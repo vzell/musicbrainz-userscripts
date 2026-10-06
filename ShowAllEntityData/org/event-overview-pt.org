@@ -1,0 +1,228 @@
+* TODO new pageType =event-overview=: relationships, setlist and event art on =/event/<mbid>=
+** Request (original, 2026-10-06)
+
+- "new plan; tackle P5, add a new PT for it" — P5 of
+  [[file:CAA-release-tracks-handling.org]]: the release page's Cover art
+  section, viewer and tab click, for event art on the event page.
+- Asked what the PT's button should consolidate (the event page has no
+  =table.tbl=): "go with 1.) [Relationships table + Event art] but show me a
+  nice HTML based preview for =debug/event-PT.html=".
+- "also show me a HTML mockup for rendering the h2 'Setlist' info into
+  sub-tables".
+- "the features should be configurable".
+
+** Status
+
+- [X] Design branch =design/event-overview= (no userscript change, no
+      changelog, no version bump).
+- [X] Mockups: [[file:event-overview-mockups.html]] (open from disk; it
+      hotlinks the 15 thumbnails from eventartarchive.org and falls back to
+      labelled tiles offline). Published as a private artifact with the
+      thumbnails inlined: https://claude.ai/artifact/EPSbAv5P7DPHVRw4pP5uAV
+      (built by =scripts/build-mockup-artifact.py=).
+- [ ] The user's picks (see DECIDE), then the implementation phases below on
+      =feature/event-overview=.
+
+** Data set (2026-10-06)
+
+- Event =3f2ca30a-7de4-4964-ad30-48376535fec8=, "2025‐05‐20: Co‐op Live,
+  Manchester, England, UK", Concert. Snapshot =debug/event-PT.html=
+  (gitignored; saved with other userscripts active).
+- =scripts/extract-event-mockup-data.py debug/event-PT.html
+  org/event-overview-data.json= — 58 relationship targets (artist 23, place 1,
+  recording 26, release 1, series 2, url 5) and 63 setlist lines (artist 21,
+  join 7, blank 3, header 2, note 1, song 29).
+- Event Art Archive record =org/event-overview-eaa-3f2ca30a.json=, a live
+  GET of =https://eventartarchive.org/event/3f2ca30a-…= (307 →
+  =archive.org/download/mbid-…/index.json=):
+  - same shape as a CAA record (=images[]= with =approved=, =comment=,
+    =edit=, =front=, =id=, =image=, =thumbnails= 250/500/1200/small/large,
+    =types=) *plus an =event= key and without a =back= key*;
+  - 15 images: Poster, Merchandise+Poster, Schedule+Poster ×5,
+    Schedule+Banner ×3, Setlist, Schedule, Ticket ×2, Map. All approved, no
+    comments, one =front: true=.
+
+** The native event page (what the PT works from)
+
+- =#content=: =div.eventheader > h1=, =p.subheader= ("~ Concert"), the tabs
+  (Overview, *Event art (15)* → =/event-art=, Aliases, Tags, Reviews,
+  Details, Edit), then the h2s Annotation, =h2.relationships=,
+  =h2.related-series=, =h2.setlist=.
+- *No =table.tbl=.* Relationships are =table.details=, one per target type,
+  each row =<th>phrase:</th><td>= with =<br>=-separated targets. A target
+  line is the entity link plus whatever follows: a disambiguation in
+  parentheses, relationship attributes ("(time: 19:40 - 22-29, lead vocals,
+  …)"), the area chain after a place ("in Manchester, Greater Manchester,
+  …"), "(live, …) by <artist credit>" after a recording, "(order: 150)"
+  after a series.
+- *"Related series" mixes two things*: the event's own "part of" series, and
+  then that SERIES' relationships (tour by, subseries of, official
+  homepages, schedule). The latter describe the tour, not the event.
+- Setlist: one =p.setlist=, =<br>=-separated lines: =strong= "Artist: <a>"
+  lines; =span.comment= joining words ("&", "with", "and"); a blank line
+  between parts; a =span.comment= right after a blank line is a part header
+  ("Soundcheck", "Concert"); other =span.comment= lines are notes
+  ("Scheduled: 19:30 | Local Start Time 19:40 / End Time 22:29"); song lines
+  are =/work/= links, several joined by " / " for a medley.
+- The "Event Schedule" h2 after the setlist is *another userscript's*
+  (=sanojjonas=) block, not MusicBrainz markup. Leave it alone.
+- Sidebar =div.event-art= is the same shape as =div.cover-art=.
+
+** Mockup catalogue
+
+| ID | What                                                       | Verdict           |
+|----+------------------------------------------------------------+-------------------|
+| E0 | today                                                      | reference         |
+| C  | settings group "🎫 EVENT PAGE", every part its own setting | *recommended*     |
+| T1 | relationships as one table (Relationship · Target · Type · Details · From) | alternative |
+| T2 | one sub-table per target type, "Via <series>" table apart, Recordings cross-linked to the setlist ("Concert #14") | *recommended* |
+| S1 | setlist: Line-up table, then one table per part; notes under the part's h3; medley = one row, several works; "also <part>"; 🎙 when a recording made here exists | *recommended* |
+| S2 | setlist: Line-up + one "Songs" table with a Part column     | alternative       |
+| E1 | "Event art (15)" section above Relationships: chips, Grid / By type, ★, hover card | *recommended* |
+| E2 | the "Event art" tab opens the viewer (grid)                | *recommended*     |
+
+Settings as mocked (C):
+
+| Key                                      | Default        | Depends on |
+|------------------------------------------+----------------+------------|
+| =sa_enable_event_overview=               | on             | -          |
+| =sa_event_overview_relationships=        | on             | enable     |
+| =sa_event_overview_relationships_layout= | per target type | relationships |
+| =sa_event_overview_related_series=       | on             | relationships |
+| =sa_event_overview_setlist=              | on             | enable     |
+| =sa_event_overview_setlist_layout=       | per part       | setlist    |
+| =sa_event_overview_event_art=            | on             | enable     |
+| =sa_event_overview_art_tab=              | on             | event art  |
+
+** DECIDED (2026-10-06, by the user)
+
+- [X] "Ship the pageType with C (every part a setting), T2 and S1 as the
+      default layouts, and E1 + E2 for the art."
+- [X] Read as: both layouts ship as the values of the two layout settings
+      (C holds them), T2 and S1 the defaults, T1 and S2 the alternatives.
+- [X] The setting keys and defaults as in the table above.
+- [X] Event art remembers its own Grid / By type choice (a new GM key next
+      to =MB_RELEASE_ART_LAYOUT_KEY=) — confirmed by the user.
+- [X] Changed in implementation: the settings library (VZ_MBLibrary) has no
+      select type, and adding one is a library change that the dev script's
+      mirror =@require= would not even exercise live. So each layout choice
+      is a checkbox, default off: =sa_event_overview_relationships_one_table=
+      (T1), =sa_event_overview_setlist_one_table= (S2).
+- [X] Changed in implementation: every converted table ends up in ONE block
+      after =h2.relationships= — =renderGroupedTable()='s initial render
+      removes every h3/=table.tbl= in =#content= and re-inserts all groups
+      after the h2 before the first table, so the setlist cannot keep a
+      section of its own without changing that core function. Its tables
+      carry a "Setlist:" prefix instead (WIP.2).
+
+** Implementation phases (branch =feature/event-overview=, after DECIDE)
+
+Each phase: WIP changelog entries only, fixture specs that fail before and
+pass after (mutation-checked), HELP resync, =lint-summary.py --check=,
+=npm run test:full=, the user's browser check before any merge.
+
+*** TODO WIP.1 — the pageType and its settings
+- 2026-10-06, implemented (WIP.1 on =feature/event-overview=):
+  - [X] Settings =sa_enable_event_overview=, =sa_event_overview_relationships=,
+        =sa_event_overview_relationships_one_table=,
+        =sa_event_overview_related_series= in a new 🎫 EVENT PAGE group.
+  - [X] Entry =event-overview= at the head of the "Event pages" block (the
+        array's entity block for events), match also requiring a table part.
+  - [X] =applyEventDetailsToTables()= (named =eventDetailsToTables=, not the
+        generic =detailsToTables= planned: it reads the event page's own
+        sections). Wired on the live page, a fetched document and the
+        Load-from-Disk hydration.
+  - [X] Per-group columns: =group.colHeaders= generalised from
+        =user-ratings= (fetch loop + =renderGroupedTable()=), and carried
+        through Save/Load (a latent gap for user-ratings too).
+  - [X] =tests/fixtures/event-overview.spec.js= (7), mutation list
+        =scripts/mutations/event-overview.json= (15/15 caught).
+  - [X] Snapshot baseline: captured with WIP.2 (below).
+- Plan as written:
+- Settings group as in C, after the release-tracklist group; run
+  =scripts/dump-config-defaults.py= and =scripts/dump-default-history.py=.
+- =pageDefinitions= entry =event-overview=, before =event-tags= (tab order):
+  match =Lib.settings.sa_enable_event_overview && /^\/event\/[a-f0-9-]{36}\/?$/=,
+  =tableMode: 'multi'=, =non_paginated: true=. Follow the
+  =add-pagetype-from-html= skill (=@include= coverage, container re-root,
+  heading placement).
+- New pre-processing =detailsToTables= (=applyDetailsToTables(def)=): the
+  =table.details= under =h2.relationships= / =h2.related-series= → one
+  =table.tbl= per target type (T2), native anchors kept; disambiguation
+  (=span.comment=) kept apart from relationship attributes. Wired exactly
+  like =listToTable= (live page and fetched document).
+- Fixture =tests/fixtures/event-overview.html= captured raw
+  (=tests/support/capture-raw-page.js=), spec, =tests/pagetypes.json= entry
+  + snapshot baseline (event art seeded off),
+  =PAGETYPES-TESTING-REFERENCE.org= row, mutation list.
+
+*** TODO WIP.2 — the setlist as tables
+- 2026-10-06, implemented (WIP.2):
+  - [X] Inside =applyEventDetailsToTables()= (shared placement, and the
+        Recording column needs the parsed recordings), not a separate
+        =setlistToTables= feature: =_eventSetlistParse()= +
+        =_eventSetlistGroups()=. Groups "Setlist: Line-up", one per part
+        ("Songs" without headers), or "Setlist: All songs" (one-table
+        setting); notes via =data-mb-intro-html= → =group.introHtml=, now
+        carried through Save/Load.
+  - [X] Anchor: =h2.relationships= when relationship tables were built,
+        else the setlist's own h2. The match offers the button while either
+        table part is on.
+  - [X] =tests/fixtures/event-overview-setlist.spec.js= (8); mutation list
+        now 32/32 caught; snapshot baseline =tests/snapshots/event-overview/=.
+- Plan as written:
+- =setlistToTables= (=applySetlistToTables(def)=): =p.setlist= line by line
+  → Line-up + one table per part (S1); stops at the paragraph's end.
+- Edge cases from the MusicBrainz setlist syntax: no part headers (one
+  "Setlist" table), a plain-text song line without a link (a text row,
+  never dropped).
+- Spec: 3 tables 21/3/26; the medley row has 2 works; "also" marks; 🎙 from
+  the recording relationships; no setlist → no tables.
+
+*** TODO WIP.4 — follow-ups from the user's review (2026-10-06, items 4–7)
+- [X] 4. Setlist "(with …)" artists → multi-row "Additional artists" (raw
+      fixture =tests/fixtures/event-overview-with-artists.html=, event
+      cd595883-…). MusicBrainz renders them as /work/ links; their MBIDs are
+      the line-up's artists, so they are re-pointed to /artist/ and never
+      counted as works.
+- [X] 5. Song as a multi-row column (=collapsableColumns=; every row a =<ul>=).
+- [X] 6. No parentheses in any Disambiguation column.
+- [X] 7. Performer attributes split: Time ("19:40 - 22-29", left as
+      MusicBrainz has it) and Credits, one row per credit.
+- [X] Found in the same fixture: a note right after a blank line
+      ("Scheduled: 19:00 …") is a note, not a part (=_eventSetlistIsNote()=).
+- [X] Mutation list =event-overview.json=: 51/51 caught.
+
+*** TODO WIP.3 — Event art
+- 2026-10-06, implemented (WIP.3):
+  - [X] =_artSectionDesc('caa'|'eaa')= — a function, not the planned
+        =_ART_SECTIONS= const (TDZ: it is reachable early and names the
+        contexts declared further down); =_artSectionOf(sec)= reads the
+        section's =data-mb-art-ctx=. Every handler (insert, load texts,
+        sheet, layouts, click, viewer order, title, tab click) resolves it.
+  - [X] Event layouts Grid / By type under their own GM key
+        (=MB_EVENT_ART_LAYOUT_KEY=, workspace group =eventart=); settings
+        =sa_event_overview_event_art= (forced off in
+        =FIXTURE_SETTINGS_OVERRIDE=) and =sa_event_overview_art_tab=.
+  - [X] Viewer: "Main back" only when the record has the flag; the title is
+        the h1's entity link (the whole h1 holds the toolbar after a render —
+        on the release page too).
+  - [X] Probe =--event= mode; fixture =tests/fixtures/eaa-event-3f2ca30a.json=;
+        =event-overview-art.spec.js= (7) + mobile (1).
+  - [X] Found while testing: =integerColumns= resolve once from the first
+        group's headers unless the pageType re-resolves per table; added
+        =event-overview= to that gate (the setlist's "Billing").
+- Plan as written:
+- Generalise the release section behind a descriptor table
+  (=_ART_SECTIONS=: ctx, setting, entity regex, anchor, label, archive name,
+  title selector, layouts); the section records its ctx; handlers resolve it
+  instead of using =CAA_CTX=. Keep the =.mb-release-art-*= classes (P1–P4
+  specs and mutation lists depend on them).
+- Release-only: Spreads (R6) and Medium art (R7). Event layouts: Grid and By
+  type.
+- The viewer's info panel without a =back= key.
+- Probe: extend =scripts/probe-caa-release-images.py= with an event mode;
+  save the record as =tests/fixtures/eaa-event-3f2ca30a.json=.
+- Specs mirroring P1–P3 with =EAA_CTX=; re-run the P2–P4 mutation lists (the
+  refactor touches every handler they guard); one =run-perf-comparison= on a
+  release-tracks page before and after the refactor.

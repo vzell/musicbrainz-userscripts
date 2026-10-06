@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "a0afc38aabbb53af1ec0c34ef71ac68d6618b828",
-    "revisions_walked": 773
+    "head": "d62526014d8d2f39c23df2f87f20c9f5708e1041",
+    "revisions_walked": 778
   },
   "changes": [
     {
@@ -533,6 +533,7 @@
     "sa_enable_release_tracks": true,
     "sa_enable_release_tracks_acoustid_column": false,
     "sa_enable_release_tracks_cover_art": true,
+    "sa_enable_release_tracks_medium_art": true,
     "sa_enable_release_tracks_isrc_column": false,
     "sa_enable_release_tracks_length_mismatch_flag": true,
     "sa_enable_release_tracks_video_medium_flag": true,
@@ -558,6 +559,14 @@
     "sa_ars_column_max_height_em": 5.6,
     "sa_ars_column_max_width": 480,
     "sa_credit_attr_color": "#2e7d32",
+    "sa_enable_event_overview": true,
+    "sa_event_overview_relationships": true,
+    "sa_event_overview_relationships_one_table": false,
+    "sa_event_overview_related_series": true,
+    "sa_event_overview_setlist": true,
+    "sa_event_overview_setlist_one_table": false,
+    "sa_event_overview_event_art": true,
+    "sa_event_overview_art_tab": true,
     "sa_enable_expand_rgs": true,
     "sa_enable_barcode_highlight": true,
     "sa_enable_barcode_validation": true,

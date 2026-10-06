@@ -67,14 +67,15 @@ const SECTION_A = 'divider_';
 // `sa_enable_relationships_column` and `sa_enable_release_tracks_cover_art`
 // OFF for every fixture, to keep the suite network-free once a spec clicks
 // "Show all". All three DEFAULT to true — so from this dialog's point of view
-// a fixture profile arrives with three settings already changed, and every
-// count here would be off by three while looking plausible. These tests never
+// a fixture profile arrives with four settings already changed, and every
+// count here would be off by four while looking plausible. These tests never
 // click "Show all" and never fetch, so putting them back at their defaults is
 // safe and is what makes "an untouched profile" mean it.
 const PRISTINE = {
     sa_enable_caa_pics: true,
     sa_enable_relationships_column: true,
     sa_enable_release_tracks_cover_art: true,
+    sa_event_overview_event_art: true,
 };
 
 /** Loads the shell without clicking anything — the dialog needs no table. */

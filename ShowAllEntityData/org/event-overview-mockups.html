@@ -1,0 +1,1696 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- SKELETON-END: everything above this line is dropped when the page is published as an Artifact. -->
+<title>Event Overview Page</title>
+<!--
+  ShowAllEntityData design study, 2026-10-06. Companion to org/event-overview-pt.org,
+  branch design/event-overview. Sibling of org/CAA-release-tracks-mockups.html, whose
+  stage, liner card and viewer it reuses so the two read as one family.
+  Data is real: https://musicbrainz.org/event/3f2ca30a-7de4-4964-ad30-48376535fec8
+  ("2025-05-20: Co-op Live, Manchester, England, UK"). Relationships and setlist were
+  extracted from debug/event-PT.html by scripts/extract-event-mockup-data.py
+  (org/event-overview-data.json); the 15 images come from the live Event Art Archive
+  record (org/event-overview-eaa-3f2ca30a.json), both 2026-10-06.
+  Opened from disk, images are hotlinked from eventartarchive.org. The published Artifact
+  copy carries the 250 px thumbnails inline (window.__EMBED), because its sandbox blocks
+  outside images. Every image falls back to a labelled tile if it cannot load.
+-->
+<!--EMBED-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: the same design-review sheet as the release study. A sticky index, then one specimen
+   per idea (E0 today, C settings, T1/T2 relationships, S1/S2 setlist, E1/E2 event art). Each
+   specimen is a light "MusicBrainz stage" (a slice of the real event page) with a cost caption. */
+:root {
+    --bg: #f2f3f5;
+    --surface: #ffffff;
+    --ink: #1c2230;
+    --muted: #586174;
+    --rule: #d8dce3;
+    --accent: #ba478f;          /* MusicBrainz purple */
+    --accent-ink: #ffffff;
+    --ok: #2f7d4f;
+    --warn: #a45a07;
+    --bad: #b42318;
+
+    --f-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+    --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, Consolas, "Courier New", monospace;
+
+    /* Stage = a MusicBrainz page. Always light, as MusicBrainz itself is. */
+    --st-bg: #ffffff;
+    --st-ink: #222222;
+    --st-even: #f4f4f4;
+    --st-rule: #c9c9c9;
+    --st-head: #eeeeee;
+    --st-link: #0b3fae;
+    --st-muted: #777777;
+    --st-tab: #f3f3f3;
+    --st-sel: #ffffff;
+    --st-hit: #fff2a8;
+    --st-flag-bg: #eef6ee;
+    --st-flag-ink: #2e6b2e;
+    --st-font: Arial, Helvetica, sans-serif;
+
+    /* Liner notes = the script's existing tooltip look (.mb-tt-liner). */
+    --ln-bg: #fbf8f1;
+    --ln-ink: #2b2622;
+    --ln-rule: #d9cfbd;
+    --ln-dim: #7a6d5c;
+    --ln-pill: #efe6d4;
+    --ln-pill-ink: #4a3f33;
+    --ln-shadow: rgba(60, 40, 20, 0.35);
+    --ln-font: Georgia, "Times New Roman", Times, serif;
+
+    /* Viewer = a darkroom. Deliberately the same in both themes. */
+    --vw-bg: #0d0e11;
+    --vw-panel: #17191e;
+    --vw-ink: #ebe7df;
+    --vw-dim: #9c978c;
+    --vw-rule: #2b2e35;
+    --vw-accent: #f0a35e;
+
+    /* One colour per EAA image type, for chips and fallback tiles. */
+    --t-poster: #8a6a2f;
+    --t-schedule: #2f6fb2;
+    --t-banner: #7a4fb0;
+    --t-ticket: #b0574f;
+    --t-map: #2c806a;
+    --t-merch: #b0427a;
+    --t-setlist: #6f7480;
+
+    /* The settings dialog (VZ_MBLibrary look), light like the stage. */
+    --cfg-bg: #fdfdfd;
+    --cfg-ink: #222222;
+    --cfg-rule: #d0d0d0;
+    --cfg-div: #ba478f;
+    --cfg-dim: #6b6b6b;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg: #121418;
+        --surface: #1a1d23;
+        --ink: #e7e9ee;
+        --muted: #9aa2b1;
+        --rule: #2d313a;
+        --accent: #e58cc4;
+        --accent-ink: #1d0c17;
+        --ok: #6cc28f;
+        --warn: #f0a35e;
+        --bad: #f08a80;
+        color-scheme: dark;
+    }
+}
+:root[data-theme="dark"] {
+    --bg: #121418;
+    --surface: #1a1d23;
+    --ink: #e7e9ee;
+    --muted: #9aa2b1;
+    --rule: #2d313a;
+    --accent: #e58cc4;
+    --accent-ink: #1d0c17;
+    --ok: #6cc28f;
+    --warn: #f0a35e;
+    --bad: #f08a80;
+    color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.55 var(--f-body);
+    padding-inline: 16px;
+    padding-block: 0 56px;
+}
+img { max-width: 100%; }
+a { color: inherit; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wrap { max-width: 1180px; margin: 0 auto; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; line-height: 1.15; margin: 0; }
+code, kbd, .mono { font-family: var(--f-mono); font-size: 0.88em; }
+kbd {
+    border: 1px solid var(--rule);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    padding: 0 5px;
+    background: var(--surface);
+}
+p { margin: 0; max-width: 68ch; }
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.hero { padding-block: 36px 20px; display: grid; gap: 14px; }
+.eyebrow {
+    font: 600 12px/1 var(--f-display);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+}
+.hero h1 { font-size: clamp(30px, 5vw, 46px); font-weight: 700; letter-spacing: -0.01em; }
+.hero .lede { font-size: 17px; color: var(--muted); }
+.facts-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 22px;
+    margin: 4px 0 0;
+    padding: 12px 0 0;
+    border-top: 1px solid var(--rule);
+    font-size: 13px;
+}
+.facts-row div { display: flex; gap: 6px; min-width: 0; }
+.facts-row dt { color: var(--muted); }
+.facts-row dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; }
+.tally { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ── Index ──────────────────────────────────────────────────────────────── */
+.toc {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 20;
+    background: var(--bg);
+    border-bottom: 1px solid var(--rule);
+    margin-inline: -16px;
+    padding: 8px 16px;
+}
+.toc ul {
+    list-style: none;
+    margin: 0 auto;
+    padding: 0;
+    max-width: 1180px;
+    display: flex;
+    gap: 4px 18px;
+    flex-wrap: wrap;
+    font: 500 13px/1.6 var(--f-display);
+}
+.toc a { text-decoration: none; color: var(--muted); }
+.toc a:hover { color: var(--accent); }
+.toc b { color: var(--ink); font-weight: 600; margin-right: 4px; }
+
+/* ── Specimens ──────────────────────────────────────────────────────────── */
+section.spec { padding-block: 34px 0; display: grid; gap: 14px; scroll-margin-top: 48px; }
+.spec-head { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.spec-id {
+    font: 700 13px/1 var(--f-mono);
+    color: var(--accent-ink);
+    background: var(--accent);
+    border-radius: 4px;
+    padding: 4px 7px;
+}
+.spec-head h2 { font-size: 24px; font-weight: 600; }
+.verdict {
+    font: 600 12px/1 var(--f-display);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    padding: 4px 9px;
+}
+.v-rec { color: var(--ok); }
+.v-opt { color: var(--warn); }
+.v-ref { color: var(--muted); }
+.spec > p { color: var(--muted); }
+.card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    overflow: hidden;
+}
+.cost {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border-top: 1px solid var(--rule);
+    font-size: 13px;
+    margin: 0;
+}
+.cost div { background: var(--surface); padding: 10px 14px; min-width: 0; }
+.cost dt {
+    font: 600 11px/1.4 var(--f-display);
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+.cost dd { margin: 2px 0 0; }
+.demo-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--rule);
+    font-size: 13px;
+    align-items: center;
+}
+.demo-bar .lbl { color: var(--muted); margin-right: 4px; }
+
+/* ── Stage: a slice of the MusicBrainz event page ───────────────────────── */
+.stage-scroll { overflow-x: auto; }
+.stage {
+    background: var(--st-bg);
+    color: var(--st-ink);
+    font: 12px/1.4 var(--st-font);
+    padding: 14px 16px 18px;
+    min-width: 0;
+}
+.stage a { color: var(--st-link); text-decoration: none; }
+.stage .st-title { font: bold 20px/1.25 var(--st-font); margin: 0; }
+.stage .st-title small { font-weight: normal; color: var(--st-muted); font-size: 13px; }
+.stage .st-sub { margin: 2px 0 10px; font-size: 13px; color: var(--st-muted); }
+.st-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-bottom: 1px solid var(--st-rule);
+}
+.st-tabs li a, .st-tabs li span {
+    display: block;
+    padding: 4px 9px;
+    background: var(--st-tab);
+    border: 1px solid var(--st-rule);
+    border-bottom: 0;
+    border-radius: 4px 4px 0 0;
+    color: var(--st-link);
+    position: relative;
+    top: 1px;
+}
+.st-tabs li.sel span { background: var(--st-sel); color: var(--st-ink); font-weight: bold; }
+.st-tabs li.hot a { box-shadow: 0 0 0 2px var(--accent) inset; }
+.st-tabs .tab-pip {
+    display: inline-block;
+    margin-left: 5px;
+    font: 600 10px/1 var(--st-font);
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-radius: 3px;
+    padding: 2px 4px;
+}
+.st-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 200px;
+    gap: 18px;
+    padding-top: 12px;
+}
+.st-main { min-width: 0; display: grid; gap: 8px; align-content: start; }
+.st-side { display: grid; gap: 10px; align-content: start; font-size: 11px; }
+.st-side h4 { margin: 0; font-size: 12px; border-bottom: 1px solid var(--st-rule); padding-bottom: 2px; }
+.st-side dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 1px 8px; }
+.st-side dt { color: var(--st-muted); }
+.st-side dd { margin: 0; overflow-wrap: anywhere; }
+.st-cover { display: block; width: 100%; aspect-ratio: 1; object-fit: contain; background: var(--st-even); }
+.st-h2 {
+    font: bold 15px/1.3 var(--st-font);
+    border-bottom: 1px solid var(--st-rule);
+    padding-bottom: 2px;
+    margin-top: 6px;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.st-h2 .tri, .st-h3 .tri { font-size: 10px; color: var(--st-muted); width: 10px; }
+.st-h2 .stat, .st-h3 .stat { font-weight: normal; font-size: 11px; color: var(--st-muted); }
+.st-h3 {
+    font: bold 13px/1.3 var(--st-font);
+    margin: 6px 0 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.st-button {
+    font: 12px/1 var(--st-font);
+    border: 1px solid var(--st-rule);
+    background: var(--st-head);
+    border-radius: 3px;
+    padding: 4px 8px;
+    color: var(--st-ink);
+}
+.st-saed {
+    font: normal 11px/1 var(--st-font);
+    color: var(--st-muted);
+    border: 1px dashed var(--st-rule);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+.st-filter {
+    font: 11px/1.2 var(--st-font);
+    border: 1px solid var(--st-rule);
+    border-radius: 3px;
+    padding: 2px 5px;
+    width: 130px;
+    max-width: 100%;
+    background: var(--st-bg);
+    color: var(--st-ink);
+}
+.st-note { color: var(--st-muted); font-style: italic; font-size: 11px; }
+.st-native { display: grid; gap: 4px; }
+.st-details { border-collapse: collapse; width: 100%; font-size: 12px; }
+.st-details th { text-align: right; vertical-align: top; padding: 2px 8px 2px 0; white-space: nowrap; color: var(--st-ink); width: 1%; }
+.st-details td { padding: 2px 0; }
+.st-p { font-size: 12px; line-height: 1.55; margin: 0; max-width: none; }
+.st-p .cm { color: var(--st-muted); }
+.st-tbl { border-collapse: collapse; width: 100%; font-size: 12px; }
+.st-tbl th {
+    background: var(--st-head);
+    text-align: left;
+    padding: 3px 6px;
+    border-bottom: 1px solid var(--st-rule);
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+}
+.st-tbl th .ar { color: var(--st-muted); font-size: 9px; margin-left: 3px; }
+.st-tbl td { padding: 2px 6px; vertical-align: top; }
+.st-tbl tr:nth-child(even) td { background: var(--st-even); }
+.st-tbl .num { width: 30px; color: var(--st-muted); font-variant-numeric: tabular-nums; }
+.st-tbl .dim { color: var(--st-muted); }
+.st-tbl ul { list-style: none; margin: 0; padding: 0; }
+.st-tbl mark { background: var(--st-hit); color: inherit; }
+.st-flag {
+    display: inline-block;
+    font: 10px/1.3 var(--st-font);
+    border: 1px solid var(--st-flag-ink);
+    color: var(--st-flag-ink);
+    background: var(--st-flag-bg);
+    border-radius: 3px;
+    padding: 0 4px;
+    white-space: nowrap;
+}
+.st-type {
+    display: inline-block;
+    font: 10px/1.3 var(--st-font);
+    border: 1px solid var(--st-rule);
+    border-radius: 3px;
+    padding: 0 4px;
+    color: var(--st-muted);
+    white-space: nowrap;
+}
+.st-group-note { font-size: 11px; color: var(--st-muted); margin: 0; }
+.st-empty { color: var(--st-muted); font-style: italic; padding: 6px 0; }
+@media (max-width: 700px) {
+    .st-body { grid-template-columns: minmax(0, 1fr); }
+    .st-side { grid-template-columns: 110px minmax(0, 1fr); align-items: start; }
+}
+
+/* ── Image tiles (shared) ───────────────────────────────────────────────── */
+.thumb { display: block; object-fit: contain; background: var(--st-even); cursor: zoom-in; }
+.fb {
+    display: inline-grid;
+    place-items: center;
+    color: #ffffff;
+    font: 600 11px/1 var(--f-display);
+    letter-spacing: 0.04em;
+    cursor: zoom-in;
+    text-align: center;
+}
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid var(--st-rule);
+    border-radius: 999px;
+    padding: 2px 8px 2px 6px;
+    font: 11px/1.3 var(--st-font);
+    background: var(--st-bg);
+    color: var(--st-ink);
+    cursor: pointer;
+}
+.chip i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.chip b { font-weight: bold; font-variant-numeric: tabular-nums; }
+.chip[aria-pressed="true"] { border-color: var(--st-ink); background: var(--st-head); }
+.tally .chip { border-color: var(--rule); background: var(--surface); color: var(--ink); cursor: default; }
+.ca-sec { display: grid; gap: 8px; }
+.ca-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ca-tools .sep { flex: 1 1 auto; }
+.seg { display: inline-flex; border: 1px solid var(--st-rule); border-radius: 4px; overflow: hidden; }
+.seg button {
+    border: 0;
+    background: var(--st-bg);
+    color: var(--st-ink);
+    font: 11px/1 var(--st-font);
+    padding: 4px 8px;
+    cursor: pointer;
+}
+.seg button + button { border-left: 1px solid var(--st-rule); }
+.seg button[aria-pressed="true"] { background: var(--st-head); font-weight: bold; }
+.ca-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+.ca-group { display: grid; gap: 4px; }
+.ca-group h5 { margin: 4px 0 0; font: bold 11px/1.3 var(--st-font); color: var(--st-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.tile { position: relative; display: grid; gap: 3px; min-width: 0; }
+.tile .thumb, .tile .fb { width: 100%; aspect-ratio: 1; border: 1px solid var(--st-rule); }
+.tile .cap { font: 11px/1.3 var(--st-font); min-width: 0; overflow-wrap: anywhere; }
+.tile .star {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    background: rgba(0, 0, 0, 0.66);
+    color: #ffd76a;
+    font: bold 11px/1 var(--st-font);
+    padding: 3px 5px;
+    border-radius: 3px;
+}
+
+/* ── Settings dialog (C) ────────────────────────────────────────────────── */
+.cfg-split { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); }
+.cfg {
+    background: var(--cfg-bg);
+    color: var(--cfg-ink);
+    font: 12px/1.4 var(--st-font);
+    padding: 12px 14px;
+    border-right: 1px solid var(--rule);
+    display: grid;
+    gap: 9px;
+    align-content: start;
+}
+.cfg-div {
+    font: bold 12px/1.3 var(--st-font);
+    color: var(--cfg-div);
+    border-bottom: 2px solid var(--cfg-div);
+    padding-bottom: 3px;
+    letter-spacing: 0.03em;
+}
+.cfg-row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 7px; align-items: start; }
+.cfg-row.child { margin-left: 20px; }
+.cfg-row input { margin: 2px 0 0; }
+.cfg-row label { font-weight: bold; }
+.cfg-row .key { grid-column: 2; font: 10.5px/1.3 var(--f-mono); color: var(--cfg-dim); overflow-wrap: anywhere; }
+.cfg-row .desc { grid-column: 2; color: var(--cfg-dim); }
+.cfg-row select {
+    grid-column: 2;
+    font: 12px/1.2 var(--st-font);
+    border: 1px solid var(--cfg-rule);
+    border-radius: 3px;
+    padding: 2px 4px;
+    background: #ffffff;
+    color: var(--cfg-ink);
+    justify-self: start;
+}
+.cfg-row.off { opacity: 0.45; }
+@media (max-width: 760px) {
+    .cfg-split { grid-template-columns: minmax(0, 1fr); }
+    .cfg { border-right: 0; border-bottom: 1px solid var(--rule); }
+}
+
+/* ── Tables in prose ────────────────────────────────────────────────────── */
+.tbl-wrap { overflow-x: auto; }
+table.plain { border-collapse: collapse; width: 100%; font-size: 13px; }
+table.plain th, table.plain td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+table.plain th { font: 600 11px/1.3 var(--f-display); letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+
+/* ── Liner card tooltip ─────────────────────────────────────────────────── */
+#tt {
+    position: fixed;
+    z-index: 60;
+    max-width: 300px;
+    background: var(--ln-bg);
+    color: var(--ln-ink);
+    border: 1px solid var(--ln-rule);
+    border-radius: 3px;
+    box-shadow: 0 8px 24px var(--ln-shadow);
+    font: 13px/1.45 var(--ln-font);
+    padding: 10px 12px;
+    pointer-events: none;
+    display: grid;
+    gap: 5px;
+}
+.tt-title { font-weight: bold; font-size: 14px; }
+.tt-pills { display: flex; gap: 4px; flex-wrap: wrap; }
+.tt-pill { background: var(--ln-pill); color: var(--ln-pill-ink); border-radius: 999px; padding: 0 7px; font-size: 11.5px; }
+.tt-dim { color: var(--ln-dim); font-size: 11.5px; }
+.tt-rule { border: 0; border-top: 1px solid var(--ln-rule); margin: 2px 0; }
+.tt-img { width: 180px; height: 180px; object-fit: contain; background: #ffffff; border: 1px solid var(--ln-rule); }
+
+/* ── Viewer ─────────────────────────────────────────────────────────────── */
+#vw {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    background: var(--vw-bg);
+    color: var(--vw-ink);
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    font: 13px/1.45 var(--f-body);
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.vw-bar { display: flex; gap: 10px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--vw-rule); flex-wrap: wrap; }
+.vw-bar .t { font: 600 15px/1.2 var(--f-display); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 200px; }
+.vw-bar .pos { color: var(--vw-dim); font-variant-numeric: tabular-nums; }
+.vw-btn {
+    background: var(--vw-panel);
+    border: 1px solid var(--vw-rule);
+    color: var(--vw-ink);
+    border-radius: 5px;
+    padding: 3px 9px;
+    cursor: pointer;
+    font: 12px/1.4 var(--f-body);
+    text-decoration: none;
+}
+.vw-btn:hover { border-color: var(--vw-accent); }
+.vw-btn[aria-pressed="true"] { border-color: var(--vw-accent); color: var(--vw-accent); }
+.vw-mid { display: grid; grid-template-columns: minmax(0, 1fr) 280px; min-height: 0; }
+.vw-mid.noinfo { grid-template-columns: minmax(0, 1fr); }
+.vw-mid.noinfo .vw-info { display: none; }
+.vw-stage { position: relative; overflow: hidden; display: grid; place-items: center; min-height: 0; cursor: zoom-in; touch-action: pan-y; }
+.vw-stage.zoomed { cursor: zoom-out; }
+.vw-stage img { width: 100%; height: 100%; padding: 12px 56px; object-fit: contain; transform-origin: center; transition: transform 0.12s ease-out; user-select: none; }
+.vw-load { position: absolute; left: 12px; bottom: 10px; color: var(--vw-dim); font-size: 12px; max-width: 70%; }
+.vw-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(23, 25, 30, 0.7);
+    border: 1px solid var(--vw-rule);
+    color: var(--vw-ink);
+    width: 38px;
+    height: 54px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 20px;
+}
+.vw-nav.prev { left: 10px; }
+.vw-nav.next { right: 10px; }
+.vw-info {
+    background: var(--ln-bg);
+    color: var(--ln-ink);
+    font: 13px/1.5 var(--ln-font);
+    padding: 14px 16px;
+    overflow-y: auto;
+    display: grid;
+    gap: 7px;
+    align-content: start;
+    border-left: 1px solid var(--vw-rule);
+}
+.vw-info a { color: var(--ln-ink); }
+.vw-info dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 12px; }
+.vw-info dt { color: var(--ln-dim); }
+.vw-info dd { margin: 0; overflow-wrap: anywhere; }
+.vw-film { display: flex; gap: 5px; overflow-x: auto; padding: 8px 14px; border-top: 1px solid var(--vw-rule); }
+.vw-film .thumb, .vw-film .fb { flex: 0 0 56px; width: 56px; height: 56px; background: var(--vw-panel); opacity: 0.55; border: 2px solid transparent; }
+.vw-film .cur { opacity: 1; border-color: var(--vw-accent); }
+.vw-grid { overflow-y: auto; padding: 14px; display: grid; gap: 14px; align-content: start; min-height: 0; }
+.vw-grid h5 { margin: 0; font: 600 12px/1.3 var(--f-display); color: var(--vw-dim); letter-spacing: 0.06em; text-transform: uppercase; }
+.vw-grid .row { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+.vw-grid .row .thumb, .vw-grid .row .fb { width: 100%; aspect-ratio: 1; background: var(--vw-panel); }
+.vw-grid .row figure { margin: 0; display: grid; gap: 4px; }
+.vw-grid figcaption { font-size: 11.5px; color: var(--vw-dim); overflow-wrap: anywhere; }
+.vw-keys { color: var(--vw-dim); font-size: 11px; }
+.vw-keys kbd { background: var(--vw-panel); border-color: var(--vw-rule); color: var(--vw-ink); }
+@media (max-width: 760px) {
+    .vw-mid { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+    .vw-info { border-left: 0; border-top: 1px solid var(--vw-rule); max-height: 36vh; }
+    .vw-keys { display: none; }
+}
+
+.prose { display: grid; gap: 12px; }
+.prose h2 { font-size: 24px; font-weight: 600; }
+.prose ul { margin: 0; padding-left: 20px; max-width: 72ch; display: grid; gap: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+    <header class="hero">
+        <div class="eyebrow">ShowAllEntityData · design study · event-overview</div>
+        <h1>The event overview page</h1>
+        <p class="lede">A new pageType for <code>/event/&lt;mbid&gt;</code>. Its button turns the relationship lists and
+            the setlist into filterable, sortable tables, and puts the 15 Event Art Archive images above them. Every part
+            is a setting of its own. All mockups run on the real data of one concert. Type in a table's filter, click a
+            column header to sort, hover a thumbnail for its card, click it for the viewer.</p>
+        <dl class="facts-row">
+            <div><dt>Event</dt><dd><a href="https://musicbrainz.org/event/3f2ca30a-7de4-4964-ad30-48376535fec8">2025‐05‐20: Co‐op Live, Manchester, England, UK</a></dd></div>
+            <div><dt>Type</dt><dd>Concert</dd></div>
+            <div><dt>Relationships</dt><dd id="fact-rels"></dd></div>
+            <div><dt>Setlist</dt><dd id="fact-setlist"></dd></div>
+            <div><dt>Event art</dt><dd>15 images, all approved, no comments</dd></div>
+            <div><dt>Branch</dt><dd><code>design/event-overview</code></dd></div>
+        </dl>
+        <div class="tally" id="hero-tally"></div>
+    </header>
+</div>
+
+<nav class="toc" aria-label="Mockups">
+    <ul>
+        <li><a href="#e0"><b>E0</b>Today</a></li>
+        <li><a href="#c"><b>C</b>Settings</a></li>
+        <li><a href="#t1"><b>T1</b>One table</a></li>
+        <li><a href="#t2"><b>T2</b>Per target type</a></li>
+        <li><a href="#s1"><b>S1</b>Setlist per part</a></li>
+        <li><a href="#s2"><b>S2</b>Setlist as one list</a></li>
+        <li><a href="#e1"><b>E1</b>Event art</a></li>
+        <li><a href="#e2"><b>E2</b>Tab and viewer</a></li>
+        <li><a href="#rec"><b>✓</b>Recommendation</a></li>
+    </ul>
+</nav>
+
+<main class="wrap">
+    <section class="spec" id="e0">
+        <div class="spec-head"><span class="spec-id">E0</span><h2>Today</h2><span class="verdict v-ref">reference</span></div>
+        <p>The native overview. Relationships are nine small two-column lists, one target per line. The setlist is a
+            single paragraph of lines. Nothing can be filtered or sorted, and the event art sits behind the
+            “Event art (15)” tab.</p>
+        <div class="card">
+            <div class="stage-scroll"><div class="stage" id="stage-e0"></div></div>
+            <dl class="cost">
+                <div><dt>Requests</dt><dd>0. Seeing the art means opening a second page.</dd></div>
+                <div><dt>No pageType today</dt><dd>Only <code>event-tags</code> exists; nothing matches the bare <code>/event/&lt;mbid&gt;</code> path.</dd></div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="spec" id="c">
+        <div class="spec-head"><span class="spec-id">C</span><h2>Every part is a setting</h2><span class="verdict v-rec">recommended</span></div>
+        <p>A new “🎫 EVENT PAGE” group in the settings dialog. The first box adds the button at all; each part under it
+            can be turned off on its own, and the two layout choices make T1/T2 and S1/S2 user choices instead of ours.
+            Change any of them: the page on the right is rebuilt the way the script would render it.</p>
+        <div class="card">
+            <div class="cfg-split">
+                <form class="cfg" id="cfg" aria-label="Event page settings (mockup)"></form>
+                <div class="stage-scroll"><div class="stage" id="stage-c"></div></div>
+            </div>
+            <dl class="cost">
+                <div><dt>Defaults</dt><dd>Everything on, with T2 and S1 as the layouts. Each setting is read once per render.</dd></div>
+                <div><dt>Owed per setting</dt><dd>A <code>configSchema</code> entry, the defaults dump, and its fixture/off state in a spec.</dd></div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="spec" id="t1">
+        <div class="spec-head"><span class="spec-id">T1</span><h2>Relationships as one table</h2><span class="verdict v-opt">alternative</span></div>
+        <p>Every target of every list becomes one row: the relationship, the target, its entity type, whatever followed
+            it on the line, and which heading it came from. One filter searches everything, which is handy for a quick
+            “is X credited anywhere”, but most columns are half empty because a recording, a place and a URL have little
+            in common.</p>
+        <div class="card">
+            <div class="stage-scroll"><div class="stage" id="stage-t1"></div></div>
+            <dl class="cost">
+                <div><dt>Rows</dt><dd id="cost-t1"></dd></div>
+                <div><dt>Render</dt><dd><code>tableMode: 'single'</code>, one <code>table.tbl</code></dd></div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="spec" id="t2">
+        <div class="spec-head"><span class="spec-id">T2</span><h2>One sub-table per target type</h2><span class="verdict v-rec">recommended</span></div>
+        <p>The script's normal multi-table view: an h3 per target type, each with the columns that fit it, its own
+            count and filter. Recordings name where the setlist played them; the related series' own relationships
+            (its tour artists, its parent series, its links) keep their own table, so they are never mistaken for the
+            event's.</p>
+        <div class="card">
+            <div class="stage-scroll"><div class="stage" id="stage-t2"></div></div>
+            <dl class="cost">
+                <div><dt>Tables</dt><dd id="cost-t2"></dd></div>
+                <div><dt>Render</dt><dd><code>tableMode: 'multi'</code>; native anchors kept, so flags and entity links survive</dd></div>
+                <div><dt>Cross-check</dt><dd>“In setlist” matches a recording's title to the setlist's work names; no request</dd></div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="spec" id="s1">
+        <div class="spec-head"><span class="spec-id">S1</span><h2>Setlist: one sub-table per part</h2><span class="verdict v-rec">recommended</span></div>
+        <p>The line-up, then one table per setlist part (“Soundcheck”, “Concert”), each under its own h3 with its count.
+            A part's note line (“Scheduled: …”) sits under its h3 instead of becoming a row. A medley line stays one row
+            with every work it names; a song played in two parts is marked in both; a song with a recording made at
+            this event shows 🎙.</p>
+        <div class="card">
+            <div class="stage-scroll"><div class="stage" id="stage-s1"></div></div>
+            <dl class="cost">
+                <div><dt>Tables</dt><dd id="cost-s1"></dd></div>
+                <div><dt>Source</dt><dd><code>p.setlist</code> line by line; everything after the paragraph (another script's “Event Schedule” block) is left alone</dd></div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="spec" id="s2">
+        <div class="spec-head"><span class="spec-id">S2</span><h2>Setlist: every song in one table</h2><span class="verdict v-opt">alternative</span></div>
+        <p>All songs in one table with a “Part” column, the line-up beside it. Better for filtering across parts (“every
+            song from <i>The River</i> era”), but the per-part counts move out of the headings.</p>
+        <div class="card">
+            <div class="stage-scroll"><div class="stage" id="stage-s2"></div></div>
+            <dl class="cost">
+                <div><dt>Tables</dt><dd id="cost-s2"></dd></div>
+                <div><dt>Sorting</dt><dd>“Part” then “#” restores the running order after any other sort</dd></div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="spec" id="e1">
+        <div class="spec-head"><span class="spec-id">E1</span><h2>“Event art (15)” section</h2><span class="verdict v-rec">recommended</span></div>
+        <p>The release page's Cover art section, fed from the Event Art Archive. The type chips are the archive's event
+            types; an image with two types (“Schedule / Poster”) counts for both. Grid and By type only: Spreads and the
+            medium thumbnails are release packaging and stay on the release page.</p>
+        <div class="card">
+            <div class="stage-scroll"><div class="stage" id="stage-e1"></div></div>
+            <dl class="cost">
+                <div><dt>Requests</dt><dd>0 before the button; then 1 JSON to eventartarchive.org (or 0 from the shared cache) + 15 lazy 250 px thumbs</dd></div>
+                <div><dt>Where it lives</dt><dd>Before <code>h2.relationships</code>; the end of <code>#content</code> when an event has no relationships</dd></div>
+                <div><dt>Record shape</dt><dd>As a cover art record plus an <code>event</code> key, and no <code>back</code> flag</dd></div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="spec" id="e2">
+        <div class="spec-head"><span class="spec-id">E2</span><h2>The tab opens the viewer</h2><span class="verdict v-rec">recommended</span></div>
+        <p>A plain click on “Event art (15)” opens the viewer on a grid of every image instead of leaving the page.
+            Ctrl-click, middle click and Shift-click still open the archive page. Keys as on the release page:
+            <kbd>←</kbd> <kbd>→</kbd> step, <kbd>Z</kbd> zoom, <kbd>G</kbd> grid, <kbd>I</kbd> info, <kbd>Esc</kbd> close.</p>
+        <div class="card">
+            <div class="demo-bar"><span class="lbl">Try:</span>
+                <span class="lbl">click the outlined tab, or a thumbnail in E1.</span>
+            </div>
+            <div class="stage-scroll"><div class="stage" id="stage-e2"></div></div>
+            <dl class="cost">
+                <div><dt>Requests</dt><dd>1200 px only for the image in view, ±1 preloaded</dd></div>
+                <div><dt>Shared</dt><dd>The same <code>_artViewer*</code> component as the release page, driven by <code>EAA_CTX</code></dd></div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="spec prose" id="rec">
+        <div class="spec-head"><span class="spec-id">✓</span><h2>Recommendation</h2></div>
+        <p>Ship the pageType with <strong>C</strong> (every part a setting), <strong>T2</strong> and <strong>S1</strong> as
+            the default layouts, and <strong>E1 + E2</strong> for the art. Whether T1 and S2 ship as the alternative values
+            of the two layout settings is your call: each costs one extra render path and its specs.</p>
+        <div class="card tbl-wrap">
+            <table class="plain">
+                <thead><tr><th>ID</th><th>What</th><th>Setting</th><th>Default</th><th>Verdict</th></tr></thead>
+                <tbody>
+                    <tr><td>C</td><td>the “🎫 EVENT PAGE” settings group</td><td><code>sa_enable_event_overview</code></td><td>on</td><td><strong>recommended</strong></td></tr>
+                    <tr><td>T2</td><td>relationships, one table per target type</td><td><code>sa_event_overview_relationships</code> + layout</td><td>on, per type</td><td><strong>recommended</strong></td></tr>
+                    <tr><td>T1</td><td>relationships, one table</td><td>layout value “one table”</td><td>-</td><td>alternative</td></tr>
+                    <tr><td>S1</td><td>setlist, one table per part</td><td><code>sa_event_overview_setlist</code> + layout</td><td>on, per part</td><td><strong>recommended</strong></td></tr>
+                    <tr><td>S2</td><td>setlist, one table</td><td>layout value “one table”</td><td>-</td><td>alternative</td></tr>
+                    <tr><td>E1</td><td>Event art section</td><td><code>sa_event_overview_event_art</code></td><td>on</td><td><strong>recommended</strong></td></tr>
+                    <tr><td>E2</td><td>tab click opens the viewer</td><td><code>sa_event_overview_art_tab</code></td><td>on</td><td><strong>recommended</strong></td></tr>
+                </tbody>
+            </table>
+        </div>
+        <p>The plan and the open decisions are in <code>org/event-overview-pt.org</code>.</p>
+    </section>
+</main>
+
+<div id="tt" hidden></div>
+<div id="vw" hidden role="dialog" aria-modal="true" aria-label="Event art viewer"></div>
+
+<script>
+(() => {
+    'use strict';
+
+    /* ── Data (debug/event-PT.html + the live EAA record, 2026-10-06) ─────── */
+    const EV = {
+        mbid: '3f2ca30a-7de4-4964-ad30-48376535fec8',
+        title: '2025‐05‐20: Co‐op Live, Manchester, England, UK',
+        date: '2025-05-20',
+        time: '19:30',
+        type: 'Concert',
+    };
+    /* [phrase, entity type, name, rest of the line, group] — group 'e' = the event's own, 's' = via the related series */
+    const RELS = [
+        ...[
+            ['Anthony Almonte', '(Puerto Rican singer and percussionist)'], ['Roy Bittan', ''],
+            ['Jake Clemons', '(singer‐songwriter, saxophonist and nephew of Clarence Clemons)'],
+            ['Barry Danielian', '(American trumpeter, producer and arranger)'], ['Ada Dyer', '(American soul singer)'],
+            ['The E Street Band', '(time: 19:40 - 22-29)'], ['The E Street Choir', ''], ['The E Street Horns', ''],
+            ['Charles Giordano', '(American keyboardist and accordionist)'], ['Curtis King', '(American singer and songwriter)'],
+            ['Nils Lofgren', ''], ['Lisa Lowell', ''], ['Ed Manion', '(American saxophonist)'], ['Ozzie Melendez', '(trombonist)'],
+            ['Michelle Moore', '(American gospel singer)'], ['Curt Ramm', '(American trumpet player)'],
+            ['Bruce Springsteen', '(time: 19:40 - 22-29, lead vocals, spoken vocals, harmonica, electric guitar)'],
+            ['Steven Van Zandt', ''], ['Garry Tallent', ''], ['Soozie Tyrell', ''], ['Max Weinberg', ''],
+        ].map(([n, r]) => ['main performers', 'artist', n, r, 'e']),
+        ['held at', 'place', 'Co‐op Live', 'in Manchester, Greater Manchester, England, United Kingdom', 'e'],
+        ...[
+            'Badlands', 'Because the Night', 'Born in the U.S.A.', 'Born to Run', 'Chimes of Freedom', 'Dancing in the Dark',
+            'Death to My Hometown', 'Ghosts', 'Glory Days', 'House of a Thousand Guitars', 'Land of Hope and Dreams / People Get Ready',
+            'Long Walk Home', 'Murder Incorporated', 'My City of Ruins', 'No Surrender', 'Rainmaker', 'Reason to Believe', 'Seeds',
+            'Something in the Night', 'Tenth Avenue Freeze‐Out', 'The Promised Land', 'The Rising', 'The River', 'Thunder Road',
+            'Wrecking Ball', 'Youngstown',
+        ].map(n => ['recording location for', 'recording', n,
+            `(live, 2025‐05‐20: Co‐op Live, Manchester, England, UK) by Bruce Springsteen${n === 'House of a Thousand Guitars' ? '' : ' & The E Street Band'}`, 'e']),
+        ['recording location for', 'release', '2025‐05‐20: Co‐op Live, Manchester, England, UK', 'by Bruce Springsteen & The E Street Band', 'e'],
+        ['part of', 'series', '2023–25 International Tour', '(order: 150)', 'e'],
+        ['video channel', 'url', 'https://www.blogness-brucespringsteen.net/post/manchester3', '', 'e'],
+        ['setlist.fm', 'url', 'https://www.setlist.fm/setlist/bruce-springsteen/2025/co-op-live-manchester-england-43535b97.html', '', 'e'],
+        ['reviews', 'url', 'http://brucebase.wikidot.com/2025#200525', '', 'e'],
+        ['tour by', 'artist', 'The E Street Band', '', 's'],
+        ['tour by', 'artist', 'Bruce Springsteen', '', 's'],
+        ['subseries of', 'series', 'Bruce Springsteen Concert Tours', '', 's'],
+        ['official homepages', 'url', 'https://www.nugs.net/live-download-of-bruce-springsteen-mp3-flac-or-online-music-streaming/1260-PACKAGE.html', '', 's'],
+        ['schedule', 'url', 'https://brucebase.wdfiles.com/local--files/files:news-tour-23int/2024-INT_Schedule_01_USA.jpg', '', 's'],
+    ].map(([phrase, type, name, rest, group]) => ({ phrase, type, name, rest, group }));
+    const SERIES_NAME = '2023–25 International Tour';
+
+    /* The p.setlist lines, classified (artist / join / blank / header / note / song). */
+    const SET = [
+        ['artist', 'Bruce Springsteen'], ['join', '&'], ['artist', 'The E Street Band'], ['join', 'with'],
+        ['artist', 'Roy Bittan'], ['artist', 'Nils Lofgren'], ['artist', 'Garry Tallent'], ['artist', 'Steven Van Zandt'],
+        ['artist', 'Max Weinberg'], ['join', 'and'], ['artist', 'Charles Giordano'], ['artist', 'Soozie Tyrell'], ['join', 'and'],
+        ['artist', 'The E Street Horns'], ['join', 'with'], ['artist', 'Jake Clemons'], ['artist', 'Barry Danielian'],
+        ['artist', 'Ed Manion'], ['artist', 'Ozzie Melendez'], ['artist', 'Curt Ramm'], ['join', 'and'],
+        ['artist', 'The E Street Choir'], ['join', 'with'], ['artist', 'Anthony Almonte'], ['artist', 'Ada Dyer'],
+        ['artist', 'Curtis King'], ['artist', 'Lisa Lowell'], ['artist', 'Michelle Moore'],
+        ['blank'], ['header', 'Soundcheck'],
+        ['song', 'Something in the Night'], ['song', 'No Surrender'], ['song', 'Reason to Believe'],
+        ['blank'], ['header', 'Concert'], ['note', 'Scheduled: 19:30 | Local Start Time 19:40 / End Time 22:29'],
+        ...['No Surrender', 'Land of Hope and Dreams / People Get Ready', 'Death to My Hometown', 'Seeds', 'Something in the Night',
+            'Rainmaker', 'The Promised Land', 'Reason to Believe', 'The River', 'Youngstown', 'Murder Incorporated', 'Long Walk Home',
+            'House of a Thousand Guitars', 'My City of Ruins', 'Because the Night', 'Ghosts', 'Wrecking Ball', 'The Rising',
+            'Badlands', 'Thunder Road', 'Born in the U.S.A.', 'Born to Run', 'Glory Days', 'Dancing in the Dark',
+            'Tenth Avenue Freeze‐Out', 'Chimes of Freedom'].map(s => ['song', s]),
+        ['blank'],
+    ];
+
+    /* The 15 Event Art Archive images, in archive order. */
+    const IMAGES = [
+        ['42097088052', ['Poster'], true, 126930910], ['42097090026', ['Merchandise', 'Poster'], false, 126930911],
+        ['41993982371', ['Schedule', 'Poster'], false, 126322935], ['41954439676', ['Schedule', 'Poster'], false, 126120331],
+        ['41993982950', ['Schedule', 'Poster'], false, 126322937], ['41993983467', ['Schedule', 'Poster'], false, 126322942],
+        ['41993984111', ['Schedule', 'Poster'], false, 126322949], ['41993985919', ['Schedule', 'Banner'], false, 126322952],
+        ['41993986280', ['Schedule', 'Banner'], false, 126322953], ['41993986839', ['Schedule', 'Banner'], false, 126322954],
+        ['42332377981', ['Setlist'], false, 128139205], ['41993987671', ['Schedule'], false, 126322955],
+        ['42332377461', ['Ticket'], false, 128139198], ['42332377156', ['Ticket'], false, 128139195],
+        ['41993989026', ['Map'], false, 126322957],
+    ].map(([id, types, front, edit]) => ({ id, types, front, edit }));
+    const N = IMAGES.length;
+    const TYPE_ORDER = ['Poster', 'Merchandise', 'Schedule', 'Banner', 'Setlist', 'Ticket', 'Map'];
+    const TVAR = { Poster: '--t-poster', Merchandise: '--t-merch', Schedule: '--t-schedule', Banner: '--t-banner', Setlist: '--t-setlist', Ticket: '--t-ticket', Map: '--t-map' };
+    const EMBED = window.__EMBED || {};
+
+    /* ── Helpers ──────────────────────────────────────────────────────────── */
+    /**
+     * Creates an element with attributes and children.
+     * @param {string} tag
+     * @param {Object} [attrs]
+     * @param {...(Node|string|null)} kids
+     * @returns {HTMLElement}
+     */
+    function el(tag, attrs, ...kids) {
+        const n = document.createElement(tag);
+        if (attrs) {
+            for (const [k, v] of Object.entries(attrs)) {
+                if (v === null || v === undefined || v === false) continue;
+                if (k === 'class') n.className = v;
+                else if (k === 'style') n.style.cssText = v;
+                else n.setAttribute(k, v === true ? '' : v);
+            }
+        }
+        for (const k of kids.flat()) {
+            if (k === null || k === undefined || k === false) continue;
+            n.append(k instanceof Node ? k : document.createTextNode(String(k)));
+        }
+        return n;
+    }
+    /** @returns {HTMLAnchorElement} a stage link (never navigates). */
+    function link(text, href) {
+        return el('a', { href: href || '#', 'data-dead': href ? null : '1' }, text);
+    }
+    /** @returns {string} the 250 px thumbnail: embedded copy when published, archive URL otherwise. */
+    function thumbSrc(im) {
+        return EMBED[im.id] || `https://eventartarchive.org/event/${EV.mbid}/${im.id}-250.jpg`;
+    }
+    /** @returns {string} archive URL of a size ('250', '500', '1200', or '' for the original). */
+    function sizeUrl(im, size) {
+        return `https://eventartarchive.org/event/${EV.mbid}/${im.id}${size ? '-' + size : ''}.jpg`;
+    }
+    /** @returns {string} CSS colour of an image type. */
+    function typeColour(t) {
+        return `var(${TVAR[t] || '--t-setlist'})`;
+    }
+    /** @returns {Object<string, number>} images per type (an image counts for every type it carries). */
+    function typeCounts() {
+        const c = {};
+        IMAGES.forEach(im => im.types.forEach(t => { c[t] = (c[t] || 0) + 1; }));
+        return c;
+    }
+    const counts = typeCounts();
+    /**
+     * A thumbnail of image `i`; hover shows its card, click opens the viewer (both delegated).
+     * @param {number} i
+     * @param {string} [cls]
+     * @returns {HTMLImageElement}
+     */
+    function img(i, cls) {
+        const im = IMAGES[i];
+        return el('img', {
+            class: 'thumb' + (cls ? ' ' + cls : ''), src: thumbSrc(im), alt: im.types.join(' / '),
+            loading: 'lazy', decoding: 'async', draggable: 'false', 'data-i': i, 'data-open': '1', 'data-tt': 'img',
+        });
+    }
+    /* A thumbnail that fails to load becomes a tile labelled with its first type. */
+    document.addEventListener('error', ev => {
+        const t = ev.target;
+        if (!(t instanceof HTMLImageElement) || t.dataset.i === undefined || t.closest('#vw .vw-stage')) return;
+        const im = IMAGES[+t.dataset.i];
+        const sp = el('span', { class: t.className.replace('thumb', '').trim() + ' fb', role: 'img', 'aria-label': t.alt, style: `background:${typeColour(im.types[0])}` }, im.types[0]);
+        for (const k of ['i', 'open', 'tt']) if (t.dataset[k] !== undefined) sp.dataset[k] = t.dataset[k];
+        t.replaceWith(sp);
+    }, true);
+    /**
+     * A type chip.
+     * @param {?string} t type, null for "All"
+     * @param {number} n
+     * @param {Object} [attrs]
+     * @returns {HTMLElement}
+     */
+    function chip(t, n, attrs) {
+        return el('span', Object.assign({ class: 'chip' }, attrs || {}), el('i', { style: `background:${t ? typeColour(t) : 'var(--st-ink)'}` }), t || 'All', ' ', el('b', {}, n));
+    }
+
+    /* ── Derived data ─────────────────────────────────────────────────────── */
+    /**
+     * Splits a performer line's tail into relationship attributes and disambiguation.
+     * "(time: …, lead vocals)" is credits; any other "(…)" is the artist's disambiguation.
+     * @param {string} rest
+     * @returns {{attrs: string, disamb: string}}
+     */
+    function splitRest(rest) {
+        const m = /^\((.*)\)$/.exec(rest);
+        if (!m) return { attrs: '', disamb: rest };
+        if (/^time:/.test(m[1])) return { attrs: m[1].replace(/22-29/, '22:29'), disamb: '' };
+        return { attrs: '', disamb: m[1] };
+    }
+    /**
+     * The setlist parsed into a line-up and parts, as S1/S2 would build them.
+     * @returns {{lineup: Array<{name: string, join: string, group: number}>, parts: Array<{name: string, notes: string[], songs: string[]}>}}
+     */
+    function parseSetlist() {
+        const lineup = [];
+        const parts = [];
+        let group = 1;
+        let pendingJoin = '';
+        let part = null;
+        SET.forEach(([kind, text]) => {
+            if (kind === 'artist' && !part) {
+                lineup.push({ name: text, join: pendingJoin, group });
+                pendingJoin = '';
+            } else if (kind === 'join' && !part) {
+                pendingJoin = text;
+                if (text !== '&') group += 1;
+            } else if (kind === 'header') {
+                part = { name: text, notes: [], songs: [] };
+                parts.push(part);
+            } else if (kind === 'note' && part) {
+                part.notes.push(text);
+            } else if (kind === 'song') {
+                if (!part) { part = { name: 'Setlist', notes: [], songs: [] }; parts.push(part); }
+                part.songs.push(text);
+            }
+        });
+        return { lineup, parts };
+    }
+    const SETLIST = parseSetlist();
+    const RECORDED = new Set(RELS.filter(r => r.type === 'recording').map(r => r.name));
+    /**
+     * The parts (other than `own`) that also play a work of `song`.
+     * @param {string} song
+     * @param {string} own
+     * @returns {string[]}
+     */
+    function alsoIn(song, own) {
+        const works = song.split(' / ');
+        return SETLIST.parts.filter(p => p.name !== own && p.songs.some(s => s.split(' / ').some(w => works.includes(w)))).map(p => p.name);
+    }
+    /**
+     * Where each recording's title appears in the setlist ("Concert #14").
+     * @param {string} title
+     * @returns {string[]}
+     */
+    function setlistPositions(title) {
+        const out = [];
+        SETLIST.parts.forEach(p => p.songs.forEach((s, k) => { if (s === title) out.push(`${p.name} #${k + 1}`); }));
+        return out;
+    }
+
+    /* ── Generic stage table: filter + sort, as the script's tables behave ── */
+    /**
+     * A filterable, sortable table under an h3 (or bare when no title is given).
+     * @param {Object} o
+     * @param {?string} o.title h3 text, null for no h3
+     * @param {string[]} o.cols column headers
+     * @param {Array<Array<Node|string>>} o.rows cells per row
+     * @param {string} [o.note] a line under the h3
+     * @param {string} [o.numCol] header of a leading running-number column
+     * @returns {HTMLElement}
+     */
+    function stTable(o) {
+        const box = el('div', { class: 'st-native' });
+        const state = { q: '', sortBy: -1, dir: 1 };
+        const tb = el('tbody');
+        const stat = el('span', { class: 'stat' });
+        const filter = el('input', { class: 'st-filter', type: 'search', placeholder: 'Filter…', 'aria-label': `Filter ${o.title || 'table'}` });
+        const head = el('tr', {}, o.cols.map((c, k) => el('th', { 'data-k': k, scope: 'col' }, c, el('span', { class: 'ar' }))));
+        const text = cell => (cell instanceof Node ? cell.textContent : String(cell));
+        /** Renders the body for the current filter and sort. */
+        const draw = () => {
+            const q = state.q.toLowerCase();
+            let rows = o.rows.map((r, i) => ({ r, i })).filter(({ r }) => !q || r.some(c => text(c).toLowerCase().includes(q)));
+            if (state.sortBy >= 0) {
+                rows = rows.slice().sort((a, b) => state.dir * text(a.r[state.sortBy]).localeCompare(text(b.r[state.sortBy]), undefined, { numeric: true }));
+            }
+            tb.textContent = '';
+            rows.forEach(({ r }) => tb.append(el('tr', {}, r.map((c, k) => {
+                const td = el('td', { class: k === 0 && o.numCol ? 'num' : null });
+                td.append(c instanceof Node ? c.cloneNode(true) : c);
+                if (q) markText(td, q);
+                return td;
+            }))));
+            stat.textContent = q ? `${rows.length} of ${o.rows.length} rows` : `${o.rows.length} rows`;
+            head.querySelectorAll('th').forEach((th, k) => { th.lastChild.textContent = k === state.sortBy ? (state.dir > 0 ? '▲' : '▼') : ''; });
+        };
+        filter.addEventListener('input', () => { state.q = filter.value.trim(); draw(); });
+        head.addEventListener('click', ev => {
+            const th = ev.target.closest('th');
+            if (!th) return;
+            const k = +th.dataset.k;
+            state.dir = state.sortBy === k ? -state.dir : 1;
+            state.sortBy = k;
+            draw();
+        });
+        if (o.title !== null) box.append(el('div', { class: 'st-h3' }, el('span', { class: 'tri' }, '▼'), o.title, stat, filter, el('span', { class: 'st-saed' }, '📊 ↔️ 👁️')));
+        else box.append(el('div', { class: 'st-h3' }, stat, filter));
+        if (o.note) box.append(el('p', { class: 'st-group-note' }, o.note));
+        box.append(el('div', { class: 'stage-scroll' }, el('table', { class: 'st-tbl' }, el('thead', {}, head), tb)));
+        draw();
+        return box;
+    }
+    /**
+     * Wraps every case-insensitive match of `q` in the cell's text nodes in <mark>.
+     * @param {HTMLElement} root
+     * @param {string} q lower-case query
+     */
+    function markText(root, q) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        const hits = [];
+        while (walker.nextNode()) if (walker.currentNode.nodeValue.toLowerCase().includes(q)) hits.push(walker.currentNode);
+        hits.forEach(t => {
+            const s = t.nodeValue;
+            const k = s.toLowerCase().indexOf(q);
+            const frag = document.createDocumentFragment();
+            frag.append(s.slice(0, k), el('mark', {}, s.slice(k, k + q.length)), s.slice(k + q.length));
+            t.replaceWith(frag);
+        });
+    }
+    /** @returns {HTMLElement} a small entity-type badge. */
+    function typeBadge(t) {
+        return el('span', { class: 'st-type' }, t);
+    }
+    /** @returns {string} a URL's host. */
+    function host(u) {
+        try { return new URL(u).host.replace(/^www\./, ''); } catch (_) { return u; }
+    }
+
+    /* ── Relationship tables ──────────────────────────────────────────────── */
+    /**
+     * T1: every target as one row.
+     * @returns {HTMLElement}
+     */
+    function relsOneTable() {
+        const rows = RELS.map(r => {
+            const { attrs, disamb } = r.type === 'artist' ? splitRest(r.rest) : { attrs: '', disamb: r.rest };
+            return [r.phrase, r.type === 'url' ? link(host(r.name), r.name) : link(r.name), typeBadge(r.type),
+                [attrs, disamb].filter(Boolean).join(' · '), r.group === 'e' ? 'Relationships' : `via ${SERIES_NAME}`];
+        });
+        return stTable({ title: null, cols: ['Relationship', 'Target', 'Type', 'Details', 'From'], rows });
+    }
+    /**
+     * T2: one table per target type (plus the related series' own relationships).
+     * @param {boolean} withSeries include the series' own relationships table
+     * @returns {HTMLElement[]}
+     */
+    function relsPerType(withSeries) {
+        const ev = RELS.filter(r => r.group === 'e');
+        const of = t => ev.filter(r => r.type === t);
+        const out = [];
+        const artists = of('artist');
+        out.push(stTable({
+            title: `Artists (${artists.length})`, numCol: '#', cols: ['#', 'Artist', 'Relationship', 'Credits', 'Disambiguation'],
+            rows: artists.map((r, k) => { const s = splitRest(r.rest); return [String(k + 1), link(r.name), r.phrase, s.attrs, el('span', { class: 'dim' }, s.disamb)]; }),
+        }));
+        out.push(stTable({
+            title: 'Places (1)', cols: ['Place', 'Relationship', 'Area'],
+            rows: of('place').map(r => [link(r.name), r.phrase, r.rest.replace(/^in /, '')]),
+        }));
+        const recs = of('recording');
+        out.push(stTable({
+            title: `Recordings (${recs.length})`, numCol: '#', cols: ['#', 'Recording', 'Artist', 'Disambiguation', 'In setlist'],
+            rows: recs.map((r, k) => {
+                const m = /^\((.*)\) by (.*)$/.exec(r.rest) || [];
+                const pos = setlistPositions(r.name);
+                return [String(k + 1), link(r.name), m[2] || '', el('span', { class: 'dim' }, m[1] || ''),
+                    pos.length ? el('span', { class: 'st-flag' }, pos.join(', ')) : el('span', { class: 'dim' }, '—')];
+            }),
+        }));
+        out.push(stTable({
+            title: 'Releases (1)', cols: ['Release', 'Relationship', 'Artist'],
+            rows: of('release').map(r => [link(r.name), r.phrase, r.rest.replace(/^by /, '')]),
+        }));
+        out.push(stTable({
+            title: 'Series (1)', cols: ['Series', 'Relationship', 'Details'],
+            rows: of('series').map(r => [link(r.name), r.phrase, r.rest.replace(/^\((.*)\)$/, '$1')]),
+        }));
+        const urls = of('url');
+        out.push(stTable({
+            title: `URLs (${urls.length})`, cols: ['Relationship', 'Site', 'URL'],
+            rows: urls.map(r => [r.phrase, host(r.name), link(r.name, r.name)]),
+        }));
+        if (withSeries) {
+            const s = RELS.filter(r => r.group === 's');
+            out.push(stTable({
+                title: `Via ${SERIES_NAME} (${s.length})`, cols: ['Relationship', 'Target', 'Type'],
+                note: 'The related series’ own relationships, shown by MusicBrainz under “Related series”. They describe the tour, not this event.',
+                rows: s.map(r => [r.phrase, r.type === 'url' ? link(host(r.name), r.name) : link(r.name), typeBadge(r.type)]),
+            }));
+        }
+        return out;
+    }
+
+    /* ── Setlist tables ───────────────────────────────────────────────────── */
+    /**
+     * A song cell: one line per work (a medley is one row with several works).
+     * @param {string} song
+     * @returns {HTMLElement}
+     */
+    function songCell(song) {
+        const works = song.split(' / ');
+        return works.length > 1 ? el('ul', {}, works.map(w => el('li', {}, link(w)))) : link(song);
+    }
+    /**
+     * The flags column of a setlist row.
+     * @param {string} song
+     * @param {string} part
+     * @returns {HTMLElement}
+     */
+    function songFlags(song, part) {
+        const f = el('span', {});
+        if (song.includes(' / ')) f.append(el('span', { class: 'st-flag' }, 'medley'), ' ');
+        alsoIn(song, part).forEach(p => f.append(el('span', { class: 'st-flag' }, `also ${p}`), ' '));
+        if (RECORDED.has(song)) f.append(el('span', { title: 'A recording made at this event exists' }, '🎙'));
+        return f;
+    }
+    /** @returns {HTMLElement} the Line-up table. */
+    function lineupTable() {
+        return stTable({
+            title: `Line-up (${SETLIST.lineup.length})`, numCol: '#', cols: ['#', 'Artist', 'Joined by', 'Billing'],
+            rows: SETLIST.lineup.map((a, k) => [String(k + 1), link(a.name), a.join ? el('span', { class: 'dim' }, a.join) : '', String(a.group)]),
+        });
+    }
+    /**
+     * S1: line-up, then one table per part.
+     * @returns {HTMLElement[]}
+     */
+    function setlistPerPart() {
+        return [lineupTable(), ...SETLIST.parts.map(p => stTable({
+            title: `${p.name} (${p.songs.length})`, numCol: '#', cols: ['#', 'Song', 'Notes'], note: p.notes.join(' · ') || null,
+            rows: p.songs.map((s, k) => [String(k + 1), songCell(s), songFlags(s, p.name)]),
+        }))];
+    }
+    /**
+     * S2: line-up, then every song in one table with a Part column.
+     * @returns {HTMLElement[]}
+     */
+    function setlistOneTable() {
+        const rows = [];
+        SETLIST.parts.forEach(p => p.songs.forEach((s, k) => rows.push([p.name, String(k + 1), songCell(s), songFlags(s, p.name)])));
+        const notes = SETLIST.parts.filter(p => p.notes.length).map(p => `${p.name}: ${p.notes.join(' · ')}`).join(' — ');
+        return [lineupTable(), stTable({ title: `Songs (${rows.length})`, cols: ['Part', '#', 'Song', 'Notes'], note: notes || null, rows })];
+    }
+
+    /* ── Event art section (E1) ───────────────────────────────────────────── */
+    const art = { filter: null, layout: 'grid' };
+    /**
+     * The "Event art (15)" h2 + section, as the release page's Cover art section.
+     * @returns {HTMLElement[]}
+     */
+    function artSection() {
+        const sec = el('div', { class: 'ca-sec', 'data-art-sec': '1' });
+        const tools = el('div', { class: 'ca-tools' });
+        tools.append(chip(null, N, { 'data-art-filter': '', 'aria-pressed': String(!art.filter), role: 'button', tabindex: '0' }));
+        TYPE_ORDER.forEach(t => tools.append(chip(t, counts[t], { 'data-art-filter': t, 'aria-pressed': String(art.filter === t), role: 'button', tabindex: '0' })));
+        tools.append(el('span', { class: 'sep' }));
+        const seg = el('span', { class: 'seg', role: 'group', 'aria-label': 'Layout' });
+        for (const [k, txt] of [['grid', 'Grid'], ['grouped', 'By type']]) seg.append(el('button', { type: 'button', 'data-art-layout': k, 'aria-pressed': String(art.layout === k) }, txt));
+        tools.append(seg);
+        sec.append(tools);
+        const shown = IMAGES.map((im, i) => i).filter(i => !art.filter || IMAGES[i].types.includes(art.filter));
+        const tile = i => {
+            const im = IMAGES[i];
+            const t = el('div', { class: 'tile' }, img(i));
+            if (im.front) t.append(el('span', { class: 'star', title: 'Main front image of the archive' }, '★ main'));
+            t.append(el('div', { class: 'cap' }, el('b', {}, im.types.join(' / '))));
+            return t;
+        };
+        if (art.layout === 'grid') {
+            sec.append(el('div', { class: 'ca-grid' }, shown.map(tile)));
+        } else {
+            TYPE_ORDER.forEach(t => {
+                const idx = shown.filter(i => IMAGES[i].types[0] === t);
+                if (idx.length) sec.append(el('div', { class: 'ca-group' }, el('h5', {}, `${t} × ${idx.length}`), el('div', { class: 'ca-grid' }, idx.map(tile))));
+            });
+        }
+        const h2 = el('div', { class: 'st-h2' }, el('span', { class: 'tri' }, '▼'), `Event art (${N})`,
+            el('span', { class: 'stat' }, art.filter ? `${shown.length} of ${N} shown` : 'from eventartarchive.org'));
+        return [h2, sec];
+    }
+
+    /* ── The MusicBrainz stage ────────────────────────────────────────────── */
+    const CFG = {
+        enable: true, rels: true, relsLayout: 'type', series: true, setlist: true, setlistLayout: 'part', art: true, tab: true,
+    };
+    /**
+     * Builds a slice of the event page into `host`.
+     * @param {HTMLElement} hostEl
+     * @param {Object} o
+     * @param {'plain'|'hot'|'viewer'} [o.tab] how the Event art tab looks and behaves
+     * @param {boolean} [o.button] show the "Show all Relationships for Event" button
+     * @param {Node[]} [o.top] nodes above the relationships (the art section)
+     * @param {Node[]} [o.rels] replacement for the native relationship lists
+     * @param {Node[]} [o.setlist] replacement for the native setlist paragraph
+     * @param {boolean} [o.nativeRels] show the native lists (default when o.rels is absent)
+     * @param {boolean} [o.short] shorten native content
+     */
+    function stage(hostEl, o = {}) {
+        hostEl.textContent = '';
+        hostEl.append(el('h1', { class: 'st-title' }, link(EV.title), ' ', el('small', {}, `(${EV.date})`)));
+        hostEl.append(el('p', { class: 'st-sub' }, `~ ${EV.type}`));
+        const tabs = el('ul', { class: 'st-tabs' });
+        tabs.append(el('li', { class: 'sel' }, el('span', {}, 'Overview')));
+        const artTab = el('a', { href: `https://musicbrainz.org/event/${EV.mbid}/event-art`, target: '_blank', rel: 'noopener' }, `Event art (${N})`);
+        if (o.tab === 'viewer') {
+            artTab.dataset.tabViewer = '1';
+            artTab.append(el('span', { class: 'tab-pip', title: 'Opens here. Ctrl-click opens the page.' }, 'here'));
+        }
+        tabs.append(el('li', { class: o.tab === 'hot' || o.tab === 'viewer' ? 'hot' : null }, artTab));
+        for (const t of ['Aliases', 'Tags', 'Reviews', 'Details', 'Edit']) tabs.append(el('li', {}, link(t)));
+        hostEl.append(tabs);
+
+        const body = el('div', { class: 'st-body' });
+        const main = el('div', { class: 'st-main' });
+        if (o.button) main.append(el('div', {}, el('span', { class: 'st-button' }, 'Show all Relationships for Event'), ' ', el('span', { class: 'st-saed' }, 'pressed')));
+        main.append(el('div', { class: 'st-h2' }, 'Annotation'), el('p', { class: 'st-note' }, '(the event’s annotation, unchanged)'));
+        if (o.top) main.append(...o.top);
+        main.append(el('div', { class: 'st-h2' }, o.rels ? el('span', { class: 'tri' }, '▼') : null, 'Relationships', o.rels ? el('span', { class: 'st-saed' }, 'filter · 📊 …') : null));
+        if (o.rels) main.append(...o.rels);
+        else main.append(...nativeRels(o.short));
+        if (!o.rels) main.append(el('div', { class: 'st-h2' }, 'Related series'), ...nativeSeries());
+        main.append(el('div', { class: 'st-h2' }, o.setlist ? el('span', { class: 'tri' }, '▼') : null, 'Setlist'));
+        if (o.setlist) main.append(...o.setlist);
+        else main.append(nativeSetlist(o.short));
+        main.append(el('p', { class: 'st-note' }, '“Event Schedule” (another userscript’s block) follows here, untouched.'));
+
+        const side = el('aside', { class: 'st-side' });
+        side.append(img(0, 'st-cover'));
+        side.append(el('div', {}, el('h4', {}, 'Event information'),
+            el('dl', {}, el('dt', {}, 'Type:'), el('dd', {}, EV.type), el('dt', {}, 'Date:'), el('dd', {}, EV.date), el('dt', {}, 'Time:'), el('dd', {}, EV.time))));
+        body.append(main, side);
+        hostEl.append(body);
+    }
+    /**
+     * The native relationship lists (table.details), as MusicBrainz renders them.
+     * @param {boolean} [short]
+     * @returns {HTMLElement[]}
+     */
+    function nativeRels(short) {
+        const ev = RELS.filter(r => r.group === 'e');
+        const phrases = [...new Set(ev.map(r => r.phrase))];
+        const t = el('table', { class: 'st-details' });
+        phrases.forEach(p => {
+            let list = ev.filter(r => r.phrase === p);
+            const more = short && list.length > 4 ? list.length - 4 : 0;
+            if (more) list = list.slice(0, 4);
+            const td = el('td');
+            list.forEach((r, k) => {
+                if (k) td.append(el('br'));
+                td.append(r.type === 'url' ? link(r.name, r.name) : link(r.name), r.rest ? ' ' + r.rest : '');
+            });
+            if (more) td.append(el('br'), el('span', { class: 'st-note' }, `… ${more} more`));
+            t.append(el('tr', {}, el('th', {}, p + ':'), td));
+        });
+        return [t];
+    }
+    /** @returns {HTMLElement[]} the native "Related series" block. */
+    function nativeSeries() {
+        const t = el('table', { class: 'st-details' });
+        const s = RELS.filter(r => r.group === 's');
+        [...new Set(s.map(r => r.phrase))].forEach(p => {
+            const td = el('td');
+            s.filter(r => r.phrase === p).forEach((r, k) => { if (k) td.append(el('br')); td.append(r.type === 'url' ? link(r.name, r.name) : link(r.name)); });
+            t.append(el('tr', {}, el('th', {}, p + ':'), td));
+        });
+        return [el('p', { class: 'st-p' }, link(SERIES_NAME)), t];
+    }
+    /**
+     * The native p.setlist paragraph.
+     * @param {boolean} [short]
+     * @returns {HTMLElement}
+     */
+    function nativeSetlist(short) {
+        const p = el('p', { class: 'st-p' });
+        let songs = 0;
+        for (const [kind, text] of SET) {
+            if (kind === 'song' && short && ++songs > 8) { p.append(el('span', { class: 'cm' }, '…'), el('br')); break; }
+            if (kind === 'artist') p.append(el('strong', {}, 'Artist: ', link(text)));
+            else if (kind === 'song') text.split(' / ').forEach((w, k) => p.append(k ? ' / ' : '', link(w)));
+            else if (kind !== 'blank') p.append(el('span', { class: 'cm' }, text));
+            p.append(el('br'));
+        }
+        return p;
+    }
+
+    /* ── Specimens ────────────────────────────────────────────────────────── */
+    document.getElementById('fact-rels').textContent = `${RELS.filter(r => r.group === 'e').length} targets + ${RELS.filter(r => r.group === 's').length} via the series`;
+    document.getElementById('fact-setlist').textContent =
+        `${SETLIST.lineup.length} artists · ${SETLIST.parts.map(p => `${p.name} ${p.songs.length}`).join(' · ')}`;
+    const heroTally = document.getElementById('hero-tally');
+    TYPE_ORDER.forEach(t => heroTally.append(chip(t, counts[t])));
+
+    stage(document.getElementById('stage-e0'), { tab: 'hot', short: true });
+
+    /** Re-renders the C stage from the mock settings. */
+    function renderC() {
+        const host = document.getElementById('stage-c');
+        if (!CFG.enable) { stage(host, { short: true }); return; }
+        stage(host, {
+            button: true,
+            tab: CFG.art && CFG.tab ? 'viewer' : 'plain',
+            top: CFG.art ? artSection() : null,
+            rels: CFG.rels ? (CFG.relsLayout === 'type' ? relsPerType(CFG.series) : [relsOneTable()]) : null,
+            setlist: CFG.setlist ? (CFG.setlistLayout === 'part' ? setlistPerPart() : setlistOneTable()) : null,
+            short: true,
+        });
+    }
+    /** Builds the mock settings group. */
+    function buildCfg() {
+        const f = document.getElementById('cfg');
+        const row = (key, setting, lbl, desc, child) => {
+            const id = 'cfg-' + key;
+            return el('div', { class: 'cfg-row' + (child ? ' child' : ''), 'data-row': key },
+                el('input', { type: 'checkbox', id, 'data-cfg': key, checked: CFG[key] }),
+                el('label', { for: id }, lbl), el('span', { class: 'key' }, setting), el('span', { class: 'desc' }, desc));
+        };
+        const sel = (key, setting, lbl, opts) => {
+            const id = 'cfg-' + key;
+            return el('div', { class: 'cfg-row child', 'data-row': key }, el('span', {}),
+                el('label', { for: id }, lbl), el('span', { class: 'key' }, setting),
+                el('select', { id, 'data-cfg': key }, opts.map(([v, t]) => el('option', { value: v, selected: CFG[key] === v }, t))));
+        };
+        f.append(el('div', { class: 'cfg-div' }, '🎫 EVENT PAGE'),
+            row('enable', 'sa_enable_event_overview', 'Enable Event overview consolidation', 'Adds a “Show all Relationships for Event” button on /event/<mbid>.'),
+            row('rels', 'sa_event_overview_relationships', 'Relationships as tables', 'Turns the relationship lists into filterable, sortable tables.', true),
+            sel('relsLayout', 'sa_event_overview_relationships_layout', 'Relationship tables', [['type', 'One table per target type (T2)'], ['one', 'One table (T1)']]),
+            row('series', 'sa_event_overview_related_series', 'Include the related series’ own relationships', 'Its tour artists, parent series and links, in their own table.', true),
+            row('setlist', 'sa_event_overview_setlist', 'Setlist as tables', 'Line-up and each part of the setlist as tables.', true),
+            sel('setlistLayout', 'sa_event_overview_setlist_layout', 'Setlist tables', [['part', 'One table per part (S1)'], ['one', 'One table (S2)']]),
+            row('art', 'sa_event_overview_event_art', 'Show an “Event art” section', 'Every Event Art Archive image above the relationships. One request per render, none when cached.', true),
+            row('tab', 'sa_event_overview_art_tab', 'The “Event art” tab opens the viewer', 'A plain click opens the images here; Ctrl-click still opens the page.', true));
+        syncCfg();
+    }
+    /** Greys out the settings that depend on one that is off. */
+    function syncCfg() {
+        const dep = { rels: 'enable', relsLayout: 'rels', series: 'rels', setlist: 'enable', setlistLayout: 'setlist', art: 'enable', tab: 'art' };
+        const on = k => (dep[k] ? on(dep[k]) && CFG[dep[k]] : true);
+        document.querySelectorAll('#cfg [data-row]').forEach(r => {
+            const k = r.dataset.row;
+            const live = on(k);
+            r.classList.toggle('off', !live);
+            r.querySelector('[data-cfg]').disabled = !live;
+        });
+    }
+    document.getElementById('cfg').addEventListener('change', ev => {
+        const c = ev.target.closest('[data-cfg]');
+        if (!c) return;
+        CFG[c.dataset.cfg] = c.type === 'checkbox' ? c.checked : c.value;
+        syncCfg();
+        renderC();
+    });
+    buildCfg();
+    renderC();
+
+    stage(document.getElementById('stage-t1'), { button: true, rels: [relsOneTable()], short: true });
+    document.getElementById('cost-t1').textContent = `${RELS.length} rows, 5 columns, half of them empty for most rows`;
+    stage(document.getElementById('stage-t2'), { button: true, rels: relsPerType(true), short: true });
+    document.getElementById('cost-t2').textContent = '7: Artists 21 · Places 1 · Recordings 26 · Releases 1 · Series 1 · URLs 3 · via the series 5';
+    stage(document.getElementById('stage-s1'), { button: true, setlist: setlistPerPart(), short: true });
+    document.getElementById('cost-s1').textContent = `${1 + SETLIST.parts.length}: Line-up ${SETLIST.lineup.length} · ${SETLIST.parts.map(p => `${p.name} ${p.songs.length}`).join(' · ')}`;
+    stage(document.getElementById('stage-s2'), { button: true, setlist: setlistOneTable(), short: true });
+    document.getElementById('cost-s2').textContent = `2: Line-up ${SETLIST.lineup.length} · Songs ${SETLIST.parts.reduce((n, p) => n + p.songs.length, 0)}`;
+
+    /** Re-renders every stage that shows the art section. */
+    function renderArt() {
+        stage(document.getElementById('stage-e1'), { button: true, tab: 'viewer', top: artSection(), short: true });
+        if (CFG.enable && CFG.art) renderC();
+    }
+    renderArt();
+    stage(document.getElementById('stage-e2'), { button: true, tab: 'viewer', short: true });
+
+    /* ── Liner card tooltip (delegated) ───────────────────────────────────── */
+    const tt = document.getElementById('tt');
+    /**
+     * Fills the liner card for image i.
+     * @param {number} i
+     */
+    function fillTip(i) {
+        const im = IMAGES[i];
+        const first = im.types[0];
+        const same = IMAGES.filter(x => x.types.includes(first));
+        tt.textContent = '';
+        tt.append(el('div', { class: 'tt-title' }, im.front ? '★ Main front' : im.types.join(' / ')),
+            el('div', { class: 'tt-pills' }, im.types.map(t => el('span', { class: 'tt-pill' }, t))),
+            el('img', { class: 'tt-img', src: thumbSrc(im), alt: '' }), el('hr', { class: 'tt-rule' }),
+            el('div', { class: 'tt-dim' }, `${i + 1} of ${N}` + (same.length > 1 ? ` · ${first} ${same.indexOf(im) + 1} of ${same.length}` : '') + ' · approved'),
+            el('div', { class: 'tt-dim' }, `edit #${im.edit} · id ${im.id}`),
+            el('div', { class: 'tt-dim' }, 'Click: viewer · Ctrl-click: 1200 px in a new tab'));
+    }
+    /**
+     * Positions the card next to `anchor`, inside the viewport.
+     * @param {Element} anchor
+     */
+    function placeTip(anchor) {
+        const r = anchor.getBoundingClientRect();
+        const w = tt.offsetWidth;
+        const h = tt.offsetHeight;
+        let x = r.right + 10;
+        if (x + w > innerWidth - 8) x = r.left - w - 10;
+        if (x < 8) x = Math.max(8, Math.min(innerWidth - w - 8, r.left));
+        let y = r.top;
+        if (y + h > innerHeight - 8) y = innerHeight - h - 8;
+        tt.style.left = Math.max(8, x) + 'px';
+        tt.style.top = Math.max(8, y) + 'px';
+    }
+    let lastPointerTouch = false;
+    document.addEventListener('pointerdown', ev => { lastPointerTouch = ev.pointerType === 'touch'; }, true);
+    document.addEventListener('mouseover', ev => {
+        if (lastPointerTouch) return;
+        const t = ev.target.closest('[data-tt="img"]');
+        if (!t || t.closest('#vw')) return;
+        fillTip(+t.dataset.i);
+        tt.hidden = false;
+        placeTip(t);
+    });
+    document.addEventListener('mouseout', ev => {
+        const t = ev.target.closest('[data-tt="img"]');
+        if (t && !t.contains(ev.relatedTarget)) tt.hidden = true;
+    });
+    addEventListener('scroll', () => { tt.hidden = true; }, { passive: true });
+
+    /* ── Viewer ───────────────────────────────────────────────────────────── */
+    const vw = document.getElementById('vw');
+    const V = { i: 0, grid: false, info: true, zoom: false, opener: null, list: [], gridStart: false, swiped: false };
+    /**
+     * Opens the viewer over a list of image indices.
+     * @param {number} i image index
+     * @param {Object} [o]
+     * @param {boolean} [o.grid] start in grid mode
+     * @param {number[]} [o.list] the indices to step through (default: all)
+     * @param {Element} [o.from] element focus returns to
+     */
+    function openViewer(i, o = {}) {
+        V.i = i;
+        V.grid = !!o.grid;
+        V.gridStart = V.grid;
+        V.list = o.list || IMAGES.map((_, k) => k);
+        V.zoom = false;
+        V.opener = o.from || document.activeElement;
+        tt.hidden = true;
+        vw.hidden = false;
+        document.documentElement.style.overflow = 'hidden';
+        renderViewer();
+    }
+    /** Closes the viewer and returns focus. */
+    function closeViewer() {
+        vw.hidden = true;
+        vw.textContent = '';
+        document.documentElement.style.overflow = '';
+        if (V.opener && V.opener.focus) V.opener.focus();
+    }
+    /**
+     * Steps within the list, wrapping.
+     * @param {number} d +1 / -1
+     */
+    function step(d) {
+        const L = V.list;
+        V.i = L[(L.indexOf(V.i) + d + L.length) % L.length];
+        V.zoom = false;
+        renderViewer();
+    }
+    /** Renders the viewer for the current state. */
+    function renderViewer() {
+        const L = V.list;
+        const im = IMAGES[V.i];
+        vw.textContent = '';
+        const bar = el('div', { class: 'vw-bar' },
+            el('span', { class: 't' }, EV.title),
+            el('span', { class: 'pos' }, V.grid ? `${L.length} images` : `${L.indexOf(V.i) + 1} / ${L.length}`),
+            el('button', { class: 'vw-btn', type: 'button', 'data-vw': 'grid', 'aria-pressed': String(V.grid) }, 'Grid (G)'),
+            el('button', { class: 'vw-btn', type: 'button', 'data-vw': 'info', 'aria-pressed': String(V.info) }, 'Info (I)'),
+            el('a', { class: 'vw-btn', href: sizeUrl(im, ''), target: '_blank', rel: 'noopener' }, 'Original (O)'),
+            el('button', { class: 'vw-btn', type: 'button', 'data-vw': 'close' }, 'Close (Esc)'));
+        vw.append(bar);
+        if (V.grid) {
+            const g = el('div', { class: 'vw-grid' });
+            TYPE_ORDER.forEach(t => {
+                const idx = L.filter(i => IMAGES[i].types[0] === t);
+                if (!idx.length) return;
+                g.append(el('h5', {}, `${t} × ${idx.length}`), el('div', { class: 'row' }, idx.map(i => {
+                    const th = img(i);
+                    th.removeAttribute('data-tt');
+                    th.removeAttribute('data-open');
+                    th.dataset.vwGo = i;
+                    return el('figure', {}, th, el('figcaption', {}, IMAGES[i].front ? '★ main front' : IMAGES[i].types.join(' / ')));
+                })));
+            });
+            vw.append(g, el('div', { class: 'vw-bar vw-keys' }, 'Click an image to view it · ', el('kbd', {}, 'Esc'), V.gridStart ? ' close' : ' back'));
+            bar.querySelector('[data-vw="close"]').focus();
+            return;
+        }
+        const mid = el('div', { class: 'vw-mid' + (V.info ? '' : ' noinfo') });
+        const st = el('div', { class: 'vw-stage' + (V.zoom ? ' zoomed' : ''), 'data-vw': 'stage' });
+        const shown = el('img', { src: thumbSrc(im), alt: im.types.join(' / '), draggable: 'false', 'data-i': V.i });
+        if (V.zoom) shown.style.transform = 'scale(2)';
+        const note = el('div', { class: 'vw-load' }, 'Showing the 250 px thumbnail; loading 1200 px…');
+        st.append(shown, note,
+            el('button', { class: 'vw-nav prev', type: 'button', 'data-vw': 'prev', 'aria-label': 'Previous' }, '‹'),
+            el('button', { class: 'vw-nav next', type: 'button', 'data-vw': 'next', 'aria-label': 'Next' }, '›'));
+        const big = new Image();
+        big.onload = () => { if (shown.isConnected) { shown.src = big.src; note.textContent = '1200 px'; } };
+        big.onerror = () => { if (shown.isConnected) note.textContent = 'The 1200 px image is blocked here, so this is the 250 px thumbnail scaled up.'; };
+        big.src = sizeUrl(im, '1200');
+        const first = im.types[0];
+        const same = IMAGES.filter(x => x.types.includes(first));
+        mid.append(st, el('div', { class: 'vw-info' },
+            el('div', { class: 'tt-title' }, im.front ? '★ Main front' : im.types.join(' / ')),
+            el('div', { class: 'tt-pills' }, im.types.map(t => el('span', { class: 'tt-pill' }, t))),
+            el('div', { class: 'tt-dim' }, 'No comment'), el('hr', { class: 'tt-rule' }),
+            el('dl', {},
+                el('dt', {}, 'Position'), el('dd', {}, `${V.i + 1} of ${N}` + (same.length > 1 ? ` · ${first} ${same.indexOf(im) + 1} of ${same.length}` : '')),
+                el('dt', {}, 'Main front'), el('dd', {}, im.front ? 'yes' : 'no'),
+                el('dt', {}, 'Status'), el('dd', {}, 'approved'),
+                el('dt', {}, 'Added in'), el('dd', {}, el('a', { href: `https://musicbrainz.org/edit/${im.edit}`, target: '_blank', rel: 'noopener' }, `edit #${im.edit}`)),
+                el('dt', {}, 'Archive id'), el('dd', {}, el('span', { class: 'mono' }, im.id))),
+            el('div', { class: 'tt-dim' }, 'Event art records carry no “main back” flag, so the panel leaves that line out.'),
+            el('div', { class: 'vw-keys' }, el('kbd', {}, '←'), ' ', el('kbd', {}, '→'), ' step · ', el('kbd', {}, 'Z'), ' zoom · ', el('kbd', {}, 'G'), ' grid · ', el('kbd', {}, 'I'), ' info · ', el('kbd', {}, 'Esc'), ' close')));
+        vw.append(mid);
+        const film = el('div', { class: 'vw-film' }, L.map(i => {
+            const th = img(i, i === V.i ? 'cur' : '');
+            th.removeAttribute('data-tt');
+            th.removeAttribute('data-open');
+            th.dataset.vwGo = i;
+            return th;
+        }));
+        vw.append(film);
+        const cur = film.querySelector('.cur');
+        if (cur) cur.scrollIntoView({ block: 'nearest', inline: 'center' });
+        bar.querySelector('[data-vw="close"]').focus({ preventScroll: true });
+    }
+    vw.addEventListener('click', ev => {
+        if (V.swiped) { V.swiped = false; return; }
+        const go = ev.target.closest('[data-vw-go]');
+        if (go) { V.i = +go.dataset.vwGo; V.grid = false; V.zoom = false; renderViewer(); return; }
+        const b = ev.target.closest('[data-vw]');
+        if (!b) return;
+        const a = b.dataset.vw;
+        if (a === 'close') closeViewer();
+        else if (a === 'grid') { V.grid = !V.grid; renderViewer(); }
+        else if (a === 'info') { V.info = !V.info; renderViewer(); }
+        else if (a === 'prev') step(-1);
+        else if (a === 'next') step(1);
+        else if (a === 'stage') {
+            V.zoom = !V.zoom;
+            b.classList.toggle('zoomed', V.zoom);
+            const im = b.querySelector('img');
+            im.style.transform = V.zoom ? 'scale(2)' : '';
+            im.style.transformOrigin = 'center';
+        }
+    });
+    vw.addEventListener('mousemove', ev => {
+        if (!V.zoom) return;
+        const st = ev.target.closest('.vw-stage');
+        if (!st) return;
+        const r = st.getBoundingClientRect();
+        st.querySelector('img').style.transformOrigin = `${((ev.clientX - r.left) / r.width) * 100}% ${((ev.clientY - r.top) / r.height) * 100}%`;
+    });
+    let swipeX = null;
+    vw.addEventListener('pointerdown', ev => { if (ev.pointerType === 'touch') swipeX = ev.clientX; });
+    vw.addEventListener('pointerup', ev => {
+        if (swipeX === null) return;
+        const dx = ev.clientX - swipeX;
+        swipeX = null;
+        if (Math.abs(dx) > 50 && !V.grid) { V.swiped = true; step(dx < 0 ? 1 : -1); }
+    });
+    document.addEventListener('keydown', ev => {
+        if (vw.hidden) {
+            if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.closest('[data-art-filter]')) { ev.preventDefault(); ev.target.click(); }
+            return;
+        }
+        const k = ev.key;
+        if (k === 'Escape') { ev.preventDefault(); if (V.grid && !V.gridStart) { V.grid = false; renderViewer(); } else closeViewer(); }
+        else if (V.grid) { if (k === 'g' || k === 'G') { V.grid = false; renderViewer(); } }
+        else if (k === 'ArrowRight') { ev.preventDefault(); step(1); }
+        else if (k === 'ArrowLeft') { ev.preventDefault(); step(-1); }
+        else if (k === 'Home') { V.i = V.list[0]; renderViewer(); }
+        else if (k === 'End') { V.i = V.list[V.list.length - 1]; renderViewer(); }
+        else if (k === 'g' || k === 'G') { V.grid = true; renderViewer(); }
+        else if (k === 'i' || k === 'I') { V.info = !V.info; renderViewer(); }
+        else if (k === 'z' || k === 'Z') vw.querySelector('.vw-stage')?.click();
+    });
+
+    /* ── One delegated click listener for the page ───────────────────────── */
+    document.addEventListener('click', ev => {
+        if (ev.target.closest('#vw')) return;
+        if (ev.target.closest('a[data-dead]')) { ev.preventDefault(); return; }
+        const tab = ev.target.closest('[data-tab-viewer]');
+        if (tab) {
+            if (ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.button !== 0) return;
+            ev.preventDefault();
+            openViewer(0, { grid: true, from: tab });
+            return;
+        }
+        const op = ev.target.closest('[data-open]');
+        if (op) {
+            const sec = op.closest('[data-art-sec]');
+            const list = sec ? Array.from(sec.querySelectorAll('[data-i]')).map(n => +n.dataset.i) : null;
+            openViewer(+op.dataset.i, { from: op, list });
+            return;
+        }
+        const f = ev.target.closest('[data-art-filter]');
+        if (f) { art.filter = f.dataset.artFilter || null; renderArt(); return; }
+        const lay = ev.target.closest('[data-art-layout]');
+        if (lay) { art.layout = lay.dataset.artLayout; renderArt(); }
+    });
+})();
+</script>
+</body>
+</html>

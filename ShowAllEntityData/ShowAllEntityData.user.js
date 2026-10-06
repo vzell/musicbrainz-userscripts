@@ -2735,6 +2735,92 @@
         },
 
         // ============================================================
+        // EVENT PAGE SECTION (pageType 'event-overview')
+        // org/event-overview-pt.org — every part is its own setting.
+        // ============================================================
+        divider_event_overview: {
+            type: 'divider',
+            label: '🎫 EVENT PAGE'
+        },
+
+        sa_enable_event_overview: {
+            label: 'Enable Event overview consolidation',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds a "Show all Relationships for Event" button on event pages ' +
+                         '(musicbrainz.org/event/<mbid>) that turns the event\'s relationship ' +
+                         'lists into filterable/sortable tables. The settings below choose ' +
+                         'which parts it builds.'
+        },
+
+        sa_event_overview_relationships: {
+            label: 'Relationships as tables',
+            type: 'checkbox',
+            default: true,
+            description: 'Turns the "Relationships" lists (performers, place, recordings, ' +
+                         'series, URLs, …) into tables: one row per related entity, keeping ' +
+                         'its link, credits and disambiguation in their own columns.'
+        },
+
+        sa_event_overview_relationships_one_table: {
+            label: 'One table for all relationships',
+            type: 'checkbox',
+            default: false,
+            description: 'Off (default): one table per kind of related entity (Artists, ' +
+                         'Places, Recordings, URLs, …), each with the columns that fit it. ' +
+                         'On: every relationship in a single table, with a "Type" column — ' +
+                         'one filter searches all of them.'
+        },
+
+        sa_event_overview_related_series: {
+            label: 'Include the related series\' own relationships',
+            type: 'checkbox',
+            default: true,
+            description: 'Under "Related series" MusicBrainz also lists the relationships of ' +
+                         'the series the event belongs to (its tour artists, parent series, ' +
+                         'links). On: they get their own "Via <series>" table. Off: that ' +
+                         'native section is left as it is.'
+        },
+
+        sa_event_overview_setlist: {
+            label: 'Setlist as tables',
+            type: 'checkbox',
+            default: true,
+            description: 'Turns the "Setlist" into tables: the line-up, then one table per part ' +
+                         'of the setlist ("Soundcheck", "Concert", …) with its notes above it. A ' +
+                         'medley line stays one row listing its works; a song played in more than ' +
+                         'one part is marked; a song with a recording made at this event links it.'
+        },
+
+        sa_event_overview_setlist_one_table: {
+            label: 'One table for the whole setlist',
+            type: 'checkbox',
+            default: false,
+            description: 'Off (default): one table per part of the setlist. On: every song in ' +
+                         'one table with a "Part" column (the line-up keeps its own table).'
+        },
+
+        sa_event_overview_event_art: {
+            label: 'Show an "Event art" section',
+            type: 'checkbox',
+            default: true,
+            description: 'After "Show all Relationships for Event", adds an "Event art (N)" section ' +
+                         'above the tables with every Event Art Archive image of the event — type ' +
+                         'chips, Grid / By type, ★ on the main image, a hover card and the full-' +
+                         'screen viewer. Costs one request to eventartarchive.org per render (none ' +
+                         'when cached, none when the tab says 0), plus the 250 px thumbnails.'
+        },
+
+        sa_event_overview_art_tab: {
+            label: 'The "Event art" tab opens the viewer',
+            type: 'checkbox',
+            default: true,
+            description: 'With the Event art section loaded, a plain click on the native "Event art ' +
+                         '(N)" tab opens the images here, in the viewer\'s grid, instead of leaving ' +
+                         'the page. Ctrl-click (or middle-click) still opens the archive page.'
+        },
+
+        // ============================================================
         // EXPAND RELEASE AND RELEASE GROUPS SECTION
         // Adapted from "MusicBrainz: Expand/collapse release groups"
         // by Michael Wiencek — injected post-render into the SA table.
@@ -12108,6 +12194,727 @@
         blocks.forEach(block => block.remove());
 
         Lib.debug('init', `applyNotesReceivedToTable: converted ${tbody.rows.length} edit-list block(s) → table.`);
+    }
+
+    // ── Event overview: relationship lists → tables (pageType 'event-overview') ──
+    //
+    // org/event-overview-pt.org. The native /event/<mbid> page has no
+    // table.tbl: each kind of related entity is a small `table.details`, one
+    // row per relationship phrase ("main performers:", "held at:", …) whose
+    // <td> lists the targets separated by <br>. A target line is
+    //   span.<type>link (empty marker) + the entity <a> (possibly inside
+    //   span.name-variation) + what follows it:
+    //     span.comment            → the target's disambiguation
+    //     " by <bdi>…</bdi>"      → artist credit (recordings, releases)
+    //     " in <area chain>"      → a place's area
+    //     " (time: …, vocals, …)" → relationship attributes ("credits")
+    //     " [info]"               → a URL's /url/<id> page
+    // Native nodes are cloned, never re-typed, so entity links, flags and
+    // other scripts' decorations survive into the cells.
+
+    /** Plural group name per target entity type, in MusicBrainz's own order. */
+    const _EVENT_REL_GROUP_NAMES = {
+        artist: 'Artists', 'release-group': 'Release groups', release: 'Releases', recording: 'Recordings',
+        work: 'Works', label: 'Labels', area: 'Areas', place: 'Places', event: 'Events', series: 'Series',
+        instrument: 'Instruments', genre: 'Genres', url: 'URLs', text: 'Other'
+    };
+
+    /** Column header naming the target, per target entity type. */
+    const _EVENT_REL_TARGET_COLS = {
+        artist: 'Artist', 'release-group': 'Release group', release: 'Release', recording: 'Recording',
+        work: 'Work', label: 'Label', area: 'Area', place: 'Place', event: 'Event', series: 'Series',
+        instrument: 'Instrument', genre: 'Genre', url: 'URL', text: 'Target'
+    };
+
+    /**
+     * The entity type an event relationship target links to.
+     *
+     * @param   {string} href The target anchor's raw `href` attribute.
+     * @returns {string} A key of `_EVENT_REL_GROUP_NAMES`.
+     */
+    function _eventRelTargetType(href) {
+        const m = /^(?:https?:\/\/[^/]*musicbrainz\.(?:org|eu))?\/(artist|release-group|release|recording|work|label|area|place|event|series|instrument|genre)\//.exec(href || '');
+        if (m) return m[1];
+        return /^(?:https?:)?\/\//.test(href || '') ? 'url' : 'text';
+    }
+
+    /**
+     * Splits an element's child nodes into lines at each `<br>`.
+     *
+     * @param   {Element} el
+     * @returns {Node[][]}
+     */
+    function _eventSplitAtBr(el) {
+        const lines = [[]];
+        el.childNodes.forEach(n => {
+            if (n.nodeType === Node.ELEMENT_NODE && n.tagName === 'BR') lines.push([]);
+            else lines[lines.length - 1].push(n);
+        });
+        return lines;
+    }
+
+    /**
+     * Trims leading/trailing whitespace-only text nodes and the outer
+     * whitespace of the first and last text node, in place. With `parens`,
+     * also strips one wrapping "(" … ")" pair (relationship attributes and
+     * "(order: 150)" arrive parenthesised; the column says what they are).
+     *
+     * @param   {Node[]}  nodes  Cloned nodes (mutated).
+     * @param   {boolean} [parens]
+     * @returns {Node[]}  The trimmed list.
+     */
+    function _eventTrimNodes(nodes, parens) {
+        const out = nodes.filter(n => n.nodeType !== Node.COMMENT_NODE);
+        while (out.length && out[0].nodeType === Node.TEXT_NODE && !out[0].textContent.trim()) out.shift();
+        while (out.length && out[out.length - 1].nodeType === Node.TEXT_NODE && !out[out.length - 1].textContent.trim()) out.pop();
+        if (!out.length) return out;
+        const first = out[0];
+        const last = out[out.length - 1];
+        if (first.nodeType === Node.TEXT_NODE) first.textContent = first.textContent.replace(/^\s+/, '');
+        if (last.nodeType === Node.TEXT_NODE) last.textContent = last.textContent.replace(/\s+$/, '');
+        if (parens && first.nodeType === Node.TEXT_NODE && last.nodeType === Node.TEXT_NODE &&
+                first.textContent.startsWith('(') && last.textContent.endsWith(')')) {
+            first.textContent = first.textContent.slice(1);
+            last.textContent = last.textContent.slice(0, -1);
+        }
+        return out.filter(n => n.nodeType !== Node.TEXT_NODE || n.textContent !== '');
+    }
+
+    /**
+     * Parses one target line of an event relationship list into its parts,
+     * as cloned nodes.
+     *
+     * @param   {Node[]} nodes The line's child nodes (between two `<br>`s).
+     * @returns {?{type: string, main: Node[], href: string, artist: Node[], area: Node[], extra: Node[], comment: Node[]}}
+     *          null for an empty line.
+     */
+    function _eventRelParseLine(nodes) {
+        const live = nodes.filter(n => n.nodeType !== Node.COMMENT_NODE);
+        if (!live.some(n => n.textContent.trim())) return null;
+        let i = 0;
+        const lead = [];
+        while (i < live.length) {
+            const n = live[i];
+            if (n.nodeType === Node.TEXT_NODE && !n.textContent.trim()) { i++; continue; }
+            // The empty entity-icon marker (span.artistlink, span.placelink, … or a bare <span> before a URL).
+            if (n.nodeType === Node.ELEMENT_NODE && n.tagName === 'SPAN' && !n.textContent.trim() && !n.querySelector('a')) {
+                lead.push(n);
+                i++;
+                continue;
+            }
+            break;
+        }
+        const mainNode = live[i];
+        const anchor = mainNode && mainNode.nodeType === Node.ELEMENT_NODE
+            ? (mainNode.tagName === 'A' ? mainNode : mainNode.querySelector('a[href]'))
+            : null;
+        const clone = n => n.cloneNode(true);
+        if (!anchor) {
+            return { type: 'text', main: _eventTrimNodes(live.map(clone)), href: '', artist: [], area: [], extra: [], comment: [] };
+        }
+        const href = anchor.getAttribute('href') || '';
+        const type = _eventRelTargetType(href);
+        const rest = live.slice(i + 1);
+        const parts = { artist: [], area: [], extra: [], comment: [] };
+        for (let k = 0; k < rest.length; k++) {
+            const n = rest[k];
+            if (n.nodeType === Node.ELEMENT_NODE && n.tagName === 'SPAN' && n.classList.contains('comment')) {
+                parts.comment.push(clone(n));
+            } else if (n.nodeType === Node.TEXT_NODE && /\bby\s*$/.test(n.textContent) && rest[k + 1] &&
+                       rest[k + 1].nodeType === Node.ELEMENT_NODE && !parts.artist.length) {
+                // " by " + <bdi>artist credit</bdi>; any text before "by" belongs to extra.
+                const before = n.textContent.replace(/\bby\s*$/, '');
+                if (before.trim()) parts.extra.push(document.createTextNode(before));
+                parts.artist.push(clone(rest[k + 1]));
+                k++;
+            } else if (type === 'place' && n.nodeType === Node.TEXT_NODE && /^\s*in\s/.test(n.textContent) && !parts.area.length) {
+                parts.area.push(document.createTextNode(n.textContent.replace(/^\s*in\s+/, '')));
+                rest.slice(k + 1).forEach(x => parts.area.push(clone(x)));
+                break;
+            } else {
+                parts.extra.push(clone(n));
+            }
+        }
+        const main = [...lead, mainNode].map(clone);
+        if (type === 'url') {
+            // "[info]" (the URL entity's own page) stays with the link it describes.
+            const info = _eventTrimNodes(parts.extra);
+            if (info.length) main.push(document.createTextNode(' '), ...info);
+            parts.extra = [];
+        }
+        return {
+            type, href, main,
+            artist: _eventTrimNodes(parts.artist),
+            area: _eventTrimNodes(parts.area),
+            extra: _eventTrimNodes(parts.extra, true),
+            // The span.comment's own content, without its "(" … ")" — the column
+            // header already says what it is.
+            comment: _eventTrimNodes(parts.comment.flatMap(n =>
+                (n.nodeType === Node.ELEMENT_NODE && n.classList.contains('comment')) ? Array.from(n.childNodes) : [n]), true)
+        };
+    }
+
+    /**
+     * The relationship rows of every `table.details` among `nodes`.
+     *
+     * @param   {Element[]} nodes Siblings of a section's h2 (up to the next h2).
+     * @param   {?string}   from  The related series' name, null for the event's own.
+     * @returns {Array<Object>} Parsed lines (`_eventRelParseLine()`) plus `phrase` and `from`.
+     */
+    function _eventRelRowsFrom(nodes, from) {
+        const rows = [];
+        nodes.forEach(n => {
+            const tables = n.matches('table.details') ? [n] : Array.from(n.querySelectorAll('table.details'));
+            tables.forEach(t => t.querySelectorAll(':scope > tbody > tr, :scope > tr').forEach(tr => {
+                const th = tr.querySelector(':scope > th');
+                const td = tr.querySelector(':scope > td');
+                if (!th || !td) return;
+                const phrase = th.textContent.trim().replace(/:\s*$/, '');
+                _eventSplitAtBr(td).forEach(line => {
+                    const parsed = _eventRelParseLine(line);
+                    if (parsed) rows.push({ ...parsed, phrase, from });
+                });
+            }));
+        });
+        return rows;
+    }
+
+    /**
+     * The element siblings after `h2`, up to (not including) the next `<h2>`.
+     *
+     * @param   {?Element} h2
+     * @returns {Element[]}
+     */
+    function _eventSectionNodes(h2) {
+        const out = [];
+        for (let n = h2 && h2.nextElementSibling; n && n.tagName !== 'H2'; n = n.nextElementSibling) out.push(n);
+        return out;
+    }
+
+    /**
+     * Builds one h3 + `table.tbl` pair. The column list is stored on the table
+     * as `data-mb-col-headers`, which the fetch loop copies to
+     * `group.colHeaders` so `renderGroupedTable()` builds THIS group's header
+     * row instead of cloning the first group's (the groups' columns differ).
+     *
+     * @param   {Document} doc
+     * @param   {string}   name    The group name (the h3 text).
+     * @param   {string[]} cols    Column headers.
+     * @param   {Array<Array<Node[]|string>>} rows Cells per row: nodes or plain text.
+     * @param   {string}   [intro] HTML shown between the h3 and the table
+     *          (`data-mb-intro-html` → `group.introHtml`).
+     * @returns {DocumentFragment}
+     */
+    function _eventBuildTable(doc, name, cols, rows, intro) {
+        const frag = doc.createDocumentFragment();
+        const h3 = doc.createElement('h3');
+        h3.textContent = name;
+        const table = doc.createElement('table');
+        table.className = 'tbl';
+        table.dataset.mbEventTable = '1';
+        table.dataset.mbColHeaders = JSON.stringify(cols);
+        // Shown between the h3 and its table (group.introHtml), like Structure K's.
+        if (intro) table.dataset.mbIntroHtml = intro;
+        const thead = doc.createElement('thead');
+        const hr = doc.createElement('tr');
+        cols.forEach(c => {
+            const th = doc.createElement('th');
+            th.textContent = c;
+            hr.appendChild(th);
+        });
+        thead.appendChild(hr);
+        const tbody = doc.createElement('tbody');
+        rows.forEach((cells, k) => {
+            const tr = doc.createElement('tr');
+            tr.className = k % 2 ? 'even' : 'odd';
+            cells.forEach(c => {
+                const td = doc.createElement('td');
+                if (Array.isArray(c)) c.forEach(n => td.appendChild(n));
+                else td.textContent = c;
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+        table.append(thead, tbody);
+        frag.append(h3, table);
+        return frag;
+    }
+
+    /**
+     * Splits a run of nodes into items at a separator found in its TEXT nodes
+     * (never inside an element, so a linked name keeps its link whole).
+     * Each item is trimmed; empty items are dropped.
+     *
+     * @param   {Node[]} nodes Cloned nodes (consumed).
+     * @param   {RegExp} sep   Separator, matched in text nodes only.
+     * @returns {Node[][]}
+     */
+    function _eventSplitNodes(nodes, sep) {
+        const items = [[]];
+        nodes.forEach(n => {
+            if (n.nodeType !== Node.TEXT_NODE) { items[items.length - 1].push(n); return; }
+            const pieces = n.textContent.split(sep);
+            pieces.forEach((piece, k) => {
+                if (k > 0) items.push([]);
+                if (piece) items[items.length - 1].push(document.createTextNode(piece));
+            });
+        });
+        return items.map(it => _eventTrimNodes(it)).filter(it => it.some(n => n.textContent.trim()));
+    }
+
+    /**
+     * A performer's relationship attributes, split: the "time: …" item on its
+     * own, every other attribute ("lead vocals", "harmonica" — instrument
+     * links kept) as one credit each.
+     *
+     * @param   {Node[]} extra The row's `extra` nodes (parentheses already stripped).
+     * @returns {{time: string, credits: Node[][]}}
+     */
+    function _eventSplitCredits(extra) {
+        const items = _eventSplitNodes(extra.map(n => n.cloneNode(true)), /\s*,\s*/);
+        let time = '';
+        const credits = [];
+        items.forEach(it => {
+            const text = it.map(n => n.textContent).join('').trim();
+            const m = /^time:\s*(.*)$/i.exec(text);
+            if (m && !time) time = m[1];
+            else credits.push(it);
+        });
+        return { time, credits };
+    }
+
+    /**
+     * A multi-row cell: one `<li>` per item, in a `<ul>` (also for a single
+     * item, so a `collapsableColumns` column never treats it as prose).
+     *
+     * @param   {Node[][]} items
+     * @returns {Node[]}
+     */
+    function _eventListCell(items) {
+        if (!items.length) return [];
+        const ul = document.createElement('ul');
+        items.forEach(it => {
+            const li = document.createElement('li');
+            it.forEach(n => li.appendChild(n));
+            ul.appendChild(li);
+        });
+        return [ul];
+    }
+
+    /**
+     * The tables for one group of relationship rows: '#', the target (and a
+     * Site column for URLs), Relationship, then only those of Artist / Area /
+     * Credits or Details / Disambiguation that some row actually fills. A group
+     * of performers splits its attributes into Credits (one row per credit)
+     * and Time. With
+     * `withType`, a Type column follows the target (one-table layout, and the
+     * related series' groups, which mix kinds).
+     *
+     * @param   {Array<Object>} rows Rows of `_eventRelRowsFrom()`.
+     * @param   {string} targetCol   Header of the target column.
+     * @param   {boolean} withType
+     * @param   {boolean} withFrom   Add a "From" column (the related series' name, or "Event").
+     * @returns {{cols: string[], cells: Array<Array<Node[]|string>>}}
+     */
+    function _eventRelColumns(rows, targetCol, withType, withFrom) {
+        const has = key => rows.some(r => r[key].length);
+        const allUrls = rows.every(r => r.type === 'url');
+        const allArtists = rows.every(r => r.type === 'artist');
+        const split = allArtists ? rows.map(r => _eventSplitCredits(r.extra)) : null;
+        const hasCredits = !!split && split.some(x => x.credits.length);
+        const hasTime = !!split && split.some(x => x.time);
+        const cols = ['#'];
+        if (allUrls) cols.push('Site');
+        cols.push(targetCol);
+        if (withType) cols.push('Type');
+        cols.push('Relationship');
+        if (has('artist')) cols.push('Artist');
+        if (has('area')) cols.push('Area');
+        if (split) {
+            if (hasCredits) cols.push('Credits');
+            if (hasTime) cols.push('Time');
+        } else if (has('extra')) {
+            cols.push('Details');
+        }
+        if (has('comment')) cols.push('Disambiguation');
+        if (withFrom) cols.push('From');
+        const host = (href) => {
+            try { return new URL(href, 'https://musicbrainz.org').host.replace(/^www\./, ''); } catch (_) { return ''; }
+        };
+        const cells = rows.map((r, k) => {
+            const row = [String(k + 1)];
+            if (allUrls) row.push(host(r.href));
+            row.push(r.main.map(n => n.cloneNode(true)));
+            if (withType) row.push(_EVENT_REL_TARGET_COLS[r.type] || 'Target');
+            row.push(r.phrase);
+            if (has('artist')) row.push(r.artist.map(n => n.cloneNode(true)));
+            if (has('area')) row.push(r.area.map(n => n.cloneNode(true)));
+            if (split) {
+                if (hasCredits) row.push(_eventListCell(split[k].credits));
+                if (hasTime) row.push(split[k].time);
+            } else if (has('extra')) {
+                row.push(r.extra.map(n => n.cloneNode(true)));
+            }
+            if (has('comment')) row.push(r.comment.map(n => n.cloneNode(true)));
+            if (withFrom) row.push(r.from ? r.from : 'Event');
+            return row;
+        });
+        return { cols, cells };
+    }
+
+    /** Joining words between line-up artists ("Bruce Springsteen & The E Street Band with …"). */
+    const _EVENT_SETLIST_JOINS = new Set(['&', 'and', 'with', '+', 'feat.', 'featuring', 'vs.', 'x']);
+
+    /**
+     * Whether a setlist comment reads as a note rather than a part header:
+     * "label: value" or a clock time ("Scheduled: 19:00 Local Start Time
+     * ??:?? / End Time ??:??"). A part header is a bare name ("Soundcheck",
+     * "Concert", "Encore"). Both can follow a blank line.
+     *
+     * @param   {string} text
+     * @returns {boolean}
+     */
+    function _eventSetlistIsNote(text) {
+        return /:\s|\b\d{1,2}:\d{2}\b|\?\?:\?\?/.test(text);
+    }
+
+    /**
+     * One song line of the setlist: the song's works, its text, and the
+     * artists of a trailing "(with …)" ("This Land Is Your Land (with
+     * Trombone Shorty & the New Breed Brass Band and all performers)").
+     *
+     * MusicBrainz renders every linked name on a song line as a /work/ link,
+     * also the artists inside "(with …)" — whose MBIDs are artists' (probed
+     * 2026-10-06 on event cd595883-…: each is the same MBID as that artist's
+     * /artist/ link in the line-up). So only the links BEFORE "(with" are the
+     * song's works, and the ones after it are re-pointed to /artist/. The
+     * artists are split at ",", "&" and "and" in the text between links;
+     * unlinked words stay with their item ("the New Breed Brass Band", "all
+     * performers").
+     *
+     * @param   {Node[]} nodes The line's nodes (comments removed).
+     * @returns {{kind: 'song', works: Element[], text: string, withItems: Node[][]}}
+     */
+    function _eventSetlistSong(nodes) {
+        const el = n => n.nodeType === Node.ELEMENT_NODE;
+        const WITH = /\(\s*with\s+/i;
+        const k = nodes.findIndex(n => n.nodeType === Node.TEXT_NODE && WITH.test(n.textContent));
+        let songNodes = nodes;
+        let withItems = [];
+        if (k !== -1) {
+            const at = nodes[k].textContent.search(WITH);
+            const before = nodes[k].textContent.slice(0, at);
+            const after = nodes[k].textContent.slice(at).replace(WITH, '');
+            songNodes = [...nodes.slice(0, k), document.createTextNode(before)];
+            const rest = [document.createTextNode(after), ...nodes.slice(k + 1).map(n => n.cloneNode(true))];
+            const last = rest[rest.length - 1];
+            if (last.nodeType === Node.TEXT_NODE) last.textContent = last.textContent.replace(/\)\s*$/, '');
+            rest.forEach(n => {
+                const anchors = el(n) ? (n.tagName === 'A' ? [n] : Array.from(n.querySelectorAll('a[href]'))) : [];
+                anchors.forEach(a => {
+                    const href = a.getAttribute('href') || '';
+                    if (/\/work\/[0-9a-f-]{36}/.test(href)) a.setAttribute('href', href.replace('/work/', '/artist/'));
+                });
+            });
+            withItems = _eventSplitNodes(rest, /\s*(?:,|&|\band\b)\s*/);
+        }
+        const works = [];
+        songNodes.forEach(n => {
+            if (!el(n)) return;
+            (n.tagName === 'A' ? [n] : Array.from(n.querySelectorAll('a[href]'))).forEach(a => {
+                if (/\/work\/[0-9a-f-]{36}/.test(a.getAttribute('href') || '')) works.push(a);
+            });
+        });
+        const text = songNodes.map(n => n.textContent).join('').replace(/\s+/g, ' ').trim();
+        return { kind: 'song', works, text, withItems };
+    }
+
+    /**
+     * Parses the event page's `p.setlist` into a line-up and parts.
+     *
+     * MusicBrainz renders the setlist syntax (`@ artist`, `* work`, `# comment`)
+     * as one paragraph of `<br>`-separated lines:
+     *   - `<strong>Artist: <a>…</a></strong>` → an artist of the line-up;
+     *   - a `span.comment` holding only a joining word ("&", "with", "and", …)
+     *     when the next line is an artist → how that artist is joined. The
+     *     billing group (1, 2, …) moves on at every joining word but "&";
+     *   - a `span.comment` right after a blank line (or at the very start) →
+     *     a part header ("Soundcheck", "Concert") — unless it reads as a note
+     *     (`_eventSetlistIsNote()`: "Scheduled: 19:00 …");
+     *   - any other `span.comment` → a note of the current part; before the
+     *     first part, of the NEXT part (the line-up's when none follows);
+     *   - any other line → a song (`_eventSetlistSong()`): its `/work/` links
+     *     before a "(with …)" are its works (several: a medley/segue), the
+     *     artists inside it are its additional artists, and a line without a
+     *     work link is kept as text, never dropped.
+     * Songs before any header go to a part named "Songs".
+     *
+     * @param   {Element} p `p.setlist`.
+     * @returns {{lineup: Array<{anchor: ?Element, text: string, join: string, group: number, part: string}>,
+     *            parts: Array<{name: string, notes: string[], songs: Array<{works: Element[], text: string, withItems: Node[][]}>}>,
+     *            lineupNotes: string[]}}
+     */
+    function _eventSetlistParse(p) {
+        const kinds = _eventSplitAtBr(p).map(raw => {
+            const nodes = raw.filter(n => n.nodeType !== Node.COMMENT_NODE);
+            const text = nodes.map(n => n.textContent).join('').replace(/\s+/g, ' ').trim();
+            if (!text) return { kind: 'blank' };
+            const el = n => n.nodeType === Node.ELEMENT_NODE;
+            const strong = nodes.find(n => el(n) && n.tagName === 'STRONG');
+            if (strong && /^Artist:/.test(strong.textContent.trim())) {
+                return { kind: 'artist', anchor: strong.querySelector('a[href]'), text: strong.textContent.trim().replace(/^Artist:\s*/, '') };
+            }
+            const commentOnly = nodes.every(n => (n.nodeType === Node.TEXT_NODE && !n.textContent.trim()) ||
+                (el(n) && n.tagName === 'SPAN' && n.classList.contains('comment')));
+            return commentOnly ? { kind: 'comment', text } : _eventSetlistSong(nodes);
+        });
+        const lineup = [];
+        const parts = [];
+        const lineupNotes = [];
+        let group = 1;
+        let pendingJoin = '';
+        let part = null;
+        let prevBlank = true;
+        let pendingNotes = [];
+        kinds.forEach((k, i) => {
+            if (k.kind === 'blank') { prevBlank = true; return; }
+            if (k.kind === 'comment') {
+                const next = kinds.slice(i + 1).find(x => x.kind !== 'blank');
+                if (_EVENT_SETLIST_JOINS.has(k.text.toLowerCase()) && next && next.kind === 'artist') {
+                    pendingJoin = k.text;
+                    if (k.text !== '&') group += 1;
+                } else if (prevBlank && !_eventSetlistIsNote(k.text)) {
+                    part = { name: k.text, notes: pendingNotes, songs: [] };
+                    pendingNotes = [];
+                    parts.push(part);
+                } else if (part) {
+                    part.notes.push(k.text);
+                } else {
+                    pendingNotes.push(k.text);
+                }
+            } else if (k.kind === 'artist') {
+                lineup.push({ anchor: k.anchor, text: k.text, join: pendingJoin, group, part: part ? part.name : '' });
+                pendingJoin = '';
+            } else {
+                if (!part) {
+                    part = { name: 'Songs', notes: pendingNotes, songs: [] };
+                    pendingNotes = [];
+                    parts.push(part);
+                }
+                part.songs.push(k);
+            }
+            prevBlank = false;
+        });
+        lineupNotes.push(...pendingNotes);
+        return { lineup, parts, lineupNotes };
+    }
+
+    /**
+     * The setlist's h3 + `table.tbl` groups: "Setlist: Line-up", then one per
+     * part ("Setlist: Concert", …) — or, with `oneTable`, every song in
+     * "Setlist: All songs" with a Part column. A part's notes go above its table
+     * (`data-mb-intro-html`). Song columns, each only when some row fills it:
+     * Additional artists (a "(with …)" line's artists, one row each), Medley
+     * (a line with several works), Also in (the other parts that play
+     * one of its works, by work MBID) and Recording (the event's "recording
+     * location for" recordings whose title is the line's text).
+     *
+     * @param   {Document} doc
+     * @param   {Object}   parsed     `_eventSetlistParse()`.
+     * @param   {Array<Object>} recordings The event's own recording rows (`_eventRelRowsFrom()`).
+     * @param   {boolean}  oneTable
+     * @returns {DocumentFragment[]}
+     */
+    function _eventSetlistGroups(doc, parsed, recordings, oneTable) {
+        const out = [];
+        const { lineup, parts, lineupNotes } = parsed;
+        const para = t => {
+            const p = doc.createElement('p');
+            p.textContent = t;
+            return p.outerHTML;
+        };
+        if (lineup.length) {
+            const withPart = lineup.some(a => a.part);
+            const cols = ['#', 'Artist', 'Joined by', 'Billing'];
+            if (withPart) cols.push('Part');
+            const cells = lineup.map((a, k) => {
+                const row = [String(k + 1), a.anchor ? [a.anchor.cloneNode(true)] : a.text, a.join, String(a.group)];
+                if (withPart) row.push(a.part);
+                return row;
+            });
+            out.push(_eventBuildTable(doc, 'Setlist: Line-up', cols, cells, lineupNotes.map(para).join('')));
+        }
+        if (!parts.length) return out;
+
+        const workId = a => ((a.getAttribute('href') || '').match(/\/work\/([0-9a-f-]{36})/) || [])[1] || '';
+        const partsOfWork = new Map();
+        parts.forEach(p => p.songs.forEach(s => s.works.forEach(a => {
+            const id = workId(a);
+            if (!partsOfWork.has(id)) partsOfWork.set(id, new Set());
+            partsOfWork.get(id).add(p.name);
+        })));
+        const norm = t => t.replace(/\s+/g, ' ').trim();
+        const recTitle = r => norm(r.main.map(n => n.textContent).join(''));
+        // Song, Additional artists and Recording are multi-row cells (a <ul>,
+        // also for one item) — collapsableColumns on the pageType.
+        const songRow = (s, partName) => ({
+            song: _eventListCell(s.works.length ? s.works.map(a => [a.cloneNode(true)]) : [[doc.createTextNode(s.text)]]),
+            withArtists: s.withItems.map(it => it.map(n => n.cloneNode(true))),
+            medley: s.works.length > 1 ? 'medley' : '',
+            also: Array.from(new Set(s.works.flatMap(a => Array.from(partsOfWork.get(workId(a)) || []))))
+                .filter(n => n !== partName).join(', '),
+            rec: recordings.filter(r => recTitle(r) === norm(s.text)).map(r => r.main.map(n => n.cloneNode(true)))
+        });
+        const table = (name, rows, withPart, intro) => {
+            const has = key => rows.some(r => r[key].length);
+            const cols = withPart ? ['Part', '#', 'Song'] : ['#', 'Song'];
+            if (has('withArtists')) cols.push('Additional artists');
+            if (has('medley')) cols.push('Medley');
+            if (has('also')) cols.push('Also in');
+            if (has('rec')) cols.push('Recording');
+            const cells = rows.map(r => {
+                const row = withPart ? [r.part, String(r.n), r.song] : [String(r.n), r.song];
+                if (has('withArtists')) row.push(_eventListCell(r.withArtists));
+                if (has('medley')) row.push(r.medley);
+                if (has('also')) row.push(r.also);
+                if (has('rec')) row.push(_eventListCell(r.rec));
+                return row;
+            });
+            return _eventBuildTable(doc, name, cols, cells, intro);
+        };
+        if (oneTable) {
+            const rows = parts.flatMap(p => p.songs.map((s, k) => ({ ...songRow(s, p.name), part: p.name, n: k + 1 })));
+            const intro = parts.filter(p => p.notes.length).map(p => para(`${p.name}: ${p.notes.join(' · ')}`)).join('');
+            out.push(table('Setlist: All songs', rows, true, intro));
+        } else {
+            parts.forEach(p => {
+                if (!p.songs.length) return;
+                const rows = p.songs.map((s, k) => ({ ...songRow(s, p.name), n: k + 1 }));
+                out.push(table(`Setlist: ${p.name}`, rows, false, p.notes.map(para).join('')));
+            });
+        }
+        return out;
+    }
+
+    /**
+     * Turns the event page's relationship lists into h3 + `table.tbl` groups
+     * (pageType 'event-overview', `features.eventDetailsToTables`).
+     *
+     * Reads every `table.details` under `h2.relationships`, and — with
+     * `sa_event_overview_related_series` — every series of `h2.related-series`
+     * (an h3 naming the series, then its own lists). Groups:
+     *   - default: one table per kind of target (Artists, Places, Recordings,
+     *     …) in first-appearance order, then one "Via <series>" table per
+     *     related series;
+     *   - `sa_event_overview_relationships_one_table`: everything in one
+     *     "Relationships" table with Type and (when series are included) From.
+     * All groups go right after `h2.relationships`, the native lists they
+     * replace are removed, and so is the converted "Related series" section.
+     * When the series are NOT included their native h3s become h4s:
+     * `renderGroupedTable()`'s initial cleanup removes every `h3` in
+     * `#content`, which would strip the series names off a section left
+     * native.
+     *
+     * The setlist (`sa_event_overview_setlist`) is converted here too —
+     * `_eventSetlistParse()` / `_eventSetlistGroups()` — because it shares
+     * the placement and needs the parsed recordings for its Recording
+     * column. Its groups follow the relationship groups, named "Setlist: …":
+     * `renderGroupedTable()` re-inserts every group as ONE block after the h2
+     * before the first table, so the setlist cannot keep a section of its
+     * own. The native "Setlist" h2 is removed with its paragraph, unless it
+     * is the anchor (relationships not converted, or the event has none).
+     *
+     * Idempotent (`#content` is marked `data-mb-event-tables`). Does nothing
+     * when neither part is switched on or neither exists on the page.
+     *
+     * @param {object}           def
+     * @param {Document|Element} [docContext=document]
+     * @returns {void}
+     */
+    function applyEventDetailsToTables(def, docContext = document) {
+        if (!def?.features?.eventDetailsToTables) return;
+        const relOn = !!Lib.settings.sa_event_overview_relationships;
+        const setOn = !!Lib.settings.sa_event_overview_setlist;
+        if (!relOn && !setOn) return;
+        const root = docContext.getElementById ? docContext.getElementById('content') : docContext.querySelector('#content');
+        if (!root || root.dataset.mbEventTables) return;
+        const relH2 = root.querySelector('h2.relationships');
+        const setH2 = root.querySelector('h2.setlist');
+        const setP = root.querySelector('p.setlist');
+        const doc = root.ownerDocument;
+        const withSeries = !!Lib.settings.sa_event_overview_related_series;
+        const ownNodes = _eventSectionNodes(relH2);
+        const own = _eventRelRowsFrom(ownNodes, null);
+
+        const seriesH2 = root.querySelector('h2.related-series');
+        const seriesNodes = _eventSectionNodes(seriesH2);
+        const seriesGroups = [];
+        if (relOn && withSeries) {
+            let cur = null;
+            seriesNodes.forEach(n => {
+                if (n.tagName === 'H3') {
+                    cur = { name: n.textContent.trim(), nodes: [] };
+                    seriesGroups.push(cur);
+                } else if (cur) {
+                    cur.nodes.push(n);
+                }
+            });
+            seriesGroups.forEach(g => { g.rows = _eventRelRowsFrom(g.nodes, g.name); });
+        }
+        const seriesRows = seriesGroups.flatMap(g => g.rows);
+        const relBuilt = relOn && (own.length > 0 || seriesRows.length > 0);
+        const setGroups = setOn && setP
+            ? _eventSetlistGroups(doc, _eventSetlistParse(setP), own.filter(r => r.type === 'recording'),
+                !!Lib.settings.sa_event_overview_setlist_one_table)
+            : [];
+        const anchor = relBuilt ? relH2 : (setGroups.length ? (setH2 || relH2) : null);
+        if (!anchor) return;
+
+        const frag = doc.createDocumentFragment();
+        if (!relBuilt) {
+            // Relationship tables not built: nothing to add here.
+        } else if (Lib.settings.sa_event_overview_relationships_one_table) {
+            const all = [...own, ...seriesRows];
+            const { cols, cells } = _eventRelColumns(all, 'Target', true, seriesRows.length > 0);
+            frag.appendChild(_eventBuildTable(doc, 'Relationships', cols, cells));
+        } else {
+            const order = [];
+            own.forEach(r => { if (!order.includes(r.type)) order.push(r.type); });
+            order.forEach(t => {
+                const rows = own.filter(r => r.type === t);
+                const { cols, cells } = _eventRelColumns(rows, _EVENT_REL_TARGET_COLS[t] || 'Target', false, false);
+                frag.appendChild(_eventBuildTable(doc, _EVENT_REL_GROUP_NAMES[t] || 'Other', cols, cells));
+            });
+            seriesGroups.forEach(g => {
+                if (!g.rows.length) return;
+                const { cols, cells } = _eventRelColumns(g.rows, 'Target', true, false);
+                frag.appendChild(_eventBuildTable(doc, `Via ${g.name}`, cols, cells));
+            });
+        }
+
+        setGroups.forEach(g => frag.appendChild(g));
+
+        if (relBuilt) ownNodes.forEach(n => { if (n.matches('table.details') || n.querySelector('table.details')) n.remove(); });
+        if (relBuilt && withSeries && seriesH2) {
+            seriesNodes.forEach(n => n.remove());
+            seriesH2.remove();
+        } else {
+            seriesNodes.forEach(n => {
+                if (n.tagName !== 'H3') return;
+                const h4 = doc.createElement('h4');
+                Array.from(n.attributes).forEach(a => h4.setAttribute(a.name, a.value));
+                while (n.firstChild) h4.appendChild(n.firstChild);
+                n.replaceWith(h4);
+            });
+        }
+        if (setGroups.length) {
+            setP.remove();
+            if (setH2 && setH2 !== anchor) setH2.remove();
+        }
+        anchor.after(frag);
+        root.dataset.mbEventTables = '1';
+        Lib.debug('init', `applyEventDetailsToTables: ${relBuilt ? own.length + seriesRows.length : 0} relationship row(s), ` +
+            `${setGroups.length} setlist table(s) → tables.`);
     }
 
     /**
@@ -21590,6 +22397,33 @@
             non_paginated: false
         },
         // Event pages
+        // The event overview (/event/<mbid>) — org/event-overview-pt.org. The
+        // native page has no table.tbl at all: its relationships are small
+        // two-column table.details lists ("main performers:", "held at:",
+        // "recording location for:", …, plus a "Related series" section), which
+        // applyEventDetailsToTables() turns into h3 + table.tbl groups (one per
+        // kind of related entity, or one table) with per-group columns
+        // (`data-mb-col-headers` → group.colHeaders). groupByH3 then reads each
+        // group name from its h3, as for 'account-applications'. Single static
+        // page, no pagination. Anchored match: '/event/<mbid>/<sub-page>' has
+        // its own pageTypes (event-tags, aliases, …). No button when every
+        // table-building part is off: it would render nothing.
+        {
+            type: 'event-overview',
+            match: (path) => Lib.settings.sa_enable_event_overview &&
+                (Lib.settings.sa_event_overview_relationships || Lib.settings.sa_event_overview_setlist) &&
+                path.match(/^\/event\/[a-f0-9-]{36}\/?$/),
+            buttons: [ { label: 'Show all Relationships for Event', shortLabel: 'Relationships' } ],
+            features: {
+                eventDetailsToTables: true,
+                groupByH3: true,
+                integerColumns: [ { sourceColumn: '#', align: 'R' }, { sourceColumn: 'Billing', align: 'R' } ],
+                // Multi-row cells (a <ul> per cell, built by the converter).
+                collapsableColumns: [ 'Credits', 'Song', 'Additional artists', 'Recording' ]
+            },
+            tableMode: 'multi',
+            non_paginated: true
+        },
         {
             type: 'artist-events',
             match: (path) => path.includes('/events'),
@@ -55411,13 +56245,21 @@ a { color: #1565c0; }`;
 
     /**
      * GM storage key for the release page Cover art section's layout
-     * (`_releaseArtInsertSection()`): the string `'grid'` or `'grouped'`
-     * ("By type"). A missing or unknown value means `'grid'`. Runtime UI
-     * state, not an `sa_` setting, so it is written directly and carried by
-     * the config export through `_CFG_WORKSPACE_GROUPS`. Declared here, above
-     * that registry, because a `const` read before its line is a TDZ error.
+     * (`_releaseArtInsertSection()`): the string `'grid'`, `'grouped'`
+     * ("By type") or `'spreads'`. A missing or unknown value means `'grid'`.
+     * Runtime UI state, not an `sa_` setting, so it is written directly and
+     * carried by the config export through `_CFG_WORKSPACE_GROUPS`. Declared
+     * here, above that registry, because a `const` read before its line is a
+     * TDZ error.
      */
     const MB_RELEASE_ART_LAYOUT_KEY = 'mb_sa_release_art_layout';
+
+    /**
+     * GM storage key for the event page's Event art section layout (`'grid'`
+     * or `'grouped'`) — its own, because an event's image types have nothing
+     * in common with a release's. Same TDZ placement as the key above.
+     */
+    const MB_EVENT_ART_LAYOUT_KEY = 'mb_sa_event_art_layout';
 
     /**
      * Storage-shape version of `MB_UNIQ_SECTION_COLLAPSE_KEY`'s object, kept
@@ -62369,6 +63211,13 @@ a { color: #1565c0; }`;
             applyListToTable(activeDefinition);
         }
 
+        // ── eventDetailsToTables pre-processing ──────────────────────────────
+        // 'event-overview': the relationship lists (table.details) become
+        // h3 + table.tbl groups. Same ordering constraints as listToTable.
+        if (activeDefinition.features?.eventDetailsToTables) {
+            applyEventDetailsToTables(activeDefinition);
+        }
+
         // ── editsToTable pre-processing ─────────────────────────────────────
         // For the 'edits' pageType, convert the native div.edit-list block
         // sequence into a proper <table class="tbl"> the same way listToTable
@@ -62781,6 +63630,9 @@ a { color: #1565c0; }`;
                 // skipped: it was already converted in the pre-processing block.
                 if (doc !== document && Array.isArray(activeDefinition.features?.listToTable)) {
                     applyListToTable(activeDefinition, doc);
+                }
+                if (doc !== document && activeDefinition.features?.eventDetailsToTables) {
+                    applyEventDetailsToTables(activeDefinition, doc);
                 }
 
                 // ── editsToTable on fetched pages ────────────────────────────
@@ -63485,10 +64337,13 @@ a { color: #1565c0; }`;
                                 // other entityFeatures-driven pageType.
                                 _lastGroup.entityFeaturesKey = _efKey;
                             }
-                            // For user-ratings, store per-group column headers (from
-                            // applyListToTable Structure H) so renderGroupedTable can
-                            // build the correct per-group thead width (2-col vs 3-col).
-                            if (pageType === 'user-ratings' && table.dataset.mbColHeaders) {
+                            // Per-group column headers, stamped by the converter that
+                            // built the table (applyListToTable Structure H for
+                            // user-ratings: 2-col vs 3-col; applyEventDetailsToTables
+                            // for event-overview: different columns per kind of
+                            // related entity), so renderGroupedTable builds each
+                            // group's own thead instead of cloning the first group's.
+                            if (table.dataset.mbColHeaders) {
                                 try { _lastGroup.colHeaders = JSON.parse(table.dataset.mbColHeaders); } catch (_e) {}
                             }
                             // For privileged-accounts, carry over the intro/description
@@ -63512,7 +64367,10 @@ a { color: #1565c0; }`;
                         // activeColumnExtractors must be re-resolved against the CURRENT
                         // table's headers — otherwise previous tables' resolved colIdx
                         // values linger and cause multiple extractors to fire on every row.
-                        if (pageType === 'tag-value' || pageType === 'user-tag-value' || pageType === 'user-ratings' || pageType === 'instrument-list' || pageType === 'artist-credit') {
+                        // 'event-overview': each group has its own columns, so an integer
+                        // column that is not in the FIRST table (the setlist's "Billing")
+                        // would otherwise never resolve, and never get its numeric styling.
+                        if (pageType === 'tag-value' || pageType === 'user-tag-value' || pageType === 'user-ratings' || pageType === 'instrument-list' || pageType === 'artist-credit' || pageType === 'event-overview') {
                             // Rebuild the active extractors/integer-columns/erasers from this
                             // group's own entity-specific features (entityFeatures map, if any),
                             // merged with the base features (listToTable, removeSelector, etc.) —
@@ -67989,7 +68847,9 @@ a { color: #1565c0; }`;
                 table.style.width = 'calc(100% - 1.5em)';
                 if (templateHead) {
                     let _theadForGroup;
-                    if (pageType === 'user-ratings') {
+                    // Also taken by any group that carries its own colHeaders
+                    // (event-overview: each kind of related entity has its own columns).
+                    if (pageType === 'user-ratings' || group.colHeaders) {
                         // ── Per-group thead for user-ratings ──────────────────────────
                         // Each group may have a different column count (2-col for entity
                         // types without artist credit, 3-col for those with "by …").
@@ -82207,6 +83067,11 @@ a { color: #1565c0; }`;
             keys: [MB_RELEASE_ART_LAYOUT_KEY],
         },
         {
+            group: 'eventart',
+            label: 'Event page Event art layout',
+            keys: [MB_EVENT_ART_LAYOUT_KEY],
+        },
+        {
             group: 'dialog',
             label: 'Settings dialog layout',
             // Written by VZ_MBLibrary, into THIS script's GM storage — a
@@ -87971,6 +88836,13 @@ a { color: #1565c0; }`;
                     tagSeeAllCount: group.tagSeeAllCount || null,
                     tagSeeAllEntityLabel: group.tagSeeAllEntityLabel || null,
                     ratingsViewAllUrl: group.ratingsViewAllUrl || null,
+                    // A group's own column list (user-ratings, event-overview):
+                    // without it a disk load builds every group's header row
+                    // from the first group's, misaligning the rest.
+                    colHeaders: group.colHeaders || null,
+                    // The paragraphs shown between a group's h3 and its table
+                    // (privileged-accounts' intro, an event setlist part's notes).
+                    introHtml: group.introHtml || null,
                     rows: group.rows.map(row => {
                         return Array.from(row.cells)
                             .filter(cell => !cell.classList.contains('mb-re-cell') &&
@@ -88214,6 +89086,12 @@ a { color: #1565c0; }`;
             // record paragraphs again; an empty table takes their place.
             if (activeDefinition.features?.bsRecordsToTable) {
                 applyBsRecordsToTable(activeDefinition);
+            }
+            // And for the event overview: the reloaded page holds the native
+            // relationship lists again, which would otherwise stay on the page
+            // beside the restored tables.
+            if (activeDefinition.features?.eventDetailsToTables) {
+                applyEventDetailsToTables(activeDefinition);
             }
 
             // Restore table headers if they were saved
@@ -88549,6 +89427,12 @@ a { color: #1565c0; }`;
                     }
                     if (group.ratingsViewAllUrl) {
                         _grpEntry.ratingsViewAllUrl = group.ratingsViewAllUrl;
+                    }
+                    if (Array.isArray(group.colHeaders)) {
+                        _grpEntry.colHeaders = group.colHeaders;
+                    }
+                    if (typeof group.introHtml === 'string' && group.introHtml) {
+                        _grpEntry.introHtml = group.introHtml;
                     }
                     groupedRows.push(_grpEntry);
                     loadedRowCount += reconstructedRows.length;
@@ -95168,6 +96052,64 @@ a { color: #1565c0; }`;
     // so it exists only after "Show all Tracks for Release" and becomes an
     // ordinary page-level h2 through makeH2sCollapsible(). It is not a table:
     // never cloned, never filtered, never counted by the global filter.
+    //
+    // The same section serves the event page's "Event art (N)" (pageType
+    // 'event-overview', org/event-overview-pt.org): everything that differs
+    // lives in _artSectionDesc(), and each handler resolves the descriptor
+    // from the section's data-mb-art-ctx. The `.mb-release-art-*` class names
+    // stay as they are on both pages (the P1–P4 specs, mutation lists and
+    // docs key on them); read them as "the art section".
+
+    /**
+     * What differs between the two art sections. A function, not a `const`
+     * table: it is reached from code that may run before this line has been
+     * evaluated (`updateFilterButtonsVisibility()` → medium art), and the
+     * contexts it names are declared further down.
+     *
+     * @param   {'caa'|'eaa'} key
+     * @returns {?{key: string, ctx: Object, pageType: string, setting: string, tabSetting: ?string,
+     *            entityRe: RegExp, entityPrefix: string, anchor: function(): ?Element, label: string,
+     *            archiveName: string, what: string, titleSel: string, layouts: string[], layoutKey: string}}
+     */
+    function _artSectionDesc(key) {
+        if (key === 'caa') {
+            return {
+                key, ctx: CAA_CTX, pageType: 'release-tracks',
+                setting: 'sa_enable_release_tracks_cover_art', tabSetting: null,
+                entityRe: /^\/release\/([a-f0-9-]{36})/, entityPrefix: '/release/',
+                anchor: () => document.querySelector('h2.tracklist'),
+                label: 'Cover art', archiveName: 'Cover Art Archive', what: 'release',
+                titleSel: '.releaseheader h1, #content h1',
+                layouts: ['grid', 'grouped', 'spreads'], layoutKey: MB_RELEASE_ART_LAYOUT_KEY
+            };
+        }
+        if (key === 'eaa') {
+            return {
+                key, ctx: EAA_CTX, pageType: 'event-overview',
+                setting: 'sa_event_overview_event_art', tabSetting: 'sa_event_overview_art_tab',
+                entityRe: /^\/event\/([a-f0-9-]{36})/, entityPrefix: '/event/',
+                // Above the tables: the h2 they were rendered under
+                // (applyEventDetailsToTables()'s anchor).
+                anchor: () => document.querySelector('#content h2.relationships') ||
+                              document.querySelector('#content h2.setlist'),
+                label: 'Event art', archiveName: 'Event Art Archive', what: 'event',
+                titleSel: '.eventheader h1, #content h1',
+                layouts: ['grid', 'grouped'], layoutKey: MB_EVENT_ART_LAYOUT_KEY
+            };
+        }
+        return null;
+    }
+
+    /**
+     * The descriptor of a built section (its `data-mb-art-ctx`, `'caa'` when
+     * unmarked).
+     *
+     * @param   {?Element} sec `div.mb-release-art-sec`.
+     * @returns {Object} `_artSectionDesc()`'s result.
+     */
+    function _artSectionOf(sec) {
+        return _artSectionDesc((sec && sec.dataset.mbArtCtx) || 'caa');
+    }
 
     /**
      * Reads N from the native "Cover art (N)" tab, which costs no request.
@@ -95401,9 +96343,10 @@ a { color: #1565c0; }`;
      *
      * @param   {Object[]} images The release's archive images, in archive order.
      * @param   {number}   index  The tile's image, its position in archive order.
+     * @param   {string}   [archiveName='Cover Art Archive'] For the ⏳ tip.
      * @returns {HTMLElement}     `figure.mb-release-art-tile`.
      */
-    function _releaseArtBuildTile(images, index) {
+    function _releaseArtBuildTile(images, index, archiveName = 'Cover Art Archive') {
         const imgData = images[index];
         const thumbs = imgData.thumbnails || {};
         const thumb = (thumbs['250'] || thumbs.small || thumbs['500'] || thumbs.large || imgData.image || '')
@@ -95445,7 +96388,7 @@ a { color: #1565c0; }`;
             const pend = document.createElement('span');
             pend.className = 'mb-release-art-pending';
             pend.textContent = ' ⏳';
-            _setTip(pend, 'Pending approval in the Cover Art Archive');
+            _setTip(pend, `Pending approval in the ${archiveName}`);
             cap.appendChild(pend);
         }
         if (imgData.comment) {
@@ -95476,16 +96419,19 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * The remembered layout: `'grid'`, `'grouped'` or `'spreads'`
-     * (`MB_RELEASE_ART_LAYOUT_KEY`). Anything else, including nothing stored,
-     * is `'grid'`.
+     * The remembered layout of a section: one of its descriptor's `layouts`
+     * (`'grid'`, `'grouped'`, and `'spreads'` on the release page), stored
+     * under its own `layoutKey` (`MB_RELEASE_ART_LAYOUT_KEY` /
+     * `MB_EVENT_ART_LAYOUT_KEY`). Anything else, including nothing stored, is
+     * `'grid'`.
      *
+     * @param   {Object} [desc] `_artSectionDesc()`; the release page's by default.
      * @returns {'grid'|'grouped'|'spreads'}
      */
-    function _releaseArtLayout() {
+    function _releaseArtLayout(desc = _artSectionDesc('caa')) {
         let v;
-        try { v = GM_getValue(MB_RELEASE_ART_LAYOUT_KEY, null); } catch (_) { v = null; }
-        return v === 'grouped' || v === 'spreads' ? v : 'grid';
+        try { v = GM_getValue(desc.layoutKey, null); } catch (_) { v = null; }
+        return desc.layouts.includes(v) ? v : 'grid';
     }
 
     /**
@@ -95562,8 +96508,9 @@ a { color: #1565c0; }`;
      * @returns {number[]}
      */
     function _releaseArtViewerOrder(sec) {
-        if (_releaseArtLayout() === 'spreads') {
-            const images = CAA_CTX.imagesCache.get(sec.dataset.mbArtEntity) || [];
+        const desc = _artSectionOf(sec);
+        if (_releaseArtLayout(desc) === 'spreads') {
+            const images = desc.ctx.imagesCache.get(sec.dataset.mbArtEntity) || [];
             const { pairs, book, rest } = _releaseArtSpreadsPlan(images,
                 _releaseArtShownIndices(images, sec.dataset.mbArtActiveType || ''));
             return [...pairs.flatMap(p => [p.l, p.r]), ...book, ...rest];
@@ -95586,6 +96533,7 @@ a { color: #1565c0; }`;
      */
     function _releaseArtRenderSpreads(sec, images, shown) {
         const { pairs, book, rest } = _releaseArtSpreadsPlan(images, shown);
+        const archiveName = _artSectionOf(sec).archiveName;
         const block = (title, cls) => {
             const box = document.createElement('div');
             box.className = cls;
@@ -95599,7 +96547,7 @@ a { color: #1565c0; }`;
         const pages = (...idx) => {
             const p = document.createElement('div');
             p.className = 'mb-release-art-spread-pages';
-            idx.forEach(i => p.appendChild(_releaseArtBuildTile(images, i)));
+            idx.forEach(i => p.appendChild(_releaseArtBuildTile(images, i, archiveName)));
             return p;
         };
         const foot = () => {
@@ -95642,7 +96590,7 @@ a { color: #1565c0; }`;
             const box = block(`Single pages, ${rest.length}`, 'mb-release-art-spread');
             const g = document.createElement('div');
             g.className = 'mb-release-art-grid';
-            rest.forEach(i => g.appendChild(_releaseArtBuildTile(images, i)));
+            rest.forEach(i => g.appendChild(_releaseArtBuildTile(images, i, archiveName)));
             box.appendChild(g);
         }
     }
@@ -95663,9 +96611,10 @@ a { color: #1565c0; }`;
      * @returns {void}
      */
     function _releaseArtRenderSheet(sec) {
-        const images = CAA_CTX.imagesCache.get(sec.dataset.mbArtEntity) || [];
+        const desc = _artSectionOf(sec);
+        const images = desc.ctx.imagesCache.get(sec.dataset.mbArtEntity) || [];
         const filter = sec.dataset.mbArtActiveType || '';
-        const layout = _releaseArtLayout();
+        const layout = _releaseArtLayout(desc);
         sec.querySelectorAll('.mb-release-art-tools, .mb-release-art-grid, .mb-release-art-group, .mb-release-art-spread')
             .forEach(n => n.remove());
 
@@ -95691,7 +96640,8 @@ a { color: #1565c0; }`;
         seg.className = 'mb-release-art-seg';
         seg.setAttribute('role', 'group');
         seg.setAttribute('aria-label', 'Layout');
-        [['grid', 'Grid'], ['grouped', 'By type'], ['spreads', 'Spreads']].forEach(([key, label]) => {
+        [['grid', 'Grid'], ['grouped', 'By type'], ['spreads', 'Spreads']]
+            .filter(([key]) => desc.layouts.includes(key)).forEach(([key, label]) => {
             const b = document.createElement('button');
             b.type = 'button';
             b.dataset.mbArtLayout = key;
@@ -95714,7 +96664,7 @@ a { color: #1565c0; }`;
         };
         if (layout === 'grid') {
             const g = grid();
-            shown.forEach(i => g.appendChild(_releaseArtBuildTile(images, i)));
+            shown.forEach(i => g.appendChild(_releaseArtBuildTile(images, i, desc.archiveName)));
             sec.appendChild(g);
             return;
         }
@@ -95732,7 +96682,7 @@ a { color: #1565c0; }`;
             hdr.className = 'mb-release-art-group-hdr';
             hdr.textContent = `${type} × ${idx.length}`;
             const g = grid();
-            idx.forEach(i => g.appendChild(_releaseArtBuildTile(images, i)));
+            idx.forEach(i => g.appendChild(_releaseArtBuildTile(images, i, desc.archiveName)));
             box.append(hdr, g);
             sec.appendChild(box);
         });
@@ -95758,8 +96708,9 @@ a { color: #1565c0; }`;
         if (tileLink && sec.contains(tileLink)) {
             if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
             e.preventDefault();
-            _artViewerOpen(CAA_CTX, sec.dataset.mbArtEntity, _releaseArtViewerOrder(sec),
-                Number(tileLink.parentElement.dataset.mbArtI), { opener: tileLink, title: _releaseArtTitle() });
+            const desc = _artSectionOf(sec);
+            _artViewerOpen(desc.ctx, sec.dataset.mbArtEntity, _releaseArtViewerOrder(sec),
+                Number(tileLink.parentElement.dataset.mbArtI), { opener: tileLink, title: _releaseArtTitle(desc) });
             return;
         }
         const book = e.target.closest('[data-mb-art-book-step]');
@@ -95779,7 +96730,7 @@ a { color: #1565c0; }`;
         }
         const lay = e.target.closest('[data-mb-art-layout]');
         if (lay && sec.contains(lay)) {
-            try { GM_setValue(MB_RELEASE_ART_LAYOUT_KEY, lay.dataset.mbArtLayout); } catch (_) { /* storage blocked: still switch */ }
+            try { GM_setValue(_artSectionOf(sec).layoutKey, lay.dataset.mbArtLayout); } catch (_) { /* storage blocked: still switch */ }
             sec.dataset.mbArtBookPage = '0';
             _releaseArtRenderSheet(sec);
         }
@@ -96020,11 +96971,12 @@ a { color: #1565c0; }`;
      */
     async function _releaseArtLoad(ctx, h2, sec) {
         const entityPath = sec.dataset.mbArtEntity;
+        const desc = _artSectionOf(sec);
         sec.dataset.mbArtState = 'loading';
         sec.textContent = '';
         const status = document.createElement('div');
         status.className = 'mb-release-art-status';
-        status.textContent = 'Loading cover art…';
+        status.textContent = `Loading ${desc.label.toLowerCase()}…`;
         sec.appendChild(status);
 
         const { state, images } = await _artFetchEntityImages(ctx, entityPath);
@@ -96040,10 +96992,10 @@ a { color: #1565c0; }`;
         }
         if (state === 'none') {
             if (countEl) countEl.textContent = ' (0)';
-            status.textContent = 'The Cover Art Archive has no images for this release.';
+            status.textContent = `The ${desc.archiveName} has no images for this ${desc.what}.`;
             return;
         }
-        status.textContent = 'The Cover Art Archive could not be reached.';
+        status.textContent = `The ${desc.archiveName} could not be reached.`;
         const retry = document.createElement('button');
         retry.type = 'button';
         retry.className = 'mb-release-art-retry';
@@ -96061,33 +97013,36 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Inserts the Cover art section before `h2.tracklist` and starts loading
-     * it. Called from the release-tracks render tail BEFORE
-     * `makeH2sCollapsible()`, which then makes the new h2 collapsible like any
-     * other; the caller opens it afterwards (the section starts uncollapsed).
+     * Inserts the art section of the page's type — "Cover art (N)" before
+     * `h2.tracklist` on release-tracks, "Event art (N)" before the event
+     * page's tables on event-overview (`_artSectionDesc()`) — and starts
+     * loading it. Called from the render tail BEFORE `makeH2sCollapsible()`,
+     * which then makes the new h2 collapsible like any other; the caller
+     * opens it afterwards (the section starts uncollapsed).
      *
-     * Does nothing (and makes no request) when the setting is off, the page is
-     * not release-tracks, the tab says "Cover art (0)", or there is no
-     * `h2.tracklist` to anchor on. Idempotent: a previous section is replaced.
+     * Does nothing (and makes no request) when the page type has no art
+     * section, its setting is off, the tab says "(0)", or there is no anchor.
+     * Idempotent: a previous section is replaced.
      *
      * @returns {?HTMLElement} The new h2, or null when nothing was inserted.
      */
     function _releaseArtInsertSection() {
-        if (!Lib.settings.sa_enable_release_tracks_cover_art) return null;
-        if (activeDefinition?.type !== 'release-tracks') return null;
-        const m = /^\/release\/([a-f0-9-]{36})/.exec(location.pathname);
-        const anchorH2 = document.querySelector('h2.tracklist');
+        const desc = ['caa', 'eaa'].map(_artSectionDesc).find(d => d.pageType === activeDefinition?.type);
+        if (!desc) return null;
+        if (!Lib.settings[desc.setting]) return null;
+        const m = desc.entityRe.exec(location.pathname);
+        const anchorH2 = desc.anchor();
         if (!m || !anchorH2) return null;
 
         document.querySelectorAll('.mb-release-art-h2, .mb-release-art-sec').forEach(n => n.remove());
-        const ctx = CAA_CTX;
+        const ctx = desc.ctx;
         const tabCount = _releaseArtTabCount(ctx);
         if (tabCount === 0) return null;
         _ensureReleaseArtStyle();
 
         const h2 = document.createElement('h2');
         h2.className = 'mb-release-art-h2';
-        h2.append('Cover art');
+        h2.append(desc.label);
         const count = document.createElement('span');
         count.className = 'mb-release-art-count';
         count.textContent = tabCount === null ? '' : ` (${tabCount})`;
@@ -96095,23 +97050,29 @@ a { color: #1565c0; }`;
 
         const sec = document.createElement('div');
         sec.className = 'mb-release-art-sec';
-        sec.dataset.mbArtEntity = '/release/' + m[1];
+        sec.dataset.mbArtCtx = desc.key;
+        sec.dataset.mbArtEntity = desc.entityPrefix + m[1];
         sec.addEventListener('click', _releaseArtOnClick);
 
         anchorH2.before(h2, sec);
         _releaseArtLoad(ctx, h2, sec);
-        _releaseArtInstallTabIntercept();
+        if (!desc.tabSetting || Lib.settings[desc.tabSetting]) _releaseArtInstallTabIntercept();
         return h2;
     }
 
     /**
-     * The release's title for the viewer's bar.
+     * The page's title (the release's, the event's) for the viewer's bar: the
+     * text of the entity link inside the page's h1. Not the h1's whole text —
+     * after a render the h1 also holds this script's own toolbar (and, on an
+     * event page, the date in parentheses).
      *
+     * @param   {Object} [desc] `_artSectionDesc()`; the release page's by default.
      * @returns {string}
      */
-    function _releaseArtTitle() {
-        const h1 = document.querySelector('.releaseheader h1, #content h1');
-        return (h1 && h1.textContent.trim()) || 'Cover art';
+    function _releaseArtTitle(desc = _artSectionDesc('caa')) {
+        const h1 = document.querySelector(desc.titleSel);
+        const link = h1 && h1.querySelector('a[href]');
+        return ((link || h1) && (link || h1).textContent.trim()) || desc.label;
     }
 
     let _releaseArtTabInterceptInstalled = false;
@@ -96144,14 +97105,16 @@ a { color: #1565c0; }`;
      */
     function _releaseArtOnTabClick(e) {
         if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.defaultPrevented) return;
-        const a = e.target instanceof Element && e.target.closest(`ul.tabs a[href$="${CAA_CTX.artSuffix}"]`);
-        if (!a) return;
         const sec = document.querySelector('.mb-release-art-sec');
+        const desc = _artSectionOf(sec);
+        if (desc.tabSetting && !Lib.settings[desc.tabSetting]) return;
+        const a = e.target instanceof Element && e.target.closest(`ul.tabs a[href$="${desc.ctx.artSuffix}"]`);
+        if (!a) return;
         if (!sec || sec.dataset.mbArtState !== 'ok') return;
         e.preventDefault();
         e.stopImmediatePropagation();
-        _artViewerOpen(CAA_CTX, sec.dataset.mbArtEntity, null, null,
-            { grid: true, opener: a, title: _releaseArtTitle() });
+        _artViewerOpen(desc.ctx, sec.dataset.mbArtEntity, null, null,
+            { grid: true, opener: a, title: _releaseArtTitle(desc) });
     }
 
     // ── Artwork viewer (R5) ─────────────────────────────────────────────────
@@ -96530,7 +97493,8 @@ a { color: #1565c0; }`;
         row('Position', `${st.i + 1} of ${st.images.length}` +
             (sameType.length > 1 ? ` · ${types[0]} ${sameType.indexOf(im) + 1} of ${sameType.length}` : ''));
         row('Main front', im.front ? 'yes' : 'no');
-        row('Main back', im.back ? 'yes' : 'no');
+        // Event art records carry no "back" flag at all (probed 2026-10-06): no line rather than a false "no".
+        if (typeof im.back === 'boolean') row('Main back', im.back ? 'yes' : 'no');
         row('Status', im.approved === false ? 'pending approval' : 'approved');
         if (im.edit) {
             const a = _artvEl('a', null, `edit #${im.edit}`);

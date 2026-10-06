@@ -121,8 +121,8 @@
     "why": "Ctrl/Cmd-click must keep opening the cover-art page in a new tab.",
     "edits": [
       {
-        "find": "        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.defaultPrevented) return;\n        const a = e.target instanceof Element",
-        "replace": "        if (e.button !== 0 || e.defaultPrevented) return;\n        const a = e.target instanceof Element"
+        "find": "        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.defaultPrevented) return;\n        const sec = document.querySelector('.mb-release-art-sec');",
+        "replace": "        if (e.button !== 0 || e.defaultPrevented) return;\n        const sec = document.querySelector('.mb-release-art-sec');"
       }
     ],
     "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
@@ -134,8 +134,8 @@
     "why": "Opened from a filtered sheet it must step through the tiles shown, not all 16.",
     "edits": [
       {
-        "find": "            _artViewerOpen(CAA_CTX, sec.dataset.mbArtEntity, indices,",
-        "replace": "            void indices; _artViewerOpen(CAA_CTX, sec.dataset.mbArtEntity, null,"
+        "find": "            _artViewerOpen(desc.ctx, sec.dataset.mbArtEntity, _releaseArtViewerOrder(sec),",
+        "replace": "            _artViewerOpen(desc.ctx, sec.dataset.mbArtEntity, null,"
       }
     ],
     "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",

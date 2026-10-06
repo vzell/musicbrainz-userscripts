@@ -108,7 +108,7 @@
     "why": "Turning sa_enable_release_tracks_cover_art off must remove the section and its request entirely.",
     "edits": [
       {
-        "find": "        if (!Lib.settings.sa_enable_release_tracks_cover_art) return null;",
+        "find": "        if (!Lib.settings[desc.setting]) return null;",
         "replace": "        if (false) return null;"
       }
     ],

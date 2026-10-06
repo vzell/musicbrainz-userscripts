@@ -1,0 +1,669 @@
+[
+  {
+    "name": "render: a group's own colHeaders are ignored",
+    "why": "Without the generalised branch every group clones the first group's header row (Artists'), misaligning Places, Recordings, URLs, … — the default for multi-table pages.",
+    "edits": [
+      {
+        "find": "                    if (pageType === 'user-ratings' || group.colHeaders) {",
+        "replace": "                    if (pageType === 'user-ratings') {"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "each with its own aligned columns",
+    "expect": "fail"
+  },
+  {
+    "name": "fetch loop: colHeaders only copied for user-ratings",
+    "why": "The table's data-mb-col-headers never reaches group.colHeaders, so the render falls back to the shared header.",
+    "edits": [
+      {
+        "find": "                            if (table.dataset.mbColHeaders) {",
+        "replace": "                            if (pageType === 'user-ratings' && table.dataset.mbColHeaders) {"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "each with its own aligned columns",
+    "expect": "fail"
+  },
+  {
+    "name": "disk: colHeaders not saved",
+    "why": "A Load from Disk would rebuild every group's header from the first group's.",
+    "edits": [
+      {
+        "find": "                    colHeaders: group.colHeaders || null,",
+        "replace": "                    colHeaders: null,"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "round trip keeps every group",
+    "expect": "fail"
+  },
+  {
+    "name": "disk: colHeaders not restored",
+    "why": "Same, on the load side.",
+    "edits": [
+      {
+        "find": "                        _grpEntry.colHeaders = group.colHeaders;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "round trip keeps every group",
+    "expect": "fail"
+  },
+  {
+    "name": "disk: the converter does not run before hydration",
+    "why": "The reloaded page holds the native relationship lists again; they would stay beside the restored tables.",
+    "edits": [
+      {
+        "find": "            if (activeDefinition.features?.eventDetailsToTables) {\n                applyEventDetailsToTables(activeDefinition);\n            }\n\n            // Restore table headers",
+        "replace": "\n            // Restore table headers"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "round trip keeps every group",
+    "expect": "fail"
+  },
+  {
+    "name": "parser: the disambiguation joins the credits",
+    "why": "span.comment must land in Disambiguation, not in Credits/Details.",
+    "edits": [
+      {
+        "find": "                parts.comment.push(clone(n));",
+        "replace": "                parts.extra.push(clone(n));"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "each part of a target line lands in its own column",
+    "expect": "fail"
+  },
+  {
+    "name": "parser: no artist credit",
+    "why": "\" by <bdi>…</bdi>\" after a recording must become the Artist column.",
+    "edits": [
+      {
+        "find": "            } else if (n.nodeType === Node.TEXT_NODE && /\\bby\\s*$/.test(n.textContent) && rest[k + 1] &&",
+        "replace": "            } else if (n.nodeType === Node.TEXT_NODE && /\\bnever-by\\s*$/.test(n.textContent) && rest[k + 1] &&"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "each part of a target line lands in its own column",
+    "expect": "fail"
+  },
+  {
+    "name": "parser: no area for a place",
+    "why": "\" in <area chain>\" after a place must become the Area column.",
+    "edits": [
+      {
+        "find": "            } else if (type === 'place' && n.nodeType === Node.TEXT_NODE",
+        "replace": "            } else if (type === 'never' && n.nodeType === Node.TEXT_NODE"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "each part of a target line lands in its own column",
+    "expect": "fail"
+  },
+  {
+    "name": "parser: credits keep their parentheses",
+    "why": "\"(time: …, lead vocals)\" is shown as the Credits value, without the wrapping pair.",
+    "edits": [
+      {
+        "find": "            extra: _eventTrimNodes(parts.extra, true),",
+        "replace": "            extra: _eventTrimNodes(parts.extra),"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "each part of a target line lands in its own column",
+    "expect": "fail"
+  },
+  {
+    "name": "parser: a URL loses its [info] link",
+    "why": "The /url/<id> page link belongs with the URL it describes.",
+    "edits": [
+      {
+        "find": "            if (info.length) main.push(document.createTextNode(' '), ...info);",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "each part of a target line lands in its own column",
+    "expect": "fail"
+  },
+  {
+    "name": "setting ignored: one table",
+    "why": "\"One table for all relationships\" must give a single table with Type and From.",
+    "edits": [
+      {
+        "find": "        } else if (Lib.settings.sa_event_overview_relationships_one_table) {",
+        "replace": "        } else if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "One table for all relationships",
+    "expect": "fail"
+  },
+  {
+    "name": "setting ignored: related series",
+    "why": "With the setting off, the series' own relationships stay native.",
+    "edits": [
+      {
+        "find": "        const withSeries = !!Lib.settings.sa_event_overview_related_series;",
+        "replace": "        const withSeries = true;"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "a \"Via\" table, or left native",
+    "expect": "fail"
+  },
+  {
+    "name": "native series section: its h3 stays an h3",
+    "why": "renderGroupedTable()'s initial cleanup removes every h3 in #content, so the series name would vanish from the section left native.",
+    "edits": [
+      {
+        "find": "                if (n.tagName !== 'H3') return;\n                const h4 = doc.createElement('h4');",
+        "replace": "                return;\n                const h4 = doc.createElement('h4');"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "a \"Via\" table, or left native",
+    "expect": "fail"
+  },
+  {
+    "name": "'#' is not an integer column",
+    "why": "The declaration gives '#' its right-aligned, tabular-figure cells. Numeric SORTING does not depend on it: _sortColumnKind()'s name heuristic already treats any header containing '#' as numeric.",
+    "edits": [
+      {
+        "find": "                integerColumns: [ { sourceColumn: '#', align: 'R' }, { sourceColumn: 'Billing', align: 'R' } ]",
+        "replace": "                integerColumns: [ { sourceColumn: 'Billing', align: 'R' } ]"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "sorts as a number",
+    "expect": "fail"
+  },
+  {
+    "name": "button shown with every table part off",
+    "why": "It would render nothing.",
+    "edits": [
+      {
+        "find": "            match: (path) => Lib.settings.sa_enable_event_overview &&\n                (Lib.settings.sa_event_overview_relationships || Lib.settings.sa_event_overview_setlist) &&\n",
+        "replace": "            match: (path) => Lib.settings.sa_enable_event_overview &&\n"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "settings off: no button",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 button: the setlist alone does not count",
+    "why": "With relationships off and the setlist on, the button still has a use.",
+    "edits": [
+      {
+        "find": "                (Lib.settings.sa_event_overview_relationships || Lib.settings.sa_event_overview_setlist) &&\n",
+        "replace": "                Lib.settings.sa_event_overview_relationships &&\n"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "settings off: no button",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 billing: '&' starts a new group too",
+    "why": "\"Bruce Springsteen & The E Street Band\" is one billing.",
+    "edits": [
+      {
+        "find": "                    if (k.text !== '&') group += 1;",
+        "replace": "                    group += 1;"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "billing",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 'Billing' is not an integer column",
+    "why": "The declaration gives Billing its right-aligned, tabular cells.",
+    "edits": [
+      {
+        "find": "                integerColumns: [ { sourceColumn: '#', align: 'R' }, { sourceColumn: 'Billing', align: 'R' } ]",
+        "replace": "                integerColumns: [ { sourceColumn: '#', align: 'R' } ]"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "billing",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 no part headers",
+    "why": "A comment after a blank line names the next part; without that every song lands in one part.",
+    "edits": [
+      {
+        "find": "                } else if (prevBlank && !_eventSetlistIsNote(k.text)) {",
+        "replace": "                } else if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "one table per part, aligned",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 a note becomes a song row",
+    "why": "\"Scheduled: …\" describes the part; it must not be counted as a song.",
+    "edits": [
+      {
+        "find": "                    part.notes.push(k.text);",
+        "replace": "                    part.songs.push({ works: [], text: k.text });"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "note sits under its h3",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 a medley keeps only its first work",
+    "why": "A medley line is one row listing every work it names.",
+    "edits": [
+      {
+        "find": "            song: _eventListCell(s.works.length ? s.works.map(a => [a.cloneNode(true)]) : [[doc.createTextNode(s.text)]]),",
+        "replace": "            song: _eventListCell(s.works.length ? [[s.works[0].cloneNode(true)]] : [[doc.createTextNode(s.text)]]),"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "a medley is one row",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 'Also in' names the row's own part",
+    "why": "Only the OTHER parts that play a work of the line belong there.",
+    "edits": [
+      {
+        "find": "                .filter(n => n !== partName).join(', '),",
+        "replace": "                .join(', '),"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "a medley is one row",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 no recording cross-reference",
+    "why": "A song with a recording made at this event links it.",
+    "edits": [
+      {
+        "find": "            rec: recordings.filter(r => recTitle(r) === norm(s.text)).map(r => r.main.map(n => n.cloneNode(true)))",
+        "replace": "            rec: []"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "a medley is one row",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 no intro on the table",
+    "why": "A part's notes are shown between its h3 and its table.",
+    "edits": [
+      {
+        "find": "        if (intro) table.dataset.mbIntroHtml = intro;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "note sits under its h3",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 disk: introHtml not saved",
+    "why": "A Load from Disk would lose the part's notes.",
+    "edits": [
+      {
+        "find": "                    introHtml: group.introHtml || null,",
+        "replace": "                    introHtml: null,"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "round trip keeps the note",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 disk: introHtml not restored",
+    "why": "Same, on the load side.",
+    "edits": [
+      {
+        "find": "                        _grpEntry.introHtml = group.introHtml;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "round trip keeps the note",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 the native setlist stays",
+    "why": "The converted paragraph must not stay beside its tables.",
+    "edits": [
+      {
+        "find": "            setP.remove();\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "one table per part, aligned",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 the native Setlist h2 stays",
+    "why": "An empty Setlist section would be left behind the tables.",
+    "edits": [
+      {
+        "find": "            if (setH2 && setH2 !== anchor) setH2.remove();",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "one table per part, aligned",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 setting ignored: setlist",
+    "why": "Off, the setlist stays as MusicBrainz shows it.",
+    "edits": [
+      {
+        "find": "        const setOn = !!Lib.settings.sa_event_overview_setlist;",
+        "replace": "        const setOn = true;"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "setlist off: left native",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 setting ignored: setlist one table",
+    "why": "On, every song goes into one table with a Part column.",
+    "edits": [
+      {
+        "find": "                !!Lib.settings.sa_event_overview_setlist_one_table)",
+        "replace": "                false)"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "One table for the whole setlist",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 no anchor without relationship tables",
+    "why": "With relationships off, the setlist's own h2 anchors its tables.",
+    "edits": [
+      {
+        "find": "        const anchor = relBuilt ? relH2 : (setGroups.length ? (setH2 || relH2) : null);",
+        "replace": "        const anchor = relBuilt ? relH2 : null;"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "setlist off: left native",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 a song without a work link is dropped",
+    "why": "A plain-text song line is a row, not a comment.",
+    "edits": [
+      {
+        "find": "            return commentOnly ? { kind: 'comment', text } : _eventSetlistSong(nodes);",
+        "replace": "            return { kind: 'comment', text };"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "a song without a work link",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.3 the section is not stamped with its context",
+    "why": "Every handler resolves its descriptor from data-mb-art-ctx; unstamped, the event section is treated as the release's (CAA cache, release texts).",
+    "edits": [
+      {
+        "find": "        sec.dataset.mbArtCtx = desc.key;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-art.spec.js",
+    "grep": "only after the button, one request",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.3 the page's descriptor is always the release's",
+    "why": "The descriptor must follow the page type, or the event page gets no section at all.",
+    "edits": [
+      {
+        "find": "        const desc = ['caa', 'eaa'].map(_artSectionDesc).find(d => d.pageType === activeDefinition?.type);",
+        "replace": "        const desc = _artSectionDesc('caa');"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-art.spec.js",
+    "grep": "only after the button, one request",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.3 the event section anchors on the release's tracklist",
+    "why": "The event page has no h2.tracklist; the section must sit above the event's tables.",
+    "edits": [
+      {
+        "find": "                anchor: () => document.querySelector('#content h2.relationships') ||",
+        "replace": "                anchor: () => document.querySelector('h2.tracklist') ||"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-art.spec.js",
+    "grep": "only after the button, one request",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.3 the event setting is ignored",
+    "why": "Off, no section and no request.",
+    "edits": [
+      {
+        "find": "        if (!Lib.settings[desc.setting]) return null;",
+        "replace": "        if (false) return null;"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-art.spec.js",
+    "grep": "the setting off: no section, no request",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.3 Spreads offered on the event page",
+    "why": "Spreads is release packaging; the event layouts are Grid and By type.",
+    "edits": [
+      {
+        "find": "                layouts: ['grid', 'grouped'], layoutKey: MB_EVENT_ART_LAYOUT_KEY",
+        "replace": "                layouts: ['grid', 'grouped', 'spreads'], layoutKey: MB_EVENT_ART_LAYOUT_KEY"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-art.spec.js",
+    "grep": "Grid / By type only, remembered under the event key",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.3 the event layout shares the release key",
+    "why": "An event's types have nothing in common with a release's; its layout is remembered on its own.",
+    "edits": [
+      {
+        "find": "                layouts: ['grid', 'grouped'], layoutKey: MB_EVENT_ART_LAYOUT_KEY",
+        "replace": "                layouts: ['grid', 'grouped'], layoutKey: MB_RELEASE_ART_LAYOUT_KEY"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-art.spec.js",
+    "grep": "Grid / By type only, remembered under the event key",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.3 the status texts name the Cover Art Archive",
+    "why": "On the event page the archive is the Event Art Archive, and the thing is an event.",
+    "edits": [
+      {
+        "find": "            status.textContent = `The ${desc.archiveName} has no images for this ${desc.what}.`;",
+        "replace": "            status.textContent = 'The Cover Art Archive has no images for this release.';"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-art.spec.js",
+    "grep": "name the Event Art Archive",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.3 the tab setting is ignored (both gates)",
+    "why": "Off, a plain click on the tab must go its normal way. Enforced twice (installing the interceptor, and in the handler) — removing ONE gate cannot be seen, so this entry removes both.",
+    "edits": [
+      {
+        "find": "        if (!desc.tabSetting || Lib.settings[desc.tabSetting]) _releaseArtInstallTabIntercept();",
+        "replace": "        _releaseArtInstallTabIntercept();"
+      },
+      {
+        "find": "        if (desc.tabSetting && !Lib.settings[desc.tabSetting]) return;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-art.spec.js",
+    "grep": "a plain click with the tab setting off",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.3 'Main back' printed without the flag",
+    "why": "Event art records have no back flag; \"no\" would be an invention.",
+    "edits": [
+      {
+        "find": "        if (typeof im.back === 'boolean') row('Main back', im.back ? 'yes' : 'no');",
+        "replace": "        row('Main back', im.back ? 'yes' : 'no');"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-art.spec.js",
+    "grep": "no \"Main back\" line",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.3 the viewer's title is the whole h1",
+    "why": "After a render the h1 also holds the script's toolbar (and an event's date).",
+    "edits": [
+      {
+        "find": "        const link = h1 && h1.querySelector('a[href]');",
+        "replace": "        const link = null;"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-art.spec.js",
+    "grep": "no \"Main back\" line",
+    "expect": "fail"
+  },
+  {
+    "name": "4: '(with …)' not recognised",
+    "why": "Its artists would be counted as the song's works (a false medley) and get no column.",
+    "edits": [
+      {
+        "find": "        const k = nodes.findIndex(n => n.nodeType === Node.TEXT_NODE && WITH.test(n.textContent));",
+        "replace": "        const k = -1;"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "Additional artists, one row each",
+    "expect": "fail"
+  },
+  {
+    "name": "4: '(with …)' links left as /work/",
+    "why": "Their MBIDs are artists' (the line-up links the same MBIDs as /artist/).",
+    "edits": [
+      {
+        "find": "                    if (/\\/work\\/[0-9a-f-]{36}/.test(href)) a.setAttribute('href', href.replace('/work/', '/artist/'));",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "Additional artists, one row each",
+    "expect": "fail"
+  },
+  {
+    "name": "4: '(with …)' artists not split",
+    "why": "One row per artist: split at ',', '&' and 'and'.",
+    "edits": [
+      {
+        "find": "            withItems = _eventSplitNodes(rest, /\\s*(?:,|&|\\band\\b)\\s*/);",
+        "replace": "            withItems = [rest];"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "Additional artists, one row each",
+    "expect": "fail"
+  },
+  {
+    "name": "setlist: a note after a blank line becomes a part",
+    "why": "\"Scheduled: 19:00 …\" is a note, not a part named after it.",
+    "edits": [
+      {
+        "find": "                } else if (prevBlank && !_eventSetlistIsNote(k.text)) {",
+        "replace": "                } else if (prevBlank) {"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "a note right after a blank line",
+    "expect": "fail"
+  },
+  {
+    "name": "setlist: a note before the first part is not carried to it",
+    "why": "It belongs above the songs that follow it.",
+    "edits": [
+      {
+        "find": "                    part = { name: 'Songs', notes: pendingNotes, songs: [] };",
+        "replace": "                    part = { name: 'Songs', notes: [], songs: [] };"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "a note right after a blank line",
+    "expect": "fail"
+  },
+  {
+    "name": "5: Song is not a multi-row column",
+    "why": "Without collapsableColumns the medley's list rows get no toggle.",
+    "edits": [
+      {
+        "find": "                collapsableColumns: [ 'Credits', 'Song', 'Additional artists', 'Recording' ]",
+        "replace": "                collapsableColumns: [ 'Credits', 'Additional artists', 'Recording' ]"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "Song is a multi-row cell",
+    "expect": "fail"
+  },
+  {
+    "name": "6: Disambiguation keeps its parentheses",
+    "why": "The span.comment's own content goes in, without '(' … ')'.",
+    "edits": [
+      {
+        "find": "                (n.nodeType === Node.ELEMENT_NODE && n.classList.contains('comment')) ? Array.from(n.childNodes) : [n]), true)",
+        "replace": "                [n]), true)"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "each part of a target line lands in its own column",
+    "expect": "fail"
+  },
+  {
+    "name": "7: credits not split",
+    "why": "One row per credit.",
+    "edits": [
+      {
+        "find": "        const items = _eventSplitNodes(extra.map(n => n.cloneNode(true)), /\\s*,\\s*/);",
+        "replace": "        const items = [extra.map(n => n.cloneNode(true))];"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "each part of a target line lands in its own column",
+    "expect": "fail"
+  },
+  {
+    "name": "7: no Time column",
+    "why": "\"time: …\" is its own column, not a credit.",
+    "edits": [
+      {
+        "find": "            if (m && !time) time = m[1];",
+        "replace": "            if (false) time = m[1];"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "each part of a target line lands in its own column",
+    "expect": "fail"
+  }
+]

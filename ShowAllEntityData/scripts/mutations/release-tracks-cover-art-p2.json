@@ -30,7 +30,7 @@
     "why": "Remembering is the decision; asserting only the click would pass on code that writes nothing.",
     "edits": [
       {
-        "find": "            try { GM_setValue(MB_RELEASE_ART_LAYOUT_KEY, lay.dataset.mbArtLayout); } catch (_) { /* storage blocked: still switch */ }",
+        "find": "            try { GM_setValue(_artSectionOf(sec).layoutKey, lay.dataset.mbArtLayout); } catch (_) { /* storage blocked: still switch */ }",
         "replace": "            sec.dataset.mbArtLayoutTmp = lay.dataset.mbArtLayout;"
       }
     ],
@@ -43,8 +43,8 @@
     "why": "A fresh load seeded with 'grouped' must open grouped.",
     "edits": [
       {
-        "find": "        return v === 'grouped' ? 'grouped' : 'grid';",
-        "replace": "        return v === 'never' ? 'grouped' : 'grid';"
+        "find": "        return desc.layouts.includes(v) ? v : 'grid';",
+        "replace": "        return 'grid';"
       }
     ],
     "spec": "tests/fixtures/release-tracks-cover-art.spec.js",

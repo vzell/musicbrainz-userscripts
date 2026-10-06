@@ -152,10 +152,10 @@ touching their stored state, so clearing it restores the user's own layout;
 mutations exist for both directions of getting that wrong.
 
 **A fixture profile is not a pristine profile.** `FIXTURE_SETTINGS_OVERRIDE`
-forces `sa_enable_caa_pics`, `sa_enable_relationships_column` and
-`sa_enable_release_tracks_cover_art` OFF and all three DEFAULT to true, so
-any test that counts "changed" settings is off by three unless it puts them
-back — `settings-dialog.spec.js`'s `PRISTINE` is what that
+forces `sa_enable_caa_pics`, `sa_enable_relationships_column`,
+`sa_enable_release_tracks_cover_art` and `sa_event_overview_event_art` OFF
+and all four DEFAULT to true, so any test that counts "changed" settings is
+off by four unless it puts them back — `settings-dialog.spec.js`'s `PRISTINE` is what that
 looks like. Related: **`data-section` holds the divider's schema KEY**
 (`divider_thresholds`), not its label; matching on the label finds nothing and
 reads as the feature being broken.

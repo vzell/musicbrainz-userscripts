@@ -19296,3 +19296,123 @@ docs/claude/testing-playwright.md.
 `release-tracks-medium-art.spec.js` (10), two new mobile tests.
 `release-tracks-cover-art-p4.json`: 21/21 planted defects caught, plus one
 recorded overlap (the spread's own width cap is covered by the section's).
+
+## 2026-10-06 — event-overview pageType: relationship lists → per-kind tables (branch feature/event-overview, WIP.1)
+
+**The page.** `/event/<mbid>` has no `table.tbl`; its relationships are
+`table.details` lists (`<th>phrase:</th><td>` with `<br>`-separated target
+lines). `applyEventDetailsToTables()` turns them into one h3 + `table.tbl` per
+kind of related entity. Raw fixture `tests/fixtures/event-overview.html`
+(capture-raw-page.js, event 3f2ca30a-…).
+
+**Groups with different columns render misaligned by default.**
+`renderGroupedTable()` clones ONE header row, built from the first table, for
+every group; only `user-ratings` built its own (`group.colHeaders`, gated on
+the pageType). Generalised to any group carrying `colHeaders` (copied from
+`data-mb-col-headers` in the fetch loop). The disk path dropped the field —
+Save/Load now carries it, which also fixes user-ratings after a disk load.
+Pinned by comparing each row's cell count with its own header's.
+
+**Setlist above Relationships after the render — by design.** A probe that
+wrapped the DOM insertion methods and logged stacks for `h2.relationships`
+showed the move comes from `_relocateTrailingH2Sections()`: every h2 section
+AFTER the data h2 is moved before it (`sa_enable_h2_section_relocation_on_final_page`).
+Not touched; the setlist becomes tables in WIP.2 anyway.
+
+**The render's h3 sweep.** The initial render removes every `h3` in
+`#content`; with "related series" switched off the native section keeps its
+series names only because the converter turns those h3s into h4s.
+
+**`integerColumns: '#'` does not make '#' sort numerically** — the sort's name
+heuristic already does (`_sortColumnKind()`: any header containing '#'). The
+declaration gives the right-aligned, tabular cells; its mutation is pinned by
+`data-mb-int-col-styled`, not by the sort order.
+
+**Results:** `event-overview.spec.js` 7/7; `event-overview.json` 15/15 caught;
+`user-ratings-*` specs unchanged.
+
+## 2026-10-06 — event-overview: the setlist as tables (branch feature/event-overview, WIP.2)
+
+**Parsed from the rendered paragraph, not the setlist syntax.** MusicBrainz
+renders `@ artist` / `* work` / `# comment` as `<strong>Artist: <a>`,
+`<a href="/work/…">` and `span.comment` lines in one `p.setlist`. A comment
+is a part header only right after a blank line, and a joining word ("&",
+"with", "and", …) only when the next line is an artist — the same `and`
+comment elsewhere is a note. A text line without a work link is kept as a
+song row.
+
+**One block, not two sections.** The setlist groups follow the relationship
+groups under `h2.relationships`, named "Setlist: …", because
+`renderGroupedTable()` re-inserts every group after the h2 before the first
+table. With relationships off the setlist's own h2 is the anchor.
+
+**Notes as group intros.** A part's notes ride `data-mb-intro-html` →
+`group.introHtml` (Structure K's mechanism). The disk round trip never stored
+`introHtml` — added, so privileged-accounts' intro survives a disk load too.
+
+**Results:** `event-overview-setlist.spec.js` 8/8, `event-overview.spec.js`
+7/7; `event-overview.json` 32/32 caught (two WIP.1 finds re-targeted after
+the restructure). Snapshot baseline `tests/snapshots/event-overview/`
+captured logged in, event art seeded off.
+
+## 2026-10-06 — event-overview: Event art, and the art section generalised (branch feature/event-overview, WIP.3)
+
+**One section, two pages.** `_artSectionDesc('caa'|'eaa')` holds everything
+that differs (context, settings, anchor, labels, archive name, title selector,
+layouts, layout key); the section is stamped `data-mb-art-ctx` and every handler
+resolves the descriptor from it. A function rather than a `const` table:
+`_releaseArtApplyMediumArt()` rides `updateFilterButtonsVisibility()`, and the
+descriptor names `CAA_CTX`/`EAA_CTX`, declared further down — a table would be
+one TDZ error away.
+
+**EAA record, probed** (`scripts/probe-caa-release-images.py --event`): the
+CAA shape plus an `event` key, NO `back` key on any image, `https:` URLs (CAA
+hands out `http:`). A 404 means no art (EVENT_SX). The viewer printed "Main
+back: no" for every event image — an invention; it now prints the line only
+when the flag exists.
+
+**The viewer's title was the whole h1.** The art spec's title assertion read
+"2025‐05‐20: … (2025-05-20)🧮¹ RelationshipsStop | 📦 Data▾…" — after a render
+the h1 also holds the script's toolbar. The release page had the same defect;
+no release spec looked at the title. `_releaseArtTitle()` now reads the h1's
+entity link.
+
+**A test I added was never green, and its mutation was caught vacuously.**
+WIP.2's "Billing is styled as a number" assertion was added after the spec's
+last green run and only exercised through mutation-check, where a failing test
+"catches" any defect. Running the spec for WIP.3 showed it failing on clean
+code: the groupByH3 fetch loop resolves `integerColumns` colIdx ONCE, from the
+first group's headers, unless the pageType is in its per-table re-resolution
+gate. "#" is column 0 in every group and hid that; "Billing" lives only in the
+line-up table. `event-overview` is now in the gate. Lesson recorded in the
+spirit of CLAUDE.md's "verify the fails-before half": also verify the
+passes-after half on clean code before trusting a mutation verdict.
+
+**FIXTURE_SETTINGS_OVERRIDE now forces four settings off** (the new
+`sa_event_overview_event_art` fetches from eventartarchive.org on every
+render); both settings-dialog specs' PRISTINE profiles restore it.
+
+## 2026-10-06 — event-overview: credits, bare disambiguation, "(with …)" artists, multi-row Song (branch feature/event-overview, WIP.4)
+
+**"(with …)" artists are /work/ links.** On event cd595883-… the line
+`This Land Is Your Land (with Trombone Shorty & the New Breed Brass Band and
+all performers)` renders every linked name as `<a href="/work/<mbid>">` —
+and each MBID is the same as that artist's `/artist/` link in the line-up
+(checked for all five). So the parser takes only the /work/ links BEFORE
+"(with" as the song's works (before this, such a song counted as a medley and
+its artists fed "Also in"), splits the parenthetical at ",", "&", "and", and
+re-points those links to /artist/.
+
+**A note can follow a blank line.** The same setlist has no part headers and
+"Scheduled: 19:00 Local Start Time ??:?? / End Time ??:??" right after a blank
+line, which the WIP.2 rule made a part named after it. A comment reads as a
+note when it has "label: value" or a clock time; notes before the first part
+go to the next part.
+
+**Multi-row columns are lists for EVERY row.** `collapsableColumns` treats a
+non-list cell as prose (clamp wrapper), so Song / Credits / Additional artists
+/ Recording are always a `<ul>`, one `<li>` for a single value (a one-item list
+is never prose).
+
+**Results:** `event-overview.spec.js` 7/7, `event-overview-setlist.spec.js`
+11/11; three WIP.2 mutation finds re-targeted, nine new entries.

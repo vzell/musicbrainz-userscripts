@@ -287,6 +287,28 @@ after "Show all Tracks for Release", `_releaseArtInsertSection()` puts a
 it after. Setting `sa_enable_release_tracks_cover_art` (forced off in
 `FIXTURE_SETTINGS_OVERRIDE`).
 
+**The event page has the same section** ("Event art (N)", pageType
+`event-overview`, `org/event-overview-pt.org`). Everything that differs lives in
+`_artSectionDesc('caa'|'eaa')` — context, setting, tab setting, entity regex,
+anchor, label, archive name, title selector, layouts, layout GM key — and every
+handler resolves it from the section's `data-mb-art-ctx` (`_artSectionOf(sec)`),
+never from a hard-coded `CAA_CTX`. Rules that come with that:
+- **A function, not a `const` table**: it is reachable from code that can run
+  before its line is evaluated, and it names `CAA_CTX`/`EAA_CTX`, declared
+  further down.
+- **The `.mb-release-art-*` classes stay on both pages** — specs and mutation
+  lists key on them; read them as "the art section".
+- **Release-only**: Spreads (only the CAA descriptor lists `'spreads'`) and the
+  Medium art (gated on the release-tracks pageType).
+- **Event art records have no `back` key** (probed 2026-10-06,
+  `scripts/probe-caa-release-images.py --event`), and their URLs are already
+  `https:`. The viewer prints "Main back" only when the flag exists.
+- **The viewer's title is the h1's entity LINK text** (`_releaseArtTitle()`):
+  after a render the h1 also holds the script's toolbar.
+- Setting `sa_event_overview_event_art` is forced off in
+  `FIXTURE_SETTINGS_OVERRIDE` too; `sa_event_overview_art_tab` gates the tab
+  click (the release page's tab click has no setting).
+
 - **One record, one cache.** `_artFetchEntityImages(ctx, entityPath)` is the
   table-free copy of `_artEnrichIcon()`'s three tiers with the same 404 vs
   429/5xx bookkeeping, so the section and the CAA column share
@@ -351,4 +373,6 @@ it after. Setting `sa_enable_release_tracks_cover_art` (forced off in
 Covered by `release-tracks-cover-art.spec.js`, `release-tracks-cover-art-viewer.spec.js`,
 `release-tracks-cover-art-spreads.spec.js`, `release-tracks-medium-art.spec.js`
 and `release-tracks-cover-art.mobile.spec.js`; mutation lists
-`release-tracks-cover-art.json`, `-p2.json`, `-p3.json` and `-p4.json`.
+`release-tracks-cover-art.json`, `-p2.json`, `-p3.json` and `-p4.json`. The
+event page: `event-overview-art.spec.js`, `event-overview-art.mobile.spec.js`,
+mutation list `event-overview.json`.

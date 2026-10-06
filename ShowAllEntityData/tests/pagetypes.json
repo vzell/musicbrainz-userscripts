@@ -20,6 +20,16 @@
     "waitForAutoResize": true
   },
   {
+    "pageType": "event-overview",
+    "url": "https://musicbrainz.org/event/3f2ca30a-7de4-4964-ad30-48376535fec8",
+    "tableMode": "multi",
+    "showAllButtonSelector": "button[data-label=\"Show all Relationships for Event\"]",
+    "seedGmValues": { "sa_enable_event_overview": true, "sa_event_overview_event_art": false },
+    "hasCaaOrEaa": false,
+    "hasRelationships": false,
+    "waitForAutoResize": true
+  },
+  {
     "pageType": "releasegroup-releases",
     "url": "https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c",
     "tableMode": "multi",

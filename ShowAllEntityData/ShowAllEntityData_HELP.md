@@ -1078,6 +1078,8 @@ an import brings your deletions back.
   MusicBrainz's own h3-grouped sub-tables
 - **Release tracklists** (`/release/<mbid>`, and `/release/<mbid>/disc/<n>`) —
   the whole tracklist across every medium, consolidated
+- **Event pages** (`/event/<mbid>`) — the event's relationships and setlist as
+  tables, and its Event Art Archive images
 - **Collections** — your own, subscribed ones, and their entity sub-tabs
 - **Tags** — entity tag pages, user tag pages, and the most-popular-tags page
 - **Search results** — every entity type
@@ -1251,6 +1253,68 @@ like a length over the threshold, with a ⚠️ and a tooltip saying why. The Ti
 column's 📊 dropdown counts these tracks under **Title info - Work**. Switch
 the marking off in ⚙️ Settings → 💿 RELEASE TRACKLIST ("Flag tracks whose
 recording has no associated work"); the 📊 counts stay either way.
+
+</details>
+
+<details>
+<summary>Event pages</summary>
+
+An event page (`/event/<mbid>`) gains **Relationships for Event**. MusicBrainz
+lists an event's relationships as short lists, one target per line; the button
+turns them into tables you can filter and sort, **one table per kind of related
+entity** — Artists, Places, Recordings, Releases, Series, URLs, … — each with
+the columns that fit it:
+
+- the related entity itself, as the same link MusicBrainz shows, with a **#**
+  column that restores the original order;
+- **Relationship** — the phrase it was listed under ("main performers",
+  "held at", "recording location for", …);
+- for performers, **Credits** — one row per credit ("lead vocals",
+  "harmonica", …, instrument links kept) — and **Time** ("19:40 - 22:29");
+  **Artist** for recordings and releases, **Area** for a place, **Details**
+  for anything else on the line ("order: 150" for a series), and
+  **Disambiguation** (without its parentheses) — each only when some row has
+  one;
+- for URLs, the **Site** and the link, with its **[info]** page.
+
+Under "Related series", MusicBrainz also lists the relationships of the
+series the event belongs to: its tour artists, its parent series, its links.
+Those describe the tour, not the event, so they get their own **Via <series>**
+table.
+
+**The setlist as tables.** After the relationships come **Setlist: Line-up**
+— every artist with how they are joined ("&", "with", "and") and a **Billing**
+number that moves on at every joining word but "&" — and one table per part
+of the setlist (**Setlist: Soundcheck**, **Setlist: Concert**, …; **Setlist:
+Songs** when the setlist has no parts). A part's notes ("Scheduled: 19:30 |
+Local Start Time 19:40 / End Time 22:29") sit under its heading. **Song** is a
+multi-row column: a medley line ("Land of Hope and Dreams / People Get
+Ready") stays one row with one list row per work. The artists of a "(with …)"
+line ("This Land Is Your Land (with Trombone Shorty & the New Breed Brass Band
+and all performers)") go into **Additional artists**, one row each, linked to
+the artist. **Also in** names the other parts that play the same work;
+**Recording** links the recording made at this event whose title is the song.
+A song without a work link is kept as text.
+
+**Event art without leaving the page.** Above the tables, an **Event art (N)**
+section shows every Event Art Archive image of the event — posters, schedules,
+banners, tickets, maps — with the same type chips, **Grid / By type** switch, ★
+on the archive's main image, hover card and full-screen viewer as a release
+page's Cover art section (see *Release tracklists*). Its layout is remembered
+separately from the release page's. A plain click on the native **Event art
+(N)** tab opens the viewer on a grid of every image instead of leaving the page;
+Ctrl-click still opens the archive page. It costs one request per render (none
+when cached, none when the tab says 0).
+
+Every part is a setting, in ⚙️ Settings → 🎫 EVENT PAGE: the page as a whole,
+*Relationships as tables*, *One table for all relationships* (off by default:
+one table with a **Type** and a **From** column instead of one per kind),
+*Include the related series' own relationships* (off: that section stays
+as MusicBrainz shows it), *Setlist as tables*, *One table for the whole
+setlist* (off by default: every song in **Setlist: All songs** with a **Part**
+column), *Show an "Event art" section* and *The "Event art" tab opens the
+viewer*. With both table parts off the button is not offered (the Event art
+section comes with the button).
 
 </details>
 
