@@ -237,8 +237,8 @@ skill for turning a =planned= row into a =captured= one.
 | 90 | sl-bootlegs-intro             | single       | springsteenlyrics.com /bootlegs.php            | NOT MusicBrainz, opt-in twice; the bootleg landing page, no cards and no button: the compact bar (slNavOnly) alone         |
 | 91 | jl-list                       | single       | jungleland.it /html/list.htm                   | NOT MusicBrainz, opt-in, own tab only; links → table (jlListToTable), date cut off Title, Year                             |
 | 92 | bs-records                    | single       | brucespringsteen.it /DB/records.aspx           | NOT MusicBrainz, opt-in, own tab only; 2 buttons (Unofficial/Official) fetch all formats                                   |
-| 93 | event-overview                | multi        | /event/EVENT_MAN                               | eventDetailsToTables (relationships + setlist), per-group colHeaders, groupByH3; every part a setting                    |
-| 94 | sl-brucelegs                  | single       | springsteenlyrics.com /brucelegs.php?cmd=list  | NOT MusicBrainz, opt-in; CD and vinyl bootleg cards → table, dateParts + splitLocationText on plain text                 |
+| 93 | event-overview                | multi        | /event/EVENT_MAN                               | eventDetailsToTables (relationships + setlist), per-group colHeaders, groupByH3; every part a setting                      |
+| 94 | sl-brucelegs                  | single       | springsteenlyrics.com /brucelegs.php?cmd=list  | NOT MusicBrainz, opt-in; CD and vinyl bootleg cards → table, dateParts + splitLocationText on plain text                   |
 | 95 | sl-lyrics                     | single       | springsteenlyrics.com /lyrics.php              | NOT MusicBrainz, opt-in; 32 letter pages fetched by KEY (features.pageKeys), song lines → table, bracket split + dateParts |
 
 * Page type details
