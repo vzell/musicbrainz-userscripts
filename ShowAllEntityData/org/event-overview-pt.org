@@ -94,13 +94,16 @@ Settings as mocked (C):
 | =sa_event_overview_event_art=            | on             | enable     |
 | =sa_event_overview_art_tab=              | on             | event art  |
 
-** DECIDE (open, for the user)
+** DECIDED (2026-10-06, by the user)
 
-- [ ] T2 only, or T1 too as a value of the layout setting?
-- [ ] S1 only, or S2 too as a value of the layout setting?
-- [ ] The setting keys and defaults above.
-- [ ] Event art: share the release page's remembered layout
-      (=MB_RELEASE_ART_LAYOUT_KEY=) or keep its own?
+- [X] "Ship the pageType with C (every part a setting), T2 and S1 as the
+      default layouts, and E1 + E2 for the art."
+- [X] Read as: both layouts ship as the values of the two layout settings
+      (C holds them), T2 and S1 the defaults, T1 and S2 the alternatives.
+- [X] The setting keys and defaults as in the table above.
+- [ ] Not answered, chosen in implementation: event art remembers its own
+      Grid / By type choice (a new GM key next to =MB_RELEASE_ART_LAYOUT_KEY=),
+      because its type set has nothing in common with a release's.
 
 ** Implementation phases (branch =feature/event-overview=, after DECIDE)
 
