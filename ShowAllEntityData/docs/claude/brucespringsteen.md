@@ -132,8 +132,8 @@ Parsing:
 
 Columns (`_BS_HEADERS`):
 
-| Unofficial | Official |
-|---|---|
+| Unofficial                                | Official                                              |
+|-------------------------------------------|-------------------------------------------------------|
 | Title, Matrix, Format, Label, Code, Notes | Title, Catalogue, Format, Country, Promo, Code, Notes |
 
 - **Promo** is "yes" or empty, as springsteenlyrics.com's flags are.
@@ -151,11 +151,11 @@ Columns (`_BS_HEADERS`):
 
 ## Tests
 
-| Spec | Pins |
-|---|---|
-| `tests/fixtures/bs-records.spec.js` | fixture preconditions (the LP page's onload ticks C4 only; 1878/1186); gates off and in the frameset (form state untouched); setting on: exactly Unofficial and Official, all 12 boxes ticked; each button: exactly one fetch with all formats of its kind, rows = the list's own "N RESULTS", exact headers, the live records gone, the UN radio matching, the shared table CSS; parsed fields (spaced Mx, notes, nested-parenthesis label, `(copy/repress)`, no Mx line, "…" decoded, PROMO, `Catalogue:`); Label and Country filters; the navigation guard on a predefined-filter link; no MusicBrainz/CAA/EAA request; Save → Load from Disk on a fresh page; `_bsParseHead` shapes |
-| `tests/fixtures/sl-include-regex.spec.js` | the `@include` line: `DB`/`db` records.aspx in; `Blegsdx.htm`, `detrec.aspx`, the other frameset, look-alike hosts out |
-| `tests/live/bs-records.spec.js` (`@extended`) | each button on the real site: rows = the count the all-formats page announces |
+| Spec                                          | Pins                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+|-----------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `tests/fixtures/bs-records.spec.js`           | fixture preconditions (the LP page's onload ticks C4 only; 1878/1186); gates off and in the frameset (form state untouched); setting on: exactly Unofficial and Official, all 12 boxes ticked; each button: exactly one fetch with all formats of its kind, rows = the list's own "N RESULTS", exact headers, the live records gone, the UN radio matching, the shared table CSS; parsed fields (spaced Mx, notes, nested-parenthesis label, `(copy/repress)`, no Mx line, "…" decoded, PROMO, `Catalogue:`); Label and Country filters; the navigation guard on a predefined-filter link; no MusicBrainz/CAA/EAA request; Save → Load from Disk on a fresh page; `_bsParseHead` shapes |
+| `tests/fixtures/sl-include-regex.spec.js`     | the `@include` line: `DB`/`db` records.aspx in; `Blegsdx.htm`, `detrec.aspx`, the other frameset, look-alike hosts out                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `tests/live/bs-records.spec.js` (`@extended`) | each button on the real site: rows = the count the all-formats page announces                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 
 Fixtures: `python3 scripts/build-bs-fixtures.py` turns the three raw
 captures into `tests/fixtures/bs-records-{unofficial,official,lp}.html`,

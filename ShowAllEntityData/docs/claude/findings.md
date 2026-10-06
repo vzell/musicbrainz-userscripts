@@ -22,17 +22,17 @@ project skill `add-finding` (`.claude/skills/add-finding/SKILL.md`).
 
 ## The registry contract
 
-| Field | Meaning |
-|---|---|
-| `id`, `level`, `glyph`, `label`, `tip` | Identity, `'warn'`/`'error'`, and the menu row's text. Ids are `[a-z-]` tokens: they go into a CSS attribute selector unescaped. |
-| `scope` | `'cell'` → the menu ticks a 📊 entry; `'row'` → the row filter. See below. |
-| `coFlagged` | Length only: both duration cells always carry the same flag, so ticking the first column suffices. |
-| `inlineGlyph` | The cell already shows its own ⚠️/❌ (ISRC, ISWC, barcode, live credit): tint only. |
-| `enabled()` | Optional; the finding's own feature setting (`sa_enable_pending_edits_section`, `sa_enable_barcode_validation`). |
-| `cols(name, plan)` | Which columns are tested. `'*'` = every cell of a row that passes `rowGate()`. |
-| `test(cell, row, plan)` | The detector. |
-| `detail(cell, row, plan)` | Optional, cell scope: this cell's own text, appended to its tooltip line after the label (`rec-event-mismatch`/`rec-place-mismatch` name both values). Same source-row rule as `test()`. |
-| `tint(cell)` | Whether this finding paints. `false` for the families that already had CSS (length, video, no-work, live titles); the rest read their `sa_findings_tint_*` setting. |
+| Field                                  | Meaning                                                                                                                                                                                  |
+|----------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `id`, `level`, `glyph`, `label`, `tip` | Identity, `'warn'`/`'error'`, and the menu row's text. Ids are `[a-z-]` tokens: they go into a CSS attribute selector unescaped.                                                         |
+| `scope`                                | `'cell'` → the menu ticks a 📊 entry; `'row'` → the row filter. See below.                                                                                                               |
+| `coFlagged`                            | Length only: both duration cells always carry the same flag, so ticking the first column suffices.                                                                                       |
+| `inlineGlyph`                          | The cell already shows its own ⚠️/❌ (ISRC, ISWC, barcode, live credit): tint only.                                                                                                       |
+| `enabled()`                            | Optional; the finding's own feature setting (`sa_enable_pending_edits_section`, `sa_enable_barcode_validation`).                                                                         |
+| `cols(name, plan)`                     | Which columns are tested. `'*'` = every cell of a row that passes `rowGate()`.                                                                                                           |
+| `test(cell, row, plan)`                | The detector.                                                                                                                                                                            |
+| `detail(cell, row, plan)`              | Optional, cell scope: this cell's own text, appended to its tooltip line after the label (`rec-event-mismatch`/`rec-place-mismatch` name both values). Same source-row rule as `test()`. |
+| `tint(cell)`                           | Whether this finding paints. `false` for the families that already had CSS (length, video, no-work, live titles); the rest read their `sa_findings_tint_*` setting.                      |
 
 **`test()` reads SOURCE-row data, never post-render decoration.** The stamp
 reaches master rows, and a master row never saw the render tail —
