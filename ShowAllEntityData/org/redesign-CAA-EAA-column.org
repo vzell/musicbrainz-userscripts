@@ -304,9 +304,14 @@ two cache tiers (IDB record vs fresh fetch), feeding it.
   count badge). Text kept out of filter/sort (see invariants).
 - Optional: "no Front image" as a =FINDINGS= entry via the =add-finding= skill.
 
-*** TODO P5 — D2 table gallery (optional)
-- Opened from the strip toggle or the 📊 summary panel; lazy thumbnails
-  (IntersectionObserver); type chips; "Compare two".
+*** DONE P5 — D2 table gallery
+- Opened from a 🖼 button after the 📊 in each table's artwork run, and from
+  the 📊 summary panel ("Open gallery"); type chips; "Compare two".
+- Decided 2026-10-06: the table's visible rows; zero archive requests
+  (pending releases show "loading…" and fill in while open); a movable
+  =createInfoDialog()= window, the viewer on top. Lazy thumbnails by
+  =loading="lazy"= in the window's scroller (no IntersectionObserver).
+  Branch =feature/caa-gallery=.
 
 ** Follow-ups / open questions
 

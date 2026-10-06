@@ -96,13 +96,17 @@ const shellFile = (() => {
  *
  * @param {import('@playwright/test').Page} page
  * @param {Object} [settings]
- * @param {{domToggle?: boolean}} [opts] domToggle: press the master toggle
+ * @param {{domToggle?: boolean, hold?: string[]}} [opts] hold: release MBIDs
+ *   whose archive answer is held open (never aborted) until `release()` —
+ *   their cells stay pending. domToggle: press the master toggle
  *   through the DOM — on the phone emulation MusicBrainz's header overlays it,
  *   so a pointer click is intercepted.
- * @returns {Promise<{hits: Map<string, number>}>} Archive JSON requests per release.
+ * @returns {Promise<{hits: Map<string, number>, release: function(): void}>} Archive JSON
+ *   requests per release, and the release of the held answers.
  */
-async function open(page, settings = {}, { domToggle = false } = {}) {
+async function open(page, settings = {}, { domToggle = false, hold = [] } = {}) {
     const hits = new Map();
+    const held = [];
     await loadUserscriptPage(page, {
         url: RG_URL,
         fixtureFile: shellFile,
@@ -120,9 +124,10 @@ async function open(page, settings = {}, { domToggle = false } = {}) {
     await page.route('https://coverartarchive.org/**', (route) => route.fulfill({ status: 404, body: '' }));
     await page.route(/^https:\/\/coverartarchive\.org\/.*\.jpg$/,
         (route) => route.fulfill({ status: 200, contentType: 'image/png', body: ONE_PX_PNG }));
-    await page.route(META_RE, (route) => {
+    await page.route(META_RE, async (route) => {
         const mbid = route.request().url().match(META_RE)[1];
         hits.set(mbid, (hits.get(mbid) || 0) + 1);
+        if (hold.includes(mbid)) await new Promise((resolve) => held.push(resolve));
         if (!BODIES[mbid]) return route.fulfill({ status: 404, body: '' });
         return route.fulfill({ status: 200, contentType: 'application/json', body: BODIES[mbid] });
     });
@@ -148,8 +153,8 @@ async function open(page, settings = {}, { domToggle = false } = {}) {
     }
     await expect.poll(() => page.locator('ul.mb-caa-art-ul').count(), {
         timeout: 30000, message: 'every release with artwork gets its cell built',
-    }).toBe(6);
-    return { hits };
+    }).toBe(Object.keys(BODIES).filter((m) => !hold.includes(m)).length);
+    return { hits, release: () => held.splice(0).forEach((r) => r()) };
 }
 
 /** The CAA `<td>` of a release, as a locator. */

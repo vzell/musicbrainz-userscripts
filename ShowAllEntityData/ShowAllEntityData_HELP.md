@@ -814,14 +814,29 @@ at the last/first image continue into the next/previous row, and
 stepped through. Ctrl-click (or middle-click) the icon to follow the link
 instead.
 
+**The gallery (🖼).** The 🖼 button among a table's artwork controls (after
+📊), or **🖼 Open gallery** in its 📊 summary, opens a window with every image
+of the releases the table currently shows — the rows the filters leave, in
+their order — grouped by release, each labelled with its format, country and
+date, label and catalog number. The type chips at the top show only those
+images (several at once: any of them); a release without one says so ("No
+Medium image"), which answers "which releases miss a disc scan?" at a glance.
+**Compare two** puts two releases side by side, one line per image type, with
+"none" where one has no such image. A click on an image opens the viewer,
+whose Shift+← → then step through the gallery's releases. A release whose
+artwork is still loading shows "loading…" and fills in while the window is
+open. The window can be moved and resized and remembers where it was; Escape
+or a click outside closes it (not a click in the viewer).
+
 **Settings** (⚙️ → 🖼️ CAA/EAA ILLUSTRATED DISCOGRAPHY): the layout, tile size
 and tiles per line, the ▦ button, both cards (and how many tiles the release
 card shows, and the preview size), marking filter matches in the cards, the
 viewer from the column and from the icon, the viewer's image size (**1200**,
 or the **original** file, which can be many MB), crossing into the next row,
-keeping the zoom level, the slideshow interval, and the chip types with their
-letters. None of these makes a request of its own: everything is read from the
-artwork records the column has already loaded.
+keeping the zoom level, the slideshow interval, the chip types with their
+letters, and the gallery (on/off, its tile size, Compare two). None of these
+makes a request of its own: everything is read from the artwork records the
+column has already loaded.
 
 </details>
 

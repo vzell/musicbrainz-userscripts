@@ -1,0 +1,67 @@
+[
+  {
+    "name": "no 🖼 gallery button on the first render",
+    "why": "The per-table opener is created right after the 📊 on the retry button's create path; without it the gallery has no way in from the table.",
+    "edits": [{"find": "        _artCreateSummaryButton(ctx, table, tableIndex);\n        _artCreateGalleryButton(ctx, table, tableIndex);", "replace": "        _artCreateSummaryButton(ctx, table, tableIndex);"}],
+    "spec": "tests/fixtures/caa-gallery.spec.js",
+    "grep": "opens on the rows shown",
+    "expect": "fail"
+  },
+  {
+    "name": "a pending release is never filled in",
+    "why": "Zero requests means the gallery waits for the column's queue; the 1 s re-check is what fills a release in while the window is open.",
+    "edits": [{"find": "        if (st.rels.some(r => r.state === 'pending')) st.timer = setInterval(() => _artGalleryTick(st), 1000);", "replace": "        void st.timer;"}],
+    "spec": "tests/fixtures/caa-gallery.spec.js",
+    "grep": "fills in while the window is open",
+    "expect": "fail"
+  },
+  {
+    "name": "the gallery closes on a click inside the viewer",
+    "why": "The viewer is outside the dialog; without keepOpenWithin its clicks count as \"click outside\".",
+    "edits": [{"find": "            keepOpenWithin: ['#mb-art-viewer'],\n", "replace": "\n"}],
+    "spec": "tests/fixtures/caa-gallery.spec.js",
+    "grep": "the viewer never closes the gallery",
+    "expect": "fail"
+  },
+  {
+    "name": "keepOpenWithin matched with closest() instead of the composed path",
+    "why": "The viewer re-renders on the click (the Info button), detaching the target before the click reaches the document; closest() on a detached node finds nothing.",
+    "edits": [{"find": "                e.composedPath().some(n => n instanceof Element && opts.keepOpenWithin.some(sel => n.matches(sel)))) return;", "replace": "                e.target.closest && opts.keepOpenWithin.some(sel => e.target.closest(sel))) return;"}],
+    "spec": "tests/fixtures/caa-gallery.spec.js",
+    "grep": "the viewer never closes the gallery",
+    "expect": "fail"
+  },
+  {
+    "name": "the viewer steps every loaded release, chips ignored",
+    "why": "Shift+→ must walk the releases the gallery shows under its chips; a release the Medium chip empties is skipped.",
+    "edits": [{"find": "        const nav = st.rels.filter(r => r.state === 'ok' && _artGalleryShown(st, r).length);", "replace": "        const nav = st.rels.filter(r => r.state === 'ok');"}],
+    "spec": "tests/fixtures/caa-gallery.spec.js",
+    "grep": "the viewer never closes the gallery",
+    "expect": "fail"
+  },
+  {
+    "name": "a release without the chosen type gets no placeholder",
+    "why": "\"No Medium image\" is the answer the chips exist for; an empty row says nothing.",
+    "edits": [{"find": "                    tiles.appendChild(_artvEl('span', 'mb-art-gal-missing', `No ${[...st.sel].join(' or ')} image`));\n", "replace": "\n"}],
+    "spec": "tests/fixtures/caa-gallery.spec.js",
+    "grep": "names the releases without one",
+    "expect": "fail"
+  },
+  {
+    "name": "the 📊 summary re-anchors behind the 🖼",
+    "why": "Recorded honestly: without skipping the 🖼 the summary moves behind it on every pass and the 🖼 moves back after it — the same final order, at the cost of two DOM moves per pass. Nothing observable fails.",
+    "edits": [{"find": "            const _end = _ctlRunEnd(anchor, [existing, _gallery]);", "replace": "            const _end = _ctlRunEnd(anchor, existing); void _gallery;"}],
+    "spec": "tests/fixtures/caa-summary-button-position.spec.js",
+    "grep": "it stays in the control run",
+    "expect": "pass"
+  },
+  {
+    "name": "a tap on a gallery image does not open the viewer",
+    "why": "On a phone the tap is the only way in.",
+    "edits": [{"find": "        const fig = t.closest('figure.mb-art-gal-tile');\n        if (fig) {", "replace": "        const fig = null;\n        if (fig) {"}],
+    "spec": "tests/fixtures/caa-gallery.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "a tap on an image opens the viewer",
+    "expect": "fail"
+  }
+]

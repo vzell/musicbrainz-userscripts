@@ -448,3 +448,33 @@ h2/h3 expand-all controls skip it through `_COLLAPSE_HDR_BTN_SEL` (expanding
 every art cell would load every thumbnail). **li-0 must wrap**: the first
 render's prose marker div holds the icon, hint and count, and as a shrinkable
 flex item beside the chips it collapsed to the icon's width.
+
+## The table-wide artwork gallery (D2)
+
+`org/redesign-CAA-EAA-column.org` P5; grep `// ── D2: the table-wide artwork gallery`.
+Opened by the per-table 🖼 (`_artCreateGalleryButton()`, id
+`${ctx.btnPrefix}-gallery-${i}`, right after the 📊) or the summary's "Open
+gallery" (`.mb-art-sum-gallery` — NOT `.mb-art-sum-act`, which specs use to
+find the retry). Rules:
+
+- **Scope = the live rows**, `_artTableEntityPaths()` — the same helper
+  `_artCollectSummary()` now uses — so a filter narrows it, and it says so.
+- **Zero archive requests.** States come from the caches as the summary reads
+  them (`_artGalleryRelState()`); a pending release is re-checked once a second
+  while the window is open (`_artGalleryTick()`), which stops when none is
+  pending or the window is gone.
+- **The 📊 re-anchor skips the 🖼** (`_ctlRunEnd()` takes a skip list); without
+  it the two swap on every pass and land in the same order — invisible, so the
+  mutation entry is recorded as `"expect": "pass"`.
+- **The viewer opens on top of a `createInfoDialog()`**, which closes on a
+  click outside: `keepOpenWithin: ['#mb-art-viewer']`, matched on
+  `e.composedPath()` — the viewer re-renders on its own clicks and detaches the
+  target before the click reaches the document. Escape never reaches the
+  dialog while the viewer is open (its window-capture key handler).
+- **Its Shift+← → walk the gallery's releases** that the chips leave non-empty,
+  not the table's rows (`_artGalleryOpenViewer()`'s `onGroupStep`).
+- Captions copy the cell `<li>` pills/comment (`_artCardCopy()`), so the
+  table filter's marks show here too, as in the cards.
+
+Covered by `caa-gallery.spec.js` (incl. EAA), `caa-gallery.mobile.spec.js`,
+`caa-summary-button-position.spec.js`; mutation list `caa-gallery.json`.

@@ -19516,3 +19516,28 @@ debug/BoDeans-CAA-bug-inclusive-warning.html). Two findings:
   fixture only reproduces it in a narrow column, so the test pins the CAA
   column to the reported 150 px (its <th> min-width), and the mutation has to
   remove BOTH rules — removing one passed, correctly.
+
+## 2026-10-06 — CAA/EAA artwork gallery, D2 (branch feature/caa-gallery, WIP.1)
+
+org/redesign-CAA-EAA-column.org P5; docs/claude/artwork-caa-eaa.md "The
+table-wide artwork gallery (D2)" has the rules. What was found on the way:
+
+- **`createInfoDialog()` would close under the viewer.** It closes on any
+  document `click` outside itself, and the viewer is outside. Worse, a click on
+  the viewer's own buttons re-renders the viewer, so by the time the click
+  reaches the document its target is detached and `closest('#mb-art-viewer')`
+  finds nothing. New opt-in `keepOpenWithin` matches on `e.composedPath()`,
+  fixed at dispatch; the mutation using `closest()` fails as it should.
+- **Two run members that re-anchor to the run's end would swap forever.** The
+  📊 re-anchors to `_ctlRunEnd()` on every pass; with the 🖼 after it in the
+  same id-prefix run, the 📊 moved behind the 🖼 and the 🖼 moved back. Same
+  final order, two DOM moves per pass, nothing a test can see — so
+  `_ctlRunEnd()` takes a skip LIST and the mutation is recorded as a pass.
+- **`.mb-art-sum-act` is the retry's identity**, located by
+  caa-artwork-summary.spec.js; the gallery action reusing the class broke its
+  "one action" count. Own class `.mb-art-sum-gallery`.
+
+**Results:** caa-gallery.spec.js 9/9 (EAA included), .mobile.spec.js 1/1,
+caa-summary-button-position, caa-artwork-summary, caa-column-redesign,
+release-tracks-cover-art-viewer and the config specs green; mutation list 8/8
+as expected (7 fail, 1 recorded pass).
