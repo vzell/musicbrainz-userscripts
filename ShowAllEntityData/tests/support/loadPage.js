@@ -34,9 +34,15 @@ const USERSCRIPT_PATH = path.join(PROJECT_ROOT, 'ShowAllEntityData.user.js');
 // fixture tests keeps that suite genuinely network-free even once a fixture
 // test clicks a "Show all" button, rather than relying on no test happening
 // to trigger it.
+//
+// `sa_enable_release_tracks_cover_art` (default true) is the third: the
+// release page's "Cover art (N)" section fetches the archive record with plain
+// fetch() on every release-tracks render. Specs of that section turn it back
+// on and route coverartarchive.org themselves.
 const FIXTURE_SETTINGS_OVERRIDE = {
     sa_enable_caa_pics: false,
     sa_enable_relationships_column: false,
+    sa_enable_release_tracks_cover_art: false,
 };
 
 // `_migrateFrozenSettings()` repairs a GM profile that VZ_MBLibrary's old SAVE

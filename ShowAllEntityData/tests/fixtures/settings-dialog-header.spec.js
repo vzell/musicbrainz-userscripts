@@ -46,11 +46,12 @@ const SID = 'vz-mb-show-all-entity-data';
 const OVERLAY = `#${SID}-settings-overlay`;
 
 // Same reasoning as settings-dialog.spec.js's own PRISTINE: the fixture
-// harness forces two settings OFF that both default to true, so an untouched
-// profile would otherwise arrive with two changes already on the counter.
+// harness forces three settings OFF that all default to true, so an untouched
+// profile would otherwise arrive with three changes already on the counter.
 const PRISTINE = {
     sa_enable_caa_pics: true,
     sa_enable_relationships_column: true,
+    sa_enable_release_tracks_cover_art: true,
 };
 
 /**

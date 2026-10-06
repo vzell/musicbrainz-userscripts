@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "f8240eef7db5fa2730a36d158429ecf22b2762ef",
-    "revisions_walked": 765
+    "head": "058b93ed2b71e345260605c990a673c2a32e608a",
+    "revisions_walked": 767
   },
   "changes": [
     {
@@ -532,6 +532,7 @@
     "sa_findings_tint_live_credit": true,
     "sa_enable_release_tracks": true,
     "sa_enable_release_tracks_acoustid_column": false,
+    "sa_enable_release_tracks_cover_art": true,
     "sa_enable_release_tracks_isrc_column": false,
     "sa_enable_release_tracks_length_mismatch_flag": true,
     "sa_enable_release_tracks_video_medium_flag": true,

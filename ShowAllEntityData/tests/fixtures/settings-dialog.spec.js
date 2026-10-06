@@ -63,17 +63,18 @@ const OVERLAY = `#${SID}-settings-overlay`;
 //   divider_thresholds   → holds sa_max_page, used as the "other section"
 const SECTION_A = 'divider_';
 
-// `loadPage.js`'s FIXTURE_SETTINGS_OVERRIDE forces `sa_enable_caa_pics` and
-// `sa_enable_relationships_column` OFF for every fixture, to keep the suite
-// network-free once a spec clicks "Show all". Both DEFAULT to true — so from
-// this dialog's point of view a fixture profile arrives with two settings
-// already changed, and every count here would be off by two while looking
-// plausible. These tests never click "Show all" and never fetch, so putting
-// the two back at their defaults is safe and is what makes "an untouched
-// profile" mean it.
+// `loadPage.js`'s FIXTURE_SETTINGS_OVERRIDE forces `sa_enable_caa_pics`,
+// `sa_enable_relationships_column` and `sa_enable_release_tracks_cover_art`
+// OFF for every fixture, to keep the suite network-free once a spec clicks
+// "Show all". All three DEFAULT to true — so from this dialog's point of view
+// a fixture profile arrives with three settings already changed, and every
+// count here would be off by three while looking plausible. These tests never
+// click "Show all" and never fetch, so putting them back at their defaults is
+// safe and is what makes "an untouched profile" mean it.
 const PRISTINE = {
     sa_enable_caa_pics: true,
     sa_enable_relationships_column: true,
+    sa_enable_release_tracks_cover_art: true,
 };
 
 /** Loads the shell without clicking anything — the dialog needs no table. */

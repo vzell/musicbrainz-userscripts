@@ -2330,6 +2330,18 @@
                          'AcoustID keeps its native unlink (×) / suggested-link (+) action link.'
         },
 
+        sa_enable_release_tracks_cover_art: {
+            label: 'Show a "Cover art" section above the tracklist',
+            type: 'checkbox',
+            default: true,
+            description: 'After "Show all Tracks for Release", adds a collapsible "Cover art (N)" ' +
+                         'section above the tracklist showing every Cover Art Archive image of ' +
+                         'the release with its types and comment, so the separate "Cover art" tab ' +
+                         'is not needed. Costs one request to coverartarchive.org per render (none ' +
+                         'when the record is already cached, none when the tab says 0), plus the ' +
+                         '250 px thumbnails. ★ marks the archive\'s main front image.'
+        },
+
         sa_enable_release_tracks_isrc_column: {
             label: 'Show "ISRCs" column',
             type: 'checkbox',
@@ -64661,8 +64673,14 @@ a { color: #1565c0; }`;
             // Install navigation guard (idempotent — safe to call on every render)
             initNavigationGuard();
 
+            // release-tracks: the "Cover art (N)" section goes in BEFORE
+            // makeH2sCollapsible() so it becomes an ordinary collapsible h2, and
+            // is opened right after (it starts uncollapsed, unlike other h2s).
+            const _releaseArtH2 = _releaseArtInsertSection();
+
             // Make all H2s collapsible after rendering
             makeH2sCollapsible();
+            if (_releaseArtH2 && _releaseArtH2._mbToggle) _releaseArtH2._mbToggle(true);
 
             // Apply sticky headers for better scrolling experience
             if (Lib.settings.sa_enable_sticky_headers) {
@@ -95036,6 +95054,316 @@ a { color: #1565c0; }`;
         }
 
         anchor.dataset[ctx.enrichedAttr] = '1';
+    }
+
+    /**
+     * Resolves the archive record of ONE entity, without a table row: the
+     * three tiers of `_artEnrichIcon()` (session Map → IndexedDB → network)
+     * with the same bookkeeping, so both callers share one cache and agree on
+     * what a zero means.
+     *
+     * - 404/410 (`_ART_MISS_STATUSES`) is a fact about the entity: cached as 0
+     *   for the session AND persisted to IDB, never recorded as failed.
+     * - 429/5xx is a bad minute at the archive: cached as 0 for the session only
+     *   and recorded in `ctx.failedCache` (org/503-handling.org F5/F7).
+     * - A thrown request caches nothing and is recorded as failed, so the next
+     *   call retries it.
+     *
+     * Used by the release page's Cover art section
+     * (org/CAA-release-tracks-handling.org); `_artEnrichIcon()` keeps its own
+     * inline copy of these tiers for now — folding it onto this helper is a
+     * separate, mutation-checked step because that function is on the table
+     * render path.
+     *
+     * @param   {ArtCtx} ctx        `CAA_CTX` or `EAA_CTX`.
+     * @param   {string} entityPath e.g. `/release/<mbid>`.
+     * @returns {Promise<{state: 'ok'|'none'|'failed', images: Object[]}>}
+     */
+    async function _artFetchEntityImages(ctx, entityPath) {
+        if (ctx.countCache.has(entityPath)) {
+            const images = ctx.imagesCache.get(entityPath) || [];
+            if (images.length) return { state: 'ok', images };
+            return { state: ctx.failedCache.has(entityPath) ? 'failed' : 'none', images: [] };
+        }
+        if (Lib.settings.sa_art_idb_enable) {
+            try {
+                const idbMeta = await _artIdbGetMetadata(entityPath);
+                if (idbMeta !== null) {
+                    const images = Array.isArray(idbMeta.images) ? idbMeta.images : [];
+                    ctx.countCache.set(entityPath, images.length);
+                    ctx.imagesCache.set(entityPath, images);
+                    return { state: images.length ? 'ok' : 'none', images };
+                }
+            } catch (idbErr) {
+                Lib.warn(ctx.key, `${ctx.key}FetchEntityImages: IDB metadata read error for ${entityPath}:`, idbErr);
+            }
+        }
+        try {
+            const resp = await fetch(ctx.apiHost + entityPath);
+            if (!resp.ok) {
+                const definitiveAbsence = _ART_MISS_STATUSES.includes(resp.status);
+                if (!definitiveAbsence) {
+                    Lib.warn(ctx.key, `${ctx.key}FetchEntityImages: HTTP ${resp.status} for ${entityPath}`);
+                }
+                ctx.countCache.set(entityPath, 0);
+                ctx.imagesCache.set(entityPath, []);
+                if (definitiveAbsence) ctx.failedCache.delete(entityPath);
+                else ctx.failedCache.add(entityPath);
+                _artScheduleFailedBtnRefresh(ctx);
+                if (Lib.settings.sa_art_idb_enable && definitiveAbsence) {
+                    _artIdbPutMetadata(entityPath, 0, []);
+                }
+                return { state: definitiveAbsence ? 'none' : 'failed', images: [] };
+            }
+            const json = await resp.json();
+            const images = Array.isArray(json.images) ? json.images : [];
+            ctx.countCache.set(entityPath, images.length);
+            ctx.imagesCache.set(entityPath, images);
+            ctx.failedCache.delete(entityPath);
+            _artScheduleFailedBtnRefresh(ctx);
+            if (Lib.settings.sa_art_idb_enable) {
+                _artIdbPutMetadata(entityPath, images.length, images);
+            }
+            return { state: images.length ? 'ok' : 'none', images };
+        } catch (err) {
+            Lib.warn(ctx.key, `${ctx.key}FetchEntityImages: network error for ${entityPath}:`, err);
+            ctx.failedCache.add(entityPath);
+            _artScheduleFailedBtnRefresh(ctx);
+            return { state: 'failed', images: [] };
+        }
+    }
+
+    // ── Release page Cover art section (release-tracks) ─────────────────────
+    //
+    // org/CAA-release-tracks-handling.org, mockup R1. A collapsible h2
+    // "Cover art (N)" inserted before h2.tracklist by the release-tracks render,
+    // so it exists only after "Show all Tracks for Release" and becomes an
+    // ordinary page-level h2 through makeH2sCollapsible(). It is not a table:
+    // never cloned, never filtered, never counted by the global filter.
+
+    /**
+     * Reads N from the native "Cover art (N)" tab, which costs no request.
+     *
+     * @param   {ArtCtx} ctx `CAA_CTX` (tab link ends in `ctx.artSuffix`).
+     * @returns {?number} The count, or null when the tab is missing or unreadable.
+     */
+    function _releaseArtTabCount(ctx) {
+        const tab = document.querySelector(`ul.tabs a[href$="${ctx.artSuffix}"]`);
+        const m = tab && /\((\d+)\)/.exec(tab.textContent);
+        return m ? parseInt(m[1], 10) : null;
+    }
+
+    /**
+     * Injects the Cover art section's stylesheet once.
+     *
+     * @returns {void}
+     */
+    function _ensureReleaseArtStyle() {
+        if (document.getElementById('mb-release-art-style')) return;
+        // GM_addStyle so this is exempt from page CSP style-src restrictions.
+        const style = GM_addStyle(`
+            .mb-release-art-count { font-weight: normal; }
+            .mb-release-art-sec { margin: 6px 0 16px; }
+            .mb-release-art-status { color: #666; font-style: italic; margin: 4px 0; }
+            .mb-release-art-retry { margin-left: 6px; cursor: pointer; }
+            .mb-release-art-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                gap: 10px;
+            }
+            .mb-release-art-tile {
+                position: relative;
+                margin: 0;
+                display: flex;
+                flex-direction: column;
+                gap: 3px;
+                min-width: 0;
+            }
+            .mb-release-art-tile a { display: block; line-height: 0; }
+            .mb-release-art-tile img {
+                width: 100%;
+                aspect-ratio: 1;
+                object-fit: contain;
+                background: #f4f4f4;
+                border: 1px solid #ddd;
+                box-sizing: border-box;
+            }
+            .mb-release-art-tile figcaption { font-size: 11px; line-height: 1.3; overflow-wrap: anywhere; }
+            .mb-release-art-tile figcaption .mb-release-art-comment { display: block; color: #666; }
+            .mb-release-art-star {
+                position: absolute;
+                top: 4px;
+                left: 4px;
+                background: rgba(0, 0, 0, 0.66);
+                color: #ffd76a;
+                font: bold 11px/1 sans-serif;
+                padding: 3px 5px;
+                border-radius: 3px;
+            }
+        `);
+        style.id = 'mb-release-art-style';
+    }
+
+    /**
+     * Builds one tile of the contact sheet.
+     *
+     * The ★ reads the archive's `front` flag, NOT `types.includes('Front')`:
+     * an image can be typed Front without being the main front
+     * (docs/claude/artwork-caa-eaa.md, summary panel). Until the viewer lands
+     * the thumbnail links to the 1200 px image in a new tab.
+     *
+     * @param   {Object} imgData One entry of the archive record's `images`.
+     * @param   {number} index   Its position in archive order.
+     * @returns {HTMLElement}    `figure.mb-release-art-tile`.
+     */
+    function _releaseArtBuildTile(imgData, index) {
+        const thumbs = imgData.thumbnails || {};
+        const thumb = (thumbs['250'] || thumbs.small || thumbs['500'] || thumbs.large || imgData.image || '')
+            .replace(/^http:/, '');
+        const big = (thumbs['1200'] || thumbs.large || imgData.image || thumb).replace(/^http:/, '');
+        const types = Array.isArray(imgData.types) && imgData.types.length ? imgData.types : ['(no type)'];
+
+        const fig = document.createElement('figure');
+        fig.className = 'mb-release-art-tile';
+        fig.dataset.mbArtI = String(index);
+
+        const a = document.createElement('a');
+        a.href = big;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        const img = document.createElement('img');
+        img.src = thumb;
+        img.loading = 'lazy';
+        img.decoding = 'async';
+        img.alt = types.join(' / ') + (imgData.comment ? ' · ' + imgData.comment : '');
+        a.appendChild(img);
+        fig.appendChild(a);
+
+        if (imgData.front) {
+            const star = document.createElement('span');
+            star.className = 'mb-release-art-star';
+            star.textContent = '★ main';
+            _setTip(star, 'The archive\'s main front image');
+            fig.appendChild(star);
+        }
+
+        const cap = document.createElement('figcaption');
+        const b = document.createElement('b');
+        b.className = 'mb-release-art-types';
+        b.textContent = types.join(' / ');
+        cap.appendChild(b);
+        if (imgData.approved === false) {
+            const pend = document.createElement('span');
+            pend.className = 'mb-release-art-pending';
+            pend.textContent = ' ⏳';
+            _setTip(pend, 'Pending approval in the Cover Art Archive');
+            cap.appendChild(pend);
+        }
+        if (imgData.comment) {
+            const c = document.createElement('span');
+            c.className = 'mb-release-art-comment';
+            c.textContent = imgData.comment;
+            cap.appendChild(c);
+        }
+        fig.appendChild(cap);
+        return fig;
+    }
+
+    /**
+     * Fills the section from the archive record: a contact sheet, a "no
+     * artwork" note, or a failure note with a retry button. The retry button
+     * is wired directly: the section is never cloned, so a direct listener
+     * survives every re-render.
+     *
+     * @param   {ArtCtx}      ctx
+     * @param   {HTMLElement} h2  The section's `h2.mb-release-art-h2`.
+     * @param   {HTMLElement} sec The section's `div.mb-release-art-sec`.
+     * @returns {Promise<void>}
+     */
+    async function _releaseArtLoad(ctx, h2, sec) {
+        const entityPath = sec.dataset.mbArtEntity;
+        sec.dataset.mbArtState = 'loading';
+        sec.textContent = '';
+        const status = document.createElement('div');
+        status.className = 'mb-release-art-status';
+        status.textContent = 'Loading cover art…';
+        sec.appendChild(status);
+
+        const { state, images } = await _artFetchEntityImages(ctx, entityPath);
+        if (!sec.isConnected) return;
+        sec.dataset.mbArtState = state;
+        const countEl = h2.querySelector('.mb-release-art-count');
+        if (state === 'ok') {
+            if (countEl) countEl.textContent = ` (${images.length})`;
+            status.remove();
+            const grid = document.createElement('div');
+            grid.className = 'mb-release-art-grid';
+            images.forEach((im, i) => grid.appendChild(_releaseArtBuildTile(im, i)));
+            sec.appendChild(grid);
+            return;
+        }
+        if (state === 'none') {
+            if (countEl) countEl.textContent = ' (0)';
+            status.textContent = 'The Cover Art Archive has no images for this release.';
+            return;
+        }
+        status.textContent = 'The Cover Art Archive could not be reached.';
+        const retry = document.createElement('button');
+        retry.type = 'button';
+        retry.className = 'mb-release-art-retry';
+        retry.textContent = '⟳ Retry';
+        retry.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // Drop the session zero first, or Tier 1 serves it straight back
+            // (docs/claude/artwork-caa-eaa.md, CAA/EAA retry).
+            ctx.countCache.delete(entityPath);
+            ctx.imagesCache.delete(entityPath);
+            ctx.failedCache.delete(entityPath);
+            _releaseArtLoad(ctx, h2, sec);
+        });
+        status.appendChild(retry);
+    }
+
+    /**
+     * Inserts the Cover art section before `h2.tracklist` and starts loading
+     * it. Called from the release-tracks render tail BEFORE
+     * `makeH2sCollapsible()`, which then makes the new h2 collapsible like any
+     * other; the caller opens it afterwards (the section starts uncollapsed).
+     *
+     * Does nothing (and makes no request) when the setting is off, the page is
+     * not release-tracks, the tab says "Cover art (0)", or there is no
+     * `h2.tracklist` to anchor on. Idempotent: a previous section is replaced.
+     *
+     * @returns {?HTMLElement} The new h2, or null when nothing was inserted.
+     */
+    function _releaseArtInsertSection() {
+        if (!Lib.settings.sa_enable_release_tracks_cover_art) return null;
+        if (activeDefinition?.type !== 'release-tracks') return null;
+        const m = /^\/release\/([a-f0-9-]{36})/.exec(location.pathname);
+        const anchorH2 = document.querySelector('h2.tracklist');
+        if (!m || !anchorH2) return null;
+
+        document.querySelectorAll('.mb-release-art-h2, .mb-release-art-sec').forEach(n => n.remove());
+        const ctx = CAA_CTX;
+        const tabCount = _releaseArtTabCount(ctx);
+        if (tabCount === 0) return null;
+        _ensureReleaseArtStyle();
+
+        const h2 = document.createElement('h2');
+        h2.className = 'mb-release-art-h2';
+        h2.append('Cover art');
+        const count = document.createElement('span');
+        count.className = 'mb-release-art-count';
+        count.textContent = tabCount === null ? '' : ` (${tabCount})`;
+        h2.appendChild(count);
+
+        const sec = document.createElement('div');
+        sec.className = 'mb-release-art-sec';
+        sec.dataset.mbArtEntity = '/release/' + m[1];
+
+        anchorH2.before(h2, sec);
+        _releaseArtLoad(ctx, h2, sec);
+        return h2;
     }
 
 

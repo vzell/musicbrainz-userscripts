@@ -546,7 +546,8 @@ Both halves matter and the reasons are easy to get backwards.
 **When reproducing anything in this area, check the fixture settings first.**
 `loadPage.js`'s `FIXTURE_SETTINGS_OVERRIDE` forces `sa_enable_caa_pics` and
 `sa_enable_relationships_column` OFF for every fixture spec — i.e. it removes
-the two largest late-injected controls. The first attempt to reproduce this bug
+the two largest late-injected controls (it also forces
+`sa_enable_release_tracks_cover_art` off, which adds no table control). The first attempt to reproduce this bug
 reported **0 of 21** affected columns for exactly that reason, against **20 of
 21** on the real page. A "cannot reproduce" here means nothing until that
 override has been switched back on.
