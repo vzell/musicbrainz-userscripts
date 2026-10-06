@@ -391,5 +391,45 @@
     "spec": "tests/fixtures/sl-bootlegs.spec.js",
     "grep": "First date is split into DD",
     "expect": "fail"
+  },
+  {
+    "name": "brucelegs has no column set",
+    "why": "applySlCardsToTable() returns early for a kind without _SL_HEADERS, so no table is built and nothing renders.",
+    "edits": [{ "find": "        brucelegs:  ['Cover',", "replace": "        brucelegsOff:  ['Cover'," }],
+    "spec": "tests/fixtures/sl-brucelegs.spec.js",
+    "grep": "both pages become one table",
+    "expect": "fail"
+  },
+  {
+    "name": "brucelegs Label and Cat # swapped",
+    "why": "The two are separate card lines here (not \"Label (Cat #)\" as on the collection); each must reach its own column.",
+    "edits": [{ "find": "            textCell(fields['Label'] || '');\n            textCell(fields['Cat #'] || '');\n", "replace": "            textCell(fields['Cat #'] || '');\n            textCell(fields['Label'] || '');\n" }],
+    "spec": "tests/fixtures/sl-brucelegs.spec.js",
+    "grep": "card fields land in their own columns",
+    "expect": "fail"
+  },
+  {
+    "name": "brucelegs First date is not fed to dateParts",
+    "why": "The date split must be declared on sl-brucelegs too, not only on sl-bootlegs.",
+    "edits": [{ "find": "slCardsToTable: 'brucelegs',\n                columnExtractors: [\n                    { sourceColumn: 'First date', extractor: 'dateParts',", "replace": "slCardsToTable: 'brucelegs',\n                columnExtractors: [\n                    { sourceColumn: 'First date', extractor: 'datePartsOff'," }],
+    "spec": "tests/fixtures/sl-brucelegs.spec.js",
+    "grep": "First date is split into DD",
+    "expect": "fail"
+  },
+  {
+    "name": "brucelegs ignores the show note in Location",
+    "why": "On brucelegs the note sits in Location (\"…, USA (Early Show)\"). None of the fixture's 100 cards has one, so the fixture spec cannot see this; tests/live/sl-lists.spec.js (\"show notes, dates and locations split on every row\", @extended) does. Recorded so the gap is known.",
+    "edits": [{ "find": "textCell(_slShowQualifier(fields['Date']) || _slShowQualifier(fields['Location']));", "replace": "textCell(_slShowQualifier(fields['Date']));" }],
+    "spec": "tests/fixtures/sl-brucelegs.spec.js",
+    "grep": "card fields land in their own columns",
+    "expect": "pass"
+  },
+  {
+    "name": "the @include line no longer admits brucelegs.php",
+    "why": "Tampermonkey would never inject the script on the CD and vinyl bootleg list; only the regex spec can see it.",
+    "edits": [{ "find": "springsteenlyrics\\.com\\/(?:collection|bootlegs|brucelegs)\\.php", "replace": "springsteenlyrics\\.com\\/(?:collection|bootlegs)\\.php" }],
+    "spec": "tests/fixtures/sl-include-regex.spec.js",
+    "grep": "springsteenlyrics.com: every list page",
+    "expect": "fail"
   }
 ]

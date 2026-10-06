@@ -7,7 +7,8 @@ the **collection** (`collection.php?cmd=list…`) and the **bootleg** lists
 (`bootlegs.php?cmd=list…`), every category and every `f_*` filter — as the
 pageTypes `sl-collection` and `sl-bootlegs`, and on the collection's entry
 page `collection.php` ("Latest additions", every item, `pg=` pagination) as
-`sl-collection-intro`. It is **opt-in**:
+`sl-collection-intro`, and on the **CD and vinyl bootleg** list
+(`brucelegs.php?cmd=list…`) as `sl-brucelegs`. It is **opt-in**:
 `sa_enable_springsteenlyrics`, default **off**. Only what each list card shows
 is used; no item detail page is fetched. The bootleg landing page
 `bootlegs.php` (`sl-bootlegs-intro`) has no cards; it is supported only for the
@@ -121,9 +122,30 @@ text after `glyphicon-option-vertical`).
 
 Columns (`_SL_HEADERS`):
 
-| sl-collection | sl-bootlegs |
-|---|---|
-| Cover, Title, Version, Label, Cat. no., Format, Country, Release date, Original year, Copies | Cover, Title, Label, Date, First date, Show, Location, Format, Duration, Lossy, Artwork, Info file (+ DD, MM, YYYY, Day, Month, Place, Locality, Region, Country from `columnExtractors`) |
+| sl-collection | sl-bootlegs | sl-brucelegs |
+|---|---|---|
+| Cover, Title, Version, Label, Cat. no., Format, Country, Release date, Original year, Copies | Cover, Title, Label, Date, First date, Show, Location, Format, Duration, Lossy, Artwork, Info file (+ DD, MM, YYYY, Day, Month, Place, Locality, Region, Country from `columnExtractors`) | Cover, Title, Version, Label, Cat. no., Date, First date, Show, Location, Format (+ the same nine extracted columns) |
+
+- **sl-brucelegs** (`brucelegs.php?cmd=list`, 402 cards on 2026-10-06, `page=N`):
+  - **Cards and fields.** It uses the same `div.blog-post` cards, so the same
+    converter applies with a third kind. Its fields are Label (often a
+    `f_label=` link) and Cat # on separate lines, then Date, Location and
+    Format. The sub-title is the pressing, so it goes in Version as on the
+    collection.
+  - **No flag columns.** "PDF available" and "artwork available" appear on
+    all 402 cards, so they carry nothing and get no column.
+  - **Dates.** The real shapes are `DD Mon YYYY` 169, `YYYY / YYYY` 170,
+    `YYYY` 59, `Mon YYYY` 2, and `Mon YYYY / Mon YYYY` 1, all read by
+    `_slFirstIsoDate()`.
+  - **Locations.** The shape that matters for `splitLocationText`: 221 of
+    402 Locations are one-part descriptions ("Various Location", "Studio /
+    Live", "Unknown location"), which go to Place. 137 end in "USA",
+    sometimes with a show note ("USA (Early Show)"). The Show column falls
+    back to that note, since Date never carries one here.
+  - **Tests and the compact bar.** No fixture card has such a note, so the
+    `@extended` live spec checks it on every real row, and the mutation is
+    recorded `"expect": "pass"`. The compact bar does not apply: the kind is
+    not in its gate's list.
 
 - **Label / Cat. no.** and **Release date / Original year** split the site's
   "Label (Cat #)" and "Release date (Original year)" at the LAST parenthesised
@@ -514,7 +536,8 @@ leaves the other fixtures byte-identical.
 | `tests/fixtures/sl-sticky-headers.spec.js`  | album, sampler, memorabilia: breadcrumb, `<h1>`, category buttons, list `<h2>` (and the year filter) keep their left edge and stay in the window; Title docks at the table's left. Each shape again with the compact bar on, the bar in place of the walls, plus a bootleg list (with `.col-md-12` CSS) |
 | `tests/fixtures/sl-scope-bar.spec.js`       | the compact bar: off by default changes nothing; one menu per wall whose entries ARE the wall's links; walls hidden, not removed; the room above the list shrinks; choices keep the other filters and drop the page; category change drops the album; chips; Year range from the slider or the fallback; search, arrows, Escape, outside press; Enter navigates. Bootlegs: one Category menu, forms untouched; counts recorded for whole categories only (not a filtered list, not a search) and shown; the era timeline (one bar per era, chronological, width by span, height per year, unknown dashed); a search page labelled by its heading, a category change dropping the search. Search box: Auto reads five date forms and falls back to titles, slash dates stay text; impossible days and non-dates in Date mode disable Search with a reason; partial dates link their era and a title search; a hand-picked field; Enter navigates; a result page prefills the box; Recent moves a repeat to the front, keeps eight, forgets on request; no box on collection pages. After the fetch: Country, Year and Copies narrow the loaded table to the rows computed from it, no reload, chips and button follow both ways (incl. the column ✕), two table chips clear in place, Format and Category still navigate with their note, a filter carried in the URL still reloads, nothing-in-range shows an empty table; a pull-down opened low fits the window. Landing page: bar off leaves it untouched (no heading, toolbar or class, no error); bar on gives Category ("Choose a list"), search box and Recent, forms and buttons hidden, no fetch button, Data/View hidden, Statistics kept and not recorded; its Category menu has the era timeline with nothing current; its search box searches. Formats guide: the Format menu grouped Audio/Video/Print with a guide line per entry, found by abbreviation; the site panel hidden with the format wall and kept where there is none; every Format cell's tip (compound and counted texts); after the fetch Format filters by first medium ("CD + 2xDVD" is CD); Album and Category still navigate. Mutations: `scripts/mutations/sl-scope-bar.json` |
 | `tests/fixtures/sl-include-regex.spec.js`   | the `@include` header lines                                                                                                                                                                                                                         |
-| `tests/live/sl-lists.spec.js` (`@extended`) | real pagination: rows = the page's own "Showing items … of N" (album/12i, book, the entry page, aud_live1967); Sticky Page Headers under the site's real CSS                                                                                       |
+| `tests/fixtures/sl-brucelegs.spec.js`       | the CD and vinyl bootleg columns across two pages, card fields (no sub-title, a label link, year and month spans), the DD…Month split at each date precision, Location split incl. a description in Place and "USA" as United States, YYYY numeric sort, a Country filter |
+| `tests/live/sl-lists.spec.js` (`@extended`) | real pagination: rows = the page's own "Showing items … of N" (album/12i, book, the entry page, aud_live1967, brucelegs); Sticky Page Headers under the site's real CSS; on every real brucelegs row: a Location show note reaches Show, no description or "USA" reaches Country, every dated row has YYYY |
 
 Fixtures are generated: `python3 scripts/build-sl-fixtures.py` splits three
 logged-out snapshots in `debug/` into two 50-card pages each (rewriting only

@@ -80,6 +80,15 @@ const SL_KINDS = {
         pageParam: 'page',
         cmds: ['list'],
     },
+    // The CD and vinyl bootlegs (debug/sl-brucelegs.html, split in two).
+    brucelegs: {
+        url: 'https://springsteenlyrics.com/brucelegs.php?cmd=list',
+        pathname: '/brucelegs.php',
+        pages: ['sl-brucelegs-page1.html', 'sl-brucelegs-page2.html'].map((f) => path.join(FIXTURE_DIR, f)),
+        button: 'Show all CD and vinyl bootlegs of this list',
+        pageParam: 'page',
+        cmds: ['list'],
+    },
     // The bootleg landing page: no cards, so no button and nothing fetched.
     // No `cmds`: nothing is served after the load, so a followed link is
     // aborted by the catch-all — specs assert on its href instead.
@@ -97,7 +106,7 @@ const SL_KINDS = {
  * Loads one SL list fixture with the userscript injected.
  *
  * @param {import('@playwright/test').Page} page
- * @param {{ kind: ('collection'|'collection-intro'|'sampler'|'memorabilia'|'bootlegs'|'bootlegs-intro'), enabled?: boolean, settingsOverride?: Object<string, *>, startPage?: number, url?: string }} opts
+ * @param {{ kind: ('collection'|'collection-intro'|'sampler'|'memorabilia'|'bootlegs'|'brucelegs'|'bootlegs-intro'),enabled?: boolean, settingsOverride?: Object<string, *>, startPage?: number, url?: string }} opts
  *   `enabled` seeds `sa_enable_springsteenlyrics` (default `true`; the
  *   setting itself defaults to OFF). `startPage` (default 1) opens the list
  *   on that page: its file is the live document, at the list URL with the

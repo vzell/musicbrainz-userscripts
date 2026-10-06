@@ -10,6 +10,7 @@ pages in `debug/`:
     debug/sl-sampler-raw.html           collection.php?cmd=list&category=sampler            (2026-10-05, curl)
     debug/sl-memorabilia-raw.html       collection.php?cmd=list&category=memorabilia        (2026-10-05, curl)
     debug/sl-bootleg.html               bootlegs.php  (the bootleg landing page, no cards)  (2026-10-05)
+    debug/sl-brucelegs.html             brucelegs.php?cmd=list  (CD and vinyl bootlegs)     (2026-10-06)
 
 The last three render the "Filter by original year of release" block, whose
 stray `</div>` closes `.project-detail` before the list -- the shape the
@@ -65,6 +66,8 @@ TARGETS = [
      'collection.php?cmd=list&amp;category=sampler', 'page', False),
     ('debug/sl-memorabilia-raw.html', 'tests/fixtures/sl-memorabilia',
      'collection.php?cmd=list&amp;category=memorabilia', 'page', False),
+    ('debug/sl-brucelegs.html', 'tests/fixtures/sl-brucelegs',
+     'brucelegs.php?cmd=list', 'page', True),
 ]
 
 # Pages without item cards, sanitised the same way and written whole:

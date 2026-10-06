@@ -44,6 +44,12 @@ test.describe('@include coverage', () => {
             // The site's own filter forms put cmd=list after another parameter.
             'https://springsteenlyrics.com/bootlegs.php?f_date=1975-08-15&cmd=list&category=f_date',
             'https://springsteenlyrics.com/bootlegs.php?f_title=Born&cmd=list&category=f_title#top',
+            // The CD and vinyl bootlegs, with each of its filters.
+            'https://www.springsteenlyrics.com/brucelegs.php?cmd=list',
+            'https://springsteenlyrics.com/brucelegs.php?cmd=list&page=3',
+            'https://springsteenlyrics.com/brucelegs.php?cmd=list&f_letter=a',
+            'https://springsteenlyrics.com/brucelegs.php?cmd=list&f_format=vinyl',
+            'https://springsteenlyrics.com/brucelegs.php?cmd=list&f_label=Good Ship Funke',
             // The collection entry page ("Latest additions") and its own
             // pagination, which uses cmd=intro and pg= (its "»" link puts pg
             // first).
@@ -62,6 +68,8 @@ test.describe('@include coverage', () => {
         const others = [
             'https://springsteenlyrics.com/collection.php?item=9266&category=album&f_format=12i',
             'https://springsteenlyrics.com/bootlegs.php?item=4554&category=aud_live1967',
+            'https://springsteenlyrics.com/brucelegs.php?item=281&f_format=vinyl',
+            'https://springsteenlyrics.com/brucelegs.php',
             'https://springsteenlyrics.com/bootlegs.php?cmd=introx',
             'https://springsteenlyrics.com/bootlegs.php?pg=2',
             'https://springsteenlyrics.com/collection.php?cmd=introx',

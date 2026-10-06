@@ -52,6 +52,13 @@ const LISTS = [
         headers: ['Cover', 'Title', 'Label', 'Date', 'First date', 'Show', 'Location', 'Format', 'Duration', 'Lossy', 'Artwork', 'Info file',
             'DD', 'MM', 'YYYY', 'Day', 'Month', 'Place', 'Locality', 'Region', 'Country'],
     },
+    {
+        name: 'CD and vinyl bootlegs',
+        url: 'https://springsteenlyrics.com/brucelegs.php?cmd=list',
+        button: 'Show all CD and vinyl bootlegs of this list',
+        headers: ['Cover', 'Title', 'Version', 'Label', 'Cat. no.', 'Date', 'First date', 'Show', 'Location', 'Format',
+            'DD', 'MM', 'YYYY', 'Day', 'Month', 'Place', 'Locality', 'Region', 'Country'],
+    },
 ];
 
 /**
@@ -139,4 +146,34 @@ test('springsteenlyrics.com: the page above a wide table stays put while scrolli
     const moved = sels.filter((sel, i) => Math.abs(after.lefts[i] - before.lefts[i]) > 1);
     expect(moved, 'elements whose left edge moved while scrolling').toEqual([]);
     expect(Math.abs(after.thLeft - before.tableLeft), 'Title docks at the table\'s natural left').toBeLessThanOrEqual(1);
+});
+
+// The whole real CD and vinyl bootleg list (402 cards on 2026-10-06), for
+// what its 100-card fixture does not hold: a show note inside Location
+// ("…, USA (Early Show)"), and every description-only Location the site
+// writes. Each must stay out of Country.
+test('springsteenlyrics.com CD and vinyl bootlegs: show notes, dates and locations split on every row', { tag: '@extended' }, async ({ page }) => {
+    await loadUserscriptPage(page, {
+        url: 'https://springsteenlyrics.com/brucelegs.php?cmd=list',
+        settingsOverride: { sa_enable_springsteenlyrics: true },
+    });
+    await page.click('button[data-label="Show all CD and vinyl bootlegs of this list"]');
+    await page.locator('#mb-filter-container').waitFor({ state: 'visible', timeout: 120000 });
+    await page.waitForFunction(() => !document.getElementById('mb-render-heading'), null, { timeout: 120000 });
+
+    const out = await page.evaluate(() => {
+        const names = Array.from(document.querySelectorAll('table.tbl thead tr:first-child th'))
+            .map((th) => th.dataset.colName || th.textContent.trim());
+        const rows = Array.from(document.querySelectorAll('table.tbl tbody tr')).map((tr) =>
+            Object.fromEntries(names.map((n, i) => [n, (tr.cells[i]?.textContent || '').trim()])));
+        const noted = rows.filter((r) => /\((?:early|late) show\)/i.test(r.Location));
+        return {
+            noted: noted.length,
+            notedWithoutShow: noted.filter((r) => !/show/i.test(r.Show)).map((r) => r.Location),
+            badCountry: [...new Set(rows.map((r) => r.Country))].filter((c) => /various|studio|location|live|unknown|^usa$|\(/i.test(c)),
+            undatedYear: rows.filter((r) => /\b(19|20)\d\d\b/.test(r.Date) && !r.YYYY).map((r) => r.Date),
+        };
+    });
+    expect(out.noted, 'premise: the list has show notes in Location').toBeGreaterThan(0);
+    expect(out).toEqual({ noted: out.noted, notedWithoutShow: [], badCountry: [], undatedYear: [] });
 });

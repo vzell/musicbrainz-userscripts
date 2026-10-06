@@ -18,7 +18,7 @@
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/release\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/disc\/\d+)?\/?(?:\?[^#]*)?(?:#.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits\/?(?:\?.*)?|edit\/(?:subscribed(?:_editors)?|notes-received)\/?(?:\?.*)?|account\/applications\/?(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections\/?(?:\?.*)?|election\/.*|genres\/?(?:\?.*)?|cdstub\/.*|isrc\/.*|iswc\/.*|doc\/Edit_Types\/?(?:\?.*)?|instruments\/?(?:\?.*)?|privileged\/?(?:\?.*)?)$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/]+\/(?:subscriptions\/.*|subscribers\/?(?:\?.*)?|collections\/?(?:\?.*)?|ratings\/.*|ratings(?:\?.*)?|tags.*|tag\/.*|edits(?:\/open)?\/?(?:\?.*)?)$/
-// @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/(?:collection|bootlegs)\.php\?(?:[^#]*&)?cmd=list(?:[&#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/(?:collection|bootlegs|brucelegs)\.php\?(?:[^#]*&)?cmd=list(?:[&#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/collection\.php(?:\?(?:(?:[^#]*&)?cmd=intro(?:&[^#]*)?|pg=\d+(?:&[^#]*)?))?(?:#.*)?$/
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/bootlegs\.php(?:\?(?:[^#]*&)?cmd=intro(?:&[^#]*)?)?(?:#.*)?$/
 // @include      /^https?:\/\/(?:www\.)?jungleland\.it\/html\/list\.htm(?:[?#].*)?$/
@@ -4040,7 +4040,8 @@
             description: 'Off by default. When on, the script also runs on springsteenlyrics.com\'s ' +
                          'paginated list pages — collection.php?cmd=list… (every category and ' +
                          'every format/country/date/… filter), the collection\'s entry page ' +
-                         'collection.php ("Latest additions") and bootlegs.php?cmd=list… — and ' +
+                         'collection.php ("Latest additions"), bootlegs.php?cmd=list… and the CD ' +
+                         'and vinyl bootlegs, brucelegs.php?cmd=list… — and ' +
                          'offers a "Show all" button that fetches every page of the list, turns ' +
                          'the item cards into one filterable, sortable table, and adds the usual ' +
                          'toolbar. Only what each list card shows is used; no item detail page is ' +
@@ -9398,7 +9399,8 @@
      */
     const _SL_HEADERS = {
         collection: ['Cover', 'Title', 'Version', 'Label', 'Cat. no.', 'Format', 'Country', 'Release date', 'Original year', 'Copies'],
-        bootlegs:   ['Cover', 'Title', 'Label', 'Date', 'First date', 'Show', 'Location', 'Format', 'Duration', 'Lossy', 'Artwork', 'Info file']
+        bootlegs:   ['Cover', 'Title', 'Label', 'Date', 'First date', 'Show', 'Location', 'Format', 'Duration', 'Lossy', 'Artwork', 'Info file'],
+        brucelegs:  ['Cover', 'Title', 'Version', 'Label', 'Cat. no.', 'Date', 'First date', 'Show', 'Location', 'Format']
     };
 
     /**
@@ -9708,6 +9710,21 @@
             textCell(notes.some(t => /\bLossy\b/i.test(t)) ? 'yes' : '');
             textCell(body.querySelector('.bi-image') ? 'yes' : '');
             textCell(body.querySelector('.glyphicon-file') ? 'yes' : '');
+        } else if (kind === 'brucelegs') {
+            // CD and vinyl bootlegs: the sub-title is the pressing ("Limited
+            // Edition #350 numbered - Marbled Grey Vinyl"), Label and Cat #
+            // are separate lines. A show note sits in Location here ("…,
+            // USA (Early Show)"), not in Date. The card's "PDF available" /
+            // "artwork available" notes are on every one of the 402 cards
+            // (2026-10-06), so they carry no information and get no column.
+            textCell(_slCardSubtitle(body));
+            textCell(fields['Label'] || '');
+            textCell(fields['Cat #'] || '');
+            textCell(fields['Date'] || '');
+            textCell(_slFirstIsoDate(fields['Date']));
+            textCell(_slShowQualifier(fields['Date']) || _slShowQualifier(fields['Location']));
+            textCell(fields['Location'] || '');
+            textCell(fields['Format'] || '');
         } else {
             const [label, catNo] = _slSplitTrailingParen(fields['Label (Cat #)']);
             const [released, originalYear] = _slSplitTrailingParen(fields['Release date (Original year)']);
@@ -22973,6 +22990,31 @@
             buttons: [],
             features: {
                 slNavOnly: true
+            },
+            tableMode: 'single'
+        },
+        // The "CD and Vinyl Bootlegs" list (`brucelegs.php?cmd=list`, with or
+        // without its f_letter / f_format / f_label filters): the same
+        // `div.blog-post` cards as the bootleg lists, numbered `page=N`
+        // pagination (402 items, 5 pages on 2026-10-06), its own field set
+        // (Label and Cat # on separate lines, no Duration). Same date and
+        // location splits as sl-bootlegs. No compact bar: the kind is not in
+        // that gate's list, so its letter and format walls stay as they are.
+        {
+            type: 'sl-brucelegs',
+            host: 'springsteenlyrics.com',
+            match: (path, params) => path === '/brucelegs.php' && params.get('cmd') === 'list',
+            buttons: [ { label: 'Show all CD and vinyl bootlegs of this list', shortLabel: 'Bootlegs' } ],
+            features: {
+                slCardsToTable: 'brucelegs',
+                columnExtractors: [
+                    { sourceColumn: 'First date', extractor: 'dateParts',         syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] },
+                    { sourceColumn: 'Location',   extractor: 'splitLocationText', syntheticColumns: ['Place', 'Locality', 'Region', 'Country'] }
+                ],
+                integerColumns: [
+                    { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' }
+                ],
+                stickyColumn: 'Title'
             },
             tableMode: 'single'
         },

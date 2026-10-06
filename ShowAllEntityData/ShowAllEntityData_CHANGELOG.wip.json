@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-10-06",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "springsteenlyrics.com CD and vinyl bootlegs (brucelegs.php, with any letter, format or label filter) are now supported too, when springsteenlyrics.com support is switched on: a Bootlegs button fetches every page into one table with Cover, Title, Version (the pressing), Label, Cat. no., Date, First date, Show, Location and Format, plus the same date and location split as the bootleg lists. A location that is only a description (\"Various Location\") stays whole in Place, and \"USA\" reads United States."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "New pageType sl-brucelegs (#94 in PAGETYPES-TESTING-REFERENCE.org); fixture pages from debug/sl-brucelegs.html via scripts/build-sl-fixtures.py; new tests/fixtures/sl-brucelegs.spec.js (5 tests); tests/live/sl-lists.spec.js gains the list and a whole-list check; sl-include-regex.spec.js covers brucelegs.php. scripts/mutations/sl-support.json: 5 new entries, one recorded as pass (the Location show note, which no fixture card has). WIP.2's location splitter learned one-part descriptions, show notes and \"USA\" from this list's 402 cards. docs/claude/springsteenlyrics.md and HELP updated."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-10-06",
     "sections": [

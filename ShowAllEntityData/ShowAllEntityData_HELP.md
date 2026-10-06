@@ -1164,7 +1164,8 @@ an import brings your deletions back.
 - **Account pages** (`/account/applications`)
 - Also works on the **musicbrainz.eu** mirror
 - **Not MusicBrainz:** the **springsteenlyrics.com** collection (every
-  category and the entry page) and bootleg lists, the **jungleland.it**
+  category and the entry page), bootleg lists and CD and vinyl bootleg
+  list, the **jungleland.it**
   bootleg artwork list and the **brucespringsteen.it** record database —
   each off until you switch it on, see
   [Page-specific behaviour](#page-specific-behaviour)
@@ -1497,10 +1498,11 @@ off, the script leaves that site's pages untouched.
 
 Once on, every **collection list** (`collection.php?cmd=list…`, any
 category), the collection's **entry page** (`collection.php`, "Latest
-additions") and every **bootleg list** (`bootlegs.php?cmd=list…`) — with any
-format, country, date, title or other filter you picked on the site — gets a
-heading with the usual toolbar and one action button: **Items** on a
-collection list or the entry page, **Bootlegs** on a bootleg list. Pressing it
+additions"), every **bootleg list** (`bootlegs.php?cmd=list…`) and the **CD
+and vinyl bootleg list** (`brucelegs.php?cmd=list…`) — with any format,
+country, date, title, letter, label or other filter you picked on the site —
+gets a heading with the usual toolbar and one action button: **Items** on a
+collection list or the entry page, **Bootlegs** on either bootleg list. Pressing it
 fetches every page of that list (100 items each), turns the item cards into
 one table, and gives you the usual filters, sorting, column controls, export
 and Save/Load.
@@ -1627,6 +1629,15 @@ The columns come from what each card shows — no item page is opened:
     written as United States, so one country has one value to filter on.
     Region holds a state or province only. A bootleg of several shows gets
     one line per show in each of the four columns, in the same order.
+- **CD and vinyl bootlegs:** Cover, Title, Version, Label, Cat. no., Date,
+  First date, Show, Location, Format, then the same DD … Month and Place …
+  Country columns as the bootleg lists. *Version* is the pressing ("Limited
+  Edition #200 copies numbered - Picture Disc"). The site's year spans
+  ("1981 / 1984") start *First date* at their first year. A location that
+  is only a description ("Various Location", "Studio / Live") stays whole in
+  *Place* and leaves the other three empty. A note such as "(Early Show)" at
+  the end of the location goes to *Show*. Every card says "PDF available"
+  and "artwork available", so those notes get no column.
 
 Cover and Title link to the item's own page on springsteenlyrics.com;
 following one asks first, as leaving any consolidated table does.
