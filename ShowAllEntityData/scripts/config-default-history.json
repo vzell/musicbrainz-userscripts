@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "cc5c5412cc8961e3cf0ab927c1866f19eb69dd6f",
-    "revisions_walked": 789
+    "head": "5e3b5ad8a2807bbc5f16ca69eac504d3efdc326a",
+    "revisions_walked": 790
   },
   "changes": [
     {
@@ -662,6 +662,7 @@
     "sa_enable_springsteenlyrics": false,
     "sa_sl_compact_nav": false,
     "sa_enable_jungleland": false,
-    "sa_enable_brucespringsteen": false
+    "sa_enable_brucespringsteen": false,
+    "sa_enable_brucebase": false
   }
 }
