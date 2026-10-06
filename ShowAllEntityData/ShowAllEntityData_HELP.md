@@ -1123,6 +1123,17 @@ raw **ARs** column, and a flag on live-recording credit dates that disagree with
 the recording date (Recording engineer, Performer, Vocals, Instruments, Recorded
 at event, Recorded at place).
 
+**Cover art without leaving the page.** After **Tracks for Release**, a
+**Cover art (N)** section opens above the tracklist with every Cover Art
+Archive image of the release: its types, its comment, ★ on the archive's main
+front image (which is not necessarily every image typed Front), and ⏳ on an
+image still pending approval. Click its heading to collapse it like any other
+section; a thumbnail opens the 1200 px image. It costs one request per render
+— none when the record is already cached from a CAA column, none when the tab
+says "Cover art (0)" — and the global filter never hides it. "No images" and
+"could not be reached" are told apart; the second offers **⟳ Retry**. Setting:
+*Show a "Cover art" section above the tracklist* (on by default).
+
 **Live recordings from more than one event.** Each track is matched to an
 event: its **Recorded at event**, else the event its recording comment names
 (`live, 1996‐04‐19: Saal 1, ICC Berlin, Berlin, Germany`), else its **Recording

@@ -220,6 +220,17 @@ resync (=ShowAllEntityData_HELP.md=, release-tracks and CAA sections),
 asking to merge. Never merge without the user's browser check.
 
 *** TODO P0 — probe and fixture
+- 2026-10-06, branch =feature/release-cover-art=: probe written
+  (=scripts/probe-caa-release-images.py=). Its first run could not reach the
+  record: coverartarchive.org answers 307 → =archive.org/download/mbid-…/index.json=
+  and archive.org refused connections at that moment (curl too). The 404 for
+  the 0-image release (=5cf63c93-…=) and the WS/2 counts (16, 13, 0) were
+  recorded. *Re-run the probe and paste its output here before merging.*
+- No new HTML fixture was needed: the spec uses the existing
+  =release-tracks-medley.html= (tab "Cover art (13)") and
+  =release-tracks-eti-keywords.html= (tab "Cover art (0)"), with the real
+  16-image record saved earlier the same day as
+  =tests/fixtures/caa-release-d0adda7e.json=.
 - =scripts/probe-caa-release-images.py=: fetch the archive JSON for the example
   release plus one with 0 images (expect 404), one =darkened= release and one
   with a pending image; record keys, URL schemes (=http:= vs =https:=, =//=)
@@ -235,6 +246,27 @@ asking to merge. Never merge without the user's browser check.
   =sa_enable_caa_pics= off — the new feature must not need it.
 
 *** TODO P1 — shared fetch helper + R1 skeleton
+- 2026-10-06, branch =feature/release-cover-art= (WIP.1), together with the
+  tiles of P2:
+  - =_artFetchEntityImages(ctx, entityPath)= written as a NEW helper with the
+    same three tiers and bookkeeping; =_artEnrichIcon()= deliberately NOT
+    rewired yet (it is on the table render path; do it as its own
+    mutation-checked step).
+  - =_releaseArtInsertSection()= / =_releaseArtLoad()= /
+    =_releaseArtBuildTile()= / =_releaseArtTabCount()= /
+    =_ensureReleaseArtStyle()=; hooked in =startFetchingProcess()='s render
+    tail before =makeH2sCollapsible()=, opened with =_mbToggle(true)= after
+    it (decided: starts uncollapsed, so it fetches on render, not on expand).
+    Classes are =h2.mb-release-art-h2= / =div.mb-release-art-sec= (not the
+    =mb-cover-art-*= working names above).
+  - Setting =sa_enable_release_tracks_cover_art= (default on), added to
+    =FIXTURE_SETTINGS_OVERRIDE=.
+  - Spec =tests/fixtures/release-tracks-cover-art.spec.js= (8 tests), mutation
+    list =scripts/mutations/release-tracks-cover-art.json= (9 defects, all
+    caught).
+  - Not done: Load-from-Disk does not build the section (it calls
+    =makeH2sCollapsible()= on its own path); thumbnails use plain =<img src>=
+    (browser cache), not =_artFetchCachedImage()=.
 - Extract =_artFetchEntityImages(ctx, entityPath)= (working name) from
   =_artEnrichIcon=: cache → IDB → fetch → persist, miss/failure bookkeeping.
   =_artEnrichIcon= calls it, so the CAA column and the release section share
@@ -247,6 +279,8 @@ asking to merge. Never merge without the user's browser check.
   503 = retry link; GF typing does not hide or count the section.
 
 *** TODO P2 — R1 contact sheet
+- Tiles (types, comment, ★ main front, ⏳ pending) landed with P1. Still to do:
+  type chips, layout switch, liner-card hover.
 - Tiles (types, comment, ★ main front, ⏳ pending), type chips (filter), layout
   switch Grid / By type. Liner-card hover through the tooltip engine.
 - Specs: 16 tiles in archive order; chip "Medium" leaves 4; ★ only on the

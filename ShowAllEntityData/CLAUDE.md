@@ -409,7 +409,7 @@ userscript reads that file.
   IIFE (TDZ). The config export's `workspace` block is declared only by
   `_CFG_WORKSPACE_GROUPS` — verbatim values, allowlist not sweep.
 - Only `applyVisibility()` may assign `display` to a settings row or header.
-- A fixture profile is not pristine (`FIXTURE_SETTINGS_OVERRIDE` forces two
+- A fixture profile is not pristine (`FIXTURE_SETTINGS_OVERRIDE` forces three
   settings off).
 
 Full text: `docs/claude/settings-and-config.md`; design history:
@@ -478,8 +478,9 @@ The harness lives under `tests/`; how to run each suite and what it costs:
   `PAGETYPES-TESTING-REFERENCE.org` (coverage plan). Helpers:
   `tests/support/{customDialog,diskFixture,subtableTab,toolbarMenu,liveAssertions}.js`.
 - **`FIXTURE_SETTINGS_OVERRIDE`** (`tests/support/loadPage.js`) forces
-  `sa_enable_caa_pics` and `sa_enable_relationships_column` OFF — a "cannot
-  reproduce" means nothing until they are back on.
+  `sa_enable_caa_pics`, `sa_enable_relationships_column` and
+  `sa_enable_release_tracks_cover_art` OFF — a "cannot reproduce" means
+  nothing until they are back on.
 
 **Threshold dialogs will stall a test.** Four blocking plain-DOM overlays (not
 native `confirm()`, so `page.on('dialog')` never fires):

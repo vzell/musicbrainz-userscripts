@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1242+2026-10-06",
-    "schema_entries": 334,
+    "script_version": "9.99.1243+2026-10-06",
+    "schema_entries": 335,
     "sections": 43,
-    "settings": 291,
-    "settings_with_default": 286,
+    "settings": 292,
+    "settings_with_default": 287,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 135,
+      "checkbox": 136,
       "color_picker": 62,
       "divider": 43,
       "number": 42,
@@ -302,6 +302,7 @@
     "sa_enable_release_tracks": "Enable Release Tracklist consolidation",
     "sa_enable_release_tracks_acoustid_column": "Show \"AcoustIDs\" column",
     "sa_enable_release_tracks_acoustid_isrc_observer": "Watch for late-arriving AcoustID/ISRC data",
+    "sa_enable_release_tracks_cover_art": "Show a \"Cover art\" section above the tracklist",
     "sa_enable_release_tracks_credit_role_columns": "Show engineer/producer/mixer/performer/copyright credit columns",
     "sa_enable_release_tracks_disambiguation_observer": "Watch for late-arriving Disambiguation data",
     "sa_enable_release_tracks_dynamic_ar_columns": "Auto-discover columns for every other relationship type",
@@ -594,6 +595,7 @@
     "sa_enable_release_tracks": true,
     "sa_enable_release_tracks_acoustid_column": false,
     "sa_enable_release_tracks_acoustid_isrc_observer": true,
+    "sa_enable_release_tracks_cover_art": true,
     "sa_enable_release_tracks_credit_role_columns": true,
     "sa_enable_release_tracks_disambiguation_observer": true,
     "sa_enable_release_tracks_dynamic_ar_columns": true,
