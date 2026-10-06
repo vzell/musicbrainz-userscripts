@@ -161,6 +161,9 @@ shape:
         mergeContinuationRows: true,  // fold "<td colspan=N> empty" continuation rows
                                       // into the preceding row as extra <li> rows —
                                       // pair with renderMultiRowCell on the same columns
+        eventDetailsToTables: true,   // event-overview: table.details lists → h3 + table.tbl
+                                      // groups, each with its own columns (data-mb-col-headers
+                                      // → group.colHeaders; see docs/claude/fetch-and-render-pipeline.md)
 
         // Column pipeline:
         columnExtractors: [ { extractor: 'name', sourceColumn: 'Col', syntheticColumns: ['A','B'] } ],

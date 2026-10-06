@@ -1,0 +1,27 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-06",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "New page type: the event page (musicbrainz.org/event/<mbid>) gains \"Show all Relationships for Event\". MusicBrainz lists an event's relationships as short lists, one target per line; they become filterable, sortable tables — one per kind of related entity (Artists, Places, Recordings, Releases, Series, URLs, …), each with the columns that fit it: the native link, a # column that restores the original order, the Relationship phrase, and — only when some row has one — Credits (\"time: 19:40 - 22:29, lead vocals, harmonica\"), Artist (a recording's or release's artist credit), Area (a place's), Details and Disambiguation; URLs get a Site column and keep their [info] link. The related series' own relationships (listed by MusicBrainz under \"Related series\": its tour artists, parent series and links) get their own \"Via <series>\" table.",
+          "Every part is a setting, in a new ⚙️ Settings group 🎫 EVENT PAGE: the page as a whole, \"Relationships as tables\", \"One table for all relationships\" (off by default: one table with Type and From columns instead of one per kind) and \"Include the related series' own relationships\" (off: that section stays as MusicBrainz shows it)."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "A multi-table group may carry its own column list (group.colHeaders, from the table's data-mb-col-headers) for any page type, not only the ratings pages; Save to Disk now stores it and Load from Disk restores it, so after a disk load every group keeps its own header row instead of the first group's."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "New fixture tests/fixtures/event-overview.html (a raw capture of event 3f2ca30a-…, 2026-10-06) and spec event-overview.spec.js (7 tests: groups and aligned columns, the parts of a line, one table, related series on/off, filter and sort, Save/Load round trip, settings off). Mutation list scripts/mutations/event-overview.json: 15 planted defects, all caught. PAGETYPES-TESTING-REFERENCE.org #93; design study and plan in org/event-overview-pt.org and org/event-overview-mockups.html."
+        ]
+      }
+    ]
+  }
+]

@@ -1078,6 +1078,7 @@ an import brings your deletions back.
   MusicBrainz's own h3-grouped sub-tables
 - **Release tracklists** (`/release/<mbid>`, and `/release/<mbid>/disc/<n>`) —
   the whole tracklist across every medium, consolidated
+- **Event pages** (`/event/<mbid>`) — the event's relationships as tables
 - **Collections** — your own, subscribed ones, and their entity sub-tabs
 - **Tags** — entity tag pages, user tag pages, and the most-popular-tags page
 - **Search results** — every entity type
@@ -1251,6 +1252,38 @@ like a length over the threshold, with a ⚠️ and a tooltip saying why. The Ti
 column's 📊 dropdown counts these tracks under **Title info - Work**. Switch
 the marking off in ⚙️ Settings → 💿 RELEASE TRACKLIST ("Flag tracks whose
 recording has no associated work"); the 📊 counts stay either way.
+
+</details>
+
+<details>
+<summary>Event pages</summary>
+
+An event page (`/event/<mbid>`) gains **Relationships for Event**. MusicBrainz
+lists an event's relationships as short lists, one target per line; the button
+turns them into tables you can filter and sort, **one table per kind of related
+entity** — Artists, Places, Recordings, Releases, Series, URLs, … — each with
+the columns that fit it:
+
+- the related entity itself, as the same link MusicBrainz shows, with a **#**
+  column that restores the original order;
+- **Relationship** — the phrase it was listed under ("main performers",
+  "held at", "recording location for", …);
+- **Credits** for performers ("time: 19:40 - 22:29, lead vocals, harmonica"),
+  **Artist** for recordings and releases, **Area** for a place, **Details**
+  for anything else on the line ("order: 150" for a series), and
+  **Disambiguation** — each only when some row has one;
+- for URLs, the **Site** and the link, with its **[info]** page.
+
+Under "Related series", MusicBrainz also lists the relationships of the
+series the event belongs to: its tour artists, its parent series, its links.
+Those describe the tour, not the event, so they get their own **Via <series>**
+table.
+
+Every part is a setting, in ⚙️ Settings → 🎫 EVENT PAGE: the page as a whole,
+*Relationships as tables*, *One table for all relationships* (off by default:
+one table with a **Type** and a **From** column instead of one per kind),
+and *Include the related series' own relationships* (off: that section stays
+as MusicBrainz shows it).
 
 </details>
 

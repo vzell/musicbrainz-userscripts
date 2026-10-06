@@ -101,9 +101,19 @@ Settings as mocked (C):
 - [X] Read as: both layouts ship as the values of the two layout settings
       (C holds them), T2 and S1 the defaults, T1 and S2 the alternatives.
 - [X] The setting keys and defaults as in the table above.
-- [ ] Not answered, chosen in implementation: event art remembers its own
-      Grid / By type choice (a new GM key next to =MB_RELEASE_ART_LAYOUT_KEY=),
-      because its type set has nothing in common with a release's.
+- [X] Event art remembers its own Grid / By type choice (a new GM key next
+      to =MB_RELEASE_ART_LAYOUT_KEY=) — confirmed by the user.
+- [X] Changed in implementation: the settings library (VZ_MBLibrary) has no
+      select type, and adding one is a library change that the dev script's
+      mirror =@require= would not even exercise live. So each layout choice
+      is a checkbox, default off: =sa_event_overview_relationships_one_table=
+      (T1), =sa_event_overview_setlist_one_table= (S2).
+- [X] Changed in implementation: every converted table ends up in ONE block
+      after =h2.relationships= — =renderGroupedTable()='s initial render
+      removes every h3/=table.tbl= in =#content= and re-inserts all groups
+      after the h2 before the first table, so the setlist cannot keep a
+      section of its own without changing that core function. Its tables
+      carry a "Setlist:" prefix instead (WIP.2).
 
 ** Implementation phases (branch =feature/event-overview=, after DECIDE)
 
@@ -112,6 +122,23 @@ pass after (mutation-checked), HELP resync, =lint-summary.py --check=,
 =npm run test:full=, the user's browser check before any merge.
 
 *** TODO WIP.1 — the pageType and its settings
+- 2026-10-06, implemented (WIP.1 on =feature/event-overview=):
+  - [X] Settings =sa_enable_event_overview=, =sa_event_overview_relationships=,
+        =sa_event_overview_relationships_one_table=,
+        =sa_event_overview_related_series= in a new 🎫 EVENT PAGE group.
+  - [X] Entry =event-overview= at the head of the "Event pages" block (the
+        array's entity block for events), match also requiring a table part.
+  - [X] =applyEventDetailsToTables()= (named =eventDetailsToTables=, not the
+        generic =detailsToTables= planned: it reads the event page's own
+        sections). Wired on the live page, a fetched document and the
+        Load-from-Disk hydration.
+  - [X] Per-group columns: =group.colHeaders= generalised from
+        =user-ratings= (fetch loop + =renderGroupedTable()=), and carried
+        through Save/Load (a latent gap for user-ratings too).
+  - [X] =tests/fixtures/event-overview.spec.js= (7), mutation list
+        =scripts/mutations/event-overview.json= (15/15 caught).
+  - [ ] Snapshot baseline: after WIP.2, so the setlist tables are not drift.
+- Plan as written:
 - Settings group as in C, after the release-tracklist group; run
   =scripts/dump-config-defaults.py= and =scripts/dump-default-history.py=.
 - =pageDefinitions= entry =event-overview=, before =event-tags= (tab order):

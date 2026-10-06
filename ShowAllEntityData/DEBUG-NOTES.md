@@ -19296,3 +19296,37 @@ docs/claude/testing-playwright.md.
 `release-tracks-medium-art.spec.js` (10), two new mobile tests.
 `release-tracks-cover-art-p4.json`: 21/21 planted defects caught, plus one
 recorded overlap (the spread's own width cap is covered by the section's).
+
+## 2026-10-06 — event-overview pageType: relationship lists → per-kind tables (branch feature/event-overview, WIP.1)
+
+**The page.** `/event/<mbid>` has no `table.tbl`; its relationships are
+`table.details` lists (`<th>phrase:</th><td>` with `<br>`-separated target
+lines). `applyEventDetailsToTables()` turns them into one h3 + `table.tbl` per
+kind of related entity. Raw fixture `tests/fixtures/event-overview.html`
+(capture-raw-page.js, event 3f2ca30a-…).
+
+**Groups with different columns render misaligned by default.**
+`renderGroupedTable()` clones ONE header row, built from the first table, for
+every group; only `user-ratings` built its own (`group.colHeaders`, gated on
+the pageType). Generalised to any group carrying `colHeaders` (copied from
+`data-mb-col-headers` in the fetch loop). The disk path dropped the field —
+Save/Load now carries it, which also fixes user-ratings after a disk load.
+Pinned by comparing each row's cell count with its own header's.
+
+**Setlist above Relationships after the render — by design.** A probe that
+wrapped the DOM insertion methods and logged stacks for `h2.relationships`
+showed the move comes from `_relocateTrailingH2Sections()`: every h2 section
+AFTER the data h2 is moved before it (`sa_enable_h2_section_relocation_on_final_page`).
+Not touched; the setlist becomes tables in WIP.2 anyway.
+
+**The render's h3 sweep.** The initial render removes every `h3` in
+`#content`; with "related series" switched off the native section keeps its
+series names only because the converter turns those h3s into h4s.
+
+**`integerColumns: '#'` does not make '#' sort numerically** — the sort's name
+heuristic already does (`_sortColumnKind()`: any header containing '#'). The
+declaration gives the right-aligned, tabular cells; its mutation is pinned by
+`data-mb-int-col-styled`, not by the sort order.
+
+**Results:** `event-overview.spec.js` 7/7; `event-overview.json` 15/15 caught;
+`user-ratings-*` specs unchanged.

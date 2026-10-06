@@ -2735,6 +2735,54 @@
         },
 
         // ============================================================
+        // EVENT PAGE SECTION (pageType 'event-overview')
+        // org/event-overview-pt.org — every part is its own setting.
+        // ============================================================
+        divider_event_overview: {
+            type: 'divider',
+            label: '🎫 EVENT PAGE'
+        },
+
+        sa_enable_event_overview: {
+            label: 'Enable Event overview consolidation',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds a "Show all Relationships for Event" button on event pages ' +
+                         '(musicbrainz.org/event/<mbid>) that turns the event\'s relationship ' +
+                         'lists into filterable/sortable tables. The settings below choose ' +
+                         'which parts it builds.'
+        },
+
+        sa_event_overview_relationships: {
+            label: 'Relationships as tables',
+            type: 'checkbox',
+            default: true,
+            description: 'Turns the "Relationships" lists (performers, place, recordings, ' +
+                         'series, URLs, …) into tables: one row per related entity, keeping ' +
+                         'its link, credits and disambiguation in their own columns.'
+        },
+
+        sa_event_overview_relationships_one_table: {
+            label: 'One table for all relationships',
+            type: 'checkbox',
+            default: false,
+            description: 'Off (default): one table per kind of related entity (Artists, ' +
+                         'Places, Recordings, URLs, …), each with the columns that fit it. ' +
+                         'On: every relationship in a single table, with a "Type" column — ' +
+                         'one filter searches all of them.'
+        },
+
+        sa_event_overview_related_series: {
+            label: 'Include the related series\' own relationships',
+            type: 'checkbox',
+            default: true,
+            description: 'Under "Related series" MusicBrainz also lists the relationships of ' +
+                         'the series the event belongs to (its tour artists, parent series, ' +
+                         'links). On: they get their own "Via <series>" table. Off: that ' +
+                         'native section is left as it is.'
+        },
+
+        // ============================================================
         // EXPAND RELEASE AND RELEASE GROUPS SECTION
         // Adapted from "MusicBrainz: Expand/collapse release groups"
         // by Michael Wiencek — injected post-render into the SA table.
@@ -12108,6 +12156,384 @@
         blocks.forEach(block => block.remove());
 
         Lib.debug('init', `applyNotesReceivedToTable: converted ${tbody.rows.length} edit-list block(s) → table.`);
+    }
+
+    // ── Event overview: relationship lists → tables (pageType 'event-overview') ──
+    //
+    // org/event-overview-pt.org. The native /event/<mbid> page has no
+    // table.tbl: each kind of related entity is a small `table.details`, one
+    // row per relationship phrase ("main performers:", "held at:", …) whose
+    // <td> lists the targets separated by <br>. A target line is
+    //   span.<type>link (empty marker) + the entity <a> (possibly inside
+    //   span.name-variation) + what follows it:
+    //     span.comment            → the target's disambiguation
+    //     " by <bdi>…</bdi>"      → artist credit (recordings, releases)
+    //     " in <area chain>"      → a place's area
+    //     " (time: …, vocals, …)" → relationship attributes ("credits")
+    //     " [info]"               → a URL's /url/<id> page
+    // Native nodes are cloned, never re-typed, so entity links, flags and
+    // other scripts' decorations survive into the cells.
+
+    /** Plural group name per target entity type, in MusicBrainz's own order. */
+    const _EVENT_REL_GROUP_NAMES = {
+        artist: 'Artists', 'release-group': 'Release groups', release: 'Releases', recording: 'Recordings',
+        work: 'Works', label: 'Labels', area: 'Areas', place: 'Places', event: 'Events', series: 'Series',
+        instrument: 'Instruments', genre: 'Genres', url: 'URLs', text: 'Other'
+    };
+
+    /** Column header naming the target, per target entity type. */
+    const _EVENT_REL_TARGET_COLS = {
+        artist: 'Artist', 'release-group': 'Release group', release: 'Release', recording: 'Recording',
+        work: 'Work', label: 'Label', area: 'Area', place: 'Place', event: 'Event', series: 'Series',
+        instrument: 'Instrument', genre: 'Genre', url: 'URL', text: 'Target'
+    };
+
+    /**
+     * The entity type an event relationship target links to.
+     *
+     * @param   {string} href The target anchor's raw `href` attribute.
+     * @returns {string} A key of `_EVENT_REL_GROUP_NAMES`.
+     */
+    function _eventRelTargetType(href) {
+        const m = /^(?:https?:\/\/[^/]*musicbrainz\.(?:org|eu))?\/(artist|release-group|release|recording|work|label|area|place|event|series|instrument|genre)\//.exec(href || '');
+        if (m) return m[1];
+        return /^(?:https?:)?\/\//.test(href || '') ? 'url' : 'text';
+    }
+
+    /**
+     * Splits an element's child nodes into lines at each `<br>`.
+     *
+     * @param   {Element} el
+     * @returns {Node[][]}
+     */
+    function _eventSplitAtBr(el) {
+        const lines = [[]];
+        el.childNodes.forEach(n => {
+            if (n.nodeType === Node.ELEMENT_NODE && n.tagName === 'BR') lines.push([]);
+            else lines[lines.length - 1].push(n);
+        });
+        return lines;
+    }
+
+    /**
+     * Trims leading/trailing whitespace-only text nodes and the outer
+     * whitespace of the first and last text node, in place. With `parens`,
+     * also strips one wrapping "(" … ")" pair (relationship attributes and
+     * "(order: 150)" arrive parenthesised; the column says what they are).
+     *
+     * @param   {Node[]}  nodes  Cloned nodes (mutated).
+     * @param   {boolean} [parens]
+     * @returns {Node[]}  The trimmed list.
+     */
+    function _eventTrimNodes(nodes, parens) {
+        const out = nodes.filter(n => n.nodeType !== Node.COMMENT_NODE);
+        while (out.length && out[0].nodeType === Node.TEXT_NODE && !out[0].textContent.trim()) out.shift();
+        while (out.length && out[out.length - 1].nodeType === Node.TEXT_NODE && !out[out.length - 1].textContent.trim()) out.pop();
+        if (!out.length) return out;
+        const first = out[0];
+        const last = out[out.length - 1];
+        if (first.nodeType === Node.TEXT_NODE) first.textContent = first.textContent.replace(/^\s+/, '');
+        if (last.nodeType === Node.TEXT_NODE) last.textContent = last.textContent.replace(/\s+$/, '');
+        if (parens && first.nodeType === Node.TEXT_NODE && last.nodeType === Node.TEXT_NODE &&
+                first.textContent.startsWith('(') && last.textContent.endsWith(')')) {
+            first.textContent = first.textContent.slice(1);
+            last.textContent = last.textContent.slice(0, -1);
+        }
+        return out.filter(n => n.nodeType !== Node.TEXT_NODE || n.textContent !== '');
+    }
+
+    /**
+     * Parses one target line of an event relationship list into its parts,
+     * as cloned nodes.
+     *
+     * @param   {Node[]} nodes The line's child nodes (between two `<br>`s).
+     * @returns {?{type: string, main: Node[], href: string, artist: Node[], area: Node[], extra: Node[], comment: Node[]}}
+     *          null for an empty line.
+     */
+    function _eventRelParseLine(nodes) {
+        const live = nodes.filter(n => n.nodeType !== Node.COMMENT_NODE);
+        if (!live.some(n => n.textContent.trim())) return null;
+        let i = 0;
+        const lead = [];
+        while (i < live.length) {
+            const n = live[i];
+            if (n.nodeType === Node.TEXT_NODE && !n.textContent.trim()) { i++; continue; }
+            // The empty entity-icon marker (span.artistlink, span.placelink, … or a bare <span> before a URL).
+            if (n.nodeType === Node.ELEMENT_NODE && n.tagName === 'SPAN' && !n.textContent.trim() && !n.querySelector('a')) {
+                lead.push(n);
+                i++;
+                continue;
+            }
+            break;
+        }
+        const mainNode = live[i];
+        const anchor = mainNode && mainNode.nodeType === Node.ELEMENT_NODE
+            ? (mainNode.tagName === 'A' ? mainNode : mainNode.querySelector('a[href]'))
+            : null;
+        const clone = n => n.cloneNode(true);
+        if (!anchor) {
+            return { type: 'text', main: _eventTrimNodes(live.map(clone)), href: '', artist: [], area: [], extra: [], comment: [] };
+        }
+        const href = anchor.getAttribute('href') || '';
+        const type = _eventRelTargetType(href);
+        const rest = live.slice(i + 1);
+        const parts = { artist: [], area: [], extra: [], comment: [] };
+        for (let k = 0; k < rest.length; k++) {
+            const n = rest[k];
+            if (n.nodeType === Node.ELEMENT_NODE && n.tagName === 'SPAN' && n.classList.contains('comment')) {
+                parts.comment.push(clone(n));
+            } else if (n.nodeType === Node.TEXT_NODE && /\bby\s*$/.test(n.textContent) && rest[k + 1] &&
+                       rest[k + 1].nodeType === Node.ELEMENT_NODE && !parts.artist.length) {
+                // " by " + <bdi>artist credit</bdi>; any text before "by" belongs to extra.
+                const before = n.textContent.replace(/\bby\s*$/, '');
+                if (before.trim()) parts.extra.push(document.createTextNode(before));
+                parts.artist.push(clone(rest[k + 1]));
+                k++;
+            } else if (type === 'place' && n.nodeType === Node.TEXT_NODE && /^\s*in\s/.test(n.textContent) && !parts.area.length) {
+                parts.area.push(document.createTextNode(n.textContent.replace(/^\s*in\s+/, '')));
+                rest.slice(k + 1).forEach(x => parts.area.push(clone(x)));
+                break;
+            } else {
+                parts.extra.push(clone(n));
+            }
+        }
+        const main = [...lead, mainNode].map(clone);
+        if (type === 'url') {
+            // "[info]" (the URL entity's own page) stays with the link it describes.
+            const info = _eventTrimNodes(parts.extra);
+            if (info.length) main.push(document.createTextNode(' '), ...info);
+            parts.extra = [];
+        }
+        return {
+            type, href, main,
+            artist: _eventTrimNodes(parts.artist),
+            area: _eventTrimNodes(parts.area),
+            extra: _eventTrimNodes(parts.extra, true),
+            comment: _eventTrimNodes(parts.comment)
+        };
+    }
+
+    /**
+     * The relationship rows of every `table.details` among `nodes`.
+     *
+     * @param   {Element[]} nodes Siblings of a section's h2 (up to the next h2).
+     * @param   {?string}   from  The related series' name, null for the event's own.
+     * @returns {Array<Object>} Parsed lines (`_eventRelParseLine()`) plus `phrase` and `from`.
+     */
+    function _eventRelRowsFrom(nodes, from) {
+        const rows = [];
+        nodes.forEach(n => {
+            const tables = n.matches('table.details') ? [n] : Array.from(n.querySelectorAll('table.details'));
+            tables.forEach(t => t.querySelectorAll(':scope > tbody > tr, :scope > tr').forEach(tr => {
+                const th = tr.querySelector(':scope > th');
+                const td = tr.querySelector(':scope > td');
+                if (!th || !td) return;
+                const phrase = th.textContent.trim().replace(/:\s*$/, '');
+                _eventSplitAtBr(td).forEach(line => {
+                    const parsed = _eventRelParseLine(line);
+                    if (parsed) rows.push({ ...parsed, phrase, from });
+                });
+            }));
+        });
+        return rows;
+    }
+
+    /**
+     * The element siblings after `h2`, up to (not including) the next `<h2>`.
+     *
+     * @param   {?Element} h2
+     * @returns {Element[]}
+     */
+    function _eventSectionNodes(h2) {
+        const out = [];
+        for (let n = h2 && h2.nextElementSibling; n && n.tagName !== 'H2'; n = n.nextElementSibling) out.push(n);
+        return out;
+    }
+
+    /**
+     * Builds one h3 + `table.tbl` pair. The column list is stored on the table
+     * as `data-mb-col-headers`, which the fetch loop copies to
+     * `group.colHeaders` so `renderGroupedTable()` builds THIS group's header
+     * row instead of cloning the first group's (the groups' columns differ).
+     *
+     * @param   {Document} doc
+     * @param   {string}   name    The group name (the h3 text).
+     * @param   {string[]} cols    Column headers.
+     * @param   {Array<Array<Node[]|string>>} rows Cells per row: nodes or plain text.
+     * @returns {DocumentFragment}
+     */
+    function _eventBuildTable(doc, name, cols, rows) {
+        const frag = doc.createDocumentFragment();
+        const h3 = doc.createElement('h3');
+        h3.textContent = name;
+        const table = doc.createElement('table');
+        table.className = 'tbl';
+        table.dataset.mbEventTable = '1';
+        table.dataset.mbColHeaders = JSON.stringify(cols);
+        const thead = doc.createElement('thead');
+        const hr = doc.createElement('tr');
+        cols.forEach(c => {
+            const th = doc.createElement('th');
+            th.textContent = c;
+            hr.appendChild(th);
+        });
+        thead.appendChild(hr);
+        const tbody = doc.createElement('tbody');
+        rows.forEach((cells, k) => {
+            const tr = doc.createElement('tr');
+            tr.className = k % 2 ? 'even' : 'odd';
+            cells.forEach(c => {
+                const td = doc.createElement('td');
+                if (Array.isArray(c)) c.forEach(n => td.appendChild(n));
+                else td.textContent = c;
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+        table.append(thead, tbody);
+        frag.append(h3, table);
+        return frag;
+    }
+
+    /**
+     * The tables for one group of relationship rows: '#', the target (and a
+     * Site column for URLs), Relationship, then only those of Artist / Area /
+     * Credits or Details / Disambiguation that some row actually fills. With
+     * `withType`, a Type column follows the target (one-table layout, and the
+     * related series' groups, which mix kinds).
+     *
+     * @param   {Array<Object>} rows Rows of `_eventRelRowsFrom()`.
+     * @param   {string} targetCol   Header of the target column.
+     * @param   {boolean} withType
+     * @param   {boolean} withFrom   Add a "From" column (the related series' name, or "Event").
+     * @returns {{cols: string[], cells: Array<Array<Node[]|string>>}}
+     */
+    function _eventRelColumns(rows, targetCol, withType, withFrom) {
+        const has = key => rows.some(r => r[key].length);
+        const allUrls = rows.every(r => r.type === 'url');
+        const allArtists = rows.every(r => r.type === 'artist');
+        const extraCol = allArtists ? 'Credits' : 'Details';
+        const cols = ['#'];
+        if (allUrls) cols.push('Site');
+        cols.push(targetCol);
+        if (withType) cols.push('Type');
+        cols.push('Relationship');
+        if (has('artist')) cols.push('Artist');
+        if (has('area')) cols.push('Area');
+        if (has('extra')) cols.push(extraCol);
+        if (has('comment')) cols.push('Disambiguation');
+        if (withFrom) cols.push('From');
+        const host = (href) => {
+            try { return new URL(href, 'https://musicbrainz.org').host.replace(/^www\./, ''); } catch (_) { return ''; }
+        };
+        const cells = rows.map((r, k) => {
+            const row = [String(k + 1)];
+            if (allUrls) row.push(host(r.href));
+            row.push(r.main.map(n => n.cloneNode(true)));
+            if (withType) row.push(_EVENT_REL_TARGET_COLS[r.type] || 'Target');
+            row.push(r.phrase);
+            if (has('artist')) row.push(r.artist.map(n => n.cloneNode(true)));
+            if (has('area')) row.push(r.area.map(n => n.cloneNode(true)));
+            if (has('extra')) row.push(r.extra.map(n => n.cloneNode(true)));
+            if (has('comment')) row.push(r.comment.map(n => n.cloneNode(true)));
+            if (withFrom) row.push(r.from ? r.from : 'Event');
+            return row;
+        });
+        return { cols, cells };
+    }
+
+    /**
+     * Turns the event page's relationship lists into h3 + `table.tbl` groups
+     * (pageType 'event-overview', `features.eventDetailsToTables`).
+     *
+     * Reads every `table.details` under `h2.relationships`, and — with
+     * `sa_event_overview_related_series` — every series of `h2.related-series`
+     * (an h3 naming the series, then its own lists). Groups:
+     *   - default: one table per kind of target (Artists, Places, Recordings,
+     *     …) in first-appearance order, then one "Via <series>" table per
+     *     related series;
+     *   - `sa_event_overview_relationships_one_table`: everything in one
+     *     "Relationships" table with Type and (when series are included) From.
+     * All groups go right after `h2.relationships`, the native lists they
+     * replace are removed, and so is the converted "Related series" section.
+     * When the series are NOT included their native h3s become h4s:
+     * `renderGroupedTable()`'s initial cleanup removes every `h3` in
+     * `#content`, which would strip the series names off a section left
+     * native.
+     *
+     * Idempotent (the anchor h2 is marked `data-mb-event-tables`). Does
+     * nothing with `sa_event_overview_relationships` off or without
+     * `h2.relationships`.
+     *
+     * @param {object}           def
+     * @param {Document|Element} [docContext=document]
+     * @returns {void}
+     */
+    function applyEventDetailsToTables(def, docContext = document) {
+        if (!def?.features?.eventDetailsToTables || !Lib.settings.sa_event_overview_relationships) return;
+        const root = docContext.getElementById ? docContext.getElementById('content') : docContext.querySelector('#content');
+        if (!root) return;
+        const relH2 = root.querySelector(':scope > h2.relationships, h2.relationships');
+        if (!relH2 || relH2.dataset.mbEventTables) return;
+        const doc = root.ownerDocument;
+        const withSeries = !!Lib.settings.sa_event_overview_related_series;
+        const ownNodes = _eventSectionNodes(relH2);
+        const own = _eventRelRowsFrom(ownNodes, null);
+
+        const seriesH2 = root.querySelector('h2.related-series');
+        const seriesNodes = _eventSectionNodes(seriesH2);
+        const seriesGroups = [];
+        if (withSeries) {
+            let cur = null;
+            seriesNodes.forEach(n => {
+                if (n.tagName === 'H3') {
+                    cur = { name: n.textContent.trim(), nodes: [] };
+                    seriesGroups.push(cur);
+                } else if (cur) {
+                    cur.nodes.push(n);
+                }
+            });
+            seriesGroups.forEach(g => { g.rows = _eventRelRowsFrom(g.nodes, g.name); });
+        }
+        const seriesRows = seriesGroups.flatMap(g => g.rows);
+        if (!own.length && !seriesRows.length) return;
+
+        const frag = doc.createDocumentFragment();
+        if (Lib.settings.sa_event_overview_relationships_one_table) {
+            const all = [...own, ...seriesRows];
+            const { cols, cells } = _eventRelColumns(all, 'Target', true, seriesRows.length > 0);
+            frag.appendChild(_eventBuildTable(doc, 'Relationships', cols, cells));
+        } else {
+            const order = [];
+            own.forEach(r => { if (!order.includes(r.type)) order.push(r.type); });
+            order.forEach(t => {
+                const rows = own.filter(r => r.type === t);
+                const { cols, cells } = _eventRelColumns(rows, _EVENT_REL_TARGET_COLS[t] || 'Target', false, false);
+                frag.appendChild(_eventBuildTable(doc, _EVENT_REL_GROUP_NAMES[t] || 'Other', cols, cells));
+            });
+            seriesGroups.forEach(g => {
+                if (!g.rows.length) return;
+                const { cols, cells } = _eventRelColumns(g.rows, 'Target', true, false);
+                frag.appendChild(_eventBuildTable(doc, `Via ${g.name}`, cols, cells));
+            });
+        }
+
+        ownNodes.forEach(n => { if (n.matches('table.details') || n.querySelector('table.details')) n.remove(); });
+        if (withSeries && seriesH2) {
+            seriesNodes.forEach(n => n.remove());
+            seriesH2.remove();
+        } else {
+            seriesNodes.forEach(n => {
+                if (n.tagName !== 'H3') return;
+                const h4 = doc.createElement('h4');
+                Array.from(n.attributes).forEach(a => h4.setAttribute(a.name, a.value));
+                while (n.firstChild) h4.appendChild(n.firstChild);
+                n.replaceWith(h4);
+            });
+        }
+        relH2.after(frag);
+        relH2.dataset.mbEventTables = '1';
+        Lib.debug('init', `applyEventDetailsToTables: ${own.length} own + ${seriesRows.length} series relationship row(s) → tables.`);
     }
 
     /**
@@ -21590,6 +22016,31 @@
             non_paginated: false
         },
         // Event pages
+        // The event overview (/event/<mbid>) — org/event-overview-pt.org. The
+        // native page has no table.tbl at all: its relationships are small
+        // two-column table.details lists ("main performers:", "held at:",
+        // "recording location for:", …, plus a "Related series" section), which
+        // applyEventDetailsToTables() turns into h3 + table.tbl groups (one per
+        // kind of related entity, or one table) with per-group columns
+        // (`data-mb-col-headers` → group.colHeaders). groupByH3 then reads each
+        // group name from its h3, as for 'account-applications'. Single static
+        // page, no pagination. Anchored match: '/event/<mbid>/<sub-page>' has
+        // its own pageTypes (event-tags, aliases, …). No button when every
+        // table-building part is off: it would render nothing.
+        {
+            type: 'event-overview',
+            match: (path) => Lib.settings.sa_enable_event_overview &&
+                Lib.settings.sa_event_overview_relationships &&
+                path.match(/^\/event\/[a-f0-9-]{36}\/?$/),
+            buttons: [ { label: 'Show all Relationships for Event', shortLabel: 'Relationships' } ],
+            features: {
+                eventDetailsToTables: true,
+                groupByH3: true,
+                integerColumns: [ { sourceColumn: '#', align: 'R' } ]
+            },
+            tableMode: 'multi',
+            non_paginated: true
+        },
         {
             type: 'artist-events',
             match: (path) => path.includes('/events'),
@@ -62369,6 +62820,13 @@ a { color: #1565c0; }`;
             applyListToTable(activeDefinition);
         }
 
+        // ── eventDetailsToTables pre-processing ──────────────────────────────
+        // 'event-overview': the relationship lists (table.details) become
+        // h3 + table.tbl groups. Same ordering constraints as listToTable.
+        if (activeDefinition.features?.eventDetailsToTables) {
+            applyEventDetailsToTables(activeDefinition);
+        }
+
         // ── editsToTable pre-processing ─────────────────────────────────────
         // For the 'edits' pageType, convert the native div.edit-list block
         // sequence into a proper <table class="tbl"> the same way listToTable
@@ -62781,6 +63239,9 @@ a { color: #1565c0; }`;
                 // skipped: it was already converted in the pre-processing block.
                 if (doc !== document && Array.isArray(activeDefinition.features?.listToTable)) {
                     applyListToTable(activeDefinition, doc);
+                }
+                if (doc !== document && activeDefinition.features?.eventDetailsToTables) {
+                    applyEventDetailsToTables(activeDefinition, doc);
                 }
 
                 // ── editsToTable on fetched pages ────────────────────────────
@@ -63485,10 +63946,13 @@ a { color: #1565c0; }`;
                                 // other entityFeatures-driven pageType.
                                 _lastGroup.entityFeaturesKey = _efKey;
                             }
-                            // For user-ratings, store per-group column headers (from
-                            // applyListToTable Structure H) so renderGroupedTable can
-                            // build the correct per-group thead width (2-col vs 3-col).
-                            if (pageType === 'user-ratings' && table.dataset.mbColHeaders) {
+                            // Per-group column headers, stamped by the converter that
+                            // built the table (applyListToTable Structure H for
+                            // user-ratings: 2-col vs 3-col; applyEventDetailsToTables
+                            // for event-overview: different columns per kind of
+                            // related entity), so renderGroupedTable builds each
+                            // group's own thead instead of cloning the first group's.
+                            if (table.dataset.mbColHeaders) {
                                 try { _lastGroup.colHeaders = JSON.parse(table.dataset.mbColHeaders); } catch (_e) {}
                             }
                             // For privileged-accounts, carry over the intro/description
@@ -67989,7 +68453,9 @@ a { color: #1565c0; }`;
                 table.style.width = 'calc(100% - 1.5em)';
                 if (templateHead) {
                     let _theadForGroup;
-                    if (pageType === 'user-ratings') {
+                    // Also taken by any group that carries its own colHeaders
+                    // (event-overview: each kind of related entity has its own columns).
+                    if (pageType === 'user-ratings' || group.colHeaders) {
                         // ── Per-group thead for user-ratings ──────────────────────────
                         // Each group may have a different column count (2-col for entity
                         // types without artist credit, 3-col for those with "by …").
@@ -87971,6 +88437,10 @@ a { color: #1565c0; }`;
                     tagSeeAllCount: group.tagSeeAllCount || null,
                     tagSeeAllEntityLabel: group.tagSeeAllEntityLabel || null,
                     ratingsViewAllUrl: group.ratingsViewAllUrl || null,
+                    // A group's own column list (user-ratings, event-overview):
+                    // without it a disk load builds every group's header row
+                    // from the first group's, misaligning the rest.
+                    colHeaders: group.colHeaders || null,
                     rows: group.rows.map(row => {
                         return Array.from(row.cells)
                             .filter(cell => !cell.classList.contains('mb-re-cell') &&
@@ -88214,6 +88684,12 @@ a { color: #1565c0; }`;
             // record paragraphs again; an empty table takes their place.
             if (activeDefinition.features?.bsRecordsToTable) {
                 applyBsRecordsToTable(activeDefinition);
+            }
+            // And for the event overview: the reloaded page holds the native
+            // relationship lists again, which would otherwise stay on the page
+            // beside the restored tables.
+            if (activeDefinition.features?.eventDetailsToTables) {
+                applyEventDetailsToTables(activeDefinition);
             }
 
             // Restore table headers if they were saved
@@ -88549,6 +89025,9 @@ a { color: #1565c0; }`;
                     }
                     if (group.ratingsViewAllUrl) {
                         _grpEntry.ratingsViewAllUrl = group.ratingsViewAllUrl;
+                    }
+                    if (Array.isArray(group.colHeaders)) {
+                        _grpEntry.colHeaders = group.colHeaders;
                     }
                     groupedRows.push(_grpEntry);
                     loadedRowCount += reconstructedRows.length;

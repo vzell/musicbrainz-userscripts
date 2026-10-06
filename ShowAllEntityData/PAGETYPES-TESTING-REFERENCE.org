@@ -53,6 +53,7 @@ search and is left as a =<collection-mbid>= placeholder.
 | PLACE_SP    | Place "The Stone Pony", Asbury Park                                         | 6a59a67c-fcc5-491f-949c-bfc45bc97463 |
 | AREA_NJ     | Area "New Jersey"                                                           | a36544c1-cb40-4f44-9e0e-7a5a69e403a8 |
 | EVENT_SX    | Event "SXSW 2012, day 3: Bruce Springsteen"                                 | ad5aaaef-8dd5-4152-987c-f6eaad05c20e |
+| EVENT_MAN   | Event "2025‐05‐20: Co‐op Live, Manchester, England, UK"                     | 3f2ca30a-7de4-4964-ad30-48376535fec8 |
 | SERIES_ST   | Series "Bruce Springsteen Studio Collection"                                | aa3694d3-a3d0-48ed-8f07-5b576de87908 |
 | SERIES_LIVE | Series "Bruce Springsteen Live Events: Standalone Recordings"               | 83a184b0-1759-4205-9844-37e18957da5c |
 | INSTR_GT    | Instrument "Guitar" (generic entity)                                        | 63021302-86cd-4aee-80df-2270d54f4978 |
@@ -138,6 +139,7 @@ skill for turning a =planned= row into a =captured= one.
 | sl-collection(-intro) / sl-bootlegs(-intro) | fixtures | Not MusicBrainz (springsteenlyrics.com, opt-in): own =slCardsToTable= card converter, injected =<h1>=, own CSS; the bootleg landing page is the compact bar alone. The snapshot harness is MusicBrainz-shaped, so coverage is seven fixture specs built from the =debug/sl-*= snapshots by =scripts/build-sl-fixtures.py=, plus the =@extended= live spec =tests/live/sl-lists.spec.js=. See docs/claude/springsteenlyrics.md.                                                                                                                                                                                                                                                                                                                                                               |
 | jl-list                                     | fixtures | Not MusicBrainz (jungleland.it, opt-in, list.htm as its own tab only): own =jlListToTable= link converter, injected =<h1>=/=<h2>=, the table CSS shared with springsteenlyrics.com. One fixture spec built from =debug/jungleland.it.html= by =scripts/build-jl-fixtures.py=, plus the =@extended= live spec =tests/live/jl-list.spec.js=. See docs/claude/jungleland.md.                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | bs-records                                  | fixtures | Not MusicBrainz (brucespringsteen.it, opt-in, own tab only): two buttons whose =params= always FETCH page 1 (every format of their kind), own =bsRecordsToTable= converter that gives the live page only an empty table, injected =<h1>=/=<h2>=, shared table CSS. One fixture spec over three whole curl captures (=scripts/build-bs-fixtures.py=), plus the =@extended= live spec =tests/live/bs-records.spec.js=. See docs/claude/brucespringsteen.md.                                                                                                                                                                                                                                                                                                                                    |
+| event-overview                              | fixtures | The native page has no =table.tbl=: own =eventDetailsToTables= converter (=table.details= lists → one h3 + table per kind of related entity), per-group columns through =group.colHeaders= (generalised from user-ratings), every part a =sa_event_overview_*= setting. Fixture spec over a raw capture (=tests/fixtures/event-overview.html=); snapshot baseline planned once the setlist tables land (org/event-overview-pt.org WIP.2). |
 
 * Quick reference table
 
@@ -235,6 +237,7 @@ skill for turning a =planned= row into a =captured= one.
 | 90 | sl-bootlegs-intro             | single       | springsteenlyrics.com /bootlegs.php            | NOT MusicBrainz, opt-in twice; the bootleg landing page, no cards and no button: the compact bar (slNavOnly) alone         |
 | 91 | jl-list                       | single       | jungleland.it /html/list.htm                   | NOT MusicBrainz, opt-in, own tab only; links → table (jlListToTable), date cut off Title, Year                             |
 | 92 | bs-records                    | single       | brucespringsteen.it /DB/records.aspx           | NOT MusicBrainz, opt-in, own tab only; 2 buttons (Unofficial/Official) fetch all formats                                   |
+| 93 | event-overview                | multi        | /event/EVENT_MAN                               | eventDetailsToTables, per-group colHeaders, groupByH3, numeric #; every part a setting                                     |
 
 * Page type details
 ** 1. taglookup
@@ -838,6 +841,14 @@ lists converted into sortable tables), tableMode =multi=.
 - Not MusicBrainz, and opt-in (=sa_enable_brucespringsteen=, default off). Only records.aspx opened as its own tab: on the site it is the 222 px left frame of the =Blegsdx.htm= frameset.
 - Features exercised: button =params= → page 1 always FETCHED (the live page's own records, e.g. the frameset's LP-only default, are replaced by an empty table); =bsRecordsToTable= per kind — Unofficial: Title, Matrix, Format, Label, Code, Notes; Official: Title, Catalogue, Format, Country, Promo, Code, Notes; the site's format checkboxes all ticked at init and at click time (with the kind's radio); the navigation guard counts the query (predefined-filter links); sticky Title.
 - Coverage: =tests/fixtures/bs-records.spec.js= (gates incl. the frameset, both buttons, parsing incl. charset, filters, guard, no MusicBrainz request, Save/Load), =sl-include-regex.spec.js=; fixtures =bs-records-{unofficial,official,lp}.html= from curl captures in =debug/= (=scripts/build-bs-fixtures.py=); live =tests/live/bs-records.spec.js= (=@extended=, both buttons).
+
+** 93. event-overview
+- URL: [[https://musicbrainz.org/event/3f2ca30a-7de4-4964-ad30-48376535fec8][/event/EVENT_MAN]]
+- Match: ~Lib.settings.sa_enable_event_overview && Lib.settings.sa_event_overview_relationships && /^\/event\/[a-f0-9-]{36}\/?$/~ (no button when every table-building part is off)
+- Button: "Show all Relationships for Event"
+- tableMode: multi, =non_paginated=; the live page is the only page
+- Features exercised: =eventDetailsToTables= (=applyEventDetailsToTables()=): the =table.details= lists under =h2.relationships= — and, with =sa_event_overview_related_series=, each series under =h2.related-series= — become one h3 + =table.tbl= per kind of related entity (or one table, =sa_event_overview_relationships_one_table=), each with its own columns via =data-mb-col-headers= → =group.colHeaders= (also saved and restored by Save/Load); =groupByH3=; ='#'= as an integer column. Plan and decisions: =org/event-overview-pt.org=.
+- Coverage: =tests/fixtures/event-overview.spec.js= over a raw capture (=tests/fixtures/event-overview.html=, =tests/support/capture-raw-page.js=, 2026-10-06); mutation list =scripts/mutations/event-overview.json=.
 
 * Not independently routable
 

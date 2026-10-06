@@ -263,3 +263,31 @@ and a fixture route serves the same shell for every page). Mutation list
 once `fetchHtml()` retries, failing ONE attempt of a request proves nothing** —
 the retry absorbs it and the run comes back clean. A test that wants a final
 failure has to exhaust all three attempts.
+
+## A multi-table group's columns come from the FIRST group unless it carries its own
+
+`renderGroupedTable()` builds one `templateHead` from the first table and
+clones it for every group. That is right where all groups share columns (the
+common case) and silently wrong where they do not: the cells keep their own
+order, the header row says something else. A group gets its own header row
+from `group.colHeaders`, which the fetch loop copies from the source table's
+`data-mb-col-headers` (any pageType since the event-overview work; it used to
+be `user-ratings` only), and which Save to Disk stores and Load from Disk
+restores — the disk path is a separate hydration and lost it before.
+
+A converter that builds groups with different columns
+(`applyEventDetailsToTables()`, Structure H of `applyListToTable()`) must
+stamp `data-mb-col-headers` on every table it builds. Test it by comparing
+each row's cell count with its own table's header count, per group — "N
+tables appear" passes on the cloned-header bug.
+
+Two more things the event page taught, both generic:
+- **The initial render removes every `h3` in `#content`** (and every
+  `table.tbl`) before inserting the groups after the h2 that precedes the
+  first table. A native section the converter leaves alone must not keep
+  its labels in h3s (`applyEventDetailsToTables()` turns the related series'
+  h3s into h4s when that part is switched off).
+- **`_relocateTrailingH2Sections()`** (`sa_enable_h2_section_relocation_on_final_page`,
+  default on) moves every h2 section that comes after the data h2 to just
+  before it. On the event page a native "Setlist" therefore ends up above
+  "Relationships" — by design, not a bug in the converter.

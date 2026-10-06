@@ -1,0 +1,197 @@
+[
+  {
+    "name": "render: a group's own colHeaders are ignored",
+    "why": "Without the generalised branch every group clones the first group's header row (Artists'), misaligning Places, Recordings, URLs, … — the default for multi-table pages.",
+    "edits": [
+      {
+        "find": "                    if (pageType === 'user-ratings' || group.colHeaders) {",
+        "replace": "                    if (pageType === 'user-ratings') {"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "each with its own aligned columns",
+    "expect": "fail"
+  },
+  {
+    "name": "fetch loop: colHeaders only copied for user-ratings",
+    "why": "The table's data-mb-col-headers never reaches group.colHeaders, so the render falls back to the shared header.",
+    "edits": [
+      {
+        "find": "                            if (table.dataset.mbColHeaders) {",
+        "replace": "                            if (pageType === 'user-ratings' && table.dataset.mbColHeaders) {"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "each with its own aligned columns",
+    "expect": "fail"
+  },
+  {
+    "name": "disk: colHeaders not saved",
+    "why": "A Load from Disk would rebuild every group's header from the first group's.",
+    "edits": [
+      {
+        "find": "                    colHeaders: group.colHeaders || null,",
+        "replace": "                    colHeaders: null,"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "round trip keeps every group",
+    "expect": "fail"
+  },
+  {
+    "name": "disk: colHeaders not restored",
+    "why": "Same, on the load side.",
+    "edits": [
+      {
+        "find": "                        _grpEntry.colHeaders = group.colHeaders;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "round trip keeps every group",
+    "expect": "fail"
+  },
+  {
+    "name": "disk: the converter does not run before hydration",
+    "why": "The reloaded page holds the native relationship lists again; they would stay beside the restored tables.",
+    "edits": [
+      {
+        "find": "            if (activeDefinition.features?.eventDetailsToTables) {\n                applyEventDetailsToTables(activeDefinition);\n            }\n\n            // Restore table headers",
+        "replace": "\n            // Restore table headers"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "round trip keeps every group",
+    "expect": "fail"
+  },
+  {
+    "name": "parser: the disambiguation joins the credits",
+    "why": "span.comment must land in Disambiguation, not in Credits/Details.",
+    "edits": [
+      {
+        "find": "                parts.comment.push(clone(n));",
+        "replace": "                parts.extra.push(clone(n));"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "each part of a target line lands in its own column",
+    "expect": "fail"
+  },
+  {
+    "name": "parser: no artist credit",
+    "why": "\" by <bdi>…</bdi>\" after a recording must become the Artist column.",
+    "edits": [
+      {
+        "find": "            } else if (n.nodeType === Node.TEXT_NODE && /\\bby\\s*$/.test(n.textContent) && rest[k + 1] &&",
+        "replace": "            } else if (n.nodeType === Node.TEXT_NODE && /\\bnever-by\\s*$/.test(n.textContent) && rest[k + 1] &&"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "each part of a target line lands in its own column",
+    "expect": "fail"
+  },
+  {
+    "name": "parser: no area for a place",
+    "why": "\" in <area chain>\" after a place must become the Area column.",
+    "edits": [
+      {
+        "find": "            } else if (type === 'place' && n.nodeType === Node.TEXT_NODE",
+        "replace": "            } else if (type === 'never' && n.nodeType === Node.TEXT_NODE"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "each part of a target line lands in its own column",
+    "expect": "fail"
+  },
+  {
+    "name": "parser: credits keep their parentheses",
+    "why": "\"(time: …, lead vocals)\" is shown as the Credits value, without the wrapping pair.",
+    "edits": [
+      {
+        "find": "            extra: _eventTrimNodes(parts.extra, true),",
+        "replace": "            extra: _eventTrimNodes(parts.extra),"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "each part of a target line lands in its own column",
+    "expect": "fail"
+  },
+  {
+    "name": "parser: a URL loses its [info] link",
+    "why": "The /url/<id> page link belongs with the URL it describes.",
+    "edits": [
+      {
+        "find": "            if (info.length) main.push(document.createTextNode(' '), ...info);",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "each part of a target line lands in its own column",
+    "expect": "fail"
+  },
+  {
+    "name": "setting ignored: one table",
+    "why": "\"One table for all relationships\" must give a single table with Type and From.",
+    "edits": [
+      {
+        "find": "        if (Lib.settings.sa_event_overview_relationships_one_table) {",
+        "replace": "        if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "One table for all relationships",
+    "expect": "fail"
+  },
+  {
+    "name": "setting ignored: related series",
+    "why": "With the setting off, the series' own relationships stay native.",
+    "edits": [
+      {
+        "find": "        const withSeries = !!Lib.settings.sa_event_overview_related_series;",
+        "replace": "        const withSeries = true;"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "a \"Via\" table, or left native",
+    "expect": "fail"
+  },
+  {
+    "name": "native series section: its h3 stays an h3",
+    "why": "renderGroupedTable()'s initial cleanup removes every h3 in #content, so the series name would vanish from the section left native.",
+    "edits": [
+      {
+        "find": "                if (n.tagName !== 'H3') return;\n                const h4 = doc.createElement('h4');",
+        "replace": "                return;\n                const h4 = doc.createElement('h4');"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "a \"Via\" table, or left native",
+    "expect": "fail"
+  },
+  {
+    "name": "'#' is not an integer column",
+    "why": "The declaration gives '#' its right-aligned, tabular-figure cells. Numeric SORTING does not depend on it: _sortColumnKind()'s name heuristic already treats any header containing '#' as numeric.",
+    "edits": [
+      {
+        "find": "                eventDetailsToTables: true,\n                groupByH3: true,\n                integerColumns: [ { sourceColumn: '#', align: 'R' } ]",
+        "replace": "                eventDetailsToTables: true,\n                groupByH3: true,\n                integerColumns: []"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "sorts as a number",
+    "expect": "fail"
+  },
+  {
+    "name": "button shown with every table part off",
+    "why": "It would render nothing.",
+    "edits": [
+      {
+        "find": "            match: (path) => Lib.settings.sa_enable_event_overview &&\n                Lib.settings.sa_event_overview_relationships &&\n",
+        "replace": "            match: (path) => Lib.settings.sa_enable_event_overview &&\n"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "settings off: no button",
+    "expect": "fail"
+  }
+]

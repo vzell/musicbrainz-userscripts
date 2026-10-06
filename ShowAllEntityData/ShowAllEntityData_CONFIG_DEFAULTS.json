@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1246+2026-10-06",
-    "schema_entries": 336,
-    "sections": 43,
-    "settings": 293,
-    "settings_with_default": 288,
+    "script_version": "9.99.1248+2026-10-06",
+    "schema_entries": 341,
+    "sections": 44,
+    "settings": 297,
+    "settings_with_default": 292,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,9 +15,9 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 137,
+      "checkbox": 141,
       "color_picker": 62,
-      "divider": 43,
+      "divider": 44,
       "number": 42,
       "keyboard_shortcut": 23,
       "popup_dialog": 14,
@@ -122,6 +122,10 @@
     {
       "key": "divider_release_tracks",
       "label": "💿 RELEASE TRACKLIST"
+    },
+    {
+      "key": "divider_event_overview",
+      "label": "🎫 EVENT PAGE"
     },
     {
       "key": "divider_expand_rgs",
@@ -275,6 +279,7 @@
     "sa_enable_dropdown_flag_icons": "Show Flag Icons In Unique-Values Dropdown",
     "sa_enable_edits_diff_colors": "Enable old/new value diff colors in \"Edit details\"",
     "sa_enable_edits_type_colors": "Enable \"Edit#\"/\"Edit action\" column background colors",
+    "sa_enable_event_overview": "Enable Event overview consolidation",
     "sa_enable_event_parts_extractor": "Enable 'Event Parts' synthetic column extractor",
     "sa_enable_expand_release_events": "Auto-expand truncated \"Country/Date\" release-event cells",
     "sa_enable_expand_rgs": "Enable Expand Release and Release Groups",
@@ -332,6 +337,9 @@
     "sa_enable_uvd_title_series": "Unique-Values Dropdown: Title Series Numbering",
     "sa_enable_uvd_title_style_issues": "Unique-Values Dropdown: Title Style Issues",
     "sa_enable_uvd_title_subtitle": "Unique-Values Dropdown: Title Subtitles",
+    "sa_event_overview_related_series": "Include the related series' own relationships",
+    "sa_event_overview_relationships": "Relationships as tables",
+    "sa_event_overview_relationships_one_table": "One table for all relationships",
     "sa_event_rg_search_artist": "Search only release groups by the release's artist",
     "sa_event_rg_search_hints": "Closest titles to show when no release group matches",
     "sa_event_rg_search_phrase": "Search the event name as an exact phrase",
@@ -569,6 +577,7 @@
     "sa_enable_dropdown_flag_icons": true,
     "sa_enable_edits_diff_colors": true,
     "sa_enable_edits_type_colors": true,
+    "sa_enable_event_overview": true,
     "sa_enable_event_parts_extractor": true,
     "sa_enable_expand_release_events": true,
     "sa_enable_expand_rgs": true,
@@ -626,6 +635,9 @@
     "sa_enable_uvd_title_series": true,
     "sa_enable_uvd_title_style_issues": true,
     "sa_enable_uvd_title_subtitle": true,
+    "sa_event_overview_related_series": true,
+    "sa_event_overview_relationships": true,
+    "sa_event_overview_relationships_one_table": false,
     "sa_event_rg_search_artist": true,
     "sa_event_rg_search_hints": 5,
     "sa_event_rg_search_phrase": true,
