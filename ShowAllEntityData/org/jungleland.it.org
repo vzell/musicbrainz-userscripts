@@ -39,3 +39,7 @@ Done as the opt-in pageType =jl-list=. The new setting is
   - =scripts/mutations/jl-support.json=;
   - the live =@extended= spec =tests/live/jl-list.spec.js=, which covers the
     whole real page.
+
+** TODO add detail page handling, with additional "Uploader" column and optionally covers
+
+    

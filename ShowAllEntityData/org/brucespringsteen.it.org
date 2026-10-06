@@ -102,3 +102,6 @@ Details: =docs/claude/brucespringsteen.md=, and the dated entry in
 - Unofficial: https://www.brucespringsteen.it/DB/records.aspx?tipe=-1,0,1,2,3,4,5,6,7,8,9,10,11&sort=0&addon=0
 - Official: https://www.brucespringsteen.it/DB/records.aspx?tipe=-2,0,1,2,3,4,5,6,7,8,9,10,11&sort=0&addon=0
 #+end_example
+
+** TODO add detail page handling, with tracklist and optionally covers
+

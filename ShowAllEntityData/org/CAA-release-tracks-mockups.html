@@ -1,0 +1,1525 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- SKELETON-END: everything above this line is dropped when the page is published as an Artifact. -->
+<title>Release Page Cover Art</title>
+<!--
+  ShowAllEntityData design study, 2026-10-06. Companion to org/CAA-release-tracks-handling.org,
+  branch design/caa-release-tracks. Sibling of org/redesign-CAA-EAA-mockups.html
+  (branch design/caa-eaa-redesign), whose look and liner-card style it reuses.
+  Data is real: https://musicbrainz.org/release/d0adda7e-86de-4aef-af95-ee7da122d175
+  (Bruce Springsteen, "Only the Strong Survive: Covers Vol. 1", 3 x 12" Vinyl, 16 images),
+  probed from coverartarchive.org and /ws/2 on 2026-10-06.
+  Opened from disk, images are hotlinked from coverartarchive.org. The published Artifact copy
+  carries the 250 px thumbnails inline (window.__EMBED), because its sandbox blocks outside images.
+  Every image falls back to a labelled tile if it cannot load.
+-->
+<!--EMBED-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: a design-review sheet, same as the CAA/EAA column study. A sticky index, then one
+   specimen per placement idea (R0-R7). Each specimen holds a light "MusicBrainz stage" (a slice of
+   the real release page) and a cost/verdict caption underneath. The viewer is a darkroom overlay. */
+:root {
+    --bg: #f2f3f5;
+    --surface: #ffffff;
+    --ink: #1c2230;
+    --muted: #586174;
+    --rule: #d8dce3;
+    --accent: #ba478f;          /* MusicBrainz purple */
+    --accent-ink: #ffffff;
+    --ok: #2f7d4f;
+    --warn: #a45a07;
+    --bad: #b42318;
+
+    --f-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+    --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, Consolas, "Courier New", monospace;
+
+    /* Stage = a MusicBrainz page. Always light, as MusicBrainz itself is. */
+    --st-bg: #ffffff;
+    --st-ink: #222222;
+    --st-even: #f4f4f4;
+    --st-rule: #c9c9c9;
+    --st-head: #eeeeee;
+    --st-link: #0b3fae;
+    --st-muted: #777777;
+    --st-tab: #f3f3f3;
+    --st-sel: #ffffff;
+    --st-font: Arial, Helvetica, sans-serif;
+
+    /* Liner notes = the script's existing tooltip look (.mb-tt-liner). Kept verbatim. */
+    --ln-bg: #fbf8f1;
+    --ln-ink: #2b2622;
+    --ln-rule: #d9cfbd;
+    --ln-dim: #7a6d5c;
+    --ln-pill: #efe6d4;
+    --ln-pill-ink: #4a3f33;
+    --ln-shadow: rgba(60, 40, 20, 0.35);
+    --ln-font: Georgia, "Times New Roman", Times, serif;
+
+    /* Viewer = a darkroom. Deliberately the same in both themes. */
+    --vw-bg: #0d0e11;
+    --vw-panel: #17191e;
+    --vw-ink: #ebe7df;
+    --vw-dim: #9c978c;
+    --vw-rule: #2b2e35;
+    --vw-accent: #f0a35e;       /* MusicBrainz orange, lifted for a dark ground */
+
+    /* One colour per CAA image type, for chips and fallback tiles. */
+    --t-front: #2f6fb2;
+    --t-back: #7a4fb0;
+    --t-other: #6f7480;
+    --t-liner: #b0574f;
+    --t-medium: #2c806a;
+    --t-poster: #8a6a2f;
+    --t-sticker: #b0427a;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg: #121418;
+        --surface: #1a1d23;
+        --ink: #e7e9ee;
+        --muted: #9aa2b1;
+        --rule: #2d313a;
+        --accent: #e58cc4;
+        --accent-ink: #1d0c17;
+        --ok: #6cc28f;
+        --warn: #f0a35e;
+        --bad: #f08a80;
+        color-scheme: dark;
+    }
+}
+:root[data-theme="dark"] {
+    --bg: #121418;
+    --surface: #1a1d23;
+    --ink: #e7e9ee;
+    --muted: #9aa2b1;
+    --rule: #2d313a;
+    --accent: #e58cc4;
+    --accent-ink: #1d0c17;
+    --ok: #6cc28f;
+    --warn: #f0a35e;
+    --bad: #f08a80;
+    color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.55 var(--f-body);
+    padding-inline: 16px;
+    padding-block: 0 56px;
+}
+img { max-width: 100%; }
+a { color: inherit; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wrap { max-width: 1180px; margin: 0 auto; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; line-height: 1.15; margin: 0; }
+code, kbd, .mono { font-family: var(--f-mono); font-size: 0.88em; }
+kbd {
+    border: 1px solid var(--rule);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    padding: 0 5px;
+    background: var(--surface);
+}
+p { margin: 0; max-width: 68ch; }
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.hero { padding-block: 36px 20px; display: grid; gap: 14px; }
+.eyebrow {
+    font: 600 12px/1 var(--f-display);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+}
+.hero h1 { font-size: clamp(30px, 5vw, 46px); font-weight: 700; letter-spacing: -0.01em; }
+.hero .lede { font-size: 17px; color: var(--muted); }
+.facts-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 22px;
+    margin: 4px 0 0;
+    padding: 12px 0 0;
+    border-top: 1px solid var(--rule);
+    font-size: 13px;
+}
+.facts-row div { display: flex; gap: 6px; min-width: 0; }
+.facts-row dt { color: var(--muted); }
+.facts-row dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; }
+.tally { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ── Index ──────────────────────────────────────────────────────────────── */
+.toc {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 20;
+    background: var(--bg);
+    border-bottom: 1px solid var(--rule);
+    margin-inline: -16px;
+    padding: 8px 16px;
+}
+.toc ul {
+    list-style: none;
+    margin: 0 auto;
+    padding: 0;
+    max-width: 1180px;
+    display: flex;
+    gap: 4px 18px;
+    flex-wrap: wrap;
+    font: 500 13px/1.6 var(--f-display);
+}
+.toc a { text-decoration: none; color: var(--muted); }
+.toc a:hover { color: var(--accent); }
+.toc b { color: var(--ink); font-weight: 600; margin-right: 4px; }
+
+/* ── Specimens ──────────────────────────────────────────────────────────── */
+section.spec { padding-block: 34px 0; display: grid; gap: 14px; scroll-margin-top: 48px; }
+.spec-head { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.spec-id {
+    font: 700 13px/1 var(--f-mono);
+    color: var(--accent-ink);
+    background: var(--accent);
+    border-radius: 4px;
+    padding: 4px 7px;
+}
+.spec-head h2 { font-size: 24px; font-weight: 600; }
+.verdict {
+    font: 600 12px/1 var(--f-display);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    padding: 4px 9px;
+}
+.v-rec { color: var(--ok); }
+.v-opt { color: var(--warn); }
+.v-no { color: var(--bad); }
+.v-ref { color: var(--muted); }
+.spec > p { color: var(--muted); }
+.card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    overflow: hidden;
+}
+.cost {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border-top: 1px solid var(--rule);
+    font-size: 13px;
+}
+.cost div { background: var(--surface); padding: 10px 14px; min-width: 0; }
+.cost dt {
+    font: 600 11px/1.4 var(--f-display);
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+.cost dd { margin: 2px 0 0; }
+.demo-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--rule);
+    font-size: 13px;
+    align-items: center;
+}
+.demo-bar .lbl { color: var(--muted); margin-right: 4px; }
+.btn {
+    border: 1px solid var(--rule);
+    background: var(--bg);
+    border-radius: 6px;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-size: 13px;
+}
+.btn:hover { border-color: var(--accent); }
+.btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+/* ── Stage: a slice of the MusicBrainz release page ─────────────────────── */
+.stage-scroll { overflow-x: auto; }
+.stage {
+    background: var(--st-bg);
+    color: var(--st-ink);
+    font: 12px/1.4 var(--st-font);
+    padding: 14px 16px 18px;
+    min-width: 0;
+}
+.stage a { color: var(--st-link); text-decoration: none; }
+.stage .st-title { font: bold 20px/1.25 var(--st-font); margin: 0; }
+.stage .st-title small { font-weight: normal; color: var(--st-muted); font-size: 13px; }
+.stage .st-sub { margin: 2px 0 10px; font-size: 13px; }
+.st-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-bottom: 1px solid var(--st-rule);
+}
+.st-tabs li a, .st-tabs li span {
+    display: block;
+    padding: 4px 9px;
+    background: var(--st-tab);
+    border: 1px solid var(--st-rule);
+    border-bottom: 0;
+    border-radius: 4px 4px 0 0;
+    color: var(--st-link);
+    position: relative;
+    top: 1px;
+}
+.st-tabs li.sel span { background: var(--st-sel); color: var(--st-ink); font-weight: bold; }
+.st-tabs li.hot a { box-shadow: 0 0 0 2px var(--accent) inset; }
+.st-tabs .tab-pip {
+    display: inline-block;
+    margin-left: 5px;
+    font: 600 10px/1 var(--st-font);
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-radius: 3px;
+    padding: 2px 4px;
+}
+.st-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 220px;
+    gap: 18px;
+    padding-top: 12px;
+}
+.st-main { min-width: 0; display: grid; gap: 8px; align-content: start; }
+.st-side { display: grid; gap: 10px; align-content: start; font-size: 11px; }
+.st-side h4 { margin: 0; font-size: 12px; border-bottom: 1px solid var(--st-rule); padding-bottom: 2px; }
+.st-side dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 1px 8px; }
+.st-side dt { color: var(--st-muted); }
+.st-side dd { margin: 0; overflow-wrap: anywhere; }
+.st-cover { display: block; width: 100%; aspect-ratio: 1; object-fit: contain; background: var(--st-even); }
+.st-h2 {
+    font: bold 15px/1.3 var(--st-font);
+    border-bottom: 1px solid var(--st-rule);
+    padding-bottom: 2px;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+    cursor: pointer;
+    user-select: none;
+}
+.st-h2 .tri { font-size: 10px; color: var(--st-muted); width: 10px; }
+.st-h2 .stat { font-weight: normal; font-size: 11px; color: var(--st-muted); }
+.st-h3 {
+    font: bold 13px/1.3 var(--st-font);
+    margin: 4px 0 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.st-tbl { border-collapse: collapse; width: 100%; font-size: 12px; }
+.st-tbl th { background: var(--st-head); text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--st-rule); }
+.st-tbl td { padding: 2px 6px; }
+.st-tbl tr:nth-child(even) td { background: var(--st-even); }
+.st-tbl .num { width: 34px; color: var(--st-muted); }
+.st-tbl .len { width: 50px; text-align: right; font-variant-numeric: tabular-nums; }
+.st-saed {
+    font: normal 11px/1 var(--st-font);
+    color: var(--st-muted);
+    border: 1px dashed var(--st-rule);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+.st-note { color: var(--st-muted); font-style: italic; font-size: 11px; }
+@media (max-width: 700px) {
+    .st-body { grid-template-columns: minmax(0, 1fr); }
+    .st-side { grid-template-columns: 120px minmax(0, 1fr); align-items: start; }
+}
+
+/* ── Image tiles (shared) ───────────────────────────────────────────────── */
+.thumb {
+    display: block;
+    object-fit: contain;
+    background: var(--st-even);
+    cursor: zoom-in;
+}
+.fb {
+    display: inline-grid;
+    place-items: center;
+    color: #ffffff;
+    font: 600 12px/1 var(--f-display);
+    letter-spacing: 0.04em;
+    cursor: zoom-in;
+}
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid var(--st-rule);
+    border-radius: 999px;
+    padding: 2px 8px 2px 6px;
+    font: 11px/1.3 var(--st-font);
+    background: var(--st-bg);
+    color: var(--st-ink);
+    cursor: pointer;
+}
+.chip i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.chip b { font-weight: bold; font-variant-numeric: tabular-nums; }
+.chip[aria-pressed="true"] { border-color: var(--st-ink); background: var(--st-head); }
+.tally .chip { border-color: var(--rule); background: var(--surface); color: var(--ink); cursor: default; }
+
+/* R1: the Cover art section */
+.ca-sec { display: grid; gap: 8px; }
+.ca-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ca-tools .sep { flex: 1 1 auto; }
+.seg { display: inline-flex; border: 1px solid var(--st-rule); border-radius: 4px; overflow: hidden; }
+.seg button {
+    border: 0;
+    background: var(--st-bg);
+    color: var(--st-ink);
+    font: 11px/1 var(--st-font);
+    padding: 4px 8px;
+    cursor: pointer;
+}
+.seg button + button { border-left: 1px solid var(--st-rule); }
+.seg button[aria-pressed="true"] { background: var(--st-head); font-weight: bold; }
+.ca-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+.ca-group { display: grid; gap: 4px; }
+.ca-group h5 { margin: 4px 0 0; font: bold 11px/1.3 var(--st-font); color: var(--st-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.tile { position: relative; display: grid; gap: 3px; min-width: 0; }
+.tile .thumb, .tile .fb { width: 100%; aspect-ratio: 1; border: 1px solid var(--st-rule); }
+.tile .cap { font: 11px/1.3 var(--st-font); min-width: 0; overflow-wrap: anywhere; }
+.tile .cap b { font-weight: bold; }
+.tile .cap span { color: var(--st-muted); display: block; }
+.tile .star {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    background: rgba(0, 0, 0, 0.66);
+    color: #ffd76a;
+    font: bold 11px/1 var(--st-font);
+    padding: 3px 5px;
+    border-radius: 3px;
+}
+.tile[hidden] { display: none; }
+
+/* R2: filmstrip */
+.strip {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding: 8px 2px 6px;
+    border-bottom: 1px solid var(--st-rule);
+}
+.strip .tile { flex: 0 0 72px; scroll-snap-align: start; }
+.strip .cap { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.strip-head { display: flex; gap: 8px; align-items: baseline; font-size: 11px; color: var(--st-muted); padding-top: 8px; }
+
+/* R3: sidebar gallery */
+.sg-big-cap { font-size: 11px; color: var(--st-muted); min-height: 2.6em; }
+.sg-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
+.sg-grid .thumb, .sg-grid .fb { width: 100%; aspect-ratio: 1; border: 1px solid var(--st-rule); }
+.sg-grid .on { outline: 2px solid var(--accent); outline-offset: 0; }
+
+/* R6: spreads */
+.spreads { display: grid; gap: 18px; padding: 16px; background: var(--st-bg); color: var(--st-ink); font: 12px/1.4 var(--st-font); }
+.spread { display: grid; gap: 6px; }
+.spread h5 { margin: 0; font: bold 12px/1.3 var(--st-font); }
+.spread-pages {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    max-width: 520px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+    position: relative;
+}
+.spread-pages::after {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 calc(50% - 10px);
+    width: 20px;
+    background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.22), transparent);
+    pointer-events: none;
+}
+.spread-pages .thumb, .spread-pages .fb { width: 100%; aspect-ratio: 1; object-fit: cover; }
+.spread-foot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; color: var(--st-muted); font-size: 11px; }
+
+/* R7: per-medium art */
+.med-art { display: inline-flex; gap: 3px; align-items: center; }
+.med-art .thumb, .med-art .fb { width: 26px; height: 26px; border: 1px solid var(--st-rule); font-size: 9px; }
+.med-warn {
+    font: normal 11px/1.3 var(--st-font);
+    color: #8a5300;
+    background: #fff4dc;
+    border: 1px solid #f0d49a;
+    border-radius: 3px;
+    padding: 1px 6px;
+    cursor: pointer;
+}
+
+/* ── Tables in prose ────────────────────────────────────────────────────── */
+.tbl-wrap { overflow-x: auto; }
+table.plain { border-collapse: collapse; width: 100%; font-size: 13px; }
+table.plain th, table.plain td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+table.plain th { font: 600 11px/1.3 var(--f-display); letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+table.plain td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ── Liner card tooltip (.mb-tt-liner look) ─────────────────────────────── */
+#tt {
+    position: fixed;
+    z-index: 60;
+    max-width: 300px;
+    background: var(--ln-bg);
+    color: var(--ln-ink);
+    border: 1px solid var(--ln-rule);
+    border-radius: 3px;
+    box-shadow: 0 8px 24px var(--ln-shadow);
+    font: 13px/1.45 var(--ln-font);
+    padding: 10px 12px;
+    pointer-events: none;
+    display: grid;
+    gap: 5px;
+}
+.tt-title { font-weight: bold; font-size: 14px; }
+.tt-pills { display: flex; gap: 4px; flex-wrap: wrap; }
+.tt-pill {
+    background: var(--ln-pill);
+    color: var(--ln-pill-ink);
+    border-radius: 999px;
+    padding: 0 7px;
+    font-size: 11.5px;
+}
+.tt-comment { font-style: italic; }
+.tt-dim { color: var(--ln-dim); font-size: 11.5px; }
+.tt-rule { border: 0; border-top: 1px solid var(--ln-rule); margin: 2px 0; }
+.tt-img { width: 180px; height: 180px; object-fit: contain; background: #ffffff; border: 1px solid var(--ln-rule); }
+
+/* ── Viewer (R5) ────────────────────────────────────────────────────────── */
+#vw {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    background: var(--vw-bg);
+    color: var(--vw-ink);
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    font: 13px/1.45 var(--f-body);
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.vw-bar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--vw-rule);
+    flex-wrap: wrap;
+}
+.vw-bar .t { font: 600 15px/1.2 var(--f-display); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 200px; }
+.vw-bar .pos { color: var(--vw-dim); font-variant-numeric: tabular-nums; }
+.vw-btn {
+    background: var(--vw-panel);
+    border: 1px solid var(--vw-rule);
+    color: var(--vw-ink);
+    border-radius: 5px;
+    padding: 3px 9px;
+    cursor: pointer;
+    font: 12px/1.4 var(--f-body);
+}
+.vw-btn:hover { border-color: var(--vw-accent); }
+.vw-btn[aria-pressed="true"] { border-color: var(--vw-accent); color: var(--vw-accent); }
+.vw-mid { display: grid; grid-template-columns: minmax(0, 1fr) 280px; min-height: 0; }
+.vw-mid.noinfo { grid-template-columns: minmax(0, 1fr); }
+.vw-mid.noinfo .vw-info { display: none; }
+.vw-stage { position: relative; overflow: hidden; display: grid; place-items: center; min-height: 0; cursor: zoom-in; touch-action: pan-y; }
+.vw-stage.zoomed { cursor: zoom-out; }
+.vw-stage img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    transform-origin: center;
+    transition: transform 0.12s ease-out;
+    user-select: none;
+}
+.vw-load {
+    position: absolute;
+    left: 12px;
+    bottom: 10px;
+    color: var(--vw-dim);
+    font-size: 12px;
+    max-width: 70%;
+}
+.vw-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(23, 25, 30, 0.7);
+    border: 1px solid var(--vw-rule);
+    color: var(--vw-ink);
+    width: 38px;
+    height: 54px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 20px;
+}
+.vw-nav.prev { left: 10px; }
+.vw-nav.next { right: 10px; }
+.vw-info {
+    background: var(--ln-bg);
+    color: var(--ln-ink);
+    font: 13px/1.5 var(--ln-font);
+    padding: 14px 16px;
+    overflow-y: auto;
+    display: grid;
+    gap: 7px;
+    align-content: start;
+    border-left: 1px solid var(--vw-rule);
+}
+.vw-info a { color: var(--ln-ink); }
+.vw-info dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 12px; }
+.vw-info dt { color: var(--ln-dim); }
+.vw-info dd { margin: 0; overflow-wrap: anywhere; }
+.vw-sizes { display: flex; gap: 6px; flex-wrap: wrap; font-size: 12px; }
+.vw-film {
+    display: flex;
+    gap: 5px;
+    overflow-x: auto;
+    padding: 8px 14px;
+    border-top: 1px solid var(--vw-rule);
+    scroll-snap-type: x proximity;
+}
+.vw-film .thumb, .vw-film .fb {
+    flex: 0 0 56px;
+    width: 56px;
+    height: 56px;
+    background: var(--vw-panel);
+    opacity: 0.55;
+    border: 2px solid transparent;
+    scroll-snap-align: center;
+}
+.vw-film .cur { opacity: 1; border-color: var(--vw-accent); }
+.vw-grid {
+    overflow-y: auto;
+    padding: 14px;
+    display: grid;
+    gap: 14px;
+    align-content: start;
+    min-height: 0;
+}
+.vw-grid h5 { margin: 0; font: 600 12px/1.3 var(--f-display); color: var(--vw-dim); letter-spacing: 0.06em; text-transform: uppercase; }
+.vw-grid .row { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+.vw-grid .row .thumb, .vw-grid .row .fb { width: 100%; aspect-ratio: 1; background: var(--vw-panel); }
+.vw-grid .row figure { margin: 0; display: grid; gap: 4px; }
+.vw-grid figcaption { font-size: 11.5px; color: var(--vw-dim); overflow-wrap: anywhere; }
+.vw-keys { color: var(--vw-dim); font-size: 11px; }
+.vw-keys kbd { background: var(--vw-panel); border-color: var(--vw-rule); color: var(--vw-ink); }
+@media (max-width: 760px) {
+    .vw-mid { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+    .vw-info { border-left: 0; border-top: 1px solid var(--vw-rule); max-height: 36vh; }
+    .vw-keys { display: none; }
+}
+
+/* ── Prose sections ─────────────────────────────────────────────────────── */
+.prose { display: grid; gap: 12px; }
+.prose h2 { font-size: 24px; font-weight: 600; }
+.prose ul { margin: 0; padding-left: 20px; max-width: 72ch; display: grid; gap: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+    <header class="hero">
+        <div class="eyebrow">ShowAllEntityData · design study · release-tracks</div>
+        <h1>Cover art on the release page</h1>
+        <p class="lede">Eight ways to show all 16 Cover Art Archive images of a release on its overview page,
+            so nobody has to open the separate “Cover art (16)” tab. Each mockup runs on the real data of one release.
+            Hover a thumbnail for its card, click it for the viewer.</p>
+        <dl class="facts-row">
+            <div><dt>Release</dt><dd><a href="https://musicbrainz.org/release/d0adda7e-86de-4aef-af95-ee7da122d175">Only the Strong Survive: Covers Vol. 1</a></dd></div>
+            <div><dt>Artist</dt><dd>Bruce Springsteen</dd></div>
+            <div><dt>Media</dt><dd>3 × 12″ Vinyl, Gatefold Cover</dd></div>
+            <div><dt>Images</dt><dd>16, all approved</dd></div>
+            <div><dt>Probed</dt><dd>2026-10-06</dd></div>
+            <div><dt>Branch</dt><dd><code>design/caa-release-tracks</code></dd></div>
+        </dl>
+        <div class="tally" id="hero-tally"></div>
+    </header>
+</div>
+
+<nav class="toc" aria-label="Mockups">
+    <ul>
+        <li><a href="#r0"><b>R0</b>Today</a></li>
+        <li><a href="#r1"><b>R1</b>Section</a></li>
+        <li><a href="#r2"><b>R2</b>Filmstrip</a></li>
+        <li><a href="#r3"><b>R3</b>Sidebar</a></li>
+        <li><a href="#r4"><b>R4</b>Tab</a></li>
+        <li><a href="#r5"><b>R5</b>Viewer</a></li>
+        <li><a href="#r6"><b>R6</b>Spreads</a></li>
+        <li><a href="#r7"><b>R7</b>Per medium</a></li>
+        <li><a href="#rec"><b>✓</b>Recommendation</a></li>
+    </ul>
+</nav>
+
+<main class="wrap">
+    <section class="spec" id="r0">
+        <div class="spec-head"><span class="spec-id">R0</span><h2>Today</h2><span class="verdict v-ref">reference</span></div>
+        <p>The sidebar shows the main front at 250 px. The other 15 images are one click away, on a page that leaves the
+            tracklist and everything the script built on it. ShowAllEntityData does nothing with cover art on this page.</p>
+        <div class="card">
+            <div class="stage-scroll"><div class="stage" id="stage-r0"></div></div>
+            <dl class="cost">
+                <div><dt>Requests</dt><dd>0 (MusicBrainz renders the sidebar image)</dd></div>
+                <div><dt>What it costs the user</dt><dd>A page change, then the back button, which reloads the release page and its consolidated tracklist</dd></div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="spec" id="r1">
+        <div class="spec-head"><span class="spec-id">R1</span><h2>“Cover art” section above the tracklist</h2><span class="verdict v-rec">recommended</span></div>
+        <p>A new collapsible h2, built like every other h2 on the page. Collapsed, it reads its count from the tab text
+            and costs nothing. Expanded, it loads the archive JSON once and shows a contact sheet. The type chips filter
+            the sheet; the second switch groups it by type. ★ marks the archive's main front, which is not the same thing
+            as “has the Front type”.</p>
+        <div class="card">
+            <div class="demo-bar"><span class="lbl">Try:</span>
+                <button class="btn" type="button" data-r1-collapse>Collapse / expand the section</button>
+                <span class="lbl">Click a chip to filter, a thumbnail to open the viewer.</span>
+            </div>
+            <div class="stage-scroll"><div class="stage" id="stage-r1"></div></div>
+            <dl class="cost">
+                <div><dt>Requests</dt><dd>Collapsed: 0. Expanded: 1 JSON (or 0 from the shared cache) + 16 lazy 250 px thumbs</dd></div>
+                <div><dt>Where it lives</dt><dd>Inserted before <code>h2.tracklist</code>, so <code>makeH2sCollapsible()</code> wraps it and stops at “Tracklist”</dd></div>
+                <div><dt>Risk</dt><dd>Must stay outside the tracklist's global filter, row counts and master toggle</dd></div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="spec" id="r2">
+        <div class="spec-head"><span class="spec-id">R2</span><h2>Filmstrip under the tabs</h2><span class="verdict v-no">not recommended</span></div>
+        <p>A single scrolling row of 72 px thumbnails between the tabs and the page. Compact and always in view, but it
+            needs the JSON and every thumbnail on each page load, it pushes the tracklist down on every release, and the
+            72 px tiles are too small to tell Liner pages apart.</p>
+        <div class="card">
+            <div class="stage-scroll"><div class="stage" id="stage-r2"></div></div>
+            <dl class="cost">
+                <div><dt>Requests</dt><dd>1 JSON + 16 thumbs on every page load</dd></div>
+                <div><dt>Verdict</dt><dd>R1 shows the same images at a useful size and only when asked</dd></div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="spec" id="r3">
+        <div class="spec-head"><span class="spec-id">R3</span><h2>Sidebar gallery</h2><span class="verdict v-opt">optional</span></div>
+        <p>The native sidebar image gets a 4-column grid underneath. Hovering a small tile swaps the big image and its
+            caption in place; clicking opens the viewer. It leaves the main column alone, but the 50 px tiles are small and
+            the grid becomes four rows tall for this release.</p>
+        <div class="card">
+            <div class="stage-scroll"><div class="stage" id="stage-r3"></div></div>
+            <dl class="cost">
+                <div><dt>Requests</dt><dd>1 JSON + 16 thumbs on page load, or on the first hover of the sidebar image</dd></div>
+                <div><dt>Risk</dt><dd>Touches native MusicBrainz markup (<code>div.cover-art</code>), which other userscripts also decorate</dd></div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="spec" id="r4">
+        <div class="spec-head"><span class="spec-id">R4</span><h2>The “Cover art (16)” tab opens in place</h2><span class="verdict v-rec">recommended, as an add-on</span></div>
+        <p>A plain click on the tab opens the viewer in grid mode over the page instead of navigating. Ctrl/Cmd-click,
+            middle-click and “open in new tab” keep working, because the link stays a link. The small marker on the tab tells
+            the user the click behaves differently. Click the tab below.</p>
+        <div class="card">
+            <div class="stage-scroll"><div class="stage" id="stage-r4"></div></div>
+            <dl class="cost">
+                <div><dt>Requests</dt><dd>0 until clicked; then as R1 expanded</dd></div>
+                <div><dt>Why add-on</dt><dd>Costs one delegated click handler and reuses R5 entirely</dd></div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="spec" id="r5">
+        <div class="spec-head"><span class="spec-id">R5</span><h2>Viewer</h2><span class="verdict v-rec">recommended, shared</span></div>
+        <p>The lightbox from the CAA/EAA column study (D1 there), with one release as its whole scope. It shows the
+            250 px thumbnail at once and swaps in the 1200 px image when it arrives. The info panel is the house liner card.
+            Build it once: whichever branch lands first owns the viewer, the other reuses it.</p>
+        <div class="card">
+            <div class="demo-bar"><span class="lbl">Open at:</span>
+                <button class="btn" type="button" data-open-at="0">Front</button>
+                <button class="btn" type="button" data-open-at="2">Gatefold inside</button>
+                <button class="btn" type="button" data-open-at="7">First Medium</button>
+                <button class="btn" type="button" data-open-grid>Grid</button>
+            </div>
+            <div class="tbl-wrap">
+                <table class="plain">
+                    <thead><tr><th>Key</th><th>Action</th></tr></thead>
+                    <tbody>
+                        <tr><td><kbd>←</kbd> <kbd>→</kbd>, swipe</td><td>Previous / next image; wraps at the ends</td></tr>
+                        <tr><td><kbd>Home</kbd> <kbd>End</kbd></td><td>First / last image</td></tr>
+                        <tr><td>click, <kbd>Z</kbd></td><td>Toggle 2× zoom; the zoomed image follows the mouse</td></tr>
+                        <tr><td><kbd>G</kbd></td><td>Grid of all images, grouped by type</td></tr>
+                        <tr><td><kbd>I</kbd></td><td>Show / hide the info panel</td></tr>
+                        <tr><td><kbd>O</kbd></td><td>Open the original image in a new tab</td></tr>
+                        <tr><td><kbd>Esc</kbd></td><td>Close (from grid: back to the image); focus returns to the opener</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <dl class="cost">
+                <div><dt>Requests</dt><dd>0 JSON (reads the same cache as R1); 1200 px per image viewed, ±1 neighbour preloaded</dd></div>
+                <div><dt>Out of scope</dt><dd>Editing, reordering, removing art. The script reads; it does not edit</dd></div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="spec" id="r6">
+        <div class="spec-head"><span class="spec-id">R6</span><h2>Spreads and booklet</h2><span class="verdict v-opt">later, optional</span></div>
+        <p>A third layout for the R1 section. Images whose comments end in “left” and “right” and share the rest are shown
+            as one opened spread; Liner (and Booklet) pages are paged two at a time in archive order. Pairing is a heuristic
+            on free-text comments, so anything unpaired stays a single page and the layout never hides an image.</p>
+        <div class="card">
+            <div class="spreads" id="r6-body"></div>
+            <dl class="cost">
+                <div><dt>Requests</dt><dd>0 beyond R1</dd></div>
+                <div><dt>Heuristic</dt><dd><code>/^(.*?)\s*\b(left|right)$/i</code> on <code>comment</code>, same prefix, same type</dd></div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="spec" id="r7">
+        <div class="spec-head"><span class="spec-id">R7</span><h2>Medium art beside each medium</h2><span class="verdict v-opt">later, only with explicit comments</span></div>
+        <p>A small thumbnail of the label or disc in each medium's h3. The archive has no link from an image to a medium,
+            so this can only guess. The proposed rule assigns an image only when its comment names the medium
+            (“disc 2”, “LP 3”, “side C”) or when Medium images and media are equal in number. This release has 4 Medium
+            images, 3 media and no comments, so the rule refuses and says so. The second button shows the matched look.</p>
+        <div class="card">
+            <div class="demo-bar"><span class="lbl">State:</span>
+                <button class="btn" type="button" data-r7="real" aria-pressed="true">This release (4 images, 3 media)</button>
+                <button class="btn" type="button" data-r7="matched" aria-pressed="false">If comments said “disc 1–3”</button>
+            </div>
+            <div class="stage-scroll"><div class="stage" id="stage-r7"></div></div>
+            <dl class="cost">
+                <div><dt>Requests</dt><dd>1 JSON at page load (types are needed before anything shows)</dd></div>
+                <div><dt>Risk</dt><dd>A wrong guess puts disc 2's label on disc 1. Refusing is the safe default</dd></div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="spec prose" id="rec">
+        <div class="spec-head"><span class="spec-id">✓</span><h2>Recommendation</h2></div>
+        <p>Ship <strong>R1 + R5</strong>, with <strong>R4</strong> as a small add-on. Nothing loads until the user asks,
+            the archive JSON is shared with the CAA column's cache, and the viewer is the same component the CAA/EAA column
+            study already plans. R3, R6 and R7 can follow once that settles. R2 stays out.</p>
+        <div class="card tbl-wrap">
+            <table class="plain">
+                <thead><tr><th>ID</th><th>Placement</th><th>Requests at page load</th><th>On demand</th><th>Verdict</th></tr></thead>
+                <tbody>
+                    <tr><td>R0</td><td>today</td><td class="n">0</td><td>page change</td><td>reference</td></tr>
+                    <tr><td>R1</td><td>h2 section, collapsed</td><td class="n">0</td><td>1 JSON + 16 lazy thumbs</td><td><strong>recommended</strong></td></tr>
+                    <tr><td>R2</td><td>filmstrip</td><td class="n">1 + 16</td><td>-</td><td>not recommended</td></tr>
+                    <tr><td>R3</td><td>sidebar grid</td><td class="n">1 + 16</td><td>-</td><td>optional</td></tr>
+                    <tr><td>R4</td><td>tab click</td><td class="n">0</td><td>as R1</td><td><strong>add-on</strong></td></tr>
+                    <tr><td>R5</td><td>viewer</td><td class="n">0</td><td>1200 px per image viewed</td><td><strong>recommended</strong></td></tr>
+                    <tr><td>R6</td><td>spreads layout</td><td class="n">0</td><td>as R1</td><td>later</td></tr>
+                    <tr><td>R7</td><td>per-medium h3</td><td class="n">1</td><td>-</td><td>later</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <p>Open decisions are listed in <code>org/CAA-release-tracks-handling.org</code> under DECIDE.</p>
+    </section>
+</main>
+
+<div id="tt" hidden></div>
+<div id="vw" hidden role="dialog" aria-modal="true" aria-label="Cover art viewer"></div>
+
+<script>
+(() => {
+    'use strict';
+
+    /* ── Data (probed 2026-10-06) ─────────────────────────────────────────── */
+    const R = {
+        mbid: 'd0adda7e-86de-4aef-af95-ee7da122d175',
+        title: 'Only the Strong Survive: Covers Vol. 1',
+        disamb: 'black vinyl, lacquer cut version 3',
+        artist: 'Bruce Springsteen',
+        date: '2022-11-11',
+        country: 'Europe',
+        label: 'Columbia / Sony Music',
+        catno: '19658745361',
+        barcode: '196587453619',
+        packaging: 'Gatefold Cover',
+        media: [
+            { format: '12" Vinyl', tracks: [
+                ['A1', 'Only the Strong Survive', '2:59'], ['A2', 'Soul Days', '3:58'], ['A3', 'Nightshift', '4:56'],
+                ['A4', 'Do I Love You (Indeed I Do)', '2:27'], ['A5', 'The Sun Ain’t Gonna Shine Anymore', '3:44'] ] },
+            { format: '12" Vinyl', tracks: [
+                ['B1', 'Turn Back the Hands of Time', '3:07'], ['B2', 'When She Was My Girl', '3:17'],
+                ['B3', 'Hey, Western Union Man', '3:53'], ['B4', 'I Wish It Would Rain', '3:24'], ['B5', 'Don’t Play That Song', '3:34'] ] },
+            { format: '12" Vinyl', tracks: [
+                ['C1', 'Any Other Way', '2:54'], ['C2', 'I Forgot to Be Your Lover', '2:28'], ['C3', '7 Rooms of Gloom', '2:39'],
+                ['C4', 'What Becomes of the Brokenhearted', '3:31'], ['C5', 'Someday We’ll Be Together', '3:33'] ] },
+        ],
+        images: [
+            { id: '34698678836', types: ['Front'], front: true, edit: 96361198 },
+            { id: '34698679777', types: ['Back'], back: true, edit: 96361199 },
+            { id: '34698680302', types: ['Other'], comment: 'opened gatefold cover, inside', edit: 96361200 },
+            { id: '34698680898', types: ['Other'], comment: 'opened gatefold cover, inside left', edit: 96361203 },
+            { id: '34698681466', types: ['Other'], comment: 'opened gatefold cover, inside right', edit: 96361204 },
+            { id: '34698682059', types: ['Liner'], edit: 96361205 },
+            { id: '34698682581', types: ['Liner'], edit: 96361206 },
+            { id: '34698682967', types: ['Medium'], edit: 96361208 },
+            { id: '34698683480', types: ['Medium'], edit: 96361209 },
+            { id: '34698683980', types: ['Liner'], edit: 96361210 },
+            { id: '34698684669', types: ['Liner'], edit: 96361213 },
+            { id: '34698685300', types: ['Medium'], edit: 96361219 },
+            { id: '34698685841', types: ['Medium'], edit: 96361224 },
+            { id: '34698686293', types: ['Poster'], edit: 96361231 },
+            { id: '34698686660', types: ['Poster'], edit: 96361247 },
+            { id: '34698687206', types: ['Sticker'], edit: 96361250 },
+        ],
+    };
+    const N = R.images.length;
+    const TYPE_ORDER = ['Front', 'Back', 'Other', 'Liner', 'Medium', 'Poster', 'Sticker'];
+    const TVAR = { Front: '--t-front', Back: '--t-back', Other: '--t-other', Liner: '--t-liner', Medium: '--t-medium', Poster: '--t-poster', Sticker: '--t-sticker' };
+    const EMBED = window.__EMBED || {};
+
+    /* ── Helpers ──────────────────────────────────────────────────────────── */
+    /**
+     * Creates an element with attributes and children.
+     * @param {string} tag
+     * @param {Object} [attrs]
+     * @param {...(Node|string|null)} kids
+     * @returns {HTMLElement}
+     */
+    function el(tag, attrs, ...kids) {
+        const n = document.createElement(tag);
+        if (attrs) {
+            for (const [k, v] of Object.entries(attrs)) {
+                if (v === null || v === undefined || v === false) continue;
+                if (k === 'class') n.className = v;
+                else if (k === 'text') n.textContent = v;
+                else if (k === 'style') n.style.cssText = v;
+                else n.setAttribute(k, v === true ? '' : v);
+            }
+        }
+        for (const k of kids) {
+            if (k === null || k === undefined || k === false) continue;
+            n.append(k instanceof Node ? k : document.createTextNode(String(k)));
+        }
+        return n;
+    }
+    /** @returns {string} the 250 px thumbnail: embedded copy when published, archive URL otherwise. */
+    function thumbSrc(im) {
+        return EMBED[im.id] || `https://coverartarchive.org/release/${R.mbid}/${im.id}-250.jpg`;
+    }
+    /** @returns {string} archive URL of a size ('250', '500', '1200', or '' for the original). */
+    function sizeUrl(im, size) {
+        return `https://coverartarchive.org/release/${R.mbid}/${im.id}${size ? '-' + size : ''}.jpg`;
+    }
+    /** @returns {string} CSS colour of a type. */
+    function typeColour(t) {
+        return `var(${TVAR[t] || '--t-other'})`;
+    }
+    /** @returns {string} "Other · opened gatefold cover, inside". */
+    function label(im) {
+        return im.types.join(' / ') + (im.comment ? ' · ' + im.comment : '');
+    }
+    /**
+     * A thumbnail of image `i`. Hover shows its card, click opens the viewer (both delegated).
+     * @param {number} i image index
+     * @param {string} [cls] extra classes
+     * @returns {HTMLImageElement}
+     */
+    function img(i, cls) {
+        const im = R.images[i];
+        return el('img', {
+            class: 'thumb' + (cls ? ' ' + cls : ''),
+            src: thumbSrc(im),
+            alt: label(im),
+            loading: 'lazy',
+            decoding: 'async',
+            draggable: 'false',
+            'data-i': i,
+            'data-open': '1',
+            'data-tt': 'img',
+        });
+    }
+    /** @returns {Object<string, number>} images per type. */
+    function typeCounts() {
+        const c = {};
+        R.images.forEach(im => im.types.forEach(t => { c[t] = (c[t] || 0) + 1; }));
+        return c;
+    }
+    /** @returns {number} position of image i within its first type ("Liner 3 of 4"). */
+    function posInType(i) {
+        const t = R.images[i].types[0];
+        let n = 0;
+        for (let k = 0; k <= i; k++) if (R.images[k].types.includes(t)) n++;
+        return n;
+    }
+
+    /* A thumbnail that fails to load becomes a tile labelled with its type. */
+    document.addEventListener('error', ev => {
+        const t = ev.target;
+        if (!(t instanceof HTMLImageElement) || t.dataset.i === undefined || t.closest('#vw .vw-stage')) return;
+        const im = R.images[+t.dataset.i];
+        const sp = el('span', { class: t.className.replace('thumb', '').trim() + ' fb', role: 'img', 'aria-label': t.alt, style: `background:${typeColour(im.types[0])}` },
+            im.types[0]);
+        for (const k of ['i', 'open', 'tt']) if (t.dataset[k] !== undefined) sp.dataset[k] = t.dataset[k];
+        t.replaceWith(sp);
+    }, true);
+
+    /* ── The MusicBrainz stage ────────────────────────────────────────────── */
+    /**
+     * Builds a slice of the release page into `host`.
+     * @param {HTMLElement} host
+     * @param {Object} o
+     * @param {'plain'|'hot'|'viewer'} [o.tab] how the Cover art tab looks/behaves
+     * @param {Node} [o.underTabs] node between tabs and body (R2)
+     * @param {Node} [o.mainTop] node above the tracklist h2 (R1)
+     * @param {Node} [o.side] replacement for the sidebar cover (R3)
+     * @param {Function} [o.h3Extra] (mediumIndex) → node for the medium's h3 (R7)
+     * @param {number} [o.media] how many media to render (default 1)
+     */
+    function stage(host, o = {}) {
+        host.textContent = '';
+        host.append(el('h1', { class: 'st-title' }, R.title, ' ', el('small', {}, `(${R.disamb})`)));
+        host.append(el('p', { class: 'st-sub' }, 'Release by ', el('a', { href: '#' }, R.artist)));
+        const tabs = el('ul', { class: 'st-tabs' });
+        tabs.append(el('li', { class: 'sel' }, el('span', {}, 'Overview')));
+        const caTab = el('a', { href: `https://musicbrainz.org/release/${R.mbid}/cover-art`, target: '_blank', rel: 'noopener' }, `Cover art (${N})`);
+        if (o.tab === 'viewer') {
+            caTab.dataset.tabViewer = '1';
+            caTab.append(el('span', { class: 'tab-pip', title: 'Opens here. Ctrl-click opens the page.' }, 'here'));
+        }
+        tabs.append(el('li', { class: o.tab === 'hot' || o.tab === 'viewer' ? 'hot' : null }, caTab));
+        for (const t of ['Aliases', 'Tags', 'Details', 'Edit', 'Edit relationships']) tabs.append(el('li', {}, el('a', { href: '#' }, t)));
+        host.append(tabs);
+        if (o.underTabs) host.append(o.underTabs);
+
+        const body = el('div', { class: 'st-body' });
+        const main = el('div', { class: 'st-main' });
+        if (o.mainTop) main.append(o.mainTop);
+        main.append(el('div', { class: 'st-h2' }, el('span', { class: 'tri' }, '▼'), 'Tracklist',
+            el('span', { class: 'stat' }, '15 tracks'), el('span', { class: 'st-saed' }, 'filter · ▶ Show all · 📊 …')));
+        const nMedia = o.media || 1;
+        for (let m = 0; m < nMedia; m++) {
+            const med = R.media[m];
+            const h3 = el('h3', { class: 'st-h3' }, `${med.format} ${m + 1}`);
+            if (o.h3Extra) {
+                const x = o.h3Extra(m);
+                if (x) h3.append(x);
+            }
+            main.append(h3);
+            const tb = el('tbody');
+            for (const [num, title, len] of med.tracks) {
+                tb.append(el('tr', {}, el('td', { class: 'num' }, num), el('td', {}, el('a', { href: '#' }, title)), el('td', { class: 'len' }, len)));
+            }
+            main.append(el('table', { class: 'st-tbl' }, el('thead', {}, el('tr', {}, el('th', {}, '#'), el('th', {}, 'Title'), el('th', { class: 'len' }, 'Length'))), tb));
+        }
+        if (nMedia < R.media.length) main.append(el('p', { class: 'st-note' }, `… ${R.media.length - nMedia} more media`));
+
+        const side = el('aside', { class: 'st-side' });
+        side.append(o.side || img(0, 'st-cover'));
+        side.append(el('div', {}, el('h4', {}, 'Release information'),
+            el('dl', {}, el('dt', {}, 'Packaging:'), el('dd', {}, R.packaging), el('dt', {}, 'Date:'), el('dd', {}, R.date),
+                el('dt', {}, 'Label:'), el('dd', {}, R.label), el('dt', {}, 'Cat. no.:'), el('dd', {}, R.catno),
+                el('dt', {}, 'Barcode:'), el('dd', {}, R.barcode))));
+        body.append(main, side);
+        host.append(body);
+    }
+
+    /* ── Hero tally ───────────────────────────────────────────────────────── */
+    /**
+     * Renders a type-tally chip.
+     * @param {string} t type
+     * @param {number} n count
+     * @param {Object} [attrs]
+     * @returns {HTMLElement}
+     */
+    function chip(t, n, attrs) {
+        return el('span', Object.assign({ class: 'chip' }, attrs || {}), el('i', { style: `background:${t ? typeColour(t) : 'var(--st-ink)'}` }), t || 'All', ' ', el('b', {}, n));
+    }
+    const counts = typeCounts();
+    const heroTally = document.getElementById('hero-tally');
+    TYPE_ORDER.forEach(t => heroTally.append(chip(t, counts[t])));
+
+    /* ── R0 ───────────────────────────────────────────────────────────────── */
+    stage(document.getElementById('stage-r0'), { tab: 'hot', media: 1 });
+
+    /* ── R1 ───────────────────────────────────────────────────────────────── */
+    const r1 = { filter: null, layout: 'grid', open: true };
+    /**
+     * Builds R1's Cover art section (h2 + tools + sheet).
+     * @returns {HTMLElement}
+     */
+    function buildR1() {
+        const sec = el('div', { class: 'ca-sec' });
+        const h2 = el('div', { class: 'st-h2', 'data-r1-h2': '1' }, el('span', { class: 'tri' }, r1.open ? '▼' : '▲'), `Cover art (${N})`,
+            el('span', { class: 'stat' }, r1.open ? (r1.filter ? `${counts[r1.filter]} of ${N} shown` : 'from coverartarchive.org') : 'collapsed · 0 requests so far'));
+        sec.append(h2);
+        if (!r1.open) return sec;
+        const tools = el('div', { class: 'ca-tools' });
+        tools.append(chip(null, N, { 'data-r1-filter': '', 'aria-pressed': String(!r1.filter), role: 'button', tabindex: '0' }));
+        TYPE_ORDER.forEach(t => tools.append(chip(t, counts[t], { 'data-r1-filter': t, 'aria-pressed': String(r1.filter === t), role: 'button', tabindex: '0' })));
+        tools.append(el('span', { class: 'sep' }));
+        const seg = el('span', { class: 'seg', role: 'group', 'aria-label': 'Layout' });
+        for (const [k, txt] of [['grid', 'Grid'], ['grouped', 'By type'], ['spreads', 'Spreads']]) {
+            seg.append(el('button', { type: 'button', 'data-r1-layout': k, 'aria-pressed': String(r1.layout === k) }, txt));
+        }
+        tools.append(seg);
+        sec.append(tools);
+        if (r1.layout === 'spreads') {
+            const box = el('div', {});
+            buildSpreads(box, true);
+            sec.append(box);
+            return sec;
+        }
+        const tileFor = i => {
+            const im = R.images[i];
+            const t = el('div', { class: 'tile', hidden: r1.filter && !im.types.includes(r1.filter) });
+            t.append(img(i));
+            if (im.front) t.append(el('span', { class: 'star', title: 'Main front image of the archive' }, '★ main'));
+            t.append(el('div', { class: 'cap' }, el('b', {}, im.types.join(' / ')), im.comment ? el('span', {}, im.comment) : null));
+            return t;
+        };
+        if (r1.layout === 'grid') {
+            const g = el('div', { class: 'ca-grid' });
+            R.images.forEach((_, i) => g.append(tileFor(i)));
+            sec.append(g);
+        } else {
+            TYPE_ORDER.forEach(t => {
+                if (r1.filter && r1.filter !== t) return;
+                const idx = R.images.map((im, i) => im.types[0] === t ? i : -1).filter(i => i >= 0);
+                if (!idx.length) return;
+                const g = el('div', { class: 'ca-grid' });
+                idx.forEach(i => g.append(tileFor(i)));
+                sec.append(el('div', { class: 'ca-group' }, el('h5', {}, `${t} × ${idx.length}`), g));
+            });
+        }
+        return sec;
+    }
+    /** Re-renders R1's stage. */
+    function renderR1() {
+        stage(document.getElementById('stage-r1'), { mainTop: buildR1(), media: 1 });
+    }
+    renderR1();
+
+    /* ── R2 ───────────────────────────────────────────────────────────────── */
+    (() => {
+        const wrap = el('div', {});
+        wrap.append(el('div', { class: 'strip-head' }, el('b', {}, `${N} images`), '· scroll sideways · hover for details'));
+        const s = el('div', { class: 'strip' });
+        R.images.forEach((im, i) => s.append(el('div', { class: 'tile' }, img(i), el('div', { class: 'cap' }, im.types.join('/')))));
+        wrap.append(s);
+        stage(document.getElementById('stage-r2'), { underTabs: wrap, media: 1 });
+    })();
+
+    /* ── R3 ───────────────────────────────────────────────────────────────── */
+    (() => {
+        const box = el('div', { style: 'display:grid;gap:4px' });
+        const big = img(0, 'st-cover');
+        big.dataset.r3Big = '1';
+        const cap = el('div', { class: 'sg-big-cap' }, '★ Front (main) · 1 of 16');
+        const grid = el('div', { class: 'sg-grid' });
+        R.images.forEach((_, i) => {
+            const t = img(i, i === 0 ? 'on' : '');
+            t.dataset.r3 = i;
+            t.removeAttribute('data-tt');
+            grid.append(t);
+        });
+        box.append(big, cap, grid);
+        stage(document.getElementById('stage-r3'), { side: box, media: 1 });
+        box.addEventListener('mouseover', ev => {
+            const t = ev.target.closest('[data-r3]');
+            if (!t) return;
+            const i = +t.dataset.r3;
+            const im = R.images[i];
+            const cur = box.querySelector('[data-r3-big]');
+            if (cur.tagName === 'IMG') cur.src = thumbSrc(im);
+            cur.dataset.i = i;
+            cur.alt = label(im);
+            cap.textContent = `${im.front ? '★ ' : ''}${label(im)} · ${i + 1} of ${N}`;
+            grid.querySelectorAll('.on').forEach(n => n.classList.remove('on'));
+            t.classList.add('on');
+        });
+    })();
+
+    /* ── R4 ───────────────────────────────────────────────────────────────── */
+    stage(document.getElementById('stage-r4'), { tab: 'viewer', media: 1 });
+
+    /* ── R6 ───────────────────────────────────────────────────────────────── */
+    /**
+     * Pairs "… left" / "… right" comments of the same type into spreads.
+     * @returns {{pairs: Array<[number, number, string]>, used: Set<number>}}
+     */
+    function findSpreads() {
+        const re = /^(.*?)\s*\b(left|right)$/i;
+        const byKey = {};
+        R.images.forEach((im, i) => {
+            const m = re.exec(im.comment || '');
+            if (!m) return;
+            const key = im.types[0] + '|' + m[1].toLowerCase();
+            (byKey[key] = byKey[key] || {})[m[2].toLowerCase()] = i;
+            byKey[key].prefix = m[1];
+        });
+        const pairs = [];
+        const used = new Set();
+        Object.values(byKey).forEach(v => {
+            if (v.left !== undefined && v.right !== undefined) {
+                pairs.push([v.left, v.right, v.prefix]);
+                used.add(v.left).add(v.right);
+            }
+        });
+        return { pairs, used };
+    }
+    const bookletState = { page: 0 };
+    /**
+     * Renders spreads + booklet pager into `box`.
+     * @param {HTMLElement} box
+     * @param {boolean} [compact] inside the R1 stage
+     */
+    function buildSpreads(box, compact) {
+        box.textContent = '';
+        box.classList.add('spreads');
+        if (compact) box.style.padding = '4px 0';
+        const { pairs, used } = findSpreads();
+        pairs.forEach(([l, r, prefix]) => {
+            box.append(el('div', { class: 'spread' }, el('h5', {}, `${R.images[l].types[0]}: ${prefix}`),
+                el('div', { class: 'spread-pages' }, img(l), img(r)),
+                el('div', { class: 'spread-foot' }, `Paired from “${R.images[l].comment}” + “${R.images[r].comment}”.`)));
+        });
+        const liner = R.images.map((im, i) => (im.types.includes('Liner') || im.types.includes('Booklet')) && !used.has(i) ? i : -1).filter(i => i >= 0);
+        if (liner.length) {
+            const pages = Math.ceil(liner.length / 2);
+            const p = Math.min(bookletState.page, pages - 1);
+            const a = liner[p * 2];
+            const b = liner[p * 2 + 1];
+            box.append(el('div', { class: 'spread' }, el('h5', {}, `Liner, ${liner.length} pages`),
+                el('div', { class: 'spread-pages' }, img(a), b !== undefined ? img(b) : el('span', {})),
+                el('div', { class: 'spread-foot' },
+                    el('button', { class: 'btn', type: 'button', 'data-book': '-1', disabled: p === 0 }, '◀'),
+                    `pages ${p * 2 + 1}${b !== undefined ? '–' + (p * 2 + 2) : ''} of ${liner.length}`,
+                    el('button', { class: 'btn', type: 'button', 'data-book': '1', disabled: p >= pages - 1 }, '▶'),
+                    'archive order; no comments to go by')));
+        }
+        const rest = R.images.map((im, i) => !used.has(i) && !liner.includes(i) ? i : -1).filter(i => i >= 0);
+        const g = el('div', { class: 'ca-grid' });
+        rest.forEach(i => g.append(el('div', { class: 'tile' }, img(i), el('div', { class: 'cap' }, el('b', {}, R.images[i].types.join(' / ')), R.images[i].comment ? el('span', {}, R.images[i].comment) : null))));
+        box.append(el('div', { class: 'spread' }, el('h5', {}, `Single pages, ${rest.length}`), g));
+    }
+    /** Re-renders every spreads view. */
+    function renderSpreads() {
+        buildSpreads(document.getElementById('r6-body'));
+        if (r1.layout === 'spreads') renderR1();
+    }
+    renderSpreads();
+
+    /* ── R7 ───────────────────────────────────────────────────────────────── */
+    /**
+     * Renders R7 in one of two states.
+     * @param {'real'|'matched'} mode
+     */
+    function renderR7(mode) {
+        const medIdx = R.images.map((im, i) => im.types.includes('Medium') ? i : -1).filter(i => i >= 0);
+        stage(document.getElementById('stage-r7'), {
+            media: 3,
+            h3Extra: m => {
+                if (mode === 'matched') {
+                    return el('span', { class: 'med-art' }, img(medIdx[m]));
+                }
+                return m === 0
+                    ? el('span', { class: 'med-warn', 'data-open-type': 'Medium', title: 'Open the Medium images in the viewer' },
+                        `${medIdx.length} Medium images, ${R.media.length} media, no comments: not assigned`)
+                    : null;
+            },
+        });
+    }
+    renderR7('real');
+
+    /* ── Liner card tooltip (delegated) ───────────────────────────────────── */
+    const tt = document.getElementById('tt');
+    /**
+     * Fills the liner card for image i.
+     * @param {number} i
+     */
+    function fillTip(i) {
+        const im = R.images[i];
+        const c = counts[im.types[0]];
+        tt.textContent = '';
+        tt.append(el('div', { class: 'tt-title' }, im.front ? '★ Main front' : im.types.join(' / ')));
+        tt.append(el('div', { class: 'tt-pills' }, ...im.types.map(t => el('span', { class: 'tt-pill' }, t))));
+        if (im.comment) tt.append(el('div', { class: 'tt-comment' }, `“${im.comment}”`));
+        tt.append(el('img', { class: 'tt-img', src: thumbSrc(im), alt: '' }));
+        tt.append(el('hr', { class: 'tt-rule' }));
+        tt.append(el('div', { class: 'tt-dim' }, `${i + 1} of ${N}` + (c > 1 ? ` · ${im.types[0]} ${posInType(i)} of ${c}` : '') + ' · approved'));
+        tt.append(el('div', { class: 'tt-dim' }, `edit #${im.edit} · id ${im.id}`));
+        tt.append(el('div', { class: 'tt-dim' }, 'Click: viewer'));
+    }
+    /**
+     * Positions the card next to `anchor`, kept inside the viewport.
+     * @param {Element} anchor
+     */
+    function placeTip(anchor) {
+        const r = anchor.getBoundingClientRect();
+        const w = tt.offsetWidth;
+        const h = tt.offsetHeight;
+        let x = r.right + 10;
+        if (x + w > innerWidth - 8) x = r.left - w - 10;
+        if (x < 8) x = Math.max(8, Math.min(innerWidth - w - 8, r.left));
+        let y = r.top;
+        if (y + h > innerHeight - 8) y = innerHeight - h - 8;
+        tt.style.left = Math.max(8, x) + 'px';
+        tt.style.top = Math.max(8, y) + 'px';
+    }
+    let lastPointerTouch = false;
+    document.addEventListener('pointerdown', ev => { lastPointerTouch = ev.pointerType === 'touch'; }, true);
+    document.addEventListener('mouseover', ev => {
+        if (lastPointerTouch) return;   // touch-compat mouse events: no hover card (mirrors _isTouchCompatMouseEvent)
+        const t = ev.target.closest('[data-tt="img"]');
+        if (!t || t.closest('#vw')) return;
+        fillTip(+t.dataset.i);
+        tt.hidden = false;
+        placeTip(t);
+    });
+    document.addEventListener('mouseout', ev => {
+        const t = ev.target.closest('[data-tt="img"]');
+        if (t && !t.contains(ev.relatedTarget)) tt.hidden = true;
+    });
+    addEventListener('scroll', () => { tt.hidden = true; }, { passive: true });
+
+    /* ── Viewer (R5) ──────────────────────────────────────────────────────── */
+    const vw = document.getElementById('vw');
+    const V = { i: 0, grid: false, info: true, zoom: false, opener: null, only: null, gridStart: false, swiped: false };
+    /**
+     * The index list the viewer steps through (all images, or one type).
+     * @returns {number[]}
+     */
+    function vList() {
+        return R.images.map((im, i) => !V.only || im.types.includes(V.only) ? i : -1).filter(i => i >= 0);
+    }
+    /**
+     * Opens the viewer.
+     * @param {number} i image index
+     * @param {Object} [o]
+     * @param {boolean} [o.grid] start in grid mode
+     * @param {string|null} [o.only] restrict to one type
+     * @param {Element} [o.from] element focus returns to
+     */
+    function openViewer(i, o = {}) {
+        V.i = i;
+        V.grid = !!o.grid;
+        V.gridStart = V.grid;
+        V.only = o.only || null;
+        V.zoom = false;
+        V.opener = o.from || document.activeElement;
+        tt.hidden = true;
+        vw.hidden = false;
+        document.documentElement.style.overflow = 'hidden';
+        renderViewer();
+    }
+    /** Closes the viewer and returns focus. */
+    function closeViewer() {
+        vw.hidden = true;
+        vw.textContent = '';
+        document.documentElement.style.overflow = '';
+        if (V.opener && V.opener.focus) V.opener.focus();
+    }
+    /**
+     * Steps within the current list.
+     * @param {number} d +1 / -1
+     */
+    function step(d) {
+        const L = vList();
+        const k = L.indexOf(V.i);
+        V.i = L[(k + d + L.length) % L.length];
+        V.zoom = false;
+        renderViewer();
+    }
+    /** Renders the whole viewer for the current state. */
+    function renderViewer() {
+        const L = vList();
+        const im = R.images[V.i];
+        vw.textContent = '';
+        const bar = el('div', { class: 'vw-bar' },
+            el('span', { class: 't' }, `${R.title} · ${R.artist}`),
+            el('span', { class: 'pos' }, V.grid ? `${L.length} images` : `${L.indexOf(V.i) + 1} / ${L.length}`),
+            V.only ? el('span', { class: 'pos' }, `only ${V.only}`) : null,
+            el('button', { class: 'vw-btn', type: 'button', 'data-vw': 'grid', 'aria-pressed': String(V.grid) }, 'Grid (G)'),
+            el('button', { class: 'vw-btn', type: 'button', 'data-vw': 'info', 'aria-pressed': String(V.info) }, 'Info (I)'),
+            el('a', { class: 'vw-btn', href: sizeUrl(im, ''), target: '_blank', rel: 'noopener', 'data-vw': 'orig' }, 'Original (O)'),
+            el('button', { class: 'vw-btn', type: 'button', 'data-vw': 'close', 'aria-label': 'Close' }, 'Close (Esc)'));
+        vw.append(bar);
+
+        if (V.grid) {
+            const g = el('div', { class: 'vw-grid' });
+            TYPE_ORDER.forEach(t => {
+                const idx = L.filter(i => R.images[i].types[0] === t);
+                if (!idx.length) return;
+                const row = el('div', { class: 'row' });
+                idx.forEach(i => {
+                    const th = img(i);
+                    th.removeAttribute('data-tt');
+                    th.dataset.vwGo = i;
+                    th.removeAttribute('data-open');
+                    row.append(el('figure', {}, th, el('figcaption', {}, R.images[i].front ? '★ main front' : (R.images[i].comment || R.images[i].types.join(' / ')))));
+                });
+                g.append(el('h5', {}, `${t} × ${idx.length}`), row);
+            });
+            vw.append(g);
+            vw.append(el('div', { class: 'vw-bar vw-keys' }, 'Click an image to view it · ', el('kbd', {}, 'G'), ' / ', el('kbd', {}, 'Esc'), ' back'));
+            bar.querySelector('[data-vw="close"]').focus();
+            return;
+        }
+
+        const mid = el('div', { class: 'vw-mid' + (V.info ? '' : ' noinfo') });
+        const st = el('div', { class: 'vw-stage' + (V.zoom ? ' zoomed' : ''), 'data-vw': 'stage' });
+        const shown = el('img', { src: thumbSrc(im), alt: label(im), draggable: 'false', 'data-i': V.i });
+        if (V.zoom) shown.style.transform = 'scale(2)';
+        st.append(shown);
+        const note = el('div', { class: 'vw-load' }, 'Showing the 250 px thumbnail; loading 1200 px…');
+        st.append(note);
+        st.append(el('button', { class: 'vw-nav prev', type: 'button', 'data-vw': 'prev', 'aria-label': 'Previous' }, '‹'));
+        st.append(el('button', { class: 'vw-nav next', type: 'button', 'data-vw': 'next', 'aria-label': 'Next' }, '›'));
+        /* Progressive load: the thumb is shown at once, the 1200 px copy replaces it on load. */
+        const big = new Image();
+        big.onload = () => { if (shown.isConnected) { shown.src = big.src; note.textContent = '1200 px'; } };
+        big.onerror = () => { if (shown.isConnected) note.textContent = 'The 1200 px image is blocked here, so this is the 250 px thumbnail scaled up.'; };
+        big.src = sizeUrl(im, '1200');
+        /* ±1 neighbour preload. */
+        const k = L.indexOf(V.i);
+        [L[(k + 1) % L.length], L[(k - 1 + L.length) % L.length]].forEach(j => { new Image().src = sizeUrl(R.images[j], '1200'); });
+
+        const c = counts[im.types[0]];
+        const info = el('div', { class: 'vw-info' },
+            el('div', { class: 'tt-title' }, im.front ? '★ Main front' : im.types.join(' / ')),
+            el('div', { class: 'tt-pills' }, ...im.types.map(t => el('span', { class: 'tt-pill' }, t))),
+            im.comment ? el('div', { class: 'tt-comment' }, `“${im.comment}”`) : el('div', { class: 'tt-dim' }, 'No comment'),
+            el('hr', { class: 'tt-rule' }),
+            el('dl', {},
+                el('dt', {}, 'Position'), el('dd', {}, `${V.i + 1} of ${N}` + (c > 1 ? ` · ${im.types[0]} ${posInType(V.i)} of ${c}` : '')),
+                el('dt', {}, 'Main front'), el('dd', {}, im.front ? 'yes' : 'no'),
+                el('dt', {}, 'Main back'), el('dd', {}, im.back ? 'yes' : 'no'),
+                el('dt', {}, 'Status'), el('dd', {}, 'approved'),
+                el('dt', {}, 'Added in'), el('dd', {}, el('a', { href: `https://musicbrainz.org/edit/${im.edit}`, target: '_blank', rel: 'noopener' }, `edit #${im.edit}`)),
+                el('dt', {}, 'Archive id'), el('dd', {}, el('span', { class: 'mono' }, im.id))),
+            el('hr', { class: 'tt-rule' }),
+            el('div', { class: 'vw-sizes' }, 'Sizes:', ...['250', '500', '1200', ''].map(s => el('a', { href: sizeUrl(im, s), target: '_blank', rel: 'noopener' }, s || 'original'))),
+            el('div', { class: 'tt-dim' }, 'Pixel size and file size are not in the archive JSON; they would show here once the image has loaded.'),
+            el('div', { class: 'vw-keys' }, el('kbd', {}, '←'), ' ', el('kbd', {}, '→'), ' step · ', el('kbd', {}, 'Z'), ' zoom · ', el('kbd', {}, 'G'), ' grid · ', el('kbd', {}, 'I'), ' info · ', el('kbd', {}, 'Esc'), ' close'));
+        mid.append(st, info);
+        vw.append(mid);
+
+        const film = el('div', { class: 'vw-film' });
+        L.forEach(i => {
+            const th = img(i, i === V.i ? 'cur' : '');
+            th.removeAttribute('data-tt');
+            th.removeAttribute('data-open');
+            th.dataset.vwGo = i;
+            film.append(th);
+        });
+        vw.append(film);
+        const cur = film.querySelector('.cur');
+        if (cur) cur.scrollIntoView({ block: 'nearest', inline: 'center' });
+        bar.querySelector('[data-vw="close"]').focus({ preventScroll: true });
+    }
+    vw.addEventListener('click', ev => {
+        if (V.swiped) { V.swiped = false; return; }
+        const go = ev.target.closest('[data-vw-go]');
+        if (go) { V.i = +go.dataset.vwGo; V.grid = false; V.zoom = false; renderViewer(); return; }
+        const b = ev.target.closest('[data-vw]');
+        if (!b) return;
+        const a = b.dataset.vw;
+        if (a === 'close') closeViewer();
+        else if (a === 'grid') { V.grid = !V.grid; renderViewer(); }
+        else if (a === 'info') { V.info = !V.info; renderViewer(); }
+        else if (a === 'prev') step(-1);
+        else if (a === 'next') step(1);
+        else if (a === 'stage') {
+            V.zoom = !V.zoom;
+            b.classList.toggle('zoomed', V.zoom);
+            const im = b.querySelector('img');
+            im.style.transform = V.zoom ? 'scale(2)' : '';
+            im.style.transformOrigin = 'center';
+        }
+    });
+    vw.addEventListener('mousemove', ev => {
+        if (!V.zoom) return;
+        const st = ev.target.closest('.vw-stage');
+        if (!st) return;
+        const r = st.getBoundingClientRect();
+        const im = st.querySelector('img');
+        im.style.transformOrigin = `${((ev.clientX - r.left) / r.width) * 100}% ${((ev.clientY - r.top) / r.height) * 100}%`;
+    });
+    let swipeX = null;
+    vw.addEventListener('pointerdown', ev => { if (ev.pointerType === 'touch') swipeX = ev.clientX; });
+    vw.addEventListener('pointerup', ev => {
+        if (swipeX === null) return;
+        const dx = ev.clientX - swipeX;
+        swipeX = null;
+        if (Math.abs(dx) > 50 && !V.grid) { V.swiped = true; step(dx < 0 ? 1 : -1); }
+    });
+    document.addEventListener('keydown', ev => {
+        if (vw.hidden) return;
+        const k = ev.key;
+        if (k === 'Escape') { ev.preventDefault(); if (V.grid && !V.gridStart) { V.grid = false; renderViewer(); } else closeViewer(); }
+        else if (V.grid) { if (k === 'g' || k === 'G') { V.grid = false; renderViewer(); } }
+        else if (k === 'ArrowRight') { ev.preventDefault(); step(1); }
+        else if (k === 'ArrowLeft') { ev.preventDefault(); step(-1); }
+        else if (k === 'Home') { V.i = vList()[0]; renderViewer(); }
+        else if (k === 'End') { const L = vList(); V.i = L[L.length - 1]; renderViewer(); }
+        else if (k === 'g' || k === 'G') { V.grid = true; renderViewer(); }
+        else if (k === 'i' || k === 'I') { V.info = !V.info; renderViewer(); }
+        else if (k === 'z' || k === 'Z') vw.querySelector('.vw-stage')?.click();
+        else if (k === 'o' || k === 'O') window.open(sizeUrl(R.images[V.i], ''), '_blank', 'noopener');
+    });
+
+    /* ── One delegated click listener for the whole page ──────────────────── */
+    document.addEventListener('click', ev => {
+        if (ev.target.closest('#vw')) return;
+        const tab = ev.target.closest('[data-tab-viewer]');
+        if (tab) {
+            if (ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.button !== 0) return;  // keep the link a link
+            ev.preventDefault();
+            openViewer(0, { grid: true, from: tab });
+            return;
+        }
+        const ot = ev.target.closest('[data-open-type]');
+        if (ot) { const t = ot.dataset.openType; openViewer(R.images.findIndex(im => im.types.includes(t)), { only: t, from: ot }); return; }
+        const at = ev.target.closest('[data-open-at]');
+        if (at) { openViewer(+at.dataset.openAt, { from: at }); return; }
+        if (ev.target.closest('[data-open-grid]')) { openViewer(0, { grid: true, from: ev.target }); return; }
+        const op = ev.target.closest('[data-open]');
+        if (op) { openViewer(+op.dataset.i, { from: op }); return; }
+        if (ev.target.closest('[data-r1-collapse], [data-r1-h2]')) { r1.open = !r1.open; renderR1(); return; }
+        const f = ev.target.closest('[data-r1-filter]');
+        if (f) { r1.filter = f.dataset.r1Filter || null; renderR1(); return; }
+        const lay = ev.target.closest('[data-r1-layout]');
+        if (lay) { r1.layout = lay.dataset.r1Layout; renderR1(); return; }
+        const bk = ev.target.closest('[data-book]');
+        if (bk) { bookletState.page = Math.max(0, bookletState.page + +bk.dataset.book); renderSpreads(); return; }
+        const r7 = ev.target.closest('[data-r7]');
+        if (r7) {
+            document.querySelectorAll('[data-r7]').forEach(b => b.setAttribute('aria-pressed', String(b === r7)));
+            renderR7(r7.dataset.r7);
+        }
+    });
+    document.addEventListener('keydown', ev => {
+        if (!vw.hidden || (ev.key !== 'Enter' && ev.key !== ' ')) return;
+        const c = ev.target.closest('[data-r1-filter]');
+        if (c) { ev.preventDefault(); c.click(); }
+    });
+})();
+</script>
+</body>
+</html>

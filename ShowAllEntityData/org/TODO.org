@@ -1210,11 +1210,9 @@ I get
 * DONE integrate springsteenlyrics.com
 
 
-* TODO add cover art to the 'release-tracks' PT
-
 * TODO fix my release-tracks special script
 
-* TODO add more functionality to the SP parser
+* DONE add more functionality to the SP parser
 
 * DONE flaky under load: uvd-grouped-sections.spec.js:257 (UVD quick filter on a grouped topic)
 

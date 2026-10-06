@@ -1,0 +1,17 @@
+* TODO add cover art to the 'release-tracks' PT
+
+We already have a branch "design/caa-eaa-redesign" for the redesign of the CAA/EAA column on specific PTs.
+
+1.)
+
+Create another branch for the design how the CAA images under the "Cover art (n)" tab of the PT 'release-tracks'
+e.g. https://musicbrainz.org/release/d0adda7e-86de-4aef-af95-ee7da122d175/ can be displayed nicely without navigating to
+the direct URL https://musicbrainz.org/release/d0adda7e-86de-4aef-af95-ee7da122d175/cover-art
+
+2.)
+
+Show me some nice HTML based mockups before implementing something.
+
+3.)
+
+Add the plan to this file, so that I can actually do the real implementation in another Claude session on another host.
