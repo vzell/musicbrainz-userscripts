@@ -1,0 +1,292 @@
+* TODO redesign the CAA/EAA column and it's image display
+
+** Request (original)
+
+Redesign the CAA/EAA column and it's image display e.g. on
+
+#+begin_src bash
+@debug/CAA-redesign.html - raw final rendered HTML from https://musicbrainz.org/release-group/fa9c43a7-2592-3336-a09b-1414b4b6ee68
+#+end_src
+
+1.)
+
+show me different rela nice HTML based mockups based on the above URL
+
+2.)
+
+specifically when it comes to the display/count of the CAA/EAA images
+
+a.)
+
+maybe better/richer tooltip support
+
+b.)
+
+Currently when a CAA cell is uncollapsed, the images with their comments are shown below each other.
+Show me different mockups how the image display could be designed (maybe even with it's own rich popup window)
+
+Get ideas Art Station - https://github.com/majkinetor/musicbrainz-userscripts/blob/main/userscripts/art_station/README.md
+specifically - Full-screen viewer section
+
+3.)
+
+Only write the plan/followups in this file, do not implement yet. Implementation will be down on another machine, so the
+plan needs to survive
+
+** Status
+
+- 2026-10-04: design only. Nothing in =ShowAllEntityData.user.js= changed; no
+  version bump, no changelog or WIP entry. The WIP changelog starts with P0.
+- Branch: =design/caa-eaa-redesign= (this file plus the mockup page). Not merged.
+- Mockups: [[file:redesign-CAA-EAA-mockups.html]], a self-contained page. Open it
+  straight from disk in a browser. It hotlinks the 21 real thumbnails from
+  coverartarchive.org; every image falls back to a labelled tile when offline.
+- The same page is published as a private claude.ai artifact (thumbnails inlined,
+  since the artifact sandbox blocks outside images):
+  https://claude.ai/artifact/RhC3hfNtBczp3DJBqV2Cfc
+- Everything in the mockups is real data from the snapshot: the "Bootleg release"
+  sub-table of release-group =fa9c43a7-2592-3336-a09b-1414b4b6ee68=
+  ("1996‐04‐19: ICC Berlin, Saal 1, Berlin, Germany", Bruce Springsteen), with
+  5 releases and 21 images. Per-release counts are Born Again 2, Berlin Night 10,
+  Berlin ’96 1, Old Habits 4, I Am the Real Bob Dylan 4. Berlin Night has every
+  interesting case: two Front-typed images (only one is the archive's main
+  front), three Medium images with comments "disc 1/2/3", two Booklet and two
+  Tray images.
+
+** Current anatomy (grep anchors, no line numbers)
+
+- Cell builder: =function _artBuildMultiRowArtCell= wraps the original cell in
+  =ul.mb-caa-art-ul[data-mb-art-search]=:
+  - =li.mb-caa-art-li-summary=: ▶ =[data-caa-expand-btn]=, MusicBrainz's own
+    =span.caa-icon= (front at =sa_caa_small_img_size=), the 🟢/🗄️ cache hint,
+    =.mb-caa-count-badge= and the hidden =.mb-caa-sort-key=.
+  - one =li.mb-caa-art-li-image= per image (=function _artBuildImageLi=),
+    hidden until expanded. It holds the 250 px thumbnail *displayed at 18 × 18 px*
+    (CSS =li.mb-caa-art-li-image img=), grey pills inside =.mb-caa-type-badge=,
+    =.mb-caa-art-comment=, ⏳ =.mb-caa-art-pending= when =approved === false=,
+    and three data attributes =data-li-big-src=, =data-li-tooltip-types=,
+    =data-li-tooltip-comment=.
+- Image-row hover: =function _artWireImageLi= calls =_showArtHoverPreview()=
+  (singleton =#mb-art-hover-preview=) plus a small =.mb-tt-liner= card in
+  =#mb-art-bigbox-tooltip=, showing the types and the comment only. It re-wires
+  per clone; there is no delegation.
+- Strip tooltip: =_renderBigboxTooltipFromColumns= (tooltipColumns-driven) is
+  already rich, but only for the big-image strip.
+- Summary panel: =_artCollectSummary= / =_artRenderSummary=, ZERO requests,
+  reads =ctx.imagesCache=.
+- Archive JSON per image (in =ctx.imagesCache=, free to read): =id=, =types[]=,
+  =front=, =back=, =comment=, =approved=, =edit=, =image=,
+  =thumbnails{250,500,1200,small,large}=. *No pixel dimensions and no file
+  size.* Art Station's "3.2 MB PNG / 1400 × 1400" therefore needs the original
+  to be loaded (or a HEAD request), so it can only appear in the viewer, after
+  the load.
+- Settings in play: =sa_caa_hover_preview=, =sa_caa_big_img_size= (default 250),
+  =sa_caa_small_img_size=, =sa_caa_big_max_height=, =sa_caa_pics_*=.
+- Liner card look (=.mb-tt-liner=, Georgia, =#fbf8f1=) is the house style for
+  every floating card. The mockups reuse it verbatim.
+
+** Mockup catalogue
+
+| ID | Area                  | Mockup                                                                                | Extra requests                           | Verdict         |
+|----+-----------------------+---------------------------------------------------------------------------------------+------------------------------------------+-----------------|
+| A0 | Collapsed cell        | Current: ▶ icon, cache hint, count                                                    | -                                        | reference       |
+| A1 | Collapsed cell        | Stacked deck: first 3 images fanned, count pill                                       | +2 thumbs per row (≥3 images)            | optional        |
+| A2 | Collapsed cell        | Type-coverage chips F·B·Sp·M·Bk·T, filled/hollow, superscript repeat count, ⏳ pending | 0                                        | *recommended*   |
+| A3 | Collapsed cell        | Mini filmstrip, 22 px thumbs, "+6"                                                    | 1 per image per row, at render           | *not* recomm.   |
+| B1 | Tooltip, icon/count   | Contact sheet: title, metadata, all images as 56 px tiles, ★ main front, type tally   | 0 JSON; thumbs on first hover via queue  | *recommended*   |
+| B2 | Tooltip, image row    | 200 px preview + card: pills, comment, "6 of 10", main front/back, sizes, archive id  | 1 (same as today's preview)              | *recommended*   |
+| C0 | Expanded cell         | Current vertical list, 18 px thumbs                                                   | -                                        | reference       |
+| C1 | Expanded cell         | Contact-sheet grid, ~64 px tiles, type/comment on a scrim, ★ main front               | 0 (same thumbs as C0)                    | *recommended*   |
+| C2 | Expanded cell         | Grouped by first type ("Medium ×3"), other types named                                | 0                                        | as a toggle     |
+| C3 | Expanded cell         | Horizontal filmstrip with scroll-snap, caption below                                  | 0                                        | optional        |
+| D1 | Popup                 | Lightbox viewer (Art Station-like), info panel = liner card, filmstrip, keys           | 1 per image viewed (1200), ±1 preload    | *recommended*   |
+| D2 | Popup                 | Table-wide gallery grouped by release, type-filter chips, "Compare two" mode          | 1 thumb per image, on open, lazy         | later phase     |
+| D3 | Popup                 | Docked non-modal side panel following the hovered/selected row                        | as B1                                    | optional        |
+
+D1's key map, as built in the mockup:
+- ← → image (crosses into the neighbouring release at either end)
+- Shift+← → previous/next release
+- ↑ ↓ / wheel zoom toward the cursor, 0 fit, click toggles 2×
+- image follows the mouse when zoomed; zoom level remembered
+- P slideshow, G grid of the current release, I info panel, O open original,
+  Home/End, Esc close
+- touch: tap opens, horizontal swipe steps
+
+Two of these come straight from Art Station's full-screen viewer: the remembered
+zoom and mouse-follow pan. Its edit actions (Enter edits the comment, Delete marks
+for removal) are out of scope: this script reads, it does not edit art.
+
+Learned while building the mockup: *the viewer must be progressive.* A 1200 px
+image from coverartarchive.org (redirected to archive.org) can take seconds. Show
+the 250 px thumbnail, already cached, at once, and swap in the large image on
+=load=. Show a quiet "loading" note in the meantime, not an empty stage.
+
+** Recommendation
+
+Ship *A2 + B1/B2 + C1 (C2 as a layout toggle) + D1*. None adds a JSON request.
+C1 and D1 make art that is already downloaded actually visible: today the
+expanded cell fetches 250 px images and shows them at 18 px. D2 follows once D1
+has settled, and A3 stays out.
+
+*** DECIDE (open for the user)
+- [ ] Default expanded-cell layout: =list= (today) vs =grid= (C1) vs =grouped= (C2).
+- [ ] Does D1 replace the hover preview on image rows, or sit beside it (hover =
+      preview, click = viewer)? The mockup does the latter.
+- [ ] D2 in the first release, or later?
+- [ ] Viewer image size: 1200 (proposed default) or original. The original can
+      be many MB; 1200 is what the archive pre-renders.
+- [ ] A1 at all? Only worth it if cards 2–3 load on hover.
+- [ ] Should "no Front image" / "no Medium image" become findings (⚠️ menu)?
+
+** Invariants the implementation must keep
+
+From docs/claude/artwork-caa-eaa.md and docs/claude/filter-and-cache-invariants.md:
+
+- *Presence sort* goes through =_sortCellText()= and =.mb-caa-sort-key=. New chip
+  or tile markup must not leak into sort text.
+- *Types and comments* are resolved by =_artSearchTextFor()= /
+  =data-mb-art-search= / =_artSyncSearchTextToSourceRow()=, never by reading
+  =ul.mb-caa-art-ul=. A new layout changes the rendering only, not the search
+  text.
+- *Keep the classes =.mb-caa-type-badge > span= and =.mb-caa-art-comment= in
+  every layout.* The 📊 =arttype:=/=artcomment:= structure modes, the uniq-dropdown
+  counts and =_artHighlightImageLi()= all select on them (grep
+  =mb-caa-type-badge > span=). C1/C2/C3 tiles must carry them, visually
+  restyled, or the filter highlight and the 📊 counts silently break.
+- New visible text (A2 chips, tile captions) goes into =_CLEAN_STRIP_SEL=, or is
+  rendered from a data attribute via CSS =::before=, so a typed filter for "B" or
+  "M" does not match chip letters.
+- *Expanded state*: both the FIRST-BUILD and REBUILD branches of
+  =_artBuildMultiRowArtCell= restore expansion (=expandedCells=,
+  =wasExpanded=). A layout switch must go through the same path.
+- *Clone safety*: =renderFinalTable=/=renderGroupedTable= =cloneNode(true)=, which
+  drops listeners. The viewer and the new tooltips are opened by ONE delegated
+  listener, keyed on data attributes (release path + image index), never by
+  per-element =addEventListener=. The mockup does exactly this
+  (=document.addEventListener('click', … closest('[data-open]'))=).
+- *Master-row mirroring* on =tableMode: 'multi'=: anything appended to a live
+  row must reach the source row (=_findMasterRowByIdx()=,
+  =_buildMasterRowIndex()=). The viewer should read from =ctx.imagesCache= by
+  entity path, not from DOM, which side-steps this.
+- *Driven by =ctx=*, never the literal "CAA": the same viewer serves EAA
+  (=ctx.column=, =ctx.toggleLabel=, event-art types such as Poster).
+- *Touch*: =_isTouchCompatMouseEvent()= guards every hover handler. The viewer
+  opens on tap and steps on swipe; a mobile spec covers both.
+- Hover texts through =_setTip()=; cards use =.mb-tt-liner= rows
+  (=.mb-tt-title=, =-pill=, =-comment=, =-dim=, =-rule=, =-foot=); no inline
+  colours.
+- CSS: extend shared selector lists, never copy a block; *no backtick inside a
+  =GM_addStyle= comment*.
+- Summary-panel rule carries over: *do not add a request to enrich* tooltips or
+  the viewer's metadata. Everything comes from =ctx.imagesCache=.
+
+** Request and performance budget
+
+- B1, B2 metadata, C1, C2, C3 and D1 metadata: 0 JSON requests.
+- Thumbnails stay =loading="lazy"=, so hidden ones are not fetched; they load
+  only when shown (expand, B1 hover, viewer filmstrip).
+- Viewer images (1200/original) are user-initiated. They go through
+  =_artFetchCachedImage()= (session Map → IDB → GM_xhr) and the shared
+  =_caaQueue=, with at most ±1 neighbour preloaded.
+- A3 (and A1 without hover-loading) is a request regression: N thumbnails per
+  row at render. Flag it per CLAUDE.md "Performance is a priority" before any
+  implementation.
+- Measure: =run-perf-comparison= on a large =releasegroup-releases= page and
+  the =artist-releasegroups= baseline, main vs branch in one session, ratios
+  only. Watch render, filter-keystroke and sort time with the C1 layout
+  expanded on many rows.
+
+** Implementation phases
+
+Each phase is its own feature branch with =ShowAllEntityData_CHANGELOG.wip.json=
+entries, fixture specs that fail before the change and pass after it (verified
+with =scripts/mutation-check.py= and a =scripts/mutations/*.json= list), a HELP
+resync, and =python3 scripts/lint-summary.py --check=. New settings get a
+=configSchema= entry and a =scripts/dump-config-defaults.py= run.
+
+*** TODO P0 — explain the =data-li-big-src= size mismatch (F0)
+In the snapshot, =data-li-big-src= has the =-500.jpg= size and a =//= prefix for
+Born Again, Berlin ’96, Old Habits and I Am the Real Bob Dylan. For Berlin Night
+it has =-250.jpg= and =https:=. =sa_caa_big_img_size= defaults to 250, so one
+of the two is unexpected. =_artBuildImageLi= picks =thumbnails[bigSize]= → 1200 →
+large → 500; the protocol difference suggests two archive-JSON generations, or
+two cache tiers (IDB record vs fresh fetch), feeding it.
+- Probe (new, to write in P0): =scripts/probe-caa-thumbnail-keys.py= — fetch the five releases' JSON
+  and record which =thumbnails= keys and URL schemes each returns.
+- Check what =sa_caa_big_img_size= was on the machine that saved the snapshot,
+  and whether IDB records keep the URLs of an older setting.
+- Record the result in =DEBUG-NOTES.md= before building the viewer on that
+  attribute. The viewer itself should derive sizes from =imagesCache= rather
+  than trusting the stamped attribute.
+
+*** TODO P1 — B1/B2 rich tooltips
+- One liner-card renderer for "release art summary" (B1) and "one image" (B2);
+  P2 reuses it as the viewer's info panel.
+- B1 on hover of the icon and the count badge (the =span.caa-icon= anchor and
+  =.mb-caa-count-badge=), via delegation on the table.
+- B2 replaces the two floating boxes of =_artWireImageLi= with one card.
+- Show =img.front= ("★ main front") separately from =types.includes('Front')=.
+  The fixture already makes the two disagree (see the summary-panel section of
+  artwork-caa-eaa.md).
+- Specs: on single and multi tables, after a sort re-render, hover gives one tile
+  per image with the right types and comments. Mutation: drop delegation and
+  wire per element, which must fail after the re-render.
+
+*** TODO P2 — D1 viewer
+- New =_artViewer*= family: a singleton overlay, opened by delegation from the
+  icon, the cell thumbnails and the strip images, keyed by entity path + image
+  index. Navigation spans the VISIBLE rows of the current table, so filtered
+  rows are skipped.
+- Progressive load (thumb first, then 1200). =sa_caa_viewer_size= (1200|original),
+  remembered zoom in GM storage (=sa_caa_viewer_zoom=).
+- Specs:
+  - key order equals cell order
+  - Shift+→ lands on the next visible row with a filter active
+  - zero extra JSON requests (count =GM_xmlhttpRequest= to =/release/*= JSON)
+  - EAA variant on =tests/fixtures/artist-events-eaa.html=
+  - =*.mobile.spec.js= for tap and swipe
+  - focus returns to the opener on Esc
+
+*** TODO P3 — C1/C2 expanded layouts
+- =sa_caa_cell_layout= (=list|grid|grouped=), default =list= until DECIDE
+  above is settled.
+- Rebuild branch and first-build branch both honour it.
+- Specs: per layout, a type filter highlights inside the tile; the 📊 artType /
+  artComment counts are unchanged versus =list=; expanded state survives a sort
+  on a multi table.
+
+*** TODO P4 — A2 type-coverage chips
+- Counts from =imagesCache=, rendered only after enrichment (deferred like the
+  count badge). Text kept out of filter/sort (see invariants).
+- Optional: "no Front image" as a =FINDINGS= entry via the =add-finding= skill.
+
+*** TODO P5 — D2 table gallery (optional)
+- Opened from the strip toggle or the 📊 summary panel; lazy thumbnails
+  (IntersectionObserver); type chips; "Compare two".
+
+** Follow-ups / open questions
+
+- Art Station interop: if a user runs Art Station too, does anything collide? It
+  works on the release cover-art page, not on listings, so probably not. Check
+  =tests/fixtures/live-userscripts/manifest.json= and register it with the
+  =register-live-userscript= skill if it is added there.
+- Downloads from the viewer (=GM_download=), named like Art Station's
+  =<NN> <types> <comment>.<ext>=. Later, if wanted.
+- Styling for =approved === false= in the new layouts (⏳ today). This data set
+  has no pending image, so a fixture is needed for it.
+- EAA type vocabulary (Poster, Banner, …): chips in A2 should derive the set
+  from =ctx=, not hard-code CAA's.
+- Specs likely to need updating when the markup changes:
+  - =tests/fixtures/bigbox-tooltip.spec.js=, =rich-tooltips.spec.js=,
+    =touch-tooltip.mobile.spec.js=, =strip-transient-cell-equivalence.spec.js=,
+    =caa-col-hdr-deferred-visibility.spec.js=, =filter-flag-scoping.spec.js=,
+    =user-ratings-multigroup.spec.js=
+  - live: =releasegroup-releases-caa-type-comment-filter.spec.js=,
+    =releasegroup-releases-caa-uniqdrop-filter.spec.js=,
+    =releasegroup-releases-filter-sort.spec.js=,
+    =artist-releases-filter-sort.spec.js=
+- HELP (=ShowAllEntityData_HELP.md=): the CAA/EAA section needs a rewrite per
+  phase as it ships, including the viewer's key map.
+- Snapshot for fixtures: =debug/CAA-redesign.html= is gitignored. Save a trimmed
+  copy under =tests/fixtures/= (e.g. =releasegroup-caa-redesign.html=) in P1, so
+  the specs have Berlin Night's ten-image cell.
