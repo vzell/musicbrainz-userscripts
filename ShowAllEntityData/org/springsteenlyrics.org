@@ -194,11 +194,10 @@ Decided (2026-10-05):
   list as it is visited (GM storage), never the landing page's drifting
   Statistics numbers.
 
-
 ** TODO add detail page support
-
 ** TODO add support for logged in case
-** DONE CLAUDE.md
+
+* DONE CLAUDE.md
 
 now that we support the following Bruce Springsteen related websites beside MusicBrainz (a general purpose music
 database)
@@ -287,7 +286,7 @@ based approach to get ALL the song pages with lyrics
 </div>
 #+end_example
 
-* add support for https://www.springsteenlyrics.com/brucelegs.php?cmd=list
+* DONE add support for https://www.springsteenlyrics.com/brucelegs.php?cmd=list
 
 add additionally support for the "CD and Vinyl Bootlegs" sub-webpage of springsteenlyrics.com
 https://www.springsteenlyrics.com/brucelegs.php?cmd=list - @debug/sl-brucelegs.html
@@ -299,3 +298,27 @@ parse the above URL for the structure and columns to extract
 2.)
 
 for date expression use our date part extractor to create synthetic columns
+
+
+* TODO analyze how linked detail pages in non MusicBrainz websites can be handled from their repsective PTs
+
+Analyze how linked detail pages in non MusicBrainz websites can be handled from their repsective PTs, e.g.
+
+https://www.springsteenlyrics.com/collection.php ==> https://www.springsteenlyrics.com/collection.php?item=7431&category=audioboot&f_country=Europe
+https://www.springsteenlyrics.com/bootlegs.php?cmd=list&category=aud_live2014 ===> https://www.springsteenlyrics.com/bootlegs.php?item=6739&category=aud_live2014
+https://www.jungleland.it/html/list.htm  ==> https://www.jungleland.it/html/19760930.htm
+https://www.brucespringsteen.it/DB/records.aspx?tipe=-1,0,1,2,3,4,5,6,7,8,9,10,11&sort=0&addon=0 ==> https://www.brucespringsteen.it/DB/detrec.aspx?code=CR1AD1
+https://www.brucespringsteen.it/DB/records.aspx?tipe=-2,0,1,2,3,4,5,6,7,8,9,10,11&sort=0&addon=0 ==> https://www.brucespringsteen.it/DB/detrec.aspx?code=COL4942001
+https://brucebase.wikidot.com/stats:songs ==> https://brucebase.wikidot.com/song:4th-of-july-asbury-park-sandy
+
+1.)
+
+Is it possible to popup a small mini webpage by hovering over the detail link (or something like that), pressing esc closed the popup
+
+2.)
+
+Or is it possible to include the detail inforamtion somehow in the same row as the detail link
+
+3.)
+
+Make some suggestions, and show me nice rich HTML mockup pages
