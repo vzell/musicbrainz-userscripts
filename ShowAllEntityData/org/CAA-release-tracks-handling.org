@@ -17,6 +17,63 @@ Show me some nice HTML based mockups before implementing something.
 
 Add the plan to this file, so that I can actually do the real implementation in another Claude session on another host.
 
+4.)
+
+a.)
+
+setlist entries could also have the following kind of entries which references artists which additionally performed with
+the main artist
+
+#+begin_example
+This Land Is Your Land (with Trombone Shorty & the New Breed Brass Band and all performers)
+#+end_example
+
+see raw HTML of https://musicbrainz.org/event/cd595883-d26a-4e76-a033-eb588e0f9c55 at @debug/event-setlist-with-artists.html
+
+b.)
+
+render these artist(s) as a multi-row cell named "Additional artists"
+
+5.)
+
+when a setlist "Song" has the following structure
+
+#+begin_example
+Land of Hope and Dreams / People Get Ready
+#+end_example
+
+render "Song" as a multi-row column
+
+6.)
+
+The "Disambiguation" column in sub-table "Artists" should not render the opening and closing braces
+
+so
+
+#+begin_example
+(Puerto Rican singer and percussionist)  ==>  Puerto Rican singer and percussionist
+#+end_example
+
+Actually never render the opening and closing braces in any "Disambiguation" column in any sub-table
+
+7.)
+
+When an artist entry having the following additional information
+
+#+begin_example
+Bruce Springsteen (time: 19:40 - 22-29, lead vocals, spoken vocals, harmonica, electric guitar)
+#+end_example
+
+split it into the following columns
+
+#+begin_example
+Credits: lead vocals, spoken vocals, harmonica, electric guitar <-- multi-row cell
+Time: 19:40 - 22-29
+#+end_example
+
+In this special case it should actually be "19:40 - 22:29", but leave it at is, I will correct it on Musicbrainz
+directly
+
 ** Status
 
 - [X] Request 1.) design branch — =design/caa-release-tracks=, merged into

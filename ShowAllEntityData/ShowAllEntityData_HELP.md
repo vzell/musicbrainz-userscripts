@@ -1269,10 +1269,12 @@ the columns that fit it:
   column that restores the original order;
 - **Relationship** — the phrase it was listed under ("main performers",
   "held at", "recording location for", …);
-- **Credits** for performers ("time: 19:40 - 22:29, lead vocals, harmonica"),
+- for performers, **Credits** — one row per credit ("lead vocals",
+  "harmonica", …, instrument links kept) — and **Time** ("19:40 - 22:29");
   **Artist** for recordings and releases, **Area** for a place, **Details**
   for anything else on the line ("order: 150" for a series), and
-  **Disambiguation** — each only when some row has one;
+  **Disambiguation** (without its parentheses) — each only when some row has
+  one;
 - for URLs, the **Site** and the link, with its **[info]** page.
 
 Under "Related series", MusicBrainz also lists the relationships of the
@@ -1285,10 +1287,14 @@ table.
 number that moves on at every joining word but "&" — and one table per part
 of the setlist (**Setlist: Soundcheck**, **Setlist: Concert**, …; **Setlist:
 Songs** when the setlist has no parts). A part's notes ("Scheduled: 19:30 |
-Local Start Time 19:40 / End Time 22:29") sit under its heading. A medley line
-stays one row listing every work; **Also in** names the other parts that play
-the same work; **Recording** links the recording made at this event whose
-title is the line. A song without a work link is kept as text.
+Local Start Time 19:40 / End Time 22:29") sit under its heading. **Song** is a
+multi-row column: a medley line ("Land of Hope and Dreams / People Get
+Ready") stays one row with one list row per work. The artists of a "(with …)"
+line ("This Land Is Your Land (with Trombone Shorty & the New Breed Brass Band
+and all performers)") go into **Additional artists**, one row each, linked to
+the artist. **Also in** names the other parts that play the same work;
+**Recording** links the recording made at this event whose title is the song.
+A song without a work link is kept as text.
 
 **Event art without leaving the page.** Above the tables, an **Event art (N)**
 section shows every Event Art Archive image of the event — posters, schedules,

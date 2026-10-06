@@ -1,5 +1,25 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-10-06",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Event page, performers: the relationship attributes are split — \"time: …\" into its own Time column, every other attribute into Credits, one row per credit (\"lead vocals\", \"spoken vocals\", \"harmonica\", \"electric guitar\"; instrument links kept).",
+          "Event page: every Disambiguation column shows the disambiguation without its parentheses.",
+          "Event page setlist: Song is a multi-row column — a medley line keeps one list row per work. The artists of a \"(with …)\" line (\"This Land Is Your Land (with Trombone Shorty & the New Breed Brass Band and all performers)\") go into a new multi-row Additional artists column, one row each, linked to the artist (MusicBrainz renders them as /work/ links, so they are never counted as the song's works or as a medley). A note right after a blank line (\"Scheduled: 19:00 Local Start Time ??:??\") sits above the songs that follow it instead of becoming a part of its own."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "New fixture tests/fixtures/event-overview-with-artists.html (a raw capture of event cd595883-…); event-overview.spec.js and event-overview-setlist.spec.js (11 tests) cover the split credits, the bare disambiguation, the Additional artists, the note and the multi-row Song. scripts/mutations/event-overview.json: 51 planted defects."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-10-06",
     "sections": [

@@ -86,7 +86,7 @@ test.describe('pageType event-overview: relationships as tables (WIP.1)', () => 
             ['Via 2023–25 International Tour', 5],
         ]);
         const heads = Object.fromEntries(g.map((x) => [x.name, x.heads]));
-        expect(heads.Artists.slice(0, 5)).toEqual(['#', 'Artist', 'Relationship', 'Credits', 'Disambiguation']);
+        expect(heads.Artists.slice(0, 6)).toEqual(['#', 'Artist', 'Relationship', 'Credits', 'Time', 'Disambiguation']);
         expect(heads.Places.slice(0, 4)).toEqual(['#', 'Place', 'Relationship', 'Area']);
         expect(heads.Recordings.slice(0, 5)).toEqual(['#', 'Recording', 'Relationship', 'Artist', 'Disambiguation']);
         expect(heads.URLs.slice(0, 4)).toEqual(['#', 'Site', 'URL', 'Relationship']);
@@ -103,10 +103,21 @@ test.describe('pageType event-overview: relationships as tables (WIP.1)', () => 
         const row = (name, header, text) => g[name].rows.find((r) => r[col(name, header)] === text);
 
         const bruce = row('Artists', 'Artist', 'Bruce Springsteen');
-        expect(bruce[col('Artists', 'Credits')]).toBe('time: 19:40 - 22-29, lead vocals, spoken vocals, harmonica, electric guitar');
+        // "time: …" has its own column; the other attributes are one credit per row.
+        expect(bruce[col('Artists', 'Time')]).toBe('19:40 - 22-29');
         expect(bruce[col('Artists', 'Disambiguation')]).toBe('');
+        expect(row('Artists', 'Artist', 'The E Street Band')[col('Artists', 'Time')]).toBe('19:40 - 22-29');
+        const credits = await page.evaluate((idx) => {
+            const t = document.querySelectorAll('table.tbl')[0];
+            const tr = Array.from(t.querySelectorAll('tbody tr')).find((r) => r.cells[1].textContent.includes('Bruce Springsteen'));
+            return Array.from(tr.cells[idx].querySelectorAll('li')).map((li) => li.textContent.trim());
+        }, col('Artists', 'Credits'));
+        expect(credits).toEqual(['lead vocals', 'spoken vocals', 'harmonica', 'electric guitar']);
+        // Disambiguation without its wrapping parentheses — in every table.
         expect(row('Artists', 'Artist', 'Jake Clemons')[col('Artists', 'Disambiguation')])
-            .toBe('(singer‐songwriter, saxophonist and nephew of Clarence Clemons)');
+            .toBe('singer‐songwriter, saxophonist and nephew of Clarence Clemons');
+        expect(row('Recordings', 'Recording', 'Badlands')[col('Recordings', 'Disambiguation')])
+            .toBe('live, 2025‐05‐20: Co‐op Live, Manchester, England, UK');
         expect(row('Places', 'Place', 'Co‐op Live')[col('Places', 'Area')]).toBe('Manchester, Greater Manchester, England, United Kingdom');
         const badlands = row('Recordings', 'Recording', 'Badlands');
         expect(badlands[col('Recordings', 'Artist')]).toBe('Bruce Springsteen & The E Street Band');

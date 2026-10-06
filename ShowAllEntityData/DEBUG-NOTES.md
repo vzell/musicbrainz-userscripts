@@ -19391,3 +19391,28 @@ passes-after half on clean code before trusting a mutation verdict.
 **FIXTURE_SETTINGS_OVERRIDE now forces four settings off** (the new
 `sa_event_overview_event_art` fetches from eventartarchive.org on every
 render); both settings-dialog specs' PRISTINE profiles restore it.
+
+## 2026-10-06 — event-overview: credits, bare disambiguation, "(with …)" artists, multi-row Song (branch feature/event-overview, WIP.4)
+
+**"(with …)" artists are /work/ links.** On event cd595883-… the line
+`This Land Is Your Land (with Trombone Shorty & the New Breed Brass Band and
+all performers)` renders every linked name as `<a href="/work/<mbid>">` —
+and each MBID is the same as that artist's `/artist/` link in the line-up
+(checked for all five). So the parser takes only the /work/ links BEFORE
+"(with" as the song's works (before this, such a song counted as a medley and
+its artists fed "Also in"), splits the parenthetical at ",", "&", "and", and
+re-points those links to /artist/.
+
+**A note can follow a blank line.** The same setlist has no part headers and
+"Scheduled: 19:00 Local Start Time ??:?? / End Time ??:??" right after a blank
+line, which the WIP.2 rule made a part named after it. A comment reads as a
+note when it has "label: value" or a clock time; notes before the first part
+go to the next part.
+
+**Multi-row columns are lists for EVERY row.** `collapsableColumns` treats a
+non-list cell as prose (clamp wrapper), so Song / Credits / Additional artists
+/ Recording are always a `<ul>`, one `<li>` for a single value (a one-item list
+is never prose).
+
+**Results:** `event-overview.spec.js` 7/7, `event-overview-setlist.spec.js`
+11/11; three WIP.2 mutation finds re-targeted, nine new entries.

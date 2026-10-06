@@ -238,7 +238,7 @@
     "why": "A comment after a blank line names the next part; without that every song lands in one part.",
     "edits": [
       {
-        "find": "                } else if (prevBlank) {",
+        "find": "                } else if (prevBlank && !_eventSetlistIsNote(k.text)) {",
         "replace": "                } else if (false) {"
       }
     ],
@@ -264,8 +264,8 @@
     "why": "A medley line is one row listing every work it names.",
     "edits": [
       {
-        "find": "            song: s.works.length ? asList(s.works.map(a => [a.cloneNode(true)])) : s.text,",
-        "replace": "            song: s.works.length ? [s.works[0].cloneNode(true)] : s.text,"
+        "find": "            song: _eventListCell(s.works.length ? s.works.map(a => [a.cloneNode(true)]) : [[doc.createTextNode(s.text)]]),",
+        "replace": "            song: _eventListCell(s.works.length ? [[s.works[0].cloneNode(true)]] : [[doc.createTextNode(s.text)]]),"
       }
     ],
     "spec": "tests/fixtures/event-overview-setlist.spec.js",
@@ -407,7 +407,7 @@
     "why": "A plain-text song line is a row, not a comment.",
     "edits": [
       {
-        "find": "            return commentOnly ? { kind: 'comment', text } : { kind: 'song', works: [], text };",
+        "find": "            return commentOnly ? { kind: 'comment', text } : _eventSetlistSong(nodes);",
         "replace": "            return { kind: 'comment', text };"
       }
     ],
@@ -547,6 +547,123 @@
     ],
     "spec": "tests/fixtures/event-overview-art.spec.js",
     "grep": "no \"Main back\" line",
+    "expect": "fail"
+  },
+  {
+    "name": "4: '(with …)' not recognised",
+    "why": "Its artists would be counted as the song's works (a false medley) and get no column.",
+    "edits": [
+      {
+        "find": "        const k = nodes.findIndex(n => n.nodeType === Node.TEXT_NODE && WITH.test(n.textContent));",
+        "replace": "        const k = -1;"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "Additional artists, one row each",
+    "expect": "fail"
+  },
+  {
+    "name": "4: '(with …)' links left as /work/",
+    "why": "Their MBIDs are artists' (the line-up links the same MBIDs as /artist/).",
+    "edits": [
+      {
+        "find": "                    if (/\\/work\\/[0-9a-f-]{36}/.test(href)) a.setAttribute('href', href.replace('/work/', '/artist/'));",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "Additional artists, one row each",
+    "expect": "fail"
+  },
+  {
+    "name": "4: '(with …)' artists not split",
+    "why": "One row per artist: split at ',', '&' and 'and'.",
+    "edits": [
+      {
+        "find": "            withItems = _eventSplitNodes(rest, /\\s*(?:,|&|\\band\\b)\\s*/);",
+        "replace": "            withItems = [rest];"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "Additional artists, one row each",
+    "expect": "fail"
+  },
+  {
+    "name": "setlist: a note after a blank line becomes a part",
+    "why": "\"Scheduled: 19:00 …\" is a note, not a part named after it.",
+    "edits": [
+      {
+        "find": "                } else if (prevBlank && !_eventSetlistIsNote(k.text)) {",
+        "replace": "                } else if (prevBlank) {"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "a note right after a blank line",
+    "expect": "fail"
+  },
+  {
+    "name": "setlist: a note before the first part is not carried to it",
+    "why": "It belongs above the songs that follow it.",
+    "edits": [
+      {
+        "find": "                    part = { name: 'Songs', notes: pendingNotes, songs: [] };",
+        "replace": "                    part = { name: 'Songs', notes: [], songs: [] };"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "a note right after a blank line",
+    "expect": "fail"
+  },
+  {
+    "name": "5: Song is not a multi-row column",
+    "why": "Without collapsableColumns the medley's list rows get no toggle.",
+    "edits": [
+      {
+        "find": "                collapsableColumns: [ 'Credits', 'Song', 'Additional artists', 'Recording' ]",
+        "replace": "                collapsableColumns: [ 'Credits', 'Additional artists', 'Recording' ]"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "Song is a multi-row cell",
+    "expect": "fail"
+  },
+  {
+    "name": "6: Disambiguation keeps its parentheses",
+    "why": "The span.comment's own content goes in, without '(' … ')'.",
+    "edits": [
+      {
+        "find": "                (n.nodeType === Node.ELEMENT_NODE && n.classList.contains('comment')) ? Array.from(n.childNodes) : [n]), true)",
+        "replace": "                [n]), true)"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "each part of a target line lands in its own column",
+    "expect": "fail"
+  },
+  {
+    "name": "7: credits not split",
+    "why": "One row per credit.",
+    "edits": [
+      {
+        "find": "        const items = _eventSplitNodes(extra.map(n => n.cloneNode(true)), /\\s*,\\s*/);",
+        "replace": "        const items = [extra.map(n => n.cloneNode(true))];"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "each part of a target line lands in its own column",
+    "expect": "fail"
+  },
+  {
+    "name": "7: no Time column",
+    "why": "\"time: …\" is its own column, not a credit.",
+    "edits": [
+      {
+        "find": "            if (m && !time) time = m[1];",
+        "replace": "            if (false) time = m[1];"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "each part of a target line lands in its own column",
     "expect": "fail"
   }
 ]

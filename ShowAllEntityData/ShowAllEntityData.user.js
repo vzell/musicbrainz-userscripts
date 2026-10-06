@@ -12347,7 +12347,10 @@
             artist: _eventTrimNodes(parts.artist),
             area: _eventTrimNodes(parts.area),
             extra: _eventTrimNodes(parts.extra, true),
-            comment: _eventTrimNodes(parts.comment)
+            // The span.comment's own content, without its "(" … ")" — the column
+            // header already says what it is.
+            comment: _eventTrimNodes(parts.comment.flatMap(n =>
+                (n.nodeType === Node.ELEMENT_NODE && n.classList.contains('comment')) ? Array.from(n.childNodes) : [n]), true)
         };
     }
 
@@ -12438,9 +12441,72 @@
     }
 
     /**
+     * Splits a run of nodes into items at a separator found in its TEXT nodes
+     * (never inside an element, so a linked name keeps its link whole).
+     * Each item is trimmed; empty items are dropped.
+     *
+     * @param   {Node[]} nodes Cloned nodes (consumed).
+     * @param   {RegExp} sep   Separator, matched in text nodes only.
+     * @returns {Node[][]}
+     */
+    function _eventSplitNodes(nodes, sep) {
+        const items = [[]];
+        nodes.forEach(n => {
+            if (n.nodeType !== Node.TEXT_NODE) { items[items.length - 1].push(n); return; }
+            const pieces = n.textContent.split(sep);
+            pieces.forEach((piece, k) => {
+                if (k > 0) items.push([]);
+                if (piece) items[items.length - 1].push(document.createTextNode(piece));
+            });
+        });
+        return items.map(it => _eventTrimNodes(it)).filter(it => it.some(n => n.textContent.trim()));
+    }
+
+    /**
+     * A performer's relationship attributes, split: the "time: …" item on its
+     * own, every other attribute ("lead vocals", "harmonica" — instrument
+     * links kept) as one credit each.
+     *
+     * @param   {Node[]} extra The row's `extra` nodes (parentheses already stripped).
+     * @returns {{time: string, credits: Node[][]}}
+     */
+    function _eventSplitCredits(extra) {
+        const items = _eventSplitNodes(extra.map(n => n.cloneNode(true)), /\s*,\s*/);
+        let time = '';
+        const credits = [];
+        items.forEach(it => {
+            const text = it.map(n => n.textContent).join('').trim();
+            const m = /^time:\s*(.*)$/i.exec(text);
+            if (m && !time) time = m[1];
+            else credits.push(it);
+        });
+        return { time, credits };
+    }
+
+    /**
+     * A multi-row cell: one `<li>` per item, in a `<ul>` (also for a single
+     * item, so a `collapsableColumns` column never treats it as prose).
+     *
+     * @param   {Node[][]} items
+     * @returns {Node[]}
+     */
+    function _eventListCell(items) {
+        if (!items.length) return [];
+        const ul = document.createElement('ul');
+        items.forEach(it => {
+            const li = document.createElement('li');
+            it.forEach(n => li.appendChild(n));
+            ul.appendChild(li);
+        });
+        return [ul];
+    }
+
+    /**
      * The tables for one group of relationship rows: '#', the target (and a
      * Site column for URLs), Relationship, then only those of Artist / Area /
-     * Credits or Details / Disambiguation that some row actually fills. With
+     * Credits or Details / Disambiguation that some row actually fills. A group
+     * of performers splits its attributes into Credits (one row per credit)
+     * and Time. With
      * `withType`, a Type column follows the target (one-table layout, and the
      * related series' groups, which mix kinds).
      *
@@ -12454,7 +12520,9 @@
         const has = key => rows.some(r => r[key].length);
         const allUrls = rows.every(r => r.type === 'url');
         const allArtists = rows.every(r => r.type === 'artist');
-        const extraCol = allArtists ? 'Credits' : 'Details';
+        const split = allArtists ? rows.map(r => _eventSplitCredits(r.extra)) : null;
+        const hasCredits = !!split && split.some(x => x.credits.length);
+        const hasTime = !!split && split.some(x => x.time);
         const cols = ['#'];
         if (allUrls) cols.push('Site');
         cols.push(targetCol);
@@ -12462,7 +12530,12 @@
         cols.push('Relationship');
         if (has('artist')) cols.push('Artist');
         if (has('area')) cols.push('Area');
-        if (has('extra')) cols.push(extraCol);
+        if (split) {
+            if (hasCredits) cols.push('Credits');
+            if (hasTime) cols.push('Time');
+        } else if (has('extra')) {
+            cols.push('Details');
+        }
         if (has('comment')) cols.push('Disambiguation');
         if (withFrom) cols.push('From');
         const host = (href) => {
@@ -12476,7 +12549,12 @@
             row.push(r.phrase);
             if (has('artist')) row.push(r.artist.map(n => n.cloneNode(true)));
             if (has('area')) row.push(r.area.map(n => n.cloneNode(true)));
-            if (has('extra')) row.push(r.extra.map(n => n.cloneNode(true)));
+            if (split) {
+                if (hasCredits) row.push(_eventListCell(split[k].credits));
+                if (hasTime) row.push(split[k].time);
+            } else if (has('extra')) {
+                row.push(r.extra.map(n => n.cloneNode(true)));
+            }
             if (has('comment')) row.push(r.comment.map(n => n.cloneNode(true)));
             if (withFrom) row.push(r.from ? r.from : 'Event');
             return row;
@@ -12488,6 +12566,70 @@
     const _EVENT_SETLIST_JOINS = new Set(['&', 'and', 'with', '+', 'feat.', 'featuring', 'vs.', 'x']);
 
     /**
+     * Whether a setlist comment reads as a note rather than a part header:
+     * "label: value" or a clock time ("Scheduled: 19:00 Local Start Time
+     * ??:?? / End Time ??:??"). A part header is a bare name ("Soundcheck",
+     * "Concert", "Encore"). Both can follow a blank line.
+     *
+     * @param   {string} text
+     * @returns {boolean}
+     */
+    function _eventSetlistIsNote(text) {
+        return /:\s|\b\d{1,2}:\d{2}\b|\?\?:\?\?/.test(text);
+    }
+
+    /**
+     * One song line of the setlist: the song's works, its text, and the
+     * artists of a trailing "(with …)" ("This Land Is Your Land (with
+     * Trombone Shorty & the New Breed Brass Band and all performers)").
+     *
+     * MusicBrainz renders every linked name on a song line as a /work/ link,
+     * also the artists inside "(with …)" — whose MBIDs are artists' (probed
+     * 2026-10-06 on event cd595883-…: each is the same MBID as that artist's
+     * /artist/ link in the line-up). So only the links BEFORE "(with" are the
+     * song's works, and the ones after it are re-pointed to /artist/. The
+     * artists are split at ",", "&" and "and" in the text between links;
+     * unlinked words stay with their item ("the New Breed Brass Band", "all
+     * performers").
+     *
+     * @param   {Node[]} nodes The line's nodes (comments removed).
+     * @returns {{kind: 'song', works: Element[], text: string, withItems: Node[][]}}
+     */
+    function _eventSetlistSong(nodes) {
+        const el = n => n.nodeType === Node.ELEMENT_NODE;
+        const WITH = /\(\s*with\s+/i;
+        const k = nodes.findIndex(n => n.nodeType === Node.TEXT_NODE && WITH.test(n.textContent));
+        let songNodes = nodes;
+        let withItems = [];
+        if (k !== -1) {
+            const at = nodes[k].textContent.search(WITH);
+            const before = nodes[k].textContent.slice(0, at);
+            const after = nodes[k].textContent.slice(at).replace(WITH, '');
+            songNodes = [...nodes.slice(0, k), document.createTextNode(before)];
+            const rest = [document.createTextNode(after), ...nodes.slice(k + 1).map(n => n.cloneNode(true))];
+            const last = rest[rest.length - 1];
+            if (last.nodeType === Node.TEXT_NODE) last.textContent = last.textContent.replace(/\)\s*$/, '');
+            rest.forEach(n => {
+                const anchors = el(n) ? (n.tagName === 'A' ? [n] : Array.from(n.querySelectorAll('a[href]'))) : [];
+                anchors.forEach(a => {
+                    const href = a.getAttribute('href') || '';
+                    if (/\/work\/[0-9a-f-]{36}/.test(href)) a.setAttribute('href', href.replace('/work/', '/artist/'));
+                });
+            });
+            withItems = _eventSplitNodes(rest, /\s*(?:,|&|\band\b)\s*/);
+        }
+        const works = [];
+        songNodes.forEach(n => {
+            if (!el(n)) return;
+            (n.tagName === 'A' ? [n] : Array.from(n.querySelectorAll('a[href]'))).forEach(a => {
+                if (/\/work\/[0-9a-f-]{36}/.test(a.getAttribute('href') || '')) works.push(a);
+            });
+        });
+        const text = songNodes.map(n => n.textContent).join('').replace(/\s+/g, ' ').trim();
+        return { kind: 'song', works, text, withItems };
+    }
+
+    /**
      * Parses the event page's `p.setlist` into a line-up and parts.
      *
      * MusicBrainz renders the setlist syntax (`@ artist`, `* work`, `# comment`)
@@ -12497,17 +12639,19 @@
      *     when the next line is an artist → how that artist is joined. The
      *     billing group (1, 2, …) moves on at every joining word but "&";
      *   - a `span.comment` right after a blank line (or at the very start) →
-     *     a part header ("Soundcheck", "Concert");
-     *   - any other `span.comment` → a note of the current part (of the
-     *     line-up, before the first part);
-     *   - a line with `/work/` links → a song (several links: a medley/segue);
-     *   - any other text line → a song without a work link, kept as text,
-     *     never dropped.
+     *     a part header ("Soundcheck", "Concert") — unless it reads as a note
+     *     (`_eventSetlistIsNote()`: "Scheduled: 19:00 …");
+     *   - any other `span.comment` → a note of the current part; before the
+     *     first part, of the NEXT part (the line-up's when none follows);
+     *   - any other line → a song (`_eventSetlistSong()`): its `/work/` links
+     *     before a "(with …)" are its works (several: a medley/segue), the
+     *     artists inside it are its additional artists, and a line without a
+     *     work link is kept as text, never dropped.
      * Songs before any header go to a part named "Songs".
      *
      * @param   {Element} p `p.setlist`.
      * @returns {{lineup: Array<{anchor: ?Element, text: string, join: string, group: number, part: string}>,
-     *            parts: Array<{name: string, notes: string[], songs: Array<{works: Element[], text: string}>}>,
+     *            parts: Array<{name: string, notes: string[], songs: Array<{works: Element[], text: string, withItems: Node[][]}>}>,
      *            lineupNotes: string[]}}
      */
     function _eventSetlistParse(p) {
@@ -12520,17 +12664,9 @@
             if (strong && /^Artist:/.test(strong.textContent.trim())) {
                 return { kind: 'artist', anchor: strong.querySelector('a[href]'), text: strong.textContent.trim().replace(/^Artist:\s*/, '') };
             }
-            const works = [];
-            nodes.forEach(n => {
-                if (!el(n)) return;
-                (n.tagName === 'A' ? [n] : Array.from(n.querySelectorAll('a[href]'))).forEach(a => {
-                    if (/\/work\/[0-9a-f-]{36}/.test(a.getAttribute('href') || '')) works.push(a);
-                });
-            });
-            if (works.length) return { kind: 'song', works, text };
             const commentOnly = nodes.every(n => (n.nodeType === Node.TEXT_NODE && !n.textContent.trim()) ||
                 (el(n) && n.tagName === 'SPAN' && n.classList.contains('comment')));
-            return commentOnly ? { kind: 'comment', text } : { kind: 'song', works: [], text };
+            return commentOnly ? { kind: 'comment', text } : _eventSetlistSong(nodes);
         });
         const lineup = [];
         const parts = [];
@@ -12539,6 +12675,7 @@
         let pendingJoin = '';
         let part = null;
         let prevBlank = true;
+        let pendingNotes = [];
         kinds.forEach((k, i) => {
             if (k.kind === 'blank') { prevBlank = true; return; }
             if (k.kind === 'comment') {
@@ -12546,26 +12683,29 @@
                 if (_EVENT_SETLIST_JOINS.has(k.text.toLowerCase()) && next && next.kind === 'artist') {
                     pendingJoin = k.text;
                     if (k.text !== '&') group += 1;
-                } else if (prevBlank) {
-                    part = { name: k.text, notes: [], songs: [] };
+                } else if (prevBlank && !_eventSetlistIsNote(k.text)) {
+                    part = { name: k.text, notes: pendingNotes, songs: [] };
+                    pendingNotes = [];
                     parts.push(part);
                 } else if (part) {
                     part.notes.push(k.text);
                 } else {
-                    lineupNotes.push(k.text);
+                    pendingNotes.push(k.text);
                 }
             } else if (k.kind === 'artist') {
                 lineup.push({ anchor: k.anchor, text: k.text, join: pendingJoin, group, part: part ? part.name : '' });
                 pendingJoin = '';
             } else {
                 if (!part) {
-                    part = { name: 'Songs', notes: [], songs: [] };
+                    part = { name: 'Songs', notes: pendingNotes, songs: [] };
+                    pendingNotes = [];
                     parts.push(part);
                 }
                 part.songs.push(k);
             }
             prevBlank = false;
         });
+        lineupNotes.push(...pendingNotes);
         return { lineup, parts, lineupNotes };
     }
 
@@ -12574,7 +12714,8 @@
      * part ("Setlist: Concert", …) — or, with `oneTable`, every song in
      * "Setlist: All songs" with a Part column. A part's notes go above its table
      * (`data-mb-intro-html`). Song columns, each only when some row fills it:
-     * Medley (a line with several works), Also in (the other parts that play
+     * Additional artists (a "(with …)" line's artists, one row each), Medley
+     * (a line with several works), Also in (the other parts that play
      * one of its works, by work MBID) and Recording (the event's "recording
      * location for" recordings whose title is the line's text).
      *
@@ -12614,18 +12755,11 @@
         })));
         const norm = t => t.replace(/\s+/g, ' ').trim();
         const recTitle = r => norm(r.main.map(n => n.textContent).join(''));
-        const asList = nodeLists => {
-            if (nodeLists.length === 1) return nodeLists[0];
-            const ul = doc.createElement('ul');
-            nodeLists.forEach(nodes => {
-                const li = doc.createElement('li');
-                nodes.forEach(n => li.appendChild(n));
-                ul.appendChild(li);
-            });
-            return [ul];
-        };
+        // Song, Additional artists and Recording are multi-row cells (a <ul>,
+        // also for one item) — collapsableColumns on the pageType.
         const songRow = (s, partName) => ({
-            song: s.works.length ? asList(s.works.map(a => [a.cloneNode(true)])) : s.text,
+            song: _eventListCell(s.works.length ? s.works.map(a => [a.cloneNode(true)]) : [[doc.createTextNode(s.text)]]),
+            withArtists: s.withItems.map(it => it.map(n => n.cloneNode(true))),
             medley: s.works.length > 1 ? 'medley' : '',
             also: Array.from(new Set(s.works.flatMap(a => Array.from(partsOfWork.get(workId(a)) || []))))
                 .filter(n => n !== partName).join(', '),
@@ -12634,14 +12768,16 @@
         const table = (name, rows, withPart, intro) => {
             const has = key => rows.some(r => r[key].length);
             const cols = withPart ? ['Part', '#', 'Song'] : ['#', 'Song'];
+            if (has('withArtists')) cols.push('Additional artists');
             if (has('medley')) cols.push('Medley');
             if (has('also')) cols.push('Also in');
             if (has('rec')) cols.push('Recording');
             const cells = rows.map(r => {
                 const row = withPart ? [r.part, String(r.n), r.song] : [String(r.n), r.song];
+                if (has('withArtists')) row.push(_eventListCell(r.withArtists));
                 if (has('medley')) row.push(r.medley);
                 if (has('also')) row.push(r.also);
-                if (has('rec')) row.push(r.rec.length ? asList(r.rec) : '');
+                if (has('rec')) row.push(_eventListCell(r.rec));
                 return row;
             });
             return _eventBuildTable(doc, name, cols, cells, intro);
@@ -22281,7 +22417,9 @@
             features: {
                 eventDetailsToTables: true,
                 groupByH3: true,
-                integerColumns: [ { sourceColumn: '#', align: 'R' }, { sourceColumn: 'Billing', align: 'R' } ]
+                integerColumns: [ { sourceColumn: '#', align: 'R' }, { sourceColumn: 'Billing', align: 'R' } ],
+                // Multi-row cells (a <ul> per cell, built by the converter).
+                collapsableColumns: [ 'Credits', 'Song', 'Additional artists', 'Recording' ]
             },
             tableMode: 'multi',
             non_paginated: true

@@ -179,6 +179,20 @@ pass after (mutation-checked), HELP resync, =lint-summary.py --check=,
 - Spec: 3 tables 21/3/26; the medley row has 2 works; "also" marks; 🎙 from
   the recording relationships; no setlist → no tables.
 
+*** TODO WIP.4 — follow-ups from the user's review (2026-10-06, items 4–7)
+- [X] 4. Setlist "(with …)" artists → multi-row "Additional artists" (raw
+      fixture =tests/fixtures/event-overview-with-artists.html=, event
+      cd595883-…). MusicBrainz renders them as /work/ links; their MBIDs are
+      the line-up's artists, so they are re-pointed to /artist/ and never
+      counted as works.
+- [X] 5. Song as a multi-row column (=collapsableColumns=; every row a =<ul>=).
+- [X] 6. No parentheses in any Disambiguation column.
+- [X] 7. Performer attributes split: Time ("19:40 - 22-29", left as
+      MusicBrainz has it) and Credits, one row per credit.
+- [X] Found in the same fixture: a note right after a blank line
+      ("Scheduled: 19:00 …") is a note, not a part (=_eventSetlistIsNote()=).
+- [X] Mutation list =event-overview.json=: 51/51 caught.
+
 *** TODO WIP.3 — Event art
 - 2026-10-06, implemented (WIP.3):
   - [X] =_artSectionDesc('caa'|'eaa')= — a function, not the planned

@@ -29,6 +29,14 @@
 //  7. NO HEADER, AND A SONG WITHOUT A WORK LINK: the songs go to "Songs" and
 //     the plain line is a row, not dropped.
 //  8. A SAVE/LOAD ROUND TRIP KEEPS THE NOTE (group.introHtml is stored).
+//  9. "(WITH …)" ARTISTS ARE ADDITIONAL ARTISTS, NOT WORKS (event cd595883-…,
+//     tests/fixtures/event-overview-with-artists.html): one row each, links
+//     re-pointed to /artist/, and the song is not mistaken for a medley.
+//     A parser that collects every /work/ link of a line passes 1–8.
+// 10. A NOTE AFTER A BLANK LINE IS NOT A PART ("Scheduled: 19:00 …" in the
+//     same fixture): its songs go to "Songs", the note above them.
+// 11. SONG IS A MULTI-ROW CELL: a medley's works are list rows with the
+//     collapse toggle the multi-row columns carry.
 
 const fs = require('fs');
 const os = require('os');
@@ -42,6 +50,10 @@ const URL = 'https://musicbrainz.org/event/3f2ca30a-7de4-4964-ad30-48376535fec8'
 const FIXTURE = path.join(__dirname, 'event-overview.html');
 const BUTTON = 'button[data-label="Show all Relationships for Event"]';
 const NOTE = 'Scheduled: 19:30 | Local Start Time 19:40 / End Time 22:29';
+const WITH = {
+    url: 'https://musicbrainz.org/event/cd595883-d26a-4e76-a033-eb588e0f9c55',
+    file: path.join(__dirname, 'event-overview-with-artists.html'),
+};
 
 /**
  * Loads the event fixture (optionally rewritten), presses the button and
@@ -50,16 +62,16 @@ const NOTE = 'Scheduled: 19:30 | Local Start Time 19:40 / End Time 22:29';
  * @param {import('@playwright/test').Page} page
  * @param {{settings?: Object, rewrite?: function(string): string, press?: boolean}} [opts]
  */
-async function openEvent(page, { settings = {}, rewrite = null, press = true } = {}) {
+async function openEvent(page, { settings = {}, rewrite = null, press = true, fixture = { url: URL, file: FIXTURE } } = {}) {
     await page.context().route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
-    let fixtureFile = FIXTURE;
+    let fixtureFile = fixture.file;
     if (rewrite) {
         fixtureFile = path.join(__dirname, '..', '..', 'test-results', `event-setlist-${Date.now()}-${Math.random().toString(36).slice(2)}.html`);
         fs.mkdirSync(path.dirname(fixtureFile), { recursive: true });
-        fs.writeFileSync(fixtureFile, rewrite(fs.readFileSync(FIXTURE, 'utf8')));
+        fs.writeFileSync(fixtureFile, rewrite(fs.readFileSync(fixture.file, 'utf8')));
     }
     await loadUserscriptPage(page, {
-        url: URL, fixtureFile, testMode: true,
+        url: fixture.url, fixtureFile, testMode: true,
         settingsOverride: { sa_enable_event_overview: true, sa_event_overview_setlist: true, ...settings },
     });
     await page.route('https://musicbrainz.org/event/**', (route) => route.fulfill({ path: fixtureFile, contentType: 'text/html' }));
@@ -205,6 +217,56 @@ test.describe('pageType event-overview: the setlist as tables (WIP.2)', () => {
         expect(plain, 'the plain-text line is a row').toBeTruthy();
         expect(plain[1].works).toBe(0);
         expect(plain[concert.heads.indexOf('Recording')].recs, 'matched by title all the same').toBe(1);
+    });
+
+    test('"(with …)" artists are Additional artists, one row each, linked to /artist/ — not works', async ({ page }) => {
+        await openEvent(page, { fixture: WITH });
+        const g = await byName(page);
+        const songs = g['Setlist: Songs'];
+        expect(songs, 'premise: no part headers, so one "Songs" table').toBeTruthy();
+        expect(songs.heads).toContain('Additional artists');
+        expect(songs.heads, 'no line here is a medley').not.toContain('Medley');
+        const col = songs.heads.indexOf('Additional artists');
+        const cells = await page.evaluate((idx) => {
+            const h3 = Array.from(document.querySelectorAll('h3.mb-toggle-h3')).find((h) => h.textContent.includes('Setlist: Songs'));
+            let t = h3.nextElementSibling;
+            while (t && t.tagName !== 'TABLE') t = t.nextElementSibling;
+            return Array.from(t.querySelectorAll('tbody tr')).map((tr) => ({
+                song: Array.from(tr.cells[1].querySelectorAll('li')).map((li) => li.textContent.trim()),
+                works: tr.cells[1].querySelectorAll('a[href^="/work/"]').length,
+                items: Array.from(tr.cells[idx].querySelectorAll('li')).map((li) => li.textContent.replace(/\s+/g, ' ').trim()),
+                hrefs: Array.from(tr.cells[idx].querySelectorAll('a')).map((a) => a.getAttribute('href')),
+            })).filter((r) => r.items.length);
+        }, col);
+        expect(cells.map((c) => c.song[0])).toEqual([
+            'Plane Wreck at Los Gatos (Deportee)', 'This Land Is Your Land', 'I’m Shipping Up to Boston',
+            'American Land', 'This Land Is Your Land',
+        ]);
+        expect(cells.every((c) => c.works === 1), 'only the song\'s own work, not the artists').toBe(true);
+        const last = cells[cells.length - 1];
+        expect(last.items).toEqual(['Trombone Shorty', 'the New Breed Brass Band', 'all performers']);
+        expect(last.hrefs).toEqual(['/artist/cae4fd51-4d58-4d48-92c1-6198cc2e45ed', '/artist/470ebb49-d510-4dae-95ee-c0a75c882dc7']);
+        expect(cells[0].items).toEqual(['Rosanne Cash']);
+    });
+
+    test('a note right after a blank line is a note, not a part', async ({ page }) => {
+        await openEvent(page, { fixture: WITH });
+        const names = (await groups(page)).map((x) => x.name).filter((n) => n.startsWith('Setlist: '));
+        expect(names).toEqual(['Setlist: Line-up', 'Setlist: Songs']);
+        expect((await byName(page))['Setlist: Songs'].intro).toBe('Scheduled: 19:00 Local Start Time ??:?? / End Time ??:??');
+    });
+
+    test('Song is a multi-row cell: a medley\'s works are list rows with a collapse toggle', async ({ page }) => {
+        await openEvent(page);
+        const medley = await page.evaluate(() => {
+            const h3 = Array.from(document.querySelectorAll('h3.mb-toggle-h3')).find((h) => h.textContent.includes('Setlist: Concert'));
+            let t = h3.nextElementSibling;
+            while (t && t.tagName !== 'TABLE') t = t.nextElementSibling;
+            const td = t.querySelectorAll('tbody tr')[1].cells[1];
+            return { items: Array.from(td.querySelectorAll('li')).map((li) => li.textContent.trim()), toggle: !!td.querySelector('.mb-cell-collapse-toggle') };
+        });
+        expect(medley.items).toEqual(['Land of Hope and Dreams', 'People Get Ready']);
+        expect(medley.toggle).toBe(true);
     });
 
     test('a Save to Disk → Load from Disk round trip keeps the note', async ({ page, context }) => {
