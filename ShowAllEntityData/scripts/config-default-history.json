@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "edeb6d918af429efef66f7cd7064be261c07430f",
-    "revisions_walked": 775
+    "head": "6f8730fbeef45482664cf10588c6d391fcbf0eae",
+    "revisions_walked": 776
   },
   "changes": [
     {
@@ -559,6 +559,10 @@
     "sa_ars_column_max_height_em": 5.6,
     "sa_ars_column_max_width": 480,
     "sa_credit_attr_color": "#2e7d32",
+    "sa_enable_event_overview": true,
+    "sa_event_overview_relationships": true,
+    "sa_event_overview_relationships_one_table": false,
+    "sa_event_overview_related_series": true,
     "sa_enable_expand_rgs": true,
     "sa_enable_barcode_highlight": true,
     "sa_enable_barcode_validation": true,
