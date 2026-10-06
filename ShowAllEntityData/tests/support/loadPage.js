@@ -39,10 +39,14 @@ const USERSCRIPT_PATH = path.join(PROJECT_ROOT, 'ShowAllEntityData.user.js');
 // release page's "Cover art (N)" section fetches the archive record with plain
 // fetch() on every release-tracks render. Specs of that section turn it back
 // on and route coverartarchive.org themselves.
+//
+// `sa_event_overview_event_art` (default true) is the fourth, for the same
+// reason on the event page (eventartarchive.org).
 const FIXTURE_SETTINGS_OVERRIDE = {
     sa_enable_caa_pics: false,
     sa_enable_relationships_column: false,
     sa_enable_release_tracks_cover_art: false,
+    sa_event_overview_event_art: false,
 };
 
 // `_migrateFrozenSettings()` repairs a GM profile that VZ_MBLibrary's old SAVE

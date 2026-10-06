@@ -1,5 +1,35 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-10-06",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Event page: an \"Event art (N)\" section above the tables with every Event Art Archive image of the event — the release page's Cover art section with the event's own type chips (Poster, Schedule, Banner, Ticket, Map, …), Grid / By type (remembered separately from the release page's), ★ on the archive's main image, the hover card and the full-screen viewer. A plain click on the native \"Event art (N)\" tab opens the viewer on a grid of every image; Ctrl-click still opens the archive page. One request per render (none when cached, none when the tab says 0). Two new settings: \"Show an 'Event art' section\" and \"The 'Event art' tab opens the viewer\", both on."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The artwork viewer's title is the release's (or event's) own name again, not the whole page heading — after a render that heading also holds the script's toolbar, which the title bar showed."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "The Cover art section, its viewer wiring and the tab click are driven by one descriptor per page (_artSectionDesc(): context, setting, anchor, labels, archive name, layouts, layout key), so the release and event pages share every handler. The viewer's info panel leaves out \"Main back\" when the record has no such flag (event art records never do). scripts/probe-caa-release-images.py gained --event."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "New specs event-overview-art.spec.js (7 tests) and event-overview-art.mobile.spec.js; fixture tests/fixtures/eaa-event-3f2ca30a.json (probed 2026-10-06: an \"event\" key, no \"back\" key, https URLs). The fixture harness now also forces sa_event_overview_event_art off (FIXTURE_SETTINGS_OVERRIDE), and the settings-dialog specs' PRISTINE profile restores it. Every release cover-art mutation list re-run against the refactor: all caught, 7 stale finds re-targeted (4 of them stale since P4, which had not re-run the P1–P3 lists). scripts/mutations/event-overview.json grows to 42 planted defects, all caught."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-10-06",
     "sections": [

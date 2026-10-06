@@ -19354,3 +19354,40 @@ table. With relationships off the setlist's own h2 is the anchor.
 7/7; `event-overview.json` 32/32 caught (two WIP.1 finds re-targeted after
 the restructure). Snapshot baseline `tests/snapshots/event-overview/`
 captured logged in, event art seeded off.
+
+## 2026-10-06 — event-overview: Event art, and the art section generalised (branch feature/event-overview, WIP.3)
+
+**One section, two pages.** `_artSectionDesc('caa'|'eaa')` holds everything
+that differs (context, settings, anchor, labels, archive name, title selector,
+layouts, layout key); the section is stamped `data-mb-art-ctx` and every handler
+resolves the descriptor from it. A function rather than a `const` table:
+`_releaseArtApplyMediumArt()` rides `updateFilterButtonsVisibility()`, and the
+descriptor names `CAA_CTX`/`EAA_CTX`, declared further down — a table would be
+one TDZ error away.
+
+**EAA record, probed** (`scripts/probe-caa-release-images.py --event`): the
+CAA shape plus an `event` key, NO `back` key on any image, `https:` URLs (CAA
+hands out `http:`). A 404 means no art (EVENT_SX). The viewer printed "Main
+back: no" for every event image — an invention; it now prints the line only
+when the flag exists.
+
+**The viewer's title was the whole h1.** The art spec's title assertion read
+"2025‐05‐20: … (2025-05-20)🧮¹ RelationshipsStop | 📦 Data▾…" — after a render
+the h1 also holds the script's toolbar. The release page had the same defect;
+no release spec looked at the title. `_releaseArtTitle()` now reads the h1's
+entity link.
+
+**A test I added was never green, and its mutation was caught vacuously.**
+WIP.2's "Billing is styled as a number" assertion was added after the spec's
+last green run and only exercised through mutation-check, where a failing test
+"catches" any defect. Running the spec for WIP.3 showed it failing on clean
+code: the groupByH3 fetch loop resolves `integerColumns` colIdx ONCE, from the
+first group's headers, unless the pageType is in its per-table re-resolution
+gate. "#" is column 0 in every group and hid that; "Billing" lives only in the
+line-up table. `event-overview` is now in the gate. Lesson recorded in the
+spirit of CLAUDE.md's "verify the fails-before half": also verify the
+passes-after half on clean code before trusting a mutation verdict.
+
+**FIXTURE_SETTINGS_OVERRIDE now forces four settings off** (the new
+`sa_event_overview_event_art` fetches from eventartarchive.org on every
+render); both settings-dialog specs' PRISTINE profiles restore it.

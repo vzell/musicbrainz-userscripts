@@ -377,7 +377,7 @@ Before proposing a fix for a rendering or 'element not appearing' bug, first con
 | `#mb-col-mode-pop` / `.mb-uniq-ex-banner`                  | The one shared pop-up behind every compact `.mb-col-mode-btn`; the 📊 panel's banner when its column is in Exclude mode                                                                                                                                                                                                    |
 | `.mb-col-uniq-item`                                        | Unique-values dropdown row item                                                                                                                                                                                                                                                                                            |
 | `[data-mb-tip]`                                            | Marks a hover text as the script's own, so the engine shows it as a "Liner notes" card; stamped ONLY by `_setTip()` (or `data-mb-tip title="…"` in markup), never a bare `el.title =` (see docs/claude/toolbar-and-header-ui.md)                                                                                           |
-| `.mb-release-art-h2` / `.mb-release-art-sec`               | release-tracks "Cover art (N)" section above `h2.tracklist` — not a table, never cloned; tiles are `figure.mb-release-art-tile[data-mb-art-i]` with their hover card in `data-mbtt` (see docs/claude/artwork-caa-eaa.md)                                                                                                                       |
+| `.mb-release-art-h2` / `.mb-release-art-sec`               | release-tracks "Cover art (N)" section above `h2.tracklist` (and event-overview's "Event art (N)" above the tables: `data-mb-art-ctx`, `_artSectionDesc()`) — not a table, never cloned; tiles are `figure.mb-release-art-tile[data-mb-art-i]` with their hover card in `data-mbtt` (see docs/claude/artwork-caa-eaa.md)                                                                                                                       |
 | `.mb-release-art-spread` / `.mb-medium-art`                | The section's Spreads layout blocks (pairs, the Liner pager, singles); the Medium-image thumbs (`button.mb-medium-art-btn`, image `pointer-events: none`) or "not assigned" note inside a medium's h3 (see docs/claude/artwork-caa-eaa.md)                                                                                    |
 | `#mb-art-viewer`                                           | The full-screen artwork viewer overlay (z-index 2147483400, under the tooltips); while open it owns every key through a window-capture listener (see docs/claude/artwork-caa-eaa.md)                                                                                                                                         |
 | `.mb-tt-liner`                                             | The one look of every floating tooltip (`#mb-stat-tooltip`, the cover-art card, the Relationships panels, the Ctrl+M overlay); rows use `.mb-tt-title`/`-body`/`-foot`/`-comment`/`-dim`/`-rule`/`-pill`/`-alert`, never inline colours                                                                                    |
@@ -415,7 +415,7 @@ userscript reads that file.
   IIFE (TDZ). The config export's `workspace` block is declared only by
   `_CFG_WORKSPACE_GROUPS` — verbatim values, allowlist not sweep.
 - Only `applyVisibility()` may assign `display` to a settings row or header.
-- A fixture profile is not pristine (`FIXTURE_SETTINGS_OVERRIDE` forces three
+- A fixture profile is not pristine (`FIXTURE_SETTINGS_OVERRIDE` forces four
   settings off).
 
 Full text: `docs/claude/settings-and-config.md`; design history:
@@ -484,9 +484,9 @@ The harness lives under `tests/`; how to run each suite and what it costs:
   `PAGETYPES-TESTING-REFERENCE.org` (coverage plan). Helpers:
   `tests/support/{customDialog,diskFixture,subtableTab,toolbarMenu,liveAssertions}.js`.
 - **`FIXTURE_SETTINGS_OVERRIDE`** (`tests/support/loadPage.js`) forces
-  `sa_enable_caa_pics`, `sa_enable_relationships_column` and
-  `sa_enable_release_tracks_cover_art` OFF — a "cannot reproduce" means
-  nothing until they are back on.
+  `sa_enable_caa_pics`, `sa_enable_relationships_column`,
+  `sa_enable_release_tracks_cover_art` and `sa_event_overview_event_art` OFF
+  — a "cannot reproduce" means nothing until they are back on.
 
 **Threshold dialogs will stall a test.** Four blocking plain-DOM overlays (not
 native `confirm()`, so `page.on('dialog')` never fires):

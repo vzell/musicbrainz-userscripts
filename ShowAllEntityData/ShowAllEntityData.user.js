@@ -2800,6 +2800,26 @@
                          'one table with a "Part" column (the line-up keeps its own table).'
         },
 
+        sa_event_overview_event_art: {
+            label: 'Show an "Event art" section',
+            type: 'checkbox',
+            default: true,
+            description: 'After "Show all Relationships for Event", adds an "Event art (N)" section ' +
+                         'above the tables with every Event Art Archive image of the event — type ' +
+                         'chips, Grid / By type, ★ on the main image, a hover card and the full-' +
+                         'screen viewer. Costs one request to eventartarchive.org per render (none ' +
+                         'when cached, none when the tab says 0), plus the 250 px thumbnails.'
+        },
+
+        sa_event_overview_art_tab: {
+            label: 'The "Event art" tab opens the viewer',
+            type: 'checkbox',
+            default: true,
+            description: 'With the Event art section loaded, a plain click on the native "Event art ' +
+                         '(N)" tab opens the images here, in the viewer\'s grid, instead of leaving ' +
+                         'the page. Ctrl-click (or middle-click) still opens the archive page.'
+        },
+
         // ============================================================
         // EXPAND RELEASE AND RELEASE GROUPS SECTION
         // Adapted from "MusicBrainz: Expand/collapse release groups"
@@ -56087,13 +56107,21 @@ a { color: #1565c0; }`;
 
     /**
      * GM storage key for the release page Cover art section's layout
-     * (`_releaseArtInsertSection()`): the string `'grid'` or `'grouped'`
-     * ("By type"). A missing or unknown value means `'grid'`. Runtime UI
-     * state, not an `sa_` setting, so it is written directly and carried by
-     * the config export through `_CFG_WORKSPACE_GROUPS`. Declared here, above
-     * that registry, because a `const` read before its line is a TDZ error.
+     * (`_releaseArtInsertSection()`): the string `'grid'`, `'grouped'`
+     * ("By type") or `'spreads'`. A missing or unknown value means `'grid'`.
+     * Runtime UI state, not an `sa_` setting, so it is written directly and
+     * carried by the config export through `_CFG_WORKSPACE_GROUPS`. Declared
+     * here, above that registry, because a `const` read before its line is a
+     * TDZ error.
      */
     const MB_RELEASE_ART_LAYOUT_KEY = 'mb_sa_release_art_layout';
+
+    /**
+     * GM storage key for the event page's Event art section layout (`'grid'`
+     * or `'grouped'`) — its own, because an event's image types have nothing
+     * in common with a release's. Same TDZ placement as the key above.
+     */
+    const MB_EVENT_ART_LAYOUT_KEY = 'mb_sa_event_art_layout';
 
     /**
      * Storage-shape version of `MB_UNIQ_SECTION_COLLAPSE_KEY`'s object, kept
@@ -64201,7 +64229,10 @@ a { color: #1565c0; }`;
                         // activeColumnExtractors must be re-resolved against the CURRENT
                         // table's headers — otherwise previous tables' resolved colIdx
                         // values linger and cause multiple extractors to fire on every row.
-                        if (pageType === 'tag-value' || pageType === 'user-tag-value' || pageType === 'user-ratings' || pageType === 'instrument-list' || pageType === 'artist-credit') {
+                        // 'event-overview': each group has its own columns, so an integer
+                        // column that is not in the FIRST table (the setlist's "Billing")
+                        // would otherwise never resolve, and never get its numeric styling.
+                        if (pageType === 'tag-value' || pageType === 'user-tag-value' || pageType === 'user-ratings' || pageType === 'instrument-list' || pageType === 'artist-credit' || pageType === 'event-overview') {
                             // Rebuild the active extractors/integer-columns/erasers from this
                             // group's own entity-specific features (entityFeatures map, if any),
                             // merged with the base features (listToTable, removeSelector, etc.) —
@@ -82898,6 +82929,11 @@ a { color: #1565c0; }`;
             keys: [MB_RELEASE_ART_LAYOUT_KEY],
         },
         {
+            group: 'eventart',
+            label: 'Event page Event art layout',
+            keys: [MB_EVENT_ART_LAYOUT_KEY],
+        },
+        {
             group: 'dialog',
             label: 'Settings dialog layout',
             // Written by VZ_MBLibrary, into THIS script's GM storage — a
@@ -95878,6 +95914,64 @@ a { color: #1565c0; }`;
     // so it exists only after "Show all Tracks for Release" and becomes an
     // ordinary page-level h2 through makeH2sCollapsible(). It is not a table:
     // never cloned, never filtered, never counted by the global filter.
+    //
+    // The same section serves the event page's "Event art (N)" (pageType
+    // 'event-overview', org/event-overview-pt.org): everything that differs
+    // lives in _artSectionDesc(), and each handler resolves the descriptor
+    // from the section's data-mb-art-ctx. The `.mb-release-art-*` class names
+    // stay as they are on both pages (the P1–P4 specs, mutation lists and
+    // docs key on them); read them as "the art section".
+
+    /**
+     * What differs between the two art sections. A function, not a `const`
+     * table: it is reached from code that may run before this line has been
+     * evaluated (`updateFilterButtonsVisibility()` → medium art), and the
+     * contexts it names are declared further down.
+     *
+     * @param   {'caa'|'eaa'} key
+     * @returns {?{key: string, ctx: Object, pageType: string, setting: string, tabSetting: ?string,
+     *            entityRe: RegExp, entityPrefix: string, anchor: function(): ?Element, label: string,
+     *            archiveName: string, what: string, titleSel: string, layouts: string[], layoutKey: string}}
+     */
+    function _artSectionDesc(key) {
+        if (key === 'caa') {
+            return {
+                key, ctx: CAA_CTX, pageType: 'release-tracks',
+                setting: 'sa_enable_release_tracks_cover_art', tabSetting: null,
+                entityRe: /^\/release\/([a-f0-9-]{36})/, entityPrefix: '/release/',
+                anchor: () => document.querySelector('h2.tracklist'),
+                label: 'Cover art', archiveName: 'Cover Art Archive', what: 'release',
+                titleSel: '.releaseheader h1, #content h1',
+                layouts: ['grid', 'grouped', 'spreads'], layoutKey: MB_RELEASE_ART_LAYOUT_KEY
+            };
+        }
+        if (key === 'eaa') {
+            return {
+                key, ctx: EAA_CTX, pageType: 'event-overview',
+                setting: 'sa_event_overview_event_art', tabSetting: 'sa_event_overview_art_tab',
+                entityRe: /^\/event\/([a-f0-9-]{36})/, entityPrefix: '/event/',
+                // Above the tables: the h2 they were rendered under
+                // (applyEventDetailsToTables()'s anchor).
+                anchor: () => document.querySelector('#content h2.relationships') ||
+                              document.querySelector('#content h2.setlist'),
+                label: 'Event art', archiveName: 'Event Art Archive', what: 'event',
+                titleSel: '.eventheader h1, #content h1',
+                layouts: ['grid', 'grouped'], layoutKey: MB_EVENT_ART_LAYOUT_KEY
+            };
+        }
+        return null;
+    }
+
+    /**
+     * The descriptor of a built section (its `data-mb-art-ctx`, `'caa'` when
+     * unmarked).
+     *
+     * @param   {?Element} sec `div.mb-release-art-sec`.
+     * @returns {Object} `_artSectionDesc()`'s result.
+     */
+    function _artSectionOf(sec) {
+        return _artSectionDesc((sec && sec.dataset.mbArtCtx) || 'caa');
+    }
 
     /**
      * Reads N from the native "Cover art (N)" tab, which costs no request.
@@ -96111,9 +96205,10 @@ a { color: #1565c0; }`;
      *
      * @param   {Object[]} images The release's archive images, in archive order.
      * @param   {number}   index  The tile's image, its position in archive order.
+     * @param   {string}   [archiveName='Cover Art Archive'] For the ⏳ tip.
      * @returns {HTMLElement}     `figure.mb-release-art-tile`.
      */
-    function _releaseArtBuildTile(images, index) {
+    function _releaseArtBuildTile(images, index, archiveName = 'Cover Art Archive') {
         const imgData = images[index];
         const thumbs = imgData.thumbnails || {};
         const thumb = (thumbs['250'] || thumbs.small || thumbs['500'] || thumbs.large || imgData.image || '')
@@ -96155,7 +96250,7 @@ a { color: #1565c0; }`;
             const pend = document.createElement('span');
             pend.className = 'mb-release-art-pending';
             pend.textContent = ' ⏳';
-            _setTip(pend, 'Pending approval in the Cover Art Archive');
+            _setTip(pend, `Pending approval in the ${archiveName}`);
             cap.appendChild(pend);
         }
         if (imgData.comment) {
@@ -96186,16 +96281,19 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * The remembered layout: `'grid'`, `'grouped'` or `'spreads'`
-     * (`MB_RELEASE_ART_LAYOUT_KEY`). Anything else, including nothing stored,
-     * is `'grid'`.
+     * The remembered layout of a section: one of its descriptor's `layouts`
+     * (`'grid'`, `'grouped'`, and `'spreads'` on the release page), stored
+     * under its own `layoutKey` (`MB_RELEASE_ART_LAYOUT_KEY` /
+     * `MB_EVENT_ART_LAYOUT_KEY`). Anything else, including nothing stored, is
+     * `'grid'`.
      *
+     * @param   {Object} [desc] `_artSectionDesc()`; the release page's by default.
      * @returns {'grid'|'grouped'|'spreads'}
      */
-    function _releaseArtLayout() {
+    function _releaseArtLayout(desc = _artSectionDesc('caa')) {
         let v;
-        try { v = GM_getValue(MB_RELEASE_ART_LAYOUT_KEY, null); } catch (_) { v = null; }
-        return v === 'grouped' || v === 'spreads' ? v : 'grid';
+        try { v = GM_getValue(desc.layoutKey, null); } catch (_) { v = null; }
+        return desc.layouts.includes(v) ? v : 'grid';
     }
 
     /**
@@ -96272,8 +96370,9 @@ a { color: #1565c0; }`;
      * @returns {number[]}
      */
     function _releaseArtViewerOrder(sec) {
-        if (_releaseArtLayout() === 'spreads') {
-            const images = CAA_CTX.imagesCache.get(sec.dataset.mbArtEntity) || [];
+        const desc = _artSectionOf(sec);
+        if (_releaseArtLayout(desc) === 'spreads') {
+            const images = desc.ctx.imagesCache.get(sec.dataset.mbArtEntity) || [];
             const { pairs, book, rest } = _releaseArtSpreadsPlan(images,
                 _releaseArtShownIndices(images, sec.dataset.mbArtActiveType || ''));
             return [...pairs.flatMap(p => [p.l, p.r]), ...book, ...rest];
@@ -96296,6 +96395,7 @@ a { color: #1565c0; }`;
      */
     function _releaseArtRenderSpreads(sec, images, shown) {
         const { pairs, book, rest } = _releaseArtSpreadsPlan(images, shown);
+        const archiveName = _artSectionOf(sec).archiveName;
         const block = (title, cls) => {
             const box = document.createElement('div');
             box.className = cls;
@@ -96309,7 +96409,7 @@ a { color: #1565c0; }`;
         const pages = (...idx) => {
             const p = document.createElement('div');
             p.className = 'mb-release-art-spread-pages';
-            idx.forEach(i => p.appendChild(_releaseArtBuildTile(images, i)));
+            idx.forEach(i => p.appendChild(_releaseArtBuildTile(images, i, archiveName)));
             return p;
         };
         const foot = () => {
@@ -96352,7 +96452,7 @@ a { color: #1565c0; }`;
             const box = block(`Single pages, ${rest.length}`, 'mb-release-art-spread');
             const g = document.createElement('div');
             g.className = 'mb-release-art-grid';
-            rest.forEach(i => g.appendChild(_releaseArtBuildTile(images, i)));
+            rest.forEach(i => g.appendChild(_releaseArtBuildTile(images, i, archiveName)));
             box.appendChild(g);
         }
     }
@@ -96373,9 +96473,10 @@ a { color: #1565c0; }`;
      * @returns {void}
      */
     function _releaseArtRenderSheet(sec) {
-        const images = CAA_CTX.imagesCache.get(sec.dataset.mbArtEntity) || [];
+        const desc = _artSectionOf(sec);
+        const images = desc.ctx.imagesCache.get(sec.dataset.mbArtEntity) || [];
         const filter = sec.dataset.mbArtActiveType || '';
-        const layout = _releaseArtLayout();
+        const layout = _releaseArtLayout(desc);
         sec.querySelectorAll('.mb-release-art-tools, .mb-release-art-grid, .mb-release-art-group, .mb-release-art-spread')
             .forEach(n => n.remove());
 
@@ -96401,7 +96502,8 @@ a { color: #1565c0; }`;
         seg.className = 'mb-release-art-seg';
         seg.setAttribute('role', 'group');
         seg.setAttribute('aria-label', 'Layout');
-        [['grid', 'Grid'], ['grouped', 'By type'], ['spreads', 'Spreads']].forEach(([key, label]) => {
+        [['grid', 'Grid'], ['grouped', 'By type'], ['spreads', 'Spreads']]
+            .filter(([key]) => desc.layouts.includes(key)).forEach(([key, label]) => {
             const b = document.createElement('button');
             b.type = 'button';
             b.dataset.mbArtLayout = key;
@@ -96424,7 +96526,7 @@ a { color: #1565c0; }`;
         };
         if (layout === 'grid') {
             const g = grid();
-            shown.forEach(i => g.appendChild(_releaseArtBuildTile(images, i)));
+            shown.forEach(i => g.appendChild(_releaseArtBuildTile(images, i, desc.archiveName)));
             sec.appendChild(g);
             return;
         }
@@ -96442,7 +96544,7 @@ a { color: #1565c0; }`;
             hdr.className = 'mb-release-art-group-hdr';
             hdr.textContent = `${type} × ${idx.length}`;
             const g = grid();
-            idx.forEach(i => g.appendChild(_releaseArtBuildTile(images, i)));
+            idx.forEach(i => g.appendChild(_releaseArtBuildTile(images, i, desc.archiveName)));
             box.append(hdr, g);
             sec.appendChild(box);
         });
@@ -96468,8 +96570,9 @@ a { color: #1565c0; }`;
         if (tileLink && sec.contains(tileLink)) {
             if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
             e.preventDefault();
-            _artViewerOpen(CAA_CTX, sec.dataset.mbArtEntity, _releaseArtViewerOrder(sec),
-                Number(tileLink.parentElement.dataset.mbArtI), { opener: tileLink, title: _releaseArtTitle() });
+            const desc = _artSectionOf(sec);
+            _artViewerOpen(desc.ctx, sec.dataset.mbArtEntity, _releaseArtViewerOrder(sec),
+                Number(tileLink.parentElement.dataset.mbArtI), { opener: tileLink, title: _releaseArtTitle(desc) });
             return;
         }
         const book = e.target.closest('[data-mb-art-book-step]');
@@ -96489,7 +96592,7 @@ a { color: #1565c0; }`;
         }
         const lay = e.target.closest('[data-mb-art-layout]');
         if (lay && sec.contains(lay)) {
-            try { GM_setValue(MB_RELEASE_ART_LAYOUT_KEY, lay.dataset.mbArtLayout); } catch (_) { /* storage blocked: still switch */ }
+            try { GM_setValue(_artSectionOf(sec).layoutKey, lay.dataset.mbArtLayout); } catch (_) { /* storage blocked: still switch */ }
             sec.dataset.mbArtBookPage = '0';
             _releaseArtRenderSheet(sec);
         }
@@ -96730,11 +96833,12 @@ a { color: #1565c0; }`;
      */
     async function _releaseArtLoad(ctx, h2, sec) {
         const entityPath = sec.dataset.mbArtEntity;
+        const desc = _artSectionOf(sec);
         sec.dataset.mbArtState = 'loading';
         sec.textContent = '';
         const status = document.createElement('div');
         status.className = 'mb-release-art-status';
-        status.textContent = 'Loading cover art…';
+        status.textContent = `Loading ${desc.label.toLowerCase()}…`;
         sec.appendChild(status);
 
         const { state, images } = await _artFetchEntityImages(ctx, entityPath);
@@ -96750,10 +96854,10 @@ a { color: #1565c0; }`;
         }
         if (state === 'none') {
             if (countEl) countEl.textContent = ' (0)';
-            status.textContent = 'The Cover Art Archive has no images for this release.';
+            status.textContent = `The ${desc.archiveName} has no images for this ${desc.what}.`;
             return;
         }
-        status.textContent = 'The Cover Art Archive could not be reached.';
+        status.textContent = `The ${desc.archiveName} could not be reached.`;
         const retry = document.createElement('button');
         retry.type = 'button';
         retry.className = 'mb-release-art-retry';
@@ -96771,33 +96875,36 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Inserts the Cover art section before `h2.tracklist` and starts loading
-     * it. Called from the release-tracks render tail BEFORE
-     * `makeH2sCollapsible()`, which then makes the new h2 collapsible like any
-     * other; the caller opens it afterwards (the section starts uncollapsed).
+     * Inserts the art section of the page's type — "Cover art (N)" before
+     * `h2.tracklist` on release-tracks, "Event art (N)" before the event
+     * page's tables on event-overview (`_artSectionDesc()`) — and starts
+     * loading it. Called from the render tail BEFORE `makeH2sCollapsible()`,
+     * which then makes the new h2 collapsible like any other; the caller
+     * opens it afterwards (the section starts uncollapsed).
      *
-     * Does nothing (and makes no request) when the setting is off, the page is
-     * not release-tracks, the tab says "Cover art (0)", or there is no
-     * `h2.tracklist` to anchor on. Idempotent: a previous section is replaced.
+     * Does nothing (and makes no request) when the page type has no art
+     * section, its setting is off, the tab says "(0)", or there is no anchor.
+     * Idempotent: a previous section is replaced.
      *
      * @returns {?HTMLElement} The new h2, or null when nothing was inserted.
      */
     function _releaseArtInsertSection() {
-        if (!Lib.settings.sa_enable_release_tracks_cover_art) return null;
-        if (activeDefinition?.type !== 'release-tracks') return null;
-        const m = /^\/release\/([a-f0-9-]{36})/.exec(location.pathname);
-        const anchorH2 = document.querySelector('h2.tracklist');
+        const desc = ['caa', 'eaa'].map(_artSectionDesc).find(d => d.pageType === activeDefinition?.type);
+        if (!desc) return null;
+        if (!Lib.settings[desc.setting]) return null;
+        const m = desc.entityRe.exec(location.pathname);
+        const anchorH2 = desc.anchor();
         if (!m || !anchorH2) return null;
 
         document.querySelectorAll('.mb-release-art-h2, .mb-release-art-sec').forEach(n => n.remove());
-        const ctx = CAA_CTX;
+        const ctx = desc.ctx;
         const tabCount = _releaseArtTabCount(ctx);
         if (tabCount === 0) return null;
         _ensureReleaseArtStyle();
 
         const h2 = document.createElement('h2');
         h2.className = 'mb-release-art-h2';
-        h2.append('Cover art');
+        h2.append(desc.label);
         const count = document.createElement('span');
         count.className = 'mb-release-art-count';
         count.textContent = tabCount === null ? '' : ` (${tabCount})`;
@@ -96805,23 +96912,29 @@ a { color: #1565c0; }`;
 
         const sec = document.createElement('div');
         sec.className = 'mb-release-art-sec';
-        sec.dataset.mbArtEntity = '/release/' + m[1];
+        sec.dataset.mbArtCtx = desc.key;
+        sec.dataset.mbArtEntity = desc.entityPrefix + m[1];
         sec.addEventListener('click', _releaseArtOnClick);
 
         anchorH2.before(h2, sec);
         _releaseArtLoad(ctx, h2, sec);
-        _releaseArtInstallTabIntercept();
+        if (!desc.tabSetting || Lib.settings[desc.tabSetting]) _releaseArtInstallTabIntercept();
         return h2;
     }
 
     /**
-     * The release's title for the viewer's bar.
+     * The page's title (the release's, the event's) for the viewer's bar: the
+     * text of the entity link inside the page's h1. Not the h1's whole text —
+     * after a render the h1 also holds this script's own toolbar (and, on an
+     * event page, the date in parentheses).
      *
+     * @param   {Object} [desc] `_artSectionDesc()`; the release page's by default.
      * @returns {string}
      */
-    function _releaseArtTitle() {
-        const h1 = document.querySelector('.releaseheader h1, #content h1');
-        return (h1 && h1.textContent.trim()) || 'Cover art';
+    function _releaseArtTitle(desc = _artSectionDesc('caa')) {
+        const h1 = document.querySelector(desc.titleSel);
+        const link = h1 && h1.querySelector('a[href]');
+        return ((link || h1) && (link || h1).textContent.trim()) || desc.label;
     }
 
     let _releaseArtTabInterceptInstalled = false;
@@ -96854,14 +96967,16 @@ a { color: #1565c0; }`;
      */
     function _releaseArtOnTabClick(e) {
         if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.defaultPrevented) return;
-        const a = e.target instanceof Element && e.target.closest(`ul.tabs a[href$="${CAA_CTX.artSuffix}"]`);
-        if (!a) return;
         const sec = document.querySelector('.mb-release-art-sec');
+        const desc = _artSectionOf(sec);
+        if (desc.tabSetting && !Lib.settings[desc.tabSetting]) return;
+        const a = e.target instanceof Element && e.target.closest(`ul.tabs a[href$="${desc.ctx.artSuffix}"]`);
+        if (!a) return;
         if (!sec || sec.dataset.mbArtState !== 'ok') return;
         e.preventDefault();
         e.stopImmediatePropagation();
-        _artViewerOpen(CAA_CTX, sec.dataset.mbArtEntity, null, null,
-            { grid: true, opener: a, title: _releaseArtTitle() });
+        _artViewerOpen(desc.ctx, sec.dataset.mbArtEntity, null, null,
+            { grid: true, opener: a, title: _releaseArtTitle(desc) });
     }
 
     // ── Artwork viewer (R5) ─────────────────────────────────────────────────
@@ -97240,7 +97355,8 @@ a { color: #1565c0; }`;
         row('Position', `${st.i + 1} of ${st.images.length}` +
             (sameType.length > 1 ? ` · ${types[0]} ${sameType.indexOf(im) + 1} of ${sameType.length}` : ''));
         row('Main front', im.front ? 'yes' : 'no');
-        row('Main back', im.back ? 'yes' : 'no');
+        // Event art records carry no "back" flag at all (probed 2026-10-06): no line rather than a false "no".
+        if (typeof im.back === 'boolean') row('Main back', im.back ? 'yes' : 'no');
         row('Status', im.approved === false ? 'pending approval' : 'approved');
         if (im.edit) {
             const a = _artvEl('a', null, `edit #${im.edit}`);

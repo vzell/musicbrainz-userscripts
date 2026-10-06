@@ -414,5 +414,139 @@
     "spec": "tests/fixtures/event-overview-setlist.spec.js",
     "grep": "a song without a work link",
     "expect": "fail"
+  },
+  {
+    "name": "WIP.3 the section is not stamped with its context",
+    "why": "Every handler resolves its descriptor from data-mb-art-ctx; unstamped, the event section is treated as the release's (CAA cache, release texts).",
+    "edits": [
+      {
+        "find": "        sec.dataset.mbArtCtx = desc.key;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-art.spec.js",
+    "grep": "only after the button, one request",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.3 the page's descriptor is always the release's",
+    "why": "The descriptor must follow the page type, or the event page gets no section at all.",
+    "edits": [
+      {
+        "find": "        const desc = ['caa', 'eaa'].map(_artSectionDesc).find(d => d.pageType === activeDefinition?.type);",
+        "replace": "        const desc = _artSectionDesc('caa');"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-art.spec.js",
+    "grep": "only after the button, one request",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.3 the event section anchors on the release's tracklist",
+    "why": "The event page has no h2.tracklist; the section must sit above the event's tables.",
+    "edits": [
+      {
+        "find": "                anchor: () => document.querySelector('#content h2.relationships') ||",
+        "replace": "                anchor: () => document.querySelector('h2.tracklist') ||"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-art.spec.js",
+    "grep": "only after the button, one request",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.3 the event setting is ignored",
+    "why": "Off, no section and no request.",
+    "edits": [
+      {
+        "find": "        if (!Lib.settings[desc.setting]) return null;",
+        "replace": "        if (false) return null;"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-art.spec.js",
+    "grep": "the setting off: no section, no request",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.3 Spreads offered on the event page",
+    "why": "Spreads is release packaging; the event layouts are Grid and By type.",
+    "edits": [
+      {
+        "find": "                layouts: ['grid', 'grouped'], layoutKey: MB_EVENT_ART_LAYOUT_KEY",
+        "replace": "                layouts: ['grid', 'grouped', 'spreads'], layoutKey: MB_EVENT_ART_LAYOUT_KEY"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-art.spec.js",
+    "grep": "Grid / By type only, remembered under the event key",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.3 the event layout shares the release key",
+    "why": "An event's types have nothing in common with a release's; its layout is remembered on its own.",
+    "edits": [
+      {
+        "find": "                layouts: ['grid', 'grouped'], layoutKey: MB_EVENT_ART_LAYOUT_KEY",
+        "replace": "                layouts: ['grid', 'grouped'], layoutKey: MB_RELEASE_ART_LAYOUT_KEY"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-art.spec.js",
+    "grep": "Grid / By type only, remembered under the event key",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.3 the status texts name the Cover Art Archive",
+    "why": "On the event page the archive is the Event Art Archive, and the thing is an event.",
+    "edits": [
+      {
+        "find": "            status.textContent = `The ${desc.archiveName} has no images for this ${desc.what}.`;",
+        "replace": "            status.textContent = 'The Cover Art Archive has no images for this release.';"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-art.spec.js",
+    "grep": "name the Event Art Archive",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.3 the tab setting is ignored (both gates)",
+    "why": "Off, a plain click on the tab must go its normal way. Enforced twice (installing the interceptor, and in the handler) — removing ONE gate cannot be seen, so this entry removes both.",
+    "edits": [
+      {
+        "find": "        if (!desc.tabSetting || Lib.settings[desc.tabSetting]) _releaseArtInstallTabIntercept();",
+        "replace": "        _releaseArtInstallTabIntercept();"
+      },
+      {
+        "find": "        if (desc.tabSetting && !Lib.settings[desc.tabSetting]) return;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-art.spec.js",
+    "grep": "a plain click with the tab setting off",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.3 'Main back' printed without the flag",
+    "why": "Event art records have no back flag; \"no\" would be an invention.",
+    "edits": [
+      {
+        "find": "        if (typeof im.back === 'boolean') row('Main back', im.back ? 'yes' : 'no');",
+        "replace": "        row('Main back', im.back ? 'yes' : 'no');"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-art.spec.js",
+    "grep": "no \"Main back\" line",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.3 the viewer's title is the whole h1",
+    "why": "After a render the h1 also holds the script's toolbar (and an event's date).",
+    "edits": [
+      {
+        "find": "        const link = h1 && h1.querySelector('a[href]');",
+        "replace": "        const link = null;"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-art.spec.js",
+    "grep": "no \"Main back\" line",
+    "expect": "fail"
   }
 ]

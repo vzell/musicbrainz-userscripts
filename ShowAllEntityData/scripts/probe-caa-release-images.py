@@ -21,9 +21,15 @@ Default releases: the design study's example (16 images), and the two
 release-tracks fixtures the specs use (`release-tracks-medley.html`, 13 per its
 tab; `release-tracks-eti-keywords.html`, 0 per its tab).
 
-One request per release to each host, one second apart.
+`--event` probes eventartarchive.org/event/<mbid> instead, for the event page's
+"Event art (N)" section (org/event-overview-pt.org, WIP.3). WS/2 carries no
+event-art count, so there is no tab-count stand-in to compare; the record's
+own key set (an `event` key, and whether `back` exists at all) is the point.
+Default events: the event-overview fixture's (15 images) and EVENT_SX.
 
-usage: python3 scripts/probe-caa-release-images.py [mbid ...]
+One request per entity to each host, one second apart.
+
+usage: python3 scripts/probe-caa-release-images.py [--event] [mbid ...]
 """
 import collections
 import json
@@ -36,6 +42,10 @@ DEFAULTS = [
     'd0adda7e-86de-4aef-af95-ee7da122d175',  # design study example, 16 images
     'a9a3b139-cf22-4d28-801e-3f3d49521d0e',  # release-tracks-medley.html, tab says 13
     '5cf63c93-e27e-4d98-81bc-9aba8b6861a7',  # release-tracks-eti-keywords.html, tab says 0
+]
+EVENT_DEFAULTS = [
+    '3f2ca30a-7de4-4964-ad30-48376535fec8',  # tests/fixtures/event-overview.html, tab says 15
+    'ad5aaaef-8dd5-4152-987c-f6eaad05c20e',  # EVENT_SX (PAGETYPES-TESTING-REFERENCE.org)
 ]
 UA = 'ShowAllEntityData-caa-release-images-probe/1.0 ( https://github.com/vzell/mb-userscripts )'
 
@@ -65,21 +75,29 @@ def scheme(url):
     return 'other'
 
 
-def probe(mbid):
-    """Print the facts for one release."""
-    print(f'== release {mbid}')
-    status, rec = get_json(f'https://coverartarchive.org/release/{mbid}')
+def probe(mbid, entity='release'):
+    """Print the facts for one release (or, entity='event', one event)."""
+    print(f'== {entity} {mbid}')
+    host = 'coverartarchive.org' if entity == 'release' else 'eventartarchive.org'
+    status, rec = get_json(f'https://{host}/{entity}/{mbid}')
     time.sleep(1)
-    ws_status, ws = get_json(f'https://musicbrainz.org/ws/2/release/{mbid}?fmt=json')
-    time.sleep(1)
-    ws_count = (ws or {}).get('cover-art-archive', {}).get('count')
-    print(f'   archive HTTP {status}; WS/2 HTTP {ws_status}, cover-art-archive.count = {ws_count}')
+    if entity == 'release':
+        ws_status, ws = get_json(f'https://musicbrainz.org/ws/2/release/{mbid}?fmt=json')
+        time.sleep(1)
+        ws_count = (ws or {}).get('cover-art-archive', {}).get('count')
+        print(f'   archive HTTP {status}; WS/2 HTTP {ws_status}, cover-art-archive.count = {ws_count}')
+    else:
+        ws_count = None
+        print(f'   archive HTTP {status} (WS/2 has no event-art count to compare)')
     if rec is None:
-        print('   no record (expected for a release without artwork)')
+        print(f'   no record (expected for a {entity} without artwork)')
         return
     images = rec.get('images', [])
     print(f'   record keys: {sorted(rec.keys())}')
-    print(f'   images: {len(images)} (WS/2 count agrees: {ws_count == len(images)})')
+    if entity == 'release':
+        print(f'   images: {len(images)} (WS/2 count agrees: {ws_count == len(images)})')
+    else:
+        print(f'   images: {len(images)}; "back" key present on {sum(1 for im in images if "back" in im)} of them')
     keys = collections.Counter()
     thumbs = collections.Counter()
     schemes = collections.Counter()
@@ -104,7 +122,12 @@ def probe(mbid):
 
 def main():
     """Probe every MBID given on the command line, or the defaults."""
-    for mbid in sys.argv[1:] or DEFAULTS:
+    args = sys.argv[1:]
+    if args and args[0] == '--event':
+        for mbid in args[1:] or EVENT_DEFAULTS:
+            probe(mbid, 'event')
+        return
+    for mbid in args or DEFAULTS:
         probe(mbid)
 
 

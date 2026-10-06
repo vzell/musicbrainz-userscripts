@@ -2,7 +2,12 @@
   {
     "name": "R6: pairing ignores the image type",
     "why": "The key is type + comment prefix; without the type, an Other 'left' and a Sticker 'right' of the same comment become one spread.",
-    "edits": [{ "find": "            const key = `${first}|${m[1].toLowerCase()}`;", "replace": "            const key = m[1].toLowerCase();" }],
+    "edits": [
+      {
+        "find": "            const key = `${first}|${m[1].toLowerCase()}`;",
+        "replace": "            const key = m[1].toLowerCase();"
+      }
+    ],
     "spec": "tests/fixtures/release-tracks-cover-art-spreads.spec.js",
     "grep": "a left and a right of different types stay apart",
     "expect": "fail"
@@ -10,7 +15,12 @@
   {
     "name": "R6: no duplicate guard",
     "why": "Two lefts for one key are ambiguous; pairing the first one guesses.",
-    "edits": [{ "find": "            if (v.left.length !== 1 || v.right.length !== 1) return;", "replace": "            if (!v.left.length || !v.right.length) return;" }],
+    "edits": [
+      {
+        "find": "            if (v.left.length !== 1 || v.right.length !== 1) return;",
+        "replace": "            if (!v.left.length || !v.right.length) return;"
+      }
+    ],
     "spec": "tests/fixtures/release-tracks-cover-art-spreads.spec.js",
     "grep": "two lefts for one key stay single pages",
     "expect": "fail"
@@ -18,7 +28,12 @@
   {
     "name": "R6: Liner pages are not paged",
     "why": "Only Booklet goes to the pager; the four Liner pages land among the singles.",
-    "edits": [{ "find": "(images[i].types || []).some(t => t === 'Liner' || t === 'Booklet')", "replace": "(images[i].types || []).some(t => t === 'Booklet')" }],
+    "edits": [
+      {
+        "find": "(images[i].types || []).some(t => t === 'Liner' || t === 'Booklet')",
+        "replace": "(images[i].types || []).some(t => t === 'Booklet')"
+      }
+    ],
     "spec": "tests/fixtures/release-tracks-cover-art-spreads.spec.js",
     "grep": "the pager and singles hold the rest",
     "expect": "fail"
@@ -26,7 +41,12 @@
   {
     "name": "R6: the pager page is not clamped",
     "why": "A page index past the end shows nothing (or throws) instead of the last page.",
-    "edits": [{ "find": "            const page = Math.min(Math.max(0, parseInt(sec.dataset.mbArtBookPage, 10) || 0), nPages - 1);", "replace": "            const page = Math.max(0, parseInt(sec.dataset.mbArtBookPage, 10) || 0);" }],
+    "edits": [
+      {
+        "find": "            const page = Math.min(Math.max(0, parseInt(sec.dataset.mbArtBookPage, 10) || 0), nPages - 1);",
+        "replace": "            const page = Math.max(0, parseInt(sec.dataset.mbArtBookPage, 10) || 0);"
+      }
+    ],
     "spec": "tests/fixtures/release-tracks-cover-art-spreads.spec.js",
     "grep": "stops at both ends",
     "expect": "fail"
@@ -34,7 +54,12 @@
   {
     "name": "R6: the clamped page is not stored back",
     "why": "The last page is shown, but the stored index stays past the end, so one back step does nothing visible.",
-    "edits": [{ "find": "            sec.dataset.mbArtBookPage = String(page);\n", "replace": "" }],
+    "edits": [
+      {
+        "find": "            sec.dataset.mbArtBookPage = String(page);\n",
+        "replace": ""
+      }
+    ],
     "spec": "tests/fixtures/release-tracks-cover-art-spreads.spec.js",
     "grep": "stops at both ends",
     "expect": "fail"
@@ -42,7 +67,12 @@
   {
     "name": "R6: a layout switch keeps the pager page",
     "why": "Coming back to Spreads should start on the first liner pages.",
-    "edits": [{ "find": "            sec.dataset.mbArtBookPage = '0';\n            _releaseArtRenderSheet(sec);\n        }\n    }", "replace": "            _releaseArtRenderSheet(sec);\n        }\n    }" }],
+    "edits": [
+      {
+        "find": "            sec.dataset.mbArtBookPage = '0';\n            _releaseArtRenderSheet(sec);\n        }\n    }",
+        "replace": "            _releaseArtRenderSheet(sec);\n        }\n    }"
+      }
+    ],
     "spec": "tests/fixtures/release-tracks-cover-art-spreads.spec.js",
     "grep": "stops at both ends",
     "expect": "fail"
@@ -50,7 +80,12 @@
   {
     "name": "R6: the viewer steps through the visible tiles only",
     "why": "Collecting the on-screen tiles (as Grid does) loses the liner pages the pager hides.",
-    "edits": [{ "find": "        if (_releaseArtLayout() === 'spreads') {", "replace": "        if (false) {" }],
+    "edits": [
+      {
+        "find": "        if (_releaseArtLayout(desc) === 'spreads') {",
+        "replace": "        if (false) {"
+      }
+    ],
     "spec": "tests/fixtures/release-tracks-cover-art-spreads.spec.js",
     "grep": "liner pages behind the pager included",
     "expect": "fail"
@@ -58,7 +93,12 @@
   {
     "name": "R6: a stored 'spreads' layout is not accepted",
     "why": "The choice is lost: the layout falls back to Grid after the click that stored it.",
-    "edits": [{ "find": "        return v === 'grouped' || v === 'spreads' ? v : 'grid';", "replace": "        return v === 'grouped' ? v : 'grid';" }],
+    "edits": [
+      {
+        "find": "        return desc.layouts.includes(v) ? v : 'grid';",
+        "replace": "        return desc.layouts.includes(v) && v !== 'spreads' ? v : 'grid';"
+      }
+    ],
     "spec": "tests/fixtures/release-tracks-cover-art-spreads.spec.js",
     "grep": "Spreads is offered and remembered",
     "expect": "fail"
@@ -66,7 +106,12 @@
   {
     "name": "R6: the spread's own width cap",
     "why": "Without its max-width the spread is still capped by the section (calc(100vw - 32px)), so the phone check is expected to stay green: recorded, not hidden.",
-    "edits": [{ "find": "                max-width: min(520px, calc(100vw - 32px));", "replace": "                max-width: none;" }],
+    "edits": [
+      {
+        "find": "                max-width: min(520px, calc(100vw - 32px));",
+        "replace": "                max-width: none;"
+      }
+    ],
     "spec": "tests/fixtures/release-tracks-cover-art.mobile.spec.js",
     "project": "chromium-mobile",
     "grep": "an opened spread fits the phone window",
@@ -75,7 +120,12 @@
   {
     "name": "R7: no one-medium rule",
     "why": "On a single medium every Medium image is certainly that medium's; without the rule five images on one medium are refused.",
-    "edits": [{ "find": "        if (media.length === 1) {", "replace": "        if (false) {" }],
+    "edits": [
+      {
+        "find": "        if (media.length === 1) {",
+        "replace": "        if (false) {"
+      }
+    ],
     "spec": "tests/fixtures/release-tracks-medium-art.spec.js",
     "grep": "one medium takes every Medium image",
     "expect": "fail"
@@ -83,7 +133,12 @@
   {
     "name": "R7: equal counts assign even with comments",
     "why": "Archive order is a guess once any comment exists: one 'CD 3' plus two uncommented images would be placed 1, 2, 3.",
-    "edits": [{ "find": "        if (!commented && medium.length === media.length) {", "replace": "        if (medium.length === media.length) {" }],
+    "edits": [
+      {
+        "find": "        if (!commented && medium.length === media.length) {",
+        "replace": "        if (medium.length === media.length) {"
+      }
+    ],
     "spec": "tests/fixtures/release-tracks-medium-art.spec.js",
     "grep": "one readable comment among uncommented images",
     "expect": "fail"
@@ -91,7 +146,12 @@
   {
     "name": "R7: equal counts never assign",
     "why": "The 'as many Medium images as media' rule the user chose: without it the uncommented 3-on-3 case is refused.",
-    "edits": [{ "find": "            medium.forEach((i, k) => put(media[k].pos, i));", "replace": "" }],
+    "edits": [
+      {
+        "find": "            medium.forEach((i, k) => put(media[k].pos, i));",
+        "replace": ""
+      }
+    ],
     "spec": "tests/fixtures/release-tracks-medium-art.spec.js",
     "grep": "as many uncommented Medium images as media",
     "expect": "fail"
@@ -99,7 +159,12 @@
   {
     "name": "R7: sides counted on CDs",
     "why": "A CD has no side C; treating every medium as two-sided assigns 'side C' to CD 2.",
-    "edits": [{ "find": "        const twoSided = media.every(m => /vinyl|\"|\\blp\\b|cassette/i.test(m.format));", "replace": "        const twoSided = true;" }],
+    "edits": [
+      {
+        "find": "        const twoSided = media.every(m => /vinyl|\"|\\blp\\b|cassette/i.test(m.format));",
+        "replace": "        const twoSided = true;"
+      }
+    ],
     "spec": "tests/fixtures/release-tracks-medium-art.spec.js",
     "grep": "is medium 2 on vinyl, and nothing on CDs",
     "expect": "fail"
@@ -107,7 +172,12 @@
   {
     "name": "R7: sides never counted",
     "why": "On vinyl, 'side C' names medium 2.",
-    "edits": [{ "find": "            if (twoSided) {", "replace": "            if (false) {" }],
+    "edits": [
+      {
+        "find": "            if (twoSided) {",
+        "replace": "            if (false) {"
+      }
+    ],
     "spec": "tests/fixtures/release-tracks-medium-art.spec.js",
     "grep": "is medium 2 on vinyl, and nothing on CDs",
     "expect": "fail"
@@ -115,7 +185,12 @@
   {
     "name": "R7: a medium that does not exist is accepted",
     "why": "'CD 7' on a 3-CD release names no medium; it must land in the note, not vanish into a missing h3.",
-    "edits": [{ "find": "            if (pos !== null && positions.has(pos)) put(pos, i);", "replace": "            if (pos !== null) put(pos, i);" }],
+    "edits": [
+      {
+        "find": "            if (pos !== null && positions.has(pos)) put(pos, i);",
+        "replace": "            if (pos !== null) put(pos, i);"
+      }
+    ],
     "spec": "tests/fixtures/release-tracks-medium-art.spec.js",
     "grep": "a comment naming a medium that does not exist",
     "expect": "fail"
@@ -123,7 +198,12 @@
   {
     "name": "R7: a comment naming two media takes the first",
     "why": "'CD 2 + CD 3' is ambiguous; the first number is a guess.",
-    "edits": [{ "find": "            const pos = found.size === 1 ? found.values().next().value : null;", "replace": "            const pos = found.size >= 1 ? found.values().next().value : null;" }],
+    "edits": [
+      {
+        "find": "            const pos = found.size === 1 ? found.values().next().value : null;",
+        "replace": "            const pos = found.size >= 1 ? found.values().next().value : null;"
+      }
+    ],
     "spec": "tests/fixtures/release-tracks-medium-art.spec.js",
     "grep": "a comment naming a medium that does not exist",
     "expect": "fail"
@@ -131,7 +211,12 @@
   {
     "name": "R7: the thumb image takes the click",
     "why": "Without pointer-events none the click target is the IMG, which the h3's collapse handler does not exempt: clicking a thumb collapses the medium.",
-    "edits": [{ "find": "                object-fit: cover;\n                pointer-events: none;\n", "replace": "                object-fit: cover;\n" }],
+    "edits": [
+      {
+        "find": "                object-fit: cover;\n                pointer-events: none;\n",
+        "replace": "                object-fit: cover;\n"
+      }
+    ],
     "spec": "tests/fixtures/release-tracks-medium-art.spec.js",
     "grep": "without collapsing the medium",
     "expect": "fail"
@@ -139,7 +224,12 @@
   {
     "name": "R7 mobile: the thumb image takes the tap",
     "why": "Same trap on touch: the tap's target becomes the IMG, the h3 collapse handler takes it and stops it, and the viewer never opens.",
-    "edits": [{ "find": "                object-fit: cover;\n                pointer-events: none;\n", "replace": "                object-fit: cover;\n" }],
+    "edits": [
+      {
+        "find": "                object-fit: cover;\n                pointer-events: none;\n",
+        "replace": "                object-fit: cover;\n"
+      }
+    ],
     "spec": "tests/fixtures/release-tracks-cover-art.mobile.spec.js",
     "project": "chromium-mobile",
     "grep": "tapping a Medium thumb in the medium heading",
@@ -148,7 +238,12 @@
   {
     "name": "R7: the note opens only the first Medium image",
     "why": "The note stands for every Medium image; the viewer must step through all of them.",
-    "edits": [{ "find": "            list = medium;\n", "replace": "            list = medium.slice(0, 1);\n" }],
+    "edits": [
+      {
+        "find": "            list = medium;\n",
+        "replace": "            list = medium.slice(0, 1);\n"
+      }
+    ],
     "spec": "tests/fixtures/release-tracks-medium-art.spec.js",
     "grep": "the note opens the viewer on the Medium images only",
     "expect": "fail"
@@ -156,7 +251,12 @@
   {
     "name": "R7: no repair from the filter pass",
     "why": "The thumbs ride updateFilterButtonsVisibility(); without that call an h3 rebuilt after the section loaded stays bare.",
-    "edits": [{ "find": "        _releaseArtApplyMediumArt();\n        _updateFindingMenus();", "replace": "        _updateFindingMenus();" }],
+    "edits": [
+      {
+        "find": "        _releaseArtApplyMediumArt();\n        _updateFindingMenus();",
+        "replace": "        _updateFindingMenus();"
+      }
+    ],
     "spec": "tests/fixtures/release-tracks-medium-art.spec.js",
     "grep": "the thumbs survive a filter re-render",
     "expect": "fail"
@@ -164,7 +264,12 @@
   {
     "name": "R7: not applied when the record arrives",
     "why": "The first application is when the section's record loads; something else may call the filter pass after that, so this records whether that call alone is load-bearing.",
-    "edits": [{ "find": "            _releaseArtRenderSheet(sec);\n            _releaseArtApplyMediumArt();\n", "replace": "            _releaseArtRenderSheet(sec);\n" }],
+    "edits": [
+      {
+        "find": "            _releaseArtRenderSheet(sec);\n            _releaseArtApplyMediumArt();\n",
+        "replace": "            _releaseArtRenderSheet(sec);\n"
+      }
+    ],
     "spec": "tests/fixtures/release-tracks-medium-art.spec.js",
     "grep": "a note, never a guess",
     "expect": "fail"
@@ -172,7 +277,12 @@
   {
     "name": "R7: the setting is ignored",
     "why": "Turning off 'Show Medium images in each medium heading' must leave the h3s alone.",
-    "edits": [{ "find": "                   Lib.settings.sa_enable_release_tracks_medium_art && Array.isArray(images);", "replace": "                   Array.isArray(images);" }],
+    "edits": [
+      {
+        "find": "                   Lib.settings.sa_enable_release_tracks_medium_art && Array.isArray(images);",
+        "replace": "                   Array.isArray(images);"
+      }
+    ],
     "spec": "tests/fixtures/release-tracks-medium-art.spec.js",
     "grep": "the setting turns them off",
     "expect": "fail"

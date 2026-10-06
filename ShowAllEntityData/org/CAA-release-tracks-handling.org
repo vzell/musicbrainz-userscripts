@@ -412,6 +412,9 @@ CLOSED: [2026-10-06 Tue]
   said must refuse.
 
 *** TODO P5 — EAA on the event page (decided: yes)
+- 2026-10-06: implemented on =feature/event-overview= (WIP.3 there) — the
+  section, viewer and tab click now run from =_artSectionDesc()=. Merge
+  pending the user's browser check.
 - 2026-10-06: decided — a new pageType =event-overview= whose button
   consolidates the relationships (and the setlist) into tables, with the
   Event art section above. Plan, data and mockups:

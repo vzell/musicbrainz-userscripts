@@ -180,6 +180,25 @@ pass after (mutation-checked), HELP resync, =lint-summary.py --check=,
   the recording relationships; no setlist → no tables.
 
 *** TODO WIP.3 — Event art
+- 2026-10-06, implemented (WIP.3):
+  - [X] =_artSectionDesc('caa'|'eaa')= — a function, not the planned
+        =_ART_SECTIONS= const (TDZ: it is reachable early and names the
+        contexts declared further down); =_artSectionOf(sec)= reads the
+        section's =data-mb-art-ctx=. Every handler (insert, load texts,
+        sheet, layouts, click, viewer order, title, tab click) resolves it.
+  - [X] Event layouts Grid / By type under their own GM key
+        (=MB_EVENT_ART_LAYOUT_KEY=, workspace group =eventart=); settings
+        =sa_event_overview_event_art= (forced off in
+        =FIXTURE_SETTINGS_OVERRIDE=) and =sa_event_overview_art_tab=.
+  - [X] Viewer: "Main back" only when the record has the flag; the title is
+        the h1's entity link (the whole h1 holds the toolbar after a render —
+        on the release page too).
+  - [X] Probe =--event= mode; fixture =tests/fixtures/eaa-event-3f2ca30a.json=;
+        =event-overview-art.spec.js= (7) + mobile (1).
+  - [X] Found while testing: =integerColumns= resolve once from the first
+        group's headers unless the pageType re-resolves per table; added
+        =event-overview= to that gate (the setlist's "Billing").
+- Plan as written:
 - Generalise the release section behind a descriptor table
   (=_ART_SECTIONS=: ctx, setting, entity regex, anchor, label, archive name,
   title selector, layouts); the section records its ctx; handlers resolve it

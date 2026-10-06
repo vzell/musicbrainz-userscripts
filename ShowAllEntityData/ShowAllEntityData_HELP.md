@@ -1079,7 +1079,7 @@ an import brings your deletions back.
 - **Release tracklists** (`/release/<mbid>`, and `/release/<mbid>/disc/<n>`) —
   the whole tracklist across every medium, consolidated
 - **Event pages** (`/event/<mbid>`) — the event's relationships and setlist as
-  tables
+  tables, and its Event Art Archive images
 - **Collections** — your own, subscribed ones, and their entity sub-tabs
 - **Tags** — entity tag pages, user tag pages, and the most-popular-tags page
 - **Search results** — every entity type
@@ -1290,13 +1290,25 @@ stays one row listing every work; **Also in** names the other parts that play
 the same work; **Recording** links the recording made at this event whose
 title is the line. A song without a work link is kept as text.
 
+**Event art without leaving the page.** Above the tables, an **Event art (N)**
+section shows every Event Art Archive image of the event — posters, schedules,
+banners, tickets, maps — with the same type chips, **Grid / By type** switch, ★
+on the archive's main image, hover card and full-screen viewer as a release
+page's Cover art section (see *Release tracklists*). Its layout is remembered
+separately from the release page's. A plain click on the native **Event art
+(N)** tab opens the viewer on a grid of every image instead of leaving the page;
+Ctrl-click still opens the archive page. It costs one request per render (none
+when cached, none when the tab says 0).
+
 Every part is a setting, in ⚙️ Settings → 🎫 EVENT PAGE: the page as a whole,
 *Relationships as tables*, *One table for all relationships* (off by default:
 one table with a **Type** and a **From** column instead of one per kind),
 *Include the related series' own relationships* (off: that section stays
-as MusicBrainz shows it), *Setlist as tables* and *One table for the whole
+as MusicBrainz shows it), *Setlist as tables*, *One table for the whole
 setlist* (off by default: every song in **Setlist: All songs** with a **Part**
-column). With both table parts off the button is not offered.
+column), *Show an "Event art" section* and *The "Event art" tab opens the
+viewer*. With both table parts off the button is not offered (the Event art
+section comes with the button).
 
 </details>
 
