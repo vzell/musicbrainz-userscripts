@@ -95247,7 +95247,40 @@ a { color: #1565c0; }`;
             .mb-release-art-chip b { font-variant-numeric: tabular-nums; }
             .mb-release-art-chip[aria-pressed="true"] { border-color: #555; background: #e8e8e8; font-weight: bold; }
             .mb-release-art-seg { display: inline-flex; border: 1px solid #ccc; border-radius: 4px; overflow: hidden; }
-            .mb-release-art-seg button {
+            .mb-release-art-seg button + button { border-left: 1px solid #ccc; }
+            .mb-release-art-seg button[aria-pressed="true"] { background: #e8e8e8; font-weight: bold; }
+            .mb-release-art-group + .mb-release-art-group,
+            .mb-release-art-spread + .mb-release-art-spread { margin-top: 14px; }
+            .mb-release-art-spread-pages {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                max-width: min(520px, calc(100vw - 32px));
+                position: relative;
+                box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+            }
+            .mb-release-art-spread-pages::after {
+                content: "";
+                position: absolute;
+                top: 0;
+                bottom: 0;
+                left: calc(50% - 10px);
+                width: 20px;
+                background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.22), transparent);
+                pointer-events: none;
+            }
+            .mb-release-art-spread-pages .mb-release-art-tile a { border: 0; }
+            .mb-release-art-spread-pages figcaption { display: none; }
+            .mb-release-art-spread-foot {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                align-items: center;
+                margin-top: 5px;
+                color: #666;
+                font-size: 11px;
+            }
+            .mb-release-art-seg button,
+            .mb-release-art-spread-foot button {
                 border: 0;
                 background: #fff;
                 color: #222;
@@ -95255,9 +95288,8 @@ a { color: #1565c0; }`;
                 padding: 2px 9px;
                 cursor: pointer;
             }
-            .mb-release-art-seg button + button { border-left: 1px solid #ccc; }
-            .mb-release-art-seg button[aria-pressed="true"] { background: #e8e8e8; font-weight: bold; }
-            .mb-release-art-group + .mb-release-art-group { margin-top: 10px; }
+            .mb-release-art-spread-foot button { border: 1px solid #ccc; border-radius: 4px; }
+            .mb-release-art-spread-foot button:disabled { color: #aaa; cursor: default; }
             .mb-release-art-group-hdr {
                 margin: 0 0 4px;
                 font-size: 11px;
@@ -95398,23 +95430,185 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * The remembered layout: `'grid'` or `'grouped'` (`MB_RELEASE_ART_LAYOUT_KEY`).
+     * The remembered layout: `'grid'`, `'grouped'` or `'spreads'`
+     * (`MB_RELEASE_ART_LAYOUT_KEY`). Anything else, including nothing stored,
+     * is `'grid'`.
      *
-     * @returns {'grid'|'grouped'}
+     * @returns {'grid'|'grouped'|'spreads'}
      */
     function _releaseArtLayout() {
         let v;
         try { v = GM_getValue(MB_RELEASE_ART_LAYOUT_KEY, null); } catch (_) { v = null; }
-        return v === 'grouped' ? 'grouped' : 'grid';
+        return v === 'grouped' || v === 'spreads' ? v : 'grid';
+    }
+
+    /**
+     * Pairs the "… left" / "… right" images of one opened spread (mockup R6):
+     * same FIRST type, same comment up to a final "left"/"right"
+     * (case-insensitive). The pairing is a heuristic on free text, so it only
+     * pairs when it is unambiguous: a key with two lefts or two rights pairs
+     * nothing, and every unpaired image stays a single page.
+     *
+     * @param   {Object[]} images The release's archive images, in archive order.
+     * @param   {number[]} shown  The indices the chip filter leaves, ascending.
+     * @returns {{pairs: Array<{l: number, r: number, prefix: string}>, used: Set<number>}}
+     *          Pairs ordered by the left image's index.
+     */
+    function _releaseArtFindSpreads(images, shown) {
+        const re = /^(.*?)\s*\b(left|right)$/i;
+        const byKey = new Map();
+        shown.forEach(i => {
+            const m = re.exec((images[i].comment || '').trim());
+            if (!m) return;
+            const first = (images[i].types && images[i].types[0]) || '(no type)';
+            const key = `${first}|${m[1].toLowerCase()}`;
+            if (!byKey.has(key)) byKey.set(key, { left: [], right: [], prefix: m[1] });
+            byKey.get(key)[m[2].toLowerCase()].push(i);
+        });
+        const pairs = [];
+        const used = new Set();
+        byKey.forEach(v => {
+            if (v.left.length !== 1 || v.right.length !== 1) return;
+            pairs.push({ l: v.left[0], r: v.right[0], prefix: v.prefix });
+            used.add(v.left[0]).add(v.right[0]);
+        });
+        pairs.sort((a, b) => a.l - b.l);
+        return { pairs, used };
+    }
+
+    /**
+     * What the Spreads layout shows, in its on-screen (and viewer) order: the
+     * paired spreads, then the unpaired Liner/Booklet pages (all of them, in
+     * archive order — the pager shows two at a time), then every other image.
+     * Each shown index appears in exactly one of the three.
+     *
+     * @param   {Object[]} images The release's archive images, in archive order.
+     * @param   {number[]} shown  The indices the chip filter leaves, ascending.
+     * @returns {{pairs: Array<{l: number, r: number, prefix: string}>, book: number[], rest: number[]}}
+     */
+    function _releaseArtSpreadsPlan(images, shown) {
+        const { pairs, used } = _releaseArtFindSpreads(images, shown);
+        const isBook = i => (images[i].types || []).some(t => t === 'Liner' || t === 'Booklet');
+        const book = shown.filter(i => !used.has(i) && isBook(i));
+        const rest = shown.filter(i => !used.has(i) && !isBook(i));
+        return { pairs, book, rest };
+    }
+
+    /**
+     * The indices the chip filter leaves, in archive order.
+     *
+     * @param   {Object[]} images The release's archive images.
+     * @param   {string}   filter The chosen type, "" for all.
+     * @returns {number[]}
+     */
+    function _releaseArtShownIndices(images, filter) {
+        return images.map((im, i) => i)
+            .filter(i => !filter || (images[i].types && images[i].types.length ? images[i].types : ['(no type)']).includes(filter));
+    }
+
+    /**
+     * The order the viewer steps through when a tile is clicked: the tiles
+     * as they stand on screen for Grid and By type, and the Spreads plan for
+     * Spreads — which includes the Liner pages the pager currently hides, so
+     * paging is never needed to reach one in the viewer.
+     *
+     * @param   {HTMLElement} sec A loaded `div.mb-release-art-sec`.
+     * @returns {number[]}
+     */
+    function _releaseArtViewerOrder(sec) {
+        if (_releaseArtLayout() === 'spreads') {
+            const images = CAA_CTX.imagesCache.get(sec.dataset.mbArtEntity) || [];
+            const { pairs, book, rest } = _releaseArtSpreadsPlan(images,
+                _releaseArtShownIndices(images, sec.dataset.mbArtActiveType || ''));
+            return [...pairs.flatMap(p => [p.l, p.r]), ...book, ...rest];
+        }
+        return Array.from(sec.querySelectorAll('figure.mb-release-art-tile')).map(f => Number(f.dataset.mbArtI));
+    }
+
+    /**
+     * Appends the Spreads layout (mockup R6) to a section: one opened spread
+     * per left/right pair, the Liner/Booklet pages two at a time with a ◀ ▶
+     * pager (page index on the section, `data-mb-art-book-page`, clamped
+     * here), and the remaining images as a normal grid. Every tile is an
+     * ordinary `_releaseArtBuildTile()` tile, so its hover card, ★/⏳ and
+     * viewer click work as in the other layouts.
+     *
+     * @param   {HTMLElement} sec    The section.
+     * @param   {Object[]}    images The release's archive images, in archive order.
+     * @param   {number[]}    shown  The indices the chip filter leaves, ascending.
+     * @returns {void}
+     */
+    function _releaseArtRenderSpreads(sec, images, shown) {
+        const { pairs, book, rest } = _releaseArtSpreadsPlan(images, shown);
+        const block = (title, cls) => {
+            const box = document.createElement('div');
+            box.className = cls;
+            const hdr = document.createElement('div');
+            hdr.className = 'mb-release-art-group-hdr';
+            hdr.textContent = title;
+            box.appendChild(hdr);
+            sec.appendChild(box);
+            return box;
+        };
+        const pages = (...idx) => {
+            const p = document.createElement('div');
+            p.className = 'mb-release-art-spread-pages';
+            idx.forEach(i => p.appendChild(_releaseArtBuildTile(images, i)));
+            return p;
+        };
+        const foot = () => {
+            const f = document.createElement('div');
+            f.className = 'mb-release-art-spread-foot';
+            return f;
+        };
+        pairs.forEach(({ l, r, prefix }) => {
+            const first = (images[l].types && images[l].types[0]) || '(no type)';
+            const box = block(prefix ? `${first}: ${prefix}` : first, 'mb-release-art-spread');
+            box.dataset.mbArtSpread = `${l},${r}`;
+            const f = foot();
+            f.textContent = `Paired from “${images[l].comment}” + “${images[r].comment}”`;
+            box.append(pages(l, r), f);
+        });
+        if (book.length) {
+            const nPages = Math.ceil(book.length / 2);
+            const page = Math.min(Math.max(0, parseInt(sec.dataset.mbArtBookPage, 10) || 0), nPages - 1);
+            sec.dataset.mbArtBookPage = String(page);
+            const a = book[page * 2];
+            const b = book[page * 2 + 1];
+            const box = block(`Liner, ${book.length} page${book.length === 1 ? '' : 's'}`, 'mb-release-art-spread');
+            box.dataset.mbArtBook = '';
+            const f = foot();
+            const btn = (step, label, disabled) => {
+                const x = document.createElement('button');
+                x.type = 'button';
+                x.dataset.mbArtBookStep = step;
+                x.textContent = label;
+                x.disabled = disabled;
+                return x;
+            };
+            const where = document.createElement('span');
+            where.className = 'mb-release-art-book-where';
+            where.textContent = `pages ${page * 2 + 1}${b !== undefined ? '–' + (page * 2 + 2) : ''} of ${book.length}`;
+            f.append(btn('-1', '◀', page === 0), where, btn('1', '▶', page >= nPages - 1));
+            box.append(b !== undefined ? pages(a, b) : pages(a), f);
+        }
+        if (rest.length) {
+            const box = block(`Single pages, ${rest.length}`, 'mb-release-art-spread');
+            const g = document.createElement('div');
+            g.className = 'mb-release-art-grid';
+            rest.forEach(i => g.appendChild(_releaseArtBuildTile(images, i)));
+            box.appendChild(g);
+        }
     }
 
     /**
      * (Re)builds the toolbar and the contact sheet of a loaded section from
      * `CAA_CTX.imagesCache`: type chips (`data-mb-art-filter`, "" = all) and the
-     * Grid / By type switch (`data-mb-art-layout`), then the tiles — all of
-     * them, or only those carrying the chosen type, either as one grid in
-     * archive order or grouped under each image's FIRST type in
-     * first-appearance order. The chosen type lives on the section
+     * Grid / By type / Spreads switch (`data-mb-art-layout`), then the tiles —
+     * all of them, or only those carrying the chosen type, either as one grid
+     * in archive order, grouped under each image's FIRST type in
+     * first-appearance order, or as spreads (`_releaseArtRenderSpreads()`).
+     * The chosen type lives on the section
      * (`data-mb-art-active-type`, deliberately NOT the chips'
      * `data-mb-art-filter`, which `closest()` would then match on the
      * section itself), the layout in GM storage.
@@ -95426,7 +95620,8 @@ a { color: #1565c0; }`;
         const images = CAA_CTX.imagesCache.get(sec.dataset.mbArtEntity) || [];
         const filter = sec.dataset.mbArtActiveType || '';
         const layout = _releaseArtLayout();
-        sec.querySelectorAll('.mb-release-art-tools, .mb-release-art-grid, .mb-release-art-group').forEach(n => n.remove());
+        sec.querySelectorAll('.mb-release-art-tools, .mb-release-art-grid, .mb-release-art-group, .mb-release-art-spread')
+            .forEach(n => n.remove());
 
         const tools = document.createElement('div');
         tools.className = 'mb-release-art-tools';
@@ -95450,7 +95645,7 @@ a { color: #1565c0; }`;
         seg.className = 'mb-release-art-seg';
         seg.setAttribute('role', 'group');
         seg.setAttribute('aria-label', 'Layout');
-        [['grid', 'Grid'], ['grouped', 'By type']].forEach(([key, label]) => {
+        [['grid', 'Grid'], ['grouped', 'By type'], ['spreads', 'Spreads']].forEach(([key, label]) => {
             const b = document.createElement('button');
             b.type = 'button';
             b.dataset.mbArtLayout = key;
@@ -95461,8 +95656,11 @@ a { color: #1565c0; }`;
         tools.appendChild(seg);
         sec.appendChild(tools);
 
-        const shown = images.map((im, i) => i)
-            .filter(i => !filter || (images[i].types && images[i].types.length ? images[i].types : ['(no type)']).includes(filter));
+        const shown = _releaseArtShownIndices(images, filter);
+        if (layout === 'spreads') {
+            _releaseArtRenderSpreads(sec, images, shown);
+            return;
+        }
         const grid = () => {
             const g = document.createElement('div');
             g.className = 'mb-release-art-grid';
@@ -95496,8 +95694,10 @@ a { color: #1565c0; }`;
 
     /**
      * The section's one click handler, delegated on the section (which is
-     * never cloned, so a listener on it survives every re-render): a type chip
-     * sets the filter, a layout button sets and remembers the layout.
+     * never cloned, so a listener on it survives every re-render): a tile opens
+     * the viewer, a type chip sets the filter, a layout button sets and
+     * remembers the layout, and the Spreads pager's ◀ ▶ step its page. A chip
+     * or a layout switch puts the pager back on its first page.
      *
      * @param   {MouseEvent} e
      * @returns {void}
@@ -95512,21 +95712,29 @@ a { color: #1565c0; }`;
         if (tileLink && sec.contains(tileLink)) {
             if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
             e.preventDefault();
-            const indices = Array.from(sec.querySelectorAll('figure.mb-release-art-tile'))
-                .map(f => Number(f.dataset.mbArtI));
-            _artViewerOpen(CAA_CTX, sec.dataset.mbArtEntity, indices,
+            _artViewerOpen(CAA_CTX, sec.dataset.mbArtEntity, _releaseArtViewerOrder(sec),
                 Number(tileLink.parentElement.dataset.mbArtI), { opener: tileLink, title: _releaseArtTitle() });
+            return;
+        }
+        const book = e.target.closest('[data-mb-art-book-step]');
+        if (book && sec.contains(book)) {
+            // Clamped by _releaseArtRenderSpreads(), so no bounds here.
+            sec.dataset.mbArtBookPage = String((parseInt(sec.dataset.mbArtBookPage, 10) || 0) +
+                Number(book.dataset.mbArtBookStep));
+            _releaseArtRenderSheet(sec);
             return;
         }
         const chip = e.target.closest('[data-mb-art-filter]');
         if (chip && sec.contains(chip)) {
             sec.dataset.mbArtActiveType = chip.dataset.mbArtFilter;
+            sec.dataset.mbArtBookPage = '0';
             _releaseArtRenderSheet(sec);
             return;
         }
         const lay = e.target.closest('[data-mb-art-layout]');
         if (lay && sec.contains(lay)) {
             try { GM_setValue(MB_RELEASE_ART_LAYOUT_KEY, lay.dataset.mbArtLayout); } catch (_) { /* storage blocked: still switch */ }
+            sec.dataset.mbArtBookPage = '0';
             _releaseArtRenderSheet(sec);
         }
     }

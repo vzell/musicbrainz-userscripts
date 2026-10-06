@@ -147,4 +147,17 @@ test.describe('release-tracks Cover art section on a touch device', () => {
         await swipe(150, 130);
         await expect(pos, 'a 20 px move is not a swipe').toHaveText('6 / 16');
     });
+
+    test('Spreads: an opened spread fits the phone window (P4, R6)', async ({ page }) => {
+        await openRelease(page);
+        await page.locator('.mb-release-art-sec [data-mb-art-layout="spreads"]').tap();
+        const fit = await page.evaluate(() => Array.from(document.querySelectorAll('.mb-release-art-spread-pages'))
+            .map((p) => ({ right: p.getBoundingClientRect().right, width: p.getBoundingClientRect().width,
+                           win: window.innerWidth })));
+        expect(fit.length, 'premise: the gatefold spread and the liner pager').toBe(2);
+        fit.forEach((f) => {
+            expect(f.width).toBeGreaterThan(100);
+            expect(f.right, 'no sideways scrolling to see the right page').toBeLessThanOrEqual(f.win);
+        });
+    });
 });

@@ -318,7 +318,18 @@ it after. Setting `sa_enable_release_tracks_cover_art` (forced off in
   page?" for any link to another path — before any handler further down could
   act. Plain left click only; Ctrl/Cmd/Shift/Alt/middle clicks and a click
   while nothing is loaded go their normal way (including that confirm).
+- **Spreads (R6) pairs only when unambiguous.** `_releaseArtFindSpreads()`
+  keys on FIRST type + the comment before a final "left"/"right"; a key with
+  two lefts or two rights pairs nothing. `_releaseArtSpreadsPlan()` is the one
+  source of the layout's order (pairs, then every Liner/Booklet page, then the
+  rest), used by both the render and the viewer.
+- **The viewer's list is `_releaseArtViewerOrder(sec)`, not the tiles on
+  screen.** In Spreads the pager hides all but two Liner pages, so collecting
+  the visible tiles (right for Grid / By type) would drop the rest from the
+  viewer. The pager index lives on the section (`data-mb-art-book-page`) and is
+  clamped and written back by the render; a chip or layout switch resets it.
 
-Covered by `release-tracks-cover-art.spec.js`, `release-tracks-cover-art-viewer.spec.js`
-and `release-tracks-cover-art.mobile.spec.js`; mutation lists
-`release-tracks-cover-art.json`, `-p2.json` and `-p3.json`.
+Covered by `release-tracks-cover-art.spec.js`, `release-tracks-cover-art-viewer.spec.js`,
+`release-tracks-cover-art-spreads.spec.js` and
+`release-tracks-cover-art.mobile.spec.js`; mutation lists
+`release-tracks-cover-art.json`, `-p2.json`, `-p3.json` and `-p4.json`.

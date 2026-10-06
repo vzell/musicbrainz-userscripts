@@ -1133,10 +1133,17 @@ types, comment, a larger preview, "6 of 16 · Liner 1 of 4", and the edit that
 added it. The chips above the sheet (**All 16**, **Front 1**, **Liner 4**, …)
 show only the images carrying that type — an image with two types counts for
 both — and **Grid / By type** groups the sheet under each image's first type.
-The layout is remembered, and travels with a config export.
+**Spreads** lays the sheet out like the package itself: two images of the same
+type whose comments differ only in a final "left" / "right" ("opened gatefold
+cover, inside left" + "… inside right") are shown side by side as one opened
+spread, the Liner and Booklet pages are turned two at a time with **◀ ▶**, and
+everything else follows as single pages. The pairing goes by the comments, so
+it only pairs when that is unambiguous — no image is ever hidden. The layout is
+remembered, and travels with a config export.
 
 **The viewer.** Click a thumbnail to open it full screen; it steps through the
-thumbnails currently shown, in their order, so a chip or **By type** applies.
+thumbnails currently shown, in their order, so a chip or **By type** applies
+(in **Spreads**, every Liner page is included, also those the pager hides).
 Clicking the **Cover art (N)** tab itself opens the viewer on a grid of every
 image instead of leaving the page — Ctrl-click (or middle-click) the tab, or a
 thumbnail, to open the archive page or the image in a new tab as before. The

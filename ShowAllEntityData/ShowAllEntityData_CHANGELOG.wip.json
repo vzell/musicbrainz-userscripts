@@ -1,0 +1,20 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-06",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Release page Cover art section: a third layout, Spreads, next to Grid and By type. Two images of the same type whose comments differ only in a final \"left\"/\"right\" (\"opened gatefold cover, inside left\" + \"… inside right\") are shown side by side as one opened spread; the Liner and Booklet pages are turned two at a time with ◀ ▶; everything else follows as single pages. Pairing only happens when it is unambiguous (two lefts for one comment, or a left and right of different types, stay single), and no image is ever hidden. The chips apply, the choice is remembered, and the viewer opened from a tile steps through the spreads order including the liner pages the pager hides. No request of its own."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "New spec release-tracks-cover-art-spreads.spec.js (7 tests); the mobile spec checks that a spread fits a phone window. Mutation list scripts/mutations/release-tracks-cover-art-p4.json: 8 planted defects caught, plus one recorded overlap (the spread's own width cap is covered by the section's). docs/claude/artwork-caa-eaa.md gains the pairing and viewer-order rules."
+        ]
+      }
+    ]
+  }
+]
