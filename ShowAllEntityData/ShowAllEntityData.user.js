@@ -3296,6 +3296,36 @@
             description: 'The same as "CAA type chips", for the Event Art Archive\'s types in EAA columns.'
         },
 
+        sa_caa_gallery: {
+            label: 'Artwork gallery for a whole table (🖼)',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds a 🖼 button to every table\'s artwork controls (and "Open gallery" to its 📊 artwork ' +
+                         'summary): a movable window with every image of the releases the table currently shows, ' +
+                         'grouped by release, with type chips (which releases have no Medium image?) and a ' +
+                         '"Compare two" view. A click on an image opens the artwork viewer. It reads the artwork ' +
+                         'records the column has already loaded and asks the archive for nothing; releases still ' +
+                         'loading fill in while the window is open.'
+        },
+
+        sa_caa_gallery_tile_size: {
+            label: 'Artwork gallery tile size (px)',
+            type: 'number',
+            default: 82,
+            min: 48,
+            max: 250,
+            description: 'Edge length of one image in the artwork gallery. The images are the 250 px thumbnails ' +
+                         'the CAA/EAA cells use, so a larger size costs no request.'
+        },
+
+        sa_caa_gallery_compare: {
+            label: 'Artwork gallery: "Compare two" view',
+            type: 'checkbox',
+            default: true,
+            description: 'Offers a "Compare two" switch in the artwork gallery: two releases side by side, one line ' +
+                         'per image type, "none" where a release has no image of that type.'
+        },
+
         // ============================================================
         // ART ARCHIVE INDEXEDDB CACHE SECTION
         // ============================================================
@@ -39786,6 +39816,12 @@ ${sections.join('\n')}
      *   (the previous behaviour, unchanged for any caller that doesn't pass it).
      * @param {string}         [opts.minHeight='200px'] CSS min-height, used both
      *   as the layout floor and as the resize/clamp floor when opts.geoKey is set.
+     * @param {string[]}       [opts.keepOpenWithin] Selectors of elements OUTSIDE
+     *   the dialog whose clicks must not close it — an overlay the dialog opens
+     *   on top of itself (the artwork gallery's `#mb-art-viewer`). Matched on
+     *   the event's composed path, which is fixed at dispatch: a click on the
+     *   overlay's ✕ removes the ✕ before the click reaches the document, and
+     *   `closest()` on a detached node finds nothing.
      * @returns {{ dialog: HTMLElement, scrollArea: HTMLElement, close: Function,
      *             titleBarRight: HTMLElement } | null}
      *   Returns null when the dialog was toggled closed (existing instance removed).
@@ -40027,6 +40063,8 @@ ${sections.join('\n')}
         const onClickOutside = (e) => {
             if (dialog.contains(e.target)) return;
             if (_lastMousedownInDialog) { _lastMousedownInDialog = false; return; }
+            if (opts.keepOpenWithin && opts.keepOpenWithin.length &&
+                e.composedPath().some(n => n instanceof Element && opts.keepOpenWithin.some(sel => n.matches(sel)))) return;
             closeDialog();
         };
         setTimeout(() => document.addEventListener('click', onClickOutside), 100);
@@ -49290,6 +49328,107 @@ a { color: #1565c0; }`;
             margin-left: 1px;
         }
         .mb-caa-type-chip[data-mb-chip-pending] { border-color: #b45309; color: #b45309; }
+        /* ── The table-wide artwork gallery (D2), a createInfoDialog() window
+           with the class mb-art-gallery; --mb-art-gal-tile from
+           sa_caa_gallery_tile_size. */
+        .mb-art-gallery .mb-art-gal-bar {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+            padding: 8px 16px;
+            background: #ffffff;
+            border-bottom: 1px solid #eeeeee;
+        }
+        .mb-art-gallery .mb-art-gal-sum { font-size: 12px; color: #555555; margin-right: 6px; }
+        .mb-art-gallery .mb-art-gal-warn { color: #b45309; }
+        .mb-art-gallery .mb-art-gal-chip {
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1;
+            padding: 5px 8px;
+            border-radius: 999px;
+            border: 1px solid #9fa5c9;
+            color: #3949ab;
+            background: #ffffff;
+            cursor: pointer;
+        }
+        .mb-art-gallery .mb-art-gal-chip[aria-pressed="true"] { background: #3949ab; border-color: #3949ab; color: #ffffff; }
+        .mb-art-gallery .mb-art-gal-cmp-btn { margin-left: 8px; }
+        .mb-art-gallery .mb-art-gal-n { font-weight: 400; margin-left: 3px; opacity: 0.85; }
+        .mb-art-gallery .mb-art-gal-list { padding: 4px 16px 12px; }
+        .mb-art-gallery .mb-art-gal-rel {
+            display: grid;
+            grid-template-columns: 190px minmax(0, 1fr);
+            gap: 10px;
+            padding: 8px 0;
+            border-top: 1px solid #eeeeee;
+        }
+        .mb-art-gallery .mb-art-gal-rel.mb-art-gal-dimmed .mb-art-gal-who { opacity: 0.6; }
+        .mb-art-gallery .mb-art-gal-who { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 12px; }
+        .mb-art-gallery .mb-art-gal-who a { font-weight: 700; }
+        .mb-art-gallery .mb-art-gal-who span { color: #666666; font-size: 11px; overflow-wrap: anywhere; }
+        .mb-art-gallery .mb-art-gal-tiles,
+        .mb-art-gallery .mb-art-gal-cmp-cell { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start; }
+        .mb-art-gallery .mb-art-gal-tile {
+            position: relative;
+            margin: 0;
+            width: var(--mb-art-gal-tile, 82px);
+            display: grid;
+            gap: 2px;
+            cursor: zoom-in;
+        }
+        .mb-art-gallery .mb-art-gal-tile:focus-visible { outline: 2px solid #f0a35e; outline-offset: 1px; }
+        .mb-art-gallery .mb-art-gal-tile img {
+            display: block;
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: cover;
+            border-radius: 2px;
+            background: #dddddd;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+        }
+        .mb-art-gallery .mb-art-gal-tile figcaption { font-size: 10px; line-height: 1.2; overflow-wrap: anywhere; }
+        .mb-art-gallery .mb-art-gal-type { font-weight: 600; }
+        .mb-art-gallery .mb-art-gal-comment { color: #666666; font-style: italic; }
+        .mb-art-gallery .mb-art-gal-main::after {
+            content: "★";
+            position: absolute;
+            top: 2px;
+            left: 4px;
+            color: #ffc94d;
+            font-size: 12px;
+            text-shadow: 0 0 2px #000000;
+        }
+        .mb-art-gallery .mb-art-gal-missing,
+        .mb-art-gallery .mb-art-gal-empty {
+            color: #777777;
+            font-style: italic;
+            font-size: 11.5px;
+            align-self: center;
+            padding: 6px 10px;
+            border: 1px dashed #cccccc;
+            border-radius: 3px;
+        }
+        .mb-art-gallery .mb-art-gal-empty { margin: 12px 16px; }
+        .mb-art-gallery .mb-art-gal-cmp {
+            display: grid;
+            grid-template-columns: 90px minmax(0, 1fr) minmax(0, 1fr);
+            gap: 8px 12px;
+            align-items: start;
+            padding: 8px 16px 12px;
+        }
+        .mb-art-gallery .mb-art-gal-cmp-h { font-size: 12px; font-weight: 700; padding-bottom: 4px; border-bottom: 1px solid #dddddd; min-width: 0; }
+        .mb-art-gallery .mb-art-gal-cmp-h select { max-width: 100%; }
+        .mb-art-gallery .mb-art-gal-cmp-ty { font-size: 11px; font-weight: 700; padding-top: 4px; }
+        .mb-art-gallery .mb-art-gal-none { color: #777777; font-style: italic; font-size: 11px; padding-top: 4px; }
+        @media (max-width: 560px) {
+            .mb-art-gallery .mb-art-gal-rel { grid-template-columns: minmax(0, 1fr); }
+            .mb-art-gallery .mb-art-gal-cmp { grid-template-columns: 64px minmax(0, 1fr) minmax(0, 1fr); }
+        }
         /* ── Artwork cards (B1 release summary, B2 one image) in #mb-stat-tooltip. */
         #mb-stat-tooltip .mb-art-card-tiles {
             display: flex;
@@ -50436,6 +50575,18 @@ a { color: #1565c0; }`;
             border: 1px solid rgba(190,140,0,0.7);
             border-radius: 3px;
             background: rgba(255,193,7,0.55);
+            font-size: 1em;
+        }
+        /* The 🖼 "Open gallery" action: a plain button, not the retry's
+           warning yellow, and its own class so .mb-art-sum-act stays the
+           retry alone. */
+        #mb-art-summary-panel .mb-art-sum-gallery {
+            margin: 8px 6px 0 0;
+            cursor: pointer;
+            padding: 2px 6px;
+            border: 1px solid #aaaaaa;
+            border-radius: 3px;
+            background: #f5f5f5;
             font-size: 1em;
         }
 
@@ -56802,6 +56953,12 @@ a { color: #1565c0; }`;
      * Settings wins again (`_artCellLayout()`). Same TDZ placement.
      */
     const MB_ART_CELL_LAYOUT_KEY = 'mb_sa_art_cell_layout';
+
+    /**
+     * GM storage key for the artwork gallery window's position and size
+     * (`createInfoDialog()`'s `geoKey`). Same TDZ placement.
+     */
+    const MB_ART_GALLERY_GEO_KEY = 'mb_sa_art_gallery_geo';
 
     /**
      * Storage-shape version of `MB_UNIQ_SECTION_COLLAPSE_KEY`'s object, kept
@@ -83623,8 +83780,8 @@ a { color: #1565c0; }`;
         },
         {
             group: 'artviewer',
-            label: 'Artwork viewer zoom level and CAA/EAA cell layout',
-            keys: [MB_ART_VIEWER_ZOOM_KEY, MB_ART_CELL_LAYOUT_KEY],
+            label: 'Artwork viewer zoom level, CAA/EAA cell layout and gallery window',
+            keys: [MB_ART_VIEWER_ZOOM_KEY, MB_ART_CELL_LAYOUT_KEY, MB_ART_GALLERY_GEO_KEY],
         },
         {
             group: 'dialog',
@@ -88496,8 +88653,10 @@ a { color: #1565c0; }`;
      * both call sites use this rather than only the later one.
      *
      * @param   {HTMLElement}  el     - Any member of the run.
-     * @param   {?HTMLElement} [skip] - A member to ignore, used when RE-anchoring
-     *   an element that is already in the run and must not anchor on itself.
+     * @param   {?(HTMLElement|HTMLElement[])} [skip] - Member(s) to ignore, used
+     *   when RE-anchoring an element that is already in the run and must not
+     *   anchor on itself — or on a control that always follows it (the 📊
+     *   summary skips the 🖼 gallery opener placed right after it).
      * @returns {HTMLElement} The run's last element, or `el` when it is not in
      *   a recognised run (in which case the caller's old behaviour is kept).
      */
@@ -88506,10 +88665,11 @@ a { color: #1565c0; }`;
             ? el.id.match(/^(mb-(?:caa|eaa)-toggle-btn-|mb-rel-retry-)/) : null;
         if (!m) return el;
         const pfx = m[1];
+        const skips = Array.isArray(skip) ? skip : [skip];
         let last = el;
         let next = el.nextElementSibling;
         while (next && next.id && next.id.startsWith(pfx)) {
-            if (next !== skip) last = next;
+            if (!skips.includes(next)) last = next;
             next = next.nextElementSibling;
         }
         return last;
@@ -99347,6 +99507,481 @@ a { color: #1565c0; }`;
         };
     }
 
+    // ── D2: the table-wide artwork gallery ───────────────────────────────────
+    //
+    // org/redesign-CAA-EAA-column.org P5. Every image of the releases a table
+    // currently shows, grouped by release, in a movable createInfoDialog()
+    // window, with type chips and a "Compare two" view. Decided 2026-10-06:
+    // the table's VISIBLE rows (_artTableEntityPaths(), like the 📊 summary),
+    // ZERO archive requests (it reads ctx.imagesCache; a release still pending
+    // shows "loading…" and is filled in by a 1 s re-check while the window is
+    // open), and a click on an image opens the viewer on top, stepping the
+    // gallery's releases with Shift+← →.
+
+    /**
+     * The open gallery's state, or null. One at a time.
+     *
+     * @type {?{ctx: ArtCtx, table: HTMLTableElement, dlg: Object, rels: Object[],
+     *          sel: Set<string>, compare: boolean, ca: ?string, cb: ?string,
+     *          timer: number, tdByPath: Map<string, HTMLTableCellElement>}}
+     */
+    let _artGalleryState = null;
+
+    /**
+     * One entity's artwork state, from the caches exactly as
+     * `_artCollectSummary()` reads them.
+     *
+     * @param   {ArtCtx} ctx
+     * @param   {string} path
+     * @returns {{state: ('ok'|'none'|'failed'|'pending'), images: Object[]}}
+     */
+    function _artGalleryRelState(ctx, path) {
+        if (ctx.failedCache.has(path)) return { state: 'failed', images: [] };
+        const c = ctx.countCache.get(path);
+        if (c === undefined) return { state: 'pending', images: [] };
+        if (c <= 0) return { state: 'none', images: [] };
+        return { state: 'ok', images: ctx.imagesCache.get(path) || [] };
+    }
+
+    /**
+     * One release of the gallery: its state and images, plus the label the
+     * row gives it — the title and the big strip's fields (Format,
+     * Country/Date, Label, Catalog#), read once when the gallery opens.
+     *
+     * @param   {ArtCtx}           ctx
+     * @param   {HTMLTableElement} table
+     * @param   {{path: string, anchor: HTMLAnchorElement}} entry
+     * @returns {{path: string, title: string, meta: string, state: string, images: Object[]}}
+     */
+    function _artGalleryRelease(ctx, table, entry) {
+        const tr = entry.anchor.closest('tr');
+        const meta = [];
+        if (tr) {
+            ['Format', 'Country/Date', 'Country', 'Date', 'Label', 'Catalog#'].forEach(name => {
+                const ci = _artTooltipColIdx(table, name);
+                if (ci < 0) return;
+                const t = _artTooltipCellText(tr, ci);
+                if (t) meta.push(t);
+            });
+        }
+        return { path: entry.path, title: _artRowTitle(tr, entry.path) || entry.path, meta: meta.join(' · '),
+                 ..._artGalleryRelState(ctx, entry.path) };
+    }
+
+    /**
+     * Opens the gallery for `table` — or, from the same table's opener again,
+     * closes it (the dialog toggles by id). Opening another table's gallery
+     * closes the current one first.
+     *
+     * @param   {ArtCtx}           ctx
+     * @param   {HTMLTableElement} table
+     * @param   {?HTMLElement}     opener
+     * @returns {void}
+     */
+    function _artGalleryOpen(ctx, table, opener) {
+        const prev = _artGalleryState;
+        if (prev) {
+            _artGalleryStop(prev);
+            _artGalleryState = null;
+            if (prev.dlg.dialog.isConnected) {
+                prev.dlg.close();
+                if (prev.table === table && prev.ctx === ctx) return;
+            }
+        }
+        const h = caaFindHeaderForTable(table);
+        const labelNode = h && Array.from(h.childNodes).find(n => n.nodeType === 3 && n.textContent.trim());
+        const name = labelNode ? labelNode.textContent.trim() : '';
+        const dlg = createInfoDialog({
+            id: 'mb-art-gallery',
+            title: `${ctx.column} gallery${name ? ' — ' + name : ''}`,
+            width: 'min(1100px, 94vw)',
+            minWidth: '300px',
+            maxHeight: '86vh',
+            centerV: false,
+            geoKey: MB_ART_GALLERY_GEO_KEY,
+            keepOpenWithin: ['#mb-art-viewer'],
+        });
+        if (!dlg) return;
+        dlg.dialog.classList.add('mb-art-gallery');
+        dlg.dialog.style.setProperty('--mb-art-gal-tile', `${_artNumSetting('sa_caa_gallery_tile_size', 82, 24)}px`);
+        const entries = _artTableEntityPaths(ctx, table);
+        const st = {
+            ctx, table, dlg,
+            rels: entries.map(e => _artGalleryRelease(ctx, table, e)),
+            tdByPath: new Map(entries.map(e => [e.path, e.anchor.closest('td')])),
+            sel: new Set(), compare: false, ca: null, cb: null, timer: 0,
+        };
+        _artGalleryState = st;
+        dlg.scrollArea.addEventListener('click', ev => _artGalleryOnClick(st, ev));
+        dlg.scrollArea.addEventListener('change', ev => _artGalleryOnChange(st, ev));
+        dlg.scrollArea.addEventListener('keydown', ev => {
+            if (ev.key !== 'Enter' && ev.key !== ' ') return;
+            const fig = ev.target.closest && ev.target.closest('figure.mb-art-gal-tile');
+            if (!fig) return;
+            ev.preventDefault();
+            _artGalleryOpenViewer(st, fig.dataset.mbArtPath, Number(fig.dataset.mbArtI), fig);
+        });
+        _artGalleryRender(st);
+        if (st.rels.some(r => r.state === 'pending')) st.timer = setInterval(() => _artGalleryTick(st), 1000);
+        Lib.debug(ctx.key, `_artGalleryOpen(): ${st.rels.length} release(s)`);
+    }
+
+    /**
+     * Stops a gallery's pending re-check.
+     *
+     * @param   {Object} st
+     * @returns {void}
+     */
+    function _artGalleryStop(st) {
+        if (st.timer) clearInterval(st.timer);
+        st.timer = 0;
+    }
+
+    /**
+     * The 1 s re-check while releases are pending: re-reads only those from
+     * the caches the column's queue fills, and re-renders (keeping the scroll
+     * position) when one changed. Stops itself when the window is gone or
+     * nothing is pending any more.
+     *
+     * @param   {Object} st
+     * @returns {void}
+     */
+    function _artGalleryTick(st) {
+        if (_artGalleryState !== st || !st.dlg.dialog.isConnected) { _artGalleryStop(st); return; }
+        let changed = false;
+        st.rels.forEach(r => {
+            if (r.state !== 'pending') return;
+            const now = _artGalleryRelState(st.ctx, r.path);
+            if (now.state === 'pending') return;
+            Object.assign(r, now);
+            changed = true;
+        });
+        if (changed) _artGalleryRender(st);
+        if (!st.rels.some(r => r.state === 'pending')) _artGalleryStop(st);
+    }
+
+    /**
+     * Whether an image passes the gallery's type chips (none selected = all;
+     * several = any of them).
+     *
+     * @param   {Object} st
+     * @param   {Object} im
+     * @returns {boolean}
+     */
+    function _artGalleryMatch(st, im) {
+        if (!st.sel.size) return true;
+        const types = Array.isArray(im.types) && im.types.length ? im.types : ['(no type)'];
+        return types.some(t => st.sel.has(t));
+    }
+
+    /**
+     * A release's image indices the chips let through, in archive order.
+     *
+     * @param   {Object} st
+     * @param   {Object} r A gallery release.
+     * @returns {number[]}
+     */
+    function _artGalleryShown(st, r) {
+        return r.images.map((_, i) => i).filter(i => _artGalleryMatch(st, r.images[i]));
+    }
+
+    /**
+     * Type names in chip order: the ctx's chip vocabulary first, then the
+     * others in the order given.
+     *
+     * @param   {ArtCtx}   ctx
+     * @param   {string[]} types In first-appearance order, unique.
+     * @returns {string[]}
+     */
+    function _artGalleryTypeOrder(ctx, types) {
+        const vocab = _artChipTypes(ctx).map(c => c.type);
+        return [...vocab.filter(t => types.includes(t)), ...types.filter(t => !vocab.includes(t))];
+    }
+
+    /**
+     * The live cell `<li>` of an image, whose pills/comment carry the active
+     * filter's marks (`liFor` for captions and the viewer's info panel).
+     *
+     * @param   {Object} st
+     * @param   {string} path
+     * @param   {number} i
+     * @returns {?Element}
+     */
+    function _artGalleryLi(st, path, i) {
+        const td = st.tdByPath.get(path);
+        return td && td.isConnected ? td.querySelector(`li.mb-caa-art-li-image[data-mb-art-i="${i}"]`) : null;
+    }
+
+    /**
+     * Renders the bar and the gallery or the comparison into the window,
+     * keeping its scroll position.
+     *
+     * @param   {Object} st
+     * @returns {void}
+     */
+    function _artGalleryRender(st) {
+        const area = st.dlg.scrollArea;
+        const top = area.scrollTop;
+        area.textContent = '';
+        area.appendChild(_artGalleryBar(st));
+        area.appendChild(st.compare && Lib.settings.sa_caa_gallery_compare !== false ? _artGalleryCompare(st) : _artGalleryList(st));
+        area.scrollTop = top;
+    }
+
+    /**
+     * The bar: what the window covers, the type chips with their image
+     * counts, and the "Compare two" switch.
+     *
+     * @param   {Object} st
+     * @returns {HTMLElement}
+     */
+    function _artGalleryBar(st) {
+        const bar = _artvEl('div', 'mb-art-gal-bar');
+        const loaded = st.rels.filter(r => r.state === 'ok');
+        const nImages = loaded.reduce((n, r) => n + r.images.length, 0);
+        const pending = st.rels.filter(r => r.state === 'pending').length;
+        const sum = _artvEl('span', 'mb-art-gal-sum',
+            `${st.rels.length} release${st.rels.length === 1 ? '' : 's'} · ${nImages} image${nImages === 1 ? '' : 's'}` +
+            (pending ? ` · ${pending} loading` : ''));
+        if (typeof _anyFilterActive === 'function' && _anyFilterActive()) {
+            sum.appendChild(_artvEl('span', 'mb-art-gal-warn', ' · only the rows the filters show'));
+        }
+        bar.appendChild(sum);
+        const counts = new Map();
+        loaded.forEach(r => r.images.forEach(im =>
+            ((im.types && im.types.length) ? im.types : ['(no type)']).forEach(t => counts.set(t, (counts.get(t) || 0) + 1))));
+        const chip = (label, type, n, pressed) => {
+            const b = _artvEl('button', 'mb-art-gal-chip', label);
+            b.type = 'button';
+            b.dataset.mbArtGalType = type;
+            b.setAttribute('aria-pressed', String(pressed));
+            if (n !== null) b.appendChild(_artvEl('span', 'mb-art-gal-n', String(n)));
+            return b;
+        };
+        bar.appendChild(chip('All', '', nImages, st.sel.size === 0));
+        _artGalleryTypeOrder(st.ctx, [...counts.keys()]).forEach(t => bar.appendChild(chip(t, t, counts.get(t), st.sel.has(t))));
+        if (Lib.settings.sa_caa_gallery_compare !== false) {
+            const cmp = _artvEl('button', 'mb-art-gal-chip mb-art-gal-cmp-btn', 'Compare two');
+            cmp.type = 'button';
+            cmp.dataset.mbArtGalCompare = '';
+            cmp.setAttribute('aria-pressed', String(st.compare));
+            bar.appendChild(cmp);
+        }
+        return bar;
+    }
+
+    /**
+     * One image tile: the cell's 250 px thumbnail (lazy), ★ for the main
+     * front, and a caption of its types and comment — copied from the cell's
+     * `<li>` while it exists, so a filter's marks show here too.
+     *
+     * @param   {Object} st
+     * @param   {Object} r A gallery release.
+     * @param   {number} i
+     * @returns {HTMLElement}
+     */
+    function _artGalleryTile(st, r, i) {
+        const im = r.images[i];
+        const types = Array.isArray(im.types) && im.types.length ? im.types : ['(no type)'];
+        const fig = _artvEl('figure', 'mb-art-gal-tile' + (im.front ? ' mb-art-gal-main' : ''));
+        fig.dataset.mbArtPath = r.path;
+        fig.dataset.mbArtI = String(i);
+        fig.tabIndex = 0;
+        const img = document.createElement('img');
+        img.src = _artViewerThumbUrl(im);
+        img.alt = types.join(' / ');
+        img.loading = 'lazy';
+        const cap = document.createElement('figcaption');
+        const li = _artGalleryLi(st, r.path, i);
+        const pills = li ? Array.from(li.querySelectorAll('.mb-caa-type-badge > span')) : [];
+        const comment = li ? li.querySelector('.mb-caa-art-comment') : null;
+        if (pills.length) {
+            cap.innerHTML = pills.map(p => _artCardCopy(p, 'mb-art-gal-type')).join(' / ') +
+                (comment ? ' · ' + _artCardCopy(comment, 'mb-art-gal-comment') : '');
+        } else {
+            cap.appendChild(_artvEl('span', 'mb-art-gal-type', types.join(' / ')));
+            if (im.comment) cap.append(' · ', _artvEl('span', 'mb-art-gal-comment', im.comment));
+        }
+        if (im.approved === false) cap.append(' ⏳');
+        fig.append(img, cap);
+        return fig;
+    }
+
+    /**
+     * The gallery view: one block per release, in row order.
+     *
+     * @param   {Object} st
+     * @returns {HTMLElement}
+     */
+    function _artGalleryList(st) {
+        const box = _artvEl('div', 'mb-art-gal-list');
+        if (!st.rels.length) {
+            box.appendChild(_artvEl('div', 'mb-art-gal-empty', 'No release with an artwork link in the rows shown.'));
+            return box;
+        }
+        const missing = { pending: 'loading…', none: 'no artwork', failed: 'could not be loaded — ⚠⟳ retries it' };
+        st.rels.forEach(r => {
+            const rel = _artvEl('div', 'mb-art-gal-rel');
+            rel.dataset.mbArtPath = r.path;
+            rel.dataset.mbArtState = r.state;
+            const who = _artvEl('div', 'mb-art-gal-who');
+            const a = _artvEl('a', null, r.title);
+            a.href = r.path;
+            a.target = '_blank';
+            a.rel = 'noopener';
+            who.appendChild(a);
+            if (r.meta) who.appendChild(_artvEl('span', null, r.meta));
+            who.appendChild(_artvEl('span', 'mb-art-gal-state',
+                r.state === 'ok' ? `${r.images.length} image${r.images.length === 1 ? '' : 's'}` : missing[r.state]));
+            const tiles = _artvEl('div', 'mb-art-gal-tiles');
+            if (r.state !== 'ok') {
+                tiles.appendChild(_artvEl('span', 'mb-art-gal-missing', missing[r.state]));
+            } else {
+                const shown = _artGalleryShown(st, r);
+                if (!shown.length) {
+                    tiles.appendChild(_artvEl('span', 'mb-art-gal-missing', `No ${[...st.sel].join(' or ')} image`));
+                    rel.classList.add('mb-art-gal-dimmed');
+                }
+                shown.forEach(i => tiles.appendChild(_artGalleryTile(st, r, i)));
+            }
+            rel.append(who, tiles);
+            box.appendChild(rel);
+        });
+        return box;
+    }
+
+    /**
+     * "Compare two": two releases side by side, one line per first image
+     * type (the chips apply), "none" where a release has no image of it.
+     *
+     * @param   {Object} st
+     * @returns {HTMLElement}
+     */
+    function _artGalleryCompare(st) {
+        const ok = st.rels.filter(r => r.state === 'ok' && r.images.length);
+        const box = _artvEl('div', 'mb-art-gal-cmp');
+        if (ok.length < 2) {
+            box.appendChild(_artvEl('div', 'mb-art-gal-empty', 'Comparing needs two releases with artwork in the rows shown.'));
+            return box;
+        }
+        if (!ok.some(r => r.path === st.ca)) st.ca = ok[0].path;
+        if (!ok.some(r => r.path === st.cb) || st.cb === st.ca) st.cb = ok.find(r => r.path !== st.ca).path;
+        const sides = [st.ca, st.cb].map(p => ok.find(r => r.path === p));
+        box.appendChild(_artvEl('div', 'mb-art-gal-cmp-h', 'Type'));
+        ['a', 'b'].forEach((side, s) => {
+            const h = _artvEl('div', 'mb-art-gal-cmp-h');
+            const sel = document.createElement('select');
+            sel.dataset.mbArtGalSide = side;
+            sel.setAttribute('aria-label', `Release ${s + 1} to compare`);
+            ok.forEach(r => {
+                const o = document.createElement('option');
+                o.value = r.path;
+                o.textContent = r.meta ? `${r.title} (${r.meta})` : r.title;
+                if (r.path === sides[s].path) o.selected = true;
+                sel.appendChild(o);
+            });
+            h.appendChild(sel);
+            box.appendChild(h);
+        });
+        const firstOf = im => (Array.isArray(im.types) && im.types[0]) || '(no type)';
+        const seen = [];
+        sides.forEach(r => r.images.forEach(im => { const t = firstOf(im); if (!seen.includes(t)) seen.push(t); }));
+        _artGalleryTypeOrder(st.ctx, seen).filter(t => !st.sel.size || st.sel.has(t)).forEach(t => {
+            box.appendChild(_artvEl('div', 'mb-art-gal-cmp-ty', t));
+            sides.forEach(r => {
+                const cell = _artvEl('div', 'mb-art-gal-cmp-cell');
+                r.images.forEach((im, i) => { if (firstOf(im) === t) cell.appendChild(_artGalleryTile(st, r, i)); });
+                if (!cell.childNodes.length) cell.appendChild(_artvEl('span', 'mb-art-gal-none', 'none'));
+                box.appendChild(cell);
+            });
+        });
+        return box;
+    }
+
+    /**
+     * Clicks in the window (delegated): a chip toggles its type (All clears),
+     * "Compare two" switches the view, an image opens the viewer.
+     *
+     * @param   {Object}     st
+     * @param   {MouseEvent} ev
+     * @returns {void}
+     */
+    function _artGalleryOnClick(st, ev) {
+        const t = ev.target;
+        if (!t.closest) return;
+        const chip = t.closest('[data-mb-art-gal-type]');
+        if (chip) {
+            const type = chip.dataset.mbArtGalType;
+            if (!type) st.sel.clear();
+            else if (st.sel.has(type)) st.sel.delete(type);
+            else st.sel.add(type);
+            _artGalleryRender(st);
+            return;
+        }
+        if (t.closest('[data-mb-art-gal-compare]')) {
+            st.compare = !st.compare;
+            _artGalleryRender(st);
+            return;
+        }
+        const fig = t.closest('figure.mb-art-gal-tile');
+        if (fig) {
+            ev.preventDefault();
+            _artGalleryOpenViewer(st, fig.dataset.mbArtPath, Number(fig.dataset.mbArtI), fig);
+        }
+    }
+
+    /**
+     * A comparison side's release chosen.
+     *
+     * @param   {Object} st
+     * @param   {Event}  ev
+     * @returns {void}
+     */
+    function _artGalleryOnChange(st, ev) {
+        const sel = ev.target.closest && ev.target.closest('select[data-mb-art-gal-side]');
+        if (!sel) return;
+        if (sel.dataset.mbArtGalSide === 'a') st.ca = sel.value;
+        else st.cb = sel.value;
+        _artGalleryRender(st);
+    }
+
+    /**
+     * Opens the viewer at one gallery image. Its list is that release's
+     * images the chips let through; Shift+← → (and ← → at either end) step
+     * the gallery's releases that have such an image — the gallery's order,
+     * not the table's.
+     *
+     * @param   {Object}      st
+     * @param   {string}      path
+     * @param   {number}      i
+     * @param   {HTMLElement} opener
+     * @returns {void}
+     */
+    function _artGalleryOpenViewer(st, path, i, opener) {
+        const nav = st.rels.filter(r => r.state === 'ok' && _artGalleryShown(st, r).length);
+        let k = nav.findIndex(r => r.path === path);
+        if (k < 0) return;
+        const describe = r => ({
+            entityPath: r.path,
+            list: _artGalleryShown(st, r),
+            title: r.title,
+            rowPos: { k: nav.indexOf(r) + 1, n: nav.length },
+            liFor: j => _artGalleryLi(st, r.path, j),
+        });
+        const here = describe(nav[k]);
+        // Compare shows a release's images by first type; the chips may not
+        // have let this one through the list — open at it all the same.
+        const list = here.list.includes(i) ? here.list : nav[k].images.map((_, j) => j);
+        _artViewerOpen(st.ctx, path, list, i, {
+            opener, title: here.title, rowPos: here.rowPos, liFor: here.liFor,
+            onGroupStep: d => {
+                if (nav.length < 2) return null;
+                k = (k + d + nav.length) % nav.length;
+                return describe(nav[k]);
+            },
+        });
+    }
+
     // ── The artwork findings (no Front / no Medium image) ────────────────────
 
     /**
@@ -100816,6 +101451,28 @@ a { color: #1565c0; }`;
      *   re-enrichment, not so anyone waits on it.
      */
     /**
+     * The art entities of a table's LIVE rows, in row order, one per entity
+     * path — what the 📊 summary panel and the artwork gallery both report on.
+     * Deduped by path: the sticky-column duplicate of a row carries the same
+     * anchor, and a release-group breadcrumb can repeat one. `runFilter()`
+     * removes the rows a filter rejects, so this is "the rows shown".
+     *
+     * @param   {Object} ctx
+     * @param   {HTMLTableElement} table
+     * @returns {Array<{path: string, anchor: HTMLAnchorElement}>}
+     */
+    function _artTableEntityPaths(ctx, table) {
+        const suffixRe = new RegExp(ctx.artSuffix + '$');
+        const out = [];
+        const seen = new Set();
+        table.querySelectorAll('tbody a[href$="' + ctx.artSuffix + '"]').forEach(a => {
+            const p = a.getAttribute('ref') || (a.getAttribute('href') || '').replace(suffixRe, '');
+            if (p && !seen.has(p)) { seen.add(p); out.push({ path: p, anchor: a }); }
+        });
+        return out;
+    }
+
+    /**
      * Everything the artwork summary panel reports about one table.
      *
      * **Reads `ctx.imagesCache`, which already holds the FULL archive record.**
@@ -100841,17 +101498,7 @@ a { color: #1565c0; }`;
      * @returns {Object} Aggregates; see the panel renderer for what each is for.
      */
     function _artCollectSummary(ctx, table) {
-        const suffixRe = new RegExp(ctx.artSuffix + '$');
-        const paths = [];
-        const seen = new Set();
-        // Deduped by PATH: the sticky-column duplicate of a row carries the same
-        // anchor, and a release-group breadcrumb can repeat one too.
-        // Deduped by PATH: the sticky-column duplicate of a row carries the
-        // same anchor, and a release-group breadcrumb can repeat one.
-        table.querySelectorAll('tbody a[href$="' + ctx.artSuffix + '"]').forEach(a => {
-            const p = a.getAttribute('ref') || (a.getAttribute('href') || '').replace(suffixRe, '');
-            if (p && !seen.has(p)) { seen.add(p); paths.push(p); }
-        });
+        const paths = _artTableEntityPaths(ctx, table).map(e => e.path);
 
         const out = {
             // The artwork QUEUE, because "21 pending" with no context reads as
@@ -101092,6 +101739,16 @@ a { color: #1565c0; }`;
         // Zone 2 EXPLAINS, zone 4 ACTS — and a user already looking at the list
         // should not have to close the panel to act on it.
         const foot = add(el, 'div', null, 'mb-art-sum-foot');
+        if (Lib.settings.sa_caa_gallery !== false) {
+            const gal = add(foot, 'button', '🖼 Open gallery', 'mb-art-sum-gallery');
+            gal.type = 'button';
+            gal.dataset.mbArtGalleryOpen = '';
+            gal.addEventListener('click', ev => {
+                ev.stopPropagation();
+                _artCloseSummary();
+                _artGalleryOpen(ctx, table, owner);
+            });
+        }
         if (ctx.failedCache.size) {
             const act = add(foot, 'button',
                 `\u26a0\u27f3 Retry these (${ctx.failedCache.size})`, 'mb-art-sum-act');
@@ -101170,7 +101827,11 @@ a { color: #1565c0; }`;
             // The run's END, skipping this button itself so it cannot anchor on
             // its own position. Re-anchoring to the ⟳ directly would drag it
             // back in front of the 🔗⟳ on every pass.
-            const _end = _ctlRunEnd(anchor, existing);
+            // The 🖼 gallery opener always follows this button
+            // (_artCreateGalleryButton() re-anchors it right after), so it is
+            // skipped too — or the two would swap on every pass.
+            const _gallery = document.getElementById(ctx.btnPrefix + '-gallery-' + tableIndex);
+            const _end = _ctlRunEnd(anchor, [existing, _gallery]);
             if (existing.previousElementSibling !== _end) _end.after(existing);
             return;
         }
@@ -101193,6 +101854,51 @@ a { color: #1565c0; }`;
         // End of the artwork run, for the same reason as the re-anchor path
         // above: the 🔗⟳ may already have been inserted after `anchor`.
         _ctlRunEnd(anchor).after(btn);
+    }
+
+    /**
+     * Creates (or re-anchors) the per-table 🖼 artwork-gallery opener
+     * (org/redesign-CAA-EAA-column.org D2), right after the 📊 summary
+     * opener. Same pattern and the same reason as `_artCreateSummaryButton()`:
+     * an existing button is RE-ANCHORED on every pass, because the run it
+     * belongs to is rebuilt around a row-count stat that churns on every
+     * filter. The id prefix puts it into the segmented run's CSS. Removed
+     * when `sa_caa_gallery` is off.
+     *
+     * @param   {Object} ctx
+     * @param   {HTMLTableElement} table
+     * @param   {number} tableIndex
+     * @returns {void}
+     */
+    function _artCreateGalleryButton(ctx, table, tableIndex) {
+        const id = ctx.btnPrefix + '-gallery-' + tableIndex;
+        const existing = document.getElementById(id);
+        if (Lib.settings.sa_caa_gallery === false) {
+            if (existing) existing.remove();
+            return;
+        }
+        const anchor = document.getElementById(ctx.btnPrefix + '-summary-' + tableIndex);
+        if (!anchor) return;
+        if (existing) {
+            if (existing.previousElementSibling !== anchor) anchor.after(existing);
+            return;
+        }
+        const btn = document.createElement('button');
+        btn.id = id;
+        btn.type = 'button';
+        btn.textContent = '🖼';
+        _setTip(btn, `Every ${ctx.column} image of the releases this table shows, grouped by release — ` +
+                  'type chips, "Compare two", a click opens the viewer. Asks the archive for nothing.');
+        btn.style.cssText =
+            'cursor:pointer; padding:1px 4px; border:1px solid #aaa;' +
+            ' border-radius:3px; background:#f5f5f5; vertical-align:middle;' +
+            ' font-size:0.8em; margin-left:3px; line-height:1;' +
+            ' display:inline-flex; align-items:center; box-sizing:border-box;';
+        btn.addEventListener('click', ev => {
+            ev.stopPropagation();
+            _artGalleryOpen(ctx, table, btn);
+        });
+        anchor.after(btn);
     }
 
     /**
@@ -101703,6 +102409,7 @@ a { color: #1565c0; }`;
             // untouched: the run it belongs to is rebuilt around a row-count
             // stat that churns on every filter. See _artCreateSummaryButton().
             _artCreateSummaryButton(ctx, table, tableIndex);
+            _artCreateGalleryButton(ctx, table, tableIndex);
             return;
         }
 
@@ -101740,6 +102447,7 @@ a { color: #1565c0; }`;
         // Zone 2 of org/503-handling.org's retry design: the summary opener,
         // inserted after this table's ⟳ so the run reads as one group.
         _artCreateSummaryButton(ctx, table, tableIndex);
+        _artCreateGalleryButton(ctx, table, tableIndex);
 
         // Zone 4, per table. Hooked HERE because this runs once per table on
         // every render, which is exactly when the controls need re-counting and

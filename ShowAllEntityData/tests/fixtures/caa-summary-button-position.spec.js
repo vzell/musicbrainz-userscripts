@@ -110,6 +110,13 @@ test.describe('artwork summary button: position survives a re-render', () => {
             expect(sumAt(after), 'the summary button must not be left behind the stat')
                 .toBeGreaterThan(statAt(after));
 
+            // The 🖼 gallery opener (org/redesign-CAA-EAA-column.org D2) follows
+            // the 📊 directly, before and after the re-render — the summary's
+            // own re-anchor skips it, or the two would swap on every pass.
+            const galAt = (arr) => arr.indexOf('mb-caa-toggle-btn-gallery-0');
+            expect(galAt(before), 'gallery right after the summary at first render').toBe(sumAt(before) + 1);
+            expect(galAt(after), 'gallery right after the summary after the re-render').toBe(sumAt(after) + 1);
+
             // And the run stays contiguous: nothing wedged between the controls.
             const controls = after.filter((k) => k !== 'mb-row-count-stat');
             const firstControl = after.indexOf(controls[0]);

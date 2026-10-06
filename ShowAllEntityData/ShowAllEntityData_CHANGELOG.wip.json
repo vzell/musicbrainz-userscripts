@@ -1,0 +1,26 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-06",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "CAA/EAA artwork gallery: a 🖼 button after 📊 in every table's artwork controls (and \"🖼 Open gallery\" in the 📊 summary) opens a movable, resizable window with every image of the releases the table currently shows, grouped by release and labelled with format, country/date, label and catalog number. Type chips show only those images and name the releases without one (\"No Medium image\"); \"Compare two\" lines two releases up type by type. A click opens the artwork viewer, whose Shift+← → step through the gallery's releases. It asks the archive for nothing: a release still loading shows \"loading…\" and fills in while the window is open."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "New settings (⚙️ → 🖼️ CAA/EAA ILLUSTRATED DISCOGRAPHY): artwork gallery on/off, its tile size, and its \"Compare two\" view. The window's position and size travel with a config export."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "New tests/fixtures/caa-gallery.spec.js (9 tests, EAA included) and caa-gallery.mobile.spec.js; caa-summary-button-position.spec.js pins the 🖼 right after the 📊; scripts/mutations/caa-gallery.json (8 entries, one recorded pass). org/redesign-CAA-EAA-column.org P5 done."
+        ]
+      }
+    ]
+  }
+]
