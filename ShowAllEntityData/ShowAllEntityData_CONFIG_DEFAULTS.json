@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1243+2026-10-06",
-    "schema_entries": 335,
+    "script_version": "9.99.1246+2026-10-06",
+    "schema_entries": 336,
     "sections": 43,
-    "settings": 292,
-    "settings_with_default": 287,
+    "settings": 293,
+    "settings_with_default": 288,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 136,
+      "checkbox": 137,
       "color_picker": 62,
       "divider": 43,
       "number": 42,
@@ -310,6 +310,7 @@
     "sa_enable_release_tracks_isrc_column": "Show \"ISRCs\" column",
     "sa_enable_release_tracks_length_mismatch_flag": "Flag tracks whose two lengths disagree",
     "sa_enable_release_tracks_live_date_check": "Flag live-recording credit dates that don't match \"Recording date\"",
+    "sa_enable_release_tracks_medium_art": "Show Medium images in each medium heading",
     "sa_enable_release_tracks_no_work_flag": "Flag tracks whose recording has no associated work",
     "sa_enable_release_tracks_recording_of_columns": "Show \"Recording of\" / \"Recorded at\" / \"Recorded in\" / \"Mixed at\" columns",
     "sa_enable_release_tracks_video_medium_flag": "Flag video recordings on a medium that cannot carry video",
@@ -603,6 +604,7 @@
     "sa_enable_release_tracks_isrc_column": false,
     "sa_enable_release_tracks_length_mismatch_flag": true,
     "sa_enable_release_tracks_live_date_check": true,
+    "sa_enable_release_tracks_medium_art": true,
     "sa_enable_release_tracks_no_work_flag": true,
     "sa_enable_release_tracks_recording_of_columns": true,
     "sa_enable_release_tracks_video_medium_flag": true,

@@ -1133,10 +1133,17 @@ types, comment, a larger preview, "6 of 16 · Liner 1 of 4", and the edit that
 added it. The chips above the sheet (**All 16**, **Front 1**, **Liner 4**, …)
 show only the images carrying that type — an image with two types counts for
 both — and **Grid / By type** groups the sheet under each image's first type.
-The layout is remembered, and travels with a config export.
+**Spreads** lays the sheet out like the package itself: two images of the same
+type whose comments differ only in a final "left" / "right" ("opened gatefold
+cover, inside left" + "… inside right") are shown side by side as one opened
+spread, the Liner and Booklet pages are turned two at a time with **◀ ▶**, and
+everything else follows as single pages. The pairing goes by the comments, so
+it only pairs when that is unambiguous — no image is ever hidden. The layout is
+remembered, and travels with a config export.
 
 **The viewer.** Click a thumbnail to open it full screen; it steps through the
-thumbnails currently shown, in their order, so a chip or **By type** applies.
+thumbnails currently shown, in their order, so a chip or **By type** applies
+(in **Spreads**, every Liner page is included, also those the pager hides).
 Clicking the **Cover art (N)** tab itself opens the viewer on a grid of every
 image instead of leaving the page — Ctrl-click (or middle-click) the tab, or a
 thumbnail, to open the archive page or the image in a new tab as before. The
@@ -1152,6 +1159,19 @@ page's own shortcuts are paused. It costs one request per render
 says "Cover art (0)" — and the global filter never hides it. "No images" and
 "could not be reached" are told apart; the second offers **⟳ Retry**. Setting:
 *Show a "Cover art" section above the tracklist* (on by default).
+
+**Disc labels in the medium headings.** The archive's **Medium** images (disc
+and record labels) appear as small thumbnails in the heading of the medium they
+show — click one for the viewer, which then steps through that medium's own
+images. The archive does not say which medium an image shows, so one is placed
+only when that is certain: the release has a single medium; its comment names
+the medium ("disc 2", "CD 2", "LP 2", or "side C" on vinyl and cassettes, two
+sides per medium); or no Medium image has a comment and there are exactly as
+many of them as media, which are then taken in archive order. Everything else
+is collected in one note on the first medium — e.g. *4 Medium images, 3 media,
+no comments: not assigned* — that opens them in the viewer. It makes no request
+of its own. Setting: *Show Medium images in each medium heading* (on by default;
+needs the Cover art section).
 
 **Live recordings from more than one event.** Each track is matched to an
 event: its **Recorded at event**, else the event its recording comment names

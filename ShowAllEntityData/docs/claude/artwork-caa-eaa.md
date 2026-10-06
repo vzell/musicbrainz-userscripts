@@ -318,7 +318,37 @@ it after. Setting `sa_enable_release_tracks_cover_art` (forced off in
   page?" for any link to another path — before any handler further down could
   act. Plain left click only; Ctrl/Cmd/Shift/Alt/middle clicks and a click
   while nothing is loaded go their normal way (including that confirm).
+- **Spreads (R6) pairs only when unambiguous.** `_releaseArtFindSpreads()`
+  keys on FIRST type + the comment before a final "left"/"right"; a key with
+  two lefts or two rights pairs nothing. `_releaseArtSpreadsPlan()` is the one
+  source of the layout's order (pairs, then every Liner/Booklet page, then the
+  rest), used by both the render and the viewer.
+- **The viewer's list is `_releaseArtViewerOrder(sec)`, not the tiles on
+  screen.** In Spreads the pager hides all but two Liner pages, so collecting
+  the visible tiles (right for Grid / By type) would drop the rest from the
+  viewer. The pager index lives on the section (`data-mb-art-book-page`) and is
+  clamped and written back by the render; a chip or layout switch resets it.
+- **Medium art in the medium h3s (R7) never guesses.**
+  `_releaseArtMediumAssign()` is pure and assigns in this order: one medium
+  takes every Medium image; a comment naming exactly one EXISTING medium
+  ("disc/CD/LP/DVD/medium/vinyl/record N", or "side X" only when every medium
+  is two-sided) assigns it; archive order only when NO Medium image has a
+  comment and the counts are equal — an unreadable comment ("disc two") is not
+  "no comment". Everything else lands in one `.mb-medium-art-note` on the first
+  medium's h3. Setting `sa_enable_release_tracks_medium_art` (default on,
+  inert without the section).
+- **A thumb in a medium h3 is a `<button>` whose `<img>` has
+  `pointer-events: none`.** The h3's collapse handler (in `renderGroupedTable()`)
+  exempts a click only by `e.target.tagName` (A, BUTTON, INPUT, …) and stops
+  propagation otherwise: with the IMG as target, a click collapses the medium
+  and the delegated viewer listener on `document` never sees it.
+- **`_releaseArtApplyMediumArt()` rides `updateFilterButtonsVisibility()`**
+  (beside `_updateMediumEventBadges()`), and runs once more when the record
+  arrives. It reads `CAA_CTX.imagesCache` only, memoises the assignment per
+  images array, and skips an h3 whose `data-mb-art-key` already matches: a
+  filter pass costs a query per medium.
 
-Covered by `release-tracks-cover-art.spec.js`, `release-tracks-cover-art-viewer.spec.js`
+Covered by `release-tracks-cover-art.spec.js`, `release-tracks-cover-art-viewer.spec.js`,
+`release-tracks-cover-art-spreads.spec.js`, `release-tracks-medium-art.spec.js`
 and `release-tracks-cover-art.mobile.spec.js`; mutation lists
-`release-tracks-cover-art.json`, `-p2.json` and `-p3.json`.
+`release-tracks-cover-art.json`, `-p2.json`, `-p3.json` and `-p4.json`.

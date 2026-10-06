@@ -39,6 +39,13 @@ and file name:
   "hidden afterwards" (see the touch-guard section of
   `toolbar-and-header-ui.md`). Mutation entries need `"project":
   "chromium-mobile"`.
+  **`locator.tap()` can fail forever on a zoomed-out page once the visual
+  viewport has scrolled** (release-tracks: a 1648 px layout viewport, the
+  412 × 839 visual one 865 px down): its actionability hit-check treats the
+  visual-viewport point as a layout one, lands on whatever sits higher up and
+  reports it as "intercepts pointer events". A real touch at the same spot is
+  fine. Use `page.touchscreen.tap()` at `boundingBox()`'s centre and assert the
+  `pointerdown` target, as `release-tracks-cover-art.mobile.spec.js` does.
 - **`chromium-live`** (`tests/live/*.spec.js`) — real musicbrainz.org
   pages. Every spec carries exactly one tag:
   - `@core` — shared-mechanism sanity net (filter/sort/fetch/pagination

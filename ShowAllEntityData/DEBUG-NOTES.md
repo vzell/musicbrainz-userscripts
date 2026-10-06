@@ -19262,3 +19262,37 @@ stub would also stop the error but leave a DOM the real page never has.
 network" by the marker header — "no page error" alone passes on every lucky
 run, which is how this hid — and the removed warning.
 `harness-mb-static-script.json`: 2/2 caught, both against `loadPage.js`.
+
+## 2026-10-06 — release-tracks Cover art P4: Spreads (R6) and Medium art in the medium h3s (R7) (branch feature/release-cover-art-p4)
+
+**Scope.** org/CAA-release-tracks-handling.org P4. The user replaced R3
+(sidebar gallery) with R6: no sidebar support. R7 assigns on comments or on
+equal counts (user's choice), tightened in implementation to equal counts of
+UNCOMMENTED images only — a comment the parser cannot read ("disc two") may
+contradict archive order, so it refuses.
+
+**Spreads: the viewer's order is not the tiles on screen.** The pager hides
+all but two Liner pages, so the Grid way of collecting the viewer's list
+(`figure.mb-release-art-tile` in DOM order) silently drops the rest.
+`_releaseArtViewerOrder()` derives it from `_releaseArtSpreadsPlan()` instead.
+
+**Medium h3 thumbs: the IMG must not be the click target.** The h3 collapse
+handler in `renderGroupedTable()` exempts clicks by `e.target.tagName` and
+stops propagation otherwise; a bare `<img>` (even inside a `<button>`) collapses
+the medium and the delegated viewer listener never runs. `pointer-events: none`
+on the image makes the button the target (mutation-checked, desktop and mobile).
+
+**Harness: `locator.tap()` hit-check vs a scrolled visual viewport.** The
+mobile tap test first timed out with "mb-release-art-grid intercepts pointer
+events". A probe showed no overlap at rest (`elementFromPoint` at the thumb's
+centre = the thumb), `visualViewport` = 412 × 839 at offsetTop 865 over a
+1648 px layout viewport, `boundingBox().y` = 407 (visual), and a raw
+`page.touchscreen.tap()` there hit `BUTTON.mb-medium-art-btn` and opened the
+viewer. So Playwright's actionability check tested the visual-viewport point
+in layout coordinates (y 407 = inside the grid). Not a page bug; recorded in
+docs/claude/testing-playwright.md.
+
+**Results:** `release-tracks-cover-art-spreads.spec.js` (7),
+`release-tracks-medium-art.spec.js` (10), two new mobile tests.
+`release-tracks-cover-art-p4.json`: 21/21 planted defects caught, plus one
+recorded overlap (the spread's own width cap is covered by the section's).
