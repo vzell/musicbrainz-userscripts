@@ -89,6 +89,30 @@ const SL_KINDS = {
         pageParam: 'page',
         cmds: ['list'],
     },
+    // The lyrics index (sl-lyrics), started from its landing page or from a
+    // letter page. Pages are fetched by KEY (features.pageKeys), so the
+    // route serves `keyFiles[letter]` rather than `pages[n]`; the fixture
+    // pages' letter walls are trimmed to "(" and "b" (build-sl-fixtures.py).
+    'lyrics-intro': {
+        url: 'https://springsteenlyrics.com/lyrics.php',
+        pathname: '/lyrics.php',
+        pages: [path.join(FIXTURE_DIR, 'sl-lyrics-intro.html')],
+        button: 'Show all lyrics',
+        pageParam: 'page',
+        keyParam: 'letter',
+        keyFiles: { '(': path.join(FIXTURE_DIR, 'sl-lyrics-paren.html'), b: path.join(FIXTURE_DIR, 'sl-lyrics-b.html') },
+        cmds: ['list'],
+    },
+    'lyrics-b': {
+        url: 'https://springsteenlyrics.com/lyrics.php?cmd=list&letter=b',
+        pathname: '/lyrics.php',
+        pages: [path.join(FIXTURE_DIR, 'sl-lyrics-b.html')],
+        button: 'Show all lyrics',
+        pageParam: 'page',
+        keyParam: 'letter',
+        keyFiles: { '(': path.join(FIXTURE_DIR, 'sl-lyrics-paren.html'), b: path.join(FIXTURE_DIR, 'sl-lyrics-b.html') },
+        cmds: ['list'],
+    },
     // The bootleg landing page: no cards, so no button and nothing fetched.
     // No `cmds`: nothing is served after the load, so a followed link is
     // aborted by the catch-all — specs assert on its href instead.
@@ -106,7 +130,7 @@ const SL_KINDS = {
  * Loads one SL list fixture with the userscript injected.
  *
  * @param {import('@playwright/test').Page} page
- * @param {{ kind: ('collection'|'collection-intro'|'sampler'|'memorabilia'|'bootlegs'|'brucelegs'|'bootlegs-intro'),enabled?: boolean, settingsOverride?: Object<string, *>, startPage?: number, url?: string }} opts
+ * @param {{ kind: ('collection'|'collection-intro'|'sampler'|'memorabilia'|'bootlegs'|'brucelegs'|'lyrics-intro'|'lyrics-b'|'bootlegs-intro'), enabled?: boolean, settingsOverride?: Object<string, *>, startPage?: number, url?: string }} opts
  *   `enabled` seeds `sa_enable_springsteenlyrics` (default `true`; the
  *   setting itself defaults to OFF). `startPage` (default 1) opens the list
  *   on that page: its file is the live document, at the list URL with the
@@ -136,8 +160,10 @@ async function loadSlListPage(page, { kind, enabled = true, settingsOverride = {
 
     await page.route((url) => url.hostname === 'springsteenlyrics.com' && url.pathname === spec.pathname
         && spec.cmds.includes(url.searchParams.get('cmd')) && !url.searchParams.has('item'), (route) => {
-        const pageNum = parseInt(new URL(route.request().url()).searchParams.get(spec.pageParam) || '1', 10);
-        const file = spec.pages[pageNum - 1];
+        const params = new URL(route.request().url()).searchParams;
+        const file = spec.keyParam
+            ? spec.keyFiles[(params.get(spec.keyParam) || '').toLowerCase()]
+            : spec.pages[parseInt(params.get(spec.pageParam) || '1', 10) - 1];
         return file
             ? route.fulfill({ path: file, contentType: 'text/html' })
             : route.fulfill({ status: 404, body: 'no such fixture page' });

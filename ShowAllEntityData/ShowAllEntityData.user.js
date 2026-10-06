@@ -21,6 +21,7 @@
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/(?:collection|bootlegs|brucelegs)\.php\?(?:[^#]*&)?cmd=list(?:[&#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/collection\.php(?:\?(?:(?:[^#]*&)?cmd=intro(?:&[^#]*)?|pg=\d+(?:&[^#]*)?))?(?:#.*)?$/
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/bootlegs\.php(?:\?(?:[^#]*&)?cmd=intro(?:&[^#]*)?)?(?:#.*)?$/
+// @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/lyrics\.php(?:\?(?:[^#]*&)?cmd=(?:intro|list)(?:&[^#]*)?)?(?:#.*)?$/
 // @include      /^https?:\/\/(?:www\.)?jungleland\.it\/html\/list\.htm(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?brucespringsteen\.it\/(?:DB|db)\/records\.aspx(?:[?#].*)?$/
 // @connect      raw.githubusercontent.com
@@ -4041,7 +4042,8 @@
                          'paginated list pages — collection.php?cmd=list… (every category and ' +
                          'every format/country/date/… filter), the collection\'s entry page ' +
                          'collection.php ("Latest additions"), bootlegs.php?cmd=list… and the CD ' +
-                         'and vinyl bootlegs, brucelegs.php?cmd=list… — and ' +
+                         'and vinyl bootlegs, brucelegs.php?cmd=list…, plus the lyrics index ' +
+                         'lyrics.php (every first-letter page in one go) — and ' +
                          'offers a "Show all" button that fetches every page of the list, turns ' +
                          'the item cards into one filterable, sortable table, and adds the usual ' +
                          'toolbar. Only what each list card shows is used; no item detail page is ' +
@@ -9834,6 +9836,225 @@
         }
 
         Lib.debug('init', `applySlCardsToTable: converted ${tbody.rows.length} ${kind} card(s) → table.`);
+    }
+
+    // -------------------------------------------------------------------------
+    // springsteenlyrics.com: the lyrics index (lyrics.php, sl-lyrics)
+    // -------------------------------------------------------------------------
+    // One page per first letter (`lyrics.php?cmd=list&letter=X`, 32 letters,
+    // each ONE page), every song one line:
+    //   <span class="monospaced"><i class="bi bi-file-earmark-text"></i>
+    //   <a href="lyrics.php?song=SLUG">TITLE</a> [Live 30 Sep 1987 version]</span><br>
+    // Not cards, so not applySlCardsToTable(). The pages are fetched by
+    // features.pageKeys (_readPageKeys()), one per letter link. Survey of all
+    // 3,552 lines on 2026-10-06 in docs/claude/springsteenlyrics.md.
+
+    /**
+     * Column headers of the lyrics table, in order. "No." and "Letter" stay
+     * clear of `_sortColumnKind()`'s name heuristic (no `#`, `Year`, …);
+     * "No." is declared numeric in `integerColumns` instead.
+     * @type {string[]}
+     */
+    const _SL_LYRICS_HEADERS = ['Title', 'Lyrics', 'Version', 'Type', 'Artist', 'Date', 'Show', 'No.', 'Letter'];
+
+    /**
+     * Splits a lyrics line's bracketed version text into the table's fields.
+     *
+     * Type follows ordered rules taken from a survey of every bracket on the
+     * site (2026-10-06; the counts are rows):
+     *   - Live (1,792) and Soundcheck (14) come first.
+     *   - Original (337): "Original Roy Orbison version" gives the Artist.
+     *   - Another artist's version, "X's cover|album|single|EP|original
+     *     version", gives X as Artist. Its Type is Cover (93), Other artist
+     *     album (91), Original, or Other.
+     *   - Album (254).
+     *   - Demo, Rehearsal, Outtake, Unofficial studio, Official studio,
+     *     Handwritten, Draft and Studio.
+     *   - Version ("Version 2", "Alternative version #1", "Take #1").
+     *   - Anything else is Other.
+     *
+     * The other fields:
+     *   - **Date:** `_slFirstIsoDate()`, from ANY type that carries one ("30
+     *     Jun 1982 demo version", "Official 1995 studio version"); a range
+     *     keeps its first date.
+     *   - **Show:** the parenthesised note of a Live or Soundcheck line
+     *     ("early show", "KLOL-FM"), never a "take #N".
+     *   - **No.:** the number in "version 2", "#3" or "take #1".
+     *
+     * @param {string} text The text inside the brackets ('' when the line has none).
+     * @returns {{type: string, artist: string, date: string, show: string, no: string}} The fields; '' where none.
+     */
+    function _slLyricsParseVersion(text) {
+        const s = String(text || '').replace(/\s+/g, ' ').trim();
+        const out = { type: '', artist: '', date: '', show: '', no: '' };
+        if (!s) return out;
+        const low = s.toLowerCase();
+        let m;
+        if (/^live\b/.test(low)) {
+            out.type = 'Live';
+        } else if (/\bsound-?check\b/.test(low)) {
+            out.type = 'Soundcheck';
+        } else if (/^original\b/.test(low)) {
+            out.type = 'Original';
+            m = s.match(/^original\s+(.+?)\s+version\b/i);
+            if (m && !/^studio$/i.test(m[1])) out.artist = m[1];
+        } else if ((m = s.match(/^(.+)(?:'s|’s|'|’)\s+((?:[\w-]+\s+)?version\b.*)$/i))) {
+            // The LAST possessive before "[word] version": "Manfred Mann's
+            // Earth Band's cover version" is Manfred Mann's Earth Band.
+            out.artist = m[1].trim();
+            const rest = m[2].toLowerCase();
+            out.type = /\bcover\b/.test(rest) ? 'Cover'
+                : /\balbum\b/.test(rest) ? 'Other artist album'
+                    : /\boriginal\b/.test(rest) ? 'Original' : 'Other';
+        } else if (/\balbum version\b/.test(low)) {
+            out.type = 'Album';
+        } else if (/\bdemo\b/.test(low)) {
+            out.type = 'Demo';
+        } else if (/\brehearsal\b/.test(low)) {
+            out.type = 'Rehearsal';
+        } else if (/\bouttake\b/.test(low)) {
+            out.type = 'Outtake';
+        } else if (/^unofficial\b/.test(low)) {
+            out.type = 'Unofficial studio';
+        } else if (/^official\b/.test(low)) {
+            out.type = 'Official studio';
+        } else if (/\bhandwritten\b/.test(low)) {
+            out.type = 'Handwritten';
+        } else if (/\bdraft\b/.test(low)) {
+            out.type = 'Draft';
+        } else if (/\bstudio\b/.test(low)) {
+            out.type = 'Studio';
+        } else if (/^(?:version|take|alternat\w*)\b/.test(low)) {
+            out.type = 'Version';
+        } else {
+            out.type = 'Other';
+        }
+        out.date = _slFirstIsoDate(s);
+        if (out.type === 'Live' || out.type === 'Soundcheck') {
+            out.show = _slShowQualifier(s).split(', ').filter(q => !/^take\b/i.test(q)).join(', ');
+        }
+        m = s.match(/#\s*(\d+)\b/) || s.match(/\b(?:version|take)\s+(\d+)\b/i);
+        if (m) out.no = String(parseInt(m[1], 10));
+        return out;
+    }
+
+    /**
+     * Converts a springsteenlyrics.com lyrics letter page's song lines into a
+     * `<table class="tbl">`, so the standard fetch / filter / sort pipeline
+     * can process it — the counterpart of `applySlCardsToTable()` for the
+     * pageType carrying `features.slLyricsToTable`.
+     *
+     * Called from the same three places as the other converters: the
+     * click-time pre-processing block of `startFetchingProcess()` (live
+     * page), the fetch loop for a fetched page (`doc !== document`) and
+     * `_hydrateAndRenderFromSnapshotData()` for Load from Disk. Idempotent: a
+     * page with no song line left is a no-op.
+     *
+     * The lines are found from themselves (`span.monospaced` holding a
+     * `lyrics.php?song=` link), outside the navbar and footer, never through
+     * `.project-detail` (see `_slFindCards()` for why). The Letter column
+     * comes from the page's own heading, `Starting with "B"`, so a fetched
+     * page needs no URL.
+     *
+     * The lyrics LANDING page (`lyrics.php`) has no song lines but carries
+     * the same letter links; there the live document gets an empty table
+     * under an injected `<h2>`, which the fetched pages fill — the
+     * `bs-records` precedent.
+     *
+     * @param {object}   def                   The active merged pageDefinition.
+     * @param {Document} [docContext=document] The live or a fetched document.
+     * @returns {void}
+     */
+    function applySlLyricsToTable(def, docContext = document) {
+        if (!def?.features?.slLyricsToTable) return;
+        const lines = Array.from(docContext.querySelectorAll('span.monospaced'))
+            .filter(span => span.querySelector('a[href*="lyrics.php?song="]') && !span.closest('.navbar, footer, table'));
+        const heading = Array.from(docContext.querySelectorAll('h3.heading, h2.heading'))
+            .find(h => /^Starting with\s*"/i.test(h.textContent.trim()));
+        const letter = (heading?.textContent.match(/"(.*)"/) || [])[1] || '';
+
+        const table = docContext.createElement('table');
+        table.className = 'tbl mb-sl-table';
+        const thead = docContext.createElement('thead');
+        const hr = docContext.createElement('tr');
+        _SL_LYRICS_HEADERS.forEach(h => {
+            const th = docContext.createElement('th');
+            th.textContent = h;
+            hr.appendChild(th);
+        });
+        thead.appendChild(hr);
+        table.appendChild(thead);
+        const tbody = docContext.createElement('tbody');
+        table.appendChild(tbody);
+
+        if (lines.length === 0) {
+            if (docContext.querySelector('table.mb-sl-table')) return;
+            const wall = docContext === document && !heading ? docContext.querySelector('.project-detail .element-buttons') : null;
+            if (!wall) {
+                // Said out loud, like applySlCardsToTable(): a silent no-op
+                // renders "0 rows" with nothing in the log to say why.
+                Lib.warn('init', `applySlLyricsToTable: no song lines found on the ${docContext === document ? 'live' : 'fetched'} page ` +
+                    `(${docContext.querySelectorAll('span.monospaced').length} span.monospaced in the document) — nothing converted.`);
+                return;
+            }
+            // The landing page: an empty table for the fetched letters.
+            const h2 = document.createElement('h2');
+            h2.className = 'heading mb-sl-list-heading';
+            h2.textContent = 'All lyrics';
+            wall.after(h2, table);
+            for (let el = table.parentElement; el; el = el.parentElement) {
+                if (el.classList.contains('container')) el.classList.add('mb-sl-wide');
+            }
+            Lib.debug('init', 'applySlLyricsToTable: landing page — empty table for the fetched letters.');
+            return;
+        }
+
+        lines.forEach(span => {
+            const a = span.querySelector('a[href*="lyrics.php?song="]');
+            const icon = span.querySelector('i');
+            const after = Array.from(span.childNodes).slice(Array.from(span.childNodes).indexOf(a) + 1)
+                .map(n => n.textContent).join('');
+            const version = ((after.match(/\[([^\]]*)\]/) || [])[1] || '').replace(/\s+/g, ' ').trim();
+            const v = _slLyricsParseVersion(version);
+            const tr = docContext.createElement('tr');
+            const titleTd = docContext.createElement('td');
+            const link = docContext.createElement('a');
+            link.setAttribute('href', a.getAttribute('href'));
+            link.textContent = a.textContent.replace(/\s+/g, ' ').trim();
+            titleTd.appendChild(link);
+            tr.appendChild(titleTd);
+            // bi-file-earmark-text: lyrics on the song page; the plain
+            // bi-file-earmark: "Lyrics not available" (checked on song=babyme).
+            const hasLyrics = !!icon && icon.classList.contains('bi-file-earmark-text');
+            [hasLyrics ? '✓' : '✗', version, v.type, v.artist, v.date, v.show, v.no, letter.toUpperCase()].forEach(value => {
+                const td = docContext.createElement('td');
+                td.textContent = value;
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+
+        lines[0].parentNode.insertBefore(table, lines[0]);
+        lines.forEach(span => {
+            const next = span.nextSibling;
+            if (next && next.nodeName === 'BR') next.remove();
+            span.remove();
+        });
+
+        if (docContext === document) {
+            if (heading && heading.tagName === 'H3') {
+                const h2 = document.createElement('h2');
+                Array.from(heading.attributes).forEach(attr => h2.setAttribute(attr.name, attr.value));
+                while (heading.firstChild) h2.appendChild(heading.firstChild);
+                h2.classList.add('mb-sl-list-heading');
+                heading.replaceWith(h2);
+            }
+            for (let el = table.parentElement; el; el = el.parentElement) {
+                if (el.classList.contains('container')) el.classList.add('mb-sl-wide');
+            }
+        }
+
+        Lib.debug('init', `applySlLyricsToTable: converted ${tbody.rows.length} song line(s) of letter "${letter}" → table.`);
     }
 
     /**
@@ -22990,6 +23211,35 @@
             buttons: [],
             features: {
                 slNavOnly: true
+            },
+            tableMode: 'single'
+        },
+        // The lyrics index: one page per first letter
+        // (`lyrics.php?cmd=list&letter=X`, 32 letters, each ONE page), and
+        // its landing page `lyrics.php` (bare or `cmd=intro`), which carries
+        // the same letter links. Song lines, not cards: own converter,
+        // applySlLyricsToTable(). The pages are not numbered, so
+        // `features.pageKeys` makes the letter links the page list
+        // (_readPageKeys()); from any of these pages one press fetches every
+        // letter. `?song=` (a song page) and `cmd=songslistedbyrelease` are
+        // not this list.
+        {
+            type: 'sl-lyrics',
+            host: 'springsteenlyrics.com',
+            match: (path, params) => path === '/lyrics.php' && !params.has('song') &&
+                (!params.has('cmd') || params.get('cmd') === 'intro' || params.get('cmd') === 'list'),
+            buttons: [ { label: 'Show all lyrics', shortLabel: 'Lyrics' } ],
+            features: {
+                slLyricsToTable: true,
+                pageKeys: { param: 'letter', selector: '.element-buttons a[href*="letter="]' },
+                columnExtractors: [
+                    { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
+                ],
+                integerColumns: [
+                    { sourceColumn: 'No.', align: 'R' },
+                    { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' }
+                ],
+                stickyColumn: 'Title'
             },
             tableMode: 'single'
         },
@@ -52235,7 +52485,11 @@ a { color: #1565c0; }`;
      * every run — so a fresh press of any button removes the offer, and a
      * resumed run that succeeds leaves nothing behind.
      *
-     * @type {?{nextPage: number, maxPage: number, pagesProcessed: number,
+     * `pageKeys` is the interrupted run's key list (a `features.pageKeys`
+     * pageType, `_readPageKeys()`), so `nextPage` indexes the same order;
+     * null for numbered pages.
+     *
+     * @type {?{nextPage: number, maxPage: number, pageKeys: ?Array<{key: string, href: string}>, pagesProcessed: number,
      *          totalRowsAccumulated: number, cumulativeFetchTime: number,
      *          lastCategory: ?string, pendingGroupCellHtml: ?string,
      *          maxPageKnown: boolean, button: HTMLElement,
@@ -63147,6 +63401,41 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Reads the list of pages to fetch for a pageType whose pages are NOT
+     * numbered: `features.pageKeys = { param, selector }`. Each link matching
+     * `selector` in `doc` is one page; its `param` value is the page's key
+     * (springsteenlyrics.com's lyrics index: `letter=(`, `letter=1`, …,
+     * `letter=z`). The link itself is what gets fetched, so the page's own
+     * other parameters (`cmd=list`) come with it even when the run starts on
+     * a page that lacks them (the lyrics landing page, `lyrics.php`).
+     *
+     * Keys are de-duplicated case-insensitively, in page order. The fetch
+     * loop keeps its 1-based index `p` and reads `keys[p - 1]`, so its
+     * counters, progress bar, page-count dialog and resume work unchanged.
+     * MusicBrainz never reaches this: no MusicBrainz pageType sets
+     * `features.pageKeys`.
+     *
+     * @param {object}   def The active merged pageDefinition.
+     * @param {Document} doc The document to read the links from (the live page).
+     * @returns {?Array<{key: string, href: string}>} The pages, or null when the pageType has no `pageKeys`.
+     */
+    function _readPageKeys(def, doc) {
+        const cfg = def?.features?.pageKeys;
+        if (!cfg) return null;
+        const keys = [];
+        const seen = new Set();
+        doc.querySelectorAll(cfg.selector).forEach(a => {
+            let url;
+            try { url = new URL(a.getAttribute('href') || '', doc.baseURI); } catch (e) { return; }
+            const key = url.searchParams.get(cfg.param);
+            if (!key || seen.has(key.toLowerCase())) return;
+            seen.add(key.toLowerCase());
+            keys.push({ key, href: url.toString() });
+        });
+        return keys;
+    }
+
+    /**
      * Determines the maximum page number by parsing the pagination UI on the current page
      * (the page number is read from the `_pageParamName()` query parameter of each link).
      * @returns {number} The maximum page number found, defaults to 1 if no pagination is present
@@ -64197,6 +64486,10 @@ a { color: #1565c0; }`;
         if (activeDefinition.features?.slCardsToTable) {
             applySlCardsToTable(activeDefinition);
         }
+        // The lyrics index ('sl-lyrics'): song lines, not cards.
+        if (activeDefinition.features?.slLyricsToTable) {
+            applySlLyricsToTable(activeDefinition);
+        }
 
         // ── jlListToTable pre-processing ─────────────────────────────────────
         // The jungleland.it list ('jl-list'): its plain links become a
@@ -64255,6 +64548,10 @@ a { color: #1565c0; }`;
         Lib.debug('fetch', 'Starting fetch process...', overrideParams);
         globalStatusDisplay.textContent = 'Getting number of pages to fetch...';
         let maxPage;
+        // Set only for a `features.pageKeys` pageType (see _readPageKeys()):
+        // page p of the loop is then pageKeys[p - 1], fetched by its own link.
+        // null everywhere else, which leaves every numbered-page path as it was.
+        let pageKeys = null;
 
         // ── Compute effective fetch path (accounts for virtualPath) ──────────
         // When a button carries virtualPath (e.g. '/label'), replace the last
@@ -64287,7 +64584,21 @@ a { color: #1565c0; }`;
             // request and — worse — put "⚠️ High Page Count" in front of the
             // user a second time for the same set of pages.
             maxPage = resumeFrom.maxPage;
+            // The same key order as the interrupted run, or nextPage would
+            // point at a different page.
+            pageKeys = resumeFrom.pageKeys || null;
             Lib.debug('fetch', `Resuming from page ${resumeFrom.nextPage}: reusing maxPage ${maxPage} from the interrupted run.`);
+        } else if (activeDefinition?.features?.pageKeys) {
+            // Pages named by key, not number (springsteenlyrics.com's lyrics
+            // index, one page per first letter): the links on the live page
+            // ARE the page list.
+            pageKeys = _readPageKeys(activeDefinition, document);
+            maxPage = pageKeys.length;
+            if (maxPage === 0) {
+                Lib.warn('fetch', `features.pageKeys: no link matches "${activeDefinition.features.pageKeys.selector}" on this page — nothing to fetch.`);
+            }
+            Lib.debug('fetch', `Context: pageKeys (${activeDefinition.features.pageKeys.param}): ${pageKeys.map(k => k.key).join(' ')}`);
+            globalStatusDisplay.textContent = `Getting number of pages to fetch... ${maxPage} pages, one per ${activeDefinition.features.pageKeys.param}`;
         } else if (isAmbiguousEditsPagination) {
             // MusicBrainz edit-listing pagination never reveals a true last page
             // (the widget is a sliding window around the current page, and
@@ -64430,6 +64741,11 @@ a { color: #1565c0; }`;
         // Same parameter the loop below sets: on a `pageParam` page, reading
         // `page` would call `?pg=3` "page 1" and reuse its live cards as page 1.
         const currentPageNum = parseInt(currentUrlParams.get(_pageParamName()) || '1', 10);
+        // The pageKeys counterpart: the key this page itself shows ('' on a
+        // page that shows none, e.g. the lyrics landing page — every key is
+        // then fetched).
+        const currentPageKey = pageKeys
+            ? (currentUrlParams.get(activeDefinition.features.pageKeys.param) || '').toLowerCase() : '';
 
         // A resume continues the interrupted run's running totals rather than
         // restarting them, or the status line would say "Loaded 3 pages" over a
@@ -64461,8 +64777,9 @@ a { color: #1565c0; }`;
                 const pageStartTime = performance.now();
 
                 // Initialize fetchUrl from the full current URL to preserve Search parameters (query, type, etc.)
-                const fetchUrl = new URL(window.location.href);
-                fetchUrl.searchParams.set(_pageParamName(), p.toString());
+                // A pageKeys page is fetched by its own link instead.
+                const fetchUrl = new URL(pageKeys ? pageKeys[p - 1].href : window.location.href);
+                if (!pageKeys) fetchUrl.searchParams.set(_pageParamName(), p.toString());
 
                 // ── virtualPath support ───────────────────────────────────────
                 // When the clicked button carries a virtualPath value (e.g.
@@ -64494,7 +64811,13 @@ a { color: #1565c0; }`;
                     // Fix: always fetch search pages fresh from the network so the DOMParser
                     // receives a fully server-rendered response, regardless of whether p===1.
                     const _isSearchPage = activeDefinition && activeDefinition.type === 'search';
-                    if (!_isResume && !_isSearchPage && !buttonConfig.virtualPath && p === currentPageNum && (!overrideParams || Object.keys(overrideParams).length === 0)) {
+                    // With pageKeys, "this page" is the one whose KEY the URL
+                    // shows: started on letter=b, the live list is reused when
+                    // the loop reaches "b", not as page 1 (which is "(").
+                    const _isCurrentPage = pageKeys
+                        ? pageKeys[p - 1].key.toLowerCase() === currentPageKey
+                        : p === currentPageNum;
+                    if (!_isResume && !_isSearchPage && !buttonConfig.virtualPath && _isCurrentPage && (!overrideParams || Object.keys(overrideParams).length === 0)) {
                         Lib.debug('fetch', `Page ${p} is current page. Using existing document.`);
                         doc = document;
                    } else {
@@ -64521,6 +64844,7 @@ a { color: #1565c0; }`;
                     _resumeState = {
                         nextPage: p,
                         maxPage,
+                        pageKeys,
                         pagesProcessed,
                         totalRowsAccumulated,
                         cumulativeFetchTime,
@@ -64632,6 +64956,9 @@ a { color: #1565c0; }`;
                 // springsteenlyrics.com page is raw cards, never converted.
                 if (doc !== document && activeDefinition.features?.slCardsToTable) {
                     applySlCardsToTable(activeDefinition, doc);
+                }
+                if (doc !== document && activeDefinition.features?.slLyricsToTable) {
+                    applySlLyricsToTable(activeDefinition, doc);
                 }
                 // Same for jungleland.it — not reached today (its list is one
                 // page, so the live document is reused), kept so a second
@@ -66111,8 +66438,9 @@ a { color: #1565c0; }`;
                 const fillColor = progress >= 1.0 ? '#ccffcc' : (progress >= 0.5 ? '#ffe0b2' : '#ffcccc');
                 fetchProgressFill.style.width = `${fillPct}%`;
                 fetchProgressFill.style.background = fillColor;
-                fetchProgressLabel.textContent =
-                    `Loading page ${p} of ${maxPage}... (${totalRowsAccumulated} rows) - ${estRemainingSeconds.toFixed(1)}s left`;
+                fetchProgressLabel.textContent = pageKeys
+                    ? `Loading ${pageKeys[p - 1].key.toUpperCase()} (${p} of ${maxPage})... (${totalRowsAccumulated} rows) - ${estRemainingSeconds.toFixed(1)}s left`
+                    : `Loading page ${p} of ${maxPage}... (${totalRowsAccumulated} rows) - ${estRemainingSeconds.toFixed(1)}s left`;
 
                 // Detailed statistics per page fetch
                 Lib.debug('fetch', `Page ${p}/${maxPage} processed in ${(pageDuration / 1000).toFixed(2)}s. Rows on page: ${rowsInThisPage}. Total: ${totalRowsAccumulated}`);
@@ -90048,6 +90376,9 @@ a { color: #1565c0; }`;
             if (activeDefinition.features?.slCardsToTable) {
                 applySlCardsToTable(activeDefinition);
             }
+            if (activeDefinition.features?.slLyricsToTable) {
+                applySlLyricsToTable(activeDefinition);
+            }
             // And for jungleland.it: the reloaded list is plain links again.
             if (activeDefinition.features?.jlListToTable) {
                 applyJlListToTable(activeDefinition);
@@ -107243,6 +107574,17 @@ a { color: #1565c0; }`;
              */
             slShowQualifier(text) {
                 return _slShowQualifier(text);
+            },
+
+            /**
+             * Thin wrapper around `_slLyricsParseVersion()` — the lyrics
+             * index's bracket parser (Type, Artist, Date, Show, No.).
+             *
+             * @param {string} text - The text inside a lyrics line's brackets.
+             * @returns {{type: string, artist: string, date: string, show: string, no: string}} The fields.
+             */
+            slLyricsParseVersion(text) {
+                return _slLyricsParseVersion(text);
             },
 
             /**

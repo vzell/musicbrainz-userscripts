@@ -177,3 +177,47 @@ test('springsteenlyrics.com CD and vinyl bootlegs: show notes, dates and locatio
     expect(out.noted, 'premise: the list has show notes in Location').toBeGreaterThan(0);
     expect(out).toEqual({ noted: out.noted, notedWithoutShow: [], badCountry: [], undatedYear: [] });
 });
+
+// The whole real lyrics index: 32 letter pages fetched by key
+// (features.pageKeys), 3,552 song lines on 2026-10-06. Self-consistent rather
+// than a fixed count: the landing page's own statistics (`chartData`, one
+// count per first letter) must equal the rows, letter by letter.
+test('springsteenlyrics.com lyrics index: every letter page consolidates into the site\'s own per-letter counts', { tag: '@extended' }, async ({ page }) => {
+    test.setTimeout(300000);
+    await loadUserscriptPage(page, {
+        url: 'https://springsteenlyrics.com/lyrics.php',
+        settingsOverride: { sa_enable_springsteenlyrics: true },
+    });
+    const announced = await page.evaluate(() => {
+        const m = Array.from(document.scripts).map((s) => s.textContent).join('\n').match(/var chartData = (\{[^}]*\});/);
+        return m ? JSON.parse(m[1]) : null;
+    });
+    expect(announced, 'the landing page carries its per-letter statistics').not.toBeNull();
+
+    await page.click('button[data-label="Show all lyrics"]');
+    await page.locator('#mb-filter-container').waitFor({ state: 'visible', timeout: 240000 });
+    await page.waitForFunction(() => !document.getElementById('mb-render-heading'), null, { timeout: 240000 });
+
+    const out = await page.evaluate(() => {
+        const names = Array.from(document.querySelectorAll('table.tbl thead tr:first-child th'))
+            .map((th) => th.dataset.colName || th.textContent.trim());
+        const rows = Array.from(document.querySelectorAll('table.tbl tbody tr')).map((tr) =>
+            Object.fromEntries(names.map((n, i) => [n, (tr.cells[i]?.textContent || '').trim()])));
+        const perLetter = {};
+        rows.forEach((r) => { perLetter[r.Letter] = (perLetter[r.Letter] || 0) + 1; });
+        const types = {};
+        rows.forEach((r) => { types[r.Type] = (types[r.Type] || 0) + 1; });
+        return {
+            perLetter,
+            types,
+            liveUndated: rows.filter((r) => r.Type === 'Live' && !r.YYYY).length,
+            badSplit: rows.filter((r) => r.Date && !r.Date.startsWith(r.YYYY)).map((r) => `${r.Title} ${r.Date}`).slice(0, 10),
+        };
+    });
+    expect(out.perLetter).toEqual(announced);
+    // The classifier's survey (2026-10-06): 35 of 3,552 lines are "Other",
+    // and 2 Live lines carry no date. A jump means the site writes a new shape.
+    expect(out.types.Other || 0, `types: ${JSON.stringify(out.types)}`).toBeLessThan(60);
+    expect(out.liveUndated).toBeLessThan(10);
+    expect(out.badSplit).toEqual([]);
+});

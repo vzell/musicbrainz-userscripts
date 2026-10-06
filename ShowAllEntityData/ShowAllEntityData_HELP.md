@@ -1164,8 +1164,8 @@ an import brings your deletions back.
 - **Account pages** (`/account/applications`)
 - Also works on the **musicbrainz.eu** mirror
 - **Not MusicBrainz:** the **springsteenlyrics.com** collection (every
-  category and the entry page), bootleg lists and CD and vinyl bootleg
-  list, the **jungleland.it**
+  category and the entry page), bootleg lists, CD and vinyl bootleg list
+  and lyrics index, the **jungleland.it**
   bootleg artwork list and the **brucespringsteen.it** record database —
   each off until you switch it on, see
   [Page-specific behaviour](#page-specific-behaviour)
@@ -1488,7 +1488,7 @@ releases.
 </details>
 
 <details>
-<summary>springsteenlyrics.com collection and bootleg lists</summary>
+<summary>springsteenlyrics.com collection, bootleg and lyrics lists</summary>
 
 Not a MusicBrainz page at all, and **off until you switch it on**: ⚙️ Settings →
 *🎸 springsteenlyrics.com* → *Enable on springsteenlyrics.com collection and
@@ -1638,6 +1638,33 @@ The columns come from what each card shows — no item page is opened:
   *Place* and leaves the other three empty. A note such as "(Early Show)" at
   the end of the location goes to *Show*. Every card says "PDF available"
   and "artwork available", so those notes get no column.
+
+**The lyrics index** (`lyrics.php`, or any of its "Lyrics starting with"
+pages) gets one button, **Lyrics**. The site lists its songs one first letter
+per page. Pressing it fetches every letter, whichever page you start on, and
+turns the over 3,500 song lines into one table:
+
+- **Title** links to the song's lyrics page. **Lyrics** is ✓ when that page
+  has lyrics, and ✗ when the site's plain icon says it has none.
+- **Version** is the site's text in brackets, as written ("Live 30 Sep 1987
+  version", "Original Roy Orbison version"). It is also read into:
+  - **Type:** Live, Soundcheck, Original, Cover, Album, Other artist album,
+    Official studio, Unofficial studio, Studio, Demo, Rehearsal, Outtake,
+    Handwritten, Draft, Version or Other, and empty when there is no bracket.
+    Filter or pick one from its 📊 list, e.g. only the Live versions.
+  - **Artist:** the other artist, for "Original Roy Orbison version" or
+    "Patti Scialfa's album version".
+  - **Date:** any date in the text, as `1987-09-30`. A month or a year alone
+    stays as `1987-09` or `1987`.
+  - **Show:** the note in brackets of a live version, such as "early show".
+  - **No.:** the number of "version 2", "#3" or "take #1".
+- **Letter** is the first-letter page the song came from.
+- **DD, MM, YYYY, Day, Month** split *Date*, the same as on the bootleg
+  lists.
+
+While loading, the progress line names the letter it is on ("Loading H (9
+of 32)"). If one letter fails to load, "↻ Load remaining pages" carries on
+from that letter.
 
 Cover and Title link to the item's own page on springsteenlyrics.com;
 following one asks first, as leaving any consolidated table does.

@@ -7,8 +7,9 @@ the **collection** (`collection.php?cmd=list…`) and the **bootleg** lists
 (`bootlegs.php?cmd=list…`), every category and every `f_*` filter — as the
 pageTypes `sl-collection` and `sl-bootlegs`, and on the collection's entry
 page `collection.php` ("Latest additions", every item, `pg=` pagination) as
-`sl-collection-intro`, and on the **CD and vinyl bootleg** list
-(`brucelegs.php?cmd=list…`) as `sl-brucelegs`. It is **opt-in**:
+`sl-collection-intro`, on the **CD and vinyl bootleg** list
+(`brucelegs.php?cmd=list…`) as `sl-brucelegs`, and on the **lyrics index**
+(`lyrics.php`, one page per first letter) as `sl-lyrics`. It is **opt-in**:
 `sa_enable_springsteenlyrics`, default **off**. Only what each list card shows
 is used; no item detail page is fetched. The bootleg landing page
 `bootlegs.php` (`sl-bootlegs-intro`) has no cards; it is supported only for the
@@ -280,6 +281,96 @@ pushed back at the far right — plain `position: sticky`, on any host.
 - The entry page's 54 pages and 5365 rows trip ⚠️ High Page Count and the
   render-decision dialog at the default thresholds — expected, not a bug.
 
+## The lyrics index — `sl-lyrics`, `features.pageKeys`, `applySlLyricsToTable()`
+
+Added 2026-10-06. The URLs are `lyrics.php?cmd=list&letter=X` and the landing
+page `lyrics.php` (bare or `cmd=intro`). A song page (`?song=`) and
+`cmd=songslistedbyrelease` are NOT this list, and the `@include` line and
+`match` both keep them out.
+
+**Survey** (all 32 letter pages, fetched once at 1 request/s):
+
+- **Letters:** there are 32 (`( 1 3 4 5 6 7 a…z`, no `x`), exactly the links
+  in `div.element-buttons a[href*="letter="]`. The `9`/`x` buttons sit inside
+  an HTML comment, which `querySelectorAll` does not see.
+- **Pages:** every letter is ONE page ("Showing items 1-N of N"; T, the
+  largest, has 514).
+- **Lines:** 3,552 lines and 1,336 distinct titles, with unique `song=`
+  slugs. The landing page's own `chartData` holds the same per-letter counts,
+  which the live spec compares against.
+- **Line shape:** one shape with no exceptions:
+  `<span class="monospaced"><i class="ICON"></i> <a href="lyrics.php?song=SLUG">TITLE</a> [BRACKET]</span><br>`.
+  - ICON `bi-file-earmark-text` (3,352) means lyrics are present. The plain
+    `bi-file-earmark` (200) means "Lyrics not available" (checked on
+    `song=babyme`). That gives the **Lyrics** column, ✓/✗.
+  - A line has 0 or 1 brackets, never 2 (312 have none).
+
+**Fetching by key: `features.pageKeys = { param, selector }`.** Nothing in the
+fetch loop fetched anything but `p = 1..maxPage`, and these pages have no
+number. `_readPageKeys()` reads the matching links of the LIVE page into
+`[{key, href}]`, in order and de-duplicated case-insensitively.
+`startFetchingProcess()` then works as follows:
+
+- **Page count:** `maxPage = keys.length`. This branch sits right after
+  `_isResume`, before every numbered branch. No links at all logs
+  `Lib.warn`.
+- **URL:** page p is `new URL(keys[p-1].href)`, the link ITSELF. The landing
+  page's own URL has no `cmd=list`, so "current URL + letter" would fetch
+  the landing page 32 times.
+- **Reusing the live page:** "is this the live page" compares
+  `keys[p-1].key` with the current URL's `letter`, not `p` with
+  `currentPageNum`. Started on `letter=b`, page 1 is `(`, and the live B
+  list is reused when the loop reaches `b`.
+- **Resume:** `_resumeState.pageKeys` carries the key list, so a resume's
+  `nextPage` indexes the same order.
+- **Progress:** the label reads "Loading H (9 of 32)".
+
+`p` stays a 1-based index, so the counters, the progress bar, `pagesPhrase`,
+the High Page Count dialog (32 < 50 never fires) and "page X of M failed"
+all work unchanged. No MusicBrainz pageType sets `pageKeys`, so every new
+branch is dead code there. The full fixture suite proves this.
+
+**The converter, `applySlLyricsToTable()`** is not `applySlCardsToTable()`:
+the rows are song lines, not cards. It runs at the same three call sites
+(live, fetched, Load from Disk).
+
+- **Finding lines:** lines are found from themselves (`span.monospaced` with a
+  `lyrics.php?song=` link, outside navbar, footer and tables).
+- **Letter:** comes from the page's own `Starting with "X"` heading, so a
+  fetched page needs no URL.
+- **Landing page:** it has no lines but has the letter wall. The LIVE landing
+  page gets an empty table plus `<h2 class="mb-sl-list-heading">All
+  lyrics</h2>` right after the wall, for the fetched letters to fill (the
+  `bs-records` precedent).
+- **Empty fetched page:** a fetched page without lines warns.
+
+**Columns** (`_SL_LYRICS_HEADERS`): Title, Lyrics, Version (the bracket
+verbatim), Type, Artist, Date, Show, No., Letter, then DD … Month from
+`dateParts` on Date. `_slLyricsParseVersion()` fills these from ordered
+rules. Survey counts:
+
+| Type | Rows | Type | Rows |
+|---|---|---|---|
+| Live | 1,792 | Studio | 61 |
+| Original | 337 | Rehearsal | 46 |
+| (none) | 312 | Handwritten | 30 |
+| Album | 254 | Outtake | 30 |
+| Official studio | 217 | Version | 20 |
+| Demo | 107 | Soundcheck | 14 |
+| Unofficial studio | 100 | Draft | 13 |
+| Cover | 93 | Other | about 35 |
+| Other artist album | 91 | | |
+
+- **Artist:** `Original X version` gives X. `X's [word] version` gives X, and
+  the LAST possessive wins ("Manfred Mann's Earth Band's cover version"). The
+  first draft took the first one, and the rendered fixture row caught it.
+- **Date:** `_slFirstIsoDate()` on ANY type. Live shapes: `DD Mon YYYY` 1,734;
+  `Mon YYYY` / `Month YYYY` about 50; `YYYY` 3; `DD Mon YYYY / DD Mon YYYY`
+  5 (first date kept); `18 Oct (early show) 1975` 1.
+- **Show:** `_slShowQualifier()` on Live or Soundcheck lines only, with a
+  "take #N" left out because it belongs in No.
+- **No.:** from `#N`, `version N` or `take N`.
+
 ## The compact category/filter bar — `_slInstallScopeBar()`
 
 Behind its own setting, `sa_sl_compact_nav` (default **off**; needs
@@ -537,7 +628,8 @@ leaves the other fixtures byte-identical.
 | `tests/fixtures/sl-scope-bar.spec.js`       | the compact bar: off by default changes nothing; one menu per wall whose entries ARE the wall's links; walls hidden, not removed; the room above the list shrinks; choices keep the other filters and drop the page; category change drops the album; chips; Year range from the slider or the fallback; search, arrows, Escape, outside press; Enter navigates. Bootlegs: one Category menu, forms untouched; counts recorded for whole categories only (not a filtered list, not a search) and shown; the era timeline (one bar per era, chronological, width by span, height per year, unknown dashed); a search page labelled by its heading, a category change dropping the search. Search box: Auto reads five date forms and falls back to titles, slash dates stay text; impossible days and non-dates in Date mode disable Search with a reason; partial dates link their era and a title search; a hand-picked field; Enter navigates; a result page prefills the box; Recent moves a repeat to the front, keeps eight, forgets on request; no box on collection pages. After the fetch: Country, Year and Copies narrow the loaded table to the rows computed from it, no reload, chips and button follow both ways (incl. the column ✕), two table chips clear in place, Format and Category still navigate with their note, a filter carried in the URL still reloads, nothing-in-range shows an empty table; a pull-down opened low fits the window. Landing page: bar off leaves it untouched (no heading, toolbar or class, no error); bar on gives Category ("Choose a list"), search box and Recent, forms and buttons hidden, no fetch button, Data/View hidden, Statistics kept and not recorded; its Category menu has the era timeline with nothing current; its search box searches. Formats guide: the Format menu grouped Audio/Video/Print with a guide line per entry, found by abbreviation; the site panel hidden with the format wall and kept where there is none; every Format cell's tip (compound and counted texts); after the fetch Format filters by first medium ("CD + 2xDVD" is CD); Album and Category still navigate. Mutations: `scripts/mutations/sl-scope-bar.json` |
 | `tests/fixtures/sl-include-regex.spec.js`   | the `@include` header lines                                                                                                                                                                                                                         |
 | `tests/fixtures/sl-brucelegs.spec.js`       | the CD and vinyl bootleg columns across two pages, card fields (no sub-title, a label link, year and month spans), the DD…Month split at each date precision, Location split incl. a description in Place and "USA" as United States, YYYY numeric sort, a Country filter |
-| `tests/live/sl-lists.spec.js` (`@extended`) | real pagination: rows = the page's own "Showing items … of N" (album/12i, book, the entry page, aud_live1967, brucelegs); Sticky Page Headers under the site's real CSS; on every real brucelegs row: a Location show note reaches Show, no description or "USA" reaches Country, every dated row has YYYY |
+| `tests/fixtures/sl-lyrics.spec.js`          | pageKeys: from the landing page every letter fetched by its OWN link (one request each), from a letter page that letter reused live and the order kept; a failed letter resumes at that letter with the rows kept; the line split (Lyrics ✓/✗, Type, Artist incl. the last possessive, Date, Show, No.), DD…Month at each precision, a Type filter, YYYY numeric sort; `_slLyricsParseVersion()` over 42 bracket shapes |
+| `tests/live/sl-lists.spec.js` (`@extended`) | real pagination: rows = the page's own "Showing items … of N" (album/12i, book, the entry page, aud_live1967, brucelegs); Sticky Page Headers under the site's real CSS; on every real brucelegs row: a Location show note reaches Show, no description or "USA" reaches Country, every dated row has YYYY; the whole lyrics index (32 letters) against the landing page's own per-letter `chartData`, with bounds on "Other" and undated Live lines |
 
 Fixtures are generated: `python3 scripts/build-sl-fixtures.py` splits three
 logged-out snapshots in `debug/` into two 50-card pages each (rewriting only

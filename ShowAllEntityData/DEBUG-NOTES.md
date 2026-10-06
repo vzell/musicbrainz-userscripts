@@ -19541,3 +19541,52 @@ table-wide artwork gallery (D2)" has the rules. What was found on the way:
 caa-summary-button-position, caa-artwork-summary, caa-column-redesign,
 release-tracks-cover-art-viewer and the config specs green; mutation list 8/8
 as expected (7 fail, 1 recorded pass).
+
+## 2026-10-07 — springsteenlyrics.com lyrics index, brucelegs, and the standard date/location splits on foreign hosts (branch feature/sl-lyrics, WIP.1–WIP.4)
+
+Four commits: jungleland.it Version + Date split (WIP.1), sl-bootlegs Date +
+Location split (WIP.2), new sl-brucelegs (WIP.3), new sl-lyrics with
+`features.pageKeys` (WIP.4). docs/claude/springsteenlyrics.md and
+docs/claude/jungleland.md hold the rules; the surveys behind every rule were
+run on the live sites 2026-10-06 (1 request/s, results in those docs). What
+was found on the way:
+
+- **A `ColumnDataExtractor` runs unchanged on a converted foreign table.**
+  The converters write a plain `table.tbl` before the header scan resolves
+  `sourceColumn` by name, so `dateParts` needs only an ISO source column
+  (jl-list Date, SL First date, lyrics Date). Extracted columns land at the
+  END of the row, as on MusicBrainz.
+- **`splitLocation` cannot read text.** It routes `/place/`/`/area/`/`.flag`
+  links. `splitLocationText` is its plain-text sibling with the same four
+  columns. The brucelegs survey changed its rules before it shipped: 221 of
+  402 Locations there are one-part descriptions ("Various Location"), which
+  must not become a Country; "USA (Early Show)" carries a show note; "USA"
+  and a bare "NJ" must give the same Country.
+- **jungleland.it versions live in the href, not the title.** The site cuts
+  long titles off ("… (Versi"); `_N.htm` is never cut. The first rule (date
+  pages only) missed 43 named "others" pages with `_N`; the full-list check
+  (6,327 entries, no title disagreeing) settled "`_N` → N, else 1".
+- **DD sorts as a number without its `integerColumns` entry** — the sort
+  reads all-digit cells by content. Recorded as an `"expect": "pass"`
+  mutation in jl-support.json rather than claimed as covered.
+- **pageKeys: fetch the LINK, not "current URL + key".** The lyrics landing
+  page `lyrics.php` has no `cmd=list`; current-URL-plus-letter would fetch
+  the landing page 32 times. And "is this the live page" must compare keys:
+  started on `letter=b`, a numeric comparison reuses the live B list as page
+  1 ("("). Both are mutation-checked.
+- **First possessive vs last.** "Manfred Mann's Earth Band's cover version"
+  gave Artist "Manfred Mann" with the first-draft regex; the rendered fixture
+  row caught it. Making only the artist group lazy is an equivalent mutant
+  once the tail is "[word] version", so the mutation entry plants the whole
+  first-draft regex instead.
+- **Pre-existing, not from this branch:** `scripts/audit-config-defaults.py`
+  fails on `main` since 9.99.1255 — `sa_caa_gallery` was added without
+  refreshing `scripts/config-default-history.json`
+  (`scripts/dump-default-history.py`). Left for main.
+
+**Results:** all sl-* and jl-list fixture specs green (incl. the new
+sl-brucelegs 5 and sl-lyrics 7); live @extended: jl-list (whole list),
+sl-lists bootlegs, brucelegs (402 rows, every real row's notes/locations)
+and the lyrics index (all 32 letters equal the landing page's own
+per-letter counts); mutation lists: jl-support 4 new (2 recorded pass),
+sl-support 23 new (1 recorded pass).

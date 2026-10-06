@@ -50,6 +50,13 @@ test.describe('@include coverage', () => {
             'https://springsteenlyrics.com/brucelegs.php?cmd=list&f_letter=a',
             'https://springsteenlyrics.com/brucelegs.php?cmd=list&f_format=vinyl',
             'https://springsteenlyrics.com/brucelegs.php?cmd=list&f_label=Good Ship Funke',
+            // The lyrics index: every letter page, and its landing page.
+            'https://springsteenlyrics.com/lyrics.php?cmd=list&letter=a',
+            'https://www.springsteenlyrics.com/lyrics.php?cmd=list&letter=(',
+            'https://springsteenlyrics.com/lyrics.php?letter=b&cmd=list',
+            'https://springsteenlyrics.com/lyrics.php',
+            'https://springsteenlyrics.com/lyrics.php?cmd=intro',
+            'https://springsteenlyrics.com/lyrics.php#top',
             // The collection entry page ("Latest additions") and its own
             // pagination, which uses cmd=intro and pg= (its "»" link puts pg
             // first).
@@ -77,7 +84,10 @@ test.describe('@include coverage', () => {
             'https://springsteenlyrics.com/collection.php?item=10265&category=all',
             'https://springsteenlyrics.com/collection.php?cmd=listing',
             'https://springsteenlyrics.com/collection.php?xcmd=list',
-            'https://springsteenlyrics.com/lyrics.php?cmd=list&letter=a',
+            // A song page, and the by-release listing, are not the index.
+            'https://springsteenlyrics.com/lyrics.php?song=babycomeback',
+            'https://springsteenlyrics.com/lyrics.php?cmd=songslistedbyrelease',
+            'https://springsteenlyrics.com/lyrics.php?cmd=listing',
             'https://springsteenlyrics.com/index.php',
             'https://springsteenlyrics.com.example.org/collection.php?cmd=list',
             'https://example.org/springsteenlyrics.com/collection.php?cmd=list',

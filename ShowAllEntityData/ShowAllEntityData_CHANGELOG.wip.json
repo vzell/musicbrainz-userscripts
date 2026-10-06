@@ -1,5 +1,29 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "springsteenlyrics.com lyrics index (lyrics.php and its \"Lyrics starting with\" pages) is now supported, when springsteenlyrics.com support is switched on: a Lyrics button fetches every first-letter page, whichever one you start on, into one table of the over 3,500 song lines. The text in brackets is split into Type (Live, Original, Cover, Demo, Album, …), Artist, Date, Show (\"early show\") and No.; Lyrics says whether the song page has lyrics at all; the date is split into DD, MM, YYYY, Day and Month. The progress line names the letter it is loading, and a letter that fails to load can be resumed from that letter."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "The page fetcher can now walk a list of pages named by key instead of by number (features.pageKeys, _readPageKeys()): each matching link on the page is one page, fetched by its own link, with the live page reused when its key comes up and the key list kept for a resume. Nothing on MusicBrainz uses it."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "New pageType sl-lyrics (#95); fixtures sl-lyrics-{intro,paren,b}.html from debug/ snapshots via scripts/build-sl-fixtures.py (letter walls trimmed to \"(\" and \"b\"); new tests/fixtures/sl-lyrics.spec.js (7 tests incl. a resume and 42 bracket shapes); tests/live/sl-lists.spec.js checks all 32 real letters against the landing page's own per-letter counts. scripts/mutations/sl-support.json: 10 new entries. docs/claude/springsteenlyrics.md, CLAUDE.md page anatomy (pageKeys) and HELP updated."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-10-06",
     "sections": [
