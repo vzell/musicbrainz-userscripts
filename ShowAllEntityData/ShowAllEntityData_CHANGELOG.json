@@ -1,5 +1,29 @@
 [
   {
+    "version": "9.99.1244",
+    "date": "2026-10-06",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Release pages: after \"Show all Tracks for Release\", a collapsible \"Cover art (N)\" section opens above the tracklist with every Cover Art Archive image of the release — types, comment, ★ on the archive's main front image (read from its `front` flag, not from the Front type), ⏳ on images pending approval. It costs one request to coverartarchive.org per render (none on a session or IndexedDB cache hit shared with the CAA column, none when the tab says \"Cover art (0)\"), is never hidden or counted by the global filter, tells \"no images\" (404) from \"could not be reached\" (429/5xx/network) and offers ⟳ Retry for the latter. New setting sa_enable_release_tracks_cover_art (on by default). Design: org/CAA-release-tracks-handling.org, mockup R1."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "New _artFetchEntityImages(ctx, entityPath): the session Map → IndexedDB → network tiers of _artEnrichIcon() without a table row, with the same 404/410 vs 429/5xx/network bookkeeping (ctx.failedCache, IDB persistence of definitive absences only). _artEnrichIcon() is unchanged for now."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "scripts/probe-caa-release-images.py records the archive record shape the section relies on. Fixture spec tests/fixtures/release-tracks-cover-art.spec.js (9 tests, including an older record that carries only the small/large thumbnail keys, as the probe found) with mutation list scripts/mutations/release-tracks-cover-art.json (10 planted defects, all caught). FIXTURE_SETTINGS_OVERRIDE now also forces the new setting off, so fixture specs stay network-free."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1243",
     "date": "2026-10-06",
     "sections": [
