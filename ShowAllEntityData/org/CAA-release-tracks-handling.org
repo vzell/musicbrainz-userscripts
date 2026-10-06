@@ -82,7 +82,8 @@ directly
 - [X] Request 3.) plan in this file — and the decisions under DECIDED.
 - [X] P0 + P1 implemented on =feature/release-cover-art= (WIP.1), checked
       live by the user 2026-10-06. P2 and P3 shipped (9.99.1245, 9.99.1246).
-      P4 (R6 + R7) shipped (9.99.1247, 9.99.1248); P5 open.
+      P4 (R6 + R7) shipped (9.99.1247, 9.99.1248); P5 shipped with the
+      event-overview pageType (9.99.1249–9.99.1252).
 - History: 2026-10-06 started as design only (no userscript change, no
   changelog). Design branch sibling of =design/caa-eaa-redesign=
   (=org/redesign-CAA-EAA-column.org=, =org/redesign-CAA-EAA-mockups.html=),
@@ -468,10 +469,12 @@ CLOSED: [2026-10-06 Tue]
   "4 Medium images, 3 media, no comments: not assigned" — the case the mockup
   said must refuse.
 
-*** TODO P5 — EAA on the event page (decided: yes)
-- 2026-10-06: implemented on =feature/event-overview= (WIP.3 there) — the
-  section, viewer and tab click now run from =_artSectionDesc()=. Merge
-  pending the user's browser check.
+*** DONE P5 — EAA on the event page (decided: yes)
+CLOSED: [2026-10-06 Tue]
+- 2026-10-06: shipped with the new =event-overview= pageType as 9.99.1249–9.99.1252
+  (the art section itself is 9.99.1251) — the
+  section, viewer and tab click now run from =_artSectionDesc()=; checked
+  live by the user before the merge.
 - 2026-10-06: decided — a new pageType =event-overview= whose button
   consolidates the relationships (and the setlist) into tables, with the
   Event art section above. Plan, data and mockups:

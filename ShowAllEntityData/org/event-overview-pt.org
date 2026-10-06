@@ -1,4 +1,4 @@
-* TODO new pageType =event-overview=: relationships, setlist and event art on =/event/<mbid>=
+* DONE new pageType =event-overview=: relationships, setlist and event art on =/event/<mbid>=
 ** Request (original, 2026-10-06)
 
 - "new plan; tackle P5, add a new PT for it" — P5 of
@@ -22,6 +22,8 @@
       (built by =scripts/build-mockup-artifact.py=).
 - [ ] The user's picks (see DECIDE), then the implementation phases below on
       =feature/event-overview=.
+- [X] Shipped 2026-10-06 as 9.99.1249–9.99.1252 after the user's browser check
+      (=feature/event-overview= merged into =main=).
 
 ** Data set (2026-10-06)
 
@@ -113,7 +115,7 @@ Settings as mocked (C):
       removes every h3/=table.tbl= in =#content= and re-inserts all groups
       after the h2 before the first table, so the setlist cannot keep a
       section of its own without changing that core function. Its tables
-      carry a "Setlist:" prefix instead (WIP.2).
+      carry a "Setlist:" prefix instead (9.99.1250).
 
 ** Implementation phases (branch =feature/event-overview=, after DECIDE)
 
@@ -121,8 +123,9 @@ Each phase: WIP changelog entries only, fixture specs that fail before and
 pass after (mutation-checked), HELP resync, =lint-summary.py --check=,
 =npm run test:full=, the user's browser check before any merge.
 
-*** TODO WIP.1 — the pageType and its settings
-- 2026-10-06, implemented (WIP.1 on =feature/event-overview=):
+*** DONE 9.99.1249 — the pageType and its settings
+CLOSED: [2026-10-06 Tue]
+- 2026-10-06, implemented (9.99.1249):
   - [X] Settings =sa_enable_event_overview=, =sa_event_overview_relationships=,
         =sa_event_overview_relationships_one_table=,
         =sa_event_overview_related_series= in a new 🎫 EVENT PAGE group.
@@ -137,7 +140,7 @@ pass after (mutation-checked), HELP resync, =lint-summary.py --check=,
         through Save/Load (a latent gap for user-ratings too).
   - [X] =tests/fixtures/event-overview.spec.js= (7), mutation list
         =scripts/mutations/event-overview.json= (15/15 caught).
-  - [X] Snapshot baseline: captured with WIP.2 (below).
+  - [X] Snapshot baseline: captured with 9.99.1250 (below).
 - Plan as written:
 - Settings group as in C, after the release-tracklist group; run
   =scripts/dump-config-defaults.py= and =scripts/dump-default-history.py=.
@@ -156,8 +159,9 @@ pass after (mutation-checked), HELP resync, =lint-summary.py --check=,
   + snapshot baseline (event art seeded off),
   =PAGETYPES-TESTING-REFERENCE.org= row, mutation list.
 
-*** TODO WIP.2 — the setlist as tables
-- 2026-10-06, implemented (WIP.2):
+*** DONE 9.99.1250 — the setlist as tables
+CLOSED: [2026-10-06 Tue]
+- 2026-10-06, implemented (9.99.1250):
   - [X] Inside =applyEventDetailsToTables()= (shared placement, and the
         Recording column needs the parsed recordings), not a separate
         =setlistToTables= feature: =_eventSetlistParse()= +
@@ -179,7 +183,8 @@ pass after (mutation-checked), HELP resync, =lint-summary.py --check=,
 - Spec: 3 tables 21/3/26; the medley row has 2 works; "also" marks; 🎙 from
   the recording relationships; no setlist → no tables.
 
-*** TODO WIP.4 — follow-ups from the user's review (2026-10-06, items 4–7)
+*** DONE 9.99.1252 — follow-ups from the user's review (2026-10-06, items 4–7)
+CLOSED: [2026-10-06 Tue]
 - [X] 4. Setlist "(with …)" artists → multi-row "Additional artists" (raw
       fixture =tests/fixtures/event-overview-with-artists.html=, event
       cd595883-…). MusicBrainz renders them as /work/ links; their MBIDs are
@@ -193,8 +198,9 @@ pass after (mutation-checked), HELP resync, =lint-summary.py --check=,
       ("Scheduled: 19:00 …") is a note, not a part (=_eventSetlistIsNote()=).
 - [X] Mutation list =event-overview.json=: 51/51 caught.
 
-*** TODO WIP.3 — Event art
-- 2026-10-06, implemented (WIP.3):
+*** DONE 9.99.1251 — Event art
+CLOSED: [2026-10-06 Tue]
+- 2026-10-06, implemented (9.99.1251):
   - [X] =_artSectionDesc('caa'|'eaa')= — a function, not the planned
         =_ART_SECTIONS= const (TDZ: it is reachable early and names the
         contexts declared further down); =_artSectionOf(sec)= reads the
