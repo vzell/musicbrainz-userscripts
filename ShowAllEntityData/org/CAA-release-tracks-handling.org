@@ -19,10 +19,14 @@ Add the plan to this file, so that I can actually do the real implementation in 
 
 ** Status
 
-- 2026-10-06: design only. Nothing in =ShowAllEntityData.user.js= changed; no
-  version bump, no changelog or WIP entry. The WIP changelog starts with P1.
-- Branch: =design/caa-release-tracks= (this file plus the mockup page). Not
-  merged. Sibling of =design/caa-eaa-redesign=
+- [X] Request 1.) design branch — =design/caa-release-tracks=, merged into
+      =main= 2026-10-06 (=5b15c27=) and deleted.
+- [X] Request 2.) HTML mockups — R0–R7, see below.
+- [X] Request 3.) plan in this file — and the decisions under DECIDED.
+- [X] P0 + P1 implemented on =feature/release-cover-art= (WIP.1), checked
+      live by the user 2026-10-06. P2 (rest), P3, P4, P5 open.
+- History: 2026-10-06 started as design only (no userscript change, no
+  changelog). Design branch sibling of =design/caa-eaa-redesign=
   (=org/redesign-CAA-EAA-column.org=, =org/redesign-CAA-EAA-mockups.html=),
   whose look, liner card and viewer (D1 there) the mockups reuse.
 - Mockups: [[file:CAA-release-tracks-mockups.html]], a self-contained page. Open
@@ -171,8 +175,9 @@ R3, R6 and R7 can follow once that has settled. R2 stays out.
   render (the section starts uncollapsed, as decided): 1 JSON request to
   =coverartarchive.org/release/<mbid>= (no published rate limit, no batch
   endpoint — see the root CLAUDE.md), or 0 on a =_caaImagesCache= / IDB hit.
-- Thumbnails: =loading="lazy"=, 250 px, only rendered while the section is open.
-  They go through =_artFetchCachedImage()= if IDB image caching is on.
+- Thumbnails: =loading="lazy"=, 250 px (=small= on older records). As built
+  they are plain =<img src>= (browser HTTP cache), NOT =_artFetchCachedImage()=
+  — routing them through the IDB image cache is open.
 - Viewer: 1200 px only for the image being viewed, ±1 neighbour preloaded.
 - Off the hot path: the section is not a table, so filtering, sorting and
   rendering of the tracklist are unaffected. Still capture one
@@ -181,7 +186,7 @@ R3, R6 and R7 can follow once that has settled. R2 stays out.
 
 ** Invariants the implementation must keep
 
-- Opt-in: a new =sa_enable_release_tracks_cover_art= child (name to confirm)
+- [X] Opt-in: a new =sa_enable_release_tracks_cover_art= child (name confirmed, default on)
   in =configSchema=, then =scripts/dump-config-defaults.py=, and
   =scripts/dump-default-history.py=. Guard with
   =activeDefinition?.type !== 'release-tracks'=. Independent of
@@ -189,8 +194,8 @@ R3, R6 and R7 can follow once that has settled. R2 stays out.
 - *Do not let the section join the tracklist machinery*: not a =table.tbl=, no
   =.mb-row-count-stat=, not counted by the GF, not toggled by
   =.mb-master-toggle=, not touched by =renameH2ToH3= (it is inserted after the
-  pre-processing). Give it its own class (e.g. =h2.mb-cover-art-h2=,
-  =div.mb-cover-art-sec=).
+  pre-processing). Give it its own class — done: =h2.mb-release-art-h2=,
+  =div.mb-release-art-sec=.
 - Delegated listeners only, keyed on data attributes (=data-mb-art-i=, entity
   path): the mockup has ONE document click listener. Hover cards via the
   existing tooltip engine and =_setTip()=, rows as =.mb-tt-liner= classes
@@ -220,6 +225,7 @@ resync (=ShowAllEntityData_HELP.md=, release-tracks and CAA sections),
 asking to merge. Never merge without the user's browser check.
 
 *** DONE P0 — probe and fixture
+CLOSED: [2026-10-06 Tue]
 - 2026-10-06, branch =feature/release-cover-art=: probe written
   (=scripts/probe-caa-release-images.py=). Its first run could not reach the
   record: coverartarchive.org answers 307 → =archive.org/download/mbid-…/index.json=
@@ -261,21 +267,23 @@ asking to merge. Never merge without the user's browser check.
   =release-tracks-eti-keywords.html= (tab "Cover art (0)"), with the real
   16-image record saved earlier the same day as
   =tests/fixtures/caa-release-d0adda7e.json=.
-- =scripts/probe-caa-release-images.py=: fetch the archive JSON for the example
-  release plus one with 0 images (expect 404), one =darkened= release and one
-  with a pending image; record keys, URL schemes (=http:= vs =https:=, =//=)
+- Plan as written, item by item:
+- [X] =scripts/probe-caa-release-images.py=: fetch the archive JSON for the example
+  release plus one with 0 images (expect 404) — done; one =darkened= release and one
+  with a pending image — [ ] not yet (no MBID at hand; pass them as arguments); record keys, URL schemes (=http:= vs =https:=, =//=)
   and status codes next to the code that will depend on them.
-- Fixture: a trimmed copy of the example release page under
+- [X] (replaced: existing fixtures + saved record, see above) Fixture: a trimmed copy of the example release page under
   =tests/fixtures/release-tracks-cover-art.html= (start from an existing
   =release-tracks-*.html= fixture's shape), plus the JSON as a fixture file.
-- Stubbing as in =caa-artwork-summary.spec.js= /
+- [X] Stubbing as in =caa-artwork-summary.spec.js= /
   =caa-metadata-transient-503.spec.js=: =page.route('https://coverartarchive.org/**')=
   with a =META_RE= fulfil (=fulfill({status})=, never =abort()=); image bytes
   via =window.__gmXhrResponses= (=tests/support/gmStubs.js=); IDB via
   =tests/support/idbFixture.js=. Remember =FIXTURE_SETTINGS_OVERRIDE= forces
   =sa_enable_caa_pics= off — the new feature must not need it.
 
-*** TODO P1 — shared fetch helper + R1 skeleton
+*** DONE P1 — shared fetch helper + R1 skeleton
+CLOSED: [2026-10-06 Tue]
 - 2026-10-06, branch =feature/release-cover-art= (WIP.1), together with the
   tiles of P2:
   - =_artFetchEntityImages(ctx, entityPath)= written as a NEW helper with the
@@ -297,25 +305,29 @@ asking to merge. Never merge without the user's browser check.
   - Not done: Load-from-Disk does not build the section (it calls
     =makeH2sCollapsible()= on its own path); thumbnails use plain =<img src>=
     (browser cache), not =_artFetchCachedImage()=.
-- Extract =_artFetchEntityImages(ctx, entityPath)= (working name) from
-  =_artEnrichIcon=: cache → IDB → fetch → persist, miss/failure bookkeeping.
-  =_artEnrichIcon= calls it, so the CAA column and the release section share
-  one code path. Mutation-check: the column specs must still pass.
-- Insert =h2.mb-cover-art-h2= "Cover art (N)" before =h2.tracklist= during the
-  release-tracks render, before =makeH2sCollapsible()=; N from the tab text.
-  Expanding triggers the fetch, once.
-- Specs: collapsed = 0 requests to =coverartarchive.org=; expanding = exactly 1;
-  second expand = 0; IDB hit = 0; 404 = no section / "no artwork" state;
-  503 = retry link; GF typing does not hide or count the section.
+- Plan as written, item by item:
+  - [X] =_artFetchEntityImages(ctx, entityPath)=: cache → IDB → fetch →
+        persist, miss/failure bookkeeping.
+  - [ ] =_artEnrichIcon= calls it, so both share one code path — deferred,
+        see the follow-up below.
+  - [X] h2 "Cover art (N)" before =h2.tracklist=, before
+        =makeH2sCollapsible()=, N from the tab text (then from the record).
+        "Expanding triggers the fetch" was superseded by the decision to
+        start uncollapsed: the fetch runs on render.
+  - [X] Specs: 0 requests before "Show all", exactly 1 after; 404 = "no
+        images"; 503 = retry that asks again; GF never hides the section;
+        "Cover art (0)" = no section, no request; setting off = nothing.
+  - [ ] Spec: an IDB hit costs 0 requests (=tests/support/idbFixture.js=).
 
-*** TODO P2 — R1 contact sheet
-- Tiles (types, comment, ★ main front, ⏳ pending) landed with P1. Still to do:
-  type chips, layout switch, liner-card hover.
-- Tiles (types, comment, ★ main front, ⏳ pending), type chips (filter), layout
-  switch Grid / By type. Liner-card hover through the tooltip engine.
-- Specs: 16 tiles in archive order; chip "Medium" leaves 4; ★ only on the
-  =front: true= image even when another image also has type Front (fixture:
-  add one); hover shows types + comment; touch shows no hover card.
+*** TODO P2 — R1 contact sheet [2/6]
+- [X] Tiles: types, comment, ★ main front, ⏳ pending (landed with P1).
+- [X] Specs: 16 tiles in archive order; ★ only on the =front: true= image
+      even when another image is also typed Front.
+- [ ] Type chips (filter); spec: chip "Medium" leaves 4.
+- [ ] Layout switch Grid / By type.
+- [ ] Liner-card hover through the tooltip engine; spec: hover shows types +
+      comment.
+- [ ] Touch shows no hover card (=*.mobile.spec.js=).
 
 *** TODO P3 — R5 viewer (shared with D1)
 - =_artViewer*= singleton, opened by delegation with an image list + index;
@@ -349,8 +361,14 @@ asking to merge. Never merge without the user's browser check.
   =<NN> <types> <comment>.<ext>=, later if wanted.
 - Should "release has no Front image" / "Medium images ≠ media" become
   findings (=add-finding= skill)? Probably not on a single-release page.
-- HELP: a new release-tracks subsection for the Cover art section and the
-  viewer's key map.
-- Snapshot registry: if the section changes the rendered page shape, refresh
-  the release-tracks baseline and note it under "Expected drift" in
-  =tests/snapshots/registry.org=.
+- [X] HELP: the Cover art section is described under "Release tracklists"
+  (WIP.1). [ ] The viewer's key map, with P3.
+- [ ] Rewire =_artEnrichIcon()= onto =_artFetchEntityImages()= (one code
+  path), mutation-checked against the CAA column specs.
+- [ ] Load-from-Disk: build the section on that path too.
+- [X] Snapshot registry: the section would change the rendered page shape
+  (the setting defaults on), so =tests/pagetypes.json='s release-tracks
+  entry now seeds =sa_enable_release_tracks_cover_art: false= — same as
+  =releasegroup-releases= seeds =sa_enable_caa_pics: false=. The baseline
+  stays valid and does not depend on live archive data or archive uptime;
+  the section is covered by the fixture spec instead.
