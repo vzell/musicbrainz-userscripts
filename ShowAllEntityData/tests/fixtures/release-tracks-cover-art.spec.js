@@ -201,6 +201,28 @@ test.describe('release-tracks: Cover art section', () => {
         expect(tile0.href).toBe('//coverartarchive.org/release/d0adda7e-86de-4aef-af95-ee7da122d175/34698678836-500.jpg');
     });
 
+    test('a thumbnail that fails to load keeps its square tile', async ({ page }) => {
+        // Every thumbnail is a 404 here, as on 2026-10-06 while archive.org
+        // was down: a broken <img> renders its alt text and ignores
+        // aspect-ratio, so the link box itself must hold the square and clip.
+        await openRelease(page);
+        await showAll(page);
+        await sectionSettled(page, 'ok');
+        const boxes = await page.evaluate(() => Array.from(
+            document.querySelectorAll('figure.mb-release-art-tile > a')).map((a) => ({
+            w: a.getBoundingClientRect().width,
+            h: a.getBoundingClientRect().height,
+            clips: getComputedStyle(a).overflow === 'hidden',
+            broken: !a.querySelector('img').naturalWidth,
+        })));
+        expect(boxes.length).toBe(16);
+        expect(boxes.every((b) => b.broken), 'premise: the thumbnails really failed').toBe(true);
+        for (const b of boxes) {
+            expect(Math.abs(b.w - b.h), `tile is square (${b.w}×${b.h})`).toBeLessThanOrEqual(1);
+            expect(b.clips).toBe(true);
+        }
+    });
+
     test('★ marks only the archive\'s main front, not every Front-typed image', async ({ page }) => {
         await openRelease(page);
         await showAll(page);
@@ -272,5 +294,113 @@ test.describe('release-tracks: Cover art section', () => {
         await showAll(page);
         expect(await page.locator('.mb-release-art-h2, .mb-release-art-sec').count()).toBe(0);
         expect(hits()).toBe(0);
+    });
+});
+
+// P2 (org/CAA-release-tracks-handling.org): type chips, Grid / By type, the
+// remembered layout, and the liner-card hover.
+//
+//  9. A CHIP FILTERS BY TYPE MEMBERSHIP, NOT BY FIRST TYPE. The record's
+//     image 2 is Back + Front, so "Front" must show 2 tiles and count 2 — a
+//     chip that compared only `types[0]` would show 1 while saying 2.
+// 10. "By type" GROUPS BY FIRST TYPE in first-appearance order, and the
+//     choice is WRITTEN to GM storage; a fresh page load seeded with it opens
+//     grouped. Asserting only the click would pass on code that never stored
+//     anything.
+// 11. THE HOVER CARD IS THE TILE'S OWN, built from the record: position,
+//     position within its type, comment, edit id. Shown by the shared
+//     tooltip engine, so it is read from #mb-stat-tooltip.
+
+/**
+ * The tile indices currently in the sheet, in DOM order, and the group
+ * headers if grouped.
+ *
+ * @param {import('@playwright/test').Page} page
+ */
+const sheet = (page) => page.evaluate(() => {
+    const sec = document.querySelector('.mb-release-art-sec');
+    return {
+        tiles: Array.from(sec.querySelectorAll('figure.mb-release-art-tile')).map((t) => Number(t.dataset.mbArtI)),
+        groups: Array.from(sec.querySelectorAll('.mb-release-art-group-hdr')).map((h) => h.textContent),
+        chips: Array.from(sec.querySelectorAll('.mb-release-art-chip')).map((c) => ({
+            text: c.textContent.replace(/\s+/g, ' ').trim(),
+            pressed: c.getAttribute('aria-pressed'),
+        })),
+        layout: (sec.querySelector('[data-mb-art-layout][aria-pressed="true"]') || {}).dataset?.mbArtLayout || null,
+    };
+});
+
+test.describe('release-tracks: Cover art section — chips, layout, hover (P2)', () => {
+    test('type chips count every type an image carries and filter by membership', async ({ page }) => {
+        await openRelease(page);
+        await showAll(page);
+        await sectionSettled(page, 'ok');
+
+        let s = await sheet(page);
+        expect(s.chips.map((c) => c.text)).toEqual(
+            ['All 16', 'Front 2', 'Back 1', 'Other 3', 'Liner 4', 'Medium 4', 'Poster 2', 'Sticker 1']);
+        expect(s.chips[0].pressed).toBe('true');
+
+        await page.click('.mb-release-art-chip[data-mb-art-filter="Front"]');
+        s = await sheet(page);
+        expect(s.tiles, 'image 2 is Back + Front').toEqual([0, 1]);
+        expect(s.chips.find((c) => c.text === 'Front 2').pressed).toBe('true');
+
+        await page.click('.mb-release-art-chip[data-mb-art-filter="Medium"]');
+        expect((await sheet(page)).tiles).toEqual([7, 8, 11, 12]);
+
+        await page.click('.mb-release-art-chip[data-mb-art-filter=""]');
+        expect((await sheet(page)).tiles).toEqual([...Array(16).keys()]);
+    });
+
+    test('"By type" groups by first type in archive order and is remembered', async ({ page }) => {
+        await openRelease(page);
+        await showAll(page);
+        await sectionSettled(page, 'ok');
+        expect((await sheet(page)).layout).toBe('grid');
+
+        await page.click('.mb-release-art-seg [data-mb-art-layout="grouped"]');
+        const s = await sheet(page);
+        expect(s.layout).toBe('grouped');
+        expect(s.groups).toEqual(
+            ['Front × 1', 'Back × 1', 'Other × 3', 'Liner × 4', 'Medium × 4', 'Poster × 2', 'Sticker × 1']);
+        expect(s.tiles).toEqual([0, 1, 2, 3, 4, 5, 6, 9, 10, 7, 8, 11, 12, 13, 14, 15]);
+        expect(await page.evaluate(() => window.GM_getValue('mb_sa_release_art_layout', null))).toBe('grouped');
+
+        // A chip still applies inside the grouped layout.
+        await page.click('.mb-release-art-chip[data-mb-art-filter="Medium"]');
+        expect((await sheet(page)).groups).toEqual(['Medium × 4']);
+
+        await page.click('.mb-release-art-seg [data-mb-art-layout="grid"]');
+        expect(await page.evaluate(() => window.GM_getValue('mb_sa_release_art_layout', null))).toBe('grid');
+    });
+
+    test('a stored "grouped" layout is what a fresh load opens with', async ({ page }) => {
+        await openRelease(page, { settings: { mb_sa_release_art_layout: 'grouped' } });
+        await showAll(page);
+        await sectionSettled(page, 'ok');
+        const s = await sheet(page);
+        expect(s.layout).toBe('grouped');
+        expect(s.groups[0]).toBe('Front × 1');
+    });
+
+    test('hovering a tile shows its own liner card from the record', async ({ page }) => {
+        await openRelease(page);
+        await showAll(page);
+        await sectionSettled(page, 'ok');
+        const tip = page.locator('#mb-stat-tooltip');
+
+        await page.mouse.move(0, 0);
+        await page.hover('figure.mb-release-art-tile[data-mb-art-i="5"] figcaption');
+        await expect(tip).toBeVisible();
+        const liner = await tip.textContent();
+        expect(liner).toContain('Liner');
+        expect(liner).toContain('6 of 16 · Liner 1 of 4');
+        expect(liner).toContain('edit #96361205');
+
+        await page.mouse.move(0, 0);
+        await page.hover('figure.mb-release-art-tile[data-mb-art-i="3"] figcaption');
+        await expect(tip).toContainText('“opened gatefold cover, inside left”');
+        await expect(tip).toContainText('4 of 16 · Other 2 of 3');
     });
 });

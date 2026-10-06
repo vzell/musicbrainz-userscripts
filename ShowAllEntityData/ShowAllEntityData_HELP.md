@@ -1128,7 +1128,12 @@ at event, Recorded at place).
 Archive image of the release: its types, its comment, ★ on the archive's main
 front image (which is not necessarily every image typed Front), and ⏳ on an
 image still pending approval. Click its heading to collapse it like any other
-section; a thumbnail opens the 1200 px image. It costs one request per render
+section; a thumbnail opens the 1200 px image. Hover a thumbnail for its card:
+types, comment, a larger preview, "6 of 16 · Liner 1 of 4", and the edit that
+added it. The chips above the sheet (**All 16**, **Front 1**, **Liner 4**, …)
+show only the images carrying that type — an image with two types counts for
+both — and **Grid / By type** groups the sheet under each image's first type.
+The layout is remembered, and travels with a config export. It costs one request per render
 — none when the record is already cached from a CAA column, none when the tab
 says "Cover art (0)" — and the global filter never hides it. "No images" and
 "could not be reached" are told apart; the second offers **⟳ Retry**. Setting:
