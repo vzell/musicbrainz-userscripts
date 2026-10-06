@@ -1,0 +1,919 @@
+{
+ "source": "debug/event-PT.html",
+ "relationships": [
+  {
+   "group": "Relationships",
+   "phrase": "main performers",
+   "type": "artist",
+   "name": "Anthony Almonte",
+   "href": "/artist/b0ab3979-4165-4e3e-b125-2d77f14080bd",
+   "rest": "(Puerto Rican singer and percussionist)"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "main performers",
+   "type": "artist",
+   "name": "Roy Bittan",
+   "href": "/artist/11d2fcfe-669d-4596-8921-e07dbdae311f",
+   "rest": ""
+  },
+  {
+   "group": "Relationships",
+   "phrase": "main performers",
+   "type": "artist",
+   "name": "Jake Clemons",
+   "href": "/artist/5c64226c-d673-4d23-a612-2bfb704edd66",
+   "rest": "(singer‐songwriter, saxophonist and nephew of Clarence Clemons)"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "main performers",
+   "type": "artist",
+   "name": "Barry Danielian",
+   "href": "/artist/092ae7a4-0ea2-407a-a200-d1ee09383537",
+   "rest": "(American trumpeter, producer and arranger)"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "main performers",
+   "type": "artist",
+   "name": "Ada Dyer",
+   "href": "/artist/1ca07311-cbfe-4ae8-a518-aa76c8579802",
+   "rest": "(American soul singer)"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "main performers",
+   "type": "artist",
+   "name": "The E Street Band",
+   "href": "/artist/d6652e7b-33fe-49ef-8336-4c863b4f996f",
+   "rest": "(time: 19:40 - 22-29)"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "main performers",
+   "type": "artist",
+   "name": "The E Street Choir",
+   "href": "/artist/ad2232c5-2b11-4699-80c2-e5f83c56c8e4",
+   "rest": ""
+  },
+  {
+   "group": "Relationships",
+   "phrase": "main performers",
+   "type": "artist",
+   "name": "The E Street Horns",
+   "href": "/artist/61c0a8b8-e3f1-4e7f-9f42-7b21a7bf9e4e",
+   "rest": ""
+  },
+  {
+   "group": "Relationships",
+   "phrase": "main performers",
+   "type": "artist",
+   "name": "Charles Giordano",
+   "href": "/artist/4382fa5d-03de-4ebf-baf3-df6a1d1922f0",
+   "rest": "(American keyboardist and accordionist)"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "main performers",
+   "type": "artist",
+   "name": "Curtis King",
+   "href": "/artist/7b18698b-33fb-4865-b158-e74f3457eeb7",
+   "rest": "(American singer and songwriter)"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "main performers",
+   "type": "artist",
+   "name": "Nils Lofgren",
+   "href": "/artist/a1ef6bc8-2644-4b6d-aa21-27b630acf751",
+   "rest": ""
+  },
+  {
+   "group": "Relationships",
+   "phrase": "main performers",
+   "type": "artist",
+   "name": "Lisa Lowell",
+   "href": "/artist/59d77428-bf32-4c9f-bc4c-7c03ec882c59",
+   "rest": ""
+  },
+  {
+   "group": "Relationships",
+   "phrase": "main performers",
+   "type": "artist",
+   "name": "Ed Manion",
+   "href": "/artist/6a3394ba-6888-4dd0-93f3-06c1e35749d8",
+   "rest": "(American saxophonist)"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "main performers",
+   "type": "artist",
+   "name": "Ozzie Melendez",
+   "href": "/artist/ef011392-7eee-4090-ad83-660c48e9b1c1",
+   "rest": "(trombonist)"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "main performers",
+   "type": "artist",
+   "name": "Michelle Moore",
+   "href": "/artist/e67ac344-ce0a-4a27-b4ad-9502dab57a82",
+   "rest": "(American gospel singer)"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "main performers",
+   "type": "artist",
+   "name": "Curt Ramm",
+   "href": "/artist/028fd996-fe8f-41b6-a6ed-1cb4b06a23d2",
+   "rest": "(American trumpet player)"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "main performers",
+   "type": "artist",
+   "name": "Bruce Springsteen",
+   "href": "/artist/70248960-cb53-4ea4-943a-edb18f7d336f",
+   "rest": "(time: 19:40 - 22-29, lead vocals, spoken vocals, harmonica, electric guitar)"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "main performers",
+   "type": "artist",
+   "name": "Steven Van Zandt",
+   "href": "/artist/de53495e-ad5a-4c30-82ab-05e7e3ec7b4d",
+   "rest": ""
+  },
+  {
+   "group": "Relationships",
+   "phrase": "main performers",
+   "type": "artist",
+   "name": "Garry Tallent",
+   "href": "/artist/42b42dd1-9263-4eae-91cd-4014a5b5d39f",
+   "rest": ""
+  },
+  {
+   "group": "Relationships",
+   "phrase": "main performers",
+   "type": "artist",
+   "name": "Soozie Tyrell",
+   "href": "/artist/065af1a2-2fa9-4864-852e-08c00c9c67d8",
+   "rest": ""
+  },
+  {
+   "group": "Relationships",
+   "phrase": "main performers",
+   "type": "artist",
+   "name": "Max Weinberg",
+   "href": "/artist/2566ca73-1dfd-49e7-ab20-dfa5697b360e",
+   "rest": ""
+  },
+  {
+   "group": "Relationships",
+   "phrase": "held at",
+   "type": "place",
+   "name": "Co‐op Live",
+   "href": "/place/b3021e11-9066-40ff-8560-37e7416cf438",
+   "rest": "in Manchester, Greater Manchester, England, United Kingdom"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "recording location for",
+   "type": "recording",
+   "name": "Badlands",
+   "href": "/recording/0adb249e-86f9-4434-b064-0a61a328b67f",
+   "rest": "(live, 2025‐05‐20: Co‐op Live, Manchester, England, UK) by Bruce Springsteen & The E Street Band"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "recording location for",
+   "type": "recording",
+   "name": "Because the Night",
+   "href": "/recording/dbac24b9-92b1-4f97-82a3-75790dbf8ab8",
+   "rest": "(live, 2025‐05‐20: Co‐op Live, Manchester, England, UK) by Bruce Springsteen & The E Street Band"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "recording location for",
+   "type": "recording",
+   "name": "Born in the U.S.A.",
+   "href": "/recording/9b5ab15b-309f-40a7-9eb9-b4e25b88fc50",
+   "rest": "(live, 2025‐05‐20: Co‐op Live, Manchester, England, UK) by Bruce Springsteen & The E Street Band"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "recording location for",
+   "type": "recording",
+   "name": "Born to Run",
+   "href": "/recording/bf0dee8c-3903-4e52-a439-8743235e5526",
+   "rest": "(live, 2025‐05‐20: Co‐op Live, Manchester, England, UK) by Bruce Springsteen & The E Street Band"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "recording location for",
+   "type": "recording",
+   "name": "Chimes of Freedom",
+   "href": "/recording/4ebb98af-8ebc-4108-a7fb-69fb45d0a68c",
+   "rest": "(live, 2025‐05‐20: Co‐op Live, Manchester, England, UK) by Bruce Springsteen & The E Street Band"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "recording location for",
+   "type": "recording",
+   "name": "Dancing in the Dark",
+   "href": "/recording/63f09c7e-92e2-48a9-8f4e-f49f2b254a13",
+   "rest": "(live, 2025‐05‐20: Co‐op Live, Manchester, England, UK) by Bruce Springsteen & The E Street Band"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "recording location for",
+   "type": "recording",
+   "name": "Death to My Hometown",
+   "href": "/recording/52e8d72a-8f1a-4dfb-8984-745022bba4f6",
+   "rest": "(live, 2025‐05‐20: Co‐op Live, Manchester, England, UK) by Bruce Springsteen & The E Street Band"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "recording location for",
+   "type": "recording",
+   "name": "Ghosts",
+   "href": "/recording/4047a0ae-c3d4-4183-a8a0-e3996b81e849",
+   "rest": "(live, 2025‐05‐20: Co‐op Live, Manchester, England, UK) by Bruce Springsteen & The E Street Band"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "recording location for",
+   "type": "recording",
+   "name": "Glory Days",
+   "href": "/recording/d92164ad-044a-4941-8b5f-c2437bfc3fbe",
+   "rest": "(live, 2025‐05‐20: Co‐op Live, Manchester, England, UK) by Bruce Springsteen & The E Street Band"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "recording location for",
+   "type": "recording",
+   "name": "House of a Thousand Guitars",
+   "href": "/recording/dae4d930-06ef-41b2-a141-366ddaafd487",
+   "rest": "(live, 2025‐05‐20: Co‐op Live, Manchester, England, UK) by Bruce Springsteen"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "recording location for",
+   "type": "recording",
+   "name": "Land of Hope and Dreams / People Get Ready",
+   "href": "/recording/d0e818a0-645e-4b06-a103-f132d948616b",
+   "rest": "(live, 2025‐05‐20: Co‐op Live, Manchester, England, UK) by Bruce Springsteen & The E Street Band"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "recording location for",
+   "type": "recording",
+   "name": "Long Walk Home",
+   "href": "/recording/bc86999c-2e98-48cd-af03-31f7ca0bf7fe",
+   "rest": "(live, 2025‐05‐20: Co‐op Live, Manchester, England, UK) by Bruce Springsteen & The E Street Band"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "recording location for",
+   "type": "recording",
+   "name": "Murder Incorporated",
+   "href": "/recording/98890284-9cfa-4a38-9336-c878320efa05",
+   "rest": "(live, 2025‐05‐20: Co‐op Live, Manchester, England, UK) by Bruce Springsteen & The E Street Band"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "recording location for",
+   "type": "recording",
+   "name": "My City of Ruins",
+   "href": "/recording/b51955f4-6908-4dda-bdf9-b4b141849fce",
+   "rest": "(live, 2025‐05‐20: Co‐op Live, Manchester, England, UK) by Bruce Springsteen & The E Street Band"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "recording location for",
+   "type": "recording",
+   "name": "No Surrender",
+   "href": "/recording/f1e35978-43e3-4465-822f-62dc336e699e",
+   "rest": "(live, 2025‐05‐20: Co‐op Live, Manchester, England, UK) by Bruce Springsteen & The E Street Band"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "recording location for",
+   "type": "recording",
+   "name": "Rainmaker",
+   "href": "/recording/805f9b33-d7ac-4d17-991b-19ede0fdec64",
+   "rest": "(live, 2025‐05‐20: Co‐op Live, Manchester, England, UK) by Bruce Springsteen & The E Street Band"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "recording location for",
+   "type": "recording",
+   "name": "Reason to Believe",
+   "href": "/recording/7a56a322-9964-4b61-8cee-f34e32339434",
+   "rest": "(live, 2025‐05‐20: Co‐op Live, Manchester, England, UK) by Bruce Springsteen & The E Street Band"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "recording location for",
+   "type": "recording",
+   "name": "Seeds",
+   "href": "/recording/c5198360-9f5a-493b-842d-974b9318ebdf",
+   "rest": "(live, 2025‐05‐20: Co‐op Live, Manchester, England, UK) by Bruce Springsteen & The E Street Band"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "recording location for",
+   "type": "recording",
+   "name": "Something in the Night",
+   "href": "/recording/91b4a226-aa29-45a1-b8e1-9ed3907205af",
+   "rest": "(live, 2025‐05‐20: Co‐op Live, Manchester, England, UK) by Bruce Springsteen & The E Street Band"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "recording location for",
+   "type": "recording",
+   "name": "Tenth Avenue Freeze‐Out",
+   "href": "/recording/c6c3a91c-9d94-4217-9186-2bdf85c628cc",
+   "rest": "(live, 2025‐05‐20: Co‐op Live, Manchester, England, UK) by Bruce Springsteen & The E Street Band"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "recording location for",
+   "type": "recording",
+   "name": "The Promised Land",
+   "href": "/recording/8db2ed89-7fd5-486c-84fe-aa24bd452116",
+   "rest": "(live, 2025‐05‐20: Co‐op Live, Manchester, England, UK) by Bruce Springsteen & The E Street Band"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "recording location for",
+   "type": "recording",
+   "name": "The Rising",
+   "href": "/recording/54633cc1-9cd9-4f7e-88b2-13d69f38b254",
+   "rest": "(live, 2025‐05‐20: Co‐op Live, Manchester, England, UK) by Bruce Springsteen & The E Street Band"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "recording location for",
+   "type": "recording",
+   "name": "The River",
+   "href": "/recording/a7a412ca-ed33-475c-b5f2-e8f78393f2e8",
+   "rest": "(live, 2025‐05‐20: Co‐op Live, Manchester, England, UK) by Bruce Springsteen & The E Street Band"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "recording location for",
+   "type": "recording",
+   "name": "Thunder Road",
+   "href": "/recording/f49923d1-31eb-42b4-abc2-5197c4d5d540",
+   "rest": "(live, 2025‐05‐20: Co‐op Live, Manchester, England, UK) by Bruce Springsteen & The E Street Band"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "recording location for",
+   "type": "recording",
+   "name": "Wrecking Ball",
+   "href": "/recording/0cd0d9b7-f1e2-4a6e-a232-2fdcb02522da",
+   "rest": "(live, 2025‐05‐20: Co‐op Live, Manchester, England, UK) by Bruce Springsteen & The E Street Band"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "recording location for",
+   "type": "recording",
+   "name": "Youngstown",
+   "href": "/recording/74999b1b-31f6-47d5-bed7-d75cd76da31f",
+   "rest": "(live, 2025‐05‐20: Co‐op Live, Manchester, England, UK) by Bruce Springsteen & The E Street Band"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "recording location for",
+   "type": "release",
+   "name": "2025‐05‐20: Co‐op Live, Manchester, England, UK",
+   "href": "/release/4986bd6c-7506-46d9-b05d-9c212a608537",
+   "rest": "by Bruce Springsteen & The E Street Band"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "part of",
+   "type": "series",
+   "name": "2023–25 International Tour",
+   "href": "/series/db03e180-5b76-4fae-8ca8-52ec6ac9de1f",
+   "rest": "(order: 150)"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "video channel",
+   "type": "url",
+   "name": "https://www.blogness-brucespringsteen.net/post/manchester3",
+   "href": "https://www.blogness-brucespringsteen.net/post/manchester3",
+   "rest": "[info]"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "setlist.fm",
+   "type": "url",
+   "name": "https://www.setlist.fm/setlist/bruce-springsteen/2025/co-op-live-manchester-england-43535b97.html",
+   "href": "https://www.setlist.fm/setlist/bruce-springsteen/2025/co-op-live-manchester-england-43535b97.html",
+   "rest": "[info]"
+  },
+  {
+   "group": "Relationships",
+   "phrase": "reviews",
+   "type": "url",
+   "name": "http://brucebase.wikidot.com/2025#200525",
+   "href": "http://brucebase.wikidot.com/2025#200525",
+   "rest": "[info]"
+  },
+  {
+   "group": "Related series",
+   "phrase": "tour by",
+   "type": "artist",
+   "name": "The E Street Band",
+   "href": "/artist/d6652e7b-33fe-49ef-8336-4c863b4f996f",
+   "rest": ""
+  },
+  {
+   "group": "Related series",
+   "phrase": "tour by",
+   "type": "artist",
+   "name": "Bruce Springsteen",
+   "href": "/artist/70248960-cb53-4ea4-943a-edb18f7d336f",
+   "rest": ""
+  },
+  {
+   "group": "Related series",
+   "phrase": "subseries of",
+   "type": "series",
+   "name": "Bruce Springsteen Concert Tours",
+   "href": "/series/bf668806-793f-4131-959f-9124ad76a47b",
+   "rest": ""
+  },
+  {
+   "group": "Related series",
+   "phrase": "official homepages",
+   "type": "url",
+   "name": "https://www.nugs.net/live-download-of-bruce-springsteen-mp3-flac-or-online-music-streaming/1260-PACKAGE.html",
+   "href": "https://www.nugs.net/live-download-of-bruce-springsteen-mp3-flac-or-online-music-streaming/1260-PACKAGE.html",
+   "rest": "[info]"
+  },
+  {
+   "group": "Related series",
+   "phrase": "schedule",
+   "type": "url",
+   "name": "https://brucebase.wdfiles.com/local--files/files:news-tour-23int/2024-INT_Schedule_01_USA.jpg",
+   "href": "https://brucebase.wdfiles.com/local--files/files:news-tour-23int/2024-INT_Schedule_01_USA.jpg",
+   "rest": "[info]"
+  }
+ ],
+ "setlist": [
+  {
+   "kind": "artist",
+   "name": "Bruce Springsteen",
+   "href": "/artist/70248960-cb53-4ea4-943a-edb18f7d336f"
+  },
+  {
+   "kind": "join",
+   "text": "&"
+  },
+  {
+   "kind": "artist",
+   "name": "The E Street Band",
+   "href": "/artist/d6652e7b-33fe-49ef-8336-4c863b4f996f"
+  },
+  {
+   "kind": "join",
+   "text": "with"
+  },
+  {
+   "kind": "artist",
+   "name": "Roy Bittan",
+   "href": "/artist/11d2fcfe-669d-4596-8921-e07dbdae311f"
+  },
+  {
+   "kind": "artist",
+   "name": "Nils Lofgren",
+   "href": "/artist/a1ef6bc8-2644-4b6d-aa21-27b630acf751"
+  },
+  {
+   "kind": "artist",
+   "name": "Garry Tallent",
+   "href": "/artist/42b42dd1-9263-4eae-91cd-4014a5b5d39f"
+  },
+  {
+   "kind": "artist",
+   "name": "Steven Van Zandt",
+   "href": "/artist/de53495e-ad5a-4c30-82ab-05e7e3ec7b4d"
+  },
+  {
+   "kind": "artist",
+   "name": "Max Weinberg",
+   "href": "/artist/2566ca73-1dfd-49e7-ab20-dfa5697b360e"
+  },
+  {
+   "kind": "join",
+   "text": "and"
+  },
+  {
+   "kind": "artist",
+   "name": "Charles Giordano",
+   "href": "/artist/4382fa5d-03de-4ebf-baf3-df6a1d1922f0"
+  },
+  {
+   "kind": "artist",
+   "name": "Soozie Tyrell",
+   "href": "/artist/065af1a2-2fa9-4864-852e-08c00c9c67d8"
+  },
+  {
+   "kind": "join",
+   "text": "and"
+  },
+  {
+   "kind": "artist",
+   "name": "The E Street Horns",
+   "href": "/artist/61c0a8b8-e3f1-4e7f-9f42-7b21a7bf9e4e"
+  },
+  {
+   "kind": "join",
+   "text": "with"
+  },
+  {
+   "kind": "artist",
+   "name": "Jake Clemons",
+   "href": "/artist/5c64226c-d673-4d23-a612-2bfb704edd66"
+  },
+  {
+   "kind": "artist",
+   "name": "Barry Danielian",
+   "href": "/artist/092ae7a4-0ea2-407a-a200-d1ee09383537"
+  },
+  {
+   "kind": "artist",
+   "name": "Ed Manion",
+   "href": "/artist/6a3394ba-6888-4dd0-93f3-06c1e35749d8"
+  },
+  {
+   "kind": "artist",
+   "name": "Ozzie Melendez",
+   "href": "/artist/ef011392-7eee-4090-ad83-660c48e9b1c1"
+  },
+  {
+   "kind": "artist",
+   "name": "Curt Ramm",
+   "href": "/artist/028fd996-fe8f-41b6-a6ed-1cb4b06a23d2"
+  },
+  {
+   "kind": "join",
+   "text": "and"
+  },
+  {
+   "kind": "artist",
+   "name": "The E Street Choir",
+   "href": "/artist/ad2232c5-2b11-4699-80c2-e5f83c56c8e4"
+  },
+  {
+   "kind": "join",
+   "text": "with"
+  },
+  {
+   "kind": "artist",
+   "name": "Anthony Almonte",
+   "href": "/artist/b0ab3979-4165-4e3e-b125-2d77f14080bd"
+  },
+  {
+   "kind": "artist",
+   "name": "Ada Dyer",
+   "href": "/artist/1ca07311-cbfe-4ae8-a518-aa76c8579802"
+  },
+  {
+   "kind": "artist",
+   "name": "Curtis King",
+   "href": "/artist/7b18698b-33fb-4865-b158-e74f3457eeb7"
+  },
+  {
+   "kind": "artist",
+   "name": "Lisa Lowell",
+   "href": "/artist/59d77428-bf32-4c9f-bc4c-7c03ec882c59"
+  },
+  {
+   "kind": "artist",
+   "name": "Michelle Moore",
+   "href": "/artist/e67ac344-ce0a-4a27-b4ad-9502dab57a82"
+  },
+  {
+   "kind": "blank"
+  },
+  {
+   "kind": "header",
+   "text": "Soundcheck"
+  },
+  {
+   "kind": "song",
+   "text": "Something in the Night",
+   "works": [
+    {
+     "name": "Something in the Night",
+     "href": "/work/2d09387a-a652-36f1-a910-16183bf81407"
+    }
+   ]
+  },
+  {
+   "kind": "song",
+   "text": "No Surrender",
+   "works": [
+    {
+     "name": "No Surrender",
+     "href": "/work/5282969b-4c49-3013-aa05-8af5c4be6ae9"
+    }
+   ]
+  },
+  {
+   "kind": "song",
+   "text": "Reason to Believe",
+   "works": [
+    {
+     "name": "Reason to Believe",
+     "href": "/work/efa14865-61d7-33b6-b597-fdef24f39943"
+    }
+   ]
+  },
+  {
+   "kind": "blank"
+  },
+  {
+   "kind": "header",
+   "text": "Concert"
+  },
+  {
+   "kind": "note",
+   "text": "Scheduled: 19:30 | Local Start Time 19:40 / End Time 22:29"
+  },
+  {
+   "kind": "song",
+   "text": "No Surrender",
+   "works": [
+    {
+     "name": "No Surrender",
+     "href": "/work/5282969b-4c49-3013-aa05-8af5c4be6ae9"
+    }
+   ]
+  },
+  {
+   "kind": "song",
+   "text": "Land of Hope and Dreams / People Get Ready",
+   "works": [
+    {
+     "name": "Land of Hope and Dreams",
+     "href": "/work/9878138e-7ca7-4bb3-be1f-3dfeed51d4f5"
+    },
+    {
+     "name": "People Get Ready",
+     "href": "/work/44b41cfa-2f97-37c5-a6aa-527c99d44d46"
+    }
+   ]
+  },
+  {
+   "kind": "song",
+   "text": "Death to My Hometown",
+   "works": [
+    {
+     "name": "Death to My Hometown",
+     "href": "/work/028e665e-f76c-43d3-9e6d-25108b87dd97"
+    }
+   ]
+  },
+  {
+   "kind": "song",
+   "text": "Seeds",
+   "works": [
+    {
+     "name": "Seeds",
+     "href": "/work/3ceaab7d-52b4-3957-93e6-dfb7459803df"
+    }
+   ]
+  },
+  {
+   "kind": "song",
+   "text": "Something in the Night",
+   "works": [
+    {
+     "name": "Something in the Night",
+     "href": "/work/2d09387a-a652-36f1-a910-16183bf81407"
+    }
+   ]
+  },
+  {
+   "kind": "song",
+   "text": "Rainmaker",
+   "works": [
+    {
+     "name": "Rainmaker",
+     "href": "/work/79772b1c-171d-47e5-9afd-b54a9cbd878f"
+    }
+   ]
+  },
+  {
+   "kind": "song",
+   "text": "The Promised Land",
+   "works": [
+    {
+     "name": "The Promised Land",
+     "href": "/work/13411c83-ddd8-31ca-b968-79e4cf6db8fb"
+    }
+   ]
+  },
+  {
+   "kind": "song",
+   "text": "Reason to Believe",
+   "works": [
+    {
+     "name": "Reason to Believe",
+     "href": "/work/efa14865-61d7-33b6-b597-fdef24f39943"
+    }
+   ]
+  },
+  {
+   "kind": "song",
+   "text": "The River",
+   "works": [
+    {
+     "name": "The River",
+     "href": "/work/fe0f14e5-de68-3aa6-bf48-80c4cbe2a1f7"
+    }
+   ]
+  },
+  {
+   "kind": "song",
+   "text": "Youngstown",
+   "works": [
+    {
+     "name": "Youngstown",
+     "href": "/work/f4a77656-8cdb-365c-aef9-034c098e249f"
+    }
+   ]
+  },
+  {
+   "kind": "song",
+   "text": "Murder Incorporated",
+   "works": [
+    {
+     "name": "Murder Incorporated",
+     "href": "/work/9e21f814-f5a2-350d-91ce-a23ce921f5d5"
+    }
+   ]
+  },
+  {
+   "kind": "song",
+   "text": "Long Walk Home",
+   "works": [
+    {
+     "name": "Long Walk Home",
+     "href": "/work/d5d5d83e-2841-4210-9be1-252341babc7e"
+    }
+   ]
+  },
+  {
+   "kind": "song",
+   "text": "House of a Thousand Guitars",
+   "works": [
+    {
+     "name": "House of a Thousand Guitars",
+     "href": "/work/54be9f02-1cc7-4e69-ae5d-fdb1f23e6a1e"
+    }
+   ]
+  },
+  {
+   "kind": "song",
+   "text": "My City of Ruins",
+   "works": [
+    {
+     "name": "My City of Ruins",
+     "href": "/work/abc923d4-6aa1-3bf2-9cbc-2307882e4bb3"
+    }
+   ]
+  },
+  {
+   "kind": "song",
+   "text": "Because the Night",
+   "works": [
+    {
+     "name": "Because the Night",
+     "href": "/work/2e9dd9af-98a2-3a19-a778-58981f2824e6"
+    }
+   ]
+  },
+  {
+   "kind": "song",
+   "text": "Ghosts",
+   "works": [
+    {
+     "name": "Ghosts",
+     "href": "/work/131f270d-67d8-4f92-8ad8-18c3147cf1ae"
+    }
+   ]
+  },
+  {
+   "kind": "song",
+   "text": "Wrecking Ball",
+   "works": [
+    {
+     "name": "Wrecking Ball",
+     "href": "/work/c29fbe7c-9cfa-426e-9832-314cc14990f1"
+    }
+   ]
+  },
+  {
+   "kind": "song",
+   "text": "The Rising",
+   "works": [
+    {
+     "name": "The Rising",
+     "href": "/work/4b4ab9ab-0bb9-43bb-ae09-4993c4b90ff8"
+    }
+   ]
+  },
+  {
+   "kind": "song",
+   "text": "Badlands",
+   "works": [
+    {
+     "name": "Badlands",
+     "href": "/work/e8a5fe99-0aff-3e7b-840c-7ab96cb702be"
+    }
+   ]
+  },
+  {
+   "kind": "song",
+   "text": "Thunder Road",
+   "works": [
+    {
+     "name": "Thunder Road",
+     "href": "/work/cc8d858a-38ef-35b0-b83c-a5d26f04207b"
+    }
+   ]
+  },
+  {
+   "kind": "song",
+   "text": "Born in the U.S.A.",
+   "works": [
+    {
+     "name": "Born in the U.S.A.",
+     "href": "/work/55d593ce-52cc-30ec-9494-eca1ab879f5c"
+    }
+   ]
+  },
+  {
+   "kind": "song",
+   "text": "Born to Run",
+   "works": [
+    {
+     "name": "Born to Run",
+     "href": "/work/9893a23c-f282-3b07-a2db-b4f2f3b9f4b2"
+    }
+   ]
+  },
+  {
+   "kind": "song",
+   "text": "Glory Days",
+   "works": [
+    {
+     "name": "Glory Days",
+     "href": "/work/e59ca323-dd32-3a0b-80a9-d42746362213"
+    }
+   ]
+  },
+  {
+   "kind": "song",
+   "text": "Dancing in the Dark",
+   "works": [
+    {
+     "name": "Dancing in the Dark",
+     "href": "/work/f8556ea5-f89f-3c2f-922f-d5225c1a4511"
+    }
+   ]
+  },
+  {
+   "kind": "song",
+   "text": "Tenth Avenue Freeze‐Out",
+   "works": [
+    {
+     "name": "Tenth Avenue Freeze‐Out",
+     "href": "/work/aa151b23-5171-3d35-a487-55fc8c66131e"
+    }
+   ]
+  },
+  {
+   "kind": "song",
+   "text": "Chimes of Freedom",
+   "works": [
+    {
+     "name": "Chimes of Freedom",
+     "href": "/work/b6417ad9-7965-331a-8a0f-18c3da2f4f74"
+    }
+   ]
+  },
+  {
+   "kind": "blank"
+  }
+ ]
+}

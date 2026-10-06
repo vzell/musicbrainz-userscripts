@@ -412,6 +412,10 @@ CLOSED: [2026-10-06 Tue]
   said must refuse.
 
 *** TODO P5 — EAA on the event page (decided: yes)
+- 2026-10-06: decided — a new pageType =event-overview= whose button
+  consolidates the relationships (and the setlist) into tables, with the
+  Event art section above. Plan, data and mockups:
+  [[file:event-overview-pt.org]], [[file:event-overview-mockups.html]].
 - Same section, viewer and tab click with =EAA_CTX= (=eventartarchive.org=,
   tab "Event art (n)", types such as Poster/Banner/Flyer/Ticket).
 - Needs a hook on =/event/<mbid>=, which has no pageType today (only
