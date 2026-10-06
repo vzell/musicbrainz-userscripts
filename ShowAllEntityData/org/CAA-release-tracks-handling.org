@@ -137,27 +137,38 @@ asks, the JSON shares =_caaImagesCache= and the IDB =metadata= store with the
 CAA column, and the viewer is the component the CAA/EAA study already plans.
 R3, R6 and R7 can follow once that has settled. R2 stays out.
 
-*** DECIDE (open for the user)
-- [ ] R1 default state: collapsed (0 requests, proposed) or open (1 JSON + thumbs
-      on every release page)? Proposed: a setting, default collapsed, and the
-      open/closed state remembered like other h2s if that mechanism exists.
-- [ ] When does the section appear: only after "Show all Tracks for Release"
-      (inside the render, so =makeH2sCollapsible()= picks it up — proposed), or
-      already at page load, independent of the button?
-- [ ] Position: above "Tracklist" (mockup) or below it, before "Release
-      information"?
-- [ ] R4 at all? It changes what a plain click on a native tab does.
-- [ ] Who builds the viewer first — this branch or =design/caa-eaa-redesign= P2?
-      Either way one =_artViewer*= family, driven by =ctx= and an image list,
-      not by table rows.
-- [ ] Viewer image size: 1200 (proposed) or original.
-- [ ] R6 "Spreads" layout in the first release, or later?
-- [ ] EAA: the same section for events (=/event/<mbid>=, =EAA_CTX=) later? The
-      design is ctx-driven so it costs little.
+*** DECIDED (2026-10-06, by the user)
+- [X] Ship *R1 + R5*, with *R4* as a small add-on. R2 out; R3, R6, R7 later.
+- [X] R1 starts *uncollapsed* (=h2._mbToggle(true)= after
+      =makeH2sCollapsible()=). Consequence for the budget below: the JSON
+      (or a cache hit) and the 250 px thumbs load on every render, not on
+      expand. Still 0 before the button is pressed.
+- [X] The section appears *only after "Show all Tracks for Release"* is
+      pressed — built inside the release-tracks render, before
+      =makeH2sCollapsible()=.
+- [X] R4: a plain left click on the "Cover art (n)" tab opens the viewer in
+      *grid mode* over the page instead of navigating; Ctrl/Cmd/Shift/middle
+      click keep navigating. Wired together with the section, i.e. after the
+      render.
+- [X] Position: above "Tracklist", as in the mockup.
+- [X] Viewer image size: *1200*.
+- [X] This branch builds the viewer first (=_artViewer*=, driven by =ctx= and
+      an image list); =design/caa-eaa-redesign= P2 reuses it.
+- [X] *EAA also*: the same section + viewer + tab click for event art
+      (=EAA_CTX=, =eventartarchive.org=, tab "Event art (n)"). Caveat: there is
+      NO pageType for the event overview page (=/event/<mbid>=) today — only
+      =event-tags= — so there is no "Show all" button to hang it off. Planned as
+      its own phase (P5) after the CAA side works; how it is triggered on
+      =/event/<mbid>= is decided then. Everything built in P1–P3 takes a =ctx=
+      so P5 is wiring, not new UI.
+
+*** Still open
+- [ ] R6 "Spreads" layout: later (default).
 
 ** Request and performance budget
 
-- Per page view: 0 requests while R1 is collapsed. On expand: 1 JSON request to
+- Per page view: 0 requests before "Show all Tracks for Release". After the
+  render (the section starts uncollapsed, as decided): 1 JSON request to
   =coverartarchive.org/release/<mbid>= (no published rate limit, no batch
   endpoint — see the root CLAUDE.md), or 0 on a =_caaImagesCache= / IDB hit.
 - Thumbnails: =loading="lazy"=, 250 px, only rendered while the section is open.
@@ -255,6 +266,15 @@ asking to merge. Never merge without the user's browser check.
   =comment=, same prefix and type; unpaired images stay single.
 - R7 only with explicit comment matches ("disc N", "CD N", "LP N", "side X")
   or equal counts; otherwise the visible "not assigned" note.
+
+*** TODO P5 — EAA on the event page (decided: yes)
+- Same section, viewer and tab click with =EAA_CTX= (=eventartarchive.org=,
+  tab "Event art (n)", types such as Poster/Banner/Flyer/Ticket).
+- Needs a hook on =/event/<mbid>=, which has no pageType today (only
+  =event-tags=). Decide first: a new =event= pageType with its own button,
+  or a section independent of any button. Probe the EAA JSON shape first
+  (extend =scripts/probe-caa-release-images.py=).
+- Fixture: an event page with event art; specs mirror P1–P3 with =ctx= = EAA.
 
 ** Follow-ups / open questions
 
