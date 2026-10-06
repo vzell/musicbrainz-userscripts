@@ -1160,6 +1160,19 @@ says "Cover art (0)" — and the global filter never hides it. "No images" and
 "could not be reached" are told apart; the second offers **⟳ Retry**. Setting:
 *Show a "Cover art" section above the tracklist* (on by default).
 
+**Disc labels in the medium headings.** The archive's **Medium** images (disc
+and record labels) appear as small thumbnails in the heading of the medium they
+show — click one for the viewer, which then steps through that medium's own
+images. The archive does not say which medium an image shows, so one is placed
+only when that is certain: the release has a single medium; its comment names
+the medium ("disc 2", "CD 2", "LP 2", or "side C" on vinyl and cassettes, two
+sides per medium); or no Medium image has a comment and there are exactly as
+many of them as media, which are then taken in archive order. Everything else
+is collected in one note on the first medium — e.g. *4 Medium images, 3 media,
+no comments: not assigned* — that opens them in the viewer. It makes no request
+of its own. Setting: *Show Medium images in each medium heading* (on by default;
+needs the Cover art section).
+
 **Live recordings from more than one event.** Each track is matched to an
 event: its **Recorded at event**, else the event its recording comment names
 (`live, 1996‐04‐19: Saal 1, ICC Berlin, Berlin, Germany`), else its **Recording

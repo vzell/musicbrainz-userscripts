@@ -2342,6 +2342,18 @@
                          '250 px thumbnails. ★ marks the archive\'s main front image.'
         },
 
+        sa_enable_release_tracks_medium_art: {
+            label: 'Show Medium images in each medium heading',
+            type: 'checkbox',
+            default: true,
+            description: 'With the "Cover art" section on, puts the archive\'s Medium images (disc ' +
+                         'labels) as small thumbnails into the heading of the medium they show. An ' +
+                         'image is placed only when that is certain: the release has one medium, its ' +
+                         'comment names the medium ("disc 2", "LP 2", "side C"), or there are exactly ' +
+                         'as many uncommented Medium images as media. Otherwise a "not assigned" note ' +
+                         'opens them in the viewer. No request of its own.'
+        },
+
         sa_enable_release_tracks_isrc_column: {
             label: 'Show "ISRCs" column',
             type: 'checkbox',
@@ -47358,6 +47370,7 @@ a { color: #1565c0; }`;
         // needing its own.
         _updatePendingEditsButtons();
         _updateMediumEventBadges();
+        _releaseArtApplyMediumArt();
         _updateFindingMenus();
     }
 
@@ -95289,6 +95302,39 @@ a { color: #1565c0; }`;
                 cursor: pointer;
             }
             .mb-release-art-spread-foot button { border: 1px solid #ccc; border-radius: 4px; }
+            .mb-medium-art {
+                display: inline-flex;
+                align-items: center;
+                gap: 3px;
+                margin: 0 6px;
+                vertical-align: middle;
+            }
+            .mb-medium-art-btn {
+                width: 26px;
+                height: 26px;
+                padding: 0;
+                border: 1px solid #ccc;
+                background: #f4f4f4;
+                line-height: 0;
+                overflow: hidden;
+                cursor: zoom-in;
+            }
+            .mb-medium-art-btn img {
+                display: block;
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                pointer-events: none;
+            }
+            .mb-medium-art-more,
+            .mb-medium-art-note {
+                font: normal 11px/1.4 sans-serif;
+                border-radius: 3px;
+                padding: 1px 6px;
+                cursor: pointer;
+            }
+            .mb-medium-art-more { border: 1px solid #ccc; background: #fff; color: #222; }
+            .mb-medium-art-note { border: 1px solid #f0d49a; background: #fff4dc; color: #8a5300; }
             .mb-release-art-spread-foot button:disabled { color: #aaa; cursor: default; }
             .mb-release-art-group-hdr {
                 margin: 0 0 4px;
@@ -95739,6 +95785,228 @@ a { color: #1565c0; }`;
         }
     }
 
+    // ── Medium art in each medium's h3 (mockup R7) ──────────────────────────
+    //
+    // The archive's Medium images carry no link to a medium, only free-text
+    // comments. A wrong guess puts disc 2's label on disc 1, so an image is
+    // assigned only when that is certain, and every image that is not shows
+    // up in one visible "not assigned" note instead.
+
+    /**
+     * The release's media as their rendered h3s name them: "1 - CD",
+     * "2 - 12\" Vinyl", "1 - CD: <medium title>" (built by
+     * `applyNormalizeMediumTracklists()`), in tracklist order.
+     *
+     * @returns {Array<{pos: number, format: string, h3: HTMLElement}>}
+     */
+    function _releaseArtMedia() {
+        const media = [];
+        _tableSourceRows().forEach(({ table }) => {
+            const h3 = findH3ForTable(table);
+            const icon = h3 && h3.querySelector(':scope > .mb-toggle-icon');
+            const text = icon && icon.nextSibling && icon.nextSibling.nodeType === Node.TEXT_NODE
+                ? icon.nextSibling.textContent : '';
+            const m = /^\s*(\d+)\s+-\s+(.*?)\s*$/.exec(text);
+            if (m) media.push({ pos: Number(m[1]), format: m[2].split(': ')[0], h3 });
+        });
+        return media;
+    }
+
+    /**
+     * Assigns the archive's Medium images to media, or refuses (pure; no DOM).
+     * In this order:
+     *   1. one medium only: every Medium image is that medium's — certain;
+     *   2. a comment naming exactly one existing medium: "disc 2", "CD 2",
+     *      "LP 2", "medium 2", "vinyl 2", "record 2", "DVD 2" — or "side C"
+     *      when every medium is two-sided (vinyl, cassette), two sides per
+     *      medium, so side C is medium 2;
+     *   3. NO Medium image has a comment at all AND there are exactly as many
+     *      Medium images as media: archive order. A comment that names no
+     *      medium the parser can read ("label, disc two") is not "no comment":
+     *      it may say something archive order contradicts, so it refuses;
+     *   4. anything else stays unassigned.
+     *
+     * @param   {Object[]} images The release's archive images, in archive order.
+     * @param   {Array<{pos: number, format: string}>} media From `_releaseArtMedia()`.
+     * @returns {{byPos: Map<number, number[]>, unassigned: number[], medium: number[], commented: number}}
+     *          `medium` is every Medium image's index; `commented` how many of
+     *          them carry a comment at all.
+     */
+    function _releaseArtMediumAssign(images, media) {
+        const medium = images.map((im, i) => i).filter(i => (images[i].types || []).includes('Medium'));
+        const byPos = new Map();
+        const put = (pos, i) => {
+            if (!byPos.has(pos)) byPos.set(pos, []);
+            byPos.get(pos).push(i);
+        };
+        const commented = medium.filter(i => (images[i].comment || '').trim()).length;
+        if (!media.length || !medium.length) return { byPos, unassigned: medium.slice(), medium, commented };
+        if (media.length === 1) {
+            medium.forEach(i => put(media[0].pos, i));
+            return { byPos, unassigned: [], medium, commented };
+        }
+        const positions = new Set(media.map(m => m.pos));
+        const twoSided = media.every(m => /vinyl|"|\blp\b|cassette/i.test(m.format));
+        const numRe = /\b(?:disc|disk|cd|lp|dvd|medium|vinyl|record)\s*#?\s*(\d+)\b/gi;
+        const sideRe = /\bside\s+([a-z])\b/gi;
+        const named = (comment) => {
+            const found = new Set();
+            for (const m of comment.matchAll(numRe)) found.add(Number(m[1]));
+            if (twoSided) {
+                for (const m of comment.matchAll(sideRe)) {
+                    found.add(Math.floor((m[1].toLowerCase().charCodeAt(0) - 97) / 2) + 1);
+                }
+            }
+            return found;
+        };
+        if (!commented && medium.length === media.length) {
+            medium.forEach((i, k) => put(media[k].pos, i));
+            return { byPos, unassigned: [], medium, commented };
+        }
+        const unassigned = [];
+        medium.forEach(i => {
+            const found = named(images[i].comment || '');
+            const pos = found.size === 1 ? found.values().next().value : null;
+            if (pos !== null && positions.has(pos)) put(pos, i);
+            else unassigned.push(i);
+        });
+        return { byPos, unassigned, medium, commented };
+    }
+
+    let _releaseArtMediumClickInstalled = false;
+    const _releaseArtMediumMemo = new WeakMap();
+
+    /**
+     * Puts each medium's assigned Medium images, as small thumbs, into its
+     * h3 (`span.mb-medium-art`, before the row count), and one "not assigned"
+     * note on the first medium's h3 for every Medium image that could not be
+     * assigned (`_releaseArtMediumAssign()`). Reads only the record already in
+     * `CAA_CTX.imagesCache` — never a request. Idempotent and cheap (a memo hit
+     * and one query per medium), because it rides
+     * `updateFilterButtonsVisibility()`: a full render rebuilds the h3s with
+     * `innerHTML`, a filter or sort render reuses them.
+     *
+     * The thumbs are `<button>`s: the h3's collapse handler ignores a click
+     * whose target is a BUTTON, and the `<img>` inside has
+     * `pointer-events: none` so the target is never the image.
+     *
+     * @returns {void}
+     */
+    function _releaseArtApplyMediumArt() {
+        if (!activeDefinition || activeDefinition.type !== 'release-tracks') return;
+        const sec = document.querySelector('.mb-release-art-sec[data-mb-art-state="ok"]');
+        const images = sec && CAA_CTX.imagesCache.get(sec.dataset.mbArtEntity);
+        const on = Lib.settings.sa_enable_release_tracks_cover_art &&
+                   Lib.settings.sa_enable_release_tracks_medium_art && Array.isArray(images);
+        const media = on ? _releaseArtMedia() : [];
+        if (!on || !media.length) {
+            document.querySelectorAll('.mb-medium-art').forEach(n => n.remove());
+            return;
+        }
+        let memo = _releaseArtMediumMemo.get(images);
+        const mediaKey = media.map(m => `${m.pos}:${m.format}`).join('|');
+        if (!memo || memo.mediaKey !== mediaKey) {
+            memo = { mediaKey, result: _releaseArtMediumAssign(images, media) };
+            _releaseArtMediumMemo.set(images, memo);
+        }
+        const { byPos, unassigned, medium, commented } = memo.result;
+        if (!_releaseArtMediumClickInstalled) {
+            _releaseArtMediumClickInstalled = true;
+            document.addEventListener('click', _releaseArtOnMediumClick);
+        }
+        media.forEach(({ pos, h3 }, k) => {
+            const mine = byPos.get(pos) || [];
+            const note = k === 0 && unassigned.length ? unassigned : [];
+            const key = `${sec.dataset.mbArtEntity}|${mine.join(',')}|${note.join(',')}`;
+            let box = h3.querySelector(':scope > .mb-medium-art');
+            if (!mine.length && !note.length) {
+                if (box) box.remove();
+                return;
+            }
+            if (box && box.dataset.mbArtKey === key) return;
+            if (!box) {
+                box = document.createElement('span');
+                box.className = 'mb-medium-art';
+            }
+            box.textContent = '';
+            box.dataset.mbArtKey = key;
+            box.dataset.mbArtPos = String(pos);
+            mine.slice(0, 4).forEach(i => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'mb-medium-art-btn';
+                b.dataset.mbArtI = String(i);
+                b.dataset.mbtt = _releaseArtTipHtml(images, i);
+                const img = document.createElement('img');
+                img.src = _artViewerThumbUrl(images[i]);
+                img.alt = images[i].comment || 'Medium';
+                img.loading = 'lazy';
+                img.decoding = 'async';
+                b.appendChild(img);
+                box.appendChild(b);
+            });
+            if (mine.length > 4) {
+                const more = document.createElement('button');
+                more.type = 'button';
+                more.className = 'mb-medium-art-more';
+                more.dataset.mbArtI = String(mine[4]);
+                more.textContent = `+${mine.length - 4}`;
+                _setTip(more, `${mine.length - 4} more Medium image${mine.length - 4 === 1 ? '' : 's'} of this medium`);
+                box.appendChild(more);
+            }
+            if (note.length) {
+                const n = document.createElement('button');
+                n.type = 'button';
+                n.className = 'mb-medium-art-note';
+                const why = commented ? 'no comment names a single medium' : 'no comments';
+                n.textContent = note.length === medium.length
+                    ? `${medium.length} Medium image${medium.length === 1 ? '' : 's'}, ${media.length} media, ${why}: not assigned`
+                    : `${note.length} of ${medium.length} Medium images not assigned`;
+                _setTip(n, 'Open the Medium images in the viewer.\nAn image is put on a medium only when its comment names that ' +
+                           'medium ("disc 2", "LP 2", "side C") or when there are as many Medium images as media.');
+                box.appendChild(n);
+            }
+            const stat = h3.querySelector(':scope > .mb-row-count-stat');
+            if (stat) {
+                if (stat.previousSibling !== box) stat.before(box);
+            } else if (!box.isConnected) {
+                h3.appendChild(box);
+            }
+        });
+    }
+
+    /**
+     * Opens the viewer from a medium h3: a thumb (or "+N") steps through that
+     * medium's own Medium images, the note through every Medium image.
+     * Delegated on `document`, installed once by `_releaseArtApplyMediumArt()`.
+     *
+     * @param   {MouseEvent} e
+     * @returns {void}
+     */
+    function _releaseArtOnMediumClick(e) {
+        const btn = e.target instanceof Element && e.target.closest('.mb-medium-art > button');
+        if (!btn || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+        const sec = document.querySelector('.mb-release-art-sec[data-mb-art-state="ok"]');
+        const images = sec && CAA_CTX.imagesCache.get(sec.dataset.mbArtEntity);
+        if (!images) return;
+        const memo = _releaseArtMediumMemo.get(images);
+        if (!memo) return;
+        const { byPos, medium } = memo.result;
+        let list;
+        let start;
+        if (btn.classList.contains('mb-medium-art-note')) {
+            list = medium;
+            start = medium[0];
+        } else {
+            list = byPos.get(Number(btn.parentElement.dataset.mbArtPos)) || [];
+            start = Number(btn.dataset.mbArtI);
+        }
+        if (!list.length) return;
+        e.preventDefault();
+        e.stopPropagation();
+        _artViewerOpen(CAA_CTX, sec.dataset.mbArtEntity, list, start, { opener: btn, title: _releaseArtTitle() });
+    }
+
     /**
      * Fills the section from the archive record: a contact sheet, a "no
      * artwork" note, or a failure note with a retry button. The retry button
@@ -95767,6 +96035,7 @@ a { color: #1565c0; }`;
             if (countEl) countEl.textContent = ` (${images.length})`;
             status.remove();
             _releaseArtRenderSheet(sec);
+            _releaseArtApplyMediumArt();
             return;
         }
         if (state === 'none') {

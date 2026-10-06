@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-10-06",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Release tracklist: the archive's Medium images (disc and record labels) appear as small thumbnails in the heading of the medium they show; a click opens the viewer on that medium's images. The archive does not say which medium an image shows, so one is placed only when that is certain — the release has one medium; its comment names exactly one existing medium (\"disc 2\", \"CD 2\", \"LP 2\", or \"side C\" on vinyl and cassettes, two sides per medium); or no Medium image has a comment and there are exactly as many as media (archive order). Everything else is listed in one note on the first medium (\"4 Medium images, 3 media, no comments: not assigned\") that opens them in the viewer. At most four thumbnails per medium, then \"+N\". No request of its own. New setting \"Show Medium images in each medium heading\" (on by default; needs the Cover art section)."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "New spec release-tracks-medium-art.spec.js (10 tests); the mobile spec adds a tap on a medium thumb. release-tracks-cover-art-p4.json gains 13 defects for this, all caught. docs/claude/artwork-caa-eaa.md records the assignment order and the h3 click trap (a bare <img> target collapses the medium); docs/claude/testing-playwright.md records why locator.tap() can report a false \"intercepts pointer events\" once the visual viewport has scrolled."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-10-06",
     "sections": [

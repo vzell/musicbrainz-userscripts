@@ -71,5 +71,110 @@
     "project": "chromium-mobile",
     "grep": "an opened spread fits the phone window",
     "expect": "pass"
+  },
+  {
+    "name": "R7: no one-medium rule",
+    "why": "On a single medium every Medium image is certainly that medium's; without the rule five images on one medium are refused.",
+    "edits": [{ "find": "        if (media.length === 1) {", "replace": "        if (false) {" }],
+    "spec": "tests/fixtures/release-tracks-medium-art.spec.js",
+    "grep": "one medium takes every Medium image",
+    "expect": "fail"
+  },
+  {
+    "name": "R7: equal counts assign even with comments",
+    "why": "Archive order is a guess once any comment exists: one 'CD 3' plus two uncommented images would be placed 1, 2, 3.",
+    "edits": [{ "find": "        if (!commented && medium.length === media.length) {", "replace": "        if (medium.length === media.length) {" }],
+    "spec": "tests/fixtures/release-tracks-medium-art.spec.js",
+    "grep": "one readable comment among uncommented images",
+    "expect": "fail"
+  },
+  {
+    "name": "R7: equal counts never assign",
+    "why": "The 'as many Medium images as media' rule the user chose: without it the uncommented 3-on-3 case is refused.",
+    "edits": [{ "find": "            medium.forEach((i, k) => put(media[k].pos, i));", "replace": "" }],
+    "spec": "tests/fixtures/release-tracks-medium-art.spec.js",
+    "grep": "as many uncommented Medium images as media",
+    "expect": "fail"
+  },
+  {
+    "name": "R7: sides counted on CDs",
+    "why": "A CD has no side C; treating every medium as two-sided assigns 'side C' to CD 2.",
+    "edits": [{ "find": "        const twoSided = media.every(m => /vinyl|\"|\\blp\\b|cassette/i.test(m.format));", "replace": "        const twoSided = true;" }],
+    "spec": "tests/fixtures/release-tracks-medium-art.spec.js",
+    "grep": "is medium 2 on vinyl, and nothing on CDs",
+    "expect": "fail"
+  },
+  {
+    "name": "R7: sides never counted",
+    "why": "On vinyl, 'side C' names medium 2.",
+    "edits": [{ "find": "            if (twoSided) {", "replace": "            if (false) {" }],
+    "spec": "tests/fixtures/release-tracks-medium-art.spec.js",
+    "grep": "is medium 2 on vinyl, and nothing on CDs",
+    "expect": "fail"
+  },
+  {
+    "name": "R7: a medium that does not exist is accepted",
+    "why": "'CD 7' on a 3-CD release names no medium; it must land in the note, not vanish into a missing h3.",
+    "edits": [{ "find": "            if (pos !== null && positions.has(pos)) put(pos, i);", "replace": "            if (pos !== null) put(pos, i);" }],
+    "spec": "tests/fixtures/release-tracks-medium-art.spec.js",
+    "grep": "a comment naming a medium that does not exist",
+    "expect": "fail"
+  },
+  {
+    "name": "R7: a comment naming two media takes the first",
+    "why": "'CD 2 + CD 3' is ambiguous; the first number is a guess.",
+    "edits": [{ "find": "            const pos = found.size === 1 ? found.values().next().value : null;", "replace": "            const pos = found.size >= 1 ? found.values().next().value : null;" }],
+    "spec": "tests/fixtures/release-tracks-medium-art.spec.js",
+    "grep": "a comment naming a medium that does not exist",
+    "expect": "fail"
+  },
+  {
+    "name": "R7: the thumb image takes the click",
+    "why": "Without pointer-events none the click target is the IMG, which the h3's collapse handler does not exempt: clicking a thumb collapses the medium.",
+    "edits": [{ "find": "                object-fit: cover;\n                pointer-events: none;\n", "replace": "                object-fit: cover;\n" }],
+    "spec": "tests/fixtures/release-tracks-medium-art.spec.js",
+    "grep": "without collapsing the medium",
+    "expect": "fail"
+  },
+  {
+    "name": "R7 mobile: the thumb image takes the tap",
+    "why": "Same trap on touch: the tap's target becomes the IMG, the h3 collapse handler takes it and stops it, and the viewer never opens.",
+    "edits": [{ "find": "                object-fit: cover;\n                pointer-events: none;\n", "replace": "                object-fit: cover;\n" }],
+    "spec": "tests/fixtures/release-tracks-cover-art.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "tapping a Medium thumb in the medium heading",
+    "expect": "fail"
+  },
+  {
+    "name": "R7: the note opens only the first Medium image",
+    "why": "The note stands for every Medium image; the viewer must step through all of them.",
+    "edits": [{ "find": "            list = medium;\n", "replace": "            list = medium.slice(0, 1);\n" }],
+    "spec": "tests/fixtures/release-tracks-medium-art.spec.js",
+    "grep": "the note opens the viewer on the Medium images only",
+    "expect": "fail"
+  },
+  {
+    "name": "R7: no repair from the filter pass",
+    "why": "The thumbs ride updateFilterButtonsVisibility(); without that call an h3 rebuilt after the section loaded stays bare.",
+    "edits": [{ "find": "        _releaseArtApplyMediumArt();\n        _updateFindingMenus();", "replace": "        _updateFindingMenus();" }],
+    "spec": "tests/fixtures/release-tracks-medium-art.spec.js",
+    "grep": "the thumbs survive a filter re-render",
+    "expect": "fail"
+  },
+  {
+    "name": "R7: not applied when the record arrives",
+    "why": "The first application is when the section's record loads; something else may call the filter pass after that, so this records whether that call alone is load-bearing.",
+    "edits": [{ "find": "            _releaseArtRenderSheet(sec);\n            _releaseArtApplyMediumArt();\n", "replace": "            _releaseArtRenderSheet(sec);\n" }],
+    "spec": "tests/fixtures/release-tracks-medium-art.spec.js",
+    "grep": "a note, never a guess",
+    "expect": "fail"
+  },
+  {
+    "name": "R7: the setting is ignored",
+    "why": "Turning off 'Show Medium images in each medium heading' must leave the h3s alone.",
+    "edits": [{ "find": "                   Lib.settings.sa_enable_release_tracks_medium_art && Array.isArray(images);", "replace": "                   Array.isArray(images);" }],
+    "spec": "tests/fixtures/release-tracks-medium-art.spec.js",
+    "grep": "the setting turns them off",
+    "expect": "fail"
   }
 ]

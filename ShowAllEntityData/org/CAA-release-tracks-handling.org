@@ -24,7 +24,8 @@ Add the plan to this file, so that I can actually do the real implementation in 
 - [X] Request 2.) HTML mockups — R0–R7, see below.
 - [X] Request 3.) plan in this file — and the decisions under DECIDED.
 - [X] P0 + P1 implemented on =feature/release-cover-art= (WIP.1), checked
-      live by the user 2026-10-06. P2 (rest), P3, P4, P5 open.
+      live by the user 2026-10-06. P2 and P3 shipped (9.99.1245, 9.99.1246).
+      P4 (R6 + R7) implemented on =feature/release-cover-art-p4=; P5 open.
 - History: 2026-10-06 started as design only (no userscript change, no
   changelog). Design branch sibling of =design/caa-eaa-redesign=
   (=org/redesign-CAA-EAA-column.org=, =org/redesign-CAA-EAA-mockups.html=),
@@ -166,8 +167,17 @@ R3, R6 and R7 can follow once that has settled. R2 stays out.
       =/event/<mbid>= is decided then. Everything built in P1–P3 takes a =ctx=
       so P5 is wiring, not new UI.
 
+*** DECIDED (2026-10-06, by the user, for P4)
+- [X] P4 = *R6 + R7*. *R3 is dropped: no sidebar support* (it would hide or
+      rewrite the native =div.cover-art= that MusicBrainz and other scripts
+      manage).
+- [X] R6 is a third layout of R1, never the default (Grid stays).
+- [X] R7 assigns on comment matches OR equal counts; its own setting
+      =sa_enable_release_tracks_medium_art=, default on. Tightened while
+      implementing: equal counts only when NO Medium image has a comment.
+
 *** Still open
-- [ ] R6 "Spreads" layout: later (default).
+- (none)
 
 ** Request and performance budget
 
@@ -371,11 +381,31 @@ CLOSED: [2026-10-06 Tue]
   mode; Ctrl-click on the tab is not intercepted; zero extra JSON requests;
   mobile tap/swipe.
 
-*** TODO P4 — optional: R6 spreads, R3 sidebar, R7 per medium
-- R6 as a third R1 layout, pairing rule =/^(.*?)\s*\b(left|right)$/i= on
-  =comment=, same prefix and type; unpaired images stay single.
-- R7 only with explicit comment matches ("disc N", "CD N", "LP N", "side X")
-  or equal counts; otherwise the visible "not assigned" note.
+*** TODO P4 — R6 spreads + R7 per medium (R3 dropped)
+- 2026-10-06, branch =feature/release-cover-art-p4=, implemented; waiting
+  for the user's browser check before merging.
+  - [X] R6 (WIP.1): third layout "Spreads" — =_releaseArtFindSpreads()=
+        (rule =/^(.*?)\s*\b(left|right)$/i= on =comment=, FIRST type + prefix,
+        only when exactly one left and one right), =_releaseArtSpreadsPlan()=
+        (pairs → every Liner/Booklet page → rest), =_releaseArtRenderSpreads()=
+        with a ◀ ▶ pager (=data-mb-art-book-page=, clamped),
+        =_releaseArtViewerOrder()= so the viewer includes the paged-out
+        liner pages.
+  - [X] R7 (WIP.2): =_releaseArtMedia()= / =_releaseArtMediumAssign()= (one
+        medium → all; a comment naming exactly one existing medium; "side X"
+        only on two-sided media; archive order only when NO Medium image has
+        a comment and counts are equal; else one "not assigned" note) /
+        =_releaseArtApplyMediumArt()= (rides
+        =updateFilterButtonsVisibility()=, memoised) /
+        =_releaseArtOnMediumClick()=.
+  - [X] Specs: =release-tracks-cover-art-spreads.spec.js= (7),
+        =release-tracks-medium-art.spec.js= (10), mobile +2. Mutation list
+        =release-tracks-cover-art-p4.json=: 21/21 caught + 1 recorded overlap.
+  - [ ] User browser check, then merge.
+- Expected on the example release d0adda7e: one spread ("Other: opened
+  gatefold cover, inside"), "Liner, 4 pages", and in the tracklist the note
+  "4 Medium images, 3 media, no comments: not assigned" — the case the mockup
+  said must refuse.
 
 *** TODO P5 — EAA on the event page (decided: yes)
 - Same section, viewer and tab click with =EAA_CTX= (=eventartarchive.org=,

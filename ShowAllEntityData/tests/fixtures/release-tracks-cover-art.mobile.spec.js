@@ -160,4 +160,33 @@ test.describe('release-tracks Cover art section on a touch device', () => {
             expect(f.right, 'no sideways scrolling to see the right page').toBeLessThanOrEqual(f.win);
         });
     });
+
+    test('tapping a Medium thumb in the medium heading opens the viewer, not the collapse (P4, R7)', async ({ page }) => {
+        await openRelease(page);
+        // One CD: all four Medium images (7, 8, 11, 12) are its own.
+        const thumb = page.locator('.mb-medium-art-btn[data-mb-art-i="8"]');
+        await thumb.scrollIntoViewIfNeeded();
+        const tableShown = () => thumb.evaluate((b) => {
+            let n = b.closest('h3').nextElementSibling;
+            while (n && n.tagName !== 'TABLE') n = n.nextElementSibling;
+            return !!n && n.style.display !== 'none';
+        });
+        const before = await tableShown();
+        // A raw touch at the box centre, not locator.tap(): once the visual
+        // viewport is scrolled (here 865 px down a 1648 px wide, zoomed-out
+        // layout viewport), Playwright's actionability hit-check tests the
+        // VISUAL-viewport coordinates as if they were layout ones, lands on
+        // the Cover art grid above and reports it as intercepting — forever.
+        // The real touch reaches the button (probed 2026-10-06), and the
+        // pointerdown target is asserted below rather than assumed.
+        await page.evaluate(() => {
+            window.__tapTarget = null;
+            document.addEventListener('pointerdown', (e) => { window.__tapTarget = e.target.className; }, { capture: true, once: true });
+        });
+        const box = await thumb.boundingBox();
+        await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+        expect(await page.evaluate(() => window.__tapTarget), 'the touch landed on the thumb').toBe('mb-medium-art-btn');
+        await expect(page.locator('#mb-art-viewer .mb-artv-pos')).toHaveText('2 / 4');
+        expect(await tableShown(), 'the tap did not toggle the medium').toBe(before);
+    });
 });
