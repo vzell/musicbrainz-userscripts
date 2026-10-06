@@ -1,4 +1,4 @@
-* TODO redesign the CAA/EAA column and it's image display
+* DONE redesign the CAA/EAA column and it's image display
 ** Request (original)
 
 Redesign the CAA/EAA column and it's image display e.g. on

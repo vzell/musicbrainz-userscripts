@@ -198,3 +198,104 @@ Decided (2026-10-05):
 ** TODO add detail page support
 
 ** TODO add support for logged in case
+** DONE CLAUDE.md
+
+now that we support the following Bruce Springsteen related websites beside MusicBrainz (a general purpose music
+database)
+
+#+begin_example
+brucespringsteen.it
+jungleland.it
+springsteenlyrics.com
+#+end_example
+
+and soon will add more e.g
+
+#+begin_example
+brucebase.wikidot.com
+etc.
+#+end_example
+
+add the following facts to CLAUDE.md
+
+1.)
+
+our userscript in general suports display/sorting/filtering etc. of any kind of data in a uniform way, regardless if the
+initial data is already table based (single-, or multi-table) or not
+
+2.)
+
+when adding more support or new websites beside MusicBrainz related stuff, always make sure that NOTHING breaks for the
+MusicBrainz case, as this is our primary concern. Support for everything else is just on top, configurable but false by
+default.
+
+3.)
+
+Use your own words to best describe the above facts and edit CLAUDE.md accordingly
+
+
+
+
+add support for Bruce Springsteen lyrics pages at https://www.springsteenlyrics.com/lyrics.php
+
+1.)
+
+parse the following pages to get the structure
+
+#+begin_example
+@debug/sl-lyrics.html - entry point to all the lyrics pages - https://www.springsteenlyrics.com/lyrics.php
+@debug/sl-(.html - example lyrics page for songs starting with "(" - https://www.springsteenlyrics.com/lyrics.php?cmd=list&letter=(
+@debug/sl-b.html - example lyrics page for songs starting with "B" - https://www.springsteenlyrics.com/lyrics.php?cmd=list&letter=b
+#+end_example
+
+2.)
+
+a.)
+
+extract the song title, e.g. "BABY COME BACK" in a column named "Title"
+
+b.)
+
+extract the text inside "[" and "]" and suggest column names to extract to, e.g.
+
+#+begin_example
+Live
+Studio
+Demo
+Cover
+Album
+Unofficial
+etc
+#+end_example
+
+3.)
+
+load all other pages for each beginning character to get the complete picture
+
+4.)
+
+specifically for live songs use our MusicBrainz date extractor to date components, etc
+
+5.)
+
+Probably generalise the paginated page fetching from a number based approach (MusicBrainz) to in this case character
+based approach to get ALL the song pages with lyrics
+
+#+begin_example
+<div class="element-buttons" align="center"><p><strong>Lyrics starting with:</strong></p>
+...
+</div>
+#+end_example
+
+* add support for https://www.springsteenlyrics.com/brucelegs.php?cmd=list
+
+add additionally support for the "CD and Vinyl Bootlegs" sub-webpage of springsteenlyrics.com
+https://www.springsteenlyrics.com/brucelegs.php?cmd=list - @debug/sl-brucelegs.html
+
+1.)
+
+parse the above URL for the structure and columns to extract
+
+2.)
+
+for date expression use our date part extractor to create synthetic columns
