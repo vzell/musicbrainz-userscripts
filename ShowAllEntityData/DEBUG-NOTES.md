@@ -19590,3 +19590,52 @@ sl-lists bootlegs, brucelegs (402 rows, every real row's notes/locations)
 and the lyrics index (all 32 letters equal the landing page's own
 per-letter counts); mutation lists: jl-support 4 new (2 recorded pass),
 sl-support 23 new (1 recorded pass).
+
+## 2026-10-07 — Brucebase song list as an opt-in table (branch feature/bb-songs, WIP.1)
+
+Request: `org/brucebase.org` — brucebase.wikidot.com/stats:songs, "extract
+the song title, let the userscript handle the rest", off by default. New
+pageType `bb-songs`, setting `sa_enable_brucebase`; the jungleland.it design
+once more (docs/claude/brucebase.md). Columns decided with the user: Title +
+Letter, one row per distinct song.
+
+Snapshot `debug/bb-songs.html` (saved from the browser), and what it showed:
+
+- **Two YUI tabviews, both linking songs.** The letter tabview (28 tabs,
+  `=- 0-9 -=` … `=- Alt. -=`) and, further down, News / Media / "Released
+  (Not on Springsteen Album)", whose last tab links 41 songs. So the
+  converter finds the tabview by its label shape, never "any `/song:`
+  link". All 41 are also in the letter tabs, which makes the scoping
+  invisible to the spec: recorded as `"expect": "pass"` in
+  `scripts/mutations/bb-support.json`. The first draft of that entry
+  planted a mutant that ALSO lettered every song "0-9" and passed only
+  because its grep selected a test that never reads Letter — replaced by a
+  faithful one (sweep the rest of the document after the tabs) whose grep
+  includes the letter test.
+- **1,689 links, 1,679 distinct.** "Alt." repeats the 10 songs whose title
+  starts with a parenthesised subtitle; first-wins de-duplication by href
+  keeps each under its main letter, because Alt. is the last tab. The
+  page's "1683 different songs" is a different count; the live spec counts
+  links instead.
+- **The page HAS an `<h1>`** — the wiki's name in `#header` — so the generic
+  header lookup's `document.querySelector('h1')` fallback would have put
+  the toolbar there. `_bbPrepareLivePage()` injects `h1.mb-bb-h1` in
+  `#page-title`'s place (hidden, not removed). Mutation-checked.
+- **An iframe on the same path** (`/stats:songs/html/<hash>`, an
+  html-block): kept out by the `@include` regex, so no frame gate; the
+  include spec pins it.
+- **Title sort is numeric-collated** (`localeCompare(..., {numeric: true})`):
+  "96 Tears" after "7 Rooms Of Gloom". The first spec draft assumed a plain
+  text order and failed on exactly those rows.
+
+**Results:** bb-songs fixture spec 11/11, sl-include-regex 5/5; mutation
+list bb-support 12 entries all as declared (11 fail, 1 recorded pass),
+userscript restored and hash-verified; live `@extended` bb-songs passed in
+9.3 s (2026-10-06T22:58Z, this WSL2 host); lint within baseline; config
+default/doc/changelog audits clean. `npm run test:full`: 1247 passed, 1
+failed — `sl-lyrics.spec.js` "a failed letter resumes at that LETTER"
+(`rows[0].Letter` undefined), run while the live spec ran beside it; the
+whole sl-lyrics spec then passed 21/21 (`--repeat-each=3`) on its own, and
+nothing in this branch touches its code path. Timing under load, not a
+regression — but a resume test that loses its first row under load is worth
+a look if it recurs.

@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1259+2026-10-07",
-    "schema_entries": 371,
-    "sections": 44,
-    "settings": 327,
-    "settings_with_default": 322,
+    "schema_entries": 373,
+    "sections": 45,
+    "settings": 328,
+    "settings_with_default": 323,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,10 +15,10 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 160,
+      "checkbox": 161,
       "color_picker": 62,
       "number": 48,
-      "divider": 44,
+      "divider": 45,
       "keyboard_shortcut": 23,
       "popup_dialog": 14,
       "text": 14,
@@ -202,6 +202,10 @@
     {
       "key": "divider_brucespringsteen",
       "label": "💿 BRUCESPRINGSTEEN.IT"
+    },
+    {
+      "key": "divider_brucebase",
+      "label": "📚 BRUCEBASE"
     }
   ],
   "labels": {
@@ -287,6 +291,7 @@
     "sa_enable_art_fetch_debug_logging": "Enable CAA/EAA image fetch debug logging",
     "sa_enable_barcode_highlight": "Enable Barcode Highlight",
     "sa_enable_barcode_validation": "Enable Barcode Format Validation",
+    "sa_enable_brucebase": "Enable on the Brucebase song list",
     "sa_enable_brucespringsteen": "Enable on the brucespringsteen.it record database",
     "sa_enable_caa_inline_jesus2099_observer": "Watch for late jesus2099 cover-art icon re-injection",
     "sa_enable_caa_pics": "Enable CAA/EAA Illustrated Discography",
@@ -615,6 +620,7 @@
     "sa_enable_art_fetch_debug_logging": false,
     "sa_enable_barcode_highlight": true,
     "sa_enable_barcode_validation": true,
+    "sa_enable_brucebase": false,
     "sa_enable_brucespringsteen": false,
     "sa_enable_caa_inline_jesus2099_observer": true,
     "sa_enable_caa_pics": true,

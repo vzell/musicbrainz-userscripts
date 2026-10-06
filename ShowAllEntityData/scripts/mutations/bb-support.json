@@ -1,0 +1,158 @@
+[
+    {
+        "name": "the opt-in gate never stops the script",
+        "why": "Brucebase support is opt-in (sa_enable_brucebase, default off). Without the gate the script would put its toolbar on the wiki's page with the setting off; the spec must see the heading and toolbar appear.",
+        "edits": [
+            {
+                "find": "if (_isBbHost && Lib.settings.sa_enable_brucebase !== true) {",
+                "replace": "if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-songs.spec.js",
+        "grep": "with the setting off",
+        "expect": "fail"
+    },
+    {
+        "name": "no <h1> is injected; the wiki's own header <h1> holds the toolbar",
+        "why": "The generic header lookup falls back to document.querySelector('h1'), the wiki's site name in #header. The spec pins the toolbar on h1.mb-bb-h1 and none in #header.",
+        "edits": [
+            {
+                "find": "        headerContainer = _bbPrepareLivePage();",
+                "replace": "        headerContainer = document.querySelector('h1');"
+            }
+        ],
+        "spec": "tests/fixtures/bb-songs.spec.js",
+        "grep": "with the setting on",
+        "expect": "fail"
+    },
+    {
+        "name": "the Alt. repeats are not de-duplicated",
+        "why": "The Alt. tab lists the 10 subtitle songs a second time; without the de-duplication they become 10 extra rows lettered Alt. The spec pins one row per distinct song and no Alt. letter.",
+        "edits": [
+            {
+                "find": "                if (seen.has(key)) return;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-songs.spec.js",
+        "grep": "every song of the letter tabs|Alt. repeat keeps its own",
+        "expect": "fail"
+    },
+    {
+        "name": "Letter is not written",
+        "why": "The Letter cell comes from the tab label; leaving it empty breaks the Letter filter and the per-row letters the spec pins.",
+        "edits": [
+            {
+                "find": "        letterTd.textContent = item.letter;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-songs.spec.js",
+        "grep": "Alt. repeat keeps its own|a Letter column filter",
+        "expect": "fail"
+    },
+    {
+        "name": "the tab label's =- -= markers are kept",
+        "why": "Without the label parser every Letter reads '=- A -=' rather than 'A'.",
+        "edits": [
+            {
+                "find": "        return m ? m[1] : t;\n    }\n\n    /**\n     * Finds the song list's letter tabview.",
+                "replace": "        return t;\n    }\n\n    /**\n     * Finds the song list's letter tabview."
+            }
+        ],
+        "spec": "tests/fixtures/bb-songs.spec.js",
+        "grep": "Alt. repeat keeps its own|_bbParseTabLabel",
+        "expect": "fail"
+    },
+    {
+        "name": "the letter tabview is left on the page",
+        "why": "The tabs would stay below the table, every song shown twice. The spec pins exactly one yui-navset (the second one) after the press.",
+        "edits": [
+            {
+                "find": "        tabview.remove();\n\n        if (docContext === document && !document.querySelector('h2.mb-bb-list-heading')) {",
+                "replace": "\n        if (docContext === document && !document.querySelector('h2.mb-bb-list-heading')) {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-songs.spec.js",
+        "grep": "every song of the letter tabs",
+        "expect": "fail"
+    },
+    {
+        "name": "no <h2> before the table",
+        "why": "updateH2Count() anchors the row count and filter bar to the last h2 before the table; the spec pins the injected h2 in front of it.",
+        "edits": [
+            {
+                "find": "            h2.className = 'mb-bb-list-heading';\n            h2.textContent = 'Songs';\n            table.parentNode.insertBefore(h2, table);",
+                "replace": "            h2.className = 'mb-bb-list-heading';\n            h2.textContent = 'Songs';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-songs.spec.js",
+        "grep": "every song of the letter tabs",
+        "expect": "fail"
+    },
+    {
+        "name": "the shared table CSS does not name Brucebase",
+        "why": "_ensureForeignTableStyle() is keyed on the hosts' body classes; without .mb-sa-host-bb the table renders unstyled. The spec pins the border and padding.",
+        "edits": [
+            {
+                "find": "            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl) th,\n            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl) td {",
+                "replace": "            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs) table.tbl) th,\n            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs) table.tbl) td {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-songs.spec.js",
+        "grep": "every song of the letter tabs",
+        "expect": "fail"
+    },
+    {
+        "name": "Load from Disk does not convert the reloaded page",
+        "why": "After a reload the live page holds the letter tabs again; without this call site the restored rows render while the tabview stays beside them. The spec pins one yui-navset after the load.",
+        "edits": [
+            {
+                "find": "            // And for Brucebase: the reloaded page holds the letter tabs again.\n            if (activeDefinition.features?.bbSongsToTable) {\n                applyBbSongsToTable(activeDefinition);\n            }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-songs.spec.js",
+        "grep": "Save to Disk",
+        "expect": "fail"
+    },
+    {
+        "name": "the click-time conversion is skipped",
+        "why": "Without the pre-processing call there is no table.tbl for the pipeline to read, and the button renders nothing.",
+        "edits": [
+            {
+                "find": "        if (activeDefinition.features?.bbSongsToTable) {\n            applyBbSongsToTable(activeDefinition);\n        }\n\n        // ── bsRecordsToTable pre-processing",
+                "replace": "\n        // ── bsRecordsToTable pre-processing"
+            }
+        ],
+        "spec": "tests/fixtures/bb-songs.spec.js",
+        "grep": "every song of the letter tabs",
+        "expect": "fail"
+    },
+    {
+        "name": "_foreignHost does not name Brucebase",
+        "why": "The detection loop only considers definitions whose host equals _foreignHost; without the Brucebase arm it is null there, the bb-songs definition is never considered, and no toolbar appears. (Removing the host comparison itself is a guard no spec can see; jl-support.json records that one.)",
+        "edits": [
+            {
+                "find": "        : _isBbHost ? 'brucebase.wikidot.com'\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-songs.spec.js",
+        "grep": "with the setting on",
+        "expect": "fail"
+    },
+    {
+        "name": "the song list is also read from the rest of the document",
+        "why": "A guard no spec can see on this page: reading every /song: link of the document after the letter tabs would add the second tabview's 'Released (Not on Springsteen Album)' songs, but all 41 of them are also in the letter tabs (checked on the 2026-10-07 snapshot), and the letter tabview comes first, so first-wins de-duplication drops them again and no row or letter changes. Kept because the site can list a song there before it lists it under its letter.",
+        "edits": [
+            {
+                "find": "        return items;\n    }\n\n    /**\n     * Builds one table row (Title, Letter) for a Brucebase song.",
+                "replace": "        tabview.ownerDocument.querySelectorAll('li > a[href^=\"/song:\"]').forEach(a => {\n            const key = a.getAttribute('href');\n            if (seen.has(key)) return;\n            seen.add(key);\n            items.push({ anchor: a, letter: '' });\n        });\n        return items;\n    }\n\n    /**\n     * Builds one table row (Title, Letter) for a Brucebase song."
+            }
+        ],
+        "spec": "tests/fixtures/bb-songs.spec.js",
+        "grep": "every song of the letter tabs|Alt. repeat keeps its own",
+        "expect": "pass"
+    }
+]

@@ -36,8 +36,8 @@ a special case for.
 
 **MusicBrainz is the primary product; every other site is an add-on.**
 Besides musicbrainz.org the script supports a growing set of Bruce
-Springsteen sites (springsteenlyrics.com, jungleland.it, brucespringsteen.it;
-brucebase.wikidot.com and others are planned). The rules for each new one:
+Springsteen sites (springsteenlyrics.com, jungleland.it, brucespringsteen.it,
+brucebase.wikidot.com; others are planned). The rules for each new one:
 
 - **Nothing may change for MusicBrainz.** Its behaviour, output and
   performance stay the same. When a foreign-site change touches shared code
@@ -108,6 +108,7 @@ until you open it.
 | `springsteenlyrics.md`                     | springsteenlyrics.com: `_isSlHost`, the `sl-*` pageTypes, `applySlCardsToTable()`, `_ensureSlStyle()`     | The opt-in gate exits before anything visible; the converter runs in THREE places (live, fetched, disk load); find the list from its cards, never via `.project-detail`           |
 | `jungleland.md`                            | jungleland.it: `_isJlHost`, `_foreignHost`, `jl-list`, `applyJlListToTable()`, the shared table CSS       | Only list.htm as its own tab (a frame gate, no `@noframes`); `_foreignHost` names WHICH host; the table CSS is shared — extend its `:is()` list                                   |
 | `brucespringsteen.md`                      | brucespringsteen.it: `_isBsHost`, `bs-records` (two buttons), `applyBsRecordsToTable()`                   | Rows come from the FETCHED page (button params); the live page gets an empty table; own tab only; the server sends UTF-8                                                          |
+| `brucebase.md`                             | brucebase.wikidot.com: `_isBbHost`, `bb-songs`, `applyBbSongsToTable()`, the letter tabview               | Read ONLY the `=- … -=` tabview (a second one links songs too); one row per song (Alt. repeats); the toolbar `<h1>` is injected, not the wiki's own                               |
 
 **Big files — grep, never read whole** (a whole read costs 10–250k tokens):
 `DEBUG-NOTES.md` (dated root-cause log, ~1 MB), `PERFORMANCE.org`,
