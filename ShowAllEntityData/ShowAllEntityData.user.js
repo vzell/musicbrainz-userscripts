@@ -95308,7 +95308,7 @@ a { color: #1565c0; }`;
             `<div class="mb-tt-rule"></div>` +
             `<div class="mb-tt-dim">${_rgEsc(where)}</div>` +
             (ids ? `<div class="mb-tt-dim">${_rgEsc(ids)}</div>` : '') +
-            `<div class="mb-tt-foot">Click: open the 1200 px image</div>` +
+            `<div class="mb-tt-foot">Click: viewer · Ctrl-click: 1200 px in a new tab</div>` +
             `</div>`;
     }
 
@@ -95504,6 +95504,20 @@ a { color: #1565c0; }`;
      */
     function _releaseArtOnClick(e) {
         const sec = e.currentTarget;
+        // A thumbnail opens the viewer on a plain left click, stepping through
+        // the tiles currently shown, in their on-screen order (the chip filter
+        // and the By type grouping both apply). Ctrl/Cmd/Shift/middle click
+        // keep the link's own behaviour: the 1200 px image in a new tab.
+        const tileLink = e.target.closest('figure.mb-release-art-tile > a');
+        if (tileLink && sec.contains(tileLink)) {
+            if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+            e.preventDefault();
+            const indices = Array.from(sec.querySelectorAll('figure.mb-release-art-tile'))
+                .map(f => Number(f.dataset.mbArtI));
+            _artViewerOpen(CAA_CTX, sec.dataset.mbArtEntity, indices,
+                Number(tileLink.parentElement.dataset.mbArtI), { opener: tileLink, title: _releaseArtTitle() });
+            return;
+        }
         const chip = e.target.closest('[data-mb-art-filter]');
         if (chip && sec.contains(chip)) {
             sec.dataset.mbArtActiveType = chip.dataset.mbArtFilter;
@@ -95609,7 +95623,747 @@ a { color: #1565c0; }`;
 
         anchorH2.before(h2, sec);
         _releaseArtLoad(ctx, h2, sec);
+        _releaseArtInstallTabIntercept();
         return h2;
+    }
+
+    /**
+     * The release's title for the viewer's bar.
+     *
+     * @returns {string}
+     */
+    function _releaseArtTitle() {
+        const h1 = document.querySelector('.releaseheader h1, #content h1');
+        return (h1 && h1.textContent.trim()) || 'Cover art';
+    }
+
+    let _releaseArtTabInterceptInstalled = false;
+
+    /**
+     * Installs, once per page, the R4 click interceptor on the native
+     * "Cover art (N)" tab. On `window` in the CAPTURE phase on purpose: after
+     * a render `initNavigationGuard()`'s anchor guard (document capture) asks
+     * "leave this page?" for any link to another path, and would do so before
+     * any handler further down could act. Stopping the event here means a
+     * plain click opens the viewer and never sees that confirm.
+     *
+     * @returns {void}
+     */
+    function _releaseArtInstallTabIntercept() {
+        if (_releaseArtTabInterceptInstalled) return;
+        _releaseArtTabInterceptInstalled = true;
+        window.addEventListener('click', _releaseArtOnTabClick, true);
+    }
+
+    /**
+     * A plain left click on the "Cover art (N)" tab opens the viewer in grid
+     * mode over the page instead of navigating. Ctrl/Cmd/Shift/Alt/middle
+     * clicks are left alone (open in a new tab, as before), and so is a click
+     * while the section has nothing loaded (still loading, no images, or the
+     * archive could not be reached) — then the tab navigates as it always did.
+     *
+     * @param   {MouseEvent} e
+     * @returns {void}
+     */
+    function _releaseArtOnTabClick(e) {
+        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.defaultPrevented) return;
+        const a = e.target instanceof Element && e.target.closest(`ul.tabs a[href$="${CAA_CTX.artSuffix}"]`);
+        if (!a) return;
+        const sec = document.querySelector('.mb-release-art-sec');
+        if (!sec || sec.dataset.mbArtState !== 'ok') return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        _artViewerOpen(CAA_CTX, sec.dataset.mbArtEntity, null, null,
+            { grid: true, opener: a, title: _releaseArtTitle() });
+    }
+
+    // ── Artwork viewer (R5) ─────────────────────────────────────────────────
+    //
+    // org/CAA-release-tracks-handling.org, mockup R5 (shared with the CAA/EAA
+    // column study's D1). A singleton full-screen overlay, `#mb-art-viewer`,
+    // driven by a ctx + entity path + list of image indices; it reads the
+    // archive record from `ctx.imagesCache` and makes no JSON request. While it
+    // is open:
+    //   • one window CAPTURE keydown listener takes every key first — the
+    //     viewer's own (← → Home End Z G I O Esc, unmodified) and Tab (kept
+    //     inside the overlay) — and stops every key from reaching the page, so
+    //     Ctrl+M mode, the Ctrl shortcuts, ?, / and Shift+Esc cannot act on the
+    //     page behind it, and initNavigationGuard()'s Tab trap cannot move focus
+    //     out of it;
+    //   • page scrolling is locked (documentElement overflow), restored on close;
+    //   • focus returns to the opener on close.
+    // z-index 2147483400: above every panel (the 📊 dropdown, the corner
+    // notice), below the .mb-tt-liner tooltips (2147483500).
+
+    let _artViewerState = null;
+
+    /**
+     * An image's thumbnail URL (250, or `small` on older records), protocol-relative.
+     *
+     * @param   {Object} im
+     * @returns {string}
+     */
+    function _artViewerThumbUrl(im) {
+        const t = im.thumbnails || {};
+        return (t['250'] || t.small || t['500'] || t.large || im.image || '').replace(/^http:/, '');
+    }
+
+    /**
+     * An image's large URL (1200, or `large` on older records), protocol-relative.
+     *
+     * @param   {Object} im
+     * @returns {string}
+     */
+    function _artViewerBigUrl(im) {
+        const t = im.thumbnails || {};
+        return (t['1200'] || t.large || im.image || _artViewerThumbUrl(im)).replace(/^http:/, '');
+    }
+
+    /**
+     * Loads an image fully and resolves with the URL to show: a `blob:` URL
+     * from the IndexedDB image cache when `sa_art_idb_enable` is on (the same
+     * rule every other artwork caller follows), else the URL itself once the
+     * browser has it.
+     *
+     * @param   {string} url
+     * @returns {Promise<string>}
+     */
+    function _artViewerLoad(url) {
+        if (Lib.settings.sa_art_idb_enable) {
+            return _artFetchCachedImage(url).then(r => r.objectUrl);
+        }
+        return new Promise((resolve, reject) => {
+            const pre = new Image();
+            pre.onload = () => resolve(url);
+            pre.onerror = () => reject(new Error('image failed: ' + url));
+            pre.src = url;
+        });
+    }
+
+    /**
+     * Injects the viewer's stylesheet once.
+     *
+     * @returns {void}
+     */
+    function _ensureArtViewerStyle() {
+        if (document.getElementById('mb-art-viewer-style')) return;
+        // GM_addStyle so this is exempt from page CSP style-src restrictions.
+        const style = GM_addStyle(`
+            #mb-art-viewer {
+                position: fixed;
+                inset: 0;
+                z-index: 2147483400;
+                background: #0d0e11;
+                color: #ebe7df;
+                display: grid;
+                grid-template-rows: auto minmax(0, 1fr) auto;
+                font: 13px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            }
+            #mb-art-viewer[hidden] { display: none; }
+            #mb-art-viewer .mb-artv-bar {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                align-items: center;
+                padding: 8px 14px;
+                border-bottom: 1px solid #2b2e35;
+            }
+            #mb-art-viewer .mb-artv-title {
+                flex: 1 1 200px;
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                font-weight: 600;
+                font-size: 15px;
+            }
+            #mb-art-viewer .mb-artv-pos { color: #9c978c; font-variant-numeric: tabular-nums; }
+            #mb-art-viewer .mb-artv-btn {
+                background: #17191e;
+                border: 1px solid #2b2e35;
+                color: #ebe7df;
+                border-radius: 5px;
+                padding: 3px 9px;
+                cursor: pointer;
+                font: inherit;
+                font-size: 12px;
+                text-decoration: none;
+            }
+            #mb-art-viewer .mb-artv-btn:hover,
+            #mb-art-viewer .mb-artv-btn:focus-visible { border-color: #f0a35e; outline: none; }
+            #mb-art-viewer .mb-artv-btn[aria-pressed="true"] { border-color: #f0a35e; color: #f0a35e; }
+            #mb-art-viewer .mb-artv-mid { display: grid; grid-template-columns: minmax(0, 1fr) 290px; min-height: 0; }
+            #mb-art-viewer .mb-artv-mid.mb-artv-noinfo { grid-template-columns: minmax(0, 1fr); }
+            #mb-art-viewer .mb-artv-mid.mb-artv-noinfo .mb-artv-info { display: none; }
+            #mb-art-viewer .mb-artv-stage {
+                position: relative;
+                overflow: hidden;
+                display: grid;
+                place-items: center;
+                min-height: 0;
+                cursor: zoom-in;
+                touch-action: pan-y;
+            }
+            #mb-art-viewer .mb-artv-stage.mb-artv-zoomed { cursor: zoom-out; }
+            #mb-art-viewer .mb-artv-img {
+                width: 100%;
+                height: 100%;
+                padding: 12px 56px;
+                box-sizing: border-box;
+                object-fit: contain;
+                transition: transform 0.12s ease-out;
+                user-select: none;
+            }
+            #mb-art-viewer .mb-artv-note {
+                position: absolute;
+                left: 12px;
+                bottom: 10px;
+                max-width: 70%;
+                color: #9c978c;
+                font-size: 12px;
+            }
+            #mb-art-viewer .mb-artv-nav {
+                position: absolute;
+                top: 50%;
+                transform: translateY(-50%);
+                width: 38px;
+                height: 54px;
+                background: rgba(23, 25, 30, 0.7);
+                border: 1px solid #2b2e35;
+                border-radius: 6px;
+                color: #ebe7df;
+                font-size: 20px;
+                cursor: pointer;
+            }
+            #mb-art-viewer .mb-artv-prev { left: 10px; }
+            #mb-art-viewer .mb-artv-next { right: 10px; }
+            #mb-art-viewer .mb-artv-info {
+                position: static;
+                overflow-y: auto;
+                border-radius: 0;
+                border-width: 0 0 0 1px;
+                box-shadow: none;
+                padding: 14px 16px;
+            }
+            #mb-art-viewer .mb-artv-info dl {
+                display: grid;
+                grid-template-columns: auto 1fr;
+                gap: 2px 10px;
+                margin: 0;
+                font-size: 12px;
+            }
+            #mb-art-viewer .mb-artv-info dt { color: #7a6d5c; }
+            #mb-art-viewer .mb-artv-info dd { margin: 0; overflow-wrap: anywhere; }
+            #mb-art-viewer .mb-artv-info a { color: inherit; }
+            #mb-art-viewer .mb-artv-film {
+                display: flex;
+                gap: 5px;
+                overflow-x: auto;
+                padding: 8px 14px;
+                border-top: 1px solid #2b2e35;
+            }
+            #mb-art-viewer .mb-artv-film img,
+            #mb-art-viewer .mb-artv-grid img {
+                display: block;
+                object-fit: contain;
+                background: #17191e;
+                cursor: pointer;
+            }
+            #mb-art-viewer .mb-artv-film img {
+                flex: 0 0 56px;
+                width: 56px;
+                height: 56px;
+                opacity: 0.55;
+                border: 2px solid transparent;
+                box-sizing: border-box;
+            }
+            #mb-art-viewer .mb-artv-film img.mb-artv-cur { opacity: 1; border-color: #f0a35e; }
+            #mb-art-viewer .mb-artv-grid {
+                overflow-y: auto;
+                padding: 14px;
+                display: grid;
+                gap: 14px;
+                align-content: start;
+                min-height: 0;
+            }
+            #mb-art-viewer .mb-artv-grid-hdr {
+                font-size: 12px;
+                font-weight: 600;
+                color: #9c978c;
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+            }
+            #mb-art-viewer .mb-artv-grid-row {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                gap: 10px;
+            }
+            #mb-art-viewer .mb-artv-grid figure { margin: 0; display: grid; gap: 4px; }
+            #mb-art-viewer .mb-artv-grid img { width: 100%; aspect-ratio: 1; }
+            #mb-art-viewer .mb-artv-grid figcaption { font-size: 11.5px; color: #9c978c; overflow-wrap: anywhere; }
+            #mb-art-viewer .mb-artv-keys { color: #9c978c; font-size: 11px; }
+            @media (max-width: 760px) {
+                #mb-art-viewer .mb-artv-mid { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+                #mb-art-viewer .mb-artv-info { border-width: 1px 0 0; max-height: 36vh; }
+                #mb-art-viewer .mb-artv-img { padding: 8px 44px; }
+            }
+        `);
+        style.id = 'mb-art-viewer-style';
+    }
+
+    /**
+     * Opens the viewer (or re-targets it when already open).
+     *
+     * @param   {ArtCtx}    ctx        `CAA_CTX` or `EAA_CTX`.
+     * @param   {string}    entityPath Key into `ctx.imagesCache`, e.g. `/release/<mbid>`.
+     * @param   {?number[]} indices    Image indices to step through, in order;
+     *                                 null/empty = every image in archive order.
+     * @param   {?number}   start      The image to show first (falls back to the first of `indices`).
+     * @param   {Object}    [opts]
+     * @param   {boolean}   [opts.grid=false]   Start in grid mode (the tab click does).
+     * @param   {?Element}  [opts.opener=null]  Focus returns here on close.
+     * @param   {string}    [opts.title='']     Shown in the bar.
+     * @returns {void}
+     */
+    function _artViewerOpen(ctx, entityPath, indices, start, { grid = false, opener = null, title = '' } = {}) {
+        const images = ctx.imagesCache.get(entityPath) || [];
+        const list = (indices && indices.length ? indices : images.map((_, i) => i)).filter(i => images[i]);
+        if (!list.length) return;
+        _ensureArtViewerStyle();
+        let root = document.getElementById('mb-art-viewer');
+        if (!root) {
+            root = document.createElement('div');
+            root.id = 'mb-art-viewer';
+            root.setAttribute('role', 'dialog');
+            root.setAttribute('aria-modal', 'true');
+            root.tabIndex = -1;
+            root.addEventListener('click', _artViewerOnClick);
+            root.addEventListener('mousemove', _artViewerOnMouseMove);
+            root.addEventListener('pointerdown', _artViewerOnPointerDown);
+            root.addEventListener('pointerup', _artViewerOnPointerUp);
+            document.body.appendChild(root);
+        }
+        root.setAttribute('aria-label', `${ctx.column} artwork viewer`);
+        const prevOverflow = _artViewerState ? _artViewerState.prevOverflow : document.documentElement.style.overflow;
+        _artViewerState = {
+            ctx, entityPath, images, list,
+            i: list.includes(start) ? start : list[0],
+            grid, gridStart: grid, info: true, zoom: false,
+            opener, title, prevOverflow,
+            swipeX: null, swipeAt: 0, gen: 0,
+        };
+        document.documentElement.style.overflow = 'hidden';
+        window.removeEventListener('keydown', _artViewerOnKey, true);
+        window.addEventListener('keydown', _artViewerOnKey, true);
+        root.hidden = false;
+        _artViewerRender();
+    }
+
+    /**
+     * Closes the viewer: removes its key listener, unlocks scrolling and
+     * returns focus to the opener.
+     *
+     * @returns {void}
+     */
+    function _artViewerClose() {
+        const st = _artViewerState;
+        if (!st) return;
+        _artViewerState = null;
+        window.removeEventListener('keydown', _artViewerOnKey, true);
+        const root = document.getElementById('mb-art-viewer');
+        if (root) {
+            root.hidden = true;
+            root.textContent = '';
+        }
+        document.documentElement.style.overflow = st.prevOverflow;
+        if (st.opener && st.opener.isConnected && typeof st.opener.focus === 'function') st.opener.focus();
+    }
+
+    /**
+     * Steps within the list, wrapping at both ends.
+     *
+     * @param   {number} d +1 or -1.
+     * @returns {void}
+     */
+    function _artViewerStep(d) {
+        const st = _artViewerState;
+        if (!st) return;
+        const k = st.list.indexOf(st.i);
+        st.i = st.list[(k + d + st.list.length) % st.list.length];
+        st.zoom = false;
+        _artViewerRender();
+    }
+
+    /**
+     * Small element helper for the viewer's markup.
+     *
+     * @param   {string} tag
+     * @param   {string} [cls]
+     * @param   {string} [text]
+     * @returns {HTMLElement}
+     */
+    function _artvEl(tag, cls, text) {
+        const n = document.createElement(tag);
+        if (cls) n.className = cls;
+        if (text !== undefined) n.textContent = text;
+        return n;
+    }
+
+    /**
+     * A viewer button.
+     *
+     * @param   {string}  action   `data-artv` value.
+     * @param   {string}  label
+     * @param   {?boolean} [pressed] Rendered as `aria-pressed` when given.
+     * @returns {HTMLButtonElement}
+     */
+    function _artvBtn(action, label, pressed) {
+        const b = _artvEl('button', 'mb-artv-btn', label);
+        b.type = 'button';
+        b.dataset.artv = action;
+        if (pressed !== undefined && pressed !== null) b.setAttribute('aria-pressed', String(pressed));
+        return b;
+    }
+
+    /**
+     * The info panel's content for one image, as `.mb-tt-liner` rows.
+     *
+     * @param   {Object} st The viewer state.
+     * @returns {HTMLElement}
+     */
+    function _artViewerInfo(st) {
+        const im = st.images[st.i];
+        const types = im.types && im.types.length ? im.types : ['(no type)'];
+        const sameType = st.images.filter(x => (x.types || []).includes(types[0]));
+        const panel = _artvEl('div', 'mb-artv-info mb-tt-liner');
+        panel.appendChild(_artvEl('div', 'mb-tt-title', im.front ? '★ Main front' : types.join(' / ')));
+        const pills = _artvEl('div', 'mb-tt-body');
+        pills.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;';
+        types.forEach(t => pills.appendChild(_artvEl('span', 'mb-tt-pill', t)));
+        panel.appendChild(pills);
+        panel.appendChild(im.comment ? _artvEl('div', 'mb-tt-comment', `“${im.comment}”`) : _artvEl('div', 'mb-tt-dim', 'No comment'));
+        panel.appendChild(_artvEl('div', 'mb-tt-rule'));
+        const dl = document.createElement('dl');
+        const row = (k, v) => {
+            dl.appendChild(_artvEl('dt', null, k));
+            const dd = document.createElement('dd');
+            if (v instanceof Node) dd.appendChild(v); else dd.textContent = v;
+            dl.appendChild(dd);
+        };
+        row('Position', `${st.i + 1} of ${st.images.length}` +
+            (sameType.length > 1 ? ` · ${types[0]} ${sameType.indexOf(im) + 1} of ${sameType.length}` : ''));
+        row('Main front', im.front ? 'yes' : 'no');
+        row('Main back', im.back ? 'yes' : 'no');
+        row('Status', im.approved === false ? 'pending approval' : 'approved');
+        if (im.edit) {
+            const a = _artvEl('a', null, `edit #${im.edit}`);
+            a.href = `/edit/${im.edit}`;
+            a.target = '_blank';
+            a.rel = 'noopener';
+            row('Added in', a);
+        }
+        if (im.id) row('Archive id', String(im.id));
+        panel.appendChild(dl);
+        panel.appendChild(_artvEl('div', 'mb-tt-rule'));
+        const sizes = _artvEl('div', 'mb-tt-body', 'Sizes: ');
+        const t = im.thumbnails || {};
+        [['250', t['250'] || t.small], ['500', t['500'] || t.large], ['1200', t['1200']], ['original', im.image]]
+            .filter(([, u]) => u)
+            .forEach(([label, u], n) => {
+                if (n) sizes.append(' · ');
+                const a = _artvEl('a', null, label);
+                a.href = u.replace(/^http:/, '');
+                a.target = '_blank';
+                a.rel = 'noopener';
+                sizes.appendChild(a);
+            });
+        panel.appendChild(sizes);
+        panel.appendChild(_artvEl('div', 'mb-tt-foot', '← → step · Z zoom · G grid · I info · O original · Esc close'));
+        return panel;
+    }
+
+    /**
+     * Renders the viewer for its current state: the bar, then either the
+     * grid (grouped under each image's first type) or the stage, the info
+     * panel and the filmstrip. The large image replaces the thumbnail once it
+     * has loaded; `st.gen` drops a load that finishes after the user moved on.
+     *
+     * @returns {void}
+     */
+    function _artViewerRender() {
+        const st = _artViewerState;
+        const root = document.getElementById('mb-art-viewer');
+        if (!st || !root) return;
+        root.textContent = '';
+        const im = st.images[st.i];
+
+        const bar = _artvEl('div', 'mb-artv-bar');
+        bar.appendChild(_artvEl('span', 'mb-artv-title', st.title || `${st.ctx.column} artwork`));
+        bar.appendChild(_artvEl('span', 'mb-artv-pos',
+            st.grid ? `${st.list.length} image${st.list.length === 1 ? '' : 's'}` : `${st.list.indexOf(st.i) + 1} / ${st.list.length}`));
+        bar.appendChild(_artvBtn('grid', 'Grid (G)', st.grid));
+        if (!st.grid) bar.appendChild(_artvBtn('info', 'Info (I)', st.info));
+        const orig = _artvEl('a', 'mb-artv-btn', 'Original (O)');
+        orig.href = (im.image || _artViewerBigUrl(im)).replace(/^http:/, '');
+        orig.target = '_blank';
+        orig.rel = 'noopener';
+        bar.appendChild(orig);
+        const close = _artvBtn('close', 'Close (Esc)');
+        bar.appendChild(close);
+        root.appendChild(bar);
+
+        if (st.grid) {
+            const grid = _artvEl('div', 'mb-artv-grid');
+            const groups = new Map();
+            st.list.forEach(i => {
+                const first = (st.images[i].types && st.images[i].types[0]) || '(no type)';
+                if (!groups.has(first)) groups.set(first, []);
+                groups.get(first).push(i);
+            });
+            groups.forEach((idx, type) => {
+                grid.appendChild(_artvEl('div', 'mb-artv-grid-hdr', `${type} × ${idx.length}`));
+                const rowEl = _artvEl('div', 'mb-artv-grid-row');
+                idx.forEach(i => {
+                    const x = st.images[i];
+                    const fig = document.createElement('figure');
+                    const img = document.createElement('img');
+                    img.src = _artViewerThumbUrl(x);
+                    img.alt = (x.types || []).join(' / ');
+                    img.loading = 'lazy';
+                    img.dataset.artvGo = String(i);
+                    fig.append(img, _artvEl('figcaption', null,
+                        x.front ? '★ main front' : (x.comment || (x.types || []).join(' / '))));
+                    rowEl.appendChild(fig);
+                });
+                grid.appendChild(rowEl);
+            });
+            root.appendChild(grid);
+            root.appendChild(_artvEl('div', 'mb-artv-bar mb-artv-keys',
+                st.gridStart ? 'Click an image to view it · Esc close' : 'Click an image to view it · G or Esc back'));
+            close.focus({ preventScroll: true });
+            return;
+        }
+
+        const mid = _artvEl('div', 'mb-artv-mid' + (st.info ? '' : ' mb-artv-noinfo'));
+        const stage = _artvEl('div', 'mb-artv-stage' + (st.zoom ? ' mb-artv-zoomed' : ''));
+        stage.dataset.artv = 'stage';
+        const img = _artvEl('img', 'mb-artv-img');
+        img.alt = (im.types || []).join(' / ') + (im.comment ? ' · ' + im.comment : '');
+        img.draggable = false;
+        img.src = _artViewerThumbUrl(im);
+        img.dataset.artvSize = 'thumb';
+        if (st.zoom) img.style.transform = 'scale(2)';
+        stage.appendChild(img);
+        const note = _artvEl('div', 'mb-artv-note', 'Showing the thumbnail; loading the large image…');
+        stage.appendChild(note);
+        const prev = _artvBtn('prev', '‹');
+        prev.className = 'mb-artv-nav mb-artv-prev';
+        prev.setAttribute('aria-label', 'Previous image');
+        const next = _artvBtn('next', '›');
+        next.className = 'mb-artv-nav mb-artv-next';
+        next.setAttribute('aria-label', 'Next image');
+        stage.append(prev, next);
+        mid.append(stage, _artViewerInfo(st));
+        root.appendChild(mid);
+
+        const film = _artvEl('div', 'mb-artv-film');
+        st.list.forEach(i => {
+            const th = document.createElement('img');
+            th.src = _artViewerThumbUrl(st.images[i]);
+            th.alt = (st.images[i].types || []).join(' / ');
+            th.loading = 'lazy';
+            th.dataset.artvGo = String(i);
+            if (i === st.i) th.className = 'mb-artv-cur';
+            film.appendChild(th);
+        });
+        root.appendChild(film);
+        const cur = film.querySelector('.mb-artv-cur');
+        if (cur && typeof cur.scrollIntoView === 'function') cur.scrollIntoView({ block: 'nearest', inline: 'center' });
+
+        const gen = ++st.gen;
+        const bigUrl = _artViewerBigUrl(im);
+        _artViewerLoad(bigUrl).then(src => {
+            if (_artViewerState !== st || st.gen !== gen || !img.isConnected) return;
+            img.src = src;
+            img.dataset.artvSize = 'big';
+            note.textContent = '';
+        }).catch(() => {
+            if (_artViewerState !== st || st.gen !== gen || !note.isConnected) return;
+            note.textContent = 'Showing the thumbnail; the large image could not be loaded.';
+        });
+        // Preload the two neighbours so stepping is instant.
+        const k = st.list.indexOf(st.i);
+        [st.list[(k + 1) % st.list.length], st.list[(k - 1 + st.list.length) % st.list.length]]
+            .filter(j => j !== st.i)
+            .forEach(j => { _artViewerLoad(_artViewerBigUrl(st.images[j])).catch(() => {}); });
+        close.focus({ preventScroll: true });
+    }
+
+    /**
+     * Toggles 2× zoom without re-rendering (the loaded image stays).
+     *
+     * @returns {void}
+     */
+    function _artViewerToggleZoom() {
+        const st = _artViewerState;
+        const stage = document.querySelector('#mb-art-viewer .mb-artv-stage');
+        if (!st || !stage) return;
+        st.zoom = !st.zoom;
+        stage.classList.toggle('mb-artv-zoomed', st.zoom);
+        const img = stage.querySelector('.mb-artv-img');
+        if (img) {
+            img.style.transform = st.zoom ? 'scale(2)' : '';
+            if (!st.zoom) img.style.transformOrigin = '';
+        }
+    }
+
+    /**
+     * The viewer's key handler (window, capture phase, only while open).
+     * Every key is stopped from reaching the page; the viewer's own keys act
+     * only without Ctrl/Cmd/Alt, so a browser shortcut keeps its default.
+     *
+     * @param   {KeyboardEvent} e
+     * @returns {void}
+     */
+    function _artViewerOnKey(e) {
+        const st = _artViewerState;
+        if (!st) return;
+        e.stopImmediatePropagation();
+        const root = document.getElementById('mb-art-viewer');
+        if (e.key === 'Tab') {
+            const focusables = root ? Array.from(root.querySelectorAll('button, a[href]')) : [];
+            if (focusables.length) {
+                const at = focusables.indexOf(document.activeElement);
+                const nextIdx = e.shiftKey
+                    ? (at <= 0 ? focusables.length - 1 : at - 1)
+                    : (at === -1 || at === focusables.length - 1 ? 0 : at + 1);
+                focusables[nextIdx].focus();
+            }
+            e.preventDefault();
+            return;
+        }
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        const k = e.key;
+        let handled = true;
+        if (k === 'Escape') {
+            if (st.grid && !st.gridStart) {
+                st.grid = false;
+                _artViewerRender();
+            } else {
+                _artViewerClose();
+            }
+        } else if (st.grid) {
+            if (k === 'g' || k === 'G') {
+                st.grid = false;
+                _artViewerRender();
+            } else {
+                handled = false;
+            }
+        } else if (k === 'ArrowRight') {
+            _artViewerStep(1);
+        } else if (k === 'ArrowLeft') {
+            _artViewerStep(-1);
+        } else if (k === 'Home' || k === 'End') {
+            st.i = k === 'Home' ? st.list[0] : st.list[st.list.length - 1];
+            st.zoom = false;
+            _artViewerRender();
+        } else if (k === 'z' || k === 'Z') {
+            _artViewerToggleZoom();
+        } else if (k === 'g' || k === 'G') {
+            st.grid = true;
+            _artViewerRender();
+        } else if (k === 'i' || k === 'I') {
+            st.info = !st.info;
+            _artViewerRender();
+        } else if (k === 'o' || k === 'O') {
+            const im = st.images[st.i];
+            window.open((im.image || _artViewerBigUrl(im)).replace(/^http:/, ''), '_blank', 'noopener');
+        } else {
+            handled = false;
+        }
+        if (handled) e.preventDefault();
+    }
+
+    /**
+     * Clicks inside the viewer (delegated on the overlay): a filmstrip or grid
+     * image jumps to it; the buttons act; a click on the stage toggles zoom.
+     * The Original link and the info panel's links are real links and open
+     * normally. The click a swipe ends with is ignored.
+     *
+     * @param   {MouseEvent} e
+     * @returns {void}
+     */
+    function _artViewerOnClick(e) {
+        const st = _artViewerState;
+        if (!st) return;
+        if (performance.now() - st.swipeAt < 500) {
+            e.preventDefault();
+            return;
+        }
+        const go = e.target.closest('[data-artv-go]');
+        if (go) {
+            st.i = Number(go.dataset.artvGo);
+            st.grid = false;
+            st.zoom = false;
+            _artViewerRender();
+            return;
+        }
+        const b = e.target.closest('[data-artv]');
+        if (!b) return;
+        const action = b.dataset.artv;
+        if (action === 'close') _artViewerClose();
+        else if (action === 'grid') { st.grid = !st.grid; _artViewerRender(); }
+        else if (action === 'info') { st.info = !st.info; _artViewerRender(); }
+        else if (action === 'prev') _artViewerStep(-1);
+        else if (action === 'next') _artViewerStep(1);
+        else if (action === 'stage') _artViewerToggleZoom();
+    }
+
+    /**
+     * While zoomed, the image follows the mouse.
+     *
+     * @param   {MouseEvent} e
+     * @returns {void}
+     */
+    function _artViewerOnMouseMove(e) {
+        const st = _artViewerState;
+        if (!st || !st.zoom) return;
+        const stage = e.target.closest('.mb-artv-stage');
+        const img = stage && stage.querySelector('.mb-artv-img');
+        if (!img) return;
+        const r = stage.getBoundingClientRect();
+        img.style.transformOrigin =
+            `${((e.clientX - r.left) / r.width) * 100}% ${((e.clientY - r.top) / r.height) * 100}%`;
+    }
+
+    /**
+     * Touch swipe, start: remembers where a touch began on the stage.
+     *
+     * @param   {PointerEvent} e
+     * @returns {void}
+     */
+    function _artViewerOnPointerDown(e) {
+        const st = _artViewerState;
+        if (!st || e.pointerType !== 'touch' || !e.target.closest('.mb-artv-stage')) return;
+        st.swipeX = e.clientX;
+    }
+
+    /**
+     * Touch swipe, end: a horizontal move of more than 50 px steps (left =
+     * next), and the click that follows is swallowed.
+     *
+     * @param   {PointerEvent} e
+     * @returns {void}
+     */
+    function _artViewerOnPointerUp(e) {
+        const st = _artViewerState;
+        if (!st || st.swipeX === null) return;
+        const dx = e.clientX - st.swipeX;
+        st.swipeX = null;
+        if (Math.abs(dx) > 50 && !st.grid) {
+            st.swipeAt = performance.now();
+            _artViewerStep(dx < 0 ? 1 : -1);
+        }
     }
 
 

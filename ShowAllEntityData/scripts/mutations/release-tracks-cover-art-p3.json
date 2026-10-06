@@ -1,0 +1,172 @@
+[
+  {
+    "name": "a tile click no longer opens the viewer",
+    "why": "The tile's plain left click is the main way in; without the handler the link opens the 1200 px image in a new tab instead.",
+    "edits": [
+      {
+        "find": "        const tileLink = e.target.closest('figure.mb-release-art-tile > a');",
+        "replace": "        const tileLink = null;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+    "grep": "a tile opens the viewer at that image",
+    "expect": "fail"
+  },
+  {
+    "name": "stepping does not wrap",
+    "why": "→ on the last image must go to the first, ← on the first to the last.",
+    "edits": [
+      {
+        "find": "        st.i = st.list[(k + d + st.list.length) % st.list.length];",
+        "replace": "        st.i = st.list[Math.max(0, Math.min(st.list.length - 1, k + d))];"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+    "grep": "a tile opens the viewer at that image",
+    "expect": "fail"
+  },
+  {
+    "name": "focus is not returned to the opener on close",
+    "why": "Closing must hand focus back to the tile (or tab) that opened the viewer, or a keyboard user is stranded at the page top.",
+    "edits": [
+      {
+        "find": "        if (st.opener && st.opener.isConnected && typeof st.opener.focus === 'function') st.opener.focus();",
+        "replace": "        void st.opener;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+    "grep": "a tile opens the viewer at that image",
+    "expect": "fail"
+  },
+  {
+    "name": "page scrolling is not restored on close",
+    "why": "The viewer locks documentElement overflow; leaving it 'hidden' freezes the page after close.",
+    "edits": [
+      {
+        "find": "        document.documentElement.style.overflow = st.prevOverflow;",
+        "replace": "        void st.prevOverflow;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+    "grep": "a tile opens the viewer at that image",
+    "expect": "fail"
+  },
+  {
+    "name": "keys are not stopped from reaching the page",
+    "why": "Without stopImmediatePropagation the page's own shortcuts (Ctrl+M, ?, /, Shift+Esc) act behind the viewer.",
+    "edits": [
+      {
+        "find": "        if (!st) return;\n        e.stopImmediatePropagation();\n        const root = document.getElementById('mb-art-viewer');",
+        "replace": "        if (!st) return;\n        const root = document.getElementById('mb-art-viewer');"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+    "grep": "no key reaches the page",
+    "expect": "fail"
+  },
+  {
+    "name": "the key listener is on document instead of window capture",
+    "why": "On document capture it runs AFTER listeners registered earlier on document, so page shortcuts still see every key.",
+    "edits": [
+      {
+        "find": "        window.removeEventListener('keydown', _artViewerOnKey, true);\n        window.addEventListener('keydown', _artViewerOnKey, true);",
+        "replace": "        document.removeEventListener('keydown', _artViewerOnKey, true);\n        document.addEventListener('keydown', _artViewerOnKey, true);"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+    "grep": "no key reaches the page",
+    "expect": "fail"
+  },
+  {
+    "name": "Tab is not trapped",
+    "why": "Without the trap, Tab walks focus out of the overlay into the page behind it.",
+    "edits": [
+      {
+        "find": "        if (e.key === 'Tab') {\n            const focusables",
+        "replace": "        if (e.key === 'Tab-disabled') {\n            const focusables"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+    "grep": "keep focus inside the viewer",
+    "expect": "fail"
+  },
+  {
+    "name": "Esc from a G grid closes instead of returning to the image",
+    "why": "A grid entered with G is a mode of the open viewer; only a viewer OPENED in grid closes on Esc.",
+    "edits": [
+      {
+        "find": "            if (st.grid && !st.gridStart) {",
+        "replace": "            if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+    "grep": "G opens the grid grouped by first type",
+    "expect": "fail"
+  },
+  {
+    "name": "the tab interceptor is registered on document, not window",
+    "why": "initNavigationGuard()'s anchor guard is a document-capture listener registered first; a later document listener runs after its leave-page confirm.",
+    "edits": [
+      {
+        "find": "        window.addEventListener('click', _releaseArtOnTabClick, true);",
+        "replace": "        document.addEventListener('click', _releaseArtOnTabClick, true);"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+    "grep": "a plain click on the \"Cover art\" tab",
+    "expect": "fail"
+  },
+  {
+    "name": "the tab interceptor also swallows a Ctrl-click",
+    "why": "Ctrl/Cmd-click must keep opening the cover-art page in a new tab.",
+    "edits": [
+      {
+        "find": "        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.defaultPrevented) return;\n        const a = e.target instanceof Element",
+        "replace": "        if (e.button !== 0 || e.defaultPrevented) return;\n        const a = e.target instanceof Element"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+    "grep": "a Ctrl-click on the tab is not intercepted",
+    "expect": "fail"
+  },
+  {
+    "name": "the viewer ignores the chip filter and steps through every image",
+    "why": "Opened from a filtered sheet it must step through the tiles shown, not all 16.",
+    "edits": [
+      {
+        "find": "            _artViewerOpen(CAA_CTX, sec.dataset.mbArtEntity, indices,",
+        "replace": "            void indices; _artViewerOpen(CAA_CTX, sec.dataset.mbArtEntity, null,"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+    "grep": "chip-filtered sheet",
+    "expect": "fail"
+  },
+  {
+    "name": "the large image never replaces the thumbnail",
+    "why": "Progressive load: the 1200 px image must be swapped in once it has loaded.",
+    "edits": [
+      {
+        "find": "            img.src = src;\n            img.dataset.artvSize = 'big';",
+        "replace": "            void src;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
+    "grep": "the large image replaces the thumbnail",
+    "expect": "fail"
+  },
+  {
+    "name": "a swipe does not step",
+    "why": "On touch, a horizontal swipe on the stage is the way to step.",
+    "edits": [
+      {
+        "find": "        if (Math.abs(dx) > 50 && !st.grid) {",
+        "replace": "        if (Math.abs(dx) > 5000 && !st.grid) {"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "a horizontal swipe steps",
+    "expect": "fail"
+  }
+]
