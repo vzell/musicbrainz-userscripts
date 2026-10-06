@@ -72,29 +72,29 @@
 
 ** Mockup catalogue
 
-| ID | What                                                       | Verdict           |
-|----+------------------------------------------------------------+-------------------|
-| E0 | today                                                      | reference         |
-| C  | settings group "🎫 EVENT PAGE", every part its own setting | *recommended*     |
-| T1 | relationships as one table (Relationship · Target · Type · Details · From) | alternative |
-| T2 | one sub-table per target type, "Via <series>" table apart, Recordings cross-linked to the setlist ("Concert #14") | *recommended* |
+| ID | What                                                                                                                                                            | Verdict       |
+|----+-----------------------------------------------------------------------------------------------------------------------------------------------------------------+---------------|
+| E0 | today                                                                                                                                                           | reference     |
+| C  | settings group "🎫 EVENT PAGE", every part its own setting                                                                                                      | *recommended* |
+| T1 | relationships as one table (Relationship · Target · Type · Details · From)                                                                                      | alternative   |
+| T2 | one sub-table per target type, "Via <series>" table apart, Recordings cross-linked to the setlist ("Concert #14")                                               | *recommended* |
 | S1 | setlist: Line-up table, then one table per part; notes under the part's h3; medley = one row, several works; "also <part>"; 🎙 when a recording made here exists | *recommended* |
-| S2 | setlist: Line-up + one "Songs" table with a Part column     | alternative       |
-| E1 | "Event art (15)" section above Relationships: chips, Grid / By type, ★, hover card | *recommended* |
-| E2 | the "Event art" tab opens the viewer (grid)                | *recommended*     |
+| S2 | setlist: Line-up + one "Songs" table with a Part column                                                                                                         | alternative   |
+| E1 | "Event art (15)" section above Relationships: chips, Grid / By type, ★, hover card                                                                              | *recommended* |
+| E2 | the "Event art" tab opens the viewer (grid)                                                                                                                     | *recommended* |
 
 Settings as mocked (C):
 
-| Key                                      | Default        | Depends on |
-|------------------------------------------+----------------+------------|
-| =sa_enable_event_overview=               | on             | -          |
-| =sa_event_overview_relationships=        | on             | enable     |
+| Key                                      | Default         | Depends on    |
+|------------------------------------------+-----------------+---------------|
+| =sa_enable_event_overview=               | on              | -             |
+| =sa_event_overview_relationships=        | on              | enable        |
 | =sa_event_overview_relationships_layout= | per target type | relationships |
-| =sa_event_overview_related_series=       | on             | relationships |
-| =sa_event_overview_setlist=              | on             | enable     |
-| =sa_event_overview_setlist_layout=       | per part       | setlist    |
-| =sa_event_overview_event_art=            | on             | enable     |
-| =sa_event_overview_art_tab=              | on             | event art  |
+| =sa_event_overview_related_series=       | on              | relationships |
+| =sa_event_overview_setlist=              | on              | enable        |
+| =sa_event_overview_setlist_layout=       | per part        | setlist       |
+| =sa_event_overview_event_art=            | on              | enable        |
+| =sa_event_overview_art_tab=              | on              | event art     |
 
 ** DECIDED (2026-10-06, by the user)
 
