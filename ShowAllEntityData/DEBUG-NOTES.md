@@ -20315,3 +20315,39 @@ failure will say why.
 **Lesson:** "passes alone, fails in the full suite" was reproduced only with
 `--workers=28`, not with more repeats at the default worker count. Stress
 with workers, not just repeats.
+
+## 2026-10-08 — Phase 4: previews beyond table links (branch feature/popup-engine-phase4, WIP.1–WIP.4)
+
+org/iframe.org item 1b, the four parts the user chose: the `data-mb-pop`
+foundation with a page-wide setting, barcode cells, 📊 dropdown entries,
+Catalog# → its label. Rules in docs/claude/detail-pages.md, "MusicBrainz:
+beyond table links". What the work found:
+
+- **Catalog# and Label cells are not paired.** MusicBrainz lists a row's
+  unique labels and unique catalog numbers independently (three labels
+  against two numbers on a Greetings row), so the 1b sketch's per-column
+  `popTargets` declaration would have mis-paired them. The label comes from
+  the release's own `label-info`, matched on the number as MusicBrainz
+  compares `catno` (case, spaces, separators ignored).
+- **The barcode search index ignores a leading zero** (probed:
+  `barcode:074643190329` and `barcode:74643190329` answer the same 6
+  releases), so the cell's own digits are asked; `td.barcode-cell` is a target
+  as it is, no stamp needed.
+- **The 📊 dropdown keeps no value in the DOM** (value and key live in its
+  closures), so entries are stamped while it builds them, from its own
+  name → href map; only a name with ONE href is stamped.
+- **The dropdown (z-index 999999) covered the window (10050)** after a pin
+  from an entry; a pin from inside it now closes it. Found by a spec that
+  checks `elementFromPoint` at the window's centre.
+- **A dropdown opened by script off screen stays off screen** (fixed
+  position beside its button): 2 of 10 spec runs; the helper scrolls the
+  header into view first.
+- **`config-default-history.json` was stale on main** (ten settings added
+  since its last refresh); `audit-config-defaults.py` failed only once a new
+  key arrived. Refreshed; no default changed.
+
+**Results:** `popup-mb.spec.js` 54 passed; `popup-mb.json` 51 as declared
+(all re-run after the last change); live `popup-mb.spec.js` 7 of 7; the 47
+📊 dropdown specs (182 tests) pass; lint within the baseline. `npm run
+test:full`: 1347 passed, 0 failed (2026-10-07T22:35:24Z to 22:42:54Z, host
+NB-3641, WSL2).
