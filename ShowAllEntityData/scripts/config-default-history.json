@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "5e3b5ad8a2807bbc5f16ca69eac504d3efdc326a",
-    "revisions_walked": 790
+    "head": "74e997c5903baa6e48476e643d6040f94ec2c575",
+    "revisions_walked": 820
   },
   "changes": [
     {
@@ -555,6 +555,7 @@
     "sa_enable_release_tracks_live_date_check": true,
     "sa_release_rg_link": true,
     "sa_event_rg_tooltip": true,
+    "sa_event_rg_tooltip_without_ctrl": false,
     "sa_event_rg_search_phrase": true,
     "sa_event_rg_search_artist": true,
     "sa_event_rg_search_hints": 5,
@@ -660,9 +661,18 @@
     "sa_edits_color_zebra_odd": "#ffffff",
     "sa_edits_color_zebra_even": "#f2f2f2",
     "sa_enable_springsteenlyrics": false,
+    "sa_sl_detail_preview": false,
     "sa_sl_compact_nav": false,
     "sa_enable_jungleland": false,
+    "sa_jl_detail_preview": false,
     "sa_enable_brucespringsteen": false,
-    "sa_enable_brucebase": false
+    "sa_bs_detail_preview": false,
+    "sa_enable_brucebase": false,
+    "sa_bb_detail_preview": false,
+    "sa_pop_mb": false,
+    "sa_pop_mb_page": false,
+    "sa_pop_mb_ttl_hours": 24,
+    "sa_rg_window_max_releases": 500,
+    "sa_dp_hover_without_ctrl": false
   }
 }
