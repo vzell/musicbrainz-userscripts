@@ -82,9 +82,10 @@ generate the plan information inside this file, so that I can resume also from a
   =popTargets= column declaration; the dropdown keeps no value in the DOM, so
   its entries are stamped while it builds them; the dropdown (z 999999) sat
   in front of the window (10050), so a pin from an entry closes it.
-- [-] Phase 5 (optional): drill-down inside the dialog, on
-  =feature/popup-engine-phase5= (from =main= at 9.99.1284). The side drawer
-  is not built: decided 2026-10-08, the window as it is suffices.
+- [X] Phase 5 (optional): drill-down inside the dialog, 9.99.1285: built on
+  =feature/popup-engine-phase5=, live-tested by the user and merged to =main=
+  2026-10-08. The side drawer is not built: decided 2026-10-08, the window as
+  it is suffices.
 
 ** Resume here (another session, another host)
 

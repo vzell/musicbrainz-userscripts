@@ -1,5 +1,29 @@
 [
   {
+    "version": "9.99.1285",
+    "date": "2026-10-08",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Link previews on MusicBrainz: drill down inside the window. A click on an entity link in the window's Extracted view (a release in a release group's list, a release's release group, a label, a recording in a tracklist…) shows that entity in the same window, and the title shows the path (\"Release group › Release\"). ← Back in the title bar, Backspace or Alt+← go back, from memory. Ctrl-, Shift- or middle-click still open the link in a new tab. ‹ › and ← → go on from the row the window was opened from."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Popup engine (org/iframe.org Phase 5): the window keeps a back stack (_dpDialog.stack); _dpDrill()/_dpBack(); a drilled target never takes the page row's mark; _mbPopTarget() takes inWindow for links inside the window."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "popup-mb.spec.js: 4 more tests (58); popup-mb.json: 6 more mutations (57), three re-anchored; the live spec drills from a release to its release group. HELP, docs/claude/detail-pages.md, org/iframe.org."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1284",
     "date": "2026-10-08",
     "sections": [
