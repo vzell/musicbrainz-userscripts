@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.3",
+        "date": "2026-10-07",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "Cover art / Event art section: the type chips (All, Front, Back, Medium, …) are now multi-select. A click toggles a type, the sheet shows the images carrying ANY selected type (an image with two of them shows once), and All, or un-pressing the last type, shows everything again. Grid, By type, Spreads and the viewer all follow the combined selection. A chip click re-renders the section exactly as before; no performance impact."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.2",
         "date": "2026-10-07",
         "sections": [

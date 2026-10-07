@@ -1210,6 +1210,9 @@ types, comment, a larger preview, "6 of 16 · Liner 1 of 4", and the edit that
 added it. The chips above the sheet (**All 16**, **Front 1**, **Liner 4**, …)
 show only the images carrying that type — an image with two types counts for
 both — and **Grid / By type** groups the sheet under each image's first type.
+The chips combine: click **Front** and then **Back** to see the images
+carrying either type (an image with both shows once). Click a pressed chip
+again to drop its type; **All**, or dropping the last one, shows every image.
 **Spreads** lays the sheet out like the package itself: two images of the same
 type whose comments differ only in a final "left" / "right" ("opened gatefold
 cover, inside left" + "… inside right") are shown side by side as one opened

@@ -89,5 +89,57 @@
         "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
         "grep": "with sa_event_rg_tooltip_without_ctrl on",
         "expect": "fail"
+    },
+    {
+        "name": "a chip replaces the selection instead of toggling it",
+        "why": "The pre-multi-select behaviour: a second chip would REPLACE the first, so Front then Medium would show only Medium.",
+        "edits": [
+            {
+                "find": "            const next = !type ? [] : sel.includes(type) ? sel.filter(t => t !== type) : [...sel, type];",
+                "replace": "            const next = type ? [type] : [];"
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art.spec.js",
+        "grep": "chips are multi-select",
+        "expect": "fail"
+    },
+    {
+        "name": "the union duplicates an image carrying two selected types",
+        "why": "Image 2 is Back + Front; a union built per type (concat) would show it twice when both chips are pressed.",
+        "edits": [
+            {
+                "find": "                (images[i].types && images[i].types.length ? images[i].types : ['(no type)']).some(t => want.has(t)));",
+                "replace": "                (images[i].types && images[i].types.length ? images[i].types : ['(no type)']).some(t => want.has(t)))\n            .flatMap(i => (images[i].types || []).filter(t => want.has(t)).map(() => i).slice(0, want.size ? undefined : 1));"
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art.spec.js",
+        "grep": "chips are multi-select",
+        "expect": "fail"
+    },
+    {
+        "name": "the All chip stays pressed beside selected types",
+        "why": "aria-pressed on All must mean 'nothing selected'; pressed always, it would claim All while a type filters.",
+        "edits": [
+            {
+                "find": "            b.setAttribute('aria-pressed', String(type ? active.includes(type) : !active.length));",
+                "replace": "            b.setAttribute('aria-pressed', String(type ? active.includes(type) : true));"
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art.spec.js",
+        "grep": "chips are multi-select",
+        "expect": "fail"
+    },
+    {
+        "name": "the viewer ignores the multi-chip selection in Spreads",
+        "why": "_releaseArtViewerOrder() must read the same selection as the render; reading none, the Spreads viewer would step through every image.",
+        "edits": [
+            {
+                "find": "                _releaseArtShownIndices(images, _releaseArtActiveTypes(sec)));",
+                "replace": "                _releaseArtShownIndices(images, []));"
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-cover-art-spreads.spec.js",
+        "grep": "a union of chips applies",
+        "expect": "fail"
     }
 ]

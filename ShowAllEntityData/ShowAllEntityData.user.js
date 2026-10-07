@@ -100150,15 +100150,36 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * The indices the chip filter leaves, in archive order.
+     * The types the section's chips have selected (`data-mb-art-active-types`,
+     * a JSON array), empty for All — also when the attribute is missing or
+     * not a JSON array of strings.
+     *
+     * @param   {HTMLElement} sec A `div.mb-release-art-sec`.
+     * @returns {string[]}
+     */
+    function _releaseArtActiveTypes(sec) {
+        try {
+            const v = JSON.parse(sec.dataset.mbArtActiveTypes || '[]');
+            return Array.isArray(v) ? v.filter(t => typeof t === 'string' && t) : [];
+        } catch (_) {
+            return [];
+        }
+    }
+
+    /**
+     * The indices the chip filter leaves, in archive order: every image when
+     * no type is selected, else each image carrying ANY selected type (an
+     * untyped image counts as "(no type)"), once.
      *
      * @param   {Object[]} images The release's archive images.
-     * @param   {string}   filter The chosen type, "" for all.
+     * @param   {string[]} types  The selected types, empty for all.
      * @returns {number[]}
      */
-    function _releaseArtShownIndices(images, filter) {
+    function _releaseArtShownIndices(images, types) {
+        const want = new Set(types);
         return images.map((im, i) => i)
-            .filter(i => !filter || (images[i].types && images[i].types.length ? images[i].types : ['(no type)']).includes(filter));
+            .filter(i => !want.size ||
+                (images[i].types && images[i].types.length ? images[i].types : ['(no type)']).some(t => want.has(t)));
     }
 
     /**
@@ -100175,7 +100196,7 @@ a { color: #1565c0; }`;
         if (_releaseArtLayout(desc) === 'spreads') {
             const images = desc.ctx.imagesCache.get(sec.dataset.mbArtEntity) || [];
             const { pairs, book, rest } = _releaseArtSpreadsPlan(images,
-                _releaseArtShownIndices(images, sec.dataset.mbArtActiveType || ''));
+                _releaseArtShownIndices(images, _releaseArtActiveTypes(sec)));
             return [...pairs.flatMap(p => [p.l, p.r]), ...book, ...rest];
         }
         return Array.from(sec.querySelectorAll('figure.mb-release-art-tile')).map(f => Number(f.dataset.mbArtI));
@@ -100262,11 +100283,12 @@ a { color: #1565c0; }`;
      * (Re)builds the toolbar and the contact sheet of a loaded section from
      * `CAA_CTX.imagesCache`: type chips (`data-mb-art-filter`, "" = all) and the
      * Grid / By type / Spreads switch (`data-mb-art-layout`), then the tiles —
-     * all of them, or only those carrying the chosen type, either as one grid
-     * in archive order, grouped under each image's FIRST type in
-     * first-appearance order, or as spreads (`_releaseArtRenderSpreads()`).
-     * The chosen type lives on the section
-     * (`data-mb-art-active-type`, deliberately NOT the chips'
+     * all of them, or only those carrying ANY of the selected types (the
+     * chips are multi-select), either as one grid in archive order, grouped
+     * under each image's FIRST type in first-appearance order, or as spreads
+     * (`_releaseArtRenderSpreads()`). The selected types live on the section
+     * (`data-mb-art-active-types`, a JSON array read by
+     * `_releaseArtActiveTypes()`; deliberately NOT the chips'
      * `data-mb-art-filter`, which `closest()` would then match on the
      * section itself), the layout in GM storage.
      *
@@ -100276,7 +100298,7 @@ a { color: #1565c0; }`;
     function _releaseArtRenderSheet(sec) {
         const desc = _artSectionOf(sec);
         const images = desc.ctx.imagesCache.get(sec.dataset.mbArtEntity) || [];
-        const filter = sec.dataset.mbArtActiveType || '';
+        const active = _releaseArtActiveTypes(sec);
         const layout = _releaseArtLayout(desc);
         sec.querySelectorAll('.mb-release-art-tools, .mb-release-art-grid, .mb-release-art-group, .mb-release-art-spread')
             .forEach(n => n.remove());
@@ -100288,7 +100310,7 @@ a { color: #1565c0; }`;
             b.type = 'button';
             b.className = 'mb-release-art-chip';
             b.dataset.mbArtFilter = type;
-            b.setAttribute('aria-pressed', String(filter === type));
+            b.setAttribute('aria-pressed', String(type ? active.includes(type) : !active.length));
             const num = document.createElement('b');
             num.textContent = String(n);
             b.append(label + ' ', num);
@@ -100315,7 +100337,7 @@ a { color: #1565c0; }`;
         tools.appendChild(seg);
         sec.appendChild(tools);
 
-        const shown = _releaseArtShownIndices(images, filter);
+        const shown = _releaseArtShownIndices(images, active);
         if (layout === 'spreads') {
             _releaseArtRenderSpreads(sec, images, shown);
             return;
@@ -100354,9 +100376,10 @@ a { color: #1565c0; }`;
     /**
      * The section's one click handler, delegated on the section (which is
      * never cloned, so a listener on it survives every re-render): a tile opens
-     * the viewer, a type chip sets the filter, a layout button sets and
-     * remembers the layout, and the Spreads pager's ◀ ▶ step its page. A chip
-     * or a layout switch puts the pager back on its first page.
+     * the viewer, a type chip toggles its type in the selection ("All"
+     * clears it, and so does un-pressing the last type), a layout button sets
+     * and remembers the layout, and the Spreads pager's ◀ ▶ step its page. A
+     * chip or a layout switch puts the pager back on its first page.
      *
      * @param   {MouseEvent} e
      * @returns {void}
@@ -100386,7 +100409,10 @@ a { color: #1565c0; }`;
         }
         const chip = e.target.closest('[data-mb-art-filter]');
         if (chip && sec.contains(chip)) {
-            sec.dataset.mbArtActiveType = chip.dataset.mbArtFilter;
+            const type = chip.dataset.mbArtFilter;
+            const sel = _releaseArtActiveTypes(sec);
+            const next = !type ? [] : sel.includes(type) ? sel.filter(t => t !== type) : [...sel, type];
+            sec.dataset.mbArtActiveTypes = JSON.stringify(next);
             sec.dataset.mbArtBookPage = '0';
             _releaseArtRenderSheet(sec);
             return;
