@@ -8,3 +8,27 @@ and when pinned with the possibility to switch between "Extracted" and "Live pag
 <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 20px 12px; border-bottom: 2px solid rgb(221, 221, 221); cursor: move; user-select: none; flex-shrink: 0; border-radius: 8px 8px 0px 0px; background: rgb(248, 248, 248);"><span style="font-weight: 700; font-size: 1.15em; color: rgb(34, 34, 34);">Detail page</span><div style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;"><button type="button" class="mb-dp-tbtn" data-mb-tip="" title="Previous row (←)">‹</button><span class="mb-dp-pos-label">1 / 402</span><button type="button" class="mb-dp-tbtn" data-mb-tip="" title="Next row (→)">›</button><span class="mb-dp-seg"><button type="button" class="mb-dp-tbtn" data-mb-tip="" title="What the script read from the page" aria-pressed="true">Extracted</button><button type="button" class="mb-dp-tbtn" data-mb-tip="" title="The site's own page, with its navigation hidden" aria-pressed="false">Live page</button></span><button type="button" class="mb-dp-tbtn" data-mb-tip="" title="Load the page again, bypassing the saved copy">⟳</button><a class="mb-dp-tbtn" target="_blank" rel="noopener" data-mb-tip="" title="Open the page in a new tab" href="https://www.springsteenlyrics.com/brucelegs.php?item=281&amp;f_format=vinyl">↗</a><button data-mb-tip="" title="Close (Escape)" style="background: none; border-width: medium; border-style: none; border-color: currentcolor; border-image: none; font-size: 1.2em; cursor: pointer; color: rgb(102, 102, 102); padding: 0px 4px; line-height: 1; user-select: none;">✕</button></div></div>
 #+end_example
 
+This would close the gap in our userscript to be a generic show all website framework with filter/sort/etc. support to
+the ability to also include/show detail/referenced information, so the end-user can stay most of the time on the main
+summarized information and only include details when neccessary
+
+1.)
+
+Generalize/refactor this functionality in a generic popup engine, which can be used on every "a href"/"or some defined container"
+everywhere on ALL the PTs supported by our userscript (inclusive ALL MusicBrainz pages)
+
+a.)
+
+"a href"'s are the number one candidate
+
+b.)
+
+make some suggestions how the "some defined container" could be implemented/work
+
+2.)
+
+The current RG popup used on 'release-tracks' PTs should be enhanced first
+
+3.)
+
+Make comprehensive suggestions for MusicBrainz PTs with nice rich HTML based mockups
