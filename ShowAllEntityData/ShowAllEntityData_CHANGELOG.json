@@ -1,5 +1,41 @@
 [
   {
+    "version": "9.99.1269",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Cover art / Event art section: the type chips (All, Front, Back, Medium, …) are now multi-select. A click toggles a type, the sheet shows the images carrying ANY selected type (an image with two of them shows once), and All, or un-pressing the last type, shows everything again. Grid, By type, Spreads and the viewer all follow the combined selection. A chip click re-renders the section exactly as before; no performance impact."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1268",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Release tracklist: the release group card on a live track's \"#\" cell now opens only while Ctrl is held — hover the cell with Ctrl down, or rest the pointer on it and press Ctrl (which opens it at once). Moving down the column no longer pops up cards or starts searches. The new setting \"Show the \\\"#\\\" release group card on a plain hover (without Ctrl)\" (⚙️ Settings → 💿 RELEASE TRACKLIST, off by default) brings back the old behaviour, as 9.99.1267 does for the detail-page previews. Alt+click is unchanged. Not on the filter/sort/render path; no performance impact."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1267",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Detail-page previews (springsteenlyrics.com, jungleland.it, brucespringsteen.it, Brucebase): the hover card now opens only while Ctrl is held — hover a title with Ctrl down, or rest the pointer on it and press Ctrl (which opens it at once). Moving the pointer across the table no longer pops up cards or fetches pages. The new setting \"Show the detail-page preview on a plain hover (without Ctrl)\" (⚙️ Settings → 🔎 Detail-page previews, off by default) brings back the old behaviour. Tapping a title on a touch screen still opens the window. Not on the filter/sort/render path; no performance impact."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1266",
     "date": "2026-10-07",
     "sections": [

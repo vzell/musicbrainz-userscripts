@@ -159,7 +159,8 @@ Build C only if B feels cramped in practice.
 - D on jungleland: Uploader alone may not be worth 1 h 47 min. A covers-only
   column built from predicted thumbnail URLs needs no fetch at all.
 
-* Request - <2026-10-07 Wed 13:21>
+
+* DONE Request - pressing the "Ctrl" key at the same time when hovering over - <2026-10-07 Wed 13:21>
 
 1.)
 

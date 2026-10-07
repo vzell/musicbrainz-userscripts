@@ -1,0 +1,10 @@
+* TODO generalize the iframe support
+
+Currently we use iframe support, initially when it popsup with the ability to press "Space" for pin and "Esc" to close
+
+and when pinned with the possibility to switch between "Extracted" and "Live page"
+
+#+begin_example
+<div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 20px 12px; border-bottom: 2px solid rgb(221, 221, 221); cursor: move; user-select: none; flex-shrink: 0; border-radius: 8px 8px 0px 0px; background: rgb(248, 248, 248);"><span style="font-weight: 700; font-size: 1.15em; color: rgb(34, 34, 34);">Detail page</span><div style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;"><button type="button" class="mb-dp-tbtn" data-mb-tip="" title="Previous row (←)">‹</button><span class="mb-dp-pos-label">1 / 402</span><button type="button" class="mb-dp-tbtn" data-mb-tip="" title="Next row (→)">›</button><span class="mb-dp-seg"><button type="button" class="mb-dp-tbtn" data-mb-tip="" title="What the script read from the page" aria-pressed="true">Extracted</button><button type="button" class="mb-dp-tbtn" data-mb-tip="" title="The site's own page, with its navigation hidden" aria-pressed="false">Live page</button></span><button type="button" class="mb-dp-tbtn" data-mb-tip="" title="Load the page again, bypassing the saved copy">⟳</button><a class="mb-dp-tbtn" target="_blank" rel="noopener" data-mb-tip="" title="Open the page in a new tab" href="https://www.springsteenlyrics.com/brucelegs.php?item=281&amp;f_format=vinyl">↗</a><button data-mb-tip="" title="Close (Escape)" style="background: none; border-width: medium; border-style: none; border-color: currentcolor; border-image: none; font-size: 1.2em; cursor: pointer; color: rgb(102, 102, 102); padding: 0px 4px; line-height: 1; user-select: none;">✕</button></div></div>
+#+end_example
+
