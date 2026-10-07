@@ -43,8 +43,8 @@
         "why": "An inline cover or thumbnail has its own hover preview (#mb-art-hover-preview); a card over it would be a second box.",
         "edits": [
             {
-                "find": "        if (a.querySelector('img:not(.avatar)') || a.closest('td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;",
-                "replace": "        if (a.closest('td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;"
+                "find": "        if (a.querySelector('img:not(.avatar)') || a.closest(inWindow ? 'td.mb-rel-cell' : 'td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;",
+                "replace": "        if (a.closest(inWindow ? 'td.mb-rel-cell' : 'td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -56,8 +56,8 @@
         "why": "The Relationships column has its own tooltip (#mb-rel-tooltip) on its cells.",
         "edits": [
             {
-                "find": "        if (a.querySelector('img:not(.avatar)') || a.closest('td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;",
-                "replace": "        if (a.querySelector('img:not(.avatar)') || a.closest('#mb-dp-peek, #mb-dp-dialog')) return null;"
+                "find": "        if (a.querySelector('img:not(.avatar)') || a.closest(inWindow ? 'td.mb-rel-cell' : 'td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;",
+                "replace": "        if (a.querySelector('img:not(.avatar)') || a.closest(inWindow ? 'p.never' : '#mb-dp-peek, #mb-dp-dialog')) return null;"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -473,8 +473,8 @@
         "why": "MusicBrainz puts an <img class=\"avatar\"> inside every editor link; treated as artwork, no editor link on a real page would have a card (found by the live spec on the Subscribers tab).",
         "edits": [
             {
-                "find": "        if (a.querySelector('img:not(.avatar)') || a.closest('td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;",
-                "replace": "        if (a.querySelector('img') || a.closest('td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;"
+                "find": "        if (a.querySelector('img:not(.avatar)') || a.closest(inWindow ? 'td.mb-rel-cell' : 'td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;",
+                "replace": "        if (a.querySelector('img') || a.closest(inWindow ? 'td.mb-rel-cell' : 'td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -661,6 +661,84 @@
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
         "grep": "its card is the label the release names",
+        "expect": "fail"
+    },
+    {
+        "name": "a click on an entity link in the window does not drill down",
+        "why": "Answer 5: a link inside the window shows that entity in the same window, with Back.",
+        "edits": [
+            {
+                "find": "            else if (_dpDrill(e)) return;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a click on the release group shows it in the window",
+        "expect": "fail"
+    },
+    {
+        "name": "a modified click drills down too",
+        "why": "Ctrl, Shift, Alt or a middle click keep the link's own behaviour: a new tab.",
+        "edits": [
+            {
+                "find": "        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return false;\n        const a = e.target.closest ? e.target.closest('a[href]') : null;",
+                "replace": "        if (e.button !== 0) return false;\n        const a = e.target.closest ? e.target.closest('a[href]') : null;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "keeps the link's own new tab",
+        "expect": "fail"
+    },
+    {
+        "name": "links inside the window are never targets",
+        "why": "Without inWindow the card and the window exclude themselves, so a drill-down finds nothing to show.",
+        "edits": [
+            {
+                "find": "a.closest(inWindow ? 'td.mb-rel-cell' : 'td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;",
+                "replace": "a.closest('td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a click on the release group shows it in the window",
+        "expect": "fail"
+    },
+    {
+        "name": "the arrows step from the drilled target",
+        "why": "A drilled target is a link in the window with no column: after a drill-down the arrows go on from the page target it started from, and the path is dropped.",
+        "edits": [
+            {
+                "find": "        const t = _dpDialog.stack.length ? _dpDialog.stack[0] : _dpDialog.target;\n        _dpDialog.stack = [];",
+                "replace": "        const t = _dpDialog.target;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the arrows go on from the page target",
+        "expect": "fail"
+    },
+    {
+        "name": "a drilled target takes the page row's mark",
+        "why": "A drilled target's element is a row of the window's own table: marking it would unmark the page's row.",
+        "edits": [
+            {
+                "find": "        if (!t.drilled) {\n            const tr = t.el.closest('tr');",
+                "replace": "        if (true) {\n            const tr = t.el.closest('tr');"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a click on the release group shows it in the window",
+        "expect": "fail"
+    },
+    {
+        "name": "Backspace does not go back",
+        "why": "Backspace and Alt+← go back, as in a browser.",
+        "edits": [
+            {
+                "find": "        const back = (e.key === 'Backspace' && !e.altKey && !e.ctrlKey && !e.metaKey)\n            || ",
+                "replace": "        const back = false\n            || "
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "Backspace and Alt",
         "expect": "fail"
     }
 ]

@@ -13294,10 +13294,14 @@
      * returned; `target` what it shows (`_popResolve()`: the source, the
      * element, its key and URL), `url` that target's URL; `view` `'ex'`
      * (Extracted) or `'live'`; `hideNav` whether the Live page view hides the
-     * site's own navigation.
-     * @type {{api: ?object, target: ?object, url: string, view: string, hideNav: boolean, row: ?HTMLTableRowElement, controls: ?object}}
+     * site's own navigation; `stack` the targets a drill-down came from
+     * (org/iframe.org Phase 5: a click on an entity link in the Extracted
+     * view shows that entity in the same window; Back returns), oldest
+     * first — empty for a target opened from the page.
+     * @type {{api: ?object, target: ?object, url: string, view: string, hideNav: boolean, row: ?HTMLTableRowElement,
+     *   controls: ?object, stack: Array<object>}}
      */
-    const _dpDialog = { api: null, target: null, url: '', view: 'ex', hideNav: true, row: null, controls: null };
+    const _dpDialog = { api: null, target: null, url: '', view: 'ex', hideNav: true, row: null, controls: null, stack: [] };
 
     /**
      * Collapses whitespace (non-breaking spaces included) and trims.
@@ -14708,15 +14712,23 @@
     function _dpShowInDialog(t) {
         _dpDialog.target = t;
         _dpDialog.url = t.url;
-        // createInfoDialog()'s title bar is its first child, the title its first span.
+        // createInfoDialog()'s title bar is its first child, the title its
+        // first span: the target's kind, after a drill-down the path to it
+        // ("Release group › Release"), its last three steps.
         const title = _dpDialog.api ? _dpDialog.api.dialog.querySelector(':scope > div > span') : null;
-        if (title) title.textContent = t.kind || t.src.kind;
-        const tr = t.el.closest('tr');
-        if (_dpDialog.row && _dpDialog.row !== tr) _dpDialog.row.classList.remove('mb-dp-current');
-        _dpDialog.row = tr;
-        if (tr) {
-            tr.classList.add('mb-dp-current');
-            tr.scrollIntoView({ block: 'nearest' });
+        const kinds = _dpDialog.stack.concat([t]).map(x => x.kind || x.src.kind);
+        if (title) title.textContent = (kinds.length > 3 ? ['…', ...kinds.slice(-3)] : kinds).join(' › ');
+        if (_dpDialog.controls && _dpDialog.controls.back) _dpDialog.controls.back.style.display = _dpDialog.stack.length ? '' : 'none';
+        // A drilled target's element is a link in the window, not a row of
+        // the page: the page's row keeps its mark.
+        if (!t.drilled) {
+            const tr = t.el.closest('tr');
+            if (_dpDialog.row && _dpDialog.row !== tr) _dpDialog.row.classList.remove('mb-dp-current');
+            _dpDialog.row = tr;
+            if (tr) {
+                tr.classList.add('mb-dp-current');
+                tr.scrollIntoView({ block: 'nearest' });
+            }
         }
         _dpRenderDialog(false);
     }
@@ -14730,7 +14742,10 @@
      * @returns {void}
      */
     function _dpStep(delta) {
-        const t = _dpDialog.target;
+        // After a drill-down the arrows go on from the page target it
+        // started from; the path is dropped.
+        const t = _dpDialog.stack.length ? _dpDialog.stack[0] : _dpDialog.target;
+        _dpDialog.stack = [];
         if (!t) return;
         const steps = t.src.steps(t);
         if (!steps.length) return;
@@ -14740,6 +14755,43 @@
         const next = steps[i + delta];
         const nt = next ? _popResolve(next) : null;
         if (nt) _dpShowInDialog(nt);
+    }
+
+    /**
+     * A plain click (left button, no modifier) on an entity link in the
+     * window's Extracted view shows that entity in the same window
+     * (org/iframe.org Phase 5, answer 5), the current target going on the
+     * back stack; Ctrl, Shift, Alt or a middle click keep the link's own
+     * behaviour (a new tab). Only links the MusicBrainz entity cards know
+     * (`_mbPopTarget()` with `inWindow`), and only while they are on
+     * (`sa_pop_mb`). A link to what the window already shows does nothing.
+     *
+     * @param {MouseEvent} e - A click in the window's scroll area.
+     * @returns {boolean} Whether the click drilled down.
+     */
+    function _dpDrill(e) {
+        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return false;
+        const a = e.target.closest ? e.target.closest('a[href]') : null;
+        const cur = _dpDialog.target;
+        if (!a || !cur || !_dpDialog.api || !_dpDialog.api.scrollArea.contains(a)) return false;
+        const src = _popSources().find(x => x.id === 'mb-entity');
+        if (!src || !src.enabled()) return false;
+        const r = _mbPopTarget(a, { inWindow: true });
+        if (!r || r.key === cur.key) return false;
+        e.preventDefault();
+        _dpDialog.stack.push(cur);
+        _dpShowInDialog(Object.assign({ src, el: a, drilled: true }, r));
+        return true;
+    }
+
+    /**
+     * Back from a drill-down: the window shows the target it came from.
+     *
+     * @returns {void}
+     */
+    function _dpBack() {
+        const prev = _dpDialog.stack.pop();
+        if (prev) _dpShowInDialog(prev);
     }
 
     /**
@@ -14754,9 +14806,20 @@
             document.removeEventListener('keydown', _dpDialogKeys, true);
             return;
         }
+        if (_dpIsTextField(e.target)) return;
+        // Back from a drill-down (Phase 5): Backspace, or Alt+← as in a
+        // browser. Only with something to go back to.
+        const back = (e.key === 'Backspace' && !e.altKey && !e.ctrlKey && !e.metaKey)
+            || (e.key === 'ArrowLeft' && e.altKey && !e.ctrlKey && !e.metaKey);
+        if (back) {
+            if (!_dpDialog.stack.length) return;
+            e.preventDefault();
+            e.stopPropagation();
+            _dpBack();
+            return;
+        }
         if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
         if (e.altKey || e.ctrlKey || e.metaKey) return;
-        if (_dpIsTextField(e.target)) return;
         e.preventDefault();
         e.stopPropagation();
         _dpStep(e.key === 'ArrowLeft' ? -1 : 1);
@@ -14783,6 +14846,8 @@
         // 999999) would stay in front of the window (10050); the user has
         // moved on to the entity, so it closes, as a click outside it would.
         if (t.el && t.el.closest && t.el.closest('#mb-col-uniq-dropdown')) closeUniqDrop(false);
+        // A target opened from the page starts a new path.
+        _dpDialog.stack = [];
         if (_dpDialog.api && _dpDialog.api.dialog.isConnected) {
             _dpShowInDialog(t);
             return;
@@ -14795,6 +14860,8 @@
             _setTip(b, tip);
             return b;
         };
+        const back = btn('← Back', 'Back to what the window showed before (Backspace, Alt+←)');
+        back.style.display = 'none';
         const prev = btn('‹', 'Previous row (←)');
         const pos = document.createElement('span');
         pos.className = 'mb-dp-pos-label';
@@ -14821,7 +14888,7 @@
             centerV: false,
             zIndex: 10050,
             geoKey: 'sa_dp_dialog_geometry',
-            titleBarExtras: [prev, pos, next, seg, reload, open]
+            titleBarExtras: [back, prev, pos, next, seg, reload, open]
         });
         if (!api) return;
         if (!GM_getValue('sa_dp_dialog_geometry', null)) api.dialog.style.height = 'min(640px, 86vh)';
@@ -14832,12 +14899,15 @@
         }, true);
         api.scrollArea.addEventListener('click', (e) => {
             if (e.target.closest('.mb-dp-retry')) _dpRenderDialog(true);
+            // An entity link: drill down (Phase 5).
+            else if (_dpDrill(e)) return;
             // A source's own controls in its Extracted view (a sortable
             // header): delegated here, since every repaint replaces them.
             else if (_dpDialog.target && _dpDialog.target.src.onAreaClick) _dpDialog.target.src.onAreaClick(e, _dpDialog.target);
         });
         _dpDialog.api = api;
-        _dpDialog.controls = { pos, ex, live, open };
+        _dpDialog.controls = { pos, ex, live, open, back };
+        back.addEventListener('click', _dpBack);
         prev.addEventListener('click', () => _dpStep(-1));
         next.addEventListener('click', () => _dpStep(1));
         ex.addEventListener('click', () => { _dpDialog.view = 'ex'; _dpRenderDialog(false); });
@@ -14854,6 +14924,7 @@
             if (_dpDialog.api === api) {
                 _dpDialog.api = null;
                 _dpDialog.target = null;
+                _dpDialog.stack = [];
             }
         });
         gone.observe(document.body, { childList: true });
@@ -36642,9 +36713,12 @@
      * body, with the page-wide scope — not in `_MB_POP_PAGE_SKIP`.
      *
      * @param {Element} a
+     * @param {{inWindow?: boolean}} [opts] - `inWindow`: a link in the
+     *   window's Extracted view, for a drill-down (Phase 5); otherwise the
+     *   card and the window are never targets themselves.
      * @returns {?{key: string, url: string, type: string, id: string, kind: string, wide: boolean, name: string, col: string}}
      */
-    function _mbPopTarget(a) {
+    function _mbPopTarget(a, { inWindow = false } = {}) {
         if (!a || !a.getAttribute) return null;
         let seg = '';
         let type = '';
@@ -36684,7 +36758,7 @@
         if (!k) return null;
         // An image means artwork (it has its own preview) — except the
         // avatar MusicBrainz puts inside every editor link (Phase 3).
-        if (a.querySelector('img:not(.avatar)') || a.closest('td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;
+        if (a.querySelector('img:not(.avatar)') || a.closest(inWindow ? 'td.mb-rel-cell' : 'td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;
         if (!a.closest('table.tbl > tbody') && a.closest(_MB_POP_PAGE_SKIP)) return null;
         const td = a.closest('td, th');
         const table = td && td.closest('table.tbl');

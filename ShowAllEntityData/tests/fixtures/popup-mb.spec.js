@@ -1331,3 +1331,78 @@ test.describe('MusicBrainz link previews: Catalog# → its label (Phase 4)', () 
         await expect(card(page).locator('.mb-tt-title')).toHaveText('Columbia', { timeout: 15000 });
     });
 });
+
+test.describe('MusicBrainz link previews: drill-down inside the window (Phase 5)', () => {
+    const title = (page) => dialog(page).locator(':scope > div > span').first();
+    const backBtn = (page) => dialog(page).locator('button.mb-dp-tbtn', { hasText: '← Back' });
+
+    /**
+     * Opens the window on the page's first release.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {Object} [opts] - For `open()`.
+     * @returns {Promise<Object>} `open()`'s request log.
+     */
+    async function releaseWindow(page, opts = {}) {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false, ...opts });
+        await ctrlHover(page, relLink(page));
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('.mb-pop-tracks li').first()).toBeVisible();
+        return log;
+    }
+
+    test('a click on the release group shows it in the window; Back returns, from memory', async ({ page }) => {
+        const log = await releaseWindow(page);
+        await expect(title(page)).toHaveText('Release');
+        await expect(backBtn(page)).toBeHidden();
+        await dialog(page).locator('.mb-dp-area a[href^="/release-group/"]').first().click();
+        await expect(title(page)).toHaveText('Release › Release group');
+        await expect(dialog(page).locator('.mb-rg-wtable tbody tr').first()).toBeVisible();
+        await expect(backBtn(page)).toBeVisible();
+        expect(log.browses, 'the release group\'s releases').toHaveLength(1);
+        // The page's row keeps its mark; nothing in the window is marked.
+        await expect(page.locator('tr.mb-dp-current')).toHaveCount(1);
+        await expect(page.locator('table.tbl tbody tr.mb-dp-current')).toHaveCount(1);
+        await backBtn(page).click();
+        await expect(title(page)).toHaveText('Release');
+        await expect(dialog(page).locator('.mb-pop-tracks li')).toHaveCount(9);
+        await expect(backBtn(page)).toBeHidden();
+        expect(log.lookups, 'the release again: from memory').toHaveLength(1);
+    });
+
+    test('Backspace and Alt+← go back; the title shows the path', async ({ page }) => {
+        await releaseWindow(page);
+        await dialog(page).locator('.mb-dp-area a[href^="/release-group/"]').first().click();
+        await expect(title(page)).toHaveText('Release › Release group');
+        await dialog(page).locator('.mb-rg-wtable tbody a[href^="/release/"]').first().click();
+        await expect(title(page)).toHaveText('Release › Release group › Release');
+        await page.keyboard.press('Backspace');
+        await expect(title(page)).toHaveText('Release › Release group');
+        await page.keyboard.press('Alt+ArrowLeft');
+        await expect(title(page)).toHaveText('Release');
+        // Nothing left to go back to: Backspace is not taken.
+        await page.keyboard.press('Backspace');
+        await expect(title(page)).toHaveText('Release');
+    });
+
+    test('Ctrl+click keeps the link\'s own new tab, and the window stays', async ({ page }) => {
+        await page.context().route('https://musicbrainz.org/release-group/**', (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<html></html>' }));
+        await releaseWindow(page);
+        const popup = page.context().waitForEvent('page');
+        await dialog(page).locator('.mb-dp-area a[href^="/release-group/"]').first().click({ modifiers: ['Control'] });
+        await popup;
+        await expect(title(page)).toHaveText('Release');
+    });
+
+    test('the arrows go on from the page target the drill-down started from', async ({ page }) => {
+        const log = await releaseWindow(page);
+        await dialog(page).locator('.mb-dp-area a[href^="/release-group/"]').first().click();
+        await expect(title(page)).toHaveText('Release › Release group');
+        await page.keyboard.press('ArrowRight');
+        await expect(title(page)).toHaveText('Release');
+        await expect(backBtn(page)).toBeHidden();
+        await expect.poll(() => log.lookups.length, { timeout: 10000 }).toBe(2);
+        expect(log.lookups[1].url).not.toContain(REL_ID);
+    });
+});
