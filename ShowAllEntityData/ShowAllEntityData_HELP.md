@@ -1529,8 +1529,7 @@ on hover* switched on (it is off until you do), the links in a table show what
 is behind them without opening a tab. So far: **releases**, **release
 groups**, **recordings**, **works**, **artists**, **labels**, **areas**,
 **instruments**, **events**, **places**, **series**, **collections**, and the
-codes: **ISRCs**, **ISWCs** and **disc IDs**. Edits and editors are not
-previewed yet.
+codes: **ISRCs**, **ISWCs** and **disc IDs**, and **edits** and **editors**.
 
 **Hold Ctrl and rest the pointer on a link**, or rest it first and then press
 **Ctrl**: a card opens beside the link. Without Ctrl nothing happens, so
@@ -1552,6 +1551,12 @@ its address and coordinates; a series card its first items. An ISRC or ISWC
 card lists the recordings or works carrying the code; a disc ID card its
 tracks, length and releases; a collection card its type, size and editor
 (MusicBrainz shows only public collections; a private one's card says so).
+An edit card shows the edit's type, status, vote tally, editor, dates and
+first changes; its window every change, the entities it touches and its notes
+(MusicBrainz shows the editor and the notes only when you are logged in). An
+editor card shows the user type, member since and edit counts — nothing
+personal. An open edit is read again on every page load, since its votes
+change.
 **Esc** or moving away closes it.
 
 **Press Space** to pin it into a window:

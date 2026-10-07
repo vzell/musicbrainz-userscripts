@@ -459,6 +459,47 @@ works and events, the instrument list) WITHOUT "Show all": the engine serves
 the native first page's table too. Series, collection, ISRC-in-a-table and
 disc ID are fixture-only (no light page links them in a table).
 
+## MusicBrainz: edit and editor cards, read from the page (org/iframe.org, Phase 3)
+
+The Web Service has no edits and no editors, so `edit` and `user` are PAGE
+kinds (`_mbPopPageKind()`): `_mbPageLoad()` fetches `/edit/<n>` or
+`/user/<name>` through `_dpGetRaw(url, _MB_LIVE, …)` — the one MusicBrainz
+rate gate, and the raw-page memory the Live page view reads, so a hover then
+Live page costs ONE request — and parses it into a record kept like any card
+(`_mbLoad()`, the loader both kinds of card share; `_MB_POP_PAGE_VERSION`:
+**bump it when a page parser's output changes**). Paths: `_MB_POP_PAGE_RE`,
+the bare edit or profile only (not `/edit/<n>/data`, `/user/<name>/edits`).
+
+- **`_mbParseEditPage()`** reads `.edit-header` (number, type; the editor, or
+  "Editor hidden" when logged out), every `table.details` row (`td.old` +
+  `td.new` → "old → new"), the vote tally, `#sidebar` (status, Opened, Closed
+  or Voting, …) and `div.edit-note`s — `div.`, because the logged-in "add a
+  note" form's `<textarea class="edit-note">` matches `.edit-note` too (the
+  spec saw "Notes · 2" for one note). Notes and editor show only to a
+  logged-in reader (`notesHidden`).
+- **`_mbParseUserPage()`** reads the user type, member since, subscribers and
+  the Edits statistics, and deliberately NOTHING else of a profile: no email
+  line, age, gender, location, languages or bio (org/iframe.org R9).
+- **An open edit is memory-only** (`keep: d => d.status !== 'Open'`): its
+  votes change. A closed edit and a profile are kept for `sa_pop_mb_ttl_hours`.
+- **A page that does not parse** (a login page, an error page) is a failure,
+  AND is deleted from `_dpRawMem`: `_dpGetRaw()` remembers every page it
+  fetched, and the next try would otherwise re-read the login page without
+  asking (found by the spec).
+- **An editor link's avatar is not artwork.** MusicBrainz puts an
+  `<img class="avatar">` inside every editor link; `_mbPopTarget()` skips links
+  around `img:not(.avatar)` only. Found by the live spec: with plain `img`,
+  no editor link on a real page had a card, while the fixture's probe links,
+  which had no avatar, passed.
+
+**Fixtures and privacy.** `scripts/fetch-mb-page-fixture.js --auth` loads the
+live specs' login state for pages that show more (or anything) only when
+logged in, and blanks the page's tokens and the logged-in editor's
+preferences. Committed: the user's OWN applied edit (logged in, editor and
+note shown), an open edit captured LOGGED OUT (no other editor's name or
+notes), and the user's own profile logged out with its age, gender and
+location rows removed. Never commit another editor's profile.
+
 `python3 scripts/check-mutation-anchors.py` checks, without running a spec,
 that every `find` of every mutation list still matches once. Run it after
 editing a line a list anchors on: Phase 2's first step changed two lines that

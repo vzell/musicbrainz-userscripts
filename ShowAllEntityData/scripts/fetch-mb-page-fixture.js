@@ -19,10 +19,19 @@
  * and the Mapbox access token in the page's global config is blanked, since
  * GitHub push protection refuses any push that carries one.
  *
- * Anonymous (no login state), one page per run.
+ * Anonymous by default, one page per run. `--auth` loads the live specs'
+ * login state (`playwright/.auth/vzell.json`, `npm run auth:login`), for
+ * pages that show more, or anything at all, only to a logged-in editor: an
+ * edit's editor and notes, an edit list (org/iframe.org Phase 3). A
+ * logged-in page also carries the session's form tokens; `scrub()` blanks
+ * them. Capture only pages whose content may be committed: the user's own
+ * edits, never another editor's profile.
+ *
+ *   node scripts/fetch-mb-page-fixture.js --auth /edit/126930910 tests/fixtures/edit-page-applied.html
  */
 
 const fs = require('fs');
+const path = require('path');
 const { chromium } = require('@playwright/test');
 
 /**
@@ -35,6 +44,13 @@ const { chromium } = require('@playwright/test');
 function scrub(html) {
     return html
         .replace(/("MAPBOX_ACCESS_TOKEN"\s*:\s*")[^"]*(")/g, '$1$2')
+        // A logged-in page's form and session tokens, and the logged-in
+        // editor's own preferences (timezone, date format) in the page's
+        // embedded config (--auth).
+        .replace(/("preferences"\s*:\s*)\{[^{}]*\}/g, '$1{}')
+        .replace(/(name="[^"]*(?:csrf|token|session)[^"]*"\s+value=")[^"]*(")/gi, '$1$2')
+        .replace(/(value=")[^"]*("\s+name="[^"]*(?:csrf|token|session)[^"]*")/gi, '$1$2')
+        .replace(/("[A-Za-z_]*(?:csrf|token|session)[A-Za-z_]*"\s*:\s*")[^"]*(")/gi, '$1$2')
         .replace(/\b[ps]k\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '');
 }
 
@@ -44,14 +60,22 @@ function scrub(html) {
  * @returns {Promise<void>}
  */
 async function main() {
-    const [pagePath, out] = process.argv.slice(2);
+    const args = process.argv.slice(2);
+    const auth = args.includes('--auth');
+    const [pagePath, out] = args.filter(a => a !== '--auth');
     if (!pagePath || !out || !pagePath.startsWith('/')) {
-        console.log('usage: node scripts/fetch-mb-page-fixture.js </path/on/musicbrainz.org> <out.html>');
+        console.log('usage: node scripts/fetch-mb-page-fixture.js [--auth] </path/on/musicbrainz.org> <out.html>');
+        process.exit(2);
+    }
+    const state = path.join(__dirname, '..', 'playwright', '.auth', 'vzell.json');
+    if (auth && !fs.existsSync(state)) {
+        console.log(`--auth: no login state at ${state}; run npm run auth:login first`);
         process.exit(2);
     }
     const browser = await chromium.launch();
     try {
-        const page = await browser.newPage();
+        const context = await browser.newContext(auth ? { storageState: state } : {});
+        const page = await context.newPage();
         await page.goto(`https://musicbrainz.org${pagePath}`, { waitUntil: 'domcontentloaded', timeout: 90000 });
         // The verification page submits itself and lands back on the page.
         await page.waitForSelector('#page', { timeout: 90000 });

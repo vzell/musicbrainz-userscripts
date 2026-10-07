@@ -20259,3 +20259,31 @@ newer resume snapshot); both still fail their specs.
 
 Run `scripts/check-mutation-anchors.py` after any edit to a guarded line; it
 reads the lists without running a spec.
+
+## 2026-10-07 — Edit and editor cards read from the page (branch feature/popup-engine-phase3, WIP.1)
+
+org/iframe.org Phase 3. Rules in docs/claude/detail-pages.md, "MusicBrainz:
+edit and editor cards, read from the page". What the work found:
+
+- **Logged out, an edit page hides its editor and notes, and an edit list
+  does not load at all** (the fixture fetcher timed out waiting for `#page`).
+  `scripts/fetch-mb-page-fixture.js --auth` loads the live specs' login
+  state; it blanks tokens and the logged-in editor's preferences (timezone)
+  from the page's embedded config.
+- **The note form's `<textarea class="edit-note">` matched `.edit-note`**: one
+  note read as two. The parser takes `div.edit-note` (mutation-pinned).
+- **A login page stayed in `_dpRawMem`**, so the retry re-read it without a
+  request. `_mbPageLoad()` deletes a page that does not parse.
+- **Every MusicBrainz editor link holds an avatar `<img>`**, so the "link
+  around an image is artwork" rule left every real editor link without a card.
+  Only the live spec (Subscribers tab, after "Show all") showed it; the
+  fixture's probe links had no avatar. Now `img:not(.avatar)`.
+- **Privacy:** the committed profile fixture is the user's own, logged out,
+  with its age, gender and location rows removed; the open edit was captured
+  logged out, so no other editor's name or notes are in the repository.
+
+**Results:** `popup-mb.spec.js` 41 passed (with the mobile, rg-popup and
+detail-preview specs: 75); `popup-mb.json` 37 as declared; live
+`popup-mb.spec.js` 6 of 6 (2026-10-07T21:13:20Z to 21:13:51Z); lint within
+the baseline. `npm run test:full`: 1334 passed, 0 failed
+(2026-10-07T21:13:57Z to 21:20:47Z, host NB-3641, WSL2).
