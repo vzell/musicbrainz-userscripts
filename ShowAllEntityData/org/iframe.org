@@ -52,10 +52,10 @@ generate the plan information inside this file, so that I can resume also from a
 - [X] Phase 0: probes (2026-10-07, on =feature/popup-engine=). No userscript
   change. Results R1 to R10 in "Phase 0: probes", and what they change in the
   plan right after them.
-- [X] Phase 1: the engine refactor into sources (WIP.1), then the release-group
-  popup on =release-tracks= (item 2 of the request, WIP.2), on
-  =feature/popup-engine=; live-tested by the user 2026-10-07. Not merged:
-  =npm run test:full= and the merge itself are still to come. Design and rules:
+- [X] Phase 1: the engine refactor into sources (9.99.1270), then the
+  release-group popup on =release-tracks= (item 2 of the request, 9.99.1271);
+  live-tested by the user and merged to =main= 2026-10-07 (=npm run
+  test:full=: 1292 passed). Design and rules:
   [[file:../docs/claude/detail-pages.md]] ("The popup engine: sources",
   "MusicBrainz: the release-group sources").
 - [ ] Phase 2: Web Service entity cards on the links of MusicBrainz tables.
@@ -299,8 +299,8 @@ it happens during pre-processing, before the rows are captured.
 
 ** 2. Phase 1: the release-group popup on release-tracks
 
-Phase 1 is two WIP entries on =feature/popup-engine=: WIP.1 the refactor into
-sources (no visible change), WIP.2 these enhancements.
+Phase 1 shipped as two versions: 9.99.1270 the refactor into sources (no
+visible change), 9.99.1271 these enhancements.
 
 | #   | Enhancement                | What changes                                                                                                                                               |
 |-----+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -420,11 +420,11 @@ gives the user.
 | Phase | Scope                                                                                             | Where                                 | Visible change      |
 |-------+---------------------------------------------------------------------------------------------------+---------------------------------------+---------------------|
 | 0     | probes (next section); results written into this file                                             | =scripts/=, on =feature/popup-engine= | none                |
-| 1     | the refactor into sources (WIP.1); the release-group popup E1-E10 (WIP.2)                         | =feature/popup-engine=                | release-tracks only |
-| 2     | Web Service cards on MusicBrainz table links: every kind of "Per entity kind" but edit and editor | same branch, WIP.3                    | behind =sa_pop_mb=  |
-| 3     | edit and editor cards read from HTML; the Live page for every MusicBrainz kind                    | WIP.4                                 | the edits PTs       |
-| 4     | containers (1b), page-wide scope, perhaps a wider =@include=                                      | WIP.5                                 | where declared      |
-| 5     | drill-down inside the dialog with a back stack; a side drawer if wanted                           | WIP.6                                 | the dialog          |
+| 1     | the refactor into sources (9.99.1270); the release-group popup E1-E10 (9.99.1271)                 | =feature/popup-engine=                | release-tracks only |
+| 2     | Web Service cards on MusicBrainz table links: every kind of "Per entity kind" but edit and editor | its own branch and WIP entries        | behind =sa_pop_mb=  |
+| 3     | edit and editor cards read from HTML; the Live page for every MusicBrainz kind                    | its own branch and WIP entries        | the edits PTs       |
+| 4     | containers (1b), page-wide scope, perhaps a wider =@include=                                      | its own branch and WIP entries        | where declared      |
+| 5     | drill-down inside the dialog with a back stack; a side drawer if wanted                           | its own branch and WIP entries        | the dialog          |
 
 Every phase owes, before anyone asks to merge:
 - fixture specs and a mutation list; a spec that MusicBrainz with =sa_pop_mb=
@@ -553,7 +553,8 @@ What this changes in the plan above:
 - Live page on MusicBrainz: =liveRoot= =#page=, nothing else hidden (R6, as
   corrected).
 - Phase 0 changed no userscript code, so it has no WIP changelog entry;
-  Phase 1's entry (WIP.1) names the two probes in its 📝 Docs section.
+  Phase 1's first entry (9.99.1270) names the two probes in its 📝 Docs
+  section.
 
 ** Risks and traps
 
