@@ -1530,6 +1530,11 @@ is behind them without opening a tab. So far: **releases**, **release
 groups**, **recordings**, **works**, **artists**, **labels**, **areas**,
 **instruments**, **events**, **places**, **series**, **collections**, and the
 codes: **ISRCs**, **ISWCs** and **disc IDs**, and **edits** and **editors**.
+A **Barcode** cell has a card too: the barcode's format and the releases
+carrying it. So does an entry of a column's **📊 dropdown** that names one
+artist, label, area or other entity: hold Ctrl over it. Pinning it with Space
+closes the dropdown. A **catalog number** shows the card of the label its
+release lists with that number (the window and Live page are the label's).
 
 **Hold Ctrl and rest the pointer on a link**, or rest it first and then press
 **Ctrl**: a card opens beside the link. Without Ctrl nothing happens, so
@@ -1593,8 +1598,11 @@ it was *fetched now* or *saved today*. A card that could not load says so;
 hover again to retry.
 
 Not previewed: the artwork column's links, a link around a picture (they have
-their own preview), the Relationships column (its own tooltip), and links
-outside a table. On a **touch screen**, a tap on such a link opens the window
+their own preview) and the Relationships column (its own tooltip). Links
+outside a table are previewed only with *Also preview links outside tables*
+switched on (same section): then the header, an annotation, the sidebar and
+relationship lists have cards too, but not the tabs, the page navigation or
+the script's own toolbar. On a **touch screen**, a tap on such a link opens the window
 instead of the page; **↗** in the window opens the page.
 
 </details>

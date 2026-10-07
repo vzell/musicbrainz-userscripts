@@ -1,0 +1,98 @@
+[
+  {
+    "version": "WIP.4",
+    "date": "2026-10-08",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Link previews on MusicBrainz: a catalog number has a card too — the card of the label that the row's release lists with that number (case, spaces and separators ignored, as MusicBrainz compares them). Its window is the label's window, and its Live page the label's page. A number the release lists for no label, or for several, says so. The Catalog# and Label cells list their values independently (three labels against two numbers on some rows), so the label is read from the release itself, never paired by position."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Popup engine: MusicBrainz's own span.catalog-number in a row that links a release is a target (\"<release>~<number>\"); the catalog-number kind reuses the release card's request and cache key, then hands over to the label kind. A kind may compute its Live page once it knows it (liveUrl)."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "popup-mb.spec.js: 4 more tests (54); popup-mb.json: 4 more mutations (51), four re-anchored; the live spec checks a barcode cell, a catalog number and a 📊 entry on the real release group page (7 tests). HELP, docs/claude/detail-pages.md, org/iframe.org."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.3",
+    "date": "2026-10-08",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Link previews on MusicBrainz: an entry of the 📊 dropdown that names one entity (an artist, a label, an area…) has that entity's card on Ctrl-hover — plain entries and the \"Entity info\" name entries alike. A name two entities share (two areas both called \"New York\") has none, since which one is meant is not known. Space pins it; the dropdown then closes, so it does not cover the window."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Popup engine: _mbPopParsePath() is the one place a MusicBrainz path becomes a kind, for links and for _mbPopStampHref(), which stamps an element from the one href the dropdown recorded for a name (entityNameHrefsMap). makeValueSynItem() returns its entry."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "popup-mb.spec.js: 2 more tests (50); popup-mb.json: 3 more mutations (47). The 47 existing 📊 dropdown specs (182 tests) pass unchanged."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.2",
+    "date": "2026-10-08",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Link previews on MusicBrainz: a Barcode cell has a card too — its format, whether its check digit is wrong, and the releases carrying that barcode, from one search; its window lists them (the first 25) with format, label and catalog number, and its Live page is MusicBrainz's barcode search. ← → step down the Barcode column. \"[none]\" and empty cells have none."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Popup engine: MusicBrainz's own td.barcode-cell is a target as it is, no stamp needed; a lookup kind may be fed by a search (query(t)). The search index ignores a barcode's leading zero (probed 2026-10-08), so the cell's own digits are asked."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "popup-mb.spec.js: 3 more tests (48) on the host page's real Barcode cells; fixture ws2-pop-barcode-074643190329.json; popup-mb.json: 3 more mutations (44), two re-anchored."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-10-08",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Link previews on MusicBrainz: new setting \"Also preview links outside tables\" (off by default). When on, every entity link in the page's content has a card too — the header, an annotation, the sidebar, a relationship list — except the entity's tabs, the page navigation and the script's own toolbar."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Popup engine (org/iframe.org Phase 4, item 1b): any element stamped data-mb-pop=\"<kind>:<id>\" is previewed as that kind, with data-mb-pop-name for its loading card; the attribute survives every re-render, and the arrows step over stamped cells as over links. A stamped kind must be one of the registry's own (an attribute string cannot reach an inherited property); a kind may name its own page (a disc ID: /cdtoc/). The coming barcode, 📊 entry and Catalog# cards build on this."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "popup-mb.spec.js: 4 more tests (45); popup-mb.json: 4 more mutations (41), one re-anchored. ShowAllEntityData_CONFIG_DEFAULTS.json regenerated. HELP, docs/claude/detail-pages.md, org/iframe.org."
+        ]
+      }
+    ]
+  }
+]

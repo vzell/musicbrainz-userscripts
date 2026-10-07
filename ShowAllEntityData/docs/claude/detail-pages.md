@@ -501,6 +501,66 @@ note shown), an open edit captured LOGGED OUT (no other editor's name or
 notes), and the user's own profile logged out with its age, gender and
 location rows removed. Never commit another editor's profile.
 
+## MusicBrainz: beyond table links (org/iframe.org, Phase 4)
+
+- **`data-mb-pop="<kind>:<id>"`** on any element makes it a target
+  (`_mbPopTarget()`'s first branch; the source's selector always includes
+  `[data-mb-pop]`). Stamp it at pre-processing or in a formatter that runs on
+  the SOURCE rows: an attribute survives `cloneNode(true)`, so the re-renders
+  keep it for free, and it changes no cell text, so none of the four
+  post-render cache duties (filter-and-cache-invariants.md) apply.
+  `data-mb-pop-name` names the target for its loading card. The kind is
+  looked up as an OWN key of `_MB_KINDS` (an attribute string like
+  `constructor:1` must not find an inherited property). A kind's page is
+  `k.path(id)` when it has one (a disc ID: `/cdtoc/<id>`), else
+  `/<kind>/<id>`. The arrows treat a stamped cell like a link
+  (`_mbPopSteps()` looks at `a[href], [data-mb-pop]`).
+- **Page-wide scope, `sa_pop_mb_page`** (default off): the selector is a
+  getter, `[data-mb-pop], #page a[href]` instead of
+  `[data-mb-pop], table.tbl > tbody a[href]`, read at every event (no
+  reload). Outside a table body `_MB_POP_PAGE_SKIP` leaves out the entity's
+  tabs (its "Overview" is a bare entity link), pagination, `nav`, and the
+  script's toolbar and menus. `@include` is unchanged (answer 6).
+- **Barcode cells** need no stamp: MusicBrainz's own `td.barcode-cell` (plain
+  text) is a target as it is (`_mbPopTarget()`'s TD branch; the selector names
+  `table.tbl > tbody td.barcode-cell`). Its id is `_findCellBarcodeParts()`'s
+  digits as the cell writes them; the `barcode` kind is one release search,
+  `release?query=barcode:<digits>&limit=25` (`_mbPopLookupKind({query})`). The
+  search index ignores a leading zero (probed 2026-10-08: with and without, the
+  same 6 releases). Its page (`k.path`) is the advanced search. The step finder
+  considers the cell itself (`[td, ...td.querySelectorAll(…)]`). An invalid
+  barcode's own "Liner notes" card gives way to this one (`_OTHER_RICH_TIPS`);
+  a click on a grouped cell still toggles its merge boxes (the card hides on
+  mousedown).
+- **📊 entries** are stamped where the dropdown builds them: a plain entry in
+  `renderItems()` and an "Entity info" name entry in `_emitNameSynItem()`
+  (`makeValueSynItem()` now returns its element), through
+  `_mbPopStampHref(el, hrefs, name)` from the dropdown's own
+  `entityNameHrefsMap` — only when the name has exactly ONE href (two areas
+  both named "New York": no stamp). Entries keep no value in the DOM, which is
+  why the stamp happens at build time. `_mbPopParsePath()` is the one path →
+  kind parser for links and stamps. Pinning from an entry closes the dropdown
+  (`_dpOpenDialog()`): its z-index 999999 is above the window's 10050. Space
+  over a shown card pins (the engine's capture listener runs before the
+  dropdown's own Space-toggles-entry). In specs, open a dropdown with its
+  column header scrolled into view: it is fixed-position beside its button,
+  and opened off screen it stays there (2 of 10 runs).
+- **Catalog# → its label.** MusicBrainz's Catalog# and Label cells list
+  their values INDEPENDENTLY (unique labels, unique numbers: three labels
+  against two numbers on a Greetings row), so a number cannot be paired with
+  a label by position — a per-column declaration (the 1b sketch's
+  `popTargets`) would mis-pair them. Instead a `span.catalog-number` in a row
+  that links a release is a target `catno:<release>~<number>`
+  (`_mbPopRowRelease()`); the kind loads the release lookup (the release
+  card's own request and cache key), takes the `label-info` whose
+  catalog number matches (`_mbPopCatnoKey()`: case, spaces and separators
+  ignored, as MusicBrainz compares `catno`), and with ONE label hands over to
+  the label kind with a target that keeps the catalog number's key (so
+  `_mbPopWanted()` still recognises the card and the window). The label's
+  lookup starts from the repaint the release answer causes, only when never
+  asked (the `_rgWindowFor()` exception). `liveUrl(t)` on a kind lets the
+  Live page be the label's once known.
+
 `python3 scripts/check-mutation-anchors.py` checks, without running a spec,
 that every `find` of every mutation list still matches once. Run it after
 editing a line a list anchors on: Phase 2's first step changed two lines that

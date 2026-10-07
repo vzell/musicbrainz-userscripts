@@ -79,6 +79,7 @@ const WS2_FIXTURES = [
     [/\/ws\/2\/iswc\//, 'ws2-pop-iswc-btr.json'],
     [/\/ws\/2\/discid\//, 'ws2-pop-discid-dark.json'],
     [/\/ws\/2\/collection\//, 'ws2-pop-collection-attending.json'],
+    [/\/ws\/2\/release\?query=barcode:/, 'ws2-pop-barcode-074643190329.json'],
 ];
 // A 1×1 PNG, so a cover the card asks for loads instead of being dropped.
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
@@ -149,6 +150,7 @@ async function open(page, { settings = {}, lookup = null, showAll = true, ws2 = 
     });
     await ctx.route('**/ws/2/release?recording=**', other);
     await ctx.route('**/ws/2/release?label=**', other);
+    await ctx.route('**/ws/2/release?query=**', other);
     await ctx.route('**/ws/2/release-group?artist=**', other);
     // Phase 3: edit and editor pages, by URL (`pageFixture` may answer instead).
     await ctx.route(/^https:\/\/musicbrainz\.org\/(edit|user)\//, (route) => {
@@ -1051,5 +1053,281 @@ test.describe('MusicBrainz link previews: edit and editor, read from the page (P
         await ctrlHover(page, a);
         await expect(card(page)).toContainText('fetched now');
         expect(log.html).toHaveLength(2);
+    });
+});
+
+test.describe('MusicBrainz link previews: beyond table links (Phase 4)', () => {
+    /**
+     * What `__saTest.popResolve()` says for elements the page builds:
+     * stamped elements in a cell, the page's own header and tab links.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<Object<string, ?string>>}
+     */
+    async function resolveAll(page) {
+        return page.evaluate((id) => {
+            const td = document.querySelector('table.tbl tbody tr td:first-child');
+            const stamp = (value, name) => {
+                const el = document.createElement('span');
+                el.setAttribute('data-mb-pop', value);
+                if (name) el.setAttribute('data-mb-pop-name', name);
+                el.textContent = name || value;
+                td.appendChild(el);
+                return window.__saTest.popResolve(el);
+            };
+            const res = (el) => (el ? window.__saTest.popResolve(el) : 'missing');
+            return {
+                stamped: stamp(`release:${id}`, 'Greetings'),
+                discid: stamp('discid:coDDysS5IdmG1aPONqJSQd6TJws-'),
+                unknownKind: stamp('nope:1'),
+                inherited: stamp('constructor:1'),
+                noId: stamp('release:'),
+                header: res(document.querySelector('#content .subheader a[href^="/artist/"]')),
+                tab: res(document.querySelector('#content .tabs a[href^="/release-group/"]')),
+            };
+        }, REL_ID);
+    }
+
+    test('a stamped element is previewed as its kind, anywhere; a bad stamp is not', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const r = await resolveAll(page);
+        expect(r.stamped).toBe(`mb-entity|release:${REL_ID}`);
+        expect(r.discid).toBe('mb-entity|discid:coDDysS5IdmG1aPONqJSQd6TJws-');
+        expect(r.unknownKind).toBeNull();
+        expect(r.inherited, 'only the registry\'s own kinds').toBeNull();
+        expect(r.noId).toBeNull();
+        expect(r.header, 'outside a table: not with the default scope').toBeNull();
+    });
+
+    test('a stamped element\'s card and page: its name while loading, its kind\'s own path', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        await page.evaluate((id) => {
+            const td = document.querySelector('table.tbl tbody tr td:first-child');
+            const el = document.createElement('span');
+            el.id = 'stamped';
+            el.setAttribute('data-mb-pop', `release:${id}`);
+            el.setAttribute('data-mb-pop-name', 'Stamped release');
+            el.textContent = 'cell text';
+            td.appendChild(el);
+            const d = document.createElement('span');
+            d.id = 'stamped-disc';
+            d.setAttribute('data-mb-pop', 'discid:coDDysS5IdmG1aPONqJSQd6TJws-');
+            d.textContent = 'disc';
+            td.appendChild(d);
+        }, REL_ID);
+        await ctrlHover(page, page.locator('#stamped'));
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page)).toContainText('Greetings From Asbury Park, N.J.');
+        expect(log.lookups).toHaveLength(1);
+        await ctrlHover(page, page.locator('#stamped-disc'));
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('a.mb-dp-tbtn')).toHaveAttribute('href', 'https://musicbrainz.org/cdtoc/coDDysS5IdmG1aPONqJSQd6TJws-');
+    });
+
+    test('page-wide scope (sa_pop_mb_page): a header link has a card; the tabs still do not', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true, sa_pop_mb_page: true }, showAll: false });
+        const r = await resolveAll(page);
+        expect(r.header).toMatch(/^mb-entity\|artist:[0-9a-f-]{36}$/);
+        expect(r.tab, 'the entity\'s own tabs').toBeNull();
+        const header = page.locator('#content .subheader a[href^="/artist/"]').first();
+        await ctrlHover(page, header);
+        await expect(card(page)).toContainText('fetched now');
+        expect(log.ws2).toEqual([expect.stringContaining('/ws/2/artist/')]);
+    });
+
+    test('the arrows step over stamped cells of the same kind in the same column', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        await page.evaluate(() => {
+            const rows = Array.from(document.querySelectorAll('table.tbl tbody tr')).filter(tr => tr.cells.length > 7).slice(0, 3);
+            rows.forEach((tr, i) => {
+                const el = document.createElement('span');
+                el.className = 'stamped-step';
+                el.setAttribute('data-mb-pop', 'discid:coDDysS5IdmG1aPONqJSQd6TJws-');
+                el.setAttribute('data-mb-pop-name', `disc ${i + 1}`);
+                el.textContent = `disc ${i + 1}`;
+                tr.cells[7].appendChild(el);
+            });
+        });
+        await ctrlHover(page, page.locator('.stamped-step').first());
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('.mb-dp-pos-label')).toHaveText('1 / 3');
+        await page.keyboard.press('ArrowRight');
+        await expect(dialog(page).locator('.mb-dp-pos-label')).toHaveText('2 / 3');
+    });
+});
+
+test.describe('MusicBrainz link previews: barcode cells (Phase 4)', () => {
+    const BARCODE = '074643190329';
+    const bcCell = (page) => page.locator('table.tbl tbody td.barcode-cell', { hasText: BARCODE }).first();
+
+    test('a barcode cell is a target; "[none]" and an empty cell are not', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const r = await page.evaluate((code) => {
+            const cells = Array.from(document.querySelectorAll('table.tbl tbody td.barcode-cell'));
+            const res = (td) => (td ? window.__saTest.popResolve(td) : 'missing');
+            const none = document.createElement('td');
+            none.className = 'barcode-cell';
+            none.textContent = '[none]';
+            const empty = document.createElement('td');
+            empty.className = 'barcode-cell';
+            cells[0].parentElement.append(none, empty);
+            return { code: res(cells.find(td => td.textContent.trim() === code)), none: res(none), empty: res(empty) };
+        }, BARCODE);
+        expect(r.code).toBe(`mb-entity|barcode:${BARCODE}`);
+        expect(r.none).toBeNull();
+        expect(r.empty).toBeNull();
+    });
+
+    test('its card: the releases carrying it, from one search', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        await ctrlHover(page, bcCell(page));
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-title')).toHaveText(BARCODE);
+        await expect(card(page).locator('.mb-tt-pill')).toContainText(['6 releases']);
+        await expect(card(page).locator('.mb-dp-kv')).toContainText('Greetings From Asbury Park, N.J.');
+        expect(log.ws2).toEqual([expect.stringContaining(`/ws/2/release?query=barcode:${BARCODE}&limit=25&fmt=json`)]);
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Barcode');
+        await expect(dialog(page).locator('.mb-rg-wtable tbody tr')).toHaveCount(6);
+        await expect(dialog(page).locator('a.mb-dp-tbtn')).toHaveAttribute('href',
+            `https://musicbrainz.org/search?query=barcode%3A${BARCODE}&type=release&method=advanced`);
+    });
+
+    test('the arrows step down the Barcode column, over cells that hold a barcode', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true } });
+        const n = await page.evaluate(() => Array.from(document.querySelectorAll('table.tbl tbody td.barcode-cell'))
+            .filter(td => td.getClientRects().length && /\d/.test(td.textContent) && td.textContent.trim() !== '[none]').length);
+        expect(n).toBeGreaterThan(2);
+        await ctrlHover(page, bcCell(page));
+        await expect(card(page)).toBeVisible();
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('.mb-dp-pos-label')).toHaveText(new RegExp(`^\\d+ / ${n}$`));
+        const before = await dialog(page).locator('.mb-dp-pos-label').textContent();
+        await page.keyboard.press('ArrowRight');
+        await expect(dialog(page).locator('.mb-dp-pos-label')).not.toHaveText(before);
+        await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Barcode');
+    });
+});
+
+test.describe('MusicBrainz link previews: 📊 dropdown entries (Phase 4)', () => {
+    const ARTIST_POP = 'artist:70248960-cb53-4ea4-943a-edb18f7d336f';
+
+    /**
+     * Opens the first visible table's 📊 dropdown on a column.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {string} col
+     * @returns {Promise<void>}
+     */
+    async function openDrop(page, col) {
+        await page.evaluate((name) => {
+            const th = Array.from(document.querySelectorAll('table.tbl thead th'))
+                .find((t) => t.dataset.colName === name && t.getClientRects().length);
+            // The dropdown is fixed-position beside its button: clicked off
+            // screen, it opens off screen (2 of 10 runs did).
+            th.scrollIntoView({ block: 'center' });
+            th.querySelector('.mb-col-uniq-wrap').click();
+        }, col);
+        await expect(page.locator('#mb-col-uniq-dropdown')).toBeVisible();
+    }
+
+    test('an entry naming one entity is stamped and has that entity\'s card; an entry naming none is not', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true } });
+        await openDrop(page, 'Artist');
+        const drop = page.locator('#mb-col-uniq-dropdown');
+        const plain = drop.locator(`.mb-col-uniq-item:not(.mb-col-uniq-multirow-item)[data-mb-pop="${ARTIST_POP}"]`);
+        await expect(plain).toHaveCount(1);
+        await expect(plain).toHaveAttribute('data-mb-pop-name', 'Bruce Springsteen');
+        await ctrlHover(page, plain);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-pill')).toContainText(['Person']);
+        expect(log.ws2).toEqual([expect.stringContaining('/ws/2/artist/70248960-cb53-4ea4-943a-edb18f7d336f?')]);
+        // The Label column's "Entity info - Label name" entries are stamped too.
+        await page.keyboard.press('Escape');
+        await page.mouse.click(5, 5);
+        await openDrop(page, 'Label');
+        await expect(page.locator('#mb-col-uniq-dropdown .mb-col-uniq-multirow-item[data-mb-pop="label:011d1192-6f65-45bd-85c4-0400dd45693e"]'))
+            .toHaveCount(1);
+        // A Format value names no entity: no stamp.
+        await page.keyboard.press('Escape');
+        await page.mouse.click(5, 5);
+        await openDrop(page, 'Format');
+        await expect(page.locator('#mb-col-uniq-dropdown .mb-col-uniq-item[data-mb-pop]')).toHaveCount(0);
+    });
+
+    test('pinning an entry\'s card puts the window in front: the dropdown closes', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true } });
+        await openDrop(page, 'Artist');
+        const entry = page.locator(`#mb-col-uniq-dropdown .mb-col-uniq-item[data-mb-pop="${ARTIST_POP}"]`).first();
+        await ctrlHover(page, entry);
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        await expect(dialog(page)).toBeVisible();
+        await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Artist');
+        await expect(page.locator('#mb-col-uniq-dropdown')).toBeHidden();
+        const inFront = await page.evaluate(() => {
+            const d = document.getElementById('mb-dp-dialog').getBoundingClientRect();
+            const el = document.elementFromPoint(d.left + d.width / 2, d.top + d.height / 2);
+            return !!(el && el.closest('#mb-dp-dialog'));
+        });
+        expect(inFront, 'nothing covers the window').toBe(true);
+    });
+});
+
+test.describe('MusicBrainz link previews: Catalog# → its label (Phase 4)', () => {
+    const catSpan = (page) => page.locator('table.tbl tbody span.catalog-number', { hasText: /^KC 31903$/ }).first();
+
+    test('a catalog number resolves to its row\'s release and the number', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const r = await page.evaluate(() => {
+            const span = Array.from(document.querySelectorAll('table.tbl tbody span.catalog-number')).find(s => s.textContent.trim() === 'KC 31903');
+            const loose = document.createElement('span');
+            loose.className = 'catalog-number';
+            loose.textContent = 'XYZ 1';
+            document.querySelector('#content').appendChild(loose);
+            return { span: window.__saTest.popResolve(span), outside: window.__saTest.popResolve(loose) };
+        });
+        expect(r.span).toBe(`mb-entity|catno:${REL_ID}~KC 31903`);
+        expect(r.outside, 'not in a table row that links a release').toBeNull();
+    });
+
+    test('its card is the label the release names for that number: the release lookup, then the label\'s', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        await ctrlHover(page, catSpan(page));
+        await expect(card(page)).toContainText('fetched now', { timeout: 15000 });
+        await expect(card(page).locator('.mb-tt-dim').first()).toHaveText('KC 31903 — catalog number of');
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('Columbia');
+        await expect(card(page).locator('.mb-tt-pill')).toContainText(['LC 00162']);
+        expect(log.lookups.map(l => l.url)).toEqual([expect.stringContaining(`/ws/2/release/${REL_ID}?${INC}`)]);
+        expect(log.ws2).toEqual([expect.stringContaining('/ws/2/label/011d1192-6f65-45bd-85c4-0400dd45693e?inc=genres+aliases')]);
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Catalog number');
+        await expect(dialog(page).locator('h4:text-is("Related labels") + .mb-dp-kv')).toContainText('Vocalion');
+        await expect(dialog(page).locator('a.mb-dp-tbtn')).toHaveAttribute('href', 'https://musicbrainz.org/label/011d1192-6f65-45bd-85c4-0400dd45693e');
+    });
+
+    test('a number the release does not list for any label says so, and asks for no label', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        await page.evaluate(() => {
+            const span = Array.from(document.querySelectorAll('table.tbl tbody span.catalog-number')).find(s => s.textContent.trim() === 'KC 31903');
+            span.textContent = 'NOT 1';
+            span.id = 'other-cat';
+        });
+        await ctrlHover(page, page.locator('#other-cat'));
+        await expect(card(page)).toContainText('The release lists no label with this catalog number.', { timeout: 15000 });
+        expect(log.ws2).toEqual([]);
+    });
+
+    test('the number is compared as MusicBrainz compares catalog numbers', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        await page.evaluate(() => {
+            const span = Array.from(document.querySelectorAll('table.tbl tbody span.catalog-number')).find(s => s.textContent.trim() === 'KC 31903');
+            span.textContent = 'kc-31903';
+            span.id = 'loose-cat';
+        });
+        await ctrlHover(page, page.locator('#loose-cat'));
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('Columbia', { timeout: 15000 });
     });
 });

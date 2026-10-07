@@ -4240,6 +4240,15 @@
                          'a link opens the window instead of the page (↗ in the window opens the page).'
         },
 
+        sa_pop_mb_page: {
+            label: 'Also preview links outside tables',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default: only the links in a table have a card. When on, every entity link in the ' +
+                         'page\'s content has one too — the header, an annotation, the sidebar, a relationship list ' +
+                         '— except the tabs, the page navigation and the script\'s own toolbar.'
+        },
+
         sa_pop_mb_ttl_hours: {
             label: 'Keep MusicBrainz answers for (hours)',
             type: 'number',
@@ -14770,6 +14779,10 @@
     function _dpOpenDialog(t) {
         _dpHidePeek();
         if (!t || !t.src.enabled()) return;
+        // A card pinned from a 📊 entry (Phase 4): the dropdown (z-index
+        // 999999) would stay in front of the window (10050); the user has
+        // moved on to the entity, so it closes, as a click outside it would.
+        if (t.el && t.el.closest && t.el.closest('#mb-col-uniq-dropdown')) closeUniqDrop(false);
         if (_dpDialog.api && _dpDialog.api.dialog.isConnected) {
             _dpShowInDialog(t);
             return;
@@ -36530,46 +36543,157 @@
     const _MB_POP_PAGE_RE = /^\/(?:(edit)\/(\d+)|(user)\/([^/]+))\/?$/;
 
     /**
-     * What a link in a MusicBrainz table previews, or null: a same-origin
-     * link to the bare page of a kind `_MB_KINDS` knows (an entity by MBID,
-     * or a code: `_MB_POP_CODE_RE`), not wrapping an image (artwork has its
-     * own preview), not in the Relationships column (its own tooltip), not
-     * inside the card or the window.
+     * The kind a MusicBrainz page path previews as: an entity by MBID
+     * (`_MB_POP_PATH_RE`), a code (`_MB_POP_CODE_RE`), an edit or an editor
+     * (`_MB_POP_PAGE_RE`); `seg` is the path's own first segment (a disc ID's
+     * page is /cdtoc/, its kind `discid`). `null` for any other path.
+     *
+     * @param {string} pathname
+     * @returns {?{seg: string, type: string, id: string}}
+     */
+    function _mbPopParsePath(pathname) {
+        const m = _MB_POP_PATH_RE.exec(pathname);
+        if (m) return { seg: m[1], type: m[1], id: m[2] };
+        const c = _MB_POP_CODE_RE.exec(pathname);
+        if (c) return { seg: c[1], type: _MB_POP_CODE_TYPES[c[1]], id: c[2] };
+        const p = _MB_POP_PAGE_RE.exec(pathname);
+        if (p) return { seg: p[1] || p[3], type: p[1] || p[3], id: p[2] || p[4] };
+        return null;
+    }
+
+    /**
+     * The release a table row is about: the MBID of its first link to a
+     * bare release page ('' when it links none), for a Catalog# card.
+     *
+     * @param {Element} el - An element in the row.
+     * @returns {string}
+     */
+    function _mbPopRowRelease(el) {
+        const tr = el.closest('tr');
+        if (!tr) return '';
+        for (const a of tr.querySelectorAll('a[href^="/release/"]')) {
+            const pp = _mbPopParsePath(a.pathname);
+            if (pp && pp.type === 'release') return pp.id;
+        }
+        return '';
+    }
+
+    /**
+     * A catalog number as MusicBrainz compares them: case, spaces and
+     * separators ignored (MusicBrainz_API/Search on `catno`).
+     *
+     * @param {string} c
+     * @returns {string}
+     */
+    function _mbPopCatnoKey(c) {
+        return String(c || '').toLowerCase().replace(/[\s\-._/]+/g, '');
+    }
+
+    /**
+     * Stamps an element with the kind and id of ONE entity's link
+     * (`data-mb-pop`, `data-mb-pop-name`), so the popup engine previews it
+     * (Phase 4: a 📊 entry whose value names exactly one entity). Nothing
+     * when there is no href, or several (two areas both named "New York":
+     * which one is meant is not known), or the path is not a kind the cards
+     * know.
+     *
+     * @param {Element} el
+     * @param {?(string|Set<string>)} hrefs - One href, or the Set the 📊
+     *   dropdown recorded for a name.
+     * @param {string} name - For the loading card.
+     * @returns {void}
+     */
+    function _mbPopStampHref(el, hrefs, name) {
+        const list = typeof hrefs === 'string' ? [hrefs] : Array.from(hrefs || []);
+        if (!el || list.length !== 1) return;
+        let pathname;
+        try {
+            pathname = new URL(list[0], window.location.origin).pathname;
+        } catch (_) {
+            return;
+        }
+        const pp = _mbPopParsePath(pathname);
+        if (!pp || !Object.prototype.hasOwnProperty.call(_MB_KINDS, pp.type)) return;
+        el.setAttribute('data-mb-pop', `${pp.type}:${pp.id}`);
+        if (name) el.setAttribute('data-mb-pop-name', name);
+    }
+
+    /**
+     * What the page-wide scope (`sa_pop_mb_page`) leaves out: the entity's
+     * own tabs (its "Overview" tab is a bare entity link), the page
+     * navigation, and the script's own toolbar and menus.
+     * @type {string}
+     */
+    const _MB_POP_PAGE_SKIP = '.tabs, .pagination, .pageselector, nav, #mb-show-all-controls-container, .mb-toolbar-menu-panel';
+
+    /**
+     * What an element previews, or null:
+     *   - an element stamped `data-mb-pop="<kind>:<id>"` (org/iframe.org 1b,
+     *     Phase 4): a converter, an extractor or a formatter marks a
+     *     non-link (a barcode cell, a 📊 entry) as one of the `_MB_KINDS`;
+     *     the attribute survives every `cloneNode(true)` re-render, and an
+     *     optional `data-mb-pop-name` names it for the loading card;
+     *   - a same-origin link to the bare page of a kind `_MB_KINDS` knows
+     *     (an entity by MBID, a code: `_MB_POP_CODE_RE`, an edit or editor:
+     *     `_MB_POP_PAGE_RE`).
+     * Not an element around an image (artwork has its own preview; an
+     * editor's avatar does not count), not in the Relationships column (its
+     * own tooltip), not inside the card or the window, and — outside a table
+     * body, with the page-wide scope — not in `_MB_POP_PAGE_SKIP`.
      *
      * @param {Element} a
      * @returns {?{key: string, url: string, type: string, id: string, kind: string, wide: boolean, name: string, col: string}}
      */
     function _mbPopTarget(a) {
-        if (!a || a.tagName !== 'A' || a.origin !== window.location.origin) return null;
+        if (!a || !a.getAttribute) return null;
         let seg = '';
         let type = '';
         let id = '';
-        const m = _MB_POP_PATH_RE.exec(a.pathname);
-        if (m) {
-            [, seg, id] = m;
-            type = seg;
+        const pop = a.getAttribute('data-mb-pop');
+        // A barcode cell (MusicBrainz's own td.barcode-cell, plain text):
+        // its digits, as the cell writes them (the search index ignores a
+        // leading zero, probed 2026-10-08). "[none]" and an empty cell are
+        // not a barcode.
+        const bc = !pop && a.tagName === 'TD' && a.classList.contains('barcode-cell') ? _findCellBarcodeParts(a)[0] : null;
+        // A catalog number (MusicBrainz's own span.catalog-number): the
+        // row's release and the number, "<release MBID>~<number>"; the card
+        // finds the label in the release's own label info (Catalog# and
+        // Label cells list their values independently, so they cannot be
+        // paired by position).
+        const cat = !pop && !bc && a.tagName === 'SPAN' && a.classList.contains('catalog-number') ? _mbPopRowRelease(a) : '';
+        if (bc && bc.digits) {
+            type = 'barcode';
+            id = bc.digits;
+        } else if (cat && a.textContent.trim()) {
+            type = 'catno';
+            id = `${cat}~${a.textContent.trim()}`;
+        } else if ((a.tagName === 'TD' || a.tagName === 'SPAN') && !pop) {
+            return null;
+        } else if (pop) {
+            const i = pop.indexOf(':');
+            type = i > 0 ? pop.slice(0, i) : '';
+            id = i > 0 ? pop.slice(i + 1) : '';
+        } else if (a.tagName !== 'A' || a.origin !== window.location.origin) {
+            return null;
         } else {
-            const c = _MB_POP_CODE_RE.exec(a.pathname);
-            const p = !c && _MB_POP_PAGE_RE.exec(a.pathname);
-            if (c) {
-                [, seg, id] = c;
-                type = _MB_POP_CODE_TYPES[seg];
-            } else if (p) {
-                seg = p[1] || p[3];
-                id = p[2] || p[4];
-                type = seg;
-            }
+            const pp = _mbPopParsePath(a.pathname);
+            if (pp) ({ seg, type, id } = pp);
         }
-        const k = type && _MB_KINDS[type];
+        // Own keys only: a stamped kind is a string from an attribute.
+        const k = type && id && Object.prototype.hasOwnProperty.call(_MB_KINDS, type) ? _MB_KINDS[type] : null;
         if (!k) return null;
         // An image means artwork (it has its own preview) — except the
         // avatar MusicBrainz puts inside every editor link (Phase 3).
         if (a.querySelector('img:not(.avatar)') || a.closest('td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;
+        if (!a.closest('table.tbl > tbody') && a.closest(_MB_POP_PAGE_SKIP)) return null;
         const td = a.closest('td, th');
         const table = td && td.closest('table.tbl');
+        // A stamped element's page: its kind's own path (a disc ID's is
+        // /cdtoc/), else /<kind>/<id>; a link's: the path it names.
+        const where = seg ? `/${seg}/${id}` : (k.path ? k.path(id) : `/${type}/${id}`);
         return {
-            key: `${type}:${id}`, url: new URL(`/${seg}/${id}`, window.location.origin).href,
-            type, id, kind: k.title, wide: !!k.wide, name: a.textContent.trim(),
+            key: `${type}:${id}`, url: new URL(where, window.location.origin).href,
+            type, id, kind: k.title, wide: !!k.wide, name: a.getAttribute('data-mb-pop-name') || a.textContent.trim(),
             col: table ? _resolveColHeaderName(table, td.cellIndex) : '',
         };
     }
@@ -36600,7 +36724,7 @@
             for (const tr of tb.tBodies[0].rows) {
                 const td = tr.cells[idx];
                 if (!td) continue;
-                const a = Array.from(td.querySelectorAll('a[href]')).find(x => {
+                const a = [td, ...td.querySelectorAll('a[href], [data-mb-pop], span.catalog-number')].find(x => {
                     const m = _mbPopTarget(x);
                     return m && m.type === t.type;
                 });
@@ -36761,22 +36885,23 @@
      * whatever `pin(t, d, start, repaint)` starts once the answer is there:
      * the `card`/`extracted` members of an `_MB_KINDS` entry.
      *
-     * @param {{cardInc: string, cardHtml: function(Object, object): string,
-     *   windowHtml: function(Object, object): string,
+     * @param {{cardInc?: string, query?: function(object): {key: string, url: string},
+     *   cardHtml: function(Object, object): string, windowHtml: function(Object, object): string,
      *   pin?: function(object, Object, boolean, function(): void): void,
-     *   failNote?: function(string): string}} spec
+     *   failNote?: function(string): string}} spec - `query(t)`, when given,
+     *   feeds the kind from another request than its lookup (a search).
      * @returns {{card: function(object, boolean, function(): void): string,
      *   extracted: function(object, boolean, boolean, function(): void): string}}
      */
     function _mbPopLookupKind(spec) {
         return {
             card(t, start, repaint) {
-                const q = _mbPopLookup(t, spec.cardInc);
+                const q = spec.query ? spec.query(t) : _mbPopLookup(t, spec.cardInc);
                 if (start) _mbWsLoad(q.key, q.url, { repaint, wanted: _mbPopWanted(t) });
                 return _mbPopCardShell(t, _mbPop.get(q.key), spec.cardHtml, spec.failNote);
             },
             extracted(t, start, force, repaint) {
-                const q = _mbPopLookup(t, spec.cardInc);
+                const q = spec.query ? spec.query(t) : _mbPopLookup(t, spec.cardInc);
                 // The pin's extras start once the answer is there: from this
                 // call when it is cached, else from the repaint it causes —
                 // `pin()` itself starts only what was never asked (or ⟳).
@@ -37959,7 +38084,7 @@
         })),
         // A disc ID: its table of contents (offsets in CD sectors, 75 a
         // second) and the releases it is attached to.
-        discid: Object.assign({ title: 'Disc ID', wide: true }, _mbPopLookupKind({
+        discid: Object.assign({ title: 'Disc ID', wide: true, path: (id) => `/cdtoc/${id}` }, _mbPopLookupKind({
             cardInc: '',
             cardHtml(d) {
                 const rels = d.releases || [];
@@ -38056,6 +38181,141 @@
                     `<p><a href="/user/${encodeURIComponent(d.name)}/edits" target="_blank" rel="noopener">Their edits</a></p></div></div>`;
             },
         })),
+        // Phase 4: a barcode cell. One release search on the indexed
+        // `barcode` field (MusicBrainz_API/Search, checked 2026-10-08): the
+        // releases carrying it, the first 25 (the default limit) and the count.
+        barcode: Object.assign({
+            title: 'Barcode', wide: true,
+            path: (id) => `/search?query=barcode%3A${encodeURIComponent(id)}&type=release&method=advanced`,
+        }, _mbPopLookupKind({
+            query: (t) => _mbPopBrowse('release', `query=barcode:${encodeURIComponent(t.id)}&limit=25`),
+            cardHtml(d, t) {
+                const rels = (d.releases || []).slice().sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'));
+                const n = typeof d.count === 'number' ? d.count : rels.length;
+                const fmt = _parseBarcodeCode(t.id);
+                return `<div class="mb-tt-title">${_rgEsc(t.id)}</div><div class="mb-tt-body mb-rg-pills">` +
+                    _mbPopPillsHtml([fmt && fmt.format, fmt && fmt.valid === false ? 'invalid check digit' : '',
+                        `${n} release${n === 1 ? '' : 's'}`]) + '</div><div class="mb-tt-rule"></div>' +
+                    (rels.length ? _mbPopKvHtml([['Releases', rels.slice(0, _MB_POP_CARD_RELEASES).map(r => `${_rgEsc(r.date || '—')} ` +
+                        `${_rgEsc(r.title)}${r.country ? ` <span class="mb-rg-cc">${_rgEsc(r.country)}</span>` : ''}` +
+                        `${(r.media || []).length ? ` <span class="mb-rg-dim">${_rgEsc(_rgFormatOf(r))}</span>` : ''}`).join('<br>') +
+                        (n > _MB_POP_CARD_RELEASES ? `<br><span class="mb-rg-dim">+ ${n - _MB_POP_CARD_RELEASES} more</span>` : '')]])
+                        : '<div class="mb-tt-comment">MusicBrainz has no release with this barcode.</div>');
+            },
+            windowHtml(d, t) {
+                const rels = (d.releases || []).slice().sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'));
+                const n = typeof d.count === 'number' ? d.count : rels.length;
+                const fmt = _parseBarcodeCode(t.id);
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(t.id)}</div>` +
+                    `<div class="mb-rg-pills">${_mbPopPillsHtml([fmt && fmt.format, fmt && fmt.valid === false ? 'invalid check digit' : ''])}</div>` +
+                    '<h4>Barcode</h4>' + _mbPopKvHtml([
+                        ['Format', _rgEsc((fmt && fmt.format) || '')],
+                        ['Releases', _rgEsc(String(n))],
+                    ]);
+                const right = `<h4>Releases · ${n}</h4>` + (n > rels.length ? `<div class="mb-rg-progress">The first ${rels.length} of ${n}.</div>` : '') +
+                    (rels.length ? _mbPopTableHtml(['Release', 'Date', 'Country', 'Format', 'Label / Cat#'], rels.map(r => [
+                        `<a href="/release/${_rgEsc(r.id)}" target="_blank" rel="noopener">${_rgEsc(r.title)}</a>` +
+                            `${r.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(r.disambiguation)})</span>` : ''}`,
+                        _rgEsc(r.date || '—'), _rgEsc(r.country || '—'), _rgEsc((r.media || []).length ? _rgFormatOf(r) : '—'),
+                        _rgEsc(_rgLabelOf(r) || '—'),
+                    ])) : '<div class="mb-dp-xsub">MusicBrainz has no release with this barcode.</div>');
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+        })),
+        // Phase 4: a catalog number. Its row's release lookup (the release
+        // card's own request and cache key) names the label(s) with this
+        // number; ONE label → that label's card and window, its page the
+        // Live page. The label's lookup starts once the release answered:
+        // from a repaint too, but only when it was never asked (a failure
+        // waits for ⟳), as `_rgWindowFor()`'s exception.
+        catno: (() => {
+            const RELEASE_INC = 'artist-credits+labels+recordings+release-groups+media';
+            const parts = (t) => {
+                const i = t.id.indexOf('~');
+                return { rel: t.id.slice(0, i), cat: t.id.slice(i + 1) };
+            };
+            const releaseQ = (t) => _mbPopLookup({ type: 'release', id: parts(t).rel }, RELEASE_INC);
+            /**
+             * The label info of the target's release whose catalog number is
+             * the target's, once the release answered; null before.
+             * @param {object} t
+             * @returns {?Array<Object>}
+             */
+            const matches = (t) => {
+                const st = _mbPop.get(releaseQ(t).key);
+                if (!st || st.status !== 'done' || !st.data) return null;
+                const want = _mbPopCatnoKey(parts(t).cat);
+                return (st.data['label-info'] || []).filter(li => li.label && li.label.id && _mbPopCatnoKey(li['catalog-number']) === want);
+            };
+            /**
+             * The label target the card hands over to (the target's own key,
+             * so `_mbPopWanted()` still recognises the window), or null.
+             * @param {object} t
+             * @returns {?object}
+             */
+            const labelTarget = (t) => {
+                const m = matches(t);
+                const ids = m ? Array.from(new Set(m.map(li => li.label.id))) : [];
+                if (ids.length !== 1) return null;
+                return Object.assign({}, t, { type: 'label', id: ids[0], kind: 'Label',
+                    url: new URL(`/label/${ids[0]}`, window.location.origin).href });
+            };
+            /**
+             * What the card or window shows before (or instead of) a label:
+             * loading, the release's failure, or the label info that did
+             * not name exactly one label.
+             * @param {object} t
+             * @param {boolean} win - The window's look, else the card's.
+             * @returns {string}
+             */
+            const pending = (t, win) => {
+                const st = _mbPop.get(releaseQ(t).key);
+                const m = matches(t);
+                const head = win ? `<div class="mb-dp-xtitle">${_rgEsc(parts(t).cat)}</div>`
+                    : `<div class="mb-tt-title">${_rgEsc(parts(t).cat)}</div><div class="mb-tt-comment">Catalog number</div><div class="mb-tt-rule"></div>`;
+                let body;
+                if (st && st.status === 'failed') body = `Could not load the release from MusicBrainz (${_rgEsc(st.detail)}).`;
+                else if (!m) body = '<span class="mb-dp-spin">◌</span> Loading…';
+                else if (!m.length) body = 'The release lists no label with this catalog number.';
+                else body = `Several labels share it: ${_rgEsc(m.map(li => li.label.name).join(', '))}.`;
+                return win ? `<div class="mb-dp-x"><div class="mb-dp-col">${head}<div class="mb-dp-xsub">${body}</div></div></div>`
+                    : `<div class="mb-pop-card">${head}<div class="mb-tt-comment">${body}</div></div>`;
+            };
+            /**
+             * Starts the release lookup on a call with `start`; the label's
+             * once the release answered and it was never asked.
+             * @param {object} t
+             * @param {boolean} start
+             * @param {boolean} force
+             * @param {function(): void} repaint
+             * @returns {?object} The label target, when there is one.
+             */
+            const drive = (t, start, force, repaint) => {
+                const q = releaseQ(t);
+                if (start) _mbWsLoad(q.key, q.url, { force: start && force, repaint, wanted: _mbPopWanted(t) });
+                return labelTarget(t);
+            };
+            return {
+                title: 'Catalog number', wide: true,
+                card(t, start, repaint) {
+                    const lt = drive(t, start, false, repaint);
+                    if (!lt) return pending(t, false);
+                    const lk = _mbPopLookup(lt, 'genres+aliases').key;
+                    return _MB_KINDS.label.card(lt, start || !_mbPop.has(lk), repaint)
+                        .replace('<div class="mb-pop-card">', `<div class="mb-pop-card"><div class="mb-tt-dim">${_rgEsc(parts(t).cat)} — catalog number of</div>`);
+                },
+                extracted(t, start, force, repaint) {
+                    const lt = drive(t, start, force, repaint);
+                    if (!lt) return pending(t, true);
+                    const lk = _mbPopLookup(lt, 'genres+aliases').key;
+                    return _MB_KINDS.label.extracted(lt, start || !_mbPop.has(lk), start && force, repaint);
+                },
+                liveUrl(t) {
+                    const lt = labelTarget(t);
+                    return lt ? lt.url : new URL(`/release/${parts(t).rel}`, window.location.origin).href;
+                },
+            };
+        })(),
     };
 
     /**
@@ -38075,12 +38335,19 @@
         return {
             id: 'mb-entity',
             kind: 'MusicBrainz',
-            selector: 'table.tbl > tbody a[href]',
+            // Read at every event, so the setting needs no reload.
+            get selector() {
+                return Lib.settings.sa_pop_mb_page === true
+                    ? '[data-mb-pop], table.tbl > tbody td.barcode-cell, table.tbl > tbody span.catalog-number, #page a[href]'
+                    : '[data-mb-pop], table.tbl > tbody td.barcode-cell, table.tbl > tbody span.catalog-number, table.tbl > tbody a[href]';
+            },
             live: _MB_LIVE,
             enabled: () => !_foreignHost && Lib.settings.sa_pop_mb === true,
             resolve: (a) => _mbPopTarget(a),
             needsCtrl: _dpNeedsCtrl,
-            liveUrl: (t) => t.url,
+            // A kind may say its page only once it knows it (a catalog
+            // number: its label's).
+            liveUrl: (t) => (_MB_KINDS[t.type].liveUrl ? _MB_KINDS[t.type].liveUrl(t) : t.url),
             card: (t, start, repaint) => _MB_KINDS[t.type].card(t, start, repaint),
             extracted: (t, start, force, repaint) => _MB_KINDS[t.type].extracted(t, start, force, repaint),
             onAreaClick(e, t) {
@@ -79989,6 +80256,11 @@ a { color: #1565c0; }`;
                     _glyphNotes.push('flag/area icon shown as it appears in the table');
                 }
                 _setTip(item, _glyphNotes.length ? `${displayText} — ${_glyphNotes.join(' — ')}` : displayText);
+                // Popup engine (org/iframe.org Phase 4): a value that is the
+                // name of exactly ONE entity linked in this column previews
+                // that entity on Ctrl-hover. The dropdown knows the links by
+                // name already (entityNameHrefsMap).
+                _mbPopStampHref(item, entityNameHrefsMap.get(v), v);
 
                 // ---- Checkbox glyph: ☑/☐, enables multi-select (OR'd within column) ----
                 // Not a native <input type="checkbox"> — the whole row is the click
@@ -81928,6 +82200,7 @@ a { color: #1565c0; }`;
                 ? (entityType && _ENTITY_TYPE_GLYPH[entityType] ? `entity_${entityType}` : 'entity_other')
                 : (MB_UNIQ_KIND_TO_SECTION[kind] || 'credit');
             getOrCreateSynSection(sectionKey).itemsBox.appendChild(item);
+            return item;
         };
 
         /**
@@ -81965,16 +82238,17 @@ a { color: #1565c0; }`;
         const _emitNameSynItem = (v) => {
             const hrefs = entityNameHrefsMap.get(v);
             const entityType = entityNameTypeMap.get(v);
+            // Each entry naming one entity previews it (Phase 4).
             if (!hrefs || hrefs.size <= 1 || !_entityNameSplitsByHref(entityType)) {
-                makeValueSynItem('name', v, entityNameAnyValueCounts.get(v) || entityNameValueCounts.get(v),
-                    entityNameGlyphMap.get(v), entityType, entityNameFlagMap.get(v));
+                _mbPopStampHref(makeValueSynItem('name', v, entityNameAnyValueCounts.get(v) || entityNameValueCounts.get(v),
+                    entityNameGlyphMap.get(v), entityType, entityNameFlagMap.get(v)), hrefs, v);
                 return;
             }
             Array.from(hrefs).forEach((href, i) => {
                 const label = `${v} (${i + 1})`;
-                makeValueSynItem('name', label, entityHrefAnyValueCounts.get(href) || entityHrefValueCounts.get(href),
+                _mbPopStampHref(makeValueSynItem('name', label, entityHrefAnyValueCounts.get(href) || entityHrefValueCounts.get(href),
                     entityHrefGlyphMap.get(href), entityHrefTypeMap.get(href), entityHrefFlagMap.get(href),
-                    href);
+                    href), href, v);
             });
         };
 

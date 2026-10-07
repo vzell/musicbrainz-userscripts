@@ -87,6 +87,31 @@ test.describe('MusicBrainz link previews on the real site', { tag: '@extended' }
         expect(errors).toEqual([]);
     });
 
+    test('a release group page: a barcode cell, a catalog number, a 📊 entry (Phase 4)', async ({ page }) => {
+        test.setTimeout(240000);
+        const errors = collectPageErrors(page);
+        await openLive(page, 'https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c');
+        const body = page.locator('table.tbl tbody').first();
+        const bc = await cardFor(page, body.locator('td.barcode-cell').filter({ hasText: /\d{8,}/ }).first());
+        await expect(bc.locator('.mb-tt-pill').last()).toHaveText(/^\d+ releases?$/);
+        const cat = await cardFor(page, body.locator('span.catalog-number').first());
+        await expect(cat.locator('.mb-tt-dim').first()).toContainText('catalog number of');
+        // The 📊 dropdown of the Artist column (after "Show all": the native
+        // table has no 📊 buttons; two pages here): its entry names the artist.
+        await page.click('button[data-label="Show all Releases for ReleaseGroup"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const master = page.locator('.mb-master-toggle');
+        if (await master.count() && (await master.getAttribute('data-state')) === 'collapsed') await master.click();
+        await page.evaluate(() => {
+            const th = Array.from(document.querySelectorAll('table.tbl thead th')).find((t) => t.dataset.colName === 'Artist' && t.getClientRects().length);
+            th.scrollIntoView({ block: 'center' });
+            th.querySelector('.mb-col-uniq-wrap').click();
+        });
+        const entry = page.locator('#mb-col-uniq-dropdown .mb-col-uniq-item[data-mb-pop^="artist:"]').first();
+        await cardFor(page, entry);
+        expect(errors).toEqual([]);
+    });
+
     test('a release tracklist: a recording card', async ({ page }) => {
         test.setTimeout(180000);
         const errors = collectPageErrors(page);
