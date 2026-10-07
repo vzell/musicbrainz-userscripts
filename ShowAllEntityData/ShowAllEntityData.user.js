@@ -2658,11 +2658,21 @@
             label: 'Release group card on the "#" cell of each live track',
             type: 'checkbox',
             default: true,
-            description: 'Release tracklist: hovering a track\'s "#" cell shows the release group of the event the ' +
+            description: 'Release tracklist: hovering a track\'s "#" cell with Ctrl held (or pressing Ctrl while ' +
+                         'the pointer is on it) shows the release group of the event the ' +
                          'track comes from. For the main event that is the release\'s own release group; for any ' +
                          'other event, a MusicBrainz Web Service search looks for a release group named like the ' +
                          'event (the Disambiguation without "live, " and without a trailing "; …"), once per event. ' +
                          'Alt+click the cell to open that release group, or the search, on musicbrainz.org.'
+        },
+
+        sa_event_rg_tooltip_without_ctrl: {
+            label: 'Show the "#" release group card on a plain hover (without Ctrl)',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default: the card above shows only while Ctrl is held, so moving the pointer ' +
+                         'down the "#" column neither pops up cards nor starts searches. When on, hovering the ' +
+                         'cell is enough, as before.'
         },
 
         sa_event_rg_search_phrase: {
@@ -35451,20 +35461,71 @@
     let _eventRgTooltipWired = false;
 
     /**
+     * Shows an element's ready-made `data-mbtt` card in `#mb-stat-tooltip`
+     * at once, at a pointer position — for a card asked for by a key press
+     * rather than a mouseover (the "#" cell's Ctrl, `initEventRgTooltip()`).
+     * The engine's own mouseout hides it as usual. Assigned by
+     * `_initStatTooltip()`, a no-op until then. Declared here, above that
+     * function's call at page init, so the assignment is past the `let`'s
+     * temporal dead zone.
+     * @type {function(HTMLElement, {clientX: number, clientY: number}): void}
+     */
+    let _mbttShowNow = () => {};
+
+    /**
+     * Whether the "#" card waits for Ctrl: true unless
+     * `sa_event_rg_tooltip_without_ctrl` is on. Read at every event, so the
+     * setting applies without a reload.
+     *
+     * @returns {boolean}
+     */
+    function _eventRgNeedsCtrl() {
+        return Lib.settings.sa_event_rg_tooltip_without_ctrl !== true;
+    }
+
+    /**
      * Wires the "#" event card once, delegated on `document`, so the clones
      * every re-render makes need nothing: a `pointerover` (dispatched before
-     * the tooltip engine's `mouseover`) writes the cell's `data-mbtt` just
-     * in time and starts the lookup; an Alt+click opens the card's target.
+     * the tooltip engine's `mouseover`) on entering a cell writes its
+     * `data-mbtt` just in time and starts the lookup; an Alt+click opens the
+     * card's target.
+     *
+     * Unless `sa_event_rg_tooltip_without_ctrl` is on, entering a cell
+     * without Ctrl held REMOVES its `data-mbtt` (one an earlier Ctrl hover
+     * left), so the engine shows nothing and nothing is looked up; pressing
+     * Ctrl while the pointer is on the cell then writes the card and shows it
+     * through `_mbttShowNow()`.
      *
      * @returns {void}
      */
     function initEventRgTooltip() {
         if (_eventRgTooltipWired) return;
         _eventRgTooltipWired = true;
+        let hoverTd = null; // the "#" cell the pointer is in
         document.addEventListener('pointerover', e => {
             if (Lib.settings.sa_event_rg_tooltip === false || !e.target.closest) return;
             const td = e.target.closest(_EVENT_RG_CELL_SEL);
-            if (td) td.dataset.mbtt = _eventRgCardHtml(td, true);
+            // Crossing the cell's own children is the same hover.
+            if (!td || td === hoverTd) return;
+            hoverTd = td;
+            if (_eventRgNeedsCtrl() && !e.ctrlKey) {
+                delete td.dataset.mbtt;
+                return;
+            }
+            td.dataset.mbtt = _eventRgCardHtml(td, true);
+        }, true);
+        document.addEventListener('pointerout', e => {
+            if (!hoverTd || !hoverTd.contains(e.target)) return;
+            if (e.relatedTarget && hoverTd.contains(e.relatedTarget)) return;
+            hoverTd = null;
+        }, true);
+        document.addEventListener('keydown', e => {
+            if (e.key !== 'Control' || e.repeat || !hoverTd) return;
+            if (Lib.settings.sa_event_rg_tooltip === false || !_eventRgNeedsCtrl()) return;
+            if (!hoverTd.isConnected || !hoverTd.matches(':hover')) return;
+            hoverTd.dataset.mbtt = _eventRgCardHtml(hoverTd, true);
+            const r = hoverTd.getBoundingClientRect();
+            _mbttShowNow(hoverTd, { clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 });
         }, true);
         document.addEventListener('click', e => {
             if (!e.altKey || Lib.settings.sa_event_rg_tooltip === false || !e.target.closest) return;
@@ -57457,6 +57518,39 @@ a { color: #1565c0; }`;
         let _lastMove = null;   // latest mouse event, for positioning after the delay
 
         /**
+         * Shows a `[data-mbtt]` (or resolved `[data-mbtt-fn]`) element's card
+         * at once, next to a pointer position.
+         * @param {HTMLElement} el
+         * @param {{clientX: number, clientY: number}} e - Where the pointer is.
+         * @param {?string} fnHtml - The resolver's HTML, or null for `data-mbtt`.
+         */
+        const _showMbtt = (el, e, fnHtml) => {
+            if (_target && _target !== el) _hide();
+            _target = el;
+            _own = false;
+            _fnShown = !!fnHtml;
+            _tip.innerHTML = fnHtml || el.dataset.mbtt;
+            _tip.style.display = 'block';
+            _positionTip(e);
+            if (fnHtml) _mbttAfterShow(el, _tip);
+            // Suppress the element's own native title (action buttons) and any
+            // h2/h3 ancestor's (row-count stat) while our tooltip is visible,
+            // so the browser doesn't overlay both tooltips simultaneously.
+            if (el.title) {
+                el.dataset.mbttSavedTitle = el.title;
+                el.title = '';
+            }
+            const _hParent = el.closest('h2, h3');
+            if (_hParent && _hParent !== el && _hParent.title) {
+                _hParent.dataset.mbttSavedTitleParent = _hParent.title;
+                _hParent.title = '';
+            }
+        };
+        _mbttShowNow = (el, pt) => {
+            if (el && el.isConnected && el.dataset.mbtt) _showMbtt(el, pt, null);
+        };
+
+        /**
          * Shows a stashed own tooltip's card.
          * @param {string} text - The element's plain title.
          */
@@ -57532,26 +57626,7 @@ a { color: #1565c0; }`;
             // element's plain title (if any) is used as usual.
             const fnHtml = el && el.dataset.mbttFn ? _mbttResolve(el) : null;
             if (el && (el.dataset.mbtt || fnHtml)) {
-                if (_target && _target !== el) _hide();
-                _target = el;
-                _own = false;
-                _fnShown = !!fnHtml;
-                _tip.innerHTML = fnHtml || el.dataset.mbtt;
-                _tip.style.display = 'block';
-                _positionTip(e);
-                if (fnHtml) _mbttAfterShow(el, _tip);
-                // Suppress the element's own native title (action buttons) and any
-                // h2/h3 ancestor's (row-count stat) while our tooltip is visible,
-                // so the browser doesn't overlay both tooltips simultaneously.
-                if (el.title) {
-                    el.dataset.mbttSavedTitle = el.title;
-                    el.title = '';
-                }
-                const _hParent = el.closest('h2, h3');
-                if (_hParent && _hParent !== el && _hParent.title) {
-                    _hParent.dataset.mbttSavedTitleParent = _hParent.title;
-                    _hParent.title = '';
-                }
+                _showMbtt(el, e, fnHtml);
                 return;
             }
             if (!el || !el.hasAttribute('data-mb-tip') || !Lib.settings.sa_rich_tooltips) return;

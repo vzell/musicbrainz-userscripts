@@ -1287,10 +1287,14 @@ not a live title, a ⚠️ after the link explains why and suggests a title from
 the event with the most tracks; there is then no main event and no tint.
 
 **The release group of each track's event.** Hovering a live track's **#**
-cell shows a release group card. For the main event it is the release's own
+cell with **Ctrl** held, or pressing **Ctrl** while the pointer is on it,
+shows a release group card. Without Ctrl nothing happens, so moving down the
+column starts no searches; *Show the "#" release group card on a plain hover
+(without Ctrl)* in ⚙️ Settings → 💿 RELEASE TRACKLIST brings back the plain
+hover. For the main event it is the release's own
 release group. For any other event, a search looks for a release group named
 exactly like the event: the Disambiguation without `live, ` and without a
-trailing `; …`. It runs once per event, only when you hover. A found group
+trailing `; …`. It runs once per event, only when you ask for the card. A found group
 gets the same card as the header link. Otherwise the card says so and lists
 the closest titles the search returned. Alt+click the **#** cell to open the
 release group, or the search, on musicbrainz.org. In ⚙️ Settings → 💿 RELEASE

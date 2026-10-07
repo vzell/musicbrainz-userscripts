@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1266+2026-10-07",
-    "schema_entries": 379,
+    "schema_entries": 380,
     "sections": 46,
-    "settings": 333,
-    "settings_with_default": 328,
+    "settings": 334,
+    "settings_with_default": 329,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 166,
+      "checkbox": 167,
       "color_picker": 62,
       "number": 48,
       "divider": 46,
@@ -381,6 +381,7 @@
     "sa_event_rg_search_hints": "Closest titles to show when no release group matches",
     "sa_event_rg_search_phrase": "Search the event name as an exact phrase",
     "sa_event_rg_tooltip": "Release group card on the \"#\" cell of each live track",
+    "sa_event_rg_tooltip_without_ctrl": "Show the \"#\" release group card on a plain hover (without Ctrl)",
     "sa_export_convert_multirow_glyphs": "Convert multi-row collapse glyphs on export",
     "sa_export_include_sort_state": "Include sort-state glyph in exported column headers",
     "sa_export_include_uniq_counts": "Include unique-value counts in exported column headers",
@@ -715,6 +716,7 @@
     "sa_event_rg_search_hints": 5,
     "sa_event_rg_search_phrase": true,
     "sa_event_rg_tooltip": true,
+    "sa_event_rg_tooltip_without_ctrl": false,
     "sa_export_convert_multirow_glyphs": false,
     "sa_export_include_sort_state": true,
     "sa_export_include_uniq_counts": false,

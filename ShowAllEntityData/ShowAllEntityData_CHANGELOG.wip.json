@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.2",
+        "date": "2026-10-07",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "Release tracklist: the release group card on a live track's \"#\" cell now opens only while Ctrl is held — hover the cell with Ctrl down, or rest the pointer on it and press Ctrl (which opens it at once). Moving down the column no longer pops up cards or starts searches. The new setting \"Show the \\\"#\\\" release group card on a plain hover (without Ctrl)\" (⚙️ Settings → 💿 RELEASE TRACKLIST, off by default) brings back the old behaviour, as WIP.1 does for the detail-page previews. Alt+click is unchanged. Not on the filter/sort/render path; no performance impact."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.1",
         "date": "2026-10-07",
         "sections": [

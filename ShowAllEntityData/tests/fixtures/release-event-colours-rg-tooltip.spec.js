@@ -81,7 +81,23 @@ const hashCell = (page, t, r) => page.locator('table.tbl').nth(t).locator('tbody
 const tip = (page) => page.locator('#mb-stat-tooltip');
 
 /**
- * Hovers one "#" cell from a resting pointer, so the card is shown afresh.
+ * Hovers one "#" cell from a resting pointer WITHOUT Ctrl: by default
+ * (sa_event_rg_tooltip_without_ctrl off) no card is due.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {number} t
+ * @param {number} r
+ */
+async function plainHoverHash(page, t, r) {
+    await page.mouse.move(0, 0);
+    await expect(tip(page)).toBeHidden();
+    await hashCell(page, t, r).hover();
+}
+
+/**
+ * Hovers one "#" cell from a resting pointer with Ctrl held, so the card is
+ * shown afresh. Ctrl goes down on no cell (so the press shows nothing) and
+ * up after the hover, so a later Alt+click is not Ctrl+Alt+click.
  *
  * @param {import('@playwright/test').Page} page
  * @param {number} t
@@ -90,7 +106,9 @@ const tip = (page) => page.locator('#mb-stat-tooltip');
 async function hoverHash(page, t, r) {
     await page.mouse.move(0, 0);
     await expect(tip(page)).toBeHidden();
+    await page.keyboard.down('Control');
     await hashCell(page, t, r).hover();
+    await page.keyboard.up('Control');
 }
 
 /** `[event-idx, background, chip]` of every "#" cell of table `t`. */
@@ -201,6 +219,38 @@ test.describe('per-event "#" colours and the "#" release group card', () => {
         expect(await hashCell(page, 2, 11).getAttribute('data-mbtt')).toBeNull();
         expect(searches).toEqual([]);
         expect(browses).toEqual([]);
+    });
+
+    test('Ctrl gate: a plain hover shows no card and asks nothing', async ({ page }) => {
+        const { searches, browses } = await open(page);
+        await plainHoverHash(page, 2, 11);
+        await plainHoverHash(page, 0, 0);
+        expect(await hashCell(page, 0, 0).getAttribute('data-mbtt')).toBeNull();
+        await expect(tip(page)).toBeHidden();
+        expect(searches).toEqual([]);
+        expect(browses).toEqual([]);
+    });
+
+    test('Ctrl gate: Ctrl pressed while the pointer is on a "#" cell shows its card', async ({ page }) => {
+        const { searches } = await open(page, { search: () => ({ status: 200, body: json('ws2-rg-search-terms.json') }) });
+        await plainHoverHash(page, 2, 11);
+        await page.keyboard.press('Control');
+        await expect(tip(page)).toBeVisible();
+        await expect(tip(page)).toContainText('No release group is named like this event.', { timeout: 15000 });
+        expect(searches).toHaveLength(1);
+        // Leaving the cell hides it as any card; a plain hover back does not
+        // bring back the card the Ctrl press left on the cell.
+        await page.mouse.move(0, 0);
+        await expect(tip(page)).toBeHidden();
+        await plainHoverHash(page, 2, 11);
+        expect(await hashCell(page, 2, 11).getAttribute('data-mbtt')).toBeNull();
+        await expect(tip(page)).toBeHidden();
+    });
+
+    test('Ctrl gate: with sa_event_rg_tooltip_without_ctrl on, a plain hover shows the card', async ({ page }) => {
+        await open(page, { settings: { sa_event_rg_tooltip_without_ctrl: true } });
+        await plainHoverHash(page, 0, 0);
+        await expect(tip(page)).toContainText('main event');
     });
 
     test('a failed search is not kept: the next hover asks again', async ({ page }) => {

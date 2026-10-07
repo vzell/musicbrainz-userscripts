@@ -625,6 +625,13 @@ rules from. The "#" card is wired ONCE, delegated (`initEventRgTooltip()`):
 a `pointerover` writes `data-mbtt` just before the engine's `mouseover`,
 and only that hover may START a lookup (`_eventRgCardHtml(td, true)`) — a
 repaint that restarted one looped forever on a 503 (caught by the spec).
+**Ctrl gate** (`_eventRgNeedsCtrl()`, `sa_event_rg_tooltip_without_ctrl`,
+default false): the `pointerover` acts only on ENTERING a cell (children are
+the same hover) and, without `e.ctrlKey`, DELETES the cell's `data-mbtt` — an
+earlier Ctrl hover left one there, and the engine would show it. A Ctrl
+`keydown` on the hovered cell writes the card and shows it through
+`_mbttShowNow()`, the hook `_initStatTooltip()` exposes (its `let` sits above
+the init call at page init, out of the TDZ). Specs hold Ctrl in `hoverHash()`.
 All requests share `_rgWsGet()`'s queue (≥1.1 s apart). A hit counts only
 when its title IS the event name: terms mode scores wrong concerts 100
 (`scripts/probe-rg-event-search.py`). Spec

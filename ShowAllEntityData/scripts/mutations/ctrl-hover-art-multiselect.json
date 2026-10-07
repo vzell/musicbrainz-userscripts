@@ -37,5 +37,57 @@
         "spec": "tests/fixtures/detail-preview.spec.js",
         "grep": "with the setting on, a plain hover shows the card",
         "expect": "fail"
+    },
+    {
+        "name": "the \"#\" card ignores the Ctrl gate on hover",
+        "why": "By default (sa_event_rg_tooltip_without_ctrl off) entering a \"#\" cell without Ctrl must neither write the card nor start a lookup.",
+        "edits": [
+            {
+                "find": "            if (_eventRgNeedsCtrl() && !e.ctrlKey) {\n                delete td.dataset.mbtt;\n                return;\n            }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
+        "grep": "a plain hover shows no card and asks nothing",
+        "expect": "fail"
+    },
+    {
+        "name": "a plain hover keeps the card an earlier Ctrl press left",
+        "why": "The Ctrl press writes data-mbtt on the cell; without the delete, the next plain hover would show it from the engine's own mouseover.",
+        "edits": [
+            {
+                "find": "                delete td.dataset.mbtt;\n                return;",
+                "replace": "                return;"
+            }
+        ],
+        "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
+        "grep": "Ctrl pressed while the pointer is on a",
+        "expect": "fail"
+    },
+    {
+        "name": "pressing Ctrl on a \"#\" cell shows nothing",
+        "why": "Without the engine hook the card would only be written to the cell, never shown, until the pointer re-entered.",
+        "edits": [
+            {
+                "find": "            _mbttShowNow(hoverTd, { clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 });",
+                "replace": "            void r;"
+            }
+        ],
+        "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
+        "grep": "Ctrl pressed while the pointer is on a",
+        "expect": "fail"
+    },
+    {
+        "name": "the \"#\" plain-hover setting is ignored",
+        "why": "sa_event_rg_tooltip_without_ctrl: true restores the old plain hover.",
+        "edits": [
+            {
+                "find": "        return Lib.settings.sa_event_rg_tooltip_without_ctrl !== true;",
+                "replace": "        return true;"
+            }
+        ],
+        "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
+        "grep": "with sa_event_rg_tooltip_without_ctrl on",
+        "expect": "fail"
     }
 ]
