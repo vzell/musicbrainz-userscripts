@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Tests: user-ratings-multigroup.spec.js no longer waits on the Internet. Its saved page's own <img> tags fetched two covers from coverartarchive.org and an avatar from static.metabrainz.org, and page.goto() waits for them; under load a real request outlasted the 90 s timeout (18 of 60 failed with --repeat-each=60 --workers=28; it had failed once in a merge gate). They are now answered locally: 120 of 120 under the same load. The other test that failed once in a merge gate (sticky-page-headers' annotation test) did not fail in 204 stressed runs and is left as it is; its stylesheets, fetched live from static.metabrainz.org, are still served and fast. docs/claude/detail-pages.md: the label code format (\"LC 00162\") is confirmed. No change for users."
+        ]
+      }
+    ]
+  }
+]

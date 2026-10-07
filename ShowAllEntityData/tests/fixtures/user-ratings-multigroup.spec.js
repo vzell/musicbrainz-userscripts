@@ -12,8 +12,23 @@ const { loadUserscriptPage } = require('../support/loadPage');
 // fixture.js for how this real capture was turned into a fixture.
 const RATINGS_URL = 'https://musicbrainz.org/user/vzell/ratings';
 const FIXTURE_FILE = path.join(__dirname, 'user-ratings-multigroup.html');
+// A 1×1 PNG for the page's own cover <img> tags (see openRatings()).
+const PNG_1X1 = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
 
 const openRatings = async (page, settingsOverride = {}) => {
+    // The saved page's own <img> tags fetch two covers from coverartarchive.org
+    // and an avatar from static.metabrainz.org; page.goto() waits for them
+    // (the load event). Under a loaded full run a real request could outlast
+    // the 90 s test timeout: 18 of 60 failed with --repeat-each=60
+    // --workers=28 (DEBUG-NOTES 2026-10-07). Answered locally instead; the
+    // script's own artwork requests go through GM_xmlhttpRequest, stubbed
+    // below, not through these routes.
+    await page.context().route(/^https:\/\/coverartarchive\.org\//, (route) => (route.request().resourceType() === 'image'
+        ? route.fulfill({ status: 200, contentType: 'image/png', body: PNG_1X1 })
+        : route.fallback()));
+    await page.context().route(/^https:\/\/static\.metabrainz\.org\/.*\.svg$/, (route) => route.fulfill({
+        status: 200, contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>',
+    }));
     await loadUserscriptPage(page, {
         url: RATINGS_URL,
         fixtureFile: FIXTURE_FILE,
