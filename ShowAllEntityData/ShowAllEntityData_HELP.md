@@ -125,7 +125,8 @@ Each row shows its own keyboard shortcut on the right. Open a menu with the
 mouse or with that shortcut — pressing `Ctrl+D` opens **🛠 View** and then the
 Density pull-down for you. Inside an open menu, ↑/↓ move between rows, Home and
 End jump to the ends, Enter activates, Escape closes. Opening one menu closes
-the other.
+the other. A menu opens below its button, or above it when the button is near
+the bottom of the window; one longer than the room available scrolls.
 
 On artist release-group pages a third menu appears, **📀 Discography ▾**, whose
 own label names the view you are in — *📀 Discography: Official*.

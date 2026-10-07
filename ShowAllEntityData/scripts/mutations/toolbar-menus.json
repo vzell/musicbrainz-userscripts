@@ -231,5 +231,18 @@
     "spec": "tests/fixtures/toolbar-menus.spec.js",
     "grep": "leave-page confirm is cancelled",
     "expect": "fail"
+  },
+  {
+    "name": "a menu panel always opens below its button, uncapped",
+    "why": "The panel is position: fixed, so the page cannot scroll it into view. Opened below unconditionally, a menu near the window's bottom put its rows off-screen: the cause of event-overview.spec.js's intermittent Save to Disk failure.",
+    "edits": [
+      {
+        "find": "            const up = height > below && above > below;\n            const room = Math.max(80, Math.floor(up ? above : below));\n            if (height > room) {",
+        "replace": "            const up = false;\n            const room = Math.max(80, Math.floor(up ? above : below));\n            if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/toolbar-menus.spec.js",
+    "grep": "fit in the window",
+    "expect": "fail"
   }
 ]

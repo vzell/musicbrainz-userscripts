@@ -39490,14 +39490,37 @@ ${sections.join('\n')}
         /** @returns {boolean} Whether this menu's panel is currently shown. */
         const isOpen = () => panel.style.display !== 'none';
 
-        /** Shows the panel below its button, closing any other open toolbar menu. */
+        /**
+         * Shows the panel at its button, closing any other open toolbar menu.
+         *
+         * The panel is `position: fixed`, so the page can never scroll it
+         * into view: it must FIT. Below the button when it fits there; else
+         * above it when there is more room above; and never taller than the
+         * room it opens into (it scrolls inside). It used to open below
+         * unconditionally, so with the toolbar near the window's bottom the
+         * rows were off-screen and unreachable: the cause of the
+         * event-overview "Save to Disk" spec's intermittent failure, where the
+         * unstyled fixture puts the toolbar at the bottom of the window. Same
+         * rule as the springsteenlyrics.com scope bar (`_slPlaceScopePop()`).
+         */
         const open = () => {
             _closeToolbarMenus(descriptor);
             // flex, not block — see the blockification note in this section's header.
             panel.style.display = 'flex';
             btn.setAttribute('aria-expanded', 'true');
+            panel.style.maxHeight = '';
+            panel.style.overflowY = '';
             const rect = btn.getBoundingClientRect();
-            panel.style.top  = `${rect.bottom + 5}px`;
+            const height = panel.offsetHeight;
+            const below = window.innerHeight - rect.bottom - 5 - 8;
+            const above = rect.top - 5 - 8;
+            const up = height > below && above > below;
+            const room = Math.max(80, Math.floor(up ? above : below));
+            if (height > room) {
+                panel.style.maxHeight = `${room}px`;
+                panel.style.overflowY = 'auto';
+            }
+            panel.style.top  = up ? `${Math.max(8, rect.top - 5 - Math.min(height, room))}px` : `${rect.bottom + 5}px`;
             panel.style.left = `${rect.left}px`;
             // Keep the panel inside the viewport when the button sits far right.
             const pRect = panel.getBoundingClientRect();

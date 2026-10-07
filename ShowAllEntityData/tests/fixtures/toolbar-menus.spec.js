@@ -401,3 +401,88 @@ test.describe('the h1 toolbar menus', () => {
         await expect(page.locator('#mb-shortcuts-help-btn u')).toHaveText('K');
     });
 });
+
+/**
+ * Pushes the toolbar down by putting a spacer of `height` px at the top of
+ * the body, so a menu button sits where a test needs it.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {number} height
+ */
+async function pushToolbarDown(page, height) {
+    await page.evaluate((h) => {
+        const s = document.createElement('div');
+        s.id = 'test-spacer';
+        s.style.height = `${h}px`;
+        document.body.insertBefore(s, document.body.firstChild);
+        window.scrollTo(0, 0);
+    }, height);
+}
+
+/**
+ * The 📦 Data menu's button and panel rects, and the window height.
+ *
+ * @param {import('@playwright/test').Page} page
+ */
+const dataMenuGeometry = (page) => page.evaluate(() => {
+    const b = document.getElementById('mb-data-menu-btn').getBoundingClientRect();
+    const p = document.getElementById('mb-data-menu-btn-panel');
+    const r = p.getBoundingClientRect();
+    return {
+        btnTop: b.top, btnBottom: b.bottom, top: r.top, bottom: r.bottom, height: r.height,
+        scrolls: p.scrollHeight > p.clientHeight, vh: window.innerHeight,
+    };
+});
+
+// A menu panel is position: fixed, so the page cannot scroll it into view. It
+// used to open below its button unconditionally: with the toolbar near the
+// window's bottom its rows were off-screen and unreachable. That is what made
+// event-overview.spec.js's "Save to Disk" round trip fail intermittently (its
+// unstyled fixture puts the toolbar at the bottom of the 720 px window) and
+// what tests/support/toolbarMenu.js's `force` option worked around.
+test.describe('toolbar menus fit in the window', () => {
+    test('near the window\'s bottom a menu opens upward, and its rows are reachable', async ({ page }) => {
+        await loadAndRender(page);
+        // Where it fits, it still opens below its button.
+        await openToolbarMenu(page, 'data');
+        let g = await dataMenuGeometry(page);
+        expect(g.top).toBeGreaterThanOrEqual(g.btnBottom);
+        await page.locator('#mb-data-menu-btn').click();
+        await expect(page.locator('#mb-data-menu-btn-panel')).toBeHidden();
+
+        // The button 20 px above the window's bottom edge.
+        await pushToolbarDown(page, Math.round(g.vh - g.btnBottom - 20));
+        g = await dataMenuGeometry(page);
+        expect(g.vh - g.btnBottom).toBeLessThan(25);
+        await openToolbarMenu(page, 'data');
+        g = await dataMenuGeometry(page);
+        expect(g.bottom).toBeLessThanOrEqual(g.btnTop);
+        expect(g.top).toBeGreaterThanOrEqual(0);
+        expect(g.scrolls).toBe(false);
+        // Reachable without `force`: Playwright's own actionability checks pass.
+        await page.locator('#mb-save-to-disk-btn').click();
+        await expect(page.locator('#sa-sd-save-confirm')).toBeVisible();
+    });
+
+    test('with too little room on either side a menu is capped to the window and scrolls inside', async ({ page }) => {
+        await loadAndRender(page);
+        await openToolbarMenu(page, 'data');
+        const natural = (await dataMenuGeometry(page)).height;
+        await page.locator('#mb-data-menu-btn').click();
+        // A window only 40 px taller than the panel, the button in its middle:
+        // neither side has room for the whole panel.
+        await page.setViewportSize({ width: 1280, height: Math.round(natural + 40) });
+        let g = await dataMenuGeometry(page);
+        await pushToolbarDown(page, Math.round(g.vh / 2 - (g.btnBottom - g.btnTop) / 2 - g.btnTop));
+        await openToolbarMenu(page, 'data');
+        g = await dataMenuGeometry(page);
+        expect(g.top).toBeGreaterThanOrEqual(0);
+        expect(g.bottom).toBeLessThanOrEqual(g.vh);
+        expect(g.height).toBeLessThan(natural);
+        expect(g.scrolls).toBe(true);
+        // The last row is reachable: Playwright scrolls it into view inside the panel.
+        const last = page.locator('#mb-data-menu-btn-panel > .mb-toolbar-menu-item:visible').last();
+        await last.scrollIntoViewIfNeeded();
+        await expect(last).toBeInViewport();
+    });
+});
