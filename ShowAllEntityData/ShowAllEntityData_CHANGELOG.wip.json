@@ -1,5 +1,29 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-10-08",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Link previews on MusicBrainz: an entry of the 📊 dropdown that names one entity (an artist, a label, an area…) has that entity's card on Ctrl-hover — plain entries and the \"Entity info\" name entries alike. A name two entities share (two areas both called \"New York\") has none, since which one is meant is not known. Space pins it; the dropdown then closes, so it does not cover the window."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Popup engine: _mbPopParsePath() is the one place a MusicBrainz path becomes a kind, for links and for _mbPopStampHref(), which stamps an element from the one href the dropdown recorded for a name (entityNameHrefsMap). makeValueSynItem() returns its entry."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "popup-mb.spec.js: 2 more tests (50); popup-mb.json: 3 more mutations (47). The 47 existing 📊 dropdown specs (182 tests) pass unchanged."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-10-08",
     "sections": [

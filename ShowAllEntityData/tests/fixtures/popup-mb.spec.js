@@ -1210,3 +1210,68 @@ test.describe('MusicBrainz link previews: barcode cells (Phase 4)', () => {
         await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Barcode');
     });
 });
+
+test.describe('MusicBrainz link previews: 📊 dropdown entries (Phase 4)', () => {
+    const ARTIST_POP = 'artist:70248960-cb53-4ea4-943a-edb18f7d336f';
+
+    /**
+     * Opens the first visible table's 📊 dropdown on a column.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {string} col
+     * @returns {Promise<void>}
+     */
+    async function openDrop(page, col) {
+        await page.evaluate((name) => {
+            const th = Array.from(document.querySelectorAll('table.tbl thead th'))
+                .find((t) => t.dataset.colName === name && t.getClientRects().length);
+            // The dropdown is fixed-position beside its button: clicked off
+            // screen, it opens off screen (2 of 10 runs did).
+            th.scrollIntoView({ block: 'center' });
+            th.querySelector('.mb-col-uniq-wrap').click();
+        }, col);
+        await expect(page.locator('#mb-col-uniq-dropdown')).toBeVisible();
+    }
+
+    test('an entry naming one entity is stamped and has that entity\'s card; an entry naming none is not', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true } });
+        await openDrop(page, 'Artist');
+        const drop = page.locator('#mb-col-uniq-dropdown');
+        const plain = drop.locator(`.mb-col-uniq-item:not(.mb-col-uniq-multirow-item)[data-mb-pop="${ARTIST_POP}"]`);
+        await expect(plain).toHaveCount(1);
+        await expect(plain).toHaveAttribute('data-mb-pop-name', 'Bruce Springsteen');
+        await ctrlHover(page, plain);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-pill')).toContainText(['Person']);
+        expect(log.ws2).toEqual([expect.stringContaining('/ws/2/artist/70248960-cb53-4ea4-943a-edb18f7d336f?')]);
+        // The Label column's "Entity info - Label name" entries are stamped too.
+        await page.keyboard.press('Escape');
+        await page.mouse.click(5, 5);
+        await openDrop(page, 'Label');
+        await expect(page.locator('#mb-col-uniq-dropdown .mb-col-uniq-multirow-item[data-mb-pop="label:011d1192-6f65-45bd-85c4-0400dd45693e"]'))
+            .toHaveCount(1);
+        // A Format value names no entity: no stamp.
+        await page.keyboard.press('Escape');
+        await page.mouse.click(5, 5);
+        await openDrop(page, 'Format');
+        await expect(page.locator('#mb-col-uniq-dropdown .mb-col-uniq-item[data-mb-pop]')).toHaveCount(0);
+    });
+
+    test('pinning an entry\'s card puts the window in front: the dropdown closes', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true } });
+        await openDrop(page, 'Artist');
+        const entry = page.locator(`#mb-col-uniq-dropdown .mb-col-uniq-item[data-mb-pop="${ARTIST_POP}"]`).first();
+        await ctrlHover(page, entry);
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        await expect(dialog(page)).toBeVisible();
+        await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Artist');
+        await expect(page.locator('#mb-col-uniq-dropdown')).toBeHidden();
+        const inFront = await page.evaluate(() => {
+            const d = document.getElementById('mb-dp-dialog').getBoundingClientRect();
+            const el = document.elementFromPoint(d.left + d.width / 2, d.top + d.height / 2);
+            return !!(el && el.closest('#mb-dp-dialog'));
+        });
+        expect(inFront, 'nothing covers the window').toBe(true);
+    });
+});

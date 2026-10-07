@@ -532,6 +532,19 @@ location rows removed. Never commit another editor's profile.
   barcode's own "Liner notes" card gives way to this one (`_OTHER_RICH_TIPS`);
   a click on a grouped cell still toggles its merge boxes (the card hides on
   mousedown).
+- **📊 entries** are stamped where the dropdown builds them: a plain entry in
+  `renderItems()` and an "Entity info" name entry in `_emitNameSynItem()`
+  (`makeValueSynItem()` now returns its element), through
+  `_mbPopStampHref(el, hrefs, name)` from the dropdown's own
+  `entityNameHrefsMap` — only when the name has exactly ONE href (two areas
+  both named "New York": no stamp). Entries keep no value in the DOM, which is
+  why the stamp happens at build time. `_mbPopParsePath()` is the one path →
+  kind parser for links and stamps. Pinning from an entry closes the dropdown
+  (`_dpOpenDialog()`): its z-index 999999 is above the window's 10050. Space
+  over a shown card pins (the engine's capture listener runs before the
+  dropdown's own Space-toggles-entry). In specs, open a dropdown with its
+  column header scrolled into view: it is fixed-position beside its button,
+  and opened off screen it stays there (2 of 10 runs).
 
 `python3 scripts/check-mutation-anchors.py` checks, without running a spec,
 that every `find` of every mutation list still matches once. Run it after

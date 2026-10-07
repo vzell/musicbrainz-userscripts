@@ -571,5 +571,44 @@
         "spec": "tests/fixtures/popup-mb.spec.js",
         "grep": "step down the Barcode column",
         "expect": "fail"
+    },
+    {
+        "name": "plain 📊 entries are not stamped",
+        "why": "An entry whose value is one entity's name (the dropdown's entityNameHrefsMap) previews that entity.",
+        "edits": [
+            {
+                "find": "                _mbPopStampHref(item, entityNameHrefsMap.get(v), v);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "an entry naming one entity is stamped",
+        "expect": "fail"
+    },
+    {
+        "name": "the Entity info name entries are not stamped",
+        "why": "'» label name: Columbia' names one label as much as a plain entry does.",
+        "edits": [
+            {
+                "find": "                _mbPopStampHref(makeValueSynItem('name', v, entityNameAnyValueCounts.get(v) || entityNameValueCounts.get(v),\n                    entityNameGlyphMap.get(v), entityType, entityNameFlagMap.get(v)), hrefs, v);",
+                "replace": "                makeValueSynItem('name', v, entityNameAnyValueCounts.get(v) || entityNameValueCounts.get(v),\n                    entityNameGlyphMap.get(v), entityType, entityNameFlagMap.get(v));"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "an entry naming one entity is stamped",
+        "expect": "fail"
+    },
+    {
+        "name": "pinning a 📊 entry leaves the dropdown in front of the window",
+        "why": "The dropdown (z-index 999999) would cover the window (10050); pinning moves the user on to the entity, so the dropdown closes.",
+        "edits": [
+            {
+                "find": "        if (t.el && t.el.closest && t.el.closest('#mb-col-uniq-dropdown')) closeUniqDrop(false);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "pinning an entry",
+        "expect": "fail"
     }
 ]

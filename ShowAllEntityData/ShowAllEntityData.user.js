@@ -14779,6 +14779,10 @@
     function _dpOpenDialog(t) {
         _dpHidePeek();
         if (!t || !t.src.enabled()) return;
+        // A card pinned from a 📊 entry (Phase 4): the dropdown (z-index
+        // 999999) would stay in front of the window (10050); the user has
+        // moved on to the entity, so it closes, as a click outside it would.
+        if (t.el && t.el.closest && t.el.closest('#mb-col-uniq-dropdown')) closeUniqDrop(false);
         if (_dpDialog.api && _dpDialog.api.dialog.isConnected) {
             _dpShowInDialog(t);
             return;
@@ -36539,6 +36543,54 @@
     const _MB_POP_PAGE_RE = /^\/(?:(edit)\/(\d+)|(user)\/([^/]+))\/?$/;
 
     /**
+     * The kind a MusicBrainz page path previews as: an entity by MBID
+     * (`_MB_POP_PATH_RE`), a code (`_MB_POP_CODE_RE`), an edit or an editor
+     * (`_MB_POP_PAGE_RE`); `seg` is the path's own first segment (a disc ID's
+     * page is /cdtoc/, its kind `discid`). `null` for any other path.
+     *
+     * @param {string} pathname
+     * @returns {?{seg: string, type: string, id: string}}
+     */
+    function _mbPopParsePath(pathname) {
+        const m = _MB_POP_PATH_RE.exec(pathname);
+        if (m) return { seg: m[1], type: m[1], id: m[2] };
+        const c = _MB_POP_CODE_RE.exec(pathname);
+        if (c) return { seg: c[1], type: _MB_POP_CODE_TYPES[c[1]], id: c[2] };
+        const p = _MB_POP_PAGE_RE.exec(pathname);
+        if (p) return { seg: p[1] || p[3], type: p[1] || p[3], id: p[2] || p[4] };
+        return null;
+    }
+
+    /**
+     * Stamps an element with the kind and id of ONE entity's link
+     * (`data-mb-pop`, `data-mb-pop-name`), so the popup engine previews it
+     * (Phase 4: a 📊 entry whose value names exactly one entity). Nothing
+     * when there is no href, or several (two areas both named "New York":
+     * which one is meant is not known), or the path is not a kind the cards
+     * know.
+     *
+     * @param {Element} el
+     * @param {?(string|Set<string>)} hrefs - One href, or the Set the 📊
+     *   dropdown recorded for a name.
+     * @param {string} name - For the loading card.
+     * @returns {void}
+     */
+    function _mbPopStampHref(el, hrefs, name) {
+        const list = typeof hrefs === 'string' ? [hrefs] : Array.from(hrefs || []);
+        if (!el || list.length !== 1) return;
+        let pathname;
+        try {
+            pathname = new URL(list[0], window.location.origin).pathname;
+        } catch (_) {
+            return;
+        }
+        const pp = _mbPopParsePath(pathname);
+        if (!pp || !Object.prototype.hasOwnProperty.call(_MB_KINDS, pp.type)) return;
+        el.setAttribute('data-mb-pop', `${pp.type}:${pp.id}`);
+        if (name) el.setAttribute('data-mb-pop-name', name);
+    }
+
+    /**
      * What the page-wide scope (`sa_pop_mb_page`) leaves out: the entity's
      * own tabs (its "Overview" tab is a bare entity link), the page
      * navigation, and the script's own toolbar and menus.
@@ -36570,7 +36622,6 @@
         let type = '';
         let id = '';
         const pop = a.getAttribute('data-mb-pop');
-        const m = !pop && a.tagName === 'A' && a.origin === window.location.origin && _MB_POP_PATH_RE.exec(a.pathname);
         // A barcode cell (MusicBrainz's own td.barcode-cell, plain text):
         // its digits, as the cell writes them (the search index ignores a
         // leading zero, probed 2026-10-08). "[none]" and an empty cell are
@@ -36587,20 +36638,9 @@
             id = i > 0 ? pop.slice(i + 1) : '';
         } else if (a.tagName !== 'A' || a.origin !== window.location.origin) {
             return null;
-        } else if (m) {
-            [, seg, id] = m;
-            type = seg;
         } else {
-            const c = _MB_POP_CODE_RE.exec(a.pathname);
-            const p = !c && _MB_POP_PAGE_RE.exec(a.pathname);
-            if (c) {
-                [, seg, id] = c;
-                type = _MB_POP_CODE_TYPES[seg];
-            } else if (p) {
-                seg = p[1] || p[3];
-                id = p[2] || p[4];
-                type = seg;
-            }
+            const pp = _mbPopParsePath(a.pathname);
+            if (pp) ({ seg, type, id } = pp);
         }
         // Own keys only: a stamped kind is a string from an attribute.
         const k = type && id && Object.prototype.hasOwnProperty.call(_MB_KINDS, type) ? _MB_KINDS[type] : null;
@@ -80083,6 +80123,11 @@ a { color: #1565c0; }`;
                     _glyphNotes.push('flag/area icon shown as it appears in the table');
                 }
                 _setTip(item, _glyphNotes.length ? `${displayText} — ${_glyphNotes.join(' — ')}` : displayText);
+                // Popup engine (org/iframe.org Phase 4): a value that is the
+                // name of exactly ONE entity linked in this column previews
+                // that entity on Ctrl-hover. The dropdown knows the links by
+                // name already (entityNameHrefsMap).
+                _mbPopStampHref(item, entityNameHrefsMap.get(v), v);
 
                 // ---- Checkbox glyph: ☑/☐, enables multi-select (OR'd within column) ----
                 // Not a native <input type="checkbox"> — the whole row is the click
@@ -82022,6 +82067,7 @@ a { color: #1565c0; }`;
                 ? (entityType && _ENTITY_TYPE_GLYPH[entityType] ? `entity_${entityType}` : 'entity_other')
                 : (MB_UNIQ_KIND_TO_SECTION[kind] || 'credit');
             getOrCreateSynSection(sectionKey).itemsBox.appendChild(item);
+            return item;
         };
 
         /**
@@ -82059,16 +82105,17 @@ a { color: #1565c0; }`;
         const _emitNameSynItem = (v) => {
             const hrefs = entityNameHrefsMap.get(v);
             const entityType = entityNameTypeMap.get(v);
+            // Each entry naming one entity previews it (Phase 4).
             if (!hrefs || hrefs.size <= 1 || !_entityNameSplitsByHref(entityType)) {
-                makeValueSynItem('name', v, entityNameAnyValueCounts.get(v) || entityNameValueCounts.get(v),
-                    entityNameGlyphMap.get(v), entityType, entityNameFlagMap.get(v));
+                _mbPopStampHref(makeValueSynItem('name', v, entityNameAnyValueCounts.get(v) || entityNameValueCounts.get(v),
+                    entityNameGlyphMap.get(v), entityType, entityNameFlagMap.get(v)), hrefs, v);
                 return;
             }
             Array.from(hrefs).forEach((href, i) => {
                 const label = `${v} (${i + 1})`;
-                makeValueSynItem('name', label, entityHrefAnyValueCounts.get(href) || entityHrefValueCounts.get(href),
+                _mbPopStampHref(makeValueSynItem('name', label, entityHrefAnyValueCounts.get(href) || entityHrefValueCounts.get(href),
                     entityHrefGlyphMap.get(href), entityHrefTypeMap.get(href), entityHrefFlagMap.get(href),
-                    href);
+                    href), href, v);
             });
         };
 
