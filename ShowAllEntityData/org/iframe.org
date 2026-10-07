@@ -66,9 +66,10 @@ generate the plan information inside this file, so that I can resume also from a
   see "Phase 2: progress" below. The Live page is included for
   every kind (decided 2026-10-07), so Phase 3 keeps only the edit and
   editor cards.
-- [-] Phase 3: edit and editor cards (read from HTML), on
-  =feature/popup-engine-phase3= (from =main= at 9.99.1278); see "Phase 3"
-  below. (The Live page for every MusicBrainz card moved into Phase 2.)
+- [X] Phase 3: edit and editor cards (read from HTML), 9.99.1279: built on
+  =feature/popup-engine-phase3=, live-tested by the user and merged to =main=
+  2026-10-07 (=npm run test:full=: 1334 passed); see "Phase 3" below. (The
+  Live page for every MusicBrainz card moved into Phase 2.)
 - [ ] Phase 4: containers beyond =<a href>= (item 1b) and page-wide scope.
 - [ ] Phase 5 (optional): drill-down inside the dialog; a side drawer if the
   dialog feels cramped.
