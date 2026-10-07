@@ -56,8 +56,8 @@
     "why": "The main event's RG is known from the page; searching for it wastes a request.",
     "edits": [
       {
-        "find": "        if (row.dataset.mbMainEvent === '1') {\n            const info = _releaseGroupInfo();\n            if (info) {\n                if (start) _rgPreviewLoad(info, refresh);",
-        "replace": "        if (false) {\n            const info = _releaseGroupInfo();\n            if (info) {\n                if (start) _rgPreviewLoad(info, refresh);"
+        "find": "        if (row.dataset.mbMainEvent === '1') {\n            const info = _releaseGroupInfo();\n            if (info) {\n                if (start) _rgReleasesLoad(info, { repaint: refresh });",
+        "replace": "        if (false) {\n            const info = _releaseGroupInfo();\n            if (info) {\n                if (start) _rgReleasesLoad(info, { repaint: refresh });"
       }
     ],
     "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
@@ -69,8 +69,8 @@
     "why": "Without the per-event cache every track of the event costs a search.",
     "edits": [
       {
-        "find": "        const cur = _eventRgSearches.get(text);\n        if (cur && (cur.status === 'loading' || cur.status === 'done')) return;",
-        "replace": "        const cur = _eventRgSearches.get(text);\n        if (cur && cur.status === 'loading') return;"
+        "find": "            return;\n        }\n        if (cur && cur.status === 'done') return;\n        const h = Lib.settings.sa_event_rg_search_hints;",
+        "replace": "            return;\n        }\n        const h = Lib.settings.sa_event_rg_search_hints;"
       }
     ],
     "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
@@ -108,8 +108,8 @@
     "why": "The setting caps the closest titles; 0 shows none.",
     "edits": [
       {
-        "find": "            hints: rgs.filter(r => r !== hit).slice(0, hintsN).map(r => r.title), query, detail: '',",
-        "replace": "            hints: rgs.filter(r => r !== hit).map(r => r.title), query, detail: '',"
+        "find": "            hints: rgs.filter(r => r !== hit).slice(0, hintsN).map(r => ({ id: r.id, title: r.title })), detail: '',",
+        "replace": "            hints: rgs.filter(r => r !== hit).map(r => ({ id: r.id, title: r.title })), detail: '',"
       }
     ],
     "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
@@ -144,11 +144,11 @@
   },
   {
     "name": "tooltip setting ignored",
-    "why": "Off must mean no card and no request.",
+    "why": "Off must mean no card and no request. Since the popup engine (org/iframe.org Phase 1) the setting is the \"#\" source's enabled(), which also keeps the engine's listeners from serving the cells.",
     "edits": [
       {
-        "find": "            if (Lib.settings.sa_event_rg_tooltip === false || !e.target.closest) return;\n            const td = e.target.closest(_EVENT_RG_CELL_SEL);\n            if (td) td.dataset.mbtt",
-        "replace": "            if (!e.target.closest) return;\n            const td = e.target.closest(_EVENT_RG_CELL_SEL);\n            if (td) td.dataset.mbtt"
+        "find": "            enabled: () => !_foreignHost && Lib.settings.sa_event_rg_tooltip !== false && _isReleasePagePath(),",
+        "replace": "            enabled: () => !_foreignHost && _isReleasePagePath(),"
       }
     ],
     "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",

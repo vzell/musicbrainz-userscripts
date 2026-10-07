@@ -19954,3 +19954,58 @@ mutations, and all 11 fail as declared.
 
 **Results:** lint is within the baseline. `npm run test:full`: 1281 passed,
 0 failed (finished 2026-10-07T12:31:53Z, host petri, WSL2).
+
+## 2026-10-07 — Popup engine sources; the release-group popup on it (branch feature/popup-engine, WIP.1–WIP.2)
+
+org/iframe.org Phase 1. WIP.1 turned the detail-page preview into an engine
+that serves sources (`_popSources()`, `_popResolve()`); the four foreign sites
+became `_dpSiteSource()` with no visible change (24 specs, 32 mutations as
+recorded). WIP.2 made the release page's two release-group cards sources
+(`_rgLinkSource()`, `_eventRgSource()`): the card beside the element, Space
+for a window with every release and the group's facts, a Live page, a day in
+IndexedDB, and one rate gate with the Relationships column. Live-tested by
+the user. What was learned the hard way:
+
+- **The Live page root must be `#page`, not `#content`.** Phase 0 (R6)
+  recorded "`#content`, else `#page`", reading only which container holds
+  the content. `_dpIsolateFrame()` hides the SIBLINGS of the root and of each
+  ancestor, and `#sidebar` is `#content`'s sibling: the sidebar would have
+  gone with the header. `scripts/fetch-mb-page-fixture.js`'s capture showed
+  `body > .header, #unsupported-browser, #page > (#content, #sidebar),
+  #footer`: `#page`'s siblings are exactly the chrome. Pinned by the Live page
+  test (sidebar visible) and its mutation.
+- **"Album + Live" is not proof the lookup answered.** The ⟳ test waited for
+  it before clicking ⟳ and then saw no second lookup: the text comes from the
+  page's own JSON (`_releaseGroupInfo().type`), the lookup was still waiting
+  for its slot, and a lookup in flight is joined, not repeated. Wait for a
+  fact only the lookup gives ("no votes").
+- **A kept list shown at once hides a request still queued.** The old 4a test
+  ("kept for the page") checked the request count right after the card showed
+  "Born Again". With the release list kept in `_rgReleases`, a second hover
+  shows it at once even if a (mutated) reload is waiting 1.1 s for its slot,
+  so the count was still 1 when read: the mutation "preview re-requested on
+  every hover" passed. The test now waits 2.5 s, past one slot, before
+  counting.
+- **One guard covered by another, recorded as such.** "The window reads only
+  the first page" passes when planted: `_rgWindowFor()` asks again on every
+  repaint for a first-page-only list, so the window still gets every page,
+  one per repaint. `expect: "pass"` with that reason in
+  `scripts/mutations/popup-engine.json`.
+- **Tapping on a zoomed-out phone page.** `Locator.tap()` on a "#" cell kept
+  hitting MusicBrainz's unstyled header (static.metabrainz.org is blocked in
+  fixtures): on the Pixel 7 emulation `visualViewport.offsetTop` was 482, so
+  Playwright's box (visual viewport) and `elementFromPoint()` (layout
+  viewport) disagree. The mobile spec asserts the premise with the offset
+  added, then taps with `page.touchscreen.tap()` at the box's centre.
+- **Paging by the releases returned.** The Web Service caps a release browse
+  at 500 tracks, so `offset` grows by `releases.length`, never by 100. With
+  `inc=media+labels` the cap did not bite on Born to Run (100 releases, 926
+  tracks); with `+recordings` it did (57). The spec's two-page double returns
+  90 first, so a client stepping by the limit loses ten.
+
+**Tests.** New `release-rg-popup.spec.js` (10) and its mobile sibling (1);
+`release-rg-main-event.spec.js` and `release-event-colours-rg-tooltip.spec.js`
+moved from `#mb-stat-tooltip`/`data-mbtt` to `#mb-dp-peek`. Mutation lists:
+new `popup-engine.json` (17, one recorded pass), `detail-preview.json`,
+`event-colours-rg-tooltip.json` and `release-rg-main-event.json` re-anchored;
+every entry as declared after the two fixes above.

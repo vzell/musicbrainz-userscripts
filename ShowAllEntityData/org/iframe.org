@@ -52,8 +52,12 @@ generate the plan information inside this file, so that I can resume also from a
 - [X] Phase 0: probes (2026-10-07, on =feature/popup-engine=). No userscript
   change. Results R1 to R10 in "Phase 0: probes", and what they change in the
   plan right after them.
-- [ ] Phase 1: the engine refactor into sources, then the release-group popup on
-  =release-tracks= (item 2 of the request).
+- [X] Phase 1: the engine refactor into sources (WIP.1), then the release-group
+  popup on =release-tracks= (item 2 of the request, WIP.2), on
+  =feature/popup-engine=; live-tested by the user 2026-10-07. Not merged:
+  =npm run test:full= and the merge itself are still to come. Design and rules:
+  [[file:../docs/claude/detail-pages.md]] ("The popup engine: sources",
+  "MusicBrainz: the release-group sources").
 - [ ] Phase 2: Web Service entity cards on the links of MusicBrainz tables.
 - [ ] Phase 3: edit and editor cards (read from HTML); Live page for every
   MusicBrainz card.
@@ -263,9 +267,11 @@ card.
 - The Live page on MusicBrainz: the entity's own page, fetched same-origin
   through the shared gate and cleaned by =_dpLiveDocHtml()= (no scripts, so React
   does not hydrate and the userscript does not run again inside); =liveRoot=
-  =#content=, else =#page= (the =/user/= and =/isrc/= pages have no
-  =#content=); =liveHide= =.header= and =#footer=; the sidebar (cover, rating,
-  tags, external links) and the entity's own =.tabs= stay. Phase 0 (R6) found
+  =#page=, whose siblings are exactly the site's =.header=, browser warning and
+  =#footer=, so nothing needs =liveHide=; the sidebar (cover, rating, tags,
+  external links) and the entity's own =.tabs= stay. (Not =#content=:
+  =_dpIsolateFrame()= hides the root's siblings, and the sidebar is one.
+  Corrected in Phase 1, see R6.) Phase 0 (R6) found
   every probed page complete without its scripts, except a "Wikipedia" section
   whose cache is cold.
 
@@ -510,10 +516,14 @@ Rate_Limiting page (2026-10-07).
   and area in this run, work and instrument in the run before); one scripted
   visit fills that cache. Layout, for the Live page view:
   - entity and edit pages: =#page > #content, #sidebar=;
-  - =/user/= and =/isrc/=: =#page.fullwidth= with no =#content=, so =liveRoot=
-    is =#content=, else =#page=;
+  - =/user/= and =/isrc/=: =#page.fullwidth= with no =#content=;
   - on every page the site's own chrome is =.header= and =#footer= (hide them);
     =.tabs= is the entity's own tab bar (keep it).
+  So =liveRoot= is =#page= on every page (corrected in Phase 1, 2026-10-07;
+  this read first said "=#content=, else =#page=" and missed that
+  =_dpIsolateFrame()= hides the root's siblings: the sidebar would have gone
+  too). =body > .header, #unsupported-browser, #page, #footer=, so =#page='s
+  siblings are exactly the chrome and no =liveHide= is needed.
 - *R7. Only release pages embed the entity.* =/release/= embeds the whole
   release (731,858 of 868,692 characters); every other page only stubs:
   =entity=, the annotation, =cachedWikipediaExtract=, and one =events= block per
@@ -540,10 +550,10 @@ What this changes in the plan above:
   asks for every item-kind rel (R1); an area shows its parent only (R1); an
   instrument has no description from the Web Service (R1); an event links
   releases, never release groups (R1).
-- Live page on MusicBrainz: =liveRoot= =#content=, falling back to =#page=;
-  =liveHide= =.header=, =#footer= (R6).
+- Live page on MusicBrainz: =liveRoot= =#page=, nothing else hidden (R6, as
+  corrected).
 - Phase 0 changed no userscript code, so it has no WIP changelog entry;
-  Phase 1's entry names the two probes in its 📝 Docs section.
+  Phase 1's entry (WIP.1) names the two probes in its 📝 Docs section.
 
 ** Risks and traps
 

@@ -78,7 +78,7 @@ const foundFor = (title) => {
 const hashCell = (page, t, r) => page.locator('table.tbl').nth(t).locator('tbody tr').nth(r).locator('td').first();
 
 /** The shown tooltip card. */
-const tip = (page) => page.locator('#mb-stat-tooltip');
+const tip = (page) => page.locator('#mb-dp-peek');
 
 /**
  * Hovers one "#" cell from a resting pointer WITHOUT Ctrl: by default
@@ -213,25 +213,31 @@ test.describe('per-event "#" colours and the "#" release group card', () => {
     });
 
     test('tooltip setting off: no card, no request', async ({ page }) => {
+        // A fake clock (time still flows) lets the test jump past the card's
+        // show timer (sa_rich_tooltip_delay_ms) before asserting there is
+        // none, as detail-preview.spec.js does.
+        await page.clock.install();
         const { searches, browses } = await open(page, { settings: { sa_event_rg_tooltip: false } });
-        // The delegated handler runs synchronously during the hover.
         await hoverHash(page, 2, 11);
-        expect(await hashCell(page, 2, 11).getAttribute('data-mbtt')).toBeNull();
+        await page.clock.fastForward(1000);
+        await expect(tip(page)).toBeHidden();
         expect(searches).toEqual([]);
         expect(browses).toEqual([]);
     });
 
     test('Ctrl gate: a plain hover shows no card and asks nothing', async ({ page }) => {
+        await page.clock.install();
         const { searches, browses } = await open(page);
         await plainHoverHash(page, 2, 11);
         await plainHoverHash(page, 0, 0);
-        expect(await hashCell(page, 0, 0).getAttribute('data-mbtt')).toBeNull();
+        await page.clock.fastForward(1000);
         await expect(tip(page)).toBeHidden();
         expect(searches).toEqual([]);
         expect(browses).toEqual([]);
     });
 
     test('Ctrl gate: Ctrl pressed while the pointer is on a "#" cell shows its card', async ({ page }) => {
+        await page.clock.install();
         const { searches } = await open(page, { search: () => ({ status: 200, body: json('ws2-rg-search-terms.json') }) });
         await plainHoverHash(page, 2, 11);
         await page.keyboard.press('Control');
@@ -239,11 +245,11 @@ test.describe('per-event "#" colours and the "#" release group card', () => {
         await expect(tip(page)).toContainText('No release group is named like this event.', { timeout: 15000 });
         expect(searches).toHaveLength(1);
         // Leaving the cell hides it as any card; a plain hover back does not
-        // bring back the card the Ctrl press left on the cell.
+        // bring the card back.
         await page.mouse.move(0, 0);
         await expect(tip(page)).toBeHidden();
         await plainHoverHash(page, 2, 11);
-        expect(await hashCell(page, 2, 11).getAttribute('data-mbtt')).toBeNull();
+        await page.clock.fastForward(1000);
         await expect(tip(page)).toBeHidden();
     });
 

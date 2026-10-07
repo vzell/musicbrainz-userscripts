@@ -2647,11 +2647,14 @@
             default: true,
             description: 'On a release page, rewrite "(see all versions of this release, 5 available)" as ' +
                          '"(5 versions available in <release group name>)" — the name is in the page already, ' +
-                         'so this costs no request. Hovering it shows a preview of the release group: its ' +
-                         'cover, type and artist, and a table of its releases, which one MusicBrainz Web ' +
-                         'Service request loads on the first hover. When tracks carry live event data but the ' +
-                         'release group title is not a live title ("YYYY-MM-DD: Venue, City, …"), a ⚠️ after ' +
-                         'the link explains why and suggests one.'
+                         'so this costs no request. Hovering it shows a card of the release group beside the ' +
+                         'link: its cover, type and artist, and its first releases, which one MusicBrainz Web ' +
+                         'Service request loads on the first hover. Press Space to pin it into a window you can ' +
+                         'move and resize: every release in a table you can sort, each one linked, next to the ' +
+                         'group\'s type, rating, genres, links and annotation; "Live page" shows the release ' +
+                         'group\'s own page. Esc closes either. What was loaded is kept for a day. When tracks ' +
+                         'carry live event data but the release group title is not a live title ("YYYY-MM-DD: ' +
+                         'Venue, City, …"), a ⚠️ after the link explains why and suggests one.'
         },
 
         sa_event_rg_tooltip: {
@@ -2663,7 +2666,10 @@
                          'track comes from. For the main event that is the release\'s own release group; for any ' +
                          'other event, a MusicBrainz Web Service search looks for a release group named like the ' +
                          'event (the Disambiguation without "live, " and without a trailing "; …"), once per event. ' +
-                         'Alt+click the cell to open that release group, or the search, on musicbrainz.org.'
+                         'Space pins the card into the release group window (see the setting above); there ← and → ' +
+                         'step through the "#" cells. When no release group is named like the event, the window ' +
+                         'links the closest ones and the search. Alt+click the cell to open that release group, or ' +
+                         'the search, on musicbrainz.org.'
         },
 
         sa_event_rg_tooltip_without_ctrl: {
@@ -2698,6 +2704,16 @@
             default: 5,
             description: 'How many of the search\'s other results the "#" card lists when none is named like the ' +
                          'event. 0 shows none.'
+        },
+
+        sa_rg_window_max_releases: {
+            label: 'Release group window: at most this many releases',
+            type: 'number',
+            default: 500,
+            description: 'The window that Space opens on a release group card (the "versions available in" link, ' +
+                         'a "#" cell) lists the group\'s releases, read from MusicBrainz 100 at a time, one request ' +
+                         'a second. A group with more releases than this shows the first ones and says so. The first ' +
+                         '100 are always read.'
         },
 
         sa_enable_release_tracks_dynamic_ar_columns: {
@@ -13786,14 +13802,18 @@
      *     `liveUrl(t)`: the Live page view;
      *   - `steps(t)` and `stepId(el)`: what ‹ › step through, and an
      *     identity that survives the table's `cloneNode(true)` re-renders;
-     *   - `kind`: the window's title; `wide`: a wider card.
-     * The four foreign sites are one source each (`_dpSiteSource()`).
+     *   - `kind`: the window's title; `wide`: a wider card;
+     *   - `onAreaClick(e, t)`, optional: a click in its Extracted view.
+     * The four foreign sites are one source each (`_dpSiteSource()`); a
+     * MusicBrainz release page adds its two release-group sources, the
+     * subheader link and the "#" cell (`_rgLinkSource()`, `_eventRgSource()`).
      *
      * @returns {Array<object>}
      */
     function _popSources() {
         if (!_popSources.list) {
-            _popSources.list = Object.keys(_DP_SITES).map(host => _dpSiteSource(host, _DP_SITES[host]));
+            _popSources.list = Object.keys(_DP_SITES).map(host => _dpSiteSource(host, _DP_SITES[host]))
+                .concat([_rgLinkSource(), _eventRgSource()]);
         }
         return _popSources.list;
     }
@@ -14911,6 +14931,61 @@
             .mb-dp-dialog .mb-dp-live-url { font: 11px ui-monospace, Consolas, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
             .mb-dp-dialog .mb-dp-live-status { font-style: italic; }
             .mb-dp-dialog .mb-dp-live iframe { flex: 1; width: 100%; border: 0; background: #fff; }
+            /* The release-group sources (a release page's subheader link and
+               live "#" cells): a wider card, and the window's release table. */
+            #mb-dp-peek.mb-dp-wide { max-width: 540px; }
+            #mb-dp-peek .mb-rg-card { width: 500px; max-width: 100%; }
+            #mb-dp-peek .mb-rg-card-ev { width: 460px; }
+            #mb-dp-peek .mb-rg-head { display: flex; gap: 12px; align-items: flex-start; }
+            #mb-dp-peek .mb-rg-cover {
+                width: 84px; height: 84px; flex-shrink: 0; overflow: hidden;
+                background: #efe6d4; border: 1px solid #d9cfbd; border-radius: 2px;
+            }
+            #mb-dp-peek .mb-rg-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+            #mb-dp-peek .mb-rg-headtext { min-width: 0; }
+            :is(#mb-dp-peek, .mb-dp-dialog) .mb-rg-pills { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+            .mb-dp-dialog .mb-rg-pills { margin: 6px 0 2px; }
+            .mb-dp-dialog .mb-tt-pill {
+                display: inline-block; background: #efe6d4; color: #4a3f33; border: 1px solid #d9cfbd; border-radius: 3px;
+                padding: 0 5px; font-size: 0.88em; font-weight: 700; line-height: 1.45; white-space: nowrap;
+            }
+            :is(#mb-dp-peek, .mb-dp-dialog) .mb-rg-echip {
+                display: inline-block; font-size: 0.75em; font-weight: 700; color: #222;
+                border: 1px solid #8f8f8f; border-radius: 2px; padding: 0 3px;
+            }
+            #mb-dp-peek .mb-rg-evhead { display: flex; gap: 8px; align-items: center; }
+            #mb-dp-peek .mb-rg-hintlbl { margin-top: 4px; }
+            #mb-dp-peek .mb-rg-table { width: 100%; border-collapse: collapse; font-size: 0.92em; line-height: 1.4; }
+            #mb-dp-peek .mb-rg-table th { font-weight: 400; font-style: italic; color: #7a6d5c; text-align: left; padding: 0 6px 3px 0; }
+            #mb-dp-peek .mb-rg-table td { padding: 2px 6px 2px 0; }
+            #mb-dp-peek .mb-rg-table td:first-child { padding-left: 4px; }
+            #mb-dp-peek .mb-rg-table tr.mb-rg-cur td { background: #f1e8d5; }
+            #mb-dp-peek .mb-rg-table tr.mb-rg-cur td:first-child { font-weight: 700; }
+            :is(#mb-dp-peek, .mb-dp-dialog) .mb-rg-dim { color: #7a6d5c; }
+            #mb-dp-peek .mb-rg-cc { font-size: 0.85em; border: 1px solid #d9cfbd; border-radius: 2px; padding: 0 3px; }
+            .mb-dp-dialog .mb-dp-x.mb-rg-x { grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr); }
+            @media (max-width: 640px) {
+                .mb-dp-dialog .mb-dp-x.mb-rg-x { grid-template-columns: minmax(0, 1fr); }
+            }
+            .mb-dp-dialog .mb-rg-progress { margin: 0 0 6px; font-style: italic; color: #7a6d5c; }
+            .mb-dp-dialog .mb-rg-links a { color: inherit; }
+            .mb-dp-dialog .mb-rg-wtable-wrap { overflow-x: auto; border: 1px solid #d9cfbd; background: #fffdf8; }
+            .mb-dp-dialog .mb-rg-wtable { border-collapse: collapse; width: 100%; font-size: 12.5px; line-height: 1.35; }
+            .mb-dp-dialog .mb-rg-wtable :is(th, td) {
+                padding: 3px 6px; border-bottom: 1px solid #ece4d4; text-align: left; vertical-align: middle; white-space: nowrap;
+            }
+            .mb-dp-dialog .mb-rg-wtable th { background: #efe6d4; font-weight: 400; font-style: italic; color: #7a6d5c; }
+            .mb-dp-dialog .mb-rg-wtable th button {
+                border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: pointer;
+            }
+            .mb-dp-dialog .mb-rg-wtable th button::after { content: " \\2195"; opacity: 0.4; font-style: normal; }
+            .mb-dp-dialog .mb-rg-wtable th[aria-sort="ascending"] button::after { content: " \\25B2"; opacity: 0.9; }
+            .mb-dp-dialog .mb-rg-wtable th[aria-sort="descending"] button::after { content: " \\25BC"; opacity: 0.9; }
+            .mb-dp-dialog .mb-rg-wtable tr.mb-rg-cur td { background: #f1e8d5; font-weight: 700; }
+            .mb-dp-dialog .mb-rg-wtable a { color: #6b3f12; }
+            .mb-dp-dialog .mb-rg-num { text-align: right; font-variant-numeric: tabular-nums; }
+            .mb-dp-dialog .mb-rg-thumb { width: 32px; padding-right: 0; }
+            .mb-dp-dialog .mb-rg-thumb img { width: 32px; height: 32px; object-fit: cover; display: block; border: 1px solid #d9cfbd; }
             table.tbl > tbody > tr.mb-dp-current > td {
                 background-image: linear-gradient(rgba(255, 204, 0, 0.25), rgba(255, 204, 0, 0.25));
             }
@@ -14957,8 +15032,9 @@
     /**
      * Installs the popup engine (the detail-page preview's hover card and
      * pinned dialog) when one of its sources is enabled here (`_popSources()`:
-     * a foreign host whose preview setting is on). Called once from the init
-     * block, after a foreign host's live page is prepared. Where no source is
+     * a foreign host whose preview setting is on, or a MusicBrainz release
+     * page with a release-group card on). Called once from the init block,
+     * after a foreign host's live page is prepared. Where no source is
      * enabled it does nothing at all: no stylesheet, no listener.
      *
      * Everything is delegated on the document, so the table's
@@ -35161,55 +35237,93 @@
     // country, status, media[].format, label-info[] — saved as
     // tests/fixtures/ws2-rg-release-browse.json. Mockup the card follows:
     // https://claude.ai/artifact/GLjW6qPpEAY1BD8JawRZs6 (approved 2026-10-05).
+    //
+    // Since the popup engine (org/iframe.org, Phase 1) this card and the "#"
+    // cell's are two of its sources (`_rgLinkSource()`, `_eventRgSource()`):
+    // the card sits beside the link or cell, Esc closes it, and Space pins it
+    // into the window, whose Extracted view lists EVERY release (the browse
+    // paged by `offset`), sortable, beside the group's own facts (one lookup,
+    // on pin), and whose Live page view is the release group's page. Both
+    // are kept in IndexedDB for a day; every request goes through the one
+    // MusicBrainz rate gate, `_relAwaitRateSlot()`. Mockups:
+    // https://claude.ai/artifact/PwX26bNZEJaifwtFDZzhSg (org/iframe-mockups.html).
 
-    /** Attempts for the preview's one request, including the first (see `_ws2GetJson()`). */
+    /** Attempts for each of the popups' requests, including the first (see `_ws2GetJson()`). */
     const _RG_PREVIEW_TRIES = 4;
     /** Base spacing between those attempts, ms; widened per attempt. */
     const _RG_PREVIEW_DELAY = 1200;
-
+    /** Releases one browse page asks for: the Web Service's ceiling. */
+    const _RG_BROWSE_LIMIT = 100;
+    /** Releases the card's table shows; the pinned window shows them all. */
+    const _RG_CARD_ROWS = 8;
     /**
-     * Each release group's preview table, per page, by RG gid — shared by
-     * the header link, the "#" cells of the main event and those of any
-     * other event whose RG the search found. Absent until the first hover,
-     * then `loading`, `done` (kept for the page) or `failed` (the next hover
-     * asks again — only a successful answer is kept).
-     *
-     * @type {Map<string, {status: ('loading'|'done'|'failed'), table: string, detail: string}>}
+     * How long a release group's releases and facts are reused from
+     * IndexedDB, ms: MusicBrainz data changes daily (org/iframe.org, answer
+     * 4). ⟳ in the window always asks again.
      */
-    const _rgPreviews = new Map();
-
-    /** Minimum spacing between this feature's WS/2 requests, ms (MusicBrainz asks for ~1/s). */
-    const _RG_WS_SPACING = 1100;
-    /** The tail of the request queue `_rgWsGet()` appends to. */
-    let _rgWsQueue = Promise.resolve();
-    /** When the last queued request started, ms since the epoch. */
-    let _rgWsLastAt = 0;
+    const _RG_TTL_MS = 24 * 60 * 60 * 1000;
+    /** Version of the release-group records kept in IndexedDB; bump when their shape changes. */
+    const _RG_IDB_VERSION = 1;
 
     /**
-     * One WS/2 request of the release group previews and the "#" event
-     * search, run one at a time and at least `_RG_WS_SPACING` apart, however
-     * fast the pointer moves over the table; `_ws2GetJson()` retries a
-     * transient status with the server's `Retry-After` as a floor.
+     * Each release group's releases as far as loaded, by RG gid, shared by
+     * the subheader link's card, the "#" cards and the pinned window. Absent
+     * until one of them asks, then `loading` (with the callbacks that
+     * repaint whoever waits), `done` or `failed`. A `done` list is complete,
+     * capped at `sa_rg_window_max_releases`, or partial: the card's first
+     * page only, or a window load that failed part-way (`detail` says why);
+     * a window goes on from there. Only a successful page is kept, and only
+     * a finished load reaches IndexedDB.
+     *
+     * @type {Map<string, {status: ('loading'|'done'|'failed'), releases: Array<Object>, total: ?number,
+     *   complete: boolean, capped: boolean, all: boolean, at: number, cached: boolean, detail: string,
+     *   listeners: Set<function(): void>}>}
+     */
+    const _rgReleases = new Map();
+
+    /**
+     * Each release group's own facts (type, first release, artist credit,
+     * rating, genres, external links, annotation), by gid: the one lookup
+     * the pinned window makes. Same states and the same rule as
+     * `_rgReleases`: only a success is kept.
+     *
+     * @type {Map<string, {status: ('loading'|'done'|'failed'), data: ?Object, at: number, cached: boolean,
+     *   detail: string, listeners: Set<function(): void>}>}
+     */
+    const _rgFacts = new Map();
+
+    /**
+     * The window's sort of the releases table, kept while the page is open:
+     * a `_RG_COLUMNS` key and 1 (ascending) or -1. No key: this release
+     * first, then by date and title, as on the card.
+     * @type {{key: string, dir: number}}
+     */
+    const _rgSort = { key: '', dir: 1 };
+
+    /**
+     * One Web Service request of the release-group popups (the releases, the
+     * facts, the "#" event search), through `_relAwaitRateSlot()`: the one
+     * gate of the MusicBrainz requests the script makes on its own
+     * (org/iframe.org, answer 7), so these and the Relationships column
+     * together keep one request per `_REL_WS2_SPACING_MS`, however fast the
+     * pointer moves. `_ws2GetJson()` retries a transient status; each retry
+     * waits at least the server's `Retry-After`, then for a slot of its own.
      *
      * @param {string} url - Same-origin `/ws/2/...`.
      * @param {string} label - For the `rg` debug channel.
      * @returns {Promise<{ok: boolean, status: number, data: ?Object, detail: string}>}
      */
-    function _rgWsGet(url, label) {
-        const run = _rgWsQueue.then(async () => {
-            const wait = _rgWsLastAt + _RG_WS_SPACING - Date.now();
-            if (wait > 0) await new Promise(r => setTimeout(r, wait));
-            _rgWsLastAt = Date.now();
-            return _ws2GetJson(url, {
-                tries: _RG_PREVIEW_TRIES,
-                beforeRetry: (attempt, retryAfterMs) => new Promise(
-                    r => setTimeout(r, Math.max(_RG_PREVIEW_DELAY * attempt, retryAfterMs))),
-                dbg: (...args) => Lib.debug('rg', ...args),
-                label,
-            });
+    async function _rgWsGet(url, label) {
+        await _relAwaitRateSlot();
+        return _ws2GetJson(url, {
+            tries: _RG_PREVIEW_TRIES,
+            beforeRetry: async (attempt, retryAfterMs) => {
+                await new Promise(r => setTimeout(r, Math.max(_RG_PREVIEW_DELAY * attempt, retryAfterMs)));
+                await _relAwaitRateSlot();
+            },
+            dbg: (...args) => Lib.debug('rg', ...args),
+            label,
         });
-        _rgWsQueue = run.catch(() => {});
-        return run;
     }
 
     /**
@@ -35237,116 +35351,447 @@
     }
 
     /**
-     * The preview's table of releases, from the WS/2 browse: the current
-     * release first and marked, then by date and title; format as
-     * "3×CD" / "CD + DVD", label and catalog number. One string, no
-     * whitespace between tags (`#mb-stat-tooltip` is `white-space: pre-wrap`).
+     * A release-group record from the detail-page database (IndexedDB of
+     * musicbrainz.org's own origin, `_dpOpenIdb()`), when it is younger than
+     * `_RG_TTL_MS` and of `_RG_IDB_VERSION`.
      *
-     * @param {{releases?: Array<object>, 'release-count'?: number}} data
+     * @param {string} key - `rg-releases:<gid>` or `rg-facts:<gid>`.
+     * @returns {Promise<?{data: Object, at: number}>}
+     */
+    async function _rgIdbGet(key) {
+        const rec = await _dpIdbGet(`mb:${key}`).catch(() => null);
+        return rec && rec.v === _RG_IDB_VERSION && Date.now() - rec.at < _RG_TTL_MS ? { data: rec.data, at: rec.at } : null;
+    }
+
+    /**
+     * Keeps a release-group record in the detail-page database.
+     *
+     * @param {string} key - As `_rgIdbGet()`.
+     * @param {Object} data
+     * @param {number} at - When it was fetched.
+     * @returns {void}
+     */
+    function _rgIdbPut(key, data, at) {
+        _dpIdbPut({ url: `mb:${key}`, v: _RG_IDB_VERSION, at, data }).catch(() => { /* memory still has it */ });
+    }
+
+    /**
+     * Loads one release group's releases: memory, then IndexedDB, then the
+     * Web Service browse, page by page:
+     *   /ws/2/release?release-group=<gid>&inc=media+labels&limit=100&offset=<n>&fmt=json
+     * The card needs only the first page (`all` false); the pinned window
+     * asks for all of them, up to `sa_rg_window_max_releases`. Each page is
+     * one request through `_rgWsGet()`, and `offset` grows by the releases
+     * RETURNED, not by the limit: https://musicbrainz.org/doc/MusicBrainz_API
+     * (checked 2026-10-07) caps a release browse at 500 tracks, so a page can
+     * hold fewer than 100 (with inc=media+labels it did not bite in Phase 0,
+     * org/iframe.org R2).
+     *
+     * Never more than one load per group: a caller arriving while one runs
+     * adds its `repaint` to it, and a window's `all` makes a running card
+     * load go on. A page that fails is not kept; what loaded before it is,
+     * and the next ask goes on from there. `force` (⟳) starts from the first
+     * page, skipping IndexedDB.
+     *
+     * @param {{gid: string}} info
+     * @param {{all?: boolean, force?: boolean, repaint?: ?function(): void}} [opts]
+     * @returns {void}
+     */
+    function _rgReleasesLoad(info, { all = false, force = false, repaint = null } = {}) {
+        const gid = info.gid;
+        const cur = _rgReleases.get(gid);
+        if (cur && cur.status === 'loading') {
+            if (repaint) cur.listeners.add(repaint);
+            if (all) cur.all = true;
+            return;
+        }
+        if (!force && cur && cur.status === 'done' && (cur.complete || cur.capped || !all)) return;
+        const prev = !force && cur && cur.status === 'done' ? cur : null;
+        const st = {
+            status: 'loading', releases: prev ? prev.releases : [], total: prev ? prev.total : null,
+            complete: false, capped: false, all, at: 0, cached: false, detail: '',
+            listeners: new Set(repaint ? [repaint] : []),
+        };
+        _rgReleases.set(gid, st);
+        const notify = () => st.listeners.forEach(fn => fn());
+        const v = Lib.settings.sa_rg_window_max_releases;
+        const cap = typeof v === 'number' && v > 0 ? v : 500;
+        (async () => {
+            if (!force && !prev) {
+                const rec = await _rgIdbGet(`rg-releases:${gid}`);
+                if (rec) {
+                    Object.assign(st, { releases: rec.data.releases || [], total: rec.data.total });
+                    if (rec.data.complete || rec.data.capped || !st.all) {
+                        Object.assign(st, { status: 'done', complete: !!rec.data.complete, capped: !!rec.data.capped, at: rec.at, cached: true });
+                        notify();
+                        return;
+                    }
+                }
+            }
+            for (;;) {
+                const res = await _rgWsGet(`/ws/2/release?release-group=${encodeURIComponent(gid)}&inc=media+labels` +
+                    `&limit=${_RG_BROWSE_LIMIT}&offset=${st.releases.length}&fmt=json`, '_rgReleasesLoad');
+                if (!res.ok || !res.data) {
+                    st.status = st.releases.length ? 'done' : 'failed';
+                    st.detail = res.detail || `HTTP ${res.status}`;
+                    notify();
+                    return;
+                }
+                const got = res.data.releases || [];
+                st.releases = st.releases.concat(got);
+                st.total = typeof res.data['release-count'] === 'number' ? res.data['release-count'] : st.releases.length;
+                st.complete = !got.length || st.releases.length >= st.total;
+                st.capped = !st.complete && st.releases.length >= cap;
+                if (st.complete || st.capped || !st.all) break;
+                notify();
+            }
+            Object.assign(st, { status: 'done', detail: '', at: Date.now(), cached: false });
+            _rgIdbPut(`rg-releases:${gid}`, { releases: st.releases, total: st.total, complete: st.complete, capped: st.capped }, st.at);
+            notify();
+        })();
+    }
+
+    /**
+     * Loads one release group's own facts, for the pinned window: memory,
+     * then IndexedDB, then one lookup through `_rgWsGet()`:
+     *   /ws/2/release-group/<gid>?inc=artist-credits+genres+ratings+url-rels+annotation&fmt=json
+     * (every include valid on a release-group lookup,
+     * https://musicbrainz.org/doc/MusicBrainz_API checked 2026-10-07; probed
+     * in Phase 0, org/iframe.org R1). Only a success is kept.
+     *
+     * @param {string} gid
+     * @param {{force?: boolean, repaint?: ?function(): void}} [opts]
+     * @returns {void}
+     */
+    function _rgFactsLoad(gid, { force = false, repaint = null } = {}) {
+        const cur = _rgFacts.get(gid);
+        if (cur && cur.status === 'loading') {
+            if (repaint) cur.listeners.add(repaint);
+            return;
+        }
+        if (!force && cur && cur.status === 'done') return;
+        const st = { status: 'loading', data: null, at: 0, cached: false, detail: '', listeners: new Set(repaint ? [repaint] : []) };
+        _rgFacts.set(gid, st);
+        const notify = () => st.listeners.forEach(fn => fn());
+        (async () => {
+            if (!force) {
+                const rec = await _rgIdbGet(`rg-facts:${gid}`);
+                if (rec) {
+                    Object.assign(st, { status: 'done', data: rec.data, at: rec.at, cached: true });
+                    notify();
+                    return;
+                }
+            }
+            const res = await _rgWsGet(`/ws/2/release-group/${encodeURIComponent(gid)}` +
+                '?inc=artist-credits+genres+ratings+url-rels+annotation&fmt=json', '_rgFactsLoad');
+            if (res.ok && res.data) {
+                Object.assign(st, { status: 'done', data: res.data, at: Date.now() });
+                _rgIdbPut(`rg-facts:${gid}`, res.data, st.at);
+            } else {
+                Object.assign(st, { status: 'failed', detail: res.detail || `HTTP ${res.status}` });
+            }
+            notify();
+        })();
+    }
+
+    /**
+     * A release's media as "3×CD" / "CD + DVD", "—" when it lists none.
+     *
+     * @param {Object} r - A release of the Web Service browse.
+     * @returns {string}
+     */
+    function _rgFormatOf(r) {
+        const counts = new Map();
+        (r.media || []).forEach(m => counts.set(m.format || '?', (counts.get(m.format || '?') || 0) + 1));
+        return Array.from(counts).map(([f, n]) => (n > 1 ? `${n}×${f}` : f)).join(' + ') || '—';
+    }
+
+    /**
+     * A release's labels with their catalog numbers, "Label · CAT; Label2".
+     *
+     * @param {Object} r
+     * @returns {string}
+     */
+    function _rgLabelOf(r) {
+        return (r['label-info'] || [])
+            .map(li => [li.label && li.label.name, li['catalog-number']].filter(Boolean).join(' · '))
+            .filter(Boolean).join('; ');
+    }
+
+    /**
+     * The releases in the card's order: this release first, then by date
+     * (undated last) and title.
+     *
+     * @param {Array<Object>} rels
+     * @param {string} releaseGid
+     * @returns {Array<Object>} A sorted copy.
+     */
+    function _rgSortedReleases(rels, releaseGid) {
+        return (rels || []).slice().sort((a, b) =>
+            (b.id === releaseGid) - (a.id === releaseGid) ||
+            (a.date || '9999').localeCompare(b.date || '9999') || String(a.title).localeCompare(String(b.title)));
+    }
+
+    /**
+     * The card's table of releases: this release first and marked, then by
+     * date and title, at most `_RG_CARD_ROWS` of them; format as "3×CD" /
+     * "CD + DVD", label and catalog number. The foot says how many there
+     * are and, when every one is loaded and they share it, their status.
+     *
+     * @param {{releases: Array<Object>, total: ?number}} st - `_rgReleases` state.
      * @param {{releaseGid: string}} info
      * @returns {string}
      */
-    function _rgReleasesTableHtml(data, info) {
-        const rels = (data.releases || []).slice().sort((a, b) =>
-            (b.id === info.releaseGid) - (a.id === info.releaseGid) ||
-            (a.date || '9999').localeCompare(b.date || '9999') || String(a.title).localeCompare(String(b.title)));
-        const fmt = r => {
-            const counts = new Map();
-            (r.media || []).forEach(m => counts.set(m.format || '?', (counts.get(m.format || '?') || 0) + 1));
-            return Array.from(counts).map(([f, n]) => (n > 1 ? `${n}×${f}` : f)).join(' + ') || '—';
-        };
-        const label = r => (r['label-info'] || [])
-            .map(li => [li.label && li.label.name, li['catalog-number']].filter(Boolean).join(' · '))
-            .filter(Boolean).join('; ');
-        const td = 'padding:2px 6px 2px 0;';
-        const dim = 'color:#7a6d5c;';
-        const rows = rels.map(r => {
+    function _rgReleasesTableHtml(st, info) {
+        const rels = _rgSortedReleases(st.releases, info.releaseGid);
+        const shown = rels.slice(0, _RG_CARD_ROWS);
+        const dim = (on) => (on ? ' class="mb-rg-dim"' : '');
+        const rows = shown.map(r => {
             const cur = r.id === info.releaseGid;
-            const lab = label(r);
-            return `<tr${cur ? ' style="background:#f1e8d5;"' : ''}>` +
-                `<td style="padding:2px 6px 2px 4px;${cur ? 'font-weight:700;' : ''}">${cur ? '▸ ' : ''}${_rgEsc(r.title)}</td>` +
-                `<td style="${td}">${_rgEsc(fmt(r))}</td>` +
-                `<td style="${td}${r.date ? '' : dim}">${_rgEsc(r.date || '—')}</td>` +
-                `<td style="${td}${r.country ? '' : dim}">${r.country ? `<span style="font-size:0.85em;border:1px solid #d9cfbd;border-radius:2px;padding:0 3px;">${_rgEsc(r.country)}</span>` : '—'}</td>` +
-                `<td style="padding:2px 4px 2px 0;${!lab || lab.startsWith('[') ? dim : ''}">${_rgEsc(lab || '—')}</td></tr>`;
+            const lab = _rgLabelOf(r);
+            return `<tr${cur ? ' class="mb-rg-cur"' : ''}><td>${cur ? '▸ ' : ''}${_rgEsc(r.title)}</td>` +
+                `<td>${_rgEsc(_rgFormatOf(r))}</td>` +
+                `<td${dim(!r.date)}>${_rgEsc(r.date || '—')}</td>` +
+                `<td${dim(!r.country)}>${r.country ? `<span class="mb-rg-cc">${_rgEsc(r.country)}</span>` : '—'}</td>` +
+                `<td${dim(!lab || lab.startsWith('['))}>${_rgEsc(lab || '—')}</td></tr>`;
         }).join('');
-        const th = 'font-weight:400;font-style:italic;padding:0 6px 3px 0;';
         const statuses = new Set(rels.map(r => r.status).filter(Boolean));
-        const total = data['release-count'] || rels.length;
+        const total = st.total || rels.length;
         const foot = [
-            statuses.size === 1 ? `All ${total} release${total === 1 ? '' : 's'} are ${[...statuses][0]}` : `${total} release${total === 1 ? '' : 's'}`,
-            total > rels.length ? `showing ${rels.length}` : null,
-            '▸ = this release · click to open the release group',
+            statuses.size === 1 && rels.length >= total
+                ? `All ${total} release${total === 1 ? '' : 's'} are ${[...statuses][0]}`
+                : `${total} release${total === 1 ? '' : 's'}`,
+            total > shown.length ? `showing ${shown.length}` : null,
+            '▸ = this release',
         ].filter(Boolean).join(' · ');
-        return `<table style="width:100%;border-collapse:collapse;font-size:0.92em;line-height:1.4;">` +
-            `<thead><tr style="color:#7a6d5c;text-align:left;"><th style="${th}">Release</th><th style="${th}">Format</th>` +
-            `<th style="${th}">Date</th><th style="${th}">Country</th><th style="${th}padding-right:0;">Label / Cat#</th></tr></thead>` +
-            `<tbody>${rows}</tbody></table><div class="mb-tt-foot">${_rgEsc(foot)}</div>`;
+        return '<table class="mb-rg-table"><thead><tr><th>Release</th><th>Format</th><th>Date</th><th>Country</th>' +
+            `<th>Label / Cat#</th></tr></thead><tbody>${rows}</tbody></table><div class="mb-tt-foot">${_rgEsc(foot)}</div>`;
     }
 
     /**
-     * The whole preview card: the release group's cover, name, type and
-     * artist, then the table — or its loading or failure line.
+     * A release group's card: its cover, name, type and artist, the pills,
+     * then the table of releases — or its loading or failure line. Rendered
+     * from `_rgReleases` as it stands: the source repaints it as pages arrive.
      *
-     * @param {{gid: string, name: string, type: string, artist: string}} info
+     * @param {{gid: string, name: string, type: string, artist: string, releaseGid: string}} info
      * @param {number} n - Releases the group has.
      * @param {string} [lead] - HTML before the pills: the "main event" pill
      *   or an event's "E<n>" chip, on a "#" cell's card.
+     * @param {string} [footHtml] - A foot line of the caller's.
      * @returns {string}
      */
-    function _rgPreviewHtml(info, n, lead = '') {
+    function _rgCardHtml(info, n, lead = '', footHtml = '') {
         const live = _parseLiveTitle(info.name);
-        const st = _rgPreviews.get(info.gid) || { status: 'loading', table: '', detail: '' };
+        const st = _rgReleases.get(info.gid) || { status: 'loading', releases: [], total: null };
         const pill = t => `<span class="mb-tt-pill">${_rgEsc(t)}</span>`;
-        const head = `<div style="display:flex;gap:12px;align-items:flex-start;">` +
-            `<div style="width:84px;height:84px;flex-shrink:0;background:#efe6d4;border:1px solid #d9cfbd;border-radius:2px;overflow:hidden;">` +
-            `<img src="https://coverartarchive.org/release-group/${_rgEsc(info.gid)}/front-250" alt="" style="width:100%;height:100%;object-fit:cover;display:block;"></div>` +
-            `<div style="min-width:0;"><div class="mb-tt-title">${_rgEsc(info.name)}</div>` +
+        const head = '<div class="mb-rg-head"><div class="mb-rg-cover">' +
+            `<img src="https://coverartarchive.org/release-group/${_rgEsc(info.gid)}/front-250" alt=""></div>` +
+            `<div class="mb-rg-headtext"><div class="mb-tt-title">${_rgEsc(info.name)}</div>` +
             `<div class="mb-tt-body">${_rgEsc([info.type, info.artist].filter(Boolean).join(' · '))}</div>` +
-            `<div class="mb-tt-body" style="display:flex;gap:6px;flex-wrap:wrap;">${lead}${live && live.kind === 'valid' ? pill('✓ live title') : ''}${pill(`${n} release${n === 1 ? '' : 's'}`)}</div>` +
-            `</div></div><div class="mb-tt-rule"></div>`;
+            `<div class="mb-tt-body mb-rg-pills">${lead}${live && live.kind === 'valid' ? pill('✓ live title') : ''}` +
+            `${pill(`${n} release${n === 1 ? '' : 's'}`)}</div></div></div><div class="mb-tt-rule"></div>`;
         let body;
-        if (st.status === 'done') body = st.table;
-        else if (st.status === 'failed') {
+        if (st.status === 'failed') {
             body = `<div class="mb-tt-alert">Could not load the releases (${_rgEsc(st.detail)}).</div>` +
-                   `<div class="mb-tt-foot">Hover again to retry.</div>`;
-        } else body = `<div class="mb-tt-comment">Loading the ${n} release${n === 1 ? '' : 's'}…</div>`;
-        return `<div style="width:500px;max-width:100%;">${head}${body}</div>`;
+                   '<div class="mb-tt-foot">Hover again to retry.</div>';
+        } else if (st.releases.length) body = _rgReleasesTableHtml(st, info);
+        else if (st.status === 'done') body = '<div class="mb-tt-comment">MusicBrainz lists no releases for it.</div>';
+        else body = `<div class="mb-tt-comment">Loading the ${n} release${n === 1 ? '' : 's'}…</div>`;
+        // How old the releases are, as the detail-page cards say it: they
+        // are kept a day (_RG_TTL_MS).
+        const age = st.status === 'done' && st.at ? `${_rgEsc(_dpAgeText({ cached: st.cached, at: st.at }))} · ` : '';
+        return `<div class="mb-rg-card">${head}${body}${footHtml}` +
+            `<div class="mb-tt-foot">${age}<kbd>Space</kbd> every release, sortable · <kbd>Esc</kbd> close</div></div>`;
     }
 
     /**
-     * Writes the preview into the link's `data-mbtt`, and into the shown
-     * card when the pointer is on the link.
+     * The window's columns of the releases table: key, header, the value it
+     * sorts by, and whether that value is a number.
+     * @type {Array<{key: string, label: string, num?: boolean, val: function(Object): (string|number)}>}
+     */
+    const _RG_COLUMNS = [
+        { key: 'title', label: 'Release', val: r => r.title || '' },
+        { key: 'format', label: 'Format', val: r => (r.media || []).length ? _rgFormatOf(r) : '' },
+        { key: 'tracks', label: 'Tracks', num: true, val: r => (r.media || []).reduce((s, m) => s + (m['track-count'] || 0), 0) },
+        { key: 'date', label: 'Date', val: r => r.date || '' },
+        { key: 'country', label: 'Country', val: r => r.country || '' },
+        { key: 'label', label: 'Label', val: r => (r['label-info'] || []).map(li => li.label && li.label.name).filter(Boolean).join('; ') },
+        { key: 'catno', label: 'Cat#', val: r => (r['label-info'] || []).map(li => li['catalog-number']).filter(Boolean).join('; ') },
+        { key: 'barcode', label: 'Barcode', val: r => r.barcode || '' },
+    ];
+
+    /**
+     * The window's table of every loaded release, sorted by `_rgSort` (empty
+     * values last either way), else in the card's order. Each title links its
+     * release (a new tab); a cover shows only where the release's own
+     * `cover-art-archive.front` says the archive has one, so the table
+     * requests no missing image (org/iframe.org R2; the block is accurate,
+     * org/caa-artwork-requests.org F1). The images load lazily, as the table
+     * scrolls into view.
      *
-     * @param {HTMLAnchorElement} a
-     * @param {object} info - `_releaseGroupInfo()`.
+     * @param {{releases: Array<Object>}} st - `_rgReleases` state.
+     * @param {{releaseGid: string}} info
+     * @returns {string}
+     */
+    function _rgWindowTableHtml(st, info) {
+        let rels = _rgSortedReleases(st.releases, info.releaseGid);
+        const col = _RG_COLUMNS.find(c => c.key === _rgSort.key);
+        if (col) {
+            rels = rels.slice().sort((a, b) => {
+                const x = col.val(a);
+                const y = col.val(b);
+                if (x === '' || y === '') return (x === '') - (y === '');
+                return (col.num ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true })) * _rgSort.dir;
+            });
+        }
+        const head = '<th></th>' + _RG_COLUMNS.map(c => {
+            const sort = _rgSort.key === c.key ? (_rgSort.dir > 0 ? 'ascending' : 'descending') : 'none';
+            return `<th aria-sort="${sort}"><button type="button" data-mb-rg-sort="${c.key}">${_rgEsc(c.label)}</button></th>`;
+        }).join('');
+        const rows = rels.map(r => {
+            const cur = r.id === info.releaseGid;
+            const front = r['cover-art-archive'] && r['cover-art-archive'].front;
+            const id = _rgEsc(r.id);
+            const cells = _RG_COLUMNS.map(c => {
+                if (c.key === 'title') {
+                    return `<td>${cur ? '▸ ' : ''}<a href="/release/${id}" target="_blank" rel="noopener">${_rgEsc(r.title)}</a>` +
+                        `${r.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(r.disambiguation)})</span>` : ''}</td>`;
+                }
+                const v = c.key === 'format' ? _rgFormatOf(r) : c.val(r);
+                return `<td${c.num ? ' class="mb-rg-num"' : ''}>${_rgEsc(v === '' ? '—' : v)}</td>`;
+            }).join('');
+            return `<tr${cur ? ' class="mb-rg-cur"' : ''}><td class="mb-rg-thumb">` +
+                (front ? `<img loading="lazy" src="https://coverartarchive.org/release/${id}/front-250" alt="">` : '') +
+                `</td>${cells}</tr>`;
+        }).join('');
+        return `<div class="mb-rg-wtable-wrap"><table class="mb-rg-wtable"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
+    }
+
+    /**
+     * The facts column of the window: type, first release, artist, rating,
+     * genres, the external links and the annotation — or their loading or
+     * failure line.
+     *
+     * @param {{status: string, data: ?Object, detail: string}} f - `_rgFacts` state.
+     * @returns {string}
+     */
+    function _rgFactsHtml(f) {
+        if (f.status === 'failed') {
+            return `<h4>Facts</h4><div class="mb-dp-warn">Could not load the release group (${_rgEsc(f.detail)}).</div>` +
+                '<p><button type="button" class="mb-dp-retry">⟳ Try again</button></p>';
+        }
+        if (f.status !== 'done' || !f.data) {
+            return '<h4>Facts</h4><div class="mb-dp-xsub"><span class="mb-dp-spin">◌</span> Loading the release group…</div>';
+        }
+        const d = f.data;
+        const fields = [['Type', [d['primary-type'], ...(d['secondary-types'] || [])].filter(Boolean).join(' + ') || '—']];
+        if (d['first-release-date']) fields.push(['First release', d['first-release-date']]);
+        const credit = (d['artist-credit'] || []).map(c => `${c.name || ''}${c.joinphrase || ''}`).join('');
+        if (credit) fields.push(['Artist', credit]);
+        const rt = d.rating || {};
+        const votes = rt['votes-count'] || 0;
+        fields.push(['Rating', votes ? `${rt.value} of 5 · ${votes} vote${votes === 1 ? '' : 's'}` : 'no votes']);
+        const genres = (d.genres || []).map(g => g.name).filter(Boolean);
+        if (genres.length) fields.push(['Genres', genres.join(', ')]);
+        let html = '<h4>Facts</h4>' + _dpFieldsHtml(fields);
+        const urls = (d.relations || []).filter(r => r.url && r.url.resource);
+        if (urls.length) {
+            html += `<h4>Links (${urls.length})</h4><div class="mb-rg-links">` + urls.map(r => {
+                let host = r.url.resource;
+                try {
+                    host = new URL(r.url.resource).hostname.replace(/^www\./, '');
+                } catch (_) { /* keep the whole address */ }
+                return `<div><a href="${_rgEsc(r.url.resource)}" target="_blank" rel="noopener">${_rgEsc(host)}</a> ` +
+                    `<span class="mb-rg-dim">${_rgEsc(r.type)}</span></div>`;
+            }).join('') + '</div>';
+        }
+        if (d.annotation) html += `<h4>Annotation</h4><div class="mb-dp-section">${_rgEsc(d.annotation)}</div>`;
+        return html;
+    }
+
+    /**
+     * The pinned window of one release group: its name, pills and cover with
+     * the facts on the left; every release, sortable, on the right, with the
+     * load's state above the table.
+     *
+     * @param {{gid: string, name: string, type: string, artist: string, releaseGid: string}} info
+     * @param {number} n - Releases the group has.
+     * @param {string} [lead] - As `_rgCardHtml()`.
+     * @returns {string}
+     */
+    function _rgWindowHtml(info, n, lead = '') {
+        const st = _rgReleases.get(info.gid) || { status: 'loading', releases: [], total: null };
+        const f = _rgFacts.get(info.gid) || { status: 'loading', data: null, detail: '' };
+        const live = _parseLiveTitle(info.name);
+        const pill = t => `<span class="mb-tt-pill">${_rgEsc(t)}</span>`;
+        const gid = _rgEsc(info.gid);
+        const left = `<div class="mb-dp-xtitle">${_rgEsc(info.name)}</div>` +
+            `<div class="mb-dp-xsub">${_rgEsc([info.type, info.artist].filter(Boolean).join(' · '))}</div>` +
+            `<div class="mb-rg-pills">${lead}${live && live.kind === 'valid' ? pill('✓ live title') : ''}` +
+            `${pill(`${n} release${n === 1 ? '' : 's'}`)}</div>` +
+            `<a href="https://coverartarchive.org/release-group/${gid}/front" target="_blank" rel="noopener">` +
+            `<img class="mb-dp-xcover" src="https://coverartarchive.org/release-group/${gid}/front-250" alt=""></a>` +
+            _rgFactsHtml(f);
+        const loaded = st.releases.length;
+        const total = st.total;
+        let state = '';
+        if (st.status === 'loading') {
+            state = `<div class="mb-rg-progress"><span class="mb-dp-spin">◌</span> Loading the releases… ${loaded}` +
+                `${total != null ? ` of ${total}` : ''}</div>`;
+        } else if (st.status === 'failed') {
+            state = `<div class="mb-dp-warn">Could not load the releases (${_rgEsc(st.detail)}).</div>` +
+                '<p><button type="button" class="mb-dp-retry">⟳ Try again</button></p>';
+        } else if (st.capped) {
+            state = `<div class="mb-rg-progress">The first ${loaded} of ${total}: ⚙️ Settings → 💿 RELEASE TRACKLIST → ` +
+                '"Release group window: at most this many releases".</div>';
+        } else if (!st.complete && st.detail) {
+            state = `<div class="mb-dp-warn">Loaded ${loaded} of ${total}; the rest could not be loaded (${_rgEsc(st.detail)}).</div>` +
+                '<p><button type="button" class="mb-dp-retry">⟳ Try again</button></p>';
+        }
+        const right = `<h4>Releases · ${total != null ? total : n}</h4>${state}` + (loaded ? _rgWindowTableHtml(st, info) : '');
+        const age = st.at ? _dpAgeText({ cached: st.cached, at: st.at }) : '';
+        return `<div class="mb-dp-x mb-rg-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>` +
+            `<div class="mb-dp-xfoot">${_rgEsc(age)}${age ? ' · ' : ''}click a header to sort · ⟳ asks MusicBrainz again</div>`;
+    }
+
+    /**
+     * The window of one release group, starting what it still needs: every
+     * release and the facts. Started on a pin, a step or ⟳ (`start`) — and
+     * also when nothing was asked yet, or only the card's first page: a "#"
+     * window opened before its search answered gets here by a repaint. Never
+     * for a failure, which only ⟳ or "Try again" retries: a repaint that
+     * retried would loop.
+     *
+     * @param {Object} info - `_releaseGroupInfo()`, or a found event's group.
      * @param {number} n
+     * @param {string} lead
+     * @param {boolean} start
+     * @param {boolean} force
+     * @param {function(): void} repaint
+     * @returns {string}
      */
-    function _rgPreviewRefresh(a, info, n) {
-        a.dataset.mbtt = _rgPreviewHtml(info, n);
-        const tip = document.getElementById('mb-stat-tooltip');
-        if (tip && tip.style.display === 'block' && a.matches(':hover')) tip.innerHTML = a.dataset.mbtt;
+    function _rgWindowFor(info, n, lead, start, force, repaint) {
+        const st = _rgReleases.get(info.gid);
+        const firstPageOnly = st && st.status === 'done' && !st.complete && !st.capped && !st.detail;
+        if (start || !st || firstPageOnly) _rgReleasesLoad(info, { all: true, force: start && force, repaint });
+        if (start || !_rgFacts.get(info.gid)) _rgFactsLoad(info.gid, { force: start && force, repaint });
+        return _rgWindowHtml(info, n, lead);
     }
 
     /**
-     * Loads one release group's preview table on the first hover (and on
-     * the next one after a failure): one WS/2 browse through `_rgWsGet()`.
-     * Never more than one in flight per group.
+     * A click in the window's Extracted view of a release group: a header
+     * sorts by its column, a second click on it reverses the order.
      *
-     * @param {object} info - `_releaseGroupInfo()`, or a found event's RG.
-     * @param {function(): void} onUpdate - Repaints whatever shows the card.
-     * @returns {Promise<void>}
+     * @param {MouseEvent} e
+     * @returns {void}
      */
-    async function _rgPreviewLoad(info, onUpdate) {
-        const cur = _rgPreviews.get(info.gid);
-        if (cur && (cur.status === 'loading' || cur.status === 'done')) return;
-        _rgPreviews.set(info.gid, { status: 'loading', table: '', detail: '' });
-        onUpdate();
-        const res = await _rgWsGet(`/ws/2/release?release-group=${encodeURIComponent(info.gid)}&inc=media+labels&limit=100&fmt=json`, '_rgPreviewLoad');
-        _rgPreviews.set(info.gid, res.ok && res.data
-            ? { status: 'done', table: _rgReleasesTableHtml(res.data, info), detail: '' }
-            : { status: 'failed', table: '', detail: res.detail || `HTTP ${res.status}` });
-        onUpdate();
+    function _rgOnAreaClick(e) {
+        const b = e.target.closest ? e.target.closest('button[data-mb-rg-sort]') : null;
+        if (!b) return;
+        const key = b.dataset.mbRgSort;
+        _rgSort.dir = _rgSort.key === key ? -_rgSort.dir : 1;
+        _rgSort.key = key;
+        _dpRenderDialog(false);
     }
 
     /**
@@ -35374,11 +35819,13 @@
 
     /**
      * Rewrites the release page's "(see all versions of this release, N
-     * available)" link as "(N versions available in <name>)" with the
-     * preview card, once; and on every call (page init, then each
-     * `stampFindings()` pass) adds or removes the 4c ⚠️ after it: shown when
-     * tracks carry live event data (`_mainEventCtx.liveRows`) and the release
-     * group title is not a valid live title.
+     * available)" link as "(N versions available in <name>)", once; and on
+     * every call (page init, then each `stampFindings()` pass) adds or
+     * removes the 4c ⚠️ after it: shown when tracks carry live event data
+     * (`_mainEventCtx.liveRows`) and the release group title is not a valid
+     * live title. Its `data-mb-rg-link` (the version count) is what makes it
+     * the popup engine's (`_rgLinkSource()`): the card on hover, Space for
+     * the window.
      *
      * @returns {void}
      */
@@ -35397,8 +35844,6 @@
             const bdi = document.createElement('bdi');
             bdi.textContent = info.name;
             a.appendChild(bdi);
-            a.addEventListener('mouseenter', () => { _rgPreviewLoad(info, () => _rgPreviewRefresh(a, info, n)); });
-            _rgPreviewRefresh(a, info, n);
         }
         const live = _parseLiveTitle(info.name);
         let warn = a.parentNode.querySelector('.mb-rg-live-warn');
@@ -35431,11 +35876,14 @@
     // counts only when its title IS the event name, never by score.
 
     /**
-     * Each event search, per page, by search text: `loading`, `done` (kept;
-     * `rg` is null when nothing matched) or `failed` (asked again on the next
-     * hover).
+     * Each event search, per page, by search text: `loading` (with the
+     * callbacks that repaint whoever waits: a card, the window), `done`
+     * (kept; `rg` is null when nothing matched; `hints` are the closest other
+     * groups, with their ids so the window can link them) or `failed`
+     * (asked again on the next hover).
      *
-     * @type {Map<string, {status: ('loading'|'done'|'failed'), rg: ?object, n: number, hints: string[], query: string, detail: string}>}
+     * @type {Map<string, {status: ('loading'|'done'|'failed'), rg: ?object, n: number,
+     *   hints: Array<{id: string, title: string}>, query: string, detail: string, listeners: Set<function(): void>}>}
      */
     const _eventRgSearches = new Map();
 
@@ -35493,25 +35941,31 @@
 
     /**
      * Searches once per event name for a release group named exactly like it
-     * ("-" and "‐" alike), keeps the closest other titles as hints, and loads
-     * a found group's preview table.
+     * ("-" and "‐" alike), keeps the closest other groups as hints, and loads
+     * a found group's releases. A caller arriving while the search runs adds
+     * its `onUpdate` to it, so a card and the window both repaint.
      *
      * @param {string} text
-     * @param {function(): void} onUpdate
+     * @param {?function(): void} onUpdate
      * @returns {Promise<void>}
      */
     async function _eventRgLookup(text, onUpdate) {
         const cur = _eventRgSearches.get(text);
-        if (cur && (cur.status === 'loading' || cur.status === 'done')) return;
+        if (cur && cur.status === 'loading') {
+            if (onUpdate) cur.listeners.add(onUpdate);
+            return;
+        }
+        if (cur && cur.status === 'done') return;
         const h = Lib.settings.sa_event_rg_search_hints;
         const hintsN = typeof h === 'number' && h >= 0 ? h : 5;
         const query = _eventRgQuery(text);
-        _eventRgSearches.set(text, { status: 'loading', rg: null, n: 0, hints: [], query, detail: '' });
-        onUpdate();
+        const entry = { status: 'loading', rg: null, n: 0, hints: [], query, detail: '', listeners: new Set(onUpdate ? [onUpdate] : []) };
+        _eventRgSearches.set(text, entry);
+        const notify = () => entry.listeners.forEach(fn => fn());
         const res = await _rgWsGet(`/ws/2/release-group?query=${encodeURIComponent(query)}&limit=${Math.min(25, hintsN + 5)}&fmt=json`, '_eventRgLookup');
         if (!res.ok || !res.data) {
-            _eventRgSearches.set(text, { status: 'failed', rg: null, n: 0, hints: [], query, detail: res.detail || `HTTP ${res.status}` });
-            onUpdate();
+            Object.assign(entry, { status: 'failed', detail: res.detail || `HTTP ${res.status}` });
+            notify();
             return;
         }
         const fold = v => String(v || '').replace(/‐/g, '-').trim();
@@ -35524,12 +35978,12 @@
             artist: (hit['artist-credit'] || []).map(c => `${c.name || ''}${c.joinphrase || ''}`).join(''),
             releaseGid: (p && p.release && p.release.gid) || '',
         } : null;
-        _eventRgSearches.set(text, {
+        Object.assign(entry, {
             status: 'done', rg: info, n: hit ? (hit.count || (hit.releases || []).length) : 0,
-            hints: rgs.filter(r => r !== hit).slice(0, hintsN).map(r => r.title), query, detail: '',
+            hints: rgs.filter(r => r !== hit).slice(0, hintsN).map(r => ({ id: r.id, title: r.title })), detail: '',
         });
-        if (info) _rgPreviewLoad(info, onUpdate);
-        onUpdate();
+        if (info) _rgReleasesLoad(info, { repaint: notify });
+        notify();
     }
 
     /**
@@ -35546,6 +36000,17 @@
     }
 
     /**
+     * A "#" cell's "E<n>" chip, in its event's tint; '' on the main event.
+     *
+     * @param {HTMLTableCellElement} td
+     * @returns {string}
+     */
+    function _eventChipHtml(td) {
+        const idx = td.dataset.mbEventIdx ? Number(td.dataset.mbEventIdx) : null;
+        return idx ? `<span class="mb-rg-echip" style="background:${_eventTint(idx)};">E${idx}</span>` : '';
+    }
+
+    /**
      * The "#" cell's card: the release's own RG for the main event; for
      * another event its found RG, or the search's state — searching,
      * failed, or no match with hints. With `start` (a hover, never a
@@ -35554,35 +36019,34 @@
      *
      * @param {HTMLTableCellElement} td
      * @param {boolean} [start]
+     * @param {function(): void} [repaint] - The popup engine's: repaints the
+     *   card while it still shows this cell.
      * @returns {string}
      */
-    function _eventRgCardHtml(td, start = false) {
+    function _eventRgCardHtml(td, start = false, repaint = () => {}) {
         const row = td.parentElement;
         const key = row.dataset.mbEventKey || '';
-        const refresh = () => _eventRgRepaint(td);
-        const idx = td.dataset.mbEventIdx ? Number(td.dataset.mbEventIdx) : null;
-        const chip = idx
-            ? `<span style="font-size:0.75em;font-weight:700;border:1px solid #8f8f8f;border-radius:2px;padding:0 3px;background:${_eventTint(idx)};">E${idx}</span>`
-            : '';
+        const refresh = repaint;
+        const chip = _eventChipHtml(td);
         const foot = t => `<div class="mb-tt-foot">${t}</div>`;
         if (row.dataset.mbMainEvent === '1') {
             const info = _releaseGroupInfo();
             if (info) {
-                if (start) _rgPreviewLoad(info, refresh);
-                return _rgPreviewHtml(info, _releaseGroupVersionCount(), '<span class="mb-tt-pill">main event</span>') +
-                    foot('The release\'s own release group · Alt+click to open it');
+                if (start) _rgReleasesLoad(info, { repaint: refresh });
+                return _rgCardHtml(info, _releaseGroupVersionCount(), '<span class="mb-tt-pill">main event</span>',
+                    foot('The release\'s own release group · Alt+click to open it'));
             }
         }
         const text = _eventSearchText(row);
         const count = _mainEventCtx.allKeys.get(key) || 0;
-        const head = `<div style="display:flex;gap:8px;align-items:center;">${chip}<span class="mb-tt-title">${_rgEsc(text || key)}</span></div>` +
+        const head = `<div class="mb-rg-evhead">${chip}<span class="mb-tt-title">${_rgEsc(text || key)}</span></div>` +
             `<div class="mb-tt-body">${count} track${count === 1 ? '' : 's'} on this release${row.dataset.mbMainEvent === '0' ? ' · not the main event' : ''}</div><div class="mb-tt-rule"></div>`;
-        const wrap = body => `<div style="width:460px;max-width:100%;">${head}${body}</div>`;
+        const wrap = body => `<div class="mb-rg-card mb-rg-card-ev">${head}${body}</div>`;
         if (!text) return wrap('<div class="mb-tt-body">No event name to search for: this track has a date but no event and no live comment.</div>');
         if (start) _eventRgLookup(text, refresh);
         const st = _eventRgSearches.get(text) || { status: 'loading', rg: null, hints: [], query: '', detail: '' };
         if (st.status === 'done' && st.rg) {
-            return _rgPreviewHtml(st.rg, st.n, chip) + foot('Found by searching for this event · Alt+click to open it');
+            return _rgCardHtml(st.rg, st.n, chip, foot('Found by searching for this event · Alt+click to open it'));
         }
         if (st.status === 'loading') return wrap('<div class="mb-tt-comment">Searching for a release group named like this event…</div>');
         if (st.status === 'failed') {
@@ -35591,23 +36055,59 @@
         const mode = `${Lib.settings.sa_event_rg_search_phrase !== false ? 'phrase' : 'terms'} search` +
             `${Lib.settings.sa_event_rg_search_artist !== false ? ', by the release\'s artist' : ''}`;
         const hints = st.hints.length
-            ? `<div class="mb-tt-dim" style="margin-top:4px;">Closest titles the search returned:</div><div class="mb-tt-body">${st.hints.map(_rgEsc).join('<br>')}</div>`
+            ? `<div class="mb-tt-dim mb-rg-hintlbl">Closest titles the search returned:</div><div class="mb-tt-body">${st.hints.map(h => _rgEsc(h.title)).join('<br>')}</div>`
             : '';
         return wrap(`<div class="mb-tt-body">No release group is named like this event.</div>${hints}` +
-            foot(`${mode} · Alt+click to run it on musicbrainz.org`));
+            foot(`${mode} · Alt+click to run it on musicbrainz.org`) +
+            foot('<kbd>Space</kbd> the search and the closest titles, as links · <kbd>Esc</kbd> close'));
     }
 
     /**
-     * Rewrites a "#" cell's card, and the shown tooltip when the pointer is
-     * on that cell.
+     * The "#" cell's window: the release group of the cell's event, as the
+     * card found it (`_rgWindowFor()`: every release and the group's
+     * facts), or, when no group is named like the event, the search and the
+     * closest titles as links; else the search's state. With `start` (a pin,
+     * a step, ⟳) it starts the search, `force` dropping a kept answer first.
      *
      * @param {HTMLTableCellElement} td
+     * @param {boolean} start
+     * @param {boolean} force
+     * @param {function(): void} repaint
+     * @returns {string}
      */
-    function _eventRgRepaint(td) {
-        if (!td.isConnected) return;
-        td.dataset.mbtt = _eventRgCardHtml(td);
-        const tip = document.getElementById('mb-stat-tooltip');
-        if (tip && tip.style.display === 'block' && td.matches(':hover')) tip.innerHTML = td.dataset.mbtt;
+    function _eventRgWindowHtml(td, start, force, repaint) {
+        const row = td.parentElement;
+        if (row.dataset.mbMainEvent === '1') {
+            const info = _releaseGroupInfo();
+            if (info) return _rgWindowFor(info, _releaseGroupVersionCount(), '<span class="mb-tt-pill">main event</span>', start, force, repaint);
+        }
+        const text = _eventSearchText(row);
+        const chip = _eventChipHtml(td);
+        const one = (html) => `<div class="mb-dp-x"><div class="mb-dp-col">${html}</div></div>`;
+        if (!text) return one('<div class="mb-dp-xsub">No event name to search for: this track has a date but no event and no live comment.</div>');
+        if (start) {
+            const cur = _eventRgSearches.get(text);
+            if (force && cur && cur.status !== 'loading') _eventRgSearches.delete(text);
+            _eventRgLookup(text, repaint);
+        }
+        const st = _eventRgSearches.get(text) || { status: 'loading', rg: null, hints: [], query: '', detail: '' };
+        if (st.status === 'done' && st.rg) return _rgWindowFor(st.rg, st.n, chip, start, force, repaint);
+        if (st.status === 'loading') {
+            return one('<div class="mb-dp-loading"><span class="mb-dp-spin">◌</span> Searching for a release group named like this event…</div>');
+        }
+        if (st.status === 'failed') {
+            return one(`<div class="mb-dp-warn">Could not search (${_rgEsc(st.detail)}).</div>` +
+                '<p><button type="button" class="mb-dp-retry">⟳ Try again</button></p>');
+        }
+        const search = `/search?query=${encodeURIComponent(st.query)}&type=release_group&method=advanced`;
+        const hints = st.hints.length
+            ? st.hints.map(h => `<div><a href="/release-group/${_rgEsc(h.id)}" target="_blank" rel="noopener">${_rgEsc(h.title)}</a></div>`).join('')
+            : '<div class="mb-dp-xsub">The search returned none.</div>';
+        return `<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-xtitle">${chip ? `${chip} ` : ''}${_rgEsc(text)}</div>` +
+            '<div class="mb-dp-xsub">No release group is named like this event.</div>' +
+            `<h4>The search</h4><div class="mb-dp-section">${_rgEsc(st.query)}</div>` +
+            `<p><a href="${_rgEsc(search)}" target="_blank" rel="noopener">Run it on musicbrainz.org ↗</a></p></div>` +
+            `<div class="mb-dp-col"><h4>Closest titles</h4>${hints}</div></div>`;
     }
 
     /**
@@ -35636,16 +36136,14 @@
     let _eventRgTooltipWired = false;
 
     /**
-     * Shows an element's ready-made `data-mbtt` card in `#mb-stat-tooltip`
-     * at once, at a pointer position — for a card asked for by a key press
-     * rather than a mouseover (the "#" cell's Ctrl, `initEventRgTooltip()`).
-     * The engine's own mouseout hides it as usual. Assigned by
-     * `_initStatTooltip()`, a no-op until then. Declared here, above that
-     * function's call at page init, so the assignment is past the `let`'s
-     * temporal dead zone.
-     * @type {function(HTMLElement, {clientX: number, clientY: number}): void}
+     * Whether this is a release page (`/release/<mbid>`, also `/disc/<n>`):
+     * where both release-group sources of the popup engine live.
+     *
+     * @returns {boolean}
      */
-    let _mbttShowNow = () => {};
+    function _isReleasePagePath() {
+        return /^\/release\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/disc\/\d+)?\/?$/.test(window.location.pathname);
+    }
 
     /**
      * Whether the "#" card waits for Ctrl: true unless
@@ -35659,49 +36157,16 @@
     }
 
     /**
-     * Wires the "#" event card once, delegated on `document`, so the clones
-     * every re-render makes need nothing: a `pointerover` (dispatched before
-     * the tooltip engine's `mouseover`) on entering a cell writes its
-     * `data-mbtt` just in time and starts the lookup; an Alt+click opens the
-     * card's target.
-     *
-     * Unless `sa_event_rg_tooltip_without_ctrl` is on, entering a cell
-     * without Ctrl held REMOVES its `data-mbtt` (one an earlier Ctrl hover
-     * left), so the engine shows nothing and nothing is looked up; pressing
-     * Ctrl while the pointer is on the cell then writes the card and shows it
-     * through `_mbttShowNow()`.
+     * Wires the "#" cell's Alt+click once, delegated on `document`, so the
+     * clones every re-render makes need nothing: it opens the card's target
+     * (`_eventRgTargetUrl()`). The card itself and its window belong to the
+     * popup engine (`_eventRgSource()`).
      *
      * @returns {void}
      */
     function initEventRgTooltip() {
         if (_eventRgTooltipWired) return;
         _eventRgTooltipWired = true;
-        let hoverTd = null; // the "#" cell the pointer is in
-        document.addEventListener('pointerover', e => {
-            if (Lib.settings.sa_event_rg_tooltip === false || !e.target.closest) return;
-            const td = e.target.closest(_EVENT_RG_CELL_SEL);
-            // Crossing the cell's own children is the same hover.
-            if (!td || td === hoverTd) return;
-            hoverTd = td;
-            if (_eventRgNeedsCtrl() && !e.ctrlKey) {
-                delete td.dataset.mbtt;
-                return;
-            }
-            td.dataset.mbtt = _eventRgCardHtml(td, true);
-        }, true);
-        document.addEventListener('pointerout', e => {
-            if (!hoverTd || !hoverTd.contains(e.target)) return;
-            if (e.relatedTarget && hoverTd.contains(e.relatedTarget)) return;
-            hoverTd = null;
-        }, true);
-        document.addEventListener('keydown', e => {
-            if (e.key !== 'Control' || e.repeat || !hoverTd) return;
-            if (Lib.settings.sa_event_rg_tooltip === false || !_eventRgNeedsCtrl()) return;
-            if (!hoverTd.isConnected || !hoverTd.matches(':hover')) return;
-            hoverTd.dataset.mbtt = _eventRgCardHtml(hoverTd, true);
-            const r = hoverTd.getBoundingClientRect();
-            _mbttShowNow(hoverTd, { clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 });
-        }, true);
         document.addEventListener('click', e => {
             if (!e.altKey || Lib.settings.sa_event_rg_tooltip === false || !e.target.closest) return;
             const td = e.target.closest(_EVENT_RG_CELL_SEL);
@@ -35711,6 +36176,104 @@
             e.stopPropagation();
             window.open(url, '_blank', 'noopener');
         }, true);
+    }
+
+    /**
+     * The Live page view of a MusicBrainz page, for the popup engine's
+     * `_dpGetRaw()` and `_dpIsolateFrame()`: fetched through the one
+     * MusicBrainz rate gate; `#page` is the root, so hiding its siblings
+     * hides the site's header, browser warning and footer and keeps both
+     * the content and the sidebar (cover, rating, tags, links). Every page
+     * probed in Phase 0 has `#page`, `/user/` and `/isrc/` too, which have no
+     * `#content` (org/iframe.org R6).
+     * @type {{charset: null, awaitSlot: function(): Promise<void>, liveRoot: function(Document): ?Element,
+     *   liveHide: string[], liveCss: string, livePrepare: null}}
+     */
+    const _MB_LIVE = {
+        charset: null,
+        awaitSlot: () => _relAwaitRateSlot(),
+        liveRoot: (doc) => doc.getElementById('page'),
+        liveHide: [],
+        liveCss: '',
+        livePrepare: null,
+    };
+
+    /**
+     * The release page's subheader link ("N versions available in <name>",
+     * `initReleaseGroupLink()`) as a source of the popup engine
+     * (`_popSources()`). Its card shows on a plain hover, as it always did
+     * (org/iframe.org, answer 8): the release group, its pills and the first
+     * releases, from one browse page. Space pins the window: every release,
+     * sortable, beside the group's facts (`_rgWindowFor()`); its Live page
+     * view is the release group's own page. Off with `sa_release_rg_link`.
+     *
+     * @returns {object} The source.
+     */
+    function _rgLinkSource() {
+        return {
+            id: 'mb-release-group',
+            kind: 'Release group',
+            selector: 'p.subheader span.small > a[href^="/release-group/"][data-mb-rg-link]',
+            wide: true,
+            live: _MB_LIVE,
+            enabled: () => !_foreignHost && Lib.settings.sa_release_rg_link !== false && _isReleasePagePath(),
+            resolve(el) {
+                const info = _releaseGroupInfo();
+                if (!info) return null;
+                return { key: info.gid, url: new URL(`/release-group/${info.gid}`, window.location.origin).href, info, n: Number(el.dataset.mbRgLink) || 0 };
+            },
+            needsCtrl: () => false,
+            liveUrl: (t) => t.url,
+            card(t, start, repaint) {
+                if (start) _rgReleasesLoad(t.info, { repaint });
+                return _rgCardHtml(t.info, t.n);
+            },
+            extracted: (t, start, force, repaint) => _rgWindowFor(t.info, t.n, '', start, force, repaint),
+            onAreaClick: _rgOnAreaClick,
+            steps: (t) => [t.el],
+            stepId: () => 'mb-release-group',
+        };
+    }
+
+    /**
+     * The "#" cell of a live track (`_EVENT_RG_CELL_SEL`: a release
+     * tracklist row with an event key) as a source of the popup engine: the
+     * release group of the track's event (`_eventRgCardHtml()`), the
+     * release's own for the main event, else one a search finds. Its card
+     * waits for Ctrl unless `sa_event_rg_tooltip_without_ctrl` is on; Space
+     * pins the window (`_eventRgWindowHtml()`), and ‹ › step down the "#"
+     * cells of every visible row, from one sub-table into the next. Off with
+     * `sa_event_rg_tooltip`.
+     *
+     * @returns {object} The source.
+     */
+    function _eventRgSource() {
+        return {
+            id: 'mb-event-rg',
+            kind: 'Release group',
+            selector: _EVENT_RG_CELL_SEL,
+            wide: true,
+            live: _MB_LIVE,
+            enabled: () => !_foreignHost && Lib.settings.sa_event_rg_tooltip !== false && _isReleasePagePath(),
+            resolve(td) {
+                const row = td.parentElement;
+                if (!row || !row.dataset.mbEventKey) return null;
+                return { key: `${row.dataset.mbMainEvent === '1' ? 'main' : 'ev'}:${row.dataset.mbEventKey}`, url: this.liveUrl({ el: td }) };
+            },
+            needsCtrl: _eventRgNeedsCtrl,
+            // The found group, else the search, else (before the search has
+            // answered) the release's own group.
+            liveUrl(t) {
+                const info = _releaseGroupInfo();
+                const path = _eventRgTargetUrl(t.el) || (info ? `/release-group/${info.gid}` : window.location.pathname);
+                return new URL(path, window.location.origin).href;
+            },
+            card: (t, start, repaint) => _eventRgCardHtml(t.el, start, repaint),
+            extracted: (t, start, force, repaint) => _eventRgWindowHtml(t.el, start, force, repaint),
+            onAreaClick: _rgOnAreaClick,
+            steps: () => Array.from(document.querySelectorAll(_EVENT_RG_CELL_SEL)).filter(td => td.getClientRects().length > 0),
+            stepId: (td) => td.parentElement.dataset.mbRowIdx || `${td.parentElement.dataset.mbEventKey}|${td.textContent}`,
+        };
     }
 
     /**
@@ -49345,7 +49908,8 @@ a { color: #1565c0; }`;
 
     // The popup engine (hover card + pinned dialog), when one of its sources
     // is enabled here: a foreign host's tables with that host's preview
-    // setting on. A no-op wherever no source is. See _initDetailPreview().
+    // setting on, or a MusicBrainz release page's release-group cards. A
+    // no-op wherever no source is. See _initDetailPreview().
     if (pageType && headerContainer) _initDetailPreview();
 
     if (pageType) Lib.prefix = `[VZ-${SCRIPT_BASE_NAME}: ${pageType}]`;
@@ -57720,9 +58284,6 @@ a { color: #1565c0; }`;
                 _hParent.dataset.mbttSavedTitleParent = _hParent.title;
                 _hParent.title = '';
             }
-        };
-        _mbttShowNow = (el, pt) => {
-            if (el && el.isConnected && el.dataset.mbtt) _showMbtt(el, pt, null);
         };
 
         /**
@@ -100134,7 +100695,7 @@ a { color: #1565c0; }`;
      * and clamps it, and skips it on a tap (`_isTouchCompatMouseEvent()`), so
      * the section adds no hover listener of its own. `#mb-stat-tooltip` is
      * `white-space: pre-wrap`, so the string carries NO whitespace between
-     * tags. Same layout idiom as `_rgPreviewHtml()`.
+     * tags. Same layout idiom as the release group card (`_rgCardHtml()`).
      *
      * Everything comes from the archive record already in `CAA_CTX.imagesCache`;
      * the preview is the 500 px thumbnail (`large` on older records).
@@ -109287,6 +109848,18 @@ a { color: #1565c0; }`;
              */
             tipTextToHtml(text) {
                 return _tipTextToHtml(text);
+            },
+            /**
+             * Reserves `n` slots of the one MusicBrainz rate gate
+             * (`_relAwaitRateSlot()`, the shipping function), as `n` requests
+             * of another feature would, so a spec can show that the release
+             * group popups' requests (`_rgWsGet()`) wait behind them.
+             *
+             * @param {number} n
+             * @returns {void}
+             */
+            reserveMbRateSlots(n) {
+                for (let i = 0; i < n; i++) _relAwaitRateSlot();
             },
             /**
              * A foreign host's detail-page parser (`_DP_SITES[host].parse`)
