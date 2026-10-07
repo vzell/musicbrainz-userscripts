@@ -20171,3 +20171,32 @@ below: still unexplained, still not marked flaky.
 the baseline; config, docs and publish audits clean. `npm run test:full`:
 1328 passed, 0 failed (2026-10-07T19:25:35Z to 19:32:28Z, host NB-3641,
 WSL2).
+
+## 2026-10-07 — merge gate of feature/popup-engine-phase2: three load-sensitive tests, one already flaky on main
+
+`npm run test:full` on the merged `main` (fold applied, 9.99.1276) was not
+green twice, each time with a DIFFERENT failure, while the branch's own run an
+hour earlier was 1328 of 1328 (host NB-3641, WSL2, 28 cores):
+
+- run 1 (to 2026-10-07T20:15:32Z): 1326 passed, 2 failed —
+  `sticky-page-headers.spec.js › an Annotation with a wiki "== … ==" heading …`
+  (also failed once in the WIP.4 run) and `user-ratings-multigroup.spec.js ›
+  the "Release group ratings" row is NOT desynced …`. Both passed 5 of 5
+  alone. Neither page runs this branch's code (`sa_pop_mb` off). Their error
+  text was lost: the run's output was piped through `tail`;
+- run 2 (20:16:47Z to 20:24:10Z): 1327 passed, 1 failed —
+  `detail-preview.spec.js › … (brucespringsteen.it) › a hover that has moved
+  on by the time its slot comes up makes no request` (1 request expected, 2
+  served).
+
+**The detail-preview test was flaky BEFORE this branch.** With
+`--repeat-each=20` (parallel workers, so loaded) it failed 14 of 20 on
+pre-merge `main` (1ee09e2, a temporary worktree) and 14 of 20 on the merged
+tree; alone with `--repeat-each=10`, 1 of 10. Its `page.clock.fastForward(1500)`
+races the second hover's rate slot under load. Not fixed here; worth its own
+change (wait on the gate being idle, as popup-mb.spec.js does with
+`__saTest.mbRateSlotWaitMs()`, instead of a fixed jump).
+
+Merged on the user's word after their live browser check ("Tested live, OK").
+Lesson for the next gate: save the full report (`> file`), never `| tail`, or
+a red run cannot be diagnosed afterwards.

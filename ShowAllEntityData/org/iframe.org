@@ -58,11 +58,14 @@ generate the plan information inside this file, so that I can resume also from a
   test:full=: 1292 passed). Design and rules:
   [[file:../docs/claude/detail-pages.md]] ("The popup engine: sources",
   "MusicBrainz: the release-group sources").
-- [-] Phase 2: Web Service entity cards on the links of MusicBrainz tables.
-  On =feature/popup-engine-phase2= (branched 2026-10-07 from =main= at
-  9.99.1271), in five WIP steps; see "Phase 2: progress" below. The Live page
-  is included for every kind (decided 2026-10-07), so Phase 3 keeps only the
-  edit and editor cards.
+- [X] Phase 2: Web Service entity cards on the links of MusicBrainz tables
+  (9.99.1272 to 9.99.1276), built on =feature/popup-engine-phase2= in five
+  steps, live-tested by the user and merged to =main= 2026-10-07 (=npm run
+  test:full=: 1328 passed on the branch; on the merged tree two runs each
+  had load-sensitive failures, see DEBUG-NOTES 2026-10-07 "merge gate");
+  see "Phase 2: progress" below. The Live page is included for
+  every kind (decided 2026-10-07), so Phase 3 keeps only the edit and
+  editor cards.
 - [ ] Phase 3: edit and editor cards (read from HTML). (The Live page for
   every MusicBrainz card moved into Phase 2.)
 - [ ] Phase 4: containers beyond =<a href>= (item 1b) and page-wide scope.
@@ -73,8 +76,8 @@ generate the plan information inside this file, so that I can resume also from a
 
 1. =git pull= on =main=: this file and the mockups are there. Phases 0 and 1
    were done on =feature/popup-engine= (merged); Phase 2 lives on
-   =feature/popup-engine-phase2= — pull that and read "Phase 2: progress" for
-   the next WIP step.
+   =feature/popup-engine-phase2= (merged 2026-10-07, 9.99.1272 to 9.99.1276);
+   Phase 3 starts from =main=.
 2. Read, in this order:
    - this file;
    - [[file:../docs/claude/detail-pages.md]]: the engine's rules, every one of
@@ -570,19 +573,19 @@ specs and mutation entries; the Live page for every kind now (=_MB_LIVE=, root
 =#page=); a tap on a table link opens the window (the engine's rule). Merge
 only after the user's browser check of the whole branch.
 
-| Step  | Kinds                                         | State                    |
-|-------+-----------------------------------------------+--------------------------|
-| WIP.1 | the engine for MusicBrainz tables; release group (Phase 1's card and window), release | done 2026-10-07 |
-| WIP.2 | recording, work                               | done 2026-10-07          |
-| WIP.3 | artist, label, area, instrument               | done 2026-10-07          |
-| WIP.4 | event, place, series                          | done 2026-10-07          |
-| WIP.5 | ISRC, ISWC, disc ID, collection               | done 2026-10-07          |
+| Version   | Kinds                                         | State                    |
+|-----------+-----------------------------------------------+--------------------------|
+| 9.99.1272 | the engine for MusicBrainz tables; release group (Phase 1's card and window), release | done 2026-10-07 |
+| 9.99.1273 | recording, work                               | done 2026-10-07          |
+| 9.99.1274 | artist, label, area, instrument               | done 2026-10-07          |
+| 9.99.1275 | event, place, series                          | done 2026-10-07          |
+| 9.99.1276 | ISRC, ISWC, disc ID, collection               | done 2026-10-07          |
 
-The release moved into WIP.1 (planned for WIP.2): the release group kind runs
+The release moved into 9.99.1272 (planned for 9.99.1273): the release group kind runs
 on Phase 1's loaders, so without a first lookup kind the new loader
 (=_mbWsLoad()=: cache, TTL, failure, =wanted()=) would have shipped untested.
 
-Design as built (WIP.1), with the rules: [[file:../docs/claude/detail-pages.md]],
+Design as built (9.99.1272), with the rules: [[file:../docs/claude/detail-pages.md]],
 "MusicBrainz: entity cards on table links". In short:
 - =_mbEntitySource()= last in =_popSources()=; =_mbPopTarget()= previews only
   the bare entity path (so not =/cover-art=), no image link, not
@@ -595,7 +598,7 @@ Design as built (WIP.1), with the rules: [[file:../docs/claude/detail-pages.md]]
   replaced =_RG_TTL_MS=;
 - =_mbPopSteps()= by header name across sub-tables.
 
-Found on the way (WIP.1):
+Found on the way (9.99.1272):
 - A native MusicBrainz release list's first cell holds a hidden
   =/cover-art= link BEFORE the release link; =_mbPopTarget()= skips it, and a
   spec locator for "the first release link" must too.

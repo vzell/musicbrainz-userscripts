@@ -149,24 +149,24 @@ opens the window, as on the foreign hosts (kept, decided 2026-10-07).
   requests go through `_mbPopPinLoad()`, which skips a key that FAILED unless
   it is ⟳ (pinned by a mutation); a ⟳ reaches the extras started from the
   lookup's own callback too (`start && force`).
-- **Kinds so far**: release group, release (WIP.1); recording — card
+- **Kinds so far**: release group, release (9.99.1272); recording — card
   `artist-credits+isrcs+releases+work-rels`, window `artist-rels+place-rels+event-rels`
   plus `release?recording=…&limit=1` ONLY when the lookup's list is full
   (`_MB_POP_SUBLIST_CAP` 25, org/iframe.org R3); work — card
   `artist-rels+label-rels+work-rels`, window `recording?work=…&limit=100&inc=artist-credits`
-  (WIP.2); artist — card `genres+ratings+aliases` (url-rels left to the window,
+  (9.99.1273); artist — card `genres+ratings+aliases` (url-rels left to the window,
   R1), window `url-rels` plus one `release-group?artist=…&type=<t>&limit=1`
   per `_MB_POP_RG_TYPES`; label — card `genres+aliases`, window
   `url-rels+label-rels` plus `release?label=…&limit=1`; area — `area-rels`;
   instrument — `instrument-rels+aliases`, no description from the Web Service
-  (WIP.3); event — card `artist-rels+place-rels` (the setlist is a field of the
+  (9.99.1274); event — card `artist-rels+place-rels` (the setlist is a field of the
   event), window `recording-rels+release-rels` plus the Event Art Archive index
   (`_mbPopArtLoad(_mbPopEventArt, EAA_CTX, …)`, on pin only, R4); place — card
   `area-rels+url-rels`, window `event?place=…&limit=100` sorted by date (the
   browse is not); series — one lookup with every item-kind relation (R1),
-  items by `ordering-key` (the lookup is not in order) (WIP.4); ISRC
+  items by `ordering-key` (the lookup is not in order) (9.99.1275); ISRC
   (`artist-credits`), ISWC, disc ID and collection — one lookup each, no extras
-  (WIP.5). Browse keys: `pop:browse:<entity>?<query>` (`_mbPopBrowse()`).
+  (9.99.1276). Browse keys: `pop:browse:<entity>?<query>` (`_mbPopBrowse()`).
 - **Codes** are a second path pattern, `_MB_POP_CODE_RE` (`/isrc/`, `/iswc/`,
   `/cdtoc/`); `_MB_POP_CODE_TYPES` maps the page segment to the kind and Web
   Service path — a disc ID's page is `/cdtoc/<id>`, its lookup
