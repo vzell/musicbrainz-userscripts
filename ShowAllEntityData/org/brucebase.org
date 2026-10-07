@@ -1,4 +1,5 @@
 ﻿* TODO BruceBase
+** DONE i
 
 Give the website https://brucebase.wikidot.com/stats:songs the same treatment as what we've done with the
 https://www.springsteenlyrics.com/lyrics.php website.
@@ -11,3 +12,61 @@ some other fancy stuff in the beginning.
 2.)
 
 The whole feature should be configurable (default off, as the main userscript is normally used just with MusicBrainz)
+
+** summary
+
+WIP.3 is committed (1b2c478) and pushed, and the Brucebase fix is ready as WIP.4 but not yet committed.
+
+What your Brucebase log showed:
+- Ours, now fixed (line 121): "8 × Blocked script execution in 'about:srcdoc'". The Live page copy had no scripts left, but Wikidot puts small inline scripts directly on some elements: onfocus on the search box and onclick on the sign-in, report and cookie-settings links. Chrome refuses and logs each of those as the page loads, without any click. The copy now removes those attributes and the javascript: links too, while the links themselves stay. Reproduced against today's real song page: 6 messages before the fix, 0 after.
+- The site's own and your ad blocker's (lines 1–22, 36–37): these are all logged at 09:04:11, before the userscript even started.
+  - The ERR_BLOCKED_BY_CLIENT lines are your ad blocker stopping Wikidot's ad scripts.
+  - The "92 × Blocked script execution" comes from frames the page creates while it runs, most likely its ad frames.
+  - The meh7.png 404s come from the list page's own YouTube video.
+  - The WebGPU powerPreference note is the browser's.
+
+  None of these are ours to fix.
+
+Checks:
+- Specs: the fixture spec passes 20/20, the mobile spec 1/1, and the live spec 5/5. The Brucebase live test now runs your exact steps (hover, Space, Live page) and checks for no blocked-script messages.
+- Mutation: the new mutation check fails as it should.
+- Lint: within baseline.
+
+The full suite was not clean: 1,267 passed and 1 failed. The failure is sl-lyrics.spec.js "a failed letter resumes at that LETTER, keeping the rows already loaded". It fails in at least 3 of 5 runs on its own, and it fails the same way on main, so this branch didn't cause it. It's the same test DEBUG-NOTES recorded failing once during the Brucebase merge; today it's much more frequent, for a reason I haven't investigated. I recorded it in DEBUG-NOTES as needing its own look.
+
+Your note in org/springsteenlyrics.org is still uncommitted. Shall I commit and push WIP.4? And do you want me to look into the sl-lyrics failure separately afterwards?
+
+** still buggy
+
+1.)
+
+the console error is still there:
+
+#+begin_example
+09:45:39.439 [VZ-ShowAllEntityData: bb-songs] 📝 https://brucebase.wikidot.com/song:7-rooms-of-gloom: parsed — 1 field(s), 0 track(s), 0 image(s). 
+about:srcdoc:1 Blocked script execution in 'about:srcdoc' because the document's frame is sandboxed and the 'allow-scripts' permission is not set.
+#+end_example
+
+2.)
+
+Also look into the sl-lyrics failure
+
+** summary
+
+WIP.4 is committed (f7d47f2) and pushed. The resume bug is fixed on its own branch, fix/resume-col-names, made from main, and I'm checking with you before committing it.
+
+WIP.4 removes Brucebase's inline handlers and javascript: links from the Live page copy. Its DEBUG-NOTES entry records the sl-lyrics root cause and the remaining Brucebase message. That message stays as you decided: it comes from something in your browser, most likely the ad blocker. Your notes in org/springsteenlyrics.org and org/brucebase.org are still uncommitted in your checkout.
+
+The resume bug fix, on fix/resume-col-names:
+- What was wrong: after "↻ Load remaining pages", the script re-read each column's name from its header text. By then the header also held the number from its 📊 button, so "Title" became "Title 4", and filters, sorting and column visibility stopped finding those columns.
+- Fix: one line in makeTableSortableUnified(): the column keeps the name stored when the table was first built.
+- Test: a new test waits until the 📊 numbers are showing and then resumes, which makes the bug happen every time. Without the fix it fails 5 of 5; with the fix it and the older resume test pass 10 of 10. A mutation check confirms it.
+- Also on the branch: a DEBUG-NOTES entry, its own WIP changelog, and a paragraph in docs/claude/fetch-and-render-pipeline.md. It doesn't affect HELP.
+- Full suite there: 1,248 passed and 1 failed. The failure is the event-overview Save to Disk test from before, which also fails on main, about 1 run in 21. That one is still uninvestigated.
+
+The branch lives in a temporary worktree, because your uncommitted notes block switching branches in your checkout. The worktree's node_modules is a symlink I made, which won't be committed.
+
+At merge time, whichever of the two branches merges second will have a conflict where both add to the end of DEBUG-NOTES.md and both create ShowAllEntityData_CHANGELOG.wip.json. Both are simple to resolve during the merge.
+
+Shall I commit and push fix/resume-col-names? And do you want the event-overview Save to Disk failure looked into as well?
+

@@ -301,8 +301,7 @@ parse the above URL for the structure and columns to extract
 
 for date expression use our date part extractor to create synthetic columns
 
-
-* TODO analyze how linked detail pages in non MusicBrainz websites can be handled from their repsective PTs
+* DONE analyze how linked detail pages in non MusicBrainz websites can be handled from their repsective PTs
 
 Answered in [[file:detail-pages.org]], with mockups in
 [[file:detail-pages-mockups.html]] (2026-10-07).
@@ -327,3 +326,42 @@ Or is it possible to include the detail inforamtion somehow in the same row as t
 3.)
 
 Make some suggestions, and show me nice rich HTML mockup pages
+
+* TODO summary
+
+One thing that isn't from this change:
+- An existing intermittent failure. In the full suite, 1,266 passed and 1 failed: the event-overview Save to Disk round
+  trip timed out waiting for the download. It fails the same way on main (1 of 21 runs), so this branch didn't cause
+  it. I recorded it in DEBUG-NOTES.
+
+The springsteenlyrics site also throws its own error ("Container is not defined") on its lyrics pages, even with no
+userscript loaded. The live test exempts that one exact message.
+
+* summary 2
+
+Most of it is the site's, but two lines are ours.
+
+Ours, and fixable:
+- "Blocked script execution … sandboxed and the 'allow-scripts' permission is not set", ×29 and ×17 (lines 436 and 439). This is the Live page view. I deliberately load the page with its scripts switched off, and Chrome logs one line for every script it refuses to run. Nothing is broken; it's just noise.
+- GET https://www.youtube-nocookie.com/img/meh7.png 404 (line 440). The song page embeds a YouTube video. Inside the scriptless frame the player can't start, and YouTube's fallback image request fails.
+
+Both can be fixed the same way: don't hand the frame the page's URL. Instead, fetch the page, remove its <script> tags, replace each embedded video with a plain "▶ Watch on YouTube" link, and give the frame that cleaned copy. Chrome then has no scripts to refuse, and the frame no longer requests the page a second time. Everything else in the Live page view, including hiding the site's navigation, stays the same.
+
+The site's own, worth reporting (both also appear on lines 1–2, on the plain lyrics page before any preview):
+- Mixed content: the pages load their font stylesheet over plain http://fonts.googleapis.com/… from an https page, so the browser blocks it and the "Open Sans" font never loads. The fix is to change that one link to https://.
+- [DOM] Input elements should have autocomplete attributes on the login form's password field (hTxtPassword). It's a hint, not an error; the fix is autocomplete="current-password" on that input.
+
+The "Container is not defined" error from the live test isn't in your log, which is consistent with it coming from the site and not from us.
+
+Not new, and not from the preview: the two [Violation] lines (411–412, a 350 ms animation-frame handler and a 328 ms forced reflow). They occur at 08:00:12–13, while the 3,552-row table is auto-sizing its columns after the render, 15 seconds before you opened the preview. They're the existing column auto-resize (sa_auto_resize_columns), not this branch.
+
+Shall I make the Live page view change on this branch as WIP.3? If you'd like to tell the site owner, a short note could read:
+
+▎ Your pages load their font stylesheet over HTTP (http://fonts.googleapis.com/css?family=Open+Sans:300,400,700) from an HTTPS page, so browsers block it and Open Sans never loads. Changing it to https:// fixes that. Separately, adding autocomplete="current-password" to the login form's password field (hTxtPassword) silences Chrome's hint about it.
+
+* bug
+
+then the Console log for https://brucebase.wikidot.com/stats:songs - @debug/bb-debug-song.log
+
+Hovering the "4th Of July, Asbury Park (Sandy)" link, then pressing "Space" and finally switching to the live page
+
