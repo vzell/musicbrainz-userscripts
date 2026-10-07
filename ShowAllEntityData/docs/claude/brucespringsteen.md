@@ -140,7 +140,9 @@ Columns (`_BS_HEADERS`):
 - **Notes** hold the italic line, e.g. "Lower 'Bruce Springsteen' - Little
   Steven Mix", "Picture disc".
 - **Title** links to the absolute `detrec.aspx` URL with `target="_blank"`,
-  because standalone there is no `principale` frame.
+  because standalone there is no `principale` frame. With the opt-in detail
+  preview on (`sa_bs_detail_preview`), hovering it shows the record's
+  tracklist and source shows (docs/claude/detail-pages.md).
 
 ## Styling
 

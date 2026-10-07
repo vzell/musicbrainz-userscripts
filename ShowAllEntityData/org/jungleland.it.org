@@ -42,4 +42,7 @@ Done as the opt-in pageType =jl-list=. The new setting is
 
 ** TODO add detail page handling, with additional "Uploader" column and optionally covers
 
+Analysis, probes and mockups: [[file:detail-pages.org]] (2026-10-07). The
+detail pages are windows-1252, which =fetchHtml()= cannot decode yet.
+
     

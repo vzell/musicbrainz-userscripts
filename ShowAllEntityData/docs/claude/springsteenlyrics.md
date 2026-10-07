@@ -11,7 +11,8 @@ page `collection.php` ("Latest additions", every item, `pg=` pagination) as
 (`brucelegs.php?cmd=list…`) as `sl-brucelegs`, and on the **lyrics index**
 (`lyrics.php`, one page per first letter) as `sl-lyrics`. It is **opt-in**:
 `sa_enable_springsteenlyrics`, default **off**. Only what each list card shows
-is used; no item detail page is fetched. The bootleg landing page
+goes into the table; an item's own page is read only by the opt-in detail
+preview (`sa_sl_detail_preview`, docs/claude/detail-pages.md). The bootleg landing page
 `bootlegs.php` (`sl-bootlegs-intro`) has no cards; it is supported only for the
 compact bar, and only while `sa_sl_compact_nav` is on as well — see "The
 bootleg landing page" below.

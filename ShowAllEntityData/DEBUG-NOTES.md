@@ -19640,6 +19640,209 @@ nothing in this branch touches its code path. Timing under load, not a
 regression — but a resume test that loses its first row under load is worth
 a look if it recurs.
 
+## 2026-10-07 — Detail-page preview on the four foreign hosts (branch feature/detail-pages, WIP.1)
+
+Request: `org/detail-pages.org` (analysis, probes, mockups at
+https://claude.ai/artifact/GX4fCDvgQ15GwA89pDWKmF). Decided: "A + B first,
+setting per site, ship live page view" — a hover card and a pinned dialog
+with Extracted and Live page views; `sa_sl/jl/bs/bb_detail_preview`, all off.
+Design and rules: docs/claude/detail-pages.md.
+
+Snapshots: `debug/detail-*` (curl, 2026-10-07; eleven become fixtures through
+`scripts/build-detail-fixtures.py`). What the specs found that the prototype
+regex parsers had hidden:
+
+- **Space never pinned after a render.** The first version let a Space
+  through whenever the focus was in a text field — and after every render the
+  script focuses the global filter itself, so the card appeared, Space did
+  nothing. Found by the fixture spec, not by reasoning. Now a Space is the
+  field's only within `_DP_TYPING_GRACE_MS` (1.5 s) of an `input` event, and
+  opening the dialog moves the focus into it so ← → are not the filter's.
+  Both directions are mutation-checked.
+- **brucespringsteen.it's tracklist table was never found.** The header row's
+  `textContent` is "PosTitleFromNotesVer", so `\bPos\b` cannot match. Read the
+  header cell by cell.
+- **Every line of a springsteenlyrics.com tracklist became a paragraph.** The
+  site writes `line<br />\nline`; turning `<br>` into a newline while keeping
+  the source's newline gave a blank line between all lines, so bootleg 1331's
+  UNNUMBERED tracklist (35 titles) came out as 36 notes. `_dpBlockText()` now
+  collapses source whitespace first, as rendering does. The prototype parser
+  (regex, not DOM) had shown a different symptom of the same page (Duration
+  swallowing the songs) that the DOM reader never had.
+- **"BORN IN THE U.S.A."** ends in a dot, which the "title-like line" test
+  read as prose: an all-capitals line may end in one.
+- **Test traps, not code defects**, worth knowing for the next card spec:
+  `toContainText` does not wait for visibility, and a hidden card keeps its
+  last content, so a text check passed on the PREVIOUS hover's card and Space
+  was pressed before the new one showed (helper `peekAt()` waits for
+  visible); and `getComputedStyle(child).display` stays `block` under a
+  `display: none` ancestor — measure "rendered" with `getClientRects()`.
+- `page.clock` (install before load, `fastForward()`) replaced every
+  `waitForTimeout` the first draft had (hover delay, typing grace, rate-gate
+  slot), keeping the lint baseline flat; the rate-gate test waits for the
+  second card's loading line (a positive sign its request is queued) before
+  moving away.
+
+Kept off MusicBrainz by construction: `_DP_SITES` is keyed by
+`_foreignHost`, `_initDetailPreview()` is called only on a foreign host, and
+the cache is its own IndexedDB database (`vz-saed-detail-pages`), not a store
+in the art cache, which would have bumped `_ART_IDB_VERSION` everywhere.
+
+**Results:** detail-preview fixture spec 16/16 and mobile spec 1/1; mutation
+list detail-preview 21 entries all as declared (19 fail, 2 recorded pass: the
+hover tap guard is covered by the mousedown hide; `_OTHER_RICH_TIPS` has no
+reachable overlap), userscript restored and hash-verified, the five entries
+touched by the `page.clock` rewrite re-run and still failing; live `@extended`
+detail-preview 4/4 in 59 s (2026-10-07T00:45:58Z–00:46:58Z, host NB-3641,
+WSL2); `npm run test:full` 1265 passed in 7.7 min (00:47:17Z–00:54:58Z, same
+host); lint within baseline; config default and doc audits clean.
+
+## 2026-10-07 — Detail preview on the lyrics index; no song lyrics in the repository (branch feature/detail-pages, WIP.2)
+
+Reported after WIP.1: "OK everywhere except no popup on lyrics.php". The
+lyrics index's rows link `lyrics.php?song=SLUG` (one page per version), which
+`isDetailUrl` did not admit. Added `_dpParseSlSong()` (docs/claude/detail-pages.md):
+title, version, lyrics or "Lyrics not available", every `h3.heading`
+section, Available Versions' count, Info's first paragraph; the card gets a
+four-line excerpt with the line count. Snapshots `debug/detail-sl-lyrics-{badlands,babyme}.html`.
+
+**Song lyrics are blanked in the fixtures, and no spec quotes lyric text.**
+Writing the first draft of the lyrics spec with lyric lines in it made the
+model's reply fail with "API Error: Output blocked by content filtering
+policy". Decided with the user: `build-detail-fixtures.py` turns every word
+of a lyrics block into "la" (tags, breaks, punctuation and entities kept, so
+the parser sees the same lines and verses; a "Lyrics not available" alert is
+left alone — the first draft blanked it too, and the spec caught that), and
+the specs assert sections, line counts, and the excerpt as parsed from the
+fixture. The three existing lyric-line assertions (Brucebase, fixture and
+live spec) became line counts. **The pushed WIP.1 commit (`5ca590e`) held the
+unblanked Brucebase fixture** `detail-bb-4th-of-july.html`; at the user's
+request it was rewritten (as `055edbb`: the blanked fixture, the build
+script's Brucebase blanking and the three line-count assertions, its tests
+re-run 17/17 on that tree) and the branch force-pushed with
+`--force-with-lease`, so no lyric text remains in the branch history.
+
+The live lyrics test met the site's OWN `Uncaught (in promise) Error:
+Container is not defined`, thrown on its lyrics pages with no userscript
+loaded (bare Chromium, about 07:33Z). Exempted by exact message, as
+sl-lists.spec.js exempts `init is not defined`.
+
+**A pre-existing flake, not this branch:** `event-overview.spec.js` "a Save
+to Disk → Load from Disk round trip keeps every group's own columns" timed out
+waiting for the `download` event once in `test:full`. It failed the same way
+on `main` (8043073, a scratch worktree): 1 of 21 runs of the whole spec with
+`--repeat-each=3`; 6 of 6 passed when that test ran alone, on main and on the
+branch alike (the branch: 1 of 6 alone). Worth a look on its own.
+
+**Results:** detail-preview fixture spec 18/18 and mobile 1/1; four new
+mutations (song links not admitted, song page read as a card, placeholders
+kept, no "not available" note) all fail as declared, userscript restored and
+verified; live `@extended` detail-preview 5/5 in 1.0 min
+(2026-10-07T07:34:11Z–07:35:12Z, host NB-3641, WSL2); `npm run test:full`
+1266 passed, 1 failed, the event-overview flake above (07:36:33Z–07:44:02Z);
+lint within baseline; config default and doc audits clean.
+
+## 2026-10-07 — Detail preview's Live page view: a cleaned copy instead of the URL (branch feature/detail-pages, WIP.3)
+
+Reported from a real browser (`debug/sl-debug-song.log`, song=dreamyou):
+after opening the Live page view, "Blocked script execution in '<URL>'
+because the document's frame is sandboxed …" ×29 and ×17, and `GET
+youtube-nocookie.com/img/meh7.png 404`. The frame loaded the page's URL with
+`sandbox` minus `allow-scripts`, and Chrome logs one line per refused script
+(the dreamyou page has 30 `<script>` tags); the embedded YouTube player could
+not start, and its fallback image 404'd. The log's other lines were the
+site's own (a `http://` Google Fonts stylesheet blocked as mixed content, a
+password field's autocomplete hint, both also on the plain lyrics page) and,
+at 08:00:12–13, the existing column auto-resize of the 3,552-row table (two
+`[Violation]` lines), unrelated to the preview.
+
+Fix: the frame gets `srcdoc` = `_dpLiveDocHtml()`, a copy with no scripts or
+noscripts, iframes as links ("▶ Watch on YouTube"), no meta refresh, a `<base
+href>` naming the page, the doctype kept; from `_dpRawMem` (the last 12 raw
+pages, filled by every fetch), so opening it after a hover makes no second
+request; ⟳ refetches. A new frame's initial `about:blank` fires `load` too:
+the first version attached the listener before inserting the frame, marked
+that blank document done, and a spec poll read it (`null.getClientRects`).
+The listener now goes on only once `srcdoc` is set, and `_dpIsolateFrame()`
+skips `about:blank` as well (recorded `"expect": "pass"`: the late listener
+covers it).
+
+**Playwright's trace recorder trips the sandbox too**, and cost most of this
+entry's time. After the fix, the live spec still saw 3 "Blocked script
+execution" lines. Bisected: not the copy (the saved `srcdoc` loaded bare
+logged none), not the userscript (the same with its gate exiting), not the
+harness's init scripts or libraries (a standalone script with all of them
+logged none), but `trace: 'retain-on-failure'`, which records every test and
+injects a snapshot script into every frame: `--trace=off` shows none. The live
+spec now runs with `test.use({ trace: 'off' })` (per file only; a nested
+describe is refused, "forces a new worker"). Without the tracer slowing it,
+jungleland.it's live test hovered while the 6,000-row table's render tail
+still held the main thread, and the card's 400 ms timer fired late: its
+visibility wait went from 5 s to 30 s, as the helper's next wait already was.
+
+**Results:** detail-preview fixture spec 20/20 and mobile 1/1, twice over
+(`--repeat-each=2`); six new mutations all as declared (5 fail, 1 recorded
+pass), userscript restored and verified; live `@extended` detail-preview 5/5
+in 1.1 min (2026-10-07T08:35:12Z–08:36:18Z, host NB-3641, WSL2), the BADLANDS
+test asserting no blocked-script message, the video as a link and no YouTube
+request; `npm run test:full` 1268 passed in 7.6 min (08:36:24Z–08:44:01Z, same
+host; the event-overview flake did not recur); lint within baseline.
+
+## 2026-10-07 — Live page view on Brucebase: inline handlers are "scripts" too (branch feature/detail-pages, WIP.4)
+
+Reported from a real browser after WIP.3 (`debug/bb-debug-song.log`, hover
+"4th Of July, Asbury Park (Sandy)", Space, Live page): `8Blocked script
+execution in 'about:srcdoc'`. The copy had no `<script>` left; reproduced
+untraced with today's real page cleaned by the real `_dpLiveDocHtml()`: six
+messages, each pointing at an element with an inline handler: the search
+box's `onfocus`, the login, report and cookie-settings links' `onclick`.
+Chrome refuses, and logs, each inline handler of a scriptless sandboxed frame
+as the page is parsed, click or no click (the user's eight include a couple
+more of the same kind). The copy now drops every `on…` attribute and every
+`javascript:` URL (the 16 `href="javascript:;"` links did nothing there);
+re-checked: zero.
+
+The rest of that log is the wiki's and the user's ad blocker's, all logged at
+09:04:11, before the userscript initialised: `ERR_BLOCKED_BY_CLIENT` for
+googleads/doubleclick, `ad_status.js`, `dc.js`; a WebGPU `powerPreference`
+note; `92Blocked script execution in '<URL>'` from frames the page adds at
+runtime (its saved copy has no sandboxed iframe of its own, so most likely the
+ad frames); and three `youtube.com/img/meh7.png` 404s from the page's own
+YouTube embed.
+
+**A pre-existing failure, now frequent:** `sl-lyrics.spec.js` "a failed
+letter resumes at that LETTER, keeping the rows already loaded"
+(`rows[0].Letter` undefined, line 114) failed in this `test:full`, then 3+ of
+5 runs alone on the branch AND 3+ of 5 alone on `main` (8043073, scratch
+worktree, 09:2xZ). It is the test the 2026-10-07 bb-songs entry above saw
+fail once under load; today it fails in isolation on main. Not caused by this
+branch (the preview is off in that spec, and nothing here touches the lyrics
+fetch or resume path). **Root cause found the same day, a real bug in main:**
+"↻ Load remaining pages" re-runs `makeTableSortableUnified()` over headers
+already decorated, whose 📊 count badges hold plain digits, and its `colName`
+is read from `th.textContent` ("Title ⇅▲▼102📊" → "Title 102"), so the
+resumed table's `data-col-name`s become "Title 4", "Version 12", "Date 8"…
+(which ones depends on which badges were filled in when the resume began,
+hence the intermittency). Fix: prefer the stored `th.dataset.colName`
+(8 of 8 passed with it); shipped on its own branch from main, not here.
+
+**One message stays, by decision:** after WIP.4 the user still saw one
+`Blocked script execution in 'about:srcdoc'` at line 1 on Brucebase. Today's
+real "7 Rooms Of Gloom" copy logs none in a browser without extensions, and
+the copy's line 1 is only the doctype, `<html>`, `<head>` and our `<base>`:
+something in the user's browser injects a script into every new frame, and
+the sandbox refuses it. Only on Brucebase, where the user's ad blocker acts
+(the earlier log), so most likely its site-specific scriptlet. Harmless; left
+as it is, with the sandbox kept (decided with the user).
+
+**Results:** detail-preview fixture spec 20/20 and mobile 1/1; the new
+mutation (handlers and javascript: URLs kept) fails as declared, userscript
+restored and verified; live `@extended` detail-preview 5/5 in 1.1 min
+(2026-10-07T09:12:15Z–09:13:19Z, host NB-3641, WSL2), the Brucebase test now
+running the reported steps and asserting no "Blocked script execution" in
+about:srcdoc; `npm run test:full` 1267 passed, 1 failed, the sl-lyrics test
+above (09:14:06Z–09:21:38Z); lint within baseline.
+
 ## 2026-10-07 — A resume renamed its columns ("Title 4"): the stored name must win (branch fix/resume-col-names, WIP.1)
 
 It recurred. During the feature/detail-pages work the `sl-lyrics.spec.js` test

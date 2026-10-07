@@ -1669,7 +1669,9 @@ of 32)"). If one letter fails to load, "↻ Load remaining pages" carries on
 from that letter.
 
 Cover and Title link to the item's own page on springsteenlyrics.com;
-following one asks first, as leaving any consolidated table does.
+following one asks first, as leaving any consolidated table does. To see
+what that page adds without leaving the table, switch on the preview: see
+*Previewing the detail pages* under [Page-specific behaviour](#page-specific-behaviour).
 
 </details>
 
@@ -1713,7 +1715,9 @@ these columns:
 The list holds over 6,000 bootlegs, more than the default *Large Dataset
 Threshold* (5000 rows), so the "many rows" question comes up before the table
 is shown.
-Everything is on that one page; nothing is fetched.
+Everything is on that one page; nothing is fetched, unless you switch on the
+preview of the artwork pages (see
+*Previewing the detail pages* under [Page-specific behaviour](#page-specific-behaviour)).
 
 </details>
 
@@ -1749,7 +1753,9 @@ turns them into one table:
 *Format* is the site's own text ("2 CD-R", "1 7 in."). *Notes* is the italic
 line some records carry ("Picture disc", "Lower 'Bruce Springsteen' - Little
 Steven Mix"). The title links to the record's detail page, which opens in a
-new tab.
+new tab. With the preview on, resting the pointer on a title shows the
+record's tracklist and the shows its tracks come from (see
+*Previewing the detail pages* under [Page-specific behaviour](#page-specific-behaviour)).
 
 To switch from one kind to the other, press the other button. The page
 reloads first, as it does whenever a second list is loaded, so press it once
@@ -1782,7 +1788,62 @@ with a subtitle, such as "(I Can't Get No) Satisfaction", a second time; they
 are not repeated, and keep the letter of their main title (*S*). The tabs are
 replaced by the table; the second set of tabs further down (News, Media,
 Released) stays as it was. Everything is on that one page; nothing is
-fetched.
+fetched, unless you switch on the preview of the song pages (see
+*Previewing the detail pages* under [Page-specific behaviour](#page-specific-behaviour)).
+
+</details>
+
+<details>
+<summary>Previewing the detail pages</summary>
+
+Each row of these tables links to a page with more detail: a bootleg's
+tracklist and scans or a song's lyrics on springsteenlyrics.com, an artwork
+page's scans on jungleland.it, a record's tracklist on brucespringsteen.it, a
+song's history on Brucebase. The preview shows that detail without leaving
+the table.
+
+It is **off until you switch it on**, for each site separately, right under
+that site's own switch in ⚙️ Settings:
+
+| Site                   | Setting                                                  | The card shows                                                                 |
+|------------------------|----------------------------------------------------------|--------------------------------------------------------------------------------|
+| 🎸 springsteenlyrics.com | *Preview item and song pages on springsteenlyrics.com lists* | the tracklist by disc, the notes (lineage, edition), the artwork scans; on the lyrics index, the version, the first lines of the lyrics and the song's info |
+| 🌴 jungleland.it        | *Preview artwork pages on the jungleland.it list*        | the uploader and the scans (front, back, discs, booklet)                       |
+| 💿 brucespringsteen.it  | *Preview record pages in the brucespringsteen.it database* | the tracklist, the show each track comes from, the notes, the photo           |
+| 📚 Brucebase           | *Preview song pages on the Brucebase song list*          | the album it comes from, how often and when last it was played live, releases |
+
+**Rest the pointer on a title** for a moment and a card opens beside it.
+The first time, it shows "Loading the detail page…" while the page is read in
+the background. The script reads at most one page a second, and a page you
+have already seen comes back at once: it is kept for 30 days. The card's last
+line says whether the page was fetched now or saved earlier. Moving the
+pointer away closes the card, and so does **Esc**.
+
+**Press Space** while the card is open to pin it into a window. A Space you
+type into the filter box stays in the filter box. In the window:
+
+- **‹ ›** or the **← →** keys step to the previous or next row of the table,
+  in the order the table shows them.
+- **Extracted** shows what the script read from the page, laid out for
+  reading: the fields, the scans (click one for the full size), the notes and
+  the whole tracklist. On Brucebase it also has the credits, the studio
+  versions and the lyrics; on the springsteenlyrics.com lyrics index, the
+  whole lyrics and every section of the song's page (info, recording,
+  releases, live history, covers, credits, the other versions).
+- **Live page** shows the site's own page inside the window. *Hide the site's
+  navigation* removes the site's menus, header and footer so only the content
+  is left. The page's own scripts do not run there: on Brucebase every tab is
+  shown, one under the other, and an embedded video is a "▶ Watch on YouTube"
+  link instead of a player. A page you have just hovered opens without being
+  read again.
+- **⟳** reads the page again instead of using the saved copy.
+- **↗** opens the page in a new tab.
+
+Drag the window by its title bar and resize it from its lower right corner;
+it reopens where you left it. **Esc**, **✕** or a click outside closes it.
+
+On a **touch screen**, there is no pointer to rest, so tapping a title opens
+the window directly. Use **↗** to go to the page itself.
 
 </details>
 
@@ -1793,8 +1854,8 @@ fetched.
 The script runs in any mobile browser that runs Tampermonkey (Firefox for
 Android, for example), with or without that browser's *Desktop site* mode.
 MusicBrainz itself has no mobile layout, so either way you get the desktop
-page, zoomed out to fit the table, and you pinch to zoom in. Two things behave
-differently from a desktop, on purpose:
+page, zoomed out to fit the table, and you pinch to zoom in. A few things
+behave differently from a desktop, on purpose:
 
 - **Hover tooltips do not open on a tap.** A tap would open them but nothing
   could close them again, so they would stay over the page. That covers the
@@ -1809,6 +1870,10 @@ differently from a desktop, on purpose:
 - **Sticky Page Headers is off.** Pinch-zoom moves what you see independently
   of what the browser pins, so the bars cannot reliably stay in view. To try it
   anyway, tick *Sticky Page Headers on touch devices* in 📌 Table stickiness.
+- **A tap on a title opens the detail preview's window** on the sites where
+  you switched the preview on (*Previewing the detail pages* under
+  [Page-specific behaviour](#page-specific-behaviour)), instead of the page
+  itself; the window's ↗ opens the page.
 
 Keyboard shortcuts need a keyboard, and dragging a column edge to resize it
 needs a mouse.

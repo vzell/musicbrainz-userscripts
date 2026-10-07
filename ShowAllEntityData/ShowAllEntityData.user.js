@@ -4047,10 +4047,27 @@
                          'lyrics.php (every first-letter page in one go) — and ' +
                          'offers a "Show all" button that fetches every page of the list, turns ' +
                          'the item cards into one filterable, sortable table, and adds the usual ' +
-                         'toolbar. Only what each list card shows is used; no item detail page is ' +
-                         'fetched. When off, the script exits on that site before touching the ' +
-                         'page. Settings are shared with MusicBrainz, so this can be switched on ' +
-                         'from either site.'
+                         'toolbar. Only what each list card shows goes into the table; an item\'s ' +
+                         'own page is read only for the preview below. When off, the script exits on ' +
+                         'that site before touching the page. Settings are shared with MusicBrainz, ' +
+                         'so this can be switched on from either site.'
+        },
+
+        sa_sl_detail_preview: {
+            label: 'Preview item and song pages on springsteenlyrics.com lists',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default; needs the setting above. When on, resting the pointer on ' +
+                         'an item\'s title in the table shows a card with what the item\'s own page ' +
+                         'adds: the tracklist, the notes (lineage, edition) and the artwork scans. ' +
+                         'On the lyrics index it shows the song page instead: the version, the ' +
+                         'first lines of the lyrics and the song\'s info; the pinned window has ' +
+                         'the whole lyrics and every section of the page. ' +
+                         'The page is fetched in the background, at most one a second, and kept ' +
+                         'for 30 days. Press Space to pin the card into a window you can move, ' +
+                         'resize and scroll; ← and → step through the rows, and its "Live page" ' +
+                         'view shows the site\'s own page with the site\'s menus hidden. Esc ' +
+                         'closes either. On a touch screen, tapping a title opens the window.'
         },
 
         sa_sl_compact_nav: {
@@ -4090,10 +4107,24 @@
                          'with Title, Date, Year and Version columns, plus the date split into ' +
                          'day, month, year, weekday and month name. It works only when list.htm is ' +
                          'opened in its own tab: inside the site\'s two-frame view ' +
-                         '(artwork.htm) the narrow left frame is left as it is. No item page is ' +
-                         'fetched. When off, the script exits on that site before touching the ' +
-                         'page. Settings are shared with MusicBrainz, so this can be switched on ' +
-                         'from either site.'
+                         '(artwork.htm) the narrow left frame is left as it is. An item\'s own page ' +
+                         'is read only for the preview below. When off, the script exits on that ' +
+                         'site before touching the page. Settings are shared with MusicBrainz, so ' +
+                         'this can be switched on from either site.'
+        },
+
+        sa_jl_detail_preview: {
+            label: 'Preview artwork pages on the jungleland.it list',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default; needs the setting above. When on, resting the pointer on ' +
+                         'a title in the table shows a card with what its artwork page adds: the ' +
+                         'uploader and the scans (front, back, discs, booklet). The page is ' +
+                         'fetched in the background, at most one a second, and kept for 30 days. ' +
+                         'Press Space to pin the card into a window you can move, resize and ' +
+                         'scroll; ← and → step through the rows, and its "Live page" view shows ' +
+                         'the site\'s own page. Esc closes either. On a touch screen, tapping a ' +
+                         'title opens the window.'
         },
 
         // ============================================================
@@ -4114,10 +4145,25 @@
                          'into one filterable, sortable table (Title, Matrix or Catalogue, Format, ' +
                          'Label or Country, Code, Notes). It works only when records.aspx is ' +
                          'opened in its own tab: inside the site\'s two-frame view (Blegsdx.htm) ' +
-                         'the narrow list frame is left as it is. No record\'s detail page is ' +
-                         'fetched. When off, the script exits on that site before touching the ' +
-                         'page. Settings are shared with MusicBrainz, so this can be switched on ' +
-                         'from either site.'
+                         'the narrow list frame is left as it is. A record\'s own page is read ' +
+                         'only for the preview below. When off, the script exits on that site ' +
+                         'before touching the page. Settings are shared with MusicBrainz, so this ' +
+                         'can be switched on from either site.'
+        },
+
+        sa_bs_detail_preview: {
+            label: 'Preview record pages in the brucespringsteen.it database',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default; needs the setting above. When on, resting the pointer on ' +
+                         'a record\'s title in the table shows a card with what the record\'s own ' +
+                         'page adds: the tracklist with the show each track comes from, the ' +
+                         'notes, and the photo when there is one. The page is fetched in the ' +
+                         'background, at most one a second, and kept for 30 days. Press Space to ' +
+                         'pin the card into a window you can move, resize and scroll; ← and → ' +
+                         'step through the rows, and its "Live page" view shows the site\'s own ' +
+                         'page. Esc closes either. On a touch screen, tapping a title opens the ' +
+                         'window.'
         },
 
         // ============================================================
@@ -4135,10 +4181,26 @@
             description: 'Off by default. When on, the script also runs on the Brucebase wiki\'s ' +
                          'song list (brucebase.wikidot.com/stats:songs) and offers a "Show all ' +
                          'songs" button that turns the 28 letter tabs into one filterable, ' +
-                         'sortable table with Title and Letter columns, one row per song. No ' +
-                         'song page is fetched. When off, the script exits on that site before ' +
-                         'touching the page. Settings are shared with MusicBrainz, so this can be ' +
-                         'switched on from either site.'
+                         'sortable table with Title and Letter columns, one row per song. A ' +
+                         'song\'s own page is read only for the preview below. When off, the ' +
+                         'script exits on that site before touching the page. Settings are shared ' +
+                         'with MusicBrainz, so this can be switched on from either site.'
+        },
+
+        sa_bb_detail_preview: {
+            label: 'Preview song pages on the Brucebase song list',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default; needs the setting above. When on, resting the pointer on ' +
+                         'a song in the table shows a card with what its song page adds: the ' +
+                         'album it comes from, how often it was played live and when last, the ' +
+                         'official releases and live downloads. The page is fetched in the ' +
+                         'background, at most one a second, and kept for 30 days. Press Space to ' +
+                         'pin the card into a window you can move, resize and scroll, which also ' +
+                         'shows the credits, the studio versions and the lyrics; ← and → step ' +
+                         'through the rows, and its "Live page" view shows the wiki\'s own page ' +
+                         'with every tab opened. Esc closes either. On a touch screen, tapping a ' +
+                         'title opens the window.'
         }
 
     };
@@ -12981,6 +13043,1765 @@
             host.insertBefore(h1, host.firstChild);
         }
         return h1;
+    }
+
+    // =========================================================================
+    // Detail-page preview on the non-MusicBrainz hosts
+    // =========================================================================
+    // Every row of the four foreign tables links to a detail page (a
+    // bootleg's tracklist, a record's source shows, a song's history) that
+    // the list does not show. Resting the pointer on such a link shows a
+    // card with what the page adds (the "peek"); Space pins it into a
+    // dialog with an Extracted and a Live page view. Opt-in per site
+    // (`sa_sl_detail_preview`, `sa_jl_detail_preview`,
+    // `sa_bs_detail_preview`, `sa_bb_detail_preview`), default off, and
+    // installed only on a foreign host, so nothing here runs on MusicBrainz.
+    // The detail pages match no `@include` line: the script never runs on
+    // them, so they are fetched (same origin) and parsed from the list page.
+    // See docs/claude/detail-pages.md and org/detail-pages.org.
+
+    /**
+     * Version of the parsed record shape. A cached record of another
+     * version is ignored, so a parser change never shows stale fields.
+     * @type {number}
+     */
+    const _DP_PARSER_VERSION = 1;
+
+    /**
+     * IndexedDB database of parsed detail pages. Deliberately NOT a store in
+     * the art cache (`_ART_IDB_NAME`): adding one there would bump its
+     * version on MusicBrainz too. IndexedDB is per origin, so each foreign
+     * host gets its own copy of this database.
+     * @type {string}
+     */
+    const _DP_IDB_NAME = 'vz-saed-detail-pages';
+
+    /**
+     * How long a parsed detail page is reused before it is fetched again.
+     * @type {number}
+     */
+    const _DP_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+    /**
+     * Minimum spacing between two detail-page requests. A sweep of the
+     * pointer down the table can start many hovers; the gate keeps them to
+     * one request per interval, and a hover that has moved on by the time
+     * its slot comes up makes no request at all (see `_dpGet()`).
+     * @type {number}
+     */
+    const _DP_SPACING_MS = 1000;
+
+    /**
+     * How long after the last keystroke typed into a text field a Space is
+     * still that field's. After a render the script focuses the global
+     * filter itself, so "focus is in a text field" alone would make Space
+     * never pin: what matters is whether the user is typing there.
+     * @type {number}
+     */
+    const _DP_TYPING_GRACE_MS = 1500;
+
+    /**
+     * Matches a numbered track line of a springsteenlyrics.com tracklist:
+     * "01- Intro", "A1- LONELY NIGHT IN THE PARK", "12. Badlands". Capture 1
+     * is the position, 2 the title. One to three digits only, so a year at
+     * the start of a note ("1975 - …") is not a track.
+     * @type {RegExp}
+     */
+    const _DP_TRACK_RE = /^([A-Z]?\d{1,3}[a-z]?)\s*[-–.)]\s*(.+)$/;
+
+    /**
+     * Matches a medium header line of a springsteenlyrics.com tracklist:
+     * "Disc 1:", "CD 2", "Side A:". Capture 1 is the header without its colon.
+     * @type {RegExp}
+     */
+    const _DP_DISC_RE = /^((?:disc|disk|cd|dvd|side|lp|tape|set)\b[^:]{0,12}?)\s*:?$/i;
+
+    /**
+     * Parsed detail pages of this session, by absolute URL (the tier in
+     * front of IndexedDB).
+     * @type {Map<string, {data: object, at: number}>}
+     */
+    const _dpMem = new Map();
+
+    /**
+     * Requests in flight, by URL, with the "still wanted" callbacks of every
+     * caller waiting on them.
+     * @type {Map<string, {promise: Promise<object>, wants: Array<function(): boolean>}>}
+     */
+    const _dpInflight = new Map();
+
+    /**
+     * The last `_DP_RAW_KEEP` detail pages' decoded HTML, by URL, newest
+     * last: what the dialog's Live page view shows, so opening it after a
+     * hover (which fetched the page) makes no second request. Session only,
+     * never written to IndexedDB, which keeps only the parsed record.
+     * @type {Map<string, string>}
+     */
+    const _dpRawMem = new Map();
+
+    /**
+     * How many raw pages `_dpRawMem` keeps (a song page is about 200 KB).
+     * @type {number}
+     */
+    const _DP_RAW_KEEP = 12;
+
+    /**
+     * Remembers a page's decoded HTML in `_dpRawMem`, dropping the oldest
+     * page beyond `_DP_RAW_KEEP`.
+     *
+     * @param {string} url
+     * @param {string} html
+     * @returns {void}
+     */
+    function _dpRememberRaw(url, html) {
+        _dpRawMem.delete(url);
+        _dpRawMem.set(url, html);
+        while (_dpRawMem.size > _DP_RAW_KEEP) _dpRawMem.delete(_dpRawMem.keys().next().value);
+    }
+
+    /**
+     * Earliest `Date.now()` at which the next detail-page request may start.
+     * @type {number}
+     */
+    let _dpNextSlotAt = 0;
+
+    /**
+     * Cached connection to `_DP_IDB_NAME`, reset to null when it closes.
+     * @type {?Promise<IDBDatabase>}
+     */
+    let _dpIdbPromise = null;
+
+    /**
+     * The hover card's state: its element, the link it belongs to, and the
+     * pending show timer.
+     * @type {{el: ?HTMLElement, link: ?HTMLAnchorElement, timer: number}}
+     */
+    const _dpPeek = { el: null, link: null, timer: 0, typedAt: 0 };
+
+    /**
+     * Whether an element is a text field: where a Space or an arrow key is
+     * the field's own.
+     *
+     * @param {?EventTarget} el
+     * @returns {boolean}
+     */
+    function _dpIsTextField(el) {
+        return !!(el && el.closest && el.closest('input, textarea, select, [contenteditable="true"]'));
+    }
+
+    /**
+     * The pinned dialog's state. `api` is what `createInfoDialog()`
+     * returned; `table` the table whose rows ← and → step through; `url` the
+     * page shown; `view` `'ex'` (Extracted) or `'live'`; `hideNav` whether
+     * the Live page view hides the site's own navigation.
+     * @type {{api: ?object, table: ?HTMLTableElement, url: string, view: string, hideNav: boolean, row: ?HTMLTableRowElement, controls: ?object}}
+     */
+    const _dpDialog = { api: null, table: null, url: '', view: 'ex', hideNav: true, row: null, controls: null };
+
+    /**
+     * Collapses whitespace (non-breaking spaces included) and trims.
+     *
+     * @param {*} s
+     * @returns {string}
+     */
+    function _dpText(s) {
+        return String(s ?? '').replace(/\s+/g, ' ').trim();
+    }
+
+    /**
+     * Turns an element into plain text that keeps its RENDERED line
+     * structure: a `<br>` is a line break, and every block element ends one.
+     * The source's own whitespace is collapsed first, as a browser renders
+     * it: the sites write `line<br />\nline`, and keeping that newline beside
+     * the `<br>`'s made every line a paragraph of its own. Lines are trimmed
+     * and runs of blank lines kept to one, so `<br><br>` is a paragraph break.
+     *
+     * @param {Element} el
+     * @returns {string}
+     */
+    function _dpBlockText(el) {
+        const c = el.cloneNode(true);
+        c.querySelectorAll('script, style, noscript').forEach(n => n.remove());
+        const walker = (c.ownerDocument || document).createTreeWalker(c, NodeFilter.SHOW_TEXT);
+        for (let t = walker.nextNode(); t; t = walker.nextNode()) {
+            if (!t.parentElement || !t.parentElement.closest('pre, textarea')) t.nodeValue = t.nodeValue.replace(/\s+/g, ' ');
+        }
+        c.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+        c.querySelectorAll('p, div, li, tr, h1, h2, h3, h4, h5, h6, ul, ol, table').forEach(b => b.append('\n'));
+        return c.textContent.split('\n')
+            .map(l => l.replace(/[ \t ]+/g, ' ').trim())
+            .join('\n').replace(/\n{3,}/g, '\n\n').trim();
+    }
+
+    /**
+     * Resolves a link or image path of a detail page to an absolute URL.
+     * jungleland.it and brucespringsteen.it write their image paths with
+     * backslashes (`..\artwork\1970\thumb\…`), which a browser only
+     * tolerates inside the page itself.
+     *
+     * @param {?string} src  The attribute as written.
+     * @param {string}  base The detail page's URL.
+     * @returns {string} The absolute URL, or '' when there is none.
+     */
+    function _dpAbsUrl(src, base) {
+        if (!src) return '';
+        try {
+            return new URL(String(src).trim().replace(/\\/g, '/'), base).href;
+        } catch (_) {
+            return '';
+        }
+    }
+
+    /**
+     * A blank parsed record.
+     *
+     * `excerpt` is the opening of a long text for the card (a song's first
+     * lyric lines, with the full line count); `summary` a paragraph shown on
+     * the card only, because the dialog already shows it within a section.
+     *
+     * @returns {{title: string, subtitle: string, fields: Array<string[]>, tracks: Array<{disc: string, pos: string, title: string, from: string}>, notes: string[], images: Array<{thumb: string, full: string, label: string}>, cover: string, sections: Array<{label: string, text: string}>, highlight: ?{value: string, label: string}, unnumbered: boolean, excerpt: ?{label: string, lines: string[], total: number}, summary: string}}
+     */
+    function _dpEmpty() {
+        return {
+            title: '', subtitle: '', fields: [], tracks: [], notes: [], images: [],
+            cover: '', sections: [], highlight: null, unnumbered: false, excerpt: null, summary: ''
+        };
+    }
+
+    /**
+     * Splits the text of a springsteenlyrics.com tracklist block into tracks
+     * and notes.
+     *
+     * The block is the item's `span.monospaced`: medium headers ("Disc 1:"),
+     * numbered track lines, blank lines between media, then free-text notes
+     * (a lineage line, the edition). Tracks run until the first line that is
+     * neither a header nor a track; everything from there on is notes, one
+     * per blank-line-separated paragraph. When no line at all is numbered,
+     * a first paragraph of three or more short title-like lines is the
+     * tracklist, unnumbered (bootleg item 1331, whose "BORN IN THE U.S.A."
+     * is why an all-capitals line may end in a dot), and the record says so.
+     *
+     * @param {string} text  `_dpBlockText()` of the block.
+     * @param {object} data  The record being filled (`_dpEmpty()` shape).
+     * @returns {void}
+     */
+    function _dpSlTracklist(text, data) {
+        const blocks = String(text || '').split(/\n\s*\n/)
+            .map(b => b.split('\n').map(l => l.trim()).filter(Boolean))
+            .filter(b => b.length);
+        let disc = '';
+        let done = false;
+        const rest = [];
+        blocks.forEach(block => {
+            const kept = [];
+            block.forEach(line => {
+                if (!done) {
+                    const d = line.match(_DP_DISC_RE);
+                    if (d) { disc = d[1]; return; }
+                    const t = line.match(_DP_TRACK_RE);
+                    if (t) { data.tracks.push({ disc, pos: t[1], title: t[2], from: '' }); return; }
+                    if (data.tracks.length) done = true;
+                }
+                kept.push(line);
+            });
+            if (kept.length) rest.push(kept);
+        });
+        // Title-like: short, no lineage arrow, and no sentence end unless the
+        // line has no lower case at all ("BORN IN THE U.S.A.").
+        const titleLike = (l) => l.length <= 80 && !/-->/.test(l) && (!/[.:]$/.test(l) || l === l.toUpperCase());
+        if (!data.tracks.length && rest.length && rest[0].length >= 3 && rest[0].every(titleLike)) {
+            rest.shift().forEach(title => data.tracks.push({ disc: '', pos: '', title, from: '' }));
+            data.unnumbered = true;
+        }
+        rest.forEach(b => data.notes.push(b.join('\n')));
+    }
+
+    /**
+     * Parses a springsteenlyrics.com item page (`collection.php?item=`,
+     * `bootlegs.php?item=`, `brucelegs.php?item=`).
+     *
+     * The item's own info block is the same `div.blog-post` card the list
+     * shows, so the list converter's readers apply (`_slFindCards()`,
+     * `_slReadCardFields()`, `_slCardSubtitle()`). The tracklist is the
+     * `span.monospaced` that directly follows the card's `div.divide30`
+     * spacer; the artwork section's own `span.monospaced` ("300 dpi scans")
+     * and the info-file one come later and are not it. Scans are every
+     * `…_tn.jpg` thumbnail outside the navbar and footer, each linking to its
+     * full-size image.
+     *
+     * A song page of the lyrics index (`lyrics.php?song=`) has no card and
+     * goes to `_dpParseSlSong()`.
+     *
+     * @param {Document} doc The fetched page.
+     * @param {string}   url The page's URL.
+     * @returns {?object} The record (`_dpEmpty()` shape), or null when the
+     *   page has no item card (an error page, a CloudFlare challenge).
+     */
+    function _dpParseSl(doc, url) {
+        if (/\/lyrics\.php$/.test(new URL(url).pathname)) return _dpParseSlSong(doc, url);
+        const card = _slFindCards(doc)[0];
+        if (!card) return null;
+        const data = _dpEmpty();
+        const body = card.querySelector('.col-md-10') || card;
+        const titleLink = body.querySelector('a[href*="item="]');
+        data.title = _dpText(titleLink ? titleLink.textContent : '');
+        data.subtitle = _slCardSubtitle(body);
+        // The site writes an unknown value as "–", or "– (–)" for a pair.
+        data.fields = Object.entries(_slReadCardFields(body)).filter(([, v]) => !/^[–\-\s()]*$/.test(v));
+        const cover = card.querySelector('.col-md-2 img');
+        data.cover = _dpAbsUrl(cover && cover.getAttribute('src'), url);
+        const spacer = card.nextElementSibling;
+        const block = spacer && spacer.matches('div.divide30') ? spacer.nextElementSibling : null;
+        if (block && block.matches('span.monospaced')) _dpSlTracklist(_dpBlockText(block), data);
+        doc.querySelectorAll('img[src*="_tn."]').forEach(img => {
+            if (img.closest('.navbar, footer')) return;
+            const a = img.closest('a[href]');
+            data.images.push({
+                thumb: _dpAbsUrl(img.getAttribute('src'), url),
+                full: _dpAbsUrl(a && a.getAttribute('href'), url),
+                label: ''
+            });
+        });
+        return data;
+    }
+
+    /**
+     * Parses a springsteenlyrics.com song page (`lyrics.php?song=SLUG`, one
+     * per version: the lyrics index's rows link to these).
+     *
+     * Everything sits in `.project-detail` (checked on two pages,
+     * 2026-10-07): an `<h3>` with the title (and a "transcribed by" icon), a
+     * `<p><em>` with the version ("Album version"; empty on a song with no
+     * known version), then between two `<hr>`s either the lyrics (one `<p>`,
+     * a `<br/>` per line, a blank line between verses, `span.text-info`
+     * stage notes) or an "alert-warning" "Lyrics not available". After that
+     * come `h3.heading` sections, each running to the next heading: Info,
+     * Writing and Recording, releases (with one sub-heading per album), Live
+     * History, Covers, Credits / References, Available Versions. The site's
+     * "SECTION NOT YET COMPLETED" placeholders are left out, and a section
+     * with nothing else is dropped. Available Versions gives a count; its
+     * entries are the other versions' pages.
+     *
+     * @param {Document} doc The fetched page.
+     * @param {string}   url The page's URL.
+     * @returns {?object} The record, or null when the page has no
+     *   `.project-detail` title.
+     */
+    function _dpParseSlSong(doc, url) {
+        const pd = doc.querySelector('.project-detail');
+        const head = pd && pd.querySelector(':scope > h3:not(.heading)');
+        if (!head) return null;
+        const data = _dpEmpty();
+        data.title = _dpText(head.textContent);
+        const em = head.nextElementSibling && head.nextElementSibling.querySelector('em');
+        data.subtitle = em ? _dpText(em.textContent) : '';
+        const rules = Array.from(pd.querySelectorAll(':scope > hr'));
+        if (rules.length >= 2) {
+            const box = doc.createElement('div');
+            for (let n = rules[0].nextSibling; n && n !== rules[1]; n = n.nextSibling) box.appendChild(n.cloneNode(true));
+            if (box.querySelector('.alert-warning')) {
+                data.notes.push(_dpText(box.querySelector('.alert-warning').textContent.replace(/^×/, '')));
+            } else {
+                const text = _dpBlockText(box);
+                if (text) {
+                    data.sections.push({ label: 'Lyrics', text });
+                    const lines = text.split('\n').filter(l => l && !/^\[.*\]$/.test(l));
+                    data.excerpt = { label: 'Lyrics', lines: lines.slice(0, 4), total: lines.length };
+                }
+            }
+        }
+        const heads = Array.from(pd.querySelectorAll(':scope > h3.heading'));
+        heads.forEach(h => {
+            const box = doc.createElement('div');
+            for (let n = h.nextSibling; n && !(n.nodeType === Node.ELEMENT_NODE && n.matches('h3.heading')); n = n.nextSibling) {
+                // Spacers and embedded videos (a YouTube iframe in a .row) carry no text.
+                if (n.nodeType === Node.ELEMENT_NODE && (n.matches('div.divide10, iframe, script') || n.querySelector('iframe'))) continue;
+                box.appendChild(n.cloneNode(true));
+            }
+            const label = _dpText(h.textContent);
+            const text = _dpBlockText(box).split('\n')
+                .filter(l => !/^SECTION NOT YET COMPLETED$/i.test(l)).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+            if (label === 'Available Versions') {
+                const n = box.querySelectorAll('span.monospaced').length;
+                if (n) data.fields.push(['Versions on the site', String(n)]);
+            }
+            if (text) data.sections.push({ label, text });
+            if (label === 'Info' && !data.summary) {
+                const p = box.querySelector('p');
+                if (p) data.summary = _dpText(p.textContent);
+            }
+        });
+        pd.querySelectorAll('img[src*="lyrics/images/"]').forEach(img => {
+            const a = img.closest('.item-img-wrap') && img.closest('.item-img-wrap').querySelector('a[href]');
+            data.images.push({
+                thumb: _dpAbsUrl(img.getAttribute('src'), url),
+                full: _dpAbsUrl(a ? a.getAttribute('href') : img.getAttribute('src'), url),
+                label: ''
+            });
+        });
+        return data;
+    }
+
+    /**
+     * Parses a jungleland.it artwork page (`html/YYYYMMDD[_N].htm`).
+     *
+     * The page is three bold `<a>Label: value</a>` lines (Title, Date,
+     * Uploader) and one linked thumbnail per scan,
+     * `..\artwork\<decade>\thumb\tn_<stem>_<label>.jpg` (front, back, cd1,
+     * booklet1, …), written with backslashes. "0000-00-00" is the site's
+     * unknown date and is left out. Images outside `artwork/` (a stats
+     * counter) are ignored.
+     *
+     * @param {Document} doc The fetched page (decoded as windows-1252).
+     * @param {string}   url The page's URL.
+     * @returns {?object} The record, or null when the page has neither a
+     *   title line nor a scan.
+     */
+    function _dpParseJl(doc, url) {
+        const data = _dpEmpty();
+        doc.querySelectorAll('a:not([href])').forEach(a => {
+            const m = _dpText(a.textContent).match(/^(Title|Date|Uploader)\s*:\s*(.*)$/i);
+            if (!m) return;
+            const label = m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase();
+            if (label === 'Title') data.title = m[2];
+            else if (m[2] && !/^0{4}-0{2}-0{2}$/.test(m[2])) data.fields.push([label, m[2]]);
+        });
+        doc.querySelectorAll('a[href] > img[src]').forEach(img => {
+            const src = img.getAttribute('src').replace(/\\/g, '/');
+            if (!/(?:^|\/)artwork\//i.test(src)) return;
+            const label = (src.match(/_([^_/]+)\.(?:jpe?g|png|gif)$/i) || [])[1] || '';
+            data.images.push({
+                thumb: _dpAbsUrl(src, url),
+                full: _dpAbsUrl(img.parentElement.getAttribute('href'), url),
+                label
+            });
+        });
+        if (!data.title && !data.images.length) return null;
+        data.cover = (data.images.find(i => i.label === 'front') || {}).thumb || '';
+        return data;
+    }
+
+    /**
+     * Parses a brucespringsteen.it record page (`DB/detrec.aspx?code=`).
+     *
+     * The header is a run of `Label: <b>value</b><br>` lines starting with
+     * "Title  :". The labels differ by record type (Support, Matrix,
+     * Producer, Vinyl for a bootleg; Catalogue number, Pressed in, Release
+     * period for an official release), so they are read as a list, never by
+     * name. Notes are the `<p>` that starts "Notes:". The tracklist is the
+     * table headed Pos / Title / From / Notes / Ver; its From column writes
+     * `"` for "same as above", which is filled in from the row before, and
+     * the trailing "/1" show index is dropped. Song and show links are
+     * `href="#"` script calls, so only their text is kept. A record may have
+     * one photo, `..\blegs\images\<code>.jpg`, which is often missing.
+     *
+     * @param {Document} doc The fetched page.
+     * @param {string}   url The page's URL.
+     * @returns {?object} The record, or null when the page has no title line.
+     */
+    function _dpParseBs(doc, url) {
+        const start = Array.from(doc.querySelectorAll('b'))
+            .find(b => /(?:^|\n)\s*Title\s*:\s*$/.test(b.previousSibling ? b.previousSibling.textContent : ''));
+        if (!start) return null;
+        const data = _dpEmpty();
+        data.title = _dpText(start.textContent);
+        let label = '';
+        for (let n = start.nextSibling; n; n = n.nextSibling) {
+            if (n.nodeType === Node.TEXT_NODE) { label += n.textContent; continue; }
+            if (n.nodeName === 'BR') continue;
+            if (n.nodeName !== 'B') break;
+            const name = _dpText(label).replace(/\s*:$/, '');
+            const value = _dpText(n.textContent);
+            if (name && value) data.fields.push([name, value]);
+            label = '';
+        }
+        const notes = Array.from(doc.querySelectorAll('p')).find(p => /^\s*Notes\s*:/.test(p.textContent));
+        const noteText = notes ? _dpBlockText(notes).replace(/^Notes\s*:\s*/, '').trim() : '';
+        if (noteText) data.notes.push(noteText);
+        // Header cell by cell: the row's textContent runs them together
+        // ("PosTitleFromNotesVer").
+        const table = Array.from(doc.querySelectorAll('table')).find(t => {
+            const head = t.rows[0] ? Array.from(t.rows[0].cells).map(c => _dpText(c.textContent)) : [];
+            return head.includes('Pos') && head.includes('From');
+        });
+        let from = '';
+        if (table) {
+            Array.from(table.rows).slice(1).forEach(tr => {
+                const cells = Array.from(tr.cells).map(td => _dpText(td.textContent));
+                if (cells.length < 3 || !/^\d+\/\d+$/.test(cells[0])) return;
+                const own = /^["”]?$/.test(cells[2]) ? from : cells[2].replace(/\/\d+$/, '');
+                from = own;
+                data.tracks.push({ disc: cells[0].split('/')[0], pos: cells[0], title: cells[1], from: own });
+            });
+        }
+        const img = doc.querySelector('img[src*="blegs"]');
+        if (img) {
+            const src = _dpAbsUrl(img.getAttribute('src'), url);
+            data.cover = src;
+            data.images.push({ thumb: src, full: src, label: '' });
+        }
+        return data;
+    }
+
+    /**
+     * Parses a Brucebase song page (`/song:<slug>`).
+     *
+     * `#page-title` is the title, and the text of `#page-content` before the
+     * song's tabview is its origin ("Track 2 of The Wild, The Innocent & The
+     * E Street Shuffle, 1973."). The tabview pairs label i of `ul.yui-nav`
+     * with panel i of `.yui-content`, as on the song list
+     * (`_bbCollectItems()`), and the panels are read by label: Performances
+     * (the count and the newest show, its list being newest first), Released
+     * on Album, Released as Live Download (the count), and Credits, On The
+     * Tracks and Lyrics as whole sections for the dialog.
+     *
+     * @param {Document} doc The fetched page.
+     * @param {string}   url The page's URL (unused; links are not kept).
+     * @returns {?object} The record, or null when the page has no
+     *   `#page-content`.
+     */
+    function _dpParseBb(doc, url) {
+        const content = doc.getElementById('page-content');
+        if (!content) return null;
+        const data = _dpEmpty();
+        data.title = _dpText(doc.getElementById('page-title') ? doc.getElementById('page-title').textContent : '');
+        const nav = content.querySelector('div.yui-navset');
+        const before = [];
+        for (const n of Array.from(content.childNodes)) {
+            if (nav && (n === nav || (n.contains && n.contains(nav)))) break;
+            if (n.nodeName !== 'SCRIPT' && n.nodeName !== 'STYLE') before.push(n.textContent);
+        }
+        data.subtitle = _dpText(before.join(' ')).replace(/\s+([,.])/g, '$1');
+        if (!nav) return data;
+        const labels = Array.from(nav.querySelectorAll(':scope > ul.yui-nav > li')).map(li => _dpText(li.textContent));
+        const panels = Array.from((nav.querySelector(':scope > .yui-content') || { children: [] }).children);
+        const tab = (name) => panels[labels.indexOf(name)] || null;
+        const perf = tab('Performances');
+        if (perf) {
+            const m = _dpText(perf.textContent).match(/Performed live\s+([\d,]+)\s+times?/i);
+            if (m) {
+                const n = Number(m[1].replace(/,/g, ''));
+                data.highlight = { value: n.toLocaleString('en-US'), label: n === 1 ? 'live performance' : 'live performances' };
+                data.fields.push(['Performed live', `${n.toLocaleString('en-US')} ${n === 1 ? 'time' : 'times'}`]);
+            }
+            const gig = perf.querySelector('a[href^="/gig:"]');
+            if (gig) data.fields.push(['Last played', _dpText(gig.textContent)]);
+        }
+        const album = tab('Released on Album');
+        const albumText = album ? _dpText(album.textContent).replace(/^Released on\s*/i, '') : '';
+        if (albumText) data.fields.push(['Released on', albumText]);
+        const dl = tab('Released as Live Download');
+        const dlCount = dl ? _dpText(dl.textContent).match(/following\s+([\d,]+)\s+official live downloads?/i) : null;
+        if (dlCount) data.fields.push(['Live downloads', dlCount[1]]);
+        ['Credits', 'On The Tracks', 'Lyrics'].forEach(name => {
+            const panel = tab(name);
+            const text = panel ? _dpBlockText(panel) : '';
+            if (text) data.sections.push({ label: name, text });
+        });
+        return data;
+    }
+
+    /**
+     * The four hosts' detail pages: which links lead to one, the setting that
+     * switches the preview on, how to decode and parse a page, and how the
+     * dialog's Live page view trims the site's own page. Keyed by
+     * `_foreignHost`.
+     *
+     * - `isDetailUrl(u)`: `u` is a same-origin `URL`.
+     * - `charset`: used when the response names none (jungleland.it is
+     *   windows-1252 with no declaration; brucespringsteen.it's header says
+     *   UTF-8 and wins over its meta tag).
+     * - `liveRoot(doc)`: the element the Live page view keeps. Every sibling
+     *   of it and of each of its ancestors is hidden.
+     * - `liveHide`: further selectors hidden with the navigation.
+     * - `liveCss`: page rules for the Live page view (scoped to
+     *   `html.mb-dp-isolate` where they belong to "Hide site navigation").
+     * - `livePrepare(doc)`: anything the page needs without its scripts.
+     *
+     * @type {Object<string, {setting: string, isDetailUrl: function(URL): boolean, charset: ?string, parse: function(Document, string): ?object, liveRoot: ?function(Document): ?Element, liveHide: string[], liveCss: string, livePrepare: ?function(Document): void}>}
+     */
+    const _DP_SITES = {
+        'springsteenlyrics.com': {
+            setting: 'sa_sl_detail_preview',
+            isDetailUrl: (u) => (/^\/(?:collection|bootlegs|brucelegs)\.php$/.test(u.pathname) &&
+                /^\d+$/.test(u.searchParams.get('item') || '')) ||
+                (u.pathname === '/lyrics.php' && !!u.searchParams.get('song')),
+            charset: null,
+            parse: _dpParseSl,
+            liveRoot: (doc) => {
+                const pd = doc.querySelector('.project-detail');
+                return pd ? (pd.closest('.container') || pd) : null;
+            },
+            liveHide: [],
+            liveCss: '',
+            livePrepare: null
+        },
+        'jungleland.it': {
+            setting: 'sa_jl_detail_preview',
+            isDetailUrl: (u) => /^\/html\/[^/]+\.htm$/i.test(u.pathname) &&
+                !/\/(?:list|images|artwork|index)\.htm$/i.test(u.pathname),
+            charset: 'windows-1252',
+            parse: _dpParseJl,
+            liveRoot: null,
+            liveHide: [],
+            liveCss: '',
+            livePrepare: null
+        },
+        'brucespringsteen.it': {
+            setting: 'sa_bs_detail_preview',
+            isDetailUrl: (u) => /^\/db\/detrec\.aspx$/i.test(u.pathname) && !!u.searchParams.get('code'),
+            charset: null,
+            parse: _dpParseBs,
+            liveRoot: null,
+            liveHide: ['p[style*="double"]', 'h4'],
+            liveCss: '',
+            livePrepare: null
+        },
+        'brucebase.wikidot.com': {
+            setting: 'sa_bb_detail_preview',
+            isDetailUrl: (u) => /^\/song:[^/]+$/.test(u.pathname),
+            charset: null,
+            parse: _dpParseBb,
+            liveRoot: (doc) => doc.getElementById('main-content'),
+            liveHide: ['#action-area-top', '#breadcrumbs', '#page-info-break', '#page-options-container',
+                '#action-area', '#page-options-bottom-tips'],
+            liveCss: 'html.mb-dp-isolate #main-content { margin: 0 !important; padding: 0 12px !important; float: none !important; width: auto !important; }' +
+                'html.mb-dp-isolate #container, html.mb-dp-isolate #container-wrap, html.mb-dp-isolate #content-wrap' +
+                ' { width: auto !important; max-width: none !important; min-width: 0 !important; margin: 0 !important; padding: 0 !important; }' +
+                '.yui-content > div { display: block !important; }' +
+                'ul.yui-nav { display: none !important; }' +
+                'h3.mb-dp-tablabel { margin: 18px 0 6px; border-bottom: 1px solid #ccc; }',
+            // Without its scripts the tabview shows only its first panel and
+            // its labels do nothing: show every panel under its label.
+            livePrepare: (doc) => {
+                doc.querySelectorAll('#page-content div.yui-navset').forEach(nav => {
+                    const labels = Array.from(nav.querySelectorAll(':scope > ul.yui-nav > li'));
+                    const panels = Array.from((nav.querySelector(':scope > .yui-content') || { children: [] }).children);
+                    panels.forEach((panel, i) => {
+                        if (!labels[i] || (panel.previousElementSibling && panel.previousElementSibling.matches('h3.mb-dp-tablabel'))) return;
+                        const h = doc.createElement('h3');
+                        h.className = 'mb-dp-tablabel';
+                        h.textContent = _dpText(labels[i].textContent);
+                        panel.parentNode.insertBefore(h, panel);
+                    });
+                });
+            }
+        }
+    };
+
+    /**
+     * The `_DP_SITES` entry of this host when its preview setting is on.
+     *
+     * @returns {?object}
+     */
+    function _dpActiveSite() {
+        const site = _foreignHost ? _DP_SITES[_foreignHost] : null;
+        return site && Lib.settings[site.setting] === true ? site : null;
+    }
+
+    /**
+     * Tells whether a link is a detail link the preview handles: a text link
+     * (not the Cover thumbnail, which links to the same page) inside a data
+     * table's body, to a same-origin detail page of this host, with the
+     * host's preview setting on.
+     *
+     * @param {?Element} a
+     * @returns {?object} The host's `_DP_SITES` entry, or null.
+     */
+    function _dpSiteForLink(a) {
+        if (!a || !a.matches || !a.matches('a[href]') || !a.closest('table.tbl > tbody') || a.querySelector('img')) return null;
+        const site = _dpActiveSite();
+        if (!site) return null;
+        let u;
+        try {
+            u = new URL(a.href);
+        } catch (_) {
+            return null;
+        }
+        return u.origin === window.location.origin && site.isDetailUrl(u) ? site : null;
+    }
+
+    /**
+     * Waits for, and reserves, the next detail-page request slot
+     * (`_DP_SPACING_MS` apart). Reserved synchronously, so two callers in
+     * the same tick get consecutive slots, as in `_relAwaitRateSlot()`.
+     *
+     * @returns {Promise<void>}
+     */
+    function _dpAwaitSlot() {
+        const now = Date.now();
+        const at = Math.max(now, _dpNextSlotAt);
+        _dpNextSlotAt = at + _DP_SPACING_MS;
+        return at > now ? new Promise(r => setTimeout(r, at - now)) : Promise.resolve();
+    }
+
+    /**
+     * Fetches a detail page and decodes it. `fetchHtml()` is not used: it
+     * decodes everything as UTF-8 (`res.text()`), and jungleland.it serves
+     * windows-1252 without saying so. The response's own charset wins, then
+     * the host's, then UTF-8. A transient status is retried once.
+     *
+     * @param {string}  url
+     * @param {?string} charset The host's charset for an undeclared response.
+     * @returns {Promise<string>} The page's HTML.
+     * @throws {Error} On a failed request; `status` holds the HTTP status
+     *   (0 when no response arrived).
+     */
+    async function _dpFetchText(url, charset) {
+        for (let attempt = 1; ; attempt++) {
+            let res;
+            try {
+                res = await fetch(url, { credentials: 'same-origin' });
+            } catch (netErr) {
+                if (netErr && netErr.status === undefined) netErr.status = 0;
+                throw netErr;
+            }
+            if (res.ok) {
+                const buf = await res.arrayBuffer();
+                const declared = ((res.headers.get('content-type') || '').match(/charset=["']?([\w.:-]+)/i) || [])[1];
+                let decoder;
+                try {
+                    decoder = new TextDecoder(declared || charset || 'utf-8');
+                } catch (_) {
+                    decoder = new TextDecoder('utf-8');
+                }
+                return decoder.decode(buf);
+            }
+            const err = new Error(`HTTP ${res.status} ${res.statusText || ''}`.trim());
+            err.status = res.status;
+            if (attempt >= 2 || !_isTransientHttp(res.status)) throw err;
+            await new Promise(r => setTimeout(r, Math.max(1500, _parseRetryAfterMs(res.headers.get('Retry-After')))));
+        }
+    }
+
+    /**
+     * Opens (or reuses) the detail-page database.
+     *
+     * @returns {Promise<IDBDatabase>}
+     */
+    function _dpOpenIdb() {
+        if (_dpIdbPromise) return _dpIdbPromise;
+        _dpIdbPromise = new Promise((resolve, reject) => {
+            if (typeof indexedDB === 'undefined') {
+                reject(new Error('IndexedDB not available'));
+                return;
+            }
+            const req = indexedDB.open(_DP_IDB_NAME, 1);
+            req.onupgradeneeded = (ev) => {
+                const db = ev.target.result;
+                if (!db.objectStoreNames.contains('pages')) db.createObjectStore('pages', { keyPath: 'url' });
+            };
+            req.onsuccess = (ev) => {
+                const db = ev.target.result;
+                db.onversionchange = () => { db.close(); _dpIdbPromise = null; };
+                db.onclose = () => { _dpIdbPromise = null; };
+                resolve(db);
+            };
+            req.onerror = (ev) => { _dpIdbPromise = null; reject(ev.target.error); };
+            req.onblocked = () => { _dpIdbPromise = null; reject(new Error('IndexedDB open blocked by another tab')); };
+        });
+        return _dpIdbPromise;
+    }
+
+    /**
+     * Reads one parsed page from the database.
+     *
+     * @param {string} url
+     * @returns {Promise<?{url: string, v: number, at: number, data: object}>}
+     */
+    function _dpIdbGet(url) {
+        return _dpOpenIdb().then(db => new Promise((resolve, reject) => {
+            try {
+                const req = db.transaction('pages', 'readonly').objectStore('pages').get(url);
+                req.onsuccess = () => resolve(req.result || null);
+                req.onerror = (ev) => reject(ev.target.error);
+            } catch (e) {
+                reject(e);
+            }
+        }));
+    }
+
+    /**
+     * Writes one parsed page to the database.
+     *
+     * @param {{url: string, v: number, at: number, data: object}} record
+     * @returns {Promise<void>}
+     */
+    function _dpIdbPut(record) {
+        return _dpOpenIdb().then(db => new Promise((resolve, reject) => {
+            try {
+                const req = db.transaction('pages', 'readwrite').objectStore('pages').put(record);
+                req.onsuccess = () => resolve();
+                req.onerror = (ev) => reject(ev.target.error);
+            } catch (e) {
+                reject(e);
+            }
+        }));
+    }
+
+    /**
+     * Returns a detail page's parsed record: from this session's memory,
+     * then IndexedDB (younger than `_DP_TTL_MS`, same parser version), then
+     * the network through the rate gate.
+     *
+     * Resolves an OUTCOME, as the Relationships fetches do, and only a
+     * successful parse is cached:
+     *   - `{outcome: 'ok', data, at, cached}`;
+     *   - `{outcome: 'error', detail}`: the request failed, or the page had
+     *     nothing a detail page has (an error page, a CloudFlare challenge);
+     *   - `{outcome: 'skipped'}`: by the time the request's slot came up, no
+     *     caller wanted the page any more (the pointer had moved on), so no
+     *     request was made.
+     *
+     * Callers waiting on the same URL share one request.
+     *
+     * @param {string} url
+     * @param {object} site    The host's `_DP_SITES` entry.
+     * @param {{wanted?: function(): boolean, force?: boolean}} [opts]
+     *   `wanted` is asked right before the request; `force` skips both caches.
+     * @returns {Promise<object>}
+     */
+    async function _dpGet(url, site, { wanted = () => true, force = false } = {}) {
+        if (!force) {
+            const mem = _dpMem.get(url);
+            if (mem) return { outcome: 'ok', data: mem.data, at: mem.at, cached: true };
+            const rec = await _dpIdbGet(url).catch(() => null);
+            if (rec && rec.v === _DP_PARSER_VERSION && Date.now() - rec.at < _DP_TTL_MS) {
+                _dpMem.set(url, { data: rec.data, at: rec.at });
+                return { outcome: 'ok', data: rec.data, at: rec.at, cached: true };
+            }
+        }
+        const pending = _dpInflight.get(url);
+        if (pending) {
+            pending.wants.push(wanted);
+            const shared = await pending.promise;
+            return shared.outcome === 'skipped' && wanted() ? _dpGet(url, site, { wanted, force }) : shared;
+        }
+        const entry = { wants: [wanted], promise: null };
+        entry.promise = (async () => {
+            await _dpAwaitSlot();
+            if (!entry.wants.some(w => w())) return { outcome: 'skipped' };
+            try {
+                const html = await _dpFetchText(url, site.charset);
+                _dpRememberRaw(url, html);
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const data = site.parse(doc, url);
+                if (!data || (!data.title && !data.fields.length && !data.tracks.length && !data.images.length)) {
+                    Lib.warn('detail', `${url}: the page has none of a detail page's parts — not cached.`);
+                    return { outcome: 'error', detail: 'The page did not look like a detail page (an error page, or a "checking your browser" page?).' };
+                }
+                const at = Date.now();
+                _dpMem.set(url, { data, at });
+                _dpIdbPut({ url, v: _DP_PARSER_VERSION, at, data }).catch(() => { /* memory still has it */ });
+                Lib.debug('detail', `${url}: parsed — ${data.fields.length} field(s), ${data.tracks.length} track(s), ${data.images.length} image(s).`);
+                return { outcome: 'ok', data, at, cached: false };
+            } catch (err) {
+                Lib.warn('detail', `${url}: ${err && err.message}`);
+                return { outcome: 'error', detail: (err && err.message) || 'The request failed.' };
+            }
+        })();
+        _dpInflight.set(url, entry);
+        try {
+            return await entry.promise;
+        } finally {
+            _dpInflight.delete(url);
+        }
+    }
+
+    /**
+     * "fetched now" or "saved 3 days ago", for a card's foot.
+     *
+     * @param {object} res A `_dpGet()` outcome `'ok'`.
+     * @returns {string}
+     */
+    function _dpAgeText(res) {
+        if (!res.cached) return 'fetched now';
+        const days = Math.floor((Date.now() - res.at) / 86400000);
+        return days < 1 ? 'saved today' : `saved ${days} day${days === 1 ? '' : 's'} ago`;
+    }
+
+    /**
+     * Groups tracks by a key, keeping first-seen order.
+     *
+     * @param {Array<object>} tracks
+     * @param {string}        key    `'disc'` or `'from'`.
+     * @returns {Array<[string, Array<object>]>}
+     */
+    function _dpGroupTracks(tracks, key) {
+        const groups = new Map();
+        tracks.forEach(t => {
+            const k = t[key] || '';
+            if (!groups.has(k)) groups.set(k, []);
+            groups.get(k).push(t);
+        });
+        return Array.from(groups);
+    }
+
+    /**
+     * HTML of a label/value list.
+     *
+     * @param {Array<string[]>} fields
+     * @param {number}          [maxLen] Values longer than this are cut with "…".
+     * @returns {string}
+     */
+    function _dpFieldsHtml(fields, maxLen) {
+        if (!fields.length) return '';
+        const cut = (v) => (maxLen && v.length > maxLen ? v.slice(0, maxLen - 1).trimEnd() + '…' : v);
+        return '<dl class="mb-dp-kv">' + fields.map(([k, v]) =>
+            `<dt>${_mbttEscape(k)}</dt><dd>${_mbttEscape(cut(v))}</dd>`).join('') + '</dl>';
+    }
+
+    /**
+     * HTML of one ordered track list.
+     *
+     * @param {Array<object>} tracks
+     * @returns {string}
+     */
+    function _dpTrackListHtml(tracks) {
+        return '<ol class="mb-dp-tracks">' + tracks.map(t =>
+            `<li><span class="mb-dp-pos">${_mbttEscape(t.pos || '·')}</span>${_mbttEscape(t.title)}</li>`).join('') + '</ol>';
+    }
+
+    /**
+     * The hover card for a parsed record: title and sub-title, a cover,
+     * the fields, a tracklist summary (the first six tracks, by source show
+     * where the page names one per track), the first note, a strip of scans
+     * and a foot with the cache state and the keys.
+     *
+     * @param {object} data A parsed record.
+     * @param {object} res  Its `_dpGet()` outcome.
+     * @returns {string}
+     */
+    function _dpCardHtml(data, res) {
+        const parts = [];
+        parts.push(`<div class="mb-dp-head">${data.cover ? `<img class="mb-dp-cover" src="${_mbttEscape(data.cover)}" alt="">` : ''}<div class="mb-dp-headtext">` +
+            `<div class="mb-tt-title">${_mbttEscape(data.title || '(untitled)')}</div>` +
+            (data.subtitle ? `<div class="mb-tt-comment">${_mbttEscape(data.subtitle)}</div>` : '') +
+            (data.highlight ? `<div class="mb-dp-stat"><b>${_mbttEscape(data.highlight.value)}</b> ${_mbttEscape(data.highlight.label)}</div>` : '') +
+            _dpFieldsHtml(data.fields.filter(([k]) => !data.highlight || k !== 'Performed live'), 160) + '</div></div>');
+        if (data.tracks.length) {
+            const discs = new Set(data.tracks.map(t => t.disc).filter(Boolean)).size;
+            const bySource = data.tracks.some(t => t.from) ? _dpGroupTracks(data.tracks, 'from') : [];
+            parts.push('<div class="mb-tt-rule"></div>');
+            parts.push(`<div class="mb-tt-body"><b>${data.tracks.length} track${data.tracks.length === 1 ? '' : 's'}</b>` +
+                (discs > 1 ? ` on ${discs} discs` : '') +
+                (data.unnumbered ? ' <span class="mb-tt-dim">(not numbered on the page)</span>' : '') + '</div>');
+            bySource.slice(0, 3).forEach(([from, ts]) => parts.push(
+                `<div class="mb-tt-body mb-dp-src">${_mbttEscape(from || 'source not given')} <span class="mb-tt-dim">· ${ts.length} track${ts.length === 1 ? '' : 's'}</span></div>`));
+            if (bySource.length > 3) parts.push(`<div class="mb-tt-dim">and ${bySource.length - 3} more source shows</div>`);
+            parts.push(_dpTrackListHtml(data.tracks.slice(0, 6)));
+            if (data.tracks.length > 6) parts.push(`<div class="mb-tt-dim">+ ${data.tracks.length - 6} more</div>`);
+        }
+        if (data.excerpt && data.excerpt.lines.length) {
+            parts.push('<div class="mb-tt-rule"></div>');
+            parts.push(`<div class="mb-tt-body mb-dp-excerpt">${data.excerpt.lines.map(l => _mbttEscape(l)).join('<br>')}</div>`);
+            if (data.excerpt.total > data.excerpt.lines.length) {
+                parts.push(`<div class="mb-tt-dim">${_mbttEscape(data.excerpt.label)}: ${data.excerpt.total} lines (Space for all)</div>`);
+            }
+        }
+        const prose = data.notes[0] || data.summary || '';
+        if (prose) {
+            const note = prose.replace(/\s+/g, ' ');
+            parts.push('<div class="mb-tt-rule"></div>');
+            parts.push(`<div class="mb-tt-comment">${_mbttEscape(note.length > 220 ? note.slice(0, 219).trimEnd() + '…' : note)}</div>`);
+        }
+        const thumbs = data.images.filter(i => i.thumb && i.thumb !== data.cover);
+        if (thumbs.length) {
+            parts.push('<div class="mb-dp-thumbs">' + thumbs.slice(0, 6).map(i =>
+                `<img src="${_mbttEscape(i.thumb)}" alt="${_mbttEscape(i.label)}">`).join('') +
+                (thumbs.length > 6 ? `<span class="mb-tt-dim">+${thumbs.length - 6}</span>` : '') + '</div>');
+        }
+        const more = data.sections.map(s => s.label).filter(l => !data.excerpt || l !== data.excerpt.label);
+        if (more.length) {
+            parts.push(`<div class="mb-tt-dim">Also: ${more.slice(0, 4).map(l => _mbttEscape(l)).join(', ')}` +
+                `${more.length > 4 ? `, and ${more.length - 4} more` : ''} (Space)</div>`);
+        }
+        parts.push(`<div class="mb-tt-foot">${_mbttEscape(_dpAgeText(res))} · <kbd>Space</kbd> pin · <kbd>Esc</kbd> close</div>`);
+        return parts.join('');
+    }
+
+    /**
+     * Creates the hover card element once. It is a `.mb-tt-liner` card like
+     * every other tooltip of the script. Images that fail to load (a
+     * brucespringsteen.it record without its photo) are dropped rather than
+     * shown broken.
+     *
+     * @returns {HTMLElement}
+     */
+    function _dpEnsurePeekEl() {
+        if (_dpPeek.el && _dpPeek.el.isConnected) return _dpPeek.el;
+        const el = document.createElement('div');
+        el.id = 'mb-dp-peek';
+        el.className = 'mb-tt-liner';
+        el.setAttribute('role', 'tooltip');
+        el.style.display = 'none';
+        el.addEventListener('error', (e) => {
+            if (e.target && e.target.tagName === 'IMG') e.target.remove();
+        }, true);
+        document.body.appendChild(el);
+        _dpPeek.el = el;
+        return el;
+    }
+
+    /**
+     * Places the hover card beside its link: to the right of the link's text
+     * when there is room, else to its left, else below it, and always inside
+     * the window. Beside rather than below, so the rows under the pointer
+     * stay visible while the pointer moves down the table.
+     *
+     * @param {HTMLAnchorElement} a
+     * @returns {void}
+     */
+    function _dpPlacePeek(a) {
+        const el = _dpPeek.el;
+        if (!el || !a.isConnected) return;
+        const r = a.getBoundingClientRect();
+        el.style.left = '0px';
+        el.style.top = '0px';
+        const w = el.offsetWidth;
+        const h = el.offsetHeight;
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        let x = r.right + 12;
+        let y = r.top - 6;
+        if (x + w > vw - 8) {
+            x = r.left - w - 12;
+            if (x < 8) {
+                x = Math.min(Math.max(8, r.left), vw - w - 8);
+                y = r.bottom + 8;
+                if (y + h > vh - 8) y = r.top - h - 8;
+            }
+        }
+        el.style.left = Math.max(8, x) + 'px';
+        el.style.top = Math.max(8, Math.min(y, vh - h - 8)) + 'px';
+    }
+
+    /**
+     * Whether the hover card is showing.
+     *
+     * @returns {boolean}
+     */
+    function _dpPeekShown() {
+        return !!(_dpPeek.el && _dpPeek.el.style.display === 'block');
+    }
+
+    /**
+     * Hides the hover card and forgets its link.
+     *
+     * @returns {void}
+     */
+    function _dpHidePeek() {
+        clearTimeout(_dpPeek.timer);
+        _dpPeek.timer = 0;
+        _dpPeek.link = null;
+        if (_dpPeek.el) _dpPeek.el.style.display = 'none';
+    }
+
+    /**
+     * Shows the hover card for a link after the rich-tooltip delay
+     * (`sa_rich_tooltip_delay_ms`, as the script's other cards), so a pointer
+     * crossing the table does not request every page it passes.
+     *
+     * @param {HTMLAnchorElement} a
+     * @returns {void}
+     */
+    function _dpSchedulePeek(a) {
+        _dpHidePeek();
+        _dpPeek.link = a;
+        const d = Lib.settings.sa_rich_tooltip_delay_ms;
+        _dpPeek.timer = setTimeout(() => _dpShowPeek(a), (typeof d === 'number' && d >= 0) ? d : 400);
+    }
+
+    /**
+     * Shows the hover card for a link: at once when the page is cached,
+     * else a loading card that the record replaces when it arrives, as long
+     * as the card still belongs to that link.
+     *
+     * @param {HTMLAnchorElement} a
+     * @returns {Promise<void>}
+     */
+    async function _dpShowPeek(a) {
+        const site = _dpSiteForLink(a);
+        if (!site || _dpPeek.link !== a || !a.isConnected) return;
+        const el = _dpEnsurePeekEl();
+        const url = a.href;
+        const stillMine = () => _dpPeek.link === a && el.style.display === 'block';
+        const mem = _dpMem.get(url);
+        el.innerHTML = mem
+            ? _dpCardHtml(mem.data, { cached: true, at: mem.at })
+            : `<div class="mb-tt-title">${_mbttEscape(_dpText(a.textContent))}</div>` +
+              '<div class="mb-tt-body mb-dp-loading"><span class="mb-dp-spin">◌</span> Loading the detail page…</div>';
+        el.style.display = 'block';
+        _dpPlacePeek(a);
+        if (mem) return;
+        const res = await _dpGet(url, site, { wanted: stillMine });
+        if (!stillMine()) return;
+        el.innerHTML = res.outcome === 'ok'
+            ? _dpCardHtml(res.data, res)
+            : `<div class="mb-tt-title">${_mbttEscape(_dpText(a.textContent))}</div>` +
+              `<div class="mb-tt-body mb-tt-alert">Could not load the detail page.</div>` +
+              `<div class="mb-tt-dim">${_mbttEscape(res.detail || '')}</div>`;
+        _dpPlacePeek(a);
+    }
+
+    /**
+     * The detail links of a table's visible rows, one per row, in display
+     * order: what ← and → step through.
+     *
+     * @param {?HTMLTableElement} table
+     * @returns {HTMLAnchorElement[]}
+     */
+    function _dpRowLinks(table) {
+        const t = table && table.isConnected ? table : document.querySelector('table.tbl');
+        if (!t || !t.tBodies[0]) return [];
+        const out = [];
+        Array.from(t.tBodies[0].rows).forEach(tr => {
+            if (tr.style.display === 'none') return;
+            const a = Array.from(tr.querySelectorAll('a[href]')).find(x => _dpSiteForLink(x));
+            if (a) out.push(a);
+        });
+        return out;
+    }
+
+    /**
+     * Builds the Extracted view of a record: fields, scans and notes on the
+     * left; the tracklist (by medium, or by source show) and the page's
+     * longer sections (a song's credits, studio versions, lyrics) on the
+     * right.
+     *
+     * @param {object} data A parsed record.
+     * @param {object} res  Its `_dpGet()` outcome.
+     * @returns {string}
+     */
+    function _dpExtractedHtml(data, res) {
+        const left = [];
+        const right = [];
+        left.push(`<div class="mb-dp-xtitle">${_mbttEscape(data.title || '(untitled)')}</div>`);
+        if (data.subtitle) left.push(`<div class="mb-dp-xsub">${_mbttEscape(data.subtitle)}</div>`);
+        if (data.highlight) left.push(`<div class="mb-dp-stat"><b>${_mbttEscape(data.highlight.value)}</b> ${_mbttEscape(data.highlight.label)}</div>`);
+        if (data.cover) left.push(`<a href="${_mbttEscape(data.cover)}" target="_blank" rel="noopener"><img class="mb-dp-xcover" src="${_mbttEscape(data.cover)}" alt=""></a>`);
+        if (data.fields.length) left.push('<h4>Fields</h4>' + _dpFieldsHtml(data.fields));
+        const scans = data.images.filter(i => i.thumb && i.thumb !== data.cover);
+        if (scans.length) {
+            left.push(`<h4>Images (${scans.length})</h4><div class="mb-dp-gallery">` + scans.map(i =>
+                `<a href="${_mbttEscape(i.full || i.thumb)}" target="_blank" rel="noopener"><img src="${_mbttEscape(i.thumb)}" alt="${_mbttEscape(i.label)}">` +
+                (i.label ? `<span>${_mbttEscape(i.label)}</span>` : '') + '</a>').join('') + '</div>');
+        }
+        if (data.notes.length) left.push('<h4>Notes</h4>' + data.notes.map(n => `<div class="mb-dp-note">${_mbttEscape(n)}</div>`).join(''));
+        if (data.tracks.length) {
+            right.push(`<h4>Tracklist · ${data.tracks.length} track${data.tracks.length === 1 ? '' : 's'}</h4>`);
+            if (data.unnumbered) right.push('<div class="mb-dp-warn">The page lists these titles without track numbers, so they are shown in page order.</div>');
+            if (data.tracks.some(t => t.from)) {
+                _dpGroupTracks(data.tracks, 'from').forEach(([from, ts]) => right.push(
+                    `<div class="mb-dp-group"><div class="mb-dp-gname">${_mbttEscape(from || 'source not given')}</div>${_dpTrackListHtml(ts)}</div>`));
+            } else {
+                right.push('<div class="mb-dp-discs">' + _dpGroupTracks(data.tracks, 'disc').map(([disc, ts]) =>
+                    `<div>${disc ? `<div class="mb-dp-gname">${_mbttEscape(disc)}</div>` : ''}${_dpTrackListHtml(ts)}</div>`).join('') + '</div>');
+            }
+        }
+        data.sections.forEach(s => right.push(`<h4>${_mbttEscape(s.label)}</h4><div class="mb-dp-section">${_mbttEscape(s.text)}</div>`));
+        if (!right.length) right.push('<h4>Tracklist</h4><div class="mb-dp-xsub">The page has no tracklist.</div>');
+        return `<div class="mb-dp-x"><div class="mb-dp-col">${left.join('')}</div><div class="mb-dp-col">${right.join('')}</div></div>` +
+            `<div class="mb-dp-xfoot">${_mbttEscape(_dpAgeText(res))}</div>`;
+    }
+
+    /**
+     * A detail page's decoded HTML for the Live page view: from
+     * `_dpRawMem` (a hover or the Extracted view fetched it already), else
+     * fetched through the rate gate and remembered.
+     *
+     * @param {string} url
+     * @param {object} site  The host's `_DP_SITES` entry.
+     * @param {{wanted?: function(): boolean, force?: boolean}} [opts]
+     *   `wanted` is asked right before a request; `force` skips the memory.
+     * @returns {Promise<{outcome: string, html?: string, detail?: string}>}
+     *   `ok` with the HTML, `error` with a reason, or `skipped` (no longer wanted).
+     */
+    async function _dpGetRaw(url, site, { wanted = () => true, force = false } = {}) {
+        if (!force && _dpRawMem.has(url)) return { outcome: 'ok', html: _dpRawMem.get(url) };
+        await _dpAwaitSlot();
+        if (!wanted()) return { outcome: 'skipped' };
+        try {
+            const html = await _dpFetchText(url, site.charset);
+            _dpRememberRaw(url, html);
+            return { outcome: 'ok', html };
+        } catch (err) {
+            Lib.warn('detail', `${url} (Live page): ${err && err.message}`);
+            return { outcome: 'error', detail: (err && err.message) || 'The request failed.' };
+        }
+    }
+
+    /**
+     * Turns a detail page's HTML into the document the Live page view shows
+     * (the frame's `srcdoc`):
+     *   - every `<script>` and `<noscript>` is removed. The frame has no
+     *     `allow-scripts` either, but a page handed to it with its scripts
+     *     still in made Chrome log "Blocked script execution … sandboxed" once
+     *     per script (29 on a springsteenlyrics.com song page);
+     *   - so is every inline event handler (`on…` attribute) and every
+     *     `javascript:` URL, which Chrome also logs once each as the page is
+     *     parsed (WIP.4: six on a Brucebase song page);
+     *   - every `<iframe>` (a YouTube video, an html-block) becomes a link:
+     *     inside a frame without scripts a player cannot start, and YouTube's
+     *     own fallback image then 404s;
+     *   - a `<meta http-equiv="refresh">` is removed;
+     *   - a `<base href>` naming the page's own URL comes first in `<head>`,
+     *     so its relative links, images and stylesheets resolve as on the
+     *     site (a page's own `<base>` keeps its other attributes).
+     * The doctype is kept, so a quirks-mode page (jungleland.it) stays one.
+     *
+     * @param {string} html The page, decoded.
+     * @param {string} url  The page's URL.
+     * @returns {string} The document to give the frame as `srcdoc`.
+     */
+    function _dpLiveDocHtml(html, url) {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        doc.querySelectorAll('script, noscript, meta[http-equiv="refresh" i]').forEach(n => n.remove());
+        // Inline handlers count as scripts too: the sandbox refuses each one
+        // as the page is parsed and Chrome logs it, click or no click (six
+        // on a Brucebase song page: the search box's onfocus, the login,
+        // report and cookie links' onclick). javascript: URLs go for the
+        // same reason; those links did nothing without the page's scripts.
+        doc.querySelectorAll('*').forEach(el => {
+            Array.from(el.attributes).forEach(a => {
+                const name = a.name.toLowerCase();
+                if (name.startsWith('on') ||
+                    (/^(?:href|src|action|formaction|xlink:href)$/.test(name) && /^\s*javascript:/i.test(a.value))) {
+                    el.removeAttribute(a.name);
+                }
+            });
+        });
+        doc.querySelectorAll('iframe').forEach(fr => {
+            const src = _dpAbsUrl(fr.getAttribute('src'), url);
+            const yt = src.match(/^https?:\/\/(?:www\.)?youtube(?:-nocookie)?\.com\/embed\/([\w-]+)/);
+            const p = doc.createElement('p');
+            p.className = 'mb-dp-embed';
+            if (src) {
+                const a = doc.createElement('a');
+                a.href = yt ? `https://www.youtube.com/watch?v=${yt[1]}` : src;
+                a.textContent = yt ? '▶ Watch on YouTube' : '▶ Open the embedded page';
+                p.appendChild(a);
+            }
+            fr.replaceWith(p);
+        });
+        let base = doc.querySelector('base');
+        if (!base) {
+            base = doc.createElement('base');
+            doc.head.insertBefore(base, doc.head.firstChild);
+        }
+        base.setAttribute('href', url);
+        const dt = doc.doctype;
+        const doctype = dt ? `<!DOCTYPE ${dt.name}${dt.publicId ? ` PUBLIC "${dt.publicId}"` : ''}${dt.systemId ? ` "${dt.systemId}"` : ''}>` : '';
+        return doctype + doc.documentElement.outerHTML;
+    }
+
+    /**
+     * Trims the Live page view's page to its content: hides the siblings of
+     * the host's `liveRoot` and of each of its ancestors, and the host's
+     * `liveHide` selectors (all toggled by "Hide site navigation", through
+     * `html.mb-dp-isolate`), runs its `livePrepare`, hides images that did
+     * not load (the page's own `onerror` handlers do not run without its
+     * scripts), and makes links open in a new tab.
+     *
+     * The frame holds `_dpLiveDocHtml()`'s copy of the page as `srcdoc`,
+     * with `sandbox="allow-same-origin …"`: its origin is the list page's,
+     * so its document is the script's to change. The copy has no scripts,
+     * and the sandbox (no `allow-scripts`) would refuse any anyway: no
+     * trackers, no pop-ups, no second run of what the page does on load.
+     *
+     * @param {HTMLIFrameElement} frame
+     * @param {object}            site  The host's `_DP_SITES` entry.
+     * @returns {void}
+     */
+    function _dpIsolateFrame(frame, site) {
+        let doc = null;
+        try {
+            doc = frame.contentDocument;
+        } catch (_) {
+            doc = null;
+        }
+        // A new frame first holds an empty about:blank document, and its load
+        // event fires too: only the srcdoc copy (about:srcdoc) is the page.
+        if (!doc || !doc.body || doc.URL === 'about:blank' || doc.documentElement.dataset.mbDpDone) return;
+        doc.documentElement.dataset.mbDpDone = '1';
+        const style = doc.createElement('style');
+        style.textContent = 'html.mb-dp-isolate .mb-dp-hide { display: none !important; }' +
+            '.mb-dp-broken { display: none !important; }' + site.liveCss;
+        (doc.head || doc.documentElement).appendChild(style);
+        const root = site.liveRoot ? site.liveRoot(doc) : null;
+        for (let el = root; el && el.parentElement && el !== doc.body; el = el.parentElement) {
+            Array.from(el.parentElement.children).forEach(s => {
+                if (s !== el && !/^(?:SCRIPT|STYLE|LINK|META|TITLE|HEAD)$/.test(s.tagName)) s.classList.add('mb-dp-hide');
+            });
+        }
+        site.liveHide.forEach(sel => doc.querySelectorAll(sel).forEach(n => n.classList.add('mb-dp-hide')));
+        if (site.livePrepare) site.livePrepare(doc);
+        doc.querySelectorAll('img').forEach(img => {
+            const drop = () => img.classList.add('mb-dp-broken');
+            if (img.complete && img.getAttribute('src') && img.naturalWidth === 0) drop();
+            else img.addEventListener('error', drop);
+        });
+        doc.querySelectorAll('a[href]').forEach(a => {
+            a.target = '_blank';
+            a.rel = 'noopener';
+        });
+        doc.documentElement.classList.toggle('mb-dp-isolate', _dpDialog.hideNav);
+    }
+
+    /**
+     * Fills the dialog's content area with the current view of the current
+     * page: the Extracted record (loading first when it is not cached), or
+     * the Live page frame.
+     *
+     * @param {boolean} [force] Fetch again, bypassing the caches (the parsed
+     *   record's two tiers in Extracted, the raw-page memory in Live page).
+     * @returns {Promise<void>}
+     */
+    async function _dpRenderDialog(force) {
+        const api = _dpDialog.api;
+        const site = _dpActiveSite();
+        if (!api || !api.dialog.isConnected || !site) return;
+        const url = _dpDialog.url;
+        const area = api.scrollArea;
+        const c = _dpDialog.controls;
+        c.ex.setAttribute('aria-pressed', String(_dpDialog.view === 'ex'));
+        c.live.setAttribute('aria-pressed', String(_dpDialog.view === 'live'));
+        c.open.href = url;
+        const links = _dpRowLinks(_dpDialog.table);
+        const i = links.findIndex(a => a.href === url);
+        c.pos.textContent = i >= 0 ? `${i + 1} / ${links.length}` : '';
+        if (_dpDialog.view === 'live') {
+            area.classList.add('mb-dp-area-live');
+            area.innerHTML = '';
+            const wrap = document.createElement('div');
+            wrap.className = 'mb-dp-live';
+            const bar = document.createElement('div');
+            bar.className = 'mb-dp-live-bar';
+            const label = document.createElement('label');
+            const box = document.createElement('input');
+            box.type = 'checkbox';
+            box.checked = _dpDialog.hideNav;
+            box.className = 'mb-dp-hidenav';
+            label.append(box, ' Hide the site\'s navigation');
+            const where = document.createElement('span');
+            where.className = 'mb-dp-live-url';
+            where.textContent = url;
+            bar.append(label, where);
+            const frame = document.createElement('iframe');
+            frame.setAttribute('sandbox', 'allow-same-origin allow-popups allow-popups-to-escape-sandbox');
+            frame.setAttribute('title', 'Detail page');
+            box.addEventListener('change', () => {
+                _dpDialog.hideNav = box.checked;
+                try {
+                    if (frame.contentDocument) frame.contentDocument.documentElement.classList.toggle('mb-dp-isolate', box.checked);
+                } catch (_) { /* not ours to touch */ }
+            });
+            wrap.append(bar, frame);
+            area.appendChild(wrap);
+            // The page's own HTML, cleaned (_dpLiveDocHtml()), as srcdoc: no
+            // second request when a hover or the Extracted view read it
+            // already, and no scripts for the sandbox to refuse.
+            const status = document.createElement('span');
+            status.className = 'mb-dp-live-status';
+            status.textContent = 'Loading…';
+            bar.appendChild(status);
+            const raw = await _dpGetRaw(url, site, {
+                force,
+                wanted: () => _dpDialog.url === url && _dpDialog.view === 'live' && frame.isConnected
+            });
+            if (_dpDialog.url !== url || _dpDialog.view !== 'live' || !frame.isConnected) return;
+            if (raw.outcome !== 'ok') {
+                frame.remove();
+                status.remove();
+                const fail = document.createElement('div');
+                fail.className = 'mb-dp-x';
+                fail.innerHTML = '<div class="mb-dp-col"><div class="mb-dp-warn">Could not load the detail page.</div>' +
+                    `<div class="mb-dp-xsub">${_mbttEscape(raw.detail || '')}</div>` +
+                    '<p><button type="button" class="mb-dp-retry">⟳ Try again</button></p></div>';
+                wrap.appendChild(fail);
+                return;
+            }
+            status.remove();
+            frame.addEventListener('load', () => _dpIsolateFrame(frame, site));
+            frame.srcdoc = _dpLiveDocHtml(raw.html, url);
+            return;
+        }
+        area.classList.remove('mb-dp-area-live');
+        const mem = force ? null : _dpMem.get(url);
+        if (mem) {
+            area.innerHTML = _dpExtractedHtml(mem.data, { cached: true, at: mem.at });
+            return;
+        }
+        area.innerHTML = '<div class="mb-dp-x mb-dp-loading"><span class="mb-dp-spin">◌</span> Loading the detail page…</div>';
+        const res = await _dpGet(url, site, { wanted: () => _dpDialog.url === url && api.dialog.isConnected, force });
+        if (_dpDialog.url !== url || !api.dialog.isConnected || _dpDialog.view !== 'ex') return;
+        if (res.outcome === 'ok') {
+            area.innerHTML = _dpExtractedHtml(res.data, res);
+        } else if (res.outcome === 'error') {
+            area.innerHTML = '<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-warn">Could not load the detail page.</div>' +
+                `<div class="mb-dp-xsub">${_mbttEscape(res.detail || '')}</div>` +
+                '<p><button type="button" class="mb-dp-retry">⟳ Try again</button></p></div></div>';
+        }
+    }
+
+    /**
+     * Shows a page in the dialog and marks its row.
+     *
+     * @param {HTMLAnchorElement} a The row's detail link.
+     * @returns {void}
+     */
+    function _dpShowInDialog(a) {
+        _dpDialog.url = a.href;
+        const tr = a.closest('tr');
+        if (_dpDialog.row && _dpDialog.row !== tr) _dpDialog.row.classList.remove('mb-dp-current');
+        _dpDialog.row = tr;
+        if (tr) {
+            tr.classList.add('mb-dp-current');
+            tr.scrollIntoView({ block: 'nearest' });
+        }
+        _dpRenderDialog(false);
+    }
+
+    /**
+     * Steps the dialog to the previous or next visible row's page.
+     *
+     * @param {number} delta -1 or 1.
+     * @returns {void}
+     */
+    function _dpStep(delta) {
+        const links = _dpRowLinks(_dpDialog.table);
+        if (!links.length) return;
+        let i = links.findIndex(a => a.href === _dpDialog.url);
+        if (i < 0) i = delta > 0 ? -1 : links.length;
+        const next = links[i + delta];
+        if (next) _dpShowInDialog(next);
+    }
+
+    /**
+     * ← and → step through the rows while the dialog is open, unless the
+     * focus is in a text field. Removes itself once the dialog is gone.
+     *
+     * @param {KeyboardEvent} e
+     * @returns {void}
+     */
+    function _dpDialogKeys(e) {
+        if (!_dpDialog.api || !_dpDialog.api.dialog.isConnected) {
+            document.removeEventListener('keydown', _dpDialogKeys, true);
+            return;
+        }
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        if (e.altKey || e.ctrlKey || e.metaKey) return;
+        if (_dpIsTextField(e.target)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        _dpStep(e.key === 'ArrowLeft' ? -1 : 1);
+    }
+
+    /**
+     * Opens the pinned dialog on a detail link's page, or shows that page in
+     * the dialog already open.
+     *
+     * The dialog is `createInfoDialog()`'s shell: it is dragged by its title
+     * bar, resized from its corner (position and size are remembered under
+     * `sa_dp_dialog_geometry`), and closed by ✕, Esc or a click outside. Its
+     * title bar adds ‹ ›, the row position, the Extracted / Live page
+     * switch, ⟳ (fetch again, bypassing the cache) and ↗ (open the page in a
+     * new tab).
+     *
+     * @param {HTMLAnchorElement} a
+     * @returns {void}
+     */
+    function _dpOpenDialog(a) {
+        _dpHidePeek();
+        if (!_dpSiteForLink(a)) return;
+        _dpDialog.table = a.closest('table');
+        if (_dpDialog.api && _dpDialog.api.dialog.isConnected) {
+            _dpShowInDialog(a);
+            return;
+        }
+        const btn = (text, tip) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'mb-dp-tbtn';
+            b.textContent = text;
+            _setTip(b, tip);
+            return b;
+        };
+        const prev = btn('‹', 'Previous row (←)');
+        const pos = document.createElement('span');
+        pos.className = 'mb-dp-pos-label';
+        const next = btn('›', 'Next row (→)');
+        const seg = document.createElement('span');
+        seg.className = 'mb-dp-seg';
+        const ex = btn('Extracted', 'What the script read from the page');
+        const live = btn('Live page', 'The site\'s own page, with its navigation hidden');
+        seg.append(ex, live);
+        const reload = btn('⟳', 'Load the page again, bypassing the saved copy');
+        const open = document.createElement('a');
+        open.className = 'mb-dp-tbtn';
+        open.target = '_blank';
+        open.rel = 'noopener';
+        open.textContent = '↗';
+        _setTip(open, 'Open the page in a new tab');
+        const api = createInfoDialog({
+            id: 'mb-dp-dialog',
+            title: 'Detail page',
+            width: 'min(860px, 94vw)',
+            maxHeight: '88vh',
+            minWidth: '320px',
+            minHeight: '260px',
+            centerV: false,
+            zIndex: 10050,
+            geoKey: 'sa_dp_dialog_geometry',
+            titleBarExtras: [prev, pos, next, seg, reload, open]
+        });
+        if (!api) return;
+        if (!GM_getValue('sa_dp_dialog_geometry', null)) api.dialog.style.height = 'min(640px, 86vh)';
+        api.dialog.classList.add('mb-dp-dialog');
+        api.scrollArea.classList.add('mb-dp-area');
+        api.scrollArea.addEventListener('error', (e) => {
+            if (e.target && e.target.tagName === 'IMG') e.target.remove();
+        }, true);
+        api.scrollArea.addEventListener('click', (e) => {
+            if (e.target.closest('.mb-dp-retry')) _dpRenderDialog(true);
+        });
+        _dpDialog.api = api;
+        _dpDialog.controls = { pos, ex, live, open };
+        prev.addEventListener('click', () => _dpStep(-1));
+        next.addEventListener('click', () => _dpStep(1));
+        ex.addEventListener('click', () => { _dpDialog.view = 'ex'; _dpRenderDialog(false); });
+        live.addEventListener('click', () => { _dpDialog.view = 'live'; _dpRenderDialog(false); });
+        reload.addEventListener('click', () => _dpRenderDialog(true));
+        document.addEventListener('keydown', _dpDialogKeys, true);
+        // createInfoDialog() removes the dialog itself (✕, Esc, outside
+        // click): take the row mark off when it goes.
+        const gone = new MutationObserver(() => {
+            if (api.dialog.isConnected) return;
+            gone.disconnect();
+            if (_dpDialog.row) _dpDialog.row.classList.remove('mb-dp-current');
+            _dpDialog.row = null;
+            if (_dpDialog.api === api) _dpDialog.api = null;
+        });
+        gone.observe(document.body, { childList: true });
+        // Take the focus into the dialog (out of the global filter the
+        // render focused), so ← → and the scroll keys reach it.
+        api.scrollArea.focus({ preventScroll: true });
+        _dpShowInDialog(a);
+    }
+
+    /**
+     * Installs the preview's stylesheet, once per document. The card itself
+     * is a `.mb-tt-liner`; these rules lay out its rows and the dialog.
+     *
+     * @returns {void}
+     */
+    function _ensureDetailPreviewStyle() {
+        if (document.getElementById('mb-dp-style')) return;
+        // GM_addStyle so this is exempt from page CSP style-src restrictions.
+        const style = GM_addStyle(`
+            #mb-dp-peek {
+                position: fixed;
+                min-width: 240px;
+                max-width: 420px;
+                pointer-events: none;
+            }
+            #mb-dp-peek .mb-dp-head { display: flex; gap: 10px; align-items: flex-start; }
+            #mb-dp-peek .mb-dp-headtext { min-width: 0; flex: 1; }
+            #mb-dp-peek .mb-dp-cover { flex: none; width: 64px; height: 64px; object-fit: cover; border: 1px solid #d9cfbd; border-radius: 2px; }
+            #mb-dp-peek .mb-dp-thumbs { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 6px; }
+            #mb-dp-peek .mb-dp-thumbs img { height: 44px; max-width: 72px; object-fit: cover; border: 1px solid #d9cfbd; border-radius: 2px; }
+            #mb-dp-peek .mb-dp-src { margin-top: 1px; }
+            #mb-dp-peek .mb-dp-excerpt { font-style: italic; }
+            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-kv {
+                display: grid;
+                grid-template-columns: max-content minmax(0, 1fr);
+                gap: 1px 10px;
+                margin: 4px 0 0;
+            }
+            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-kv dt { font-style: italic; color: #7a6d5c; }
+            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-kv dd { margin: 0; }
+            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-tracks { margin: 3px 0 0; padding: 0; list-style: none; }
+            #mb-dp-peek .mb-dp-tracks { columns: 2; column-gap: 16px; }
+            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-tracks li { break-inside: avoid; }
+            #mb-dp-peek .mb-dp-tracks li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-pos { color: #7a6d5c; font-variant-numeric: tabular-nums; margin-right: 6px; }
+            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-stat { margin: 4px 0 2px; }
+            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-stat b { font-size: 1.6em; font-variant-numeric: tabular-nums; }
+            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-spin { display: inline-block; animation: mb-dp-spin 0.9s linear infinite; }
+            @keyframes mb-dp-spin { to { transform: rotate(360deg); } }
+            @media (prefers-reduced-motion: reduce) {
+                :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-spin { animation: none; }
+            }
+            .mb-dp-dialog .mb-dp-tbtn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 26px;
+                height: 26px;
+                padding: 0 7px;
+                border: 1px solid #ccc;
+                border-radius: 3px;
+                background: #fff;
+                color: #222;
+                font: 13px/1 sans-serif;
+                text-decoration: none;
+                cursor: pointer;
+            }
+            .mb-dp-dialog .mb-dp-tbtn:hover { background: #f0f0f0; }
+            .mb-dp-dialog .mb-dp-seg { display: inline-flex; }
+            .mb-dp-dialog .mb-dp-seg .mb-dp-tbtn { border-radius: 0; }
+            .mb-dp-dialog .mb-dp-seg .mb-dp-tbtn + .mb-dp-tbtn { border-left: 0; }
+            .mb-dp-dialog .mb-dp-seg .mb-dp-tbtn[aria-pressed="true"] { background: #2b2622; color: #fbf8f1; border-color: #2b2622; }
+            .mb-dp-dialog .mb-dp-pos-label { font: 12px ui-monospace, Consolas, monospace; color: #666; min-width: 4.5em; text-align: center; }
+            .mb-dp-dialog .mb-dp-area { position: relative; background: #fbf8f1; }
+            .mb-dp-dialog .mb-dp-area.mb-dp-area-live { overflow: hidden; }
+            .mb-dp-dialog .mb-dp-x {
+                display: grid;
+                grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+                gap: 18px;
+                padding: 14px 18px;
+                color: #2b2622;
+                font: 13.5px/1.5 Georgia, "Times New Roman", Times, serif;
+            }
+            @media (max-width: 640px) {
+                .mb-dp-dialog .mb-dp-x { grid-template-columns: minmax(0, 1fr); }
+            }
+            .mb-dp-dialog .mb-dp-col { min-width: 0; }
+            .mb-dp-dialog .mb-dp-xtitle { font-weight: 700; font-size: 1.2em; line-height: 1.3; }
+            .mb-dp-dialog .mb-dp-xsub { font-style: italic; color: #7a6d5c; }
+            .mb-dp-dialog .mb-dp-xcover { display: block; max-width: 100%; max-height: 220px; margin: 8px 0; border: 1px solid #d9cfbd; }
+            .mb-dp-dialog h4 {
+                margin: 14px 0 4px;
+                font: 600 11px/1.3 ui-monospace, Consolas, monospace;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                color: #7a6d5c;
+            }
+            .mb-dp-dialog .mb-dp-col > h4:first-child { margin-top: 0; }
+            .mb-dp-dialog .mb-dp-gallery { display: flex; flex-wrap: wrap; gap: 6px; }
+            .mb-dp-dialog .mb-dp-gallery a { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; color: #7a6d5c; font-size: 11px; text-decoration: none; }
+            .mb-dp-dialog .mb-dp-gallery img { height: 88px; max-width: 160px; object-fit: cover; border: 1px solid #d9cfbd; }
+            .mb-dp-dialog .mb-dp-note { white-space: pre-wrap; margin-bottom: 6px; }
+            .mb-dp-dialog .mb-dp-section { white-space: pre-wrap; }
+            .mb-dp-dialog .mb-dp-discs { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px 16px; }
+            .mb-dp-dialog .mb-dp-group + .mb-dp-group { margin-top: 10px; }
+            .mb-dp-dialog .mb-dp-gname { font-style: italic; color: #7a6d5c; }
+            .mb-dp-dialog .mb-dp-warn, #mb-dp-peek .mb-dp-warn { border-left: 3px solid #9b2218; background: #f6e6dc; padding: 4px 8px; margin: 4px 0 8px; }
+            .mb-dp-dialog .mb-dp-xfoot { padding: 0 18px 12px; font: italic 12px Georgia, serif; color: #7a6d5c; }
+            .mb-dp-dialog .mb-dp-live { position: absolute; inset: 0; display: flex; flex-direction: column; }
+            .mb-dp-dialog .mb-dp-live-bar {
+                flex: none;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px 14px;
+                align-items: center;
+                padding: 6px 12px;
+                border-bottom: 1px solid #ddd;
+                background: #f8f8f8;
+                font: 12px sans-serif;
+                color: #555;
+            }
+            .mb-dp-dialog .mb-dp-live-bar label { display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
+            .mb-dp-dialog .mb-dp-live-url { font: 11px ui-monospace, Consolas, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+            .mb-dp-dialog .mb-dp-live-status { font-style: italic; }
+            .mb-dp-dialog .mb-dp-live iframe { flex: 1; width: 100%; border: 0; background: #fff; }
+            table.tbl > tbody > tr.mb-dp-current > td {
+                background-image: linear-gradient(rgba(255, 204, 0, 0.25), rgba(255, 204, 0, 0.25));
+            }
+        `);
+        style.id = 'mb-dp-style';
+    }
+
+    /**
+     * Installs the detail-page preview on a foreign host whose preview
+     * setting is on (`_DP_SITES[_foreignHost].setting`). Called once from the
+     * init block, after the host's live page is prepared. On MusicBrainz, or
+     * with the setting off, it does nothing at all.
+     *
+     * Everything is delegated on the document, so the table's
+     * `cloneNode(true)` re-renders need no re-wiring:
+     *   - hover (or keyboard focus) on a detail link → the card, after the
+     *     rich-tooltip delay; leaving the link, a press anywhere or a scroll
+     *     hides it;
+     *   - Esc hides the card (and only the card, when a dialog is under it);
+     *   - Space while the card shows pins it into the dialog, unless the
+     *     user is typing in a text field (`_DP_TYPING_GRACE_MS`): after a
+     *     render the global filter has the focus without anyone typing;
+     *   - a TAP on a detail link opens the dialog instead of the page: a
+     *     touch screen has no hover, and the dialog's ↗ opens the page.
+     *
+     * Hover handlers ignore a tap's compatibility mouse events
+     * (`_isTouchCompatMouseEvent()`), as every tooltip of the script does.
+     *
+     * @returns {void}
+     */
+    function _initDetailPreview() {
+        if (!_dpActiveSite() || _initDetailPreview.done) return;
+        _initDetailPreview.done = true;
+        _installTouchInputTracker();
+        _ensureDetailPreviewStyle();
+        document.addEventListener('mouseover', (e) => {
+            const a = e.target.closest ? e.target.closest('a[href]') : null;
+            if (!a || a === _dpPeek.link) return;
+            if (!_dpSiteForLink(a) || _isTouchCompatMouseEvent(e)) return;
+            _dpSchedulePeek(a);
+        }, true);
+        document.addEventListener('mouseout', (e) => {
+            const a = _dpPeek.link;
+            if (!a || !a.contains(e.target)) return;
+            if (e.relatedTarget && a.contains(e.relatedTarget)) return;
+            _dpHidePeek();
+        }, true);
+        document.addEventListener('focusin', (e) => {
+            const a = e.target;
+            if (a === _dpPeek.link || !_dpSiteForLink(a)) return;
+            let visible;
+            try {
+                visible = a.matches(':focus-visible');
+            } catch (_) {
+                visible = false;
+            }
+            if (visible) _dpSchedulePeek(a);
+        }, true);
+        document.addEventListener('focusout', (e) => {
+            if (e.target === _dpPeek.link) _dpHidePeek();
+        }, true);
+        document.addEventListener('mousedown', () => {
+            if (_dpPeek.link) _dpHidePeek();
+        }, true);
+        window.addEventListener('scroll', () => {
+            if (_dpPeekShown()) _dpHidePeek();
+        }, { capture: true, passive: true });
+        document.addEventListener('input', (e) => {
+            if (_dpIsTextField(e.target)) _dpPeek.typedAt = Date.now();
+        }, true);
+        document.addEventListener('keydown', (e) => {
+            if (!_dpPeekShown()) return;
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                _dpHidePeek();
+                return;
+            }
+            if ((e.key === ' ' || e.code === 'Space') && !e.altKey && !e.ctrlKey && !e.metaKey) {
+                // A Space typed into a field stays the field's; the focus the
+                // render left in the global filter does not count as typing.
+                if (_dpIsTextField(e.target) && Date.now() - _dpPeek.typedAt < _DP_TYPING_GRACE_MS) return;
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                _dpOpenDialog(_dpPeek.link);
+            }
+        }, true);
+        document.addEventListener('click', (e) => {
+            if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+            const a = e.target.closest ? e.target.closest('a[href]') : null;
+            if (!a || !_dpSiteForLink(a)) return;
+            if (!_isTouchCompatMouseEvent(e) && !_isTouchPrimaryDevice()) return;
+            e.preventDefault();
+            e.stopPropagation();
+            _dpOpenDialog(a);
+        }, true);
+        Lib.debug('detail', `Detail-page preview installed for ${_foreignHost}.`);
     }
 
     /**
@@ -47210,6 +49031,11 @@ a { color: #1565c0; }`;
         headerContainer = _bbPrepareLivePage();
     }
 
+    // The detail-page preview (hover card + pinned dialog) on the foreign
+    // hosts' tables, when that host's preview setting is on. A no-op on
+    // MusicBrainz. See _initDetailPreview().
+    if (_foreignHost && pageType && headerContainer) _initDetailPreview();
+
     if (pageType) Lib.prefix = `[VZ-${SCRIPT_BASE_NAME}: ${pageType}]`;
     Lib.debug('init', 'Initializing script for path:', path);
 
@@ -55545,7 +57371,7 @@ a { color: #1565c0; }`;
         document.body.appendChild(_tip);
 
         /** Rich tooltips that, while shown, rule out a card (see _showOwn). */
-        const _OTHER_RICH_TIPS = ['mb-art-bigbox-tooltip', 'mb-art-hover-preview', 'mb-rel-tooltip'];
+        const _OTHER_RICH_TIPS = ['mb-art-bigbox-tooltip', 'mb-art-hover-preview', 'mb-rel-tooltip', 'mb-dp-peek'];
 
         let _target = null;     // element whose card is shown or pending
         let _own = false;       // _target is a data-mb-tip element (not data-mbtt)
@@ -107109,6 +108935,45 @@ a { color: #1565c0; }`;
              */
             tipTextToHtml(text) {
                 return _tipTextToHtml(text);
+            },
+            /**
+             * A foreign host's detail-page parser (`_DP_SITES[host].parse`)
+             * run on an HTML string, so a spec can pin each host's record
+             * shape from a saved page without serving it.
+             *
+             * @param {string} host  A `_foreignHost` value, e.g. 'jungleland.it'.
+             * @param {string} html  The page, already decoded.
+             * @param {string} url   The page's URL (relative paths resolve against it).
+             * @returns {?object} The parsed record, or null.
+             */
+            dpParse(host, html, url) {
+                const site = _DP_SITES[host];
+                return site ? site.parse(new DOMParser().parseFromString(html, 'text/html'), url) : null;
+            },
+            /**
+             * The Live page view's cleaning (`_dpLiveDocHtml()`): a page's HTML
+             * in, the frame's `srcdoc` out, so a spec can pin what it removes,
+             * replaces and adds on a page no fixture has (fixtures have their
+             * iframes stripped already).
+             *
+             * @param {string} html
+             * @param {string} url
+             * @returns {string}
+             */
+            dpLiveDocHtml(html, url) {
+                return _dpLiveDocHtml(html, url);
+            },
+            /**
+             * The springsteenlyrics.com tracklist splitter (`_dpSlTracklist()`)
+             * on a plain text, for the shapes no saved page has.
+             *
+             * @param {string} text
+             * @returns {{tracks: Array<object>, notes: string[], unnumbered: boolean}}
+             */
+            dpSlTracklist(text) {
+                const data = _dpEmpty();
+                _dpSlTracklist(text, data);
+                return { tracks: data.tracks, notes: data.notes, unnumbered: data.unnumbered };
             },
             /**
              * The text a column filter matches a cell against

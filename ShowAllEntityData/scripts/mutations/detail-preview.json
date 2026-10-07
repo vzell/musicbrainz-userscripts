@@ -1,0 +1,424 @@
+[
+    {
+        "name": "the per-host preview setting is ignored",
+        "why": "The preview is opt-in per host (sa_bs_detail_preview, default off). Without the check a hover with the setting off would fetch and show the card.",
+        "edits": [
+            {
+                "find": "        return site && Lib.settings[site.setting] === true ? site : null;",
+                "replace": "        return site || null;"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "preview off, a hover shows nothing",
+        "expect": "fail"
+    },
+    {
+        "name": "the preview installs on MusicBrainz too",
+        "why": "Only a foreign host has a _DP_SITES entry and only there is _initDetailPreview() called. Installed on MusicBrainz (here: as if it were brucespringsteen.it), the stylesheet and listeners would land on every MusicBrainz page.",
+        "edits": [
+            {
+                "find": "        const site = _foreignHost ? _DP_SITES[_foreignHost] : null;",
+                "replace": "        const site = _DP_SITES[_foreignHost || 'brucespringsteen.it'];"
+            },
+            {
+                "find": "    if (_foreignHost && pageType && headerContainer) _initDetailPreview();",
+                "replace": "    _initDetailPreview();"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "every preview setting on changes nothing",
+        "expect": "fail"
+    },
+    {
+        "name": "jungleland.it pages are decoded as UTF-8",
+        "why": "jungleland.it serves windows-1252 with no charset. Decoded as UTF-8, 'Köln' comes out as 'K�ln' and the card's title is wrong.",
+        "edits": [
+            {
+                "find": "            charset: 'windows-1252',",
+                "replace": "            charset: null,"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "windows-1252 page is decoded",
+        "expect": "fail"
+    },
+    {
+        "name": "jungleland.it's unknown date 0000-00-00 is shown",
+        "why": "The site writes an unknown date as 0000-00-00; the record leaves it out.",
+        "edits": [
+            {
+                "find": "            else if (m[2] && !/^0{4}-0{2}-0{2}$/.test(m[2])) data.fields.push([label, m[2]]);",
+                "replace": "            else if (m[2]) data.fields.push([label, m[2]]);"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "jungleland.it: title, uploader",
+        "expect": "fail"
+    },
+    {
+        "name": "brucespringsteen.it's ditto marks are not carried down",
+        "why": "The From column writes a double quote for 'same as above'. Without carrying the previous show down, 13 of CR1AD1's 14 tracks have the source '\"'.",
+        "edits": [
+            {
+                "find": "                const own = /^[\"”]?$/.test(cells[2]) ? from : cells[2].replace(/\\/\\d+$/, '');",
+                "replace": "                const own = cells[2].replace(/\\/\\d+$/, '');"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "ditto marks carried down",
+        "expect": "fail"
+    },
+    {
+        "name": "the tracklist table is recognised from the header row's whole text",
+        "why": "The header row's textContent runs the cells together ('PosTitleFromNotesVer'), so a word-boundary test on it never matches and every record has no tracks.",
+        "edits": [
+            {
+                "find": "            return head.includes('Pos') && head.includes('From');",
+                "replace": "            return /\\bPos\\b/.test(head.join('')) && /\\bFrom\\b/.test(head.join(''));"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "ditto marks carried down",
+        "expect": "fail"
+    },
+    {
+        "name": "the source's own whitespace is kept beside each <br>",
+        "why": "The sites write 'line<br />\\nline'. Keeping that newline as well as the <br>'s makes every line a paragraph of its own, so bootleg 1331's unnumbered tracklist is read as 36 notes.",
+        "edits": [
+            {
+                "find": "            if (!t.parentElement || !t.parentElement.closest('pre, textarea')) t.nodeValue = t.nodeValue.replace(/\\s+/g, ' ');\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "springsteenlyrics.com: discs, a lineage note",
+        "expect": "fail"
+    },
+    {
+        "name": "an all-capitals title ending in a dot ends the unnumbered tracklist",
+        "why": "Bootleg 1331 lists 'BORN IN THE U.S.A.'; without the all-capitals allowance the block is not title-like and the tracklist becomes notes.",
+        "edits": [
+            {
+                "find": "(!/[.:]$/.test(l) || l === l.toUpperCase())",
+                "replace": "!/[.:]$/.test(l)"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "springsteenlyrics.com: discs, a lineage note",
+        "expect": "fail"
+    },
+    {
+        "name": "Esc does not hide the card",
+        "why": "Esc closes the hover card (the request this feature answers).",
+        "edits": [
+            {
+                "find": "                e.stopImmediatePropagation();\n                _dpHidePeek();\n                return;",
+                "replace": "                e.stopImmediatePropagation();\n                return;"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "Esc hides the card",
+        "expect": "fail"
+    },
+    {
+        "name": "a Space typed into a field pins the card",
+        "why": "While the user is typing in a field (the global filter), a Space is the field's; pinning would swallow it.",
+        "edits": [
+            {
+                "find": "                if (_dpIsTextField(e.target) && Date.now() - _dpPeek.typedAt < _DP_TYPING_GRACE_MS) return;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "a Space TYPED there stays typed",
+        "expect": "fail"
+    },
+    {
+        "name": "focus in a text field alone blocks the pin",
+        "why": "The original defect: after a render the global filter has the focus without anyone typing, so 'focus in a field' alone meant Space never pinned.",
+        "edits": [
+            {
+                "find": "                if (_dpIsTextField(e.target) && Date.now() - _dpPeek.typedAt < _DP_TYPING_GRACE_MS) return;",
+                "replace": "                if (_dpIsTextField(e.target)) return;"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "a Space TYPED there stays typed",
+        "expect": "fail"
+    },
+    {
+        "name": "the dialog leaves the focus in the global filter",
+        "why": "Without moving the focus into the dialog, the render's focus in the filter keeps the arrow keys: the dialog's arrow handler steps aside for a text field.",
+        "edits": [
+            {
+                "find": "        api.scrollArea.focus({ preventScroll: true });\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "Esc hides the card",
+        "expect": "fail"
+    },
+    {
+        "name": "a hover that moved on still makes its request",
+        "why": "The rate gate asks the waiting callers whether they still want the page before the request. Without it a sweep down the table fetches every row it passed.",
+        "edits": [
+            {
+                "find": "            if (!entry.wants.some(w => w())) return { outcome: 'skipped' };\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "moved on by the time its slot comes up",
+        "expect": "fail"
+    },
+    {
+        "name": "a parsed page is not saved to IndexedDB",
+        "why": "After a reload only the database has the record; without the write the page is fetched again.",
+        "edits": [
+            {
+                "find": "                _dpIdbPut({ url, v: _DP_PARSER_VERSION, at, data }).catch(() => { /* memory still has it */ });\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "survives a reload",
+        "expect": "fail"
+    },
+    {
+        "name": "the Live page view hides nothing around its root",
+        "why": "The siblings of the kept root and of its ancestors are the site's navigation (springsteenlyrics.com: #header-top, the navbar, the breadcrumb, the footer).",
+        "edits": [
+            {
+                "find": "                if (s !== el && !/^(?:SCRIPT|STYLE|LINK|META|TITLE|HEAD)$/.test(s.tagName)) s.classList.add('mb-dp-hide');",
+                "replace": "                if (s !== el && !/^(?:SCRIPT|STYLE|LINK|META|TITLE|HEAD)$/.test(s.tagName)) void s;"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "Live page view with the site's navigation hidden",
+        "expect": "fail"
+    },
+    {
+        "name": "the Live page view's hide switch is never applied",
+        "why": "The hidden parts are hidden through html.mb-dp-isolate; without setting it on load, nothing is hidden.",
+        "edits": [
+            {
+                "find": "        doc.documentElement.classList.toggle('mb-dp-isolate', _dpDialog.hideNav);\n    }",
+                "replace": "    }"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "Live page view with the site's navigation hidden",
+        "expect": "fail"
+    },
+    {
+        "name": "the Live page frame runs the site's scripts",
+        "why": "The frame is sandboxed without allow-scripts (no trackers, no pop-ups, no second run of the page's own code). The spec pins the sandbox attribute.",
+        "edits": [
+            {
+                "find": "            frame.setAttribute('sandbox', 'allow-same-origin allow-popups allow-popups-to-escape-sandbox');\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "Live page view with the site's navigation hidden",
+        "expect": "fail"
+    },
+    {
+        "name": "Brucebase's tab panels stay hidden in the Live page view",
+        "why": "Without its scripts the wiki's tabview shows its first panel only; the view shows every panel under its label.",
+        "edits": [
+            {
+                "find": "                '.yui-content > div { display: block !important; }' +\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "the Live page with every tab",
+        "expect": "fail"
+    },
+    {
+        "name": "a tap on a detail link opens the page",
+        "why": "A touch screen has no hover; the tap opens the dialog instead of the page.",
+        "edits": [
+            {
+                "find": "            if (!_isTouchCompatMouseEvent(e) && !_isTouchPrimaryDevice()) return;",
+                "replace": "            return;"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "a tap on a detail link opens the dialog",
+        "expect": "fail"
+    },
+    {
+        "name": "the hover handler does not ignore a tap",
+        "why": "Every hover tooltip ignores a tap's compatibility mouseover. Here the guard is covered by another: the tap's mousedown hides the card and clears its pending timer before the delay runs out, and the click then opens the dialog. Recorded so the overlap is known, not assumed.",
+        "edits": [
+            {
+                "find": "            if (!_dpSiteForLink(a) || _isTouchCompatMouseEvent(e)) return;",
+                "replace": "            if (!_dpSiteForLink(a)) return;"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "a tap on a detail link opens the dialog",
+        "expect": "pass"
+    },
+    {
+        "name": "the card is not in _OTHER_RICH_TIPS",
+        "why": "The rule for every floating hover tooltip (toolbar-and-header-ui.md). No spec can see it: the card shows only while a detail link is hovered, and those links carry no script tooltip of their own. Recorded so the overlap is known.",
+        "edits": [
+            {
+                "find": "'mb-rel-tooltip', 'mb-dp-peek'];",
+                "replace": "'mb-rel-tooltip'];"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "a hover loads the page once",
+        "expect": "pass"
+    },
+    {
+        "name": "lyrics.php?song= links are not detail links",
+        "why": "The lyrics index's rows link to song pages; without the lyrics.php clause no card opens there (the report that started WIP.2).",
+        "edits": [
+            {
+                "find": "                (u.pathname === '/lyrics.php' && !!u.searchParams.get('song')),",
+                "replace": "                false,"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "lyrics index: a song",
+        "expect": "fail"
+    },
+    {
+        "name": "a song page is read as an item card",
+        "why": "A song page has no div.blog-post card; read by the item parser it yields nothing.",
+        "edits": [
+            {
+                "find": "        if (/\\/lyrics\\.php$/.test(new URL(url).pathname)) return _dpParseSlSong(doc, url);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "springsteenlyrics.com song pages|lyrics index: a song",
+        "expect": "fail"
+    },
+    {
+        "name": "the site's SECTION NOT YET COMPLETED placeholders are kept",
+        "why": "Placeholder lines carry nothing; a section that has only one would show as content.",
+        "edits": [
+            {
+                "find": "                .filter(l => !/^SECTION NOT YET COMPLETED$/i.test(l)).join('\\n')",
+                "replace": "                .join('\\n')"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "springsteenlyrics.com song pages",
+        "expect": "fail"
+    },
+    {
+        "name": "a song without lyrics does not say so",
+        "why": "The 'Lyrics not available' alert becomes the record's note, which the card shows.",
+        "edits": [
+            {
+                "find": "                data.notes.push(_dpText(box.querySelector('.alert-warning').textContent.replace(/^×/, '')));",
+                "replace": "                void box;"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "springsteenlyrics.com song pages|lyrics index: a song",
+        "expect": "fail"
+    },
+    {
+        "name": "the Live page copy keeps the page's scripts",
+        "why": "A page handed to the scriptless frame with its scripts in made Chrome log 'Blocked script execution … sandboxed' once per script (the report behind WIP.3).",
+        "edits": [
+            {
+                "find": "        doc.querySelectorAll('script, noscript, meta[http-equiv=\"refresh\" i]').forEach(n => n.remove());",
+                "replace": "        doc.querySelectorAll('meta[http-equiv=\"refresh\" i]').forEach(n => n.remove());"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "Live page view's copy|Live page view with the site's navigation hidden",
+        "expect": "fail"
+    },
+    {
+        "name": "the Live page copy keeps embedded videos as iframes",
+        "why": "A YouTube player cannot start without scripts, and its fallback image 404s; the copy shows a link instead.",
+        "edits": [
+            {
+                "find": "            fr.replaceWith(p);",
+                "replace": "            void p;"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "Live page view's copy",
+        "expect": "fail"
+    },
+    {
+        "name": "the Live page copy has no base URL",
+        "why": "A srcdoc document's relative URLs resolve against about:srcdoc, not the page, unless a <base href> names the page.",
+        "edits": [
+            {
+                "find": "        base.setAttribute('href', url);",
+                "replace": "        void base;"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "Live page view's copy|Live page view with the site's navigation hidden",
+        "expect": "fail"
+    },
+    {
+        "name": "the Live page view fetches the page again after a hover",
+        "why": "The hover (or the Extracted view) fetched the page already; the Live page view reuses it from _dpRawMem.",
+        "edits": [
+            {
+                "find": "        if (!force && _dpRawMem.has(url)) return { outcome: 'ok', html: _dpRawMem.get(url) };",
+                "replace": "        if (false) return { outcome: 'ok', html: _dpRawMem.get(url) };"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "Live page view with the site's navigation hidden",
+        "expect": "fail"
+    },
+    {
+        "name": "⟳ reuses the remembered page",
+        "why": "⟳ reads the page again; in the Live page view that must bypass _dpRawMem.",
+        "edits": [
+            {
+                "find": "        reload.addEventListener('click', () => _dpRenderDialog(true));",
+                "replace": "        reload.addEventListener('click', () => _dpRenderDialog(false));"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "Live page view with the site's navigation hidden",
+        "expect": "fail"
+    },
+    {
+        "name": "the frame's about:blank document is treated as the page",
+        "why": "A new frame's initial about:blank fires a load too. The load listener is attached only after srcdoc is set, so it never sees that document; the guard is the second line. Recorded so the overlap is known.",
+        "edits": [
+            {
+                "find": "doc.URL === 'about:blank' || ",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "Live page view with the site's navigation hidden",
+        "expect": "pass"
+    },
+    {
+        "name": "the Live page copy keeps inline handlers and javascript: URLs",
+        "why": "The sandbox refuses every on… attribute as the page is parsed and Chrome logs each (eight on a Brucebase song page, the WIP.4 report); javascript: links did nothing there anyway.",
+        "edits": [
+            {
+                "find": "                if (name.startsWith('on') ||\n                    (/^(?:href|src|action|formaction|xlink:href)$/.test(name) && /^\\s*javascript:/i.test(a.value))) {\n                    el.removeAttribute(a.name);\n                }",
+                "replace": "                void name;"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "Live page view's copy|the Live page with every tab",
+        "expect": "fail"
+    }
+]
