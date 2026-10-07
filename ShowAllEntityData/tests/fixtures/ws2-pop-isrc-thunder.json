@@ -1,0 +1,28 @@
+{
+ "isrc": "USSM17500803",
+ "recordings": [
+  {
+   "first-release-date": "1975-08-25",
+   "id": "bbcedc0f-2fff-42f4-9ca6-6d2263d1a042",
+   "length": 290000,
+   "artist-credit": [
+    {
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "disambiguation": "",
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "name": "Bruce Springsteen"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "disambiguation": "version 7",
+   "title": "Thunder Road",
+   "video": false
+  }
+ ]
+}

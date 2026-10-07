@@ -20070,7 +20070,7 @@ it added `sa_jl_detail_preview`, `sa_sl_detail_preview` and
 recorded overlap); `popup-engine.json` 17 as declared after re-anchoring; the
 Phase 1 and foreign-host preview specs 57 + 2 passed; lint within the
 baseline; config and docs audits clean. `npm test`: 1293 passed, 0 failed
-(2026-10-07T18:20:58Z to 18:27:15Z, host petri, WSL2).
+(2026-10-07T18:20:58Z to 18:27:15Z, host NB-3641, WSL2).
 
 ## 2026-10-07 — Recording and work cards; a "no request" check that could not fail (branch feature/popup-engine-phase2, WIP.2)
 
@@ -20090,7 +20090,7 @@ entries. Grep for `UNEXPECTED` too, or count the lines.
 
 **Results:** `popup-mb.spec.js` 20 passed; `popup-mb.json` 19 as declared;
 lint within the baseline. `npm test`: 1299 passed, 0 failed
-(2026-10-07T18:39:00Z to 18:45:45Z, host petri, WSL2).
+(2026-10-07T18:39:00Z to 18:45:45Z, host NB-3641, WSL2).
 
 ## 2026-10-07 — Artist, label, area and instrument cards; relation directions read off the data (branch feature/popup-engine-phase2, WIP.3)
 
@@ -20116,7 +20116,7 @@ now look each name up.
 
 **Results:** `popup-mb.spec.js` 26 passed; `popup-mb.json` 24 as declared;
 lint within the baseline. `npm test`: 1305 passed, 0 failed
-(2026-10-07T18:52:53Z to 18:59:03Z, host petri, WSL2).
+(2026-10-07T18:52:53Z to 18:59:03Z, host NB-3641, WSL2).
 
 ## 2026-10-07 — Event, place and series cards (branch feature/popup-engine-phase2, WIP.4)
 
@@ -20140,3 +20140,34 @@ gate.
 
 **Results:** `popup-mb.spec.js` 30 passed; `popup-mb.json` 29, the five new as
 declared (the rest unchanged since the WIP.3 run); lint within the baseline.
+
+## 2026-10-07 — ISRC, ISWC, disc ID and collection cards; the live twin (branch feature/popup-engine-phase2, WIP.5)
+
+**A code's page path is not its Web Service path.** A disc ID's page is
+`/cdtoc/<id>`, its lookup `/ws/2/discid/<id>`; `_MB_POP_CODE_TYPES` maps one
+to the other, and the target's `url` (↗, Live page) keeps the PAGE's segment.
+Both directions are mutation-pinned.
+
+**A private collection answers 401.** The Web Service shows public
+collections only. The card adds "It is probably private." (`failNote`), and
+the failure is not kept, as any.
+
+**The live twin found two locator traps, no code defect.**
+`tests/live/popup-mb.spec.js` first failed on an artist's events tab: each
+row's first `/event/` link is the event-art icon, a link around an image to
+`/event/<id>/event-art`, which the engine skips by design. And the instrument
+list is a list per type until "Show all" makes the tables, whose sub-tables
+then start collapsed. Both fixed in the spec.
+
+**The host was misreported.** The entries above for WIP.1–WIP.3 first said
+"host petri", copied from an older entry; `hostname` says NB-3641. Corrected.
+
+**The WIP.4 run's sticky-headers failure did not recur** in the merge gate
+below: still unexplained, still not marked flaky.
+
+**Results:** `popup-mb.spec.js` 35 passed; `popup-mb.json` 32 as declared
+(all re-run after `_mbPopTarget()` gained the code paths); live
+`popup-mb.spec.js` 5 of 5 (2026-10-07T19:24:38Z to 19:25:06Z); lint within
+the baseline; config, docs and publish audits clean. `npm run test:full`:
+1328 passed, 0 failed (2026-10-07T19:25:35Z to 19:32:28Z, host NB-3641,
+WSL2).

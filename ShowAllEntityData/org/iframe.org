@@ -576,7 +576,7 @@ only after the user's browser check of the whole branch.
 | WIP.2 | recording, work                               | done 2026-10-07          |
 | WIP.3 | artist, label, area, instrument               | done 2026-10-07          |
 | WIP.4 | event, place, series                          | done 2026-10-07          |
-| WIP.5 | ISRC, ISWC, disc ID, collection               |                          |
+| WIP.5 | ISRC, ISWC, disc ID, collection               | done 2026-10-07          |
 
 The release moved into WIP.1 (planned for WIP.2): the release group kind runs
 on Phase 1's loaders, so without a first lookup kind the new loader

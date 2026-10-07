@@ -66,6 +66,10 @@ const WS2_FIXTURES = [
     [/\/ws\/2\/place\/[0-9a-f-]{36}\?/, 'ws2-pop-place-sp.json'],
     [/\/ws\/2\/event\?place=/, 'ws2-pop-place-sp-events.json'],
     [/\/ws\/2\/series\/[0-9a-f-]{36}\?/, 'ws2-pop-series-st.json'],
+    [/\/ws\/2\/isrc\//, 'ws2-pop-isrc-thunder.json'],
+    [/\/ws\/2\/iswc\//, 'ws2-pop-iswc-btr.json'],
+    [/\/ws\/2\/discid\//, 'ws2-pop-discid-dark.json'],
+    [/\/ws\/2\/collection\//, 'ws2-pop-collection-attending.json'],
 ];
 // A 1×1 PNG, so a cover the card asks for loads instead of being dropped.
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
@@ -125,7 +129,7 @@ async function open(page, { settings = {}, lookup = null, showAll = true, ws2 = 
         const r = own || (hit ? { status: 200, body: json(hit[1]) } : { status: 404, body: '{"error":"no fixture"}' });
         return route.fulfill({ status: r.status, contentType: 'application/json', body: r.body });
     };
-    await ctx.route(/\/ws\/2\/(recording|work|artist|label|area|instrument|event|place|series)[/?]/, other);
+    await ctx.route(/\/ws\/2\/(recording|work|artist|label|area|instrument|event|place|series|isrc|iswc|discid|collection)[/?]/, other);
     await ctx.route('https://eventartarchive.org/**', (route) => {
         const u = new URL(route.request().url());
         if (/^\/event\/[0-9a-f-]{36}\/?$/.test(u.pathname)) {
@@ -839,5 +843,72 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
         await expect(rows.locator('td:first-child')).toHaveText(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']);
         await expect(rows.first().locator('a')).toHaveAttribute('href', /^\/release\/[0-9a-f-]{36}$/);
         expect(log.ws2).toEqual([expect.stringContaining('inc=release-rels+release-group-rels+recording-rels+work-rels+event-rels+artist-rels')]);
+    });
+});
+
+test.describe('MusicBrainz link previews: ISRC, ISWC, disc ID, collection (WIP.5)', () => {
+    const DISCID = 'coDDysS5IdmG1aPONqJSQd6TJws-';
+    const COLLECTION = '/collection/60df131d-bdb7-3c83-840d-e31e566baabe';
+
+    test('an ISRC: the recordings carrying it', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, '/isrc/USSM17500803', 'USSM17500803');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-pill')).toHaveText(['1 recording']);
+        await expect(card(page).locator('.mb-pop-tracks li')).toContainText(['Thunder Road']);
+        await expect(card(page).locator('.mb-pop-len')).toHaveText(['4:50']);
+        expect(log.ws2).toEqual([expect.stringContaining('/ws/2/isrc/USSM17500803?inc=artist-credits&fmt=json')]);
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('ISRC');
+        await expect(dialog(page).locator('.mb-rg-wtable tbody tr a').first()).toHaveAttribute('href', /^\/recording\/[0-9a-f-]{36}$/);
+    });
+
+    test('an ISWC: the works carrying it', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, '/iswc/T-070.014.903-6', 'T-070.014.903-6');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-pill')).toHaveText(['1 work']);
+        await expect(card(page).locator('.mb-pop-tracks li')).toContainText(['Born to Run · Song']);
+        expect(log.ws2).toEqual([expect.stringContaining('/ws/2/iswc/T-070.014.903-6?fmt=json')]);
+    });
+
+    test('a disc ID: its table of contents and releases; its page is /cdtoc/, its lookup /ws/2/discid/', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, `/cdtoc/${DISCID}`, DISCID);
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        // 193,680 sectors at 75 a second.
+        await expect(card(page).locator('.mb-tt-pill')).toContainText(['10 tracks', '43:02']);
+        await expect(card(page).locator('.mb-dp-kv')).toContainText('Darkness on the Edge of Town');
+        expect(log.ws2).toEqual([expect.stringContaining(`/ws/2/discid/${DISCID}?fmt=json`)]);
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Disc ID');
+        await expect(dialog(page).locator('h4', { hasText: 'Table of contents' })).toHaveText('Table of contents · 10');
+        await expect(dialog(page).locator('a.mb-dp-tbtn')).toHaveAttribute('href', `https://musicbrainz.org/cdtoc/${DISCID}`);
+    });
+
+    test('a public collection: its type, size and editor', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, COLLECTION, 'Attending');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-pill')).toHaveText(['Attending', '0 events']);
+        await expect(card(page).locator('.mb-dp-kv a')).toHaveAttribute('href', '/user/vzell');
+        expect(log.ws2).toEqual([expect.stringContaining(`/ws/2${COLLECTION}?fmt=json`)]);
+    });
+
+    test('a private collection answers 401: the card says so, and nothing is kept', async ({ page }) => {
+        const log = await open(page, {
+            settings: { sa_pop_mb: true }, showAll: false,
+            ws2: (url) => (url.includes('/ws/2/collection/') ? { status: 401, body: '{"error":"Authentication required"}' } : null),
+        });
+        const a = await addLink(page, COLLECTION, 'Attending');
+        await ctrlHover(page, a);
+        await expect(card(page).locator('.mb-tt-alert')).toContainText('It is probably private.');
+        await ctrlHover(page, a);
+        await expect(card(page).locator('.mb-tt-alert')).toContainText('It is probably private.');
+        await expect.poll(() => log.ws2.length, { message: 'a failure is asked again on the next hover' }).toBe(2);
     });
 });

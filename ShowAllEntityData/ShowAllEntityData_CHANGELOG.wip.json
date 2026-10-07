@@ -1,5 +1,29 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Link previews on MusicBrainz: ISRC, ISWC, disc ID and collection cards. An ISRC card lists the recordings carrying it, an ISWC card the works; a disc ID card shows its number of tracks, its length and the releases it is attached to, and its window the whole table of contents; a collection card shows its type, how many items it holds and its editor. MusicBrainz shows only public collections: a private one's card says it is probably private."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Popup engine: _mbPopTarget() also takes a code page (_MB_POP_CODE_RE: /isrc/, /iswc/, /cdtoc/, the last looked up at /ws/2/discid/); a kind may add its own note to a failure (failNote)."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "popup-mb.spec.js: 5 more tests (35); four ws2-pop-isrc/iswc/discid/collection fixtures (scripts/capture-ws2-fixtures.py); popup-mb.json: 3 more mutations (32). New tests/live/popup-mb.spec.js (@extended, 5 tests: release group page, release, works, events, instruments). HELP, docs/claude/detail-pages.md, org/iframe.org."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "2026-10-07",
     "sections": [

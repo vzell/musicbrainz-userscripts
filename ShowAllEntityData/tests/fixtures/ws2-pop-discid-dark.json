@@ -1,0 +1,1223 @@
+{
+ "offset-count": 10,
+ "id": "coDDysS5IdmG1aPONqJSQd6TJws-",
+ "releases": [
+  {
+   "asin": "B0000025D0",
+   "cover-art-archive": {
+    "front": true,
+    "count": 1,
+    "back": false,
+    "darkened": false,
+    "artwork": true
+   },
+   "title": "Darkness on the Edge of Town",
+   "quality": "normal",
+   "packaging": null,
+   "barcode": "5099708606121",
+   "media": [
+    {
+     "id": "8718152d-b868-3514-af79-5a5ddaa5eb35",
+     "track-count": 10,
+     "format": "CD",
+     "position": 1,
+     "title": "",
+     "discs": [
+      {
+       "offsets": [
+        150,
+        18462,
+        39047,
+        62632,
+        75247,
+        106375,
+        126570,
+        137035,
+        155340,
+        173380
+       ],
+       "sectors": 193682,
+       "id": ".e7j.xUyegpXcVRx8R.TP8sx1nM-",
+       "offset-count": 10
+      },
+      {
+       "sectors": 193535,
+       "offsets": [
+        150,
+        18447,
+        39045,
+        62607,
+        75240,
+        106362,
+        126537,
+        137027,
+        155302,
+        173380
+       ],
+       "id": "9Czk.0oUtNeaWl301K_pIJjgTZE-",
+       "offset-count": 10
+      },
+      {
+       "offsets": [
+        150,
+        18435,
+        39035,
+        62595,
+        75228,
+        106350,
+        126523,
+        137013,
+        155303,
+        173368
+       ],
+       "sectors": 193665,
+       "id": "AzXGIeDb2KI3l7kDQv7PwnAa6CM-",
+       "offset-count": 10
+      },
+      {
+       "offset-count": 10,
+       "sectors": 194055,
+       "offsets": [
+        150,
+        18481,
+        39071,
+        62603,
+        75215,
+        106482,
+        126685,
+        137171,
+        155553,
+        173599
+       ],
+       "id": "D0_vePyLwq7R3yZ1y8V0mXUdzTU-"
+      },
+      {
+       "offset-count": 10,
+       "sectors": 194175,
+       "offsets": [
+        150,
+        18470,
+        39072,
+        62640,
+        75287,
+        106675,
+        126882,
+        137337,
+        155692,
+        173712
+       ],
+       "id": "NcTRU4UTb_ZuI2qYyioGePmXdfQ-"
+      },
+      {
+       "id": "OnSOK77HBaSf.Val0cxk_fkByig-",
+       "offsets": [
+        150,
+        18637,
+        39388,
+        63106,
+        75891,
+        107181,
+        127500,
+        138140,
+        156582,
+        174801
+       ],
+       "sectors": 195067,
+       "offset-count": 10
+      },
+      {
+       "id": "UQwhAIgaThgfC6yvTOCcEvk4HNw-",
+       "sectors": 193567,
+       "offsets": [
+        150,
+        18462,
+        39060,
+        62622,
+        75252,
+        106375,
+        126550,
+        137040,
+        155305,
+        173392
+       ],
+       "offset-count": 10
+      },
+      {
+       "offset-count": 10,
+       "id": "VHTge0T_zkBQed4GukovzmiAm5I-",
+       "offsets": [
+        150,
+        18428,
+        39028,
+        62589,
+        75224,
+        106341,
+        126515,
+        137006,
+        155272,
+        173362
+       ],
+       "sectors": 193505
+      },
+      {
+       "offset-count": 10,
+       "offsets": [
+        143,
+        18428,
+        39028,
+        62589,
+        75224,
+        106341,
+        126515,
+        137006,
+        155272,
+        173362
+       ],
+       "sectors": 193505,
+       "id": "ZADqNdgUqLUxdBI.YktJFZWxY9E-"
+      },
+      {
+       "offset-count": 10,
+       "id": "coDDysS5IdmG1aPONqJSQd6TJws-",
+       "sectors": 193680,
+       "offsets": [
+        150,
+        18482,
+        39080,
+        62645,
+        75275,
+        106410,
+        126575,
+        137062,
+        155350,
+        173415
+       ]
+      },
+      {
+       "id": "o2FGg642CM887mYnNTxy_CI_1GU-",
+       "sectors": 193550,
+       "offsets": [
+        150,
+        18435,
+        39033,
+        62595,
+        75220,
+        106350,
+        126513,
+        137015,
+        155270,
+        173360
+       ],
+       "offset-count": 10
+      }
+     ],
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31"
+    }
+   ],
+   "id": "768c675c-57bf-3826-8ef1-e5a1a5e1fb96",
+   "release-events": [
+    {
+     "date": "1992-06-29",
+     "area": {
+      "disambiguation": "",
+      "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+      "name": "United Kingdom",
+      "type": null,
+      "iso-3166-1-codes": [
+       "GB"
+      ],
+      "sort-name": "United Kingdom",
+      "type-id": null
+     }
+    }
+   ],
+   "date": "1992-06-29",
+   "packaging-id": null,
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "status": "Official",
+   "country": "GB",
+   "disambiguation": ""
+  },
+  {
+   "asin": null,
+   "title": "Darkness on the Edge of Town",
+   "cover-art-archive": {
+    "artwork": true,
+    "darkened": false,
+    "count": 28,
+    "back": true,
+    "front": true
+   },
+   "quality": "normal",
+   "barcode": "4571191052223",
+   "packaging": "Cardboard/Paper Sleeve",
+   "media": [
+    {
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "title": "",
+     "discs": [
+      {
+       "offset-count": 10,
+       "id": ".e7j.xUyegpXcVRx8R.TP8sx1nM-",
+       "sectors": 193682,
+       "offsets": [
+        150,
+        18462,
+        39047,
+        62632,
+        75247,
+        106375,
+        126570,
+        137035,
+        155340,
+        173380
+       ]
+      },
+      {
+       "offsets": [
+        150,
+        18447,
+        39045,
+        62607,
+        75240,
+        106362,
+        126537,
+        137027,
+        155302,
+        173380
+       ],
+       "sectors": 193535,
+       "id": "9Czk.0oUtNeaWl301K_pIJjgTZE-",
+       "offset-count": 10
+      },
+      {
+       "sectors": 193665,
+       "offsets": [
+        150,
+        18435,
+        39035,
+        62595,
+        75228,
+        106350,
+        126523,
+        137013,
+        155303,
+        173368
+       ],
+       "id": "AzXGIeDb2KI3l7kDQv7PwnAa6CM-",
+       "offset-count": 10
+      },
+      {
+       "offset-count": 10,
+       "id": "D0_vePyLwq7R3yZ1y8V0mXUdzTU-",
+       "offsets": [
+        150,
+        18481,
+        39071,
+        62603,
+        75215,
+        106482,
+        126685,
+        137171,
+        155553,
+        173599
+       ],
+       "sectors": 194055
+      },
+      {
+       "offset-count": 10,
+       "id": "NcTRU4UTb_ZuI2qYyioGePmXdfQ-",
+       "sectors": 194175,
+       "offsets": [
+        150,
+        18470,
+        39072,
+        62640,
+        75287,
+        106675,
+        126882,
+        137337,
+        155692,
+        173712
+       ]
+      },
+      {
+       "offsets": [
+        150,
+        18637,
+        39388,
+        63106,
+        75891,
+        107181,
+        127500,
+        138140,
+        156582,
+        174801
+       ],
+       "sectors": 195067,
+       "id": "OnSOK77HBaSf.Val0cxk_fkByig-",
+       "offset-count": 10
+      },
+      {
+       "offset-count": 10,
+       "id": "UQwhAIgaThgfC6yvTOCcEvk4HNw-",
+       "sectors": 193567,
+       "offsets": [
+        150,
+        18462,
+        39060,
+        62622,
+        75252,
+        106375,
+        126550,
+        137040,
+        155305,
+        173392
+       ]
+      },
+      {
+       "sectors": 193505,
+       "offsets": [
+        150,
+        18428,
+        39028,
+        62589,
+        75224,
+        106341,
+        126515,
+        137006,
+        155272,
+        173362
+       ],
+       "id": "VHTge0T_zkBQed4GukovzmiAm5I-",
+       "offset-count": 10
+      },
+      {
+       "id": "ZADqNdgUqLUxdBI.YktJFZWxY9E-",
+       "offsets": [
+        143,
+        18428,
+        39028,
+        62589,
+        75224,
+        106341,
+        126515,
+        137006,
+        155272,
+        173362
+       ],
+       "sectors": 193505,
+       "offset-count": 10
+      },
+      {
+       "offset-count": 10,
+       "id": "coDDysS5IdmG1aPONqJSQd6TJws-",
+       "offsets": [
+        150,
+        18482,
+        39080,
+        62645,
+        75275,
+        106410,
+        126575,
+        137062,
+        155350,
+        173415
+       ],
+       "sectors": 193680
+      },
+      {
+       "id": "o2FGg642CM887mYnNTxy_CI_1GU-",
+       "sectors": 193550,
+       "offsets": [
+        150,
+        18435,
+        39033,
+        62595,
+        75220,
+        106350,
+        126513,
+        137015,
+        155270,
+        173360
+       ],
+       "offset-count": 10
+      }
+     ],
+     "format": "CD",
+     "position": 1,
+     "track-count": 10,
+     "id": "c37830ca-f91c-325c-9ba4-2a2260783ba4"
+    }
+   ],
+   "id": "278f1add-59f3-30c5-91be-e2ddfbc0c564",
+   "release-events": [
+    {
+     "date": "2005-06-22",
+     "area": {
+      "disambiguation": "",
+      "name": "Japan",
+      "id": "2db42837-c832-3c27-b4a3-08198f75693c",
+      "type-id": null,
+      "sort-name": "Japan",
+      "iso-3166-1-codes": [
+       "JP"
+      ],
+      "type": null
+     }
+    }
+   ],
+   "date": "2005-06-22",
+   "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "status": "Official",
+   "country": "JP",
+   "disambiguation": "Japan, vinyl replica edition"
+  },
+  {
+   "disambiguation": "Japan, vinyl replica edition for the european market",
+   "country": "XE",
+   "status": "Official",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f",
+   "release-events": [
+    {
+     "date": "2008",
+     "area": {
+      "sort-name": "Europe",
+      "iso-3166-1-codes": [
+       "XE"
+      ],
+      "type": null,
+      "type-id": null,
+      "name": "Europe",
+      "id": "89a675c2-3e37-3518-b83c-418bad59a85a",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "date": "2008",
+   "id": "c3373f88-6a47-3537-8b93-6f6e98ac3137",
+   "media": [
+    {
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "title": "",
+     "discs": [
+      {
+       "offset-count": 10,
+       "id": ".e7j.xUyegpXcVRx8R.TP8sx1nM-",
+       "sectors": 193682,
+       "offsets": [
+        150,
+        18462,
+        39047,
+        62632,
+        75247,
+        106375,
+        126570,
+        137035,
+        155340,
+        173380
+       ]
+      },
+      {
+       "offsets": [
+        150,
+        18447,
+        39045,
+        62607,
+        75240,
+        106362,
+        126537,
+        137027,
+        155302,
+        173380
+       ],
+       "sectors": 193535,
+       "id": "9Czk.0oUtNeaWl301K_pIJjgTZE-",
+       "offset-count": 10
+      },
+      {
+       "offset-count": 10,
+       "sectors": 193665,
+       "offsets": [
+        150,
+        18435,
+        39035,
+        62595,
+        75228,
+        106350,
+        126523,
+        137013,
+        155303,
+        173368
+       ],
+       "id": "AzXGIeDb2KI3l7kDQv7PwnAa6CM-"
+      },
+      {
+       "offset-count": 10,
+       "id": "D0_vePyLwq7R3yZ1y8V0mXUdzTU-",
+       "sectors": 194055,
+       "offsets": [
+        150,
+        18481,
+        39071,
+        62603,
+        75215,
+        106482,
+        126685,
+        137171,
+        155553,
+        173599
+       ]
+      },
+      {
+       "offset-count": 10,
+       "sectors": 194175,
+       "offsets": [
+        150,
+        18470,
+        39072,
+        62640,
+        75287,
+        106675,
+        126882,
+        137337,
+        155692,
+        173712
+       ],
+       "id": "NcTRU4UTb_ZuI2qYyioGePmXdfQ-"
+      },
+      {
+       "id": "OnSOK77HBaSf.Val0cxk_fkByig-",
+       "sectors": 195067,
+       "offsets": [
+        150,
+        18637,
+        39388,
+        63106,
+        75891,
+        107181,
+        127500,
+        138140,
+        156582,
+        174801
+       ],
+       "offset-count": 10
+      },
+      {
+       "id": "UQwhAIgaThgfC6yvTOCcEvk4HNw-",
+       "sectors": 193567,
+       "offsets": [
+        150,
+        18462,
+        39060,
+        62622,
+        75252,
+        106375,
+        126550,
+        137040,
+        155305,
+        173392
+       ],
+       "offset-count": 10
+      },
+      {
+       "sectors": 193505,
+       "offsets": [
+        150,
+        18428,
+        39028,
+        62589,
+        75224,
+        106341,
+        126515,
+        137006,
+        155272,
+        173362
+       ],
+       "id": "VHTge0T_zkBQed4GukovzmiAm5I-",
+       "offset-count": 10
+      },
+      {
+       "id": "ZADqNdgUqLUxdBI.YktJFZWxY9E-",
+       "sectors": 193505,
+       "offsets": [
+        143,
+        18428,
+        39028,
+        62589,
+        75224,
+        106341,
+        126515,
+        137006,
+        155272,
+        173362
+       ],
+       "offset-count": 10
+      },
+      {
+       "id": "coDDysS5IdmG1aPONqJSQd6TJws-",
+       "sectors": 193680,
+       "offsets": [
+        150,
+        18482,
+        39080,
+        62645,
+        75275,
+        106410,
+        126575,
+        137062,
+        155350,
+        173415
+       ],
+       "offset-count": 10
+      },
+      {
+       "offset-count": 10,
+       "id": "o2FGg642CM887mYnNTxy_CI_1GU-",
+       "sectors": 193550,
+       "offsets": [
+        150,
+        18435,
+        39033,
+        62595,
+        75220,
+        106350,
+        126513,
+        137015,
+        155270,
+        173360
+       ]
+      }
+     ],
+     "format": "CD",
+     "position": 1,
+     "track-count": 10,
+     "id": "931a2b48-05a1-39e6-a495-e77c352243e4"
+    }
+   ],
+   "packaging": "Cardboard/Paper Sleeve",
+   "barcode": "8869728744250",
+   "quality": "normal",
+   "cover-art-archive": {
+    "front": true,
+    "back": true,
+    "count": 10,
+    "darkened": false,
+    "artwork": true
+   },
+   "title": "Darkness on the Edge of Town",
+   "asin": null
+  },
+  {
+   "media": [
+    {
+     "id": "17dbf519-007c-3511-96cb-2d78545b0b42",
+     "track-count": 10,
+     "position": 1,
+     "format": "CD",
+     "title": "",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "discs": [
+      {
+       "id": "coDDysS5IdmG1aPONqJSQd6TJws-",
+       "offsets": [
+        150,
+        18482,
+        39080,
+        62645,
+        75275,
+        106410,
+        126575,
+        137062,
+        155350,
+        173415
+       ],
+       "sectors": 193680,
+       "offset-count": 10
+      }
+     ]
+    }
+   ],
+   "id": "3e153141-b5f3-4341-aebc-13d7f56e8217",
+   "date": "1990",
+   "release-events": [
+    {
+     "area": {
+      "sort-name": "Europe",
+      "type": null,
+      "iso-3166-1-codes": [
+       "XE"
+      ],
+      "type-id": null,
+      "disambiguation": "",
+      "name": "Europe",
+      "id": "89a675c2-3e37-3518-b83c-418bad59a85a"
+     },
+     "date": "1990"
+    }
+   ],
+   "asin": null,
+   "title": "Darkness on the Edge of Town",
+   "cover-art-archive": {
+    "front": true,
+    "count": 4,
+    "back": true,
+    "darkened": false,
+    "artwork": true
+   },
+   "quality": "normal",
+   "barcode": "5099708606121",
+   "packaging": "Jewel Case",
+   "country": "XE",
+   "disambiguation": "MANUFACTURED BY DADC AUSTRIA on mirror band",
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "status": "Official"
+  },
+  {
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "status": "Official",
+   "country": "US",
+   "disambiguation": "",
+   "title": "Darkness on the Edge of Town",
+   "cover-art-archive": {
+    "darkened": false,
+    "artwork": true,
+    "front": true,
+    "count": 2,
+    "back": true
+   },
+   "asin": null,
+   "barcode": "074643531825",
+   "packaging": "Jewel Case",
+   "quality": "normal",
+   "media": [
+    {
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "title": "",
+     "discs": [
+      {
+       "offsets": [
+        150,
+        18462,
+        39060,
+        62622,
+        75252,
+        106375,
+        126550,
+        137040,
+        155305,
+        173392
+       ],
+       "sectors": 193567,
+       "id": "UQwhAIgaThgfC6yvTOCcEvk4HNw-",
+       "offset-count": 10
+      },
+      {
+       "id": "VHTge0T_zkBQed4GukovzmiAm5I-",
+       "sectors": 193505,
+       "offsets": [
+        150,
+        18428,
+        39028,
+        62589,
+        75224,
+        106341,
+        126515,
+        137006,
+        155272,
+        173362
+       ],
+       "offset-count": 10
+      },
+      {
+       "id": "coDDysS5IdmG1aPONqJSQd6TJws-",
+       "sectors": 193680,
+       "offsets": [
+        150,
+        18482,
+        39080,
+        62645,
+        75275,
+        106410,
+        126575,
+        137062,
+        155350,
+        173415
+       ],
+       "offset-count": 10
+      }
+     ],
+     "position": 1,
+     "format": "CD",
+     "track-count": 10,
+     "id": "00e1ae95-521f-386e-b7fc-57a4969130eb"
+    }
+   ],
+   "date": "",
+   "release-events": [
+    {
+     "date": "",
+     "area": {
+      "name": "United States",
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "disambiguation": "",
+      "type-id": null,
+      "sort-name": "United States",
+      "type": null,
+      "iso-3166-1-codes": [
+       "US"
+      ]
+     }
+    }
+   ],
+   "id": "c4b01581-df6a-492d-bf98-31d36affb9b1"
+  },
+  {
+   "status": "Official",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "disambiguation": "enhanced packaging reissue",
+   "country": "XE",
+   "barcode": "5099751125525",
+   "packaging": "Jewel Case",
+   "quality": "normal",
+   "title": "Darkness on the Edge of Town",
+   "cover-art-archive": {
+    "artwork": true,
+    "darkened": false,
+    "count": 23,
+    "back": true,
+    "front": true
+   },
+   "asin": null,
+   "date": "2003-05-05",
+   "release-events": [
+    {
+     "date": "2003-05-05",
+     "area": {
+      "type": null,
+      "iso-3166-1-codes": [
+       "XE"
+      ],
+      "sort-name": "Europe",
+      "type-id": null,
+      "id": "89a675c2-3e37-3518-b83c-418bad59a85a",
+      "name": "Europe",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "id": "bd73a274-2096-4eb1-984b-1e6ac6310381",
+   "media": [
+    {
+     "position": 1,
+     "format": "CD",
+     "title": "",
+     "discs": [
+      {
+       "offsets": [
+        150,
+        18462,
+        39047,
+        62632,
+        75247,
+        106375,
+        126570,
+        137035,
+        155340,
+        173380
+       ],
+       "sectors": 193682,
+       "id": ".e7j.xUyegpXcVRx8R.TP8sx1nM-",
+       "offset-count": 10
+      },
+      {
+       "offset-count": 10,
+       "offsets": [
+        150,
+        18447,
+        39045,
+        62607,
+        75240,
+        106362,
+        126537,
+        137027,
+        155302,
+        173380
+       ],
+       "sectors": 193535,
+       "id": "9Czk.0oUtNeaWl301K_pIJjgTZE-"
+      },
+      {
+       "sectors": 193665,
+       "offsets": [
+        150,
+        18435,
+        39035,
+        62595,
+        75228,
+        106350,
+        126523,
+        137013,
+        155303,
+        173368
+       ],
+       "id": "AzXGIeDb2KI3l7kDQv7PwnAa6CM-",
+       "offset-count": 10
+      },
+      {
+       "offset-count": 10,
+       "id": "D0_vePyLwq7R3yZ1y8V0mXUdzTU-",
+       "offsets": [
+        150,
+        18481,
+        39071,
+        62603,
+        75215,
+        106482,
+        126685,
+        137171,
+        155553,
+        173599
+       ],
+       "sectors": 194055
+      },
+      {
+       "offset-count": 10,
+       "sectors": 194175,
+       "offsets": [
+        150,
+        18470,
+        39072,
+        62640,
+        75287,
+        106675,
+        126882,
+        137337,
+        155692,
+        173712
+       ],
+       "id": "NcTRU4UTb_ZuI2qYyioGePmXdfQ-"
+      },
+      {
+       "offset-count": 10,
+       "id": "OnSOK77HBaSf.Val0cxk_fkByig-",
+       "sectors": 195067,
+       "offsets": [
+        150,
+        18637,
+        39388,
+        63106,
+        75891,
+        107181,
+        127500,
+        138140,
+        156582,
+        174801
+       ]
+      },
+      {
+       "offset-count": 10,
+       "sectors": 193567,
+       "offsets": [
+        150,
+        18462,
+        39060,
+        62622,
+        75252,
+        106375,
+        126550,
+        137040,
+        155305,
+        173392
+       ],
+       "id": "UQwhAIgaThgfC6yvTOCcEvk4HNw-"
+      },
+      {
+       "offset-count": 10,
+       "offsets": [
+        150,
+        18428,
+        39028,
+        62589,
+        75224,
+        106341,
+        126515,
+        137006,
+        155272,
+        173362
+       ],
+       "sectors": 193505,
+       "id": "VHTge0T_zkBQed4GukovzmiAm5I-"
+      },
+      {
+       "offsets": [
+        143,
+        18428,
+        39028,
+        62589,
+        75224,
+        106341,
+        126515,
+        137006,
+        155272,
+        173362
+       ],
+       "sectors": 193505,
+       "id": "ZADqNdgUqLUxdBI.YktJFZWxY9E-",
+       "offset-count": 10
+      },
+      {
+       "offsets": [
+        150,
+        18482,
+        39080,
+        62645,
+        75275,
+        106410,
+        126575,
+        137062,
+        155350,
+        173415
+       ],
+       "sectors": 193680,
+       "id": "coDDysS5IdmG1aPONqJSQd6TJws-",
+       "offset-count": 10
+      },
+      {
+       "id": "o2FGg642CM887mYnNTxy_CI_1GU-",
+       "sectors": 193550,
+       "offsets": [
+        150,
+        18435,
+        39033,
+        62595,
+        75220,
+        106350,
+        126513,
+        137015,
+        155270,
+        173360
+       ],
+       "offset-count": 10
+      }
+     ],
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "id": "a852737f-93cd-3c7a-9d17-770f45e93c84",
+     "track-count": 10
+    }
+   ]
+  },
+  {
+   "quality": "normal",
+   "packaging": "Jewel Case",
+   "barcode": "5099708606121",
+   "asin": null,
+   "title": "Darkness on the Edge of Town",
+   "cover-art-archive": {
+    "artwork": true,
+    "darkened": false,
+    "count": 6,
+    "back": true,
+    "front": true
+   },
+   "id": "9b94e384-60e3-44e3-b0ba-dd09a68485df",
+   "date": "",
+   "release-events": [
+    {
+     "date": "",
+     "area": {
+      "disambiguation": "",
+      "id": "89a675c2-3e37-3518-b83c-418bad59a85a",
+      "name": "Europe",
+      "iso-3166-1-codes": [
+       "XE"
+      ],
+      "type": null,
+      "sort-name": "Europe",
+      "type-id": null
+     }
+    }
+   ],
+   "media": [
+    {
+     "track-count": 10,
+     "id": "a521f313-edc6-3faf-b967-d5f31bb74285",
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "discs": [
+      {
+       "offsets": [
+        150,
+        18482,
+        39080,
+        62645,
+        75275,
+        106410,
+        126575,
+        137062,
+        155350,
+        173415
+       ],
+       "sectors": 193680,
+       "id": "coDDysS5IdmG1aPONqJSQd6TJws-",
+       "offset-count": 10
+      }
+     ],
+     "title": "",
+     "format": "CD",
+     "position": 1
+    }
+   ],
+   "status": "Official",
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "disambiguation": "MASTERED BY DADC AUSTRIA on mirror band",
+   "country": "XE"
+  }
+ ],
+ "sectors": 193680,
+ "offsets": [
+  150,
+  18482,
+  39080,
+  62645,
+  75275,
+  106410,
+  126575,
+  137062,
+  155350,
+  173415
+ ]
+}

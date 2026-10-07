@@ -164,8 +164,16 @@ opens the window, as on the foreign hosts (kept, decided 2026-10-07).
   (`_mbPopArtLoad(_mbPopEventArt, EAA_CTX, …)`, on pin only, R4); place — card
   `area-rels+url-rels`, window `event?place=…&limit=100` sorted by date (the
   browse is not); series — one lookup with every item-kind relation (R1),
-  items by `ordering-key` (the lookup is not in order) (WIP.4). Browse keys:
-  `pop:browse:<entity>?<query>` (`_mbPopBrowse()`).
+  items by `ordering-key` (the lookup is not in order) (WIP.4); ISRC
+  (`artist-credits`), ISWC, disc ID and collection — one lookup each, no extras
+  (WIP.5). Browse keys: `pop:browse:<entity>?<query>` (`_mbPopBrowse()`).
+- **Codes** are a second path pattern, `_MB_POP_CODE_RE` (`/isrc/`, `/iswc/`,
+  `/cdtoc/`); `_MB_POP_CODE_TYPES` maps the page segment to the kind and Web
+  Service path — a disc ID's page is `/cdtoc/<id>`, its lookup
+  `/ws/2/discid/<id>`, and the target's `url` (↗, Live page) keeps the PAGE's
+  segment. A kind may add `failNote(detail)` to its failure line: a private
+  collection answers 401 (the Web Service shows public collections only) and
+  its card says "It is probably private." — still not kept, as any failure.
 - **The setlist is MusicBrainz's markup** (`_mbPopSetlist()`): `@ ` line-up
   artist, `# ` comment (between artists, the billing word "&"/"with"),
   `* ` song. `[mbid|name]` tokens are shown by NAME only: inside a song line
@@ -444,6 +452,12 @@ sibling taps a release link. The Web Service answers are real captures:
 a hidden `/cover-art` link before the release link**: a locator for "the
 first release link" must exclude it (`:not([href$="/cover-art"])`), as
 `_mbPopTarget()` does.
+
+The live twin, `tests/live/popup-mb.spec.js` (`@extended`), hovers one real
+link per kind on five light pages (a release group, a release, an artist's
+works and events, the instrument list) WITHOUT "Show all": the engine serves
+the native first page's table too. Series, collection, ISRC-in-a-table and
+disc ID are fixture-only (no light page links them in a table).
 
 `python3 scripts/check-mutation-anchors.py` checks, without running a spec,
 that every `find` of every mutation list still matches once. Run it after

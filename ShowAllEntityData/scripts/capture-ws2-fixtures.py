@@ -59,6 +59,22 @@ FIXTURES = {
     'label-columbia-count': 'release?label=011d1192-6f65-45bd-85c4-0400dd45693e&limit=1',
     'area-nj': 'area/a36544c1-cb40-4f44-9e0e-7a5a69e403a8?inc=area-rels',
     'instrument-guitar': 'instrument/63021302-86cd-4aee-80df-2270d54f4978?inc=instrument-rels+aliases',
+    # WIP.4: the Manchester event (it has event art, R4), a place, a series.
+    # A series' item kind follows its type, so the lookup asks for every
+    # item-kind relation (R1).
+    'event-manchester': 'event/3f2ca30a-7de4-4964-ad30-48376535fec8?inc=artist-rels+place-rels',
+    'event-manchester-pin': 'event/3f2ca30a-7de4-4964-ad30-48376535fec8?inc=recording-rels+release-rels',
+    'place-sp': 'place/6a59a67c-fcc5-491f-949c-bfc45bc97463?inc=area-rels+url-rels',
+    'place-sp-events': 'event?place=6a59a67c-fcc5-491f-949c-bfc45bc97463&limit=100',
+    'series-st': 'series/aa3694d3-a3d0-48ed-8f07-5b576de87908'
+                 '?inc=release-rels+release-group-rels+recording-rels+work-rels+event-rels+artist-rels',
+    # WIP.5: codes. Thunder Road's ISRC, Born to Run's ISWC, a disc ID of the
+    # probe's "Darkness" release, and a public collection (the user's own,
+    # found by the Phase 0 probe's editor browse).
+    'isrc-thunder': 'isrc/USSM17500803?inc=artist-credits',
+    'iswc-btr': 'iswc/T-070.014.903-6',
+    'discid-dark': 'discid/coDDysS5IdmG1aPONqJSQd6TJws-',
+    'collection-attending': 'collection/60df131d-bdb7-3c83-840d-e31e566baabe',
 }
 
 _last = [0.0]

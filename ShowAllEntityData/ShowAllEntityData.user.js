@@ -36454,25 +36454,50 @@
     const _MB_POP_PATH_RE = /^\/(artist|release-group|release|recording|work|label|event|place|area|series|instrument|collection)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/;
 
     /**
+     * The page of a code a link may preview: an ISRC, an ISWC, a disc ID.
+     * A disc ID's page is /cdtoc/<id>, its Web Service path /ws/2/discid/<id>
+     * (`_MB_POP_CODE_TYPES`).
+     * @type {RegExp}
+     */
+    const _MB_POP_CODE_RE = /^\/(isrc|iswc|cdtoc)\/([A-Za-z0-9._-]+)\/?$/;
+
+    /** A code page's path segment → its kind in `_MB_KINDS` (and Web Service path). */
+    const _MB_POP_CODE_TYPES = { isrc: 'isrc', iswc: 'iswc', cdtoc: 'discid' };
+
+    /**
      * What a link in a MusicBrainz table previews, or null: a same-origin
-     * link to the bare page of a kind `_MB_KINDS` knows, not wrapping an
-     * image (artwork has its own preview), not in the Relationships column
-     * (its own tooltip), not inside the card or the window.
+     * link to the bare page of a kind `_MB_KINDS` knows (an entity by MBID,
+     * or a code: `_MB_POP_CODE_RE`), not wrapping an image (artwork has its
+     * own preview), not in the Relationships column (its own tooltip), not
+     * inside the card or the window.
      *
      * @param {Element} a
      * @returns {?{key: string, url: string, type: string, id: string, kind: string, wide: boolean, name: string, col: string}}
      */
     function _mbPopTarget(a) {
         if (!a || a.tagName !== 'A' || a.origin !== window.location.origin) return null;
+        let seg = '';
+        let type = '';
+        let id = '';
         const m = _MB_POP_PATH_RE.exec(a.pathname);
-        const k = m && _MB_KINDS[m[1]];
+        if (m) {
+            [, seg, id] = m;
+            type = seg;
+        } else {
+            const c = _MB_POP_CODE_RE.exec(a.pathname);
+            if (c) {
+                [, seg, id] = c;
+                type = _MB_POP_CODE_TYPES[seg];
+            }
+        }
+        const k = type && _MB_KINDS[type];
         if (!k) return null;
         if (a.querySelector('img') || a.closest('td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;
         const td = a.closest('td, th');
         const table = td && td.closest('table.tbl');
         return {
-            key: `${m[1]}:${m[2]}`, url: new URL(`/${m[1]}/${m[2]}`, window.location.origin).href,
-            type: m[1], id: m[2], kind: k.title, wide: !!k.wide, name: a.textContent.trim(),
+            key: `${type}:${id}`, url: new URL(`/${seg}/${id}`, window.location.origin).href,
+            type, id, kind: k.title, wide: !!k.wide, name: a.textContent.trim(),
             col: table ? _resolveColHeaderName(table, td.cellIndex) : '',
         };
     }
@@ -36613,9 +36638,11 @@
      * @param {object} t - The target.
      * @param {?Object} st - `_mbPop` state of the card's request.
      * @param {function(Object, object): string} body - The kind's card for a loaded answer.
+     * @param {?function(string): string} [failNote] - The kind's word on a
+     *   failure, from its detail ("It is probably private.").
      * @returns {string}
      */
-    function _mbPopCardShell(t, st, body) {
+    function _mbPopCardShell(t, st, body, failNote = null) {
         if (st && st.status === 'done' && st.data) {
             return `<div class="mb-pop-card">${body(st.data, t)}<div class="mb-tt-foot">` +
                 `${_rgEsc(_dpAgeText({ cached: st.cached, at: st.at }))} · <kbd>Space</kbd> more · <kbd>Esc</kbd> close</div></div>`;
@@ -36624,7 +36651,8 @@
             '<div class="mb-tt-rule"></div>';
         if (st && st.status === 'failed') {
             return `<div class="mb-pop-card">${head}<div class="mb-tt-alert">Could not load it from MusicBrainz ` +
-                `(${_rgEsc(st.detail)}).</div><div class="mb-tt-foot">Hover again to retry.</div></div>`;
+                `(${_rgEsc(st.detail)}).${_rgEsc(failNote ? failNote(st.detail) : '')}</div>` +
+                '<div class="mb-tt-foot">Hover again to retry.</div></div>';
         }
         return `<div class="mb-pop-card">${head}<div class="mb-tt-comment"><span class="mb-dp-spin">◌</span> Loading…</div></div>`;
     }
@@ -36637,9 +36665,10 @@
      * @param {object} t
      * @param {?Object} st - `_mbPop` state of the card's request.
      * @param {function(Object, object): string} body - The kind's window for a loaded answer.
+     * @param {?function(string): string} [failNote] - As `_mbPopCardShell()`.
      * @returns {string}
      */
-    function _mbPopWindowShell(t, st, body) {
+    function _mbPopWindowShell(t, st, body, failNote = null) {
         if (st && st.status === 'done' && st.data) {
             return body(st.data, t) + `<div class="mb-dp-xfoot">${_rgEsc(_dpAgeText({ cached: st.cached, at: st.at }))} · ` +
                 '⟳ asks MusicBrainz again</div>';
@@ -36647,7 +36676,8 @@
         const title = `<div class="mb-dp-xtitle">${_rgEsc(t.name || t.kind)}</div>`;
         if (st && st.status === 'failed') {
             return `<div class="mb-dp-x"><div class="mb-dp-col">${title}<div class="mb-dp-warn">Could not load it from ` +
-                `MusicBrainz (${_rgEsc(st.detail)}).</div><p><button type="button" class="mb-dp-retry">⟳ Try again</button></p></div></div>`;
+                `MusicBrainz (${_rgEsc(st.detail)}).${_rgEsc(failNote ? failNote(st.detail) : '')}</div>` +
+                '<p><button type="button" class="mb-dp-retry">⟳ Try again</button></p></div></div>';
         }
         return `<div class="mb-dp-x"><div class="mb-dp-col">${title}<div class="mb-dp-xsub"><span class="mb-dp-spin">◌</span> ` +
             'Loading…</div></div></div>';
@@ -36661,7 +36691,8 @@
      *
      * @param {{cardInc: string, cardHtml: function(Object, object): string,
      *   windowHtml: function(Object, object): string,
-     *   pin?: function(object, Object, boolean, function(): void): void}} spec
+     *   pin?: function(object, Object, boolean, function(): void): void,
+     *   failNote?: function(string): string}} spec
      * @returns {{card: function(object, boolean, function(): void): string,
      *   extracted: function(object, boolean, boolean, function(): void): string}}
      */
@@ -36670,7 +36701,7 @@
             card(t, start, repaint) {
                 const q = _mbPopLookup(t, spec.cardInc);
                 if (start) _mbWsLoad(q.key, q.url, { repaint, wanted: _mbPopWanted(t) });
-                return _mbPopCardShell(t, _mbPop.get(q.key), spec.cardHtml);
+                return _mbPopCardShell(t, _mbPop.get(q.key), spec.cardHtml, spec.failNote);
             },
             extracted(t, start, force, repaint) {
                 const q = _mbPopLookup(t, spec.cardInc);
@@ -36686,7 +36717,7 @@
                 if (start) _mbWsLoad(q.key, q.url, { force, repaint: later, wanted: _mbPopWanted(t) });
                 const st = _mbPop.get(q.key);
                 if (spec.pin && st && st.status === 'done') spec.pin(t, st.data, start && force, repaint);
-                return _mbPopWindowShell(t, st, spec.windowHtml);
+                return _mbPopWindowShell(t, st, spec.windowHtml, spec.failNote);
             },
         };
     }
@@ -37663,6 +37694,104 @@
                     _rgEsc(x.e.date || x.e['first-release-date'] || (x.e['life-span'] || {}).begin || '—'),
                 ]), [0]) : '<div class="mb-dp-xsub">No items yet.</div>');
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+        })),
+        // The codes (WIP.5): one lookup each, the card and the window from
+        // the same answer. A code's page path is its kind's, except a disc
+        // ID's: /cdtoc/<id> on the site, /ws/2/discid/<id> in the Web Service
+        // (`_MB_POP_CODE_RE`).
+        isrc: Object.assign({ title: 'ISRC', wide: false }, _mbPopLookupKind({
+            cardInc: 'artist-credits',
+            cardHtml(d) {
+                const recs = d.recordings || [];
+                return `<div class="mb-tt-title">${_rgEsc(d.isrc)}</div><div class="mb-tt-body mb-rg-pills">` +
+                    `${_mbPopPillsHtml([`${recs.length} recording${recs.length === 1 ? '' : 's'}`])}</div><div class="mb-tt-rule"></div>` +
+                    '<ol class="mb-dp-tracks mb-pop-tracks">' + recs.map(r => `<li><span class="mb-pop-ttl">${_rgEsc(r.title)}` +
+                        `${r.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(r.disambiguation)})</span>` : ''}` +
+                        `${r['artist-credit'] ? ` <span class="mb-rg-dim">· ${_rgEsc(_mbPopCreditText(r['artist-credit']))}</span>` : ''}</span>` +
+                        `${typeof r.length === 'number' ? `<span class="mb-pop-len">${_msFormatSeconds(r.length)}</span>` : ''}</li>`).join('') + '</ol>';
+            },
+            windowHtml(d) {
+                const recs = d.recordings || [];
+                return `<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-xtitle">${_rgEsc(d.isrc)}</div>` +
+                    '<div class="mb-dp-xsub">International Standard Recording Code</div></div>' +
+                    `<div class="mb-dp-col"><h4>Recordings · ${recs.length}</h4>` + _mbPopTableHtml(['Recording', 'Artist', 'Length'], recs.map(r => [
+                        `<a href="/recording/${_rgEsc(r.id)}" target="_blank" rel="noopener">${_rgEsc(r.title)}</a>` +
+                            `${r.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(r.disambiguation)})</span>` : ''}`,
+                        _mbPopCreditHtml(r['artist-credit']),
+                        typeof r.length === 'number' ? _msFormatSeconds(r.length) : '—',
+                    ]), [2]) + '</div></div>';
+            },
+        })),
+        iswc: Object.assign({ title: 'ISWC', wide: false }, _mbPopLookupKind({
+            cardInc: '',
+            cardHtml(d, t) {
+                const works = d.works || [];
+                return `<div class="mb-tt-title">${_rgEsc(t.id)}</div><div class="mb-tt-body mb-rg-pills">` +
+                    `${_mbPopPillsHtml([`${works.length} work${works.length === 1 ? '' : 's'}`])}</div><div class="mb-tt-rule"></div>` +
+                    '<ol class="mb-dp-tracks mb-pop-tracks">' + works.map(w => `<li><span class="mb-pop-ttl">${_rgEsc(w.title)}` +
+                        `${w.type ? ` <span class="mb-rg-dim">· ${_rgEsc(w.type)}</span>` : ''}</span></li>`).join('') + '</ol>';
+            },
+            windowHtml(d, t) {
+                const works = d.works || [];
+                return `<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-xtitle">${_rgEsc(t.id)}</div>` +
+                    '<div class="mb-dp-xsub">International Standard Musical Work Code</div></div>' +
+                    `<div class="mb-dp-col"><h4>Works · ${works.length}</h4>` + _mbPopTableHtml(['Work', 'Type', 'Language'], works.map(w => [
+                        `<a href="/work/${_rgEsc(w.id)}" target="_blank" rel="noopener">${_rgEsc(w.title)}</a>` +
+                            `${w.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(w.disambiguation)})</span>` : ''}`,
+                        _rgEsc(w.type || '—'),
+                        _rgEsc(((w.languages && w.languages.length ? w.languages : [w.language]).filter(Boolean)).join(', ') || '—'),
+                    ])) + '</div></div>';
+            },
+        })),
+        // A disc ID: its table of contents (offsets in CD sectors, 75 a
+        // second) and the releases it is attached to.
+        discid: Object.assign({ title: 'Disc ID', wide: true }, _mbPopLookupKind({
+            cardInc: '',
+            cardHtml(d) {
+                const rels = d.releases || [];
+                const n = d['offset-count'] || (d.offsets || []).length;
+                return `<div class="mb-tt-title">${_rgEsc(d.id)}</div><div class="mb-tt-body mb-rg-pills">` +
+                    _mbPopPillsHtml([`${n} track${n === 1 ? '' : 's'}`, typeof d.sectors === 'number' ? _msFormatSeconds(d.sectors / 75 * 1000) : '',
+                        `${rels.length} release${rels.length === 1 ? '' : 's'}`]) + '</div><div class="mb-tt-rule"></div>' +
+                    _mbPopKvHtml([['Releases', rels.slice(0, _MB_POP_CARD_RELEASES).map(r => `${_rgEsc(r.date || '—')} ${_rgEsc(r.title)}` +
+                        `${r.country ? ` <span class="mb-rg-cc">${_rgEsc(r.country)}</span>` : ''}`).join('<br>') +
+                        (rels.length > _MB_POP_CARD_RELEASES ? `<br><span class="mb-rg-dim">+ ${rels.length - _MB_POP_CARD_RELEASES} more</span>` : '')]]);
+            },
+            windowHtml(d) {
+                const offs = d.offsets || [];
+                const toc = offs.map((o, i) => {
+                    const end = i + 1 < offs.length ? offs[i + 1] : d.sectors;
+                    return [String(i + 1), String(o), typeof end === 'number' ? _msFormatSeconds((end - o) / 75 * 1000) : '—'];
+                });
+                const rels = d.releases || [];
+                return `<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-xtitle">${_rgEsc(d.id)}</div>` +
+                    `<h4>Table of contents · ${offs.length}</h4>` + _mbPopTableHtml(['Track', 'Offset', 'Length'], toc, [0, 1, 2]) +
+                    `</div><div class="mb-dp-col"><h4>Releases · ${rels.length}</h4>` + _mbPopTableHtml(['Release', 'Date', 'Country'], rels.map(r => [
+                        `<a href="/release/${_rgEsc(r.id)}" target="_blank" rel="noopener">${_rgEsc(r.title)}</a>`,
+                        _rgEsc(r.date || '—'), _rgEsc(r.country || '—'),
+                    ])) + '</div></div>';
+            },
+        })),
+        // Public collections only: a private one answers 401 (not kept, as
+        // any failure), and the card says what that probably means.
+        collection: Object.assign({ title: 'Collection', wide: false }, _mbPopLookupKind({
+            cardInc: '',
+            failNote: (detail) => (/\b40[13]\b/.test(detail) ? ' It is probably private.' : ''),
+            cardHtml(d) {
+                const n = d[`${d['entity-type']}-count`];
+                return `<div class="mb-tt-title">${_rgEsc(d.name)}</div><div class="mb-tt-body mb-rg-pills">` +
+                    _mbPopPillsHtml([d.type, typeof n === 'number' ? `${_mbPopNum(n)} ${d['entity-type']}${n === 1 ? '' : 's'}` : '']) +
+                    '</div><div class="mb-tt-rule"></div>' + _mbPopKvHtml([['Editor', d.editor ? `<a href="/user/${encodeURIComponent(d.editor)}" ` +
+                        `target="_blank" rel="noopener">${_rgEsc(d.editor)}</a>` : '']]);
+            },
+            windowHtml(d) {
+                const n = d[`${d['entity-type']}-count`];
+                return `<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
+                    `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type])}</div><h4>Facts</h4>` + _mbPopKvHtml([
+                        ['Holds', _rgEsc(typeof n === 'number' ? `${_mbPopNum(n)} ${d['entity-type']}${n === 1 ? '' : 's'}` : d['entity-type'] || '')],
+                        ['Editor', d.editor ? `<a href="/user/${encodeURIComponent(d.editor)}" target="_blank" rel="noopener">${_rgEsc(d.editor)}</a>` : ''],
+                    ]) + '</div></div>';
             },
         })),
     };

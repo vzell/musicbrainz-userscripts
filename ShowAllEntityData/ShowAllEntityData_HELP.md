@@ -1528,8 +1528,9 @@ With ⚙️ Settings → 🔎 LINK PREVIEWS ON MUSICBRAINZ → *Preview linked e
 on hover* switched on (it is off until you do), the links in a table show what
 is behind them without opening a tab. So far: **releases**, **release
 groups**, **recordings**, **works**, **artists**, **labels**, **areas**,
-**instruments**, **events**, **places** and **series**; the other kinds
-follow.
+**instruments**, **events**, **places**, **series**, **collections**, and the
+codes: **ISRCs**, **ISWCs** and **disc IDs**. Edits and editors are not
+previewed yet.
 
 **Hold Ctrl and rest the pointer on a link**, or rest it first and then press
 **Ctrl**: a card opens beside the link. Without Ctrl nothing happens, so
@@ -1547,7 +1548,10 @@ span, birthplace, genres, rating, IPI and ISNI; a label card the type, label
 code, area, years active and genres; an area card what it is part of and how
 many parts it has; an instrument card its type, subtypes and other names; an
 event card its date and time, place, line-up and first songs; a place card
-its address and coordinates; a series card its first items.
+its address and coordinates; a series card its first items. An ISRC or ISWC
+card lists the recordings or works carrying the code; a disc ID card its
+tracks, length and releases; a collection card its type, size and editor
+(MusicBrainz shows only public collections; a private one's card says so).
 **Esc** or moving away closes it.
 
 **Press Space** to pin it into a window:

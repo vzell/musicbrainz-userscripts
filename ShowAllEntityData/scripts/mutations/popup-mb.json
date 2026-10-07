@@ -30,8 +30,8 @@
         "why": "The CAA/EAA icon column links /release/<id>/cover-art (artwork has its own preview); /edit and the tabs are not the entity either.",
         "edits": [
             {
-                "find": "[0-9a-f]{4}-[0-9a-f]{12})\\/?$/;\n\n    /**\n     * What a link in a MusicBrainz table previews",
-                "replace": "[0-9a-f]{4}-[0-9a-f]{12})(?:\\/.*)?$/;\n\n    /**\n     * What a link in a MusicBrainz table previews"
+                "find": "[0-9a-f]{4}-[0-9a-f]{12})\\/?$/;\n\n    /**\n     * The page of a code a link may preview",
+                "replace": "[0-9a-f]{4}-[0-9a-f]{12})(?:\\/.*)?$/;\n\n    /**\n     * The page of a code a link may preview"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -375,6 +375,45 @@
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
         "grep": "the series card and window",
+        "expect": "fail"
+    },
+    {
+        "name": "a disc ID's page is taken for its kind",
+        "why": "The site's page is /cdtoc/<id>, the Web Service's path /ws/2/discid/<id>: without the mapping a disc ID link previews nothing.",
+        "edits": [
+            {
+                "find": "    const _MB_POP_CODE_TYPES = { isrc: 'isrc', iswc: 'iswc', cdtoc: 'discid' };",
+                "replace": "    const _MB_POP_CODE_TYPES = { isrc: 'isrc', iswc: 'iswc', cdtoc: 'cdtoc' };"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a disc ID",
+        "expect": "fail"
+    },
+    {
+        "name": "a code's page is built from its kind, not its path",
+        "why": "↗ and the Live page must open /cdtoc/<id>, the page the link named; /discid/<id> does not exist on the site.",
+        "edits": [
+            {
+                "find": "            key: `${type}:${id}`, url: new URL(`/${seg}/${id}`, window.location.origin).href,",
+                "replace": "            key: `${type}:${id}`, url: new URL(`/${type}/${id}`, window.location.origin).href,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a disc ID",
+        "expect": "fail"
+    },
+    {
+        "name": "a private collection's 401 gets no explanation",
+        "why": "The Web Service shows public collections only; 'HTTP 401' alone reads like a fault of the script.",
+        "edits": [
+            {
+                "find": "            failNote: (detail) => (/\\b40[13]\\b/.test(detail) ? ' It is probably private.' : ''),",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a private collection",
         "expect": "fail"
     }
 ]
