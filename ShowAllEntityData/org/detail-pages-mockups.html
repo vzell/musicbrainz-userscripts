@@ -1,0 +1,1343 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- SKELETON-END: everything above this line is dropped when the page is published as an Artifact. -->
+<title>Springsteen Detail Previews</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a test bench. A tab strip of the five options; each option is a mock
+   browser window showing the real site's table, with a notes column beside it.
+   Popups use the userscript's own cream "liner notes" card, unchanged. */
+:root {
+    --bg: #e9edf1;
+    --surface: #f8fafc;
+    --ink: #18202b;
+    --muted: #556070;
+    --line: #cfd6df;
+    --accent: #24527f;
+    --accent-ink: #ffffff;
+    --accent-soft: #dbe6f1;
+    --ok: #2c7347;
+    --ok-soft: #dcefe2;
+    --warn: #8f5a00;
+    --warn-soft: #f6e8cc;
+    --err: #9b2218;
+    --err-soft: #f6dcd8;
+    --shadow: 0 1px 0 rgba(20, 30, 45, 0.05), 0 12px 32px -18px rgba(20, 30, 45, 0.35);
+
+    /* The foreign sites and the script's table: a light page in both themes. */
+    --site-bg: #ffffff;
+    --site-ink: #222222;
+    --site-dim: #6b6b6b;
+    --site-line: #dddddd;
+    --site-head: #e8e8e8;
+    --site-even: #f2f2f2;
+    --site-link: #1d4f96;
+    --site-chrome: #f1f3f6;
+    --site-chrome-ink: #4d5664;
+    --site-sel: #fff4c2;
+
+    /* The userscript's .mb-tt-liner card, verbatim. */
+    --liner-bg: #fbf8f1;
+    --liner-ink: #2b2622;
+    --liner-line: #d9cfbd;
+    --liner-dim: #7a6d5c;
+    --liner-pill: #efe6d4;
+    --liner-pill-ink: #4a3f33;
+    --liner-alert: #9b2218;
+
+    --f-display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+    --f-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, Consolas, "Courier New", monospace;
+    --f-liner: Georgia, "Times New Roman", Times, serif;
+    --f-site: Arial, Helvetica, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg: #11161d;
+        --surface: #19212b;
+        --ink: #e2e7ee;
+        --muted: #9aa5b4;
+        --line: #2c3746;
+        --accent: #86b4e2;
+        --accent-ink: #0e1620;
+        --accent-soft: #1f3248;
+        --ok: #74c494;
+        --ok-soft: #1c3326;
+        --warn: #e3ac4c;
+        --warn-soft: #3a2d14;
+        --err: #f08a7d;
+        --err-soft: #3d1f1b;
+        --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 14px 34px -16px rgba(0, 0, 0, 0.7);
+        color-scheme: dark;
+    }
+}
+:root[data-theme="dark"] {
+    --bg: #11161d;
+    --surface: #19212b;
+    --ink: #e2e7ee;
+    --muted: #9aa5b4;
+    --line: #2c3746;
+    --accent: #86b4e2;
+    --accent-ink: #0e1620;
+    --accent-soft: #1f3248;
+    --ok: #74c494;
+    --ok-soft: #1c3326;
+    --warn: #e3ac4c;
+    --warn-soft: #3a2d14;
+    --err: #f08a7d;
+    --err-soft: #3d1f1b;
+    --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 14px 34px -16px rgba(0, 0, 0, 0.7);
+    color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.55 var(--f-body);
+    padding-inline: 16px;
+    padding-block: 0 64px;
+}
+.wrap { max-width: 1240px; margin: 0 auto; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+code, .mono { font-family: var(--f-mono); font-size: 0.88em; }
+kbd {
+    display: inline-block; padding: 0 5px; border: 1px solid var(--line); border-bottom-width: 2px;
+    border-radius: 3px; background: var(--surface); color: var(--ink);
+    font: 500 0.78em/1.5 var(--f-mono);
+}
+
+/* ---- Masthead ---------------------------------------------------------- */
+.mast { padding-block: 36px 18px; display: grid; gap: 10px; }
+.eyebrow {
+    font: 600 12px/1.3 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+}
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
+h1 {
+    font-size: clamp(30px, 5vw, 50px); line-height: 1.02; font-weight: 800;
+    font-stretch: 72%; letter-spacing: -0.01em; text-transform: uppercase;
+}
+h2 { font-size: 26px; font-weight: 800; font-stretch: 80%; line-height: 1.1; }
+h3 { font-size: 17px; font-weight: 700; font-stretch: 88%; line-height: 1.2; }
+.lead { max-width: 68ch; color: var(--muted); margin: 0; }
+.urlrow { display: flex; flex-wrap: wrap; gap: 6px 14px; font: 12.5px/1.4 var(--f-mono); color: var(--muted); }
+.urlrow span { overflow-wrap: anywhere; }
+.urlrow b { color: var(--ink); font-weight: 500; }
+
+/* ---- Tabs -------------------------------------------------------------- */
+.tabs {
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+    display: flex; flex-wrap: wrap; gap: 4px; padding-block: 10px;
+    background: var(--bg); border-bottom: 1px solid var(--line);
+}
+.tab {
+    display: inline-flex; align-items: baseline; gap: 7px;
+    border: 1px solid transparent; background: none; color: var(--muted);
+    padding: 6px 12px; border-radius: 3px; cursor: pointer;
+    font: 600 14px/1.2 var(--f-body);
+}
+.tab .k {
+    font: 800 15px/1 var(--f-display); font-stretch: 75%; color: var(--ink);
+    min-width: 1.1em; text-align: center;
+}
+.tab:hover { color: var(--ink); background: var(--surface); }
+.tab[aria-selected="true"] { background: var(--ink); color: var(--bg); }
+.tab[aria-selected="true"] .k { color: var(--bg); }
+.tab .rec {
+    font: 600 10px/1 var(--f-mono); letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 3px 5px; border-radius: 2px; background: var(--ok-soft); color: var(--ok);
+}
+.tab .nope { background: var(--err-soft); color: var(--err); }
+.tab[aria-selected="true"] .rec { background: var(--bg); }
+
+.panel { padding-top: 26px; display: grid; gap: 26px; }
+.panel-head { display: grid; gap: 8px; max-width: 80ch; }
+.panel-head p { margin: 0; color: var(--muted); }
+
+/* ---- Bench: mock window + notes --------------------------------------- */
+.bench { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 22px; align-items: start; }
+@media (max-width: 960px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+.window {
+    position: relative; min-width: 0; background: var(--site-bg); color: var(--site-ink);
+    border: 1px solid var(--line); border-radius: 6px; box-shadow: var(--shadow); overflow: hidden;
+}
+.chrome {
+    display: flex; align-items: center; gap: 10px; padding: 7px 10px;
+    background: var(--site-chrome); color: var(--site-chrome-ink); border-bottom: 1px solid var(--site-line);
+    font: 12px/1.3 var(--f-mono);
+}
+.chrome .url { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chrome .pt {
+    flex: none; padding: 2px 6px; border-radius: 2px; background: var(--site-bg);
+    border: 1px solid var(--site-line); font-weight: 500;
+}
+.sitebody { padding: 12px 14px 16px; font: 13px/1.4 var(--f-site); overflow-x: auto; }
+.sitebar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 8px; }
+.sitebar h4 { margin: 0; font: bold 18px/1.2 var(--f-site); }
+.sitebar .count { color: var(--site-dim); font-size: 12px; }
+.sitebar input {
+    font: 13px var(--f-site); padding: 3px 6px; border: 1px solid #bbb; border-radius: 2px;
+    background: #fff; color: var(--site-ink); width: 190px; max-width: 100%;
+}
+
+table.tbl { border-collapse: collapse; background: var(--site-bg); color: var(--site-ink); font: 13px/1.4 var(--f-site); width: 100%; }
+table.tbl th, table.tbl td { border: 1px solid var(--site-line); padding: 3px 6px; vertical-align: top; text-align: left; }
+table.tbl thead th { background: var(--site-head); white-space: nowrap; }
+table.tbl tbody tr:nth-child(even) > td { background: var(--site-even); }
+table.tbl a { color: var(--site-link); text-decoration: none; }
+table.tbl a:hover { text-decoration: underline; }
+table.tbl tr.is-sel > td { background: var(--site-sel); }
+table.tbl tr.is-peek > td { box-shadow: inset 0 -1px 0 #e0c86a, inset 0 1px 0 #e0c86a; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.dim { color: var(--site-dim); }
+
+/* The 🔍 pin button that follows a detail link */
+.pinbtn {
+    margin-left: 4px; padding: 0 3px; border: 1px solid transparent; border-radius: 2px;
+    background: none; cursor: pointer; font-size: 11px; line-height: 1.3; opacity: 0;
+    color: var(--site-ink);
+}
+tr:hover .pinbtn, .pinbtn:focus-visible { opacity: 1; border-color: var(--site-line); background: #fff; }
+@media (hover: none) { .pinbtn { opacity: 1; } }
+
+.notes { display: grid; gap: 14px; font-size: 14px; }
+.note {
+    display: grid; gap: 6px; padding-bottom: 12px; border-bottom: 1px solid var(--line);
+}
+.note:last-child { border-bottom: 0; }
+.note .lbl {
+    font: 600 11px/1.3 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+}
+.note p { margin: 0; }
+.note ul { margin: 0; padding-left: 1.1em; display: grid; gap: 3px; }
+.try {
+    background: var(--accent-soft); color: var(--ink); border-radius: 4px; padding: 10px 12px;
+    display: grid; gap: 4px; font-size: 14px;
+}
+.try b { font-family: var(--f-display); font-stretch: 85%; font-size: 15px; }
+
+/* ---- Liner card (the script's look) ----------------------------------- */
+.liner {
+    background: var(--liner-bg); color: var(--liner-ink); border: 1px solid var(--liner-line);
+    border-radius: 3px; padding: 8px 12px 9px; font: 13px/1.5 var(--f-liner);
+    box-shadow: 0 1px 0 #e9e1d1, 0 10px 24px -8px rgba(60, 40, 20, 0.35); text-align: left;
+}
+.liner .t { font-weight: 700; font-size: 1.08em; line-height: 1.3; }
+.liner .sub { font-style: italic; color: var(--liner-dim); }
+.liner .rule { border-top: 1px solid var(--liner-line); margin: 6px 0; }
+.liner .pill {
+    display: inline-block; background: var(--liner-pill); color: var(--liner-pill-ink);
+    border: 1px solid var(--liner-line); border-radius: 3px; padding: 0 5px;
+    font-size: 0.88em; font-weight: 700; line-height: 1.45; white-space: nowrap;
+}
+.liner .pills { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.liner .kv { display: grid; grid-template-columns: max-content 1fr; gap: 1px 10px; margin-top: 4px; }
+.liner .kv dt { color: var(--liner-dim); font-style: italic; }
+.liner .kv dd { margin: 0; }
+.liner ol { margin: 2px 0 0; padding: 0; list-style: none; columns: 2; column-gap: 16px; }
+.liner ol li { break-inside: avoid; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.liner ol .p { color: var(--liner-dim); font-variant-numeric: tabular-nums; margin-right: 5px; }
+.liner .more { color: var(--liner-dim); font-style: italic; }
+.liner .big { font-size: 2em; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.liner .stat { display: flex; align-items: baseline; gap: 8px; margin: 6px 0 2px; }
+.liner .foot {
+    margin-top: 7px; font-style: italic; font-size: 0.92em; color: var(--liner-dim);
+    display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center;
+}
+.liner .foot kbd { background: #fff; color: var(--liner-ink); border-color: #cbbfa9; font-style: normal; }
+.liner .state { font-style: normal; font-size: 0.85em; font-weight: 700; letter-spacing: 0.02em; }
+.liner .state.fresh { color: #2c7347; }
+.liner .state.cached { color: var(--liner-dim); }
+.liner .alert { color: var(--liner-alert); font-weight: 700; }
+.liner .loading { display: flex; align-items: center; gap: 8px; color: var(--liner-dim); font-style: italic; }
+.spin { display: inline-block; animation: spin 0.9s linear infinite; font-style: normal; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.tiles { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+
+/* Placeholder sleeves: the mockup cannot load the sites' images */
+.sleeve {
+    position: relative; flex: none; width: 54px; height: 54px; border-radius: 2px; overflow: hidden;
+    display: grid; place-items: end start; padding: 3px 4px;
+    font: 700 8px/1.1 var(--f-mono); letter-spacing: 0.04em; text-transform: uppercase; color: #fff;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+.sleeve.lg { width: 132px; height: 132px; font-size: 10px; padding: 6px 7px; }
+.sleeve.md { width: 86px; height: 68px; }
+.sleeve.sm { width: 34px; height: 34px; font-size: 0; padding: 0; }
+.sleeve span { position: relative; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); }
+
+/* The floating peek card */
+#peek {
+    position: fixed; z-index: 60; width: min(380px, calc(100vw - 24px));
+    pointer-events: none; display: none;
+}
+#peek.on { display: block; }
+
+/* ---- Pinned dialog (B) ------------------------------------------------ */
+#pin {
+    position: fixed; z-index: 70; left: 50%; top: 80px; transform: translateX(-50%);
+    width: min(760px, calc(100vw - 24px)); height: min(620px, calc(100vh - 110px));
+    min-width: 300px; min-height: 260px; resize: both; overflow: hidden;
+    display: none; flex-direction: column;
+    background: var(--liner-bg); color: var(--liner-ink); border: 1px solid var(--liner-line);
+    border-radius: 4px; box-shadow: 0 2px 0 #e9e1d1, 0 24px 60px -18px rgba(40, 25, 10, 0.55);
+    font: 13.5px/1.5 var(--f-liner);
+}
+#pin.on { display: flex; }
+.pin-bar {
+    display: flex; align-items: center; gap: 8px; padding: 7px 8px 7px 12px;
+    border-bottom: 1px solid var(--liner-line); background: var(--liner-pill); cursor: move; user-select: none;
+}
+.pin-bar .t { flex: 1; min-width: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pin-bar .pos { font: 12px var(--f-mono); color: var(--liner-dim); white-space: nowrap; }
+.ibtn {
+    border: 1px solid var(--liner-line); background: var(--liner-bg); color: var(--liner-ink);
+    border-radius: 3px; min-width: 26px; height: 26px; cursor: pointer; font: 14px/1 var(--f-body);
+}
+.ibtn:hover { background: #fff; }
+.seg { display: inline-flex; border: 1px solid var(--liner-line); border-radius: 3px; overflow: hidden; }
+.seg button {
+    border: 0; background: var(--liner-bg); color: var(--liner-ink); padding: 3px 10px; cursor: pointer;
+    font: 600 12px/1.4 var(--f-body);
+}
+.seg button[aria-pressed="true"] { background: var(--liner-ink); color: var(--liner-bg); }
+.pin-tools {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 7px 12px;
+    border-bottom: 1px solid var(--liner-line); font: 12px/1.3 var(--f-body); color: var(--liner-dim);
+}
+.pin-tools label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.pin-body { flex: 1; min-height: 0; overflow: auto; padding: 12px 14px; }
+.pin-foot {
+    padding: 6px 12px; border-top: 1px solid var(--liner-line); font-style: italic; font-size: 12px;
+    color: var(--liner-dim); display: flex; flex-wrap: wrap; gap: 4px 12px;
+}
+.pin-foot kbd { background: #fff; color: var(--liner-ink); border-color: #cbbfa9; font-style: normal; }
+.xgrid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 16px; }
+@media (max-width: 620px) { .xgrid { grid-template-columns: minmax(0, 1fr); } }
+.xgrid h5 {
+    margin: 0 0 4px; font: 600 10.5px/1.3 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--liner-dim);
+}
+.discs { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px 16px; }
+.discs ol { margin: 0; padding: 0; list-style: none; }
+.discs li { display: flex; gap: 6px; font-size: 12.5px; line-height: 1.45; }
+.discs li .p { color: var(--liner-dim); font-variant-numeric: tabular-nums; flex: none; min-width: 2.4em; }
+.srcgroup + .srcgroup { margin-top: 10px; }
+.srcgroup .src { font-style: italic; color: var(--liner-dim); font-size: 12px; margin-bottom: 2px; }
+.srcgroup ol { margin: 0; padding: 0; list-style: none; columns: 2 170px; column-gap: 16px; }
+.srcgroup li { display: flex; gap: 6px; font-size: 12.5px; line-height: 1.45; break-inside: avoid; }
+.srcgroup li .p { color: var(--liner-dim); font-variant-numeric: tabular-nums; flex: none; min-width: 2.4em; }
+.lineage {
+    margin-top: 10px; padding: 6px 8px; border: 1px dashed var(--liner-line); border-radius: 3px;
+    font: 12px/1.45 var(--f-mono);
+}
+.warnbox {
+    margin-bottom: 10px; padding: 6px 9px; border-left: 3px solid var(--liner-alert); background: #f6e6dc;
+    font-size: 12.5px;
+}
+
+/* The "Live page" view: the site's own page in an iframe, mocked */
+.livepage {
+    border: 1px solid var(--site-line); background: var(--site-bg); color: var(--site-ink);
+    font: 13px/1.4 var(--f-site); border-radius: 2px;
+}
+.livepage .lp-url {
+    padding: 4px 8px; font: 11px var(--f-mono); color: var(--site-dim); border-bottom: 1px solid var(--site-line);
+    background: var(--site-chrome); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.lp-nav { padding: 8px; display: grid; gap: 5px; background: #2f3337; }
+.lp-nav i { display: block; height: 9px; border-radius: 2px; background: #5b6168; }
+.lp-nav i:nth-child(2) { width: 82%; } .lp-nav i:nth-child(3) { width: 64%; } .lp-nav i:nth-child(4) { width: 90%; }
+.lp-nav .cap { font: 11px var(--f-mono); color: #c9ced4; }
+.lp-content { padding: 10px 12px; }
+.lp-content h6 { margin: 0 0 6px; font: bold 15px var(--f-site); color: #2b6cb0; }
+.lp-content .mono { white-space: pre-wrap; font-size: 12px; }
+.livepage.hide-nav .lp-nav { display: none; }
+
+/* ---- Drawer (C) -------------------------------------------------------- */
+.drawer-host { position: relative; min-height: 470px; }
+.drawer {
+    position: absolute; top: 0; right: 0; bottom: 0; width: min(340px, 100%);
+    background: var(--liner-bg); color: var(--liner-ink); border-left: 1px solid var(--liner-line);
+    box-shadow: -14px 0 28px -20px rgba(40, 25, 10, 0.6);
+    transform: translateX(105%); transition: transform 0.22s ease; display: flex; flex-direction: column;
+    font: 13.5px/1.5 var(--f-liner);
+}
+.drawer.on { transform: none; }
+.drawer-host.drawer-open .sitebody { padding-right: calc(min(340px, 100%) + 14px); }
+@media (max-width: 700px) { .drawer-host.drawer-open .sitebody { padding-right: 14px; } }
+.drawer .pin-body { padding: 12px 14px; }
+.covers { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+@media (prefers-reduced-motion: reduce) { .drawer { transition: none; } .spin { animation: none; } }
+
+/* ---- Columns (D) ------------------------------------------------------- */
+th.det { background: #e2e7d8 !important; }
+.hdr-flex { display: inline-flex; align-items: center; gap: 5px; }
+.det-toggle {
+    display: inline-flex; align-items: center; gap: 4px; padding: 0 5px; border: 1px solid #b9c2a6;
+    border-radius: 2px; background: #f6f8f1; cursor: pointer; font: 12px/1.6 var(--f-site); color: var(--site-ink);
+}
+.det-toggle .badge { font: 11px var(--f-mono); color: var(--site-dim); }
+.sorth { cursor: pointer; }
+.sorth:hover { text-decoration: underline; }
+td.dc { cursor: pointer; }
+td.dc[data-s="idle"]::before { content: "📄\FE0E"; color: #b3b3b3; }
+td.dc[data-s="queued"]::before { content: "⋯"; color: var(--site-dim); }
+td.dc[data-s="loading"]::before { content: "◌"; display: inline-block; animation: spin 0.9s linear infinite; color: var(--site-dim); }
+td.dc[data-s="none"]::before { content: "–"; color: var(--site-dim); }
+td.dc[data-s="error"]::before { content: "⚠\FE0E"; color: var(--err); font-weight: bold; }
+td.dc[data-s="error"]:hover::before { content: "⟳"; color: var(--site-link); }
+td.dc[data-s="done"] { cursor: auto; }
+.mrow { margin: 0; padding: 0; list-style: none; }
+.mrow li + li { border-top: 1px dotted #ccc; }
+.ctog { border: 0; background: none; padding: 0 3px 0 0; cursor: pointer; font-size: 10px; color: var(--site-dim); }
+.hl { background: #ffd700; color: #b00000; border-radius: 2px; padding: 0 1px; }
+.uvd {
+    position: absolute; z-index: 5; width: 300px; max-width: calc(100% - 20px); background: #fff;
+    border: 1px solid #bbb; box-shadow: 0 8px 22px -10px rgba(0, 0, 0, 0.45); font: 12.5px/1.4 var(--f-site);
+    padding: 6px 0; color: var(--site-ink);
+}
+.uvd h6 { margin: 0; padding: 2px 10px 4px; font: bold 11px var(--f-site); text-transform: uppercase; color: var(--site-dim); }
+.uvd label { display: flex; gap: 6px; padding: 1px 10px; cursor: pointer; }
+.uvd label:hover { background: #eef3fa; }
+.uvd .c { margin-left: auto; color: var(--site-dim); font-variant-numeric: tabular-nums; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font: 12px var(--f-site); color: var(--site-dim); margin-top: 8px; }
+.legend b { color: var(--site-ink); font-weight: normal; }
+
+/* ---- Overview ---------------------------------------------------------- */
+.answers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 880px) { .answers { grid-template-columns: minmax(0, 1fr); } }
+.answer { display: grid; gap: 8px; align-content: start; padding-top: 12px; border-top: 3px solid var(--ink); }
+.answer .q { font: 600 12px/1.3 var(--f-mono); color: var(--muted); }
+.answer .a { font: 800 22px/1.1 var(--f-display); font-stretch: 78%; }
+.answer p { margin: 0; }
+.verdict { display: inline-block; padding: 1px 7px; border-radius: 2px; font: 700 12px/1.6 var(--f-mono); }
+.v-yes { background: var(--ok-soft); color: var(--ok); }
+.v-cost { background: var(--warn-soft); color: var(--warn); }
+
+.datatable-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+table.data { border-collapse: collapse; width: 100%; font: 13.5px/1.5 var(--f-body); color: var(--ink); }
+table.data th, table.data td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+table.data thead th {
+    font: 600 11px/1.3 var(--f-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+    background: var(--bg); white-space: nowrap;
+}
+table.data tbody tr:last-child td { border-bottom: 0; }
+table.data td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; font-family: var(--f-mono); font-size: 12.5px; }
+table.data .site { font-weight: 600; white-space: nowrap; }
+table.data .pt { font: 12px var(--f-mono); color: var(--muted); }
+.chip { display: inline-block; padding: 1px 6px; border-radius: 2px; font: 600 11.5px/1.5 var(--f-mono); white-space: nowrap; }
+.c-good { background: var(--ok-soft); color: var(--ok); }
+.c-mid { background: var(--warn-soft); color: var(--warn); }
+.c-bad { background: var(--err-soft); color: var(--err); }
+.c-na { background: var(--bg); color: var(--muted); }
+
+.phases { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 880px) { .phases { grid-template-columns: minmax(0, 1fr); } }
+.phase { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 14px 16px; display: grid; gap: 8px; align-content: start; }
+.phase .n { font: 600 11px/1.3 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.phase ul { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; font-size: 14px; }
+.phase.first { border-color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
+
+.findings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 26px; }
+@media (max-width: 760px) { .findings { grid-template-columns: minmax(0, 1fr); } }
+.finding { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; font-size: 14px; }
+.finding .sev { grid-row: span 2; margin-top: 2px; }
+.finding b { font-weight: 600; }
+.finding p { margin: 0; color: var(--muted); }
+
+/* ---- Inline row (E) ---------------------------------------------------- */
+.e-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 820px) { .e-grid { grid-template-columns: minmax(0, 1fr); } }
+tr.detailrow > td { background: #fffbe8 !important; font-size: 12px; color: #5a4a20; }
+tr.detailrow.wrong > td { background: #fde8e4 !important; color: #8a1f14; }
+.e-cap { font: 600 11px/1.3 var(--f-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--site-dim); margin-bottom: 6px; }
+.breaks { display: grid; gap: 10px; }
+.break { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 2px 8px; font-size: 14px; }
+.break .x { color: var(--err); font-weight: 700; font-family: var(--f-mono); }
+.break p { margin: 0; color: var(--muted); grid-column: 2; }
+@media (max-width: 700px) { .tabs { position: static; } }
+
+.toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 90;
+    background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 4px; font-size: 13.5px;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s; max-width: calc(100vw - 32px);
+}
+.toast.on { opacity: 1; }
+.calc { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 14px; }
+.calc select { font: 14px var(--f-body); padding: 4px 6px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); color: var(--ink); }
+.calc output { font: 500 14px var(--f-mono); }
+</style>
+
+<div class="wrap">
+    <header class="mast">
+        <div class="eyebrow">ShowAllEntityData · foreign-site pageTypes · design study · 2026-10-07</div>
+        <h1>Detail pages, without leaving the list</h1>
+        <p class="lead">Every row on the four Springsteen sites links to a detail page the script never opens. These mockups show five ways to bring that page to the row. Each one is built from 28 real detail pages fetched and parsed on 2026-10-07. Only the cover images are stand-ins, because this page cannot load the sites' images.</p>
+        <div class="urlrow">
+            <span><b>sl-collection / sl-bootlegs</b> → bootlegs.php?item=6739</span>
+            <span><b>jl-list</b> → html/19760930.htm</span>
+            <span><b>bs-records</b> → detrec.aspx?code=CR1AD1</span>
+            <span><b>bb-songs</b> → song:4th-of-july-asbury-park-sandy</span>
+        </div>
+    </header>
+
+    <nav class="tabs" role="tablist" aria-label="Options">
+        <button class="tab" role="tab" id="t-overview" aria-controls="overview" aria-selected="true"><span class="k">≡</span>Overview</button>
+        <button class="tab" role="tab" id="t-peek" aria-controls="peek-p" aria-selected="false"><span class="k">A</span>Hover peek <span class="rec">phase 1</span></button>
+        <button class="tab" role="tab" id="t-pin" aria-controls="pin-p" aria-selected="false"><span class="k">B</span>Pinned preview <span class="rec">phase 1</span></button>
+        <button class="tab" role="tab" id="t-drawer" aria-controls="drawer-p" aria-selected="false"><span class="k">C</span>Side drawer</button>
+        <button class="tab" role="tab" id="t-columns" aria-controls="columns-p" aria-selected="false"><span class="k">D</span>Detail columns <span class="rec">phase 2</span></button>
+        <button class="tab" role="tab" id="t-inline" aria-controls="inline-p" aria-selected="false"><span class="k">E</span>Inline row <span class="rec nope">avoid</span></button>
+    </nav>
+
+    <!-- ================= OVERVIEW ================= -->
+    <section class="panel" id="overview" role="tabpanel" aria-labelledby="t-overview">
+        <div class="answers">
+            <div class="answer">
+                <div class="q">Question 1 · popup on hover, Esc closes</div>
+                <div class="a">Yes, on all four sites</div>
+                <p><span class="verdict v-yes">feasible</span> Each detail page has the same origin as its list, so the script can fetch it and parse it into the same cream card it already uses for cover art and relationships. A plain hover card cannot be scrolled, so <b>Space</b> pins it into a dialog you can scroll and drag (options A and B).</p>
+            </div>
+            <div class="answer">
+                <div class="q">Question 2 · detail data in the row</div>
+                <div class="a">Yes, as columns loaded on demand</div>
+                <p><span class="verdict v-cost">costs fetches</span> One page per row at the polite 1.1 s spacing. A whole jungleland list takes about 1 h 47 min, so detail columns must load only when asked for, per table or per cell, and be cached. The values then filter, sort and appear in 📊 like any other column (option D).</p>
+            </div>
+            <div class="answer">
+                <div class="q">Question 3 · suggestions</div>
+                <div class="a">Peek and pin first, then columns</div>
+                <p>One parser per site feeds every option, so the first phase builds the parts the second phase reuses. The side drawer (C) is an alternative to the dialog. The inline row (E) is shown only to explain why it should not be built.</p>
+            </div>
+        </div>
+
+        <div class="panel-head">
+            <h2>What each detail page adds</h2>
+            <p>The "Row shows" column comes from the script's converters. "The page adds" comes from parsing the pages fetched today. Row counts are from the list snapshots in <code>debug/</code>.</p>
+        </div>
+        <div class="datatable-wrap">
+            <table class="data">
+                <thead><tr><th>Site · pageType</th><th>Row shows</th><th>The page adds</th><th>Real sample</th><th>Page</th><th>Rows</th><th>All rows at 1.1 s</th></tr></thead>
+                <tbody>
+                    <tr><td><div class="site">springsteenlyrics</div><div class="pt">sl-bootlegs, sl-collection</div></td><td>Cover, title, version, date, location, format, duration, artwork and info-file flags</td><td>Full tracklist with disc breaks, lineage line, artwork scans, label and cat. no. (collection)</td><td>6739: 28 tracks on 3 discs, <span class="mono">Original Cd-r --&gt; EAC (Secure) --&gt; …</span>, 5 scans</td><td class="n">40 KB</td><td class="n">100/page</td><td class="n">1 m 50 s / page</td></tr>
+                    <tr><td><div class="site">jungleland.it</div><div class="pt">jl-list</div></td><td>Title, date, year, version</td><td>Uploader, front and back covers, sometimes more scans</td><td>19760930: uploader Olli2605, front + back. 19750205: 10 images</td><td class="n">1.6 KB</td><td class="n">5,839</td><td class="n">1 h 47 m</td></tr>
+                    <tr><td><div class="site">brucespringsteen.it</div><div class="pt">bs-records</div></td><td>Title, format, label, matrix, code</td><td>Tracklist with the source show for every track, notes, vinyl colour</td><td>CR1AD1: 14 tracks, all from Tampa, FL, Jai Alai, 10-Nov-1975</td><td class="n">5–8 KB</td><td class="n">1,878 + 1,186</td><td class="n">34 m + 22 m</td></tr>
+                    <tr><td><div class="site">brucebase</div><div class="pt">bb-songs</div></td><td>Title, letter</td><td>Origin album, performance count, last played, official releases, lyrics</td><td>Thunder Road: track 1 of Born To Run, played live 1,587 times, last 2026-04-18</td><td class="n">65–115 KB</td><td class="n">1,679</td><td class="n">31 m</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="panel-head">
+            <h2>Options compared</h2>
+        </div>
+        <div class="datatable-wrap">
+            <table class="data">
+                <thead><tr><th></th><th>A · Hover peek</th><th>B · Pinned preview</th><th>C · Side drawer</th><th>D · Detail columns</th><th>E · Inline row</th></tr></thead>
+                <tbody>
+                    <tr><th>Answers</th><td>Question 1</td><td>Question 1, scrollable</td><td>Question 1, browse mode</td><td>Question 2</td><td>Question 2, partly</td></tr>
+                    <tr><th>Fetches</th><td><span class="chip c-good">1 per hover</span></td><td><span class="chip c-good">1 per pin</span></td><td><span class="chip c-good">1 per row opened</span></td><td><span class="chip c-mid">1 per row, in bulk</span></td><td><span class="chip c-good">1 per expand</span></td></tr>
+                    <tr><th>Filter, sort, 📊</th><td><span class="chip c-na">no</span></td><td><span class="chip c-na">no</span></td><td><span class="chip c-na">no</span></td><td><span class="chip c-good">yes</span></td><td><span class="chip c-bad">breaks them</span></td></tr>
+                    <tr><th>Filter/sort hot path</th><td><span class="chip c-good">untouched</span></td><td><span class="chip c-good">untouched</span></td><td><span class="chip c-good">untouched</span></td><td><span class="chip c-mid">4 post-render duties</span></td><td><span class="chip c-bad">row invariants</span></td></tr>
+                    <tr><th>Keyboard</th><td><kbd>Esc</kbd> <kbd>Space</kbd></td><td><kbd>Esc</kbd> <kbd>←</kbd> <kbd>→</kbd></td><td><kbd>Esc</kbd> <kbd>j</kbd> <kbd>k</kbd></td><td>–</td><td>–</td></tr>
+                    <tr><th>Phone</th><td><span class="chip c-mid">🔍 opens B</span></td><td><span class="chip c-good">full width</span></td><td><span class="chip c-good">full width</span></td><td><span class="chip c-good">same table</span></td><td><span class="chip c-mid">tall rows</span></td></tr>
+                    <tr><th>Reuses</th><td><code>data-mbtt-fn</code>, <code>_mbttAfterShow</code></td><td><code>createInfoDialog()</code></td><td><code>#mb-art-viewer</code> key capture</td><td>Relationships column pattern</td><td>–</td></tr>
+                    <tr><th>Effort</th><td><span class="chip c-good">S</span></td><td><span class="chip c-good">S–M</span></td><td><span class="chip c-mid">M</span></td><td><span class="chip c-bad">L</span></td><td><span class="chip c-bad">L, fragile</span></td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="panel-head"><h2>Recommended path</h2></div>
+        <div class="phases">
+            <div class="phase first">
+                <div class="n">Phase 1 · foundation + A + B</div>
+                <h3>Peek, then pin</h3>
+                <ul>
+                    <li><code>DetailPageParsers</code>: one parser per site, returning <code>{title, fields, tracks, images, notes}</code></li>
+                    <li>A same-origin detail fetch with a 1.1 s gate and per-host decoding (windows-1252 for jungleland)</li>
+                    <li>An IndexedDB store <code>detail-pages</code> with a TTL; each host gets its own database</li>
+                    <li>Hover card through <code>data-mbtt-fn="detail"</code>; Esc closes it; Space and 🔍 pin it</li>
+                    <li>A setting per site, off by default, under the existing site gate</li>
+                </ul>
+            </div>
+            <div class="phase">
+                <div class="n">Phase 2 · D</div>
+                <h3>Detail columns</h3>
+                <ul>
+                    <li>A "📄 Details" column group per site, with a header toggle and a progress badge</li>
+                    <li>Relationships-style load states: queued, loading, none, failed, retry</li>
+                    <li>Tracklists and source shows as multi-row cells with the existing ▶ collapse</li>
+                    <li>Reads phase 1's cache, so every row already peeked costs nothing</li>
+                </ul>
+            </div>
+            <div class="phase">
+                <div class="n">Optional · C</div>
+                <h3>Browse mode</h3>
+                <ul>
+                    <li>The same content as B, docked to the right edge</li>
+                    <li>Pays off on jungleland, where the detail page is mostly covers</li>
+                    <li>Build it only if B feels cramped in practice</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="panel-head"><h2>Found while probing</h2></div>
+        <div class="findings">
+            <div class="finding"><span class="chip c-bad sev">must</span><b>The detail pages are outside every <code>@include</code></b><p>The script never runs on them, so everything has to be fetched and parsed from the list page.</p></div>
+            <div class="finding"><span class="chip c-bad sev">must</span><b>jungleland.it is windows-1252 with no charset</b><p><code>fetchHtml()</code> calls <code>res.text()</code>, which decodes as UTF-8. Use <code>arrayBuffer()</code> with <code>TextDecoder('windows-1252')</code>.</p></div>
+            <div class="finding"><span class="chip c-mid sev">parse</span><b>Some springsteenlyrics tracklists have no numbers</b><p>Items 1331 and 1332 list bare titles straight after Duration. The parser falls back to plain lines and says so (see B, row 4).</p></div>
+            <div class="finding"><span class="chip c-mid sev">parse</span><b>brucespringsteen.it repeats sources with <code>"</code></b><p>The From column uses a ditto mark for "same as above", so the parser has to fill each one from the row above it. Its song links are <code>href="#"</code>, so they have nowhere to point.</p></div>
+            <div class="finding"><span class="chip c-mid sev">size</span><b>A brucebase song page is 65–115 KB</b><p>Parse it once and cache only the extracted fields, not the HTML.</p></div>
+            <div class="finding"><span class="chip c-good sev">ok</span><b>Framing is allowed</b><p>None of the sites block same-origin iframes; brucebase sends <code>SAMEORIGIN</code>. That is what makes B's "Live page" view possible.</p></div>
+        </div>
+    </section>
+
+    <!-- ================= A: HOVER PEEK ================= -->
+    <section class="panel" id="peek-p" role="tabpanel" aria-labelledby="t-peek" hidden>
+        <div class="panel-head">
+            <h2>A · Hover peek</h2>
+            <p>Rest the pointer on a title for 400 ms. The first hover fetches the page and shows ◌ while it loads; later hovers read the cache. The card is the script's existing liner card, so it looks like the cover-art and relationship tooltips.</p>
+        </div>
+        <div class="bench">
+            <div class="window">
+                <div class="chrome"><span class="url">https://www.brucespringsteen.it/DB/records.aspx?tipe=-1,0,1,2,3,4,5,6,7,8,9,10,11&amp;sort=0&amp;addon=0</span><span class="pt">bs-records</span></div>
+                <div class="sitebody">
+                    <div class="sitebar"><h4>Unofficial records</h4><span class="count">8 of 1,878 rows</span></div>
+                    <table class="tbl" id="tbl-a-bs"></table>
+                </div>
+            </div>
+            <aside class="notes">
+                <div class="try"><b>Try it</b><span>Hover a title, then press <kbd>Space</kbd> to pin it or <kbd>Esc</kbd> to close it. On a phone, tap 🔍.</span></div>
+                <div class="note"><span class="lbl">Card content</span><p>The bootleg's format, label and matrix, the source shows with track counts, the first tracks and the notes.</p></div>
+                <div class="note"><span class="lbl">Built on</span><ul><li><code>_setTip</code> / <code>data-mbtt-fn="detail"</code></li><li><code>_mbttAfterShow</code> fills in the content when the fetch returns</li><li>Add the card to <code>_OTHER_RICH_TIPS</code></li><li>Ignore touch-compat mouse events (<code>_isTouchCompatMouseEvent</code>)</li></ul></div>
+                <div class="note"><span class="lbl">Needs adding</span><p>An Esc handler on <code>#mb-stat-tooltip</code>; today only moving the pointer away hides it.</p></div>
+            </aside>
+        </div>
+        <div class="bench">
+            <div class="window">
+                <div class="chrome"><span class="url">https://brucebase.wikidot.com/stats:songs</span><span class="pt">bb-songs</span></div>
+                <div class="sitebody">
+                    <div class="sitebar"><h4>Songs</h4><span class="count">6 of 1,679 rows</span></div>
+                    <table class="tbl" id="tbl-a-bb"></table>
+                </div>
+            </div>
+            <aside class="notes">
+                <div class="note"><span class="lbl">Most value per fetch</span><p>The list row has only a title and a letter. The detail page adds the origin album, the performance count, the last show and the releases. Of the four sites, this one gains the most.</p></div>
+                <div class="note"><span class="lbl">Cost</span><p>65–115 KB per page. Cache the parsed fields only.</p></div>
+            </aside>
+        </div>
+    </section>
+
+    <!-- ================= B: PINNED PREVIEW ================= -->
+    <section class="panel" id="pin-p" role="tabpanel" aria-labelledby="t-pin" hidden>
+        <div class="panel-head">
+            <h2>B · Pinned preview</h2>
+            <p>The same content in a dialog you can drag, resize and scroll. <b>Extracted</b> shows the parsed fields, laid out for reading. <b>Live page</b> shows the site's own page in a same-origin iframe, which the script can restyle to hide the site's navigation. <kbd>←</kbd> <kbd>→</kbd> step through the rows; <kbd>Esc</kbd> closes.</p>
+        </div>
+        <div class="bench">
+            <div class="window">
+                <div class="chrome"><span class="url">https://www.springsteenlyrics.com/bootlegs.php?cmd=list&amp;category=aud_live2014</span><span class="pt">sl-bootlegs</span></div>
+                <div class="sitebody">
+                    <div class="sitebar"><h4>Audience recordings · live 2014–</h4><span class="count">6 rows shown</span></div>
+                    <table class="tbl" id="tbl-b-sl"></table>
+                </div>
+            </div>
+            <aside class="notes">
+                <div class="try"><b>Try it</b><span>Click 🔍 on any row, or hover a title and press <kbd>Space</kbd>. Row 4 shows the fallback when a tracklist has no numbers.</span></div>
+                <div class="note"><span class="lbl">Built on</span><p><code>createInfoDialog()</code> already provides the title bar, ✕, Esc and click-outside closing, and position and size remembered under a <code>geoKey</code>.</p></div>
+                <div class="note"><span class="lbl">Live page</span><p>A same-origin iframe can be restyled from the list page. Here that means hiding the about 85 % of the springsteenlyrics page that is navigation, scrolling to <code>.project-detail</code> and turning off the page's own scripts. Use it when the parser misses something.</p></div>
+            </aside>
+        </div>
+    </section>
+
+    <!-- ================= C: DRAWER ================= -->
+    <section class="panel" id="drawer-p" role="tabpanel" aria-labelledby="t-drawer" hidden>
+        <div class="panel-head">
+            <h2>C · Side drawer</h2>
+            <p>Click a row and the detail page slides in from the right while the list stays usable. <kbd>j</kbd> / <kbd>k</kbd> or <kbd>↓</kbd> / <kbd>↑</kbd> move through the rows, and <kbd>Esc</kbd> closes the drawer. It suits jungleland, where the detail page is mostly cover art.</p>
+        </div>
+        <div class="bench">
+            <div class="window drawer-host" id="drawer-host">
+                <div class="chrome"><span class="url">https://www.jungleland.it/html/list.htm</span><span class="pt">jl-list</span></div>
+                <div class="sitebody">
+                    <div class="sitebar"><h4>Artwork list</h4><span class="count">8 of 5,839 rows</span></div>
+                    <table class="tbl" id="tbl-c-jl"></table>
+                </div>
+                <div class="drawer" id="drawer" role="complementary" aria-label="Detail page"></div>
+            </div>
+            <aside class="notes">
+                <div class="try"><b>Try it</b><span>Click a row, then use <kbd>j</kbd> and <kbd>k</kbd>. The first row has ten scans.</span></div>
+                <div class="note"><span class="lbl">Covers without a fetch?</span><p>Partly. Thumbnails follow <code>artwork/&lt;decade&gt;/thumb/tn_&lt;stem&gt;_front.jpg</code>, so front and back can be guessed. Extra scans (<code>cd1</code>, inserts) and the uploader still need the page.</p></div>
+                <div class="note"><span class="lbl">Compared with B</span><p>Same parser, same cache, and the content does not cover the list. It costs more to build: the layout has to make room for the drawer, and its key capture must not clash with the filter boxes.</p></div>
+            </aside>
+        </div>
+    </section>
+
+    <!-- ================= D: COLUMNS ================= -->
+    <section class="panel" id="columns-p" role="tabpanel" aria-labelledby="t-columns" hidden>
+        <div class="panel-head">
+            <h2>D · Detail columns</h2>
+            <p>A column group the script fills from the detail pages, loaded on demand like the Relationships column. Once loaded, the values filter, sort and show up in 📊. Click one cell to load just that row, or press the header toggle to load the whole table.</p>
+        </div>
+        <div class="bench">
+            <div class="window" id="d-window">
+                <div class="chrome"><span class="url">https://www.brucespringsteen.it/DB/records.aspx?tipe=-1,0,…&amp;sort=0&amp;addon=0</span><span class="pt">bs-records</span></div>
+                <div class="sitebody" style="position:relative">
+                    <div class="sitebar">
+                        <h4>Unofficial records</h4>
+                        <label class="count" for="d-filter">Filter</label>
+                        <input id="d-filter" type="search" placeholder="try: Wembley, Zurich, CD-R">
+                        <span class="count" id="d-count">8 of 8 rows</span>
+                    </div>
+                    <table class="tbl" id="tbl-d-bs"></table>
+                    <div class="legend">
+                        <span><b>📄︎</b> not loaded</span><span><b>⋯</b> queued</span><span><b>◌</b> loading</span><span><b>–</b> nothing on the page</span><span><b>⚠︎</b> failed, hover for <b>⟳</b> retry</span>
+                    </div>
+                    <div class="legend">Shown at about 3× real speed; the real gate allows one page every 1.1 s.</div>
+                </div>
+            </div>
+            <aside class="notes">
+                <div class="try"><b>Try it</b><span>Press <b>▶📄</b>, wait for one ⚠︎, click it to retry, then type <i>Wembley</i> in the filter or open 📊 on Source show.</span></div>
+                <div class="note"><span class="lbl">Columns per site</span>
+                    <ul>
+                        <li><b>sl</b>: Tracks, Discs, Lineage, Scans</li>
+                        <li><b>jl</b>: Uploader, Covers</li>
+                        <li><b>bs</b>: Recorded, Source show, Tracks, Notes</li>
+                        <li><b>bb</b>: Origin, Played live, Last played, Releases</li>
+                    </ul>
+                </div>
+                <div class="note"><span class="lbl">The rules it must follow</span><p>Never add or remove a <code>&lt;td&gt;</code>; only fill cells that already exist. Write to the master rows too. After each write: clear the 📊 cache, the filter cache and <code>_rowTextCache</code>, and re-run <code>runFilter()</code>.</p></div>
+                <div class="note"><span class="lbl">How long a load takes</span>
+                    <div class="calc">
+                        <label for="calc-site">Table</label>
+                        <select id="calc-site">
+                            <option value="100">sl-bootlegs, one page (100)</option>
+                            <option value="1878">bs-records unofficial (1,878)</option>
+                            <option value="1186">bs-records official (1,186)</option>
+                            <option value="1679">bb-songs (1,679)</option>
+                            <option value="5839">jl-list (5,839)</option>
+                        </select>
+                        <output id="calc-out" for="calc-site"></output>
+                    </div>
+                    <p>Rows already in the cache cost nothing, so a second visit is instant. Above a threshold the group starts collapsed, as <code>sa_rel_collapse_threshold</code> does for Relationships.</p>
+                </div>
+            </aside>
+        </div>
+    </section>
+
+    <!-- ================= E: INLINE ROW ================= -->
+    <section class="panel" id="inline-p" role="tabpanel" aria-labelledby="t-inline" hidden>
+        <div class="panel-head">
+            <h2>E · Inline expand row: not recommended</h2>
+            <p>Opening a ▶ under the row to show the tracklist feels natural, but an extra <code>&lt;tr&gt;</code> inside the table's <code>tbody</code> breaks assumptions the table code relies on everywhere.</p>
+        </div>
+        <div class="bench">
+            <div class="window">
+                <div class="chrome"><span class="url">sl-bootlegs, before and after sorting by Date</span><span class="pt">illustration</span></div>
+                <div class="sitebody">
+                    <div class="e-grid">
+                        <div><div class="e-cap">Expanded, unsorted</div><table class="tbl" id="tbl-e1"></table></div>
+                        <div><div class="e-cap">After a sort: the detail row lands under the wrong show</div><table class="tbl" id="tbl-e2"></table></div>
+                    </div>
+                </div>
+            </div>
+            <aside class="notes">
+                <div class="breaks">
+                    <div class="break"><span class="x">✕</span><b>Sorting</b><p><code>sortLargeArray()</code> reorders source rows. A detail row is not one of them, so it stays where it was or is dropped.</p></div>
+                    <div class="break"><span class="x">✕</span><b>Re-rendering</b><p><code>renderGroupedTable()</code> clones its source rows, so a detail row added to the live table is gone after the next filter.</p></div>
+                    <div class="break"><span class="x">✕</span><b>Counting and filtering</b><p>Row counts, <code>runFilter()</code> and the 📊 tallies would count the detail row as a record.</p></div>
+                    <div class="break"><span class="x">✕</span><b>Column indexes</b><p>A full-width <code>colspan</code> cell has none of the indexes the column extractors and the sticky column expect.</p></div>
+                </div>
+                <div class="note"><span class="lbl">The safe version</span><p>Put the tracklist inside a cell of D's column group as a multi-row <code>ul&gt;li</code> with the existing ▶ collapse toggle. The cell lives on the source row, so sorting, cloning and filtering all keep working.</p></div>
+            </aside>
+        </div>
+    </section>
+</div>
+
+<div id="peek" class="liner" role="tooltip" aria-hidden="true"></div>
+<div id="pin" role="dialog" aria-modal="false" aria-labelledby="pin-title">
+    <div class="pin-bar" id="pin-bar">
+        <span class="t" id="pin-title"></span>
+        <span class="pos" id="pin-pos"></span>
+        <button class="ibtn" id="pin-prev" aria-label="Previous row">‹</button>
+        <button class="ibtn" id="pin-next" aria-label="Next row">›</button>
+        <button class="ibtn" id="pin-close" aria-label="Close">✕</button>
+    </div>
+    <div class="pin-tools">
+        <div class="seg" role="group" aria-label="View">
+            <button id="v-ex" aria-pressed="true">Extracted</button>
+            <button id="v-live" aria-pressed="false">Live page</button>
+        </div>
+        <label id="nav-lbl" hidden><input type="checkbox" id="hide-nav" checked> Hide site navigation</label>
+        <span id="pin-src"></span>
+    </div>
+    <div class="pin-body" id="pin-body"></div>
+    <div class="pin-foot"><span><kbd>←</kbd> <kbd>→</kbd> rows</span><span><kbd>Esc</kbd> close</span><span>Drag the title bar, resize from the corner</span><span id="pin-cache"></span></div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const DATA = {"bb_4th":{"fields":[["Origin","Track 2 of The Wild, The Innocent & The E Street Shuffle, 1973."],["Performed live","280"],["Last played","2024-09-15 Beach, Surf Stage, Asbury Park, NJ"]],"tracks":[],"notes":[],"images":[],"title":"4th Of July, Asbury Park (Sandy)","releases":[["The Wild, The Innocent & The E Street Shuffle","1973"],["The Essential","2003"],["Chapter And Verse","2016"],["Best Of","2024"]],"bytes":82189},"bb_backstreets":{"fields":[["Origin","Track 4 of Born To Run, 1975."],["Performed live","616"],["Last played","2024-11-22 Rogers Arena, Vancouver, BC"]],"tracks":[],"notes":[],"images":[],"title":"Backstreets","releases":[["Born To Run","1975"]],"bytes":97470},"bb_incident":{"fields":[["Origin","Track 5 of The Wild, The Innocent & The E Street Shuffle, 1973."],["Performed live","151"],["Last played","2017-01-22 Perth Arena, Perth, Western Australia, Australia"]],"tracks":[],"notes":[],"images":[],"title":"Incident On 57th Street","releases":[["The Wild, The Innocent & The E Street Shuffle","1973"]],"bytes":64972},"bb_jungleland":{"fields":[["Origin","Track 8 of Born To Run, 1975."],["Performed live","642"],["Last played","2024-11-22 Rogers Arena, Vancouver, BC"]],"tracks":[],"notes":[],"images":[],"title":"Jungleland","releases":[["Born To Run","1975"],["The Essential","2003"]],"bytes":87049},"bb_rosalita":{"fields":[["Origin","Track 6 of The Wild, The Innocent & The E Street Shuffle, 1973."],["Performed live","875"],["Last played","2024-11-06 Scotiabank Arena, Toronto, ON"]],"tracks":[],"notes":[],"images":[],"title":"Rosalita (Come Out Tonight)","releases":[["The Wild, The Innocent & The E Street Shuffle","1973"],["The Essential","2003"],["Greatest Hits","2009"],["Collection:1973–2012","2013"],["Best Of","2024"]],"bytes":97725},"bb_thunder":{"fields":[["Origin","Track 1 of Born To Run, 1975."],["Performed live","1587"],["Last played","2026-04-18 Pollak Theatre, Monmouth University, West Long Branch, NJ"]],"tracks":[],"notes":[],"images":[],"title":"Thunder Road","releases":[["Born To Run","1975"],["Greatest Hits","1995"],["The Essential","2003"],["Greatest Hits","2009"],["Collection:1973–2012","2013"],["Best Of","2024"]],"bytes":115106},"bs_CD11":{"fields":[["Support","3 CD"],["Matrix","BSGR 21/22/23"],["Producer","Gamble Records"],["Vinyl","CD"]],"tracks":[["1","1/1","The promised land","Vienna,Stadthalle(Austria) 24-Apr-1999"],["1","1/2","Two hearts","Vienna,Stadthalle(Austria) 24-Apr-1999"],["1","1/3","Prove it all night","Vienna,Stadthalle(Austria) 24-Apr-1999"],["1","1/4","Rendezvous","Vienna,Stadthalle(Austria) 24-Apr-1999"],["1","1/5","Darkness on the edge of town","Vienna,Stadthalle(Austria) 24-Apr-1999"],["1","1/6","Mansion on the hill","Vienna,Stadthalle(Austria) 24-Apr-1999"],["1","1/7","The river","Vienna,Stadthalle(Austria) 24-Apr-1999"],["1","1/8","Youngstown","Vienna,Stadthalle(Austria) 24-Apr-1999"],["1","1/9","Murder inc.","Vienna,Stadthalle(Austria) 24-Apr-1999"],["1","1/10","Badlands","Vienna,Stadthalle(Austria) 24-Apr-1999"],["1","1/11","Darlington county","Vienna,Stadthalle(Austria) 24-Apr-1999"],["1","1/12","10th avenue freeze-out","Vienna,Stadthalle(Austria) 24-Apr-1999"],["2","2/2","Dollhouse","Vienna,Stadthalle(Austria) 24-Apr-1999"],["2","2/3","Cadillac ranch","Vienna,Stadthalle(Austria) 24-Apr-1999"],["2","2/4","Working on the highway","Vienna,Stadthalle(Austria) 24-Apr-1999"],["2","2/5","The ghost of Tom Joad","Vienna,Stadthalle(Austria) 24-Apr-1999"],["2","2/6","Jungleland","Vienna,Stadthalle(Austria) 24-Apr-1999"],["2","2/7","Light of day","Vienna,Stadthalle(Austria) 24-Apr-1999"],["2","2/8","Out in the street","Vienna,Stadthalle(Austria) 24-Apr-1999"],["2","2/9","Hungry heart","Vienna,Stadthalle(Austria) 24-Apr-1999"],["2","2/10","Thunder road","Vienna,Stadthalle(Austria) 24-Apr-1999"],["2","2/11","Born to run","Vienna,Stadthalle(Austria) 24-Apr-1999"],["2","2/12","If I should fall behind","Vienna,Stadthalle(Austria) 24-Apr-1999"],["3","3/1","Land of hope and dreams","Vienna,Stadthalle(Austria) 24-Apr-1999"],["3","3/2","10th avenue freeze-out","New York,NY,Waldorf Astoria Hotel(USA) 16-Mar-1999"],["3","3/3","The promised land","New York,NY,Waldorf Astoria Hotel(USA) 16-Mar-1999"],["3","3/4","In the midnight hour","New York,NY,Waldorf Astoria Hotel(USA) 16-Mar-1999"],["3","3/5","Working on the highway","New York,NY,NBC TV Studios(USA) 26-Feb-1999"],["3","3/6","Give my love to Rose","Asbury Park,NJ,????(USA) 06-Mar-1999"]],"notes":["Track 3-7 is a CD-ROM track with some videos (5) from 1999 shows."],"images":[],"title":"1999","bytes":7233},"bs_CD2DIMP1":{"fields":[["Support","1 CD"],["Matrix","HH 124"],["Producer","High hopes Records"],["Vinyl","CD"]],"tracks":[["1","1/1","Roulette","Album release,b-sides, bonus trk of TOL(USA) 05-Sep-1987"],["1","1/2","Viva Las Vegas","Album release,b-sides, bonus trk of TOL(USA) 05-Sep-1987"],["1","1/3","Johnny bye bye","Album release,b-sides, bonus trk of BITUSA(USA) 04-Jun-1984"],["1","1/4","Merry Christmas baby","Uniondale,NY,Nassau Coliseum(USA) 31-Dec-1980"],["1","1/5","Stand on it","Album release,b-sides, bonus trk of BITUSA(USA) 04-Jun-1984"],["1","1/6","Gypsy woman","Album release,b-sides, bonus trk of TGOTJ(USA) 16-Nov-1995"],["1","1/7","Lucky Man","Album release,b-sides, bonus trk of TOL(USA) 05-Sep-1987"],["1","1/8","Vigilante man","New York,NY,Madison Square Garden(USA) 19-May-1988"],["1","1/9","Dead man walking","Album release,b-sides, bonus trk of TGOTJ(USA) 16-Nov-1995"],["1","1/10","Pink cadillac","Album release,b-sides, bonus trk of BITUSA(USA) 04-Jun-1984"],["1","1/11","Part man part monkey","Album release,b-sides, bonus trk of HT/LT(USA) 28-Mar-1992"],["1","1/12","Shut out the light","Album release,b-sides, bonus trk of BITUSA(USA) 04-Jun-1984"],["1","1/13","Missing","Album release,b-sides, bonus trk of TGOTJ(USA) 16-Nov-1995"],["1","1/14","The big payback","Album release,b-sides of Nebraska(USA) 20-Sep-1982"],["1","1/15","Two for the road","Album release,b-sides, bonus trk of TOL(USA) 05-Sep-1987"],["1","1/16","Chicken lips and lizard hips","Album release,b-sides, bonus trk of TOL(USA) 05-Sep-1987"],["1","1/17","Be true","Album release,b-sides, bonus trk of RIVER(USA) 10-Oct-1980"],["1","1/18","Held up without a gun","Album release,b-sides, bonus trk of RIVER(USA) 10-Oct-1980"],["1","1/19","Chain smokin'","Unknown,Unknown(Unknown) 23-Sep-1949"],["1","1/20","30 days out","Album release,b-sides, bonus trk of HT/LT(USA) 28-Mar-1992"],["1","1/21","Janey, don't you lose heart","Album release,b-sides, bonus trk of BITUSA(USA) 04-Jun-1984"],["1","1/22","57 channels (and nothin' on)","Album release,b-sides, bonus trk of HT/LT(USA) 28-Mar-1992"]],"notes":["Another pretty useless copy of the material of ANOTHER SIDE OF BRUCE SPRINGSTEEN and / or BACKSIDES. Never heard to it so I don't know if it has been reassembled or copied from one of the above."],"images":[],"title":"22 DIAMONDS IN MY POCKET","bytes":8142},"bs_CDTYLHSSTB1":{"fields":[["Support","3 CD"],["Matrix","ON TOUR20211"],["Producer","Red line"],["Vinyl","CD"]],"tracks":[["1","1/1","Darkness on the edge of town","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["1","1/2","Mansion on the hill","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["1","1/3","This hard land","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["1","1/4","Better days","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["1","1/5","Lucky town","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["1","1/6","57 channels (and nothin' on)","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["1","1/7","Trapped","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["1","1/8","Badlands","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["1","1/9","Living proof","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["1","1/10","Many rivers to cross","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["1","1/11","My hometown","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["1","1/12","Leap of faith","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["1","1/13","Man's job","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["1","1/14","Roll of the dice","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["2","2/1","The promised land","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["2","2/2","Gloria's eyes","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["2","2/3","Prove it all night","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["2","2/4","Human touch","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["2","2/5","The river","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["2","2/6","Souls of the departed","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["2","2/7","Born in the USA","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["2","2/8","Light of day","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["2","2/9","Hungry heart","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["2","2/10","Glory days","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["2","2/11","Thunder road","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["3","3/1","Born to run","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["3","3/2","My beautiful reward","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["3","3/3","Working on the highway","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"]],"notes":["Cartoon package with the standard CD box inside. The 3rd CD is actually a Mini CD. Red line / On Tour production. Good audience quality and nice colour package."],"images":[],"title":"12 YEARS LATER HE'S STILL THE BOSS","bytes":7019},"bs_CR1AD1":{"fields":[["Support","2 CD-R"],["Matrix","2211/12"],["Producer","Anubis Records"],["Vinyl","CD"]],"tracks":[["1","1/1","Thunder road","Tampa,FL,Jai Alai(USA) 10-Nov-1975"],["1","1/2","10th avenue freeze-out","Tampa,FL,Jai Alai(USA) 10-Nov-1975"],["1","1/3","Spirit in the night","Tampa,FL,Jai Alai(USA) 10-Nov-1975"],["1","1/4","The 'E' street shuffle","Tampa,FL,Jai Alai(USA) 10-Nov-1975"],["1","1/5","She's the one","Tampa,FL,Jai Alai(USA) 10-Nov-1975"],["1","1/6","Born to run","Tampa,FL,Jai Alai(USA) 10-Nov-1975"],["1","1/7","4th of July, Asbury Park (Sandy)","Tampa,FL,Jai Alai(USA) 10-Nov-1975"],["2","2/1","It's hard to be a saint in the city","Tampa,FL,Jai Alai(USA) 10-Nov-1975"],["2","2/2","Backstreets","Tampa,FL,Jai Alai(USA) 10-Nov-1975"],["2","2/3","Kitty's back","Tampa,FL,Jai Alai(USA) 10-Nov-1975"],["2","2/4","Jungleland","Tampa,FL,Jai Alai(USA) 10-Nov-1975"],["2","2/5","Rosalita (Come out tonight)","Tampa,FL,Jai Alai(USA) 10-Nov-1975"],["2","2/6","Detroit Medley","Tampa,FL,Jai Alai(USA) 10-Nov-1975"],["2","2/7","Quarter to three","Tampa,FL,Jai Alai(USA) 10-Nov-1975"]],"notes":["Date on package is wrong. Fine package. Full show."],"images":[],"title":"1001 AMERICAN DREAMS","bytes":4996},"bs_CR1YLHSQG1":{"fields":[["Support","2 CD-R"],["Matrix","DBM 209/210"],["Producer","Doberman"],["Vinyl","CD"]],"tracks":[["1","1/1","Working on the highway","Birmingham,NEC(GB) 16-May-1999"],["1","1/1","My love will not let you down","Birmingham,NEC(GB) 16-May-1999"],["1","1/2","Prove it all night","Birmingham,NEC(GB) 16-May-1999"],["1","1/2","The ghost of Tom Joad","Birmingham,NEC(GB) 16-May-1999"],["1","1/3","Two hearts","Birmingham,NEC(GB) 16-May-1999"],["1","1/3","Born in the USA","Birmingham,NEC(GB) 16-May-1999"],["1","1/4","Darlington county","Birmingham,NEC(GB) 16-May-1999"],["1","1/5","Factory","Birmingham,NEC(GB) 16-May-1999"],["1","1/6","The river","Birmingham,NEC(GB) 16-May-1999"],["1","1/7","Youngstown","Birmingham,NEC(GB) 16-May-1999"],["1","1/8","Murder inc.","Birmingham,NEC(GB) 16-May-1999"],["1","1/9","Badlands","Birmingham,NEC(GB) 16-May-1999"],["1","1/10","Out in the street","Birmingham,NEC(GB) 16-May-1999"],["1","1/11","10th avenue freeze-out","Birmingham,NEC(GB) 16-May-1999"],["1","1/12","Where the bands are","Birmingham,NEC(GB) 16-May-1999"],["2","2/4","War","Birmingham,NEC(GB) 16-May-1999"],["2","2/5","The promised land","Birmingham,NEC(GB) 16-May-1999"],["2","2/6","Backstreets","Birmingham,NEC(GB) 16-May-1999"],["2","2/7","Light of day","Birmingham,NEC(GB) 16-May-1999"],["2","2/8","Streets of Philadelphia","Birmingham,NEC(GB) 16-May-1999"],["2","2/9","Hungry heart","Birmingham,NEC(GB) 16-May-1999"],["2","2/10","Born to run","Birmingham,NEC(GB) 16-May-1999"],["2","2/11","Thunder road","Birmingham,NEC(GB) 16-May-1999"],["2","2/12","If I should fall behind","Birmingham,NEC(GB) 16-May-1999"],["2","2/13","Land of hope and dreams","Birmingham,NEC(GB) 16-May-1999"]],"notes":["Full show."],"images":[],"title":"18 YEARS LATER HE'S STILL QUITE GOOD..","bytes":6498},"bs_DV1YLHSTB1":{"fields":[["Support","2 DVD"],["Matrix","?"],["Producer","July4th 1985"],["Vinyl","CD"]],"tracks":[["1","1/1","Darkness on the edge of town","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["1","1/2","Mansion on the hill","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["1","1/3","This hard land","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["1","1/4","Better days","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["1","1/5","Lucky town","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["1","1/6","57 channels (and nothin' on)","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["1","1/7","Trapped","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["1","1/8","Badlands","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["1","1/9","Living proof","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["1","1/10","Many rivers to cross","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["1","1/11","My hometown","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["1","1/12","Leap of faith","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["2","2/1","Man's job","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["2","2/2","Roll of the dice","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["2","2/3","The promised land","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["2","2/4","Gloria's eyes","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["2","2/5","Prove it all night","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["2","2/6","Human touch","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["2","2/7","The river","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["2","2/8","Souls of the departed","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["2","2/9","Born in the USA","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["2","2/10","Light of day","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["2","2/11","Hungry heart","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["2","2/12","Glory days","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["2","2/13","Thunder road","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["2","2/14","Born to run","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["2","2/15","My beautiful reward","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"],["2","2/16","Working on the highway","Zurich,Hallenstadion(Switzerland) 07-Apr-1993"]],"notes":[],"images":[],"title":"12 YEARS LATER HE'S STILL THE BOSS","bytes":6836},"bs_LP1B1":{"fields":[["Support","2 LP"],["Matrix","5646"],["Producer","Zebra Records"],["Vinyl","Black"]],"tracks":[["1","1/1","Racing in the street","Passaic,NJ,Capitol Theatre(USA) 19-Sep-1978"],["1","1/2","Thunder road","Passaic,NJ,Capitol Theatre(USA) 19-Sep-1978"],["1","1/3","Meeting across the river","Passaic,NJ,Capitol Theatre(USA) 19-Sep-1978"],["1","1/4","Jungleland","Passaic,NJ,Capitol Theatre(USA) 19-Sep-1978"],["2","2/1","Kitty's back","Passaic,NJ,Capitol Theatre(USA) 19-Sep-1978"],["2","2/2","Badlands","Passaic,NJ,Capitol Theatre(USA) 19-Sep-1978"],["2","2/3","Streets of fire","Passaic,NJ,Capitol Theatre(USA) 19-Sep-1978"],["3","3/1","Spirit in the night","Passaic,NJ,Capitol Theatre(USA) 19-Sep-1978"],["3","3/2","Darkness on the edge of town","Passaic,NJ,Capitol Theatre(USA) 19-Sep-1978"],["3","3/3","Independence day","Passaic,NJ,Capitol Theatre(USA) 19-Sep-1978"],["3","3/4","The promised land","Passaic,NJ,Capitol Theatre(USA) 19-Sep-1978"],["4","4/1","Prove it all night","Passaic,NJ,Capitol Theatre(USA) 19-Sep-1978"],["4","4/2","Raise your hand","Passaic,NJ,Capitol Theatre(USA) 19-Sep-1978"],["4","4/3","Born to run","Passaic,NJ,Capitol Theatre(USA) 19-Sep-1978"],["4","4/4","Because the night","Passaic,NJ,Capitol Theatre(USA) 19-Sep-1978"]],"notes":["B&W&red insert cover\n\nThe cover states 30-Aug-1978. It is impossible. That show setlist has still to be recovered and it is very unlikely that this record can contain songs from that night.\n\nI have never seen the record, but assuming that the songs are all from the same night, the only feasible show is 19-Sep-1978, which also present the same song sequencing."],"images":[],"title":"1980 BOSTON","bytes":5547},"bs_LP1BF1":{"fields":[["Support","3 LP"],["Matrix","CNT 101-2-3"],["Producer","Unknown"],["Vinyl","Black"]],"tracks":[["1","1/1","Prove it all night","London,Wembley Arena(GB) 30-May-1981"],["1","1/2","The ties that bind","London,Wembley Arena(GB) 30-May-1981"],["1","1/3","Out in the street","London,Wembley Arena(GB) 29-May-1981"],["2","2/1","Darkness on the edge of town","London,Wembley Arena(GB) 29-May-1981"],["2","2/2","Independence day","London,Wembley Arena(GB) 29-May-1981"],["3","3/1","Johnny bye bye","London,Wembley Arena(GB) 29-May-1981"],["3","3/2","Jackson cage","London,Wembley Arena(GB) 30-May-1981"],["3","3/3","Trapped","London,Wembley Arena(GB) 29-May-1981"],["3","3/4","Two hearts","London,Wembley Arena(GB) 29-May-1981"],["4","4/1","The promised land","London,Wembley Arena(GB) 29-May-1981"],["4","4/2","This land is your land","London,Wembley Arena(GB) 29-May-1981"],["4","4/3","Badlands","London,Wembley Arena(GB) 29-May-1981"],["5","5/1","Thunder road","London,Wembley Arena(GB) 29-May-1981"],["5","5/2","Cadillac ranch","London,Wembley Arena(GB) 29-May-1981"],["6","6/1","You can look (but you better not touch)","London,Wembley Arena(GB) 29-May-1981"],["6","6/2","Sherry darling","London,Wembley Arena(GB) 29-May-1981"],["6","6/3","Hungry heart","London,Wembley Arena(GB) 29-May-1981"],["6","6/4","Fire","London,Wembley Arena(GB) 29-May-1981"]],"notes":["First release with CENT/CNT matrix, in box Set, with b/w insert and black vinyl.\n\nRE-released, always in box set and with same insert, but colour vinyl. \n\nThird re-release was in sleeve edition and contained only 2 of the 3 records by random choice. \n\nVery poor sound."],"images":[],"title":"1981 BOX FILE","bytes":6187},"jl_19750205":{"fields":[["Date","1975-02-05"],["Uploader","eztadmin"]],"tracks":[],"notes":[],"images":["front","back","cd1","cd2","booklet1","booklet2","booklet3","booklet4","booklet5","booklet6"],"title":"Main Point Night","bytes":2902},"jl_19750802_2":{"fields":[["Date","1975-08-02"],["Uploader","earlmv"]],"tracks":[],"notes":[],"images":["front","back"],"title":"Live In Norfolk '75 (Version 2)","bytes":1583},"jl_19750926_2":{"fields":[["Date","1975-09-26"],["Uploader","night"]],"tracks":[],"notes":[],"images":["front","back"],"title":"Iowa Shuffle (Version 2)","bytes":1575},"jl_19751109_2":{"fields":[["Date","1975-11-09"],["Uploader","henkie"]],"tracks":[],"notes":[],"images":["front","back"],"title":"and Jack Knife cried (Version 2)","bytes":1584},"jl_19751212_3":{"fields":[["Date","1975-12-12"],["Uploader","Lobbezoo"]],"tracks":[],"notes":[],"images":["front","back"],"title":"Greenvale (Soundcheck) (Version 3)","bytes":1588},"jl_19760413":{"fields":[["Date","1976-04-13"],["Uploader","brucelegs"]],"tracks":[],"notes":[],"images":["front","back"],"title":"Penn State University","bytes":1568},"jl_19760930":{"fields":[["Date","1976-09-30"],["Uploader","Olli2605"]],"tracks":[],"notes":[],"images":["front","back"],"title":"Santa Monica - 30 September 1976","bytes":1578},"jl_19761010":{"fields":[["Date","1976-10-10"],["Uploader","Olli2605"]],"tracks":[],"notes":[],"images":["front","back"],"title":"Oxford, Ohio - 1976","bytes":1565},"sl_1277":{"fields":[["Version","Mauro R. / hrubesh version (master)"],["Date","05 Jul 2016"],["Location","Stadio Giuseppe Meazza, Milan, Italy"],["Format","FLAC"],["Duration","217:51.34"]],"tracks":[["Disc 1","01","Intro music"],["Disc 1","02","MEET ME IN THE CITY"],["Disc 1","03","PROVE IT ALL NIGHT"],["Disc 1","04","ROULETTE"],["Disc 1","05","THE TIES THAT BIND"],["Disc 1","06","SHERRY DARLING"],["Disc 1","07","SPIRIT IN THE NIGHT"],["Disc 1","08","ROSALITA (COME OUT TONIGHT)"],["Disc 1","09","FIRE"],["Disc 1","10","SOMETHING IN THE NIGHT"],["Disc 1","11","HUNGRY HEART"],["Disc 1","12","OUT IN THE STREET"],["Disc 1","13","MARY'S PLACE"],["Disc 1","14","DEATH TO MY HOMETOWN"],["Disc 2","01","THE RIVER"],["Disc 2","02","RACING IN THE STREET"],["Disc 2","03","CADILLAC RANCH"],["Disc 2","04","THE PROMISED LAND"],["Disc 2","05","I'M A ROCKER"],["Disc 2","06","LONESOME DAY"],["Disc 2","07","DARLINGTON COUNTY"],["Disc 2","08","THE PRICE YOU PAY"],["Disc 2","09","BECAUSE THE NIGHT"],["Disc 2","10","STREETS OF FIRE"],["Disc 2","11","THE RISING"],["Disc 2","12","BADLANDS"],["Disc 3","01","BACKSTREETS"],["Disc 3","02","BORN TO RUN"],["Disc 3","03","SEVEN NIGHTS TO ROCK"],["Disc 3","04","DANCING IN THE DARK"],["Disc 3","05","TENTH AVENUE FREEZE-OUT"],["Disc 3","06","SHOUT"],["Disc 3","07","BOBBY JEAN"],["Disc 3","08","THIS HARD LAND"],["Disc 3","09","Outro music"]],"notes":[],"images":["bootlegs/aud_live2014/1277_artwork_01_tn.jpg","bootlegs/aud_live2014/1277_artwork_02_tn.jpg","bootlegs/aud_live2014/1277_artwork_03_tn.jpg","bootlegs/aud_live2014/1277_artwork_04_tn.jpg","bootlegs/aud_live2014/1277_artwork_05_tn.jpg","bootlegs/aud_live2014/1277_artwork_06_tn.jpg"],"title":"[no title]","infofile":true,"bytes":41152},"sl_1278":{"fields":[["Version","Mauro R. / hrubesh version (mix)"],["Date","05 Jul 2016"],["Location","Stadio Giuseppe Meazza, Milan, Italy"],["Format","FLAC"],["Duration","217:51.34"]],"tracks":[["Disc 1","01","Intro music"],["Disc 1","02","MEET ME IN THE CITY"],["Disc 1","03","PROVE IT ALL NIGHT"],["Disc 1","04","ROULETTE"],["Disc 1","05","THE TIES THAT BIND"],["Disc 1","06","SHERRY DARLING"],["Disc 1","07","SPIRIT IN THE NIGHT"],["Disc 1","08","ROSALITA (COME OUT TONIGHT)"],["Disc 1","09","FIRE"],["Disc 1","10","SOMETHING IN THE NIGHT"],["Disc 1","11","HUNGRY HEART"],["Disc 1","12","OUT IN THE STREET"],["Disc 1","13","MARY'S PLACE"],["Disc 1","14","DEATH TO MY HOMETOWN"],["Disc 2","01","THE RIVER"],["Disc 2","02","RACING IN THE STREET"],["Disc 2","03","CADILLAC RANCH"],["Disc 2","04","THE PROMISED LAND"],["Disc 2","05","I'M A ROCKER"],["Disc 2","06","LONESOME DAY"],["Disc 2","07","DARLINGTON COUNTY"],["Disc 2","08","THE PRICE YOU PAY"],["Disc 2","09","BECAUSE THE NIGHT"],["Disc 2","10","STREETS OF FIRE"],["Disc 2","11","THE RISING"],["Disc 2","12","BADLANDS"],["Disc 3","01","BACKSTREETS"],["Disc 3","02","BORN TO RUN"],["Disc 3","03","SEVEN NIGHTS TO ROCK"],["Disc 3","04","DANCING IN THE DARK"],["Disc 3","05","TENTH AVENUE FREEZE-OUT"],["Disc 3","06","SHOUT"],["Disc 3","07","BOBBY JEAN"],["Disc 3","08","THIS HARD LAND"],["Disc 3","09","Outro music"]],"notes":[],"images":["bootlegs/aud_live2014/1278_artwork_01_tn.jpg","bootlegs/aud_live2014/1278_artwork_02_tn.jpg","bootlegs/aud_live2014/1278_artwork_03_tn.jpg","bootlegs/aud_live2014/1278_artwork_04_tn.jpg","bootlegs/aud_live2014/1278_artwork_05_tn.jpg","bootlegs/aud_live2014/1278_artwork_06_tn.jpg"],"title":"[no title]","infofile":true,"bytes":41128},"sl_1331":{"fields":[["Version","Dario Regis version"],["Date","03 Jul 2016"],["Location","Stadio Giuseppe Meazza, Milan, Italy"],["Format","MP3"],["Duration","3:44:16"]],"tracks":[["","","LAND OF HOPE AND DREAMS"],["","","THE TIES THAT BIND"],["","","SHERRY DARLING"],["","","SPIRIT IN THE NIGHT"],["","","MY LOVE WILL NOT LET YOU DOWN"],["","","JACKSON CAGE"],["","","TWO HEARTS"],["","","INDEPENDENCE DAY"],["","","HUNGRY HEART"],["","","OUT IN THE STREET"],["","","CRUSH ON YOU"],["","","LUCILLE"],["","","YOU CAN LOOK (BUT YOU BETTER NOT TOUCH)"],["","","DEATH TO MY HOMETOWN"],["","","THE RIVER"],["","","POINT BLANK"],["","","TRAPPED"],["","","THE PROMISED LAND"],["","","I'M A ROCKER"],["","","LUCKY TOWN"],["","","WORKING ON THE HIGHWAY"],["","","DARLINGTON COUNTY"],["","","I'M ON FIRE"],["","","DRIVE ALL NIGHT"],["","","BECAUSE THE NIGHT"],["","","THE RISING"],["","","BADLANDS"],["","","JUNGLELAND"],["","","BORN IN THE U.S.A."],["","","BORN TO RUN"],["","","RAMROD"],["","","DANCING IN THE DARK"],["","","TENTH AVENUE FREEZE-OUT"],["","","SHOUT"],["","","THUNDER ROAD"],["","","One mp3 file 192kbps"]],"notes":[],"images":[],"title":"[no title]","infofile":false,"bytes":39047,"unnumbered":true},"sl_1332":{"fields":[["Version","Dario Regis version"],["Date","05 Jul 2016"],["Location","Stadio Giuseppe Meazza, Milan, Italy"],["Format","MP3"],["Duration","3:37:49"]],"tracks":[["","","MEET ME IN THE CITY"],["","","PROVE IT ALL NIGHT"],["","","ROULETTE"],["","","THE TIES THAT BIND"],["","","SHERRY DARLING"],["","","SPIRIT IN THE NIGHT"],["","","ROSALITA (COME OUT TONIGHT)"],["","","FIRE"],["","","SOMETHING IN THE NIGHT"],["","","HUNGRY HEART"],["","","OUT IN THE STREET"],["","","MARY'S PLACE"],["","","DEATH TO MY HOMETOWN"],["","","THE RIVER"],["","","RACING IN THE STREET"],["","","CADILLAC RANCH"],["","","THE PROMISED LAND"],["","","I'M A ROCKER"],["","","LONESOME DAY"],["","","DARLINGTON COUNTY"],["","","THE PRICE YOU PAY"],["","","BECAUSE THE NIGHT"],["","","STREETS OF FIRE"],["","","THE RISING"],["","","BADLANDS"],["","","BACKSTREETS"],["","","BORN TO RUN"],["","","SEVEN NIGHTS TO ROCK"],["","","DANCING IN THE DARK"],["","","TENTH AVENUE FREEZE-OUT"],["","","SHOUT"],["","","BOBBY JEAN"],["","","THIS HARD LAND"],["","","One mp3 file 192kbps"]],"notes":[],"images":[],"title":"[no title]","infofile":false,"bytes":39004,"unnumbered":true},"sl_2045":{"fields":[["Version","Rockawaythedays version"],["Date","14 May 2016"],["Location","Camp Nou, Barcelona, Spain"],["Format","FLAC"],["Duration","215:45.22"]],"tracks":[["","01","Intro"],["","02","BADLANDS"],["","03","NO SURRENDER"],["","04","MY LOVE WILL NOT LET YOU DOWN"],["","05","THE TIES THAT BIND"],["","06","SHERRY DARLING"],["","07","JACKSON CAGE"],["","08","TWO HEARTS"],["","09","I'M GOIN' DOWN"],["","10","HUNGRY HEART"],["","11","OUT IN THE STREET"],["","12","I WANNA MARRY YOU"],["","13","THE RIVER"],["","14","POINT BLANK"],["","15","ATLANTIC CITY"],["","16","DARLINGTON COUNTY"],["","17","GLORY DAYS"],["","18","I WANNA BE WITH YOU"],["","19","RAMROD"],["","20","THE PRICE YOU PAY"],["","21","DRIVE ALL NIGHT"],["","22","LONESOME DAY"],["","23","PROVE IT ALL NIGHT"],["","24","THE PROMISED LAND"],["","25","BECAUSE THE NIGHT"],["","26","SHE'S THE ONE"],["","27","BRILLIANT DISGUISE"],["","28","THE RISING"],["","29","THUNDER ROAD"],["","30","PURPLE RAIN"],["","31","BORN IN THE U.S.A."],["","32","BORN TO RUN"],["","33","DANCING IN THE DARK"],["","34","TENTH AVENUE FREEZE-OUT"],["","35","SHOUT"],["","36","BOBBY JEAN"],["","37","TWIST AND SHOUT"]],"notes":[],"images":[],"title":"[no title]","infofile":true,"bytes":39607},"sl_6739":{"fields":[["Version","Asbury Park Discs"],["Date","05 Feb 2014"],["Location","Perth Arena, Perth, Australia"],["Format","–"],["Duration","–"]],"tracks":[["Disc 1","01","Intro"],["Disc 1","02","FRANKIE FELL IN LOVE"],["Disc 1","03","HIGH HOPES"],["Disc 1","04","JUST LIKE FIRE WOULD"],["Disc 1","05","BADLANDS"],["Disc 1","06","HUNGRY HEART"],["Disc 1","07","THE E STREET SHUFFLE"],["Disc 1","08","KITTY'S BACK"],["Disc 1","09","WRECKING BALL"],["Disc 1","10","DEATH TO MY HOMETOWN"],["Disc 1","11","THE RIVER"],["Disc 1","12","HEAVEN'S WALL"],["Disc 2","01","AMERICAN SKIN (41 SHOTS)"],["Disc 2","02","BECAUSE THE NIGHT"],["Disc 2","03","SHE'S THE ONE"],["Disc 2","04","WORKING ON THE HIGHWAY"],["Disc 2","05","DARLINGTON COUNTY"],["Disc 2","06","SHACKLED AND DRAWN"],["Disc 2","07","WAITIN' ON A SUNNY DAY"],["Disc 2","08","FOR YOU"],["Disc 2","09","THE GHOST OF TOM JOAD"],["Disc 3","01","THE RISING"],["Disc 3","02","RAMROD"],["Disc 3","03","BORN TO RUN"],["Disc 3","04","DANCING IN THE DARK"],["Disc 3","05","TENTH AVENUE FREEZE-OUT"],["Disc 3","06","SHOUT"],["Disc 3","07","THUNDER ROAD"]],"notes":["Original Cd-r --> EAC (Secure) --> Waw --> Flac Level 8 & Align"],"images":["bootlegs/aud_live2014/6739_artwork_01_tn.jpg","bootlegs/aud_live2014/6739_artwork_02_tn.jpg","bootlegs/aud_live2014/6739_artwork_03_tn.jpg","bootlegs/aud_live2014/6739_artwork_04_tn.jpg","bootlegs/aud_live2014/6739_artwork_05_tn.jpg"],"title":"First Ever Show In Perth","infofile":false,"bytes":40519}};
+
+/* ------------------------------------------------------------------ util */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const f = (d, k) => (d.fields.find(x => x[0] === k) || [])[1] || '';
+const nf = n => Number(n).toLocaleString('en-US');
+
+function hue(str) {
+    let h = 0;
+    for (const ch of str) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return h % 360;
+}
+/** A stand-in sleeve: the mockup cannot load the sites' images. */
+function sleeve(seed, label, size = '') {
+    const h = hue(seed);
+    const bg = `linear-gradient(135deg, hsl(${h} 42% 34%), hsl(${(h + 40) % 360} 38% 22%))`;
+    const stripe = `repeating-linear-gradient(90deg, transparent 0 9px, hsla(${(h + 180) % 360} 60% 70% / .18) 9px 11px)`;
+    return `<div class="sleeve ${size}" style="background:${stripe},${bg}" title="${esc(label)} (stand-in image)"><span>${esc(label)}</span></div>`;
+}
+let toastT;
+function toast(msg) {
+    const t = $('#toast');
+    t.textContent = msg;
+    t.classList.add('on');
+    clearTimeout(toastT);
+    toastT = setTimeout(() => t.classList.remove('on'), 2200);
+}
+
+/* ------------------------------------------------------------------ rows */
+const ROWS = {
+    bs: ['bs_CR1AD1', 'bs_CDTYLHSSTB1', 'bs_DV1YLHSTB1', 'bs_CR1YLHSQG1', 'bs_LP1B1', 'bs_LP1BF1', 'bs_CD11', 'bs_CD2DIMP1'],
+    bb: ['bb_4th', 'bb_backstreets', 'bb_incident', 'bb_jungleland', 'bb_rosalita', 'bb_thunder'],
+    sl: ['sl_6739', 'sl_1277', 'sl_1278', 'sl_1331', 'sl_1332', 'sl_2045'],
+    jl: ['jl_19750205', 'jl_19750802_2', 'jl_19750926_2', 'jl_19751109_2', 'jl_19751212_3', 'jl_19760413', 'jl_19760930', 'jl_19761010'],
+};
+const URL_OF = k => {
+    const [s, id] = [k.slice(0, 2), k.slice(3)];
+    if (s === 'bs') return `https://www.brucespringsteen.it/DB/detrec.aspx?code=${id}`;
+    if (s === 'sl') return `https://www.springsteenlyrics.com/bootlegs.php?item=${id}&category=aud_live2014`;
+    if (s === 'jl') return `https://www.jungleland.it/html/${id}.htm`;
+    const slug = { '4th': '4th-of-july-asbury-park-sandy', backstreets: 'backstreets', incident: 'incident-on-57th-street', jungleland: 'jungleland', rosalita: 'rosalita-come-out-tonight', thunder: 'thunder-road' }[id];
+    return `https://brucebase.wikidot.com/song:${slug}`;
+};
+
+/** Group bs tracks by source show, keeping first-seen order. */
+function bsSources(d) {
+    const m = new Map();
+    for (const t of d.tracks) m.set(t[3], (m.get(t[3]) || 0) + 1);
+    return [...m];
+}
+function srcParts(s) {
+    const m = s.match(/^(.*?)\s(\d\d-\w{3}-\d{4})$/);
+    return m ? { place: m[1].replace(/,/g, ', ').replace(/\(/, ' (').replace(/\s+/g, ' '), date: m[2] } : { place: s, date: '' };
+}
+function discCount(d) {
+    if (d.key.startsWith('bs')) return new Set(d.tracks.map(t => t[0])).size;
+    return new Set(d.tracks.map(t => t[0])).size || 1;
+}
+
+/* ------------------------------------------------------------------ cards */
+function cardBs(d) {
+    const src = bsSources(d);
+    const shown = d.tracks.slice(0, 6);
+    return `<div class="t">${esc(d.title)}</div>
+        <div class="pills"><span class="pill">${esc(f(d, 'Support'))}</span><span class="pill">${esc(f(d, 'Producer'))}</span><span class="pill">Mx ${esc(f(d, 'Matrix'))}</span></div>
+        <div class="rule"></div>
+        ${src.slice(0, 2).map(([s, n]) => { const p = srcParts(s); return `<div><b>${esc(p.place)}</b> <span class="sub">${esc(p.date)}</span> · ${n} track${n > 1 ? 's' : ''}</div>`; }).join('')}
+        ${src.length > 2 ? `<div class="more">and ${src.length - 2} more source shows</div>` : ''}
+        <ol>${shown.map(t => `<li><span class="p">${esc(t[1])}</span>${esc(t[2])}</li>`).join('')}</ol>
+        ${d.tracks.length > shown.length ? `<div class="more">+ ${d.tracks.length - shown.length} more tracks on ${discCount(d)} disc${discCount(d) > 1 ? 's' : ''}</div>` : ''}
+        ${d.notes[0] ? `<div class="rule"></div><div class="sub">${esc(d.notes[0].length > 170 ? d.notes[0].slice(0, 168) + '…' : d.notes[0])}</div>` : ''}`;
+}
+function cardBb(d) {
+    const rel = d.releases || [];
+    return `<div class="t">${esc(d.title)}</div>
+        <div class="sub">${esc(f(d, 'Origin'))}</div>
+        <div class="stat"><span class="big">${nf(f(d, 'Performed live'))}</span><span>live performances</span></div>
+        <div class="kv"><dt>Last played</dt><dd>${esc(f(d, 'Last played'))}</dd>
+        <dt>On record</dt><dd>${rel.slice(0, 4).map(r => `${esc(r[0])} (${r[1]})`).join(' · ')}${rel.length > 4 ? ` · <span class="more">+${rel.length - 4}</span>` : ''}</dd></div>`;
+}
+function cardSl(d) {
+    const discs = [...new Set(d.tracks.map(t => t[0]).filter(Boolean))];
+    return `<div class="t">${esc(d.title)} <span class="sub">· ${esc(f(d, 'Version'))}</span></div>
+        <div class="kv"><dt>Date</dt><dd>${esc(f(d, 'Date'))}</dd><dt>Location</dt><dd>${esc(f(d, 'Location'))}</dd><dt>Format</dt><dd>${esc(f(d, 'Format'))} · ${esc(f(d, 'Duration'))}</dd></div>
+        <div class="rule"></div>
+        <div><b>${d.tracks.length} tracks</b>${discs.length ? ` on ${discs.length} disc${discs.length > 1 ? 's' : ''}` : ''}${d.unnumbered ? ' <span class="alert">· not numbered</span>' : ''}${d.images.length ? ` · ${d.images.length} artwork scans` : ''}</div>
+        ${d.notes[0] ? `<div class="sub">${esc(d.notes[0])}</div>` : ''}
+        ${d.images.length ? `<div class="tiles">${d.images.slice(0, 5).map((s, i) => sleeve(d.key + i, 'art ' + (i + 1), 'sm')).join('')}</div>` : ''}`;
+}
+function cardJl(d) {
+    return `<div class="t">${esc(d.title)}</div>
+        <div class="kv"><dt>Date</dt><dd>${esc(f(d, 'Date'))}</dd><dt>Uploader</dt><dd>${esc(f(d, 'Uploader'))}</dd></div>
+        <div class="tiles">${d.images.slice(0, 6).map(l => sleeve(d.key + l, l)).join('')}</div>`;
+}
+const CARD = { bs: cardBs, bb: cardBb, sl: cardSl, jl: cardJl };
+
+/* ------------------------------------------------------------- the cache */
+const cache = new Set();   // keys "fetched" in this session
+
+/* ------------------------------------------------------------- A: peek */
+const peek = $('#peek');
+let peekTimer = null, peekKey = null, peekLoadT = null, lastPt = { x: 0, y: 0 }, peekList = null;
+function placePeek() {
+    const r = peek.getBoundingClientRect();
+    let x = lastPt.x + 14, y = lastPt.y + 16;
+    if (x + r.width > innerWidth - 8) x = Math.max(8, lastPt.x - r.width - 14);
+    if (y + r.height > innerHeight - 8) y = Math.max(8, innerHeight - r.height - 8);
+    peek.style.left = x + 'px';
+    peek.style.top = y + 'px';
+}
+function peekFoot(state) {
+    return `<div class="foot"><span class="state ${state}">${state === 'fresh' ? '● fetched now' : '○ from cache'}</span><span><kbd>Space</kbd> pin</span><span><kbd>Esc</kbd> close</span></div>`;
+}
+function showPeek(key) {
+    const d = DATA[key];
+    peekKey = key;
+    peek.classList.add('on');
+    peek.setAttribute('aria-hidden', 'false');
+    document.querySelectorAll('tr.is-peek').forEach(tr => tr.classList.remove('is-peek'));
+    document.querySelector(`tr[data-key="${key}"]`)?.classList.add('is-peek');
+    if (cache.has(key)) {
+        peek.innerHTML = CARD[key.slice(0, 2)](d) + peekFoot('cached');
+        placePeek();
+        return;
+    }
+    peek.innerHTML = `<div class="t">${esc(d.title)}</div><div class="loading"><span class="spin">◌</span> Fetching the detail page…</div>`;
+    placePeek();
+    clearTimeout(peekLoadT);
+    peekLoadT = setTimeout(() => {
+        cache.add(key);
+        if (peekKey === key) { peek.innerHTML = CARD[key.slice(0, 2)](d) + peekFoot('fresh'); placePeek(); }
+    }, 650);
+}
+function hidePeek() {
+    clearTimeout(peekTimer);
+    clearTimeout(peekLoadT);
+    peek.classList.remove('on');
+    peek.setAttribute('aria-hidden', 'true');
+    document.querySelectorAll('tr.is-peek').forEach(tr => tr.classList.remove('is-peek'));
+    peekKey = null;
+}
+document.addEventListener('mouseover', e => {
+    const a = e.target.closest('a[data-peek]');
+    if (!a) return;
+    lastPt = { x: e.clientX, y: e.clientY };
+    clearTimeout(peekTimer);
+    const key = a.dataset.peek;
+    peekList = a.closest('table').id;
+    peekTimer = setTimeout(() => showPeek(key), 400);
+});
+document.addEventListener('mousemove', e => {
+    lastPt = { x: e.clientX, y: e.clientY };
+    if (peek.classList.contains('on')) placePeek();
+});
+document.addEventListener('mouseout', e => {
+    const a = e.target.closest('a[data-peek]');
+    if (a && !a.contains(e.relatedTarget)) hidePeek();
+});
+
+/* ------------------------------------------------------------- B: pin */
+const pin = $('#pin');
+let pinList = [], pinIdx = 0, pinView = 'ex';
+function openPin(key, listId) {
+    hidePeek();
+    const tbl = document.getElementById(listId);
+    pinList = [...tbl.querySelectorAll('tbody tr[data-key]')].map(tr => tr.dataset.key);
+    pinIdx = Math.max(0, pinList.indexOf(key));
+    pin.classList.add('on');
+    renderPin();
+    $('#pin-close').focus({ preventScroll: true });
+}
+function closePin() { pin.classList.remove('on'); }
+function stepPin(n) {
+    if (!pinList.length) return;
+    pinIdx = (pinIdx + n + pinList.length) % pinList.length;
+    renderPin();
+}
+function tracksBlock(d) {
+    if (d.key.startsWith('bs')) {
+        return bsSources(d).map(([s]) => {
+            const p = srcParts(s);
+            const ts = d.tracks.filter(t => t[3] === s);
+            return `<div class="srcgroup"><div class="src">${esc(p.place)} · ${esc(p.date)}</div><ol class="discs-ol">${ts.map(t => `<li><span class="p">${esc(t[1])}</span>${esc(t[2])}</li>`).join('')}</ol></div>`;
+        }).join('');
+    }
+    const groups = new Map();
+    for (const t of d.tracks) { const g = t[0] || 'Tracklist'; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(t); }
+    return `<div class="discs">${[...groups].map(([g, ts]) => `<div><h5>${esc(g)}</h5><ol>${ts.map(t => `<li><span class="p">${esc(t[1] || '·')}</span>${esc(t[2])}</li>`).join('')}</ol></div>`).join('')}</div>`;
+}
+function extractedView(d) {
+    const s = d.key.slice(0, 2);
+    const fields = d.fields.filter(x => x[0] !== 'Origin');
+    const left = `
+        ${s === 'bb' ? `<div class="sub" style="margin-bottom:6px">${esc(f(d, 'Origin'))}</div>` : ''}
+        <h5>Fields</h5>
+        <dl class="kv" style="display:grid;grid-template-columns:max-content 1fr;gap:2px 12px;margin:0 0 12px">${fields.map(([k, v]) => `<dt style="color:var(--liner-dim);font-style:italic">${esc(k)}</dt><dd style="margin:0">${esc(k === 'Performed live' ? nf(v) : v)}</dd>`).join('')}</dl>
+        ${d.releases ? `<h5>Official releases</h5><div style="margin-bottom:12px">${d.releases.map(r => `${esc(r[0])} <span class="sub">(${r[1]})</span>`).join('<br>')}</div>` : ''}
+        ${d.images.length ? `<h5>${s === 'jl' ? 'Images' : 'Artwork scans'} (${d.images.length})</h5><div class="tiles" style="margin-bottom:12px">${d.images.map((x, i) => sleeve(d.key + (s === 'jl' ? x : i), s === 'jl' ? x : 'art ' + String(i + 1).padStart(2, '0'), 'md')).join('')}</div>` : ''}
+        ${d.notes.length ? `<h5>Notes</h5>${d.notes.map(n => `<div class="lineage">${esc(n)}</div>`).join('')}` : ''}`;
+    const right = d.tracks.length
+        ? `<h5>Tracklist · ${d.tracks.length} tracks</h5>${d.unnumbered ? `<div class="warnbox">This tracklist has no track numbers, so the parser kept the plain lines in page order.</div>` : ''}${tracksBlock(d)}`
+        : (s === 'bb' ? `<h5>Also on the page</h5><div class="sub">Performances by tour, lyrics, studio versions and live downloads: available to parse, left out of this card.</div>` : `<h5>Tracklist</h5><div class="sub">This page has no tracklist.</div>`);
+    return `<div class="xgrid"><div>${left}</div><div>${right}</div></div>`;
+}
+function liveView(d) {
+    const s = d.key.slice(0, 2);
+    const body = s === 'sl'
+        ? `<h6>Info</h6><div><b>${esc(d.title)}</b> · <b>${esc(f(d, 'Version'))}</b></div>${['Date', 'Location', 'Format', 'Duration'].map(k => `<div><i>${k}:</i> ${esc(f(d, k))}</div>`).join('')}<br><div class="mono">${d.tracks.map(t => (t[1] ? t[1] + '- ' : '') + t[2]).join('\n')}</div>`
+        : s === 'bs'
+            ? `<div>Title : <b>${esc(d.title)}</b>${d.fields.map(([k, v]) => `<br>${esc(k)}: <b>${esc(v)}</b>`).join('')}</div><p>Notes:<br>${esc(d.notes[0] || '')}</p><table class="tbl"><tr><th>Pos</th><th>Title</th><th>From</th></tr>${d.tracks.map((t, i) => `<tr><td>${t[1]}</td><td>${esc(t[2])}</td><td>${i && d.tracks[i - 1][3] === t[3] ? '&nbsp;&nbsp;"' : esc(t[3])}</td></tr>`).join('')}</table>`
+            : s === 'jl'
+                ? `<b>Title: ${esc(d.title)}</b><br><b>Date: ${esc(f(d, 'Date'))}</b><br><b>Uploader: ${esc(f(d, 'Uploader'))}</b><div class="tiles">${d.images.map(x => sleeve(d.key + x, x, 'md')).join('')}</div>`
+                : `<h6>${esc(d.title)}</h6><p>${esc(f(d, 'Origin'))}</p><p>Performed live <b>${f(d, 'Performed live')}</b> times…</p>`;
+    return `<div class="livepage ${$('#hide-nav').checked ? 'hide-nav' : ''}"><div class="lp-url">&lt;iframe src="${esc(URL_OF(d.key))}"&gt;: same origin, restyled by the script</div><div class="lp-nav"><span class="cap">The site's own header, menus and search (about 85 % of the springsteenlyrics page)</span><i></i><i></i><i></i><i></i></div><div class="lp-content">${body}</div></div>`;
+}
+function renderPin() {
+    const key = pinList[pinIdx];
+    const d = DATA[key];
+    const s = key.slice(0, 2);
+    $('#pin-title').textContent = s === 'sl' ? `${d.title} · ${f(d, 'Version')}` : d.title;
+    $('#pin-pos').textContent = `row ${pinIdx + 1} of ${pinList.length}`;
+    $('#pin-src').innerHTML = `<span class="mono">${esc(URL_OF(key).replace(/^https:\/\//, ''))}</span>`;
+    $('#nav-lbl').hidden = pinView !== 'live';
+    $('#pin-body').innerHTML = pinView === 'ex' ? extractedView(d) : liveView(d);
+    $('#pin-cache').textContent = cache.has(key) ? 'from cache' : 'fetched now';
+    cache.add(key);
+    document.querySelectorAll('tr.is-sel').forEach(tr => tr.classList.remove('is-sel'));
+    document.querySelector(`#pin-p tr[data-key="${key}"], #peek-p tr[data-key="${key}"]`)?.classList.add('is-sel');
+}
+$('#pin-close').onclick = closePin;
+$('#pin-prev').onclick = () => stepPin(-1);
+$('#pin-next').onclick = () => stepPin(1);
+$('#v-ex').onclick = () => { pinView = 'ex'; $('#v-ex').setAttribute('aria-pressed', 'true'); $('#v-live').setAttribute('aria-pressed', 'false'); renderPin(); };
+$('#v-live').onclick = () => { pinView = 'live'; $('#v-live').setAttribute('aria-pressed', 'true'); $('#v-ex').setAttribute('aria-pressed', 'false'); renderPin(); };
+$('#hide-nav').onchange = () => renderPin();
+(function drag() {
+    const bar = $('#pin-bar');
+    let sx, sy, ox, oy, on = false;
+    bar.addEventListener('pointerdown', e => {
+        if (e.target.closest('button')) return;
+        const r = pin.getBoundingClientRect();
+        pin.style.transform = 'none';
+        pin.style.left = r.left + 'px';
+        pin.style.top = r.top + 'px';
+        sx = e.clientX; sy = e.clientY; ox = r.left; oy = r.top; on = true;
+        bar.setPointerCapture(e.pointerId);
+    });
+    bar.addEventListener('pointermove', e => {
+        if (!on) return;
+        pin.style.left = Math.max(0, Math.min(innerWidth - 80, ox + e.clientX - sx)) + 'px';
+        pin.style.top = Math.max(0, Math.min(innerHeight - 40, oy + e.clientY - sy)) + 'px';
+    });
+    bar.addEventListener('pointerup', () => { on = false; });
+})();
+
+/* ------------------------------------------------------------- C: drawer */
+const drawer = $('#drawer');
+let drawerIdx = -1;
+function openDrawer(i) {
+    const rows = ROWS.jl;
+    drawerIdx = (i + rows.length) % rows.length;
+    const key = rows[drawerIdx];
+    const d = DATA[key];
+    const fresh = !cache.has(key);
+    cache.add(key);
+    const front = d.images.filter(x => x === 'front' || x === 'back');
+    const extra = d.images.filter(x => x !== 'front' && x !== 'back');
+    drawer.innerHTML = `
+        <div class="pin-bar" style="cursor:default"><span class="t">${esc(d.title)}</span><span class="pos">${drawerIdx + 1} / ${rows.length}</span><button class="ibtn" data-dr="-1" aria-label="Previous row">↑</button><button class="ibtn" data-dr="1" aria-label="Next row">↓</button><button class="ibtn" data-dr="x" aria-label="Close">✕</button></div>
+        <div class="pin-body">
+            <div class="covers">${front.map(x => sleeve(key + x, x, 'lg')).join('')}</div>
+            ${extra.length ? `<h5 style="margin:0 0 4px;font:600 10.5px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--liner-dim)">More scans (${extra.length})</h5><div class="tiles" style="margin-bottom:10px">${extra.map(x => sleeve(key + x, x)).join('')}</div>` : ''}
+            <dl class="kv" style="display:grid;grid-template-columns:max-content 1fr;gap:2px 12px;margin:0">
+                <dt style="color:var(--liner-dim);font-style:italic">Date</dt><dd style="margin:0">${esc(f(d, 'Date'))}</dd>
+                <dt style="color:var(--liner-dim);font-style:italic">Uploader</dt><dd style="margin:0">${esc(f(d, 'Uploader'))}</dd>
+                <dt style="color:var(--liner-dim);font-style:italic">Page</dt><dd style="margin:0" class="mono">html/${esc(key.slice(3))}.htm</dd>
+            </dl>
+        </div>
+        <div class="pin-foot"><span><kbd>j</kbd> <kbd>k</kbd> rows</span><span><kbd>Esc</kbd> close</span><span>${fresh ? 'fetched now' : 'from cache'}</span></div>`;
+    drawer.classList.add('on');
+    $('#drawer-host').classList.add('drawer-open');
+    document.querySelectorAll('#tbl-c-jl tr.is-sel').forEach(tr => tr.classList.remove('is-sel'));
+    $(`#tbl-c-jl tr[data-key="${key}"]`).classList.add('is-sel');
+}
+function closeDrawer() {
+    drawer.classList.remove('on');
+    $('#drawer-host').classList.remove('drawer-open');
+    document.querySelectorAll('#tbl-c-jl tr.is-sel').forEach(tr => tr.classList.remove('is-sel'));
+    drawerIdx = -1;
+}
+drawer.addEventListener('click', e => {
+    const b = e.target.closest('[data-dr]');
+    if (!b) return;
+    if (b.dataset.dr === 'x') closeDrawer(); else openDrawer(drawerIdx + Number(b.dataset.dr));
+});
+
+/* ------------------------------------------------------------- tables */
+function linkCell(key, text, listId) {
+    return `<a href="${esc(URL_OF(key))}" data-peek="${key}" data-list="${listId}">${esc(text)}</a><button class="pinbtn" data-pin="${key}" data-list="${listId}" aria-label="Preview ${esc(text)}">🔍</button>`;
+}
+function buildA() {
+    $('#tbl-a-bs').innerHTML = `<thead><tr><th>Title</th><th>Format</th><th>Label</th><th>Matrix</th><th>Code</th></tr></thead><tbody>${ROWS.bs.map(k => {
+        const d = DATA[k];
+        return `<tr data-key="${k}"><td>${linkCell(k, d.title, 'tbl-a-bs')}</td><td>${esc(f(d, 'Support'))}</td><td>${esc(f(d, 'Producer'))}</td><td>${esc(f(d, 'Matrix'))}</td><td class="mono dim">${esc(k.slice(3))}</td></tr>`;
+    }).join('')}</tbody>`;
+    $('#tbl-a-bb').innerHTML = `<thead><tr><th>Title</th><th>Letter</th></tr></thead><tbody>${ROWS.bb.map(k => {
+        const d = DATA[k];
+        return `<tr data-key="${k}"><td>${linkCell(k, d.title, 'tbl-a-bb')}</td><td>${esc(d.title[0].toUpperCase().replace(/\d/, '#'))}</td></tr>`;
+    }).join('')}</tbody>`;
+}
+function buildB() {
+    $('#tbl-b-sl').innerHTML = `<thead><tr><th>Cover</th><th>Title</th><th>Label</th><th>Date</th><th>Location</th><th>Format</th><th>Duration</th><th>Artwork</th></tr></thead><tbody>${ROWS.sl.map(k => {
+        const d = DATA[k];
+        return `<tr data-key="${k}"><td>${sleeve(k, '', 'sm')}</td><td>${linkCell(k, d.title, 'tbl-b-sl')}</td><td>${esc(f(d, 'Version'))}</td><td style="white-space:nowrap">${esc(f(d, 'Date'))}</td><td>${esc(f(d, 'Location'))}</td><td>${esc(f(d, 'Format'))}</td><td class="num">${esc(f(d, 'Duration'))}</td><td>${d.images.length ? '✓' : ''}</td></tr>`;
+    }).join('')}</tbody>`;
+}
+function buildC() {
+    $('#tbl-c-jl').innerHTML = `<thead><tr><th>Title</th><th>Date</th><th>Year</th><th>Version</th></tr></thead><tbody>${ROWS.jl.map((k, i) => {
+        const d = DATA[k];
+        const v = (k.match(/_(\d+)$/) || [])[1] || '';
+        return `<tr data-key="${k}" data-i="${i}" style="cursor:pointer"><td><a href="${esc(URL_OF(k))}" data-row="${i}">${esc(d.title)}</a></td><td style="white-space:nowrap">${esc(f(d, 'Date'))}</td><td class="num">${f(d, 'Date').slice(0, 4)}</td><td class="num">${v}</td></tr>`;
+    }).join('')}</tbody>`;
+    $('#tbl-c-jl').addEventListener('click', e => {
+        const tr = e.target.closest('tr[data-i]');
+        if (!tr) return;
+        e.preventDefault();
+        openDrawer(Number(tr.dataset.i));
+    });
+}
+
+/* ------------------------------------------------------------- D: columns */
+const D = { state: {}, sort: null, expanded: false, failedOnce: new Set() };
+const DET_COLS = ['Recorded', 'Source show', 'Tracks', 'Notes'];
+function dValues(key) {
+    const d = DATA[key];
+    const src = bsSources(d);
+    const dates = src.map(([s]) => srcParts(s).date).filter(Boolean);
+    return {
+        'Recorded': dates.length ? (dates.length > 1 ? `${dates[0]} …` : dates[0]) : '',
+        'Source show': src.map(([s, n]) => { const p = srcParts(s); return `${p.place}, ${p.date} (${n})`; }),
+        'Tracks': d.tracks.length,
+        'Notes': d.notes[0] || '',
+    };
+}
+function dCell(key, col) {
+    const st = D.state[key] || 'idle';
+    if (st !== 'done') return `<td class="dc" data-s="${st}" data-key="${key}" title="${st === 'error' ? 'HTTP 503 from detrec.aspx. Click to retry' : st === 'idle' ? 'Click to load this row' : ''}"></td>`;
+    const v = dValues(key)[col];
+    if (col === 'Source show') {
+        const many = v.length > 2;
+        return `<td class="dc" data-s="done"><ul class="mrow">${v.map((x, i) => `<li ${many && i >= 2 && !D.open?.[key] ? 'hidden' : ''}>${i === 0 && many ? `<button class="ctog" data-ct="${key}">${D.open?.[key] ? '▼' : '▶'}</button>` : ''}${esc(x)}</li>`).join('')}</ul></td>`;
+    }
+    if (col === 'Tracks') return `<td class="dc num" data-s="done">${v}</td>`;
+    if (col === 'Notes') return `<td class="dc" data-s="${v ? 'done' : 'none'}" style="max-width:260px">${esc(v.length > 90 ? v.slice(0, 88) + '…' : v)}</td>`;
+    return `<td class="dc" data-s="done" style="white-space:nowrap">${esc(v)}</td>`;
+}
+function rowText(key) {
+    const d = DATA[key];
+    let t = [d.title, f(d, 'Support'), f(d, 'Producer'), f(d, 'Matrix'), key.slice(3)].join(' ');
+    if (D.state[key] === 'done') { const v = dValues(key); t += ' ' + [v.Recorded, v['Source show'].join(' '), v.Tracks, v.Notes].join(' '); }
+    return t;
+}
+function hlText(html, q) {
+    if (!q) return html;
+    const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    return html.replace(/>([^<]+)</g, (m, txt) => '>' + txt.replace(re, '<span class="hl">$1</span>') + '<');
+}
+function renderD() {
+    const q = $('#d-filter').value.trim();
+    const done = ROWS.bs.filter(k => D.state[k] === 'done').length;
+    let keys = ROWS.bs.filter(k => !q || rowText(k).toLowerCase().includes(q.toLowerCase()));
+    if (D.sort) {
+        const [col, dir] = D.sort;
+        keys = keys.slice().sort((a, b) => {
+            const va = D.state[a] === 'done' ? dValues(a)[col] : -1, vb = D.state[b] === 'done' ? dValues(b)[col] : -1;
+            return (va > vb ? 1 : va < vb ? -1 : 0) * dir;
+        });
+    }
+    const loading = ROWS.bs.some(k => ['queued', 'loading'].includes(D.state[k]));
+    const tog = `<span class="det-toggle" role="button" tabindex="0" id="d-tog" aria-pressed="${D.expanded}">${D.expanded ? '▼' : '▶'}📄 <span class="badge">${done}/${ROWS.bs.length}</span></span>`;
+    const hdr = DET_COLS.map((c, i) => {
+        const arrow = D.sort && D.sort[0] === c ? (D.sort[1] > 0 ? ' ▲' : ' ▼') : '';
+        const inner = c === 'Tracks' ? `<span class="sorth" data-sort="Tracks">${c}${arrow}</span>` : c === 'Source show' ? `${c} <span class="sorth" data-uvd="1" title="Unique values">📊</span>` : c;
+        return `<th class="det">${i === 0 ? `<span class="hdr-flex">${tog} ${inner}</span>` : inner}</th>`;
+    }).join('');
+    const body = keys.map(k => {
+        const d = DATA[k];
+        const cells = `<td>${esc(d.title)}</td><td>${esc(f(d, 'Support'))}</td><td>${esc(f(d, 'Producer'))}</td><td style="white-space:nowrap">${esc(f(d, 'Matrix'))}</td>` + DET_COLS.map(c => dCell(k, c)).join('');
+        return `<tr data-key="${k}">${hlText(cells, q)}</tr>`;
+    }).join('');
+    $('#tbl-d-bs').innerHTML = `<thead><tr><th>Title</th><th>Format</th><th>Label</th><th>Matrix</th>${hdr}</tr></thead><tbody>${body}</tbody>`;
+    $('#d-count').textContent = `${keys.length} of ${ROWS.bs.length} rows${loading ? ' · loading details' : ''}`;
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+let dRun = 0;
+async function loadRow(key, run) {
+    D.state[key] = 'loading';
+    renderD();
+    await sleep(380);
+    if (run !== undefined && run !== dRun) return;
+    if (key === 'bs_CD2DIMP1' && !D.failedOnce.has(key)) {
+        D.failedOnce.add(key);
+        D.state[key] = 'error';
+    } else {
+        D.state[key] = 'done';
+        cache.add(key);
+    }
+    renderD();
+}
+async function loadAll() {
+    const run = ++dRun;
+    D.expanded = true;
+    for (const k of ROWS.bs) if (D.state[k] !== 'done') D.state[k] = 'queued';
+    renderD();
+    for (const k of ROWS.bs) {
+        if (run !== dRun || !D.expanded) return;
+        if (D.state[k] !== 'queued') continue;
+        await loadRow(k, run);
+    }
+}
+function collapseAll() {
+    dRun++;
+    D.expanded = false;
+    D.sort = null;
+    for (const k of ROWS.bs) D.state[k] = 'idle';
+    $('.uvd')?.remove();
+    renderD();
+}
+function openUvd(anchor) {
+    $('.uvd')?.remove();
+    const counts = new Map();
+    for (const k of ROWS.bs) if (D.state[k] === 'done') for (const s of dValues(k)['Source show']) {
+        const name = s.replace(/ \(\d+\)$/, '');
+        counts.set(name, (counts.get(name) || 0) + 1);
+    }
+    const box = document.createElement('div');
+    box.className = 'uvd';
+    const host = $('#tbl-d-bs').parentElement;
+    const r = anchor.getBoundingClientRect(), hr = host.getBoundingClientRect();
+    box.style.left = Math.max(6, Math.min(hr.width - 306, r.left - hr.left + host.scrollLeft - 120)) + 'px';
+    box.style.top = (r.bottom - hr.top + 4) + 'px';
+    box.innerHTML = `<h6>Source show · ${counts.size} values</h6>${counts.size ? [...counts].sort((a, b) => b[1] - a[1]).map(([n, c]) => `<label><input type="checkbox" data-v="${esc(n.split(',')[0])}"> ${esc(n)}<span class="c">${c}</span></label>`).join('') : '<label>Load the details first.</label>'}`;
+    host.appendChild(box);
+}
+function buildD() {
+    renderD();
+    const calc = () => {
+        const n = Number($('#calc-site').value);
+        const s = Math.round(n * 1.1);
+        const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+        $('#calc-out').textContent = `${nf(n)} pages, ${h ? h + ' h ' : ''}${m} min${h ? '' : ' ' + sec + ' s'}`;
+    };
+    $('#calc-site').onchange = calc;
+    calc();
+    $('#d-filter').addEventListener('input', renderD);
+    $('#tbl-d-bs').addEventListener('click', e => {
+        if (e.target.closest('#d-tog')) { D.expanded ? collapseAll() : loadAll(); return; }
+        const s = e.target.closest('[data-sort]');
+        if (s) { D.sort = D.sort && D.sort[1] < 0 ? null : [s.dataset.sort, D.sort ? -1 : 1]; renderD(); return; }
+        const u = e.target.closest('[data-uvd]');
+        if (u) { e.stopPropagation(); $('.uvd') ? $('.uvd').remove() : openUvd(u); return; }
+        const ct = e.target.closest('[data-ct]');
+        if (ct) { D.open = D.open || {}; D.open[ct.dataset.ct] = !D.open[ct.dataset.ct]; renderD(); return; }
+        const td = e.target.closest('td.dc');
+        if (td && ['idle', 'error'].includes(td.dataset.s)) loadRow(td.dataset.key);
+    });
+    $('#tbl-d-bs').addEventListener('keydown', e => {
+        if (e.target.id === 'd-tog' && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); D.expanded ? collapseAll() : loadAll(); }
+    });
+    document.addEventListener('change', e => {
+        if (!e.target.closest('.uvd')) return;
+        const ticked = [...document.querySelectorAll('.uvd input:checked')].map(i => i.dataset.v);
+        $('#d-filter').value = ticked[0] || '';
+        renderD();
+    });
+    document.addEventListener('mousedown', e => {
+        if ($('.uvd') && !e.target.closest('.uvd') && !e.target.closest('[data-uvd]')) $('.uvd').remove();
+    });
+}
+
+/* ------------------------------------------------------------- E */
+function buildE() {
+    const rows = ['sl_6739', 'sl_1277', 'sl_2045'];
+    const tr = k => { const d = DATA[k]; return `<tr><td>${esc(f(d, 'Date'))}</td><td>${esc(f(d, 'Location').split(',')[0])}</td></tr>`; };
+    const det = (k, wrong) => { const d = DATA[k]; return `<tr class="detailrow ${wrong ? 'wrong' : ''}"><td colspan="2">▼ ${d.tracks.length} tracks: ${esc(d.tracks.slice(1, 4).map(t => t[2]).join(', '))} …${wrong ? ` <b>(this is ${esc(f(d, 'Location').split(',')[0])})</b>` : ''}</td></tr>`; };
+    $('#tbl-e1').innerHTML = `<thead><tr><th>Date</th><th>Location</th></tr></thead><tbody>${tr('sl_6739')}${det('sl_6739')}${tr('sl_1277')}${tr('sl_2045')}</tbody>`;
+    $('#tbl-e2').innerHTML = `<thead><tr><th>Date ▲</th><th>Location</th></tr></thead><tbody>${tr('sl_2045')}${det('sl_6739', true)}${tr('sl_1277')}${tr('sl_6739')}</tbody>`;
+}
+
+/* ------------------------------------------------------------- global */
+document.addEventListener('click', e => {
+    const b = e.target.closest('.pinbtn');
+    if (b) { e.preventDefault(); openPin(b.dataset.pin, b.dataset.list); return; }
+    const a = e.target.closest('a[data-peek]');
+    if (a) { e.preventDefault(); toast('In the real table this opens the detail page. Here: hover it, or click 🔍.'); return; }
+    if (pin.classList.contains('on') && !pin.contains(e.target) && !e.target.closest('.tab')) {
+        /* createInfoDialog closes on a click outside, so this does too */
+        closePin();
+    }
+});
+document.addEventListener('keydown', e => {
+    const typing = e.target.matches('input, select, textarea');
+    if (e.key === 'Escape') {
+        if (peek.classList.contains('on')) { hidePeek(); return; }
+        if (pin.classList.contains('on')) { closePin(); return; }
+        if ($('.uvd')) { $('.uvd').remove(); return; }
+        if (drawerIdx >= 0) { closeDrawer(); return; }
+        return;
+    }
+    if (typing) return;
+    if (e.key === ' ' && peek.classList.contains('on') && peekKey) { e.preventDefault(); openPin(peekKey, peekList); return; }
+    if (pin.classList.contains('on')) {
+        if (e.key === 'ArrowLeft') { e.preventDefault(); stepPin(-1); }
+        if (e.key === 'ArrowRight') { e.preventDefault(); stepPin(1); }
+        return;
+    }
+    if (drawerIdx >= 0 && !$('#drawer-p').hidden) {
+        if (e.key === 'j' || e.key === 'ArrowDown') { e.preventDefault(); openDrawer(drawerIdx + 1); }
+        if (e.key === 'k' || e.key === 'ArrowUp') { e.preventDefault(); openDrawer(drawerIdx - 1); }
+    }
+});
+
+/* tabs, deep-linkable by a bare #token */
+const TABS = { overview: 'overview', peek: 'peek-p', pin: 'pin-p', drawer: 'drawer-p', columns: 'columns-p', inline: 'inline-p' };
+function selectTab(name, focus) {
+    if (!TABS[name]) name = 'overview';
+    for (const [n, id] of Object.entries(TABS)) {
+        const t = document.getElementById('t-' + n);
+        t.setAttribute('aria-selected', String(n === name));
+        t.tabIndex = n === name ? 0 : -1;
+        document.getElementById(id).hidden = n !== name;
+    }
+    hidePeek();
+    closePin();
+    if (name !== 'drawer') closeDrawer();
+    if (focus) document.getElementById('t-' + name).focus();
+    try { history.replaceState(null, '', '#' + name); } catch (_) { /* sandboxed */ }
+    try { localStorage.setItem('dp-tab', name); } catch (_) { /* storage blocked */ }
+}
+document.querySelector('.tabs').addEventListener('click', e => {
+    const t = e.target.closest('.tab');
+    if (t) selectTab(t.id.slice(2));
+});
+document.querySelector('.tabs').addEventListener('keydown', e => {
+    if (!['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+    const names = Object.keys(TABS);
+    const cur = names.indexOf(document.activeElement.id.slice(2));
+    if (cur < 0) return;
+    selectTab(names[(cur + (e.key === 'ArrowRight' ? 1 : -1) + names.length) % names.length], true);
+});
+
+for (const k of Object.keys(DATA)) DATA[k].key = k;
+buildA(); buildB(); buildC(); buildD(); buildE();
+let start = location.hash.slice(1);
+if (!TABS[start]) { try { start = localStorage.getItem('dp-tab') || 'overview'; } catch (_) { start = 'overview'; } }
+selectTab(start);
+</script>

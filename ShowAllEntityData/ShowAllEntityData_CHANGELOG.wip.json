@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Preview the detail pages on the four Springsteen sites without leaving the table, when switched on: ⚙️ Settings → each site's section → \"Preview … pages\" (one setting per site, off by default, under that site's own switch). Rest the pointer on a title and a card opens beside it with what the row's own page adds: on springsteenlyrics.com a bootleg's tracklist by disc, its notes and its artwork scans; on jungleland.it the uploader and the scans; on brucespringsteen.it a record's tracklist with the show each track comes from, and its photo; on Brucebase the album a song comes from, how often and when last it was played live, its releases and live downloads. The page is read in the background, at most one a second, and kept for 30 days, so a card you have seen comes back at once. Esc closes the card. Space pins it into a window you can move and resize: ‹ › (or ← →) step through the rows, \"Extracted\" shows everything the script read (on Brucebase also the credits, studio versions and lyrics), and \"Live page\" shows the site's own page with its menus hidden. ⟳ reads the page again, ↗ opens it in a new tab. On a touch screen, tapping a title opens the window."
+        ]
+      }
+    ]
+  }
+]

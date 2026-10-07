@@ -9,7 +9,8 @@ is **opt-in**: `sa_enable_brucebase`, default **off**. The request
 the song title, then let our userscript handle the rest" — so this is the
 jungleland.it design (docs/claude/jungleland.md) once more: a host gate, one
 definition with `host`, one converter, the shared table CSS. No bar, no
-hand-off, nothing fetched.
+hand-off, nothing fetched (except the song pages read by the opt-in detail
+preview, `sa_bb_detail_preview`, docs/claude/detail-pages.md).
 
 ## The page
 

@@ -105,3 +105,7 @@ Details: =docs/claude/brucespringsteen.md=, and the dated entry in
 
 ** TODO add detail page handling, with tracklist and optionally covers
 
+Analysis, probes and mockups: [[file:detail-pages.org]] (2026-10-07). The
+detail page has no images; its value is the tracklist with a source show per
+track.
+

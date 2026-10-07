@@ -195,6 +195,8 @@ Decided (2026-10-05):
   Statistics numbers.
 
 ** TODO add detail page support
+
+Analysis, probes and mockups: [[file:detail-pages.org]] (2026-10-07).
 ** TODO add support for logged in case
 
 * DONE CLAUDE.md
@@ -301,6 +303,9 @@ for date expression use our date part extractor to create synthetic columns
 
 
 * TODO analyze how linked detail pages in non MusicBrainz websites can be handled from their repsective PTs
+
+Answered in [[file:detail-pages.org]], with mockups in
+[[file:detail-pages-mockups.html]] (2026-10-07).
 
 Analyze how linked detail pages in non MusicBrainz websites can be handled from their repsective PTs, e.g.
 

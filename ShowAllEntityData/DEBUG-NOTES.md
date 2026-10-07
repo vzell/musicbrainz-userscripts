@@ -19639,3 +19639,60 @@ whole sl-lyrics spec then passed 21/21 (`--repeat-each=3`) on its own, and
 nothing in this branch touches its code path. Timing under load, not a
 regression — but a resume test that loses its first row under load is worth
 a look if it recurs.
+
+## 2026-10-07 — Detail-page preview on the four foreign hosts (branch feature/detail-pages, WIP.1)
+
+Request: `org/detail-pages.org` (analysis, probes, mockups at
+https://claude.ai/artifact/GX4fCDvgQ15GwA89pDWKmF). Decided: "A + B first,
+setting per site, ship live page view" — a hover card and a pinned dialog
+with Extracted and Live page views; `sa_sl/jl/bs/bb_detail_preview`, all off.
+Design and rules: docs/claude/detail-pages.md.
+
+Snapshots: `debug/detail-*` (curl, 2026-10-07; eleven become fixtures through
+`scripts/build-detail-fixtures.py`). What the specs found that the prototype
+regex parsers had hidden:
+
+- **Space never pinned after a render.** The first version let a Space
+  through whenever the focus was in a text field — and after every render the
+  script focuses the global filter itself, so the card appeared, Space did
+  nothing. Found by the fixture spec, not by reasoning. Now a Space is the
+  field's only within `_DP_TYPING_GRACE_MS` (1.5 s) of an `input` event, and
+  opening the dialog moves the focus into it so ← → are not the filter's.
+  Both directions are mutation-checked.
+- **brucespringsteen.it's tracklist table was never found.** The header row's
+  `textContent` is "PosTitleFromNotesVer", so `\bPos\b` cannot match. Read the
+  header cell by cell.
+- **Every line of a springsteenlyrics.com tracklist became a paragraph.** The
+  site writes `line<br />\nline`; turning `<br>` into a newline while keeping
+  the source's newline gave a blank line between all lines, so bootleg 1331's
+  UNNUMBERED tracklist (35 titles) came out as 36 notes. `_dpBlockText()` now
+  collapses source whitespace first, as rendering does. The prototype parser
+  (regex, not DOM) had shown a different symptom of the same page (Duration
+  swallowing the songs) that the DOM reader never had.
+- **"BORN IN THE U.S.A."** ends in a dot, which the "title-like line" test
+  read as prose: an all-capitals line may end in one.
+- **Test traps, not code defects**, worth knowing for the next card spec:
+  `toContainText` does not wait for visibility, and a hidden card keeps its
+  last content, so a text check passed on the PREVIOUS hover's card and Space
+  was pressed before the new one showed (helper `peekAt()` waits for
+  visible); and `getComputedStyle(child).display` stays `block` under a
+  `display: none` ancestor — measure "rendered" with `getClientRects()`.
+- `page.clock` (install before load, `fastForward()`) replaced every
+  `waitForTimeout` the first draft had (hover delay, typing grace, rate-gate
+  slot), keeping the lint baseline flat; the rate-gate test waits for the
+  second card's loading line (a positive sign its request is queued) before
+  moving away.
+
+Kept off MusicBrainz by construction: `_DP_SITES` is keyed by
+`_foreignHost`, `_initDetailPreview()` is called only on a foreign host, and
+the cache is its own IndexedDB database (`vz-saed-detail-pages`), not a store
+in the art cache, which would have bumped `_ART_IDB_VERSION` everywhere.
+
+**Results:** detail-preview fixture spec 16/16 and mobile spec 1/1; mutation
+list detail-preview 21 entries all as declared (19 fail, 2 recorded pass: the
+hover tap guard is covered by the mousedown hide; `_OTHER_RICH_TIPS` has no
+reachable overlap), userscript restored and hash-verified, the five entries
+touched by the `page.clock` rewrite re-run and still failing; live `@extended`
+detail-preview 4/4 in 59 s (2026-10-07T00:45:58Z–00:46:58Z, host NB-3641,
+WSL2); `npm run test:full` 1265 passed in 7.7 min (00:47:17Z–00:54:58Z, same
+host); lint within baseline; config default and doc audits clean.

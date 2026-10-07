@@ -1,0 +1,160 @@
+* TODO detail pages on the foreign-site pageTypes: peek, pin, then columns
+** Request (original, 2026-10-07)
+
+From [[file:springsteenlyrics.org]] ("analyze how linked detail pages in non
+MusicBrainz websites can be handled from their respective PTs"):
+
+1. a small popup of the detail page when hovering the detail link, closed by Esc;
+2. or the detail information in the same row as the link;
+3. suggestions plus rich HTML mockups.
+
+The same work also covers three per-site TODOs:
+- [[file:springsteenlyrics.org]] "add detail page support";
+- [[file:brucespringsteen.it.org]] "detail page handling, with tracklist and optionally covers";
+- [[file:jungleland.it.org]] "detail page handling, with additional Uploader column and optionally covers".
+
+** Status
+
+- [X] Probe the detail pages: headers, charset, structure (2026-10-07).
+- [X] Snapshots in =debug/= (gitignored):
+  - =detail-sl-collection-7431.html=, =detail-sl-bootlegs-6739.html=
+  - =detail-jl-19760930.htm=, =detail-jl-19700113_3.htm= (a =_N= version with a =cd1= scan)
+  - =detail-bs-CR1AD1.html= (unofficial), =detail-bs-COL4942001.html= (official)
+  - =detail-bb-song-4th-of-july.html=
+- [X] Prototype parsers run over 28 real pages: 8 bs, 6 sl, 8 jl, 6 bb (see "Parser findings").
+- [X] Mockups: [[file:detail-pages-mockups.html]], a self-contained page you can open from disk.
+  Published as https://claude.ai/artifact/GX4fCDvgQ15GwA89pDWKmF
+- [X] Decided (2026-10-07): "go ahead with A + B first, setting per site, ship
+  live page view".
+- [X] Phase 1 on branch =feature/detail-pages=: the card, the pinned dialog
+  with Extracted and Live page views, one setting per site
+  (=sa_sl/jl/bs/bb_detail_preview=). Design and rules:
+  [[file:../docs/claude/detail-pages.md]]. Two choices differ from the plan
+  above:
+  - the card is its own element and controller, not a =data-mbtt-fn= case of
+    =_initStatTooltip()=. That engine shows a resolver card at once and
+    synchronously; this one needs a delay, a loading state, Esc and Space;
+  - the cache is its own IndexedDB database, not a store in the art cache,
+    which would have bumped =_ART_IDB_VERSION= on MusicBrainz too.
+- [ ] Phase 2 (D, detail columns), when asked for.
+
+** What the probes established
+
+| PT           | Detail URL                    | Framing headers        | Charset                        | Page size |
+|--------------+-------------------------------+------------------------+--------------------------------+-----------|
+| =sl-*=       | =?item=N&category=C=          | none                   | UTF-8                          | ~40 KB    |
+| =jl-list=    | =/html/YYYYMMDD[_N].htm=      | none                   | windows-1252, no declaration   | ~1.6 KB   |
+| =bs-records= | =detrec.aspx?code=X=          | none                   | UTF-8 (the meta tag is wrong)  | 5–8 KB    |
+| =bb-songs=   | =/song:<slug>=                | =X-Frame-Options: SAMEORIGIN= | UTF-8                   | 65–115 KB |
+
+- *The detail pages match no =@include=*, so the script never runs on them.
+  All data has to be fetched and parsed from the list page.
+- *Every detail page has the same origin as its list.* Plain =fetch= works, including through
+  CloudFlare on springsteenlyrics.com. A same-origin iframe also works, and
+  the list page can restyle its =contentDocument=.
+- =fetchHtml()= decodes with =res.text()=, which is UTF-8 only. jungleland.it
+  needs =arrayBuffer()= + =new TextDecoder('windows-1252')=.
+
+*** What each detail page adds over the row
+
+| PT           | The row already shows                                         | The detail page adds                                                                    |
+|--------------+---------------------------------------------------------------+-----------------------------------------------------------------------------------------|
+| =sl-bootlegs= | cover, title, version, date, location, format, duration, flags | tracklist with "Disc N:" breaks, lineage line, artwork scans =<id>_artwork_NN_tn.jpg=     |
+| =sl-collection= | cover, title, label, cat. no., format, country, dates        | side-numbered tracklist (A1/B1), prose notes, scans =<id>_NN_tn.jpg=                    |
+| =jl-list=    | title, date, year, version                                    | uploader, front/back covers, sometimes more scans (=cd1=, =booklet1…6=)                 |
+| =bs-records= | title, format, label, matrix, code                            | tracklist with the source show per track, notes, vinyl colour                           |
+| =bb-songs=   | title, letter                                                 | origin album line, performance count, last played, official releases, lyrics, versions |
+
+*** Where the data sits
+
+- *sl*: inside =.project-detail=. The header fields are =<span class="text-primary"><em>Label:</em></span> value<br>=, the
+  version follows =glyphicon-option-vertical=, and the tracklist is the first =span.monospaced=.
+  Scans are =img[src$="_tn.jpg"]=.
+- *jl*: =<a>Title: …</a>=, =<a>Date: …</a>=, =<a>Uploader: …</a>=. Images are
+  =..\artwork\<decade>\thumb\tn_<stem>_<label>.jpg=, with *backslashes*.
+- *bs*: =Title  : <b>…</b><br>Support: <b>…</b><br>…=, then =Notes:<br>…</p>=,
+  then a =<table>= with columns Pos / Title / From / Notes / Ver. The labels
+  differ by record type (Matrix/Producer/Vinyl vs Catalogue number/Pressed
+  in/Release period), so read them as a generic label map.
+- *bb*: =#page-title=; =Track N of <em>Album</em>, YYYY.=; =Performed live
+  <strong>N</strong> times (=; the first =a[href^="/gig:"]= is the newest
+  show; =<p>Released on …</p>= with =a[href^="/retail:"]= plus =(YYYY)=.
+
+** Parser findings (prototype run, 2026-10-07)
+
+- sl 1331 and 1332: an *unnumbered* tracklist directly after Duration, with no
+  =<br>= between them, so a naive Duration read swallows the songs. The parser
+  must cut Duration at the first newline and fall back to plain lines, and say
+  so in the UI.
+- sl 2045: a numbered tracklist with no "Disc N:" header. Treat it as one disc.
+- bs: the From column repeats a source as =&nbsp;&nbsp;"= ("same as above");
+  each one has to be filled from the row above. Song and show links are
+  =href="#"=, so there is nothing to link to.
+- jl: thumbnails can be predicted from the file name for front and back, but
+  the extra scans and the uploader need the page.
+- bb: the page is large; cache only the extracted fields. The tour breakdown
+  ("Performed at N show(s) of M on the … Tour") sits inside nested markup that
+  a simple regex missed; it needs a DOM read.
+
+** Options (all mocked in [[file:detail-pages-mockups.html]])
+
+They all share one foundation:
+- =DetailPageParsers[site]= returns ={title, fields[], tracks[], images[], notes[]}=;
+- a same-origin detail fetch with a 1.1 s gate modelled on
+  =_relAwaitRateSlot=, with per-host decoding;
+- an IndexedDB store =detail-pages= keyed by URL, with a TTL. That means
+  bumping =_ART_IDB_VERSION= in =_artOpenIdb()=. IndexedDB is per origin, so
+  each host gets its own empty database.
+
+| #  | Option            | Reuses                                                               | Verdict              |
+|----+-------------------+----------------------------------------------------------------------+----------------------|
+| A  | Hover peek card   | =data-mbtt-fn="detail"= in =_mbttResolve()= / =_mbttAfterShow()=; =_OTHER_RICH_TIPS= | phase 1  |
+| B  | Pinned preview    | =createInfoDialog()= (geoKey, Esc, click-outside); Extracted / Live-page iframe | phase 1   |
+| C  | Side drawer       | =#mb-art-viewer= key-capture pattern                                 | optional             |
+| D  | Detail columns    | Relationships deferred-column pattern + the four post-render duties | phase 2              |
+| E  | Inline expand row | –                                                                    | avoid                |
+
+- A needs one addition to =_initStatTooltip()=: Esc hides the card. Today
+  only =mouseout=/=mousedown= do. Space (or a 🔍 after the link) pins the card
+  into B. On touch, the 🔍 is the only way in.
+- D: a fixed column group emitted by each converter (=_slBuildRow=,
+  =_bsBuildRow=, …), not via =injectedColumns=, which is wired to WS/2.
+  Cells always exist; only their content is deferred. Write to the master
+  rows; after every write clear the 📊 cache, =_filterResultCache= and
+  =_rowTextCache= on the source row, then re-run =runFilter()=. Name the header
+  toggle something other than =.mb-caa-col-hdr-btn= or
+  =.mb-col-collapse-hdr-btn=, because =initCollapsableColumns()= removes both.
+- E breaks =sortLargeArray()= ordering, =renderGroupedTable()= cloning, row
+  counts and the column indexes. Its safe version is D's tracklist cell as a
+  multi-row =ul>li= with the existing ▶ collapse.
+
+*** Cost of D at 1.1 s per page
+
+| Table                            | Rows  | Full load |
+|----------------------------------+-------+-----------|
+| sl-bootlegs, one page            | 100   | 1 min 50 s |
+| bs-records unofficial            | 1,878 | 34 min    |
+| bs-records official              | 1,186 | 22 min    |
+| bb-songs                         | 1,679 | 31 min    |
+| jl-list                          | 5,839 | 1 h 47 min |
+
+So D loads on demand, either per table (header toggle) or per cell (click). It
+starts collapsed above a threshold, as =sa_rel_collapse_threshold= does, and
+anything cached by A or B costs nothing.
+
+** Recommendation
+
+Phase 1 is the foundation plus A and B, behind a per-site setting that is off
+by default and nested under the site's existing =sa_enable_<site>= gate. It
+adds nothing to the filter/sort/render path and changes nothing on
+MusicBrainz (host-gated). Phase 2 is D, reusing phase 1's parsers and cache.
+Build C only if B feels cramped in practice.
+
+** Open questions
+
+- +One settings switch for all four sites, or one per site?+ One per site
+  (2026-10-07).
+- +Should B's "Live page" view ship in phase 1, or only Extracted?+ It ships
+  (2026-10-07).
+- D on jungleland: Uploader alone may not be worth 1 h 47 min. A covers-only
+  column built from predicted thumbnail URLs needs no fetch at all.

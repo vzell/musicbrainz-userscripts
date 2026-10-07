@@ -10,7 +10,9 @@ so complex": read each entry's title and year, and let the pipeline do the
 rest. It is deliberately the smallest version of the springsteenlyrics.com
 design (docs/claude/springsteenlyrics.md): a host gate, one definition with
 `host`, one converter, and the shared table CSS. It has no bar, no hand-off
-and fetches nothing.
+and fetches nothing, except the opt-in detail preview's artwork pages
+(`sa_jl_detail_preview`, docs/claude/detail-pages.md; they are windows-1252,
+which `fetchHtml()` cannot decode, so it has its own fetch).
 
 ## The page
 

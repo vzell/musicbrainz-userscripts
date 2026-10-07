@@ -109,6 +109,7 @@ until you open it.
 | `jungleland.md`                            | jungleland.it: `_isJlHost`, `_foreignHost`, `jl-list`, `applyJlListToTable()`, the shared table CSS       | Only list.htm as its own tab (a frame gate, no `@noframes`); `_foreignHost` names WHICH host; the table CSS is shared — extend its `:is()` list                                   |
 | `brucespringsteen.md`                      | brucespringsteen.it: `_isBsHost`, `bs-records` (two buttons), `applyBsRecordsToTable()`                   | Rows come from the FETCHED page (button params); the live page gets an empty table; own tab only; the server sends UTF-8                                                          |
 | `brucebase.md`                             | brucebase.wikidot.com: `_isBbHost`, `bb-songs`, `applyBbSongsToTable()`, the letter tabview               | Read ONLY the `=- … -=` tabview (a second one links songs too); one row per song (Alt. repeats); the toolbar `<h1>` is injected, not the wiki's own                               |
+| `detail-pages.md`                          | The foreign hosts' detail-page card and dialog: `_DP_SITES`, the `_dpParse*()` parsers, `#mb-dp-peek`, `#mb-dp-dialog` | Bump `_DP_PARSER_VERSION` when a parser's output changes; Space pins unless the user is TYPING (render focus is in the filter); its IndexedDB is its own, never the art cache's |
 
 **Big files — grep, never read whole** (a whole read costs 10–250k tokens):
 `DEBUG-NOTES.md` (dated root-cause log, ~1 MB), `PERFORMANCE.org`,
