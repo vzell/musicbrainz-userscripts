@@ -13202,13 +13202,14 @@
     let _dpIdbPromise = null;
 
     /**
-     * The hover card's state: its element, the link it belongs to, the
-     * pending show timer, and the detail link under the pointer (`hover`,
-     * kept whether or not a card is due, so that pressing Ctrl on it can
-     * show one).
-     * @type {{el: ?HTMLElement, link: ?HTMLAnchorElement, timer: number, typedAt: number, hover: ?HTMLAnchorElement}}
+     * The hover card's state: its element, the element it belongs to
+     * (`link`: a link, or a container such as a "#" cell) and that element's
+     * target (`_popResolve()`), the pending show timer, and the previewable
+     * element under the pointer (`hover`, kept whether or not a card is due,
+     * so that pressing Ctrl on it can show one).
+     * @type {{el: ?HTMLElement, link: ?Element, target: ?object, timer: number, typedAt: number, hover: ?Element}}
      */
-    const _dpPeek = { el: null, link: null, timer: 0, typedAt: 0, hover: null };
+    const _dpPeek = { el: null, link: null, target: null, timer: 0, typedAt: 0, hover: null };
 
     /**
      * Whether the card waits for Ctrl: true unless
@@ -13234,12 +13235,13 @@
 
     /**
      * The pinned dialog's state. `api` is what `createInfoDialog()`
-     * returned; `table` the table whose rows ← and → step through; `url` the
-     * page shown; `view` `'ex'` (Extracted) or `'live'`; `hideNav` whether
-     * the Live page view hides the site's own navigation.
-     * @type {{api: ?object, table: ?HTMLTableElement, url: string, view: string, hideNav: boolean, row: ?HTMLTableRowElement, controls: ?object}}
+     * returned; `target` what it shows (`_popResolve()`: the source, the
+     * element, its key and URL), `url` that target's URL; `view` `'ex'`
+     * (Extracted) or `'live'`; `hideNav` whether the Live page view hides the
+     * site's own navigation.
+     * @type {{api: ?object, target: ?object, url: string, view: string, hideNav: boolean, row: ?HTMLTableRowElement, controls: ?object}}
      */
-    const _dpDialog = { api: null, table: null, url: '', view: 'ex', hideNav: true, row: null, controls: null };
+    const _dpDialog = { api: null, target: null, url: '', view: 'ex', hideNav: true, row: null, controls: null };
 
     /**
      * Collapses whitespace (non-breaking spaces included) and trims.
@@ -13765,6 +13767,161 @@
     }
 
     /**
+     * Every source of the popup engine (org/iframe.org), enabled or not,
+     * built once. The card, the pinned window and their keys are one engine;
+     * a SOURCE says what it previews and how:
+     *   - `selector` and `resolve(el)`: which element under the pointer it
+     *     serves (`closest(selector)`), and that element's `{key, url}`, or
+     *     null when it is not one of its own;
+     *   - `enabled()`: its host and settings, read at every event;
+     *   - `needsCtrl()`: whether its card waits for Ctrl;
+     *   - `card(t, start, repaint)` and `extracted(t, start, force, repaint)`:
+     *     HTML for the card and for the window's Extracted view in their
+     *     CURRENT state, at once; when that state changes (a request
+     *     answers) the source calls `repaint()`. Only a call with `start`
+     *     (a hover, a pin, a step, ⟳) may start a request: a repaint that
+     *     started one would retry a failed request for ever;
+     *   - `live` (`_dpIsolateFrame()`'s liveRoot/liveHide/liveCss/livePrepare,
+     *     plus charset and the rate gate `_dpGetRaw()` uses) and
+     *     `liveUrl(t)`: the Live page view;
+     *   - `steps(t)` and `stepId(el)`: what ‹ › step through, and an
+     *     identity that survives the table's `cloneNode(true)` re-renders;
+     *   - `kind`: the window's title; `wide`: a wider card.
+     * The four foreign sites are one source each (`_dpSiteSource()`).
+     *
+     * @returns {Array<object>}
+     */
+    function _popSources() {
+        if (!_popSources.list) {
+            _popSources.list = Object.keys(_DP_SITES).map(host => _dpSiteSource(host, _DP_SITES[host]));
+        }
+        return _popSources.list;
+    }
+
+    /**
+     * What the element under the pointer (or one of its ancestors) previews:
+     * the first enabled source that claims it.
+     *
+     * @param {?EventTarget} node
+     * @returns {?{src: object, el: Element, key: string, url: string}} A
+     *   TARGET: the source, the element it serves, and that element's key
+     *   and URL (plus whatever else the source's `resolve()` returned).
+     */
+    function _popResolve(node) {
+        if (!node || !node.closest) return null;
+        for (const src of _popSources()) {
+            const el = node.closest(src.selector);
+            if (!el || !src.enabled()) continue;
+            const r = src.resolve(el);
+            if (r) return Object.assign({ src, el }, r);
+        }
+        return null;
+    }
+
+    /**
+     * Whether the card shows, and shows `el`'s.
+     *
+     * @param {Element} el
+     * @returns {boolean}
+     */
+    function _dpPeekShowing(el) {
+        return _dpPeek.link === el && _dpPeekShown();
+    }
+
+    /**
+     * Whether the window is open on target `t`.
+     *
+     * @param {object} t A target (`_popResolve()`).
+     * @returns {boolean}
+     */
+    function _dpDialogShowing(t) {
+        return _dpDialog.target === t && !!_dpDialog.api && _dpDialog.api.dialog.isConnected;
+    }
+
+    /**
+     * The Extracted view's failure, with its "Try again" button.
+     *
+     * @param {string} detail
+     * @returns {string}
+     */
+    function _dpFailHtml(detail) {
+        return '<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-warn">Could not load the detail page.</div>' +
+            `<div class="mb-dp-xsub">${_mbttEscape(detail || '')}</div>` +
+            '<p><button type="button" class="mb-dp-retry">⟳ Try again</button></p></div></div>';
+    }
+
+    /**
+     * A foreign site's `_DP_SITES` entry as a source of the engine, with the
+     * behaviour the detail-page preview had before sources existed: the same
+     * link test (`_dpSiteForLink()`), the record through `_dpGet()` (memory,
+     * IndexedDB, then one request through `_dpAwaitSlot()`), the same card
+     * and Extracted view, and ‹ › through the first detail link of every
+     * visible row (`_dpRowLinks()`).
+     *
+     * @param {string} host  A `_foreignHost` value.
+     * @param {object} site  Its `_DP_SITES` entry.
+     * @returns {object} The source.
+     */
+    function _dpSiteSource(host, site) {
+        // The outcome of the latest card request and window request per URL:
+        // what a repaint shows ("fetched now" until the next hover).
+        const cardRes = new Map();
+        const exRes = new Map();
+        const head = (t) => `<div class="mb-tt-title">${_mbttEscape(_dpText(t.el.textContent))}</div>`;
+        const cardLoading = (t) => head(t) +
+            '<div class="mb-tt-body mb-dp-loading"><span class="mb-dp-spin">◌</span> Loading the detail page…</div>';
+        const exLoading = '<div class="mb-dp-x mb-dp-loading"><span class="mb-dp-spin">◌</span> Loading the detail page…</div>';
+        return {
+            id: host,
+            kind: 'Detail page',
+            selector: 'a[href]',
+            wide: false,
+            live: site,
+            enabled: () => _dpActiveSite() === site,
+            resolve: (el) => (_dpSiteForLink(el) === site ? { key: el.href, url: el.href, table: el.closest('table') } : null),
+            needsCtrl: _dpNeedsCtrl,
+            liveUrl: (t) => t.url,
+            card(t, start, repaint) {
+                if (start) {
+                    cardRes.delete(t.url);
+                    const mem = _dpMem.get(t.url);
+                    if (mem) return _dpCardHtml(mem.data, { cached: true, at: mem.at });
+                    _dpGet(t.url, site, { wanted: () => _dpPeekShowing(t.el) }).then(res => {
+                        cardRes.set(t.url, res);
+                        repaint();
+                    });
+                    return cardLoading(t);
+                }
+                const res = cardRes.get(t.url);
+                if (res && res.outcome === 'ok') return _dpCardHtml(res.data, res);
+                if (res && res.outcome === 'error') {
+                    return head(t) + '<div class="mb-tt-body mb-tt-alert">Could not load the detail page.</div>' +
+                        `<div class="mb-tt-dim">${_mbttEscape(res.detail || '')}</div>`;
+                }
+                return cardLoading(t);
+            },
+            extracted(t, start, force, repaint) {
+                if (start) {
+                    exRes.delete(t.url);
+                    const mem = force ? null : _dpMem.get(t.url);
+                    if (mem) return _dpExtractedHtml(mem.data, { cached: true, at: mem.at });
+                    _dpGet(t.url, site, { wanted: () => _dpDialogShowing(t), force }).then(res => {
+                        exRes.set(t.url, res);
+                        repaint();
+                    });
+                    return exLoading;
+                }
+                const res = exRes.get(t.url);
+                if (res && res.outcome === 'ok') return _dpExtractedHtml(res.data, res);
+                if (res && res.outcome === 'error') return _dpFailHtml(res.detail);
+                return exLoading;
+            },
+            steps: (t) => _dpRowLinks(t.table),
+            stepId: (el) => el.href,
+        };
+    }
+
+    /**
      * Waits for, and reserves, the next detail-page request slot
      * (`_DP_SPACING_MS` apart). Reserved synchronously, so two callers in
      * the same tick get consecutive slots, as in `_relAwaitRateSlot()`.
@@ -14137,54 +14294,48 @@
         clearTimeout(_dpPeek.timer);
         _dpPeek.timer = 0;
         _dpPeek.link = null;
+        _dpPeek.target = null;
         if (_dpPeek.el) _dpPeek.el.style.display = 'none';
     }
 
     /**
-     * Shows the hover card for a link after the rich-tooltip delay
+     * Shows the hover card for a target after the rich-tooltip delay
      * (`sa_rich_tooltip_delay_ms`, as the script's other cards), so a pointer
      * crossing the table does not request every page it passes.
      *
-     * @param {HTMLAnchorElement} a
+     * @param {object} t A target (`_popResolve()`).
      * @returns {void}
      */
-    function _dpSchedulePeek(a) {
+    function _dpSchedulePeek(t) {
         _dpHidePeek();
-        _dpPeek.link = a;
+        _dpPeek.link = t.el;
+        _dpPeek.target = t;
         const d = Lib.settings.sa_rich_tooltip_delay_ms;
-        _dpPeek.timer = setTimeout(() => _dpShowPeek(a), (typeof d === 'number' && d >= 0) ? d : 400);
+        _dpPeek.timer = setTimeout(() => _dpShowPeek(t), (typeof d === 'number' && d >= 0) ? d : 400);
     }
 
     /**
-     * Shows the hover card for a link: at once when the page is cached,
-     * else a loading card that the record replaces when it arrives, as long
-     * as the card still belongs to that link.
+     * Shows the hover card for a target: its source's card for the current
+     * state at once (cached, or loading), repainted by the source when that
+     * state changes, as long as the card still belongs to that element.
      *
-     * @param {HTMLAnchorElement} a
-     * @returns {Promise<void>}
+     * @param {object} t A target (`_popResolve()`).
+     * @returns {void}
      */
-    async function _dpShowPeek(a) {
-        const site = _dpSiteForLink(a);
-        if (!site || _dpPeek.link !== a || !a.isConnected) return;
+    function _dpShowPeek(t) {
+        if (_dpPeek.link !== t.el || !t.el.isConnected || !t.src.enabled()) return;
         const el = _dpEnsurePeekEl();
-        const url = a.href;
-        const stillMine = () => _dpPeek.link === a && el.style.display === 'block';
-        const mem = _dpMem.get(url);
-        el.innerHTML = mem
-            ? _dpCardHtml(mem.data, { cached: true, at: mem.at })
-            : `<div class="mb-tt-title">${_mbttEscape(_dpText(a.textContent))}</div>` +
-              '<div class="mb-tt-body mb-dp-loading"><span class="mb-dp-spin">◌</span> Loading the detail page…</div>';
+        el.classList.toggle('mb-dp-wide', !!t.src.wide);
+        const repaint = () => {
+            if (!_dpPeekShowing(t.el)) return;
+            el.innerHTML = t.src.card(t, false, repaint);
+            _dpPlacePeek(t.el);
+        };
+        // Shown before the source is asked, so a request it starts finds
+        // its card showing when its rate slot comes up.
         el.style.display = 'block';
-        _dpPlacePeek(a);
-        if (mem) return;
-        const res = await _dpGet(url, site, { wanted: stillMine });
-        if (!stillMine()) return;
-        el.innerHTML = res.outcome === 'ok'
-            ? _dpCardHtml(res.data, res)
-            : `<div class="mb-tt-title">${_mbttEscape(_dpText(a.textContent))}</div>` +
-              `<div class="mb-tt-body mb-tt-alert">Could not load the detail page.</div>` +
-              `<div class="mb-tt-dim">${_mbttEscape(res.detail || '')}</div>`;
-        _dpPlacePeek(a);
+        el.innerHTML = t.src.card(t, true, repaint);
+        _dpPlacePeek(t.el);
     }
 
     /**
@@ -14254,7 +14405,10 @@
      * fetched through the rate gate and remembered.
      *
      * @param {string} url
-     * @param {object} site  The host's `_DP_SITES` entry.
+     * @param {object} site  The source's `live`: a `_DP_SITES` entry, or an
+     *   object of the same shape. Its `charset` decodes an undeclared
+     *   response; its `awaitSlot`, when it has one, is the rate gate (the
+     *   foreign hosts use `_dpAwaitSlot()`).
      * @param {{wanted?: function(): boolean, force?: boolean}} [opts]
      *   `wanted` is asked right before a request; `force` skips the memory.
      * @returns {Promise<{outcome: string, html?: string, detail?: string}>}
@@ -14262,7 +14416,7 @@
      */
     async function _dpGetRaw(url, site, { wanted = () => true, force = false } = {}) {
         if (!force && _dpRawMem.has(url)) return { outcome: 'ok', html: _dpRawMem.get(url) };
-        await _dpAwaitSlot();
+        await (site.awaitSlot || _dpAwaitSlot)();
         if (!wanted()) return { outcome: 'skipped' };
         try {
             const html = await _dpFetchText(url, site.charset);
@@ -14393,26 +14547,29 @@
 
     /**
      * Fills the dialog's content area with the current view of the current
-     * page: the Extracted record (loading first when it is not cached), or
-     * the Live page frame.
+     * target: its source's Extracted view (loading first when it is not
+     * cached, repainted by the source as its data arrives), or the Live page
+     * frame.
      *
-     * @param {boolean} [force] Fetch again, bypassing the caches (the parsed
-     *   record's two tiers in Extracted, the raw-page memory in Live page).
+     * @param {boolean} [force] Fetch again, bypassing the caches (the
+     *   source's own in Extracted, the raw-page memory in Live page).
      * @returns {Promise<void>}
      */
     async function _dpRenderDialog(force) {
         const api = _dpDialog.api;
-        const site = _dpActiveSite();
-        if (!api || !api.dialog.isConnected || !site) return;
-        const url = _dpDialog.url;
+        const t = _dpDialog.target;
+        if (!api || !api.dialog.isConnected || !t || !t.src.enabled()) return;
+        const src = t.src;
+        const url = src.liveUrl(t);
         const area = api.scrollArea;
         const c = _dpDialog.controls;
         c.ex.setAttribute('aria-pressed', String(_dpDialog.view === 'ex'));
         c.live.setAttribute('aria-pressed', String(_dpDialog.view === 'live'));
         c.open.href = url;
-        const links = _dpRowLinks(_dpDialog.table);
-        const i = links.findIndex(a => a.href === url);
-        c.pos.textContent = i >= 0 ? `${i + 1} / ${links.length}` : '';
+        const steps = src.steps(t);
+        const id = src.stepId(t.el);
+        const i = steps.findIndex(el => src.stepId(el) === id);
+        c.pos.textContent = i >= 0 ? `${i + 1} / ${steps.length}` : '';
         if (_dpDialog.view === 'live') {
             area.classList.add('mb-dp-area-live');
             area.innerHTML = '';
@@ -14432,7 +14589,7 @@
             bar.append(label, where);
             const frame = document.createElement('iframe');
             frame.setAttribute('sandbox', 'allow-same-origin allow-popups allow-popups-to-escape-sandbox');
-            frame.setAttribute('title', 'Detail page');
+            frame.setAttribute('title', src.kind);
             box.addEventListener('change', () => {
                 _dpDialog.hideNav = box.checked;
                 try {
@@ -14448,11 +14605,11 @@
             status.className = 'mb-dp-live-status';
             status.textContent = 'Loading…';
             bar.appendChild(status);
-            const raw = await _dpGetRaw(url, site, {
+            const raw = await _dpGetRaw(url, src.live, {
                 force,
-                wanted: () => _dpDialog.url === url && _dpDialog.view === 'live' && frame.isConnected
+                wanted: () => _dpDialog.target === t && _dpDialog.view === 'live' && frame.isConnected
             });
-            if (_dpDialog.url !== url || _dpDialog.view !== 'live' || !frame.isConnected) return;
+            if (_dpDialog.target !== t || _dpDialog.view !== 'live' || !frame.isConnected) return;
             if (raw.outcome !== 'ok') {
                 frame.remove();
                 status.remove();
@@ -14465,37 +14622,32 @@
                 return;
             }
             status.remove();
-            frame.addEventListener('load', () => _dpIsolateFrame(frame, site));
+            frame.addEventListener('load', () => _dpIsolateFrame(frame, src.live));
             frame.srcdoc = _dpLiveDocHtml(raw.html, url);
             return;
         }
         area.classList.remove('mb-dp-area-live');
-        const mem = force ? null : _dpMem.get(url);
-        if (mem) {
-            area.innerHTML = _dpExtractedHtml(mem.data, { cached: true, at: mem.at });
-            return;
-        }
-        area.innerHTML = '<div class="mb-dp-x mb-dp-loading"><span class="mb-dp-spin">◌</span> Loading the detail page…</div>';
-        const res = await _dpGet(url, site, { wanted: () => _dpDialog.url === url && api.dialog.isConnected, force });
-        if (_dpDialog.url !== url || !api.dialog.isConnected || _dpDialog.view !== 'ex') return;
-        if (res.outcome === 'ok') {
-            area.innerHTML = _dpExtractedHtml(res.data, res);
-        } else if (res.outcome === 'error') {
-            area.innerHTML = '<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-warn">Could not load the detail page.</div>' +
-                `<div class="mb-dp-xsub">${_mbttEscape(res.detail || '')}</div>` +
-                '<p><button type="button" class="mb-dp-retry">⟳ Try again</button></p></div></div>';
-        }
+        const repaint = () => {
+            if (_dpDialog.target !== t || !api.dialog.isConnected || _dpDialog.view !== 'ex') return;
+            area.innerHTML = src.extracted(t, false, false, repaint);
+        };
+        area.innerHTML = src.extracted(t, true, !!force, repaint);
     }
 
     /**
-     * Shows a page in the dialog and marks its row.
+     * Shows a target in the dialog, titles the dialog after its source and
+     * marks its row.
      *
-     * @param {HTMLAnchorElement} a The row's detail link.
+     * @param {object} t A target (`_popResolve()`).
      * @returns {void}
      */
-    function _dpShowInDialog(a) {
-        _dpDialog.url = a.href;
-        const tr = a.closest('tr');
+    function _dpShowInDialog(t) {
+        _dpDialog.target = t;
+        _dpDialog.url = t.url;
+        // createInfoDialog()'s title bar is its first child, the title its first span.
+        const title = _dpDialog.api ? _dpDialog.api.dialog.querySelector(':scope > div > span') : null;
+        if (title) title.textContent = t.src.kind;
+        const tr = t.el.closest('tr');
         if (_dpDialog.row && _dpDialog.row !== tr) _dpDialog.row.classList.remove('mb-dp-current');
         _dpDialog.row = tr;
         if (tr) {
@@ -14506,18 +14658,24 @@
     }
 
     /**
-     * Steps the dialog to the previous or next visible row's page.
+     * Steps the dialog to the previous or next of its source's steps (a
+     * foreign site: the next visible row's detail link). Found by the
+     * source's `stepId()`, since a re-render may have replaced the element.
      *
      * @param {number} delta -1 or 1.
      * @returns {void}
      */
     function _dpStep(delta) {
-        const links = _dpRowLinks(_dpDialog.table);
-        if (!links.length) return;
-        let i = links.findIndex(a => a.href === _dpDialog.url);
-        if (i < 0) i = delta > 0 ? -1 : links.length;
-        const next = links[i + delta];
-        if (next) _dpShowInDialog(next);
+        const t = _dpDialog.target;
+        if (!t) return;
+        const steps = t.src.steps(t);
+        if (!steps.length) return;
+        const id = t.src.stepId(t.el);
+        let i = steps.findIndex(el => t.src.stepId(el) === id);
+        if (i < 0) i = delta > 0 ? -1 : steps.length;
+        const next = steps[i + delta];
+        const nt = next ? _popResolve(next) : null;
+        if (nt) _dpShowInDialog(nt);
     }
 
     /**
@@ -14541,25 +14699,24 @@
     }
 
     /**
-     * Opens the pinned dialog on a detail link's page, or shows that page in
-     * the dialog already open.
+     * Opens the pinned dialog on a target, or shows that target in the
+     * dialog already open.
      *
      * The dialog is `createInfoDialog()`'s shell: it is dragged by its title
      * bar, resized from its corner (position and size are remembered under
      * `sa_dp_dialog_geometry`), and closed by ✕, Esc or a click outside. Its
      * title bar adds ‹ ›, the row position, the Extracted / Live page
      * switch, ⟳ (fetch again, bypassing the cache) and ↗ (open the page in a
-     * new tab).
+     * new tab). Its title is the target's source's `kind`.
      *
-     * @param {HTMLAnchorElement} a
+     * @param {?object} t A target (`_popResolve()`).
      * @returns {void}
      */
-    function _dpOpenDialog(a) {
+    function _dpOpenDialog(t) {
         _dpHidePeek();
-        if (!_dpSiteForLink(a)) return;
-        _dpDialog.table = a.closest('table');
+        if (!t || !t.src.enabled()) return;
         if (_dpDialog.api && _dpDialog.api.dialog.isConnected) {
-            _dpShowInDialog(a);
+            _dpShowInDialog(t);
             return;
         }
         const btn = (text, tip) => {
@@ -14588,7 +14745,7 @@
         _setTip(open, 'Open the page in a new tab');
         const api = createInfoDialog({
             id: 'mb-dp-dialog',
-            title: 'Detail page',
+            title: t.src.kind,
             width: 'min(860px, 94vw)',
             maxHeight: '88vh',
             minWidth: '320px',
@@ -14607,6 +14764,9 @@
         }, true);
         api.scrollArea.addEventListener('click', (e) => {
             if (e.target.closest('.mb-dp-retry')) _dpRenderDialog(true);
+            // A source's own controls in its Extracted view (a sortable
+            // header): delegated here, since every repaint replaces them.
+            else if (_dpDialog.target && _dpDialog.target.src.onAreaClick) _dpDialog.target.src.onAreaClick(e, _dpDialog.target);
         });
         _dpDialog.api = api;
         _dpDialog.controls = { pos, ex, live, open };
@@ -14623,13 +14783,16 @@
             gone.disconnect();
             if (_dpDialog.row) _dpDialog.row.classList.remove('mb-dp-current');
             _dpDialog.row = null;
-            if (_dpDialog.api === api) _dpDialog.api = null;
+            if (_dpDialog.api === api) {
+                _dpDialog.api = null;
+                _dpDialog.target = null;
+            }
         });
         gone.observe(document.body, { childList: true });
         // Take the focus into the dialog (out of the global filter the
         // render focused), so ← → and the scroll keys reach it.
         api.scrollArea.focus({ preventScroll: true });
-        _dpShowInDialog(a);
+        _dpShowInDialog(t);
     }
 
     /**
@@ -14771,37 +14934,47 @@
     }
 
     /**
-     * The detail link a Ctrl press shows the card for: the one under the
-     * pointer, else the one with keyboard focus; null when there is none.
+     * The target a Ctrl press shows the card for: the previewable element
+     * under the pointer, else the one with keyboard focus; null when there
+     * is none.
      *
-     * @returns {?HTMLAnchorElement}
+     * @returns {?object} A target (`_popResolve()`).
      */
     function _dpCtrlTarget() {
         const h = _dpPeek.hover;
-        if (h && h.isConnected && h.matches(':hover') && _dpSiteForLink(h)) return h;
+        if (h && h.isConnected && h.matches(':hover')) {
+            const t = _popResolve(h);
+            if (t && t.el === h) return t;
+        }
         const f = document.activeElement;
-        if (f && f.matches && f.matches('a[href]') && _dpSiteForLink(f) && _dpFocusVisible(f)) return f;
+        if (f && f.matches && _dpFocusVisible(f)) {
+            const t = _popResolve(f);
+            if (t && t.el === f) return t;
+        }
         return null;
     }
 
     /**
-     * Installs the detail-page preview on a foreign host whose preview
-     * setting is on (`_DP_SITES[_foreignHost].setting`). Called once from the
-     * init block, after the host's live page is prepared. On MusicBrainz, or
-     * with the setting off, it does nothing at all.
+     * Installs the popup engine (the detail-page preview's hover card and
+     * pinned dialog) when one of its sources is enabled here (`_popSources()`:
+     * a foreign host whose preview setting is on). Called once from the init
+     * block, after a foreign host's live page is prepared. Where no source is
+     * enabled it does nothing at all: no stylesheet, no listener.
      *
      * Everything is delegated on the document, so the table's
      * `cloneNode(true)` re-renders need no re-wiring:
-     *   - hover (or keyboard focus) on a detail link → the card, after the
-     *     rich-tooltip delay; leaving the link, a press anywhere or a scroll
-     *     hides it. Unless `sa_dp_hover_without_ctrl` is on, only a hover
-     *     with Ctrl held counts, and pressing Ctrl on a hovered (or focused)
-     *     link shows its card at once (`_dpCtrlTarget()`);
+     *   - hover (or keyboard focus) on an element a source serves
+     *     (`_popResolve()`) → its card, after the rich-tooltip delay; leaving
+     *     the element, a press anywhere or a scroll hides it. When the
+     *     source's `needsCtrl()` says so (the foreign sites: unless
+     *     `sa_dp_hover_without_ctrl` is on), only a hover with Ctrl held
+     *     counts, and pressing Ctrl on a hovered (or focused) element shows
+     *     its card at once (`_dpCtrlTarget()`);
      *   - Esc hides the card (and only the card, when a dialog is under it);
      *   - Space while the card shows pins it into the dialog, unless the
      *     user is typing in a text field (`_DP_TYPING_GRACE_MS`): after a
      *     render the global filter has the focus without anyone typing;
-     *   - a TAP on a detail link opens the dialog instead of the page: a
+     *   - a TAP on such an element opens the dialog instead of the page: a
      *     touch screen has no hover, and the dialog's ↗ opens the page.
      *
      * Hover handlers ignore a tap's compatibility mouse events
@@ -14810,19 +14983,18 @@
      * @returns {void}
      */
     function _initDetailPreview() {
-        if (!_dpActiveSite() || _initDetailPreview.done) return;
+        if (_initDetailPreview.done || !_popSources().some(s => s.enabled())) return;
         _initDetailPreview.done = true;
         _installTouchInputTracker();
         _ensureDetailPreviewStyle();
         document.addEventListener('mouseover', (e) => {
-            const a = e.target.closest ? e.target.closest('a[href]') : null;
-            if (!a || a === _dpPeek.link) return;
-            if (!_dpSiteForLink(a) || _isTouchCompatMouseEvent(e)) return;
-            _dpPeek.hover = a;
-            // Without Ctrl held, only remember the link: pressing Ctrl on it
-            // shows the card (the keydown handler below).
-            if (_dpNeedsCtrl() && !e.ctrlKey) return;
-            _dpSchedulePeek(a);
+            const t = _popResolve(e.target);
+            if (!t || t.el === _dpPeek.link || _isTouchCompatMouseEvent(e)) return;
+            _dpPeek.hover = t.el;
+            // Without Ctrl held, only remember the element: pressing Ctrl on
+            // it shows the card (the keydown handler below).
+            if (t.src.needsCtrl() && !e.ctrlKey) return;
+            _dpSchedulePeek(t);
         }, true);
         document.addEventListener('mouseout', (e) => {
             const h = _dpPeek.hover;
@@ -14833,9 +15005,9 @@
             _dpHidePeek();
         }, true);
         document.addEventListener('focusin', (e) => {
-            const a = e.target;
-            if (a === _dpPeek.link || !_dpSiteForLink(a)) return;
-            if (_dpFocusVisible(a) && !_dpNeedsCtrl()) _dpSchedulePeek(a);
+            const t = _popResolve(e.target);
+            if (!t || t.el !== e.target || t.el === _dpPeek.link) return;
+            if (_dpFocusVisible(t.el) && !t.src.needsCtrl()) _dpSchedulePeek(t);
         }, true);
         document.addEventListener('focusout', (e) => {
             if (e.target === _dpPeek.link) _dpHidePeek();
@@ -14850,15 +15022,17 @@
             if (_dpIsTextField(e.target)) _dpPeek.typedAt = Date.now();
         }, true);
         document.addEventListener('keydown', (e) => {
-            // Ctrl pressed on a detail link (hovered, else keyboard-focused)
-            // shows its card at once: the key press is the intent, so no
-            // delay. Not consumed — Ctrl+<key> shortcuts keep working.
-            if (e.key === 'Control' && !e.repeat && _dpNeedsCtrl() && !_dpPeekShown()) {
-                const a = _dpCtrlTarget();
-                if (a) {
+            // Ctrl pressed on a previewable element (hovered, else
+            // keyboard-focused) shows its card at once: the key press is the
+            // intent, so no delay. Not consumed — Ctrl+<key> shortcuts keep
+            // working.
+            if (e.key === 'Control' && !e.repeat && !_dpPeekShown()) {
+                const t = _dpCtrlTarget();
+                if (t && t.src.needsCtrl()) {
                     _dpHidePeek();
-                    _dpPeek.link = a;
-                    _dpShowPeek(a);
+                    _dpPeek.link = t.el;
+                    _dpPeek.target = t;
+                    _dpShowPeek(t);
                 }
                 return;
             }
@@ -14875,19 +15049,20 @@
                 if (_dpIsTextField(e.target) && Date.now() - _dpPeek.typedAt < _DP_TYPING_GRACE_MS) return;
                 e.preventDefault();
                 e.stopImmediatePropagation();
-                _dpOpenDialog(_dpPeek.link);
+                _dpOpenDialog(_dpPeek.target);
             }
         }, true);
         document.addEventListener('click', (e) => {
             if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
-            const a = e.target.closest ? e.target.closest('a[href]') : null;
-            if (!a || !_dpSiteForLink(a)) return;
+            const t = _popResolve(e.target);
+            if (!t) return;
             if (!_isTouchCompatMouseEvent(e) && !_isTouchPrimaryDevice()) return;
             e.preventDefault();
             e.stopPropagation();
-            _dpOpenDialog(a);
+            _dpOpenDialog(t);
         }, true);
-        Lib.debug('detail', `Detail-page preview installed for ${_foreignHost}.`);
+        Lib.debug('detail', `Popup engine installed on ${_foreignHost || window.location.hostname}: ` +
+            _popSources().filter(s => s.enabled()).map(s => s.id).join(', ') + '.');
     }
 
     /**
@@ -49168,10 +49343,10 @@ a { color: #1565c0; }`;
         headerContainer = _bbPrepareLivePage();
     }
 
-    // The detail-page preview (hover card + pinned dialog) on the foreign
-    // hosts' tables, when that host's preview setting is on. A no-op on
-    // MusicBrainz. See _initDetailPreview().
-    if (_foreignHost && pageType && headerContainer) _initDetailPreview();
+    // The popup engine (hover card + pinned dialog), when one of its sources
+    // is enabled here: a foreign host's tables with that host's preview
+    // setting on. A no-op wherever no source is. See _initDetailPreview().
+    if (pageType && headerContainer) _initDetailPreview();
 
     if (pageType) Lib.prefix = `[VZ-${SCRIPT_BASE_NAME}: ${pageType}]`;
     Lib.debug('init', 'Initializing script for path:', path);

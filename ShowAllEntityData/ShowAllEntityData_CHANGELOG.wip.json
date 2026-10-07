@@ -1,0 +1,20 @@
+[
+    {
+        "version": "WIP.1",
+        "date": "2026-10-07",
+        "sections": [
+            {
+                "label": "🔧 Refactor",
+                "items": [
+                    "The detail-page preview (the hover card and the pinned window of the four Springsteen sites) is now a popup engine with sources (org/iframe.org, Phase 1): each site is one source that says which links it serves, how its card and its window's Extracted view read, which page its Live page view shows and what ‹ › step through. Nothing changes for the four sites; the engine installs only where a source is enabled, so MusicBrainz still gets no stylesheet and no listener from it. Not on the filter/sort/render path; no performance impact."
+                ]
+            },
+            {
+                "label": "📝 Docs",
+                "items": [
+                    "Phase 0 of org/iframe.org: scripts/probe-mb-entity-lookups.py and scripts/probe-mb-page-nojs.js (results R1-R10 in org/iframe.org). scripts/mutations/detail-preview.json re-anchored on the engine's hover handler and call site; tests/fixtures/detail-preview.spec.js and its mobile spec pass unchanged."
+                ]
+            }
+        ]
+    }
+]
