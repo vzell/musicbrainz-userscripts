@@ -1533,7 +1533,8 @@ codes: **ISRCs**, **ISWCs** and **disc IDs**, and **edits** and **editors**.
 A **Barcode** cell has a card too: the barcode's format and the releases
 carrying it. So does an entry of a column's **📊 dropdown** that names one
 artist, label, area or other entity: hold Ctrl over it. Pinning it with Space
-closes the dropdown.
+closes the dropdown. A **catalog number** shows the card of the label its
+release lists with that number (the window and Live page are the label's).
 
 **Hold Ctrl and rest the pointer on a link**, or rest it first and then press
 **Ctrl**: a card opens beside the link. Without Ctrl nothing happens, so

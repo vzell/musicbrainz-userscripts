@@ -499,8 +499,8 @@
         "why": "sa_pop_mb_page is opt-in: by default only table links (and stamped elements) have a card.",
         "edits": [
             {
-                "find": "                    : '[data-mb-pop], table.tbl > tbody td.barcode-cell, table.tbl > tbody a[href]';",
-                "replace": "                    : '[data-mb-pop], table.tbl > tbody td.barcode-cell, #page a[href]';"
+                "find": "                    : '[data-mb-pop], table.tbl > tbody td.barcode-cell, table.tbl > tbody span.catalog-number, table.tbl > tbody a[href]';",
+                "replace": "                    : '[data-mb-pop], table.tbl > tbody td.barcode-cell, table.tbl > tbody span.catalog-number, #page a[href]';"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -525,8 +525,8 @@
         "why": "A stamped cell of the column's kind is a step like a link.",
         "edits": [
             {
-                "find": "                const a = [td, ...td.querySelectorAll('a[href], [data-mb-pop]')].find(x => {",
-                "replace": "                const a = [td, ...td.querySelectorAll('a[href]')].find(x => {"
+                "find": "                const a = [td, ...td.querySelectorAll('a[href], [data-mb-pop], span.catalog-number')].find(x => {",
+                "replace": "                const a = [td, ...td.querySelectorAll('a[href], span.catalog-number')].find(x => {"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -551,8 +551,8 @@
         "why": "The selector must name td.barcode-cell, or a hover on one never reaches _mbPopTarget().",
         "edits": [
             {
-                "find": "                    : '[data-mb-pop], table.tbl > tbody td.barcode-cell, table.tbl > tbody a[href]';",
-                "replace": "                    : '[data-mb-pop], table.tbl > tbody a[href]';"
+                "find": "                    : '[data-mb-pop], table.tbl > tbody td.barcode-cell, table.tbl > tbody span.catalog-number, table.tbl > tbody a[href]';",
+                "replace": "                    : '[data-mb-pop], table.tbl > tbody span.catalog-number, table.tbl > tbody a[href]';"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -564,8 +564,8 @@
         "why": "A barcode cell is its own target: the step finder must consider the cell, not only what is inside it.",
         "edits": [
             {
-                "find": "                const a = [td, ...td.querySelectorAll('a[href], [data-mb-pop]')].find(x => {",
-                "replace": "                const a = [...td.querySelectorAll('a[href], [data-mb-pop]')].find(x => {"
+                "find": "                const a = [td, ...td.querySelectorAll('a[href], [data-mb-pop], span.catalog-number')].find(x => {",
+                "replace": "                const a = [...td.querySelectorAll('a[href], [data-mb-pop], span.catalog-number')].find(x => {"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -609,6 +609,58 @@
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
         "grep": "pinning an entry",
+        "expect": "fail"
+    },
+    {
+        "name": "a catalog number is not a target",
+        "why": "MusicBrainz's own span.catalog-number in a row that links a release is a target: the release's label info names its label.",
+        "edits": [
+            {
+                "find": "        const cat = !pop && !bc && a.tagName === 'SPAN' && a.classList.contains('catalog-number') ? _mbPopRowRelease(a) : '';",
+                "replace": "        const cat = '';"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "resolves to its row",
+        "expect": "fail"
+    },
+    {
+        "name": "catalog numbers are compared as typed",
+        "why": "MusicBrainz compares catalog numbers ignoring case, spaces and separators (MusicBrainz_API/Search, catno); 'kc-31903' is KC 31903.",
+        "edits": [
+            {
+                "find": "        return String(c || '').toLowerCase().replace(/[\\s\\-._/]+/g, '');",
+                "replace": "        return String(c || '');"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "compared as MusicBrainz compares",
+        "expect": "fail"
+    },
+    {
+        "name": "the label lookup waits for a hover that never comes",
+        "why": "The label is known only once the release answered, in a repaint; the label's lookup must start there when it was never asked, or the card stays on the release's loading line.",
+        "edits": [
+            {
+                "find": "                    return _MB_KINDS.label.card(lt, start || !_mbPop.has(lk), repaint)",
+                "replace": "                    return _MB_KINDS.label.card(lt, start, repaint)"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "its card is the label the release names",
+        "expect": "fail"
+    },
+    {
+        "name": "a catalog number's page stays its release's",
+        "why": "Once the label is known, ↗ and the Live page are the label's page, the card's subject.",
+        "edits": [
+            {
+                "find": "                    return lt ? lt.url : new URL(`/release/${parts(t).rel}`, window.location.origin).href;",
+                "replace": "                    return new URL(`/release/${parts(t).rel}`, window.location.origin).href;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "its card is the label the release names",
         "expect": "fail"
     }
 ]

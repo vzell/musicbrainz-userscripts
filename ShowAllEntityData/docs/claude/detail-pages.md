@@ -545,6 +545,21 @@ location rows removed. Never commit another editor's profile.
   dropdown's own Space-toggles-entry). In specs, open a dropdown with its
   column header scrolled into view: it is fixed-position beside its button,
   and opened off screen it stays there (2 of 10 runs).
+- **Catalog# → its label.** MusicBrainz's Catalog# and Label cells list
+  their values INDEPENDENTLY (unique labels, unique numbers: three labels
+  against two numbers on a Greetings row), so a number cannot be paired with
+  a label by position — a per-column declaration (the 1b sketch's
+  `popTargets`) would mis-pair them. Instead a `span.catalog-number` in a row
+  that links a release is a target `catno:<release>~<number>`
+  (`_mbPopRowRelease()`); the kind loads the release lookup (the release
+  card's own request and cache key), takes the `label-info` whose
+  catalog number matches (`_mbPopCatnoKey()`: case, spaces and separators
+  ignored, as MusicBrainz compares `catno`), and with ONE label hands over to
+  the label kind with a target that keeps the catalog number's key (so
+  `_mbPopWanted()` still recognises the card and the window). The label's
+  lookup starts from the repaint the release answer causes, only when never
+  asked (the `_rgWindowFor()` exception). `liveUrl(t)` on a kind lets the
+  Live page be the label's once known.
 
 `python3 scripts/check-mutation-anchors.py` checks, without running a spec,
 that every `find` of every mutation list still matches once. Run it after
