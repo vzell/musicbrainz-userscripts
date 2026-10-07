@@ -21,8 +21,8 @@
     "why": "The style guide's ETI is lowercase. Without that rule an alternative title such as 'Cecilia (Does Your Mother Know You're Out)' is listed as ETI and lost from the single-title entries.",
     "edits": [
       {
-        "find": "    const _TITLE_ETI_RE      = /\\s[(\\[]([a-z][^()\\[\\]]*)[)\\]]$/;",
-        "replace": "    const _TITLE_ETI_RE      = /\\s[(\\[]([^()\\[\\]]*)[)\\]]$/;"
+        "find": "        if (/^[a-z]/.test(g) && !_TITLE_ETI_MINOR_RE.test(g)) return 'eti';",
+        "replace": "        if (!_TITLE_ETI_MINOR_RE.test(g)) return 'eti';"
       }
     ],
     "spec": "tests/fixtures/uniq-drop-title-anatomy.spec.js",
@@ -34,8 +34,8 @@
     "why": "'Nancy (with the Laughing Face)' is a song title; title case keeps 'with' lowercase. Without the exception it shows up as ETI.",
     "edits": [
       {
-        "find": "            while ((em = _TITLE_ETI_RE.exec(part)) && !_TITLE_ETI_MINOR_RE.test(em[1])) {",
-        "replace": "            while ((em = _TITLE_ETI_RE.exec(part))) {"
+        "find": "        if (/^[a-z]/.test(g) && !_TITLE_ETI_MINOR_RE.test(g)) return 'eti';",
+        "replace": "        if (/^[a-z]/.test(g)) return 'eti';"
       }
     ],
     "spec": "tests/fixtures/uniq-drop-title-anatomy.spec.js",
@@ -207,8 +207,8 @@
     "why": "Without it an artist or label name in a Name/Title column is parsed as a title: 'ABBA' becomes ALL UPPERCASE.",
     "edits": [
       {
-        "find": "            return _TITLE_ENTITY_HREF_RE.test(bdi.closest('a[href]').getAttribute('href')) ? bdi : null;",
-        "replace": "            return bdi;"
+        "find": "            if (bdi) return _TITLE_ENTITY_HREF_RE.test(a.getAttribute('href')) ? bdi : null;",
+        "replace": "            if (bdi) return bdi;"
       }
     ],
     "spec": "tests/fixtures/uniq-drop-title-info-columns.spec.js",

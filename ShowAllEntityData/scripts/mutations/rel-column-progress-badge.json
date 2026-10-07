@@ -69,8 +69,8 @@
     "why": "_relTableProgress() treats a failed cell as done, so the badge reports a complete table while a row is still failed.",
     "edits": [
       {
-        "find": "            if (td.dataset.relDone === '1') _done.add(m);",
-        "replace": "            if (td.dataset.relDone === '1' || td.dataset.relError) _done.add(m);"
+        "find": "            _all.add(m);\n            if (td.dataset.relDone === '1') _done.add(m);",
+        "replace": "            _all.add(m);\n            if (td.dataset.relDone === '1' || td.dataset.relError) _done.add(m);"
       }
     ],
     "spec": "tests/fixtures/rel-column-progress-badge.spec.js",

@@ -4,8 +4,8 @@
     "why": "Without u, the 📊 in the class contributes its two UTF-16 halves as separate members, so the high half \\uD83D is also stripped from 🔗 and every other emoji that shares it. The label becomes '\\uDD17 Links': present, non-empty, still ending in 'Links', so only an exact comparison sees it.",
     "edits": [
       {
-        "find": "            const colName = th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();\n            if (!colName) return; // Skip empty headers",
-        "replace": "            const colName = th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();\n            if (!colName) return; // Skip empty headers"
+        "find": "            const colName = th.dataset.colName || th.textContent.replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();",
+        "replace": "            const colName = th.dataset.colName || th.textContent.replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();"
       }
     ],
     "spec": "tests/fixtures/header-emoji-surrogate.spec.js",
@@ -17,8 +17,8 @@
     "why": "The same planted defect, seen from the guard that covers the call sites the DOM spec cannot reach.",
     "edits": [
       {
-        "find": "            const colName = th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();\n            if (!colName) return; // Skip empty headers",
-        "replace": "            const colName = th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();\n            if (!colName) return; // Skip empty headers"
+        "find": "            const colName = th.dataset.colName || th.textContent.replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();",
+        "replace": "            const colName = th.dataset.colName || th.textContent.replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();"
       }
     ],
     "spec": "tests/fixtures/regex-unicode-flag-guard.spec.js",

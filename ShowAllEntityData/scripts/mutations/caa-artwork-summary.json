@@ -82,8 +82,8 @@
     "why": "The sticky-column duplicate of a row carries the same art anchor, and a release-group breadcrumb can repeat one. Counting an entity twice inflates every number in the panel. KNOWN GAP recorded honestly: this fixture's sub-table has no sticky duplicate reaching the art anchor, so the counts do not move. Covering it needs a pageType with a sticky first column that carries one.",
     "edits": [
       {
-        "find": "            if (p && !seen.has(p)) { seen.add(p); paths.push(p); }",
-        "replace": "            if (p) { paths.push(p); }"
+        "find": "            if (p && !seen.has(p)) { seen.add(p); out.push({ path: p, anchor: a }); }",
+        "replace": "            if (p) { out.push({ path: p, anchor: a }); }"
       }
     ],
     "spec": "tests/fixtures/caa-artwork-summary.spec.js",

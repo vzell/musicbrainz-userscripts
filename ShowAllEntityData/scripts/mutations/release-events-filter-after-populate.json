@@ -43,7 +43,7 @@
     "why": "Removes the trailing runFilter(). The caches are still dropped, so retyping works — but a user who typed a filter while the fetch was in flight keeps staring at the rows it matched against empty cells. Must fail on 'D: the still-active filter shows the US rows without being retyped'.",
     "edits": [
       {
-        "find": "        if (_filterActive) {\n            _dbg('initReleaseEventsColumn: re-running the active filter against the populated cells');\n            runFilter();\n        }",
+        "find": "        if (_anyFilterActive()) {\n            _dbg('initReleaseEventsColumn: re-running the active filter against the populated cells');\n            runFilter();\n        }",
         "replace": ""
       }
     ],
@@ -56,8 +56,8 @@
     "why": "cols is 'not cached' at undefined; null is a VALUE. _cachedColText() would return null and testRowMatch() throws on .toLowerCase() mid-runFilter(). Must fail — on the isolation test and/or the uncaught-page-error afterEach, whichever trips first.",
     "edits": [
       {
-        "find": "            if (cached) { cached.cols = []; cached.full = null; }",
-        "replace": "            if (cached) { cached.cols = cached.cols.map(() => null); cached.full = null; }"
+        "find": "            const cached = _rowTextCache.get(row);\n            if (cached) { cached.cols = []; cached.full = null; }",
+        "replace": "            const cached = _rowTextCache.get(row);\n            if (cached) { cached.cols = cached.cols.map(() => null); cached.full = null; }"
       }
     ],
     "spec": "tests/fixtures/release-events-filter-after-populate.spec.js",

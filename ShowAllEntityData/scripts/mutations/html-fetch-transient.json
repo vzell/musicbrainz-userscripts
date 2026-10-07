@@ -43,8 +43,8 @@
     "why": "F1 itself, reproduced by putting the increment back on the failure path: `pagesProcessed` then includes the page that 503'd and the line reads \"2 of 3\". Note the test asserts the NUMBER, not merely that a warning appeared — a warning would still be there.",
     "edits": [
       {
-        "find": "                    fetchIncomplete.pageFailure = { page: p, detail: _httpFailureDetail(e) };\n                    break; // Stop fetching further pages on error",
-        "replace": "                    fetchIncomplete.pageFailure = { page: p, detail: _httpFailureDetail(e) };\n                    pagesProcessed++;\n                    break; // Stop fetching further pages on error"
+        "find": "                        baseDef,\n                    };\n                    break; // Stop fetching further pages on error",
+        "replace": "                        baseDef,\n                    };\n                    pagesProcessed++;\n                    break; // Stop fetching further pages on error"
       }
     ],
     "spec": "tests/fixtures/html-fetch-transient.spec.js",

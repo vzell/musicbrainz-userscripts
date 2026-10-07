@@ -43,7 +43,7 @@
     "why": "A flagged cell's tint is the more urgent message; the exclusions keep it.",
     "edits": [
       {
-        "find": "        tr[data-mb-track-target] > td:not([data-mb-len-flag]):not([data-mb-video-flag=\"mismatch\"]):not([data-mb-work-flag]) {",
+        "find": "        tr[data-mb-track-target] > td:not([data-mb-len-flag]):not([data-mb-video-flag=\"mismatch\"]):not([data-mb-work-flag]):not([data-mb-live-flag]):not([data-mb-finding]) {",
         "replace": "        tr[data-mb-track-target] > td {"
       }
     ],

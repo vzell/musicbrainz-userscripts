@@ -276,8 +276,8 @@
         "replace": "                if (el === sidebar) continue;\n"
       },
       {
-        "find": "                if (el.id === 'content' || el.querySelector('table.tbl')) walk(el);\n                else bodies.push(el);\n",
-        "replace": "                bodies.push(el);\n"
+        "find": "                if (el.id === 'content' || el.querySelector('table.tbl') || _sphIsFullWidthFloat(el)) walk(el);\n                else bodies.push(el);\n",
+        "replace": "                if (_sphIsFullWidthFloat(el)) walk(el);\n                else bodies.push(el);\n"
       },
       {
         "find": "            if (el.matches('table.tbl') || el.querySelector('table.tbl')) return false;\n",
@@ -293,8 +293,8 @@
     "why": "The pre-fix shape of bug 2: div.wikipedia-extract is walked into instead of pinned whole, so its h2, body, link and licence note are candidates of their own. The inline guard then keeps the link and the note unpinned, so the extract no longer stays put as a whole.",
     "edits": [
       {
-        "find": "                if (el.id === 'content' || el.querySelector('table.tbl')) walk(el);\n",
-        "replace": "                if (el.id === 'content' || el.querySelector('table.tbl, h2')) walk(el);\n"
+        "find": "                if (el.id === 'content' || el.querySelector('table.tbl') || _sphIsFullWidthFloat(el)) walk(el);\n",
+        "replace": "                if (el.id === 'content' || el.querySelector('table.tbl, h2') || _sphIsFullWidthFloat(el)) walk(el);\n"
       }
     ],
     "spec": "tests/fixtures/sticky-page-headers.spec.js",
@@ -345,8 +345,8 @@
     "why": "Both halves of the old behaviour: the wrapper is walked into AND inline elements are pinned on their own, each at the wrapper's left edge, so the licence <small> is drawn over the 'Continue reading' <a> once scrolled.",
     "edits": [
       {
-        "find": "                if (el.id === 'content' || el.querySelector('table.tbl')) walk(el);\n",
-        "replace": "                if (el.id === 'content' || el.querySelector('table.tbl, h2')) walk(el);\n"
+        "find": "                if (el.id === 'content' || el.querySelector('table.tbl') || _sphIsFullWidthFloat(el)) walk(el);\n",
+        "replace": "                if (el.id === 'content' || el.querySelector('table.tbl, h2') || _sphIsFullWidthFloat(el)) walk(el);\n"
       },
       {
         "find": "        if (kind === 'body' && nat.display.startsWith('inline') && !_sphAloneOnLine(el)) return false;\n",

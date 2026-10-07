@@ -43,8 +43,8 @@
     "why": "F5 kept the in-memory zero for a transient failure on purpose, so Tier 1 serves it back on every re-render. A retry that re-arms the anchors without dropping that zero makes no request at all — the same defect F5 itself fixed one layer down, where _artRetryTable() cleared the session caches but not the IDB record.",
     "edits": [
       {
-        "find": "        paths.forEach(pth => {\n            ctx.countCache.delete(pth);\n            ctx.imagesCache.delete(pth);\n        });",
-        "replace": "        paths.forEach(pth => { void pth; });"
+        "find": "        // that merely share the table.\n        paths.forEach(pth => {\n            ctx.countCache.delete(pth);\n            ctx.imagesCache.delete(pth);\n        });",
+        "replace": "        // that merely share the table.\n        paths.forEach(pth => { void pth; });"
       }
     ],
     "spec": "tests/fixtures/caa-retry-failed-only.spec.js",
@@ -56,8 +56,8 @@
     "why": "KNOWN GAP, and it corrected my own understanding of the code: this membership test is an EFFICIENCY guard, not the correctness one. Re-arming an anchor only causes a request when the entity has no cache entry, and the entities that answered still have theirs — so Tier 1 serves them and the request counts do not move. What actually limits the requests is the cache-deletion loop above, which IS scoped to `paths` and DOES have a failing mutation (\"the retry does not clear the cached zero\"). Dropping this test would still make the pass walk every anchor on the page and re-enrich every table, which is worth keeping and is not worth a request-count assertion.",
     "edits": [
       {
-        "find": "            if (!pth || !paths.has(pth)) return;",
-        "replace": "            if (!pth) return;"
+        "find": "        document.querySelectorAll('a[href$=\"' + ctx.artSuffix + '\"]').forEach(a => {\n            const pth = a.getAttribute('ref') || (a.getAttribute('href') || '').replace(suffixRe, '');\n            if (!pth || !paths.has(pth)) return;",
+        "replace": "        document.querySelectorAll('a[href$=\"' + ctx.artSuffix + '\"]').forEach(a => {\n            const pth = a.getAttribute('ref') || (a.getAttribute('href') || '').replace(suffixRe, '');\n            if (!pth) return;"
       }
     ],
     "spec": "tests/fixtures/caa-retry-failed-only.spec.js",

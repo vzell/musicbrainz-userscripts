@@ -73,8 +73,8 @@
     "why": "The integerColumns align ':' entry is what makes _sortColumnKind() sort Duration as a duration. As text, the 73-minute \"1:13:36\" sorts before \"31:09.55\" and the unknown \"?:??\" is not pinned last.",
     "edits": [
       {
-        "find": "integerColumns: [ { sourceColumn: 'Duration', align: ':' } ]",
-        "replace": "integerColumns: []"
+        "find": "                    { sourceColumn: 'Duration', align: ':' },\n",
+        "replace": ""
       }
     ],
     "spec": "tests/fixtures/sl-bootlegs.spec.js",
@@ -216,8 +216,8 @@
     "why": "The heading usually sits outside .project-detail (see _slFindCards()), so the h2 styling rule keys on mb-sl-list-heading, not on its position.",
     "edits": [
       {
-        "find": "                h2.classList.add('mb-sl-list-heading');\n",
-        "replace": ""
+        "find": "                // sits (often outside `.project-detail`, see _slFindCards()).\n                h2.classList.add('mb-sl-list-heading');\n",
+        "replace": "                // sits (often outside `.project-detail`, see _slFindCards()).\n"
       }
     ],
     "spec": "tests/fixtures/sl-collection-intro.spec.js",
@@ -255,8 +255,8 @@
     "why": "applyStickyColumn() then falls back to column 0, the Cover thumbnail, instead of Title.",
     "edits": [
       {
-        "find": "                integerColumns: [ { sourceColumn: 'Duration', align: ':' } ],\n                stickyColumn: 'Title'\n",
-        "replace": "                integerColumns: [ { sourceColumn: 'Duration', align: ':' } ]\n"
+        "find": "                    { sourceColumn: 'Duration', align: ':' },\n                    { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' }\n                ],\n                stickyColumn: 'Title'\n",
+        "replace": "                    { sourceColumn: 'Duration', align: ':' },\n                    { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' }\n                ]\n"
       }
     ],
     "spec": "tests/fixtures/sl-bootlegs.spec.js",
@@ -331,7 +331,7 @@
   {
     "name": "bootleg First date is not fed to dateParts",
     "why": "sl-bootlegs splits its ISO First date with the MusicBrainz dateParts extractor; an unknown extractor name leaves DD/MM/YYYY/Day/Month empty on every row.",
-    "edits": [{ "find": "{ sourceColumn: 'First date', extractor: 'dateParts',", "replace": "{ sourceColumn: 'First date', extractor: 'datePartsOff'," }],
+    "edits": [{ "find": "with the same four columns.\n                columnExtractors: [\n                    { sourceColumn: 'First date', extractor: 'dateParts',", "replace": "with the same four columns.\n                columnExtractors: [\n                    { sourceColumn: 'First date', extractor: 'datePartsOff'," }],
     "spec": "tests/fixtures/sl-bootlegs.spec.js",
     "grep": "First date is split into DD",
     "expect": "fail"
@@ -339,7 +339,7 @@
   {
     "name": "bootleg Location is not split",
     "why": "Without a resolvable source column the four Place/Locality/Region/Country columns are never appended.",
-    "edits": [{ "find": "{ sourceColumn: 'Location',   extractor: 'splitLocationText',", "replace": "{ sourceColumn: 'Locationx',  extractor: 'splitLocationText'," }],
+    "edits": [{ "find": "with the same four columns.\n                columnExtractors: [\n                    { sourceColumn: 'First date', extractor: 'dateParts',         syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] },\n                    { sourceColumn: 'Location',   extractor: 'splitLocationText',", "replace": "with the same four columns.\n                columnExtractors: [\n                    { sourceColumn: 'First date', extractor: 'dateParts',         syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] },\n                    { sourceColumn: 'Locationx',  extractor: 'splitLocationText'," }],
     "spec": "tests/fixtures/sl-bootlegs.spec.js",
     "grep": "Location is split into Place",
     "expect": "fail"

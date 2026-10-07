@@ -4,8 +4,8 @@
         "why": "The core of org/ISRC.org item 3 — without this, every native ISRCs column keeps showing MusicBrainz's compact, un-hyphenated code forever.",
         "edits": [
             {
-                "find": "            a.removeAttribute('data-mb-isrc-invalid');\n            a.removeAttribute('title');\n            code.textContent = '';",
-                "replace": "            a.removeAttribute('data-mb-isrc-invalid');\n            a.removeAttribute('title');\n            return;\n            code.textContent = '';"
+                "find": "        a.removeAttribute('data-mb-isrc-invalid');\n        a.removeAttribute('title');\n        if (code.children.length === 4 &&",
+                "replace": "        a.removeAttribute('data-mb-isrc-invalid');\n        a.removeAttribute('title');\n        return;\n        if (code.children.length === 4 &&"
             }
         ],
         "spec": "tests/fixtures/isrc-column-format.spec.js",
@@ -17,8 +17,8 @@
         "why": "Org item 6 — without this, a code that doesn't match CC-XXX-YY-NNNNN gets neither the ⚠️ glyph nor a filterable invalid count, and a real data-entry error looks identical to a correct code.",
         "edits": [
             {
-                "find": "            const parsed = _parseIsrcCode(raw);\n            if (!parsed) {\n                a.setAttribute('data-mb-isrc-invalid', '1');",
-                "replace": "            const parsed = _parseIsrcCode(raw) || { country: 'XX', registrant: 'XXX', year: '00', designation: '00000' };\n            if (false) {\n                a.setAttribute('data-mb-isrc-invalid', '1');"
+                "find": "        const parsed = _parseIsrcCode(raw);\n        if (!parsed) {\n            a.setAttribute('data-mb-isrc-invalid', '1');",
+                "replace": "        const parsed = _parseIsrcCode(raw) || { country: 'XX', registrant: 'XXX', year: '00', designation: '00000' };\n        if (false) {\n            a.setAttribute('data-mb-isrc-invalid', '1');"
             }
         ],
         "spec": "tests/fixtures/isrc-column-format.spec.js",

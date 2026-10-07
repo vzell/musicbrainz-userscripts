@@ -111426,6 +111426,27 @@ a { color: #1565c0; }`;
                 return Math.max(0, _relNextSlotAt - Date.now());
             },
             /**
+             * Reserves `n` slots of the foreign hosts' detail-page rate gate
+             * (`_dpAwaitSlot()`, the shipping function), so a spec can put the
+             * next request's slot in the future by construction instead of
+             * relying on how fast the test runs.
+             *
+             * @param {number} n
+             * @returns {void}
+             */
+            reserveDpRateSlots(n) {
+                for (let i = 0; i < n; i++) _dpAwaitSlot();
+            },
+            /**
+             * How long a request asking the detail-page rate gate now would
+             * wait, ms (0 when the gate is idle).
+             *
+             * @returns {number}
+             */
+            dpRateSlotWaitMs() {
+                return Math.max(0, _dpNextSlotAt - Date.now());
+            },
+            /**
              * Which source of the popup engine claims an element, and with
              * what key (`_popResolve()`, the shipping function), so a spec
              * can pin what is previewed and what is not without hovering.

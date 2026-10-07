@@ -4,8 +4,8 @@
     "why": "Image 2 is Back + Front; the Front chip counts 2, so it must show both. Comparing types[0] shows 1 while the chip says 2.",
     "edits": [
       {
-        "find": "            .filter(i => !filter || (images[i].types && images[i].types.length ? images[i].types : ['(no type)']).includes(filter));",
-        "replace": "            .filter(i => !filter || ((images[i].types || [])[0] || '(no type)') === filter);"
+        "find": "                (images[i].types && images[i].types.length ? images[i].types : ['(no type)']).some(t => want.has(t)));",
+        "replace": "                want.has((images[i].types || [])[0] || '(no type)'));"
       }
     ],
     "spec": "tests/fixtures/release-tracks-cover-art.spec.js",

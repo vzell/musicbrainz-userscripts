@@ -3,7 +3,7 @@
     "name": "the row-count stat tooltip renders empty",
     "why": "_initStatTooltip() shows #mb-stat-tooltip but without the data-mbtt content: visible, yet no filter-expression chip.",
     "edits": [
-      { "find": "            _tip.innerHTML = el.dataset.mbtt;\n", "replace": "            _tip.innerHTML = '';\n" }
+      { "find": "            _tip.innerHTML = fnHtml || el.dataset.mbtt;\n", "replace": "            _tip.innerHTML = fnHtml || '';\n" }
     ],
     "spec": "tests/fixtures/rich-tooltips.spec.js",
     "grep": "row-count stat",
@@ -43,7 +43,7 @@
     "name": "the strip tooltip is never displayed",
     "why": "The strip wrapper's mouseenter in _artInitBigPics() builds the content but never shows it — the user-visible symptom of the 2026-10-04 release-group report, on both table modes.",
     "edits": [
-      { "find": "                            _tip.style.display = 'block';\n                            const _tw = _tip.offsetWidth, _th = _tip.offsetHeight;\n", "replace": "                            const _tw = _tip.offsetWidth, _th = _tip.offsetHeight;\n" }
+      { "find": "                            _tip.style.display = 'block';\n                            _fitArtTooltipToViewport(_tip);\n", "replace": "                            _fitArtTooltipToViewport(_tip);\n" }
     ],
     "spec": "tests/fixtures/bigbox-tooltip.spec.js",
     "grep": "hovering a strip image",

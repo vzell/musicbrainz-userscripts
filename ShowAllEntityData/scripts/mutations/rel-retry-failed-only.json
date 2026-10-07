@@ -69,8 +69,8 @@
     "why": "The pre-existing bug this branch fixed in passing: the walk stopped at the <h2>, so on a single-table page with cover art off the retry buttons were built and then dropped on the floor — which is every single-table FIXTURE, and why no spec had ever seen them. The failed-only control anchors on them, so it goes missing too.",
     "edits": [
       {
-        "find": "                return _single ? (el.querySelector('button:last-of-type') || el) : null;",
-        "replace": "                return null;"
+        "find": "        if (_hdr.tagName === 'H2' && !_single) return null;",
+        "replace": "        if (_hdr.tagName === 'H2') return null;"
       }
     ],
     "spec": "tests/fixtures/rel-retry-failed-only.spec.js",

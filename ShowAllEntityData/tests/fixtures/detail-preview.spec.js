@@ -506,8 +506,13 @@ test.describe('the hover card and the pinned dialog (brucespringsteen.it)', () =
         const links = page.locator('table.tbl tbody a[href*="detrec.aspx"]');
         await hover(page, links.nth(0));
         await expect.poll(() => served.length).toBe(1);
-        // The second hover asks right away, but its slot is a second after the
-        // first: its card shows the loading line while it waits.
+        // The second hover asks right away, but its slot must still be in the
+        // future when the pointer leaves. Reserved here rather than assumed:
+        // "a second after the first" held only while the test ran within that
+        // second, and under a loaded full run it did not (the slot was free at
+        // once, the card still showing, so the page was asked: 14 of 20 runs
+        // failed with --repeat-each=20, DEBUG-NOTES 2026-10-07).
+        await page.evaluate(() => window.__saTest.reserveDpRateSlots(2));
         await page.keyboard.down('Control');
         await links.nth(1).hover();
         await page.keyboard.up('Control');
@@ -515,8 +520,11 @@ test.describe('the hover card and the pinned dialog (brucespringsteen.it)', () =
         await expect(peek(page)).toContainText('Loading the detail page');
         await page.mouse.move(0, 0);
         await expect(peek(page)).toBeHidden();
-        // Past the slot: it comes up, finds nobody wanting the page, and asks nothing.
-        await page.clock.fastForward(1500);
+        // Past the slot: it comes up, finds nobody wanting the page, and asks
+        // nothing. The gate idle is the signal that every reserved slot (and
+        // the hover's own) has come up.
+        await page.clock.fastForward(3500);
+        await expect.poll(() => page.evaluate(() => window.__saTest.dpRateSlotWaitMs())).toBe(0);
         await expect(peek(page)).toBeHidden();
         expect(served).toHaveLength(1);
     });

@@ -4,8 +4,8 @@
     "why": "The original org/503-handling.org F5 defect: a 503 is written to the IDB `metadata` store exactly like a real 404. The store assertion for the transiently-failed release must notice.",
     "edits": [
       {
-        "find": "if (Lib.settings.sa_art_idb_enable && definitiveAbsence) {",
-        "replace": "if (Lib.settings.sa_art_idb_enable) {"
+        "find": "                    // for WS/2 — left standing in the oldest network path.\n                    if (Lib.settings.sa_art_idb_enable && definitiveAbsence) {",
+        "replace": "                    // for WS/2 — left standing in the oldest network path.\n                    if (Lib.settings.sa_art_idb_enable) {"
       }
     ],
     "spec": "tests/fixtures/caa-metadata-transient-503.spec.js",

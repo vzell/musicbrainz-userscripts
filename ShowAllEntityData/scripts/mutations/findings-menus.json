@@ -108,8 +108,8 @@
     "why": "renderGroupedTable() always renders clones of the source rows, so a stamp on the live rows alone vanishes on the next filter pass. Must fail on 'the stamp survives a filter re-render'.",
     "edits": [
       {
-        "find": "                if (m.row !== row) _stampFindingRow(m.row, plan);\n                done.add(m.row);\n                owners.add(m.owner);",
-        "replace": "                done.add(m.row);"
+        "find": "            if (m.row !== row) fn(m.row);\n            done.add(m.row);\n            owners.add(m.owner);",
+        "replace": "            done.add(m.row);"
       }
     ],
     "spec": "tests/fixtures/findings-stamp.spec.js",
