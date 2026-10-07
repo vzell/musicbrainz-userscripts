@@ -70,11 +70,12 @@ generate the plan information inside this file, so that I can resume also from a
   =feature/popup-engine-phase3=, live-tested by the user and merged to =main=
   2026-10-07 (=npm run test:full=: 1334 passed); see "Phase 3" below. (The
   Live page for every MusicBrainz card moved into Phase 2.)
-- [-] Phase 4: containers beyond =<a href>= (item 1b) and page-wide scope, on
-  =feature/popup-engine-phase4= (from =main= at 9.99.1280). Chosen
-  2026-10-08: the =data-mb-pop= foundation with a page-wide setting (WIP.1),
-  barcode cells (WIP.2), 📊 dropdown entries (WIP.3), Catalog# → its label
-  (WIP.4). Not chosen: the touch magnifier per row; a wider =@include= stays
+- [X] Phase 4: containers beyond =<a href>= (item 1b) and page-wide scope,
+  9.99.1281 to 9.99.1284: built on =feature/popup-engine-phase4=, live-tested
+  by the user and merged to =main= 2026-10-08 (=npm run test:full=: 1347
+  passed). Chosen 2026-10-08: the =data-mb-pop= foundation with a page-wide
+  setting (9.99.1281), barcode cells (9.99.1282), 📊 dropdown entries
+  (9.99.1283), Catalog# → its label (9.99.1284). Not chosen: the touch magnifier per row; a wider =@include= stays
   out (answer 6). Found while building: Catalog# and Label cells are not
   paired by position (unique labels and unique numbers listed independently),
   so the label comes from the release's own label info, not from a
