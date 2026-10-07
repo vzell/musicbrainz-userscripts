@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.1262+2026-10-07
+// @version      9.99.1266+2026-10-07
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting. Optionally also springsteenlyrics.com collection and bootleg lists, the jungleland.it bootleg artwork list and the brucespringsteen.it record database.
 // @author       vzell
 // @tag          AI generated
@@ -14240,7 +14240,7 @@
      *     per script (29 on a springsteenlyrics.com song page);
      *   - so is every inline event handler (`on…` attribute) and every
      *     `javascript:` URL, which Chrome also logs once each as the page is
-     *     parsed (WIP.4: six on a Brucebase song page);
+     *     parsed (9.99.1266: six on a Brucebase song page);
      *   - every `<iframe>` (a YouTube video, an html-block) becomes a link:
      *     inside a frame without scripts a player cannot start, and YouTube's
      *     own fallback image then 404s;

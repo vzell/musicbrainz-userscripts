@@ -280,7 +280,7 @@
     },
     {
         "name": "lyrics.php?song= links are not detail links",
-        "why": "The lyrics index's rows link to song pages; without the lyrics.php clause no card opens there (the report that started WIP.2).",
+        "why": "The lyrics index's rows link to song pages; without the lyrics.php clause no card opens there (the report that started 9.99.1264).",
         "edits": [
             {
                 "find": "                (u.pathname === '/lyrics.php' && !!u.searchParams.get('song')),",
@@ -332,7 +332,7 @@
     },
     {
         "name": "the Live page copy keeps the page's scripts",
-        "why": "A page handed to the scriptless frame with its scripts in made Chrome log 'Blocked script execution … sandboxed' once per script (the report behind WIP.3).",
+        "why": "A page handed to the scriptless frame with its scripts in made Chrome log 'Blocked script execution … sandboxed' once per script (the report behind 9.99.1265).",
         "edits": [
             {
                 "find": "        doc.querySelectorAll('script, noscript, meta[http-equiv=\"refresh\" i]').forEach(n => n.remove());",
@@ -410,7 +410,7 @@
     },
     {
         "name": "the Live page copy keeps inline handlers and javascript: URLs",
-        "why": "The sandbox refuses every on… attribute as the page is parsed and Chrome logs each (eight on a Brucebase song page, the WIP.4 report); javascript: links did nothing there anyway.",
+        "why": "The sandbox refuses every on… attribute as the page is parsed and Chrome logs each (eight on a Brucebase song page, the 9.99.1266 report); javascript: links did nothing there anyway.",
         "edits": [
             {
                 "find": "                if (name.startsWith('on') ||\n                    (/^(?:href|src|action|formaction|xlink:href)$/.test(name) && /^\\s*javascript:/i.test(a.value))) {\n                    el.removeAttribute(a.name);\n                }",

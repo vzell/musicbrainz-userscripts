@@ -1,5 +1,53 @@
 [
   {
+    "version": "9.99.1266",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The detail preview's \"Live page\" view on Brucebase no longer logs \"Blocked script execution\" in the browser console (eight times per song page). The wiki's search box, sign-in, report and cookie-settings links carry small inline scripts of their own, and the view's copy of the page now leaves those out too; the links themselves stay. The many other console messages on Brucebase pages (blocked ad requests, its own video frames) come from the site and an ad blocker, not from the script."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1265",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The detail preview's \"Live page\" view (9.99.1263) no longer fills the browser console with \"Blocked script execution … sandboxed\" messages (29 on a springsteenlyrics.com song page), nor with a failed YouTube image request. The view now shows a copy of the page with its scripts removed and any embedded video as a \"▶ Watch on YouTube\" link, since a player could not start there anyway. A page you have just hovered opens in that view without being read from the site again; ⟳ still reads it afresh. The two remaining console messages on springsteenlyrics.com pages, the blocked http:// font stylesheet and the password field's autocomplete hint, come from the site itself."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1264",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The detail-page preview (9.99.1263) now also works on springsteenlyrics.com's lyrics index (lyrics.php), where it opened nothing before. Rest the pointer on a song and the card shows that version's page: which version it is (\"Album version\"), the first lines of the lyrics with their number of lines, how many versions the site has, and the start of the song's info, or \"Lyrics not available\". The pinned window has the whole lyrics and every section of the song's page: info, writing and recording, releases, live history, covers, credits and the other versions. The setting is now called \"Preview item and song pages on springsteenlyrics.com lists\"."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1263",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Preview the detail pages on the four Springsteen sites without leaving the table, when switched on: ⚙️ Settings → each site's section → \"Preview … pages\" (one setting per site, off by default, under that site's own switch). Rest the pointer on a title and a card opens beside it with what the row's own page adds: on springsteenlyrics.com a bootleg's tracklist by disc, its notes and its artwork scans; on jungleland.it the uploader and the scans; on brucespringsteen.it a record's tracklist with the show each track comes from, and its photo; on Brucebase the album a song comes from, how often and when last it was played live, its releases and live downloads. The page is read in the background, at most one a second, and kept for 30 days, so a card you have seen comes back at once. Esc closes the card. Space pins it into a window you can move and resize: ‹ › (or ← →) step through the rows, \"Extracted\" shows everything the script read (on Brucebase also the credits, studio versions and lyrics), and \"Live page\" shows the site's own page with its menus hidden. ⟳ reads the page again, ↗ opens it in a new tab. On a touch screen, tapping a title opens the window."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1262",
     "date": "2026-10-07",
     "sections": [

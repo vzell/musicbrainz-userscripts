@@ -2,7 +2,7 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1260+2026-10-07",
+    "script_version": "9.99.1266+2026-10-07",
     "schema_entries": 377,
     "sections": 45,
     "settings": 332,

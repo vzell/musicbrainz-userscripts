@@ -107,7 +107,7 @@ test.describe('detail-page preview on the real sites', { tag: '@extended' }, () 
         await expect(dialog.locator('.mb-dp-col').last().locator('h4').first()).toHaveText('Lyrics');
         await expect(dialog.locator('h4', { hasText: 'Available Versions' })).toHaveCount(1);
 
-        // The Live page view (WIP.3): the page's cleaned copy. The song page
+        // The Live page view (9.99.1265): the page's cleaned copy. The song page
         // embeds a YouTube video and carries some 30 scripts; the sandboxed
         // frame used to log "Blocked script execution" once per script, and
         // the player's fallback image 404'd. Now: no such message, the video
@@ -183,7 +183,7 @@ test.describe('detail-page preview on the real sites', { tag: '@extended' }, () 
         expect(await page.locator('#mb-dp-dialog .mb-dp-section').last().evaluate((el) => el.textContent.split('\n').filter(Boolean).length))
             .toBeGreaterThan(20);
 
-        // The Live page view (WIP.4), the reported steps: hover, Space, Live
+        // The Live page view (9.99.1266), the reported steps: hover, Space, Live
         // page. The wiki's inline handlers (search box, login, report and
         // cookie links) made the sandbox log "Blocked script execution" in
         // about:srcdoc eight times. The page's own messages (its ad frames,

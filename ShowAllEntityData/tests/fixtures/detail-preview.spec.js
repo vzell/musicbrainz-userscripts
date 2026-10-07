@@ -190,7 +190,7 @@ test.describe('detail-page parsers (one record per saved page)', () => {
 
         // A Brucebase (Wikidot)-like page: inline handlers and javascript:
         // links, which the sandbox also refuses, and Chrome logs, as the page
-        // is parsed (WIP.4). Gone, with the elements and their text kept.
+        // is parsed (9.99.1266). Gone, with the elements and their text kept.
         const bb = await page.evaluate(([h, u]) => {
             const doc = new DOMParser().parseFromString(window.__saTest.dpLiveDocHtml(h, u), 'text/html');
             const handlers = [];
@@ -620,7 +620,7 @@ test.describe('the other hosts', () => {
         })).toEqual({ sideBar: 'none', labels: 10, hiddenPanels: 0, panels: 10 });
         // The premise: the saved page carries Wikidot's inline handlers and
         // javascript: links (the build strips scripts only). The frame's copy
-        // has none, so the sandbox has nothing to refuse (WIP.4).
+        // has none, so the sandbox has nothing to refuse (9.99.1266).
         const raw = fixtureHtml('detail-bb-4th-of-july.html');
         expect(raw).toMatch(/\sonclick="/);
         expect(raw).toMatch(/href="javascript:/);

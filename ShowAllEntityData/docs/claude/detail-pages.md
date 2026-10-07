@@ -15,7 +15,7 @@ Design study, probes and the mockups the user chose from:
 
 | Host                  | Setting                | Detail links                                                                                                    |
 |-----------------------|------------------------|-----------------------------------------------------------------------------------------------------------------|
-| springsteenlyrics.com | `sa_sl_detail_preview` | `collection.php`/`bootlegs.php`/`brucelegs.php` with `item=N`; `lyrics.php?song=SLUG` (the lyrics index, WIP.2) |
+| springsteenlyrics.com | `sa_sl_detail_preview` | `collection.php`/`bootlegs.php`/`brucelegs.php` with `item=N`; `lyrics.php?song=SLUG` (the lyrics index, 9.99.1264) |
 | jungleland.it         | `sa_jl_detail_preview` | `/html/*.htm` except list, images, artwork                                                                      |
 | brucespringsteen.it   | `sa_bs_detail_preview` | `/DB/detrec.aspx?code=`                                                                                         |
 | brucebase.wikidot.com | `sa_bb_detail_preview` | `/song:<slug>`                                                                                                  |
@@ -155,18 +155,18 @@ obligations (filter-and-cache-invariants.md) do not apply.
 
 **Live page view.** An `<iframe sandbox="allow-same-origin allow-popups
 allow-popups-to-escape-sandbox">` whose `srcdoc` is a cleaned copy of the page
-(`_dpLiveDocHtml()`, since WIP.3): same origin, so its document is the
+(`_dpLiveDocHtml()`, since 9.99.1265): same origin, so its document is the
 script's to change, and NO scripts, so no trackers, no pop-ups and no second
 run of the page's own code. The copy:
-- has every `<script>` and `<noscript>` removed. Until WIP.3 the frame loaded
+- has every `<script>` and `<noscript>` removed. Until 9.99.1265 the frame loaded
   the page's URL and the sandbox refused its scripts, and Chrome logged
   "Blocked script execution … sandboxed" once per script (29 on a
   springsteenlyrics.com song page, reported from a real browser);
 - has every inline event handler (`on…` attribute) and every `javascript:`
-  URL removed (WIP.4). The sandbox refuses those too, ONE MESSAGE EACH, as the
+  URL removed (9.99.1266). The sandbox refuses those too, ONE MESSAGE EACH, as the
   page is parsed, click or no click: eight on a Brucebase song page (the
   search box's `onfocus`, the login, report and cookie-settings links'
-  `onclick`). Found only from a real browser's console after WIP.3; the
+  `onclick`). Found only from a real browser's console after 9.99.1265; the
   elements and their text stay;
 - shows every `<iframe>` as a link ("▶ Watch on YouTube" for a YouTube
   embed): a player cannot start without scripts, and YouTube's fallback image
