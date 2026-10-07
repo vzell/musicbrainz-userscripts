@@ -66,8 +66,10 @@ async function openToolbarMenu(page, which) {
  * @param {import('@playwright/test').Page} page
  * @param {string} selector - e.g. `'#mb-save-to-disk-btn'`.
  * @param {{ force?: boolean, timeout?: number }} [opts] - `force` skips
- *   Playwright's actionability checks, for a row whose panel can extend below
- *   the fold in the project's 1280x720 viewport. `timeout` applies to the click
+ *   Playwright's actionability checks. It was added for a row whose panel
+ *   extended below the fold in the project's 1280x720 viewport; since
+ *   9.99.1262 a panel always fits the window (opening upward, or capped and
+ *   scrolling), so no caller needs it for that. `timeout` applies to the click
  *   itself, for a control whose handler serialises a large dataset before it
  *   settles.
  * @returns {Promise<void>}

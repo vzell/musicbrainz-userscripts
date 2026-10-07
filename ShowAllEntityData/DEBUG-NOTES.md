@@ -19675,3 +19675,36 @@ of 10 pass with it (with the older resume test). Mutation added to
 "Save to Disk → Load from Disk round trip" waiting for its `download` event,
 a separate pre-existing flake that failed the same way on main the same day
 (1 of 21 runs of its spec; recorded on feature/detail-pages).
+
+## 2026-10-07 — Toolbar menus opened off-screen: the event-overview "Save to Disk" flake (branch fix/toolbar-menu-fit, WIP.1)
+
+The flake in the entry above, and in the feature/detail-pages entries: the
+`event-overview.spec.js` round trip timed out waiting for its `download`
+event. Not the save at all. An instrumented copy (12 runs, 3 failed) showed
+every failure stuck one step earlier: `clickToolbarItem('#mb-save-to-disk-btn')`
+retrying with "element is outside of the viewport", until the 60 s download
+wait ran out (the original report's second error, "locator.click: Test
+ended", was exactly that). The failure screenshot: the fixture renders
+without MusicBrainz's CSS (the spec blocks static.metabrainz.org), so the
+site's navigation is a long unstyled list and the script's toolbar sits at
+y ≈ 707 of the 720 px window. `open()` placed the `position: fixed` panel at
+the button's bottom edge, kept it inside the window horizontally only, and so
+opened it below the window, where no scroll can reach a fixed element.
+Whether it fitted depended on the page's scroll position after the render:
+intermittent. A real user hits the same with the toolbar near the window's
+bottom. `tests/support/toolbarMenu.js` had grown a `force` option "for a row
+whose panel can extend below the fold": a workaround for this very bug.
+
+Fix: `open()` places the panel below when it fits, else above when there is
+more room above, and caps it to that room (`max-height`, `overflow-y: auto`),
+the springsteenlyrics.com scope bar's rule (`_slPlaceScopePop()`). Two new
+`toolbar-menus.spec.js` tests, each with its premise asserted: the button 20 px
+above the window's bottom opens the menu upward and "Save to Disk" is
+clickable without `force`; a window only 40 px taller than the panel, the
+button in the middle, caps it and scrolls. Both fail without the fix (and the
+new `toolbar-menus.json` mutation fails as declared); the event-overview spec
+passed 28 of 28 (7 tests × 4) with it.
+
+**Results:** lint within baseline; `npm run test:full` 1251 passed, 0 failed
+(2026-10-07T10:30:34Z–10:38:10Z, host NB-3641, WSL2): the first fully green
+merge-gate run of the day.

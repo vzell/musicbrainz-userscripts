@@ -212,7 +212,19 @@ adopt it. Row order inside a panel comes from `_TOOLBAR_MENU_ROW_ORDER`, not
 from the sequence the render tail happens to adopt in — 🎹 is adopted on the
 INITIAL render and would otherwise head the 🛠 View list.
 
-Six things are load-bearing, and every one of them fails silently:
+Seven things are load-bearing, and every one of them fails silently:
+
+- **A panel must FIT the window: it is `position: fixed`, and the page can
+  never scroll it into view.** `open()` puts it below its button when it fits
+  there, else above when there is more room above, and caps it to the room it
+  opens into (`max-height`, scrolling inside). Until 9.99.1262 it always opened
+  below: with the toolbar near the window's bottom the rows were off-screen,
+  and a click on one retried until the test timed out. That was
+  `event-overview.spec.js`'s intermittent "Save to Disk" failure, whose
+  unstyled fixture puts the toolbar at the bottom of the 720 px window, and the
+  reason `clickToolbarItem()` grew a `force` option. Same rule as
+  springsteenlyrics.com's scope bar (`_slPlaceScopePop()`). Specs:
+  `toolbar-menus.spec.js` "toolbar menus fit in the window".
 
 - **A row in a CLOSED panel has a ZERO bounding rect.** Density's and Export's
   own pull-downs, and `showLoadFilterDialog()`, all position themselves from a
