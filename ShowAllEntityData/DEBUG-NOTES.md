@@ -19639,3 +19639,39 @@ whole sl-lyrics spec then passed 21/21 (`--repeat-each=3`) on its own, and
 nothing in this branch touches its code path. Timing under load, not a
 regression — but a resume test that loses its first row under load is worth
 a look if it recurs.
+
+## 2026-10-07 — A resume renamed its columns ("Title 4"): the stored name must win (branch fix/resume-col-names, WIP.1)
+
+It recurred. During the feature/detail-pages work the `sl-lyrics.spec.js` test
+the entry above calls "timing under load", "a failed letter resumes at that
+LETTER, keeping the rows already loaded", failed in `test:full`, then 3+ of 5
+runs ALONE, on that branch and on `main` (8043073) alike: `rows[0].Letter`
+undefined while the row count was right. So not load, and not that branch.
+
+Printing the headers before and after the resume showed it: after "↻ Load
+remaining pages" the `data-col-name`s read "Title 4", "Lyrics 1", "Version
+12", "Type 2", "Date 8": each the column's name plus the number its 📊 count
+badge showed. A resume renders over the live table, and
+`makeTableSortableUnified()` read `colName` from `th.textContent`, stripping
+the icon glyphs and superscript digits but not the badge's plain digits.
+Its own comment said the text "is always raw/undecorated here", true on a
+first render, when the badges are still empty, and false on a resume. Which
+columns broke depended on which badges `_updateAllColHeaderCounts()` had filled
+when the resume began: hence the intermittency, and Letter, the test's key,
+broke only sometimes. Every name-keyed lookup missed for the rest of that page
+visit: filters, sort state, column visibility.
+
+Fix: `const colName = th.dataset.colName || <text, as before>`. The stored
+name is what `_sortColumnHeaderName()` already prefers, and it keeps a real
+digit in a header ("1st seconder", the reason the text path does not strip
+0-9). New test "a resume keeps every column's name, also once the 📊 counts
+are filled in" waits for the Title and Letter badges to hold digits before
+resuming, which makes the bug deterministic: 5 of 5 fail without the fix, 10
+of 10 pass with it (with the older resume test). Mutation added to
+`scripts/mutations/sl-support.json`, and it fails as declared.
+
+**Results:** lint within baseline; `npm run test:full` 1248 passed, 1 failed
+(2026-10-07T09:57:14Z–10:04:37Z, host NB-3641, WSL2): the event-overview
+"Save to Disk → Load from Disk round trip" waiting for its `download` event,
+a separate pre-existing flake that failed the same way on main the same day
+(1 of 21 runs of its spec; recorded on feature/detail-pages).

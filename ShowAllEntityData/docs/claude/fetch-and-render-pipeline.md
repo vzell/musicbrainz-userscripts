@@ -56,6 +56,17 @@ oversight: the render tail never calls `runFilter()`, so a preserved filter
 input would sit above a table showing every row. A resume is a fetch, and a
 fetch starts from a clean filter.
 
+**A resume renders over headers that are already decorated.** The render
+re-runs `makeTableSortableUnified()` on the live table, whose `<th>`s carry
+the sort icons and the 📊 count badges of the first render, and those badges
+hold plain digits by then. Its column name must therefore come from the
+stored `th.dataset.colName` first; read from the header text, "Title ⇅▲▼102📊"
+became "Title 102", the resumed table's columns were renamed ("Title 4",
+"Version 12", "Date 8", whichever badges were filled when the resume began),
+and every name-keyed lookup missed. Found 2026-10-07 through
+`sl-lyrics.spec.js`, failing 3+ of 5 on main; pinned by its "a resume keeps
+every column's name" test, which waits for the badges before resuming.
+
 `_resumeState` is written only by the loop's page-failure arm and cleared at the
 top of every run (including a resumed one) and on a disk load. `__saTest.resumeState()`
 exposes it, because a resumed run that silently re-fetched everything looks

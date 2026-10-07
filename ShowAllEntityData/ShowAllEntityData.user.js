@@ -81370,7 +81370,12 @@ a { color: #1565c0; }`;
             // seconder"). Only the decorative icon glyphs and Unicode
             // superscript digits (used later for the multi-sort order badge,
             // a distinct code point range from ASCII 0-9) are stripped.
-            const colName = th.textContent.replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
+            //
+            // EXCEPT on a second pass over the same header ("↻ Load remaining
+            // pages" re-runs this on the live table): the header is decorated
+            // by then, its 📊 count badge holds plain digits, and the text
+            // read "Title 102". The name stored on the first pass wins.
+            const colName = th.dataset.colName || th.textContent.replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
             th.innerHTML = ''; // clear for new icon layout
 
             const createIcon = (char, targetState) => {
