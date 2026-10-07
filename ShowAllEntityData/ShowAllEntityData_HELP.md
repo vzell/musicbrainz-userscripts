@@ -1526,8 +1526,8 @@ releases.
 
 With ⚙️ Settings → 🔎 LINK PREVIEWS ON MUSICBRAINZ → *Preview linked entities
 on hover* switched on (it is off until you do), the links in a table show what
-is behind them without opening a tab. So far: **releases** and **release
-groups**; the other kinds follow.
+is behind them without opening a tab. So far: **releases**, **release
+groups**, **recordings** and **works**; the other kinds follow.
 
 **Hold Ctrl and rest the pointer on a link**, or rest it first and then press
 **Ctrl**: a card opens beside the link. Without Ctrl nothing happens, so
@@ -1536,7 +1536,11 @@ moving across a table neither opens cards nor asks MusicBrainz anything
 changes that). A release card shows the cover, status, type, format and
 number of tracks, the date and country, label and catalog number, barcode,
 packaging and the first tracks with their lengths. A release group card shows
-the group's releases, as the release page's "versions available" link does.
+the group's releases, as the release page's "versions available" link does. A
+recording card shows its length, artist, ISRCs, first release date, the work
+it performs and its earliest releases ("on 25+ releases" when there are more
+than MusicBrainz lists at once). A work card shows its type, language, ISWC,
+composer, lyricist and publishers.
 **Esc** or moving away closes it.
 
 **Press Space** to pin it into a window:
@@ -1544,7 +1548,12 @@ the group's releases, as the release page's "versions available" link does.
 - **Extracted**: for a release, the whole tracklist by medium (each track
   opens its recording), its release group, labels, release events, language,
   and the images in the Cover Art Archive; for a release group, every
-  release in a sortable table beside the group's facts.
+  release in a sortable table beside the group's facts; for a recording, its
+  credits (performers and their instruments, producers, engineers, where it
+  was recorded and mixed) and up to 25 of its releases with the real total;
+  for a work, its writers, publishers and related works, its society codes,
+  and its first 100 recordings with the total. A part that could not be
+  loaded says so, with **Try again**.
 - **Live page**: the entity's own MusicBrainz page, without the site's header
   and footer, and without its scripts.
 - **‹ ›** or **← →** step to the same kind of link in the **same column** of

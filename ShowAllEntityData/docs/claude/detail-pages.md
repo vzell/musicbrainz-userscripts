@@ -145,7 +145,16 @@ opens the window, as on the foreign hosts (kept, decided 2026-10-07).
   Archive index through `_artFetchEntityImages(CAA_CTX, …)`, only where the
   answer's `cover-art-archive.count` says there are images). `pin()` may run
   from a repaint, but starts only what was never asked (or ⟳), so a failure
-  does not loop — the same exception `_rgWindowFor()` has.
+  does not loop — the same exception `_rgWindowFor()` has. A pin's MusicBrainz
+  requests go through `_mbPopPinLoad()`, which skips a key that FAILED unless
+  it is ⟳ (pinned by a mutation); a ⟳ reaches the extras started from the
+  lookup's own callback too (`start && force`).
+- **Kinds so far**: release group, release (WIP.1); recording — card
+  `artist-credits+isrcs+releases+work-rels`, window `artist-rels+place-rels+event-rels`
+  plus `release?recording=…&limit=1` ONLY when the lookup's list is full
+  (`_MB_POP_SUBLIST_CAP` 25, org/iframe.org R3); work — card
+  `artist-rels+label-rels+work-rels`, window `recording?work=…&limit=100&inc=artist-credits`
+  (WIP.2). Browse keys: `pop:browse:<entity>?<query>` (`_mbPopBrowse()`).
 - **One loader: `_mbWsLoad(cacheKey, url, …)`**, state in `_mbPop`. Memory,
   then IndexedDB (`_rgIdbGet(key, _MB_POP_IDB_VERSION)`, the release group's
   helpers with a version argument), then `_rgWsGet()`. The key is

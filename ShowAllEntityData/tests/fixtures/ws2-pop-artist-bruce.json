@@ -1,0 +1,183 @@
+{
+ "genres": [
+  {
+   "name": "alternative folk",
+   "id": "0b48a36c-630f-4ee7-8cf3-480e3dd8be65",
+   "count": 1,
+   "disambiguation": ""
+  },
+  {
+   "name": "americana",
+   "id": "2c765e49-a12e-45eb-b628-f8b9cc0a0250",
+   "count": 8,
+   "disambiguation": ""
+  },
+  {
+   "name": "aor",
+   "count": 3,
+   "id": "aca1caab-09d1-44b5-ae84-590ff1d218fc",
+   "disambiguation": ""
+  },
+  {
+   "disambiguation": "",
+   "name": "classic rock",
+   "count": 1,
+   "id": "93244085-20e5-4f16-9067-1d19143b3810"
+  },
+  {
+   "disambiguation": "",
+   "name": "contemporary folk",
+   "count": 3,
+   "id": "c11e4253-a888-4a2a-adde-c274b748d0b3"
+  },
+  {
+   "count": 4,
+   "id": "a91eed3a-fdd0-494e-ade0-95ea4117f6eb",
+   "name": "folk",
+   "disambiguation": ""
+  },
+  {
+   "disambiguation": "",
+   "count": 1,
+   "id": "445dc48f-5233-4b4f-987f-867ff9ade836",
+   "name": "folk rock"
+  },
+  {
+   "count": 13,
+   "id": "52856ec0-9f9b-45f4-ab09-1bb8cc0a98e4",
+   "name": "heartland rock",
+   "disambiguation": ""
+  },
+  {
+   "disambiguation": "",
+   "id": "797e2e85-5ffd-495c-a757-8b4079052f0e",
+   "count": 4,
+   "name": "pop rock"
+  },
+  {
+   "disambiguation": "",
+   "name": "rock",
+   "count": 18,
+   "id": "0e3fc579-2d24-4f20-9dae-736e1ec78798"
+  },
+  {
+   "count": 3,
+   "id": "e4581b76-a842-440b-9b0f-1aa7a00a5c57",
+   "name": "rock and roll",
+   "disambiguation": ""
+  },
+  {
+   "id": "455f264b-db00-4716-991d-fbd32dc24523",
+   "count": 7,
+   "name": "singer-songwriter",
+   "disambiguation": ""
+  },
+  {
+   "disambiguation": "",
+   "count": 1,
+   "id": "7d0c6a6b-5d56-4b1e-a8c7-e32194f246b9",
+   "name": "soft rock"
+  }
+ ],
+ "name": "Bruce Springsteen",
+ "rating": {
+  "votes-count": 15,
+  "value": 4.4
+ },
+ "area": {
+  "disambiguation": "",
+  "iso-3166-1-codes": [
+   "US"
+  ],
+  "sort-name": "United States",
+  "type": null,
+  "name": "United States",
+  "type-id": null,
+  "id": "489ce91b-6658-3307-9877-795b68554c98"
+ },
+ "disambiguation": "",
+ "sort-name": "Springsteen, Bruce",
+ "begin-area": {
+  "sort-name": "Long Branch",
+  "disambiguation": "",
+  "id": "bb0af2e9-6ae0-4c4f-b729-c8d6444d6380",
+  "type-id": null,
+  "name": "Long Branch",
+  "type": null
+ },
+ "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+ "gender-id": "36d3d30a-839d-3eda-8cb3-29be4384e4a9",
+ "gender": "Male",
+ "aliases": [
+  {
+   "locale": null,
+   "begin": "1949-09-23",
+   "sort-name": "Springsteen, Bruce Frederick Joseph",
+   "name": "Bruce Frederick Joseph Springsteen",
+   "type": "Legal name",
+   "end": null,
+   "primary": null,
+   "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+   "ended": false
+  },
+  {
+   "locale": "en",
+   "begin": null,
+   "sort-name": "Springsteen, Bruce",
+   "name": "Bruce Springsteen",
+   "type": "Artist name",
+   "primary": true,
+   "end": null,
+   "ended": false,
+   "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc"
+  },
+  {
+   "sort-name": "Bruce Springteen",
+   "type": "Search hint",
+   "name": "Bruce Springteen",
+   "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+   "ended": false,
+   "primary": null,
+   "end": null,
+   "locale": null,
+   "begin": null
+  },
+  {
+   "begin": null,
+   "locale": "en",
+   "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+   "ended": false,
+   "end": null,
+   "primary": false,
+   "type": "Artist name",
+   "name": "The Boss",
+   "sort-name": "Boss, The"
+  },
+  {
+   "locale": "ja",
+   "begin": null,
+   "name": "ブルース・スプリングスティーン",
+   "type": "Artist name",
+   "end": null,
+   "primary": true,
+   "ended": false,
+   "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+   "sort-name": "ブルース・スプリングスティーン"
+  }
+ ],
+ "type": "Person",
+ "ipis": [
+  "00076333277"
+ ],
+ "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+ "end-area": null,
+ "life-span": {
+  "end": null,
+  "ended": false,
+  "begin": "1949-09-23"
+ },
+ "isnis": [
+  "0000000121418834"
+ ],
+ "country": "US"
+}

@@ -36688,9 +36688,10 @@
                 // The pin's extras start once the answer is there: from this
                 // call when it is cached, else from the repaint it causes —
                 // `pin()` itself starts only what was never asked (or ⟳).
+                // A ⟳ (start + force) asks the extras again too.
                 const later = () => {
                     const s = _mbPop.get(q.key);
-                    if (spec.pin && s && s.status === 'done') spec.pin(t, s.data, false, repaint);
+                    if (spec.pin && s && s.status === 'done') spec.pin(t, s.data, start && force, repaint);
                     repaint();
                 };
                 if (start) _mbWsLoad(q.key, q.url, { force, repaint: later, wanted: _mbPopWanted(t) });
@@ -36740,6 +36741,149 @@
                 `${typeof ms === 'number' ? `<span class="mb-pop-len">${_msFormatSeconds(ms)}</span>` : ''}</li>`;
         }).join('') + '</ol>';
     }
+
+    /**
+     * Starts one of a window's extra requests (a second lookup, a count,
+     * a browse) through `_mbWsLoad()`, from `pin()`: always on ⟳
+     * (`again`), else unless it already failed. `pin()` runs from repaints
+     * too, and a failure must wait for ⟳ or "Try again", never loop.
+     *
+     * @param {object} t - The target.
+     * @param {string} key - Cache key.
+     * @param {string} url - Same-origin `/ws/2/...`.
+     * @param {boolean} again - ⟳: ask again, skipping both caches.
+     * @param {function(): void} repaint
+     * @returns {void}
+     */
+    function _mbPopPinLoad(t, key, url, again, repaint) {
+        const s = _mbPop.get(key);
+        if (!again && s && s.status === 'failed') return;
+        _mbWsLoad(key, url, { force: again, repaint, wanted: _mbPopWanted(t) });
+    }
+
+    /**
+     * The cache key and URL of a browse (`/ws/2/<entity>?<query>`).
+     *
+     * @param {string} entity - What is browsed: `release`, `recording`, …
+     * @param {string} query - Without `fmt`.
+     * @returns {{key: string, url: string}}
+     */
+    function _mbPopBrowse(entity, query) {
+        return { key: `pop:browse:${entity}?${query}`, url: `/ws/2/${entity}?${query}&fmt=json` };
+    }
+
+    /**
+     * A window section for one extra request in its CURRENT state: a heading,
+     * then a loading line, the failure (with "Try again", which is ⟳), or
+     * what `body` makes of the answer.
+     *
+     * @param {string} title - The section heading.
+     * @param {?Object} st - `_mbPop` state.
+     * @param {function(Object): string} body
+     * @returns {string}
+     */
+    function _mbPopSectionHtml(title, st, body) {
+        let html;
+        if (st && st.status === 'done' && st.data) html = body(st.data);
+        else if (st && st.status === 'failed') {
+            html = `<div class="mb-dp-warn">Could not load it from MusicBrainz (${_rgEsc(st.detail)}).</div>` +
+                '<p><button type="button" class="mb-dp-retry">⟳ Try again</button></p>';
+        } else html = '<div class="mb-dp-xsub"><span class="mb-dp-spin">◌</span> Loading…</div>';
+        return `<h4>${_rgEsc(title)}</h4>${html}`;
+    }
+
+    /**
+     * An entity of a relation as HTML: linked (a new tab) when it has an id,
+     * with the relation's attributes and credited name in brackets and its
+     * dates, dimmed.
+     *
+     * @param {Object} r - A relation of the Web Service.
+     * @param {string} type - Its target type: `artist`, `label`, `place`, `work`, …
+     * @returns {string}
+     */
+    function _mbPopRelTargetHtml(r, type) {
+        const e = r[type] || {};
+        const name = _rgEsc(e.name || e.title || '');
+        const link = e.id ? `<a href="/${type}/${_rgEsc(e.id)}" target="_blank" rel="noopener">${name}</a>` : name;
+        const notes = [...(r.attributes || []), r['target-credit'] && r['target-credit'] !== (e.name || e.title) ? `as ${r['target-credit']}` : '']
+            .filter(Boolean);
+        const when = [r.begin, r.end].filter(Boolean);
+        return link + (notes.length ? ` <span class="mb-rg-dim">(${_rgEsc(notes.join(', '))})</span>` : '') +
+            (when.length ? ` <span class="mb-rg-dim">${_rgEsc(when.length === 2 && when[0] !== when[1] ? `${when[0]} – ${when[1]}` : when[0])}</span>` : '');
+    }
+
+    /**
+     * The relations of one target type, grouped by relationship type in the
+     * order MusicBrainz lists them, as `[type, [relation, …]]` pairs.
+     *
+     * @param {?Array<Object>} rels - `relations`.
+     * @param {string} targetType
+     * @returns {Array<Array>}
+     */
+    function _mbPopRelsByType(rels, targetType) {
+        const by = new Map();
+        (rels || []).filter(r => r['target-type'] === targetType).forEach(r => {
+            if (!by.has(r.type)) by.set(r.type, []);
+            by.get(r.type).push(r);
+        });
+        return Array.from(by);
+    }
+
+    /**
+     * Relations grouped by type as label/value rows for `_mbPopKvHtml()`:
+     * the type (first letter up) and its targets, one per line.
+     *
+     * @param {?Array<Object>} rels
+     * @param {string} targetType
+     * @returns {Array<Array<string>>}
+     */
+    function _mbPopRelRows(rels, targetType) {
+        return _mbPopRelsByType(rels, targetType).map(([type, list]) => [
+            type.charAt(0).toUpperCase() + type.slice(1),
+            list.map(r => _mbPopRelTargetHtml(r, targetType)).join('<br>'),
+        ]);
+    }
+
+    /**
+     * The names of a type's targets as text, at most `max` and "+N".
+     *
+     * @param {?Array<Object>} rels
+     * @param {string} targetType
+     * @param {Array<string>} types - The relationship types to take.
+     * @param {number} [max]
+     * @returns {string}
+     */
+    function _mbPopRelNames(rels, targetType, types, max = 3) {
+        const names = [];
+        (rels || []).forEach(r => {
+            const e = r[targetType];
+            if (r['target-type'] === targetType && types.includes(r.type) && e && !names.includes(e.name || e.title)) names.push(e.name || e.title);
+        });
+        return names.length > max ? `${names.slice(0, max).join(', ')} +${names.length - max}` : names.join(', ');
+    }
+
+    /**
+     * A plain table of the window, in the look of the release group's
+     * (`.mb-rg-wtable`): a header row and rows of cells that are HTML
+     * already.
+     *
+     * @param {Array<string>} heads
+     * @param {Array<Array<string>>} rows
+     * @param {Array<number>} [numCols] - Columns aligned as numbers.
+     * @returns {string}
+     */
+    function _mbPopTableHtml(heads, rows, numCols = []) {
+        return '<div class="mb-rg-wtable-wrap"><table class="mb-rg-wtable"><thead><tr>' +
+            heads.map(h => `<th>${_rgEsc(h)}</th>`).join('') + '</tr></thead><tbody>' +
+            rows.map(r => '<tr>' + r.map((c, i) => `<td${numCols.includes(i) ? ' class="mb-rg-num"' : ''}>${c}</td>`).join('') + '</tr>').join('') +
+            '</tbody></table></div>';
+    }
+
+    /** Releases a recording lookup embeds at most (Phase 0, org/iframe.org R3): a full list means "maybe more". */
+    const _MB_POP_SUBLIST_CAP = 25;
+
+    /** Releases a recording card lists. */
+    const _MB_POP_CARD_RELEASES = 5;
 
     /** Tracks a release card lists before "+ N more". */
     const _MB_POP_CARD_TRACKS = 6;
@@ -36865,6 +37009,132 @@
                     _mbPopArt.set(d.id, { state: 'failed', images: [] });
                     repaint();
                 });
+            },
+        })),
+        // Card: one lookup (22.6 KB in Phase 0); its releases stop at 25, so
+        // a full list says "25+" (R3). Window: the same answer, plus the
+        // credits lookup (artists and places) and the real release count.
+        recording: Object.assign({ title: 'Recording', wide: true }, _mbPopLookupKind({
+            cardInc: 'artist-credits+isrcs+releases+work-rels',
+            cardHtml(d) {
+                const rels = d.releases || [];
+                const n = rels.length >= _MB_POP_SUBLIST_CAP ? `${rels.length}+` : String(rels.length);
+                const head = `<div class="mb-tt-title">${_rgEsc(d.title)}` +
+                    `${d.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(d.disambiguation)})</span>` : ''}</div>` +
+                    `<div class="mb-tt-body">${_rgEsc(_mbPopCreditText(d['artist-credit']))}</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([
+                        typeof d.length === 'number' ? _msFormatSeconds(d.length) : '', d.video ? 'video' : '',
+                        `on ${n} release${n === '1' ? '' : 's'}`])}</div><div class="mb-tt-rule"></div>`;
+                const works = (d.relations || []).filter(r => r['target-type'] === 'work' && r.work).map(r =>
+                    _rgEsc(r.work.title) + ((r.attributes || []).length ? ` <span class="mb-rg-dim">(${_rgEsc(r.attributes.join(', '))})</span>` : ''));
+                const first = rels.slice().sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999')).slice(0, _MB_POP_CARD_RELEASES);
+                return head + _mbPopKvHtml([
+                    ['First release', _rgEsc(d['first-release-date'] || '')],
+                    ['ISRC', _rgEsc((d.isrcs || []).join(', '))],
+                    ['Work', works.join('<br>')],
+                    ['Releases', first.map(r => `${_rgEsc(r.date || '—')} ${_rgEsc(r.title)}` +
+                        `${r.country ? ` <span class="mb-rg-cc">${_rgEsc(r.country)}</span>` : ''}`).join('<br>')],
+                ]);
+            },
+            windowHtml(d, t) {
+                const pin = _mbPopLookup(t, 'artist-rels+place-rels+event-rels');
+                const count = _mbPopBrowse('release', `recording=${encodeURIComponent(t.id)}&limit=1`);
+                const rels = (d.releases || []).slice().sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'));
+                const full = rels.length >= _MB_POP_SUBLIST_CAP;
+                const cs = _mbPop.get(count.key);
+                const total = !full ? rels.length : (cs && cs.status === 'done' && cs.data ? cs.data['release-count'] : null);
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.title)}</div>` +
+                    `<div class="mb-dp-xsub">${_mbPopCreditHtml(d['artist-credit'])}` +
+                    `${d.disambiguation ? ` (${_rgEsc(d.disambiguation)})` : ''}</div>` +
+                    `<div class="mb-rg-pills">${_mbPopPillsHtml([typeof d.length === 'number' ? _msFormatSeconds(d.length) : '',
+                        d.video ? 'video' : ''])}</div>` +
+                    '<h4>Facts</h4>' + _mbPopKvHtml([
+                        ['First release', _rgEsc(d['first-release-date'] || '')],
+                        ['ISRC', (d.isrcs || []).map(c => `<a href="/isrc/${_rgEsc(c)}" target="_blank" rel="noopener">${_rgEsc(c)}</a>`).join(', ')],
+                        ..._mbPopRelRows(d.relations, 'work'),
+                    ]) +
+                    _mbPopSectionHtml('Credits', _mbPop.get(pin.key), (p) => _mbPopKvHtml([
+                        ..._mbPopRelRows(p.relations, 'artist'),
+                        ..._mbPopRelRows(p.relations, 'place'),
+                        ..._mbPopRelRows(p.relations, 'event'),
+                    ]) || '<div class="mb-dp-xsub">No credits.</div>');
+                const shown = full && total != null && total > rels.length
+                    ? `<div class="mb-rg-progress">The first ${rels.length} of ${total}; ` +
+                      `<a href="/recording/${_rgEsc(d.id)}" target="_blank" rel="noopener">the recording's page</a> lists them all.</div>`
+                    : '';
+                const right = `<h4>Releases${total != null ? ` · ${total}` : (full ? ` · ${rels.length}+` : '')}</h4>${shown}` +
+                    (rels.length ? _mbPopTableHtml(['Release', 'Date', 'Country', 'Status'], rels.map(r => [
+                        `<a href="/release/${_rgEsc(r.id)}" target="_blank" rel="noopener">${_rgEsc(r.title)}</a>` +
+                            `${r.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(r.disambiguation)})</span>` : ''}`,
+                        _rgEsc(r.date || '—'), _rgEsc(r.country || '—'), _rgEsc(r.status || '—'),
+                    ])) : '<div class="mb-dp-xsub">On no release.</div>');
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+            // The credits lookup (10.8 KB), and — only when the lookup's
+            // release list is full — the count, from a browse with limit=1.
+            pin(t, d, again, repaint) {
+                const pin = _mbPopLookup(t, 'artist-rels+place-rels+event-rels');
+                _mbPopPinLoad(t, pin.key, pin.url, again, repaint);
+                if ((d.releases || []).length >= _MB_POP_SUBLIST_CAP) {
+                    const count = _mbPopBrowse('release', `recording=${encodeURIComponent(t.id)}&limit=1`);
+                    _mbPopPinLoad(t, count.key, count.url, again, repaint);
+                }
+            },
+        })),
+        // Card: one lookup (11.8 KB): type, language, ISWC, writers,
+        // publishers, other versions. Window: the same, plus the first 100
+        // recordings from a browse, with the real count.
+        work: Object.assign({ title: 'Work', wide: true }, _mbPopLookupKind({
+            cardInc: 'artist-rels+label-rels+work-rels',
+            cardHtml(d) {
+                const langs = (d.languages && d.languages.length ? d.languages : [d.language]).filter(Boolean);
+                const head = `<div class="mb-tt-title">${_rgEsc(d.title)}` +
+                    `${d.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(d.disambiguation)})</span>` : ''}</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([d.type, ...langs, ...(d.iswcs || [])])}</div>` +
+                    '<div class="mb-tt-rule"></div>';
+                const versions = (d.relations || []).filter(r => r['target-type'] === 'work').length;
+                return head + _mbPopKvHtml([
+                    ['Composer', _rgEsc(_mbPopRelNames(d.relations, 'artist', ['composer', 'writer']))],
+                    ['Lyricist', _rgEsc(_mbPopRelNames(d.relations, 'artist', ['lyricist', 'librettist']))],
+                    ['Publisher', _rgEsc(_mbPopRelNames(d.relations, 'label', ['publishing']) ||
+                        _mbPopRelNames(d.relations, 'artist', ['publishing']))],
+                    ['Related works', versions ? String(versions) : ''],
+                ]);
+            },
+            windowHtml(d, t) {
+                const browse = _mbPopBrowse('recording', `work=${encodeURIComponent(t.id)}&limit=100&inc=artist-credits`);
+                const langs = (d.languages && d.languages.length ? d.languages : [d.language]).filter(Boolean);
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.title)}</div>` +
+                    (d.disambiguation ? `<div class="mb-dp-xsub">${_rgEsc(d.disambiguation)}</div>` : '') +
+                    `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type, ...langs])}</div>` +
+                    '<h4>Facts</h4>' + _mbPopKvHtml([
+                        ['ISWC', (d.iswcs || []).map(c => `<a href="/iswc/${_rgEsc(c)}" target="_blank" rel="noopener">${_rgEsc(c)}</a>`).join(', ')],
+                        ..._mbPopRelRows(d.relations, 'artist'),
+                        ..._mbPopRelRows(d.relations, 'label'),
+                        ..._mbPopRelRows(d.relations, 'work'),
+                    ]) +
+                    ((d.attributes || []).length ? `<h4>Codes · ${d.attributes.length}</h4>` + _mbPopKvHtml(d.attributes.map(a =>
+                        [a.type || '', _rgEsc(a.value)])) : '');
+                const right = _mbPopSectionHtml('Recordings', _mbPop.get(browse.key), (b) => {
+                    const recs = b.recordings || [];
+                    const total = typeof b['recording-count'] === 'number' ? b['recording-count'] : recs.length;
+                    return `<div class="mb-rg-progress">${total} recording${total === 1 ? '' : 's'}` +
+                        (total > recs.length ? `; the first ${recs.length} here, <a href="/work/${_rgEsc(d.id)}" target="_blank" rel="noopener">` +
+                            'the work\'s page</a> lists them all' : '') + '.</div>' +
+                        (recs.length ? _mbPopTableHtml(['Recording', 'Artist', 'Length'], recs.map(r => [
+                            `<a href="/recording/${_rgEsc(r.id)}" target="_blank" rel="noopener">${_rgEsc(r.title)}</a>` +
+                                `${r.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(r.disambiguation)})</span>` : ''}`,
+                            _rgEsc(_mbPopCreditText(r['artist-credit'])),
+                            typeof r.length === 'number' ? _msFormatSeconds(r.length) : '—',
+                        ]), [2]) : '');
+                });
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+            // The first page of its recordings (a work can have thousands:
+            // 2,226 for "Born to Run" in Phase 0, R3), with the count.
+            pin(t, d, again, repaint) {
+                const browse = _mbPopBrowse('recording', `work=${encodeURIComponent(t.id)}&limit=100&inc=artist-credits`);
+                _mbPopPinLoad(t, browse.key, browse.url, again, repaint);
             },
         })),
     };

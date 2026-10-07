@@ -33,6 +33,32 @@ FIXTURES = {
     # of tests/fixtures/releasegroup-releases-multirow-catalog.html.
     'release-greetings': 'release/3ce46b79-5e8c-470a-bcdc-45f301d09f60'
                          '?inc=artist-credits+labels+recordings+release-groups+media',
+    # WIP.2: the studio "Thunder Road" (org/iframe.org R10: found through its
+    # ISRC USSM17500803) and its work: the card's lookup, the window's
+    # lookup and count, the work's first page of recordings.
+    'recording-thunder': 'recording/bbcedc0f-2fff-42f4-9ca6-6d2263d1a042'
+                         '?inc=artist-credits+isrcs+releases+work-rels',
+    'recording-thunder-pin': 'recording/bbcedc0f-2fff-42f4-9ca6-6d2263d1a042'
+                             '?inc=artist-rels+place-rels+event-rels',
+    'recording-thunder-count': 'release?recording=bbcedc0f-2fff-42f4-9ca6-6d2263d1a042&limit=1',
+    'work-btr': 'work/9893a23c-f282-3b07-a2db-b4f2f3b9f4b2?inc=artist-rels+label-rels+work-rels',
+    'work-btr-recordings': 'recording?work=9893a23c-f282-3b07-a2db-b4f2f3b9f4b2&limit=100&inc=artist-credits',
+    # WIP.3: the legend's artist, label, area and instrument
+    # (PAGETYPES-TESTING-REFERENCE.org; the Phase 0 probe's ids). The artist
+    # card leaves url-rels to the window (R1: 75 links are most of its
+    # 30 KB); the window counts release groups per primary type.
+    'artist-bruce': 'artist/70248960-cb53-4ea4-943a-edb18f7d336f?inc=genres+ratings+aliases',
+    'artist-bruce-pin': 'artist/70248960-cb53-4ea4-943a-edb18f7d336f?inc=url-rels',
+    'artist-bruce-rg-album': 'release-group?artist=70248960-cb53-4ea4-943a-edb18f7d336f&type=album&limit=1',
+    'artist-bruce-rg-single': 'release-group?artist=70248960-cb53-4ea4-943a-edb18f7d336f&type=single&limit=1',
+    'artist-bruce-rg-ep': 'release-group?artist=70248960-cb53-4ea4-943a-edb18f7d336f&type=ep&limit=1',
+    'artist-bruce-rg-broadcast': 'release-group?artist=70248960-cb53-4ea4-943a-edb18f7d336f&type=broadcast&limit=1',
+    'artist-bruce-rg-other': 'release-group?artist=70248960-cb53-4ea4-943a-edb18f7d336f&type=other&limit=1',
+    'label-columbia': 'label/011d1192-6f65-45bd-85c4-0400dd45693e?inc=genres+aliases',
+    'label-columbia-pin': 'label/011d1192-6f65-45bd-85c4-0400dd45693e?inc=url-rels+label-rels',
+    'label-columbia-count': 'release?label=011d1192-6f65-45bd-85c4-0400dd45693e&limit=1',
+    'area-nj': 'area/a36544c1-cb40-4f44-9e0e-7a5a69e403a8?inc=area-rels',
+    'instrument-guitar': 'instrument/63021302-86cd-4aee-80df-2270d54f4978?inc=instrument-rels+aliases',
 }
 
 _last = [0.0]

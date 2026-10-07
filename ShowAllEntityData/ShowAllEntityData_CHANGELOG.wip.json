@@ -1,5 +1,29 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Link previews on MusicBrainz: recording and work cards. A recording card shows its length, artist, ISRCs, first release date, the work it is a performance of and its earliest releases, with \"on 25+ releases\" when MusicBrainz lists more than one request returns. Its window adds the credits (performers with their instruments, producers, engineers, where it was recorded and mixed) and every release up to 25 with the real total. A work card shows its type, language, ISWC, composer, lyricist, publishers and how many related works it has; its window lists them all with links, its society codes, and its first 100 recordings with the total. ⟳ asks every part of the window again; a part that failed shows \"Try again\" and is not asked again on its own."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Popup engine: _mbPopPinLoad() starts a window's extra request unless it already failed (⟳ always), _mbPopBrowse() keys a browse, _mbPopSectionHtml()/_mbPopRelRows()/_mbPopTableHtml() render a window part, its relations and a plain table. ⟳ passes on to the extras started from the lookup's own callback."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "popup-mb.spec.js: 6 more tests (20); fixtures ws2-pop-recording-thunder*.json and ws2-pop-work-btr*.json (scripts/capture-ws2-fixtures.py); popup-mb.json: 5 more mutations (19). HELP, docs/claude/detail-pages.md, org/iframe.org."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-10-07",
     "sections": [

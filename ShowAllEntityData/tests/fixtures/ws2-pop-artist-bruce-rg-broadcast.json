@@ -1,0 +1,20 @@
+{
+ "release-groups": [
+  {
+   "secondary-type-ids": [
+    "12af3f5e-ce2a-3941-8b93-d482884031e5"
+   ],
+   "secondary-types": [
+    "Interview"
+   ],
+   "title": "Interview With Bob Costas: 21st Nov.95",
+   "primary-type": "Broadcast",
+   "id": "ac881c82-9399-429e-902f-0dd23e8deedd",
+   "disambiguation": "",
+   "first-release-date": "1996",
+   "primary-type-id": "3b2e49e1-2875-37b8-9fa9-1f7cf3f49900"
+  }
+ ],
+ "release-group-offset": 0,
+ "release-group-count": 6
+}

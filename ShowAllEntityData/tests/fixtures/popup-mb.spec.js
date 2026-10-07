@@ -43,6 +43,16 @@ const RELEASE_PAGE = path.join(__dirname, 'release-tracks-brixton-night.html');
 const REL_ID = '3ce46b79-5e8c-470a-bcdc-45f301d09f60';
 const INC = 'inc=artist-credits+labels+recordings+release-groups+media';
 const json = (name) => fs.readFileSync(path.join(__dirname, name), 'utf8');
+const REC_ID = 'bbcedc0f-2fff-42f4-9ca6-6d2263d1a042';   // the studio "Thunder Road"
+const WORK_ID = '9893a23c-f282-3b07-a2db-b4f2f3b9f4b2';  // "Born to Run", the song
+// Real captures (scripts/capture-ws2-fixtures.py), by the request each answers.
+const WS2_FIXTURES = [
+    [/\/ws\/2\/recording\/[0-9a-f-]{36}\?inc=artist-credits\+isrcs/, 'ws2-pop-recording-thunder.json'],
+    [/\/ws\/2\/recording\/[0-9a-f-]{36}\?inc=artist-rels/, 'ws2-pop-recording-thunder-pin.json'],
+    [/\/ws\/2\/release\?recording=/, 'ws2-pop-recording-thunder-count.json'],
+    [/\/ws\/2\/work\/[0-9a-f-]{36}\?/, 'ws2-pop-work-btr.json'],
+    [/\/ws\/2\/recording\?work=/, 'ws2-pop-work-btr-recordings.json'],
+];
 // A 1×1 PNG, so a cover the card asks for loads instead of being dropped.
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
 // The page's first release link, or the one of row r of sub-table t.
@@ -57,11 +67,18 @@ const dialog = (page) => page.locator('#mb-dp-dialog');
  * "Show all" and expands every sub-table. Requests are logged by kind.
  *
  * @param {import('@playwright/test').Page} page
- * @param {{settings?: Object, lookup?: function(string): {status: number, body: string}, showAll?: boolean}} [opts]
- * @returns {Promise<{lookups: Array<{url: string, at: number}>, browses: string[], rgLookups: string[], caa: string[], pages: string[]}>}
+ * The other kinds' requests (recording, work, …) are answered from
+ * `WS2_FIXTURES` unless `ws2` returns an answer of its own, and logged in
+ * `log.ws2` in order.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {{settings?: Object, lookup?: function(string): {status: number, body: string}, showAll?: boolean,
+ *   ws2?: function(string): ?{status: number, body: string}}} [opts]
+ * @returns {Promise<{lookups: Array<{url: string, at: number}>, browses: string[], rgLookups: string[], caa: string[],
+ *   pages: string[], ws2: string[]}>}
  */
-async function open(page, { settings = {}, lookup = null, showAll = true } = {}) {
-    const log = { lookups: [], browses: [], rgLookups: [], caa: [], pages: [] };
+async function open(page, { settings = {}, lookup = null, showAll = true, ws2 = null } = {}) {
+    const log = { lookups: [], browses: [], rgLookups: [], caa: [], pages: [], ws2: [] };
     const ctx = page.context();
     await ctx.route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
     await ctx.route('https://coverartarchive.org/**', (route) => {
@@ -86,6 +103,16 @@ async function open(page, { settings = {}, lookup = null, showAll = true } = {})
         log.rgLookups.push(route.request().url());
         return route.fulfill({ status: 200, contentType: 'application/json', body: json('ws2-rg-lookup.json') });
     });
+    const other = (route) => {
+        const url = route.request().url();
+        log.ws2.push(url);
+        const own = ws2 ? ws2(url) : null;
+        const hit = own ? null : WS2_FIXTURES.find(([re]) => re.test(url));
+        const r = own || (hit ? { status: 200, body: json(hit[1]) } : { status: 404, body: '{"error":"no fixture"}' });
+        return route.fulfill({ status: r.status, contentType: 'application/json', body: r.body });
+    };
+    await ctx.route(/\/ws\/2\/(recording|work)[/?]/, other);
+    await ctx.route('**/ws/2/release?recording=**', other);
     await ctx.route('https://musicbrainz.org/release/**', (route) => {
         log.pages.push(route.request().url());
         return route.fulfill({ path: RELEASE_PAGE, contentType: 'text/html' });
@@ -103,6 +130,27 @@ async function open(page, { settings = {}, lookup = null, showAll = true } = {})
     }
     await page.mouse.move(0, 0);
     return log;
+}
+
+/**
+ * Adds a link to the first cell of the first table's first row, as a table
+ * of that kind would carry it, so one host page serves every kind.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} href
+ * @param {string} text
+ * @returns {Promise<import('@playwright/test').Locator>}
+ */
+async function addLink(page, href, text) {
+    await page.evaluate(([h, x]) => {
+        const td = document.querySelector('table.tbl tbody tr td:first-child');
+        const a = document.createElement('a');
+        a.href = h;
+        a.className = 'pop-probe';
+        a.textContent = x;
+        td.append(' ', a);
+    }, [href, text]);
+    return page.locator(`a.pop-probe[href="${href}"]`);
 }
 
 /**
@@ -466,5 +514,124 @@ test.describe('MusicBrainz link previews (sa_pop_mb)', () => {
         await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Release group');
         await expect(dialog(page).locator('.mb-rg-wtable tbody tr').first()).toBeVisible();
         await expect.poll(() => log.rgLookups.length).toBe(1);
+    });
+});
+
+test.describe('MusicBrainz link previews: recording and work (WIP.2)', () => {
+    const recLookups = (log) => log.ws2.filter(u => /\/ws\/2\/recording\/[0-9a-f-]{36}\?inc=artist-credits\+isrcs/.test(u));
+    const recCredits = (log) => log.ws2.filter(u => /\/ws\/2\/recording\/[0-9a-f-]{36}\?inc=artist-rels/.test(u));
+    const recCounts = (log) => log.ws2.filter(u => /\/ws\/2\/release\?recording=/.test(u));
+
+    test('the recording card: length, "25+" releases, ISRCs, the work — one request', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, `/recording/${REC_ID}`, 'Thunder Road');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page)).toContainText('version 7');
+        await expect(card(page).locator('.mb-tt-pill')).toContainText(['4:50', 'on 25+ releases']);
+        await expect(card(page)).toContainText('USSM17500803, USSM19904335');
+        await expect(card(page)).toContainText('1975-08-25');
+        await expect(card(page).locator('.mb-dp-kv')).toContainText('Thunder Road');
+        expect(log.ws2).toEqual([expect.stringContaining(`/ws/2/recording/${REC_ID}?inc=artist-credits+isrcs+releases+work-rels&fmt=json`)]);
+    });
+
+    test('the recording window: credits and the real release count, each asked once; ⟳ asks all again', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, `/recording/${REC_ID}`, 'Thunder Road');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        const area = dialog(page).locator('.mb-dp-area');
+        await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Recording');
+        // Credits come from a second lookup of the same recording with another
+        // inc set: a cache key without the inc would answer it from the card's.
+        const credits = area.locator('h4:text-is("Credits") + .mb-dp-kv');
+        await expect(credits).toContainText('Roy Bittan');
+        await expect(credits).toContainText('glockenspiel, Rhodes piano');
+        await expect(credits).toContainText('914 Sound Studios');
+        await expect(area.locator('h4', { hasText: 'Releases' })).toHaveText('Releases · 271');
+        await expect(area).toContainText('The first 25 of 271');
+        await expect(area.locator('.mb-rg-wtable tbody tr')).toHaveCount(25);
+        expect(recLookups(log)).toHaveLength(1);
+        expect(recCredits(log)).toEqual([expect.stringContaining('inc=artist-rels+place-rels+event-rels')]);
+        expect(recCounts(log)).toEqual([expect.stringContaining(`release?recording=${REC_ID}&limit=1`)]);
+
+        await dialog(page).locator('button.mb-dp-tbtn', { hasText: '⟳' }).click();
+        await expect.poll(() => [recLookups(log).length, recCredits(log).length, recCounts(log).length], { timeout: 15000 })
+            .toEqual([2, 2, 2]);
+        await expect(area.locator('h4', { hasText: 'Releases' })).toHaveText('Releases · 271');
+    });
+
+    test('a recording on fewer releases than a lookup lists asks for no count', async ({ page }) => {
+        const short = JSON.parse(json('ws2-pop-recording-thunder.json'));
+        short.releases = short.releases.slice(0, 3);
+        const log = await open(page, {
+            settings: { sa_pop_mb: true }, showAll: false,
+            ws2: (url) => (/\?inc=artist-credits\+isrcs/.test(url) ? { status: 200, body: JSON.stringify(short) } : null),
+        });
+        const a = await addLink(page, `/recording/${REC_ID}`, 'Thunder Road');
+        await ctrlHover(page, a);
+        await expect(card(page).locator('.mb-tt-pill')).toContainText(['on 3 releases']);
+        // Listening from before the pin: a count would come one rate slot
+        // after the credits lookup, so "none yet" right after the credits
+        // show proves nothing.
+        const countAsked = page.waitForRequest(/\/ws\/2\/release\?recording=/, { timeout: 4000 }).then(() => true, () => false);
+        await page.keyboard.press('Space');
+        const area = dialog(page).locator('.mb-dp-area');
+        await expect(area.locator('h4', { hasText: 'Releases' })).toHaveText('Releases · 3');
+        await expect(area.locator('h4:text-is("Credits") + .mb-dp-kv')).toContainText('Roy Bittan');
+        expect(await countAsked, 'every release is in the lookup: no count is asked').toBe(false);
+        expect(recCounts(log)).toEqual([]);
+    });
+
+    test('a failed extra request shows "Try again" and is not asked again by a repaint', async ({ page }) => {
+        await page.clock.install();
+        const log = await open(page, {
+            settings: { sa_pop_mb: true }, showAll: false,
+            ws2: (url) => (/\?inc=artist-rels/.test(url) ? { status: 500, body: '{"error":"boom"}' } : null),
+        });
+        const a = await addLink(page, `/recording/${REC_ID}`, 'Thunder Road');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        const area = dialog(page).locator('.mb-dp-area');
+        await expect(area.locator('h4', { hasText: 'Credits' })).toBeVisible();
+        await expect(area.locator('.mb-dp-warn')).toContainText('Could not load');
+        // The count still answers and repaints the window: past a few slots,
+        // the failed credits lookup has not been asked again.
+        await expect(area.locator('h4', { hasText: 'Releases' })).toHaveText('Releases · 271');
+        await page.clock.fastForward(5000);
+        await expect.poll(() => page.evaluate(() => window.__saTest.mbRateSlotWaitMs())).toBe(0);
+        expect(recCredits(log)).toHaveLength(1);
+        await area.locator('button.mb-dp-retry').click();
+        await expect.poll(() => recCredits(log).length, { timeout: 15000 }).toBe(2);
+    });
+
+    test('the work card: type, language, ISWC, writers, publishers — one request', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, `/work/${WORK_ID}`, 'Born to Run');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-pill')).toContainText(['Song', 'eng', 'T-070.014.903-6']);
+        await expect(card(page).locator('.mb-dp-kv')).toContainText('Bruce Springsteen');
+        await expect(card(page).locator('.mb-dp-kv dt')).toContainText(['Composer', 'Lyricist', 'Publisher', 'Related works']);
+        expect(log.ws2).toEqual([expect.stringContaining(`/ws/2/work/${WORK_ID}?inc=artist-rels+label-rels+work-rels&fmt=json`)]);
+    });
+
+    test('the work window: its first 100 recordings of 2,226, from one browse', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, `/work/${WORK_ID}`, 'Born to Run');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        const area = dialog(page).locator('.mb-dp-area');
+        await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Work');
+        await expect(area).toContainText('2226 recordings; the first 100 here');
+        await expect(area.locator('.mb-rg-wtable tbody tr')).toHaveCount(100);
+        await expect(area.locator('.mb-rg-wtable tbody tr').first().locator('a')).toHaveAttribute('href', /^\/recording\/[0-9a-f-]{36}$/);
+        await expect(area.locator('h4', { hasText: 'Codes' })).toBeVisible();
+        expect(log.ws2.filter(u => u.includes('/ws/2/recording?work='))).toEqual([
+            expect.stringContaining(`recording?work=${WORK_ID}&limit=100&inc=artist-credits`),
+        ]);
     });
 });

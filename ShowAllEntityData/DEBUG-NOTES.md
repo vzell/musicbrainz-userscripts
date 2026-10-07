@@ -20071,3 +20071,23 @@ recorded overlap); `popup-engine.json` 17 as declared after re-anchoring; the
 Phase 1 and foreign-host preview specs 57 + 2 passed; lint within the
 baseline; config and docs audits clean. `npm test`: 1293 passed, 0 failed
 (2026-10-07T18:20:58Z to 18:27:15Z, host petri, WSL2).
+
+## 2026-10-07 — Recording and work cards; a "no request" check that could not fail (branch feature/popup-engine-phase2, WIP.2)
+
+**"No count yet" right after the credits showed proved nothing.** The
+recording window asks its credits lookup, then (only when the lookup's
+release list is full, 25) a count browse, ONE RATE SLOT LATER. The spec
+asserted "no count request" as soon as the credits rendered, which held
+whether or not the guard existed: the mutation "always ask for the count"
+survived. It now listens from before the pin with `page.waitForRequest()`
+expected to time out (4 s), and the mutation fails as it should. Any "this
+request is never made" check behind the shared gate must wait past the slot
+the request would have had.
+
+**The mutation summary hid it.** `mutation-check.py` prints a survivor as
+`UNEXPECTED`; a summary grepped for `OK|BAD|ERROR` showed 18 lines for 19
+entries. Grep for `UNEXPECTED` too, or count the lines.
+
+**Results:** `popup-mb.spec.js` 20 passed; `popup-mb.json` 19 as declared;
+lint within the baseline. `npm test`: 1299 passed, 0 failed
+(2026-10-07T18:39:00Z to 18:45:45Z, host petri, WSL2).

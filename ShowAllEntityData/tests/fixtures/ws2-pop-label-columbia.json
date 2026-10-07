@@ -1,0 +1,107 @@
+{
+ "country": "US",
+ "isnis": [],
+ "life-span": {
+  "begin": "1887",
+  "ended": false,
+  "end": null
+ },
+ "label-code": 162,
+ "type": "Imprint",
+ "aliases": [
+  {
+   "begin": null,
+   "locale": "en",
+   "sort-name": "Columbia Records",
+   "ended": false,
+   "type-id": "3a1a0c48-d885-3b89-87b2-9e8a483c5675",
+   "end": null,
+   "primary": false,
+   "type": "Label name",
+   "name": "Columbia Records"
+  },
+  {
+   "locale": null,
+   "begin": null,
+   "sort-name": "Columbia US",
+   "type": null,
+   "name": "Columbia US",
+   "type-id": null,
+   "ended": false,
+   "primary": null,
+   "end": null
+  },
+  {
+   "locale": null,
+   "begin": null,
+   "sort-name": "Columbia/Sony Music Entertainment (Germany) GmbH & Co. KG",
+   "type": null,
+   "name": "Columbia/Sony Music Entertainment (Germany) GmbH & Co. KG",
+   "type-id": null,
+   "ended": false,
+   "primary": null,
+   "end": null
+  }
+ ],
+ "ipis": [],
+ "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+ "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+ "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX",
+ "sort-name": "Columbia",
+ "name": "Columbia",
+ "genres": [
+  {
+   "disambiguation": "",
+   "count": 2,
+   "id": "ceeaa283-5d7b-4202-8d1d-e25d116b2a18",
+   "name": "alternative rock"
+  },
+  {
+   "count": 1,
+   "id": "445dc48f-5233-4b4f-987f-867ff9ade836",
+   "name": "folk rock",
+   "disambiguation": ""
+  },
+  {
+   "name": "heartland rock",
+   "id": "52856ec0-9f9b-45f4-ab09-1bb8cc0a98e4",
+   "count": 1,
+   "disambiguation": ""
+  },
+  {
+   "id": "52faa157-6bad-4d86-a0ab-d4dec7d2513c",
+   "count": 1,
+   "name": "hip hop",
+   "disambiguation": ""
+  },
+  {
+   "disambiguation": "",
+   "count": 2,
+   "id": "ccd19ebf-052c-4afe-8ad9-fbb0a73f94a7",
+   "name": "indie rock"
+  },
+  {
+   "name": "psychedelic rock",
+   "count": 2,
+   "id": "146ef761-5ad9-48b4-b0b3-483104f7da48",
+   "disambiguation": ""
+  },
+  {
+   "disambiguation": "",
+   "name": "rock",
+   "id": "0e3fc579-2d24-4f20-9dae-736e1ec78798",
+   "count": 2
+  }
+ ],
+ "area": {
+  "name": "United States",
+  "type": null,
+  "id": "489ce91b-6658-3307-9877-795b68554c98",
+  "type-id": null,
+  "iso-3166-1-codes": [
+   "US"
+  ],
+  "disambiguation": "",
+  "sort-name": "United States"
+ }
+}

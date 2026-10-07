@@ -181,5 +181,70 @@
         "grep": "a tap on a release link",
         "expect": "fail",
         "project": "chromium-mobile"
+    },
+    {
+        "name": "the cache key leaves out the inc set",
+        "why": "Two lookups of one recording with different inc sets (the card's, the window's credits) must not answer each other: the credits would come from the card's answer, which has no artist relations, and never be asked (_relFetchWs2()'s trap, org/iframe.org 'Risks').",
+        "edits": [
+            {
+                "find": "            key: `pop:${t.type}:${t.id}:${inc}`,",
+                "replace": "            key: `pop:${t.type}:${t.id}`,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the recording window",
+        "expect": "fail"
+    },
+    {
+        "name": "the recording window always asks for the count",
+        "why": "A lookup embeds at most 25 releases (Phase 0, R3): only a full list can mean more, so only then is the count worth a request.",
+        "edits": [
+            {
+                "find": "                if ((d.releases || []).length >= _MB_POP_SUBLIST_CAP) {",
+                "replace": "                if (true) {"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "asks for no count",
+        "expect": "fail"
+    },
+    {
+        "name": "a failed extra request is asked again by every repaint",
+        "why": "pin() runs from repaints too; without the guard a failed credits lookup is asked again whenever anything else in the window answers, for ever.",
+        "edits": [
+            {
+                "find": "        if (!again && s && s.status === 'failed') return;",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a failed extra request",
+        "expect": "fail"
+    },
+    {
+        "name": "⟳ asks only the card's lookup again",
+        "why": "⟳ 'asks MusicBrainz again' for the whole window: the extras started from the lookup's own callback must get the ⟳ too.",
+        "edits": [
+            {
+                "find": "                    if (spec.pin && s && s.status === 'done') spec.pin(t, s.data, start && force, repaint);",
+                "replace": "                    if (spec.pin && s && s.status === 'done') spec.pin(t, s.data, false, repaint);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "asks all again",
+        "expect": "fail"
+    },
+    {
+        "name": "a full release list reads as exact",
+        "why": "25 is where the lookup stops, not the count (271 for Thunder Road): the card says '25+'.",
+        "edits": [
+            {
+                "find": "                const n = rels.length >= _MB_POP_SUBLIST_CAP ? `${rels.length}+` : String(rels.length);",
+                "replace": "                const n = String(rels.length);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the recording card",
+        "expect": "fail"
     }
 ]
