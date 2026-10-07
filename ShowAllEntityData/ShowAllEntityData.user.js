@@ -36371,6 +36371,14 @@
     const _MB_POP_IDB_VERSION = 1;
 
     /**
+     * Version of the records parsed from MusicBrainz pages and kept in
+     * IndexedDB (`_mbPageLoad()`: an edit, an editor). Bump it whenever a
+     * page parser's output changes, as `_DP_PARSER_VERSION` for the foreign
+     * hosts, or users keep the old fields for `sa_pop_mb_ttl_hours`.
+     */
+    const _MB_POP_PAGE_VERSION = 1;
+
+    /**
      * Each entity card's Web Service answer, by cache key
      * (`pop:<type>:<id>:<inc>`): absent until a card or window asks, then
      * `loading` (with the callbacks that repaint whoever waits and the
@@ -36392,22 +36400,70 @@
     const _mbPopArt = new Map();
 
     /**
-     * Loads one Web Service answer for the entity cards: memory, then
-     * IndexedDB (younger than `_mbTtlMs()`), then one request through
-     * `_rgWsGet()`. Never more than one load per key: a caller arriving
-     * while one runs adds its `repaint` and `wanted`. When the rate slot
-     * comes up and no caller wants the answer any more (the hover moved
-     * on), nothing is asked and the load is forgotten, so the next hover
-     * starts again. `force` (⟳) skips both caches. Only a success is kept;
-     * a failure is retried by the next call with `start` (a hover, a pin,
-     * ⟳), never by a repaint.
+     * Loads one Web Service answer for the entity cards (`_mbLoad()`), asked
+     * through `_rgWsGet()`.
      *
      * @param {string} cacheKey - `pop:<type>:<id>:<inc>`.
      * @param {string} url - Same-origin `/ws/2/...`.
      * @param {{force?: boolean, repaint?: ?function(): void, wanted?: ?function(): boolean}} [opts]
      * @returns {void}
      */
-    function _mbWsLoad(cacheKey, url, { force = false, repaint = null, wanted = null } = {}) {
+    function _mbWsLoad(cacheKey, url, opts = {}) {
+        _mbLoad(cacheKey, (wanted) => _rgWsGet(url, '_mbWsLoad', wanted), opts);
+    }
+
+    /**
+     * Loads one MusicBrainz PAGE for the cards the Web Service cannot feed
+     * (an edit, an editor: org/iframe.org Phase 3), through `_mbLoad()`: the
+     * page's HTML through `_dpGetRaw()` and the one MusicBrainz rate gate
+     * (`_MB_LIVE`), which also remembers it for the Live page view, so
+     * hovering and then opening the Live page costs one request; then
+     * `parse(doc)`, whose record is what is kept. A page `parse()` does not
+     * recognise (a login page, an error page) is a failure, not kept.
+     * `keep(record)` says whether the record may go to IndexedDB (an open
+     * edit's votes change: memory only).
+     *
+     * @param {string} cacheKey - `pop:page:<type>:<id>`.
+     * @param {string} url - The page, absolute and same-origin.
+     * @param {function(Document): ?Object} parse
+     * @param {{force?: boolean, repaint?: ?function(): void, wanted?: ?function(): boolean,
+     *   keep?: ?function(Object): boolean}} [opts]
+     * @returns {void}
+     */
+    function _mbPageLoad(cacheKey, url, parse, opts = {}) {
+        _mbLoad(cacheKey, async (wanted, force) => {
+            const raw = await _dpGetRaw(url, _MB_LIVE, { wanted, force });
+            if (raw.outcome === 'skipped') return { skipped: true };
+            if (raw.outcome !== 'ok') return { ok: false, detail: raw.detail || 'The request failed.' };
+            const rec = parse(new DOMParser().parseFromString(raw.html, 'text/html'));
+            if (rec) return { ok: true, data: rec };
+            // _dpGetRaw() remembers every page it fetched, for the Live page
+            // view: a page that is not the one expected (a login page) must
+            // not be read back from there by the next try.
+            _dpRawMem.delete(url);
+            return { ok: false, detail: 'not the page expected' };
+        }, Object.assign({ version: _MB_POP_PAGE_VERSION }, opts));
+    }
+
+    /**
+     * The one loader of the MusicBrainz cards: memory, then IndexedDB
+     * (younger than `_mbTtlMs()`, of `version`), then `ask(wanted, force)`.
+     * Never more than one load per key: a caller arriving while one runs
+     * adds its `repaint` and `wanted`. When the rate slot comes up and no
+     * caller wants the answer any more (the hover moved on), nothing is
+     * asked and the load is forgotten, so the next hover starts again.
+     * `force` (⟳) skips both caches. Only a success is kept, and in
+     * IndexedDB only when `keep` (if given) agrees; a failure is retried by
+     * the next call with `start` (a hover, a pin, ⟳), never by a repaint.
+     *
+     * @param {string} cacheKey
+     * @param {function(function(): boolean, boolean): Promise<{ok?: boolean, status?: number, data?: ?Object,
+     *   detail?: string, skipped?: boolean}>} ask - The request: `_rgWsGet()`'s answer shape.
+     * @param {{force?: boolean, repaint?: ?function(): void, wanted?: ?function(): boolean,
+     *   version?: number, keep?: ?function(Object): boolean}} [opts]
+     * @returns {void}
+     */
+    function _mbLoad(cacheKey, ask, { force = false, repaint = null, wanted = null, version = _MB_POP_IDB_VERSION, keep = null } = {}) {
         const cur = _mbPop.get(cacheKey);
         if (cur && cur.status === 'loading') {
             if (repaint) cur.listeners.add(repaint);
@@ -36423,21 +36479,21 @@
         const notify = () => st.listeners.forEach(fn => fn());
         (async () => {
             if (!force) {
-                const rec = await _rgIdbGet(cacheKey, _MB_POP_IDB_VERSION);
+                const rec = await _rgIdbGet(cacheKey, version);
                 if (rec) {
                     Object.assign(st, { status: 'done', data: rec.data, at: rec.at, cached: true });
                     notify();
                     return;
                 }
             }
-            const res = await _rgWsGet(url, '_mbWsLoad', () => st.wants.some(w => w()));
+            const res = await ask(() => st.wants.some(w => w()), force);
             if (res.skipped) {
                 if (_mbPop.get(cacheKey) === st) _mbPop.delete(cacheKey);
                 return;
             }
             if (res.ok && res.data) {
                 Object.assign(st, { status: 'done', data: res.data, at: Date.now(), cached: false });
-                _rgIdbPut(cacheKey, res.data, st.at, _MB_POP_IDB_VERSION);
+                if (!keep || keep(res.data)) _rgIdbPut(cacheKey, res.data, st.at, version);
             } else {
                 Object.assign(st, { status: 'failed', detail: res.detail || `HTTP ${res.status}` });
             }
@@ -36465,6 +36521,15 @@
     const _MB_POP_CODE_TYPES = { isrc: 'isrc', iswc: 'iswc', cdtoc: 'discid' };
 
     /**
+     * The pages whose cards are read from the page itself (Phase 3): an
+     * edit (`/edit/<number>`) and an editor's profile (`/user/<name>`, the
+     * name percent-encoded as in the link). Their tabs (`/user/<name>/edits`,
+     * `/edit/<n>/data`) are not previewed.
+     * @type {RegExp}
+     */
+    const _MB_POP_PAGE_RE = /^\/(?:(edit)\/(\d+)|(user)\/([^/]+))\/?$/;
+
+    /**
      * What a link in a MusicBrainz table previews, or null: a same-origin
      * link to the bare page of a kind `_MB_KINDS` knows (an entity by MBID,
      * or a code: `_MB_POP_CODE_RE`), not wrapping an image (artwork has its
@@ -36485,14 +36550,21 @@
             type = seg;
         } else {
             const c = _MB_POP_CODE_RE.exec(a.pathname);
+            const p = !c && _MB_POP_PAGE_RE.exec(a.pathname);
             if (c) {
                 [, seg, id] = c;
                 type = _MB_POP_CODE_TYPES[seg];
+            } else if (p) {
+                seg = p[1] || p[3];
+                id = p[2] || p[4];
+                type = seg;
             }
         }
         const k = type && _MB_KINDS[type];
         if (!k) return null;
-        if (a.querySelector('img') || a.closest('td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;
+        // An image means artwork (it has its own preview) — except the
+        // avatar MusicBrainz puts inside every editor link (Phase 3).
+        if (a.querySelector('img:not(.avatar)') || a.closest('td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;
         const td = a.closest('td, th');
         const table = td && td.closest('table.tbl');
         return {
@@ -37169,6 +37241,147 @@
     /** Items a series card lists before "+ N more". */
     const _MB_POP_CARD_ITEMS = 5;
 
+    /**
+     * The text of an element with its whitespace collapsed, '' for none.
+     *
+     * @param {?Element} el
+     * @returns {string}
+     */
+    function _mbPopText(el) {
+        return el ? el.textContent.replace(/\s+/g, ' ').trim() : '';
+    }
+
+    /**
+     * An edit's page (`/edit/<n>`) as a record for its card and window
+     * (org/iframe.org Phase 3: the Web Service has no edits). Read from
+     * `.edit-header` (number and type, the editor or "Editor hidden" for
+     * anyone logged out), the `table.details` rows (a row with `td.old` and
+     * `td.new` reads "old → new"), the vote tally, `#sidebar`'s status and
+     * properties (Opened, Closed or Voting, …), and the notes, which
+     * MusicBrainz shows only to a logged-in editor (`notesHidden`). Text
+     * only, so it can be kept; the entities the changes link are kept as
+     * `{type, id, name}`. `null` when the page is not an edit's.
+     *
+     * @param {Document} doc
+     * @returns {?Object}
+     */
+    function _mbParseEditPage(doc) {
+        const h1 = doc.querySelector('#content .edit-header h1');
+        const m = h1 && /^Edit #(\d+)\s*-\s*(.+)$/.exec(_mbPopText(h1));
+        if (!m) return null;
+        const editorA = doc.querySelector('#content .edit-header .subheader a[href^="/user/"]');
+        const changes = [];
+        const entities = [];
+        doc.querySelectorAll('#content table.details').forEach(table => {
+            if (table.parentElement && table.parentElement.closest('table.details')) return;
+            Array.from(table.rows).forEach(tr => {
+                const th = tr.querySelector(':scope > th');
+                if (!th) return;
+                const oldTd = tr.querySelector(':scope > td.old');
+                const newTd = tr.querySelector(':scope > td.new');
+                const value = oldTd && newTd
+                    ? `${_mbPopText(oldTd) || '—'} → ${_mbPopText(newTd) || '—'}`
+                    : _mbPopText(tr.querySelector(':scope > td'));
+                changes.push([_mbPopText(th).replace(/:$/, ''), value]);
+                tr.querySelectorAll('a[href]').forEach(a => {
+                    const em = _MB_POP_PATH_RE.exec(a.getAttribute('href') || '');
+                    if (em && entities.length < 12 && !entities.some(e => e.id === em[2])) {
+                        entities.push({ type: em[1], id: em[2], name: _mbPopText(a) });
+                    }
+                });
+            });
+        });
+        const props = [];
+        doc.querySelectorAll('#sidebar dl.properties').forEach(dl => {
+            dl.querySelectorAll(':scope > dt').forEach(dt => {
+                const dd = dt.nextElementSibling;
+                if (dd && dd.tagName === 'DD') props.push([_mbPopText(dt).replace(/:$/, ''), _mbPopText(dd)]);
+            });
+        });
+        const status = (props.find(p => p[0] === 'Status') || [])[1] || '';
+        // div.: the "add a note" form's own <textarea class="edit-note">
+        // is not a note.
+        const notes = Array.from(doc.querySelectorAll('#content .edit-notes div.edit-note:not(.add-edit-note)')).map(n => ({
+            author: _mbPopText(n.querySelector('.owner bdi')) || _mbPopText(n.querySelector('.owner')),
+            date: _mbPopText(n.querySelector('.owner .date')),
+            text: _mbPopText(n.querySelector('.edit-note-text')),
+        }));
+        return {
+            id: m[1], type: m[2], status, editor: editorA ? _mbPopText(editorA) : '',
+            changes, entities, tally: _mbPopText(doc.querySelector('#content table.vote-tally td.vote')),
+            props: props.filter(p => p[0] !== 'Status'), notes,
+            notesHidden: !notes.length && /You must be logged in to see edit notes/.test(_mbPopText(doc.getElementById('content'))),
+        };
+    }
+
+    /**
+     * An editor's profile page (`/user/<name>`) as a record for the card:
+     * the user type, member since, subscribers and the edit statistics.
+     * Deliberately NOT the age, gender, location, languages or bio a
+     * profile may show (org/iframe.org R9): they are never read. `null`
+     * when the page is not a profile.
+     *
+     * @param {Document} doc
+     * @returns {?Object}
+     */
+    function _mbParseUserPage(doc) {
+        const name = _mbPopText(doc.querySelector('#page h1 a[href^="/user/"] bdi'));
+        const info = doc.querySelector('#page table.profileinfo');
+        if (!name || !info) return null;
+        const row = (label) => {
+            const th = Array.from(info.querySelectorAll('th')).find(x => _mbPopText(x) === `${label}:`);
+            return th ? _mbPopText(th.nextElementSibling) : '';
+        };
+        const stats = [];
+        const edits = doc.querySelector('#page table.statistics');
+        if (edits) {
+            edits.querySelectorAll('tbody tr').forEach(tr => {
+                const th = tr.querySelector('th');
+                const td = tr.querySelector('td');
+                if (th && td) stats.push([_mbPopText(th), _mbPopText(td)]);
+            });
+        }
+        return {
+            name, userType: row('User type'), since: row('Member since'),
+            subscribers: (row('Subscribers').match(/^[\d,]+/) || [''])[0], stats,
+        };
+    }
+
+    /**
+     * A kind fed by a MusicBrainz PAGE rather than the Web Service
+     * (`_mbPageLoad()`), in the shape of `_mbPopLookupKind()`: the card and
+     * the window show the same parsed record.
+     *
+     * @param {{parse: function(Document): ?Object, keep?: function(Object): boolean,
+     *   cardHtml: function(Object, object): string, windowHtml: function(Object, object): string}} spec
+     * @returns {{card: function(object, boolean, function(): void): string,
+     *   extracted: function(object, boolean, boolean, function(): void): string}}
+     */
+    function _mbPopPageKind(spec) {
+        const key = (t) => `pop:page:${t.type}:${t.id}`;
+        return {
+            card(t, start, repaint) {
+                if (start) _mbPageLoad(key(t), t.url, spec.parse, { repaint, wanted: _mbPopWanted(t), keep: spec.keep });
+                return _mbPopCardShell(t, _mbPop.get(key(t)), spec.cardHtml);
+            },
+            extracted(t, start, force, repaint) {
+                if (start) _mbPageLoad(key(t), t.url, spec.parse, { force, repaint, wanted: _mbPopWanted(t), keep: spec.keep });
+                return _mbPopWindowShell(t, _mbPop.get(key(t)), spec.windowHtml);
+            },
+        };
+    }
+
+    /**
+     * A statistic of an editor's record by its label, '' when absent.
+     *
+     * @param {Object} d - `_mbParseUserPage()`'s record.
+     * @param {string} label - "Total", "Accepted", …
+     * @returns {string}
+     */
+    function _mbPopStat(d, label) {
+        return ((d.stats || []).find(x => x[0] === label) || [])[1] || '';
+    }
+
     /** Releases a recording lookup embeds at most (Phase 0, org/iframe.org R3): a full list means "maybe more". */
     const _MB_POP_SUBLIST_CAP = 25;
 
@@ -37792,6 +38005,55 @@
                         ['Holds', _rgEsc(typeof n === 'number' ? `${_mbPopNum(n)} ${d['entity-type']}${n === 1 ? '' : 's'}` : d['entity-type'] || '')],
                         ['Editor', d.editor ? `<a href="/user/${encodeURIComponent(d.editor)}" target="_blank" rel="noopener">${_rgEsc(d.editor)}</a>` : ''],
                     ]) + '</div></div>';
+            },
+        })),
+        // Phase 3: read from the page itself, the Web Service has neither.
+        // An edit's votes and status change while it is open, so an open
+        // edit stays in memory only; a closed one is kept like the rest.
+        edit: Object.assign({ title: 'Edit', wide: true }, _mbPopPageKind({
+            parse: _mbParseEditPage,
+            keep: (d) => d.status !== 'Open',
+            cardHtml(d) {
+                const when = d.props.filter(p => /^(Opened|Closed|Voting)$/.test(p[0]));
+                const first = d.changes.slice(0, 4).map(([k, v]) => [k, _rgEsc(v.length > 90 ? `${v.slice(0, 89).trimEnd()}…` : v)]);
+                return `<div class="mb-tt-title">Edit #${_rgEsc(d.id)}</div><div class="mb-tt-body">${_rgEsc(d.type)}</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([d.status, d.tally, d.editor ? `by ${d.editor}` : 'editor hidden'])}</div>` +
+                    '<div class="mb-tt-rule"></div>' + _mbPopKvHtml([...when.map(([k, v]) => [k, _rgEsc(v)]), ...first,
+                        ['Notes', d.notesHidden ? 'log in to see them' : _rgEsc(String(d.notes.length))]]) +
+                    (d.changes.length > first.length ? `<div class="mb-tt-dim">+ ${d.changes.length - first.length} more</div>` : '');
+            },
+            windowHtml(d) {
+                const left = `<div class="mb-dp-xtitle">Edit #${_rgEsc(d.id)}</div><div class="mb-dp-xsub">${_rgEsc(d.type)}</div>` +
+                    `<div class="mb-rg-pills">${_mbPopPillsHtml([d.status, d.tally])}</div><h4>Edit</h4>` + _mbPopKvHtml([
+                        ['Editor', d.editor ? `<a href="/user/${encodeURIComponent(d.editor)}" target="_blank" rel="noopener">${_rgEsc(d.editor)}</a>`
+                            : 'hidden (log in to see who)'],
+                        ...d.props.map(([k, v]) => [k, _rgEsc(v)]),
+                    ]) + (d.entities.length ? '<h4>Entities</h4>' + _mbPopKvHtml(d.entities.map(e => [
+                        e.type.replace(/-/g, ' '), `<a href="/${_rgEsc(e.type)}/${_rgEsc(e.id)}" target="_blank" rel="noopener">${_rgEsc(e.name)}</a>`])) : '');
+                const notes = d.notesHidden ? '<div class="mb-dp-xsub">MusicBrainz shows edit notes only to editors who are logged in.</div>'
+                    : (d.notes.length ? d.notes.map(n => `<div class="mb-dp-group"><div class="mb-dp-gname">${_rgEsc([n.author, n.date].filter(Boolean)
+                        .join(' · '))}</div><div class="mb-dp-note">${_rgEsc(n.text)}</div></div>`).join('') : '<div class="mb-dp-xsub">No notes.</div>');
+                const right = `<h4>Changes</h4>${_mbPopKvHtml(d.changes.map(([k, v]) => [k, _rgEsc(v)])) || '<div class="mb-dp-xsub">None listed.</div>'}` +
+                    `<h4>Notes${d.notes.length ? ` · ${d.notes.length}` : ''}</h4>${notes}`;
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+        })),
+        // An editor: what the profile says about their editing, nothing
+        // personal (R9).
+        user: Object.assign({ title: 'Editor', wide: false }, _mbPopPageKind({
+            parse: _mbParseUserPage,
+            cardHtml(d) {
+                return `<div class="mb-tt-title">${_rgEsc(d.name)}</div><div class="mb-tt-body mb-rg-pills">` +
+                    _mbPopPillsHtml([d.userType, d.since ? `since ${d.since.slice(0, 10)}` : '']) + '</div><div class="mb-tt-rule"></div>' +
+                    _mbPopKvHtml(['Total', 'Accepted', 'Auto-edits', 'Voted down', 'Open'].map(l => [`${l === 'Total' ? 'Edits' : l}`,
+                        _rgEsc(_mbPopStat(d, l))]).concat([['Subscribers', _rgEsc(d.subscribers)]]));
+            },
+            windowHtml(d) {
+                return `<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
+                    `<div class="mb-rg-pills">${_mbPopPillsHtml([d.userType])}</div><h4>Editor</h4>` + _mbPopKvHtml([
+                        ['Member since', _rgEsc(d.since)], ['Subscribers', _rgEsc(d.subscribers)],
+                    ]) + `</div><div class="mb-dp-col"><h4>Edits</h4>${_mbPopTableHtml(['', 'Count'], d.stats.map(([k, v]) => [_rgEsc(k), _rgEsc(v)]), [1])}` +
+                    `<p><a href="/user/${encodeURIComponent(d.name)}/edits" target="_blank" rel="noopener">Their edits</a></p></div></div>`;
             },
         })),
     };

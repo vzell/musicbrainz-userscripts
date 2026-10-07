@@ -11,7 +11,10 @@
 // is enough, and the engine is installed on every page with a pageType), one
 // link per kind, so about a dozen Web Service requests through the script's
 // own one-a-second gate. Series, collection, ISRC and disc ID cards are
-// covered by the fixture spec only: no light page links them in a table.
+// covered by the fixture spec only: no light page links them in a table. Nor
+// does any light page link an edit in a table (an edit list becomes one only
+// after "Show all", which would page through a whole edit history): edit
+// cards are fixture-only too; the editor card is checked here.
 
 const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
@@ -111,6 +114,21 @@ test.describe('MusicBrainz link previews on the real site', { tag: '@extended' }
         const card = await cardFor(page, page.locator('table.tbl tbody a[href^="/event/"]:not(:has(img)):not([href$="/event-art"])').first());
         await expect(card.locator('.mb-tt-pill').first()).toBeVisible();
         await cardFor(page, page.locator('table.tbl tbody a[href^="/place/"]').first());
+        expect(errors).toEqual([]);
+    });
+
+    test('an editor\'s subscribers: an editor card read from the profile page (Phase 3)', async ({ page }) => {
+        test.setTimeout(180000);
+        const errors = collectPageErrors(page);
+        await openLive(page, 'https://musicbrainz.org/user/vzell/subscribers');
+        // A list until "Show all" (one page) makes it a table; each editor
+        // link holds the editor's avatar image.
+        await page.click('button[data-label="Show all Editor Subscribers for User"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const link = page.locator('table.tbl tbody a[href^="/user/"]').filter({ hasNotText: /^vzell$/ }).first();
+        const card = await cardFor(page, link);
+        await expect(card.locator('.mb-dp-kv dt').first()).toHaveText('Edits');
+        await expect(card).not.toContainText('Email');
         expect(errors).toEqual([]);
     });
 

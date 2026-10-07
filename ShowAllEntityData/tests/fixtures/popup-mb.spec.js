@@ -46,6 +46,15 @@ const json = (name) => fs.readFileSync(path.join(__dirname, name), 'utf8');
 const REC_ID = 'bbcedc0f-2fff-42f4-9ca6-6d2263d1a042';   // the studio "Thunder Road"
 const WORK_ID = '9893a23c-f282-3b07-a2db-b4f2f3b9f4b2';  // "Born to Run", the song
 // Real captures (scripts/capture-ws2-fixtures.py), by the request each answers.
+// Phase 3's pages, captured with scripts/fetch-mb-page-fixture.js: the user's
+// own applied edit logged in (--auth: editor and notes shown), an open edit
+// logged out (editor hidden), the user's own profile logged out with its
+// age, gender and location rows removed.
+const PAGE_FIXTURES = [
+    [/\/edit\/126930910\/?$/, 'edit-page-applied.html'],
+    [/\/edit\/154299713\/?$/, 'edit-page-open.html'],
+    [/\/user\/vzell\/?$/, 'user-page-vzell.html'],
+];
 const WS2_FIXTURES = [
     [/\/ws\/2\/recording\/[0-9a-f-]{36}\?inc=artist-credits\+isrcs/, 'ws2-pop-recording-thunder.json'],
     [/\/ws\/2\/recording\/[0-9a-f-]{36}\?inc=artist-rels/, 'ws2-pop-recording-thunder-pin.json'],
@@ -95,8 +104,8 @@ const dialog = (page) => page.locator('#mb-dp-dialog');
  * @returns {Promise<{lookups: Array<{url: string, at: number}>, browses: string[], rgLookups: string[], caa: string[],
  *   pages: string[], ws2: string[]}>}
  */
-async function open(page, { settings = {}, lookup = null, showAll = true, ws2 = null } = {}) {
-    const log = { lookups: [], browses: [], rgLookups: [], caa: [], pages: [], ws2: [], eaa: [] };
+async function open(page, { settings = {}, lookup = null, showAll = true, ws2 = null, pageFixture = null } = {}) {
+    const log = { lookups: [], browses: [], rgLookups: [], caa: [], pages: [], ws2: [], eaa: [], html: [] };
     const ctx = page.context();
     await ctx.route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
     await ctx.route('https://coverartarchive.org/**', (route) => {
@@ -141,6 +150,16 @@ async function open(page, { settings = {}, lookup = null, showAll = true, ws2 = 
     await ctx.route('**/ws/2/release?recording=**', other);
     await ctx.route('**/ws/2/release?label=**', other);
     await ctx.route('**/ws/2/release-group?artist=**', other);
+    // Phase 3: edit and editor pages, by URL (`pageFixture` may answer instead).
+    await ctx.route(/^https:\/\/musicbrainz\.org\/(edit|user)\//, (route) => {
+        const url = route.request().url();
+        log.html.push(url);
+        const own = pageFixture ? pageFixture(url) : null;
+        const file = own || PAGE_FIXTURES.find(([re]) => re.test(url));
+        if (!file) return route.fulfill({ status: 404, contentType: 'text/html', body: '<html><body>no fixture</body></html>' });
+        if (typeof file === 'object' && !Array.isArray(file)) return route.fulfill(file);
+        return route.fulfill({ path: path.join(__dirname, Array.isArray(file) ? file[1] : file), contentType: 'text/html' });
+    });
     await ctx.route('https://musicbrainz.org/release/**', (route) => {
         log.pages.push(route.request().url());
         return route.fulfill({ path: RELEASE_PAGE, contentType: 'text/html' });
@@ -910,5 +929,127 @@ test.describe('MusicBrainz link previews: ISRC, ISWC, disc ID, collection (WIP.5
         await ctrlHover(page, a);
         await expect(card(page).locator('.mb-tt-alert')).toContainText('It is probably private.');
         await expect.poll(() => log.ws2.length, { message: 'a failure is asked again on the next hover' }).toBe(2);
+    });
+});
+
+test.describe('MusicBrainz link previews: edit and editor, read from the page (Phase 3)', () => {
+    const APPLIED = '/edit/126930910';
+    const OPEN = '/edit/154299713';
+
+    test('what is previewed: an edit and a profile, not their tabs', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const r = await page.evaluate(() => {
+            const td = document.querySelector('table.tbl tbody tr td:first-child');
+            const res = (href) => {
+                const a = document.createElement('a');
+                a.href = href;
+                a.textContent = 'x';
+                td.appendChild(a);
+                return window.__saTest.popResolve(a);
+            };
+            return {
+                edit: res('/edit/126930910'), data: res('/edit/126930910/data'), notNumber: res('/edit/open'),
+                user: res('/user/vzell'), userEdits: res('/user/vzell/edits'), encoded: res('/user/Some%20One'),
+                // MusicBrainz's own editor link, its avatar inside.
+                avatar: (() => {
+                    const a = document.createElement('a');
+                    a.href = '/user/vzell';
+                    a.innerHTML = '<img class="avatar no-avatar" alt="" width="15" height="15"><bdi>vzell</bdi>';
+                    td.appendChild(a);
+                    return window.__saTest.popResolve(a);
+                })(),
+            };
+        });
+        expect(r.edit).toBe('mb-entity|edit:126930910');
+        expect(r.data).toBeNull();
+        expect(r.notNumber).toBeNull();
+        expect(r.user).toBe('mb-entity|user:vzell');
+        expect(r.userEdits).toBeNull();
+        expect(r.encoded).toBe('mb-entity|user:Some%20One');
+        expect(r.avatar, 'an editor link\'s avatar is not artwork').toBe('mb-entity|user:vzell');
+    });
+
+    test('an applied edit: type, status, editor, changes and notes from one page request, which the Live page reuses', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, APPLIED, 'Edit #126930910');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('Edit #126930910');
+        await expect(card(page)).toContainText('Add event art');
+        await expect(card(page).locator('.mb-tt-pill')).toHaveText(['Applied', 'automatically applied', 'by vzell']);
+        const kv = card(page).locator('.mb-dp-kv');
+        await expect(kv).toContainText('2025‐05‐20: Co‐op Live, Manchester, England, UK');
+        await expect(kv.locator('dt')).toContainText(['Opened', 'Closed', 'Event']);
+        expect(log.html).toEqual([`https://musicbrainz.org${APPLIED}`]);
+        await page.keyboard.press('Space');
+        const area = dialog(page).locator('.mb-dp-area');
+        await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Edit');
+        await expect(area.locator('h4', { hasText: 'Notes' })).toHaveText('Notes · 1');
+        await expect(area.locator('.mb-dp-gname')).toContainText('vzell');
+        await expect(area.locator('a[href="/event/3f2ca30a-7de4-4964-ad30-48376535fec8"]')).toBeVisible();
+        await dialog(page).locator('button.mb-dp-tbtn', { hasText: 'Live page' }).click();
+        const frame = page.frameLocator('#mb-dp-dialog iframe');
+        await expect(frame.locator('.edit-header h1')).toHaveText('Edit #126930910 - Add event art', { timeout: 15000 });
+        expect(log.html, 'the Live page reuses the hover\'s page').toHaveLength(1);
+    });
+
+    test('an open edit: its tally and closing, the editor hidden to a logged-out reader; kept in memory only', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, OPEN, 'Edit #154299713');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-pill')).toHaveText(['Open', '0 yes : 2 no', 'editor hidden']);
+        await expect(card(page).locator('.mb-dp-kv')).toContainText('About to close');
+        await expect(card(page).locator('.mb-dp-kv')).toContainText('log in to see them');
+        expect(log.html).toHaveLength(1);
+        // Its votes change: after a reload it is asked again, not read back.
+        await reloadScript(page);
+        const again = await addLink(page, OPEN, 'Edit #154299713');
+        await ctrlHover(page, again);
+        await expect(card(page)).toContainText('fetched now');
+        expect(log.html).toHaveLength(2);
+    });
+
+    test('a closed edit is kept: after a reload it comes from IndexedDB', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        await ctrlHover(page, await addLink(page, APPLIED, 'Edit #126930910'));
+        await expect(card(page)).toContainText('fetched now');
+        await reloadScript(page);
+        await ctrlHover(page, await addLink(page, APPLIED, 'Edit #126930910'));
+        await expect(card(page)).toContainText('saved today');
+        expect(log.html).toHaveLength(1);
+    });
+
+    test('an editor: user type, member since and edit counts — nothing personal', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, '/user/vzell', 'vzell');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-pill')).toHaveText(['Auto-editor', 'since 2013-11-28']);
+        const kv = card(page).locator('.mb-dp-kv');
+        await expect(kv.locator('dt')).toHaveText(['Edits', 'Accepted', 'Auto-edits', 'Voted down', 'Open', 'Subscribers']);
+        await expect(kv.locator('dd').first()).toHaveText('1,006,542');
+        await expect(card(page)).not.toContainText('Email');
+        await expect(card(page)).not.toContainText('Bio');
+        expect(log.html).toEqual(['https://musicbrainz.org/user/vzell']);
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Editor');
+        await expect(dialog(page).locator('.mb-rg-wtable tbody tr').first()).toContainText('Total');
+        await expect(dialog(page).locator('.mb-dp-area')).not.toContainText('Languages');
+    });
+
+    test('a page that is not the edit (a login page) fails and is not kept', async ({ page }) => {
+        let login = true;
+        const log = await open(page, {
+            settings: { sa_pop_mb: true }, showAll: false,
+            pageFixture: () => (login ? { status: 200, contentType: 'text/html', body: '<html><body><div id="page"><h1>Log in</h1></div></body></html>' } : null),
+        });
+        const a = await addLink(page, APPLIED, 'Edit #126930910');
+        await ctrlHover(page, a);
+        await expect(card(page).locator('.mb-tt-alert')).toContainText('not the page expected');
+        login = false;
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        expect(log.html).toHaveLength(2);
     });
 });

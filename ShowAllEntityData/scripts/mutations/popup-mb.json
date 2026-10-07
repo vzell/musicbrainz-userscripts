@@ -43,7 +43,7 @@
         "why": "An inline cover or thumbnail has its own hover preview (#mb-art-hover-preview); a card over it would be a second box.",
         "edits": [
             {
-                "find": "        if (a.querySelector('img') || a.closest('td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;",
+                "find": "        if (a.querySelector('img:not(.avatar)') || a.closest('td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;",
                 "replace": "        if (a.closest('td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;"
             }
         ],
@@ -56,8 +56,8 @@
         "why": "The Relationships column has its own tooltip (#mb-rel-tooltip) on its cells.",
         "edits": [
             {
-                "find": "        if (a.querySelector('img') || a.closest('td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;",
-                "replace": "        if (a.querySelector('img') || a.closest('#mb-dp-peek, #mb-dp-dialog')) return null;"
+                "find": "        if (a.querySelector('img:not(.avatar)') || a.closest('td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;",
+                "replace": "        if (a.querySelector('img:not(.avatar)') || a.closest('#mb-dp-peek, #mb-dp-dialog')) return null;"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -414,6 +414,71 @@
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
         "grep": "a private collection",
+        "expect": "fail"
+    },
+    {
+        "name": "the note form's textarea counts as a note",
+        "why": "A logged-in edit page's 'add a note' form has a <textarea class=\"edit-note\">; only div.edit-note is a note (found by the spec: 'Notes · 2' for one note).",
+        "edits": [
+            {
+                "find": "        const notes = Array.from(doc.querySelectorAll('#content .edit-notes div.edit-note:not(.add-edit-note)')).map(n => ({",
+                "replace": "        const notes = Array.from(doc.querySelectorAll('#content .edit-notes .edit-note:not(.add-edit-note)')).map(n => ({"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "an applied edit",
+        "expect": "fail"
+    },
+    {
+        "name": "a page that did not parse stays in the raw-page memory",
+        "why": "_dpGetRaw() remembers every page it fetched for the Live page; a login page left there answers the next try too, so the edit is never asked again until the page reloads (found by the spec).",
+        "edits": [
+            {
+                "find": "            _dpRawMem.delete(url);\n            return { ok: false, detail: 'not the page expected' };",
+                "replace": "            return { ok: false, detail: 'not the page expected' };"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "is not kept",
+        "expect": "fail"
+    },
+    {
+        "name": "an open edit is kept in IndexedDB",
+        "why": "An open edit's votes and status change; kept for a day it would show yesterday's tally.",
+        "edits": [
+            {
+                "find": "            keep: (d) => d.status !== 'Open',",
+                "replace": "            keep: () => true,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "an open edit",
+        "expect": "fail"
+    },
+    {
+        "name": "an edit's or a profile's tabs are previewed",
+        "why": "/user/<name>/edits and /edit/<n>/data are other pages; only the edit and the profile themselves have a card.",
+        "edits": [
+            {
+                "find": "    const _MB_POP_PAGE_RE = /^\\/(?:(edit)\\/(\\d+)|(user)\\/([^/]+))\\/?$/;",
+                "replace": "    const _MB_POP_PAGE_RE = /^\\/(?:(edit)\\/(\\d+)|(user)\\/([^/]+))(?:\\/.*)?$/;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "an edit and a profile, not their tabs",
+        "expect": "fail"
+    },
+    {
+        "name": "an editor link's avatar counts as artwork",
+        "why": "MusicBrainz puts an <img class=\"avatar\"> inside every editor link; treated as artwork, no editor link on a real page would have a card (found by the live spec on the Subscribers tab).",
+        "edits": [
+            {
+                "find": "        if (a.querySelector('img:not(.avatar)') || a.closest('td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;",
+                "replace": "        if (a.querySelector('img') || a.closest('td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "an edit and a profile, not their tabs",
         "expect": "fail"
     }
 ]

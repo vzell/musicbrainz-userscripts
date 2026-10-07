@@ -66,8 +66,9 @@ generate the plan information inside this file, so that I can resume also from a
   see "Phase 2: progress" below. The Live page is included for
   every kind (decided 2026-10-07), so Phase 3 keeps only the edit and
   editor cards.
-- [ ] Phase 3: edit and editor cards (read from HTML). (The Live page for
-  every MusicBrainz card moved into Phase 2.)
+- [-] Phase 3: edit and editor cards (read from HTML), on
+  =feature/popup-engine-phase3= (from =main= at 9.99.1278); see "Phase 3"
+  below. (The Live page for every MusicBrainz card moved into Phase 2.)
 - [ ] Phase 4: containers beyond =<a href>= (item 1b) and page-wide scope.
 - [ ] Phase 5 (optional): drill-down inside the dialog; a side drawer if the
   dialog feels cramped.
@@ -610,6 +611,28 @@ Found on the way (9.99.1272):
 Fixtures: =scripts/capture-ws2-fixtures.py= saves each card's exact request as
 =tests/fixtures/ws2-pop-<name>.json=; add the next step's kinds to its
 =FIXTURES= table before writing their specs.
+
+** Phase 3: edit and editor cards
+
+Built 2026-10-07 on =feature/popup-engine-phase3=, one WIP step. Rules as
+built: [[file:../docs/claude/detail-pages.md]], "MusicBrainz: edit and
+editor cards, read from the page". In short: =_mbPageLoad()= reads the page
+through =_dpGetRaw()= (one request serves card and Live page), the parsers
+read only what the cards show (R9 for editors), an open edit is memory-only.
+
+Found on the way:
+- logged out, an edit page hides its editor and notes, and an edit list does
+  not load at all: fixtures need =fetch-mb-page-fixture.js --auth= (added),
+  which also blanks tokens and preferences;
+- the note form's =<textarea class="edit-note">= is not a note (=div.=);
+- a login page left in =_dpRawMem= answered the retry too: dropped on a
+  failed parse;
+- every editor link holds an avatar =<img>=: the "link around an image"
+  rule now exempts =.avatar= (found only by the live spec).
+
+Not covered live: an edit card. No light page links an edit in a table (an
+edit list becomes a table only after "Show all", which pages through a whole
+edit history); fixture-only.
 
 ** Risks and traps
 
