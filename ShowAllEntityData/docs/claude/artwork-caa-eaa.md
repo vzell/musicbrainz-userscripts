@@ -350,6 +350,14 @@ never from a hard-coded `CAA_CTX`. Rules that come with that:
   the visible tiles (right for Grid / By type) would drop the rest from the
   viewer. The pager index lives on the section (`data-mb-art-book-page`) and is
   clamped and written back by the render; a chip or layout switch resets it.
+- **The section's type chips are multi-select (a union).** The selection lives
+  on the section as `data-mb-art-active-types`, a JSON array read ONLY through
+  `_releaseArtActiveTypes()` (bad or missing data = `[]` = All). A plain
+  click toggles a type; the "All" chip (`data-mb-art-filter=""`) clears; the
+  last un-press is All again. `_releaseArtShownIndices(images, types)` keeps
+  an image carrying ANY selected type, once, in archive order, and both the
+  render and `_releaseArtViewerOrder()` call it, so the viewer steps through
+  exactly the union. event-overview's Event art shares all of it.
 - **Medium art in the medium h3s (R7) never guesses.**
   `_releaseArtMediumAssign()` is pure and assigns in this order: one medium
   takes every Medium image; a comment naming exactly one EXISTING medium

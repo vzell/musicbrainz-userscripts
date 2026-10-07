@@ -232,6 +232,19 @@ test.describe('release-tracks Cover art viewer (P3)', () => {
         expect(v.info).toContain('12 of 16');
     });
 
+    test('opened from a multi-chip sheet, the viewer steps through the union in archive order', async ({ page }) => {
+        await openRelease(page);
+        await page.click('.mb-release-art-chip[data-mb-art-filter="Front"]');
+        await page.click('.mb-release-art-chip[data-mb-art-filter="Medium"]');
+        // This record has one Front (image 0) and four Medium (7, 8, 11, 12).
+        await clickTile(page, 0);
+        expect((await viewer(page)).pos).toBe('1 / 5');
+        await page.keyboard.press('ArrowRight');
+        const v = await viewer(page);
+        expect(v.pos).toBe('2 / 5');
+        expect(v.info).toContain('8 of 16');
+    });
+
     test('the large image replaces the thumbnail; the viewer makes no JSON request', async ({ page }) => {
         const { hits } = await openRelease(page, { bigImages: true });
         await clickTile(page, 0);

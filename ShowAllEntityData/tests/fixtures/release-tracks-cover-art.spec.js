@@ -346,10 +346,40 @@ test.describe('release-tracks: Cover art section — chips, layout, hover (P2)',
         expect(s.tiles, 'image 2 is Back + Front').toEqual([0, 1]);
         expect(s.chips.find((c) => c.text === 'Front 2').pressed).toBe('true');
 
+        // Chips are multi-select: a second chip ADDS its type (a union).
         await page.click('.mb-release-art-chip[data-mb-art-filter="Medium"]');
-        expect((await sheet(page)).tiles).toEqual([7, 8, 11, 12]);
+        expect((await sheet(page)).tiles).toEqual([0, 1, 7, 8, 11, 12]);
 
         await page.click('.mb-release-art-chip[data-mb-art-filter=""]');
+        expect((await sheet(page)).tiles).toEqual([...Array(16).keys()]);
+    });
+
+    test('chips are multi-select: a click toggles, the union shows once, the last un-press is All', async ({ page }) => {
+        await openRelease(page);
+        await showAll(page);
+        await sectionSettled(page, 'ok');
+        const pressed = async () => (await sheet(page)).chips.filter((c) => c.pressed === 'true').map((c) => c.text);
+
+        await page.click('.mb-release-art-chip[data-mb-art-filter="Medium"]');
+        await page.click('.mb-release-art-chip[data-mb-art-filter="Poster"]');
+        expect(await pressed()).toEqual(['Medium 4', 'Poster 2']);
+        expect((await sheet(page)).tiles).toEqual([7, 8, 11, 12, 13, 14]);
+
+        // Un-pressing one type keeps the other.
+        await page.click('.mb-release-art-chip[data-mb-art-filter="Medium"]');
+        expect(await pressed()).toEqual(['Poster 2']);
+        expect((await sheet(page)).tiles).toEqual([13, 14]);
+
+        // Image 2 is Back + Front: in the union of both it is ONE tile.
+        await page.click('.mb-release-art-chip[data-mb-art-filter="Poster"]');
+        expect(await pressed(), 'the last un-press is All').toEqual(['All 16']);
+        await page.click('.mb-release-art-chip[data-mb-art-filter="Front"]');
+        await page.click('.mb-release-art-chip[data-mb-art-filter="Back"]');
+        expect((await sheet(page)).tiles).toEqual([0, 1]);
+
+        // "All" clears the whole selection.
+        await page.click('.mb-release-art-chip[data-mb-art-filter=""]');
+        expect(await pressed()).toEqual(['All 16']);
         expect((await sheet(page)).tiles).toEqual([...Array(16).keys()]);
     });
 
@@ -367,9 +397,12 @@ test.describe('release-tracks: Cover art section — chips, layout, hover (P2)',
         expect(s.tiles).toEqual([0, 1, 2, 3, 4, 5, 6, 9, 10, 7, 8, 11, 12, 13, 14, 15]);
         expect(await page.evaluate(() => window.GM_getValue('mb_sa_release_art_layout', null))).toBe('grouped');
 
-        // A chip still applies inside the grouped layout.
+        // A chip still applies inside the grouped layout, and so does a union.
         await page.click('.mb-release-art-chip[data-mb-art-filter="Medium"]');
         expect((await sheet(page)).groups).toEqual(['Medium × 4']);
+        await page.click('.mb-release-art-chip[data-mb-art-filter="Sticker"]');
+        expect((await sheet(page)).groups).toEqual(['Medium × 4', 'Sticker × 1']);
+        await page.click('.mb-release-art-chip[data-mb-art-filter=""]');
 
         await page.click('.mb-release-art-seg [data-mb-art-layout="grid"]');
         expect(await page.evaluate(() => window.GM_getValue('mb_sa_release_art_layout', null))).toBe('grid');

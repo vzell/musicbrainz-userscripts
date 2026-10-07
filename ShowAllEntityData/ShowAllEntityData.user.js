@@ -2658,11 +2658,21 @@
             label: 'Release group card on the "#" cell of each live track',
             type: 'checkbox',
             default: true,
-            description: 'Release tracklist: hovering a track\'s "#" cell shows the release group of the event the ' +
+            description: 'Release tracklist: hovering a track\'s "#" cell with Ctrl held (or pressing Ctrl while ' +
+                         'the pointer is on it) shows the release group of the event the ' +
                          'track comes from. For the main event that is the release\'s own release group; for any ' +
                          'other event, a MusicBrainz Web Service search looks for a release group named like the ' +
                          'event (the Disambiguation without "live, " and without a trailing "; …"), once per event. ' +
                          'Alt+click the cell to open that release group, or the search, on musicbrainz.org.'
+        },
+
+        sa_event_rg_tooltip_without_ctrl: {
+            label: 'Show the "#" release group card on a plain hover (without Ctrl)',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default: the card above shows only while Ctrl is held, so moving the pointer ' +
+                         'down the "#" column neither pops up cards nor starts searches. When on, hovering the ' +
+                         'cell is enough, as before.'
         },
 
         sa_event_rg_search_phrase: {
@@ -4058,7 +4068,7 @@
             type: 'checkbox',
             default: false,
             description: 'Off by default; needs the setting above. When on, resting the pointer on ' +
-                         'an item\'s title in the table shows a card with what the item\'s own page ' +
+                         'an item\'s title in the table with Ctrl held shows a card with what the item\'s own page ' +
                          'adds: the tracklist, the notes (lineage, edition) and the artwork scans. ' +
                          'On the lyrics index it shows the song page instead: the version, the ' +
                          'first lines of the lyrics and the song\'s info; the pinned window has ' +
@@ -4118,7 +4128,7 @@
             type: 'checkbox',
             default: false,
             description: 'Off by default; needs the setting above. When on, resting the pointer on ' +
-                         'a title in the table shows a card with what its artwork page adds: the ' +
+                         'a title in the table with Ctrl held shows a card with what its artwork page adds: the ' +
                          'uploader and the scans (front, back, discs, booklet). The page is ' +
                          'fetched in the background, at most one a second, and kept for 30 days. ' +
                          'Press Space to pin the card into a window you can move, resize and ' +
@@ -4156,7 +4166,7 @@
             type: 'checkbox',
             default: false,
             description: 'Off by default; needs the setting above. When on, resting the pointer on ' +
-                         'a record\'s title in the table shows a card with what the record\'s own ' +
+                         'a record\'s title in the table with Ctrl held shows a card with what the record\'s own ' +
                          'page adds: the tracklist with the show each track comes from, the ' +
                          'notes, and the photo when there is one. The page is fetched in the ' +
                          'background, at most one a second, and kept for 30 days. Press Space to ' +
@@ -4192,7 +4202,7 @@
             type: 'checkbox',
             default: false,
             description: 'Off by default; needs the setting above. When on, resting the pointer on ' +
-                         'a song in the table shows a card with what its song page adds: the ' +
+                         'a song in the table with Ctrl held shows a card with what its song page adds: the ' +
                          'album it comes from, how often it was played live and when last, the ' +
                          'official releases and live downloads. The page is fetched in the ' +
                          'background, at most one a second, and kept for 30 days. Press Space to ' +
@@ -4201,6 +4211,26 @@
                          'through the rows, and its "Live page" view shows the wiki\'s own page ' +
                          'with every tab opened. Esc closes either. On a touch screen, tapping a ' +
                          'title opens the window.'
+        },
+
+        // ============================================================
+        // DETAIL-PAGE PREVIEWS (every non-MusicBrainz site above)
+        // ============================================================
+        divider_detail_preview: {
+            type: 'divider',
+            label: '🔎 DETAIL-PAGE PREVIEWS (all sites above)'
+        },
+
+        sa_dp_hover_without_ctrl: {
+            label: 'Show the detail-page preview on a plain hover (without Ctrl)',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default: the preview card of springsteenlyrics.com, jungleland.it, ' +
+                         'brucespringsteen.it and Brucebase shows only while Ctrl is held — hover a ' +
+                         'title with Ctrl down, or rest the pointer on it and then press Ctrl — so ' +
+                         'moving the pointer across the table neither pops up cards nor fetches ' +
+                         'pages. When on, resting the pointer on a title is enough, as before. ' +
+                         'Tapping a title on a touch screen opens the window either way.'
         }
 
     };
@@ -13172,11 +13202,24 @@
     let _dpIdbPromise = null;
 
     /**
-     * The hover card's state: its element, the link it belongs to, and the
-     * pending show timer.
-     * @type {{el: ?HTMLElement, link: ?HTMLAnchorElement, timer: number}}
+     * The hover card's state: its element, the link it belongs to, the
+     * pending show timer, and the detail link under the pointer (`hover`,
+     * kept whether or not a card is due, so that pressing Ctrl on it can
+     * show one).
+     * @type {{el: ?HTMLElement, link: ?HTMLAnchorElement, timer: number, typedAt: number, hover: ?HTMLAnchorElement}}
      */
-    const _dpPeek = { el: null, link: null, timer: 0, typedAt: 0 };
+    const _dpPeek = { el: null, link: null, timer: 0, typedAt: 0, hover: null };
+
+    /**
+     * Whether the card waits for Ctrl: true unless
+     * `sa_dp_hover_without_ctrl` is on. Read at every event, so the setting
+     * applies without a reload.
+     *
+     * @returns {boolean}
+     */
+    function _dpNeedsCtrl() {
+        return Lib.settings.sa_dp_hover_without_ctrl !== true;
+    }
 
     /**
      * Whether an element is a text field: where a Space or an arrow key is
@@ -14713,6 +14756,35 @@
     }
 
     /**
+     * Whether an element shows a keyboard focus ring (`:focus-visible`),
+     * false where the browser does not know the selector.
+     *
+     * @param {Element} el
+     * @returns {boolean}
+     */
+    function _dpFocusVisible(el) {
+        try {
+            return el.matches(':focus-visible');
+        } catch (_) {
+            return false;
+        }
+    }
+
+    /**
+     * The detail link a Ctrl press shows the card for: the one under the
+     * pointer, else the one with keyboard focus; null when there is none.
+     *
+     * @returns {?HTMLAnchorElement}
+     */
+    function _dpCtrlTarget() {
+        const h = _dpPeek.hover;
+        if (h && h.isConnected && h.matches(':hover') && _dpSiteForLink(h)) return h;
+        const f = document.activeElement;
+        if (f && f.matches && f.matches('a[href]') && _dpSiteForLink(f) && _dpFocusVisible(f)) return f;
+        return null;
+    }
+
+    /**
      * Installs the detail-page preview on a foreign host whose preview
      * setting is on (`_DP_SITES[_foreignHost].setting`). Called once from the
      * init block, after the host's live page is prepared. On MusicBrainz, or
@@ -14722,7 +14794,9 @@
      * `cloneNode(true)` re-renders need no re-wiring:
      *   - hover (or keyboard focus) on a detail link → the card, after the
      *     rich-tooltip delay; leaving the link, a press anywhere or a scroll
-     *     hides it;
+     *     hides it. Unless `sa_dp_hover_without_ctrl` is on, only a hover
+     *     with Ctrl held counts, and pressing Ctrl on a hovered (or focused)
+     *     link shows its card at once (`_dpCtrlTarget()`);
      *   - Esc hides the card (and only the card, when a dialog is under it);
      *   - Space while the card shows pins it into the dialog, unless the
      *     user is typing in a text field (`_DP_TYPING_GRACE_MS`): after a
@@ -14744,9 +14818,15 @@
             const a = e.target.closest ? e.target.closest('a[href]') : null;
             if (!a || a === _dpPeek.link) return;
             if (!_dpSiteForLink(a) || _isTouchCompatMouseEvent(e)) return;
+            _dpPeek.hover = a;
+            // Without Ctrl held, only remember the link: pressing Ctrl on it
+            // shows the card (the keydown handler below).
+            if (_dpNeedsCtrl() && !e.ctrlKey) return;
             _dpSchedulePeek(a);
         }, true);
         document.addEventListener('mouseout', (e) => {
+            const h = _dpPeek.hover;
+            if (h && h.contains(e.target) && !(e.relatedTarget && h.contains(e.relatedTarget))) _dpPeek.hover = null;
             const a = _dpPeek.link;
             if (!a || !a.contains(e.target)) return;
             if (e.relatedTarget && a.contains(e.relatedTarget)) return;
@@ -14755,13 +14835,7 @@
         document.addEventListener('focusin', (e) => {
             const a = e.target;
             if (a === _dpPeek.link || !_dpSiteForLink(a)) return;
-            let visible;
-            try {
-                visible = a.matches(':focus-visible');
-            } catch (_) {
-                visible = false;
-            }
-            if (visible) _dpSchedulePeek(a);
+            if (_dpFocusVisible(a) && !_dpNeedsCtrl()) _dpSchedulePeek(a);
         }, true);
         document.addEventListener('focusout', (e) => {
             if (e.target === _dpPeek.link) _dpHidePeek();
@@ -14776,6 +14850,18 @@
             if (_dpIsTextField(e.target)) _dpPeek.typedAt = Date.now();
         }, true);
         document.addEventListener('keydown', (e) => {
+            // Ctrl pressed on a detail link (hovered, else keyboard-focused)
+            // shows its card at once: the key press is the intent, so no
+            // delay. Not consumed — Ctrl+<key> shortcuts keep working.
+            if (e.key === 'Control' && !e.repeat && _dpNeedsCtrl() && !_dpPeekShown()) {
+                const a = _dpCtrlTarget();
+                if (a) {
+                    _dpHidePeek();
+                    _dpPeek.link = a;
+                    _dpShowPeek(a);
+                }
+                return;
+            }
             if (!_dpPeekShown()) return;
             if (e.key === 'Escape') {
                 e.preventDefault();
@@ -35375,20 +35461,71 @@
     let _eventRgTooltipWired = false;
 
     /**
+     * Shows an element's ready-made `data-mbtt` card in `#mb-stat-tooltip`
+     * at once, at a pointer position — for a card asked for by a key press
+     * rather than a mouseover (the "#" cell's Ctrl, `initEventRgTooltip()`).
+     * The engine's own mouseout hides it as usual. Assigned by
+     * `_initStatTooltip()`, a no-op until then. Declared here, above that
+     * function's call at page init, so the assignment is past the `let`'s
+     * temporal dead zone.
+     * @type {function(HTMLElement, {clientX: number, clientY: number}): void}
+     */
+    let _mbttShowNow = () => {};
+
+    /**
+     * Whether the "#" card waits for Ctrl: true unless
+     * `sa_event_rg_tooltip_without_ctrl` is on. Read at every event, so the
+     * setting applies without a reload.
+     *
+     * @returns {boolean}
+     */
+    function _eventRgNeedsCtrl() {
+        return Lib.settings.sa_event_rg_tooltip_without_ctrl !== true;
+    }
+
+    /**
      * Wires the "#" event card once, delegated on `document`, so the clones
      * every re-render makes need nothing: a `pointerover` (dispatched before
-     * the tooltip engine's `mouseover`) writes the cell's `data-mbtt` just
-     * in time and starts the lookup; an Alt+click opens the card's target.
+     * the tooltip engine's `mouseover`) on entering a cell writes its
+     * `data-mbtt` just in time and starts the lookup; an Alt+click opens the
+     * card's target.
+     *
+     * Unless `sa_event_rg_tooltip_without_ctrl` is on, entering a cell
+     * without Ctrl held REMOVES its `data-mbtt` (one an earlier Ctrl hover
+     * left), so the engine shows nothing and nothing is looked up; pressing
+     * Ctrl while the pointer is on the cell then writes the card and shows it
+     * through `_mbttShowNow()`.
      *
      * @returns {void}
      */
     function initEventRgTooltip() {
         if (_eventRgTooltipWired) return;
         _eventRgTooltipWired = true;
+        let hoverTd = null; // the "#" cell the pointer is in
         document.addEventListener('pointerover', e => {
             if (Lib.settings.sa_event_rg_tooltip === false || !e.target.closest) return;
             const td = e.target.closest(_EVENT_RG_CELL_SEL);
-            if (td) td.dataset.mbtt = _eventRgCardHtml(td, true);
+            // Crossing the cell's own children is the same hover.
+            if (!td || td === hoverTd) return;
+            hoverTd = td;
+            if (_eventRgNeedsCtrl() && !e.ctrlKey) {
+                delete td.dataset.mbtt;
+                return;
+            }
+            td.dataset.mbtt = _eventRgCardHtml(td, true);
+        }, true);
+        document.addEventListener('pointerout', e => {
+            if (!hoverTd || !hoverTd.contains(e.target)) return;
+            if (e.relatedTarget && hoverTd.contains(e.relatedTarget)) return;
+            hoverTd = null;
+        }, true);
+        document.addEventListener('keydown', e => {
+            if (e.key !== 'Control' || e.repeat || !hoverTd) return;
+            if (Lib.settings.sa_event_rg_tooltip === false || !_eventRgNeedsCtrl()) return;
+            if (!hoverTd.isConnected || !hoverTd.matches(':hover')) return;
+            hoverTd.dataset.mbtt = _eventRgCardHtml(hoverTd, true);
+            const r = hoverTd.getBoundingClientRect();
+            _mbttShowNow(hoverTd, { clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 });
         }, true);
         document.addEventListener('click', e => {
             if (!e.altKey || Lib.settings.sa_event_rg_tooltip === false || !e.target.closest) return;
@@ -57381,6 +57518,39 @@ a { color: #1565c0; }`;
         let _lastMove = null;   // latest mouse event, for positioning after the delay
 
         /**
+         * Shows a `[data-mbtt]` (or resolved `[data-mbtt-fn]`) element's card
+         * at once, next to a pointer position.
+         * @param {HTMLElement} el
+         * @param {{clientX: number, clientY: number}} e - Where the pointer is.
+         * @param {?string} fnHtml - The resolver's HTML, or null for `data-mbtt`.
+         */
+        const _showMbtt = (el, e, fnHtml) => {
+            if (_target && _target !== el) _hide();
+            _target = el;
+            _own = false;
+            _fnShown = !!fnHtml;
+            _tip.innerHTML = fnHtml || el.dataset.mbtt;
+            _tip.style.display = 'block';
+            _positionTip(e);
+            if (fnHtml) _mbttAfterShow(el, _tip);
+            // Suppress the element's own native title (action buttons) and any
+            // h2/h3 ancestor's (row-count stat) while our tooltip is visible,
+            // so the browser doesn't overlay both tooltips simultaneously.
+            if (el.title) {
+                el.dataset.mbttSavedTitle = el.title;
+                el.title = '';
+            }
+            const _hParent = el.closest('h2, h3');
+            if (_hParent && _hParent !== el && _hParent.title) {
+                _hParent.dataset.mbttSavedTitleParent = _hParent.title;
+                _hParent.title = '';
+            }
+        };
+        _mbttShowNow = (el, pt) => {
+            if (el && el.isConnected && el.dataset.mbtt) _showMbtt(el, pt, null);
+        };
+
+        /**
          * Shows a stashed own tooltip's card.
          * @param {string} text - The element's plain title.
          */
@@ -57456,26 +57626,7 @@ a { color: #1565c0; }`;
             // element's plain title (if any) is used as usual.
             const fnHtml = el && el.dataset.mbttFn ? _mbttResolve(el) : null;
             if (el && (el.dataset.mbtt || fnHtml)) {
-                if (_target && _target !== el) _hide();
-                _target = el;
-                _own = false;
-                _fnShown = !!fnHtml;
-                _tip.innerHTML = fnHtml || el.dataset.mbtt;
-                _tip.style.display = 'block';
-                _positionTip(e);
-                if (fnHtml) _mbttAfterShow(el, _tip);
-                // Suppress the element's own native title (action buttons) and any
-                // h2/h3 ancestor's (row-count stat) while our tooltip is visible,
-                // so the browser doesn't overlay both tooltips simultaneously.
-                if (el.title) {
-                    el.dataset.mbttSavedTitle = el.title;
-                    el.title = '';
-                }
-                const _hParent = el.closest('h2, h3');
-                if (_hParent && _hParent !== el && _hParent.title) {
-                    _hParent.dataset.mbttSavedTitleParent = _hParent.title;
-                    _hParent.title = '';
-                }
+                _showMbtt(el, e, fnHtml);
                 return;
             }
             if (!el || !el.hasAttribute('data-mb-tip') || !Lib.settings.sa_rich_tooltips) return;
@@ -99999,15 +100150,36 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * The indices the chip filter leaves, in archive order.
+     * The types the section's chips have selected (`data-mb-art-active-types`,
+     * a JSON array), empty for All — also when the attribute is missing or
+     * not a JSON array of strings.
+     *
+     * @param   {HTMLElement} sec A `div.mb-release-art-sec`.
+     * @returns {string[]}
+     */
+    function _releaseArtActiveTypes(sec) {
+        try {
+            const v = JSON.parse(sec.dataset.mbArtActiveTypes || '[]');
+            return Array.isArray(v) ? v.filter(t => typeof t === 'string' && t) : [];
+        } catch (_) {
+            return [];
+        }
+    }
+
+    /**
+     * The indices the chip filter leaves, in archive order: every image when
+     * no type is selected, else each image carrying ANY selected type (an
+     * untyped image counts as "(no type)"), once.
      *
      * @param   {Object[]} images The release's archive images.
-     * @param   {string}   filter The chosen type, "" for all.
+     * @param   {string[]} types  The selected types, empty for all.
      * @returns {number[]}
      */
-    function _releaseArtShownIndices(images, filter) {
+    function _releaseArtShownIndices(images, types) {
+        const want = new Set(types);
         return images.map((im, i) => i)
-            .filter(i => !filter || (images[i].types && images[i].types.length ? images[i].types : ['(no type)']).includes(filter));
+            .filter(i => !want.size ||
+                (images[i].types && images[i].types.length ? images[i].types : ['(no type)']).some(t => want.has(t)));
     }
 
     /**
@@ -100024,7 +100196,7 @@ a { color: #1565c0; }`;
         if (_releaseArtLayout(desc) === 'spreads') {
             const images = desc.ctx.imagesCache.get(sec.dataset.mbArtEntity) || [];
             const { pairs, book, rest } = _releaseArtSpreadsPlan(images,
-                _releaseArtShownIndices(images, sec.dataset.mbArtActiveType || ''));
+                _releaseArtShownIndices(images, _releaseArtActiveTypes(sec)));
             return [...pairs.flatMap(p => [p.l, p.r]), ...book, ...rest];
         }
         return Array.from(sec.querySelectorAll('figure.mb-release-art-tile')).map(f => Number(f.dataset.mbArtI));
@@ -100111,11 +100283,12 @@ a { color: #1565c0; }`;
      * (Re)builds the toolbar and the contact sheet of a loaded section from
      * `CAA_CTX.imagesCache`: type chips (`data-mb-art-filter`, "" = all) and the
      * Grid / By type / Spreads switch (`data-mb-art-layout`), then the tiles —
-     * all of them, or only those carrying the chosen type, either as one grid
-     * in archive order, grouped under each image's FIRST type in
-     * first-appearance order, or as spreads (`_releaseArtRenderSpreads()`).
-     * The chosen type lives on the section
-     * (`data-mb-art-active-type`, deliberately NOT the chips'
+     * all of them, or only those carrying ANY of the selected types (the
+     * chips are multi-select), either as one grid in archive order, grouped
+     * under each image's FIRST type in first-appearance order, or as spreads
+     * (`_releaseArtRenderSpreads()`). The selected types live on the section
+     * (`data-mb-art-active-types`, a JSON array read by
+     * `_releaseArtActiveTypes()`; deliberately NOT the chips'
      * `data-mb-art-filter`, which `closest()` would then match on the
      * section itself), the layout in GM storage.
      *
@@ -100125,7 +100298,7 @@ a { color: #1565c0; }`;
     function _releaseArtRenderSheet(sec) {
         const desc = _artSectionOf(sec);
         const images = desc.ctx.imagesCache.get(sec.dataset.mbArtEntity) || [];
-        const filter = sec.dataset.mbArtActiveType || '';
+        const active = _releaseArtActiveTypes(sec);
         const layout = _releaseArtLayout(desc);
         sec.querySelectorAll('.mb-release-art-tools, .mb-release-art-grid, .mb-release-art-group, .mb-release-art-spread')
             .forEach(n => n.remove());
@@ -100137,7 +100310,7 @@ a { color: #1565c0; }`;
             b.type = 'button';
             b.className = 'mb-release-art-chip';
             b.dataset.mbArtFilter = type;
-            b.setAttribute('aria-pressed', String(filter === type));
+            b.setAttribute('aria-pressed', String(type ? active.includes(type) : !active.length));
             const num = document.createElement('b');
             num.textContent = String(n);
             b.append(label + ' ', num);
@@ -100164,7 +100337,7 @@ a { color: #1565c0; }`;
         tools.appendChild(seg);
         sec.appendChild(tools);
 
-        const shown = _releaseArtShownIndices(images, filter);
+        const shown = _releaseArtShownIndices(images, active);
         if (layout === 'spreads') {
             _releaseArtRenderSpreads(sec, images, shown);
             return;
@@ -100203,9 +100376,10 @@ a { color: #1565c0; }`;
     /**
      * The section's one click handler, delegated on the section (which is
      * never cloned, so a listener on it survives every re-render): a tile opens
-     * the viewer, a type chip sets the filter, a layout button sets and
-     * remembers the layout, and the Spreads pager's ◀ ▶ step its page. A chip
-     * or a layout switch puts the pager back on its first page.
+     * the viewer, a type chip toggles its type in the selection ("All"
+     * clears it, and so does un-pressing the last type), a layout button sets
+     * and remembers the layout, and the Spreads pager's ◀ ▶ step its page. A
+     * chip or a layout switch puts the pager back on its first page.
      *
      * @param   {MouseEvent} e
      * @returns {void}
@@ -100235,7 +100409,10 @@ a { color: #1565c0; }`;
         }
         const chip = e.target.closest('[data-mb-art-filter]');
         if (chip && sec.contains(chip)) {
-            sec.dataset.mbArtActiveType = chip.dataset.mbArtFilter;
+            const type = chip.dataset.mbArtFilter;
+            const sel = _releaseArtActiveTypes(sec);
+            const next = !type ? [] : sel.includes(type) ? sel.filter(t => t !== type) : [...sel, type];
+            sec.dataset.mbArtActiveTypes = JSON.stringify(next);
             sec.dataset.mbArtBookPage = '0';
             _releaseArtRenderSheet(sec);
             return;

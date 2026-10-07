@@ -219,6 +219,25 @@ test.describe('release-tracks Cover art: Spreads layout (P4, R6)', () => {
         expect(s.blocks[0].tiles).toEqual([5, 6]);
     });
 
+    test('a union of chips applies: "Liner" + "Medium" is the pager plus the single pages', async ({ page }) => {
+        await openRelease(page);
+        await setLayout(page, 'spreads');
+        await page.click('.mb-release-art-sec [data-mb-art-filter="Liner"]');
+        await page.click('.mb-release-art-sec [data-mb-art-filter="Medium"]');
+        const s = await sheet(page);
+        expect(s.blocks).toHaveLength(2);
+        expect(s.blocks[0].book).toBe(true);
+        expect(s.blocks[0].tiles).toEqual([5, 6]);
+        expect(s.blocks[1].tiles).toEqual([7, 8, 11, 12]);
+
+        // The viewer steps through the same union, in the Spreads order: the
+        // Liner pages the pager hides (9, 10) included, before the singles.
+        await page.click('figure.mb-release-art-tile[data-mb-art-i="5"] > a');
+        const order = await page.evaluate(() => Array.from(
+            document.querySelectorAll('#mb-art-viewer .mb-artv-film [data-artv-go]')).map((n) => Number(n.dataset.artvGo)));
+        expect(order).toEqual([5, 6, 9, 10, 7, 8, 11, 12]);
+    });
+
     test('a tile opens the viewer over the spreads order, liner pages behind the pager included', async ({ page }) => {
         const { hits } = await openRelease(page);
         await setLayout(page, 'spreads');

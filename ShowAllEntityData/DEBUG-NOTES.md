@@ -19911,3 +19911,46 @@ passed 28 of 28 (7 tests × 4) with it.
 **Results:** lint within baseline; `npm run test:full` 1251 passed, 0 failed
 (2026-10-07T10:30:34Z–10:38:10Z, host NB-3641, WSL2): the first fully green
 merge-gate run of the day.
+
+## 2026-10-07 — Hover cards behind Ctrl; multi-select art chips (branch feature/ctrl-hover-art-multiselect, WIP.1–WIP.3)
+
+A user request, not a bug. The detail-page card on the four foreign hosts
+and the release-tracks "#" release-group card popped up (and fetched or
+searched) whenever the pointer crossed the table. Both now wait for Ctrl:
+a hover with Ctrl down, or Ctrl pressed on the hovered element. Each has
+an opt-out setting that is off by default (`sa_dp_hover_without_ctrl`,
+`sa_event_rg_tooltip_without_ctrl`).
+
+- **Detail card (`_initDetailPreview()`).** `mouseover` always records
+  `_dpPeek.hover` and schedules only with `e.ctrlKey`. A Ctrl `keydown`
+  shows the card at once for `_dpCtrlTarget()`: the hovered link (still
+  `:hover`), else a `:focus-visible` one.
+- **"#" card (`initEventRgTooltip()`).** It is not a controller of its own.
+  It writes `data-mbtt` for the shared engine just in time. So the gate
+  works by DELETING the cell's `data-mbtt` on a Ctrl-less entry, because an
+  earlier Ctrl hover left one there and the engine would otherwise show it.
+  The keydown path needed a way into the engine: `_initStatTooltip()`'s
+  `[data-mbtt]` show block became `_showMbtt()`, exposed as
+  `_mbttShowNow()`.
+- **TDZ trap avoided.** `_initStatTooltip()` runs at page init (grep
+  `_initStatTooltip(); // create`) from a line ABOVE the function. A `let
+  _mbttShowNow` declared beside the function would have thrown on the
+  assignment, so the `let` sits beside `initEventRgTooltip()`, higher up.
+- **Pointer moves inside the "#" cell.** The `pointerover` now acts only
+  on ENTERING the cell (`hoverTd`), so moving across the cell's children is
+  the same hover. Before, every child crossed rewrote the card.
+- **Art chips.** The state moved from a string (`data-mb-art-active-type`)
+  to a JSON array (`data-mb-art-active-types`, read only through
+  `_releaseArtActiveTypes()`). A click toggles; the result is a union, each
+  image once. The mutation file caught a gap: no spec opened the Spreads
+  viewer with a chip selected. That spec now exists. Its first expectation
+  was wrong, because the viewer rightly includes the Liner pages the pager
+  hides (9, 10).
+
+**Tests.** `hover()`/`hoverHash()` now hold Ctrl, so every existing card
+spec exercises the gated path. `plainHover()`/`plainHoverHash()` are the
+ungated ones. `scripts/mutations/ctrl-hover-art-multiselect.json` has 11
+mutations, and all 11 fail as declared.
+
+**Results:** lint is within the baseline. `npm run test:full`: 1281 passed,
+0 failed (finished 2026-10-07T12:31:53Z, host petri, WSL2).

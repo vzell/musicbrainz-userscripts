@@ -1210,6 +1210,9 @@ types, comment, a larger preview, "6 of 16 · Liner 1 of 4", and the edit that
 added it. The chips above the sheet (**All 16**, **Front 1**, **Liner 4**, …)
 show only the images carrying that type — an image with two types counts for
 both — and **Grid / By type** groups the sheet under each image's first type.
+The chips combine: click **Front** and then **Back** to see the images
+carrying either type (an image with both shows once). Click a pressed chip
+again to drop its type; **All**, or dropping the last one, shows every image.
 **Spreads** lays the sheet out like the package itself: two images of the same
 type whose comments differ only in a final "left" / "right" ("opened gatefold
 cover, inside left" + "… inside right") are shown side by side as one opened
@@ -1287,10 +1290,14 @@ not a live title, a ⚠️ after the link explains why and suggests a title from
 the event with the most tracks; there is then no main event and no tint.
 
 **The release group of each track's event.** Hovering a live track's **#**
-cell shows a release group card. For the main event it is the release's own
+cell with **Ctrl** held, or pressing **Ctrl** while the pointer is on it,
+shows a release group card. Without Ctrl nothing happens, so moving down the
+column starts no searches; *Show the "#" release group card on a plain hover
+(without Ctrl)* in ⚙️ Settings → 💿 RELEASE TRACKLIST brings back the plain
+hover. For the main event it is the release's own
 release group. For any other event, a search looks for a release group named
 exactly like the event: the Disambiguation without `live, ` and without a
-trailing `; …`. It runs once per event, only when you hover. A found group
+trailing `; …`. It runs once per event, only when you ask for the card. A found group
 gets the same card as the header link. Otherwise the card says so and lists
 the closest titles the search returned. Alt+click the **#** cell to open the
 release group, or the search, on musicbrainz.org. In ⚙️ Settings → 💿 RELEASE
@@ -1753,7 +1760,7 @@ turns them into one table:
 *Format* is the site's own text ("2 CD-R", "1 7 in."). *Notes* is the italic
 line some records carry ("Picture disc", "Lower 'Bruce Springsteen' - Little
 Steven Mix"). The title links to the record's detail page, which opens in a
-new tab. With the preview on, resting the pointer on a title shows the
+new tab. With the preview on, resting the pointer on a title with Ctrl held shows the
 record's tracklist and the shows its tracks come from (see
 *Previewing the detail pages* under [Page-specific behaviour](#page-specific-behaviour)).
 
@@ -1812,7 +1819,12 @@ that site's own switch in ⚙️ Settings:
 | 💿 brucespringsteen.it  | *Preview record pages in the brucespringsteen.it database* | the tracklist, the show each track comes from, the notes, the photo           |
 | 📚 Brucebase           | *Preview song pages on the Brucebase song list*          | the album it comes from, how often and when last it was played live, releases |
 
-**Rest the pointer on a title** for a moment and a card opens beside it.
+**Hold Ctrl and rest the pointer on a title** for a moment and a card opens
+beside it, or rest the pointer on the title first and then press **Ctrl**: the
+card opens at once. Without Ctrl nothing happens, so moving the pointer across
+the table neither opens cards nor reads pages. If you would rather have the
+card on a plain hover, switch on *Show the detail-page preview on a plain
+hover (without Ctrl)* under ⚙️ Settings → *🔎 Detail-page previews*.
 The first time, it shows "Loading the detail page…" while the page is read in
 the background. The script reads at most one page a second, and a page you
 have already seen comes back at once: it is kept for 30 days. The card's last
