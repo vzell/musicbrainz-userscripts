@@ -13,12 +13,12 @@ Design study, probes and the mockups the user chose from:
 
 ## Gates: one setting per host, nothing on MusicBrainz
 
-| Host                  | Setting                 | Detail links                                    |
-|-----------------------|-------------------------|-------------------------------------------------|
-| springsteenlyrics.com | `sa_sl_detail_preview`  | `collection.php`/`bootlegs.php`/`brucelegs.php` with `item=N`; `lyrics.php?song=SLUG` (the lyrics index, WIP.2) |
-| jungleland.it         | `sa_jl_detail_preview`  | `/html/*.htm` except list, images, artwork      |
-| brucespringsteen.it   | `sa_bs_detail_preview`  | `/DB/detrec.aspx?code=`                         |
-| brucebase.wikidot.com | `sa_bb_detail_preview`  | `/song:<slug>`                                  |
+| Host                  | Setting                | Detail links                                                                                                    |
+|-----------------------|------------------------|-----------------------------------------------------------------------------------------------------------------|
+| springsteenlyrics.com | `sa_sl_detail_preview` | `collection.php`/`bootlegs.php`/`brucelegs.php` with `item=N`; `lyrics.php?song=SLUG` (the lyrics index, WIP.2) |
+| jungleland.it         | `sa_jl_detail_preview` | `/html/*.htm` except list, images, artwork                                                                      |
+| brucespringsteen.it   | `sa_bs_detail_preview` | `/DB/detrec.aspx?code=`                                                                                         |
+| brucebase.wikidot.com | `sa_bb_detail_preview` | `/song:<slug>`                                                                                                  |
 
 All four default **off** and sit under their host's own `sa_enable_<site>`
 setting, which still has to be on. `_DP_SITES` is keyed by `_foreignHost`,
