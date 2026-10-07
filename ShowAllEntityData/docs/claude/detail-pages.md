@@ -187,8 +187,9 @@ opens the window, as on the foreign hosts (kept, decided 2026-10-07).
   are its counties, guitar's forward "subtype" include slide guitar. Any other
   group is its type, with an arrow when the type comes in both directions.
 - **The label code is "LC" and five digits** (`_mbPopLabelCode()`), as
-  recalled from MusicBrainz's own formatter — NOT checked against a page:
-  musicbrainz.org answered curl with a browser check. Confirm in a browser.
+  MusicBrainz's own formatter writes it ("LC 00162" for Columbia): written
+  from memory (musicbrainz.org answered curl with a browser check) and
+  confirmed against a label page by the user in a browser, 2026-10-07.
 - **One loader: `_mbWsLoad(cacheKey, url, …)`**, state in `_mbPop`. Memory,
   then IndexedDB (`_rgIdbGet(key, _MB_POP_IDB_VERSION)`, the release group's
   helpers with a version argument), then `_rgWsGet()`. The key is

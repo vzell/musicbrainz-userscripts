@@ -20287,3 +20287,31 @@ detail-preview specs: 75); `popup-mb.json` 37 as declared; live
 `popup-mb.spec.js` 6 of 6 (2026-10-07T21:13:20Z to 21:13:51Z); lint within
 the baseline. `npm run test:full`: 1334 passed, 0 failed
 (2026-10-07T21:13:57Z to 21:20:47Z, host NB-3641, WSL2).
+
+## 2026-10-07 — The two load-sensitive merge-gate tests: one fixed, one not reproducible (branch fix/load-sensitive-tests, WIP.1)
+
+**`user-ratings-multigroup.spec.js › the "Release group ratings" row is NOT
+desynced …` waited on the Internet.** With `--repeat-each=60 --workers=28`
+it failed 18 of 60, every time `page.goto: Test timeout of 90000ms exceeded`
+(`--repeat-each=20` at the default worker count did not reproduce it). The
+saved page's own `<img>` tags fetch two release-group covers from
+coverartarchive.org and an editor avatar from static.metabrainz.org; the
+shared loader blocks only archive.org images, and `page.goto()` waits for
+the load event. Fix, in the spec only: its `openRatings()` answers those
+images locally (a 1×1 PNG, an empty SVG). Not in `loadPage.js`: a page-level
+route there would override the context-level cover routes other specs
+register (page routes win). Result: 120 of 120 under the same load, 22 s
+instead of 2.1 min.
+
+**`sticky-page-headers.spec.js › an Annotation with a wiki "== … ==" heading
+…` did not reproduce**: 0 failures in 60 runs of the test with 28 workers
+and in 144 runs of its whole file (4 repeats × 36 tests, 28 workers). Its
+fixture takes MusicBrainz's three stylesheets live from static.metabrainz.org
+(the layout it measures depends on them); all three still answer 200 in under
+0.2 s. The one failure's text was lost (that gate's output went through
+`tail`). Left as it is; every gate run now saves the full report, so a next
+failure will say why.
+
+**Lesson:** "passes alone, fails in the full suite" was reproduced only with
+`--workers=28`, not with more repeats at the default worker count. Stress
+with workers, not just repeats.
