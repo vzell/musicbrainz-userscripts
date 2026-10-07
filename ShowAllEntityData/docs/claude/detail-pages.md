@@ -22,10 +22,97 @@ Design study, probes and the mockups the user chose from:
 
 All four default **off** and sit under their host's own `sa_enable_<site>`
 setting, which still has to be on. `_DP_SITES` is keyed by `_foreignHost`,
-so on MusicBrainz `_dpActiveSite()` is null, and `_initDetailPreview()` is
-only called when `_foreignHost` is set. Nothing of this feature runs there: no
-stylesheet, no listener, no database. The spec pins that with every preview
-setting on (`"on a MusicBrainz page, every preview setting on changes nothing"`).
+so on MusicBrainz `_dpActiveSite()` is null and no foreign source is
+enabled. Since the popup engine (next section) `_initDetailPreview()` is
+called on every page and installs only where a source is enabled: on
+MusicBrainz that is a release page with a release-group card on, and nowhere
+else, so every other MusicBrainz page gets no stylesheet, no listener and no
+database from it. The spec pins that with every preview setting on (`"on a
+MusicBrainz page, every preview setting on changes nothing"`, an `/iswc/`
+page).
+
+## The popup engine: sources (org/iframe.org, Phase 1)
+
+The card and the dialog are an engine that serves SOURCES (`_popSources()`,
+built once; `_popResolve(node)` finds the first enabled source whose
+`selector` matches `node.closest()` and whose `resolve()` accepts it, and
+returns a TARGET `{src, el, key, url, …}`). The four foreign sites are one
+source each (`_dpSiteSource()`, the behaviour above, unchanged); a MusicBrainz
+release page adds two (below). A source has:
+
+| Member                                    | What it is                                                                                                           |
+|-------------------------------------------|----------------------------------------------------------------------------------------------------------------------|
+| `selector`, `resolve(el)`                 | which element it previews (a link, or a container such as a "#" cell), and that element's `{key, url}`, or null      |
+| `enabled()`                               | its host and settings, read at every event                                                                           |
+| `needsCtrl()`                             | whether its card waits for Ctrl (the foreign sites: `_dpNeedsCtrl()`)                                                |
+| `card(t, start, repaint)`                 | the card's HTML for the CURRENT state, at once                                                                       |
+| `extracted(t, start, force, repaint)`     | the Extracted view's HTML, the same way                                                                              |
+| `live`, `liveUrl(t)`                      | the Live page view: `_dpIsolateFrame()`'s fields, plus `charset` and `awaitSlot` (the rate gate `_dpGetRaw()` waits on) |
+| `steps(t)`, `stepId(el)`                  | what ‹ › step through, and an identity that survives the `cloneNode(true)` re-renders                                |
+| `kind`, `wide`, `onAreaClick(e, t)`       | the dialog's title, a wider card, a click in the Extracted view (a sortable header)                                  |
+
+Rules that fail silently if broken:
+
+- **Only a call with `start` may start a request.** `card()`/`extracted()`
+  are called again by `repaint()` whenever their source's state changes (a
+  page of releases arrives); a repaint that started a request would retry a
+  failed one for ever (the "#" card's lesson, release-tracks-and-length.md).
+  The one exception is `_rgWindowFor()`: a repaint may start what was never
+  asked (a "#" window opened before its search answered), never a failure.
+- **A source keeps its own per-URL state for repaints.** `_dpSiteSource()`
+  keeps the latest card and window outcome per URL, so a repaint shows
+  "fetched now" until the next hover, as before.
+- **`repaint()` checks that its target is still shown** (`_dpPeekShowing()`,
+  `_dpDialogShowing()`): a late answer for a card the pointer has left paints
+  nothing.
+- **The dialog's title is the source's `kind`** (`_dpShowInDialog()` sets it on
+  the title span `createInfoDialog()` made), so one dialog serves every source.
+
+## MusicBrainz: the release-group sources
+
+On a release page (`_isReleasePagePath()`), two sources serve the release
+group cards that release-tracks-and-length.md describes ("Item 4" and "Per-event
+tints and the "#" card"):
+
+- `_rgLinkSource()`: the subheader link "N versions available in <name>"
+  (`[data-mb-rg-link]`, written by `initReleaseGroupLink()`). Its card shows on
+  a PLAIN hover, as it always did (org/iframe.org, answer 8). Off with
+  `sa_release_rg_link`.
+- `_eventRgSource()`: the "#" cell of a live track (`_EVENT_RG_CELL_SEL`). Its
+  card waits for Ctrl unless `sa_event_rg_tooltip_without_ctrl` is on; ‹ › step
+  down the "#" cells of every visible row (`stepId` = `data-mb-row-idx`). Off
+  with `sa_event_rg_tooltip`. Alt+click stays its own handler
+  (`initEventRgTooltip()`).
+
+Both share `_rgReleases` (a group's releases as far as loaded) and `_rgFacts`
+(its lookup), and the window `_rgWindowFor()` builds:
+
+- **Every release, paged by the releases RETURNED.** `_rgReleasesLoad()`
+  browses `release?release-group=…&inc=media+labels&limit=100&offset=<n>`, `n`
+  being the releases it has, not a multiple of 100: the Web Service caps a
+  release browse at 500 tracks (MusicBrainz_API, checked 2026-10-07). The card
+  needs the first page only; the window asks for all of them, up to
+  `sa_rg_window_max_releases` (default 500), and joins a load that is running.
+  A page that fails keeps what loaded before it; ⟳ starts again from the first.
+- **Facts on pin only**: one lookup,
+  `release-group/<gid>?inc=artist-credits+genres+ratings+url-rels+annotation`.
+- **Kept a day**: both in this file's database (`vz-saed-detail-pages`, keys
+  `mb:rg-releases:<gid>` and `mb:rg-facts:<gid>`, `_RG_TTL_MS`,
+  `_RG_IDB_VERSION`). IndexedDB is per origin, so on musicbrainz.org this is a
+  database of its own, and the art cache's `_ART_IDB_VERSION` is untouched.
+  Only a success is kept; the card's foot says "fetched now" / "saved today".
+- **One rate gate**: every request goes through `_relAwaitRateSlot()`
+  (`_rgWsGet()`), the gate of the Relationships column too, so the two together
+  stay at one request per 1.1 s (org/iframe.org, answer 7). The foreign sites
+  keep `_dpAwaitSlot()`: another origin, another budget.
+- **Covers only where the archive has a front**: the window's thumbnails read
+  each release's own `cover-art-archive.front` (accurate:
+  org/caa-artwork-requests.org F1), and load lazily.
+- **The Live page root is `#page`, not `#content`.** `_dpIsolateFrame()` hides
+  the siblings of the root and of each ancestor: `#page` hides MusicBrainz's
+  `.header`, the browser warning and `#footer`, and keeps `#content` and
+  `#sidebar`; `#content` would hide the sidebar too (`_MB_LIVE`, org/iframe.org
+  R6; every probed page, `/user/` and `/isrc/` included, has `#page`).
 
 **The detail pages match no `@include` line.** The script never runs ON them,
 in a tab or in the Live page frame. Everything is fetched (same origin) and
@@ -234,6 +321,17 @@ jungleland.it pages stay windows-1252, and it strips scripts, noscripts,
 iframes, links and background images. `tests/support/detailFixture.js` serves
 them after a list loader's catch-all and answers a detail URL with no fixture
 with a 404. Mutation list: `scripts/mutations/detail-preview.json`.
+
+The release-group sources (Phase 1): `tests/fixtures/release-rg-popup.spec.js`
+pins the subheader card (plain hover, beside the link, one request), the
+window over a 150-release double whose first page holds 90 (offsets 0 and
+90), the facts lookup, this release first, covers only where `front` is true,
+the sort, ⟳, IndexedDB after a reload, the shared rate gate
+(`__saTest.reserveMbRateSlots()`), ← → over the "#" cells, the no-match
+window's links and the Live page (`#page` root). Its mobile sibling taps a "#"
+cell at its centre: on the zoomed-out Pixel 7 page `visualViewport.offsetTop`
+is not 0 and `Locator.tap()` lands on the unstyled header. Mutation list:
+`scripts/mutations/popup-engine.json`.
 
 **No song lyrics in the repository** (decided 2026-10-07). The build blanks
 every word of a song page's lyrics block to "la" (springsteenlyrics.com: between

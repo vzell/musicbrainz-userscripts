@@ -1,11 +1,11 @@
 [
     {
         "name": "the detail-page card ignores the Ctrl gate on hover",
-        "why": "By default (sa_dp_hover_without_ctrl off) only a hover with Ctrl held may schedule the card. Without the gate a pointer crossing the table pops cards and fetches pages again.",
+        "why": "By default (sa_dp_hover_without_ctrl off) only a hover with Ctrl held may schedule the card. Without the gate a pointer crossing the table pops cards and fetches pages again. Since the popup engine (org/iframe.org Phase 1) this is the engine's one gate line, asked of each source (t.src.needsCtrl()).",
         "edits": [
             {
-                "find": "            if (_dpNeedsCtrl() && !e.ctrlKey) return;\n            _dpSchedulePeek(a);",
-                "replace": "            _dpSchedulePeek(a);"
+                "find": "            if (t.src.needsCtrl() && !e.ctrlKey) return;\n            _dpSchedulePeek(t);",
+                "replace": "            _dpSchedulePeek(t);"
             }
         ],
         "spec": "tests/fixtures/detail-preview.spec.js",
@@ -17,8 +17,8 @@
         "why": "Ctrl pressed while the pointer already rests on a title must show its card at once; without the keydown branch only a hover that STARTS with Ctrl held would.",
         "edits": [
             {
-                "find": "                const a = _dpCtrlTarget();",
-                "replace": "                const a = null;"
+                "find": "                const t = _dpCtrlTarget();",
+                "replace": "                const t = null;"
             }
         ],
         "spec": "tests/fixtures/detail-preview.spec.js",
@@ -40,11 +40,11 @@
     },
     {
         "name": "the \"#\" card ignores the Ctrl gate on hover",
-        "why": "By default (sa_event_rg_tooltip_without_ctrl off) entering a \"#\" cell without Ctrl must neither write the card nor start a lookup.",
+        "why": "By default (sa_event_rg_tooltip_without_ctrl off) entering a \"#\" cell without Ctrl must neither show the card nor start a lookup. Since the popup engine the gate is the \"#\" source's needsCtrl().",
         "edits": [
             {
-                "find": "            if (_eventRgNeedsCtrl() && !e.ctrlKey) {\n                delete td.dataset.mbtt;\n                return;\n            }\n",
-                "replace": ""
+                "find": "            needsCtrl: _eventRgNeedsCtrl,",
+                "replace": "            needsCtrl: () => false,"
             }
         ],
         "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
@@ -53,11 +53,11 @@
     },
     {
         "name": "a plain hover keeps the card an earlier Ctrl press left",
-        "why": "The Ctrl press writes data-mbtt on the cell; without the delete, the next plain hover would show it from the engine's own mouseover.",
+        "why": "The guard this entry first planted (the stale data-mbtt a Ctrl press left on the cell) is gone with its mechanism: the popup engine keeps no card state on the cell. The same test's nearest guard is the engine's: leaving the cell hides the card, so a later plain hover finds none showing.",
         "edits": [
             {
-                "find": "                delete td.dataset.mbtt;\n                return;",
-                "replace": "                return;"
+                "find": "            if (e.relatedTarget && a.contains(e.relatedTarget)) return;\n            _dpHidePeek();",
+                "replace": "            if (e.relatedTarget && a.contains(e.relatedTarget)) return;"
             }
         ],
         "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
@@ -66,11 +66,11 @@
     },
     {
         "name": "pressing Ctrl on a \"#\" cell shows nothing",
-        "why": "Without the engine hook the card would only be written to the cell, never shown, until the pointer re-entered.",
+        "why": "Ctrl pressed while the pointer rests on a \"#\" cell must show its card at once. Since the popup engine that is the engine's keydown branch (_dpCtrlTarget()), the same line the detail-page entry above plants, seen here by the \"#\" spec.",
         "edits": [
             {
-                "find": "            _mbttShowNow(hoverTd, { clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 });",
-                "replace": "            void r;"
+                "find": "                const t = _dpCtrlTarget();",
+                "replace": "                const t = null;"
             }
         ],
         "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",

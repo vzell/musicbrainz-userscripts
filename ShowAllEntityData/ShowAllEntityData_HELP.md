@@ -1272,10 +1272,28 @@ filter hides.
 `(see all versions of this release, 5 available)` link names its release
 group: `(5 versions available in 1996‐04‐19: ICC Berlin, Saal 1, Berlin,
 Germany)`. The name is in the page already, so this costs nothing. Hovering
-it previews the release group: its cover, type and artist, and a table of its
-releases with this one marked ▸, loaded with one request on the first hover
-(a failed load is tried again on the next hover). Switch it off in ⚙️ Settings
-→ 💿 RELEASE TRACKLIST.
+it shows a card of the release group beside the link: its cover, type and
+artist, and its first releases with this one marked ▸, loaded with one request
+on the first hover (a failed load is tried again on the next hover). **Esc**
+closes the card. **Space** pins it into a window you can move and resize:
+
+- **Extracted** lists *every* release of the group, read 100 at a time, in a
+  table you can sort by clicking a column header (again to reverse it). Each
+  title opens its release in a new tab; a cover shows where the Cover Art
+  Archive has one. Beside it: the group's type, first release date, artist,
+  rating, genres, external links and annotation.
+- **Live page** shows the release group's own page, without the site's header
+  and footer.
+- **⟳** reads everything again from MusicBrainz; **↗** opens the release group
+  in a new tab.
+
+What was loaded is kept for a day, so the card of a group you have seen comes
+back at once (its foot says *saved today*). A group with very many releases
+shows the first 500; ⚙️ Settings → 💿 RELEASE TRACKLIST → *Release group
+window: at most this many releases* changes that. These requests and the
+Relationships column's share one limit of one request a second. Switch the link
+and its card off in ⚙️ Settings → 💿 RELEASE TRACKLIST. On a touch screen, a
+tap on the link opens the window.
 
 When the release group title is a live title, it names the release's **main
 event**, by its date. If the tracks come from two or more dates, the **#**
@@ -1299,7 +1317,11 @@ release group. For any other event, a search looks for a release group named
 exactly like the event: the Disambiguation without `live, ` and without a
 trailing `; …`. It runs once per event, only when you ask for the card. A found group
 gets the same card as the header link. Otherwise the card says so and lists
-the closest titles the search returned. Alt+click the **#** cell to open the
+the closest titles the search returned. **Space** pins the card into the same
+window as the header link's, where **←** and **→** step from one **#** cell to
+the next, across the media; for an event without a release group of its own,
+the window links the closest titles and the search instead. On a touch screen,
+a tap on a **#** cell opens the window. Alt+click the **#** cell to open the
 release group, or the search, on musicbrainz.org. In ⚙️ Settings → 💿 RELEASE
 TRACKLIST you can switch the card off, search the words instead of the exact
 phrase (like the website's search, with many more hits), drop the

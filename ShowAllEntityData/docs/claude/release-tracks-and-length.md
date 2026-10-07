@@ -608,9 +608,11 @@ location's first part). See docs/claude/findings.md.
 **Item 4: the release group decides the main event.** `initReleaseGroupLink()`
 (page init, and again at the end of every `stampFindings()`) rewrites the
 subheader's "see all versions" link from `release.releaseGroup` in the page's
-JSON (`_releaseGroupInfo()`, no request), loads its preview table with one
-WS/2 release browse on the first hover (`_rgPreviewLoad()`, kept only on
-success), and adds the 4c ⚠️. `data-mb-main-event="0"` greens the "#" cell
+JSON (`_releaseGroupInfo()`, no request) and adds the 4c ⚠️. Its card is a
+source of the popup engine (`_rgLinkSource()`, docs/claude/detail-pages.md):
+one WS/2 release browse on the first hover (`_rgReleasesLoad()`, kept only on
+success, then a day in IndexedDB), and Space pins it into a window with every
+release and the group's facts. `data-mb-main-event="0"` greens the "#" cell
 (CSS placed before the track-target rule, which out-ranks it).
 `rg-title-mismatch` (⚠️) compares main-event tracks with
 `_rgTitlePartForDate()`. Spec `release-rg-main-event.spec.js`; probe
@@ -621,18 +623,21 @@ numbers the events off the main one by date (`eventIdx`); `_stampMainEventRow()`
 writes `data-mb-event-idx`/`data-mb-event-tint` on the "#" CELL (its
 `::before` "E<n>" chip reads them with `attr()`, which cannot reach the row).
 Tints come from `_EVENT_TINTS`, which the CSS template also generates its
-rules from. The "#" card is wired ONCE, delegated (`initEventRgTooltip()`):
-a `pointerover` writes `data-mbtt` just before the engine's `mouseover`,
-and only that hover may START a lookup (`_eventRgCardHtml(td, true)`) — a
-repaint that restarted one looped forever on a 503 (caught by the spec).
+rules from. The "#" card is a source of the popup engine (`_eventRgSource()`,
+docs/claude/detail-pages.md): its listeners are the engine's, delegated on the
+document, and only a hover, a pin or a step may START a lookup
+(`_eventRgCardHtml(td, true, repaint)`) — a repaint that restarted one looped
+forever on a 503 (caught by the spec). Alt+click stays its own delegated
+handler (`initEventRgTooltip()`).
 **Ctrl gate** (`_eventRgNeedsCtrl()`, `sa_event_rg_tooltip_without_ctrl`,
-default false): the `pointerover` acts only on ENTERING a cell (children are
-the same hover) and, without `e.ctrlKey`, DELETES the cell's `data-mbtt` — an
-earlier Ctrl hover left one there, and the engine would show it. A Ctrl
-`keydown` on the hovered cell writes the card and shows it through
-`_mbttShowNow()`, the hook `_initStatTooltip()` exposes (its `let` sits above
-the init call at page init, out of the TDZ). Specs hold Ctrl in `hoverHash()`.
-All requests share `_rgWsGet()`'s queue (≥1.1 s apart). A hit counts only
+default false): the source's `needsCtrl()`, so the engine shows the card on a
+hover with Ctrl held, or at once when Ctrl is pressed on the hovered cell.
+Specs hold Ctrl in `hoverHash()`. Space pins the card into the window, where
+← → step down the "#" cells (`data-mb-row-idx` is the step identity); for an
+event no release group is named like, the window links the closest groups
+(the search keeps their ids) and the search. All requests go through
+`_rgWsGet()` and so through `_relAwaitRateSlot()`, the gate the Relationships
+column uses (≥1.1 s apart, together). A hit counts only
 when its title IS the event name: terms mode scores wrong concerts 100
 (`scripts/probe-rg-event-search.py`). Spec
 `release-event-colours-rg-tooltip.spec.js` on `release-tracks-brixton-night.html`.

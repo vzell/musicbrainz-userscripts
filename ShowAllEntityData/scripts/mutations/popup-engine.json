@@ -1,0 +1,224 @@
+[
+    {
+        "name": "the browse steps offset by the limit, not by the releases returned",
+        "why": "The Web Service caps a release browse at 500 tracks, so a page can hold fewer than 100 releases; stepping by the limit then skips the ones it left out (the spec's first page has 90: offset 100 loses ten).",
+        "edits": [
+            {
+                "find": "`&limit=${_RG_BROWSE_LIMIT}&offset=${st.releases.length}&fmt=json`, '_rgReleasesLoad');",
+                "replace": "`&limit=${_RG_BROWSE_LIMIT}&offset=${Math.ceil(st.releases.length / _RG_BROWSE_LIMIT) * _RG_BROWSE_LIMIT}&fmt=json`, '_rgReleasesLoad');"
+            }
+        ],
+        "spec": "tests/fixtures/release-rg-popup.spec.js",
+        "grep": "every release, paged by the releases returned",
+        "expect": "fail"
+    },
+    {
+        "name": "the window reads only the first page",
+        "why": "The window's point is every release. Here the guard is covered by another: _rgWindowFor() asks again on every repaint for a list that holds only its first page (firstPageOnly), so with the load loop cut after one page each repaint reads the next one, and the window still ends with all 150. Recorded so the overlap is known, not assumed.",
+        "edits": [
+            {
+                "find": "                if (st.complete || st.capped || !st.all) break;",
+                "replace": "                if (true) break;"
+            }
+        ],
+        "spec": "tests/fixtures/release-rg-popup.spec.js",
+        "grep": "every release, paged by the releases returned",
+        "expect": "pass"
+    },
+    {
+        "name": "the window does not look up the group's facts",
+        "why": "Type, rating, genres, links and annotation come from the one lookup made on pin.",
+        "edits": [
+            {
+                "find": "        if (start || !_rgFacts.get(info.gid)) _rgFactsLoad(info.gid, { force: start && force, repaint });",
+                "replace": "        if (false) _rgFactsLoad(info.gid, { force: start && force, repaint });"
+            }
+        ],
+        "spec": "tests/fixtures/release-rg-popup.spec.js",
+        "grep": "every release, paged by the releases returned",
+        "expect": "fail"
+    },
+    {
+        "name": "a card load running at the pin does not go on for the window",
+        "why": "When Space comes before the card's first page has answered, the window joins that load and marks it all-pages. The spec pins only after the card has its page (its premise asserts the card's count first), so the load is never running at the pin: no spec here can see this guard. Recorded so the gap is known.",
+        "edits": [
+            {
+                "find": "            if (all) cur.all = true;",
+                "replace": "            if (false) cur.all = true;"
+            }
+        ],
+        "spec": "tests/fixtures/release-rg-popup.spec.js",
+        "grep": "every release, paged by the releases returned",
+        "expect": "pass"
+    },
+    {
+        "name": "this release is not first",
+        "why": "The card and the window open with the page's own release first and marked.",
+        "edits": [
+            {
+                "find": "            (b.id === releaseGid) - (a.id === releaseGid) ||\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/release-rg-popup.spec.js",
+        "grep": "this release first and linked",
+        "expect": "fail"
+    },
+    {
+        "name": "a cover is asked for every release",
+        "why": "Only cover-art-archive.front says the archive has a front; asking for the rest costs the archive a request each and shows nothing.",
+        "edits": [
+            {
+                "find": "            const front = r['cover-art-archive'] && r['cover-art-archive'].front;",
+                "replace": "            const front = true;"
+            }
+        ],
+        "spec": "tests/fixtures/release-rg-popup.spec.js",
+        "grep": "covers only where the archive has a front",
+        "expect": "fail"
+    },
+    {
+        "name": "a second click on a header does not reverse the order",
+        "why": "The direction is half of a sort.",
+        "edits": [
+            {
+                "find": "                return (col.num ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true })) * _rgSort.dir;",
+                "replace": "                return (col.num ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true }));"
+            }
+        ],
+        "spec": "tests/fixtures/release-rg-popup.spec.js",
+        "grep": "sorts by a header",
+        "expect": "fail"
+    },
+    {
+        "name": "empty values sort first",
+        "why": "An undated release says nothing about order; it goes last either way.",
+        "edits": [
+            {
+                "find": "                if (x === '' || y === '') return (x === '') - (y === '');",
+                "replace": "                if (x === '' || y === '') return (y === '') - (x === '');"
+            }
+        ],
+        "spec": "tests/fixtures/release-rg-popup.spec.js",
+        "grep": "sorts by a header",
+        "expect": "fail"
+    },
+    {
+        "name": "⟳ keeps the kept lists",
+        "why": "⟳ is the way to see what changed on MusicBrainz today: it must bypass memory and IndexedDB.",
+        "edits": [
+            {
+                "find": "        if (start || !st || firstPageOnly) _rgReleasesLoad(info, { all: true, force: start && force, repaint });",
+                "replace": "        if (start || !st || firstPageOnly) _rgReleasesLoad(info, { all: true, force: false, repaint });"
+            }
+        ],
+        "spec": "tests/fixtures/release-rg-popup.spec.js",
+        "grep": "asks MusicBrainz again",
+        "expect": "fail"
+    },
+    {
+        "name": "the releases are not kept in IndexedDB",
+        "why": "Kept a day, so a reload or another page of the same group asks nothing.",
+        "edits": [
+            {
+                "find": "            _rgIdbPut(`rg-releases:${gid}`, { releases: st.releases, total: st.total, complete: st.complete, capped: st.capped }, st.at);",
+                "replace": "            void 0;"
+            }
+        ],
+        "spec": "tests/fixtures/release-rg-popup.spec.js",
+        "grep": "kept a day",
+        "expect": "fail"
+    },
+    {
+        "name": "the card does not say how old its releases are",
+        "why": "Kept a day: the foot says \"saved today\" as the detail-page cards do.",
+        "edits": [
+            {
+                "find": "        const age = st.status === 'done' && st.at ? `${_rgEsc(_dpAgeText({ cached: st.cached, at: st.at }))} · ` : '';",
+                "replace": "        const age = '';"
+            }
+        ],
+        "spec": "tests/fixtures/release-rg-popup.spec.js",
+        "grep": "kept a day",
+        "expect": "fail"
+    },
+    {
+        "name": "the popups' requests skip the shared rate gate",
+        "why": "One gate for every MusicBrainz request the script makes on its own (org/iframe.org, answer 7); a gate of their own let the popups and the Relationships column together go over one a second.",
+        "edits": [
+            {
+                "find": "    async function _rgWsGet(url, label) {\n        await _relAwaitRateSlot();",
+                "replace": "    async function _rgWsGet(url, label) {"
+            }
+        ],
+        "spec": "tests/fixtures/release-rg-popup.spec.js",
+        "grep": "one rate gate",
+        "expect": "fail"
+    },
+    {
+        "name": "the subheader card waits for Ctrl",
+        "why": "The link's card was never Ctrl-gated and stays on a plain hover (org/iframe.org, answer 8); only the \"#\" cell waits for Ctrl.",
+        "edits": [
+            {
+                "find": "            needsCtrl: () => false,",
+                "replace": "            needsCtrl: () => true,"
+            }
+        ],
+        "spec": "tests/fixtures/release-rg-popup.spec.js",
+        "grep": "a plain hover, beside the link",
+        "expect": "fail"
+    },
+    {
+        "name": "the \"#\" window steps nowhere",
+        "why": "← → step down the \"#\" column, from one sub-table into the next.",
+        "edits": [
+            {
+                "find": "            steps: () => Array.from(document.querySelectorAll(_EVENT_RG_CELL_SEL)).filter(td => td.getClientRects().length > 0),",
+                "replace": "            steps: (t) => [t.el],"
+            }
+        ],
+        "spec": "tests/fixtures/release-rg-popup.spec.js",
+        "grep": "Space pins, ← → step down the column",
+        "expect": "fail"
+    },
+    {
+        "name": "a no-match window shows the closest titles without links",
+        "why": "The card cannot be clicked; the window is where the closest groups become reachable.",
+        "edits": [
+            {
+                "find": "            ? st.hints.map(h => `<div><a href=\"/release-group/${_rgEsc(h.id)}\" target=\"_blank\" rel=\"noopener\">${_rgEsc(h.title)}</a></div>`).join('')",
+                "replace": "            ? st.hints.map(h => `<div>${_rgEsc(h.title)}</div>`).join('')"
+            }
+        ],
+        "spec": "tests/fixtures/release-rg-popup.spec.js",
+        "grep": "closest titles and the search, as links",
+        "expect": "fail"
+    },
+    {
+        "name": "the Live page view's root is #content",
+        "why": "_dpIsolateFrame() hides every sibling of the root and of its ancestors: #content would hide the sidebar (cover, rating, tags, links) along with the site's header and footer; #page hides only those (org/iframe.org R6).",
+        "edits": [
+            {
+                "find": "        liveRoot: (doc) => doc.getElementById('page'),",
+                "replace": "        liveRoot: (doc) => doc.getElementById('content'),"
+            }
+        ],
+        "spec": "tests/fixtures/release-rg-popup.spec.js",
+        "grep": "Live page: the release group page",
+        "expect": "fail"
+    },
+    {
+        "name": "a tap on a \"#\" cell is served by no source",
+        "why": "A touch screen has no hover and no Ctrl: the tap is the only way to the window. Planted in the \"#\" source's resolve(), so the engine's own tap rule (pinned by detail-preview.json) stays as it is.",
+        "edits": [
+            {
+                "find": "                if (!row || !row.dataset.mbEventKey) return null;",
+                "replace": "                if (true) return null;"
+            }
+        ],
+        "spec": "tests/fixtures/release-rg-popup.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "a tap on a",
+        "expect": "fail"
+    }
+]

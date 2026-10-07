@@ -1,0 +1,166 @@
+{
+ "title": "1996‐04‐19: ICC Berlin, Saal 1, Berlin, Germany",
+ "genres": [
+  {
+   "id": "0e3fc579-2d24-4f20-9dae-736e1ec78798",
+   "count": 1,
+   "disambiguation": "",
+   "name": "rock"
+  },
+  {
+   "name": "rock and roll",
+   "count": 1,
+   "id": "e4581b76-a842-440b-9b0f-1aa7a00a5c57",
+   "disambiguation": ""
+  }
+ ],
+ "relations": [
+  {
+   "type-id": "5849de4a-78ae-4876-975d-2181107e70b7",
+   "target-type": "url",
+   "target-credit": "",
+   "source-credit": "",
+   "attributes": [],
+   "begin": null,
+   "attribute-values": {},
+   "end": null,
+   "type": "discography entry",
+   "url": {
+    "id": "8dd611e4-bdf2-4519-bdc0-63038d026a0f",
+    "resource": "https://www.springsteenlyrics.com/bootlegs.php?cmd=list&category=aud_live1995&page=2"
+   },
+   "direction": "forward",
+   "ended": false,
+   "attribute-ids": {}
+  },
+  {
+   "target-type": "url",
+   "target-credit": "",
+   "type-id": "99e550f3-5ab4-3110-b5b9-fe01d970b126",
+   "attributes": [],
+   "begin": null,
+   "end": null,
+   "attribute-values": {},
+   "source-credit": "",
+   "type": "discogs",
+   "url": {
+    "resource": "https://www.discogs.com/master/4079167",
+    "id": "1469202f-ea37-4e2c-8adc-a5dcb9111080"
+   },
+   "ended": false,
+   "attribute-ids": {},
+   "direction": "forward"
+  }
+ ],
+ "primary-type": "Album",
+ "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+ "rating": {
+  "value": null,
+  "votes-count": 0
+ },
+ "id": "fa9c43a7-2592-3336-a09b-1414b4b6ee68",
+ "artist-credit": [
+  {
+   "artist": {
+    "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "disambiguation": "",
+    "genres": [
+     {
+      "name": "alternative folk",
+      "count": 1,
+      "id": "0b48a36c-630f-4ee7-8cf3-480e3dd8be65",
+      "disambiguation": ""
+     },
+     {
+      "name": "americana",
+      "disambiguation": "",
+      "id": "2c765e49-a12e-45eb-b628-f8b9cc0a0250",
+      "count": 8
+     },
+     {
+      "disambiguation": "",
+      "id": "aca1caab-09d1-44b5-ae84-590ff1d218fc",
+      "count": 3,
+      "name": "aor"
+     },
+     {
+      "name": "classic rock",
+      "count": 1,
+      "id": "93244085-20e5-4f16-9067-1d19143b3810",
+      "disambiguation": ""
+     },
+     {
+      "name": "contemporary folk",
+      "disambiguation": "",
+      "id": "c11e4253-a888-4a2a-adde-c274b748d0b3",
+      "count": 3
+     },
+     {
+      "id": "a91eed3a-fdd0-494e-ade0-95ea4117f6eb",
+      "count": 4,
+      "disambiguation": "",
+      "name": "folk"
+     },
+     {
+      "count": 1,
+      "id": "445dc48f-5233-4b4f-987f-867ff9ade836",
+      "disambiguation": "",
+      "name": "folk rock"
+     },
+     {
+      "id": "52856ec0-9f9b-45f4-ab09-1bb8cc0a98e4",
+      "disambiguation": "",
+      "count": 13,
+      "name": "heartland rock"
+     },
+     {
+      "disambiguation": "",
+      "id": "797e2e85-5ffd-495c-a757-8b4079052f0e",
+      "count": 4,
+      "name": "pop rock"
+     },
+     {
+      "name": "rock",
+      "id": "0e3fc579-2d24-4f20-9dae-736e1ec78798",
+      "disambiguation": "",
+      "count": 18
+     },
+     {
+      "id": "e4581b76-a842-440b-9b0f-1aa7a00a5c57",
+      "count": 3,
+      "disambiguation": "",
+      "name": "rock and roll"
+     },
+     {
+      "name": "singer-songwriter",
+      "count": 7,
+      "id": "455f264b-db00-4716-991d-fbd32dc24523",
+      "disambiguation": ""
+     },
+     {
+      "name": "soft rock",
+      "id": "7d0c6a6b-5d56-4b1e-a8c7-e32194f246b9",
+      "count": 1,
+      "disambiguation": ""
+     }
+    ],
+    "type": "Person",
+    "name": "Bruce Springsteen",
+    "country": "US",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "sort-name": "Springsteen, Bruce"
+   },
+   "joinphrase": "",
+   "name": "Bruce Springsteen"
+  }
+ ],
+ "secondary-type-ids": [
+  "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+ ],
+ "secondary-types": [
+  "Live"
+ ],
+ "annotation": null,
+ "first-release-date": "1996",
+ "disambiguation": ""
+}

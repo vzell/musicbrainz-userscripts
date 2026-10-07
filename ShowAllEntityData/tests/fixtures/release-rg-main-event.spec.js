@@ -131,7 +131,7 @@ test.describe('release group link and main event (org/live-bootleg.org 4)', () =
     test('4a: the preview loads on the first hover only, and lists the releases', async ({ page }) => {
         const { calls } = await open(page);
         expect(calls).toEqual([]);
-        const tip = page.locator('#mb-stat-tooltip');
+        const tip = page.locator('#mb-dp-peek');
         await page.locator(LINK).hover();
         await expect(tip).toContainText('Born Again', { timeout: 15000 });
         await expect(tip).toContainText('▸ Berlin Night');
@@ -142,9 +142,15 @@ test.describe('release group link and main event (org/live-bootleg.org 4)', () =
 
         await page.mouse.move(0, 0);
         await expect(tip).toBeHidden();
+        // The card shows a kept list at once, even while a reload of it would
+        // still be waiting for its slot on the shared rate gate (1.1 s after
+        // the first request): listen past that slot for a browse that must
+        // not come, rather than counting at once.
+        const again = page.waitForRequest(/\/ws\/2\/release\?release-group=/, { timeout: 2500 }).then(() => 'requested', () => 'none');
         await page.locator(LINK).hover();
         await expect(tip).toContainText('Born Again');
-        expect(calls, 'kept for the page').toHaveLength(1);
+        expect(await again, 'kept for the page').toBe('none');
+        expect(calls).toHaveLength(1);
     });
 
     test('4a: a failed preview is not kept — the next hover asks again', async ({ page }) => {
@@ -153,7 +159,7 @@ test.describe('release group link and main event (org/live-bootleg.org 4)', () =
         const { calls } = await open(page, {
             ws2: () => (++n <= 4 ? { status: 503, body: '' } : { status: 200, body: WS2_BODY }),
         });
-        const tip = page.locator('#mb-stat-tooltip');
+        const tip = page.locator('#mb-dp-peek');
         await page.locator(LINK).hover();
         await expect(tip).toContainText('Could not load the releases (HTTP 503)', { timeout: 30000 });
         expect(calls, 'retried up to the limit').toHaveLength(4);

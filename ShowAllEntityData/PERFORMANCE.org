@@ -3420,7 +3420,11 @@ retryAfterMs)~ *before* calling ~_relAwaitRateSlot()~. The order is the point.
 Reserving the slot first and topping the wait up afterwards would spend a
 reservation and then fire late, so the request would no longer sit immediately
 behind the slot it holds. Anything that adds a wait to these callbacks belongs
-on the same side of the gate.
+on the same side of the gate. Since the popup engine (org/iframe.org Phase 1,
+2026-10-07) the release page's release-group popups go through this gate too
+(~_rgWsGet()~, which had a queue of its own), with the same order in their
+~beforeRetry~; ~release-rg-popup.spec.js~ pins that they wait behind slots
+another feature holds.
 
 **** What shipped (2026-09-18, 9.99.1101-9.99.1108)
 

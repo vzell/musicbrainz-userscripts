@@ -1,0 +1,38 @@
+[
+    {
+        "version": "WIP.2",
+        "date": "2026-10-07",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "Release tracklist: the release group cards (the \"N versions available in …\" link and a live track's \"#\" cell) now open beside the link or cell, and Space pins them into a window you can move and resize. It lists every release of the group, not just the first 100, in a table you can sort by any column, with each title linked and covers where the archive has one, next to the group's type, rating, genres, links and annotation; \"Live page\" shows the release group's own page. ← → step through the \"#\" cells. For an event no release group is named like, the window links the closest ones and the search. What was loaded is kept for a day (⟳ asks again), and these requests now share one rate limit with the Relationships column. The link's card still shows on a plain hover; the \"#\" card still waits for Ctrl. New setting: \"Release group window: at most this many releases\" (default 500). Not on the filter/sort/render path."
+                ]
+            },
+            {
+                "label": "📝 Docs",
+                "items": [
+                    "New tests/fixtures/release-rg-popup.spec.js (10 tests) and release-rg-popup.mobile.spec.js; fixtures ws2-rg-lookup.json (scripts/probe-rg-release-browse.py --lookup) and rg-page-berlin.html (new scripts/fetch-mb-page-fixture.js); new scripts/mutations/popup-engine.json; event-colours-rg-tooltip.json and release-rg-main-event.json re-anchored. docs/claude/detail-pages.md: the engine's sources and the release-group sources."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.1",
+        "date": "2026-10-07",
+        "sections": [
+            {
+                "label": "🔧 Refactor",
+                "items": [
+                    "The detail-page preview (the hover card and the pinned window of the four Springsteen sites) is now a popup engine with sources (org/iframe.org, Phase 1): each site is one source that says which links it serves, how its card and its window's Extracted view read, which page its Live page view shows and what ‹ › step through. Nothing changes for the four sites; the engine installs only where a source is enabled, so MusicBrainz still gets no stylesheet and no listener from it. Not on the filter/sort/render path; no performance impact."
+                ]
+            },
+            {
+                "label": "📝 Docs",
+                "items": [
+                    "Phase 0 of org/iframe.org: scripts/probe-mb-entity-lookups.py and scripts/probe-mb-page-nojs.js (results R1-R10 in org/iframe.org). scripts/mutations/detail-preview.json re-anchored on the engine's hover handler and call site; tests/fixtures/detail-preview.spec.js and its mobile spec pass unchanged."
+                ]
+            }
+        ]
+    }
+]

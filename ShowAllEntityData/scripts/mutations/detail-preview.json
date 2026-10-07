@@ -14,15 +14,11 @@
     },
     {
         "name": "the preview installs on MusicBrainz too",
-        "why": "Only a foreign host has a _DP_SITES entry and only there is _initDetailPreview() called. Installed on MusicBrainz (here: as if it were brucespringsteen.it), the stylesheet and listeners would land on every MusicBrainz page.",
+        "why": "Only a foreign host has a _DP_SITES entry, so on MusicBrainz no foreign source is enabled and _initDetailPreview() installs nothing (since the popup engine's sources, its call site no longer checks _foreignHost: the engine's own gate is the guard). Enabled on MusicBrainz (here: as if it were brucespringsteen.it), the stylesheet and listeners would land on every MusicBrainz page.",
         "edits": [
             {
                 "find": "        const site = _foreignHost ? _DP_SITES[_foreignHost] : null;",
                 "replace": "        const site = _DP_SITES[_foreignHost || 'brucespringsteen.it'];"
-            },
-            {
-                "find": "    if (_foreignHost && pageType && headerContainer) _initDetailPreview();",
-                "replace": "    _initDetailPreview();"
             }
         ],
         "spec": "tests/fixtures/detail-preview.spec.js",
@@ -256,8 +252,8 @@
         "why": "Every hover tooltip ignores a tap's compatibility mouseover. Here the guard is covered by another: the tap's mousedown hides the card and clears its pending timer before the delay runs out, and the click then opens the dialog. Recorded so the overlap is known, not assumed.",
         "edits": [
             {
-                "find": "            if (!_dpSiteForLink(a) || _isTouchCompatMouseEvent(e)) return;",
-                "replace": "            if (!_dpSiteForLink(a)) return;"
+                "find": "            if (!t || t.el === _dpPeek.link || _isTouchCompatMouseEvent(e)) return;",
+                "replace": "            if (!t || t.el === _dpPeek.link) return;"
             }
         ],
         "spec": "tests/fixtures/detail-preview.mobile.spec.js",

@@ -49,9 +49,15 @@ generate the plan information inside this file, so that I can resume also from a
 - [X] Decide the "Open questions" at the end of this file: decided 2026-10-07,
   see "answers". Answer 8 differs from the recommendation: the subheader link
   stays on a plain hover.
-- [ ] Phase 0: probes. No userscript change.
-- [ ] Phase 1: the engine refactor into sources, then the release-group popup on
-  =release-tracks= (item 2 of the request).
+- [X] Phase 0: probes (2026-10-07, on =feature/popup-engine=). No userscript
+  change. Results R1 to R10 in "Phase 0: probes", and what they change in the
+  plan right after them.
+- [X] Phase 1: the engine refactor into sources (WIP.1), then the release-group
+  popup on =release-tracks= (item 2 of the request, WIP.2), on
+  =feature/popup-engine=; live-tested by the user 2026-10-07. Not merged:
+  =npm run test:full= and the merge itself are still to come. Design and rules:
+  [[file:../docs/claude/detail-pages.md]] ("The popup engine: sources",
+  "MusicBrainz: the release-group sources").
 - [ ] Phase 2: Web Service entity cards on the links of MusicBrainz tables.
 - [ ] Phase 3: edit and editor cards (read from HTML); Live page for every
   MusicBrainz card.
@@ -261,9 +267,13 @@ card.
 - The Live page on MusicBrainz: the entity's own page, fetched same-origin
   through the shared gate and cleaned by =_dpLiveDocHtml()= (no scripts, so React
   does not hydrate and the userscript does not run again inside); =liveRoot=
-  =#content=; header, banner and footer hidden; the sidebar (cover, rating,
-  tags, external links) stays. Phase 0 checks what a page without scripts still
-  shows.
+  =#page=, whose siblings are exactly the site's =.header=, browser warning and
+  =#footer=, so nothing needs =liveHide=; the sidebar (cover, rating, tags,
+  external links) and the entity's own =.tabs= stay. (Not =#content=:
+  =_dpIsolateFrame()= hides the root's siblings, and the sidebar is one.
+  Corrected in Phase 1, see R6.) Phase 0 (R6) found
+  every probed page complete without its scripts, except a "Wikipedia" section
+  whose cache is cold.
 
 ** 1b. Containers beyond <a href> (suggestions)
 
@@ -431,12 +441,119 @@ Results go here, dated, next to the code that will depend on them.
 
 | Probe                                             | Question                                                                                            | Result |
 |---------------------------------------------------+-----------------------------------------------------------------------------------------------------+--------|
-| =scripts/probe-mb-entity-lookups.py= (new)        | per kind: do the candidate inc sets above return the fields the card needs; how big is each answer? |        |
-| =scripts/probe-mb-page-nojs.js= (new, Playwright) | with JavaScript off, what does each entity page still show (#content, sidebar, tracklist, setlist)? |        |
-| the same script                                   | which entity pages embed JSON besides /release (could one HTML fetch feed both views)?              |        |
-| =scripts/probe-caa-presence-from-browse.py=       | does the release browse carry =cover-art-archive.front= (thumbs without 404s)?                      |        |
-| =scripts/probe-mb-entity-lookups.py=              | release-group browse with =offset=: page size, order, total count                                   |        |
-| a note, not a probe                               | does fetching musicbrainz.org HTML pages share the Web Service's rate limit?                        |        |
+| =scripts/probe-mb-entity-lookups.py= (new)        | per kind: do the candidate inc sets above return the fields the card needs; how big is each answer? | R1 R3  |
+| =scripts/probe-mb-page-nojs.js= (new, Playwright) | with JavaScript off, what does each entity page still show (#content, sidebar, tracklist, setlist)? | R6 R8  |
+| the same script                                   | which entity pages embed JSON besides /release (could one HTML fetch feed both views)?              | R7     |
+| =scripts/probe-caa-presence-from-browse.py=       | does the release browse carry =cover-art-archive.front= (thumbs without 404s)?                      | R2     |
+| =scripts/probe-mb-entity-lookups.py=              | release-group browse with =offset=: page size, order, total count                                   | R2     |
+| a note, not a probe                               | does fetching musicbrainz.org HTML pages share the Web Service's rate limit?                        | R5     |
+
+*** Results (2026-10-07, host =petri=)
+
+Runs: =probe-mb-entity-lookups.py= at 15:07:40 UTC (37 requests, about 45 s);
+=probe-mb-page-nojs.js= at 15:12:03 UTC (one browser check, 14 in-page fetches,
+14 normal page loads, about 2 min). Raw output, gitignored, so re-run to see it:
+=debug/probe-mb-entity-lookups.json=, =debug/probe-mb-page-nojs.json= and the
+frame screenshots =debug/probe-nojs-<kind>.png=. Read first, as the root
+CLAUDE.md asks: https://musicbrainz.org/doc/MusicBrainz_API and its
+Rate_Limiting page (2026-10-07).
+
+- *R1. Every candidate lookup answers with the card's fields.* All HTTP 200,
+  1.5 to 34 KB, 70 to 570 ms:
+
+| Kind               | Request (inc)                                         | Bytes       | The card can rely on                                                                                   | Note                                                               |
+|--------------------+-------------------------------------------------------+-------------+--------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| release group, pin | artist-credits+genres+ratings+url-rels+annotation     | 7.9 KB      | type, secondary types, first release, artist credit, rating and votes, genres, URL links, annotation   | annotation is '' when there is none                                |
+| release            | artist-credits+labels+recordings+release-groups+media | 8.8 KB      | status, packaging, date, country, release events, label and cat#, language, formats, tracks + lengths  | cover-art-archive {count, front, back}; barcode null on a 1975 LP  |
+| recording          | artist-credits+isrcs+releases+work-rels               | 22.6 KB     | length, first release, video flag, ISRCs, the work ("performance")                                     | the embedded releases stop at 25 (R3)                              |
+| recording, pin     | artist-rels+place-rels+event-rels                     | 10.8 KB     | 16 artist credits (instrument, vocal, producer, engineer, mix), recorded at and mixed at places        |                                                                    |
+| work               | artist-rels+label-rels+work-rels                      | 11.8 KB     | type, language, ISWC, composer, lyricist, 12 publishers (label rels), 3 other versions                 |                                                                    |
+| artist             | genres+ratings+url-rels+aliases                       | 30.3 KB     | type, gender, area, begin area, life span, IPI, ISNI, genres, rating, aliases                          | 75 URL links are most of the size: move url-rels to the pin        |
+| label              | genres+url-rels+label-rels                            | 34.1 KB     | type, label code (the integer 162, to format as LC), area, life span, genres                           | 46 label rels: parent and subsidiaries                             |
+| event              | artist-rels+place-rels+recording-rels+release-rels    | 28.8 KB     | type, time, cancelled, life span, setlist (62 lines of text), 24 main performers, place, 26 recordings | no event-to-release-group links exist (release-group-rels: none)   |
+| place              | area-rels+url-rels                                    | 2.3 KB      | type, address, area, coordinates, life span                                                            |                                                                    |
+| area               | area-rels                                             | 9.9 KB      | type, ISO 3166-2 code, the immediate parent                                                            | a whole chain costs one lookup per level                           |
+| series             | release-rels+release-group-rels                       | 10.9 KB     | type, 12 items, each with ordering-key and number                                                      | the item kind follows the series type: ask for every item-kind rel |
+| instrument         | instrument-rels+aliases                               | 10.7 KB     | type, relations, 27 aliases                                                                            | NO description in the answer (guitar)                              |
+| isrc, iswc, discid | /isrc/<code>, /iswc/<code>, /discid/<id>              | 0.2-13.6 KB | the recordings; the works; TOC (sectors, offsets) and its releases                                     |                                                                    |
+| collection         | browse ?editor=<name>                                 | 0.4 KB      | name, entity type, item count                                                                          | public collections only                                            |
+
+- *R2. A release group's releases: pages of 100, any order, covers flagged.*
+  Born to Run: release-count 104, so two requests (100 + 4), no release on two
+  pages. With ~inc=media+labels~ a page holds 100 releases (926 tracks
+  counted): the documented 500-track cap does not bite. With =+recordings= it
+  does: 57 releases, 494 tracks. So the window browses with =media+labels= and
+  still advances =offset= by the releases returned, as the docs say. The order
+  is not by date (2005, 2025, 1975, ...): sort in the script, as
+  =_rgReleasesTableHtml()= already does. The =cover-art-archive= block is on
+  104 of 104 releases, =front= true on 102: thumbnails only where =front= is
+  true, so no 404s. org/caa-artwork-requests.org F1 (2026-09-18) already found
+  the block accurate (no false negatives in 25 count-0 samples) and absent from
+  release-group JSON, so =probe-caa-presence-from-browse.py= was not re-run.
+- *R3. Counts come from a browse with ~limit=1~, not from a lookup's list.* A
+  lookup's sub-query list stops at 25: Thunder Road's lookup embedded 25
+  releases, ~release?recording=<id>&limit=1~ says 271. A count costs 0.2 to
+  0.7 KB and about 100 ms (a label's 43,170 releases: 0.9 to 1.4 s). Work 2,226
+  recordings, place 110 events, artist 1,924 album release groups. So the
+  recording card says "on 25+ releases" when its list is full, and the window
+  asks for the real count.
+- *R4. Event art is one index request on its own host.* eventartarchive.org
+  answered 200 with 15 images for the Manchester event (1.8 to 2.4 s) and 404
+  for the SXSW one. Load the poster after the card shows, or on pin.
+- *R5. Rate limit.* Web Service answers carry =x-ratelimit-limit: 1900= with
+  =-remaining= and =-reset=; =-remaining= fell by about 1,200 in two minutes
+  while the probe made 37 requests, so it is a shared bucket and of no use for
+  pacing one client. Website HTML pages carry no =x-ratelimit= header
+  (=x-mb-gateway: rex=), and the docs neither include nor exempt them. The
+  decision stands: every MusicBrainz request, HTML included, goes through
+  =_relAwaitRateSlot()=.
+- *R6. Pages without scripts are complete.* On 12 of 14 pages the rendered
+  text and the table rows are the same with and without scripts (within 13
+  characters): release group, release, recording, work, artist, label, event
+  (setlist included), series, instrument, isrc, user, edit. Both stylesheets
+  and the images load through the =<base href>=. The exception: the "Wikipedia"
+  section is loaded by script when MusicBrainz's extract cache is cold (place
+  and area in this run, work and instrument in the run before); one scripted
+  visit fills that cache. Layout, for the Live page view:
+  - entity and edit pages: =#page > #content, #sidebar=;
+  - =/user/= and =/isrc/=: =#page.fullwidth= with no =#content=;
+  - on every page the site's own chrome is =.header= and =#footer= (hide them);
+    =.tabs= is the entity's own tab bar (keep it).
+  So =liveRoot= is =#page= on every page (corrected in Phase 1, 2026-10-07;
+  this read first said "=#content=, else =#page=" and missed that
+  =_dpIsolateFrame()= hides the root's siblings: the sidebar would have gone
+  too). =body > .header, #unsupported-browser, #page, #footer=, so =#page='s
+  siblings are exactly the chrome and no =liveHide= is needed.
+- *R7. Only release pages embed the entity.* =/release/= embeds the whole
+  release (731,858 of 868,692 characters); every other page only stubs:
+  =entity=, the annotation, =cachedWikipediaExtract=, and one =events= block per
+  release row. The Extracted view stays on the Web Service (8.8 KB for a release
+  against 869 KB of HTML); the HTML is fetched only when the Live page view
+  opens.
+- *R8. HTML pages are big and sometimes slow.* 12 to 869 KB, 0.1 to 1.6 s, but
+  the Thunder Road recording page took 5.2 s and 6.3 s in two runs. The Live
+  page view needs its loading state. =_DP_RAW_KEEP= (12 pages) can then hold
+  about 10 MB of release pages, which is acceptable.
+- *R9. Privacy.* =/user/<name>= shows age, gender and location. The editor card
+  shows user type, member since and edit statistics only.
+- *R10. A wrong legend entry.* PAGETYPES-TESTING-REFERENCE.org's =REC_BTR=
+  (875a6a0d-...) is not the studio "Born to Run" but a VIDEO recording from the
+  30th anniversary DVD (first released 2005-11-12, three releases, no ISRC, no
+  work). The probes use the studio "Thunder Road"
+  (bbcedc0f-2fff-42f4-9ca6-6d2263d1a042, found through ISRC USSM17500803) for a
+  typical recording card. The legend itself is not changed here.
+
+What this changes in the plan above:
+- E4: =offset= grows by the releases returned; the inc stays =media+labels= (R2).
+- "Per entity kind": the recording card's count is "25+" from the lookup and
+  exact on pin (R3); the artist card moves =url-rels= to the pin (R1); a series
+  asks for every item-kind rel (R1); an area shows its parent only (R1); an
+  instrument has no description from the Web Service (R1); an event links
+  releases, never release groups (R1).
+- Live page on MusicBrainz: =liveRoot= =#page=, nothing else hidden (R6, as
+  corrected).
+- Phase 0 changed no userscript code, so it has no WIP changelog entry;
+  Phase 1's entry (WIP.1) names the two probes in its 📝 Docs section.
 
 ** Risks and traps
 
