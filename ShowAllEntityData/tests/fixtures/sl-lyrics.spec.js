@@ -118,6 +118,30 @@ test.describe('sl-lyrics (springsteenlyrics.com lyrics index)', () => {
         expect(resumed).toEqual(['?cmd=list&letter=b']);
     });
 
+    test('a resume keeps every column\'s name, also once the 📊 counts are filled in', async ({ page }) => {
+        // "↻ Load remaining pages" re-runs makeTableSortableUnified() over the
+        // live table's headers. Once their 📊 count badges hold digits, a name
+        // read from the header text came out "Title 4", "Letter 1": the
+        // resumed table's columns were renamed, and the test above failed
+        // whenever the resume began after the badges were filled (3+ of 5 on
+        // 2026-10-07). Here the resume waits for exactly that state.
+        const { spec } = await loadSlListPage(page, { kind: 'lyrics-intro' });
+        await page.route((url) => url.pathname === '/lyrics.php' && url.searchParams.get('letter') === 'b',
+            (route) => route.fulfill({ status: 404, body: 'gone for now' }), { times: 1 });
+        await page.click(`button[data-label="${spec.button}"]`);
+        await expect(page.locator('#mb-resume-fetch-btn')).toBeVisible({ timeout: 30000 });
+        // The premise: the partial table's badges hold digits before the resume.
+        for (const col of ['Title', 'Letter']) {
+            await expect(page.locator(`table.tbl thead th[data-col-name="${col}"] .mb-col-uniq-count`)).toHaveText(/\d/);
+        }
+        await page.click('#mb-resume-fetch-btn');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        expect(await renderedSlHeaders(page)).toEqual(HEADERS);
+        const rows = await renderedSlRows(page);
+        expect(rows).toHaveLength(PAREN_ROWS + B_ROWS);
+        expect(rows[0].Letter).toBe('(');
+    });
+
     test('each line is split into Lyrics / Version / Type / Artist / Date / Show / No.', async ({ page }) => {
         await showAllLyrics(page, 'lyrics-intro');
         const s = bySong(await renderedSlRows(page));

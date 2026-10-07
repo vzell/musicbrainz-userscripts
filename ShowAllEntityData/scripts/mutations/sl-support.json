@@ -511,5 +511,13 @@
     "spec": "tests/fixtures/sl-include-regex.spec.js",
     "grep": "springsteenlyrics.com: every list page",
     "expect": "fail"
+  },
+  {
+    "name": "a resume renames its columns from their decorated header text",
+    "why": "\"↻ Load remaining pages\" re-runs makeTableSortableUnified() over headers whose 📊 count badges already hold digits; read from the text, \"Title\" became \"Title 4\" and every name-keyed lookup missed. The stored data-col-name must win.",
+    "edits": [{ "find": "            const colName = th.dataset.colName || th.textContent.replace(", "replace": "            const colName = th.textContent.replace(" }],
+    "spec": "tests/fixtures/sl-lyrics.spec.js",
+    "grep": "keeps every column",
+    "expect": "fail"
   }
 ]
