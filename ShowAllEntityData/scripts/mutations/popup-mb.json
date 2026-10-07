@@ -311,5 +311,70 @@
         "spec": "tests/fixtures/popup-mb.spec.js",
         "grep": "the artist window",
         "expect": "fail"
+    },
+    {
+        "name": "the setlist shows its [mbid|name] tokens raw",
+        "why": "The Web Service gives the setlist in MusicBrainz's markup; a song shown as '[9893a23c-…|Born to Run]' is unreadable.",
+        "edits": [
+            {
+                "find": "        const name = s => s.replace(/\\[[0-9a-f-]{36}\\|([^\\]]*)\\]/g, '$1').trim();",
+                "replace": "        const name = s => s.trim();"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the event window",
+        "expect": "fail"
+    },
+    {
+        "name": "the line-up ignores the setlist's own joining words",
+        "why": "'Bruce Springsteen & The E Street Band with Roy Bittan, …' is how the setlist bills them; commas alone lose the billing.",
+        "edits": [
+            {
+                "find": "            } else if (kind === '#' && !songs.length && lineup.length && /^(&|and|with|feat\\.?|featuring)$/i.test(body)) {",
+                "replace": "            } else if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the event card",
+        "expect": "fail"
+    },
+    {
+        "name": "the event art is not loaded on pin",
+        "why": "The poster comes from the Event Art Archive, its own host, only in the window (R4).",
+        "edits": [
+            {
+                "find": "                _mbPopArtLoad(_mbPopEventArt, EAA_CTX, 'event', d.id, again, repaint);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the event window",
+        "expect": "fail"
+    },
+    {
+        "name": "a place's events keep the browse's order",
+        "why": "The event browse answers in no date order; the window promises 'by date'.",
+        "edits": [
+            {
+                "find": "                    const evs = (b.events || []).slice().sort((x, y) =>\n                        ((x['life-span'] || {}).begin || '9999').localeCompare((y['life-span'] || {}).begin || '9999'));",
+                "replace": "                    const evs = (b.events || []).slice();"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the place card and window",
+        "expect": "fail"
+    },
+    {
+        "name": "a series' items keep the lookup's order",
+        "why": "The lookup lists the items by ordering key 1, 2, 10, 7, …; a series is read in its order.",
+        "edits": [
+            {
+                "find": "            .sort((a, b) => (a['ordering-key'] ?? 1e9) - (b['ordering-key'] ?? 1e9))\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the series card and window",
+        "expect": "fail"
     }
 ]

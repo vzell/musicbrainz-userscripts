@@ -159,7 +159,19 @@ opens the window, as on the foreign hosts (kept, decided 2026-10-07).
   per `_MB_POP_RG_TYPES`; label — card `genres+aliases`, window
   `url-rels+label-rels` plus `release?label=…&limit=1`; area — `area-rels`;
   instrument — `instrument-rels+aliases`, no description from the Web Service
-  (WIP.3). Browse keys: `pop:browse:<entity>?<query>` (`_mbPopBrowse()`).
+  (WIP.3); event — card `artist-rels+place-rels` (the setlist is a field of the
+  event), window `recording-rels+release-rels` plus the Event Art Archive index
+  (`_mbPopArtLoad(_mbPopEventArt, EAA_CTX, …)`, on pin only, R4); place — card
+  `area-rels+url-rels`, window `event?place=…&limit=100` sorted by date (the
+  browse is not); series — one lookup with every item-kind relation (R1),
+  items by `ordering-key` (the lookup is not in order) (WIP.4). Browse keys:
+  `pop:browse:<entity>?<query>` (`_mbPopBrowse()`).
+- **The setlist is MusicBrainz's markup** (`_mbPopSetlist()`): `@ ` line-up
+  artist, `# ` comment (between artists, the billing word "&"/"with"),
+  `* ` song. `[mbid|name]` tokens are shown by NAME only: inside a song line
+  the markup does not say whether one is a work or an artist. (The
+  event-overview page's `_eventSetlistParse()` reads the rendered HTML, a
+  different input.)
 - **Relations are grouped by type AND direction** (`_mbPopRelsByType()`), and
   `_MB_POP_REL_LABELS` names a group whose meaning turns on its direction, as
   read off the captures, not guessed: Columbia's forward "label ownership"

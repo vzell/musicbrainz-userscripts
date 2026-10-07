@@ -20117,3 +20117,26 @@ now look each name up.
 **Results:** `popup-mb.spec.js` 26 passed; `popup-mb.json` 24 as declared;
 lint within the baseline. `npm test`: 1305 passed, 0 failed
 (2026-10-07T18:52:53Z to 18:59:03Z, host petri, WSL2).
+
+## 2026-10-07 — Event, place and series cards (branch feature/popup-engine-phase2, WIP.4)
+
+**Two orderings were only testable because the captures are unordered.** The
+place's event browse answers 1982, 1987, 2008, 1982, …; the series lookup
+lists its items by ordering key 1, 2, 10, 7, …. Both windows sort, and both
+specs now assert the WHOLE order: a first-row check (the first draft) passed
+with the sort removed, since the first captured row happened to be early.
+
+**The setlist is markup, not HTML.** The Web Service's `setlist` is
+MusicBrainz's own markup (`@` artist, `#` comment, `*` song, `[mbid|name]`);
+the event-overview page's `_eventSetlistParse()` reads the rendered HTML, so
+it could not be reused. `_mbPopSetlist()` shows tokens by name only.
+
+**One unexplained failure under load.** `npm test` (19:03:42Z–19:10:06Z):
+1308 passed, 1 failed — `sticky-page-headers.spec.js › an Annotation with a
+wiki "== … ==" heading pins its whole text…`, a page where none of this
+branch's code runs (`sa_pop_mb` is off, nothing is installed). It passed 5 of
+5 alone (`--repeat-each=5`). Not marked flaky: watch for it in the merge
+gate.
+
+**Results:** `popup-mb.spec.js` 30 passed; `popup-mb.json` 29, the five new as
+declared (the rest unchanged since the WIP.3 run); lint within the baseline.

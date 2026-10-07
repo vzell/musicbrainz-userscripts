@@ -61,6 +61,11 @@ const WS2_FIXTURES = [
     [/\/ws\/2\/release\?label=/, 'ws2-pop-label-columbia-count.json'],
     [/\/ws\/2\/area\/[0-9a-f-]{36}\?/, 'ws2-pop-area-nj.json'],
     [/\/ws\/2\/instrument\/[0-9a-f-]{36}\?/, 'ws2-pop-instrument-guitar.json'],
+    [/\/ws\/2\/event\/[0-9a-f-]{36}\?inc=artist-rels/, 'ws2-pop-event-manchester.json'],
+    [/\/ws\/2\/event\/[0-9a-f-]{36}\?inc=recording-rels/, 'ws2-pop-event-manchester-pin.json'],
+    [/\/ws\/2\/place\/[0-9a-f-]{36}\?/, 'ws2-pop-place-sp.json'],
+    [/\/ws\/2\/event\?place=/, 'ws2-pop-place-sp-events.json'],
+    [/\/ws\/2\/series\/[0-9a-f-]{36}\?/, 'ws2-pop-series-st.json'],
 ];
 // A 1×1 PNG, so a cover the card asks for loads instead of being dropped.
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
@@ -87,7 +92,7 @@ const dialog = (page) => page.locator('#mb-dp-dialog');
  *   pages: string[], ws2: string[]}>}
  */
 async function open(page, { settings = {}, lookup = null, showAll = true, ws2 = null } = {}) {
-    const log = { lookups: [], browses: [], rgLookups: [], caa: [], pages: [], ws2: [] };
+    const log = { lookups: [], browses: [], rgLookups: [], caa: [], pages: [], ws2: [], eaa: [] };
     const ctx = page.context();
     await ctx.route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
     await ctx.route('https://coverartarchive.org/**', (route) => {
@@ -120,7 +125,15 @@ async function open(page, { settings = {}, lookup = null, showAll = true, ws2 = 
         const r = own || (hit ? { status: 200, body: json(hit[1]) } : { status: 404, body: '{"error":"no fixture"}' });
         return route.fulfill({ status: r.status, contentType: 'application/json', body: r.body });
     };
-    await ctx.route(/\/ws\/2\/(recording|work|artist|label|area|instrument)[/?]/, other);
+    await ctx.route(/\/ws\/2\/(recording|work|artist|label|area|instrument|event|place|series)[/?]/, other);
+    await ctx.route('https://eventartarchive.org/**', (route) => {
+        const u = new URL(route.request().url());
+        if (/^\/event\/[0-9a-f-]{36}\/?$/.test(u.pathname)) {
+            log.eaa.push(u.pathname);
+            return route.fulfill({ status: 200, contentType: 'application/json', body: json('eaa-event-3f2ca30a.json') });
+        }
+        return route.fulfill({ status: 200, contentType: 'image/png', body: PNG });
+    });
     await ctx.route('**/ws/2/release?recording=**', other);
     await ctx.route('**/ws/2/release?label=**', other);
     await ctx.route('**/ws/2/release-group?artist=**', other);
@@ -747,5 +760,84 @@ test.describe('MusicBrainz link previews: artist, label, area, instrument (WIP.3
         }
         await expect(area.locator('h4', { hasText: 'Aliases' })).toHaveText('Aliases · 27');
         expect(log.ws2).toHaveLength(1);
+    });
+});
+
+test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
+    const EVENT = '/event/3f2ca30a-7de4-4964-ad30-48376535fec8';
+
+    test('the event card: date and time, place, line-up and the first songs of its setlist — one request', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, EVENT, 'Manchester');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-pill')).toContainText(['Concert', '2025-05-20 19:30']);
+        const kv = card(page).locator('.mb-dp-kv');
+        await expect(kv).toContainText('Co‐op Live, Manchester');
+        // The setlist's line-up, joined by its own words ("&", "with").
+        await expect(kv).toContainText('Bruce Springsteen & The E Street Band with Roy Bittan, Nils Lofgren');
+        await expect(card(page).locator('.mb-pop-tracks li')).toHaveCount(5);
+        await expect(card(page).locator('.mb-tt-dim')).toContainText('more');
+        expect(log.ws2).toEqual([expect.stringContaining(`/ws/2${EVENT}?inc=artist-rels+place-rels&fmt=json`)]);
+        expect(log.eaa, 'the poster only on pin').toEqual([]);
+    });
+
+    test('the event window: the whole setlist, what was recorded there, the event art', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, EVENT, 'Manchester');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        const area = dialog(page).locator('.mb-dp-area');
+        await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Event');
+        const songs = area.locator('h4:text-matches("^Setlist") ~ ol.mb-pop-tracks li');
+        await expect(songs.last()).toContainText('Chimes of Freedom');
+        await expect(songs.filter({ hasText: /\[|\]/ })).toHaveCount(0);
+        const recorded = area.locator('h4:text-is("Recorded here") + .mb-dp-kv');
+        await expect(recorded.locator('dt')).toContainText(['Recorded at (releases)', 'Recorded at (recordings)']);
+        await expect(recorded.locator('dd').nth(1).locator('a')).toHaveCount(26);
+        await expect(area.locator('.mb-dp-gallery img')).not.toHaveCount(0);
+        expect(log.eaa).toEqual([EVENT]);
+        expect(log.ws2.filter(u => u.includes('inc=recording-rels+release-rels'))).toHaveLength(1);
+    });
+
+    test('the place card and window: address, coordinates with a map, its events by date', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, '/place/6a59a67c-fcc5-491f-949c-bfc45bc97463', 'The Stone Pony');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-pill')).toContainText(['Venue', 'Asbury Park', '1973 –']);
+        await expect(card(page).locator('.mb-dp-kv')).toContainText('913 Ocean Avenue, Asbury Park, NJ 07712, USA');
+        await expect(card(page).locator('.mb-dp-kv')).toContainText('40.21995, -74.00058');
+        await page.keyboard.press('Space');
+        const area = dialog(page).locator('.mb-dp-area');
+        await expect(area.locator('a[href^="https://www.openstreetmap.org/"]')).toHaveAttribute('href', /mlat=40\.21995&mlon=-74\.00058/);
+        await expect(area.locator('.mb-rg-links > div')).toHaveCount(5);
+        await expect(area).toContainText('110 events; 100 of them here, by date');
+        const dates = area.locator('.mb-rg-wtable tbody tr td:first-child');
+        await expect(dates).toHaveCount(100);
+        // The browse answers in no date order (1982, 1987, 2008, 1982, …).
+        await expect.poll(async () => {
+            const d = await dates.allTextContents();
+            return d.join('|') === [...d].sort().join('|');
+        }, { message: 'the events are sorted by date' }).toBe(true);
+        expect(log.ws2.filter(u => u.includes('/ws/2/event?place='))).toHaveLength(1);
+    });
+
+    test('the series card and window: its items in order, with their numbers', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, '/series/aa3694d3-a3d0-48ed-8f07-5b576de87908', 'Studio Collection');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-pill')).toContainText(['Release series', '12 items']);
+        await expect(card(page).locator('.mb-pop-tracks li').first()).toContainText('1');
+        await expect(card(page).locator('.mb-pop-tracks li').first()).toContainText('Born in the U.S.A.');
+        await page.keyboard.press('Space');
+        const rows = dialog(page).locator('.mb-rg-wtable tbody tr');
+        await expect(rows).toHaveCount(12);
+        // The lookup lists them by ordering key 1, 2, 10, 7, …: shown in order.
+        await expect(rows.locator('td:first-child')).toHaveText(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']);
+        await expect(rows.first().locator('a')).toHaveAttribute('href', /^\/release\/[0-9a-f-]{36}$/);
+        expect(log.ws2).toEqual([expect.stringContaining('inc=release-rels+release-group-rels+recording-rels+work-rels+event-rels+artist-rels')]);
     });
 });

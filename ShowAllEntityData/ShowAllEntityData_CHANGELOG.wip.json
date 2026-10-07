@@ -1,5 +1,29 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Link previews on MusicBrainz: event, place and series cards. An event card shows the type, date and time, whether it was cancelled, the place, the line-up as the setlist bills it (\"A & B with C, D\") and the first songs; its window adds the whole setlist, what was recorded there (releases and recordings) and the event's posters from the Event Art Archive. A place card shows the type, area, years open, address and coordinates; its window adds a map link, its external links and up to 100 of its events, sorted by date. A series card shows its type and first items with their numbers; its window lists every item in order."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Popup engine: _mbPopSetlist() reads MusicBrainz's setlist markup (line-up, songs, notes; [mbid|name] tokens by name); _mbPopArtLoad()/_mbPopGalleryHtml() load and show an archive's images once per window, now for the release's cover strip too."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "popup-mb.spec.js: 4 more tests (30); five ws2-pop-event/place/series fixtures (scripts/capture-ws2-fixtures.py) and the existing eaa-event-3f2ca30a.json; popup-mb.json: 5 more mutations (29). HELP, docs/claude/detail-pages.md, org/iframe.org."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-10-07",
     "sections": [

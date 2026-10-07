@@ -1527,8 +1527,9 @@ releases.
 With ⚙️ Settings → 🔎 LINK PREVIEWS ON MUSICBRAINZ → *Preview linked entities
 on hover* switched on (it is off until you do), the links in a table show what
 is behind them without opening a tab. So far: **releases**, **release
-groups**, **recordings**, **works**, **artists**, **labels**, **areas** and
-**instruments**; the other kinds follow.
+groups**, **recordings**, **works**, **artists**, **labels**, **areas**,
+**instruments**, **events**, **places** and **series**; the other kinds
+follow.
 
 **Hold Ctrl and rest the pointer on a link**, or rest it first and then press
 **Ctrl**: a card opens beside the link. Without Ctrl nothing happens, so
@@ -1544,7 +1545,9 @@ than MusicBrainz lists at once). A work card shows its type, language, ISWC,
 composer, lyricist and publishers. An artist card shows the type, area, life
 span, birthplace, genres, rating, IPI and ISNI; a label card the type, label
 code, area, years active and genres; an area card what it is part of and how
-many parts it has; an instrument card its type, subtypes and other names.
+many parts it has; an instrument card its type, subtypes and other names; an
+event card its date and time, place, line-up and first songs; a place card
+its address and coordinates; a series card its first items.
 **Esc** or moving away closes it.
 
 **Press Space** to pin it into a window:
@@ -1560,8 +1563,11 @@ many parts it has; an instrument card its type, subtypes and other names.
   link and how many release groups of each type; for a label, the labels it
   owns, is owned by or is an imprint of, its links and its number of
   releases; for an area, its parts; for an instrument, the related
-  instruments and every alias (its description is on the Live page). A part
-  that could not be loaded says so, with **Try again**.
+  instruments and every alias (its description is on the Live page); for an
+  event, the whole setlist, what was recorded there and its posters; for a
+  place, a map link, its links and up to 100 of its events by date; for a
+  series, every item in order. A part that could not be loaded says so, with
+  **Try again**.
 - **Live page**: the entity's own MusicBrainz page, without the site's header
   and footer, and without its scripts.
 - **‹ ›** or **← →** step to the same kind of link in the **same column** of

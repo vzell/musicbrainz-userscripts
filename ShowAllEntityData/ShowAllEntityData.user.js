@@ -37010,6 +37010,134 @@
     /** The primary types an artist window counts release groups of, with their names. */
     const _MB_POP_RG_TYPES = [['album', 'Album'], ['single', 'Single'], ['ep', 'EP'], ['broadcast', 'Broadcast'], ['other', 'Other']];
 
+    /**
+     * An event's setlist as the Web Service gives it (MusicBrainz's setlist
+     * markup, one entry per line): `@ ` an artist of the line-up, `# ` a
+     * comment (between artists: the joining word, "&", "with"), `* ` a song,
+     * a blank line a break. Inline `[mbid|name]` tokens are shown by name
+     * only: the markup does not say whether a token inside a song line is a
+     * work or an artist ("(with [mbid|name])"), so a link would be a guess.
+     *
+     * @param {string} text - `setlist`.
+     * @returns {{lineup: string, songs: string[], notes: string[]}} The
+     *   line-up as one line ("A & B with C, D"), the songs in order, and the
+     *   comments that are not joining words.
+     */
+    function _mbPopSetlist(text) {
+        const name = s => s.replace(/\[[0-9a-f-]{36}\|([^\]]*)\]/g, '$1').trim();
+        const lineup = [];
+        const songs = [];
+        const notes = [];
+        let join = '';
+        String(text || '').split(/\r?\n/).forEach(line => {
+            const kind = line.charAt(0);
+            const body = name(line.slice(1));
+            if (kind === '@' && !songs.length) {
+                // "A" + " & B" + " with C" + ", D": a joining word when the
+                // comment line before gave one, else a comma.
+                lineup.push(lineup.length ? `${join || ','} ${body}` : body);
+                join = '';
+            } else if (kind === '#' && !songs.length && lineup.length && /^(&|and|with|feat\.?|featuring)$/i.test(body)) {
+                join = ` ${body}`;
+            } else if (kind === '*') {
+                songs.push(body);
+            } else if (kind === '#' || kind === '@') {
+                if (body) notes.push(body);
+            } else if (line.trim()) {
+                songs.push(name(line));
+            }
+        });
+        return { lineup: lineup.join(''), songs, notes };
+    }
+
+    /** Songs an event card lists before "+ N more". */
+    const _MB_POP_CARD_SONGS = 5;
+
+    /**
+     * An event's date and time as one line: "2025-05-20 19:30", or a span
+     * of days.
+     *
+     * @param {Object} d - An event of the Web Service.
+     * @returns {string}
+     */
+    function _mbPopEventWhen(d) {
+        const ls = d['life-span'] || {};
+        const day = ls.begin && ls.end && ls.begin !== ls.end ? `${ls.begin} – ${ls.end}` : (ls.begin || '');
+        return [day, d.time].filter(Boolean).join(' ');
+    }
+
+    /**
+     * Each event window's Event Art Archive images, by event MBID, as
+     * `_mbPopArt` keeps a release's.
+     * @type {Map<string, {state: string, images: Array<Object>}>}
+     */
+    const _mbPopEventArt = new Map();
+
+    /**
+     * A strip of archive images for a window: each thumbnail links its full
+     * image, labelled with its types; a loading or failure line instead
+     * while that is the state.
+     *
+     * @param {string} title - The section heading.
+     * @param {?{state: string, images: Array<Object>}} art
+     * @param {number} count - Images the entity is known to have, for the heading while loading.
+     * @returns {string}
+     */
+    function _mbPopGalleryHtml(title, art, count) {
+        if (art && art.state === 'ok') {
+            return `<h4>${_rgEsc(title)} · ${art.images.length}</h4><div class="mb-dp-gallery">` + art.images.map(im => {
+                const th = (im.thumbnails && (im.thumbnails['250'] || im.thumbnails.small)) || im.image;
+                return `<a href="${_rgEsc(im.image)}" target="_blank" rel="noopener"><img loading="lazy" src="${_rgEsc(th)}" alt="">` +
+                    `${_rgEsc((im.types || []).join(', '))}</a>`;
+            }).join('') + '</div>';
+        }
+        if (art && art.state === 'none') return '';
+        const n = count ? ` · ${count}` : '';
+        if (art && art.state === 'failed') return `<h4>${_rgEsc(title)}${n}</h4><div class="mb-dp-xsub">The archive did not answer.</div>`;
+        return `<h4>${_rgEsc(title)}${n}</h4><div class="mb-dp-xsub"><span class="mb-dp-spin">◌</span> Loading…</div>`;
+    }
+
+    /**
+     * Starts loading one entity's archive images for a window once
+     * (`_artFetchEntityImages()`, which keeps them for the session and in the
+     * art cache), or again on ⟳; never from a plain repaint once asked.
+     *
+     * @param {Map<string, Object>} map - `_mbPopArt` or `_mbPopEventArt`.
+     * @param {Object} ctx - `CAA_CTX` or `EAA_CTX`.
+     * @param {string} type - `release` or `event`.
+     * @param {string} id - The entity's MBID.
+     * @param {boolean} again - ⟳.
+     * @param {function(): void} repaint
+     * @returns {void}
+     */
+    function _mbPopArtLoad(map, ctx, type, id, again, repaint) {
+        if (map.has(id) && !again) return;
+        map.set(id, { state: 'loading', images: [] });
+        _artFetchEntityImages(ctx, `/${type}/${id}`).then((r) => {
+            map.set(id, r);
+            repaint();
+        }, () => {
+            map.set(id, { state: 'failed', images: [] });
+            repaint();
+        });
+    }
+
+    /**
+     * A series' items in their order: its `part of` relations, by ordering
+     * key, each with its number (`attribute-values.number`) and target.
+     *
+     * @param {Object} d - A series of the Web Service.
+     * @returns {Array<{num: string, type: string, e: Object}>}
+     */
+    function _mbPopSeriesItems(d) {
+        return (d.relations || []).filter(r => r.type === 'part of' && r[r['target-type']])
+            .sort((a, b) => (a['ordering-key'] ?? 1e9) - (b['ordering-key'] ?? 1e9))
+            .map(r => ({ num: (r['attribute-values'] && r['attribute-values'].number) || '', type: r['target-type'], e: r[r['target-type']] }));
+    }
+
+    /** Items a series card lists before "+ N more". */
+    const _MB_POP_CARD_ITEMS = 5;
+
     /** Releases a recording lookup embeds at most (Phase 0, org/iframe.org R3): a full list means "maybe more". */
     const _MB_POP_SUBLIST_CAP = 25;
 
@@ -37082,21 +37210,7 @@
                 const media = d.media || [];
                 const tracks = media.reduce((s, m) => s + (m['track-count'] || 0), 0);
                 const lang = d['text-representation'] || {};
-                const art = _mbPopArt.get(d.id);
-                let gallery = '';
-                if (caa.count) {
-                    if (art && art.state === 'ok') {
-                        gallery = `<h4>Cover art · ${art.images.length}</h4><div class="mb-dp-gallery">` + art.images.map(im => {
-                            const th = (im.thumbnails && (im.thumbnails['250'] || im.thumbnails.small)) || im.image;
-                            return `<a href="${_rgEsc(im.image)}" target="_blank" rel="noopener"><img loading="lazy" src="${_rgEsc(th)}" alt="">` +
-                                `${_rgEsc((im.types || []).join(', '))}</a>`;
-                        }).join('') + '</div>';
-                    } else if (art && art.state === 'failed') {
-                        gallery = `<h4>Cover art · ${caa.count}</h4><div class="mb-dp-xsub">The Cover Art Archive did not answer.</div>`;
-                    } else if (!art || art.state === 'loading') {
-                        gallery = `<h4>Cover art · ${caa.count}</h4><div class="mb-dp-xsub"><span class="mb-dp-spin">◌</span> Loading…</div>`;
-                    }
-                }
+                const gallery = caa.count ? _mbPopGalleryHtml('Cover art', _mbPopArt.get(d.id), caa.count) : '';
                 const left = `<div class="mb-dp-xtitle">${_rgEsc(d.title)}</div>` +
                     `<div class="mb-dp-xsub">${_mbPopCreditHtml(d['artist-credit'])}` +
                     `${d.disambiguation ? ` (${_rgEsc(d.disambiguation)})` : ''}</div>` +
@@ -37130,16 +37244,7 @@
             // in the art cache. Started once (or by ⟳), never again by a
             // repaint, so a failure does not loop.
             pin(t, d, again, repaint) {
-                const caa = d['cover-art-archive'] || {};
-                if (!caa.count || (_mbPopArt.has(d.id) && !again)) return;
-                _mbPopArt.set(d.id, { state: 'loading', images: [] });
-                _artFetchEntityImages(CAA_CTX, `/release/${d.id}`).then((r) => {
-                    _mbPopArt.set(d.id, r);
-                    repaint();
-                }, () => {
-                    _mbPopArt.set(d.id, { state: 'failed', images: [] });
-                    repaint();
-                });
+                if ((d['cover-art-archive'] || {}).count) _mbPopArtLoad(_mbPopArt, CAA_CTX, 'release', d.id, again, repaint);
             },
         })),
         // Card: one lookup (22.6 KB in Phase 0); its releases stop at 25, so
@@ -37428,6 +37533,136 @@
                         [a.locale || a.type || '—', _rgEsc(a.name)]))}</div>` +
                     `<div class="mb-dp-col"><h4>Related instruments</h4>${_mbPopKvHtml(_mbPopRelRows(d.relations, 'instrument')) ||
                     '<div class="mb-dp-xsub">None.</div>'}</div></div>`;
+            },
+        })),
+        // Card: one lookup with the line-up and the place (16 KB for the
+        // Manchester show); the setlist is a field of the event itself. Window:
+        // the recordings and releases recorded there (one lookup) and the
+        // poster from the Event Art Archive (R4: its own host, only on pin).
+        event: Object.assign({ title: 'Event', wide: true }, _mbPopLookupKind({
+            cardInc: 'artist-rels+place-rels',
+            cardHtml(d) {
+                const place = (d.relations || []).find(r => r['target-type'] === 'place' && r.place);
+                const sl = _mbPopSetlist(d.setlist);
+                const head = `<div class="mb-tt-title">${_rgEsc(d.name)}</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([d.type, _mbPopEventWhen(d), d.cancelled ? 'cancelled' : '',
+                        sl.songs.length ? `${sl.songs.length} song${sl.songs.length === 1 ? '' : 's'}` : ''])}</div><div class="mb-tt-rule"></div>`;
+                const more = sl.songs.length - _MB_POP_CARD_SONGS;
+                return head + _mbPopKvHtml([
+                    ['Place', place ? _rgEsc([place.place.name, place.place.area && place.place.area.name].filter(Boolean).join(', ')) : ''],
+                    ['Line-up', _rgEsc(sl.lineup || _mbPopRelNames(d.relations, 'artist', ['main performer', 'support act', 'guest performer']))],
+                ]) + (sl.songs.length
+                    ? '<ol class="mb-dp-tracks mb-pop-tracks">' + sl.songs.slice(0, _MB_POP_CARD_SONGS).map((x, i) =>
+                        `<li><span class="mb-dp-pos">${i + 1}</span><span class="mb-pop-ttl">${_rgEsc(x)}</span></li>`).join('') + '</ol>' +
+                      (more > 0 ? `<div class="mb-tt-dim">+ ${more} more</div>` : '')
+                    : '');
+            },
+            windowHtml(d, t) {
+                const pin = _mbPopLookup(t, 'recording-rels+release-rels');
+                const sl = _mbPopSetlist(d.setlist);
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
+                    `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type, d.cancelled ? 'cancelled' : ''])}</div>` +
+                    '<h4>Facts</h4>' + _mbPopKvHtml([
+                        ['When', _rgEsc(_mbPopEventWhen(d))],
+                        ..._mbPopRelRows(d.relations, 'place'),
+                        ..._mbPopRelRows(d.relations, 'artist'),
+                    ]) +
+                    _mbPopGalleryHtml('Event art', _mbPopEventArt.get(d.id), 0) +
+                    _mbPopSectionHtml('Recorded here', _mbPop.get(pin.key), (p) => _mbPopKvHtml([
+                        ..._mbPopRelRows(p.relations, 'release').map(([k, v]) => [`${k} (releases)`, v]),
+                        ..._mbPopRelRows(p.relations, 'recording').map(([k, v]) => [`${k} (recordings)`, v]),
+                    ]) || '<div class="mb-dp-xsub">Nothing recorded here is in MusicBrainz.</div>');
+                const right = `<h4>Setlist${sl.songs.length ? ` · ${sl.songs.length}` : ''}</h4>` +
+                    (sl.lineup ? `<div class="mb-dp-xsub">${_rgEsc(sl.lineup)}</div>` : '') +
+                    (sl.songs.length ? '<ol class="mb-dp-tracks mb-pop-tracks">' + sl.songs.map((x, i) =>
+                        `<li><span class="mb-dp-pos">${i + 1}</span><span class="mb-pop-ttl">${_rgEsc(x)}</span></li>`).join('') + '</ol>'
+                        : '<div class="mb-dp-xsub">MusicBrainz has no setlist for it.</div>') +
+                    sl.notes.map(n => `<div class="mb-dp-note">${_rgEsc(n)}</div>`).join('');
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+            pin(t, d, again, repaint) {
+                const pin = _mbPopLookup(t, 'recording-rels+release-rels');
+                _mbPopPinLoad(t, pin.key, pin.url, again, repaint);
+                _mbPopArtLoad(_mbPopEventArt, EAA_CTX, 'event', d.id, again, repaint);
+            },
+        })),
+        // Card and window: one lookup (2.3 KB): type, address, area,
+        // coordinates, links. Window: up to 100 of its events from a browse,
+        // sorted by date (the browse's own order is not by date).
+        place: Object.assign({ title: 'Place', wide: true }, _mbPopLookupKind({
+            cardInc: 'area-rels+url-rels',
+            cardHtml(d) {
+                const c = d.coordinates;
+                return `<div class="mb-tt-title">${_rgEsc(d.name)}` +
+                    `${d.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(d.disambiguation)})</span>` : ''}</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([d.type, d.area && d.area.name, _mbPopLifeSpan(d['life-span'])])}</div>` +
+                    '<div class="mb-tt-rule"></div>' + _mbPopKvHtml([
+                        ['Address', _rgEsc(d.address || '')],
+                        ['Coordinates', c ? _rgEsc(`${c.latitude}, ${c.longitude}`) : ''],
+                    ]);
+            },
+            windowHtml(d, t) {
+                const browse = _mbPopBrowse('event', `place=${encodeURIComponent(t.id)}&limit=100`);
+                const c = d.coordinates;
+                const map = c ? `https://www.openstreetmap.org/?mlat=${c.latitude}&mlon=${c.longitude}#map=17/${c.latitude}/${c.longitude}` : '';
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
+                    (d.disambiguation ? `<div class="mb-dp-xsub">${_rgEsc(d.disambiguation)}</div>` : '') +
+                    `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type])}</div><h4>Facts</h4>` + _mbPopKvHtml([
+                        ['Address', _rgEsc(d.address || '')],
+                        ['Area', _mbPopAreaHtml(d.area)],
+                        ['Coordinates', c ? `<a href="${_rgEsc(map)}" target="_blank" rel="noopener">${_rgEsc(`${c.latitude}, ${c.longitude}`)}</a>` : ''],
+                        ['Open', _rgEsc(_mbPopLifeSpan(d['life-span']))],
+                    ]) + _mbPopUrlLinksHtml(d.relations);
+                const right = _mbPopSectionHtml('Events', _mbPop.get(browse.key), (b) => {
+                    const evs = (b.events || []).slice().sort((x, y) =>
+                        ((x['life-span'] || {}).begin || '9999').localeCompare((y['life-span'] || {}).begin || '9999'));
+                    const total = typeof b['event-count'] === 'number' ? b['event-count'] : evs.length;
+                    return `<div class="mb-rg-progress">${_mbPopNum(total)} event${total === 1 ? '' : 's'}` +
+                        (total > evs.length ? `; ${evs.length} of them here, by date — <a href="/place/${_rgEsc(d.id)}/events" ` +
+                            'target="_blank" rel="noopener">the place\'s page</a> lists them all' : '') + '.</div>' +
+                        (evs.length ? _mbPopTableHtml(['Date', 'Event', 'Type'], evs.map(x => [
+                            _rgEsc((x['life-span'] || {}).begin || '—'),
+                            `<a href="/event/${_rgEsc(x.id)}" target="_blank" rel="noopener">${_rgEsc(x.name)}</a>` +
+                                `${x.cancelled ? ' <span class="mb-rg-dim">(cancelled)</span>' : ''}`,
+                            _rgEsc(x.type || ''),
+                        ])) : '');
+                });
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+            pin(t, d, again, repaint) {
+                const browse = _mbPopBrowse('event', `place=${encodeURIComponent(t.id)}&limit=100`);
+                _mbPopPinLoad(t, browse.key, browse.url, again, repaint);
+            },
+        })),
+        // Card and window: one lookup with every item kind's relation (R1:
+        // which one a series uses follows its type); the items in order, with
+        // their numbers.
+        series: Object.assign({ title: 'Series', wide: true }, _mbPopLookupKind({
+            cardInc: 'release-rels+release-group-rels+recording-rels+work-rels+event-rels+artist-rels',
+            cardHtml(d) {
+                const items = _mbPopSeriesItems(d);
+                const more = items.length - _MB_POP_CARD_ITEMS;
+                return `<div class="mb-tt-title">${_rgEsc(d.name)}</div>` +
+                    (d.disambiguation ? `<div class="mb-tt-comment">${_rgEsc(d.disambiguation)}</div>` : '') +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([d.type, `${items.length} item${items.length === 1 ? '' : 's'}`])}</div>` +
+                    '<div class="mb-tt-rule"></div>' + (items.length
+                    ? '<ol class="mb-dp-tracks mb-pop-tracks">' + items.slice(0, _MB_POP_CARD_ITEMS).map(x =>
+                        `<li><span class="mb-dp-pos">${_rgEsc(x.num || '·')}</span><span class="mb-pop-ttl">${_rgEsc(x.e.title || x.e.name)}</span></li>`)
+                        .join('') + '</ol>' + (more > 0 ? `<div class="mb-tt-dim">+ ${more} more</div>` : '')
+                    : '<div class="mb-tt-comment">No items yet.</div>');
+            },
+            windowHtml(d) {
+                const items = _mbPopSeriesItems(d);
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
+                    (d.disambiguation ? `<div class="mb-dp-xsub">${_rgEsc(d.disambiguation)}</div>` : '') +
+                    `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type])}</div>`;
+                const right = `<h4>Items · ${items.length}</h4>` + (items.length ? _mbPopTableHtml(['#', 'Item', 'Date'], items.map(x => [
+                    _rgEsc(x.num || '—'),
+                    `<a href="/${_rgEsc(x.type)}/${_rgEsc(x.e.id)}" target="_blank" rel="noopener">${_rgEsc(x.e.title || x.e.name)}</a>` +
+                        `${x.e.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(x.e.disambiguation)})</span>` : ''}`,
+                    _rgEsc(x.e.date || x.e['first-release-date'] || (x.e['life-span'] || {}).begin || '—'),
+                ]), [0]) : '<div class="mb-dp-xsub">No items yet.</div>');
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
         })),
     };

@@ -1,0 +1,1506 @@
+{
+ "event-offset": 0,
+ "events": [
+  {
+   "time": "",
+   "name": "1982‐06‐06: The Stone Pony, Asbury Park, NJ, USA",
+   "type": "Concert",
+   "cancelled": false,
+   "life-span": {
+    "ended": true,
+    "end": "1982-06-06",
+    "begin": "1982-06-06"
+   },
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n# No set details known",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "id": "026c7f3b-9dd2-4803-8443-8b39f95f8f53",
+   "disambiguation": "Cats on a Smooth Surface"
+  },
+  {
+   "time": "",
+   "type": "Concert",
+   "name": "1987‐08‐09: The Stone Pony, Asbury Park, NJ, USA",
+   "cancelled": false,
+   "life-span": {
+    "ended": true,
+    "end": "1987-08-09",
+    "begin": "1987-08-09"
+   },
+   "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n# &\r\n@ [d6652e7b-33fe-49ef-8336-4c863b4f996f|The E Street Band]\r\n\r\n* [d662d712-f9f8-4118-8bb2-a821395dbf96|Light of Day]\r\n* [8ecc135f-ce4e-3fd3-9e9f-7944bd4daa9b|Darlington County]\r\n* [67d273f2-be0f-3183-933f-77b2743be3f9|I’m Bad, I’m Nationwide]\r\n* [31ec5d71-8104-350e-a27c-b58d025e8c25|Fortunate Son]\r\n* [04db3cb9-af4e-35a9-8709-54d63ef23f50|Ruby Baby]\r\n* [54d6831c-4447-3087-a71e-3f92aa1fad27|Stand by Me]\r\n* [a7baceed-e1ca-4468-9687-d8cfbee3086f|Hang Up My Rock and Roll Shoes]\r\n* [e59ca323-dd32-3a0b-80a9-d42746362213|Glory Days]\r\n* [450b4d94-c768-3a43-9edc-253cf300199e|Having a Party]\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout]",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "id": "029d809f-4c06-493e-9ea6-604d80945f50",
+   "disambiguation": ""
+  },
+  {
+   "time": "",
+   "type": "Concert",
+   "cancelled": false,
+   "name": "2008‐05‐13: The Stone Pony, Asbury Park, NJ, USA",
+   "life-span": {
+    "ended": true,
+    "begin": "2008-05-13",
+    "end": "2008-05-13"
+   },
+   "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n# with\r\n@ [358d8fde-ad5b-4df1-bcd8-193bada6edd5|Bobby Bandiera]\r\n# and\r\n@ [9df6e393-da6b-4e65-9f50-6e4df5624e63|The Bobby Bandiera Band]\r\n\r\n# Soundcheck\r\n* [9726937c-33f1-467c-bec5-93e3774e9212|I’ll Work for Your Love]\r\n* [f44d3b21-8947-34f1-b701-46ed1cc0eb15|634-5789 (Soulsville, U.S.A.)]\r\n* [64142910-6d7c-4ad1-a4b4-6dcdf4b0b521|Waitin’ on a Sunny Day]\r\n* [13da1f8d-c08d-3d9b-891b-395e363c3a5b|Cover Me]\r\n* [fa36af81-2bd8-3436-bf94-7df8e818d99d|Two Hearts]\r\n* [dba2f648-cb81-3d19-b252-1bbecc62758b|Spirit in the Night]\r\n* [8ecc135f-ce4e-3fd3-9e9f-7944bd4daa9b|Darlington County]\r\n* [6bd0c0d8-f7c6-30f0-b701-242def55f9f9|Man’s Job]\r\n* [034c723f-a482-38d8-863a-39726e7823d0|It Takes Two]\r\n* [d97a13df-e992-399e-9b1e-8eb4c83af1b7|Ain’t Too Proud to Beg]\r\n* [e59ca323-dd32-3a0b-80a9-d42746362213|Glory Days]\r\n* [7f44c910-49f8-35f5-bb65-4c6d790ad685|Cadillac Ranch]\r\n* [b129bcb5-dbb7-48b6-be70-74c0800505c3|Girls in Their Summer Clothes]\r\n* [19d4ae05-391f-311f-a487-24b21d48d095|Hold On, I’m Comin’]\r\n* [c908e556-a77f-422a-8cf0-a0e0f0c87d73|Talk to Me]\r\n* [b656ff9a-9b07-347e-b318-7bfbc5ac008e|Pink Cadillac]\r\n* [3818fa67-c508-3499-9d18-0fd9a2b443ce|Sugar, Sugar]\r\n\r\n# Concert\r\n* [f44d3b21-8947-34f1-b701-46ed1cc0eb15|634-5789 (Soulsville, U.S.A.)]\r\n* [7f44c910-49f8-35f5-bb65-4c6d790ad685|Cadillac Ranch]\r\n* [13da1f8d-c08d-3d9b-891b-395e363c3a5b|Cover Me]\r\n* [fa36af81-2bd8-3436-bf94-7df8e818d99d|Two Hearts]\r\n* [dba2f648-cb81-3d19-b252-1bbecc62758b|Spirit in the Night]\r\n* [19d4ae05-391f-311f-a487-24b21d48d095|Hold On, I’m Comin’]\r\n* [034c723f-a482-38d8-863a-39726e7823d0|It Takes Two] (with Patti Scialfa)\r\n* [8e437cd5-9fe1-3258-a6a7-0f84386ab196|Rendezvous]\r\n* [b129bcb5-dbb7-48b6-be70-74c0800505c3|Girls in Their Summer Clothes]\r\n* [9a50dd49-3e54-34aa-a6d1-138ea3869a45|Seven Nights to Rock]\r\n* [3005488d-0d7e-3299-9a73-e2b086fbb844|Tell Him] (with Patti Scialfa)\r\n* [2607534c-9a80-39c1-aa76-b5b7508ad45d|Time Is on My Side] (with Patti Scialfa)\r\n* [64142910-6d7c-4ad1-a4b4-6dcdf4b0b521|Waitin’ on a Sunny Day]\r\n* [e497263c-4f15-36c0-b27c-dca99482962c|The Fever] (with Southside Johnny)\r\n* [c908e556-a77f-422a-8cf0-a0e0f0c87d73|Talk to Me] (with Southside Johnny)\r\n* [8ecc135f-ce4e-3fd3-9e9f-7944bd4daa9b|Darlington County]\r\n* [6c028112-5e5e-38e7-be1f-70057cff7338|From Small Things (Big Things One Day Come)]\r\n* [6bd0c0d8-f7c6-30f0-b701-242def55f9f9|Man’s Job]\r\n* [b656ff9a-9b07-347e-b318-7bfbc5ac008e|Pink Cadillac]\r\n* [da6d0c3b-c9ca-35b0-a0e5-9bff0ef9bf8e|All I Have to Do Is Dream] (with Patti Scialfa)\r\n* [da1f36f5-dcdd-4a56-8d92-4b3527fd1291|Detroit Medley]\r\n* [aa151b23-5171-3d35-a487-55fc8c66131e|Tenth Avenue Freeze-Out]\r\n* [cc8d858a-38ef-35b0-b83c-a5d26f04207b|Thunder Road]\r\n* [e59ca323-dd32-3a0b-80a9-d42746362213|Glory Days]\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout]",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "id": "04bf0b2c-b36f-4350-abdc-17539e0793d7",
+   "disambiguation": "annual benefit for the Ranney School"
+  },
+  {
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [0135dd36-dde3-325b-8394-0a9faf6aa653|Ready Teddy] (with Bruce Springsteen)\r\n* [6c028112-5e5e-38e7-be1f-70057cff7338|From Small Things (Big Things One Day Come)] (with Bruce Springsteen)\r\n* [ea5edc10-c74a-4fa5-add4-96d120efba8e|Come On, Let’s Go] (with Bruce Springsteen)\r\n* [9cb5a89d-cfbf-4b8a-8154-7c90f230e00c|Come on Over to My Place] (with Bruce Springsteen)\r\n* [8fe3ee6b-106f-3d53-b7dc-7f5ce350f0f7|Around and Around] (with Bruce Springsteen)\r\n* [4ca8aa2d-b1b0-3473-8f0b-2a388054e947|Lucille] / [8972043c-562d-4e3d-a9ea-44916b221287|On the Prowl] (with Bruce Springsteen)\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout] (with Bruce Springsteen)",
+   "id": "0a999506-5c00-45b9-bea1-f3a16ed33d62",
+   "disambiguation": "Cats on a Smooth Surface",
+   "time": "",
+   "life-span": {
+    "ended": true,
+    "end": "1982-08-08",
+    "begin": "1982-08-08"
+   },
+   "cancelled": false,
+   "type": "Concert",
+   "name": "1982‐08‐08: The Stone Pony, Asbury Park, NJ, USA"
+  },
+  {
+   "life-span": {
+    "end": "2019-06-20",
+    "begin": "2019-06-20",
+    "ended": true
+   },
+   "type": null,
+   "cancelled": false,
+   "name": "2019‐06‐20: The Stone Pony, Asbury Park, NJ, USA",
+   "time": "19:15",
+   "id": "0b7ddd68-826d-4d64-8659-0215cb63c4e4",
+   "disambiguation": "Celebration of Life for Kerry Layton",
+   "type-id": null,
+   "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen] (guest)\r\n@ [f09aa40c-b613-4ea2-a8cf-6056c2657a9a|Patti Scialfa] (guest)"
+  },
+  {
+   "name": "1984‐06‐01: The Stone Pony, Asbury Park, NJ, USA",
+   "type": "Concert",
+   "cancelled": false,
+   "life-span": {
+    "begin": "1984-06-01",
+    "end": "1984-06-01",
+    "ended": true
+   },
+   "time": "",
+   "id": "0f94658c-ef4b-4bde-8851-38347534c742",
+   "disambiguation": "John Eddie and The Front Street Runners",
+   "setlist": "@ [db9023d4-d836-4983-befb-ebed46de8159|John Eddie and The Front Street Runners]\r\n\r\n* [67d273f2-be0f-3183-933f-77b2743be3f9|I’m Bad, I’m Nationwide] (with Bruce Springsteen)\r\n* [19be8846-a857-3f42-a9c6-e4984d4ef474|Proud Mary] (with Bruce Springsteen)\r\n* [57a0e7e7-f1b8-3fee-853f-fcd0fff9be02|Bright Lights, Big City] (with Bruce Springsteen)\r\n* [34607acd-d7b7-3294-9bc8-8cedbe6ccd15|Carol] (with Bruce Springsteen)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b"
+  },
+  {
+   "id": "163a8444-2cbb-404d-b7a6-1d5e8eebb0a1",
+   "disambiguation": "Cats on a Smooth Surface",
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [4ca8aa2d-b1b0-3473-8f0b-2a388054e947|Lucille] (with Bruce Springsteen)\r\n* [fe769284-3e8e-4038-bc41-a0a67bbc5d18|Little Latin Lupe Lu] (with Bruce Springsteen)\r\n* [34607acd-d7b7-3294-9bc8-8cedbe6ccd15|Carol] (with Bruce Springsteen)\r\n* [8fe3ee6b-106f-3d53-b7dc-7f5ce350f0f7|Around and Around] (with Bruce Springsteen)\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout] (with Bruce Springsteen)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "type": "Concert",
+   "name": "1984‐10‐07: The Stone Pony, Asbury Park, NJ, USA",
+   "cancelled": false,
+   "life-span": {
+    "begin": "1984-10-07",
+    "end": "1984-10-07",
+    "ended": true
+   },
+   "time": ""
+  },
+  {
+   "time": "",
+   "life-span": {
+    "begin": "2010-01-23",
+    "end": "2010-01-23",
+    "ended": true
+   },
+   "cancelled": false,
+   "type": "Concert",
+   "name": "2010‐01‐23: The Stone Pony, Asbury Park, NJ, USA",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n# with\r\n@ [9df6e393-da6b-4e65-9f50-6e4df5624e63|The Bobby Bandiera Band]\r\n\r\n* [f44d3b21-8947-34f1-b701-46ed1cc0eb15|634-5789 (Soulsville, U.S.A.)]\r\n* [35fdc4a9-fd0a-3a68-a539-5b377464a3ac|Out in the Street]\r\n* [13da1f8d-c08d-3d9b-891b-395e363c3a5b|Cover Me]\r\n* [9a50dd49-3e54-34aa-a6d1-138ea3869a45|Seven Nights to Rock]\r\n* [dba2f648-cb81-3d19-b252-1bbecc62758b|Spirit in the Night]\r\n* [c908e556-a77f-422a-8cf0-a0e0f0c87d73|Talk to Me] (with Southside Johnny)\r\n* [19be8846-a857-3f42-a9c6-e4984d4ef474|Proud Mary] (with Southside Johnny)\r\n* [3005488d-0d7e-3299-9a73-e2b086fbb844|Tell Him] (with Patti Scialfa)\r\n* [fa36af81-2bd8-3436-bf94-7df8e818d99d|Two Hearts]\r\n* [b089d13d-887d-39d6-9417-f30c37d9be2b|Jambalaya (On the Bayou)]\r\n* [e39be679-5a1e-3ddb-9f23-c469783a54ea|You’ve Really Got a Hold on Me]\r\n* [2e20cccd-1729-405d-a496-16e76430b76a|Radio Nowhere]\r\n* [64142910-6d7c-4ad1-a4b4-6dcdf4b0b521|Waitin’ on a Sunny Day]\r\n* [6b68afb7-d508-3cdb-8b41-687de4773d72|Sherry Darling]\r\n* [e497263c-4f15-36c0-b27c-dca99482962c|The Fever] (with Southside Johnny)\r\n* [8ecc135f-ce4e-3fd3-9e9f-7944bd4daa9b|Darlington County]\r\n* [73a3f4b3-29c7-389a-a778-43cccd7be945|Oh, Pretty Woman]\r\n* [67268cb3-7bcb-32f2-9598-131b4f5ebd93|Brilliant Disguise]\r\n* [3e91895c-2ae4-4b9b-89ca-40ad23239c92|The Boy From New York City] (with Patti Scialfa)\r\n* [b656ff9a-9b07-347e-b318-7bfbc5ac008e|Pink Cadillac]\r\n* [f8556ea5-f89f-3c2f-922f-d5225c1a4511|Dancing in the Dark]\r\n* [450b4d94-c768-3a43-9edc-253cf300199e|Having a Party] (with Southside Johnny)\r\n* [da1f36f5-dcdd-4a56-8d92-4b3527fd1291|Detroit Medley] (with Southside Johnny)\r\n* [aa151b23-5171-3d35-a487-55fc8c66131e|Tenth Avenue Freeze-Out]\r\n* [e59ca323-dd32-3a0b-80a9-d42746362213|Glory Days]\r\n* [d2ba3e86-ab3f-3984-a34d-aaaa964c7508|(Your Love Keeps Lifting Me) Higher and Higher] (with Brian and Jane Williams)\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout]",
+   "id": "185bf839-d300-4dde-9cfa-8f3730a03d1b",
+   "disambiguation": "annual benefit for the Ranney School"
+  },
+  {
+   "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n# with\r\n@ [6a3394ba-6888-4dd0-93f3-06c1e35749d8|Eddie Manion]\r\n@ [f09aa40c-b613-4ea2-a8cf-6056c2657a9a|Patti Scialfa]\r\n@ [f826b4d1-2dc3-4c4f-ba70-69b472320338|Southside Johnny]\r\n@ [9df6e393-da6b-4e65-9f50-6e4df5624e63|The Bobby Bandiera Band]\r\n\r\n* [f44d3b21-8947-34f1-b701-46ed1cc0eb15|634-5789 (Soulsville, U.S.A.)]\r\n* [c908e556-a77f-422a-8cf0-a0e0f0c87d73|Talk to Me]\r\n* [9a50dd49-3e54-34aa-a6d1-138ea3869a45|Seven Nights to Rock]\r\n* [fa36af81-2bd8-3436-bf94-7df8e818d99d|Two Hearts]\r\n* [dba2f648-cb81-3d19-b252-1bbecc62758b|Spirit in the Night]\r\n* [8e437cd5-9fe1-3258-a6a7-0f84386ab196|Rendezvous]\r\n* [6c028112-5e5e-38e7-be1f-70057cff7338|From Small Things (Big Things One Day Come)]\r\n* [4b75e209-aca7-3290-bf09-13c60ed78c12|All That Heaven Will Allow]\r\n* [3005488d-0d7e-3299-9a73-e2b086fbb844|Tell Him] (with Patti Scialfa)\r\n* [3e91895c-2ae4-4b9b-89ca-40ad23239c92|The Boy From New York City] (with Patti Scialfa)\r\n* [3818fa67-c508-3499-9d18-0fd9a2b443ce|Sugar, Sugar] (with Patti Scialfa)\r\n* [c454c4dc-9024-3d41-a288-637e958dd45c|Further On (Up the Road)]\r\n* [64142910-6d7c-4ad1-a4b4-6dcdf4b0b521|Waitin’ on a Sunny Day]\r\n* [e497263c-4f15-36c0-b27c-dca99482962c|The Fever] (with Southside Johnny)\r\n* [e5500466-274a-48cd-9c75-abff7ada71c5|I Don’t Want to Go Home] (with Southside Johnny)\r\n* [9109a984-655e-38cb-91a9-cc8c677f120d|Son of a Preacher Man] (with Patti Scialfa)\r\n* [1ca78d1b-4ffc-39cb-af8d-94a13bab0a71|Seaside Bar Song]\r\n* [8ecc135f-ce4e-3fd3-9e9f-7944bd4daa9b|Darlington County]\r\n* [aa151b23-5171-3d35-a487-55fc8c66131e|Tenth Avenue Freeze-Out]\r\n* [da1f36f5-dcdd-4a56-8d92-4b3527fd1291|Detroit Medley]\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout]",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "disambiguation": "private benefit for parents and teachers of the Ranney School of Tinton Falls, NJ",
+   "id": "1d9b4f50-68ed-4327-9eb2-cdc3e2856a27",
+   "time": "",
+   "type": "Concert",
+   "name": "2006‐09‐17: The Stone Pony, Asbury Park, NJ, USA",
+   "cancelled": false,
+   "life-span": {
+    "begin": "2006-09-17",
+    "end": "2006-09-17",
+    "ended": true
+   }
+  },
+  {
+   "id": "265094f1-4599-4c4a-9e74-f50dd0ff4087",
+   "disambiguation": "Cats on a Smooth Surface",
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n# No set details known",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "name": "1982‐04‐25: The Stone Pony, Asbury Park, NJ, USA",
+   "type": "Concert",
+   "cancelled": false,
+   "life-span": {
+    "begin": "1982-04-25",
+    "end": "1982-04-25",
+    "ended": true
+   },
+   "time": ""
+  },
+  {
+   "time": "",
+   "cancelled": false,
+   "type": "Concert",
+   "name": "1998-09-20: The Stone Pony, Asbury Park, NJ, USA",
+   "life-span": {
+    "end": "1998-09-20",
+    "begin": "1998-09-20",
+    "ended": true
+   },
+   "setlist": "@ [358d8fde-ad5b-4df1-bcd8-193bada6edd5|Bobby Bandiera]\r\n# with\r\n@ [f826b4d1-2dc3-4c4f-ba70-69b472320338|Southside Johnny]\r\n\r\n* [e497263c-4f15-36c0-b27c-dca99482962c|The Fever]",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "disambiguation": "",
+   "id": "26b22d86-4ff2-497f-9294-8c550bfd671e"
+  },
+  {
+   "life-span": {
+    "ended": true,
+    "begin": "2001-05-27",
+    "end": "2001-05-27"
+   },
+   "name": "2001‐05‐27: The Stone Pony, Asbury Park, NJ, USA",
+   "type": "Concert",
+   "cancelled": false,
+   "time": "16:00",
+   "disambiguation": "Southside Johnny & The Asbury Jukes Stone Pony 25th Anniversary Show",
+   "id": "26cead1c-a5fa-4677-873a-312412c6dc91",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [d7bc97fb-4bd3-453b-98a1-9081f89c52f0|Southside Johnny & The Asbury Jukes]\r\n# with\r\n@ [f826b4d1-2dc3-4c4f-ba70-69b472320338|Southside Johnny]\r\n@ [a5ab77f2-da3b-454c-aa5f-239f5c8ea096|Chris Anderson]\r\n@ [24eaae76-804b-4b8e-b63c-1cc40ae8eb18|Louie Appel]\r\n@ [358d8fde-ad5b-4df1-bcd8-193bada6edd5|Bobby Bandiera]\r\n@ [a69e4e44-1195-426c-af41-1f782fe75d7e|Jeff Kazee]\r\n@ [6a3394ba-6888-4dd0-93f3-06c1e35749d8|Ed Manion]\r\n@ [6ae5508c-cec6-4d23-a3df-92e8b1e988b2|Mark Pender]\r\n@ [bc7ceac9-a524-42bd-996a-380d2f1eb567|Steve “Muddy” Shews]\r\n@ [3644f94c-f682-4fcc-a7fc-b64a4f9cb096|Joey Stann]\r\n\r\n@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen] (guest)\r\n@ [f9227504-4fa5-44ee-b205-5301a1f86936|Graham Parker] (guest)\r\n\r\n# Scheduled: 16:00 Local Start Time ??:?? / End Time ??:??\r\n* [bb3d8e32-12e1-4476-94cb-1d9f1f6f3dd9|Cadillac Jack]\r\n* [8fd4fdf2-247a-449b-9d26-4de9d74099db|I Played the Fool]\r\n* [45785852-d36c-49d2-8703-ccb7f402351f|Love on the Wrong Side of Town]\r\n* [85cad5ff-68b8-430d-9d3a-5463e2fc9c63|Gin Soaked Boy]\r\n* [c908e556-a77f-422a-8cf0-a0e0f0c87d73|Talk to Me]\r\n* [36ab492d-b06e-4623-a0a6-7ae996a8e782|Take It Inside]\r\n* [48bb98b7-2997-4014-b59f-88b0e5cd6d2b|Paris]\r\n* [ea5de099-d7f6-4288-b13c-b21fc0366864|Coming Back]\r\n* [6a5228c0-b7d5-4681-93e8-e1b3b251e8aa|Tell ’em I’m Broke]\r\n* [7960406f-d357-4563-9ee5-38690feee3bc|Sinful]\r\n* You Don’t Know\r\n* [ce8a6518-c92f-464f-b8d9-5c11cfd7427f|Tired Skin]\r\n* [69e3a597-8583-4e5b-ba77-818a56d85ac4|Why Is Love Such a Sacrifice]\r\n* [E497263c-4f15-36c0-B27c-Dca99482962c|The Fever] (with [70248960-Cb53-4ea4-943a-Edb18f7d336f|Bruce Springsteen])\r\n* [E5500466-274a-48cd-9c75-Abff7ada71c5|I Don’t Want to Go Home] (with [70248960-Cb53-4ea4-943a-Edb18f7d336f|Bruce Springsteen])\r\n* [95fba578-26f7-43fe-Ae8c-91dd58e8da46|I’ve Been Working Too Hard] (with [70248960-Cb53-4ea4-943a-Edb18f7d336f|Bruce Springsteen] and [f9227504-4fa5-44ee-b205-5301a1f86936|Graham Parker])\r\n* [Be81408c-6e68-39db-Ad9c-6890dfaf7f73|Cold Sweat] (with [70248960-Cb53-4ea4-943a-Edb18f7d336f|Bruce Springsteen] and [f9227504-4fa5-44ee-b205-5301a1f86936|Graham Parker])\r\n* [Ec9c3c3e-9df7-4a81-A738-Cf8c5f602f2f|Trapped Again] (with [70248960-Cb53-4ea4-943a-Edb18f7d336f|Bruce Springsteen] and [f9227504-4fa5-44ee-b205-5301a1f86936|Graham Parker])\r\n* [5ef69804-345c-4e4f-92c0-1ccb38189da5|Chain of Fools] / [46aba62f-15ed-3642-9dab-Cdd8b4a312a9|Born on the Bayou] (with [70248960-Cb53-4ea4-943a-Edb18f7d336f|Bruce Springsteen] and [f9227504-4fa5-44ee-b205-5301a1f86936|Graham Parker])\r\n* [450b4d94-C768-3a43-9edc-253cf300199e|Having a Party] (with [70248960-Cb53-4ea4-943a-Edb18f7d336f|Bruce Springsteen] and [f9227504-4fa5-44ee-b205-5301a1f86936|Graham Parker])"
+  },
+  {
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [ea5edc10-c74a-4fa5-add4-96d120efba8e|Come On, Let’s Go] (with Bruce Springsteen)\r\n* [fe769284-3e8e-4038-bc41-a0a67bbc5d18|Little Latin Lupe Lu] (with Bruce Springsteen)\r\n* [7050e65f-66f8-31ee-be38-61ddfb93a60a|Sweet Little Sixteen] (with Bruce Springsteen)\r\n* [8fe3ee6b-106f-3d53-b7dc-7f5ce350f0f7|Around and Around] (with Bruce Springsteen)\r\n* [4ca8aa2d-b1b0-3473-8f0b-2a388054e947|Lucille] (with Bruce Springsteen)\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout] (with Bruce Springsteen)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "disambiguation": "Cats on a Smooth Surface",
+   "id": "2c0d6fd6-fd47-4bf0-b5c2-88592da1e05e",
+   "time": "",
+   "type": "Concert",
+   "name": "1982‐06‐20: The Stone Pony, Asbury Park, NJ, USA",
+   "cancelled": false,
+   "life-span": {
+    "end": "1982-06-20",
+    "begin": "1982-06-20",
+    "ended": true
+   }
+  },
+  {
+   "disambiguation": "Cats on a Smooth Surface",
+   "id": "2d4d9007-9146-43a0-b98c-75153215e85b",
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [ea5edc10-c74a-4fa5-add4-96d120efba8e|Come On, Let’s Go] (with Bruce Springsteen)\r\n* [6c028112-5e5e-38e7-be1f-70057cff7338|From Small Things (Big Things One Day Come)] (with Bruce Springsteen)\r\n* [9915e1a9-13ff-3ea0-823d-56fe45f7535d|Ramrod] (with Bruce Springsteen)\r\n* [4ca8aa2d-b1b0-3473-8f0b-2a388054e947|Lucille] (with Bruce Springsteen)\r\n* [8fe3ee6b-106f-3d53-b7dc-7f5ce350f0f7|Around and Around] (with Bruce Springsteen)\r\n* [19476812-4ec2-46d2-b0e9-c26a11a0d0c6|The Wanderer] (with Bruce Springsteen)\r\n* [4679e271-b7c1-3331-882e-2a173f2001e4|Long Tall Sally] (with Bruce Springsteen)\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout] (with Bruce Springsteen)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "name": "1982‐07‐25: The Stone Pony, Asbury Park, NJ, USA",
+   "type": "Concert",
+   "cancelled": false,
+   "life-span": {
+    "ended": true,
+    "begin": "1982-07-25",
+    "end": "1982-07-25"
+   },
+   "time": ""
+  },
+  {
+   "life-span": {
+    "begin": "1986-03-02",
+    "end": "1986-03-02",
+    "ended": true
+   },
+   "type": "Concert",
+   "cancelled": false,
+   "name": "1986‐03‐02: The Stone Pony, Asbury Park, NJ, USA",
+   "time": "",
+   "disambiguation": "",
+   "id": "2e915804-f50c-4fc4-9f55-1f3437b265da",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n# &\r\n@ [d6652e7b-33fe-49ef-8336-4c863b4f996f|The E Street Band]\r\n\r\n* [b096fd0f-0184-4d69-9c00-057104a07acf|Stand on It]\r\n* [90963641-d3b1-3d89-aec1-c913c6c03fc4|Working on the Highway]\r\n* [8ecc135f-ce4e-3fd3-9e9f-7944bd4daa9b|Darlington County]\r\n* [13411c83-ddd8-31ca-b968-79e4cf6db8fb|The Promised Land]\r\n* [d3cbf5a8-c80a-3273-a405-e756cf11e9ca|Darkness on the Edge of Town]\r\n* [0d640b42-dd07-30a4-8d7d-d6f18202fbfa|I’m Goin’ Down]\r\n* [4b3b9bf5-380b-3c0f-8a7e-4f654bf84290|My Hometown]\r\n* [7f44c910-49f8-35f5-bb65-4c6d790ad685|Cadillac Ranch]\r\n* [e59ca323-dd32-3a0b-80a9-d42746362213|Glory Days]"
+  },
+  {
+   "disambiguation": "Cats on a Smooth Surface",
+   "id": "313dc5fc-18a5-4e2b-8fb4-df574ed616bd",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [36db83df-5ca8-359d-af39-03ddab0bd1bb|Rip It Up] (with Bruce Springsteen)\r\n* [9cb5a89d-cfbf-4b8a-8154-7c90f230e00c|Come on Over to My Place] (with Bruce Springsteen)\r\n* [ea5edc10-c74a-4fa5-add4-96d120efba8e|Come On, Let’s Go] (with Bruce Springsteen)\r\n* [4ca8aa2d-b1b0-3473-8f0b-2a388054e947|Lucille] (with Bruce Springsteen)\r\n* [8fe3ee6b-106f-3d53-b7dc-7f5ce350f0f7|Around and Around] (with Bruce Springsteen)\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout] (with Bruce Springsteen)",
+   "life-span": {
+    "end": "1982-08-01",
+    "begin": "1982-08-01",
+    "ended": true
+   },
+   "name": "1982‐08‐01: The Stone Pony, Asbury Park, NJ, USA",
+   "type": "Concert",
+   "cancelled": false,
+   "time": ""
+  },
+  {
+   "time": "",
+   "life-span": {
+    "ended": true,
+    "end": "1984-03-25",
+    "begin": "1984-03-25"
+   },
+   "type": "Concert",
+   "cancelled": false,
+   "name": "1984‐03‐25: The Stone Pony, Asbury Park, NJ, USA",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [67d273f2-be0f-3183-933f-77b2743be3f9|I’m Bad, I’m Nationwide] (with Bruce Springsteen)\r\n* [4ca8aa2d-b1b0-3473-8f0b-2a388054e947|Lucille] (with Bruce Springsteen)",
+   "disambiguation": "Cats on a Smooth Surface",
+   "id": "31650a29-b8d2-4cde-a5b4-a7a3f61ad408"
+  },
+  {
+   "name": "2004‐11‐06: The Stone Pony, Asbury Park, NJ, USA",
+   "type": "Concert",
+   "cancelled": false,
+   "life-span": {
+    "ended": true,
+    "end": "2004-11-06",
+    "begin": "2004-11-06"
+   },
+   "time": "",
+   "id": "31ae96aa-f00d-4624-8f06-ff6f44fe6d21",
+   "disambiguation": "fifth annual Light of Day benefit",
+   "setlist": "@ [137e3419-13b5-46d6-8e0a-a9231de584b4|Boccigalupe & The Badboys]\r\n\r\n# No set details known\r\n\r\n\r\n@ [4250835c-5cf8-4db4-95b6-6ba0001f7db7|JoBonanno & The Godsons of Soul]\r\n\r\n# No set details known\r\n\r\n\r\n@ [91fb24e5-727c-4272-b6ba-e6b47cd80a15|Joe D'Urso & Stone Caravan]\r\n\r\n# No set details known\r\n\r\n\r\n@ [4fa97aab-aa25-4d12-ba0d-37b49e714cbc|The Danny White Band]\r\n\r\n# No set details known\r\n\r\n\r\n@ [60890a33-fc2b-4d06-b8a0-a4599437144e|Joe Grushecky & The Houserockers]\r\n# with\r\n@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n\r\n* [ea292cc9-fa47-4c6b-8f83-bd13f93b6b61|Idiot’s Delight]\r\n* [6c028112-5e5e-38e7-be1f-70057cff7338|From Small Things (Big Things One Day Come)]\r\n* [67d3c66a-e5ed-4705-b4fa-545bf8b65ae8|Homestead]\r\n* [f80534bf-958d-34c0-83cb-d7edbe887cdf|Johnny 99]\r\n* [7547a9b5-8bb6-42a0-8dfb-b7b52aeebd48|Code of Silence]\r\n* [edee001d-572c-352a-8486-dcfe06f8fc90|Atlantic City] (with Boccigalupe)\r\n* [9e21f814-f5a2-350d-91ce-a23ce921f5d5|Murder Incorporated]\r\n* [3d04d7cd-96e6-4617-b235-09870e5efc51|Talking to the King]\r\n* [ef2bc544-4701-42d7-9a4e-218b7fd4f462|Never Be Enough Time]\r\n* [0dd91858-8b22-328c-a129-d37690906cb0|Mustang Sally]\r\n* [58a01740-e85b-36a6-bcee-24bf53b8b2fe|This Hard Land]\r\n* [d662d712-f9f8-4118-8bb2-a821395dbf96|Light of Day] / [3a96010b-1118-33d2-8644-4aca81a092dd|Land of 1000 Dances] (with all performers and Bob Benjamin)\r\n* [10caf751-2927-38d2-aaab-5dc23297cbab|Great Balls of Fire] (with all performers and Bob Benjamin)\r\n* [f0cd0c3e-2657-303f-bbe4-05e8c597a328|Whole Lotta Shakin’ Goin’ On] / [269038cb-2cde-382a-8491-988fab28cf5e|Shout] (with all performers and Bob Benjamin)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b"
+  },
+  {
+   "life-span": {
+    "end": "2003-05-02",
+    "begin": "2003-05-02",
+    "ended": true
+   },
+   "type": "Launch event",
+   "name": "2003‐05‐02: The Stone Pony, Asbury Park, NJ, USA",
+   "cancelled": false,
+   "time": "",
+   "id": "37d303d5-3921-45f1-a723-20f478d26b58",
+   "disambiguation": "Soozie Tyrell",
+   "type-id": "caee15f1-f9c4-3122-821f-34ea4011ac7d",
+   "setlist": "@ [065af1a2-2fa9-4864-852e-08c00c9c67d8|Soozie Tyrell]\r\n\r\n* [e1beb4f1-33a2-45f8-a521-71b34cb38f39|Ste. Genevieve] (with Bruce Springsteen and Patti Scialfa)\r\n* [9f9307a7-890c-3caf-bc64-c5fd56d93a20|It’s All Over Now] (with Bruce Springsteen and Patti Scialfa)"
+  },
+  {
+   "id": "3843b85d-4d9f-445b-8d36-5234c39bb9db",
+   "disambiguation": "",
+   "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n# with\r\n@ [358d8fde-ad5b-4df1-bcd8-193bada6edd5|Bobby Bandiera]\r\n@ [a5ab77f2-da3b-454c-aa5f-239f5c8ea096|Chris Anderson]\r\n@ [6a3394ba-6888-4dd0-93f3-06c1e35749d8|Eddie Manion]\r\n@ [3644f94c-f682-4fcc-a7fc-b64a4f9cb096|Joey Stann]\r\n@ [f09aa40c-b613-4ea2-a8cf-6056c2657a9a|Patti Scialfa]\r\n@ [f826b4d1-2dc3-4c4f-ba70-69b472320338|Southside Johnny]\r\n\r\n* [f44d3b21-8947-34f1-b701-46ed1cc0eb15|634-5789 (Soulsville, U.S.A.)]\r\n* [69a1d8eb-395a-37b4-b018-aca653055ec0|Soul Man]\r\n* [bf15918b-4880-423f-b882-424cb6e9575c|Boogaloo Down Broadway]\r\n* [5740e2cf-979d-32ca-8ff3-7036e0bf4cef|Shake]\r\n* [3005488d-0d7e-3299-9a73-e2b086fbb844|Tell Him] (with Patti Scialfa)\r\n* [6c028112-5e5e-38e7-be1f-70057cff7338|From Small Things (Big Things One Day Come)]\r\n* [c1b9bc08-ba81-382f-8ce0-83995035368f|Green River]\r\n* [db8f3060-b101-3877-9805-ce054f923302|Hungry Heart]\r\n* [8ecc135f-ce4e-3fd3-9e9f-7944bd4daa9b|Darlington County]\r\n* [84c3151f-6d1e-3cf8-aaef-025df5c9a3d6|Everybody Needs Somebody to Love]\r\n* [62cd9af9-435f-3632-b885-f7d4685211a4|Respect]\r\n* [19d4ae05-391f-311f-a487-24b21d48d095|Hold On, I’m Comin’]\r\n* [77d8a7cf-750b-4ca1-b2c3-43b30d0fc4fd|Twistin’ the Night Away]\r\n* [b01fca31-4bda-3783-9f67-1d3feb84acb3|Hey Tonight]\r\n* [e39be679-5a1e-3ddb-9f23-c469783a54ea|You’ve Really Got a Hold on Me]\r\n* [0dd91858-8b22-328c-a129-d37690906cb0|Mustang Sally]\r\n* [0a97123c-960f-3186-a7aa-517ac7907b22|I Thank You]\r\n* [e59ca323-dd32-3a0b-80a9-d42746362213|Glory Days]\r\n* [aa151b23-5171-3d35-a487-55fc8c66131e|Tenth Avenue Freeze-Out]\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout]\r\n* [450b4d94-c768-3a43-9edc-253cf300199e|Having a Party] (with Southside Johnny)\r\n* [7a4e4a26-acd7-45e4-bbc9-34875404daaa|Sweet Soul Music] / [db2198ee-8017-3f01-9faa-80f47bf84ecf|Tequila] / [7a4e4a26-acd7-45e4-bbc9-34875404daaa|Sweet Soul Music]",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "type": "Concert",
+   "cancelled": false,
+   "name": "2004‐04‐25: The Stone Pony, Asbury Park, NJ, USA",
+   "life-span": {
+    "end": "2004-04-25",
+    "begin": "2004-04-25",
+    "ended": true
+   },
+   "time": ""
+  },
+  {
+   "id": "39827e0a-3dbc-4afc-bf27-356490ba96f7",
+   "disambiguation": "Cats on a Smooth Surface",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [67d273f2-be0f-3183-933f-77b2743be3f9|I’m Bad, I’m Nationwide] (with Bruce Springsteen)\r\n* [fe769284-3e8e-4038-bc41-a0a67bbc5d18|Little Latin Lupe Lu] (with Bruce Springsteen)\r\n* [8c806b4e-edb4-3101-bc58-2605ec309a2e|Jersey Girl] (with Bruce Springsteen)",
+   "life-span": {
+    "ended": true,
+    "end": "1984-04-22",
+    "begin": "1984-04-22"
+   },
+   "type": "Concert",
+   "name": "1984‐04‐22: The Stone Pony, Asbury Park, NJ, USA",
+   "cancelled": false,
+   "time": ""
+  },
+  {
+   "setlist": "@ [137e3419-13b5-46d6-8e0a-a9231de584b4|Boccigalupe & The Badboys]\r\n\r\n# No set details known\r\n\r\n\r\n@ [4250835c-5cf8-4db4-95b6-6ba0001f7db7|JoBonanno & The Godsons of Soul]\r\n\r\n# No set details known\r\n\r\n\r\n@ [91fb24e5-727c-4272-b6ba-e6b47cd80a15|Joe D'Urso & Stone Caravan]\r\n\r\n# No set details known\r\n\r\n\r\n@ [065af1a2-2fa9-4864-852e-08c00c9c67d8|Soozie Tyrell]\r\n\r\n# No set details known\r\n\r\n\r\n@ [40fb02de-afc3-441c-a6ec-21fee861d478|Willie Nile]\r\n\r\n# No set details known\r\n\r\n\r\n@ [6123044a-f551-4c68-8d28-64c40035172c|Garland Jeffreys]\r\n# with\r\n@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n\r\n* [0c2d9eb6-1c6c-407f-98b6-61b40c7d68b5|Hail Hail Rock ’n’ Roll]\r\n* [78282243-c9f9-352d-a2a1-36c8567a05bc|96 Tears]\r\n\r\n\r\n@ [60890a33-fc2b-4d06-b8a0-a4599437144e|Joe Grushecky & The Houserockers]\r\n# with\r\n@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n\r\n* [ef2bc544-4701-42d7-9a4e-218b7fd4f462|Never Be Enough Time]\r\n* [67d3c66a-e5ed-4705-b4fa-545bf8b65ae8|Homestead]\r\n* [6c028112-5e5e-38e7-be1f-70057cff7338|From Small Things (Big Things One Day Come)]\r\n* [7547a9b5-8bb6-42a0-8dfb-b7b52aeebd48|Code of Silence]\r\n* [f3f7023a-4486-3341-bac8-b479443da96f|Fire]\r\n* [3d04d7cd-96e6-4617-b235-09870e5efc51|Talking to the King]\r\n* [f80534bf-958d-34c0-83cb-d7edbe887cdf|Johnny 99]\r\n* [9e21f814-f5a2-350d-91ce-a23ce921f5d5|Murder Incorporated] (with Johnny Grushecky)\r\n* [f3cbe2e2-7375-4c14-a69a-cdbd5dd30988|Pumping Iron]\r\n* [d662d712-f9f8-4118-8bb2-a821395dbf96|Light of Day] (with Michael J. Fox)\r\n* [75688ca0-8b04-341b-9f84-d59d63b16cf7|Dirty Water]\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout] / [98c77c85-30de-48ad-ab83-e0c29b3da0ef|La Bamba] (with all performers)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "disambiguation": "fourth annual Light of Day benefit",
+   "id": "3abbfbc7-7ac8-4ae7-897a-4e57087b8c78",
+   "time": "17:00",
+   "name": "2003‐11‐01: The Stone Pony, Asbury Park, NJ, USA",
+   "type": "Concert",
+   "cancelled": false,
+   "life-span": {
+    "ended": true,
+    "begin": "2003-11-01",
+    "end": "2003-11-01"
+   }
+  },
+  {
+   "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n# &\r\n@ [d6652e7b-33fe-49ef-8336-4c863b4f996f|The E Street Band]\r\n\r\n* [4b3b9bf5-380b-3c0f-8a7e-4f654bf84290|My Hometown]\r\n* [13411c83-ddd8-31ca-b968-79e4cf6db8fb|The Promised Land]\r\n* [e8a5fe99-0aff-3e7b-840c-7ab96cb702be|Badlands]\r\n* [d3cbf5a8-c80a-3273-a405-e756cf11e9ca|Darkness on the Edge of Town]\r\n* [b096fd0f-0184-4d69-9c00-057104a07acf|Stand on It]\r\n* [9915e1a9-13ff-3ea0-823d-56fe45f7535d|Ramrod]\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout]",
+   "type-id": null,
+   "id": "3df42b5d-52d9-4e30-9598-46a9b5a1e1c7",
+   "disambiguation": "Jam ’86 Hometown Benefit",
+   "time": "",
+   "cancelled": false,
+   "type": null,
+   "name": "1986‐01‐19: The Stone Pony, Asbury Park, NJ, USA",
+   "life-span": {
+    "begin": "1986-01-19",
+    "end": "1986-01-19",
+    "ended": true
+   }
+  },
+  {
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [ea5edc10-c74a-4fa5-add4-96d120efba8e|Come On, Let’s Go] (with Bruce Springsteen)\r\n* [6c028112-5e5e-38e7-be1f-70057cff7338|From Small Things (Big Things One Day Come)] (with Bruce Springsteen)\r\n* [7050e65f-66f8-31ee-be38-61ddfb93a60a|Sweet Little Sixteen] (with Bruce Springsteen)\r\n* [4ca8aa2d-b1b0-3473-8f0b-2a388054e947|Lucille] (with Bruce Springsteen)\r\n* [8fe3ee6b-106f-3d53-b7dc-7f5ce350f0f7|Around and Around] (with Bruce Springsteen)\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout] (with Bruce Springsteen)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "id": "3faed6ce-5e63-4109-8d28-d5d1dec11939",
+   "disambiguation": "Cats on a Smooth Surface",
+   "time": "",
+   "name": "1982‐06‐27: The Stone Pony, Asbury Park, NJ, USA",
+   "type": "Concert",
+   "cancelled": false,
+   "life-span": {
+    "begin": "1982-06-27",
+    "end": "1982-06-27",
+    "ended": true
+   }
+  },
+  {
+   "setlist": "@ [a2567452-7d11-45a7-98ff-1cbbc8ba0910|Paul Stanley]\r\n* [f97155b6-6f4d-3c1c-8fb3-f0bce3feeda4|I Stole Your Love]\r\n* [2790382f-ee22-3f78-8cc4-cbf29620cd62|I Want You]\r\n* [9861c6ae-bfe0-336f-bd9c-7cf50f8ab4dd|Tears Are Falling]\r\n* [57ed9a97-3cb3-405a-be83-b0979e9dbea6|Tonight You Belong to Me]\r\n* [18687bad-c6c2-38f8-b53d-79404ad17d56|C’mon and Love Me]\r\n* [f760644e-dcb9-4367-97d0-d640a75026f2|Wouldn’t You Like to Know Me]\r\n* [5dbb6fa5-9332-3890-9021-4241f4f3f4d5|Heaven’s on Fire]\r\n* [8df9373e-403c-3c1b-9a81-e5d49944d5c2|Hide Your Heart]\r\n* [27385c64-05db-37e7-be2f-01c345d659c0|I Still Love You]\r\n* [3cf24063-833a-3166-bae7-8c37c8c5b5d3|Crazy Crazy Nights]\r\n* [c0c83391-23ed-3e13-b482-9b935e03eade|Reason to Live]\r\n* [e93851ad-502b-3549-b187-2ed8bac9c19f|Lick It Up]\r\n* [2f3718e4-8a95-4bfb-ac5c-9e7da6d3ba34|Let’s Put the X in Sex]\r\n* [d14dc99a-a45e-394d-8fb7-06dc91670b58|Love Gun]\r\n* [5528b495-d932-4cba-ab54-0aa2fdc8c108|Goodbye]\r\n* [d335c181-eff5-3165-81d9-dadd03c91e7e|Communication Breakdown]\r\n* [512c4801-5184-3061-934d-e3542921aa66|Detroit Rock City]",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "disambiguation": "",
+   "id": "43f7bd2c-61cf-48c1-bc94-b9bc9ff3ec07",
+   "time": "",
+   "name": "Paul Stanley at The Stone Pony",
+   "type": "Concert",
+   "cancelled": false,
+   "life-span": {
+    "ended": true,
+    "begin": "1989-02-24",
+    "end": "1989-02-24"
+   }
+  },
+  {
+   "disambiguation": "Cats on a Smooth Surface",
+   "id": "440996d1-6a9d-4228-adc3-06c8143ad057",
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [705565fe-c0c7-472f-a98f-54b02836e873|Keep a Knockin’] (with Bruce Springsteen)\r\n* [8fe3ee6b-106f-3d53-b7dc-7f5ce350f0f7|Around and Around] (with Bruce Springsteen)\r\n* [24d776f1-b093-37ea-98df-5d4c2a57e5d1|Wooly Bully] (with Bruce Springsteen)\r\n* [fe769284-3e8e-4038-bc41-a0a67bbc5d18|Little Latin Lupe Lu] (with Bruce Springsteen)\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout] (with Bruce Springsteen)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "type": "Concert",
+   "cancelled": false,
+   "name": "1983‐07‐10: The Stone Pony, Asbury Park, NJ, USA",
+   "life-span": {
+    "ended": true,
+    "end": "1983-07-10",
+    "begin": "1983-07-10"
+   },
+   "time": ""
+  },
+  {
+   "name": "2025‐10‐26: The Stone Pony, Asbury Park, NJ, USA",
+   "type": null,
+   "cancelled": false,
+   "life-span": {
+    "begin": "2025-10-26",
+    "end": "2025-10-26",
+    "ended": true
+   },
+   "time": "",
+   "disambiguation": "Birthday Party at The Pony",
+   "id": "47b84024-bd3b-4e36-80e1-b051e12ede2f",
+   "setlist": "",
+   "type-id": null
+  },
+  {
+   "setlist": "",
+   "type-id": null,
+   "disambiguation": "rehearsals for the play “Lady Beth”",
+   "id": "49e5d1e6-0f27-46b7-a838-c0b7622a7520",
+   "time": "",
+   "type": null,
+   "name": "1986‐02: The Stone Pony, Asbury Park, NJ, USA",
+   "cancelled": false,
+   "life-span": {
+    "ended": true,
+    "end": "1986-02",
+    "begin": "1986-02"
+   }
+  },
+  {
+   "life-span": {
+    "ended": true,
+    "end": "1987-12-05",
+    "begin": "1987-12-05"
+   },
+   "cancelled": false,
+   "type": "Concert",
+   "name": "1987‐12‐05: The Stone Pony, Asbury Park, NJ, USA",
+   "time": "",
+   "id": "4b5df864-4941-4338-8f30-c06cf461f3b1",
+   "disambiguation": "Cats on a Smooth Surface",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [34607acd-d7b7-3294-9bc8-8cedbe6ccd15|Carol] (with Bruce Springsteen)\r\n* [54d6831c-4447-3087-a71e-3f92aa1fad27|Stand by Me] (with Bruce Springsteen)\r\n* [24d776f1-b093-37ea-98df-5d4c2a57e5d1|Wooly Bully] (with Bruce Springsteen)\r\n* [8fe3ee6b-106f-3d53-b7dc-7f5ce350f0f7|Around and Around] (with Bruce Springsteen)\r\n* [fe769284-3e8e-4038-bc41-a0a67bbc5d18|Little Latin Lupe Lu] (with Bruce Springsteen)\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout] (with Bruce Springsteen)"
+  },
+  {
+   "life-span": {
+    "ended": true,
+    "begin": "1982-10-03",
+    "end": "1982-10-03"
+   },
+   "type": "Concert",
+   "name": "1982‐10‐03: The Stone Pony, Asbury Park, NJ, USA",
+   "cancelled": false,
+   "time": "",
+   "disambiguation": "Cats on a Smooth Surface",
+   "id": "50f66e9c-01e6-46d3-b12e-68ce6c5e49f1",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [6c028112-5e5e-38e7-be1f-70057cff7338|From Small Things (Big Things One Day Come)] (with Bruce Springsteen)\r\n* [ea5edc10-c74a-4fa5-add4-96d120efba8e|Come On, Let’s Go] (with Bruce Springsteen)\r\n* [8fe3ee6b-106f-3d53-b7dc-7f5ce350f0f7|Around and Around] (with Bruce Springsteen)\r\n* [4a938f40-95cf-3d4a-a21a-f5732689238b|Open All Night] (with Bruce Springsteen)\r\n* [8c806b4e-edb4-3101-bc58-2605ec309a2e|Jersey Girl] (with Bruce Springsteen)\r\n* [8972043c-562d-4e3d-a9ea-44916b221287|On the Prowl] (with Bruce Springsteen)\r\n* [e5719339-1996-358f-b71b-25e96494a071|Do You Want to Dance] (with Bruce Springsteen)\r\n* [4ca8aa2d-b1b0-3473-8f0b-2a388054e947|Lucille] (with Bruce Springsteen)\r\n* [24d776f1-b093-37ea-98df-5d4c2a57e5d1|Wooly Bully] (with Bruce Springsteen)\r\n* [d09c6013-caa7-357a-946a-bae2c124e942|Louie Louie] (with Bruce Springsteen)\r\n* [203ebaab-f8e8-483f-8032-9ed75d0e976f|Rock Baby Rock] (with Bruce Springsteen)\r\n* [9cb5a89d-cfbf-4b8a-8154-7c90f230e00c|Come on Over to My Place] (with Bruce Springsteen)\r\n* [450b4d94-c768-3a43-9edc-253cf300199e|Having a Party] (with Bruce Springsteen)\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout] (with Bruce Springsteen)"
+  },
+  {
+   "setlist": "@ [a1ef6bc8-2644-4b6d-aa21-27b630acf751|Nils Lofgren]\r\n# with\r\n@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n\r\n* [194391fb-0e28-3a81-bae1-9483d10f67e6|If I Should Fall Behind]\r\n* [9f9307a7-890c-3caf-bc64-c5fd56d93a20|It’s All Over Now]\r\n* [4c4b77c7-21a1-32a9-a29b-241ff99cb397|Boom Boom]\r\n* [f6fce5ac-63be-4c79-9d0a-d60e6e0ebaf2|Shine Silently]\r\n\r\n\r\n@ [3e045881-56a5-4b62-8f99-cb3982cab577|John Eddie]\r\n\r\n* [90a7e5b0-3711-35d5-b499-a90c62935a2b|Suspicious Minds] (with Bruce Springsteen)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "disambiguation": "Clearwater Festival",
+   "id": "510cce24-bb0d-42b6-a9f7-ebf890d03dff",
+   "time": "",
+   "type": "Concert",
+   "cancelled": false,
+   "name": "2001‐08‐18: The Stone Pony, Asbury Park, NJ, USA",
+   "life-span": {
+    "end": "2001-08-18",
+    "begin": "2001-08-18",
+    "ended": true
+   }
+  },
+  {
+   "type": "Concert",
+   "name": "1987‐04‐12: The Stone Pony, Asbury Park, NJ, USA",
+   "cancelled": false,
+   "life-span": {
+    "end": "1987-04-12",
+    "begin": "1987-04-12",
+    "ended": true
+   },
+   "time": "",
+   "id": "51b0fca6-8b74-48f6-88bd-b788b894dbf8",
+   "disambiguation": "",
+   "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n# &\r\n@ [d6652e7b-33fe-49ef-8336-4c863b4f996f|The E Street Band]\r\n# with\r\n@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [d662d712-f9f8-4118-8bb2-a821395dbf96|Light of Day]\r\n* [b096fd0f-0184-4d69-9c00-057104a07acf|Stand on It]\r\n* [8ecc135f-ce4e-3fd3-9e9f-7944bd4daa9b|Darlington County]\r\n* [4b3b9bf5-380b-3c0f-8a7e-4f654bf84290|My Hometown]\r\n* [7f44c910-49f8-35f5-bb65-4c6d790ad685|Cadillac Ranch]\r\n* [e59ca323-dd32-3a0b-80a9-d42746362213|Glory Days]\r\n* [8fe3ee6b-106f-3d53-b7dc-7f5ce350f0f7|Around and Around]\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout]\r\n* [34607acd-d7b7-3294-9bc8-8cedbe6ccd15|Carol]\r\n* [24d776f1-b093-37ea-98df-5d4c2a57e5d1|Wooly Bully]\r\n* [4ca8aa2d-b1b0-3473-8f0b-2a388054e947|Lucille]\r\n* [95a395d2-a515-323e-a800-2408488d5ff5|Kansas City/Hey-Hey-Hey-Hey!] (with Jon Bon Jovi)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b"
+  },
+  {
+   "type": "Concert",
+   "cancelled": false,
+   "name": "1982‐09‐25: The Stone Pony, Asbury Park, NJ, USA",
+   "life-span": {
+    "ended": true,
+    "begin": "1982-09-25",
+    "end": "1982-09-25"
+   },
+   "time": "",
+   "disambiguation": "Cats on a Smooth Surface",
+   "id": "52ba979c-6243-422d-8108-6016901675b1",
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [0135dd36-dde3-325b-8394-0a9faf6aa653|Ready Teddy] (with Bruce Springsteen)\r\n* [6c028112-5e5e-38e7-be1f-70057cff7338|From Small Things (Big Things One Day Come)] (with Bruce Springsteen)\r\n* [9cb5a89d-cfbf-4b8a-8154-7c90f230e00c|Come on Over to My Place] (with Bruce Springsteen)\r\n* [8fe3ee6b-106f-3d53-b7dc-7f5ce350f0f7|Around and Around] (with Bruce Springsteen)\r\n* [4ca8aa2d-b1b0-3473-8f0b-2a388054e947|Lucille] (with Bruce Springsteen)\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout] / [bba40a4a-c222-3d60-8f3a-95ad07a421fc|Happy Birthday to You] (with Bruce Springsteen)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b"
+  },
+  {
+   "id": "5843d832-a117-4b64-8405-a92a84d5736f",
+   "disambiguation": "Cats on a Smooth Surface",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [54d6831c-4447-3087-a71e-3f92aa1fad27|Stand by Me] (with Bruce Springsteen)\r\n* [8fe3ee6b-106f-3d53-b7dc-7f5ce350f0f7|Around and Around] (with Bruce Springsteen)",
+   "life-span": {
+    "end": "1988-08-21",
+    "begin": "1988-08-21",
+    "ended": true
+   },
+   "cancelled": false,
+   "type": "Concert",
+   "name": "1988‐08‐21: The Stone Pony, Asbury Park, NJ, USA",
+   "time": ""
+  },
+  {
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [867b38dc-776a-47ee-9d47-3df8fbfa3514|Killer Joe]\r\n\r\n* [ade02f6a-dd14-35a8-be4c-69e134f70943|You Never Can Tell] (with Bruce Springsteen, Roy Bittan, Patti Scialfa and The Miami Horns)\r\n* [4ca8aa2d-b1b0-3473-8f0b-2a388054e947|Lucille] (with Bruce Springsteen, Roy Bittan, Patti Scialfa and The Miami Horns)\r\n* [4c4b77c7-21a1-32a9-a29b-241ff99cb397|Boom Boom] (with Bruce Springsteen, Roy Bittan, Patti Scialfa and The Miami Horns)\r\n* [273bcf19-9c43-3e6b-91df-020680ace117|Travelin’ Band] (with Bruce Springsteen, Roy Bittan, Patti Scialfa and The Miami Horns)",
+   "id": "59a00aab-691b-4889-9646-d083b99e336b",
+   "disambiguation": "Killer Joe",
+   "time": "",
+   "life-span": {
+    "end": "1989-06-02",
+    "begin": "1989-06-02",
+    "ended": true
+   },
+   "type": "Concert",
+   "name": "1989‐06‐02: The Stone Pony, Asbury Park, NJ, USA",
+   "cancelled": false
+  },
+  {
+   "setlist": "@ [d7bc97fb-4bd3-453b-98a1-9081f89c52f0|Southside Johnny & The Asbury Jukes]\r\n# with\r\n@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n\r\n* [e5500466-274a-48cd-9c75-abff7ada71c5|I Don’t Want to Go Home] (with Bruce Springsteen)\r\n* [450b4d94-c768-3a43-9edc-253cf300199e|Having a Party] (with Bruce Springsteen)\r\n* [cc8d858a-38ef-35b0-b83c-a5d26f04207b|Thunder Road] (Bruce Springsteen)\r\n* [2e0de115-e833-3b42-8fba-b20314b0284f|Mona] / [7ed9ed5d-8526-4522-a6a7-42cbcc1864f0|She’s the One] (Bruce Springsteen)\r\n* [9893a23c-f282-3b07-a2db-b4f2f3b9f4b2|Born to Run] (Bruce Springsteen)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "id": "5af06f98-8335-458d-b4e6-a971da757537",
+   "disambiguation": "Southside Johnny & The Asbury Jukes",
+   "time": "18:00",
+   "cancelled": false,
+   "type": "Concert",
+   "name": "1977‐09‐13: The Stone Pony, Asbury Park, NJ, USA",
+   "life-span": {
+    "end": "1977-09-13",
+    "begin": "1977-09-13",
+    "ended": true
+   }
+  },
+  {
+   "time": "",
+   "life-span": {
+    "end": "2019-11-16",
+    "begin": "2019-11-16",
+    "ended": true
+   },
+   "name": "2019‐11‐16: The Stone Pony, Asbury Park, NJ, USA",
+   "type": "Concert",
+   "cancelled": false,
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n@ [9df6e393-da6b-4e65-9f50-6e4df5624e63|Bobby Bandiera Band]\r\n# with\r\n@ [358d8fde-ad5b-4df1-bcd8-193bada6edd5|Bobby Bandiera]\r\n# and\r\n@ [236fca70-1195-4842-a1a0-0e8a0aff98fc|Layonne Holmes]\r\n\r\n@ [2566ca73-1dfd-49e7-ab20-dfa5697b360e|Max Weinberg] (guest)\r\n\r\n# Soundcheck\r\n* [7f44c910-49f8-35f5-bb65-4c6d790ad685|Cadillac Ranch]\r\n* [8e437cd5-9fe1-3258-a6a7-0f84386ab196|Rendezvous]\r\n* [6c028112-5e5e-38e7-be1f-70057cff7338|From Small Things (Big Things One Day Come)]\r\n* [464c648e-223a-3180-b207-9f42f57288bb|I’m on Fire]\r\n* [64142910-6d7c-4ad1-a4b4-6dcdf4b0b521|Waitin’ on a Sunny Day]\r\n* [c908e556-a77f-422a-8cf0-a0e0f0c87d73|Talk to Me]\r\n* [1f573511-eb4b-3106-8fb2-f15de52e4868|4th of July, Asbury Park (Sandy)]\r\n* [aa151b23-5171-3d35-a487-55fc8c66131e|Tenth Avenue Freeze‐Out]\r\n* [f8556ea5-f89f-3c2f-922f-d5225c1a4511|Dancing in the Dark]\r\n* [9893a23c-f282-3b07-a2db-b4f2f3b9f4b2|Born to Run]\r\n* [66969327-8735-37eb-aaa1-a4b638d446b0|Rosalita (Come Out Tonight)]\r\n* [da1f36f5-dcdd-4a56-8d92-4b3527fd1291|Detroit Medley]\r\n\r\n# Concert\r\n* [f44d3b21-8947-34f1-b701-46ed1cc0eb15|634‒5789 (Soulsville, U.S.A.)]\r\n* [9a50dd49-3e54-34aa-a6d1-138ea3869a45|Seven Nights to Rock]\r\n* [8ecc135f-ce4e-3fd3-9e9f-7944bd4daa9b|Darlington County]\r\n* [dba2f648-cb81-3d19-b252-1bbecc62758b|Spirit in the Night]\r\n* [b1528b3f-0c0e-3977-ba98-5cb5b38108db|Growin’ Up]\r\n* [2e9dd9af-98a2-3a19-a778-58981f2824e6|Because the Night]\r\n* [fa36af81-2bd8-3436-bf94-7df8e818d99d|Two Hearts]\r\n* [7f44c910-49f8-35f5-bb65-4c6d790ad685|Cadillac Ranch]\r\n* [8e437cd5-9fe1-3258-a6a7-0f84386ab196|Rendezvous]\r\n* [3e91895c-2ae4-4b9b-89ca-40ad23239c92|The Boy From New York City]\r\n* [6c028112-5e5e-38e7-be1f-70057cff7338|From Small Things (Big Things One Day Come)]\r\n* [464c648e-223a-3180-b207-9f42f57288bb|I’m on Fire]\r\n* [64142910-6d7c-4ad1-a4b4-6dcdf4b0b521|Waitin’ on a Sunny Day]\r\n* [c908e556-a77f-422a-8cf0-a0e0f0c87d73|Talk to Me]\r\n* [1f573511-eb4b-3106-8fb2-f15de52e4868|4th of July, Asbury Park (Sandy)]\r\n* [aa151b23-5171-3d35-a487-55fc8c66131e|Tenth Avenue Freeze‐Out] (with Max Weinberg)\r\n* [f8556ea5-f89f-3c2f-922f-d5225c1a4511|Dancing in the Dark] (with Max Weinberg)\r\n* [9893a23c-f282-3b07-a2db-b4f2f3b9f4b2|Born to Run] (with Max Weinberg)\r\n* [66969327-8735-37eb-aaa1-a4b638d446b0|Rosalita (Come Out Tonight)] (with Max Weinberg)\r\n* [da1f36f5-dcdd-4a56-8d92-4b3527fd1291|Detroit Medley] (with Max Weinberg)\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout] (with Max Weinberg)\r\n* [cc8d858a-38ef-35b0-b83c-a5d26f04207b|Thunder Road]",
+   "id": "61ad6394-5295-4d37-9c8f-9e28cdbc332d",
+   "disambiguation": "Boston College Benefit"
+  },
+  {
+   "time": "",
+   "life-span": {
+    "ended": true,
+    "begin": "2004-07-17",
+    "end": "2004-07-17"
+   },
+   "type": "Concert",
+   "cancelled": false,
+   "name": "2004‐07‐17: The Stone Pony, Asbury Park, NJ, USA",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [60890a33-fc2b-4d06-b8a0-a4599437144e|Joe Grushecky & The Houserockers]\r\n# with\r\n@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n\r\n* [ef2bc544-4701-42d7-9a4e-218b7fd4f462|Never Be Enough Time]\r\n* [67d3c66a-e5ed-4705-b4fa-545bf8b65ae8|Homestead]\r\n* [7547a9b5-8bb6-42a0-8dfb-b7b52aeebd48|Code of Silence]\r\n* [f80534bf-958d-34c0-83cb-d7edbe887cdf|Johnny 99] (with Soozie Tyrell)\r\n* [f3cbe2e2-7375-4c14-a69a-cdbd5dd30988|Pumping Iron]\r\n* [0dd91858-8b22-328c-a129-d37690906cb0|Mustang Sally] (with Patti Scialfa and Soozie Tyrell)\r\n* [bd50f03f-3dd3-325b-b11a-0d76c532b7b4|Walking the Dog] (with Patti Scialfa and Soozie Tyrell)\r\n* [3d04d7cd-96e6-4617-b235-09870e5efc51|Talking to the King]\r\n* [209fd9b7-e830-3127-b5c9-8bc4a5bcb11f|Down the Road Apiece]\r\n* [c6222b2f-6831-4f30-8ce7-a6fb9f0aeed7|Have a Good Time (but Get Out Alive)]\r\n* [9e21f814-f5a2-350d-91ce-a23ce921f5d5|Murder Incorporated]",
+   "disambiguation": "Joe Grushecky & The Houserockers",
+   "id": "63632ed8-5ba5-4a36-9224-ddf713bdf1b6"
+  },
+  {
+   "time": "",
+   "type": "Concert",
+   "cancelled": false,
+   "name": "1987‐08‐21: The Stone Pony, Asbury Park, NJ, USA",
+   "life-span": {
+    "ended": true,
+    "begin": "1987-08-21",
+    "end": "1987-08-21"
+   },
+   "setlist": "@ [9b29b47f-5004-4863-92c0-058b621dcea8|Little Steven & The Disciples of Soul]\r\n\r\n* [def63ae6-0999-4783-82ad-1871bde26910|Native American] (with Bruce Springsteen)\r\n* [28130793-61bc-4ca1-8e6f-a6ecb5a4f1ff|Sun City] (with Bruce Springsteen)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "disambiguation": "Little Steven & The Disciples of Soul",
+   "id": "6544199e-b817-4e7b-b986-e580ef9ab218"
+  },
+  {
+   "time": "",
+   "type": "Concert",
+   "name": "1982‐04‐11: The Stone Pony, Asbury Park, NJ, USA",
+   "cancelled": false,
+   "life-span": {
+    "ended": true,
+    "begin": "1982-04-11",
+    "end": "1982-04-11"
+   },
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n# No set details known",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "disambiguation": "Cats on a Smooth Surface",
+   "id": "65c0e850-fe5d-4afb-9173-a77afe89fde4"
+  },
+  {
+   "cancelled": false,
+   "type": "Concert",
+   "name": "2002‐04‐14: The Stone Pony, Asbury Park, NJ, USA",
+   "life-span": {
+    "ended": true,
+    "end": "2002-04-14",
+    "begin": "2002-04-14"
+   },
+   "time": "",
+   "disambiguation": "",
+   "id": "6905631f-e396-467d-8c44-87c8f191b502",
+   "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n# with\r\n@ [358d8fde-ad5b-4df1-bcd8-193bada6edd5|Bobby Bandiera]\r\n@ [9df6e393-da6b-4e65-9f50-6e4df5624e63|The Bobby Bandiera Band]\r\n@ [c716c897-8db9-4167-8787-940b14f6e1ca|Bob Berger]\r\n@ [d33bff2e-65ee-4107-b067-20b22f8cb698|Joe Bellia]\r\n@ [3644f94c-f682-4fcc-a7fc-b64a4f9cb096|Joey Stann]\r\n@ [59d77428-bf32-4c9f-bc4c-7c03ec882c59|Lisa Lowell]\r\n@ [2566ca73-1dfd-49e7-ab20-dfa5697b360e|Max Weinberg]\r\n@ [078e680d-6d6c-46ce-8134-0bddeb9e5e35|Mike Mancini]\r\n@ [f09aa40c-b613-4ea2-a8cf-6056c2657a9a|Patti Scialfa]\r\n@ [065af1a2-2fa9-4864-852e-08c00c9c67d8|Soozie Tyrell]\r\n@ [f826b4d1-2dc3-4c4f-ba70-69b472320338|Southside Johnny]\r\n@ [bc7ceac9-a524-42bd-996a-380d2f1eb567|Steve Shews]\r\n\r\n# Soundcheck\r\n* [f322792d-9f7a-38f2-bddb-73731c1b2039|Good Times]\r\n\r\n# Concert\r\n* [3d55b4e1-36f5-3cec-b702-59d1b534611e|Roll Over Beethoven]\r\n* [9a50dd49-3e54-34aa-a6d1-138ea3869a45|Seven Nights to Rock]\r\n* [034c723f-a482-38d8-863a-39726e7823d0|It Takes Two]\r\n* [da1f36f5-dcdd-4a56-8d92-4b3527fd1291|Detroit Medley]\r\n* [3005488d-0d7e-3299-9a73-e2b086fbb844|Tell Him]\r\n* [c1b9bc08-ba81-382f-8ce0-83995035368f|Green River]\r\n* [8423eef7-88aa-39b0-9c4f-11a2a113fdc6|Tell Me Why]\r\n* [3e91895c-2ae4-4b9b-89ca-40ad23239c92|The Boy From New York City]\r\n* [3cec167a-2b7d-4843-81e6-8b3eea13840f|Ramblin’ Gamblin’ Man]\r\n* [b64b28c2-69ad-38c4-8446-a4a9c7ae2186|Domino] (with Max Weinberg)\r\n* [69a1d8eb-395a-37b4-b018-aca653055ec0|Soul Man] (with Max Weinberg)\r\n* [d97a13df-e992-399e-9b1e-8eb4c83af1b7|Ain’t Too Proud to Beg] (with Max Weinberg)\r\n* [7215f333-bd0a-3e4d-b6a2-977846b1af35|Wonderful World] (with Max Weinberg)\r\n* [77d8a7cf-750b-4ca1-b2c3-43b30d0fc4fd|Twistin’ the Night Away] (with Max Weinberg)\r\n* [b01fca31-4bda-3783-9f67-1d3feb84acb3|Hey Tonight] (with Max Weinberg)\r\n* [e39be679-5a1e-3ddb-9f23-c469783a54ea|You’ve Really Got a Hold on Me] (with Max Weinberg)\r\n* [9f9307a7-890c-3caf-bc64-c5fd56d93a20|It’s All Over Now] (with Max Weinberg)\r\n* [7a369a15-bf19-49ab-ac6f-7d761f81b0c7|Get Out of Denver] (with Max Weinberg)\r\n* [8ecc135f-ce4e-3fd3-9e9f-7944bd4daa9b|Darlington County] (with Max Weinberg)\r\n* [e59ca323-dd32-3a0b-80a9-d42746362213|Glory Days]\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout]\r\n* [cc8d858a-38ef-35b0-b83c-a5d26f04207b|Thunder Road]",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b"
+  },
+  {
+   "disambiguation": "Clarence Clemons & The Red Bank Rockers",
+   "id": "6acdcdd7-b3ee-4d9a-8c8a-c5793d497224",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [e070d092-5bd5-4379-ac55-b3534832e2a5|Clarence Clemons & The Red Bank Rockers]\r\n\r\n* [f3f7023a-4486-3341-bac8-b479443da96f|Fire] (with Bruce Springsteen)\r\n* [d9d1e4d7-2181-3565-89db-377d6b031af7|In the Midnight Hour] (with Bruce Springsteen)\r\n* [4ca8aa2d-b1b0-3473-8f0b-2a388054e947|Lucille] (with Bruce Springsteen)\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout] (with Bruce Springsteen)",
+   "life-span": {
+    "ended": true,
+    "end": "1984-05-19",
+    "begin": "1984-05-19"
+   },
+   "cancelled": false,
+   "type": "Concert",
+   "name": "1984‐05‐19: The Stone Pony, Asbury Park, NJ, USA",
+   "time": ""
+  },
+  {
+   "disambiguation": "Boston College benefit",
+   "id": "6c4fcb51-054c-4ec4-a916-6af655696138",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n# with\r\n@ [9df6e393-da6b-4e65-9f50-6e4df5624e63|The Bobby Bandiera Band]\r\n# and\r\n@ [2566ca73-1dfd-49e7-ab20-dfa5697b360e|Max Weinberg]\r\n\r\n* [90963641-d3b1-3d89-aec1-c913c6c03fc4|Working on the Highway]\r\n* [98d2b0ee-4d89-428c-af7d-9b6d9dd551c9|My Lucky Day]\r\n* [f44d3b21-8947-34f1-b701-46ed1cc0eb15|634-5789 (Soulsville, U.S.A.)]\r\n* [9a50dd49-3e54-34aa-a6d1-138ea3869a45|Seven Nights to Rock]\r\n* [b1528b3f-0c0e-3977-ba98-5cb5b38108db|Growin’ Up]\r\n* [dba2f648-cb81-3d19-b252-1bbecc62758b|Spirit in the Night]\r\n* [8a79ad2b-819c-47b3-a02d-85aee7d3c1c0|Working on a Dream]\r\n* [d9d1e4d7-2181-3565-89db-377d6b031af7|In the Midnight Hour] (with Southside Johnny)\r\n* [c908e556-a77f-422a-8cf0-a0e0f0c87d73|Talk to Me] (with Southside Johnny)\r\n* [fa36af81-2bd8-3436-bf94-7df8e818d99d|Two Hearts]\r\n* [8ecc135f-ce4e-3fd3-9e9f-7944bd4daa9b|Darlington County]\r\n* [b656ff9a-9b07-347e-b318-7bfbc5ac008e|Pink Cadillac]\r\n* [e497263c-4f15-36c0-b27c-dca99482962c|The Fever] (with Southside Johnny)\r\n* [e5500466-274a-48cd-9c75-abff7ada71c5|I Don’t Want to Go Home] (with Southside Johnny)\r\n* [1f573511-eb4b-3106-8fb2-f15de52e4868|4th of July, Asbury Park (Sandy)]\r\n* [7f44c910-49f8-35f5-bb65-4c6d790ad685|Cadillac Ranch]\r\n* [aa151b23-5171-3d35-a487-55fc8c66131e|Tenth Avenue Freeze-Out]\r\n* [e59ca323-dd32-3a0b-80a9-d42746362213|Glory Days]\r\n* [450b4d94-c768-3a43-9edc-253cf300199e|Having a Party] (with Southside Johnny)\r\n* [9893a23c-f282-3b07-a2db-b4f2f3b9f4b2|Born to Run]\r\n* [66969327-8735-37eb-aaa1-a4b638d446b0|Rosalita (Come Out Tonight)]\r\n* [da1f36f5-dcdd-4a56-8d92-4b3527fd1291|Detroit Medley] (with Southside Johnny)\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout]\r\n* [cc8d858a-38ef-35b0-b83c-a5d26f04207b|Thunder Road]",
+   "life-span": {
+    "end": "2010-09-11",
+    "begin": "2010-09-11",
+    "ended": true
+   },
+   "type": "Concert",
+   "cancelled": false,
+   "name": "2010‐09‐11: The Stone Pony, Asbury Park, NJ, USA",
+   "time": ""
+  },
+  {
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [0f1201e6-6e14-4dba-9a4f-66a641e2f11a|The Shakes]\r\n# with\r\n@ [a0ce1b37-a0d4-4ced-897b-a396e94d05b8|Bob Campanell]\r\n\r\n* [c783b0b7-cbc4-3be6-89dc-a13883fe5c51|Jailhouse Rock] (with Bruce Springsteen)\r\n* [a2933279-5d9a-4254-8e80-3f18f91844b6|Sea Cruise] (with Bruce Springsteen)",
+   "id": "739e9bb8-b2e9-4deb-9420-4c25da54342b",
+   "disambiguation": "The Shakes",
+   "time": "",
+   "life-span": {
+    "ended": true,
+    "begin": "1977-05-19",
+    "end": "1977-05-19"
+   },
+   "cancelled": false,
+   "type": "Concert",
+   "name": "1977‐05‐19: The Stone Pony, Asbury Park, NJ, USA"
+  },
+  {
+   "type": "Concert",
+   "cancelled": false,
+   "name": "2001‐09‐01: The Stone Pony, Asbury Park, NJ, USA",
+   "life-span": {
+    "ended": true,
+    "end": "2001-09-01",
+    "begin": "2001-09-01"
+   },
+   "time": "20:00",
+   "disambiguation": "Clarence Clemons & Temple of Soul",
+   "id": "768e8345-88b2-4a73-b191-0137c4ff7855",
+   "setlist": "@ [7e4bfa5f-a8b8-4fb0-81b5-f74f6ac72133|Clarence Clemons]\r\n# with\r\n@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen] (guest)\r\n\r\n* [b656ff9a-9b07-347e-b318-7bfbc5ac008e|Pink Cadillac]\r\n* [4c29e9ca-caf6-327f-b857-2c7bfd43f16e|Raise Your Hand]\r\n* [0dd91858-8b22-328c-a129-d37690906cb0|Mustang Sally]\r\n* [e59ca323-dd32-3a0b-80a9-d42746362213|Glory Days]",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b"
+  },
+  {
+   "type-id": null,
+   "setlist": "",
+   "disambiguation": "“Lady Beth” play",
+   "id": "7acc74ce-0375-4a0f-92d7-fa5d04c35b86",
+   "time": "",
+   "life-span": {
+    "ended": true,
+    "end": "1986-09-26",
+    "begin": "1986-09-26"
+   },
+   "type": null,
+   "cancelled": false,
+   "name": "1986‐09‐26: The Stone Pony, Asbury Park, NJ, USA"
+  },
+  {
+   "time": "",
+   "type": "Concert",
+   "name": "2010‐07‐23: The Stone Pony, Asbury Park, NJ, USA",
+   "cancelled": false,
+   "life-span": {
+    "ended": true,
+    "begin": "2010-07-23",
+    "end": "2010-07-23"
+   },
+   "setlist": "@ [bf103bec-70e3-45a5-9d1b-97715db04a96|Alejandro Escovedo]\r\n\r\n* [d323779c-4e32-4142-a8c7-eaf8e2914dfb|Always a Friend] (with Bruce Springsteen)\r\n* [671e17f4-c244-4c81-9c93-438b1b11de96|Faith] (with Bruce Springsteen)\r\n* [e16e4dde-5639-4ec0-8376-00867be37c1e|Beast of Burden] (with Bruce Springsteen)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "disambiguation": "Alejandro Escovedo",
+   "id": "7b3fb025-13ef-48fa-97d1-adaaf0aa8ec0"
+  },
+  {
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [45d7e6e8-c5bf-4c59-a79e-c7bb2e9b2cc9|Mike Ness]\r\n\r\n* [7c4c825e-2581-4d97-9faa-4d5ee94547ee|Misery Loves Company] (with Bruce Springsteen)\r\n* [5b0bc8d5-00f4-4e12-b06f-cd01406ac22d|Ball and Chain] (with Bruce Springsteen)\r\n* [30825ee8-7ac8-439d-9713-9913bca00e1a|If You Leave Before Me] (with Bruce Springsteen)\r\n* [f4d124a8-3c74-3885-9bec-fe0be82aea98|I Fought the Law] (with Bruce Springsteen)",
+   "disambiguation": "",
+   "id": "80d1be40-eff6-4836-b4a7-959abf6d783e",
+   "time": "",
+   "life-span": {
+    "ended": true,
+    "begin": "2008-05-17",
+    "end": "2008-05-17"
+   },
+   "name": "2008‐05‐17: The Stone Pony, Asbury Park, NJ, USA",
+   "type": "Concert",
+   "cancelled": false
+  },
+  {
+   "id": "817a843d-2e41-454b-9230-b4c4fc782412",
+   "disambiguation": "The Diamonds",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [6e394e49-4e93-40b9-8b79-7f84dcbd0e25|The Diamonds]\r\n\r\n* [4ca8aa2d-b1b0-3473-8f0b-2a388054e947|Lucille] (with Bruce Springsteen)\r\n* [4679e271-b7c1-3331-882e-2a173f2001e4|Long Tall Sally] (with Bruce Springsteen)",
+   "life-span": {
+    "begin": "1983-04-27",
+    "end": "1983-04-27",
+    "ended": true
+   },
+   "name": "1983‐04‐27: The Stone Pony, Asbury Park, NJ, USA",
+   "type": "Concert",
+   "cancelled": false,
+   "time": ""
+  },
+  {
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [358d8fde-ad5b-4df1-bcd8-193bada6edd5|Bobby Bandiera]\r\n\r\n* [97a0c5bb-5410-35c0-92b2-927f7e458bec|Hound Dog] (with Bruce Springsteen)\r\n* [334afb17-cc73-3167-83cb-1387cce1e809|Under the Boardwalk] (with Bruce Springsteen)\r\n* [e59ca323-dd32-3a0b-80a9-d42746362213|Glory Days] (with Bruce Springsteen)",
+   "disambiguation": "Bobby Bandiera",
+   "id": "83575194-d273-4069-acc8-f7b7e77dc885",
+   "time": "",
+   "life-span": {
+    "ended": true,
+    "begin": "1989-06-24",
+    "end": "1989-06-24"
+   },
+   "type": "Concert",
+   "cancelled": false,
+   "name": "1989‐06‐24: The Stone Pony, Asbury Park, NJ, USA"
+  },
+  {
+   "time": "",
+   "type": "Concert",
+   "cancelled": false,
+   "name": "1977‐04‐17: The Stone Pony, Asbury Park, NJ, USA",
+   "life-span": {
+    "begin": "1977-04-17",
+    "end": "1977-04-17",
+    "ended": true
+   },
+   "setlist": "@ [d7bc97fb-4bd3-453b-98a1-9081f89c52f0|Southside Johnny & The Asbury Jukes]\r\n\r\n* [e497263c-4f15-36c0-b27c-dca99482962c|The Fever] (with Bruce Springsteen)\r\n* [e5500466-274a-48cd-9c75-abff7ada71c5|I Don’t Want to Go Home] (with Bruce Springsteen)\r\n* [ae7f68a2-6940-448d-adfa-c34593337240|You Mean So Much to Me] (with Bruce Springsteen)\r\n* [450b4d94-c768-3a43-9edc-253cf300199e|Having a Party] (with Bruce Springsteen)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "id": "87459b48-70c6-40ea-9722-31ec2139ade3",
+   "disambiguation": "Southside Johnny & The Asbury Jukes"
+  },
+  {
+   "life-span": {
+    "ended": true,
+    "end": "1982-06-13",
+    "begin": "1982-06-13"
+   },
+   "type": "Concert",
+   "name": "1982‐06‐13: The Stone Pony, Asbury Park, NJ, USA",
+   "cancelled": false,
+   "time": "",
+   "id": "8c0b533c-ce16-47bf-bd9d-95085ed2b2c3",
+   "disambiguation": "Cats on a Smooth Surface",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [f8069a6e-1bc5-3623-b522-17dc41cbe665|Heartbreak Hotel] (with Bruce Springsteen)\r\n* [8fe3ee6b-106f-3d53-b7dc-7f5ce350f0f7|Around and Around] (with Bruce Springsteen)\r\n* [4ca8aa2d-b1b0-3473-8f0b-2a388054e947|Lucille] (with Bruce Springsteen)\r\n* [6a79f7b5-771c-3897-9a28-46e139bfef90|Kansas City] (with Bruce Springsteen)\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout] (with Bruce Springsteen)"
+  },
+  {
+   "disambiguation": "Cats on a Smooth Surface",
+   "id": "90513310-c4a6-4add-bf9f-c7b38a5961f0",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [273bcf19-9c43-3e6b-91df-020680ace117|Travelin’ Band] (with Bruce Springsteen)",
+   "life-span": {
+    "ended": true,
+    "end": "1989-07-09",
+    "begin": "1989-07-09"
+   },
+   "type": "Concert",
+   "name": "1989‐07‐09: The Stone Pony, Asbury Park, NJ, USA",
+   "cancelled": false,
+   "time": ""
+  },
+  {
+   "time": "",
+   "cancelled": false,
+   "type": null,
+   "name": "1995‐10‐16: The Stone Pony, Asbury Park, NJ, USA",
+   "life-span": {
+    "end": "1995-10-16",
+    "begin": "1995-10-16",
+    "ended": true
+   },
+   "setlist": "@ [60890a33-fc2b-4d06-b8a0-a4599437144e|Joe Grushecky & The Houserockers]\r\n# with\r\n@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n\r\n* [8bd3625e-a993-3388-bfb2-23dc1350fa4d|Folsom Prison Blues]\r\n* [14f3287f-4952-33df-b699-9687f7d6945f|Gimme Shelter]\r\n* [d662d712-f9f8-4118-8bb2-a821395dbf96|Light of Day]\r\n* [4c4b77c7-21a1-32a9-a29b-241ff99cb397|Boom Boom]\r\n* [3ceaab7d-52b4-3957-93e6-dfb7459803df|Seeds]\r\n* [987fa912-ca9e-3045-bd3d-cabe39c8e8bb|Shake, Rattle and Roll]",
+   "type-id": null,
+   "disambiguation": "private rehearsal",
+   "id": "921aad18-3f49-4582-aaa6-4871dafe3336"
+  },
+  {
+   "id": "95d7bee4-1baf-482a-b0d5-100318b1e4f2",
+   "disambiguation": "",
+   "setlist": "@ [e1f1e33e-2e4c-4d43-b91b-7064068d3283|KISS]\r\n* [f97155b6-6f4d-3c1c-8fb3-f0bce3feeda4|I Stole Your Love]\r\n* [f6d82fe6-e09f-372c-ac13-dfe5f5031e1b|Deuce]\r\n* [5dbb6fa5-9332-3890-9021-4241f4f3f4d5|Heaven’s on Fire]\r\n* [adfd2044-6c4d-35f6-9213-fff8da30b68e|Fits Like a Glove] (interrupted, followed by snippets of “[b41829d6-9af7-3159-a8ce-fca057a1bbfe|Heartbreaker]” and “[ab4b7950-8fdb-343d-9946-4da5f312af0e|Oh Susannah]”)\r\n* [dd001bbb-7a17-3786-bf53-99cec06a5546|Rise to It]\r\n* [6873693b-c125-3fb1-986d-e200fab2bc93|Betrayed]\r\n* [18687bad-c6c2-38f8-b53d-79404ad17d56|C’mon and Love Me]\r\n* [a35d9cc6-4732-3181-920b-0f1a0d876d56|Calling Dr. Love]\r\n* [8df9373e-403c-3c1b-9a81-e5d49944d5c2|Hide Your Heart]\r\n* [d14dc99a-a45e-394d-8fb7-06dc91670b58|Love Gun]\r\n* [512c4801-5184-3061-934d-e3542921aa66|Detroit Rock City]\r\n* [b05809ff-d6a9-3b17-9d8d-c15697d77462|I Love It Loud]\r\n* [52cb581c-5972-3d49-9cdb-bb2b472f99b9|Black Diamond]",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "type": "Concert",
+   "name": "KISS at The Stone Pony",
+   "cancelled": false,
+   "life-span": {
+    "ended": true,
+    "end": "1990-04-14",
+    "begin": "1990-04-14"
+   },
+   "time": ""
+  },
+  {
+   "id": "96695197-fd4c-4ef0-a074-ed87cbb60c6e",
+   "disambiguation": "Friends of Special Children Benefit",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ local musicians\r\n\r\n* [b3e49473-899d-3f08-9f06-2afc70f85e2e|Santa Claus Is Comin’ to Town] (with Bruce Springsteen)",
+   "life-span": {
+    "end": "1988-12-18",
+    "begin": "1988-12-18",
+    "ended": true
+   },
+   "type": "Concert",
+   "name": "1988‐12‐18: The Stone Pony, Asbury Park, NJ, USA",
+   "cancelled": false,
+   "time": ""
+  },
+  {
+   "cancelled": false,
+   "type": "Concert",
+   "name": "1989‐07‐01: The Stone Pony, Asbury Park, NJ, USA",
+   "life-span": {
+    "ended": true,
+    "begin": "1989-07-01",
+    "end": "1989-07-01"
+   },
+   "time": "",
+   "disambiguation": "La Bamba",
+   "id": "9723480f-8521-4e17-b8e2-628f12f4cd51",
+   "setlist": "@ [0c59859b-9de2-43d1-aaf7-4c54cef5f14a|La Bamba]\r\n\r\n* [4679e271-b7c1-3331-882e-2a173f2001e4|Long Tall Sally] (with Bruce Springsteen)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b"
+  },
+  {
+   "time": "",
+   "cancelled": false,
+   "type": "Concert",
+   "name": "1982‐08‐15: The Stone Pony, Asbury Park, NJ, USA",
+   "life-span": {
+    "ended": true,
+    "end": "1982-08-15",
+    "begin": "1982-08-15"
+   },
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [0135dd36-dde3-325b-8394-0a9faf6aa653|Ready Teddy] (with Bruce Springsteen)\r\n* [6c028112-5e5e-38e7-be1f-70057cff7338|From Small Things (Big Things One Day Come)] (with Bruce Springsteen)\r\n* [8fe3ee6b-106f-3d53-b7dc-7f5ce350f0f7|Around and Around] (with Bruce Springsteen)\r\n* [8c806b4e-edb4-3101-bc58-2605ec309a2e|Jersey Girl] (with Bruce Springsteen)\r\n* [dd21710e-a51b-3029-ae58-cd6a3559af26|You Can Look (but You Better Not Touch)] (with Bruce Springsteen)\r\n* [450b4d94-c768-3a43-9edc-253cf300199e|Having a Party] (with Bruce Springsteen)\r\n* [da1f36f5-dcdd-4a56-8d92-4b3527fd1291|Detroit Medley] / [5740e2cf-979d-32ca-8ff3-7036e0bf4cef|Shake] / [7a4e4a26-acd7-45e4-bbc9-34875404daaa|Sweet Soul Music] (with Bruce Springsteen)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "disambiguation": "Cats on a Smooth Surface",
+   "id": "97a15a0e-1674-4629-a178-62718bd98fbd"
+  },
+  {
+   "life-span": {
+    "end": "2025-10-20",
+    "begin": "2025-10-20",
+    "ended": true
+   },
+   "type": null,
+   "name": "2025‐10‐20: The Stone Pony, Asbury Park, NJ, USA",
+   "cancelled": false,
+   "time": "",
+   "id": "97fe7c03-e647-4827-b29f-1987b0800f84",
+   "disambiguation": "ABC Good Morning America",
+   "type-id": null,
+   "setlist": ""
+  },
+  {
+   "life-span": {
+    "ended": true,
+    "begin": "1989-07-23",
+    "end": "1989-07-23"
+   },
+   "type": "Concert",
+   "cancelled": false,
+   "name": "1989‐07‐23: The Stone Pony, Asbury Park, NJ, USA",
+   "time": "",
+   "disambiguation": "Cats on a Smooth Surface",
+   "id": "991870a3-73d8-4a28-b8a7-8f22f6a3c106",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [3b3bd804-95f2-3494-9c20-4980d6c117ff|Old Time Rock & Roll] (with Bruce Springsteen)\r\n* [97a0c5bb-5410-35c0-92b2-927f7e458bec|Hound Dog] (with Bruce Springsteen)\r\n* [6c028112-5e5e-38e7-be1f-70057cff7338|From Small Things (Big Things One Day Come)] (with Bruce Springsteen)\r\n* [334afb17-cc73-3167-83cb-1387cce1e809|Under the Boardwalk] (with Bruce Springsteen)\r\n* [7050e65f-66f8-31ee-be38-61ddfb93a60a|Sweet Little Sixteen] (with Bruce Springsteen)\r\n* [e59ca323-dd32-3a0b-80a9-d42746362213|Glory Days] (with Bruce Springsteen)\r\n* [34607acd-d7b7-3294-9bc8-8cedbe6ccd15|Carol] (with Bruce Springsteen)"
+  },
+  {
+   "life-span": {
+    "end": "2007-04-29",
+    "begin": "2007-04-29",
+    "ended": true
+   },
+   "type": "Concert",
+   "name": "2007‐04‐29: The Stone Pony, Asbury Park, NJ, USA",
+   "cancelled": false,
+   "time": "",
+   "disambiguation": "private benefit/fundraising gig for the Ranney School of Tinton Falls, NJ",
+   "id": "9922574e-ffba-449a-a091-225e18b544ab",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n# with\r\n@ [358d8fde-ad5b-4df1-bcd8-193bada6edd5|Bobby Bandiera]\r\n# and\r\n@ [9df6e393-da6b-4e65-9f50-6e4df5624e63|The Bobby Bandiera Band]\r\n# plus\r\n@ [f09aa40c-b613-4ea2-a8cf-6056c2657a9a|Patti Scialfa]\r\n@ [f826b4d1-2dc3-4c4f-ba70-69b472320338|Southside Johnny]\r\n\r\n# Soundcheck\r\n* [13da1f8d-c08d-3d9b-891b-395e363c3a5b|Cover Me]\r\n* [7f44c910-49f8-35f5-bb65-4c6d790ad685|Cadillac Ranch]\r\n* [b656ff9a-9b07-347e-b318-7bfbc5ac008e|Pink Cadillac]\r\n* [6bd0c0d8-f7c6-30f0-b701-242def55f9f9|Man’s Job]\r\n* [0d640b42-dd07-30a4-8d7d-d6f18202fbfa|I’m Goin’ Down]\r\n* [64142910-6d7c-4ad1-a4b4-6dcdf4b0b521|Waitin’ on a Sunny Day]\r\n* [aa151b23-5171-3d35-a487-55fc8c66131e|Tenth Avenue Freeze-Out]\r\n* [dba2f648-cb81-3d19-b252-1bbecc62758b|Spirit in the Night]\r\n* [c908e556-a77f-422a-8cf0-a0e0f0c87d73|Talk to Me]\r\n* [e497263c-4f15-36c0-b27c-dca99482962c|The Fever]\r\n\r\n# Concert\r\n* [7f44c910-49f8-35f5-bb65-4c6d790ad685|Cadillac Ranch]\r\n* [f44d3b21-8947-34f1-b701-46ed1cc0eb15|634-5789 (Soulsville, U.S.A.)]\r\n* [13da1f8d-c08d-3d9b-891b-395e363c3a5b|Cover Me]\r\n* [dba2f648-cb81-3d19-b252-1bbecc62758b|Spirit in the Night]\r\n* [6c028112-5e5e-38e7-be1f-70057cff7338|From Small Things (Big Things One Day Come)]\r\n* [fa36af81-2bd8-3436-bf94-7df8e818d99d|Two Hearts]\r\n* [8e437cd5-9fe1-3258-a6a7-0f84386ab196|Rendezvous]\r\n* [67268cb3-7bcb-32f2-9598-131b4f5ebd93|Brilliant Disguise] (with Patti Scialfa)\r\n* [2607534c-9a80-39c1-aa76-b5b7508ad45d|Time Is on My Side] (with Patti Scialfa)\r\n* [3005488d-0d7e-3299-9a73-e2b086fbb844|Tell Him] (with Patti Scialfa)\r\n* [c454c4dc-9024-3d41-a288-637e958dd45c|Further On (Up the Road)]\r\n* [64142910-6d7c-4ad1-a4b4-6dcdf4b0b521|Waitin’ on a Sunny Day]\r\n* [9a50dd49-3e54-34aa-a6d1-138ea3869a45|Seven Nights to Rock]\r\n* [e497263c-4f15-36c0-b27c-dca99482962c|The Fever] (with Southside Johnny)\r\n* [238819bb-3897-3a6f-9385-bbddd5ea3c6f|Can I Get a Witness] / [84c3151f-6d1e-3cf8-aaef-025df5c9a3d6|Everybody Needs Somebody to Love] (with Southside Johnny)\r\n* [c908e556-a77f-422a-8cf0-a0e0f0c87d73|Talk to Me] (with Southside Johnny)\r\n* [8ecc135f-ce4e-3fd3-9e9f-7944bd4daa9b|Darlington County]\r\n* [6bd0c0d8-f7c6-30f0-b701-242def55f9f9|Man’s Job]\r\n* [b656ff9a-9b07-347e-b318-7bfbc5ac008e|Pink Cadillac]\r\n* [aa151b23-5171-3d35-a487-55fc8c66131e|Tenth Avenue Freeze-Out]\r\n* [3e91895c-2ae4-4b9b-89ca-40ad23239c92|The Boy From New York City] (with Patti Scialfa)\r\n* [f8556ea5-f89f-3c2f-922f-d5225c1a4511|Dancing in the Dark]\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout]"
+  },
+  {
+   "type": "Concert",
+   "name": "1992‐12‐27: The Stone Pony, Asbury Park, NJ, USA",
+   "cancelled": false,
+   "life-span": {
+    "end": "1992-12-27",
+    "begin": "1992-12-27",
+    "ended": true
+   },
+   "time": "",
+   "id": "9ae1059f-6545-4b8f-9d35-adb4a18d83a5",
+   "disambiguation": "Southside Johnny & The Asbury Jukes",
+   "setlist": "@ [d7bc97fb-4bd3-453b-98a1-9081f89c52f0|Southside Johnny & The Asbury Jukes]\r\n\r\n* [e497263c-4f15-36c0-b27c-dca99482962c|The Fever] (with Bruce Springsteen)\r\n* Oh Caroline\r\n* [60e7e981-831b-4c92-8745-c8c2911d1e43|All the Way Home]\r\n* [e5500466-274a-48cd-9c75-abff7ada71c5|I Don’t Want to Go Home]\r\n* [a2bd3a97-4faa-4e9e-8aac-e8d4aa007137|This Time It’s for Real]\r\n* [2f167c1f-b5ef-4923-83e6-a565abaa0b0c|It’s Been a Long Time] (with Bruce Springsteen and Jon Bon Jovi)\r\n* [450b4d94-c768-3a43-9edc-253cf300199e|Having a Party] (with Bruce Springsteen and Jon Bon Jovi)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b"
+  },
+  {
+   "life-span": {
+    "begin": "1991-09-26",
+    "end": "1991-09-26",
+    "ended": true
+   },
+   "type": "Concert",
+   "cancelled": false,
+   "name": "1991‐09‐26: The Stone Pony, Asbury Park, NJ, USA",
+   "time": "",
+   "disambiguation": "Southside Johnny & The Asbury Jukes",
+   "id": "a0dc2482-bdc3-44bc-abc0-e1934c9a5f9c",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [d7bc97fb-4bd3-453b-98a1-9081f89c52f0|Southside Johnny & The Asbury Jukes]\r\n\r\n* [fd130937-04a3-3f16-ab12-0db75bd56a61|Better Days]\r\n* Coming Back\r\n* Rescue Me\r\n* [60e7e981-831b-4c92-8745-c8c2911d1e43|All the Way Home]\r\n* [95fba578-26f7-43fe-ae8c-91dd58e8da46|I’ve Been Working Too Hard] (with Jon Bon Jovi)\r\n* All Night Long\r\n* Soul’s on Fire\r\n* [e497263c-4f15-36c0-b27c-dca99482962c|The Fever]\r\n* [e5500466-274a-48cd-9c75-abff7ada71c5|I Don’t Want to Go Home]\r\n* Shake ’em Down\r\n* [2f167c1f-b5ef-4923-83e6-a565abaa0b0c|It’s Been a Long Time] (with Bruce Springsteen)\r\n* [2f167c1f-b5ef-4923-83e6-a565abaa0b0c|It’s Been a Long Time] (with Bruce Springsteen)\r\n* [2f167c1f-b5ef-4923-83e6-a565abaa0b0c|It’s Been a Long Time] (with Bruce Springsteen)\r\n* [450b4d94-c768-3a43-9edc-253cf300199e|Having a Party] (with Bruce Springsteen)\r\n* [c908e556-a77f-422a-8cf0-a0e0f0c87d73|Talk to Me] (with Bruce Springsteen)"
+  },
+  {
+   "disambiguation": "Cats on a Smooth Surface",
+   "id": "a196efe7-d119-4784-ae7a-948c4488aa4f",
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [0135dd36-dde3-325b-8394-0a9faf6aa653|Ready Teddy] (with Bruce Springsteen)\r\n* [8fe3ee6b-106f-3d53-b7dc-7f5ce350f0f7|Around and Around] (with Bruce Springsteen)\r\n* [8c806b4e-edb4-3101-bc58-2605ec309a2e|Jersey Girl] (with Bruce Springsteen)\r\n* [4ca8aa2d-b1b0-3473-8f0b-2a388054e947|Lucille] (with Bruce Springsteen)\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout] (with Bruce Springsteen)\r\n* [5afc7b32-34cb-3cf5-839d-9ef490a27b0f|Ain’t That Loving You Baby] (with Bruce Springsteen)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "type": "Concert",
+   "name": "1983‐08‐14: The Stone Pony, Asbury Park, NJ, USA",
+   "cancelled": false,
+   "life-span": {
+    "ended": true,
+    "end": "1983-08-14",
+    "begin": "1983-08-14"
+   },
+   "time": ""
+  },
+  {
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n@ [9df6e393-da6b-4e65-9f50-6e4df5624e63|Bobby Bandiera Band]\r\n# with\r\n@ [358d8fde-ad5b-4df1-bcd8-193bada6edd5|Bobby Bandiera]\r\n@ [a5ab77f2-da3b-454c-aa5f-239f5c8ea096|Chris Anderson]\r\n@ [d33bff2e-65ee-4107-b067-20b22f8cb698|Joe Bellia]\r\n@ [3644f94c-f682-4fcc-a7fc-b64a4f9cb096|Joey Stann]\r\n@ [23c1c76d-17d7-473a-b352-630977af574d|Kevin Kavanaugh]\r\n@ [6a3394ba-6888-4dd0-93f3-06c1e35749d8|Ed Manion]\r\n@ [0e073997-d11b-43f2-84e1-1675201e9896|Steve “Muddy” Shews]\r\n\r\n@ [f09aa40c-b613-4ea2-a8cf-6056c2657a9a|Patti Scialfa] (guest)\r\n@ [f826b4d1-2dc3-4c4f-ba70-69b472320338|Southside Johnny] (guest)\r\n\r\n* [06ed8873-bc50-39e8-9ee7-2953a8a4ddb4|Wipe Out] (just the band, instrumental introduction)\r\n* [19476812-4ec2-46d2-b0e9-c26a11a0d0c6|The Wanderer] (just the band, instrumental introduction)\r\n* [f44d3b21-8947-34f1-b701-46ed1cc0eb15|634-5789 (Soulsville, U.S.A.)]\r\n* [c908e556-a77f-422a-8cf0-a0e0f0c87d73|Talk to Me] (with [f826b4d1-2dc3-4c4f-ba70-69b472320338|Southside Johnny])\r\n* [9a50dd49-3e54-34aa-a6d1-138ea3869a45|Seven Nights to Rock]\r\n* [fa36af81-2bd8-3436-bf94-7df8e818d99d|Two Hearts]\r\n* [dba2f648-cb81-3d19-b252-1bbecc62758b|Spirit in the Night]\r\n* [8e437cd5-9fe1-3258-a6a7-0f84386ab196|Rendezvous]\r\n* [4b75e209-aca7-3290-bf09-13c60ed78c12|All That Heaven Will Allow]\r\n* [3005488d-0d7e-3299-9a73-e2b086fbb844|Tell Him] (with [f09aa40c-b613-4ea2-a8cf-6056c2657a9a|Patti Scialfa])\r\n* [9109a984-655e-38cb-91a9-cc8c677f120d|Son of a Preacher Man] (with [f09aa40c-b613-4ea2-a8cf-6056c2657a9a|Patti Scialfa])\r\n* [3e91895c-2ae4-4b9b-89ca-40ad23239c92|The Boy From New York City] (with [f09aa40c-b613-4ea2-a8cf-6056c2657a9a|Patti Scialfa])\r\n* [c454c4dc-9024-3d41-a288-637e958dd45c|Further on (Up the Road)]\r\n* [64142910-6d7c-4ad1-a4b4-6dcdf4b0b521|Waitin’ on a Sunny Day]\r\n* [e497263c-4f15-36c0-b27c-dca99482962c|The Fever] (with [f826b4d1-2dc3-4c4f-ba70-69b472320338|Southside Johnny])\r\n* [e5500466-274a-48cd-9c75-abff7ada71c5|I Don’t Want to Go Home] (with [f826b4d1-2dc3-4c4f-ba70-69b472320338|Southside Johnny])\r\n* [8ecc135f-ce4e-3fd3-9e9f-7944bd4daa9b|Darlington County]\r\n* [1ca78d1b-4ffc-39cb-af8d-94a13bab0a71|Seaside Bar Song]\r\n* [4f4cf4ef-0357-37c4-9fc7-846513f5fa08|Bad Moon Rising]\r\n* [b096fd0f-0184-4d69-9c00-057104a07acf|Stand on It]\r\n* [5740e2cf-979d-32ca-8ff3-7036e0bf4cef|Shake] (with [f826b4d1-2dc3-4c4f-ba70-69b472320338|Southside Johnny])\r\n* [194391fb-0e28-3a81-bae1-9483d10f67e6|If I Should Fall Behind]\r\n* [aa151b23-5171-3d35-a487-55fc8c66131e|Tenth Avenue Freeze-Out]\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout] / [98c77c85-30de-48ad-ab83-e0c29b3da0ef|La Bamba] (with [f826b4d1-2dc3-4c4f-ba70-69b472320338|Southside Johnny])",
+   "disambiguation": "Rumson Country Day School benefit",
+   "id": "a41a51cb-d158-427e-aba3-60801103cd31",
+   "time": "",
+   "life-span": {
+    "begin": "2005-04-10",
+    "end": "2005-04-10",
+    "ended": true
+   },
+   "name": "2005‐04‐10: The Stone Pony, Asbury Park, NJ, USA",
+   "type": "Concert",
+   "cancelled": false
+  },
+  {
+   "cancelled": false,
+   "type": "Concert",
+   "name": "2002‐04‐13: The Stone Pony, Asbury Park, NJ, USA",
+   "life-span": {
+    "end": "2002-04-13",
+    "begin": "2002-04-13",
+    "ended": true
+   },
+   "time": "",
+   "disambiguation": "",
+   "id": "a7f59980-73bf-4517-a483-67447a1d1d44",
+   "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n# with\r\n@ [358d8fde-ad5b-4df1-bcd8-193bada6edd5|Bobby Bandiera]\r\n@ [9df6e393-da6b-4e65-9f50-6e4df5624e63|The Bobby Bandiera Band]\r\n@ [c716c897-8db9-4167-8787-940b14f6e1ca|Bob Berger]\r\n@ [d33bff2e-65ee-4107-b067-20b22f8cb698|Joe Bellia]\r\n@ [3644f94c-f682-4fcc-a7fc-b64a4f9cb096|Joey Stann]\r\n@ [59d77428-bf32-4c9f-bc4c-7c03ec882c59|Lisa Lowell]\r\n@ [078e680d-6d6c-46ce-8134-0bddeb9e5e35|Mike Mancini]\r\n@ [f09aa40c-b613-4ea2-a8cf-6056c2657a9a|Patti Scialfa]\r\n@ [065af1a2-2fa9-4864-852e-08c00c9c67d8|Soozie Tyrell]\r\n@ [f826b4d1-2dc3-4c4f-ba70-69b472320338|Southside Johnny]\r\n@ [bc7ceac9-a524-42bd-996a-380d2f1eb567|Steve Shews]\r\n\r\n# Soundcheck\r\n* [e9c8011a-fb29-359a-b7a5-80d30cabe378|It’s Not Unusual]\r\n* [3818fa67-c508-3499-9d18-0fd9a2b443ce|Sugar, Sugar]\r\n\r\n# Concert\r\n* [9a50dd49-3e54-34aa-a6d1-138ea3869a45|Seven Nights to Rock]\r\n* [034c723f-a482-38d8-863a-39726e7823d0|It Takes Two]\r\n* [da1f36f5-dcdd-4a56-8d92-4b3527fd1291|Detroit Medley]\r\n* [3005488d-0d7e-3299-9a73-e2b086fbb844|Tell Him] (Patti Scialfa)\r\n* [c1b9bc08-ba81-382f-8ce0-83995035368f|Green River]\r\n* [8423eef7-88aa-39b0-9c4f-11a2a113fdc6|Tell Me Why]\r\n* [3e91895c-2ae4-4b9b-89ca-40ad23239c92|The Boy From New York City]\r\n* [3cec167a-2b7d-4843-81e6-8b3eea13840f|Ramblin’ Gamblin’ Man]\r\n* [b64b28c2-69ad-38c4-8446-a4a9c7ae2186|Domino]\r\n* [69a1d8eb-395a-37b4-b018-aca653055ec0|Soul Man]\r\n* [7215f333-bd0a-3e4d-b6a2-977846b1af35|Wonderful World]\r\n* [77d8a7cf-750b-4ca1-b2c3-43b30d0fc4fd|Twistin’ the Night Away]\r\n* [b01fca31-4bda-3783-9f67-1d3feb84acb3|Hey Tonight]\r\n* [e39be679-5a1e-3ddb-9f23-c469783a54ea|You’ve Really Got a Hold on Me]\r\n* [06a76d9b-86a1-483a-ac3d-f30910d09a2c|Lucky Girl] (Patti Scialfa)\r\n* [19be8846-a857-3f42-a9c6-e4984d4ef474|Proud Mary]\r\n* [7a369a15-bf19-49ab-ac6f-7d761f81b0c7|Get Out of Denver]\r\n* [c3fe1dc6-21aa-3d8d-9cde-df8524fbc83c|Tutti Frutti] (with Southside Johnny)\r\n* [8ecc135f-ce4e-3fd3-9e9f-7944bd4daa9b|Darlington County] (with Southside Johnny)\r\n* [e59ca323-dd32-3a0b-80a9-d42746362213|Glory Days]\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout]\r\n* [cc8d858a-38ef-35b0-b83c-a5d26f04207b|Thunder Road]",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b"
+  },
+  {
+   "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n# with\r\n@ [9df6e393-da6b-4e65-9f50-6e4df5624e63|The Bobby Bandiera Band]\r\n# and\r\n@ [11d2fcfe-669d-4596-8921-e07dbdae311f|Roy Bittan]\r\n@ [2566ca73-1dfd-49e7-ab20-dfa5697b360e|Max Weinberg]\r\n@ [9efce9b4-9edd-4646-8cbc-6a91e267bfba|Screamin’ Steve Barlotta]\r\n\r\n* [f44d3b21-8947-34f1-b701-46ed1cc0eb15|634-5789 (Soulsville, U.S.A.)]\r\n* [90963641-d3b1-3d89-aec1-c913c6c03fc4|Working on the Highway]\r\n* [98d2b0ee-4d89-428c-af7d-9b6d9dd551c9|My Lucky Day]\r\n* [b1528b3f-0c0e-3977-ba98-5cb5b38108db|Growin’ Up]\r\n* [dba2f648-cb81-3d19-b252-1bbecc62758b|Spirit in the Night]\r\n* [8a79ad2b-819c-47b3-a02d-85aee7d3c1c0|Working on a Dream]\r\n* [9a50dd49-3e54-34aa-a6d1-138ea3869a45|Seven Nights to Rock]\r\n* [79325ac0-f02d-3491-837e-925f57d052dc|Savin’ Up] (with J.T. Bowen)\r\n* [f57738cd-9272-4267-a44b-e473d734042f|A Woman’s Got the Power] (with J.T. Bowen)\r\n* [8ecc135f-ce4e-3fd3-9e9f-7944bd4daa9b|Darlington County]\r\n* [2e9dd9af-98a2-3a19-a778-58981f2824e6|Because the Night]\r\n* [64142910-6d7c-4ad1-a4b4-6dcdf4b0b521|Waitin’ on a Sunny Day]\r\n* [1f573511-eb4b-3106-8fb2-f15de52e4868|4th of July, Asbury Park (Sandy)]\r\n* [b656ff9a-9b07-347e-b318-7bfbc5ac008e|Pink Cadillac]\r\n* [c908e556-a77f-422a-8cf0-a0e0f0c87d73|Talk to Me]\r\n* [aa151b23-5171-3d35-a487-55fc8c66131e|Tenth Avenue Freeze-Out]\r\n* [d9d1e4d7-2181-3565-89db-377d6b031af7|In the Midnight Hour] (with J.T. Bowen)\r\n* [69a1d8eb-395a-37b4-b018-aca653055ec0|Soul Man] (with J.T. Bowen)\r\n* [f8556ea5-f89f-3c2f-922f-d5225c1a4511|Dancing in the Dark]\r\n* [e59ca323-dd32-3a0b-80a9-d42746362213|Glory Days]\r\n* [9893a23c-f282-3b07-a2db-b4f2f3b9f4b2|Born to Run]\r\n* [66969327-8735-37eb-aaa1-a4b638d446b0|Rosalita (Come Out Tonight)]\r\n* [450b4d94-c768-3a43-9edc-253cf300199e|Having a Party] (with J.T. Bowen)\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout]\r\n* [cc8d858a-38ef-35b0-b83c-a5d26f04207b|Thunder Road]",
+   "type-id": null,
+   "disambiguation": "Boston College benefit",
+   "id": "a8bb2a77-4174-460b-bbd9-dbc4a9217568",
+   "time": "",
+   "type": null,
+   "name": "2011‐10‐22: The Stone Pony, Asbury Park, NJ, USA",
+   "cancelled": false,
+   "life-span": {
+    "ended": true,
+    "begin": "2011-10-22",
+    "end": "2011-10-22"
+   }
+  },
+  {
+   "life-span": {
+    "begin": "2000-11-03",
+    "end": "2000-11-03",
+    "ended": true
+   },
+   "type": "Concert",
+   "name": "2000‐11‐03: The Stone Pony, Asbury Park, NJ, USA",
+   "cancelled": false,
+   "time": "",
+   "id": "ac6db257-1e3a-40df-b675-13f1bb92fcd2",
+   "disambiguation": "first annual Light of Day benefit",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [60890a33-fc2b-4d06-b8a0-a4599437144e|Joe Grushecky & The Houserockers]\r\n* [017bcda3-4391-4179-a9fb-e6d4b82f75e7|Labor of Love]\r\n* [0c9b4735-4e43-30db-b061-f4f4de6d70c3|Brand New Cadillac]\r\n\r\n\r\n@ [60890a33-fc2b-4d06-b8a0-a4599437144e|Joe Grushecky & The Houserockers]\r\n# with\r\n@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n\r\n* [ef2bc544-4701-42d7-9a4e-218b7fd4f462|Never Be Enough Time]\r\n* [67d3c66a-e5ed-4705-b4fa-545bf8b65ae8|Homestead]\r\n* [f3cbe2e2-7375-4c14-a69a-cdbd5dd30988|Pumping Iron]\r\n* [9e21f814-f5a2-350d-91ce-a23ce921f5d5|Murder Incorporated]\r\n* [3d04d7cd-96e6-4617-b235-09870e5efc51|Talking to the King]\r\n* [209fd9b7-e830-3127-b5c9-8bc4a5bcb11f|Down the Road Apiece]\r\n* [40404ff5-ad09-4ff1-9762-a077d051cdb1|Diddy Wah Diddy]\r\n* [e8b7d248-94dc-4a79-bed3-3d7ccc13165b|Everything’s Going to Work Out Right]\r\n* [705565fe-c0c7-472f-a98f-54b02836e873|Keep a Knockin’]\r\n* [9915e1a9-13ff-3ea0-823d-56fe45f7535d|Ramrod]\r\n* [d662d712-f9f8-4118-8bb2-a821395dbf96|Light of Day]\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout] / [98c77c85-30de-48ad-ab83-e0c29b3da0ef|La Bamba] (with all performers, Patti Scialfa, Lee Ann Grushecky, and Bob Benjamin)\r\n* [e5500466-274a-48cd-9c75-abff7ada71c5|I Don’t Want to Go Home] (with all performers, Patti Scialfa, Lee Ann Grushecky, and Bob Benjamin)"
+  },
+  {
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [0135dd36-dde3-325b-8394-0a9faf6aa653|Ready Teddy] (with Bruce Springsteen)\r\n* [6c028112-5e5e-38e7-be1f-70057cff7338|From Small Things (Big Things One Day Come)] (with Bruce Springsteen)\r\n* [ea5edc10-c74a-4fa5-add4-96d120efba8e|Come On, Let’s Go] (with Bruce Springsteen)\r\n* [4ca8aa2d-b1b0-3473-8f0b-2a388054e947|Lucille] (with Bruce Springsteen)\r\n* [9cb5a89d-cfbf-4b8a-8154-7c90f230e00c|Come on Over to My Place] (with Bruce Springsteen)\r\n* [8fe3ee6b-106f-3d53-b7dc-7f5ce350f0f7|Around and Around] (with Bruce Springsteen)\r\n* [450b4d94-c768-3a43-9edc-253cf300199e|Having a Party] (with Bruce Springsteen)\r\n* [8c806b4e-edb4-3101-bc58-2605ec309a2e|Jersey Girl] (with Bruce Springsteen)\r\n* [24d776f1-b093-37ea-98df-5d4c2a57e5d1|Wooly Bully] (with Bruce Springsteen)\r\n* [d09c6013-caa7-357a-946a-bae2c124e942|Louie Louie] (with Bruce Springsteen)\r\n* [cd2abace-ec92-3a74-8cc0-4131a33d1fcf|Hi-Heel Sneakers] (with Bruce Springsteen)\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout] (with Bruce Springsteen)",
+   "id": "afca36c7-b12d-4b2d-b8c5-bc764796e3f4",
+   "disambiguation": "Cats on a Smooth Surface",
+   "time": "",
+   "life-span": {
+    "ended": true,
+    "end": "1982-09-19",
+    "begin": "1982-09-19"
+   },
+   "type": "Concert",
+   "name": "1982‐09‐19: The Stone Pony, Asbury Park, NJ, USA",
+   "cancelled": false
+  },
+  {
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [9b29b47f-5004-4863-92c0-058b621dcea8|Little Steven & The Disciples of Soul]\r\n# with\r\n@ [de53495e-ad5a-4c30-82ab-05e7e3ec7b4d|Steven Van Zandt]\r\n@ [b0ab3979-4165-4e3e-b125-2d77f14080bd|Anthony Almonte]\r\n@ [25796215-9ec7-4d7b-ab48-8cd39adc08b2|Ravi Best]\r\n@ [432fcd84-7594-468e-92ec-ea080adb477f|Andy Burton]\r\n@ [bac82cac-a752-4a4e-9ad6-fe3395e924f5|Jack Daley]\r\n@ [0b7d3e2e-aa6a-4fa9-a378-c87ae6bf146c|Sara Devine]\r\n@ [7a606d62-de1f-412f-9d5b-57ab4c17b5bc|Stan Harrison]\r\n@ [078e680d-6d6c-46ce-8134-0bddeb9e5e35|Mike Mancini]\r\n@ [6a3394ba-6888-4dd0-93f3-06c1e35749d8|Ed Manion]\r\n@ [733dd37c-eaff-4fe5-9055-95b2d76b2bd0|Audrey Martells]\r\n@ [75c75041-11d8-4b9d-b724-e64f14e57489|John Martin]\r\n@ [286b737a-71b1-4499-9c1a-9e86a47c9647|Rich Mercurio]\r\n@ [ea772005-b24c-4368-be0f-3b44e8fa8f36|Marc Ribler]\r\n@ [535f0c88-70ac-4486-8aea-6e2fbb34b16c|Ron Tooley]\r\n@ [7051f147-0f98-4679-a929-0ca365de9793|Jessie Wagner]\r\n\r\n@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen] (guest)\r\n\r\n* [7a4e4a26-acd7-45e4-bbc9-34875404daaa|Sweet Soul Music]\r\n* [1c4263e6-29ad-447f-b4d3-1e7b2f5c882e|Bitter Fruit]\r\n* [976ec138-006b-4737-8a48-2964930213a4|Soulfire]\r\n* [60031a2f-a7ed-4b15-8b72-ed6dc76a8476|I Am a Patriot]\r\n* [9f264762-54c2-3cf4-8b09-d90a5d394fa2|Can You Feel It]\r\n* [e5500466-274a-48cd-9c75-abff7ada71c5|I Don’t Want to Go Home] (with [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]) (paused due to fire alarm and continued after)\r\n* [450b4d94-c768-3a43-9edc-253cf300199e|Having a Party]\r\n* [E5500466-274a-48cd-9c75-Abff7ada71c5|I Don’t Want to Go Home] (with [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]) (resumed after fire alarm and power returns))\r\n* [Aa151b23-5171-3d35-A487-55fc8c66131e|Tenth Avenue Freeze‐Out] (with [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen])\r\n* [C76301db-6cc7-33e1-8b53-09e5ef25fe55|Merry Christmas Baby] (with [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen])\r\n* [B3e49473-899d-3f08-9f06-2afc70f85e2e|Santa Claus Is Comin’ to Town] (with [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen])",
+   "disambiguation": "Hungerthon Benefit",
+   "id": "b0466931-607d-4033-aff3-022c3122ea2d",
+   "time": "18:00",
+   "life-span": {
+    "ended": true,
+    "end": "2025-12-14",
+    "begin": "2025-12-14"
+   },
+   "name": "2025‐12‐14: The Stone Pony, Asbury Park, NJ, USA",
+   "type": "Concert",
+   "cancelled": false
+  },
+  {
+   "life-span": {
+    "ended": true,
+    "begin": "1977-09-04",
+    "end": "1977-09-04"
+   },
+   "type": "Concert",
+   "cancelled": false,
+   "name": "1977‐09‐04: The Stone Pony, Asbury Park, NJ, USA",
+   "time": "",
+   "disambiguation": "The Shots",
+   "id": "b2be92f9-73db-4d25-a032-a48f08771dd4",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [4156f8fb-561a-4790-ab15-6c635418fc3a|The Shots]\r\n# with\r\n@ [c3c7b7fc-b8cd-4bb2-bcfc-48e15cc0c8e9|Billy Hector]\r\n\r\n* [f8327730-4000-3530-a1c5-072467f1508b|Funky Broadway] (with Bruce Springsteen)\r\n* [22890ccc-e4b0-4c7f-879c-cd89a89b5b92|Farther Up the Road] (with Bruce Springsteen)"
+  },
+  {
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [19be8846-a857-3f42-a9c6-e4984d4ef474|Proud Mary] (with Bruce Springsteen)\r\n* [75688ca0-8b04-341b-9f84-d59d63b16cf7|Dirty Water] (with Bruce Springsteen)\r\n* [67d273f2-be0f-3183-933f-77b2743be3f9|I’m Bad, I’m Nationwide] (with Bruce Springsteen)\r\n* [4ca8aa2d-b1b0-3473-8f0b-2a388054e947|Lucille] (with Bruce Springsteen)",
+   "id": "b3803225-b0fb-40d9-9403-437134045464",
+   "disambiguation": "Cats on a Smooth Surface",
+   "time": "",
+   "life-span": {
+    "ended": true,
+    "begin": "1984-04-08",
+    "end": "1984-04-08"
+   },
+   "type": "Concert",
+   "cancelled": false,
+   "name": "1984‐04‐08: The Stone Pony, Asbury Park, NJ, USA"
+  },
+  {
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [4ca8aa2d-b1b0-3473-8f0b-2a388054e947|Lucille] (with Bruce Springsteen)\r\n* [34607acd-d7b7-3294-9bc8-8cedbe6ccd15|Carol] (with Bruce Springsteen)",
+   "id": "b70b436c-9e58-4d3a-88e7-7f10faca5d97",
+   "disambiguation": "Cats on a Smooth Surface",
+   "time": "",
+   "life-span": {
+    "begin": "1984-01-08",
+    "end": "1984-01-08",
+    "ended": true
+   },
+   "name": "1984‐01‐08: The Stone Pony, Asbury Park, NJ, USA",
+   "type": "Concert",
+   "cancelled": false
+  },
+  {
+   "setlist": "@ [db9023d4-d836-4983-befb-ebed46de8159|John Eddie and The Front Street Runners]\r\n\r\n* [273bcf19-9c43-3e6b-91df-020680ace117|Travelin’ Band] (with Bruce Springsteen)\r\n* [19be8846-a857-3f42-a9c6-e4984d4ef474|Proud Mary] (with Bruce Springsteen)\r\n* [67d273f2-be0f-3183-933f-77b2743be3f9|I’m Bad, I’m Nationwide] (with Bruce Springsteen)\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout] (with Bruce Springsteen)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "disambiguation": "John Eddie and The Front Street Runners",
+   "id": "b9025139-6ed4-4f7d-9db1-3108743b8851",
+   "time": "",
+   "type": "Concert",
+   "cancelled": false,
+   "name": "1984‐09‐02: The Stone Pony, Asbury Park, NJ, USA",
+   "life-span": {
+    "ended": true,
+    "end": "1984-09-02",
+    "begin": "1984-09-02"
+   }
+  },
+  {
+   "time": "",
+   "life-span": {
+    "ended": true,
+    "end": "1987-08-22",
+    "begin": "1987-08-22"
+   },
+   "cancelled": false,
+   "type": "Concert",
+   "name": "1987‐08‐22: The Stone Pony, Asbury Park, NJ, USA",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [392baa89-ea47-4de6-8dc0-fdac3ec85509|Levon Helm]\r\n# and his\r\n@ All Stars\r\n\r\n* [9c11abaa-2f64-386b-a702-2c263dc64173|Up on Cripple Creek] (with Bruce Springsteen)\r\n* [4ca8aa2d-b1b0-3473-8f0b-2a388054e947|Lucille] (with Bruce Springsteen)",
+   "disambiguation": "Levon Helm",
+   "id": "b92f710a-eaa3-4821-8077-d716fb367dcc"
+  },
+  {
+   "time": "",
+   "life-span": {
+    "ended": true,
+    "end": "1989-06-09",
+    "begin": "1989-06-09"
+   },
+   "cancelled": false,
+   "type": "Concert",
+   "name": "1989‐06‐09: The Stone Pony, Asbury Park, NJ, USA",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [a1ef6bc8-2644-4b6d-aa21-27b630acf751|Nils Lofgren]\r\n\r\n* [6394bda2-57a6-3578-badc-f3043d4f0ba8|Not Fade Away] (with Bruce Springsteen and Max Weinberg)\r\n* [d9d1e4d7-2181-3565-89db-377d6b031af7|In the Midnight Hour] (with Bruce Springsteen and Max Weinberg)\r\n* [3dbb3809-ad48-41b4-a9ca-77f10c162c8d|Lean on Me] (with Bruce Springsteen and Max Weinberg)\r\n* [e59ca323-dd32-3a0b-80a9-d42746362213|Glory Days] (with Bruce Springsteen and Max Weinberg)",
+   "id": "bc4304a6-0d2a-4761-8f8e-a58352a674a4",
+   "disambiguation": "Nils Lofgren"
+  },
+  {
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [e077aeef-d6b9-40d1-9d8d-daada9a2c65b|Lord Gunner Group]\r\n\r\n* [d9d1e4d7-2181-3565-89db-377d6b031af7|In the Midnight Hour] (with Bruce Springsteen)\r\n* [3089a18c-eb9e-479b-9e50-609d58a899b8|Jole Blon] (with Bruce Springsteen)",
+   "disambiguation": "Lord Gunner Group",
+   "id": "be295446-c730-49d2-b130-8cb1f5ca84a2",
+   "time": "",
+   "life-span": {
+    "end": "1982-01-05",
+    "begin": "1982-01-05",
+    "ended": true
+   },
+   "name": "1982‐01‐05: The Stone Pony, Asbury Park, NJ, USA",
+   "type": "Concert",
+   "cancelled": false
+  },
+  {
+   "type": "Concert",
+   "cancelled": false,
+   "name": "1983‐11‐06: The Stone Pony, Asbury Park, NJ, USA",
+   "life-span": {
+    "end": "1983-11-06",
+    "begin": "1983-11-06",
+    "ended": true
+   },
+   "time": "",
+   "disambiguation": "Cats on a Smooth Surface",
+   "id": "c0636be3-6ac8-4498-aac6-71af212f4478",
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [9f9307a7-890c-3caf-bc64-c5fd56d93a20|It’s All Over Now] (with Bruce Springsteen)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b"
+  },
+  {
+   "id": "c10ba4c1-4f78-48d9-b4f5-e5eb282432b9",
+   "disambiguation": "Cats on a Smooth Surface",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [6c028112-5e5e-38e7-be1f-70057cff7338|From Small Things (Big Things One Day Come)] (with Bruce Springsteen)\r\n* [8fe3ee6b-106f-3d53-b7dc-7f5ce350f0f7|Around and Around] (with Bruce Springsteen)\r\n* [4ca8aa2d-b1b0-3473-8f0b-2a388054e947|Lucille] (with Bruce Springsteen)\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout] (with Bruce Springsteen)",
+   "life-span": {
+    "ended": true,
+    "begin": "1983-04-24",
+    "end": "1983-04-24"
+   },
+   "name": "1983‐04‐24: The Stone Pony, Asbury Park, NJ, USA",
+   "type": "Concert",
+   "cancelled": false,
+   "time": ""
+  },
+  {
+   "life-span": {
+    "end": "1983-06-18",
+    "begin": "1983-06-18",
+    "ended": true
+   },
+   "name": "1983‐06‐18: The Stone Pony, Asbury Park, NJ, USA",
+   "type": "Concert",
+   "cancelled": false,
+   "time": "",
+   "disambiguation": "The Diamonds",
+   "id": "c6db85c2-28fd-4633-895c-eacf5fd7b2f0",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [6e394e49-4e93-40b9-8b79-7f84dcbd0e25|The Diamonds]\r\n\r\n* [8fe3ee6b-106f-3d53-b7dc-7f5ce350f0f7|Around and Around] (with Bruce Springsteen)\r\n* [4ca8aa2d-b1b0-3473-8f0b-2a388054e947|Lucille] (with Bruce Springsteen)\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout] (with Bruce Springsteen)"
+  },
+  {
+   "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n# &\r\n@ [d6652e7b-33fe-49ef-8336-4c863b4f996f|The E Street Band]\r\n\r\n# Partial setlist\r\n* [9ab3c6a7-e71a-3445-a74e-c52b2f3be283|Jingle Bell Rock]\r\n* [7f44c910-49f8-35f5-bb65-4c6d790ad685|Cadillac Ranch]\r\n* [e8f22db4-6ee7-3c9c-a3ac-84d0f9215a1b|My Girl]",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "disambiguation": "private family and “Rising” concert tour crew party",
+   "id": "c97d0a31-d01e-414f-83b6-49389dd8f06c",
+   "time": "",
+   "name": "2002‐12‐22: The Stone Pony, Asbury Park, NJ, USA",
+   "type": "Concert",
+   "cancelled": false,
+   "life-span": {
+    "end": "2002-12-22",
+    "begin": "2002-12-22",
+    "ended": true
+   }
+  },
+  {
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n# with\r\n@ [9df6e393-da6b-4e65-9f50-6e4df5624e63|The Bobby Bandiera Band]\r\n\r\n* [f44d3b21-8947-34f1-b701-46ed1cc0eb15|634-5789 (Soulsville, U.S.A.)]\r\n* [7f44c910-49f8-35f5-bb65-4c6d790ad685|Cadillac Ranch]\r\n* [13da1f8d-c08d-3d9b-891b-395e363c3a5b|Cover Me]\r\n* [fa36af81-2bd8-3436-bf94-7df8e818d99d|Two Hearts]\r\n* [dba2f648-cb81-3d19-b252-1bbecc62758b|Spirit in the Night]\r\n* [034c723f-a482-38d8-863a-39726e7823d0|It Takes Two] (with Patti Scialfa)\r\n* [8e437cd5-9fe1-3258-a6a7-0f84386ab196|Rendezvous]\r\n* [9a50dd49-3e54-34aa-a6d1-138ea3869a45|Seven Nights to Rock]\r\n* [3818fa67-c508-3499-9d18-0fd9a2b443ce|Sugar, Sugar]\r\n* [3005488d-0d7e-3299-9a73-e2b086fbb844|Tell Him] (with Patti Scialfa)\r\n* [2607534c-9a80-39c1-aa76-b5b7508ad45d|Time Is on My Side] (with Patti Scialfa)\r\n* [67268cb3-7bcb-32f2-9598-131b4f5ebd93|Brilliant Disguise]\r\n* [c454c4dc-9024-3d41-a288-637e958dd45c|Further on (Up the Road)]\r\n* [e497263c-4f15-36c0-b27c-dca99482962c|The Fever] (with Southside Johnny)\r\n* [c908e556-a77f-422a-8cf0-a0e0f0c87d73|Talk to Me] (with Southside Johnny)\r\n* [f8556ea5-f89f-3c2f-922f-d5225c1a4511|Dancing in the Dark]\r\n* [64142910-6d7c-4ad1-a4b4-6dcdf4b0b521|Waitin’ on a Sunny Day]\r\n* [3e91895c-2ae4-4b9b-89ca-40ad23239c92|The Boy From New York City] (with Patti Scialfa)\r\n* [8ecc135f-ce4e-3fd3-9e9f-7944bd4daa9b|Darlington County]\r\n* [6c028112-5e5e-38e7-be1f-70057cff7338|From Small Things (Big Things One Day Come)]\r\n* [6bd0c0d8-f7c6-30f0-b701-242def55f9f9|Man’s Job]\r\n* [b656ff9a-9b07-347e-b318-7bfbc5ac008e|Pink Cadillac]\r\n* [450b4d94-c768-3a43-9edc-253cf300199e|Having a Party] (with Southside Johnny)\r\n* [da1f36f5-dcdd-4a56-8d92-4b3527fd1291|Detroit Medley]\r\n* [aa151b23-5171-3d35-a487-55fc8c66131e|Tenth Avenue Freeze-Out]\r\n* [e59ca323-dd32-3a0b-80a9-d42746362213|Glory Days]\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout]\r\n* [cc8d858a-38ef-35b0-b83c-a5d26f04207b|Thunder Road]",
+   "id": "cec60893-a8c3-41de-8889-42f45048907a",
+   "disambiguation": "Boston College benefit",
+   "time": "",
+   "life-span": {
+    "ended": true,
+    "end": "2009-10-17",
+    "begin": "2009-10-17"
+   },
+   "type": "Concert",
+   "name": "2009‐10‐17: The Stone Pony, Asbury Park, NJ, USA",
+   "cancelled": false
+  },
+  {
+   "time": "",
+   "life-span": {
+    "end": "2026-08-28",
+    "begin": "2026-08-28",
+    "ended": true
+   },
+   "type": "Concert",
+   "cancelled": false,
+   "name": "2026‐08‐28: The Stone Pony, Summer Stage, Asbury Park, NJ, USA",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "",
+   "id": "d42e8d15-866c-4525-a141-b7700af7d9a5",
+   "disambiguation": "Bleachers"
+  },
+  {
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [5923fa49-79c3-4251-84fe-d54a1ed9db86|Gloria] (with Bruce Springsteen)\r\n* [4c4b77c7-21a1-32a9-a29b-241ff99cb397|Boom Boom] (with Bruce Springsteen)\r\n* [050b2993-7704-33a1-83ea-00f4bac382e4|We Gotta Get Out of This Place] (with Bruce Springsteen)\r\n* [d12cf1ae-7feb-3f04-88e9-c4d7df3ff754|The Last Time] (with Bruce Springsteen)\r\n* [5b31460f-26a9-3e90-b0a9-6adcf8d1fba9|Rockin’ All Over the World] (with Bruce Springsteen)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "disambiguation": "Cats on a Smooth Surface",
+   "id": "d637ded3-2366-4f13-97d0-9ce791d6ce29",
+   "time": "",
+   "cancelled": false,
+   "type": "Concert",
+   "name": "1984‐06‐10: The Stone Pony, Asbury Park, NJ, USA",
+   "life-span": {
+    "end": "1984-06-10",
+    "begin": "1984-06-10",
+    "ended": true
+   }
+  },
+  {
+   "time": "",
+   "type": "Concert",
+   "name": "1994‐07‐16: The Stone Pony Tent, Asbury Park, NJ, USA",
+   "cancelled": false,
+   "life-span": {
+    "end": "1994-07-16",
+    "begin": "1994-07-16",
+    "ended": true
+   },
+   "setlist": "@ [d7bc97fb-4bd3-453b-98a1-9081f89c52f0|Southside Johnny & The Asbury Jukes]\r\n\r\n* [8fd4fdf2-247a-449b-9d26-4de9d74099db|I Played the Fool] (with Bruce Springsteen, Jon Bon Jovi, Max Weinberg and Patti Scialfa)\r\n* [f8327730-4000-3530-a1c5-072467f1508b|Funky Broadway] (with Bruce Springsteen, Jon Bon Jovi, Max Weinberg and Patti Scialfa)\r\n* [3a96010b-1118-33d2-8644-4aca81a092dd|Land of 1000 Dances] (with Bruce Springsteen, Jon Bon Jovi, Max Weinberg and Patti Scialfa)\r\n* [2f167c1f-b5ef-4923-83e6-a565abaa0b0c|It’s Been a Long Time] (with Bruce Springsteen, Jon Bon Jovi, Max Weinberg and Patti Scialfa)\r\n* [8c806b4e-edb4-3101-bc58-2605ec309a2e|Jersey Girl] (with Bruce Springsteen, Jon Bon Jovi, Max Weinberg and Patti Scialfa)\r\n* [95fba578-26f7-43fe-ae8c-91dd58e8da46|I’ve Been Working Too Hard] (with Bruce Springsteen, Jon Bon Jovi, Max Weinberg and Patti Scialfa)\r\n* [450b4d94-c768-3a43-9edc-253cf300199e|Having a Party] (with Bruce Springsteen, Jon Bon Jovi, Max Weinberg and Patti Scialfa)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "disambiguation": "Southside Johnny & The Asbury Jukes",
+   "id": "db0df581-05d4-41fb-8127-3232ee942596"
+  },
+  {
+   "time": "",
+   "cancelled": false,
+   "type": "Concert",
+   "name": "1987‐11‐20: The Stone Pony, Asbury Park, NJ, USA",
+   "life-span": {
+    "ended": true,
+    "begin": "1987-11-20",
+    "end": "1987-11-20"
+   },
+   "setlist": "@ [358d8fde-ad5b-4df1-bcd8-193bada6edd5|Bobby Bandiera]\r\n\r\n* [fe769284-3e8e-4038-bc41-a0a67bbc5d18|Little Latin Lupe Lu] (with Bruce Springsteen)\r\n* [54d6831c-4447-3087-a71e-3f92aa1fad27|Stand by Me] (with Bruce Springsteen)\r\n* [34607acd-d7b7-3294-9bc8-8cedbe6ccd15|Carol] (with Bruce Springsteen)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "id": "db777a0c-191c-4057-8572-5f481ccba023",
+   "disambiguation": "Bobby Bandiera"
+  },
+  {
+   "type": "Concert",
+   "cancelled": false,
+   "name": "1984‐08‐22: The Stone Pony, Asbury Park, NJ, USA",
+   "life-span": {
+    "end": "1984-08-22",
+    "begin": "1984-08-22",
+    "ended": true
+   },
+   "time": "",
+   "id": "de99c407-ec30-494d-9c08-b49c149cd029",
+   "disambiguation": "La Bamba and the Hubcaps",
+   "setlist": "@ [dcaf7d3d-fc8d-43b4-b54e-4af75bdbc27a|La Bamba and the Hubcaps]\r\n\r\n* [273bcf19-9c43-3e6b-91df-020680ace117|Travelin’ Band] (with Bruce Springsteen)\r\n* [67d273f2-be0f-3183-933f-77b2743be3f9|I’m Bad, I’m Nationwide] (with Bruce Springsteen)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b"
+  },
+  {
+   "disambiguation": "warm‐up gig",
+   "id": "e5caeaac-c339-4f0a-b321-41d93df9e5fe",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n# &\r\n@ [d6652e7b-33fe-49ef-8336-4c863b4f996f|The E Street Band]\r\n\r\n* [cc8d858a-38ef-35b0-b83c-a5d26f04207b|Thunder Road]\r\n* [35fdc4a9-fd0a-3a68-a539-5b377464a3ac|Out in the Street]\r\n* [872604b3-15d2-44fd-8631-0903b0ddb858|Prove It All Night]\r\n* [e59ca323-dd32-3a0b-80a9-d42746362213|Glory Days]\r\n* [fe0f14e5-de68-3aa6-bf48-80c4cbe2a1f7|The River]\r\n* [8ecc135f-ce4e-3fd3-9e9f-7944bd4daa9b|Darlington County]\r\n* [f8556ea5-f89f-3c2f-922f-d5225c1a4511|Dancing in the Dark]\r\n* [13411c83-ddd8-31ca-b968-79e4cf6db8fb|The Promised Land]\r\n* [4b3b9bf5-380b-3c0f-8a7e-4f654bf84290|My Hometown]\r\n* [55d593ce-52cc-30ec-9494-eca1ab879f5c|Born in the U.S.A.]\r\n* [e8a5fe99-0aff-3e7b-840c-7ab96cb702be|Badlands]\r\n* [9893a23c-f282-3b07-a2db-b4f2f3b9f4b2|Born to Run]",
+   "life-span": {
+    "ended": true,
+    "end": "1984-06-08",
+    "begin": "1984-06-08"
+   },
+   "cancelled": false,
+   "type": "Concert",
+   "name": "1984‐06‐08: The Stone Pony, Asbury Park, NJ, USA",
+   "time": ""
+  },
+  {
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n# &\r\n@ [d6652e7b-33fe-49ef-8336-4c863b4f996f|The E Street Band]\r\n# with\r\n@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [d662d712-f9f8-4118-8bb2-a821395dbf96|Light of Day]\r\n* [67d273f2-be0f-3183-933f-77b2743be3f9|I’m Bad, I’m Nationwide]\r\n* [ea5edc10-c74a-4fa5-add4-96d120efba8e|Come On, Let’s Go]\r\n* [5923fa49-79c3-4251-84fe-d54a1ed9db86|Gloria]\r\n* [464c648e-223a-3180-b207-9f42f57288bb|I’m on Fire]\r\n* [04db3cb9-af4e-35a9-8709-54d63ef23f50|Ruby Baby]\r\n* [7050e65f-66f8-31ee-be38-61ddfb93a60a|Sweet Little Sixteen]\r\n* [19be8846-a857-3f42-a9c6-e4984d4ef474|Proud Mary]\r\n* [a50f2637-33a5-3e1f-a375-101460bea6a5|Money (That’s What I Want)]\r\n* [8c806b4e-edb4-3101-bc58-2605ec309a2e|Jersey Girl]\r\n* [8fe3ee6b-106f-3d53-b7dc-7f5ce350f0f7|Around and Around]\r\n* [e59ca323-dd32-3a0b-80a9-d42746362213|Glory Days]\r\n* [450b4d94-c768-3a43-9edc-253cf300199e|Having a Party]\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout]",
+   "disambiguation": "",
+   "id": "e62feb7c-9a9a-4141-9bb3-1a72053cb8b3",
+   "time": "",
+   "life-span": {
+    "end": "1987-08-02",
+    "begin": "1987-08-02",
+    "ended": true
+   },
+   "name": "1987‐08‐02: The Stone Pony, Asbury Park, NJ, USA",
+   "type": "Concert",
+   "cancelled": false
+  },
+  {
+   "disambiguation": "Marshall Crenshaw",
+   "id": "ea099c33-84a7-4741-ae82-640bc29a6585",
+   "setlist": "@ [3a389027-814a-4f99-8f12-44e5276595cf|Marshall Crenshaw]\r\n\r\n* [2e5bff10-df66-4760-8df4-38a95d917d2a|You Can’t Sit Down] (with Bruce Springsteen)\r\n* [98c77c85-30de-48ad-ab83-e0c29b3da0ef|La Bamba] / [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout] (with Bruce Springsteen)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "type": "Concert",
+   "cancelled": false,
+   "name": "1987‐07‐31: The Stone Pony, Asbury Park, NJ, USA",
+   "life-span": {
+    "ended": true,
+    "begin": "1987-07-31",
+    "end": "1987-07-31"
+   },
+   "time": ""
+  },
+  {
+   "disambiguation": "Cats on a Smooth Surface",
+   "id": "ea80152e-23da-4774-bb55-91545acbe0d7",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [4679e271-b7c1-3331-882e-2a173f2001e4|Long Tall Sally] (with Bruce Springsteen)\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout] (with Bruce Springsteen)",
+   "life-span": {
+    "ended": true,
+    "end": "1982-05-02",
+    "begin": "1982-05-02"
+   },
+   "type": "Concert",
+   "name": "1982‐05‐02: The Stone Pony, Asbury Park, NJ, USA",
+   "cancelled": false,
+   "time": ""
+  },
+  {
+   "disambiguation": "Joe Grushecky & The Houserockers",
+   "id": "ec0ec8f9-3578-417d-b00a-339b578a2c7d",
+   "setlist": "@ [60890a33-fc2b-4d06-b8a0-a4599437144e|Joe Grushecky & The Houserockers]\r\n\r\n# Soundcheck\r\n* [d425aad9-b29b-3b45-a81a-580678efe16c|Crossroads] (with Bruce Springsteen)\r\n\r\n# Concert\r\n* [41497836-145d-4e8b-8196-cc92d459685a|What Did You Do in the War] (with Bruce Springsteen)\r\n* [3d04d7cd-96e6-4617-b235-09870e5efc51|Talking to the King] (with Bruce Springsteen)\r\n* [83a551e3-d8d3-4533-8871-4af752b12e88|Chain Smokin’] (with Bruce Springsteen)\r\n* [017bcda3-4391-4179-a9fb-e6d4b82f75e7|Labor of Love] (with Bruce Springsteen)\r\n* [ef2bc544-4701-42d7-9a4e-218b7fd4f462|Never Be Enough Time] (with Bruce Springsteen)\r\n* [9e21f814-f5a2-350d-91ce-a23ce921f5d5|Murder Incorporated] (with Bruce Springsteen)\r\n* [0dd91858-8b22-328c-a129-d37690906cb0|Mustang Sally] (with Bruce Springsteen)\r\n* [da953211-995a-4e54-afd6-15bb3ca07156|Dark and Bloody Ground] (with Bruce Springsteen)\r\n* [f3cbe2e2-7375-4c14-a69a-cdbd5dd30988|Pumping Iron] (with Bruce Springsteen)\r\n* [acdf6bde-908e-4091-9e3e-fc336dc5bdfd|American Babylon] (with Bruce Springsteen)\r\n* [67d3c66a-e5ed-4705-b4fa-545bf8b65ae8|Homestead] (with Bruce Springsteen)\r\n* [d662d712-f9f8-4118-8bb2-a821395dbf96|Light of Day] (with Bruce Springsteen)\r\n* [0692cc42-4f43-31f5-9d95-b4ba3fd9e179|Brown Eyed Girl] (with Bruce Springsteen)\r\n* [209fd9b7-e830-3127-b5c9-8bc4a5bcb11f|Down the Road Apiece] (with Bruce Springsteen)\r\n* [37500a15-11a1-4cf1-b4c2-797e2817b2f5|Rebel Music] (with Bruce Springsteen)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "type": "Concert",
+   "cancelled": false,
+   "name": "1995‐10‐17: The Stone Pony, Asbury Park, NJ, USA",
+   "life-span": {
+    "end": "1995-10-17",
+    "begin": "1995-10-17",
+    "ended": true
+   },
+   "time": ""
+  },
+  {
+   "time": "",
+   "life-span": {
+    "end": "2006-05-02",
+    "begin": "2006-05-02",
+    "ended": true
+   },
+   "type": "Concert",
+   "cancelled": false,
+   "name": "2006‐05‐02: The Stone Pony, Asbury Park, NJ, USA",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n# with\r\n@ [9df6e393-da6b-4e65-9f50-6e4df5624e63|The Bobby Bandiera Band]\r\n@ [f826b4d1-2dc3-4c4f-ba70-69b472320338|Southside Johnny]\r\n\r\n* [f44d3b21-8947-34f1-b701-46ed1cc0eb15|634-5789 (Soulsville, U.S.A.)]\r\n* [c908e556-a77f-422a-8cf0-a0e0f0c87d73|Talk to Me]\r\n* [9a50dd49-3e54-34aa-a6d1-138ea3869a45|Seven Nights to Rock]\r\n* [fa36af81-2bd8-3436-bf94-7df8e818d99d|Two Hearts]\r\n* [dba2f648-cb81-3d19-b252-1bbecc62758b|Spirit in the Night]\r\n* [8e437cd5-9fe1-3258-a6a7-0f84386ab196|Rendezvous]\r\n* [6c028112-5e5e-38e7-be1f-70057cff7338|From Small Things (Big Things One Day Come)]\r\n* [4b75e209-aca7-3290-bf09-13c60ed78c12|All That Heaven Will Allow]\r\n* [3818fa67-c508-3499-9d18-0fd9a2b443ce|Sugar, Sugar]\r\n* [c454c4dc-9024-3d41-a288-637e958dd45c|Further On (Up the Road)]\r\n* [64142910-6d7c-4ad1-a4b4-6dcdf4b0b521|Waitin’ on a Sunny Day]\r\n* [e497263c-4f15-36c0-b27c-dca99482962c|The Fever] (with Southside Johnny)\r\n* [a2bd3a97-4faa-4e9e-8aac-e8d4aa007137|This Time It’s for Real] (with Southside Johnny)\r\n* [8ecc135f-ce4e-3fd3-9e9f-7944bd4daa9b|Darlington County]\r\n* [1ca78d1b-4ffc-39cb-af8d-94a13bab0a71|Seaside Bar Song]\r\n* [b096fd0f-0184-4d69-9c00-057104a07acf|Stand on It]\r\n* [5740e2cf-979d-32ca-8ff3-7036e0bf4cef|Shake]\r\n* [aa151b23-5171-3d35-a487-55fc8c66131e|Tenth Avenue Freeze-Out]\r\n* [da1f36f5-dcdd-4a56-8d92-4b3527fd1291|Detroit Medley]",
+   "id": "f1f2c5c6-f051-4f43-b7c5-c733ef199859",
+   "disambiguation": ""
+  },
+  {
+   "life-span": {
+    "ended": true,
+    "begin": "1989-09-22",
+    "end": "1989-09-22"
+   },
+   "name": "1989‐09‐22: The Stone Pony, Asbury Park, NJ, USA",
+   "type": "Concert",
+   "cancelled": false,
+   "time": "",
+   "id": "f3381b69-6648-47b6-b00e-5be0183cac20",
+   "disambiguation": "Jimmy Cliff",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [2caa54a7-b08c-41da-b892-3a41abe778be|Jimmy Cliff]\r\n# and his band\r\n\r\n* [58976436-655f-4cda-8aa7-2b3f45dc1bf2|Trapped] (with Bruce Springsteen)"
+  },
+  {
+   "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n# with\r\n@ [358d8fde-ad5b-4df1-bcd8-193bada6edd5|Bobby Bandiera]\r\n# and\r\n@ [9df6e393-da6b-4e65-9f50-6e4df5624e63|The Bobby Bandiera Band]\r\n\r\n* [90963641-d3b1-3d89-aec1-c913c6c03fc4|Working on the Highway]\r\n* [98d2b0ee-4d89-428c-af7d-9b6d9dd551c9|My Lucky Day]\r\n* [f44d3b21-8947-34f1-b701-46ed1cc0eb15|634-5789 (Soulsville, U.S.A.)]\r\n* [20246d97-9201-4f22-b09c-c7c3d2f210d4|Gotta Get That Feeling]\r\n* [9a50dd49-3e54-34aa-a6d1-138ea3869a45|Seven Nights to Rock]\r\n* [dba2f648-cb81-3d19-b252-1bbecc62758b|Spirit in the Night] (with Southside Johnny)\r\n* [b1528b3f-0c0e-3977-ba98-5cb5b38108db|Growin’ Up]\r\n* [8a79ad2b-819c-47b3-a02d-85aee7d3c1c0|Working on a Dream]\r\n* [d9d1e4d7-2181-3565-89db-377d6b031af7|In the Midnight Hour]\r\n* [c908e556-a77f-422a-8cf0-a0e0f0c87d73|Talk to Me]\r\n* [e72886af-540d-3210-a9c0-13e78402014e|Got My Mojo Working] (with Southside Johnny and Danny Clinch)\r\n* [6792a932-6d5b-4392-8ec7-e58a145e20d2|Save My Love]\r\n* [8ecc135f-ce4e-3fd3-9e9f-7944bd4daa9b|Darlington County]\r\n* [e497263c-4f15-36c0-b27c-dca99482962c|The Fever] (with Southside Johnny)\r\n* [f8556ea5-f89f-3c2f-922f-d5225c1a4511|Dancing in the Dark]\r\n* [b656ff9a-9b07-347e-b318-7bfbc5ac008e|Pink Cadillac]\r\n* [e5500466-274a-48cd-9c75-abff7ada71c5|I Don’t Want to Go Home] (with Southside Johnny)\r\n* [7f44c910-49f8-35f5-bb65-4c6d790ad685|Cadillac Ranch]\r\n* [1f573511-eb4b-3106-8fb2-f15de52e4868|4th of July, Asbury Park (Sandy)]\r\n* [e59ca323-dd32-3a0b-80a9-d42746362213|Glory Days]\r\n* [aa151b23-5171-3d35-a487-55fc8c66131e|Tenth Avenue Freeze-Out]\r\n* [450b4d94-c768-3a43-9edc-253cf300199e|Having a Party] (with Southside Johnny)\r\n* [9893a23c-f282-3b07-a2db-b4f2f3b9f4b2|Born to Run]\r\n* [66969327-8735-37eb-aaa1-a4b638d446b0|Rosalita (Come Out Tonight)]\r\n* [5587820f-9171-3130-bab4-1b416c3c5cae|Come a Little Bit Closer] (with Southside Johnny)\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout]\r\n* [da1f36f5-dcdd-4a56-8d92-4b3527fd1291|Detroit Medley]\r\n* [cc8d858a-38ef-35b0-b83c-a5d26f04207b|Thunder Road]",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "id": "f7483ae8-3660-4ce5-b06b-d13cc9ec176b",
+   "disambiguation": "annual benefit for the Ranney School",
+   "time": "",
+   "type": "Concert",
+   "name": "2011‐01‐29: The Stone Pony, Asbury Park, NJ, USA",
+   "cancelled": false,
+   "life-span": {
+    "end": "2011-01-29",
+    "begin": "2011-01-29",
+    "ended": true
+   }
+  },
+  {
+   "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n# with\r\n@ [358d8fde-ad5b-4df1-bcd8-193bada6edd5|Bobby Bandiera]\r\n@ [5ace9b0c-cc21-4d8f-8e08-a70234439f2a|Jon Bon Jovi]\r\n@ [f09aa40c-b613-4ea2-a8cf-6056c2657a9a|Patti Scialfa]\r\n@ [f826b4d1-2dc3-4c4f-ba70-69b472320338|Southside Johnny]\r\n\r\n* [3005488d-0d7e-3299-9a73-e2b086fbb844|Tell Him]\r\n* [c1b9bc08-ba81-382f-8ce0-83995035368f|Green River]\r\n* [7215f333-bd0a-3e4d-b6a2-977846b1af35|Wonderful World]\r\n* [3cec167a-2b7d-4843-81e6-8b3eea13840f|Ramblin’ Gamblin’ Man]\r\n* [3818fa67-c508-3499-9d18-0fd9a2b443ce|Sugar, Sugar]\r\n* [3e91895c-2ae4-4b9b-89ca-40ad23239c92|The Boy From New York City]\r\n* [b64b28c2-69ad-38c4-8446-a4a9c7ae2186|Domino]\r\n* [77d8a7cf-750b-4ca1-b2c3-43b30d0fc4fd|Twistin’ the Night Away]\r\n* [b01fca31-4bda-3783-9f67-1d3feb84acb3|Hey Tonight]\r\n* [8423eef7-88aa-39b0-9c4f-11a2a113fdc6|Tell Me Why]\r\n* [8ecc135f-ce4e-3fd3-9e9f-7944bd4daa9b|Darlington County]\r\n* [e59ca323-dd32-3a0b-80a9-d42746362213|Glory Days]\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout]",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "disambiguation": "",
+   "id": "fb9f2740-23d1-43c0-affe-58b9d01a136d",
+   "time": "",
+   "type": "Concert",
+   "cancelled": false,
+   "name": "2003‐04‐30: The Stone Pony, Asbury Park, NJ, USA",
+   "life-span": {
+    "ended": true,
+    "begin": "2003-04-30",
+    "end": "2003-04-30"
+   }
+  },
+  {
+   "life-span": {
+    "begin": "1977-10-13",
+    "end": "1977-10-13",
+    "ended": true
+   },
+   "cancelled": false,
+   "type": "Concert",
+   "name": "1977‐10‐13: The Stone Pony, Asbury Park, NJ, USA",
+   "time": "",
+   "id": "fca0ed5a-e49c-44da-a0e6-e3d2b8dd56e3",
+   "disambiguation": "Southside Johnny & The Asbury Jukes",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [d7bc97fb-4bd3-453b-98a1-9081f89c52f0|Southside Johnny & The Asbury Jukes]\r\n\r\n* [7a4fc2c6-9921-321a-b3b8-eb369655a8d9|Down in the Valley] (with Bruce Springsteen)\r\n* [d97a13df-e992-399e-9b1e-8eb4c83af1b7|Ain’t Too Proud to Beg] (with Bruce Springsteen)\r\n* [e46684d1-e9d5-456e-9b8e-340fbbe3e0e8|Soothe Me] (with Bruce Springsteen)\r\n* [34607acd-d7b7-3294-9bc8-8cedbe6ccd15|Carol] (with Bruce Springsteen)"
+  },
+  {
+   "id": "fd5487d3-3b7c-490d-81a2-96be344da3b9",
+   "disambiguation": "The Tangiers Blues Band",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [91037ad4-4ee5-4d8b-98aa-41df93ddd92e|The Tangiers Blues Band]\r\n# with\r\n@ [a1979995-66bc-4e61-9880-2e9f0484b29a|Danny Clinch]\r\n@ Chris Scianni\r\n# and\r\n@ [45546b7f-e58c-4cf3-ac56-f5b174906304|The Ocean Avenue Stompers Horn Section]\r\n\r\n@ [5c64226c-d673-4d23-a612-2bfb704edd66|Jake Clemons] (guest)\r\n@ [ddf327d9-1ac0-4206-b069-5c40e054934a|Rachel Ana Dobken] (guest)\r\n@ [1bfae567-61d5-4dbc-b368-198e547fe729|Robert Randolph] (guest)\r\n@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen] (guest)\r\n\r\n* [4c4b77c7-21a1-32a9-A29b-241ff99cb397|Boom Boom]\r\n* [209fd9b7-E830-3127-B5c9-8bc4a5bcb11f|Down the Road Apiece]\r\n* [4ca8aa2d-B1b0-3473-8f0b-2a388054e947|Lucille]\r\n* [f0373dec-cdd9-3223-92f4-f06e6124fe90|My Babe]\r\n* [5923fa49-79c3-4251-84fe-D54a1ed9db86|Gloria]",
+   "life-span": {
+    "end": "2024-09-14",
+    "begin": "2024-09-14",
+    "ended": true
+   },
+   "cancelled": false,
+   "type": "Concert",
+   "name": "2024‐09‐14: The Stone Pony, Asbury Park, NJ, USA",
+   "time": ""
+  },
+  {
+   "life-span": {
+    "ended": true,
+    "end": "1982-05-16",
+    "begin": "1982-05-16"
+   },
+   "type": "Concert",
+   "name": "1982‐05‐16: The Stone Pony, Asbury Park, NJ, USA",
+   "cancelled": false,
+   "time": "",
+   "id": "fdd857c6-cf3b-4b75-b659-75946c258410",
+   "disambiguation": "Cats on a Smooth Surface",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n# No set details known"
+  },
+  {
+   "type": "Concert",
+   "cancelled": false,
+   "name": "1982‐05‐23: The Stone Pony, Asbury Park, NJ, USA",
+   "life-span": {
+    "ended": true,
+    "end": "1982-05-23",
+    "begin": "1982-05-23"
+   },
+   "time": "",
+   "disambiguation": "Cats on a Smooth Surface",
+   "id": "fdf0c10a-6354-41e5-a796-a20e9deb5d34",
+   "setlist": "@ [8893617e-e3c2-406c-afc3-ec390e040ed2|Cats on a Smooth Surface]\r\n\r\n* [34607acd-d7b7-3294-9bc8-8cedbe6ccd15|Carol] (with Bruce Springsteen)\r\n* [4679e271-b7c1-3331-882e-2a173f2001e4|Long Tall Sally] (with Bruce Springsteen)\r\n* [7e2dedbb-5be0-32d4-8985-079d6df1e78b|Twist and Shout] (with Bruce Springsteen)",
+   "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b"
+  }
+ ],
+ "event-count": 110
+}
