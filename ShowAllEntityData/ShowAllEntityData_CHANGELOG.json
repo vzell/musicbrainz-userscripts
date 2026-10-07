@@ -1,5 +1,29 @@
 [
   {
+    "version": "9.99.1278",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Tests: the 42 mutation entries whose `find` no longer matched exactly once (scripts/check-mutation-anchors.py: 0 or 2+ matches, after the code they guard was reworded, moved or duplicated) are re-anchored on the code that implements the same guard today, across 25 lists (CAA/EAA, Relationships, release events, rich tooltips, settings coercion, springsteenlyrics, sticky headers, title sections, video flags, …). Each new find matches once; all 42 were run and behave as declared (fail where they did, pass where they were recorded as a known overlap). Only find/replace strings changed; no guard was dropped. No change for users."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1277",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Tests: detail-preview.spec.js's \"a hover that has moved on by the time its slot comes up makes no request\" no longer depends on how fast the test runs. It assumed the second hover came within a second of the first request, so the second request's rate slot was still in the future; under a loaded full run it was not, and the test failed 14 of 20 times with --repeat-each=20 on main and on the branch alike. It now reserves two slots of the foreign hosts' rate gate before that hover and waits for the gate to be idle (new test-mode hooks __saTest.reserveDpRateSlots() and dpRateSlotWaitMs()): 50 of 50 under the same load, and the mutation it exists for still fails it. No change for users."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1276",
     "date": "2026-10-07",
     "sections": [
