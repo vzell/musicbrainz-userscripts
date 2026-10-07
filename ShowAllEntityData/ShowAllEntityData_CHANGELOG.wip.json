@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Tests: detail-preview.spec.js's \"a hover that has moved on by the time its slot comes up makes no request\" no longer depends on how fast the test runs. It assumed the second hover came within a second of the first request, so the second request's rate slot was still in the future; under a loaded full run it was not, and the test failed 14 of 20 times with --repeat-each=20 on main and on the branch alike. It now reserves two slots of the foreign hosts' rate gate before that hover and waits for the gate to be idle (new test-mode hooks __saTest.reserveDpRateSlots() and dpRateSlotWaitMs()): 50 of 50 under the same load, and the mutation it exists for still fails it. No change for users."
+        ]
+      }
+    ]
+  }
+]

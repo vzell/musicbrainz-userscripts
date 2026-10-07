@@ -20200,3 +20200,28 @@ change (wait on the gate being idle, as popup-mb.spec.js does with
 Merged on the user's word after their live browser check ("Tested live, OK").
 Lesson for the next gate: save the full report (`> file`), never `| tail`, or
 a red run cannot be diagnosed afterwards.
+
+## 2026-10-07 — detail-preview's "moved-on hover" test: a timing assumption, made deterministic (branch fix/detail-preview-moved-on-flake, WIP.1)
+
+**Root cause.** The test hovers row 1 (its request goes out), then row 2, and
+leaves before row 2's rate slot comes up, expecting no second request. It
+relied on row 2's slot being "a second after the first", which holds only if
+the hover happens within that second of real time (the fake clock lets time
+flow). Under load it did not: `_dpAwaitSlot()` found the slot already free,
+returned at once, the card was still showing, so `wanted()` said yes and the
+page was asked — 2 requests. 14 of 20 failed with `--repeat-each=20` on
+pre-merge main (1ee09e2) and on the merged tree alike; 1 of 10 alone.
+
+**Fix (test only).** Reserve two slots of the shipping gate before the second
+hover (`__saTest.reserveDpRateSlots(2)`, as the MusicBrainz specs use
+`reserveMbRateSlots()`), jump past them, and confirm the gate is idle
+(`__saTest.dpRateSlotWaitMs()` → 0) before asserting. The guarantee under test
+is unchanged.
+
+**Results:** 50 of 50 with `--repeat-each=50`; the mutation "a hover that
+moved on still makes its request" (scripts/mutations/detail-preview.json)
+still fails it; detail-preview specs 24 passed; lint within the baseline.
+
+The other two tests that failed once each in the Phase 2 merge gate
+(sticky-page-headers' annotation test, user-ratings-multigroup) were not part
+of this change.
