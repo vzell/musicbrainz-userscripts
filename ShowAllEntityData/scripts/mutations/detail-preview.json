@@ -407,5 +407,18 @@
         "spec": "tests/fixtures/detail-preview.spec.js",
         "grep": "Live page view with the site's navigation hidden",
         "expect": "pass"
+    },
+    {
+        "name": "the Live page copy keeps inline handlers and javascript: URLs",
+        "why": "The sandbox refuses every on… attribute as the page is parsed and Chrome logs each (eight on a Brucebase song page, the WIP.4 report); javascript: links did nothing there anyway.",
+        "edits": [
+            {
+                "find": "                if (name.startsWith('on') ||\n                    (/^(?:href|src|action|formaction|xlink:href)$/.test(name) && /^\\s*javascript:/i.test(a.value))) {\n                    el.removeAttribute(a.name);\n                }",
+                "replace": "                void name;"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "Live page view's copy|the Live page with every tab",
+        "expect": "fail"
     }
 ]

@@ -19787,3 +19787,58 @@ in 1.1 min (2026-10-07T08:35:12Z–08:36:18Z, host NB-3641, WSL2), the BADLANDS
 test asserting no blocked-script message, the video as a link and no YouTube
 request; `npm run test:full` 1268 passed in 7.6 min (08:36:24Z–08:44:01Z, same
 host; the event-overview flake did not recur); lint within baseline.
+
+## 2026-10-07 — Live page view on Brucebase: inline handlers are "scripts" too (branch feature/detail-pages, WIP.4)
+
+Reported from a real browser after WIP.3 (`debug/bb-debug-song.log`, hover
+"4th Of July, Asbury Park (Sandy)", Space, Live page): `8Blocked script
+execution in 'about:srcdoc'`. The copy had no `<script>` left; reproduced
+untraced with today's real page cleaned by the real `_dpLiveDocHtml()`: six
+messages, each pointing at an element with an inline handler: the search
+box's `onfocus`, the login, report and cookie-settings links' `onclick`.
+Chrome refuses, and logs, each inline handler of a scriptless sandboxed frame
+as the page is parsed, click or no click (the user's eight include a couple
+more of the same kind). The copy now drops every `on…` attribute and every
+`javascript:` URL (the 16 `href="javascript:;"` links did nothing there);
+re-checked: zero.
+
+The rest of that log is the wiki's and the user's ad blocker's, all logged at
+09:04:11, before the userscript initialised: `ERR_BLOCKED_BY_CLIENT` for
+googleads/doubleclick, `ad_status.js`, `dc.js`; a WebGPU `powerPreference`
+note; `92Blocked script execution in '<URL>'` from frames the page adds at
+runtime (its saved copy has no sandboxed iframe of its own, so most likely the
+ad frames); and three `youtube.com/img/meh7.png` 404s from the page's own
+YouTube embed.
+
+**A pre-existing failure, now frequent:** `sl-lyrics.spec.js` "a failed
+letter resumes at that LETTER, keeping the rows already loaded"
+(`rows[0].Letter` undefined, line 114) failed in this `test:full`, then 3+ of
+5 runs alone on the branch AND 3+ of 5 alone on `main` (8043073, scratch
+worktree, 09:2xZ). It is the test the 2026-10-07 bb-songs entry above saw
+fail once under load; today it fails in isolation on main. Not caused by this
+branch (the preview is off in that spec, and nothing here touches the lyrics
+fetch or resume path). **Root cause found the same day, a real bug in main:**
+"↻ Load remaining pages" re-runs `makeTableSortableUnified()` over headers
+already decorated, whose 📊 count badges hold plain digits, and its `colName`
+is read from `th.textContent` ("Title ⇅▲▼102📊" → "Title 102"), so the
+resumed table's `data-col-name`s become "Title 4", "Version 12", "Date 8"…
+(which ones depends on which badges were filled in when the resume began,
+hence the intermittency). Fix: prefer the stored `th.dataset.colName`
+(8 of 8 passed with it); shipped on its own branch from main, not here.
+
+**One message stays, by decision:** after WIP.4 the user still saw one
+`Blocked script execution in 'about:srcdoc'` at line 1 on Brucebase. Today's
+real "7 Rooms Of Gloom" copy logs none in a browser without extensions, and
+the copy's line 1 is only the doctype, `<html>`, `<head>` and our `<base>`:
+something in the user's browser injects a script into every new frame, and
+the sandbox refuses it. Only on Brucebase, where the user's ad blocker acts
+(the earlier log), so most likely its site-specific scriptlet. Harmless; left
+as it is, with the sandbox kept (decided with the user).
+
+**Results:** detail-preview fixture spec 20/20 and mobile 1/1; the new
+mutation (handlers and javascript: URLs kept) fails as declared, userscript
+restored and verified; live `@extended` detail-preview 5/5 in 1.1 min
+(2026-10-07T09:12:15Z–09:13:19Z, host NB-3641, WSL2), the Brucebase test now
+running the reported steps and asserting no "Blocked script execution" in
+about:srcdoc; `npm run test:full` 1267 passed, 1 failed, the sl-lyrics test
+above (09:14:06Z–09:21:38Z); lint within baseline.

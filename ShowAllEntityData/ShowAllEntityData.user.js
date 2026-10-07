@@ -14238,6 +14238,9 @@
      *     `allow-scripts` either, but a page handed to it with its scripts
      *     still in made Chrome log "Blocked script execution … sandboxed" once
      *     per script (29 on a springsteenlyrics.com song page);
+     *   - so is every inline event handler (`on…` attribute) and every
+     *     `javascript:` URL, which Chrome also logs once each as the page is
+     *     parsed (WIP.4: six on a Brucebase song page);
      *   - every `<iframe>` (a YouTube video, an html-block) becomes a link:
      *     inside a frame without scripts a player cannot start, and YouTube's
      *     own fallback image then 404s;
@@ -14254,6 +14257,20 @@
     function _dpLiveDocHtml(html, url) {
         const doc = new DOMParser().parseFromString(html, 'text/html');
         doc.querySelectorAll('script, noscript, meta[http-equiv="refresh" i]').forEach(n => n.remove());
+        // Inline handlers count as scripts too: the sandbox refuses each one
+        // as the page is parsed and Chrome logs it, click or no click (six
+        // on a Brucebase song page: the search box's onfocus, the login,
+        // report and cookie links' onclick). javascript: URLs go for the
+        // same reason; those links did nothing without the page's scripts.
+        doc.querySelectorAll('*').forEach(el => {
+            Array.from(el.attributes).forEach(a => {
+                const name = a.name.toLowerCase();
+                if (name.startsWith('on') ||
+                    (/^(?:href|src|action|formaction|xlink:href)$/.test(name) && /^\s*javascript:/i.test(a.value))) {
+                    el.removeAttribute(a.name);
+                }
+            });
+        });
         doc.querySelectorAll('iframe').forEach(fr => {
             const src = _dpAbsUrl(fr.getAttribute('src'), url);
             const yt = src.match(/^https?:\/\/(?:www\.)?youtube(?:-nocookie)?\.com\/embed\/([\w-]+)/);

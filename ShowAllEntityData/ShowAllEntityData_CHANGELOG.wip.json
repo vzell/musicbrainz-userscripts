@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The detail preview's \"Live page\" view on Brucebase no longer logs \"Blocked script execution\" in the browser console (eight times per song page). The wiki's search box, sign-in, report and cookie-settings links carry small inline scripts of their own, and the view's copy of the page now leaves those out too; the links themselves stay. The many other console messages on Brucebase pages (blocked ad requests, its own video frames) come from the site and an ad blocker, not from the script."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-10-07",
     "sections": [

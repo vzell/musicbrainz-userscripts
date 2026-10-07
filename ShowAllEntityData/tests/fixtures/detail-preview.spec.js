@@ -187,6 +187,33 @@ test.describe('detail-page parsers (one record per saved page)', () => {
             'https://www.jungleland.it/html/19760930.htm');
         expect(jl.head.startsWith('<html')).toBe(true);
         expect(jl.bases).toEqual([['https://www.jungleland.it/html/19760930.htm', '_self']]);
+
+        // A Brucebase (Wikidot)-like page: inline handlers and javascript:
+        // links, which the sandbox also refuses, and Chrome logs, as the page
+        // is parsed (WIP.4). Gone, with the elements and their text kept.
+        const bb = await page.evaluate(([h, u]) => {
+            const doc = new DOMParser().parseFromString(window.__saTest.dpLiveDocHtml(h, u), 'text/html');
+            const handlers = [];
+            doc.querySelectorAll('*').forEach((el) => {
+                for (const a of el.attributes) if (/^on/i.test(a.name)) handlers.push(a.name);
+            });
+            return {
+                handlers,
+                js: doc.querySelectorAll('[href^="javascript:" i], [src^="javascript:" i], [action^="javascript:" i]').length,
+                kept: Array.from(doc.querySelectorAll('a, input, form'), (el) => el.tagName.toLowerCase() + ':' + (el.textContent || el.getAttribute('name') || '')),
+                plain: doc.querySelector('a.plain').getAttribute('href'),
+            };
+        }, ['<!DOCTYPE html><html><body onload="init()">' +
+            '<input name="query" onfocus="clearIt(this)">' +
+            '<a href="javascript:;" onclick="WIKIDOT.page.listeners.loginClick(event)">Sign in</a>' +
+            '<a href="  JavaScript:void(0)">Report a bug</a>' +
+            '<form name="f" action="javascript:submitIt()"></form>' +
+            '<a class="plain" href="/song:badlands" onmouseover="hi()">Badlands</a>' +
+            '</body></html>', 'https://brucebase.wikidot.com/song:4th-of-july-asbury-park-sandy']);
+        expect(bb.handlers).toEqual([]);
+        expect(bb.js).toBe(0);
+        expect(bb.kept).toEqual(['input:query', 'a:Sign in', 'a:Report a bug', 'form:f', 'a:Badlands']);
+        expect(bb.plain).toBe('/song:badlands');
     });
 
     test('springsteenlyrics.com song pages: version, lyrics by shape, sections, versions count; no lyrics', async ({ page }) => {
@@ -591,6 +618,20 @@ test.describe('the other hosts', () => {
                 panels: panels.length,
             };
         })).toEqual({ sideBar: 'none', labels: 10, hiddenPanels: 0, panels: 10 });
+        // The premise: the saved page carries Wikidot's inline handlers and
+        // javascript: links (the build strips scripts only). The frame's copy
+        // has none, so the sandbox has nothing to refuse (WIP.4).
+        const raw = fixtureHtml('detail-bb-4th-of-july.html');
+        expect(raw).toMatch(/\sonclick="/);
+        expect(raw).toMatch(/href="javascript:/);
+        expect(await page.evaluate(() => {
+            const doc = document.querySelector('#mb-dp-dialog iframe').contentDocument;
+            let handlers = 0;
+            doc.querySelectorAll('*').forEach((el) => {
+                for (const a of el.attributes) if (/^on/i.test(a.name)) handlers++;
+            });
+            return { handlers, js: doc.querySelectorAll('[href^="javascript:" i]').length };
+        })).toEqual({ handlers: 0, js: 0 });
         expect(errors).toEqual([]);
     });
 });

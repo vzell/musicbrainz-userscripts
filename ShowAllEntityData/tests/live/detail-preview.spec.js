@@ -182,6 +182,23 @@ test.describe('detail-page preview on the real sites', { tag: '@extended' }, () 
         await expect(page.locator('#mb-dp-dialog h4').last()).toHaveText('Lyrics');
         expect(await page.locator('#mb-dp-dialog .mb-dp-section').last().evaluate((el) => el.textContent.split('\n').filter(Boolean).length))
             .toBeGreaterThan(20);
+
+        // The Live page view (WIP.4), the reported steps: hover, Space, Live
+        // page. The wiki's inline handlers (search box, login, report and
+        // cookie links) made the sandbox log "Blocked script execution" in
+        // about:srcdoc eight times. The page's own messages (its ad frames,
+        // its YouTube embed) are logged before this and are not counted.
+        const blocked = [];
+        page.on('console', (msg) => {
+            if (/Blocked script execution/.test(msg.text()) && /about:srcdoc/.test(msg.text())) blocked.push(msg.text());
+        });
+        await page.locator('#mb-dp-dialog button', { hasText: 'Live page' }).click();
+        await expect.poll(() => page.evaluate(() => {
+            const doc = document.querySelector('#mb-dp-dialog iframe')?.contentDocument;
+            if (!doc || !doc.documentElement.dataset.mbDpDone) return null;
+            return { tabs: doc.querySelectorAll('h3.mb-dp-tablabel').length > 0, scripts: doc.querySelectorAll('script').length };
+        }), { timeout: 30000 }).toEqual({ tabs: true, scripts: 0 });
+        expect(blocked).toEqual([]);
         expect(pageErrors).toEqual([]);
     });
 });
