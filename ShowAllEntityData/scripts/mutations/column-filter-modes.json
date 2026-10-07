@@ -56,8 +56,8 @@
     "why": "Removes the reset from the ✕ handler. The Ex chip stays pressed and the next text typed is inverted. Must fail.",
     "edits": [
       {
-        "find": "                _resetColFilterModes(input);\n                input.focus(); // → applyFilterFocusStyle adds prefix + focus bg",
-        "replace": "                input.focus(); // → applyFilterFocusStyle adds prefix + focus bg"
+        "find": "                _resetColFilterModes(input);\n                // → applyFilterFocusStyle adds prefix + focus bg (desktop only;",
+        "replace": "                // → applyFilterFocusStyle adds prefix + focus bg (desktop only;"
       }
     ],
     "spec": "tests/fixtures/column-filter-modes.spec.js",

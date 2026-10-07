@@ -60,8 +60,8 @@
     "why": "tests/support/browser.js's waitForRenderComplete({waitForAutoResize}) polls for a title starting with 'Restore' to know the auto-resize-on-load pass finished. Moving the wording into the button text would hang every render wait in the suite rather than failing loudly.",
     "edits": [
       {
-        "find": "            resizeBtn.title = `Restore original column widths (click to toggle / ${buildShortcutHint('sa_shortcut_auto_resize', 'Ctrl+R', 'R')})`;",
-        "replace": "            resizeBtn.innerHTML = '↔️ Restore';\n            resizeBtn.title = `Original column widths restored (click to toggle / ${buildShortcutHint('sa_shortcut_auto_resize', 'Ctrl+R', 'R')})`;"
+        "find": "            _setTip(resizeBtn, `Restore original column widths (click to toggle / ${buildShortcutHint('sa_shortcut_auto_resize', 'Ctrl+R', 'R')})`);",
+        "replace": "            resizeBtn.innerHTML = '↔️ Restore';\n            _setTip(resizeBtn, `Original column widths restored (click to toggle / ${buildShortcutHint('sa_shortcut_auto_resize', 'Ctrl+R', 'R')})`);"
       }
     ],
     "spec": "tests/fixtures/h2-table-controls-anchor.spec.js",

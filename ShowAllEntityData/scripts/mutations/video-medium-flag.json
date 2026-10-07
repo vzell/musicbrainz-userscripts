@@ -56,8 +56,8 @@
     "why": "The first open counts from the DOM; every later open on an unchanged table is served from the cache object. Leaving the counters out of it makes the section vanish on the second open only.",
     "edits": [
       {
-        "find": "                lenFlagSevereCount, lenFlagWarnCount, videoMediumMismatchCount, videoMediumOkCount,\n                lengthDeviationWithin10Count,",
-        "replace": "                lenFlagSevereCount, lenFlagWarnCount,\n                lengthDeviationWithin10Count,"
+        "find": "                lenFlagSevereCount, lenFlagWarnCount, videoMediumMismatchCount, videoMediumOkCount,\n                titleAnatomyCounts: _ta,",
+        "replace": "                lenFlagSevereCount, lenFlagWarnCount,\n                titleAnatomyCounts: _ta,"
       }
     ],
     "spec": "tests/fixtures/release-tracks-video-medium-flag.spec.js",

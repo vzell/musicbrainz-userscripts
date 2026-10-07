@@ -17,8 +17,8 @@
     "why": "Placement guard. `settings` is a shallow copy, not a reference, so coercing after Object.assign leaves the copy holding strings. Only ONE read consumes that copy today (the debug-logging callback, a checkbox), so this is expected to PASS — recorded so the next person to move the call knows the ordering is deliberate and currently unpinned, rather than discovering it by breaking something subtle later.",
     "edits": [
       {
-        "find": "    _coerceNumericSettings();\n\n    // Copy settings reference so the callback can access them\n    Object.assign(settings, Lib.settings);",
-        "replace": "    // Copy settings reference so the callback can access them\n    Object.assign(settings, Lib.settings);\n    _coerceNumericSettings();"
+        "find": "    _coerceNumericSettings();\n    // Registered here rather than at each entry point, so the library's own two\n    // menu paths open the same dialog the toolbar button does — see\n    // _registerSettingsIntegration()'s JSDoc. Safe this early: it only records\n    // the hooks, and both are function declarations, hoisted.\n    _registerSettingsIntegration();\n\n    // Copy settings reference so the callback can access them\n    Object.assign(settings, Lib.settings);",
+        "replace": "    // Registered here rather than at each entry point, so the library's own two\n    // menu paths open the same dialog the toolbar button does — see\n    // _registerSettingsIntegration()'s JSDoc. Safe this early: it only records\n    // the hooks, and both are function declarations, hoisted.\n    _registerSettingsIntegration();\n\n    // Copy settings reference so the callback can access them\n    Object.assign(settings, Lib.settings);\n    _coerceNumericSettings();"
       }
     ],
     "spec": "tests/fixtures/settings-numeric-coercion.spec.js",

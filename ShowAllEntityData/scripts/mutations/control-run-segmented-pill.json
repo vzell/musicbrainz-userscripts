@@ -69,7 +69,7 @@
     "why": "KNOWN GAP, recorded rather than hidden. `skip` exists so the 📊 summary cannot anchor on its own position when it RE-anchors after a filter re-creates the row-count stat. Reaching it needs a pass in which the summary is already the run's last element AND something re-runs the art pass afterwards; this fixture's artwork all 404s, so the re-anchor branch never fires a second time. Covering it needs a live page or a fixture that keeps artwork resolving across a filter.",
     "edits": [
       {
-        "find": "            if (next !== skip) last = next;",
+        "find": "            if (!skips.includes(next)) last = next;",
         "replace": "            last = next;"
       }
     ],

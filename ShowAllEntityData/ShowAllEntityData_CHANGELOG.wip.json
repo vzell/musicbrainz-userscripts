@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Tests: the 42 mutation entries whose `find` no longer matched exactly once (scripts/check-mutation-anchors.py: 0 or 2+ matches, after the code they guard was reworded, moved or duplicated) are re-anchored on the code that implements the same guard today, across 25 lists (CAA/EAA, Relationships, release events, rich tooltips, settings coercion, springsteenlyrics, sticky headers, title sections, video flags, …). Each new find matches once; all 42 were run and behave as declared (fail where they did, pass where they were recorded as a known overlap). Only find/replace strings changed; no guard was dropped. No change for users."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-10-07",
     "sections": [

@@ -82,8 +82,8 @@
     "why": "Restores the title without data-mb-col-tip. The first load looks right; a SECOND save then refuses the title (the writer's ownership check) and the second reopen loses it. Must fail on the save-again test, and only there.",
     "edits": [
       {
-        "find": "            td.title = cellData.lenTip;\n            td.dataset.mbColTip = '1';",
-        "replace": "            td.title = cellData.lenTip;"
+        "find": "            _setTip(td, cellData.lenTip);\n            td.dataset.mbColTip = '1';",
+        "replace": "            _setTip(td, cellData.lenTip);"
       }
     ],
     "spec": "tests/fixtures/len-flag-disk-roundtrip.spec.js",
@@ -95,8 +95,8 @@
     "why": "A release tracklist is tableMode 'multi', so this is the loop a Load from Disk takes. Must fail on the round-trip test.",
     "edits": [
       {
-        "find": "                            _restoreLenMismatchFlag(td, cellData);\n                            tr.appendChild(td);",
-        "replace": "                            tr.appendChild(td);"
+        "find": "                            _restoreLenMismatchFlag(td, cellData);\n                            _restoreVideoMediumFlag(td, cellData);",
+        "replace": "                            _restoreVideoMediumFlag(td, cellData);"
       }
     ],
     "spec": "tests/fixtures/len-flag-disk-roundtrip.spec.js",
@@ -108,8 +108,8 @@
     "why": "The single-table loop serves single-table Load from Disk and the sub-table handoff tab. No pageType that has LENGTH flags reaches it: release-tracks is multi-table and is not in SA_SNAPSHOT_SUPPORTED_PAGETYPES. KNOWN UNREACHABLE today. Kept so that adding the handoff to release-tracks, or flags to a single-table page, finds a reader already in place.",
     "edits": [
       {
-        "find": "                        _msResetCarriedOverPrecision(td);\n                        // A LENGTH mismatch lives on the <td>, not in its\n                        // HTML — put it back from the cell record.\n                        _restoreLenMismatchFlag(td, cellData);\n                        if (_beforeFp !== null) {",
-        "replace": "                        _msResetCarriedOverPrecision(td);\n                        if (_beforeFp !== null) {"
+        "find": "                        _restoreLenMismatchFlag(td, cellData);\n                        _restoreVideoMediumFlag(td, cellData);\n                        _restoreNoWorkFlag(td, cellData);\n                        if (_beforeFp !== null) {",
+        "replace": "                        _restoreVideoMediumFlag(td, cellData);\n                        _restoreNoWorkFlag(td, cellData);\n                        if (_beforeFp !== null) {"
       }
     ],
     "spec": "tests/fixtures/len-flag-disk-roundtrip.spec.js",

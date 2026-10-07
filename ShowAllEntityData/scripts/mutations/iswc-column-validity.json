@@ -4,8 +4,8 @@
         "why": "org/ISRC.org item 7's whole point is a CORRECT check digit, verified against ISO 15707's own published formula and cross-checked against two independent real examples (org/ISRC.org's own T-034524680-1 and debug/artist-works-initial.html's T-070.127.339-3). Dropping the outer `% 10` changes the computed digit whenever `sum % 10` is 0, and more subtly can format an off-by-one digit as a two-character string, silently breaking the equality check against the single-digit code.",
         "edits": [
             {
-                "find": "        const expected = String((10 - (sum % 10)) % 10);",
-                "replace": "        const expected = String(10 - (sum % 10));"
+                "find": "        for (let i = 0; i < 9; i++) sum += (i + 1) * Number(workNumber[i]);\n        const expected = String((10 - (sum % 10)) % 10);",
+                "replace": "        for (let i = 0; i < 9; i++) sum += (i + 1) * Number(workNumber[i]);\n        const expected = String(10 - (sum % 10));"
             }
         ],
         "spec": "tests/fixtures/iswc-column-validity.spec.js",
