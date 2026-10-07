@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-08",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Tests: sticky-page-headers.spec.js's annotation test no longer fails on its own premise. Its click on the Annotation heading scrolls that element into view, and on a page wider than the window that scroll can move the page sideways by a few pixels, depending on how far the layout has settled; the test then failed on \"the page starts at scrollX 0\" (Expected: 0, Received: 6) before anything it checks — the one-off merge-gate failure seen three times since 9.99.1276. It now returns the page to its left edge after the click (toLeftEdge()). Reproduced on demand by nudging the page 6 px after the click: failed before the fix, passes after. No change for users."
+        ]
+      }
+    ]
+  }
+]
