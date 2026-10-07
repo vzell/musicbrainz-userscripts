@@ -1,0 +1,513 @@
+{
+ "label-info": [
+  {
+   "label": {
+    "label-code": 162,
+    "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+    "type": "Imprint",
+    "sort-name": "Columbia",
+    "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+    "name": "Columbia",
+    "disambiguation": "owned by Sony Music Entertainment, worldwide except JP; formerly owned by CBS between 1938–1990 within US/CA/MX"
+   },
+   "catalog-number": "KC 31903"
+  }
+ ],
+ "artist-credit": [
+  {
+   "name": "Bruce Springsteen",
+   "joinphrase": "",
+   "artist": {
+    "country": "US",
+    "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "disambiguation": "",
+    "type": "Person",
+    "sort-name": "Springsteen, Bruce",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+   }
+  }
+ ],
+ "packaging": "Cardboard/Paper Sleeve",
+ "barcode": "",
+ "quality": "normal",
+ "title": "Greetings From Asbury Park, N.J.",
+ "cover-art-archive": {
+  "front": true,
+  "count": 8,
+  "back": true,
+  "darkened": false,
+  "artwork": true
+ },
+ "asin": null,
+ "release-events": [
+  {
+   "date": "1973-01-05",
+   "area": {
+    "disambiguation": "",
+    "id": "489ce91b-6658-3307-9877-795b68554c98",
+    "name": "United States",
+    "iso-3166-1-codes": [
+     "US"
+    ],
+    "type": null,
+    "sort-name": "United States",
+    "type-id": null
+   }
+  }
+ ],
+ "date": "1973-01-05",
+ "id": "3ce46b79-5e8c-470a-bcdc-45f301d09f60",
+ "media": [
+  {
+   "tracks": [
+    {
+     "number": "1",
+     "title": "Blinded by the Light",
+     "length": 302000,
+     "position": 1,
+     "artist-credit": [
+      {
+       "name": "Bruce Springsteen",
+       "joinphrase": "",
+       "artist": {
+        "name": "Bruce Springsteen",
+        "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+        "disambiguation": "",
+        "country": "US",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "sort-name": "Springsteen, Bruce",
+        "type": "Person"
+       }
+      }
+     ],
+     "recording": {
+      "artist-credit": [
+       {
+        "joinphrase": "",
+        "name": "Bruce Springsteen",
+        "artist": {
+         "sort-name": "Springsteen, Bruce",
+         "type": "Person",
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+         "country": "US",
+         "name": "Bruce Springsteen",
+         "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+         "disambiguation": ""
+        }
+       }
+      ],
+      "video": false,
+      "disambiguation": "version 1a",
+      "length": 302000,
+      "id": "3497900e-6c78-47d8-a6ae-4526e7f3bfd6",
+      "title": "Blinded by the Light",
+      "first-release-date": "1973-01-05"
+     },
+     "id": "2ae56e10-b1a0-4d58-9b5f-5a334e5938fe"
+    },
+    {
+     "id": "4da8194f-49fd-4c10-8051-dae76f3b8cf1",
+     "recording": {
+      "title": "Growin’ Up",
+      "first-release-date": "1973-01-05",
+      "artist-credit": [
+       {
+        "artist": {
+         "country": "US",
+         "disambiguation": "",
+         "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+         "name": "Bruce Springsteen",
+         "type": "Person",
+         "sort-name": "Springsteen, Bruce",
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+        },
+        "joinphrase": "",
+        "name": "Bruce Springsteen"
+       }
+      ],
+      "video": false,
+      "disambiguation": "version 6",
+      "id": "109c22b2-0d97-419f-bee4-edb7d6f8dbff",
+      "length": 185000
+     },
+     "length": 185000,
+     "position": 2,
+     "artist-credit": [
+      {
+       "joinphrase": "",
+       "name": "Bruce Springsteen",
+       "artist": {
+        "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+        "name": "Bruce Springsteen",
+        "disambiguation": "",
+        "country": "US",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "type": "Person",
+        "sort-name": "Springsteen, Bruce"
+       }
+      }
+     ],
+     "number": "2",
+     "title": "Growin’ Up"
+    },
+    {
+     "number": "3",
+     "title": "Mary Queen of Arkansas",
+     "length": 320000,
+     "position": 3,
+     "artist-credit": [
+      {
+       "name": "Bruce Springsteen",
+       "joinphrase": "",
+       "artist": {
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "sort-name": "Springsteen, Bruce",
+        "type": "Person",
+        "disambiguation": "",
+        "name": "Bruce Springsteen",
+        "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+        "country": "US"
+       }
+      }
+     ],
+     "recording": {
+      "title": "Mary Queen of Arkansas",
+      "first-release-date": "1973-01-05",
+      "artist-credit": [
+       {
+        "artist": {
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+         "sort-name": "Springsteen, Bruce",
+         "type": "Person",
+         "name": "Bruce Springsteen",
+         "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+         "disambiguation": "",
+         "country": "US"
+        },
+        "name": "Bruce Springsteen",
+        "joinphrase": ""
+       }
+      ],
+      "video": false,
+      "disambiguation": "version 4b",
+      "id": "13bdde38-e8cc-41cf-a0bb-6c195bb8665f",
+      "length": 320000
+     },
+     "id": "77d8ea17-4607-4c67-b16f-31ec249ade58"
+    },
+    {
+     "recording": {
+      "length": 125000,
+      "id": "5eaa1035-3685-43a1-9236-0fd60952780d",
+      "video": false,
+      "artist-credit": [
+       {
+        "artist": {
+         "sort-name": "Springsteen, Bruce",
+         "type": "Person",
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+         "country": "US",
+         "disambiguation": "",
+         "name": "Bruce Springsteen",
+         "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+        },
+        "name": "Bruce Springsteen",
+        "joinphrase": ""
+       }
+      ],
+      "disambiguation": "version 3b",
+      "first-release-date": "1973-01-05",
+      "title": "Does This Bus Stop at 82nd Street?"
+     },
+     "id": "8c610a80-804f-49ea-aaaa-b7d6397d5c46",
+     "number": "4",
+     "title": "Does This Bus Stop at 82nd Street?",
+     "length": 125000,
+     "position": 4,
+     "artist-credit": [
+      {
+       "artist": {
+        "country": "US",
+        "disambiguation": "",
+        "name": "Bruce Springsteen",
+        "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+        "sort-name": "Springsteen, Bruce",
+        "type": "Person",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+       },
+       "name": "Bruce Springsteen",
+       "joinphrase": ""
+      }
+     ]
+    },
+    {
+     "number": "5",
+     "title": "Lost in the Flood",
+     "length": 314000,
+     "position": 5,
+     "artist-credit": [
+      {
+       "joinphrase": "",
+       "name": "Bruce Springsteen",
+       "artist": {
+        "country": "US",
+        "name": "Bruce Springsteen",
+        "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+        "disambiguation": "",
+        "sort-name": "Springsteen, Bruce",
+        "type": "Person",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+       }
+      }
+     ],
+     "recording": {
+      "video": false,
+      "artist-credit": [
+       {
+        "name": "Bruce Springsteen",
+        "joinphrase": "",
+        "artist": {
+         "disambiguation": "",
+         "name": "Bruce Springsteen",
+         "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+         "country": "US",
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+         "sort-name": "Springsteen, Bruce",
+         "type": "Person"
+        }
+       }
+      ],
+      "disambiguation": "",
+      "length": 314000,
+      "id": "666148da-9889-470c-a2cd-efc9fb0c7199",
+      "title": "Lost in the Flood",
+      "first-release-date": "1973-01-05"
+     },
+     "id": "352e94c1-4ca1-419e-a8e0-51cc4df85b78"
+    },
+    {
+     "id": "ee96d717-abfd-4d0b-a559-4895ab15186b",
+     "recording": {
+      "title": "The Angel",
+      "first-release-date": "1973-01-05",
+      "video": false,
+      "artist-credit": [
+       {
+        "artist": {
+         "disambiguation": "",
+         "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+         "name": "Bruce Springsteen",
+         "country": "US",
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+         "type": "Person",
+         "sort-name": "Springsteen, Bruce"
+        },
+        "joinphrase": "",
+        "name": "Bruce Springsteen"
+       }
+      ],
+      "disambiguation": "studio, version 4c",
+      "id": "f8102160-84a5-4ecd-b1ad-f3c7e5ad6877",
+      "length": 203000
+     },
+     "position": 6,
+     "artist-credit": [
+      {
+       "joinphrase": "",
+       "name": "Bruce Springsteen",
+       "artist": {
+        "type": "Person",
+        "sort-name": "Springsteen, Bruce",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "country": "US",
+        "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+        "name": "Bruce Springsteen",
+        "disambiguation": ""
+       }
+      }
+     ],
+     "length": 203000,
+     "title": "The Angel",
+     "number": "6"
+    },
+    {
+     "id": "414becae-dbb0-413c-9dc0-6c5f7115d694",
+     "recording": {
+      "artist-credit": [
+       {
+        "name": "Bruce Springsteen",
+        "joinphrase": "",
+        "artist": {
+         "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+         "name": "Bruce Springsteen",
+         "disambiguation": "",
+         "country": "US",
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+         "type": "Person",
+         "sort-name": "Springsteen, Bruce"
+        }
+       }
+      ],
+      "disambiguation": "version 2b",
+      "video": false,
+      "length": 279000,
+      "id": "d7610153-af46-4f96-ae68-564000948a65",
+      "title": "For You",
+      "first-release-date": "1973-01-05"
+     },
+     "length": 279000,
+     "position": 7,
+     "artist-credit": [
+      {
+       "artist": {
+        "sort-name": "Springsteen, Bruce",
+        "type": "Person",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "country": "US",
+        "name": "Bruce Springsteen",
+        "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+        "disambiguation": ""
+       },
+       "joinphrase": "",
+       "name": "Bruce Springsteen"
+      }
+     ],
+     "number": "7",
+     "title": "For You"
+    },
+    {
+     "recording": {
+      "length": 298000,
+      "id": "127f5477-caeb-462b-9689-57da3c9e6972",
+      "disambiguation": "version 2",
+      "artist-credit": [
+       {
+        "name": "Bruce Springsteen",
+        "joinphrase": "",
+        "artist": {
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+         "type": "Person",
+         "sort-name": "Springsteen, Bruce",
+         "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+         "name": "Bruce Springsteen",
+         "disambiguation": "",
+         "country": "US"
+        }
+       }
+      ],
+      "video": false,
+      "first-release-date": "1973-01-05",
+      "title": "Spirit in the Night"
+     },
+     "id": "f36ed187-ac30-4850-8656-800394d80a32",
+     "title": "Spirit in the Night",
+     "number": "8",
+     "position": 8,
+     "artist-credit": [
+      {
+       "artist": {
+        "country": "US",
+        "name": "Bruce Springsteen",
+        "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+        "disambiguation": "",
+        "sort-name": "Springsteen, Bruce",
+        "type": "Person",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+       },
+       "joinphrase": "",
+       "name": "Bruce Springsteen"
+      }
+     ],
+     "length": 298000
+    },
+    {
+     "artist-credit": [
+      {
+       "name": "Bruce Springsteen",
+       "joinphrase": "",
+       "artist": {
+        "type": "Person",
+        "sort-name": "Springsteen, Bruce",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "country": "US",
+        "disambiguation": "",
+        "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+        "name": "Bruce Springsteen"
+       }
+      }
+     ],
+     "position": 9,
+     "length": 193000,
+     "title": "It’s Hard to Be a Saint in the City",
+     "number": "9",
+     "id": "91637b47-3830-41eb-9a17-6e60651bd877",
+     "recording": {
+      "length": 193000,
+      "id": "a704d8cd-b6d7-4918-b865-82f623f4a4ce",
+      "disambiguation": "version 6c",
+      "artist-credit": [
+       {
+        "artist": {
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+         "sort-name": "Springsteen, Bruce",
+         "type": "Person",
+         "disambiguation": "",
+         "name": "Bruce Springsteen",
+         "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+         "country": "US"
+        },
+        "joinphrase": "",
+        "name": "Bruce Springsteen"
+       }
+      ],
+      "video": false,
+      "first-release-date": "1973-01-05",
+      "title": "It’s Hard to Be a Saint in the City"
+     }
+    }
+   ],
+   "title": "",
+   "format-id": "3e9080b0-5e6c-34ab-bd15-f526b6306a64",
+   "format": "12\" Vinyl",
+   "position": 1,
+   "track-offset": 0,
+   "track-count": 9,
+   "id": "9b391dcd-b534-31e6-9d76-8f7dfdc14e14"
+  }
+ ],
+ "status": "Official",
+ "text-representation": {
+  "language": "eng",
+  "script": "Latn"
+ },
+ "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+ "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f",
+ "disambiguation": "Pitman pressing",
+ "release-group": {
+  "artist-credit": [
+   {
+    "name": "Bruce Springsteen",
+    "joinphrase": "",
+    "artist": {
+     "sort-name": "Springsteen, Bruce",
+     "type": "Person",
+     "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+     "country": "US",
+     "disambiguation": "",
+     "name": "Bruce Springsteen",
+     "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+    }
+   }
+  ],
+  "title": "Greetings From Asbury Park, N.J.",
+  "first-release-date": "1973-01-05",
+  "disambiguation": "",
+  "secondary-types": [],
+  "id": "c497fc44-ddaf-3cce-a9b4-bfec958a0f3c",
+  "secondary-type-ids": [],
+  "primary-type": "Album",
+  "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc"
+ },
+ "country": "US"
+}

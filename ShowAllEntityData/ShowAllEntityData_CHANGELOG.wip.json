@@ -1,0 +1,124 @@
+[
+  {
+    "version": "WIP.5",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Link previews on MusicBrainz: ISRC, ISWC, disc ID and collection cards. An ISRC card lists the recordings carrying it, an ISWC card the works; a disc ID card shows its number of tracks, its length and the releases it is attached to, and its window the whole table of contents; a collection card shows its type, how many items it holds and its editor. MusicBrainz shows only public collections: a private one's card says it is probably private."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Popup engine: _mbPopTarget() also takes a code page (_MB_POP_CODE_RE: /isrc/, /iswc/, /cdtoc/, the last looked up at /ws/2/discid/); a kind may add its own note to a failure (failNote)."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "popup-mb.spec.js: 5 more tests (35); four ws2-pop-isrc/iswc/discid/collection fixtures (scripts/capture-ws2-fixtures.py); popup-mb.json: 3 more mutations (32). New tests/live/popup-mb.spec.js (@extended, 5 tests: release group page, release, works, events, instruments). HELP, docs/claude/detail-pages.md, org/iframe.org."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.4",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Link previews on MusicBrainz: event, place and series cards. An event card shows the type, date and time, whether it was cancelled, the place, the line-up as the setlist bills it (\"A & B with C, D\") and the first songs; its window adds the whole setlist, what was recorded there (releases and recordings) and the event's posters from the Event Art Archive. A place card shows the type, area, years open, address and coordinates; its window adds a map link, its external links and up to 100 of its events, sorted by date. A series card shows its type and first items with their numbers; its window lists every item in order."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Popup engine: _mbPopSetlist() reads MusicBrainz's setlist markup (line-up, songs, notes; [mbid|name] tokens by name); _mbPopArtLoad()/_mbPopGalleryHtml() load and show an archive's images once per window, now for the release's cover strip too."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "popup-mb.spec.js: 4 more tests (30); five ws2-pop-event/place/series fixtures (scripts/capture-ws2-fixtures.py) and the existing eaa-event-3f2ca30a.json; popup-mb.json: 5 more mutations (29). HELP, docs/claude/detail-pages.md, org/iframe.org."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.3",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Link previews on MusicBrainz: artist, label, area and instrument cards. An artist card shows the type, gender, area, life span, where they were born or founded, genres, rating, IPI, ISNI and other names; its window adds every external link and how many release groups they have of each type (album, single, EP, broadcast, other). A label card shows the type, label code, area, years active, genres and other names; its window adds the related labels (what it owns, who owns it, whose imprint it is, distribution, reissues), its links and how many releases it has. An area card shows the type, ISO codes, what it is part of and how many parts it has; its window lists the parts. An instrument card shows the type, subtypes and other names; its window lists the related instruments and every alias (MusicBrainz's description of an instrument is on its Live page)."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Popup engine: relations are grouped by type and direction and named as MusicBrainz's pages word them (_MB_POP_REL_LABELS, read off the captured answers); one links helper, _mbPopUrlLinksHtml(), now also renders the release group window's links. The artist card leaves the external links to the window (most of the artist lookup's size in Phase 0)."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "popup-mb.spec.js: 6 more tests (26); twelve ws2-pop-artist/label/area/instrument fixtures (scripts/capture-ws2-fixtures.py); popup-mb.json: 5 more mutations (24). The WIP.2 commit carried a scratch script by mistake (scripts/_peek3.py); removed here. HELP, docs/claude/detail-pages.md, org/iframe.org."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.2",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Link previews on MusicBrainz: recording and work cards. A recording card shows its length, artist, ISRCs, first release date, the work it is a performance of and its earliest releases, with \"on 25+ releases\" when MusicBrainz lists more than one request returns. Its window adds the credits (performers with their instruments, producers, engineers, where it was recorded and mixed) and every release up to 25 with the real total. A work card shows its type, language, ISWC, composer, lyricist, publishers and how many related works it has; its window lists them all with links, its society codes, and its first 100 recordings with the total. ⟳ asks every part of the window again; a part that failed shows \"Try again\" and is not asked again on its own."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Popup engine: _mbPopPinLoad() starts a window's extra request unless it already failed (⟳ always), _mbPopBrowse() keys a browse, _mbPopSectionHtml()/_mbPopRelRows()/_mbPopTableHtml() render a window part, its relations and a plain table. ⟳ passes on to the extras started from the lookup's own callback."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "popup-mb.spec.js: 6 more tests (20); fixtures ws2-pop-recording-thunder*.json and ws2-pop-work-btr*.json (scripts/capture-ws2-fixtures.py); popup-mb.json: 5 more mutations (19). HELP, docs/claude/detail-pages.md, org/iframe.org."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Link previews on MusicBrainz (new setting \"Preview linked entities on hover\", in the new section 🔎 LINK PREVIEWS ON MUSICBRAINZ, off by default): hold Ctrl over a release or release group link in any table for a card, read from the MusicBrainz Web Service. A release card shows the cover, status, type, format, track count, date and country, label and catalog number, barcode, packaging and the first tracks with their lengths. Space pins it into the window the release page's release group cards already use: for a release, its whole tracklist by medium (each track linking its recording), its release group, labels and release events, and its Cover Art Archive images; for a release group, every release, sortable. \"Live page\" shows the entity's own page without its scripts. ← → step down the same column, from one sub-table into the next. On a touch screen a tap on such a link opens the window instead of the page (↗ opens the page). More entity kinds follow in the next steps.",
+          "A card asks MusicBrainz once, through the one rate gate the Relationships column uses, and only if the pointer is still on the link when its turn comes; what it got is kept in this browser for \"Keep MusicBrainz answers for (hours)\" (new, default 24; it also ages the release group window's releases). ⟳ always asks again; a failure is shown and not kept.",
+          "\"Show the detail-page preview on a plain hover (without Ctrl)\" is now \"Show every preview on a plain hover (without Ctrl)\" and covers the MusicBrainz link previews too (same setting, same default). \"Release group window: at most this many releases\" moved into the new section."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Popup engine: one source, _mbEntitySource(), serves every MusicBrainz table link through a registry of kinds (_MB_KINDS); a target may carry its own kind and width, which the dialog title and the card follow. New loader _mbWsLoad() (memory, IndexedDB keyed by the request's inc set, network; in-flight sharing; wanted() after the rate slot). _rgWsGet() takes an optional wanted(), and _rgReleasesLoad() passes one on from a table link only, so the release page's own two sources behave as before. _RG_TTL_MS became _mbTtlMs() (sa_pop_mb_ttl_hours). Not on the filter/sort/render path: one more source in the delegated mouseover resolve, only with the setting on."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "New tests/fixtures/popup-mb.spec.js (14 tests) and popup-mb.mobile.spec.js; fixture ws2-pop-release-greetings.json from the new scripts/capture-ws2-fixtures.py; new scripts/mutations/popup-mb.json; scripts/mutations/popup-engine.json re-anchored on the two Phase 1 lines this step changed. New scripts/check-mutation-anchors.py: a read-only check that every mutation `find` still matches once (it also lists 42 anchors already stale on main, left as they are). docs/claude/detail-pages.md, ShowAllEntityData_HELP.md and org/iframe.org updated."
+        ]
+      }
+    ]
+  }
+]

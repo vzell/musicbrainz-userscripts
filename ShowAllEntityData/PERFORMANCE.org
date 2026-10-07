@@ -3424,7 +3424,13 @@ on the same side of the gate. Since the popup engine (org/iframe.org Phase 1,
 2026-10-07) the release page's release-group popups go through this gate too
 (~_rgWsGet()~, which had a queue of its own), with the same order in their
 ~beforeRetry~; ~release-rg-popup.spec.js~ pins that they wait behind slots
-another feature holds.
+another feature holds. Phase 2's entity cards on every MusicBrainz table link
+(~_mbEntitySource()~, ~sa_pop_mb~, off by default) use the same ~_rgWsGet()~,
+which now asks the caller's ~wanted()~ once its slot comes up: a hover that
+has moved on sends nothing, but the slot it reserved is spent, so with the
+setting on each card a user opens can delay the Relationships column's
+auto-load by up to one slot (org/iframe.org, answer 7); ~popup-mb.spec.js~
+pins both the wait and the skip.
 
 **** What shipped (2026-09-18, 9.99.1101-9.99.1108)
 

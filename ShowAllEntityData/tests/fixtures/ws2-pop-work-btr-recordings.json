@@ -1,0 +1,3250 @@
+{
+ "recordings": [
+  {
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce"
+     },
+     "name": "Bruce Springsteen"
+    },
+    {
+     "name": "The E Street Band",
+     "joinphrase": "",
+     "artist": {
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "type": "Group",
+      "name": "The E Street Band",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "video": false,
+   "disambiguation": "live, 1980‐10‐14: MECCA Arena, Milwaukee, WI, USA",
+   "id": "0049b0b0-2093-4f71-adb0-a59de5ed74cd",
+   "title": "Born to Run",
+   "length": 299000
+  },
+  {
+   "length": 301853,
+   "first-release-date": "1995",
+   "title": "Born to Run",
+   "disambiguation": "",
+   "video": false,
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "disambiguation": "US rock singer‐songwriter, multi‐instrumentalist & actress",
+      "id": "2c16cb3f-e85f-4158-889f-ffc038f5792d",
+      "sort-name": "Quatro, Suzi",
+      "type": "Person",
+      "name": "Suzi Quatro",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     },
+     "name": "Suzi Quatro"
+    }
+   ],
+   "id": "00f55541-3f21-4790-942a-09d71cf8b0dc"
+  },
+  {
+   "length": 252760,
+   "first-release-date": "1993",
+   "title": "Born to Run",
+   "disambiguation": "",
+   "video": false,
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "artist": {
+      "name": "Wolfsbane",
+      "type": "Group",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "sort-name": "Wolfsbane",
+      "id": "1d46f498-63f9-4178-bc81-fbd8b483d9a4",
+      "disambiguation": "",
+      "country": "GB"
+     },
+     "name": "Wolfsbane"
+    }
+   ],
+   "id": "03a1e74c-0d4d-4ce8-ae5f-1deccc1424e1"
+  },
+  {
+   "title": "Born to Run",
+   "first-release-date": "2014",
+   "length": 347000,
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "joinphrase": " & "
+    },
+    {
+     "name": "The E Street Band",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The",
+      "name": "The E Street Band",
+      "type": "Group",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b"
+     },
+     "joinphrase": ""
+    }
+   ],
+   "video": false,
+   "disambiguation": "live, 2014‐02‐01: FNB Stadium, Johannesburg, South Africa",
+   "id": "07b8fc4e-038c-466a-a065-63d4a247dd41"
+  },
+  {
+   "first-release-date": "2001",
+   "title": "Born to Run",
+   "length": 257613,
+   "artist-credit": [
+    {
+     "name": "Ray Wilson",
+     "joinphrase": "",
+     "artist": {
+      "sort-name": "Wilson, Ray",
+      "id": "4e7ee52e-adbb-4410-a338-35d5615136c8",
+      "name": "Ray Wilson",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "GB",
+      "disambiguation": "Genesis vocalist for a short time"
+     }
+    }
+   ],
+   "video": false,
+   "disambiguation": "live, 2001",
+   "id": "0d39db7f-f2f5-4c4c-a963-f80ee58ca2a1"
+  },
+  {
+   "disambiguation": "live, 1980‐10‐17: Kiel Opera House, St. Louis, MO, USA",
+   "video": false,
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "artist": {
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "name": "Bruce Springsteen"
+    },
+    {
+     "name": "The E Street Band",
+     "artist": {
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "name": "The E Street Band",
+      "type": "Group",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "joinphrase": ""
+    }
+   ],
+   "length": 335000,
+   "title": "Born to Run",
+   "id": "0ee271d4-6604-478f-a787-35aa07be38b4"
+  },
+  {
+   "id": "14dc0449-5510-41e6-8de1-4d2e1c46f2e4",
+   "first-release-date": "1990-06-23",
+   "title": "Born to Run",
+   "length": 286533,
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "video": false,
+   "disambiguation": "live, 1978‐09‐19: Capitol Theatre, Passaic, NJ, USA"
+  },
+  {
+   "id": "15288e16-25e7-478f-9ce8-73257147722a",
+   "disambiguation": "live, 1988‐04‐27: Los Angeles Memorial Sports Arena, Los Angeles, CA, USA",
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     },
+     "name": "Bruce Springsteen"
+    },
+    {
+     "joinphrase": "",
+     "artist": {
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "name": "The E Street Band",
+      "type": "Group",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "name": "The E Street Band"
+    }
+   ],
+   "video": false,
+   "length": 486493,
+   "title": "Born to Run",
+   "first-release-date": "1990"
+  },
+  {
+   "disambiguation": "live, 1988‐03‐14: Richfield Coliseum, Richfield, OH, USA",
+   "video": false,
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "artist": {
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "name": "Bruce Springsteen"
+    },
+    {
+     "joinphrase": "",
+     "artist": {
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type": "Group",
+      "name": "The E Street Band",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "name": "The E Street Band"
+    }
+   ],
+   "length": 479920,
+   "title": "Born to Run",
+   "id": "16b74ed4-0c21-498a-b515-fdb66ac6dfa6"
+  },
+  {
+   "length": 270000,
+   "first-release-date": "2009-09-29",
+   "title": "Born to Run",
+   "disambiguation": "",
+   "video": false,
+   "artist-credit": [
+    {
+     "artist": {
+      "name": "Boston University Dear Abbeys",
+      "type": "Group",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "id": "4db360d8-585a-451c-8f87-d75dd0e64989",
+      "sort-name": "Boston University Dear Abbeys",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "Boston University Dear Abbeys"
+    }
+   ],
+   "id": "1d18de5b-d169-4fc9-8263-0a1ac55896be"
+  },
+  {
+   "title": "Born to Run",
+   "id": "1e27351e-a183-4501-84c8-c66a5cdd4ba7",
+   "length": 256000,
+   "video": false,
+   "artist-credit": [
+    {
+     "joinphrase": " with ",
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "name": "Bruce Springsteen"
+    },
+    {
+     "name": "Southside Johnny",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "sort-name": "Southside Johnny",
+      "id": "f826b4d1-2dc3-4c4f-ba70-69b472320338",
+      "type": "Person",
+      "name": "Southside Johnny",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     },
+     "joinphrase": " and "
+    },
+    {
+     "artist": {
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type": "Group",
+      "name": "The E Street Band",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "joinphrase": "",
+     "name": "The E Street Band"
+    }
+   ],
+   "disambiguation": "live, 1977‐09‐13: The Stone Pony, Asbury Park, NJ, USA"
+  },
+  {
+   "video": false,
+   "artist-credit": [
+    {
+     "name": "Big Daddy",
+     "artist": {
+      "id": "09aee210-8761-4b66-84fa-1a5a835636c6",
+      "sort-name": "Big Daddy",
+      "name": "Big Daddy",
+      "type": "Group",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "country": "US",
+      "disambiguation": "comedy rock band"
+     },
+     "joinphrase": ""
+    }
+   ],
+   "disambiguation": "",
+   "title": "Born to Run",
+   "first-release-date": "1991",
+   "length": 188000,
+   "id": "1e4dfef8-fa20-4c36-b63f-b1e3c952c617"
+  },
+  {
+   "title": "Born to Run",
+   "id": "1f109c9e-b5ee-495a-b896-d6ffb7d3224b",
+   "length": 366000,
+   "video": false,
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     },
+     "name": "Bruce Springsteen"
+    },
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The",
+      "name": "The E Street Band",
+      "type": "Group",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b"
+     },
+     "joinphrase": " with ",
+     "name": "The E Street Band"
+    },
+    {
+     "name": "Mike Mills",
+     "artist": {
+      "name": "Mike Mills",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "525d2a4a-3d81-4d96-9581-3442feed3d2e",
+      "sort-name": "Mills, Mike",
+      "disambiguation": "R.E.M. bass player",
+      "country": "US"
+     },
+     "joinphrase": " and "
+    },
+    {
+     "name": "Peter Buck",
+     "artist": {
+      "country": "US",
+      "disambiguation": "R.E.M. guitarist",
+      "id": "2bab20bf-8dab-4af8-b7b0-ba8e30860261",
+      "sort-name": "Buck, Peter",
+      "name": "Peter Buck",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     },
+     "joinphrase": ""
+    }
+   ],
+   "disambiguation": "live, 2004‐10‐02: Gund Arena, Cleveland, OH, USA"
+  },
+  {
+   "length": 273333,
+   "title": "Born to Run",
+   "first-release-date": "2006-07-01",
+   "disambiguation": "",
+   "artist-credit": [
+    {
+     "name": "Something for Kate",
+     "artist": {
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "type": "Group",
+      "name": "Something for Kate",
+      "id": "f5b6d250-2cf6-44d3-b6ff-b91c0215b583",
+      "sort-name": "Something for Kate",
+      "disambiguation": "",
+      "country": "AU"
+     },
+     "joinphrase": ""
+    }
+   ],
+   "video": false,
+   "id": "21e6aa94-a6e7-4d12-b81e-12b67058c028"
+  },
+  {
+   "length": 421000,
+   "id": "22748ea7-9248-4555-8ce1-36cee11e792a",
+   "title": "Born to Run",
+   "disambiguation": "live, 1977‐12‐31: Capitol Theatre, Passaic, NJ, USA",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     },
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen"
+    },
+    {
+     "name": "The E Street Band",
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "name": "The E Street Band",
+      "type": "Group",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f"
+     },
+     "joinphrase": ""
+    }
+   ],
+   "video": false
+  },
+  {
+   "first-release-date": "1988",
+   "title": "Born to Run",
+   "length": 475000,
+   "video": false,
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "disambiguation": "live, 1988‐04‐04: Capital Centre, Largo, MD, USA",
+   "id": "2443eba2-a858-4595-87b6-35719f8f3b97"
+  },
+  {
+   "id": "251798f5-b60c-4feb-9da7-29b8807c936b",
+   "length": 314000,
+   "first-release-date": "2024-09-06",
+   "title": "Born to Run",
+   "disambiguation": "live, 2024‐08‐21: Citizens Bank Park, Philadelphia, PA, USA",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": " & ",
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     }
+    },
+    {
+     "artist": {
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "name": "The E Street Band",
+      "type": "Group",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "joinphrase": "",
+     "name": "The E Street Band"
+    }
+   ],
+   "video": false
+  },
+  {
+   "artist-credit": [
+    {
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "joinphrase": ", ",
+     "name": "Bruce Springsteen"
+    },
+    {
+     "name": "The E Street Band",
+     "joinphrase": " with ",
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "name": "The E Street Band",
+      "type": "Group",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The"
+     }
+    },
+    {
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "id": "7dd2a29e-5415-4180-9af9-231b1d5716ad",
+      "sort-name": "Murphy, Elliott",
+      "type": "Person",
+      "name": "Elliott Murphy",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     },
+     "name": "Elliott Murphy"
+    }
+   ],
+   "video": false,
+   "disambiguation": "live, 2016‐07‐11: AccorHotels Arena, Paris, France",
+   "first-release-date": "2017-03-02",
+   "title": "Born to Run",
+   "length": null,
+   "id": "2896528c-0a29-4601-9a55-d69e94120f72"
+  },
+  {
+   "id": "2a642cde-ec0c-42a9-94f0-a4ee4389e014",
+   "first-release-date": "2000",
+   "title": "Born to Run",
+   "length": null,
+   "artist-credit": [
+    {
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     },
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen"
+    },
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "type": "Group",
+      "name": "The E Street Band"
+     },
+     "joinphrase": "",
+     "name": "The E Street Band"
+    }
+   ],
+   "video": false,
+   "disambiguation": "live, 1999‐09‐15: First Union Center, Philadelphia, PA, USA"
+  },
+  {
+   "video": false,
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "type": "Person"
+     },
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen"
+    },
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "name": "The E Street Band",
+      "type": "Group"
+     },
+     "joinphrase": "",
+     "name": "The E Street Band"
+    }
+   ],
+   "disambiguation": "live, 1980‐12‐09: Spectrum, Philadelphia, PA, USA",
+   "title": "[intro] / Born to Run",
+   "id": "2ca5095f-32c1-4c9a-8d14-c73346babc63",
+   "length": 364000
+  },
+  {
+   "disambiguation": "live, 1992‐08‐07: Brendan Byrne Arena, East Rutherford, NJ, USA",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "type": "Person"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "video": false,
+   "length": 324800,
+   "title": "Born to Run",
+   "first-release-date": "1992",
+   "id": "2db4d4b1-9e75-4376-90c9-32d59d488f31"
+  },
+  {
+   "first-release-date": "2015",
+   "title": "Born to Run",
+   "length": null,
+   "video": false,
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "disambiguation": "live, 1988‐09‐21: Los Angeles Memorial Coliseum, Los Angeles, CA, USA",
+   "id": "35137d2d-eb79-4fb9-8560-905169e08a77"
+  },
+  {
+   "id": "35440ea9-0c3a-45f7-8670-e8f00607d43c",
+   "length": 220333,
+   "first-release-date": "1993",
+   "title": "Born to Run",
+   "disambiguation": "live, 1993‐06‐24: Brendan Byrne Arena, East Rutherford, NJ, USA",
+   "video": false,
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce"
+     }
+    }
+   ]
+  },
+  {
+   "disambiguation": "",
+   "video": true,
+   "artist-credit": [
+    {
+     "name": "The Killers",
+     "joinphrase": " & ",
+     "artist": {
+      "disambiguation": "American rock band",
+      "country": "US",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "type": "Group",
+      "name": "The Killers",
+      "id": "95e1ead9-4d31-4808-a7ac-32c3614c116b",
+      "sort-name": "Killers, The"
+     }
+    },
+    {
+     "joinphrase": "",
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "length": 888000,
+   "title": "2022-10-01: Madison Square Garden, New York City, NY, USA",
+   "id": "3d20cee6-6519-49c2-af62-f3198d1ad4f6"
+  },
+  {
+   "id": "40303079-cb29-40b3-9624-c1dc71841d49",
+   "disambiguation": "live, 2017‐01‐22: Perth Arena, Perth, Australia",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": " & ",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     }
+    },
+    {
+     "name": "The E Street Band",
+     "artist": {
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The",
+      "type": "Group",
+      "name": "The E Street Band",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "joinphrase": ""
+    }
+   ],
+   "video": false,
+   "length": 317000,
+   "first-release-date": "2017-01-27",
+   "title": "Born to Run"
+  },
+  {
+   "artist-credit": [
+    {
+     "name": "John Miles",
+     "artist": {
+      "disambiguation": "UK singer/songwriter/guitarist/keyboardist",
+      "country": "GB",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "name": "John Miles",
+      "id": "4256d457-1372-4b3b-b443-fd5cf9bb733f",
+      "sort-name": "Miles, John"
+     },
+     "joinphrase": ""
+    }
+   ],
+   "video": false,
+   "disambiguation": "live",
+   "title": "Born to Run",
+   "first-release-date": "2009-09-25",
+   "length": 290880,
+   "id": "41452ad7-af4e-4151-88e4-7144ed2af824"
+  },
+  {
+   "title": "Born to Run",
+   "id": "42c696f5-4c83-44f1-ab8b-537ad316bcab",
+   "length": null,
+   "video": false,
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "name": "Bruce Springsteen"
+    },
+    {
+     "joinphrase": " with ",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "name": "The E Street Band",
+      "type": "Group"
+     },
+     "name": "The E Street Band"
+    },
+    {
+     "name": "Mills",
+     "joinphrase": " and ",
+     "artist": {
+      "country": "US",
+      "disambiguation": "R.E.M. bass player",
+      "sort-name": "Mills, Mike",
+      "id": "525d2a4a-3d81-4d96-9581-3442feed3d2e",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "name": "Mike Mills"
+     }
+    },
+    {
+     "joinphrase": "",
+     "artist": {
+      "disambiguation": "R.E.M. guitarist",
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "name": "Peter Buck",
+      "id": "2bab20bf-8dab-4af8-b7b0-ba8e30860261",
+      "sort-name": "Buck, Peter"
+     },
+     "name": "Buck"
+    }
+   ],
+   "disambiguation": "live, 2004‐10‐05: Xcel Energy Center, St. Paul, MN, USA"
+  },
+  {
+   "video": false,
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     },
+     "name": "Bruce Springsteen"
+    },
+    {
+     "name": "The E Street Band",
+     "artist": {
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "type": "Group",
+      "name": "The E Street Band",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "joinphrase": ""
+    }
+   ],
+   "disambiguation": "live, 2017‐02‐16: Brisbane Entertainment Centre, Brisbane, Australia",
+   "first-release-date": "2017-03-04",
+   "title": "Born to Run",
+   "length": 347000,
+   "id": "437230f6-0329-4953-9fe1-3f328fa89057"
+  },
+  {
+   "id": "46e864e6-6d4f-4541-8688-aec0abd2f6cb",
+   "video": false,
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce"
+     },
+     "joinphrase": " & "
+    },
+    {
+     "name": "The E Street Band",
+     "joinphrase": "",
+     "artist": {
+      "name": "The E Street Band",
+      "type": "Group",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "disambiguation": "live, 2012‐11‐28: Rose Garden, Portland, OR, USA",
+   "first-release-date": "2013-01-01",
+   "title": "Born to Run",
+   "length": null
+  },
+  {
+   "id": "52419470-4b43-43d0-b546-42ba3c918f28",
+   "title": "Born to Run",
+   "length": 358000,
+   "artist-credit": [
+    {
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen"
+    },
+    {
+     "name": "The E Street Band",
+     "joinphrase": "",
+     "artist": {
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "name": "The E Street Band",
+      "type": "Group",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "country": "US",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "video": false,
+   "disambiguation": "live, 1985‐07‐07: Roundhay Park, Leeds, England, UK"
+  },
+  {
+   "title": "Born to Run",
+   "id": "56fe2b39-85cb-4dc9-a0f3-91c3d53fe987",
+   "length": 328000,
+   "video": false,
+   "artist-credit": [
+    {
+     "name": "Southside Johnny & The Asbury Jukes",
+     "joinphrase": " / ",
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "type": "Group",
+      "name": "Southside Johnny & The Asbury Jukes",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "sort-name": "Southside Johnny & The Asbury Jukes",
+      "id": "d7bc97fb-4bd3-453b-98a1-9081f89c52f0"
+     }
+    },
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     },
+     "joinphrase": " & "
+    },
+    {
+     "name": "The E Street Band",
+     "joinphrase": "",
+     "artist": {
+      "type": "Group",
+      "name": "The E Street Band",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "disambiguation": "live, 1977‐05‐12: Monmouth Arts Center, Red Bank, NJ, USA"
+  },
+  {
+   "id": "5857c560-26cb-430c-a456-bca23a5d540e",
+   "title": "Born to Run",
+   "first-release-date": "2014-11-17",
+   "length": 324000,
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "joinphrase": " & "
+    },
+    {
+     "name": "The E Street Band",
+     "artist": {
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "name": "The E Street Band",
+      "type": "Group",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "joinphrase": ""
+    }
+   ],
+   "video": false,
+   "disambiguation": "live, 2014‐04‐24: PNC Arena, Raleigh, NC, USA"
+  },
+  {
+   "first-release-date": "2015-04-02",
+   "title": "Born to Run",
+   "length": 290000,
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": " & ",
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "disambiguation": "",
+      "country": "US"
+     }
+    },
+    {
+     "name": "The E Street Band",
+     "joinphrase": "",
+     "artist": {
+      "name": "The E Street Band",
+      "type": "Group",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "video": false,
+   "disambiguation": "live, 1977‐12‐31: Capitol Theatre, Passaic, NJ, USA",
+   "id": "5b7e230a-6718-4b68-9d48-f6ddcd836dae"
+  },
+  {
+   "id": "5c44de5b-7bad-4130-87d6-3e135c4be9ca",
+   "artist-credit": [
+    {
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     },
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen"
+    },
+    {
+     "name": "The E Street Band",
+     "joinphrase": "",
+     "artist": {
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "type": "Group",
+      "name": "The E Street Band",
+      "country": "US",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "video": false,
+   "disambiguation": "live rehearsal, 2002‐07‐30: Convention Hall, Asbury Park, NJ, USA; evening",
+   "title": "Born to Run",
+   "first-release-date": "2002",
+   "length": 321160
+  },
+  {
+   "id": "5c9e2c0b-84e4-45a6-bd09-d871809d8549",
+   "title": "Born to Run",
+   "length": null,
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "name": "Bruce Springsteen"
+    },
+    {
+     "artist": {
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "name": "The E Street Band",
+      "type": "Group",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "The E Street Band"
+    }
+   ],
+   "video": false,
+   "disambiguation": "live, 2000‐02‐28: Bryce Jordan Center, Penn State University, University Park, PA, USA"
+  },
+  {
+   "id": "5e4891a4-23a7-4783-9db6-35dfa06cd268",
+   "disambiguation": "",
+   "video": false,
+   "artist-credit": [
+    {
+     "name": "Diesel",
+     "joinphrase": "",
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "name": "Diesel",
+      "id": "c9ba869f-5751-4fb5-a710-17817111a173",
+      "sort-name": "Diesel",
+      "disambiguation": "Australian pop rock aka Mark Lizotte",
+      "country": "AU"
+     }
+    }
+   ],
+   "length": 271053,
+   "first-release-date": "2016-07-01",
+   "title": "Born to Run"
+  },
+  {
+   "disambiguation": "live, 2008‐04‐23: Amway Arena, Orlando, FL, USA",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "type": "Person"
+     },
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen"
+    },
+    {
+     "name": "The E Street Band",
+     "joinphrase": "",
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "name": "The E Street Band",
+      "type": "Group",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The"
+     }
+    }
+   ],
+   "video": false,
+   "length": 317000,
+   "id": "5f910e13-0f4c-4d33-b4c5-cd104d792f81",
+   "title": "Born to Run"
+  },
+  {
+   "disambiguation": "live, 1980‐10‐14: MECCA Arena, Milwaukee, WI, USA",
+   "video": false,
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "name": "Bruce Springsteen"
+    },
+    {
+     "name": "The E Street Band",
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "name": "The E Street Band",
+      "type": "Group",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f"
+     },
+     "joinphrase": ""
+    }
+   ],
+   "length": 299000,
+   "title": "Born to Run",
+   "id": "66472d05-1566-4a19-b9db-4225f2865314"
+  },
+  {
+   "video": false,
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "name": "Bruce Springsteen"
+     },
+     "joinphrase": " & "
+    },
+    {
+     "name": "The E Street Band",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "name": "The E Street Band",
+      "type": "Group"
+     },
+     "joinphrase": ""
+    }
+   ],
+   "disambiguation": "live, 1977‐03‐24: Music Hall, Boston, MA, USA",
+   "first-release-date": "2013",
+   "title": "Born to Run",
+   "length": null,
+   "id": "6b2c66fc-9cad-4791-a9d1-e095f1e7b971"
+  },
+  {
+   "id": "6d4ff10f-ddf3-402b-ba54-0a293581d2ec",
+   "title": "Born to Run",
+   "first-release-date": "2025-12-05",
+   "length": 347000,
+   "artist-credit": [
+    {
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce"
+     },
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen"
+    },
+    {
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type": "Group",
+      "name": "The E Street Band",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b"
+     },
+     "name": "The E Street Band"
+    }
+   ],
+   "video": false,
+   "disambiguation": "live, 2013‐05‐08: HK Areena, Turku, Finland"
+  },
+  {
+   "id": "71346fb4-7764-432d-802e-dfdf4149bc92",
+   "length": 419000,
+   "first-release-date": "2015",
+   "title": "Born to Run",
+   "disambiguation": "live, 1978‐08‐09: The Agora, Cleveland, OH, USA",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "name": "Bruce Springsteen"
+     },
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen"
+    },
+    {
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "type": "Group",
+      "name": "The E Street Band"
+     },
+     "name": "The E Street Band"
+    }
+   ],
+   "video": false
+  },
+  {
+   "disambiguation": "live, 1978‐09‐30: Fox Theatre, Atlanta, GA, USA",
+   "video": false,
+   "artist-credit": [
+    {
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen"
+    },
+    {
+     "joinphrase": "",
+     "artist": {
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The",
+      "name": "The E Street Band",
+      "type": "Group",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "name": "The E Street Band"
+    }
+   ],
+   "length": 440000,
+   "first-release-date": "2014",
+   "title": "Born to Run",
+   "id": "715a7bf3-0303-499c-859e-0c5a9387586f"
+  },
+  {
+   "disambiguation": "live, 1980‐10‐14: MECCA Arena, Milwaukee, WI, USA",
+   "video": false,
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": " & ",
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US",
+      "disambiguation": ""
+     }
+    },
+    {
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "type": "Group",
+      "name": "The E Street Band"
+     },
+     "name": "The E Street Band"
+    }
+   ],
+   "length": 309000,
+   "title": "Born to Run",
+   "id": "77066ce2-5323-45cb-9d66-01dc2b810c42"
+  },
+  {
+   "disambiguation": "",
+   "artist-credit": [
+    {
+     "artist": {
+      "disambiguation": "",
+      "country": null,
+      "type": "Group",
+      "name": "Pickin’ On Project",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "id": "a2e48b1e-62a3-470e-bddc-2fe167148e0b",
+      "sort-name": "Pickin’ On Project"
+     },
+     "joinphrase": "",
+     "name": "Pickin’ On Project"
+    }
+   ],
+   "video": false,
+   "length": 272586,
+   "first-release-date": "1999-07-13",
+   "title": "Born to Run",
+   "id": "788fbd6c-b62f-4c62-a5e6-5632a90d887c"
+  },
+  {
+   "id": "78da3a33-9af7-4892-82fe-98951b6a4fc1",
+   "length": 281000,
+   "title": "Born to Run",
+   "first-release-date": "1998",
+   "disambiguation": "",
+   "artist-credit": [
+    {
+     "name": "The Royal Philharmonic Orchestra",
+     "artist": {
+      "type-id": "a0b36c92-3eb1-3839-a4f9-4799823f54a5",
+      "type": "Orchestra",
+      "name": "Royal Philharmonic Orchestra",
+      "sort-name": "Royal Philharmonic Orchestra",
+      "id": "299597ae-3a20-4bf1-973e-03704af69f6b",
+      "disambiguation": "",
+      "country": "GB"
+     },
+     "joinphrase": ", "
+    },
+    {
+     "name": "Mike Batt",
+     "joinphrase": ", ",
+     "artist": {
+      "country": "GB",
+      "disambiguation": "",
+      "sort-name": "Batt, Mike",
+      "id": "2f354cca-0eba-46e2-a716-96f14f47865a",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "name": "Mike Batt"
+     }
+    },
+    {
+     "artist": {
+      "sort-name": "Tempest, Joey",
+      "id": "5f567b22-61cb-48d4-b096-09968f6c3f77",
+      "name": "Joey Tempest",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "SE",
+      "disambiguation": "Swedish singer"
+     },
+     "joinphrase": "",
+     "name": "Joey Tempest"
+    }
+   ],
+   "video": false
+  },
+  {
+   "disambiguation": "live, 2009‐06‐28: Hyde Park, London, England, UK",
+   "artist-credit": [
+    {
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     },
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen"
+    },
+    {
+     "name": "The E Street Band",
+     "joinphrase": "",
+     "artist": {
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "type": "Group",
+      "name": "The E Street Band",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "video": true,
+   "length": 394000,
+   "first-release-date": "2010",
+   "title": "Born to Run",
+   "id": "7a54ba36-088c-484d-b663-6b8fe5b66f9b"
+  },
+  {
+   "id": "7a68ffe7-7aa5-4fdb-9679-219eadf4fe1c",
+   "title": "Born to Run",
+   "length": 521000,
+   "artist-credit": [
+    {
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen"
+    },
+    {
+     "name": "The E Street Band",
+     "joinphrase": "",
+     "artist": {
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "name": "The E Street Band",
+      "type": "Group",
+      "country": "US",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "video": false,
+   "disambiguation": "live, 1978‐08‐04: Charleston Civic Center, Charleston, WV, USA"
+  },
+  {
+   "id": "850449a8-dd26-4eb9-a661-e13edc0bc58e",
+   "video": false,
+   "artist-credit": [
+    {
+     "name": "The Slow Show",
+     "joinphrase": "",
+     "artist": {
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "name": "The Slow Show",
+      "type": "Group",
+      "id": "02770532-d734-4f5d-957d-297b03f253eb",
+      "sort-name": "Slow Show, The",
+      "disambiguation": "UK indie pop band",
+      "country": "GB"
+     }
+    }
+   ],
+   "disambiguation": "live",
+   "title": "Born to Run",
+   "first-release-date": "2013-02-18",
+   "length": 226906
+  },
+  {
+   "disambiguation": "live, 1978‐12‐15: Winterland Ballroom, San Francisco, CA, USA",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "name": "Bruce Springsteen"
+     },
+     "joinphrase": ""
+    }
+   ],
+   "video": false,
+   "length": 299173,
+   "title": "Born to Run",
+   "first-release-date": "1990",
+   "id": "854c71c2-80cb-4399-80ea-f695483e1cad"
+  },
+  {
+   "disambiguation": "live, 1975‐10‐18, late show: The Roxy Theatre, West Hollywood, CA, USA",
+   "video": false,
+   "artist-credit": [
+    {
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen"
+    },
+    {
+     "artist": {
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The",
+      "type": "Group",
+      "name": "The E Street Band",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "joinphrase": "",
+     "name": "The E Street Band"
+    }
+   ],
+   "length": null,
+   "title": "Born to Run",
+   "first-release-date": "2016-11-28",
+   "id": "87d82ea3-df23-4ffa-b14c-c496c3f1e9b7"
+  },
+  {
+   "artist-credit": [
+    {
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen"
+    },
+    {
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "type": "Group",
+      "name": "The E Street Band",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f"
+     },
+     "joinphrase": "",
+     "name": "The E Street Band"
+    }
+   ],
+   "video": false,
+   "disambiguation": "live, 1981‐03‐02: Hampton Roads Coliseum, Hampton, VA, USA",
+   "title": "Born to Run",
+   "first-release-date": "1981-03-02",
+   "length": null,
+   "id": "8a1e24c6-aaaa-441e-86f4-c3b62c990455"
+  },
+  {
+   "disambiguation": "live, 1978‐09‐03: Saginaw Civic Center, Saginaw, MI, USA",
+   "video": false,
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "joinphrase": " & "
+    },
+    {
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "name": "The E Street Band",
+      "type": "Group",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f"
+     },
+     "joinphrase": "",
+     "name": "The E Street Band"
+    }
+   ],
+   "length": 317000,
+   "title": "Born to Run",
+   "id": "8d33cdc4-0ae3-47f7-be3d-69d6d00879a1"
+  },
+  {
+   "id": "8d415f95-37b1-44d8-ba4e-1107411ade53",
+   "first-release-date": "2010-11-02",
+   "title": "Born to Run",
+   "length": 321053,
+   "video": false,
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     },
+     "name": "Bruce Springsteen"
+    },
+    {
+     "name": "The E Street Band",
+     "artist": {
+      "type": "Group",
+      "name": "The E Street Band",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "joinphrase": " with "
+    },
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "American singer‐songwriter and pianist",
+      "id": "64b94289-9474-4d43-8c93-918ccc1920d1",
+      "sort-name": "Joel, Billy",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Billy Joel",
+      "type": "Person"
+     },
+     "joinphrase": "",
+     "name": "Billy Joel"
+    }
+   ],
+   "disambiguation": "live, 2009‐10‐29: Madison Square Garden, New York City, NY, USA"
+  },
+  {
+   "disambiguation": "live, 2016‐07‐31: Letzigrund, Zurich, Switzerland",
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "name": "Bruce Springsteen"
+    },
+    {
+     "name": "The E Street Band",
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "name": "The E Street Band",
+      "type": "Group",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f"
+     },
+     "joinphrase": ""
+    }
+   ],
+   "video": false,
+   "length": 318000,
+   "first-release-date": "2016-11-23",
+   "title": "Born to Run",
+   "id": "8fa6b981-6ef7-4b69-a22a-17d875a46cbe"
+  },
+  {
+   "id": "924f6f9a-8e23-4c0f-b220-2010bcc52f71",
+   "disambiguation": "live, 1993‐05‐14: Waldbühne, Berlin, Germany",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "joinphrase": ""
+    }
+   ],
+   "video": false,
+   "length": 391000,
+   "first-release-date": "2022-04-01",
+   "title": "Born to Run"
+  },
+  {
+   "id": "96839256-e709-4632-a8e8-fe75829b1d23",
+   "first-release-date": "2014-11-17",
+   "title": "Born to Run",
+   "length": 335000,
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "name": "Bruce Springsteen"
+    },
+    {
+     "name": "The E Street Band",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type": "Group",
+      "name": "The E Street Band",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b"
+     },
+     "joinphrase": ""
+    }
+   ],
+   "video": false,
+   "disambiguation": "live, 2014‐04‐08: U.S. Bank Arena, Cincinnati, OH, USA"
+  },
+  {
+   "first-release-date": "1991-06",
+   "title": "Born to Run",
+   "length": 293333,
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "joinphrase": " & "
+    },
+    {
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The",
+      "name": "The E Street Band",
+      "type": "Group",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b"
+     },
+     "name": "The E Street Band"
+    }
+   ],
+   "video": false,
+   "disambiguation": "live, 1985‐07‐04: Wembley Stadium, London, England, UK",
+   "id": "9877a8ca-2a40-4b3a-9e66-70a97aa7f0d4"
+  },
+  {
+   "id": "98b2ba93-45e8-45fd-9d2d-8c2b85e3f391",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": " & ",
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "country": "US",
+      "disambiguation": ""
+     }
+    },
+    {
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "type": "Group",
+      "name": "The E Street Band",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f"
+     },
+     "joinphrase": "",
+     "name": "The E Street Band"
+    }
+   ],
+   "video": false,
+   "disambiguation": "live, 1999‐04‐24: Wiener Stadthalle, Vienna, Austria",
+   "first-release-date": "1999",
+   "title": "Born to Run",
+   "length": null
+  },
+  {
+   "id": "9a37f2a1-2e96-4eb5-8002-dcc481a1dd9f",
+   "first-release-date": "1990",
+   "title": "Born to Run",
+   "length": 412960,
+   "video": false,
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "name": "Bruce Springsteen"
+    },
+    {
+     "name": "The E Street Band",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type": "Group",
+      "name": "The E Street Band",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b"
+     },
+     "joinphrase": ""
+    }
+   ],
+   "disambiguation": "live, 1977‐12‐31: Capitol Theatre, Passaic, NJ, USA"
+  },
+  {
+   "length": 388437,
+   "first-release-date": "2014",
+   "title": "Born to Run",
+   "disambiguation": "live, 2014‐02‐12: Adelaide Entertainment Centre, Adelaide, Australia",
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "name": "Bruce Springsteen"
+    },
+    {
+     "name": "The E Street Band",
+     "artist": {
+      "type": "Group",
+      "name": "The E Street Band",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "joinphrase": ""
+    }
+   ],
+   "video": false,
+   "id": "9b45d487-63f4-4d5f-bcf9-806598569189"
+  },
+  {
+   "id": "9b47e28c-ca4d-4f3a-9713-e99dce2c79c9",
+   "video": true,
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "disambiguation": "live, 1988‐04‐27: Los Angeles Memorial Sports Arena, Los Angeles, CA, USA",
+   "first-release-date": "1989-03-21",
+   "title": "Born to Run",
+   "length": 593000
+  },
+  {
+   "video": false,
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce"
+     },
+     "joinphrase": " & "
+    },
+    {
+     "name": "The E Street Band",
+     "joinphrase": "",
+     "artist": {
+      "name": "The E Street Band",
+      "type": "Group",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "disambiguation": "live, 2016‐05‐19: Bela Vista Park, Lisbon, Portugal",
+   "title": "Born to Run",
+   "first-release-date": "2016-06-29",
+   "length": 320000,
+   "id": "a015eb58-b26e-4dc7-9093-309841b7e9e5"
+  },
+  {
+   "id": "a2d2887d-e622-4502-a3eb-19e9d927752c",
+   "disambiguation": "live, 2008‐04‐28: Greensboro Coliseum, Greensboro, NC, USA",
+   "video": false,
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "name": "Bruce Springsteen"
+    },
+    {
+     "name": "The E Street Band",
+     "artist": {
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "type": "Group",
+      "name": "The E Street Band",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "joinphrase": ""
+    }
+   ],
+   "length": 342000,
+   "first-release-date": "2020-11-06",
+   "title": "Born to Run"
+  },
+  {
+   "video": false,
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "type": "Person"
+     },
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen"
+    },
+    {
+     "name": "The E Street Band",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "type": "Group",
+      "name": "The E Street Band"
+     },
+     "joinphrase": ""
+    }
+   ],
+   "disambiguation": "live, 2016‐06‐19: Olympiastadion, Berlin, Germany",
+   "first-release-date": "2016-08-10",
+   "title": "Born to Run",
+   "length": 305000,
+   "id": "a6d79723-363b-424b-9754-3000eca2fe72"
+  },
+  {
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     },
+     "joinphrase": " & "
+    },
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "name": "The E Street Band",
+      "type": "Group"
+     },
+     "joinphrase": "",
+     "name": "The E Street Band"
+    }
+   ],
+   "video": false,
+   "disambiguation": "",
+   "id": "a8d50d0a-28f9-4c69-90e7-57222f07444f",
+   "title": "1976‐04‐04: MSU Auditorium, Michigan State University, East Lansing, MI, USA",
+   "length": 7250000
+  },
+  {
+   "id": "b059da62-e611-472d-b63c-ba5ed792020e",
+   "title": "Born to Run",
+   "first-release-date": "1990-04",
+   "length": 334066,
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce"
+     }
+    }
+   ],
+   "video": false,
+   "disambiguation": "live, 1978‐11‐02: Capital Centre, Largo, MD, USA"
+  },
+  {
+   "disambiguation": "live, 1978‐08‐09: The Agora, Cleveland, OH, USA",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": " & ",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "type": "Person"
+     }
+    },
+    {
+     "name": "The E Street Band",
+     "joinphrase": "",
+     "artist": {
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "type": "Group",
+      "name": "The E Street Band",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "video": false,
+   "length": null,
+   "id": "b1ae2a36-1f68-4439-8365-b91f05ef1608",
+   "title": "Born to Run"
+  },
+  {
+   "id": "b2bf8169-e4c8-4949-bd0a-1d8b97b93f3f",
+   "disambiguation": "",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "artist": {
+      "sort-name": "Cheats, The",
+      "id": "6a65d32e-4d31-4729-ad1a-e32dc358bf3d",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "name": "The Cheats",
+      "type": "Group",
+      "country": "US",
+      "disambiguation": "USA punk band"
+     },
+     "name": "The Cheats"
+    }
+   ],
+   "video": false,
+   "length": 255213,
+   "first-release-date": "2022-09-16",
+   "title": "Born to Run"
+  },
+  {
+   "id": "b2dad532-2726-4979-9349-cf50df3c92d0",
+   "first-release-date": "1996",
+   "title": "Born to Run",
+   "length": 253000,
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "artist": {
+      "sort-name": "Feelings, The",
+      "id": "99582cd8-4371-4e55-b269-c65f266f12cb",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "name": "The Feelings",
+      "type": "Group",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "name": "The Feelings"
+    }
+   ],
+   "video": false,
+   "disambiguation": ""
+  },
+  {
+   "id": "b4f3f81b-cbe6-44ee-a400-e4ed81b4d0bb",
+   "length": 277000,
+   "first-release-date": "2010-11-16",
+   "title": "Born to Run",
+   "disambiguation": "live, 1978‐07‐08: Arizona Veterans Memorial Coliseum, Phoenix, AZ, USA",
+   "artist-credit": [
+    {
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "video": true
+  },
+  {
+   "id": "b5f3adf0-fa0e-46dd-826a-90cfcbd1543b",
+   "length": 321000,
+   "title": "Born to Run",
+   "first-release-date": "2007-12-10",
+   "disambiguation": "live, 2007‐11‐28: Datch Forum, Milan, Italy",
+   "video": false,
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "type": "Person"
+     },
+     "name": "Bruce Springsteen"
+    },
+    {
+     "joinphrase": "",
+     "artist": {
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "name": "The E Street Band",
+      "type": "Group",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "name": "The E Street Band"
+    }
+   ]
+  },
+  {
+   "disambiguation": "live, 1978‐08‐04: Charleston Civic Center, Charleston, WV, USA",
+   "video": false,
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "name": "Bruce Springsteen"
+    },
+    {
+     "name": "The E Street Band",
+     "joinphrase": "",
+     "artist": {
+      "type": "Group",
+      "name": "The E Street Band",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "length": 429000,
+   "title": "Born to Run",
+   "id": "bb440cb6-f48b-4b54-8319-4845c7cf70d5"
+  },
+  {
+   "video": false,
+   "artist-credit": [
+    {
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "disambiguation": "live, 1979‐09‐22: Madison Square Garden, New York City, NY, USA",
+   "first-release-date": "1991",
+   "title": "Born to Run",
+   "length": 293840,
+   "id": "bc121ca5-ae2c-42f5-8fb5-09f7783975e0"
+  },
+  {
+   "id": "bf214823-1cc5-464d-be31-cf41c299b9d3",
+   "length": 310000,
+   "first-release-date": "2024-09-03",
+   "title": "Born to Run",
+   "disambiguation": "live, 2024‐08‐18: PPG Paints Arena, Pittsburgh, PA, USA",
+   "video": false,
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "type": "Person"
+     },
+     "joinphrase": " & "
+    },
+    {
+     "joinphrase": "",
+     "artist": {
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The",
+      "name": "The E Street Band",
+      "type": "Group",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "name": "The E Street Band"
+    }
+   ]
+  },
+  {
+   "title": "Born to Run",
+   "id": "c0d5f4d7-497d-4167-ab14-8555c27b9be0",
+   "length": null,
+   "video": true,
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "name": "Bruce Springsteen"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "disambiguation": "live, 1993‐04‐11: Stadio Marc’Antonio Bentegodi, Verona, Italy"
+  },
+  {
+   "length": 286000,
+   "id": "ca1e2e1c-2d26-4ca7-be43-3d2e55a5077d",
+   "title": "Born to Run",
+   "disambiguation": "live, 1977‐12‐31: Capitol Theatre, Passaic, NJ, USA",
+   "artist-credit": [
+    {
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce"
+     },
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen"
+    },
+    {
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "type": "Group",
+      "name": "The E Street Band",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f"
+     },
+     "joinphrase": "",
+     "name": "The E Street Band"
+    }
+   ],
+   "video": false
+  },
+  {
+   "title": "Born to Run",
+   "first-release-date": "1996",
+   "length": 292000,
+   "video": false,
+   "artist-credit": [
+    {
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "disambiguation": "live, 1985‐07‐04: Wembley Stadium, London, England, UK",
+   "id": "cc1993fd-d173-4d11-b372-3dc77c64fb8d"
+  },
+  {
+   "id": "cd714fc3-863c-4e78-a3e3-0373870469bd",
+   "disambiguation": "",
+   "artist-credit": [
+    {
+     "name": "Studio 99",
+     "artist": {
+      "disambiguation": "",
+      "country": "CA",
+      "type": "Group",
+      "name": "Studio 99",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "sort-name": "Studio 99",
+      "id": "d4a9e4a2-a060-4d39-b5c0-252160b1154d"
+     },
+     "joinphrase": ""
+    }
+   ],
+   "video": false,
+   "length": 265000,
+   "first-release-date": "2006-02-07",
+   "title": "Born to Run"
+  },
+  {
+   "id": "ce035a62-cf72-42a3-a232-17dc2de0ca14",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     },
+     "joinphrase": ""
+    }
+   ],
+   "video": true,
+   "disambiguation": "live, 1993‐04‐11: Stadio Marc’Antonio Bentegodi, Verona, Italy",
+   "first-release-date": "2007",
+   "title": "Born to Run",
+   "length": null
+  },
+  {
+   "title": "Born to Run",
+   "first-release-date": "2014",
+   "length": 345514,
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "joinphrase": " & "
+    },
+    {
+     "name": "The E Street Band",
+     "joinphrase": "",
+     "artist": {
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "name": "The E Street Band",
+      "type": "Group",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "country": "US",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "video": false,
+   "disambiguation": "live, 2014‐02‐19: Allphones Arena, Sydney, Australia",
+   "id": "ce17f012-1a9e-42e6-93fd-04e43e1c87ca"
+  },
+  {
+   "video": false,
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce"
+     },
+     "name": "Bruce Springsteen"
+    },
+    {
+     "name": "The E Street Band",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "type": "Group",
+      "name": "The E Street Band"
+     },
+     "joinphrase": ""
+    }
+   ],
+   "disambiguation": "live, 1980‐10‐14: MECCA Arena, Milwaukee, WI, USA",
+   "title": "Born to Run",
+   "id": "cfa88c12-8bba-4dd8-b300-a895b5d241b4",
+   "length": 224000
+  },
+  {
+   "id": "d058ce89-68e1-4523-9da5-7e69a90201bb",
+   "title": "Born to Run",
+   "length": null,
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce"
+     },
+     "joinphrase": " & "
+    },
+    {
+     "joinphrase": "",
+     "artist": {
+      "type": "Group",
+      "name": "The E Street Band",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "name": "The E Street Band"
+    }
+   ],
+   "video": false,
+   "disambiguation": "live, 1978‐08‐09: The Agora, Cleveland, OH, USA"
+  },
+  {
+   "id": "d27705cd-d2b5-483b-b03f-a307257a02a2",
+   "disambiguation": "",
+   "artist-credit": [
+    {
+     "name": "The Sing-Off Contestants",
+     "joinphrase": "",
+     "artist": {
+      "country": null,
+      "disambiguation": "A cappella group",
+      "sort-name": "Sing-Off Contestants, The",
+      "id": "cb57a0a3-c89f-46f0-a8df-ae5571bd27fd",
+      "name": "The Sing-Off Contestants",
+      "type": "Other",
+      "type-id": "ac897045-5043-3294-969b-187360e45d86"
+     }
+    }
+   ],
+   "video": false,
+   "length": 232000,
+   "first-release-date": "2011",
+   "title": "Born to Run"
+  },
+  {
+   "length": 334000,
+   "id": "d568677b-60e5-4da2-8a55-0621fc2953fe",
+   "title": "Born to Run",
+   "disambiguation": "live, 2009‐04‐22: TD Banknorth Garden, Boston, MA, USA",
+   "artist-credit": [
+    {
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     },
+     "joinphrase": " feat. ",
+     "name": "Bruce Springsteen"
+    },
+    {
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "type": "Person",
+      "name": "Jay Weinberg",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Weinberg, Jay",
+      "id": "40bccd7f-a0ec-4314-87a0-d909ecd249fe"
+     },
+     "joinphrase": "",
+     "name": "Jay Weinberg"
+    }
+   ],
+   "video": false
+  },
+  {
+   "title": "2022-10-01: Madison Square Garden, New York City, NY, USA",
+   "id": "d8bfc1e3-fb37-4d39-83e6-18b27310d266",
+   "length": 987000,
+   "video": true,
+   "artist-credit": [
+    {
+     "name": "The Killers",
+     "joinphrase": " & ",
+     "artist": {
+      "id": "95e1ead9-4d31-4808-a7ac-32c3614c116b",
+      "sort-name": "Killers, The",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "name": "The Killers",
+      "type": "Group",
+      "country": "US",
+      "disambiguation": "American rock band"
+     }
+    },
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "disambiguation": ""
+  },
+  {
+   "disambiguation": "",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "singer-songwriter; the Moldy Peaches",
+      "sort-name": "Green, Adam",
+      "id": "150e799b-3244-45d9-a6cb-5a3e8c33d430",
+      "name": "Adam Green",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     },
+     "joinphrase": "",
+     "name": "Adam Green"
+    }
+   ],
+   "video": false,
+   "length": 272000,
+   "first-release-date": "2004-05-24",
+   "title": "Born to Run",
+   "id": "da17eedd-afd6-4e41-aad3-2ff4b4aaa1e0"
+  },
+  {
+   "disambiguation": "live, 1980‐10‐13: St. Paul Civic Center, St. Paul, MN, USA",
+   "video": false,
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "joinphrase": " & "
+    },
+    {
+     "name": "The E Street Band",
+     "artist": {
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "name": "The E Street Band",
+      "type": "Group",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "joinphrase": ""
+    }
+   ],
+   "length": 294000,
+   "title": "Born to Run",
+   "id": "deff4a56-e6b8-4223-ae19-1bd7d542e1fb"
+  },
+  {
+   "length": 245000,
+   "first-release-date": "2003-09",
+   "title": "Born to Run",
+   "disambiguation": "",
+   "artist-credit": [
+    {
+     "name": "Jerry Lawson",
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Jerry Lawson",
+      "type": "Person",
+      "sort-name": "Lawson, Jerry",
+      "id": "e756f752-76b0-4e80-b411-2b801685bdf7",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "joinphrase": ""
+    }
+   ],
+   "video": false,
+   "id": "e32ba797-0a00-41fa-9b1a-6342e7c13b26"
+  },
+  {
+   "id": "e412efb3-c441-4f30-b57a-e442a49139d8",
+   "video": false,
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "artist": {
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "name": "Bruce Springsteen"
+    },
+    {
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The",
+      "type": "Group",
+      "name": "The E Street Band",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b"
+     },
+     "name": "The E Street Band"
+    }
+   ],
+   "disambiguation": "live, 2014‐02‐05: Perth Arena, Perth, Australia",
+   "title": "Born to Run",
+   "first-release-date": "2014-11-17",
+   "length": 317000
+  },
+  {
+   "id": "ee5389e3-b6ea-4802-88ce-f23d3d27cf5f",
+   "disambiguation": "live, 2025‐06‐27: Veltins‐Arena, Gelsenkirchen, Germany",
+   "video": false,
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "name": "Bruce Springsteen"
+    },
+    {
+     "name": "The E Street Band",
+     "joinphrase": "",
+     "artist": {
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The",
+      "type": "Group",
+      "name": "The E Street Band",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "country": "US",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "length": 302000,
+   "first-release-date": "2025-08-20",
+   "title": "Born to Run"
+  },
+  {
+   "id": "f059f32d-df01-4635-afad-e9a78c0c8bbd",
+   "disambiguation": "live",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "joinphrase": ""
+    }
+   ],
+   "video": false,
+   "length": 328000,
+   "first-release-date": "2019-04-03",
+   "title": "Born to Run"
+  },
+  {
+   "title": "2016‐07‐11: AccorHotels Arena, Paris, France",
+   "id": "f0ff98a4-4ad7-4c89-9dd0-4c1362086dec",
+   "length": 13687000,
+   "video": true,
+   "artist-credit": [
+    {
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     },
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen"
+    },
+    {
+     "name": "The E Street Band",
+     "artist": {
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "type": "Group",
+      "name": "The E Street Band",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "joinphrase": ""
+    }
+   ],
+   "disambiguation": "live, 2016‐07‐11: AccorHotels Arena, Paris, France"
+  },
+  {
+   "title": "Born to Run",
+   "first-release-date": "2016-07-21",
+   "length": 314000,
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "name": "Bruce Springsteen"
+    },
+    {
+     "name": "The E Street Band",
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "name": "The E Street Band",
+      "type": "Group"
+     }
+    }
+   ],
+   "video": false,
+   "disambiguation": "live, 2016‐06‐01: Hampden Park, Glasgow, Scotland, UK",
+   "id": "f2f58fc8-7c3d-40fd-b9e8-0b0df68bc397"
+  },
+  {
+   "first-release-date": "2014-11-24",
+   "title": "Born to Run",
+   "length": 273000,
+   "artist-credit": [
+    {
+     "name": "Frank Turner",
+     "artist": {
+      "country": "GB",
+      "disambiguation": "UK punk & folk singer‐songwriter",
+      "id": "aca5718f-4f49-4439-b8f6-209db3f11757",
+      "sort-name": "Turner, Frank",
+      "type": "Person",
+      "name": "Frank Turner",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     },
+     "joinphrase": ""
+    }
+   ],
+   "video": false,
+   "disambiguation": "",
+   "id": "f3e8b148-5b65-4870-a4c1-a7eb499771c1"
+  },
+  {
+   "id": "f4dcc156-d768-4851-bd08-5fc96f583056",
+   "disambiguation": "live",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     },
+     "joinphrase": ""
+    }
+   ],
+   "video": false,
+   "length": 275000,
+   "title": "Born to Run",
+   "first-release-date": "1994"
+  },
+  {
+   "length": 368117,
+   "id": "f676fcc3-f6e5-46ee-bac8-bfbba01eca1e",
+   "title": "Born to Run",
+   "disambiguation": "live, 1999‐04‐15: Kölnarena, Cologne, Germany",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": " & ",
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "type": "Person",
+      "name": "Bruce Springsteen",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce"
+     }
+    },
+    {
+     "joinphrase": "",
+     "artist": {
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "type": "Group",
+      "name": "The E Street Band",
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "name": "The E Street Band"
+    }
+   ],
+   "video": false
+  },
+  {
+   "title": "Born to Run",
+   "first-release-date": "2005-02-07",
+   "length": 312613,
+   "artist-credit": [
+    {
+     "name": "Roger Daltrey",
+     "joinphrase": "",
+     "artist": {
+      "id": "3896a59d-3058-4797-94b7-864bc58ccd98",
+      "sort-name": "Daltrey, Roger",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "name": "Roger Daltrey",
+      "country": "GB",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "video": false,
+   "disambiguation": "",
+   "id": "f7b608ed-ce41-4519-b919-6c0d483c857e"
+  },
+  {
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     },
+     "joinphrase": " & "
+    },
+    {
+     "name": "The E Street Band",
+     "artist": {
+      "sort-name": "E Street Band, The",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "type": "Group",
+      "name": "The E Street Band",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "joinphrase": ""
+    }
+   ],
+   "video": false,
+   "disambiguation": "live, 1978‐05‐31: Music Hall, Boston, MA, USA",
+   "id": "faacacea-546d-4476-b928-14904b6eb805",
+   "title": "Born to Run",
+   "length": 271000
+  },
+  {
+   "id": "fc26f680-ac24-432b-aa8e-1f8e02990856",
+   "video": false,
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "artist": {
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "name": "Bruce Springsteen"
+    },
+    {
+     "name": "The E Street Band",
+     "artist": {
+      "disambiguation": "",
+      "country": "US",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "type": "Group",
+      "name": "The E Street Band",
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "sort-name": "E Street Band, The"
+     },
+     "joinphrase": ""
+    }
+   ],
+   "disambiguation": "live, 2017‐02‐09: Qudos Bank Arena, Sydney, Australia",
+   "first-release-date": "2017-02-23",
+   "title": "Born to Run",
+   "length": 322000
+  },
+  {
+   "length": null,
+   "id": "fda9fb6c-2c04-467c-8642-c359d25a7448",
+   "title": "Born to Run",
+   "disambiguation": "live, 1977‐05‐12: Monmouth Arts Center, Red Bank, NJ, USA",
+   "artist-credit": [
+    {
+     "joinphrase": " with ",
+     "artist": {
+      "id": "d7bc97fb-4bd3-453b-98a1-9081f89c52f0",
+      "sort-name": "Southside Johnny & The Asbury Jukes",
+      "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+      "type": "Group",
+      "name": "Southside Johnny & The Asbury Jukes",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "name": "Southside Johnny & The Asbury Jukes"
+    },
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Bruce Springsteen",
+      "type": "Person"
+     }
+    }
+   ],
+   "video": false
+  }
+ ],
+ "recording-offset": 0,
+ "recording-count": 2226
+}

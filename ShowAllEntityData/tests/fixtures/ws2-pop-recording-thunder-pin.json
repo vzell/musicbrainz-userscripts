@@ -1,0 +1,537 @@
+{
+ "relations": [
+  {
+   "target-type": "artist",
+   "attribute-values": {},
+   "type-id": "5dcc52af-7064-4051-8d62-7d80f4c3c907",
+   "artist": {
+    "id": "b81c5f3a-4659-469c-bbf4-3d2a3488d3ec",
+    "sort-name": "Lahav, Louis",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "לואי להב",
+    "disambiguation": "",
+    "country": "IL",
+    "type": "Person"
+   },
+   "attribute-ids": {},
+   "target-credit": "Louis Lahav",
+   "begin": "1974-10",
+   "ended": true,
+   "direction": "backward",
+   "attributes": [],
+   "end": "1975-03",
+   "source-credit": "",
+   "type": "engineer"
+  },
+  {
+   "source-credit": "",
+   "type": "engineer",
+   "attribute-values": {},
+   "artist": {
+    "disambiguation": "",
+    "country": "US",
+    "type": "Person",
+    "id": "f970e8eb-42ea-4cfc-bdb3-e007cf9c4dba",
+    "sort-name": "Iovine, Jimmy",
+    "name": "Jimmy Iovine",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+   },
+   "type-id": "5dcc52af-7064-4051-8d62-7d80f4c3c907",
+   "target-type": "artist",
+   "direction": "backward",
+   "end": "1975-07-16",
+   "attributes": [],
+   "attribute-ids": {},
+   "ended": true,
+   "target-credit": "",
+   "begin": "1975-04-18"
+  },
+  {
+   "ended": true,
+   "target-credit": "",
+   "begin": "1974-10",
+   "attribute-ids": {
+    "glockenspiel": "340b8043-e3c4-443e-afb8-7fce24fe0ce4",
+    "Rhodes piano": "aa3b54ec-9cc8-409c-a2d9-f960e65bf5f5"
+   },
+   "attributes": [
+    "glockenspiel",
+    "Rhodes piano"
+   ],
+   "end": "1975-07-16",
+   "direction": "backward",
+   "target-type": "artist",
+   "type-id": "59054b12-01ac-43ee-a618-285fd397e461",
+   "attribute-credits": {},
+   "artist": {
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Roy Bittan",
+    "sort-name": "Bittan, Roy",
+    "id": "11d2fcfe-669d-4596-8921-e07dbdae311f",
+    "type": "Person",
+    "country": "US",
+    "disambiguation": ""
+   },
+   "attribute-values": {},
+   "type": "instrument",
+   "source-credit": ""
+  },
+  {
+   "source-credit": "",
+   "type": "instrument",
+   "target-type": "artist",
+   "attribute-values": {},
+   "artist": {
+    "sort-name": "Clemons, Clarence",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Clarence Clemons",
+    "id": "7e4bfa5f-a8b8-4fb0-81b5-f74f6ac72133",
+    "type": "Person",
+    "disambiguation": "",
+    "country": "US"
+   },
+   "attribute-credits": {},
+   "type-id": "59054b12-01ac-43ee-a618-285fd397e461",
+   "attribute-ids": {
+    "saxophone": "a9ed16cd-b8cb-4256-9c41-93f5f0458c49"
+   },
+   "target-credit": "",
+   "ended": true,
+   "begin": "1974-10",
+   "direction": "backward",
+   "end": "1975-07-16",
+   "attributes": [
+    "saxophone"
+   ]
+  },
+  {
+   "attribute-values": {},
+   "artist": {
+    "id": "94a88a40-8568-403e-86e6-8c01fd4b626a",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Danny Federici",
+    "sort-name": "Federici, Danny",
+    "country": "US",
+    "disambiguation": "",
+    "type": "Person"
+   },
+   "attribute-credits": {},
+   "type-id": "59054b12-01ac-43ee-a618-285fd397e461",
+   "target-type": "artist",
+   "direction": "backward",
+   "end": "1975-07-16",
+   "attributes": [
+    "organ"
+   ],
+   "attribute-ids": {
+    "organ": "55a37f4f-39a4-45a7-851d-586569985519"
+   },
+   "begin": "1974-10",
+   "target-credit": "",
+   "ended": true,
+   "source-credit": "",
+   "type": "instrument"
+  },
+  {
+   "target-type": "artist",
+   "artist": {
+    "type": "Person",
+    "country": "US",
+    "disambiguation": "",
+    "name": "Bruce Springsteen",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "sort-name": "Springsteen, Bruce",
+    "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+   },
+   "type-id": "59054b12-01ac-43ee-a618-285fd397e461",
+   "attribute-credits": {},
+   "attribute-values": {},
+   "ended": true,
+   "target-credit": "",
+   "begin": "1974-10",
+   "attribute-ids": {
+    "guitar": "63021302-86cd-4aee-80df-2270d54f4978",
+    "harmonica": "63e37f1a-30b6-4746-8a49-dfb55be3cdd1"
+   },
+   "end": "1975-07-16",
+   "attributes": [
+    "guitar",
+    "harmonica"
+   ],
+   "direction": "backward",
+   "source-credit": "",
+   "type": "instrument"
+  },
+  {
+   "target-type": "artist",
+   "attribute-credits": {},
+   "type-id": "59054b12-01ac-43ee-a618-285fd397e461",
+   "artist": {
+    "sort-name": "Tallent, Garry",
+    "name": "Garry Tallent",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "id": "42b42dd1-9263-4eae-91cd-4014a5b5d39f",
+    "type": "Person",
+    "disambiguation": "",
+    "country": "US"
+   },
+   "attribute-values": {},
+   "target-credit": "",
+   "begin": "1974-10",
+   "ended": true,
+   "attribute-ids": {
+    "bass guitar": "17f9f065-2312-4a24-8309-6f6dd63e2e33"
+   },
+   "attributes": [
+    "bass guitar"
+   ],
+   "end": "1975-07-16",
+   "direction": "backward",
+   "source-credit": "",
+   "type": "instrument"
+  },
+  {
+   "source-credit": "",
+   "type": "instrument",
+   "attribute-values": {},
+   "artist": {
+    "id": "2566ca73-1dfd-49e7-ab20-dfa5697b360e",
+    "name": "Max Weinberg",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "sort-name": "Weinberg, Max",
+    "country": "US",
+    "disambiguation": "",
+    "type": "Person"
+   },
+   "attribute-credits": {},
+   "type-id": "59054b12-01ac-43ee-a618-285fd397e461",
+   "target-type": "artist",
+   "direction": "backward",
+   "end": "1975-07-16",
+   "attributes": [
+    "drums (drum set)"
+   ],
+   "attribute-ids": {
+    "drums (drum set)": "12092505-6ee1-46af-a15a-b5b468b6b155"
+   },
+   "target-credit": "",
+   "begin": "1974-10",
+   "ended": true
+  },
+  {
+   "source-credit": "",
+   "type": "mix",
+   "type-id": "3e3102e1-1896-4f50-b5b2-dd9824e46efe",
+   "artist": {
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Jimmy Iovine",
+    "sort-name": "Iovine, Jimmy",
+    "id": "f970e8eb-42ea-4cfc-bdb3-e007cf9c4dba",
+    "type": "Person",
+    "country": "US",
+    "disambiguation": ""
+   },
+   "attribute-values": {},
+   "target-type": "artist",
+   "attributes": [],
+   "end": null,
+   "direction": "backward",
+   "begin": null,
+   "target-credit": "",
+   "ended": false,
+   "attribute-ids": {}
+  },
+  {
+   "type": "producer",
+   "source-credit": "",
+   "attribute-ids": {},
+   "ended": false,
+   "target-credit": "",
+   "begin": null,
+   "direction": "backward",
+   "end": null,
+   "attributes": [],
+   "target-type": "artist",
+   "attribute-values": {},
+   "artist": {
+    "type": "Person",
+    "disambiguation": "",
+    "country": "US",
+    "sort-name": "Appel, Mike",
+    "name": "Mike Appel",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "id": "fdbf4fbb-c994-46a2-a6a4-5027318cb7aa"
+   },
+   "type-id": "5c0ceac3-feb4-41f0-868d-dc06f6e27fc0"
+  },
+  {
+   "attributes": [],
+   "end": null,
+   "direction": "backward",
+   "ended": false,
+   "target-credit": "",
+   "begin": null,
+   "attribute-ids": {},
+   "type-id": "5c0ceac3-feb4-41f0-868d-dc06f6e27fc0",
+   "artist": {
+    "id": "4530bdd0-9707-442e-b37e-578def6a0926",
+    "name": "Jon Landau",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "sort-name": "Landau, Jon",
+    "country": "US",
+    "disambiguation": "",
+    "type": "Person"
+   },
+   "attribute-values": {},
+   "target-type": "artist",
+   "type": "producer",
+   "source-credit": ""
+  },
+  {
+   "type": "producer",
+   "source-credit": "",
+   "end": null,
+   "attributes": [],
+   "direction": "backward",
+   "ended": false,
+   "target-credit": "",
+   "begin": null,
+   "attribute-ids": {},
+   "artist": {
+    "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Bruce Springsteen",
+    "sort-name": "Springsteen, Bruce",
+    "country": "US",
+    "disambiguation": "",
+    "type": "Person"
+   },
+   "type-id": "5c0ceac3-feb4-41f0-868d-dc06f6e27fc0",
+   "attribute-values": {},
+   "target-type": "artist"
+  },
+  {
+   "type-id": "0fdbe3c6-7700-4a31-ae54-b53f06ae1cfa",
+   "attribute-credits": {},
+   "artist": {
+    "type": "Person",
+    "country": "US",
+    "disambiguation": "",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Mike Appel",
+    "sort-name": "Appel, Mike",
+    "id": "fdbf4fbb-c994-46a2-a6a4-5027318cb7aa"
+   },
+   "attribute-values": {},
+   "target-type": "artist",
+   "attributes": [
+    "background vocals"
+   ],
+   "end": "1975-07-16",
+   "direction": "backward",
+   "target-credit": "",
+   "begin": "1974-10",
+   "ended": true,
+   "attribute-ids": {
+    "background vocals": "75052401-7340-4e5b-a71d-ea024a128849"
+   },
+   "source-credit": "",
+   "type": "vocal"
+  },
+  {
+   "source-credit": "",
+   "type": "vocal",
+   "target-type": "artist",
+   "attribute-credits": {},
+   "type-id": "0fdbe3c6-7700-4a31-ae54-b53f06ae1cfa",
+   "artist": {
+    "type": "Person",
+    "disambiguation": "",
+    "country": "US",
+    "sort-name": "Bittan, Roy",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Roy Bittan",
+    "id": "11d2fcfe-669d-4596-8921-e07dbdae311f"
+   },
+   "attribute-values": {},
+   "target-credit": "",
+   "ended": true,
+   "begin": "1974-10",
+   "attribute-ids": {
+    "background vocals": "75052401-7340-4e5b-a71d-ea024a128849"
+   },
+   "attributes": [
+    "background vocals"
+   ],
+   "end": "1975-07-16",
+   "direction": "backward"
+  },
+  {
+   "target-type": "artist",
+   "attribute-values": {},
+   "type-id": "0fdbe3c6-7700-4a31-ae54-b53f06ae1cfa",
+   "attribute-credits": {},
+   "artist": {
+    "sort-name": "Little Steven",
+    "name": "Little Steven",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "id": "de53495e-ad5a-4c30-82ab-05e7e3ec7b4d",
+    "type": "Person",
+    "disambiguation": "",
+    "country": "US"
+   },
+   "attribute-ids": {
+    "background vocals": "75052401-7340-4e5b-a71d-ea024a128849"
+   },
+   "begin": "1974-10",
+   "target-credit": "",
+   "ended": true,
+   "direction": "backward",
+   "attributes": [
+    "background vocals"
+   ],
+   "end": "1975-07-16",
+   "source-credit": "",
+   "type": "vocal"
+  },
+  {
+   "type": "vocal",
+   "source-credit": "",
+   "end": "1975-07-16",
+   "attributes": [
+    "lead vocals"
+   ],
+   "direction": "backward",
+   "ended": true,
+   "target-credit": "",
+   "begin": "1974-10",
+   "attribute-ids": {
+    "lead vocals": "8e2a3255-87c2-4809-a174-98cb3704f1a5"
+   },
+   "artist": {
+    "type": "Person",
+    "disambiguation": "",
+    "country": "US",
+    "sort-name": "Springsteen, Bruce",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Bruce Springsteen",
+    "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+   },
+   "attribute-credits": {},
+   "type-id": "0fdbe3c6-7700-4a31-ae54-b53f06ae1cfa",
+   "attribute-values": {},
+   "target-type": "artist"
+  },
+  {
+   "end": null,
+   "attributes": [],
+   "direction": "backward",
+   "target-credit": "",
+   "ended": false,
+   "begin": null,
+   "place": {
+    "type-id": "05fa6a09-ff92-3d34-bdbb-5141d3c24f38",
+    "name": "The Record Plant",
+    "id": "da7b57fc-8997-407c-8a1d-bdd7bb32b87a",
+    "area": {
+     "disambiguation": "",
+     "id": "edd27a39-ff8a-4af4-8bbf-f369b0fb1899",
+     "sort-name": "Midtown Manhattan",
+     "type": "City",
+     "name": "Midtown Manhattan",
+     "type-id": "6fd8f29a-3d0a-32fc-980d-ea697b69da78"
+    },
+    "address": "321 West 44th Street, New York, NY 10036",
+    "type": "Studio",
+    "coordinates": {
+     "longitude": -73.98996,
+     "latitude": 40.75963
+    },
+    "disambiguation": "New York"
+   },
+   "attribute-ids": {},
+   "type-id": "11d74801-1493-4a5d-bc0f-4ddc537acddb",
+   "attribute-values": {},
+   "target-type": "place",
+   "type": "mixed at",
+   "source-credit": ""
+  },
+  {
+   "attribute-ids": {},
+   "begin": "1974-10",
+   "target-credit": "",
+   "ended": true,
+   "place": {
+    "address": "32 Rt. 303, Blauvelt, New York, USA",
+    "coordinates": {
+     "longitude": -73.9493,
+     "latitude": 41.0651
+    },
+    "type": "Studio",
+    "disambiguation": "",
+    "type-id": "05fa6a09-ff92-3d34-bdbb-5141d3c24f38",
+    "name": "914 Sound Studios",
+    "id": "be30acd4-eba7-4b38-8429-b4f5840ef782",
+    "area": {
+     "id": "75e398a3-5f3f-4224-9cd8-0fe44715bc95",
+     "name": "New York",
+     "type-id": "fd3d44c5-80a1-3842-9745-2c4972d35afa",
+     "iso-3166-2-codes": [
+      "US-NY"
+     ],
+     "sort-name": "New York",
+     "disambiguation": "",
+     "type": "Subdivision"
+    }
+   },
+   "direction": "backward",
+   "end": "1975-03",
+   "attributes": [],
+   "target-type": "place",
+   "attribute-values": {},
+   "type-id": "ad462279-14b0-4180-9b58-571d0eef7c51",
+   "type": "recorded at",
+   "source-credit": ""
+  },
+  {
+   "type-id": "ad462279-14b0-4180-9b58-571d0eef7c51",
+   "attribute-values": {},
+   "target-type": "place",
+   "attributes": [],
+   "end": "1975-07-16",
+   "direction": "backward",
+   "place": {
+    "disambiguation": "New York",
+    "address": "321 West 44th Street, New York, NY 10036",
+    "type": "Studio",
+    "coordinates": {
+     "latitude": 40.75963,
+     "longitude": -73.98996
+    },
+    "area": {
+     "disambiguation": "",
+     "id": "edd27a39-ff8a-4af4-8bbf-f369b0fb1899",
+     "sort-name": "Midtown Manhattan",
+     "name": "Midtown Manhattan",
+     "type": "City",
+     "type-id": "6fd8f29a-3d0a-32fc-980d-ea697b69da78"
+    },
+    "id": "da7b57fc-8997-407c-8a1d-bdd7bb32b87a",
+    "type-id": "05fa6a09-ff92-3d34-bdbb-5141d3c24f38",
+    "name": "The Record Plant"
+   },
+   "begin": "1975-04-18",
+   "target-credit": "",
+   "ended": true,
+   "attribute-ids": {},
+   "source-credit": "",
+   "type": "recorded at"
+  }
+ ],
+ "length": 290000,
+ "video": false,
+ "id": "bbcedc0f-2fff-42f4-9ca6-6d2263d1a042",
+ "first-release-date": "1975-08-25",
+ "title": "Thunder Road",
+ "disambiguation": "version 7"
+}

@@ -1,0 +1,117 @@
+{
+ "life-span": {
+  "end": null,
+  "begin": "1973",
+  "ended": false
+ },
+ "type": "Venue",
+ "name": "The Stone Pony",
+ "coordinates": {
+  "latitude": 40.21995,
+  "longitude": -74.00058
+ },
+ "area": {
+  "type-id": null,
+  "sort-name": "Asbury Park",
+  "type": null,
+  "name": "Asbury Park",
+  "disambiguation": "",
+  "id": "10fa66f7-aa08-4823-8af8-52108f350a5a"
+ },
+ "disambiguation": "",
+ "id": "6a59a67c-fcc5-491f-949c-bfc45bc97463",
+ "relations": [
+  {
+   "attributes": [],
+   "attribute-ids": {},
+   "source-credit": "",
+   "target-credit": "",
+   "attribute-values": {},
+   "type": "discogs",
+   "ended": false,
+   "end": null,
+   "begin": null,
+   "target-type": "url",
+   "url": {
+    "id": "68b02726-4752-4df0-bb0d-9b26a651064d",
+    "resource": "https://www.discogs.com/label/582871"
+   },
+   "type-id": "1c140ac8-8dc2-449e-92cb-52c90d525640",
+   "direction": "forward"
+  },
+  {
+   "direction": "forward",
+   "target-type": "url",
+   "begin": null,
+   "end": null,
+   "type-id": "424b7629-ea37-45b4-95f4-0dd5f809f490",
+   "url": {
+    "resource": "http://brucebase.wikidot.com/venue:stone-pony-asbury-park-nj",
+    "id": "fbb27bb7-a786-4869-8b57-05f283db0702"
+   },
+   "attribute-values": {},
+   "type": "fanpage",
+   "ended": false,
+   "attributes": [],
+   "attribute-ids": {},
+   "source-credit": "",
+   "target-credit": ""
+  },
+  {
+   "attribute-values": {},
+   "type": "image",
+   "ended": false,
+   "attribute-ids": {},
+   "attributes": [],
+   "source-credit": "",
+   "target-credit": "",
+   "direction": "forward",
+   "begin": null,
+   "end": null,
+   "target-type": "url",
+   "url": {
+    "resource": "https://commons.wikimedia.org/wiki/File:Stone_pony2_net.jpg",
+    "id": "2c0c627b-b663-4c42-b823-52bad6f3a843"
+   },
+   "type-id": "68a4537c-f2a6-49b8-81c5-82a62b0976b7"
+  },
+  {
+   "type": "official homepage",
+   "attribute-values": {},
+   "ended": false,
+   "source-credit": "",
+   "attributes": [],
+   "attribute-ids": {},
+   "target-credit": "",
+   "direction": "forward",
+   "target-type": "url",
+   "begin": null,
+   "end": null,
+   "type-id": "696b79da-7e45-40e6-a9d4-b31438eb7e5d",
+   "url": {
+    "resource": "http://stoneponyonline.com/",
+    "id": "9a53a702-8072-435b-b1d4-241938a09c6e"
+   }
+  },
+  {
+   "direction": "forward",
+   "type-id": "e6826618-b410-4b8d-b3b5-52e29eac5e1f",
+   "url": {
+    "id": "dcfd985e-7763-4241-bac8-a47178c71300",
+    "resource": "https://www.wikidata.org/wiki/Q3989486"
+   },
+   "target-type": "url",
+   "end": null,
+   "begin": null,
+   "ended": false,
+   "type": "wikidata",
+   "attribute-values": {},
+   "target-credit": "",
+   "source-credit": "",
+   "attribute-ids": {},
+   "attributes": []
+  }
+ ],
+ "type-id": "cd92781a-a73f-30e8-a430-55d7521338db",
+ "address": "913 Ocean Avenue, Asbury Park, NJ 07712, USA"
+}

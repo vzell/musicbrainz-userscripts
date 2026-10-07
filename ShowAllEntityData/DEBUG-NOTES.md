@@ -20018,3 +20018,156 @@ card"); every entry as declared after the two fixes above. The specs' new
 
 **Results:** lint is within the baseline. `npm run test:full`: 1292 passed,
 0 failed (2026-10-07T16:37:44Z to 16:44:33Z, host petri, WSL2).
+
+## 2026-10-07 — MusicBrainz entity cards on table links: the engine, release group and release (branch feature/popup-engine-phase2, WIP.1)
+
+org/iframe.org Phase 2, first of five steps. `_mbEntitySource()` serves every
+entity link in a MusicBrainz `table.tbl` body behind `sa_pop_mb` (off by
+default); rules in docs/claude/detail-pages.md, "MusicBrainz: entity cards on
+table links".
+
+**A native release list's first cell starts with a hidden `/cover-art`
+link.** On the "Greetings From Asbury Park, N.J." release group page (native,
+before "Show all"), `td:first-child a[href^="/release/"]` resolves to
+`/release/<id>/cover-art`, which Playwright reports as "element is not
+visible": four of the first eleven tests timed out on hover. The rendered
+table has no such link, so the tests on the rendered page passed. The
+resolver was already right (`_MB_POP_PATH_RE` takes the bare path only); the
+spec locators now exclude `[href$="/cover-art"]`.
+
+**A loading card already shows the link's text.** The card's loading state
+titles itself with the link text, and on a release list that text IS the
+release title, so `toContainText('<title>')` passed before the request had
+gone out and the request-count assertion after it raced. The specs wait for
+"fetched now" (the loaded card's foot) instead.
+
+**The release moved from WIP.2 into WIP.1.** The release group kind runs on
+Phase 1's loaders (`_rgReleasesLoad()`), so with it alone the new loader
+`_mbWsLoad()` (IndexedDB keyed with the inc set, the TTL setting, failures
+not kept, `wanted()` after the slot) would have shipped with no spec reaching
+it.
+
+**`#mb-stat-tooltip` already gives way to the card.** Expected a race between
+the two delay-0 timers on a link with its own `data-mb-tip` text; a control
+test (previews off → the Liner notes card shows) and the real one (previews on
+→ only the card) both pass with no code change: `_showOwn()` checks
+`_OTHER_RICH_TIPS`, which lists `mb-dp-peek`, and the engine's timer runs
+first. Pinned, with a mutation that drops `mb-dp-peek` from the list.
+
+**Two mutation anchors of Phase 1 broke.** `_rgWsGet()` gained a `wanted`
+argument and the browse call a third argument, so two `find`s of
+`scripts/mutations/popup-engine.json` matched nothing. New
+`scripts/check-mutation-anchors.py` (read-only) finds that without running a
+spec; re-anchored. It also lists 42 anchors in older lists that already match
+0 or 2+ times on `main` — not touched here, worth a pass of their own.
+
+**`ShowAllEntityData_CONFIG_DEFAULTS.json` was stale on `main`**: regenerating
+it added `sa_jl_detail_preview`, `sa_sl_detail_preview` and
+`sa_rg_window_max_releases` besides this step's two settings.
+
+**Results:** `popup-mb.spec.js` 14 passed, `popup-mb.mobile.spec.js` 1 passed;
+`scripts/mutations/popup-mb.json` 14 entries as declared (13 caught, 1
+recorded overlap); `popup-engine.json` 17 as declared after re-anchoring; the
+Phase 1 and foreign-host preview specs 57 + 2 passed; lint within the
+baseline; config and docs audits clean. `npm test`: 1293 passed, 0 failed
+(2026-10-07T18:20:58Z to 18:27:15Z, host NB-3641, WSL2).
+
+## 2026-10-07 — Recording and work cards; a "no request" check that could not fail (branch feature/popup-engine-phase2, WIP.2)
+
+**"No count yet" right after the credits showed proved nothing.** The
+recording window asks its credits lookup, then (only when the lookup's
+release list is full, 25) a count browse, ONE RATE SLOT LATER. The spec
+asserted "no count request" as soon as the credits rendered, which held
+whether or not the guard existed: the mutation "always ask for the count"
+survived. It now listens from before the pin with `page.waitForRequest()`
+expected to time out (4 s), and the mutation fails as it should. Any "this
+request is never made" check behind the shared gate must wait past the slot
+the request would have had.
+
+**The mutation summary hid it.** `mutation-check.py` prints a survivor as
+`UNEXPECTED`; a summary grepped for `OK|BAD|ERROR` showed 18 lines for 19
+entries. Grep for `UNEXPECTED` too, or count the lines.
+
+**Results:** `popup-mb.spec.js` 20 passed; `popup-mb.json` 19 as declared;
+lint within the baseline. `npm test`: 1299 passed, 0 failed
+(2026-10-07T18:39:00Z to 18:45:45Z, host NB-3641, WSL2).
+
+## 2026-10-07 — Artist, label, area and instrument cards; relation directions read off the data (branch feature/popup-engine-phase2, WIP.3)
+
+**Relation groups are named from the captures, not guessed.** The Web Service
+gives a relation's `type` and `direction`, not MusicBrainz's phrase for it,
+and the direction flips the meaning: Columbia's forward "label ownership"
+targets (Vocalion, Ruffhouse) are labels it OWNS, its one backward target
+(Columbia/Epic Label Group) OWNS IT; New Jersey's 21 forward "part of" targets
+are its counties, its backward one the United States; guitar's forward
+"subtype" targets include slide guitar. `_MB_POP_REL_LABELS` names only the
+groups so verified; any other is its type, with an arrow when it comes in both
+directions. Grouping by type alone (the WIP.2 helper) put a label's owner
+among the labels it owns.
+
+**The label code format is from memory.** `_mbPopLabelCode()` writes "LC" and
+five digits (162 → "LC 00162"), as recalled from MusicBrainz's own formatter.
+musicbrainz.org answered curl with a "Verifying your browser" page, so it was
+not checked against a label page; check it in a browser.
+
+**The relation groups come in MusicBrainz's order.** Two specs first assumed
+an order for the group names and failed although every group was there; they
+now look each name up.
+
+**Results:** `popup-mb.spec.js` 26 passed; `popup-mb.json` 24 as declared;
+lint within the baseline. `npm test`: 1305 passed, 0 failed
+(2026-10-07T18:52:53Z to 18:59:03Z, host NB-3641, WSL2).
+
+## 2026-10-07 — Event, place and series cards (branch feature/popup-engine-phase2, WIP.4)
+
+**Two orderings were only testable because the captures are unordered.** The
+place's event browse answers 1982, 1987, 2008, 1982, …; the series lookup
+lists its items by ordering key 1, 2, 10, 7, …. Both windows sort, and both
+specs now assert the WHOLE order: a first-row check (the first draft) passed
+with the sort removed, since the first captured row happened to be early.
+
+**The setlist is markup, not HTML.** The Web Service's `setlist` is
+MusicBrainz's own markup (`@` artist, `#` comment, `*` song, `[mbid|name]`);
+the event-overview page's `_eventSetlistParse()` reads the rendered HTML, so
+it could not be reused. `_mbPopSetlist()` shows tokens by name only.
+
+**One unexplained failure under load.** `npm test` (19:03:42Z–19:10:06Z):
+1308 passed, 1 failed — `sticky-page-headers.spec.js › an Annotation with a
+wiki "== … ==" heading pins its whole text…`, a page where none of this
+branch's code runs (`sa_pop_mb` is off, nothing is installed). It passed 5 of
+5 alone (`--repeat-each=5`). Not marked flaky: watch for it in the merge
+gate.
+
+**Results:** `popup-mb.spec.js` 30 passed; `popup-mb.json` 29, the five new as
+declared (the rest unchanged since the WIP.3 run); lint within the baseline.
+
+## 2026-10-07 — ISRC, ISWC, disc ID and collection cards; the live twin (branch feature/popup-engine-phase2, WIP.5)
+
+**A code's page path is not its Web Service path.** A disc ID's page is
+`/cdtoc/<id>`, its lookup `/ws/2/discid/<id>`; `_MB_POP_CODE_TYPES` maps one
+to the other, and the target's `url` (↗, Live page) keeps the PAGE's segment.
+Both directions are mutation-pinned.
+
+**A private collection answers 401.** The Web Service shows public
+collections only. The card adds "It is probably private." (`failNote`), and
+the failure is not kept, as any.
+
+**The live twin found two locator traps, no code defect.**
+`tests/live/popup-mb.spec.js` first failed on an artist's events tab: each
+row's first `/event/` link is the event-art icon, a link around an image to
+`/event/<id>/event-art`, which the engine skips by design. And the instrument
+list is a list per type until "Show all" makes the tables, whose sub-tables
+then start collapsed. Both fixed in the spec.
+
+**The host was misreported.** The entries above for WIP.1–WIP.3 first said
+"host petri", copied from an older entry; `hostname` says NB-3641. Corrected.
+
+**The WIP.4 run's sticky-headers failure did not recur** in the merge gate
+below: still unexplained, still not marked flaky.
+
+**Results:** `popup-mb.spec.js` 35 passed; `popup-mb.json` 32 as declared
+(all re-run after `_mbPopTarget()` gained the code paths); live
+`popup-mb.spec.js` 5 of 5 (2026-10-07T19:24:38Z to 19:25:06Z); lint within
+the baseline; config, docs and publish audits clean. `npm run test:full`:
+1328 passed, 0 failed (2026-10-07T19:25:35Z to 19:32:28Z, host NB-3641,
+WSL2).

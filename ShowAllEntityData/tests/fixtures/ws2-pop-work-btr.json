@@ -1,0 +1,606 @@
+{
+ "id": "9893a23c-f282-3b07-a2db-b4f2f3b9f4b2",
+ "relations": [
+  {
+   "begin": "1974",
+   "type-id": "d59d99ea-23d4-4a80-b066-edca32ee158f",
+   "artist": {
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "type": "Person",
+    "sort-name": "Springsteen, Bruce",
+    "disambiguation": "",
+    "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "country": "US"
+   },
+   "end": "1974",
+   "target-credit": "",
+   "target-type": "artist",
+   "ended": true,
+   "attribute-ids": {},
+   "attribute-values": {},
+   "type": "composer",
+   "direction": "backward",
+   "source-credit": "",
+   "attributes": []
+  },
+  {
+   "type": "lyricist",
+   "direction": "backward",
+   "source-credit": "",
+   "attributes": [],
+   "artist": {
+    "type": "Person",
+    "sort-name": "Springsteen, Bruce",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "country": "US",
+    "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "disambiguation": ""
+   },
+   "type-id": "3e48faba-ec01-47fd-8e89-30e81161661c",
+   "begin": "1974",
+   "target-credit": "",
+   "end": "1974",
+   "target-type": "artist",
+   "attribute-ids": {},
+   "ended": true,
+   "attribute-values": {}
+  },
+  {
+   "end": "1975",
+   "target-credit": "",
+   "begin": "1975",
+   "type-id": "a442b140-830b-30b0-a4aa-2e36f098b6aa",
+   "artist": {
+    "sort-name": "Springsteen, Bruce",
+    "type": "Person",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "country": "US",
+    "disambiguation": "",
+    "name": "Bruce Springsteen",
+    "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+   },
+   "attribute-ids": {},
+   "ended": true,
+   "target-type": "artist",
+   "attribute-values": {},
+   "type": "publishing",
+   "direction": "backward",
+   "source-credit": "",
+   "attributes": []
+  },
+  {
+   "attribute-values": {},
+   "attribute-ids": {},
+   "ended": true,
+   "target-type": "artist",
+   "target-credit": "",
+   "end": "1988",
+   "type-id": "a442b140-830b-30b0-a4aa-2e36f098b6aa",
+   "artist": {
+    "sort-name": "Springsteen, Bruce",
+    "type": "Person",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "country": "US",
+    "name": "Bruce Springsteen",
+    "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "disambiguation": ""
+   },
+   "begin": "1988",
+   "attributes": [],
+   "source-credit": "",
+   "direction": "backward",
+   "type": "publishing"
+  },
+  {
+   "target-credit": "",
+   "end": "2003",
+   "artist": {
+    "sort-name": "Springsteen, Bruce",
+    "type": "Person",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "country": "US",
+    "name": "Bruce Springsteen",
+    "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "disambiguation": ""
+   },
+   "type-id": "a442b140-830b-30b0-a4aa-2e36f098b6aa",
+   "begin": "2003",
+   "attribute-values": {},
+   "ended": true,
+   "attribute-ids": {},
+   "target-type": "artist",
+   "direction": "backward",
+   "type": "publishing",
+   "attributes": [],
+   "source-credit": ""
+  },
+  {
+   "label": {
+    "type": "Publisher",
+    "sort-name": "Laurel Canyon Music Ltd.",
+    "type-id": "e9ad53b0-e3d0-3885-a10b-8193d501338c",
+    "label-code": null,
+    "disambiguation": "publishing company of Mike Appel and Jim Cretecos",
+    "id": "ecad675f-d5b8-49af-9f98-190618907b80",
+    "name": "Laurel Canyon Music Ltd."
+   },
+   "end": "1974",
+   "target-credit": "",
+   "begin": "1974",
+   "type-id": "05ee6f18-4517-342d-afdf-5897f64276e3",
+   "attribute-ids": {},
+   "ended": true,
+   "target-type": "label",
+   "attribute-values": {},
+   "type": "publishing",
+   "direction": "backward",
+   "source-credit": "",
+   "attributes": []
+  },
+  {
+   "direction": "backward",
+   "type": "publishing",
+   "attributes": [],
+   "source-credit": "",
+   "type-id": "05ee6f18-4517-342d-afdf-5897f64276e3",
+   "begin": null,
+   "target-credit": "",
+   "end": null,
+   "label": {
+    "label-code": null,
+    "type-id": "e9ad53b0-e3d0-3885-a10b-8193d501338c",
+    "type": "Publisher",
+    "sort-name": "Bruce Springsteen Music",
+    "id": "8b8c0ddc-7800-43c3-8e3b-1ae338714872",
+    "name": "Bruce Springsteen Music",
+    "disambiguation": ""
+   },
+   "attribute-values": {},
+   "target-type": "label",
+   "ended": false,
+   "attribute-ids": {}
+  },
+  {
+   "source-credit": "",
+   "attributes": [],
+   "type": "publishing",
+   "direction": "backward",
+   "attribute-ids": {},
+   "ended": false,
+   "target-type": "label",
+   "attribute-values": {},
+   "label": {
+    "id": "9b3c18b1-be4a-41fe-aed3-fc043838e23c",
+    "name": "Intersong Music Ltd.",
+    "disambiguation": "",
+    "label-code": null,
+    "type-id": "e9ad53b0-e3d0-3885-a10b-8193d501338c",
+    "type": "Publisher",
+    "sort-name": "Intersong Music Ltd."
+   },
+   "target-credit": "",
+   "end": null,
+   "type-id": "05ee6f18-4517-342d-afdf-5897f64276e3",
+   "begin": null
+  },
+  {
+   "source-credit": "",
+   "attributes": [],
+   "type": "publishing",
+   "direction": "backward",
+   "attribute-ids": {},
+   "ended": false,
+   "target-type": "label",
+   "attribute-values": {},
+   "label": {
+    "name": "Penjane",
+    "id": "8b0be3b4-7de1-4821-8718-cb4efdfc5377",
+    "disambiguation": "",
+    "sort-name": "Penjane",
+    "type": "Publisher",
+    "label-code": null,
+    "type-id": "e9ad53b0-e3d0-3885-a10b-8193d501338c"
+   },
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "05ee6f18-4517-342d-afdf-5897f64276e3"
+  },
+  {
+   "source-credit": "",
+   "attributes": [],
+   "type": "publishing",
+   "direction": "backward",
+   "target-type": "label",
+   "attribute-ids": {},
+   "ended": false,
+   "attribute-values": {},
+   "label": {
+    "id": "e29d84e8-096c-4f86-83a4-992401236199",
+    "name": "Sony/ATV Music Publishing (UK) Ltd.",
+    "disambiguation": "",
+    "label-code": null,
+    "type-id": "e9ad53b0-e3d0-3885-a10b-8193d501338c",
+    "type": "Publisher",
+    "sort-name": "Sony/ATV Music Publishing (UK) Ltd."
+   },
+   "begin": null,
+   "type-id": "05ee6f18-4517-342d-afdf-5897f64276e3",
+   "end": null,
+   "target-credit": ""
+  },
+  {
+   "source-credit": "",
+   "attributes": [],
+   "type": "publishing",
+   "direction": "backward",
+   "target-type": "label",
+   "ended": false,
+   "attribute-ids": {},
+   "attribute-values": {},
+   "label": {
+    "disambiguation": "not for release label use!",
+    "id": "8d12de21-cb53-4a1d-9bbe-fad99540d30b",
+    "name": "Universal Music Publishing France",
+    "type-id": "e9ad53b0-e3d0-3885-a10b-8193d501338c",
+    "label-code": null,
+    "type": "Publisher",
+    "sort-name": "Universal Music Publishing France"
+   },
+   "begin": null,
+   "type-id": "05ee6f18-4517-342d-afdf-5897f64276e3",
+   "end": null,
+   "target-credit": ""
+  },
+  {
+   "direction": "backward",
+   "type": "publishing",
+   "attributes": [],
+   "source-credit": "",
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "05ee6f18-4517-342d-afdf-5897f64276e3",
+   "label": {
+    "label-code": null,
+    "type-id": "e9ad53b0-e3d0-3885-a10b-8193d501338c",
+    "sort-name": "Universal Music Works",
+    "type": "Publisher",
+    "name": "Universal Music Works",
+    "id": "e0a14bc0-b9b7-44b7-8548-912d8d8b2e34",
+    "disambiguation": "GMR affiliated"
+   },
+   "attribute-values": {},
+   "ended": false,
+   "attribute-ids": {},
+   "target-type": "label"
+  },
+  {
+   "direction": "backward",
+   "type": "publishing",
+   "attributes": [
+    "sub"
+   ],
+   "source-credit": "",
+   "type-id": "05ee6f18-4517-342d-afdf-5897f64276e3",
+   "begin": null,
+   "target-credit": "",
+   "end": null,
+   "label": {
+    "type": "Publisher",
+    "sort-name": "シンコーミュージック・エンタテイメント",
+    "type-id": "e9ad53b0-e3d0-3885-a10b-8193d501338c",
+    "label-code": null,
+    "disambiguation": "",
+    "id": "7c26dc19-bf86-4f18-a629-6986c3d11d69",
+    "name": "シンコーミュージック・エンタテイメント"
+   },
+   "attribute-values": {},
+   "target-type": "label",
+   "attribute-ids": {
+    "sub": "4521ce8e-3d24-4b64-9805-59df6f3a4740"
+   },
+   "ended": false
+  },
+  {
+   "attribute-values": {},
+   "target-type": "label",
+   "attribute-ids": {
+    "sub": "4521ce8e-3d24-4b64-9805-59df6f3a4740"
+   },
+   "ended": false,
+   "begin": null,
+   "type-id": "05ee6f18-4517-342d-afdf-5897f64276e3",
+   "end": null,
+   "target-credit": "",
+   "label": {
+    "type-id": "e9ad53b0-e3d0-3885-a10b-8193d501338c",
+    "label-code": null,
+    "type": "Publisher",
+    "sort-name": "ユニバーサル・ミュージック・パブリッシング Synch事業部",
+    "disambiguation": "",
+    "id": "f1b68ffd-563a-4a33-b2a5-400ed081eca1",
+    "name": "ユニバーサル・ミュージック・パブリッシング Synch事業部"
+   },
+   "attributes": [
+    "sub"
+   ],
+   "source-credit": "",
+   "direction": "backward",
+   "type": "publishing"
+  },
+  {
+   "source-credit": "",
+   "attributes": [
+    "parody"
+   ],
+   "type": "other version",
+   "direction": "forward",
+   "attribute-ids": {
+    "parody": "d73de9d3-934b-419c-8c83-2e48a5773b14"
+   },
+   "ended": false,
+   "target-type": "work",
+   "attribute-values": {},
+   "work": {
+    "title": "Governor Christie Traffic Jam",
+    "type": "Song",
+    "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+    "language": "eng",
+    "iswcs": [],
+    "languages": [
+     "eng"
+    ],
+    "attributes": [],
+    "disambiguation": "",
+    "id": "57ae4f22-e0d3-4dd3-859c-fdfc44138f9b"
+   },
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "7440b539-19ab-4243-8c03-4f5942ca2218"
+  },
+  {
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "7440b539-19ab-4243-8c03-4f5942ca2218",
+   "attribute-values": {},
+   "work": {
+    "language": "eng",
+    "iswcs": [],
+    "disambiguation": "",
+    "languages": [
+     "eng"
+    ],
+    "attributes": [],
+    "id": "59262441-6641-462e-bd24-c375bf62c627",
+    "title": "Born Above",
+    "type": "Song",
+    "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6"
+   },
+   "ended": false,
+   "attribute-ids": {
+    "parody": "d73de9d3-934b-419c-8c83-2e48a5773b14"
+   },
+   "target-type": "work",
+   "direction": "forward",
+   "type": "other version",
+   "attributes": [
+    "parody"
+   ],
+   "source-credit": ""
+  },
+  {
+   "attribute-values": {},
+   "work": {
+    "type-id": null,
+    "type": null,
+    "title": "Born to Add",
+    "disambiguation": "",
+    "attributes": [],
+    "languages": [
+     "eng"
+    ],
+    "id": "6c5a9dce-d5a8-3160-be0f-e3d4930e8bcc",
+    "iswcs": [],
+    "language": "eng"
+   },
+   "attribute-ids": {
+    "parody": "d73de9d3-934b-419c-8c83-2e48a5773b14"
+   },
+   "ended": false,
+   "target-type": "work",
+   "target-credit": "",
+   "end": null,
+   "type-id": "7440b539-19ab-4243-8c03-4f5942ca2218",
+   "begin": null,
+   "attributes": [
+    "parody"
+   ],
+   "source-credit": "",
+   "direction": "forward",
+   "type": "other version"
+  }
+ ],
+ "disambiguation": "",
+ "languages": [
+  "eng"
+ ],
+ "attributes": [
+  {
+   "value": "4052178",
+   "type-id": "fd46ccc3-b3bb-4c5a-b40d-23b81899ef46",
+   "type": "SPAC ID"
+  },
+  {
+   "type": "SOBODAYCOM ID",
+   "type-id": "3667d8d9-9fe4-4df0-873b-4dc00a886d80",
+   "value": "4052178"
+  },
+  {
+   "type": "SGACEDOM ID",
+   "value": "4052178",
+   "type-id": "33fe1f90-d812-48ef-839f-bc151afecaca"
+  },
+  {
+   "type-id": "5ab3cd1a-b9ad-4244-8b32-b3a958d4ede6",
+   "value": "4052178",
+   "type": "NICAUTOR ID"
+  },
+  {
+   "type": "AEI ID",
+   "value": "4052178",
+   "type-id": "d12e548d-4579-4ddd-abb6-9ffa4fee6826"
+  },
+  {
+   "type-id": "a9551cb7-ee2c-4b05-87b6-18ef0e549865",
+   "value": "4052178",
+   "type": "AACIMH ID"
+  },
+  {
+   "value": "4052178",
+   "type-id": "43b74305-291f-4ae3-9e59-0dca457c00fe",
+   "type": "SACIM ID"
+  },
+  {
+   "type": "APA ID",
+   "value": "5245605",
+   "type-id": "84afca1d-80dc-4d44-8d7a-e1e84e70aa65"
+  },
+  {
+   "value": "14904",
+   "type-id": "5ea37343-be89-4cd0-8a37-f471738df641",
+   "type": "COMPASS ID"
+  },
+  {
+   "type-id": "5ea37343-be89-4cd0-8a37-f471738df641",
+   "value": "13318647",
+   "type": "COMPASS ID"
+  },
+  {
+   "type-id": "955305a2-58ec-4c64-94f7-7fb9b209416c",
+   "value": "4052178",
+   "type": "ACAM ID"
+  },
+  {
+   "type-id": "27ea7f59-9f9c-4aee-b31a-61109ac03819",
+   "value": "4278777",
+   "type": "AGADU ID"
+  },
+  {
+   "type": "SACVEN ID",
+   "value": "3279751",
+   "type-id": "91064561-0c00-4574-ad18-247c7216675f"
+  },
+  {
+   "value": "2175903",
+   "type-id": "b66d6f47-2a58-4bc1-ac75-b44c47a198f8",
+   "type": "APDAYC ID"
+  },
+  {
+   "type": "SAYCE ID",
+   "type-id": "4bcbb212-a973-46ee-8160-e9f0f89ca6ef",
+   "value": "1667838"
+  },
+  {
+   "type": "SAYCO ID",
+   "value": "1667838",
+   "type-id": "4439b1a5-47da-4774-9caa-8b8589129297"
+  },
+  {
+   "value": "78950",
+   "type-id": "d37a8c27-8f83-47c7-954d-175d35759990",
+   "type": "ECAD ID"
+  },
+  {
+   "type": "SIAE ID",
+   "value": "76203079800",
+   "type-id": "2e4f9e12-d094-4bd0-b4dd-a560cc5c4977"
+  },
+  {
+   "value": "92634",
+   "type-id": "f15e9a05-231e-415b-8b7d-8ec44c736bde",
+   "type": "SPA ID"
+  },
+  {
+   "type": "PRS tune code",
+   "type-id": "cd76035f-b94e-4e47-850d-aa2cd825d1a6",
+   "value": "278852J"
+  },
+  {
+   "type": "SABAM ID",
+   "type-id": "b2e4067b-a9e4-44fb-bfcd-3c1fc41dc06d",
+   "value": "004528000"
+  },
+  {
+   "value": "061155503",
+   "type-id": "519f3860-0b48-4532-8752-25984f662360",
+   "type": "SACM ID"
+  },
+  {
+   "type": "BUMA/STEMRA ID",
+   "type-id": "a6492434-b847-4f1b-9869-9184ade990ed",
+   "value": "W-000284803"
+  },
+  {
+   "type-id": "d8aa6512-314a-478d-bd30-e8d7411509cb",
+   "value": "247264",
+   "type": "SADAIC ID"
+  },
+  {
+   "type": "AKM ID",
+   "value": "534903201",
+   "type-id": "eee68598-7f51-44a7-bd5a-fc728f1854d2"
+  },
+  {
+   "type": "AKM ID",
+   "type-id": "eee68598-7f51-44a7-bd5a-fc728f1854d2",
+   "value": "37266901"
+  },
+  {
+   "type": "SACEM ID",
+   "type-id": "d08147e2-d167-3c2b-bbe4-af6643a194f9",
+   "value": "75 069 924 11"
+  },
+  {
+   "type": "SGAE ID",
+   "value": "111.888",
+   "type-id": "6a200b13-ca08-3b32-87a9-7aaa46368d75"
+  },
+  {
+   "type": "SUISA ID",
+   "value": "000397 294 49",
+   "type-id": "034f35ae-d250-3749-95e7-854e606d5960"
+  },
+  {
+   "type": "APRA ID",
+   "value": "GW02483034",
+   "type-id": "bdf50af8-0881-322a-8ab7-f031a4935d04"
+  },
+  {
+   "type": "SOCAN ID",
+   "type-id": "00370bc6-7388-34a1-aa5b-b0e081ccb53d",
+   "value": "10081634"
+  },
+  {
+   "type": "GEMA ID",
+   "type-id": "01eeee67-f514-3801-bdce-279e04872f91",
+   "value": "1336464-001"
+  },
+  {
+   "type": "JASRAC ID",
+   "type-id": "31048fcc-3dbb-3979-8f85-805afb933e0c",
+   "value": "0B0-9415-1"
+  }
+ ],
+ "iswcs": [
+  "T-070.014.903-6"
+ ],
+ "language": "eng",
+ "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+ "title": "Born to Run",
+ "type": "Song"
+}

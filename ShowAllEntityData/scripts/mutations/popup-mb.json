@@ -1,0 +1,419 @@
+[
+    {
+        "name": "the MusicBrainz source ignores sa_pop_mb",
+        "why": "The link previews are opt-in, off by default (org/iframe.org, answer 1): with the setting off a MusicBrainz page gets no stylesheet, no listener and no request.",
+        "edits": [
+            {
+                "find": "            enabled: () => !_foreignHost && Lib.settings.sa_pop_mb === true,",
+                "replace": "            enabled: () => !_foreignHost,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "off by default",
+        "expect": "fail"
+    },
+    {
+        "name": "the MusicBrainz cards ignore the Ctrl gate",
+        "why": "They follow sa_dp_hover_without_ctrl, 'every preview' (answer 2): moving the pointer across a table full of links must neither pop up cards nor ask MusicBrainz.",
+        "edits": [
+            {
+                "find": "            resolve: (a) => _mbPopTarget(a),\n            needsCtrl: _dpNeedsCtrl,",
+                "replace": "            resolve: (a) => _mbPopTarget(a),\n            needsCtrl: () => false,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the Ctrl gate",
+        "expect": "fail"
+    },
+    {
+        "name": "any page under an entity is previewed, not just the bare one",
+        "why": "The CAA/EAA icon column links /release/<id>/cover-art (artwork has its own preview); /edit and the tabs are not the entity either.",
+        "edits": [
+            {
+                "find": "[0-9a-f]{4}-[0-9a-f]{12})\\/?$/;\n\n    /**\n     * The page of a code a link may preview",
+                "replace": "[0-9a-f]{4}-[0-9a-f]{12})(?:\\/.*)?$/;\n\n    /**\n     * The page of a code a link may preview"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "what is previewed",
+        "expect": "fail"
+    },
+    {
+        "name": "a link wrapping an image is previewed",
+        "why": "An inline cover or thumbnail has its own hover preview (#mb-art-hover-preview); a card over it would be a second box.",
+        "edits": [
+            {
+                "find": "        if (a.querySelector('img') || a.closest('td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;",
+                "replace": "        if (a.closest('td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "what is previewed",
+        "expect": "fail"
+    },
+    {
+        "name": "a link in the Relationships column is previewed",
+        "why": "The Relationships column has its own tooltip (#mb-rel-tooltip) on its cells.",
+        "edits": [
+            {
+                "find": "        if (a.querySelector('img') || a.closest('td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;",
+                "replace": "        if (a.querySelector('img') || a.closest('#mb-dp-peek, #mb-dp-dialog')) return null;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "what is previewed",
+        "expect": "fail"
+    },
+    {
+        "name": "a request nobody wants any more is still sent",
+        "why": "The popup engine's rule: a hover that has moved on by the time its rate slot comes up makes no request (as _dpGet() on the foreign hosts); otherwise crossing a table queues one request per link.",
+        "edits": [
+            {
+                "find": "        if (wanted && !wanted()) {",
+                "replace": "        if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "hover that moved on before its rate slot asks nothing; the gate",
+        "expect": "fail"
+    },
+    {
+        "name": "a release-group link's card does not pass its wanted() on",
+        "why": "Phase 1's loader always wanted its pages (the release page's own sources still do); from a table link a moved-on hover must make no request.",
+        "edits": [
+            {
+                "find": "                if (start) _rgReleasesLoad(info, { repaint, wanted: _mbPopWanted(t) });",
+                "replace": "                if (start) _rgReleasesLoad(info, { repaint });"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "release-group link whose hover moved on",
+        "expect": "fail"
+    },
+    {
+        "name": "a failed answer is kept",
+        "why": "Only a success is cached, everywhere in the script: a failure kept as done would never be asked again until the page reloads.",
+        "edits": [
+            {
+                "find": "                Object.assign(st, { status: 'failed', detail: res.detail || `HTTP ${res.status}` });\n            }\n            notify();\n        })();\n    }\n\n    /**\n     * The entity path",
+                "replace": "                Object.assign(st, { status: 'done', data: null, detail: res.detail || `HTTP ${res.status}` });\n            }\n            notify();\n        })();\n    }\n\n    /**\n     * The entity path"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a failure is shown, not kept",
+        "expect": "fail"
+    },
+    {
+        "name": "a repaint starts the card's request",
+        "why": "Only a call with start may start a request: card() is called again by every repaint, and a repaint that started one would retry a failed request for ever (docs/claude/detail-pages.md).",
+        "edits": [
+            {
+                "find": "                if (start) _mbWsLoad(q.key, q.url, { repaint, wanted: _mbPopWanted(t) });",
+                "replace": "                _mbWsLoad(q.key, q.url, { repaint, wanted: _mbPopWanted(t) });"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a failure is shown, not kept",
+        "expect": "fail"
+    },
+    {
+        "name": "the answers ignore sa_pop_mb_ttl_hours",
+        "why": "MusicBrainz data changes daily; the setting says how long an answer is reused (answer 4), and a one-hour TTL must ask again for a two-hour-old answer.",
+        "edits": [
+            {
+                "find": "        return (typeof h === 'number' && h > 0 ? h : 24) * 60 * 60 * 1000;",
+                "replace": "        return 24 * 60 * 60 * 1000;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "IndexedDB after a reload",
+        "expect": "fail"
+    },
+    {
+        "name": "the arrows stay in the first sub-table",
+        "why": "On a multi-table page the column goes on in the next visible sub-table (the releases of a group split by status).",
+        "edits": [
+            {
+                "find": "        for (const tb of tables) {\n            const heads = tb.querySelectorAll('thead tr:first-child th').length;",
+                "replace": "        for (const tb of tables.slice(0, 1)) {\n            const heads = tb.querySelectorAll('thead tr:first-child th').length;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "step down the same column",
+        "expect": "fail"
+    },
+    {
+        "name": "the arrows mix kinds in a column",
+        "why": "A row links a release, an artist, a label: the arrows step through ONE kind. Re-checked in WIP.3 with artist and label cards: on the host page every column holds one kind (its /cover-art anchors resolve to nothing), so the kind filter is still covered by the column match. Recorded so the overlap is known.",
+        "edits": [
+            {
+                "find": "                    return m && m.type === t.type;",
+                "replace": "                    return !!m;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "step down the same column",
+        "expect": "pass"
+    },
+    {
+        "name": "the card no longer rules out the Liner notes card",
+        "why": "One box at a time: while the card shows, #mb-stat-tooltip shows no card of the same link (_OTHER_RICH_TIPS).",
+        "edits": [
+            {
+                "find": "'mb-rel-tooltip', 'mb-dp-peek'];",
+                "replace": "'mb-rel-tooltip'];"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the card rules out",
+        "expect": "fail"
+    },
+    {
+        "name": "a tap on a MusicBrainz link follows it",
+        "why": "The engine's tap rule, kept on MusicBrainz (decided 2026-10-07): a touch screen has no hover and no Ctrl, so a tap opens the window and its ↗ opens the page.",
+        "edits": [
+            {
+                "find": "            if (!_isTouchCompatMouseEvent(e) && !_isTouchPrimaryDevice()) return;",
+                "replace": "            if (!_isTouchCompatMouseEvent(e) && !_isTouchPrimaryDevice()) return;\n            if (t.src.id === 'mb-entity') return;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.mobile.spec.js",
+        "grep": "a tap on a release link",
+        "expect": "fail",
+        "project": "chromium-mobile"
+    },
+    {
+        "name": "the cache key leaves out the inc set",
+        "why": "Two lookups of one recording with different inc sets (the card's, the window's credits) must not answer each other: the credits would come from the card's answer, which has no artist relations, and never be asked (_relFetchWs2()'s trap, org/iframe.org 'Risks').",
+        "edits": [
+            {
+                "find": "            key: `pop:${t.type}:${t.id}:${inc}`,",
+                "replace": "            key: `pop:${t.type}:${t.id}`,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the recording window",
+        "expect": "fail"
+    },
+    {
+        "name": "the recording window always asks for the count",
+        "why": "A lookup embeds at most 25 releases (Phase 0, R3): only a full list can mean more, so only then is the count worth a request.",
+        "edits": [
+            {
+                "find": "                if ((d.releases || []).length >= _MB_POP_SUBLIST_CAP) {",
+                "replace": "                if (true) {"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "asks for no count",
+        "expect": "fail"
+    },
+    {
+        "name": "a failed extra request is asked again by every repaint",
+        "why": "pin() runs from repaints too; without the guard a failed credits lookup is asked again whenever anything else in the window answers, for ever.",
+        "edits": [
+            {
+                "find": "        if (!again && s && s.status === 'failed') return;",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a failed extra request",
+        "expect": "fail"
+    },
+    {
+        "name": "⟳ asks only the card's lookup again",
+        "why": "⟳ 'asks MusicBrainz again' for the whole window: the extras started from the lookup's own callback must get the ⟳ too.",
+        "edits": [
+            {
+                "find": "                    if (spec.pin && s && s.status === 'done') spec.pin(t, s.data, start && force, repaint);",
+                "replace": "                    if (spec.pin && s && s.status === 'done') spec.pin(t, s.data, false, repaint);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "asks all again",
+        "expect": "fail"
+    },
+    {
+        "name": "a full release list reads as exact",
+        "why": "25 is where the lookup stops, not the count (271 for Thunder Road): the card says '25+'.",
+        "edits": [
+            {
+                "find": "                const n = rels.length >= _MB_POP_SUBLIST_CAP ? `${rels.length}+` : String(rels.length);",
+                "replace": "                const n = String(rels.length);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the recording card",
+        "expect": "fail"
+    },
+    {
+        "name": "relation groups lose their direction-aware names",
+        "why": "A label owns some labels and is owned by another; 'Label ownership' twice says neither. _MB_POP_REL_LABELS names them as MusicBrainz's pages do.",
+        "edits": [
+            {
+                "find": "            const name = _MB_POP_REL_LABELS[k] ||",
+                "replace": "            const name = '' ||"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the label card and window",
+        "expect": "fail"
+    },
+    {
+        "name": "relations are grouped by type only",
+        "why": "Without the direction the label's parent lands among the labels it owns.",
+        "edits": [
+            {
+                "find": "            const k = `${r.type}|${r.direction || 'forward'}`;",
+                "replace": "            const k = `${r.type}|forward`;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the label card and window",
+        "expect": "fail"
+    },
+    {
+        "name": "the artist card asks for its links",
+        "why": "75 URL relations were most of the artist lookup's 30 KB in Phase 0 (R1): the card leaves them to the window.",
+        "edits": [
+            {
+                "find": "            cardInc: 'genres+ratings+aliases',",
+                "replace": "            cardInc: 'genres+ratings+aliases+url-rels',"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the artist card",
+        "expect": "fail"
+    },
+    {
+        "name": "the label code is not padded",
+        "why": "MusicBrainz shows a label code as 'LC' and five digits; the Web Service gives the bare integer (162).",
+        "edits": [
+            {
+                "find": "        return typeof code === 'number' ? `LC ${String(code).padStart(5, '0')}` : '';",
+                "replace": "        return typeof code === 'number' ? `LC ${code}` : '';"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the label card and window",
+        "expect": "fail"
+    },
+    {
+        "name": "the artist window counts one type only",
+        "why": "Each primary type is its own browse (limit=1); the window shows all five as they arrive.",
+        "edits": [
+            {
+                "find": "                _MB_POP_RG_TYPES.forEach(([type]) => {",
+                "replace": "                _MB_POP_RG_TYPES.slice(0, 1).forEach(([type]) => {"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the artist window",
+        "expect": "fail"
+    },
+    {
+        "name": "the setlist shows its [mbid|name] tokens raw",
+        "why": "The Web Service gives the setlist in MusicBrainz's markup; a song shown as '[9893a23c-…|Born to Run]' is unreadable.",
+        "edits": [
+            {
+                "find": "        const name = s => s.replace(/\\[[0-9a-f-]{36}\\|([^\\]]*)\\]/g, '$1').trim();",
+                "replace": "        const name = s => s.trim();"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the event window",
+        "expect": "fail"
+    },
+    {
+        "name": "the line-up ignores the setlist's own joining words",
+        "why": "'Bruce Springsteen & The E Street Band with Roy Bittan, …' is how the setlist bills them; commas alone lose the billing.",
+        "edits": [
+            {
+                "find": "            } else if (kind === '#' && !songs.length && lineup.length && /^(&|and|with|feat\\.?|featuring)$/i.test(body)) {",
+                "replace": "            } else if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the event card",
+        "expect": "fail"
+    },
+    {
+        "name": "the event art is not loaded on pin",
+        "why": "The poster comes from the Event Art Archive, its own host, only in the window (R4).",
+        "edits": [
+            {
+                "find": "                _mbPopArtLoad(_mbPopEventArt, EAA_CTX, 'event', d.id, again, repaint);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the event window",
+        "expect": "fail"
+    },
+    {
+        "name": "a place's events keep the browse's order",
+        "why": "The event browse answers in no date order; the window promises 'by date'.",
+        "edits": [
+            {
+                "find": "                    const evs = (b.events || []).slice().sort((x, y) =>\n                        ((x['life-span'] || {}).begin || '9999').localeCompare((y['life-span'] || {}).begin || '9999'));",
+                "replace": "                    const evs = (b.events || []).slice();"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the place card and window",
+        "expect": "fail"
+    },
+    {
+        "name": "a series' items keep the lookup's order",
+        "why": "The lookup lists the items by ordering key 1, 2, 10, 7, …; a series is read in its order.",
+        "edits": [
+            {
+                "find": "            .sort((a, b) => (a['ordering-key'] ?? 1e9) - (b['ordering-key'] ?? 1e9))\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the series card and window",
+        "expect": "fail"
+    },
+    {
+        "name": "a disc ID's page is taken for its kind",
+        "why": "The site's page is /cdtoc/<id>, the Web Service's path /ws/2/discid/<id>: without the mapping a disc ID link previews nothing.",
+        "edits": [
+            {
+                "find": "    const _MB_POP_CODE_TYPES = { isrc: 'isrc', iswc: 'iswc', cdtoc: 'discid' };",
+                "replace": "    const _MB_POP_CODE_TYPES = { isrc: 'isrc', iswc: 'iswc', cdtoc: 'cdtoc' };"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a disc ID",
+        "expect": "fail"
+    },
+    {
+        "name": "a code's page is built from its kind, not its path",
+        "why": "↗ and the Live page must open /cdtoc/<id>, the page the link named; /discid/<id> does not exist on the site.",
+        "edits": [
+            {
+                "find": "            key: `${type}:${id}`, url: new URL(`/${seg}/${id}`, window.location.origin).href,",
+                "replace": "            key: `${type}:${id}`, url: new URL(`/${type}/${id}`, window.location.origin).href,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a disc ID",
+        "expect": "fail"
+    },
+    {
+        "name": "a private collection's 401 gets no explanation",
+        "why": "The Web Service shows public collections only; 'HTTP 401' alone reads like a fault of the script.",
+        "edits": [
+            {
+                "find": "            failNote: (detail) => (/\\b40[13]\\b/.test(detail) ? ' It is probably private.' : ''),",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a private collection",
+        "expect": "fail"
+    }
+]

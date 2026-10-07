@@ -1,0 +1,657 @@
+{
+ "disambiguation": "Italian “La Repubblica” and “L’Espresso” reissue series",
+ "name": "Bruce Springsteen Studio Collection",
+ "relations": [
+  {
+   "target-type": "release",
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "ended": false,
+   "attribute-values": {
+    "number": "1"
+   },
+   "ordering-key": 1,
+   "release": {
+    "disambiguation": "Italy, “La Repubblica” and “L’Espresso” reissue",
+    "country": "IT",
+    "status": null,
+    "status-id": null,
+    "text-representation": {
+     "script": "Latn",
+     "language": "eng"
+    },
+    "packaging-id": null,
+    "date": "2008-11-26",
+    "release-events": [
+     {
+      "area": {
+       "iso-3166-1-codes": [
+        "IT"
+       ],
+       "type": null,
+       "sort-name": "Italy",
+       "type-id": null,
+       "disambiguation": "",
+       "id": "c6500277-9a3d-349b-bf30-41afdbf42add",
+       "name": "Italy"
+      },
+      "date": "2008-11-26"
+     }
+    ],
+    "id": "f9b529c4-cc82-48a7-8328-dd054143247f",
+    "packaging": null,
+    "barcode": "",
+    "quality": "normal",
+    "title": "Born in the U.S.A."
+   },
+   "begin": null,
+   "type-id": "3fa29f01-8e13-3e49-9b0a-ad212aa2f81d",
+   "end": null,
+   "target-credit": "",
+   "source-credit": "",
+   "attributes": [
+    "number"
+   ],
+   "type": "part of",
+   "direction": "backward"
+  },
+  {
+   "type": "part of",
+   "direction": "backward",
+   "source-credit": "",
+   "attributes": [
+    "number"
+   ],
+   "release": {
+    "id": "c4f4c30e-5652-4c9d-b045-34fcb50a5d12",
+    "release-events": [
+     {
+      "date": "2008-12-03",
+      "area": {
+       "type-id": null,
+       "type": null,
+       "iso-3166-1-codes": [
+        "IT"
+       ],
+       "sort-name": "Italy",
+       "disambiguation": "",
+       "id": "c6500277-9a3d-349b-bf30-41afdbf42add",
+       "name": "Italy"
+      }
+     }
+    ],
+    "date": "2008-12-03",
+    "quality": "normal",
+    "barcode": "",
+    "packaging": null,
+    "title": "Born to Run",
+    "disambiguation": "Italy, “La Repubblica” and “L’Espresso” reissue",
+    "country": "IT",
+    "status": null,
+    "packaging-id": null,
+    "text-representation": {
+     "script": "Latn",
+     "language": "eng"
+    },
+    "status-id": null
+   },
+   "ordering-key": 2,
+   "type-id": "3fa29f01-8e13-3e49-9b0a-ad212aa2f81d",
+   "begin": null,
+   "target-credit": "",
+   "end": null,
+   "target-type": "release",
+   "ended": false,
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "attribute-values": {
+    "number": "2"
+   }
+  },
+  {
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "ended": false,
+   "target-type": "release",
+   "attribute-values": {
+    "number": "10"
+   },
+   "ordering-key": 10,
+   "release": {
+    "status": null,
+    "packaging-id": null,
+    "text-representation": {
+     "script": "Latn",
+     "language": "eng"
+    },
+    "status-id": null,
+    "disambiguation": "Italy, “La Repubblica” and “L’Espresso” reissue",
+    "country": "IT",
+    "quality": "normal",
+    "barcode": "",
+    "packaging": null,
+    "title": "Darkness on the Edge of Town",
+    "id": "de8bd048-d5fb-47b3-8a8a-89a81d4c94ee",
+    "date": "2009-01-28",
+    "release-events": [
+     {
+      "date": "2009-01-28",
+      "area": {
+       "type-id": null,
+       "sort-name": "Italy",
+       "type": null,
+       "iso-3166-1-codes": [
+        "IT"
+       ],
+       "disambiguation": "",
+       "name": "Italy",
+       "id": "c6500277-9a3d-349b-bf30-41afdbf42add"
+      }
+     }
+    ]
+   },
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "3fa29f01-8e13-3e49-9b0a-ad212aa2f81d",
+   "source-credit": "",
+   "attributes": [
+    "number"
+   ],
+   "type": "part of",
+   "direction": "backward"
+  },
+  {
+   "source-credit": "",
+   "attributes": [
+    "number"
+   ],
+   "type": "part of",
+   "direction": "backward",
+   "target-type": "release",
+   "ended": false,
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "attribute-values": {
+    "number": "7"
+   },
+   "release": {
+    "country": "IT",
+    "disambiguation": "Italy, “La Repubblica” and “L’Espresso” reissue",
+    "status-id": null,
+    "text-representation": {
+     "language": "eng",
+     "script": "Latn"
+    },
+    "packaging-id": null,
+    "status": null,
+    "release-events": [
+     {
+      "area": {
+       "type-id": null,
+       "type": null,
+       "iso-3166-1-codes": [
+        "IT"
+       ],
+       "sort-name": "Italy",
+       "disambiguation": "",
+       "id": "c6500277-9a3d-349b-bf30-41afdbf42add",
+       "name": "Italy"
+      },
+      "date": "2009-01-07"
+     }
+    ],
+    "date": "2009-01-07",
+    "id": "21c27d41-2336-4fc1-b707-af9afd56a84f",
+    "title": "Greetings From Asbury Park, N.J.",
+    "barcode": "",
+    "packaging": null,
+    "quality": "normal"
+   },
+   "ordering-key": 7,
+   "begin": null,
+   "type-id": "3fa29f01-8e13-3e49-9b0a-ad212aa2f81d",
+   "end": null,
+   "target-credit": ""
+  },
+  {
+   "attribute-values": {
+    "number": "12"
+   },
+   "target-type": "release",
+   "ended": false,
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "begin": null,
+   "type-id": "3fa29f01-8e13-3e49-9b0a-ad212aa2f81d",
+   "end": null,
+   "target-credit": "",
+   "ordering-key": 12,
+   "release": {
+    "release-events": [
+     {
+      "area": {
+       "type-id": null,
+       "sort-name": "Italy",
+       "iso-3166-1-codes": [
+        "IT"
+       ],
+       "type": null,
+       "name": "Italy",
+       "id": "c6500277-9a3d-349b-bf30-41afdbf42add",
+       "disambiguation": ""
+      },
+      "date": "2009-02-11"
+     }
+    ],
+    "date": "2009-02-11",
+    "id": "fcb2e47d-8787-4bdd-a285-8e860cb5672a",
+    "packaging": null,
+    "barcode": "",
+    "quality": "normal",
+    "title": "Human Touch",
+    "disambiguation": "Italy, “La Repubblica” and “L’Espresso” reissue",
+    "country": "IT",
+    "status": null,
+    "status-id": null,
+    "text-representation": {
+     "script": "Latn",
+     "language": "eng"
+    },
+    "packaging-id": null
+   },
+   "attributes": [
+    "number"
+   ],
+   "source-credit": "",
+   "direction": "backward",
+   "type": "part of"
+  },
+  {
+   "type-id": "3fa29f01-8e13-3e49-9b0a-ad212aa2f81d",
+   "begin": null,
+   "target-credit": "",
+   "end": null,
+   "release": {
+    "country": "IT",
+    "disambiguation": "Italy, “La Repubblica” and “L’Espresso” reissue",
+    "status-id": null,
+    "text-representation": {
+     "script": "Latn",
+     "language": "eng"
+    },
+    "packaging-id": null,
+    "status": null,
+    "release-events": [
+     {
+      "date": "2009-02-04",
+      "area": {
+       "name": "Italy",
+       "id": "c6500277-9a3d-349b-bf30-41afdbf42add",
+       "disambiguation": "",
+       "type-id": null,
+       "sort-name": "Italy",
+       "type": null,
+       "iso-3166-1-codes": [
+        "IT"
+       ]
+      }
+     }
+    ],
+    "date": "2009-02-04",
+    "id": "ac212b13-8bae-4a21-a602-cb8dc8665af8",
+    "title": "Lucky Town",
+    "packaging": null,
+    "barcode": "",
+    "quality": "normal"
+   },
+   "ordering-key": 11,
+   "attribute-values": {
+    "number": "11"
+   },
+   "target-type": "release",
+   "ended": false,
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "direction": "backward",
+   "type": "part of",
+   "attributes": [
+    "number"
+   ],
+   "source-credit": ""
+  },
+  {
+   "direction": "backward",
+   "type": "part of",
+   "attributes": [
+    "number"
+   ],
+   "source-credit": "",
+   "begin": null,
+   "type-id": "3fa29f01-8e13-3e49-9b0a-ad212aa2f81d",
+   "end": null,
+   "target-credit": "",
+   "release": {
+    "release-events": [
+     {
+      "date": "2008-12-31",
+      "area": {
+       "type-id": null,
+       "iso-3166-1-codes": [
+        "IT"
+       ],
+       "type": null,
+       "sort-name": "Italy",
+       "disambiguation": "",
+       "id": "c6500277-9a3d-349b-bf30-41afdbf42add",
+       "name": "Italy"
+      }
+     }
+    ],
+    "date": "2008-12-31",
+    "id": "f4efe996-f7ae-47d6-be0a-ca31f1525ecb",
+    "title": "Nebraska",
+    "barcode": "",
+    "packaging": null,
+    "quality": "normal",
+    "country": "IT",
+    "disambiguation": "Italy, “La Repubblica” and “L’Espresso” reissue",
+    "text-representation": {
+     "language": "eng",
+     "script": "Latn"
+    },
+    "status-id": null,
+    "packaging-id": null,
+    "status": null
+   },
+   "ordering-key": 6,
+   "attribute-values": {
+    "number": "6"
+   },
+   "target-type": "release",
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "ended": false
+  },
+  {
+   "begin": null,
+   "type-id": "3fa29f01-8e13-3e49-9b0a-ad212aa2f81d",
+   "end": null,
+   "target-credit": "",
+   "ordering-key": 8,
+   "release": {
+    "release-events": [
+     {
+      "area": {
+       "name": "Italy",
+       "id": "c6500277-9a3d-349b-bf30-41afdbf42add",
+       "disambiguation": "",
+       "type-id": null,
+       "sort-name": "Italy",
+       "iso-3166-1-codes": [
+        "IT"
+       ],
+       "type": null
+      },
+      "date": "2009-01-14"
+     }
+    ],
+    "date": "2009-01-14",
+    "id": "7e0d941a-2785-467a-a67a-488e44459f89",
+    "packaging": null,
+    "barcode": "",
+    "quality": "normal",
+    "title": "The Ghost of Tom Joad",
+    "disambiguation": "Italy, “La Repubblica” and “L’Espresso” reissue",
+    "country": "IT",
+    "status": null,
+    "text-representation": {
+     "language": "eng",
+     "script": "Latn"
+    },
+    "status-id": null,
+    "packaging-id": null
+   },
+   "attribute-values": {
+    "number": "8"
+   },
+   "target-type": "release",
+   "ended": false,
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "direction": "backward",
+   "type": "part of",
+   "attributes": [
+    "number"
+   ],
+   "source-credit": ""
+  },
+  {
+   "type": "part of",
+   "direction": "backward",
+   "source-credit": "",
+   "attributes": [
+    "number"
+   ],
+   "release": {
+    "disambiguation": "Italy, “La Repubblica” and “L’Espresso” reissue",
+    "country": "IT",
+    "status": null,
+    "status-id": null,
+    "text-representation": {
+     "script": "Latn",
+     "language": "eng"
+    },
+    "packaging-id": null,
+    "date": "2008-12-10",
+    "release-events": [
+     {
+      "area": {
+       "disambiguation": "",
+       "name": "Italy",
+       "id": "c6500277-9a3d-349b-bf30-41afdbf42add",
+       "sort-name": "Italy",
+       "type": null,
+       "iso-3166-1-codes": [
+        "IT"
+       ],
+       "type-id": null
+      },
+      "date": "2008-12-10"
+     }
+    ],
+    "id": "b1f88bb9-343f-448f-a2db-a1124741ec0e",
+    "packaging": null,
+    "barcode": "",
+    "quality": "normal",
+    "title": "The Rising"
+   },
+   "ordering-key": 3,
+   "begin": null,
+   "type-id": "3fa29f01-8e13-3e49-9b0a-ad212aa2f81d",
+   "end": null,
+   "target-credit": "",
+   "target-type": "release",
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "ended": false,
+   "attribute-values": {
+    "number": "3"
+   }
+  },
+  {
+   "direction": "backward",
+   "type": "part of",
+   "attributes": [
+    "number"
+   ],
+   "source-credit": "",
+   "type-id": "3fa29f01-8e13-3e49-9b0a-ad212aa2f81d",
+   "begin": null,
+   "target-credit": "",
+   "end": null,
+   "ordering-key": 4,
+   "release": {
+    "country": "IT",
+    "disambiguation": "Italy, “La Repubblica” and “L’Espresso” reissue",
+    "text-representation": {
+     "language": "eng",
+     "script": "Latn"
+    },
+    "status-id": null,
+    "packaging-id": null,
+    "status": null,
+    "release-events": [
+     {
+      "area": {
+       "id": "c6500277-9a3d-349b-bf30-41afdbf42add",
+       "name": "Italy",
+       "disambiguation": "",
+       "type": null,
+       "iso-3166-1-codes": [
+        "IT"
+       ],
+       "sort-name": "Italy",
+       "type-id": null
+      },
+      "date": "2008-12-17"
+     }
+    ],
+    "date": "2008-12-17",
+    "id": "fd5d40a6-cab4-40e0-8d21-437dc53ecb3d",
+    "title": "The River",
+    "packaging": null,
+    "barcode": "",
+    "quality": "normal"
+   },
+   "attribute-values": {
+    "number": "4"
+   },
+   "target-type": "release",
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "ended": false
+  },
+  {
+   "ordering-key": 9,
+   "release": {
+    "disambiguation": "Italy, “La Repubblica” and “L’Espresso” reissue",
+    "country": "IT",
+    "status": null,
+    "status-id": null,
+    "text-representation": {
+     "script": "Latn",
+     "language": "eng"
+    },
+    "packaging-id": null,
+    "date": "2009-01-21",
+    "release-events": [
+     {
+      "date": "2009-01-21",
+      "area": {
+       "type": null,
+       "iso-3166-1-codes": [
+        "IT"
+       ],
+       "sort-name": "Italy",
+       "type-id": null,
+       "disambiguation": "",
+       "id": "c6500277-9a3d-349b-bf30-41afdbf42add",
+       "name": "Italy"
+      }
+     }
+    ],
+    "id": "110d8fb7-eff0-4849-8e6e-dfade8e57ef2",
+    "packaging": null,
+    "barcode": "",
+    "quality": "normal",
+    "title": "The Wild, the Innocent & The E Street Shuffle"
+   },
+   "begin": null,
+   "type-id": "3fa29f01-8e13-3e49-9b0a-ad212aa2f81d",
+   "end": null,
+   "target-credit": "",
+   "target-type": "release",
+   "ended": false,
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "attribute-values": {
+    "number": "9"
+   },
+   "type": "part of",
+   "direction": "backward",
+   "source-credit": "",
+   "attributes": [
+    "number"
+   ]
+  },
+  {
+   "direction": "backward",
+   "type": "part of",
+   "attributes": [
+    "number"
+   ],
+   "source-credit": "",
+   "type-id": "3fa29f01-8e13-3e49-9b0a-ad212aa2f81d",
+   "begin": null,
+   "target-credit": "",
+   "end": null,
+   "ordering-key": 5,
+   "release": {
+    "disambiguation": "Italy, “La Repubblica” and “L’Espresso” reissue",
+    "country": "IT",
+    "status": null,
+    "packaging-id": null,
+    "text-representation": {
+     "script": "Latn",
+     "language": "eng"
+    },
+    "status-id": null,
+    "id": "0c384eba-4963-4284-a79b-2e52a4f8d1f0",
+    "release-events": [
+     {
+      "area": {
+       "iso-3166-1-codes": [
+        "IT"
+       ],
+       "type": null,
+       "sort-name": "Italy",
+       "type-id": null,
+       "id": "c6500277-9a3d-349b-bf30-41afdbf42add",
+       "name": "Italy",
+       "disambiguation": ""
+      },
+      "date": "2008-12-24"
+     }
+    ],
+    "date": "2008-12-24",
+    "quality": "normal",
+    "barcode": "",
+    "packaging": null,
+    "title": "Tunnel of Love"
+   },
+   "attribute-values": {
+    "number": "5"
+   },
+   "target-type": "release",
+   "attribute-ids": {
+    "number": "a59c5830-5ec7-38fe-9a21-c7ea54f6650a"
+   },
+   "ended": false
+  }
+ ],
+ "id": "aa3694d3-a3d0-48ed-8f07-5b576de87908",
+ "type-id": "52b90f1e-ff62-3bd0-b254-5d91ced5d757",
+ "type": "Release series"
+}

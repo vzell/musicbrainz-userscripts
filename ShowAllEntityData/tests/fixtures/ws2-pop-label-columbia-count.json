@@ -1,0 +1,47 @@
+{
+ "releases": [
+  {
+   "cover-art-archive": {
+    "darkened": false,
+    "count": 0,
+    "front": false,
+    "artwork": false,
+    "back": false
+   },
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "packaging": null,
+   "packaging-id": null,
+   "status": "Official",
+   "country": "US",
+   "asin": null,
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "date": "1893-11",
+   "release-events": [
+    {
+     "date": "1893-11",
+     "area": {
+      "type-id": null,
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "type": null,
+      "name": "United States",
+      "sort-name": "United States",
+      "disambiguation": "",
+      "iso-3166-1-codes": [
+       "US"
+      ]
+     }
+    }
+   ],
+   "id": "cbeea757-6abb-4451-8ec8-f96f760ce477",
+   "quality": "normal",
+   "barcode": "",
+   "title": "Rastus and the Watermillion",
+   "disambiguation": ""
+  }
+ ],
+ "release-count": 43171,
+ "release-offset": 0
+}

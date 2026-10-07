@@ -1,0 +1,1260 @@
+{
+ "title": "Thunder Road",
+ "first-release-date": "1975-08-25",
+ "artist-credit": [
+  {
+   "artist": {
+    "disambiguation": "",
+    "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "name": "Bruce Springsteen",
+    "country": "US",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "type": "Person",
+    "sort-name": "Springsteen, Bruce"
+   },
+   "joinphrase": "",
+   "name": "Bruce Springsteen"
+  }
+ ],
+ "length": 290000,
+ "disambiguation": "version 7",
+ "video": false,
+ "isrcs": [
+  "USSM17500803",
+  "USSM19904335"
+ ],
+ "relations": [
+  {
+   "source-credit": "",
+   "attributes": [],
+   "type": "performance",
+   "direction": "forward",
+   "target-type": "work",
+   "ended": true,
+   "attribute-ids": {},
+   "work": {
+    "title": "Thunder Road",
+    "type": "Song",
+    "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+    "iswcs": [
+     "T-070.184.153-3"
+    ],
+    "language": "eng",
+    "id": "cc8d858a-38ef-35b0-b83c-a5d26f04207b",
+    "attributes": [],
+    "languages": [
+     "eng"
+    ],
+    "disambiguation": "B. Springsteen 1974–1975"
+   },
+   "attribute-values": {},
+   "begin": "1974-10",
+   "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+   "end": "1975-07-16",
+   "target-credit": ""
+  }
+ ],
+ "id": "bbcedc0f-2fff-42f4-9ca6-6d2263d1a042",
+ "releases": [
+  {
+   "release-events": [
+    {
+     "date": "1975-08-25",
+     "area": {
+      "disambiguation": "",
+      "id": "89a675c2-3e37-3518-b83c-418bad59a85a",
+      "name": "Europe",
+      "type-id": null,
+      "type": null,
+      "iso-3166-1-codes": [
+       "XE"
+      ],
+      "sort-name": "Europe"
+     }
+    }
+   ],
+   "date": "1975-08-25",
+   "id": "46e5c6a9-b0a7-4e42-9162-8f412705b09d",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "packaging": null,
+   "barcode": null,
+   "quality": "normal",
+   "title": "Born to Run",
+   "disambiguation": "",
+   "country": "XE",
+   "status": "Official",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "packaging-id": null
+  },
+  {
+   "country": "US",
+   "disambiguation": "",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f",
+   "status": "Official",
+   "date": "1975-08-25",
+   "release-events": [
+    {
+     "date": "1975-08-25",
+     "area": {
+      "type-id": null,
+      "sort-name": "United States",
+      "type": null,
+      "iso-3166-1-codes": [
+       "US"
+      ],
+      "disambiguation": "",
+      "name": "United States",
+      "id": "489ce91b-6658-3307-9877-795b68554c98"
+     }
+    }
+   ],
+   "id": "1d404e1d-fcb6-3a52-b478-e706e893c897",
+   "title": "Born to Run",
+   "packaging": "Cardboard/Paper Sleeve",
+   "barcode": "",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "disambiguation": "",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "quality": "normal"
+  },
+  {
+   "id": "6a1afc01-ef92-4176-801a-1cd5fa94ba8a",
+   "date": "1975-08-25",
+   "release-events": [
+    {
+     "area": {
+      "type-id": null,
+      "sort-name": "Netherlands",
+      "iso-3166-1-codes": [
+       "NL"
+      ],
+      "type": null,
+      "name": "Netherlands",
+      "id": "ef1b7cc0-cd26-36f4-8ea0-04d9623786c7",
+      "disambiguation": ""
+     },
+     "date": "1975-08-25"
+    }
+   ],
+   "quality": "normal",
+   "artist-credit": [
+    {
+     "artist": {
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "packaging": "Gatefold Cover",
+   "barcode": "",
+   "title": "Born to Run",
+   "disambiguation": "Holland, version 4",
+   "country": "NL",
+   "status": "Official",
+   "packaging-id": "e724a489-a7e8-30a1-a17c-30dfd6831202",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe"
+  },
+  {
+   "packaging": "Other",
+   "barcode": "",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce"
+     }
+    }
+   ],
+   "quality": "normal",
+   "title": "Born to Run",
+   "date": "1975",
+   "release-events": [
+    {
+     "date": "1975",
+     "area": {
+      "type-id": null,
+      "sort-name": "United States",
+      "iso-3166-1-codes": [
+       "US"
+      ],
+      "type": null,
+      "name": "United States",
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "id": "dd9e6581-f441-40b9-b938-36224d70ec06",
+   "status": "Official",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "packaging-id": "815b7785-8284-3926-8f04-e48bc6c4d102",
+   "disambiguation": "US 8‐track, version 1",
+   "country": "US"
+  },
+  {
+   "quality": "normal",
+   "packaging": "Other",
+   "barcode": "",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     }
+    }
+   ],
+   "title": "Born to Run",
+   "id": "9946af79-6237-4f3c-9c41-1387076b857c",
+   "date": "1975",
+   "release-events": [
+    {
+     "date": "1975",
+     "area": {
+      "disambiguation": "",
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "name": "United States",
+      "iso-3166-1-codes": [
+       "US"
+      ],
+      "type": null,
+      "sort-name": "United States",
+      "type-id": null
+     }
+    }
+   ],
+   "status": "Official",
+   "packaging-id": "815b7785-8284-3926-8f04-e48bc6c4d102",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "disambiguation": "US 8‐track, version 2",
+   "country": "US"
+  },
+  {
+   "quality": "normal",
+   "packaging": "Gatefold Cover",
+   "barcode": "",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     }
+    }
+   ],
+   "title": "Born to Run",
+   "id": "5742feac-769f-4e8c-a7e1-0ced9bd2bd6c",
+   "release-events": [
+    {
+     "area": {
+      "disambiguation": "",
+      "name": "United Kingdom",
+      "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+      "sort-name": "United Kingdom",
+      "type": null,
+      "iso-3166-1-codes": [
+       "GB"
+      ],
+      "type-id": null
+     },
+     "date": "1975"
+    }
+   ],
+   "date": "1975",
+   "status": "Official",
+   "packaging-id": "e724a489-a7e8-30a1-a17c-30dfd6831202",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "disambiguation": "UK, version 5",
+   "country": "GB"
+  },
+  {
+   "packaging-id": "e724a489-a7e8-30a1-a17c-30dfd6831202",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "status": "Official",
+   "country": "GB",
+   "disambiguation": "UK, version 7",
+   "title": "Born to Run",
+   "quality": "normal",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "packaging": "Gatefold Cover",
+   "barcode": "",
+   "id": "7c09dca0-f3c0-46aa-8fbb-f03ffe8923c6",
+   "date": "1975",
+   "release-events": [
+    {
+     "area": {
+      "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+      "name": "United Kingdom",
+      "disambiguation": "",
+      "type-id": null,
+      "iso-3166-1-codes": [
+       "GB"
+      ],
+      "type": null,
+      "sort-name": "United Kingdom"
+     },
+     "date": "1975"
+    }
+   ]
+  },
+  {
+   "country": "GB",
+   "disambiguation": "anti‐forgery pattern on the reverse tracklist flap",
+   "packaging-id": "c70b737a-0114-39a9-88f7-82843e54f906",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "status": "Official",
+   "id": "384d53a3-ea13-4dc7-bb2a-87a5b764f9f8",
+   "date": "1975",
+   "release-events": [
+    {
+     "date": "1975",
+     "area": {
+      "sort-name": "United Kingdom",
+      "type": null,
+      "iso-3166-1-codes": [
+       "GB"
+      ],
+      "type-id": null,
+      "name": "United Kingdom",
+      "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "title": "Born to Run",
+   "quality": "normal",
+   "packaging": "Cassette Case",
+   "barcode": "",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person"
+     }
+    }
+   ]
+  },
+  {
+   "id": "8be63550-81da-451a-b23d-2be1b6a92fe8",
+   "date": "1975",
+   "release-events": [
+    {
+     "date": "1975",
+     "area": {
+      "type-id": null,
+      "sort-name": "United States",
+      "type": null,
+      "iso-3166-1-codes": [
+       "US"
+      ],
+      "name": "United States",
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "quality": "normal",
+   "packaging": "Other",
+   "barcode": "074643379588",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+     }
+    }
+   ],
+   "title": "Born to Run",
+   "disambiguation": "US 8‐track, version 5, matt black cartridge, Columbia TC8 Stereo slipcase",
+   "country": "US",
+   "status": "Official",
+   "packaging-id": "815b7785-8284-3926-8f04-e48bc6c4d102",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   }
+  },
+  {
+   "disambiguation": "",
+   "country": "GB",
+   "status": "Official",
+   "packaging-id": "e724a489-a7e8-30a1-a17c-30dfd6831202",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "id": "d143caf4-66e7-445b-9831-2c11ba9b6f89",
+   "date": "1975",
+   "release-events": [
+    {
+     "area": {
+      "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+      "name": "United Kingdom",
+      "disambiguation": "",
+      "type-id": null,
+      "iso-3166-1-codes": [
+       "GB"
+      ],
+      "type": null,
+      "sort-name": "United Kingdom"
+     },
+     "date": "1975"
+    }
+   ],
+   "quality": "normal",
+   "barcode": "",
+   "packaging": "Gatefold Cover",
+   "artist-credit": [
+    {
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "disambiguation": ""
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "title": "Born to Run"
+  },
+  {
+   "title": "Born to Run",
+   "quality": "normal",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "barcode": "",
+   "packaging": "Other",
+   "id": "e6caecf1-405d-4dbe-b876-508c40b66a79",
+   "release-events": [
+    {
+     "date": "1975",
+     "area": {
+      "type-id": null,
+      "sort-name": "United States",
+      "iso-3166-1-codes": [
+       "US"
+      ],
+      "type": null,
+      "name": "United States",
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "date": "1975",
+   "packaging-id": "815b7785-8284-3926-8f04-e48bc6c4d102",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "status": "Official",
+   "country": "US",
+   "disambiguation": "US 8‐track, version 4"
+  },
+  {
+   "status-id": "518ffc83-5cde-34df-8627-81bff5093d92",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f",
+   "status": "Promotion",
+   "country": "AR",
+   "disambiguation": "",
+   "title": "Born to Run",
+   "packaging": "Cardboard/Paper Sleeve",
+   "barcode": "",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "quality": "normal",
+   "date": "1975",
+   "release-events": [
+    {
+     "date": "1975",
+     "area": {
+      "iso-3166-1-codes": [
+       "AR"
+      ],
+      "type": null,
+      "sort-name": "Argentina",
+      "type-id": null,
+      "disambiguation": "",
+      "id": "0df04709-c7d8-3b55-a6ea-f3e5069a947b",
+      "name": "Argentina"
+     }
+    }
+   ],
+   "id": "836b5924-a9d7-4291-abd4-f03a9fddbd26"
+  },
+  {
+   "disambiguation": "",
+   "country": "AR",
+   "status": "Promotion",
+   "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "status-id": "518ffc83-5cde-34df-8627-81bff5093d92",
+   "id": "97cfffa7-dd6a-4b6d-b0f4-13a7014c8881",
+   "release-events": [
+    {
+     "area": {
+      "disambiguation": "",
+      "id": "0df04709-c7d8-3b55-a6ea-f3e5069a947b",
+      "name": "Argentina",
+      "type-id": null,
+      "type": null,
+      "iso-3166-1-codes": [
+       "AR"
+      ],
+      "sort-name": "Argentina"
+     },
+     "date": "1975"
+    }
+   ],
+   "date": "1975",
+   "quality": "normal",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     }
+    }
+   ],
+   "barcode": "",
+   "packaging": "Cardboard/Paper Sleeve",
+   "title": "Born to Run"
+  },
+  {
+   "status": "Official",
+   "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "disambiguation": "",
+   "country": "AR",
+   "quality": "normal",
+   "artist-credit": [
+    {
+     "artist": {
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "barcode": "",
+   "packaging": "Cardboard/Paper Sleeve",
+   "title": "Born to Run",
+   "id": "8c93e07d-c7ca-4249-8e8d-f86ec5896637",
+   "date": "1975",
+   "release-events": [
+    {
+     "area": {
+      "type-id": null,
+      "sort-name": "Argentina",
+      "type": null,
+      "iso-3166-1-codes": [
+       "AR"
+      ],
+      "disambiguation": "",
+      "name": "Argentina",
+      "id": "0df04709-c7d8-3b55-a6ea-f3e5069a947b"
+     },
+     "date": "1975"
+    }
+   ]
+  },
+  {
+   "date": "1975",
+   "release-events": [
+    {
+     "date": "1975",
+     "area": {
+      "sort-name": "Canada",
+      "type": null,
+      "iso-3166-1-codes": [
+       "CA"
+      ],
+      "type-id": null,
+      "disambiguation": "",
+      "name": "Canada",
+      "id": "71bbafaa-e825-3e15-8ca9-017dcad1748b"
+     }
+    }
+   ],
+   "id": "ec7acb3a-8025-4ee2-9f7a-12f51ae3971c",
+   "barcode": "",
+   "packaging": "Cardboard/Paper Sleeve",
+   "artist-credit": [
+    {
+     "artist": {
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "disambiguation": "",
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "quality": "normal",
+   "title": "Born to Run",
+   "disambiguation": "",
+   "country": "CA",
+   "status": "Official",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f"
+  },
+  {
+   "title": "Born to Run",
+   "barcode": "",
+   "packaging": "Gatefold Cover",
+   "artist-credit": [
+    {
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "quality": "normal",
+   "date": "1975",
+   "release-events": [
+    {
+     "area": {
+      "type": null,
+      "iso-3166-1-codes": [
+       "AU"
+      ],
+      "sort-name": "Australia",
+      "type-id": null,
+      "id": "106e0bec-b638-3b37-b731-f53d507dc00e",
+      "name": "Australia",
+      "disambiguation": ""
+     },
+     "date": "1975"
+    }
+   ],
+   "id": "06730cbe-8796-4016-b903-36370c06cf21",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "packaging-id": "e724a489-a7e8-30a1-a17c-30dfd6831202",
+   "status": "Official",
+   "country": "AU",
+   "disambiguation": "Australia, version 1"
+  },
+  {
+   "date": "1975",
+   "release-events": [
+    {
+     "area": {
+      "name": "Australia",
+      "id": "106e0bec-b638-3b37-b731-f53d507dc00e",
+      "disambiguation": "",
+      "sort-name": "Australia",
+      "type": null,
+      "iso-3166-1-codes": [
+       "AU"
+      ],
+      "type-id": null
+     },
+     "date": "1975"
+    }
+   ],
+   "id": "8cabdc3f-f8ec-429e-a770-6bfff5308533",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "packaging": "Gatefold Cover",
+   "barcode": "",
+   "quality": "normal",
+   "title": "Born to Run",
+   "disambiguation": "Australia, version 1; promo stamped",
+   "country": "AU",
+   "status": "Promotion",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "status-id": "518ffc83-5cde-34df-8627-81bff5093d92",
+   "packaging-id": "e724a489-a7e8-30a1-a17c-30dfd6831202"
+  },
+  {
+   "title": "Born to Run",
+   "quality": "normal",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "disambiguation": "",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     }
+    }
+   ],
+   "barcode": "",
+   "packaging": "Other",
+   "id": "e323e33b-9729-406a-bf3d-b3b60319ce7d",
+   "date": "1975",
+   "release-events": [
+    {
+     "date": "1975",
+     "area": {
+      "disambiguation": "",
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "name": "United States",
+      "iso-3166-1-codes": [
+       "US"
+      ],
+      "type": null,
+      "sort-name": "United States",
+      "type-id": null
+     }
+    }
+   ],
+   "packaging-id": "815b7785-8284-3926-8f04-e48bc6c4d102",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "status": "Official",
+   "country": "US",
+   "disambiguation": ""
+  },
+  {
+   "status": "Official",
+   "packaging-id": "f7101ce3-0384-39ce-9fde-fbbd0044d35f",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "disambiguation": "",
+   "country": "GB",
+   "quality": "normal",
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": ""
+     }
+    }
+   ],
+   "barcode": "",
+   "packaging": "Cardboard/Paper Sleeve",
+   "title": "Born to Run",
+   "id": "fdfb1d8d-ed26-4bab-ad70-6a73af7d4bfc",
+   "date": "1975",
+   "release-events": [
+    {
+     "date": "1975",
+     "area": {
+      "disambiguation": "",
+      "name": "United Kingdom",
+      "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+      "type-id": null,
+      "sort-name": "United Kingdom",
+      "type": null,
+      "iso-3166-1-codes": [
+       "GB"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "status": "Official",
+   "packaging-id": "c70b737a-0114-39a9-88f7-82843e54f906",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "disambiguation": "",
+   "country": "ID",
+   "quality": "normal",
+   "artist-credit": [
+    {
+     "artist": {
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "disambiguation": ""
+     },
+     "name": "Bruce Springsteen",
+     "joinphrase": ""
+    }
+   ],
+   "packaging": "Cassette Case",
+   "barcode": "",
+   "title": "Born to Run",
+   "id": "d07b52b5-6140-41df-bbd3-c5d07ed4e87e",
+   "date": "1975",
+   "release-events": [
+    {
+     "date": "1975",
+     "area": {
+      "name": "Indonesia",
+      "id": "d3a68bd0-7419-3f99-a5bd-204d6e057089",
+      "disambiguation": "",
+      "type-id": null,
+      "sort-name": "Indonesia",
+      "iso-3166-1-codes": [
+       "ID"
+      ],
+      "type": null
+     }
+    }
+   ]
+  },
+  {
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "packaging-id": "c70b737a-0114-39a9-88f7-82843e54f906",
+   "status": "Official",
+   "country": "MX",
+   "disambiguation": "",
+   "title": "Born to Run",
+   "packaging": "Cassette Case",
+   "barcode": "",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "disambiguation": "",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce"
+     }
+    }
+   ],
+   "quality": "normal",
+   "date": "1975",
+   "release-events": [
+    {
+     "area": {
+      "type-id": null,
+      "iso-3166-1-codes": [
+       "MX"
+      ],
+      "type": null,
+      "sort-name": "Mexico",
+      "disambiguation": "",
+      "id": "3e08b2cd-69f3-317c-b1e4-e71be581839e",
+      "name": "Mexico"
+     },
+     "date": "1975"
+    }
+   ],
+   "id": "f7e4b1d7-a065-45b8-b45a-5fcb08955a6c"
+  },
+  {
+   "country": "US",
+   "disambiguation": "US 8‐track, version 5, glossy black cartridge",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "packaging-id": "815b7785-8284-3926-8f04-e48bc6c4d102",
+   "status": "Official",
+   "date": "1975",
+   "release-events": [
+    {
+     "date": "1975",
+     "area": {
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "name": "United States",
+      "disambiguation": "",
+      "type-id": null,
+      "type": null,
+      "iso-3166-1-codes": [
+       "US"
+      ],
+      "sort-name": "United States"
+     }
+    }
+   ],
+   "id": "ba5ea9ed-6bca-4bdb-9622-4bfd6fdca878",
+   "title": "Born to Run",
+   "packaging": "Other",
+   "barcode": "074643379588",
+   "artist-credit": [
+    {
+     "artist": {
+      "country": "US",
+      "disambiguation": "",
+      "name": "Bruce Springsteen",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "sort-name": "Springsteen, Bruce",
+      "type": "Person",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "quality": "normal"
+  },
+  {
+   "id": "cf54548e-aee9-4ffb-9d88-ba39e4bcb9df",
+   "date": "1975",
+   "release-events": [
+    {
+     "area": {
+      "name": "United Kingdom",
+      "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+      "disambiguation": "",
+      "type-id": null,
+      "sort-name": "United Kingdom",
+      "iso-3166-1-codes": [
+       "GB"
+      ],
+      "type": null
+     },
+     "date": "1975"
+    }
+   ],
+   "title": "Born to Run",
+   "quality": "normal",
+   "packaging": "Cassette Case",
+   "barcode": "",
+   "artist-credit": [
+    {
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce"
+     },
+     "joinphrase": "",
+     "name": "Bruce Springsteen"
+    }
+   ],
+   "country": "GB",
+   "disambiguation": "black shell with red paper labels",
+   "packaging-id": "c70b737a-0114-39a9-88f7-82843e54f906",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "status": "Official"
+  },
+  {
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "packaging-id": "e724a489-a7e8-30a1-a17c-30dfd6831202",
+   "status": "Official",
+   "country": "GB",
+   "disambiguation": "UK, version 6",
+   "title": "Born to Run",
+   "packaging": "Gatefold Cover",
+   "barcode": "",
+   "artist-credit": [
+    {
+     "joinphrase": "",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "quality": "normal",
+   "date": "1975",
+   "release-events": [
+    {
+     "area": {
+      "sort-name": "United Kingdom",
+      "iso-3166-1-codes": [
+       "GB"
+      ],
+      "type": null,
+      "type-id": null,
+      "disambiguation": "",
+      "name": "United Kingdom",
+      "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed"
+     },
+     "date": "1975"
+    }
+   ],
+   "id": "1e212454-76da-4b04-8649-0c877d765e76"
+  },
+  {
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "joinphrase": "",
+     "artist": {
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "type": "Person",
+      "sort-name": "Springsteen, Bruce",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "disambiguation": "",
+      "country": "US"
+     }
+    }
+   ],
+   "barcode": "",
+   "packaging": "Gatefold Cover",
+   "quality": "normal",
+   "title": "Born to Run",
+   "release-events": [
+    {
+     "area": {
+      "iso-3166-1-codes": [
+       "GB"
+      ],
+      "type": null,
+      "sort-name": "United Kingdom",
+      "type-id": null,
+      "disambiguation": "",
+      "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+      "name": "United Kingdom"
+     },
+     "date": "1975"
+    }
+   ],
+   "date": "1975",
+   "id": "a0b5713b-76e0-42d1-9fc3-762e98f01d8d",
+   "status": "Official",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "packaging-id": "e724a489-a7e8-30a1-a17c-30dfd6831202",
+   "disambiguation": "UK, version 6; upside down",
+   "country": "GB"
+  }
+ ]
+}

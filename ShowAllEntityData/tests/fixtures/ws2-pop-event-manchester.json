@@ -1,0 +1,648 @@
+{
+ "id": "3f2ca30a-7de4-4964-ad30-48376535fec8",
+ "life-span": {
+  "begin": "2025-05-20",
+  "ended": true,
+  "end": "2025-05-20"
+ },
+ "relations": [
+  {
+   "target-credit": "",
+   "artist": {
+    "sort-name": "Almonte, Anthony",
+    "country": "US",
+    "disambiguation": "Puerto Rican singer and percussionist",
+    "id": "b0ab3979-4165-4e3e-b125-2d77f14080bd",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Anthony Almonte",
+    "type": "Person"
+   },
+   "type": "main performer",
+   "attribute-ids": {},
+   "source-credit": "",
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "ended": false,
+   "end": null,
+   "attribute-values": {},
+   "begin": null,
+   "target-type": "artist",
+   "attributes": [],
+   "direction": "backward"
+  },
+  {
+   "direction": "backward",
+   "target-type": "artist",
+   "attributes": [],
+   "begin": null,
+   "attribute-values": {},
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "ended": false,
+   "end": null,
+   "attribute-ids": {},
+   "type": "main performer",
+   "source-credit": "",
+   "artist": {
+    "id": "11d2fcfe-669d-4596-8921-e07dbdae311f",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Roy Bittan",
+    "type": "Person",
+    "sort-name": "Bittan, Roy",
+    "disambiguation": "",
+    "country": "US"
+   },
+   "target-credit": ""
+  },
+  {
+   "direction": "backward",
+   "attributes": [],
+   "target-type": "artist",
+   "begin": null,
+   "attribute-values": {},
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "ended": false,
+   "end": null,
+   "attribute-ids": {},
+   "type": "main performer",
+   "source-credit": "",
+   "artist": {
+    "sort-name": "Clemons, Jake",
+    "country": "US",
+    "disambiguation": "singer‐songwriter, saxophonist and nephew of Clarence Clemons",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "id": "5c64226c-d673-4d23-a612-2bfb704edd66",
+    "type": "Person",
+    "name": "Jake Clemons"
+   },
+   "target-credit": ""
+  },
+  {
+   "artist": {
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "id": "092ae7a4-0ea2-407a-a200-d1ee09383537",
+    "type": "Person",
+    "name": "Barry Danielian",
+    "sort-name": "Danielian, Barry",
+    "disambiguation": "American trumpeter, producer and arranger",
+    "country": "US"
+   },
+   "target-credit": "",
+   "end": null,
+   "ended": false,
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "source-credit": "",
+   "type": "main performer",
+   "attribute-ids": {},
+   "begin": null,
+   "attribute-values": {},
+   "direction": "backward",
+   "target-type": "artist",
+   "attributes": []
+  },
+  {
+   "artist": {
+    "name": "Ada Dyer",
+    "type": "Person",
+    "id": "1ca07311-cbfe-4ae8-a518-aa76c8579802",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "disambiguation": "American soul singer",
+    "country": "US",
+    "sort-name": "Dyer, Ada"
+   },
+   "target-credit": "",
+   "end": null,
+   "ended": false,
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "source-credit": "",
+   "type": "main performer",
+   "attribute-ids": {},
+   "begin": null,
+   "attribute-values": {},
+   "direction": "backward",
+   "target-type": "artist",
+   "attributes": []
+  },
+  {
+   "target-credit": "",
+   "artist": {
+    "name": "The E Street Band",
+    "type": "Group",
+    "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+    "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+    "country": "US",
+    "disambiguation": "",
+    "sort-name": "E Street Band, The"
+   },
+   "source-credit": "",
+   "type": "main performer",
+   "attribute-ids": {
+    "time": "ebd303c3-7f57-452a-aa3b-d780ebad868d"
+   },
+   "end": null,
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "ended": false,
+   "attribute-values": {
+    "time": "19:40 - 22:29"
+   },
+   "begin": null,
+   "target-type": "artist",
+   "attributes": [
+    "time"
+   ],
+   "direction": "backward"
+  },
+  {
+   "target-credit": "",
+   "artist": {
+    "sort-name": "E Street Choir, The",
+    "country": "US",
+    "disambiguation": "",
+    "id": "ad2232c5-2b11-4699-80c2-e5f83c56c8e4",
+    "type-id": "6124967d-7e3a-3eba-b642-c9a2ffb44d94",
+    "name": "The E Street Choir",
+    "type": "Choir"
+   },
+   "type": "main performer",
+   "attribute-ids": {},
+   "source-credit": "",
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "ended": false,
+   "end": null,
+   "attribute-values": {},
+   "begin": null,
+   "attributes": [],
+   "target-type": "artist",
+   "direction": "backward"
+  },
+  {
+   "begin": null,
+   "attribute-values": {},
+   "direction": "backward",
+   "attributes": [],
+   "target-type": "artist",
+   "artist": {
+    "sort-name": "E Street Horns, The",
+    "country": "US",
+    "disambiguation": "",
+    "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+    "id": "61c0a8b8-e3f1-4e7f-9f42-7b21a7bf9e4e",
+    "type": "Group",
+    "name": "The E Street Horns"
+   },
+   "target-credit": "",
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "ended": false,
+   "end": null,
+   "type": "main performer",
+   "attribute-ids": {},
+   "source-credit": ""
+  },
+  {
+   "target-credit": "",
+   "artist": {
+    "disambiguation": "American keyboardist and accordionist",
+    "country": "US",
+    "sort-name": "Giordano, Charles",
+    "name": "Charles Giordano",
+    "type": "Person",
+    "id": "4382fa5d-03de-4ebf-baf3-df6a1d1922f0",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+   },
+   "type": "main performer",
+   "attribute-ids": {},
+   "source-credit": "",
+   "ended": false,
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "end": null,
+   "attribute-values": {},
+   "begin": null,
+   "target-type": "artist",
+   "attributes": [],
+   "direction": "backward"
+  },
+  {
+   "attributes": [],
+   "target-type": "artist",
+   "direction": "backward",
+   "attribute-values": {},
+   "begin": null,
+   "attribute-ids": {},
+   "type": "main performer",
+   "source-credit": "",
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "ended": false,
+   "end": null,
+   "target-credit": "",
+   "artist": {
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "id": "7b18698b-33fb-4865-b158-e74f3457eeb7",
+    "type": "Person",
+    "name": "Curtis King",
+    "sort-name": "King, Curtis",
+    "disambiguation": "American singer and songwriter",
+    "country": "US"
+   }
+  },
+  {
+   "attribute-values": {},
+   "begin": null,
+   "attributes": [],
+   "target-type": "artist",
+   "direction": "backward",
+   "target-credit": "Steven Van Zandt",
+   "artist": {
+    "name": "Little Steven",
+    "type": "Person",
+    "id": "de53495e-ad5a-4c30-82ab-05e7e3ec7b4d",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "disambiguation": "",
+    "country": "US",
+    "sort-name": "Little Steven"
+   },
+   "attribute-ids": {},
+   "type": "main performer",
+   "source-credit": "",
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "ended": false,
+   "end": null
+  },
+  {
+   "artist": {
+    "id": "a1ef6bc8-2644-4b6d-aa21-27b630acf751",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Nils Lofgren",
+    "type": "Person",
+    "sort-name": "Lofgren, Nils",
+    "disambiguation": "",
+    "country": "US"
+   },
+   "target-credit": "",
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "ended": false,
+   "end": null,
+   "attribute-ids": {},
+   "type": "main performer",
+   "source-credit": "",
+   "begin": null,
+   "attribute-values": {},
+   "direction": "backward",
+   "attributes": [],
+   "target-type": "artist"
+  },
+  {
+   "attribute-ids": {},
+   "type": "main performer",
+   "source-credit": "",
+   "ended": false,
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "end": null,
+   "target-credit": "",
+   "artist": {
+    "sort-name": "Lowell, Lisa",
+    "country": "US",
+    "disambiguation": "",
+    "id": "59d77428-bf32-4c9f-bc4c-7c03ec882c59",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Lisa Lowell",
+    "type": "Person"
+   },
+   "target-type": "artist",
+   "attributes": [],
+   "direction": "backward",
+   "attribute-values": {},
+   "begin": null
+  },
+  {
+   "begin": null,
+   "attribute-values": {},
+   "direction": "backward",
+   "attributes": [],
+   "target-type": "artist",
+   "artist": {
+    "id": "6a3394ba-6888-4dd0-93f3-06c1e35749d8",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Ed Manion",
+    "type": "Person",
+    "sort-name": "Manion, Ed",
+    "country": "US",
+    "disambiguation": "American saxophonist"
+   },
+   "target-credit": "",
+   "ended": false,
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "end": null,
+   "attribute-ids": {},
+   "type": "main performer",
+   "source-credit": ""
+  },
+  {
+   "source-credit": "",
+   "type": "main performer",
+   "attribute-ids": {},
+   "end": null,
+   "ended": false,
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "target-credit": "",
+   "artist": {
+    "id": "ef011392-7eee-4090-ad83-660c48e9b1c1",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Ozzie Melendez",
+    "type": "Person",
+    "sort-name": "Melendez, Ozzie",
+    "disambiguation": "trombonist",
+    "country": "US"
+   },
+   "attributes": [],
+   "target-type": "artist",
+   "direction": "backward",
+   "attribute-values": {},
+   "begin": null
+  },
+  {
+   "target-credit": "",
+   "artist": {
+    "sort-name": "Moore, Michelle",
+    "disambiguation": "American gospel singer",
+    "country": "US",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "id": "e67ac344-ce0a-4a27-b4ad-9502dab57a82",
+    "type": "Person",
+    "name": "Michelle Moore"
+   },
+   "source-credit": "",
+   "attribute-ids": {},
+   "type": "main performer",
+   "end": null,
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "ended": false,
+   "attribute-values": {},
+   "begin": null,
+   "attributes": [],
+   "target-type": "artist",
+   "direction": "backward"
+  },
+  {
+   "target-credit": "",
+   "artist": {
+    "sort-name": "Ramm, Curt",
+    "country": "US",
+    "disambiguation": "American trumpet player",
+    "id": "028fd996-fe8f-41b6-a6ed-1cb4b06a23d2",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Curt Ramm",
+    "type": "Person"
+   },
+   "source-credit": "",
+   "type": "main performer",
+   "attribute-ids": {},
+   "end": null,
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "ended": false,
+   "attribute-values": {},
+   "begin": null,
+   "target-type": "artist",
+   "attributes": [],
+   "direction": "backward"
+  },
+  {
+   "attributes": [
+    "lead vocals",
+    "time"
+   ],
+   "attribute-ids": {
+    "lead vocals": "8e2a3255-87c2-4809-a174-98cb3704f1a5",
+    "time": "ebd303c3-7f57-452a-aa3b-d780ebad868d"
+   },
+   "source-credit": "",
+   "ended": false,
+   "end": null,
+   "target-credit": "",
+   "attribute-credits": {},
+   "target-type": "artist",
+   "direction": "backward",
+   "attribute-values": {
+    "time": "19:40 - 22:29"
+   },
+   "begin": null,
+   "type": "main performer",
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "artist": {
+    "name": "Bruce Springsteen",
+    "type": "Person",
+    "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "disambiguation": "",
+    "country": "US",
+    "sort-name": "Springsteen, Bruce"
+   }
+  },
+  {
+   "target-type": "artist",
+   "direction": "backward",
+   "attribute-values": {
+    "time": "19:40 - 22:29"
+   },
+   "begin": null,
+   "type": "main performer",
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "artist": {
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "type": "Person",
+    "name": "Bruce Springsteen",
+    "sort-name": "Springsteen, Bruce",
+    "disambiguation": "",
+    "country": "US"
+   },
+   "attributes": [
+    "spoken vocals",
+    "time"
+   ],
+   "source-credit": "",
+   "attribute-ids": {
+    "spoken vocals": "d3a36e62-a7c4-4eb9-839f-adfebe87ac12",
+    "time": "ebd303c3-7f57-452a-aa3b-d780ebad868d"
+   },
+   "end": null,
+   "ended": false,
+   "target-credit": "",
+   "attribute-credits": {}
+  },
+  {
+   "attributes": [
+    "harmonica",
+    "time"
+   ],
+   "source-credit": "",
+   "attribute-ids": {
+    "time": "ebd303c3-7f57-452a-aa3b-d780ebad868d",
+    "harmonica": "63e37f1a-30b6-4746-8a49-dfb55be3cdd1"
+   },
+   "end": null,
+   "ended": false,
+   "target-credit": "",
+   "attribute-credits": {},
+   "target-type": "artist",
+   "direction": "backward",
+   "attribute-values": {
+    "time": "19:40 - 22:29"
+   },
+   "begin": null,
+   "type": "main performer",
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "artist": {
+    "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Bruce Springsteen",
+    "type": "Person",
+    "sort-name": "Springsteen, Bruce",
+    "disambiguation": "",
+    "country": "US"
+   }
+  },
+  {
+   "attribute-values": {
+    "time": "19:40 - 22:29"
+   },
+   "begin": null,
+   "target-type": "artist",
+   "direction": "backward",
+   "artist": {
+    "country": "US",
+    "disambiguation": "",
+    "sort-name": "Springsteen, Bruce",
+    "type": "Person",
+    "name": "Bruce Springsteen",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "id": "70248960-cb53-4ea4-943a-edb18f7d336f"
+   },
+   "type": "main performer",
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "attributes": [
+    "electric guitar",
+    "time"
+   ],
+   "target-credit": "",
+   "attribute-credits": {},
+   "source-credit": "",
+   "attribute-ids": {
+    "time": "ebd303c3-7f57-452a-aa3b-d780ebad868d",
+    "electric guitar": "7ee8ebf5-3aed-4fc8-8004-49f4a8c45a87"
+   },
+   "end": null,
+   "ended": false
+  },
+  {
+   "artist": {
+    "disambiguation": "",
+    "country": "US",
+    "sort-name": "Tallent, Garry",
+    "type": "Person",
+    "name": "Garry Tallent",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "id": "42b42dd1-9263-4eae-91cd-4014a5b5d39f"
+   },
+   "target-credit": "",
+   "end": null,
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "ended": false,
+   "source-credit": "",
+   "type": "main performer",
+   "attribute-ids": {},
+   "begin": null,
+   "attribute-values": {},
+   "direction": "backward",
+   "target-type": "artist",
+   "attributes": []
+  },
+  {
+   "end": null,
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "ended": false,
+   "source-credit": "",
+   "type": "main performer",
+   "attribute-ids": {},
+   "artist": {
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "id": "065af1a2-2fa9-4864-852e-08c00c9c67d8",
+    "type": "Person",
+    "name": "Soozie Tyrell",
+    "sort-name": "Tyrell, Soozie",
+    "country": "US",
+    "disambiguation": ""
+   },
+   "target-credit": "",
+   "direction": "backward",
+   "target-type": "artist",
+   "attributes": [],
+   "begin": null,
+   "attribute-values": {}
+  },
+  {
+   "type": "main performer",
+   "attribute-ids": {},
+   "source-credit": "",
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "ended": false,
+   "end": null,
+   "target-credit": "",
+   "artist": {
+    "sort-name": "Weinberg, Max",
+    "disambiguation": "",
+    "country": "US",
+    "id": "2566ca73-1dfd-49e7-ab20-dfa5697b360e",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Max Weinberg",
+    "type": "Person"
+   },
+   "attributes": [],
+   "target-type": "artist",
+   "direction": "backward",
+   "attribute-values": {},
+   "begin": null
+  },
+  {
+   "target-credit": "",
+   "end": null,
+   "ended": false,
+   "source-credit": "",
+   "attribute-ids": {},
+   "place": {
+    "id": "b3021e11-9066-40ff-8560-37e7416cf438",
+    "coordinates": {
+     "latitude": 53.486503,
+     "longitude": -2.199672
+    },
+    "address": "Etihad Campus, 1 Sportcity Way, Manchester M11 3DL",
+    "disambiguation": "",
+    "area": {
+     "sort-name": "Manchester",
+     "disambiguation": "",
+     "iso-3166-2-codes": [
+      "GB-MAN"
+     ],
+     "id": "852531bf-3410-401f-b432-9c3157a386b9",
+     "type-id": "6fd8f29a-3d0a-32fc-980d-ea697b69da78",
+     "name": "Manchester",
+     "type": "City"
+    },
+    "type-id": "a77c11f6-82fa-3cc0-9041-ac60e5f6e024",
+    "name": "Co‐op Live",
+    "type": "Indoor arena"
+   },
+   "attributes": [],
+   "type-id": "e2c6f697-07dc-38b1-be0b-83d740165532",
+   "type": "held at",
+   "begin": null,
+   "attribute-values": {},
+   "direction": "forward",
+   "target-type": "place"
+  }
+ ],
+ "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+ "cancelled": false,
+ "name": "2025‐05‐20: Co‐op Live, Manchester, England, UK",
+ "type": "Concert",
+ "time": "19:30",
+ "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n# &\r\n@ [d6652e7b-33fe-49ef-8336-4c863b4f996f|The E Street Band]\r\n# with\r\n@ [11d2fcfe-669d-4596-8921-e07dbdae311f|Roy Bittan]\r\n@ [a1ef6bc8-2644-4b6d-aa21-27b630acf751|Nils Lofgren]\r\n@ [42b42dd1-9263-4eae-91cd-4014a5b5d39f|Garry Tallent]\r\n@ [de53495e-ad5a-4c30-82ab-05e7e3ec7b4d|Steven Van Zandt]\r\n@ [2566ca73-1dfd-49e7-ab20-dfa5697b360e|Max Weinberg]\r\n# and\r\n@ [4382fa5d-03de-4ebf-baf3-df6a1d1922f0|Charles Giordano]\r\n@ [065af1a2-2fa9-4864-852e-08c00c9c67d8|Soozie Tyrell]\r\n# and\r\n@ [61c0a8b8-e3f1-4e7f-9f42-7b21a7bf9e4e|The E Street Horns]\r\n# with\r\n@ [5c64226c-d673-4d23-a612-2bfb704edd66|Jake Clemons]\r\n@ [092ae7a4-0ea2-407a-a200-d1ee09383537|Barry Danielian]\r\n@ [6a3394ba-6888-4dd0-93f3-06c1e35749d8|Ed Manion]\r\n@ [ef011392-7eee-4090-ad83-660c48e9b1c1|Ozzie Melendez]\r\n@ [028fd996-fe8f-41b6-a6ed-1cb4b06a23d2|Curt Ramm]\r\n# and\r\n@ [ad2232c5-2b11-4699-80c2-e5f83c56c8e4|The E Street Choir]\r\n# with\r\n@ [b0ab3979-4165-4e3e-b125-2d77f14080bd|Anthony Almonte]\r\n@ [1ca07311-cbfe-4ae8-a518-aa76c8579802|Ada Dyer]\r\n@ [7b18698b-33fb-4865-b158-e74f3457eeb7|Curtis King]\r\n@ [59d77428-bf32-4c9f-bc4c-7c03ec882c59|Lisa Lowell]\r\n@ [e67ac344-ce0a-4a27-b4ad-9502dab57a82|Michelle Moore]\r\n\r\n# Soundcheck\r\n* [2d09387a-a652-36f1-a910-16183bf81407|Something in the Night]\r\n* [5282969b-4c49-3013-aa05-8af5c4be6ae9|No Surrender]\r\n* [efa14865-61d7-33b6-b597-fdef24f39943|Reason to Believe]\r\n\r\n# Concert\r\n# Scheduled: 19:30 | Local Start Time 19:40 / End Time 22:29\r\n* [5282969b-4c49-3013-aa05-8af5c4be6ae9|No Surrender]\r\n* [9878138e-7ca7-4bb3-be1f-3dfeed51d4f5|Land of Hope and Dreams] / [44b41cfa-2f97-37c5-a6aa-527c99d44d46|People Get Ready]\r\n* [028e665e-f76c-43d3-9e6d-25108b87dd97|Death to My Hometown]\r\n* [3ceaab7d-52b4-3957-93e6-dfb7459803df|Seeds]\r\n* [2d09387a-a652-36f1-a910-16183bf81407|Something in the Night]\r\n* [79772b1c-171d-47e5-9afd-b54a9cbd878f|Rainmaker]\r\n* [13411c83-ddd8-31ca-b968-79e4cf6db8fb|The Promised Land]\r\n* [efa14865-61d7-33b6-b597-fdef24f39943|Reason to Believe]\r\n* [fe0f14e5-de68-3aa6-bf48-80c4cbe2a1f7|The River]\r\n* [f4a77656-8cdb-365c-aef9-034c098e249f|Youngstown]\r\n* [9e21f814-f5a2-350d-91ce-a23ce921f5d5|Murder Incorporated]\r\n* [d5d5d83e-2841-4210-9be1-252341babc7e|Long Walk Home]\r\n* [54be9f02-1cc7-4e69-ae5d-fdb1f23e6a1e|House of a Thousand Guitars]\r\n* [abc923d4-6aa1-3bf2-9cbc-2307882e4bb3|My City of Ruins]\r\n* [2e9dd9af-98a2-3a19-a778-58981f2824e6|Because the Night]\r\n* [131f270d-67d8-4f92-8ad8-18c3147cf1ae|Ghosts]\r\n* [c29fbe7c-9cfa-426e-9832-314cc14990f1|Wrecking Ball]\r\n* [4b4ab9ab-0bb9-43bb-ae09-4993c4b90ff8|The Rising]\r\n* [e8a5fe99-0aff-3e7b-840c-7ab96cb702be|Badlands]\r\n* [cc8d858a-38ef-35b0-b83c-a5d26f04207b|Thunder Road]\r\n* [55d593ce-52cc-30ec-9494-eca1ab879f5c|Born in the U.S.A.]\r\n* [9893a23c-f282-3b07-a2db-b4f2f3b9f4b2|Born to Run]\r\n* [e59ca323-dd32-3a0b-80a9-d42746362213|Glory Days]\r\n* [f8556ea5-f89f-3c2f-922f-d5225c1a4511|Dancing in the Dark]\r\n* [aa151b23-5171-3d35-a487-55fc8c66131e|Tenth Avenue Freeze‐Out]\r\n* [b6417ad9-7965-331a-8a0f-18c3da2f4f74|Chimes of Freedom]",
+ "disambiguation": ""
+}

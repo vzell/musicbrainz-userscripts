@@ -1,0 +1,1394 @@
+{
+ "sort-name": "Springsteen, Bruce",
+ "gender": "Male",
+ "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+ "gender-id": "36d3d30a-839d-3eda-8cb3-29be4384e4a9",
+ "area": {
+  "sort-name": "United States",
+  "type": null,
+  "iso-3166-1-codes": [
+   "US"
+  ],
+  "type-id": null,
+  "disambiguation": "",
+  "name": "United States",
+  "id": "489ce91b-6658-3307-9877-795b68554c98"
+ },
+ "relations": [
+  {
+   "ended": false,
+   "attribute-ids": {},
+   "target-type": "url",
+   "attribute-values": {},
+   "url": {
+    "resource": "https://www.allmusic.com/artist/mn0000530745",
+    "id": "9939cae1-f34a-4ba0-a986-2c0aa87e27ae"
+   },
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "6b3e3c85-0002-4f34-aca6-80ace0d7e846",
+   "source-credit": "",
+   "attributes": [],
+   "type": "allmusic",
+   "direction": "forward"
+  },
+  {
+   "url": {
+    "id": "b00f122c-cc80-4956-8a26-8285e21461f7",
+    "resource": "https://www.bandsintown.com/a/26654"
+   },
+   "target-credit": "",
+   "end": null,
+   "type-id": "ea45ed3d-2d5e-456e-8c32-94b6f51426e2",
+   "begin": null,
+   "ended": false,
+   "attribute-ids": {},
+   "target-type": "url",
+   "attribute-values": {},
+   "type": "bandsintown",
+   "direction": "forward",
+   "source-credit": "",
+   "attributes": []
+  },
+  {
+   "direction": "forward",
+   "type": "BBC Music page",
+   "attributes": [],
+   "source-credit": "",
+   "end": "2020-11-19",
+   "target-credit": "",
+   "begin": null,
+   "type-id": "d028a975-000c-4525-9333-d3c8425e4b54",
+   "url": {
+    "id": "31fb17b5-19ab-45e0-b6bc-0631e6edf319",
+    "resource": "https://www.bbc.co.uk/music/artists/70248960-cb53-4ea4-943a-edb18f7d336f"
+   },
+   "attribute-values": {},
+   "attribute-ids": {},
+   "ended": true,
+   "target-type": "url"
+  },
+  {
+   "attribute-values": {},
+   "attribute-ids": {},
+   "ended": false,
+   "target-type": "url",
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "f82f9342-a08d-46b7-ab7a-d8b6330c805d",
+   "url": {
+    "id": "44de065f-ddae-449d-a362-362954fc8eda",
+    "resource": "https://bookbrainz.org/author/40060843-fca9-4290-b46e-b9a9532a57a0"
+   },
+   "attributes": [],
+   "source-credit": "",
+   "direction": "forward",
+   "type": "BookBrainz"
+  },
+  {
+   "ended": false,
+   "attribute-ids": {},
+   "target-type": "url",
+   "attribute-values": {},
+   "url": {
+    "id": "e1526369-87bb-4408-8363-d0777187f0a8",
+    "resource": "http://brucebase.wikidot.com/"
+   },
+   "target-credit": "",
+   "end": null,
+   "type-id": "4fb0eeec-a6eb-4ae3-ad52-b55765b94e8f",
+   "begin": null,
+   "source-credit": "",
+   "attributes": [],
+   "type": "discography page",
+   "direction": "forward"
+  },
+  {
+   "source-credit": "",
+   "attributes": [],
+   "type": "discography page",
+   "direction": "forward",
+   "target-type": "url",
+   "attribute-ids": {},
+   "ended": false,
+   "attribute-values": {},
+   "url": {
+    "id": "ed6fe679-f987-47ae-8559-fec088fa03b8",
+    "resource": "http://www.brucespringsteen.it/Discox.htm"
+   },
+   "begin": null,
+   "type-id": "4fb0eeec-a6eb-4ae3-ad52-b55765b94e8f",
+   "end": null,
+   "target-credit": ""
+  },
+  {
+   "type": "discogs",
+   "direction": "forward",
+   "source-credit": "",
+   "attributes": [],
+   "url": {
+    "resource": "https://www.discogs.com/artist/219986",
+    "id": "95ff85aa-9039-432f-ad1e-d431c94b209f"
+   },
+   "type-id": "04a5b104-a4c2-4bac-99a1-7b837c37d9e4",
+   "begin": null,
+   "target-credit": "",
+   "end": null,
+   "target-type": "url",
+   "attribute-ids": {},
+   "ended": false,
+   "attribute-values": {}
+  },
+  {
+   "url": {
+    "resource": "http://brucebase.wikidot.com/",
+    "id": "e1526369-87bb-4408-8363-d0777187f0a8"
+   },
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "f484f897-81cc-406e-96f9-cd799a04ee24",
+   "ended": false,
+   "attribute-ids": {},
+   "target-type": "url",
+   "attribute-values": {},
+   "type": "fanpage",
+   "direction": "forward",
+   "source-credit": "",
+   "attributes": []
+  },
+  {
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "f484f897-81cc-406e-96f9-cd799a04ee24",
+   "url": {
+    "resource": "https://the-circuit.greasylake.org/",
+    "id": "ad82fdce-bf8c-4932-b4df-e5fc8e2830cd"
+   },
+   "attribute-values": {},
+   "ended": false,
+   "attribute-ids": {},
+   "target-type": "url",
+   "direction": "forward",
+   "type": "fanpage",
+   "attributes": [],
+   "source-credit": ""
+  },
+  {
+   "url": {
+    "id": "aaef1fa7-b2fd-4c2f-b190-d9ea0a4293d1",
+    "resource": "https://www.brucespringsteen.it/"
+   },
+   "type-id": "f484f897-81cc-406e-96f9-cd799a04ee24",
+   "begin": null,
+   "target-credit": "",
+   "end": null,
+   "target-type": "url",
+   "ended": false,
+   "attribute-ids": {},
+   "attribute-values": {},
+   "type": "fanpage",
+   "direction": "forward",
+   "source-credit": "",
+   "attributes": []
+  },
+  {
+   "type": "fanpage",
+   "direction": "forward",
+   "source-credit": "",
+   "attributes": [],
+   "url": {
+    "resource": "https://www.brucespringsteen.nl/",
+    "id": "2b0f07d4-f244-4a3d-a9d9-02b317e23e49"
+   },
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "f484f897-81cc-406e-96f9-cd799a04ee24",
+   "attribute-ids": {},
+   "ended": false,
+   "target-type": "url",
+   "attribute-values": {}
+  },
+  {
+   "direction": "forward",
+   "type": "fanpage",
+   "attributes": [],
+   "source-credit": "",
+   "type-id": "f484f897-81cc-406e-96f9-cd799a04ee24",
+   "begin": null,
+   "target-credit": "",
+   "end": null,
+   "url": {
+    "resource": "http://www.springsteenlyrics.com/",
+    "id": "d5065ebc-a657-4d84-a723-296df5006123"
+   },
+   "attribute-values": {},
+   "target-type": "url",
+   "attribute-ids": {},
+   "ended": false
+  },
+  {
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "769085a1-c2f7-4c24-a532-2375a77693bd",
+   "url": {
+    "resource": "https://music.migu.cn/v3/music/artist/30115",
+    "id": "52271e92-7148-40ed-94cc-3a43ae2f2962"
+   },
+   "attribute-values": {},
+   "attribute-ids": {},
+   "ended": false,
+   "target-type": "url",
+   "direction": "forward",
+   "type": "free streaming",
+   "attributes": [],
+   "source-credit": ""
+  },
+  {
+   "direction": "forward",
+   "type": "free streaming",
+   "attributes": [],
+   "source-credit": "",
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "769085a1-c2f7-4c24-a532-2375a77693bd",
+   "url": {
+    "resource": "https://open.spotify.com/artist/3eqjTLE0HfPfh78zjh6TqT",
+    "id": "9bb8ea93-829f-4fdd-9bf6-898e47057da0"
+   },
+   "attribute-values": {},
+   "attribute-ids": {},
+   "ended": false,
+   "target-type": "url"
+  },
+  {
+   "attributes": [],
+   "source-credit": "",
+   "direction": "forward",
+   "type": "free streaming",
+   "attribute-values": {},
+   "attribute-ids": {},
+   "ended": false,
+   "target-type": "url",
+   "target-credit": "",
+   "end": null,
+   "type-id": "769085a1-c2f7-4c24-a532-2375a77693bd",
+   "begin": null,
+   "url": {
+    "resource": "https://www.deezer.com/artist/4762",
+    "id": "493569f3-d9df-403b-9299-9e28988453a2"
+   }
+  },
+  {
+   "attribute-values": {},
+   "ended": false,
+   "attribute-ids": {},
+   "target-type": "url",
+   "target-credit": "",
+   "end": null,
+   "type-id": "221132e9-e30e-43f2-a741-15afc4c5fa7c",
+   "begin": null,
+   "url": {
+    "id": "265d35a2-d417-49ea-8322-8141a8cfd2b2",
+    "resource": "https://commons.wikimedia.org/wiki/File:Bruce_Springsteen_-_Roskilde_Festival_2012.jpg"
+   },
+   "attributes": [],
+   "source-credit": "",
+   "direction": "forward",
+   "type": "image"
+  },
+  {
+   "attributes": [],
+   "source-credit": "",
+   "direction": "forward",
+   "type": "IMDb",
+   "attribute-values": {},
+   "attribute-ids": {},
+   "ended": false,
+   "target-type": "url",
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "94c8b0cc-4477-4106-932c-da60e63de61c",
+   "url": {
+    "resource": "https://www.imdb.com/name/nm0819803/",
+    "id": "cdbb7cb5-73b1-406b-bc6b-ea305f7ac939"
+   }
+  },
+  {
+   "begin": null,
+   "type-id": "08db8098-c0df-4b78-82c3-c8697b4bba7f",
+   "end": null,
+   "target-credit": "",
+   "url": {
+    "id": "5895e6a8-0cae-44a5-aabf-d018aa478c44",
+    "resource": "https://www.last.fm/music/Bruce+Springsteen"
+   },
+   "attribute-values": {},
+   "target-type": "url",
+   "ended": false,
+   "attribute-ids": {},
+   "direction": "forward",
+   "type": "last.fm",
+   "attributes": [],
+   "source-credit": ""
+  },
+  {
+   "attribute-values": {},
+   "attribute-ids": {},
+   "ended": false,
+   "target-type": "url",
+   "target-credit": "",
+   "end": null,
+   "type-id": "e4d73442-3762-45a8-905c-401da65544ed",
+   "begin": null,
+   "url": {
+    "resource": "https://genius.com/artists/Bruce-springsteen",
+    "id": "304578e0-6241-4cf5-b97d-f4e7934076b2"
+   },
+   "attributes": [],
+   "source-credit": "",
+   "direction": "forward",
+   "type": "lyrics"
+  },
+  {
+   "attribute-values": {},
+   "attribute-ids": {},
+   "ended": false,
+   "target-type": "url",
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "e4d73442-3762-45a8-905c-401da65544ed",
+   "url": {
+    "resource": "https://muzikum.eu/en/bruce-springsteen/lyrics",
+    "id": "5a024397-952a-4951-bd57-a860b82ad370"
+   },
+   "attributes": [],
+   "source-credit": "",
+   "direction": "forward",
+   "type": "lyrics"
+  },
+  {
+   "attribute-values": {},
+   "attribute-ids": {},
+   "ended": false,
+   "target-type": "url",
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "e4d73442-3762-45a8-905c-401da65544ed",
+   "url": {
+    "id": "a48ba0c7-e004-4107-b9df-b6cfa74a5eae",
+    "resource": "https://www.musixmatch.com/artist/Bruce-Springsteen"
+   },
+   "attributes": [],
+   "source-credit": "",
+   "direction": "forward",
+   "type": "lyrics"
+  },
+  {
+   "direction": "forward",
+   "type": "myspace",
+   "attributes": [],
+   "source-credit": "",
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "bac47923-ecde-4b59-822e-d08f0cd10156",
+   "url": {
+    "resource": "https://myspace.com/brucespringsteenestreet",
+    "id": "abff240b-db50-45ae-81a4-84bd2a8d9533"
+   },
+   "attribute-values": {},
+   "attribute-ids": {},
+   "ended": false,
+   "target-type": "url"
+  },
+  {
+   "attributes": [],
+   "source-credit": "",
+   "direction": "forward",
+   "type": "official homepage",
+   "attribute-values": {},
+   "target-type": "url",
+   "ended": false,
+   "attribute-ids": {},
+   "type-id": "fe33d22f-c3b0-4d68-bd53-a856badf2b15",
+   "begin": null,
+   "target-credit": "",
+   "end": null,
+   "url": {
+    "resource": "https://brucespringsteen.net/",
+    "id": "2ab5edaf-84ce-491a-b354-e2010af8723b"
+   }
+  },
+  {
+   "attributes": [],
+   "source-credit": "",
+   "direction": "forward",
+   "type": "other databases",
+   "attribute-values": {},
+   "ended": true,
+   "attribute-ids": {},
+   "target-type": "url",
+   "target-credit": "",
+   "end": "2025-12-17",
+   "type-id": "d94fb61c-fa20-4e3c-a19a-71a949fb2c55",
+   "begin": null,
+   "url": {
+    "resource": "https://jaxsta.com/profile/4b06b204-3c8e-4fb0-ad9f-f8d2a0a19496",
+    "id": "7b534fdf-78b0-4bc0-af06-964a607149ab"
+   }
+  },
+  {
+   "ended": false,
+   "attribute-ids": {},
+   "target-type": "url",
+   "attribute-values": {},
+   "url": {
+    "id": "fa6397b3-053a-4587-a309-c4dd7eaf0755",
+    "resource": "http://id.loc.gov/authorities/names/n83017057"
+   },
+   "target-credit": "",
+   "end": null,
+   "type-id": "d94fb61c-fa20-4e3c-a19a-71a949fb2c55",
+   "begin": null,
+   "source-credit": "",
+   "attributes": [],
+   "type": "other databases",
+   "direction": "forward"
+  },
+  {
+   "source-credit": "",
+   "attributes": [],
+   "type": "other databases",
+   "direction": "forward",
+   "target-type": "url",
+   "attribute-ids": {},
+   "ended": false,
+   "attribute-values": {},
+   "url": {
+    "id": "53004986-64f6-44ff-95b6-4aaa3c94ce20",
+    "resource": "https://castalbums.org/people/Bruce-Springsteen/83917"
+   },
+   "type-id": "d94fb61c-fa20-4e3c-a19a-71a949fb2c55",
+   "begin": null,
+   "target-credit": "",
+   "end": null
+  },
+  {
+   "begin": null,
+   "type-id": "d94fb61c-fa20-4e3c-a19a-71a949fb2c55",
+   "end": null,
+   "target-credit": "",
+   "url": {
+    "resource": "https://catalogue.bnf.fr/ark:/12148/cb138999861",
+    "id": "39e8b064-6486-4ee0-aa45-b5f4d2def36b"
+   },
+   "attribute-values": {},
+   "target-type": "url",
+   "attribute-ids": {},
+   "ended": false,
+   "direction": "forward",
+   "type": "other databases",
+   "attributes": [],
+   "source-credit": ""
+  },
+  {
+   "direction": "forward",
+   "type": "other databases",
+   "attributes": [],
+   "source-credit": "",
+   "target-credit": "",
+   "end": null,
+   "type-id": "d94fb61c-fa20-4e3c-a19a-71a949fb2c55",
+   "begin": null,
+   "url": {
+    "resource": "https://d-nb.info/gnd/118752286",
+    "id": "57ac181b-e2ef-4396-9dcd-5600fb2ed368"
+   },
+   "attribute-values": {},
+   "attribute-ids": {},
+   "ended": false,
+   "target-type": "url"
+  },
+  {
+   "ended": false,
+   "attribute-ids": {},
+   "target-type": "url",
+   "attribute-values": {},
+   "url": {
+    "resource": "https://id.oclc.org/worldcat/entity/E39PBJpJcGTKGKkk9PMcP9H6Kd",
+    "id": "ce4a0bc4-03da-4121-8ba8-20c7a292c77c"
+   },
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "d94fb61c-fa20-4e3c-a19a-71a949fb2c55",
+   "source-credit": "",
+   "attributes": [],
+   "type": "other databases",
+   "direction": "forward"
+  },
+  {
+   "direction": "forward",
+   "type": "other databases",
+   "attributes": [],
+   "source-credit": "",
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "d94fb61c-fa20-4e3c-a19a-71a949fb2c55",
+   "url": {
+    "id": "fa66b547-9d6c-4c8d-b5a8-9a19ff5f4bc7",
+    "resource": "https://imvdb.com/n/bruce-springsteen"
+   },
+   "attribute-values": {},
+   "attribute-ids": {},
+   "ended": false,
+   "target-type": "url"
+  },
+  {
+   "target-type": "url",
+   "ended": false,
+   "attribute-ids": {},
+   "attribute-values": {},
+   "url": {
+    "id": "3b7f860e-7c9e-4ef1-babc-1050a34e24dc",
+    "resource": "https://musicmoz.org/Bands_and_Artists/S/Springsteen,_Bruce/"
+   },
+   "type-id": "d94fb61c-fa20-4e3c-a19a-71a949fb2c55",
+   "begin": null,
+   "target-credit": "",
+   "end": null,
+   "source-credit": "",
+   "attributes": [],
+   "type": "other databases",
+   "direction": "forward"
+  },
+  {
+   "direction": "forward",
+   "type": "other databases",
+   "attributes": [],
+   "source-credit": "",
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "d94fb61c-fa20-4e3c-a19a-71a949fb2c55",
+   "url": {
+    "id": "342a405a-28c3-4474-8808-9b25f6fc209e",
+    "resource": "http://snaccooperative.org/ark:/99166/w6j69mfj"
+   },
+   "attribute-values": {},
+   "ended": false,
+   "attribute-ids": {},
+   "target-type": "url"
+  },
+  {
+   "type": "other databases",
+   "direction": "forward",
+   "source-credit": "",
+   "attributes": [],
+   "url": {
+    "id": "4ae074d0-9c71-4747-8bc5-8e5289ab9047",
+    "resource": "https://nla.gov.au/nla.party-1000809"
+   },
+   "type-id": "d94fb61c-fa20-4e3c-a19a-71a949fb2c55",
+   "begin": null,
+   "target-credit": "",
+   "end": null,
+   "target-type": "url",
+   "attribute-ids": {},
+   "ended": false,
+   "attribute-values": {}
+  },
+  {
+   "attributes": [],
+   "source-credit": "",
+   "direction": "forward",
+   "type": "other databases",
+   "attribute-values": {},
+   "attribute-ids": {},
+   "ended": false,
+   "target-type": "url",
+   "target-credit": "",
+   "end": null,
+   "type-id": "d94fb61c-fa20-4e3c-a19a-71a949fb2c55",
+   "begin": null,
+   "url": {
+    "resource": "http://soundtrackcollector.com/composer/13015/",
+    "id": "949b9e3d-56cf-48b2-9f59-a383652a26db"
+   }
+  },
+  {
+   "ended": false,
+   "attribute-ids": {},
+   "target-type": "url",
+   "attribute-values": {},
+   "url": {
+    "id": "24daab25-70b7-44e9-908c-9605505f1991",
+    "resource": "https://rateyourmusic.com/artist/bruce-springsteen"
+   },
+   "target-credit": "",
+   "end": null,
+   "type-id": "d94fb61c-fa20-4e3c-a19a-71a949fb2c55",
+   "begin": null,
+   "source-credit": "",
+   "attributes": [],
+   "type": "other databases",
+   "direction": "forward"
+  },
+  {
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "d94fb61c-fa20-4e3c-a19a-71a949fb2c55",
+   "url": {
+    "id": "942e3f66-b3ff-4f10-8cd3-30d40d795598",
+    "resource": "https://www.45cat.com/artist/bruce-springsteen"
+   },
+   "attribute-values": {},
+   "ended": false,
+   "attribute-ids": {},
+   "target-type": "url",
+   "direction": "forward",
+   "type": "other databases",
+   "attributes": [],
+   "source-credit": ""
+  },
+  {
+   "url": {
+    "id": "8bda2e8c-81aa-4766-ac07-55517d121352",
+    "resource": "https://www.ibdb.com/broadway-cast-staff/bruce-springsteen-515481"
+   },
+   "begin": null,
+   "type-id": "d94fb61c-fa20-4e3c-a19a-71a949fb2c55",
+   "end": null,
+   "target-credit": "",
+   "target-type": "url",
+   "ended": false,
+   "attribute-ids": {},
+   "attribute-values": {},
+   "type": "other databases",
+   "direction": "forward",
+   "source-credit": "",
+   "attributes": []
+  },
+  {
+   "url": {
+    "id": "a5d8a43e-39b5-43e7-958e-1d967662a63e",
+    "resource": "https://www.ibdb.com/person.php?id=515481"
+   },
+   "type-id": "d94fb61c-fa20-4e3c-a19a-71a949fb2c55",
+   "begin": null,
+   "target-credit": "",
+   "end": null,
+   "target-type": "url",
+   "attribute-ids": {},
+   "ended": false,
+   "attribute-values": {},
+   "type": "other databases",
+   "direction": "forward",
+   "source-credit": "",
+   "attributes": []
+  },
+  {
+   "direction": "forward",
+   "type": "other databases",
+   "attributes": [],
+   "source-credit": "",
+   "target-credit": "",
+   "end": null,
+   "type-id": "d94fb61c-fa20-4e3c-a19a-71a949fb2c55",
+   "begin": null,
+   "url": {
+    "resource": "https://www.livefans.jp/artists/33995",
+    "id": "8359aaac-5226-4168-b32c-5ee8f6863b83"
+   },
+   "attribute-values": {},
+   "ended": false,
+   "attribute-ids": {},
+   "target-type": "url"
+  },
+  {
+   "direction": "forward",
+   "type": "other databases",
+   "attributes": [],
+   "source-credit": "",
+   "type-id": "d94fb61c-fa20-4e3c-a19a-71a949fb2c55",
+   "begin": null,
+   "target-credit": "",
+   "end": null,
+   "url": {
+    "resource": "https://www.musik-sammler.de/artist/bruce-springsteen/",
+    "id": "f34359a6-7b94-4803-8393-a84b3575efd2"
+   },
+   "attribute-values": {},
+   "target-type": "url",
+   "ended": false,
+   "attribute-ids": {}
+  },
+  {
+   "attribute-values": {},
+   "target-type": "url",
+   "ended": false,
+   "attribute-ids": {},
+   "begin": null,
+   "type-id": "d94fb61c-fa20-4e3c-a19a-71a949fb2c55",
+   "end": null,
+   "target-credit": "",
+   "url": {
+    "resource": "https://www.muziekweb.nl/Link/M00000078266/POPULAR/",
+    "id": "d05e5cb7-d204-44bd-9073-d3be2c5df42d"
+   },
+   "attributes": [],
+   "source-credit": "",
+   "direction": "forward",
+   "type": "other databases"
+  },
+  {
+   "direction": "forward",
+   "type": "other databases",
+   "attributes": [],
+   "source-credit": "",
+   "target-credit": "",
+   "end": null,
+   "type-id": "d94fb61c-fa20-4e3c-a19a-71a949fb2c55",
+   "begin": null,
+   "url": {
+    "id": "2b4e806e-d8b4-4ff4-8291-197b3704dc1e",
+    "resource": "https://www.spirit-of-rock.com/en/band/Bruce_Springsteen"
+   },
+   "attribute-values": {},
+   "attribute-ids": {},
+   "ended": false,
+   "target-type": "url"
+  },
+  {
+   "attribute-values": {},
+   "target-type": "url",
+   "ended": false,
+   "attribute-ids": {},
+   "type-id": "d94fb61c-fa20-4e3c-a19a-71a949fb2c55",
+   "begin": null,
+   "target-credit": "",
+   "end": null,
+   "url": {
+    "resource": "https://www.whosampled.com/Bruce-Springsteen/",
+    "id": "c0d46cdf-fd18-4606-8897-48234e0c2a7f"
+   },
+   "attributes": [],
+   "source-credit": "",
+   "direction": "forward",
+   "type": "other databases"
+  },
+  {
+   "type-id": "f8319a2f-f824-4617-81c8-be6560b3b203",
+   "begin": null,
+   "target-credit": "",
+   "end": "2020-10-12",
+   "url": {
+    "resource": "https://play.google.com/store/music/artist?id=A6paynybk7yx7tszgqgiarhfaeq",
+    "id": "11c8ab12-f9b2-4d26-83ef-1f877fc9a615"
+   },
+   "attribute-values": {},
+   "target-type": "url",
+   "ended": true,
+   "attribute-ids": {},
+   "direction": "forward",
+   "type": "purchase for download",
+   "attributes": [],
+   "source-credit": ""
+  },
+  {
+   "type": "purchase for download",
+   "direction": "forward",
+   "source-credit": "",
+   "attributes": [],
+   "url": {
+    "id": "d83f0912-eb22-46e5-ae1b-b4001eeb0967",
+    "resource": "https://mora.jp/artist/37562/all"
+   },
+   "type-id": "f8319a2f-f824-4617-81c8-be6560b3b203",
+   "begin": null,
+   "target-credit": "",
+   "end": null,
+   "target-type": "url",
+   "attribute-ids": {},
+   "ended": false,
+   "attribute-values": {}
+  },
+  {
+   "target-type": "url",
+   "attribute-ids": {},
+   "ended": false,
+   "attribute-values": {},
+   "url": {
+    "id": "d5547eef-19f4-401b-ac89-08666a183393",
+    "resource": "https://music.apple.com/us/artist/178834"
+   },
+   "begin": null,
+   "type-id": "f8319a2f-f824-4617-81c8-be6560b3b203",
+   "end": null,
+   "target-credit": "",
+   "source-credit": "",
+   "attributes": [],
+   "type": "purchase for download",
+   "direction": "forward"
+  },
+  {
+   "type-id": "f8319a2f-f824-4617-81c8-be6560b3b203",
+   "begin": null,
+   "target-credit": "",
+   "end": null,
+   "url": {
+    "id": "7a47b85d-ed0d-4690-b423-66ddcd7bb48b",
+    "resource": "https://ototoy.jp/_/default/a/279950"
+   },
+   "attribute-values": {},
+   "target-type": "url",
+   "ended": false,
+   "attribute-ids": {},
+   "direction": "forward",
+   "type": "purchase for download",
+   "attributes": [],
+   "source-credit": "ブルース・スプリングスティーン"
+  },
+  {
+   "attribute-ids": {},
+   "ended": false,
+   "target-type": "url",
+   "attribute-values": {},
+   "url": {
+    "id": "372da790-d60f-437c-b655-9fae67e73e02",
+    "resource": "https://ototoy.jp/_/default/a/380398"
+   },
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "f8319a2f-f824-4617-81c8-be6560b3b203",
+   "source-credit": "",
+   "attributes": [],
+   "type": "purchase for download",
+   "direction": "forward"
+  },
+  {
+   "url": {
+    "resource": "https://us.7digital.com/artist/bruce-springsteen",
+    "id": "3059bbc0-f238-4506-87d6-87ec459eb351"
+   },
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "f8319a2f-f824-4617-81c8-be6560b3b203",
+   "ended": false,
+   "attribute-ids": {},
+   "target-type": "url",
+   "attribute-values": {},
+   "type": "purchase for download",
+   "direction": "forward",
+   "source-credit": "",
+   "attributes": []
+  },
+  {
+   "target-type": "url",
+   "attribute-ids": {},
+   "ended": false,
+   "attribute-values": {},
+   "url": {
+    "resource": "https://www.amazon.com/-/e/B000AQ2ZLQ",
+    "id": "d224f385-909b-48c7-8b69-35ccda96d1b9"
+   },
+   "begin": null,
+   "type-id": "f8319a2f-f824-4617-81c8-be6560b3b203",
+   "end": null,
+   "target-credit": "",
+   "source-credit": "",
+   "attributes": [],
+   "type": "purchase for download",
+   "direction": "forward"
+  },
+  {
+   "source-credit": "",
+   "attributes": [],
+   "type": "purchase for download",
+   "direction": "forward",
+   "attribute-ids": {},
+   "ended": false,
+   "target-type": "url",
+   "attribute-values": {},
+   "url": {
+    "resource": "https://www.hdtracks.com/#/artist/Bruce%20Springsteen",
+    "id": "6b45cfbb-8b02-4bb5-828a-fc1298ac64a5"
+   },
+   "target-credit": "",
+   "end": null,
+   "type-id": "f8319a2f-f824-4617-81c8-be6560b3b203",
+   "begin": null
+  },
+  {
+   "url": {
+    "resource": "https://www.qobuz.com/us-en/interpreter/bruce-springsteen/64959",
+    "id": "dbbf83df-630f-4b34-b53b-a7aad481bda6"
+   },
+   "type-id": "f8319a2f-f824-4617-81c8-be6560b3b203",
+   "begin": null,
+   "target-credit": "",
+   "end": null,
+   "target-type": "url",
+   "attribute-ids": {},
+   "ended": false,
+   "attribute-values": {},
+   "type": "purchase for download",
+   "direction": "forward",
+   "source-credit": "",
+   "attributes": []
+  },
+  {
+   "source-credit": "",
+   "attributes": [],
+   "type": "purchase for mail-order",
+   "direction": "forward",
+   "attribute-ids": {},
+   "ended": false,
+   "target-type": "url",
+   "attribute-values": {},
+   "url": {
+    "resource": "https://tower.jp/artist/174593",
+    "id": "afbb2c5b-fab0-45f3-aead-4438639d3bf5"
+   },
+   "target-credit": "",
+   "end": null,
+   "type-id": "611b1862-67af-4253-a64f-34adba305d1d",
+   "begin": null
+  },
+  {
+   "url": {
+    "id": "d224f385-909b-48c7-8b69-35ccda96d1b9",
+    "resource": "https://www.amazon.com/-/e/B000AQ2ZLQ"
+   },
+   "type-id": "611b1862-67af-4253-a64f-34adba305d1d",
+   "begin": null,
+   "target-credit": "",
+   "end": null,
+   "target-type": "url",
+   "attribute-ids": {},
+   "ended": false,
+   "attribute-values": {},
+   "type": "purchase for mail-order",
+   "direction": "forward",
+   "source-credit": "",
+   "attributes": []
+  },
+  {
+   "ended": false,
+   "attribute-ids": {},
+   "target-type": "url",
+   "attribute-values": {},
+   "url": {
+    "resource": "https://www.cdjapan.co.jp/person/700182981",
+    "id": "97927ca3-63be-4ef9-a72c-3fd6e5a57457"
+   },
+   "target-credit": "",
+   "end": null,
+   "type-id": "611b1862-67af-4253-a64f-34adba305d1d",
+   "begin": null,
+   "source-credit": "",
+   "attributes": [],
+   "type": "purchase for mail-order",
+   "direction": "forward"
+  },
+  {
+   "attributes": [],
+   "source-credit": "",
+   "direction": "forward",
+   "type": "purchase for mail-order",
+   "attribute-values": {},
+   "target-type": "url",
+   "attribute-ids": {},
+   "ended": false,
+   "begin": null,
+   "type-id": "611b1862-67af-4253-a64f-34adba305d1d",
+   "end": null,
+   "target-credit": "",
+   "url": {
+    "id": "92e3ae99-b261-4c86-b7dd-b7ac86aa5c56",
+    "resource": "https://www.musicstack.com/discography/bruce+springsteen+%2526+the+e-street+band"
+   }
+  },
+  {
+   "attributes": [],
+   "source-credit": "",
+   "direction": "forward",
+   "type": "purchase for mail-order",
+   "attribute-values": {},
+   "ended": false,
+   "attribute-ids": {},
+   "target-type": "url",
+   "target-credit": "",
+   "end": null,
+   "type-id": "611b1862-67af-4253-a64f-34adba305d1d",
+   "begin": null,
+   "url": {
+    "id": "63756664-5df9-4bd8-a88c-26648492b921",
+    "resource": "https://www.yesasia.com/0-aid273620-0-bpt.47-en/list.html"
+   }
+  },
+  {
+   "target-credit": "",
+   "end": null,
+   "type-id": "79c5b84d-a206-4f4c-9832-78c028c312c3",
+   "begin": null,
+   "url": {
+    "resource": "https://secondhandsongs.com/artist/934",
+    "id": "0966bd85-8131-43b4-a644-1556afb7b840"
+   },
+   "attribute-values": {},
+   "attribute-ids": {},
+   "ended": false,
+   "target-type": "url",
+   "direction": "forward",
+   "type": "secondhandsongs",
+   "attributes": [],
+   "source-credit": ""
+  },
+  {
+   "attributes": [],
+   "source-credit": "",
+   "direction": "forward",
+   "type": "setlistfm",
+   "attribute-values": {},
+   "target-type": "url",
+   "attribute-ids": {},
+   "ended": false,
+   "type-id": "bf5d0d5e-27a1-4e94-9df7-3cdc67b3b207",
+   "begin": null,
+   "target-credit": "",
+   "end": null,
+   "url": {
+    "resource": "https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html",
+    "id": "89d178f5-fd22-4b62-9525-4425681ef432"
+   }
+  },
+  {
+   "source-credit": "",
+   "attributes": [],
+   "type": "social network",
+   "direction": "forward",
+   "ended": false,
+   "attribute-ids": {},
+   "target-type": "url",
+   "attribute-values": {},
+   "url": {
+    "resource": "https://twitter.com/springsteen",
+    "id": "97071f2b-255b-46f7-8cfe-81de632a594c"
+   },
+   "end": null,
+   "target-credit": "",
+   "begin": "2009-05-29",
+   "type-id": "99429741-f3f6-484b-84f8-23af51991770"
+  },
+  {
+   "end": null,
+   "target-credit": "",
+   "begin": "2013-08-21",
+   "type-id": "99429741-f3f6-484b-84f8-23af51991770",
+   "url": {
+    "id": "5964a654-518e-4a46-bd24-5622e83c4ffa",
+    "resource": "https://www.instagram.com/springsteen/"
+   },
+   "attribute-values": {},
+   "attribute-ids": {},
+   "ended": false,
+   "target-type": "url",
+   "direction": "forward",
+   "type": "social network",
+   "attributes": [],
+   "source-credit": ""
+  },
+  {
+   "begin": null,
+   "type-id": "99429741-f3f6-484b-84f8-23af51991770",
+   "end": null,
+   "target-credit": "",
+   "url": {
+    "resource": "https://www.facebook.com/brucespringsteen",
+    "id": "dcaf6cc7-0ec7-4444-8a9a-af61e95ee6d5"
+   },
+   "attribute-values": {},
+   "target-type": "url",
+   "ended": false,
+   "attribute-ids": {},
+   "direction": "forward",
+   "type": "social network",
+   "attributes": [],
+   "source-credit": ""
+  },
+  {
+   "source-credit": "",
+   "attributes": [],
+   "type": "songkick",
+   "direction": "forward",
+   "target-type": "url",
+   "attribute-ids": {},
+   "ended": false,
+   "attribute-values": {},
+   "url": {
+    "id": "3ef09eb8-ac35-4d9d-a343-f791de6961a1",
+    "resource": "https://www.songkick.com/artists/227030"
+   },
+   "begin": null,
+   "type-id": "aac9c4bc-a5b9-30b8-9839-e3ac314c6e58",
+   "end": null,
+   "target-credit": ""
+  },
+  {
+   "attributes": [],
+   "source-credit": "",
+   "direction": "forward",
+   "type": "soundcloud",
+   "attribute-values": {},
+   "ended": false,
+   "attribute-ids": {},
+   "target-type": "url",
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "89e4a949-0976-440d-bda1-5f772c1e5710",
+   "url": {
+    "id": "8617095d-90d1-4e2a-8610-5e779ba84719",
+    "resource": "https://soundcloud.com/brucespringsteen"
+   }
+  },
+  {
+   "url": {
+    "resource": "https://us.napster.com/artist/bruce-springsteen",
+    "id": "9b753620-be32-4ad0-a677-5cb934bb7fa2"
+   },
+   "type-id": "63cc5d1f-f096-4c94-a43f-ecb32ea94161",
+   "begin": null,
+   "target-credit": "",
+   "end": "2022-06-08",
+   "target-type": "url",
+   "ended": true,
+   "attribute-ids": {},
+   "attribute-values": {},
+   "type": "streaming",
+   "direction": "forward",
+   "source-credit": "",
+   "attributes": []
+  },
+  {
+   "type": "streaming",
+   "direction": "forward",
+   "source-credit": "",
+   "attributes": [],
+   "url": {
+    "resource": "https://music.amazon.com/artists/B000QJJW2M",
+    "id": "6c873408-40f0-492a-9dd6-1c0a7a76b66f"
+   },
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "63cc5d1f-f096-4c94-a43f-ecb32ea94161",
+   "attribute-ids": {},
+   "ended": false,
+   "target-type": "url",
+   "attribute-values": {}
+  },
+  {
+   "target-type": "url",
+   "ended": false,
+   "attribute-ids": {},
+   "attribute-values": {},
+   "url": {
+    "id": "d5547eef-19f4-401b-ac89-08666a183393",
+    "resource": "https://music.apple.com/us/artist/178834"
+   },
+   "type-id": "63cc5d1f-f096-4c94-a43f-ecb32ea94161",
+   "begin": null,
+   "target-credit": "",
+   "end": null,
+   "source-credit": "",
+   "attributes": [],
+   "type": "streaming",
+   "direction": "forward"
+  },
+  {
+   "attribute-values": {},
+   "target-type": "url",
+   "attribute-ids": {},
+   "ended": false,
+   "type-id": "63cc5d1f-f096-4c94-a43f-ecb32ea94161",
+   "begin": null,
+   "target-credit": "",
+   "end": null,
+   "url": {
+    "id": "490742b0-137d-49a1-9e0c-ff2727915498",
+    "resource": "https://tidal.com/artist/509"
+   },
+   "attributes": [],
+   "source-credit": "",
+   "direction": "forward",
+   "type": "streaming"
+  },
+  {
+   "url": {
+    "resource": "https://www.qobuz.com/us-en/interpreter/bruce-springsteen/64959",
+    "id": "dbbf83df-630f-4b34-b53b-a7aad481bda6"
+   },
+   "begin": null,
+   "type-id": "63cc5d1f-f096-4c94-a43f-ecb32ea94161",
+   "end": null,
+   "target-credit": "",
+   "target-type": "url",
+   "ended": false,
+   "attribute-ids": {},
+   "attribute-values": {},
+   "type": "streaming",
+   "direction": "forward",
+   "source-credit": "",
+   "attributes": []
+  },
+  {
+   "source-credit": "",
+   "attributes": [],
+   "type": "streaming",
+   "direction": "forward",
+   "attribute-ids": {},
+   "ended": false,
+   "target-type": "url",
+   "attribute-values": {},
+   "url": {
+    "resource": "https://www.wolfgangs.com/music/bruce-springsteen/",
+    "id": "47d5351f-5748-42b8-8524-9900bc01f170"
+   },
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "63cc5d1f-f096-4c94-a43f-ecb32ea94161"
+  },
+  {
+   "attribute-values": {},
+   "target-type": "url",
+   "attribute-ids": {},
+   "ended": false,
+   "begin": null,
+   "type-id": "e8571dcc-35d4-4e91-a577-a3382fd84460",
+   "end": null,
+   "target-credit": "",
+   "url": {
+    "resource": "http://viaf.org/viaf/84960550",
+    "id": "63e9a6ec-dda2-458a-b64a-2bc2a713f3f2"
+   },
+   "attributes": [],
+   "source-credit": "",
+   "direction": "forward",
+   "type": "VIAF"
+  },
+  {
+   "target-credit": "",
+   "end": null,
+   "type-id": "689870a4-a1e4-4912-b17f-7b2664215698",
+   "begin": null,
+   "url": {
+    "id": "5b01f480-df12-40ea-8e7c-e5a72372e3db",
+    "resource": "https://www.wikidata.org/wiki/Q1225"
+   },
+   "attribute-values": {},
+   "attribute-ids": {},
+   "ended": false,
+   "target-type": "url",
+   "direction": "forward",
+   "type": "wikidata",
+   "attributes": [],
+   "source-credit": ""
+  },
+  {
+   "attribute-values": {},
+   "ended": false,
+   "attribute-ids": {},
+   "target-type": "url",
+   "end": null,
+   "target-credit": "",
+   "begin": "2006-04-01",
+   "type-id": "6a540e5b-58c6-4192-b6ba-dbc71ec8fcf0",
+   "url": {
+    "id": "3bc5e6f9-1d91-4466-a30b-6143fdc5c869",
+    "resource": "https://www.youtube.com/channel/UCcu7ANuD9J7hnTQCREqIc4Q"
+   },
+   "attributes": [],
+   "source-credit": "@brucespringsteen",
+   "direction": "forward",
+   "type": "youtube"
+  },
+  {
+   "url": {
+    "resource": "https://www.youtube.com/channel/UCkZu0HAGinESFynhe3R4hxQ",
+    "id": "06f0d600-2c02-4a2f-9728-d25d90d8f74e"
+   },
+   "type-id": "6a540e5b-58c6-4192-b6ba-dbc71ec8fcf0",
+   "begin": "2009-09-02",
+   "target-credit": "",
+   "end": null,
+   "target-type": "url",
+   "attribute-ids": {},
+   "ended": false,
+   "attribute-values": {},
+   "type": "youtube",
+   "direction": "forward",
+   "source-credit": "@BruceSpringsteenVEVO",
+   "attributes": []
+  },
+  {
+   "attributes": [],
+   "source-credit": "",
+   "direction": "forward",
+   "type": "youtube music",
+   "attribute-values": {},
+   "target-type": "url",
+   "ended": false,
+   "attribute-ids": {},
+   "begin": null,
+   "type-id": "631712a0-7525-42ba-b7a3-605aa7a238c4",
+   "end": null,
+   "target-credit": "",
+   "url": {
+    "id": "b0250aa4-3200-4c4d-a00c-1c98e4682228",
+    "resource": "https://music.youtube.com/channel/UCyFqJ_5TyAeTD7rHpLikbKQ"
+   }
+  }
+ ],
+ "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+ "isnis": [
+  "0000000121418834"
+ ],
+ "type": "Person",
+ "begin-area": {
+  "disambiguation": "",
+  "id": "bb0af2e9-6ae0-4c4f-b729-c8d6444d6380",
+  "name": "Long Branch",
+  "type-id": null,
+  "type": null,
+  "sort-name": "Long Branch"
+ },
+ "end-area": null,
+ "ipis": [
+  "00076333277"
+ ],
+ "country": "US",
+ "disambiguation": "",
+ "name": "Bruce Springsteen",
+ "life-span": {
+  "begin": "1949-09-23",
+  "end": null,
+  "ended": false
+ }
+}

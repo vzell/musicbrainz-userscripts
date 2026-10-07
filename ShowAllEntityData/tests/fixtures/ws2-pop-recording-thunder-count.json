@@ -1,0 +1,47 @@
+{
+ "release-offset": 0,
+ "release-count": 271,
+ "releases": [
+  {
+   "asin": null,
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "date": "1975-08-25",
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "cover-art-archive": {
+    "count": 1,
+    "darkened": false,
+    "front": true,
+    "back": false,
+    "artwork": true
+   },
+   "packaging-id": null,
+   "country": "XE",
+   "status": "Official",
+   "packaging": null,
+   "title": "Born to Run",
+   "disambiguation": "",
+   "id": "46e5c6a9-b0a7-4e42-9162-8f412705b09d",
+   "release-events": [
+    {
+     "area": {
+      "type": null,
+      "name": "Europe",
+      "type-id": null,
+      "id": "89a675c2-3e37-3518-b83c-418bad59a85a",
+      "disambiguation": "",
+      "iso-3166-1-codes": [
+       "XE"
+      ],
+      "sort-name": "Europe"
+     },
+     "date": "1975-08-25"
+    }
+   ],
+   "quality": "normal",
+   "barcode": null
+  }
+ ]
+}
