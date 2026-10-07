@@ -1,0 +1,1494 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- SKELETON-END: everything above this line is dropped when the page is published as an Artifact. -->
+<title>ShowAllEntityData Popup Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a test bench, as in org/detail-pages-mockups.html. A tab strip per
+   pageType family; each tab is a mock browser window showing the real table,
+   the script's own cream card and its createInfoDialog() window, with a notes
+   column beside it. The mocked sites and the script's UI keep their real light
+   look in both themes; only the bench around them follows the theme. */
+:root {
+    --bg: #e9edf1;
+    --surface: #f8fafc;
+    --ink: #18202b;
+    --muted: #556070;
+    --line: #cfd6df;
+    --accent: #24527f;
+    --accent-soft: #dbe6f1;
+    --ok: #2c7347;
+    --ok-soft: #dcefe2;
+    --warn: #8f5a00;
+    --warn-soft: #f6e8cc;
+    --err: #9b2218;
+    --err-soft: #f6dcd8;
+    --shadow: 0 1px 0 rgba(20, 30, 45, 0.05), 0 12px 32px -18px rgba(20, 30, 45, 0.35);
+
+    /* The mocked sites: a light page in both themes. */
+    --site-bg: #ffffff;
+    --site-ink: #222222;
+    --site-dim: #6b6b6b;
+    --site-line: #dddddd;
+    --site-head: #e8e8e8;
+    --site-even: #f5f5f5;
+    --site-link: #1d4f96;
+    --site-chrome: #f1f3f6;
+    --site-chrome-ink: #4d5664;
+    --site-cur: #fff1b8;
+    --site-nav: #4b4f5c;
+    --site-nav-ink: #e4e6ec;
+
+    /* The userscript's .mb-tt-liner card and the dialog's cream area, verbatim. */
+    --liner-bg: #fbf8f1;
+    --liner-ink: #2b2622;
+    --liner-line: #d9cfbd;
+    --liner-dim: #7a6d5c;
+    --liner-pill: #efe6d4;
+    --liner-pill-ink: #4a3f33;
+    --liner-alert: #9b2218;
+    --liner-warn-bg: #f6e6dc;
+
+    /* createInfoDialog()'s shell, verbatim. */
+    --dlg-bg: #ffffff;
+    --dlg-bar: #f8f8f8;
+    --dlg-line: #dddddd;
+    --dlg-btn-line: #cccccc;
+    --dlg-ink: #222222;
+    --dlg-dim: #666666;
+    --seg-on: #2b2622;
+    --seg-on-ink: #fbf8f1;
+
+    /* The release-tracks event chips (_EVENT_TINTS). */
+    --tint-1: #d9ecff;
+    --tint-2: #ffe3c4;
+    --tint-3: #e6dcff;
+
+    --f-display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+    --f-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, Consolas, "Courier New", monospace;
+    --f-liner: Georgia, "Times New Roman", Times, serif;
+    --f-site: Arial, Helvetica, sans-serif;
+    --f-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg: #11161d;
+        --surface: #19212b;
+        --ink: #e2e7ee;
+        --muted: #9aa5b4;
+        --line: #2c3746;
+        --accent: #86b4e2;
+        --accent-soft: #1f3248;
+        --ok: #74c494;
+        --ok-soft: #1c3326;
+        --warn: #e3ac4c;
+        --warn-soft: #3a2d14;
+        --err: #f08a7d;
+        --err-soft: #3d1f1b;
+        --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 14px 34px -16px rgba(0, 0, 0, 0.7);
+        color-scheme: dark;
+    }
+}
+:root[data-theme="dark"] {
+    --bg: #11161d;
+    --surface: #19212b;
+    --ink: #e2e7ee;
+    --muted: #9aa5b4;
+    --line: #2c3746;
+    --accent: #86b4e2;
+    --accent-soft: #1f3248;
+    --ok: #74c494;
+    --ok-soft: #1c3326;
+    --warn: #e3ac4c;
+    --warn-soft: #3a2d14;
+    --err: #f08a7d;
+    --err-soft: #3d1f1b;
+    --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 14px 34px -16px rgba(0, 0, 0, 0.7);
+    color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.55 var(--f-body);
+    padding-inline: 16px;
+    padding-block: 0 64px;
+}
+.wrap { max-width: 1240px; margin: 0 auto; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+code, .mono { font-family: var(--f-mono); font-size: 0.88em; }
+kbd {
+    display: inline-block; padding: 0 5px; border: 1px solid var(--line); border-bottom-width: 2px;
+    border-radius: 3px; background: var(--surface); color: var(--ink);
+    font: 500 0.78em/1.5 var(--f-mono);
+}
+
+/* ---- Masthead ---------------------------------------------------------- */
+.mast { padding-block: 36px 18px; display: grid; gap: 10px; }
+.eyebrow { font: 600 12px/1.3 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
+h1 {
+    font-size: clamp(30px, 5vw, 50px); line-height: 1.02; font-weight: 800;
+    font-stretch: 72%; letter-spacing: -0.01em; text-transform: uppercase;
+}
+h2 { font-size: 26px; font-weight: 800; font-stretch: 80%; line-height: 1.1; }
+h3 { font-size: 17px; font-weight: 700; font-stretch: 88%; line-height: 1.2; }
+.lead { max-width: 72ch; color: var(--muted); margin: 0; }
+.howto {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px;
+    font: 13px/1.4 var(--f-body); color: var(--muted);
+}
+.howto label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; color: var(--ink); }
+
+/* ---- Tabs -------------------------------------------------------------- */
+.tabs {
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+    display: flex; flex-wrap: wrap; gap: 4px; padding-block: 10px;
+    background: var(--bg); border-bottom: 1px solid var(--line);
+}
+.tab {
+    display: inline-flex; align-items: baseline; gap: 7px;
+    border: 1px solid transparent; background: none; color: var(--muted);
+    padding: 6px 11px; border-radius: 3px; cursor: pointer;
+    font: 600 14px/1.2 var(--f-body);
+}
+.tab .k { font: 800 15px/1 var(--f-display); font-stretch: 75%; color: var(--ink); min-width: 1.1em; text-align: center; }
+.tab:hover { color: var(--ink); background: var(--surface); }
+.tab[aria-selected="true"] { background: var(--ink); color: var(--bg); }
+.tab[aria-selected="true"] .k { color: var(--bg); }
+.tab .rec {
+    font: 600 10px/1 var(--f-mono); letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 3px 5px; border-radius: 2px; background: var(--ok-soft); color: var(--ok);
+}
+.tab[aria-selected="true"] .rec { background: var(--bg); }
+@media (max-width: 700px) { .tabs { position: static; } }
+
+.panel { padding-top: 26px; display: grid; gap: 26px; }
+.panel-head { display: grid; gap: 8px; max-width: 82ch; }
+.panel-head p { margin: 0; color: var(--muted); }
+.sub-head { display: grid; gap: 4px; max-width: 82ch; }
+.sub-head p { margin: 0; color: var(--muted); font-size: 14px; }
+
+/* ---- Bench: mock window + notes --------------------------------------- */
+.bench { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 22px; align-items: start; }
+@media (max-width: 980px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+.stage { display: grid; gap: 16px; min-width: 0; }
+.window {
+    position: relative; min-width: 0; background: var(--site-bg); color: var(--site-ink);
+    border: 1px solid var(--line); border-radius: 6px; box-shadow: var(--shadow);
+}
+.chrome {
+    display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 6px 6px 0 0;
+    background: var(--site-chrome); color: var(--site-chrome-ink); border-bottom: 1px solid var(--site-line);
+    font: 12px/1.3 var(--f-mono);
+}
+.chrome .url { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chrome .pt { flex: none; padding: 2px 6px; border-radius: 2px; background: var(--site-bg); border: 1px solid var(--site-line); font-weight: 500; }
+.sitebody { padding: 12px 14px 16px; font: 13px/1.4 var(--f-site); overflow-x: auto; }
+.mbhead { display: grid; gap: 2px; margin-bottom: 10px; }
+.mbhead .h { font: bold 20px/1.2 var(--f-site); }
+.mbhead .s { color: var(--site-dim); font-size: 12.5px; }
+.mbhead a { color: var(--site-link); text-decoration: none; }
+.mbhead a:hover { text-decoration: underline; }
+.sitebar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 8px; }
+.sitebar h4 { margin: 0; font: bold 16px/1.2 var(--f-site); }
+.sitebar .count { color: var(--site-dim); font-size: 12px; }
+.sitebar input {
+    font: 13px var(--f-site); padding: 3px 6px; border: 1px solid #bbbbbb; border-radius: 2px;
+    background: var(--site-bg); color: var(--site-ink); width: 190px; max-width: 100%;
+}
+
+table.tbl { border-collapse: collapse; background: var(--site-bg); color: var(--site-ink); font: 13px/1.4 var(--f-site); width: 100%; }
+table.tbl th, table.tbl td { border: 1px solid var(--site-line); padding: 3px 6px; vertical-align: top; text-align: left; }
+table.tbl thead th { background: var(--site-head); white-space: nowrap; }
+table.tbl tbody tr:nth-child(even) > td { background: var(--site-even); }
+table.tbl a { color: var(--site-link); text-decoration: none; }
+table.tbl a:hover { text-decoration: underline; }
+table.tbl tr.is-peek > td { box-shadow: inset 0 -1px 0 #e0c86a, inset 0 1px 0 #e0c86a; }
+table.tbl tr.is-cur > td { background: var(--site-cur); }
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dim { color: var(--site-dim); }
+.h3m { margin: 12px 0 4px; font: bold 13.5px var(--f-site); background: #eef1f4; padding: 3px 6px; border-left: 3px solid #9aa3ad; }
+.h3m:first-child { margin-top: 0; }
+td.pos { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.echip {
+    display: inline-block; margin-right: 4px; padding: 0 3px; border: 1px solid #8f8f8f; border-radius: 2px;
+    font: bold 10px/1.4 var(--f-site); color: #222222;
+}
+.echip.e1 { background: var(--tint-1); }
+.echip.e2 { background: var(--tint-2); }
+.echip.e3 { background: var(--tint-3); }
+.pop-cell { cursor: help; }
+.isrc { font-family: var(--f-mono); font-size: 12px; border-bottom: 1px dotted var(--site-dim); cursor: help; }
+.magnifier {
+    margin-right: 4px; padding: 0 3px; border: 1px solid var(--site-line); border-radius: 2px;
+    background: var(--site-bg); cursor: pointer; font-size: 11px; line-height: 1.3; color: var(--site-ink);
+}
+
+/* ---- Notes ------------------------------------------------------------- */
+.notes { display: grid; gap: 14px; font-size: 14px; }
+.note { display: grid; gap: 6px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.note:last-child { border-bottom: 0; }
+.note .lbl { font: 600 11px/1.3 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.note p { margin: 0; }
+.note ul { margin: 0; padding-left: 1.1em; display: grid; gap: 3px; }
+.note code { overflow-wrap: anywhere; }
+.try {
+    background: var(--accent-soft); color: var(--ink); border-radius: 4px; padding: 10px 12px;
+    display: grid; gap: 4px; font-size: 14px;
+}
+.try b { font-family: var(--f-display); font-stretch: 85%; font-size: 15px; }
+.cost { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; font-size: 13.5px; }
+.cost dt { font: 500 12px/1.6 var(--f-mono); color: var(--muted); white-space: nowrap; }
+.cost dd { margin: 0; }
+
+/* ---- Liner card (the script's look) ----------------------------------- */
+.liner {
+    background: var(--liner-bg); color: var(--liner-ink); border: 1px solid var(--liner-line);
+    border-radius: 3px; padding: 8px 12px 9px; font: 13px/1.5 var(--f-liner);
+    box-shadow: 0 1px 0 #e9e1d1, 0 10px 24px -8px rgba(60, 40, 20, 0.35); text-align: left;
+}
+.liner .head { display: flex; gap: 10px; align-items: flex-start; }
+.liner .headtext { min-width: 0; flex: 1; }
+.liner .t { font-weight: 700; font-size: 1.08em; line-height: 1.3; }
+.liner .sub { font-style: italic; color: var(--liner-dim); }
+.liner .rule { border-top: 1px solid var(--liner-line); margin: 6px 0; }
+.pill {
+    display: inline-block; background: var(--liner-pill); color: var(--liner-pill-ink);
+    border: 1px solid var(--liner-line); border-radius: 3px; padding: 0 5px;
+    font-size: 0.88em; font-weight: 700; line-height: 1.45; white-space: nowrap;
+}
+.pills { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 1px 10px; margin: 4px 0 0; }
+.kv dt { color: var(--liner-dim); font-style: italic; }
+.kv dd { margin: 0; }
+.liner ol.tl { margin: 2px 0 0; padding: 0; list-style: none; columns: 2; column-gap: 16px; }
+.liner ol.tl li { break-inside: avoid; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.p { color: var(--liner-dim); font-variant-numeric: tabular-nums; margin-right: 5px; }
+.more { color: var(--liner-dim); font-style: italic; }
+.foot {
+    margin-top: 7px; font-style: italic; font-size: 0.92em; color: var(--liner-dim);
+    display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center;
+}
+.foot kbd, .xfoot kbd { background: #ffffff; color: var(--liner-ink); border-color: #cbbfa9; font-style: normal; }
+.alert { color: var(--liner-alert); font-weight: 700; }
+.liner a, .x a { color: #6b3f12; }
+.stat { display: flex; align-items: baseline; gap: 8px; margin: 6px 0 2px; }
+.stat b { font-size: 1.7em; line-height: 1; font-variant-numeric: tabular-nums; }
+.excerpt { font-style: italic; }
+
+/* Placeholder sleeves: this page loads no cover images */
+.sleeve {
+    position: relative; flex: none; width: 64px; height: 64px; border-radius: 2px; overflow: hidden;
+    display: grid; place-items: end start; padding: 3px 4px;
+    font: 700 8px/1.1 var(--f-mono); letter-spacing: 0.04em; text-transform: uppercase; color: #ffffff;
+    background: linear-gradient(140deg, hsl(var(--h, 30) 45% 46%), hsl(calc(var(--h, 30) + 40) 40% 26%));
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+.sleeve span { position: relative; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); }
+.sleeve.lg { width: 150px; height: 150px; font-size: 10px; padding: 6px 7px; }
+.sleeve.md { width: 84px; height: 84px; }
+.sleeve.xs { width: 26px; height: 26px; font-size: 0; padding: 0; }
+.sleeve.poster { width: 64px; height: 88px; }
+
+/* The floating card inside a mock window */
+.float {
+    position: absolute; z-index: 30; width: min(400px, calc(100% - 16px));
+    pointer-events: none; display: none;
+}
+.float.wide { width: min(520px, calc(100% - 16px)); }
+.float.on { display: block; }
+.static-card { position: static; display: block; width: auto; max-width: 520px; pointer-events: auto; }
+
+/* ---- createInfoDialog() mock ------------------------------------------ */
+.dlg {
+    display: flex; flex-direction: column; min-width: 0; max-height: 680px;
+    background: var(--dlg-bg); color: var(--dlg-ink); border: 1px solid var(--dlg-btn-line); border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2); font-family: var(--f-ui); overflow: hidden;
+}
+.dlg-bar {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px;
+    padding: 12px 16px 10px; border-bottom: 2px solid var(--dlg-line); background: var(--dlg-bar);
+}
+.dlg-title { font-weight: 700; font-size: 1.1em; color: var(--dlg-ink); min-width: 0; }
+.dlg-title .crumb { font-weight: 400; color: var(--dlg-dim); }
+.dlg-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.tbtn {
+    display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px;
+    border: 1px solid var(--dlg-btn-line); border-radius: 3px; background: var(--dlg-bg); color: var(--dlg-ink);
+    font: 13px/1 var(--f-ui); text-decoration: none; cursor: pointer;
+}
+.tbtn:hover { background: #f0f0f0; }
+.seg { display: inline-flex; }
+.seg .tbtn { border-radius: 0; }
+.seg .tbtn + .tbtn { border-left: 0; }
+.seg .tbtn[aria-pressed="true"] { background: var(--seg-on); color: var(--seg-on-ink); border-color: var(--seg-on); }
+.poslbl { font: 12px var(--f-mono); color: var(--dlg-dim); min-width: 4.5em; text-align: center; }
+.xbtn { border: 0; background: none; font-size: 1.2em; color: var(--dlg-dim); cursor: pointer; padding: 0 4px; }
+.dlg-area { flex: 1; min-height: 0; overflow: auto; background: var(--liner-bg); }
+.dlg-area:focus { outline: none; }
+.dlg-hint { padding: 6px 16px; border-top: 1px solid var(--dlg-line); font: 12px var(--f-ui); color: var(--dlg-dim); background: var(--dlg-bar); }
+.dlg-closed {
+    padding: 22px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); font-size: 14px; text-align: center;
+}
+.x {
+    display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 18px;
+    padding: 14px 18px; color: var(--liner-ink); font: 13.5px/1.5 var(--f-liner);
+}
+.x.one { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 680px) { .x { grid-template-columns: minmax(0, 1fr); } }
+.x .col { min-width: 0; }
+.x h4 {
+    margin: 14px 0 4px; font: 600 11px/1.3 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--liner-dim);
+}
+.x .col > h4:first-child { margin-top: 0; }
+.xtitle { font-weight: 700; font-size: 1.2em; line-height: 1.3; }
+.xsub { font-style: italic; color: var(--liner-dim); }
+.xfoot { padding: 0 18px 12px; font: italic 12px var(--f-liner); color: var(--liner-dim); }
+.gallery { display: flex; flex-wrap: wrap; gap: 6px; }
+.gallery figure { margin: 0; display: grid; gap: 2px; justify-items: center; font-size: 11px; color: var(--liner-dim); }
+.discs { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px 16px; }
+.discs .gname { font-style: italic; color: var(--liner-dim); }
+ol.tracks { margin: 2px 0 0; padding: 0; list-style: none; }
+ol.tracks li { display: flex; gap: 6px; font-size: 12.5px; line-height: 1.45; }
+ol.tracks li .p { flex: none; min-width: 2.2em; }
+ol.tracks li .len { margin-left: auto; color: var(--liner-dim); font-variant-numeric: tabular-nums; padding-left: 8px; }
+.linkpills { display: flex; flex-wrap: wrap; gap: 4px; }
+.progress { display: flex; align-items: center; gap: 8px; font: 12px var(--f-mono); color: var(--liner-dim); margin-bottom: 6px; }
+.progress .bar { flex: 1; height: 4px; background: var(--liner-pill); border-radius: 2px; overflow: hidden; }
+.progress .bar i { display: block; height: 100%; background: var(--liner-dim); }
+
+/* The release group's releases: a real, sortable table */
+.rtwrap { overflow-x: auto; border: 1px solid var(--liner-line); border-radius: 2px; background: #fffdf8; }
+table.rt { border-collapse: collapse; width: 100%; font: 12.5px/1.35 var(--f-liner); color: var(--liner-ink); }
+table.rt th, table.rt td { padding: 3px 6px; border-bottom: 1px solid #ece4d4; text-align: left; vertical-align: middle; white-space: nowrap; }
+table.rt th { position: sticky; top: 0; background: var(--liner-pill); font-weight: 400; font-style: italic; color: var(--liner-dim); }
+table.rt th button {
+    border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: pointer;
+}
+table.rt th button::after { content: " \2195"; opacity: 0.4; font-style: normal; }
+table.rt th[aria-sort="ascending"] button::after { content: " \25B2"; opacity: 0.9; }
+table.rt th[aria-sort="descending"] button::after { content: " \25BC"; opacity: 0.9; }
+table.rt tr.cur td { background: #f1e8d5; font-weight: 700; }
+table.rt td.n { font-variant-numeric: tabular-nums; }
+.cc { display: inline-block; border: 1px solid var(--liner-line); border-radius: 2px; padding: 0 3px; font-size: 0.85em; }
+
+/* The Live page view: the site's own page, mocked */
+.livebar {
+    display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; padding: 6px 12px;
+    border-bottom: 1px solid var(--dlg-line); background: var(--dlg-bar); font: 12px var(--f-ui); color: #555555;
+}
+.livebar label { display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
+.livebar .u { font: 11px var(--f-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+.livepage { background: var(--site-bg); color: var(--site-ink); font: 13px/1.4 var(--f-site); }
+.lp-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 8px 12px; background: var(--site-nav); color: var(--site-nav-ink); font: 12px var(--f-site); }
+.lp-nav i { display: inline-block; height: 8px; width: 52px; border-radius: 2px; background: #6d7280; }
+.lp-nav .cap { font: 11px var(--f-mono); }
+.lp-main { display: grid; grid-template-columns: minmax(0, 1fr) 190px; gap: 14px; padding: 12px; }
+@media (max-width: 640px) { .lp-main { grid-template-columns: minmax(0, 1fr); } }
+.lp-main h6 { margin: 0 0 2px; font: bold 18px var(--f-site); }
+.lp-main .lp-sub { color: var(--site-dim); font-size: 12px; margin-bottom: 8px; }
+.lp-tabs { display: flex; flex-wrap: wrap; gap: 2px; margin-bottom: 8px; }
+.lp-tabs span { padding: 2px 8px; border: 1px solid var(--site-line); border-bottom: 0; font-size: 12px; color: var(--site-link); }
+.lp-tabs span:first-child { background: var(--site-head); color: var(--site-ink); }
+.lp-side { display: grid; gap: 8px; align-content: start; font-size: 12px; }
+.lp-side h6 { margin: 0; font: bold 12px var(--f-site); text-transform: uppercase; color: var(--site-dim); }
+.lp-foot { padding: 8px 12px; background: var(--site-head); color: var(--site-dim); font-size: 11px; }
+.livepage.hide-nav .lp-nav, .livepage.hide-nav .lp-foot { display: none; }
+
+/* ---- Overview ---------------------------------------------------------- */
+.answers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 880px) { .answers { grid-template-columns: minmax(0, 1fr); } }
+.answer { display: grid; gap: 8px; align-content: start; padding-top: 12px; border-top: 3px solid var(--ink); }
+.answer .q { font: 600 12px/1.3 var(--f-mono); color: var(--muted); }
+.answer .a { font: 800 22px/1.1 var(--f-display); font-stretch: 78%; }
+.answer p { margin: 0; }
+.diagram-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); padding: 10px; }
+.diagram { display: block; width: 100%; min-width: 860px; height: auto; color: var(--ink); }
+.diagram .box { fill: var(--surface); stroke: var(--line); }
+.diagram .box-acc { fill: var(--accent-soft); stroke: var(--accent); }
+.diagram .box-liner { fill: #fbf8f1; stroke: #d9cfbd; }
+.diagram .t { fill: var(--ink); font: 600 13px var(--f-body); }
+.diagram .ts { fill: var(--muted); font: 11.5px var(--f-mono); }
+.diagram .tl { fill: #2b2622; font: 600 13px var(--f-body); }
+.diagram .tls { fill: #7a6d5c; font: 11.5px var(--f-mono); }
+.diagram .edge { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+.diagram .head { fill: var(--muted); }
+.diagram .cap { fill: var(--muted); font: 600 10.5px var(--f-mono); letter-spacing: 0.08em; }
+
+.datatable-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+table.data { border-collapse: collapse; width: 100%; font: 13.5px/1.5 var(--f-body); color: var(--ink); }
+table.data th, table.data td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+table.data thead th { font: 600 11px/1.3 var(--f-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); background: var(--bg); white-space: nowrap; }
+table.data tbody tr:last-child td { border-bottom: 0; }
+table.data td.k { font-weight: 600; white-space: nowrap; }
+table.data td.req { font: 12px/1.5 var(--f-mono); color: var(--muted); }
+.chip { display: inline-block; padding: 1px 6px; border-radius: 2px; font: 600 11.5px/1.5 var(--f-mono); white-space: nowrap; }
+.c-good { background: var(--ok-soft); color: var(--ok); }
+.c-mid { background: var(--warn-soft); color: var(--warn); }
+.c-bad { background: var(--err-soft); color: var(--err); }
+
+.phases { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 880px) { .phases { grid-template-columns: minmax(0, 1fr); } }
+.phase { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 14px 16px; display: grid; gap: 8px; align-content: start; }
+.phase .n { font: 600 11px/1.3 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.phase ul { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; font-size: 14px; }
+.phase.first { border-color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
+
+.qs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 26px; margin: 0; padding: 0; list-style: none; counter-reset: q; }
+@media (max-width: 760px) { .qs { grid-template-columns: minmax(0, 1fr); } }
+.qs li { counter-increment: q; display: grid; grid-template-columns: 2em minmax(0, 1fr); gap: 2px 8px; font-size: 14px; }
+.qs li::before { content: counter(q); grid-row: span 2; font: 800 20px/1 var(--f-display); font-stretch: 75%; color: var(--accent); }
+.qs b { font-weight: 600; }
+.qs p { margin: 0; color: var(--muted); }
+
+/* ---- Two figures side by side (today vs. Phase 1) ---------------------- */
+.compare { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 880px) { .compare { grid-template-columns: minmax(0, 1fr); } }
+.fig { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.fig .cap { font: 600 11px/1.3 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.fig .cap .chip { margin-left: 6px; }
+.fig .shot { background: var(--site-bg); color: var(--site-ink); border: 1px solid var(--line); border-radius: 6px; padding: 14px; position: relative; min-height: 120px; font: 13px/1.4 var(--f-site); overflow-x: auto; }
+.cursor { display: inline-block; width: 0; height: 0; border-left: 7px solid #111111; border-top: 4px solid transparent; border-bottom: 4px solid transparent; transform: rotate(-40deg); margin: 0 2px; }
+.liner table.mini { border-collapse: collapse; width: 100%; font-size: 0.92em; line-height: 1.4; }
+.liner table.mini th { font-weight: 400; font-style: italic; color: var(--liner-dim); text-align: left; padding: 0 6px 3px 0; }
+.liner table.mini td { padding: 2px 6px 2px 0; }
+.liner table.mini tr.cur td { background: #f1e8d5; font-weight: 700; }
+
+/* ---- Containers (1b) --------------------------------------------------- */
+.cgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 900px) { .cgrid { grid-template-columns: minmax(0, 1fr); } }
+.cbox { display: grid; gap: 10px; align-content: start; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 14px 16px; min-width: 0; }
+.cbox .n { font: 600 11px/1.3 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.cbox p { margin: 0; font-size: 14px; }
+.cbox pre { margin: 0; padding: 8px 10px; background: var(--bg); border-radius: 3px; overflow-x: auto; font: 12px/1.5 var(--f-mono); color: var(--ink); }
+.cbox .shot { background: var(--site-bg); color: var(--site-ink); border: 1px solid var(--line); border-radius: 4px; padding: 10px; font: 13px/1.4 var(--f-site); overflow-x: auto; display: grid; gap: 8px; }
+.uvd { width: 270px; max-width: 100%; background: var(--site-bg); border: 1px solid #bbbbbb; box-shadow: 0 8px 22px -10px rgba(0, 0, 0, 0.45); font: 12.5px/1.4 var(--f-site); padding: 6px 0; color: var(--site-ink); }
+.uvd h6 { margin: 0; padding: 2px 10px 4px; font: bold 11px var(--f-site); text-transform: uppercase; color: var(--site-dim); }
+.uvd label { display: flex; gap: 6px; padding: 1px 10px; }
+.uvd label.hov { background: #eef3fa; }
+.uvd .c { margin-left: auto; color: var(--site-dim); font-variant-numeric: tabular-nums; }
+
+/* ---- Settings mock ----------------------------------------------------- */
+.settings { background: var(--site-bg); color: var(--site-ink); border: 1px solid var(--line); border-radius: 6px; box-shadow: var(--shadow); font: 13px/1.45 var(--f-ui); overflow: hidden; }
+.settings .sh { padding: 10px 14px; background: var(--dlg-bar); border-bottom: 2px solid var(--dlg-line); font-weight: 700; }
+.settings .div { padding: 8px 14px; background: #eef1f4; font: 700 12px var(--f-ui); letter-spacing: 0.04em; }
+.srow { display: grid; grid-template-columns: minmax(0, 1fr) 120px; gap: 4px 14px; padding: 8px 14px; border-bottom: 1px solid #eeeeee; }
+.srow:last-child { border-bottom: 0; }
+.srow .l { font-weight: 600; }
+.srow .d { grid-column: 1; color: #555555; font-size: 12px; }
+.srow .c { grid-column: 2; grid-row: 1 / span 2; align-self: center; justify-self: end; }
+.srow input[type="number"] { width: 72px; font: 13px var(--f-ui); }
+.srow.new .l::after { content: "new"; margin-left: 6px; padding: 0 4px; border-radius: 2px; background: var(--ok-soft); color: var(--ok); font: 600 10px/1.6 var(--f-mono); text-transform: uppercase; }
+.srow.kept .l::after { content: "existing"; margin-left: 6px; padding: 0 4px; border-radius: 2px; background: #eeeeee; color: #555555; font: 600 10px/1.6 var(--f-mono); text-transform: uppercase; }
+
+.toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 90;
+    background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 4px; font-size: 13.5px;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s; max-width: calc(100vw - 32px);
+}
+.toast.on { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+</style>
+
+<div class="wrap">
+    <header class="mast">
+        <div class="eyebrow">ShowAllEntityData · org/iframe.org · design study · 2026-10-07</div>
+        <h1>One popup engine for every link</h1>
+        <p class="lead">The detail-page card and its pinned window (9.99.1263) work on four Springsteen sites. These mockups show the same engine on MusicBrainz: a card for the entity behind any link in a table, Space to pin it into a window with an Extracted view and the Live page, the arrows to step through the column. The release-group popup on release tracklists comes first. All data on this page is example data, shaped like the real Web Service answers. Covers are stand-ins, because this page loads no images.</p>
+        <div class="howto">
+            <span>Hold <kbd>Ctrl</kbd> and hover a link in any mock table (or rest on it, then press <kbd>Ctrl</kbd>). <kbd>Space</kbd> pins, <kbd>Esc</kbd> closes, <kbd>←</kbd> <kbd>→</kbd> step. On a touch screen, tap a link.</span>
+            <label><input type="checkbox" id="plain-hover"> Show cards on a plain hover</label>
+        </div>
+    </header>
+
+    <nav class="tabs" role="tablist" aria-label="Mockups">
+        <button class="tab" role="tab" id="t-overview" aria-controls="p-overview" aria-selected="true"><span class="k">≡</span>Overview</button>
+        <button class="tab" role="tab" id="t-rg" aria-controls="p-rg" aria-selected="false"><span class="k">1</span>Release group <span class="rec">phase 1</span></button>
+        <button class="tab" role="tab" id="t-release" aria-controls="p-release" aria-selected="false"><span class="k">2</span>Releases</button>
+        <button class="tab" role="tab" id="t-recwork" aria-controls="p-recwork" aria-selected="false"><span class="k">3</span>Recordings &amp; works</button>
+        <button class="tab" role="tab" id="t-event" aria-controls="p-event" aria-selected="false"><span class="k">4</span>Events &amp; places</button>
+        <button class="tab" role="tab" id="t-artist" aria-controls="p-artist" aria-selected="false"><span class="k">5</span>Artists &amp; labels</button>
+        <button class="tab" role="tab" id="t-edits" aria-controls="p-edits" aria-selected="false"><span class="k">6</span>Edits</button>
+        <button class="tab" role="tab" id="t-search" aria-controls="p-search" aria-selected="false"><span class="k">7</span>Search</button>
+        <button class="tab" role="tab" id="t-containers" aria-controls="p-containers" aria-selected="false"><span class="k">8</span>Containers</button>
+        <button class="tab" role="tab" id="t-settings" aria-controls="p-settings" aria-selected="false"><span class="k">9</span>Settings</button>
+    </nav>
+
+    <!-- ===================================================== OVERVIEW -->
+    <section class="panel" id="p-overview" role="tabpanel" aria-labelledby="t-overview">
+        <div class="answers">
+            <div class="answer">
+                <div class="q">What is reused</div>
+                <div class="a">The whole detail-page engine</div>
+                <p>Card, delay, Ctrl gate, Space and Esc, the pinned window with Extracted and Live page, ‹ ›, ⟳ and ↗, the cache with its one-request-per-URL rule. Only the four site entries become "sources", and MusicBrainz adds its own.</p>
+            </div>
+            <div class="answer">
+                <div class="q">What is new</div>
+                <div class="a">Sources, a resolver, one gate</div>
+                <p>A source per entity kind; a resolver that also takes declared containers, not only links; every MusicBrainz request through the Relationships column's gate, so the script stays at one request a second.</p>
+            </div>
+            <div class="answer">
+                <div class="q">What comes first</div>
+                <div class="a">The release-group popup</div>
+                <p>The "#" cell and the subheader link on release tracklists move onto the engine: a card you can pin, every release in a sortable table, the release group's own page beside it.</p>
+            </div>
+        </div>
+
+        <div class="sub-head">
+            <h2>How a card comes about</h2>
+            <p>Three ways in, one card, one window. The resolver takes the first that matches.</p>
+        </div>
+        <div class="diagram-wrap">
+            <svg class="diagram" viewBox="0 0 1000 330" role="img" aria-labelledby="dg-t dg-d">
+                <title id="dg-t">The popup engine</title>
+                <desc id="dg-d">Sources feed a resolver with three rules; the resolver opens a card on Ctrl and hover; Space pins it into a dialog with Extracted and Live page views. All MusicBrainz requests share one rate gate and one cache.</desc>
+                <defs><marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto"><path class="head" d="M0 0 L8 4 L0 8 z"/></marker></defs>
+                <text class="cap" x="10" y="18">SOURCES</text>
+                <rect class="box" x="10" y="28" width="210" height="44" rx="3"/>
+                <text class="t" x="22" y="47">Four Springsteen sites</text>
+                <text class="ts" x="22" y="63">today's _DP_SITES, 30-day cache</text>
+                <rect class="box-acc" x="10" y="82" width="210" height="62" rx="3"/>
+                <text class="t" x="22" y="101">MusicBrainz, Web Service</text>
+                <text class="ts" x="22" y="117">release group, release, recording,</text>
+                <text class="ts" x="22" y="132">work, artist, label, event, ...</text>
+                <rect class="box" x="10" y="154" width="210" height="44" rx="3"/>
+                <text class="t" x="22" y="173">MusicBrainz, page HTML</text>
+                <text class="ts" x="22" y="189">edit, editor</text>
+
+                <text class="cap" x="290" y="18">RESOLVER · FIRST HIT WINS</text>
+                <rect class="box" x="290" y="28" width="240" height="170" rx="3"/>
+                <text class="t" x="304" y="52">1  data-mb-pop="source:key"</text>
+                <text class="ts" x="322" y="68">stamped at pre-processing</text>
+                <text class="t" x="304" y="100">2  features.popTargets</text>
+                <text class="ts" x="322" y="116">a column, by header name</text>
+                <text class="t" x="304" y="148">3  a[href] a source matches</text>
+                <text class="ts" x="322" y="164">never: images, tabs, edit links,</text>
+                <text class="ts" x="322" y="179">the script's own UI</text>
+
+                <text class="cap" x="600" y="18">CARD</text>
+                <rect class="box-liner" x="600" y="28" width="170" height="80" rx="3"/>
+                <text class="tl" x="614" y="52">Ctrl + hover</text>
+                <text class="tls" x="614" y="70">beside the link</text>
+                <text class="tls" x="614" y="86">at most 1 request</text>
+
+                <text class="cap" x="600" y="138">WINDOW</text>
+                <rect class="box-liner" x="600" y="148" width="370" height="50" rx="3"/>
+                <text class="tl" x="614" y="170">Extracted · Live page · ‹ › · ⟳ · ↗</text>
+                <text class="tls" x="614" y="188">the dialog may add 1 or 2 requests (more())</text>
+                <text class="ts" x="790" y="72">Space pins</text>
+                <text class="ts" x="790" y="88">Esc closes</text>
+
+                <path class="edge" d="M220 50 H270 V100 H288" marker-end="url(#ah)"/>
+                <path class="edge" d="M220 113 H288" marker-end="url(#ah)"/>
+                <path class="edge" d="M220 176 H270 V126 H288" marker-end="url(#ah)"/>
+                <path class="edge" d="M530 68 H598" marker-end="url(#ah)"/>
+                <path class="edge" d="M685 108 V146" marker-end="url(#ah)"/>
+
+                <rect class="box" x="10" y="238" width="460" height="74" rx="3"/>
+                <text class="t" x="24" y="260">One MusicBrainz rate gate</text>
+                <text class="ts" x="24" y="278">_relAwaitRateSlot(), 1.1 s apart, shared with the</text>
+                <text class="ts" x="24" y="294">Relationships column; _rgWsGet moves onto it</text>
+                <rect class="box" x="500" y="238" width="470" height="74" rx="3"/>
+                <text class="t" x="514" y="260">One cache</text>
+                <text class="ts" x="514" y="278">IndexedDB vz-saed-detail-pages, keyed by request URL;</text>
+                <text class="ts" x="514" y="294">24 h for MusicBrainz, 30 days for the foreign sites; ⟳ skips it</text>
+            </svg>
+        </div>
+
+        <div class="sub-head">
+            <h2>Every MusicBrainz entity kind</h2>
+            <p>A card is about the link's target, so one source serves every pageType that links that kind. Endpoints are candidates, to be checked against the MusicBrainz API documentation and a probe in Phase 0.</p>
+        </div>
+        <div class="datatable-wrap">
+            <table class="data">
+                <thead><tr><th>Kind</th><th>Card (hover)</th><th>The window adds (pin)</th><th>Requests</th><th>Mock</th></tr></thead>
+                <tbody>
+                    <tr><td class="k">Release group</td><td>cover, type, first release, artist, release count, rating</td><td>every release, sortable; facts, links, annotation</td><td class="req">1 browse · pin: more pages + 1 lookup</td><td><a href="#rg" data-goto="rg">tab 1</a></td></tr>
+                    <tr><td class="k">Release</td><td>cover, status, date and country, label, cat#, format, first tracks</td><td>tracklist by medium with lengths, release events, cover strip</td><td class="req">1 lookup · pin: CAA index</td><td><a href="#release" data-goto="release">tab 2</a></td></tr>
+                    <tr><td class="k">Recording</td><td>length, artist, ISRCs, first release, "on N releases", the work</td><td>its releases, performers, recorded at</td><td class="req">1 lookup · pin: 1 lookup</td><td><a href="#recwork" data-goto="recwork">tab 3</a></td></tr>
+                    <tr><td class="k">Work</td><td>type, language, ISWC, writers, number of recordings</td><td>recordings (paged), based on, parts</td><td class="req">1 lookup · pin: browse</td><td><a href="#recwork" data-goto="recwork">tab 3</a></td></tr>
+                    <tr><td class="k">Event</td><td>date and time, place and area, cancelled, performers, poster</td><td>setlist, line-up, recordings, releases</td><td class="req">1 lookup · pin: EAA index</td><td><a href="#event" data-goto="event">tab 4</a></td></tr>
+                    <tr><td class="k">Place</td><td>type, address, area chain, coordinates</td><td>events at the place, map link</td><td class="req">1 lookup · pin: browse</td><td><a href="#event" data-goto="event">tab 4</a></td></tr>
+                    <tr><td class="k">Artist</td><td>type, area, life span, genres, rating</td><td>release groups by type, links, aliases</td><td class="req">1 lookup · pin: counts</td><td><a href="#artist" data-goto="artist">tab 5</a></td></tr>
+                    <tr><td class="k">Label</td><td>type, area, label code, life span</td><td>releases, links, parent and subsidiaries</td><td class="req">1 lookup</td><td><a href="#artist" data-goto="artist">tab 5</a></td></tr>
+                    <tr><td class="k">Edit</td><td>type, status, votes, editor, the entity</td><td>the edit page itself (Live page)</td><td class="req">page HTML (no Web Service)</td><td><a href="#edits" data-goto="edits">tab 6</a></td></tr>
+                    <tr><td class="k">Editor</td><td>member since, accepted, rejected, open edits</td><td>-</td><td class="req">page HTML</td><td><a href="#edits" data-goto="edits">tab 6</a></td></tr>
+                    <tr><td class="k">Area, series, instrument</td><td>chain and codes; ordering and first items; description</td><td>sub-areas; every item; related instruments</td><td class="req">1 lookup</td><td>-</td></tr>
+                    <tr><td class="k">Collection, ISRC, ISWC, disc ID</td><td>owner and size; what carries the code; TOC</td><td>-</td><td class="req">1 lookup</td><td><a href="#containers" data-goto="containers">tab 8</a></td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="sub-head">
+            <h2>Phases</h2>
+            <p>Each phase on <code>feature/popup-engine</code>, a WIP changelog entry each, merged only after a browser check.</p>
+        </div>
+        <div class="phases">
+            <div class="phase"><div class="n">Phase 0 · probes</div><ul><li>inc sets per kind, answer sizes</li><li>what a page without scripts still shows</li><li>embedded JSON beyond /release</li><li>cover-art presence in the browse</li></ul></div>
+            <div class="phase first"><div class="n">Phase 1 · engine + release group</div><ul><li>_DP_SITES into sources, no visible change</li><li>both release-group cards on the engine</li><li>pin, every release, Live page, one gate</li></ul></div>
+            <div class="phase"><div class="n">Phase 2 · Web Service cards</div><ul><li>release, recording, work, artist, label, event, place, area, series, instrument</li><li>arrows step through one column</li><li>behind one setting, off by default</li></ul></div>
+            <div class="phase"><div class="n">Phase 3 · page HTML</div><ul><li>edit and editor cards</li><li>Live page for every kind</li></ul></div>
+            <div class="phase"><div class="n">Phase 4 · containers</div><ul><li>data-mb-pop, popTargets, ISRC and barcode text, UVD entries</li><li>page-wide scope</li><li>maybe a wider @include, measured first</li></ul></div>
+            <div class="phase"><div class="n">Phase 5 · optional</div><ul><li>drill-down inside the window, with Back</li><li>a side drawer if the window feels cramped</li></ul></div>
+        </div>
+
+        <div class="sub-head">
+            <h2>Decisions</h2>
+            <p>The eight open questions, answered on 2026-10-07 (org/iframe.org, "answers").</p>
+        </div>
+        <ol class="qs">
+            <li><b>MusicBrainz cards are off by default</b><p>opt-in, like every new hover feature.</p></li>
+            <li><b>No new key for the Ctrl gate</b><p>MusicBrainz cards follow the existing detail-preview setting, relabelled "every preview"; the "#" cell keeps its own.</p></li>
+            <li><b>One switch for all MusicBrainz kinds</b><p>no per-kind switches.</p></li>
+            <li><b>MusicBrainz answers are kept 24 hours</b><p>⟳ always asks again.</p></li>
+            <li><b>Links inside the window drill down, with Back</b><p>Phase 5.</p></li>
+            <li><b>Only the pages the script already runs on</b><p>@include stays as it is for now.</p></li>
+            <li><b>One rate gate for cards and the Relationships column</b><p>its auto-load slows by one slot per card opened.</p></li>
+            <li><b>The subheader link stays on a plain hover</b><p>only the "#" cell is Ctrl-gated.</p></li>
+        </ol>
+    </section>
+
+    <!-- ===================================================== 1 RELEASE GROUP -->
+    <section class="panel" id="p-rg" role="tabpanel" aria-labelledby="t-rg" hidden>
+        <div class="panel-head">
+            <h2>The release-group popup on release tracklists</h2>
+            <p>Phase 1, item 2 of the request. Two cards exist today, both shown by <code>#mb-stat-tooltip</code>: the subheader link and the "#" cell of a live track. They follow the pointer, cannot be entered or pinned, stop at 100 releases and forget everything on reload.</p>
+        </div>
+
+        <div class="sub-head">
+            <h3>The subheader link: today and in Phase 1</h3>
+            <p>Born to Run (US, 1975), whose release group has 312 releases in this example.</p>
+        </div>
+        <div class="compare">
+            <div class="fig">
+                <div class="cap">Today <span class="chip c-mid">9.99.1269</span></div>
+                <div class="shot">
+                    <div class="mbhead"><div class="h">Born to Run</div><div class="s">Release by <a href="#">Bruce Springsteen</a> (<a href="#">312 versions available in <bdi>Born to Run</bdi></a>)<span class="cursor"></span></div></div>
+                    <div class="liner static-card">
+                        <div class="head"><div class="sleeve md" style="--h: 18"><span>Born to Run</span></div><div class="headtext"><div class="t">Born to Run</div><div>Album · Bruce Springsteen</div><div class="pills"><span class="pill">312 releases</span></div></div></div>
+                        <div class="rule"></div>
+                        <table class="mini"><thead><tr><th>Release</th><th>Format</th><th>Date</th><th>Country</th><th>Label / Cat#</th></tr></thead><tbody>
+                            <tr class="cur"><td>▸ Born to Run</td><td>12" Vinyl</td><td>1975-08-25</td><td>US</td><td>Columbia · PC 33795</td></tr>
+                            <tr><td>Born to Run</td><td>12" Vinyl</td><td>1975</td><td>GB</td><td>CBS · S 69170</td></tr>
+                            <tr><td>Born to Run</td><td>CD</td><td>1984</td><td>US</td><td>Columbia · CK 33795</td></tr>
+                            <tr><td colspan="5" class="more">… 97 more rows, then nothing</td></tr>
+                        </tbody></table>
+                        <div class="foot">312 releases · showing 100 · ▸ = this release · click to open the release group</div>
+                    </div>
+                </div>
+                <p class="dim" style="margin:0;font-size:13px;color:var(--muted)">Follows the pointer, so its rows cannot be clicked; no Ctrl gate on this link; the 212 later releases are out of reach.</p>
+            </div>
+            <div class="fig">
+                <div class="cap">Phase 1 <span class="chip c-good">proposed</span></div>
+                <div class="shot">
+                    <div class="mbhead"><div class="h">Born to Run</div><div class="s">Release by <a href="#">Bruce Springsteen</a> (<a href="#">312 versions available in <bdi>Born to Run</bdi></a>)</div></div>
+                    <div class="liner static-card">
+                        <div class="head"><div class="sleeve md" style="--h: 18"><span>Born to Run</span></div><div class="headtext"><div class="t">Born to Run</div><div class="sub">Album · Bruce Springsteen · first released 1975-08-25</div><div class="pills"><span class="pill">312 releases</span><span class="pill">this one: US 1975, 12" Vinyl</span></div></div></div>
+                        <div class="rule"></div>
+                        <div class="stat"><b>312</b> releases in 41 countries, 1975 to 2024</div>
+                        <ol class="tl"><li><span class="p">▸</span>1975 US · 12" Vinyl</li><li><span class="p">·</span>1975 GB · 12" Vinyl</li><li><span class="p">·</span>1975 DE · 12" Vinyl</li><li><span class="p">·</span>1975 JP · 12" Vinyl</li><li><span class="p">·</span>1984 US · CD</li><li><span class="p">·</span>1985 JP · CD</li></ol>
+                        <div class="more">+ 306 more, sortable, in the window (Space)</div>
+                        <div class="foot">saved today · <kbd>Space</kbd> pin · <kbd>Esc</kbd> close</div>
+                    </div>
+                </div>
+                <p class="dim" style="margin:0;font-size:13px;color:var(--muted)">Beside the link, still on a plain hover (decided; the "#" cell keeps its Ctrl gate), one request (the first browse page). Space opens every release.</p>
+            </div>
+        </div>
+
+        <div class="sub-head">
+            <h3>The "#" cell of a live track</h3>
+            <p>A live release whose tracks come from two shows. Hold Ctrl over a "#" cell; Space pins.</p>
+        </div>
+        <div class="bench">
+            <div class="stage">
+                <div class="window" data-win="rg">
+                    <div class="chrome"><span class="url">musicbrainz.org/release/…</span><span class="pt">release-tracks</span></div>
+                    <div class="sitebody">
+                        <div class="mbhead"><div class="h">2025‐05‐20: Co‐op Live, Manchester, England, UK</div><div class="s">Release by <a href="#">Bruce Springsteen &amp; The E Street Band</a> (2 versions available in <a href="#" data-k="rg-man" data-col="hdr"><bdi>2025‐05‐20: Co‐op Live, …</bdi></a>)</div></div>
+                        <div class="h3m">1 · Digital Media</div>
+                        <table class="tbl">
+                            <thead><tr><th>#</th><th>Title</th><th>Length</th><th>Disambiguation</th></tr></thead>
+                            <tbody>
+                                <tr><td class="pos pop-cell" data-k="rg-man" data-col="pos" data-start><span class="echip e1">E1</span>1</td><td><a href="#">Land of Hope and Dreams</a></td><td class="num">7:41</td><td class="dim">live, 2025‐05‐20: Co‐op Live, Manchester, England, UK</td></tr>
+                                <tr><td class="pos pop-cell" data-k="rg-man" data-col="pos"><span class="echip e1">E1</span>2</td><td><a href="#">Death to My Hometown</a></td><td class="num">4:12</td><td class="dim">live, 2025‐05‐20: Co‐op Live, Manchester, England, UK</td></tr>
+                                <tr><td class="pos pop-cell" data-k="rg-man" data-col="pos"><span class="echip e1">E1</span>3</td><td><a href="#">Lonesome Day</a></td><td class="num">5:03</td><td class="dim">live, 2025‐05‐20: Co‐op Live, Manchester, England, UK</td></tr>
+                                <tr><td class="pos pop-cell" data-k="rg-man" data-col="pos"><span class="echip e1">E1</span>4</td><td><a href="#">Rainmaking</a></td><td class="num">6:20</td><td class="dim">live, 2025‐05‐20: Co‐op Live, Manchester, England, UK</td></tr>
+                                <tr><td class="pos pop-cell" data-k="rg-0517" data-col="pos"><span class="echip e2">E2</span>5</td><td><a href="#">Long Walk Home</a></td><td class="num">6:58</td><td class="dim">live, 2025‐05‐17: Co‐op Live, Manchester, England, UK</td></tr>
+                                <tr><td class="pos pop-cell" data-k="rg-nomatch" data-col="pos"><span class="echip e3">E3</span>6</td><td><a href="#">House of a Thousand Guitars</a></td><td class="num">5:47</td><td class="dim">live, 2025‐05‐14: Co‐op Live, Manchester, England, UK; soundcheck</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="liner float wide" role="tooltip"></div>
+                </div>
+                <div class="dlg-slot" data-for="rg"></div>
+            </div>
+            <aside class="notes">
+                <div class="try"><b>Try it</b><span>Ctrl over "#" of track 1 (the main event), 5 (another show, found by search) and 6 (nothing named like it). Space on 1 opens the window: sort the releases, switch to Live page.</span></div>
+                <div class="note"><div class="lbl">Requests</div><dl class="cost"><dt>card</dt><dd>1 browse, <code>/ws/2/release?release-group=…&amp;inc=media+labels&amp;limit=100</code> (as today); E2/E3 first run the event search</dd><dt>pin</dt><dd>the other browse pages (offset 100, 200, …, cap 500) + 1 lookup <code>release-group/…?inc=artist-credits+genres+ratings+url-rels+annotation</code></dd><dt>live</dt><dd>the HTML of /release-group/…</dd></dl></div>
+                <div class="note"><div class="lbl">Gate and cache</div><p>Every request through <code>_relAwaitRateSlot()</code>; the 312 releases need 4 pages, about 4.4 s, with progress. Release lists stay in IndexedDB for 24 h; event searches only for the page.</p></div>
+                <div class="note"><div class="lbl">Unchanged</div><ul><li>Alt+click opens the release group or the search</li><li>the 4c ⚠️ card after the link</li><li>the event tints and E chips</li></ul></div>
+                <div class="note"><div class="lbl">Tests</div><ul><li>release-rg-main-event, release-event-colours-rg-tooltip stay green</li><li>new release-rg-popup.spec.js: 150 releases over two pages, sort, links, ⟳, IndexedDB after reload, 503 not cached, one gate</li></ul></div>
+            </aside>
+        </div>
+    </section>
+
+    <!-- ===================================================== 2 RELEASES -->
+    <section class="panel" id="p-release" role="tabpanel" aria-labelledby="t-release" hidden>
+        <div class="panel-head">
+            <h2>Release cards on release lists</h2>
+            <p>artist-releases, label-releases, releasegroup-releases, recording-releases, area-releases, instrument-releases, taglookup, cdtoc. Compare pressings and tracklists without opening tabs; the arrows flip through the Release column of the filtered table.</p>
+        </div>
+        <div class="bench">
+            <div class="stage">
+                <div class="window" data-win="release">
+                    <div class="chrome"><span class="url">musicbrainz.org/artist/70248960-…/releases</span><span class="pt">artist-releases</span></div>
+                    <div class="sitebody">
+                        <div class="sitebar"><h4>Releases</h4><span class="count">7 of 1,914 rows</span><input type="text" id="mock-filter" value="12&quot; Vinyl US" aria-label="Global filter (mock)"></div>
+                        <table class="tbl">
+                            <thead><tr><th>Release</th><th>Format</th><th>Tracks</th><th>Date</th><th>Country</th><th>Label</th><th>Catalog#</th></tr></thead>
+                            <tbody id="release-rows"></tbody>
+                        </table>
+                    </div>
+                    <div class="liner float" role="tooltip"></div>
+                </div>
+                <div class="dlg-slot" data-for="release"></div>
+            </div>
+            <aside class="notes">
+                <div class="try"><b>Try it</b><span>Ctrl over Darkness on the Edge of Town, Space, then → to step to The River.</span></div>
+                <div class="note"><div class="lbl">Requests</div><dl class="cost"><dt>card</dt><dd>1 lookup <code>release/…?inc=artist-credits+labels+recordings+release-groups+media</code></dd><dt>pin</dt><dd>the cover index from coverartarchive.org (one request, its own host)</dd><dt>live</dt><dd>the HTML of /release/…</dd></dl></div>
+                <div class="note"><div class="lbl">Which column</div><p>A row links the release, the artist and the label. The arrows stay in the column the card was opened from, so they step release to release.</p></div>
+                <div class="note"><div class="lbl">Covers</div><p>Only where the Web Service answer says the archive has a front image, so no broken thumbnails (Phase 0 confirms the field).</p></div>
+            </aside>
+        </div>
+    </section>
+
+    <!-- ===================================================== 3 RECORDINGS & WORKS -->
+    <section class="panel" id="p-recwork" role="tabpanel" aria-labelledby="t-recwork" hidden>
+        <div class="panel-head">
+            <h2>Recording and work cards on a release tracklist</h2>
+            <p>release-tracks first, then every recording list (artist-recordings, work-recordings, instrument-recordings, place-performances, isrc). The recording card answers "where else is this take"; the work card names who wrote it.</p>
+        </div>
+        <div class="bench">
+            <div class="stage">
+                <div class="window" data-win="recwork">
+                    <div class="chrome"><span class="url">musicbrainz.org/release/1d404e1d-…</span><span class="pt">release-tracks</span></div>
+                    <div class="sitebody">
+                        <div class="h3m">1 · 12" Vinyl · Side A, Side B</div>
+                        <table class="tbl">
+                            <thead><tr><th>#</th><th>Title</th><th>Length</th><th>Recording of work</th><th>Recorded at place</th></tr></thead>
+                            <tbody>
+                                <tr><td class="pos">A1</td><td><a href="#" data-k="rec-thunder" data-col="title" data-start>Thunder Road</a></td><td class="num">4:49</td><td><a href="#" data-k="work-thunder" data-col="work">Thunder Road</a></td><td><a href="#">Record Plant</a> <span class="dim">New York</span></td></tr>
+                                <tr><td class="pos">A2</td><td><a href="#" data-k="rec-tenth" data-col="title">Tenth Avenue Freeze‐Out</a></td><td class="num">3:11</td><td><a href="#" data-k="work-tenth" data-col="work">Tenth Avenue Freeze‐Out</a></td><td><a href="#">Record Plant</a> <span class="dim">New York</span></td></tr>
+                                <tr><td class="pos">A3</td><td><a href="#" data-k="rec-night" data-col="title">Night</a></td><td class="num">3:00</td><td><a href="#">Night</a></td><td><a href="#">Record Plant</a> <span class="dim">New York</span></td></tr>
+                                <tr><td class="pos">A4</td><td><a href="#">Backstreets</a></td><td class="num">6:30</td><td><a href="#">Backstreets</a></td><td><a href="#">Record Plant</a> <span class="dim">New York</span></td></tr>
+                                <tr><td class="pos">B1</td><td><a href="#" data-k="rec-btr" data-col="title">Born to Run</a></td><td class="num">4:31</td><td><a href="#" data-k="work-btr" data-col="work">Born to Run</a></td><td><a href="#">914 Sound Studios</a> <span class="dim">Blauvelt</span></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="liner float" role="tooltip"></div>
+                </div>
+                <div class="dlg-slot" data-for="recwork"></div>
+            </div>
+            <aside class="notes">
+                <div class="try"><b>Try it</b><span>Ctrl over Thunder Road in Title, then in Recording of work. Space and → step down the column the card came from.</span></div>
+                <div class="note"><div class="lbl">Requests</div><dl class="cost"><dt>recording</dt><dd>1 lookup <code>recording/…?inc=artist-credits+isrcs+releases+work-rels</code>; pin adds <code>artist-rels+place-rels+event-rels</code></dd><dt>work</dt><dd>1 lookup <code>work/…?inc=artist-rels+label-rels+work-rels</code>; pin adds a recording browse</dd></dl></div>
+                <div class="note"><div class="lbl">What release-tracks already knows</div><p>The tracklist's own payload has the recording's length and the work link: the card fills those at once and asks only for what the page lacks.</p></div>
+                <div class="note"><div class="lbl">Live recordings</div><p>For a live take the card adds the event and the setlist position, from the same rels the live-bootleg findings use.</p></div>
+            </aside>
+        </div>
+    </section>
+
+    <!-- ===================================================== 4 EVENTS & PLACES -->
+    <section class="panel" id="p-event" role="tabpanel" aria-labelledby="t-event" hidden>
+        <div class="panel-head">
+            <h2>Event and place cards on event lists</h2>
+            <p>artist-events, area-events, place-events, series (events), and the Recorded at event column of release-tracks. Read a tour's setlists while scanning the table.</p>
+        </div>
+        <div class="bench">
+            <div class="stage">
+                <div class="window" data-win="event">
+                    <div class="chrome"><span class="url">musicbrainz.org/artist/70248960-…/events</span><span class="pt">artist-events</span></div>
+                    <div class="sitebody">
+                        <table class="tbl">
+                            <thead><tr><th>Event</th><th>Type</th><th>Date</th><th>Place</th><th>Location</th></tr></thead>
+                            <tbody>
+                                <tr><td><a href="#" data-k="ev-sx" data-col="ev">SXSW 2012, day 3: Bruce Springsteen</a></td><td>Concert</td><td class="num">2012-03-15</td><td><a href="#" data-k="pl-amh" data-col="pl">Austin Music Hall</a></td><td>Austin, Texas, United States</td></tr>
+                                <tr><td><a href="#" data-k="ev-0514" data-col="ev">2025‐05‐14: Co‐op Live, Manchester, England, UK</a></td><td>Concert</td><td class="num">2025-05-14</td><td><a href="#" data-k="pl-coop" data-col="pl">Co‐op Live</a></td><td>Manchester, England, United Kingdom</td></tr>
+                                <tr><td><a href="#" data-k="ev-0517" data-col="ev">2025‐05‐17: Co‐op Live, Manchester, England, UK</a></td><td>Concert</td><td class="num">2025-05-17</td><td><a href="#" data-k="pl-coop" data-col="pl">Co‐op Live</a></td><td>Manchester, England, United Kingdom</td></tr>
+                                <tr><td><a href="#" data-k="ev-0520" data-col="ev" data-start>2025‐05‐20: Co‐op Live, Manchester, England, UK</a></td><td>Concert</td><td class="num">2025-05-20</td><td><a href="#" data-k="pl-coop" data-col="pl">Co‐op Live</a></td><td>Manchester, England, United Kingdom</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="liner float" role="tooltip"></div>
+                </div>
+                <div class="dlg-slot" data-for="event"></div>
+            </div>
+            <aside class="notes">
+                <div class="try"><b>Try it</b><span>Ctrl over the last event, Space, then ← to walk back through the shows. Ctrl over Co‐op Live for the place.</span></div>
+                <div class="note"><div class="lbl">Requests</div><dl class="cost"><dt>event</dt><dd>1 lookup <code>event/…?inc=artist-rels+place-rels+recording-rels+release-rels</code> (the setlist is a field of the event)</dd><dt>poster</dt><dd>eventartarchive.org, only where the event has art</dd><dt>place</dt><dd>1 lookup <code>place/…?inc=area-rels+url-rels</code>; pin adds an event browse</dd></dl></div>
+                <div class="note"><div class="lbl">Ties in with</div><p>event-overview's setlist table, the EAA column, and the live-bootleg event keys on release-tracks.</p></div>
+            </aside>
+        </div>
+    </section>
+
+    <!-- ===================================================== 5 ARTISTS & LABELS -->
+    <section class="panel" id="p-artist" role="tabpanel" aria-labelledby="t-artist" hidden>
+        <div class="panel-head">
+            <h2>Artist and label cards</h2>
+            <p>Every credit column, artist credit and Label column on every pageType. The card says who someone is; the window adds what they released.</p>
+        </div>
+        <div class="bench">
+            <div class="stage">
+                <div class="window" data-win="artist">
+                    <div class="chrome"><span class="url">musicbrainz.org/release/1d404e1d-…</span><span class="pt">release-tracks · credits</span></div>
+                    <div class="sitebody">
+                        <table class="tbl">
+                            <thead><tr><th>#</th><th>Title</th><th>Performer</th><th>Phonographic copyright (℗) by label</th></tr></thead>
+                            <tbody>
+                                <tr><td class="pos">B4</td><td><a href="#">Jungleland</a></td><td><a href="#" data-k="ar-clemons" data-col="perf" data-start>Clarence Clemons</a> <span class="dim">(saxophone)</span>, <a href="#" data-k="ar-bittan" data-col="perf">Roy Bittan</a> <span class="dim">(piano)</span></td><td><a href="#" data-k="lb-columbia" data-col="lab">Columbia</a></td></tr>
+                                <tr><td class="pos">A1</td><td><a href="#">Thunder Road</a></td><td><a href="#" data-k="ar-weinberg" data-col="perf">Max Weinberg</a> <span class="dim">(drums)</span>, <a href="#" data-k="ar-tallent" data-col="perf">Garry Tallent</a> <span class="dim">(bass)</span></td><td><a href="#" data-k="lb-columbia" data-col="lab">Columbia</a></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="liner float" role="tooltip"></div>
+                </div>
+                <div class="dlg-slot" data-for="artist"></div>
+            </div>
+            <aside class="notes">
+                <div class="try"><b>Try it</b><span>Ctrl over Clarence Clemons, then over Columbia.</span></div>
+                <div class="note"><div class="lbl">Requests</div><dl class="cost"><dt>artist</dt><dd>1 lookup <code>artist/…?inc=genres+ratings+url-rels+aliases</code>; pin adds release-group counts by type (browse, limit=1 each)</dd><dt>label</dt><dd>1 lookup <code>label/…?inc=genres+url-rels+label-rels</code></dd></dl></div>
+                <div class="note"><div class="lbl">Several links in one cell</div><p>A credit cell lists several artists; each link has its own card, and the arrows step to the next row's first one.</p></div>
+            </aside>
+        </div>
+    </section>
+
+    <!-- ===================================================== 6 EDITS -->
+    <section class="panel" id="p-edits" role="tabpanel" aria-labelledby="t-edits" hidden>
+        <div class="panel-head">
+            <h2>Edit and editor cards on the edit lists</h2>
+            <p>edits, user-edits, user-open-edits, notes-received. The Web Service has no edits, so these cards read the edit page itself. The window's Live page is that page, which makes it a voting queue: the arrows go to the next edit.</p>
+        </div>
+        <div class="bench">
+            <div class="stage">
+                <div class="window" data-win="edits">
+                    <div class="chrome"><span class="url">musicbrainz.org/release-group/39b22944-…/edits</span><span class="pt">edits</span></div>
+                    <div class="sitebody">
+                        <table class="tbl">
+                            <thead><tr><th>Edit#</th><th>Edit action</th><th>Entity</th><th>Editor</th><th>Status</th></tr></thead>
+                            <tbody>
+                                <tr><td><a href="#" data-k="ed-1" data-col="ed" data-start>#100000001</a></td><td>Edit release</td><td><a href="#" data-k="rel-btr" data-col="ent">Born to Run</a></td><td><a href="#" data-k="u-example" data-col="usr">example-editor</a></td><td>Open</td></tr>
+                                <tr><td><a href="#" data-k="ed-2" data-col="ed">#100000002</a></td><td>Add cover art</td><td><a href="#">Born to Run</a></td><td><a href="#" data-k="u-example" data-col="usr">example-editor</a></td><td>Applied</td></tr>
+                                <tr><td><a href="#" data-k="ed-3" data-col="ed">#100000003</a></td><td>Edit release group</td><td><a href="#">Born to Run</a></td><td><a href="#">another-editor</a></td><td>Open</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="liner float" role="tooltip"></div>
+                </div>
+                <div class="dlg-slot" data-for="edits"></div>
+            </div>
+            <aside class="notes">
+                <div class="try"><b>Try it</b><span>Ctrl over #100000001, Space, then Live page and → to the next edit. Edit numbers and editors here are invented examples.</span></div>
+                <div class="note"><div class="lbl">Requests</div><dl class="cost"><dt>edit</dt><dd>the HTML of /edit/&lt;n&gt;, one request, which the Live page then reuses</dd><dt>editor</dt><dd>the HTML of /user/&lt;name&gt;</dd></dl></div>
+                <div class="note"><div class="lbl">Freshness</div><p>An open edit changes by the hour: its card is cached for minutes, not a day, and ⟳ asks again.</p></div>
+            </aside>
+        </div>
+    </section>
+
+    <!-- ===================================================== 7 SEARCH -->
+    <section class="panel" id="p-search" role="tabpanel" aria-labelledby="t-search" hidden>
+        <div class="panel-head">
+            <h2>Cards on search results</h2>
+            <p>The search pageType covers fifteen result types; each row's main link gets the card of its kind. Pick the right "Born to Run" without opening five tabs.</p>
+        </div>
+        <div class="bench">
+            <div class="stage">
+                <div class="window" data-win="search">
+                    <div class="chrome"><span class="url">musicbrainz.org/search?query=Born+to+Run&amp;type=release_group</span><span class="pt">search</span></div>
+                    <div class="sitebody">
+                        <table class="tbl">
+                            <thead><tr><th>Score</th><th>Release group</th><th>Artist</th><th>Type</th></tr></thead>
+                            <tbody>
+                                <tr><td class="num">100</td><td><a href="#" data-k="rg-btr" data-col="sr" data-start>Born to Run</a></td><td><a href="#">Bruce Springsteen</a></td><td>Album</td></tr>
+                                <tr><td class="num">100</td><td><a href="#" data-k="rg-btr-single" data-col="sr">Born to Run</a></td><td><a href="#">Bruce Springsteen</a></td><td>Single</td></tr>
+                                <tr><td class="num">88</td><td><a href="#" data-k="rg-btr-box" data-col="sr">Born to Run (30th Anniversary Edition)</a></td><td><a href="#">Bruce Springsteen</a></td><td>Album + Compilation</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="liner float" role="tooltip"></div>
+                </div>
+                <div class="dlg-slot" data-for="search"></div>
+            </div>
+            <aside class="notes">
+                <div class="try"><b>Try it</b><span>Ctrl over each result. The second one is the single.</span></div>
+                <div class="note"><div class="lbl">Requests</div><p>The same release-group source as tab 1: its cached answers serve both pages.</p></div>
+            </aside>
+        </div>
+    </section>
+
+    <!-- ===================================================== 8 CONTAINERS -->
+    <section class="panel" id="p-containers" role="tabpanel" aria-labelledby="t-containers" hidden>
+        <div class="panel-head">
+            <h2>Containers beyond &lt;a href&gt;</h2>
+            <p>Item 1b. Every form below ends as rule 1 of the resolver, an attribute stamped during pre-processing, so the engine keeps one path and the attribute survives every <code>cloneNode(true)</code> re-render.</p>
+        </div>
+        <div class="cgrid">
+            <div class="cbox">
+                <div class="n">i · any element, by attribute</div>
+                <p>A converter or extractor stamps the element. This is how the release-tracks "#" cell joins the engine.</p>
+                <pre>&lt;td class="pos" data-mb-pop="mb-event-rg:2025‐05‐17: Co‐op Live, …"&gt;</pre>
+                <div class="shot"><table class="tbl"><tbody><tr><td class="pos pop-cell"><span class="echip e2">E2</span>5</td><td>Long Walk Home</td></tr></tbody></table></div>
+            </div>
+            <div class="cbox">
+                <div class="n">ii · a column, by header name</div>
+                <p>The page definition declares it, resolved by header name like <code>collapsableColumns</code>, and turned into i on each cell.</p>
+                <pre>features.popTargets: [
+    { column: 'Catalog#', source: 'mb-label-catno', key: td =&gt; … },
+    { column: 'Barcode',  source: 'mb-barcode',     key: td =&gt; … }
+]</pre>
+                <div class="shot"><table class="tbl"><thead><tr><th>Label</th><th>Catalog#</th><th>Barcode</th></tr></thead><tbody><tr><td>Columbia</td><td class="pop-cell">PC 33795</td><td class="pop-cell">074643379527</td></tr></tbody></table></div>
+            </div>
+            <div class="cbox">
+                <div class="n">iii · the row</div>
+                <p>The row's main entity cell carries i. On a touch screen, which has neither hover nor Ctrl, a small magnifier opens the window.</p>
+                <div class="shot"><table class="tbl"><tbody><tr><td><button type="button" class="magnifier" aria-label="Preview (mock)">🔍</button><a href="#">Darkness on the Edge of Town</a></td><td>1978-06-02</td></tr></tbody></table></div>
+            </div>
+            <div class="cbox">
+                <div class="n">iv · text patterns</div>
+                <p>The existing formatters already find ISRCs (<code>initIsrcFormatting</code>) and barcodes (<code>initBarcodeHighlight</code>); they stamp i too. MBIDs in annotations the same way.</p>
+                <div class="shot"><div>ISRC <span class="isrc">USSM17500803</span> → the recordings carrying it</div>
+                    <div class="liner static-card"><div class="t">USSM17500803</div><div class="sub">ISRC · 1 recording</div><div class="rule"></div><div>Thunder Road · Bruce Springsteen · 4:49</div><div class="foot"><kbd>Space</kbd> pin · <kbd>Esc</kbd> close</div></div></div>
+            </div>
+            <div class="cbox">
+                <div class="n">v · the script's own UI</div>
+                <p>An entry of the 📊 unique-values dropdown names an entity; Ctrl over it shows that entity's card. h3 medium headers could show the medium's disc IDs.</p>
+                <div class="shot"><div class="uvd"><h6>Performer</h6><label><input type="checkbox" id="uvd-clemons"> Clarence Clemons <span class="c">8</span></label><label class="hov"><input type="checkbox" id="uvd-bittan"> Roy Bittan <span class="c">7</span></label><label><input type="checkbox" id="uvd-weinberg"> Max Weinberg <span class="c">8</span></label></div></div>
+            </div>
+            <div class="cbox">
+                <div class="n">vi · links inside the window</div>
+                <p>Phase 5: Space on a release inside the release-group window shows that release in the same window, with Back and the path in the title.</p>
+                <div class="dlg" style="max-height:none"><div class="dlg-bar"><span class="dlg-title"><span class="crumb">Release group › </span>Release</span><span class="dlg-tools"><button type="button" class="tbtn">← Back</button><span class="seg"><button type="button" class="tbtn" aria-pressed="true">Extracted</button><button type="button" class="tbtn" aria-pressed="false">Live page</button></span><button type="button" class="xbtn" aria-label="Close (mock)">✕</button></span></div><div class="dlg-area"><div class="x one"><div class="col"><div class="xtitle">Born to Run</div><div class="xsub">CD · 1984 · US · Columbia CK 33795</div></div></div></div></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================================================== 9 SETTINGS -->
+    <section class="panel" id="p-settings" role="tabpanel" aria-labelledby="t-settings" hidden>
+        <div class="panel-head">
+            <h2>Settings</h2>
+            <p>A new section beside the existing detail-page one. Phase 1 needs none of the new MusicBrainz switches: the release-group cards keep their own settings.</p>
+        </div>
+        <div class="settings">
+            <div class="sh">⚙️ Settings</div>
+            <div class="div">🔎 LINK PREVIEWS ON MUSICBRAINZ</div>
+            <div class="srow new"><span class="l">Preview linked entities on hover</span><span class="d">Hold Ctrl over a link in a table (release group, release, recording, work, artist, label, event, place, …) for a card; Space pins it into a window with the entity's own page. Off by default.</span><span class="c"><input type="checkbox" id="s-pop-mb" aria-label="Preview linked entities (mock)"></span></div>
+            <div class="srow new"><span class="l">Keep MusicBrainz answers for (hours)</span><span class="d">How long a card's data is reused before it is asked again. ⟳ in the window always asks again.</span><span class="c"><input type="number" id="s-pop-ttl" value="24" aria-label="Hours (mock)"></span></div>
+            <div class="srow new"><span class="l">Release group window: at most this many releases</span><span class="d">Releases are read 100 at a time, one request a second.</span><span class="c"><input type="number" id="s-rg-max" value="500" aria-label="Releases (mock)"></span></div>
+            <div class="div">💿 RELEASE TRACKLIST</div>
+            <div class="srow kept"><span class="l">Name the release group in the "see all versions" link, with a preview</span><span class="d">Phase 1: the preview becomes a card you can pin.</span><span class="c"><input type="checkbox" id="s-rg-link" checked aria-label="(mock)"></span></div>
+            <div class="srow kept"><span class="l">Release group card on the "#" cell of each live track</span><span class="d">Phase 1: the same card and window.</span><span class="c"><input type="checkbox" id="s-rg-card" checked aria-label="(mock)"></span></div>
+            <div class="srow kept"><span class="l">Show the "#" release group card on a plain hover (without Ctrl)</span><span class="d">The "#" cell only: the subheader link stays on a plain hover (decided).</span><span class="c"><input type="checkbox" id="s-rg-plain" aria-label="(mock)"></span></div>
+            <div class="div">🔎 DETAIL-PAGE PREVIEWS</div>
+            <div class="srow kept"><span class="l">Show the detail-page preview on a plain hover (without Ctrl)</span><span class="d">Relabelled "every preview": the MusicBrainz cards follow it too, with no new key (decided).</span><span class="c"><input type="checkbox" id="s-dp-plain" aria-label="(mock)"></span></div>
+        </div>
+    </section>
+</div>
+
+<div class="toast" role="status" aria-live="polite"></div>
+
+<script>
+'use strict';
+/* Mock data: example values shaped like the Web Service answers. Song and
+   album titles are real; counts, dates of later pressings, ratings, edit
+   numbers and editors are invented for the mockup. */
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const hue = s => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
+const sleeve = (label, cls = '') => `<div class="sleeve ${cls}" style="--h:${hue(label)}"><span>${esc(label)}</span></div>`;
+const pills = a => a && a.length ? `<div class="pills">${a.map(p => `<span class="pill">${esc(p)}</span>`).join('')}</div>` : '';
+const kv = a => a && a.length ? `<dl class="kv">${a.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>` : '';
+const tl = a => `<ol class="tl">${a.map(([p, t]) => `<li><span class="p">${esc(p)}</span>${esc(t)}</li>`).join('')}</ol>`;
+const tracks = a => `<ol class="tracks">${a.map(([p, t, l]) => `<li><span class="p">${esc(p)}</span><span>${esc(t)}</span>${l ? `<span class="len">${esc(l)}</span>` : ''}</li>`).join('')}</ol>`;
+const FOOT = state => `<div class="foot">${esc(state)} · <kbd>Space</kbd> pin · <kbd>Esc</kbd> close</div>`;
+
+/** A card in the script's liner look. */
+function card(d) {
+    const parts = [`<div class="head">${d.cover ? sleeve(d.cover, d.coverCls || '') : ''}<div class="headtext">` +
+        `<div class="t">${esc(d.title)}</div>${d.sub ? `<div class="sub">${esc(d.sub)}</div>` : ''}${pills(d.pills)}${kv(d.kv)}</div></div>`];
+    if (d.stat) parts.push(`<div class="rule"></div><div class="stat"><b>${esc(d.stat[0])}</b> ${esc(d.stat[1])}</div>`);
+    if (d.list) {
+        parts.push(`<div class="rule"></div>${d.listLabel ? `<div><b>${esc(d.listLabel)}</b></div>` : ''}${tl(d.list)}`);
+        if (d.listMore) parts.push(`<div class="more">${esc(d.listMore)}</div>`);
+    }
+    if (d.html) parts.push(`<div class="rule"></div>${d.html}`);
+    if (d.prose) parts.push(`<div class="rule"></div><div class="sub">${esc(d.prose)}</div>`);
+    parts.push(FOOT(d.state || 'fetched now'));
+    return parts.join('');
+}
+
+/** The Extracted view: two columns of sections, as _dpExtractedHtml() lays them out. */
+function extracted(d) {
+    const sec = s => `<h4>${esc(s.h)}</h4>${s.html}`;
+    return `<div class="x"><div class="col"><div class="xtitle">${esc(d.title)}</div>${d.sub ? `<div class="xsub">${esc(d.sub)}</div>` : ''}` +
+        (d.cover ? `<div style="margin:8px 0">${sleeve(d.cover, d.coverCls === 'poster' ? 'poster' : 'lg')}</div>` : '') +
+        (d.left || []).map(sec).join('') + `</div><div class="col">${(d.right || []).map(sec).join('')}</div></div>` +
+        `<div class="xfoot">${esc(d.age || 'fetched now')} · request: ${esc(d.req || '')}</div>`;
+}
+
+/** The Live page view: the entity's own page without its scripts, mocked. */
+function livepage(d, hideNav) {
+    return `<div class="livebar"><label><input type="checkbox" class="hidenav"${hideNav ? ' checked' : ''}> Hide the site's navigation</label><span class="u">https://musicbrainz.org${esc(d.url)}</span></div>` +
+        `<div class="livepage${hideNav ? ' hide-nav' : ''}"><div class="lp-nav"><span class="cap">site header · search · menus</span><i></i><i></i><i></i></div>` +
+        `<div class="lp-main"><div><h6>${esc(d.title)}</h6><div class="lp-sub">${esc(d.sub || '')}</div>` +
+        `<div class="lp-tabs">${(d.tabs || ['Overview', 'Relationships', 'Aliases', 'Tags', 'Edits']).map(t => `<span>${esc(t)}</span>`).join('')}</div>${d.body || ''}</div>` +
+        `<div class="lp-side">${d.side || ''}</div></div><div class="lp-foot">site footer</div></div>`;
+}
+
+/* ---- The release group's releases (tab 1 and tab 7) ------------------- */
+const BTR_RELEASES = [
+    ['Born to Run', '12" Vinyl', 8, '1975-08-25', 'US', 'Columbia', 'PC 33795', '', true],
+    ['Born to Run', '12" Vinyl', 8, '1975-08-29', 'GB', 'CBS', 'S 69170', ''],
+    ['Born to Run', '12" Vinyl', 8, '1975', 'DE', 'CBS', 'S 69170', ''],
+    ['Born to Run', '12" Vinyl', 8, '1975', 'JP', 'CBS/Sony', 'SOPO 98', ''],
+    ['Born to Run', 'CD', 8, '1984', 'US', 'Columbia', 'CK 33795', '07464337952'],
+    ['Born to Run', 'CD', 8, '1985', 'JP', 'CBS/Sony', '32DP 220', ''],
+    ['Born to Run (30th Anniversary Edition)', 'CD + 2xDVD', 8, '2005-11-14', 'US', 'Columbia', '82876 74472 2', ''],
+    ['Born to Run', 'Digital Media', 8, '2014-11-24', 'XW', 'Columbia', '', ''],
+];
+function rgTable(rows) {
+    const body = rows.map(r => `<tr${r[8] ? ' class="cur"' : ''}><td>${sleeve(r[0], 'xs')}</td><td>${r[8] ? '▸ ' : ''}<a href="#">${esc(r[0])}</a></td><td>${esc(r[1])}</td><td class="n">${r[2]}</td>` +
+        `<td class="n">${esc(r[3])}</td><td><span class="cc">${esc(r[4])}</span></td><td>${esc(r[5])}</td><td>${esc(r[6] || '-')}</td><td class="n">${esc(r[7] || '-')}</td></tr>`).join('');
+    const th = (t, k, type) => `<th aria-sort="none" data-k="${k}" data-type="${type}"><button type="button">${t}</button></th>`;
+    return `<div class="progress"><span>312 / 312 releases</span><span class="bar"><i style="width:100%"></i></span><span>4 requests</span></div>` +
+        `<div class="rtwrap"><table class="rt"><thead><tr><th></th>${th('Release', 1, 's')}${th('Format', 2, 's')}${th('Tracks', 3, 'n')}${th('Date', 4, 's')}${th('Country', 5, 's')}` +
+        `${th('Label', 6, 's')}${th('Cat#', 7, 's')}${th('Barcode', 8, 's')}</tr></thead><tbody>${body}</tbody></table></div>` +
+        `<div class="more" style="margin-top:4px">The mock shows 8 of the 312 rows. ▸ = this release. Each title opens its release (Phase 5: inside this window).</div>`;
+}
+const RG_FACTS = kv([['Type', 'Album'], ['First release', '1975-08-25'], ['Artist', 'Bruce Springsteen'], ['Rating', '4.6 of 5 (example)'], ['Genres', 'rock, heartland rock']]);
+const LINKPILLS = a => `<div class="linkpills">${a.map(x => `<span class="pill">${esc(x)}</span>`).join('')}</div>`;
+
+/* ---- Releases (tab 2) -------------------------------------------------- */
+const ALBUMS = [
+    ['rel-greet', 'Greetings From Asbury Park, N.J.', '1973-01-05', 'KC 31903', '12" Vinyl', ['Blinded by the Light', "Growin' Up", 'Mary Queen of Arkansas', 'Does This Bus Stop at 82nd Street?', 'Lost in the Flood', 'The Angel', 'For You', 'Spirit in the Night', "It's Hard to Be a Saint in the City"], [5, 4]],
+    ['rel-wild', 'The Wild, the Innocent & the E Street Shuffle', '1973-09-11', 'KC 32432', '12" Vinyl', ['The E Street Shuffle', '4th of July, Asbury Park (Sandy)', "Kitty's Back", "Wild Billy's Circus Story", 'Incident on 57th Street', 'Rosalita (Come Out Tonight)', 'New York City Serenade'], [4, 3]],
+    ['rel-btr', 'Born to Run', '1975-08-25', 'PC 33795', '12" Vinyl', ['Thunder Road', 'Tenth Avenue Freeze-Out', 'Night', 'Backstreets', 'Born to Run', "She's the One", 'Meeting Across the River', 'Jungleland'], [4, 4]],
+    ['rel-dark', 'Darkness on the Edge of Town', '1978-06-02', 'JC 35318', '12" Vinyl', ['Badlands', 'Adam Raised a Cain', 'Something in the Night', "Candy's Room", 'Racing in the Street', 'The Promised Land', 'Factory', 'Streets of Fire', 'Prove It All Night', 'Darkness on the Edge of Town'], [5, 5]],
+    ['rel-river', 'The River', '1980-10-17', 'PC2 36854', '2x12" Vinyl', ['The Ties That Bind', 'Sherry Darling', 'Jackson Cage', 'Two Hearts', 'Independence Day', 'Hungry Heart', 'Out in the Street', 'Crush on You', 'You Can Look (But You Better Not Touch)', 'I Wanna Marry You', 'The River', 'Point Blank', 'Cadillac Ranch', "I'm a Rocker", 'Fade Away', 'Stolen Car', 'Ramrod', 'The Price You Pay', 'Drive All Night', 'Wreck on the Highway'], [5, 6, 5, 4]],
+    ['rel-neb', 'Nebraska', '1982-09-30', 'TC 38358', '12" Vinyl', ['Nebraska', 'Atlantic City', 'Mansion on the Hill', 'Johnny 99', 'Highway Patrolman', 'State Trooper', 'Used Cars', 'Open All Night', "My Father's House", 'Reason to Believe'], [5, 5]],
+    ['rel-busa', 'Born in the U.S.A.', '1984-06-04', 'QC 38653', '12" Vinyl', ['Born in the U.S.A.', 'Cover Me', 'Darlington County', 'Working on the Highway', 'Downbound Train', "I'm on Fire", 'No Surrender', 'Bobby Jean', "I'm Goin' Down", 'Glory Days', 'Dancing in the Dark', 'My Hometown'], [6, 6]],
+];
+const DARK_LEN = ['4:03', '4:32', '5:12', '2:51', '6:53', '4:33', '2:17', '4:09', '3:56', '4:30'];
+
+/* ---- Everything the cards and windows show, by key -------------------- */
+const D = {};
+D['rg-man'] = {
+    kind: 'Release group',
+    card: card({ cover: '2025-05-20 Manchester', title: '2025‐05‐20: Co‐op Live, Manchester, England, UK', sub: 'Album + Live · Bruce Springsteen & The E Street Band',
+        pills: ['main event', '✓ live title', '2 releases'], html: '<table class="mini"><thead><tr><th>Release</th><th>Format</th><th>Date</th><th>Country</th></tr></thead><tbody>' +
+        '<tr class="cur"><td>▸ 2025‐05‐20: Co‐op Live, …</td><td>Digital Media</td><td>2025-06-06</td><td>XW</td></tr><tr><td>2025‐05‐20: Co‐op Live, …</td><td>Digital Media</td><td>2025-06-06</td><td>XW</td></tr></tbody></table>',
+        state: 'saved today' }),
+    ex: extracted({ title: '2025‐05‐20: Co‐op Live, Manchester, England, UK', sub: 'Album + Live · Bruce Springsteen & The E Street Band', cover: '2025-05-20 Manchester',
+        left: [{ h: 'Facts', html: kv([['Type', 'Album + Live'], ['First release', '2025-06-06'], ['Event', '2025‐05‐20: Co‐op Live, …']]) }, { h: 'Links', html: LINKPILLS(['nugs.net', 'Wikidata']) }],
+        right: [{ h: 'Releases · 2', html: '<div class="rtwrap"><table class="rt"><thead><tr><th>Release</th><th>Format</th><th>Date</th><th>Country</th></tr></thead><tbody><tr class="cur"><td>▸ <a href="#">2025‐05‐20: Co‐op Live, …</a></td><td>Digital Media</td><td class="n">2025-06-06</td><td><span class="cc">XW</span></td></tr><tr><td><a href="#">2025‐05‐20: Co‐op Live, …</a></td><td>Digital Media (24-bit)</td><td class="n">2025-06-06</td><td><span class="cc">XW</span></td></tr></tbody></table></div>' }],
+        req: 'release browse + release-group lookup' }),
+    live: { url: '/release-group/…', title: '2025‐05‐20: Co‐op Live, Manchester, England, UK', sub: 'Release group by Bruce Springsteen & The E Street Band',
+        body: '<table class="tbl"><thead><tr><th>Release</th><th>Format</th><th>Date</th><th>Country</th></tr></thead><tbody><tr><td><a href="#">2025‐05‐20: Co‐op Live, …</a></td><td>Digital Media</td><td>2025-06-06</td><td>XW</td></tr><tr><td><a href="#">2025‐05‐20: Co‐op Live, …</a></td><td>Digital Media</td><td>2025-06-06</td><td>XW</td></tr></tbody></table>',
+        side: '<h6>Release group information</h6><div>Type: Album + Live</div><h6>Tags</h6><div class="dim">none</div>' },
+};
+D['rg-0517'] = {
+    kind: 'Release group',
+    card: card({ cover: '2025-05-17 Manchester', title: '2025‐05‐17: Co‐op Live, Manchester, England, UK', sub: 'Album + Live · Bruce Springsteen & The E Street Band',
+        pills: ['E2', '1 track on this release', 'not the main event', '1 release'], prose: 'Found by searching for this event: a release group whose title IS the event name.', state: 'found now' }),
+    ex: extracted({ title: '2025‐05‐17: Co‐op Live, Manchester, England, UK', sub: 'Album + Live · found by searching for the event', cover: '2025-05-17 Manchester',
+        left: [{ h: 'Facts', html: kv([['Type', 'Album + Live'], ['First release', '2025-06-13']]) }],
+        right: [{ h: 'Releases · 1', html: '<div class="rtwrap"><table class="rt"><thead><tr><th>Release</th><th>Format</th><th>Date</th></tr></thead><tbody><tr><td><a href="#">2025‐05‐17: Co‐op Live, …</a></td><td>Digital Media</td><td class="n">2025-06-13</td></tr></tbody></table></div>' }],
+        req: 'release-group search + release browse' }),
+    live: { url: '/release-group/…', title: '2025‐05‐17: Co‐op Live, Manchester, England, UK', sub: 'Release group by Bruce Springsteen & The E Street Band' },
+};
+D['rg-nomatch'] = {
+    kind: 'Release group',
+    card: card({ title: '2025‐05‐14: Co‐op Live, Manchester, England, UK', sub: '1 track on this release · not the main event', pills: ['E3'],
+        html: '<div>No release group is named like this event.</div><div class="more" style="margin-top:4px">Closest titles the search returned, each a link (Phase 1):</div>' +
+        '<div><a href="#">2025‐05‐17: Co‐op Live, Manchester, England, UK</a><br><a href="#">2025‐05‐20: Co‐op Live, Manchester, England, UK</a></div>' +
+        '<div style="margin-top:6px"><span class="pill">🔍 Search on MusicBrainz</span></div>', state: 'phrase search, by the release\'s artist' }),
+    ex: extracted({ title: '2025‐05‐14: Co‐op Live, Manchester, England, UK', sub: 'No release group is named like this event',
+        left: [{ h: 'The search', html: '<div class="mono" style="font-size:12px">releasegroup:"2025‐05‐14: Co‐op Live, Manchester, England, UK" AND arid:70248960-…</div>' }],
+        right: [{ h: 'Closest titles', html: '<div><a href="#">2025‐05‐17: Co‐op Live, Manchester, England, UK</a></div><div><a href="#">2025‐05‐20: Co‐op Live, Manchester, England, UK</a></div>' }],
+        req: 'release-group search' }),
+    live: { url: '/search?query=…&type=release_group', title: 'Search results', sub: 'release groups', tabs: ['Search'] },
+};
+D['rg-btr'] = {
+    kind: 'Release group',
+    card: card({ cover: 'Born to Run', title: 'Born to Run', sub: 'Album · Bruce Springsteen · first released 1975-08-25', pills: ['312 releases', 'rating 4.6'],
+        stat: ['312', 'releases in 41 countries, 1975 to 2024'], list: [['·', '1975 US · 12" Vinyl'], ['·', '1975 GB · 12" Vinyl'], ['·', '1975 DE · 12" Vinyl'], ['·', '1975 JP · 12" Vinyl'], ['·', '1984 US · CD'], ['·', '1985 JP · CD']],
+        listMore: '+ 306 more, sortable, in the window (Space)', state: 'saved today' }),
+    ex: extracted({ title: 'Born to Run', sub: 'Album · Bruce Springsteen', cover: 'Born to Run',
+        left: [{ h: 'Facts', html: RG_FACTS }, { h: 'Links', html: LINKPILLS(['Wikidata', 'Wikipedia', 'Discogs', 'AllMusic']) }, { h: 'Annotation', html: '<div class="xsub">none</div>' }],
+        right: [{ h: 'Releases · 312', html: rgTable(BTR_RELEASES) }], req: '4 release browse pages + 1 release-group lookup' }),
+    live: { url: '/release-group/39b22944-7503-3937-8bba-09b17281cc6a', title: 'Born to Run', sub: 'Release group by Bruce Springsteen',
+        body: '<table class="tbl"><thead><tr><th>Release</th><th>Format</th><th>Tracks</th><th>Country/Date</th><th>Label</th></tr></thead><tbody>' +
+            BTR_RELEASES.slice(0, 5).map(r => `<tr><td><a href="#">${esc(r[0])}</a></td><td>${esc(r[1])}</td><td>${r[2]}</td><td>${esc(r[4])} ${esc(r[3])}</td><td>${esc(r[5])}</td></tr>`).join('') + '</tbody></table>',
+        side: sleeve('Born to Run', 'md') + '<h6>Release group information</h6><div>Type: Album</div><h6>Rating</h6><div>★★★★½</div><h6>External links</h6><div>Wikidata · Discogs · AllMusic</div>' },
+};
+D['rg-btr-single'] = {
+    kind: 'Release group',
+    card: card({ cover: 'Born to Run single', title: 'Born to Run', sub: 'Single · Bruce Springsteen · first released 1975', pills: ['14 releases'],
+        list: [['·', '1975 US · 7" Vinyl'], ['·', '1975 GB · 7" Vinyl'], ['·', '1975 NL · 7" Vinyl'], ['·', '1987 US · 7" Vinyl']], listMore: 'B-side: Meeting Across the River', state: 'fetched now' }),
+    ex: extracted({ title: 'Born to Run', sub: 'Single · Bruce Springsteen', cover: 'Born to Run single', left: [{ h: 'Facts', html: kv([['Type', 'Single'], ['First release', '1975']]) }],
+        right: [{ h: 'Releases · 14', html: '<div class="more">The same sortable table as the album.</div>' }], req: '1 release browse + 1 lookup' }),
+    live: { url: '/release-group/…', title: 'Born to Run', sub: 'Release group (Single) by Bruce Springsteen' },
+};
+D['rg-btr-box'] = {
+    kind: 'Release group',
+    card: card({ cover: 'Born to Run 30th', title: 'Born to Run (30th Anniversary Edition)', sub: 'Album + Compilation · Bruce Springsteen · 2005', pills: ['3 releases', 'CD + 2xDVD'], state: 'fetched now' }),
+    ex: extracted({ title: 'Born to Run (30th Anniversary Edition)', sub: 'Album + Compilation', cover: 'Born to Run 30th', left: [{ h: 'Facts', html: kv([['Type', 'Album + Compilation'], ['First release', '2005-11-14']]) }], right: [], req: '1 release browse + 1 lookup' }),
+    live: { url: '/release-group/…', title: 'Born to Run (30th Anniversary Edition)', sub: 'Release group by Bruce Springsteen' },
+};
+
+ALBUMS.forEach(([k, title, date, cat, fmt, songs, sides]) => {
+    const isDark = k === 'rel-dark';
+    const list = [], media = [];
+    let i = 0;
+    sides.forEach((n, s) => {
+        const letter = 'ABCD'[s], group = [];
+        for (let j = 1; j <= n; j++, i++) {
+            const t = [letter + j, songs[i], isDark ? DARK_LEN[i] : ''];
+            list.push(t);
+            group.push(t);
+        }
+        media.push([`Side ${letter}`, group]);
+    });
+    D[k] = {
+        kind: 'Release',
+        card: card({ cover: title, title, sub: `Bruce Springsteen · Official · ${date.slice(0, 4)}`, pills: [fmt, `${songs.length} tracks`, `${date} US`],
+            kv: [['Label', 'Columbia'], ['Cat#', cat], ['Release group', `${title} (Album)`]],
+            list: list.slice(0, 6).map(([p, t]) => [p, t]), listMore: songs.length > 6 ? `+ ${songs.length - 6} more` : '', state: k === 'rel-dark' ? 'fetched now' : 'saved today' }),
+        ex: extracted({ title, sub: `Bruce Springsteen · ${fmt} · ${date} US · Columbia ${cat}`, cover: title,
+            left: [{ h: 'Fields', html: kv([['Status', 'Official'], ['Language', 'English'], ['Script', 'Latin'], ['Barcode', '(none)'], ['Release group', title]]) },
+                { h: 'Release events', html: `<div>${esc(date)} · <span class="cc">US</span></div>` },
+                { h: 'Cover art · 4 images', html: `<div class="gallery">${['Front', 'Back', 'Medium', 'Medium'].map(t => `<figure>${sleeve(title + t, 'md')}<figcaption>${t}</figcaption></figure>`).join('')}</div>` }],
+            right: [{ h: `Tracklist · ${songs.length} tracks`, html: `<div class="discs">${media.map(([g, ts]) => `<div><div class="gname">${esc(g)}</div>${tracks(ts)}</div>`).join('')}</div>` }],
+            req: 'release lookup + cover index' }),
+        live: { url: '/release/…', title, sub: `Release by Bruce Springsteen`, tabs: ['Overview', 'Disc IDs', 'Cover art', 'Aliases', 'Tags', 'Edits'],
+            body: `<div class="h3m">${esc(fmt)}</div><table class="tbl"><tbody>${list.slice(0, 6).map(([p, t, l]) => `<tr><td>${esc(p)}</td><td><a href="#">${esc(t)}</a></td><td class="num">${esc(l || '?:??')}</td></tr>`).join('')}</tbody></table>`,
+            side: sleeve(title, 'md') + `<h6>Release information</h6><div>Format: ${esc(fmt)}<br>Date: ${esc(date)}<br>Country: US</div><h6>Labels</h6><div>Columbia – ${esc(cat)}</div>` },
+    };
+});
+
+/* ---- Recordings and works (tab 3) -------------------------------------- */
+const recCard = (title, len, isrc, n, work, place) => ({
+    kind: 'Recording',
+    card: card({ title, sub: 'Recording · Bruce Springsteen', pills: [len, isrc ? '1 ISRC' : 'no ISRC', `on ${n} releases`],
+        kv: [['First release', '1975-08-25'], ['ISRC', isrc || '-'], ['Recording of', work], ['Recorded at', place]], state: 'fetched now' }),
+    ex: extracted({ title, sub: `Recording · Bruce Springsteen · ${len}`,
+        left: [{ h: 'Fields', html: kv([['Length', len], ['ISRC', isrc || '-'], ['Video', 'no']]) }, { h: 'Credits', html: kv([['Recording of', work], ['Recorded at', place], ['Producer', 'Bruce Springsteen, Jon Landau, Mike Appel']]) }],
+        right: [{ h: `Appears on · ${n} releases`, html: '<div class="rtwrap"><table class="rt"><thead><tr><th>Release</th><th>Date</th><th>Country</th><th>Format</th></tr></thead><tbody>' +
+            BTR_RELEASES.slice(0, 5).map(r => `<tr><td><a href="#">${esc(r[0])}</a></td><td class="n">${esc(r[3])}</td><td><span class="cc">${esc(r[4])}</span></td><td>${esc(r[1])}</td></tr>`).join('') + '</tbody></table></div>' }],
+        req: 'recording lookup + rels on pin' }),
+    live: { url: '/recording/…', title, sub: 'Recording by Bruce Springsteen', tabs: ['Overview', 'Fingerprints', 'Aliases', 'Tags', 'Edits'] },
+});
+D['rec-thunder'] = recCard('Thunder Road', '4:49', 'USSM17500803', 180, 'Thunder Road', 'Record Plant, New York');
+D['rec-tenth'] = recCard('Tenth Avenue Freeze‐Out', '3:11', '', 150, 'Tenth Avenue Freeze‐Out', 'Record Plant, New York');
+D['rec-night'] = recCard('Night', '3:00', '', 140, 'Night', 'Record Plant, New York');
+D['rec-btr'] = recCard('Born to Run', '4:31', '', 260, 'Born to Run', '914 Sound Studios, Blauvelt');
+const workCard = (title, n) => ({
+    kind: 'Work',
+    card: card({ title, sub: 'Work · Song · English', pills: [`${n} recordings`, 'ISWC on record'], kv: [['Lyricist', 'Bruce Springsteen'], ['Composer', 'Bruce Springsteen']], state: 'fetched now' }),
+    ex: extracted({ title, sub: 'Song · English', left: [{ h: 'Writers', html: kv([['Lyricist', 'Bruce Springsteen'], ['Composer', 'Bruce Springsteen']]) }],
+        right: [{ h: `Recordings · ${n}`, html: '<div class="progress"><span>100 / ' + n + '</span><span class="bar"><i style="width:30%"></i></span><span>more on scroll</span></div>' +
+            '<div class="rtwrap"><table class="rt"><thead><tr><th>Recording</th><th>Artist</th><th>Length</th><th>Kind</th></tr></thead><tbody>' +
+            [['studio', '4:49'], ['live, 1975‐11‐18: Hammersmith Odeon, London', '5:12'], ['live, 1978‐07‐07: The Roxy, West Hollywood', '5:43'], ['acoustic', '5:30']]
+                .map(([c, l]) => `<tr><td><a href="#">${esc(title)}</a> <span class="xsub">(${esc(c)})</span></td><td>Bruce Springsteen</td><td class="n">${l}</td><td>${c.startsWith('live') ? 'live' : 'studio'}</td></tr>`).join('') +
+            '</tbody></table></div>' }], req: 'work lookup + recording browse on pin' }),
+    live: { url: '/work/…', title, sub: 'Work by Bruce Springsteen', tabs: ['Overview', 'Aliases', 'Tags', 'Edits'] },
+});
+D['work-thunder'] = workCard('Thunder Road', 412);
+D['work-tenth'] = workCard('Tenth Avenue Freeze‐Out', 268);
+D['work-btr'] = workCard('Born to Run', 655);
+
+/* ---- Events and places (tab 4) ----------------------------------------- */
+const SETLIST = ['Land of Hope and Dreams', 'Death to My Hometown', 'Lonesome Day', 'Rainmaking', 'Hungry Heart', 'The Promised Land', 'Darkness on the Edge of Town', 'Long Walk Home', 'House of a Thousand Guitars', 'My City of Ruins', 'Born in the U.S.A.', 'Born to Run', 'Bobby Jean', 'Dancing in the Dark', 'Tenth Avenue Freeze-Out', 'Chimes of Freedom'];
+const evCard = (k, title, date, place, area, n) => {
+    D[k] = {
+        kind: 'Event',
+        card: card({ cover: title, coverCls: 'poster', title, sub: `Concert · ${date}`, pills: [`setlist: ${n} songs`, 'poster'],
+            kv: [['Place', `${place}, ${area}`], ['Main performers', 'Bruce Springsteen & The E Street Band']],
+            list: SETLIST.slice(0, 6).map((s, i) => [String(i + 1), s]), listMore: `+ ${n - 6} more in the setlist (Space)`, listLabel: 'Setlist (example)', state: 'fetched now' }),
+        ex: extracted({ title, sub: `Concert · ${date} · ${place}`, cover: title, coverCls: 'poster',
+            left: [{ h: 'Fields', html: kv([['Date', date], ['Place', place], ['Area', area], ['Cancelled', 'no']]) }, { h: 'Line-up', html: kv([['Main performers', 'Bruce Springsteen & The E Street Band']]) }],
+            right: [{ h: `Setlist · ${n} songs (example)`, html: tracks(SETLIST.slice(0, Math.min(n, 16)).map((s, i) => [String(i + 1), s, ''])) }, { h: 'Recordings and releases', html: '<div class="more">Recordings recorded at this event, and the release groups named after it.</div>' }],
+            req: 'event lookup + EAA index' }),
+        live: { url: '/event/…', title, sub: `Event (Concert) · ${date}`, tabs: ['Overview', 'Event art', 'Aliases', 'Tags', 'Edits'], body: `<div class="h3m">Setlist</div>${tracks(SETLIST.slice(0, 8).map((s, i) => [String(i + 1), s, '']))}` },
+    };
+};
+evCard('ev-sx', 'SXSW 2012, day 3: Bruce Springsteen', '2012-03-15', 'Austin Music Hall', 'Austin, Texas, United States', 14);
+evCard('ev-0514', '2025‐05‐14: Co‐op Live, Manchester, England, UK', '2025-05-14', 'Co‐op Live', 'Manchester, England, United Kingdom', 28);
+evCard('ev-0517', '2025‐05‐17: Co‐op Live, Manchester, England, UK', '2025-05-17', 'Co‐op Live', 'Manchester, England, United Kingdom', 27);
+evCard('ev-0520', '2025‐05‐20: Co‐op Live, Manchester, England, UK', '2025-05-20', 'Co‐op Live', 'Manchester, England, United Kingdom', 28);
+D['pl-coop'] = {
+    kind: 'Place',
+    card: card({ title: 'Co‐op Live', sub: 'Indoor arena · Manchester', pills: ['opened 2024'], kv: [['Address', 'Etihad Campus, Manchester'], ['Area', 'Manchester › England › United Kingdom'], ['Coordinates', '53.48° N, 2.20° W']], state: 'fetched now' }),
+    ex: extracted({ title: 'Co‐op Live', sub: 'Indoor arena', left: [{ h: 'Fields', html: kv([['Address', 'Etihad Campus, Manchester'], ['Area', 'Manchester › England › United Kingdom'], ['Begin', '2024']]) }, { h: 'Map', html: '<span class="pill">Open in OpenStreetMap ↗</span>' }],
+        right: [{ h: 'Events here (example)', html: tracks([['', '2025‐05‐14: Co‐op Live, …', ''], ['', '2025‐05‐17: Co‐op Live, …', ''], ['', '2025‐05‐20: Co‐op Live, …', '']]) }], req: 'place lookup + event browse on pin' }),
+    live: { url: '/place/…', title: 'Co‐op Live', sub: 'Place (Indoor arena)', tabs: ['Overview', 'Events', 'Performances', 'Map', 'Aliases', 'Edits'] },
+};
+D['pl-amh'] = {
+    kind: 'Place',
+    card: card({ title: 'Austin Music Hall', sub: 'Venue · Austin', kv: [['Area', 'Austin › Texas › United States']], state: 'saved today' }),
+    ex: extracted({ title: 'Austin Music Hall', sub: 'Venue', left: [{ h: 'Fields', html: kv([['Area', 'Austin › Texas › United States']]) }], right: [], req: 'place lookup' }),
+    live: { url: '/place/…', title: 'Austin Music Hall', sub: 'Place (Venue)' },
+};
+
+/* ---- Artists and labels (tab 5) ---------------------------------------- */
+const artistCard = (k, name, kvs, instr) => {
+    D[k] = {
+        kind: 'Artist',
+        card: card({ title: name, sub: 'Person · Male', pills: [instr, 'E Street Band'], kv: kvs, state: 'fetched now' }),
+        ex: extracted({ title: name, sub: 'Person', left: [{ h: 'Fields', html: kv(kvs) }, { h: 'Links', html: LINKPILLS(['Wikidata', 'Wikipedia', 'Discogs']) }],
+            right: [{ h: 'Release groups by type (example counts)', html: kv([['Album', '12'], ['Single', '9'], ['Compilation', '3'], ['Live', '2']]) }], req: 'artist lookup + counts on pin' }),
+        live: { url: '/artist/…', title: name, sub: 'Artist (Person)', tabs: ['Overview', 'Releases', 'Recordings', 'Works', 'Events', 'Relationships'] },
+    };
+};
+artistCard('ar-clemons', 'Clarence Clemons', [['Born', '1942-01-11, Norfolk, Virginia, US'], ['Died', '2011-06-18, Palm Beach, Florida, US'], ['Also known as', 'The Big Man']], 'saxophone');
+artistCard('ar-bittan', 'Roy Bittan', [['Born', '1949-07-02, Rockaway Beach, New York, US']], 'piano');
+artistCard('ar-weinberg', 'Max Weinberg', [['Born', '1951-04-13, Newark, New Jersey, US']], 'drums');
+artistCard('ar-tallent', 'Garry Tallent', [['Born', '1949-10-27, Detroit, Michigan, US']], 'bass');
+D['lb-columbia'] = {
+    kind: 'Label',
+    card: card({ title: 'Columbia', sub: 'Label · Original Production · United States', pills: ['LC 0162', 'since 1889'], kv: [['Parent', 'Sony Music Entertainment'], ['Releases', 'over 100,000 (example)']], state: 'saved today' }),
+    ex: extracted({ title: 'Columbia', sub: 'Original Production', left: [{ h: 'Fields', html: kv([['Label code', 'LC 0162'], ['Area', 'United States'], ['Begin', '1889']]) }],
+        right: [{ h: 'Related labels', html: kv([['Parent', 'Sony Music Entertainment'], ['Imprints', 'Columbia Nashville, …']]) }], req: 'label lookup' }),
+    live: { url: '/label/011d1192-6f65-45bd-85c4-0400dd45693e', title: 'Columbia', sub: 'Label (Original Production)', tabs: ['Overview', 'Relationships', 'Aliases', 'Tags', 'Edits'] },
+};
+
+/* ---- Edits (tab 6) ---------------------------------------------------- */
+const editCard = (k, n, action, status, votes, change) => {
+    D[k] = {
+        kind: 'Edit',
+        card: card({ title: `Edit #${n} · ${action}`, sub: `Born to Run · by example-editor`, pills: [status, votes],
+            kv: [['Opened', '2026-10-05'], ['Closes', status === 'Open' ? 'in 6 days' : 'closed'], ['Change', change]], state: 'fetched now · kept 10 minutes' }),
+        ex: extracted({ title: `Edit #${n}`, sub: action, left: [{ h: 'Status', html: kv([['Status', status], ['Votes', votes], ['Editor', 'example-editor']]) }],
+            right: [{ h: 'Changes', html: kv([['Change', change]]) }, { h: 'Edit notes', html: '<div class="xsub">One note, by example-editor: "Source: the sleeve."</div>' }], req: 'the HTML of /edit/' + n }),
+        live: { url: `/edit/${n}`, title: `Edit #${n} - ${action}`, sub: `${status} · ${votes}`, tabs: ['Edit', 'Notes'], body: `<table class="tbl"><tbody><tr><th>Change</th><td>${esc(change)}</td></tr></tbody></table>`,
+            side: '<h6>Votes</h6><div>Yes · No · Abstain</div><h6>Your vote</h6><div class="dim">vote in the page itself (↗)</div>' },
+    };
+};
+editCard('ed-1', '100000001', 'Edit release', 'Open', '2 yes, 0 no', 'Packaging: (none) → Gatefold Cover');
+editCard('ed-2', '100000002', 'Add cover art', 'Applied', '1 yes, 0 no', 'Front image added');
+editCard('ed-3', '100000003', 'Edit release group', 'Open', '0 yes, 0 no', 'Disambiguation: (none) → original album');
+D['u-example'] = {
+    kind: 'Editor',
+    card: card({ title: 'example-editor', sub: 'Editor · member since 2014 (example)', pills: ['5,412 accepted', '37 rejected', '12 open'], state: 'fetched now' }),
+    ex: extracted({ title: 'example-editor', sub: 'Editor', left: [{ h: 'Edits (example)', html: kv([['Accepted', '5,412'], ['Rejected', '37'], ['Open', '12']]) }], right: [], req: 'the HTML of /user/example-editor' }),
+    live: { url: '/user/example-editor', title: 'example-editor', sub: 'Editor profile', tabs: ['Profile', 'Edits', 'Votes', 'Collections', 'Tags'] },
+};
+
+/* ---- Fill the release list (tab 2) ------------------------------------ */
+document.getElementById('release-rows').innerHTML = ALBUMS.map(([k, title, date, cat, fmt, songs]) =>
+    `<tr><td><a href="#" data-k="${k}" data-col="rel"${k === 'rel-dark' ? ' data-start' : ''}>${esc(title)}</a></td><td>${esc(fmt)}</td><td class="num">${songs.length}</td>` +
+    `<td class="num">${esc(date)}</td><td>US</td><td><a href="#" data-k="lb-columbia" data-col="lab">Columbia</a></td><td>${esc(cat)}</td></tr>`).join('');
+
+/* ---- The mock engine: Ctrl + hover, Space, Esc, arrows, tap ------------ */
+const plainBox = document.getElementById('plain-hover');
+const touch = window.matchMedia('(hover: none)').matches;
+const state = { hover: null, shown: null, win: null, typedAt: 0 };
+const PINS = {}; // win name -> {key, el, view, hideNav}
+
+function winOf(el) { return el && el.closest ? el.closest('.window[data-win]') : null; }
+function cardEl(win) { return win.querySelector('.float'); }
+
+/** Places the card beside the link, as _dpPlacePeek() does, inside its window. */
+function place(win, el) {
+    const c = cardEl(win);
+    c.style.left = '0px'; c.style.top = '0px';
+    const wr = win.getBoundingClientRect(), r = el.getBoundingClientRect();
+    const w = c.offsetWidth;
+    let x = r.right - wr.left + 12, y = r.top - wr.top - 6;
+    if (x + w > wr.width - 8) {
+        x = r.left - wr.left - w - 12;
+        if (x < 8) { x = Math.max(8, Math.min(r.left - wr.left, wr.width - w - 8)); y = r.bottom - wr.top + 8; }
+    }
+    c.style.left = Math.max(8, x) + 'px';
+    c.style.top = Math.max(8, y) + 'px';
+}
+
+function showCard(el) {
+    const win = winOf(el), k = el.dataset.k;
+    if (!win || !D[k]) return;
+    if (state.shown && state.shown !== el) hideCard();
+    const c = cardEl(win);
+    c.innerHTML = D[k].card;
+    c.classList.add('on');
+    state.shown = el; state.win = win;
+    win.querySelectorAll('tr.is-peek').forEach(t => t.classList.remove('is-peek'));
+    const tr = el.closest('tr'); if (tr) tr.classList.add('is-peek');
+    place(win, el);
+}
+function hideCard() {
+    if (!state.shown) return;
+    const win = winOf(state.shown);
+    if (win) { cardEl(win).classList.remove('on'); win.querySelectorAll('tr.is-peek').forEach(t => t.classList.remove('is-peek')); }
+    state.shown = null;
+}
+
+/** The links of one column of one window, in row order: what the arrows step through. */
+function colLinks(win, col) { return Array.from(win.querySelectorAll(`[data-k][data-col="${col}"]`)).filter(a => D[a.dataset.k]); }
+
+function renderPin(name) {
+    const p = PINS[name], slot = document.querySelector(`.dlg-slot[data-for="${name}"]`);
+    if (!slot) return;
+    if (!p) { slot.innerHTML = '<div class="dlg-closed">The window is closed. Hold Ctrl over a link and press Space to pin its card.</div>'; return; }
+    const d = D[p.el.dataset.k], win = document.querySelector(`.window[data-win="${name}"]`);
+    const links = colLinks(win, p.el.dataset.col), i = links.indexOf(p.el);
+    win.querySelectorAll('tr.is-cur').forEach(t => t.classList.remove('is-cur'));
+    const tr = p.el.closest('tr'); if (tr) tr.classList.add('is-cur');
+    slot.innerHTML = `<div class="dlg" role="dialog" aria-label="${esc(d.kind)}"><div class="dlg-bar"><span class="dlg-title">${esc(d.kind)}</span><span class="dlg-tools">` +
+        `<button type="button" class="tbtn" data-act="prev" title="Previous row (←)">‹</button><span class="poslbl">${i + 1} / ${links.length}</span>` +
+        `<button type="button" class="tbtn" data-act="next" title="Next row (→)">›</button><span class="seg"><button type="button" class="tbtn" data-act="ex" aria-pressed="${p.view === 'ex'}">Extracted</button>` +
+        `<button type="button" class="tbtn" data-act="live" aria-pressed="${p.view === 'live'}">Live page</button></span><button type="button" class="tbtn" data-act="reload" title="Load again, bypassing the saved copy">⟳</button>` +
+        `<button type="button" class="tbtn" data-act="open" title="Open the page in a new tab">↗</button><button type="button" class="xbtn" data-act="close" title="Close (Escape)">✕</button></span></div>` +
+        `<div class="dlg-area" tabindex="-1">${p.view === 'ex' ? d.ex : livepage(d.live, p.hideNav)}</div><div class="dlg-hint">← → step through the ${esc(d.kind.toLowerCase())} column · drag the title bar, resize from the corner (in the script)</div></div>`;
+}
+function pin(el) {
+    const win = winOf(el); if (!win || !D[el.dataset.k]) return;
+    const name = win.dataset.win;
+    PINS[name] = { el, view: (PINS[name] && PINS[name].view) || 'ex', hideNav: PINS[name] ? PINS[name].hideNav : true };
+    hideCard();
+    renderPin(name);
+    state.win = win;
+    // As _dpOpenDialog() does: the focus moves into the window, out of the
+    // filter (or the tab strip), so the arrows step through the rows.
+    const area = document.querySelector(`.dlg-slot[data-for="${name}"] .dlg-area`);
+    if (area) area.focus({ preventScroll: true });
+}
+function step(name, delta) {
+    const p = PINS[name]; if (!p) return;
+    const win = document.querySelector(`.window[data-win="${name}"]`);
+    const links = colLinks(win, p.el.dataset.col);
+    const next = links[links.indexOf(p.el) + delta];
+    if (next) { p.el = next; renderPin(name); }
+}
+let toastTimer = 0;
+function toast(msg) {
+    const t = document.querySelector('.toast'); t.textContent = msg; t.classList.add('on');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), 1800);
+}
+
+document.addEventListener('mouseover', e => {
+    const el = e.target.closest ? e.target.closest('[data-k]') : null;
+    if (!el || !winOf(el)) return;
+    state.hover = el;
+    if (touch) return;
+    if (e.ctrlKey || plainBox.checked) showCard(el);
+});
+document.addEventListener('mouseout', e => {
+    const el = e.target.closest ? e.target.closest('[data-k]') : null;
+    if (!el || (e.relatedTarget && el.contains(e.relatedTarget))) return;
+    if (state.hover === el) state.hover = null;
+});
+document.addEventListener('input', e => { if (e.target.matches('input[type="text"]')) state.typedAt = Date.now(); });
+document.addEventListener('keydown', e => {
+    if (e.key === 'Control' && !e.repeat && state.hover && state.hover.matches(':hover')) { showCard(state.hover); return; }
+    if (e.key === 'Escape' && state.shown) { e.preventDefault(); hideCard(); return; }
+    const typing = e.target.matches && e.target.matches('input[type="text"]') && Date.now() - state.typedAt < 1500;
+    if ((e.key === ' ' || e.code === 'Space') && state.shown && !typing && !e.ctrlKey) { e.preventDefault(); pin(state.shown); return; }
+    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && state.win && !e.target.matches('input')) {
+        const name = state.win.dataset.win;
+        if (PINS[name]) { e.preventDefault(); step(name, e.key === 'ArrowLeft' ? -1 : 1); }
+    }
+});
+document.addEventListener('mousedown', e => { if (state.shown && !e.target.closest('.float')) hideCard(); });
+document.addEventListener('click', e => {
+    const goto = e.target.closest('[data-goto]');
+    if (goto) { e.preventDefault(); selectTab(goto.dataset.goto, false); window.scrollTo({ top: 0 }); return; }
+    const el = e.target.closest('[data-k]');
+    if (el && winOf(el)) { e.preventDefault(); if (touch) pin(el); else toast('In the script this opens the page. Ctrl + hover shows its card.'); return; }
+    if (e.target.closest('a[href="#"]')) e.preventDefault();
+    const act = e.target.closest('[data-act]');
+    if (act) {
+        const name = act.closest('.dlg-slot').dataset.for, p = PINS[name];
+        if (!p) return;
+        const a = act.dataset.act;
+        if (a === 'prev') step(name, -1);
+        else if (a === 'next') step(name, 1);
+        else if (a === 'ex' || a === 'live') { p.view = a; renderPin(name); }
+        else if (a === 'reload') toast('⟳ asks MusicBrainz again, bypassing both caches.');
+        else if (a === 'open') toast('↗ opens the page in a new tab.');
+        else if (a === 'close') { delete PINS[name]; renderPin(name); document.querySelectorAll(`.window[data-win="${name}"] tr.is-cur`).forEach(t => t.classList.remove('is-cur')); }
+        return;
+    }
+    const th = e.target.closest('table.rt th[data-k] button');
+    if (th) sortRt(th.parentElement);
+});
+document.addEventListener('change', e => {
+    if (!e.target.matches('.hidenav')) return;
+    const name = e.target.closest('.dlg-slot').dataset.for;
+    PINS[name].hideNav = e.target.checked;
+    e.target.closest('.dlg').querySelector('.livepage').classList.toggle('hide-nav', e.target.checked);
+});
+
+/** Sorts the release group's table by one column, as the Phase 1 window would. */
+function sortRt(th) {
+    const table = th.closest('table'), idx = Array.from(th.parentElement.children).indexOf(th);
+    const dir = th.getAttribute('aria-sort') === 'ascending' ? 'descending' : 'ascending';
+    table.querySelectorAll('th[aria-sort]').forEach(h => h.setAttribute('aria-sort', 'none'));
+    th.setAttribute('aria-sort', dir);
+    const num = th.dataset.type === 'n';
+    const rows = Array.from(table.tBodies[0].rows);
+    rows.sort((a, b) => {
+        const x = a.cells[idx].textContent.replace('▸ ', ''), y = b.cells[idx].textContent.replace('▸ ', '');
+        const c = num ? (parseFloat(x) || 0) - (parseFloat(y) || 0) : x.localeCompare(y);
+        return dir === 'ascending' ? c : -c;
+    });
+    rows.forEach(r => table.tBodies[0].appendChild(r));
+}
+
+/* ---- Tabs --------------------------------------------------------------- */
+const TABS = ['overview', 'rg', 'release', 'recwork', 'event', 'artist', 'edits', 'search', 'containers', 'settings'];
+function startState(name) {
+    const win = document.querySelector(`.window[data-win="${name}"]`);
+    if (!win) return;
+    const start = win.querySelector('[data-start]');
+    if (!PINS[name] && start) {
+        PINS[name] = { el: start, view: 'ex', hideNav: true };
+        renderPin(name);
+        requestAnimationFrame(() => showCard(start));
+    }
+}
+function selectTab(name, focus) {
+    if (!TABS.includes(name)) name = 'overview';
+    hideCard();
+    TABS.forEach(t => {
+        document.getElementById('t-' + t).setAttribute('aria-selected', String(t === name));
+        document.getElementById('p-' + t).hidden = t !== name;
+    });
+    if (focus) document.getElementById('t-' + name).focus();
+    try { history.replaceState(null, '', '#' + name); } catch (_) { /* sandboxed */ }
+    try { localStorage.setItem('pe-tab', name); } catch (_) { /* storage blocked */ }
+    startState(name);
+}
+document.querySelector('.tabs').addEventListener('click', e => {
+    const t = e.target.closest('.tab');
+    if (t) selectTab(t.id.slice(2));
+});
+document.querySelector('.tabs').addEventListener('keydown', e => {
+    if (!['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+    e.stopPropagation();
+    const cur = TABS.indexOf(document.activeElement.id.slice(2));
+    if (cur < 0) return;
+    selectTab(TABS[(cur + (e.key === 'ArrowRight' ? 1 : -1) + TABS.length) % TABS.length], true);
+});
+window.addEventListener('resize', () => { if (state.shown) place(winOf(state.shown), state.shown); });
+
+let first = location.hash.slice(1);
+if (!TABS.includes(first)) { try { first = localStorage.getItem('pe-tab') || 'overview'; } catch (_) { first = 'overview'; } }
+selectTab(first);
+</script>

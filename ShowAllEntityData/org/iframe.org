@@ -36,3 +36,472 @@ Make comprehensive suggestions for MusicBrainz PTs with nice rich HTML based moc
 4.)
 
 generate the plan information inside this file, so that I can resume also from another Claude session on another host
+
+** Status
+
+- [X] Read the current engine and the two release-group cards on
+  =release-tracks= (2026-10-07, 9.99.1269). Inventory: "What exists today".
+- [X] Design, suggestions and phased plan: this file (2026-10-07).
+- [X] Mockups: [[file:iframe-mockups.html]], a self-contained page you can open
+  from disk. Published as https://claude.ai/artifact/PwX26bNZEJaifwtFDZzhSg
+  (private; the published copy is the file minus the lines above its
+  =SKELETON-END= marker).
+- [X] Decide the "Open questions" at the end of this file: decided 2026-10-07,
+  see "answers". Answer 8 differs from the recommendation: the subheader link
+  stays on a plain hover.
+- [ ] Phase 0: probes. No userscript change.
+- [ ] Phase 1: the engine refactor into sources, then the release-group popup on
+  =release-tracks= (item 2 of the request).
+- [ ] Phase 2: Web Service entity cards on the links of MusicBrainz tables.
+- [ ] Phase 3: edit and editor cards (read from HTML); Live page for every
+  MusicBrainz card.
+- [ ] Phase 4: containers beyond =<a href>= (item 1b) and page-wide scope.
+- [ ] Phase 5 (optional): drill-down inside the dialog; a side drawer if the
+  dialog feels cramped.
+
+** Resume here (another session, another host)
+
+1. =git pull= on =main=: this file and the mockups are there. Implementation
+   work lives on =feature/popup-engine= once Phase 0 starts; pull that too.
+2. Read, in this order:
+   - this file;
+   - [[file:../docs/claude/detail-pages.md]]: the engine's rules, every one of
+     which carries over (Space typing grace, tap opens the dialog, a moved-on
+     hover makes no request, only a success is cached, the parser version);
+   - in [[file:../docs/claude/release-tracks-and-length.md]] the paragraphs
+     "Item 4: the release group decides the main event" and "Per-event tints and
+     the "#" card";
+   - the mockups.
+3. Start the next unchecked phase with:
+
+   #+begin_example
+   Read org/iframe.org and carry out Phase <N> on branch feature/popup-engine.
+   Follow its "Design", "Risks and traps" and "Performance" sections, record the
+   changes in ShowAllEntityData_CHANGELOG.wip.json, and do not merge into main;
+   ask me first.
+   #+end_example
+
+4. Tick the phase off in "Status" when it lands, and write what Phase 0 found
+   into "Phase 0: probes".
+
+** What exists today (read 2026-10-07, 9.99.1269)
+
+Grep anchors only. Line numbers drift with every commit.
+
+*** The detail-page preview (foreign hosts only)
+
+| Part             | Grep anchor                                      | Generic or host-bound                                                                    |
+|------------------+--------------------------------------------------+------------------------------------------------------------------------------------------|
+| record           | =function _dpEmpty=                              | generic                                                                                  |
+| card, Extracted  | =_dpCardHtml=, =_dpExtractedHtml=                | generic: they render the record, never a site's markup                                   |
+| get with caches  | =async function _dpGet=                          | generic: memory, IndexedDB =vz-saed-detail-pages=, network; shared in-flight; =wanted()= |
+| fetch and decode | =async function _dpFetchText=                    | generic: charset aware, one retry on a transient status                                  |
+| rate gate        | =function _dpAwaitSlot=                          | its own 1 s gate; right for another origin, wrong on MusicBrainz                         |
+| site table       | =const _DP_SITES=                                | host-bound: isDetailUrl, parse, liveRoot, liveHide, liveCss, livePrepare                 |
+| active site      | =function _dpActiveSite=                         | host-bound: keyed on =_foreignHost=, so null on MusicBrainz                              |
+| link test        | =function _dpSiteForLink=                        | host-bound: =table.tbl > tbody= only, no =<img>= inside, same origin                     |
+| card controller  | =_dpSchedulePeek=, =_dpShowPeek=, =_dpPlacePeek= | generic: delay, loading state, placed beside the link                                    |
+| Ctrl gate        | =_dpNeedsCtrl=, =_dpCtrlTarget=                  | generic; =sa_dp_hover_without_ctrl=                                                      |
+| dialog           | =_dpOpenDialog=, =_dpRenderDialog=               | generic: =createInfoDialog()= shell, =geoKey= =sa_dp_dialog_geometry=                    |
+| row stepping     | =function _dpRowLinks=                           | the first detail link of each visible row; a MusicBrainz row has several                 |
+| Live page        | =_dpLiveDocHtml=, =_dpIsolateFrame=              | generic: a srcdoc copy without scripts, sandbox without allow-scripts                    |
+| install          | =function _initDetailPreview=                    | host-bound: called only when =_foreignHost && pageType && headerContainer=               |
+
+*** The release-group cards on release-tracks
+
+Two cards, both =data-mbtt= HTML shown by =#mb-stat-tooltip= (=_initStatTooltip=):
+
+- *The subheader link* "(N versions available in <name>)": =initReleaseGroupLink=,
+  setting =sa_release_rg_link=. The name comes from the page's own JSON
+  (=_releaseGroupInfo=, no request). The table of releases comes from one browse
+  on the first hover (=_rgPreviewLoad=):
+  ~/ws/2/release?release-group=<id>&inc=media+labels&limit=100&fmt=json~.
+- *The "#" cell of a live track*: =initEventRgTooltip=, =_eventRgCardHtml=,
+  settings =sa_event_rg_tooltip=, =sa_event_rg_tooltip_without_ctrl=,
+  =sa_event_rg_search_phrase=, =sa_event_rg_search_artist=,
+  =sa_event_rg_search_hints=. The main event shows the release's own release
+  group; any other event searches for a release group named like the event
+  (=_eventRgLookup=, ~/ws/2/release-group?query=...~), and a hit counts only
+  when its title IS the event name.
+
+What limits them today:
+- the card follows the pointer and cannot be entered: no clicking a release, no
+  scrolling a long table, no pin, no Live page;
+- at most 100 releases ("showing 100");
+- memory for this page only (=_rgPreviews=, =_eventRgSearches=): every page
+  load asks again;
+- the subheader link has no Ctrl gate; the "#" cell has one;
+- the "no match" hints keep titles only, so they cannot link;
+- inline styles (=_rgReleasesTableHtml=, =_rgPreviewHtml=);
+- =_rgWsGet= is a queue of its own (1.1 s apart), beside the Relationships
+  column's =_relAwaitRateSlot()= (1.1 s), the millisecond-length batches and the
+  page fetcher. Together they can go over MusicBrainz's 1 request per second.
+
+Covered by =tests/fixtures/release-rg-main-event.spec.js= and
+=tests/fixtures/release-event-colours-rg-tooltip.spec.js= (fixtures
+=release-tracks-brixton-night.html= and =ws2-rg-release-browse.json=). Probes:
+=scripts/probe-rg-release-browse.py=, =scripts/probe-rg-event-search.py=.
+
+*** Other floating UI the engine has to live with
+
+- =#mb-stat-tooltip= (=_initStatTooltip=): =data-mbtt=, =data-mbtt-fn=
+  (=art-sum=, =art-img=, resolved by =_mbttResolve=) and the "Liner notes"
+  cards of =[data-mb-tip]=. =_OTHER_RICH_TIPS= lists the boxes that keep it
+  quiet while they show; =mb-dp-peek= is one of them.
+- =#mb-rel-tooltip= (Relationships column), =#mb-art-hover-preview= and
+  =mb-art-bigbox-tooltip= (artwork), =#mb-art-viewer= (owns every key while
+  open).
+- =createInfoDialog()= dialogs: help, keyboard shortcuts, the artwork gallery,
+  the detail dialog.
+
+*** Shared helpers to reuse, not copy
+
+| Helper                | Grep anchor                            | Use                                                                        |
+|-----------------------+----------------------------------------+----------------------------------------------------------------------------|
+| Web Service JSON      | =async function _ws2GetJson=           | retries 429/502/503/504 with Retry-After as a floor; never rejects         |
+| MusicBrainz rate gate | =function _relAwaitRateSlot=           | "one gate for every request", 1.1 s, reserved synchronously                |
+| dialog shell          | =function createInfoDialog=            | drag, resize with =geoKey=, Esc, click outside, =titleBarExtras=           |
+| card escaping, tips   | =_mbttEscape=, =_setTip=               | text into card HTML; tooltips on the dialog's buttons                      |
+| touch                 | =_isTouchCompatMouseEvent=             | a tap is not a hover; =_isTouchPrimaryDevice=, =_installTouchInputTracker= |
+| release page JSON     | =function _readEmbeddedReleaseJson=    | what a release page already knows, at no cost                              |
+| artwork               | =CAA_CTX=, =EAA_CTX=, =_artViewerLoad= | covers and posters; the viewer for a click on one                          |
+
+** Design: one engine, many sources
+
+*** Sources replace =_DP_SITES=
+
+A source says which links (or containers) it serves and how to read their
+target:
+
+#+begin_src js
+{
+    id: 'mb-release-group',             // debug channel and cache namespace
+    host: 'musicbrainz',                // 'musicbrainz', or a _foreignHost value
+    setting: 'sa_pop_mb',               // its gate; the foreign hosts keep sa_*_detail_preview
+    kind: 'Release group',              // the dialog's title
+    match: (url, el) => key || null,    // from an href, or from data-mb-pop
+    load: async (key, ctx) => record,   // the card; ctx = {gate, fetchJson, fetchText, wanted, force}
+    more: async (key, record, ctx) => record, // optional: what only the pinned dialog needs
+    live: { url: (key) => '/release-group/' + key, charset: null,
+            liveRoot, liveHide, liveCss, livePrepare },
+    step: 'column',                     // the arrows stay in one column ('row' = today's rule)
+    ttlMs: 24 * 3600 * 1000,
+    parserVersion: 1,
+}
+#+end_src
+
+- The four foreign sites become four sources with their current parsers and
+  =step: 'row'=. That is a pure refactor, pinned by the unchanged
+  =detail-preview= specs and =scripts/mutations/detail-preview.json=.
+- =_dpActiveSite()= becomes "the sources of this host whose setting is on";
+  =_dpSiteForLink()= becomes =_popResolve(el)=, which returns
+  ={source, key, anchor}= or null.
+- The record keeps =_dpEmpty()='s shape and gains:
+  - =pills=: short facts ("Album", "Official", "12 releases");
+  - =links=: related entities, ={kind, label, href}=, clickable in the dialog;
+  - =table=: ={cols, rows, sortable}= for a release group's releases, a
+    recording's releases, a work's recordings;
+  - =art=: cover or poster URLs, only where the Web Service answer says the
+    archive has them (=cover-art-archive.front=, to be confirmed in Phase 0).
+
+*** Resolving what is under the pointer
+
+First hit wins:
+1. ~[data-mb-pop="<source>:<key>"]~ on the element or an ancestor, stamped by a
+   converter or extractor during pre-processing. An attribute survives
+   =cloneNode(true)=, so every re-render keeps it for free.
+2. A page-definition container (=features.popTargets=, see 1b).
+3. An =a[href]= that a source's =match()= accepts.
+
+Never a card for: a link that wraps an =<img>= (artwork has its own preview), the
+=.tabs= navigation, the page header and footer, the script's own toolbar and
+menus, edit/create/merge/add-cover-art links, =#= anchors, and links inside a
+card.
+
+*** Gates on MusicBrainz
+
+- One setting, =sa_pop_mb= ("Preview linked entities on hover"), *off by
+  default*, in a new ⚙️ section. No per-kind switches (answer 3).
+- The Ctrl gate as on the foreign hosts: hover with Ctrl held, or rest the
+  pointer and press Ctrl. It follows =sa_dp_hover_without_ctrl=, relabelled
+  "every preview"; the "#" cell keeps =sa_event_rg_tooltip_without_ctrl=, and
+  no new key replaces the two (answer 2). The release page's subheader link
+  stays on a plain hover (answer 8).
+- Installed at page init on every =@include=d MusicBrainz page, table rendered or
+  not: the native rows and the rendered rows hold the same links, and the
+  listeners are delegated on =document=, so =cloneNode= re-renders need nothing.
+- Scope: =table.tbl= bodies first; =#content= page-wide in Phase 4.
+
+*** Requests, cache, freshness
+
+- Every MusicBrainz request waits on =_relAwaitRateSlot()=, the gate whose own
+  JSDoc calls it "one gate for every request". =_rgWsGet= moves onto it too. The
+  foreign hosts keep =_dpAwaitSlot()=: another origin, another budget.
+- A card makes at most ONE request. The pinned dialog may add one or two
+  (=more()=); a paged browse shows its progress ("200 / 312").
+- Cache: the detail-page database =vz-saed-detail-pages=, store =pages=, keyed by
+  the request URL (which carries the inc set), ={url, v, at, data}=. IndexedDB
+  is per origin, so on musicbrainz.org it starts empty, and the art cache's
+  =_ART_IDB_VERSION= stays as it is.
+- Time to live per source: 30 days for the foreign sites, as today; 24 h by
+  default for MusicBrainz (=sa_pop_mb_ttl_hours=). ⟳ bypasses both tiers. Only
+  a successful answer is cached, as everywhere in the script.
+- *NOT* =_relFetchWs2()=: its two cache tiers are keyed =type:mbid= with no inc
+  set (=_relIncOptionsForEntityType()= fixes one per type), so a popup's answer
+  and the Relationships column's would overwrite each other's.
+
+*** The dialog
+
+- =#mb-dp-dialog= keeps its id and shell. Its title becomes the source's kind
+  ("Release group", "Release", ...) instead of "Detail page".
+- ‹ › and ← → step through the same column (=cellIndex=) and the same source in
+  the visible rows of that table: a MusicBrainz row links an artist, a release
+  group and a label, and "the first link of the row" would mix them. In a
+  multi-table page the step continues into the next visible sub-table.
+- The Live page on MusicBrainz: the entity's own page, fetched same-origin
+  through the shared gate and cleaned by =_dpLiveDocHtml()= (no scripts, so React
+  does not hydrate and the userscript does not run again inside); =liveRoot=
+  =#content=; header, banner and footer hidden; the sidebar (cover, rating,
+  tags, external links) stays. Phase 0 checks what a page without scripts still
+  shows.
+
+** 1b. Containers beyond <a href> (suggestions)
+
+Everything here ends up as rule 1 of the resolver (=data-mb-pop=), so the engine
+keeps one path. Stamping an attribute changes no cell text, so none of the four
+post-render cache duties (docs/claude/filter-and-cache-invariants.md) apply when
+it happens during pre-processing, before the rows are captured.
+
+| #   | Container                 | How it is declared                                        | Example                                                                             |
+|-----+---------------------------+-----------------------------------------------------------+-------------------------------------------------------------------------------------|
+| i   | any element, by attribute | ~data-mb-pop="<source>:<key>"~, stamped at pre-processing | the release-tracks "#" cell: ~data-mb-pop="mb-event-rg:<event key>"~                |
+| ii  | a column, by header name  | =features.popTargets: [{column, source, key(td)}]=        | Catalog# to its label; Barcode to a barcode search; Format to the format's doc      |
+| iii | the row                   | the row's main entity cell carries i                      | rows whose main entity is plain text; on a touch screen a small magnifier opens it  |
+| iv  | text patterns             | the existing formatters stamp i                           | ISRC (=initIsrcFormatting=), barcode (=initBarcodeHighlight=), MBIDs in annotations |
+| v   | the script's own UI       | i on the element                                          | UVD entries (an artist entry, its artist), h3 medium headers (the disc IDs)         |
+| vi  | links inside the dialog   | the dialog's own links                                    | Space on a release inside the release-group dialog: that release, with a Back       |
+
+- ii is the declarative form of i for a whole column: resolved by header name
+  at pre-processing, like =collapsableColumns=, and turned into i on every cell.
+- iii is the touch answer as well: a phone has no hover and no Ctrl.
+- vi turns the dialog into a small browser of linked entities: a back stack,
+  the dialog title showing the path ("Release group > Release").
+
+** 2. Phase 1: the release-group popup on release-tracks
+
+Phase 1 is two WIP entries on =feature/popup-engine=: WIP.1 the refactor into
+sources (no visible change), WIP.2 these enhancements.
+
+| #   | Enhancement                | What changes                                                                                                                                               |
+|-----+----------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| E1  | one engine                 | both cards become sources: =mb-release-group= (the subheader link), =mb-event-rg= (the "#" cell, by =data-mb-pop=); beside the element, Esc, Space pins    |
+| E2  | two gates, as today        | the "#" cell keeps its Ctrl gate; the subheader link stays on a plain hover (answer 8)                                                                     |
+| E3  | a pinned dialog            | Extracted: the release group's facts and its releases; Live page: the release group's own page                                                             |
+| E4  | every release              | the browse pages past 100 (offset), each page through the gate, progress shown, a cap (setting, default 500)                                               |
+| E5  | a real table               | sortable Release, Format, Tracks, Date, Country, Label, Cat#, Barcode; each title links its release; this release marked; covers where the archive has one |
+| E6  | facts on pin only          | one lookup on Space: type and secondary types, first release date, artist credit, rating, genres, external links, annotation                               |
+| E7  | a "no match" that helps    | the hints keep their ids and link; a Search button runs the card's own query on musicbrainz.org                                                            |
+| E8  | remembered                 | release lists in IndexedDB for 24 h; event searches stay per page                                                                                          |
+| E9  | one rate gate              | =_rgWsGet= goes through =_relAwaitRateSlot()=                                                                                                              |
+| E10 | classes, not inline styles | the table and the pills move into the engine's stylesheet                                                                                                  |
+
+Unchanged: Alt+click on the "#" cell; the 4c ⚠️ card after the link (it explains
+a title, it is not an entity, so it stays a =data-mbtt= card); the event tints;
+=data-mb-main-event=.
+
+Requests (verify in Phase 0, per the root CLAUDE.md):
+- card: ~/ws/2/release?release-group=<id>&inc=media+labels&limit=100&offset=<n>&fmt=json~
+  (as today, plus =offset= in the dialog);
+- dialog: ~/ws/2/release-group/<id>?inc=artist-credits+genres+ratings+url-rels+annotation&fmt=json~;
+- Live page: the HTML of =/release-group/<id>=.
+
+Tests (Phase 1 is done when all of these hold):
+- the foreign hosts: =detail-preview.spec.js=, =detail-preview.mobile.spec.js=
+  and =scripts/mutations/detail-preview.json= green and unchanged (the refactor's
+  guarantee);
+- =release-rg-main-event.spec.js= and =release-event-colours-rg-tooltip.spec.js=
+  green, edited only where the card moved from =#mb-stat-tooltip= to
+  =#mb-dp-peek=;
+- a new =tests/fixtures/release-rg-popup.spec.js=: a plain hover (no Ctrl) on
+  the subheader link shows the card beside it, while a "#" cell still needs
+  Ctrl; Space pins; a two-page browse fixture (150
+  releases) lists all 150; sorting by Date orders them; a title links
+  =/release/<id>=; ⟳ asks again; after a reload IndexedDB answers with no
+  request; a 503 shows the error and caches nothing; ← → step through the "#"
+  column; the Live page copy has no script; two hovers and a Relationships load
+  together keep 1.1 s between requests;
+- a mobile spec: a tap on the "#" cell opens the dialog;
+- a new =scripts/mutations/popup-engine.json=, each guard mutation-checked.
+
+** 3. MusicBrainz suggestions
+
+*** Per entity kind
+
+The card is about the link's TARGET, so one source serves every PT that links
+that kind. The card makes at most one request; the dialog adds what is marked.
+Every endpoint and inc set below is a candidate: check it against
+https://musicbrainz.org/doc/MusicBrainz_API and a Phase 0 probe before coding.
+
+| Kind          | Card (hover)                                                                   | The dialog adds (pin)                                                  | Requests (candidates)                                                                            |
+|---------------+--------------------------------------------------------------------------------+------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------|
+| Release group | cover, type, first release date, artist, releases by format, rating            | facts, every release (sortable), external links, annotation            | browse ~release?release-group=~ (media+labels); lookup on pin                                    |
+| Release       | cover, status, date and country, label and cat#, barcode, formats, track count | tracklist by medium with lengths, every release event, the cover strip | lookup ~inc=artist-credits+labels+recordings+release-groups+media~; CAA index on pin             |
+| Recording     | length, artist, first release date, ISRCs, video, "on N releases", the work    | its releases, credits (performers, recorded at place and event)        | lookup ~inc=artist-credits+isrcs+releases+work-rels~; ~artist-rels+place-rels+event-rels~ on pin |
+| Work          | type, language, ISWC, writers, publishers, number of recordings                | its recordings (paged), based-on and parts                             | lookup ~inc=artist-rels+label-rels+work-rels~; browse ~recording?work=~ on pin                   |
+| Artist        | type, area and flag, life span, disambiguation, genres, rating, IPI and ISNI   | release groups by type (counts), external links, aliases               | lookup ~inc=genres+ratings+url-rels+aliases~; counts by browse ~limit=1~ on pin                  |
+| Label         | type, area, label code, life span, genres                                      | number of releases, external links, parent and subsidiaries            | lookup ~inc=genres+url-rels+label-rels~                                                          |
+| Event         | date and time, type, place and area, cancelled, main performers, poster        | setlist, line-up, recordings and releases of the event                 | lookup ~inc=artist-rels+place-rels+recording-rels+release-rels~; EAA index                       |
+| Place         | type, address, area chain, coordinates, life span                              | events at the place, a map link                                        | lookup ~inc=area-rels+url-rels~; browse ~event?place=~ on pin                                    |
+| Area          | type, parent chain, ISO codes, flag                                            | sub-areas, counts                                                      | lookup ~inc=area-rels~                                                                           |
+| Series        | type, ordering, number of items, the first items with their numbers            | every item, in order                                                   | lookup with the rels of the series' item type                                                    |
+| Instrument    | type, description, aliases                                                     | parent and child instruments                                           | lookup ~inc=instrument-rels+aliases~                                                             |
+| Collection    | type, editor, number of items                                                  | -                                                                      | ~/ws/2/collection/<id>~ (public collections only)                                                |
+| ISRC, ISWC    | the recordings or works carrying it                                            | -                                                                      | ~/ws/2/isrc/<code>~, ~/ws/2/iswc/<code>~                                                         |
+| Disc ID       | TOC, track count, attached releases                                            | -                                                                      | ~/ws/2/discid/<id>~                                                                              |
+| Edit          | type, status, open or closed, votes, editor, the entity edited                 | the edit's details and notes (the Live page is the edit page)          | HTML of =/edit/<n>=: the Web Service has no edits                                                |
+| Editor        | member since, edits accepted and rejected, open edits                          | -                                                                      | HTML of =/user/<name>=: the Web Service has no editors                                           |
+
+*** Per PT cluster
+
+Most valuable first. Each item: the PTs, the links worth a card, and what it
+gives the user.
+
+1. *Discographies*: =artist-releasegroups=. Title (release group), artist
+   credit. Flip through a discography with the arrows: cover, versions, formats.
+2. *Release lists*: =artist-releases=, =label-releases=,
+   =releasegroup-releases=, =recording-releases=, =area-releases=,
+   =instrument-releases=, =taglookup=, =cdtoc=. Release, Label. Compare
+   pressings and tracklists without opening tabs.
+3. *Release tracklist*: =release-tracks=. "#" (Phase 1), Title (recording),
+   Recording of work, Recorded at event and place, the credit columns. "On 14
+   releases", the work's writers, the event's setlist around this track.
+4. *Edits*: =edits=, =user-edits=, =user-open-edits=, =notes-received=. Edit #,
+   the edited entity, the editors. Triage: status and votes on the card, the
+   edit itself in the Live page, the arrows to the next one.
+5. *Search*: =search=. Every result kind. Pick the right result without opening
+   five tabs.
+6. *Recording lists*: =artist-recordings=, =work-recordings=,
+   =instrument-recordings=, =area-recordings=, =place-performances=, =isrc=.
+   Recording, Release group. Which releases carry this take; its ISRCs and
+   length.
+7. *Event lists*: =artist-events=, =area-events=, =place-events=,
+   =event-overview=, =series-releases= (events). Event, Place. Setlist, line-up
+   and poster while scanning a tour.
+8. *Reports*: =report-detail=, =report-multiple-linked=. The reported entity.
+   See the problem in the card or the Live page, fix it from there.
+9. *Work lists*: =artist-works=, =area-works=. Work. Writers, ISWC and number of
+   recordings at a glance.
+10. *Mixed kinds*: =artist-relationships=, =label-relationships= (and
+    -filtered), =tag-value=, =user-tag-value=, =user-ratings=,
+    =collections-releases=, =series-releases=, =artist-credit=. The entity of
+    each sub-table, one source per kind.
+11. *Editors*: =user-subscriptions=, =editor-subscribers=, =auto-elections=,
+    =auto-editor-election=, =privileged-accounts=, =area-users=, =annotations=,
+    the =*-collections= PTs. The editor. Who is this editor.
+12. *Disc IDs*: =release-discids=, =cd-stub=, =top-cd-stub=. Disc ID, Release.
+    TOC and attached releases.
+13. *Lists of definitions*: =instrument-list=, =genres-list=. Instrument. The
+    description without leaving the list.
+14. *Leave alone*: the =*-tags= PTs, =entity-aliases=, =ratings-entity=,
+    =popular-tags=. Little to gain.
+
+** Phases
+
+| Phase | Scope                                                                                             | Where                                 | Visible change      |
+|-------+---------------------------------------------------------------------------------------------------+---------------------------------------+---------------------|
+| 0     | probes (next section); results written into this file                                             | =scripts/=, on =feature/popup-engine= | none                |
+| 1     | the refactor into sources (WIP.1); the release-group popup E1-E10 (WIP.2)                         | =feature/popup-engine=                | release-tracks only |
+| 2     | Web Service cards on MusicBrainz table links: every kind of "Per entity kind" but edit and editor | same branch, WIP.3                    | behind =sa_pop_mb=  |
+| 3     | edit and editor cards read from HTML; the Live page for every MusicBrainz kind                    | WIP.4                                 | the edits PTs       |
+| 4     | containers (1b), page-wide scope, perhaps a wider =@include=                                      | WIP.5                                 | where declared      |
+| 5     | drill-down inside the dialog with a back stack; a side drawer if wanted                           | WIP.6                                 | the dialog          |
+
+Every phase owes, before anyone asks to merge:
+- fixture specs and a mutation list; a spec that MusicBrainz with =sa_pop_mb=
+  off shows nothing new; a mobile spec for the tap;
+- one =@extended= live spec per new kind, logged in;
+- =docs/claude/detail-pages.md= widened into the engine's doc (its doc-map row in
+  =CLAUDE.md= with it), HELP, a DEBUG-NOTES entry for anything learned the hard
+  way;
+- a browser check by the user before the merge.
+
+** Phase 0: probes
+
+Results go here, dated, next to the code that will depend on them.
+
+| Probe                                             | Question                                                                                            | Result |
+|---------------------------------------------------+-----------------------------------------------------------------------------------------------------+--------|
+| =scripts/probe-mb-entity-lookups.py= (new)        | per kind: do the candidate inc sets above return the fields the card needs; how big is each answer? |        |
+| =scripts/probe-mb-page-nojs.js= (new, Playwright) | with JavaScript off, what does each entity page still show (#content, sidebar, tracklist, setlist)? |        |
+| the same script                                   | which entity pages embed JSON besides /release (could one HTML fetch feed both views)?              |        |
+| =scripts/probe-caa-presence-from-browse.py=       | does the release browse carry =cover-art-archive.front= (thumbs without 404s)?                      |        |
+| =scripts/probe-mb-entity-lookups.py=              | release-group browse with =offset=: page size, order, total count                                   |        |
+| a note, not a probe                               | does fetching musicbrainz.org HTML pages share the Web Service's rate limit?                        |        |
+
+** Risks and traps
+
+- *The =_relFetchWs2()= cache ignores =inc=.* Use the engine's own cache.
+- *One rate budget.* Every MusicBrainz request through =_relAwaitRateSlot()=;
+  never a new gate.
+- *The other floating boxes.* Add the card to =_OTHER_RICH_TIPS= (it is already
+  there as =mb-dp-peek=); a link wrapping an image keeps its artwork preview; the
+  Relationships tooltip stays on its own cells; the card's z-index stays above
+  the dialog's (a card can open over the dialog in Phase 5).
+- *Third-party userscripts* add their own links and icons to MusicBrainz tables:
+  run the =kitchen-sink= combination of =tests/support/run-live-interop.js= once
+  per phase.
+- *Ctrl+click opens a new tab* in every browser. The Ctrl keydown shows a card
+  but is never consumed, so Ctrl+click and the Ctrl+M shortcuts keep working.
+- *Typing*: Space pins only outside a field, or 1.5 s after the last keystroke
+  in one (=_DP_TYPING_GRACE_MS=): the render focuses the global filter itself.
+- *Stale data*: MusicBrainz data changes daily, hence the short TTL and ⟳.
+- *Playwright trace*: a spec that counts "Blocked script execution" messages
+  runs with =test.use({ trace: 'off' })= (see docs/claude/detail-pages.md).
+- *A freshly fetched release page re-renders itself* when its bundle hashes are
+  current: abort =static.metabrainz.org/**= in fixture specs
+  (docs/claude/release-tracks-and-length.md).
+
+** Performance
+
+- Nothing on the filter, sort or render path: the listeners are delegated on
+  =document= and return at once for anything that is not a candidate. A
+  =mouseover= costs one =closest()= and one =new URL()= per link entered.
+- Stepping walks the visible rows once per key press, never on a render.
+- Network: hover requests and the Relationships column's auto-load share one
+  1.1 s gate. With both running, the column's load slows by one slot per card
+  opened. That is the price of staying within MusicBrainz's 1 request per second
+  (open question 7).
+- A wider =@include= (Phase 4) means the whole script, now 110,379 lines, is
+  parsed on every MusicBrainz page. Measure it before deciding.
+
+** Open questions (recommendation first)
+
+1. =sa_pop_mb= default: *off* (opt-in, like every new hover feature), or on.
+2. The Ctrl gate on MusicBrainz: *follow =sa_dp_hover_without_ctrl=*, relabelled
+   "every preview", and keep =sa_event_rg_tooltip_without_ctrl= for the "#"
+   cell; or fold both into one new key, which owes a =_SETTINGS_MIGRATIONS= entry.
+3. *One master switch* for MusicBrainz cards, or one switch per entity kind.
+4. Time to live for MusicBrainz answers: *24 h*, or another value.
+5. A link inside the dialog: *drill down inside the dialog* with a Back
+   (Phase 5), or open the page in a new tab.
+6. "ALL MusicBrainz pages": *stay on the =@include=d pages for now*, or widen
+   =@include= to every MusicBrainz page (Phase 4, measure first).
+7. *One shared rate gate* for cards and the Relationships column (correct, the
+   column slows a little while cards open), or keep separate gates.
+8. The subheader link's card: *behind the Ctrl gate*, like the "#" cell, or
+   keep it on a plain hover.
+
+** answers
+
+Answers to the open questions:
+
+1. =sa_pop_mb= default: *off* (opt-in, like every new hover feature)
+2. do NOT fold both into one new key
+3. *One master switch* for MusicBrainz cards
+4. Time to live for MusicBrainz answers: *24 h*
+5. A link inside the dialog: *drill down inside the dialog* with a Back
+6. "ALL MusicBrainz pages": *stay on the =@include=d pages for now*
+7. *One shared rate gate* for cards and the Relationships column
+8. The subheader link's card: keep it on a plain hover
+
+then commit and push
