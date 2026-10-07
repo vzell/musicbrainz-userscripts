@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.1262",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The toolbar's pull-down menus (📦 Data, 🛠 View, 📀 Discography, ⚠️ WARNING, ❌ ERROR) no longer open off-screen. With the toolbar near the bottom of the window, a menu used to open below it anyway, out of sight and out of reach. It now opens upward when there is more room above, and a menu taller than the space available fits the window and scrolls."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1261",
     "date": "2026-10-07",
     "sections": [
