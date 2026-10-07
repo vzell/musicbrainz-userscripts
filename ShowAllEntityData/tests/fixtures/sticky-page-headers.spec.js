@@ -224,6 +224,23 @@ async function scrollToRightEnd(page) {
 }
 
 /**
+ * Returns the page to its left edge (and waits a frame for the sticky offsets),
+ * the premise of `expectPinned()`'s `before`. A click on an element of a page
+ * wider than the window scrolls that element into view, sideways too, by
+ * however far the layout has settled: 6 px in a 2026-10-08 merge gate, which
+ * failed the annotation test on its premise ("Expected: 0, Received: 6")
+ * before anything it checks.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<void>}
+ */
+async function toLeftEdge(page) {
+    await page.evaluate(() => window.scrollTo(0, window.scrollY));
+    await page.waitForFunction(() => window.scrollX === 0);
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => r())));
+}
+
+/**
  * Asserts that every measured element is marked, did not move horizontally
  * between `before` and `after`, and ends inside the viewport at the far right
  * (i.e. was not dragged back by its containing block during the last part of
@@ -864,6 +881,8 @@ test.describe('sticky page headers — expanded section bodies', () => {
         await expect.poll(() => isPinned(page, sel),
             { message: 'expanding Annotation must pin its body' }).toBe(true);
 
+        // The click above scrolled the heading into view, possibly sideways.
+        await toLeftEdge(page);
         const inner = ['div.annotation-body h3', 'div.annotation-body > p'];
         const before = await measure(page, [sel]);
         const innerBefore = await measure(page, inner);

@@ -20367,3 +20367,25 @@ as declared; live `popup-mb.spec.js` 7 of 7 (2026-10-07T23:17:58Z to
 23:18:49Z); lint within the baseline. The branch's `npm run test:full` was
 stopped at the user's request after their live check; the merge gate runs on
 the merged tree.
+
+## 2026-10-08 — The sticky-headers annotation test: a premise race, diagnosed at last (branch fix/sticky-annotation-premise, WIP.1)
+
+The test that failed once each in the Phase 2 and WIP.4 runs and in the
+Phase 5 merge gate, and never in 204 stressed runs, failed in the Phase 5 gate
+with its report saved: `expect(before.scrollX).toBe(0)` — Expected 0,
+Received 6 — in `expectPinned()`, i.e. on the premise that the page starts at
+its left edge, before anything the test checks. Between `settleFocusAndPointer()`
+and the "before" measurement the test clicks `h2.annotation`, and Playwright
+scrolls a clicked element into view; on this page, wider than the window, that
+can move it sideways by a few pixels, depending on how far the layout (column
+auto-resize) has settled.
+
+**Reproduced on demand:** a temporary `window.scrollTo(6, …)` right after the
+click made the unchanged test fail with exactly "Expected: 0, Received: 6";
+with the fix (`toLeftEdge()`: scroll to x 0, wait for it, one frame for the
+sticky offsets) the same nudged test passes. Nudge removed; the whole spec
+108 of 108 with `--repeat-each=3 --workers=28`.
+
+**Lesson:** a failure that will not reproduce under stress may be a race in
+the test's own setup; the saved full report (since 2026-10-07) is what made
+it diagnosable.
