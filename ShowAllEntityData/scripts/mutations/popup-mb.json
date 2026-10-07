@@ -1,0 +1,185 @@
+[
+    {
+        "name": "the MusicBrainz source ignores sa_pop_mb",
+        "why": "The link previews are opt-in, off by default (org/iframe.org, answer 1): with the setting off a MusicBrainz page gets no stylesheet, no listener and no request.",
+        "edits": [
+            {
+                "find": "            enabled: () => !_foreignHost && Lib.settings.sa_pop_mb === true,",
+                "replace": "            enabled: () => !_foreignHost,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "off by default",
+        "expect": "fail"
+    },
+    {
+        "name": "the MusicBrainz cards ignore the Ctrl gate",
+        "why": "They follow sa_dp_hover_without_ctrl, 'every preview' (answer 2): moving the pointer across a table full of links must neither pop up cards nor ask MusicBrainz.",
+        "edits": [
+            {
+                "find": "            resolve: (a) => _mbPopTarget(a),\n            needsCtrl: _dpNeedsCtrl,",
+                "replace": "            resolve: (a) => _mbPopTarget(a),\n            needsCtrl: () => false,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the Ctrl gate",
+        "expect": "fail"
+    },
+    {
+        "name": "any page under an entity is previewed, not just the bare one",
+        "why": "The CAA/EAA icon column links /release/<id>/cover-art (artwork has its own preview); /edit and the tabs are not the entity either.",
+        "edits": [
+            {
+                "find": "[0-9a-f]{4}-[0-9a-f]{12})\\/?$/;\n\n    /**\n     * What a link in a MusicBrainz table previews",
+                "replace": "[0-9a-f]{4}-[0-9a-f]{12})(?:\\/.*)?$/;\n\n    /**\n     * What a link in a MusicBrainz table previews"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "what is previewed",
+        "expect": "fail"
+    },
+    {
+        "name": "a link wrapping an image is previewed",
+        "why": "An inline cover or thumbnail has its own hover preview (#mb-art-hover-preview); a card over it would be a second box.",
+        "edits": [
+            {
+                "find": "        if (a.querySelector('img') || a.closest('td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;",
+                "replace": "        if (a.closest('td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "what is previewed",
+        "expect": "fail"
+    },
+    {
+        "name": "a link in the Relationships column is previewed",
+        "why": "The Relationships column has its own tooltip (#mb-rel-tooltip) on its cells.",
+        "edits": [
+            {
+                "find": "        if (a.querySelector('img') || a.closest('td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;",
+                "replace": "        if (a.querySelector('img') || a.closest('#mb-dp-peek, #mb-dp-dialog')) return null;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "what is previewed",
+        "expect": "fail"
+    },
+    {
+        "name": "a request nobody wants any more is still sent",
+        "why": "The popup engine's rule: a hover that has moved on by the time its rate slot comes up makes no request (as _dpGet() on the foreign hosts); otherwise crossing a table queues one request per link.",
+        "edits": [
+            {
+                "find": "        if (wanted && !wanted()) {",
+                "replace": "        if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "hover that moved on before its rate slot asks nothing; the gate",
+        "expect": "fail"
+    },
+    {
+        "name": "a release-group link's card does not pass its wanted() on",
+        "why": "Phase 1's loader always wanted its pages (the release page's own sources still do); from a table link a moved-on hover must make no request.",
+        "edits": [
+            {
+                "find": "                if (start) _rgReleasesLoad(info, { repaint, wanted: _mbPopWanted(t) });",
+                "replace": "                if (start) _rgReleasesLoad(info, { repaint });"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "release-group link whose hover moved on",
+        "expect": "fail"
+    },
+    {
+        "name": "a failed answer is kept",
+        "why": "Only a success is cached, everywhere in the script: a failure kept as done would never be asked again until the page reloads.",
+        "edits": [
+            {
+                "find": "                Object.assign(st, { status: 'failed', detail: res.detail || `HTTP ${res.status}` });\n            }\n            notify();\n        })();\n    }\n\n    /**\n     * The entity path",
+                "replace": "                Object.assign(st, { status: 'done', data: null, detail: res.detail || `HTTP ${res.status}` });\n            }\n            notify();\n        })();\n    }\n\n    /**\n     * The entity path"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a failure is shown, not kept",
+        "expect": "fail"
+    },
+    {
+        "name": "a repaint starts the card's request",
+        "why": "Only a call with start may start a request: card() is called again by every repaint, and a repaint that started one would retry a failed request for ever (docs/claude/detail-pages.md).",
+        "edits": [
+            {
+                "find": "                if (start) _mbWsLoad(q.key, q.url, { repaint, wanted: _mbPopWanted(t) });",
+                "replace": "                _mbWsLoad(q.key, q.url, { repaint, wanted: _mbPopWanted(t) });"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a failure is shown, not kept",
+        "expect": "fail"
+    },
+    {
+        "name": "the answers ignore sa_pop_mb_ttl_hours",
+        "why": "MusicBrainz data changes daily; the setting says how long an answer is reused (answer 4), and a one-hour TTL must ask again for a two-hour-old answer.",
+        "edits": [
+            {
+                "find": "        return (typeof h === 'number' && h > 0 ? h : 24) * 60 * 60 * 1000;",
+                "replace": "        return 24 * 60 * 60 * 1000;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "IndexedDB after a reload",
+        "expect": "fail"
+    },
+    {
+        "name": "the arrows stay in the first sub-table",
+        "why": "On a multi-table page the column goes on in the next visible sub-table (the releases of a group split by status).",
+        "edits": [
+            {
+                "find": "        for (const tb of tables) {\n            const heads = tb.querySelectorAll('thead tr:first-child th').length;",
+                "replace": "        for (const tb of tables.slice(0, 1)) {\n            const heads = tb.querySelectorAll('thead tr:first-child th').length;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "step down the same column",
+        "expect": "fail"
+    },
+    {
+        "name": "the arrows mix kinds in a column",
+        "why": "A row links a release, an artist, a label: the arrows step through ONE kind. On this page the release column holds releases only (its /cover-art anchors resolve to nothing), so the kind filter is covered by the column; recorded so the overlap is known, and re-checked once artist and label cards exist (WIP.3).",
+        "edits": [
+            {
+                "find": "                    return m && m.type === t.type;",
+                "replace": "                    return !!m;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "step down the same column",
+        "expect": "pass"
+    },
+    {
+        "name": "the card no longer rules out the Liner notes card",
+        "why": "One box at a time: while the card shows, #mb-stat-tooltip shows no card of the same link (_OTHER_RICH_TIPS).",
+        "edits": [
+            {
+                "find": "'mb-rel-tooltip', 'mb-dp-peek'];",
+                "replace": "'mb-rel-tooltip'];"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the card rules out",
+        "expect": "fail"
+    },
+    {
+        "name": "a tap on a MusicBrainz link follows it",
+        "why": "The engine's tap rule, kept on MusicBrainz (decided 2026-10-07): a touch screen has no hover and no Ctrl, so a tap opens the window and its ↗ opens the page.",
+        "edits": [
+            {
+                "find": "            if (!_isTouchCompatMouseEvent(e) && !_isTouchPrimaryDevice()) return;",
+                "replace": "            if (!_isTouchCompatMouseEvent(e) && !_isTouchPrimaryDevice()) return;\n            if (t.src.id === 'mb-entity') return;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.mobile.spec.js",
+        "grep": "a tap on a release link",
+        "expect": "fail",
+        "project": "chromium-mobile"
+    }
+]

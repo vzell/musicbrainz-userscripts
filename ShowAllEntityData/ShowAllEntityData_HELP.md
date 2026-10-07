@@ -1108,6 +1108,8 @@ you automatically.
 | 🌴 jungleland.it                                | Switch on the jungleland.it bootleg artwork list (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                            |
 | 💿 brucespringsteen.it                          | Switch on the brucespringsteen.it record database (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                           |
 | 📚 Brucebase                                    | Switch on the Brucebase song list (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                                           |
+| 🔎 Link previews on MusicBrainz                 | Switch on the cards of the links in MusicBrainz tables (off by default), how long their answers are kept, the release group window's size; see [Page-specific behaviour](#page-specific-behaviour)                                                                    |
+| 🔎 Every preview                                | Show the MusicBrainz link previews and the Springsteen sites' detail-page previews on a plain hover, without Ctrl                                                                                                                                                     |
 
 </details>
 
@@ -1287,10 +1289,11 @@ closes the card. **Space** pins it into a window you can move and resize:
 - **⟳** reads everything again from MusicBrainz; **↗** opens the release group
   in a new tab.
 
-What was loaded is kept for a day, so the card of a group you have seen comes
-back at once (its foot says *saved today*). A group with very many releases
-shows the first 500; ⚙️ Settings → 💿 RELEASE TRACKLIST → *Release group
-window: at most this many releases* changes that. These requests and the
+What was loaded is kept for a day (⚙️ Settings → 🔎 LINK PREVIEWS ON
+MUSICBRAINZ → *Keep MusicBrainz answers for (hours)*), so the card of a group
+you have seen comes back at once (its foot says *saved today*). A group with
+very many releases shows the first 500; *Release group window: at most this
+many releases*, in the same section, changes that. These requests and the
 Relationships column's share one limit of one request a second. Switch the link
 and its card off in ⚙️ Settings → 💿 RELEASE TRACKLIST. On a touch screen, a
 tap on the link opens the window.
@@ -1515,6 +1518,52 @@ there, but the buttons are only built when you press **▶♪** in the header.
 Host and port are configurable (`127.0.0.1`, ports 8000–8010 by default). A
 release's own tracklist does not get this column: its rows link recordings, not
 releases.
+
+</details>
+
+<details>
+<summary>Link previews on MusicBrainz</summary>
+
+With ⚙️ Settings → 🔎 LINK PREVIEWS ON MUSICBRAINZ → *Preview linked entities
+on hover* switched on (it is off until you do), the links in a table show what
+is behind them without opening a tab. So far: **releases** and **release
+groups**; the other kinds follow.
+
+**Hold Ctrl and rest the pointer on a link**, or rest it first and then press
+**Ctrl**: a card opens beside the link. Without Ctrl nothing happens, so
+moving across a table neither opens cards nor asks MusicBrainz anything
+(*Show every preview on a plain hover (without Ctrl)* under 🔎 EVERY PREVIEW
+changes that). A release card shows the cover, status, type, format and
+number of tracks, the date and country, label and catalog number, barcode,
+packaging and the first tracks with their lengths. A release group card shows
+the group's releases, as the release page's "versions available" link does.
+**Esc** or moving away closes it.
+
+**Press Space** to pin it into a window:
+
+- **Extracted**: for a release, the whole tracklist by medium (each track
+  opens its recording), its release group, labels, release events, language,
+  and the images in the Cover Art Archive; for a release group, every
+  release in a sortable table beside the group's facts.
+- **Live page**: the entity's own MusicBrainz page, without the site's header
+  and footer, and without its scripts.
+- **‹ ›** or **← →** step to the same kind of link in the **same column** of
+  the next or previous row, on into the next sub-table. A row links a
+  release, an artist and a label; the arrows stay with the one you started
+  from.
+- **⟳** asks MusicBrainz again; **↗** opens the page in a new tab.
+
+Each card asks MusicBrainz once, and only if the pointer is still on the link
+when its turn comes: the script makes at most one request a second, shared
+with the Relationships column. What it got is kept in this browser for 24
+hours (*Keep MusicBrainz answers for (hours)*); the card's foot says whether
+it was *fetched now* or *saved today*. A card that could not load says so;
+hover again to retry.
+
+Not previewed: the artwork column's links, a link around a picture (they have
+their own preview), the Relationships column (its own tooltip), and links
+outside a table. On a **touch screen**, a tap on such a link opens the window
+instead of the page; **↗** in the window opens the page.
 
 </details>
 
@@ -1845,8 +1894,9 @@ that site's own switch in ⚙️ Settings:
 beside it, or rest the pointer on the title first and then press **Ctrl**: the
 card opens at once. Without Ctrl nothing happens, so moving the pointer across
 the table neither opens cards nor reads pages. If you would rather have the
-card on a plain hover, switch on *Show the detail-page preview on a plain
-hover (without Ctrl)* under ⚙️ Settings → *🔎 Detail-page previews*.
+card on a plain hover, switch on *Show every preview on a plain hover
+(without Ctrl)* under ⚙️ Settings → *🔎 EVERY PREVIEW* (it covers the
+MusicBrainz link previews too).
 The first time, it shows "Loading the detail page…" while the page is read in
 the background. The script reads at most one page a second, and a page you
 have already seen comes back at once: it is kept for 30 days. The card's last
@@ -1907,7 +1957,9 @@ behave differently from a desktop, on purpose:
 - **A tap on a title opens the detail preview's window** on the sites where
   you switched the preview on (*Previewing the detail pages* under
   [Page-specific behaviour](#page-specific-behaviour)), instead of the page
-  itself; the window's ↗ opens the page.
+  itself; the window's ↗ opens the page. The same goes for a link in a
+  MusicBrainz table when *Preview linked entities on hover* is on (*Link
+  previews on MusicBrainz* under [Page-specific behaviour](#page-specific-behaviour)).
 
 Keyboard shortcuts need a keyboard, and dragging a column edge to resize it
 needs a mouse.

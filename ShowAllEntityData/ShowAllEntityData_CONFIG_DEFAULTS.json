@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1269+2026-10-07",
-    "schema_entries": 381,
-    "sections": 46,
-    "settings": 335,
-    "settings_with_default": 330,
+    "script_version": "9.99.1271+2026-10-07",
+    "schema_entries": 384,
+    "sections": 47,
+    "settings": 337,
+    "settings_with_default": 332,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,10 +15,10 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 167,
+      "checkbox": 168,
       "color_picker": 62,
-      "number": 49,
-      "divider": 46,
+      "number": 50,
+      "divider": 47,
       "keyboard_shortcut": 23,
       "popup_dialog": 14,
       "text": 14,
@@ -208,8 +208,12 @@
       "label": "📚 BRUCEBASE"
     },
     {
+      "key": "divider_pop_mb",
+      "label": "🔎 LINK PREVIEWS ON MUSICBRAINZ"
+    },
+    {
       "key": "divider_detail_preview",
-      "label": "🔎 DETAIL-PAGE PREVIEWS (all sites above)"
+      "label": "🔎 EVERY PREVIEW (MusicBrainz links and the sites above)"
     }
   ],
   "labels": {
@@ -271,7 +275,7 @@
     "sa_credit_attr_color": "Credit attribute color",
     "sa_default_hidden_columns": "Default Hidden Columns per Page Type",
     "sa_dialog_save_export_autoclose_ms": "Save / Export dialog auto-close delay (ms)",
-    "sa_dp_hover_without_ctrl": "Show the detail-page preview on a plain hover (without Ctrl)",
+    "sa_dp_hover_without_ctrl": "Show every preview on a plain hover (without Ctrl)",
     "sa_eaa_chip_types": "EAA type chips (Type=Letters, …)",
     "sa_edits_color_add_closed": "Edit action — Add (closed/applied)",
     "sa_edits_color_add_open": "Edit action — Add (open)",
@@ -439,6 +443,8 @@
     "sa_picard_tagger_host": "Picard host",
     "sa_picard_tagger_initially_collapsed": "Start the Picard column collapsed",
     "sa_picard_tagger_max_port": "Picard max probe port",
+    "sa_pop_mb": "Preview linked entities on hover",
+    "sa_pop_mb_ttl_hours": "Keep MusicBrainz answers for (hours)",
     "sa_pre_filter_highlight_bg": "Global Prefilter Highlight Background",
     "sa_pre_filter_highlight_color": "Global Prefilter Highlight Color",
     "sa_rel_auto_retry_failed": "Relationships: retry failed lookups once, automatically",
@@ -775,6 +781,8 @@
     "sa_picard_tagger_host": "127.0.0.1",
     "sa_picard_tagger_initially_collapsed": true,
     "sa_picard_tagger_max_port": 8010,
+    "sa_pop_mb": false,
+    "sa_pop_mb_ttl_hours": 24,
     "sa_pre_filter_highlight_bg": "#FFFFE0",
     "sa_pre_filter_highlight_color": "#008000",
     "sa_rel_auto_retry_failed": true,

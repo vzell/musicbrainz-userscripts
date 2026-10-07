@@ -1,0 +1,28 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Link previews on MusicBrainz (new setting \"Preview linked entities on hover\", in the new section 🔎 LINK PREVIEWS ON MUSICBRAINZ, off by default): hold Ctrl over a release or release group link in any table for a card, read from the MusicBrainz Web Service. A release card shows the cover, status, type, format, track count, date and country, label and catalog number, barcode, packaging and the first tracks with their lengths. Space pins it into the window the release page's release group cards already use: for a release, its whole tracklist by medium (each track linking its recording), its release group, labels and release events, and its Cover Art Archive images; for a release group, every release, sortable. \"Live page\" shows the entity's own page without its scripts. ← → step down the same column, from one sub-table into the next. On a touch screen a tap on such a link opens the window instead of the page (↗ opens the page). More entity kinds follow in the next steps.",
+          "A card asks MusicBrainz once, through the one rate gate the Relationships column uses, and only if the pointer is still on the link when its turn comes; what it got is kept in this browser for \"Keep MusicBrainz answers for (hours)\" (new, default 24; it also ages the release group window's releases). ⟳ always asks again; a failure is shown and not kept.",
+          "\"Show the detail-page preview on a plain hover (without Ctrl)\" is now \"Show every preview on a plain hover (without Ctrl)\" and covers the MusicBrainz link previews too (same setting, same default). \"Release group window: at most this many releases\" moved into the new section."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Popup engine: one source, _mbEntitySource(), serves every MusicBrainz table link through a registry of kinds (_MB_KINDS); a target may carry its own kind and width, which the dialog title and the card follow. New loader _mbWsLoad() (memory, IndexedDB keyed by the request's inc set, network; in-flight sharing; wanted() after the rate slot). _rgWsGet() takes an optional wanted(), and _rgReleasesLoad() passes one on from a table link only, so the release page's own two sources behave as before. _RG_TTL_MS became _mbTtlMs() (sa_pop_mb_ttl_hours). Not on the filter/sort/render path: one more source in the delegated mouseover resolve, only with the setting on."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "New tests/fixtures/popup-mb.spec.js (14 tests) and popup-mb.mobile.spec.js; fixture ws2-pop-release-greetings.json from the new scripts/capture-ws2-fixtures.py; new scripts/mutations/popup-mb.json; scripts/mutations/popup-engine.json re-anchored on the two Phase 1 lines this step changed. New scripts/check-mutation-anchors.py: a read-only check that every mutation `find` still matches once (it also lists 42 anchors already stale on main, left as they are). docs/claude/detail-pages.md, ShowAllEntityData_HELP.md and org/iframe.org updated."
+        ]
+      }
+    ]
+  }
+]

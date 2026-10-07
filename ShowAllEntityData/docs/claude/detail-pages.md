@@ -25,11 +25,12 @@ setting, which still has to be on. `_DP_SITES` is keyed by `_foreignHost`,
 so on MusicBrainz `_dpActiveSite()` is null and no foreign source is
 enabled. Since the popup engine (next section) `_initDetailPreview()` is
 called on every page and installs only where a source is enabled: on
-MusicBrainz that is a release page with a release-group card on, and nowhere
-else, so every other MusicBrainz page gets no stylesheet, no listener and no
-database from it. The spec pins that with every preview setting on (`"on a
-MusicBrainz page, every preview setting on changes nothing"`, an `/iswc/`
-page).
+MusicBrainz that is a release page with a release-group card on, or any
+page with `sa_pop_mb` on (the entity cards, below), and nowhere else, so with
+`sa_pop_mb` off every other MusicBrainz page gets no stylesheet, no listener
+and no database from it. The specs pin that: `"on a MusicBrainz page, every
+preview setting on changes nothing"` (every FOREIGN preview setting on, an
+`/iswc/` page) and popup-mb.spec.js's `"off by default"`.
 
 ## The popup engine: sources (org/iframe.org, Phase 1)
 
@@ -113,6 +114,65 @@ Both share `_rgReleases` (a group's releases as far as loaded) and `_rgFacts`
   `.header`, the browser warning and `#footer`, and keeps `#content` and
   `#sidebar`; `#content` would hide the sidebar too (`_MB_LIVE`, org/iframe.org
   R6; every probed page, `/user/` and `/isrc/` included, has `#page`).
+
+## MusicBrainz: entity cards on table links (org/iframe.org, Phase 2)
+
+`_mbEntitySource()` is the LAST source of `_popSources()`, so the release
+page's two (the subheader link, the "#" cell) keep what they serve. It serves
+`table.tbl > tbody a[href]` on every MusicBrainz page the script runs on
+(`_initDetailPreview()` is reached only with a pageType: a page without one,
+such as a bare `/work/<mbid>`, gets nothing; `@include` is unchanged,
+org/iframe.org answer 6), behind ONE setting, `sa_pop_mb` (default off,
+answers 1 and 3). Its card waits for Ctrl through `_dpNeedsCtrl()`
+(`sa_dp_hover_without_ctrl`, relabelled "every preview", answer 2). A tap
+opens the window, as on the foreign hosts (kept, decided 2026-10-07).
+
+- **What is previewed: `_mbPopTarget()`**, the one URL test. Same origin,
+  and the BARE entity path only (`_MB_POP_PATH_RE`): `/cover-art` (the CAA/EAA
+  icon column's anchor, and MusicBrainz's own hidden one in a native release
+  list's first cell), `/edit`, `/merge` and the tabs never match. Not a link
+  wrapping an `<img>` (artwork has its own preview), not in `td.mb-rel-cell`
+  (its own tooltip), not inside the card or the window, and only a kind
+  `_MB_KINDS` knows. Its target carries `type`, `id`, `kind` (the window's
+  title) and `wide`, and `col`, the cell's header name.
+- **The kinds: `_MB_KINDS`**, by path segment, each with `title`, `wide`,
+  `card()`, `extracted()`, optional `onAreaClick()`. The release group reuses
+  Phase 1 whole (`_rgCardHtml()`/`_rgWindowFor()` with `n` = `null`: the
+  count then comes from the browse's `release-count`, and no row is "this
+  release"). A lookup kind is built by `_mbPopLookupKind({cardInc, cardHtml,
+  windowHtml, pin})`: the card is ONE lookup, the window the same answer plus
+  what `pin()` starts once that answer is there (the release: the Cover Art
+  Archive index through `_artFetchEntityImages(CAA_CTX, …)`, only where the
+  answer's `cover-art-archive.count` says there are images). `pin()` may run
+  from a repaint, but starts only what was never asked (or ⟳), so a failure
+  does not loop — the same exception `_rgWindowFor()` has.
+- **One loader: `_mbWsLoad(cacheKey, url, …)`**, state in `_mbPop`. Memory,
+  then IndexedDB (`_rgIdbGet(key, _MB_POP_IDB_VERSION)`, the release group's
+  helpers with a version argument), then `_rgWsGet()`. The key is
+  `pop:<type>:<id>:<inc>` — WITH the inc set, unlike `_relFetchWs2()`'s
+  `type:mbid` (org/iframe.org, "Risks"). In-flight sharing per key; only a
+  success is kept; a failure is retried by the next call with `start`.
+- **`wanted()` after the rate slot.** `_rgWsGet(url, label, wanted)` asks it
+  once `_relAwaitRateSlot()` resolves: a hover that has moved on makes NO
+  request (`skipped`; the load is forgotten, so the next hover starts again;
+  the slot is spent anyway, it was reserved synchronously). `_mbPopWanted(t)`
+  = the card still shows that link, or the window is open on that entity.
+  `_rgReleasesLoad()` takes a `wanted` too, passed only from a table link:
+  a caller without one always wants, so the release page's sources are as in
+  Phase 1.
+- **TTL: `_mbTtlMs()`** = `sa_pop_mb_ttl_hours` (default 24) for every
+  MusicBrainz answer of the engine, the release group's included (it replaced
+  the constant `_RG_TTL_MS`).
+- **Stepping: `_mbPopSteps(t)`** — the same kind in the same column, the
+  column found by HEADER NAME (`_resolveColHeaderName()`) in every visible
+  top-level `table.tbl`, so the arrows go on into the next sub-table even
+  when the columns differ; one link per visible row (the first of its kind in
+  that cell). `_mbPopStepId()` = `data-mb-row-idx` (unique on the page) plus
+  the entity; a never-rendered native table falls back to the row's place.
+- **One box at a time.** `#mb-stat-tooltip`'s own-card path already gives way
+  to `#mb-dp-peek` (`_OTHER_RICH_TIPS`); on a link with its own `data-mb-tip`
+  text the card wins. Pinned with a control (previews off → the Liner notes
+  card shows).
 
 **The detail pages match no `@include` line.** The script never runs ON them,
 in a tab or in the Live page frame. Everything is fetched (same origin) and
@@ -332,6 +392,28 @@ window's links and the Live page (`#page` root). Its mobile sibling taps a "#"
 cell at its centre: on the zoomed-out Pixel 7 page `visualViewport.offsetTop`
 is not 0 and `Locator.tap()` lands on the unstyled header. Mutation list:
 `scripts/mutations/popup-engine.json`.
+
+The MusicBrainz entity cards (Phase 2): `tests/fixtures/popup-mb.spec.js` on
+the "Greetings From Asbury Park, N.J." release group page
+(`releasegroup-releases-multirow-catalog.html`, whose releases split into
+sub-tables by status) pins off by default, the Ctrl gate and its "every
+preview" switch, what is previewed (`__saTest.popResolve()`), memory then
+IndexedDB then the TTL setting (by ageing the stored record), a failure not
+kept, a moved-on hover asking nothing (release and release group), the shared
+gate, the release window and its Cover Art Archive strip, ⟳, the arrows in one
+column across sub-tables, the Live page, and one box at a time. Its mobile
+sibling taps a release link. The Web Service answers are real captures:
+`python3 scripts/capture-ws2-fixtures.py` writes `tests/fixtures/ws2-pop-*.json`
+(the exact request each card makes). Mutation list:
+`scripts/mutations/popup-mb.json`. **A native release list's first cell holds
+a hidden `/cover-art` link before the release link**: a locator for "the
+first release link" must exclude it (`:not([href$="/cover-art"])`), as
+`_mbPopTarget()` does.
+
+`python3 scripts/check-mutation-anchors.py` checks, without running a spec,
+that every `find` of every mutation list still matches once. Run it after
+editing a line a list anchors on: Phase 2's first step changed two lines that
+`popup-engine.json` anchored on.
 
 **No song lyrics in the repository** (decided 2026-10-07). The build blanks
 every word of a song page's lyrics block to "la" (springsteenlyrics.com: between

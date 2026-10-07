@@ -20018,3 +20018,56 @@ card"); every entry as declared after the two fixes above. The specs' new
 
 **Results:** lint is within the baseline. `npm run test:full`: 1292 passed,
 0 failed (2026-10-07T16:37:44Z to 16:44:33Z, host petri, WSL2).
+
+## 2026-10-07 — MusicBrainz entity cards on table links: the engine, release group and release (branch feature/popup-engine-phase2, WIP.1)
+
+org/iframe.org Phase 2, first of five steps. `_mbEntitySource()` serves every
+entity link in a MusicBrainz `table.tbl` body behind `sa_pop_mb` (off by
+default); rules in docs/claude/detail-pages.md, "MusicBrainz: entity cards on
+table links".
+
+**A native release list's first cell starts with a hidden `/cover-art`
+link.** On the "Greetings From Asbury Park, N.J." release group page (native,
+before "Show all"), `td:first-child a[href^="/release/"]` resolves to
+`/release/<id>/cover-art`, which Playwright reports as "element is not
+visible": four of the first eleven tests timed out on hover. The rendered
+table has no such link, so the tests on the rendered page passed. The
+resolver was already right (`_MB_POP_PATH_RE` takes the bare path only); the
+spec locators now exclude `[href$="/cover-art"]`.
+
+**A loading card already shows the link's text.** The card's loading state
+titles itself with the link text, and on a release list that text IS the
+release title, so `toContainText('<title>')` passed before the request had
+gone out and the request-count assertion after it raced. The specs wait for
+"fetched now" (the loaded card's foot) instead.
+
+**The release moved from WIP.2 into WIP.1.** The release group kind runs on
+Phase 1's loaders (`_rgReleasesLoad()`), so with it alone the new loader
+`_mbWsLoad()` (IndexedDB keyed with the inc set, the TTL setting, failures
+not kept, `wanted()` after the slot) would have shipped with no spec reaching
+it.
+
+**`#mb-stat-tooltip` already gives way to the card.** Expected a race between
+the two delay-0 timers on a link with its own `data-mb-tip` text; a control
+test (previews off → the Liner notes card shows) and the real one (previews on
+→ only the card) both pass with no code change: `_showOwn()` checks
+`_OTHER_RICH_TIPS`, which lists `mb-dp-peek`, and the engine's timer runs
+first. Pinned, with a mutation that drops `mb-dp-peek` from the list.
+
+**Two mutation anchors of Phase 1 broke.** `_rgWsGet()` gained a `wanted`
+argument and the browse call a third argument, so two `find`s of
+`scripts/mutations/popup-engine.json` matched nothing. New
+`scripts/check-mutation-anchors.py` (read-only) finds that without running a
+spec; re-anchored. It also lists 42 anchors in older lists that already match
+0 or 2+ times on `main` — not touched here, worth a pass of their own.
+
+**`ShowAllEntityData_CONFIG_DEFAULTS.json` was stale on `main`**: regenerating
+it added `sa_jl_detail_preview`, `sa_sl_detail_preview` and
+`sa_rg_window_max_releases` besides this step's two settings.
+
+**Results:** `popup-mb.spec.js` 14 passed, `popup-mb.mobile.spec.js` 1 passed;
+`scripts/mutations/popup-mb.json` 14 entries as declared (13 caught, 1
+recorded overlap); `popup-engine.json` 17 as declared after re-anchoring; the
+Phase 1 and foreign-host preview specs 57 + 2 passed; lint within the
+baseline; config and docs audits clean. `npm test`: 1293 passed, 0 failed
+(2026-10-07T18:20:58Z to 18:27:15Z, host petri, WSL2).
