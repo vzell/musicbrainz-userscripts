@@ -20007,5 +20007,14 @@ the user. What was learned the hard way:
 `release-rg-main-event.spec.js` and `release-event-colours-rg-tooltip.spec.js`
 moved from `#mb-stat-tooltip`/`data-mbtt` to `#mb-dp-peek`. Mutation lists:
 new `popup-engine.json` (17, one recorded pass), `detail-preview.json`,
-`event-colours-rg-tooltip.json` and `release-rg-main-event.json` re-anchored;
-every entry as declared after the two fixes above.
+`event-colours-rg-tooltip.json`, `release-rg-main-event.json` and
+`ctrl-hover-art-multiselect.json` re-anchored (five of the last pointed at the
+"#" card's old pointerover/`_mbttShowNow()` code; the one whose guard, a stale
+`data-mbtt`, no longer exists now plants the engine's "leaving hides the
+card"); every entry as declared after the two fixes above. The specs' new
+"nothing shows" checks use the fake clock (`page.clock.fastForward()`), and
+"no request" listens with `page.waitForRequest()` expected to time out:
+`waitForTimeout()` is a lint error here.
+
+**Results:** lint is within the baseline. `npm run test:full`: 1292 passed,
+0 failed (2026-10-07T16:37:44Z to 16:44:33Z, host petri, WSL2).
