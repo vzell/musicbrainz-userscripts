@@ -1753,7 +1753,7 @@ turns them into one table:
 *Format* is the site's own text ("2 CD-R", "1 7 in."). *Notes* is the italic
 line some records carry ("Picture disc", "Lower 'Bruce Springsteen' - Little
 Steven Mix"). The title links to the record's detail page, which opens in a
-new tab. With the preview on, resting the pointer on a title shows the
+new tab. With the preview on, resting the pointer on a title with Ctrl held shows the
 record's tracklist and the shows its tracks come from (see
 *Previewing the detail pages* under [Page-specific behaviour](#page-specific-behaviour)).
 
@@ -1812,7 +1812,12 @@ that site's own switch in ⚙️ Settings:
 | 💿 brucespringsteen.it  | *Preview record pages in the brucespringsteen.it database* | the tracklist, the show each track comes from, the notes, the photo           |
 | 📚 Brucebase           | *Preview song pages on the Brucebase song list*          | the album it comes from, how often and when last it was played live, releases |
 
-**Rest the pointer on a title** for a moment and a card opens beside it.
+**Hold Ctrl and rest the pointer on a title** for a moment and a card opens
+beside it, or rest the pointer on the title first and then press **Ctrl**: the
+card opens at once. Without Ctrl nothing happens, so moving the pointer across
+the table neither opens cards nor reads pages. If you would rather have the
+card on a plain hover, switch on *Show the detail-page preview on a plain
+hover (without Ctrl)* under ⚙️ Settings → *🔎 Detail-page previews*.
 The first time, it shows "Loading the detail page…" while the page is read in
 the background. The script reads at most one page a second, and a page you
 have already seen comes back at once: it is kept for 30 days. The card's last

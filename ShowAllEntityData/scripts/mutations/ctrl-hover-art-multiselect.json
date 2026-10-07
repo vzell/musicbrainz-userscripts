@@ -1,0 +1,41 @@
+[
+    {
+        "name": "the detail-page card ignores the Ctrl gate on hover",
+        "why": "By default (sa_dp_hover_without_ctrl off) only a hover with Ctrl held may schedule the card. Without the gate a pointer crossing the table pops cards and fetches pages again.",
+        "edits": [
+            {
+                "find": "            if (_dpNeedsCtrl() && !e.ctrlKey) return;\n            _dpSchedulePeek(a);",
+                "replace": "            _dpSchedulePeek(a);"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "by default a plain hover shows nothing",
+        "expect": "fail"
+    },
+    {
+        "name": "pressing Ctrl on a hovered title does nothing",
+        "why": "Ctrl pressed while the pointer already rests on a title must show its card at once; without the keydown branch only a hover that STARTS with Ctrl held would.",
+        "edits": [
+            {
+                "find": "                const a = _dpCtrlTarget();",
+                "replace": "                const a = null;"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "Ctrl pressed while the pointer rests on a title",
+        "expect": "fail"
+    },
+    {
+        "name": "the plain-hover setting is ignored",
+        "why": "sa_dp_hover_without_ctrl: true restores the old behaviour; read wrongly, a plain hover would stay silent with the setting on.",
+        "edits": [
+            {
+                "find": "        return Lib.settings.sa_dp_hover_without_ctrl !== true;",
+                "replace": "        return true;"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "with the setting on, a plain hover shows the card",
+        "expect": "fail"
+    }
+]

@@ -5,7 +5,9 @@
 // shows a card with what the detail page adds; Space pins it into a dialog
 // with an Extracted and a Live page view; Esc closes either; ← → step through
 // the rows; a tap on a touch screen opens the dialog (detail-preview.mobile.spec.js).
-// Opt-in per host (sa_sl/jl/bs/bb_detail_preview), off by default.
+// Opt-in per host (sa_sl/jl/bs/bb_detail_preview), off by default. The card
+// waits for Ctrl (held during the hover, or pressed on a hovered link) unless
+// sa_dp_hover_without_ctrl is on.
 //
 // Detail pages are served from tests/fixtures/detail-*.html
 // (scripts/build-detail-fixtures.py) by tests/support/detailFixture.js, which
@@ -68,14 +70,31 @@ async function bsWithTable(page, settings = {}) {
 }
 
 /**
- * Hovers a link after parking the pointer, so the hover really starts there.
+ * Hovers a link after parking the pointer, so the hover really starts there,
+ * WITHOUT Ctrl: by default (sa_dp_hover_without_ctrl off) no card is due.
+ * @param {import('@playwright/test').Page} page
+ * @param {import('@playwright/test').Locator} link
+ */
+async function plainHover(page, link) {
+    await page.mouse.move(0, 0);
+    await link.scrollIntoViewIfNeeded();
+    await link.hover();
+}
+
+/**
+ * Hovers a link with Ctrl held, the default way to ask for its card. Ctrl
+ * goes down while the pointer is parked (on no link, so the press itself
+ * shows nothing) and up after the hover: a held Ctrl would turn a later
+ * Space into Ctrl+Space, which does not pin.
  * @param {import('@playwright/test').Page} page
  * @param {import('@playwright/test').Locator} link
  */
 async function hover(page, link) {
     await page.mouse.move(0, 0);
     await link.scrollIntoViewIfNeeded();
+    await page.keyboard.down('Control');
     await link.hover();
+    await page.keyboard.up('Control');
 }
 
 /** @param {import('@playwright/test').Page} page */
@@ -342,6 +361,49 @@ test.describe('opt-in, and MusicBrainz untouched', () => {
     });
 });
 
+test.describe('the card waits for Ctrl (sa_dp_hover_without_ctrl)', () => {
+    test('by default a plain hover shows nothing and fetches nothing', async ({ page }) => {
+        const errors = trackPageErrors(page);
+        await page.clock.install();
+        const { served } = await bsWithTable(page);
+        await plainHover(page, page.locator('table.tbl tbody a[href*="code=CR1AD1"]'));
+        await page.clock.fastForward(1200);
+        await expect(peek(page)).toHaveCount(0);
+        expect(served).toEqual([]);
+        expect(errors).toEqual([]);
+    });
+
+    test('Ctrl pressed while the pointer rests on a title shows its card at once', async ({ page }) => {
+        const errors = trackPageErrors(page);
+        // A long delay: the card showing anyway proves the Ctrl press skips it.
+        const { served } = await bsWithTable(page, { sa_rich_tooltip_delay_ms: 60000 });
+        await plainHover(page, page.locator('table.tbl tbody a[href*="code=CR1AD1"]'));
+        await page.keyboard.press('Control');
+        await expect(peek(page)).toBeVisible();
+        await expect(peek(page)).toContainText('14 tracks on 2 discs');
+        expect(served).toEqual(['https://www.brucespringsteen.it/DB/detrec.aspx?code=CR1AD1']);
+        expect(errors).toEqual([]);
+    });
+
+    test('Ctrl with the pointer on no title shows nothing', async ({ page }) => {
+        const { served } = await bsWithTable(page);
+        await page.mouse.move(0, 0);
+        await page.keyboard.press('Control');
+        await expect(peek(page)).toHaveCount(0);
+        expect(served).toEqual([]);
+    });
+
+    test('with the setting on, a plain hover shows the card as before', async ({ page }) => {
+        const errors = trackPageErrors(page);
+        const { served } = await bsWithTable(page, { sa_dp_hover_without_ctrl: true });
+        await plainHover(page, page.locator('table.tbl tbody a[href*="code=CR1AD1"]'));
+        await expect(peek(page)).toBeVisible();
+        await expect(peek(page)).toContainText('14 tracks on 2 discs');
+        expect(served).toHaveLength(1);
+        expect(errors).toEqual([]);
+    });
+});
+
 test.describe('the hover card and the pinned dialog (brucespringsteen.it)', () => {
     test('a hover loads the page once, shows what it adds, and a second hover reads it from memory', async ({ page }) => {
         const errors = trackPageErrors(page);
@@ -446,7 +508,9 @@ test.describe('the hover card and the pinned dialog (brucespringsteen.it)', () =
         await expect.poll(() => served.length).toBe(1);
         // The second hover asks right away, but its slot is a second after the
         // first: its card shows the loading line while it waits.
+        await page.keyboard.down('Control');
         await links.nth(1).hover();
+        await page.keyboard.up('Control');
         await expect(peek(page)).toBeVisible();
         await expect(peek(page)).toContainText('Loading the detail page');
         await page.mouse.move(0, 0);

@@ -4058,7 +4058,7 @@
             type: 'checkbox',
             default: false,
             description: 'Off by default; needs the setting above. When on, resting the pointer on ' +
-                         'an item\'s title in the table shows a card with what the item\'s own page ' +
+                         'an item\'s title in the table with Ctrl held shows a card with what the item\'s own page ' +
                          'adds: the tracklist, the notes (lineage, edition) and the artwork scans. ' +
                          'On the lyrics index it shows the song page instead: the version, the ' +
                          'first lines of the lyrics and the song\'s info; the pinned window has ' +
@@ -4118,7 +4118,7 @@
             type: 'checkbox',
             default: false,
             description: 'Off by default; needs the setting above. When on, resting the pointer on ' +
-                         'a title in the table shows a card with what its artwork page adds: the ' +
+                         'a title in the table with Ctrl held shows a card with what its artwork page adds: the ' +
                          'uploader and the scans (front, back, discs, booklet). The page is ' +
                          'fetched in the background, at most one a second, and kept for 30 days. ' +
                          'Press Space to pin the card into a window you can move, resize and ' +
@@ -4156,7 +4156,7 @@
             type: 'checkbox',
             default: false,
             description: 'Off by default; needs the setting above. When on, resting the pointer on ' +
-                         'a record\'s title in the table shows a card with what the record\'s own ' +
+                         'a record\'s title in the table with Ctrl held shows a card with what the record\'s own ' +
                          'page adds: the tracklist with the show each track comes from, the ' +
                          'notes, and the photo when there is one. The page is fetched in the ' +
                          'background, at most one a second, and kept for 30 days. Press Space to ' +
@@ -4192,7 +4192,7 @@
             type: 'checkbox',
             default: false,
             description: 'Off by default; needs the setting above. When on, resting the pointer on ' +
-                         'a song in the table shows a card with what its song page adds: the ' +
+                         'a song in the table with Ctrl held shows a card with what its song page adds: the ' +
                          'album it comes from, how often it was played live and when last, the ' +
                          'official releases and live downloads. The page is fetched in the ' +
                          'background, at most one a second, and kept for 30 days. Press Space to ' +
@@ -4201,6 +4201,26 @@
                          'through the rows, and its "Live page" view shows the wiki\'s own page ' +
                          'with every tab opened. Esc closes either. On a touch screen, tapping a ' +
                          'title opens the window.'
+        },
+
+        // ============================================================
+        // DETAIL-PAGE PREVIEWS (every non-MusicBrainz site above)
+        // ============================================================
+        divider_detail_preview: {
+            type: 'divider',
+            label: '🔎 DETAIL-PAGE PREVIEWS (all sites above)'
+        },
+
+        sa_dp_hover_without_ctrl: {
+            label: 'Show the detail-page preview on a plain hover (without Ctrl)',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default: the preview card of springsteenlyrics.com, jungleland.it, ' +
+                         'brucespringsteen.it and Brucebase shows only while Ctrl is held — hover a ' +
+                         'title with Ctrl down, or rest the pointer on it and then press Ctrl — so ' +
+                         'moving the pointer across the table neither pops up cards nor fetches ' +
+                         'pages. When on, resting the pointer on a title is enough, as before. ' +
+                         'Tapping a title on a touch screen opens the window either way.'
         }
 
     };
@@ -13172,11 +13192,24 @@
     let _dpIdbPromise = null;
 
     /**
-     * The hover card's state: its element, the link it belongs to, and the
-     * pending show timer.
-     * @type {{el: ?HTMLElement, link: ?HTMLAnchorElement, timer: number}}
+     * The hover card's state: its element, the link it belongs to, the
+     * pending show timer, and the detail link under the pointer (`hover`,
+     * kept whether or not a card is due, so that pressing Ctrl on it can
+     * show one).
+     * @type {{el: ?HTMLElement, link: ?HTMLAnchorElement, timer: number, typedAt: number, hover: ?HTMLAnchorElement}}
      */
-    const _dpPeek = { el: null, link: null, timer: 0, typedAt: 0 };
+    const _dpPeek = { el: null, link: null, timer: 0, typedAt: 0, hover: null };
+
+    /**
+     * Whether the card waits for Ctrl: true unless
+     * `sa_dp_hover_without_ctrl` is on. Read at every event, so the setting
+     * applies without a reload.
+     *
+     * @returns {boolean}
+     */
+    function _dpNeedsCtrl() {
+        return Lib.settings.sa_dp_hover_without_ctrl !== true;
+    }
 
     /**
      * Whether an element is a text field: where a Space or an arrow key is
@@ -14713,6 +14746,35 @@
     }
 
     /**
+     * Whether an element shows a keyboard focus ring (`:focus-visible`),
+     * false where the browser does not know the selector.
+     *
+     * @param {Element} el
+     * @returns {boolean}
+     */
+    function _dpFocusVisible(el) {
+        try {
+            return el.matches(':focus-visible');
+        } catch (_) {
+            return false;
+        }
+    }
+
+    /**
+     * The detail link a Ctrl press shows the card for: the one under the
+     * pointer, else the one with keyboard focus; null when there is none.
+     *
+     * @returns {?HTMLAnchorElement}
+     */
+    function _dpCtrlTarget() {
+        const h = _dpPeek.hover;
+        if (h && h.isConnected && h.matches(':hover') && _dpSiteForLink(h)) return h;
+        const f = document.activeElement;
+        if (f && f.matches && f.matches('a[href]') && _dpSiteForLink(f) && _dpFocusVisible(f)) return f;
+        return null;
+    }
+
+    /**
      * Installs the detail-page preview on a foreign host whose preview
      * setting is on (`_DP_SITES[_foreignHost].setting`). Called once from the
      * init block, after the host's live page is prepared. On MusicBrainz, or
@@ -14722,7 +14784,9 @@
      * `cloneNode(true)` re-renders need no re-wiring:
      *   - hover (or keyboard focus) on a detail link → the card, after the
      *     rich-tooltip delay; leaving the link, a press anywhere or a scroll
-     *     hides it;
+     *     hides it. Unless `sa_dp_hover_without_ctrl` is on, only a hover
+     *     with Ctrl held counts, and pressing Ctrl on a hovered (or focused)
+     *     link shows its card at once (`_dpCtrlTarget()`);
      *   - Esc hides the card (and only the card, when a dialog is under it);
      *   - Space while the card shows pins it into the dialog, unless the
      *     user is typing in a text field (`_DP_TYPING_GRACE_MS`): after a
@@ -14744,9 +14808,15 @@
             const a = e.target.closest ? e.target.closest('a[href]') : null;
             if (!a || a === _dpPeek.link) return;
             if (!_dpSiteForLink(a) || _isTouchCompatMouseEvent(e)) return;
+            _dpPeek.hover = a;
+            // Without Ctrl held, only remember the link: pressing Ctrl on it
+            // shows the card (the keydown handler below).
+            if (_dpNeedsCtrl() && !e.ctrlKey) return;
             _dpSchedulePeek(a);
         }, true);
         document.addEventListener('mouseout', (e) => {
+            const h = _dpPeek.hover;
+            if (h && h.contains(e.target) && !(e.relatedTarget && h.contains(e.relatedTarget))) _dpPeek.hover = null;
             const a = _dpPeek.link;
             if (!a || !a.contains(e.target)) return;
             if (e.relatedTarget && a.contains(e.relatedTarget)) return;
@@ -14755,13 +14825,7 @@
         document.addEventListener('focusin', (e) => {
             const a = e.target;
             if (a === _dpPeek.link || !_dpSiteForLink(a)) return;
-            let visible;
-            try {
-                visible = a.matches(':focus-visible');
-            } catch (_) {
-                visible = false;
-            }
-            if (visible) _dpSchedulePeek(a);
+            if (_dpFocusVisible(a) && !_dpNeedsCtrl()) _dpSchedulePeek(a);
         }, true);
         document.addEventListener('focusout', (e) => {
             if (e.target === _dpPeek.link) _dpHidePeek();
@@ -14776,6 +14840,18 @@
             if (_dpIsTextField(e.target)) _dpPeek.typedAt = Date.now();
         }, true);
         document.addEventListener('keydown', (e) => {
+            // Ctrl pressed on a detail link (hovered, else keyboard-focused)
+            // shows its card at once: the key press is the intent, so no
+            // delay. Not consumed — Ctrl+<key> shortcuts keep working.
+            if (e.key === 'Control' && !e.repeat && _dpNeedsCtrl() && !_dpPeekShown()) {
+                const a = _dpCtrlTarget();
+                if (a) {
+                    _dpHidePeek();
+                    _dpPeek.link = a;
+                    _dpShowPeek(a);
+                }
+                return;
+            }
             if (!_dpPeekShown()) return;
             if (e.key === 'Escape') {
                 e.preventDefault();

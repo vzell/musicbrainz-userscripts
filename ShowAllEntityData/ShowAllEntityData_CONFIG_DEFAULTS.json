@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1266+2026-10-07",
-    "schema_entries": 377,
-    "sections": 45,
-    "settings": 332,
-    "settings_with_default": 327,
+    "schema_entries": 379,
+    "sections": 46,
+    "settings": 333,
+    "settings_with_default": 328,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,10 +15,10 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 165,
+      "checkbox": 166,
       "color_picker": 62,
       "number": 48,
-      "divider": 45,
+      "divider": 46,
       "keyboard_shortcut": 23,
       "popup_dialog": 14,
       "text": 14,
@@ -206,6 +206,10 @@
     {
       "key": "divider_brucebase",
       "label": "📚 BRUCEBASE"
+    },
+    {
+      "key": "divider_detail_preview",
+      "label": "🔎 DETAIL-PAGE PREVIEWS (all sites above)"
     }
   ],
   "labels": {
@@ -267,6 +271,7 @@
     "sa_credit_attr_color": "Credit attribute color",
     "sa_default_hidden_columns": "Default Hidden Columns per Page Type",
     "sa_dialog_save_export_autoclose_ms": "Save / Export dialog auto-close delay (ms)",
+    "sa_dp_hover_without_ctrl": "Show the detail-page preview on a plain hover (without Ctrl)",
     "sa_eaa_chip_types": "EAA type chips (Type=Letters, …)",
     "sa_edits_color_add_closed": "Edit action — Add (closed/applied)",
     "sa_edits_color_add_open": "Edit action — Add (open)",
@@ -600,6 +605,7 @@
     "sa_count_stat_tooltip_color": "#2b2622",
     "sa_credit_attr_color": "#2e7d32",
     "sa_dialog_save_export_autoclose_ms": 1800,
+    "sa_dp_hover_without_ctrl": false,
     "sa_eaa_chip_types": "Poster=P, Banner=Bn, Schedule=Sc, Setlist=Sl, Ticket=T",
     "sa_edits_color_add_closed": "#D0EBD7",
     "sa_edits_color_add_open": "lightgreen",

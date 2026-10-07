@@ -1,0 +1,14 @@
+[
+    {
+        "version": "WIP.1",
+        "date": "2026-10-07",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "Detail-page previews (springsteenlyrics.com, jungleland.it, brucespringsteen.it, Brucebase): the hover card now opens only while Ctrl is held — hover a title with Ctrl down, or rest the pointer on it and press Ctrl (which opens it at once). Moving the pointer across the table no longer pops up cards or fetches pages. The new setting \"Show the detail-page preview on a plain hover (without Ctrl)\" (⚙️ Settings → 🔎 Detail-page previews, off by default) brings back the old behaviour. Tapping a title on a touch screen still opens the window. Not on the filter/sort/render path; no performance impact."
+                ]
+            }
+        ]
+    }
+]
