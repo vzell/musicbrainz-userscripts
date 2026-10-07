@@ -1589,6 +1589,11 @@ change.
   release, an artist and a label; the arrows stay with the one you started
   from.
 - **⟳** asks MusicBrainz again; **↗** opens the page in a new tab.
+- **Click a link inside the window** (a release in a release group's list, a
+  release's release group, a label, a recording in a tracklist) to show that
+  entity in the same window; the title shows the path, for example *Release
+  group › Release*. **← Back**, **Backspace** or **Alt+←** return. Ctrl-click
+  (or a middle click) still opens the link in a new tab.
 
 Each card asks MusicBrainz once, and only if the pointer is still on the link
 when its turn comes: the script makes at most one request a second, shared

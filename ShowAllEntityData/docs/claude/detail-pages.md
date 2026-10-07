@@ -561,6 +561,29 @@ location rows removed. Never commit another editor's profile.
   asked (the `_rgWindowFor()` exception). `liveUrl(t)` on a kind lets the
   Live page be the label's once known.
 
+## Drill-down inside the window (org/iframe.org, Phase 5)
+
+A plain click (left button, no modifier) on an entity link in the
+Extracted view shows that entity in the same window (`_dpDrill()`, delegated
+on the scroll area, before the source's own `onAreaClick`); the current target
+goes on `_dpDialog.stack`. Ctrl/Shift/Alt/middle clicks keep the link's own
+new tab. Rules:
+
+- Only links the MusicBrainz cards know, via `_mbPopTarget(a, {inWindow:
+  true})` (without it the card and the window exclude themselves), and only
+  while `sa_pop_mb` is on (the `mb-entity` source must be enabled — a release
+  page's own release-group window then drills too).
+- The title is the path of kinds, its last three ("… › Release group ›
+  Release"); **← Back**, Backspace and Alt+← pop the stack (`_dpBack()`); the
+  answer comes from memory.
+- A drilled target (`drilled: true`) never takes the page row's
+  `tr.mb-dp-current`: its element is a row of the window's own table.
+- ‹ › and ← → step from the PAGE target the drill-down started from
+  (`stack[0]`) and drop the path; a target opened from the page
+  (`_dpOpenDialog()`) starts a new path. Closing the window clears it.
+- The side drawer of the plan was not built (the user, 2026-10-08: the
+  window as it is suffices).
+
 `python3 scripts/check-mutation-anchors.py` checks, without running a spec,
 that every `find` of every mutation list still matches once. Run it after
 editing a line a list anchors on: Phase 2's first step changed two lines that

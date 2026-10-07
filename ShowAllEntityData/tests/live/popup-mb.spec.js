@@ -80,6 +80,13 @@ test.describe('MusicBrainz link previews on the real site', { tag: '@extended' }
         await page.keyboard.press('Space');
         const dialog = page.locator('#mb-dp-dialog');
         await expect(dialog.locator('.mb-pop-tracks li').first()).toBeVisible({ timeout: 30000 });
+        // Phase 5: drill down to the release group and back.
+        const wtitle = dialog.locator(':scope > div > span').first();
+        await dialog.locator('.mb-dp-area a[href^="/release-group/"]').first().click();
+        await expect(wtitle).toHaveText('Release › Release group');
+        await expect(dialog.locator('.mb-rg-wtable tbody tr').first()).toBeVisible({ timeout: 60000 });
+        await page.keyboard.press('Backspace');
+        await expect(wtitle).toHaveText('Release');
         await dialog.locator('button.mb-dp-tbtn', { hasText: 'Live page' }).click();
         const frame = page.frameLocator('#mb-dp-dialog iframe');
         await expect(frame.locator('#content')).toBeVisible({ timeout: 60000 });

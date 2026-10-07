@@ -20351,3 +20351,19 @@ beyond table links". What the work found:
 📊 dropdown specs (182 tests) pass; lint within the baseline. `npm run
 test:full`: 1347 passed, 0 failed (2026-10-07T22:35:24Z to 22:42:54Z, host
 NB-3641, WSL2).
+
+## 2026-10-08 — Drill-down inside the window (branch feature/popup-engine-phase5, WIP.1)
+
+org/iframe.org Phase 5, drill-down only (the side drawer was declined). Rules
+in docs/claude/detail-pages.md, "Drill-down inside the window". A click on an
+entity link in the Extracted view shows it in the same window with a back
+stack; a drilled target's element is a row of the WINDOW's own table, so the
+row mark is guarded (`!t.drilled`), or the page's row lost its mark (a
+mutation pins it); the arrows step from the page target the path started
+from.
+
+**Results:** `popup-mb.spec.js` 58 passed (drill-down 4); `popup-mb.json` 57
+as declared; live `popup-mb.spec.js` 7 of 7 (2026-10-07T23:17:58Z to
+23:18:49Z); lint within the baseline. The branch's `npm run test:full` was
+stopped at the user's request after their live check; the merge gate runs on
+the merged tree.
