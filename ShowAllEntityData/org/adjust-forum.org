@@ -19,3 +19,17 @@ Remove obsolete entries
 3.)
 
 Check if the current bullet points still hold
+
+* ## Changes since last version (9.99.1167 -> 9.99.1271)
+
+ADD a new section + all the relevant information
+
+#+begin_example
+## Changes since last version (9.99.1167 -> 9.99.1271)
+#+end_example
+
+after the current section and its contents
+
+#+begin_example
+## Changes since last version (9.99.746 -> 9.99.1167)
+#+end_example
