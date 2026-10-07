@@ -52,6 +52,15 @@ const WS2_FIXTURES = [
     [/\/ws\/2\/release\?recording=/, 'ws2-pop-recording-thunder-count.json'],
     [/\/ws\/2\/work\/[0-9a-f-]{36}\?/, 'ws2-pop-work-btr.json'],
     [/\/ws\/2\/recording\?work=/, 'ws2-pop-work-btr-recordings.json'],
+    [/\/ws\/2\/artist\/[0-9a-f-]{36}\?inc=genres/, 'ws2-pop-artist-bruce.json'],
+    [/\/ws\/2\/artist\/[0-9a-f-]{36}\?inc=url-rels/, 'ws2-pop-artist-bruce-pin.json'],
+    ...['album', 'single', 'ep', 'broadcast', 'other'].map(t => [
+        new RegExp(`/ws/2/release-group\\?artist=[0-9a-f-]{36}&type=${t}&`), `ws2-pop-artist-bruce-rg-${t}.json`]),
+    [/\/ws\/2\/label\/[0-9a-f-]{36}\?inc=genres/, 'ws2-pop-label-columbia.json'],
+    [/\/ws\/2\/label\/[0-9a-f-]{36}\?inc=url-rels/, 'ws2-pop-label-columbia-pin.json'],
+    [/\/ws\/2\/release\?label=/, 'ws2-pop-label-columbia-count.json'],
+    [/\/ws\/2\/area\/[0-9a-f-]{36}\?/, 'ws2-pop-area-nj.json'],
+    [/\/ws\/2\/instrument\/[0-9a-f-]{36}\?/, 'ws2-pop-instrument-guitar.json'],
 ];
 // A 1×1 PNG, so a cover the card asks for loads instead of being dropped.
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
@@ -111,8 +120,10 @@ async function open(page, { settings = {}, lookup = null, showAll = true, ws2 = 
         const r = own || (hit ? { status: 200, body: json(hit[1]) } : { status: 404, body: '{"error":"no fixture"}' });
         return route.fulfill({ status: r.status, contentType: 'application/json', body: r.body });
     };
-    await ctx.route(/\/ws\/2\/(recording|work)[/?]/, other);
+    await ctx.route(/\/ws\/2\/(recording|work|artist|label|area|instrument)[/?]/, other);
     await ctx.route('**/ws/2/release?recording=**', other);
+    await ctx.route('**/ws/2/release?label=**', other);
+    await ctx.route('**/ws/2/release-group?artist=**', other);
     await ctx.route('https://musicbrainz.org/release/**', (route) => {
         log.pages.push(route.request().url());
         return route.fulfill({ path: RELEASE_PAGE, contentType: 'text/html' });
@@ -633,5 +644,108 @@ test.describe('MusicBrainz link previews: recording and work (WIP.2)', () => {
         expect(log.ws2.filter(u => u.includes('/ws/2/recording?work='))).toEqual([
             expect.stringContaining(`recording?work=${WORK_ID}&limit=100&inc=artist-credits`),
         ]);
+    });
+});
+
+test.describe('MusicBrainz link previews: artist, label, area, instrument (WIP.3)', () => {
+    const artistLink = (page) => page.locator('table.tbl tbody a[href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f"]').first();
+    const labelLink = (page) => page.locator('table.tbl tbody a[href="/label/011d1192-6f65-45bd-85c4-0400dd45693e"]').first();
+
+    test('the artist card: type, area, life span, rating, IPI, ISNI — one request, no links yet', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        await ctrlHover(page, artistLink(page));
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-pill')).toContainText(['Person', 'Male', 'United States', '1949-09-23 –']);
+        const kv = card(page).locator('.mb-dp-kv');
+        await expect(kv).toContainText('Long Branch');
+        await expect(kv).toContainText('4.4 of 5 · 15 votes');
+        await expect(kv).toContainText('00076333277');
+        await expect(kv).toContainText('0000000121418834');
+        expect(log.ws2).toEqual([expect.stringContaining('/ws/2/artist/70248960-cb53-4ea4-943a-edb18f7d336f?inc=genres+ratings+aliases&fmt=json')]);
+    });
+
+    test('the artist window: its links and release groups per type, as they arrive', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        await ctrlHover(page, artistLink(page));
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        const area = dialog(page).locator('.mb-dp-area');
+        await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Artist');
+        const counts = area.locator('.mb-rg-wtable tbody tr');
+        await expect(counts).toHaveCount(5);
+        await expect(counts.locator('td:last-child')).toHaveText(['1,924', '177', '28', '6', '10'], { timeout: 15000 });
+        await expect(area.locator('.mb-rg-links > div')).toHaveCount(75);
+        expect(log.ws2.filter(u => u.includes('inc=url-rels'))).toHaveLength(1);
+        expect(log.ws2.filter(u => u.includes('/ws/2/release-group?artist='))).toHaveLength(5);
+    });
+
+    test('the arrows stay in the Artist column', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true } });
+        const n = await page.evaluate(() => Array.from(document.querySelectorAll('table.tbl'))
+            .filter(t => t.getClientRects().length)
+            .reduce((s, t) => s + Array.from(t.tBodies[0].rows).filter(tr => tr.getClientRects().length &&
+                Array.from(tr.cells).some(td => td.querySelector('a[href^="/artist/"]'))).length, 0));
+        await ctrlHover(page, artistLink(page));
+        await expect(card(page)).toBeVisible();
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('.mb-dp-pos-label')).toHaveText(`1 / ${n}`);
+        await page.keyboard.press('ArrowRight');
+        await expect(dialog(page).locator('.mb-dp-pos-label')).toHaveText(`2 / ${n}`);
+        await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Artist');
+    });
+
+    test('the label card and window: label code, related labels by direction, the release count', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        await ctrlHover(page, labelLink(page));
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-pill')).toContainText(['Imprint', 'LC 00162', 'United States', '1887 –']);
+        expect(log.ws2).toEqual([expect.stringContaining('/ws/2/label/011d1192-6f65-45bd-85c4-0400dd45693e?inc=genres+aliases&fmt=json')]);
+        await page.keyboard.press('Space');
+        const area = dialog(page).locator('.mb-dp-area');
+        const related = area.locator('h4:text-is("Related labels") + .mb-dp-kv');
+        await expect(related).toContainText('Vocalion');
+        for (const name of ['Owns', 'Owned by', 'Imprint of']) {
+            await expect(related.locator('dt').getByText(name, { exact: true })).toHaveCount(1);
+        }
+        await expect(related).toContainText('Vocalion');
+        await expect(related).toContainText('Columbia/Epic Label Group');
+        await expect(area.locator('.mb-dp-kv').first()).toContainText('43,171');
+        expect(log.ws2.filter(u => u.includes('inc=url-rels+label-rels'))).toHaveLength(1);
+        expect(log.ws2.filter(u => u.includes('/ws/2/release?label='))).toHaveLength(1);
+    });
+
+    test('the area card and window: the parent and the parts, one request', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, '/area/a36544c1-cb40-4f44-9e0e-7a5a69e403a8', 'New Jersey');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-pill')).toContainText(['Subdivision', 'US-NJ']);
+        const kv = card(page).locator('.mb-dp-kv');
+        await expect(kv).toContainText('United States');
+        await expect(kv.locator('dt')).toContainText(['Part of', 'Parts']);
+        await page.keyboard.press('Space');
+        const related = dialog(page).locator('h4:text-is("Related areas") + .mb-dp-kv');
+        await expect(related.locator('dd').first().locator('a')).toHaveCount(21);
+        await expect(related).toContainText('Essex County');
+        expect(log.ws2).toHaveLength(1);
+    });
+
+    test('the instrument card and window: subtypes, hybrids, aliases; the description is left to the Live page', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, '/instrument/63021302-86cd-4aee-80df-2270d54f4978', 'guitar');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-pill')).toContainText(['String instrument']);
+        await expect(card(page).locator('.mb-dp-kv')).toContainText('slide guitar, steel guitar, Vietnamese guitar +5');
+        await page.keyboard.press('Space');
+        const area = dialog(page).locator('.mb-dp-area');
+        await expect(area).toContainText('The description is on the instrument\'s page (Live page).');
+        const groups = area.locator('h4:text-is("Related instruments") + .mb-dp-kv dt');
+        await expect(groups).toHaveCount(3);
+        for (const name of ['Hybrids', 'Part of', 'Subtypes']) {
+            await expect(groups.getByText(name, { exact: true })).toHaveCount(1);
+        }
+        await expect(area.locator('h4', { hasText: 'Aliases' })).toHaveText('Aliases · 27');
+        expect(log.ws2).toHaveLength(1);
     });
 });

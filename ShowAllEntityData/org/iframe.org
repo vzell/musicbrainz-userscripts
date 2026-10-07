@@ -574,7 +574,7 @@ only after the user's browser check of the whole branch.
 |-------+-----------------------------------------------+--------------------------|
 | WIP.1 | the engine for MusicBrainz tables; release group (Phase 1's card and window), release | done 2026-10-07 |
 | WIP.2 | recording, work                               | done 2026-10-07          |
-| WIP.3 | artist, label, area, instrument               |                          |
+| WIP.3 | artist, label, area, instrument               | done 2026-10-07          |
 | WIP.4 | event, place, series                          |                          |
 | WIP.5 | ISRC, ISWC, disc ID, collection               |                          |
 

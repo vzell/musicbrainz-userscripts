@@ -20091,3 +20091,29 @@ entries. Grep for `UNEXPECTED` too, or count the lines.
 **Results:** `popup-mb.spec.js` 20 passed; `popup-mb.json` 19 as declared;
 lint within the baseline. `npm test`: 1299 passed, 0 failed
 (2026-10-07T18:39:00Z to 18:45:45Z, host petri, WSL2).
+
+## 2026-10-07 — Artist, label, area and instrument cards; relation directions read off the data (branch feature/popup-engine-phase2, WIP.3)
+
+**Relation groups are named from the captures, not guessed.** The Web Service
+gives a relation's `type` and `direction`, not MusicBrainz's phrase for it,
+and the direction flips the meaning: Columbia's forward "label ownership"
+targets (Vocalion, Ruffhouse) are labels it OWNS, its one backward target
+(Columbia/Epic Label Group) OWNS IT; New Jersey's 21 forward "part of" targets
+are its counties, its backward one the United States; guitar's forward
+"subtype" targets include slide guitar. `_MB_POP_REL_LABELS` names only the
+groups so verified; any other is its type, with an arrow when it comes in both
+directions. Grouping by type alone (the WIP.2 helper) put a label's owner
+among the labels it owns.
+
+**The label code format is from memory.** `_mbPopLabelCode()` writes "LC" and
+five digits (162 → "LC 00162"), as recalled from MusicBrainz's own formatter.
+musicbrainz.org answered curl with a "Verifying your browser" page, so it was
+not checked against a label page; check it in a browser.
+
+**The relation groups come in MusicBrainz's order.** Two specs first assumed
+an order for the group names and failed although every group was there; they
+now look each name up.
+
+**Results:** `popup-mb.spec.js` 26 passed; `popup-mb.json` 24 as declared;
+lint within the baseline. `npm test`: 1305 passed, 0 failed
+(2026-10-07T18:52:53Z to 18:59:03Z, host petri, WSL2).

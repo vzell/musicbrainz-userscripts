@@ -1,5 +1,29 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Link previews on MusicBrainz: artist, label, area and instrument cards. An artist card shows the type, gender, area, life span, where they were born or founded, genres, rating, IPI, ISNI and other names; its window adds every external link and how many release groups they have of each type (album, single, EP, broadcast, other). A label card shows the type, label code, area, years active, genres and other names; its window adds the related labels (what it owns, who owns it, whose imprint it is, distribution, reissues), its links and how many releases it has. An area card shows the type, ISO codes, what it is part of and how many parts it has; its window lists the parts. An instrument card shows the type, subtypes and other names; its window lists the related instruments and every alias (MusicBrainz's description of an instrument is on its Live page)."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Popup engine: relations are grouped by type and direction and named as MusicBrainz's pages word them (_MB_POP_REL_LABELS, read off the captured answers); one links helper, _mbPopUrlLinksHtml(), now also renders the release group window's links. The artist card leaves the external links to the window (most of the artist lookup's size in Phase 0)."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "popup-mb.spec.js: 6 more tests (26); twelve ws2-pop-artist/label/area/instrument fixtures (scripts/capture-ws2-fixtures.py); popup-mb.json: 5 more mutations (24). The WIP.2 commit carried a scratch script by mistake (scripts/_peek3.py); removed here. HELP, docs/claude/detail-pages.md, org/iframe.org."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-10-07",
     "sections": [

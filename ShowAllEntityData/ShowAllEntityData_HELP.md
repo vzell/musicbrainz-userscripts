@@ -1527,7 +1527,8 @@ releases.
 With ⚙️ Settings → 🔎 LINK PREVIEWS ON MUSICBRAINZ → *Preview linked entities
 on hover* switched on (it is off until you do), the links in a table show what
 is behind them without opening a tab. So far: **releases**, **release
-groups**, **recordings** and **works**; the other kinds follow.
+groups**, **recordings**, **works**, **artists**, **labels**, **areas** and
+**instruments**; the other kinds follow.
 
 **Hold Ctrl and rest the pointer on a link**, or rest it first and then press
 **Ctrl**: a card opens beside the link. Without Ctrl nothing happens, so
@@ -1540,7 +1541,10 @@ the group's releases, as the release page's "versions available" link does. A
 recording card shows its length, artist, ISRCs, first release date, the work
 it performs and its earliest releases ("on 25+ releases" when there are more
 than MusicBrainz lists at once). A work card shows its type, language, ISWC,
-composer, lyricist and publishers.
+composer, lyricist and publishers. An artist card shows the type, area, life
+span, birthplace, genres, rating, IPI and ISNI; a label card the type, label
+code, area, years active and genres; an area card what it is part of and how
+many parts it has; an instrument card its type, subtypes and other names.
 **Esc** or moving away closes it.
 
 **Press Space** to pin it into a window:
@@ -1552,8 +1556,12 @@ composer, lyricist and publishers.
   credits (performers and their instruments, producers, engineers, where it
   was recorded and mixed) and up to 25 of its releases with the real total;
   for a work, its writers, publishers and related works, its society codes,
-  and its first 100 recordings with the total. A part that could not be
-  loaded says so, with **Try again**.
+  and its first 100 recordings with the total; for an artist, every external
+  link and how many release groups of each type; for a label, the labels it
+  owns, is owned by or is an imprint of, its links and its number of
+  releases; for an area, its parts; for an instrument, the related
+  instruments and every alias (its description is on the Live page). A part
+  that could not be loaded says so, with **Try again**.
 - **Live page**: the entity's own MusicBrainz page, without the site's header
   and footer, and without its scripts.
 - **‹ ›** or **← →** step to the same kind of link in the **same column** of

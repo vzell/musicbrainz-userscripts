@@ -35780,18 +35780,7 @@
         fields.push(['Rating', votes ? `${rt.value} of 5 · ${votes} vote${votes === 1 ? '' : 's'}` : 'no votes']);
         const genres = (d.genres || []).map(g => g.name).filter(Boolean);
         if (genres.length) fields.push(['Genres', genres.join(', ')]);
-        let html = '<h4>Facts</h4>' + _dpFieldsHtml(fields);
-        const urls = (d.relations || []).filter(r => r.url && r.url.resource);
-        if (urls.length) {
-            html += `<h4>Links (${urls.length})</h4><div class="mb-rg-links">` + urls.map(r => {
-                let host = r.url.resource;
-                try {
-                    host = new URL(r.url.resource).hostname.replace(/^www\./, '');
-                } catch (_) { /* keep the whole address */ }
-                return `<div><a href="${_rgEsc(r.url.resource)}" target="_blank" rel="noopener">${_rgEsc(host)}</a> ` +
-                    `<span class="mb-rg-dim">${_rgEsc(r.type)}</span></div>`;
-            }).join('') + '</div>';
-        }
+        let html = '<h4>Facts</h4>' + _dpFieldsHtml(fields) + _mbPopUrlLinksHtml(d.relations);
         if (d.annotation) html += `<h4>Annotation</h4><div class="mb-dp-section">${_rgEsc(d.annotation)}</div>`;
         return html;
     }
@@ -36813,8 +36802,9 @@
     }
 
     /**
-     * The relations of one target type, grouped by relationship type in the
-     * order MusicBrainz lists them, as `[type, [relation, …]]` pairs.
+     * The relations of one target type, grouped by relationship type AND
+     * direction (a label that owns others and is owned by one has both) in
+     * the order MusicBrainz lists them, as `['<type>|<direction>', [relation, …]]`.
      *
      * @param {?Array<Object>} rels - `relations`.
      * @param {string} targetType
@@ -36823,25 +36813,33 @@
     function _mbPopRelsByType(rels, targetType) {
         const by = new Map();
         (rels || []).filter(r => r['target-type'] === targetType).forEach(r => {
-            if (!by.has(r.type)) by.set(r.type, []);
-            by.get(r.type).push(r);
+            const k = `${r.type}|${r.direction || 'forward'}`;
+            if (!by.has(k)) by.set(k, []);
+            by.get(k).push(r);
         });
         return Array.from(by);
     }
 
     /**
-     * Relations grouped by type as label/value rows for `_mbPopKvHtml()`:
-     * the type (first letter up) and its targets, one per line.
+     * Relations grouped as label/value rows for `_mbPopKvHtml()`: the
+     * group's name (`_MB_POP_REL_LABELS`, else its type with the first
+     * letter up, and an arrow for the direction when the type has both) and
+     * its targets, one per line.
      *
      * @param {?Array<Object>} rels
      * @param {string} targetType
      * @returns {Array<Array<string>>}
      */
     function _mbPopRelRows(rels, targetType) {
-        return _mbPopRelsByType(rels, targetType).map(([type, list]) => [
-            type.charAt(0).toUpperCase() + type.slice(1),
-            list.map(r => _mbPopRelTargetHtml(r, targetType)).join('<br>'),
-        ]);
+        const groups = _mbPopRelsByType(rels, targetType);
+        const types = groups.map(([k]) => k.split('|')[0]);
+        return groups.map(([k, list]) => {
+            const [type, dir] = k.split('|');
+            const both = types.filter(x => x === type).length > 1;
+            const name = _MB_POP_REL_LABELS[k] ||
+                type.charAt(0).toUpperCase() + type.slice(1) + (both ? (dir === 'forward' ? ' →' : ' ←') : '');
+            return [name, list.map(r => _mbPopRelTargetHtml(r, targetType)).join('<br>')];
+        });
     }
 
     /**
@@ -36878,6 +36876,139 @@
             rows.map(r => '<tr>' + r.map((c, i) => `<td${numCols.includes(i) ? ' class="mb-rg-num"' : ''}>${c}</td>`).join('') + '</tr>').join('') +
             '</tbody></table></div>';
     }
+
+    /**
+     * A life span as MusicBrainz shows it: "1949-09-23 –", "1950 – 2000",
+     * "– 2000", or "ended" when it ended on an unknown date; '' when nothing
+     * is known.
+     *
+     * @param {?{begin: ?string, end: ?string, ended: boolean}} ls - `life-span`.
+     * @returns {string}
+     */
+    function _mbPopLifeSpan(ls) {
+        if (!ls || (!ls.begin && !ls.end && !ls.ended)) return '';
+        if (!ls.end) return ls.ended ? `${ls.begin ? `${ls.begin} – ` : ''}ended` : `${ls.begin} –`;
+        return `${ls.begin || ''} – ${ls.end}`.trim();
+    }
+
+    /**
+     * A label code as MusicBrainz shows it: "LC " and five digits
+     * (MusicBrainz's own formatLabelCode(); the integer 162 is Columbia's
+     * "LC 00162").
+     *
+     * @param {?number} code - `label-code`.
+     * @returns {string}
+     */
+    function _mbPopLabelCode(code) {
+        return typeof code === 'number' ? `LC ${String(code).padStart(5, '0')}` : '';
+    }
+
+    /**
+     * A count with thousands separators ("43,171").
+     *
+     * @param {number} n
+     * @returns {string}
+     */
+    function _mbPopNum(n) {
+        return Number(n).toLocaleString('en-US');
+    }
+
+    /**
+     * Genres as text, the most voted first, at most `max` and "+N".
+     *
+     * @param {?Array<Object>} genres - `genres`.
+     * @param {number} [max]
+     * @returns {string}
+     */
+    function _mbPopGenres(genres, max = 5) {
+        const names = (genres || []).slice().sort((a, b) => (b.count || 0) - (a.count || 0)).map(g => g.name).filter(Boolean);
+        return names.length > max ? `${names.slice(0, max).join(', ')} +${names.length - max}` : names.join(', ');
+    }
+
+    /**
+     * A rating as "4.4 of 5 · 15 votes", '' with no votes.
+     *
+     * @param {?{value: ?number, 'votes-count': number}} rt - `rating`.
+     * @returns {string}
+     */
+    function _mbPopRating(rt) {
+        const votes = (rt && rt['votes-count']) || 0;
+        return votes ? `${rt.value} of 5 · ${votes} vote${votes === 1 ? '' : 's'}` : '';
+    }
+
+    /**
+     * An area of the Web Service as a link (a new tab), '' for none.
+     *
+     * @param {?Object} a
+     * @returns {string}
+     */
+    function _mbPopAreaHtml(a) {
+        return a && a.id ? `<a href="/area/${_rgEsc(a.id)}" target="_blank" rel="noopener">${_rgEsc(a.name)}</a>` : '';
+    }
+
+    /**
+     * Aliases as text: each name with its type and locale, at most `max`
+     * and "+N".
+     *
+     * @param {?Array<Object>} aliases
+     * @param {number} [max]
+     * @returns {string}
+     */
+    function _mbPopAliases(aliases, max = 3) {
+        const names = (aliases || []).map(a => a.name + ([a.type, a.locale].filter(Boolean).length
+            ? ` (${[a.type, a.locale].filter(Boolean).join(', ')})` : ''));
+        return names.length > max ? `${names.slice(0, max).join('; ')} +${names.length - max}` : names.join('; ');
+    }
+
+    /**
+     * An entity's external links (its `url` relations) as the window's
+     * "Links (N)" section: each host linked, its relationship type beside it.
+     * '' when it has none.
+     *
+     * @param {?Array<Object>} rels - `relations`.
+     * @param {boolean} [withHead] - With its "Links (N)" heading; false
+     *   inside a section that has its own (`_mbPopSectionHtml()`).
+     * @returns {string}
+     */
+    function _mbPopUrlLinksHtml(rels, withHead = true) {
+        const urls = (rels || []).filter(r => r.url && r.url.resource);
+        if (!urls.length) return '';
+        return `${withHead ? `<h4>Links (${urls.length})</h4>` : ''}<div class="mb-rg-links">` + urls.map(r => {
+            let host = r.url.resource;
+            try {
+                host = new URL(r.url.resource).hostname.replace(/^www\./, '');
+            } catch (_) { /* keep the whole address */ }
+            return `<div><a href="${_rgEsc(r.url.resource)}" target="_blank" rel="noopener">${_rgEsc(host)}</a> ` +
+                `<span class="mb-rg-dim">${_rgEsc(r.type)}</span></div>`;
+        }).join('') + '</div>';
+    }
+
+    /**
+     * Names for relation groups whose meaning turns on their direction, by
+     * `<type>|<direction>`, as MusicBrainz's pages word them; read off the
+     * Phase 2 captures (Columbia owns Vocalion; New Jersey's 21 forward
+     * "part of" are its counties; guitar's forward subtypes include slide
+     * guitar). Any other group is named by its type.
+     * @type {Object<string, string>}
+     */
+    const _MB_POP_REL_LABELS = {
+        'part of|forward': 'Parts',
+        'part of|backward': 'Part of',
+        'label ownership|forward': 'Owns',
+        'label ownership|backward': 'Owned by',
+        'label distribution|forward': 'Distributes',
+        'label distribution|backward': 'Distributed by',
+        'imprint|forward': 'Imprints',
+        'imprint|backward': 'Imprint of',
+        'subtype|forward': 'Subtypes',
+        'subtype|backward': 'Subtype of',
+        'hybrid of|backward': 'Hybrids',
+        'parts|backward': 'Part of',
+        'parts|forward': 'Parts',
+    };
+
+    /** The primary types an artist window counts release groups of, with their names. */
+    const _MB_POP_RG_TYPES = [['album', 'Album'], ['single', 'Single'], ['ep', 'EP'], ['broadcast', 'Broadcast'], ['other', 'Other']];
 
     /** Releases a recording lookup embeds at most (Phase 0, org/iframe.org R3): a full list means "maybe more". */
     const _MB_POP_SUBLIST_CAP = 25;
@@ -37135,6 +37266,168 @@
             pin(t, d, again, repaint) {
                 const browse = _mbPopBrowse('recording', `work=${encodeURIComponent(t.id)}&limit=100&inc=artist-credits`);
                 _mbPopPinLoad(t, browse.key, browse.url, again, repaint);
+            },
+        })),
+        // Card: one lookup without url-rels (R1: 75 links were most of the
+        // artist's 30 KB). Window: the links (one lookup) and the release
+        // groups per primary type, each a browse with limit=1, shown as
+        // they arrive.
+        artist: Object.assign({ title: 'Artist', wide: true }, _mbPopLookupKind({
+            cardInc: 'genres+ratings+aliases',
+            cardHtml(d) {
+                const head = `<div class="mb-tt-title">${_rgEsc(d.name)}` +
+                    `${d.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(d.disambiguation)})</span>` : ''}</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([d.type, d.gender && d.gender !== 'Not applicable' ? d.gender : '',
+                        (d.area && d.area.name) || d.country, _mbPopLifeSpan(d['life-span'])])}</div><div class="mb-tt-rule"></div>`;
+                return head + _mbPopKvHtml([
+                    [d.type === 'Person' ? 'Born in' : 'Founded in', _rgEsc((d['begin-area'] && d['begin-area'].name) || '')],
+                    ['Genres', _rgEsc(_mbPopGenres(d.genres))],
+                    ['Rating', _rgEsc(_mbPopRating(d.rating))],
+                    ['IPI', _rgEsc((d.ipis || []).join(', '))],
+                    ['ISNI', _rgEsc((d.isnis || []).join(', '))],
+                    ['Also known as', _rgEsc(_mbPopAliases(d.aliases))],
+                ]);
+            },
+            windowHtml(d, t) {
+                const links = _mbPopLookup(t, 'url-rels');
+                const ls = d['life-span'] || {};
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
+                    (d.disambiguation ? `<div class="mb-dp-xsub">${_rgEsc(d.disambiguation)}</div>` : '') +
+                    `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type, d.gender && d.gender !== 'Not applicable' ? d.gender : ''])}</div>` +
+                    '<h4>Facts</h4>' + _mbPopKvHtml([
+                        ['Sort name', _rgEsc(d['sort-name'] || '')],
+                        ['Area', _mbPopAreaHtml(d.area)],
+                        [d.type === 'Person' ? 'Born' : 'Founded', [_rgEsc(ls.begin || ''), _mbPopAreaHtml(d['begin-area'])].filter(Boolean).join(' · ')],
+                        [d.type === 'Person' ? 'Died' : 'Dissolved', [_rgEsc(ls.end || (ls.ended ? 'yes' : '')), _mbPopAreaHtml(d['end-area'])]
+                            .filter(Boolean).join(' · ')],
+                        ['Rating', _rgEsc(_mbPopRating(d.rating))],
+                        ['Genres', _rgEsc(_mbPopGenres(d.genres, 99))],
+                        ['IPI', _rgEsc((d.ipis || []).join(', '))],
+                        ['ISNI', _rgEsc((d.isnis || []).join(', '))],
+                        ['Aliases', _rgEsc(_mbPopAliases(d.aliases, 99))],
+                    ]) +
+                    _mbPopSectionHtml('Links', _mbPop.get(links.key), (p) => _mbPopUrlLinksHtml(p.relations, false) ||
+                        '<div class="mb-dp-xsub">No links.</div>');
+                const rows = _MB_POP_RG_TYPES.map(([type, label]) => {
+                    const q = _mbPopBrowse('release-group', `artist=${encodeURIComponent(t.id)}&type=${type}&limit=1`);
+                    const s = _mbPop.get(q.key);
+                    let cell = '<span class="mb-dp-spin">◌</span>';
+                    if (s && s.status === 'done' && s.data) cell = _rgEsc(_mbPopNum(s.data['release-group-count'] || 0));
+                    else if (s && s.status === 'failed') cell = '<span class="mb-rg-dim">?</span>';
+                    return [_rgEsc(label), cell];
+                });
+                const right = '<h4>Release groups</h4>' + _mbPopTableHtml(['Type', 'Count'], rows, [1]) +
+                    `<p><a href="/artist/${_rgEsc(d.id)}" target="_blank" rel="noopener">The discography</a> ` +
+                    '<span class="mb-rg-dim">(official releases; the page filters the others)</span></p>';
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+            pin(t, d, again, repaint) {
+                const links = _mbPopLookup(t, 'url-rels');
+                _mbPopPinLoad(t, links.key, links.url, again, repaint);
+                _MB_POP_RG_TYPES.forEach(([type]) => {
+                    const q = _mbPopBrowse('release-group', `artist=${encodeURIComponent(t.id)}&type=${type}&limit=1`);
+                    _mbPopPinLoad(t, q.key, q.url, again, repaint);
+                });
+            },
+        })),
+        // Card: one lookup (genres, aliases; 1.8 KB). Window: the links and
+        // the related labels (one lookup, 33 KB for Columbia), and the
+        // release count from a browse with limit=1.
+        label: Object.assign({ title: 'Label', wide: true }, _mbPopLookupKind({
+            cardInc: 'genres+aliases',
+            cardHtml(d) {
+                const head = `<div class="mb-tt-title">${_rgEsc(d.name)}</div>` +
+                    (d.disambiguation ? `<div class="mb-tt-comment">${_rgEsc(d.disambiguation)}</div>` : '') +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([d.type, _mbPopLabelCode(d['label-code']),
+                        (d.area && d.area.name) || d.country, _mbPopLifeSpan(d['life-span'])])}</div><div class="mb-tt-rule"></div>`;
+                return head + _mbPopKvHtml([
+                    ['Genres', _rgEsc(_mbPopGenres(d.genres))],
+                    ['IPI', _rgEsc((d.ipis || []).join(', '))],
+                    ['Also known as', _rgEsc(_mbPopAliases(d.aliases))],
+                ]);
+            },
+            windowHtml(d, t) {
+                const pin = _mbPopLookup(t, 'url-rels+label-rels');
+                const count = _mbPopBrowse('release', `label=${encodeURIComponent(t.id)}&limit=1`);
+                const cs = _mbPop.get(count.key);
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
+                    (d.disambiguation ? `<div class="mb-dp-xsub">${_rgEsc(d.disambiguation)}</div>` : '') +
+                    `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type, _mbPopLabelCode(d['label-code'])])}</div>` +
+                    '<h4>Facts</h4>' + _mbPopKvHtml([
+                        ['Area', _mbPopAreaHtml(d.area)],
+                        ['Active', _rgEsc(_mbPopLifeSpan(d['life-span']))],
+                        ['Releases', cs && cs.status === 'done' && cs.data
+                            ? `<a href="/label/${_rgEsc(d.id)}" target="_blank" rel="noopener">${_rgEsc(_mbPopNum(cs.data['release-count'] || 0))}</a>`
+                            : (cs && cs.status === 'failed' ? '<span class="mb-rg-dim">?</span>' : '<span class="mb-dp-spin">◌</span>')],
+                        ['Genres', _rgEsc(_mbPopGenres(d.genres, 99))],
+                        ['IPI', _rgEsc((d.ipis || []).join(', '))],
+                        ['Aliases', _rgEsc(_mbPopAliases(d.aliases, 99))],
+                    ]);
+                const ps = _mbPop.get(pin.key);
+                const right = _mbPopSectionHtml('Related labels', ps, (p) => _mbPopKvHtml(_mbPopRelRows(p.relations, 'label')) ||
+                    '<div class="mb-dp-xsub">None.</div>') +
+                    (ps && ps.status === 'done' && ps.data ? _mbPopUrlLinksHtml(ps.data.relations) : '');
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+            pin(t, d, again, repaint) {
+                const pin = _mbPopLookup(t, 'url-rels+label-rels');
+                _mbPopPinLoad(t, pin.key, pin.url, again, repaint);
+                const count = _mbPopBrowse('release', `label=${encodeURIComponent(t.id)}&limit=1`);
+                _mbPopPinLoad(t, count.key, count.url, again, repaint);
+            },
+        })),
+        // One lookup for card and window: type, ISO codes, the immediate
+        // parent and the parts (a chain of parents would cost a lookup per
+        // level, R1).
+        area: Object.assign({ title: 'Area', wide: false }, _mbPopLookupKind({
+            cardInc: 'area-rels',
+            cardHtml(d) {
+                const parent = (d.relations || []).filter(r => r.type === 'part of' && r.direction === 'backward' && r.area).map(r => r.area.name);
+                const parts = (d.relations || []).filter(r => r.type === 'part of' && r.direction === 'forward').length;
+                return `<div class="mb-tt-title">${_rgEsc(d.name)}</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([d.type, ...(d['iso-3166-1-codes'] || []),
+                        ...(d['iso-3166-2-codes'] || []), ...(d['iso-3166-3-codes'] || [])])}</div><div class="mb-tt-rule"></div>` +
+                    _mbPopKvHtml([
+                        ['Part of', _rgEsc(parent.join(', '))],
+                        ['Parts', parts ? String(parts) : ''],
+                        ['Existed', _rgEsc(_mbPopLifeSpan(d['life-span']))],
+                    ]);
+            },
+            windowHtml(d) {
+                return `<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
+                    (d.disambiguation ? `<div class="mb-dp-xsub">${_rgEsc(d.disambiguation)}</div>` : '') +
+                    `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type])}</div><h4>Facts</h4>` + _mbPopKvHtml([
+                        ['ISO 3166', _rgEsc([...(d['iso-3166-1-codes'] || []), ...(d['iso-3166-2-codes'] || []),
+                            ...(d['iso-3166-3-codes'] || [])].join(', '))],
+                        ['Existed', _rgEsc(_mbPopLifeSpan(d['life-span']))],
+                    ]) + `</div><div class="mb-dp-col"><h4>Related areas</h4>${_mbPopKvHtml(_mbPopRelRows(d.relations, 'area')) ||
+                    '<div class="mb-dp-xsub">None.</div>'}</div></div>`;
+            },
+        })),
+        // One lookup for card and window. The Web Service has no
+        // instrument description (R1, guitar): the Live page shows it.
+        instrument: Object.assign({ title: 'Instrument', wide: false }, _mbPopLookupKind({
+            cardInc: 'instrument-rels+aliases',
+            cardHtml(d) {
+                return `<div class="mb-tt-title">${_rgEsc(d.name)}` +
+                    `${d.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(d.disambiguation)})</span>` : ''}</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([d.type])}</div><div class="mb-tt-rule"></div>` +
+                    (d.description ? `<div class="mb-tt-body">${_rgEsc(d.description)}</div>` : '') +
+                    _mbPopKvHtml([
+                        ..._mbPopRelRows(d.relations, 'instrument').map(([k, v]) => [k, v.split('<br>').length > 3
+                            ? `${v.split('<br>').slice(0, 3).join(', ')} +${v.split('<br>').length - 3}` : v.split('<br>').join(', ')]),
+                        ['Also known as', _rgEsc(_mbPopAliases(d.aliases))],
+                    ]);
+            },
+            windowHtml(d) {
+                return `<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
+                    `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type])}</div>` +
+                    (d.description ? `<div class="mb-dp-section">${_rgEsc(d.description)}</div>`
+                        : '<div class="mb-dp-xsub">The description is on the instrument\'s page (Live page).</div>') +
+                    `<h4>Aliases · ${(d.aliases || []).length}</h4>${_mbPopKvHtml((d.aliases || []).map(a =>
+                        [a.locale || a.type || '—', _rgEsc(a.name)]))}</div>` +
+                    `<div class="mb-dp-col"><h4>Related instruments</h4>${_mbPopKvHtml(_mbPopRelRows(d.relations, 'instrument')) ||
+                    '<div class="mb-dp-xsub">None.</div>'}</div></div>`;
             },
         })),
     };

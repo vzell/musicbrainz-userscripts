@@ -144,7 +144,7 @@
     },
     {
         "name": "the arrows mix kinds in a column",
-        "why": "A row links a release, an artist, a label: the arrows step through ONE kind. On this page the release column holds releases only (its /cover-art anchors resolve to nothing), so the kind filter is covered by the column; recorded so the overlap is known, and re-checked once artist and label cards exist (WIP.3).",
+        "why": "A row links a release, an artist, a label: the arrows step through ONE kind. Re-checked in WIP.3 with artist and label cards: on the host page every column holds one kind (its /cover-art anchors resolve to nothing), so the kind filter is still covered by the column match. Recorded so the overlap is known.",
         "edits": [
             {
                 "find": "                    return m && m.type === t.type;",
@@ -245,6 +245,71 @@
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
         "grep": "the recording card",
+        "expect": "fail"
+    },
+    {
+        "name": "relation groups lose their direction-aware names",
+        "why": "A label owns some labels and is owned by another; 'Label ownership' twice says neither. _MB_POP_REL_LABELS names them as MusicBrainz's pages do.",
+        "edits": [
+            {
+                "find": "            const name = _MB_POP_REL_LABELS[k] ||",
+                "replace": "            const name = '' ||"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the label card and window",
+        "expect": "fail"
+    },
+    {
+        "name": "relations are grouped by type only",
+        "why": "Without the direction the label's parent lands among the labels it owns.",
+        "edits": [
+            {
+                "find": "            const k = `${r.type}|${r.direction || 'forward'}`;",
+                "replace": "            const k = `${r.type}|forward`;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the label card and window",
+        "expect": "fail"
+    },
+    {
+        "name": "the artist card asks for its links",
+        "why": "75 URL relations were most of the artist lookup's 30 KB in Phase 0 (R1): the card leaves them to the window.",
+        "edits": [
+            {
+                "find": "            cardInc: 'genres+ratings+aliases',",
+                "replace": "            cardInc: 'genres+ratings+aliases+url-rels',"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the artist card",
+        "expect": "fail"
+    },
+    {
+        "name": "the label code is not padded",
+        "why": "MusicBrainz shows a label code as 'LC' and five digits; the Web Service gives the bare integer (162).",
+        "edits": [
+            {
+                "find": "        return typeof code === 'number' ? `LC ${String(code).padStart(5, '0')}` : '';",
+                "replace": "        return typeof code === 'number' ? `LC ${code}` : '';"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the label card and window",
+        "expect": "fail"
+    },
+    {
+        "name": "the artist window counts one type only",
+        "why": "Each primary type is its own browse (limit=1); the window shows all five as they arrive.",
+        "edits": [
+            {
+                "find": "                _MB_POP_RG_TYPES.forEach(([type]) => {",
+                "replace": "                _MB_POP_RG_TYPES.slice(0, 1).forEach(([type]) => {"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the artist window",
         "expect": "fail"
     }
 ]

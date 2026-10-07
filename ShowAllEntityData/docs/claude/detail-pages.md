@@ -154,7 +154,21 @@ opens the window, as on the foreign hosts (kept, decided 2026-10-07).
   plus `release?recording=…&limit=1` ONLY when the lookup's list is full
   (`_MB_POP_SUBLIST_CAP` 25, org/iframe.org R3); work — card
   `artist-rels+label-rels+work-rels`, window `recording?work=…&limit=100&inc=artist-credits`
-  (WIP.2). Browse keys: `pop:browse:<entity>?<query>` (`_mbPopBrowse()`).
+  (WIP.2); artist — card `genres+ratings+aliases` (url-rels left to the window,
+  R1), window `url-rels` plus one `release-group?artist=…&type=<t>&limit=1`
+  per `_MB_POP_RG_TYPES`; label — card `genres+aliases`, window
+  `url-rels+label-rels` plus `release?label=…&limit=1`; area — `area-rels`;
+  instrument — `instrument-rels+aliases`, no description from the Web Service
+  (WIP.3). Browse keys: `pop:browse:<entity>?<query>` (`_mbPopBrowse()`).
+- **Relations are grouped by type AND direction** (`_mbPopRelsByType()`), and
+  `_MB_POP_REL_LABELS` names a group whose meaning turns on its direction, as
+  read off the captures, not guessed: Columbia's forward "label ownership"
+  targets are labels it owns (Vocalion), New Jersey's 21 forward "part of"
+  are its counties, guitar's forward "subtype" include slide guitar. Any other
+  group is its type, with an arrow when the type comes in both directions.
+- **The label code is "LC" and five digits** (`_mbPopLabelCode()`), as
+  recalled from MusicBrainz's own formatter — NOT checked against a page:
+  musicbrainz.org answered curl with a browser check. Confirm in a browser.
 - **One loader: `_mbWsLoad(cacheKey, url, …)`**, state in `_mbPop`. Memory,
   then IndexedDB (`_rgIdbGet(key, _MB_POP_IDB_VERSION)`, the release group's
   helpers with a version argument), then `_rgWsGet()`. The key is
