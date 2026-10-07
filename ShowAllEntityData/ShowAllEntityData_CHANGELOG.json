@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.1261",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "After \"↻ Load remaining pages\" finished a load that had stopped part-way, some columns could be renamed with a number added (\"Title 4\", \"Version 12\"): the number of distinct values that column's 📊 button showed. Filters, sorting and column visibility that refer to a column by name then missed it. The columns now keep their names."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1260",
     "date": "2026-10-07",
     "sections": [
