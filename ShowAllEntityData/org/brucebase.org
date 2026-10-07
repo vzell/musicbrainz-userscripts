@@ -13,7 +13,7 @@ some other fancy stuff in the beginning.
 
 The whole feature should be configurable (default off, as the main userscript is normally used just with MusicBrainz)
 
-** still buggy
+** TODO still buggy
 
 1.)
 
@@ -23,3 +23,5 @@ the console error is still there:
 09:45:39.439 [VZ-ShowAllEntityData: bb-songs] 📝 https://brucebase.wikidot.com/song:7-rooms-of-gloom: parsed — 1 field(s), 0 track(s), 0 image(s). 
 about:srcdoc:1 Blocked script execution in 'about:srcdoc' because the document's frame is sandboxed and the 'allow-scripts' permission is not set.
 #+end_example
+
+** TODO add support for logged in case

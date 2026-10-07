@@ -1,4 +1,4 @@
-* TODO Is it possible to support springsteenlyrics.com
+* DONE Is it possible to support springsteenlyrics.com
 ** DONE i
 
 Is it possible for our userscript to optionally to support the springsteenlyrics.com website, specifically pages of the
@@ -194,10 +194,9 @@ Decided (2026-10-05):
   list as it is visited (GM storage), never the landing page's drifting
   Statistics numbers.
 
-** TODO add detail page support
+** DONE add detail page support
 
 Analysis, probes and mockups: [[file:detail-pages.org]] (2026-10-07).
-** TODO add support for logged in case
 
 * DONE CLAUDE.md
 
@@ -327,17 +326,7 @@ Or is it possible to include the detail inforamtion somehow in the same row as t
 
 Make some suggestions, and show me nice rich HTML mockup pages
 
-* TODO summary
-
-One thing that isn't from this change:
-- An existing intermittent failure. In the full suite, 1,266 passed and 1 failed: the event-overview Save to Disk round
-  trip timed out waiting for the download. It fails the same way on main (1 of 21 runs), so this branch didn't cause
-  it. I recorded it in DEBUG-NOTES.
-
-The springsteenlyrics site also throws its own error ("Container is not defined") on its lyrics pages, even with no
-userscript loaded. The live test exempts that one exact message.
-
-* summary 2
+* DONE summary 2
 
 Most of it is the site's, but two lines are ours.
 
@@ -357,11 +346,23 @@ Not new, and not from the preview: the two [Violation] lines (411–412, a 350 m
 
 Shall I make the Live page view change on this branch as WIP.3? If you'd like to tell the site owner, a short note could read:
 
-▎ Your pages load their font stylesheet over HTTP (http://fonts.googleapis.com/css?family=Open+Sans:300,400,700) from an HTTPS page, so browsers block it and Open Sans never loads. Changing it to https:// fixes that. Separately, adding autocomplete="current-password" to the login form's password field (hTxtPassword) silences Chrome's hint about it.
-
-* bug
+* DONE bug
 
 then the Console log for https://brucebase.wikidot.com/stats:songs - @debug/bb-debug-song.log
 
 Hovering the "4th Of July, Asbury Park (Sandy)" link, then pressing "Space" and finally switching to the live page
 
+
+* TODO add support for logged in case
+
+* TODO for eddy
+** TODO Container is not defined
+
+The springsteenlyrics site also throws its own error ("Container is not defined") on its lyrics pages, even with no
+userscript loaded. The live test exempts that one exact message.
+
+** TODO Your pages load their font stylesheet over HTTP
+
+Your pages load their font stylesheet over HTTP (http://fonts.googleapis.com/css?family=Open+Sans:300,400,700) from an
+HTTPS page, so browsers block it and Open Sans never loads. Changing it to https:// fixes that. Separately, adding
+autocomplete="current-password" to the login form's password field (hTxtPassword) silences Chrome's hint about it.

@@ -57,13 +57,13 @@ The same work also covers three per-site TODOs:
 
 *** What each detail page adds over the row
 
-| PT           | The row already shows                                         | The detail page adds                                                                    |
-|--------------+---------------------------------------------------------------+-----------------------------------------------------------------------------------------|
-| =sl-bootlegs= | cover, title, version, date, location, format, duration, flags | tracklist with "Disc N:" breaks, lineage line, artwork scans =<id>_artwork_NN_tn.jpg=     |
-| =sl-collection= | cover, title, label, cat. no., format, country, dates        | side-numbered tracklist (A1/B1), prose notes, scans =<id>_NN_tn.jpg=                    |
-| =jl-list=    | title, date, year, version                                    | uploader, front/back covers, sometimes more scans (=cd1=, =booklet1…6=)                 |
-| =bs-records= | title, format, label, matrix, code                            | tracklist with the source show per track, notes, vinyl colour                           |
-| =bb-songs=   | title, letter                                                 | origin album line, performance count, last played, official releases, lyrics, versions |
+| PT              | The row already shows                                          | The detail page adds                                                                   |
+|-----------------+----------------------------------------------------------------+----------------------------------------------------------------------------------------|
+| =sl-bootlegs=   | cover, title, version, date, location, format, duration, flags | tracklist with "Disc N:" breaks, lineage line, artwork scans =<id>_artwork_NN_tn.jpg=  |
+| =sl-collection= | cover, title, label, cat. no., format, country, dates          | side-numbered tracklist (A1/B1), prose notes, scans =<id>_NN_tn.jpg=                   |
+| =jl-list=       | title, date, year, version                                     | uploader, front/back covers, sometimes more scans (=cd1=, =booklet1…6=)                |
+| =bs-records=    | title, format, label, matrix, code                             | tracklist with the source show per track, notes, vinyl colour                          |
+| =bb-songs=      | title, letter                                                  | origin album line, performance count, last played, official releases, lyrics, versions |
 
 *** Where the data sits
 
@@ -106,13 +106,13 @@ They all share one foundation:
   bumping =_ART_IDB_VERSION= in =_artOpenIdb()=. IndexedDB is per origin, so
   each host gets its own empty database.
 
-| #  | Option            | Reuses                                                               | Verdict              |
-|----+-------------------+----------------------------------------------------------------------+----------------------|
-| A  | Hover peek card   | =data-mbtt-fn="detail"= in =_mbttResolve()= / =_mbttAfterShow()=; =_OTHER_RICH_TIPS= | phase 1  |
-| B  | Pinned preview    | =createInfoDialog()= (geoKey, Esc, click-outside); Extracted / Live-page iframe | phase 1   |
-| C  | Side drawer       | =#mb-art-viewer= key-capture pattern                                 | optional             |
-| D  | Detail columns    | Relationships deferred-column pattern + the four post-render duties | phase 2              |
-| E  | Inline expand row | –                                                                    | avoid                |
+| # | Option            | Reuses                                                                               | Verdict  |
+|---+-------------------+--------------------------------------------------------------------------------------+----------|
+| A | Hover peek card   | =data-mbtt-fn="detail"= in =_mbttResolve()= / =_mbttAfterShow()=; =_OTHER_RICH_TIPS= | phase 1  |
+| B | Pinned preview    | =createInfoDialog()= (geoKey, Esc, click-outside); Extracted / Live-page iframe      | phase 1  |
+| C | Side drawer       | =#mb-art-viewer= key-capture pattern                                                 | optional |
+| D | Detail columns    | Relationships deferred-column pattern + the four post-render duties                  | phase 2  |
+| E | Inline expand row | –                                                                                    | avoid    |
 
 - A needs one addition to =_initStatTooltip()=: Esc hides the card. Today
   only =mouseout=/=mousedown= do. Space (or a 🔍 after the link) pins the card
@@ -130,13 +130,13 @@ They all share one foundation:
 
 *** Cost of D at 1.1 s per page
 
-| Table                            | Rows  | Full load |
-|----------------------------------+-------+-----------|
-| sl-bootlegs, one page            | 100   | 1 min 50 s |
-| bs-records unofficial            | 1,878 | 34 min    |
-| bs-records official              | 1,186 | 22 min    |
-| bb-songs                         | 1,679 | 31 min    |
-| jl-list                          | 5,839 | 1 h 47 min |
+| Table                 | Rows  | Full load  |
+|-----------------------+-------+------------|
+| sl-bootlegs, one page | 100   | 1 min 50 s |
+| bs-records unofficial | 1,878 | 34 min     |
+| bs-records official   | 1,186 | 22 min     |
+| bb-songs              | 1,679 | 31 min     |
+| jl-list               | 5,839 | 1 h 47 min |
 
 So D loads on demand, either per table (header toggle) or per cell (click). It
 starts collapsed above a threshold, as =sa_rel_collapse_threshold= does, and
@@ -158,3 +158,21 @@ Build C only if B feels cramped in practice.
   (2026-10-07).
 - D on jungleland: Uploader alone may not be worth 1 h 47 min. A covers-only
   column built from predicted thumbnail URLs needs no fetch at all.
+
+* Request - <2026-10-07 Wed 13:21>
+
+1.)
+
+Currently ALL the non MusicBrainz related pages popup an iframe with the detail page on hover.
+
+Is it possible to do this ONLY when pressing the "Ctrl" key at the same time when hovering over ?
+
+If yes, implement it as a configuration option, (popup on hover without "Ctrl" - default: false)
+
+2.)
+
+If 1.) works also do this for PT 'release-tracks' in the "#" column for the RG popup (popup on hover without "Ctrl" - default: false)
+
+3.)
+
+Allow multi-select in the container '<div class="mb-release-art-tools"'

@@ -1,4 +1,4 @@
-* jungleland
+* DONE jungleland
 ** DONE i
 
 Give the website https://www.jungleland.it/html/list.htm the same
@@ -40,7 +40,7 @@ Done as the opt-in pageType =jl-list=. The new setting is
   - the live =@extended= spec =tests/live/jl-list.spec.js=, which covers the
     whole real page.
 
-** TODO add detail page handling, with additional "Uploader" column and optionally covers
+** DONE add detail page handling, with additional "Uploader" column and optionally covers
 
 Analysis, probes and mockups: [[file:detail-pages.org]] (2026-10-07). The
 detail pages are windows-1252, which =fetchHtml()= cannot decode yet.
