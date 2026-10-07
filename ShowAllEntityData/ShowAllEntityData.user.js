@@ -13131,6 +13131,35 @@
     const _dpInflight = new Map();
 
     /**
+     * The last `_DP_RAW_KEEP` detail pages' decoded HTML, by URL, newest
+     * last: what the dialog's Live page view shows, so opening it after a
+     * hover (which fetched the page) makes no second request. Session only,
+     * never written to IndexedDB, which keeps only the parsed record.
+     * @type {Map<string, string>}
+     */
+    const _dpRawMem = new Map();
+
+    /**
+     * How many raw pages `_dpRawMem` keeps (a song page is about 200 KB).
+     * @type {number}
+     */
+    const _DP_RAW_KEEP = 12;
+
+    /**
+     * Remembers a page's decoded HTML in `_dpRawMem`, dropping the oldest
+     * page beyond `_DP_RAW_KEEP`.
+     *
+     * @param {string} url
+     * @param {string} html
+     * @returns {void}
+     */
+    function _dpRememberRaw(url, html) {
+        _dpRawMem.delete(url);
+        _dpRawMem.set(url, html);
+        while (_dpRawMem.size > _DP_RAW_KEEP) _dpRawMem.delete(_dpRawMem.keys().next().value);
+    }
+
+    /**
      * Earliest `Date.now()` at which the next detail-page request may start.
      * @type {number}
      */
@@ -13854,6 +13883,7 @@
             if (!entry.wants.some(w => w())) return { outcome: 'skipped' };
             try {
                 const html = await _dpFetchText(url, site.charset);
+                _dpRememberRaw(url, html);
                 const doc = new DOMParser().parseFromString(html, 'text/html');
                 const data = site.parse(doc, url);
                 if (!data || (!data.title && !data.fields.length && !data.tracks.length && !data.images.length)) {
@@ -14176,6 +14206,79 @@
     }
 
     /**
+     * A detail page's decoded HTML for the Live page view: from
+     * `_dpRawMem` (a hover or the Extracted view fetched it already), else
+     * fetched through the rate gate and remembered.
+     *
+     * @param {string} url
+     * @param {object} site  The host's `_DP_SITES` entry.
+     * @param {{wanted?: function(): boolean, force?: boolean}} [opts]
+     *   `wanted` is asked right before a request; `force` skips the memory.
+     * @returns {Promise<{outcome: string, html?: string, detail?: string}>}
+     *   `ok` with the HTML, `error` with a reason, or `skipped` (no longer wanted).
+     */
+    async function _dpGetRaw(url, site, { wanted = () => true, force = false } = {}) {
+        if (!force && _dpRawMem.has(url)) return { outcome: 'ok', html: _dpRawMem.get(url) };
+        await _dpAwaitSlot();
+        if (!wanted()) return { outcome: 'skipped' };
+        try {
+            const html = await _dpFetchText(url, site.charset);
+            _dpRememberRaw(url, html);
+            return { outcome: 'ok', html };
+        } catch (err) {
+            Lib.warn('detail', `${url} (Live page): ${err && err.message}`);
+            return { outcome: 'error', detail: (err && err.message) || 'The request failed.' };
+        }
+    }
+
+    /**
+     * Turns a detail page's HTML into the document the Live page view shows
+     * (the frame's `srcdoc`):
+     *   - every `<script>` and `<noscript>` is removed. The frame has no
+     *     `allow-scripts` either, but a page handed to it with its scripts
+     *     still in made Chrome log "Blocked script execution … sandboxed" once
+     *     per script (29 on a springsteenlyrics.com song page);
+     *   - every `<iframe>` (a YouTube video, an html-block) becomes a link:
+     *     inside a frame without scripts a player cannot start, and YouTube's
+     *     own fallback image then 404s;
+     *   - a `<meta http-equiv="refresh">` is removed;
+     *   - a `<base href>` naming the page's own URL comes first in `<head>`,
+     *     so its relative links, images and stylesheets resolve as on the
+     *     site (a page's own `<base>` keeps its other attributes).
+     * The doctype is kept, so a quirks-mode page (jungleland.it) stays one.
+     *
+     * @param {string} html The page, decoded.
+     * @param {string} url  The page's URL.
+     * @returns {string} The document to give the frame as `srcdoc`.
+     */
+    function _dpLiveDocHtml(html, url) {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        doc.querySelectorAll('script, noscript, meta[http-equiv="refresh" i]').forEach(n => n.remove());
+        doc.querySelectorAll('iframe').forEach(fr => {
+            const src = _dpAbsUrl(fr.getAttribute('src'), url);
+            const yt = src.match(/^https?:\/\/(?:www\.)?youtube(?:-nocookie)?\.com\/embed\/([\w-]+)/);
+            const p = doc.createElement('p');
+            p.className = 'mb-dp-embed';
+            if (src) {
+                const a = doc.createElement('a');
+                a.href = yt ? `https://www.youtube.com/watch?v=${yt[1]}` : src;
+                a.textContent = yt ? '▶ Watch on YouTube' : '▶ Open the embedded page';
+                p.appendChild(a);
+            }
+            fr.replaceWith(p);
+        });
+        let base = doc.querySelector('base');
+        if (!base) {
+            base = doc.createElement('base');
+            doc.head.insertBefore(base, doc.head.firstChild);
+        }
+        base.setAttribute('href', url);
+        const dt = doc.doctype;
+        const doctype = dt ? `<!DOCTYPE ${dt.name}${dt.publicId ? ` PUBLIC "${dt.publicId}"` : ''}${dt.systemId ? ` "${dt.systemId}"` : ''}>` : '';
+        return doctype + doc.documentElement.outerHTML;
+    }
+
+    /**
      * Trims the Live page view's page to its content: hides the siblings of
      * the host's `liveRoot` and of each of its ancestors, and the host's
      * `liveHide` selectors (all toggled by "Hide site navigation", through
@@ -14183,9 +14286,11 @@
      * not load (the page's own `onerror` handlers do not run without its
      * scripts), and makes links open in a new tab.
      *
-     * Same origin, so the frame's document is the script's to change. Its
-     * scripts are off (`sandbox` without `allow-scripts`): no trackers, no
-     * pop-ups, and no second run of anything the page does on load.
+     * The frame holds `_dpLiveDocHtml()`'s copy of the page as `srcdoc`,
+     * with `sandbox="allow-same-origin …"`: its origin is the list page's,
+     * so its document is the script's to change. The copy has no scripts,
+     * and the sandbox (no `allow-scripts`) would refuse any anyway: no
+     * trackers, no pop-ups, no second run of what the page does on load.
      *
      * @param {HTMLIFrameElement} frame
      * @param {object}            site  The host's `_DP_SITES` entry.
@@ -14198,7 +14303,9 @@
         } catch (_) {
             doc = null;
         }
-        if (!doc || !doc.body || doc.documentElement.dataset.mbDpDone) return;
+        // A new frame first holds an empty about:blank document, and its load
+        // event fires too: only the srcdoc copy (about:srcdoc) is the page.
+        if (!doc || !doc.body || doc.URL === 'about:blank' || doc.documentElement.dataset.mbDpDone) return;
         doc.documentElement.dataset.mbDpDone = '1';
         const style = doc.createElement('style');
         style.textContent = 'html.mb-dp-isolate .mb-dp-hide { display: none !important; }' +
@@ -14229,7 +14336,8 @@
      * page: the Extracted record (loading first when it is not cached), or
      * the Live page frame.
      *
-     * @param {boolean} [force] Fetch again, bypassing both caches.
+     * @param {boolean} [force] Fetch again, bypassing the caches (the parsed
+     *   record's two tiers in Extracted, the raw-page memory in Live page).
      * @returns {Promise<void>}
      */
     async function _dpRenderDialog(force) {
@@ -14265,7 +14373,6 @@
             const frame = document.createElement('iframe');
             frame.setAttribute('sandbox', 'allow-same-origin allow-popups allow-popups-to-escape-sandbox');
             frame.setAttribute('title', 'Detail page');
-            frame.addEventListener('load', () => _dpIsolateFrame(frame, site));
             box.addEventListener('change', () => {
                 _dpDialog.hideNav = box.checked;
                 try {
@@ -14274,7 +14381,32 @@
             });
             wrap.append(bar, frame);
             area.appendChild(wrap);
-            frame.src = url;
+            // The page's own HTML, cleaned (_dpLiveDocHtml()), as srcdoc: no
+            // second request when a hover or the Extracted view read it
+            // already, and no scripts for the sandbox to refuse.
+            const status = document.createElement('span');
+            status.className = 'mb-dp-live-status';
+            status.textContent = 'Loading…';
+            bar.appendChild(status);
+            const raw = await _dpGetRaw(url, site, {
+                force,
+                wanted: () => _dpDialog.url === url && _dpDialog.view === 'live' && frame.isConnected
+            });
+            if (_dpDialog.url !== url || _dpDialog.view !== 'live' || !frame.isConnected) return;
+            if (raw.outcome !== 'ok') {
+                frame.remove();
+                status.remove();
+                const fail = document.createElement('div');
+                fail.className = 'mb-dp-x';
+                fail.innerHTML = '<div class="mb-dp-col"><div class="mb-dp-warn">Could not load the detail page.</div>' +
+                    `<div class="mb-dp-xsub">${_mbttEscape(raw.detail || '')}</div>` +
+                    '<p><button type="button" class="mb-dp-retry">⟳ Try again</button></p></div>';
+                wrap.appendChild(fail);
+                return;
+            }
+            status.remove();
+            frame.addEventListener('load', () => _dpIsolateFrame(frame, site));
+            frame.srcdoc = _dpLiveDocHtml(raw.html, url);
             return;
         }
         area.classList.remove('mb-dp-area-live');
@@ -14422,10 +14554,7 @@
         next.addEventListener('click', () => _dpStep(1));
         ex.addEventListener('click', () => { _dpDialog.view = 'ex'; _dpRenderDialog(false); });
         live.addEventListener('click', () => { _dpDialog.view = 'live'; _dpRenderDialog(false); });
-        reload.addEventListener('click', () => {
-            if (_dpDialog.view === 'live') _dpRenderDialog(false);
-            else _dpRenderDialog(true);
-        });
+        reload.addEventListener('click', () => _dpRenderDialog(true));
         document.addEventListener('keydown', _dpDialogKeys, true);
         // createInfoDialog() removes the dialog itself (✕, Esc, outside
         // click): take the row mark off when it goes.
@@ -14557,6 +14686,7 @@
             }
             .mb-dp-dialog .mb-dp-live-bar label { display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
             .mb-dp-dialog .mb-dp-live-url { font: 11px ui-monospace, Consolas, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+            .mb-dp-dialog .mb-dp-live-status { font-style: italic; }
             .mb-dp-dialog .mb-dp-live iframe { flex: 1; width: 100%; border: 0; background: #fff; }
             table.tbl > tbody > tr.mb-dp-current > td {
                 background-image: linear-gradient(rgba(255, 204, 0, 0.25), rgba(255, 204, 0, 0.25));
@@ -108774,6 +108904,19 @@ a { color: #1565c0; }`;
             dpParse(host, html, url) {
                 const site = _DP_SITES[host];
                 return site ? site.parse(new DOMParser().parseFromString(html, 'text/html'), url) : null;
+            },
+            /**
+             * The Live page view's cleaning (`_dpLiveDocHtml()`): a page's HTML
+             * in, the frame's `srcdoc` out, so a spec can pin what it removes,
+             * replaces and adds on a page no fixture has (fixtures have their
+             * iframes stripped already).
+             *
+             * @param {string} html
+             * @param {string} url
+             * @returns {string}
+             */
+            dpLiveDocHtml(html, url) {
+                return _dpLiveDocHtml(html, url);
             },
             /**
              * The springsteenlyrics.com tracklist splitter (`_dpSlTracklist()`)

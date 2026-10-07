@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The detail preview's \"Live page\" view (WIP.1) no longer fills the browser console with \"Blocked script execution … sandboxed\" messages (29 on a springsteenlyrics.com song page), nor with a failed YouTube image request. The view now shows a copy of the page with its scripts removed and any embedded video as a \"▶ Watch on YouTube\" link, since a player could not start there anyway. A page you have just hovered opens in that view without being read from the site again; ⟳ still reads it afresh. The two remaining console messages on springsteenlyrics.com pages, the blocked http:// font stylesheet and the password field's autocomplete hint, come from the site itself."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-10-07",
     "sections": [

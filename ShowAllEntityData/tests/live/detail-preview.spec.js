@@ -39,11 +39,23 @@ async function cardFor(page, link) {
     await link.scrollIntoViewIfNeeded();
     await link.hover();
     const card = page.locator('#mb-dp-peek');
-    await expect(card).toBeVisible();
+    // Generous: on jungleland.it's 6,000-row table the render's tail work
+    // keeps the page busy for seconds after the rows appear, and the card's
+    // hover delay waits for the main thread like any timer.
+    await expect(card).toBeVisible({ timeout: 30000 });
     await expect(card.locator('.mb-tt-foot')).toBeVisible({ timeout: 30000 });
     await expect(card).not.toContainText('Could not load');
     return card;
 }
+
+// Playwright's trace recorder (the config's trace: 'retain-on-failure' records
+// every test) injects its snapshot script into every frame, and the Live page
+// view's sandbox refuses it with the very "Blocked script execution" message
+// the lyrics-index test counts: once in about:blank and once or twice in
+// about:srcdoc, with the userscript switched off as much as on (bisected
+// 2026-10-07: a standalone script and --trace=off show none). A real browser
+// has no tracer. `trace` can only be set per file, so this file runs untraced.
+test.use({ trace: 'off' });
 
 test.describe('detail-page preview on the real sites', { tag: '@extended' }, () => {
     test('springsteenlyrics.com bootleg 6739: tracklist, lineage, scans; Live page with the site\'s CSS', async ({ page }) => {
@@ -94,6 +106,28 @@ test.describe('detail-page preview on the real sites', { tag: '@extended' }, () 
         const dialog = page.locator('#mb-dp-dialog');
         await expect(dialog.locator('.mb-dp-col').last().locator('h4').first()).toHaveText('Lyrics');
         await expect(dialog.locator('h4', { hasText: 'Available Versions' })).toHaveCount(1);
+
+        // The Live page view (WIP.3): the page's cleaned copy. The song page
+        // embeds a YouTube video and carries some 30 scripts; the sandboxed
+        // frame used to log "Blocked script execution" once per script, and
+        // the player's fallback image 404'd. Now: no such message, the video
+        // is a link, and nothing is requested from YouTube.
+        const consoleLines = [];
+        page.on('console', (msg) => consoleLines.push(msg.text()));
+        const youtube = [];
+        page.on('request', (req) => { if (/youtube/.test(req.url())) youtube.push(req.url()); });
+        await dialog.locator('button', { hasText: 'Live page' }).click();
+        await expect.poll(() => page.evaluate(() => {
+            const doc = document.querySelector('#mb-dp-dialog iframe')?.contentDocument;
+            if (!doc || !doc.documentElement.dataset.mbDpDone) return null;
+            return {
+                scripts: doc.querySelectorAll('script').length,
+                video: doc.querySelectorAll('p.mb-dp-embed a[href^="https://www.youtube.com/watch?v="]').length > 0,
+                iframes: doc.querySelectorAll('iframe').length,
+            };
+        }), { timeout: 30000 }).toEqual({ scripts: 0, video: true, iframes: 0 });
+        expect(consoleLines.filter((t) => /Blocked script execution/.test(t))).toEqual([]);
+        expect(youtube).toEqual([]);
         expect(pageErrors.filter((e) => e !== SL_LYRICS_OWN_ERROR)).toEqual([]);
     });
 

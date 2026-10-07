@@ -148,6 +148,47 @@ test.describe('detail-page parsers (one record per saved page)', () => {
         expect(sides.notes).toEqual(['1975 - remastered']);
     });
 
+    test('the Live page view\'s copy: no scripts, videos as links, its own base URL, the doctype kept', async ({ page }) => {
+        await loadBsRecordsPage(page);
+        const clean = (html, url) => page.evaluate(([h, u]) => {
+            const out = window.__saTest.dpLiveDocHtml(h, u);
+            const doc = new DOMParser().parseFromString(out, 'text/html');
+            return {
+                head: out.slice(0, 15),
+                scripts: doc.querySelectorAll('script, noscript').length,
+                iframes: doc.querySelectorAll('iframe').length,
+                links: Array.from(doc.querySelectorAll('p.mb-dp-embed a'), (a) => [a.textContent, a.getAttribute('href')]),
+                bases: Array.from(doc.querySelectorAll('base'), (b) => [b.getAttribute('href'), b.getAttribute('target')]),
+                refresh: doc.querySelectorAll('meta[http-equiv]').length,
+                text: doc.body.textContent.replace(/\s+/g, ' ').trim(),
+            };
+        }, [html, url]);
+
+        // A springsteenlyrics.com-like song page: scripts, a YouTube embed.
+        const sl = await clean('<!DOCTYPE html><html><head><script src="js/jquery.js"></script><meta http-equiv="refresh" content="60"></head>' +
+            '<body><p>Song text</p><script>init();</script><noscript><img src="track.gif"></noscript>' +
+            '<div class="row"><iframe src="https://www.youtube-nocookie.com/embed/SDlSCeQXbPo" allowfullscreen></iframe></div>' +
+            '<iframe src="/stats:songs/html/abc"></iframe></body></html>',
+        'https://www.springsteenlyrics.com/lyrics.php?song=badlands');
+        expect(sl.head).toBe('<!DOCTYPE html>');
+        expect(sl.scripts).toBe(0);
+        expect(sl.iframes).toBe(0);
+        expect(sl.refresh).toBe(0);
+        expect(sl.links).toEqual([
+            ['▶ Watch on YouTube', 'https://www.youtube.com/watch?v=SDlSCeQXbPo'],
+            ['▶ Open the embedded page', 'https://www.springsteenlyrics.com/stats:songs/html/abc'],
+        ]);
+        expect(sl.bases).toEqual([['https://www.springsteenlyrics.com/lyrics.php?song=badlands', null]]);
+        expect(sl.text).toContain('Song text');
+
+        // A jungleland.it-like page: no doctype (quirks mode stays), its own
+        // <base target> keeps its target and gains the page's address.
+        const jl = await clean('<html><head><title>Artwork</title><base target="_self"></head><body><b>Title: X</b></body></html>',
+            'https://www.jungleland.it/html/19760930.htm');
+        expect(jl.head.startsWith('<html')).toBe(true);
+        expect(jl.bases).toEqual([['https://www.jungleland.it/html/19760930.htm', '_self']]);
+    });
+
     test('springsteenlyrics.com song pages: version, lyrics by shape, sections, versions count; no lyrics', async ({ page }) => {
         // The fixtures' lyrics are blanked (build-detail-fixtures.py), so this
         // pins lines, verses and sections, never lyric text.
@@ -442,7 +483,19 @@ test.describe('the other hosts', () => {
         await expect.poll(state).toEqual({ topBar: false, footer: false, detail: true });
         await dialog.locator('input.mb-dp-hidenav').uncheck();
         await expect.poll(state).toEqual({ topBar: true, footer: true, detail: true });
-        expect(served.filter((u) => /item=4554/.test(u)).length).toBeGreaterThanOrEqual(2);
+        // The frame shows the page the hover already fetched: no second
+        // request. It is a cleaned copy (srcdoc): no script left to block, and
+        // its relative URLs resolve against the page's own address.
+        expect(served.filter((u) => /item=4554/.test(u))).toHaveLength(1);
+        expect(await page.evaluate(() => {
+            const fr = document.querySelector('#mb-dp-dialog iframe');
+            const doc = fr.contentDocument;
+            return { srcdoc: fr.hasAttribute('srcdoc'), src: fr.getAttribute('src'), scripts: doc.querySelectorAll('script').length, base: doc.baseURI };
+        })).toEqual({ srcdoc: true, src: null, scripts: 0, base: 'https://springsteenlyrics.com/bootlegs.php?item=4554&category=aud_live1967' });
+        // ⟳ reads the page again, bypassing that memory.
+        await dialog.locator('button.mb-dp-tbtn', { hasText: '⟳' }).click();
+        await expect.poll(state).toEqual({ topBar: true, footer: true, detail: true });
+        expect(served.filter((u) => /item=4554/.test(u))).toHaveLength(2);
         expect(errors).toEqual([]);
     });
 

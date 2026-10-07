@@ -1832,7 +1832,9 @@ type into the filter box stays in the filter box. In the window:
 - **Live page** shows the site's own page inside the window. *Hide the site's
   navigation* removes the site's menus, header and footer so only the content
   is left. The page's own scripts do not run there: on Brucebase every tab is
-  shown, one under the other.
+  shown, one under the other, and an embedded video is a "▶ Watch on YouTube"
+  link instead of a player. A page you have just hovered opens without being
+  read again.
 - **⟳** reads the page again instead of using the saved copy.
 - **↗** opens the page in a new tab.
 

@@ -19741,3 +19741,49 @@ verified; live `@extended` detail-preview 5/5 in 1.0 min
 (2026-10-07T07:34:11Z–07:35:12Z, host NB-3641, WSL2); `npm run test:full`
 1266 passed, 1 failed, the event-overview flake above (07:36:33Z–07:44:02Z);
 lint within baseline; config default and doc audits clean.
+
+## 2026-10-07 — Detail preview's Live page view: a cleaned copy instead of the URL (branch feature/detail-pages, WIP.3)
+
+Reported from a real browser (`debug/sl-debug-song.log`, song=dreamyou):
+after opening the Live page view, "Blocked script execution in '<URL>'
+because the document's frame is sandboxed …" ×29 and ×17, and `GET
+youtube-nocookie.com/img/meh7.png 404`. The frame loaded the page's URL with
+`sandbox` minus `allow-scripts`, and Chrome logs one line per refused script
+(the dreamyou page has 30 `<script>` tags); the embedded YouTube player could
+not start, and its fallback image 404'd. The log's other lines were the
+site's own (a `http://` Google Fonts stylesheet blocked as mixed content, a
+password field's autocomplete hint, both also on the plain lyrics page) and,
+at 08:00:12–13, the existing column auto-resize of the 3,552-row table (two
+`[Violation]` lines), unrelated to the preview.
+
+Fix: the frame gets `srcdoc` = `_dpLiveDocHtml()`, a copy with no scripts or
+noscripts, iframes as links ("▶ Watch on YouTube"), no meta refresh, a `<base
+href>` naming the page, the doctype kept; from `_dpRawMem` (the last 12 raw
+pages, filled by every fetch), so opening it after a hover makes no second
+request; ⟳ refetches. A new frame's initial `about:blank` fires `load` too:
+the first version attached the listener before inserting the frame, marked
+that blank document done, and a spec poll read it (`null.getClientRects`).
+The listener now goes on only once `srcdoc` is set, and `_dpIsolateFrame()`
+skips `about:blank` as well (recorded `"expect": "pass"`: the late listener
+covers it).
+
+**Playwright's trace recorder trips the sandbox too**, and cost most of this
+entry's time. After the fix, the live spec still saw 3 "Blocked script
+execution" lines. Bisected: not the copy (the saved `srcdoc` loaded bare
+logged none), not the userscript (the same with its gate exiting), not the
+harness's init scripts or libraries (a standalone script with all of them
+logged none), but `trace: 'retain-on-failure'`, which records every test and
+injects a snapshot script into every frame: `--trace=off` shows none. The live
+spec now runs with `test.use({ trace: 'off' })` (per file only; a nested
+describe is refused, "forces a new worker"). Without the tracer slowing it,
+jungleland.it's live test hovered while the 6,000-row table's render tail
+still held the main thread, and the card's 400 ms timer fired late: its
+visibility wait went from 5 s to 30 s, as the helper's next wait already was.
+
+**Results:** detail-preview fixture spec 20/20 and mobile 1/1, twice over
+(`--repeat-each=2`); six new mutations all as declared (5 fail, 1 recorded
+pass), userscript restored and verified; live `@extended` detail-preview 5/5
+in 1.1 min (2026-10-07T08:35:12Z–08:36:18Z, host NB-3641, WSL2), the BADLANDS
+test asserting no blocked-script message, the video as a link and no YouTube
+request; `npm run test:full` 1268 passed in 7.6 min (08:36:24Z–08:44:01Z, same
+host; the event-overview flake did not recur); lint within baseline.

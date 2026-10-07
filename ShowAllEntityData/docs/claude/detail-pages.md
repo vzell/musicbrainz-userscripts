@@ -154,10 +154,31 @@ on a live row and never written to cell content, so the four post-render
 obligations (filter-and-cache-invariants.md) do not apply.
 
 **Live page view.** An `<iframe sandbox="allow-same-origin allow-popups
-allow-popups-to-escape-sandbox">` of the page itself: same origin, so its
-document is the script's to change, and NO scripts, so no trackers, no
-pop-ups and no second run of the page's own code. `_dpIsolateFrame()` runs on
-load:
+allow-popups-to-escape-sandbox">` whose `srcdoc` is a cleaned copy of the page
+(`_dpLiveDocHtml()`, since WIP.3): same origin, so its document is the
+script's to change, and NO scripts, so no trackers, no pop-ups and no second
+run of the page's own code. The copy:
+- has every `<script>` and `<noscript>` removed. Until WIP.3 the frame loaded
+  the page's URL and the sandbox refused its scripts, and Chrome logged
+  "Blocked script execution … sandboxed" once per script (29 on a
+  springsteenlyrics.com song page, reported from a real browser);
+- shows every `<iframe>` as a link ("▶ Watch on YouTube" for a YouTube
+  embed): a player cannot start without scripts, and YouTube's fallback image
+  then 404'd;
+- has no `<meta http-equiv="refresh">`;
+- starts its `<head>` with a `<base href>` naming the page, so relative
+  links, images and stylesheets resolve as on the site (a page's own `<base
+  target>` keeps its target);
+- keeps the doctype, so a quirks-mode page (jungleland.it) stays one.
+
+The HTML comes from `_dpRawMem`, the last `_DP_RAW_KEEP` (12) pages' decoded
+HTML in this session, which `_dpGet()` fills: **opening Live page after a hover
+makes no second request**. Otherwise `_dpGetRaw()` fetches it through the
+same rate gate. ⟳ bypasses that memory. A new frame first loads an empty
+`about:blank` document whose `load` fires too, so the listener is attached
+only once `srcdoc` is set, and `_dpIsolateFrame()` also skips `about:blank`.
+
+`_dpIsolateFrame()` runs on the copy's load:
 - it hides every sibling of the host's `liveRoot` and of each of its ancestors,
   plus the `liveHide` selectors. Both go through
   `html.mb-dp-isolate .mb-dp-hide`, which the "Hide the site's navigation" box
@@ -168,8 +189,14 @@ load:
   not run;
 - it makes links open in a new tab.
 
-The frame is a second request for the page; it is user-initiated (a press of
-"Live page", or a step while that view is shown) and goes through no gate.
+**Testing it: Playwright's trace recorder also trips the sandbox.** The
+config's `trace: 'retain-on-failure'` records every test and injects its
+snapshot script into every frame, and the sandbox refuses it with the same
+"Blocked script execution" message: once in `about:blank`, once or twice in
+`about:srcdoc`, with the userscript switched off as much as on. Bisected on
+2026-10-07: a standalone Playwright script and `--trace=off` show none. So
+the live spec that counts those messages (`tests/live/detail-preview.spec.js`)
+runs with `test.use({ trace: 'off' })`, which Playwright allows only per file.
 
 ## Performance
 
@@ -183,7 +210,7 @@ unofficial list. That happens on the key press, not on a render.
 
 | Spec                                              | Pins                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 |---------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `tests/fixtures/detail-preview.spec.js`           | every parser on saved pages (discs, a lineage note, scans; side numbers; the unnumbered list; tracklist shapes the pages lack; jungleland's labelled backslash scans and unknown date; bs's label run, ditto marks, official labels, the photo; Brucebase's count, last show, releases, downloads, sections); the preview off = no card, no request; MusicBrainz with every preview on = nothing; one request then memory; beside the link; Esc; Space pins; ← → steps with a 404 row; Space TYPED stays typed and render focus does not block the pin; a moved-on hover makes no request; a photo, a failed photo; sl's Live page view with the navigation hidden and the box; jungleland decoded from windows-1252 and read from IndexedDB after a reload; Brucebase's card, lyrics, and Live page with every tab; song pages (version, lyrics by shape, sections without placeholders, versions count; "Lyrics not available"); the lyrics index's card (excerpt and line count as parsed from the fixture), its dialog, and a song without lyrics |
+| `tests/fixtures/detail-preview.spec.js`           | every parser on saved pages (discs, a lineage note, scans; side numbers; the unnumbered list; tracklist shapes the pages lack; jungleland's labelled backslash scans and unknown date; bs's label run, ditto marks, official labels, the photo; Brucebase's count, last show, releases, downloads, sections); the preview off = no card, no request; MusicBrainz with every preview on = nothing; one request then memory; beside the link; Esc; Space pins; ← → steps with a 404 row; Space TYPED stays typed and render focus does not block the pin; a moved-on hover makes no request; a photo, a failed photo; sl's Live page view with the navigation hidden and the box; jungleland decoded from windows-1252 and read from IndexedDB after a reload; Brucebase's card, lyrics, and Live page with every tab; song pages (version, lyrics by shape, sections without placeholders, versions count; "Lyrics not available"); the lyrics index's card (excerpt and line count as parsed from the fixture), its dialog, and a song without lyrics; the Live page copy (no scripts, videos as links, its own base URL, the doctype kept); the Live page reuses the hover's fetch (one request) and ⟳ refetches |
 | `tests/fixtures/detail-preview.mobile.spec.js`    | a tap opens the dialog, not the page, and shows no card                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 
 Fixtures: `python3 scripts/build-detail-fixtures.py` turns the curl captures

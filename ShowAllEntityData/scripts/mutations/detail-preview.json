@@ -329,5 +329,83 @@
         "spec": "tests/fixtures/detail-preview.spec.js",
         "grep": "springsteenlyrics.com song pages|lyrics index: a song",
         "expect": "fail"
+    },
+    {
+        "name": "the Live page copy keeps the page's scripts",
+        "why": "A page handed to the scriptless frame with its scripts in made Chrome log 'Blocked script execution … sandboxed' once per script (the report behind WIP.3).",
+        "edits": [
+            {
+                "find": "        doc.querySelectorAll('script, noscript, meta[http-equiv=\"refresh\" i]').forEach(n => n.remove());",
+                "replace": "        doc.querySelectorAll('meta[http-equiv=\"refresh\" i]').forEach(n => n.remove());"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "Live page view's copy|Live page view with the site's navigation hidden",
+        "expect": "fail"
+    },
+    {
+        "name": "the Live page copy keeps embedded videos as iframes",
+        "why": "A YouTube player cannot start without scripts, and its fallback image 404s; the copy shows a link instead.",
+        "edits": [
+            {
+                "find": "            fr.replaceWith(p);",
+                "replace": "            void p;"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "Live page view's copy",
+        "expect": "fail"
+    },
+    {
+        "name": "the Live page copy has no base URL",
+        "why": "A srcdoc document's relative URLs resolve against about:srcdoc, not the page, unless a <base href> names the page.",
+        "edits": [
+            {
+                "find": "        base.setAttribute('href', url);",
+                "replace": "        void base;"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "Live page view's copy|Live page view with the site's navigation hidden",
+        "expect": "fail"
+    },
+    {
+        "name": "the Live page view fetches the page again after a hover",
+        "why": "The hover (or the Extracted view) fetched the page already; the Live page view reuses it from _dpRawMem.",
+        "edits": [
+            {
+                "find": "        if (!force && _dpRawMem.has(url)) return { outcome: 'ok', html: _dpRawMem.get(url) };",
+                "replace": "        if (false) return { outcome: 'ok', html: _dpRawMem.get(url) };"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "Live page view with the site's navigation hidden",
+        "expect": "fail"
+    },
+    {
+        "name": "⟳ reuses the remembered page",
+        "why": "⟳ reads the page again; in the Live page view that must bypass _dpRawMem.",
+        "edits": [
+            {
+                "find": "        reload.addEventListener('click', () => _dpRenderDialog(true));",
+                "replace": "        reload.addEventListener('click', () => _dpRenderDialog(false));"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "Live page view with the site's navigation hidden",
+        "expect": "fail"
+    },
+    {
+        "name": "the frame's about:blank document is treated as the page",
+        "why": "A new frame's initial about:blank fires a load too. The load listener is attached only after srcdoc is set, so it never sees that document; the guard is the second line. Recorded so the overlap is known.",
+        "edits": [
+            {
+                "find": "doc.URL === 'about:blank' || ",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "Live page view with the site's navigation hidden",
+        "expect": "pass"
     }
 ]
