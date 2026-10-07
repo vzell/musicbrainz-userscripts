@@ -1,5 +1,29 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-10-08",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Link previews on MusicBrainz: a Barcode cell has a card too — its format, whether its check digit is wrong, and the releases carrying that barcode, from one search; its window lists them (the first 25) with format, label and catalog number, and its Live page is MusicBrainz's barcode search. ← → step down the Barcode column. \"[none]\" and empty cells have none."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Popup engine: MusicBrainz's own td.barcode-cell is a target as it is, no stamp needed; a lookup kind may be fed by a search (query(t)). The search index ignores a barcode's leading zero (probed 2026-10-08), so the cell's own digits are asked."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "popup-mb.spec.js: 3 more tests (48) on the host page's real Barcode cells; fixture ws2-pop-barcode-074643190329.json; popup-mb.json: 3 more mutations (44), two re-anchored."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-10-08",
     "sections": [

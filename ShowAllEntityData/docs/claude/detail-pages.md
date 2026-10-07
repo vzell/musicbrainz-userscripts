@@ -521,6 +521,17 @@ location rows removed. Never commit another editor's profile.
   reload). Outside a table body `_MB_POP_PAGE_SKIP` leaves out the entity's
   tabs (its "Overview" is a bare entity link), pagination, `nav`, and the
   script's toolbar and menus. `@include` is unchanged (answer 6).
+- **Barcode cells** need no stamp: MusicBrainz's own `td.barcode-cell` (plain
+  text) is a target as it is (`_mbPopTarget()`'s TD branch; the selector names
+  `table.tbl > tbody td.barcode-cell`). Its id is `_findCellBarcodeParts()`'s
+  digits as the cell writes them; the `barcode` kind is one release search,
+  `release?query=barcode:<digits>&limit=25` (`_mbPopLookupKind({query})`). The
+  search index ignores a leading zero (probed 2026-10-08: with and without, the
+  same 6 releases). Its page (`k.path`) is the advanced search. The step finder
+  considers the cell itself (`[td, ...td.querySelectorAll(…)]`). An invalid
+  barcode's own "Liner notes" card gives way to this one (`_OTHER_RICH_TIPS`);
+  a click on a grouped cell still toggles its merge boxes (the card hides on
+  mousedown).
 
 `python3 scripts/check-mutation-anchors.py` checks, without running a spec,
 that every `find` of every mutation list still matches once. Run it after

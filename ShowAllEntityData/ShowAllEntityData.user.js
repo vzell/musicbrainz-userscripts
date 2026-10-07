@@ -36571,7 +36571,17 @@
         let id = '';
         const pop = a.getAttribute('data-mb-pop');
         const m = !pop && a.tagName === 'A' && a.origin === window.location.origin && _MB_POP_PATH_RE.exec(a.pathname);
-        if (pop) {
+        // A barcode cell (MusicBrainz's own td.barcode-cell, plain text):
+        // its digits, as the cell writes them (the search index ignores a
+        // leading zero, probed 2026-10-08). "[none]" and an empty cell are
+        // not a barcode.
+        const bc = !pop && a.tagName === 'TD' && a.classList.contains('barcode-cell') ? _findCellBarcodeParts(a)[0] : null;
+        if (bc && bc.digits) {
+            type = 'barcode';
+            id = bc.digits;
+        } else if (a.tagName === 'TD' && !pop) {
+            return null;
+        } else if (pop) {
             const i = pop.indexOf(':');
             type = i > 0 ? pop.slice(0, i) : '';
             id = i > 0 ? pop.slice(i + 1) : '';
@@ -36637,7 +36647,7 @@
             for (const tr of tb.tBodies[0].rows) {
                 const td = tr.cells[idx];
                 if (!td) continue;
-                const a = Array.from(td.querySelectorAll('a[href], [data-mb-pop]')).find(x => {
+                const a = [td, ...td.querySelectorAll('a[href], [data-mb-pop]')].find(x => {
                     const m = _mbPopTarget(x);
                     return m && m.type === t.type;
                 });
@@ -36798,22 +36808,23 @@
      * whatever `pin(t, d, start, repaint)` starts once the answer is there:
      * the `card`/`extracted` members of an `_MB_KINDS` entry.
      *
-     * @param {{cardInc: string, cardHtml: function(Object, object): string,
-     *   windowHtml: function(Object, object): string,
+     * @param {{cardInc?: string, query?: function(object): {key: string, url: string},
+     *   cardHtml: function(Object, object): string, windowHtml: function(Object, object): string,
      *   pin?: function(object, Object, boolean, function(): void): void,
-     *   failNote?: function(string): string}} spec
+     *   failNote?: function(string): string}} spec - `query(t)`, when given,
+     *   feeds the kind from another request than its lookup (a search).
      * @returns {{card: function(object, boolean, function(): void): string,
      *   extracted: function(object, boolean, boolean, function(): void): string}}
      */
     function _mbPopLookupKind(spec) {
         return {
             card(t, start, repaint) {
-                const q = _mbPopLookup(t, spec.cardInc);
+                const q = spec.query ? spec.query(t) : _mbPopLookup(t, spec.cardInc);
                 if (start) _mbWsLoad(q.key, q.url, { repaint, wanted: _mbPopWanted(t) });
                 return _mbPopCardShell(t, _mbPop.get(q.key), spec.cardHtml, spec.failNote);
             },
             extracted(t, start, force, repaint) {
-                const q = _mbPopLookup(t, spec.cardInc);
+                const q = spec.query ? spec.query(t) : _mbPopLookup(t, spec.cardInc);
                 // The pin's extras start once the answer is there: from this
                 // call when it is cached, else from the repaint it causes —
                 // `pin()` itself starts only what was never asked (or ⟳).
@@ -38093,6 +38104,47 @@
                     `<p><a href="/user/${encodeURIComponent(d.name)}/edits" target="_blank" rel="noopener">Their edits</a></p></div></div>`;
             },
         })),
+        // Phase 4: a barcode cell. One release search on the indexed
+        // `barcode` field (MusicBrainz_API/Search, checked 2026-10-08): the
+        // releases carrying it, the first 25 (the default limit) and the count.
+        barcode: Object.assign({
+            title: 'Barcode', wide: true,
+            path: (id) => `/search?query=barcode%3A${encodeURIComponent(id)}&type=release&method=advanced`,
+        }, _mbPopLookupKind({
+            query: (t) => _mbPopBrowse('release', `query=barcode:${encodeURIComponent(t.id)}&limit=25`),
+            cardHtml(d, t) {
+                const rels = (d.releases || []).slice().sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'));
+                const n = typeof d.count === 'number' ? d.count : rels.length;
+                const fmt = _parseBarcodeCode(t.id);
+                return `<div class="mb-tt-title">${_rgEsc(t.id)}</div><div class="mb-tt-body mb-rg-pills">` +
+                    _mbPopPillsHtml([fmt && fmt.format, fmt && fmt.valid === false ? 'invalid check digit' : '',
+                        `${n} release${n === 1 ? '' : 's'}`]) + '</div><div class="mb-tt-rule"></div>' +
+                    (rels.length ? _mbPopKvHtml([['Releases', rels.slice(0, _MB_POP_CARD_RELEASES).map(r => `${_rgEsc(r.date || '—')} ` +
+                        `${_rgEsc(r.title)}${r.country ? ` <span class="mb-rg-cc">${_rgEsc(r.country)}</span>` : ''}` +
+                        `${(r.media || []).length ? ` <span class="mb-rg-dim">${_rgEsc(_rgFormatOf(r))}</span>` : ''}`).join('<br>') +
+                        (n > _MB_POP_CARD_RELEASES ? `<br><span class="mb-rg-dim">+ ${n - _MB_POP_CARD_RELEASES} more</span>` : '')]])
+                        : '<div class="mb-tt-comment">MusicBrainz has no release with this barcode.</div>');
+            },
+            windowHtml(d, t) {
+                const rels = (d.releases || []).slice().sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'));
+                const n = typeof d.count === 'number' ? d.count : rels.length;
+                const fmt = _parseBarcodeCode(t.id);
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(t.id)}</div>` +
+                    `<div class="mb-rg-pills">${_mbPopPillsHtml([fmt && fmt.format, fmt && fmt.valid === false ? 'invalid check digit' : ''])}</div>` +
+                    '<h4>Barcode</h4>' + _mbPopKvHtml([
+                        ['Format', _rgEsc((fmt && fmt.format) || '')],
+                        ['Releases', _rgEsc(String(n))],
+                    ]);
+                const right = `<h4>Releases · ${n}</h4>` + (n > rels.length ? `<div class="mb-rg-progress">The first ${rels.length} of ${n}.</div>` : '') +
+                    (rels.length ? _mbPopTableHtml(['Release', 'Date', 'Country', 'Format', 'Label / Cat#'], rels.map(r => [
+                        `<a href="/release/${_rgEsc(r.id)}" target="_blank" rel="noopener">${_rgEsc(r.title)}</a>` +
+                            `${r.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(r.disambiguation)})</span>` : ''}`,
+                        _rgEsc(r.date || '—'), _rgEsc(r.country || '—'), _rgEsc((r.media || []).length ? _rgFormatOf(r) : '—'),
+                        _rgEsc(_rgLabelOf(r) || '—'),
+                    ])) : '<div class="mb-dp-xsub">MusicBrainz has no release with this barcode.</div>');
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+        })),
     };
 
     /**
@@ -38114,7 +38166,9 @@
             kind: 'MusicBrainz',
             // Read at every event, so the setting needs no reload.
             get selector() {
-                return Lib.settings.sa_pop_mb_page === true ? '[data-mb-pop], #page a[href]' : '[data-mb-pop], table.tbl > tbody a[href]';
+                return Lib.settings.sa_pop_mb_page === true
+                    ? '[data-mb-pop], table.tbl > tbody td.barcode-cell, #page a[href]'
+                    : '[data-mb-pop], table.tbl > tbody td.barcode-cell, table.tbl > tbody a[href]';
             },
             live: _MB_LIVE,
             enabled: () => !_foreignHost && Lib.settings.sa_pop_mb === true,

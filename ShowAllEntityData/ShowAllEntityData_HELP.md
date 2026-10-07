@@ -1530,6 +1530,8 @@ is behind them without opening a tab. So far: **releases**, **release
 groups**, **recordings**, **works**, **artists**, **labels**, **areas**,
 **instruments**, **events**, **places**, **series**, **collections**, and the
 codes: **ISRCs**, **ISWCs** and **disc IDs**, and **edits** and **editors**.
+A **Barcode** cell has a card too: the barcode's format and the releases
+carrying it.
 
 **Hold Ctrl and rest the pointer on a link**, or rest it first and then press
 **Ctrl**: a card opens beside the link. Without Ctrl nothing happens, so

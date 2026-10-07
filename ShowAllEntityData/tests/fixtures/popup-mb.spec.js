@@ -79,6 +79,7 @@ const WS2_FIXTURES = [
     [/\/ws\/2\/iswc\//, 'ws2-pop-iswc-btr.json'],
     [/\/ws\/2\/discid\//, 'ws2-pop-discid-dark.json'],
     [/\/ws\/2\/collection\//, 'ws2-pop-collection-attending.json'],
+    [/\/ws\/2\/release\?query=barcode:/, 'ws2-pop-barcode-074643190329.json'],
 ];
 // A 1×1 PNG, so a cover the card asks for loads instead of being dropped.
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
@@ -149,6 +150,7 @@ async function open(page, { settings = {}, lookup = null, showAll = true, ws2 = 
     });
     await ctx.route('**/ws/2/release?recording=**', other);
     await ctx.route('**/ws/2/release?label=**', other);
+    await ctx.route('**/ws/2/release?query=**', other);
     await ctx.route('**/ws/2/release-group?artist=**', other);
     // Phase 3: edit and editor pages, by URL (`pageFixture` may answer instead).
     await ctx.route(/^https:\/\/musicbrainz\.org\/(edit|user)\//, (route) => {
@@ -1153,5 +1155,58 @@ test.describe('MusicBrainz link previews: beyond table links (Phase 4)', () => {
         await expect(dialog(page).locator('.mb-dp-pos-label')).toHaveText('1 / 3');
         await page.keyboard.press('ArrowRight');
         await expect(dialog(page).locator('.mb-dp-pos-label')).toHaveText('2 / 3');
+    });
+});
+
+test.describe('MusicBrainz link previews: barcode cells (Phase 4)', () => {
+    const BARCODE = '074643190329';
+    const bcCell = (page) => page.locator('table.tbl tbody td.barcode-cell', { hasText: BARCODE }).first();
+
+    test('a barcode cell is a target; "[none]" and an empty cell are not', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const r = await page.evaluate((code) => {
+            const cells = Array.from(document.querySelectorAll('table.tbl tbody td.barcode-cell'));
+            const res = (td) => (td ? window.__saTest.popResolve(td) : 'missing');
+            const none = document.createElement('td');
+            none.className = 'barcode-cell';
+            none.textContent = '[none]';
+            const empty = document.createElement('td');
+            empty.className = 'barcode-cell';
+            cells[0].parentElement.append(none, empty);
+            return { code: res(cells.find(td => td.textContent.trim() === code)), none: res(none), empty: res(empty) };
+        }, BARCODE);
+        expect(r.code).toBe(`mb-entity|barcode:${BARCODE}`);
+        expect(r.none).toBeNull();
+        expect(r.empty).toBeNull();
+    });
+
+    test('its card: the releases carrying it, from one search', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        await ctrlHover(page, bcCell(page));
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-title')).toHaveText(BARCODE);
+        await expect(card(page).locator('.mb-tt-pill')).toContainText(['6 releases']);
+        await expect(card(page).locator('.mb-dp-kv')).toContainText('Greetings From Asbury Park, N.J.');
+        expect(log.ws2).toEqual([expect.stringContaining(`/ws/2/release?query=barcode:${BARCODE}&limit=25&fmt=json`)]);
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Barcode');
+        await expect(dialog(page).locator('.mb-rg-wtable tbody tr')).toHaveCount(6);
+        await expect(dialog(page).locator('a.mb-dp-tbtn')).toHaveAttribute('href',
+            `https://musicbrainz.org/search?query=barcode%3A${BARCODE}&type=release&method=advanced`);
+    });
+
+    test('the arrows step down the Barcode column, over cells that hold a barcode', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true } });
+        const n = await page.evaluate(() => Array.from(document.querySelectorAll('table.tbl tbody td.barcode-cell'))
+            .filter(td => td.getClientRects().length && /\d/.test(td.textContent) && td.textContent.trim() !== '[none]').length);
+        expect(n).toBeGreaterThan(2);
+        await ctrlHover(page, bcCell(page));
+        await expect(card(page)).toBeVisible();
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('.mb-dp-pos-label')).toHaveText(new RegExp(`^\\d+ / ${n}$`));
+        const before = await dialog(page).locator('.mb-dp-pos-label').textContent();
+        await page.keyboard.press('ArrowRight');
+        await expect(dialog(page).locator('.mb-dp-pos-label')).not.toHaveText(before);
+        await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Barcode');
     });
 });

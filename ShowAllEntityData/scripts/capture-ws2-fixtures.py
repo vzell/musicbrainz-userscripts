@@ -75,6 +75,12 @@ FIXTURES = {
     'iswc-btr': 'iswc/T-070.014.903-6',
     'discid-dark': 'discid/coDDysS5IdmG1aPONqJSQd6TJws-',
     'collection-attending': 'collection/60df131d-bdb7-3c83-840d-e31e566baabe',
+    # Phase 4 (WIP.2): a barcode card is one release search on the indexed
+    # `barcode` field (MusicBrainz_API/Search, checked 2026-10-08), asked as
+    # the cell writes it. Probed 2026-10-08: barcode:74643190329 (the leading
+    # zero dropped) answered the same 6 releases, so the index ignores
+    # leading zeros and the cell's own digits are enough.
+    'barcode-074643190329': 'release?query=barcode:074643190329&limit=25',
 }
 
 _last = [0.0]

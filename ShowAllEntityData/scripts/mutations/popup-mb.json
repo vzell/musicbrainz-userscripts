@@ -499,8 +499,8 @@
         "why": "sa_pop_mb_page is opt-in: by default only table links (and stamped elements) have a card.",
         "edits": [
             {
-                "find": "                return Lib.settings.sa_pop_mb_page === true ? '[data-mb-pop], #page a[href]' : '[data-mb-pop], table.tbl > tbody a[href]';",
-                "replace": "                return '[data-mb-pop], #page a[href]';"
+                "find": "                    : '[data-mb-pop], table.tbl > tbody td.barcode-cell, table.tbl > tbody a[href]';",
+                "replace": "                    : '[data-mb-pop], table.tbl > tbody td.barcode-cell, #page a[href]';"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -525,12 +525,51 @@
         "why": "A stamped cell of the column's kind is a step like a link.",
         "edits": [
             {
-                "find": "                const a = Array.from(td.querySelectorAll('a[href], [data-mb-pop]')).find(x => {",
-                "replace": "                const a = Array.from(td.querySelectorAll('a[href]')).find(x => {"
+                "find": "                const a = [td, ...td.querySelectorAll('a[href], [data-mb-pop]')].find(x => {",
+                "replace": "                const a = [td, ...td.querySelectorAll('a[href]')].find(x => {"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
         "grep": "step over stamped cells",
+        "expect": "fail"
+    },
+    {
+        "name": "a barcode cell is not a target",
+        "why": "MusicBrainz's own td.barcode-cell holds the barcode as plain text; the cell itself is the target (no stamping, so every re-render keeps it).",
+        "edits": [
+            {
+                "find": "        const bc = !pop && a.tagName === 'TD' && a.classList.contains('barcode-cell') ? _findCellBarcodeParts(a)[0] : null;",
+                "replace": "        const bc = null;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a barcode cell is a target",
+        "expect": "fail"
+    },
+    {
+        "name": "the source does not listen on barcode cells",
+        "why": "The selector must name td.barcode-cell, or a hover on one never reaches _mbPopTarget().",
+        "edits": [
+            {
+                "find": "                    : '[data-mb-pop], table.tbl > tbody td.barcode-cell, table.tbl > tbody a[href]';",
+                "replace": "                    : '[data-mb-pop], table.tbl > tbody a[href]';"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "its card: the releases carrying it",
+        "expect": "fail"
+    },
+    {
+        "name": "the arrows skip a cell that is itself the target",
+        "why": "A barcode cell is its own target: the step finder must consider the cell, not only what is inside it.",
+        "edits": [
+            {
+                "find": "                const a = [td, ...td.querySelectorAll('a[href], [data-mb-pop]')].find(x => {",
+                "replace": "                const a = [...td.querySelectorAll('a[href], [data-mb-pop]')].find(x => {"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "step down the Barcode column",
         "expect": "fail"
     }
 ]

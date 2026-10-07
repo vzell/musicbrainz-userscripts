@@ -1,0 +1,406 @@
+{
+ "created": "2026-10-07T22:11:42.977Z",
+ "count": 6,
+ "offset": 0,
+ "releases": [
+  {
+   "id": "980a2644-4b67-4e87-8c8d-5d67c5305530",
+   "score": 100,
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "artist-credit-id": "6dcbb473-025f-3f38-a3a5-8af35818c273",
+   "count": 1,
+   "title": "Greetings From Asbury Park, N.J.",
+   "status": "Official",
+   "disambiguation": "enhanced packaging reissue",
+   "packaging": "Jewel Case",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce"
+     }
+    }
+   ],
+   "release-group": {
+    "id": "c497fc44-ddaf-3cce-a9b4-bfec958a0f3c",
+    "type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "title": "Greetings From Asbury Park, N.J.",
+    "primary-type": "Album"
+   },
+   "date": "2003",
+   "country": "US",
+   "release-events": [
+    {
+     "date": "2003",
+     "area": {
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "name": "United States",
+      "sort-name": "United States",
+      "iso-3166-1-codes": [
+       "US"
+      ]
+     }
+    }
+   ],
+   "barcode": "074643190329",
+   "label-info": [
+    {
+     "catalog-number": "CK 31903",
+     "label": {
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "name": "Columbia"
+     }
+    }
+   ],
+   "track-count": 9,
+   "media": [
+    {
+     "id": "8d8e5b59-ee1d-3d33-a610-0697b8487ee8",
+     "format": "CD",
+     "disc-count": 1,
+     "track-count": 9
+    }
+   ]
+  },
+  {
+   "id": "f9e7bf8e-465b-42be-adb7-2b328f1474d3",
+   "score": 100,
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "artist-credit-id": "6dcbb473-025f-3f38-a3a5-8af35818c273",
+   "count": 1,
+   "title": "Greetings From Asbury Park, N.J.",
+   "status": "Official",
+   "packaging": "Jewel Case",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce"
+     }
+    }
+   ],
+   "release-group": {
+    "id": "c497fc44-ddaf-3cce-a9b4-bfec958a0f3c",
+    "type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "title": "Greetings From Asbury Park, N.J.",
+    "primary-type": "Album"
+   },
+   "date": "",
+   "country": "US",
+   "release-events": [
+    {
+     "date": "",
+     "area": {
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "name": "United States",
+      "sort-name": "United States",
+      "iso-3166-1-codes": [
+       "US"
+      ]
+     }
+    }
+   ],
+   "barcode": "074643190329",
+   "label-info": [
+    {
+     "catalog-number": "CK 31903",
+     "label": {
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "name": "Columbia"
+     }
+    }
+   ],
+   "track-count": 9,
+   "media": [
+    {
+     "id": "80f16cad-ae22-3e4e-ad2b-81d3ffa28e1d",
+     "format": "CD",
+     "disc-count": 0,
+     "track-count": 9
+    }
+   ]
+  },
+  {
+   "id": "d9613519-fc6f-4124-89e8-568b63413458",
+   "score": 100,
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "artist-credit-id": "6dcbb473-025f-3f38-a3a5-8af35818c273",
+   "count": 1,
+   "title": "Greetings From Asbury Park, N.J.",
+   "status": "Official",
+   "disambiguation": "Pitman Pressing",
+   "packaging": "Jewel Case",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce"
+     }
+    }
+   ],
+   "release-group": {
+    "id": "c497fc44-ddaf-3cce-a9b4-bfec958a0f3c",
+    "type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "title": "Greetings From Asbury Park, N.J.",
+    "primary-type": "Album"
+   },
+   "date": "",
+   "country": "US",
+   "release-events": [
+    {
+     "date": "",
+     "area": {
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "name": "United States",
+      "sort-name": "United States",
+      "iso-3166-1-codes": [
+       "US"
+      ]
+     }
+    }
+   ],
+   "barcode": "074643190329",
+   "label-info": [
+    {
+     "catalog-number": "CK 31903",
+     "label": {
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "name": "Columbia"
+     }
+    }
+   ],
+   "track-count": 9,
+   "media": [
+    {
+     "id": "05c7c12e-32e8-37d2-81b4-1e11fadaa055",
+     "format": "CD",
+     "disc-count": 1,
+     "track-count": 9
+    }
+   ]
+  },
+  {
+   "id": "d05840f0-5cc8-404a-b3a1-feecd6abfce3",
+   "score": 100,
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "artist-credit-id": "6dcbb473-025f-3f38-a3a5-8af35818c273",
+   "count": 1,
+   "title": "Greetings From Asbury Park, N.J.",
+   "status": "Official",
+   "disambiguation": "CSR Compact Disc",
+   "packaging": "Jewel Case",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce"
+     }
+    }
+   ],
+   "release-group": {
+    "id": "c497fc44-ddaf-3cce-a9b4-bfec958a0f3c",
+    "type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "title": "Greetings From Asbury Park, N.J.",
+    "primary-type": "Album"
+   },
+   "date": "1984",
+   "country": "US",
+   "release-events": [
+    {
+     "date": "1984",
+     "area": {
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "name": "United States",
+      "sort-name": "United States",
+      "iso-3166-1-codes": [
+       "US"
+      ]
+     }
+    }
+   ],
+   "barcode": "074643190329",
+   "label-info": [
+    {
+     "catalog-number": "CK 31903",
+     "label": {
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "name": "Columbia"
+     }
+    }
+   ],
+   "track-count": 9,
+   "media": [
+    {
+     "id": "47117e49-be50-3464-bc30-e854d7ba36ef",
+     "format": "CD",
+     "disc-count": 1,
+     "track-count": 9
+    }
+   ]
+  },
+  {
+   "id": "86ff8941-f655-413f-bd76-a51aae685106",
+   "score": 100,
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "packaging-id": "119eba76-b343-3e02-a292-f0f00644bb9b",
+   "artist-credit-id": "6dcbb473-025f-3f38-a3a5-8af35818c273",
+   "count": 1,
+   "title": "Greetings From Asbury Park, N.J.",
+   "status": "Official",
+   "disambiguation": "96kHz · 24bit",
+   "packaging": "None",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce"
+     }
+    }
+   ],
+   "release-group": {
+    "id": "c497fc44-ddaf-3cce-a9b4-bfec958a0f3c",
+    "type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "title": "Greetings From Asbury Park, N.J.",
+    "primary-type": "Album"
+   },
+   "date": "2014",
+   "country": "US",
+   "release-events": [
+    {
+     "date": "2014",
+     "area": {
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "name": "United States",
+      "sort-name": "United States",
+      "iso-3166-1-codes": [
+       "US"
+      ]
+     }
+    }
+   ],
+   "barcode": "074643190329",
+   "label-info": [
+    {
+     "label": {
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "name": "Columbia"
+     }
+    }
+   ],
+   "track-count": 9,
+   "media": [
+    {
+     "id": "92543714-ab55-3ccf-bff2-ad8cc4f5a5a4",
+     "format": "Digital Media",
+     "disc-count": 0,
+     "track-count": 9
+    }
+   ]
+  },
+  {
+   "id": "63ca4d52-c6d0-48b7-b03e-385e6ba9129c",
+   "score": 100,
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "packaging-id": "119eba76-b343-3e02-a292-f0f00644bb9b",
+   "artist-credit-id": "6dcbb473-025f-3f38-a3a5-8af35818c273",
+   "count": 1,
+   "title": "Greetings From Asbury Park, N.J.",
+   "status": "Official",
+   "disambiguation": "44.1kHz · 24bit",
+   "packaging": "None",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce"
+     }
+    }
+   ],
+   "release-group": {
+    "id": "c497fc44-ddaf-3cce-a9b4-bfec958a0f3c",
+    "type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "title": "Greetings From Asbury Park, N.J.",
+    "primary-type": "Album"
+   },
+   "date": "",
+   "country": "US",
+   "release-events": [
+    {
+     "date": "",
+     "area": {
+      "id": "489ce91b-6658-3307-9877-795b68554c98",
+      "name": "United States",
+      "sort-name": "United States",
+      "iso-3166-1-codes": [
+       "US"
+      ]
+     }
+    }
+   ],
+   "barcode": "074643190329",
+   "label-info": [
+    {
+     "label": {
+      "id": "011d1192-6f65-45bd-85c4-0400dd45693e",
+      "name": "Columbia"
+     }
+    }
+   ],
+   "track-count": 9,
+   "media": [
+    {
+     "id": "4a6f0ac5-eb63-3ea2-8b3d-2668c8f2239f",
+     "format": "Digital Media",
+     "disc-count": 0,
+     "track-count": 9
+    }
+   ]
+  }
+ ]
+}
