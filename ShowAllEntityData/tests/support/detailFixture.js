@@ -32,11 +32,15 @@ const FIXTURE_DIR = path.join(__dirname, '..', 'fixtures');
 const DETAIL_HOSTS = {
     sl: {
         isDetail: (u) => /springsteenlyrics\.com$/.test(u.hostname) &&
-            /^\/(?:collection|bootlegs|brucelegs)\.php$/.test(u.pathname) && u.searchParams.has('item'),
+            ((/^\/(?:collection|bootlegs|brucelegs)\.php$/.test(u.pathname) && u.searchParams.has('item')) ||
+             (u.pathname === '/lyrics.php' && u.searchParams.has('song'))),
         fileFor: (u) => {
-            const name = `detail-sl-${u.pathname.slice(1, -4)}-${u.searchParams.get('item')}.html`;
+            const name = u.searchParams.has('song')
+                ? `detail-sl-lyrics-${u.searchParams.get('song')}.html`
+                : `detail-sl-${u.pathname.slice(1, -4)}-${u.searchParams.get('item')}.html`;
             return ['detail-sl-bootlegs-4554.html', 'detail-sl-bootlegs-6739.html', 'detail-sl-bootlegs-1331.html',
-                'detail-sl-collection-8981.html', 'detail-sl-collection-7431.html'].includes(name)
+                'detail-sl-collection-8981.html', 'detail-sl-collection-7431.html',
+                'detail-sl-lyrics-badlands.html', 'detail-sl-lyrics-babyme.html'].includes(name)
                 ? path.join(FIXTURE_DIR, name) : null;
         },
         contentType: 'text/html; charset=UTF-8',

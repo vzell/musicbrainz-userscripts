@@ -15,7 +15,7 @@ Design study, probes and the mockups the user chose from:
 
 | Host                  | Setting                 | Detail links                                    |
 |-----------------------|-------------------------|-------------------------------------------------|
-| springsteenlyrics.com | `sa_sl_detail_preview`  | `collection.php`/`bootlegs.php`/`brucelegs.php` with `item=N` |
+| springsteenlyrics.com | `sa_sl_detail_preview`  | `collection.php`/`bootlegs.php`/`brucelegs.php` with `item=N`; `lyrics.php?song=SLUG` (the lyrics index, WIP.2) |
 | jungleland.it         | `sa_jl_detail_preview`  | `/html/*.htm` except list, images, artwork      |
 | brucespringsteen.it   | `sa_bs_detail_preview`  | `/DB/detrec.aspx?code=`                         |
 | brucebase.wikidot.com | `sa_bb_detail_preview`  | `/song:<slug>`                                  |
@@ -61,8 +61,11 @@ and its URL is same-origin and passes the host's `isDetailUrl`.
 Every parser returns the same record, `_dpEmpty()`'s shape: `title`,
 `subtitle`, `fields` (label/value pairs, in page order), `tracks`
 (`{disc, pos, title, from}`), `notes`, `images` (`{thumb, full, label}`),
-`cover`, `sections` (`{label, text}`), `highlight`, `unnumbered`. The card and
-the dialog render only that shape, never a host's markup.
+`cover`, `sections` (`{label, text}`), `highlight`, `unnumbered`, `excerpt`
+(`{label, lines, total}`: the card's opening lines of a long text) and
+`summary` (a paragraph for the card only, since the dialog shows it inside a
+section). The card and the dialog render only that shape, never a host's
+markup.
 
 ### The parsers (all probed 2026-10-07; fixtures from `debug/detail-*`)
 
@@ -77,6 +80,19 @@ the dialog render only that shape, never a host's markup.
   paragraph of three or more title-like lines is an UNNUMBERED tracklist
   (bootleg 1331); an all-capitals line may end in a dot there ("BORN IN THE
   U.S.A.").
+- **`_dpParseSlSong()`** (reached from `_dpParseSl()` for `lyrics.php`): a
+  song page has no card. In `.project-detail`: an `<h3>` title, a `<p><em>`
+  version ("Album version"; empty when unknown), then between the first two
+  `<hr>`s the lyrics `<p>` (a `<br/>` per line, a blank line between verses,
+  `span.text-info` stage notes) or an `alert-warning` "Lyrics not available"
+  (that becomes the note). Then `h3.heading` sections, each up to the next
+  heading, album sub-headings included (Info, Writing and Recording,
+  releases, Live History, Covers, Credits / References, Available Versions).
+  The site's "SECTION NOT YET COMPLETED" lines are dropped. Available
+  Versions gives the field "Versions on the site" (its `span.monospaced`
+  lines). Info's first paragraph is the card's `summary`, and the first four
+  sung lines (stage notes left out) its `excerpt`. Every lyrics-index row links
+  its own version's page, so the card describes exactly that version.
 - **`_dpParseJl()`**: `<a>Title|Date|Uploader: …</a>` lines; "0000-00-00" is
   the site's unknown date and is left out. Scans are
   `..\artwork\<decade>\thumb\tn_<stem>_<label>.jpg` with backslashes
@@ -167,7 +183,7 @@ unofficial list. That happens on the key press, not on a render.
 
 | Spec                                              | Pins                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 |---------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `tests/fixtures/detail-preview.spec.js`           | every parser on saved pages (discs, a lineage note, scans; side numbers; the unnumbered list; tracklist shapes the pages lack; jungleland's labelled backslash scans and unknown date; bs's label run, ditto marks, official labels, the photo; Brucebase's count, last show, releases, downloads, sections); the preview off = no card, no request; MusicBrainz with every preview on = nothing; one request then memory; beside the link; Esc; Space pins; ← → steps with a 404 row; Space TYPED stays typed and render focus does not block the pin; a moved-on hover makes no request; a photo, a failed photo; sl's Live page view with the navigation hidden and the box; jungleland decoded from windows-1252 and read from IndexedDB after a reload; Brucebase's card, lyrics, and Live page with every tab |
+| `tests/fixtures/detail-preview.spec.js`           | every parser on saved pages (discs, a lineage note, scans; side numbers; the unnumbered list; tracklist shapes the pages lack; jungleland's labelled backslash scans and unknown date; bs's label run, ditto marks, official labels, the photo; Brucebase's count, last show, releases, downloads, sections); the preview off = no card, no request; MusicBrainz with every preview on = nothing; one request then memory; beside the link; Esc; Space pins; ← → steps with a 404 row; Space TYPED stays typed and render focus does not block the pin; a moved-on hover makes no request; a photo, a failed photo; sl's Live page view with the navigation hidden and the box; jungleland decoded from windows-1252 and read from IndexedDB after a reload; Brucebase's card, lyrics, and Live page with every tab; song pages (version, lyrics by shape, sections without placeholders, versions count; "Lyrics not available"); the lyrics index's card (excerpt and line count as parsed from the fixture), its dialog, and a song without lyrics |
 | `tests/fixtures/detail-preview.mobile.spec.js`    | a tap opens the dialog, not the page, and shows no card                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 
 Fixtures: `python3 scripts/build-detail-fixtures.py` turns the curl captures
@@ -176,3 +192,19 @@ jungleland.it pages stay windows-1252, and it strips scripts, noscripts,
 iframes, links and background images. `tests/support/detailFixture.js` serves
 them after a list loader's catch-all and answers a detail URL with no fixture
 with a 404. Mutation list: `scripts/mutations/detail-preview.json`.
+
+**No song lyrics in the repository** (decided 2026-10-07). The build blanks
+every word of a song page's lyrics block to "la" (springsteenlyrics.com: between
+the first two `<hr>`; Brucebase: the "Lyrics" tab's panel), keeping tags,
+line breaks, punctuation and entities, so the parser sees the same lines and
+verses. A "Lyrics not available" alert is left as it is. **Specs assert the
+SHAPE of lyrics (sections, line counts, the excerpt as parsed from the
+fixture), never lyric text** — fixture and live specs alike. A spec that
+quoted lyrics also made a model-generated reply fail with "Output blocked by
+content filtering policy" while it was being written.
+
+The live spec also checks the lyrics index. The site throws its own
+`Uncaught (in promise) Error: Container is not defined` on its lyrics pages
+with no userscript loaded (checked with a bare Chromium, 2026-10-07), and
+that one message is exempted, as `sl-lists.spec.js` exempts the site's
+`init is not defined`.

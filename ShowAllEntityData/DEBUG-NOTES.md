@@ -19696,3 +19696,48 @@ touched by the `page.clock` rewrite re-run and still failing; live `@extended`
 detail-preview 4/4 in 59 s (2026-10-07T00:45:58Z–00:46:58Z, host NB-3641,
 WSL2); `npm run test:full` 1265 passed in 7.7 min (00:47:17Z–00:54:58Z, same
 host); lint within baseline; config default and doc audits clean.
+
+## 2026-10-07 — Detail preview on the lyrics index; no song lyrics in the repository (branch feature/detail-pages, WIP.2)
+
+Reported after WIP.1: "OK everywhere except no popup on lyrics.php". The
+lyrics index's rows link `lyrics.php?song=SLUG` (one page per version), which
+`isDetailUrl` did not admit. Added `_dpParseSlSong()` (docs/claude/detail-pages.md):
+title, version, lyrics or "Lyrics not available", every `h3.heading`
+section, Available Versions' count, Info's first paragraph; the card gets a
+four-line excerpt with the line count. Snapshots `debug/detail-sl-lyrics-{badlands,babyme}.html`.
+
+**Song lyrics are blanked in the fixtures, and no spec quotes lyric text.**
+Writing the first draft of the lyrics spec with lyric lines in it made the
+model's reply fail with "API Error: Output blocked by content filtering
+policy". Decided with the user: `build-detail-fixtures.py` turns every word
+of a lyrics block into "la" (tags, breaks, punctuation and entities kept, so
+the parser sees the same lines and verses; a "Lyrics not available" alert is
+left alone — the first draft blanked it too, and the spec caught that), and
+the specs assert sections, line counts, and the excerpt as parsed from the
+fixture. The three existing lyric-line assertions (Brucebase, fixture and
+live spec) became line counts. **The pushed WIP.1 commit (`5ca590e`) held the
+unblanked Brucebase fixture** `detail-bb-4th-of-july.html`; at the user's
+request it was rewritten (as `055edbb`: the blanked fixture, the build
+script's Brucebase blanking and the three line-count assertions, its tests
+re-run 17/17 on that tree) and the branch force-pushed with
+`--force-with-lease`, so no lyric text remains in the branch history.
+
+The live lyrics test met the site's OWN `Uncaught (in promise) Error:
+Container is not defined`, thrown on its lyrics pages with no userscript
+loaded (bare Chromium, about 07:33Z). Exempted by exact message, as
+sl-lists.spec.js exempts `init is not defined`.
+
+**A pre-existing flake, not this branch:** `event-overview.spec.js` "a Save
+to Disk → Load from Disk round trip keeps every group's own columns" timed out
+waiting for the `download` event once in `test:full`. It failed the same way
+on `main` (8043073, a scratch worktree): 1 of 21 runs of the whole spec with
+`--repeat-each=3`; 6 of 6 passed when that test ran alone, on main and on the
+branch alike (the branch: 1 of 6 alone). Worth a look on its own.
+
+**Results:** detail-preview fixture spec 18/18 and mobile 1/1; four new
+mutations (song links not admitted, song page read as a card, placeholders
+kept, no "not available" note) all fail as declared, userscript restored and
+verified; live `@extended` detail-preview 5/5 in 1.0 min
+(2026-10-07T07:34:11Z–07:35:12Z, host NB-3641, WSL2); `npm run test:full`
+1266 passed, 1 failed, the event-overview flake above (07:36:33Z–07:44:02Z);
+lint within baseline; config default and doc audits clean.

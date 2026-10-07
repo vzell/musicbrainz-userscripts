@@ -19,6 +19,16 @@ const { waitForRenderComplete } = require('../support/browser');
 const BIG = { sa_render_threshold: 1000000, sa_render_warning_threshold: 1000000 };
 
 /**
+ * springsteenlyrics.com's OWN error on its lyrics pages (the letter list and a
+ * song page alike), an unhandled rejection raised once or more per page
+ * load: thrown with no userscript loaded at all (checked about
+ * 2026-10-07T07:33Z with a bare Chromium). Exempted by exact message, nothing
+ * broader, as sl-lists.spec.js does for the site's `init is not defined`.
+ * @type {string}
+ */
+const SL_LYRICS_OWN_ERROR = 'Uncaught (in promise) Error: Container is not defined';
+
+/**
  * Hovers a row's detail link and waits for its card to hold the page's
  * content (not the loading line).
  * @param {import('@playwright/test').Page} page
@@ -63,6 +73,28 @@ test.describe('detail-page preview on the real sites', { tag: '@extended' }, () 
             return { navbar: rendered('.navbar'), footer: rendered('footer'), detail: rendered('.project-detail') };
         }), { timeout: 30000 }).toEqual({ navbar: false, footer: false, detail: true });
         expect(pageErrors).toEqual([]);
+    });
+
+    test('springsteenlyrics.com lyrics index, BADLANDS: version, lyrics by shape, sections', async ({ page }) => {
+        // Asserts shapes only: the spec quotes no lyric text.
+        test.setTimeout(240000);
+        const pageErrors = collectPageErrors(page);
+        await loadUserscriptPage(page, {
+            url: 'https://www.springsteenlyrics.com/lyrics.php?cmd=list&letter=b',
+            settingsOverride: { sa_enable_springsteenlyrics: true, sa_sl_detail_preview: true, ...BIG },
+        });
+        await page.click('button[data-label="Show all lyrics"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false, timeout: 180000 });
+        const card = await cardFor(page, page.locator('table.tbl tbody a[href$="lyrics.php?song=badlands"]'));
+        await expect(card.locator('.mb-tt-title')).toHaveText('BADLANDS');
+        await expect(card).toContainText('Album version');
+        expect(await card.locator('.mb-dp-excerpt').evaluate((el) => el.innerText.split('\n').filter(Boolean).length)).toBe(4);
+        await expect(card).toContainText(/Lyrics: \d+ lines/);
+        await page.keyboard.press('Space');
+        const dialog = page.locator('#mb-dp-dialog');
+        await expect(dialog.locator('.mb-dp-col').last().locator('h4').first()).toHaveText('Lyrics');
+        await expect(dialog.locator('h4', { hasText: 'Available Versions' })).toHaveCount(1);
+        expect(pageErrors.filter((e) => e !== SL_LYRICS_OWN_ERROR)).toEqual([]);
     });
 
     test('jungleland.it 1976-09-30: uploader and scans from a windows-1252 page', async ({ page }) => {

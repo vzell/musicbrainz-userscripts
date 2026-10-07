@@ -148,6 +148,41 @@ test.describe('detail-page parsers (one record per saved page)', () => {
         expect(sides.notes).toEqual(['1975 - remastered']);
     });
 
+    test('springsteenlyrics.com song pages: version, lyrics by shape, sections, versions count; no lyrics', async ({ page }) => {
+        // The fixtures' lyrics are blanked (build-detail-fixtures.py), so this
+        // pins lines, verses and sections, never lyric text.
+        await loadBsRecordsPage(page);
+        const parse = (name, slug) => page.evaluate(([h, u]) => window.__saTest.dpParse('springsteenlyrics.com', h, u),
+            [fixtureHtml(name), `https://www.springsteenlyrics.com/lyrics.php?song=${slug}`]);
+
+        const s = await parse('detail-sl-lyrics-badlands.html', 'badlands');
+        expect(s.title).toBe('BADLANDS');
+        expect(s.subtitle).toBe('Album version');
+        expect(s.sections[0].label).toBe('Lyrics');
+        const lines = s.sections[0].text.split('\n');
+        // Verses are separated by one blank line, and the stage notes are kept.
+        expect(lines.filter((l) => l === '').length).toBeGreaterThan(5);
+        expect(lines.some((l) => /^\[.*\]$/.test(l))).toBe(true);
+        // The card's excerpt: the first four sung lines and the count of all of them.
+        const sung = lines.filter((l) => l && !/^\[.*\]$/.test(l));
+        expect(s.excerpt).toEqual({ label: 'Lyrics', lines: sung.slice(0, 4), total: sung.length });
+        const labels = s.sections.map((x) => x.label);
+        expect(labels).toEqual(expect.arrayContaining(['Info', 'Writing and Recording', 'Credits / References', 'Available Versions']));
+        expect(s.sections.every((x) => !/SECTION NOT YET COMPLETED/.test(x.text))).toBe(true);
+        expect(s.fields).toEqual([['Versions on the site', '9']]);
+        expect(s.summary).toMatch(/^BADLANDS is a song written by Bruce Springsteen/);
+        expect(s.notes).toEqual([]);
+
+        const n = await parse('detail-sl-lyrics-babyme.html', 'babyme');
+        expect(n.title).toBe('BABY & ME (BLONDIE)');
+        expect(n.subtitle).toBe('');
+        expect(n.notes).toEqual(['Lyrics not available']);
+        expect(n.excerpt).toBeNull();
+        expect(n.sections[0].label).toBe('Info');
+        expect(n.images.length).toBeGreaterThan(0);
+        expect(n.images[0].thumb).toMatch(/^https:\/\/www\.springsteenlyrics\.com\/lyrics\/images\//);
+    });
+
     test('jungleland.it: title, uploader, labelled scans with backslash paths; no unknown date', async ({ page }) => {
         await loadBsRecordsPage(page);
         const url = 'https://www.jungleland.it/html/Magic%20In%20The%20K%C3%B6ln%20Night%20(2007-12-13).htm';
@@ -408,6 +443,41 @@ test.describe('the other hosts', () => {
         await dialog.locator('input.mb-dp-hidenav').uncheck();
         await expect.poll(state).toEqual({ topBar: true, footer: true, detail: true });
         expect(served.filter((u) => /item=4554/.test(u)).length).toBeGreaterThanOrEqual(2);
+        expect(errors).toEqual([]);
+    });
+
+    test('springsteenlyrics.com lyrics index: a song\'s card, its dialog, and a song without lyrics', async ({ page }) => {
+        const errors = trackPageErrors(page);
+        await loadSlListPage(page, { kind: 'lyrics-b', settingsOverride: { sa_sl_detail_preview: true } });
+        const { served } = await routeDetailPages(page, 'sl');
+        await page.click(`button[data-label="${SL_KINDS['lyrics-b'].button}"]`);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        // What the card should show, read from the (blanked) fixture rather than written here.
+        const want = await page.evaluate(([h, u]) => window.__saTest.dpParse('springsteenlyrics.com', h, u),
+            [fixtureHtml('detail-sl-lyrics-badlands.html'), 'https://www.springsteenlyrics.com/lyrics.php?song=badlands']);
+
+        await peekAt(page, page.locator('table.tbl tbody a[href$="lyrics.php?song=badlands"]'));
+        await expect(peek(page).locator('.mb-tt-title')).toHaveText('BADLANDS');
+        await expect(peek(page)).toContainText('Album version');
+        await expect(peek(page)).toContainText('Versions on the site');
+        expect(await peek(page).locator('.mb-dp-excerpt').evaluate((el) => el.innerText.split('\n')))
+            .toEqual(want.excerpt.lines);
+        await expect(peek(page)).toContainText(`Lyrics: ${want.excerpt.total} lines`);
+        await expect(peek(page)).toContainText('BADLANDS is a song written by Bruce Springsteen');
+        expect(served).toEqual(['https://springsteenlyrics.com/lyrics.php?song=badlands']);
+
+        await page.keyboard.press('Space');
+        const dialog = page.locator('#mb-dp-dialog');
+        await expect(dialog.locator('.mb-dp-xtitle')).toHaveText('BADLANDS');
+        await expect(dialog.locator('.mb-dp-col').last().locator('h4').first()).toHaveText('Lyrics');
+        expect(await dialog.locator('.mb-dp-section').first().evaluate((el) => el.textContent))
+            .toBe(want.sections[0].text);
+        await page.keyboard.press('Escape');
+        await expect(dialog).toHaveCount(0);
+
+        await peekAt(page, page.locator('table.tbl tbody a[href$="lyrics.php?song=babyme"]'));
+        await expect(peek(page)).toContainText('Lyrics not available');
+        await expect(peek(page).locator('.mb-dp-excerpt')).toHaveCount(0);
         expect(errors).toEqual([]);
     });
 

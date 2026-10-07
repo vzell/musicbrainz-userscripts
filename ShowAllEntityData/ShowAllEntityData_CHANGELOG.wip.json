@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-10-07",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The detail-page preview (WIP.1) now also works on springsteenlyrics.com's lyrics index (lyrics.php), where it opened nothing before. Rest the pointer on a song and the card shows that version's page: which version it is (\"Album version\"), the first lines of the lyrics with their number of lines, how many versions the site has, and the start of the song's info, or \"Lyrics not available\". The pinned window has the whole lyrics and every section of the song's page: info, writing and recording, releases, live history, covers, credits and the other versions. The setting is now called \"Preview item and song pages on springsteenlyrics.com lists\"."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-10-07",
     "sections": [

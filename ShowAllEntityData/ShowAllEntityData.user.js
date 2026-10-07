@@ -4054,12 +4054,15 @@
         },
 
         sa_sl_detail_preview: {
-            label: 'Preview item pages on springsteenlyrics.com lists',
+            label: 'Preview item and song pages on springsteenlyrics.com lists',
             type: 'checkbox',
             default: false,
             description: 'Off by default; needs the setting above. When on, resting the pointer on ' +
                          'an item\'s title in the table shows a card with what the item\'s own page ' +
                          'adds: the tracklist, the notes (lineage, edition) and the artwork scans. ' +
+                         'On the lyrics index it shows the song page instead: the version, the ' +
+                         'first lines of the lyrics and the song\'s info; the pinned window has ' +
+                         'the whole lyrics and every section of the page. ' +
                          'The page is fetched in the background, at most one a second, and kept ' +
                          'for 30 days. Press Space to pin the card into a window you can move, ' +
                          'resize and scroll; ← and → step through the rows, and its "Live page" ' +
@@ -13223,12 +13226,16 @@
     /**
      * A blank parsed record.
      *
-     * @returns {{title: string, subtitle: string, fields: Array<string[]>, tracks: Array<{disc: string, pos: string, title: string, from: string}>, notes: string[], images: Array<{thumb: string, full: string, label: string}>, cover: string, sections: Array<{label: string, text: string}>, highlight: ?{value: string, label: string}, unnumbered: boolean}}
+     * `excerpt` is the opening of a long text for the card (a song's first
+     * lyric lines, with the full line count); `summary` a paragraph shown on
+     * the card only, because the dialog already shows it within a section.
+     *
+     * @returns {{title: string, subtitle: string, fields: Array<string[]>, tracks: Array<{disc: string, pos: string, title: string, from: string}>, notes: string[], images: Array<{thumb: string, full: string, label: string}>, cover: string, sections: Array<{label: string, text: string}>, highlight: ?{value: string, label: string}, unnumbered: boolean, excerpt: ?{label: string, lines: string[], total: number}, summary: string}}
      */
     function _dpEmpty() {
         return {
             title: '', subtitle: '', fields: [], tracks: [], notes: [], images: [],
-            cover: '', sections: [], highlight: null, unnumbered: false
+            cover: '', sections: [], highlight: null, unnumbered: false, excerpt: null, summary: ''
         };
     }
 
@@ -13293,12 +13300,16 @@
      * `…_tn.jpg` thumbnail outside the navbar and footer, each linking to its
      * full-size image.
      *
+     * A song page of the lyrics index (`lyrics.php?song=`) has no card and
+     * goes to `_dpParseSlSong()`.
+     *
      * @param {Document} doc The fetched page.
      * @param {string}   url The page's URL.
      * @returns {?object} The record (`_dpEmpty()` shape), or null when the
      *   page has no item card (an error page, a CloudFlare challenge).
      */
     function _dpParseSl(doc, url) {
+        if (/\/lyrics\.php$/.test(new URL(url).pathname)) return _dpParseSlSong(doc, url);
         const card = _slFindCards(doc)[0];
         if (!card) return null;
         const data = _dpEmpty();
@@ -13319,6 +13330,83 @@
             data.images.push({
                 thumb: _dpAbsUrl(img.getAttribute('src'), url),
                 full: _dpAbsUrl(a && a.getAttribute('href'), url),
+                label: ''
+            });
+        });
+        return data;
+    }
+
+    /**
+     * Parses a springsteenlyrics.com song page (`lyrics.php?song=SLUG`, one
+     * per version: the lyrics index's rows link to these).
+     *
+     * Everything sits in `.project-detail` (checked on two pages,
+     * 2026-10-07): an `<h3>` with the title (and a "transcribed by" icon), a
+     * `<p><em>` with the version ("Album version"; empty on a song with no
+     * known version), then between two `<hr>`s either the lyrics (one `<p>`,
+     * a `<br/>` per line, a blank line between verses, `span.text-info`
+     * stage notes) or an "alert-warning" "Lyrics not available". After that
+     * come `h3.heading` sections, each running to the next heading: Info,
+     * Writing and Recording, releases (with one sub-heading per album), Live
+     * History, Covers, Credits / References, Available Versions. The site's
+     * "SECTION NOT YET COMPLETED" placeholders are left out, and a section
+     * with nothing else is dropped. Available Versions gives a count; its
+     * entries are the other versions' pages.
+     *
+     * @param {Document} doc The fetched page.
+     * @param {string}   url The page's URL.
+     * @returns {?object} The record, or null when the page has no
+     *   `.project-detail` title.
+     */
+    function _dpParseSlSong(doc, url) {
+        const pd = doc.querySelector('.project-detail');
+        const head = pd && pd.querySelector(':scope > h3:not(.heading)');
+        if (!head) return null;
+        const data = _dpEmpty();
+        data.title = _dpText(head.textContent);
+        const em = head.nextElementSibling && head.nextElementSibling.querySelector('em');
+        data.subtitle = em ? _dpText(em.textContent) : '';
+        const rules = Array.from(pd.querySelectorAll(':scope > hr'));
+        if (rules.length >= 2) {
+            const box = doc.createElement('div');
+            for (let n = rules[0].nextSibling; n && n !== rules[1]; n = n.nextSibling) box.appendChild(n.cloneNode(true));
+            if (box.querySelector('.alert-warning')) {
+                data.notes.push(_dpText(box.querySelector('.alert-warning').textContent.replace(/^×/, '')));
+            } else {
+                const text = _dpBlockText(box);
+                if (text) {
+                    data.sections.push({ label: 'Lyrics', text });
+                    const lines = text.split('\n').filter(l => l && !/^\[.*\]$/.test(l));
+                    data.excerpt = { label: 'Lyrics', lines: lines.slice(0, 4), total: lines.length };
+                }
+            }
+        }
+        const heads = Array.from(pd.querySelectorAll(':scope > h3.heading'));
+        heads.forEach(h => {
+            const box = doc.createElement('div');
+            for (let n = h.nextSibling; n && !(n.nodeType === Node.ELEMENT_NODE && n.matches('h3.heading')); n = n.nextSibling) {
+                // Spacers and embedded videos (a YouTube iframe in a .row) carry no text.
+                if (n.nodeType === Node.ELEMENT_NODE && (n.matches('div.divide10, iframe, script') || n.querySelector('iframe'))) continue;
+                box.appendChild(n.cloneNode(true));
+            }
+            const label = _dpText(h.textContent);
+            const text = _dpBlockText(box).split('\n')
+                .filter(l => !/^SECTION NOT YET COMPLETED$/i.test(l)).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+            if (label === 'Available Versions') {
+                const n = box.querySelectorAll('span.monospaced').length;
+                if (n) data.fields.push(['Versions on the site', String(n)]);
+            }
+            if (text) data.sections.push({ label, text });
+            if (label === 'Info' && !data.summary) {
+                const p = box.querySelector('p');
+                if (p) data.summary = _dpText(p.textContent);
+            }
+        });
+        pd.querySelectorAll('img[src*="lyrics/images/"]').forEach(img => {
+            const a = img.closest('.item-img-wrap') && img.closest('.item-img-wrap').querySelector('a[href]');
+            data.images.push({
+                thumb: _dpAbsUrl(img.getAttribute('src'), url),
+                full: _dpAbsUrl(a ? a.getAttribute('href') : img.getAttribute('src'), url),
                 label: ''
             });
         });
@@ -13506,8 +13594,9 @@
     const _DP_SITES = {
         'springsteenlyrics.com': {
             setting: 'sa_sl_detail_preview',
-            isDetailUrl: (u) => /^\/(?:collection|bootlegs|brucelegs)\.php$/.test(u.pathname) &&
-                /^\d+$/.test(u.searchParams.get('item') || ''),
+            isDetailUrl: (u) => (/^\/(?:collection|bootlegs|brucelegs)\.php$/.test(u.pathname) &&
+                /^\d+$/.test(u.searchParams.get('item') || '')) ||
+                (u.pathname === '/lyrics.php' && !!u.searchParams.get('song')),
             charset: null,
             parse: _dpParseSl,
             liveRoot: (doc) => {
@@ -13873,8 +13962,16 @@
             parts.push(_dpTrackListHtml(data.tracks.slice(0, 6)));
             if (data.tracks.length > 6) parts.push(`<div class="mb-tt-dim">+ ${data.tracks.length - 6} more</div>`);
         }
-        if (data.notes.length) {
-            const note = data.notes[0].replace(/\s+/g, ' ');
+        if (data.excerpt && data.excerpt.lines.length) {
+            parts.push('<div class="mb-tt-rule"></div>');
+            parts.push(`<div class="mb-tt-body mb-dp-excerpt">${data.excerpt.lines.map(l => _mbttEscape(l)).join('<br>')}</div>`);
+            if (data.excerpt.total > data.excerpt.lines.length) {
+                parts.push(`<div class="mb-tt-dim">${_mbttEscape(data.excerpt.label)}: ${data.excerpt.total} lines (Space for all)</div>`);
+            }
+        }
+        const prose = data.notes[0] || data.summary || '';
+        if (prose) {
+            const note = prose.replace(/\s+/g, ' ');
             parts.push('<div class="mb-tt-rule"></div>');
             parts.push(`<div class="mb-tt-comment">${_mbttEscape(note.length > 220 ? note.slice(0, 219).trimEnd() + '…' : note)}</div>`);
         }
@@ -13884,8 +13981,10 @@
                 `<img src="${_mbttEscape(i.thumb)}" alt="${_mbttEscape(i.label)}">`).join('') +
                 (thumbs.length > 6 ? `<span class="mb-tt-dim">+${thumbs.length - 6}</span>` : '') + '</div>');
         }
-        if (data.sections.length) {
-            parts.push(`<div class="mb-tt-dim">Also: ${data.sections.map(s => _mbttEscape(s.label)).join(', ')} (Space)</div>`);
+        const more = data.sections.map(s => s.label).filter(l => !data.excerpt || l !== data.excerpt.label);
+        if (more.length) {
+            parts.push(`<div class="mb-tt-dim">Also: ${more.slice(0, 4).map(l => _mbttEscape(l)).join(', ')}` +
+                `${more.length > 4 ? `, and ${more.length - 4} more` : ''} (Space)</div>`);
         }
         parts.push(`<div class="mb-tt-foot">${_mbttEscape(_dpAgeText(res))} · <kbd>Space</kbd> pin · <kbd>Esc</kbd> close</div>`);
         return parts.join('');
@@ -14366,6 +14465,7 @@
             #mb-dp-peek .mb-dp-thumbs { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 6px; }
             #mb-dp-peek .mb-dp-thumbs img { height: 44px; max-width: 72px; object-fit: cover; border: 1px solid #d9cfbd; border-radius: 2px; }
             #mb-dp-peek .mb-dp-src { margin-top: 1px; }
+            #mb-dp-peek .mb-dp-excerpt { font-style: italic; }
             :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-kv {
                 display: grid;
                 grid-template-columns: max-content minmax(0, 1fr);

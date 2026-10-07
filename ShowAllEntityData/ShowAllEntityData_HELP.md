@@ -1795,17 +1795,18 @@ fetched, unless you switch on the preview of the song pages (see
 <details>
 <summary>Previewing the detail pages</summary>
 
-Each row of these four tables links to a page with more detail: a bootleg's
-tracklist and scans on springsteenlyrics.com, an artwork page's scans on
-jungleland.it, a record's tracklist on brucespringsteen.it, a song's history
-on Brucebase. The preview shows that detail without leaving the table.
+Each row of these tables links to a page with more detail: a bootleg's
+tracklist and scans or a song's lyrics on springsteenlyrics.com, an artwork
+page's scans on jungleland.it, a record's tracklist on brucespringsteen.it, a
+song's history on Brucebase. The preview shows that detail without leaving
+the table.
 
 It is **off until you switch it on**, for each site separately, right under
 that site's own switch in ⚙️ Settings:
 
 | Site                   | Setting                                                  | The card shows                                                                 |
 |------------------------|----------------------------------------------------------|--------------------------------------------------------------------------------|
-| 🎸 springsteenlyrics.com | *Preview item pages on springsteenlyrics.com lists*      | the tracklist by disc, the notes (lineage, edition), the artwork scans        |
+| 🎸 springsteenlyrics.com | *Preview item and song pages on springsteenlyrics.com lists* | the tracklist by disc, the notes (lineage, edition), the artwork scans; on the lyrics index, the version, the first lines of the lyrics and the song's info |
 | 🌴 jungleland.it        | *Preview artwork pages on the jungleland.it list*        | the uploader and the scans (front, back, discs, booklet)                       |
 | 💿 brucespringsteen.it  | *Preview record pages in the brucespringsteen.it database* | the tracklist, the show each track comes from, the notes, the photo           |
 | 📚 Brucebase           | *Preview song pages on the Brucebase song list*          | the album it comes from, how often and when last it was played live, releases |
@@ -1825,7 +1826,9 @@ type into the filter box stays in the filter box. In the window:
 - **Extracted** shows what the script read from the page, laid out for
   reading: the fields, the scans (click one for the full size), the notes and
   the whole tracklist. On Brucebase it also has the credits, the studio
-  versions and the lyrics.
+  versions and the lyrics; on the springsteenlyrics.com lyrics index, the
+  whole lyrics and every section of the song's page (info, recording,
+  releases, live history, covers, credits, the other versions).
 - **Live page** shows the site's own page inside the window. *Hide the site's
   navigation* removes the site's menus, header and footer so only the content
   is left. The page's own scripts do not run there: on Brucebase every tab is

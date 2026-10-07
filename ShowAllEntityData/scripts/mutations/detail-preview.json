@@ -277,5 +277,57 @@
         "spec": "tests/fixtures/detail-preview.spec.js",
         "grep": "a hover loads the page once",
         "expect": "pass"
+    },
+    {
+        "name": "lyrics.php?song= links are not detail links",
+        "why": "The lyrics index's rows link to song pages; without the lyrics.php clause no card opens there (the report that started WIP.2).",
+        "edits": [
+            {
+                "find": "                (u.pathname === '/lyrics.php' && !!u.searchParams.get('song')),",
+                "replace": "                false,"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "lyrics index: a song",
+        "expect": "fail"
+    },
+    {
+        "name": "a song page is read as an item card",
+        "why": "A song page has no div.blog-post card; read by the item parser it yields nothing.",
+        "edits": [
+            {
+                "find": "        if (/\\/lyrics\\.php$/.test(new URL(url).pathname)) return _dpParseSlSong(doc, url);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "springsteenlyrics.com song pages|lyrics index: a song",
+        "expect": "fail"
+    },
+    {
+        "name": "the site's SECTION NOT YET COMPLETED placeholders are kept",
+        "why": "Placeholder lines carry nothing; a section that has only one would show as content.",
+        "edits": [
+            {
+                "find": "                .filter(l => !/^SECTION NOT YET COMPLETED$/i.test(l)).join('\\n')",
+                "replace": "                .join('\\n')"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "springsteenlyrics.com song pages",
+        "expect": "fail"
+    },
+    {
+        "name": "a song without lyrics does not say so",
+        "why": "The 'Lyrics not available' alert becomes the record's note, which the card shows.",
+        "edits": [
+            {
+                "find": "                data.notes.push(_dpText(box.querySelector('.alert-warning').textContent.replace(/^×/, '')));",
+                "replace": "                void box;"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "springsteenlyrics.com song pages|lyrics index: a song",
+        "expect": "fail"
     }
 ]

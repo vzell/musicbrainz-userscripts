@@ -8,7 +8,10 @@ pages a row of each foreign table links to:
                            6739 (three discs + a lineage line + scans),
                            1331 (an UNNUMBERED tracklist),
                            collection.php?item=8981 (in sl-collection-page1),
-                           7431 (side-numbered tracks, prose notes, scans)
+                           7431 (side-numbered tracks, prose notes, scans),
+                           lyrics.php?song=badlands (lyrics, 19 sections,
+                           9 versions) and song=babyme ("Lyrics not
+                           available", an image), both in sl-lyrics-b
     jungleland.it          html/19750205.htm (ten scans),
                            "Magic In The Koln Night (2007-12-13).htm"
                            (an o-umlaut, an unknown 0000-00-00 date)
@@ -48,6 +51,8 @@ TARGETS = [
     ('detail-sl-bootlegs-1331.html', 'detail-sl-bootlegs-1331.html', b'LAND OF HOPE AND DREAMS', None),
     ('detail-sl-collection-8981.html', 'detail-sl-collection-8981.html', b'class="blog-post"', None),
     ('detail-sl-collection-7431.html', 'detail-sl-collection-7431.html', b'A1- LONELY NIGHT', None),
+    ('detail-sl-lyrics-badlands.html', 'detail-sl-lyrics-badlands.html', b'lyrics.php?song=badlands_outtake1', 'sl-song'),
+    ('detail-sl-lyrics-babyme.html', 'detail-sl-lyrics-babyme.html', b'Lyrics not available', 'sl-song'),
     ('detail-jl-19750205.htm', 'detail-jl-19750205.html', b'Uploader:', None),
     ('detail-jl-koln.htm', 'detail-jl-koln.html', b'K\xf6ln', None),
     ('detail-bs-CR1AD1.html', 'detail-bs-CR1AD1.html', b'Title  :', None),
