@@ -32,3 +32,7 @@ The current RG popup used on 'release-tracks' PTs should be enhanced first
 3.)
 
 Make comprehensive suggestions for MusicBrainz PTs with nice rich HTML based mockups
+
+4.)
+
+generate the plan information inside this file, so that I can resume also from another Claude session on another host
