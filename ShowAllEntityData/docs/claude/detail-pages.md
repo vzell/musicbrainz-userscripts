@@ -501,6 +501,27 @@ note shown), an open edit captured LOGGED OUT (no other editor's name or
 notes), and the user's own profile logged out with its age, gender and
 location rows removed. Never commit another editor's profile.
 
+## MusicBrainz: beyond table links (org/iframe.org, Phase 4)
+
+- **`data-mb-pop="<kind>:<id>"`** on any element makes it a target
+  (`_mbPopTarget()`'s first branch; the source's selector always includes
+  `[data-mb-pop]`). Stamp it at pre-processing or in a formatter that runs on
+  the SOURCE rows: an attribute survives `cloneNode(true)`, so the re-renders
+  keep it for free, and it changes no cell text, so none of the four
+  post-render cache duties (filter-and-cache-invariants.md) apply.
+  `data-mb-pop-name` names the target for its loading card. The kind is
+  looked up as an OWN key of `_MB_KINDS` (an attribute string like
+  `constructor:1` must not find an inherited property). A kind's page is
+  `k.path(id)` when it has one (a disc ID: `/cdtoc/<id>`), else
+  `/<kind>/<id>`. The arrows treat a stamped cell like a link
+  (`_mbPopSteps()` looks at `a[href], [data-mb-pop]`).
+- **Page-wide scope, `sa_pop_mb_page`** (default off): the selector is a
+  getter, `[data-mb-pop], #page a[href]` instead of
+  `[data-mb-pop], table.tbl > tbody a[href]`, read at every event (no
+  reload). Outside a table body `_MB_POP_PAGE_SKIP` leaves out the entity's
+  tabs (its "Overview" is a bare entity link), pagination, `nav`, and the
+  script's toolbar and menus. `@include` is unchanged (answer 6).
+
 `python3 scripts/check-mutation-anchors.py` checks, without running a spec,
 that every `find` of every mutation list still matches once. Run it after
 editing a line a list anchors on: Phase 2's first step changed two lines that

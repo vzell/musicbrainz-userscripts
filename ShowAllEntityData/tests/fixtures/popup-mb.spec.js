@@ -1053,3 +1053,105 @@ test.describe('MusicBrainz link previews: edit and editor, read from the page (P
         expect(log.html).toHaveLength(2);
     });
 });
+
+test.describe('MusicBrainz link previews: beyond table links (Phase 4)', () => {
+    /**
+     * What `__saTest.popResolve()` says for elements the page builds:
+     * stamped elements in a cell, the page's own header and tab links.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<Object<string, ?string>>}
+     */
+    async function resolveAll(page) {
+        return page.evaluate((id) => {
+            const td = document.querySelector('table.tbl tbody tr td:first-child');
+            const stamp = (value, name) => {
+                const el = document.createElement('span');
+                el.setAttribute('data-mb-pop', value);
+                if (name) el.setAttribute('data-mb-pop-name', name);
+                el.textContent = name || value;
+                td.appendChild(el);
+                return window.__saTest.popResolve(el);
+            };
+            const res = (el) => (el ? window.__saTest.popResolve(el) : 'missing');
+            return {
+                stamped: stamp(`release:${id}`, 'Greetings'),
+                discid: stamp('discid:coDDysS5IdmG1aPONqJSQd6TJws-'),
+                unknownKind: stamp('nope:1'),
+                inherited: stamp('constructor:1'),
+                noId: stamp('release:'),
+                header: res(document.querySelector('#content .subheader a[href^="/artist/"]')),
+                tab: res(document.querySelector('#content .tabs a[href^="/release-group/"]')),
+            };
+        }, REL_ID);
+    }
+
+    test('a stamped element is previewed as its kind, anywhere; a bad stamp is not', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const r = await resolveAll(page);
+        expect(r.stamped).toBe(`mb-entity|release:${REL_ID}`);
+        expect(r.discid).toBe('mb-entity|discid:coDDysS5IdmG1aPONqJSQd6TJws-');
+        expect(r.unknownKind).toBeNull();
+        expect(r.inherited, 'only the registry\'s own kinds').toBeNull();
+        expect(r.noId).toBeNull();
+        expect(r.header, 'outside a table: not with the default scope').toBeNull();
+    });
+
+    test('a stamped element\'s card and page: its name while loading, its kind\'s own path', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        await page.evaluate((id) => {
+            const td = document.querySelector('table.tbl tbody tr td:first-child');
+            const el = document.createElement('span');
+            el.id = 'stamped';
+            el.setAttribute('data-mb-pop', `release:${id}`);
+            el.setAttribute('data-mb-pop-name', 'Stamped release');
+            el.textContent = 'cell text';
+            td.appendChild(el);
+            const d = document.createElement('span');
+            d.id = 'stamped-disc';
+            d.setAttribute('data-mb-pop', 'discid:coDDysS5IdmG1aPONqJSQd6TJws-');
+            d.textContent = 'disc';
+            td.appendChild(d);
+        }, REL_ID);
+        await ctrlHover(page, page.locator('#stamped'));
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page)).toContainText('Greetings From Asbury Park, N.J.');
+        expect(log.lookups).toHaveLength(1);
+        await ctrlHover(page, page.locator('#stamped-disc'));
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('a.mb-dp-tbtn')).toHaveAttribute('href', 'https://musicbrainz.org/cdtoc/coDDysS5IdmG1aPONqJSQd6TJws-');
+    });
+
+    test('page-wide scope (sa_pop_mb_page): a header link has a card; the tabs still do not', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true, sa_pop_mb_page: true }, showAll: false });
+        const r = await resolveAll(page);
+        expect(r.header).toMatch(/^mb-entity\|artist:[0-9a-f-]{36}$/);
+        expect(r.tab, 'the entity\'s own tabs').toBeNull();
+        const header = page.locator('#content .subheader a[href^="/artist/"]').first();
+        await ctrlHover(page, header);
+        await expect(card(page)).toContainText('fetched now');
+        expect(log.ws2).toEqual([expect.stringContaining('/ws/2/artist/')]);
+    });
+
+    test('the arrows step over stamped cells of the same kind in the same column', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        await page.evaluate(() => {
+            const rows = Array.from(document.querySelectorAll('table.tbl tbody tr')).filter(tr => tr.cells.length > 7).slice(0, 3);
+            rows.forEach((tr, i) => {
+                const el = document.createElement('span');
+                el.className = 'stamped-step';
+                el.setAttribute('data-mb-pop', 'discid:coDDysS5IdmG1aPONqJSQd6TJws-');
+                el.setAttribute('data-mb-pop-name', `disc ${i + 1}`);
+                el.textContent = `disc ${i + 1}`;
+                tr.cells[7].appendChild(el);
+            });
+        });
+        await ctrlHover(page, page.locator('.stamped-step').first());
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('.mb-dp-pos-label')).toHaveText('1 / 3');
+        await page.keyboard.press('ArrowRight');
+        await expect(dialog(page).locator('.mb-dp-pos-label')).toHaveText('2 / 3');
+    });
+});

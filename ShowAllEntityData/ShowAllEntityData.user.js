@@ -4240,6 +4240,15 @@
                          'a link opens the window instead of the page (↗ in the window opens the page).'
         },
 
+        sa_pop_mb_page: {
+            label: 'Also preview links outside tables',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default: only the links in a table have a card. When on, every entity link in the ' +
+                         'page\'s content has one too — the header, an annotation, the sidebar, a relationship list ' +
+                         '— except the tabs, the page navigation and the script\'s own toolbar.'
+        },
+
         sa_pop_mb_ttl_hours: {
             label: 'Keep MusicBrainz answers for (hours)',
             type: 'number',
@@ -36530,22 +36539,45 @@
     const _MB_POP_PAGE_RE = /^\/(?:(edit)\/(\d+)|(user)\/([^/]+))\/?$/;
 
     /**
-     * What a link in a MusicBrainz table previews, or null: a same-origin
-     * link to the bare page of a kind `_MB_KINDS` knows (an entity by MBID,
-     * or a code: `_MB_POP_CODE_RE`), not wrapping an image (artwork has its
-     * own preview), not in the Relationships column (its own tooltip), not
-     * inside the card or the window.
+     * What the page-wide scope (`sa_pop_mb_page`) leaves out: the entity's
+     * own tabs (its "Overview" tab is a bare entity link), the page
+     * navigation, and the script's own toolbar and menus.
+     * @type {string}
+     */
+    const _MB_POP_PAGE_SKIP = '.tabs, .pagination, .pageselector, nav, #mb-show-all-controls-container, .mb-toolbar-menu-panel';
+
+    /**
+     * What an element previews, or null:
+     *   - an element stamped `data-mb-pop="<kind>:<id>"` (org/iframe.org 1b,
+     *     Phase 4): a converter, an extractor or a formatter marks a
+     *     non-link (a barcode cell, a 📊 entry) as one of the `_MB_KINDS`;
+     *     the attribute survives every `cloneNode(true)` re-render, and an
+     *     optional `data-mb-pop-name` names it for the loading card;
+     *   - a same-origin link to the bare page of a kind `_MB_KINDS` knows
+     *     (an entity by MBID, a code: `_MB_POP_CODE_RE`, an edit or editor:
+     *     `_MB_POP_PAGE_RE`).
+     * Not an element around an image (artwork has its own preview; an
+     * editor's avatar does not count), not in the Relationships column (its
+     * own tooltip), not inside the card or the window, and — outside a table
+     * body, with the page-wide scope — not in `_MB_POP_PAGE_SKIP`.
      *
      * @param {Element} a
      * @returns {?{key: string, url: string, type: string, id: string, kind: string, wide: boolean, name: string, col: string}}
      */
     function _mbPopTarget(a) {
-        if (!a || a.tagName !== 'A' || a.origin !== window.location.origin) return null;
+        if (!a || !a.getAttribute) return null;
         let seg = '';
         let type = '';
         let id = '';
-        const m = _MB_POP_PATH_RE.exec(a.pathname);
-        if (m) {
+        const pop = a.getAttribute('data-mb-pop');
+        const m = !pop && a.tagName === 'A' && a.origin === window.location.origin && _MB_POP_PATH_RE.exec(a.pathname);
+        if (pop) {
+            const i = pop.indexOf(':');
+            type = i > 0 ? pop.slice(0, i) : '';
+            id = i > 0 ? pop.slice(i + 1) : '';
+        } else if (a.tagName !== 'A' || a.origin !== window.location.origin) {
+            return null;
+        } else if (m) {
             [, seg, id] = m;
             type = seg;
         } else {
@@ -36560,16 +36592,21 @@
                 type = seg;
             }
         }
-        const k = type && _MB_KINDS[type];
+        // Own keys only: a stamped kind is a string from an attribute.
+        const k = type && id && Object.prototype.hasOwnProperty.call(_MB_KINDS, type) ? _MB_KINDS[type] : null;
         if (!k) return null;
         // An image means artwork (it has its own preview) — except the
         // avatar MusicBrainz puts inside every editor link (Phase 3).
         if (a.querySelector('img:not(.avatar)') || a.closest('td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog')) return null;
+        if (!a.closest('table.tbl > tbody') && a.closest(_MB_POP_PAGE_SKIP)) return null;
         const td = a.closest('td, th');
         const table = td && td.closest('table.tbl');
+        // A stamped element's page: its kind's own path (a disc ID's is
+        // /cdtoc/), else /<kind>/<id>; a link's: the path it names.
+        const where = seg ? `/${seg}/${id}` : (k.path ? k.path(id) : `/${type}/${id}`);
         return {
-            key: `${type}:${id}`, url: new URL(`/${seg}/${id}`, window.location.origin).href,
-            type, id, kind: k.title, wide: !!k.wide, name: a.textContent.trim(),
+            key: `${type}:${id}`, url: new URL(where, window.location.origin).href,
+            type, id, kind: k.title, wide: !!k.wide, name: a.getAttribute('data-mb-pop-name') || a.textContent.trim(),
             col: table ? _resolveColHeaderName(table, td.cellIndex) : '',
         };
     }
@@ -36600,7 +36637,7 @@
             for (const tr of tb.tBodies[0].rows) {
                 const td = tr.cells[idx];
                 if (!td) continue;
-                const a = Array.from(td.querySelectorAll('a[href]')).find(x => {
+                const a = Array.from(td.querySelectorAll('a[href], [data-mb-pop]')).find(x => {
                     const m = _mbPopTarget(x);
                     return m && m.type === t.type;
                 });
@@ -37959,7 +37996,7 @@
         })),
         // A disc ID: its table of contents (offsets in CD sectors, 75 a
         // second) and the releases it is attached to.
-        discid: Object.assign({ title: 'Disc ID', wide: true }, _mbPopLookupKind({
+        discid: Object.assign({ title: 'Disc ID', wide: true, path: (id) => `/cdtoc/${id}` }, _mbPopLookupKind({
             cardInc: '',
             cardHtml(d) {
                 const rels = d.releases || [];
@@ -38075,7 +38112,10 @@
         return {
             id: 'mb-entity',
             kind: 'MusicBrainz',
-            selector: 'table.tbl > tbody a[href]',
+            // Read at every event, so the setting needs no reload.
+            get selector() {
+                return Lib.settings.sa_pop_mb_page === true ? '[data-mb-pop], #page a[href]' : '[data-mb-pop], table.tbl > tbody a[href]';
+            },
             live: _MB_LIVE,
             enabled: () => !_foreignHost && Lib.settings.sa_pop_mb === true,
             resolve: (a) => _mbPopTarget(a),

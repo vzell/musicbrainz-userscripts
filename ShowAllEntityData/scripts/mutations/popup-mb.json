@@ -395,8 +395,8 @@
         "why": "↗ and the Live page must open /cdtoc/<id>, the page the link named; /discid/<id> does not exist on the site.",
         "edits": [
             {
-                "find": "            key: `${type}:${id}`, url: new URL(`/${seg}/${id}`, window.location.origin).href,",
-                "replace": "            key: `${type}:${id}`, url: new URL(`/${type}/${id}`, window.location.origin).href,"
+                "find": "        const where = seg ? `/${seg}/${id}` : (k.path ? k.path(id) : `/${type}/${id}`);",
+                "replace": "        const where = seg ? `/${type}/${id}` : (k.path ? k.path(id) : `/${type}/${id}`);"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -479,6 +479,58 @@
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
         "grep": "an edit and a profile, not their tabs",
+        "expect": "fail"
+    },
+    {
+        "name": "the page-wide scope previews the entity's own tabs",
+        "why": "Outside a table body the tabs (whose 'Overview' is a bare entity link), the page navigation and the script's toolbar are not content.",
+        "edits": [
+            {
+                "find": "        if (!a.closest('table.tbl > tbody') && a.closest(_MB_POP_PAGE_SKIP)) return null;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "page-wide scope",
+        "expect": "fail"
+    },
+    {
+        "name": "links outside tables are previewed with the default scope",
+        "why": "sa_pop_mb_page is opt-in: by default only table links (and stamped elements) have a card.",
+        "edits": [
+            {
+                "find": "                return Lib.settings.sa_pop_mb_page === true ? '[data-mb-pop], #page a[href]' : '[data-mb-pop], table.tbl > tbody a[href]';",
+                "replace": "                return '[data-mb-pop], #page a[href]';"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a bad stamp is not",
+        "expect": "fail"
+    },
+    {
+        "name": "a stamped kind may name an inherited property",
+        "why": "data-mb-pop is a string from an attribute: 'constructor:1' must not find Object.prototype.constructor in the registry.",
+        "edits": [
+            {
+                "find": "        const k = type && id && Object.prototype.hasOwnProperty.call(_MB_KINDS, type) ? _MB_KINDS[type] : null;",
+                "replace": "        const k = type && id && _MB_KINDS[type];"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a bad stamp is not",
+        "expect": "fail"
+    },
+    {
+        "name": "the arrows skip stamped cells",
+        "why": "A stamped cell of the column's kind is a step like a link.",
+        "edits": [
+            {
+                "find": "                const a = Array.from(td.querySelectorAll('a[href], [data-mb-pop]')).find(x => {",
+                "replace": "                const a = Array.from(td.querySelectorAll('a[href]')).find(x => {"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "step over stamped cells",
         "expect": "fail"
     }
 ]

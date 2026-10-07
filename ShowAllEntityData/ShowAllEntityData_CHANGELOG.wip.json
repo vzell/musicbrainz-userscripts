@@ -1,0 +1,26 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-08",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Link previews on MusicBrainz: new setting \"Also preview links outside tables\" (off by default). When on, every entity link in the page's content has a card too — the header, an annotation, the sidebar, a relationship list — except the entity's tabs, the page navigation and the script's own toolbar."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Popup engine (org/iframe.org Phase 4, item 1b): any element stamped data-mb-pop=\"<kind>:<id>\" is previewed as that kind, with data-mb-pop-name for its loading card; the attribute survives every re-render, and the arrows step over stamped cells as over links. A stamped kind must be one of the registry's own (an attribute string cannot reach an inherited property); a kind may name its own page (a disc ID: /cdtoc/). The coming barcode, 📊 entry and Catalog# cards build on this."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "popup-mb.spec.js: 4 more tests (45); popup-mb.json: 4 more mutations (41), one re-anchored. ShowAllEntityData_CONFIG_DEFAULTS.json regenerated. HELP, docs/claude/detail-pages.md, org/iframe.org."
+        ]
+      }
+    ]
+  }
+]

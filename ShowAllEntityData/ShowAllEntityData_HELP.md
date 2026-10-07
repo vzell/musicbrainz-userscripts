@@ -1593,8 +1593,11 @@ it was *fetched now* or *saved today*. A card that could not load says so;
 hover again to retry.
 
 Not previewed: the artwork column's links, a link around a picture (they have
-their own preview), the Relationships column (its own tooltip), and links
-outside a table. On a **touch screen**, a tap on such a link opens the window
+their own preview) and the Relationships column (its own tooltip). Links
+outside a table are previewed only with *Also preview links outside tables*
+switched on (same section): then the header, an annotation, the sidebar and
+relationship lists have cards too, but not the tabs, the page navigation or
+the script's own toolbar. On a **touch screen**, a tap on such a link opens the window
 instead of the page; **↗** in the window opens the page.
 
 </details>
