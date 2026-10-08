@@ -1,5 +1,23 @@
 [
   {
+    "version": "9.99.1292",
+    "date": "2026-10-08",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Artwork viewer: H (or the Flip button) mirrors the image left-right, V upside-down — handy for a scan of a CD's mould/matrix area taken through the disc, whose matrix numbers read backwards. The mirror is as seen on screen, also on a turned image, and R keeps turning clockwise on a mirrored one. View only: nothing is changed in the archive, and the next image starts unflipped."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Viewer transform order is now translate() scaleX/scaleY() rotate() scale(): the flips act on screen, after the rotation; _artViewerRotate() reverses the turn applied underneath while exactly one flip is on; _artViewerFlip(); the flips reset with the rotation in _artViewerResetZoomOnStep(). Spec tests/fixtures/art-viewer-flip.spec.js (measure() now also reports where the image's own top-left pixel is, cornerOf()); mutation list scripts/mutations/art-viewer-flip.json."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1291",
     "date": "2026-10-08",
     "sections": [

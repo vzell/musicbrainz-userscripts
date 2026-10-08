@@ -20504,6 +20504,19 @@ load-sensitive flake on first sight; if it comes back, its saved report
 where to start — the same route the 2026-10-08 sticky-headers premise race
 took.
 
+**It came back, so it is recurring, not a one-off: 2 of 4 full runs on
+2026-10-08** (the first merged-tree gate above, and the
+`feature/art-viewer-flip` branch gate, 1373 of 1374). Both times the same
+symptom; the saved page snapshot of the second shows the click DID land: the
+release-group link in the window's Facts is focused (`[active]`), the window
+did NOT drill down (still the release), and the page did not navigate — so
+the Ctrl+click went neither to the script's drill-down nor, it seems, to the
+browser's new-tab handling. Not diagnosed further; it belongs to the popup
+engine (active branch `feature/popup-engine-urls`), not to the viewer, whose
+branches only ever touched the viewer block. Until it is fixed, a red gate
+whose ONLY failure is this test is rerun before a merge — the user's call on
+2026-10-08 for the flip merge.
+
 ## 2026-10-08 — Artwork viewer flip: H / V, as seen (branch feature/art-viewer-flip, WIP.1)
 
 User request: a "flip" for scans of a CD's mould/matrix area taken through
@@ -20530,4 +20543,7 @@ mirrored or turned clockwise, then BR, BL.
 
 **Results:** `art-viewer-flip.spec.js` 3 passed; with the extras and pan
 specs 22 of 22; `art-viewer-flip.json` 6 of 6 as declared; the pan and
-extras lists' finds all still unique; lint within the baseline.
+extras lists' finds all still unique; lint within the baseline. Branch gate
+1373 of 1374 — the one failure the recurring popup-mb Ctrl+click test (see
+the entry above); merged-tree gate `npm run test:full` 1374 passed, 0 failed
+(6.9 min, finished 2026-10-08T09:36Z, host petri, WSL2).
