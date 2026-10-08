@@ -1,0 +1,164 @@
+[
+  {
+    "name": "drag mode still pans on hover",
+    "why": "In drag mode only a drag moves the zoomed image; without the mode check the hover pans it as in follow mode.",
+    "edits": [{"find": "if (!st.zoom || st.panMode !== 'follow') return;", "replace": "if (!st.zoom) return;"}],
+    "spec": "tests/fixtures/art-viewer-extras.spec.js",
+    "grep": "a hover leaves the zoomed image alone",
+    "expect": "fail"
+  },
+  {
+    "name": "the drag/pinch/anchor pan is not clamped",
+    "why": "_artViewerPanAnchor() clamps like every pan; without it a long drag moves the image past the frame.",
+    "edits": [{"find": "st.pan = { x: o.x ? clamp(-tx / o.x) : 0, y: o.y ? clamp(-ty / o.y) : 0 };", "replace": "st.pan = { x: o.x ? -tx / o.x : 0, y: o.y ? -ty / o.y : 0 };"}],
+    "spec": "tests/fixtures/art-viewer-extras.spec.js",
+    "grep": "a hover leaves the zoomed image alone",
+    "expect": "fail"
+  },
+  {
+    "name": "the click a drag ends with toggles the zoom",
+    "why": "A drag's own click must be swallowed, or every drag ends by fitting the image.",
+    "edits": [{"find": "if (st.drag.moved) st.swallowClick = true;", "replace": "void st.drag.moved;"}],
+    "spec": "tests/fixtures/art-viewer-extras.spec.js",
+    "grep": "a hover leaves the zoomed image alone",
+    "expect": "fail"
+  },
+  {
+    "name": "drag mode's wheel zooms about the centre",
+    "why": "In drag mode the wheel keeps the image spot under the pointer in place (_artViewerPanAnchor with from = to).",
+    "edits": [{"find": "if (at) _artViewerPanAnchor(st, s0, t0, at, at);", "replace": "void at;"}],
+    "spec": "tests/fixtures/art-viewer-extras.spec.js",
+    "grep": "the wheel zooms keeping the image spot",
+    "expect": "fail"
+  },
+  {
+    "name": "1:1 is not worked out again for the large image",
+    "why": "1 is pressed while the thumbnail shows; without the re-fit rule the large image keeps the thumbnail's 1:1 level and is shown at a sixth of its pixels.",
+    "edits": [{"find": "if (st.oneToOne) _artViewerSetLevel(st, 1 / st.geom.k);", "replace": "void st.oneToOne;"}],
+    "spec": "tests/fixtures/art-viewer-extras.spec.js",
+    "grep": "the readout is screen px per image px",
+    "expect": "fail"
+  },
+  {
+    "name": "the readout shows the fit-relative level",
+    "why": "The readout is screen px per IMAGE px (level x fit factor); the bare level reads 100 % at fit whatever the image's size.",
+    "edits": [{"find": "Math.round(st.zoomLevel * st.geom.k * 100)", "replace": "Math.round(st.zoomLevel * 100)"}],
+    "spec": "tests/fixtures/art-viewer-extras.spec.js",
+    "grep": "the readout is screen px per image px",
+    "expect": "fail"
+  },
+  {
+    "name": "a quarter turn is fitted as if upright",
+    "why": "At 90/270 degrees the image's width and height swap for the fit and the pan; fitted upright, the turned image overflows the frame.",
+    "edits": [{"find": "const side = rot % 180 !== 0;", "replace": "const side = false;"}],
+    "spec": "tests/fixtures/art-viewer-extras.spec.js",
+    "grep": "R turns a quarter turn",
+    "expect": "fail"
+  },
+  {
+    "name": "the turned and zoomed pan uses the upright size",
+    "why": "Same defect, seen from the pan: the overhang worked out from the upright size over-pans the turned image.",
+    "edits": [{"find": "const side = rot % 180 !== 0;", "replace": "const side = false;"}],
+    "spec": "tests/fixtures/art-viewer-extras.spec.js",
+    "grep": "turned and zoomed",
+    "expect": "fail"
+  },
+  {
+    "name": "a step keeps the rotation",
+    "why": "R turns one sideways scan; the next image starts upright.",
+    "edits": [{"find": "    function _artViewerResetZoomOnStep(st) {\n        st.rot = 0;\n", "replace": "    function _artViewerResetZoomOnStep(st) {\n"}],
+    "spec": "tests/fixtures/art-viewer-extras.spec.js",
+    "grep": "R turns a quarter turn",
+    "expect": "fail"
+  },
+  {
+    "name": "Esc closes the viewer while it is fullscreen",
+    "why": "The first Esc leaves fullscreen and keeps the viewer open, where the browser lets the key through at all.",
+    "edits": [{"find": "            if (_artViewerIsFullscreen()) {\n                document.exitFullscreen().catch(() => {});\n            } else if (st.grid && !st.gridStart) {", "replace": "            if (st.grid && !st.gridStart) {"}],
+    "spec": "tests/fixtures/art-viewer-extras.spec.js",
+    "grep": "F enters the browser",
+    "expect": "fail"
+  },
+  {
+    "name": "closing the viewer stays fullscreen",
+    "why": "The overlay is the fullscreen element; closed without leaving fullscreen, the browser shows an empty black screen.",
+    "edits": [{"find": "        if (_artViewerIsFullscreen() && document.exitFullscreen) document.exitFullscreen().catch(() => {});\n", "replace": ""}],
+    "spec": "tests/fixtures/art-viewer-extras.spec.js",
+    "grep": "F enters the browser",
+    "expect": "fail"
+  },
+  {
+    "name": "the background pick is not remembered",
+    "why": "B writes {v, from} to MB_ART_VIEWER_BG_KEY; without it the next opening is dark again.",
+    "edits": [{"find": "try { GM_setValue(MB_ART_VIEWER_BG_KEY", "replace": "try { void (MB_ART_VIEWER_BG_KEY"}],
+    "spec": "tests/fixtures/art-viewer-extras.spec.js",
+    "grep": "B cycles dark, light and checker",
+    "expect": "fail"
+  },
+  {
+    "name": "a background pick outlives a setting change",
+    "why": "The pick is honoured only while the setting still has the value it overrode (the _artCellLayout() rule).",
+    "edits": [{"find": "if (picked && picked.from === base && _ART_VIEWER_BGS.includes(picked.v)) return picked.v;", "replace": "if (picked && _ART_VIEWER_BGS.includes(picked.v)) return picked.v;"}],
+    "spec": "tests/fixtures/art-viewer-extras.spec.js",
+    "grep": "gives way once the setting is changed",
+    "expect": "fail"
+  },
+  {
+    "name": "the facts are never filled in",
+    "why": "The image's load handler fills the Shown/Original lines once the natural size is known.",
+    "edits": [{"find": "            _artViewerShowFacts(st, img);\n        });", "replace": "        });"}],
+    "spec": "tests/fixtures/art-viewer-extras.spec.js",
+    "grep": "facts: the rendition and pixel size",
+    "expect": "fail"
+  },
+  {
+    "name": "the facts setting is ignored",
+    "why": "sa_art_viewer_facts off: no Shown/Original lines.",
+    "edits": [{"find": "        if (Lib.settings.sa_art_viewer_facts !== false) {", "replace": "        if (true) {"}],
+    "spec": "tests/fixtures/art-viewer-extras.spec.js",
+    "grep": "with sa_art_viewer_facts off",
+    "expect": "fail"
+  },
+  {
+    "name": "a blob: image's size is not read",
+    "why": "From the image cache the size and type are read locally from the blob: URL; nothing else knows them (Resource Timing has no sizes for the archive).",
+    "edits": [{"find": "fetch(img.src).then(r => r.blob())", "replace": "Promise.reject(img.src).then(r => r.blob())"}],
+    "spec": "tests/fixtures/art-viewer-extras.spec.js",
+    "grep": "facts from the image cache",
+    "expect": "fail"
+  },
+  {
+    "name": "a second D while one runs makes a second request",
+    "why": "One request per press: st.dl guards the image whose original is being downloaded.",
+    "edits": [{"find": "if (!src || st.dl === key) return;", "replace": "if (!src) return;"}],
+    "spec": "tests/fixtures/art-viewer-extras.spec.js",
+    "grep": "D saves the original",
+    "expect": "fail"
+  },
+  {
+    "name": "the download name drops the comment",
+    "why": "Art Station's <NN> <types> <comment>.<ext>.",
+    "edits": [{"find": "[nn, clean(types), clean(im.comment)]", "replace": "[nn, clean(types)]"}],
+    "spec": "tests/fixtures/art-viewer-extras.spec.js",
+    "grep": "D saves the original",
+    "expect": "fail"
+  },
+  {
+    "name": "a pinch zooms about the centre",
+    "why": "A pinch keeps the image spot under the fingers' midpoint in place; the test's midpoint is off-centre.",
+    "edits": [{"find": "_artViewerPanAnchor(st, p.s0, p.t0, p.m0, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });", "replace": "st.pan = { x: 0, y: 0 };"}],
+    "spec": "tests/fixtures/art-viewer-extras.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "two fingers zoom about their midpoint",
+    "expect": "fail"
+  },
+  {
+    "name": "one finger on a zoomed image swipes instead of dragging",
+    "why": "Zoomed, one finger drags the image; only unzoomed does it swipe to the next image.",
+    "edits": [{"find": "                st.swipeX = st.zoom ? null : e.clientX;\n                if (st.zoom) _artViewerDragStart(st, stage, e);\n", "replace": "                st.swipeX = e.clientX;\n"}],
+    "spec": "tests/fixtures/art-viewer-extras.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "two fingers zoom about their midpoint",
+    "expect": "fail"
+  }
+]

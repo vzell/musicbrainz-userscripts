@@ -1,0 +1,74 @@
+[
+  {
+    "name": "the viewer image back in flow",
+    "why": "Out of flow is what keeps the image from sizing the stage. In flow (here in a block stage) it sits at the stage's top-left instead of centred in the frame, and in the old grid stage its natural height stretched the row past the stage and overflow: hidden cut the bottom off (org/viewer.org #1).",
+    "edits": [{"find": "                position: absolute;\n                inset: 0;\n                margin: auto;\n                max-width: calc(100% - 2 * var(--mb-artv-gx));", "replace": "                max-width: calc(100% - 2 * var(--mb-artv-gx));"}],
+    "spec": "tests/fixtures/art-viewer-pan.spec.js",
+    "grep": "fitted, the whole image is inside the stage",
+    "expect": "fail"
+  },
+  {
+    "name": "the image box is not sized to the fit",
+    "why": "Without the px size the CSS max-width/max-height fallback still fits a LARGE image, but shows the thumbnail at its natural 250 px, so the large image jumps in at a different size.",
+    "edits": [{"find": "            img.style.width = `${st.geom.bw}px`;\n            img.style.height = `${st.geom.bh}px`;\n", "replace": ""}],
+    "spec": "tests/fixtures/art-viewer-pan.spec.js",
+    "grep": "the thumbnail is shown at the size",
+    "expect": "fail"
+  },
+  {
+    "name": "the top/bottom gutter is not read",
+    "why": "The frame is the stage minus the gutters read from --mb-artv-gx/--mb-artv-gy; without them the fitted image touches the stage's top and bottom. Only the FIT shows it: the geometry stays self-consistent, so the zoomed pan reaches exactly the stage's edge, which the per-edge test allows. (Before the extras branch it was the other way round: the CSS max-height clamped the box, hiding it from the fit and making the pan over-pan. _artViewerFit() now lifts that clamp, since a quarter-turned box can be wider than the frame.)",
+    "edits": [{"find": "        const gy = parseFloat(cs.getPropertyValue('--mb-artv-gy')) || 0;", "replace": "        const gy = 0;"}],
+    "spec": "tests/fixtures/art-viewer-pan.spec.js",
+    "grep": "fitted, the whole image is inside the stage",
+    "expect": "fail"
+  },
+  {
+    "name": "the narrow layout keeps the wide gutters",
+    "why": "Below 760 px the media query sets the smaller gutters on the stage, and the JS reads them from there; without it the narrow image is fitted 4 px further in than the frame.",
+    "edits": [{"find": "                #mb-art-viewer .mb-artv-stage { --mb-artv-gx: 44px; --mb-artv-gy: 8px; }\n", "replace": ""}],
+    "spec": "tests/fixtures/art-viewer-pan.spec.js",
+    "grep": "fitted inside the smaller gutters",
+    "expect": "fail"
+  },
+  {
+    "name": "the pan follows the mouse only over the stage",
+    "why": "The original handler's guard. A fast move off the stage lands outside it in ONE event, so the pan stopped short of the edge (org/viewer.org #1, cause B).",
+    "edits": [{"find": "        st.ptr = { x: e.clientX, y: e.clientY };\n        if (!st.zoom || st.panMode !== 'follow') return;", "replace": "        if (!e.target.closest('.mb-artv-stage')) return;\n        st.ptr = { x: e.clientX, y: e.clientY };\n        if (!st.zoom || st.panMode !== 'follow') return;"}],
+    "spec": "tests/fixtures/art-viewer-pan.spec.js",
+    "grep": "one fast move from the centre",
+    "expect": "fail"
+  },
+  {
+    "name": "the pan is not clamped",
+    "why": "Without the clamp a pointer in the edge zone or beyond the stage pans past the edge, opening a gap between the image and the frame.",
+    "edits": [{"find": "        const axis = (p, start, size) => Math.max(-1, Math.min(1, (p - start - size / 2) / (size / 2 * reach)));", "replace": "        const axis = (p, start, size) => (p - start - size / 2) / (size / 2 * reach);"}],
+    "spec": "tests/fixtures/art-viewer-pan.spec.js",
+    "grep": "zoomed 3x",
+    "expect": "fail"
+  },
+  {
+    "name": "no edge zone",
+    "why": "With a zone of 0 the edge shows only with the pointer on the stage's last pixel; a pointer 8 % in from it leaves 8 % of the overhang hidden.",
+    "edits": [{"find": "    const _ART_VIEWER_PAN_EDGE = 0.15;", "replace": "    const _ART_VIEWER_PAN_EDGE = 0;"}],
+    "spec": "tests/fixtures/art-viewer-pan.spec.js",
+    "grep": "a pointer near each edge",
+    "expect": "fail"
+  },
+  {
+    "name": "no resize listener",
+    "why": "The fit and the pan geometry are cached in px; after a resize, without a re-fit, the pan works from the old stage.",
+    "edits": [{"find": "        window.removeEventListener('resize', _artViewerOnResize);\n        window.addEventListener('resize', _artViewerOnResize);", "replace": "        window.removeEventListener('resize', _artViewerOnResize);"}],
+    "spec": "tests/fixtures/art-viewer-pan.spec.js",
+    "grep": "after a window resize",
+    "expect": "fail"
+  },
+  {
+    "name": "no fit at render, only on image load",
+    "why": "Recorded as pass: the image's load event re-fits every image (thumbnail and large), even one the browser has cached, so no spec can see the render-time call. It is there so a remembered zoom applies at once on a step, without waiting for that load event.",
+    "edits": [{"find": "        // After the filmstrip: it takes its row from the stage's height.\n        _artViewerFit(st, img);\n", "replace": ""}],
+    "spec": "tests/fixtures/art-viewer-pan.spec.js",
+    "grep": "artwork viewer",
+    "expect": "pass"
+  }
+]
