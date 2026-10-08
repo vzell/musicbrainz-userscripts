@@ -725,6 +725,7 @@ table.details td { padding: 2px 0; word-break: break-all; }
             <li><b>Generic reader's size cap</b><p>512 KB.</p></li>
             <li><b>@connect</b><p>Keep * and list each reader host beside it.</p></li>
             <li><b>Foreign hosts</b><p>Every off-site link, under the same exclusions.</p></li>
+            <li><b>First contact with a site</b><p>Only on Space or a click, never from a hover: Tampermonkey asks once per site (U0, B1).</p></li>
         </ol>
     </section>
 
@@ -870,12 +871,23 @@ table.details td { padding: 2px 0; word-break: break-all; }
             <div class="cardfig">
                 <div class="cap">Browser check · not dead</div>
                 <div class="liner">
-                    <div class="site"><span class="fav" style="--h: 45">a</span>www.allmusic.com <span class="st redir">checked by Cloudflare</span></div>
-                    <div class="ctx">MusicBrainz: <b>Allmusic</b> of this release</div>
+                    <div class="site"><span class="fav" style="--h: 45">r</span>rateyourmusic.com <span class="st redir">checked by Cloudflare</span></div>
+                    <div class="ctx">MusicBrainz: <b>other databases</b> of this release</div>
                     <div class="rule"></div>
-                    <div class="u">https://www.allmusic.com/album/mw0000650803</div>
+                    <div class="u">https://rateyourmusic.com/release/album/bruce-springsteen/born-to-run/</div>
                     <div>The site answers scripts with a browser check ("Just a moment..."), so the card cannot read it. The link itself is fine: ↗ opens it in a tab.</div>
-                    <div class="foot">kept for this page load only · measured in U0 (X6) on discogs.com, allmusic and rateyourmusic</div>
+                    <div class="foot">kept for this page load only · in a real browser only rateyourmusic did this (U0, X9)</div>
+                </div>
+            </div>
+            <div class="cardfig">
+                <div class="cap">First contact with a site</div>
+                <div class="liner">
+                    <div class="site"><span class="fav" style="--h: 160">b</span>blogness-brucespringsteen.net <span class="st redir">not contacted yet</span></div>
+                    <div class="ctx">MusicBrainz: <b>show notes</b> of this event</div>
+                    <div class="rule"></div>
+                    <div class="u">https://blogness-brucespringsteen.net/… (example path)</div>
+                    <div>The script has never asked this site. <kbd>Space</kbd> loads a preview; Tampermonkey will ask once whether the script may contact it.</div>
+                    <div class="foot">no request on hover · remembered after the first answer · reader sites never ask</div>
                 </div>
             </div>
             <div class="cardfig">

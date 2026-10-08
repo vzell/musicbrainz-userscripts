@@ -769,12 +769,18 @@ final rendered page, in the h3 "URLs" sub-table, in the "URL" column
   2026-10-08, see "answers" at the end; all six as recommended except 6
   (every off-site link on the foreign hosts). Answer 3 adds a Discogs token
   setting, see "What the answers change".
-- [-] U0: probes, 2026-10-08 on =feature/popup-engine-urls=: the three
-  probe scripts ran, results X1 to X8 in "U0: probes", and what they change
-  right after them (Discogs is built; a Cloudflare check is not a dead link;
-  =?resource== matches the =href= attribute verbatim; the Brucebase reader
-  gets a 1 MB cap). Open: the user's browser checks B1 to B3, with
-  =scripts/probe-gm-xhr.user.js=. No userscript change, so no WIP entry.
+- [X] U0: probes, 2026-10-08 on =feature/popup-engine-urls=: three probe
+  scripts (X1 to X8) and the user's browser run (X9, B1 to B3) in "U0:
+  probes", and what they change right after them:
+  - Discogs is built;
+  - a Cloudflare check is not a dead link, and in a real browser only
+    rateyourmusic.com showed one;
+  - =?resource== matches the =href= attribute verbatim;
+  - the Brucebase reader gets a 1 MB cap;
+  - Tampermonkey asks once per unlisted host, so a first contact happens only
+    on Space (answer 7).
+
+  No userscript change, so no WIP entry. Firefox is untested (B2).
 - [ ] U1: the engine for external links, the generic reader, dead-link status.
 - [ ] U2: MusicBrainz URL entities.
 - [ ] U3: Wikipedia, Wikidata, YouTube (Discogs if U0 says so).
@@ -1123,9 +1129,9 @@ Every step owes, before anyone asks to merge:
 | the same script                         | generic pages (setlist.fm, allmusic, rateyourmusic, brucebase): status, size, =og:*= present, script-only or not  | X5 X6    |
 | =scripts/probe-mb-url-entity.py= (new)  | =/ws/2/url/<mbid>= inc names; =?resource== matching rules; several resources in one request                       | X7       |
 | =scripts/probe-bb-date-anchor.py= (new) | the Brucebase year page: which element an anchor such as =#261025= names, and what one show's block holds         | X8       |
-| a browser check by the user (B1)        | does Tampermonkey ask before the first request to a new domain despite =@connect *=? (if so: list reader hosts)   | open     |
-| the same check (B2)                     | does =anonymous: true= behave the same in Tampermonkey on Chrome and on Firefox (desktop and Android)?            | open     |
-| the same check (B3, added by X6)        | does a real browser's request get past Cloudflare's check, anonymous or with the site's cookies?                  | open     |
+| a browser check by the user (B1)        | does Tampermonkey ask before the first request to a new domain despite =@connect *=? (if so: list reader hosts)   | X9       |
+| the same check (B2)                     | does =anonymous: true= behave the same in Tampermonkey on Chrome and on Firefox (desktop and Android)?            | X9       |
+| the same check (B3, added by X6)        | does a real browser's request get past Cloudflare's check, anonymous or with the site's cookies?                  | X9       |
 
 *** Results (2026-10-08, host =NB-3641=)
 
@@ -1267,6 +1273,39 @@ nothing Discogs says about itself has been read yet (X4).
     303 KB (2016), 363 KB (1978). One fetch took 1.1 to 7.5 s (wikidot is
     slow, and slowest on its biggest pages), after a 308 from =http= to
     =https=.
+- *X9. The browser checks: a real browser, run by the user.*
+  - Run with =scripts/probe-gm-xhr.user.js=: Tampermonkey on Chrome 152,
+    Windows 10, 2026-10-08 01:05:43 UTC. Every target was asked twice, anonymous
+    first, then with cookies, one second apart.
+  - Before the run, the user had NOT visited discogs.com, allmusic.com or
+    rateyourmusic.com in that browser, so no Cloudflare clearance cookie
+    existed. The user IS logged in to brucebase.wikidot.com.
+
+  | Target                       | Anonymous                       | With cookies   |
+  |------------------------------+---------------------------------+----------------|
+  | Wikipedia summary            | 200, 1,854 B, 12,757 ms         | 200, 149 ms    |
+  | YouTube oEmbed, the playlist | 200, 771 B, 3,823 ms            | 200, 192 ms    |
+  | api.discogs.com release      | 200, 25,279 B, 4,997 ms         | 200, 595 ms    |
+  | setlist.fm show              | 200, 116,818 B, 4,240 ms        | 200, 180 ms    |
+  | brucebase.wikidot.com/2025   | 200, 120,699 B, 6,294 ms        | 200, 123,822 B |
+  | discogs.com release page     | 200, 343,262 B, 713 ms          | 200, 233 ms    |
+  | allmusic.com album page      | 200, 288,495 B, 3,616 ms        | 200, 151 ms    |
+  | rateyourmusic.com album page | 403 challenge, "Just a moment…" | the same       |
+
+  - *B1: Tampermonkey asks once per domain, despite =@connect *=* (the user
+    saw a permission page for each new site and allowed each). That is the
+    long first time of every anonymous row; discogs.com's page was quick
+    because =api.discogs.com= had been allowed just before it.
+  - *B2: on Chrome, =anonymous: true= changed no status.* The one size
+    difference is telling: Brucebase sends 3 KB more to the logged-in user,
+    so the anonymous page is the public one, which is what a card should
+    describe (answer 2 confirmed). Firefox desktop and Android are untested.
+  - *B3: in a real browser, discogs.com and allmusic.com answer, and
+    rateyourmusic.com still does not.* That holds even anonymous and with no
+    clearance cookie: X6's 403s for the first two were the Python client
+    being refused (Cloudflare tells clients apart by more than the
+    User-Agent), not something a userscript meets. rateyourmusic refuses the
+    browser too, with or without its cookies (none existed).
 
 *** What this changes in the plan
 
@@ -1277,14 +1316,41 @@ nothing Discogs says about itself has been read yet (X4).
 - *YouTube (X3)*: the reader's =test()= takes exactly the oEmbed shapes of
   =providers.json= (watch, =v/=, =youtu.be=, playlist, shorts, embed, live),
   normalised to =https=. A channel link goes to the generic reader.
-- *Discogs (X4, X6)*: *build it in U3* (answer 3 said "decide after U0").
-  Its web pages are behind Cloudflare, so the API is the only way to a Discogs
-  card, and it answers well without a token. The token setting stays as
+- *Discogs (X4, X9)*: *build it in U3* (answer 3 said "decide after U0").
+  The API answers well without a token, in Python and in the browser alike.
+  It gives what a card wants as data (formats, labels, tracklist, images)
+  where the release PAGE is 343 KB of HTML. The web page reaches the browser
+  too (X9 corrected X6 there), so the generic reader is the fallback for the
+  Discogs URLs the API reader does not take. The token setting stays as
   decided; its numbers get confirmed with a token, or from the docs read in a
   browser.
-- *Generic reader (X5, X6)*: the 512 KB cap stays. A new outcome, =checked=
-  (a 403 with =cf-mitigated: challenge=), gets its own pill, is kept for the
-  page load only, and is never "dead".
+- *Generic reader (X5, X6, X9)*:
+  - the 512 KB cap stays; the discogs.com page (343 KB) fits under it;
+  - a new outcome, =checked= (a 403 with =cf-mitigated: challenge=), gets its
+    own pill, is kept for the page load only, and is never "dead". In a real
+    browser only rateyourmusic.com showed it, so the mockup's example is that
+    site;
+  - *probes run from Python understate what a userscript can read.*
+    Cloudflare refused Python where it let Chrome through. A site's
+    refusal measured by a script is a reason for a browser check (the
+    =probe-gm-xhr.user.js= kind), never a conclusion.
+- *First contact with a site (B1; decided 2026-10-08, answer 7 below)*:
+  - every reader host gets its own =@connect= line (answer 5), and U1's
+    browser check confirms that a listed host does not prompt;
+  - the generic reader never makes its FIRST request to an unlisted host from
+    a hover. The hover card for such a link shows what costs no request (the
+    link, its host, the MusicBrainz context) and "Space loads a preview —
+    Tampermonkey will ask once for this site". Space, or a click in the card,
+    makes the request;
+  - a host that answered once (any HTTP status, so the permission was given)
+    is remembered in a GM value, =sa_pop_ext_hosts=, and later hovers load as
+    usual. Like =sa_dp_dialog_geometry= it is the script's state, not a
+    setting: it stays out of =configSchema= and out of the config export,
+    because the permission it mirrors lives in that browser's Tampermonkey,
+    not in a config file;
+  - a refused permission comes back as a request error: U1 finds out in a
+    browser what Tampermonkey reports then, and the card says that the site
+    was refused in Tampermonkey's settings.
 - *MusicBrainz (X7)*:
   - the =url= kind's lookup carries every =*-rels= and nothing else;
   - "MusicBrainz knows this URL" asks with the sibling "[info]" link's MBID
@@ -1301,13 +1367,10 @@ nothing Discogs says about itself has been read yet (X4).
     and the people;
   - the window shows the whole block, with the =/gig:= page as ↗ and the
     year page (scrolled to the anchor) as Live page.
-- *Browser checks B1 to B3* are the user's. =scripts/probe-gm-xhr.user.js= is
-  a throwaway userscript for them (Tampermonkey menu → "Run the
-  GM_xmlhttpRequest probe", on any =musicbrainz.org/event/= page). It asks
-  each reader's target twice, anonymous and with cookies, and shows status,
-  Cloudflare mark, size and time; copy its box into this section. U1 can
-  start before B1 to B3: they decide the =@connect= list and the =checked=
-  pill's wording, not the engine.
+- *Browser checks*: B1 to B3 done (X9) with =scripts/probe-gm-xhr.user.js=
+  (Tampermonkey menu → "Run the GM_xmlhttpRequest probe", on any
+  =musicbrainz.org/event/= page). Still untested: Firefox desktop and Android
+  (B2); worth one run there before U1's merge.
 
 ** Risks and traps
 
@@ -1403,10 +1466,17 @@ then commit and push
 - *4.* =maxBytes= 512 KB for the generic reader.
 - *5.* =@connect= keeps =*=, and gains one line per reader host
   (=*.wikipedia.org=, =www.wikidata.org=, =www.youtube.com=,
-  =api.discogs.com= if built, the four Springsteen hosts), so a user who
-  answers Tampermonkey's prompt with "this domain only" still has the known
-  readers.
+  =api.discogs.com= (built, X4), the four Springsteen hosts), so the known
+  readers never prompt: U0's B1 found that a host covered only by =*= makes
+  Tampermonkey ask once (X9).
 - *6.* U5 takes every off-site link on the foreign hosts, under the same
   exclusions (share bars, the sites' chrome, artwork, images). The "Scope"
   paragraph above already describes the selectors; the decision only removes
   the "Springsteen sites only" alternative.
+- *7. First contact with an unlisted host* (asked after B1, 2026-10-08):
+  *only on Space or a click, never from a hover*. The hover card shows the
+  link, its host and the MusicBrainz context, and says that Space loads a
+  preview and Tampermonkey will ask once. A host that answered once is
+  remembered (=sa_pop_ext_hosts=), and its later hovers load as usual. Hosts
+  in =@connect= never ask. Details: "What this changes in the plan" under
+  U0.
