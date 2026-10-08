@@ -20503,3 +20503,31 @@ load-sensitive flake on first sight; if it comes back, its saved report
 (`test-results/fixtures-popup-mb-MusicBra-e1441-…/trace.zip` that run) is
 where to start — the same route the 2026-10-08 sticky-headers premise race
 took.
+
+## 2026-10-08 — Artwork viewer flip: H / V, as seen (branch feature/art-viewer-flip, WIP.1)
+
+User request: a "flip" for scans of a CD's mould/matrix area taken through
+the disc, whose numbers read backwards. H mirrors left-right, V upside-down,
+plus a Flip (H) button for touch; view only, reset on a step like the
+rotation.
+
+**The order in the transform is the design.** `translate() scaleX/scaleY()
+rotate() scale()`: the flips come after the rotation in effect (before it in
+the list), so H mirrors left-right AS SEEN on a turned image; put after
+`rotate()` they would mirror the image's own axis, i.e. top-bottom on a
+quarter-turned scan. The consequence: a mirror reverses the direction of the
+turn underneath it, so `_artViewerRotate()` adds −90 for R while exactly one
+flip is on, or R would turn anticlockwise as seen. The translate stays
+outermost, so the pan is still on screen. The anchor rule needs no change: a
+flip about the centre is linear, like the rotation. Flips are
+`scaleX(-1)`/`scaleY(-1)`, not `scale(-1, 1)`, because specs read the zoom as
+the one `scale(…)` in the transform.
+
+**Measuring a flip.** A flip leaves the image's rect where it was, so
+`measure()` now also returns `origin`, the screen position of the image's
+own top-left pixel, and `cornerOf()` names its corner: TL upright, TR
+mirrored or turned clockwise, then BR, BL.
+
+**Results:** `art-viewer-flip.spec.js` 3 passed; with the extras and pan
+specs 22 of 22; `art-viewer-flip.json` 6 of 6 as declared; the pan and
+extras lists' finds all still unique; lint within the baseline.

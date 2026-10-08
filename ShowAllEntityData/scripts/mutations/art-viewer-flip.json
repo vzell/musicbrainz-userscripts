@@ -1,0 +1,53 @@
+[
+  {
+    "name": "the flips are applied in the image's own frame",
+    "why": "Before the rotation in the transform list, a flip is on screen: H mirrors left-right as SEEN. Moved after the rotation it mirrors the image's own axis, which on a turned image is top-bottom.",
+    "edits": [{"find": "        if (st.flipX) parts.push('scaleX(-1)');\n        if (st.flipY) parts.push('scaleY(-1)');\n        if (st.rot) parts.push(`rotate(${st.rot}deg)`);", "replace": "        if (st.rot) parts.push(`rotate(${st.rot}deg)`);\n        if (st.flipX) parts.push('scaleX(-1)');\n        if (st.flipY) parts.push('scaleY(-1)');"}],
+    "spec": "tests/fixtures/art-viewer-flip.spec.js",
+    "grep": "on a turned image H still mirrors",
+    "expect": "fail"
+  },
+  {
+    "name": "R ignores the mirror",
+    "why": "A mirror reverses a turn's direction; without the correction R turns anticlockwise as seen on a mirrored image.",
+    "edits": [{"find": "st.rot = (st.rot + ((d > 0) !== mirrored ? 90 : 270)) % 360;", "replace": "st.rot = (st.rot + (d > 0 ? 90 : 270)) % 360; void mirrored;"}],
+    "spec": "tests/fixtures/art-viewer-flip.spec.js",
+    "grep": "on a turned image H still mirrors",
+    "expect": "fail"
+  },
+  {
+    "name": "a step keeps the flips",
+    "why": "H mirrors one see-through scan; the next image starts unflipped, as it starts upright.",
+    "edits": [{"find": "        st.flipX = false;\n        st.flipY = false;\n", "replace": ""}],
+    "spec": "tests/fixtures/art-viewer-flip.spec.js",
+    "grep": "H and V mirror in place",
+    "expect": "fail"
+  },
+  {
+    "name": "the translate is applied inside the flips",
+    "why": "The translate stays outermost so the pan is on screen; inside a vertical flip a pointer near the bottom pans to the top.",
+    "edits": [
+      {"find": "        if (st.flipX) parts.push('scaleX(-1)');\n        if (st.flipY) parts.push('scaleY(-1)');\n        if (st.rot)", "replace": "        if (st.rot)"},
+      {"find": "        const parts = [];\n        if (st.zoom && st.geom) {\n            const t = _artViewerTranslate(st);", "replace": "        const parts = [];\n        if (st.flipX) parts.push('scaleX(-1)');\n        if (st.flipY) parts.push('scaleY(-1)');\n        if (st.zoom && st.geom) {\n            const t = _artViewerTranslate(st);"}
+    ],
+    "spec": "tests/fixtures/art-viewer-flip.spec.js",
+    "grep": "flipped upside-down and zoomed",
+    "expect": "fail"
+  },
+  {
+    "name": "the Flip button does not show the state",
+    "why": "A flip does not re-render, so the button's aria-pressed is set in place.",
+    "edits": [{"find": "        if (b) b.setAttribute('aria-pressed', String(st.flipX));\n", "replace": ""}],
+    "spec": "tests/fixtures/art-viewer-flip.spec.js",
+    "grep": "H and V mirror in place",
+    "expect": "fail"
+  },
+  {
+    "name": "no V key",
+    "why": "V mirrors upside-down.",
+    "edits": [{"find": "        } else if (k === 'v' || k === 'V') {\n            _artViewerFlip('y');\n", "replace": ""}],
+    "spec": "tests/fixtures/art-viewer-flip.spec.js",
+    "grep": "H and V mirror in place",
+    "expect": "fail"
+  }
+]

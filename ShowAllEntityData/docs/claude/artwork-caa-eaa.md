@@ -350,8 +350,14 @@ never from a hard-coded `CAA_CTX`. Rules that come with that:
   reading the zoom take the `scale(…)` part of the transform
   (`tests/support/caaColumnFixture.js`).
 - **The viewer's extras (org/viewer.org item 2) share that core.** The
-  transform is `translate() rotate() scale()`, still from the one writer,
-  which also writes the zoom readout (screen px per IMAGE px:
+  transform is `translate() scaleX/scaleY() rotate() scale()`, still from the
+  one writer — and the order is the meaning: the translate outermost keeps
+  the pan on screen; the flips before the rotation make H/V mirror as SEEN on
+  a turned image, which in turn makes `_artViewerRotate()` reverse the turn
+  applied underneath while exactly one flip is on (a mirror reverses a turn's
+  direction). Flips are `scaleX(-1)`/`scaleY(-1)`, never `scale(-1, 1)`:
+  specs read the zoom as THE `scale(…)` in the transform. The one writer
+  also writes the zoom readout (screen px per IMAGE px:
   level × `st.geom.k`). `_artViewerGeom()` swaps width and height at a
   quarter turn, and `_artViewerFit()` sets `max-width/height: none`, because a
   turned box can be wider than the frame. `_artViewerPanAnchor()` is the ONE
@@ -424,8 +430,10 @@ event page: `event-overview-art.spec.js`, `event-overview-art.mobile.spec.js`,
 mutation list `event-overview.json`. The viewer's fit and pan:
 `art-viewer-pan.spec.js`, mutation list `art-viewer-pan.json`; its extras:
 `art-viewer-extras.spec.js`, `art-viewer-extras.mobile.spec.js` (the pinch),
-mutation list `art-viewer-extras.json`; shared set-up
-`tests/support/artViewerFixture.js`.
+mutation list `art-viewer-extras.json`; the flip: `art-viewer-flip.spec.js`,
+mutation list `art-viewer-flip.json`; shared set-up
+`tests/support/artViewerFixture.js` (its `measure().origin` / `cornerOf()`
+follow the image's own top-left pixel, the only way to see a flip).
 
 ## The CAA/EAA column redesign: tiles, chips, cards, the column viewer
 
