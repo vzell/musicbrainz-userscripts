@@ -1,8 +1,155 @@
-* sidebar entries ==> collapsable h2/h3
-* all booleans
-** also for mobile (default false)
-** otherwise: default true
-* images in NON-MB sites need viewer support
-* BruceBase
+* DONE switch booleans
+
+1.)
+
+Switch the following booleans to default:true
+
+#+begin_example
+        // ============================================================
+        // LINK PREVIEWS ON MUSICBRAINZ (the popup engine's entity cards,
+        // org/iframe.org Phase 2)
+        // ============================================================
+        divider_pop_mb: {
+            type: 'divider',
+            label: '🔎 LINK PREVIEWS ON MUSICBRAINZ'
+        },
+
+        sa_pop_mb: {
+            label: 'Preview linked entities on hover',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default. Hold Ctrl over a link in a table (release group, release, recording, ' +
+                         'work, artist, label, event, place, …, and the "[info]" link beside a URL, which says which ' +
+                         'entities link that URL) for a card with what MusicBrainz knows about it; ' +
+                         'Space pins it into a window with more, and with the entity\'s own page (Live page). ' +
+                         '← → step down the same column. The data comes from the MusicBrainz Web Service, one ' +
+                         'request a second, shared with the Relationships column. On a touch screen, tapping such ' +
+                         'a link opens the window instead of the page (↗ in the window opens the page).'
+        },
+
+        sa_pop_mb_page: {
+            label: 'Also preview links outside tables',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default: only the links in a table have a card. When on, every entity link in the ' +
+                         'page\'s content has one too — the header, an annotation, the sidebar, a relationship list ' +
+                         '— except the tabs, the page navigation and the script\'s own toolbar. With external link ' +
+                         'previews on, the same goes for links to other sites.'
+        },
+
+        sa_pop_mb_ttl_hours: {
+            label: 'Keep MusicBrainz answers for (hours)',
+            type: 'number',
+            default: 24,
+            min: 1,
+            description: 'How long a card\'s data (and a release group window\'s releases) is reused from this ' +
+                         'browser\'s storage before MusicBrainz is asked again. ⟳ in the window always asks again.'
+        },
+
+        sa_rg_window_max_releases: {
+            label: 'Release group window: at most this many releases',
+            type: 'number',
+            default: 500,
+            description: 'The window that Space opens on a release group card (a table link, the release page\'s ' +
+                         '"versions available in" link, a "#" cell) lists the group\'s releases, read from ' +
+                         'MusicBrainz 100 at a time, one request a second. A group with more releases than this ' +
+                         'shows the first ones and says so. The first 100 are always read.'
+        },
+
+        // ============================================================
+        // EXTERNAL LINK PREVIEWS (links to other sites, org/iframe.org
+        // "* generalize to URLs", U1)
+        // ============================================================
+        divider_pop_ext: {
+            type: 'divider',
+            label: '🔎 EXTERNAL LINK PREVIEWS'
+        },
+
+        sa_pop_ext: {
+            label: 'Preview external links on hover',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default. Hold Ctrl over a link to another site — in a table, a relationship, the ' +
+                         'annotation or the sidebar\'s external links, and on the Springsteen sites the script ' +
+                         'supports in their lists and page text — for a card with the page\'s title, ' +
+                         'description and status (a dead or moved link shows as such); Space pins it into a window ' +
+                         'with the page itself (Live page) and, on MusicBrainz, which entities link that URL ' +
+                         '("MusicBrainz knows this URL": one Web Service request, made by the window only). ' +
+                         'A preview sends a request to the linked site, without ' +
+                         'your cookies, which tells that site the page was looked at. The first time a site is ' +
+                         'contacted Tampermonkey asks whether the script may, so a site never contacted before is ' +
+                         'loaded only when you press Space, never by hovering.'
+        },
+
+        sa_pop_ext_favicons: {
+            label: 'Show the sites\' icons',
+            type: 'checkbox',
+            default: true,
+            description: 'On by default. A card shows the linked site\'s icon instead of its first letter, asked ' +
+                         'once per site and kept for a month (like the page itself: without your cookies, and only ' +
+                         'from the site itself, never from another server). A site not contacted yet shows its ' +
+                         'letter: its icon is not asked before you press Space either. Off: letters only, one ' +
+                         'request less per site.'
+        },
+
+        sa_pop_ext_ttl_hours: {
+            label: 'Keep external answers for (hours)',
+            type: 'number',
+            default: 168,
+            min: 1,
+            description: 'How long a card\'s data is reused from this browser\'s storage before the site is asked ' +
+                         'again (a week by default). A dead link or a site\'s browser check is remembered only ' +
+                         'until the page is reloaded. ⟳ in the window always asks again.'
+        },
+
+        // `secret: true` (U3, a new rule; org/iframe.org "What the answers
+        // change", 3): the value never leaves this profile. `_buildConfigJson()`
+        // leaves it out of the 💾 file, `_applyConfigSettings()` neither sets
+        // nor blanks it from a 📂 file, and `_maskSecretSettingInputs()` shows
+        // it as dots in the dialog. Nothing logs it.
+        sa_pop_ext_discogs_token: {
+            label: 'Discogs personal access token (optional)',
+            type: 'text',
+            default: '',
+            secret: true,
+            description: 'Empty by default: Discogs links get their card from Discogs\' public API anyway, at most ' +
+                         '25 requests a minute (one every 2.5 seconds). With your own token (discogs.com → Settings ' +
+                         '→ Developers → "Generate new token") Discogs allows 60 a minute, so cards come faster. The ' +
+                         'token is sent only to api.discogs.com, is never written to a saved configuration file, and ' +
+                         'a loaded configuration file leaves it as it is.'
+        },
+
+        // ============================================================
+        // EVERY PREVIEW (MusicBrainz links and the non-MusicBrainz sites above)
+        // ============================================================
+        divider_detail_preview: {
+            type: 'divider',
+            label: '🔎 EVERY PREVIEW (MusicBrainz links and the sites above)'
+        },
+
+        sa_dp_hover_without_ctrl: {
+            label: 'Show every preview on a plain hover (without Ctrl)',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default: the link previews on MusicBrainz (entities and external links) and the ' +
+                         'preview cards of springsteenlyrics.com, jungleland.it, brucespringsteen.it and Brucebase show only ' +
+                         'while Ctrl is held — hover a link with Ctrl down, or rest the pointer on it and then ' +
+                         'press Ctrl — so moving the pointer across the table neither pops up cards nor fetches ' +
+                         'anything. When on, resting the pointer on a link is enough. The release page\'s ' +
+                         '"versions available in" link and its "#" cells keep their own settings. Tapping a link ' +
+                         'on a touch screen opens the window either way.'
+        }
+
+    };
+#+end_example
+
+2.)
+
+Add the same booleans also explicitely for mobile access, but with the defaults "false"
+
+
+* TODO Sidebar entries ==> collapsable h2/h3
+* TODO Images in NON-MB sites need viewer support
+* TODO BruceBase
 ** more userscript support for more PTs
 ** needs renderer for all kind of pages in URL engine - external link preview

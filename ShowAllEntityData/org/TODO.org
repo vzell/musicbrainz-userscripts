@@ -1271,3 +1271,6 @@ The value for the "Annotation" C should be the FULL uncollapsed value, even if t
 #+end_example
 
 
+
+
+* TODO track .ne. recording name minitooltip above popup
