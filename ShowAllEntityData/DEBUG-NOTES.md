@@ -20486,3 +20486,20 @@ test does); `art-viewer-extras.json` 20 of 20 as declared,
 `art-viewer-pan.json` 9 of 9 again; lint within the baseline;
 `audit-config-defaults.py` clean; `npm run test:full` 1371 passed, 0 failed
 (7.0 min, finished 2026-10-08T06:57Z, host petri, WSL2).
+
+## 2026-10-08 — Merge gate: one popup-mb timeout, not reproducible (merge of feature/art-viewer-extras, 9.99.1287–9.99.1291)
+
+The first `npm run test:full` on the merged tree failed ONE test, unrelated
+to the viewer: `popup-mb.spec.js` › "Ctrl+click keeps the link's own new
+tab, and the window stays" hit the 90 s test timeout in
+`page.context().waitForEvent('page')`, i.e. the new tab the Ctrl+click
+should open never reached Playwright. The merged tree differed from the
+branch that had just passed 1371 of 1371 only by `@version` and the
+changelog JSON. Not reproducible: the test alone 5 of 5
+(`--repeat-each=5`), the whole spec 174 of 174 with `--repeat-each=3
+--workers=12`, and a second `test:full` on the same tree 1371 of 1371
+(6.9 min, finished 2026-10-08T08:31Z, host petri, WSL2). Recorded as a
+load-sensitive flake on first sight; if it comes back, its saved report
+(`test-results/fixtures-popup-mb-MusicBra-e1441-…/trace.zip` that run) is
+where to start — the same route the 2026-10-08 sticky-headers premise race
+took.
