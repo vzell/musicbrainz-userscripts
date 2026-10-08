@@ -20547,3 +20547,115 @@ extras lists' finds all still unique; lint within the baseline. Branch gate
 1373 of 1374 — the one failure the recurring popup-mb Ctrl+click test (see
 the entry above); merged-tree gate `npm run test:full` 1374 passed, 0 failed
 (6.9 min, finished 2026-10-08T09:36Z, host petri, WSL2).
+
+## 2026-10-08 — External link previews, U1 (branch feature/popup-engine-urls, WIP.1)
+
+`_extSource()`: cards for links to other sites behind `sa_pop_ext`. Design
+and its probes: org/iframe.org, "* generalize to URLs" (U0: X1–X9); rules as
+built: docs/claude/detail-pages.md, "Links to other sites". What was learned
+the hard way:
+
+- **A Python probe's 403 is not a userscript's 403.** U0's probes got
+  Cloudflare's challenge from discogs.com, allmusic and rateyourmusic for
+  every User-Agent; the user's run of `scripts/probe-gm-xhr.user.js` in
+  Chrome got 200 from the first two. Only rateyourmusic refuses the browser
+  too. The plan had already said "the Discogs API is the only way" from the
+  Python result and had to be corrected (X9).
+- **Tampermonkey asks once per host that only `@connect *` covers** (X9, B1:
+  the first anonymous request of every host took 3–13 s, the prompt waiting
+  for a click). Hence answer 7, first contact on Space only, and — found in
+  review of the first version — the gate must also cover a host whose window
+  try FAILED: the first `_extCard()` gated only a link with no state at all,
+  so after a refused try a hover retried it. Fixed before the first commit;
+  the extended "a failure is shown" test failed on the old condition (mutation
+  "a hover retries a host whose first try failed").
+- **The event-overview fixture hides both places a spec wants to hover**: the
+  "URLs" sub-table renders collapsed (its own h3), and the render collapses
+  the page's h2 sections, the annotation's included ("▲ Annotation").
+  `popup-ext.spec.js` opens both (`showUrlsTable()`, `addAnnotationLinks()`);
+  the first run timed out 7 of 8 tests on `scrollIntoViewIfNeeded` — "element
+  is not visible".
+- **The GM_xmlhttpRequest stub's log holds the script's own changelog check**
+  (raw.githubusercontent.com): a spec counting preview requests filters it.
+- **Moving code moves mutation anchors.** Extracting `_popColumnSteps()` from
+  `_mbPopSteps()` broke three popup-mb.json anchors, and one more
+  (`        if (wanted && !wanted()) {`) began to match twice: `_extGet()`'s
+  12-space-indented copy CONTAINS the 8-space line. `check-mutation-anchors.py`
+  caught all four; the duplicate was re-anchored with its next line. All four
+  re-checked: three fail, the recorded "pass" passes.
+- **The live spec "stalled" twice** at "Loading…" for 45 s on the Brucebase
+  review (2026-10-08T01:51:26Z and 06:47:39Z, both first runs, the second
+  with the fixture suite loading the machine). First guessed to be a slow
+  wikidot; **the second failure's screenshot showed no card at all**: a late
+  scroll of the freshly rendered page (the URLs table sat at the bottom of
+  the viewport) had hidden the card, the engine had rightly skipped the
+  request (a moved-on hover asks nothing), and `toContainText()` read the
+  HIDDEN card's frozen "Loading…". Not a product bug. The spec's
+  `loadedCard()` now waits for a VISIBLE card with "fetched now" and hovers
+  again when it was hidden; 2/2 passed under the same load. **Lesson: a
+  card's text proves nothing without its visibility** — the fixture specs
+  get away with it because their pages are settled before the hover.
+
+Results, host NB-3641: popup-ext.spec.js 8/8, its mobile sibling 1/1,
+popup-ext.json 21/21 caught (20 in one run, 2026-10-08 ~01:30–01:45Z, the
+userscript restored and hash-verified; the 21st and its re-anchored sibling
+after the fix), the neighbouring suites 170/170, `npm test` 1346/1346
+(01:54:37Z–02:01:01Z, before the first-contact fix; popup-ext, its mobile
+sibling and popup-mb 67/67 after it), the live spec 2/2 after the one stall.
+Lint within the baseline; config defaults and their history regenerated.
+
+**After the user's first browser check (same day).** A YouTube playlist link
+in the annotation got a card titled with the link's text, no description,
+"moved", an empty Live page, and Chrome warned about unused preloads.
+`scripts/probe-ext-youtube-page.py` (06:34Z) measured the causes: without
+cookies the request goes 302 to consent.youtube.com and 303 back with
+`&cbrd=1&ucbcb=1` (not a move); the page is 1 MB, 97 % script, with
+`<title>` and every `og:` tag at about 769 KB, past the 512 KB cap — U0 X5's
+"every og: tag within 8.2 KB" was true only of the sites probed then. The
+user decided (iframe.org answers 8–10): the YouTube oEmbed reader moves from
+U3 into U1 (`www.youtube.com` in `@connect`, no Live page); the rest of a
+downloaded page is scanned for the missing tags only; "moved" means another
+host or path (http → https on the same address is a quiet "→ https"). The
+unused preloads were simply a gap in `_dpLiveDocHtml()`, now closed for every
+source. **Moving code moves anchors, again:** the reader refactor left three
+popup-ext.json anchors stale, and because `check-mutation-anchors.py` exits 0
+even when it reports bad anchors, a `check && mutation-check` chain ran the
+whole list anyway (25 caught, the 3 stale ones as ERROR; the file restored
+and verified) — read its last line, do not trust its exit code. Re-anchored,
+the three caught too: 28/28. popup-ext.spec.js 10/10 with the mobile sibling.
+
+**Firefox and the refusal (same day, the user's checks).** Chrome and Firefox
+both report a refused host through `onerror` with text the `refused` pattern
+matches (Firefox: `Refused to connect to "…": Request was blocked by the
+user`), and anonymous requests answer in Firefox too. Two fixes came out of
+the screenshots: the Live page failure heading said "detail page" (the
+foreign hosts' word; now the source's `liveFailTitle`), and the site's
+initial showed "U" for us.7digital.com. The first rule for the initial,
+"skip any leading label up to three letters", failed its own spec on
+`www.bbc.co.uk` ("C": `bbc` is the name); it now skips only prefixes (`www`,
+`m`, `mobile`, a two-letter code). popup-ext.spec.js 11/11, the mobile
+sibling 1/1, the two new mutations caught (30/30), the neighbouring popup
+suites 91/91.
+
+**Site icons (same day, asked for by the user).** `_extIconEnsure()`: one
+anonymous request per host, own host only, never for a "not contacted yet"
+site, kept 30 days (iframe.org answer 11). Two traps: the mutation checker's
+`grep` is a REGULAR EXPRESSION (Playwright `-g`), so a test title with
+"(sa_pop_ext_favicons)" selected no test — the checker said so ("this result
+proves nothing either way") instead of passing; and the spec's other tests
+count requests exactly, so the spec defaults icons OFF and only the icon
+tests switch them on (otherwise every count would gain a late icon request).
+popup-ext.spec.js 13/13 with the mobile sibling, 35 mutations (one recorded
+"pass": the first-contact card covers for `_extIconUrl()`'s known-host
+check), the live spec with Brucebase's real icon 1/1 (09:26:46Z).
+
+**A second bot-check vendor (same day).** us.7digital.com's card said "The
+site answers HTTP 405", page and icon alike. `scripts/probe-ext-refusal.py`
+(09:42Z): `server: awselb/2.0`, `x-amzn-waf-action: captcha`, title "Human
+Verification" — AWS WAF's CAPTCHA, which comes as a 405 (its silent
+challenge as a 202, which would have passed for an empty page). `checked` is
+now any bot check told by the vendor's own header (`_extBotCheck()`:
+Cloudflare's `cf-mitigated`, AWS WAF's `x-amzn-waf-action`), whatever the
+status, and the pill names the vendor. Not by status or title: a bare 403 or
+405 stays "HTTP …". Mutations 36/36 (the Cloudflare one re-anchored on
+`_extBotCheck()`).

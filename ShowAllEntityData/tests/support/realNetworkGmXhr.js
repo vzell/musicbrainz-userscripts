@@ -19,20 +19,30 @@ function buildPassthroughGmXhrScript() {
         (function () {
             window.GM_xmlhttpRequest = function (opts) {
                 window.__realGmFetch(opts.url).then(function (result) {
+                    // What Tampermonkey's answer carries besides the body: the
+                    // raw headers and where redirects ended (the external link
+                    // previews read both), offered at readyState 2 first.
+                    var extra = { finalUrl: result.url || opts.url, responseHeaders: result.headers || '' };
+                    if (typeof opts.onreadystatechange === 'function') {
+                        opts.onreadystatechange(Object.assign({ readyState: 2, status: result.status }, extra));
+                    }
                     if (typeof opts.onload !== 'function') return;
+                    var binStr = atob(result.base64);
+                    var bytes = new Uint8Array(binStr.length);
+                    for (var i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
                     if (result.status < 200 || result.status >= 300) {
-                        opts.onload({ status: result.status, response: null, responseText: '' });
+                        // An error page's text too (Cloudflare's check names
+                        // itself there); a blob caller gets no body, as before.
+                        var errText = opts.responseType === 'blob' ? '' : new TextDecoder('utf-8').decode(bytes);
+                        opts.onload(Object.assign({ status: result.status, response: null, responseText: errText }, extra));
                         return;
                     }
                     if (opts.responseType === 'blob') {
-                        var binStr = atob(result.base64);
-                        var bytes = new Uint8Array(binStr.length);
-                        for (var i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
                         var blob = new Blob([bytes], { type: result.contentType });
-                        opts.onload({ status: result.status, response: blob, responseText: '' });
+                        opts.onload(Object.assign({ status: result.status, response: blob, responseText: '' }, extra));
                     } else {
-                        var text = atob(result.base64);
-                        opts.onload({ status: result.status, response: text, responseText: text });
+                        var text = new TextDecoder('utf-8').decode(bytes);
+                        opts.onload(Object.assign({ status: result.status, response: text, responseText: text }, extra));
                     }
                 }).catch(function (err) {
                     if (typeof opts.onerror === 'function') opts.onerror(err);
@@ -89,6 +99,10 @@ async function loadUserscriptPageWithRealNetwork(page, { url, testMode, settings
             status: resp.status(),
             base64: buf.toString('base64'),
             contentType: resp.headers()['content-type'] || 'application/octet-stream',
+            // As GM_xmlhttpRequest gives them: raw "name: value" lines, and the
+            // URL the redirects ended at.
+            headers: resp.headersArray().map(h => `${h.name}: ${h.value}`).join('\r\n'),
+            url: resp.url(),
         };
     });
 

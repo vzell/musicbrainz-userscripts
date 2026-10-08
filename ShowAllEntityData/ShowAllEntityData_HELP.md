@@ -1613,6 +1613,81 @@ instead of the page; **↗** in the window opens the page.
 </details>
 
 <details>
+<summary>Previews of links to other sites</summary>
+
+With ⚙️ Settings → 🔎 EXTERNAL LINK PREVIEWS → *Preview external links on
+hover* switched on (it is off until you do), a link to **another site** shows
+what is behind it: the Wikipedia article in an annotation, the review in an
+event's **URLs** table, a site in the sidebar's *External links*. It works on
+the links in a table, in a relationship list, in the annotation and in the
+sidebar's external links; with *Also preview links outside tables* (🔎 LINK
+PREVIEWS ON MUSICBRAINZ) on every other link of the page too. It is
+independent of *Preview linked entities on hover*: you can have either, or
+both.
+
+**Hold Ctrl and rest the pointer on the link** (or rest it first and then press
+Ctrl), as for the MusicBrainz cards. The card shows the page's title, the
+site's name, its picture and description, and what the link is on this page
+— *MusicBrainz: setlist.fm of this event* when it comes from a relationship,
+*in the annotation*, *in the sidebar's external links*. Its first line shows
+the site — with its **icon** (*Show the sites' icons*, on by default: asked
+once per site and kept for a month, without your cookies and only from the
+site itself; off, or before the icon arrives, a letter stands for the site) —
+and the link's **status**:
+
+- **200** — the page is there. When the site only switched from `http` to
+  `https` on the same address, a quiet *→ https* line says so; that is no move;
+- **moved** — the link ends at another site or another page, shown below it
+  (the relationship may want updating). Parameters a site adds on the way
+  (YouTube's cookie-consent detour, for instance) do not count;
+- **404 Not found** / **410 Gone** — the page is gone;
+- **checked by Cloudflare** / **checked by AWS WAF** — the site answers
+  scripts with a browser check (Cloudflare's "Just a moment…", AWS's "Human
+  Verification"). That is **not** a broken link: ↗ opens it normally;
+- **not a page** — a PDF, an image or another file, named from what the site
+  says about it, without downloading it.
+
+**Press Space** to pin it into a window: the page's details (type, language,
+publication date, its own address, what kind of file it is), the link and its
+status, and **Live page**: the page itself, without its scripts. **‹ ›** or
+**← →** step down the same column (the URL column of a URLs table), or through
+the other external links of the same list or annotation. **⟳** asks the site
+again; **↗** opens the page.
+
+**YouTube** links (a video, a playlist, a short) get a card from YouTube's own
+short description service instead of the page: the title, the channel and the
+thumbnail, at once and without Tampermonkey asking first. A video or playlist
+that is gone or private says so. Their window has no *Live page*: a YouTube
+page shows nothing without its scripts, so ↗ is the way to watch it. A link to
+a YouTube channel gets the ordinary card.
+
+**What it sends.** A card asks the linked site for the page, once, and only if
+the pointer is still on the link when its turn comes (one request a second per
+site). The request carries **none of your cookies**, so the card shows the
+page everyone sees (logged in somewhere, you would see more there). The site
+learns that someone looked at the page, as with any visit. Pictures in the card
+and the Live page load from the site as on any web page.
+
+**The first time a site is asked, Tampermonkey asks you** whether the script may
+contact it. So that this never pops up while you just move the mouse, a site
+the script has never contacted is **loaded only when you press Space** (or tap
+the link on a touch screen): its card says *not contacted yet* until then.
+Once a site has answered, its links load on hover like any other.
+
+What it got is kept in this browser for a week (*Keep external answers for
+(hours)*); the card's foot says *fetched now* or *saved 3 days ago*. A dead
+link, a browser check or a file is remembered only until you reload the page.
+A card that could not reach the site says why — hover again to retry. If you
+told Tampermonkey not to let the script contact a site, the window says so;
+change it in Tampermonkey's settings for this script.
+
+Not previewed: links to MusicBrainz itself and the other MetaBrainz sites, the
+artwork archives, links around a picture, share buttons, and the
+Relationships column.
+
+</details>
+
+<details>
 <summary>springsteenlyrics.com collection, bootleg and lyrics lists</summary>
 
 Not a MusicBrainz page at all, and **off until you switch it on**: ⚙️ Settings →
@@ -2004,7 +2079,9 @@ behave differently from a desktop, on purpose:
   [Page-specific behaviour](#page-specific-behaviour)), instead of the page
   itself; the window's ↗ opens the page. The same goes for a link in a
   MusicBrainz table when *Preview linked entities on hover* is on (*Link
-  previews on MusicBrainz* under [Page-specific behaviour](#page-specific-behaviour)).
+  previews on MusicBrainz* under [Page-specific behaviour](#page-specific-behaviour)),
+  and for a link to another site when *Preview external links on hover* is on
+  (*Previews of links to other sites*, same place).
 
 Keyboard shortcuts need a keyboard, and dragging a column edge to resize it
 needs a mouse.

@@ -1,4 +1,4 @@
-* TODO generalize the iframe support
+* DONE generalize the iframe support
 
 Currently we use iframe support, initially when it popsup with the ability to press "Space" for pin and "Esc" to close
 
@@ -588,13 +588,13 @@ specs and mutation entries; the Live page for every kind now (=_MB_LIVE=, root
 =#page=); a tap on a table link opens the window (the engine's rule). Merge
 only after the user's browser check of the whole branch.
 
-| Version   | Kinds                                         | State                    |
-|-----------+-----------------------------------------------+--------------------------|
+|   Version | Kinds                                                                                 | State           |
+|-----------+---------------------------------------------------------------------------------------+-----------------|
 | 9.99.1272 | the engine for MusicBrainz tables; release group (Phase 1's card and window), release | done 2026-10-07 |
-| 9.99.1273 | recording, work                               | done 2026-10-07          |
-| 9.99.1274 | artist, label, area, instrument               | done 2026-10-07          |
-| 9.99.1275 | event, place, series                          | done 2026-10-07          |
-| 9.99.1276 | ISRC, ISWC, disc ID, collection               | done 2026-10-07          |
+| 9.99.1273 | recording, work                                                                       | done 2026-10-07 |
+| 9.99.1274 | artist, label, area, instrument                                                       | done 2026-10-07 |
+| 9.99.1275 | event, place, series                                                                  | done 2026-10-07 |
+| 9.99.1276 | ISRC, ISWC, disc ID, collection                                                       | done 2026-10-07 |
 
 The release moved into 9.99.1272 (planned for 9.99.1273): the release group kind runs
 on Phase 1's loaders, so without a first lookup kind the new loader
@@ -715,3 +715,818 @@ Answers to the open questions:
 8. The subheader link's card: keep it on a plain hover
 
 then commit and push
+
+
+* generalize to URLs
+
+Lots of MusicBrainz PTs, but also the non MB PTs have non MusicBrainz related URL links, e.g.:
+
+1.) MusicBrainz pages
+
+#+begin_example
+@debug/URL-initial.html - https://musicbrainz.org/event/47b84024-bd3b-4e36-80e1-b051e12ede2f - raw HTML of initial page
+@debug/URL-final.html - https://musicbrainz.org/event/47b84024-bd3b-4e36-80e1-b051e12ede2f - raw HTML of final rendered page
+#+end_example
+
+a.)
+
+typically in the "Annotation" section
+
+#+begin_example
+<a href="https://en.wikipedia.org/wiki/TeachRock" rel="nofollow">TeachRock</a>
+#+end_example
+
+b.)
+
+Also very common in the "Relationships" section:
+
+initial page:
+#+begin_example
+<tr><th>reviews:</th><td style="word-break:break-all"><span></span><a class="wrap-anywhere" href="http://brucebase.wikidot.com/2025#261025"><bdi>http://brucebase.wikidot.com/2025#261025</bdi></a> <!-- -->[<a href="/url/7c36bf3a-15d4-4b1f-afaa-40847960e3e0">info</a>]<br></td></tr>
+#+end_example
+
+final rendered page, in the h3 "URLs" sub-table, in the "URL" column
+
+#+begin_example
+<td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);"><span></span><a class="wrap-anywhere" href="http://brucebase.wikidot.com/2025#261025"><bdi>http://brucebase.wikidot.com/2025#261025</bdi></a> [<a href="/url/7c36bf3a-15d4-4b1f-afaa-40847960e3e0">info</a>]</td>
+#+end_example
+
+2.) Check also non-MusicBrainz related pages
+
+** Status
+
+- [X] Read the engine and surveyed the external links on the snapshots
+  (2026-10-08, 9.99.1286). Inventory: "What exists today" below.
+- [X] Design, suggestions and phased plan: this section (2026-10-08), on
+  =feature/popup-engine-urls=. No userscript change, so no version bump and no
+  WIP entry (the rule Phase 0 followed).
+- [X] Mockups: [[file:url-mockups.html]], self-contained, open it from disk.
+  Published as https://claude.ai/artifact/HqQUzt2RCwoay7MvyEq6Xg (private; the
+  published copy is the file minus the lines above its =SKELETON-END= marker).
+  Its stylesheet up to "URL PREVIEWS" is [[file:iframe-mockups.html]]'s,
+  copied verbatim, so the two studies look alike.
+- [X] Decide the "Open questions" at the end of this section: decided
+  2026-10-08, see "answers" at the end; all six as recommended except 6
+  (every off-site link on the foreign hosts). Answer 3 adds a Discogs token
+  setting, see "What the answers change".
+- [X] U0: probes, 2026-10-08 on =feature/popup-engine-urls=: three probe
+  scripts (X1 to X8) and the user's browser run (X9, B1 to B3) in "U0:
+  probes", and what they change right after them:
+  - Discogs is built;
+  - a Cloudflare check is not a dead link, and in a real browser only
+    rateyourmusic.com showed one;
+  - =?resource== matches the =href= attribute verbatim;
+  - the Brucebase reader gets a 1 MB cap;
+  - Tampermonkey asks once per unlisted host, so a first contact happens only
+    on Space (answer 7).
+
+  No userscript change, so no WIP entry. Firefox is untested (B2).
+- [-] U1: the engine for external links, the generic reader, dead-link status:
+  built 2026-10-08 on =feature/popup-engine-urls= as WIP.1 (=_extSource()=,
+  =_extFetch()=, =_extAwaitSlot()=, =sa_pop_ext=, =sa_pop_ext_ttl_hours=,
+  first contact through =sa_pop_ext_hosts=). Rules as built:
+  [[file:../docs/claude/detail-pages.md]], "Links to other sites". Browser
+  check by the user, 2026-10-08 (Chrome): YouTube card, no Live page button,
+  Brucebase "→ https", the first-contact card (us.7digital.com), and a
+  REFUSED host (castalbums.org): the window says "Tampermonkey did not let
+  the script contact this site", so =_extFetch()='s =refused= pattern matches
+  Tampermonkey's real =onerror= text. Firefox, the same day (B2 closed): an
+  anonymous request answers there too (castalbums.org: "checked by
+  Cloudflare"), and Tampermonkey's refusal reads =Refused to connect to
+  "…": Request was blocked by the user= (logged by Tampermonkey itself as
+  =injected: … content.js=), which the =refused= pattern matches. Fixed from
+  these checks: the Live page failure heading said "detail page" (now the
+  source's =liveFailTitle=, "Could not load the page."), and the site's
+  initial showed "U" for us.7digital.com (=_extInitial()= skips prefixes);
+  and us.7digital.com's "HTTP 405" is AWS WAF's CAPTCHA
+  (=x-amzn-waf-action: captcha=, "Human Verification",
+  =scripts/probe-ext-refusal.py=): =checked= is now any vendor's bot check
+  told by its header (=_extBotCheck()=: Cloudflare, AWS WAF), whatever the
+  status.
+- [ ] U2: MusicBrainz URL entities.
+- [ ] U3: Wikipedia, Wikidata, Discogs (U0: built). YouTube moved into U1
+  (answer 8, 2026-10-08).
+- [ ] U4: the Springsteen parsers across hosts, the Brucebase date anchor.
+- [ ] U5: external links on the four foreign hosts.
+
+** answers (2026-10-08)
+
+Asked at the start of this section:
+
+1. This session: design, plan and mockups only. No code.
+2. Reach: dedicated readers for known hosts PLUS a generic reader for any other
+   host, behind ONE opt-in switch, default off; every request anonymous (no
+   cookies).
+3. Extras, all four wanted: the foreign-site parsers across hosts; a card for
+   MusicBrainz's =/url/<mbid>= ("[info]") links; "MusicBrainz knows this URL" in
+   the window; dead-link status on every card.
+
+** Resume here (another session, another host)
+
+1. =git pull=; this section and =org/url-mockups.html= are on
+   =feature/popup-engine-urls= (or on =main= once merged).
+2. Read, in this order:
+   - this section;
+   - [[file:../docs/claude/detail-pages.md]]: every rule there carries over
+     (only a call with =start= requests, =wanted()= after the slot, only a
+     success is cached, Space pins unless the user is typing, a tap opens the
+     window);
+   - the mockups.
+3. Start the next unchecked step with:
+
+   #+begin_example
+   Read org/iframe.org, section "* generalize to URLs", and carry out U<N> on
+   branch feature/popup-engine-urls. Follow its "Design", "Risks and traps" and
+   "Performance" sections, record the changes in
+   ShowAllEntityData_CHANGELOG.wip.json, and do not merge into main; ask me first.
+   #+end_example
+
+4. Tick the step off in "Status" when it lands; write U0's findings into
+   "U0: probes", dated, with the host.
+
+** What exists today (read 2026-10-08, 9.99.1286)
+
+Grep anchors only.
+
+*** Why no external link gets a card
+
+- =_popSources()= holds, in order: one =_dpSiteSource()= per =_DP_SITES= host,
+  =_rgLinkSource()=, =_eventRgSource()=, =_mbEntitySource()=. =_popResolve()=
+  returns the first source whose =selector= matches =node.closest()= and whose
+  =resolve()= accepts the element.
+- Both link tests require the page's own origin: =_dpSiteForLink()=
+  (=u.origin === window.location.origin=, plus =table.tbl > tbody= and no
+  =<img>=) and =_mbPopTarget()= (=a.origin !== window.location.origin= →
+  null). =_mbPopTarget()= further needs a path that =_mbPopParsePath()= knows
+  (=_MB_POP_PATH_RE=, =_MB_POP_CODE_RE=, =_MB_POP_PAGE_RE=); =url= is in none
+  of them, and =_MB_KINDS= has no =url= kind. So the "[info]" link
+  (=/url/<mbid>=) gets nothing either.
+- A stamped =data-mb-pop= skips the origin test, but =_mbPopStampHref()= only
+  stamps kinds =_MB_KINDS= knows.
+
+*** Fetching
+
+- =_dpFetchText()= is =fetch(url, {credentials: 'same-origin'})=: it cannot read
+  another origin's page (no CORS on most sites). =_dpGet()= and =_dpGetRaw()=
+  call it; =_dpAwaitSlot()= is their 1 s gate; =_relAwaitRateSlot()= is
+  MusicBrainz's.
+- The header already has =@grant GM_xmlhttpRequest= and =@connect *= (besides
+  the artwork hosts). Only two callers use cross-origin requests today:
+  =_artGmFetchBlob()= (artwork, as a blob) and Picard (=_picardRequest=, to
+  127.0.0.1). No text or JSON helper over =GM_xmlhttpRequest= exists.
+- The block comment above =fetchHtml()= records why MusicBrainz's own pages use
+  =fetch()=: Tampermonkey on Firefox for Android runs =GM_xmlhttpRequest=
+  outside the tab's cookie jar. For an external page that is no loss: those
+  requests should carry no cookies anyway.
+- The test stub (=buildGmStubsScript()= in =tests/support/gmStubs.js=) answers
+  =GM_xmlhttpRequest= from =window.__gmXhrResponses[url]=, with =status=,
+  =response= and =responseText= only: no =finalUrl=, no =responseHeaders=, no
+  =onreadystatechange=. U1 has to widen it.
+
+*** What already works for any origin
+
+- =_dpLiveDocHtml()= removes scripts, =noscript=, inline handlers,
+  =javascript:= URLs and the refresh meta, turns =<iframe>= embeds into links,
+  sets =<base href>= and keeps the doctype. Nothing in it depends on the host.
+- =_dpIsolateFrame()= with no =liveRoot= hides nothing by ancestry; only
+  =liveHide= applies. So a generic external page shows whole.
+- The card and the window: =_dpEmpty()='s record and =_dpCardHtml()= /
+  =_dpExtractedHtml()= (foreign hosts), the =_mbPop*Html= helpers (MusicBrainz).
+  =_mbPopUrlLinksHtml()= already lists an entity's URL relations, as plain
+  links.
+- Nothing reads OpenGraph, =meta description=, Wikipedia's REST API or Wikidata.
+  =REL_URL_ICON_CLASSES_DEFAULT= maps URL hosts to icon classes only.
+
+*** Settings today
+
+=divider_pop_mb= ("🔎 LINK PREVIEWS ON MUSICBRAINZ": =sa_pop_mb=,
+=sa_pop_mb_page=, =sa_pop_mb_ttl_hours=, =sa_rg_window_max_releases=) and
+=divider_detail_preview= (=sa_dp_hover_without_ctrl=, the Ctrl gate of every
+preview). The foreign hosts: =sa_sl_detail_preview=, =sa_jl_detail_preview=,
+=sa_bs_detail_preview=, =sa_bb_detail_preview=.
+
+*** Census: where external links sit
+
+The event page of item 1 (=debug/URL-initial.html=, =debug/URL-final.html=):
+wikipedia 2, brucebase 2, youtube 1, in three places.
+
+| Place                   | Markup                                                                | Note                                                                   |
+|-------------------------+-----------------------------------------------------------------------+------------------------------------------------------------------------|
+| annotation              | =div.annotation-body a[rel=nofollow]=                                 | the YouTube link sits INSIDE an annotation =<h3>= toggle once rendered |
+| Relationships, native   | =table.details tr > th= "reviews:", =td > a.wrap-anywhere > bdi=      | followed by =[<a href="/url/<mbid>">info</a>]=                         |
+| Relationships, rendered | h3 "URLs (1)", =table.tbl= columns =#=, =Site=, =URL=, =Relationship= | same link and "[info]"; the =<!-- -->= comment is gone                 |
+| sidebar                 | =ul.external_links > li.<site>-favicon > a=                           | hidden while its =<h2>= is collapsed                                   |
+| sidebar, event art      | =a.artwork-image[href^="//eventartarchive.org"]=                      | artwork: it keeps its own preview                                      |
+| header, footer          | metabrainz.org, mastodon, bsky                                        | chrome: never a card                                                   |
+
+Over the MusicBrainz fixtures (header and footer left out) the most linked
+hosts are discogs, wikidata, rateyourmusic, allmusic, brucebase, genius,
+musik-sammler, last.fm, 45cat, youtube, qobuz, setlist.fm. Their =th= labels:
+"Discogs:", "discography entry:", "other databases:", "Allmusic:", "lyrics
+page:", "reviews:". The sidebar's =li.<site>-favicon= class names the site
+(discogs, wikidata, setlistfm, ...). An external link inside a =table.tbl= cell
+is rare (=discogs-links-with-multiple-releasegroups.html=,
+=search-annotation-tooltip.html=), except in the rendered "URLs" sub-tables.
+
+Item 2, the foreign hosts:
+- springsteenlyrics.com: on every page a share bar
+  (=ul.top-social=, facebook/reddit/x/whatsapp =sharer= links); the only real
+  off-site links are to brucebase.wikidot.com (=sl-bootlegs-intro-page1.html=,
+  =detail-sl-lyrics-badlands.html=);
+- brucebase.wikidot.com: wikidot's own chrome, social links, and a few
+  content links (estreetshuffle.com, vulture.com, springsteenlyrics.com);
+- brucespringsteen.it: none on the lists; brucebase.org.uk and
+  lostintheflood.priv.at on a few record pages;
+- jungleland.it: none; its one absolute link is its OWN host in capitals
+  (=WWW.JUNGLELAND.IT=), so the own-host test must ignore case.
+
+So on the foreign hosts the gain is small and mostly the Springsteen sites
+linking each other, which is what U4's cross-host parsers give.
+
+** Design: one external source, many readers
+
+*** The source
+
+=_extSource()= joins =_popSources()= BEFORE =_mbEntitySource()=. The two never
+compete: one takes only another origin, the other only its own.
+
+Its resolver, =_extTarget(a)=, takes an =a[href]= with an =http:= or =https:=
+URL whose host differs from the page's (compared lower-case, =www.= ignored),
+and returns ={key: url, url, reader, ctx}= for the first READER that accepts
+the URL. The generic reader accepts everything, so it is last.
+
+Never a card for:
+- the MetaBrainz family: musicbrainz.org links (in an annotation they are
+  absolute) go to =_mbEntitySource()= by being re-parsed with
+  =_mbPopParsePath()=; metabrainz.org, listenbrainz.org and the like get nothing;
+- coverartarchive.org, eventartarchive.org, archive.org images: artwork has its
+  own preview;
+- a link around =img:not(.avatar)=, =mailto:=, =tel:=, =javascript:=, =#= anchors;
+- share bars: =ul.top-social=, any =sharer= / =share?= / =intent/tweet= URL;
+- the site chrome (=.header=, =#footer=, wikidot's =#header=, =#top-bar=), the
+  script's own toolbar, menus and dialogs, and =_MB_POP_PAGE_SKIP=;
+- links inside the card or the window, except for drill-down (below).
+
+*** A reader
+
+#+begin_src js
+{
+    id: 'wikipedia',                  // cache namespace, debug channel suffix
+    test: (u) => bool,                // URL object → this reader serves it
+    load: async (u, ctx) => record,   // ctx = {fetch, wanted, force}; at most one request
+    more: async (u, record, ctx) => record, // optional: the window's extra (MB url lookup)
+    live: { liveRoot, liveHide, liveCss, livePrepare } | null, // null: no Live page button
+    ttlMs: null,                      // null = sa_pop_ext_ttl_hours
+    version: 1,                       // bump when load()'s output changes
+}
+#+end_src
+
+The record is =_dpEmpty()='s shape plus three fields that every external card
+shows in its head and foot:
+- =site=: the host and its favicon (=/favicon.ico= of the origin, loaded lazily,
+  hidden on error), or the page's own =<link rel=icon>=;
+- =status=: ={code, finalUrl, redirected}=, the dead-link pill (below);
+- =context=: what the page itself says about the link (below), filled at
+  resolve time with no request.
+
+*** Context from the page, at no cost
+
+| Where the link is     | What the card says before any request          | Read from                                       |
+|-----------------------+------------------------------------------------+-------------------------------------------------|
+| Relationships, native | "reviews · on this event"                      | the row's =th=, minus the colon                 |
+| "URLs" sub-table      | "reviews · on this event"                      | the row's =Relationship= cell, by header name   |
+| either of the two     | the URL entity's MBID, for the window's lookup | the sibling =a[href^="/url/"]= in the same cell |
+| sidebar               | "Review (brucebase.wikidot.com)"               | the link text and =li.<site>-favicon=           |
+| annotation            | "in the annotation"                            | =closest('.annotation')=                        |
+
+*** Fetching: =_extFetch()=
+
+A new helper over =GM_xmlhttpRequest=, never =fetch()=:
+- =anonymous: true=: no cookies are sent or stored, so a hover never acts as the
+  user on another site, and the Android cookie-jar difference does not matter;
+- =as: 'text' | 'json'=; text is decoded with the response's charset, else the
+  page's =<meta charset>=, else UTF-8 (as =_dpFetchText()= does);
+- =onreadystatechange= at =HEADERS_RECEIVED=: abort when the content type is not
+  HTML (or JSON for an API reader), and the card says "a PDF, 2.3 MB" from the
+  headers; abort past =maxBytes= (512 KB by default, see the open questions);
+- resolves ={status, finalUrl, headers, body}= and never rejects (like
+  =_ws2GetJson()=); a transient status (429, 502, 503, 504) is retried once,
+  =Retry-After= as a floor;
+- =headers=: an API reader may send its own (Wikipedia asks for an identifying
+  =Api-User-Agent=, Discogs for a =User-Agent=).
+
+*** Rate: one gate per host
+
+=_extAwaitSlot(host)=: 1 s apart PER HOST, reserved synchronously like
+=_dpAwaitSlot()=; another origin, another budget, so cards on Wikipedia links
+do not wait for a brucebase card. =wanted()= is asked after the slot, as
+everywhere: a hover that has moved on makes no request. The MusicBrainz parts
+(U2: =/ws/2/url=) go through =_relAwaitRateSlot()=, the one MusicBrainz gate.
+
+*** Cache
+
+=vz-saed-detail-pages=, store =pages=, key =ext:<reader id>:<url>=, ={url, v,
+at, data}=, used while =v= is the reader's =version= and younger than its TTL.
+Default TTL =sa_pop_ext_ttl_hours= (168, a week: an external page changes less
+than MusicBrainz data). Only a success is kept; ⟳ bypasses memory and
+IndexedDB. A dead link is an answer, not a failure: see the open questions.
+
+*** Gates
+
+- ONE setting, =sa_pop_ext= ("Preview external links on hover"), *off by
+  default*, in a new divider =divider_pop_ext= "🔎 EXTERNAL LINK PREVIEWS",
+  placed after =divider_pop_mb=; its row says plainly that a preview sends a
+  request to the linked site. =sa_pop_ext_ttl_hours= beside it.
+- It does not need =sa_pop_mb=: someone may want URL cards without entity
+  cards. On a foreign host it still needs that host's =sa_enable_<site>=.
+- The Ctrl gate: =_dpNeedsCtrl()= (=sa_dp_hover_without_ctrl=), as every other
+  preview. A tap opens the window instead of the link.
+
+*** Scope
+
+- MusicBrainz, always (that is where URLs live): =table.tbl > tbody a[href]=,
+  =table.details a[href]=, =.annotation a[href]=, =ul.external_links a[href]=.
+  With =sa_pop_mb_page=: =#page a[href]=, under the same exclusions. Like
+  =_mbEntitySource()='s, the selector is a getter read at every event.
+- Foreign hosts (U5): =table.tbl > tbody a[href]= and the site's content area
+  (the =liveRoot= its =_DP_SITES= entry already names), never the chrome.
+- The listeners stay delegated on =document=, so =cloneNode(true)= re-renders
+  need nothing.
+
+*** Stepping
+
+- In a table (the "URLs" sub-table, any =table.tbl=): the same column by header
+  name, as =_mbPopSteps()= does, but over EXTERNAL links: one per visible row.
+- Elsewhere (annotation, sidebar, a =table.details=): the external links of the
+  same container, in document order.
+
+*** The window
+
+- Extracted: the reader's record; for the generic reader, title, description,
+  image, canonical URL, status and redirect chain, language, published date
+  when the page says (=article:published_time=, JSON-LD =datePublished=).
+- "MusicBrainz knows this URL" (U2), on pin only.
+- Live page: the fetched HTML through =_dpLiveDocHtml()=, isolated with the
+  reader's =live= fields; a reader with =live: null= (YouTube) shows no switch,
+  only ↗. The HTML comes from the hover's own fetch, so the switch costs no
+  second request (as =_dpRawMem= does today).
+- Drill-down (Phase 5) widens to external links in the Extracted view: a plain
+  click on one shows its card in the window, with ← Back.
+
+** Readers (candidates until U0 confirms each)
+
+| Reader            | Serves                                                     | Request (candidate)                                                    | Card                                                           | Live page                 |
+|-------------------+------------------------------------------------------------+------------------------------------------------------------------------+----------------------------------------------------------------+---------------------------|
+| wikipedia         | =*.wikipedia.org/wiki/<title>=                             | =https://<lang>.wikipedia.org/api/rest_v1/page/summary/<title>= (JSON) | title, short description, extract, thumbnail, language         | the article, =#content=   |
+| wikidata          | =www.wikidata.org/wiki/Q<n>=                               | =https://www.wikidata.org/wiki/Special:EntityData/Q<n>.json=           | label, description, aliases, number of sitelinks               | the item page             |
+| youtube           | =youtube.com/watch=, =/playlist=, =youtu.be/=, =/@channel= | =https://www.youtube.com/oembed?url=<url>&format=json=                 | title, channel, thumbnail; "playlist"/"video"                  | none: script-only         |
+| discogs (X4)      | =discogs.com/release/=, =/master/=, =/artist/=, =/label/=  | =https://api.discogs.com/<kind>s/<id>= with a User-Agent               | title, year, formats, labels, track count                      | none: Cloudflare (X6)     |
+| springsteen sites | each =_DP_SITES= host's =isDetailUrl()=                    | the page itself, through =_extFetch()=                                 | exactly the card that host's own list shows today              | that host's =live= fields |
+| brucebase date    | =brucebase.wikidot.com/<year>#<ddmmyy>=                    | the year page (one request serves every show of that year)             | the show of that anchor: date, venue, city, notes              | the year page, scrolled   |
+| generic           | anything else                                              | the page itself                                                        | title, =og:description= / =meta description=, =og:image=, site | the whole page            |
+
+- Dead-link status on EVERY external card, whatever the reader: a pill
+  "200", "301 → <final URL>", "404 Not found", "410 Gone", "unreachable" (DNS,
+  TLS, timeout). An API reader that answers "no such page" (Wikipedia 404,
+  oEmbed 404/401 for a removed video) says the same.
+- The brucebase date reader is the user's own example (=/2025#261025=, the
+  "reviews:" link of the event page): U0 must find how one anchor maps to one
+  show on the year page.
+- The Springsteen parsers across hosts: =_DP_SITES[host].parse= takes a parsed
+  document and the URL, so a link to brucebase from a MusicBrainz page or from
+  springsteenlyrics.com reuses =_dpParseBb()= unchanged; only the fetch moves
+  from =_dpFetchText()= to =_extFetch()= when the host differs. The record and
+  the cache entry have the same shape, but IndexedDB is per origin: a song
+  card cached on brucebase's own list is NOT reused on musicbrainz.org, where
+  the first hover fetches it again.
+
+** MusicBrainz URL entities (U2)
+
+- A =url= kind in =_MB_KINDS=, =url= added to =_MB_POP_PATH_RE=: the "[info]"
+  link (=/url/<mbid>=) gets a card. One lookup, candidate
+  =/ws/2/url/<mbid>?inc=artist-rels+release-rels+release-group-rels+recording-rels+work-rels+label-rels+event-rels+place-rels+series-rels+area-rels+instrument-rels=:
+  the URL itself, and which entities link it, grouped by relationship ("reviews:
+  Springsteen and the E Street Band at ..."). Live page: =/url/<mbid>=.
+- "MusicBrainz knows this URL", in an external card's WINDOW only (never on
+  hover: one request per card): by the sibling "[info]" link's MBID when the
+  page has one, else =/ws/2/url?resource=<url>=. The answer lists the entities
+  and relationships, or says "not in MusicBrainz", which on an annotation link
+  is a hint for an editor. Through =_mbWsLoad()= and =_relAwaitRateSlot()=,
+  key =pop:url:<mbid or resource>:<inc>=.
+- U0 checks against https://musicbrainz.org/doc/MusicBrainz_API first: the
+  inc names for a URL, whether =resource= must match exactly (trailing slash,
+  =http= against =https=, =www.=), and whether one request may carry several
+  =resource= values.
+
+** Phases
+
+| Step | Scope                                                                                                                    | Visible change                      |
+|------+--------------------------------------------------------------------------------------------------------------------------+-------------------------------------|
+| U0   | probes (below); results into this section                                                                                | none                                |
+| U1   | =_extFetch()=, =_extAwaitSlot()=, =_extSource()= on MusicBrainz, the generic reader, dead-link status, context, settings | external links, behind =sa_pop_ext= |
+| U2   | the =url= kind, "MusicBrainz knows this URL"                                                                             | "[info]" links; the external window |
+| U3   | Wikipedia, Wikidata, YouTube; Discogs if U0 says so                                                                      | richer cards on those hosts         |
+| U4   | the four Springsteen parsers across hosts; the Brucebase date reader                                                     | brucebase etc. links on MusicBrainz |
+| U5   | =_extSource()= on the four foreign hosts                                                                                 | off-site links there                |
+
+Every step owes, before anyone asks to merge:
+- WIP entries in =ShowAllEntityData_CHANGELOG.wip.json=;
+- fixture specs with =GM_xmlhttpRequest= stubbed (widen =buildGmStubsScript()=
+  first: =finalUrl=, =responseHeaders=, =onreadystatechange=), including "with
+  =sa_pop_ext= off, a MusicBrainz page shows nothing new and makes no request",
+  and "no request carries cookies" (=anonymous= asserted on the stub's options);
+- a mutation list (=scripts/mutations/popup-ext.json=), each guard checked;
+- a mobile spec for the tap;
+- one =@extended= live spec per reader, logged in where MusicBrainz shows more;
+- a section in =docs/claude/detail-pages.md= (its doc-map row in =CLAUDE.md=
+  with it), HELP, a DEBUG-NOTES entry for anything learned the hard way;
+- a browser check by the user before the merge.
+
+** U0: probes
+
+| Probe                                   | Question                                                                                                          | Result   |
+|-----------------------------------------+-------------------------------------------------------------------------------------------------------------------+----------|
+| =scripts/probe-ext-readers.py= (new)    | Wikipedia summary, Wikidata entity, YouTube oEmbed (video, playlist, removed video): fields, size, headers needed | X1 X2 X3 |
+| the same script                         | Discogs API without a token: fields, the rate headers, does it answer at all?                                     | X4       |
+| the same script                         | generic pages (setlist.fm, allmusic, rateyourmusic, brucebase): status, size, =og:*= present, script-only or not  | X5 X6    |
+| =scripts/probe-mb-url-entity.py= (new)  | =/ws/2/url/<mbid>= inc names; =?resource== matching rules; several resources in one request                       | X7       |
+| =scripts/probe-bb-date-anchor.py= (new) | the Brucebase year page: which element an anchor such as =#261025= names, and what one show's block holds         | X8       |
+| a browser check by the user (B1)        | does Tampermonkey ask before the first request to a new domain despite =@connect *=? (if so: list reader hosts)   | X9       |
+| the same check (B2)                     | does =anonymous: true= behave the same in Tampermonkey on Chrome and on Firefox (desktop and Android)?            | X9       |
+| the same check (B3, added by X6)        | does a real browser's request get past Cloudflare's check, anonymous or with the site's cookies?                  | X9       |
+
+*** Results (2026-10-08, host =NB-3641=)
+
+Runs, all UTC:
+- =probe-ext-readers.py=: 00:42:13 to 00:42:37, 31 requests;
+- =probe-mb-url-entity.py=: 00:41:38 to 00:42:13, 33 requests;
+- =probe-bb-date-anchor.py=: 00:40:56 to 00:41:05 (2025, 1978), then four more year pages for their size.
+
+The first runs (00:39 to 00:41) differ only by the two lines added since: the
+Cloudflare marks of X6 and the distinct count of X7. Raw output, gitignored,
+so re-run to see it: =debug/probe-ext-readers.{txt,json}=,
+=debug/probe-mb-url-entity.{txt,json}=, =debug/probe-bb-date-anchor.txt=,
+=debug/probe-bb-year-sizes.txt=, and the saved pages
+=debug/bb-year-{2025,1978,1980,1985,2016,2023}.html=.
+
+The docs, read first (2026-10-08):
+- https://musicbrainz.org/doc/MusicBrainz_API, revision #79405;
+- the Wikimedia REST API, User-Agent policy and rate-limit pages on
+  mediawiki.org and foundation.wikimedia.org;
+- oembed.com and its =providers.json=.
+
+https://www.discogs.com/developers answered 403 to the doc fetcher, so
+nothing Discogs says about itself has been read yet (X4).
+
+- *X1. Wikipedia: the REST summary has everything the card shows.*
+  - =/api/rest_v1/page/summary/<title>=: HTTP 200, 1.5 to 2.9 KB, 100 to
+    400 ms.
+  - Fields: =type=, =title=, =description=, =extract=, =thumbnail= (not on
+    every article: TeachRock has none), =wikibase_item=, =lang=, =timestamp=.
+  - =type= is ="disambiguation"= on a disambiguation page (Mercury), so the
+    card can say so.
+  - A missing title answers 404 with a small JSON body: a dead link, with the
+    same pill as any other.
+  - The title as MusicBrainz writes it (=Greetings_from_Asbury_Park%2C_N.J.=)
+    and another language (=de.=) both answer.
+  - =Access-Control-Allow-Origin: *=. A browser User-Agent without
+    =Api-User-Agent= answered too; the reader still sends =Api-User-Agent=,
+    as the policy asks of browser scripts.
+  - Rate limit, from the docs ("new in 2026"): 200 requests a minute for an
+    unauthenticated browser user, at most 3 at a time. A 1 s per-host gate
+    stays far below it.
+  - The article PAGE has =og:title= only, no description: the generic reader
+    would show a bare title, which is why Wikipedia has a reader of its own.
+- *X2. Wikidata: ask =wbgetentities=, never the entity JSON.*
+  - =Special:EntityData/Q1225.json= is 229 KB (265 properties, 107
+    sitelinks).
+  - =w/api.php?action=wbgetentities&props=labels|descriptions|aliases|sitelinks&languages=en&sitefilter=enwiki|dewiki=
+    is 612 bytes with the label, the description, 3 aliases and the two
+    sitelinks.
+  - Both send =Access-Control-Allow-Origin: *= (the API with =origin=*=).
+- *X3. YouTube: oEmbed answers videos and playlists, not channels.*
+  - =watch?v==, =youtu.be/= and the event's =playlist?list== all answer
+    200, 771 bytes, about 110 ms: =type= ("video", for the playlist too),
+    =title= (the playlist's own title), =author_name=, =thumbnail_url= (the
+    480 px =hqdefault=).
+  - A channel URL (=http://www.youtube.com/brucebasewiki=) answers 404, and an
+    id that does not exist answers 400.
+  - No CORS header, so =GM_xmlhttpRequest= it is, as planned.
+- *X4. Discogs: the API answers without a token, images included.*
+  - =artists/=, =masters/=, =releases/= answer 200, 15 to 25 KB, about
+    330 ms.
+  - A release has =title=, =year=, =formats=, =labels=, =tracklist= and
+    =images=; image URLs are in the answer without a token (27 for the
+    artist). A master has title, year, tracklist and images; an artist has
+    name, profile and images.
+  - =X-Discogs-Ratelimit: 25=, with =-Used= and =-Remaining= counting per
+    request: 25 a minute unauthenticated, confirmed by the API itself.
+  - The token's budget (60, written in "What the answers change" from memory)
+    and the header form are not confirmed yet: =DISCOGS_TOKEN=<token>
+    python3 scripts/probe-ext-readers.py= measures them when a token is at
+    hand.
+  - No CORS header. The API sets a =__cf_bm= cookie, which an anonymous
+    request never stores.
+- *X5. The generic reader: og: tags sit at the top, and the User-Agent made no
+  difference.*
+  - setlist.fm: 112 KB; =og:title=, =og:image=, =og:type=; no
+    =og:description= but a =meta description=.
+  - songkick: a 301 to the slugged URL, then 186 KB; complete =og:= tags and
+    JSON-LD =MusicEvent=/=MusicGroup=.
+  - brucebase.wikidot.com: a 308 from =http= to =https=, and no =og:= tag and
+    no description at all: the title "2025 - Brucebase Wiki" is all a generic
+    card would get (hence X8).
+  - On every page that has them, the last =og:= tag ends within the first
+    8.2 KB, so the 512 KB cap (answer 4) only guards against a big answer, it
+    never cuts a card short.
+  - Every site answered the probe's identifying User-Agent and a browser one
+    alike.
+- *X6. Three sites are behind Cloudflare's browser check: discogs.com,
+  allmusic.com and rateyourmusic.com.*
+  - Every page answered 403 =Just a moment...= with =server: cloudflare= and
+    =cf-mitigated: challenge=, to both User-Agents.
+  - That is NOT a dead link. The pill must say so ("the site checks for a
+    browser"), offer ↗, keep nothing in IndexedDB (like a 404: memory for this
+    page load), and never call the link broken.
+  - For Discogs the API (X4) is the way to a card. For allmusic and
+    rateyourmusic there is none unless a real browser's request gets through:
+    B3.
+  - A clearance cookie could only travel with a NON-anonymous request, which
+    answer 2 ruled out. If B3 shows the cookie is what lets it through, that
+    is a question to put to the user, not a default to change.
+- *X7. MusicBrainz URL entities.*
+  - =url/<mbid>?inc=<every *-rels>=: 655 bytes, keys =id=, =resource=,
+    =relations=; the event's link is a =review= relation, backward, to the
+    event.
+  - Every other include (=annotation=, =tags=, =genres=, =aliases=,
+    =ratings=) answers 400 "… is not a valid inc parameter for the url
+    resource". That settles the docs' two statements: relationship includes
+    only.
+  - *=?resource== matching is exact, except for the host's case.* An
+    upper-case host found the entity. =https= against a stored =http=,
+    =www.= added or dropped, a trailing slash added or dropped, and the
+    =#fragment= dropped each answered 404, on all four URLs tried.
+  - So the reader asks with the link's =href= ATTRIBUTE, exactly as the page
+    writes it, never with =a.href=: the property is the browser's normalised
+    URL (a bare origin gains a =/=, characters get percent-encoded), and any
+    such change makes MusicBrainz answer 404 for a URL it knows.
+  - The annotation's Wikipedia links are not URL entities (404): an
+    annotation link gets "not in MusicBrainz", as planned.
+  - Several =resource= values answer ={url-count, url-offset, urls: [{id,
+    resource}]}= (JSON, not the docs' XML "url-list"); an unknown one is
+    skipped.
+  - Bruce Springsteen's 75 URL relations (71 distinct URLs) with every
+    =*-rels= in ONE request: 44 KB, 0.35 to 0.4 s, all 71 returned.
+  - =url?query=url:"…"= answers too (=count=, =urls=).
+- *X8. Brucebase: a year page names each show with =<a name="ddmmyy">=.*
+  - The anchor is an =<a name>= (not an =id=) inside =#page-content > p=:
+    42 of them in 2025, 161 in 1978, no two on one date in the years probed.
+  - A show's block runs from its anchor to the next one, 2 to 3.5 KB:
+    - a bold heading "2025-10-26 - THE STONE PONY, ASBURY PARK, NJ" linking
+      =/gig:2025-10-26-stone-pony-asbury-park-nj=;
+    - the setlist as one line of titles in capitals separated by " / ";
+    - the notes paragraph(s);
+    - =/relation:<name>= links for the people (the 2025 show's guests) and
+      =/song:<slug>= links;
+    - images.
+  - The links are relative, so the parser resolves them against the year
+    page.
+  - Sizes: 121 KB (2025), 217 KB (1980), 218 KB (1985), 237 KB (2023),
+    303 KB (2016), 363 KB (1978). One fetch took 1.1 to 7.5 s (wikidot is
+    slow, and slowest on its biggest pages), after a 308 from =http= to
+    =https=.
+- *X9. The browser checks: a real browser, run by the user.*
+  - Run with =scripts/probe-gm-xhr.user.js=: Tampermonkey on Chrome 152,
+    Windows 10, 2026-10-08 01:05:43 UTC. Every target was asked twice, anonymous
+    first, then with cookies, one second apart.
+  - Before the run, the user had NOT visited discogs.com, allmusic.com or
+    rateyourmusic.com in that browser, so no Cloudflare clearance cookie
+    existed. The user IS logged in to brucebase.wikidot.com.
+
+  | Target                       | Anonymous                       | With cookies   |
+  |------------------------------+---------------------------------+----------------|
+  | Wikipedia summary            | 200, 1,854 B, 12,757 ms         | 200, 149 ms    |
+  | YouTube oEmbed, the playlist | 200, 771 B, 3,823 ms            | 200, 192 ms    |
+  | api.discogs.com release      | 200, 25,279 B, 4,997 ms         | 200, 595 ms    |
+  | setlist.fm show              | 200, 116,818 B, 4,240 ms        | 200, 180 ms    |
+  | brucebase.wikidot.com/2025   | 200, 120,699 B, 6,294 ms        | 200, 123,822 B |
+  | discogs.com release page     | 200, 343,262 B, 713 ms          | 200, 233 ms    |
+  | allmusic.com album page      | 200, 288,495 B, 3,616 ms        | 200, 151 ms    |
+  | rateyourmusic.com album page | 403 challenge, "Just a moment…" | the same       |
+
+  - *B1: Tampermonkey asks once per domain, despite =@connect *=* (the user
+    saw a permission page for each new site and allowed each). That is the
+    long first time of every anonymous row; discogs.com's page was quick
+    because =api.discogs.com= had been allowed just before it.
+  - *B2: on Chrome, =anonymous: true= changed no status.* The one size
+    difference is telling: Brucebase sends 3 KB more to the logged-in user,
+    so the anonymous page is the public one, which is what a card should
+    describe (answer 2 confirmed). Firefox desktop and Android are untested.
+  - *B3: in a real browser, discogs.com and allmusic.com answer, and
+    rateyourmusic.com still does not.* That holds even anonymous and with no
+    clearance cookie: X6's 403s for the first two were the Python client
+    being refused (Cloudflare tells clients apart by more than the
+    User-Agent), not something a userscript meets. rateyourmusic refuses the
+    browser too, with or without its cookies (none existed).
+
+*** What this changes in the plan
+
+- *Wikipedia (X1)*: as planned, plus the =disambiguation= type on the card and
+  =Api-User-Agent= on every request.
+- *Wikidata (X2)*: =wbgetentities= with the UI language and =enwiki=, never
+  =Special:EntityData=.
+- *YouTube (X3)*: the reader's =test()= takes exactly the oEmbed shapes of
+  =providers.json= (watch, =v/=, =youtu.be=, playlist, shorts, embed, live),
+  normalised to =https=. A channel link goes to the generic reader.
+- *Discogs (X4, X9)*: *build it in U3* (answer 3 said "decide after U0").
+  The API answers well without a token, in Python and in the browser alike.
+  It gives what a card wants as data (formats, labels, tracklist, images)
+  where the release PAGE is 343 KB of HTML. The web page reaches the browser
+  too (X9 corrected X6 there), so the generic reader is the fallback for the
+  Discogs URLs the API reader does not take. The token setting stays as
+  decided; its numbers get confirmed with a token, or from the docs read in a
+  browser.
+- *Generic reader (X5, X6, X9)*:
+  - the 512 KB cap stays; the discogs.com page (343 KB) fits under it;
+  - a new outcome, =checked= (a 403 with =cf-mitigated: challenge=), gets its
+    own pill, is kept for the page load only, and is never "dead". In a real
+    browser only rateyourmusic.com showed it, so the mockup's example is that
+    site;
+  - *probes run from Python understate what a userscript can read.*
+    Cloudflare refused Python where it let Chrome through. A site's
+    refusal measured by a script is a reason for a browser check (the
+    =probe-gm-xhr.user.js= kind), never a conclusion.
+- *First contact with a site (B1; decided 2026-10-08, answer 7 below)*:
+  - every reader host gets its own =@connect= line (answer 5), and U1's
+    browser check confirms that a listed host does not prompt;
+  - the generic reader never makes its FIRST request to an unlisted host from
+    a hover. The hover card for such a link shows what costs no request (the
+    link, its host, the MusicBrainz context) and "Space loads a preview —
+    Tampermonkey will ask once for this site". Space, or a click in the card,
+    makes the request;
+  - a host that answered once (any HTTP status, so the permission was given)
+    is remembered in a GM value, =sa_pop_ext_hosts=, and later hovers load as
+    usual. Like =sa_dp_dialog_geometry= it is the script's state, not a
+    setting: it stays out of =configSchema= and out of the config export,
+    because the permission it mirrors lives in that browser's Tampermonkey,
+    not in a config file;
+  - a refused permission comes back as a request error: U1 finds out in a
+    browser what Tampermonkey reports then, and the card says that the site
+    was refused in Tampermonkey's settings.
+- *MusicBrainz (X7)*:
+  - the =url= kind's lookup carries every =*-rels= and nothing else;
+  - "MusicBrainz knows this URL" asks with the sibling "[info]" link's MBID
+    when the page has one, else with the =href= attribute verbatim;
+  - one batched request for every URL on a page is possible (100 per
+    request), but not needed: the window asks for one URL.
+- *Brucebase date reader (X8)*:
+  - its own size cap of *1 MB* (a late show in 1978 already sits past
+    300 KB);
+  - a loading state that expects several seconds;
+  - one request serves every show of that year, so the cache key is the YEAR
+    page, and a second date of the same year costs nothing;
+  - the card shows the heading, the setlist line, the opening of the notes
+    and the people;
+  - the window shows the whole block, with the =/gig:= page as ↗ and the
+    year page (scrolled to the anchor) as Live page.
+- *Browser checks*: B1 to B3 done (X9) with =scripts/probe-gm-xhr.user.js=
+  (Tampermonkey menu → "Run the GM_xmlhttpRequest probe", on any
+  =musicbrainz.org/event/= page). Still untested: Firefox desktop and Android
+  (B2); worth one run there before U1's merge.
+
+** Risks and traps
+
+- *Privacy.* A preview tells the linked site the user's IP address and that
+  they looked. Hence: opt-in, default off, the Ctrl gate, the hover delay
+  (=sa_rich_tooltip_delay_ms=), =wanted()= after the slot, and the setting's
+  own wording.
+- *Cookies.* =anonymous: true= on every external request. A spec asserts it.
+- *Tampermonkey's =@connect= prompt.* If a new domain asks first, a hover would
+  show a browser prompt: list the reader hosts explicitly, and let the generic
+  reader fail quietly ("needs permission") where the user said no (U0).
+- *Script-only sites* (YouTube, Spotify, Bandcamp's player, Discogs' web pages)
+  give a thin generic card and an empty Live page: a reader of their API, or
+  =live: null=.
+- *A big or binary target* (a PDF, a video file): aborted at the headers, the
+  card says what it is.
+- *The annotation =<h3>= toggle* holds a link (the YouTube playlist): the card
+  shows on the link, and a click on the link still follows it, never toggling
+  the heading; check against =makeH2sCollapsible()='s annotation handler.
+- *Absolute musicbrainz.org links* inside an annotation are internal: route
+  them to the MusicBrainz cards, never to the generic reader.
+- *A dead link is an answer.* "Only a success is cached" was written for
+  failed requests; a definite 404 or 410 is the information the card exists to
+  show (open question 2).
+- *The Live page copy loads the site's CSS and images* from the site itself
+  (through =<base href>=): that is the request the user asked for when
+  switching; scripts still never run.
+- *The other floating boxes*: =#mb-dp-peek= is already in =_OTHER_RICH_TIPS=;
+  a URL link with its own =data-mb-tip= gives way as on MusicBrainz links.
+- *Third-party userscripts* add icons and links beside URL relations: run the
+  =kitchen-sink= combination of =tests/support/run-live-interop.js= once per
+  step.
+
+** Performance
+
+- Nothing on the filter, sort or render path. A =mouseover= costs one
+  =closest()= and one host comparison more, and only on links.
+- Stepping walks the visible rows (or the container's links) on a key press,
+  never on a render.
+- Network only on hover or pin, one gate per host: a Wikipedia card never
+  slows the Relationships column, whose gate it does not use. The =/ws/2/url=
+  lookup of U2 does share that gate, on pin only.
+
+** Open questions (recommendation first)
+
+1. TTL for external answers: *a week* (=sa_pop_ext_ttl_hours= 168), or the
+   MusicBrainz 24 h.
+2. A 404 / 410: *kept for this page load only* (memory, not IndexedDB), or kept
+   for the TTL like a success, or never kept.
+3. Discogs: *decide after U0* (its API needs a User-Agent and allows 25
+   requests a minute without a token), or generic reader only.
+4. The generic reader's byte cap: *512 KB*, or more (some pages put their
+   =og:= tags after a large inline style block).
+5. =@connect=: *keep =*= and list the reader hosts beside it*, or reader hosts
+   only (then the generic reader cannot work).
+6. U5, the foreign hosts: *only links to the other Springsteen sites*, or every
+   off-site link.
+
+** answers
+
+Answers to the open questions:
+
+1. TTL for external answers: *a week* (=sa_pop_ext_ttl_hours= 168)
+2. A 404 / 410: *kept for this page load only* (memory, not IndexedDB)
+3. Discogs: *decide after U0* (its API needs a User-Agent and allows 25 requests a minute without a token) - if an end-user has a token, could it made configurable ?
+4. The generic reader's byte cap: *512 KB*
+5. =@connect=: *keep =*= and list the reader hosts beside it*
+6. U5, the foreign hosts: every off-site link
+
+then commit and push
+
+*** What the answers change (2026-10-08)
+
+- *1, 2.* =sa_pop_ext_ttl_hours= defaults to 168. A definite 404 or 410 is
+  kept in memory for this page load only (so a second hover does not ask
+  again), never in IndexedDB; any other failure is not kept at all.
+- *3, the Discogs token: yes, it can be a setting.* Discogs documents two
+  budgets: 25 requests a minute without authentication, 60 with a personal
+  access token, sent as =Authorization: Discogs token=<token>= (to confirm in
+  U0 against https://www.discogs.com/developers). So U0 probes both, and if
+  the reader is built (U3), it gets:
+  - =sa_pop_ext_discogs_token= (text, default empty), with the reader working
+    without one;
+  - the per-host gate spaced by the budget in use: about 2.5 s apart without
+    the token, 1 s with it;
+  - **the token never leaves the user's profile.** The config export writes
+    every =configSchema= setting into the file
+    (docs/claude/settings-and-config.md), and that file is meant to be shared
+    or moved to another machine. So U3 must leave this key out of the export,
+    and the import must not blank it. No setting is secret today, so this is
+    a new rule, and a spec must pin it. The token is also never written to a
+    debug channel, and the settings field masks it.
+- *4.* =maxBytes= 512 KB for the generic reader.
+- *5.* =@connect= keeps =*=, and gains one line per reader host
+  (=*.wikipedia.org=, =www.wikidata.org=, =www.youtube.com=,
+  =api.discogs.com= (built, X4), the four Springsteen hosts), so the known
+  readers never prompt: U0's B1 found that a host covered only by =*= makes
+  Tampermonkey ask once (X9).
+- *6.* U5 takes every off-site link on the foreign hosts, under the same
+  exclusions (share bars, the sites' chrome, artwork, images). The "Scope"
+  paragraph above already describes the selectors; the decision only removes
+  the "Springsteen sites only" alternative.
+- *7. First contact with an unlisted host* (asked after B1, 2026-10-08):
+  *only on Space or a click, never from a hover*. The hover card shows the
+  link, its host and the MusicBrainz context, and says that Space loads a
+  preview and Tampermonkey will ask once. A host that answered once is
+  remembered (=sa_pop_ext_hosts=), and its later hovers load as usual. Hosts
+  in =@connect= never ask. Details: "What this changes in the plan" under
+  U0.
+
+Asked after the user's first browser check of U1 (2026-10-08), a YouTube
+playlist link in the event annotation: card titled with the link's own text,
+no description, "moved", an empty Live page, and Chrome warning about unused
+preloads. =scripts/probe-ext-youtube-page.py= measured why: without cookies
+the request goes =302= to consent.youtube.com and =303= back with
+=&cbrd=1&ucbcb=1=; the page is 1 MB, 97 % script, with =<title>= and every
+=og:= tag at about 769 KB, past the 512 KB cap (U0 X5's "within 8.2 KB" held
+only for the sites probed then). The preloads are fixed outright
+(=_dpLiveDocHtml()= drops them for every source).
+
+- *8. YouTube: the oEmbed reader moves from U3 into U1* (recommended):
+  =www.youtube.com= in =@connect= and =_EXT_CONNECT_HOSTS=, no Live page
+  (=noLive=). Wikipedia and Wikidata stay in U3.
+- *9. The cap: scan the rest for tags* (recommended): parse the first 512 KB
+  as before; a field still empty is filled from the rest of the downloaded
+  page by picking out only the =<title>=, =<meta>= and canonical =<link>=
+  tags.
+- *10. "moved" only when the host or path changes* (recommended): added query
+  parameters are no move; http → https on the same host and path keeps the
+  green pill with a quiet "→ https" (Brucebase).
+- *11. Site icons, configurable* (asked for by the user, 2026-10-08; both
+  choices as recommended): loaded anonymously through =GM_xmlhttpRequest=,
+  only from the link's own host (the page's =<link rel="icon">= there, else
+  =/favicon.ico=), never for a site not contacted yet, once per host and kept
+  30 days; setting =sa_pop_ext_favicons=, ON by default. Not plain =<img>=
+  tags (they carry cookies where allowed and are not cached by the script),
+  not a favicon service (it would learn every hovered host).

@@ -117,27 +117,73 @@ function buildGmStubsScript(initialValues = {}) {
                 delete window.__gmMenuCommands[id];
             };
 
+            // Every call is logged (url, method, anonymous, headers), so a
+            // spec can count requests and assert how they were made.
+            window.__gmXhrLog = window.__gmXhrLog || [];
             window.GM_xmlhttpRequest = function (opts) {
                 const responses = window.__gmXhrResponses || {};
                 const configured = responses[opts.url];
+                window.__gmXhrLog.push({
+                    url: opts.url, method: opts.method || 'GET', anonymous: opts.anonymous === true,
+                    headers: Object.assign({}, opts.headers || {}),
+                });
+                let aborted = false;
+                const handle = {
+                    abort() {
+                        if (aborted) return;
+                        aborted = true;
+                        if (typeof opts.onabort === 'function') opts.onabort({});
+                    },
+                };
 
+                // A configured answer may also give \`responseHeaders\` (raw
+                // "Name: value" lines), \`finalUrl\` (where redirects ended),
+                // \`error\` (calls onerror with that text instead of onload),
+                // \`timeout: true\` (calls ontimeout) and \`delayMs\`. A
+                // caller's onreadystatechange gets readyState 2 (headers)
+                // first, and may abort there, as with Tampermonkey.
                 setTimeout(() => {
-                    if (!configured) {
-                        if (typeof opts.onload === 'function') {
-                            opts.onload({ status: 404, response: null, responseText: '' });
-                        }
+                    if (aborted) return;
+                    if (configured && configured.error) {
+                        if (typeof opts.onerror === 'function') opts.onerror({ error: configured.error, status: 0 });
                         return;
                     }
-                    if (typeof opts.onload === 'function') {
-                        opts.onload({
-                            status: configured.status || 200,
-                            response: configured.blob !== undefined ? configured.blob : configured.responseText,
-                            responseText: configured.responseText || '',
-                        });
+                    if (configured && configured.timeout) {
+                        if (typeof opts.ontimeout === 'function') opts.ontimeout({});
+                        return;
                     }
-                }, 0);
+                    const status = configured ? (configured.status || 200) : 404;
+                    const finalUrl = (configured && configured.finalUrl) || opts.url;
+                    const responseHeaders = (configured && configured.responseHeaders) || '';
+                    if (typeof opts.onreadystatechange === 'function') {
+                        opts.onreadystatechange({ readyState: 2, status, finalUrl, responseHeaders });
+                        if (aborted) return;
+                    }
+                    if (typeof opts.onload !== 'function') return;
+                    if (!configured) {
+                        opts.onload({ status: 404, response: null, responseText: '', finalUrl, responseHeaders: '' });
+                        return;
+                    }
+                    // \`base64\` + \`contentType\` build a Blob in the page (an
+                    // answer given as JSON through an init script cannot
+                    // carry a Blob itself): a site's icon, for instance.
+                    let blob = configured.blob;
+                    if (blob === undefined && configured.base64 !== undefined) {
+                        const bin = atob(configured.base64);
+                        const bytes = new Uint8Array(bin.length);
+                        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                        blob = new Blob([bytes], { type: configured.contentType || 'application/octet-stream' });
+                    }
+                    opts.onload({
+                        status,
+                        response: blob !== undefined ? blob : configured.responseText,
+                        responseText: configured.responseText || '',
+                        finalUrl,
+                        responseHeaders,
+                    });
+                }, (configured && configured.delayMs) || 0);
 
-                return { abort() {} };
+                return handle;
             };
         })();
     `;
