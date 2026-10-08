@@ -71,7 +71,8 @@ async function bsWithTable(page, settings = {}) {
 
 /**
  * Hovers a link after parking the pointer, so the hover really starts there,
- * WITHOUT Ctrl: by default (sa_dp_hover_without_ctrl off) no card is due.
+ * WITHOUT Ctrl: with sa_dp_hover_without_ctrl off (loadPage.js's fixture
+ * override; the schema default is on since org/non-MB-sites.org) no card is due.
  * @param {import('@playwright/test').Page} page
  * @param {import('@playwright/test').Locator} link
  */

@@ -1,14 +1,15 @@
 'use strict';
 
 // The popup engine on links to OTHER sites (org/iframe.org, "* generalize to
-// URLs", U1): `_extSource()`, behind ONE opt-in setting, `sa_pop_ext`.
+// URLs", U1): `_extSource()`, behind ONE setting, `sa_pop_ext` (on touch its twin).
 // Every external request is a `GM_xmlhttpRequest` (fetch() cannot read
 // another origin), answered here by the stub's `window.__gmXhrResponses`,
 // which also logs each call (`window.__gmXhrLog`) — nothing reaches the
 // network.
 //
 // Pins, in order:
-//   1. off by default: no card, no request;
+//   1. off when switched off: no card, no request; the schema default (on,
+//      plain hover); the touch twin does nothing on a desktop;
 //   2. what is previewed (`__saTest.popResolve()`): a link to another site
 //      in the "URLs" sub-table and in the annotation; NOT an absolute
 //      musicbrainz.org link, the "[info]" link, an artwork archive, a link
@@ -254,9 +255,34 @@ test.afterEach(() => {
 });
 
 test.describe('external link previews (sa_pop_ext)', () => {
-    test('off by default: no card, no request', async ({ page }) => {
+    test('off when switched off: no card, no request', async ({ page }) => {
+        // Off is loadPage.js's FIXTURE_SETTINGS_OVERRIDE; the schema default
+        // (on since org/non-MB-sites.org) has its own test below.
         await page.clock.install();
         await openEvent(page, { settings: { sa_pop_ext_hosts: ['www.setlist.fm'] } });
+        await ctrlHover(page, setlistLink(page));
+        await page.clock.fastForward(1000);
+        expect(await page.locator('#mb-dp-style, #mb-dp-peek, #mb-dp-dialog').count()).toBe(0);
+        expect(await xhrLog(page)).toEqual([]);
+    });
+
+    test('the schema default: on, on a plain hover', async ({ page }) => {
+        // `undefined` seeds nothing, so both keys fall back to configSchema.
+        await openEvent(page, {
+            settings: { sa_pop_ext: undefined, sa_dp_hover_without_ctrl: undefined, sa_pop_ext_hosts: ['www.setlist.fm'] },
+            responses: { [SETLIST]: { status: 200, responseHeaders: HTML_HEADERS, responseText: SETLIST_HTML } },
+        });
+        await page.mouse.move(0, 0);
+        await setlistLink(page).scrollIntoViewIfNeeded();
+        await setlistLink(page).hover();
+        await expect(card(page)).toContainText('Bruce Springsteen Setlist at Co-op Live, Manchester');
+    });
+
+    test('the touch twin does nothing on a desktop', async ({ page }) => {
+        // `sa_pop_ext_on_touch` replaces `sa_pop_ext` only on a touch-primary
+        // device (`_popSettingOn()`); here the plain key, off, is the one.
+        await page.clock.install();
+        await openEvent(page, { settings: { sa_pop_ext_on_touch: true, sa_pop_ext_hosts: ['www.setlist.fm'] } });
         await ctrlHover(page, setlistLink(page));
         await page.clock.fastForward(1000);
         expect(await page.locator('#mb-dp-style, #mb-dp-peek, #mb-dp-dialog').count()).toBe(0);
@@ -309,7 +335,13 @@ test.describe('external link previews (sa_pop_ext)', () => {
         expect(r.outside, 'outside the scope without sa_pop_mb_page').toBeNull();
         expect(r.entity, 'the entity cards keep their links').toMatch(/^mb-entity\|artist:/);
 
-        await page.evaluate(() => window.GM_setValue('sa_pop_mb_page', true));
+        // Not GM_setValue: the GM stub re-applies its seeds on every load, and
+        // loadPage.js's FIXTURE_SETTINGS_OVERRIDE seeds sa_pop_mb_page false,
+        // so a stored true would be overwritten by the reload. An init script
+        // registered after the stub's runs after it.
+        await page.context().addInitScript(() => {
+            if (window.__gmValues) window.__gmValues.sa_pop_mb_page = true;
+        });
         await page.reload();
         await addRequiredLibs(page);
         await page.addScriptTag({ path: MB_LIBRARY_PATH });

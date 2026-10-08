@@ -630,9 +630,11 @@ document, and only a hover, a pin or a step may START a lookup
 forever on a 503 (caught by the spec). Alt+click stays its own delegated
 handler (`initEventRgTooltip()`).
 **Ctrl gate** (`_eventRgNeedsCtrl()`, `sa_event_rg_tooltip_without_ctrl`,
-default false): the source's `needsCtrl()`, so the engine shows the card on a
+default false until org/non-MB-sites.org made it true on 2026-10-08): the
+source's `needsCtrl()`, so with the setting off the engine shows the card on a
 hover with Ctrl held, or at once when Ctrl is pressed on the hovered cell.
-Specs hold Ctrl in `hoverHash()`. Space pins the card into the window, where
+Specs run with it off (`FIXTURE_SETTINGS_OVERRIDE`) and hold Ctrl in
+`hoverHash()`; `"Ctrl gate, the schema default"` pins the default. Space pins the card into the window, where
 ← → step down the "#" cells (`data-mb-row-idx` is the step identity); for an
 event no release group is named like, the window links the closest groups
 (the search keeps their ids) and the search. All requests go through

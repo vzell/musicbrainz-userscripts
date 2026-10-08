@@ -42,11 +42,26 @@ const USERSCRIPT_PATH = path.join(PROJECT_ROOT, 'ShowAllEntityData.user.js');
 //
 // `sa_event_overview_event_art` (default true) is the fourth, for the same
 // reason on the event page (eventartarchive.org).
+//
+// The link previews are the other five (all default true since the branch
+// feature/popup-defaults-on, org/non-MB-sites.org). With them on, a plain
+// hover over any table link in ANY spec shows a card after the rich-tooltip
+// delay, and that card asks MusicBrainz's WS/2 (or the linked site) for its
+// data: a card can cover the element a spec is about to click, and the
+// request leaves the fixture's sandbox. The popup specs seed the switches they
+// exercise. A spec that wants the schema default back passes the key as
+// `undefined` in `settingsOverride`: `JSON.stringify` drops it, so nothing is
+// seeded and `GM_getValue` falls back to `configSchema`.
 const FIXTURE_SETTINGS_OVERRIDE = {
     sa_enable_caa_pics: false,
     sa_enable_relationships_column: false,
     sa_enable_release_tracks_cover_art: false,
     sa_event_overview_event_art: false,
+    sa_pop_mb: false,
+    sa_pop_mb_page: false,
+    sa_pop_ext: false,
+    sa_dp_hover_without_ctrl: false,
+    sa_event_rg_tooltip_without_ctrl: false,
 };
 
 // `_migrateFrozenSettings()` repairs a GM profile that VZ_MBLibrary's old SAVE

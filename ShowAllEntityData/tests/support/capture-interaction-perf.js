@@ -123,6 +123,22 @@ const {
     readScriptVersion, machineInfo, readCurrentBranch, archiveFileStem,
 } = require('./runMetadata');
 
+/**
+ * The link previews, off in every arm. Their defaults became `true` on the
+ * branch feature/popup-defaults-on (org/non-MB-sites.org), and a click this
+ * harness makes moves the pointer like a hover: the engine would then run in
+ * a branch arm and not in a `main` arm from before that change, so the two
+ * would measure different pages. An arm's own `seedGmValues` still wins.
+ * @type {Object<string, boolean>}
+ */
+const PREVIEWS_OFF = {
+    sa_pop_mb: false,
+    sa_pop_mb_page: false,
+    sa_pop_ext: false,
+    sa_dp_hover_without_ctrl: false,
+    sa_event_rg_tooltip_without_ctrl: false,
+};
+
 const SNAPSHOTS_DIR = path.join(__dirname, '..', 'snapshots');
 
 /**
@@ -363,7 +379,7 @@ function median(values) {
  */
 async function loadPage(browser, config) {
     const page = await browser.newPage();
-    await seedGmValues(page, config.seedGmValues);
+    await seedGmValues(page, { ...PREVIEWS_OFF, ...config.seedGmValues });
     // `beforeRender` (not after the load) is the only window that works for the
     // Relationships seed: IndexedDB is origin-scoped so there is nothing to
     // write to before navigation, and the render click is what reaches
@@ -760,7 +776,7 @@ async function runAll(browser, config) {
             // is a number with no denominator.
             relIconsRendered,
             relSettleMs,
-            seedGmValues: config.seedGmValues,
+            seedGmValues: { ...PREVIEWS_OFF, ...config.seedGmValues },
             branch: outName,
             gitBranch: branch,
             capturedAt,

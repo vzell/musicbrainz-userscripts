@@ -81,8 +81,9 @@ const hashCell = (page, t, r) => page.locator('table.tbl').nth(t).locator('tbody
 const tip = (page) => page.locator('#mb-dp-peek');
 
 /**
- * Hovers one "#" cell from a resting pointer WITHOUT Ctrl: by default
- * (sa_event_rg_tooltip_without_ctrl off) no card is due.
+ * Hovers one "#" cell from a resting pointer WITHOUT Ctrl: with
+ * sa_event_rg_tooltip_without_ctrl off (loadPage.js's fixture override; the
+ * schema default is on since org/non-MB-sites.org) no card is due.
  *
  * @param {import('@playwright/test').Page} page
  * @param {number} t
@@ -255,6 +256,14 @@ test.describe('per-event "#" colours and the "#" release group card', () => {
 
     test('Ctrl gate: with sa_event_rg_tooltip_without_ctrl on, a plain hover shows the card', async ({ page }) => {
         await open(page, { settings: { sa_event_rg_tooltip_without_ctrl: true } });
+        await plainHoverHash(page, 0, 0);
+        await expect(tip(page)).toContainText('main event');
+    });
+
+    test('Ctrl gate, the schema default: a plain hover shows the card', async ({ page }) => {
+        // `undefined` seeds nothing (JSON.stringify drops it), so the key
+        // falls back to configSchema instead of the fixture override's off.
+        await open(page, { settings: { sa_event_rg_tooltip_without_ctrl: undefined } });
         await plainHoverHash(page, 0, 0);
         await expect(tip(page)).toContainText('main event');
     });

@@ -1108,8 +1108,8 @@ you automatically.
 | 🌴 jungleland.it                                | Switch on the jungleland.it bootleg artwork list (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                            |
 | 💿 brucespringsteen.it                          | Switch on the brucespringsteen.it record database (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                           |
 | 📚 Brucebase                                    | Switch on the Brucebase song list (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                                           |
-| 🔎 Link previews on MusicBrainz                 | Switch on the cards of the links in MusicBrainz tables (off by default), how long their answers are kept, the release group window's size; see [Page-specific behaviour](#page-specific-behaviour)                                                                    |
-| 🔎 Every preview                                | Show the MusicBrainz link previews and the Springsteen sites' detail-page previews on a plain hover, without Ctrl                                                                                                                                                     |
+| 🔎 Link previews on MusicBrainz                 | The cards of the links on MusicBrainz pages (on by default; on a phone or tablet off unless you tick the *… on touch devices* boxes), how long their answers are kept, the release group window's size; see [Page-specific behaviour](#page-specific-behaviour)     |
+| 🔎 Every preview                                | Show the MusicBrainz link previews and the Springsteen sites' detail-page previews on a plain hover (on by default), or only while Ctrl is held                                                                                                                       |
 
 </details>
 
@@ -1310,12 +1310,13 @@ location). When tracks carry live event data but the release group title is
 not a live title, a ⚠️ after the link explains why and suggests a title from
 the event with the most tracks; there is then no main event and no tint.
 
-**The release group of each track's event.** Hovering a live track's **#**
-cell with **Ctrl** held, or pressing **Ctrl** while the pointer is on it,
-shows a release group card. Without Ctrl nothing happens, so moving down the
-column starts no searches; *Show the "#" release group card on a plain hover
-(without Ctrl)* in ⚙️ Settings → 💿 RELEASE TRACKLIST brings back the plain
-hover. For the main event it is the release's own
+**The release group of each track's event.** Resting the pointer on a live
+track's **#** cell shows a release group card, and for an event other than
+the main one that starts its search. If you would rather move down the column
+without cards or searches, switch off *Show the "#" release group card on a
+plain hover (without Ctrl)* in ⚙️ Settings → 💿 RELEASE TRACKLIST: the card
+then shows only with **Ctrl** held, or when you press **Ctrl** while the
+pointer is on the cell. For the main event it is the release's own
 release group. For any other event, a search looks for a release group named
 exactly like the event: the Disambiguation without `live, ` and without a
 trailing `; …`. It runs once per event, only when you ask for the card. A found group
@@ -1525,23 +1526,27 @@ releases.
 <summary>Link previews on MusicBrainz</summary>
 
 With ⚙️ Settings → 🔎 LINK PREVIEWS ON MUSICBRAINZ → *Preview linked entities
-on hover* switched on (it is off until you do), the links in a table show what
-is behind them without opening a tab. So far: **releases**, **release
+on hover* switched on (it is, unless you switch it off), the links on the page
+show what is behind them without opening a tab. On a **phone or tablet** that
+box does nothing: there the previews are off until you tick *Preview linked
+entities on touch devices*, because a tap on a link then opens the preview
+window instead of the page. So far: **releases**, **release
 groups**, **recordings**, **works**, **artists**, **labels**, **areas**,
 **instruments**, **events**, **places**, **series**, **collections**, the
 **[info]** link beside every URL, and the
 codes: **ISRCs**, **ISWCs** and **disc IDs**, and **edits** and **editors**.
 A **Barcode** cell has a card too: the barcode's format and the releases
 carrying it. So does an entry of a column's **📊 dropdown** that names one
-artist, label, area or other entity: hold Ctrl over it. Pinning it with Space
+artist, label, area or other entity: rest the pointer on it. Pinning it with Space
 closes the dropdown. A **catalog number** shows the card of the label its
 release lists with that number (the window and Live page are the label's).
 
-**Hold Ctrl and rest the pointer on a link**, or rest it first and then press
-**Ctrl**: a card opens beside the link. Without Ctrl nothing happens, so
-moving across a table neither opens cards nor asks MusicBrainz anything
-(*Show every preview on a plain hover (without Ctrl)* under 🔎 EVERY PREVIEW
-changes that). A release card shows the cover, status, type, format and
+**Rest the pointer on a link**: a card opens beside it, and asks MusicBrainz
+for its data (one request a second, shared with the Relationships column). If
+you would rather move across a table without cards or requests, switch off
+*Show every preview on a plain hover (without Ctrl)* under 🔎 EVERY PREVIEW:
+the card then opens only when you hold **Ctrl** and rest the pointer on a
+link, or rest it first and then press **Ctrl**. A release card shows the cover, status, type, format and
 number of tracks, the date and country, label and catalog number, barcode,
 packaging and the first tracks with their lengths. A release group card shows
 the group's releases, as the release page's "versions available" link does. A
@@ -1610,11 +1615,14 @@ hover again to retry.
 
 Not previewed: the artwork column's links, a link around a picture (they have
 their own preview) and the Relationships column (its own tooltip). Links
-outside a table are previewed only with *Also preview links outside tables*
-switched on (same section): then the header, an annotation, the sidebar and
-relationship lists have cards too, but not the tabs, the page navigation or
-the script's own toolbar. On a **touch screen**, a tap on such a link opens the window
-instead of the page; **↗** in the window opens the page.
+outside a table are previewed while *Also preview links outside tables* is on
+(same section, on by default): the header, an annotation, the sidebar and
+relationship lists have cards then, but not the tabs, the page navigation or
+the script's own toolbar. Switch it off and only the links in a table have
+cards. On a **touch screen**, with *Preview linked entities on touch devices*
+ticked, a tap on such a link opens the window instead of the page; **↗** in
+the window opens the page. Links outside a table count there only with *Also
+preview links outside tables on touch devices* ticked as well.
 
 </details>
 
@@ -1622,7 +1630,9 @@ instead of the page; **↗** in the window opens the page.
 <summary>Previews of links to other sites</summary>
 
 With ⚙️ Settings → 🔎 EXTERNAL LINK PREVIEWS → *Preview external links on
-hover* switched on (it is off until you do), a link to **another site** shows
+hover* switched on (it is, unless you switch it off; on a phone or tablet
+*Preview external links on touch devices* decides instead, off until you tick
+it), a link to **another site** shows
 what is behind it: the Wikipedia article in an annotation, the review in an
 event's **URLs** table, a site in the sidebar's *External links*. It works on
 the links in a table, in a relationship list, in the annotation and in the
@@ -1631,8 +1641,9 @@ PREVIEWS ON MUSICBRAINZ) on every other link of the page too. It is
 independent of *Preview linked entities on hover*: you can have either, or
 both.
 
-**Hold Ctrl and rest the pointer on the link** (or rest it first and then press
-Ctrl), as for the MusicBrainz cards. The card shows the page's title, the
+**Rest the pointer on the link** (or, with *Show every preview on a plain
+hover* off, hold Ctrl as you do, or press Ctrl once it rests there), as for the
+MusicBrainz cards. The card shows the page's title, the
 site's name, its picture and description, and what the link is on this page
 — *MusicBrainz: setlist.fm of this event* when it comes from a relationship,
 *in the annotation*, *in the sidebar's external links*. Its first line shows
@@ -2011,7 +2022,7 @@ turns them into one table:
 *Format* is the site's own text ("2 CD-R", "1 7 in."). *Notes* is the italic
 line some records carry ("Picture disc", "Lower 'Bruce Springsteen' - Little
 Steven Mix"). The title links to the record's detail page, which opens in a
-new tab. With the preview on, resting the pointer on a title with Ctrl held shows the
+new tab. With the preview on, resting the pointer on a title shows the
 record's tracklist and the shows its tracks come from (see
 *Previewing the detail pages* under [Page-specific behaviour](#page-specific-behaviour)).
 
@@ -2070,13 +2081,13 @@ that site's own switch in ⚙️ Settings:
 | 💿 brucespringsteen.it  | *Preview record pages in the brucespringsteen.it database* | the tracklist, the show each track comes from, the notes, the photo           |
 | 📚 Brucebase           | *Preview song pages on the Brucebase song list*          | the album it comes from, how often and when last it was played live, releases |
 
-**Hold Ctrl and rest the pointer on a title** for a moment and a card opens
-beside it, or rest the pointer on the title first and then press **Ctrl**: the
-card opens at once. Without Ctrl nothing happens, so moving the pointer across
-the table neither opens cards nor reads pages. If you would rather have the
-card on a plain hover, switch on *Show every preview on a plain hover
-(without Ctrl)* under ⚙️ Settings → *🔎 EVERY PREVIEW* (it covers the
-MusicBrainz link previews too).
+**Rest the pointer on a title** for a moment and a card opens beside it. If
+you would rather move the pointer across the table without opening cards or
+reading pages, switch off *Show every preview on a plain hover (without
+Ctrl)* under ⚙️ Settings → *🔎 EVERY PREVIEW* (it covers the MusicBrainz link
+previews too): then **hold Ctrl and rest the pointer on a title**, or rest the
+pointer on the title first and then press **Ctrl**, and the card opens at
+once.
 The first time, it shows "Loading the detail page…" while the page is read in
 the background. The script reads at most one page a second, and a page you
 have already seen comes back at once: it is kept for 30 days. The card's last

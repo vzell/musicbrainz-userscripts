@@ -36,7 +36,7 @@
 const path = require('path');
 const fs = require('fs');
 const { test, expect } = require('../support/test');
-const { loadUserscriptPage } = require('../support/loadPage');
+const { loadUserscriptPage, FIXTURE_SETTINGS_OVERRIDE } = require('../support/loadPage');
 const { collectPageErrors } = require('../support/liveAssertions');
 
 const SERIES_URL = 'https://musicbrainz.org/series/aa3694d3-a3d0-48ed-8f07-5b576de87908';
@@ -46,14 +46,10 @@ const SID = 'vz-mb-show-all-entity-data';
 const OVERLAY = `#${SID}-settings-overlay`;
 
 // Same reasoning as settings-dialog.spec.js's own PRISTINE: the fixture
-// harness forces four settings OFF that all default to true, so an untouched
-// profile would otherwise arrive with four changes already on the counter.
-const PRISTINE = {
-    sa_enable_caa_pics: true,
-    sa_enable_relationships_column: true,
-    sa_enable_release_tracks_cover_art: true,
-    sa_event_overview_event_art: true,
-};
+// harness forces settings OFF that all default to true, so an untouched
+// profile would otherwise arrive with that many changes already on the
+// counter. Derived from the override, as there.
+const PRISTINE = Object.fromEntries(Object.keys(FIXTURE_SETTINGS_OVERRIDE).map((k) => [k, undefined]));
 
 /**
  * The library's own `LIBRARY_VERSION`, read from the file the harness loads.

@@ -20870,3 +20870,152 @@ touch. The live spec 4/4 (13:54:16Z–13:54:59Z), logged in again.
 `npm run test:full`: 1415 passed, 0 failed (8.5 min,
 2026-10-08T14:57:03Z–15:05:35Z, host NB-3641, WSL2) — the popup-mb timeout
 above did not recur.
+
+## 2026-10-08 — Link previews on by default, touch twins (branch feature/popup-defaults-on, WIP.1)
+
+org/non-MB-sites.org asked for five defaults to change from false to true:
+`sa_pop_mb`, `sa_pop_mb_page`, `sa_pop_ext`, `sa_dp_hover_without_ctrl`,
+and, added during planning, `sa_event_rg_tooltip_without_ctrl`. It also asked
+for the preview switches to get mobile counterparts that default to false.
+
+**Why the touch side needed its own switches.** On a touch-primary device, an
+enabled source turns a TAP into "open the window". That is
+`_initDetailPreview()`'s click handler, which returns early unless the event
+is a touch compatibility event or the device is touch-primary. With the
+desktop switches on by default and nothing else changed, every phone would
+lose ordinary link navigation on MusicBrainz.
+
+**Decided with the user: the twin REPLACES the plain key, it does not gate
+it.** `_popSettingOn(key)` reads `<key>_on_touch` on touch and `key` on a
+desktop. The precedent, `sa_sticky_page_headers_on_touch`, is a gate
+(plain AND twin). Replacement was chosen because each device has its own
+Tampermonkey profile anyway, and "explicitly for mobile" reads most directly
+as an independent switch. Twins exist only for the three preview switches.
+`sa_dp_hover_without_ctrl` has no meaning without hover, and a favicons twin
+was declined.
+
+**Cost, flagged before implementing and accepted.** With a plain hover by
+default, moving the pointer over a table shows cards, and every card asks
+WS/2 through `_rgWsGet()`, the same rate gate the Relationships column uses.
+That is a slot per card. On a release page the "#" cells start a SEARCH per
+event. PERFORMANCE.org was updated next to the existing answer-7 note.
+
+**Why the fixture override grew from four keys to nine.** With the new
+defaults, every fixture spec that hovers a table link, which is most of them
+through Playwright's pointer moves, would show a card that can cover the
+next click target and fire WS/2 or GM_xmlhttpRequest traffic outside the
+spec's routes. The popup specs already seed what they exercise.
+The "defaults" tests un-seed a key with `undefined`. `buildGmStubsScript()`
+interpolates `JSON.stringify(initialValues)`, which drops `undefined`, so
+nothing is stored and `GM_getValue` falls back to `configSchema`.
+
+**Two specs broke for reasons that are easy to miss, and are worth keeping:**
+- `settings-dialog(-header).spec.js` kept a hand-written `PRISTINE` copy of
+  the override's four keys. It is now derived from the export.
+- `settings-migration.spec.js` runs the migration at level 0. The override
+  now seeds five keys whose `false` IS a retired default with a
+  `_SETTINGS_MIGRATIONS` entry, so the migration adopted them and the counts
+  in four tests were off by five. `loadWithProfile()` now un-seeds the
+  override.
+
+A third spec broke later, in `npm test` only: popup-ext.spec.js's "what is
+previewed" turned `sa_pop_mb_page` on with `GM_setValue` and then reloaded.
+**The GM stub re-applies its seeds on every load** (`Object.assign(gmValues,
+initialValues)` runs in the init script), so once the override seeded that
+key `false`, the reload overwrote the stored `true`. The spec now registers a
+second context init script, which runs after the stub's, to set the
+in-memory value. Any spec that sets an override key with `GM_setValue` and
+then reloads has this trap. That spec was the only one.
+
+**Migration limit, left as is.** `_SETTINGS_MIGRATION_LEVEL` stays at 1.
+The five `was: [false]` entries act only on a profile not yet migrated.
+Bumping the level would re-run passes 1 and 3 for everyone, and could
+overrule values chosen since the first run. A profile that froze `false`
+under the published mirror's pre-4.1.0 library after its migration had run
+keeps `false`. This is noted in the WIP entry.
+
+**A tap that never clicks (seen, not chased).** Under chromium-mobile
+emulation, a tap on the setlist.fm link in event-overview's "URLs" sub-table
+dispatches touchstart, touchend and mousedown, but no click, with EVERY
+preview off as well. So no navigation follows, independent of this change.
+The ext mobile "twin at its default" test therefore asserts that the engine
+stays out, not that the page opens. Its mutation (the helper reading the
+plain key) is caught. The MusicBrainz release link in the popup-mb mobile
+spec does navigate, so the "phone keeps its links" guarantee is pinned
+there. Whether a real phone shows the same thing for that table link is
+unknown. It is worth a look in Firefox Android.
+
+**Verification.**
+- New `scripts/mutations/popup-touch-twins.json`: 11 of 11 caught.
+- The five re-anchored entries of popup-mb.json and popup-ext.json: 5 of 5
+  caught.
+- A static sweep of every mutation file's `find` against the userscript:
+  0 mismatches.
+- `audit-config-defaults.py`: Stages 1 and 2 clean. Stage 3 waits on the
+  history refresh after the commit, as documented.
+- `lint-summary.py --check` and `audit-docs.py`: clean.
+- `npm run test:full` (2026-10-08T18:18:57Z–18:26:05Z, host NB-3641, WSL2):
+  1423 passed, 1 failed. The failure was popup-mb.spec.js "Ctrl+click keeps
+  the link's own new tab, and the window stays": a 90 s timeout waiting for
+  the new tab's `page` event. This is the flake already recorded twice above.
+  Measured with `--repeat-each 20` on this branch and on a detached worktree
+  of `main` (86c2d1f, node_modules symlinked), back to back:
+
+  | Tree   | Failed | Of |
+  |--------|--------|----|
+  | branch | 3      | 20 |
+  | `main` | 2      | 20 |
+
+  So it predates this change, and is now reproducible, about 1 in 8. Fixed
+  in the next entry.
+
+## 2026-10-08 — The Ctrl+click new-tab flake: Playwright drops the 'page' event (popup-mb.spec.js)
+
+"Ctrl+click keeps the link's own new tab, and the window stays" has been
+timing out since Phase 5. It was recorded twice above as "not reproducible".
+It is reproducible: `--repeat-each 40 --workers 4 --timeout 20000` failed
+1/40 and 8/40 in two runs (host NB-3641, Playwright 1.62.1, Chromium).
+
+**Hypotheses ruled out, with evidence:**
+1. *A card over the link takes the click.* Ruled out by the window's capture
+   listeners logging every keydown, mouseover, mousedown, mouseup and click.
+   The sequence was identical in passing and failing runs: Control keydown,
+   then all mouse events on the window's `<a>` with `ctrlKey` true, the click
+   not default-prevented, and `#mb-dp-peek` hidden from mouseover on.
+2. *A repaint detaches the anchor, and a disconnected link is not
+   followed.* Ruled out: the anchor was still `isConnected` at the window's
+   bubbling click and one task later. A MutationObserver on the dialog saw no
+   release-group link removed.
+3. *The browser opened no tab.* Ruled out by the Playwright trace of a
+   failing run (`--trace retain-on-failure`):
+   - Its `0-trace.network` has a SECOND page (`page@3fe104…`) fetching the
+     release-group URL with a 200, at the moment of "click action done".
+   - The response is the test's own context route (`content-length: 13`, the
+     `<html></html>` body).
+   - `0-trace.trace` has no BrowserContext `page` event for that page.
+
+**Root cause:** the tab opens and loads, and the client even serves its
+route, but Playwright never emits the context's 'page' event for it. So
+`context.waitForEvent('page')` waits out the test timeout. This is a defect
+in the harness's wait, not in the userscript: `_dpDrill()` returns early on
+Ctrl and leaves the click to the browser, which follows it.
+
+**Fix (test only):** the spec now pins the guarantee by the new tab's
+NAVIGATION REQUEST reaching the context route. That route records only once
+armed at the click; this page's own navigations go through `open()`'s
+page-level route, which takes precedence. The spec also checks that
+`page.url()` is unchanged and that the window's title stays 'Release'.
+
+**Verification:**
+- `--repeat-each 80 --workers 4`: 80/80.
+- Mutations: the existing "a modified click drills down too" still fails it,
+  now with "the link opened in a new tab" instead of a 90 s timeout.
+- A new "Ctrl+click in the window is swallowed" mutation (preventDefault
+  without a drill-down) fails it too. That is the half the title assertion
+  cannot see.
+
+**Another `waitForEvent('page')` left as is:**
+`tag-value-entity-column-leak.spec.js` uses one for a script `window.open`,
+which is a popup with an opener, not a background tab. It needs the tab
+object, and has not been seen flaking. If it ever does, this entry is the
+first suspect.

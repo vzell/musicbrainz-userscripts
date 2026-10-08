@@ -1,0 +1,150 @@
+[
+    {
+        "name": "the touch twins are ignored: a phone reads the desktop switch",
+        "why": "On a touch-primary device the _on_touch twin REPLACES the plain switch (org/non-MB-sites.org): the plain switches are on by default, and on touch an enabled source turns every tap into 'open the window', taking ordinary link navigation away from a phone.",
+        "edits": [
+            {
+                "find": "        return Lib.settings[_isTouchPrimaryDevice() ? `${key}_on_touch` : key] === true;",
+                "replace": "        return Lib.settings[key] === true;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "a tap on a release link opens the release window",
+        "expect": "fail"
+    },
+    {
+        "name": "the touch twins are ignored: the desktop switch on still opens windows on a phone",
+        "why": "The same defect seen from the other side: with the twin at its default (off) a tap must open the page, whatever the desktop switch says.",
+        "edits": [
+            {
+                "find": "        return Lib.settings[_isTouchPrimaryDevice() ? `${key}_on_touch` : key] === true;",
+                "replace": "        return Lib.settings[key] === true;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "with the touch twin at its default",
+        "expect": "fail"
+    },
+    {
+        "name": "the touch twins are ignored: a tap on a link to another site is the engine's on a phone",
+        "why": "The external side of the same defect: with sa_pop_ext on and its twin at the default, the engine must stay out of a tap.",
+        "edits": [
+            {
+                "find": "        return Lib.settings[_isTouchPrimaryDevice() ? `${key}_on_touch` : key] === true;",
+                "replace": "        return Lib.settings[key] === true;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "is not the engine",
+        "expect": "fail"
+    },
+    {
+        "name": "a desktop reads the touch twins",
+        "why": "The twins have no effect on a desktop browser: there the plain switches, on by default, decide.",
+        "edits": [
+            {
+                "find": "        return Lib.settings[_isTouchPrimaryDevice() ? `${key}_on_touch` : key] === true;",
+                "replace": "        return Lib.settings[`${key}_on_touch`] === true;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the schema defaults",
+        "expect": "fail"
+    },
+    {
+        "name": "the page-wide scope ignores its touch twin",
+        "why": "sa_pop_mb_page_on_touch, not sa_pop_mb_page, decides on touch whether a link outside the tables is the engine's.",
+        "edits": [
+            {
+                "find": "                return _popSettingOn('sa_pop_mb_page')\n",
+                "replace": "                return Lib.settings.sa_pop_mb_page === true\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "outside the tables, the tap follows",
+        "expect": "fail"
+    },
+    {
+        "name": "the external source ignores its touch twin",
+        "why": "sa_pop_ext_on_touch, not sa_pop_ext, decides on touch whether a tap on a link to another site opens the window.",
+        "edits": [
+            {
+                "find": "            enabled: () => _popSettingOn('sa_pop_ext'),",
+                "replace": "            enabled: () => Lib.settings.sa_pop_ext === true,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "a tap on a link to another site opens its window",
+        "expect": "fail"
+    },
+    {
+        "name": "sa_pop_mb back to off by default",
+        "why": "org/non-MB-sites.org: the entity previews are on by default on a desktop.",
+        "edits": [
+            {
+                "find": "            default: true,\n            description: 'On by default. Rest the pointer on a link in a table",
+                "replace": "            default: false,\n            description: 'On by default. Rest the pointer on a link in a table"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the schema defaults",
+        "expect": "fail"
+    },
+    {
+        "name": "sa_pop_mb_page back to off by default",
+        "why": "org/non-MB-sites.org: links outside the tables have a card by default.",
+        "edits": [
+            {
+                "find": "            default: true,\n            description: 'On by default: every entity link in the page",
+                "replace": "            default: false,\n            description: 'On by default: every entity link in the page"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the schema defaults",
+        "expect": "fail"
+    },
+    {
+        "name": "sa_dp_hover_without_ctrl back to off by default",
+        "why": "org/non-MB-sites.org: a plain hover is enough by default.",
+        "edits": [
+            {
+                "find": "            default: true,\n            description: 'On by default: resting the pointer on a link is enough",
+                "replace": "            default: false,\n            description: 'On by default: resting the pointer on a link is enough"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the schema defaults",
+        "expect": "fail"
+    },
+    {
+        "name": "sa_pop_ext back to off by default",
+        "why": "org/non-MB-sites.org: the external link previews are on by default on a desktop.",
+        "edits": [
+            {
+                "find": "            default: true,\n            description: 'On by default. Rest the pointer on a link to another site",
+                "replace": "            default: false,\n            description: 'On by default. Rest the pointer on a link to another site"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "the schema default",
+        "expect": "fail"
+    },
+    {
+        "name": "sa_event_rg_tooltip_without_ctrl back to off by default",
+        "why": "org/non-MB-sites.org: a plain hover on a \"#\" cell is enough by default.",
+        "edits": [
+            {
+                "find": "            default: true,\n            description: 'On by default: hovering the cell is enough",
+                "replace": "            default: false,\n            description: 'On by default: hovering the cell is enough"
+            }
+        ],
+        "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
+        "grep": "the schema default",
+        "expect": "fail"
+    }
+]

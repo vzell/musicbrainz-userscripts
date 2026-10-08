@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "9ca917a1b2d1f17f70aa4204e9eaf592833bf031",
-    "revisions_walked": 839
+    "head": "8a193e5bfb4a2a9bceaa98412b41717c56489f6f",
+    "revisions_walked": 843
   },
   "changes": [
     {
@@ -185,6 +185,51 @@
       "type": "color_picker",
       "from": "#e07000",
       "to": "#b35900"
+    },
+    {
+      "sha": "8a193e5b",
+      "date": "2026-10-08",
+      "version": "9.99.1297+2026-10-08",
+      "key": "sa_event_rg_tooltip_without_ctrl",
+      "type": "checkbox",
+      "from": false,
+      "to": true
+    },
+    {
+      "sha": "8a193e5b",
+      "date": "2026-10-08",
+      "version": "9.99.1297+2026-10-08",
+      "key": "sa_pop_mb",
+      "type": "checkbox",
+      "from": false,
+      "to": true
+    },
+    {
+      "sha": "8a193e5b",
+      "date": "2026-10-08",
+      "version": "9.99.1297+2026-10-08",
+      "key": "sa_pop_mb_page",
+      "type": "checkbox",
+      "from": false,
+      "to": true
+    },
+    {
+      "sha": "8a193e5b",
+      "date": "2026-10-08",
+      "version": "9.99.1297+2026-10-08",
+      "key": "sa_pop_ext",
+      "type": "checkbox",
+      "from": false,
+      "to": true
+    },
+    {
+      "sha": "8a193e5b",
+      "date": "2026-10-08",
+      "version": "9.99.1297+2026-10-08",
+      "key": "sa_dp_hover_without_ctrl",
+      "type": "checkbox",
+      "from": false,
+      "to": true
     }
   ],
   "stale": {
@@ -312,6 +357,41 @@
       "current": "#b35900",
       "was": [
         "#e07000"
+      ]
+    },
+    "sa_event_rg_tooltip_without_ctrl": {
+      "type": "checkbox",
+      "current": true,
+      "was": [
+        false
+      ]
+    },
+    "sa_pop_mb": {
+      "type": "checkbox",
+      "current": true,
+      "was": [
+        false
+      ]
+    },
+    "sa_pop_mb_page": {
+      "type": "checkbox",
+      "current": true,
+      "was": [
+        false
+      ]
+    },
+    "sa_pop_ext": {
+      "type": "checkbox",
+      "current": true,
+      "was": [
+        false
+      ]
+    },
+    "sa_dp_hover_without_ctrl": {
+      "type": "checkbox",
+      "current": true,
+      "was": [
+        false
       ]
     }
   },
@@ -555,7 +635,7 @@
     "sa_enable_release_tracks_live_date_check": true,
     "sa_release_rg_link": true,
     "sa_event_rg_tooltip": true,
-    "sa_event_rg_tooltip_without_ctrl": false,
+    "sa_event_rg_tooltip_without_ctrl": true,
     "sa_event_rg_search_phrase": true,
     "sa_event_rg_search_artist": true,
     "sa_event_rg_search_hints": 5,
@@ -672,14 +752,17 @@
     "sa_bs_detail_preview": false,
     "sa_enable_brucebase": false,
     "sa_bb_detail_preview": false,
-    "sa_pop_mb": false,
-    "sa_pop_mb_page": false,
+    "sa_pop_mb": true,
+    "sa_pop_mb_on_touch": false,
+    "sa_pop_mb_page": true,
+    "sa_pop_mb_page_on_touch": false,
     "sa_pop_mb_ttl_hours": 24,
     "sa_rg_window_max_releases": 500,
-    "sa_pop_ext": false,
+    "sa_pop_ext": true,
+    "sa_pop_ext_on_touch": false,
     "sa_pop_ext_favicons": true,
     "sa_pop_ext_ttl_hours": 168,
     "sa_pop_ext_discogs_token": "",
-    "sa_dp_hover_without_ctrl": false
+    "sa_dp_hover_without_ctrl": true
   }
 }

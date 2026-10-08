@@ -26,11 +26,16 @@ so on MusicBrainz `_dpActiveSite()` is null and no foreign source is
 enabled. Since the popup engine (next section) `_initDetailPreview()` is
 called on every page and installs only where a source is enabled: on
 MusicBrainz that is a release page with a release-group card on, or any
-page with `sa_pop_mb` on (the entity cards, below), and nowhere else, so with
-`sa_pop_mb` off every other MusicBrainz page gets no stylesheet, no listener
-and no database from it. The specs pin that: `"on a MusicBrainz page, every
+page with `sa_pop_mb` or `sa_pop_ext` on (the entity cards and the external
+links, below; on a touch-primary device their `_on_touch` twins instead), and
+nowhere else, so with those off every other MusicBrainz page gets no
+stylesheet, no listener and no database from it. **Since
+org/non-MB-sites.org (2026-10-08) both are ON by default on a desktop**, so
+the engine is installed on every MusicBrainz page with a pageType unless the
+user switches them off. On a phone or tablet the twins, off by default,
+decide (`_popSettingOn()`, below). The specs pin that: `"on a MusicBrainz page, every
 preview setting on changes nothing"` (every FOREIGN preview setting on, an
-`/iswc/` page) and popup-mb.spec.js's `"off by default"`.
+`/iswc/` page) and popup-mb.spec.js's `"off when switched off"`.
 
 ## The popup engine: sources (org/iframe.org, Phase 1)
 
@@ -81,7 +86,8 @@ tints and the "#" card"):
   a PLAIN hover, as it always did (org/iframe.org, answer 8). Off with
   `sa_release_rg_link`.
 - `_eventRgSource()`: the "#" cell of a live track (`_EVENT_RG_CELL_SEL`). Its
-  card waits for Ctrl unless `sa_event_rg_tooltip_without_ctrl` is on; ‹ › step
+  card waits for Ctrl unless `sa_event_rg_tooltip_without_ctrl` is on (default
+  on since org/non-MB-sites.org: a plain hover is enough); ‹ › step
   down the "#" cells of every visible row (`stepId` = `data-mb-row-idx`). Off
   with `sa_event_rg_tooltip`. Alt+click stays its own handler
   (`initEventRgTooltip()`).
@@ -123,10 +129,25 @@ page's two (the subheader link, the "#" cell) keep what they serve. It serves
 `table.tbl > tbody a[href]` on every MusicBrainz page the script runs on
 (`_initDetailPreview()` is reached only with a pageType: a page without one,
 such as a bare `/work/<mbid>`, gets nothing; `@include` is unchanged,
-org/iframe.org answer 6), behind ONE setting, `sa_pop_mb` (default off,
-answers 1 and 3). Its card waits for Ctrl through `_dpNeedsCtrl()`
-(`sa_dp_hover_without_ctrl`, relabelled "every preview", answer 2). A tap
-opens the window, as on the foreign hosts (kept, decided 2026-10-07).
+org/iframe.org answer 6), behind ONE setting, `sa_pop_mb` (default off by
+answers 1 and 3, default ON since org/non-MB-sites.org, 2026-10-08). Its card
+waits for Ctrl through `_dpNeedsCtrl()` (`sa_dp_hover_without_ctrl`,
+relabelled "every preview", answer 2) unless that is on — which it is by
+default since the same change. A tap opens the window, as on the foreign
+hosts (kept, decided 2026-10-07).
+
+- **Touch twins: `_popSettingOn(key)`.** Every read of `sa_pop_mb`,
+  `sa_pop_mb_page` and `sa_pop_ext` goes through it. On a touch-primary
+  device (`_isTouchPrimaryDevice()`) it reads `<key>_on_touch` INSTEAD of the
+  key, so the twin REPLACES the plain switch, it does not gate it (decided
+  2026-10-08). On a desktop it reads the plain key, and the twins do nothing.
+  The twins default to off: an enabled source turns a tap into "open the
+  window" (`_initDetailPreview()`'s click handler), which with the plain
+  switches on by default would take ordinary link navigation away from
+  every phone. A new MusicBrainz-side preview switch goes through the same
+  helper and gets its own `_on_touch` checkbox. Pinned by
+  `popup-mb.mobile.spec.js`, `popup-ext.mobile.spec.js` and
+  `scripts/mutations/popup-touch-twins.json`.
 
 - **What is previewed: `_mbPopTarget()`**, the one URL test. Same origin,
   and the BARE entity path only (`_MB_POP_PATH_RE`): `/cover-art` (the CAA/EAA
@@ -329,7 +350,9 @@ floating hover tooltip.
   the global filter itself, so that rule made Space never pin. That was the
   first version, found by the spec, and is pinned by a mutation.
 - **Ctrl gate** (`_dpNeedsCtrl()`, `sa_dp_hover_without_ctrl`, default
-  false, one setting for all four hosts). The `mouseover` always records the
+  false until org/non-MB-sites.org made it true on 2026-10-08, one setting for
+  all four hosts and the MusicBrainz previews). Specs run with it false: it is
+  in `FIXTURE_SETTINGS_OVERRIDE`. The `mouseover` always records the
   link in `_dpPeek.hover`, but schedules the card only with `e.ctrlKey`. A
   Ctrl `keydown` (not consumed, not on repeat) shows the card AT ONCE for
   `_dpCtrlTarget()`: the hovered link if it still matches `:hover`, else a
@@ -446,7 +469,8 @@ is not 0 and `Locator.tap()` lands on the unstyled header. Mutation list:
 The MusicBrainz entity cards (Phase 2): `tests/fixtures/popup-mb.spec.js` on
 the "Greetings From Asbury Park, N.J." release group page
 (`releasegroup-releases-multirow-catalog.html`, whose releases split into
-sub-tables by status) pins off by default, the Ctrl gate and its "every
+sub-tables by status) pins off when switched off, the schema defaults (on,
+plain hover, page-wide), the touch twin doing nothing on a desktop, the Ctrl gate and its "every
 preview" switch, what is previewed (`__saTest.popResolve()`), memory then
 IndexedDB then the TTL setting (by ageing the stored record), a failure not
 kept, a moved-on hover asking nothing (release and release group), the shared
@@ -521,7 +545,8 @@ location rows removed. Never commit another editor's profile.
   `k.path(id)` when it has one (a disc ID: `/cdtoc/<id>`), else
   `/<kind>/<id>`. The arrows treat a stamped cell like a link
   (`_mbPopSteps()` looks at `a[href], [data-mb-pop]`).
-- **Page-wide scope, `sa_pop_mb_page`** (default off): the selector is a
+- **Page-wide scope, `sa_pop_mb_page`** (default on since org/non-MB-sites.org;
+  on touch `sa_pop_mb_page_on_touch`, default off): the selector is a
   getter, `[data-mb-pop], #page a[href]` instead of
   `[data-mb-pop], table.tbl > tbody a[href]`, read at every event (no
   reload). Outside a table body `_MB_POP_PAGE_SKIP` leaves out the entity's
@@ -593,7 +618,9 @@ new tab. Rules:
 ## Links to other sites (org/iframe.org "* generalize to URLs", U1)
 
 `_extSource()` serves a link to ANOTHER site behind ONE setting, `sa_pop_ext`
-(default off, its own ⚙️ divider "🔎 EXTERNAL LINK PREVIEWS"), independent
+(default on since org/non-MB-sites.org, 2026-10-08, and on touch
+`sa_pop_ext_on_touch` instead, default off; its own ⚙️ divider "🔎 EXTERNAL
+LINK PREVIEWS"), independent
 of `sa_pop_mb`. It sits in `_popSources()` just before `_mbEntitySource()`;
 the two never claim the same link (one takes only another origin, the other
 only this one). U1 was MusicBrainz only; since U5 it serves the four
@@ -747,7 +774,8 @@ generalize to URLs".
 
 **Tests.** `tests/fixtures/popup-ext.spec.js` on `event-overview.html` (its
 "URLs" sub-table renders collapsed and the render collapses the annotation's
-h2: the spec opens both) pins off by default, what is previewed, first
+h2: the spec opens both) pins off when switched off, the schema default, the
+touch twin doing nothing on a desktop, what is previewed, first
 contact, the card and its context, memory → IndexedDB → TTL, the statuses,
 failures and a refused host, a moved-on hover and the per-host gate, and the
 window (Live page from the hover's fetch, no script, ⟳, ← →). Its mobile
@@ -1016,7 +1044,7 @@ has a pageType (`_initDetailPreview()` at the end of initialization).
   external-link records; the known hosts (`sa_pop_ext_hosts`) are a GM value,
   shared by every site the script runs on.
 
-**Tests.** `tests/fixtures/popup-ext-foreign.spec.js` (off by default; what
+**Tests.** `tests/fixtures/popup-ext-foreign.spec.js` (off when switched off; what
 is previewed — the text's link, not the share bar, footer, menus or login
 status, not the site's own link, not a link outside the content area; a
 link to Brucebase from springsteenlyrics.com with Brucebase's card and no

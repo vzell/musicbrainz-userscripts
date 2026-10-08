@@ -457,8 +457,9 @@ userscript reads that file.
 - **`secret: true` (`sa_pop_ext_discogs_token`) never leaves the profile**:
   not exported, never set or blanked by an import, masked in the dialog,
   never logged.
-- A fixture profile is not pristine (`FIXTURE_SETTINGS_OVERRIDE` forces four
-  settings off).
+- A fixture profile is not pristine (`FIXTURE_SETTINGS_OVERRIDE` forces nine
+  settings off; a spec that needs a schema default back seeds the key as
+  `undefined`).
 
 Full text: `docs/claude/settings-and-config.md`; design history:
 `org/config-handling.org`.
@@ -527,8 +528,11 @@ The harness lives under `tests/`; how to run each suite and what it costs:
   `tests/support/{customDialog,diskFixture,subtableTab,toolbarMenu,liveAssertions}.js`.
 - **`FIXTURE_SETTINGS_OVERRIDE`** (`tests/support/loadPage.js`) forces
   `sa_enable_caa_pics`, `sa_enable_relationships_column`,
-  `sa_enable_release_tracks_cover_art` and `sa_event_overview_event_art` OFF
-  — a "cannot reproduce" means nothing until they are back on.
+  `sa_enable_release_tracks_cover_art`, `sa_event_overview_event_art` and the
+  five link-preview keys (`sa_pop_mb`, `sa_pop_mb_page`, `sa_pop_ext`,
+  `sa_dp_hover_without_ctrl`, `sa_event_rg_tooltip_without_ctrl`) OFF
+  — a "cannot reproduce" means nothing until they are back on. Seeding a key
+  as `undefined` in `settingsOverride` un-seeds it (the schema default).
 
 **Threshold dialogs will stall a test.** Four blocking plain-DOM overlays (not
 native `confirm()`, so `page.on('dialog')` never fires):

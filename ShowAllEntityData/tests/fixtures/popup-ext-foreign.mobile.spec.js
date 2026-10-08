@@ -4,7 +4,8 @@
 // (chromium-mobile: Pixel 7, touch, no hover; org/iframe.org U5). A tap on a
 // link to another site in the site's text opens the window instead of
 // following the link, as on MusicBrainz (popup-ext.mobile.spec.js). Desktop:
-// popup-ext-foreign.spec.js.
+// popup-ext-foreign.spec.js. On touch the switch is `sa_pop_ext_on_touch`
+// (`_popSettingOn()`, org/non-MB-sites.org), which replaces `sa_pop_ext` there.
 
 const fs = require('fs');
 const path = require('path');
@@ -22,7 +23,7 @@ test('a tap on a link to Brucebase in springsteenlyrics.com\'s text opens Bruceb
             responseText: fs.readFileSync(path.join(__dirname, 'detail-bb-4th-of-july.html'), 'utf8'),
         },
     });
-    await loadSlListPage(page, { kind: 'bootlegs', settingsOverride: { sa_pop_ext: true, sa_rich_tooltip_delay_ms: 0 } });
+    await loadSlListPage(page, { kind: 'bootlegs', settingsOverride: { sa_pop_ext_on_touch: true, sa_rich_tooltip_delay_ms: 0 } });
     await page.evaluate((h) => {
         const a = document.createElement('a');
         a.setAttribute('href', h);

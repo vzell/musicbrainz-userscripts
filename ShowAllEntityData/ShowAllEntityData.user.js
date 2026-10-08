@@ -2669,8 +2669,8 @@
             label: 'Release group card on the "#" cell of each live track',
             type: 'checkbox',
             default: true,
-            description: 'Release tracklist: hovering a track\'s "#" cell with Ctrl held (or pressing Ctrl while ' +
-                         'the pointer is on it) shows the release group of the event the ' +
+            description: 'Release tracklist: hovering a track\'s "#" cell (with Ctrl held, or pressing Ctrl while ' +
+                         'the pointer is on it, when the setting below is off) shows the release group of the event the ' +
                          'track comes from. For the main event that is the release\'s own release group; for any ' +
                          'other event, a MusicBrainz Web Service search looks for a release group named like the ' +
                          'event (the Disambiguation without "live, " and without a trailing "; …"), once per event. ' +
@@ -2683,10 +2683,11 @@
         sa_event_rg_tooltip_without_ctrl: {
             label: 'Show the "#" release group card on a plain hover (without Ctrl)',
             type: 'checkbox',
-            default: false,
-            description: 'Off by default: the card above shows only while Ctrl is held, so moving the pointer ' +
-                         'down the "#" column neither pops up cards nor starts searches. When on, hovering the ' +
-                         'cell is enough, as before.'
+            default: true,
+            description: 'On by default: hovering the cell is enough, and a card that shows starts its search, ' +
+                         'which shares its one-a-second pace with the Relationships column. Off: the card above ' +
+                         'shows only while Ctrl is held, so moving the pointer down the "#" column neither pops ' +
+                         'up cards nor starts searches.'
         },
 
         sa_event_rg_search_phrase: {
@@ -4269,24 +4270,47 @@
         sa_pop_mb: {
             label: 'Preview linked entities on hover',
             type: 'checkbox',
-            default: false,
-            description: 'Off by default. Hold Ctrl over a link in a table (release group, release, recording, ' +
+            default: true,
+            description: 'On by default. Rest the pointer on a link in a table (release group, release, recording, ' +
                          'work, artist, label, event, place, …, and the "[info]" link beside a URL, which says which ' +
-                         'entities link that URL) for a card with what MusicBrainz knows about it; ' +
+                         'entities link that URL) — or hold Ctrl over it, with \'Show every preview on a plain ' +
+                         'hover\' off — for a card with what MusicBrainz knows about it; ' +
                          'Space pins it into a window with more, and with the entity\'s own page (Live page). ' +
                          '← → step down the same column. The data comes from the MusicBrainz Web Service, one ' +
-                         'request a second, shared with the Relationships column. On a touch screen, tapping such ' +
-                         'a link opens the window instead of the page (↗ in the window opens the page).'
+                         'request a second, shared with the Relationships column. On a phone or tablet this ' +
+                         'switch does nothing: \'Preview linked entities on touch devices\' below decides there.'
+        },
+
+        sa_pop_mb_on_touch: {
+            label: 'Preview linked entities on touch devices',
+            type: 'checkbox',
+            default: false,
+            description: 'Takes the place of \'Preview linked entities on hover\' on a touch-primary device (a ' +
+                         'phone or tablet: no hover, coarse pointer — Firefox Android with Tampermonkey, including ' +
+                         'its "Desktop site" mode). Off by default: tapping a link opens its page as usual. When ' +
+                         'on, tapping such a link opens the preview window instead of the page (↗ in the window ' +
+                         'opens the page). Has no effect on a desktop browser.'
         },
 
         sa_pop_mb_page: {
             label: 'Also preview links outside tables',
             type: 'checkbox',
+            default: true,
+            description: 'On by default: every entity link in the page\'s content has a card — the header, an ' +
+                         'annotation, the sidebar, a relationship list — except the tabs, the page navigation and ' +
+                         'the script\'s own toolbar. With external link previews on, the same goes for links to ' +
+                         'other sites. Off: only the links in a table have a card. On a phone or tablet ' +
+                         '\'Also preview links outside tables on touch devices\' below decides instead.'
+        },
+
+        sa_pop_mb_page_on_touch: {
+            label: 'Also preview links outside tables on touch devices',
+            type: 'checkbox',
             default: false,
-            description: 'Off by default: only the links in a table have a card. When on, every entity link in the ' +
-                         'page\'s content has one too — the header, an annotation, the sidebar, a relationship list ' +
-                         '— except the tabs, the page navigation and the script\'s own toolbar. With external link ' +
-                         'previews on, the same goes for links to other sites.'
+            description: 'Takes the place of \'Also preview links outside tables\' on a touch-primary device (a ' +
+                         'phone or tablet). Off by default: only a tap on a link in a table opens the preview ' +
+                         'window, every other link opens its page as usual. Has an effect only while the touch ' +
+                         'device previews are on at all, and none on a desktop browser.'
         },
 
         sa_pop_mb_ttl_hours: {
@@ -4320,8 +4344,9 @@
         sa_pop_ext: {
             label: 'Preview external links on hover',
             type: 'checkbox',
-            default: false,
-            description: 'Off by default. Hold Ctrl over a link to another site — in a table, a relationship, the ' +
+            default: true,
+            description: 'On by default. Rest the pointer on a link to another site (or hold Ctrl over it, with ' +
+                         '\'Show every preview on a plain hover\' off) — in a table, a relationship, the ' +
                          'annotation or the sidebar\'s external links, and on the Springsteen sites the script ' +
                          'supports in their lists and page text — for a card with the page\'s title, ' +
                          'description and status (a dead or moved link shows as such); Space pins it into a window ' +
@@ -4330,7 +4355,19 @@
                          'A preview sends a request to the linked site, without ' +
                          'your cookies, which tells that site the page was looked at. The first time a site is ' +
                          'contacted Tampermonkey asks whether the script may, so a site never contacted before is ' +
-                         'loaded only when you press Space, never by hovering.'
+                         'loaded only when you press Space, never by hovering. On a phone or tablet this switch ' +
+                         'does nothing: \'Preview external links on touch devices\' below decides there.'
+        },
+
+        sa_pop_ext_on_touch: {
+            label: 'Preview external links on touch devices',
+            type: 'checkbox',
+            default: false,
+            description: 'Takes the place of \'Preview external links on hover\' on a touch-primary device (a ' +
+                         'phone or tablet: no hover, coarse pointer — Firefox Android with Tampermonkey, including ' +
+                         'its "Desktop site" mode). Off by default: tapping a link to another site opens it as ' +
+                         'usual. When on, tapping it opens the preview window instead (↗ in the window opens the ' +
+                         'page). Has no effect on a desktop browser.'
         },
 
         sa_pop_ext_favicons: {
@@ -4382,12 +4419,14 @@
         sa_dp_hover_without_ctrl: {
             label: 'Show every preview on a plain hover (without Ctrl)',
             type: 'checkbox',
-            default: false,
-            description: 'Off by default: the link previews on MusicBrainz (entities and external links) and the ' +
-                         'preview cards of springsteenlyrics.com, jungleland.it, brucespringsteen.it and Brucebase show only ' +
-                         'while Ctrl is held — hover a link with Ctrl down, or rest the pointer on it and then ' +
-                         'press Ctrl — so moving the pointer across the table neither pops up cards nor fetches ' +
-                         'anything. When on, resting the pointer on a link is enough. The release page\'s ' +
+            default: true,
+            description: 'On by default: resting the pointer on a link is enough for the link previews on ' +
+                         'MusicBrainz (entities and external links) and the preview cards of springsteenlyrics.com, ' +
+                         'jungleland.it, brucespringsteen.it and Brucebase — and a card that shows asks for its ' +
+                         'data, so moving the pointer across a table starts Web Service requests, which share their ' +
+                         'one-a-second pace with the Relationships column. Off: the cards show only while Ctrl is ' +
+                         'held — hover a link with Ctrl down, or rest the pointer on it and then press Ctrl — so ' +
+                         'moving the pointer neither pops up cards nor fetches anything. The release page\'s ' +
                          '"versions available in" link and its "#" cells keep their own settings. Tapping a link ' +
                          'on a touch screen opens the window either way.'
         }
@@ -4542,10 +4581,15 @@
         { key: 'sa_auto_resize_columns_threshold', was: [2000] },
         { key: 'sa_count_stat_tooltip_bg',         was: ['#1e1e2e'] },
         { key: 'sa_count_stat_tooltip_color',      was: ['#cdd6f4'] },
+        { key: 'sa_dp_hover_without_ctrl',         was: [false] },
         { key: 'sa_enable_annotation_auto_expand', was: [false] },
         { key: 'sa_enable_ars_collapse',           was: [true] },
         { key: 'sa_enable_dropdown_flag_icons',    was: [false] },
         { key: 'sa_enable_show_single_table_btn',  was: [false] },
+        { key: 'sa_event_rg_tooltip_without_ctrl', was: [false] },
+        { key: 'sa_pop_ext',                       was: [false] },
+        { key: 'sa_pop_mb',                        was: [false] },
+        { key: 'sa_pop_mb_page',                   was: [false] },
         { key: 'sa_rel_tooltip_bg',                was: ['#ffffff'] },
         { key: 'sa_rel_tooltip_color',             was: ['#000000'] },
         { key: 'sa_sidebar_collapsed',             was: [false] },
@@ -13382,6 +13426,24 @@
     }
 
     /**
+     * Whether one of the MusicBrainz-side preview switches is on HERE:
+     * `sa_pop_mb`, `sa_pop_mb_page` or `sa_pop_ext` on a desktop, and on a
+     * touch-primary device (`_isTouchPrimaryDevice()`) that key's
+     * `_on_touch` twin INSTEAD — the twin replaces the plain switch, it does
+     * not gate it. The plain switches are on by default and the twins off,
+     * because on touch an enabled source turns a tap into "open the window"
+     * (`_initDetailPreview()`'s click handler), which would take ordinary
+     * link navigation away from a phone. Read at every event, so a change
+     * applies without a reload.
+     *
+     * @param {string} key The plain setting key, e.g. `'sa_pop_mb'`.
+     * @returns {boolean}
+     */
+    function _popSettingOn(key) {
+        return Lib.settings[_isTouchPrimaryDevice() ? `${key}_on_touch` : key] === true;
+    }
+
+    /**
      * Whether an element is a text field: where a Space or an arrow key is
      * the field's own.
      *
@@ -15354,7 +15416,8 @@
      * pinned dialog) when one of its sources is enabled here (`_popSources()`:
      * a foreign host whose preview setting is on, a MusicBrainz release page
      * with a release-group card on, or any MusicBrainz page with
-     * `sa_pop_mb` or `sa_pop_ext` on). Called once from the init block,
+     * `sa_pop_mb` or `sa_pop_ext` on, or on touch their `_on_touch` twins:
+     * `_popSettingOn()`). Called once from the init block,
      * after a foreign host's live page is prepared. Where no source is
      * enabled it does nothing at all: no stylesheet, no listener.
      *
@@ -38798,7 +38861,8 @@
      * `sa_dp_hover_without_ctrl` is on (`_dpNeedsCtrl()`, "every preview",
      * org/iframe.org answer 2); Space pins it; ‹ › step down the same column
      * (`_mbPopSteps()`); the Live page is the entity's own page (`_MB_LIVE`).
-     * Off unless `sa_pop_mb` is on.
+     * Off unless `sa_pop_mb` is on — on a touch-primary device
+     * `sa_pop_mb_on_touch` instead (`_popSettingOn()`).
      *
      * @returns {object} The source.
      */
@@ -38808,12 +38872,12 @@
             kind: 'MusicBrainz',
             // Read at every event, so the setting needs no reload.
             get selector() {
-                return Lib.settings.sa_pop_mb_page === true
+                return _popSettingOn('sa_pop_mb_page')
                     ? '[data-mb-pop], table.tbl > tbody td.barcode-cell, table.tbl > tbody span.catalog-number, #page a[href]'
                     : '[data-mb-pop], table.tbl > tbody td.barcode-cell, table.tbl > tbody span.catalog-number, table.tbl > tbody a[href]';
             },
             live: _MB_LIVE,
-            enabled: () => !_foreignHost && Lib.settings.sa_pop_mb === true,
+            enabled: () => !_foreignHost && _popSettingOn('sa_pop_mb'),
             resolve: (a) => _mbPopTarget(a),
             needsCtrl: _dpNeedsCtrl,
             // A kind may say its page only once it knows it (a catalog
@@ -40768,7 +40832,8 @@
      * `#page`. The card waits for Ctrl unless `sa_dp_hover_without_ctrl` is
      * on; Space pins; ‹ › step through the same column or block; the Live
      * page is the site's page through `_EXT_LIVE`. Off unless `sa_pop_ext` is
-     * on. On the four Springsteen sites (U5; the script runs there only with
+     * on (on a touch-primary device `sa_pop_ext_on_touch` instead, as for
+     * `sa_pop_mb_page`: `_popSettingOn()`). On the four Springsteen sites (U5; the script runs there only with
      * that site's own `sa_enable_<site>` on) it serves every off-site link of
      * the table and of the site's content area (`_DP_SITES[…].extRoot`), never
      * its chrome; the MusicBrainz parts (the context line, "MusicBrainz knows
@@ -40786,14 +40851,15 @@
                     const root = _DP_SITES[_foreignHost].extRoot;
                     return `table.tbl > tbody a[href]${root ? `, ${root} a[href]` : ''}`;
                 }
-                return Lib.settings.sa_pop_mb_page === true ? `${_EXT_SCOPE_SEL}, #page a[href]` : _EXT_SCOPE_SEL;
+                return _popSettingOn('sa_pop_mb_page') ? `${_EXT_SCOPE_SEL}, #page a[href]` : _EXT_SCOPE_SEL;
             },
             wide: false,
             live: _EXT_LIVE,
             liveFailTitle: 'Could not load the page.',
             // On a Springsteen site the script runs only past that site's own
-            // `sa_enable_<site>` gate, so `sa_pop_ext` is the one switch.
-            enabled: () => Lib.settings.sa_pop_ext === true,
+            // `sa_enable_<site>` gate, so `sa_pop_ext` (on touch its twin) is
+            // the one switch.
+            enabled: () => _popSettingOn('sa_pop_ext'),
             resolve: (a) => _extTarget(a),
             needsCtrl: _dpNeedsCtrl,
             // A reader may show another address than the link (U4: a
