@@ -1,0 +1,24 @@
+* TODO add more features to the internal image viewer
+
+Currently our userscript uses an internal viewer for viewing CAA and EAA images, see
+
+#+begin_example
+@org/CAA-release-tracks-handling.org
+@org/iframe.org
+#+end_example
+
+1.)
+
+There seems to be a bug when the image viewer is in full screen mode and I try to move the image with the mouse, it's
+NOT possible to look at the very bottom of the image, see [Image #4]
+
+2.)
+
+a.)
+
+add some more features to the viewer
+
+b.)
+
+get ideas and maybe implementation hints from the third-party user script "Art Station" by majkinetor at
+https://github.com/majkinetor/musicbrainz-userscripts/blob/main/userscripts/art_station/README.md#full-screen-viewer
