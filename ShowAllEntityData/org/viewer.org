@@ -14,7 +14,8 @@ NOT possible to look at the very bottom of the image, see [Image #4]
 
 Status (2026-10-08): fixed on branch =fix/art-viewer-pan-edges=, checked live in the browser; awaiting the merge.
 Cause: a tall image's box grew past the stage and was cropped at the bottom, even unzoomed; see DEBUG-NOTES.md, 2026-10-08.
-Item 2 (features) is planned for a follow-up branch =feature/art-viewer-extras=, after this one merges.
+Item 2 (features): built on branch =feature/art-viewer-extras= (off the fix branch) — drag to pan, image facts, D download,
+R rotate, F fullscreen, zoom readout + 1 for actual pixels, touch pinch-zoom, B background; checked live in the browser; awaiting the merge.
 
 2.)
 

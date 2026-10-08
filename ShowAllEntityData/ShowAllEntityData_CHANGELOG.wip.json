@@ -1,5 +1,69 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-10-08",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Artwork viewer: the info panel says what is on screen — \"Shown: 1200 px rendition · 1200 × 1500 px\", plus the file size and type (\"412 KB JPEG\") when they are known without asking the archive: from the image cache, or once the original has been downloaded. An \"Original\" line gives the original's pixel size and file size after a download. Setting: Viewer: show the image's pixel size and file size (on by default). Never makes a request.",
+          "Artwork viewer: D (or the Download button) saves the image's original file, named like Art Station does — \"04 Other opened gatefold cover, inside left.jpg\": its position, its types (\"none\" when untyped) and its comment. One request per press; the result shows at the bottom left of the image."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "_artViewerLoadFirst() resolves {src, url} so the panel can name the rendition (img.dataset.artvUrl); _artViewerShowFacts(), _artViewerFileInfo (session map of file sizes, by protocol-less URL), _artViewerDownload() and _artViewerDownloadName(); _artGmFetchBlob() takes an optional timeout (the download allows 5 minutes)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.4",
+    "date": "2026-10-08",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Artwork viewer: F (or the Fullscreen button) puts the viewer into the browser's real fullscreen, without tabs or address bar, and back. Esc leaves fullscreen first and closes the viewer on the next press; closing the viewer always leaves fullscreen.",
+          "Artwork viewer: B cycles the background behind the image — dark, light (for dark scans) and a checkerboard (to see where a PNG is transparent). The pick is remembered until the new setting \"Viewer: image background\" is changed."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.3",
+    "date": "2026-10-08",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Artwork viewer: R (or the Rotate button) turns the image a quarter turn clockwise, Shift+R anticlockwise — for sideways scans such as spines, OBI strips and booklets. The turned image is fitted to the area and pans to every edge like any other. View only: nothing is changed in the archive, and the next image starts upright."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.2",
+    "date": "2026-10-08",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Artwork viewer: drag to pan. The new setting \"Viewer: move a zoomed image by\" chooses \"follow\" (the image follows the mouse, as before) or \"drag\" (it stays put until dragged with the mouse button held; the wheel then zooms keeping the spot under the pointer in place). A click without moving toggles 2× in both.",
+          "Artwork viewer: the bar shows the zoom as screen pixels per image pixel (\"48 %\" when a 1200 px image is fitted, \"100 %\" at actual size), and 1 shows the image at its actual pixels — also the large image once it replaces the thumbnail.",
+          "Artwork viewer on a touch screen: two fingers pinch to zoom, about the spot between them; one finger drags a zoomed image. Unzoomed, a one-finger swipe still steps to the next image."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Viewer zoom core: _artViewerGeom() knows the rotation and the fit factor k; _artViewerSetLevel(), _artViewerOverhang(), _artViewerTranslate() and one anchor rule, _artViewerPanAnchor(), for a drag, a pinch and a zoom held at the pointer; the click a drag or pinch ends with is swallowed by a one-shot flag (st.swallowClick), not a time window. The stage is touch-action: none. Shared test set-up tests/support/artViewerFixture.js; new specs art-viewer-extras.spec.js and art-viewer-extras.mobile.spec.js; mutation list scripts/mutations/art-viewer-extras.json (20 entries)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-10-08",
     "sections": [

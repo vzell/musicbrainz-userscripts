@@ -20442,3 +20442,47 @@ call is invisible (the load event re-fits every image) and is recorded as
 as declared; the six desktop and four mobile artwork-viewer specs 58 + 7
 passed; lint within the baseline; `npm run test:full` 1357 passed, 0 failed
 (6.9 min, finished 2026-10-08T01:27Z, host petri, WSL2).
+
+## 2026-10-08 — Artwork viewer extras: drag, 1:1, rotate, fullscreen, background, facts, download, pinch (branch feature/art-viewer-extras, WIP.2–WIP.5)
+
+org/viewer.org item 2, ideas from Art Station's full-screen viewer; all eight
+the user picked, view only. Branched off `fix/art-viewer-pan-edges` (not yet
+merged): every feature builds on its `st.pan` / `_artViewerApplyTransform()`.
+Rules in docs/claude/artwork-caa-eaa.md ("The viewer's extras…").
+
+**One anchor rule.** A drag, a pinch and drag mode's wheel are the same
+equation: the image spot under `from` (at zoom s0, translate t0) ends up
+under `to` — `t1 = to − c − (s1/s0)(from − c − t0)`, rotation-independent
+because it is about the same centre — then clamped like every pan
+(`_artViewerPanAnchor()`). The fit factor `k` in `st.geom` gives the readout
+(screen px per image px) and 1:1 (level `1/k`, unrounded, below 1 for a small
+image) for free.
+
+**Found by the first run of the new spec: a gesture's click must be swallowed
+by a flag, not a window.** The drag first reused the swipe's
+`swipeAt` + 500 ms; the test's plain click right after two drags was then
+eaten, so the zoom stayed. Now `st.swallowClick` takes exactly the click the
+gesture ends with, and the next pointerdown clears it if none came. The
+swipe keeps its window (unchanged behaviour, its own spec).
+
+**Fullscreen in headless Chromium works, and delivers Esc to the page**:
+the mutation that removes Esc's leave-fullscreen branch closes the viewer
+there, and fails the spec. A real browser usually takes the first Esc itself;
+the branch covers the browsers that pass it on, and the viewer stays open
+either way.
+
+**A mutation-list entry of the fix branch had to move.** `_artViewerFit()`
+now lifts the CSS `max-width/height` (a quarter-turned box can be wider than
+the frame), so "the top/bottom gutter is not read" is no longer hidden from
+the FIT by the clamp. The geometry stays self-consistent instead, so the
+per-edge test passed it, and the entry now points at the fit test. Two finds
+followed renamed code (`st.geom.bw`, the mousemove guard's mode check).
+
+**Tests:** `tests/support/artViewerFixture.js` (shared with
+`art-viewer-pan.spec.js`; its `measure()` now maps all four corners, for the
+rotation); `art-viewer-extras.spec.js` 13, `art-viewer-extras.mobile.spec.js` 1
+(synthetic touch PointerEvents, one id per finger, as the existing swipe
+test does); `art-viewer-extras.json` 20 of 20 as declared,
+`art-viewer-pan.json` 9 of 9 again; lint within the baseline;
+`audit-config-defaults.py` clean; `npm run test:full` 1371 passed, 0 failed
+(7.0 min, finished 2026-10-08T06:57Z, host petri, WSL2).

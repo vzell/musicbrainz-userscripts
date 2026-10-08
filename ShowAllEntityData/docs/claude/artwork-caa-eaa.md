@@ -349,6 +349,30 @@ never from a hard-coded `CAA_CTX`. Rules that come with that:
   other viewer specs' 1×1 PNG can never show a fit or pan defect. Specs
   reading the zoom take the `scale(…)` part of the transform
   (`tests/support/caaColumnFixture.js`).
+- **The viewer's extras (org/viewer.org item 2) share that core.** The
+  transform is `translate() rotate() scale()`, still from the one writer,
+  which also writes the zoom readout (screen px per IMAGE px:
+  level × `st.geom.k`). `_artViewerGeom()` swaps width and height at a
+  quarter turn, and `_artViewerFit()` sets `max-width/height: none`, because a
+  turned box can be wider than the frame. `_artViewerPanAnchor()` is the ONE
+  rule for a drag, a pinch and drag mode's wheel ("the image spot under
+  `from` ends up under `to`"), clamped like every pan. **The click a drag or
+  pinch ends with is swallowed by a one-shot flag, `st.swallowClick`**
+  (cleared by the next pointerdown), never by a time window: a 500 ms window,
+  which the older swipe still uses, swallowed a real click right after a drag.
+  The stage is `touch-action: none` (the pinch); `st.panMode` is read once at
+  open. 1:1 (`st.oneToOne`) is re-applied by every fit, so it follows the large
+  image that replaces the thumbnail. The facts NEVER request: size and type come
+  from the cache's `blob:` URL, from Resource Timing (which has no sizes for the
+  archive, lacking Timing-Allow-Origin) or from a D download, keyed by
+  protocol-less URL in `_artViewerFileInfo`. `img.dataset.artvUrl` is the
+  archive URL behind a `blob:` src. D is one `_artGmFetchBlob()` per press
+  (`st.dl` guards it), saved through an `<a download>` on a blob URL. F makes
+  the overlay itself the fullscreen element: Esc's first branch leaves
+  fullscreen, `_artViewerClose()` always does, and the `fullscreenchange`
+  listener comes and goes with the key listener. B's pick is
+  `MB_ART_VIEWER_BG_KEY` `{v, from}` (the `_artCellLayout()` rule), in the
+  `artviewer` workspace group.
 - **The tab click is intercepted on `window` capture too.** After a render,
   `initNavigationGuard()`'s anchor guard (document capture) asks "leave this
   page?" for any link to another path — before any handler further down could
@@ -398,7 +422,10 @@ and `release-tracks-cover-art.mobile.spec.js`; mutation lists
 `release-tracks-cover-art.json`, `-p2.json`, `-p3.json` and `-p4.json`. The
 event page: `event-overview-art.spec.js`, `event-overview-art.mobile.spec.js`,
 mutation list `event-overview.json`. The viewer's fit and pan:
-`art-viewer-pan.spec.js`, mutation list `art-viewer-pan.json`.
+`art-viewer-pan.spec.js`, mutation list `art-viewer-pan.json`; its extras:
+`art-viewer-extras.spec.js`, `art-viewer-extras.mobile.spec.js` (the pinch),
+mutation list `art-viewer-extras.json`; shared set-up
+`tests/support/artViewerFixture.js`.
 
 ## The CAA/EAA column redesign: tiles, chips, cards, the column viewer
 

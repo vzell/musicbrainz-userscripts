@@ -3287,6 +3287,36 @@
                          'many seconds. Any key or click stops it.'
         },
 
+        sa_art_viewer_pan: {
+            label: 'Viewer: move a zoomed image by (follow / drag)',
+            type: 'text',
+            default: 'follow',
+            description: '"follow": the zoomed image follows the mouse — move toward a side to bring that edge ' +
+                         'into view. "drag": the image stays put until you drag it with the mouse button held; ' +
+                         'the wheel then zooms toward the pointer, keeping the spot under it in place. A click ' +
+                         'without moving toggles 2× in both. On a touch screen one finger drags a zoomed image ' +
+                         'and two fingers pinch to zoom, whatever this says.'
+        },
+
+        sa_art_viewer_facts: {
+            label: 'Viewer: show the image\'s pixel size and file size',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds a "Shown" line to the viewer\'s info panel: which rendition is on screen (250 / ' +
+                         '500 / 1200 px or the original) and its size in pixels, and its file size and type when ' +
+                         'they are known without asking the archive — from the image cache ("Enable IndexedDB ' +
+                         'art image/metadata cache"), or once D has downloaded the original. Never makes a request.'
+        },
+
+        sa_art_viewer_background: {
+            label: 'Viewer: image background (dark / light / checker)',
+            type: 'text',
+            default: 'dark',
+            description: 'The colour behind the image in the artwork viewer. "light" suits dark scans, ' +
+                         '"checker" shows where a PNG is transparent. B in the viewer cycles through the three ' +
+                         'and remembers the choice until this setting is changed.'
+        },
+
         sa_caa_type_chips: {
             label: 'Show artwork type chips in CAA/EAA cells',
             type: 'checkbox',
@@ -62660,6 +62690,14 @@ a { color: #1565c0; }`;
     const MB_ART_VIEWER_ZOOM_KEY = 'mb_sa_art_viewer_zoom';
 
     /**
+     * GM storage key for the artwork viewer's background as last picked with
+     * B: `{v, from}`, the background and the `sa_art_viewer_background` value
+     * it overrode — honoured only while the setting still has that value, as
+     * `MB_ART_CELL_LAYOUT_KEY` is. Same TDZ placement, same workspace group.
+     */
+    const MB_ART_VIEWER_BG_KEY = 'mb_sa_art_viewer_bg';
+
+    /**
      * GM storage key for the CAA/EAA column's expanded-cell layout as last
      * picked with the column-header ▦ button: `{v, from}`, the layout and the
      * `sa_caa_cell_layout` value it overrode. Honoured only while that
@@ -89601,8 +89639,8 @@ a { color: #1565c0; }`;
         },
         {
             group: 'artviewer',
-            label: 'Artwork viewer zoom level, CAA/EAA cell layout and gallery window',
-            keys: [MB_ART_VIEWER_ZOOM_KEY, MB_ART_CELL_LAYOUT_KEY, MB_ART_GALLERY_GEO_KEY],
+            label: 'Artwork viewer zoom level and background, CAA/EAA cell layout and gallery window',
+            keys: [MB_ART_VIEWER_ZOOM_KEY, MB_ART_VIEWER_BG_KEY, MB_ART_CELL_LAYOUT_KEY, MB_ART_GALLERY_GEO_KEY],
         },
         {
             group: 'dialog',
@@ -99037,15 +99075,17 @@ a { color: #1565c0; }`;
      * session Map before resolving to the caller.
      *
      * @param   {string} url  Absolute https:// URL.
+     * @param   {number} [timeoutMs=30000] The artwork viewer's download of an
+     *                   original, which can be many MB, allows longer.
      * @returns {Promise<Blob>}
      */
-    function _artGmFetchBlob(url) {
+    function _artGmFetchBlob(url, timeoutMs = 30000) {
         return new Promise((resolve, reject) => {
             GM_xmlhttpRequest({
                 method:       'GET',
                 url:          url,
                 responseType: 'blob',
-                timeout:      30000,
+                timeout:      timeoutMs,
                 onload:       (resp) => {
                     if (resp.status >= 200 && resp.status < 300) {
                         resolve(resp.response);
@@ -103714,7 +103754,8 @@ a { color: #1565c0; }`;
     // archive record from `ctx.imagesCache` and makes no JSON request. While it
     // is open:
     //   • one window CAPTURE keydown listener takes every key first — the
-    //     viewer's own (← → Home End Z G I O Esc, unmodified) and Tab (kept
+    //     viewer's own (← → Home End ↑ ↓ 0 1 Z R B F D P G I O Esc,
+    //     unmodified but for Shift+← → and Shift+R) and Tab (kept
     //     inside the overlay) — and stops every key from reaching the page, so
     //     Ctrl+M mode, the Ctrl shortcuts, ?, / and Shift+Esc cannot act on the
     //     page behind it, and initNavigationGuard()'s Tab trap cannot move focus
@@ -103776,13 +103817,16 @@ a { color: #1565c0; }`;
 
     /**
      * `_artViewerLoad()` over a list of URLs: resolves with the first that
-     * loads, rejects when none does.
+     * loads — the URL to show (`src`, a `blob:` URL from the image cache or
+     * the URL itself) and the archive URL it came from (`url`, which names
+     * the rendition) — and rejects when none does.
      *
      * @param   {string[]} urls
-     * @returns {Promise<string>}
+     * @returns {Promise<{src: string, url: string}>}
      */
     function _artViewerLoadFirst(urls) {
-        return urls.reduce((p, u) => p.catch(() => _artViewerLoad(u)), Promise.reject(new Error('no url')));
+        return urls.reduce((p, u) => p.catch(() => _artViewerLoad(u).then(src => ({ src, url: u }))),
+            Promise.reject(new Error('no url')));
     }
 
     /**
@@ -103844,7 +103888,9 @@ a { color: #1565c0; }`;
                 font-size: 15px;
             }
             #mb-art-viewer .mb-artv-pos,
-            #mb-art-viewer .mb-artv-rowpos { color: #9c978c; font-variant-numeric: tabular-nums; }
+            #mb-art-viewer .mb-artv-rowpos,
+            #mb-art-viewer .mb-artv-zoom { color: #9c978c; font-variant-numeric: tabular-nums; }
+            #mb-art-viewer .mb-artv-zoom { min-width: 4.5em; text-align: right; }
             #mb-art-viewer .mb-artv-btn {
                 background: #17191e;
                 border: 1px solid #2b2e35;
@@ -103869,9 +103915,16 @@ a { color: #1565c0; }`;
                 overflow: hidden;
                 min-height: 0;
                 cursor: zoom-in;
-                touch-action: pan-y;
+                touch-action: none;
             }
             #mb-art-viewer .mb-artv-stage.mb-artv-zoomed { cursor: zoom-out; }
+            #mb-art-viewer[data-mb-artv-pan="drag"] .mb-artv-stage.mb-artv-zoomed { cursor: grab; }
+            #mb-art-viewer .mb-artv-stage.mb-artv-dragging { cursor: grabbing; }
+            #mb-art-viewer .mb-artv-stage.mb-artv-dragging .mb-artv-img { transition: none; }
+            #mb-art-viewer[data-mb-artv-bg="light"] .mb-artv-stage { background: #e8e5de; }
+            #mb-art-viewer[data-mb-artv-bg="checker"] .mb-artv-stage {
+                background: repeating-conic-gradient(#3b3e45 0% 25%, #24262b 0% 50%) 50% / 24px 24px;
+            }
             /* Out of flow, so it can never size the stage (in flow, its
                natural height stretched the stage's grid row past the stage,
                and overflow: hidden cut the bottom off). Fitted into the frame
@@ -104026,7 +104079,9 @@ a { color: #1565c0; }`;
             root.addEventListener('click', _artViewerOnClick);
             root.addEventListener('mousemove', _artViewerOnMouseMove);
             root.addEventListener('pointerdown', _artViewerOnPointerDown);
+            root.addEventListener('pointermove', _artViewerOnPointerMove);
             root.addEventListener('pointerup', _artViewerOnPointerUp);
+            root.addEventListener('pointercancel', _artViewerOnPointerUp);
             root.addEventListener('wheel', _artViewerOnWheel, { passive: false });
             document.body.appendChild(root);
         }
@@ -104038,23 +104093,29 @@ a { color: #1565c0; }`;
             ctx, entityPath, images, list,
             i: list.includes(start) ? start : list[0],
             grid, gridStart: grid, info: true,
-            zoom: zoomLevel > 1, zoomLevel, pan: { x: 0, y: 0 }, ptr: null, geom: null,
+            zoom: zoomLevel !== 1, zoomLevel, pan: { x: 0, y: 0 }, ptr: null, geom: null,
+            rot: 0, oneToOne: false, panMode: _artViewerPanMode(),
+            drag: null, touches: new Map(), pinch: null, swallowClick: false, dl: null,
             opener, title, prevOverflow,
             onGroupStep, rowPos, liFor, slideshow: 0,
             swipeX: null, swipeAt: 0, gen: 0,
         };
+        root.dataset.mbArtvPan = _artViewerState.panMode;
+        root.dataset.mbArtvBg = _artViewerBg();
         document.documentElement.style.overflow = 'hidden';
         window.removeEventListener('keydown', _artViewerOnKey, true);
         window.addEventListener('keydown', _artViewerOnKey, true);
         window.removeEventListener('resize', _artViewerOnResize);
         window.addEventListener('resize', _artViewerOnResize);
+        document.removeEventListener('fullscreenchange', _artViewerOnFullscreenChange);
+        document.addEventListener('fullscreenchange', _artViewerOnFullscreenChange);
         root.hidden = false;
         _artViewerRender();
     }
 
     /**
-     * Closes the viewer: removes its key and resize listeners, unlocks
-     * scrolling and returns focus to the opener.
+     * Closes the viewer: leaves fullscreen, removes its key, resize and
+     * fullscreen listeners, unlocks scrolling and returns focus to the opener.
      *
      * @returns {void}
      */
@@ -104065,6 +104126,8 @@ a { color: #1565c0; }`;
         _artViewerState = null;
         window.removeEventListener('keydown', _artViewerOnKey, true);
         window.removeEventListener('resize', _artViewerOnResize);
+        document.removeEventListener('fullscreenchange', _artViewerOnFullscreenChange);
+        if (_artViewerIsFullscreen() && document.exitFullscreen) document.exitFullscreen().catch(() => {});
         const root = document.getElementById('mb-art-viewer');
         if (root) {
             root.hidden = true;
@@ -104125,18 +104188,19 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * After a step: keep the zoom when `sa_art_viewer_remember_zoom` is on
-     * (Art Station's behaviour), fit the image otherwise (the viewer's
-     * original behaviour).
+     * After a step: the rotation always starts over (R turns one sideways
+     * scan, not the next image); the zoom stays when
+     * `sa_art_viewer_remember_zoom` is on (Art Station's behaviour), and the
+     * image is fitted otherwise (the viewer's original behaviour).
      *
      * @param   {Object} st The viewer state.
      * @returns {void}
      */
     function _artViewerResetZoomOnStep(st) {
+        st.rot = 0;
         if (Lib.settings.sa_art_viewer_remember_zoom !== false) return;
-        st.zoomLevel = 1;
-        st.zoom = false;
-        st.pan = { x: 0, y: 0 };
+        _artViewerSetLevel(st, 1);
+        st.oneToOne = false;
     }
 
     /** Most the viewer zooms in (↑, the wheel). */
@@ -104165,14 +104229,18 @@ a { color: #1565c0; }`;
     /**
      * The stage's geometry for the image it shows: the stage rect, the frame
      * the image is fitted into (the stage minus the gutters,
-     * `--mb-artv-gx`/`--mb-artv-gy`, which keep it clear of the ‹ › buttons)
-     * and the fitted size. Null until the image's natural size is known.
+     * `--mb-artv-gx`/`--mb-artv-gy`, which keep it clear of the ‹ › buttons),
+     * the fit factor `k` (screen px per image px at zoom 1), the fitted size
+     * as SEEN (`w`/`h`: width and height swap at a quarter turn) and the
+     * box's own size (`bw`/`bh`, before the rotation). Null until the
+     * image's natural size is known.
      *
      * @param   {HTMLElement}      stage
      * @param   {HTMLImageElement} img
-     * @returns {?{left: number, top: number, sw: number, sh: number, fw: number, fh: number, w: number, h: number}}
+     * @param   {number}           [rot=0] Degrees, a multiple of 90.
+     * @returns {?{left: number, top: number, sw: number, sh: number, fw: number, fh: number, k: number, w: number, h: number, bw: number, bh: number}}
      */
-    function _artViewerGeom(stage, img) {
+    function _artViewerGeom(stage, img, rot = 0) {
         const nw = img.naturalWidth, nh = img.naturalHeight;
         if (!nw || !nh) return null;
         const r = stage.getBoundingClientRect();
@@ -104181,8 +104249,10 @@ a { color: #1565c0; }`;
         const gy = parseFloat(cs.getPropertyValue('--mb-artv-gy')) || 0;
         const fw = Math.max(1, r.width - 2 * gx);
         const fh = Math.max(1, r.height - 2 * gy);
-        const k = Math.min(fw / nw, fh / nh);
-        return { left: r.left, top: r.top, sw: r.width, sh: r.height, fw, fh, w: nw * k, h: nh * k };
+        const side = rot % 180 !== 0;
+        const vw = side ? nh : nw, vh = side ? nw : nh;
+        const k = Math.min(fw / vw, fh / vh);
+        return { left: r.left, top: r.top, sw: r.width, sh: r.height, fw, fh, k, w: vw * k, h: vh * k, bw: nw * k, bh: nh * k };
     }
 
     /**
@@ -104190,7 +104260,8 @@ a { color: #1565c0; }`;
      * (`st.geom`, so no mousemove reads layout), sizes the image box in px
      * to exactly the visible image (the thumbnail is scaled up to the same
      * size, so the large image replaces it without a jump) and re-applies
-     * the zoom and pan. Called on render, on each image load and on resize.
+     * the zoom and pan. Called on render, on each image load, on resize and
+     * on a rotation. A 1:1 zoom is worked out again for the image now shown.
      *
      * @param   {Object}           st  The viewer state.
      * @param   {HTMLImageElement} img
@@ -104198,13 +104269,106 @@ a { color: #1565c0; }`;
      */
     function _artViewerFit(st, img) {
         const stage = img.closest('.mb-artv-stage');
-        st.geom = stage ? _artViewerGeom(stage, img) : null;
+        st.geom = stage ? _artViewerGeom(stage, img, st.rot) : null;
         if (st.geom) {
-            img.style.width = `${st.geom.w}px`;
-            img.style.height = `${st.geom.h}px`;
-            if (st.ptr) _artViewerPanFromPointer(st, st.ptr.x, st.ptr.y);
+            img.style.width = `${st.geom.bw}px`;
+            img.style.height = `${st.geom.bh}px`;
+            // The px size is the fit: the CSS max-* fallback would squeeze a
+            // quarter-turned box, which can be wider than the frame.
+            img.style.maxWidth = 'none';
+            img.style.maxHeight = 'none';
+            if (st.oneToOne) _artViewerSetLevel(st, 1 / st.geom.k);
+            if (st.ptr && st.panMode === 'follow') _artViewerPanFromPointer(st, st.ptr.x, st.ptr.y);
+            if (stage) stage.classList.toggle('mb-artv-zoomed', st.zoom);
         }
         _artViewerApplyTransform(st, img);
+    }
+
+    /**
+     * `sa_art_viewer_pan`, validated.
+     *
+     * @returns {('follow'|'drag')}
+     */
+    function _artViewerPanMode() {
+        return String(Lib.settings.sa_art_viewer_pan ?? 'follow').trim().toLowerCase() === 'drag' ? 'drag' : 'follow';
+    }
+
+    /**
+     * Sets the zoom level as given — no rounding, no remembering; the callers
+     * do that. A level of (about) 1 is the fit, and clears the pan.
+     *
+     * @param   {Object} st The viewer state.
+     * @param   {number} z  Fit-relative: 1 = fitted, 2 = twice that.
+     * @returns {void}
+     */
+    function _artViewerSetLevel(st, z) {
+        st.zoom = Math.abs(z - 1) > 0.001;
+        st.zoomLevel = st.zoom ? z : 1;
+        if (!st.zoom) st.pan = { x: 0, y: 0 };
+    }
+
+    /**
+     * How far the zoomed image overhangs the frame on each side, per axis,
+     * in screen px: the most a pan of ±1 moves it.
+     *
+     * @param   {Object} st The viewer state.
+     * @returns {{x: number, y: number}}
+     */
+    function _artViewerOverhang(st) {
+        const g = st.geom;
+        if (!g) return { x: 0, y: 0 };
+        return { x: Math.max(0, (st.zoomLevel * g.w - g.fw) / 2), y: Math.max(0, (st.zoomLevel * g.h - g.fh) / 2) };
+    }
+
+    /**
+     * The image's current translate in screen px, from the pan.
+     *
+     * @param   {Object} st The viewer state.
+     * @returns {{x: number, y: number}}
+     */
+    function _artViewerTranslate(st) {
+        const o = _artViewerOverhang(st);
+        return { x: -st.pan.x * o.x, y: -st.pan.y * o.y };
+    }
+
+    /**
+     * Sets `st.pan` so that the image point which was under `from` — at
+     * zoom `s0` and translate `t0` — is now under `to`, at the current zoom.
+     * One rule for a drag (same zoom), a pinch and a zoom anchored at the
+     * pointer (`from` = `to`); the rotation drops out, being about the same
+     * centre. Clamped like every pan, so an edge never leaves the frame.
+     *
+     * @param   {Object}                 st   The viewer state.
+     * @param   {number}                 s0
+     * @param   {{x: number, y: number}} t0
+     * @param   {{x: number, y: number}} from
+     * @param   {{x: number, y: number}} to
+     * @returns {void}
+     */
+    function _artViewerPanAnchor(st, s0, t0, from, to) {
+        const g = st.geom;
+        if (!g) return;
+        const cx = g.left + g.sw / 2, cy = g.top + g.sh / 2;
+        const r = st.zoomLevel / s0;
+        const o = _artViewerOverhang(st);
+        const tx = to.x - cx - r * (from.x - cx - t0.x);
+        const ty = to.y - cy - r * (from.y - cy - t0.y);
+        const clamp = v => Math.max(-1, Math.min(1, v));
+        st.pan = { x: o.x ? clamp(-tx / o.x) : 0, y: o.y ? clamp(-ty / o.y) : 0 };
+    }
+
+    /**
+     * Remembers the zoom level for the next opening, while
+     * `sa_art_viewer_remember_zoom` is on. A 1:1 zoom is not remembered: its
+     * level belongs to one image's pixel size.
+     *
+     * @param   {Object} st The viewer state.
+     * @returns {void}
+     */
+    function _artViewerRememberZoom(st) {
+        if (Lib.settings.sa_art_viewer_remember_zoom === false || st.oneToOne) return;
+        if (st.zoomLevel < 1 || st.zoomLevel > _ART_VIEWER_ZOOM_MAX) return;
+        try { GM_setValue(MB_ART_VIEWER_ZOOM_KEY, st.zoomLevel); } catch (_) { /* storage unavailable */ }
     }
 
     /**
@@ -104226,29 +104390,28 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Writes the image's transform: nothing when fitted; zoomed, a scale
-     * about its centre plus a translate of at most the overhang, so at a pan
-     * of ±1 the image's edge sits exactly on the frame's edge — fully in
-     * view, never past it (Art Station's clamped pan). The one writer of
-     * the transform.
+     * Writes the image's transform: nothing when fitted and upright; zoomed,
+     * a scale about its centre plus a translate of at most the overhang, so
+     * at a pan of ±1 the image's edge sits exactly on the frame's edge —
+     * fully in view, never past it (Art Station's clamped pan); a rotation
+     * between the two. The one writer of the transform, so it also updates
+     * the zoom readout.
      *
      * @param   {Object}           st  The viewer state.
      * @param   {HTMLImageElement} img
      * @returns {void}
      */
     function _artViewerApplyTransform(st, img) {
-        const g = st.geom;
-        if (!st.zoom) {
-            img.style.transform = '';
-            return;
+        const parts = [];
+        if (st.zoom && st.geom) {
+            const t = _artViewerTranslate(st);
+            parts.push(`translate(${t.x.toFixed(1)}px, ${t.y.toFixed(1)}px)`);
         }
-        if (!g) {
-            img.style.transform = `scale(${st.zoomLevel})`;
-            return;
-        }
-        const tx = -st.pan.x * Math.max(0, (st.zoomLevel * g.w - g.fw) / 2);
-        const ty = -st.pan.y * Math.max(0, (st.zoomLevel * g.h - g.fh) / 2);
-        img.style.transform = `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) scale(${st.zoomLevel})`;
+        if (st.rot) parts.push(`rotate(${st.rot}deg)`);
+        if (st.zoom) parts.push(`scale(${+st.zoomLevel.toFixed(4)})`);
+        img.style.transform = parts.join(' ');
+        const readout = document.querySelector('#mb-art-viewer .mb-artv-zoom');
+        if (readout) readout.textContent = st.geom ? `${Math.round(st.zoomLevel * st.geom.k * 100)} %` : '';
     }
 
     /**
@@ -104264,30 +104427,335 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Sets the zoom level without re-rendering (the loaded image stays),
-     * toward `clientX/clientY` when given (else toward the last pointer
-     * position), and remembers it.
+     * Sets the zoom level without re-rendering (the loaded image stays) and
+     * remembers it. With a pointer position (the wheel, a click) the zoom
+     * goes toward it: in "follow" mode the pan follows that position, in
+     * "drag" mode the spot under it stays put. Without one (the keys),
+     * "follow" goes toward the last pointer position and "drag" keeps the
+     * pan where it was.
      *
-     * @param   {number}  level
+     * @param   {number}  level   Rounded to a quarter step, 1 to `_ART_VIEWER_ZOOM_MAX`.
      * @param   {?number} [clientX]
      * @param   {?number} [clientY]
+     * @param   {boolean} [exact=false] The 1:1 key: as given, not rounded, and
+     *   below 1 too (a small image shown at its own size).
      * @returns {void}
      */
-    function _artViewerSetZoom(level, clientX = null, clientY = null) {
+    function _artViewerSetZoom(level, clientX = null, clientY = null, exact = false) {
         const st = _artViewerState;
         const stage = document.querySelector('#mb-art-viewer .mb-artv-stage');
         if (!st || !stage) return;
-        st.zoomLevel = Math.min(_ART_VIEWER_ZOOM_MAX, Math.max(1, Math.round(level * 4) / 4));
-        st.zoom = st.zoomLevel > 1;
-        if (clientX !== null && clientY !== null) st.ptr = { x: clientX, y: clientY };
-        if (!st.zoom) st.pan = { x: 0, y: 0 };
-        else if (st.ptr) _artViewerPanFromPointer(st, st.ptr.x, st.ptr.y);
+        const s0 = st.zoomLevel, t0 = _artViewerTranslate(st);
+        st.oneToOne = exact;
+        _artViewerSetLevel(st, exact ? level : Math.min(_ART_VIEWER_ZOOM_MAX, Math.max(1, Math.round(level * 4) / 4)));
+        const at = clientX !== null && clientY !== null ? { x: clientX, y: clientY } : null;
+        if (at) st.ptr = at;
+        if (st.zoom && st.panMode === 'drag') {
+            if (at) _artViewerPanAnchor(st, s0, t0, at, at);
+        } else if (st.zoom && st.ptr) {
+            _artViewerPanFromPointer(st, st.ptr.x, st.ptr.y);
+        }
         stage.classList.toggle('mb-artv-zoomed', st.zoom);
         const img = stage.querySelector('.mb-artv-img');
         if (img) _artViewerApplyTransform(st, img);
-        if (Lib.settings.sa_art_viewer_remember_zoom !== false) {
-            try { GM_setValue(MB_ART_VIEWER_ZOOM_KEY, st.zoomLevel); } catch (_) { /* storage unavailable */ }
+        _artViewerRememberZoom(st);
+    }
+
+    /**
+     * The 1 key: one image pixel per screen pixel, of the image now shown —
+     * worked out again when the large image replaces the thumbnail, on a
+     * resize and on a rotation (`st.oneToOne`), until another zoom.
+     *
+     * @returns {void}
+     */
+    function _artViewerOneToOne() {
+        const st = _artViewerState;
+        if (!st || !st.geom) return;
+        _artViewerSetZoom(1 / st.geom.k, null, null, true);
+    }
+
+    /**
+     * R / Shift+R and the Rotate button: a quarter turn clockwise (`d` > 0)
+     * or anticlockwise, re-fitted so the turned image fits the frame. View
+     * only; a step starts upright again.
+     *
+     * @param   {number} d +1 or -1.
+     * @returns {void}
+     */
+    function _artViewerRotate(d) {
+        const st = _artViewerState;
+        const img = document.querySelector('#mb-art-viewer .mb-artv-stage .mb-artv-img');
+        if (!st || !img) return;
+        st.rot = (st.rot + (d > 0 ? 90 : 270)) % 360;
+        _artViewerFit(st, img);
+    }
+
+    /** The viewer's backgrounds, in the order B cycles them. */
+    const _ART_VIEWER_BGS = ['dark', 'light', 'checker'];
+
+    /**
+     * `sa_art_viewer_background`, validated.
+     *
+     * @returns {('dark'|'light'|'checker')}
+     */
+    function _artViewerBgSetting() {
+        const v = String(Lib.settings.sa_art_viewer_background ?? 'dark').trim().toLowerCase();
+        return _ART_VIEWER_BGS.includes(v) ? v : 'dark';
+    }
+
+    /**
+     * The background in force: the one last picked with B
+     * (`MB_ART_VIEWER_BG_KEY`) while the setting still has the value it
+     * overrode, else the setting — the `_artCellLayout()` rule.
+     *
+     * @returns {('dark'|'light'|'checker')}
+     */
+    function _artViewerBg() {
+        const base = _artViewerBgSetting();
+        let picked;
+        try { picked = GM_getValue(MB_ART_VIEWER_BG_KEY, null); } catch (_) { picked = null; }
+        if (picked && picked.from === base && _ART_VIEWER_BGS.includes(picked.v)) return picked.v;
+        return base;
+    }
+
+    /**
+     * B: the next background, remembered. Pure CSS on the overlay
+     * (`data-mb-artv-bg`), so nothing is re-rendered.
+     *
+     * @returns {void}
+     */
+    function _artViewerCycleBg() {
+        const root = document.getElementById('mb-art-viewer');
+        if (!root) return;
+        const next = _ART_VIEWER_BGS[(_ART_VIEWER_BGS.indexOf(_artViewerBg()) + 1) % _ART_VIEWER_BGS.length];
+        try { GM_setValue(MB_ART_VIEWER_BG_KEY, { v: next, from: _artViewerBgSetting() }); } catch (_) { /* storage unavailable */ }
+        root.dataset.mbArtvBg = next;
+    }
+
+    /**
+     * Whether the viewer overlay is the browser's fullscreen element.
+     *
+     * @returns {boolean}
+     */
+    function _artViewerIsFullscreen() {
+        const root = document.getElementById('mb-art-viewer');
+        return !!root && document.fullscreenElement === root;
+    }
+
+    /**
+     * F and the Fullscreen button: puts the overlay into the browser's
+     * fullscreen (no tabs, no address bar), or takes it out.
+     *
+     * @returns {void}
+     */
+    function _artViewerToggleFullscreen() {
+        const root = document.getElementById('mb-art-viewer');
+        if (!root || !_artViewerState) return;
+        if (_artViewerIsFullscreen()) {
+            document.exitFullscreen().catch(() => {});
+        } else if (typeof root.requestFullscreen !== 'function') {
+            _artViewerNote('This browser offers no fullscreen here.');
+        } else {
+            root.requestFullscreen().catch(() => _artViewerNote('The browser refused fullscreen.'));
         }
+    }
+
+    /**
+     * Entering or leaving fullscreen (also by the browser's own Esc): the
+     * button's state, and a re-fit to the new size.
+     *
+     * @returns {void}
+     */
+    function _artViewerOnFullscreenChange() {
+        if (!_artViewerState) return;
+        const b = document.querySelector('#mb-art-viewer [data-artv="fullscreen"]');
+        if (b) b.setAttribute('aria-pressed', String(_artViewerIsFullscreen()));
+        _artViewerOnResize();
+    }
+
+    /**
+     * Writes a line into the stage's note (bottom left).
+     *
+     * @param   {string} text
+     * @returns {void}
+     */
+    function _artViewerNote(text) {
+        const note = document.querySelector('#mb-art-viewer .mb-artv-note');
+        if (note) note.textContent = text;
+    }
+
+    /**
+     * File size and type of archive files, by protocol-relative URL, as far
+     * as they are known without a request: read from a `blob:` URL of the
+     * image cache, from Resource Timing, or from a D download (which also
+     * decodes the pixel size). Session only.
+     *
+     * @type {Map<string, {bytes: number, type: string, w?: number, h?: number}>}
+     */
+    const _artViewerFileInfo = new Map();
+
+    /**
+     * A URL without its protocol, the form the viewer keys files by.
+     *
+     * @param   {string} u
+     * @returns {string}
+     */
+    function _artViewerBareUrl(u) {
+        return String(u || '').replace(/^https?:/, '');
+    }
+
+    /**
+     * A byte count for the info panel.
+     *
+     * @param   {number} b
+     * @returns {string}
+     */
+    function _artViewerFmtBytes(b) {
+        if (b < 1024) return `${b} B`;
+        if (b < 1048576) return `${Math.round(b / 1024)} KB`;
+        return `${(b / 1048576).toFixed(1)} MB`;
+    }
+
+    /**
+     * A file type's short name ("JPEG", "PNG", "PDF"…) from a MIME type, or
+     * else from a URL's extension.
+     *
+     * @param   {string} mime
+     * @param   {string} url
+     * @returns {string}
+     */
+    function _artViewerFileType(mime, url) {
+        const m = /^(?:image|application)\/(\w+)/.exec(mime || '');
+        const t = (m ? m[1] : ((/\.([a-z0-9]+)$/i.exec(_artViewerBareUrl(url)) || [])[1] || '')).toUpperCase();
+        return t === 'JPG' ? 'JPEG' : t;
+    }
+
+    /**
+     * Which rendition an archive URL is: "original", or "N px rendition"
+     * for the `-N.jpg` thumbnails.
+     *
+     * @param   {Object} im  The archive record of the image.
+     * @param   {string} url
+     * @returns {string}
+     */
+    function _artViewerRendition(im, url) {
+        const u = _artViewerBareUrl(url);
+        if (im.image && u === _artViewerBareUrl(im.image)) return 'original';
+        const m = /-(\d+)\.jpg$/.exec(u);
+        return m ? `${m[1]} px rendition` : 'image';
+    }
+
+    /**
+     * Fills the info panel's "Shown" and "Original" lines
+     * (`sa_art_viewer_facts`) for the image on the stage: the rendition and
+     * its pixel size, then its file size and type once known. A `blob:`
+     * image (the IndexedDB cache) is read locally to learn them; otherwise
+     * Resource Timing is asked, which knows them only for a same-origin or
+     * Timing-Allow-Origin response. Never a request to the archive.
+     *
+     * @param   {Object}           st  The viewer state.
+     * @param   {HTMLImageElement} img
+     * @returns {void}
+     */
+    function _artViewerShowFacts(st, img) {
+        const shown = document.querySelector('#mb-art-viewer .mb-artv-facts');
+        const orig = document.querySelector('#mb-art-viewer .mb-artv-facts-orig');
+        if (!shown || !img.naturalWidth) return;
+        const im = st.images[st.i];
+        const url = _artViewerBareUrl(img.dataset.artvUrl);
+        const known = _artViewerFileInfo.get(url);
+        shown.textContent = [_artViewerRendition(im, url), `${img.naturalWidth} × ${img.naturalHeight} px`]
+            .concat(known ? [`${_artViewerFmtBytes(known.bytes)} ${known.type}`] : []).join(' · ');
+        if (orig) {
+            const o = im.image ? _artViewerFileInfo.get(_artViewerBareUrl(im.image)) : null;
+            orig.textContent = _artViewerRendition(im, url) === 'original' ? 'the image shown'
+                : o ? [o.w ? `${o.w} × ${o.h} px` : '', `${_artViewerFmtBytes(o.bytes)} ${o.type}`].filter(Boolean).join(' · ')
+                    : 'not loaded · D downloads it';
+        }
+        if (known || !url) return;
+        const learn = (bytes, mime) => {
+            _artViewerFileInfo.set(url, { bytes, type: _artViewerFileType(mime, url) });
+            if (_artViewerState === st && shown.isConnected) _artViewerShowFacts(st, img);
+        };
+        if (img.src.startsWith('blob:')) {
+            fetch(img.src).then(r => r.blob()).then(b => { if (b.size) learn(b.size, b.type); }).catch(() => {});
+            return;
+        }
+        const entry = performance.getEntriesByName(new URL(img.src, location.href).href).pop();
+        if (entry && entry.encodedBodySize > 0) learn(entry.encodedBodySize, '');
+    }
+
+    /**
+     * The file name D saves an image as — Art Station's
+     * `<NN> <types> <comment>.<ext>`: the image's position in the archive
+     * (zero-padded to the count's width, at least two digits), its types
+     * ("none" when untyped) and its comment, without the characters a file
+     * system rejects.
+     *
+     * @param   {Object} im  The archive record of the image.
+     * @param   {number} i   Its index in the archive.
+     * @param   {number} n   The number of images.
+     * @param   {string} ext
+     * @returns {string}
+     */
+    function _artViewerDownloadName(im, i, n, ext) {
+        const clean = s => String(s || '').replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, ' ').trim();
+        const nn = String(i + 1).padStart(Math.max(2, String(n).length), '0');
+        const types = im.types && im.types.length ? im.types.join(',') : 'none';
+        return `${[nn, clean(types), clean(im.comment)].filter(Boolean).join(' ').slice(0, 150).trim()}.${ext}`;
+    }
+
+    /**
+     * D and the Download button: saves the current image's ORIGINAL file
+     * under `_artViewerDownloadName()`. One request per press (a second
+     * press while it runs does nothing); the result shows in the stage's
+     * note, and the file's size, type and pixel size go to the info panel.
+     *
+     * @returns {void}
+     */
+    function _artViewerDownload() {
+        const st = _artViewerState;
+        if (!st || st.grid) return;
+        const i = st.i, im = st.images[i];
+        const src = _artViewerBareUrl(im.image || _artViewerBigUrl(im));
+        const key = `${st.entityPath}#${i}`;
+        if (!src || st.dl === key) return;
+        st.dl = key;
+        const ext = ((/\.([a-z0-9]+)$/i.exec(src) || [])[1] || 'jpg').toLowerCase();
+        const name = _artViewerDownloadName(im, i, st.images.length, ext);
+        const here = () => _artViewerState === st && `${st.entityPath}#${st.i}` === key;
+        const say = (text) => { if (here()) _artViewerNote(text); };
+        const refresh = () => {
+            const img = document.querySelector('#mb-art-viewer .mb-artv-stage .mb-artv-img');
+            if (here() && img) _artViewerShowFacts(st, img);
+        };
+        say(`Downloading the original — ${name}…`);
+        _artGmFetchBlob(`https:${src}`, 300000).then((blob) => {
+            const a = document.createElement('a');
+            const href = URL.createObjectURL(blob);
+            a.href = href;
+            a.download = name;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(href), 10000);
+            const info = { bytes: blob.size, type: _artViewerFileType(blob.type, src) };
+            _artViewerFileInfo.set(src, info);
+            say(`Saved “${name}” (${_artViewerFmtBytes(blob.size)}).`);
+            refresh();
+            if (typeof createImageBitmap === 'function') {
+                createImageBitmap(blob).then((bm) => {
+                    info.w = bm.width;
+                    info.h = bm.height;
+                    bm.close();
+                    refresh();
+                }).catch(() => { /* not an image (a PDF) */ });
+            }
+        }).catch((err) => {
+            say(`Download failed (${err.status ? `HTTP ${err.status}` : 'network error or timeout'}).`);
+        }).finally(() => {
+            if (st.dl === key) st.dl = null;
+        });
     }
 
     /**
@@ -104413,6 +104881,11 @@ a { color: #1565c0; }`;
             row('Added in', a);
         }
         if (im.id) row('Archive id', String(im.id));
+        // Filled in by _artViewerShowFacts() once the image has loaded.
+        if (Lib.settings.sa_art_viewer_facts !== false) {
+            row('Shown', _artvEl('span', 'mb-artv-facts', '…'));
+            row('Original', _artvEl('span', 'mb-artv-facts-orig', '…'));
+        }
         panel.appendChild(dl);
         panel.appendChild(_artvEl('div', 'mb-tt-rule'));
         const sizes = _artvEl('div', 'mb-tt-body', 'Sizes: ');
@@ -104430,7 +104903,8 @@ a { color: #1565c0; }`;
         panel.appendChild(sizes);
         panel.appendChild(_artvEl('div', 'mb-tt-foot',
             '← → step' + (st.onGroupStep ? ' · Shift+← → row' : '') +
-            ' · ↑ ↓ wheel zoom · 0 fit · Z 2× · P slideshow · G grid · I info · O original · Esc close'));
+            ' · ↑ ↓ wheel zoom · 0 fit · 1 actual pixels · Z 2× · R rotate · B background · F fullscreen' +
+            ' · D download · P slideshow · G grid · I info · O original · Esc close'));
         return panel;
     }
 
@@ -104456,9 +104930,14 @@ a { color: #1565c0; }`;
         if (st.rowPos) bar.appendChild(_artvEl('span', 'mb-artv-rowpos', `row ${st.rowPos.k} of ${st.rowPos.n}`));
         bar.appendChild(_artvEl('span', 'mb-artv-pos',
             st.grid ? `${st.list.length} image${st.list.length === 1 ? '' : 's'}` : `${st.list.indexOf(st.i) + 1} / ${st.list.length}`));
+        // Written by _artViewerApplyTransform(): screen px per image px.
+        if (!st.grid) bar.appendChild(_artvEl('span', 'mb-artv-zoom', ''));
         bar.appendChild(_artvBtn('grid', 'Grid (G)', st.grid));
         if (!st.grid) bar.appendChild(_artvBtn('info', 'Info (I)', st.info));
         if (!st.grid) bar.appendChild(_artvBtn('slideshow', 'Slideshow (P)', !!st.slideshow));
+        if (!st.grid) bar.appendChild(_artvBtn('rotate', 'Rotate (R)'));
+        bar.appendChild(_artvBtn('fullscreen', 'Fullscreen (F)', _artViewerIsFullscreen()));
+        if (!st.grid) bar.appendChild(_artvBtn('download', 'Download (D)'));
         const orig = _artvEl('a', 'mb-artv-btn', 'Original (O)');
         orig.href = (im.image || _artViewerBigUrl(im)).replace(/^http:/, '');
         orig.target = '_blank';
@@ -104509,10 +104988,15 @@ a { color: #1565c0; }`;
         // Every load (the thumbnail, then the large image) re-fits: the
         // natural size is only known once one has loaded.
         img.addEventListener('load', () => {
-            if (_artViewerState === st && img.isConnected) _artViewerFit(st, img);
+            if (_artViewerState !== st || !img.isConnected) return;
+            _artViewerFit(st, img);
+            _artViewerShowFacts(st, img);
         });
         img.src = _artViewerThumbUrl(im);
         img.dataset.artvSize = 'thumb';
+        // The archive URL behind the src (which can be a blob: URL): it
+        // names the rendition for the facts.
+        img.dataset.artvUrl = _artViewerThumbUrl(im);
         stage.appendChild(img);
         const note = _artvEl('div', 'mb-artv-note', 'Showing the thumbnail; loading the large image…');
         stage.appendChild(note);
@@ -104546,11 +105030,13 @@ a { color: #1565c0; }`;
         // Every large candidate but the thumbnail already shown, best first:
         // a failed 1200 falls back to the 500 px `large`.
         const bigUrls = _artViewerBigUrls(im).filter(u => u !== img.getAttribute('src'));
-        _artViewerLoadFirst(bigUrls).then(src => {
+        _artViewerLoadFirst(bigUrls).then(({ src, url }) => {
             if (_artViewerState !== st || st.gen !== gen || !img.isConnected) return;
             img.src = src;
             img.dataset.artvSize = 'big';
-            note.textContent = '';
+            img.dataset.artvUrl = url;
+            // Only the loading line: a download's message stays.
+            if (note.textContent.startsWith('Showing the thumbnail')) note.textContent = '';
         }).catch(() => {
             if (_artViewerState !== st || st.gen !== gen || !note.isConnected) return;
             note.textContent = 'Showing the thumbnail; the large image could not be loaded.';
@@ -104568,14 +105054,17 @@ a { color: #1565c0; }`;
 
     /**
      * Toggles between fit and 2× zoom without re-rendering (the loaded image
-     * stays); from any other zoom level it fits.
+     * stays); from any other zoom level it fits. A click passes its
+     * position, so the zoom goes toward it.
      *
+     * @param   {?number} [clientX]
+     * @param   {?number} [clientY]
      * @returns {void}
      */
-    function _artViewerToggleZoom() {
+    function _artViewerToggleZoom(clientX = null, clientY = null) {
         const st = _artViewerState;
         if (!st) return;
-        _artViewerSetZoom(st.zoom ? 1 : 2);
+        _artViewerSetZoom(st.zoom ? 1 : 2, clientX, clientY);
     }
 
     /**
@@ -104626,12 +105115,19 @@ a { color: #1565c0; }`;
         }
         let handled = true;
         if (k === 'Escape') {
-            if (st.grid && !st.gridStart) {
+            // Fullscreen first (where the browser lets Esc through at all:
+            // most take it to leave fullscreen themselves), then the grid,
+            // then the viewer.
+            if (_artViewerIsFullscreen()) {
+                document.exitFullscreen().catch(() => {});
+            } else if (st.grid && !st.gridStart) {
                 st.grid = false;
                 _artViewerRender();
             } else {
                 _artViewerClose();
             }
+        } else if (k === 'f' || k === 'F') {
+            _artViewerToggleFullscreen();
         } else if (st.grid) {
             if (k === 'g' || k === 'G') {
                 st.grid = false;
@@ -104651,6 +105147,14 @@ a { color: #1565c0; }`;
             _artViewerSetZoom(st.zoomLevel + (k === 'ArrowUp' ? 0.5 : -0.5));
         } else if (k === '0') {
             _artViewerSetZoom(1);
+        } else if (k === '1') {
+            _artViewerOneToOne();
+        } else if (k === 'r' || k === 'R') {
+            _artViewerRotate(e.shiftKey ? -1 : 1);
+        } else if (k === 'b' || k === 'B') {
+            _artViewerCycleBg();
+        } else if (k === 'd' || k === 'D') {
+            _artViewerDownload();
         } else if (k === 'p' || k === 'P') {
             _artViewerToggleSlideshow();
         } else if (k === 'Home' || k === 'End') {
@@ -104676,9 +105180,10 @@ a { color: #1565c0; }`;
 
     /**
      * Clicks inside the viewer (delegated on the overlay): a filmstrip or grid
-     * image jumps to it; the buttons act; a click on the stage toggles zoom.
-     * The Original link and the info panel's links are real links and open
-     * normally. The click a swipe ends with is ignored.
+     * image jumps to it; the buttons act; a click on the stage toggles zoom
+     * toward the click. The Original link and the info panel's links are real
+     * links and open normally. The click a swipe, a drag or a pinch ends with
+     * is ignored.
      *
      * @param   {MouseEvent} e
      * @returns {void}
@@ -104686,7 +105191,10 @@ a { color: #1565c0; }`;
     function _artViewerOnClick(e) {
         const st = _artViewerState;
         if (!st) return;
-        if (performance.now() - st.swipeAt < 500) {
+        // A drag or a pinch: exactly the click it ends with (cleared by the
+        // next press if none comes). A swipe: any click within 500 ms.
+        if (st.swallowClick || performance.now() - st.swipeAt < 500) {
+            st.swallowClick = false;
             e.preventDefault();
             return;
         }
@@ -104712,7 +105220,10 @@ a { color: #1565c0; }`;
         else if (action === 'info') { st.info = !st.info; _artViewerRender(); }
         else if (action === 'prev') _artViewerStep(-1);
         else if (action === 'next') _artViewerStep(1);
-        else if (action === 'stage') _artViewerToggleZoom();
+        else if (action === 'rotate') _artViewerRotate(1);
+        else if (action === 'fullscreen') _artViewerToggleFullscreen();
+        else if (action === 'download') _artViewerDownload();
+        else if (action === 'stage') _artViewerToggleZoom(e.clientX, e.clientY);
     }
 
     /**
@@ -104721,7 +105232,8 @@ a { color: #1565c0; }`;
      * filmstrip, the info panel) lands outside it in one event, and must
      * still pan all the way to that side (`_artViewerPanFromPointer()`
      * clamps). The position is kept unzoomed too, so a later zoom by key or
-     * click goes toward the pointer.
+     * click goes toward the pointer. In "drag" mode (`sa_art_viewer_pan`)
+     * the position is kept, but only a drag moves the image.
      *
      * @param   {MouseEvent} e
      * @returns {void}
@@ -104730,7 +105242,7 @@ a { color: #1565c0; }`;
         const st = _artViewerState;
         if (!st || st.grid) return;
         st.ptr = { x: e.clientX, y: e.clientY };
-        if (!st.zoom) return;
+        if (!st.zoom || st.panMode !== 'follow') return;
         const img = document.querySelector('#mb-art-viewer .mb-artv-stage .mb-artv-img');
         if (!img) return;
         _artViewerPanFromPointer(st, e.clientX, e.clientY);
@@ -104738,30 +105250,131 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Touch swipe, start: remembers where a touch began on the stage.
+     * Starts a drag of the zoomed image: the image point under the pointer
+     * stays under it (`_artViewerPanAnchor()`). The stage shows the grabbing
+     * cursor and drops its transition while the drag lasts.
+     *
+     * @param   {Object}       st    The viewer state.
+     * @param   {HTMLElement}  stage
+     * @param   {PointerEvent} e
+     * @returns {void}
+     */
+    function _artViewerDragStart(st, stage, e) {
+        st.drag = { id: e.pointerId, x0: e.clientX, y0: e.clientY, s0: st.zoomLevel, t0: _artViewerTranslate(st), moved: false };
+        stage.classList.add('mb-artv-dragging');
+    }
+
+    /**
+     * Pointer down on the stage. Touch: one finger remembers where a swipe
+     * began — or, on a zoomed image, starts a drag; a second finger turns it
+     * into a pinch. Mouse: in "drag" mode, the left button on a zoomed image
+     * starts a drag (the ‹ › buttons excepted).
      *
      * @param   {PointerEvent} e
      * @returns {void}
      */
     function _artViewerOnPointerDown(e) {
         const st = _artViewerState;
-        if (!st || e.pointerType !== 'touch' || !e.target.closest('.mb-artv-stage')) return;
-        st.swipeX = e.clientX;
+        if (!st) return;
+        // A new press: a gesture's click that never came no longer pends.
+        st.swallowClick = false;
+        const stage = e.target.closest('.mb-artv-stage');
+        if (st.grid || !stage) return;
+        if (e.pointerType === 'touch') {
+            st.touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            if (st.touches.size === 1) {
+                st.swipeX = st.zoom ? null : e.clientX;
+                if (st.zoom) _artViewerDragStart(st, stage, e);
+            } else if (st.touches.size === 2) {
+                const [a, b] = [...st.touches.values()];
+                st.swipeX = null;
+                st.drag = null;
+                st.pinch = {
+                    d0: Math.hypot(b.x - a.x, b.y - a.y) || 1, s0: st.zoomLevel, t0: _artViewerTranslate(st),
+                    m0: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, moved: false,
+                };
+                stage.classList.add('mb-artv-dragging');
+            }
+            return;
+        }
+        if (e.pointerType === 'mouse' && e.button === 0 && st.zoom && st.panMode === 'drag' &&
+            !e.target.closest('.mb-artv-nav')) {
+            _artViewerDragStart(st, stage, e);
+            try { stage.setPointerCapture(e.pointerId); } catch (_) { /* pointer already gone */ }
+        }
     }
 
     /**
-     * Touch swipe, end: a horizontal move of more than 50 px steps (left =
-     * next), and the click that follows is swallowed.
+     * Pointer move: a pinch zooms about the two fingers' midpoint and pans
+     * with it; a drag moves the image with the pointer once it has moved
+     * more than 4 px (less is still a click). Both stay clamped to the frame.
+     *
+     * @param   {PointerEvent} e
+     * @returns {void}
+     */
+    function _artViewerOnPointerMove(e) {
+        const st = _artViewerState;
+        if (!st) return;
+        if (e.pointerType === 'touch' && st.touches.has(e.pointerId)) {
+            st.touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        }
+        const img = document.querySelector('#mb-art-viewer .mb-artv-stage .mb-artv-img');
+        if (!img) return;
+        if (st.pinch && st.touches.size >= 2) {
+            const [a, b] = [...st.touches.values()];
+            const p = st.pinch;
+            st.oneToOne = false;
+            _artViewerSetLevel(st, Math.min(_ART_VIEWER_ZOOM_MAX, Math.max(1, p.s0 * Math.hypot(b.x - a.x, b.y - a.y) / p.d0)));
+            _artViewerPanAnchor(st, p.s0, p.t0, p.m0, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+            p.moved = true;
+            img.closest('.mb-artv-stage').classList.toggle('mb-artv-zoomed', st.zoom);
+            _artViewerApplyTransform(st, img);
+            return;
+        }
+        const d = st.drag;
+        if (!d || e.pointerId !== d.id) return;
+        if (!d.moved && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) <= 4) return;
+        d.moved = true;
+        _artViewerPanAnchor(st, d.s0, d.t0, { x: d.x0, y: d.y0 }, { x: e.clientX, y: e.clientY });
+        _artViewerApplyTransform(st, img);
+    }
+
+    /**
+     * Pointer up or cancelled: ends a pinch (once fewer than two fingers are
+     * down; its zoom is remembered) or a drag, and swallows the click that
+     * follows a pinch or a drag that moved. Otherwise a touch swipe: a
+     * horizontal move of more than 50 px steps (left = next), and its click
+     * is swallowed too.
      *
      * @param   {PointerEvent} e
      * @returns {void}
      */
     function _artViewerOnPointerUp(e) {
         const st = _artViewerState;
-        if (!st || st.swipeX === null) return;
+        if (!st) return;
+        const stage = document.querySelector('#mb-art-viewer .mb-artv-stage');
+        if (e.pointerType === 'touch') st.touches.delete(e.pointerId);
+        if (st.pinch) {
+            if (st.touches.size >= 2) return;
+            if (st.pinch.moved) {
+                st.swallowClick = true;
+                _artViewerRememberZoom(st);
+            }
+            st.pinch = null;
+            st.swipeX = null;
+            if (stage) stage.classList.remove('mb-artv-dragging');
+            return;
+        }
+        if (st.drag && e.pointerId === st.drag.id) {
+            if (st.drag.moved) st.swallowClick = true;
+            st.drag = null;
+            if (stage) stage.classList.remove('mb-artv-dragging');
+            return;
+        }
+        if (st.swipeX === null || e.pointerType !== 'touch') return;
         const dx = e.clientX - st.swipeX;
         st.swipeX = null;
-        if (Math.abs(dx) > 50 && !st.grid) {
+        if (e.type !== 'pointercancel' && Math.abs(dx) > 50 && !st.grid) {
             st.swipeAt = performance.now();
             _artViewerStep(dx < 0 ? 1 : -1);
         }

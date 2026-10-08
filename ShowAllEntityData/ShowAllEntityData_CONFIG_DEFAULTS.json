@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1280+2026-10-07",
-    "schema_entries": 385,
+    "script_version": "9.99.1286+2026-10-08",
+    "schema_entries": 388,
     "sections": 47,
-    "settings": 338,
-    "settings_with_default": 333,
+    "settings": 341,
+    "settings_with_default": 336,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,13 +15,13 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 169,
+      "checkbox": 170,
       "color_picker": 62,
       "number": 50,
       "divider": 47,
       "keyboard_shortcut": 23,
+      "text": 16,
       "popup_dialog": 14,
-      "text": 14,
       "table": 5,
       "function": 1
     }
@@ -227,7 +227,10 @@
     "sa_art_idb_enable": "Enable IndexedDB art image/metadata cache",
     "sa_art_idb_image_ttl_days": "Image blob cache TTL (days)",
     "sa_art_idb_metadata_ttl_days": "Metadata (JSON) cache TTL (days)",
+    "sa_art_viewer_background": "Viewer: image background (dark / light / checker)",
     "sa_art_viewer_cross_rows": "Viewer: ← → continue into the neighbouring row",
+    "sa_art_viewer_facts": "Viewer: show the image's pixel size and file size",
+    "sa_art_viewer_pan": "Viewer: move a zoomed image by (follow / drag)",
     "sa_art_viewer_remember_zoom": "Viewer: keep the zoom level",
     "sa_art_viewer_size": "Artwork viewer image size (1200 / original)",
     "sa_art_viewer_slideshow_secs": "Viewer: slideshow interval (seconds)",
@@ -567,7 +570,10 @@
     "sa_art_idb_enable": true,
     "sa_art_idb_image_ttl_days": 30,
     "sa_art_idb_metadata_ttl_days": 30,
+    "sa_art_viewer_background": "dark",
     "sa_art_viewer_cross_rows": true,
+    "sa_art_viewer_facts": true,
+    "sa_art_viewer_pan": "follow",
     "sa_art_viewer_remember_zoom": true,
     "sa_art_viewer_size": "1200",
     "sa_art_viewer_slideshow_secs": 4,

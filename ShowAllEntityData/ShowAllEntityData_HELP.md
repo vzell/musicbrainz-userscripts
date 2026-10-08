@@ -834,7 +834,7 @@ and tiles per line, the ▦ button, both cards (and how many tiles the release
 card shows, and the preview size), marking filter matches in the cards, the
 viewer from the column and from the icon, the viewer's image size (**1200**,
 or the **original** file, which can be many MB), crossing into the next row,
-keeping the zoom level, the slideshow interval, the chip types with their
+keeping the zoom level, the slideshow interval, how a zoomed image moves (**follow** the mouse or **drag** it), the image facts, the background, the chip types with their
 letters, and the gallery (on/off, its tile size, Compare two). None of these
 makes a request of its own: everything is read from the artwork records the
 column has already loaded.
@@ -1231,16 +1231,16 @@ image instead of leaving the page — Ctrl-click (or middle-click) the tab, or a
 thumbnail, to open the archive page or the image in a new tab as before. The
 thumbnail shows at once and the 1200 px image replaces it when it arrives; the
 panel on the right lists the types, comment, position, main front/back,
-approval, the edit that added it and links to every size. Keys: **← →** step
+approval, the edit that added it and links to every size, and what is on screen (which rendition, its pixel size, and its file size when known without a request). Keys: **← →** step
 (wrapping at the ends; opened from a CAA/EAA column they continue into the
 next row, and **Shift+← →** change rows), **Home / End**, **↑ ↓** or the mouse
 wheel zoom in and out (toward the pointer), **0** fits, **Z** or a click
-toggles 2× (the image follows the mouse: move toward a side to bring that edge into view), **P** starts or stops a slideshow,
+toggles 2× (the image follows the mouse: move toward a side to bring that edge into view; with the *drag* setting, drag it with the mouse button held instead), **1** actual pixels (the bar shows the zoom as screen pixels per image pixel), **R** / **Shift+R** turn a quarter turn (view only; the next image starts upright), **B** background (dark, light, checkerboard), **F** the browser's fullscreen, **D** download the original (named like Art Station's: position, types, comment), **P** starts or stops a slideshow,
 **G** grid, **I** info panel, **O** original in a new tab, **Esc** closes (from
-a grid opened with G: back to the image). The zoom level is kept from image to
+a grid opened with G: back to the image; in fullscreen, the first Esc leaves fullscreen). The zoom level is kept from image to
 image and remembered for next time; the large image is the 1200 px one, or the
 original file (both settings). On a touch
-screen, tap to open and swipe sideways to step. While the viewer is open the
+screen, tap to open and swipe sideways to step; pinch with two fingers to zoom, and drag a zoomed image with one. While the viewer is open the
 page's own shortcuts are paused. It costs one request per render
 — none when the record is already cached from a CAA column, none when the tab
 says "Cover art (0)" — and the global filter never hides it. "No images" and

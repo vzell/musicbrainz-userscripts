@@ -10,17 +10,17 @@
   {
     "name": "the image box is not sized to the fit",
     "why": "Without the px size the CSS max-width/max-height fallback still fits a LARGE image, but shows the thumbnail at its natural 250 px, so the large image jumps in at a different size.",
-    "edits": [{"find": "            img.style.width = `${st.geom.w}px`;\n            img.style.height = `${st.geom.h}px`;\n", "replace": ""}],
+    "edits": [{"find": "            img.style.width = `${st.geom.bw}px`;\n            img.style.height = `${st.geom.bh}px`;\n", "replace": ""}],
     "spec": "tests/fixtures/art-viewer-pan.spec.js",
     "grep": "the thumbnail is shown at the size",
     "expect": "fail"
   },
   {
     "name": "the top/bottom gutter is not read",
-    "why": "The frame is the stage minus the gutters read from --mb-artv-gx/--mb-artv-gy. The FIT does not show it — the CSS max-height (100% minus both gutters) still clamps the box and object-fit: contain keeps the image inside — but the pan range is worked out from a fitted height 24 px too tall, so the zoomed image over-pans past the bottom gutter.",
+    "why": "The frame is the stage minus the gutters read from --mb-artv-gx/--mb-artv-gy; without them the fitted image touches the stage's top and bottom. Only the FIT shows it: the geometry stays self-consistent, so the zoomed pan reaches exactly the stage's edge, which the per-edge test allows. (Before the extras branch it was the other way round: the CSS max-height clamped the box, hiding it from the fit and making the pan over-pan. _artViewerFit() now lifts that clamp, since a quarter-turned box can be wider than the frame.)",
     "edits": [{"find": "        const gy = parseFloat(cs.getPropertyValue('--mb-artv-gy')) || 0;", "replace": "        const gy = 0;"}],
     "spec": "tests/fixtures/art-viewer-pan.spec.js",
-    "grep": "a pointer near each edge",
+    "grep": "fitted, the whole image is inside the stage",
     "expect": "fail"
   },
   {
@@ -34,7 +34,7 @@
   {
     "name": "the pan follows the mouse only over the stage",
     "why": "The original handler's guard. A fast move off the stage lands outside it in ONE event, so the pan stopped short of the edge (org/viewer.org #1, cause B).",
-    "edits": [{"find": "        st.ptr = { x: e.clientX, y: e.clientY };\n        if (!st.zoom) return;", "replace": "        if (!e.target.closest('.mb-artv-stage')) return;\n        st.ptr = { x: e.clientX, y: e.clientY };\n        if (!st.zoom) return;"}],
+    "edits": [{"find": "        st.ptr = { x: e.clientX, y: e.clientY };\n        if (!st.zoom || st.panMode !== 'follow') return;", "replace": "        if (!e.target.closest('.mb-artv-stage')) return;\n        st.ptr = { x: e.clientX, y: e.clientY };\n        if (!st.zoom || st.panMode !== 'follow') return;"}],
     "spec": "tests/fixtures/art-viewer-pan.spec.js",
     "grep": "one fast move from the centre",
     "expect": "fail"
