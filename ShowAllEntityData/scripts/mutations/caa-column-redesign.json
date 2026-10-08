@@ -160,8 +160,8 @@
     "why": "A failed 1200 must fall back to the 500 px large, not leave the thumbnail with an error note.",
     "edits": [
       {
-        "find": "        return urls.reduce((p, u) => p.catch(() => _artViewerLoad(u)), Promise.reject(new Error('no url')));",
-        "replace": "        return urls.length ? _artViewerLoad(urls[0]) : Promise.reject(new Error('no url'));"
+        "find": "        return urls.reduce((p, u) => p.catch(() => _artViewerLoad(u).then(src => ({ src, url: u }))),\n            Promise.reject(new Error('no url')));",
+        "replace": "        return urls.length ? _artViewerLoad(urls[0]).then(src => ({ src, url: urls[0] })) : Promise.reject(new Error('no url'));"
       }
     ],
     "spec": "tests/fixtures/caa-column-redesign.spec.js",
@@ -173,8 +173,8 @@
     "why": "With sa_art_viewer_remember_zoom on (the default) the zoom stays from image to image.",
     "edits": [
       {
-        "find": "        if (Lib.settings.sa_art_viewer_remember_zoom !== false) return;\n        st.zoomLevel = 1;",
-        "replace": "        st.zoomLevel = 1;"
+        "find": "        if (Lib.settings.sa_art_viewer_remember_zoom !== false) return;\n        _artViewerSetLevel(st, 1);",
+        "replace": "        _artViewerSetLevel(st, 1);"
       }
     ],
     "spec": "tests/fixtures/caa-column-redesign.spec.js",

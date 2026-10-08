@@ -95,8 +95,8 @@
     "why": "A grid entered with G is a mode of the open viewer; only a viewer OPENED in grid closes on Esc.",
     "edits": [
       {
-        "find": "            if (st.grid && !st.gridStart) {",
-        "replace": "            if (false) {"
+        "find": "            } else if (st.grid && !st.gridStart) {",
+        "replace": "            } else if (false) {"
       }
     ],
     "spec": "tests/fixtures/release-tracks-cover-art-viewer.spec.js",
@@ -160,8 +160,8 @@
     "why": "On touch, a horizontal swipe on the stage is the way to step.",
     "edits": [
       {
-        "find": "        if (Math.abs(dx) > 50 && !st.grid) {",
-        "replace": "        if (Math.abs(dx) > 5000 && !st.grid) {"
+        "find": "        if (e.type !== 'pointercancel' && Math.abs(dx) > 50 && !st.grid) {",
+        "replace": "        if (e.type !== 'pointercancel' && Math.abs(dx) > 5000 && !st.grid) {"
       }
     ],
     "spec": "tests/fixtures/release-tracks-cover-art.mobile.spec.js",

@@ -20666,4 +20666,11 @@ tree gate `npm run test:full`: 1388 passed, 0 failed (8.5 min,
 2026-10-08T09:59:48Z–10:08:18Z, host NB-3641, WSL2). Found while merging, not
 caused by it: four mutation anchors in caa-column-redesign.json and
 release-tracks-cover-art-p3.json match 0 times already on 9.99.1292 (the
-artwork viewer's code moved under them); left for that feature's owner.
+artwork viewer's code moved under them). Re-anchored right after (branch
+fix/art-viewer-mutation-anchors), each with its intent unchanged: the 1200 →
+500 fallback now also returns the URL it loaded (`.then(src => ({ src, url:
+u }))`), the zoom reset calls `_artViewerSetLevel(st, 1)` instead of
+assigning `st.zoomLevel`, the G-grid Esc branch became an `else if`, and the
+swipe test gained a `pointercancel` check. All four caught again by their
+own specs (the swipe one in chromium-mobile); `check-mutation-anchors.py`
+1279 anchors, 0 bad.
