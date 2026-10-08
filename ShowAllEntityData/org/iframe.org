@@ -820,9 +820,9 @@ final rendered page, in the h3 "URLs" sub-table, in the "URL" column
   =ws2-pop-url-sl-bootlegs.json=). Not done in U2: a card for an external
   link inside the "[info]" window (drill-down to other sites is Phase 5's
   widening, "The window").
-- [X] U3: Wikipedia, Wikidata, Discogs, WIP.1 on =feature/popup-engine-urls=
-  (2026-10-08, on top of 9.99.1294; not merged, the user's browser check
-  first). YouTube moved into U1 (answer 8). Three API readers
+- [X] U3: Wikipedia, Wikidata, Discogs, 9.99.1295: built 2026-10-08 on
+  =feature/popup-engine-urls=, live-tested by the user and merged to =main=
+  the same day with U4 and U5. YouTube moved into U1 (answer 8). Three API readers
   (=_extWikipediaLoad()=, =_extWikidataLoad()=, =_extDiscogsLoad()=) before
   the generic one, their hosts in =@connect=; =sa_pop_ext_discogs_token= as
   the first =secret: true= setting (not exported, not imported, masked);
@@ -837,8 +837,9 @@ final rendered page, in the h3 "URLs" sub-table, in the "URL" column
   =wikipedia.org=, the user's own whitelist has no Wikipedia entry, and the
   card loaded from the REST summary at once).
 - [X] U4: the Springsteen parsers across hosts, the Brucebase date anchor,
-  WIP.2 on =feature/popup-engine-urls= (2026-10-08, after U3's WIP.1; not
-  merged, the user's browser check first). =_extDpLoad()= runs each site's
+  9.99.1296: built 2026-10-08 on =feature/popup-engine-urls=, live-tested by
+  the user (two Live page bugs found and fixed first) and merged the same
+  day. =_extDpLoad()= runs each site's
   =_DP_SITES= parser on a page fetched through =_extGet()= (jungleland.it
   decoded through =overrideMimeType=); =_extBbYear()= reads a Brucebase year
   page once (1 MB cap, kept by year in memory and IndexedDB) and
@@ -865,9 +866,9 @@ final rendered page, in the h3 "URLs" sub-table, in the "URL" column
     the English article (outside a table: =sa_pop_mb_page=). The @extended
     live spec hovers the first four (tests/live/popup-ext.spec.js, "U4: a
     work's annotation links"). No jungleland.it link is on it.
-- [X] U5: external links on the four foreign hosts, WIP.3 on
-  =feature/popup-engine-urls= (2026-10-08, after U4's WIP.2; not merged, the
-  user's browser check first). Every off-site link (answer 6) in the table and
+- [X] U5: external links on the four foreign hosts, 9.99.1297: built
+  2026-10-08 on =feature/popup-engine-urls=, live-tested by the user on
+  Brucebase and merged the same day. Every off-site link (answer 6) in the table and
   the site's content area (=_DP_SITES[…].extRoot=: springsteenlyrics.com
   =.project-detail=, Brucebase =#page-content=), never the chrome;
   =sa_pop_ext= is the one switch there; no MusicBrainz parts. Rules as

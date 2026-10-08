@@ -20864,3 +20864,9 @@ passed 5 of 5 (`--repeat-each 5`), and its whole file 58 of 58: a timing
 failure under the suite's load, like the merge-gate one of 2026-10-08
 ("Merge gate: one popup-mb timeout, not reproducible"), in a test U5 does not
 touch. The live spec 4/4 (13:54:16Z–13:54:59Z), logged in again.
+
+**Merged** U3, U4 and U5 as 9.99.1295, 9.99.1296 and 9.99.1297 on top of
+9.99.1294, each live-tested by the user first; no conflicts. Merged-tree gate
+`npm run test:full`: 1415 passed, 0 failed (8.5 min,
+2026-10-08T14:57:03Z–15:05:35Z, host NB-3641, WSL2) — the popup-mb timeout
+above did not recur.
