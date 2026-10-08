@@ -3,10 +3,12 @@
 // The popup engine on MusicBrainz table links (org/iframe.org, Phase 2):
 // every entity link in a `table.tbl` body gets a card (Ctrl gate, as the
 // foreign hosts' previews) and a pinned window (Space), from the Web
-// Service, behind ONE opt-in setting, `sa_pop_mb`.
+// Service, behind ONE setting, `sa_pop_mb` (on touch its twin, `sa_pop_mb_on_touch`).
 //
 // Pins, in order:
-//   1. off by default: no stylesheet, no card, no request;
+//   1. off when switched off: no stylesheet, no card, no request; the
+//      schema defaults (on, plain hover, page-wide); the touch twin
+//      `sa_pop_mb_on_touch` does nothing on a desktop;
 //   2. the Ctrl gate (`sa_dp_hover_without_ctrl`, "every preview"): a plain
 //      hover shows nothing and asks nothing, Ctrl shows the card;
 //   3. what is previewed: the bare entity page only — not `/cover-art`, not a
@@ -249,11 +251,53 @@ test.afterEach(() => {
 });
 
 test.describe('MusicBrainz link previews (sa_pop_mb)', () => {
-    test('off by default: no stylesheet, no card, no request', async ({ page }) => {
-        // A fake clock (time still flows) lets the test jump past the card's
-        // show timer before asserting there is none, as detail-preview.spec.js does.
+    test('off when switched off: no stylesheet, no card, no request', async ({ page }) => {
+        // Off is loadPage.js's FIXTURE_SETTINGS_OVERRIDE, not the schema
+        // default (on since org/non-MB-sites.org); the defaults have their
+        // own test below. A fake clock (time still flows) lets the test jump
+        // past the card's show timer before asserting there is none, as
+        // detail-preview.spec.js does.
         await page.clock.install();
         const log = await open(page);
+        await ctrlHover(page, relLink(page));
+        await page.clock.fastForward(1000);
+        expect(await page.locator('#mb-dp-style, #mb-dp-peek, #mb-dp-dialog').count()).toBe(0);
+        expect(log.lookups).toEqual([]);
+    });
+
+    test('the schema defaults: on, on a plain hover, and outside the tables too', async ({ page }) => {
+        // `undefined` seeds nothing (JSON.stringify drops it), so these three
+        // keys fall back to configSchema instead of the fixture override.
+        // Pins the defaults themselves: a reverted `default: true` on any of
+        // the three fails one of the assertions below.
+        await page.clock.install();
+        const log = await open(page, {
+            settings: { sa_pop_mb: undefined, sa_pop_mb_page: undefined, sa_dp_hover_without_ctrl: undefined },
+        });
+        await relLink(page).scrollIntoViewIfNeeded();
+        await relLink(page).hover();
+        await page.clock.fastForward(1000);
+        await expect(card(page), 'a plain hover on a table link shows the card').toBeVisible();
+        await expect(card(page)).toContainText('Greetings From Asbury Park, N.J.');
+        expect(log.lookups.length).toBe(1);
+
+        // The page-wide scope (sa_pop_mb_page): the subheader's artist link.
+        await page.mouse.move(0, 0);
+        await expect(card(page)).toBeHidden();
+        const artist = page.locator('p.subheader a[href^="/artist/"]').first();
+        await artist.scrollIntoViewIfNeeded();
+        await artist.hover();
+        await page.clock.fastForward(1000);
+        await expect(card(page), 'a link outside the tables has a card too').toBeVisible();
+        await expect(card(page)).toContainText('Bruce Springsteen');
+    });
+
+    test('the touch twin does nothing on a desktop', async ({ page }) => {
+        // `sa_pop_mb_on_touch` replaces `sa_pop_mb` only on a touch-primary
+        // device (`_popSettingOn()`); here the plain key, off, is the one.
+        await page.clock.install();
+        const log = await open(page, { settings: { sa_pop_mb_on_touch: true, sa_dp_hover_without_ctrl: true } });
+        await relLink(page).scrollIntoViewIfNeeded();
         await ctrlHover(page, relLink(page));
         await page.clock.fastForward(1000);
         expect(await page.locator('#mb-dp-style, #mb-dp-peek, #mb-dp-dialog').count()).toBe(0);
@@ -1096,7 +1140,7 @@ test.describe('MusicBrainz link previews: beyond table links (Phase 4)', () => {
         expect(r.unknownKind).toBeNull();
         expect(r.inherited, 'only the registry\'s own kinds').toBeNull();
         expect(r.noId).toBeNull();
-        expect(r.header, 'outside a table: not with the default scope').toBeNull();
+        expect(r.header, 'outside a table: not with sa_pop_mb_page off').toBeNull();
     });
 
     test('a stamped element\'s card and page: its name while loading, its kind\'s own path', async ({ page }) => {
@@ -1387,11 +1431,28 @@ test.describe('MusicBrainz link previews: drill-down inside the window (Phase 5)
     });
 
     test('Ctrl+click keeps the link\'s own new tab, and the window stays', async ({ page }) => {
-        await page.context().route('https://musicbrainz.org/release-group/**', (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<html></html>' }));
+        // Pinned by the new tab's NAVIGATION REQUEST, not by the context's
+        // 'page' event. Playwright 1.62.1 sometimes never delivers that event
+        // for a Ctrl+click background tab although the tab opens and loads:
+        // a failing run's trace has the second page fetching this URL, answered
+        // by the route below, and no 'page' event for it (DEBUG-NOTES
+        // 2026-10-08, "The Ctrl+click new-tab flake"). This page's own
+        // navigations go through open()'s page-level route, which wins over
+        // this context route, and recording starts at the click, so a hit
+        // here is another tab's.
+        const opened = [];
+        let armed = false;
+        await page.context().route('https://musicbrainz.org/release-group/**', (route) => {
+            if (armed && route.request().isNavigationRequest()) opened.push(route.request().url());
+            return route.fulfill({ status: 200, contentType: 'text/html', body: '<html></html>' });
+        });
         await releaseWindow(page);
-        const popup = page.context().waitForEvent('page');
-        await dialog(page).locator('.mb-dp-area a[href^="/release-group/"]').first().click({ modifiers: ['Control'] });
-        await popup;
+        const link = dialog(page).locator('.mb-dp-area a[href^="/release-group/"]').first();
+        const href = await link.evaluate((a) => a.href);
+        armed = true;
+        await link.click({ modifiers: ['Control'] });
+        await expect.poll(() => opened, { message: 'the link opened in a new tab' }).toContain(href);
+        expect(page.url(), 'this page stayed').toBe(RG_URL);
         await expect(title(page)).toHaveText('Release');
     });
 

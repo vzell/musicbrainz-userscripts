@@ -1,15 +1,15 @@
 [
     {
         "name": "the external source ignores sa_pop_ext",
-        "why": "External link previews are opt-in, off by default (org/iframe.org answer 2): with the setting off a hover asks no other site anything.",
+        "why": "External link previews follow sa_pop_ext (org/iframe.org answer 2; on by default since org/non-MB-sites.org, forced off in fixtures): with the setting off a hover asks no other site anything.",
         "edits": [
             {
-                "find": "            enabled: () => Lib.settings.sa_pop_ext === true,",
+                "find": "            enabled: () => _popSettingOn('sa_pop_ext'),",
                 "replace": "            enabled: () => true,"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
-        "grep": "off by default",
+        "grep": "off when switched off",
         "expect": "fail"
     },
     {
@@ -1109,8 +1109,8 @@
         "why": "U5 (answer 6): every off-site link on the four sites, behind sa_pop_ext like on MusicBrainz.",
         "edits": [
             {
-                "find": "            enabled: () => Lib.settings.sa_pop_ext === true,",
-                "replace": "            enabled: () => !_foreignHost && Lib.settings.sa_pop_ext === true,"
+                "find": "            enabled: () => _popSettingOn('sa_pop_ext'),",
+                "replace": "            enabled: () => !_foreignHost && _popSettingOn('sa_pop_ext'),"
             }
         ],
         "spec": "tests/fixtures/popup-ext-foreign.spec.js",
@@ -1119,15 +1119,15 @@
     },
     {
         "name": "U5: the external source ignores sa_pop_ext on the Springsteen sites",
-        "why": "Opt-in, off by default, there as on MusicBrainz: a hover there asks no other site anything until the user switches it on.",
+        "why": "Behind sa_pop_ext there as on MusicBrainz: with it off a hover there asks no other site anything.",
         "edits": [
             {
-                "find": "            enabled: () => Lib.settings.sa_pop_ext === true,",
+                "find": "            enabled: () => _popSettingOn('sa_pop_ext'),",
                 "replace": "            enabled: () => true,"
             }
         ],
         "spec": "tests/fixtures/popup-ext-foreign.spec.js",
-        "grep": "off by default there too",
+        "grep": "off when switched off there too",
         "expect": "fail"
     },
     {

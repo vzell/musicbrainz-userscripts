@@ -3425,12 +3425,20 @@ on the same side of the gate. Since the popup engine (org/iframe.org Phase 1,
 (~_rgWsGet()~, which had a queue of its own), with the same order in their
 ~beforeRetry~; ~release-rg-popup.spec.js~ pins that they wait behind slots
 another feature holds. Phase 2's entity cards on every MusicBrainz table link
-(~_mbEntitySource()~, ~sa_pop_mb~, off by default) use the same ~_rgWsGet()~,
+(~_mbEntitySource()~, ~sa_pop_mb~, off by default until org/non-MB-sites.org
+turned it ON on 2026-10-08) use the same ~_rgWsGet()~,
 which now asks the caller's ~wanted()~ once its slot comes up: a hover that
 has moved on sends nothing, but the slot it reserved is spent, so with the
 setting on each card a user opens can delay the Relationships column's
 auto-load by up to one slot (org/iframe.org, answer 7); ~popup-mb.spec.js~
-pins both the wait and the skip.
+pins both the wait and the skip. **Since 2026-10-08 that is the default, and
+so is the plain hover** (~sa_dp_hover_without_ctrl~ and
+~sa_event_rg_tooltip_without_ctrl~ on): a card no longer waits for Ctrl, so
+merely moving the pointer across a table (or down a release's "#" column, a
+search per event) reserves slots in the same queue. Accepted knowingly
+(org/non-MB-sites.org); switching either setting off restores the Ctrl gate.
+~capture-interaction-perf.js~ seeds all five preview keys off
+(~PREVIEWS_OFF~) so its arms stay comparable with captures made before.
 
 **** What shipped (2026-09-18, 9.99.1101-9.99.1108)
 

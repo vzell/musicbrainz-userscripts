@@ -12,7 +12,7 @@
 // jungleland.it and brucespringsteen.it lists link no other site.
 //
 // Pins:
-//   1. off by default there too: no card, no request;
+//   1. off when switched off there too: no card, no request;
 //   2. what is previewed: content links yes, chrome no, the site's own links
 //      stay its own (the detail-page source), a link outside the content
 //      area no;
@@ -97,7 +97,7 @@ test.afterEach(() => {
 });
 
 test.describe('external link previews on the Springsteen sites (U5)', () => {
-    test('off by default there too: no card, no request', async ({ page }) => {
+    test('off when switched off there too: no card, no request', async ({ page }) => {
         await page.clock.install();
         await loadSlListPage(page, { kind: 'bootlegs', settingsOverride: { sa_rich_tooltip_delay_ms: 0, sa_pop_ext_hosts: ['brucebase.wikidot.com'] } });
         const bb = await addLink(page, '.project-detail', BB_SONG, '4th Of July');

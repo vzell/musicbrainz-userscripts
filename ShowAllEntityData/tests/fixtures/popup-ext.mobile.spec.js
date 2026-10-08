@@ -2,12 +2,18 @@
 
 // The external link previews on a touch screen (chromium-mobile: Pixel 7,
 // touch, no hover). A tap has no hover to show a card on and no Ctrl to
-// hold, so with `sa_pop_ext` on a tap on a link to another site opens the
+// hold, so with the previews on a tap on a link to another site opens the
 // window instead of the page (the popup engine's tap rule). A tap is an
 // explicit act, so it may make the first request to a host the script never
 // reached (org/iframe.org answer 7), anonymously. Desktop: popup-ext.spec.js.
-// U2: with `sa_pop_mb` on, a tap on the "[info]" link beside a URL opens the
-// URL's window the same way.
+// U2: with the entity previews on, a tap on the "[info]" link beside a URL
+// opens the URL's window the same way.
+//
+// On a touch-primary device the switches are the `_on_touch` twins
+// (`_popSettingOn()`, org/non-MB-sites.org): `sa_pop_ext_on_touch` and
+// `sa_pop_mb_on_touch` REPLACE `sa_pop_ext` and `sa_pop_mb` there, and are off
+// by default, so a phone keeps its ordinary links. The tests below seed the
+// twins only, with the plain keys left off by the fixture override.
 
 const fs = require('fs');
 const path = require('path');
@@ -96,7 +102,7 @@ async function tapLink(page, link) {
 }
 
 test('a tap on a link to another site opens its window, not the page, and shows no card', async ({ page }) => {
-    const seen = await openEvent(page, { sa_pop_ext: true });
+    const seen = await openEvent(page, { sa_pop_ext_on_touch: true });
     await tapLink(page, page.locator(`table.tbl a[href="${SETLIST}"]`).first());
 
     const dialog = page.locator('#mb-dp-dialog');
@@ -114,7 +120,7 @@ test('a tap on a link to another site opens its window, not the page, and shows 
 });
 
 test('a tap on an "[info]" link opens the URL\'s window, not MusicBrainz\'s page for it (U2)', async ({ page }) => {
-    const seen = await openEvent(page, { sa_pop_mb: true });
+    const seen = await openEvent(page, { sa_pop_mb_on_touch: true });
     await tapLink(page, page.locator(`table.tbl a[href="/url/${SETLIST_URL_ID}"]`).first());
 
     const dialog = page.locator('#mb-dp-dialog');
@@ -124,6 +130,25 @@ test('a tap on an "[info]" link opens the URL\'s window, not MusicBrainz\'s page
     expect(seen.ws2).toHaveLength(1);
     expect(seen.navigations, 'the page stays').toEqual([]);
     expect(page.context().pages()).toHaveLength(1);
+    expect(seen.shown).toEqual([]);
+    expect(seen.errors).toEqual([]);
+});
+
+test('with the touch twin at its default, a tap on a link to another site is not the engine\'s, even with sa_pop_ext on', async ({ page }) => {
+    // Whether the page then opens is not asserted: in this emulation the tap
+    // on this table link dispatches touchstart, touchend and mousedown but
+    // no click, with every preview off as well (checked 2026-10-08), so no
+    // navigation follows either way. What is pinned is that the engine,
+    // which DOES get a click here when it is on (the first test), stays out.
+    const seen = await openEvent(page, { sa_pop_ext: true, sa_pop_ext_on_touch: undefined });
+    await tapLink(page, page.locator(`table.tbl a[href="${SETLIST}"]`).first());
+    // A tap's compatibility events are dispatched by the time tap() resolves,
+    // and the engine opens its window synchronously in its click handler:
+    // two frames later it would be there.
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    expect(await page.locator('#mb-dp-style, #mb-dp-peek, #mb-dp-dialog').count()).toBe(0);
+    const calls = await page.evaluate((u) => (window.__gmXhrLog || []).filter(r => r.url === u).length, SETLIST);
+    expect(calls, 'no preview request').toBe(0);
     expect(seen.shown).toEqual([]);
     expect(seen.errors).toEqual([]);
 });

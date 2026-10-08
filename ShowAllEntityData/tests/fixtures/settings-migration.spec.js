@@ -49,7 +49,7 @@
 
 const path = require('path');
 const { test, expect } = require('../support/test');
-const { loadUserscriptPage } = require('../support/loadPage');
+const { loadUserscriptPage, FIXTURE_SETTINGS_OVERRIDE } = require('../support/loadPage');
 const { collectPageErrors } = require('../support/liveAssertions');
 
 const SERIES_URL = 'https://musicbrainz.org/series/aa3694d3-a3d0-48ed-8f07-5b576de87908';
@@ -59,6 +59,16 @@ const SERIES_SHELL = path.join(__dirname, '..', 'snapshots', 'series-releases', 
 // distinguishable through `page.evaluate`'s JSON round trip — which turns a
 // real `undefined` into `null` and would make the two look the same.
 const ABSENT = '__ABSENT__';
+
+// `loadPage.js`'s FIXTURE_SETTINGS_OVERRIDE seeds its keys `false` for every
+// fixture, and since org/non-MB-sites.org five of them (the link previews) are
+// RETIRED defaults with a `_SETTINGS_MIGRATIONS` entry: left seeded, the
+// migration this file runs would adopt them as if the user's SAVE had frozen
+// them, and every count below would be off by five. Seeding each as
+// `undefined` (JSON.stringify drops it) stores nothing, so the profile holds
+// exactly what a test seeds. No test here clicks "Show all", so the artwork
+// and Relationships keys coming back on fetch nothing.
+const UNSEEDED = Object.fromEntries(Object.keys(FIXTURE_SETTINGS_OVERRIDE).map((k) => [k, undefined]));
 
 /**
  * Loads the shell with `settings` seeded into GM storage. The migration runs
@@ -73,7 +83,7 @@ async function loadWithProfile(page, settings) {
         url: SERIES_URL,
         fixtureFile: SERIES_SHELL,
         testMode: true,
-        settingsOverride: { sa_settings_migration_level: 0, ...settings },
+        settingsOverride: { ...UNSEEDED, sa_settings_migration_level: 0, ...settings },
     });
 }
 

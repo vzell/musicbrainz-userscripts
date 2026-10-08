@@ -1,7 +1,7 @@
 [
     {
         "name": "the detail-page card ignores the Ctrl gate on hover",
-        "why": "By default (sa_dp_hover_without_ctrl off) only a hover with Ctrl held may schedule the card. Without the gate a pointer crossing the table pops cards and fetches pages again. Since the popup engine (org/iframe.org Phase 1) this is the engine's one gate line, asked of each source (t.src.needsCtrl()).",
+        "why": "With sa_dp_hover_without_ctrl off (the fixture override; on by default since org/non-MB-sites.org) only a hover with Ctrl held may schedule the card. Without the gate a pointer crossing the table pops cards and fetches pages again. Since the popup engine (org/iframe.org Phase 1) this is the engine's one gate line, asked of each source (t.src.needsCtrl()).",
         "edits": [
             {
                 "find": "            if (t.src.needsCtrl() && !e.ctrlKey) return;\n            _dpSchedulePeek(t);",
@@ -40,7 +40,7 @@
     },
     {
         "name": "the \"#\" card ignores the Ctrl gate on hover",
-        "why": "By default (sa_event_rg_tooltip_without_ctrl off) entering a \"#\" cell without Ctrl must neither show the card nor start a lookup. Since the popup engine the gate is the \"#\" source's needsCtrl().",
+        "why": "With sa_event_rg_tooltip_without_ctrl off (the fixture override; on by default since org/non-MB-sites.org) entering a \"#\" cell without Ctrl must neither show the card nor start a lookup. Since the popup engine the gate is the \"#\" source's needsCtrl().",
         "edits": [
             {
                 "find": "            needsCtrl: _eventRgNeedsCtrl,",

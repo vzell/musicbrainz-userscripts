@@ -42,7 +42,7 @@
 
 const path = require('path');
 const { test, expect } = require('../support/test');
-const { loadUserscriptPage } = require('../support/loadPage');
+const { loadUserscriptPage, FIXTURE_SETTINGS_OVERRIDE } = require('../support/loadPage');
 const { collectPageErrors } = require('../support/liveAssertions');
 
 const SERIES_URL = 'https://musicbrainz.org/series/aa3694d3-a3d0-48ed-8f07-5b576de87908';
@@ -63,20 +63,19 @@ const OVERLAY = `#${SID}-settings-overlay`;
 //   divider_thresholds   → holds sa_max_page, used as the "other section"
 const SECTION_A = 'divider_';
 
-// `loadPage.js`'s FIXTURE_SETTINGS_OVERRIDE forces `sa_enable_caa_pics`,
-// `sa_enable_relationships_column` and `sa_enable_release_tracks_cover_art`
-// OFF for every fixture, to keep the suite network-free once a spec clicks
-// "Show all". All three DEFAULT to true — so from this dialog's point of view
-// a fixture profile arrives with four settings already changed, and every
-// count here would be off by four while looking plausible. These tests never
-// click "Show all" and never fetch, so putting them back at their defaults is
-// safe and is what makes "an untouched profile" mean it.
-const PRISTINE = {
-    sa_enable_caa_pics: true,
-    sa_enable_relationships_column: true,
-    sa_enable_release_tracks_cover_art: true,
-    sa_event_overview_event_art: true,
-};
+// `loadPage.js`'s FIXTURE_SETTINGS_OVERRIDE forces every one of its keys
+// (artwork, the Relationships column, the link previews) OFF for every
+// fixture, to keep the suite network-free once a spec clicks "Show all" or
+// hovers a link. They all DEFAULT to true — so from this dialog's point of
+// view a fixture profile arrives with that many settings already changed, and
+// every count here would be off by that many while looking plausible. These
+// tests never click "Show all" and never fetch, so putting them back at their
+// defaults is safe and is what makes "an untouched profile" mean it. Each key
+// is seeded as `undefined`, which JSON.stringify drops: nothing is stored and
+// the schema default applies. Derived from the override, so a key added there
+// can no longer leave this list behind (the five link-preview keys did, on
+// 2026-10-08, when this was a hand-written copy of four).
+const PRISTINE = Object.fromEntries(Object.keys(FIXTURE_SETTINGS_OVERRIDE).map((k) => [k, undefined]));
 
 /** Loads the shell without clicking anything — the dialog needs no table. */
 async function loadShell(page, settings) {

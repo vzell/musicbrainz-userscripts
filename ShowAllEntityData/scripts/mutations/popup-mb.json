@@ -1,15 +1,15 @@
 [
     {
         "name": "the MusicBrainz source ignores sa_pop_mb",
-        "why": "The link previews are opt-in, off by default (org/iframe.org, answer 1): with the setting off a MusicBrainz page gets no stylesheet, no listener and no request.",
+        "why": "The link previews follow sa_pop_mb (org/iframe.org, answer 1; on by default since org/non-MB-sites.org, forced off in fixtures): with the setting off a MusicBrainz page gets no stylesheet, no listener and no request.",
         "edits": [
             {
-                "find": "            enabled: () => !_foreignHost && Lib.settings.sa_pop_mb === true,",
+                "find": "            enabled: () => !_foreignHost && _popSettingOn('sa_pop_mb'),",
                 "replace": "            enabled: () => !_foreignHost,"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
-        "grep": "off by default",
+        "grep": "off when switched off",
         "expect": "fail"
     },
     {
@@ -495,8 +495,8 @@
         "expect": "fail"
     },
     {
-        "name": "links outside tables are previewed with the default scope",
-        "why": "sa_pop_mb_page is opt-in: by default only table links (and stamped elements) have a card.",
+        "name": "links outside tables are previewed with sa_pop_mb_page off",
+        "why": "With sa_pop_mb_page off only table links (and stamped elements) have a card.",
         "edits": [
             {
                 "find": "                    : '[data-mb-pop], table.tbl > tbody td.barcode-cell, table.tbl > tbody span.catalog-number, table.tbl > tbody a[href]';",
@@ -739,6 +739,19 @@
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
         "grep": "Backspace and Alt",
+        "expect": "fail"
+    },
+    {
+        "name": "Ctrl+click in the window is swallowed: no drill-down, but no new tab either",
+        "why": "The half the window's title cannot see: it stays 'Release' either way. Only the new tab's own request (the spec's route) tells a kept link from a dead one.",
+        "edits": [
+            {
+                "find": "        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return false;",
+                "replace": "        if (e.ctrlKey) e.preventDefault();\n        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return false;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "keeps the link.s own new tab",
         "expect": "fail"
     }
 ]
