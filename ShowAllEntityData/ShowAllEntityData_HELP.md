@@ -1610,6 +1610,11 @@ change.
   *guest* stay text.
 - **Live page**: the entity's own MusicBrainz page, without the site's header
   and footer, and without its scripts.
+- **Click an image** (a release's front cover or its Cover art strip, an
+  event's posters) to open it in the artwork viewer, the same one as the
+  release page's Cover art, stepping through all of that release's or event's
+  images. **Esc** returns to the window; Ctrl-click opens the image in a new
+  tab instead.
 - **‹ ›** or **← →** step to the same kind of link in the **same column** of
   the next or previous row, on into the next sub-table. A row links a
   release, an artist and a label; the arrows stay with the one you started
@@ -2115,9 +2120,13 @@ type into the filter box stays in the filter box. In the window:
 - **‹ ›** or the **← →** keys step to the previous or next row of the table,
   in the order the table shows them.
 - **Extracted** shows what the script read from the page, laid out for
-  reading: the fields, the scans (click one for the full size), the notes and
-  the whole tracklist. On Brucebase it also has the credits, the studio
-  versions and the lyrics; on the springsteenlyrics.com lyrics index, the
+  reading: the fields, the scans, the notes and the whole tracklist. Click
+  the cover or a scan to open it in the artwork viewer (the same one as the
+  release page's Cover art: zoom, ← → through every image of the page, grid,
+  download; **Esc** returns to the window). Ctrl-click opens the image in a
+  new tab instead. On Brucebase it also has the credits, the studio
+  versions and the lyrics, and lists the releases one per line, the live
+  releases apart; on the springsteenlyrics.com lyrics index, the
   whole lyrics and every section of the song's page (info, recording,
   releases, live history, covers, credits, the other versions).
 - **Live page** shows the site's own page inside the window. *Hide the site's

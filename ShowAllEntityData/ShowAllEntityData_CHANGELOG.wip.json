@@ -1,5 +1,37 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-10-09",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Preview window: a click on an image opens the artwork viewer over the window, the same viewer as the release page's Cover art (zoom, ← → through the images, grid, download). This covers a release's front cover and Cover art strip, an event's posters, and on the Springsteen sites (or a link to them) a record's cover and scans, plus the picture of a linked page. MusicBrainz images come from the archive record the window already loaded, so the click asks for nothing. Another site's images keep their own URLs, stay out of the artwork cache and are loaded without a referrer, and the info panel shows only what is true for them. Esc closes the viewer and goes back to the window. Ctrl-click still opens the image in a new tab.",
+          "Brucebase song preview: \"Released on\" lists one release per line, each with its year and kind, and the live releases are a field of their own, \"Released live on\", each with its recording date."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Preview window: a tracklist on a single disc (springsteenlyrics.com) wrapped its titles onto two lines in a narrow column, with the rest of the window empty. It now takes the whole column, and two or more discs share it.",
+          "Preview window on jungleland.it: the cover linked its own thumbnail rather than the full front scan."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.3",
+    "date": "2026-10-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Global filter: the ✕ stayed hidden when the filter held only spaces, so they could not be cleared with it. It now shows whenever the field holds any text, as every other filter's ✕ already did."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-10-08",
     "sections": [

@@ -382,7 +382,13 @@ markup.
   `#page-content` before the tabview; the tabview pairs label i with panel i,
   as on the song list, and panels are read by label (Performances, Released
   on Album, Released as Live Download; Credits, On The Tracks and Lyrics as
-  whole sections for the dialog).
+  whole sections for the dialog). Released on Album is prose, split into one
+  release per line by `_bbReleaseLines()` (2026-10-09, `_DP_PARSER_VERSION` 2).
+  A release starts at each `<em>` holding a link (or a bare `/retail:` or
+  `/stats:discography` link) and runs to the next one, so its year, kind and
+  "(recorded …)" stay with it. The paragraph beginning "Live versions" becomes
+  its own field, "Released live on". A paragraph with no such element is kept
+  whole.
 
 **`_dpBlockText()` collapses the source's whitespace before it turns `<br>`
 into a line break.** The sites write `line<br />\nline`; keeping that
@@ -435,6 +441,41 @@ current row carries `tr.mb-dp-current`, a transient class taken off by a
 `MutationObserver` when `createInfoDialog()` removes the dialog. The class is
 on a live row and never written to cell content, so the four post-render
 obligations (filter-and-cache-invariants.md) do not apply.
+
+**Images open the artwork viewer (2026-10-09).** A plain primary click on an
+image in the window opens `#mb-art-viewer` over it. `_dpArtViewerClick()` runs
+from the scroll area's delegated click listener, before `_dpDrill()`, so
+nothing needs re-wiring after a repaint. Ctrl, Shift, Alt and ⌘ leave the link
+alone, so the image opens in a new tab as before. The thumbnails are marked
+when the HTML is built:
+- `data-mb-artv-ctx`/`-path`/`-i` (`_mbPopArtvAttrs()`): a release's Cover art
+  strip and front cover, an event's Event art strip. The viewer reads
+  `ctx.imagesCache` and asks nothing. The front cover is marked only once the
+  record is there; until then it stays the `/cover-art` link;
+- `data-mb-artv-ext="<n>"`: another site's cover and scans
+  (`_dpExtractedCols()`, so also a Springsteen site's record seen from another
+  host, U4) and a linked page's picture (`_extLeftCol()`). The click builds the
+  list from every such link in the window, in that order, cover first. The
+  cover links its scan's FULL image (it used to link the thumbnail it shows).
+The dialog passes `keepOpenWithin: ['#mb-art-viewer']`, so a click in the viewer
+is not a click outside. Keys need nothing: the viewer's `window`-capture
+listener stops Esc and ← → before `createInfoDialog()`'s Esc handler and
+`_dpDialogKeys()`. Esc closes the viewer only, and focus returns to the
+thumbnail. Another site's images never touch the art IndexedDB and load with no
+referrer. The viewer's external mode is described in artwork-caa-eaa.md "Release
+page Cover art section and the viewer". The hover card's thumbnails are not
+clickable and stay as they are.
+
+**Tracklist columns.** `.mb-dp-discs` is
+`repeat(auto-fit, minmax(180px, 1fr))`. Until 2026-10-09 it was `auto-fill`,
+which keeps empty tracks, so a one-disc list sat in one ~180 px column and
+wrapped its titles next to empty space (springsteenlyrics.com, from a real
+browser).
+
+**A field value of several lines** (`\n`-joined) is one line each in the
+window (`<br>`, each line escaped) and one "; "-joined run in a card, where
+`maxLen` cuts it anyway (`_dpFieldsHtml()`). Brucebase's releases use it
+(`_bbReleaseLines()`, below).
 
 **Live page view.** An `<iframe sandbox="allow-same-origin allow-popups
 allow-popups-to-escape-sandbox">` whose `srcdoc` is a cleaned copy of the page

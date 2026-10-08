@@ -491,6 +491,27 @@ test.describe('MusicBrainz link previews (sa_pop_mb)', () => {
         expect(log.caa, 'one Cover Art Archive index, on pin').toEqual([`/release/${REL_ID}`]);
         expect(log.lookups).toHaveLength(1);
 
+        // A plain click on a strip image opens the artwork viewer on THAT
+        // image of the archive record the strip came from, over the window,
+        // asking the archive for nothing more; Esc closes only the viewer.
+        const viewer = page.locator('#mb-art-viewer');
+        await area.locator('.mb-dp-gallery a').nth(2).click();
+        await expect(viewer).toBeVisible();
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText('3 / 16');
+        await expect(viewer.locator('.mb-artv-title')).toHaveText('Greetings From Asbury Park, N.J.');
+        // The archive's own rows, unlike another site's image.
+        await expect(viewer.locator('.mb-artv-info')).toContainText('Status');
+        expect(log.caa, 'the viewer reads the record already loaded').toHaveLength(1);
+        await page.keyboard.press('Escape');
+        await expect(viewer).toBeHidden();
+        await expect(dialog(page)).toBeVisible();
+        // The front cover opens it on the main front.
+        await area.locator('a:has(> img.mb-dp-xcover)').click();
+        await expect(viewer.locator('.mb-artv-info .mb-tt-title')).toHaveText('★ Main front');
+        await page.keyboard.press('Escape');
+        await expect(viewer).toBeHidden();
+        await expect(dialog(page)).toBeVisible();
+
         await dialog(page).locator('button.mb-dp-tbtn', { hasText: '⟳' }).click();
         await expect.poll(() => log.lookups.length).toBe(2);
         await expect(area.locator('.mb-pop-tracks li')).toHaveCount(9);
@@ -960,6 +981,14 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
         await expect(recorded.locator('dd').nth(1).locator('a')).toHaveCount(26);
         await expect(area.locator('.mb-dp-gallery img')).not.toHaveCount(0);
         expect(log.eaa).toEqual([EVENT]);
+        // A click on the event art opens the viewer on it, from the record already here.
+        await area.locator('.mb-dp-gallery a').first().click();
+        await expect(page.locator('#mb-art-viewer')).toBeVisible();
+        await expect(page.locator('#mb-art-viewer .mb-artv-pos')).toHaveText(/^1 \/ \d+$/);
+        await expect(page.locator('#mb-art-viewer')).toHaveAttribute('aria-label', 'EAA artwork viewer');
+        expect(log.eaa).toEqual([EVENT]);
+        await page.keyboard.press('Escape');
+        await expect(dialog(page)).toBeVisible();
         expect(log.ws2.filter(u => u.includes('inc=recording-rels+release-rels'))).toHaveLength(1);
     });
 

@@ -1,0 +1,145 @@
+[
+    {
+        "name": "the global filter's ✕ trims again",
+        "why": "A filter of blanks alone is still text in the field; a trimmed test leaves the ✕ hidden, with no way to clear it but the keyboard.",
+        "edits": [
+            {
+                "find": "        const hasContent = stripFilterPrefix(filterInput.value) !== '';",
+                "replace": "        const hasContent = stripFilterPrefix(filterInput.value).trim() !== '';"
+            }
+        ],
+        "spec": "tests/fixtures/global-filter-clear.spec.js",
+        "grep": "blanks alone show the ✕",
+        "expect": "fail"
+    },
+    {
+        "name": "the window closes on a click inside the viewer",
+        "why": "Without keepOpenWithin the viewer lies outside the window, so any click in it (the info panel, a button) closes the window underneath.",
+        "edits": [
+            {
+                "find": "            titleBarExtras: [back, prev, pos, next, seg, reload, open],\n            // The artwork viewer an image opens (_dpArtViewerClick()) lies\n            // over the window; a click in it is not a click outside.\n            keepOpenWithin: ['#mb-art-viewer'],",
+                "replace": "            titleBarExtras: [back, prev, pos, next, seg, reload, open],"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "a click on a scan opens the artwork viewer",
+        "expect": "fail"
+    },
+    {
+        "name": "the window's image click is not routed to the viewer",
+        "why": "Without the delegated handler a plain click follows the link into a new tab, as before the feature.",
+        "edits": [
+            {
+                "find": "            else if (_dpArtViewerClick(e)) return;",
+                "replace": "            else if (false) return;"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "a click on a scan opens the artwork viewer",
+        "expect": "fail"
+    },
+    {
+        "name": "a Ctrl-click opens the viewer too",
+        "why": "A modified click belongs to the link (a new tab); the viewer must leave it alone.",
+        "edits": [
+            {
+                "find": "        if (e.button !== 0 || e.ctrlKey || e.shiftKey || e.altKey || e.metaKey) return false;\n        const a = e.target instanceof Element && e.target.closest('a[data-mb-artv-i], a[data-mb-artv-ext]');",
+                "replace": "        if (e.button !== 0) return false;\n        const a = e.target instanceof Element && e.target.closest('a[data-mb-artv-i], a[data-mb-artv-ext]');"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "a click on a scan opens the artwork viewer",
+        "expect": "fail"
+    },
+    {
+        "name": "another site's image goes through the art cache",
+        "why": "The art IndexedDB is the archives' store; through it a foreign image is fetched by GM_xmlhttpRequest (the fixture stub's 404) and the viewer stays on the thumbnail.",
+        "edits": [
+            {
+                "find": "        if (Lib.settings.sa_art_idb_enable && !external) {",
+                "replace": "        if (Lib.settings.sa_art_idb_enable) {"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "a click on a scan opens the artwork viewer",
+        "expect": "fail"
+    },
+    {
+        "name": "another site's image is loaded with a referrer",
+        "why": "An external request carries no referrer, like the window's own picture of such a page (docs/claude/detail-pages.md).",
+        "edits": [
+            {
+                "find": "            if (external) pre.referrerPolicy = 'no-referrer';",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "a click on a scan opens the artwork viewer",
+        "expect": "fail"
+    },
+    {
+        "name": "the viewer shows the archive's rows for another site's image",
+        "why": "Main front, status, the adding edit and the archive id would all be false for a foreign scan.",
+        "edits": [
+            {
+                "find": "        if (im.external) return _artViewerInfoExternal(st);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "a click on a scan opens the artwork viewer",
+        "expect": "fail"
+    },
+    {
+        "name": "the MusicBrainz strip images carry no viewer attributes",
+        "why": "Without data-mb-artv-* a release's Cover art strip is plain links again.",
+        "edits": [
+            {
+                "find": "                return `<a href=\"${_rgEsc(im.image)}\" target=\"_blank\" rel=\"noopener\"${_mbPopArtvAttrs(ctx, path, i)}><img loading=\"lazy\" src=\"${_rgEsc(th)}\" alt=\"\">` +",
+                "replace": "                return `<a href=\"${_rgEsc(im.image)}\" target=\"_blank\" rel=\"noopener\"><img loading=\"lazy\" src=\"${_rgEsc(th)}\" alt=\"\">` +"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the release window: tracklist",
+        "expect": "fail"
+    },
+    {
+        "name": "the one-disc tracklist grid is auto-fill again",
+        "why": "auto-fill keeps empty tracks: one disc sits in one 180px track and its titles wrap beside empty space (springsteenlyrics.com, 2026-10-09).",
+        "edits": [
+            {
+                "find": "            .mb-dp-dialog .mb-dp-discs { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 16px; }",
+                "replace": "            .mb-dp-dialog .mb-dp-discs { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px 16px; }"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "a one-disc tracklist takes the whole column",
+        "expect": "fail"
+    },
+    {
+        "name": "Brucebase's releases are one paragraph again",
+        "why": "Without the per-<em> split the release list reads as one run-on line in the window (2026-10-09 report).",
+        "edits": [
+            {
+                "find": "                if (isRelease(n)) {\n                    if (cur !== null) lines.push(cur);",
+                "replace": "                if (isRelease(n) && cur === null) {\n                    if (cur !== null) lines.push(cur);"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "Brucebase: origin, the performance count",
+        "expect": "fail"
+    },
+    {
+        "name": "a multi-line field value is joined in the window",
+        "why": "The window must show a value's lines one below another; joined with \"; \" it is one run again.",
+        "edits": [
+            {
+                "find": "            : String(v).split('\\n').map(_mbttEscape).join('<br>'));",
+                "replace": "            : _mbttEscape(String(v).split('\\n').join('; ')));"
+            }
+        ],
+        "spec": "tests/fixtures/detail-preview.spec.js",
+        "grep": "Brucebase: the card's count",
+        "expect": "fail"
+    }
+]

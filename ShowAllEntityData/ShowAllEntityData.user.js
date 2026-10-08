@@ -13296,9 +13296,11 @@
     /**
      * Version of the parsed record shape. A cached record of another
      * version is ignored, so a parser change never shows stale fields.
+     * 2: Brucebase's "Released on" is one release per line, and its live
+     *    releases are their own field (`_bbReleaseLines()`).
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 1;
+    const _DP_PARSER_VERSION = 2;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -13814,6 +13816,52 @@
     }
 
     /**
+     * A Brucebase song's "Released on Album" panel as one line per release:
+     * the studio releases, and the live ones ("Live versions are released
+     * on …") apart.
+     *
+     * The panel is prose — "Released on <em>A</em> (1973), <em>B</em>
+     * (Single, 1975), and <em>C</em> (2024)." — where each release is an
+     * `<em>` holding its link (or, rarely, a bare `/retail:` or
+     * `/stats:discography` link). A release starts at such an element and
+     * runs to the next one, so its year, its kind and a live release's
+     * "(recorded <a>date</a>)" stay with it; the joining ", ", ", and" and
+     * the closing "." are dropped. A paragraph with no such element is kept
+     * whole, less its "Released on" lead.
+     *
+     * @param {Element} panel The tab's panel.
+     * @returns {{studio: string[], live: string[]}}
+     */
+    function _bbReleaseLines(panel) {
+        const out = { studio: [], live: [] };
+        const isRelease = (n) => n.nodeType === 1 && (
+            (n.nodeName === 'EM' && n.querySelector('a[href]')) ||
+            (n.nodeName === 'A' && /^\/(?:retail:|stats:discography)/.test(n.getAttribute('href') || '')));
+        const clean = (t) => _dpText(t).replace(/^(?:[,;]\s*|and\s+)+/i, '').replace(/(?:\s*[,;.]|\s+and)+$/i, '').trim();
+        const paras = panel.querySelectorAll('p').length ? Array.from(panel.querySelectorAll('p')) : [panel];
+        paras.forEach((para) => {
+            const whole = _dpText(para.textContent);
+            if (!whole) return;
+            const into = /^live\b/i.test(whole) ? out.live : out.studio;
+            const lines = [];
+            let cur = null;
+            Array.from(para.childNodes).forEach((n) => {
+                if (isRelease(n)) {
+                    if (cur !== null) lines.push(cur);
+                    cur = n.textContent;
+                } else if (cur !== null) {
+                    cur += n.textContent;
+                }
+            });
+            if (cur !== null) lines.push(cur);
+            const kept = lines.map(clean).filter(Boolean);
+            if (kept.length) into.push(...kept);
+            else into.push(clean(whole.replace(/^(?:live versions are\s+)?released on\s*/i, '')));
+        });
+        return out;
+    }
+
+    /**
      * Parses a Brucebase song page (`/song:<slug>`).
      *
      * `#page-title` is the title, and the text of `#page-content` before the
@@ -13858,8 +13906,11 @@
             if (gig) data.fields.push(['Last played', _dpText(gig.textContent)]);
         }
         const album = tab('Released on Album');
-        const albumText = album ? _dpText(album.textContent).replace(/^Released on\s*/i, '') : '';
-        if (albumText) data.fields.push(['Released on', albumText]);
+        if (album) {
+            const rel = _bbReleaseLines(album);
+            if (rel.studio.length) data.fields.push(['Released on', rel.studio.join('\n')]);
+            if (rel.live.length) data.fields.push(['Released live on', rel.live.join('\n')]);
+        }
         const dl = tab('Released as Live Download');
         const dlCount = dl ? _dpText(dl.textContent).match(/following\s+([\d,]+)\s+official live downloads?/i) : null;
         if (dlCount) data.fields.push(['Live downloads', dlCount[1]]);
@@ -14396,8 +14447,13 @@
     function _dpFieldsHtml(fields, maxLen) {
         if (!fields.length) return '';
         const cut = (v) => (maxLen && v.length > maxLen ? v.slice(0, maxLen - 1).trimEnd() + '…' : v);
+        // A value of several lines (Brucebase's releases, `_bbReleaseLines()`)
+        // is one line each in the window, and one run in a card, where the
+        // value is cut to `maxLen` anyway.
+        const cell = (v) => (maxLen ? _mbttEscape(cut(String(v).split('\n').join('; ')))
+            : String(v).split('\n').map(_mbttEscape).join('<br>'));
         return '<dl class="mb-dp-kv">' + fields.map(([k, v]) =>
-            `<dt>${_mbttEscape(k)}</dt><dd>${_mbttEscape(cut(v))}</dd>`).join('') + '</dl>';
+            `<dt>${_mbttEscape(k)}</dt><dd>${cell(v)}</dd>`).join('') + '</dl>';
     }
 
     /**
@@ -14647,12 +14703,20 @@
         left.push(`<div class="mb-dp-xtitle">${_mbttEscape(data.title || '(untitled)')}</div>`);
         if (data.subtitle) left.push(`<div class="mb-dp-xsub">${_mbttEscape(data.subtitle)}</div>`);
         if (data.highlight) left.push(`<div class="mb-dp-stat"><b>${_mbttEscape(data.highlight.value)}</b> ${_mbttEscape(data.highlight.label)}</div>`);
-        if (data.cover) left.push(`<a href="${_mbttEscape(data.cover)}" target="_blank" rel="noopener"><img class="mb-dp-xcover" src="${_mbttEscape(data.cover)}" alt=""></a>`);
+        // A plain click on the cover or a scan opens the artwork viewer
+        // (`_dpArtViewerClick()`), the cover first and the scans after it, in
+        // page order; Ctrl-click still opens the image in a new tab.
+        // The cover is often a scan's thumbnail (jungleland.it's front): it
+        // links that scan's full image, not itself.
+        let artvN = 0;
+        const coverScan = data.cover ? (data.images.find(i => i.thumb === data.cover) || {}) : {};
+        if (data.cover) left.push(`<a href="${_mbttEscape(coverScan.full || data.cover)}" target="_blank" rel="noopener" data-mb-artv-ext="${artvN++}">` +
+            `<img class="mb-dp-xcover" src="${_mbttEscape(data.cover)}" alt="${_mbttEscape(coverScan.label || 'cover')}"></a>`);
         if (data.fields.length) left.push('<h4>Fields</h4>' + _dpFieldsHtml(data.fields));
         const scans = data.images.filter(i => i.thumb && i.thumb !== data.cover);
         if (scans.length) {
             left.push(`<h4>Images (${scans.length})</h4><div class="mb-dp-gallery">` + scans.map(i =>
-                `<a href="${_mbttEscape(i.full || i.thumb)}" target="_blank" rel="noopener"><img src="${_mbttEscape(i.thumb)}" alt="${_mbttEscape(i.label)}">` +
+                `<a href="${_mbttEscape(i.full || i.thumb)}" target="_blank" rel="noopener" data-mb-artv-ext="${artvN++}"><img src="${_mbttEscape(i.thumb)}" alt="${_mbttEscape(i.label)}">` +
                 (i.label ? `<span>${_mbttEscape(i.label)}</span>` : '') + '</a>').join('') + '</div>');
         }
         if (data.notes.length) left.push('<h4>Notes</h4>' + data.notes.map(n => `<div class="mb-dp-note">${_mbttEscape(n)}</div>`).join(''));
@@ -15050,6 +15114,73 @@
     }
 
     /**
+     * The artwork viewer's context for another site's images in the window
+     * (`_dpArtViewerClick()`): `external` makes the viewer keep their URLs
+     * as they are, skip the art cache, send no referrer and show none of the
+     * archive's rows. Holds one list at a time, the one last opened.
+     * @type {{key: string, column: string, external: boolean, imagesCache: Map<string, Object[]>}}
+     */
+    const _DP_ART_CTX = { key: 'dp', column: 'Detail page', external: true, imagesCache: new Map() };
+
+    /**
+     * A plain click on an image in the window opens the artwork viewer
+     * (`_artViewerOpen()`) over the window, as a click on the release page's
+     * Cover art section does; Ctrl, Shift, Alt or ⌘ leave the link alone, so
+     * the image still opens in a new tab.
+     *
+     * - An archive image (`data-mb-artv-ctx`/`-path`/`-i`, a release's Cover
+     *   art or an event's Event art strip, `_mbPopArtvAttrs()`): the record
+     *   `_mbPopArtLoad()` already put in `ctx.imagesCache`, so it asks for
+     *   nothing.
+     * - Another site's image (`data-mb-artv-ext`, a detail page's cover and
+     *   scans, `_dpExtractedCols()`, or a linked page's picture,
+     *   `_extLeftCol()`): every such image in the window, in page order, as
+     *   minimal records — the link is the full image, the thumbnail shown is
+     *   the small one, the caption the comment.
+     *
+     * The window stays open under the viewer (`keepOpenWithin`), the viewer
+     * takes every key while it is open, and focus returns to the thumbnail.
+     *
+     * @param {MouseEvent} e - A click in the window's scroll area.
+     * @returns {boolean} True when the click opened the viewer.
+     */
+    function _dpArtViewerClick(e) {
+        if (e.button !== 0 || e.ctrlKey || e.shiftKey || e.altKey || e.metaKey) return false;
+        const a = e.target instanceof Element && e.target.closest('a[data-mb-artv-i], a[data-mb-artv-ext]');
+        if (!a) return false;
+        const title = ((e.currentTarget && e.currentTarget.querySelector('.mb-dp-xtitle')) || {}).textContent || '';
+        if (a.dataset.mbArtvExt === undefined) {
+            const ctx = a.dataset.mbArtvCtx === 'eaa' ? EAA_CTX : CAA_CTX;
+            const path = a.dataset.mbArtvPath;
+            const i = Number(a.dataset.mbArtvI);
+            if (!(ctx.imagesCache.get(path) || [])[i]) return false;
+            e.preventDefault();
+            _artViewerOpen(ctx, path, null, i, { opener: a, title });
+            return true;
+        }
+        const area = e.currentTarget instanceof Element ? e.currentTarget : a.ownerDocument;
+        const links = Array.from(area.querySelectorAll('a[data-mb-artv-ext]'))
+            .sort((x, y) => Number(x.dataset.mbArtvExt) - Number(y.dataset.mbArtvExt));
+        const images = links.map((l) => {
+            const img = l.querySelector('img');
+            const label = l.querySelector('span');
+            const thumb = img ? (img.currentSrc || img.src) : '';
+            return {
+                image: l.href, thumbnails: { 250: thumb || l.href }, types: [], external: true,
+                comment: ((label && label.textContent) || (img && img.alt) || '').trim(),
+            };
+        });
+        const k = links.indexOf(a);
+        if (k < 0) return false;
+        e.preventDefault();
+        const key = `dp:${images.map(im => im.image).join('|')}`;
+        _DP_ART_CTX.imagesCache.clear();
+        _DP_ART_CTX.imagesCache.set(key, images);
+        _artViewerOpen(_DP_ART_CTX, key, null, k, { opener: a, title });
+        return true;
+    }
+
+    /**
      * Opens the pinned dialog on a target, or shows that target in the
      * dialog already open.
      *
@@ -15112,7 +15243,10 @@
             centerV: false,
             zIndex: 10050,
             geoKey: 'sa_dp_dialog_geometry',
-            titleBarExtras: [back, prev, pos, next, seg, reload, open]
+            titleBarExtras: [back, prev, pos, next, seg, reload, open],
+            // The artwork viewer an image opens (_dpArtViewerClick()) lies
+            // over the window; a click in it is not a click outside.
+            keepOpenWithin: ['#mb-art-viewer'],
         });
         if (!api) return;
         if (!GM_getValue('sa_dp_dialog_geometry', null)) api.dialog.style.height = 'min(640px, 86vh)';
@@ -15123,6 +15257,8 @@
         }, true);
         api.scrollArea.addEventListener('click', (e) => {
             if (e.target.closest('.mb-dp-retry')) _dpRenderDialog(true);
+            // An image: the artwork viewer.
+            else if (_dpArtViewerClick(e)) return;
             // An entity link: drill down (Phase 5).
             else if (_dpDrill(e)) return;
             // A source's own controls in its Extracted view (a sortable
@@ -15252,7 +15388,9 @@
             .mb-dp-dialog .mb-dp-gallery img { height: 88px; max-width: 160px; object-fit: cover; border: 1px solid #d9cfbd; }
             .mb-dp-dialog .mb-dp-note { white-space: pre-wrap; margin-bottom: 6px; }
             .mb-dp-dialog .mb-dp-section { white-space: pre-wrap; }
-            .mb-dp-dialog .mb-dp-discs { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px 16px; }
+            /* auto-fit, not auto-fill: the empty tracks collapse, so one disc takes the
+               whole column instead of one 180px track of it (titles wrapped beside empty space) */
+            .mb-dp-dialog .mb-dp-discs { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 16px; }
             .mb-dp-dialog .mb-dp-group + .mb-dp-group { margin-top: 10px; }
             .mb-dp-dialog .mb-dp-gname { font-style: italic; color: #7a6d5c; }
             .mb-dp-dialog .mb-dp-warn, #mb-dp-peek .mb-dp-warn { border-left: 3px solid #9b2218; background: #f6e6dc; padding: 4px 8px; margin: 4px 0 8px; }
@@ -38135,20 +38273,39 @@
     const _mbPopEventArt = new Map();
 
     /**
+     * The attributes that make a window image open the artwork viewer on a
+     * click (`_dpArtViewerClick()`): which archive, which entity, which image.
+     * The viewer reads the record `_mbPopArtLoad()` already put in
+     * `ctx.imagesCache`, so the click asks for nothing.
+     *
+     * @param {Object} ctx - `CAA_CTX` or `EAA_CTX`.
+     * @param {string} path - The entity path, e.g. `/release/<mbid>`.
+     * @param {number} i - The image's index in the archive record.
+     * @returns {string} A leading space and the attributes.
+     */
+    function _mbPopArtvAttrs(ctx, path, i) {
+        return ` data-mb-artv-ctx="${_rgEsc(ctx.key)}" data-mb-artv-path="${_rgEsc(path)}" data-mb-artv-i="${i}"`;
+    }
+
+    /**
      * A strip of archive images for a window: each thumbnail links its full
      * image, labelled with its types; a loading or failure line instead
-     * while that is the state.
+     * while that is the state. A plain click on a thumbnail opens the
+     * artwork viewer on it (`_dpArtViewerClick()`); Ctrl-click still opens
+     * the image in a new tab.
      *
      * @param {string} title - The section heading.
      * @param {?{state: string, images: Array<Object>}} art
      * @param {number} count - Images the entity is known to have, for the heading while loading.
+     * @param {Object} ctx - `CAA_CTX` or `EAA_CTX`, the archive the images are from.
+     * @param {string} path - The entity path, e.g. `/release/<mbid>`.
      * @returns {string}
      */
-    function _mbPopGalleryHtml(title, art, count) {
+    function _mbPopGalleryHtml(title, art, count, ctx, path) {
         if (art && art.state === 'ok') {
-            return `<h4>${_rgEsc(title)} · ${art.images.length}</h4><div class="mb-dp-gallery">` + art.images.map(im => {
+            return `<h4>${_rgEsc(title)} · ${art.images.length}</h4><div class="mb-dp-gallery">` + art.images.map((im, i) => {
                 const th = (im.thumbnails && (im.thumbnails['250'] || im.thumbnails.small)) || im.image;
-                return `<a href="${_rgEsc(im.image)}" target="_blank" rel="noopener"><img loading="lazy" src="${_rgEsc(th)}" alt="">` +
+                return `<a href="${_rgEsc(im.image)}" target="_blank" rel="noopener"${_mbPopArtvAttrs(ctx, path, i)}><img loading="lazy" src="${_rgEsc(th)}" alt="">` +
                     `${_rgEsc((im.types || []).join(', '))}</a>`;
             }).join('') + '</div>';
         }
@@ -38414,13 +38571,17 @@
                 const media = d.media || [];
                 const tracks = media.reduce((s, m) => s + (m['track-count'] || 0), 0);
                 const lang = d['text-representation'] || {};
-                const gallery = caa.count ? _mbPopGalleryHtml('Cover art', _mbPopArt.get(d.id), caa.count) : '';
+                const art = _mbPopArt.get(d.id);
+                const gallery = caa.count ? _mbPopGalleryHtml('Cover art', art, caa.count, CAA_CTX, `/release/${d.id}`) : '';
+                // The front cover opens the viewer on the main front once the
+                // record is here; until then it is the link it always was.
+                const frontI = art && art.state === 'ok' ? art.images.findIndex(im => im.front) : -1;
                 const left = `<div class="mb-dp-xtitle">${_rgEsc(d.title)}</div>` +
                     `<div class="mb-dp-xsub">${_mbPopCreditHtml(d['artist-credit'])}` +
                     `${d.disambiguation ? ` (${_rgEsc(d.disambiguation)})` : ''}</div>` +
                     `<div class="mb-rg-pills">${_mbPopPillsHtml([d.status, rg['primary-type'], media.length ? _rgFormatOf(d) : '',
                         tracks ? `${tracks} track${tracks === 1 ? '' : 's'}` : ''])}</div>` +
-                    (caa.front ? `<a href="/release/${id}/cover-art" target="_blank" rel="noopener">` +
+                    (caa.front ? `<a href="/release/${id}/cover-art" target="_blank" rel="noopener"${frontI >= 0 ? _mbPopArtvAttrs(CAA_CTX, `/release/${d.id}`, frontI) : ''}>` +
                         `<img class="mb-dp-xcover" src="https://coverartarchive.org/release/${id}/front-250" alt=""></a>` : '') +
                     '<h4>Facts</h4>' + _mbPopKvHtml([
                         ['Release group', rg.id ? `<a href="/release-group/${_rgEsc(rg.id)}" target="_blank" rel="noopener">` +
@@ -38787,7 +38948,7 @@
                         ..._mbPopRelRows(d.relations, 'artist'),
                     ]) +
                     _mbPopUrlRowsHtml(d.relations) +
-                    _mbPopGalleryHtml('Event art', _mbPopEventArt.get(d.id), 0) +
+                    _mbPopGalleryHtml('Event art', _mbPopEventArt.get(d.id), 0, EAA_CTX, `/event/${d.id}`) +
                     _mbPopSectionHtml('Recorded here', _mbPop.get(pin.key), (p) => _mbPopKvHtml([
                         ..._mbPopRelRows(p.relations, 'release').map(([k, v]) => [`${k} (releases)`, v]),
                         ..._mbPopRelRows(p.relations, 'recording').map(([k, v]) => [`${k} (recordings)`, v]),
@@ -41089,7 +41250,8 @@
         if (rec.siteName) left.push(`<div class="mb-dp-xsub">${_rgEsc(rec.siteName)}</div>`);
         if (rec.state === 'ok') {
             if (rec.image) {
-                left.push(`<a href="${_rgEsc(rec.image)}" target="_blank" rel="noopener noreferrer">` +
+                // A plain click opens the artwork viewer (`_dpArtViewerClick()`).
+                left.push(`<a href="${_rgEsc(rec.image)}" target="_blank" rel="noopener noreferrer" data-mb-artv-ext="0">` +
                     `<img class="mb-dp-xcover" src="${_rgEsc(rec.image)}" alt="" referrerpolicy="no-referrer"></a>`);
             }
             if (rec.description) left.push(`<div class="mb-ext-xdesc">${_rgEsc(rec.description)}</div>`);
@@ -55840,11 +56002,15 @@ a { color: #1565c0; }`;
     // Sync the ✕ clear button visibility whenever the filter input content changes
     /**
      * Shows or hides the global-filter ✕ clear button based on whether the
-     * filter input currently contains non-empty text (excluding the decorative
+     * filter input currently contains any text (excluding the decorative
      * focus prefix).  Called on every `input` event of the global filter field.
+     *
+     * Not trimmed: a filter of blanks alone filters nothing, but it is still
+     * text in the field, and ✕ is how it goes — as with every other ✕ (the
+     * column and sub-table filters test the raw value too).
      */
     const _syncGfClearBtn = () => {
-        const hasContent = stripFilterPrefix(filterInput.value).trim() !== '';
+        const hasContent = stripFilterPrefix(filterInput.value) !== '';
         filterClear.style.display = hasContent ? 'block' : 'none';
     };
 
@@ -101879,15 +102045,20 @@ a { color: #1565c0; }`;
      * @param   {string} url  Absolute https:// URL.
      * @param   {number} [timeoutMs=30000] The artwork viewer's download of an
      *                   original, which can be many MB, allows longer.
+     * @param   {Object}  [opts]
+     * @param   {boolean} [opts.anonymous=false] Send no cookies: the viewer's
+     *                   download of an image from another site (an external
+     *                   request is anonymous, docs/claude/detail-pages.md).
      * @returns {Promise<Blob>}
      */
-    function _artGmFetchBlob(url, timeoutMs = 30000) {
+    function _artGmFetchBlob(url, timeoutMs = 30000, { anonymous = false } = {}) {
         return new Promise((resolve, reject) => {
             GM_xmlhttpRequest({
                 method:       'GET',
                 url:          url,
                 responseType: 'blob',
                 timeout:      timeoutMs,
+                ...(anonymous ? { anonymous: true } : {}),
                 onload:       (resp) => {
                     if (resp.status >= 200 && resp.status < 300) {
                         resolve(resp.response);
@@ -106570,6 +106741,20 @@ a { color: #1565c0; }`;
     let _artViewerState = null;
 
     /**
+     * A URL as the viewer uses it: an archive URL protocol-relative (the
+     * archives answer on https), an external record's (`im.external`, an
+     * image of another site, `_dpArtViewerClick()`) as it is — that site may
+     * not answer on https at all.
+     *
+     * @param   {Object} im
+     * @param   {string} u
+     * @returns {string}
+     */
+    function _artViewerUrl(im, u) {
+        return im.external ? u : u.replace(/^http:/, '');
+    }
+
+    /**
      * An image's thumbnail URL (250, or `small` on older records), protocol-relative.
      *
      * @param   {Object} im
@@ -106577,7 +106762,7 @@ a { color: #1565c0; }`;
      */
     function _artViewerThumbUrl(im) {
         const t = im.thumbnails || {};
-        return (t['250'] || t.small || t['500'] || t.large || im.image || '').replace(/^http:/, '');
+        return _artViewerUrl(im, t['250'] || t.small || t['500'] || t.large || im.image || '');
     }
 
     /**
@@ -106614,7 +106799,7 @@ a { color: #1565c0; }`;
         if (t.large) out.push(t.large);
         if (im.image) out.push(im.image);
         out.push(_artViewerThumbUrl(im));
-        return [...new Set(out.filter(Boolean).map(u => u.replace(/^http:/, '')))];
+        return [...new Set(out.filter(Boolean).map(u => _artViewerUrl(im, u)))];
     }
 
     /**
@@ -106624,10 +106809,11 @@ a { color: #1565c0; }`;
      * the rendition) — and rejects when none does.
      *
      * @param   {string[]} urls
+     * @param   {boolean}  [external=false] See `_artViewerLoad()`.
      * @returns {Promise<{src: string, url: string}>}
      */
-    function _artViewerLoadFirst(urls) {
-        return urls.reduce((p, u) => p.catch(() => _artViewerLoad(u).then(src => ({ src, url: u }))),
+    function _artViewerLoadFirst(urls, external = false) {
+        return urls.reduce((p, u) => p.catch(() => _artViewerLoad(u, external).then(src => ({ src, url: u }))),
             Promise.reject(new Error('no url')));
     }
 
@@ -106637,15 +106823,22 @@ a { color: #1565c0; }`;
      * rule every other artwork caller follows), else the URL itself once the
      * browser has it.
      *
-     * @param   {string} url
+     * An external image (another site's, `_dpArtViewerClick()`) never goes
+     * through the art cache — that is the archives' store, and the popup
+     * engine keeps its own — and is asked for without a referrer, as the
+     * window's own image of such a page is.
+     *
+     * @param   {string}  url
+     * @param   {boolean} [external=false]
      * @returns {Promise<string>}
      */
-    function _artViewerLoad(url) {
-        if (Lib.settings.sa_art_idb_enable) {
+    function _artViewerLoad(url, external = false) {
+        if (Lib.settings.sa_art_idb_enable && !external) {
             return _artFetchCachedImage(url).then(r => r.objectUrl);
         }
         return new Promise((resolve, reject) => {
             const pre = new Image();
+            if (external) pre.referrerPolicy = 'no-referrer';
             pre.onload = () => resolve(url);
             pre.onerror = () => reject(new Error('image failed: ' + url));
             pre.src = url;
@@ -107537,7 +107730,8 @@ a { color: #1565c0; }`;
     function _artViewerDownloadName(im, i, n, ext) {
         const clean = s => String(s || '').replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, ' ').trim();
         const nn = String(i + 1).padStart(Math.max(2, String(n).length), '0');
-        const types = im.types && im.types.length ? im.types.join(',') : 'none';
+        // Another site's image has no types to name, rather than "none".
+        const types = im.types && im.types.length ? im.types.join(',') : (im.external ? '' : 'none');
         return `${[nn, clean(types), clean(im.comment)].filter(Boolean).join(' ').slice(0, 150).trim()}.${ext}`;
     }
 
@@ -107566,7 +107760,9 @@ a { color: #1565c0; }`;
             if (here() && img) _artViewerShowFacts(st, img);
         };
         say(`Downloading the original — ${name}…`);
-        _artGmFetchBlob(`https:${src}`, 300000).then((blob) => {
+        // Another site's image: its own URL (scheme and all), no cookies.
+        const fetchUrl = im.external ? _artViewerUrl(im, im.image || _artViewerBigUrl(im)) : `https:${src}`;
+        _artGmFetchBlob(fetchUrl, 300000, { anonymous: !!im.external }).then((blob) => {
             const a = document.createElement('a');
             const href = URL.createObjectURL(blob);
             a.href = href;
@@ -107666,6 +107862,7 @@ a { color: #1565c0; }`;
      */
     function _artViewerInfo(st) {
         const im = st.images[st.i];
+        if (im.external) return _artViewerInfoExternal(st);
         const types = im.types && im.types.length ? im.types : ['(no type)'];
         const sameType = st.images.filter(x => (x.types || []).includes(types[0]));
         const panel = _artvEl('div', 'mb-artv-info mb-tt-liner');
@@ -107745,6 +107942,57 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * The info panel for another site's image (`im.external`,
+     * `_dpArtViewerClick()`): its caption, position, where it is from and
+     * the two sizes the page links. None of the archive's rows — main
+     * front, status, the edit that added it, the archive id — which would
+     * all be false here.
+     *
+     * @param   {Object} st The viewer state.
+     * @returns {HTMLElement}
+     */
+    function _artViewerInfoExternal(st) {
+        const im = st.images[st.i];
+        const panel = _artvEl('div', 'mb-artv-info mb-tt-liner');
+        panel.appendChild(_artvEl('div', 'mb-tt-title', im.comment || `Image ${st.i + 1}`));
+        panel.appendChild(_artvEl('div', 'mb-tt-rule'));
+        const dl = document.createElement('dl');
+        const row = (k, v) => {
+            dl.appendChild(_artvEl('dt', null, k));
+            const dd = document.createElement('dd');
+            if (v instanceof Node) dd.appendChild(v); else dd.textContent = v;
+            dl.appendChild(dd);
+        };
+        row('Position', `${st.i + 1} of ${st.images.length}`);
+        let host = '';
+        try { host = new URL(im.image || _artViewerThumbUrl(im), location.href).hostname; } catch (e) { /* not a URL */ }
+        if (host) row('From', host);
+        if (Lib.settings.sa_art_viewer_facts !== false) {
+            row('Shown', _artvEl('span', 'mb-artv-facts', '…'));
+            row('Original', _artvEl('span', 'mb-artv-facts-orig', '…'));
+        }
+        panel.appendChild(dl);
+        panel.appendChild(_artvEl('div', 'mb-tt-rule'));
+        const sizes = _artvEl('div', 'mb-tt-body', 'Sizes: ');
+        const thumb = _artViewerThumbUrl(im);
+        [['thumbnail', thumb], ['full', im.image && im.image !== thumb ? im.image : '']]
+            .filter(([, u]) => u)
+            .forEach(([label, u], n) => {
+                if (n) sizes.append(' · ');
+                const a = _artvEl('a', null, label);
+                a.href = u;
+                a.target = '_blank';
+                a.rel = 'noopener noreferrer';
+                sizes.appendChild(a);
+            });
+        panel.appendChild(sizes);
+        panel.appendChild(_artvEl('div', 'mb-tt-foot',
+            '← → step · ↑ ↓ wheel zoom · 0 fit · 1 actual pixels · Z 2× · R rotate · H V flip · B background · F fullscreen' +
+            ' · D download · P slideshow · G grid · I info · O original · Esc close'));
+        return panel;
+    }
+
+    /**
      * Renders the viewer for its current state: the bar, then either the
      * grid (grouped under each image's first type) or the stage, the info
      * panel and the filmstrip. The large image replaces the thumbnail once it
@@ -107776,9 +108024,9 @@ a { color: #1565c0; }`;
         bar.appendChild(_artvBtn('fullscreen', 'Fullscreen (F)', _artViewerIsFullscreen()));
         if (!st.grid) bar.appendChild(_artvBtn('download', 'Download (D)'));
         const orig = _artvEl('a', 'mb-artv-btn', 'Original (O)');
-        orig.href = (im.image || _artViewerBigUrl(im)).replace(/^http:/, '');
+        orig.href = _artViewerUrl(im, im.image || _artViewerBigUrl(im));
         orig.target = '_blank';
-        orig.rel = 'noopener';
+        orig.rel = im.external ? 'noopener noreferrer' : 'noopener';
         bar.appendChild(orig);
         const close = _artvBtn('close', 'Close (Esc)');
         bar.appendChild(close);
@@ -107788,7 +108036,9 @@ a { color: #1565c0; }`;
             const grid = _artvEl('div', 'mb-artv-grid');
             const groups = new Map();
             st.list.forEach(i => {
-                const first = (st.images[i].types && st.images[i].types[0]) || '(no type)';
+                // Another site's images carry no types: one run, not "(no type)".
+                const first = st.ctx.external ? 'Images'
+                    : (st.images[i].types && st.images[i].types[0]) || '(no type)';
                 if (!groups.has(first)) groups.set(first, []);
                 groups.get(first).push(i);
             });
@@ -107799,6 +108049,7 @@ a { color: #1565c0; }`;
                     const x = st.images[i];
                     const fig = document.createElement('figure');
                     const img = document.createElement('img');
+                    if (x.external) img.referrerPolicy = 'no-referrer';
                     img.src = _artViewerThumbUrl(x);
                     img.alt = (x.types || []).join(' / ');
                     img.loading = 'lazy';
@@ -107829,6 +108080,7 @@ a { color: #1565c0; }`;
             _artViewerFit(st, img);
             _artViewerShowFacts(st, img);
         });
+        if (im.external) img.referrerPolicy = 'no-referrer';
         img.src = _artViewerThumbUrl(im);
         img.dataset.artvSize = 'thumb';
         // The archive URL behind the src (which can be a blob: URL): it
@@ -107850,6 +108102,7 @@ a { color: #1565c0; }`;
         const film = _artvEl('div', 'mb-artv-film');
         st.list.forEach(i => {
             const th = document.createElement('img');
+            if (st.images[i].external) th.referrerPolicy = 'no-referrer';
             th.src = _artViewerThumbUrl(st.images[i]);
             th.alt = (st.images[i].types || []).join(' / ');
             th.loading = 'lazy';
@@ -107867,7 +108120,10 @@ a { color: #1565c0; }`;
         // Every large candidate but the thumbnail already shown, best first:
         // a failed 1200 falls back to the 500 px `large`.
         const bigUrls = _artViewerBigUrls(im).filter(u => u !== img.getAttribute('src'));
-        _artViewerLoadFirst(bigUrls).then(({ src, url }) => {
+        // Another site's scan can link no bigger image than its thumbnail:
+        // then the thumbnail IS the image, and there is nothing to wait for.
+        if (!bigUrls.length) note.textContent = '';
+        else _artViewerLoadFirst(bigUrls, !!im.external).then(({ src, url }) => {
             if (_artViewerState !== st || st.gen !== gen || !img.isConnected) return;
             img.src = src;
             img.dataset.artvSize = 'big';
@@ -107884,7 +108140,7 @@ a { color: #1565c0; }`;
             .filter(j => j !== st.i)
             .forEach(j => {
                 const x = st.images[j];
-                _artViewerLoadFirst(_artViewerBigUrls(x).filter(u => u !== _artViewerThumbUrl(x))).catch(() => {});
+                _artViewerLoadFirst(_artViewerBigUrls(x).filter(u => u !== _artViewerThumbUrl(x)), !!x.external).catch(() => {});
             });
         close.focus({ preventScroll: true });
     }
@@ -108012,7 +108268,7 @@ a { color: #1565c0; }`;
             _artViewerRender();
         } else if (k === 'o' || k === 'O') {
             const im = st.images[st.i];
-            window.open((im.image || _artViewerBigUrl(im)).replace(/^http:/, ''), '_blank', 'noopener');
+            window.open(_artViewerUrl(im, im.image || _artViewerBigUrl(im)), '_blank', im.external ? 'noopener,noreferrer' : 'noopener');
         } else {
             handled = false;
         }

@@ -21084,3 +21084,53 @@ there, because the studios come from it.
   after a name that starts with them ("2025‐05‐20: Co‐op Live, … (2025-05-20)",
   a popup-ext.spec.js failure). Now they are skipped when the name, with U+2010
   read as "-", contains the begin date.
+
+## 2026-10-09 — Window images open the artwork viewer; GF ✕ for blanks; one-disc tracklist wrap; Brucebase releases per line (branch feature/gpe-art-viewer, WIP.3/WIP.4)
+
+**Global filter ✕ hidden for a filter of blanks (WIP.3).** `_syncGfClearBtn`
+tested `stripFilterPrefix(value).trim() !== ''`. Every other ✕ (the column,
+sub-table and quick filters) tests the raw value, so only the global filter
+left typed spaces with no ✕. Dropped the `.trim()`. The query itself is still
+trimmed, so blanks still filter nothing. Pinned by
+`global-filter-clear.spec.js`; mutation "the global filter's ✕ trims again".
+
+**The popup window's images open `#mb-art-viewer` (WIP.4).** These are
+`_dpArtViewerClick()`, delegated on the scroll area, and the
+`data-mb-artv-*` attributes stamped when the HTML is built. The traps found
+while wiring it:
+- **The window closed under the viewer.** `createInfoDialog()` treats any
+  click outside the dialog as "close", and the viewer is outside. The art
+  gallery had already solved this with `keepOpenWithin: ['#mb-art-viewer']`,
+  so the window passes the same.
+- **Keys are already safe.** The viewer listens on `window` in the capture
+  phase and calls `stopImmediatePropagation()`. That runs before the dialog's
+  `document` Esc handler and `_dpDialogKeys`, so Esc closes only the viewer
+  and ← → step images, not rows.
+- **A foreign image through the art cache stays a thumbnail.**
+  `_artFetchCachedImage()` fetches through `GM_xmlhttpRequest`. In fixtures
+  that is the stub's 404; on the real site it would put jungleland's scans
+  into the archives' IndexedDB. External images take `new Image()` with
+  `no-referrer` instead. The spec asserts `data-artv-size="big"` and an
+  empty Referer on the routed request.
+- **`_artViewerThumbUrl()`/`_artViewerBigUrls()` strip `http:`.** That is fine
+  for the archives (https), wrong for a site that may serve http only.
+  `_artViewerUrl(im, u)` leaves an external record's URL alone.
+- **The jungleland cover linked itself.** `data.cover` is the front scan's
+  THUMBNAIL and the `<a>` linked `data.cover`. It now links the scan's `full`.
+
+**One-disc tracklist wrapped (reported from a real browser on
+springsteenlyrics.com, mid-branch).** `.mb-dp-discs` was
+`repeat(auto-fill, minmax(180px, 1fr))`. auto-fill keeps empty tracks, so
+one disc took one ~210 px track of a ~430 px column ("DOES THIS BUS STOP AT /
+82ND STREET?"). auto-fit collapses them. The spec measured the disc 229 px
+narrower than its column before the fix.
+
+**Brucebase "Released on" was one run-on paragraph (reported mid-branch).**
+The parser took the panel's `textContent`. The panel marks every release with
+`<em><a href="/retail:…">`, so `_bbReleaseLines()` starts a line at each such
+element and keeps the following text ("(Single, 1975)", "(recorded …)")
+with it. The "Live versions are released on" paragraph became its own field.
+Multi-line values travel as `\n`-joined strings, so the IndexedDB records and
+string assertions keep their shape. `_dpFieldsHtml()` renders `<br>` in the
+window and "; " in the card. `_DP_PARSER_VERSION` was bumped to 2, so cached
+records re-parse.
