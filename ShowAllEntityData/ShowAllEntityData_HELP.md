@@ -1712,6 +1712,15 @@ but Brucebase is slow, and that first request can take several seconds. A
 date the year page has no show for, or a show that did not take place, says
 so.
 
+**On the Springsteen sites themselves** (springsteenlyrics.com, Brucebase,
+jungleland.it, brucespringsteen.it, each with its own support switched on),
+the same setting previews their links to other sites: in a list's table, in
+springsteenlyrics.com's page text and in Brucebase's wiki text — a Brucebase
+link on springsteenlyrics.com gets Brucebase's own card. The sites' share
+buttons, menus and footers do not, and neither do their links to their own
+pages (those keep the site's own detail-page preview). There is nothing
+from MusicBrainz in these cards: no "MusicBrainz knows this URL".
+
 **What it sends.** A card asks the linked site for the page, once, and only if
 the pointer is still on the link when its turn comes (one request a second per
 site). The request carries **none of your cookies**, so the card shows the

@@ -20829,3 +20829,38 @@ first copy's stylesheet wins. The user disabled one copy and the pill and
 icon came back (and a springsteenlyrics.com list page's window showed U2's
 release-group rows from the real Web Service). **When cards look unstyled,
 check the console for two "Userscript … loaded" lines first.**
+
+## 2026-10-08 — External links on the Springsteen sites, U5 (branch feature/popup-engine-urls, WIP.3)
+
+org/iframe.org "* generalize to URLs", U5: `_extSource()` on the four foreign
+hosts. Rules: docs/claude/detail-pages.md, "On the Springsteen sites".
+
+**The census chose the scope** (`scratchpad` script over every foreign list
+fixture, 2026-10-08): springsteenlyrics.com's intro text links Brucebase
+(`.project-detail`), its `.top-bar` and `.footer-col` Facebook, X, Reddit;
+Brucebase's song list links estreetshuffle.com in a tab (`#page-content`),
+its `#top-bar`, `#login-status` and `#footer` wikidot's own pages;
+jungleland.it and brucespringsteen.it lists link no other site. So the scope
+is the table plus a per-site `extRoot`.
+
+**The page the census found the links on gets no card.** The first spec
+loaded springsteenlyrics.com's bootleg INTRO page: `__saTest` undefined, no
+card. That page has no pageType, so the script stops before
+`_initDetailPreview()`. Its list pages have the same `.project-detail`; the
+spec uses the bootleg list with the intro's link put in.
+
+**A guard the spec cannot see.** Removing the four new `_EXT_SKIP_SEL`
+entries left the spec green: every site's chrome is already outside its
+scope. Kept as a second line and recorded `"expect": "pass"`, per the
+project's rule for a guard another one covers for.
+
+**Verification.** popup-ext-foreign.spec.js 4/4, its mobile sibling 1/1; the
+five U5 mutations as expected (four caught, one recorded pass), the U1
+`sa_pop_ext` mutation re-anchored on the new `enabled()` and caught. `npm
+test` (13:45:41Z–13:54:16Z, NB-3641): 1400 passed, 1 failed —
+popup-mb.spec.js "Ctrl+click keeps the link's own new tab, and the window
+stays" timed out after 90 s waiting for the new tab's `page` event. Alone it
+passed 5 of 5 (`--repeat-each 5`), and its whole file 58 of 58: a timing
+failure under the suite's load, like the merge-gate one of 2026-10-08
+("Merge gate: one popup-mb timeout, not reproducible"), in a test U5 does not
+touch. The live spec 4/4 (13:54:16Z–13:54:59Z), logged in again.

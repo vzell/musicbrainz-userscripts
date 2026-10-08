@@ -4,8 +4,8 @@
         "why": "External link previews are opt-in, off by default (org/iframe.org answer 2): with the setting off a hover asks no other site anything.",
         "edits": [
             {
-                "find": "            enabled: () => !_foreignHost && Lib.settings.sa_pop_ext === true,",
-                "replace": "            enabled: () => !_foreignHost,"
+                "find": "            enabled: () => Lib.settings.sa_pop_ext === true,",
+                "replace": "            enabled: () => true,"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
@@ -1102,6 +1102,71 @@
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
         "grep": "a Brucebase show's window",
+        "expect": "fail"
+    },
+    {
+        "name": "U5: the external source stays off on the Springsteen sites",
+        "why": "U5 (answer 6): every off-site link on the four sites, behind sa_pop_ext like on MusicBrainz.",
+        "edits": [
+            {
+                "find": "            enabled: () => Lib.settings.sa_pop_ext === true,",
+                "replace": "            enabled: () => !_foreignHost && Lib.settings.sa_pop_ext === true,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext-foreign.spec.js",
+        "grep": "what is previewed on springsteenlyrics.com",
+        "expect": "fail"
+    },
+    {
+        "name": "U5: the external source ignores sa_pop_ext on the Springsteen sites",
+        "why": "Opt-in, off by default, there as on MusicBrainz: a hover there asks no other site anything until the user switches it on.",
+        "edits": [
+            {
+                "find": "            enabled: () => Lib.settings.sa_pop_ext === true,",
+                "replace": "            enabled: () => true,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext-foreign.spec.js",
+        "grep": "off by default there too",
+        "expect": "fail"
+    },
+    {
+        "name": "U5: a site's content area is out of scope",
+        "why": "springsteenlyrics.com's text and Brucebase's wiki text are where those sites link other sites (the U5 census).",
+        "edits": [
+            {
+                "find": "                    return `table.tbl > tbody a[href]${root ? `, ${root} a[href]` : ''}`;",
+                "replace": "                    return 'table.tbl > tbody a[href]';"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext-foreign.spec.js",
+        "grep": "what is previewed on springsteenlyrics.com",
+        "expect": "fail"
+    },
+    {
+        "name": "U5: the Springsteen sites' chrome gets cards",
+        "why": "Their share bars, menus, login status and footers link Facebook, X, Reddit and wikidot: chrome, never a card. Recorded \"pass\": on the four sites the scope (table rows and _DP_SITES[...].extRoot) already leaves the chrome out, so the spec cannot see this second line; it matters if a site ever puts a share bar inside its content area.",
+        "edits": [
+            {
+                "find": "    const _EXT_SKIP_SEL = '.header, #header, #footer, .top-social, .top-bar, #top-bar, .footer-col, #login-status, ' +",
+                "replace": "    const _EXT_SKIP_SEL = '.header, #header, #footer, .top-social, ' +"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext-foreign.spec.js",
+        "grep": "what is previewed on springsteenlyrics.com",
+        "expect": "pass"
+    },
+    {
+        "name": "U5: a foreign host asks the Web Service what MusicBrainz knows of a URL",
+        "why": "The Web Service is MusicBrainz's own origin: from another site its relative /ws/2 path is that site's, and nothing there is MusicBrainz's to show.",
+        "edits": [
+            {
+                "find": "        if (_foreignHost) return null;\n        const mbid = _extInfoMbid(t.el);",
+                "replace": "        const mbid = _extInfoMbid(t.el);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext-foreign.spec.js",
+        "grep": "nothing from MusicBrainz",
         "expect": "fail"
     }
 ]

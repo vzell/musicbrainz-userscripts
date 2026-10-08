@@ -596,9 +596,10 @@ new tab. Rules:
 (default off, its own ⚙️ divider "🔎 EXTERNAL LINK PREVIEWS"), independent
 of `sa_pop_mb`. It sits in `_popSources()` just before `_mbEntitySource()`;
 the two never claim the same link (one takes only another origin, the other
-only this one). U1 is MusicBrainz only (`enabled()` checks `!_foreignHost`);
-U5 adds the foreign hosts. Design, probes (X1–X9) and the answers it rests
-on: org/iframe.org, section "* generalize to URLs".
+only this one). U1 was MusicBrainz only; since U5 it serves the four
+Springsteen sites too (section "On the Springsteen sites" below). Design,
+probes (X1–X9) and the answers it rests on: org/iframe.org, section "*
+generalize to URLs".
 
 - **What is previewed: `_extTarget()`.** An `http(s)` link whose host is not
   the page's (`www.` aside), read from the `href` ATTRIBUTE, never `a.href`
@@ -974,6 +975,54 @@ U.S.A."): Brucebase's and springsteenlyrics.com's song pages in the
 annotation, the Wikidata item, and the English Wikipedia article in the box
 MusicBrainz's own script adds after the page (outside a table, so the test
 switches `sa_pop_mb_page` on and waits for it).
+
+## On the Springsteen sites (org/iframe.org "* generalize to URLs", U5)
+
+`_extSource()` serves the four foreign hosts too (answer 6: every off-site
+link there, not only the other Springsteen sites). `enabled()` is
+`sa_pop_ext` alone: on a foreign host the script runs only past that site's
+own `sa_enable_<site>` gate, and the engine installs only where the script
+has a pageType (`_initDetailPreview()` at the end of initialization).
+
+- **Scope: `_DP_SITES[host].extRoot`.** The selector on a foreign host is
+  `table.tbl > tbody a[href]` plus `<extRoot> a[href]`: springsteenlyrics.com
+  `.project-detail` (its text), Brucebase `#page-content` (the wiki's text),
+  none for jungleland.it and brucespringsteen.it (their lists link no other
+  site). Stepping (`_extSteps()`) uses the same root as its block. The census
+  of the fixtures (2026-10-08) chose these: springsteenlyrics.com's intro
+  text links Brucebase, its `.top-bar` and `.footer-col` Facebook, X and
+  Reddit; Brucebase's song list links estreetshuffle.com in a tab, wikidot's
+  `#top-bar` menus, `#login-status` and `#footer` wikidot's own pages.
+- **Chrome stays out — by the scope first.** On all four sites the share
+  bars, menus, login status and footers sit OUTSIDE the table and the
+  `extRoot`, so the scope alone leaves them out. `_EXT_SKIP_SEL` also gained
+  `.top-bar`, `#top-bar`, `.footer-col` and `#login-status` as a second line,
+  for a site that ever puts a share bar inside its text; the mutation that
+  removes them is recorded `"expect": "pass"` (the spec cannot see it while
+  the scope covers for it).
+- **The site's own links stay its own**: the host comparison (`www.` aside,
+  lower case: jungleland.it writes its own host in capitals) leaves them to
+  the detail-page source, `_dpSiteSource()`, listed first.
+- **No MusicBrainz parts there**: `_extContext()` says nothing and
+  `_extMbQuery()` is null on a foreign host — the Web Service is MusicBrainz's
+  origin, and a relative `/ws/2` path would be the foreign site's.
+- **A link to another Springsteen site** gets that site's card through U4's
+  readers, from any host (springsteenlyrics.com → Brucebase's song card).
+- **Where it cannot help**: springsteenlyrics.com's bootleg INTRO page, where
+  the census found its Brucebase links, has no pageType, so the script and
+  the engine stop early there; its list pages have the same `.project-detail`
+  and get cards.
+- **Caches**: IndexedDB is per origin, so each site keeps its own
+  external-link records; the known hosts (`sa_pop_ext_hosts`) are a GM value,
+  shared by every site the script runs on.
+
+**Tests.** `tests/fixtures/popup-ext-foreign.spec.js` (off by default; what
+is previewed — the text's link, not the share bar, footer, menus or login
+status, not the site's own link, not a link outside the content area; a
+link to Brucebase from springsteenlyrics.com with Brucebase's card and no
+Web Service request; Brucebase's estreetshuffle.com link) and
+`popup-ext-foreign.mobile.spec.js` (a tap opens the window). Mutations: the
+`U5:` entries of `scripts/mutations/popup-ext.json`.
 
 `python3 scripts/check-mutation-anchors.py` checks, without running a spec,
 that every `find` of every mutation list still matches once. Run it after

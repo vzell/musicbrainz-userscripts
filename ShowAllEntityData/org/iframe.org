@@ -865,7 +865,18 @@ final rendered page, in the h3 "URLs" sub-table, in the "URL" column
     the English article (outside a table: =sa_pop_mb_page=). The @extended
     live spec hovers the first four (tests/live/popup-ext.spec.js, "U4: a
     work's annotation links"). No jungleland.it link is on it.
-- [ ] U5: external links on the four foreign hosts.
+- [X] U5: external links on the four foreign hosts, WIP.3 on
+  =feature/popup-engine-urls= (2026-10-08, after U4's WIP.2; not merged, the
+  user's browser check first). Every off-site link (answer 6) in the table and
+  the site's content area (=_DP_SITES[…].extRoot=: springsteenlyrics.com
+  =.project-detail=, Brucebase =#page-content=), never the chrome;
+  =sa_pop_ext= is the one switch there; no MusicBrainz parts. Rules as
+  built: [[file:../docs/claude/detail-pages.md]], "On the Springsteen
+  sites". Found on the way: springsteenlyrics.com's bootleg INTRO page, where
+  the census saw its Brucebase links, has no pageType, so the engine never
+  installs there (its list pages carry the same =.project-detail=); and the
+  chrome is already outside every site's scope, so the new =_EXT_SKIP_SEL=
+  entries are a second line (their mutation recorded "pass").
 
 ** answers (2026-10-08)
 

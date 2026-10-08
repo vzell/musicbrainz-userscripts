@@ -4322,7 +4322,8 @@
             type: 'checkbox',
             default: false,
             description: 'Off by default. Hold Ctrl over a link to another site — in a table, a relationship, the ' +
-                         'annotation or the sidebar\'s external links — for a card with the page\'s title, ' +
+                         'annotation or the sidebar\'s external links, and on the Springsteen sites the script ' +
+                         'supports in their lists and page text — for a card with the page\'s title, ' +
                          'description and status (a dead or moved link shows as such); Space pins it into a window ' +
                          'with the page itself (Live page) and, on MusicBrainz, which entities link that URL ' +
                          '("MusicBrainz knows this URL": one Web Service request, made by the window only). ' +
@@ -13824,8 +13825,12 @@
      * - `liveCss`: page rules for the Live page view (scoped to
      *   `html.mb-dp-isolate` where they belong to "Hide site navigation").
      * - `livePrepare(doc)`: anything the page needs without its scripts.
+     * - `extRoot`: the site's content area, where a link to ANOTHER site is
+     *   previewed besides the table (`_extSource()` on this host, U5), or
+     *   null for the table only. Never the site's chrome: its share bar,
+     *   menus and footer are left out by `_EXT_SKIP_SEL`.
      *
-     * @type {Object<string, {setting: string, isDetailUrl: function(URL): boolean, charset: ?string, parse: function(Document, string): ?object, liveRoot: ?function(Document): ?Element, liveHide: string[], liveCss: string, livePrepare: ?function(Document): void}>}
+     * @type {Object<string, {setting: string, isDetailUrl: function(URL): boolean, charset: ?string, parse: function(Document, string): ?object, liveRoot: ?function(Document): ?Element, liveHide: string[], liveCss: string, livePrepare: ?function(Document): void, extRoot: ?string}>}
      */
     const _DP_SITES = {
         'springsteenlyrics.com': {
@@ -13841,7 +13846,9 @@
             },
             liveHide: [],
             liveCss: '',
-            livePrepare: null
+            livePrepare: null,
+            // The intro text of a list page links Brucebase (U5 census).
+            extRoot: '.project-detail'
         },
         'jungleland.it': {
             setting: 'sa_jl_detail_preview',
@@ -13852,7 +13859,8 @@
             liveRoot: null,
             liveHide: [],
             liveCss: '',
-            livePrepare: null
+            livePrepare: null,
+            extRoot: null
         },
         'brucespringsteen.it': {
             setting: 'sa_bs_detail_preview',
@@ -13862,7 +13870,8 @@
             liveRoot: null,
             liveHide: ['p[style*="double"]', 'h4'],
             liveCss: '',
-            livePrepare: null
+            livePrepare: null,
+            extRoot: null
         },
         'brucebase.wikidot.com': {
             setting: 'sa_bb_detail_preview',
@@ -13892,7 +13901,10 @@
                         panel.parentNode.insertBefore(h, panel);
                     });
                 });
-            }
+            },
+            // The wiki's own text (estreetshuffle.com and the like, U5
+            // census); its top bar, header and footer are wikidot's chrome.
+            extRoot: '#page-content'
         }
     };
 
@@ -38919,9 +38931,13 @@
      * Where an external link never gets a card: the site's chrome, the
      * Relationships column (its own tooltip), the card and the window
      * themselves, and what the entity cards' page-wide scope leaves out.
+     * Since U5 the Springsteen sites' chrome too: springsteenlyrics.com's
+     * `.top-bar` and `.footer-col` (Facebook, X, Reddit), wikidot's
+     * `#top-bar` menus and `#login-status` (the U5 census of their fixtures).
      * @type {string}
      */
-    const _EXT_SKIP_SEL = `.header, #header, #footer, .top-social, td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog, ${_MB_POP_PAGE_SKIP}`;
+    const _EXT_SKIP_SEL = '.header, #header, #footer, .top-social, .top-bar, #top-bar, .footer-col, #login-status, ' +
+        `td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog, ${_MB_POP_PAGE_SKIP}`;
 
     /** Where external links live on a MusicBrainz page, previewed without the page-wide setting. */
     const _EXT_SCOPE_SEL = 'table.tbl > tbody a[href], table.details a[href], .annotation a[href], ul.external_links a[href]';
@@ -40674,7 +40690,9 @@
      */
     function _extSteps(t) {
         if (t.col) return _popColumnSteps(t.col, 'a[href]', (x) => !!_extTarget(x));
-        const box = t.el.closest('table.tbl, table.details, .annotation, ul.external_links');
+        // On a Springsteen site (U5), its content area is the block.
+        const root = _foreignHost && _DP_SITES[_foreignHost].extRoot;
+        const box = t.el.closest(`table.tbl, table.details, .annotation, ul.external_links${root ? `, ${root}` : ''}`);
         if (!box) return [t.el];
         return Array.from(box.querySelectorAll('a[href]')).filter(x => _extTarget(x) && x.getClientRects().length);
     }
@@ -40750,7 +40768,11 @@
      * `#page`. The card waits for Ctrl unless `sa_dp_hover_without_ctrl` is
      * on; Space pins; ‹ › step through the same column or block; the Live
      * page is the site's page through `_EXT_LIVE`. Off unless `sa_pop_ext` is
-     * on, and on MusicBrainz only in U1 (U5 adds the foreign hosts).
+     * on. On the four Springsteen sites (U5; the script runs there only with
+     * that site's own `sa_enable_<site>` on) it serves every off-site link of
+     * the table and of the site's content area (`_DP_SITES[…].extRoot`), never
+     * its chrome; the MusicBrainz parts (the context line, "MusicBrainz knows
+     * this URL") stay off there (`_extContext()`, `_extMbQuery()`).
      *
      * @returns {object} The source.
      */
@@ -40760,12 +40782,18 @@
             kind: 'Web page',
             // Read at every event, so the setting needs no reload.
             get selector() {
+                if (_foreignHost) {
+                    const root = _DP_SITES[_foreignHost].extRoot;
+                    return `table.tbl > tbody a[href]${root ? `, ${root} a[href]` : ''}`;
+                }
                 return Lib.settings.sa_pop_mb_page === true ? `${_EXT_SCOPE_SEL}, #page a[href]` : _EXT_SCOPE_SEL;
             },
             wide: false,
             live: _EXT_LIVE,
             liveFailTitle: 'Could not load the page.',
-            enabled: () => !_foreignHost && Lib.settings.sa_pop_ext === true,
+            // On a Springsteen site the script runs only past that site's own
+            // `sa_enable_<site>` gate, so `sa_pop_ext` is the one switch.
+            enabled: () => Lib.settings.sa_pop_ext === true,
             resolve: (a) => _extTarget(a),
             needsCtrl: _dpNeedsCtrl,
             // A reader may show another address than the link (U4: a
