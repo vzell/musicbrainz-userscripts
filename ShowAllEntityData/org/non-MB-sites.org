@@ -1,0 +1,8 @@
+* sidebar entries ==> collapsable h2/h3
+* all booleans
+** also for mobile (default false)
+** otherwise: default true
+* images in NON-MB sites need viewer support
+* BruceBase
+** more userscript support for more PTs
+** needs renderer for all kind of pages in URL engine - external link preview
