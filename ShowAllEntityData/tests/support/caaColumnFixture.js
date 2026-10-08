@@ -214,7 +214,9 @@ const viewer = (page) => page.evaluate(() => {
         title: q('.mb-artv-title'),
         src: (v.querySelector('.mb-artv-img') || {}).src || '',
         size: ((v.querySelector('.mb-artv-img') || {}).dataset || {}).artvSize || null,
-        zoom: ((v.querySelector('.mb-artv-img') || {}).style || {}).transform || '',
+        // The zoom level only: the transform also carries the pan's
+        // translate() once the image's natural size is known.
+        zoom: ((((v.querySelector('.mb-artv-img') || {}).style || {}).transform || '').match(/scale\([^)]*\)/) || [''])[0],
         slideshow: (v.querySelector('[data-artv="slideshow"]') || { getAttribute: () => null }).getAttribute('aria-pressed'),
         infoMarks: v.querySelectorAll('.mb-artv-info .mb-column-filter-highlight').length,
     };

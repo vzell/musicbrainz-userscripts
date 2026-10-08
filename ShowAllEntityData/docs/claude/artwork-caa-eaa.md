@@ -335,6 +335,20 @@ never from a hard-coded `CAA_CTX`. Rules that come with that:
   first and stops them all; it also traps Tab itself. Registered on open,
   removed on close. Viewer keys act only without Ctrl/Cmd/Alt, so browser
   shortcuts keep their default.
+- **The viewer image is out of flow and sized in px; the pan is a clamped
+  translate.** `.mb-artv-img` is `position: absolute` and `_artViewerFit()`
+  gives it the fitted size (frame = stage minus `--mb-artv-gx/--mb-artv-gy`)
+  on render, on each image load and on resize. Put back in flow, its natural
+  height stretched the stage's grid row and `overflow: hidden` cropped the
+  bottom of every image taller than the stage, zoomed or not (DEBUG-NOTES
+  2026-10-08). The zoom writes `translate(…) scale(…)` through ONE writer,
+  `_artViewerApplyTransform()`, from `st.pan` (−1…1, clamped, so an edge
+  stops on the frame edge); never `transform-origin`. A spec measuring the
+  viewer image must serve an image with a real natural size taller than the
+  stage (an SVG with width/height, as `art-viewer-pan.spec.js` does): the
+  other viewer specs' 1×1 PNG can never show a fit or pan defect. Specs
+  reading the zoom take the `scale(…)` part of the transform
+  (`tests/support/caaColumnFixture.js`).
 - **The tab click is intercepted on `window` capture too.** After a render,
   `initNavigationGuard()`'s anchor guard (document capture) asks "leave this
   page?" for any link to another path — before any handler further down could
@@ -383,7 +397,8 @@ Covered by `release-tracks-cover-art.spec.js`, `release-tracks-cover-art-viewer.
 and `release-tracks-cover-art.mobile.spec.js`; mutation lists
 `release-tracks-cover-art.json`, `-p2.json`, `-p3.json` and `-p4.json`. The
 event page: `event-overview-art.spec.js`, `event-overview-art.mobile.spec.js`,
-mutation list `event-overview.json`.
+mutation list `event-overview.json`. The viewer's fit and pan:
+`art-viewer-pan.spec.js`, mutation list `art-viewer-pan.json`.
 
 ## The CAA/EAA column redesign: tiles, chips, cards, the column viewer
 

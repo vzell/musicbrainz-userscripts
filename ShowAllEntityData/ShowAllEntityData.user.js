@@ -103863,21 +103863,28 @@ a { color: #1565c0; }`;
             #mb-art-viewer .mb-artv-mid.mb-artv-noinfo { grid-template-columns: minmax(0, 1fr); }
             #mb-art-viewer .mb-artv-mid.mb-artv-noinfo .mb-artv-info { display: none; }
             #mb-art-viewer .mb-artv-stage {
+                --mb-artv-gx: 56px;
+                --mb-artv-gy: 12px;
                 position: relative;
                 overflow: hidden;
-                display: grid;
-                place-items: center;
                 min-height: 0;
                 cursor: zoom-in;
                 touch-action: pan-y;
             }
             #mb-art-viewer .mb-artv-stage.mb-artv-zoomed { cursor: zoom-out; }
+            /* Out of flow, so it can never size the stage (in flow, its
+               natural height stretched the stage's grid row past the stage,
+               and overflow: hidden cut the bottom off). Fitted into the frame
+               (the stage minus the gutters) in px by _artViewerFit() once its
+               natural size is known; the max-* are the fallback until then. */
             #mb-art-viewer .mb-artv-img {
-                width: 100%;
-                height: 100%;
-                padding: 12px 56px;
-                box-sizing: border-box;
+                position: absolute;
+                inset: 0;
+                margin: auto;
+                max-width: calc(100% - 2 * var(--mb-artv-gx));
+                max-height: calc(100% - 2 * var(--mb-artv-gy));
                 object-fit: contain;
+                transform-origin: center;
                 transition: transform 0.12s ease-out;
                 user-select: none;
             }
@@ -103972,7 +103979,7 @@ a { color: #1565c0; }`;
             @media (max-width: 760px) {
                 #mb-art-viewer .mb-artv-mid { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
                 #mb-art-viewer .mb-artv-info { border-width: 1px 0 0; max-height: 36vh; }
-                #mb-art-viewer .mb-artv-img { padding: 8px 44px; }
+                #mb-art-viewer .mb-artv-stage { --mb-artv-gx: 44px; --mb-artv-gy: 8px; }
             }
         `);
         style.id = 'mb-art-viewer-style';
@@ -104031,7 +104038,7 @@ a { color: #1565c0; }`;
             ctx, entityPath, images, list,
             i: list.includes(start) ? start : list[0],
             grid, gridStart: grid, info: true,
-            zoom: zoomLevel > 1, zoomLevel, origin: '',
+            zoom: zoomLevel > 1, zoomLevel, pan: { x: 0, y: 0 }, ptr: null, geom: null,
             opener, title, prevOverflow,
             onGroupStep, rowPos, liFor, slideshow: 0,
             swipeX: null, swipeAt: 0, gen: 0,
@@ -104039,13 +104046,15 @@ a { color: #1565c0; }`;
         document.documentElement.style.overflow = 'hidden';
         window.removeEventListener('keydown', _artViewerOnKey, true);
         window.addEventListener('keydown', _artViewerOnKey, true);
+        window.removeEventListener('resize', _artViewerOnResize);
+        window.addEventListener('resize', _artViewerOnResize);
         root.hidden = false;
         _artViewerRender();
     }
 
     /**
-     * Closes the viewer: removes its key listener, unlocks scrolling and
-     * returns focus to the opener.
+     * Closes the viewer: removes its key and resize listeners, unlocks
+     * scrolling and returns focus to the opener.
      *
      * @returns {void}
      */
@@ -104055,6 +104064,7 @@ a { color: #1565c0; }`;
         _artViewerStopSlideshow(st);
         _artViewerState = null;
         window.removeEventListener('keydown', _artViewerOnKey, true);
+        window.removeEventListener('resize', _artViewerOnResize);
         const root = document.getElementById('mb-art-viewer');
         if (root) {
             root.hidden = true;
@@ -104126,7 +104136,7 @@ a { color: #1565c0; }`;
         if (Lib.settings.sa_art_viewer_remember_zoom !== false) return;
         st.zoomLevel = 1;
         st.zoom = false;
-        st.origin = '';
+        st.pan = { x: 0, y: 0 };
     }
 
     /** Most the viewer zooms in (↑, the wheel). */
@@ -104146,8 +104156,117 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * The share of each half of the stage, at its outer edge, where the
+     * pointer pans the zoomed image all the way to that edge — so the edge
+     * shows without the pointer having to reach the stage's last pixel.
+     */
+    const _ART_VIEWER_PAN_EDGE = 0.15;
+
+    /**
+     * The stage's geometry for the image it shows: the stage rect, the frame
+     * the image is fitted into (the stage minus the gutters,
+     * `--mb-artv-gx`/`--mb-artv-gy`, which keep it clear of the ‹ › buttons)
+     * and the fitted size. Null until the image's natural size is known.
+     *
+     * @param   {HTMLElement}      stage
+     * @param   {HTMLImageElement} img
+     * @returns {?{left: number, top: number, sw: number, sh: number, fw: number, fh: number, w: number, h: number}}
+     */
+    function _artViewerGeom(stage, img) {
+        const nw = img.naturalWidth, nh = img.naturalHeight;
+        if (!nw || !nh) return null;
+        const r = stage.getBoundingClientRect();
+        const cs = getComputedStyle(stage);
+        const gx = parseFloat(cs.getPropertyValue('--mb-artv-gx')) || 0;
+        const gy = parseFloat(cs.getPropertyValue('--mb-artv-gy')) || 0;
+        const fw = Math.max(1, r.width - 2 * gx);
+        const fh = Math.max(1, r.height - 2 * gy);
+        const k = Math.min(fw / nw, fh / nh);
+        return { left: r.left, top: r.top, sw: r.width, sh: r.height, fw, fh, w: nw * k, h: nh * k };
+    }
+
+    /**
+     * Fits the image into the frame: measures the geometry once
+     * (`st.geom`, so no mousemove reads layout), sizes the image box in px
+     * to exactly the visible image (the thumbnail is scaled up to the same
+     * size, so the large image replaces it without a jump) and re-applies
+     * the zoom and pan. Called on render, on each image load and on resize.
+     *
+     * @param   {Object}           st  The viewer state.
+     * @param   {HTMLImageElement} img
+     * @returns {void}
+     */
+    function _artViewerFit(st, img) {
+        const stage = img.closest('.mb-artv-stage');
+        st.geom = stage ? _artViewerGeom(stage, img) : null;
+        if (st.geom) {
+            img.style.width = `${st.geom.w}px`;
+            img.style.height = `${st.geom.h}px`;
+            if (st.ptr) _artViewerPanFromPointer(st, st.ptr.x, st.ptr.y);
+        }
+        _artViewerApplyTransform(st, img);
+    }
+
+    /**
+     * Sets `st.pan` (−1 … 1 per axis) from a pointer position: the stage's
+     * centre is 0, and the outer `_ART_VIEWER_PAN_EDGE` of each half — and
+     * anything beyond the stage — is ±1. A no-op until `st.geom` is known.
+     *
+     * @param   {Object} st      The viewer state.
+     * @param   {number} clientX
+     * @param   {number} clientY
+     * @returns {void}
+     */
+    function _artViewerPanFromPointer(st, clientX, clientY) {
+        const g = st.geom;
+        if (!g) return;
+        const reach = 1 - _ART_VIEWER_PAN_EDGE;
+        const axis = (p, start, size) => Math.max(-1, Math.min(1, (p - start - size / 2) / (size / 2 * reach)));
+        st.pan = { x: axis(clientX, g.left, g.sw), y: axis(clientY, g.top, g.sh) };
+    }
+
+    /**
+     * Writes the image's transform: nothing when fitted; zoomed, a scale
+     * about its centre plus a translate of at most the overhang, so at a pan
+     * of ±1 the image's edge sits exactly on the frame's edge — fully in
+     * view, never past it (Art Station's clamped pan). The one writer of
+     * the transform.
+     *
+     * @param   {Object}           st  The viewer state.
+     * @param   {HTMLImageElement} img
+     * @returns {void}
+     */
+    function _artViewerApplyTransform(st, img) {
+        const g = st.geom;
+        if (!st.zoom) {
+            img.style.transform = '';
+            return;
+        }
+        if (!g) {
+            img.style.transform = `scale(${st.zoomLevel})`;
+            return;
+        }
+        const tx = -st.pan.x * Math.max(0, (st.zoomLevel * g.w - g.fw) / 2);
+        const ty = -st.pan.y * Math.max(0, (st.zoomLevel * g.h - g.fh) / 2);
+        img.style.transform = `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) scale(${st.zoomLevel})`;
+    }
+
+    /**
+     * Window resize while open (also a fullscreen switch and the narrow
+     * layout's smaller gutters): re-fits the image.
+     *
+     * @returns {void}
+     */
+    function _artViewerOnResize() {
+        const st = _artViewerState;
+        const img = document.querySelector('#mb-art-viewer .mb-artv-stage .mb-artv-img');
+        if (st && img) _artViewerFit(st, img);
+    }
+
+    /**
      * Sets the zoom level without re-rendering (the loaded image stays),
-     * toward `clientX/clientY` when given, and remembers it.
+     * toward `clientX/clientY` when given (else toward the last pointer
+     * position), and remembers it.
      *
      * @param   {number}  level
      * @param   {?number} [clientX]
@@ -104160,17 +104279,12 @@ a { color: #1565c0; }`;
         if (!st || !stage) return;
         st.zoomLevel = Math.min(_ART_VIEWER_ZOOM_MAX, Math.max(1, Math.round(level * 4) / 4));
         st.zoom = st.zoomLevel > 1;
-        if (!st.zoom) st.origin = '';
-        else if (clientX !== null && clientY !== null) {
-            const r = stage.getBoundingClientRect();
-            st.origin = `${((clientX - r.left) / r.width) * 100}% ${((clientY - r.top) / r.height) * 100}%`;
-        }
+        if (clientX !== null && clientY !== null) st.ptr = { x: clientX, y: clientY };
+        if (!st.zoom) st.pan = { x: 0, y: 0 };
+        else if (st.ptr) _artViewerPanFromPointer(st, st.ptr.x, st.ptr.y);
         stage.classList.toggle('mb-artv-zoomed', st.zoom);
         const img = stage.querySelector('.mb-artv-img');
-        if (img) {
-            img.style.transform = st.zoom ? `scale(${st.zoomLevel})` : '';
-            img.style.transformOrigin = st.origin;
-        }
+        if (img) _artViewerApplyTransform(st, img);
         if (Lib.settings.sa_art_viewer_remember_zoom !== false) {
             try { GM_setValue(MB_ART_VIEWER_ZOOM_KEY, st.zoomLevel); } catch (_) { /* storage unavailable */ }
         }
@@ -104392,12 +104506,13 @@ a { color: #1565c0; }`;
         const img = _artvEl('img', 'mb-artv-img');
         img.alt = (im.types || []).join(' / ') + (im.comment ? ' · ' + im.comment : '');
         img.draggable = false;
+        // Every load (the thumbnail, then the large image) re-fits: the
+        // natural size is only known once one has loaded.
+        img.addEventListener('load', () => {
+            if (_artViewerState === st && img.isConnected) _artViewerFit(st, img);
+        });
         img.src = _artViewerThumbUrl(im);
         img.dataset.artvSize = 'thumb';
-        if (st.zoom) {
-            img.style.transform = `scale(${st.zoomLevel})`;
-            img.style.transformOrigin = st.origin || '';
-        }
         stage.appendChild(img);
         const note = _artvEl('div', 'mb-artv-note', 'Showing the thumbnail; loading the large image…');
         stage.appendChild(note);
@@ -104422,6 +104537,8 @@ a { color: #1565c0; }`;
             film.appendChild(th);
         });
         root.appendChild(film);
+        // After the filmstrip: it takes its row from the stage's height.
+        _artViewerFit(st, img);
         const cur = film.querySelector('.mb-artv-cur');
         if (cur && typeof cur.scrollIntoView === 'function') cur.scrollIntoView({ block: 'nearest', inline: 'center' });
 
@@ -104599,20 +104716,25 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * While zoomed, the image follows the mouse.
+     * While zoomed, the image follows the mouse — anywhere on the overlay,
+     * not only over the stage: a fast move off the stage (onto the
+     * filmstrip, the info panel) lands outside it in one event, and must
+     * still pan all the way to that side (`_artViewerPanFromPointer()`
+     * clamps). The position is kept unzoomed too, so a later zoom by key or
+     * click goes toward the pointer.
      *
      * @param   {MouseEvent} e
      * @returns {void}
      */
     function _artViewerOnMouseMove(e) {
         const st = _artViewerState;
-        if (!st || !st.zoom) return;
-        const stage = e.target.closest('.mb-artv-stage');
-        const img = stage && stage.querySelector('.mb-artv-img');
+        if (!st || st.grid) return;
+        st.ptr = { x: e.clientX, y: e.clientY };
+        if (!st.zoom) return;
+        const img = document.querySelector('#mb-art-viewer .mb-artv-stage .mb-artv-img');
         if (!img) return;
-        const r = stage.getBoundingClientRect();
-        st.origin = `${((e.clientX - r.left) / r.width) * 100}% ${((e.clientY - r.top) / r.height) * 100}%`;
-        img.style.transformOrigin = st.origin;
+        _artViewerPanFromPointer(st, e.clientX, e.clientY);
+        _artViewerApplyTransform(st, img);
     }
 
     /**

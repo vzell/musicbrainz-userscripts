@@ -1,0 +1,20 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-08",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Artwork viewer: a zoomed image can now be panned to every edge, and the bottom of a tall image is no longer cut off. A large image taller than the viewer's image area was laid out at its full natural height and cropped at the bottom, even unzoomed (measured: a 1200 × 1500 px image ended about 500 px below the visible area); no mouse position could bring that part into view. The image is now fitted to the area on every side, and when zoomed, moving the mouse toward a side pans the image until its edge is in view, and no further. Getting near the side is enough, and a fast move past it (onto the filmstrip or the info panel) still pans all the way. The fit also follows window resizes. Applies to the viewer of the CAA/EAA column, the gallery, and the release and event pages' art sections."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Artwork viewer: the image is out of flow and sized in px by _artViewerFit() from the stage's geometry (_artViewerGeom(), cached in st.geom; gutters from --mb-artv-gx/--mb-artv-gy); the pan is a clamped translate (_artViewerPanFromPointer(), _ART_VIEWER_PAN_EDGE, _artViewerApplyTransform()) instead of a transform-origin at the pointer. New spec tests/fixtures/art-viewer-pan.spec.js, serving images with a real natural size; mutation list scripts/mutations/art-viewer-pan.json."
+        ]
+      }
+    ]
+  }
+]

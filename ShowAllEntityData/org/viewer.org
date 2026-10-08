@@ -12,6 +12,10 @@ Currently our userscript uses an internal viewer for viewing CAA and EAA images,
 There seems to be a bug when the image viewer is in full screen mode and I try to move the image with the mouse, it's
 NOT possible to look at the very bottom of the image, see [Image #4]
 
+Status (2026-10-08): fixed on branch =fix/art-viewer-pan-edges=, checked live in the browser; awaiting the merge.
+Cause: a tall image's box grew past the stage and was cropped at the bottom, even unzoomed; see DEBUG-NOTES.md, 2026-10-08.
+Item 2 (features) is planned for a follow-up branch =feature/art-viewer-extras=, after this one merges.
+
 2.)
 
 a.)

@@ -20389,3 +20389,56 @@ sticky offsets) the same nudged test passes. Nudge removed; the whole spec
 **Lesson:** a failure that will not reproduce under stress may be a race in
 the test's own setup; the saved full report (since 2026-10-07) is what made
 it diagnosable.
+
+## 2026-10-08 — Artwork viewer: the bottom of a tall image could not be reached (branch fix/art-viewer-pan-edges, WIP.1)
+
+org/viewer.org item 1, reported with a screenshot of the Devils & Dust back
+(release 230fd31d…) zoomed in the viewer: the sticker at the bottom stayed
+cut off however the mouse moved. Grep `// ── Artwork viewer (R5)`.
+
+**Two candidate causes, stated before measuring.** A, layout: the `<img>`
+was `width/height: 100%` (plus 12/56 px padding, `object-fit: contain`) as
+the only in-flow item of a `display: grid` stage with implicit `auto`
+tracks; with the default `min-height: auto` its natural height is the
+floor of that row, so a large image grows the row past the stage and
+`overflow: hidden` crops it. B, mapping: `transform-origin` was the pointer
+as a percentage of the stage, updated only by moves OVER the stage, so the
+edge showed only with the pointer on its last pixels, and a fast move onto
+the filmstrip froze it short.
+
+**Measured, not guessed** (`tests/fixtures/art-viewer-pan.spec.js`, written
+first and run on the unchanged code): every image the other viewer specs
+serve is a 1×1 PNG, which can never be taller than the stage, so this spec
+serves SVGs with a real natural size (1200×1500, thumbnail 200×250). On the
+old code all three tests failed. **A is the cause**: unzoomed, the fitted
+image's bottom was at y 1152 with the stage ending at 647 (viewport
+1280×720), and the screenshot showed the image's bottom band missing
+entirely, while the filmstrip thumbnails showed it. So it was never only a
+zoom bug: a tall large image was cropped at fit. B could not be isolated
+while A dominated; after the fix the mutation that restores the
+stage-only mousemove guard fails the fast-exit test, so B was real too.
+
+**Fix:** the image is out of flow (`position: absolute; inset: 0; margin:
+auto`) and `_artViewerFit()` sizes its box in px to the fitted image (the
+frame is the stage minus the gutters, `--mb-artv-gx/--mb-artv-gy`, which the
+narrow media query shrinks), on render, on every image load and on window
+resize. The thumbnail is scaled up to the same box, so the large image
+replaces it without a jump. The pan is Art Station's clamped translate:
+`st.pan` in −1…1 per axis, `translate(−pan·overhang) scale(z)` about the
+centre, so at ±1 the edge sits exactly on the frame edge. The outer 15 % of
+each half of the stage (`_ART_VIEWER_PAN_EDGE`) saturates, and a move
+anywhere on the overlay pans (clamped). Geometry is cached in `st.geom`; a
+mousemove reads no layout.
+
+**An overlap the mutation list records:** with the top/bottom gutter not
+read (`gy = 0`), the FIT still looks right: the CSS `max-height` clamps the
+box and `object-fit: contain` keeps the image inside. The defect shows only
+in the pan range, which over-pans by the 24 px; the entry points at the
+per-edge test, not the fit test. Removing the render-time `_artViewerFit()`
+call is invisible (the load event re-fits every image) and is recorded as
+`"expect": "pass"`.
+
+**Results:** `art-viewer-pan.spec.js` 6 passed; `art-viewer-pan.json` 9 of 9
+as declared; the six desktop and four mobile artwork-viewer specs 58 + 7
+passed; lint within the baseline; `npm run test:full` 1357 passed, 0 failed
+(6.9 min, finished 2026-10-08T01:27Z, host petri, WSL2).

@@ -1235,7 +1235,7 @@ approval, the edit that added it and links to every size. Keys: **← →** step
 (wrapping at the ends; opened from a CAA/EAA column they continue into the
 next row, and **Shift+← →** change rows), **Home / End**, **↑ ↓** or the mouse
 wheel zoom in and out (toward the pointer), **0** fits, **Z** or a click
-toggles 2× (the image follows the mouse), **P** starts or stops a slideshow,
+toggles 2× (the image follows the mouse: move toward a side to bring that edge into view), **P** starts or stops a slideshow,
 **G** grid, **I** info panel, **O** original in a new tab, **Esc** closes (from
 a grid opened with G: back to the image). The zoom level is kept from image to
 image and remembered for next time; the large image is the 1200 px one, or the
