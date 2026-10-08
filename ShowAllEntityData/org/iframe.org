@@ -785,10 +785,24 @@ final rendered page, in the h3 "URLs" sub-table, in the "URL" column
   built 2026-10-08 on =feature/popup-engine-urls= as WIP.1 (=_extSource()=,
   =_extFetch()=, =_extAwaitSlot()=, =sa_pop_ext=, =sa_pop_ext_ttl_hours=,
   first contact through =sa_pop_ext_hosts=). Rules as built:
-  [[file:../docs/claude/detail-pages.md]], "Links to other sites". Open: the
-  user's browser check, which must also confirm what Tampermonkey's =onerror=
-  reports for a refused host (the =refused= wording rests on a pattern, not on
-  a capture) and that =anonymous: true= behaves the same on Firefox (B2).
+  [[file:../docs/claude/detail-pages.md]], "Links to other sites". Browser
+  check by the user, 2026-10-08 (Chrome): YouTube card, no Live page button,
+  Brucebase "→ https", the first-contact card (us.7digital.com), and a
+  REFUSED host (castalbums.org): the window says "Tampermonkey did not let
+  the script contact this site", so =_extFetch()='s =refused= pattern matches
+  Tampermonkey's real =onerror= text. Firefox, the same day (B2 closed): an
+  anonymous request answers there too (castalbums.org: "checked by
+  Cloudflare"), and Tampermonkey's refusal reads =Refused to connect to
+  "…": Request was blocked by the user= (logged by Tampermonkey itself as
+  =injected: … content.js=), which the =refused= pattern matches. Fixed from
+  these checks: the Live page failure heading said "detail page" (now the
+  source's =liveFailTitle=, "Could not load the page."), and the site's
+  initial showed "U" for us.7digital.com (=_extInitial()= skips prefixes);
+  and us.7digital.com's "HTTP 405" is AWS WAF's CAPTCHA
+  (=x-amzn-waf-action: captcha=, "Human Verification",
+  =scripts/probe-ext-refusal.py=): =checked= is now any vendor's bot check
+  told by its header (=_extBotCheck()=: Cloudflare, AWS WAF), whatever the
+  status.
 - [ ] U2: MusicBrainz URL entities.
 - [ ] U3: Wikipedia, Wikidata, Discogs (U0: built). YouTube moved into U1
   (answer 8, 2026-10-08).
@@ -1509,3 +1523,10 @@ only for the sites probed then). The preloads are fixed outright
 - *10. "moved" only when the host or path changes* (recommended): added query
   parameters are no move; http → https on the same host and path keeps the
   green pill with a quiet "→ https" (Brucebase).
+- *11. Site icons, configurable* (asked for by the user, 2026-10-08; both
+  choices as recommended): loaded anonymously through =GM_xmlhttpRequest=,
+  only from the link's own host (the page's =<link rel="icon">= there, else
+  =/favicon.ico=), never for a site not contacted yet, once per host and kept
+  30 days; setting =sa_pop_ext_favicons=, ON by default. Not plain =<img>=
+  tags (they carry cookies where allowed and are not cached by the script),
+  not a favicon service (it would learn every hovered host).

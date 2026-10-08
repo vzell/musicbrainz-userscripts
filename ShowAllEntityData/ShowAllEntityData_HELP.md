@@ -1630,7 +1630,10 @@ Ctrl), as for the MusicBrainz cards. The card shows the page's title, the
 site's name, its picture and description, and what the link is on this page
 — *MusicBrainz: setlist.fm of this event* when it comes from a relationship,
 *in the annotation*, *in the sidebar's external links*. Its first line shows
-the site and the link's **status**:
+the site — with its **icon** (*Show the sites' icons*, on by default: asked
+once per site and kept for a month, without your cookies and only from the
+site itself; off, or before the icon arrives, a letter stands for the site) —
+and the link's **status**:
 
 - **200** — the page is there. When the site only switched from `http` to
   `https` on the same address, a quiet *→ https* line says so; that is no move;
@@ -1638,8 +1641,9 @@ the site and the link's **status**:
   (the relationship may want updating). Parameters a site adds on the way
   (YouTube's cookie-consent detour, for instance) do not count;
 - **404 Not found** / **410 Gone** — the page is gone;
-- **checked by Cloudflare** — the site answers scripts with a browser check
-  ("Just a moment…"). That is **not** a broken link: ↗ opens it normally;
+- **checked by Cloudflare** / **checked by AWS WAF** — the site answers
+  scripts with a browser check (Cloudflare's "Just a moment…", AWS's "Human
+  Verification"). That is **not** a broken link: ↗ opens it normally;
 - **not a page** — a PDF, an image or another file, named from what the site
   says about it, without downloading it.
 

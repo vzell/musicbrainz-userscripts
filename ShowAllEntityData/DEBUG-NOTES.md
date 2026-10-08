@@ -20465,3 +20465,39 @@ even when it reports bad anchors, a `check && mutation-check` chain ran the
 whole list anyway (25 caught, the 3 stale ones as ERROR; the file restored
 and verified) — read its last line, do not trust its exit code. Re-anchored,
 the three caught too: 28/28. popup-ext.spec.js 10/10 with the mobile sibling.
+
+**Firefox and the refusal (same day, the user's checks).** Chrome and Firefox
+both report a refused host through `onerror` with text the `refused` pattern
+matches (Firefox: `Refused to connect to "…": Request was blocked by the
+user`), and anonymous requests answer in Firefox too. Two fixes came out of
+the screenshots: the Live page failure heading said "detail page" (the
+foreign hosts' word; now the source's `liveFailTitle`), and the site's
+initial showed "U" for us.7digital.com. The first rule for the initial,
+"skip any leading label up to three letters", failed its own spec on
+`www.bbc.co.uk` ("C": `bbc` is the name); it now skips only prefixes (`www`,
+`m`, `mobile`, a two-letter code). popup-ext.spec.js 11/11, the mobile
+sibling 1/1, the two new mutations caught (30/30), the neighbouring popup
+suites 91/91.
+
+**Site icons (same day, asked for by the user).** `_extIconEnsure()`: one
+anonymous request per host, own host only, never for a "not contacted yet"
+site, kept 30 days (iframe.org answer 11). Two traps: the mutation checker's
+`grep` is a REGULAR EXPRESSION (Playwright `-g`), so a test title with
+"(sa_pop_ext_favicons)" selected no test — the checker said so ("this result
+proves nothing either way") instead of passing; and the spec's other tests
+count requests exactly, so the spec defaults icons OFF and only the icon
+tests switch them on (otherwise every count would gain a late icon request).
+popup-ext.spec.js 13/13 with the mobile sibling, 35 mutations (one recorded
+"pass": the first-contact card covers for `_extIconUrl()`'s known-host
+check), the live spec with Brucebase's real icon 1/1 (09:26:46Z).
+
+**A second bot-check vendor (same day).** us.7digital.com's card said "The
+site answers HTTP 405", page and icon alike. `scripts/probe-ext-refusal.py`
+(09:42Z): `server: awselb/2.0`, `x-amzn-waf-action: captcha`, title "Human
+Verification" — AWS WAF's CAPTCHA, which comes as a 405 (its silent
+challenge as a 202, which would have passed for an empty page). `checked` is
+now any bot check told by the vendor's own header (`_extBotCheck()`:
+Cloudflare's `cf-mitigated`, AWS WAF's `x-amzn-waf-action`), whatever the
+status, and the pill names the vendor. Not by status or title: a bare 403 or
+405 stays "HTTP …". Mutations 36/36 (the Cloudflare one re-anchored on
+`_extBotCheck()`).

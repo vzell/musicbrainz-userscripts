@@ -88,6 +88,9 @@ test.describe('external link previews on the real site', { tag: '@extended' }, (
         await expect(card).toContainText('MusicBrainz: reviews of this event');
         await expect(card.locator('.mb-ext-st'), 'http:// redirected to https:// on the same path is no move').toHaveText('200');
         await expect(card.locator('.mb-ext-https')).toHaveText('→ https');
+        // The site's icon (sa_pop_ext_favicons, on by default): the page's own
+        // <link rel="icon"> on brucebase.wikidot.com, loaded anonymously.
+        await expect(card.locator('img.mb-ext-favimg')).toHaveAttribute('src', /^data:image\//, { timeout: 15000 });
         await expect(card).not.toContainText('Could not load');
 
         // The annotation's Wikipedia link (the render collapses the page's h2s).

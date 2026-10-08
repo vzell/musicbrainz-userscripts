@@ -164,9 +164,19 @@ function buildGmStubsScript(initialValues = {}) {
                         opts.onload({ status: 404, response: null, responseText: '', finalUrl, responseHeaders: '' });
                         return;
                     }
+                    // \`base64\` + \`contentType\` build a Blob in the page (an
+                    // answer given as JSON through an init script cannot
+                    // carry a Blob itself): a site's icon, for instance.
+                    let blob = configured.blob;
+                    if (blob === undefined && configured.base64 !== undefined) {
+                        const bin = atob(configured.base64);
+                        const bytes = new Uint8Array(bin.length);
+                        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                        blob = new Blob([bytes], { type: configured.contentType || 'application/octet-stream' });
+                    }
                     opts.onload({
                         status,
-                        response: configured.blob !== undefined ? configured.blob : configured.responseText,
+                        response: blob !== undefined ? blob : configured.responseText,
                         responseText: configured.responseText || '',
                         finalUrl,
                         responseHeaders,

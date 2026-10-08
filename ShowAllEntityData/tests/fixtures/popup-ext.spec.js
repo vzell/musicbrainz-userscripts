@@ -101,7 +101,11 @@ async function openEvent(page, { settings = {}, responses = {}, press = true } =
     await loadUserscriptPage(page, {
         url: URL_EVENT, fixtureFile: FIXTURE, testMode: true,
         settingsOverride: {
-            sa_enable_event_overview: true, sa_event_overview_setlist: false, sa_rich_tooltip_delay_ms: 0, ...settings,
+            sa_enable_event_overview: true, sa_event_overview_setlist: false, sa_rich_tooltip_delay_ms: 0,
+            // Icons add a request per site: off here, so the other tests
+            // count only the page's; the icon test switches them on.
+            sa_pop_ext_favicons: false,
+            ...settings,
         },
     });
     await page.route('https://musicbrainz.org/event/**', (route) => route.fulfill({ path: FIXTURE, contentType: 'text/html' }));
@@ -369,11 +373,13 @@ test.describe('external link previews (sa_pop_ext)', () => {
         const PDF = 'https://pdf.example/programme.pdf';
         const QUERY = 'https://query.example/list?id=7';
         const HTTPS = 'http://upgrade.example/2025';
+        const WAF405 = 'https://waf.example/artist';
+        const WAF202 = 'https://waf.example/challenge';
         await openEvent(page, {
             settings: {
                 sa_pop_ext: true,
                 sa_pop_ext_hosts: ['www.setlist.fm', 'dead.example', 'checked.example', 'moved.example', 'pdf.example',
-                    'query.example', 'upgrade.example'],
+                    'query.example', 'upgrade.example', 'waf.example'],
             },
             responses: {
                 [SETLIST]: { status: 200, responseHeaders: HTML_HEADERS, responseText: SETLIST_HTML },
@@ -383,9 +389,11 @@ test.describe('external link previews (sa_pop_ext)', () => {
                 [PDF]: { status: 200, responseHeaders: 'Content-Type: application/pdf\r\nContent-Length: 2400000', responseText: '%PDF-1.4' },
                 [QUERY]: { status: 200, finalUrl: `${QUERY}&cbrd=1&ucbcb=1`, responseHeaders: HTML_HEADERS, responseText: '<title>Same page, more parameters</title>' },
                 [HTTPS]: { status: 200, finalUrl: 'https://upgrade.example/2025', responseHeaders: HTML_HEADERS, responseText: '<title>Now on https</title>' },
+                [WAF405]: { status: 405, responseHeaders: `${HTML_HEADERS}\r\nx-amzn-waf-action: captcha\r\nserver: awselb/2.0`, responseText: '<title>Human Verification</title>' },
+                [WAF202]: { status: 202, responseHeaders: `${HTML_HEADERS}\r\nx-amzn-waf-action: challenge`, responseText: '' },
             },
         });
-        await addAnnotationLinks(page, [DEAD, CHECK, MOVED, PDF, QUERY, HTTPS]);
+        await addAnnotationLinks(page, [DEAD, CHECK, MOVED, PDF, QUERY, HTTPS, WAF405, WAF202]);
         const probe = (i) => page.locator('.ext-probe a').nth(i);
         const c = card(page);
 
@@ -397,10 +405,30 @@ test.describe('external link previews (sa_pop_ext)', () => {
         await expect(c.locator('.mb-ext-st')).toHaveText('404 Not found');
         expect((await xhrLog(page)).filter(r => r.url === DEAD), 'kept for this page load').toHaveLength(1);
 
+        // Its Live page fails in the external source's words, not the
+        // foreign hosts' "detail page" (reported from Chrome and Firefox).
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        await expect(d).toBeVisible();
+        await d.getByRole('button', { name: 'Live page' }).click();
+        await expect(d.locator('.mb-dp-warn')).toHaveText('Could not load the page.');
+        await expect(d).toContainText('The page is gone');
+        await page.keyboard.press('Escape');
+        await expect(d).toBeHidden();
+
         await ctrlHover(page, probe(1));
         await expect(c.locator('.mb-ext-st')).toHaveText('checked by Cloudflare');
         await expect(c).toContainText('The link itself is fine');
         await expect(c).not.toContainText('gone');
+
+        // AWS WAF's bot check (us.7digital.com, 2026-10-08): its CAPTCHA as a
+        // 405, its silent challenge as a 202 — told by x-amzn-waf-action, not
+        // by status, and never a page with nothing on it.
+        for (const i of [6, 7]) {
+            await ctrlHover(page, probe(i));
+            await expect(c.locator('.mb-ext-st')).toHaveText('checked by AWS WAF');
+            await expect(c).toContainText('browser check (AWS WAF)');
+        }
 
         await ctrlHover(page, probe(2));
         await expect(c.locator('.mb-ext-st')).toHaveText('moved');
@@ -427,7 +455,7 @@ test.describe('external link previews (sa_pop_ext)', () => {
         await ctrlHover(page, setlistLink(page));
         await expect(c).toContainText('Bruce Springsteen Setlist');
         await expect.poll(() => idbHas(page, `mb:ext:generic:${SETLIST}`)).toBe(true);
-        for (const u of [DEAD, CHECK, PDF]) expect(await idbHas(page, `mb:ext:generic:${u}`), u).toBe(false);
+        for (const u of [DEAD, CHECK, PDF, WAF405, WAF202]) expect(await idbHas(page, `mb:ext:generic:${u}`), u).toBe(false);
         expect(await idbHas(page, `mb:ext:generic:${MOVED}`), 'a moved page is a page').toBe(true);
     });
 
@@ -542,6 +570,86 @@ test.describe('external link previews (sa_pop_ext)', () => {
         await ctrlHover(page, page.locator('.ext-probe a').nth(1));
         await expect(c.locator('.mb-ext-st')).toHaveText('not available');
         await expect(c).toContainText('YouTube does not show this video');
+    });
+
+    test('the initial standing in for a site\'s icon is its name\'s, not a country or language prefix\'s', async ({ page }) => {
+        // Reported 2026-10-08: us.7digital.com showed "U".
+        const hosts = ['us.7digital.com', 'en.wikipedia.org', 'brucebase.wikidot.com', 'www.bbc.co.uk', 'example.org'];
+        const urls = hosts.map(h => `https://${h}/page`);
+        await openEvent(page, {
+            settings: { sa_pop_ext: true, sa_pop_ext_hosts: hosts },
+            responses: Object.fromEntries(urls.map(u => [u, { status: 200, responseHeaders: HTML_HEADERS, responseText: '<title>A page</title>' }])),
+        });
+        await addAnnotationLinks(page, urls);
+        const seen = [];
+        for (let i = 0; i < urls.length; i++) {
+            await ctrlHover(page, page.locator('.ext-probe a').nth(i));
+            await expect(card(page).locator('.mb-ext-host')).toHaveText(hosts[i]);
+            seen.push(await card(page).locator('.mb-ext-fav').textContent());
+        }
+        expect(seen).toEqual(['7', 'W', 'B', 'B', 'E']);
+    });
+
+    test('site icons (sa_pop_ext_favicons): anonymous, own host only, once per site, never for a site not contacted yet', async ({ page }) => {
+        const ICONHOST = 'https://icon.example/page';
+        const CDNICON = 'https://cdn-icon.example/page';
+        const NEWSITE = 'https://new.example/page';
+        const PNG_B64 = PNG.toString('base64');
+        const png = { status: 200, responseHeaders: 'Content-Type: image/png', base64: PNG_B64, contentType: 'image/png' };
+        await openEvent(page, {
+            settings: { sa_pop_ext: true, sa_pop_ext_favicons: true, sa_pop_ext_hosts: ['www.setlist.fm', 'icon.example', 'cdn-icon.example'] },
+            responses: {
+                [SETLIST]: { status: 200, responseHeaders: HTML_HEADERS, responseText: SETLIST_HTML },
+                'https://www.setlist.fm/favicon.ico': png,
+                // The page names its own icon on its own host: that one, not /favicon.ico.
+                [ICONHOST]: { status: 200, responseHeaders: HTML_HEADERS, responseText: '<head><link rel="icon" href="/img/own.png"><title>Own icon</title></head>' },
+                'https://icon.example/img/own.png': png,
+                // An icon on another host (a CDN) would bring Tampermonkey's prompt: /favicon.ico instead.
+                [CDNICON]: { status: 200, responseHeaders: HTML_HEADERS, responseText: '<head><link rel="icon" href="https://cdn.elsewhere.example/i.png"><title>CDN icon</title></head>' },
+                'https://cdn-icon.example/favicon.ico': png,
+            },
+        });
+        const c = card(page);
+        await ctrlHover(page, setlistLink(page));
+        await expect(c.locator('img.mb-ext-favimg')).toHaveAttribute('src', /^data:image\/png;base64,/);
+        await expect(c.locator('.mb-ext-fav')).toContainText('S');
+        const log1 = await xhrLog(page);
+        expect(log1).toEqual([{ url: SETLIST, anonymous: true }, { url: 'https://www.setlist.fm/favicon.ico', anonymous: true }]);
+        await expect.poll(() => idbHas(page, 'mb:ext-icon:www.setlist.fm')).toBe(true);
+        await ctrlHover(page, setlistLink(page));
+        await expect(c.locator('img.mb-ext-favimg')).toBeVisible();
+        expect(await xhrLog(page), 'once per site: memory').toHaveLength(2);
+
+        await addAnnotationLinks(page, [ICONHOST, CDNICON, NEWSITE]);
+        await ctrlHover(page, page.locator('.ext-probe a').nth(0));
+        await expect(c.locator('img.mb-ext-favimg')).toBeVisible();
+        await ctrlHover(page, page.locator('.ext-probe a').nth(1));
+        await expect(c.locator('img.mb-ext-favimg')).toBeVisible();
+        await page.clock.install();
+        await ctrlHover(page, page.locator('.ext-probe a').nth(2));
+        await expect(c).toContainText('not contacted yet');
+        await page.clock.fastForward(5000);
+        const urls = (await xhrLog(page)).map(r => r.url);
+        expect(urls).toContain('https://icon.example/img/own.png');
+        expect(urls).not.toContain('https://icon.example/favicon.ico');
+        expect(urls).toContain('https://cdn-icon.example/favicon.ico');
+        expect(urls.some(u => u.includes('cdn.elsewhere.example')), 'never another host').toBe(false);
+        expect(urls.some(u => u.includes('new.example')), 'a site not contacted yet: no icon either').toBe(false);
+        expect((await xhrLog(page)).every(r => r.anonymous)).toBe(true);
+    });
+
+    test('site icons off: letters only, no icon request', async ({ page }) => {
+        await openEvent(page, {
+            settings: { sa_pop_ext: true, sa_pop_ext_favicons: false, sa_pop_ext_hosts: ['www.setlist.fm'] },
+            responses: { [SETLIST]: { status: 200, responseHeaders: HTML_HEADERS, responseText: SETLIST_HTML } },
+        });
+        await page.clock.install();
+        await ctrlHover(page, setlistLink(page));
+        await expect(card(page)).toContainText('Bruce Springsteen Setlist');
+        // Past the host's next rate slot, when an icon request would go out.
+        await page.clock.fastForward(3000);
+        await expect(card(page).locator('img.mb-ext-favimg')).toHaveCount(0);
+        expect(await xhrLog(page)).toEqual([{ url: SETLIST, anonymous: true }]);
     });
 
     test('tags past the 512 KB cap are found in the rest of the page, without parsing it', async ({ page }) => {

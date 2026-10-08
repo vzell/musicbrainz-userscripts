@@ -49,6 +49,7 @@ release page adds two (below). A source has:
 | `card(t, start, repaint)`                 | the card's HTML for the CURRENT state, at once                                                                       |
 | `extracted(t, start, force, repaint)`     | the Extracted view's HTML, the same way                                                                              |
 | `live`, `liveUrl(t)`                      | the Live page view: `_dpIsolateFrame()`'s fields, plus `charset` and `awaitSlot` (the rate gate `_dpGetRaw()` waits on) |
+| `liveFailTitle`, a target's `noLive`      | the Live page's failure heading ("Could not load the detail page." unless set; the external source: "the page"); no Live page button for that target (YouTube) |
 | `steps(t)`, `stepId(el)`                  | what ‹ › step through, and an identity that survives the `cloneNode(true)` re-renders                                |
 | `kind`, `wide`, `onAreaClick(e, t)`       | the dialog's title, a wider card, a click in the Extracted view (a sortable header)                                  |
 
@@ -660,12 +661,18 @@ on: org/iframe.org, section "* generalize to URLs".
   the final HOST or PATH differs — added query parameters such as YouTube's
   consent bounce do not count, and http → https on the same host and path is
   `toHttps`, a quiet "→ https" with a green pill: decided 2026-10-08),
-  `dead` (404, 410), `checked` (403 with
-  `cf-mitigated: challenge` — **never a dead link**: X6 found it in Python
-  on discogs.com, allmusic and rateyourmusic, X9 in a real browser only on
-  rateyourmusic), `http` (any other 4xx), `notpage`, `big`. No response, a
-  5xx or a 429 after the retry is NO record: a failure, not kept, retried by
-  the next hover. `_extReadHead()` reads `og:`/`twitter:`/`description`,
+  `dead` (404, 410), `checked` (a bot check, `_extBotCheck()`, **never a
+  dead link**, whatever its status; `checkedBy` names the vendor for the
+  pill), `http` (any other 4xx), `notpage`, `big`. A bot check is told by
+  the vendor's own HEADER, never by status or title: Cloudflare's
+  `cf-mitigated: challenge` (a 403; X6 found it in Python on discogs.com,
+  allmusic and rateyourmusic, X9 in a real browser only on rateyourmusic),
+  AWS WAF's `x-amzn-waf-action` (its CAPTCHA a 405 "Human Verification",
+  its challenge a 202 that would pass for an empty page; us.7digital.com,
+  reported 2026-10-08, `scripts/probe-ext-refusal.py`). It is checked before
+  the status, so even a 5xx bot check is named. No response, a 5xx or a 429
+  after the retry is NO record: a failure, not kept, retried by the next
+  hover. `_extReadHead()` reads `og:`/`twitter:`/`description`,
   `<title>`, canonical, `lang`, `article:published_time` from the first
   `_EXT_MAX_BYTES`; a field still empty is filled from the rest of the
   downloaded page (`tail` from `_extFetch()`), by picking only the `<title>`,
@@ -692,6 +699,34 @@ on: org/iframe.org, section "* generalize to URLs".
   `_dpLiveDocHtml()` also drops `<link rel="preload|modulepreload|prefetch|preconnect|dns-prefetch">`
   for every source: without the scripts they only fetched what nothing used
   (Chrome warned "preloaded … but not used" for YouTube's player bundle).
+- **Site icons (`_extIconEnsure()`, `sa_pop_ext_favicons`, default on;
+  asked for and decided 2026-10-08).** One anonymous request per HOST
+  through `_extGet()` (`responseType: 'blob'`, `accept` image, at most
+  `_EXT_ICON_MAX_BYTES`), state in `_extIcons`, a found icon kept as a
+  `data:` URL in IndexedDB (`mb:ext-icon:<host>`, `_EXT_ICON_VERSION`,
+  `_EXT_ICON_TTL_MS` 30 days); `none` stays in memory for the page load.
+  `_extIconUrl()` asks ONLY the host the target's own request goes to (a
+  CDN would be a new host: Tampermonkey's prompt) and only a known host:
+  the page's `<link rel="icon">` (`_extReadHead()` reads it, past the cap
+  too) when it is on that host, else `/favicon.ico`; the YouTube reader's
+  is www.youtube.com's. The request may start from the repaint after the
+  page's answer (only then is the icon's URL known): the `_rgWindowFor()`
+  exception, never a failure. The icon covers the initial, which stays
+  underneath. `_extFetch()` takes `responseType` for this and answers
+  `blob`. The test stub builds a Blob from `base64` + `contentType`; the spec
+  turns icons OFF by default so the other tests count only the page's
+  request. The known-host check in `_extIconUrl()` is recorded `"expect":
+  "pass"`: the first-contact card returns before it asks for an icon.
+- **The site's initial (`_extInitial()`)** stands in for the icon while it
+  loads, when there is none, or with icons off. It is the first letter of the host's
+  name, leading prefixes skipped while two labels remain: `www` (`www2`…),
+  `m`, `mobile`, a two-letter country or language. Not "any label up to three
+  letters": that took `bbc` from `www.bbc.co.uk` (the spec's first run).
+- **Live page failure**: the source's `liveFailTitle`, "Could not load the
+  page." (the engine's default, "detail page", is the foreign hosts' word).
+- **Tampermonkey's refusal text** (checked 2026-10-08): Firefox `Refused to
+  connect to "…": Request was blocked by the user`; Chrome's matched the same
+  `refused` pattern. Tampermonkey logs it itself (`injected: … content.js`).
 - **Images**: the card's and window's `og:image` is an ordinary `<img>` with
   `referrerpolicy="no-referrer"` (not a `GM_xmlhttpRequest`: an image CDN
   would be one more host for Tampermonkey to ask about).

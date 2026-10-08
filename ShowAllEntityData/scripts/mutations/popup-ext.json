@@ -108,8 +108,21 @@
         "why": "A 403 with cf-mitigated: challenge is a site checking for a browser, not a broken link (U0 X6, X9): the card says so and offers the link.",
         "edits": [
             {
-                "find": "        } else if (res.status === 403 && /challenge/i.test(res.headers['cf-mitigated'] || '')) {",
-                "replace": "        } else if (false) {"
+                "find": "        if (/challenge/i.test(h['cf-mitigated'] || '')) return 'Cloudflare';",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "the link's status",
+        "expect": "fail"
+    },
+    {
+        "name": "AWS WAF's bot check counts as a refusal (or as an empty page)",
+        "why": "AWS WAF answers a request without cookies with its CAPTCHA as a 405 'Human Verification' or its challenge as a 202 (us.7digital.com, 2026-10-08, scripts/probe-ext-refusal.py): told by x-amzn-waf-action, it is a browser check, not 'HTTP 405' or a page with nothing on it.",
+        "edits": [
+            {
+                "find": "        if (h['x-amzn-waf-action']) return 'AWS WAF';",
+                "replace": ""
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
@@ -349,6 +362,97 @@
         "spec": "tests/fixtures/popup-ext.spec.js",
         "grep": "what is previewed",
         "expect": "fail"
+    },
+    {
+        "name": "the initial skips only www.",
+        "why": "The letter standing in for a site's icon is its name's: us.7digital.com showed 'U' from its country prefix (reported 2026-10-08).",
+        "edits": [
+            {
+                "find": "        while (labels.length > 2 && /^(?:www\\d*|m|mobile|[a-z]{2})$/.test(labels[0])) labels.shift();",
+                "replace": "        while (labels.length > 2 && labels[0] === 'www') labels.shift();"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "the initial standing in",
+        "expect": "fail"
+    },
+    {
+        "name": "the external Live page fails in the foreign hosts' words",
+        "why": "A link to another site is no 'detail page': the external source names its own failure heading (reported from Chrome and Firefox, 2026-10-08).",
+        "edits": [
+            {
+                "find": "            liveFailTitle: 'Could not load the page.',\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "the link's status",
+        "expect": "fail"
+    },
+    {
+        "name": "site icons ignore sa_pop_ext_favicons",
+        "why": "Icons are one request more per site; off means letters only (asked for 2026-10-08: 'configurable').",
+        "edits": [
+            {
+                "find": "        if (Lib.settings.sa_pop_ext_favicons !== true) return;",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "site icons off",
+        "expect": "fail"
+    },
+    {
+        "name": "an icon on another host is asked for",
+        "why": "An icon on a CDN is a new host: Tampermonkey would ask the user about it on a hover (U0 B1). Only the link's own host is asked, else its /favicon.ico.",
+        "edits": [
+            {
+                "find": "                if (u.hostname.toLowerCase() === host && /^https?:$/.test(u.protocol)) return u.href;",
+                "replace": "                if (/^https?:$/.test(u.protocol)) return u.href;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "own host only, once per site",
+        "expect": "fail"
+    },
+    {
+        "name": "the page's own icon is ignored",
+        "why": "A page that names its icon on its own host gets that one; /favicon.ico is the fallback.",
+        "edits": [
+            {
+                "find": "        if (rec && rec.icon) {",
+                "replace": "        if (false && rec && rec.icon) {"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "own host only, once per site",
+        "expect": "fail"
+    },
+    {
+        "name": "a site's icon is asked for again",
+        "why": "Once per site: a found icon is reused from memory (and IndexedDB), never asked again by the next hover or a repaint.",
+        "edits": [
+            {
+                "find": "        const cur = _extIcons.get(key);\n        if (cur) {",
+                "replace": "        const cur = _extIcons.get(key);\n        if (cur && cur.status !== 'done') {"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "own host only, once per site",
+        "expect": "fail"
+    },
+    {
+        "name": "an icon is asked from a host never contacted",
+        "why": "Recorded as pass: a 'not contacted yet' card returns before it asks for an icon, and the window asks only once the page has answered (the host is then known). The check in _extIconUrl() is the second line of defence answer 7 would want if either changed; the spec cannot see it while the first holds.",
+        "edits": [
+            {
+                "find": "        if (!_extHostKnown(host)) return '';",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "own host only, once per site",
+        "expect": "pass"
     },
     {
         "name": "the card loses the relationship it is",

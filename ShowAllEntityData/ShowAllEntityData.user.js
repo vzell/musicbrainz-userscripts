@@ -4292,6 +4292,17 @@
                          'loaded only when you press Space, never by hovering.'
         },
 
+        sa_pop_ext_favicons: {
+            label: 'Show the sites\' icons',
+            type: 'checkbox',
+            default: true,
+            description: 'On by default. A card shows the linked site\'s icon instead of its first letter, asked ' +
+                         'once per site and kept for a month (like the page itself: without your cookies, and only ' +
+                         'from the site itself, never from another server). A site not contacted yet shows its ' +
+                         'letter: its icon is not asked before you press Space either. Off: letters only, one ' +
+                         'request less per site.'
+        },
+
         sa_pop_ext_ttl_hours: {
             label: 'Keep external answers for (hours)',
             type: 'number',
@@ -13877,7 +13888,9 @@
      *     started one would retry a failed request for ever;
      *   - `live` (`_dpIsolateFrame()`'s liveRoot/liveHide/liveCss/livePrepare,
      *     plus charset and the rate gate `_dpGetRaw()` uses) and
-     *     `liveUrl(t)`: the Live page view;
+     *     `liveUrl(t)`: the Live page view; `liveFailTitle`, optional: its
+     *     failure heading (default "Could not load the detail page."); a
+     *     target's `noLive` hides the Live page button;
      *   - `steps(t)` and `stepId(el)`: what ‹ › step through, and an
      *     identity that survives the table's `cloneNode(true)` re-renders;
      *   - `kind`: the window's title; `wide`: a wider card (a target may
@@ -14734,7 +14747,9 @@
                 status.remove();
                 const fail = document.createElement('div');
                 fail.className = 'mb-dp-x';
-                fail.innerHTML = '<div class="mb-dp-col"><div class="mb-dp-warn">Could not load the detail page.</div>' +
+                // The source's own words when it has them (a link to another
+                // site is no "detail page"); the foreign hosts keep theirs.
+                fail.innerHTML = `<div class="mb-dp-col"><div class="mb-dp-warn">${_mbttEscape(src.liveFailTitle || 'Could not load the detail page.')}</div>` +
                     `<div class="mb-dp-xsub">${_mbttEscape(raw.detail || '')}</div>` +
                     '<p><button type="button" class="mb-dp-retry">⟳ Try again</button></p></div>';
                 wrap.appendChild(fail);
@@ -15177,8 +15192,12 @@
                 font: 12px/1.4 ui-monospace, Consolas, monospace; color: #7a6d5c;
             }
             :is(#mb-dp-peek, .mb-dp-dialog) .mb-ext-fav {
+                position: relative; overflow: hidden;
                 display: inline-grid; place-items: center; flex: none; width: 16px; height: 16px; border-radius: 3px;
                 background: #7a6d5c; color: #fbf8f1; font: 700 10px/1 sans-serif;
+            }
+            :is(#mb-dp-peek, .mb-dp-dialog) .mb-ext-favimg {
+                position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #fbf8f1;
             }
             :is(#mb-dp-peek, .mb-dp-dialog) .mb-ext-host { overflow-wrap: anywhere; }
             :is(#mb-dp-peek, .mb-dp-dialog) .mb-ext-st {
@@ -38551,7 +38570,7 @@
     // never from a hover (answer 7, `sa_pop_ext_hosts`).
 
     /** Version of the external-link records kept in IndexedDB; bump when a reader's output changes. */
-    const _EXT_IDB_VERSION = 2;
+    const _EXT_IDB_VERSION = 3;
 
     /**
      * How much of a page the generic reader parses (org/iframe.org answer 4).
@@ -38591,6 +38610,24 @@
 
     /** How many hosts `_EXT_HOSTS_KEY` keeps, newest last. */
     const _EXT_HOSTS_MAX = 1000;
+
+    /** Version of the site icons kept in IndexedDB (`_extIconEnsure()`). */
+    const _EXT_ICON_VERSION = 1;
+
+    /** How long a site's icon is reused from IndexedDB, ms: icons rarely change. */
+    const _EXT_ICON_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+    /** An icon bigger than this is not kept (a page's 512 px touch icon is no favicon). */
+    const _EXT_ICON_MAX_BYTES = 64 * 1024;
+
+    /**
+     * Each site's icon, by the host it is asked from: `loading` (with the
+     * repaints of whoever waits), `done` (`data`: a `data:` URL) or `none`
+     * (no icon, or none usable). Only a found icon goes to IndexedDB; a
+     * `none` is remembered until the page is reloaded.
+     * @type {Map<string, {status: string, data: string, listeners: Set<function(): void>}>}
+     */
+    const _extIcons = new Map();
 
     /**
      * Hosts never previewed as another site: the MetaBrainz family (a
@@ -38733,18 +38770,23 @@
      * without parsing it (a YouTube page has its `<title>` and `og:` tags at
      * about 769 KB, after its `</head>`). Never rejects: a failure is in
      * `error` (`refused` — Tampermonkey did not allow the host —,
-     * `unreachable`, `timeout`).
+     * `unreachable`, `timeout`). With `responseType: 'blob'` (a site's icon,
+     * `_extIconEnsure()`) the answer is in `blob`, not `body`.
      *
      * @param {string} url
-     * @param {{accept?: RegExp, maxBytes?: number, maxDownload?: number, headers?: Object<string, string>}} [opts]
+     * @param {{accept?: RegExp, maxBytes?: number, maxDownload?: number, headers?: Object<string, string>,
+     *   responseType?: string}} [opts]
      * @returns {Promise<{status: number, finalUrl: string, headers: Object<string, string>, contentType: string,
-     *   bytes: number, body: string, tail: string, aborted: string, error: string, detail: string}>} `aborted` is
-     *   `type` or `size` when the body was skipped.
+     *   bytes: number, body: string, tail: string, blob: ?Blob, aborted: string, error: string, detail: string}>}
+     *   `aborted` is `type` or `size` when the body was skipped.
      */
     function _extFetch(url, { accept = /\b(?:text\/html|application\/xhtml\+xml)\b/i, maxBytes = _EXT_MAX_BYTES,
-        maxDownload = _EXT_MAX_DOWNLOAD, headers = {} } = {}) {
+        maxDownload = _EXT_MAX_DOWNLOAD, headers = {}, responseType = '' } = {}) {
         return new Promise((resolve) => {
-            const base = { status: 0, finalUrl: url, headers: {}, contentType: '', bytes: 0, body: '', tail: '', aborted: '', error: '', detail: '' };
+            const base = {
+                status: 0, finalUrl: url, headers: {}, contentType: '', bytes: 0, body: '', tail: '', blob: null,
+                aborted: '', error: '', detail: '',
+            };
             let settled = false;
             let early = null;
             let req = null;
@@ -38771,6 +38813,7 @@
             try {
                 req = GM_xmlhttpRequest({
                     method: 'GET', url, headers, anonymous: true, timeout: _EXT_TIMEOUT_MS,
+                    ...(responseType ? { responseType } : {}),
                     onreadystatechange: (r) => {
                         if (settled || !r || r.readyState !== 2) return;
                         const hd = head(r);
@@ -38785,6 +38828,12 @@
                     onload: (r) => {
                         const hd = head(r);
                         const why = skip(hd);
+                        if (responseType === 'blob') {
+                            const blob = !why && r.response instanceof Blob ? r.response : null;
+                            if (!hd.bytes && blob) hd.bytes = blob.size;
+                            settle(Object.assign(hd, { blob, aborted: why }));
+                            return;
+                        }
                         const full = why ? '' : String(r.responseText || '');
                         if (!hd.bytes) hd.bytes = full.length;
                         settle(Object.assign(hd, { body: full.slice(0, maxBytes), tail: full.slice(maxBytes), aborted: why }));
@@ -38851,7 +38900,8 @@
      * @param {string} base - The page's final URL.
      * @param {string} [tail] - The rest of the page, past the cap.
      * @returns {{title: string, description: string, image: string, siteName: string, type: string,
-     *   lang: string, published: string, canonical: string}}
+     *   lang: string, published: string, canonical: string, icon: string}} `icon`: the page's own
+     *   `<link rel="icon">` (`_extIconUrl()` uses it only on the link's host).
      */
     function _extReadHead(html, base, tail = '') {
         const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -38859,7 +38909,7 @@
             ? new DOMParser().parseFromString(`<head>${[
                 (tail.match(/<title\b[^>]*>[^<]*<\/title>/i) || [''])[0],
                 ...(tail.match(/<meta\b[^>]*>/gi) || []).filter(t => /\b(?:property|name|itemprop)=["']?(?:og:|twitter:|description|datepublished|article:)/i.test(t)),
-                ...(tail.match(/<link\b[^>]*\brel=["']?canonical[^>]*>/gi) || []),
+                ...(tail.match(/<link\b[^>]*\brel=["']?(?:canonical|(?:shortcut )?icon)\b[^>]*>/gi) || []),
             ].join('')}</head>`, 'text/html')
             : null;
         const meta = (name) => {
@@ -38877,6 +38927,8 @@
             }
         };
         const canon = doc.querySelector('link[rel~="canonical" i]');
+        const iconSel = 'link[rel~="icon" i]';
+        const icon = doc.querySelector(iconSel) || (late && late.querySelector(iconSel));
         return {
             title: meta('og:title') || meta('twitter:title') || _dpText(doc.title),
             description: (meta('og:description') || meta('twitter:description') || meta('description')).slice(0, 600),
@@ -38886,7 +38938,28 @@
             lang: _dpText(doc.documentElement.getAttribute('lang')),
             published: meta('article:published_time') || meta('datePublished'),
             canonical: abs(canon && canon.getAttribute('href')),
+            icon: abs(icon && icon.getAttribute('href')),
         };
+    }
+
+    /**
+     * Whether an answer is a bot check rather than the page, and whose, from
+     * the header the vendor sets on it: Cloudflare's `cf-mitigated:
+     * challenge` (a 403, "Just a moment…", U0 X6), AWS WAF's
+     * `x-amzn-waf-action` (its CAPTCHA as a 405 "Human Verification" —
+     * us.7digital.com, reported from a real browser 2026-10-08 and probed by
+     * scripts/probe-ext-refusal.py —, its silent challenge as a 202). By
+     * header, never by status or page title: a 405 or a 403 alone is just
+     * that.
+     *
+     * @param {Object} res - `_extFetch()`'s answer.
+     * @returns {string} The vendor, or '' for none.
+     */
+    function _extBotCheck(res) {
+        const h = res.headers || {};
+        if (/challenge/i.test(h['cf-mitigated'] || '')) return 'Cloudflare';
+        if (h['x-amzn-waf-action']) return 'AWS WAF';
+        return '';
     }
 
     /**
@@ -38902,8 +38975,8 @@
      *     path, which is `toHttps` (a quiet "→ https" line, the pill stays
      *     green);
      *   - `dead`: 404 or 410;
-     *   - `checked`: a 403 from Cloudflare's browser check
-     *     (`cf-mitigated: challenge`) — NOT a dead link (U0 X6, X9);
+     *   - `checked`: a bot check (`_extBotCheck()`), whatever its status —
+     *     NOT a dead link (U0 X6, X9); `checkedBy` names the vendor;
      *   - `http`: any other 4xx;
      *   - `notpage`: a 2xx that is not a web page (a PDF, an image), from its
      *     headers alone; `big`: a page past `_EXT_MAX_DOWNLOAD`.
@@ -38915,7 +38988,11 @@
      * @returns {?Object}
      */
     function _extRecord(url, res) {
-        if (res.error || !res.status || res.status >= 500 || res.status === 429) return null;
+        if (res.error || !res.status) return null;
+        // A bot check first, whatever its status: AWS WAF's challenge is a
+        // 202, which would otherwise pass for a page with nothing on it.
+        const checkedBy = _extBotCheck(res);
+        if (!checkedBy && (res.status >= 500 || res.status === 429)) return null;
         const finalUrl = res.finalUrl || url;
         let moved = false;
         let toHttps = false;
@@ -38928,9 +39005,12 @@
         const rec = {
             state: '', status: res.status, finalUrl, moved, toHttps,
             contentType: res.contentType, bytes: res.bytes, note: '',
-            title: '', description: '', image: '', siteName: '', type: '', lang: '', published: '', canonical: '',
+            title: '', description: '', image: '', siteName: '', type: '', lang: '', published: '', canonical: '', icon: '',
+            checkedBy,
         };
-        if (res.status >= 200 && res.status < 300) {
+        if (checkedBy) {
+            rec.state = 'checked';
+        } else if (res.status >= 200 && res.status < 300) {
             if (res.aborted === 'type') rec.state = 'notpage';
             else if (res.aborted === 'size') rec.state = 'big';
             else {
@@ -38939,8 +39019,6 @@
             }
         } else if (res.status === 404 || res.status === 410) {
             rec.state = 'dead';
-        } else if (res.status === 403 && /challenge/i.test(res.headers['cf-mitigated'] || '')) {
-            rec.state = 'checked';
         } else if (res.status >= 400) {
             rec.state = 'http';
         } else {
@@ -38977,8 +39055,8 @@
                 return rec.status === 410 ? 'The site says the page is gone for good (410 Gone).'
                     : 'The page is gone: the site answers 404 Not Found.';
             case 'checked':
-                return 'The site answers scripts with a browser check ("Just a moment…"), so the card cannot read it. ' +
-                    'The link itself is fine: ↗ opens it in a tab.';
+                return `The site answers scripts with a browser check${rec.checkedBy ? ` (${rec.checkedBy})` : ''}, ` +
+                    'so the card cannot read it. The link itself is fine: ↗ opens it in a tab.';
             case 'notpage':
                 return `Not a web page${type ? `: ${type}` : ''}${rec.bytes ? `, ${_extSize(rec.bytes)}` : ''}. Not read.`;
             case 'big':
@@ -39233,22 +39311,150 @@
             cls = 'dead';
             text = rec.status === 410 ? '410 Gone' : (rec.status === 404 ? '404 Not found' : 'not available');
         }
-        else if (rec.state === 'checked') [cls, text] = ['warn', 'checked by Cloudflare'];
+        else if (rec.state === 'checked') [cls, text] = ['warn', `checked by ${rec.checkedBy || 'a bot check'}`];
         else if (rec.state === 'http' || rec.state === 'big') cls = 'warn';
         else if (rec.state === 'notpage') text = 'not a page';
         return `<span class="mb-ext-st mb-ext-st-${cls}">${_rgEsc(text)}</span>`;
     }
 
     /**
-     * The site line: an initial, the host, and the pill (HTML).
+     * The letter that stands in for a site's icon while it loads, when the
+     * site has none, or with `sa_pop_ext_favicons` off: the first
+     * letter of the host's NAME, so leading PREFIXES — `www` (`www2`…), `m`,
+     * `mobile`, a two-letter country or language (`us`, `en`, `de`) — are
+     * skipped while two labels remain. `us.7digital.com` → "7" (reported
+     * 2026-10-08: it showed "U"), `en.wikipedia.org` → "W",
+     * `brucebase.wikidot.com` → "B", `www.bbc.co.uk` → "B" (a short NAME
+     * such as `bbc` is not a prefix: "up to three letters" took it too).
+     *
+     * @param {string} host
+     * @returns {string}
+     */
+    function _extInitial(host) {
+        const labels = host.split('.');
+        while (labels.length > 2 && /^(?:www\d*|m|mobile|[a-z]{2})$/.test(labels[0])) labels.shift();
+        return ((labels[0] || '?')[0] || '?').toUpperCase();
+    }
+
+    /**
+     * Where a site's icon is asked for, or '' for none: only on the host
+     * the target's own request goes to (a CDN would be a new host, and
+     * Tampermonkey would ask the user about it, U0 B1), and only when that
+     * host is known (answered once, or in `@connect`): a "not contacted
+     * yet" site is never contacted for its icon either (answer 7). The
+     * page's own `<link rel="icon">` when it is on that host, else
+     * `/favicon.ico`.
+     *
+     * @param {object} t
+     * @param {?Object} rec - The target's record (its `icon`).
+     * @returns {string}
+     */
+    function _extIconUrl(t, rec) {
+        let base;
+        try {
+            base = new URL(t.askHost === t.host ? t.url : `https://${t.askHost}/`);
+        } catch (_) {
+            return '';
+        }
+        const host = base.hostname.toLowerCase();
+        if (!_extHostKnown(host)) return '';
+        if (rec && rec.icon) {
+            try {
+                const u = new URL(rec.icon);
+                if (u.hostname.toLowerCase() === host && /^https?:$/.test(u.protocol)) return u.href;
+            } catch (_) { /* fall back to /favicon.ico */ }
+        }
+        return `${base.origin}/favicon.ico`;
+    }
+
+    /**
+     * A Blob as a `data:` URL.
+     *
+     * @param {Blob} blob
+     * @returns {Promise<string>} '' when it cannot be read.
+     */
+    function _extBlobToDataUrl(blob) {
+        return new Promise((resolve) => {
+            try {
+                const fr = new FileReader();
+                fr.onload = () => resolve(typeof fr.result === 'string' ? fr.result : '');
+                fr.onerror = () => resolve('');
+                fr.readAsDataURL(blob);
+            } catch (_) {
+                resolve('');
+            }
+        });
+    }
+
+    /**
+     * Makes sure a site's icon is known or being asked for, when
+     * `sa_pop_ext_favicons` is on (default): from memory, then IndexedDB
+     * (`_EXT_ICON_TTL_MS`), then ONE anonymous request through `_extGet()`
+     * and the host's gate, an image no bigger than `_EXT_ICON_MAX_BYTES`.
+     * Asked once per host per page load: a host with no usable icon stays
+     * `none` until the page is reloaded, and is never asked again by a
+     * repaint. A first request may come from the repaint that follows the
+     * page's own answer (the icon's URL is known only then) — the exception
+     * `_rgWindowFor()` documents: what was never asked, never a failure.
+     *
+     * @param {object} t
+     * @param {?Object} rec
+     * @param {?function(): void} repaint - Called when the icon arrives.
+     * @returns {void}
+     */
+    function _extIconEnsure(t, rec, repaint) {
+        if (Lib.settings.sa_pop_ext_favicons !== true) return;
+        const url = _extIconUrl(t, rec);
+        if (!url) return;
+        const key = _extHostOf(url);
+        const cur = _extIcons.get(key);
+        if (cur) {
+            if (cur.status === 'loading' && repaint) cur.listeners.add(repaint);
+            return;
+        }
+        const st = { status: 'loading', data: '', listeners: new Set(repaint ? [repaint] : []) };
+        _extIcons.set(key, st);
+        const done = (data) => {
+            st.status = data ? 'done' : 'none';
+            st.data = data;
+            st.listeners.forEach(fn => fn());
+        };
+        (async () => {
+            const kept = await _rgIdbGet(`ext-icon:${key}`, _EXT_ICON_VERSION, _EXT_ICON_TTL_MS);
+            if (kept && kept.data) {
+                done(kept.data);
+                return;
+            }
+            const res = await _extGet(url, {
+                wanted: _mbPopWanted(t),
+                fetchOpts: { accept: /^image\//i, responseType: 'blob', maxDownload: _EXT_ICON_MAX_BYTES },
+            });
+            if (res.skipped) {
+                if (_extIcons.get(key) === st) _extIcons.delete(key);
+                return;
+            }
+            const blob = res.status === 200 && res.blob && res.blob.size && res.blob.size <= _EXT_ICON_MAX_BYTES ? res.blob : null;
+            const data = blob ? await _extBlobToDataUrl(blob) : '';
+            if (data) _rgIdbPut(`ext-icon:${key}`, data, Date.now(), _EXT_ICON_VERSION);
+            Lib.debug('ext', `icon ${url}: ${data ? `${blob.size} bytes` : `none (HTTP ${res.status}${res.aborted ? `, ${res.aborted}` : ''})`}.`);
+            done(data);
+        })();
+    }
+
+    /**
+     * The site line: an initial, the host, and the pill (HTML). The site's
+     * icon, once known (`_extIconEnsure()`), covers the initial, which stays
+     * underneath as the fallback.
      *
      * @param {object} t
      * @param {string} pill - `_extPillHtml()`, or '' while unknown.
      * @returns {string}
      */
     function _extSiteHtml(t, pill) {
-        const bare = t.host.replace(/^www\./, '');
-        return `<div class="mb-ext-site"><span class="mb-ext-fav">${_rgEsc((bare[0] || '?').toUpperCase())}</span>` +
+        const url = Lib.settings.sa_pop_ext_favicons === true ? _extIconUrl(t, null) : '';
+        const ic = url ? _extIcons.get(_extHostOf(url)) : null;
+        const img = ic && ic.status === 'done' ? `<img class="mb-ext-favimg" src="${_rgEsc(ic.data)}" alt="">` : '';
+        return `<div class="mb-ext-site"><span class="mb-ext-fav">${_rgEsc(_extInitial(t.host))}${img}</span>` +
             `<span class="mb-ext-host">${_rgEsc(t.host)}</span>${pill}</div>`;
     }
 
@@ -39298,6 +39504,7 @@
         const st = _mbPop.get(t.key);
         if (st && st.status === 'done' && st.data) {
             const rec = st.data;
+            _extIconEnsure(t, rec, repaint);
             let body;
             if (rec.state === 'ok') {
                 const img = rec.image ? `<img class="mb-ext-img" src="${_rgEsc(rec.image)}" alt="" referrerpolicy="no-referrer" loading="lazy">` : '';
@@ -39348,6 +39555,7 @@
                 'Loading…</div></div></div>';
         }
         const rec = st.data;
+        _extIconEnsure(t, rec, repaint);
         const left = [`<div class="mb-dp-xtitle">${_rgEsc(rec.title || t.name)}</div>`];
         if (rec.siteName) left.push(`<div class="mb-dp-xsub">${_rgEsc(rec.siteName)}</div>`);
         if (rec.state === 'ok') {
@@ -39468,6 +39676,7 @@
             },
             wide: false,
             live: _EXT_LIVE,
+            liveFailTitle: 'Could not load the page.',
             enabled: () => !_foreignHost && Lib.settings.sa_pop_ext === true,
             resolve: (a) => _extTarget(a),
             needsCtrl: _dpNeedsCtrl,
