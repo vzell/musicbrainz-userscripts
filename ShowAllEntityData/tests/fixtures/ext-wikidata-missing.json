@@ -1,0 +1,6 @@
+{
+ "url": "https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&ids=Q999999999&props=labels%7Cdescriptions%7Caliases%7Csitelinks&languages=en&sitefilter=enwiki",
+ "status": 200,
+ "contentType": "application/json; charset=utf-8",
+ "body": "{\"entities\":{\"Q999999999\":{\"id\":\"Q999999999\",\"missing\":\"\"}},\"success\":1}"
+}

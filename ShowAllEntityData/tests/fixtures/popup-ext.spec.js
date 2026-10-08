@@ -297,7 +297,7 @@ test.describe('external link previews (sa_pop_ext)', () => {
             };
         }, SETLIST);
         expect(r.table).toBe(`ext|ext:generic:${SETLIST}`);
-        expect(r.wiki).toBe('ext|ext:generic:https://en.wikipedia.org/wiki/TeachRock');
+        expect(r.wiki, 'the Wikipedia reader (U3)').toBe('ext|ext:wikipedia:https://en.wikipedia.org/wiki/TeachRock');
         expect(r.ytList, 'a playlist is the YouTube reader\'s').toBe('ext|ext:youtube:https://www.youtube.com/playlist?list=PLM0aPYPhFzkrHWh8uoXwAsxdDXyFEEELt');
         expect(r.ytChannel, 'a channel is not (oEmbed has none): the generic reader').toBe('ext|ext:generic:http://www.youtube.com/brucebasewiki');
         expect(r.info, 'the "[info]" link is MusicBrainz\'s own: the url kind (U2)').toMatch(/^mb-entity\|url:[0-9a-f-]{36}$/);
@@ -321,7 +321,7 @@ test.describe('external link previews (sa_pop_ext)', () => {
             document.querySelector('#page').appendChild(outside);
             return window.__saTest.popResolve(outside);
         });
-        expect(wide, 'page-wide scope (sa_pop_mb_page)').toBe('ext|ext:generic:https://en.wikipedia.org/wiki/Outside');
+        expect(wide, 'page-wide scope (sa_pop_mb_page)').toBe('ext|ext:wikipedia:https://en.wikipedia.org/wiki/Outside');
     });
 
     test('first contact: a hover asks nothing; Space loads it anonymously and remembers the host', async ({ page }) => {
@@ -900,5 +900,421 @@ test.describe('MusicBrainz URL entities (U2)', () => {
         await expect(dialog(page).locator('.mb-dp-area a[href^="/event/"]')).toHaveText([SETLIST_EVENT], { timeout: 10000 });
         expect(log.ws2).toEqual([SETLIST_LOOKUP]);
         expect(log.ws2At[0] - t0, 'waited behind two slots of the gate the Relationships column shares').toBeGreaterThanOrEqual(2000);
+    });
+});
+
+// U3: the readers of Wikipedia, Wikidata and Discogs. Every answer is a real
+// capture (scripts/capture-ext-fixtures.py → tests/fixtures/ext-*.json), keyed
+// by the exact request the reader builds; the links are put in the
+// annotation, as an annotation carries them. Their API hosts are in the
+// header's @connect, so no test seeds sa_pop_ext_hosts: a hover loads them.
+const EXT = (name) => JSON.parse(json(`ext-${name}.json`));
+const extAnswers = (...names) => Object.fromEntries(names.map((n) => {
+    const f = EXT(n);
+    return [f.url, { status: f.status, responseHeaders: `Content-Type: ${f.contentType}`, responseText: f.body }];
+}));
+const W = {
+    teach: 'https://en.wikipedia.org/wiki/TeachRock',
+    greet: 'https://en.wikipedia.org/wiki/Greetings_from_Asbury_Park%2C_N.J.',
+    merc: 'https://en.wikipedia.org/wiki/Mercury',
+    miss: 'https://en.wikipedia.org/wiki/No_such_article_ShowAllEntityData_probe',
+};
+const WD = { item: 'https://www.wikidata.org/wiki/Q1225', miss: 'https://www.wikidata.org/wiki/Q999999999' };
+const DG = {
+    release: 'https://www.discogs.com/release/1874253-Bruce-Springsteen-Born-To-Run',
+    master: 'https://www.discogs.com/master/26725-Bruce-Springsteen-Born-To-Run',
+    artist: 'https://www.discogs.com/artist/219986-Bruce-Springsteen',
+    label: 'https://www.discogs.com/label/1866-Columbia',
+    miss: 'https://www.discogs.com/release/999999999',
+};
+const probe = (page, i) => page.locator('.ext-probe a').nth(i);
+// Every logged request to another site, with its headers.
+const xhrFull = (page) => page.evaluate(() => (window.__gmXhrLog || [])
+    .filter(r => !/^https:\/\/raw\.githubusercontent\.com\//.test(r.url)));
+
+test.describe('readers of known sites (U3): Wikipedia, Wikidata, Discogs', () => {
+    test('which reader serves which link; the others stay generic', async ({ page }) => {
+        await openEvent(page, { settings: { sa_pop_ext: true } });
+        const links = [
+            W.teach, WD.item, DG.release, DG.master, DG.artist, DG.label,
+            'https://de.m.wikipedia.org/wiki/Bruce_Springsteen',
+            'https://www.discogs.com/de/release/1874253',
+            'https://www.wikipedia.org/', 'https://en.wikipedia.org/wiki/Special:Search',
+            'https://www.wikidata.org/wiki/Property:P31', 'https://www.discogs.com/sell/list',
+            // As MusicBrainz's sidebar writes its Wikidata link (found by the
+            // live spec): protocol-relative.
+            '//www.wikidata.org/wiki/Q1470381',
+        ];
+        await addAnnotationLinks(page, links);
+        const keys = await page.evaluate(() => Array.from(document.querySelectorAll('.ext-probe a'))
+            .map(a => window.__saTest.popResolve(a)));
+        expect(keys.map(k => k && k.split(':').slice(0, 2).join(':'))).toEqual([
+            'ext|ext:wikipedia', 'ext|ext:wikidata', 'ext|ext:discogs', 'ext|ext:discogs', 'ext|ext:discogs', 'ext|ext:discogs',
+            'ext|ext:wikipedia', 'ext|ext:discogs',
+            'ext|ext:generic', 'ext|ext:generic', 'ext|ext:generic', 'ext|ext:generic',
+            'ext|ext:wikidata',
+        ]);
+        expect(keys[12], 'read as https').toBe('ext|ext:wikidata:https://www.wikidata.org/wiki/Q1470381');
+    });
+
+    test('Wikipedia: one REST summary with Api-User-Agent; the article, a disambiguation page, a missing title', async ({ page }) => {
+        await openEvent(page, {
+            settings: { sa_pop_ext: true },
+            responses: extAnswers('wikipedia-teachrock', 'wikipedia-greetings', 'wikipedia-mercury', 'wikipedia-missing'),
+        });
+        await addAnnotationLinks(page, [W.teach, W.greet, W.merc, W.miss]);
+        await ctrlHover(page, probe(page, 0));
+        const c = card(page);
+        await expect(c).toContainText('fetched now');
+        await expect(c.locator('.mb-tt-title')).toHaveText('TeachRock');
+        await expect(c).toContainText('Wikipedia (en)');
+        await expect(c).toContainText('TeachRock is an education initiative');
+        await expect(c).toContainText('Education initiative founded by Steven Van Zandt');
+        await expect(c.locator('.mb-ext-st')).toHaveText('200');
+        const log = await xhrFull(page);
+        expect(log.map(r => r.url), 'the REST summary, not the page').toEqual([EXT('wikipedia-teachrock').url]);
+        expect(log[0].anonymous).toBe(true);
+        expect(log[0].headers['Api-User-Agent'], 'as Wikimedia asks of browser scripts').toMatch(/^ShowAllEntityData\//);
+
+        // MusicBrainz's %2C title: the same article, no "Redirected from";
+        // its thumbnail.
+        await ctrlHover(page, probe(page, 1));
+        await expect(c.locator('.mb-tt-title')).toHaveText('Greetings from Asbury Park, N.J.');
+        await expect(c.locator('img.mb-ext-img')).toHaveAttribute('src', /upload\.wikimedia\.org/);
+        await expect(c).not.toContainText('Redirected from');
+
+        await ctrlHover(page, probe(page, 2));
+        await expect(c.locator('.mb-tt-title')).toHaveText('Mercury');
+        await expect(c).toContainText('a disambiguation page');
+
+        await ctrlHover(page, probe(page, 3));
+        await expect(c.locator('.mb-ext-st')).toHaveText('404 Not found');
+        await expect(c).toContainText('Wikipedia has no article of this title');
+
+        // A "/" in a title is encoded, or the REST path would split there
+        // (no answer configured: the stub's 404 is enough to see the URL).
+        await addAnnotationLinks(page, ['https://en.wikipedia.org/wiki/AC/DC']);
+        await ctrlHover(page, page.locator('.ext-probe a[href$="/AC/DC"]'));
+        await expect(c.locator('.mb-ext-st')).toHaveText('404 Not found');
+        expect((await xhrFull(page)).map(r => r.url)).toContain('https://en.wikipedia.org/api/rest_v1/page/summary/AC%2FDC');
+    });
+
+    test('Wikipedia\'s window: its facts, the Wikidata item, and the whole article as Live page with the site around #content hidden', async ({ page }) => {
+        // Longer than the card's 512 KB cap: the Live page reads the whole page.
+        const ARTICLE = '<!doctype html><html><head><title>TeachRock - Wikipedia</title></head><body>' +
+            '<header class="probe-head">the site\'s header</header><div class="mw-page-container"><nav class="probe-nav">menu</nav>' +
+            `<main id="content"><h1>TeachRock</h1><p>${'Lorem ipsum. '.repeat(48 * 1024)}</p><p id="article-end">The end.</p></main></div></body></html>`;
+        await openEvent(page, {
+            settings: { sa_pop_ext: true },
+            responses: { ...extAnswers('wikipedia-greetings'), [W.greet]: { status: 200, responseHeaders: HTML_HEADERS, responseText: ARTICLE } },
+        });
+        await addAnnotationLinks(page, [W.greet]);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        await expect(d.locator(':scope > div > span').first()).toHaveText('Wikipedia');
+        await expect(d).toContainText('Wikipedia (en) says');
+        await expect(d).toContainText('1973 studio album by Bruce Springsteen');
+        await expect(d.locator('a[href="https://www.wikidata.org/wiki/Q1470381"]')).toBeVisible();
+
+        await d.getByRole('button', { name: 'Live page' }).click();
+        const frame = d.locator('iframe');
+        await expect(frame).toHaveAttribute('srcdoc', /article-end/);
+        const hidden = await frame.evaluate((f) => {
+            const doc = f.contentDocument;
+            return ['header.probe-head', 'nav.probe-nav', '#content'].map(s => doc.querySelector(s).classList.contains('mb-dp-hide'));
+        });
+        expect(hidden, 'the header and menus hidden, the article shown').toEqual([true, true, false]);
+        expect((await xhrFull(page)).map(r => r.url)).toEqual([EXT('wikipedia-greetings').url, W.greet]);
+    });
+
+    test('Wikidata: one wbgetentities in the browser\'s language and English; a missing item', async ({ page }) => {
+        await openEvent(page, { settings: { sa_pop_ext: true }, responses: extAnswers('wikidata-q1225', 'wikidata-missing') });
+        await addAnnotationLinks(page, [WD.item, WD.miss]);
+        await ctrlHover(page, probe(page, 0));
+        const c = card(page);
+        await expect(c.locator('.mb-tt-title')).toHaveText('Bruce Springsteen');
+        await expect(c).toContainText('American rock singer (born 1949)');
+        await expect(c).toContainText('Q1225');
+        expect((await xhrFull(page)).map(r => r.url)).toEqual([EXT('wikidata-q1225').url]);
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('a[href="https://en.wikipedia.org/wiki/Bruce_Springsteen"]')).toBeVisible();
+        await page.keyboard.press('Escape');
+
+        await ctrlHover(page, probe(page, 1));
+        await expect(c.locator('.mb-ext-st')).toHaveText('not available');
+        await expect(c).toContainText('Wikidata has no item Q999999999.');
+    });
+
+    test('Discogs: the API with its User-Agent, no token by default, 2.5 s apart; release, master, artist, label, a missing release', async ({ page }) => {
+        await openEvent(page, {
+            settings: { sa_pop_ext: true },
+            responses: extAnswers('discogs-release', 'discogs-master', 'discogs-artist', 'discogs-label', 'discogs-missing'),
+        });
+        await addAnnotationLinks(page, [DG.release, DG.master, DG.artist, DG.label, DG.miss]);
+        await ctrlHover(page, probe(page, 0));
+        const c = card(page);
+        await expect(c.locator('.mb-tt-title')).toHaveText('Born To Run');
+        await expect(c).toContainText('Discogs');
+        await expect(c).toContainText('Bruce Springsteen · 1975 · Vinyl, LP, Album, Stereo');
+        await expect(c.locator('img.mb-ext-img')).toHaveAttribute('src', /i\.discogs\.com/);
+        const log = await xhrFull(page);
+        expect(log.map(r => r.url)).toEqual(['https://api.discogs.com/releases/1874253']);
+        expect(log[0].headers['User-Agent'], 'Discogs requires one').toMatch(/^ShowAllEntityData\//);
+        expect(log[0].headers.Authorization, 'no token set').toBeUndefined();
+        expect(await page.evaluate(() => window.__saTest.extRateSlotWaitMs('api.discogs.com')),
+            '25 a minute without a token').toBeGreaterThan(1500);
+
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        await expect(d.locator(':scope > div > span').first()).toHaveText('Discogs');
+        await expect(d.getByRole('button', { name: 'Live page' }), 'the API, not the page').toBeHidden();
+        await expect(d).toContainText('Columbia – PC 33795');
+        await expect(d).toContainText('Rock, Pop Rock, Rock & Roll');
+        await page.keyboard.press('Escape');
+
+        await ctrlHover(page, probe(page, 1));
+        await expect(c.locator('.mb-tt-title')).toHaveText('Born To Run', { timeout: 10000 });
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('a[href="https://www.discogs.com/release/13896528"]')).toBeVisible();
+        await page.keyboard.press('Escape');
+
+        await ctrlHover(page, probe(page, 2));
+        await expect(c.locator('.mb-tt-title')).toHaveText('Bruce Springsteen', { timeout: 10000 });
+        await expect(c).toContainText('Bruce Frederick Joseph Springsteen');
+
+        await ctrlHover(page, probe(page, 3));
+        await expect(c.locator('.mb-tt-title')).toHaveText('Columbia', { timeout: 10000 });
+        await expect(c).toContainText('Sony Music Entertainment');
+        await expect(c).not.toContainText('[l');
+
+        await ctrlHover(page, probe(page, 4));
+        await expect(c.locator('.mb-ext-st')).toHaveText('404 Not found', { timeout: 10000 });
+        await expect(c).toContainText('Discogs has no release 999999999');
+    });
+
+    test('Discogs with the user\'s token: in the Authorization header only, 1 s apart, never in a debug line', async ({ page }) => {
+        const TOKEN = 'tok-ShowAllEntityData-probe-123';
+        const lines = [];
+        page.on('console', (m) => lines.push(m.text()));
+        await openEvent(page, {
+            settings: { sa_pop_ext: true, sa_pop_ext_discogs_token: `  ${TOKEN} `, sa_enable_debug_logging: true },
+            responses: extAnswers('discogs-release'),
+        });
+        await addAnnotationLinks(page, [DG.release]);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('Born To Run');
+        const log = await xhrFull(page);
+        expect(log.map(r => r.url), 'never in the URL').toEqual(['https://api.discogs.com/releases/1874253']);
+        expect(log[0].headers.Authorization).toBe(`Discogs token=${TOKEN}`);
+        expect(await page.evaluate(() => window.__saTest.extRateSlotWaitMs('api.discogs.com')), '60 a minute').toBeLessThanOrEqual(1000);
+        expect(lines.some(l => l.includes('api.discogs.com/releases/1874253')), 'the debug channel was on').toBe(true);
+        expect(lines.filter(l => l.includes(TOKEN)), 'the token in no console line').toEqual([]);
+    });
+});
+
+// U4: the four Springsteen sites' own parsers on links from MusicBrainz, and
+// the Brucebase date anchor. Pages are the detail-preview fixtures
+// (scripts/build-detail-fixtures.py; jungleland.it's is windows-1252 bytes,
+// read here as latin1, i.e. as a correct decoding gives it) and Brucebase's
+// 2025 year page (tests/fixtures/ext-bb-year-2025.html). All four hosts are in
+// the header's @connect: a hover loads them.
+const page_ = (name, enc = 'utf8') => fs.readFileSync(path.join(__dirname, name), enc);
+const htmlAnswer = (body) => ({ status: 200, responseHeaders: HTML_HEADERS, responseText: body });
+const SP = {
+    sl: 'https://www.springsteenlyrics.com/bootlegs.php?item=6739&category=aud_live2014',
+    jl: new URL('https://www.jungleland.it/html/Magic In The Köln Night (2007-12-13).htm').href,
+    bs: 'https://www.brucespringsteen.it/DB/detrec.aspx?code=CR1AD1',
+    bb: 'https://brucebase.wikidot.com/song:4th-of-july-asbury-park-sandy',
+};
+const BB_YEAR = 'https://brucebase.wikidot.com/2025';
+const BBD = {
+    stonePony: 'http://brucebase.wikidot.com/2025#261025',
+    library: 'https://brucebase.wikidot.com/2025#031125',
+    january: 'https://brucebase.wikidot.com/2025#090125',
+    none: 'https://brucebase.wikidot.com/2025#010125',
+};
+
+test.describe('the Springsteen sites across hosts (U4)', () => {
+    test('which reader serves which link: the four sites\' detail pages, a Brucebase date; the rest generic', async ({ page }) => {
+        await openEvent(page, { settings: { sa_pop_ext: true } });
+        await addAnnotationLinks(page, [
+            SP.sl, SP.jl, SP.bs, SP.bb, BBD.stonePony,
+            'https://brucebase.wikidot.com/2025', 'https://brucebase.wikidot.com/gig:2025-10-26-stone-pony-asbury-park-nj',
+            'https://www.springsteenlyrics.com/index.php', 'https://www.jungleland.it/html/list.htm',
+        ]);
+        const keys = await page.evaluate(() => Array.from(document.querySelectorAll('.ext-probe a'))
+            .map(a => window.__saTest.popResolve(a).split(':').slice(0, 2).join(':')));
+        expect(keys).toEqual([
+            'ext|ext:springsteen', 'ext|ext:springsteen', 'ext|ext:springsteen', 'ext|ext:springsteen', 'ext|ext:bbdate',
+            'ext|ext:generic', 'ext|ext:generic', 'ext|ext:generic', 'ext|ext:generic',
+        ]);
+    });
+
+    test('each site\'s own card, fetched anonymously; jungleland.it decoded as windows-1252', async ({ page }) => {
+        await openEvent(page, {
+            settings: { sa_pop_ext: true },
+            responses: {
+                [SP.sl]: htmlAnswer(page_('detail-sl-bootlegs-6739.html')),
+                [SP.jl]: htmlAnswer(page_('detail-jl-koln.html', 'latin1')),
+                [SP.bs]: htmlAnswer(page_('detail-bs-CR1AD1.html')),
+                [SP.bb]: htmlAnswer(page_('detail-bb-4th-of-july.html')),
+            },
+        });
+        await addAnnotationLinks(page, [SP.sl, SP.jl, SP.bs, SP.bb]);
+        const c = card(page);
+        const expected = [
+            ['First Ever Show In Perth', '28 tracks'],
+            ['Magic In The Köln Night (2007-12-13)', 'jungleland.it'],
+            ['1001 AMERICAN DREAMS', '14 tracks'],
+            ['4th Of July, Asbury Park (Sandy)', '280'],
+        ];
+        for (const [i, [title, more]] of expected.entries()) {
+            await ctrlHover(page, probe(page, i));
+            await expect(c.locator('.mb-tt-title').first()).toHaveText(title, { timeout: 10000 });
+            await expect(c).toContainText(more);
+            await expect(c.locator('.mb-ext-st')).toHaveText('200');
+            // The site line keeps its look around a site's own card body: the
+            // green pill, the 16 px initial (a user's screenshot showed them
+            // unstyled; this pins that the script's own rules reach them).
+            await expect(c.locator('.mb-ext-st')).toHaveCSS('background-color', 'rgb(220, 239, 226)');
+            await expect(c.locator('.mb-ext-fav')).toHaveCSS('width', '16px');
+        }
+        const log = await xhrFull(page);
+        expect(log.map(r => r.url)).toEqual([SP.sl, SP.jl, SP.bs, SP.bb]);
+        expect(log.every(r => r.anonymous)).toBe(true);
+        expect(log.map(r => r.overrideMimeType), 'only jungleland.it names its charset for it').toEqual(
+            ['', 'text/html; charset=windows-1252', '', '']);
+    });
+
+    test('a site\'s window: its own columns beside the link\'s; its Live page from the hover\'s fetch, trimmed as on the site', async ({ page }) => {
+        await openEvent(page, { settings: { sa_pop_ext: true }, responses: { [SP.sl]: htmlAnswer(page_('detail-sl-bootlegs-6739.html')) } });
+        await addAnnotationLinks(page, [SP.sl]);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page)).toContainText('28 tracks');
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        await expect(d.locator(':scope > div > span').first()).toHaveText('Detail page');
+        await expect(d).toContainText('Tracklist · 28 tracks');
+        await expect(d.locator('h4', { hasText: 'Link' })).toBeVisible();
+        await expect(d).toContainText('MusicBrainz knows this URL');
+        await d.getByRole('button', { name: 'Live page' }).click();
+        const frame = d.locator('iframe');
+        await expect(frame).toHaveAttribute('srcdoc', /blog-post/);
+        expect(await frame.evaluate((f) => f.contentDocument.querySelectorAll('.mb-dp-hide').length),
+            'springsteenlyrics.com\'s own liveRoot hides its navigation').toBeGreaterThan(0);
+        expect((await xhrFull(page)).map(r => r.url), 'one request: the Live page reuses the hover\'s').toEqual([SP.sl]);
+    });
+
+    test('a Brucebase date: one year page for every show of that year, kept by year; the show\'s card, a date without a show', async ({ page }) => {
+        await openEvent(page, {
+            settings: { sa_pop_ext: true },
+            responses: { [BB_YEAR]: htmlAnswer(page_('ext-bb-year-2025.html')) },
+        });
+        await addAnnotationLinks(page, [BBD.stonePony, BBD.library, BBD.none, BBD.january]);
+        const c = card(page);
+        await ctrlHover(page, probe(page, 0));
+        await expect(c.locator('.mb-tt-title').first()).toHaveText('THE STONE PONY, ASBURY PARK, NJ');
+        await expect(c).toContainText('2025-10-26');
+        await expect(c).toContainText('3 tracks');
+        await expect(c).toContainText('I DON\'T WANT TO GO HOME');
+        await expect(c).toContainText('Steven Van Zandt');
+        await expect(c.locator('.mb-ext-https'), 'asked as https, as the site redirects').toHaveText('→ https');
+        expect((await xhrFull(page)).map(r => r.url), 'the year page, as https').toEqual([BB_YEAR]);
+
+        await ctrlHover(page, probe(page, 1));
+        await expect(c.locator('.mb-tt-title').first()).toHaveText('NEW YORK PUBLIC LIBRARY, NEW YORK CITY, NY');
+        await expect(c).toContainText('THUNDER ROAD');
+        await ctrlHover(page, probe(page, 2));
+        await expect(c.locator('.mb-ext-st')).toHaveText('not available');
+        await expect(c).toContainText('Brucebase\'s 2025 page has no show at #010125.');
+        expect(await xhrFull(page), 'a second date of the same year costs nothing').toHaveLength(1);
+        await expect.poll(() => idbHas(page, `mb:ext-bbyear:${BB_YEAR}`)).toBe(true);
+
+        // After a reload, a date never hovered comes from the kept year.
+        await reloadEvent(page);
+        await addAnnotationLinks(page, [BBD.january]);
+        await ctrlHover(page, probe(page, 0));
+        await expect(c).toContainText('2025-01-09');
+        expect(await xhrFull(page), 'the year from IndexedDB').toEqual([]);
+    });
+
+    test('two dates of one year asked while its page loads share that one request', async ({ page }) => {
+        // The year page answers after 2 s: the second date is hovered while
+        // the first one's request runs, before anything is in IndexedDB,
+        // so only the year load in memory (`_extBbYears`) can join them.
+        await openEvent(page, {
+            settings: { sa_pop_ext: true },
+            responses: { [BB_YEAR]: Object.assign(htmlAnswer(page_('ext-bb-year-2025.html')), { delayMs: 2000 }) },
+        });
+        await addAnnotationLinks(page, [BBD.stonePony, BBD.library]);
+        const c = card(page);
+        await ctrlHover(page, probe(page, 0));
+        await expect(c).toContainText('several seconds');
+        await expect.poll(() => xhrFull(page).then(l => l.length)).toBe(1);
+        await ctrlHover(page, probe(page, 1));
+        await expect(c.locator('.mb-tt-title').first()).toHaveText('NEW YORK PUBLIC LIBRARY, NEW YORK CITY, NY', { timeout: 10000 });
+        expect((await xhrFull(page)).map(r => r.url)).toEqual([BB_YEAR]);
+    });
+
+    test('a Brucebase show\'s window: notes, gig page, and the year page as Live page, scrolled to the show and marked', async ({ page }) => {
+        await openEvent(page, {
+            settings: { sa_pop_ext: true },
+            // The Live page asks the year page as https, with the anchor:
+            // not the http link MusicBrainz writes.
+            responses: {
+                [BB_YEAR]: htmlAnswer(page_('ext-bb-year-2025.html')),
+                'https://brucebase.wikidot.com/2025#261025': htmlAnswer(page_('ext-bb-year-2025.html')),
+            },
+        });
+        await addAnnotationLinks(page, [BBD.stonePony]);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page)).toContainText('3 tracks');
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        await expect(d.locator(':scope > div > span').first()).toHaveText('Brucebase show');
+        await expect(d).toContainText('a benefit for TeachRock');
+        await expect(d.locator('a[href="https://brucebase.wikidot.com/gig:2025-10-26-stone-pony-asbury-park-nj"]')).toBeVisible();
+        await d.getByRole('button', { name: 'Live page' }).click();
+        const frame = d.locator('iframe');
+        await expect(frame).toHaveAttribute('srcdoc', /name="261025"/);
+        await expect(frame, 'its base is https: no mixed content from the page\'s own relative links')
+            .toHaveAttribute('srcdoc', /<base href="https:\/\/brucebase\.wikidot\.com\/2025#261025"/);
+        await expect.poll(() => frame.evaluate((f) => {
+            const m = f.contentDocument.querySelector('.mb-dp-anchor');
+            return m ? m.textContent.trim() : '';
+        })).toContain('2025-10-26 - THE STONE PONY, ASBURY PARK, NJ');
+        // Scrolled to it: the show's heading near the top of the frame's
+        // view (it sits near the end of the year page). The frame runs no
+        // script, so the scroll comes from the userscript's own window: the
+        // first version used the frame's setTimeout, which never fired.
+        await expect.poll(() => frame.evaluate((f) => {
+            const top = f.contentDocument.querySelector('.mb-dp-anchor').getBoundingClientRect().top;
+            const se = f.contentDocument.scrollingElement;
+            return se.scrollTop > 1000 && top >= 0 && top < 60;
+        }), { timeout: 5000 }).toBe(true);
+        expect((await xhrFull(page)).map(r => r.url)).toEqual([BB_YEAR, 'https://brucebase.wikidot.com/2025#261025']);
+    });
+
+    test('a cancelled show: no setlist, "did not take place", its /nogig: page', async ({ page }) => {
+        const YEAR_1978 = 'https://brucebase.wikidot.com/1978';
+        const html = '<!doctype html><html><head><title>1978 - Brucebase Wiki</title></head><body><div id="main-content"><div id="page-content">' +
+            '<p><a name="250778"></a><br /><strong><a href="/nogig:1978-07-25-civic-auditorium-jacksonville-fl">' +
+            '1978-07-25 - CIVIC AUDITORIUM, JACKSONVILLE, FL</a></strong></p>' +
+            '<div class="list-pages-box"><div class="list-pages-item"><p>Cancelled, never re-scheduled.</p></div></div>' +
+            '<a href="/Info%20Request"><img src="https://img.example/help.png" title="Help Us" alt=""></a>' +
+            '<hr /><p><a name="260778"></a><br /><strong><a href="/nogig:1978-07-26-civic-center-lakeland-fl">' +
+            '1978-07-26 - LAKELAND CIVIC CENTER, LAKELAND, FL</a></strong></p></div></div></body></html>';
+        await openEvent(page, { settings: { sa_pop_ext: true }, responses: { [YEAR_1978]: htmlAnswer(html) } });
+        await addAnnotationLinks(page, ['https://brucebase.wikidot.com/1978#250778']);
+        await ctrlHover(page, probe(page, 0));
+        const c = card(page);
+        await expect(c.locator('.mb-tt-title').first()).toHaveText('CIVIC AUDITORIUM, JACKSONVILLE, FL');
+        await expect(c).toContainText('1978-07-25 · did not take place');
+        await expect(c).not.toContainText('track');
+        await expect(c).not.toContainText('Help Us');
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('a[href="https://brucebase.wikidot.com/nogig:1978-07-25-civic-auditorium-jacksonville-fl"]')).toBeVisible();
     });
 });

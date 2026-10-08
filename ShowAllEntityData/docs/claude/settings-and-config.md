@@ -15,6 +15,21 @@ file** — it is an artifact for review and for the audit, and
 org/config-handling.org's "Why it must not be read at runtime" says why it must
 stay that way.
 
+**A `secret: true` setting never leaves this profile** (since U3, 2026-10-08;
+org/iframe.org "* generalize to URLs", "What the answers change", 3). Its
+first and so far only one is `sa_pop_ext_discogs_token`, a Discogs personal
+access token. The config file is meant to be shared or moved to another
+machine, so: `_buildConfigJson()` leaves a secret out; `_applyConfigSettings()`
+counts one in a file as skipped and writes nothing, so a file neither sets it
+(only a hand-written file can hold one) nor blanks it (the key's absence
+touches nothing, as for every key); `_maskSecretSettingInputs()` turns its
+text input into a password input (no autocomplete, no spell check) from
+`_injectSettingsConfigButtons()`'s observer, so every entry point to the
+dialog gets it — the library renders every text setting alike and knows
+nothing of `secret`; and no code logs its value (the token travels only in a
+request header, never in a URL). Pinned by `config-import-export.spec.js`,
+`settings-dialog.spec.js` and three `U3:` mutations.
+
 **A default has two places it can be wrong, and changing one is how they
 drift.** The schema's `default:` is what the settings dialog shows and what
 RESET restores; an inline `Lib.settings.sa_X || literal` is what applies when

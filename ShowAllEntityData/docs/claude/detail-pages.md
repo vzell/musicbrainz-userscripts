@@ -596,14 +596,18 @@ new tab. Rules:
 (default off, its own ⚙️ divider "🔎 EXTERNAL LINK PREVIEWS"), independent
 of `sa_pop_mb`. It sits in `_popSources()` just before `_mbEntitySource()`;
 the two never claim the same link (one takes only another origin, the other
-only this one). U1 is MusicBrainz only (`enabled()` checks `!_foreignHost`);
-U5 adds the foreign hosts. Design, probes (X1–X9) and the answers it rests
-on: org/iframe.org, section "* generalize to URLs".
+only this one). U1 was MusicBrainz only; since U5 it serves the four
+Springsteen sites too (section "On the Springsteen sites" below). Design,
+probes (X1–X9) and the answers it rests on: org/iframe.org, section "*
+generalize to URLs".
 
 - **What is previewed: `_extTarget()`.** An `http(s)` link whose host is not
   the page's (`www.` aside), read from the `href` ATTRIBUTE, never `a.href`
   (the property is normalised; MusicBrainz looks a URL up by its exact
-  string, X7). Not the MetaBrainz family or the artwork archives
+  string, X7). **A protocol-relative `//host/…` is read as https** (since
+  U3): MusicBrainz's sidebar writes its Wikidata link that way, and until
+  U3's live spec hovered it no such link had a card at all; https is also
+  how MusicBrainz stores it. Not the MetaBrainz family or the artwork archives
   (`_EXT_SKIP_HOST_RE`), not a share button (`_EXT_SKIP_URL_RE`), not around
   `img:not(.avatar)`, not in `_EXT_SKIP_SEL` (chrome, `td.mb-rel-cell`, the
   card and the window, `_MB_POP_PAGE_SKIP`). Scope: `_EXT_SCOPE_SEL` (table
@@ -619,13 +623,14 @@ on: org/iframe.org, section "* generalize to URLs".
   come back as `error` (`refused`, `unreachable`, `timeout`).
   `_extGet()` adds the gate, `wanted()` after the slot, and one retry on a
   transient status.
-- **One rate gate per HOST: `_extAwaitSlot(host)`** (`_EXT_SPACING_MS`),
-  reserved synchronously. Never `_relAwaitRateSlot()`: another site, another
+- **One rate gate per HOST: `_extAwaitSlot(host)`** (`_extSpacingMs(host)`:
+  `_EXT_SPACING_MS`, except Discogs' API since U3), reserved synchronously. Never `_relAwaitRateSlot()`: another site, another
   budget. `__saTest.extRateSlotWaitMs(host)` reads it.
 - **First contact (answer 7).** With only `@connect *` covering a host,
   Tampermonkey asks the user once before the first request to it (X9, B1).
   So `_extCard()` makes NO request for a host that is neither in
-  `_EXT_CONNECT_HOSTS` (the header's own `@connect` hosts, empty in U1) nor in
+  `_EXT_CONNECT_HOSTS` (the header's own `@connect` hosts: YouTube's, and since
+  U3 Wikipedia's, Wikidata's and Discogs' API) nor in
   the GM value `sa_pop_ext_hosts` (hosts that answered once, any status):
   the card says *not contacted yet*, and Space (or a tap, or an arrow in the
   window) makes the request. `_extGet()` remembers a host on any answer with
@@ -657,6 +662,8 @@ on: org/iframe.org, section "* generalize to URLs".
     unless the status is 404 or 410. `noLive`: the window hides its Live page
     button (`_dpRenderDialog()` forces Extracted for a `noLive` target).
     `www.youtube.com` is in `_EXT_CONNECT_HOSTS` and the header's `@connect`.
+  - **Wikipedia, Wikidata, Discogs** (U3): section "Readers of known sites"
+    below.
   - **Generic (`_extGenericLoad()`)**: the page itself, `_extRecord()`.
 - **Records: `_extRecord()`.** States `ok` (a 2xx page; `moved` only when
   the final HOST or PATH differs — added query parameters such as YouTube's
@@ -695,7 +702,9 @@ on: org/iframe.org, section "* generalize to URLs".
   `fetchText(url, charset)` and calls `awaitSlot(url)` with the URL, so the
   external Live page goes through `_extFetchText()` (anonymous, remembers the
   host) and the host's own gate. No `liveRoot`: the generic reader knows no
-  site's layout, so the whole page shows. The copy is `_dpLiveDocHtml()`'s
+  site's layout, so the whole page shows (a reader may bring its own fields,
+  `live`: U3's Wikipedia). Since U3 the Live page reads up to
+  `_EXT_MAX_DOWNLOAD`, not the card's 512 KB (a long article showed half). The copy is `_dpLiveDocHtml()`'s
   (no scripts); its CSS and images load from the site. Since 2026-10-08
   `_dpLiveDocHtml()` also drops `<link rel="preload|modulepreload|prefetch|preconnect|dns-prefetch">`
   for every source: without the scripts they only fetched what nothing used
@@ -805,6 +814,215 @@ Two halves, one request and one cache key between them:
 `url-schedule`, `url-sl-bootlegs`); `openEvent()` answers `/ws/2/url`
 lookups from them, else 404, and logs each with its time. Mutations: the
 `U2:` entries of `scripts/mutations/popup-ext.json`.
+
+## Readers of known sites (org/iframe.org "* generalize to URLs", U3)
+
+Three readers in `_EXT_READERS`, before the generic one, each ONE request
+to the site's API through `_extGet()` (anonymous, the host's gate, `wanted()`
+after the slot). An API says as data, in a few KB, what a card wants; the
+pages are hundreds of KB, or say nothing in their `<head>` (a Wikipedia
+article has `og:title` only, U0 X1). Their hosts are in the header's
+`@connect` and `_EXT_CONNECT_HOSTS` (`wikipedia.org` covers every language's
+subdomain, matched by `endsWith`), so a hover loads them from the first time.
+
+- **The record: `_extApiRecord()`**, `_extRecord()`'s shape plus `facts`
+  (label/value pairs: the card shows `_EXT_CARD_FACTS`, the window all, under
+  "<site> says" in place of the generic "The page says") and `links`
+  (label/URL pairs, the window's "See also"). **`_extApiOutcome()`** turns
+  any answer but a 200 into the reader's outcome: no answer, a 5xx or a 429
+  is a failure (not kept), a bot check is `checked`, a 404/410 `dead` with
+  the reader's own `note`, any other status `http`. `_EXT_AGENT` names the
+  script for both identifying headers.
+- **Wikipedia (`_extWikipediaTest()`, `_extWikipediaLoad()`)**: an article
+  link (`/wiki/<title>`, not `Special:`, not the `www.` portal; `m.` too) →
+  `https://<lang>.wikipedia.org/api/rest_v1/page/summary/<title>` with
+  `Api-User-Agent` (browser scripts cannot set User-Agent; Wikimedia's policy
+  asks for this one). The title goes as the link writes it, a `/` encoded as
+  `%2F` (or the REST path splits: AC/DC). Card: title, "Wikipedia (<lang>)",
+  the opening paragraph (`extract`), the short description ("About"), "a
+  disambiguation page" for `type` disambiguation, "Redirected from" only when
+  the decoded title differs from the canonical one (MusicBrainz's `%2C` is no
+  redirect), the thumbnail; See also: the Wikidata item. **Live page**: the
+  reader's own `live`, `_EXT_LIVE_WIKIPEDIA` (`liveRoot` = `#content`: the
+  header and menus hidden). A target carries `live` (`_extTarget()`) and
+  `_dpRenderDialog()` uses `t.live || src.live`. `liveRoot` is a FUNCTION of
+  the document, never a selector (the first version passed `'#content'` and
+  `_dpIsolateFrame()` threw).
+- **Wikidata (`_extWikidataTest()`, `_extWikidataLoad()`)**: an item link
+  (`/wiki/Q<n>`; properties and lexemes stay generic) →
+  `w/api.php?action=wbgetentities&props=labels|descriptions|aliases|sitelinks`
+  in `_extUiLang()` (the browser's language) and English, the sitelinks
+  filtered to those two wikis (U0 X2: 612 bytes, against 229 KB for
+  `Special:EntityData`). `missing` (an item that does not exist, still a 200)
+  and an API `error` are `dead` ("not available" on the pill); a merged item
+  says "Merged into". See also: its Wikipedia articles.
+- **Discogs (`_extDiscogsTest()`, `_extDiscogsLoad()`)**: a release, master,
+  artist or label page (`_EXT_DISCOGS_PATH_RE`: a language prefix and a slug
+  allowed) → `https://api.discogs.com/<kind>s/<id>` with the User-Agent
+  Discogs requires. Release/master: artists, released, country, formats
+  ("Vinyl, LP, Album, Stereo"), labels with catalogue numbers, genres and
+  styles, track count, the primary image; a master links its main release.
+  Artist/label: name (Discogs' " (2)" suffix dropped), the profile with
+  Discogs' markup removed (`_extDiscogsText()`: `[a=…]`, `[l123]`, `[url]`),
+  real name, members, groups, parent label, sublabels. `noLive`: the page is
+  another host than the API's, which Tampermonkey would ask about, and the
+  API says more. **Rate: `_extSpacingMs()`** — 2.5 s apart without a token
+  (25 a minute, Discogs' own `X-Discogs-Ratelimit`, U0 X4), 1 s with one (60:
+  the same header answered 60 to `Authorization: Discogs token=…`, probed
+  with the user's token 2026-10-08 12:09Z, which also confirms the header
+  form).
+- **The token: `sa_pop_ext_discogs_token`** (text, default empty), read by
+  `_extDiscogsToken()` (trimmed) and sent ONLY as `Authorization: Discogs
+  token=…` to api.discogs.com — never in a URL, so `_extGet()`'s debug line
+  cannot show it. It is the first **`secret: true`** setting, a new rule
+  (docs/claude/settings-and-config.md): left out of the config export, never
+  set or blanked by an import, and shown as dots in the dialog
+  (`_maskSecretSettingInputs()`, from `_injectSettingsConfigButtons()`'s
+  observer, so every entry point gets it).
+
+**Tests.** The "readers of known sites (U3)" block of
+`tests/fixtures/popup-ext.spec.js` (which reader takes which link; each
+reader's card, window and dead case; the Wikipedia Live page past 512 KB
+with the site hidden; the token in the header only, the spacing either way,
+no console line with the token), `config-import-export.spec.js` (the token
+neither exported nor imported) and `settings-dialog.spec.js` (masked from
+both entry points). Answers are captures: `python3
+scripts/capture-ext-fixtures.py` writes `tests/fixtures/ext-*.json`
+(`{url, status, contentType, body}`, each the exact request a reader builds
+for an English browser). Mutations: the `U3:` entries of
+`scripts/mutations/popup-ext.json`.
+
+## The Springsteen sites across hosts (org/iframe.org "* generalize to URLs", U4)
+
+Two readers in `_EXT_READERS`, before the generic one; the four hosts are in
+the header's `@connect` and `_EXT_CONNECT_HOSTS` (the parent domain covers
+`www.`), so a hover loads them from the first time.
+
+- **The four sites' own parsers (`_extDpTest()`, `_extDpLoad()`).** A link to
+  a detail page of springsteenlyrics.com, jungleland.it, brucespringsteen.it
+  or Brucebase — by that site's own `_DP_SITES[…].isDetailUrl()` — gets the
+  card that site's own list shows: the page through `_extGet()` (another
+  origin: never `_dpFetchText()`), `_extRecord()` for its status, then the
+  site's `parse(doc, finalUrl)`, unchanged, as `rec.dp`. A page the parser
+  finds nothing in keeps the generic record. The HTML goes to `_dpRawMem`,
+  so the Live page reuses the hover's fetch.
+- **Charset: `_extFetch()`'s `charset`** becomes `overrideMimeType`
+  (`text/html; charset=windows-1252` for jungleland.it, which names none);
+  `_extFetchText(url, charset)` and `_EXT_LIVE.fetchText` pass it on from
+  the source's `live.charset`. The test stub logs `overrideMimeType`.
+- **Rendering.** `_dpCardHtml()` is now `_dpCardBodyHtml()` plus its foot,
+  and `_dpExtractedHtml()` is `_dpExtractedCols()` in two columns plus its
+  foot: the foreign hosts' own output is unchanged (detail-preview.spec.js and
+  its mutation list), and `_extCard()`/`_extExtracted()` put `rec.dp`'s body
+  in the external card and its columns in the window, the link's own parts
+  (Link, On this page, "MusicBrainz knows this URL", See also) at the top of
+  the right one. The generic left column moved into `_extLeftCol()`.
+- **A reader may say more per link**: `liveFor(url)` (its Live page fields:
+  the site's own `liveRoot`/`liveHide`/`liveCss`/`livePrepare` through
+  `_extDpLive()`), `version` (its IndexedDB records' version: the
+  Springsteen reader's is `_EXT_IDB_VERSION * 100 + _DP_PARSER_VERSION`, so a
+  parser change is never served stale for a week), `loadingNote` (its loading
+  card and window say it).
+- **Different origins, different caches.** IndexedDB is per origin: a card
+  cached on brucebase.wikidot.com's own list is not seen on musicbrainz.org.
+- **The Brucebase date anchor (`_extBbDateTest()`, `_extBbDateLoad()`; U0
+  X8).** MusicBrainz links a show as `/<year>#<ddmmyy>`: the year page,
+  scrolled to `<a name="ddmmyy">`. `_extBbYear()` reads the year page ONCE
+  (as https, which the site redirects http to; `_EXT_BB_MAX_BYTES` 1 MB; 1 to
+  7.5 s, hence its `loadingNote`) and `_extBbParseYear()` parses every show
+  in it; the year is kept by URL in `_extBbYears` for the page load (a
+  failure or skip is forgotten) and in IndexedDB as `ext-bbyear:<year page>`
+  (`_EXT_BB_YEAR_VERSION`, `_extTtlMs()`), so a second date of that year,
+  even after a reload, costs nothing. A show is the `#page-content` child
+  holding the anchor (its bold heading "2025-10-26 - THE STONE PONY, …"
+  linking `/gig:`, or `/nogig:` for one that did not take place) and its
+  siblings up to the next `<hr>` or anchor (a retail-release table sits
+  between shows, after an `<hr>`): the setlist paragraph (" / " between
+  titles; none for a cancelled show), `.list-pages-box` notes with their
+  `/relation:` people, and the icons naming what the gig page has ("Help Us"
+  is a request for information, not one of them). The record is a detail
+  record in `rec.dp` (venue, date, the setlist as tracks, People, notes) plus
+  the gig page in See also. A date its year page has no show for is `dead`
+  ("not available"). Live page: the year page as Brucebase's own Live page
+  trims a song page, the show's heading marked (`.mb-dp-anchor`) and scrolled
+  to (`_extBbDateLive()`), from the year page's https address
+  (`liveUrlFor()` → the target's `liveUrl`, which the source's `liveUrl(t)`
+  prefers). **The frame runs no script, so scroll it from the userscript's
+  window**: the first version called the frame's own `setTimeout`, which
+  never fired (Chrome: "Blocked script execution in 'about:srcdoc'") and left
+  the page at its top; `scrollIntoView()` would also scroll the page behind
+  the window. Now the frame document's `scrollingElement.scrollTop` is set at
+  once and again at `_EXT_BB_SCROLL_AGAIN_MS`. And with the http link as its
+  base, the page's own relative form pointed at http from an https copy
+  (Chrome: "Mixed Content"). Both reported from a real browser, both pinned
+  by mutations.
+
+**Tests.** The "Springsteen sites across hosts (U4)" block of
+`tests/fixtures/popup-ext.spec.js`: which reader takes which link; each
+site's card from its detail-preview fixture (jungleland.it read as latin1
+bytes, as a right decoding gives it, and asked with its charset); a site's
+window and its trimmed Live page from the hover's fetch; a Brucebase date
+(one year request for three dates, a date with no show, the year from
+IndexedDB after a reload; two dates asked while the year page loads share
+it — the only test that sees `_extBbYears`, since IndexedDB covers it once
+the year is kept), a show's window and marked Live page, and a cancelled
+show. Year page fixture: `tests/fixtures/ext-bb-year-2025.html`
+(`scripts/build-detail-fixtures.py`). Mutations: the `U4:` entries of
+`scripts/mutations/popup-ext.json`. The live spec's Brucebase review is the
+date reader's since U4, and its "U4: a work's annotation links" test runs on
+https://musicbrainz.org/work/55d593ce-52cc-30ec-9494-eca1ab879f5c ("Born in the
+U.S.A."): Brucebase's and springsteenlyrics.com's song pages in the
+annotation, the Wikidata item, and the English Wikipedia article in the box
+MusicBrainz's own script adds after the page (outside a table, so the test
+switches `sa_pop_mb_page` on and waits for it).
+
+## On the Springsteen sites (org/iframe.org "* generalize to URLs", U5)
+
+`_extSource()` serves the four foreign hosts too (answer 6: every off-site
+link there, not only the other Springsteen sites). `enabled()` is
+`sa_pop_ext` alone: on a foreign host the script runs only past that site's
+own `sa_enable_<site>` gate, and the engine installs only where the script
+has a pageType (`_initDetailPreview()` at the end of initialization).
+
+- **Scope: `_DP_SITES[host].extRoot`.** The selector on a foreign host is
+  `table.tbl > tbody a[href]` plus `<extRoot> a[href]`: springsteenlyrics.com
+  `.project-detail` (its text), Brucebase `#page-content` (the wiki's text),
+  none for jungleland.it and brucespringsteen.it (their lists link no other
+  site). Stepping (`_extSteps()`) uses the same root as its block. The census
+  of the fixtures (2026-10-08) chose these: springsteenlyrics.com's intro
+  text links Brucebase, its `.top-bar` and `.footer-col` Facebook, X and
+  Reddit; Brucebase's song list links estreetshuffle.com in a tab, wikidot's
+  `#top-bar` menus, `#login-status` and `#footer` wikidot's own pages.
+- **Chrome stays out — by the scope first.** On all four sites the share
+  bars, menus, login status and footers sit OUTSIDE the table and the
+  `extRoot`, so the scope alone leaves them out. `_EXT_SKIP_SEL` also gained
+  `.top-bar`, `#top-bar`, `.footer-col` and `#login-status` as a second line,
+  for a site that ever puts a share bar inside its text; the mutation that
+  removes them is recorded `"expect": "pass"` (the spec cannot see it while
+  the scope covers for it).
+- **The site's own links stay its own**: the host comparison (`www.` aside,
+  lower case: jungleland.it writes its own host in capitals) leaves them to
+  the detail-page source, `_dpSiteSource()`, listed first.
+- **No MusicBrainz parts there**: `_extContext()` says nothing and
+  `_extMbQuery()` is null on a foreign host — the Web Service is MusicBrainz's
+  origin, and a relative `/ws/2` path would be the foreign site's.
+- **A link to another Springsteen site** gets that site's card through U4's
+  readers, from any host (springsteenlyrics.com → Brucebase's song card).
+- **Where it cannot help**: springsteenlyrics.com's bootleg INTRO page, where
+  the census found its Brucebase links, has no pageType, so the script and
+  the engine stop early there; its list pages have the same `.project-detail`
+  and get cards.
+- **Caches**: IndexedDB is per origin, so each site keeps its own
+  external-link records; the known hosts (`sa_pop_ext_hosts`) are a GM value,
+  shared by every site the script runs on.
+
+**Tests.** `tests/fixtures/popup-ext-foreign.spec.js` (off by default; what
+is previewed — the text's link, not the share bar, footer, menus or login
+status, not the site's own link, not a link outside the content area; a
+link to Brucebase from springsteenlyrics.com with Brucebase's card and no
+Web Service request; Brucebase's estreetshuffle.com link) and
+`popup-ext-foreign.mobile.spec.js` (a tap opens the window). Mutations: the
+`U5:` entries of `scripts/mutations/popup-ext.json`.
 
 `python3 scripts/check-mutation-anchors.py` checks, without running a spec,
 that every `find` of every mutation list still matches once. Run it after

@@ -820,10 +820,63 @@ final rendered page, in the h3 "URLs" sub-table, in the "URL" column
   =ws2-pop-url-sl-bootlegs.json=). Not done in U2: a card for an external
   link inside the "[info]" window (drill-down to other sites is Phase 5's
   widening, "The window").
-- [ ] U3: Wikipedia, Wikidata, Discogs (U0: built). YouTube moved into U1
-  (answer 8, 2026-10-08).
-- [ ] U4: the Springsteen parsers across hosts, the Brucebase date anchor.
-- [ ] U5: external links on the four foreign hosts.
+- [X] U3: Wikipedia, Wikidata, Discogs, WIP.1 on =feature/popup-engine-urls=
+  (2026-10-08, on top of 9.99.1294; not merged, the user's browser check
+  first). YouTube moved into U1 (answer 8). Three API readers
+  (=_extWikipediaLoad()=, =_extWikidataLoad()=, =_extDiscogsLoad()=) before
+  the generic one, their hosts in =@connect=; =sa_pop_ext_discogs_token= as
+  the first =secret: true= setting (not exported, not imported, masked);
+  Discogs 2.5 s apart without a token, 1 s with one (=_extSpacingMs()=).
+  Rules as built: [[file:../docs/claude/detail-pages.md]], "Readers of known
+  sites", and docs/claude/settings-and-config.md for the secret rule.
+  Confirmed by the user the same day: the token's budget and header form
+  (X4, below), and a card on a release group sidebar's protocol-relative
+  Wikidata link (the U1 bug U3's live spec found), and that =@connect
+  wikipedia.org= covers =en.wikipedia.org= without a prompt (Chrome, the
+  event's TeachRock link: Tampermonkey's "Original domain whitelist" lists
+  =wikipedia.org=, the user's own whitelist has no Wikipedia entry, and the
+  card loaded from the REST summary at once).
+- [X] U4: the Springsteen parsers across hosts, the Brucebase date anchor,
+  WIP.2 on =feature/popup-engine-urls= (2026-10-08, after U3's WIP.1; not
+  merged, the user's browser check first). =_extDpLoad()= runs each site's
+  =_DP_SITES= parser on a page fetched through =_extGet()= (jungleland.it
+  decoded through =overrideMimeType=); =_extBbYear()= reads a Brucebase year
+  page once (1 MB cap, kept by year in memory and IndexedDB) and
+  =_extBbDateLoad()= serves the show its anchor names, the setlist as tracks;
+  its Live page is the year page, the show marked and scrolled to. The four
+  hosts are in =@connect=. Rules as built:
+  [[file:../docs/claude/detail-pages.md]], "The Springsteen sites across
+  hosts". X8's block model held, with two variants the 2025 page did not
+  show: a cancelled show links =/nogig:= and has no setlist (1978), and a
+  retail-release table can sit between two shows, after an =<hr>=, which
+  is why a block ends at the =<hr>=.
+  *Pages to check U4 on in a browser* (recorded at the user's request,
+  2026-10-08):
+  - https://musicbrainz.org/event/47b84024-bd3b-4e36-80e1-b051e12ede2f — the
+    Brucebase date link ("reviews:"): the Stone Pony show; Space → Live page
+    scrolls to it, marked;
+  - https://musicbrainz.org/work/55d593ce-52cc-30ec-9494-eca1ab879f5c ("Born in
+    the U.S.A.") — its annotation links Brucebase's song page and
+    springsteenlyrics.com's song page (each site's own parser), five
+    Brucebase =stats:= pages and a brucespringsteen.it =sd3.aspx= song page
+    (both generic: not detail pages); its relationships link Wikidata
+    (Q522215) and both sites again as "work list entry" (with "[info]"); its
+    Wikipedia box, which MusicBrainz's own script adds after the page, links
+    the English article (outside a table: =sa_pop_mb_page=). The @extended
+    live spec hovers the first four (tests/live/popup-ext.spec.js, "U4: a
+    work's annotation links"). No jungleland.it link is on it.
+- [X] U5: external links on the four foreign hosts, WIP.3 on
+  =feature/popup-engine-urls= (2026-10-08, after U4's WIP.2; not merged, the
+  user's browser check first). Every off-site link (answer 6) in the table and
+  the site's content area (=_DP_SITES[…].extRoot=: springsteenlyrics.com
+  =.project-detail=, Brucebase =#page-content=), never the chrome;
+  =sa_pop_ext= is the one switch there; no MusicBrainz parts. Rules as
+  built: [[file:../docs/claude/detail-pages.md]], "On the Springsteen
+  sites". Found on the way: springsteenlyrics.com's bootleg INTRO page, where
+  the census saw its Brucebase links, has no pageType, so the engine never
+  installs there (its list pages carry the same =.project-detail=); and the
+  chrome is already outside every site's scope, so the new =_EXT_SKIP_SEL=
+  entries are a second line (their mutation recorded "pass").
 
 ** answers (2026-10-08)
 
@@ -1238,9 +1291,13 @@ nothing Discogs says about itself has been read yet (X4).
   - =X-Discogs-Ratelimit: 25=, with =-Used= and =-Remaining= counting per
     request: 25 a minute unauthenticated, confirmed by the API itself.
   - The token's budget (60, written in "What the answers change" from memory)
-    and the header form are not confirmed yet: =DISCOGS_TOKEN=<token>
-    python3 scripts/probe-ext-readers.py= measures them when a token is at
-    hand.
+    and the header form: *confirmed* 2026-10-08 12:09:20–12:09:47 UTC, host
+    =NB-3641=, by the user with their own token (=DISCOGS_TOKEN=<token>
+    python3 scripts/probe-ext-readers.py=, log in the gitignored
+    =debug/probe-ext-readers.log=). With =Authorization: Discogs token=…=
+    every answer said =X-Discogs-Ratelimit: 60= (25 without), so the header
+    form is what Discogs accepts. An artist's answer is about 2 KB bigger
+    with the token; same status, same fields the reader reads.
   - No CORS header. The API sets a =__cf_bm= cookie, which an anonymous
     request never stores.
 - *X5. The generic reader: og: tags sit at the top, and the User-Agent made no

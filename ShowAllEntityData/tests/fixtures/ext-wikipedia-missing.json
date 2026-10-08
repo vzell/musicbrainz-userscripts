@@ -1,0 +1,6 @@
+{
+ "url": "https://en.wikipedia.org/api/rest_v1/page/summary/No_such_article_ShowAllEntityData_probe",
+ "status": 404,
+ "contentType": "application/json; charset=utf-8",
+ "body": "{\"status\":404,\"type\":\"Internal error\"}"
+}

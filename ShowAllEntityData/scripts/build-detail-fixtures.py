@@ -17,7 +17,9 @@ pages a row of each foreign table links to:
                            (an o-umlaut, an unknown 0000-00-00 date)
     brucespringsteen.it    DB/detrec.aspx?code=CR1AD1 (ditto marks),
                            COL4942001 (official), LP1B1 (has a photo)
-    brucebase.wikidot.com  song:4th-of-july-asbury-park-sandy
+    brucebase.wikidot.com  song:4th-of-july-asbury-park-sandy, and the 2025
+                           year page (org/iframe.org U4: the date anchor
+                           reader; captured by probe-bb-date-anchor.py)
 
 Removed, so a spec stays network-free and the page cannot change under it:
 every `<script>`, `<noscript>`, `<iframe>` and `<link>`, and `background=`
@@ -59,6 +61,10 @@ TARGETS = [
     ('detail-bs-COL4942001.html', 'detail-bs-COL4942001.html', b'Catalogue number:', None),
     ('detail-bs-LP1B1.html', 'detail-bs-LP1B1.html', b'blegs\\images\\LP1B1.jpg', None),
     ('detail-bb-song-4th-of-july.html', 'detail-bb-4th-of-july.html', b'Performed live <strong>', 'bb-song'),
+    # org/iframe.org U4: Brucebase's 2025 year page (captured for U0 X8 by
+    # scripts/probe-bb-date-anchor.py), whose #261025 the event page's
+    # "reviews:" link names. Setlists are titles, not lyrics: nothing blanked.
+    ('bb-year-2025.html', 'ext-bb-year-2025.html', b'name="261025"', None),
 ]
 
 STRIP_RES = [

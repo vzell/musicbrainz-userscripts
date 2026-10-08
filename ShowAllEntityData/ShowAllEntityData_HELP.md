@@ -1675,6 +1675,52 @@ that is gone or private says so. Their window has no *Live page*: a YouTube
 page shows nothing without its scripts, so ↗ is the way to watch it. A link to
 a YouTube channel gets the ordinary card.
 
+Three more sites are read through their own services instead of the page, at
+once and without Tampermonkey asking first:
+
+- **Wikipedia** articles (any language): the article's opening paragraph, its
+  short description and picture, and whether it is a *disambiguation page*
+  or a link that Wikipedia redirects; the window links its Wikidata item, and
+  its *Live page* shows the article without Wikipedia's header and menus. A
+  title Wikipedia does not have shows as *404 Not found*.
+- **Wikidata** items: the item's name, description and other names, in your
+  browser's language and in English, and its Wikipedia articles. An item that
+  does not exist says so.
+- **Discogs** releases, masters, artists and labels: for a release the
+  artist, year, country, format, label and catalogue number, genres and number
+  of tracks, with the cover; for an artist or a label its profile, real name,
+  members or sublabels. No *Live page* (↗ opens Discogs). Discogs allows a
+  card every 2.5 seconds; with your own **Discogs personal access token**
+  (⚙️ Settings → 🔎 EXTERNAL LINK PREVIEWS → *Discogs personal access token*;
+  on discogs.com: Settings → Developers → *Generate new token*) it allows one
+  a second. The token is sent only to Discogs, shows as dots in the settings,
+  is never written into a saved configuration file, and loading one leaves
+  your token as it is.
+
+Links to the four **Springsteen sites** the script supports get the same card
+those sites' own lists show (no setting of those sites is needed here): a
+springsteenlyrics.com bootleg, collection item or song, a jungleland.it
+artwork page, a brucespringsteen.it record, a Brucebase song — with its
+tracklist, fields, scans and notes, and its *Live page* trimmed as on the
+site. They load on a hover from the first time, without Tampermonkey asking.
+A **Brucebase date** link (the "reviews:" link of many events,
+`brucebase.wikidot.com/2025#261025`) shows that one show of the year page:
+venue and date, the setlist, the people, the notes, and a link to the gig
+page; its *Live page* is the year page, scrolled to the show and marked. One
+request reads the whole year, so other dates of that year then cost nothing —
+but Brucebase is slow, and that first request can take several seconds. A
+date the year page has no show for, or a show that did not take place, says
+so.
+
+**On the Springsteen sites themselves** (springsteenlyrics.com, Brucebase,
+jungleland.it, brucespringsteen.it, each with its own support switched on),
+the same setting previews their links to other sites: in a list's table, in
+springsteenlyrics.com's page text and in Brucebase's wiki text — a Brucebase
+link on springsteenlyrics.com gets Brucebase's own card. The sites' share
+buttons, menus and footers do not, and neither do their links to their own
+pages (those keep the site's own detail-page preview). There is nothing
+from MusicBrainz in these cards: no "MusicBrainz knows this URL".
+
 **What it sends.** A card asks the linked site for the page, once, and only if
 the pointer is still on the link when its turn comes (one request a second per
 site). The request carries **none of your cookies**, so the card shows the

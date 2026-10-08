@@ -1,0 +1,6 @@
+{
+ "url": "https://api.discogs.com/releases/999999999",
+ "status": 404,
+ "contentType": "application/json",
+ "body": "{\"message\":\"That release does not exist or may have been deleted.\"}"
+}
