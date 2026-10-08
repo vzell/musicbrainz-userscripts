@@ -836,7 +836,35 @@ final rendered page, in the h3 "URLs" sub-table, in the "URL" column
   event's TeachRock link: Tampermonkey's "Original domain whitelist" lists
   =wikipedia.org=, the user's own whitelist has no Wikipedia entry, and the
   card loaded from the REST summary at once).
-- [ ] U4: the Springsteen parsers across hosts, the Brucebase date anchor.
+- [X] U4: the Springsteen parsers across hosts, the Brucebase date anchor,
+  WIP.2 on =feature/popup-engine-urls= (2026-10-08, after U3's WIP.1; not
+  merged, the user's browser check first). =_extDpLoad()= runs each site's
+  =_DP_SITES= parser on a page fetched through =_extGet()= (jungleland.it
+  decoded through =overrideMimeType=); =_extBbYear()= reads a Brucebase year
+  page once (1 MB cap, kept by year in memory and IndexedDB) and
+  =_extBbDateLoad()= serves the show its anchor names, the setlist as tracks;
+  its Live page is the year page, the show marked and scrolled to. The four
+  hosts are in =@connect=. Rules as built:
+  [[file:../docs/claude/detail-pages.md]], "The Springsteen sites across
+  hosts". X8's block model held, with two variants the 2025 page did not
+  show: a cancelled show links =/nogig:= and has no setlist (1978), and a
+  retail-release table can sit between two shows, after an =<hr>=, which
+  is why a block ends at the =<hr>=.
+  *Pages to check U4 on in a browser* (recorded at the user's request,
+  2026-10-08):
+  - https://musicbrainz.org/event/47b84024-bd3b-4e36-80e1-b051e12ede2f — the
+    Brucebase date link ("reviews:"): the Stone Pony show; Space → Live page
+    scrolls to it, marked;
+  - https://musicbrainz.org/work/55d593ce-52cc-30ec-9494-eca1ab879f5c ("Born in
+    the U.S.A.") — its annotation links Brucebase's song page and
+    springsteenlyrics.com's song page (each site's own parser), five
+    Brucebase =stats:= pages and a brucespringsteen.it =sd3.aspx= song page
+    (both generic: not detail pages); its relationships link Wikidata
+    (Q522215) and both sites again as "work list entry" (with "[info]"); its
+    Wikipedia box, which MusicBrainz's own script adds after the page, links
+    the English article (outside a table: =sa_pop_mb_page=). The @extended
+    live spec hovers the first four (tests/live/popup-ext.spec.js, "U4: a
+    work's annotation links"). No jungleland.it link is on it.
 - [ ] U5: external links on the four foreign hosts.
 
 ** answers (2026-10-08)

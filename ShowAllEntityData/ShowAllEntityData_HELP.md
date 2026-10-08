@@ -1697,6 +1697,21 @@ once and without Tampermonkey asking first:
   is never written into a saved configuration file, and loading one leaves
   your token as it is.
 
+Links to the four **Springsteen sites** the script supports get the same card
+those sites' own lists show (no setting of those sites is needed here): a
+springsteenlyrics.com bootleg, collection item or song, a jungleland.it
+artwork page, a brucespringsteen.it record, a Brucebase song — with its
+tracklist, fields, scans and notes, and its *Live page* trimmed as on the
+site. They load on a hover from the first time, without Tampermonkey asking.
+A **Brucebase date** link (the "reviews:" link of many events,
+`brucebase.wikidot.com/2025#261025`) shows that one show of the year page:
+venue and date, the setlist, the people, the notes, and a link to the gig
+page; its *Live page* is the year page, scrolled to the show and marked. One
+request reads the whole year, so other dates of that year then cost nothing —
+but Brucebase is slow, and that first request can take several seconds. A
+date the year page has no show for, or a show that did not take place, says
+so.
+
 **What it sends.** A card asks the linked site for the page, once, and only if
 the pointer is still on the link when its turn comes (one request a second per
 site). The request carries **none of your cookies**, so the card shows the

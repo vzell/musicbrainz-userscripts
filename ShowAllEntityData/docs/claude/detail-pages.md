@@ -891,6 +891,90 @@ scripts/capture-ext-fixtures.py` writes `tests/fixtures/ext-*.json`
 for an English browser). Mutations: the `U3:` entries of
 `scripts/mutations/popup-ext.json`.
 
+## The Springsteen sites across hosts (org/iframe.org "* generalize to URLs", U4)
+
+Two readers in `_EXT_READERS`, before the generic one; the four hosts are in
+the header's `@connect` and `_EXT_CONNECT_HOSTS` (the parent domain covers
+`www.`), so a hover loads them from the first time.
+
+- **The four sites' own parsers (`_extDpTest()`, `_extDpLoad()`).** A link to
+  a detail page of springsteenlyrics.com, jungleland.it, brucespringsteen.it
+  or Brucebase — by that site's own `_DP_SITES[…].isDetailUrl()` — gets the
+  card that site's own list shows: the page through `_extGet()` (another
+  origin: never `_dpFetchText()`), `_extRecord()` for its status, then the
+  site's `parse(doc, finalUrl)`, unchanged, as `rec.dp`. A page the parser
+  finds nothing in keeps the generic record. The HTML goes to `_dpRawMem`,
+  so the Live page reuses the hover's fetch.
+- **Charset: `_extFetch()`'s `charset`** becomes `overrideMimeType`
+  (`text/html; charset=windows-1252` for jungleland.it, which names none);
+  `_extFetchText(url, charset)` and `_EXT_LIVE.fetchText` pass it on from
+  the source's `live.charset`. The test stub logs `overrideMimeType`.
+- **Rendering.** `_dpCardHtml()` is now `_dpCardBodyHtml()` plus its foot,
+  and `_dpExtractedHtml()` is `_dpExtractedCols()` in two columns plus its
+  foot: the foreign hosts' own output is unchanged (detail-preview.spec.js and
+  its mutation list), and `_extCard()`/`_extExtracted()` put `rec.dp`'s body
+  in the external card and its columns in the window, the link's own parts
+  (Link, On this page, "MusicBrainz knows this URL", See also) at the top of
+  the right one. The generic left column moved into `_extLeftCol()`.
+- **A reader may say more per link**: `liveFor(url)` (its Live page fields:
+  the site's own `liveRoot`/`liveHide`/`liveCss`/`livePrepare` through
+  `_extDpLive()`), `version` (its IndexedDB records' version: the
+  Springsteen reader's is `_EXT_IDB_VERSION * 100 + _DP_PARSER_VERSION`, so a
+  parser change is never served stale for a week), `loadingNote` (its loading
+  card and window say it).
+- **Different origins, different caches.** IndexedDB is per origin: a card
+  cached on brucebase.wikidot.com's own list is not seen on musicbrainz.org.
+- **The Brucebase date anchor (`_extBbDateTest()`, `_extBbDateLoad()`; U0
+  X8).** MusicBrainz links a show as `/<year>#<ddmmyy>`: the year page,
+  scrolled to `<a name="ddmmyy">`. `_extBbYear()` reads the year page ONCE
+  (as https, which the site redirects http to; `_EXT_BB_MAX_BYTES` 1 MB; 1 to
+  7.5 s, hence its `loadingNote`) and `_extBbParseYear()` parses every show
+  in it; the year is kept by URL in `_extBbYears` for the page load (a
+  failure or skip is forgotten) and in IndexedDB as `ext-bbyear:<year page>`
+  (`_EXT_BB_YEAR_VERSION`, `_extTtlMs()`), so a second date of that year,
+  even after a reload, costs nothing. A show is the `#page-content` child
+  holding the anchor (its bold heading "2025-10-26 - THE STONE PONY, …"
+  linking `/gig:`, or `/nogig:` for one that did not take place) and its
+  siblings up to the next `<hr>` or anchor (a retail-release table sits
+  between shows, after an `<hr>`): the setlist paragraph (" / " between
+  titles; none for a cancelled show), `.list-pages-box` notes with their
+  `/relation:` people, and the icons naming what the gig page has ("Help Us"
+  is a request for information, not one of them). The record is a detail
+  record in `rec.dp` (venue, date, the setlist as tracks, People, notes) plus
+  the gig page in See also. A date its year page has no show for is `dead`
+  ("not available"). Live page: the year page as Brucebase's own Live page
+  trims a song page, the show's heading marked (`.mb-dp-anchor`) and scrolled
+  to (`_extBbDateLive()`), from the year page's https address
+  (`liveUrlFor()` → the target's `liveUrl`, which the source's `liveUrl(t)`
+  prefers). **The frame runs no script, so scroll it from the userscript's
+  window**: the first version called the frame's own `setTimeout`, which
+  never fired (Chrome: "Blocked script execution in 'about:srcdoc'") and left
+  the page at its top; `scrollIntoView()` would also scroll the page behind
+  the window. Now the frame document's `scrollingElement.scrollTop` is set at
+  once and again at `_EXT_BB_SCROLL_AGAIN_MS`. And with the http link as its
+  base, the page's own relative form pointed at http from an https copy
+  (Chrome: "Mixed Content"). Both reported from a real browser, both pinned
+  by mutations.
+
+**Tests.** The "Springsteen sites across hosts (U4)" block of
+`tests/fixtures/popup-ext.spec.js`: which reader takes which link; each
+site's card from its detail-preview fixture (jungleland.it read as latin1
+bytes, as a right decoding gives it, and asked with its charset); a site's
+window and its trimmed Live page from the hover's fetch; a Brucebase date
+(one year request for three dates, a date with no show, the year from
+IndexedDB after a reload; two dates asked while the year page loads share
+it — the only test that sees `_extBbYears`, since IndexedDB covers it once
+the year is kept), a show's window and marked Live page, and a cancelled
+show. Year page fixture: `tests/fixtures/ext-bb-year-2025.html`
+(`scripts/build-detail-fixtures.py`). Mutations: the `U4:` entries of
+`scripts/mutations/popup-ext.json`. The live spec's Brucebase review is the
+date reader's since U4, and its "U4: a work's annotation links" test runs on
+https://musicbrainz.org/work/55d593ce-52cc-30ec-9494-eca1ab879f5c ("Born in the
+U.S.A."): Brucebase's and springsteenlyrics.com's song pages in the
+annotation, the Wikidata item, and the English Wikipedia article in the box
+MusicBrainz's own script adds after the page (outside a table, so the test
+switches `sa_pop_mb_page` on and waits for it).
+
 `python3 scripts/check-mutation-anchors.py` checks, without running a spec,
 that every `find` of every mutation list still matches once. Run it after
 editing a line a list anchors on: Phase 2's first step changed two lines that

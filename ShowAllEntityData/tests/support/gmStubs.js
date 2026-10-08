@@ -126,6 +126,9 @@ function buildGmStubsScript(initialValues = {}) {
                 window.__gmXhrLog.push({
                     url: opts.url, method: opts.method || 'GET', anonymous: opts.anonymous === true,
                     headers: Object.assign({}, opts.headers || {}),
+                    // How the page is decoded when it names no charset
+                    // (jungleland.it's windows-1252, org/iframe.org U4).
+                    overrideMimeType: opts.overrideMimeType || '',
                 });
                 let aborted = false;
                 const handle = {

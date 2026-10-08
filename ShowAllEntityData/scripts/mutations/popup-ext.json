@@ -160,8 +160,8 @@
         "why": "Only an answer about the page is kept; no response at all (a name that does not resolve, a timeout, a refusal) is retried by the next hover (the engine's rule).",
         "edits": [
             {
-                "find": "        if (!rec) return { ok: false, detail: _extFailText(res) };",
-                "replace": "        if (!rec) return { ok: true, data: { state: 'http', status: 0, finalUrl: t.url, moved: false } };"
+                "find": "        if (!rec) return { ok: false, detail: _extFailText(res) };\n        if (rec.state === 'ok' && res.body) _dpRememberRaw(t.url, res.body);",
+                "replace": "        if (!rec) return { ok: true, data: { state: 'http', status: 0, finalUrl: t.url, moved: false } };\n        if (rec.state === 'ok' && res.body) _dpRememberRaw(t.url, res.body);"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
@@ -316,8 +316,8 @@
         "why": "A reader host listed in @connect never makes Tampermonkey ask, so its links load on hover from the first time (answer 5).",
         "edits": [
             {
-                "find": "    const _EXT_CONNECT_HOSTS = ['www.youtube.com', 'wikipedia.org', 'www.wikidata.org', 'api.discogs.com'];",
-                "replace": "    const _EXT_CONNECT_HOSTS = ['wikipedia.org', 'www.wikidata.org', 'api.discogs.com'];"
+                "find": "    const _EXT_CONNECT_HOSTS = ['www.youtube.com', 'wikipedia.org', 'www.wikidata.org', 'api.discogs.com',",
+                "replace": "    const _EXT_CONNECT_HOSTS = ['wikipedia.org', 'www.wikidata.org', 'api.discogs.com',"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
@@ -732,8 +732,8 @@
         "why": "The cap is the card's; a long article (a Wikipedia one runs past it) showed only its first half.",
         "edits": [
             {
-                "find": "        const res = await _extGet(url, { gate: false, fetchOpts: { maxBytes: _EXT_MAX_DOWNLOAD } });",
-                "replace": "        const res = await _extGet(url, { gate: false });"
+                "find": "        const res = await _extGet(url, { gate: false, fetchOpts: { maxBytes: _EXT_MAX_DOWNLOAD, charset } });",
+                "replace": "        const res = await _extGet(url, { gate: false, fetchOpts: { charset } });"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
@@ -881,6 +881,227 @@
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
         "grep": "which reader serves which link",
+        "expect": "fail"
+    },
+    {
+        "name": "U4: the Springsteen sites' links go to the generic reader",
+        "why": "A link to one of the four sites gets the card that site's own list shows (org/iframe.org, Readers).",
+        "edits": [
+            {
+                "find": "            id: 'springsteen', kind: 'Detail page', test: _extDpTest,",
+                "replace": "            id: 'springsteen', kind: 'Detail page', test: () => false,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "which reader serves which link: the four sites",
+        "expect": "fail"
+    },
+    {
+        "name": "U4: the four sites are not among the @connect hosts",
+        "why": "A reader host listed in @connect never makes Tampermonkey ask, so its links load on hover from the first time (answer 5).",
+        "edits": [
+            {
+                "find": "        'springsteenlyrics.com', 'jungleland.it', 'brucespringsteen.it', 'brucebase.wikidot.com'];",
+                "replace": "    ];"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "each site's own card",
+        "expect": "fail"
+    },
+    {
+        "name": "U4: jungleland.it is decoded without its charset",
+        "why": "jungleland.it serves windows-1252 and says nothing about it: \"Köln\" would come out garbled.",
+        "edits": [
+            {
+                "find": "        const res = await _extGet(t.url, { wanted, fetchOpts: { charset: site.charset } });",
+                "replace": "        const res = await _extGet(t.url, { wanted, fetchOpts: {} });"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "each site's own card",
+        "expect": "fail"
+    },
+    {
+        "name": "U4: _extFetch() drops the charset",
+        "why": "GM_xmlhttpRequest decodes with overrideMimeType; without it the charset option does nothing.",
+        "edits": [
+            {
+                "find": "                    ...(charset ? { overrideMimeType: `text/html; charset=${charset}` } : {}),\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "each site's own card",
+        "expect": "fail"
+    },
+    {
+        "name": "U4: the site's parser is not run on the fetched page",
+        "why": "The card is the site's own record (tracks, fields), not the page's <head>.",
+        "edits": [
+            {
+                "find": "            if (data && (data.title || data.fields.length || data.tracks.length || data.images.length)) rec.dp = data;",
+                "replace": "            if (false) rec.dp = data;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "each site's own card",
+        "expect": "fail"
+    },
+    {
+        "name": "U4: a site's Live page asks again after the hover",
+        "why": "The hover's fetch is remembered for the Live page: one request for both.",
+        "edits": [
+            {
+                "find": "            _dpRememberRaw(t.url, res.body);\n            const data = site.parse(",
+                "replace": "            const data = site.parse("
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a site's window",
+        "expect": "fail"
+    },
+    {
+        "name": "U4: a site's Live page is not trimmed as on the site",
+        "why": "Each site's own liveRoot/liveHide hide its navigation, as its own Live page does.",
+        "edits": [
+            {
+                "find": "            noLive: false, liveFor: (u) => _extDpLive(_DP_SITES[_extDpSiteKey(u)]),",
+                "replace": "            noLive: false,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a site's window",
+        "expect": "fail"
+    },
+    {
+        "name": "U4: every Brucebase date fetches its year page again",
+        "why": "One request reads every show of a year (121 to 363 KB, seconds each): a second date of the same year costs nothing.",
+        "edits": [
+            {
+                "find": "        if (cur) {\n            cur.wants.push(wanted);\n            return cur.promise;\n        }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "share that one request",
+        "expect": "fail"
+    },
+    {
+        "name": "U4: a Brucebase year is not kept in IndexedDB",
+        "why": "Kept by year, a date never hovered loads without a request after a reload.",
+        "edits": [
+            {
+                "find": "            if (year && Object.keys(year.shows).length) _rgIdbPut(",
+                "replace": "            if (false) _rgIdbPut("
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a Brucebase date: one year page",
+        "expect": "fail"
+    },
+    {
+        "name": "U4: a Brucebase year page is asked as the link writes it",
+        "why": "MusicBrainz links http://, which Brucebase redirects (308): asked as https at once.",
+        "edits": [
+            {
+                "find": "        const y = await _extBbYear(`https://brucebase.wikidot.com/${year}`, wanted);",
+                "replace": "        const y = await _extBbYear(`${u.protocol}//brucebase.wikidot.com/${year}`, wanted);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a Brucebase date: one year page",
+        "expect": "fail"
+    },
+    {
+        "name": "U4: a date without a show gets another show",
+        "why": "The year page names each show by its anchor; a date it does not name has none.",
+        "edits": [
+            {
+                "find": "        const show = y.year && y.year.shows[anchor];",
+                "replace": "        const show = y.year && (y.year.shows[anchor] || Object.values(y.year.shows)[0]);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a Brucebase date: one year page",
+        "expect": "fail"
+    },
+    {
+        "name": "U4: the setlist is one track",
+        "why": "The setlist paragraph lists titles with \" / \" between them: each is a track.",
+        "edits": [
+            {
+                "find": "                setlist: setlistP ? _dpText(setlistP.textContent).split(/\\s+\\/\\s+/).filter(Boolean) : [],",
+                "replace": "                setlist: setlistP ? [_dpText(setlistP.textContent)] : [],"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a Brucebase date: one year page",
+        "expect": "fail"
+    },
+    {
+        "name": "U4: a Brucebase show's Live page is not marked",
+        "why": "The year page holds a year of shows: the link names one, marked and scrolled to.",
+        "edits": [
+            {
+                "find": "            mark.classList.add('mb-dp-anchor');\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a Brucebase show's window",
+        "expect": "fail"
+    },
+    {
+        "name": "U4: a cancelled show is not called one",
+        "why": "Brucebase links a show that did not take place to /nogig:.",
+        "edits": [
+            {
+                "find": "cancelled: !!gig && /^\\/nogig:/.test(gig.getAttribute('href')),",
+                "replace": "cancelled: false,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a cancelled show",
+        "expect": "fail"
+    },
+    {
+        "name": "U4: Brucebase's \"Help Us\" icon counts as what the gig page has",
+        "why": "The icon asks readers for information: it is not a section of the gig page.",
+        "edits": [
+            {
+                "find": "                if (ti && !/^Help/i.test(ti) && !has.includes(ti)) has.push(ti);",
+                "replace": "                if (ti && !has.includes(ti)) has.push(ti);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a cancelled show",
+        "expect": "fail"
+    },
+    {
+        "name": "U4: a Brucebase show's Live page is scrolled by the frame's own timer",
+        "why": "The frame runs no script: its setTimeout never fires (Chrome: \"Blocked script execution in 'about:srcdoc'\") and the page stays at its top. The first version, reported from a real browser.",
+        "edits": [
+            {
+                "find": "            scroll();\n            _EXT_BB_SCROLL_AGAIN_MS.forEach(ms => setTimeout(scroll, ms));",
+                "replace": "            (doc.defaultView || window).setTimeout(scroll, 0);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a Brucebase show's window",
+        "expect": "fail"
+    },
+    {
+        "name": "U4: a Brucebase show's Live page is the http link",
+        "why": "MusicBrainz writes http; as the base of an https page's copy, the page's own relative form pointed at http (Chrome: \"Mixed Content\", reported from a real browser).",
+        "edits": [
+            {
+                "find": "liveUrlFor: _extBbDateLiveUrl, ",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a Brucebase show's window",
         "expect": "fail"
     }
 ]

@@ -20761,3 +20761,71 @@ re-imported): Tampermonkey's "Original domain whitelist" shows
 wikidot.com, and the card loaded from the REST summary with no permission
 page. The console's `/ws/2/url?resource=… 404` beside it is the "not in
 MusicBrainz" answer (Chrome logs every 4xx), not an error.
+
+## 2026-10-08 — The Springsteen sites across hosts, U4 (branch feature/popup-engine-urls, WIP.2)
+
+org/iframe.org "* generalize to URLs", U4: each `_DP_SITES` parser on a page
+fetched from MusicBrainz through `_extGet()`, and the Brucebase date reader.
+Rules: docs/claude/detail-pages.md, "The Springsteen sites across hosts".
+
+**The year page's block model (U0 X8) held, with two variants 2025 lacks.**
+A show is the `#page-content` child holding `<a name="ddmmyy">` and its bold
+heading, then its siblings: the setlist `<p>`, the `.list-pages-box` notes,
+the icons naming what the gig page has. In 1978 a show that did not take
+place links `/nogig:` (not `/gig:`) and has no setlist, and its icon row ends
+with a "Help Us" link asking for information. In 2025 a retail-release
+table ("NEBRASKA '82: EXPANDED EDITION") sits between two shows, after an
+`<hr>` — so a block ends at the `<hr>`, not only at the next anchor.
+
+**A mutation no spec saw: the in-memory year cache.** Removing
+`_extBbYears`'s join left the "one year page for every show" test green: by
+the time the second date was hovered, the first had put the year in
+IndexedDB, which served it. The memory join matters only for two dates asked
+WHILE the year page loads (seconds, on wikidot). A new test holds the year's
+answer back 2 s (`delayMs`) and hovers the second date meanwhile; the
+mutation now fails it.
+
+**`_dpCardHtml()` and `_dpExtractedHtml()` split, output unchanged.** They
+became `_dpCardBodyHtml()` and `_dpExtractedCols()` plus their foot, so the
+external card and window reuse a site's body and columns. The foreign hosts'
+own output is pinned by detail-preview.spec.js and its 32 mutations, all
+still caught.
+
+**Verification.** popup-ext.spec.js U4 block 7/7; mutations
+`popup-ext.json` 83/83 OK (15 U4; three older anchors re-anchored under the
+U4 edits) and `detail-preview.json` 32/32; the live spec 3/3 against the
+real sites (12:52:28Z–12:52:59Z): the event's Brucebase review card is now
+the Stone Pony show, read from the real 2025 year page.
+
+**The user's browser check found the Live page at the year's TOP (same
+day).** The card was right. The Live page showed 2025-01-09, not the Stone
+Pony, and Chrome logged "Blocked script execution in 'about:srcdoc'" twice
+and "Mixed Content: … a form that targets an insecure endpoint
+'http://brucebase.wikidot.com/dummy'". Two causes, both mine:
+- the scroll was scheduled with the FRAME's `setTimeout`
+  (`doc.defaultView.setTimeout`); a frame sandboxed without `allow-scripts`
+  runs no timer, so the callback never ran — and Chrome counted the attempt
+  as a blocked script. The fixture spec had asserted only that the heading
+  was marked (a class, set synchronously), never that the frame scrolled.
+  Now the userscript's own window sets the frame document's
+  `scrollingElement.scrollTop`, at once and again at 300 ms and 1.5 s;
+- the copy's `<base href>` was the link as MusicBrainz writes it, http; the
+  page's own relative form then targeted http from an https page. The Live
+  page now asks the year page as https (the reader's `liveUrlFor()`).
+The spec now asserts the scroll position and the https base; restoring the
+frame's timer (the exact first version) fails it in Playwright's Chromium
+too. The favicon.ico 404 in the same console was not the script's: its icons
+come through GM_xmlhttpRequest, which never logs a page "Failed to load
+resource", and the card showed Brucebase's own icon.
+
+**Unstyled site line in a real browser = two installs of the script.** The
+same check showed the status as a bare "200" and the site's icon at full
+size over its initial. The fixture spec had them styled (it now asserts the
+pill's colour and the icon box's 16 px). The console showed the script
+loaded twice, from two Tampermonkey script ids, both "9.99.1294": a re-import
+had created a second copy instead of replacing the first.
+`_ensureDetailPreviewStyle()` returns when `#mb-dp-style` exists, so the
+first copy's stylesheet wins. The user disabled one copy and the pill and
+icon came back (and a springsteenlyrics.com list page's window showed U2's
+release-group rows from the real Web Service). **When cards look unstyled,
+check the console for two "Userscript … loaded" lines first.**

@@ -34,6 +34,10 @@
 // @connect      wikipedia.org
 // @connect      www.wikidata.org
 // @connect      api.discogs.com
+// @connect      springsteenlyrics.com
+// @connect      jungleland.it
+// @connect      brucespringsteen.it
+// @connect      brucebase.wikidot.com
 // @connect      *
 // @grant        GM_xmlhttpRequest
 // @grant        GM_addStyle
@@ -14344,6 +14348,18 @@
      * @returns {string}
      */
     function _dpCardHtml(data, res) {
+        return _dpCardBodyHtml(data) +
+            `<div class="mb-tt-foot">${_mbttEscape(_dpAgeText(res))} · <kbd>Space</kbd> pin · <kbd>Esc</kbd> close</div>`;
+    }
+
+    /**
+     * `_dpCardHtml()` without its foot: what a link to one of the four sites
+     * from another site shows inside its own card (`_extCard()`, U4).
+     *
+     * @param {object} data A parsed record.
+     * @returns {string}
+     */
+    function _dpCardBodyHtml(data) {
         const parts = [];
         parts.push(`<div class="mb-dp-head">${data.cover ? `<img class="mb-dp-cover" src="${_mbttEscape(data.cover)}" alt="">` : ''}<div class="mb-dp-headtext">` +
             `<div class="mb-tt-title">${_mbttEscape(data.title || '(untitled)')}</div>` +
@@ -14387,7 +14403,6 @@
             parts.push(`<div class="mb-tt-dim">Also: ${more.slice(0, 4).map(l => _mbttEscape(l)).join(', ')}` +
                 `${more.length > 4 ? `, and ${more.length - 4} more` : ''} (Space)</div>`);
         }
-        parts.push(`<div class="mb-tt-foot">${_mbttEscape(_dpAgeText(res))} · <kbd>Space</kbd> pin · <kbd>Esc</kbd> close</div>`);
         return parts.join('');
     }
 
@@ -14539,6 +14554,20 @@
      * @returns {string}
      */
     function _dpExtractedHtml(data, res) {
+        const { left, right } = _dpExtractedCols(data);
+        return `<div class="mb-dp-x"><div class="mb-dp-col">${left.join('')}</div><div class="mb-dp-col">${right.join('')}</div></div>` +
+            `<div class="mb-dp-xfoot">${_mbttEscape(_dpAgeText(res))}</div>`;
+    }
+
+    /**
+     * `_dpExtractedHtml()`'s two columns as lists of HTML parts, so a link
+     * to one of the four sites from another site can add its own parts to
+     * them (`_extExtracted()`, U4).
+     *
+     * @param {object} data A parsed record.
+     * @returns {{left: string[], right: string[]}}
+     */
+    function _dpExtractedCols(data) {
         const left = [];
         const right = [];
         left.push(`<div class="mb-dp-xtitle">${_mbttEscape(data.title || '(untitled)')}</div>`);
@@ -14566,8 +14595,7 @@
         }
         data.sections.forEach(s => right.push(`<h4>${_mbttEscape(s.label)}</h4><div class="mb-dp-section">${_mbttEscape(s.text)}</div>`));
         if (!right.length) right.push('<h4>Tracklist</h4><div class="mb-dp-xsub">The page has no tracklist.</div>');
-        return `<div class="mb-dp-x"><div class="mb-dp-col">${left.join('')}</div><div class="mb-dp-col">${right.join('')}</div></div>` +
-            `<div class="mb-dp-xfoot">${_mbttEscape(_dpAgeText(res))}</div>`;
+        return { left, right };
     }
 
     /**
@@ -38845,10 +38873,12 @@
      * `@connect wikipedia.org` covers `en.wikipedia.org`). A reader's host
      * goes here and into the header's `@connect` together: U1 has the YouTube
      * reader's (oEmbed), U3 Wikipedia's, Wikidata's and Discogs' API hosts,
-     * U4 adds the Springsteen sites.
+     * U4 the four Springsteen sites (`_DP_SITES`, `www.` covered by the
+     * parent domain).
      * @type {string[]}
      */
-    const _EXT_CONNECT_HOSTS = ['www.youtube.com', 'wikipedia.org', 'www.wikidata.org', 'api.discogs.com'];
+    const _EXT_CONNECT_HOSTS = ['www.youtube.com', 'wikipedia.org', 'www.wikidata.org', 'api.discogs.com',
+        'springsteenlyrics.com', 'jungleland.it', 'brucespringsteen.it', 'brucebase.wikidot.com'];
 
     /** The GM key of the hosts that answered once (answer 7): the script's state, not a setting, and not exported. */
     const _EXT_HOSTS_KEY = 'sa_pop_ext_hosts';
@@ -39045,17 +39075,19 @@
      * about 769 KB, after its `</head>`). Never rejects: a failure is in
      * `error` (`refused` — Tampermonkey did not allow the host —,
      * `unreachable`, `timeout`). With `responseType: 'blob'` (a site's icon,
-     * `_extIconEnsure()`) the answer is in `blob`, not `body`.
+     * `_extIconEnsure()`) the answer is in `blob`, not `body`. `charset`
+     * decodes a page that does not name its own (jungleland.it's
+     * windows-1252, U4), through `overrideMimeType`.
      *
      * @param {string} url
      * @param {{accept?: RegExp, maxBytes?: number, maxDownload?: number, headers?: Object<string, string>,
-     *   responseType?: string}} [opts]
+     *   responseType?: string, charset?: ?string}} [opts]
      * @returns {Promise<{status: number, finalUrl: string, headers: Object<string, string>, contentType: string,
      *   bytes: number, body: string, tail: string, blob: ?Blob, aborted: string, error: string, detail: string}>}
      *   `aborted` is `type` or `size` when the body was skipped.
      */
     function _extFetch(url, { accept = /\b(?:text\/html|application\/xhtml\+xml)\b/i, maxBytes = _EXT_MAX_BYTES,
-        maxDownload = _EXT_MAX_DOWNLOAD, headers = {}, responseType = '' } = {}) {
+        maxDownload = _EXT_MAX_DOWNLOAD, headers = {}, responseType = '', charset = null } = {}) {
         return new Promise((resolve) => {
             const base = {
                 status: 0, finalUrl: url, headers: {}, contentType: '', bytes: 0, body: '', tail: '', blob: null,
@@ -39088,6 +39120,7 @@
                 req = GM_xmlhttpRequest({
                     method: 'GET', url, headers, anonymous: true, timeout: _EXT_TIMEOUT_MS,
                     ...(responseType ? { responseType } : {}),
+                    ...(charset ? { overrideMimeType: `text/html; charset=${charset}` } : {}),
                     onreadystatechange: (r) => {
                         if (settled || !r || r.readyState !== 2) return;
                         const hd = head(r);
@@ -39361,16 +39394,19 @@
      * `_extGet()`, so it is anonymous and remembers the host like a card's
      * request. Cut at `_EXT_MAX_DOWNLOAD`, not at the card's `_EXT_MAX_BYTES`
      * (since U3: a long Wikipedia article showed only its first half).
+     * `charset` (the source's `live.charset`, `_dpGetRaw()` passes it) decodes
+     * a page that names none (jungleland.it, U4).
      *
      * @param {string} url
+     * @param {?string} [charset]
      * @returns {Promise<string>}
      * @throws {Error} When the answer is not a readable page; `status` holds
      *   the HTTP status (0 without a response).
      */
-    async function _extFetchText(url) {
+    async function _extFetchText(url, charset = null) {
         // The whole page, up to `_EXT_MAX_DOWNLOAD`: the 512 KB cap is the
         // card's, and a Wikipedia article (U3) runs past it.
-        const res = await _extGet(url, { gate: false, fetchOpts: { maxBytes: _EXT_MAX_DOWNLOAD } });
+        const res = await _extGet(url, { gate: false, fetchOpts: { maxBytes: _EXT_MAX_DOWNLOAD, charset } });
         const rec = _extRecord(url, res);
         if (rec && rec.state === 'ok' && res.body) return res.body;
         const err = new Error(rec ? _extStateText(rec) : _extFailText(res));
@@ -39387,7 +39423,7 @@
     const _EXT_LIVE = {
         charset: null,
         awaitSlot: (url) => _extAwaitSlot(_extHostOf(url)),
-        fetchText: (url) => _extFetchText(url),
+        fetchText: (url, charset) => _extFetchText(url, charset),
         liveRoot: null,
         liveHide: [],
         liveCss: '',
@@ -39810,6 +39846,307 @@
         return { ok: true, data: rec };
     }
 
+    // --- U4: the four Springsteen sites' parsers, across hosts ---
+    //
+    // A link from MusicBrainz to a detail page of springsteenlyrics.com,
+    // jungleland.it, brucespringsteen.it or Brucebase gets exactly the card
+    // that site's own list shows (`_DP_SITES[host].parse`, unchanged): only
+    // the fetch differs — `_extGet()` (another origin, anonymous, the host's
+    // gate) instead of `_dpFetchText()`. IndexedDB is per origin, so a card
+    // cached on the site itself is not reused here (org/iframe.org,
+    // "Readers").
+
+    /**
+     * The `_DP_SITES` key of a URL's host (`www.` aside), '' for none.
+     *
+     * @param {URL} u
+     * @returns {string}
+     */
+    function _extDpSiteKey(u) {
+        const h = u.hostname.toLowerCase().replace(/^www\./, '');
+        return Object.prototype.hasOwnProperty.call(_DP_SITES, h) ? h : '';
+    }
+
+    /**
+     * A detail page of one of the four sites, by that site's own test.
+     *
+     * @param {URL} u
+     * @returns {boolean}
+     */
+    function _extDpTest(u) {
+        const key = _extDpSiteKey(u);
+        return !!key && _DP_SITES[key].isDetailUrl(u);
+    }
+
+    /**
+     * The Springsteen sites' reader (U4): the page itself through `_extGet()`
+     * (decoded with the site's charset when the page names none:
+     * jungleland.it), `_extRecord()` for its status, then the site's own
+     * parser on it. A page the parser finds nothing in (an error page) keeps
+     * the generic record; the HTML is remembered for the Live page.
+     *
+     * @param {object} t
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>}
+     */
+    async function _extDpLoad(t, wanted) {
+        const site = _DP_SITES[_extDpSiteKey(new URL(t.url))];
+        const res = await _extGet(t.url, { wanted, fetchOpts: { charset: site.charset } });
+        if (res.skipped) return { skipped: true };
+        const rec = _extRecord(t.url, res);
+        if (!rec) return { ok: false, detail: _extFailText(res) };
+        if (rec.state === 'ok' && res.body) {
+            _dpRememberRaw(t.url, res.body);
+            const data = site.parse(new DOMParser().parseFromString(res.body, 'text/html'), rec.finalUrl);
+            if (data && (data.title || data.fields.length || data.tracks.length || data.images.length)) rec.dp = data;
+        }
+        return { ok: true, data: rec };
+    }
+
+    /**
+     * A site's Live page fields for a page fetched from another host: the
+     * site's own `liveRoot`/`liveHide`/`liveCss`/`livePrepare` and charset,
+     * with `_EXT_LIVE`'s fetch and gate.
+     *
+     * @param {object} site - A `_DP_SITES` entry.
+     * @param {?function(Document): void} [prepare] - Run after the site's own `livePrepare`.
+     * @param {string} [css] - Added to the site's `liveCss`.
+     * @returns {object}
+     */
+    function _extDpLive(site, prepare = null, css = '') {
+        return Object.assign({}, _EXT_LIVE, {
+            charset: site.charset, liveRoot: site.liveRoot, liveHide: site.liveHide, liveCss: site.liveCss + css,
+            livePrepare: (doc) => {
+                if (site.livePrepare) site.livePrepare(doc);
+                if (prepare) prepare(doc);
+            },
+        });
+    }
+
+    // --- U4: the Brucebase date anchor (org/iframe.org, U0 X8) ---
+    //
+    // MusicBrainz links Brucebase shows as `/<year>#<ddmmyy>`: the YEAR page,
+    // scrolled to an `<a name="ddmmyy">`. One request reads every show of
+    // that year (121 to 363 KB, 1 to 7.5 s: wikidot is slow), so the year is
+    // parsed once into its shows and kept by year (`_extBbYears`, IndexedDB
+    // `ext-bbyear:<year page>`); a second date of the same year costs
+    // nothing.
+
+    /** A Brucebase year page with a show anchor: `/2025#261025`. */
+    const _EXT_BB_DATE_RE = /^\/(\d{4})$/;
+
+    /** The year page's own cap (U0 X8: a late 1978 show sits past 300 KB). */
+    const _EXT_BB_MAX_BYTES = 1024 * 1024;
+
+    /** Version of the parsed year pages kept in IndexedDB; bump when `_extBbParseYear()`'s output changes. */
+    const _EXT_BB_YEAR_VERSION = 1;
+
+    /**
+     * Each year page's load, by its URL: a promise of `_extBbYear()`'s
+     * answer. A success stays for the page load; a failure or a skip is
+     * forgotten, so the next hover asks again.
+     * @type {Map<string, {wants: Array<function(): boolean>, promise: Promise<Object>}>}
+     */
+    const _extBbYears = new Map();
+
+    /**
+     * A Brucebase year page link naming a show (`/<year>#<ddmmyy>`).
+     *
+     * @param {URL} u
+     * @returns {boolean}
+     */
+    function _extBbDateTest(u) {
+        return u.hostname.toLowerCase() === 'brucebase.wikidot.com' && _EXT_BB_DATE_RE.test(u.pathname) && /^#\d{6}$/.test(u.hash);
+    }
+
+    /**
+     * Every show of a Brucebase year page (U0 X8), by anchor name. A show is
+     * the `#page-content` child holding `<a name="ddmmyy">` and its bold
+     * heading ("2025-10-26 - THE STONE PONY, ASBURY PARK, NJ", linking its
+     * `/gig:` page, or `/nogig:` for one that did not take place), then its
+     * siblings up to the next `<hr>` or anchor: the setlist paragraph (titles
+     * in capitals, " / " between them; none for a cancelled show), the notes
+     * (`.list-pages-box`, with `/relation:` links for the people), and the
+     * icons naming what the gig page has (Photo, Setlist, News, …).
+     *
+     * @param {string} html
+     * @param {string} base - The year page's URL, for its relative links.
+     * @returns {{icon: string, shows: Object<string, Object>}}
+     */
+    function _extBbParseYear(html, base) {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const icon = _extReadHead(html.slice(0, 64 * 1024), base).icon;
+        const content = doc.getElementById('page-content');
+        const shows = {};
+        if (!content) return { icon, shows };
+        const isAnchor = (el) => !!(el && el.querySelector && el.querySelector('a[name]') &&
+            /^\d{6}$/.test(el.querySelector('a[name]').getAttribute('name')));
+        content.querySelectorAll('a[name]').forEach(a => {
+            const name = a.getAttribute('name');
+            if (!/^\d{6}$/.test(name)) return;
+            let top = a;
+            while (top.parentElement && top.parentElement !== content) top = top.parentElement;
+            const block = [];
+            for (let el = top.nextElementSibling; el && el.tagName !== 'HR' && !isAnchor(el); el = el.nextElementSibling) block.push(el);
+            const gig = top.querySelector('a[href^="/gig:"], a[href^="/nogig:"]') ||
+                block.map(el => el.querySelector('a[href^="/gig:"], a[href^="/nogig:"]')).find(Boolean) || null;
+            const heading = _dpText((top.querySelector('strong') || gig || top).textContent);
+            const [date, ...rest] = heading.split(' - ');
+            const setlistP = block.find(el => el.tagName === 'P' && !el.closest('.list-pages-box'));
+            const notesBox = block.find(el => el.matches('.list-pages-box') || el.querySelector('.list-pages-box'));
+            const notesEl = notesBox && (notesBox.matches('.list-pages-box') ? notesBox : notesBox.querySelector('.list-pages-box'));
+            const notes = notesEl ? _dpBlockText(notesEl).split(/\n+/).map(_dpText).filter(Boolean) : [];
+            const people = [];
+            (notesEl ? Array.from(notesEl.querySelectorAll('a[href^="/relation:"]')) : []).forEach(r => {
+                const n = _dpText(r.textContent);
+                if (n && !people.includes(n)) people.push(n);
+            });
+            const has = [];
+            block.forEach(el => [el, ...el.querySelectorAll('img[title]')].forEach(img => {
+                const ti = img.tagName === 'IMG' ? img.getAttribute('title') : '';
+                if (ti && !/^Help/i.test(ti) && !has.includes(ti)) has.push(ti);
+            }));
+            shows[name] = {
+                heading, date: /^\d{4}-\d\d-\d\d$/.test(date) ? date : '', venue: rest.join(' - '),
+                gig: gig ? _dpAbsUrl(gig.getAttribute('href'), base) : '', cancelled: !!gig && /^\/nogig:/.test(gig.getAttribute('href')),
+                setlist: setlistP ? _dpText(setlistP.textContent).split(/\s+\/\s+/).filter(Boolean) : [],
+                notes, people, has,
+            };
+        });
+        return { icon, shows };
+    }
+
+    /**
+     * One Brucebase year page's shows: memory, then IndexedDB (younger than
+     * `_extTtlMs()`), then ONE request (`_EXT_BB_MAX_BYTES`), shared by every
+     * date of that year that asks while it runs. Answers `{ok, year, res, at,
+     * cached}` (`res`, the request's answer, only when one was made),
+     * `{skipped: true}` when no caller wanted it once its slot came up, or
+     * `{ok: false, detail}`.
+     *
+     * @param {string} yearUrl - `https://brucebase.wikidot.com/<year>`.
+     * @param {function(): boolean} wanted
+     * @returns {Promise<Object>}
+     */
+    function _extBbYear(yearUrl, wanted) {
+        const cur = _extBbYears.get(yearUrl);
+        if (cur) {
+            cur.wants.push(wanted);
+            return cur.promise;
+        }
+        const entry = { wants: [wanted], promise: null };
+        entry.promise = (async () => {
+            const kept = await _rgIdbGet(`ext-bbyear:${yearUrl}`, _EXT_BB_YEAR_VERSION, _extTtlMs());
+            if (kept && kept.data) return { ok: true, year: kept.data, at: kept.at, cached: true };
+            const res = await _extGet(yearUrl, { wanted: () => entry.wants.some(w => w()), fetchOpts: { maxBytes: _EXT_BB_MAX_BYTES } });
+            if (res.skipped) return { skipped: true };
+            if (!_extBotCheck(res) && (res.error || !res.status || res.status >= 500 || res.status === 429)) {
+                return { ok: false, detail: _extFailText(res) };
+            }
+            const year = res.status === 200 && !_extBotCheck(res) ? _extBbParseYear(res.body || '', res.finalUrl || yearUrl) : null;
+            const at = Date.now();
+            if (year && Object.keys(year.shows).length) _rgIdbPut(`ext-bbyear:${yearUrl}`, year, at, _EXT_BB_YEAR_VERSION);
+            return { ok: true, year, res, at, cached: false };
+        })();
+        _extBbYears.set(yearUrl, entry);
+        entry.promise.then(r => {
+            if (!r.ok || !r.year) _extBbYears.delete(yearUrl);
+        });
+        return entry.promise;
+    }
+
+    /**
+     * The Brucebase date reader (U4, U0 X8): the link's show, read from its
+     * year page (`_extBbYear()`, fetched as https, which the site redirects
+     * http to). The card is the show as a detail record: the venue and the
+     * date, the setlist as its tracks, the people, the opening of the notes;
+     * the window adds every note and the gig page. A date the year page has
+     * no show for, or a year page that is not there, says so.
+     *
+     * @param {object} t
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>}
+     */
+    async function _extBbDateLoad(t, wanted) {
+        const u = new URL(t.url);
+        const year = _EXT_BB_DATE_RE.exec(u.pathname)[1];
+        const anchor = u.hash.slice(1);
+        const y = await _extBbYear(`https://brucebase.wikidot.com/${year}`, wanted);
+        if (y.skipped) return { skipped: true };
+        if (!y.ok) return { ok: false, detail: y.detail };
+        if (y.res) {
+            const out = _extApiOutcome(t, y.res, 'Brucebase', `Brucebase has no page for ${year}.`);
+            if (out) return out;
+        }
+        const rec = _extApiRecord(t, 200, 'Brucebase');
+        rec.toHttps = u.protocol === 'http:';
+        rec.icon = (y.year && y.year.icon) || '';
+        const show = y.year && y.year.shows[anchor];
+        if (!show) {
+            return { ok: true, data: Object.assign(rec, { state: 'dead', note: `Brucebase's ${year} page has no show at #${anchor}.` }) };
+        }
+        const dp = _dpEmpty();
+        dp.title = show.venue || show.heading;
+        dp.subtitle = [show.date, show.cancelled ? 'did not take place' : ''].filter(Boolean).join(' · ');
+        dp.fields = [
+            ['People', show.people.length > 8 ? `${show.people.slice(0, 8).join(', ')} +${show.people.length - 8}` : show.people.join(', ')],
+            ['The gig page has', show.has.join(', ')],
+        ].filter(f => f[1]);
+        dp.tracks = show.setlist.map((s, i) => ({ disc: '', pos: String(i + 1), title: s, from: '' }));
+        dp.notes = show.notes;
+        Object.assign(rec, { title: dp.title, description: show.notes[0] || '', type: 'show', dp });
+        if (show.gig) rec.links.push([show.cancelled ? 'The date\'s page' : 'Gig page', show.gig]);
+        return { ok: true, data: rec };
+    }
+
+    /**
+     * A Brucebase date link's Live page: the year page as Brucebase's own
+     * Live page shows a song page (`_DP_SITES`), scrolled to the show and the
+     * show's heading marked.
+     *
+     * The scroll is set from THIS window, on the frame document's own
+     * scrolling element. The frame runs no script, so its own `setTimeout`
+     * never fires (Chrome logs "Blocked script execution in
+     * 'about:srcdoc'": the first version, reported from a real browser), and
+     * `scrollIntoView()` would scroll the page behind the window too. Set
+     * again a little later, when the icons above the show have taken their
+     * place.
+     *
+     * @param {URL} u
+     * @returns {object}
+     */
+    function _extBbDateLive(u) {
+        const anchor = u.hash.slice(1);
+        return _extDpLive(_DP_SITES['brucebase.wikidot.com'], (doc) => {
+            const a = doc.querySelector(`a[name="${anchor}"]`);
+            if (!a) return;
+            const mark = a.closest('p') || a;
+            mark.classList.add('mb-dp-anchor');
+            const scroll = () => {
+                const se = doc.scrollingElement || doc.documentElement;
+                if (mark.isConnected) se.scrollTop += mark.getBoundingClientRect().top - 8;
+            };
+            scroll();
+            _EXT_BB_SCROLL_AGAIN_MS.forEach(ms => setTimeout(scroll, ms));
+        }, '.mb-dp-anchor { background: #fff3c4; outline: 2px solid #e0b84a; }');
+    }
+
+    /** When a Brucebase show's Live page is scrolled to it again, ms after its load (images above it shift it). */
+    const _EXT_BB_SCROLL_AGAIN_MS = [300, 1500];
+
+    /**
+     * A Brucebase date link's Live page address: the year page as https,
+     * the address the card reads it from. MusicBrainz writes http, and the
+     * page's own relative form then pointed at http from an https page
+     * (Chrome: "Mixed Content", reported from a real browser).
+     *
+     * @param {URL} u
+     * @returns {string}
+     */
+    function _extBbDateLiveUrl(u) {
+        return `https://brucebase.wikidot.com${u.pathname}${u.hash}`;
+    }
+
     /**
      * The Live page of a Wikipedia article: the article (`#content`), its
      * siblings — the site's header, menus and tools — hidden.
@@ -39824,11 +40161,20 @@
      * request goes to, which decides first contact (a youtu.be link asks
      * www.youtube.com) —, `load(t, wanted)`, `noLive` when the site's page
      * is no use without its scripts (the window then has no Live page), and
-     * optionally `live`, its own Live page fields (`_EXT_LIVE` otherwise).
+     * optionally `live`, its own Live page fields (`_EXT_LIVE` otherwise),
+     * or `liveFor(url)` when they depend on the link (U4: a site's own
+     * fields; a Brucebase date's anchor), and `liveUrlFor(url)` when the Live
+     * page is another address than the link (a Brucebase date: its year page
+     * as https). `version`, optional, is its
+     * records' IndexedDB version (`_EXT_IDB_VERSION` otherwise): the
+     * Springsteen reader's follows `_DP_PARSER_VERSION` too, so a parser
+     * change is not served stale. `loadingNote`, optional, is what its
+     * loading card says (Brucebase's year page takes seconds).
      * Discogs has no Live page: its page is another host than the API's,
      * which Tampermonkey would ask about, and the API already says more.
      * @type {Array<{id: string, kind: string, test: function(URL): boolean, askHost: function(URL): string,
-     *   load: function(object, function(): boolean): Promise<Object>, noLive: boolean, live?: object}>}
+     *   load: function(object, function(): boolean): Promise<Object>, noLive: boolean, live?: object,
+     *   liveFor?: function(URL): object, liveUrlFor?: function(URL): string, version?: number, loadingNote?: string}>}
      */
     const _EXT_READERS = [
         { id: 'youtube', kind: 'YouTube', test: _extYouTubeTest, askHost: () => 'www.youtube.com', load: _extYouTubeLoad, noLive: true },
@@ -39838,6 +40184,15 @@
         },
         { id: 'wikidata', kind: 'Wikidata', test: _extWikidataTest, askHost: () => 'www.wikidata.org', load: _extWikidataLoad, noLive: false },
         { id: 'discogs', kind: 'Discogs', test: _extDiscogsTest, askHost: () => 'api.discogs.com', load: _extDiscogsLoad, noLive: true },
+        {
+            id: 'bbdate', kind: 'Brucebase show', test: _extBbDateTest, askHost: () => 'brucebase.wikidot.com', load: _extBbDateLoad,
+            noLive: false, liveFor: _extBbDateLive, liveUrlFor: _extBbDateLiveUrl, version: _EXT_IDB_VERSION * 100 + _EXT_BB_YEAR_VERSION,
+            loadingNote: 'Brucebase\'s year page can take several seconds.',
+        },
+        {
+            id: 'springsteen', kind: 'Detail page', test: _extDpTest, askHost: (u) => u.hostname.toLowerCase(), load: _extDpLoad,
+            noLive: false, liveFor: (u) => _extDpLive(_DP_SITES[_extDpSiteKey(u)]), version: _EXT_IDB_VERSION * 100 + _DP_PARSER_VERSION,
+        },
         { id: 'generic', kind: 'Web page', test: () => true, askHost: (u) => u.hostname.toLowerCase(), load: _extGenericLoad, noLive: false },
     ];
 
@@ -39862,7 +40217,7 @@
             }
             return r;
         }, {
-            force, repaint, wanted: _mbPopWanted(t), version: _EXT_IDB_VERSION,
+            force, repaint, wanted: _mbPopWanted(t), version: t.reader.version || _EXT_IDB_VERSION,
             keep: (d) => d.state === 'ok', ttlMs: _extTtlMs(),
         });
     }
@@ -40125,7 +40480,13 @@
             const rec = st.data;
             _extIconEnsure(t, rec, repaint);
             let body;
-            if (rec.state === 'ok') {
+            if (rec.state === 'ok' && rec.dp) {
+                // U4: a Springsteen site's detail page, or a Brucebase show —
+                // the card that site's own list shows.
+                body = _dpCardBodyHtml(rec.dp) +
+                    (rec.moved ? `<div class="mb-ext-url">→ ${_rgEsc(rec.finalUrl)}</div>` : '') +
+                    (rec.toHttps ? '<div class="mb-ext-url mb-ext-https">→ https</div>' : '');
+            } else if (rec.state === 'ok') {
                 const img = rec.image ? `<img class="mb-ext-img" src="${_rgEsc(rec.image)}" alt="" referrerpolicy="no-referrer" loading="lazy">` : '';
                 body = `<div class="mb-ext-head">${img}<div class="mb-ext-headtext"><div class="mb-tt-title">${_rgEsc(rec.title || t.name)}</div>` +
                     (rec.siteName ? `<div class="mb-tt-comment">${_rgEsc(rec.siteName)}</div>` : '') + '</div></div>' +
@@ -40147,7 +40508,8 @@
                 '<div class="mb-tt-foot">Hover again to retry.</div></div>';
         }
         return `<div class="mb-ext-card">${_extSiteHtml(t, '')}${ctxHtml}<div class="mb-tt-rule"></div>` +
-            '<div class="mb-tt-comment"><span class="mb-dp-spin">◌</span> Loading…</div></div>';
+            '<div class="mb-tt-comment"><span class="mb-dp-spin">◌</span> Loading…</div>' +
+            (t.reader.loadingNote ? `<div class="mb-tt-dim">${_rgEsc(t.reader.loadingNote)}</div>` : '') + '</div>';
     }
 
     /**
@@ -40243,10 +40605,50 @@
         }
         if (!st || st.status !== 'done' || !st.data) {
             return `<div class="mb-dp-x"><div class="mb-dp-col">${title}<div class="mb-dp-xsub"><span class="mb-dp-spin">◌</span> ` +
-                `Loading…</div>${mbSec}</div></div>`;
+                `Loading…${t.reader.loadingNote ? ` ${_rgEsc(t.reader.loadingNote)}` : ''}</div>${mbSec}</div></div>`;
         }
         const rec = st.data;
         _extIconEnsure(t, rec, repaint);
+        // U4: a Springsteen site's detail page, or a Brucebase show — the
+        // site's own two columns, the link's facts added to the right one.
+        const dpCols = rec.state === 'ok' && rec.dp ? _dpExtractedCols(rec.dp) : null;
+        const left = dpCols ? dpCols.left : _extLeftCol(t, rec);
+        const link = (u, text) => `<a href="${_rgEsc(u)}" target="_blank" rel="noopener noreferrer">${_rgEsc(text)}</a>`;
+        const right = ['<h4>Link</h4>' + _extSiteHtml(t, _extPillHtml(rec)) + `<div class="mb-ext-url">${link(t.url, t.href)}</div>` +
+            (rec.moved ? `<div class="mb-ext-url">→ ${link(rec.finalUrl, rec.finalUrl)}</div>` : '') +
+            (rec.toHttps ? '<div class="mb-ext-url mb-ext-https">→ https (the same page)</div>' : '')];
+        const ctx = _extContextHtml(t);
+        if (ctx) right.push(`<h4>On this page</h4><div>${ctx}</div>`);
+        if (mbSec) right.push(mbSec);
+        // An API reader's own facts (U3) say it better than the generic
+        // fields; YouTube's channel is its `author`, Discogs' artist a fact.
+        const own = rec.facts || [];
+        const facts = own.length || dpCols ? own : [
+            ['Type', rec.type], ['Channel', rec.author], ['Language', rec.lang], ['Published', rec.published],
+            ['Canonical URL', rec.canonical && rec.canonical !== rec.finalUrl ? rec.canonical : ''],
+            ['Content', [(rec.contentType || '').split(';')[0].trim(), _extSize(rec.bytes)].filter(Boolean).join(', ')],
+        ].filter(f => f[1]);
+        if (facts.length) right.push(`<h4>${own.length ? `${_rgEsc(rec.siteName || t.kind)} says` : 'The page says'}</h4>` + _dpFieldsHtml(facts));
+        if ((rec.links || []).length) {
+            right.push('<h4>See also</h4>' + rec.links.map(([k, u]) =>
+                `<div class="mb-ext-url">${_rgEsc(k)}: ${link(u, u)}</div>`).join(''));
+        }
+        if (dpCols) right.push(...dpCols.right);
+        const age = rec.state === 'ok' ? _dpAgeText({ cached: st.cached, at: st.at }) : 'kept until the page is reloaded';
+        return `<div class="mb-dp-x"><div class="mb-dp-col">${left.join('')}</div><div class="mb-dp-col">${right.join('')}</div></div>` +
+            `<div class="mb-dp-xfoot">${_rgEsc(age)} · ⟳ asks the site${mbq ? ' and MusicBrainz' : ''} again</div>`;
+    }
+
+    /**
+     * The left column of an external link's window for a record that is not
+     * a site's own detail record: title, site name, then the picture and
+     * description of a page, or what its state means.
+     *
+     * @param {object} t
+     * @param {Object} rec
+     * @returns {string[]} HTML parts.
+     */
+    function _extLeftCol(t, rec) {
         const left = [`<div class="mb-dp-xtitle">${_rgEsc(rec.title || t.name)}</div>`];
         if (rec.siteName) left.push(`<div class="mb-dp-xsub">${_rgEsc(rec.siteName)}</div>`);
         if (rec.state === 'ok') {
@@ -40258,29 +40660,7 @@
         } else {
             left.push(`<div class="mb-dp-warn">${_rgEsc(_extStateText(rec))}</div>`);
         }
-        const link = (u, text) => `<a href="${_rgEsc(u)}" target="_blank" rel="noopener noreferrer">${_rgEsc(text)}</a>`;
-        const right = ['<h4>Link</h4>' + _extSiteHtml(t, _extPillHtml(rec)) + `<div class="mb-ext-url">${link(t.url, t.href)}</div>` +
-            (rec.moved ? `<div class="mb-ext-url">→ ${link(rec.finalUrl, rec.finalUrl)}</div>` : '') +
-            (rec.toHttps ? '<div class="mb-ext-url mb-ext-https">→ https (the same page)</div>' : '')];
-        const ctx = _extContextHtml(t);
-        if (ctx) right.push(`<h4>On this page</h4><div>${ctx}</div>`);
-        if (mbSec) right.push(mbSec);
-        // An API reader's own facts (U3) say it better than the generic
-        // fields; YouTube's channel is its `author`, Discogs' artist a fact.
-        const own = rec.facts || [];
-        const facts = own.length ? own : [
-            ['Type', rec.type], ['Channel', rec.author], ['Language', rec.lang], ['Published', rec.published],
-            ['Canonical URL', rec.canonical && rec.canonical !== rec.finalUrl ? rec.canonical : ''],
-            ['Content', [(rec.contentType || '').split(';')[0].trim(), _extSize(rec.bytes)].filter(Boolean).join(', ')],
-        ].filter(f => f[1]);
-        if (facts.length) right.push(`<h4>${own.length ? `${_rgEsc(rec.siteName || t.kind)} says` : 'The page says'}</h4>` + _dpFieldsHtml(facts));
-        if ((rec.links || []).length) {
-            right.push('<h4>See also</h4>' + rec.links.map(([k, u]) =>
-                `<div class="mb-ext-url">${_rgEsc(k)}: ${link(u, u)}</div>`).join(''));
-        }
-        const age = rec.state === 'ok' ? _dpAgeText({ cached: st.cached, at: st.at }) : 'kept until the page is reloaded';
-        return `<div class="mb-dp-x"><div class="mb-dp-col">${left.join('')}</div><div class="mb-dp-col">${right.join('')}</div></div>` +
-            `<div class="mb-dp-xfoot">${_rgEsc(age)} · ⟳ asks the site${mbq ? ' and MusicBrainz' : ''} again</div>`;
+        return left;
     }
 
     /**
@@ -40323,11 +40703,12 @@
      * reader of `_EXT_READERS` that takes the URL serves it: its id is in the
      * key, its kind is the window's title, its `askHost` decides first
      * contact, `noLive` hides the Live page, and `live` (a reader's own Live
-     * page fields, else null) replaces the source's.
+     * page fields, else null) replaces the source's; `liveUrl`, when not
+     * '', is the Live page's address (a reader's `liveUrlFor()`).
      *
      * @param {Element} a
      * @returns {?{key: string, url: string, href: string, host: string, askHost: string, reader: object,
-     *   noLive: boolean, kind: string, live: ?object, name: string, col: string}}
+     *   noLive: boolean, kind: string, live: ?object, liveUrl: string, name: string, col: string}}
      */
     function _extTarget(a) {
         if (!a || a.tagName !== 'A') return null;
@@ -40354,7 +40735,8 @@
         const reader = _EXT_READERS.find(r => r.test(u));
         return {
             key: `ext:${reader.id}:${u.href}`, url: u.href, href, host, askHost: reader.askHost(u),
-            reader, noLive: reader.noLive, kind: reader.kind, live: reader.live || null,
+            reader, noLive: reader.noLive, kind: reader.kind, live: reader.liveFor ? reader.liveFor(u) : (reader.live || null),
+            liveUrl: reader.liveUrlFor ? reader.liveUrlFor(u) : '',
             name: _dpText(a.textContent) || host,
             col: table ? _resolveColHeaderName(table, td.cellIndex) : '',
         };
@@ -40386,7 +40768,9 @@
             enabled: () => !_foreignHost && Lib.settings.sa_pop_ext === true,
             resolve: (a) => _extTarget(a),
             needsCtrl: _dpNeedsCtrl,
-            liveUrl: (t) => t.url,
+            // A reader may show another address than the link (U4: a
+            // Brucebase date's year page as https).
+            liveUrl: (t) => t.liveUrl || t.url,
             card: _extCard,
             extracted: _extExtracted,
             steps: _extSteps,

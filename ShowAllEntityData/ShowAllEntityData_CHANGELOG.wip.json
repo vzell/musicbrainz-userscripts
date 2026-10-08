@@ -1,5 +1,30 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-10-08",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "External link previews: a link from MusicBrainz to one of the four Springsteen sites the script supports — a springsteenlyrics.com bootleg, collection item or song, a jungleland.it artwork page, a brucespringsteen.it record, a Brucebase song — gets the same card that site's own list shows (tracklist, fields, scans, notes), and a Live page trimmed as on the site. jungleland.it's pages are decoded as windows-1252, which they are without saying so. No setting of those sites is needed; their hosts load on a hover from the first time.",
+          "A Brucebase date link (an event's \"reviews:\" link, brucebase.wikidot.com/2025#261025) shows the one show it names: venue and date, the setlist, the people, the notes and a link to the gig page; its Live page is the year page, scrolled to the show and marked. One request reads the whole year (Brucebase is slow: it can take several seconds), and every other date of that year then costs nothing, also after a reload. A date with no show, and a show that did not take place, say so."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Popup engine (org/iframe.org, \"* generalize to URLs\", U4): _extDpLoad() runs a _DP_SITES parser on a page fetched through _extGet(), as rec.dp; _extBbYear()/_extBbParseYear() read a Brucebase year page once into its shows (kept in _extBbYears and IndexedDB as ext-bbyear:<url>, _EXT_BB_YEAR_VERSION) and _extBbDateLoad() serves one of them. _extFetch() takes charset (overrideMimeType), passed on by _extFetchText() and _EXT_LIVE.fetchText. _dpCardHtml() and _dpExtractedHtml() are now _dpCardBodyHtml() and _dpExtractedCols() with their foot, so the external card and window reuse a site's body and columns (the foreign hosts' own output unchanged); the generic left column is _extLeftCol(). A reader may give liveFor(url), version and loadingNote; the Springsteen reader's records follow _DP_PARSER_VERSION too. The four hosts are in @connect and _EXT_CONNECT_HOSTS. A Brucebase show's Live page is the year page as https (liveUrlFor(), the target's liveUrl), scrolled by setting the frame document's scrollTop from the userscript's own window: the frame runs no script, so its own setTimeout never fired (found in a real browser before the merge)."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "tests/fixtures/popup-ext.spec.js: a \"Springsteen sites across hosts (U4)\" block (7 tests, one for two dates asked while their year page loads); the GM_xmlhttpRequest stub logs overrideMimeType; scripts/build-detail-fixtures.py builds tests/fixtures/ext-bb-year-2025.html. scripts/mutations/popup-ext.json gains 17 U4 mutations, three anchors re-anchored on the new code. tests/live/popup-ext.spec.js expects the Brucebase review as the date reader's card, and a new @extended test hovers the work \"Born in the U.S.A.\" (its annotation's Brucebase and springsteenlyrics.com song pages, its Wikidata item, its Wikipedia article). HELP, docs/claude/detail-pages.md (new section \"The Springsteen sites across hosts\"), CLAUDE.md, org/iframe.org."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-10-08",
     "sections": [
