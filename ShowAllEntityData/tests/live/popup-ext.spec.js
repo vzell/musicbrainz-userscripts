@@ -30,6 +30,8 @@ const REVIEW = 'http://brucebase.wikidot.com/2025#261025';
 // The review's URL entity, its "[info]" link (U0 X7).
 const REVIEW_URL_ID = '7c36bf3a-15d4-4b1f-afaa-40847960e3e0';
 const WIKI = 'https://en.wikipedia.org/wiki/TeachRock';
+// "Greetings From Asbury Park, N.J." (U3: its sidebar links Wikidata and Discogs).
+const RG = 'https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c';
 
 /**
  * Hovers a link until its card shows a loaded answer. On a freshly rendered
@@ -106,6 +108,9 @@ test.describe('external link previews on the real site', { tag: '@extended' }, (
         await expect(card.locator('.mb-ext-host')).toHaveText('en.wikipedia.org');
         await expect(card).toContainText('TeachRock');
         await expect(card).toContainText('in the annotation');
+        // U3: the Wikipedia reader (the REST summary), not the page's <head>.
+        await expect(card).toContainText('Wikipedia (en)');
+        await expect(card).toContainText('Steven Van Zandt');
         await expect(card.locator('.mb-ext-st')).toHaveText('200');
 
         // The annotation's YouTube playlist: the YouTube reader's ONE oEmbed
@@ -186,6 +191,41 @@ test.describe('external link previews on the real site', { tag: '@extended' }, (
             `https://musicbrainz.org/ws/2/url/${REVIEW_URL_ID}?fmt=json`,
             `https://musicbrainz.org/ws/2/url?resource=${encodeURIComponent(WIKI)}&fmt=json`,
         ]);
+        expect(errors).toEqual([]);
+    });
+
+    // U3: the Wikidata and Discogs readers against the real APIs, on the
+    // sidebar's external links of "Greetings From Asbury Park, N.J." (the
+    // release group page; no "Show all": the sidebar is native). Two API
+    // requests, each through its host's gate; Discogs without a token. Its
+    // Wikidata link is protocol-relative, as MusicBrainz writes it (the
+    // first run found that no card came for it). Wikipedia's reader is the
+    // first test's annotation link.
+    test('U3: the release group\'s Wikidata and Discogs links read from the sites\' APIs', async ({ page }) => {
+        const errors = collectPageErrors(page);
+        await loadUserscriptPageWithRealNetwork(page, {
+            url: RG, testMode: true,
+            settingsOverride: { sa_pop_ext: true, sa_dp_hover_without_ctrl: true, sa_rich_tooltip_delay_ms: 0 },
+        });
+        const card = page.locator('#mb-dp-peek');
+        const sidebar = page.locator('ul.external_links');
+        const wd = sidebar.locator('a[href*="wikidata.org/wiki/Q"]').first();
+        const dg = sidebar.locator('a[href*="discogs.com/master/"]').first();
+        await expect(wd, 'the release group links its Wikidata item').toHaveCount(1);
+        await expect(dg, 'and its Discogs master').toHaveCount(1);
+        if (!await wd.isVisible()) await page.locator('#sidebar h2').filter({ hasText: /External links/i }).first().click();
+
+        await loadedCard(page, wd);
+        await expect(card.locator('.mb-ext-host')).toHaveText('www.wikidata.org');
+        await expect(card).toContainText('Wikidata');
+        await expect(card).toContainText('Greetings from Asbury Park');
+        await expect(card.locator('.mb-ext-st')).toHaveText('200');
+
+        await page.mouse.move(0, 0);
+        await loadedCard(page, dg);
+        await expect(card).toContainText('Discogs');
+        await expect(card.locator('.mb-tt-title')).toContainText(/Greetings From Asbury Park/i);
+        await expect(card).toContainText('1973');
         expect(errors).toEqual([]);
     });
 });

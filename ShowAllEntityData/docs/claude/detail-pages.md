@@ -603,7 +603,10 @@ on: org/iframe.org, section "* generalize to URLs".
 - **What is previewed: `_extTarget()`.** An `http(s)` link whose host is not
   the page's (`www.` aside), read from the `href` ATTRIBUTE, never `a.href`
   (the property is normalised; MusicBrainz looks a URL up by its exact
-  string, X7). Not the MetaBrainz family or the artwork archives
+  string, X7). **A protocol-relative `//host/…` is read as https** (since
+  U3): MusicBrainz's sidebar writes its Wikidata link that way, and until
+  U3's live spec hovered it no such link had a card at all; https is also
+  how MusicBrainz stores it. Not the MetaBrainz family or the artwork archives
   (`_EXT_SKIP_HOST_RE`), not a share button (`_EXT_SKIP_URL_RE`), not around
   `img:not(.avatar)`, not in `_EXT_SKIP_SEL` (chrome, `td.mb-rel-cell`, the
   card and the window, `_MB_POP_PAGE_SKIP`). Scope: `_EXT_SCOPE_SEL` (table
@@ -619,13 +622,14 @@ on: org/iframe.org, section "* generalize to URLs".
   come back as `error` (`refused`, `unreachable`, `timeout`).
   `_extGet()` adds the gate, `wanted()` after the slot, and one retry on a
   transient status.
-- **One rate gate per HOST: `_extAwaitSlot(host)`** (`_EXT_SPACING_MS`),
-  reserved synchronously. Never `_relAwaitRateSlot()`: another site, another
+- **One rate gate per HOST: `_extAwaitSlot(host)`** (`_extSpacingMs(host)`:
+  `_EXT_SPACING_MS`, except Discogs' API since U3), reserved synchronously. Never `_relAwaitRateSlot()`: another site, another
   budget. `__saTest.extRateSlotWaitMs(host)` reads it.
 - **First contact (answer 7).** With only `@connect *` covering a host,
   Tampermonkey asks the user once before the first request to it (X9, B1).
   So `_extCard()` makes NO request for a host that is neither in
-  `_EXT_CONNECT_HOSTS` (the header's own `@connect` hosts, empty in U1) nor in
+  `_EXT_CONNECT_HOSTS` (the header's own `@connect` hosts: YouTube's, and since
+  U3 Wikipedia's, Wikidata's and Discogs' API) nor in
   the GM value `sa_pop_ext_hosts` (hosts that answered once, any status):
   the card says *not contacted yet*, and Space (or a tap, or an arrow in the
   window) makes the request. `_extGet()` remembers a host on any answer with
@@ -657,6 +661,8 @@ on: org/iframe.org, section "* generalize to URLs".
     unless the status is 404 or 410. `noLive`: the window hides its Live page
     button (`_dpRenderDialog()` forces Extracted for a `noLive` target).
     `www.youtube.com` is in `_EXT_CONNECT_HOSTS` and the header's `@connect`.
+  - **Wikipedia, Wikidata, Discogs** (U3): section "Readers of known sites"
+    below.
   - **Generic (`_extGenericLoad()`)**: the page itself, `_extRecord()`.
 - **Records: `_extRecord()`.** States `ok` (a 2xx page; `moved` only when
   the final HOST or PATH differs — added query parameters such as YouTube's
@@ -695,7 +701,9 @@ on: org/iframe.org, section "* generalize to URLs".
   `fetchText(url, charset)` and calls `awaitSlot(url)` with the URL, so the
   external Live page goes through `_extFetchText()` (anonymous, remembers the
   host) and the host's own gate. No `liveRoot`: the generic reader knows no
-  site's layout, so the whole page shows. The copy is `_dpLiveDocHtml()`'s
+  site's layout, so the whole page shows (a reader may bring its own fields,
+  `live`: U3's Wikipedia). Since U3 the Live page reads up to
+  `_EXT_MAX_DOWNLOAD`, not the card's 512 KB (a long article showed half). The copy is `_dpLiveDocHtml()`'s
   (no scripts); its CSS and images load from the site. Since 2026-10-08
   `_dpLiveDocHtml()` also drops `<link rel="preload|modulepreload|prefetch|preconnect|dns-prefetch">`
   for every source: without the scripts they only fetched what nothing used
@@ -805,6 +813,83 @@ Two halves, one request and one cache key between them:
 `url-schedule`, `url-sl-bootlegs`); `openEvent()` answers `/ws/2/url`
 lookups from them, else 404, and logs each with its time. Mutations: the
 `U2:` entries of `scripts/mutations/popup-ext.json`.
+
+## Readers of known sites (org/iframe.org "* generalize to URLs", U3)
+
+Three readers in `_EXT_READERS`, before the generic one, each ONE request
+to the site's API through `_extGet()` (anonymous, the host's gate, `wanted()`
+after the slot). An API says as data, in a few KB, what a card wants; the
+pages are hundreds of KB, or say nothing in their `<head>` (a Wikipedia
+article has `og:title` only, U0 X1). Their hosts are in the header's
+`@connect` and `_EXT_CONNECT_HOSTS` (`wikipedia.org` covers every language's
+subdomain, matched by `endsWith`), so a hover loads them from the first time.
+
+- **The record: `_extApiRecord()`**, `_extRecord()`'s shape plus `facts`
+  (label/value pairs: the card shows `_EXT_CARD_FACTS`, the window all, under
+  "<site> says" in place of the generic "The page says") and `links`
+  (label/URL pairs, the window's "See also"). **`_extApiOutcome()`** turns
+  any answer but a 200 into the reader's outcome: no answer, a 5xx or a 429
+  is a failure (not kept), a bot check is `checked`, a 404/410 `dead` with
+  the reader's own `note`, any other status `http`. `_EXT_AGENT` names the
+  script for both identifying headers.
+- **Wikipedia (`_extWikipediaTest()`, `_extWikipediaLoad()`)**: an article
+  link (`/wiki/<title>`, not `Special:`, not the `www.` portal; `m.` too) →
+  `https://<lang>.wikipedia.org/api/rest_v1/page/summary/<title>` with
+  `Api-User-Agent` (browser scripts cannot set User-Agent; Wikimedia's policy
+  asks for this one). The title goes as the link writes it, a `/` encoded as
+  `%2F` (or the REST path splits: AC/DC). Card: title, "Wikipedia (<lang>)",
+  the opening paragraph (`extract`), the short description ("About"), "a
+  disambiguation page" for `type` disambiguation, "Redirected from" only when
+  the decoded title differs from the canonical one (MusicBrainz's `%2C` is no
+  redirect), the thumbnail; See also: the Wikidata item. **Live page**: the
+  reader's own `live`, `_EXT_LIVE_WIKIPEDIA` (`liveRoot` = `#content`: the
+  header and menus hidden). A target carries `live` (`_extTarget()`) and
+  `_dpRenderDialog()` uses `t.live || src.live`. `liveRoot` is a FUNCTION of
+  the document, never a selector (the first version passed `'#content'` and
+  `_dpIsolateFrame()` threw).
+- **Wikidata (`_extWikidataTest()`, `_extWikidataLoad()`)**: an item link
+  (`/wiki/Q<n>`; properties and lexemes stay generic) →
+  `w/api.php?action=wbgetentities&props=labels|descriptions|aliases|sitelinks`
+  in `_extUiLang()` (the browser's language) and English, the sitelinks
+  filtered to those two wikis (U0 X2: 612 bytes, against 229 KB for
+  `Special:EntityData`). `missing` (an item that does not exist, still a 200)
+  and an API `error` are `dead` ("not available" on the pill); a merged item
+  says "Merged into". See also: its Wikipedia articles.
+- **Discogs (`_extDiscogsTest()`, `_extDiscogsLoad()`)**: a release, master,
+  artist or label page (`_EXT_DISCOGS_PATH_RE`: a language prefix and a slug
+  allowed) → `https://api.discogs.com/<kind>s/<id>` with the User-Agent
+  Discogs requires. Release/master: artists, released, country, formats
+  ("Vinyl, LP, Album, Stereo"), labels with catalogue numbers, genres and
+  styles, track count, the primary image; a master links its main release.
+  Artist/label: name (Discogs' " (2)" suffix dropped), the profile with
+  Discogs' markup removed (`_extDiscogsText()`: `[a=…]`, `[l123]`, `[url]`),
+  real name, members, groups, parent label, sublabels. `noLive`: the page is
+  another host than the API's, which Tampermonkey would ask about, and the
+  API says more. **Rate: `_extSpacingMs()`** — 2.5 s apart without a token
+  (25 a minute, Discogs' own `X-Discogs-Ratelimit`, U0 X4), 1 s with one (60:
+  the same header answered 60 to `Authorization: Discogs token=…`, probed
+  with the user's token 2026-10-08 12:09Z, which also confirms the header
+  form).
+- **The token: `sa_pop_ext_discogs_token`** (text, default empty), read by
+  `_extDiscogsToken()` (trimmed) and sent ONLY as `Authorization: Discogs
+  token=…` to api.discogs.com — never in a URL, so `_extGet()`'s debug line
+  cannot show it. It is the first **`secret: true`** setting, a new rule
+  (docs/claude/settings-and-config.md): left out of the config export, never
+  set or blanked by an import, and shown as dots in the dialog
+  (`_maskSecretSettingInputs()`, from `_injectSettingsConfigButtons()`'s
+  observer, so every entry point gets it).
+
+**Tests.** The "readers of known sites (U3)" block of
+`tests/fixtures/popup-ext.spec.js` (which reader takes which link; each
+reader's card, window and dead case; the Wikipedia Live page past 512 KB
+with the site hidden; the token in the header only, the spacing either way,
+no console line with the token), `config-import-export.spec.js` (the token
+neither exported nor imported) and `settings-dialog.spec.js` (masked from
+both entry points). Answers are captures: `python3
+scripts/capture-ext-fixtures.py` writes `tests/fixtures/ext-*.json`
+(`{url, status, contentType, body}`, each the exact request a reader builds
+for an English browser). Mutations: the `U3:` entries of
+`scripts/mutations/popup-ext.json`.
 
 `python3 scripts/check-mutation-anchors.py` checks, without running a spec,
 that every `find` of every mutation list still matches once. Run it after

@@ -20710,3 +20710,54 @@ Web Service requests in all). lint within baseline.
 **Merged** as 9.99.1294 on top of 9.99.1293, after the user's live check;
 no conflicts. Merged-tree gate `npm run test:full`: 1395 passed, 0 failed
 (7.8 min, 2026-10-08T11:03:01Z–11:10:51Z, host NB-3641, WSL2).
+
+## 2026-10-08 — Readers of known sites, U3 (branch feature/popup-engine-urls, WIP.1)
+
+org/iframe.org "* generalize to URLs", U3: Wikipedia, Wikidata and Discogs
+readers, and `sa_pop_ext_discogs_token`, the first `secret: true` setting.
+Rules: docs/claude/detail-pages.md, "Readers of known sites";
+docs/claude/settings-and-config.md for the secret rule.
+
+**No external link written protocol-relative ever had a card (U1).**
+MusicBrainz's sidebar writes its Wikidata link as
+`//www.wikidata.org/wiki/Q1470381` (the release group fixture has it), and
+`_extTarget()` took only `^https?://`. Every fixture spec passed: their links
+were all absolute. Found by the new @extended live spec on the real release
+group page — the link was under the pointer (the failure screenshot showed it
+highlighted) and no card came. Now read as https, which is also how
+MusicBrainz stores it (U2's `?resource=` asks with this form). Pinned by a
+probe link in the fixture spec and a mutation.
+
+**A `liveRoot` is a function of the document, not a selector.** The first
+Wikipedia reader passed `'#content'`; `_dpIsolateFrame()` called it and
+threw "site.liveRoot is not a function", caught by the spec's page-error
+guard.
+
+**A mutation's `grep` is a regex.** Three U3 entries named their test by a
+title with "(the Discogs token)" in it; Playwright read the brackets as a
+group, selected no test, and `mutation-check.py` reported ERROR (as designed:
+it refuses to score "no tests found"). Re-grepped on bracket-free words.
+
+**Captures**, `scripts/capture-ext-fixtures.py` (2026-10-08 11:18:56Z–
+11:19:07Z, host NB-3641, no Discogs token): 11 answers, each the exact
+request a reader builds for an English browser. Columbia's `parent_label`
+name ends in a space (trimmed); its profile writes `[l112015]` (dropped).
+
+**Verification.** popup-ext.spec.js and its mobile sibling 27/27,
+config-import-export and settings-dialog 32/32, `popup-ext.json` 68/68 OK
+(19 U3; three re-grepped and rerun) and `config-import-tables.json` OK after
+three anchors moved under U3's edits (re-anchored, intent unchanged); the
+live spec 3/3 against the real sites (11:37:48Z–11:38:17Z).
+
+**Confirmed by the user, same day.** With their own Discogs token,
+`probe-ext-readers.py` (12:09:20Z–12:09:47Z, NB-3641) got
+`X-Discogs-Ratelimit: 60` on every authorised answer (25 without): the
+budget `_extSpacingMs()` assumes, and the `Authorization: Discogs token=…`
+form. In a real browser, a release group sidebar's protocol-relative
+Wikidata link now has a card. And `@connect wikipedia.org` spares the prompt
+for `en.wikipedia.org` (Chrome, the event's TeachRock link with the branch
+re-imported): Tampermonkey's "Original domain whitelist" shows
+`wikipedia.org`, the user's own whitelist holds only youtube.com and
+wikidot.com, and the card loaded from the REST summary with no permission
+page. The console's `/ws/2/url?resource=… 404` beside it is the "not in
+MusicBrainz" answer (Chrome logs every 4xx), not an error.

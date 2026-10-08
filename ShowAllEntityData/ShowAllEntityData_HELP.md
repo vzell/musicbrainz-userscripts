@@ -1675,6 +1675,28 @@ that is gone or private says so. Their window has no *Live page*: a YouTube
 page shows nothing without its scripts, so ↗ is the way to watch it. A link to
 a YouTube channel gets the ordinary card.
 
+Three more sites are read through their own services instead of the page, at
+once and without Tampermonkey asking first:
+
+- **Wikipedia** articles (any language): the article's opening paragraph, its
+  short description and picture, and whether it is a *disambiguation page*
+  or a link that Wikipedia redirects; the window links its Wikidata item, and
+  its *Live page* shows the article without Wikipedia's header and menus. A
+  title Wikipedia does not have shows as *404 Not found*.
+- **Wikidata** items: the item's name, description and other names, in your
+  browser's language and in English, and its Wikipedia articles. An item that
+  does not exist says so.
+- **Discogs** releases, masters, artists and labels: for a release the
+  artist, year, country, format, label and catalogue number, genres and number
+  of tracks, with the cover; for an artist or a label its profile, real name,
+  members or sublabels. No *Live page* (↗ opens Discogs). Discogs allows a
+  card every 2.5 seconds; with your own **Discogs personal access token**
+  (⚙️ Settings → 🔎 EXTERNAL LINK PREVIEWS → *Discogs personal access token*;
+  on discogs.com: Settings → Developers → *Generate new token*) it allows one
+  a second. The token is sent only to Discogs, shows as dots in the settings,
+  is never written into a saved configuration file, and loading one leaves
+  your token as it is.
+
 **What it sends.** A card asks the linked site for the page, once, and only if
 the pointer is still on the link when its turn comes (one request a second per
 site). The request carries **none of your cookies**, so the card shows the

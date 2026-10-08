@@ -172,6 +172,24 @@ test.describe('every settings entry point opens the same dialog', () => {
             await expect(page.locator('#sa-edit-pin-list-dialog'),
                 'clicking 🔧 opened the pinned-filter editor').toHaveCount(1);
         });
+
+    test('a secret setting (the Discogs token) shows as dots, from either entry point, and still holds its value',
+        async ({ page }) => {
+            // U3 (org/iframe.org "What the answers change", 3): the library
+            // renders every text setting alike; _maskSecretSettingInputs()
+            // turns this one into a password input when the dialog opens.
+            const TOKEN = 'secret-ShowAllEntityData-probe';
+            const sel = `#${SID}-input-sa_pop_ext_discogs_token`;
+            await loadShell(page, { sa_pop_ext_discogs_token: TOKEN });
+            for (const open of [openViaGmMenu, openViaEditingMenu]) {
+                await open(page);
+                const input = page.locator(sel);
+                await expect(input).toHaveAttribute('type', 'password');
+                await expect(input).toHaveAttribute('autocomplete', 'off');
+                await expect(input, 'SAVE reads .value, which a password input keeps').toHaveValue(TOKEN);
+                await closeDialog(page);
+            }
+        });
 });
 
 test.describe('the Default column says what the default is', () => {

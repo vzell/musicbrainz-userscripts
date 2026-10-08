@@ -1,0 +1,6 @@
+{
+ "url": "https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&ids=Q1225&props=labels%7Cdescriptions%7Caliases%7Csitelinks&languages=en&sitefilter=enwiki",
+ "status": 200,
+ "contentType": "application/json; charset=utf-8",
+ "body": "{\"entities\":{\"Q1225\":{\"type\":\"item\",\"id\":\"Q1225\",\"labels\":{\"en\":{\"language\":\"en\",\"value\":\"Bruce Springsteen\"}},\"descriptions\":{\"en\":{\"language\":\"en\",\"value\":\"American rock singer (born 1949)\"}},\"aliases\":{\"en\":[{\"language\":\"en\",\"value\":\"Bruce Springsteen and The Sessions Band\"},{\"language\":\"en\",\"value\":\"Bruce Springsteen & The Sessions Band\"},{\"language\":\"en\",\"value\":\"Bruce SpBruce Frederick Joseph Springsteenringsteen with The Sessions Band\"}]},\"sitelinks\":{\"enwiki\":{\"site\":\"enwiki\",\"title\":\"Bruce Springsteen\",\"badges\":[]}}}},\"success\":1}"
+}

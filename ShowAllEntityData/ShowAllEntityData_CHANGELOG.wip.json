@@ -1,0 +1,34 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-08",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "External link previews read three sites through their own services instead of the page, at once and without Tampermonkey asking first. Wikipedia articles (any language): the opening paragraph, short description and picture, whether it is a disambiguation page or a redirect, a link to its Wikidata item, and a Live page with the article alone (Wikipedia's header and menus hidden); a title Wikipedia does not have shows as 404. Wikidata items: name, description and other names in your browser's language and English, and their Wikipedia articles; a missing item says so. Discogs releases, masters, artists and labels: for a release the artist, year, country, format, label and catalogue number, genres and track count with the cover, for an artist or a label its profile, real name, members or sublabels; no Live page.",
+          "New setting \"Discogs personal access token (optional)\" (🔎 EXTERNAL LINK PREVIEWS, empty by default): Discogs allows a card every 2.5 seconds without one and one a second with it. The token is sent only to Discogs (in a request header), shows as dots in the settings, is never written into a saved configuration file, and loading a configuration file leaves it as it is.",
+          "A Live page of another site now shows the whole page up to 4 MB; it stopped at 512 KB, the card's own limit, so a long page showed only its first part."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "External link previews: a link written without its scheme (\"//www.wikidata.org/wiki/Q…\", as MusicBrainz's sidebar writes its Wikidata link) had no card at all; it is now read as https."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Popup engine (org/iframe.org, \"* generalize to URLs\", U3): three readers in _EXT_READERS before the generic one — _extWikipediaLoad() (the REST summary with Api-User-Agent; a \"/\" in a title encoded), _extWikidataLoad() (wbgetentities in _extUiLang() and English, sitelinks filtered to those two wikis), _extDiscogsLoad() (api.discogs.com with a User-Agent and, when set, Authorization: Discogs token=…) — sharing _extApiRecord() (the record plus facts and links, which the card and the window now show) and _extApiOutcome() (failure, bot check, dead, other status). Their hosts are in @connect and _EXT_CONNECT_HOSTS (wikipedia.org covers every language). _extSpacingMs() spaces api.discogs.com 2.5 s apart without a token, 1 s with one. A reader may bring its own Live page fields (live): _extTarget() puts them on the target and _dpRenderDialog() uses t.live || src.live (Wikipedia: liveRoot #content). _extFetchText() reads up to _EXT_MAX_DOWNLOAD. A setting may be secret: true — the first, sa_pop_ext_discogs_token, is left out of _buildConfigJson(), skipped by _applyConfigSettings() and masked by _maskSecretSettingInputs() from the settings dialog's open hook."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "tests/fixtures/popup-ext.spec.js: a \"readers of known sites (U3)\" block (6 tests), and two U1 assertions now expecting the Wikipedia reader; config-import-export.spec.js: the token is neither exported nor imported; settings-dialog.spec.js: the token is masked from both entry points. New scripts/capture-ext-fixtures.py captures each reader's real answer (tests/fixtures/ext-*.json, 11 files). scripts/mutations/popup-ext.json gains 19 U3 mutations; three anchors re-anchored on the new code (two in popup-ext.json, one in config-import-tables.json). tests/live/popup-ext.spec.js gains an @extended test of the Wikidata and Discogs readers on a release group's sidebar, and its first test now expects the Wikipedia reader. ShowAllEntityData_CONFIG_DEFAULTS.json and scripts/config-default-history.json regenerated. HELP, docs/claude/detail-pages.md (new section \"Readers of known sites\"), docs/claude/settings-and-config.md (the secret rule), CLAUDE.md, org/iframe.org."
+        ]
+      }
+    ]
+  }
+]

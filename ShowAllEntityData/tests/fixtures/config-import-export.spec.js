@@ -191,6 +191,28 @@ test.describe('config save/load round trip preserves the editable lookup tables'
         expect(stored, 'nothing was written for the function key').toBeNull();
     });
 
+    test('a secret (the Discogs token) never goes into the file, and a file neither sets nor blanks it', async ({ page }) => {
+        // org/iframe.org "What the answers change", 3 (U3): the file is meant
+        // to be shared or moved, so the token stays in this profile.
+        const TOKEN = 'secret-ShowAllEntityData-probe';
+        const KEY = 'sa_pop_ext_discogs_token';
+        await loadSeriesPage(page);
+        await page.evaluate(([k, v]) => window.GM_setValue(k, v), [KEY, TOKEN]);
+        await loadSeriesPage(page);
+        const exported = await exportConfig(page);
+        expect(Object.keys(exported.settings)).not.toContain(KEY);
+        expect(JSON.stringify(exported), 'nowhere in the file').not.toContain(TOKEN);
+
+        // The file without it: the stored token stays.
+        await importConfig(page, exported.settings);
+        expect((await readGmValues(page, [KEY]))[KEY]).toBe(TOKEN);
+
+        // A hand-written file holding one: skipped, nothing written.
+        const summary = await importConfig(page, { [KEY]: 'from-a-file' });
+        expect(summary).toMatchObject({ applied: 0, skipped: 1, invalid: 0 });
+        expect((await readGmValues(page, [KEY]))[KEY]).toBe(TOKEN);
+    });
+
     test('a non-array offered for a table key is rejected and writes NOTHING', async ({ page }) => {
         await seedTablesAndReload(page);
 

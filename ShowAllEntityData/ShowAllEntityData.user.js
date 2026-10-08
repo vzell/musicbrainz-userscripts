@@ -31,6 +31,9 @@
 // @connect      archive.org
 // @connect      *.archive.org
 // @connect      www.youtube.com
+// @connect      wikipedia.org
+// @connect      www.wikidata.org
+// @connect      api.discogs.com
 // @connect      *
 // @grant        GM_xmlhttpRequest
 // @grant        GM_addStyle
@@ -4344,6 +4347,23 @@
             description: 'How long a card\'s data is reused from this browser\'s storage before the site is asked ' +
                          'again (a week by default). A dead link or a site\'s browser check is remembered only ' +
                          'until the page is reloaded. ⟳ in the window always asks again.'
+        },
+
+        // `secret: true` (U3, a new rule; org/iframe.org "What the answers
+        // change", 3): the value never leaves this profile. `_buildConfigJson()`
+        // leaves it out of the 💾 file, `_applyConfigSettings()` neither sets
+        // nor blanks it from a 📂 file, and `_maskSecretSettingInputs()` shows
+        // it as dots in the dialog. Nothing logs it.
+        sa_pop_ext_discogs_token: {
+            label: 'Discogs personal access token (optional)',
+            type: 'text',
+            default: '',
+            secret: true,
+            description: 'Empty by default: Discogs links get their card from Discogs\' public API anyway, at most ' +
+                         '25 requests a minute (one every 2.5 seconds). With your own token (discogs.com → Settings ' +
+                         '→ Developers → "Generate new token") Discogs allows 60 a minute, so cards come faster. The ' +
+                         'token is sent only to api.discogs.com, is never written to a saved configuration file, and ' +
+                         'a loaded configuration file leaves it as it is.'
         },
 
         // ============================================================
@@ -14722,6 +14742,9 @@
         if (!api || !api.dialog.isConnected || !t || !t.src.enabled()) return;
         const src = t.src;
         const url = src.liveUrl(t);
+        // A target may bring its own Live page fields (a Wikipedia article:
+        // `#content`), else its source's.
+        const live = t.live || src.live;
         const area = api.scrollArea;
         const c = _dpDialog.controls;
         // A target without a Live page (`noLive`: a YouTube link, whose page
@@ -14770,7 +14793,7 @@
             status.className = 'mb-dp-live-status';
             status.textContent = 'Loading…';
             bar.appendChild(status);
-            const raw = await _dpGetRaw(url, src.live, {
+            const raw = await _dpGetRaw(url, live, {
                 force,
                 wanted: () => _dpDialog.target === t && _dpDialog.view === 'live' && frame.isConnected
             });
@@ -14789,7 +14812,7 @@
                 return;
             }
             status.remove();
-            frame.addEventListener('load', () => _dpIsolateFrame(frame, src.live));
+            frame.addEventListener('load', () => _dpIsolateFrame(frame, live));
             frame.srcdoc = _dpLiveDocHtml(raw.html, url);
             return;
         }
@@ -38806,8 +38829,11 @@
      */
     const _EXT_MAX_DOWNLOAD = 4 * 1024 * 1024;
 
-    /** One request per host this often, ms (`_extAwaitSlot()`). */
+    /** One request per host this often, ms (`_extAwaitSlot()`; Discogs' API: `_extSpacingMs()`). */
     const _EXT_SPACING_MS = 1000;
+
+    /** How many of an API reader's facts the hover card shows (the window shows all). */
+    const _EXT_CARD_FACTS = 4;
 
     /** A request that has not answered after this long is given up, ms. */
     const _EXT_TIMEOUT_MS = 30000;
@@ -38815,12 +38841,14 @@
     /**
      * Hosts the userscript header lists in its own `@connect` lines, which
      * Tampermonkey does not ask about (org/iframe.org answer 5): a reader
-     * site's host, or a parent domain covering its subdomains. A reader's
-     * host goes here and into the header's `@connect` together: U1 has the
-     * YouTube reader's (oEmbed), U3 and U4 add theirs.
+     * site's host, or a parent domain covering its subdomains (Tampermonkey's
+     * `@connect wikipedia.org` covers `en.wikipedia.org`). A reader's host
+     * goes here and into the header's `@connect` together: U1 has the YouTube
+     * reader's (oEmbed), U3 Wikipedia's, Wikidata's and Discogs' API hosts,
+     * U4 adds the Springsteen sites.
      * @type {string[]}
      */
-    const _EXT_CONNECT_HOSTS = ['www.youtube.com'];
+    const _EXT_CONNECT_HOSTS = ['www.youtube.com', 'wikipedia.org', 'www.wikidata.org', 'api.discogs.com'];
 
     /** The GM key of the hosts that answered once (answer 7): the script's state, not a setting, and not exported. */
     const _EXT_HOSTS_KEY = 'sa_pop_ext_hosts';
@@ -38901,8 +38929,37 @@
     }
 
     /**
+     * The user's Discogs personal access token (`sa_pop_ext_discogs_token`,
+     * empty by default), trimmed; '' for none. It goes only into the
+     * `Authorization` header of requests to api.discogs.com — never into a
+     * URL, a debug line, the config export or a settings field's visible
+     * text (`_maskSecretSettingInputs()`).
+     *
+     * @returns {string}
+     */
+    function _extDiscogsToken() {
+        const v = Lib.settings.sa_pop_ext_discogs_token;
+        return typeof v === 'string' ? v.trim() : '';
+    }
+
+    /**
+     * How far apart one host's requests go, ms: `_EXT_SPACING_MS`, except
+     * Discogs' API, which allows 25 requests a minute without a token (its
+     * own `X-Discogs-Ratelimit: 25`, U0 X4) and 60 with one (the same
+     * header with `Authorization: Discogs token=…`, probed by the user with
+     * their token 2026-10-08 12:09Z): 2.5 s, or 1 s with the token.
+     *
+     * @param {string} host
+     * @returns {number}
+     */
+    function _extSpacingMs(host) {
+        if (host === 'api.discogs.com') return _extDiscogsToken() ? 1000 : 2500;
+        return _EXT_SPACING_MS;
+    }
+
+    /**
      * Waits for, and reserves, the next request slot of one host
-     * (`_EXT_SPACING_MS` apart). Reserved synchronously, as
+     * (`_extSpacingMs()` apart). Reserved synchronously, as
      * `_dpAwaitSlot()`, so two callers in one tick get consecutive slots; a
      * different host never waits for this one.
      *
@@ -38912,7 +38969,7 @@
     function _extAwaitSlot(host) {
         const now = Date.now();
         const at = Math.max(now, _extNextSlotAt.get(host) || 0);
-        _extNextSlotAt.set(host, at + _EXT_SPACING_MS);
+        _extNextSlotAt.set(host, at + _extSpacingMs(host));
         return at > now ? new Promise(r => setTimeout(r, at - now)) : Promise.resolve();
     }
 
@@ -39302,7 +39359,8 @@
      * A page's HTML for the Live page view (`_EXT_LIVE.fetchText`, called by
      * `_dpGetRaw()` after its own wait for the host's slot): through
      * `_extGet()`, so it is anonymous and remembers the host like a card's
-     * request.
+     * request. Cut at `_EXT_MAX_DOWNLOAD`, not at the card's `_EXT_MAX_BYTES`
+     * (since U3: a long Wikipedia article showed only its first half).
      *
      * @param {string} url
      * @returns {Promise<string>}
@@ -39310,7 +39368,9 @@
      *   the HTTP status (0 without a response).
      */
     async function _extFetchText(url) {
-        const res = await _extGet(url, { gate: false });
+        // The whole page, up to `_EXT_MAX_DOWNLOAD`: the 512 KB cap is the
+        // card's, and a Wikipedia article (U3) runs past it.
+        const res = await _extGet(url, { gate: false, fetchOpts: { maxBytes: _EXT_MAX_DOWNLOAD } });
         const rec = _extRecord(url, res);
         if (rec && rec.state === 'ok' && res.body) return res.body;
         const err = new Error(rec ? _extStateText(rec) : _extFailText(res));
@@ -39424,18 +39484,360 @@
         return { ok: true, data: Object.assign(rec, { state: 'http' }) };
     }
 
+    // --- U3: readers of known sites' APIs (org/iframe.org, U0 X1, X2, X4) ---
+    //
+    // An API answers what a card shows as data, in a few KB, where the page
+    // is a few hundred KB of HTML (a Discogs release page: 343 KB) or says
+    // little in its <head> (a Wikipedia article: og:title only, X1). Each
+    // reader makes ONE request, through `_extGet()` (anonymous, the host's
+    // gate, `wanted()` after the slot), and returns `_extApiRecord()`'s shape
+    // with `facts` (label/value pairs for the card and the window) and
+    // `links` (label/URL pairs for the window).
+
+    /**
+     * The identifying header Wikimedia asks browser scripts to send
+     * (`Api-User-Agent`: a browser does not let a script set User-Agent),
+     * and the User-Agent Discogs requires; both name the script and where it
+     * lives.
+     * @type {string}
+     */
+    const _EXT_AGENT = `ShowAllEntityData/${scriptVersion} (+https://github.com/vzell/mb-userscripts)`;
+
+    /**
+     * A reader's record for an API answer about the link: `_extRecord()`'s
+     * shape, state `ok`, the link as its own final URL, plus `facts` and
+     * `links`.
+     *
+     * @param {object} t - The target.
+     * @param {number} status - The API's HTTP status.
+     * @param {string} siteName
+     * @returns {Object}
+     */
+    function _extApiRecord(t, status, siteName) {
+        return {
+            state: 'ok', status, finalUrl: t.url, moved: false, toHttps: false, contentType: '', bytes: 0, note: '',
+            title: '', description: '', image: '', siteName, type: '', lang: '', published: '', canonical: '', icon: '',
+            author: '', checkedBy: '', facts: [], links: [],
+        };
+    }
+
+    /**
+     * What an API reader does with an answer that is not its data: a
+     * failure (no answer, a server error or a 429 after the retry — not
+     * kept, the next hover asks again), a bot check, or a dead or refused
+     * resource in the reader's own words. `null` for a 200, which the
+     * reader reads itself.
+     *
+     * @param {object} t
+     * @param {Object} res - `_extFetch()`'s answer.
+     * @param {string} siteName
+     * @param {string} deadNote - What a 404 means for this reader.
+     * @returns {?{ok: boolean, data?: Object, detail?: string}}
+     */
+    function _extApiOutcome(t, res, siteName, deadNote) {
+        const checkedBy = _extBotCheck(res);
+        if (!checkedBy && (res.error || !res.status || res.status >= 500 || res.status === 429)) {
+            return { ok: false, detail: _extFailText(res) };
+        }
+        if (res.status === 200 && !checkedBy) return null;
+        const rec = _extApiRecord(t, res.status, siteName);
+        if (checkedBy) Object.assign(rec, { state: 'checked', checkedBy });
+        else if (res.status === 404 || res.status === 410) Object.assign(rec, { state: 'dead', note: deadNote });
+        else rec.state = 'http';
+        return { ok: true, data: rec };
+    }
+
+    /**
+     * A JSON answer's body, or null when it is not JSON.
+     *
+     * @param {Object} res
+     * @returns {?Object}
+     */
+    function _extJson(res) {
+        try {
+            return JSON.parse(res.body || '');
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /**
+     * The browser's language as a Wikimedia language code ("de" for
+     * "de-AT"), "en" when unknown.
+     *
+     * @returns {string}
+     */
+    function _extUiLang() {
+        const l = String((typeof navigator !== 'undefined' && navigator.language) || 'en').toLowerCase().split('-')[0];
+        return /^[a-z]{2,3}$/.test(l) ? l : 'en';
+    }
+
+    /** A Wikipedia host, its language first: `en.wikipedia.org`, `de.m.wikipedia.org`. */
+    const _EXT_WIKIPEDIA_HOST_RE = /^([a-z][a-z0-9-]*)\.(?:m\.)?wikipedia\.org$/;
+
+    /**
+     * An article link on a language's Wikipedia (`/wiki/<title>`), not a
+     * special page; `www.wikipedia.org` (the portal) is not one.
+     *
+     * @param {URL} u
+     * @returns {boolean}
+     */
+    function _extWikipediaTest(u) {
+        const m = _EXT_WIKIPEDIA_HOST_RE.exec(u.hostname.toLowerCase());
+        if (!m || m[1] === 'www' || !u.pathname.startsWith('/wiki/')) return false;
+        const title = u.pathname.slice(6);
+        return !!title && !/^Special(?::|%3A)/i.test(title);
+    }
+
+    /**
+     * A title as Wikipedia compares them: decoded, underscores as spaces,
+     * the first letter in upper case.
+     *
+     * @param {string} s
+     * @returns {string}
+     */
+    function _extWikiTitleKey(s) {
+        let t = s;
+        try {
+            t = decodeURIComponent(s);
+        } catch (_) { /* keep it as written */ }
+        t = t.replace(/_/g, ' ').trim();
+        return t.charAt(0).toUpperCase() + t.slice(1);
+    }
+
+    /**
+     * The Wikipedia reader (U0 X1): ONE request to the REST summary,
+     * `https://<lang>.wikipedia.org/api/rest_v1/page/summary/<title>` (1.5 to
+     * 2.9 KB, `Api-User-Agent` as Wikimedia asks of browser scripts): title,
+     * short description, the article's opening (`extract`), thumbnail, its
+     * Wikidata item, and `type`, "disambiguation" for a disambiguation page.
+     * The title goes as the link writes it (MusicBrainz's
+     * `Greetings_from_Asbury_Park%2C_N.J.` answered, X1); a `/` in it is
+     * encoded, or the REST path would split. A 404 is a dead link. The
+     * summary follows a redirect: the card then says which title the link
+     * named.
+     *
+     * @param {object} t
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>}
+     */
+    async function _extWikipediaLoad(t, wanted) {
+        const u = new URL(t.url);
+        const lang = _EXT_WIKIPEDIA_HOST_RE.exec(u.hostname.toLowerCase())[1];
+        const title = u.pathname.slice(6);
+        const api = `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${title.replace(/\//g, '%2F')}`;
+        const res = await _extGet(api, { wanted, fetchOpts: { accept: /\bjson\b/i, headers: { 'Api-User-Agent': _EXT_AGENT } } });
+        if (res.skipped) return { skipped: true };
+        const out = _extApiOutcome(t, res, 'Wikipedia', 'Wikipedia has no article of this title (its summary service answered 404).');
+        if (out) return out;
+        const d = _extJson(res);
+        if (!d || !d.title) return { ok: false, detail: 'Wikipedia answered, but not with an article summary' };
+        const rec = _extApiRecord(t, res.status, `Wikipedia (${d.lang || lang})`);
+        const named = _extWikiTitleKey(title);
+        const canonical = _extWikiTitleKey((d.titles && d.titles.canonical) || d.title);
+        Object.assign(rec, {
+            title: String(d.title),
+            description: String(d.extract || '').slice(0, 1200),
+            image: d.thumbnail && /^https?:\/\//i.test(d.thumbnail.source || '') ? d.thumbnail.source : '',
+            type: d.type === 'disambiguation' ? 'disambiguation page' : 'article',
+            lang: String(d.lang || lang),
+        });
+        rec.facts = [
+            ['About', String(d.description || '')],
+            ['Type', d.type === 'disambiguation' ? 'a disambiguation page' : ''],
+            ['Redirected from', named !== canonical ? named : ''],
+            ['Last edited', String(d.timestamp || '').slice(0, 10)],
+        ].filter(f => f[1]);
+        if (/^Q\d+$/.test(d.wikibase_item || '')) rec.links.push(['Wikidata item', `https://www.wikidata.org/wiki/${d.wikibase_item}`]);
+        return { ok: true, data: rec };
+    }
+
+    /**
+     * An item link on Wikidata (`/wiki/Q<n>`). Properties and lexemes stay
+     * with the generic reader.
+     *
+     * @param {URL} u
+     * @returns {boolean}
+     */
+    function _extWikidataTest(u) {
+        return /^(?:www\.|m\.)?wikidata\.org$/.test(u.hostname.toLowerCase()) && /^\/wiki\/Q[1-9]\d*$/.test(u.pathname);
+    }
+
+    /**
+     * The Wikidata reader (U0 X2): ONE `wbgetentities` request for the
+     * item's label, description, aliases and its Wikipedia articles, in the
+     * browser's language and English, the sitelinks filtered to those two
+     * wikis (612 bytes for Q1225, where `Special:EntityData` is 229 KB). An
+     * item that does not exist is a dead link; one merged into another says
+     * which.
+     *
+     * @param {object} t
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>}
+     */
+    async function _extWikidataLoad(t, wanted) {
+        const id = new URL(t.url).pathname.slice(6);
+        const ui = _extUiLang();
+        const langs = Array.from(new Set([ui, 'en']));
+        const api = 'https://www.wikidata.org/w/api.php?action=wbgetentities&format=json' +
+            `&ids=${id}&props=labels%7Cdescriptions%7Caliases%7Csitelinks` +
+            `&languages=${langs.join('%7C')}&sitefilter=${langs.map(l => `${l}wiki`).join('%7C')}`;
+        const res = await _extGet(api, { wanted, fetchOpts: { accept: /\bjson\b/i, headers: { 'Api-User-Agent': _EXT_AGENT } } });
+        if (res.skipped) return { skipped: true };
+        const dead = `Wikidata has no item ${id}.`;
+        const out = _extApiOutcome(t, res, 'Wikidata', dead);
+        if (out) return out;
+        const d = _extJson(res);
+        if (d && d.error) {
+            const rec = _extApiRecord(t, res.status, 'Wikidata');
+            return { ok: true, data: Object.assign(rec, { state: 'dead', note: dead }) };
+        }
+        const e = d && d.entities ? Object.values(d.entities)[0] : null;
+        if (!e) return { ok: false, detail: 'Wikidata answered, but not with an item' };
+        const rec = _extApiRecord(t, res.status, 'Wikidata');
+        if (e.missing !== undefined) return { ok: true, data: Object.assign(rec, { state: 'dead', note: dead }) };
+        const pick = (m) => (m && ((m[ui] && m[ui].value) || (m.en && m.en.value))) || '';
+        const aliases = ((e.aliases && (e.aliases[ui] || e.aliases.en)) || []).map(a => a.value).filter(Boolean);
+        Object.assign(rec, { title: pick(e.labels) || e.id, description: pick(e.descriptions), type: 'item' });
+        rec.facts = [
+            ['Item', String(e.id || id)],
+            ['Merged into', e.id && e.id !== id ? String(e.id) : ''],
+            ['Also known as', aliases.length > 5 ? `${aliases.slice(0, 5).join('; ')} +${aliases.length - 5}` : aliases.join('; ')],
+        ].filter(f => f[1]);
+        langs.forEach(l => {
+            const s = e.sitelinks && e.sitelinks[`${l}wiki`];
+            if (s && s.title) {
+                rec.links.push([`Wikipedia (${l})`, `https://${l}.wikipedia.org/wiki/${encodeURIComponent(s.title.replace(/ /g, '_'))}`]);
+            }
+        });
+        return { ok: true, data: rec };
+    }
+
+    /** A Discogs page of one release, master, artist or label (an optional language prefix, a slug after the id). */
+    const _EXT_DISCOGS_PATH_RE = /^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?(release|master|artist|label)\/(\d+)(?:[-/]|$)/i;
+
+    /**
+     * A link to a Discogs release, master, artist or label page. Its other
+     * pages stay with the generic reader (which reaches them in a real
+     * browser: U0 X9 corrected X6).
+     *
+     * @param {URL} u
+     * @returns {boolean}
+     */
+    function _extDiscogsTest(u) {
+        return /^(?:www\.)?discogs\.com$/.test(u.hostname.toLowerCase()) && _EXT_DISCOGS_PATH_RE.test(u.pathname);
+    }
+
+    /**
+     * Discogs' markup in a profile as plain text: `[a=Name]` → Name,
+     * `[url=…]text[/url]` → text, id references and `[b]`/`[i]`/`[u]` dropped.
+     *
+     * @param {string} s
+     * @returns {string}
+     */
+    function _extDiscogsText(s) {
+        return String(s || '')
+            .replace(/\[url=[^\]]*\]([^[]*)\[\/url\]/gi, '$1')
+            .replace(/\[(?:a|l|r|m)=([^\]]+)\]/gi, '$1')
+            .replace(/\[(?:a|l|r|m)\d+\]/gi, '')
+            .replace(/\[\/?[biu]\]/gi, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    /**
+     * The Discogs reader (U0 X4, built in U3 as answer 3 allowed): ONE
+     * request to `https://api.discogs.com/<kind>s/<id>` (15 to 25 KB), with
+     * the User-Agent Discogs requires and, when the user set one, their
+     * personal access token as `Authorization: Discogs token=…`
+     * (`_extDiscogsToken()`; the reader works without it). A release: title,
+     * artists, year, country, formats, labels with catalogue numbers, genres,
+     * track count, the first image; a master: the same where it has them; an
+     * artist or a label: name, profile, members or sublabels. A 404 is a dead
+     * link.
+     *
+     * @param {object} t
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>}
+     */
+    async function _extDiscogsLoad(t, wanted) {
+        const [, kindRaw, id] = _EXT_DISCOGS_PATH_RE.exec(new URL(t.url).pathname);
+        const kind = kindRaw.toLowerCase();
+        const token = _extDiscogsToken();
+        const headers = { 'User-Agent': _EXT_AGENT, ...(token ? { Authorization: `Discogs token=${token}` } : {}) };
+        const res = await _extGet(`https://api.discogs.com/${kind}s/${id}`, { wanted, fetchOpts: { accept: /\bjson\b/i, headers } });
+        if (res.skipped) return { skipped: true };
+        const out = _extApiOutcome(t, res, 'Discogs', `Discogs has no ${kind} ${id} (its API answered 404).`);
+        if (out) return out;
+        const d = _extJson(res);
+        if (!d || !(d.title || d.name)) return { ok: false, detail: 'Discogs answered, but not with its data' };
+        const rec = _extApiRecord(t, res.status, 'Discogs');
+        const artists = (d.artists || []).map(a => `${String(a.name || '').replace(/ \(\d+\)$/, '')}${a.join ? ` ${a.join}` : ''}`).join(' ')
+            .replace(/\s+,/g, ',').trim();
+        const img = (d.images || []).find(i => i.type === 'primary') || (d.images || [])[0];
+        rec.image = img && /^https?:\/\//i.test(img.uri150 || img.uri || '') ? (img.uri150 || img.uri) : '';
+        rec.type = kind === 'master' ? 'master release' : kind;
+        if (kind === 'release' || kind === 'master') {
+            const formats = (d.formats || []).map(f => `${Number(f.qty) > 1 ? `${f.qty}×` : ''}${f.name}` +
+                `${(f.descriptions || []).length ? `, ${f.descriptions.join(', ')}` : ''}`).join('; ');
+            const labels = (d.labels || []).map(l => `${String(l.name || '').replace(/ \(\d+\)$/, '')}${l.catno && l.catno !== 'none' ? ` – ${l.catno}` : ''}`)
+                .join('; ');
+            const tracks = (d.tracklist || []).filter(x => !x.type_ || x.type_ === 'track').length;
+            rec.title = String(d.title);
+            rec.author = artists;
+            rec.description = [artists, d.year || '', formats.split(';')[0]].filter(Boolean).join(' · ');
+            rec.facts = [
+                ['Artist', artists],
+                ['Released', String(d.released_formatted || d.released || d.year || '')],
+                ['Country', String(d.country || '')],
+                ['Format', formats],
+                ['Label', labels],
+                ['Genre', [...(d.genres || []), ...(d.styles || [])].join(', ')],
+                ['Tracks', tracks ? String(tracks) : ''],
+            ].filter(f => f[1] && f[1] !== '0');
+            if (kind === 'master' && d.main_release) rec.links.push(['Main release', `https://www.discogs.com/release/${d.main_release}`]);
+        } else {
+            rec.title = String(d.name).replace(/ \(\d+\)$/, '');
+            rec.description = _extDiscogsText(d.profile).slice(0, 1200);
+            rec.facts = [
+                ['Real name', String(d.realname || '')],
+                ['Members', (d.members || []).length ? String(d.members.length) : ''],
+                ['Groups', (d.groups || []).length ? String(d.groups.length) : ''],
+                ['Parent label', d.parent_label ? String(d.parent_label.name || '').trim() : ''],
+                ['Sublabels', (d.sublabels || []).length ? String(d.sublabels.length) : ''],
+            ].filter(f => f[1]);
+        }
+        return { ok: true, data: rec };
+    }
+
+    /**
+     * The Live page of a Wikipedia article: the article (`#content`), its
+     * siblings — the site's header, menus and tools — hidden.
+     * @type {object}
+     */
+    const _EXT_LIVE_WIKIPEDIA = Object.assign({}, _EXT_LIVE, { liveRoot: (doc) => doc.getElementById('content') });
+
     /**
      * The readers, first match wins (`_extTarget()`): a known site's reader,
      * then the generic one, which takes everything. A reader has its
      * `kind` (the window's title), `test(url)`, `askHost(url)` — the host its
      * request goes to, which decides first contact (a youtu.be link asks
-     * www.youtube.com) —, `load(t, wanted)`, and `noLive` when the site's page
-     * is no use without its scripts (the window then has no Live page).
+     * www.youtube.com) —, `load(t, wanted)`, `noLive` when the site's page
+     * is no use without its scripts (the window then has no Live page), and
+     * optionally `live`, its own Live page fields (`_EXT_LIVE` otherwise).
+     * Discogs has no Live page: its page is another host than the API's,
+     * which Tampermonkey would ask about, and the API already says more.
      * @type {Array<{id: string, kind: string, test: function(URL): boolean, askHost: function(URL): string,
-     *   load: function(object, function(): boolean): Promise<Object>, noLive: boolean}>}
+     *   load: function(object, function(): boolean): Promise<Object>, noLive: boolean, live?: object}>}
      */
     const _EXT_READERS = [
         { id: 'youtube', kind: 'YouTube', test: _extYouTubeTest, askHost: () => 'www.youtube.com', load: _extYouTubeLoad, noLive: true },
+        {
+            id: 'wikipedia', kind: 'Wikipedia', test: _extWikipediaTest, load: _extWikipediaLoad, noLive: false, live: _EXT_LIVE_WIKIPEDIA,
+            askHost: (u) => `${_EXT_WIKIPEDIA_HOST_RE.exec(u.hostname.toLowerCase())[1]}.wikipedia.org`,
+        },
+        { id: 'wikidata', kind: 'Wikidata', test: _extWikidataTest, askHost: () => 'www.wikidata.org', load: _extWikidataLoad, noLive: false },
+        { id: 'discogs', kind: 'Discogs', test: _extDiscogsTest, askHost: () => 'api.discogs.com', load: _extDiscogsLoad, noLive: true },
         { id: 'generic', kind: 'Web page', test: () => true, askHost: (u) => u.hostname.toLowerCase(), load: _extGenericLoad, noLive: false },
     ];
 
@@ -39728,6 +40130,8 @@
                 body = `<div class="mb-ext-head">${img}<div class="mb-ext-headtext"><div class="mb-tt-title">${_rgEsc(rec.title || t.name)}</div>` +
                     (rec.siteName ? `<div class="mb-tt-comment">${_rgEsc(rec.siteName)}</div>` : '') + '</div></div>' +
                     (rec.description ? `<div class="mb-tt-body mb-ext-desc">${_rgEsc(_extCut(rec.description, 260))}</div>` : '') +
+                    // An API reader's facts (U3): the first few, cut short.
+                    _dpFieldsHtml((rec.facts || []).slice(0, _EXT_CARD_FACTS), 90) +
                     (rec.moved ? `<div class="mb-ext-url">→ ${_rgEsc(rec.finalUrl)}</div>` : '') +
                     (rec.toHttps ? '<div class="mb-ext-url mb-ext-https">→ https</div>' : '');
             } else {
@@ -39861,12 +40265,19 @@
         const ctx = _extContextHtml(t);
         if (ctx) right.push(`<h4>On this page</h4><div>${ctx}</div>`);
         if (mbSec) right.push(mbSec);
-        const facts = [
+        // An API reader's own facts (U3) say it better than the generic
+        // fields; YouTube's channel is its `author`, Discogs' artist a fact.
+        const own = rec.facts || [];
+        const facts = own.length ? own : [
             ['Type', rec.type], ['Channel', rec.author], ['Language', rec.lang], ['Published', rec.published],
             ['Canonical URL', rec.canonical && rec.canonical !== rec.finalUrl ? rec.canonical : ''],
             ['Content', [(rec.contentType || '').split(';')[0].trim(), _extSize(rec.bytes)].filter(Boolean).join(', ')],
         ].filter(f => f[1]);
-        if (facts.length) right.push('<h4>The page says</h4>' + _dpFieldsHtml(facts));
+        if (facts.length) right.push(`<h4>${own.length ? `${_rgEsc(rec.siteName || t.kind)} says` : 'The page says'}</h4>` + _dpFieldsHtml(facts));
+        if ((rec.links || []).length) {
+            right.push('<h4>See also</h4>' + rec.links.map(([k, u]) =>
+                `<div class="mb-ext-url">${_rgEsc(k)}: ${link(u, u)}</div>`).join(''));
+        }
         const age = rec.state === 'ok' ? _dpAgeText({ cached: st.cached, at: st.at }) : 'kept until the page is reloaded';
         return `<div class="mb-dp-x"><div class="mb-dp-col">${left.join('')}</div><div class="mb-dp-col">${right.join('')}</div></div>` +
             `<div class="mb-dp-xfoot">${_rgEsc(age)} · ⟳ asks the site${mbq ? ' and MusicBrainz' : ''} again</div>`;
@@ -39907,18 +40318,25 @@
      * button, not around an image, and not in the chrome, the Relationships
      * column, the card or the window (`_EXT_SKIP_SEL`). The URL is read from
      * the `href` ATTRIBUTE: `a.href` is the browser's normalised URL, and
-     * MusicBrainz looks a URL up by its exact string (U0 X7). The first
+     * MusicBrainz looks a URL up by its exact string (U0 X7); a
+     * protocol-relative one (`//host/…`) is read as https. The first
      * reader of `_EXT_READERS` that takes the URL serves it: its id is in the
      * key, its kind is the window's title, its `askHost` decides first
-     * contact, and `noLive` hides the Live page.
+     * contact, `noLive` hides the Live page, and `live` (a reader's own Live
+     * page fields, else null) replaces the source's.
      *
      * @param {Element} a
      * @returns {?{key: string, url: string, href: string, host: string, askHost: string, reader: object,
-     *   noLive: boolean, kind: string, name: string, col: string}}
+     *   noLive: boolean, kind: string, live: ?object, name: string, col: string}}
      */
     function _extTarget(a) {
         if (!a || a.tagName !== 'A') return null;
-        const href = (a.getAttribute('href') || '').trim();
+        const raw = (a.getAttribute('href') || '').trim();
+        // MusicBrainz writes the sidebar's Wikidata link protocol-relative
+        // (`//www.wikidata.org/wiki/Q…`, found by U3's live spec): read as
+        // https, which is also how MusicBrainz stores that URL (the window's
+        // `?resource=` lookup asks with this `href`).
+        const href = /^\/\/[^/]/.test(raw) ? `https:${raw}` : raw;
         if (!/^https?:\/\//i.test(href)) return null;
         let u;
         try {
@@ -39936,7 +40354,7 @@
         const reader = _EXT_READERS.find(r => r.test(u));
         return {
             key: `ext:${reader.id}:${u.href}`, url: u.href, href, host, askHost: reader.askHost(u),
-            reader, noLive: reader.noLive, kind: reader.kind,
+            reader, noLive: reader.noLive, kind: reader.kind, live: reader.live || null,
             name: _dpText(a.textContent) || host,
             col: table ? _resolveColHeaderName(table, td.cellIndex) : '',
         };
@@ -91398,6 +91816,9 @@ a { color: #1565c0; }`;
      *   • number    → Number() (input.value is always a string; must coerce back)
      *   • table     → the array, verbatim
      *   • all other → kept as-is (already strings)
+     *   • `secret: true` (the Discogs token, U3) → left out: the file is
+     *     meant to be shared or moved to another machine
+     *     (org/iframe.org, "What the answers change", 3)
      *
      * The JSON is formatted with 2-space indent so each key appears on its own
      * line — allowing standard line-diff tools to show exactly which settings
@@ -91417,6 +91838,9 @@ a { color: #1565c0; }`;
         for (const key of Object.keys(configSchema)) {
             const schemaCfg = configSchema[key];
             if (schemaCfg.type === 'divider' || schemaCfg.type === 'function') continue;
+            // A secret (the Discogs token) never leaves this profile: the file
+            // is meant to be shared or moved to another machine.
+            if (schemaCfg.secret) continue;
 
             const raw = Lib.settings[key];
             const dflt = schemaCfg.default;
@@ -91621,8 +92045,11 @@ a { color: #1565c0; }`;
         for (const [key, value] of Object.entries(settingsObj)) {
             const schemaCfg = configSchema[key];
 
-            // Not in the schema, or an entry type that carries no user value.
-            if (!schemaCfg || schemaCfg.type === 'divider' || schemaCfg.type === 'function') {
+            // Not in the schema, an entry type that carries no user value, or
+            // a secret: a file never sets one (the export leaves it out, so a
+            // file holding one was written by hand), and the key's absence
+            // from a file leaves the stored value alone.
+            if (!schemaCfg || schemaCfg.type === 'divider' || schemaCfg.type === 'function' || schemaCfg.secret) {
                 skipped++;
                 skippedKeys.push(key);
                 continue;
@@ -91767,7 +92194,8 @@ a { color: #1565c0; }`;
      *      below.
      *   4. Unknown keys (not in configSchema) are silently skipped.
      *   5. `divider` and `function` keys are silently skipped — neither carries
-     *      a user value.
+     *      a user value — and so is a `secret: true` key (the Discogs token,
+     *      U3): never set from a file, never blanked by one.
      *   6. Type coercion, per {@link _applyConfigSettings}: "true"/"false" →
      *      boolean for checkbox keys; numeric strings → number for number keys;
      *      a `table` key's row array is stored verbatim, and a non-array offered
@@ -91891,6 +92319,29 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Shows every `secret: true` setting (the Discogs token, U3) as dots in
+     * the open settings dialog: its text input becomes a password input, with
+     * no autocomplete and no spell check, so the value is not on screen, in
+     * a screenshot or offered back by the browser. The library renders every
+     * text setting alike; its SAVE reads `.value`, which a password input
+     * keeps. Called from {@link _injectSettingsConfigButtons}'s observer, so
+     * every entry point to the dialog gets it.
+     *
+     * @param {Element} overlay - The dialog's overlay.
+     * @returns {void}
+     */
+    function _maskSecretSettingInputs(overlay) {
+        for (const key of Object.keys(configSchema)) {
+            if (!configSchema[key].secret) continue;
+            const input = overlay.querySelector(`#${CSS.escape(`${SCRIPT_ID}-input-${key}`)}`);
+            if (!input) continue;
+            input.type = 'password';
+            input.autocomplete = 'off';
+            input.spellcheck = false;
+        }
+    }
+
+    /**
      * Injects "💾 Save configuration" and "📂 Load configuration" buttons into
      * the settings modal footer immediately after it is added to the DOM.
      *
@@ -91923,6 +92374,10 @@ a { color: #1565c0; }`;
             if (!overlay) return;
 
             obs.disconnect(); // one-shot — stop watching immediately
+
+            // Before anything that may return early: a secret is never
+            // shown in clear, whatever else fails here.
+            _maskSecretSettingInputs(overlay);
 
             // The footer is the last direct child of the container div that has
             // text-align:right (set inline in the VZ_MBLibrary template).  We

@@ -43,8 +43,8 @@
     "why": "Restores the pre-fix behaviour of writing sa_fn_edit_pinned_filter_list's internal method name into GM storage as if it were a user value. Only the import half of that test may notice — if the export assertion fails too, the two skips have been conflated.",
     "edits": [
       {
-        "find": "            if (!schemaCfg || schemaCfg.type === 'divider' || schemaCfg.type === 'function') {",
-        "replace": "            if (!schemaCfg || schemaCfg.type === 'divider') {"
+        "find": "            if (!schemaCfg || schemaCfg.type === 'divider' || schemaCfg.type === 'function' || schemaCfg.secret) {",
+        "replace": "            if (!schemaCfg || schemaCfg.type === 'divider' || schemaCfg.secret) {"
       }
     ],
     "spec": "tests/fixtures/config-import-export.spec.js",

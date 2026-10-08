@@ -820,8 +820,22 @@ final rendered page, in the h3 "URLs" sub-table, in the "URL" column
   =ws2-pop-url-sl-bootlegs.json=). Not done in U2: a card for an external
   link inside the "[info]" window (drill-down to other sites is Phase 5's
   widening, "The window").
-- [ ] U3: Wikipedia, Wikidata, Discogs (U0: built). YouTube moved into U1
-  (answer 8, 2026-10-08).
+- [X] U3: Wikipedia, Wikidata, Discogs, WIP.1 on =feature/popup-engine-urls=
+  (2026-10-08, on top of 9.99.1294; not merged, the user's browser check
+  first). YouTube moved into U1 (answer 8). Three API readers
+  (=_extWikipediaLoad()=, =_extWikidataLoad()=, =_extDiscogsLoad()=) before
+  the generic one, their hosts in =@connect=; =sa_pop_ext_discogs_token= as
+  the first =secret: true= setting (not exported, not imported, masked);
+  Discogs 2.5 s apart without a token, 1 s with one (=_extSpacingMs()=).
+  Rules as built: [[file:../docs/claude/detail-pages.md]], "Readers of known
+  sites", and docs/claude/settings-and-config.md for the secret rule.
+  Confirmed by the user the same day: the token's budget and header form
+  (X4, below), and a card on a release group sidebar's protocol-relative
+  Wikidata link (the U1 bug U3's live spec found), and that =@connect
+  wikipedia.org= covers =en.wikipedia.org= without a prompt (Chrome, the
+  event's TeachRock link: Tampermonkey's "Original domain whitelist" lists
+  =wikipedia.org=, the user's own whitelist has no Wikipedia entry, and the
+  card loaded from the REST summary at once).
 - [ ] U4: the Springsteen parsers across hosts, the Brucebase date anchor.
 - [ ] U5: external links on the four foreign hosts.
 
@@ -1238,9 +1252,13 @@ nothing Discogs says about itself has been read yet (X4).
   - =X-Discogs-Ratelimit: 25=, with =-Used= and =-Remaining= counting per
     request: 25 a minute unauthenticated, confirmed by the API itself.
   - The token's budget (60, written in "What the answers change" from memory)
-    and the header form are not confirmed yet: =DISCOGS_TOKEN=<token>
-    python3 scripts/probe-ext-readers.py= measures them when a token is at
-    hand.
+    and the header form: *confirmed* 2026-10-08 12:09:20–12:09:47 UTC, host
+    =NB-3641=, by the user with their own token (=DISCOGS_TOKEN=<token>
+    python3 scripts/probe-ext-readers.py=, log in the gitignored
+    =debug/probe-ext-readers.log=). With =Authorization: Discogs token=…=
+    every answer said =X-Discogs-Ratelimit: 60= (25 without), so the header
+    form is what Discogs accepts. An artist's answer is about 2 KB bigger
+    with the token; same status, same fields the reader reads.
   - No CORS header. The API sets a =__cf_bm= cookie, which an anonymous
     request never stores.
 - *X5. The generic reader: og: tags sit at the top, and the User-Agent made no

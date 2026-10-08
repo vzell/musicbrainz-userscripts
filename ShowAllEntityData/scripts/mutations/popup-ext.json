@@ -186,8 +186,8 @@
         "why": "Another site, another budget: a Wikipedia card must not wait behind a Brucebase one.",
         "edits": [
             {
-                "find": "        const at = Math.max(now, _extNextSlotAt.get(host) || 0);\n        _extNextSlotAt.set(host, at + _EXT_SPACING_MS);",
-                "replace": "        const at = Math.max(now, _extNextSlotAt.get('') || 0);\n        _extNextSlotAt.set('', at + _EXT_SPACING_MS);"
+                "find": "        const at = Math.max(now, _extNextSlotAt.get(host) || 0);\n        _extNextSlotAt.set(host, at + _extSpacingMs(host));",
+                "replace": "        const at = Math.max(now, _extNextSlotAt.get('') || 0);\n        _extNextSlotAt.set('', at + _extSpacingMs(host));"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
@@ -316,8 +316,8 @@
         "why": "A reader host listed in @connect never makes Tampermonkey ask, so its links load on hover from the first time (answer 5).",
         "edits": [
             {
-                "find": "    const _EXT_CONNECT_HOSTS = ['www.youtube.com'];",
-                "replace": "    const _EXT_CONNECT_HOSTS = [];"
+                "find": "    const _EXT_CONNECT_HOSTS = ['www.youtube.com', 'wikipedia.org', 'www.wikidata.org', 'api.discogs.com'];",
+                "replace": "    const _EXT_CONNECT_HOSTS = ['wikipedia.org', 'www.wikidata.org', 'api.discogs.com'];"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
@@ -634,6 +634,253 @@
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
         "grep": "shared MusicBrainz gate",
+        "expect": "fail"
+    },
+    {
+        "name": "U3: Wikipedia links go to the generic reader",
+        "why": "An article page has og:title only (U0 X1): the REST summary is what gives the card its text.",
+        "edits": [
+            {
+                "find": "            id: 'wikipedia', kind: 'Wikipedia', test: _extWikipediaTest,",
+                "replace": "            id: 'wikipedia', kind: 'Wikipedia', test: () => false,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "which reader serves which link",
+        "expect": "fail"
+    },
+    {
+        "name": "U3: Wikipedia is asked without Api-User-Agent",
+        "why": "Wikimedia asks browser scripts, which cannot set User-Agent, to identify themselves with Api-User-Agent (U0 X1).",
+        "edits": [
+            {
+                "find": "        const api = `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${title.replace(/\\//g, '%2F')}`;\n        const res = await _extGet(api, { wanted, fetchOpts: { accept: /\\bjson\\b/i, headers: { 'Api-User-Agent': _EXT_AGENT } } });",
+                "replace": "        const api = `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${title.replace(/\\//g, '%2F')}`;\n        const res = await _extGet(api, { wanted, fetchOpts: { accept: /\\bjson\\b/i, headers: {} } });"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "Wikipedia: one REST summary",
+        "expect": "fail"
+    },
+    {
+        "name": "U3: a \"/\" in a Wikipedia title splits the REST path",
+        "why": "AC/DC must be asked as summary/AC%2FDC; summary/AC/DC is another resource.",
+        "edits": [
+            {
+                "find": "${title.replace(/\\//g, '%2F')}`;",
+                "replace": "${title}`;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "Wikipedia: one REST summary",
+        "expect": "fail"
+    },
+    {
+        "name": "U3: a disambiguation page is not called one",
+        "why": "The summary says type \"disambiguation\" (Mercury, U0 X1): the card says so rather than presenting a list of meanings as an article.",
+        "edits": [
+            {
+                "find": "            ['Type', d.type === 'disambiguation' ? 'a disambiguation page' : ''],",
+                "replace": "            ['Type', ''],"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "Wikipedia: one REST summary",
+        "expect": "fail"
+    },
+    {
+        "name": "U3: every Wikipedia link is \"redirected from\" itself",
+        "why": "MusicBrainz writes Greetings_from_Asbury_Park%2C_N.J.; decoded it is the article's own title, no redirect.",
+        "edits": [
+            {
+                "find": "            ['Redirected from', named !== canonical ? named : ''],",
+                "replace": "            ['Redirected from', named],"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "Wikipedia: one REST summary",
+        "expect": "fail"
+    },
+    {
+        "name": "U3: a Wikipedia article's Live page shows the whole site",
+        "why": "The reader's own Live page fields (`#content`) hide the site's header and menus.",
+        "edits": [
+            {
+                "find": "noLive: false, live: _EXT_LIVE_WIKIPEDIA,",
+                "replace": "noLive: false, live: undefined,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "Wikipedia's window",
+        "expect": "fail"
+    },
+    {
+        "name": "U3: the engine ignores a target's own Live page fields",
+        "why": "A reader's `live` replaces the source's in _dpRenderDialog(); without it every external Live page is the generic one.",
+        "edits": [
+            {
+                "find": "        const live = t.live || src.live;",
+                "replace": "        const live = src.live;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "Wikipedia's window",
+        "expect": "fail"
+    },
+    {
+        "name": "U3: the Live page stops at the card's 512 KB",
+        "why": "The cap is the card's; a long article (a Wikipedia one runs past it) showed only its first half.",
+        "edits": [
+            {
+                "find": "        const res = await _extGet(url, { gate: false, fetchOpts: { maxBytes: _EXT_MAX_DOWNLOAD } });",
+                "replace": "        const res = await _extGet(url, { gate: false });"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "Wikipedia's window",
+        "expect": "fail"
+    },
+    {
+        "name": "U3: a missing Wikidata item looks like an item",
+        "why": "wbgetentities answers 200 with `missing` for an item that does not exist: that is a dead link.",
+        "edits": [
+            {
+                "find": "        if (e.missing !== undefined) return { ok: true, data: Object.assign(rec, { state: 'dead', note: dead }) };",
+                "replace": "        if (false) return { ok: true, data: Object.assign(rec, { state: 'dead', note: dead }) };"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "Wikidata: one wbgetentities",
+        "expect": "fail"
+    },
+    {
+        "name": "U3: Discogs is asked without a User-Agent",
+        "why": "Discogs requires an identifying User-Agent (U0 X4).",
+        "edits": [
+            {
+                "find": "        const headers = { 'User-Agent': _EXT_AGENT, ...(token",
+                "replace": "        const headers = { ...(token"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "Discogs: the API with its User-Agent",
+        "expect": "fail"
+    },
+    {
+        "name": "U3: Discogs' API is asked as often as any other host",
+        "why": "Without a token Discogs allows 25 requests a minute (X-Discogs-Ratelimit, U0 X4): 2.5 s apart.",
+        "edits": [
+            {
+                "find": "        if (host === 'api.discogs.com') return _extDiscogsToken() ? 1000 : 2500;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "Discogs: the API with its User-Agent",
+        "expect": "fail"
+    },
+    {
+        "name": "U3: Discogs' profile markup shows in the card",
+        "why": "A profile writes [l112015] for a label it names by id; the card is no place for Discogs' markup.",
+        "edits": [
+            {
+                "find": "            .replace(/\\[(?:a|l|r|m)\\d+\\]/gi, '')\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "Discogs: the API with its User-Agent",
+        "expect": "fail"
+    },
+    {
+        "name": "U3: a Discogs link has a Live page",
+        "why": "Its page is another host than the API's (Tampermonkey would ask) and the API says more: no Live page.",
+        "edits": [
+            {
+                "find": "load: _extDiscogsLoad, noLive: true },",
+                "replace": "load: _extDiscogsLoad, noLive: false },"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "Discogs: the API with its User-Agent",
+        "expect": "fail"
+    },
+    {
+        "name": "U3: the user's Discogs token is not sent",
+        "why": "With a token Discogs allows 60 requests a minute (answer 3); the reader sends it as Authorization: Discogs token=….",
+        "edits": [
+            {
+                "find": "...(token ? { Authorization: `Discogs token=${token}` } : {})",
+                "replace": "...{}"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "Discogs with the user's token",
+        "expect": "fail"
+    },
+    {
+        "name": "U3: the Discogs token is sent untrimmed",
+        "why": "A token pasted with a space around it is still the token.",
+        "edits": [
+            {
+                "find": "        return typeof v === 'string' ? v.trim() : '';",
+                "replace": "        return typeof v === 'string' ? v : '';"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "Discogs with the user's token",
+        "expect": "fail"
+    },
+    {
+        "name": "U3: a secret setting is written into the config file",
+        "why": "The file is meant to be shared or moved to another machine: the token never leaves the profile (org/iframe.org, answer 3).",
+        "edits": [
+            {
+                "find": "            if (schemaCfg.secret) continue;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/config-import-export.spec.js",
+        "grep": "neither sets nor blanks it",
+        "expect": "fail"
+    },
+    {
+        "name": "U3: a config file sets a secret setting",
+        "why": "A file never sets the token (the export leaves it out, so one holding it was written by hand).",
+        "edits": [
+            {
+                "find": "            if (!schemaCfg || schemaCfg.type === 'divider' || schemaCfg.type === 'function' || schemaCfg.secret) {",
+                "replace": "            if (!schemaCfg || schemaCfg.type === 'divider' || schemaCfg.type === 'function') {"
+            }
+        ],
+        "spec": "tests/fixtures/config-import-export.spec.js",
+        "grep": "neither sets nor blanks it",
+        "expect": "fail"
+    },
+    {
+        "name": "U3: the token shows in clear in the settings dialog",
+        "why": "A secret is shown as dots: not on screen, not in a screenshot, not offered back by the browser.",
+        "edits": [
+            {
+                "find": "            _maskSecretSettingInputs(overlay);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/settings-dialog.spec.js",
+        "grep": "shows as dots, from either entry point",
+        "expect": "fail"
+    },
+    {
+        "name": "U3: a protocol-relative link gets no card",
+        "why": "MusicBrainz's sidebar writes its Wikidata link as //www.wikidata.org/wiki/Q…: read as https, it is the Wikidata reader's (found by U3's live spec).",
+        "edits": [
+            {
+                "find": "        const href = /^\\/\\/[^/]/.test(raw) ? `https:${raw}` : raw;",
+                "replace": "        const href = raw;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "which reader serves which link",
         "expect": "fail"
     }
 ]
