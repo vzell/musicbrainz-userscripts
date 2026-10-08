@@ -693,9 +693,9 @@ table.details td { padding: 2px 0; word-break: break-all; }
                     <tr><td class="k">Wikipedia</td><td>*.wikipedia.org/wiki/…</td><td>title, short description, extract, image</td><td class="req">/api/rest_v1/page/summary/&lt;title&gt;</td><td>the article</td><td><span class="chip c-good">U3</span></td></tr>
                     <tr><td class="k">Wikidata</td><td>wikidata.org/wiki/Q…</td><td>label, description, aliases, sitelinks</td><td class="req">Special:EntityData/Q….json</td><td>the item</td><td><span class="chip c-good">U3</span></td></tr>
                     <tr><td class="k">YouTube</td><td>watch, playlist, youtu.be, channel</td><td>title, channel, thumbnail</td><td class="req">/oembed?url=…&amp;format=json</td><td>none (script-only)</td><td><span class="chip c-good">U3</span></td></tr>
-                    <tr><td class="k">Discogs</td><td>release, master, artist, label</td><td>title, year, formats, labels</td><td class="req">api.discogs.com, User-Agent, 25/min</td><td>U0 decides</td><td><span class="chip c-mid">after U0</span></td></tr>
+                    <tr><td class="k">Discogs</td><td>release, master, artist, label</td><td>title, year, formats, labels</td><td class="req">api.discogs.com, User-Agent, 25/min</td><td>none: the site is behind Cloudflare</td><td><span class="chip c-good">U3</span></td></tr>
                     <tr><td class="k">Springsteen sites</td><td>each host's detail links</td><td>the card that site's own list shows</td><td class="req">the page, via _extFetch()</td><td>the host's own fields</td><td><span class="chip c-good">U4</span></td></tr>
-                    <tr><td class="k">Brucebase date</td><td>brucebase…/&lt;year&gt;#&lt;ddmmyy&gt;</td><td>that show: date, venue, notes</td><td class="req">the year page, once per year</td><td>the year page at the show</td><td><span class="chip c-mid">after U0</span></td></tr>
+                    <tr><td class="k">Brucebase date</td><td>brucebase…/&lt;year&gt;#&lt;ddmmyy&gt;</td><td>that show: date, venue, setlist, notes</td><td class="req">the year page, once per year, 1 MB cap</td><td>the year page at the show</td><td><span class="chip c-good">U4</span></td></tr>
                     <tr><td class="k">Generic</td><td>anything else</td><td>title, description, image, site</td><td class="req">the page, HTML only, 512 KB cap</td><td>the whole page</td><td><span class="chip c-good">U1</span></td></tr>
                 </tbody>
             </table>
@@ -721,7 +721,7 @@ table.details td { padding: 2px 0; word-break: break-all; }
         <ol class="qs">
             <li><b>How long to keep an answer</b><p>A week (168 hours), adjustable in the settings.</p></li>
             <li><b>A 404 or 410</b><p>Kept for this page load only, in memory; never saved.</p></li>
-            <li><b>Discogs</b><p>Decided after U0. If built, an optional personal token raises its limit from 25 to 60 requests a minute; the token never goes into a config export.</p></li>
+            <li><b>Discogs</b><p>Built (U0 found its web pages behind Cloudflare, its API open). An optional personal token raises its limit from 25 to 60 requests a minute; the token never goes into a config export.</p></li>
             <li><b>Generic reader's size cap</b><p>512 KB.</p></li>
             <li><b>@connect</b><p>Keep * and list each reader host beside it.</p></li>
             <li><b>Foreign hosts</b><p>Every off-site link, under the same exclusions.</p></li>
@@ -865,6 +865,17 @@ table.details td { padding: 2px 0; word-break: break-all; }
                     <div class="rule"></div>
                     <div>No answer from the site (name not found, or a timeout). Nothing is kept; the next hover asks again.</div>
                     <div class="foot">failed now · ⟳ retry</div>
+                </div>
+            </div>
+            <div class="cardfig">
+                <div class="cap">Browser check · not dead</div>
+                <div class="liner">
+                    <div class="site"><span class="fav" style="--h: 45">a</span>www.allmusic.com <span class="st redir">checked by Cloudflare</span></div>
+                    <div class="ctx">MusicBrainz: <b>Allmusic</b> of this release</div>
+                    <div class="rule"></div>
+                    <div class="u">https://www.allmusic.com/album/mw0000650803</div>
+                    <div>The site answers scripts with a browser check ("Just a moment..."), so the card cannot read it. The link itself is fine: ↗ opens it in a tab.</div>
+                    <div class="foot">kept for this page load only · measured in U0 (X6) on discogs.com, allmusic and rateyourmusic</div>
                 </div>
             </div>
             <div class="cardfig">
