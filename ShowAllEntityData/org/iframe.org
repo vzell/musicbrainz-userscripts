@@ -805,9 +805,9 @@ final rendered page, in the h3 "URLs" sub-table, in the "URL" column
   =scripts/probe-ext-refusal.py=): =checked= is now any vendor's bot check
   told by its header (=_extBotCheck()=: Cloudflare, AWS WAF), whatever the
   status.
-- [X] U2: MusicBrainz URL entities, WIP.1 on =feature/popup-engine-urls=
-  (2026-10-08, on top of 9.99.1293; not merged, the user's browser check
-  first). The =url= kind (=_MB_KINDS=, =_MB_POP_PATH_RE=, one lookup with
+- [X] U2: MusicBrainz URL entities, 9.99.1294: built 2026-10-08 on
+  =feature/popup-engine-urls=, live-tested by the user and merged to =main=
+  the same day on top of 9.99.1293. The =url= kind (=_MB_KINDS=, =_MB_POP_PATH_RE=, one lookup with
   =_MB_POP_URL_INC=) gives the "[info]" link a card and a window; an external
   link's window gains "MusicBrainz knows this URL" (=_extMbQuery()=,
   =_extMbLoad()=), by the "[info]" MBID beside it, else by =?resource== with

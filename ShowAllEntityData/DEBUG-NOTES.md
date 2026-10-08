@@ -20706,3 +20706,7 @@ series' `schedule`), and the bootlegs list above.
 spec), the live spec 2/2 against musicbrainz.org (10:46:34Z–10:46:57Z; the
 review's url lookup by MBID and the Wikipedia link's `?resource=` 404, two
 Web Service requests in all). lint within baseline.
+
+**Merged** as 9.99.1294 on top of 9.99.1293, after the user's live check;
+no conflicts. Merged-tree gate `npm run test:full`: 1395 passed, 0 failed
+(7.8 min, 2026-10-08T11:03:01Z–11:10:51Z, host NB-3641, WSL2).
