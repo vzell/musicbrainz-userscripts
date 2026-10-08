@@ -1,0 +1,102 @@
+{
+ "relations": [
+  {
+   "attributes": [],
+   "source-credit": "",
+   "direction": "backward",
+   "type": "discography entry",
+   "attribute-values": {},
+   "attribute-ids": {},
+   "ended": false,
+   "target-type": "release_group",
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "5849de4a-78ae-4876-975d-2181107e70b7",
+   "release_group": {
+    "first-release-date": "1996",
+    "title": "1996‐03‐13: Cirkus, Stockholm, Sweden",
+    "id": "ccaead9e-ffd4-3ec5-aae4-2dce282ae2ba",
+    "secondary-types": [],
+    "disambiguation": "",
+    "primary-type-id": null,
+    "secondary-type-ids": [],
+    "primary-type": null
+   }
+  },
+  {
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "5849de4a-78ae-4876-975d-2181107e70b7",
+   "release_group": {
+    "secondary-type-ids": [],
+    "primary-type-id": null,
+    "primary-type": null,
+    "secondary-types": [],
+    "id": "fa9c43a7-2592-3336-a09b-1414b4b6ee68",
+    "disambiguation": "",
+    "first-release-date": "1996",
+    "title": "1996‐04‐19: ICC Berlin, Saal 1, Berlin, Germany"
+   },
+   "attribute-values": {},
+   "attribute-ids": {},
+   "ended": false,
+   "target-type": "release_group",
+   "direction": "backward",
+   "type": "discography entry",
+   "attributes": [],
+   "source-credit": ""
+  },
+  {
+   "attribute-ids": {},
+   "ended": false,
+   "target-type": "release_group",
+   "attribute-values": {},
+   "release_group": {
+    "title": "1996‐04‐20: Koningin Elisabethzaal, Antwerp, Belgium",
+    "first-release-date": "",
+    "disambiguation": "",
+    "secondary-types": [],
+    "id": "a4e9f388-931f-4a94-8e21-100570cc0608",
+    "secondary-type-ids": [],
+    "primary-type": null,
+    "primary-type-id": null
+   },
+   "end": null,
+   "target-credit": "",
+   "begin": null,
+   "type-id": "5849de4a-78ae-4876-975d-2181107e70b7",
+   "source-credit": "",
+   "attributes": [],
+   "type": "discography entry",
+   "direction": "backward"
+  },
+  {
+   "target-type": "release_group",
+   "attribute-ids": {},
+   "ended": false,
+   "attribute-values": {},
+   "release_group": {
+    "disambiguation": "",
+    "secondary-types": [],
+    "id": "f987c108-e5d8-4c25-af9a-7ef2b1821871",
+    "primary-type": null,
+    "secondary-type-ids": [],
+    "primary-type-id": null,
+    "title": "1996‐02‐21: Le Zénith de Paris, Paris, France",
+    "first-release-date": "1996"
+   },
+   "begin": null,
+   "type-id": "87d97dfc-3206-42fd-89d5-99593d5f1297",
+   "end": null,
+   "target-credit": "",
+   "source-credit": "",
+   "attributes": [],
+   "type": "official homepage",
+   "direction": "backward"
+  }
+ ],
+ "id": "8dd611e4-bdf2-4519-bdc0-63038d026a0f",
+ "resource": "https://www.springsteenlyrics.com/bootlegs.php?cmd=list&category=aud_live1995&page=2"
+}

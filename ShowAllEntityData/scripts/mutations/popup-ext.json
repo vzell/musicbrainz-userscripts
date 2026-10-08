@@ -466,5 +466,174 @@
         "spec": "tests/fixtures/popup-ext.spec.js",
         "grep": "a known host",
         "expect": "fail"
+    },
+    {
+        "name": "U2: the url kind is not a path the cards know",
+        "why": "The \"[info]\" link beside every URL relationship (/url/<mbid>) is a MusicBrainz card kind (U2, answer 3).",
+        "edits": [
+            {
+                "find": "|instrument|collection|url)\\/([0-9a-f]{8}-",
+                "replace": "|instrument|collection)\\/([0-9a-f]{8}-"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "named after its link while it loads",
+        "expect": "fail"
+    },
+    {
+        "name": "U2: an \"[info]\" card is named \"info\" while it loads",
+        "why": "The link's own text says nothing; the external link MusicBrainz writes just before it does (`_mbPopUrlNameOf()`).",
+        "edits": [
+            {
+                "find": "            name: a.getAttribute('data-mb-pop-name') || (k.nameOf ? k.nameOf(a) : '') || a.textContent.trim(),",
+                "replace": "            name: a.getAttribute('data-mb-pop-name') || a.textContent.trim(),"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "named after its link while it loads",
+        "expect": "fail"
+    },
+    {
+        "name": "U2: a url lookup's release group is read under the hyphenated key only",
+        "why": "A url lookup keys a release group target by its target type as written, release_group (ws2-pop-url-sl-bootlegs.json); read under release-group only, every release group drops out of the card.",
+        "edits": [
+            {
+                "find": "        return r[tt] || r[tt.replace(/_/g, '-')] || null;",
+                "replace": "        return r[tt.replace(/_/g, '-')] || null;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "grouped by relationship",
+        "expect": "fail"
+    },
+    {
+        "name": "U2: a release group's link keeps the target type's underscore",
+        "why": "The page of a release group is /release-group/<mbid>; /release_group/ is a 404.",
+        "edits": [
+            {
+                "find": "        return String(r['target-type'] || '').replace(/_/g, '-');",
+                "replace": "        return String(r['target-type'] || '');"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "grouped by relationship",
+        "expect": "fail"
+    },
+    {
+        "name": "U2: the URL card names every entity",
+        "why": "A URL can be linked by hundreds of entities (a label's site, a licence): the card names 3 per relationship and says how many more.",
+        "edits": [
+            {
+                "find": "    const _MB_POP_URL_CARD_NAMES = 3;",
+                "replace": "    const _MB_POP_URL_CARD_NAMES = 1000;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "the card names 3 per relationship",
+        "expect": "fail"
+    },
+    {
+        "name": "U2: the window's \"+ N more\" does not point at the URL's page",
+        "why": "Past 100 entities per relationship the window stops; MusicBrainz's page for the URL lists them all.",
+        "edits": [
+            {
+                "find": "                lines.push(id ? `<a href=\"/url/${_rgEsc(id)}\" target=\"_blank\" rel=\"noopener\">${_rgEsc(text)}</a>`",
+                "replace": "                lines.push(false ? `<a href=\"/url/${_rgEsc(id)}\" target=\"_blank\" rel=\"noopener\">${_rgEsc(text)}</a>`"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "the card names 3 per relationship",
+        "expect": "fail"
+    },
+    {
+        "name": "U2: \"MusicBrainz knows this URL\" is asked on hover",
+        "why": "One Web Service request per card would load the shared MusicBrainz gate from every pointer movement: the window only, on pin (org/iframe.org, \"The window\").",
+        "edits": [
+            {
+                "find": "        if (start) _extLoad(t, { repaint });\n        const st = _mbPop.get(t.key);",
+                "replace": "        if (start) _extLoad(t, { repaint });\n        const mq = _extMbQuery(t);\n        if (start && mq) _extMbLoad(t, mq, false, repaint);\n        const st = _mbPop.get(t.key);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "never on hover",
+        "expect": "fail"
+    },
+    {
+        "name": "U2: the window ignores the \"[info]\" MBID beside the link",
+        "why": "By the MBID the window shares the \"[info]\" card's request and cache key; by ?resource= it would ask again for what the page already names.",
+        "edits": [
+            {
+                "find": "        if (mbid) return _mbPopLookup({ type: 'url', id: mbid }, _MB_POP_URL_INC);",
+                "replace": "        if (false) return _mbPopLookup({ type: 'url', id: mbid }, _MB_POP_URL_INC);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "never on hover",
+        "expect": "fail"
+    },
+    {
+        "name": "U2: an \"[info]\" link is credited to the link before the one it follows",
+        "why": "MusicBrainz writes each URL's \"[info]\" right after it; a link with no \"[info]\" of its own stops at the next link, or it would describe another URL.",
+        "edits": [
+            {
+                "find": "            return pp && pp.type === 'url' ? pp.id : '';\n        }\n        return '';\n    }",
+                "replace": "            if (pp && pp.type === 'url') return pp.id;\n        }\n        return '';\n    }"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "no .\\[info\\]. of its own",
+        "expect": "fail"
+    },
+    {
+        "name": "U2: ?resource= sends the browser's normalised URL",
+        "why": "MusicBrainz matches a resource exactly, but for the host's case (U0 X7): a.href (\"http://www.example.org/\") is not the stored \"http://www.example.org\".",
+        "edits": [
+            {
+                "find": "            url: `/ws/2/url?resource=${encodeURIComponent(t.href)}&inc=${_MB_POP_URL_INC}&fmt=json`,",
+                "replace": "            url: `/ws/2/url?resource=${encodeURIComponent(t.url)}&inc=${_MB_POP_URL_INC}&fmt=json`,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "no .\\[info\\]. of its own",
+        "expect": "fail"
+    },
+    {
+        "name": "U2: a URL MusicBrainz does not know is shown as a failure",
+        "why": "A 404 is the answer \"not in MusicBrainz\" — on an annotation link a hint for an editor — not a request that failed.",
+        "edits": [
+            {
+                "find": "            return r.status === 404 ? { ok: true, data: { notFound: true } } : r;",
+                "replace": "            return r;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "no .\\[info\\]. of its own",
+        "expect": "fail"
+    },
+    {
+        "name": "U2: \"not in MusicBrainz\" is kept in IndexedDB",
+        "why": "An editor may add the URL any time: like a dead link, the answer is kept for this page load only (answer 2).",
+        "edits": [
+            {
+                "find": "        }, { force, repaint, wanted: _mbPopWanted(t), keep: (d) => !d.notFound });",
+                "replace": "        }, { force, repaint, wanted: _mbPopWanted(t), keep: null });"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "no .\\[info\\]. of its own",
+        "expect": "fail"
+    },
+    {
+        "name": "U2: the window's MusicBrainz request skips the shared gate",
+        "why": "Every MusicBrainz request of the engine goes through _relAwaitRateSlot(), the gate the Relationships column shares (answer 7): one request per 1.1 s together.",
+        "edits": [
+            {
+                "find": "            const r = await _rgWsGet(q.url, '_extMbLoad', wanted);",
+                "replace": "            const r = await _ws2GetJson(q.url, { tries: 1, beforeRetry: async () => {}, dbg: () => {}, label: '_extMbLoad' });"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "shared MusicBrainz gate",
+        "expect": "fail"
     }
 ]

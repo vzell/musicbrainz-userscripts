@@ -1528,7 +1528,8 @@ With ⚙️ Settings → 🔎 LINK PREVIEWS ON MUSICBRAINZ → *Preview linked e
 on hover* switched on (it is off until you do), the links in a table show what
 is behind them without opening a tab. So far: **releases**, **release
 groups**, **recordings**, **works**, **artists**, **labels**, **areas**,
-**instruments**, **events**, **places**, **series**, **collections**, and the
+**instruments**, **events**, **places**, **series**, **collections**, the
+**[info]** link beside every URL, and the
 codes: **ISRCs**, **ISWCs** and **disc IDs**, and **edits** and **editors**.
 A **Barcode** cell has a card too: the barcode's format and the releases
 carrying it. So does an entry of a column's **📊 dropdown** that names one
@@ -1556,6 +1557,11 @@ its address and coordinates; a series card its first items. An ISRC or ISWC
 card lists the recordings or works carrying the code; a disc ID card its
 tracks, length and releases; a collection card its type, size and editor
 (MusicBrainz shows only public collections; a private one's card says so).
+An **[info]** card (the link MusicBrainz writes after each URL of a
+relationship list or a **URLs** table) shows the URL's site and address and
+which entities link it, by relationship — *Setlistfm: Event: 2025‐05‐20: Co‐op
+Live, …* — naming three per relationship; its window lists up to 100 per
+relationship, then links MusicBrainz's own page for the URL.
 An edit card shows the edit's type, status, vote tally, editor, dates and
 first changes; its window every change, the entities it touches and its notes
 (MusicBrainz shows the editor and the notes only when you are logged in). An
@@ -1653,6 +1659,14 @@ status, and **Live page**: the page itself, without its scripts. **‹ ›** or
 **← →** step down the same column (the URL column of a URLs table), or through
 the other external links of the same list or annotation. **⟳** asks the site
 again; **↗** opens the page.
+
+On MusicBrainz the window also says **what MusicBrainz knows of this URL**:
+which entities link it, by relationship, with a link to MusicBrainz's page for
+the URL — or *Not in MusicBrainz*, which on an annotation link means no
+relationship carries it yet. That is one request to MusicBrainz, made by the
+window only, never by a hover, and through the same one-a-second turn as the
+MusicBrainz cards. It is shown whatever the site answered, so a dead link's
+window still says which entities point at it.
 
 **YouTube** links (a video, a playlist, a short) get a card from YouTube's own
 short description service instead of the page: the title, the channel and the

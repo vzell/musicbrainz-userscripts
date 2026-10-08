@@ -167,7 +167,8 @@ opens the window, as on the foreign hosts (kept, decided 2026-10-07).
   browse is not); series — one lookup with every item-kind relation (R1),
   items by `ordering-key` (the lookup is not in order) (9.99.1275); ISRC
   (`artist-credits`), ISWC, disc ID and collection — one lookup each, no extras
-  (9.99.1276). Browse keys: `pop:browse:<entity>?<query>` (`_mbPopBrowse()`).
+  (9.99.1276); url, the "[info]" link (U2, section "MusicBrainz URL entities"
+  below). Browse keys: `pop:browse:<entity>?<query>` (`_mbPopBrowse()`).
 - **Codes** are a second path pattern, `_MB_POP_CODE_RE` (`/isrc/`, `/iswc/`,
   `/cdtoc/`); `_MB_POP_CODE_TYPES` maps the page segment to the kind and Web
   Service path — a disc ID's page is `/cdtoc/<id>`, its lookup
@@ -748,6 +749,62 @@ each call in `window.__gmXhrLog` (url, anonymous, headers) and answers with
 `onreadystatechange` (readyState 2) first. **Filter the log**: the script's
 own changelog check (raw.githubusercontent.com) is in it too. Mutation
 list: `scripts/mutations/popup-ext.json`.
+
+## MusicBrainz URL entities (org/iframe.org "* generalize to URLs", U2)
+
+Two halves, one request and one cache key between them:
+
+- **The `url` kind: the "[info]" link.** MusicBrainz writes
+  `[<a href="/url/<mbid>">info</a>]` after every URL of a relationship list
+  and of the rendered "URLs" sub-table. `url` is in `_MB_POP_PATH_RE` and
+  `_MB_KINDS`, so under `sa_pop_mb` it is an entity card like any other
+  (table links; `#page` with `sa_pop_mb_page`). ONE lookup for card and
+  window, `url/<mbid>?inc=_MB_POP_URL_INC` — **every relationship include and
+  nothing else**: a url lookup answers 400 to `annotation`, `tags`, `genres`,
+  `aliases`, `ratings` (U0 X7). Card: host, address, "N relationships",
+  `_mbPopUrlRelRows()` with `_MB_POP_URL_CARD_NAMES` (3) per row and
+  "+ N more"; window: `_MB_POP_URL_WINDOW_NAMES` (100) per row, then
+  "+ N more" links `/url/<mbid>`. Live page `/url/<mbid>`. While it loads the
+  card is named after the external link just before it (`_mbPopUrlNameOf()`,
+  through the kind's optional `nameOf(a)`), not "info".
+- **Rows by type, direction and entity kind** (`_mbPopUrlRelRows()`), each
+  entity "Kind: name". **A release group is `release_group` twice**: the
+  target type AND the entity's key in a url lookup
+  (`ws2-pop-url-sl-bootlegs.json`, captured 2026-10-08), only its page is
+  `/release-group/`. `_mbPopRelKind()` gives the page segment,
+  `_mbPopRelEntity()` the entity (both spellings tried);
+  `_mbPopRelTargetHtml()` takes that entity as a third argument. The first
+  version read `r['release-group']`, as `_relWriteResult()`'s comment
+  records for another lookup, and every release group dropped out of the card
+  (found by the spec; pinned by a mutation).
+- **"MusicBrainz knows this URL"**, a section of an external link's WINDOW
+  (`_extExtracted()`), never of its card: one request per pinned link, not per
+  hover (pinned by a mutation that asks from the card). `_extMbQuery(t)`: by
+  the MBID of the "[info]" link right after the link on the same line
+  (`_extInfoMbid()`: the next `<a>` before a `<br>`; any other link stops it,
+  so an "[info]" never describes the link before the one it follows) — the
+  "[info]" card's own key, so either answer serves the other — else
+  `url?resource=<href ATTRIBUTE, verbatim>&inc=…` (exact match but for the
+  host's case, U0 X7: `a.href` would add a `/` to a bare origin), key
+  `pop:url:<href>:<inc>`. Null on a foreign host (U5). Loaded by
+  `_extMbLoad()` through `_mbLoad()` and `_rgWsGet()` — the ONE MusicBrainz
+  gate, never the site's — with `wanted()` the window still on that link.
+  **A 404 is an answer**, `{notFound: true}`: "Not in MusicBrainz", plus "it is
+  only in the annotation" on an annotation link; kept for this page load
+  only (`keep`), like a dead link (answer 2). The section shows in every state
+  of the site's answer (loading, failed, dead): a dead link's window still
+  says which entities point at it. It needs `sa_pop_ext` only, not `sa_pop_mb`
+  (a drill-down from its links does).
+- **`_MB_POP_PAGE_VERSION` 2**: `_mbParseEditPage()` collects an edit's
+  entities with `_MB_POP_PATH_RE`, which now matches `/url/`.
+
+**Tests.** The "MusicBrainz URL entities (U2)" block of
+`tests/fixtures/popup-ext.spec.js` and the second test of its mobile sibling
+(a tap on "[info]" opens the window). Web Service answers are captures
+(`scripts/capture-ws2-fixtures.py`: `url-setlist`, `url-setlist-resource`,
+`url-schedule`, `url-sl-bootlegs`); `openEvent()` answers `/ws/2/url`
+lookups from them, else 404, and logs each with its time. Mutations: the
+`U2:` entries of `scripts/mutations/popup-ext.json`.
 
 `python3 scripts/check-mutation-anchors.py` checks, without running a spec,
 that every `find` of every mutation list still matches once. Run it after

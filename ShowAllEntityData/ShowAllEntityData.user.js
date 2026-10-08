@@ -4264,7 +4264,8 @@
             type: 'checkbox',
             default: false,
             description: 'Off by default. Hold Ctrl over a link in a table (release group, release, recording, ' +
-                         'work, artist, label, event, place, …) for a card with what MusicBrainz knows about it; ' +
+                         'work, artist, label, event, place, …, and the "[info]" link beside a URL, which says which ' +
+                         'entities link that URL) for a card with what MusicBrainz knows about it; ' +
                          'Space pins it into a window with more, and with the entity\'s own page (Live page). ' +
                          '← → step down the same column. The data comes from the MusicBrainz Web Service, one ' +
                          'request a second, shared with the Relationships column. On a touch screen, tapping such ' +
@@ -4316,7 +4317,9 @@
             description: 'Off by default. Hold Ctrl over a link to another site — in a table, a relationship, the ' +
                          'annotation or the sidebar\'s external links — for a card with the page\'s title, ' +
                          'description and status (a dead or moved link shows as such); Space pins it into a window ' +
-                         'with the page itself (Live page). A preview sends a request to the linked site, without ' +
+                         'with the page itself (Live page) and, on MusicBrainz, which entities link that URL ' +
+                         '("MusicBrainz knows this URL": one Web Service request, made by the window only). ' +
+                         'A preview sends a request to the linked site, without ' +
                          'your cookies, which tells that site the page was looked at. The first time a site is ' +
                          'contacted Tampermonkey asks whether the script may, so a site never contacted before is ' +
                          'loaded only when you press Space, never by hovering.'
@@ -36588,7 +36591,7 @@
      * page parser's output changes, as `_DP_PARSER_VERSION` for the foreign
      * hosts, or users keep the old fields for `sa_pop_mb_ttl_hours`.
      */
-    const _MB_POP_PAGE_VERSION = 1;
+    const _MB_POP_PAGE_VERSION = 2;
 
     /**
      * Each entity card's Web Service answer, by cache key
@@ -36718,10 +36721,12 @@
     /**
      * The entity path a link may preview: the BARE page of an entity, so
      * `/cover-art` (the CAA/EAA icon column's anchor), `/edit`, `/merge` and
-     * the entity's tabs are not one.
+     * the entity's tabs are not one. `url` (U2) is the "[info]" link beside
+     * every URL relationship; `_mbParseEditPage()` reads this pattern too, so
+     * an edit's entities now include URLs (`_MB_POP_PAGE_VERSION` 2).
      * @type {RegExp}
      */
-    const _MB_POP_PATH_RE = /^\/(artist|release-group|release|recording|work|label|event|place|area|series|instrument|collection)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/;
+    const _MB_POP_PATH_RE = /^\/(artist|release-group|release|recording|work|label|event|place|area|series|instrument|collection|url)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/;
 
     /**
      * The page of a code a link may preview: an ISRC, an ISWC, a disc ID.
@@ -36897,7 +36902,8 @@
         const where = seg ? `/${seg}/${id}` : (k.path ? k.path(id) : `/${type}/${id}`);
         return {
             key: `${type}:${id}`, url: new URL(where, window.location.origin).href,
-            type, id, kind: k.title, wide: !!k.wide, name: a.getAttribute('data-mb-pop-name') || a.textContent.trim(),
+            type, id, kind: k.title, wide: !!k.wide,
+            name: a.getAttribute('data-mb-pop-name') || (k.nameOf ? k.nameOf(a) : '') || a.textContent.trim(),
             col: table ? _resolveColHeaderName(table, td.cellIndex) : '',
         };
     }
@@ -37237,10 +37243,13 @@
      *
      * @param {Object} r - A relation of the Web Service.
      * @param {string} type - Its target type: `artist`, `label`, `place`, `work`, …
+     *   — the page segment (`release-group`).
+     * @param {?Object} [entity] - The target, when not `r[type]` (a url
+     *   lookup keys a release group `release_group`: `_mbPopRelEntity()`).
      * @returns {string}
      */
-    function _mbPopRelTargetHtml(r, type) {
-        const e = r[type] || {};
+    function _mbPopRelTargetHtml(r, type, entity = null) {
+        const e = entity || r[type] || {};
         const name = _rgEsc(e.name || e.title || '');
         const link = e.id ? `<a href="/${type}/${_rgEsc(e.id)}" target="_blank" rel="noopener">${name}</a>` : name;
         const notes = [...(r.attributes || []), r['target-credit'] && r['target-credit'] !== (e.name || e.title) ? `as ${r['target-credit']}` : '']
@@ -37455,6 +37464,146 @@
         'parts|backward': 'Part of',
         'parts|forward': 'Parts',
     };
+
+    /**
+     * The inc set of every URL lookup: every relationship include and
+     * nothing else, since a url lookup answers 400 to `annotation`, `tags`,
+     * `genres`, `aliases` and `ratings` (scripts/probe-mb-url-entity.py,
+     * org/iframe.org U0 X7). One string for the "[info]" card and an
+     * external window's "MusicBrainz knows this URL", so the two share one
+     * cache key.
+     * @type {string}
+     */
+    const _MB_POP_URL_INC = 'area-rels+artist-rels+event-rels+instrument-rels+label-rels+place-rels+recording-rels' +
+        '+release-rels+release-group-rels+series-rels+url-rels+work-rels';
+
+    /** How many entities a URL card names per relationship before "+ N more". */
+    const _MB_POP_URL_CARD_NAMES = 3;
+
+    /** How many entities a URL window lists per relationship before pointing at the URL's own page. */
+    const _MB_POP_URL_WINDOW_NAMES = 100;
+
+    /**
+     * A relation's target kind as a page segment: a release group's target
+     * type is `release_group`, its page `/release-group/`.
+     *
+     * @param {Object} r - A relation of the Web Service.
+     * @returns {string}
+     */
+    function _mbPopRelKind(r) {
+        return String(r['target-type'] || '').replace(/_/g, '-');
+    }
+
+    /**
+     * A relation's target entity. A url lookup keys it by the target type
+     * as written, `release_group` included (ws2-pop-url-sl-bootlegs.json,
+     * captured 2026-10-08) — not `release-group`, which `_relWriteResult()`'s
+     * comment records for another lookup; both are tried.
+     *
+     * @param {Object} r
+     * @returns {?Object}
+     */
+    function _mbPopRelEntity(r) {
+        const tt = String(r['target-type'] || '');
+        return r[tt] || r[tt.replace(/_/g, '-')] || null;
+    }
+
+    /**
+     * Which entities link a URL, as label/value rows for `_mbPopKvHtml()`:
+     * one row per relationship type, direction and entity kind, in the order
+     * MusicBrainz lists them, named by the type ("Setlistfm", "Discography
+     * entry"); each entity on a line of its own with its kind ("Event:
+     * …"), at most `max` and "+ N more" (a link to the URL's page when
+     * `id` is given).
+     *
+     * @param {?Array<Object>} rels - The URL's `relations`.
+     * @param {number} max
+     * @param {string} [id] - The URL's MBID, for the "+ N more" link.
+     * @returns {Array<Array<string>>}
+     */
+    function _mbPopUrlRelRows(rels, max, id = '') {
+        const by = new Map();
+        (rels || []).forEach(r => {
+            const kind = _mbPopRelKind(r);
+            if (!kind || !_mbPopRelEntity(r)) return;
+            const k = `${r.type}|${r.direction || 'forward'}|${kind}`;
+            if (!by.has(k)) by.set(k, []);
+            by.get(k).push(r);
+        });
+        return Array.from(by).map(([k, list]) => {
+            const [type, , kind] = k.split('|');
+            const kt = Object.prototype.hasOwnProperty.call(_MB_KINDS, kind) ? _MB_KINDS[kind].title : kind;
+            const lines = list.slice(0, max).map(r => `<span class="mb-rg-dim">${_rgEsc(kt)}:</span> ` + (kind === 'url'
+                ? `<a href="${_rgEsc(r.url.resource)}" target="_blank" rel="noopener noreferrer">${_rgEsc(r.url.resource)}</a>`
+                : _mbPopRelTargetHtml(r, kind, _mbPopRelEntity(r))));
+            const more = list.length - max;
+            if (more > 0) {
+                const text = `+ ${more} more`;
+                lines.push(id ? `<a href="/url/${_rgEsc(id)}" target="_blank" rel="noopener">${_rgEsc(text)}</a>`
+                    : `<span class="mb-rg-dim">${_rgEsc(text)}</span>`);
+            }
+            return [type.charAt(0).toUpperCase() + type.slice(1), lines.join('<br>')];
+        });
+    }
+
+    /**
+     * A URL's host for a title ("www.setlist.fm"), the whole address when it
+     * does not parse.
+     *
+     * @param {string} resource
+     * @returns {string}
+     */
+    function _mbPopUrlHost(resource) {
+        try {
+            return new URL(resource).hostname;
+        } catch (_) {
+            return resource || '';
+        }
+    }
+
+    /**
+     * The name of an "[info]" link's card while it loads: the external link
+     * it belongs to, which MusicBrainz writes just before it on the same
+     * line (`<a href="http…">…</a> [<a href="/url/<mbid>">info</a>]`); ''
+     * when there is none, so the link's own text is used.
+     *
+     * @param {Element} a - The "[info]" link.
+     * @returns {string}
+     */
+    function _mbPopUrlNameOf(a) {
+        for (let el = a.previousElementSibling; el && el.tagName !== 'BR'; el = el.previousElementSibling) {
+            if (el.tagName !== 'A') continue;
+            const href = el.getAttribute('href') || '';
+            return /^https?:\/\//i.test(href) ? href : '';
+        }
+        return '';
+    }
+
+    /**
+     * The MBID of the "[info]" link MusicBrainz writes right after an
+     * external link on the same line (a relationship list, the rendered
+     * "URLs" sub-table), '' when the next link on that line is not one (an
+     * annotation, the sidebar, a cell that lists several URLs and this one
+     * has none).
+     *
+     * @param {?Element} a - The external link.
+     * @returns {string}
+     */
+    function _extInfoMbid(a) {
+        if (!a) return '';
+        for (let el = a.nextElementSibling; el && el.tagName !== 'BR'; el = el.nextElementSibling) {
+            if (el.tagName !== 'A') continue;
+            let u;
+            try {
+                u = new URL(el.getAttribute('href') || '', window.location.origin);
+            } catch (_) {
+                return '';
+            }
+            const pp = u.origin === window.location.origin ? _mbPopParsePath(u.pathname) : null;
+            return pp && pp.type === 'url' ? pp.id : '';
+        }
+        return '';
+    }
 
     /** The primary types an artist window counts release groups of, with their names. */
     const _MB_POP_RG_TYPES = [['album', 'Album'], ['single', 'Single'], ['ep', 'EP'], ['broadcast', 'Broadcast'], ['other', 'Other']];
@@ -37741,7 +37890,9 @@
      * The kinds the MusicBrainz entity cards know, by URL path segment: the
      * window's title (`title`), a wider card (`wide`), and how the card and
      * the window are built (`card`, `extracted`, optional `onAreaClick`), as
-     * the popup engine's sources build theirs. Requests per kind follow
+     * the popup engine's sources build theirs; an optional `nameOf(a)` names
+     * a link's loading card when its own text does not (an "[info]" link).
+     * Requests per kind follow
      * org/iframe.org Phase 0 (R1–R4); each inc set is valid for its lookup
      * per https://musicbrainz.org/doc/MusicBrainz_API (checked 2026-10-07).
      * @type {Object<string, object>}
@@ -38351,6 +38502,42 @@
                         ['Holds', _rgEsc(typeof n === 'number' ? `${_mbPopNum(n)} ${d['entity-type']}${n === 1 ? '' : 's'}` : d['entity-type'] || '')],
                         ['Editor', d.editor ? `<a href="/user/${encodeURIComponent(d.editor)}" target="_blank" rel="noopener">${_rgEsc(d.editor)}</a>` : ''],
                     ]) + '</div></div>';
+            },
+        })),
+        // U2 (org/iframe.org "* generalize to URLs"): the "[info]" link
+        // beside every URL relationship. One lookup with every relationship
+        // include (`_MB_POP_URL_INC`, 655 bytes for the event's Brucebase
+        // review in U0 X7) for card and window alike: the URL and which
+        // entities link it. An external link's window asks the same request
+        // for its "MusicBrainz knows this URL" (`_extMbQuery()`); its answer
+        // may be `{notFound: true}` (a 404 there), shown here too.
+        url: Object.assign({ title: 'URL', wide: true, nameOf: _mbPopUrlNameOf }, _mbPopLookupKind({
+            cardInc: _MB_POP_URL_INC,
+            cardHtml(d, t) {
+                if (d.notFound) {
+                    return `<div class="mb-tt-title">${_rgEsc(t.name)}</div><div class="mb-tt-rule"></div>` +
+                        '<div class="mb-tt-comment">Not in MusicBrainz (any more): it may have been merged or removed.</div>';
+                }
+                const n = (d.relations || []).length;
+                return `<div class="mb-tt-title">${_rgEsc(_mbPopUrlHost(d.resource))}</div>` +
+                    `<div class="mb-ext-url">${_rgEsc(d.resource)}</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([`${n} relationship${n === 1 ? '' : 's'}`])}</div>` +
+                    '<div class="mb-tt-rule"></div>' + (_mbPopKvHtml(_mbPopUrlRelRows(d.relations, _MB_POP_URL_CARD_NAMES)) ||
+                    '<div class="mb-tt-comment">No entity links it.</div>');
+            },
+            windowHtml(d, t) {
+                if (d.notFound) {
+                    return `<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-xtitle">${_rgEsc(t.name)}</div>` +
+                        '<div class="mb-dp-xsub">Not in MusicBrainz (any more): it may have been merged or removed.</div></div></div>';
+                }
+                const n = (d.relations || []).length;
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(_mbPopUrlHost(d.resource))}</div>` +
+                    `<div class="mb-ext-url"><a href="${_rgEsc(d.resource)}" target="_blank" rel="noopener noreferrer">${_rgEsc(d.resource)}</a></div>` +
+                    `<div class="mb-rg-pills">${_mbPopPillsHtml([`${n} relationship${n === 1 ? '' : 's'}`])}</div>` +
+                    '<h4>Facts</h4>' + _mbPopKvHtml([['MBID', _rgEsc(d.id)]]);
+                const right = `<h4>Linked from · ${n}</h4>` + (_mbPopKvHtml(_mbPopUrlRelRows(d.relations, _MB_POP_URL_WINDOW_NAMES, d.id)) ||
+                    '<div class="mb-dp-xsub">No entity links it.</div>');
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
         })),
         // Phase 3: read from the page itself, the Web Service has neither.
@@ -39560,11 +39747,78 @@
     }
 
     /**
+     * The request behind an external window's "MusicBrainz knows this URL"
+     * (U2), or null on a foreign host: the URL entity by the MBID of the
+     * "[info]" link beside the link — the "[info]" card's own request and
+     * cache key, so either one's answer serves the other — else by
+     * `?resource=` with the link's `href` ATTRIBUTE verbatim (MusicBrainz
+     * matches it exactly, but for the host's case: U0 X7). Every
+     * relationship include either way (`_MB_POP_URL_INC`).
+     *
+     * @param {object} t - A target of `_extSource()`.
+     * @returns {?{key: string, url: string}}
+     */
+    function _extMbQuery(t) {
+        if (_foreignHost) return null;
+        const mbid = _extInfoMbid(t.el);
+        if (mbid) return _mbPopLookup({ type: 'url', id: mbid }, _MB_POP_URL_INC);
+        return {
+            key: `pop:url:${t.href}:${_MB_POP_URL_INC}`,
+            url: `/ws/2/url?resource=${encodeURIComponent(t.href)}&inc=${_MB_POP_URL_INC}&fmt=json`,
+        };
+    }
+
+    /**
+     * Loads "MusicBrainz knows this URL" through `_mbLoad()` and
+     * `_rgWsGet()` — the one MusicBrainz rate gate, never the site's — from
+     * the window only (one request per pinned link, never per hover). A 404
+     * is an answer, "not in MusicBrainz", kept in memory for this page load
+     * only (as a dead link, answer 2): an editor may add the URL any time.
+     *
+     * @param {object} t
+     * @param {{key: string, url: string}} q - `_extMbQuery()`.
+     * @param {boolean} force - ⟳.
+     * @param {function(): void} repaint
+     * @returns {void}
+     */
+    function _extMbLoad(t, q, force, repaint) {
+        _mbLoad(q.key, async (wanted) => {
+            const r = await _rgWsGet(q.url, '_extMbLoad', wanted);
+            return r.status === 404 ? { ok: true, data: { notFound: true } } : r;
+        }, { force, repaint, wanted: _mbPopWanted(t), keep: (d) => !d.notFound });
+    }
+
+    /**
+     * The window's "MusicBrainz knows this URL" section for its CURRENT
+     * state: loading, the failure (with "Try again", which is ⟳), "not in
+     * MusicBrainz" (which on an annotation link is a hint for an editor), or
+     * the entities that link the URL and a link to the URL's own page.
+     *
+     * @param {object} t
+     * @param {{key: string, url: string}} q - `_extMbQuery()`.
+     * @returns {string}
+     */
+    function _extMbSectionHtml(t, q) {
+        return _mbPopSectionHtml('MusicBrainz knows this URL', _mbPop.get(q.key), (d) => {
+            if (d.notFound) {
+                const where = _extContext(t.el).where;
+                return '<div class="mb-dp-xsub mb-ext-mb-none">Not in MusicBrainz: no entity links this URL' +
+                    `${where === 'in the annotation' ? ' — it is only in the annotation' : ''}.</div>`;
+            }
+            return (_mbPopKvHtml(_mbPopUrlRelRows(d.relations, _MB_POP_URL_WINDOW_NAMES, d.id)) ||
+                '<div class="mb-dp-xsub">A URL of MusicBrainz, but no entity links it now.</div>') +
+                `<div class="mb-dp-xsub"><a href="/url/${_rgEsc(d.id)}" target="_blank" rel="noopener">MusicBrainz's page for this URL</a></div>`;
+        });
+    }
+
+    /**
      * The window's Extracted view of an external link: the page's title,
      * site name, image and description (or what its state means) on the
      * left; the link with its status and final URL, what this page says
-     * about it, and the page's own facts on the right. The window may make
-     * the FIRST request to a host (Space, a tap, an arrow key: answer 7).
+     * about it, what MusicBrainz knows about the URL (U2: on MusicBrainz,
+     * shown whatever the site answered) and the page's own facts on the
+     * right. The window may make the FIRST request to a host (Space, a tap,
+     * an arrow key: answer 7).
      *
      * @param {object} t
      * @param {boolean} start
@@ -39574,15 +39828,18 @@
      */
     function _extExtracted(t, start, force, repaint) {
         if (start) _extLoad(t, { force, repaint });
+        const mbq = _extMbQuery(t);
+        if (start && mbq) _extMbLoad(t, mbq, force, repaint);
+        const mbSec = mbq ? _extMbSectionHtml(t, mbq) : '';
         const st = _mbPop.get(t.key);
         const title = `<div class="mb-dp-xtitle">${_rgEsc(t.name)}</div>`;
         if (st && st.status === 'failed') {
             return `<div class="mb-dp-x"><div class="mb-dp-col">${title}<div class="mb-dp-warn">Could not load the page: ` +
-                `${_rgEsc(st.detail)}.</div><p><button type="button" class="mb-dp-retry">⟳ Try again</button></p></div></div>`;
+                `${_rgEsc(st.detail)}.</div><p><button type="button" class="mb-dp-retry">⟳ Try again</button></p>${mbSec}</div></div>`;
         }
         if (!st || st.status !== 'done' || !st.data) {
             return `<div class="mb-dp-x"><div class="mb-dp-col">${title}<div class="mb-dp-xsub"><span class="mb-dp-spin">◌</span> ` +
-                'Loading…</div></div></div>';
+                `Loading…</div>${mbSec}</div></div>`;
         }
         const rec = st.data;
         _extIconEnsure(t, rec, repaint);
@@ -39603,6 +39860,7 @@
             (rec.toHttps ? '<div class="mb-ext-url mb-ext-https">→ https (the same page)</div>' : '')];
         const ctx = _extContextHtml(t);
         if (ctx) right.push(`<h4>On this page</h4><div>${ctx}</div>`);
+        if (mbSec) right.push(mbSec);
         const facts = [
             ['Type', rec.type], ['Channel', rec.author], ['Language', rec.lang], ['Published', rec.published],
             ['Canonical URL', rec.canonical && rec.canonical !== rec.finalUrl ? rec.canonical : ''],
@@ -39611,7 +39869,7 @@
         if (facts.length) right.push('<h4>The page says</h4>' + _dpFieldsHtml(facts));
         const age = rec.state === 'ok' ? _dpAgeText({ cached: st.cached, at: st.at }) : 'kept until the page is reloaded';
         return `<div class="mb-dp-x"><div class="mb-dp-col">${left.join('')}</div><div class="mb-dp-col">${right.join('')}</div></div>` +
-            `<div class="mb-dp-xfoot">${_rgEsc(age)} · ⟳ asks the site again</div>`;
+            `<div class="mb-dp-xfoot">${_rgEsc(age)} · ⟳ asks the site${mbq ? ' and MusicBrainz' : ''} again</div>`;
     }
 
     /**

@@ -26,6 +26,10 @@ UA = 'ShowAllEntityData-popup-engine-fixtures/1.0 ( info@volkerzell.de )'
 WS = 'https://musicbrainz.org/ws/2'
 SPACING_S = 1.1
 OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tests', 'fixtures')
+# The userscript's `_MB_POP_URL_INC`: every relationship include, the order of
+# scripts/probe-mb-url-entity.py's ALL_RELS.
+URL_RELS = ('area-rels+artist-rels+event-rels+instrument-rels+label-rels+place-rels+recording-rels'
+            '+release-rels+release-group-rels+series-rels+url-rels+work-rels')
 
 # name -> Web Service path (without fmt), the userscript's own request.
 FIXTURES = {
@@ -81,6 +85,22 @@ FIXTURES = {
     # zero dropped) answered the same 6 releases, so the index ignores
     # leading zeros and the cell's own digits are enough.
     'barcode-074643190329': 'release?query=barcode:074643190329&limit=25',
+    # U2 (org/iframe.org, "* generalize to URLs"): URL entities of
+    # tests/fixtures/event-overview.html's "URLs" sub-table, with every
+    # relationship include and nothing else (a url lookup accepts no other
+    # include: scripts/probe-mb-url-entity.py, U0 X7). The setlist.fm link by
+    # its "[info]" MBID and by `?resource=` (the window's way when a link has
+    # no "[info]" beside it), and the tour schedule image, which several
+    # events link.
+    'url-setlist': 'url/2e9887a2-ec25-4423-9f10-eee13f180512?inc=' + URL_RELS,
+    'url-setlist-resource': 'url?resource=https%3A%2F%2Fwww.setlist.fm%2Fsetlist%2Fbruce-springsteen%2F2025%2F'
+                            'co-op-live-manchester-england-43535b97.html&inc=' + URL_RELS,
+    'url-schedule': 'url/98e760d5-a79b-4778-b425-b30b46c8a0d2?inc=' + URL_RELS,
+    # A springsteenlyrics.com list page that release groups link (from
+    # ws2-rg-lookup.json): its relations name the target type
+    # "release_group" and key the entity "release_group" too, while the
+    # page is /release-group/.
+    'url-sl-bootlegs': 'url/8dd611e4-bdf2-4519-bdc0-63038d026a0f?inc=' + URL_RELS,
 }
 
 _last = [0.0]

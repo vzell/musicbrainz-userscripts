@@ -16,7 +16,9 @@
 // passthrough (tests/support/realNetworkGmXhr.js), which sends the request
 // from Node, without the browser's cookies, as `anonymous: true` asks. Both
 // hosts are seeded as known (sa_pop_ext_hosts): first contact is the fixture
-// spec's to pin, and a hover is what is tested here.
+// spec's to pin, and a hover is what is tested here. U2 adds a second test:
+// the review's "[info]" card and "MusicBrainz knows this URL" (two Web
+// Service requests, through the script's MusicBrainz gate).
 
 const { test, expect } = require('../support/test');
 const { loadUserscriptPageWithRealNetwork } = require('../support/realNetworkGmXhr');
@@ -25,6 +27,8 @@ const { waitForRenderComplete } = require('../support/browser');
 
 const EVENT = 'https://musicbrainz.org/event/47b84024-bd3b-4e36-80e1-b051e12ede2f';
 const REVIEW = 'http://brucebase.wikidot.com/2025#261025';
+// The review's URL entity, its "[info]" link (U0 X7).
+const REVIEW_URL_ID = '7c36bf3a-15d4-4b1f-afaa-40847960e3e0';
 const WIKI = 'https://en.wikipedia.org/wiki/TeachRock';
 
 /**
@@ -117,6 +121,71 @@ test.describe('external link previews on the real site', { tag: '@extended' }, (
         const dialog = page.locator('#mb-dp-dialog');
         await expect(dialog.locator(':scope > div > span').first()).toHaveText('YouTube');
         await expect(dialog.getByRole('button', { name: 'Live page' })).toBeHidden();
+        expect(errors).toEqual([]);
+    });
+
+    // U2: two Web Service requests in all (the url lookup by the "[info]"
+    // MBID, which the review's window then reuses, and one ?resource= lookup)
+    // plus the two external pages.
+    test('U2: the review\'s "[info]" card, its window\'s "MusicBrainz knows this URL", and the annotation\'s Wikipedia link not in MusicBrainz', async ({ page }) => {
+        const errors = collectPageErrors(page);
+        const ws2 = [];
+        page.on('request', (r) => { if (r.url().includes('/ws/2/url')) ws2.push(r.url()); });
+        await loadUserscriptPageWithRealNetwork(page, {
+            url: EVENT, testMode: true,
+            settingsOverride: {
+                sa_pop_ext: true,
+                sa_pop_mb: true,
+                sa_pop_ext_hosts: ['brucebase.wikidot.com', 'en.wikipedia.org'],
+                sa_dp_hover_without_ctrl: true,
+                sa_rich_tooltip_delay_ms: 0,
+                sa_enable_event_overview: true,
+            },
+        });
+        await page.click('button[data-label="Show all Relationships for Event"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        await page.evaluate((u) => {
+            const a = document.querySelector(`table.tbl a[href="${u}"]`);
+            const t = a && a.closest('table.tbl');
+            if (!t || t.getClientRects().length) return;
+            let h = t.previousElementSibling;
+            while (h && !h.matches('h3.mb-toggle-h3')) h = h.previousElementSibling;
+            if (h) h.click();
+        }, REVIEW);
+
+        // The "[info]" link beside the review: MusicBrainz's URL entity.
+        const info = page.locator(`table.tbl a[href="/url/${REVIEW_URL_ID}"]`).first();
+        await expect(info).toBeVisible();
+        const card = await loadedCard(page, info);
+        await expect(card.locator('.mb-tt-title')).toHaveText('brucebase.wikidot.com');
+        await expect(card.locator('.mb-ext-url')).toHaveText(REVIEW);
+        await expect(card.locator('dt')).toContainText(['Review']);
+        await expect(card.locator('dd a[href="/event/47b84024-bd3b-4e36-80e1-b051e12ede2f"]')).toContainText('2025‐10‐26: The Stone Pony');
+
+        // The review's own window: the same answer, no second request.
+        const dialog = page.locator('#mb-dp-dialog');
+        const review = page.locator(`table.tbl a[href="${REVIEW}"]`).first();
+        await page.mouse.move(0, 0);
+        await loadedCard(page, review);
+        await page.keyboard.press('Space');
+        await expect(dialog.locator('h4', { hasText: 'MusicBrainz knows this URL' })).toBeVisible();
+        await expect(dialog.locator('.mb-dp-area a[href="/event/47b84024-bd3b-4e36-80e1-b051e12ede2f"]')).toBeVisible({ timeout: 15000 });
+        await page.keyboard.press('Escape');
+        await expect(dialog).toBeHidden();
+
+        // The annotation's Wikipedia link is no URL entity (U0 X7).
+        const wiki = page.locator(`.annotation a[href="${WIKI}"]`).first();
+        if (!await wiki.isVisible()) await page.locator('.annotation h2').first().click();
+        await expect(wiki).toBeVisible();
+        await page.mouse.move(0, 0);
+        await loadedCard(page, wiki);
+        await page.keyboard.press('Space');
+        await expect(dialog.locator('.mb-ext-mb-none')).toHaveText('Not in MusicBrainz: no entity links this URL — it is only in the annotation.',
+            { timeout: 15000 });
+        expect(ws2.map(u => u.replace(/inc=[^&]*&/, '')), 'one lookup by MBID, one by resource').toEqual([
+            `https://musicbrainz.org/ws/2/url/${REVIEW_URL_ID}?fmt=json`,
+            `https://musicbrainz.org/ws/2/url?resource=${encodeURIComponent(WIKI)}&fmt=json`,
+        ]);
         expect(errors).toEqual([]);
     });
 });

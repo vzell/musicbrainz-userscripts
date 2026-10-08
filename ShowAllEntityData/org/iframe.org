@@ -805,7 +805,21 @@ final rendered page, in the h3 "URLs" sub-table, in the "URL" column
   =scripts/probe-ext-refusal.py=): =checked= is now any vendor's bot check
   told by its header (=_extBotCheck()=: Cloudflare, AWS WAF), whatever the
   status.
-- [ ] U2: MusicBrainz URL entities.
+- [X] U2: MusicBrainz URL entities, WIP.1 on =feature/popup-engine-urls=
+  (2026-10-08, on top of 9.99.1293; not merged, the user's browser check
+  first). The =url= kind (=_MB_KINDS=, =_MB_POP_PATH_RE=, one lookup with
+  =_MB_POP_URL_INC=) gives the "[info]" link a card and a window; an external
+  link's window gains "MusicBrainz knows this URL" (=_extMbQuery()=,
+  =_extMbLoad()=), by the "[info]" MBID beside it, else by =?resource== with
+  the =href= attribute verbatim, a 404 as "not in MusicBrainz" for this page
+  load only. Rules as built: [[file:../docs/claude/detail-pages.md]],
+  "MusicBrainz URL entities". Learned on the way: a url lookup keys a
+  release group target =release_group= (like its target type), not
+  =release-group= as =_relWriteResult()='s comment says of another lookup;
+  the first version lost every release group (found by the spec,
+  =ws2-pop-url-sl-bootlegs.json=). Not done in U2: a card for an external
+  link inside the "[info]" window (drill-down to other sites is Phase 5's
+  widening, "The window").
 - [ ] U3: Wikipedia, Wikidata, Discogs (U0: built). YouTube moved into U1
   (answer 8, 2026-10-08).
 - [ ] U4: the Springsteen parsers across hosts, the Brucebase date anchor.

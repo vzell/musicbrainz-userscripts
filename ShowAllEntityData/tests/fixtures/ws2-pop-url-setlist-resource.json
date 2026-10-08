@@ -1,0 +1,35 @@
+{
+ "id": "2e9887a2-ec25-4423-9f10-eee13f180512",
+ "resource": "https://www.setlist.fm/setlist/bruce-springsteen/2025/co-op-live-manchester-england-43535b97.html",
+ "relations": [
+  {
+   "end": null,
+   "attribute-values": {},
+   "attribute-ids": {},
+   "attributes": [],
+   "ended": false,
+   "begin": null,
+   "direction": "backward",
+   "source-credit": "",
+   "target-credit": "",
+   "type": "setlistfm",
+   "target-type": "event",
+   "event": {
+    "life-span": {
+     "begin": "2025-05-20",
+     "ended": true,
+     "end": "2025-05-20"
+    },
+    "id": "3f2ca30a-7de4-4964-ad30-48376535fec8",
+    "cancelled": false,
+    "disambiguation": "",
+    "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n# &\r\n@ [d6652e7b-33fe-49ef-8336-4c863b4f996f|The E Street Band]\r\n# with\r\n@ [11d2fcfe-669d-4596-8921-e07dbdae311f|Roy Bittan]\r\n@ [a1ef6bc8-2644-4b6d-aa21-27b630acf751|Nils Lofgren]\r\n@ [42b42dd1-9263-4eae-91cd-4014a5b5d39f|Garry Tallent]\r\n@ [de53495e-ad5a-4c30-82ab-05e7e3ec7b4d|Steven Van Zandt]\r\n@ [2566ca73-1dfd-49e7-ab20-dfa5697b360e|Max Weinberg]\r\n# and\r\n@ [4382fa5d-03de-4ebf-baf3-df6a1d1922f0|Charles Giordano]\r\n@ [065af1a2-2fa9-4864-852e-08c00c9c67d8|Soozie Tyrell]\r\n# and\r\n@ [61c0a8b8-e3f1-4e7f-9f42-7b21a7bf9e4e|The E Street Horns]\r\n# with\r\n@ [5c64226c-d673-4d23-a612-2bfb704edd66|Jake Clemons]\r\n@ [092ae7a4-0ea2-407a-a200-d1ee09383537|Barry Danielian]\r\n@ [6a3394ba-6888-4dd0-93f3-06c1e35749d8|Ed Manion]\r\n@ [ef011392-7eee-4090-ad83-660c48e9b1c1|Ozzie Melendez]\r\n@ [028fd996-fe8f-41b6-a6ed-1cb4b06a23d2|Curt Ramm]\r\n# and\r\n@ [ad2232c5-2b11-4699-80c2-e5f83c56c8e4|The E Street Choir]\r\n# with\r\n@ [b0ab3979-4165-4e3e-b125-2d77f14080bd|Anthony Almonte]\r\n@ [1ca07311-cbfe-4ae8-a518-aa76c8579802|Ada Dyer]\r\n@ [7b18698b-33fb-4865-b158-e74f3457eeb7|Curtis King]\r\n@ [59d77428-bf32-4c9f-bc4c-7c03ec882c59|Lisa Lowell]\r\n@ [e67ac344-ce0a-4a27-b4ad-9502dab57a82|Michelle Moore]\r\n\r\n# Soundcheck\r\n* [2d09387a-a652-36f1-a910-16183bf81407|Something in the Night]\r\n* [5282969b-4c49-3013-aa05-8af5c4be6ae9|No Surrender]\r\n* [efa14865-61d7-33b6-b597-fdef24f39943|Reason to Believe]\r\n\r\n# Concert\r\n# Scheduled: 19:30 | Local Start Time 19:40 / End Time 22:29\r\n* [5282969b-4c49-3013-aa05-8af5c4be6ae9|No Surrender]\r\n* [9878138e-7ca7-4bb3-be1f-3dfeed51d4f5|Land of Hope and Dreams] / [44b41cfa-2f97-37c5-a6aa-527c99d44d46|People Get Ready]\r\n* [028e665e-f76c-43d3-9e6d-25108b87dd97|Death to My Hometown]\r\n* [3ceaab7d-52b4-3957-93e6-dfb7459803df|Seeds]\r\n* [2d09387a-a652-36f1-a910-16183bf81407|Something in the Night]\r\n* [79772b1c-171d-47e5-9afd-b54a9cbd878f|Rainmaker]\r\n* [13411c83-ddd8-31ca-b968-79e4cf6db8fb|The Promised Land]\r\n* [efa14865-61d7-33b6-b597-fdef24f39943|Reason to Believe]\r\n* [fe0f14e5-de68-3aa6-bf48-80c4cbe2a1f7|The River]\r\n* [f4a77656-8cdb-365c-aef9-034c098e249f|Youngstown]\r\n* [9e21f814-f5a2-350d-91ce-a23ce921f5d5|Murder Incorporated]\r\n* [d5d5d83e-2841-4210-9be1-252341babc7e|Long Walk Home]\r\n* [54be9f02-1cc7-4e69-ae5d-fdb1f23e6a1e|House of a Thousand Guitars]\r\n* [abc923d4-6aa1-3bf2-9cbc-2307882e4bb3|My City of Ruins]\r\n* [2e9dd9af-98a2-3a19-a778-58981f2824e6|Because the Night]\r\n* [131f270d-67d8-4f92-8ad8-18c3147cf1ae|Ghosts]\r\n* [c29fbe7c-9cfa-426e-9832-314cc14990f1|Wrecking Ball]\r\n* [4b4ab9ab-0bb9-43bb-ae09-4993c4b90ff8|The Rising]\r\n* [e8a5fe99-0aff-3e7b-840c-7ab96cb702be|Badlands]\r\n* [cc8d858a-38ef-35b0-b83c-a5d26f04207b|Thunder Road]\r\n* [55d593ce-52cc-30ec-9494-eca1ab879f5c|Born in the U.S.A.]\r\n* [9893a23c-f282-3b07-a2db-b4f2f3b9f4b2|Born to Run]\r\n* [e59ca323-dd32-3a0b-80a9-d42746362213|Glory Days]\r\n* [f8556ea5-f89f-3c2f-922f-d5225c1a4511|Dancing in the Dark]\r\n* [aa151b23-5171-3d35-a487-55fc8c66131e|Tenth Avenue Freeze‐Out]\r\n* [b6417ad9-7965-331a-8a0f-18c3da2f4f74|Chimes of Freedom]",
+    "type": "Concert",
+    "time": "19:30",
+    "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+    "name": "2025‐05‐20: Co‐op Live, Manchester, England, UK"
+   },
+   "type-id": "027fce0c-c621-4fd1-b728-1678ae08f280"
+  }
+ ]
+}

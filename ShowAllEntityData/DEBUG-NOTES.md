@@ -20674,3 +20674,35 @@ assigning `st.zoomLevel`, the G-grid Esc branch became an `else if`, and the
 swipe test gained a `pointercancel` check. All four caught again by their
 own specs (the swipe one in chromium-mobile); `check-mutation-anchors.py`
 1279 anchors, 0 bad.
+
+## 2026-10-08 — MusicBrainz URL entities, U2 (branch feature/popup-engine-urls, WIP.1)
+
+org/iframe.org "* generalize to URLs", U2: the `url` kind (the "[info]"
+link) and "MusicBrainz knows this URL" in an external link's window. Rules:
+docs/claude/detail-pages.md, "MusicBrainz URL entities".
+
+**A url lookup keys a release group `release_group`, not `release-group`.**
+`_relWriteResult()`'s comment says the Web Service names the target type
+`release_group` but keys the entity `release-group`; the first version of
+`_mbPopUrlRelRows()` followed it and read `r['release-group']`. Captured
+`url/8dd611e4-…?inc=<every *-rels>` (a springsteenlyrics.com list that four
+release groups link, `tests/fixtures/ws2-pop-url-sl-bootlegs.json`): both
+are `release_group`. The card said "4 relationships" over an empty list —
+caught by the fixture spec on its first run, never in a browser. My own
+summary script had tried both keys, which is why the capture looked as
+expected. Now `_mbPopRelEntity()` tries both spellings and
+`_mbPopRelKind()` hyphenates only the page segment; two mutations pin the
+two halves. Whether `_relWriteResult()`'s comment is right for ITS lookups
+was not checked (its code also tries both).
+
+**Captures**, `scripts/capture-ws2-fixtures.py` (2026-10-08 ~10:20Z, host
+NB-3641): the setlist.fm link of `event-overview.html` by MBID and by
+`?resource=` (one resource answers the url entity itself, not a list — the
+"several resources" shape of U0 X7 is a list), the tour schedule image (a
+series' `schedule`), and the bootlegs list above.
+
+**Verification.** popup-ext.spec.js 19/19, popup-ext.mobile.spec.js 2/2,
+`scripts/mutations/popup-ext.json` 49/49 OK (13 new, each caught by its own
+spec), the live spec 2/2 against musicbrainz.org (10:46:34Z–10:46:57Z; the
+review's url lookup by MBID and the Wikipedia link's `?resource=` 404, two
+Web Service requests in all). lint within baseline.
