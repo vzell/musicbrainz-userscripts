@@ -20659,3 +20659,11 @@ Cloudflare's `cf-mitigated`, AWS WAF's `x-amzn-waf-action`), whatever the
 status, and the pill names the vendor. Not by status or title: a bare 403 or
 405 stays "HTTP …". Mutations 36/36 (the Cloudflare one re-anchored on
 `_extBotCheck()`).
+
+**Merged** as 9.99.1293 on top of 9.99.1292 (art-viewer-flip); conflicts
+only in this file and the two generated config files (regenerated). Merged-
+tree gate `npm run test:full`: 1388 passed, 0 failed (8.5 min,
+2026-10-08T09:59:48Z–10:08:18Z, host NB-3641, WSL2). Found while merging, not
+caused by it: four mutation anchors in caa-column-redesign.json and
+release-tracks-cover-art-p3.json match 0 times already on 9.99.1292 (the
+artwork viewer's code moved under them); left for that feature's owner.

@@ -781,8 +781,10 @@ final rendered page, in the h3 "URLs" sub-table, in the "URL" column
     on Space (answer 7).
 
   No userscript change, so no WIP entry. Firefox is untested (B2).
-- [-] U1: the engine for external links, the generic reader, dead-link status:
-  built 2026-10-08 on =feature/popup-engine-urls= as WIP.1 (=_extSource()=,
+- [X] U1: the engine for external links, the generic reader, dead-link status,
+  9.99.1293: built 2026-10-08 on =feature/popup-engine-urls=, live-tested by
+  the user in Chrome and Firefox and merged to =main= the same day on top of
+  9.99.1292 (art-viewer-flip) (=_extSource()=,
   =_extFetch()=, =_extAwaitSlot()=, =sa_pop_ext=, =sa_pop_ext_ttl_hours=,
   first contact through =sa_pop_ext_hosts=). Rules as built:
   [[file:../docs/claude/detail-pages.md]], "Links to other sites". Browser
