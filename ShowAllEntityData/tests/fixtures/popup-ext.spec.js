@@ -26,13 +26,23 @@
 //      host Tampermonkey refused is not remembered;
 //   7. a hover that moved on asks nothing, and the rate gate is per host;
 //   8. the window: Extracted, the Live page from the hover's own fetch with
-//      no script left, ⟳ asks again, ← → step down the URL column.
+//      no script left, ⟳ asks again, ← → step down the URL column;
+//   9. U2, MusicBrainz URL entities: the "[info]" link's card (named after
+//      its link while it loads, one lookup with every relationship include),
+//      its window, a release group (typed and keyed "release_group") linking
+//      /release-group/, the card's and window's caps; an external
+//      window's "MusicBrainz knows this URL" — never on hover, by the
+//      "[info]" MBID (sharing the "[info]" card's answer) or else by
+//      `?resource=` with the href ATTRIBUTE verbatim, a 404 as "not in
+//      MusicBrainz" for this page load only, through the shared MusicBrainz
+//      rate gate.
 //
 // Mutation list: scripts/mutations/popup-ext.json.
 //
 // Host page: tests/fixtures/event-overview.html (an event whose "Show all"
 // turns the relationships into tables, its URLs into a "URLs" sub-table).
 
+const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('../support/test');
 const { loadUserscriptPage, addRequiredLibs, MB_LIBRARY_PATH, USERSCRIPT_PATH } = require('../support/loadPage');
@@ -52,6 +62,15 @@ const SETLIST_HTML = '<!doctype html><html lang="en"><head><title>Concert Setlis
     '<link rel="preconnect" href="https://img.example"></head><body><p id="live-probe">The setlist itself</p>' +
     '<script>window.__liveRan = 1;</script><a href="#" onclick="window.__liveRan = 2">x</a></body></html>';
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
+const json = (name) => fs.readFileSync(path.join(__dirname, name), 'utf8');
+// U2: the setlist.fm link's URL entity ("[info]" beside it), and the inc set
+// of every URL lookup (every relationship include, nothing else: U0 X7).
+const SETLIST_URL_ID = '2e9887a2-ec25-4423-9f10-eee13f180512';
+const URL_INC = 'area-rels+artist-rels+event-rels+instrument-rels+label-rels+place-rels+recording-rels' +
+    '+release-rels+release-group-rels+series-rels+url-rels+work-rels';
+const SETLIST_LOOKUP = `https://musicbrainz.org/ws/2/url/${SETLIST_URL_ID}?inc=${URL_INC}&fmt=json`;
+const SETLIST_EVENT = JSON.parse(json('ws2-pop-url-setlist.json')).relations[0].event.name;
+const infoLink = (page) => page.locator(`table.tbl a[href="/url/${SETLIST_URL_ID}"]`).first();
 const card = (page) => page.locator('#mb-dp-peek');
 const dialog = (page) => page.locator('#mb-dp-dialog');
 const setlistLink = (page) => page.locator(`table.tbl a[href="${SETLIST}"]`).first();
@@ -83,14 +102,30 @@ async function showUrlsTable(page) {
 
 /**
  * Loads the event page with `responses` as the `GM_xmlhttpRequest` answers
- * (kept across reloads), presses "Show all" and waits for the render.
+ * (kept across reloads), presses "Show all" and waits for the render. The
+ * Web Service's URL lookups (U2) are answered from the setlist.fm capture
+ * (by its MBID or its `?resource=`), else 404, unless `ws2` answers (it may
+ * return a promise, to hold an answer back); each is logged with the time
+ * it arrived.
  *
  * @param {import('@playwright/test').Page} page
- * @param {{settings?: Object, responses?: Object, press?: boolean}} [opts]
- * @returns {Promise<void>}
+ * @param {{settings?: Object, responses?: Object, press?: boolean,
+ *   ws2?: function(string): (?{status: number, body: string}|Promise<?{status: number, body: string}>)}} [opts]
+ * @returns {Promise<{ws2: string[], ws2At: number[]}>}
  */
-async function openEvent(page, { settings = {}, responses = {}, press = true } = {}) {
+async function openEvent(page, { settings = {}, responses = {}, press = true, ws2 = null } = {}) {
+    const log = { ws2: [], ws2At: [] };
     const ctx = page.context();
+    await ctx.route(/\/ws\/2\/url[/?]/, async (route) => {
+        const url = route.request().url();
+        log.ws2.push(url);
+        log.ws2At.push(Date.now());
+        const own = ws2 ? await ws2(url) : null;
+        const known = url.startsWith(`https://musicbrainz.org/ws/2/url/${SETLIST_URL_ID}?`) ||
+            url.includes(`resource=${encodeURIComponent(SETLIST)}&`);
+        const r = own || (known ? { status: 200, body: json('ws2-pop-url-setlist.json') } : { status: 404, body: '{"error":"Not Found"}' });
+        return route.fulfill({ status: r.status, contentType: 'application/json', body: r.body });
+    });
     await ctx.route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
     await ctx.route('https://eventartarchive.org/**', (route) => route.fulfill({ status: 404, body: '' }));
     await ctx.route('https://img.example/**', (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
@@ -115,6 +150,7 @@ async function openEvent(page, { settings = {}, responses = {}, press = true } =
         await showUrlsTable(page);
     }
     await page.mouse.move(0, 0);
+    return log;
 }
 
 /**
@@ -264,7 +300,7 @@ test.describe('external link previews (sa_pop_ext)', () => {
         expect(r.wiki).toBe('ext|ext:generic:https://en.wikipedia.org/wiki/TeachRock');
         expect(r.ytList, 'a playlist is the YouTube reader\'s').toBe('ext|ext:youtube:https://www.youtube.com/playlist?list=PLM0aPYPhFzkrHWh8uoXwAsxdDXyFEEELt');
         expect(r.ytChannel, 'a channel is not (oEmbed has none): the generic reader').toBe('ext|ext:generic:http://www.youtube.com/brucebasewiki');
-        expect(r.info, 'the "[info]" link is MusicBrainz\'s own (U2)').toBeNull();
+        expect(r.info, 'the "[info]" link is MusicBrainz\'s own: the url kind (U2)').toMatch(/^mb-entity\|url:[0-9a-f-]{36}$/);
         expect(r.mbAbs, 'an absolute musicbrainz.org link is not another site').toBeNull();
         expect(r.art, 'artwork has its own preview').toBeNull();
         expect(r.share).toBeNull();
@@ -708,5 +744,161 @@ test.describe('external link previews (sa_pop_ext)', () => {
         await page.keyboard.press(i < n ? 'ArrowRight' : 'ArrowLeft');
         await expect(d.locator('.mb-dp-pos-label')).toHaveText(`${i < n ? i + 1 : i - 1} / ${n}`);
         await expect(d.locator('.mb-ext-url a').first()).not.toHaveText(SETLIST);
+    });
+});
+
+test.describe('MusicBrainz URL entities (U2)', () => {
+    test('the "[info]" link: named after its link while it loads, then the URL and who links it, from one lookup', async ({ page }) => {
+        let release;
+        const held = new Promise((r) => { release = r; });
+        const log = await openEvent(page, { settings: { sa_pop_mb: true }, ws2: async () => { await held; return null; } });
+        expect(await page.evaluate((id) => window.__saTest.popResolve(document.querySelector(`table.tbl a[href="/url/${id}"]`)),
+            SETLIST_URL_ID)).toBe(`mb-entity|url:${SETLIST_URL_ID}`);
+        await ctrlHover(page, infoLink(page));
+        const c = card(page);
+        await expect(c).toContainText('Loading');
+        await expect(c.locator('.mb-tt-title'), 'the link beside it, not "info"').toHaveText(SETLIST);
+        release();
+        await expect(c).toContainText('1 relationship');
+        await expect(c.locator('.mb-tt-title')).toHaveText('www.setlist.fm');
+        await expect(c.locator('.mb-ext-url')).toHaveText(SETLIST);
+        await expect(c.locator('dt')).toHaveText(['Setlistfm']);
+        await expect(c.locator('dd')).toHaveText([`Event: ${SETLIST_EVENT}`]);
+        expect(log.ws2, 'one lookup, every relationship include and nothing else').toEqual([SETLIST_LOOKUP]);
+
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        await expect(d.locator(':scope > div > span').first()).toHaveText('URL');
+        await expect(d).toContainText('Linked from · 1');
+        await expect(d).toContainText(SETLIST_URL_ID);
+        await expect(d.locator('.mb-dp-area a[href^="/event/"]')).toHaveText([SETLIST_EVENT]);
+        await expect(d.locator('.mb-dp-pos-label'), '‹ › step through the "[info]" links of the URL column').toHaveText(/^\d \/ 3$/);
+        expect(log.ws2, 'the window reuses the card\'s answer').toHaveLength(1);
+    });
+
+    test('grouped by relationship; a release group (typed and keyed "release_group") links /release-group/', async ({ page }) => {
+        const log = await openEvent(page, {
+            settings: { sa_pop_mb: true },
+            ws2: (u) => (u.includes(`/url/${SETLIST_URL_ID}?`) ? { status: 200, body: json('ws2-pop-url-sl-bootlegs.json') } : null),
+        });
+        await ctrlHover(page, infoLink(page));
+        const c = card(page);
+        await expect(c).toContainText('4 relationships');
+        await expect(c.locator('dt')).toHaveText(['Discography entry', 'Official homepage']);
+        await expect(c.locator('dd').first()).toContainText('Release group: 1996‐03‐13: Cirkus, Stockholm, Sweden');
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        await expect(d).toContainText('Linked from · 4');
+        await expect(d.locator('.mb-dp-area a[href^="/release-group/"]')).toHaveCount(4);
+        expect(await d.locator('.mb-dp-area a[href^="/release_group/"], .mb-dp-area a[href^="/undefined"]').count()).toBe(0);
+        expect(log.ws2).toHaveLength(1);
+    });
+
+    test('the card names 3 per relationship, the window 100 and then links the URL\'s own page', async ({ page }) => {
+        const sched = JSON.parse(json('ws2-pop-url-schedule.json'));
+        const rel = sched.relations[0];
+        const many = Object.assign({}, sched, {
+            relations: Array.from({ length: 102 }, (_, i) => Object.assign({}, rel, {
+                series: Object.assign({}, rel.series, { id: `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`, name: `Tour ${i + 1}` }),
+            })),
+        });
+        await openEvent(page, {
+            settings: { sa_pop_mb: true },
+            ws2: (u) => (u.includes(`/url/${SETLIST_URL_ID}?`) ? { status: 200, body: JSON.stringify(many) } : null),
+        });
+        await ctrlHover(page, infoLink(page));
+        const c = card(page);
+        await expect(c.locator('dt')).toHaveText(['Schedule']);
+        await expect(c.locator('dd a[href^="/series/"]')).toHaveText(['Tour 1', 'Tour 2', 'Tour 3']);
+        await expect(c.locator('dd')).toContainText('+ 99 more');
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        await expect(d).toContainText('Linked from · 102');
+        await expect(d.locator('.mb-dp-area a[href^="/series/"]')).toHaveCount(100);
+        await expect(d.locator(`.mb-dp-area a[href="/url/${sched.id}"]`)).toHaveText('+ 2 more');
+    });
+
+    test('an external window says what MusicBrainz knows of the URL — never on hover, by the "[info]" MBID, shared with that card', async ({ page }) => {
+        const log = await openEvent(page, {
+            settings: { sa_pop_ext: true, sa_pop_mb: true, sa_pop_ext_hosts: ['www.setlist.fm'] },
+            responses: { [SETLIST]: { status: 200, responseHeaders: HTML_HEADERS, responseText: SETLIST_HTML } },
+        });
+        await ctrlHover(page, setlistLink(page));
+        await expect(card(page)).toContainText('Bruce Springsteen Setlist at Co-op Live, Manchester');
+        expect(log.ws2, 'a hover asks MusicBrainz nothing').toEqual([]);
+
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        await expect(d.locator('h4', { hasText: 'MusicBrainz knows this URL' })).toBeVisible();
+        await expect(d.locator('.mb-dp-area dt')).toContainText(['Setlistfm']);
+        await expect(d.locator('.mb-dp-area a[href^="/event/"]')).toHaveText([SETLIST_EVENT]);
+        await expect(d.locator(`.mb-dp-area a[href="/url/${SETLIST_URL_ID}"]`)).toHaveText('MusicBrainz\'s page for this URL');
+        expect(log.ws2, 'by the "[info]" link\'s MBID, not by ?resource=').toEqual([SETLIST_LOOKUP]);
+        expect(await xhrLog(page), 'the site was asked once, by the hover').toHaveLength(1);
+
+        await page.keyboard.press('Escape');
+        await expect(d).toBeHidden();
+        await ctrlHover(page, infoLink(page));
+        await expect(card(page)).toContainText('1 relationship');
+        expect(log.ws2, 'the "[info]" card shares that answer').toHaveLength(1);
+    });
+
+    test('a link with no "[info]" of its own: ?resource= with the href as written; a 404 is "not in MusicBrainz", for this page load only', async ({ page }) => {
+        const BARE = 'http://www.example.org';
+        const log = await openEvent(page, {
+            settings: { sa_pop_ext: true, sa_pop_ext_hosts: ['www.example.org', 'www.setlist.fm'] },
+            responses: {
+                [`${BARE}/`]: { status: 200, responseHeaders: HTML_HEADERS, responseText: '<!doctype html><html><head><title>Example</title></head><body></body></html>' },
+                [SETLIST]: { status: 200, responseHeaders: HTML_HEADERS, responseText: SETLIST_HTML },
+            },
+        });
+        await addAnnotationLinks(page, [BARE, SETLIST]);
+        // The setlist.fm link gets its own "[info]" after it, as MusicBrainz
+        // writes one: it belongs to that link only, never to the link before.
+        await page.evaluate((id) => {
+            const a = document.querySelectorAll('.ext-probe a')[1];
+            const info = document.createElement('a');
+            info.setAttribute('href', `/url/${id}`);
+            info.textContent = 'info';
+            a.after(' [', info, ']');
+        }, SETLIST_URL_ID);
+        const bare = page.locator('.ext-probe a').nth(0);
+        await ctrlHover(page, bare);
+        await expect(card(page)).toContainText('Example');
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        await expect(d.locator('.mb-ext-mb-none')).toHaveText('Not in MusicBrainz: no entity links this URL — it is only in the annotation.');
+        // The ATTRIBUTE, not a.href ("http://www.example.org/"): MusicBrainz
+        // matches a resource exactly (U0 X7).
+        expect(log.ws2).toEqual([`https://musicbrainz.org/ws/2/url?resource=${encodeURIComponent(BARE)}&inc=${URL_INC}&fmt=json`]);
+        await expect.poll(() => idbHas(page, `mb:ext:generic:${BARE}/`)).toBe(true);
+        expect(await idbHas(page, `mb:pop:url:${BARE}:${URL_INC}`), 'a 404 never goes to IndexedDB').toBe(false);
+
+        await page.keyboard.press('Escape');
+        await ctrlHover(page, bare);
+        await page.keyboard.press('Space');
+        await expect(d.locator('.mb-ext-mb-none')).toBeVisible();
+        expect(log.ws2, 'remembered for this page load').toHaveLength(1);
+
+        await page.keyboard.press('Escape');
+        await ctrlHover(page, page.locator('.ext-probe a').nth(1));
+        await page.keyboard.press('Space');
+        await expect(d.locator('.mb-dp-area a[href^="/event/"]')).toHaveText([SETLIST_EVENT]);
+        expect(log.ws2[1], 'its own "[info]" MBID').toBe(SETLIST_LOOKUP);
+    });
+
+    test('the window\'s MusicBrainz request waits for the shared MusicBrainz gate', async ({ page }) => {
+        const log = await openEvent(page, {
+            settings: { sa_pop_ext: true, sa_pop_ext_hosts: ['www.setlist.fm'] },
+            responses: { [SETLIST]: { status: 200, responseHeaders: HTML_HEADERS, responseText: SETLIST_HTML } },
+        });
+        await ctrlHover(page, setlistLink(page));
+        await expect(card(page)).toContainText('Bruce Springsteen Setlist at Co-op Live, Manchester');
+        await page.evaluate(() => window.__saTest.reserveMbRateSlots(2));
+        const t0 = Date.now();
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('.mb-dp-area a[href^="/event/"]')).toHaveText([SETLIST_EVENT], { timeout: 10000 });
+        expect(log.ws2).toEqual([SETLIST_LOOKUP]);
+        expect(log.ws2At[0] - t0, 'waited behind two slots of the gate the Relationships column shares').toBeGreaterThanOrEqual(2000);
     });
 });

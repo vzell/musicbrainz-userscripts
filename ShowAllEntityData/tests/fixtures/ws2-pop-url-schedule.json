@@ -1,0 +1,27 @@
+{
+ "relations": [
+  {
+   "type": "schedule",
+   "attribute-values": {},
+   "ended": false,
+   "source-credit": "",
+   "attribute-ids": {},
+   "attributes": [],
+   "target-credit": "",
+   "direction": "backward",
+   "begin": null,
+   "end": null,
+   "series": {
+    "disambiguation": "",
+    "id": "db03e180-5b76-4fae-8ca8-52ec6ac9de1f",
+    "name": "2023–25 International Tour",
+    "type": "Tour",
+    "type-id": "8ff6df0e-3dce-3bdf-bd57-d386c51b0060"
+   },
+   "target-type": "series",
+   "type-id": "ac9d08ef-c794-48b9-aadb-4d2944a0b6ed"
+  }
+ ],
+ "id": "98e760d5-a79b-4778-b425-b30b46c8a0d2",
+ "resource": "https://brucebase.wdfiles.com/local--files/files:news-tour-23int/2024-INT_Schedule_01_USA.jpg"
+}
