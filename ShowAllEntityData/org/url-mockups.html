@@ -1,0 +1,1086 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- SKELETON-END: everything above this line is dropped when the page is published as an Artifact. -->
+<title>External Link Previews</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* The stylesheet up to "URL PREVIEWS" below is org/iframe-mockups.html's,
+   copied verbatim so the two studies look the same; the part after it is
+   this page's own. */
+/* Layout: a test bench, as in org/detail-pages-mockups.html. A tab strip per
+   pageType family; each tab is a mock browser window showing the real table,
+   the script's own cream card and its createInfoDialog() window, with a notes
+   column beside it. The mocked sites and the script's UI keep their real light
+   look in both themes; only the bench around them follows the theme. */
+:root {
+    --bg: #e9edf1;
+    --surface: #f8fafc;
+    --ink: #18202b;
+    --muted: #556070;
+    --line: #cfd6df;
+    --accent: #24527f;
+    --accent-soft: #dbe6f1;
+    --ok: #2c7347;
+    --ok-soft: #dcefe2;
+    --warn: #8f5a00;
+    --warn-soft: #f6e8cc;
+    --err: #9b2218;
+    --err-soft: #f6dcd8;
+    --shadow: 0 1px 0 rgba(20, 30, 45, 0.05), 0 12px 32px -18px rgba(20, 30, 45, 0.35);
+
+    /* The mocked sites: a light page in both themes. */
+    --site-bg: #ffffff;
+    --site-ink: #222222;
+    --site-dim: #6b6b6b;
+    --site-line: #dddddd;
+    --site-head: #e8e8e8;
+    --site-even: #f5f5f5;
+    --site-link: #1d4f96;
+    --site-chrome: #f1f3f6;
+    --site-chrome-ink: #4d5664;
+    --site-cur: #fff1b8;
+    --site-nav: #4b4f5c;
+    --site-nav-ink: #e4e6ec;
+
+    /* The userscript's .mb-tt-liner card and the dialog's cream area, verbatim. */
+    --liner-bg: #fbf8f1;
+    --liner-ink: #2b2622;
+    --liner-line: #d9cfbd;
+    --liner-dim: #7a6d5c;
+    --liner-pill: #efe6d4;
+    --liner-pill-ink: #4a3f33;
+    --liner-alert: #9b2218;
+    --liner-warn-bg: #f6e6dc;
+
+    /* createInfoDialog()'s shell, verbatim. */
+    --dlg-bg: #ffffff;
+    --dlg-bar: #f8f8f8;
+    --dlg-line: #dddddd;
+    --dlg-btn-line: #cccccc;
+    --dlg-ink: #222222;
+    --dlg-dim: #666666;
+    --seg-on: #2b2622;
+    --seg-on-ink: #fbf8f1;
+
+    /* The release-tracks event chips (_EVENT_TINTS). */
+    --tint-1: #d9ecff;
+    --tint-2: #ffe3c4;
+    --tint-3: #e6dcff;
+
+    --f-display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+    --f-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, Consolas, "Courier New", monospace;
+    --f-liner: Georgia, "Times New Roman", Times, serif;
+    --f-site: Arial, Helvetica, sans-serif;
+    --f-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg: #11161d;
+        --surface: #19212b;
+        --ink: #e2e7ee;
+        --muted: #9aa5b4;
+        --line: #2c3746;
+        --accent: #86b4e2;
+        --accent-soft: #1f3248;
+        --ok: #74c494;
+        --ok-soft: #1c3326;
+        --warn: #e3ac4c;
+        --warn-soft: #3a2d14;
+        --err: #f08a7d;
+        --err-soft: #3d1f1b;
+        --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 14px 34px -16px rgba(0, 0, 0, 0.7);
+        color-scheme: dark;
+    }
+}
+:root[data-theme="dark"] {
+    --bg: #11161d;
+    --surface: #19212b;
+    --ink: #e2e7ee;
+    --muted: #9aa5b4;
+    --line: #2c3746;
+    --accent: #86b4e2;
+    --accent-soft: #1f3248;
+    --ok: #74c494;
+    --ok-soft: #1c3326;
+    --warn: #e3ac4c;
+    --warn-soft: #3a2d14;
+    --err: #f08a7d;
+    --err-soft: #3d1f1b;
+    --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 14px 34px -16px rgba(0, 0, 0, 0.7);
+    color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.55 var(--f-body);
+    padding-inline: 16px;
+    padding-block: 0 64px;
+}
+.wrap { max-width: 1240px; margin: 0 auto; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+code, .mono { font-family: var(--f-mono); font-size: 0.88em; }
+kbd {
+    display: inline-block; padding: 0 5px; border: 1px solid var(--line); border-bottom-width: 2px;
+    border-radius: 3px; background: var(--surface); color: var(--ink);
+    font: 500 0.78em/1.5 var(--f-mono);
+}
+
+/* ---- Masthead ---------------------------------------------------------- */
+.mast { padding-block: 36px 18px; display: grid; gap: 10px; }
+.eyebrow { font: 600 12px/1.3 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
+h1 {
+    font-size: clamp(30px, 5vw, 50px); line-height: 1.02; font-weight: 800;
+    font-stretch: 72%; letter-spacing: -0.01em; text-transform: uppercase;
+}
+h2 { font-size: 26px; font-weight: 800; font-stretch: 80%; line-height: 1.1; }
+h3 { font-size: 17px; font-weight: 700; font-stretch: 88%; line-height: 1.2; }
+.lead { max-width: 72ch; color: var(--muted); margin: 0; }
+.howto {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px;
+    font: 13px/1.4 var(--f-body); color: var(--muted);
+}
+.howto label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; color: var(--ink); }
+
+/* ---- Tabs -------------------------------------------------------------- */
+.tabs {
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+    display: flex; flex-wrap: wrap; gap: 4px; padding-block: 10px;
+    background: var(--bg); border-bottom: 1px solid var(--line);
+}
+.tab {
+    display: inline-flex; align-items: baseline; gap: 7px;
+    border: 1px solid transparent; background: none; color: var(--muted);
+    padding: 6px 11px; border-radius: 3px; cursor: pointer;
+    font: 600 14px/1.2 var(--f-body);
+}
+.tab .k { font: 800 15px/1 var(--f-display); font-stretch: 75%; color: var(--ink); min-width: 1.1em; text-align: center; }
+.tab:hover { color: var(--ink); background: var(--surface); }
+.tab[aria-selected="true"] { background: var(--ink); color: var(--bg); }
+.tab[aria-selected="true"] .k { color: var(--bg); }
+.tab .rec {
+    font: 600 10px/1 var(--f-mono); letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 3px 5px; border-radius: 2px; background: var(--ok-soft); color: var(--ok);
+}
+.tab[aria-selected="true"] .rec { background: var(--bg); }
+@media (max-width: 700px) { .tabs { position: static; } }
+
+.panel { padding-top: 26px; display: grid; gap: 26px; }
+.panel-head { display: grid; gap: 8px; max-width: 82ch; }
+.panel-head p { margin: 0; color: var(--muted); }
+.sub-head { display: grid; gap: 4px; max-width: 82ch; }
+.sub-head p { margin: 0; color: var(--muted); font-size: 14px; }
+
+/* ---- Bench: mock window + notes --------------------------------------- */
+.bench { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 22px; align-items: start; }
+@media (max-width: 980px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+.stage { display: grid; gap: 16px; min-width: 0; }
+.window {
+    position: relative; min-width: 0; background: var(--site-bg); color: var(--site-ink);
+    border: 1px solid var(--line); border-radius: 6px; box-shadow: var(--shadow);
+}
+.chrome {
+    display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 6px 6px 0 0;
+    background: var(--site-chrome); color: var(--site-chrome-ink); border-bottom: 1px solid var(--site-line);
+    font: 12px/1.3 var(--f-mono);
+}
+.chrome .url { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chrome .pt { flex: none; padding: 2px 6px; border-radius: 2px; background: var(--site-bg); border: 1px solid var(--site-line); font-weight: 500; }
+.sitebody { padding: 12px 14px 16px; font: 13px/1.4 var(--f-site); overflow-x: auto; }
+.mbhead { display: grid; gap: 2px; margin-bottom: 10px; }
+.mbhead .h { font: bold 20px/1.2 var(--f-site); }
+.mbhead .s { color: var(--site-dim); font-size: 12.5px; }
+.mbhead a { color: var(--site-link); text-decoration: none; }
+.mbhead a:hover { text-decoration: underline; }
+.sitebar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 8px; }
+.sitebar h4 { margin: 0; font: bold 16px/1.2 var(--f-site); }
+.sitebar .count { color: var(--site-dim); font-size: 12px; }
+.sitebar input {
+    font: 13px var(--f-site); padding: 3px 6px; border: 1px solid #bbbbbb; border-radius: 2px;
+    background: var(--site-bg); color: var(--site-ink); width: 190px; max-width: 100%;
+}
+
+table.tbl { border-collapse: collapse; background: var(--site-bg); color: var(--site-ink); font: 13px/1.4 var(--f-site); width: 100%; }
+table.tbl th, table.tbl td { border: 1px solid var(--site-line); padding: 3px 6px; vertical-align: top; text-align: left; }
+table.tbl thead th { background: var(--site-head); white-space: nowrap; }
+table.tbl tbody tr:nth-child(even) > td { background: var(--site-even); }
+table.tbl a { color: var(--site-link); text-decoration: none; }
+table.tbl a:hover { text-decoration: underline; }
+table.tbl tr.is-peek > td { box-shadow: inset 0 -1px 0 #e0c86a, inset 0 1px 0 #e0c86a; }
+table.tbl tr.is-cur > td { background: var(--site-cur); }
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dim { color: var(--site-dim); }
+.h3m { margin: 12px 0 4px; font: bold 13.5px var(--f-site); background: #eef1f4; padding: 3px 6px; border-left: 3px solid #9aa3ad; }
+.h3m:first-child { margin-top: 0; }
+td.pos { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.echip {
+    display: inline-block; margin-right: 4px; padding: 0 3px; border: 1px solid #8f8f8f; border-radius: 2px;
+    font: bold 10px/1.4 var(--f-site); color: #222222;
+}
+.echip.e1 { background: var(--tint-1); }
+.echip.e2 { background: var(--tint-2); }
+.echip.e3 { background: var(--tint-3); }
+.pop-cell { cursor: help; }
+.isrc { font-family: var(--f-mono); font-size: 12px; border-bottom: 1px dotted var(--site-dim); cursor: help; }
+.magnifier {
+    margin-right: 4px; padding: 0 3px; border: 1px solid var(--site-line); border-radius: 2px;
+    background: var(--site-bg); cursor: pointer; font-size: 11px; line-height: 1.3; color: var(--site-ink);
+}
+
+/* ---- Notes ------------------------------------------------------------- */
+.notes { display: grid; gap: 14px; font-size: 14px; }
+.note { display: grid; gap: 6px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.note:last-child { border-bottom: 0; }
+.note .lbl { font: 600 11px/1.3 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.note p { margin: 0; }
+.note ul { margin: 0; padding-left: 1.1em; display: grid; gap: 3px; }
+.note code { overflow-wrap: anywhere; }
+.try {
+    background: var(--accent-soft); color: var(--ink); border-radius: 4px; padding: 10px 12px;
+    display: grid; gap: 4px; font-size: 14px;
+}
+.try b { font-family: var(--f-display); font-stretch: 85%; font-size: 15px; }
+.cost { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; font-size: 13.5px; }
+.cost dt { font: 500 12px/1.6 var(--f-mono); color: var(--muted); white-space: nowrap; }
+.cost dd { margin: 0; }
+
+/* ---- Liner card (the script's look) ----------------------------------- */
+.liner {
+    background: var(--liner-bg); color: var(--liner-ink); border: 1px solid var(--liner-line);
+    border-radius: 3px; padding: 8px 12px 9px; font: 13px/1.5 var(--f-liner);
+    box-shadow: 0 1px 0 #e9e1d1, 0 10px 24px -8px rgba(60, 40, 20, 0.35); text-align: left;
+}
+.liner .head { display: flex; gap: 10px; align-items: flex-start; }
+.liner .headtext { min-width: 0; flex: 1; }
+.liner .t { font-weight: 700; font-size: 1.08em; line-height: 1.3; }
+.liner .sub { font-style: italic; color: var(--liner-dim); }
+.liner .rule { border-top: 1px solid var(--liner-line); margin: 6px 0; }
+.pill {
+    display: inline-block; background: var(--liner-pill); color: var(--liner-pill-ink);
+    border: 1px solid var(--liner-line); border-radius: 3px; padding: 0 5px;
+    font-size: 0.88em; font-weight: 700; line-height: 1.45; white-space: nowrap;
+}
+.pills { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 1px 10px; margin: 4px 0 0; }
+.kv dt { color: var(--liner-dim); font-style: italic; }
+.kv dd { margin: 0; }
+.liner ol.tl { margin: 2px 0 0; padding: 0; list-style: none; columns: 2; column-gap: 16px; }
+.liner ol.tl li { break-inside: avoid; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.p { color: var(--liner-dim); font-variant-numeric: tabular-nums; margin-right: 5px; }
+.more { color: var(--liner-dim); font-style: italic; }
+.foot {
+    margin-top: 7px; font-style: italic; font-size: 0.92em; color: var(--liner-dim);
+    display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center;
+}
+.foot kbd, .xfoot kbd { background: #ffffff; color: var(--liner-ink); border-color: #cbbfa9; font-style: normal; }
+.alert { color: var(--liner-alert); font-weight: 700; }
+.liner a, .x a { color: #6b3f12; }
+.stat { display: flex; align-items: baseline; gap: 8px; margin: 6px 0 2px; }
+.stat b { font-size: 1.7em; line-height: 1; font-variant-numeric: tabular-nums; }
+.excerpt { font-style: italic; }
+
+/* Placeholder sleeves: this page loads no cover images */
+.sleeve {
+    position: relative; flex: none; width: 64px; height: 64px; border-radius: 2px; overflow: hidden;
+    display: grid; place-items: end start; padding: 3px 4px;
+    font: 700 8px/1.1 var(--f-mono); letter-spacing: 0.04em; text-transform: uppercase; color: #ffffff;
+    background: linear-gradient(140deg, hsl(var(--h, 30) 45% 46%), hsl(calc(var(--h, 30) + 40) 40% 26%));
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+.sleeve span { position: relative; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); }
+.sleeve.lg { width: 150px; height: 150px; font-size: 10px; padding: 6px 7px; }
+.sleeve.md { width: 84px; height: 84px; }
+.sleeve.xs { width: 26px; height: 26px; font-size: 0; padding: 0; }
+.sleeve.poster { width: 64px; height: 88px; }
+
+/* The floating card inside a mock window */
+.float {
+    position: absolute; z-index: 30; width: min(400px, calc(100% - 16px));
+    pointer-events: none; display: none;
+}
+.float.wide { width: min(520px, calc(100% - 16px)); }
+.float.on { display: block; }
+.static-card { position: static; display: block; width: auto; max-width: 520px; pointer-events: auto; }
+
+/* ---- createInfoDialog() mock ------------------------------------------ */
+.dlg {
+    display: flex; flex-direction: column; min-width: 0; max-height: 680px;
+    background: var(--dlg-bg); color: var(--dlg-ink); border: 1px solid var(--dlg-btn-line); border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2); font-family: var(--f-ui); overflow: hidden;
+}
+.dlg-bar {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px;
+    padding: 12px 16px 10px; border-bottom: 2px solid var(--dlg-line); background: var(--dlg-bar);
+}
+.dlg-title { font-weight: 700; font-size: 1.1em; color: var(--dlg-ink); min-width: 0; }
+.dlg-title .crumb { font-weight: 400; color: var(--dlg-dim); }
+.dlg-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.tbtn {
+    display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px;
+    border: 1px solid var(--dlg-btn-line); border-radius: 3px; background: var(--dlg-bg); color: var(--dlg-ink);
+    font: 13px/1 var(--f-ui); text-decoration: none; cursor: pointer;
+}
+.tbtn:hover { background: #f0f0f0; }
+.seg { display: inline-flex; }
+.seg .tbtn { border-radius: 0; }
+.seg .tbtn + .tbtn { border-left: 0; }
+.seg .tbtn[aria-pressed="true"] { background: var(--seg-on); color: var(--seg-on-ink); border-color: var(--seg-on); }
+.poslbl { font: 12px var(--f-mono); color: var(--dlg-dim); min-width: 4.5em; text-align: center; }
+.xbtn { border: 0; background: none; font-size: 1.2em; color: var(--dlg-dim); cursor: pointer; padding: 0 4px; }
+.dlg-area { flex: 1; min-height: 0; overflow: auto; background: var(--liner-bg); }
+.dlg-area:focus { outline: none; }
+.dlg-hint { padding: 6px 16px; border-top: 1px solid var(--dlg-line); font: 12px var(--f-ui); color: var(--dlg-dim); background: var(--dlg-bar); }
+.dlg-closed {
+    padding: 22px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); font-size: 14px; text-align: center;
+}
+.x {
+    display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 18px;
+    padding: 14px 18px; color: var(--liner-ink); font: 13.5px/1.5 var(--f-liner);
+}
+.x.one { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 680px) { .x { grid-template-columns: minmax(0, 1fr); } }
+.x .col { min-width: 0; }
+.x h4 {
+    margin: 14px 0 4px; font: 600 11px/1.3 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--liner-dim);
+}
+.x .col > h4:first-child { margin-top: 0; }
+.xtitle { font-weight: 700; font-size: 1.2em; line-height: 1.3; }
+.xsub { font-style: italic; color: var(--liner-dim); }
+.xfoot { padding: 0 18px 12px; font: italic 12px var(--f-liner); color: var(--liner-dim); }
+.gallery { display: flex; flex-wrap: wrap; gap: 6px; }
+.gallery figure { margin: 0; display: grid; gap: 2px; justify-items: center; font-size: 11px; color: var(--liner-dim); }
+.discs { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px 16px; }
+.discs .gname { font-style: italic; color: var(--liner-dim); }
+ol.tracks { margin: 2px 0 0; padding: 0; list-style: none; }
+ol.tracks li { display: flex; gap: 6px; font-size: 12.5px; line-height: 1.45; }
+ol.tracks li .p { flex: none; min-width: 2.2em; }
+ol.tracks li .len { margin-left: auto; color: var(--liner-dim); font-variant-numeric: tabular-nums; padding-left: 8px; }
+.linkpills { display: flex; flex-wrap: wrap; gap: 4px; }
+.progress { display: flex; align-items: center; gap: 8px; font: 12px var(--f-mono); color: var(--liner-dim); margin-bottom: 6px; }
+.progress .bar { flex: 1; height: 4px; background: var(--liner-pill); border-radius: 2px; overflow: hidden; }
+.progress .bar i { display: block; height: 100%; background: var(--liner-dim); }
+
+/* The release group's releases: a real, sortable table */
+.rtwrap { overflow-x: auto; border: 1px solid var(--liner-line); border-radius: 2px; background: #fffdf8; }
+table.rt { border-collapse: collapse; width: 100%; font: 12.5px/1.35 var(--f-liner); color: var(--liner-ink); }
+table.rt th, table.rt td { padding: 3px 6px; border-bottom: 1px solid #ece4d4; text-align: left; vertical-align: middle; white-space: nowrap; }
+table.rt th { position: sticky; top: 0; background: var(--liner-pill); font-weight: 400; font-style: italic; color: var(--liner-dim); }
+table.rt th button {
+    border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: pointer;
+}
+table.rt th button::after { content: " \2195"; opacity: 0.4; font-style: normal; }
+table.rt th[aria-sort="ascending"] button::after { content: " \25B2"; opacity: 0.9; }
+table.rt th[aria-sort="descending"] button::after { content: " \25BC"; opacity: 0.9; }
+table.rt tr.cur td { background: #f1e8d5; font-weight: 700; }
+table.rt td.n { font-variant-numeric: tabular-nums; }
+.cc { display: inline-block; border: 1px solid var(--liner-line); border-radius: 2px; padding: 0 3px; font-size: 0.85em; }
+
+/* The Live page view: the site's own page, mocked */
+.livebar {
+    display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; padding: 6px 12px;
+    border-bottom: 1px solid var(--dlg-line); background: var(--dlg-bar); font: 12px var(--f-ui); color: #555555;
+}
+.livebar label { display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
+.livebar .u { font: 11px var(--f-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+.livepage { background: var(--site-bg); color: var(--site-ink); font: 13px/1.4 var(--f-site); }
+.lp-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 8px 12px; background: var(--site-nav); color: var(--site-nav-ink); font: 12px var(--f-site); }
+.lp-nav i { display: inline-block; height: 8px; width: 52px; border-radius: 2px; background: #6d7280; }
+.lp-nav .cap { font: 11px var(--f-mono); }
+.lp-main { display: grid; grid-template-columns: minmax(0, 1fr) 190px; gap: 14px; padding: 12px; }
+@media (max-width: 640px) { .lp-main { grid-template-columns: minmax(0, 1fr); } }
+.lp-main h6 { margin: 0 0 2px; font: bold 18px var(--f-site); }
+.lp-main .lp-sub { color: var(--site-dim); font-size: 12px; margin-bottom: 8px; }
+.lp-tabs { display: flex; flex-wrap: wrap; gap: 2px; margin-bottom: 8px; }
+.lp-tabs span { padding: 2px 8px; border: 1px solid var(--site-line); border-bottom: 0; font-size: 12px; color: var(--site-link); }
+.lp-tabs span:first-child { background: var(--site-head); color: var(--site-ink); }
+.lp-side { display: grid; gap: 8px; align-content: start; font-size: 12px; }
+.lp-side h6 { margin: 0; font: bold 12px var(--f-site); text-transform: uppercase; color: var(--site-dim); }
+.lp-foot { padding: 8px 12px; background: var(--site-head); color: var(--site-dim); font-size: 11px; }
+.livepage.hide-nav .lp-nav, .livepage.hide-nav .lp-foot { display: none; }
+
+/* ---- Overview ---------------------------------------------------------- */
+.answers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 880px) { .answers { grid-template-columns: minmax(0, 1fr); } }
+.answer { display: grid; gap: 8px; align-content: start; padding-top: 12px; border-top: 3px solid var(--ink); }
+.answer .q { font: 600 12px/1.3 var(--f-mono); color: var(--muted); }
+.answer .a { font: 800 22px/1.1 var(--f-display); font-stretch: 78%; }
+.answer p { margin: 0; }
+.diagram-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); padding: 10px; }
+.diagram { display: block; width: 100%; min-width: 860px; height: auto; color: var(--ink); }
+.diagram .box { fill: var(--surface); stroke: var(--line); }
+.diagram .box-acc { fill: var(--accent-soft); stroke: var(--accent); }
+.diagram .box-liner { fill: #fbf8f1; stroke: #d9cfbd; }
+.diagram .t { fill: var(--ink); font: 600 13px var(--f-body); }
+.diagram .ts { fill: var(--muted); font: 11.5px var(--f-mono); }
+.diagram .tl { fill: #2b2622; font: 600 13px var(--f-body); }
+.diagram .tls { fill: #7a6d5c; font: 11.5px var(--f-mono); }
+.diagram .edge { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+.diagram .head { fill: var(--muted); }
+.diagram .cap { fill: var(--muted); font: 600 10.5px var(--f-mono); letter-spacing: 0.08em; }
+
+.datatable-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+table.data { border-collapse: collapse; width: 100%; font: 13.5px/1.5 var(--f-body); color: var(--ink); }
+table.data th, table.data td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+table.data thead th { font: 600 11px/1.3 var(--f-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); background: var(--bg); white-space: nowrap; }
+table.data tbody tr:last-child td { border-bottom: 0; }
+table.data td.k { font-weight: 600; white-space: nowrap; }
+table.data td.req { font: 12px/1.5 var(--f-mono); color: var(--muted); }
+.chip { display: inline-block; padding: 1px 6px; border-radius: 2px; font: 600 11.5px/1.5 var(--f-mono); white-space: nowrap; }
+.c-good { background: var(--ok-soft); color: var(--ok); }
+.c-mid { background: var(--warn-soft); color: var(--warn); }
+.c-bad { background: var(--err-soft); color: var(--err); }
+
+.phases { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 880px) { .phases { grid-template-columns: minmax(0, 1fr); } }
+.phase { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 14px 16px; display: grid; gap: 8px; align-content: start; }
+.phase .n { font: 600 11px/1.3 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.phase ul { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; font-size: 14px; }
+.phase.first { border-color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
+
+.qs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 26px; margin: 0; padding: 0; list-style: none; counter-reset: q; }
+@media (max-width: 760px) { .qs { grid-template-columns: minmax(0, 1fr); } }
+.qs li { counter-increment: q; display: grid; grid-template-columns: 2em minmax(0, 1fr); gap: 2px 8px; font-size: 14px; }
+.qs li::before { content: counter(q); grid-row: span 2; font: 800 20px/1 var(--f-display); font-stretch: 75%; color: var(--accent); }
+.qs b { font-weight: 600; }
+.qs p { margin: 0; color: var(--muted); }
+
+/* ---- Two figures side by side (today vs. Phase 1) ---------------------- */
+.compare { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 880px) { .compare { grid-template-columns: minmax(0, 1fr); } }
+.fig { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.fig .cap { font: 600 11px/1.3 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.fig .cap .chip { margin-left: 6px; }
+.fig .shot { background: var(--site-bg); color: var(--site-ink); border: 1px solid var(--line); border-radius: 6px; padding: 14px; position: relative; min-height: 120px; font: 13px/1.4 var(--f-site); overflow-x: auto; }
+.cursor { display: inline-block; width: 0; height: 0; border-left: 7px solid #111111; border-top: 4px solid transparent; border-bottom: 4px solid transparent; transform: rotate(-40deg); margin: 0 2px; }
+.liner table.mini { border-collapse: collapse; width: 100%; font-size: 0.92em; line-height: 1.4; }
+.liner table.mini th { font-weight: 400; font-style: italic; color: var(--liner-dim); text-align: left; padding: 0 6px 3px 0; }
+.liner table.mini td { padding: 2px 6px 2px 0; }
+.liner table.mini tr.cur td { background: #f1e8d5; font-weight: 700; }
+
+/* ---- Containers (1b) --------------------------------------------------- */
+.cgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 900px) { .cgrid { grid-template-columns: minmax(0, 1fr); } }
+.cbox { display: grid; gap: 10px; align-content: start; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 14px 16px; min-width: 0; }
+.cbox .n { font: 600 11px/1.3 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.cbox p { margin: 0; font-size: 14px; }
+.cbox pre { margin: 0; padding: 8px 10px; background: var(--bg); border-radius: 3px; overflow-x: auto; font: 12px/1.5 var(--f-mono); color: var(--ink); }
+.cbox .shot { background: var(--site-bg); color: var(--site-ink); border: 1px solid var(--line); border-radius: 4px; padding: 10px; font: 13px/1.4 var(--f-site); overflow-x: auto; display: grid; gap: 8px; }
+.uvd { width: 270px; max-width: 100%; background: var(--site-bg); border: 1px solid #bbbbbb; box-shadow: 0 8px 22px -10px rgba(0, 0, 0, 0.45); font: 12.5px/1.4 var(--f-site); padding: 6px 0; color: var(--site-ink); }
+.uvd h6 { margin: 0; padding: 2px 10px 4px; font: bold 11px var(--f-site); text-transform: uppercase; color: var(--site-dim); }
+.uvd label { display: flex; gap: 6px; padding: 1px 10px; }
+.uvd label.hov { background: #eef3fa; }
+.uvd .c { margin-left: auto; color: var(--site-dim); font-variant-numeric: tabular-nums; }
+
+/* ---- Settings mock ----------------------------------------------------- */
+.settings { background: var(--site-bg); color: var(--site-ink); border: 1px solid var(--line); border-radius: 6px; box-shadow: var(--shadow); font: 13px/1.45 var(--f-ui); overflow: hidden; }
+.settings .sh { padding: 10px 14px; background: var(--dlg-bar); border-bottom: 2px solid var(--dlg-line); font-weight: 700; }
+.settings .div { padding: 8px 14px; background: #eef1f4; font: 700 12px var(--f-ui); letter-spacing: 0.04em; }
+.srow { display: grid; grid-template-columns: minmax(0, 1fr) 120px; gap: 4px 14px; padding: 8px 14px; border-bottom: 1px solid #eeeeee; }
+.srow:last-child { border-bottom: 0; }
+.srow .l { font-weight: 600; }
+.srow .d { grid-column: 1; color: #555555; font-size: 12px; }
+.srow .c { grid-column: 2; grid-row: 1 / span 2; align-self: center; justify-self: end; }
+.srow input[type="number"] { width: 72px; font: 13px var(--f-ui); }
+.srow.new .l::after { content: "new"; margin-left: 6px; padding: 0 4px; border-radius: 2px; background: var(--ok-soft); color: var(--ok); font: 600 10px/1.6 var(--f-mono); text-transform: uppercase; }
+.srow.kept .l::after { content: "existing"; margin-left: 6px; padding: 0 4px; border-radius: 2px; background: #eeeeee; color: #555555; font: 600 10px/1.6 var(--f-mono); text-transform: uppercase; }
+
+.toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 90;
+    background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 4px; font-size: 13.5px;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s; max-width: calc(100vw - 32px);
+}
+.toast.on { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+
+/* ---- URL PREVIEWS: this page's own additions ---------------------------- */
+:root {
+    /* Status pills inside the liner card: the card stays light in both themes,
+       like the script's own, so these are not redefined for dark. */
+    --st-ok-bg: #dcefe2;
+    --st-ok-ink: #22603b;
+    --st-redir-bg: #f6e8cc;
+    --st-redir-ink: #7a4c00;
+    --st-dead-bg: #f6dcd8;
+    --st-dead-ink: #8e1f16;
+    --ann-bg: #fafafa;
+}
+.fav {
+    display: inline-grid; place-items: center; flex: none; width: 16px; height: 16px; border-radius: 3px;
+    font: 700 10px/1 var(--f-site); color: #ffffff; vertical-align: -3px;
+    background: hsl(var(--h, 210) 45% 42%);
+}
+.site { display: flex; align-items: center; gap: 6px; font: 12px/1.3 var(--f-mono); color: var(--liner-dim); }
+.st {
+    display: inline-block; padding: 0 5px; border-radius: 3px; font: 700 11px/1.6 var(--f-mono); white-space: nowrap;
+}
+.st.ok { background: var(--st-ok-bg); color: var(--st-ok-ink); }
+.st.redir { background: var(--st-redir-bg); color: var(--st-redir-ink); }
+.st.dead { background: var(--st-dead-bg); color: var(--st-dead-ink); }
+.ctx { font-style: italic; color: var(--liner-dim); font-size: 0.92em; }
+.ctx b { font-style: normal; color: var(--liner-ink); }
+.liner .desc { margin-top: 4px; }
+.liner .u { font: 11.5px/1.4 var(--f-mono); color: var(--liner-dim); overflow-wrap: anywhere; }
+.thumb {
+    flex: none; width: 96px; height: 54px; border-radius: 2px; display: grid; place-items: center;
+    font: 700 9px/1.1 var(--f-mono); letter-spacing: 0.04em; text-transform: uppercase; color: #ffffff; text-align: center; padding: 4px;
+    background: linear-gradient(140deg, hsl(var(--h, 0) 45% 40%), hsl(calc(var(--h, 0) + 30) 40% 22%));
+}
+.thumb.sq { width: 64px; height: 64px; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 16px; align-items: start; }
+.cardfig { display: grid; gap: 6px; min-width: 0; }
+.cardfig .cap { font: 600 11px/1.3 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.cardfig .liner { max-width: none; }
+
+/* The MusicBrainz event page, mocked */
+.mbann { border: 1px solid var(--site-line); background: var(--ann-bg); padding: 8px 10px; margin-bottom: 12px; }
+.mbann h5 { margin: 0 0 4px; font: bold 14px var(--f-site); }
+.mbann p { margin: 0 0 6px; }
+.mbann a, .mbside a, table.details a { color: var(--site-link); text-decoration: none; }
+.mbann a:hover, .mbside a:hover, table.details a:hover { text-decoration: underline; }
+.mbann .h3toggle { margin: 6px 0 0; font: bold 13.5px var(--f-site); }
+.mbann .h3toggle .ti { color: var(--site-dim); margin-right: 4px; font-weight: 400; }
+.hov { outline: 2px dashed #c79a2a; outline-offset: 1px; border-radius: 1px; }
+.info { color: var(--site-dim); }
+.evgrid { display: grid; grid-template-columns: minmax(0, 1fr) 180px; gap: 14px; }
+@media (max-width: 640px) { .evgrid { grid-template-columns: minmax(0, 1fr); } }
+.mbside { display: grid; gap: 4px; align-content: start; font-size: 12px; }
+.mbside h6 { margin: 0 0 2px; font: bold 12px var(--f-site); text-transform: uppercase; color: var(--site-dim); }
+.mbside ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; }
+.mbside li { display: flex; gap: 5px; align-items: baseline; }
+table.details { border-collapse: collapse; font: 13px/1.4 var(--f-site); margin-bottom: 10px; }
+table.details th { text-align: right; vertical-align: top; padding: 2px 8px 2px 0; font-weight: 400; color: var(--site-dim); white-space: nowrap; }
+table.details td { padding: 2px 0; word-break: break-all; }
+
+/* The Live page of an external site, mocked */
+.lp-wiki { padding: 12px; display: grid; gap: 6px; }
+.lp-wiki h6 { margin: 0; font: 400 20px/1.2 Georgia, "Times New Roman", serif; border-bottom: 1px solid var(--site-line); padding-bottom: 4px; }
+.lp-wiki p { margin: 0; }
+.lp-bb { padding: 12px; display: grid; gap: 8px; }
+.lp-bb h6 { margin: 0; font: bold 16px var(--f-site); }
+.lp-bb .gig { border-top: 1px solid var(--site-line); padding-top: 6px; }
+.lp-bb .gig.cur { background: var(--site-cur); }
+.lp-bb .gig b { display: block; }
+.view { min-width: 0; }
+
+/* The flow diagram's reader list */
+.diagram .tr { fill: var(--ink); font: 12px var(--f-mono); }
+.diagram .dash { stroke-dasharray: 4 4; }
+</style>
+
+<div class="wrap">
+    <header class="mast">
+        <div class="eyebrow">ShowAllEntityData · org/iframe.org · generalize to URLs · 2026-10-08</div>
+        <h1>Cards for links that leave the site</h1>
+        <p class="lead">The popup engine previews MusicBrainz entities and the four Springsteen sites' own detail pages. Every link to another site still opens blind: the Wikipedia article in an annotation, the Brucebase review in the "URLs" sub-table, the YouTube playlist. These mockups show the same card and window for those links: a reader per known site, a generic reader for any other, the link's status, and what MusicBrainz itself knows about the URL.</p>
+        <p class="lead">Card texts are examples shaped like the real answers. Phase U0's probes replace them with measured fields before any code is written.</p>
+    </header>
+
+    <nav class="tabs" role="tablist" aria-label="Mockups">
+        <button class="tab" role="tab" id="t-overview" aria-controls="p-overview" aria-selected="true"><span class="k">≡</span>Overview</button>
+        <button class="tab" role="tab" id="t-event" aria-controls="p-event" aria-selected="false"><span class="k">1</span>Event page</button>
+        <button class="tab" role="tab" id="t-status" aria-controls="p-status" aria-selected="false"><span class="k">2</span>Generic &amp; dead links</button>
+        <button class="tab" role="tab" id="t-window" aria-controls="p-window" aria-selected="false"><span class="k">3</span>URL entity &amp; window</button>
+        <button class="tab" role="tab" id="t-hosts" aria-controls="p-hosts" aria-selected="false"><span class="k">4</span>Across hosts</button>
+        <button class="tab" role="tab" id="t-settings" aria-controls="p-settings" aria-selected="false"><span class="k">5</span>Settings</button>
+    </nav>
+
+    <!-- ===================================================== OVERVIEW -->
+    <section class="panel" id="p-overview" role="tabpanel" aria-labelledby="t-overview">
+        <div class="answers">
+            <div class="answer">
+                <div class="q">What is reused</div>
+                <div class="a">The engine, unchanged</div>
+                <p>Card, delay, Ctrl gate, Space and Esc, the window with Extracted and Live page, ‹ ›, ⟳, ↗, drill-down, the cache. <code>_dpLiveDocHtml()</code> already cleans any site's HTML.</p>
+            </div>
+            <div class="answer">
+                <div class="q">What is new</div>
+                <div class="a">One source, many readers</div>
+                <p><code>_extSource()</code> takes links to another origin; a reader per known site, a generic one for the rest. <code>_extFetch()</code> reads across origins, without cookies, one second apart per host.</p>
+            </div>
+            <div class="answer">
+                <div class="q">What is asked of the user</div>
+                <div class="a">One switch, off by default</div>
+                <p>A preview tells the linked site that someone looked. So it is opt-in, behind the Ctrl gate and the hover delay, and a pointer that moves on asks nothing.</p>
+            </div>
+        </div>
+
+        <div class="sub-head">
+            <h2>How an external link becomes a card</h2>
+            <p>The external source sits before the MusicBrainz one; the two never compete, because one takes only another origin and the other only its own.</p>
+        </div>
+        <div class="diagram-wrap">
+            <svg class="diagram" viewBox="0 0 1000 290" role="img" aria-labelledby="fl-t fl-d">
+                <title id="fl-t">External link resolution</title>
+                <desc id="fl-d">A link in scope goes to _extTarget, which keeps links to another origin and passes same-origin links to the MusicBrainz cards. The first matching reader loads the page through _extFetch, anonymous and one second apart per host. The card shows on Ctrl and hover; Space opens the window, which adds MusicBrainz's own view of the URL through the MusicBrainz rate gate.</desc>
+                <defs><marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto"><path class="head" d="M0 0 L8 4 L0 8 z"/></marker></defs>
+                <text class="cap" x="10" y="18">PAGE</text>
+                <rect class="box" x="10" y="30" width="170" height="64" rx="3"/>
+                <text class="t" x="22" y="50">Link in scope</text>
+                <text class="ts" x="22" y="67">annotation, details,</text>
+                <text class="ts" x="22" y="82">URLs table, sidebar</text>
+
+                <text class="cap" x="210" y="18">RESOLVE</text>
+                <rect class="box-acc" x="210" y="30" width="190" height="64" rx="3"/>
+                <text class="t" x="222" y="50">_extTarget()</text>
+                <text class="ts" x="222" y="67">another origin, and</text>
+                <text class="ts" x="222" y="82">not on the skip list</text>
+
+                <rect class="box" x="210" y="170" width="190" height="56" rx="3"/>
+                <text class="t" x="222" y="192">Same origin</text>
+                <text class="ts" x="222" y="210">MusicBrainz cards</text>
+
+                <text class="cap" x="430" y="18">READERS, FIRST MATCH</text>
+                <rect class="box" x="430" y="30" width="200" height="196" rx="3"/>
+                <text class="tr" x="444" y="54">wikipedia<tspan class="ts" x="534">REST summary</tspan></text>
+                <text class="tr" x="444" y="78">wikidata<tspan class="ts" x="534">entity JSON</tspan></text>
+                <text class="tr" x="444" y="102">youtube<tspan class="ts" x="534">oEmbed</tspan></text>
+                <text class="tr" x="444" y="126">discogs<tspan class="ts" x="534">after U0</tspan></text>
+                <text class="tr" x="444" y="150">springsteen<tspan class="ts" x="534">4 parsers</tspan></text>
+                <text class="tr" x="444" y="174">bb date<tspan class="ts" x="534">year page</tspan></text>
+                <text class="tr" x="444" y="198">generic<tspan class="ts" x="534">title, og:*</tspan></text>
+
+                <text class="cap" x="660" y="18">FETCH</text>
+                <rect class="box-acc" x="660" y="30" width="150" height="64" rx="3"/>
+                <text class="t" x="672" y="50">_extFetch()</text>
+                <text class="ts" x="672" y="67">GM xhr, anonymous</text>
+                <text class="ts" x="672" y="82">1 s gate per host</text>
+
+                <rect class="box" x="660" y="170" width="150" height="56" rx="3"/>
+                <text class="t" x="672" y="192">/ws/2/url</text>
+                <text class="ts" x="672" y="210">MB gate, on pin</text>
+
+                <text class="cap" x="840" y="18">SHOW</text>
+                <rect class="box-liner" x="840" y="30" width="150" height="64" rx="3"/>
+                <text class="tl" x="852" y="50">Card</text>
+                <text class="tls" x="852" y="67">Ctrl + hover</text>
+                <text class="tls" x="852" y="82">status, context</text>
+                <rect class="box-liner" x="840" y="170" width="150" height="56" rx="3"/>
+                <text class="tl" x="852" y="192">Window</text>
+                <text class="tls" x="852" y="210">Extracted, Live</text>
+
+                <path class="edge" d="M180 62 H206" marker-end="url(#ah)"/>
+                <path class="edge" d="M400 62 H426" marker-end="url(#ah)"/>
+                <path class="edge dash" d="M305 94 V166" marker-end="url(#ah)"/>
+                <path class="edge" d="M630 62 H656" marker-end="url(#ah)"/>
+                <path class="edge" d="M810 62 H836" marker-end="url(#ah)"/>
+                <path class="edge" d="M915 94 V166" marker-end="url(#ah)"/>
+                <path class="edge" d="M810 198 H836" marker-end="url(#ah)"/>
+                <text class="ts" x="924" y="136">Space</text>
+                <text class="ts" x="314" y="136">same origin</text>
+                <text class="cap" x="10" y="270">EVERY REQUEST: OPT-IN · NO COOKIES · ONLY A SUCCESS IS KEPT · A MOVED-ON HOVER ASKS NOTHING</text>
+            </svg>
+        </div>
+
+        <div class="sub-head">
+            <h2>Readers</h2>
+            <p>Each is a candidate until U0 has probed it. A reader that cannot render a useful Live page says so, and the window shows only ↗.</p>
+        </div>
+        <div class="datatable-wrap">
+            <table class="data">
+                <thead><tr><th>Reader</th><th>Serves</th><th>Card shows</th><th>Request</th><th>Live page</th><th>State</th></tr></thead>
+                <tbody>
+                    <tr><td class="k">Wikipedia</td><td>*.wikipedia.org/wiki/…</td><td>title, short description, extract, image</td><td class="req">/api/rest_v1/page/summary/&lt;title&gt;</td><td>the article</td><td><span class="chip c-good">U3</span></td></tr>
+                    <tr><td class="k">Wikidata</td><td>wikidata.org/wiki/Q…</td><td>label, description, aliases, sitelinks</td><td class="req">Special:EntityData/Q….json</td><td>the item</td><td><span class="chip c-good">U3</span></td></tr>
+                    <tr><td class="k">YouTube</td><td>watch, playlist, youtu.be, channel</td><td>title, channel, thumbnail</td><td class="req">/oembed?url=…&amp;format=json</td><td>none (script-only)</td><td><span class="chip c-good">U3</span></td></tr>
+                    <tr><td class="k">Discogs</td><td>release, master, artist, label</td><td>title, year, formats, labels</td><td class="req">api.discogs.com, User-Agent, 25/min</td><td>U0 decides</td><td><span class="chip c-mid">after U0</span></td></tr>
+                    <tr><td class="k">Springsteen sites</td><td>each host's detail links</td><td>the card that site's own list shows</td><td class="req">the page, via _extFetch()</td><td>the host's own fields</td><td><span class="chip c-good">U4</span></td></tr>
+                    <tr><td class="k">Brucebase date</td><td>brucebase…/&lt;year&gt;#&lt;ddmmyy&gt;</td><td>that show: date, venue, notes</td><td class="req">the year page, once per year</td><td>the year page at the show</td><td><span class="chip c-mid">after U0</span></td></tr>
+                    <tr><td class="k">Generic</td><td>anything else</td><td>title, description, image, site</td><td class="req">the page, HTML only, 512 KB cap</td><td>the whole page</td><td><span class="chip c-good">U1</span></td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="sub-head">
+            <h2>Steps</h2>
+            <p>Each step lands on its own, with specs, a mutation list, a live spec and a browser check before the merge.</p>
+        </div>
+        <div class="phases">
+            <div class="phase first"><div class="n">U0 · probes</div><ul><li>Wikipedia, Wikidata, oEmbed, Discogs answers</li><li>generic pages: og:*, size, script-only</li><li>/ws/2/url and ?resource= rules</li><li>the Brucebase year page anchors</li><li>Tampermonkey's @connect prompt</li></ul></div>
+            <div class="phase"><div class="n">U1 · the engine</div><ul><li>_extFetch(), the per-host gate</li><li>_extSource() on MusicBrainz</li><li>the generic reader, status pill</li><li>context from the page</li><li>sa_pop_ext, off by default</li></ul></div>
+            <div class="phase"><div class="n">U2 · MusicBrainz URLs</div><ul><li>a url kind for the "[info]" links</li><li>"MusicBrainz knows this URL" in the window</li></ul></div>
+            <div class="phase"><div class="n">U3 · known sites</div><ul><li>Wikipedia, Wikidata, YouTube</li><li>Discogs, if U0 says so</li></ul></div>
+            <div class="phase"><div class="n">U4 · Springsteen sites</div><ul><li>the four parsers from any host</li><li>the Brucebase date anchor</li></ul></div>
+            <div class="phase"><div class="n">U5 · foreign hosts</div><ul><li>the external source on the four sites</li><li>share bars and chrome left out</li></ul></div>
+        </div>
+
+        <div class="sub-head">
+            <h2>Decisions</h2>
+            <p>The open questions, answered on 2026-10-08.</p>
+        </div>
+        <ol class="qs">
+            <li><b>How long to keep an answer</b><p>A week (168 hours), adjustable in the settings.</p></li>
+            <li><b>A 404 or 410</b><p>Kept for this page load only, in memory; never saved.</p></li>
+            <li><b>Discogs</b><p>Decided after U0. If built, an optional personal token raises its limit from 25 to 60 requests a minute; the token never goes into a config export.</p></li>
+            <li><b>Generic reader's size cap</b><p>512 KB.</p></li>
+            <li><b>@connect</b><p>Keep * and list each reader host beside it.</p></li>
+            <li><b>Foreign hosts</b><p>Every off-site link, under the same exclusions.</p></li>
+        </ol>
+    </section>
+
+    <!-- ===================================================== 1 EVENT PAGE -->
+    <section class="panel" id="p-event" role="tabpanel" aria-labelledby="t-event" hidden>
+        <div class="panel-head">
+            <h2>The event page of the request</h2>
+            <p>musicbrainz.org/event/47b84024-…, after "Show all": the annotation, the Relationships tables (the URL is now the "URLs" sub-table) and the sidebar. Three external links, three readers. The dashed outline marks the link each card belongs to.</p>
+        </div>
+        <div class="bench">
+            <div class="stage">
+                <div class="window">
+                    <div class="chrome"><span class="url">musicbrainz.org/event/47b84024-bd3b-4e36-80e1-b051e12ede2f</span><span class="pt">event-overview</span></div>
+                    <div class="sitebody">
+                        <div class="mbhead"><div class="h">2025‐10‐26: The Stone Pony, Asbury Park, NJ, USA</div><div class="s">(Birthday Party at The Pony)</div></div>
+                        <div class="evgrid">
+                            <div>
+                                <div class="mbann">
+                                    <h5>Annotation</h5>
+                                    <p>Bruce makes a surprise appearance at Little Steven's Birthday Party At The Pony, a benefit for <a href="#" class="hov" rel="nofollow">TeachRock</a> presented by <a href="#" rel="nofollow">Hard Rock</a>. Bruce joins Steven Van Zandt and The Disciples of Soul for a three song set.</p>
+                                    <div class="h3toggle"><span class="ti">▼</span><a href="#" class="hov" rel="nofollow">YouTube Playlist</a></div>
+                                </div>
+                                <div class="h3m">URLs (1)</div>
+                                <table class="tbl">
+                                    <thead><tr><th>#</th><th>Site</th><th>URL</th><th>Relationship</th></tr></thead>
+                                    <tbody><tr><td class="num">1</td><td>brucebase.wikidot.com</td><td><a class="wrap-anywhere hov" href="#"><bdi>http://brucebase.wikidot.com/2025#261025</bdi></a> <span class="info">[<a href="#">info</a>]</span></td><td>reviews</td></tr></tbody>
+                                </table>
+                            </div>
+                            <div class="mbside">
+                                <h6>External links</h6>
+                                <ul><li><span class="fav" style="--h: 20">B</span><a href="#">Review (brucebase.wikidot.com)</a></li></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="cards">
+                    <div class="cardfig">
+                        <div class="cap">URLs sub-table · Brucebase date reader</div>
+                        <div class="liner">
+                            <div class="site"><span class="fav" style="--h: 20">B</span>brucebase.wikidot.com · 2025 <span class="st ok">200</span></div>
+                            <div class="ctx">MusicBrainz: <b>reviews</b> of this event</div>
+                            <div class="rule"></div>
+                            <div class="t">26 October 2025 · The Stone Pony, Asbury Park, NJ</div>
+                            <div class="sub">Little Steven's birthday party; Bruce guests for three songs</div>
+                            <dl class="kv"><dt>Billing</dt><dd>Little Steven &amp; The Disciples Of Soul</dd><dt>With</dt><dd>Bruce Springsteen (guest)</dd><dt>Set</dt><dd>3 songs with Bruce (example)</dd></dl>
+                            <div class="foot">fetched now · one request serves every 2025 show · <kbd>Space</kbd> pin · <kbd>Esc</kbd> close</div>
+                        </div>
+                    </div>
+                    <div class="cardfig">
+                        <div class="cap">Annotation · Wikipedia reader</div>
+                        <div class="liner">
+                            <div class="site"><span class="fav" style="--h: 0">W</span>en.wikipedia.org <span class="st ok">200</span></div>
+                            <div class="ctx">in the annotation</div>
+                            <div class="rule"></div>
+                            <div class="head"><div class="thumb sq" style="--h: 200">logo</div><div class="headtext"><div class="t">TeachRock</div><div class="sub">American non-profit music education organization (example)</div></div></div>
+                            <div class="desc">TeachRock is a non-profit founded by Steven Van Zandt that builds school lessons around the history of popular music. (example extract)</div>
+                            <div class="foot">saved 3 days ago · <kbd>Space</kbd> pin · <kbd>Esc</kbd> close</div>
+                        </div>
+                    </div>
+                    <div class="cardfig">
+                        <div class="cap">Annotation heading · YouTube reader</div>
+                        <div class="liner">
+                            <div class="site"><span class="fav" style="--h: 355">▶</span>www.youtube.com · playlist <span class="st ok">200</span></div>
+                            <div class="ctx">in the annotation</div>
+                            <div class="rule"></div>
+                            <div class="head"><div class="thumb" style="--h: 355">thumbnail</div><div class="headtext"><div class="t">Little Steven's Birthday Party at The Pony 2025 (example title)</div><div class="sub">a channel name (example)</div></div></div>
+                            <div class="foot">no Live page for YouTube: ↗ opens it · <kbd>Space</kbd> pin</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <aside class="notes">
+                <div class="try"><b>Read the context line</b><span>"reviews of this event" costs nothing: the URLs sub-table's Relationship cell (or the native row's "reviews:" heading) says it before any request.</span></div>
+                <div class="note"><div class="lbl">Requests</div><dl class="cost"><dt>Brucebase</dt><dd>one, the year page <code>/2025</code>; every 2025 show is then cached</dd><dt>Wikipedia</dt><dd>one, the REST summary (JSON, a few KB)</dd><dt>YouTube</dt><dd>one, oEmbed</dd><dt>[info]</dt><dd>its own card: tab 3</dd></dl></div>
+                <div class="note"><div class="lbl">Never a card</div><ul><li>the event art in the sidebar (its own preview)</li><li>musicbrainz.org links in the annotation: they get the MusicBrainz card</li><li>header and footer links</li></ul></div>
+                <div class="note"><div class="lbl">The heading link</div><p>"YouTube Playlist" is inside an annotation heading that toggles its section. The card shows on the link; a click on the link follows it and does not toggle the heading.</p></div>
+                <div class="note"><div class="lbl">Stepping</div><p>‹ › go down the URL column of the sub-table, or through the annotation's external links in page order.</p></div>
+            </aside>
+        </div>
+    </section>
+
+    <!-- ===================================================== 2 GENERIC & DEAD -->
+    <section class="panel" id="p-status" role="tabpanel" aria-labelledby="t-status" hidden>
+        <div class="panel-head">
+            <h2>The generic reader and the link's status</h2>
+            <p>Any site without its own reader: the page's title, its og: or meta description and image, its icon. Every external card, whatever the reader, carries a status pill, so a link that has gone dead or moved is visible on hover. This helps when fixing relationships.</p>
+        </div>
+        <div class="cards">
+            <div class="cardfig">
+                <div class="cap">200 · generic reader</div>
+                <div class="liner">
+                    <div class="site"><span class="fav" style="--h: 140">s</span>www.setlist.fm <span class="st ok">200</span></div>
+                    <div class="ctx">MusicBrainz: <b>setlist.fm</b> of this event</div>
+                    <div class="rule"></div>
+                    <div class="head"><div class="thumb" style="--h: 140">og:image</div><div class="headtext"><div class="t">Concert setlist at The Stone Pony, Asbury Park (example og:title)</div><div class="desc">The setlist of the show, with notes and covers (example og:description).</div></div></div>
+                    <div class="foot">fetched now · 84 KB read · <kbd>Space</kbd> pin</div>
+                </div>
+            </div>
+            <div class="cardfig">
+                <div class="cap">301 · moved</div>
+                <div class="liner">
+                    <div class="site"><span class="fav" style="--h: 260">e</span>fanzine.example <span class="st redir">301</span></div>
+                    <div class="ctx">MusicBrainz: <b>reviews</b> of this release</div>
+                    <div class="rule"></div>
+                    <div class="u">http://fanzine.example/reviews/btr.htm</div>
+                    <div class="u">→ https://www.fanzine.example/archive/1975/born-to-run/</div>
+                    <div class="t" style="margin-top:4px">Born to Run, reviewed (example)</div>
+                    <div class="foot">the relationship still points at the old address · <kbd>Space</kbd> pin</div>
+                </div>
+            </div>
+            <div class="cardfig">
+                <div class="cap">404 · dead</div>
+                <div class="liner">
+                    <div class="site"><span class="fav" style="--h: 30">o</span>oldsite.example <span class="st dead">404 Not found</span></div>
+                    <div class="ctx">MusicBrainz: <b>discography entry</b> of this release</div>
+                    <div class="rule"></div>
+                    <div class="u">http://oldsite.example/discography/brucelp1.html</div>
+                    <div class="alert" style="margin-top:4px">The page is gone.</div>
+                    <div class="foot">kept for this page load only (open question 2) · ⟳ asks again</div>
+                </div>
+            </div>
+            <div class="cardfig">
+                <div class="cap">Not a page</div>
+                <div class="liner">
+                    <div class="site"><span class="fav" style="--h: 90">d</span>docs.example <span class="st ok">200</span></div>
+                    <div class="ctx">in the annotation</div>
+                    <div class="rule"></div>
+                    <div class="u">https://docs.example/tour-1975-programme.pdf</div>
+                    <div>A PDF, 2.3 MB. Not read: the reader stops at the headers.</div>
+                    <div class="foot">↗ opens it · no Live page</div>
+                </div>
+            </div>
+            <div class="cardfig">
+                <div class="cap">Unreachable</div>
+                <div class="liner">
+                    <div class="site"><span class="fav" style="--h: 0">?</span>gone.example <span class="st dead">unreachable</span></div>
+                    <div class="ctx">in the sidebar</div>
+                    <div class="rule"></div>
+                    <div>No answer from the site (name not found, or a timeout). Nothing is kept; the next hover asks again.</div>
+                    <div class="foot">failed now · ⟳ retry</div>
+                </div>
+            </div>
+            <div class="cardfig">
+                <div class="cap">Script-only site</div>
+                <div class="liner">
+                    <div class="site"><span class="fav" style="--h: 150">♪</span>open.streaming.example <span class="st ok">200</span></div>
+                    <div class="ctx">MusicBrainz: <b>streaming page</b> of this release</div>
+                    <div class="rule"></div>
+                    <div class="t">Born to Run (example og:title)</div>
+                    <div class="more">The page builds itself with scripts; this is all its HTML says.</div>
+                    <div class="foot">fetched now · Live page would be empty: ↗ only</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================================================== 3 URL ENTITY & WINDOW -->
+    <section class="panel" id="p-window" role="tabpanel" aria-labelledby="t-window" hidden>
+        <div class="panel-head">
+            <h2>MusicBrainz's own view of a URL</h2>
+            <p>The "[info]" link beside every URL relationship opens MusicBrainz's page for that URL. It becomes a MusicBrainz card kind, and the same answer fills the external window's "MusicBrainz knows this URL" section, on pin only.</p>
+        </div>
+        <div class="compare">
+            <div class="fig">
+                <div class="cap">The "[info]" link · url kind <span class="chip c-good">U2</span></div>
+                <div class="liner">
+                    <div class="head"><div class="headtext"><div class="t">URL</div><div class="u">http://brucebase.wikidot.com/2025#261025</div><div class="pills"><span class="pill">1 relationship</span><span class="pill">brucebase.wikidot.com</span></div></div></div>
+                    <div class="rule"></div>
+                    <dl class="kv"><dt>reviews</dt><dd>Event: 2025‐10‐26: The Stone Pony, Asbury Park, NJ, USA</dd></dl>
+                    <div class="foot">fetched now · /ws/2/url/&lt;mbid&gt;?inc=…-rels · <kbd>Space</kbd> pin</div>
+                </div>
+            </div>
+            <div class="fig">
+                <div class="cap">A URL nobody links <span class="chip c-mid">annotation link</span></div>
+                <div class="liner">
+                    <div class="site"><span class="fav" style="--h: 0">W</span>en.wikipedia.org <span class="st ok">200</span></div>
+                    <div class="rule"></div>
+                    <div class="t">MusicBrainz knows this URL</div>
+                    <div class="sub">Not in MusicBrainz: no entity links https://en.wikipedia.org/wiki/TeachRock. It appears only in this annotation.</div>
+                    <div class="foot">in the window only · /ws/2/url?resource=… through the MusicBrainz gate</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="sub-head">
+            <h3>The window, pinned from the Brucebase link</h3>
+            <p>Switch between Extracted and Live page. The window's title is the reader's kind; ‹ › step through the URL column.</p>
+        </div>
+        <div class="dlg" id="ext-dlg">
+            <div class="dlg-bar">
+                <span class="dlg-title">Brucebase show</span>
+                <div class="dlg-tools">
+                    <button type="button" class="tbtn" title="Previous link (←)">‹</button>
+                    <span class="poslbl">1 / 1</span>
+                    <button type="button" class="tbtn" title="Next link (→)">›</button>
+                    <span class="seg"><button type="button" class="tbtn" data-view="ex" aria-pressed="true">Extracted</button><button type="button" class="tbtn" data-view="live" aria-pressed="false">Live page</button></span>
+                    <button type="button" class="tbtn" title="Load again, bypassing the saved copy">⟳</button>
+                    <a class="tbtn" href="#" title="Open the page in a new tab">↗</a>
+                    <button type="button" class="xbtn" title="Close (Escape)">✕</button>
+                </div>
+            </div>
+            <div class="dlg-area">
+                <div class="view" data-view="ex">
+                    <div class="x">
+                        <div class="col">
+                            <div class="xtitle">26 October 2025 · The Stone Pony</div>
+                            <div class="xsub">Asbury Park, NJ · Little Steven's birthday party</div>
+                            <h4>Link</h4>
+                            <div class="site"><span class="fav" style="--h: 20">B</span>brucebase.wikidot.com/2025#261025 <span class="st ok">200</span></div>
+                            <h4>On this page</h4>
+                            <div class="ctx">MusicBrainz: <b>reviews</b> of this event (URLs sub-table)</div>
+                            <h4>MusicBrainz knows this URL</h4>
+                            <dl class="kv"><dt>reviews</dt><dd>Event: 2025‐10‐26: The Stone Pony, Asbury Park, NJ, USA</dd></dl>
+                        </div>
+                        <div class="col">
+                            <h4>The show (example)</h4>
+                            <dl class="kv"><dt>Billing</dt><dd>Little Steven &amp; The Disciples Of Soul</dd><dt>Guests</dt><dd>Bruce Springsteen; Jesse Malin; Darlene Love; Gary U.S. Bonds</dd><dt>With Bruce</dt><dd>3 songs</dd></dl>
+                            <h4>Notes (example)</h4>
+                            <p style="margin:0">A benefit for TeachRock. Bruce is announced as a surprise guest during the second half of the set.</p>
+                        </div>
+                    </div>
+                    <div class="xfoot">fetched now · request: brucebase.wikidot.com/2025 (anonymous) · MusicBrainz: /ws/2/url/7c36bf3a-…</div>
+                </div>
+                <div class="view" data-view="live" hidden>
+                    <div class="livebar"><label><input type="checkbox" class="hidenav" id="hidenav-bb" checked> Hide the site's navigation</label><span class="u">http://brucebase.wikidot.com/2025#261025</span></div>
+                    <div class="livepage hide-nav">
+                        <div class="lp-nav"><span class="cap">wikidot header · search · menus</span><i></i><i></i><i></i></div>
+                        <div class="lp-bb">
+                            <h6>2025</h6>
+                            <div class="gig"><b>24 October 2025</b>an earlier show (example)</div>
+                            <div class="gig cur"><b>26 October 2025 · The Stone Pony, Asbury Park, NJ</b>Scrolled to the anchor and marked: the show the link names.</div>
+                            <div class="gig"><b>later shows</b>(example)</div>
+                        </div>
+                        <div class="lp-foot">site footer</div>
+                    </div>
+                </div>
+            </div>
+            <div class="dlg-hint">← → step · Backspace back after a drill-down · Esc close</div>
+        </div>
+    </section>
+
+    <!-- ===================================================== 4 ACROSS HOSTS -->
+    <section class="panel" id="p-hosts" role="tabpanel" aria-labelledby="t-hosts" hidden>
+        <div class="panel-head">
+            <h2>The Springsteen sites, from anywhere</h2>
+            <p>The four sites' parsers take a page and a URL; nothing ties them to their own host except the fetch. Through <code>_extFetch()</code> a link to any of them gets the same card from MusicBrainz, and from each other's pages. IndexedDB is per origin, so a card cached on brucebase.wikidot.com is fetched again the first time on musicbrainz.org.</p>
+        </div>
+        <div class="bench">
+            <div class="stage">
+                <div class="window">
+                    <div class="chrome"><span class="url">musicbrainz.org/work/…</span><span class="pt">work relationships</span></div>
+                    <div class="sitebody">
+                        <div class="mbhead"><div class="h">Thunder Road</div><div class="s">Work · Song</div></div>
+                        <table class="details">
+                            <tr><th>lyrics page:</th><td><a href="#" class="hov">https://www.springsteenlyrics.com/lyrics.php?song=thunderroad</a> <span class="info">[<a href="#">info</a>]</span></td></tr>
+                            <tr><th>other databases:</th><td><a href="#" class="hov">http://brucebase.wikidot.com/song:thunder-road</a> <span class="info">[<a href="#">info</a>]</span></td></tr>
+                        </table>
+                    </div>
+                </div>
+                <div class="cards">
+                    <div class="cardfig">
+                        <div class="cap">springsteenlyrics.com song · _dpParseSl()</div>
+                        <div class="liner">
+                            <div class="site"><span class="fav" style="--h: 210">S</span>www.springsteenlyrics.com <span class="st ok">200</span></div>
+                            <div class="ctx">MusicBrainz: <b>lyrics page</b> of this work</div>
+                            <div class="rule"></div>
+                            <div class="t">Thunder Road</div>
+                            <div class="sub">Album version</div>
+                            <dl class="kv"><dt>Lyrics</dt><dd>4 verses, 34 lines (example count)</dd><dt>Versions on the site</dt><dd>12 (example)</dd></dl>
+                            <div class="more">Also: Info, Writing and Recording, Live History, Covers</div>
+                            <div class="foot">the same card springsteenlyrics.com's own index shows · <kbd>Space</kbd> pin</div>
+                        </div>
+                    </div>
+                    <div class="cardfig">
+                        <div class="cap">Brucebase song · _dpParseBb()</div>
+                        <div class="liner">
+                            <div class="site"><span class="fav" style="--h: 20">B</span>brucebase.wikidot.com <span class="st ok">200</span></div>
+                            <div class="ctx">MusicBrainz: <b>other databases</b> of this work</div>
+                            <div class="rule"></div>
+                            <div class="t">Thunder Road</div>
+                            <dl class="kv"><dt>Performances</dt><dd>1,400+ (example)</dd><dt>Last played</dt><dd>a 2025 show (example)</dd><dt>Released on</dt><dd>Born to Run (1975)</dd></dl>
+                            <div class="more">Also: Credits, On The Tracks, Lyrics</div>
+                            <div class="foot">the same card Brucebase's song list shows · <kbd>Space</kbd> pin</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <aside class="notes">
+                <div class="note"><div class="lbl">What moves</div><p>Only the fetch: <code>_dpFetchText()</code> (same origin, with the site's cookies) on the site itself, <code>_extFetch()</code> (anonymous) from anywhere else. The record, the card and the Live page fields stay the host's own.</p></div>
+                <div class="note"><div class="lbl">No lyrics</div><p>The card counts verses and lines; it never quotes lyrics, in fixtures or specs either (docs/claude/detail-pages.md).</p></div>
+                <div class="note"><div class="lbl">On the foreign hosts (U5)</div><ul><li>springsteenlyrics.com's links to Brucebase get the Brucebase card</li><li>its share bar (facebook, reddit, x, whatsapp) gets nothing</li><li>jungleland.it's own host in capitals is still its own host</li></ul></div>
+            </aside>
+        </div>
+    </section>
+
+    <!-- ===================================================== 5 SETTINGS -->
+    <section class="panel" id="p-settings" role="tabpanel" aria-labelledby="t-settings" hidden>
+        <div class="panel-head">
+            <h2>Settings</h2>
+            <p>One new section after the MusicBrainz link previews. The Ctrl gate is the one every preview already follows; no new key replaces it.</p>
+        </div>
+        <div class="settings">
+            <div class="sh">⚙️ Settings</div>
+            <div class="div">🔎 LINK PREVIEWS ON MUSICBRAINZ</div>
+            <div class="srow kept"><span class="l">Preview linked entities on hover</span><span class="d">The MusicBrainz cards. U2 adds the "[info]" links of URL relationships to them. Independent of the switch below.</span><span class="c"><input type="checkbox" id="s-pop-mb" aria-label="(mock)"></span></div>
+            <div class="div">🔎 EXTERNAL LINK PREVIEWS</div>
+            <div class="srow new"><span class="l">Preview external links on hover</span><span class="d">Links to other sites in annotations, relationships and the sidebar. A preview sends a request to the linked site (without your cookies), which tells that site the page was looked at.</span><span class="c"><input type="checkbox" id="s-pop-ext" aria-label="(mock)"></span></div>
+            <div class="srow new"><span class="l">Keep external answers for (hours)</span><span class="d">How long a card's data is reused. ⟳ in the window always asks again. A dead link is kept only for the page load.</span><span class="c"><input type="number" id="s-pop-ext-ttl" value="168" aria-label="(mock)"></span></div>
+            <div class="srow new"><span class="l">Discogs personal access token (optional)</span><span class="d">Only if U0 leads to a Discogs reader. Without it, Discogs cards work at 25 requests a minute; with it, 60. Stays in this browser: a config export leaves it out.</span><span class="c"><input type="password" id="s-pop-ext-discogs" value="" placeholder="none" aria-label="(mock)" style="width:110px"></span></div>
+            <div class="div">🔎 EVERY PREVIEW (MusicBrainz links and the sites above)</div>
+            <div class="srow kept"><span class="l">Show every preview on a plain hover (without Ctrl)</span><span class="d">External links follow it too.</span><span class="c"><input type="checkbox" id="s-dp-noctrl" aria-label="(mock)"></span></div>
+        </div>
+    </section>
+</div>
+
+<script>
+'use strict';
+/** The tab strip: click and arrow keys, the choice remembered per viewer. */
+const TABS = ['overview', 'event', 'status', 'window', 'hosts', 'settings'];
+function selectTab(name, focus) {
+    if (!TABS.includes(name)) name = 'overview';
+    TABS.forEach(t => {
+        document.getElementById('t-' + t).setAttribute('aria-selected', String(t === name));
+        document.getElementById('p-' + t).hidden = t !== name;
+    });
+    if (focus) document.getElementById('t-' + name).focus();
+    try { history.replaceState(null, '', '#' + name); } catch (_) { /* sandboxed */ }
+    try { localStorage.setItem('url-tab', name); } catch (_) { /* storage blocked */ }
+}
+document.querySelector('.tabs').addEventListener('click', e => {
+    const t = e.target.closest('.tab');
+    if (t) selectTab(t.id.slice(2));
+});
+document.querySelector('.tabs').addEventListener('keydown', e => {
+    if (!['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+    const cur = TABS.indexOf(document.activeElement.id.slice(2));
+    if (cur < 0) return;
+    selectTab(TABS[(cur + (e.key === 'ArrowRight' ? 1 : -1) + TABS.length) % TABS.length], true);
+});
+
+/** The window's Extracted / Live page switch and its "hide navigation" box. */
+const dlg = document.getElementById('ext-dlg');
+dlg.querySelector('.seg').addEventListener('click', e => {
+    const b = e.target.closest('[data-view]');
+    if (!b) return;
+    dlg.querySelectorAll('.seg [data-view]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    dlg.querySelectorAll('.view').forEach(v => { v.hidden = v.dataset.view !== b.dataset.view; });
+});
+dlg.addEventListener('change', e => {
+    if (!e.target.classList.contains('hidenav')) return;
+    dlg.querySelector('.livepage').classList.toggle('hide-nav', e.target.checked);
+});
+
+window.addEventListener('hashchange', () => selectTab(location.hash.slice(1)));
+
+let first = location.hash.slice(1);
+if (!TABS.includes(first)) { try { first = localStorage.getItem('url-tab') || 'overview'; } catch (_) { first = 'overview'; } }
+selectTab(first);
+</script>
