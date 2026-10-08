@@ -1,0 +1,366 @@
+[
+    {
+        "name": "the external source ignores sa_pop_ext",
+        "why": "External link previews are opt-in, off by default (org/iframe.org answer 2): with the setting off a hover asks no other site anything.",
+        "edits": [
+            {
+                "find": "            enabled: () => !_foreignHost && Lib.settings.sa_pop_ext === true,",
+                "replace": "            enabled: () => !_foreignHost,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "off by default",
+        "expect": "fail"
+    },
+    {
+        "name": "external requests carry the user's cookies",
+        "why": "Every external request is anonymous: a card describes the page everyone sees and never acts as the user on another site (U0 X9: logged in to Brucebase, the cookie request got the logged-in page).",
+        "edits": [
+            {
+                "find": "method: 'GET', url, headers, anonymous: true, timeout: _EXT_TIMEOUT_MS,",
+                "replace": "method: 'GET', url, headers, anonymous: false, timeout: _EXT_TIMEOUT_MS,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "first contact",
+        "expect": "fail"
+    },
+    {
+        "name": "a hover makes the first request to a host the script never reached",
+        "why": "Tampermonkey asks the user once per host only @connect * covers (U0 B1): that prompt must come from Space or a tap, never from a pointer passing over a link (answer 7).",
+        "edits": [
+            {
+                "find": "        if ((!st0 || st0.status === 'failed') && !_extHostKnown(t.askHost)) {",
+                "replace": "        if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "first contact",
+        "expect": "fail"
+    },
+    {
+        "name": "a hover retries a host whose first try failed",
+        "why": "A host the window's try could not reach (no answer, or Tampermonkey refused it) is still unknown: a hover retrying it would bring the permission prompt back on a hover (answer 7). Found in review after the first version of U1, which gated only a link with no state at all.",
+        "edits": [
+            {
+                "find": "        if ((!st0 || st0.status === 'failed') && !_extHostKnown(t.askHost)) {",
+                "replace": "        if (!st0 && !_extHostKnown(t.askHost)) {"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a failure is shown",
+        "expect": "fail"
+    },
+    {
+        "name": "a host that answered is not remembered",
+        "why": "After one answer Tampermonkey no longer asks, so later hovers of that host load at once (answer 7, sa_pop_ext_hosts).",
+        "edits": [
+            {
+                "find": "            if (res.status > 0) _extRememberHost(host);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "first contact",
+        "expect": "fail"
+    },
+    {
+        "name": "a host is remembered even when the request got no answer",
+        "why": "A host Tampermonkey refused (or one that never answered) must stay 'not contacted': its next hover would otherwise ask again and bring the prompt or the refusal back on a hover.",
+        "edits": [
+            {
+                "find": "            if (res.status > 0) _extRememberHost(host);",
+                "replace": "            _extRememberHost(host);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a failure is shown",
+        "expect": "fail"
+    },
+    {
+        "name": "a dead link is kept in IndexedDB",
+        "why": "A 404, a browser check or a non-page is kept for this page load only (answer 2): a link fixed at the site must show as fixed after a reload.",
+        "edits": [
+            {
+                "find": "            keep: (d) => d.state === 'ok', ttlMs: _extTtlMs(),",
+                "replace": "            keep: null, ttlMs: _extTtlMs(),"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "the link's status",
+        "expect": "fail"
+    },
+    {
+        "name": "the external records ignore sa_pop_ext_ttl_hours",
+        "why": "External answers keep their own time to live (answer 1, a week by default), not the MusicBrainz cards' 24 hours.",
+        "edits": [
+            {
+                "find": "            keep: (d) => d.state === 'ok', ttlMs: _extTtlMs(),",
+                "replace": "            keep: (d) => d.state === 'ok',"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a known host",
+        "expect": "fail"
+    },
+    {
+        "name": "Cloudflare's browser check counts as a refusal like any 403",
+        "why": "A 403 with cf-mitigated: challenge is a site checking for a browser, not a broken link (U0 X6, X9): the card says so and offers the link.",
+        "edits": [
+            {
+                "find": "        } else if (res.status === 403 && /challenge/i.test(res.headers['cf-mitigated'] || '')) {",
+                "replace": "        } else if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "the link's status",
+        "expect": "fail"
+    },
+    {
+        "name": "a moved page is not told apart",
+        "why": "A link that ends at another URL is worth knowing (an editor can update the relationship): the card shows 'moved' and the final URL.",
+        "edits": [
+            {
+                "find": "            moved = a.hostname.toLowerCase() !== b.hostname.toLowerCase() || a.pathname !== b.pathname;",
+                "replace": "            moved = false;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "the link's status",
+        "expect": "fail"
+    },
+    {
+        "name": "a non-page is downloaded and read as a page",
+        "why": "A PDF or an image is told from its headers and the download aborted there; reading it as HTML gives an empty card and a pointless download.",
+        "edits": [
+            {
+                "find": "                if (hd.contentType && !accept.test(hd.contentType)) return 'type';",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "the link's status",
+        "expect": "fail"
+    },
+    {
+        "name": "a failed request is kept",
+        "why": "Only an answer about the page is kept; no response at all (a name that does not resolve, a timeout, a refusal) is retried by the next hover (the engine's rule).",
+        "edits": [
+            {
+                "find": "        if (!rec) return { ok: false, detail: _extFailText(res) };",
+                "replace": "        if (!rec) return { ok: true, data: { state: 'http', status: 0, finalUrl: t.url, moved: false } };"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a failure is shown",
+        "expect": "fail"
+    },
+    {
+        "name": "a hover that moved on still asks",
+        "why": "wanted() is asked once the slot comes up: a pointer crossing a list of links must not send a request for each.",
+        "edits": [
+            {
+                "find": "            if (wanted && !wanted()) {\n                Lib.debug('ext', `no longer wanted, not asked: ${url}`);",
+                "replace": "            if (false) {\n                Lib.debug('ext', `no longer wanted, not asked: ${url}`);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "moved on",
+        "expect": "fail"
+    },
+    {
+        "name": "one rate gate for every host",
+        "why": "Another site, another budget: a Wikipedia card must not wait behind a Brucebase one.",
+        "edits": [
+            {
+                "find": "        const at = Math.max(now, _extNextSlotAt.get(host) || 0);\n        _extNextSlotAt.set(host, at + _EXT_SPACING_MS);",
+                "replace": "        const at = Math.max(now, _extNextSlotAt.get('') || 0);\n        _extNextSlotAt.set('', at + _EXT_SPACING_MS);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "moved on",
+        "expect": "fail"
+    },
+    {
+        "name": "no rate gate at all",
+        "why": "One request per host per second, however fast the pointer moves.",
+        "edits": [
+            {
+                "find": "            if (gate || attempt > 1) await _extAwaitSlot(host);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "moved on",
+        "expect": "fail"
+    },
+    {
+        "name": "the Live page fetches another site with fetch()",
+        "why": "fetch() cannot read another origin (no CORS on most sites); the Live page of an external link goes through _EXT_LIVE.fetchText, GM_xmlhttpRequest.",
+        "edits": [
+            {
+                "find": "            const html = await (site.fetchText || _dpFetchText)(url, site.charset);",
+                "replace": "            const html = await _dpFetchText(url, site.charset);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "the window",
+        "expect": "fail"
+    },
+    {
+        "name": "the hover's page is not remembered for the Live page",
+        "why": "Hover then Live page costs ONE request: the read page goes to _dpRawMem, as on the foreign hosts.",
+        "edits": [
+            {
+                "find": "        if (rec.state === 'ok' && res.body) _dpRememberRaw(t.url, res.body);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "the window",
+        "expect": "fail"
+    },
+    {
+        "name": "the Live page copy keeps the page's preload links",
+        "why": "Without its scripts a page's preloads only download what nothing uses (YouTube preloads its whole player; Chrome logs each one). Reported from a real browser, 2026-10-08.",
+        "edits": [
+            {
+                "find": "            if (/\\b(?:preload|modulepreload|prefetch|preconnect|dns-prefetch)\\b/i.test(n.getAttribute('rel'))) n.remove();",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "the window",
+        "expect": "fail"
+    },
+    {
+        "name": "added query parameters count as a move",
+        "why": "YouTube bounces a request without cookies through consent.youtube.com and back with &cbrd=1&ucbcb=1: the same page, not a move (decided 2026-10-08: host or path).",
+        "edits": [
+            {
+                "find": "            moved = a.hostname.toLowerCase() !== b.hostname.toLowerCase() || a.pathname !== b.pathname;",
+                "replace": "            moved = a.href.replace(/#.*$/, '') !== b.href.replace(/#.*$/, '');"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "the link's status",
+        "expect": "fail"
+    },
+    {
+        "name": "an http to https upgrade is not mentioned",
+        "why": "Same host and path over https keeps the green status but says '→ https' (decided 2026-10-08).",
+        "edits": [
+            {
+                "find": "            toHttps = !moved && a.protocol === 'http:' && b.protocol === 'https:';",
+                "replace": "            toHttps = false;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "the link's status",
+        "expect": "fail"
+    },
+    {
+        "name": "tags past the cap are not looked for",
+        "why": "A YouTube page has its title and og: tags at about 769 KB; the rest of a downloaded page is scanned for just those tags (decided 2026-10-08).",
+        "edits": [
+            {
+                "find": "        const late = tail\n            ? new DOMParser()",
+                "replace": "        const late = null && tail\n            ? new DOMParser()"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "tags past the 512 KB cap",
+        "expect": "fail"
+    },
+    {
+        "name": "YouTube links go to the generic reader",
+        "why": "The page is 1 MB of script bounced through a consent page; oEmbed gives title, channel and thumbnail in 771 bytes (U0 X3).",
+        "edits": [
+            {
+                "find": "        { id: 'youtube', kind: 'YouTube', test: _extYouTubeTest,",
+                "replace": "        { id: 'youtube', kind: 'YouTube', test: () => false,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "YouTube",
+        "expect": "fail"
+    },
+    {
+        "name": "a YouTube window offers its blank Live page",
+        "why": "Without its scripts a YouTube page shows nothing; a reader's noLive hides the switch.",
+        "edits": [
+            {
+                "find": "        c.live.style.display = t.noLive ? 'none' : '';",
+                "replace": "        c.live.style.display = '';"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "YouTube",
+        "expect": "fail"
+    },
+    {
+        "name": "the YouTube reader's host is not among the @connect hosts",
+        "why": "A reader host listed in @connect never makes Tampermonkey ask, so its links load on hover from the first time (answer 5).",
+        "edits": [
+            {
+                "find": "    const _EXT_CONNECT_HOSTS = ['www.youtube.com'];",
+                "replace": "    const _EXT_CONNECT_HOSTS = [];"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "YouTube",
+        "expect": "fail"
+    },
+    {
+        "name": "MetaBrainz and the artwork archives count as other sites",
+        "why": "An absolute musicbrainz.org link is the entity cards' (or nobody's), and artwork has its own preview.",
+        "edits": [
+            {
+                "find": "        if (_EXT_SKIP_HOST_RE.test(host) || _EXT_SKIP_URL_RE.test(href)) return null;",
+                "replace": "        if (_EXT_SKIP_URL_RE.test(href)) return null;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "what is previewed",
+        "expect": "fail"
+    },
+    {
+        "name": "a share button is previewed",
+        "why": "A sharer link posts the current page somewhere; it is not a page of its own.",
+        "edits": [
+            {
+                "find": "        if (_EXT_SKIP_HOST_RE.test(host) || _EXT_SKIP_URL_RE.test(href)) return null;",
+                "replace": "        if (_EXT_SKIP_HOST_RE.test(host)) return null;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "what is previewed",
+        "expect": "fail"
+    },
+    {
+        "name": "a link around an image is previewed",
+        "why": "An image link is artwork or a thumbnail, with its own preview where it has one.",
+        "edits": [
+            {
+                "find": "        if (a.querySelector('img:not(.avatar)') || a.closest(_EXT_SKIP_SEL)) return null;",
+                "replace": "        if (a.closest(_EXT_SKIP_SEL)) return null;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "what is previewed",
+        "expect": "fail"
+    },
+    {
+        "name": "the card loses the relationship it is",
+        "why": "'MusicBrainz: setlist.fm of this event' costs no request: the URLs sub-table's Relationship column says it.",
+        "edits": [
+            {
+                "find": "                if (_resolveColHeaderName(table, i) !== 'Relationship') continue;",
+                "replace": "                continue;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a known host",
+        "expect": "fail"
+    }
+]

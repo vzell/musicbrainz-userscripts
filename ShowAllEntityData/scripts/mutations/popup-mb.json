@@ -69,8 +69,8 @@
         "why": "The popup engine's rule: a hover that has moved on by the time its rate slot comes up makes no request (as _dpGet() on the foreign hosts); otherwise crossing a table queues one request per link.",
         "edits": [
             {
-                "find": "        if (wanted && !wanted()) {",
-                "replace": "        if (false) {"
+                "find": "        if (wanted && !wanted()) {\n            Lib.debug('rg', ",
+                "replace": "        if (false) {\n            Lib.debug('rg', "
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -147,8 +147,8 @@
         "why": "A row links a release, an artist, a label: the arrows step through ONE kind. Re-checked in WIP.3 with artist and label cards: on the host page every column holds one kind (its /cover-art anchors resolve to nothing), so the kind filter is still covered by the column match. Recorded so the overlap is known.",
         "edits": [
             {
-                "find": "                    return m && m.type === t.type;",
-                "replace": "                    return !!m;"
+                "find": "            return !!m && m.type === t.type;",
+                "replace": "            return !!m;"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -525,8 +525,8 @@
         "why": "A stamped cell of the column's kind is a step like a link.",
         "edits": [
             {
-                "find": "                const a = [td, ...td.querySelectorAll('a[href], [data-mb-pop], span.catalog-number')].find(x => {",
-                "replace": "                const a = [td, ...td.querySelectorAll('a[href], span.catalog-number')].find(x => {"
+                "find": "        return _popColumnSteps(t.col, 'a[href], [data-mb-pop], span.catalog-number', (x) => {",
+                "replace": "        return _popColumnSteps(t.col, 'a[href], span.catalog-number', (x) => {"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -564,8 +564,8 @@
         "why": "A barcode cell is its own target: the step finder must consider the cell, not only what is inside it.",
         "edits": [
             {
-                "find": "                const a = [td, ...td.querySelectorAll('a[href], [data-mb-pop], span.catalog-number')].find(x => {",
-                "replace": "                const a = [...td.querySelectorAll('a[href], [data-mb-pop], span.catalog-number')].find(x => {"
+                "find": "                const a = [td, ...td.querySelectorAll(sel)].find(pick);",
+                "replace": "                const a = [...td.querySelectorAll(sel)].find(pick);"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",

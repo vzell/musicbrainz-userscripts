@@ -372,6 +372,10 @@ run of the page's own code. The copy:
   embed): a player cannot start without scripts, and YouTube's fallback image
   then 404'd;
 - has no `<meta http-equiv="refresh">`;
+- has no `<link rel="preload|modulepreload|prefetch|preconnect|dns-prefetch">`
+  (2026-10-08): with the scripts gone they only downloaded what nothing used,
+  and Chrome logged "preloaded using link preload but not used" for each (a
+  YouTube page, reported from a real browser);
 - starts its `<head>` with a `<base href>` naming the page, so relative
   links, images and stylesheets resolve as on the site (a page's own `<base
   target>` keeps its target);
@@ -583,6 +587,132 @@ new tab. Rules:
   (`_dpOpenDialog()`) starts a new path. Closing the window clears it.
 - The side drawer of the plan was not built (the user, 2026-10-08: the
   window as it is suffices).
+
+## Links to other sites (org/iframe.org "* generalize to URLs", U1)
+
+`_extSource()` serves a link to ANOTHER site behind ONE setting, `sa_pop_ext`
+(default off, its own ⚙️ divider "🔎 EXTERNAL LINK PREVIEWS"), independent
+of `sa_pop_mb`. It sits in `_popSources()` just before `_mbEntitySource()`;
+the two never claim the same link (one takes only another origin, the other
+only this one). U1 is MusicBrainz only (`enabled()` checks `!_foreignHost`);
+U5 adds the foreign hosts. Design, probes (X1–X9) and the answers it rests
+on: org/iframe.org, section "* generalize to URLs".
+
+- **What is previewed: `_extTarget()`.** An `http(s)` link whose host is not
+  the page's (`www.` aside), read from the `href` ATTRIBUTE, never `a.href`
+  (the property is normalised; MusicBrainz looks a URL up by its exact
+  string, X7). Not the MetaBrainz family or the artwork archives
+  (`_EXT_SKIP_HOST_RE`), not a share button (`_EXT_SKIP_URL_RE`), not around
+  `img:not(.avatar)`, not in `_EXT_SKIP_SEL` (chrome, `td.mb-rel-cell`, the
+  card and the window, `_MB_POP_PAGE_SKIP`). Scope: `_EXT_SCOPE_SEL` (table
+  bodies, `table.details`, `.annotation`, `ul.external_links`), plus `#page`
+  with `sa_pop_mb_page` — a getter, read at every event.
+- **Fetching: `_extFetch()`, never `fetch()`** (another origin, no CORS):
+  `GM_xmlhttpRequest` with **`anonymous: true`** — no cookie sent or stored,
+  so a card describes the page everyone sees (X9: logged in to Brucebase, the
+  cookie request got 3 KB more). At `readyState` 2 a 2xx that is not HTML
+  (`type`) or whose Content-Length passes `_EXT_MAX_DOWNLOAD` (`size`) is
+  aborted: its headers name it. The body is cut to `_EXT_MAX_BYTES` (512 KB,
+  answer 4; every `og:` tag sat within 8.2 KB, X5). Never rejects: failures
+  come back as `error` (`refused`, `unreachable`, `timeout`).
+  `_extGet()` adds the gate, `wanted()` after the slot, and one retry on a
+  transient status.
+- **One rate gate per HOST: `_extAwaitSlot(host)`** (`_EXT_SPACING_MS`),
+  reserved synchronously. Never `_relAwaitRateSlot()`: another site, another
+  budget. `__saTest.extRateSlotWaitMs(host)` reads it.
+- **First contact (answer 7).** With only `@connect *` covering a host,
+  Tampermonkey asks the user once before the first request to it (X9, B1).
+  So `_extCard()` makes NO request for a host that is neither in
+  `_EXT_CONNECT_HOSTS` (the header's own `@connect` hosts, empty in U1) nor in
+  the GM value `sa_pop_ext_hosts` (hosts that answered once, any status):
+  the card says *not contacted yet*, and Space (or a tap, or an arrow in the
+  window) makes the request. `_extGet()` remembers a host on any answer with
+  a status, never on an error, so a refused host stays unknown. **The gate
+  covers a FAILED state too** (`!st0 || st0.status === 'failed'`): a host
+  whose try from the window got no answer is still unknown, and a hover
+  retrying it would bring the prompt back; its card shows "The last try
+  failed: …" instead. The first version gated only a link with no state at
+  all (found in review, pinned by a mutation).
+  `sa_pop_ext_hosts` is the script's state like `sa_dp_dialog_geometry`: not
+  in `configSchema`, not exported (the permission it mirrors lives in that
+  browser's Tampermonkey).
+- **Readers: `_EXT_READERS`, first match wins** (`_extTarget()` puts the
+  reader on the target; its id is in the key `ext:<reader>:<url>`). A reader
+  has `kind` (the window's title), `test(url)`, `askHost(url)` — the host its
+  request goes to, which first contact checks (a youtu.be link asks
+  www.youtube.com) —, `load(t, wanted)` and `noLive`. `_extLoad()` runs the
+  reader's load through `_mbLoad()`.
+  - **YouTube (`_extYouTubeTest()`, `_extYouTubeLoad()`)**, brought from U3
+    into U1 on 2026-10-08 after the user's real playlist link: the PAGE is
+    1 MB, 97 % script, bounced through consent.youtube.com when no cookie is
+    sent (302, then 303 back with `&cbrd=1&ucbcb=1`), its tags at 769 KB, its
+    Live page blank (`scripts/probe-ext-youtube-page.py`). The reader asks
+    oEmbed once (`https://www.youtube.com/oembed?format=json&url=<link, https>`,
+    `accept` JSON), takes watch (with v), /v/, youtu.be, playlist (with
+    list), shorts, embed and live (oembed.com's providers.json); a channel
+    or user page stays generic (oEmbed answers 404, U0 X3). 400/401/403/404
+    are `dead` with its own `note`; the pill then says "not available"
+    unless the status is 404 or 410. `noLive`: the window hides its Live page
+    button (`_dpRenderDialog()` forces Extracted for a `noLive` target).
+    `www.youtube.com` is in `_EXT_CONNECT_HOSTS` and the header's `@connect`.
+  - **Generic (`_extGenericLoad()`)**: the page itself, `_extRecord()`.
+- **Records: `_extRecord()`.** States `ok` (a 2xx page; `moved` only when
+  the final HOST or PATH differs — added query parameters such as YouTube's
+  consent bounce do not count, and http → https on the same host and path is
+  `toHttps`, a quiet "→ https" with a green pill: decided 2026-10-08),
+  `dead` (404, 410), `checked` (403 with
+  `cf-mitigated: challenge` — **never a dead link**: X6 found it in Python
+  on discogs.com, allmusic and rateyourmusic, X9 in a real browser only on
+  rateyourmusic), `http` (any other 4xx), `notpage`, `big`. No response, a
+  5xx or a 429 after the retry is NO record: a failure, not kept, retried by
+  the next hover. `_extReadHead()` reads `og:`/`twitter:`/`description`,
+  `<title>`, canonical, `lang`, `article:published_time` from the first
+  `_EXT_MAX_BYTES`; a field still empty is filled from the rest of the
+  downloaded page (`tail` from `_extFetch()`), by picking only the `<title>`,
+  matching `<meta>` and canonical `<link>` tags out of it and parsing those
+  (decided 2026-10-08: U0 X5's "every og: tag within 8.2 KB" held only for
+  the sites probed, not for YouTube).
+- **Loading: `_extLoad()` through `_mbLoad()`**, key `ext:generic:<url>`,
+  `_EXT_IDB_VERSION`, `ttlMs: _extTtlMs()` (`sa_pop_ext_ttl_hours`, 168,
+  answer 1) — `_mbLoad()` and `_rgIdbGet()` take a time to live for this.
+  `keep: d => d.state === 'ok'`: everything else stays in `_mbPop` for this
+  page load only (answer 2), so a dead link is not asked twice on one page
+  and is asked again after a reload. A read page also goes to `_dpRawMem`, so
+  hover then Live page is one request.
+- **Context at no cost: `_extContext()`**: a `table.details` row's `th`, or a
+  `table.tbl`'s "Relationship" column (by header name), plus "of this
+  <entity>" from the page path; else *in the annotation* / *in the sidebar's
+  external links*. Nothing on a foreign host.
+- **Live page: `_EXT_LIVE`.** `_dpGetRaw()` now takes a source's
+  `fetchText(url, charset)` and calls `awaitSlot(url)` with the URL, so the
+  external Live page goes through `_extFetchText()` (anonymous, remembers the
+  host) and the host's own gate. No `liveRoot`: the generic reader knows no
+  site's layout, so the whole page shows. The copy is `_dpLiveDocHtml()`'s
+  (no scripts); its CSS and images load from the site. Since 2026-10-08
+  `_dpLiveDocHtml()` also drops `<link rel="preload|modulepreload|prefetch|preconnect|dns-prefetch">`
+  for every source: without the scripts they only fetched what nothing used
+  (Chrome warned "preloaded … but not used" for YouTube's player bundle).
+- **Images**: the card's and window's `og:image` is an ordinary `<img>` with
+  `referrerpolicy="no-referrer"` (not a `GM_xmlhttpRequest`: an image CDN
+  would be one more host for Tampermonkey to ask about).
+- **Stepping: `_extSteps()`** — in a table, `_popColumnSteps()` (shared with
+  `_mbPopSteps()` since U1) over external links; elsewhere the external links
+  of the same `table.details`, `.annotation` or `ul.external_links`.
+  `_extStepId()` = row index + the `href` attribute.
+
+**Tests.** `tests/fixtures/popup-ext.spec.js` on `event-overview.html` (its
+"URLs" sub-table renders collapsed and the render collapses the annotation's
+h2: the spec opens both) pins off by default, what is previewed, first
+contact, the card and its context, memory → IndexedDB → TTL, the statuses,
+failures and a refused host, a moved-on hover and the per-host gate, and the
+window (Live page from the hover's fetch, no script, ⟳, ← →). Its mobile
+sibling taps a link. Every external answer comes from the
+`GM_xmlhttpRequest` stub (`tests/support/gmStubs.js`), which since U1 logs
+each call in `window.__gmXhrLog` (url, anonymous, headers) and answers with
+`responseHeaders`, `finalUrl`, `error`, `timeout` or `delayMs`, calling
+`onreadystatechange` (readyState 2) first. **Filter the log**: the script's
+own changelog check (raw.githubusercontent.com) is in it too. Mutation
+list: `scripts/mutations/popup-ext.json`.
 
 `python3 scripts/check-mutation-anchors.py` checks, without running a spec,
 that every `find` of every mutation list still matches once. Run it after

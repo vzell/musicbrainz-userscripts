@@ -781,9 +781,17 @@ final rendered page, in the h3 "URLs" sub-table, in the "URL" column
     on Space (answer 7).
 
   No userscript change, so no WIP entry. Firefox is untested (B2).
-- [ ] U1: the engine for external links, the generic reader, dead-link status.
+- [-] U1: the engine for external links, the generic reader, dead-link status:
+  built 2026-10-08 on =feature/popup-engine-urls= as WIP.1 (=_extSource()=,
+  =_extFetch()=, =_extAwaitSlot()=, =sa_pop_ext=, =sa_pop_ext_ttl_hours=,
+  first contact through =sa_pop_ext_hosts=). Rules as built:
+  [[file:../docs/claude/detail-pages.md]], "Links to other sites". Open: the
+  user's browser check, which must also confirm what Tampermonkey's =onerror=
+  reports for a refused host (the =refused= wording rests on a pattern, not on
+  a capture) and that =anonymous: true= behaves the same on Firefox (B2).
 - [ ] U2: MusicBrainz URL entities.
-- [ ] U3: Wikipedia, Wikidata, YouTube (Discogs if U0 says so).
+- [ ] U3: Wikipedia, Wikidata, Discogs (U0: built). YouTube moved into U1
+  (answer 8, 2026-10-08).
 - [ ] U4: the Springsteen parsers across hosts, the Brucebase date anchor.
 - [ ] U5: external links on the four foreign hosts.
 
@@ -1480,3 +1488,24 @@ then commit and push
   remembered (=sa_pop_ext_hosts=), and its later hovers load as usual. Hosts
   in =@connect= never ask. Details: "What this changes in the plan" under
   U0.
+
+Asked after the user's first browser check of U1 (2026-10-08), a YouTube
+playlist link in the event annotation: card titled with the link's own text,
+no description, "moved", an empty Live page, and Chrome warning about unused
+preloads. =scripts/probe-ext-youtube-page.py= measured why: without cookies
+the request goes =302= to consent.youtube.com and =303= back with
+=&cbrd=1&ucbcb=1=; the page is 1 MB, 97 % script, with =<title>= and every
+=og:= tag at about 769 KB, past the 512 KB cap (U0 X5's "within 8.2 KB" held
+only for the sites probed then). The preloads are fixed outright
+(=_dpLiveDocHtml()= drops them for every source).
+
+- *8. YouTube: the oEmbed reader moves from U3 into U1* (recommended):
+  =www.youtube.com= in =@connect= and =_EXT_CONNECT_HOSTS=, no Live page
+  (=noLive=). Wikipedia and Wikidata stay in U3.
+- *9. The cap: scan the rest for tags* (recommended): parse the first 512 KB
+  as before; a field still empty is filled from the rest of the downloaded
+  page by picking out only the =<title>=, =<meta>= and canonical =<link>=
+  tags.
+- *10. "moved" only when the host or path changes* (recommended): added query
+  parameters are no move; http → https on the same host and path keeps the
+  green pill with a quiet "→ https" (Brucebase).

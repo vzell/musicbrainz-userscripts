@@ -30,6 +30,7 @@
 // @connect      eventartarchive.org
 // @connect      archive.org
 // @connect      *.archive.org
+// @connect      www.youtube.com
 // @connect      *
 // @grant        GM_xmlhttpRequest
 // @grant        GM_addStyle
@@ -4246,7 +4247,8 @@
             default: false,
             description: 'Off by default: only the links in a table have a card. When on, every entity link in the ' +
                          'page\'s content has one too — the header, an annotation, the sidebar, a relationship list ' +
-                         '— except the tabs, the page navigation and the script\'s own toolbar.'
+                         '— except the tabs, the page navigation and the script\'s own toolbar. With external link ' +
+                         'previews on, the same goes for links to other sites.'
         },
 
         sa_pop_mb_ttl_hours: {
@@ -4269,6 +4271,38 @@
         },
 
         // ============================================================
+        // EXTERNAL LINK PREVIEWS (links to other sites, org/iframe.org
+        // "* generalize to URLs", U1)
+        // ============================================================
+        divider_pop_ext: {
+            type: 'divider',
+            label: '🔎 EXTERNAL LINK PREVIEWS'
+        },
+
+        sa_pop_ext: {
+            label: 'Preview external links on hover',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default. Hold Ctrl over a link to another site — in a table, a relationship, the ' +
+                         'annotation or the sidebar\'s external links — for a card with the page\'s title, ' +
+                         'description and status (a dead or moved link shows as such); Space pins it into a window ' +
+                         'with the page itself (Live page). A preview sends a request to the linked site, without ' +
+                         'your cookies, which tells that site the page was looked at. The first time a site is ' +
+                         'contacted Tampermonkey asks whether the script may, so a site never contacted before is ' +
+                         'loaded only when you press Space, never by hovering.'
+        },
+
+        sa_pop_ext_ttl_hours: {
+            label: 'Keep external answers for (hours)',
+            type: 'number',
+            default: 168,
+            min: 1,
+            description: 'How long a card\'s data is reused from this browser\'s storage before the site is asked ' +
+                         'again (a week by default). A dead link or a site\'s browser check is remembered only ' +
+                         'until the page is reloaded. ⟳ in the window always asks again.'
+        },
+
+        // ============================================================
         // EVERY PREVIEW (MusicBrainz links and the non-MusicBrainz sites above)
         // ============================================================
         divider_detail_preview: {
@@ -4280,8 +4314,8 @@
             label: 'Show every preview on a plain hover (without Ctrl)',
             type: 'checkbox',
             default: false,
-            description: 'Off by default: the link previews on MusicBrainz and the preview cards of ' +
-                         'springsteenlyrics.com, jungleland.it, brucespringsteen.it and Brucebase show only ' +
+            description: 'Off by default: the link previews on MusicBrainz (entities and external links) and the ' +
+                         'preview cards of springsteenlyrics.com, jungleland.it, brucespringsteen.it and Brucebase show only ' +
                          'while Ctrl is held — hover a link with Ctrl down, or rest the pointer on it and then ' +
                          'press Ctrl — so moving the pointer across the table neither pops up cards nor fetches ' +
                          'anything. When on, resting the pointer on a link is enough. The release page\'s ' +
@@ -13854,14 +13888,17 @@
      * MusicBrainz release page adds its two release-group sources, the
      * subheader link and the "#" cell (`_rgLinkSource()`, `_eventRgSource()`);
      * every MusicBrainz table link is the last one (`_mbEntitySource()`,
-     * `sa_pop_mb`), so the first two keep what they serve.
+     * `sa_pop_mb`), so the first two keep what they serve. Links to ANOTHER
+     * site come just before it (`_extSource()`, `sa_pop_ext`, org/iframe.org
+     * "* generalize to URLs"): the two never claim the same link, one taking
+     * only another origin and the other only this one.
      *
      * @returns {Array<object>}
      */
     function _popSources() {
         if (!_popSources.list) {
             _popSources.list = Object.keys(_DP_SITES).map(host => _dpSiteSource(host, _DP_SITES[host]))
-                .concat([_rgLinkSource(), _eventRgSource(), _mbEntitySource()]);
+                .concat([_rgLinkSource(), _eventRgSource(), _extSource(), _mbEntitySource()]);
         }
         return _popSources.list;
     }
@@ -14475,8 +14512,11 @@
      * @param {string} url
      * @param {object} site  The source's `live`: a `_DP_SITES` entry, or an
      *   object of the same shape. Its `charset` decodes an undeclared
-     *   response; its `awaitSlot`, when it has one, is the rate gate (the
-     *   foreign hosts use `_dpAwaitSlot()`).
+     *   response; its `awaitSlot(url)`, when it has one, is the rate gate (the
+     *   foreign hosts use `_dpAwaitSlot()`; another site's page, its host's
+     *   own, `_extAwaitSlot()`); its `fetchText(url, charset)`, when it has
+     *   one, fetches instead of `_dpFetchText()`, whose `fetch()` cannot
+     *   read another origin (`_extFetchText()`).
      * @param {{wanted?: function(): boolean, force?: boolean}} [opts]
      *   `wanted` is asked right before a request; `force` skips the memory.
      * @returns {Promise<{outcome: string, html?: string, detail?: string}>}
@@ -14484,10 +14524,10 @@
      */
     async function _dpGetRaw(url, site, { wanted = () => true, force = false } = {}) {
         if (!force && _dpRawMem.has(url)) return { outcome: 'ok', html: _dpRawMem.get(url) };
-        await (site.awaitSlot || _dpAwaitSlot)();
+        await (site.awaitSlot || _dpAwaitSlot)(url);
         if (!wanted()) return { outcome: 'skipped' };
         try {
-            const html = await _dpFetchText(url, site.charset);
+            const html = await (site.fetchText || _dpFetchText)(url, site.charset);
             _dpRememberRaw(url, html);
             return { outcome: 'ok', html };
         } catch (err) {
@@ -14510,6 +14550,10 @@
      *     inside a frame without scripts a player cannot start, and YouTube's
      *     own fallback image then 404s;
      *   - a `<meta http-equiv="refresh">` is removed;
+     *   - so is every `<link rel="preload|modulepreload|prefetch|preconnect|dns-prefetch">`:
+     *     with the scripts gone they only download what nothing uses (a
+     *     YouTube page preloads its whole player bundle, and Chrome logs
+     *     "preloaded using link preload but not used" for each);
      *   - a `<base href>` naming the page's own URL comes first in `<head>`,
      *     so its relative links, images and stylesheets resolve as on the
      *     site (a page's own `<base>` keeps its other attributes).
@@ -14522,6 +14566,9 @@
     function _dpLiveDocHtml(html, url) {
         const doc = new DOMParser().parseFromString(html, 'text/html');
         doc.querySelectorAll('script, noscript, meta[http-equiv="refresh" i]').forEach(n => n.remove());
+        doc.querySelectorAll('link[rel]').forEach(n => {
+            if (/\b(?:preload|modulepreload|prefetch|preconnect|dns-prefetch)\b/i.test(n.getAttribute('rel'))) n.remove();
+        });
         // Inline handlers count as scripts too: the sandbox refuses each one
         // as the page is parsed and Chrome logs it, click or no click (six
         // on a Brucebase song page: the search box's onfocus, the login,
@@ -14631,6 +14678,10 @@
         const url = src.liveUrl(t);
         const area = api.scrollArea;
         const c = _dpDialog.controls;
+        // A target without a Live page (`noLive`: a YouTube link, whose page
+        // is nothing but scripts) shows Extracted, with no Live page button.
+        if (t.noLive) _dpDialog.view = 'ex';
+        c.live.style.display = t.noLive ? 'none' : '';
         c.ex.setAttribute('aria-pressed', String(_dpDialog.view === 'ex'));
         c.live.setAttribute('aria-pressed', String(_dpDialog.view === 'live'));
         c.open.href = url;
@@ -15118,6 +15169,31 @@
             #mb-dp-peek .mb-pop-ttl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
             :is(#mb-dp-peek, .mb-dp-dialog) .mb-pop-len { flex: none; color: #7a6d5c; font-variant-numeric: tabular-nums; }
             .mb-dp-dialog .mb-dp-kv a, .mb-dp-dialog .mb-dp-xsub a, .mb-dp-dialog .mb-pop-ttl a { color: #6b3f12; }
+            /* Links to other sites (_extSource()): the site line with its
+               status pill, the page's image beside its title. */
+            #mb-dp-peek .mb-ext-card { width: 400px; max-width: 100%; }
+            :is(#mb-dp-peek, .mb-dp-dialog) .mb-ext-site {
+                display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px;
+                font: 12px/1.4 ui-monospace, Consolas, monospace; color: #7a6d5c;
+            }
+            :is(#mb-dp-peek, .mb-dp-dialog) .mb-ext-fav {
+                display: inline-grid; place-items: center; flex: none; width: 16px; height: 16px; border-radius: 3px;
+                background: #7a6d5c; color: #fbf8f1; font: 700 10px/1 sans-serif;
+            }
+            :is(#mb-dp-peek, .mb-dp-dialog) .mb-ext-host { overflow-wrap: anywhere; }
+            :is(#mb-dp-peek, .mb-dp-dialog) .mb-ext-st {
+                display: inline-block; padding: 0 5px; border-radius: 3px; white-space: nowrap;
+                font: 700 11px/1.6 ui-monospace, Consolas, monospace;
+            }
+            :is(#mb-dp-peek, .mb-dp-dialog) .mb-ext-st-ok { background: #dcefe2; color: #22603b; }
+            :is(#mb-dp-peek, .mb-dp-dialog) .mb-ext-st-warn { background: #f6e8cc; color: #7a4c00; }
+            :is(#mb-dp-peek, .mb-dp-dialog) .mb-ext-st-dead { background: #f6dcd8; color: #8e1f16; }
+            #mb-dp-peek .mb-ext-head { display: flex; gap: 10px; align-items: flex-start; }
+            #mb-dp-peek .mb-ext-headtext { min-width: 0; flex: 1; }
+            #mb-dp-peek .mb-ext-img { flex: none; width: 96px; height: 64px; object-fit: cover; border: 1px solid #d9cfbd; border-radius: 2px; }
+            :is(#mb-dp-peek, .mb-dp-dialog) .mb-ext-url { font: 11.5px/1.4 ui-monospace, Consolas, monospace; color: #7a6d5c; overflow-wrap: anywhere; }
+            .mb-dp-dialog .mb-ext-url a { color: #6b3f12; }
+            .mb-dp-dialog .mb-ext-xdesc { margin-top: 6px; }
         `);
         style.id = 'mb-dp-style';
     }
@@ -15163,7 +15239,7 @@
      * pinned dialog) when one of its sources is enabled here (`_popSources()`:
      * a foreign host whose preview setting is on, a MusicBrainz release page
      * with a release-group card on, or any MusicBrainz page with
-     * `sa_pop_mb` on). Called once from the init block,
+     * `sa_pop_mb` or `sa_pop_ext` on). Called once from the init block,
      * after a foreign host's live page is prepared. Where no source is
      * enabled it does nothing at all: no stylesheet, no listener.
      *
@@ -35503,14 +35579,17 @@
      * is younger than `_mbTtlMs()` and of the version asked for.
      *
      * @param {string} key - `rg-releases:<gid>`, `rg-facts:<gid>`, or an
-     *   entity card's `pop:<kind>:<id>:<inc>` (`_mbWsLoad()`).
+     *   entity card's `pop:<kind>:<id>:<inc>` (`_mbWsLoad()`), or an external
+     *   link's `ext:<reader>:<url>` (`_extLoad()`).
      * @param {number} [v] - The record version: `_RG_IDB_VERSION` unless the
      *   caller keeps its own.
+     * @param {number} [ttlMs] - How old a record may be: `_mbTtlMs()` unless
+     *   the caller keeps its own (an external page: `_extTtlMs()`).
      * @returns {Promise<?{data: Object, at: number}>}
      */
-    async function _rgIdbGet(key, v = _RG_IDB_VERSION) {
+    async function _rgIdbGet(key, v = _RG_IDB_VERSION, ttlMs = _mbTtlMs()) {
         const rec = await _dpIdbGet(`mb:${key}`).catch(() => null);
-        return rec && rec.v === v && Date.now() - rec.at < _mbTtlMs() ? { data: rec.data, at: rec.at } : null;
+        return rec && rec.v === v && Date.now() - rec.at < ttlMs ? { data: rec.data, at: rec.at } : null;
     }
 
     /**
@@ -36544,10 +36623,12 @@
      * @param {function(function(): boolean, boolean): Promise<{ok?: boolean, status?: number, data?: ?Object,
      *   detail?: string, skipped?: boolean}>} ask - The request: `_rgWsGet()`'s answer shape.
      * @param {{force?: boolean, repaint?: ?function(): void, wanted?: ?function(): boolean,
-     *   version?: number, keep?: ?function(Object): boolean}} [opts]
+     *   version?: number, keep?: ?function(Object): boolean, ttlMs?: number}} [opts] - `ttlMs`:
+     *   how old an IndexedDB record may be, `_mbTtlMs()` unless given (an
+     *   external page keeps its own, `_extLoad()`).
      * @returns {void}
      */
-    function _mbLoad(cacheKey, ask, { force = false, repaint = null, wanted = null, version = _MB_POP_IDB_VERSION, keep = null } = {}) {
+    function _mbLoad(cacheKey, ask, { force = false, repaint = null, wanted = null, version = _MB_POP_IDB_VERSION, keep = null, ttlMs = undefined } = {}) {
         const cur = _mbPop.get(cacheKey);
         if (cur && cur.status === 'loading') {
             if (repaint) cur.listeners.add(repaint);
@@ -36563,7 +36644,7 @@
         const notify = () => st.listeners.forEach(fn => fn());
         (async () => {
             if (!force) {
-                const rec = await _rgIdbGet(cacheKey, version);
+                const rec = await _rgIdbGet(cacheKey, version, ttlMs);
                 if (rec) {
                     Object.assign(st, { status: 'done', data: rec.data, at: rec.at, cached: true });
                     notify();
@@ -36785,6 +36866,26 @@
      * @returns {HTMLAnchorElement[]}
      */
     function _mbPopSteps(t) {
+        return _popColumnSteps(t.col, 'a[href], [data-mb-pop], span.catalog-number', (x) => {
+            const m = _mbPopTarget(x);
+            return !!m && m.type === t.type;
+        });
+    }
+
+    /**
+     * The steps of a column, for any source whose targets sit in table
+     * cells: in every visible top-level `table.tbl`, the column whose header
+     * is `col` (by name, so sub-tables line up when their columns differ),
+     * and in each of its rows the first element of the cell (the cell
+     * itself included) that `pick` accepts, when it is visible. Tables in
+     * page order, rows in display order.
+     *
+     * @param {string} col - The header name.
+     * @param {string} sel - What in a cell may be a step.
+     * @param {function(Element): boolean} pick - Whether it is one.
+     * @returns {Element[]}
+     */
+    function _popColumnSteps(col, sel, pick) {
         const out = [];
         const tables = Array.from(document.querySelectorAll('table.tbl'))
             .filter(tb => !(tb.parentElement && tb.parentElement.closest('table.tbl')) && tb.tBodies[0] && tb.getClientRects().length);
@@ -36792,16 +36893,13 @@
             const heads = tb.querySelectorAll('thead tr:first-child th').length;
             let idx = -1;
             for (let i = 0; i < heads && idx < 0; i++) {
-                if (_resolveColHeaderName(tb, i) === t.col) idx = i;
+                if (_resolveColHeaderName(tb, i) === col) idx = i;
             }
             if (idx < 0) continue;
             for (const tr of tb.tBodies[0].rows) {
                 const td = tr.cells[idx];
                 if (!td) continue;
-                const a = [td, ...td.querySelectorAll('a[href], [data-mb-pop], span.catalog-number')].find(x => {
-                    const m = _mbPopTarget(x);
-                    return m && m.type === t.type;
-                });
+                const a = [td, ...td.querySelectorAll(sel)].find(pick);
                 if (a && a.getClientRects().length) out.push(a);
             }
         }
@@ -38430,6 +38528,954 @@
             },
             steps: _mbPopSteps,
             stepId: _mbPopStepId,
+        };
+    }
+
+    // --- The popup engine on links to other sites (org/iframe.org,
+    // "* generalize to URLs", U1) ---
+    //
+    // `_extSource()` serves a link to ANOTHER site — a Wikipedia article in
+    // an annotation, the Brucebase review in a "URLs" sub-table, a sidebar
+    // link — behind ONE opt-in setting, `sa_pop_ext` (answer 2). A READER
+    // turns the page into a record; U1 has the generic one (title, og: and
+    // meta description, image, status), later steps add readers for known
+    // sites in front of it. Every request goes through `_extFetch()`:
+    // `GM_xmlhttpRequest`, since `fetch()` cannot read another origin, with
+    // `anonymous: true`, so no cookie is sent or stored and a card describes
+    // the page everyone sees (U0 X9: logged in to Brucebase, the cookie
+    // request got the logged-in page). One second apart per HOST
+    // (`_extAwaitSlot()`): another site, another budget, never the
+    // MusicBrainz gate. With only `@connect *` covering a host, Tampermonkey
+    // asks the user once before the first request to it (U0 X9, B1), so a
+    // host the script never reached is first contacted on Space (or a tap),
+    // never from a hover (answer 7, `sa_pop_ext_hosts`).
+
+    /** Version of the external-link records kept in IndexedDB; bump when a reader's output changes. */
+    const _EXT_IDB_VERSION = 2;
+
+    /**
+     * How much of a page the generic reader parses (org/iframe.org answer 4).
+     * U0 X5 found every page's last `og:` tag within its first 8.2 KB, so the
+     * cap never cuts a card short; it bounds what is parsed and remembered.
+     * @type {number}
+     */
+    const _EXT_MAX_BYTES = 512 * 1024;
+
+    /**
+     * A page whose Content-Length says it is bigger than this is not
+     * downloaded at all: `GM_xmlhttpRequest` cannot stop part-way and keep
+     * what it has, so the cap above applies after the download, and this one
+     * keeps the download itself bounded.
+     * @type {number}
+     */
+    const _EXT_MAX_DOWNLOAD = 4 * 1024 * 1024;
+
+    /** One request per host this often, ms (`_extAwaitSlot()`). */
+    const _EXT_SPACING_MS = 1000;
+
+    /** A request that has not answered after this long is given up, ms. */
+    const _EXT_TIMEOUT_MS = 30000;
+
+    /**
+     * Hosts the userscript header lists in its own `@connect` lines, which
+     * Tampermonkey does not ask about (org/iframe.org answer 5): a reader
+     * site's host, or a parent domain covering its subdomains. A reader's
+     * host goes here and into the header's `@connect` together: U1 has the
+     * YouTube reader's (oEmbed), U3 and U4 add theirs.
+     * @type {string[]}
+     */
+    const _EXT_CONNECT_HOSTS = ['www.youtube.com'];
+
+    /** The GM key of the hosts that answered once (answer 7): the script's state, not a setting, and not exported. */
+    const _EXT_HOSTS_KEY = 'sa_pop_ext_hosts';
+
+    /** How many hosts `_EXT_HOSTS_KEY` keeps, newest last. */
+    const _EXT_HOSTS_MAX = 1000;
+
+    /**
+     * Hosts never previewed as another site: the MetaBrainz family (a
+     * musicbrainz.org link is the entity cards' to serve) and the artwork
+     * archives (artwork has its own preview).
+     * @type {RegExp}
+     */
+    const _EXT_SKIP_HOST_RE = /(?:^|\.)(?:musicbrainz|metabrainz|listenbrainz|critiquebrainz|acousticbrainz|bookbrainz)\.(?:org|eu)$|(?:^|\.)(?:coverartarchive|eventartarchive)\.org$/;
+
+    /** Share buttons: a link that posts the current page somewhere, never a page of its own. */
+    const _EXT_SKIP_URL_RE = /\/sharer(?:\.php)?(?:[/?#]|$)|\/share(?:Article)?\?|\/intent\/(?:tweet|post)|whatsapp\.com\/send|\/submit\?url=/i;
+
+    /**
+     * Where an external link never gets a card: the site's chrome, the
+     * Relationships column (its own tooltip), the card and the window
+     * themselves, and what the entity cards' page-wide scope leaves out.
+     * @type {string}
+     */
+    const _EXT_SKIP_SEL = `.header, #header, #footer, .top-social, td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog, ${_MB_POP_PAGE_SKIP}`;
+
+    /** Where external links live on a MusicBrainz page, previewed without the page-wide setting. */
+    const _EXT_SCOPE_SEL = 'table.tbl > tbody a[href], table.details a[href], .annotation a[href], ul.external_links a[href]';
+
+    /**
+     * The next free request time per host (`_extAwaitSlot()`).
+     * @type {Map<string, number>}
+     */
+    const _extNextSlotAt = new Map();
+
+    /**
+     * How long an external page's record is reused from IndexedDB, ms:
+     * `sa_pop_ext_ttl_hours`, a week by default (answer 1). Read with
+     * `typeof`, never `||` (CLAUDE.md, "Settings keys").
+     *
+     * @returns {number}
+     */
+    function _extTtlMs() {
+        const h = Lib.settings.sa_pop_ext_ttl_hours;
+        return (typeof h === 'number' && h > 0 ? h : 168) * 60 * 60 * 1000;
+    }
+
+    /**
+     * A URL's host, lower case; '' for a URL that does not parse.
+     *
+     * @param {string} url
+     * @returns {string}
+     */
+    function _extHostOf(url) {
+        try {
+            return new URL(url).hostname.toLowerCase();
+        } catch (_) {
+            return '';
+        }
+    }
+
+    /**
+     * Waits for, and reserves, the next request slot of one host
+     * (`_EXT_SPACING_MS` apart). Reserved synchronously, as
+     * `_dpAwaitSlot()`, so two callers in one tick get consecutive slots; a
+     * different host never waits for this one.
+     *
+     * @param {string} host
+     * @returns {Promise<void>}
+     */
+    function _extAwaitSlot(host) {
+        const now = Date.now();
+        const at = Math.max(now, _extNextSlotAt.get(host) || 0);
+        _extNextSlotAt.set(host, at + _EXT_SPACING_MS);
+        return at > now ? new Promise(r => setTimeout(r, at - now)) : Promise.resolve();
+    }
+
+    /**
+     * The hosts that answered a request once (answer 7).
+     *
+     * @returns {string[]}
+     */
+    function _extKnownHosts() {
+        let v;
+        try {
+            v = GM_getValue(_EXT_HOSTS_KEY, []);
+        } catch (_) {
+            v = [];
+        }
+        return Array.isArray(v) ? v : [];
+    }
+
+    /**
+     * Whether a hover may contact a host: it is listed in `@connect`
+     * (`_EXT_CONNECT_HOSTS`), or it answered once, so Tampermonkey will not
+     * ask the user.
+     *
+     * @param {string} host
+     * @returns {boolean}
+     */
+    function _extHostKnown(host) {
+        return _EXT_CONNECT_HOSTS.some(h => host === h || host.endsWith(`.${h}`)) || _extKnownHosts().includes(host);
+    }
+
+    /**
+     * Remembers that a host answered: any HTTP status means Tampermonkey let
+     * the request through.
+     *
+     * @param {string} host
+     * @returns {void}
+     */
+    function _extRememberHost(host) {
+        const list = _extKnownHosts();
+        if (!host || list.includes(host)) return;
+        list.push(host);
+        try {
+            GM_setValue(_EXT_HOSTS_KEY, list.slice(-_EXT_HOSTS_MAX));
+        } catch (_) { /* the next hover asks again: harmless */ }
+    }
+
+    /**
+     * A raw header block as an object with lower-case keys (the first of a
+     * repeated header wins).
+     *
+     * @param {?string} raw - `responseHeaders`.
+     * @returns {Object<string, string>}
+     */
+    function _extParseHeaders(raw) {
+        const out = {};
+        String(raw || '').split(/\r?\n/).forEach(line => {
+            const i = line.indexOf(':');
+            if (i <= 0) return;
+            const k = line.slice(0, i).trim().toLowerCase();
+            if (!(k in out)) out[k] = line.slice(i + 1).trim();
+        });
+        return out;
+    }
+
+    /**
+     * ONE request to another site: `GM_xmlhttpRequest`, `anonymous` (no
+     * cookie sent or stored), never `fetch()`, which cannot read another
+     * origin. Once the headers are in, a 2xx answer that is not of the type
+     * asked for (a PDF, an image) or bigger than `maxDownload` is aborted:
+     * its headers say what it is. The body is cut to `maxBytes`; what lies
+     * past the cut is `tail`, for `_extReadHead()` to find late tags in
+     * without parsing it (a YouTube page has its `<title>` and `og:` tags at
+     * about 769 KB, after its `</head>`). Never rejects: a failure is in
+     * `error` (`refused` — Tampermonkey did not allow the host —,
+     * `unreachable`, `timeout`).
+     *
+     * @param {string} url
+     * @param {{accept?: RegExp, maxBytes?: number, maxDownload?: number, headers?: Object<string, string>}} [opts]
+     * @returns {Promise<{status: number, finalUrl: string, headers: Object<string, string>, contentType: string,
+     *   bytes: number, body: string, tail: string, aborted: string, error: string, detail: string}>} `aborted` is
+     *   `type` or `size` when the body was skipped.
+     */
+    function _extFetch(url, { accept = /\b(?:text\/html|application\/xhtml\+xml)\b/i, maxBytes = _EXT_MAX_BYTES,
+        maxDownload = _EXT_MAX_DOWNLOAD, headers = {} } = {}) {
+        return new Promise((resolve) => {
+            const base = { status: 0, finalUrl: url, headers: {}, contentType: '', bytes: 0, body: '', tail: '', aborted: '', error: '', detail: '' };
+            let settled = false;
+            let early = null;
+            let req = null;
+            const settle = (r) => {
+                if (settled) return;
+                settled = true;
+                resolve(Object.assign({}, base, r));
+            };
+            const head = (r) => {
+                const h = _extParseHeaders(r.responseHeaders);
+                const len = parseInt(h['content-length'], 10);
+                return {
+                    status: Number(r.status) || 0, finalUrl: r.finalUrl || url, headers: h,
+                    contentType: (h['content-type'] || '').toLowerCase(), bytes: Number.isFinite(len) ? len : 0,
+                };
+            };
+            // Only a 2xx body is skipped: an error page is read for what it
+            // says (Cloudflare's check names itself in its headers).
+            const skip = (hd) => {
+                if (hd.status < 200 || hd.status > 299) return '';
+                if (hd.contentType && !accept.test(hd.contentType)) return 'type';
+                return hd.bytes > maxDownload ? 'size' : '';
+            };
+            try {
+                req = GM_xmlhttpRequest({
+                    method: 'GET', url, headers, anonymous: true, timeout: _EXT_TIMEOUT_MS,
+                    onreadystatechange: (r) => {
+                        if (settled || !r || r.readyState !== 2) return;
+                        const hd = head(r);
+                        const why = skip(hd);
+                        if (!why) return;
+                        early = Object.assign(hd, { aborted: why });
+                        settle(early);
+                        try {
+                            if (req && req.abort) req.abort();
+                        } catch (_) { /* already gone */ }
+                    },
+                    onload: (r) => {
+                        const hd = head(r);
+                        const why = skip(hd);
+                        const full = why ? '' : String(r.responseText || '');
+                        if (!hd.bytes) hd.bytes = full.length;
+                        settle(Object.assign(hd, { body: full.slice(0, maxBytes), tail: full.slice(maxBytes), aborted: why }));
+                    },
+                    onerror: (r) => {
+                        const detail = String((r && (r.error || r.statusText)) || '');
+                        settle({
+                            error: /refus|not (?:permitted|allowed)|blacklist|@connect/i.test(detail) ? 'refused' : 'unreachable',
+                            detail,
+                        });
+                    },
+                    ontimeout: () => settle({ error: 'timeout', detail: '' }),
+                    onabort: () => settle(early || { error: 'unreachable', detail: 'aborted' }),
+                });
+            } catch (e) {
+                settle({ error: 'unreachable', detail: (e && e.message) || String(e) });
+            }
+        });
+    }
+
+    /**
+     * `_extFetch()` through the host's rate gate, retried once on a
+     * transient status (429, 502, 503, 504), `Retry-After` as a floor. A
+     * caller's `wanted()` is asked once the slot comes up: a hover that has
+     * moved on makes no request (`{skipped: true}`). Any answer with a
+     * status remembers the host (answer 7).
+     *
+     * @param {string} url
+     * @param {{wanted?: ?function(): boolean, gate?: boolean, fetchOpts?: Object}} [opts] - `gate`
+     *   false: the caller waited for the first slot itself (`_dpGetRaw()`);
+     *   `fetchOpts`: `_extFetch()`'s options (a JSON API's `accept`).
+     * @returns {Promise<Object>} `_extFetch()`'s answer, or `{skipped: true}`.
+     */
+    async function _extGet(url, { wanted = null, gate = true, fetchOpts = {} } = {}) {
+        const host = _extHostOf(url);
+        for (let attempt = 1; ; attempt++) {
+            if (gate || attempt > 1) await _extAwaitSlot(host);
+            if (wanted && !wanted()) {
+                Lib.debug('ext', `no longer wanted, not asked: ${url}`);
+                return { skipped: true };
+            }
+            Lib.debug('ext', `GET ${url}${attempt > 1 ? ` (attempt ${attempt})` : ''}`);
+            const res = await _extFetch(url, fetchOpts);
+            if (res.status > 0) _extRememberHost(host);
+            if (attempt >= 2 || !_isTransientHttp(res.status)) return res;
+            await new Promise(r => setTimeout(r, Math.max(1500, _parseRetryAfterMs(res.headers['retry-after']))));
+        }
+    }
+
+    /**
+     * What a page's `<head>` says about it: title, description, image, site
+     * name, type, language, publication date, canonical URL. Image and
+     * canonical URL are resolved against the page and kept only when they
+     * are http(s).
+     *
+     * Only the first `_EXT_MAX_BYTES` are parsed. When a field is still
+     * empty and the page went on past that (`tail`), the `<title>`, `<meta>`
+     * and canonical `<link>` tags are picked out of the rest by a pattern
+     * and only THEY are parsed, to fill the gaps (decided 2026-10-08 after a
+     * real YouTube playlist page: 1 MB, 97 % script, its tags at 769 KB;
+     * U0 X5's "every og: tag within 8.2 KB" held only for the sites probed).
+     *
+     * @param {string} html - The page, up to the cap.
+     * @param {string} base - The page's final URL.
+     * @param {string} [tail] - The rest of the page, past the cap.
+     * @returns {{title: string, description: string, image: string, siteName: string, type: string,
+     *   lang: string, published: string, canonical: string}}
+     */
+    function _extReadHead(html, base, tail = '') {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const late = tail
+            ? new DOMParser().parseFromString(`<head>${[
+                (tail.match(/<title\b[^>]*>[^<]*<\/title>/i) || [''])[0],
+                ...(tail.match(/<meta\b[^>]*>/gi) || []).filter(t => /\b(?:property|name|itemprop)=["']?(?:og:|twitter:|description|datepublished|article:)/i.test(t)),
+                ...(tail.match(/<link\b[^>]*\brel=["']?canonical[^>]*>/gi) || []),
+            ].join('')}</head>`, 'text/html')
+            : null;
+        const meta = (name) => {
+            const sel = `meta[property="${name}" i], meta[name="${name}" i], meta[itemprop="${name}" i]`;
+            const el = doc.querySelector(sel) || (late && late.querySelector(sel));
+            return el ? _dpText(el.getAttribute('content')) : '';
+        };
+        const abs = (v) => {
+            if (!v) return '';
+            try {
+                const u = new URL(v, base);
+                return /^https?:$/.test(u.protocol) ? u.href : '';
+            } catch (_) {
+                return '';
+            }
+        };
+        const canon = doc.querySelector('link[rel~="canonical" i]');
+        return {
+            title: meta('og:title') || meta('twitter:title') || _dpText(doc.title),
+            description: (meta('og:description') || meta('twitter:description') || meta('description')).slice(0, 600),
+            image: abs(meta('og:image') || meta('og:image:url') || meta('twitter:image')),
+            siteName: meta('og:site_name'),
+            type: meta('og:type'),
+            lang: _dpText(doc.documentElement.getAttribute('lang')),
+            published: meta('article:published_time') || meta('datePublished'),
+            canonical: abs(canon && canon.getAttribute('href')),
+        };
+    }
+
+    /**
+     * A request's answer as the record a card shows, or null for a failure
+     * that is not an answer about the page (no response, a refused host, a
+     * server error after the retry): those are not kept and the next hover
+     * asks again. States:
+     *   - `ok`: a 2xx web page. `moved` when the redirects ended at another
+     *     HOST or PATH (decided 2026-10-08): added query parameters do not
+     *     count (YouTube bounces a request without cookies through
+     *     consent.youtube.com and back with `&cbrd=1&ucbcb=1` — the same
+     *     page), and neither does http becoming https on the same host and
+     *     path, which is `toHttps` (a quiet "→ https" line, the pill stays
+     *     green);
+     *   - `dead`: 404 or 410;
+     *   - `checked`: a 403 from Cloudflare's browser check
+     *     (`cf-mitigated: challenge`) — NOT a dead link (U0 X6, X9);
+     *   - `http`: any other 4xx;
+     *   - `notpage`: a 2xx that is not a web page (a PDF, an image), from its
+     *     headers alone; `big`: a page past `_EXT_MAX_DOWNLOAD`.
+     * Only `ok` goes to IndexedDB (`_extLoad()`); the others stay in memory
+     * until the page is reloaded (answer 2).
+     *
+     * @param {string} url - The link's URL.
+     * @param {Object} res - `_extFetch()`'s answer.
+     * @returns {?Object}
+     */
+    function _extRecord(url, res) {
+        if (res.error || !res.status || res.status >= 500 || res.status === 429) return null;
+        const finalUrl = res.finalUrl || url;
+        let moved = false;
+        let toHttps = false;
+        try {
+            const a = new URL(url);
+            const b = new URL(finalUrl);
+            moved = a.hostname.toLowerCase() !== b.hostname.toLowerCase() || a.pathname !== b.pathname;
+            toHttps = !moved && a.protocol === 'http:' && b.protocol === 'https:';
+        } catch (_) { /* an unparsable final URL: not a move we can name */ }
+        const rec = {
+            state: '', status: res.status, finalUrl, moved, toHttps,
+            contentType: res.contentType, bytes: res.bytes, note: '',
+            title: '', description: '', image: '', siteName: '', type: '', lang: '', published: '', canonical: '',
+        };
+        if (res.status >= 200 && res.status < 300) {
+            if (res.aborted === 'type') rec.state = 'notpage';
+            else if (res.aborted === 'size') rec.state = 'big';
+            else {
+                rec.state = 'ok';
+                Object.assign(rec, _extReadHead(res.body || '', rec.finalUrl, res.tail || ''));
+            }
+        } else if (res.status === 404 || res.status === 410) {
+            rec.state = 'dead';
+        } else if (res.status === 403 && /challenge/i.test(res.headers['cf-mitigated'] || '')) {
+            rec.state = 'checked';
+        } else if (res.status >= 400) {
+            rec.state = 'http';
+        } else {
+            return null;
+        }
+        return rec;
+    }
+
+    /**
+     * A byte count for a card: "84 KB", "2.3 MB".
+     *
+     * @param {number} n
+     * @returns {string}
+     */
+    function _extSize(n) {
+        if (!n) return '';
+        if (n < 1024 * 1024) return `${Math.max(1, Math.round(n / 1024))} KB`;
+        return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    /**
+     * What a record that is not a readable page says, in a sentence.
+     *
+     * @param {Object} rec - `_extRecord()`.
+     * @returns {string}
+     */
+    function _extStateText(rec) {
+        // A reader may say it in its own words (YouTube: "does not exist or
+        // is not public").
+        if (rec.note) return rec.note;
+        const type = (rec.contentType || '').split(';')[0].trim();
+        switch (rec.state) {
+            case 'dead':
+                return rec.status === 410 ? 'The site says the page is gone for good (410 Gone).'
+                    : 'The page is gone: the site answers 404 Not Found.';
+            case 'checked':
+                return 'The site answers scripts with a browser check ("Just a moment…"), so the card cannot read it. ' +
+                    'The link itself is fine: ↗ opens it in a tab.';
+            case 'notpage':
+                return `Not a web page${type ? `: ${type}` : ''}${rec.bytes ? `, ${_extSize(rec.bytes)}` : ''}. Not read.`;
+            case 'big':
+                return `A page of ${_extSize(rec.bytes)}, too big to read.`;
+            case 'http':
+                return `The site answers HTTP ${rec.status}.`;
+            default:
+                return '';
+        }
+    }
+
+    /**
+     * Why a request gave no record, in a few words.
+     *
+     * @param {Object} res - `_extFetch()`'s answer.
+     * @returns {string}
+     */
+    function _extFailText(res) {
+        if (res.error === 'refused') return 'Tampermonkey did not let the script contact this site';
+        if (res.error === 'timeout') return 'the site did not answer within 30 seconds';
+        if (res.error) return `the site could not be reached${res.detail ? ` (${res.detail})` : ''}`;
+        return `the site answered HTTP ${res.status}`;
+    }
+
+    /**
+     * A page's HTML for the Live page view (`_EXT_LIVE.fetchText`, called by
+     * `_dpGetRaw()` after its own wait for the host's slot): through
+     * `_extGet()`, so it is anonymous and remembers the host like a card's
+     * request.
+     *
+     * @param {string} url
+     * @returns {Promise<string>}
+     * @throws {Error} When the answer is not a readable page; `status` holds
+     *   the HTTP status (0 without a response).
+     */
+    async function _extFetchText(url) {
+        const res = await _extGet(url, { gate: false });
+        const rec = _extRecord(url, res);
+        if (rec && rec.state === 'ok' && res.body) return res.body;
+        const err = new Error(rec ? _extStateText(rec) : _extFailText(res));
+        err.status = res.status || 0;
+        throw err;
+    }
+
+    /**
+     * The Live page view of another site's page: `_dpGetRaw()` fetches it
+     * through `_extFetchText()` and the host's own gate, the copy shows the
+     * whole page (no `liveRoot`: the generic reader knows no site's layout).
+     * @type {object}
+     */
+    const _EXT_LIVE = {
+        charset: null,
+        awaitSlot: (url) => _extAwaitSlot(_extHostOf(url)),
+        fetchText: (url) => _extFetchText(url),
+        liveRoot: null,
+        liveHide: [],
+        liveCss: '',
+        livePrepare: null,
+    };
+
+    /**
+     * The generic reader's request: the page itself, read by
+     * `_extRecord()`. A page that was read is also remembered for the Live
+     * page view (`_dpRememberRaw()`), so hover then Live page costs one
+     * request.
+     *
+     * @param {object} t - A target of `_extSource()`.
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>} `_mbLoad()`'s answer shape.
+     */
+    async function _extGenericLoad(t, wanted) {
+        const res = await _extGet(t.url, { wanted });
+        if (res.skipped) return { skipped: true };
+        const rec = _extRecord(t.url, res);
+        if (!rec) return { ok: false, detail: _extFailText(res) };
+        if (rec.state === 'ok' && res.body) _dpRememberRaw(t.url, res.body);
+        return { ok: true, data: rec };
+    }
+
+    /**
+     * The YouTube links oEmbed serves (oembed.com's providers.json, read
+     * 2026-10-08): watch (with a video), /v/, youtu.be, a playlist (with a
+     * list), shorts, embed and live. A channel or a user page is not one:
+     * oEmbed answers 404 for it (U0 X3), so it stays with the generic reader.
+     *
+     * @param {URL} u
+     * @returns {boolean}
+     */
+    function _extYouTubeTest(u) {
+        const host = u.hostname.toLowerCase();
+        if (host === 'youtu.be') return /^\/[\w-]{6,}/.test(u.pathname);
+        if (!/^(?:www\.|m\.|music\.)?youtube\.com$/.test(host)) return false;
+        if (/^\/watch\/?$/.test(u.pathname)) return !!u.searchParams.get('v');
+        if (/^\/playlist\/?$/.test(u.pathname)) return !!u.searchParams.get('list');
+        return /^\/(?:v|shorts|embed|live)\/[\w-]+/.test(u.pathname);
+    }
+
+    /**
+     * The YouTube reader's request (brought from U3 into U1 on 2026-10-08,
+     * after a real playlist link: the PAGE is 1 MB, 97 % script, bounced
+     * through consent.youtube.com when no cookie is sent, its tags at
+     * 769 KB, and its Live page blank): ONE oEmbed request,
+     * `https://www.youtube.com/oembed?format=json&url=<the link, https>`,
+     * 771 bytes (U0 X3): title, channel, thumbnail. 400, 401, 403 and 404 —
+     * an id that does not exist (X3), a private resource (oembed.com), a
+     * removed one — are `dead`, in YouTube's own words.
+     *
+     * @param {object} t
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>}
+     */
+    async function _extYouTubeLoad(t, wanted) {
+        const page = new URL(t.url);
+        page.protocol = 'https:';
+        page.hash = '';
+        const api = `https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(page.href)}`;
+        const res = await _extGet(api, { wanted, fetchOpts: { accept: /\bjson\b/i } });
+        if (res.skipped) return { skipped: true };
+        if (res.error || !res.status || res.status >= 500 || res.status === 429) return { ok: false, detail: _extFailText(res) };
+        const what = page.searchParams.get('list') && !page.searchParams.get('v') ? 'playlist'
+            : (/^\/shorts\b/.test(page.pathname) ? 'short' : 'video');
+        const rec = {
+            state: 'ok', status: res.status, finalUrl: t.url, moved: false, toHttps: false, contentType: '', bytes: 0, note: '',
+            title: '', description: '', image: '', siteName: 'YouTube', type: what, lang: '', published: '', canonical: '',
+            author: '',
+        };
+        if (res.status === 200) {
+            let d;
+            try {
+                d = JSON.parse(res.body || '');
+            } catch (_) {
+                d = null;
+            }
+            if (!d || !d.title) return { ok: false, detail: 'YouTube answered, but not with oEmbed data' };
+            Object.assign(rec, {
+                title: String(d.title), author: String(d.author_name || ''),
+                image: /^https?:\/\//i.test(d.thumbnail_url || '') ? d.thumbnail_url : '',
+                description: d.author_name ? `A ${what} by ${d.author_name}` : '',
+            });
+            return { ok: true, data: rec };
+        }
+        if ([400, 401, 403, 404].includes(res.status)) {
+            return { ok: true, data: Object.assign(rec, {
+                state: 'dead',
+                note: `YouTube does not show this ${what}: it does not exist, was removed, or is not public (oEmbed answered ${res.status}).`,
+            }) };
+        }
+        return { ok: true, data: Object.assign(rec, { state: 'http' }) };
+    }
+
+    /**
+     * The readers, first match wins (`_extTarget()`): a known site's reader,
+     * then the generic one, which takes everything. A reader has its
+     * `kind` (the window's title), `test(url)`, `askHost(url)` — the host its
+     * request goes to, which decides first contact (a youtu.be link asks
+     * www.youtube.com) —, `load(t, wanted)`, and `noLive` when the site's page
+     * is no use without its scripts (the window then has no Live page).
+     * @type {Array<{id: string, kind: string, test: function(URL): boolean, askHost: function(URL): string,
+     *   load: function(object, function(): boolean): Promise<Object>, noLive: boolean}>}
+     */
+    const _EXT_READERS = [
+        { id: 'youtube', kind: 'YouTube', test: _extYouTubeTest, askHost: () => 'www.youtube.com', load: _extYouTubeLoad, noLive: true },
+        { id: 'generic', kind: 'Web page', test: () => true, askHost: (u) => u.hostname.toLowerCase(), load: _extGenericLoad, noLive: false },
+    ];
+
+    /**
+     * Loads one external link's record through `_mbLoad()` (memory, then
+     * IndexedDB younger than `_extTtlMs()`, then its reader's ONE request),
+     * so the engine's rules hold as for the entity cards: one load per link,
+     * a moved-on hover asks nothing, a failure is not kept. A record that is
+     * not `ok` (a dead link, a browser check) is kept in memory only, for
+     * this page load (answer 2).
+     *
+     * @param {object} t - A target of `_extSource()`.
+     * @param {{force?: boolean, repaint?: ?function(): void}} [opts]
+     * @returns {void}
+     */
+    function _extLoad(t, { force = false, repaint = null } = {}) {
+        _mbLoad(t.key, async (wanted) => {
+            const r = await t.reader.load(t, wanted);
+            if (r.ok && r.data) {
+                const rec = r.data;
+                Lib.debug('ext', `${t.url} (${t.reader.id}): ${rec.state} (HTTP ${rec.status})${rec.moved ? ` → ${rec.finalUrl}` : ''}.`);
+            }
+            return r;
+        }, {
+            force, repaint, wanted: _mbPopWanted(t), version: _EXT_IDB_VERSION,
+            keep: (d) => d.state === 'ok', ttlMs: _extTtlMs(),
+        });
+    }
+
+    /**
+     * What the page itself says about a link, at no cost: the relationship
+     * it is (a details row's heading, a "Relationship" column), and of what
+     * ("of this event"), or where it sits (the annotation, the sidebar's
+     * external links). Empty on a foreign host.
+     *
+     * @param {Element} a
+     * @returns {{rel: string, of: string, where: string}}
+     */
+    function _extContext(a) {
+        const none = { rel: '', of: '', where: '' };
+        if (_foreignHost || !a || !a.closest) return none;
+        const kind = (window.location.pathname.split('/')[1] || '').replace(/-/g, ' ');
+        const of = /^(?:artist|release group|release|recording|work|label|event|place|area|series|instrument)$/.test(kind) ? `of this ${kind}` : '';
+        const tr = a.closest('tr');
+        if (tr && a.closest('table.details')) {
+            const th = tr.querySelector(':scope > th');
+            const rel = th ? _dpText(th.textContent).replace(/:$/, '') : '';
+            if (rel) return { rel, of, where: '' };
+        }
+        const table = a.closest('table.tbl');
+        if (tr && table) {
+            const n = table.querySelectorAll('thead tr:first-child th').length;
+            for (let i = 0; i < n; i++) {
+                if (_resolveColHeaderName(table, i) !== 'Relationship') continue;
+                const rel = tr.cells[i] ? _dpText(tr.cells[i].textContent) : '';
+                if (rel) return { rel, of, where: '' };
+            }
+            return none;
+        }
+        if (a.closest('ul.external_links')) return { rel: '', of: '', where: 'in the sidebar\'s external links' };
+        if (a.closest('.annotation')) return { rel: '', of: '', where: 'in the annotation' };
+        return none;
+    }
+
+    /**
+     * The context line of a card or window, HTML; '' when the page says
+     * nothing.
+     *
+     * @param {object} t
+     * @returns {string}
+     */
+    function _extContextHtml(t) {
+        const c = _extContext(t.el);
+        if (c.rel) return `MusicBrainz: <b>${_rgEsc(c.rel)}</b>${c.of ? ` ${_rgEsc(c.of)}` : ''}`;
+        return c.where ? _rgEsc(c.where) : '';
+    }
+
+    /**
+     * A record's status pill: green for a page, amber for a move, a browser
+     * check or another refusal, red for a dead link.
+     *
+     * @param {Object} rec
+     * @returns {string}
+     */
+    function _extPillHtml(rec) {
+        let cls = 'ok';
+        let text = String(rec.status);
+        if (rec.state === 'ok' && rec.moved) [cls, text] = ['warn', 'moved'];
+        else if (rec.state === 'dead') {
+            cls = 'dead';
+            text = rec.status === 410 ? '410 Gone' : (rec.status === 404 ? '404 Not found' : 'not available');
+        }
+        else if (rec.state === 'checked') [cls, text] = ['warn', 'checked by Cloudflare'];
+        else if (rec.state === 'http' || rec.state === 'big') cls = 'warn';
+        else if (rec.state === 'notpage') text = 'not a page';
+        return `<span class="mb-ext-st mb-ext-st-${cls}">${_rgEsc(text)}</span>`;
+    }
+
+    /**
+     * The site line: an initial, the host, and the pill (HTML).
+     *
+     * @param {object} t
+     * @param {string} pill - `_extPillHtml()`, or '' while unknown.
+     * @returns {string}
+     */
+    function _extSiteHtml(t, pill) {
+        const bare = t.host.replace(/^www\./, '');
+        return `<div class="mb-ext-site"><span class="mb-ext-fav">${_rgEsc((bare[0] || '?').toUpperCase())}</span>` +
+            `<span class="mb-ext-host">${_rgEsc(t.host)}</span>${pill}</div>`;
+    }
+
+    /**
+     * Cuts a text at a word to about `n` characters.
+     *
+     * @param {string} s
+     * @param {number} n
+     * @returns {string}
+     */
+    function _extCut(s, n) {
+        if (s.length <= n) return s;
+        const cut = s.slice(0, n);
+        return `${cut.slice(0, Math.max(cut.lastIndexOf(' '), n - 20)).trimEnd()}…`;
+    }
+
+    /**
+     * The hover card of an external link for its CURRENT state:
+     *   - a host the script never reached and nothing loaded or loading: the
+     *     link, its context, and "Space loads a preview" — NO request (answer
+     *     7). That includes a host whose try from the window FAILED (no answer,
+     *     or Tampermonkey refused it): a hover retrying it would bring the
+     *     permission prompt back on a hover; its reason is shown instead;
+     *   - loading, the failure ("hover again"), or the record: title, site
+     *     name, image, description, the final URL of a moved page, or what a
+     *     dead link or a browser check means.
+     * Only a call with `start` asks (the engine's rule).
+     *
+     * @param {object} t
+     * @param {boolean} start
+     * @param {function(): void} repaint
+     * @returns {string}
+     */
+    function _extCard(t, start, repaint) {
+        const ctx = _extContextHtml(t);
+        const ctxHtml = ctx ? `<div class="mb-tt-comment">${ctx}</div>` : '';
+        const st0 = _mbPop.get(t.key);
+        if ((!st0 || st0.status === 'failed') && !_extHostKnown(t.askHost)) {
+            const last = st0 ? `<div class="mb-tt-alert">The last try failed: ${_rgEsc(st0.detail)}.</div>` : '';
+            return `<div class="mb-ext-card">${_extSiteHtml(t, '<span class="mb-ext-st mb-ext-st-warn">not contacted yet</span>')}` +
+                `${ctxHtml}<div class="mb-tt-rule"></div><div class="mb-ext-url">${_rgEsc(t.href)}</div>${last}` +
+                '<div class="mb-tt-body mb-ext-first">The script has never asked this site. <kbd>Space</kbd> loads a preview; ' +
+                'Tampermonkey asks once whether the script may contact it.</div>' +
+                '<div class="mb-tt-foot">no request yet · <kbd>Esc</kbd> close</div></div>';
+        }
+        if (start) _extLoad(t, { repaint });
+        const st = _mbPop.get(t.key);
+        if (st && st.status === 'done' && st.data) {
+            const rec = st.data;
+            let body;
+            if (rec.state === 'ok') {
+                const img = rec.image ? `<img class="mb-ext-img" src="${_rgEsc(rec.image)}" alt="" referrerpolicy="no-referrer" loading="lazy">` : '';
+                body = `<div class="mb-ext-head">${img}<div class="mb-ext-headtext"><div class="mb-tt-title">${_rgEsc(rec.title || t.name)}</div>` +
+                    (rec.siteName ? `<div class="mb-tt-comment">${_rgEsc(rec.siteName)}</div>` : '') + '</div></div>' +
+                    (rec.description ? `<div class="mb-tt-body mb-ext-desc">${_rgEsc(_extCut(rec.description, 260))}</div>` : '') +
+                    (rec.moved ? `<div class="mb-ext-url">→ ${_rgEsc(rec.finalUrl)}</div>` : '') +
+                    (rec.toHttps ? '<div class="mb-ext-url mb-ext-https">→ https</div>' : '');
+            } else {
+                body = `<div class="mb-ext-url">${_rgEsc(t.href)}</div><div class="mb-tt-body">${_rgEsc(_extStateText(rec))}</div>`;
+            }
+            const age = rec.state === 'ok' ? _dpAgeText({ cached: st.cached, at: st.at }) : 'until the page is reloaded';
+            return `<div class="mb-ext-card">${_extSiteHtml(t, _extPillHtml(rec))}${ctxHtml}<div class="mb-tt-rule"></div>${body}` +
+                `<div class="mb-tt-foot">${_rgEsc(age)} · <kbd>Space</kbd> more · <kbd>Esc</kbd> close</div></div>`;
+        }
+        if (st && st.status === 'failed') {
+            return `<div class="mb-ext-card">${_extSiteHtml(t, '')}${ctxHtml}<div class="mb-tt-rule"></div>` +
+                `<div class="mb-tt-alert">Could not load the page: ${_rgEsc(st.detail)}.</div>` +
+                '<div class="mb-tt-foot">Hover again to retry.</div></div>';
+        }
+        return `<div class="mb-ext-card">${_extSiteHtml(t, '')}${ctxHtml}<div class="mb-tt-rule"></div>` +
+            '<div class="mb-tt-comment"><span class="mb-dp-spin">◌</span> Loading…</div></div>';
+    }
+
+    /**
+     * The window's Extracted view of an external link: the page's title,
+     * site name, image and description (or what its state means) on the
+     * left; the link with its status and final URL, what this page says
+     * about it, and the page's own facts on the right. The window may make
+     * the FIRST request to a host (Space, a tap, an arrow key: answer 7).
+     *
+     * @param {object} t
+     * @param {boolean} start
+     * @param {boolean} force
+     * @param {function(): void} repaint
+     * @returns {string}
+     */
+    function _extExtracted(t, start, force, repaint) {
+        if (start) _extLoad(t, { force, repaint });
+        const st = _mbPop.get(t.key);
+        const title = `<div class="mb-dp-xtitle">${_rgEsc(t.name)}</div>`;
+        if (st && st.status === 'failed') {
+            return `<div class="mb-dp-x"><div class="mb-dp-col">${title}<div class="mb-dp-warn">Could not load the page: ` +
+                `${_rgEsc(st.detail)}.</div><p><button type="button" class="mb-dp-retry">⟳ Try again</button></p></div></div>`;
+        }
+        if (!st || st.status !== 'done' || !st.data) {
+            return `<div class="mb-dp-x"><div class="mb-dp-col">${title}<div class="mb-dp-xsub"><span class="mb-dp-spin">◌</span> ` +
+                'Loading…</div></div></div>';
+        }
+        const rec = st.data;
+        const left = [`<div class="mb-dp-xtitle">${_rgEsc(rec.title || t.name)}</div>`];
+        if (rec.siteName) left.push(`<div class="mb-dp-xsub">${_rgEsc(rec.siteName)}</div>`);
+        if (rec.state === 'ok') {
+            if (rec.image) {
+                left.push(`<a href="${_rgEsc(rec.image)}" target="_blank" rel="noopener noreferrer">` +
+                    `<img class="mb-dp-xcover" src="${_rgEsc(rec.image)}" alt="" referrerpolicy="no-referrer"></a>`);
+            }
+            if (rec.description) left.push(`<div class="mb-ext-xdesc">${_rgEsc(rec.description)}</div>`);
+        } else {
+            left.push(`<div class="mb-dp-warn">${_rgEsc(_extStateText(rec))}</div>`);
+        }
+        const link = (u, text) => `<a href="${_rgEsc(u)}" target="_blank" rel="noopener noreferrer">${_rgEsc(text)}</a>`;
+        const right = ['<h4>Link</h4>' + _extSiteHtml(t, _extPillHtml(rec)) + `<div class="mb-ext-url">${link(t.url, t.href)}</div>` +
+            (rec.moved ? `<div class="mb-ext-url">→ ${link(rec.finalUrl, rec.finalUrl)}</div>` : '') +
+            (rec.toHttps ? '<div class="mb-ext-url mb-ext-https">→ https (the same page)</div>' : '')];
+        const ctx = _extContextHtml(t);
+        if (ctx) right.push(`<h4>On this page</h4><div>${ctx}</div>`);
+        const facts = [
+            ['Type', rec.type], ['Channel', rec.author], ['Language', rec.lang], ['Published', rec.published],
+            ['Canonical URL', rec.canonical && rec.canonical !== rec.finalUrl ? rec.canonical : ''],
+            ['Content', [(rec.contentType || '').split(';')[0].trim(), _extSize(rec.bytes)].filter(Boolean).join(', ')],
+        ].filter(f => f[1]);
+        if (facts.length) right.push('<h4>The page says</h4>' + _dpFieldsHtml(facts));
+        const age = rec.state === 'ok' ? _dpAgeText({ cached: st.cached, at: st.at }) : 'kept until the page is reloaded';
+        return `<div class="mb-dp-x"><div class="mb-dp-col">${left.join('')}</div><div class="mb-dp-col">${right.join('')}</div></div>` +
+            `<div class="mb-dp-xfoot">${_rgEsc(age)} · ⟳ asks the site again</div>`;
+    }
+
+    /**
+     * What ‹ › step through from an external link: in a table, the same
+     * column (`_popColumnSteps()`), one external link per visible row;
+     * elsewhere, the external links of the same block (a relationship
+     * table, the annotation, the sidebar's list), in page order.
+     *
+     * @param {object} t
+     * @returns {Element[]}
+     */
+    function _extSteps(t) {
+        if (t.col) return _popColumnSteps(t.col, 'a[href]', (x) => !!_extTarget(x));
+        const box = t.el.closest('table.tbl, table.details, .annotation, ul.external_links');
+        if (!box) return [t.el];
+        return Array.from(box.querySelectorAll('a[href]')).filter(x => _extTarget(x) && x.getClientRects().length);
+    }
+
+    /**
+     * An identity for a step that survives the re-renders: the row's
+     * `data-mb-row-idx` when it has one, and the link as written.
+     *
+     * @param {Element} a
+     * @returns {string}
+     */
+    function _extStepId(a) {
+        const tr = a.closest('tr');
+        return `${tr && tr.dataset.mbRowIdx ? tr.dataset.mbRowIdx : ''}|${a.getAttribute('href')}`;
+    }
+
+    /**
+     * What a link to another site previews, or null. An `http(s)` link
+     * whose host is not this page's (`www.` aside), not in the MetaBrainz
+     * family or the artwork archives (`_EXT_SKIP_HOST_RE`), not a share
+     * button, not around an image, and not in the chrome, the Relationships
+     * column, the card or the window (`_EXT_SKIP_SEL`). The URL is read from
+     * the `href` ATTRIBUTE: `a.href` is the browser's normalised URL, and
+     * MusicBrainz looks a URL up by its exact string (U0 X7). The first
+     * reader of `_EXT_READERS` that takes the URL serves it: its id is in the
+     * key, its kind is the window's title, its `askHost` decides first
+     * contact, and `noLive` hides the Live page.
+     *
+     * @param {Element} a
+     * @returns {?{key: string, url: string, href: string, host: string, askHost: string, reader: object,
+     *   noLive: boolean, kind: string, name: string, col: string}}
+     */
+    function _extTarget(a) {
+        if (!a || a.tagName !== 'A') return null;
+        const href = (a.getAttribute('href') || '').trim();
+        if (!/^https?:\/\//i.test(href)) return null;
+        let u;
+        try {
+            u = new URL(href);
+        } catch (_) {
+            return null;
+        }
+        const host = u.hostname.toLowerCase();
+        const bare = (h) => h.replace(/^www\./, '');
+        if (bare(host) === bare(window.location.hostname.toLowerCase())) return null;
+        if (_EXT_SKIP_HOST_RE.test(host) || _EXT_SKIP_URL_RE.test(href)) return null;
+        if (a.querySelector('img:not(.avatar)') || a.closest(_EXT_SKIP_SEL)) return null;
+        const td = a.closest('td, th');
+        const table = td && td.closest('table.tbl');
+        const reader = _EXT_READERS.find(r => r.test(u));
+        return {
+            key: `ext:${reader.id}:${u.href}`, url: u.href, href, host, askHost: reader.askHost(u),
+            reader, noLive: reader.noLive, kind: reader.kind,
+            name: _dpText(a.textContent) || host,
+            col: table ? _resolveColHeaderName(table, td.cellIndex) : '',
+        };
+    }
+
+    /**
+     * Every link to another site as ONE source of the popup engine, listed
+     * just before `_mbEntitySource()` (the two never claim the same link).
+     * Where: `_EXT_SCOPE_SEL` (a table, a relationship list, the annotation,
+     * the sidebar's external links), and with `sa_pop_mb_page` the whole
+     * `#page`. The card waits for Ctrl unless `sa_dp_hover_without_ctrl` is
+     * on; Space pins; ‹ › step through the same column or block; the Live
+     * page is the site's page through `_EXT_LIVE`. Off unless `sa_pop_ext` is
+     * on, and on MusicBrainz only in U1 (U5 adds the foreign hosts).
+     *
+     * @returns {object} The source.
+     */
+    function _extSource() {
+        return {
+            id: 'ext',
+            kind: 'Web page',
+            // Read at every event, so the setting needs no reload.
+            get selector() {
+                return Lib.settings.sa_pop_mb_page === true ? `${_EXT_SCOPE_SEL}, #page a[href]` : _EXT_SCOPE_SEL;
+            },
+            wide: false,
+            live: _EXT_LIVE,
+            enabled: () => !_foreignHost && Lib.settings.sa_pop_ext === true,
+            resolve: (a) => _extTarget(a),
+            needsCtrl: _dpNeedsCtrl,
+            liveUrl: (t) => t.url,
+            card: _extCard,
+            extracted: _extExtracted,
+            steps: _extSteps,
+            stepId: _extStepId,
         };
     }
 
@@ -112055,6 +113101,18 @@ a { color: #1565c0; }`;
              */
             dpRateSlotWaitMs() {
                 return Math.max(0, _dpNextSlotAt - Date.now());
+            },
+            /**
+             * How long a request to `host` asking the external links' rate
+             * gate now (`_extAwaitSlot()`, the shipping gate) would wait, ms,
+             * so a spec can show that one host's requests are spaced and
+             * another host's are not.
+             *
+             * @param {string} host
+             * @returns {number}
+             */
+            extRateSlotWaitMs(host) {
+                return Math.max(0, (_extNextSlotAt.get(host) || 0) - Date.now());
             },
             /**
              * Which source of the popup engine claims an element, and with
