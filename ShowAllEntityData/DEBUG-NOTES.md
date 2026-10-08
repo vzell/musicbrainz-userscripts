@@ -21019,3 +21019,68 @@ page-level route, which takes precedence. The spec also checks that
 which is a popup with an opener, not a background tab. It needs the tab
 object, and has not been seen flaking. If it ever does, this entry is the
 first suspect.
+
+## 2026-10-08 — Event preview: raw `[mbid|name]` setlist tokens, guests as works (branch feature/event-popup-details, WIP.1/WIP.2)
+
+**Symptom (org/event-GPE.org, `debug/mb-event-popup.html`):** the window of
+the Stone Pony show (`/event/26cead1c-a5fa-4677-873a-312412c6dc91`) listed
+songs 14–20 as raw markup, e.g. `[E497263c-4f15-36c0-B27c-Dca99482962c|The
+Fever] (with [70248960-Cb53-…|Bruce Springsteen])`, while songs 1–13
+showed their names.
+
+**Root cause:** `_mbPopSetlist()` stripped tokens with
+`/\[[0-9a-f-]{36}\|([^\]]*)\]/g`, which is lowercase-only. An editor typed
+those MBIDs in mixed case: 14 of the 44 tokens (probe
+`scripts/probe-mb-entity-lookups.py --only event-details`, 2026-10-08).
+MusicBrainz accepts them, and its own page links them as typed. For the same
+lines it links EVERY token as `/work/`, the "(with …)" artists included
+(`debug/mb-event-initial.html`: `/work/70248960-…` for Bruce Springsteen). So
+the page is no model for which token is what.
+
+**Fix:** `_MB_POP_SETLIST_TOKEN_RE` is case-insensitive and its name part is
+optional. `_mbPopSetlistLine()` links tokens by line kind: `@` → artist; `*`
+→ work, except inside a `(with|feat.|featuring|ft. …)` group → artist; `#` →
+names only. Links use the lowercased MBID, because `_MB_POP_PATH_RE` (card,
+drill-down) matches lowercase only.
+
+**Same branch:**
+- "Held at" gets the area chain (`_mbPopAreaChain()`, Country/Subdivision/City
+  as musicbrainz-server's `load_containment`).
+- "Part of" and "URLs" come from `event-rels+series-rels+url-rels` on the card
+  lookup.
+- An instrument attribute links `/instrument/<attribute-id>`, which is the
+  instrument's MBID: probe `--only attr-instruments`, where trumpet and drums
+  answer 200 and "lead vocals", "background vocals" and "time" answer 404.
+  `_mbPopIsInstrumentAttr()` leaves out `…vocals` and
+  `_MB_POP_NON_INSTRUMENT_ATTRS`.
+- A series target's "part of" is FORWARD from the item's side
+  (`ws2-pop-series-st.json` lists the items backward), so
+  `_MB_POP_REL_LABELS` gained a three-part key
+  `'part of|forward|series': 'Part of'`. Without it an event's series would
+  be labelled "Parts".
+
+**Tests:** `popup-mb.spec.js`, the event describe block: three new tests
+(setlist links plus instruments; held at, part of and URLs plus the card from
+cache; a failed chain step plus ⟳).
+
+**Extended to place, artist, label and recording (the user, 2026-10-09).**
+`_mbPopAreaChainLoad(t, areas, …)` now takes the areas, and every kind's
+`pin()` calls it. The recording's call waits until its credits lookup is
+there, because the studios come from it.
+
+- **Trap: an entity's own area has `type: null`.** That covers an artist's
+  `area`/`begin-area`/`end-area`, a label's and a place's `area`; only a
+  RELATION's area carries its type. A walk that stops on
+  `type === 'Country'` would therefore look up the United States for every
+  US artist and label: 26 KB, and its `area-rels` lists every state.
+  `_mbPopIsCountry()` also accepts an ISO 3166-1 code, which only countries
+  carry. The 2026-10-08 probe chains confirm that no city, county or
+  subdivision has one.
+- **Test routing.** Before this, `popup-mb.spec.js` answered EVERY
+  `/ws/2/area/` request with New Jersey, which gives wrong chains (Asbury Park
+  → New Jersey's parent). `AREA_CHAIN_FIXTURES` routes the captured areas by
+  id ahead of that catch-all.
+- **The repeated event day.** An event target's days used to be repeated
+  after a name that starts with them ("2025‐05‐20: Co‐op Live, … (2025-05-20)",
+  a popup-ext.spec.js failure). Now they are skipped when the name, with U+2010
+  read as "-", contains the begin date.

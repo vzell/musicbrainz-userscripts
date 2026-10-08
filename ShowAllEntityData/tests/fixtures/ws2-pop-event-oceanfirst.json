@@ -1,0 +1,157 @@
+{
+ "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+ "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n@ [345881e6-c293-43d2-bf59-c9598efad3a9|The Disciples of Soul]\r\n# with\r\n@ [b0ab3979-4165-4e3e-b125-2d77f14080bd|Anthony Almonte]\r\n@ [25796215-9ec7-4d7b-ab48-8cd39adc08b2|Ravi Best]\r\n@ [432fcd84-7594-468e-92ec-ea080adb477f|Andy Burton]\r\n@ [f2222d82-9d0a-47a0-8cf0-8aba0b858f53|John Conte]\r\n@ [0b7d3e2e-aa6a-4fa9-a378-c87ae6bf146c|Sara Devine]\r\n@ [078e680d-6d6c-46ce-8134-0bddeb9e5e35|Mike Mancini]\r\n@ [6a3394ba-6888-4dd0-93f3-06c1e35749d8|Ed Manion]\r\n@ [9059a286-a584-4440-a9bb-a48517836c0e|David Mansfield]\r\n@ [75c75041-11d8-4b9d-b724-e64f14e57489|John Martin]\r\n@ [286b737a-71b1-4499-9c1a-9e86a47c9647|Rich Mercurio]\r\n@ [6215a971-255b-4e99-b380-5bd43aff9a06|Neal Pawley]\r\n@ [ea772005-b24c-4368-be0f-3b44e8fa8f36|Marc Ribler]\r\n@ [535f0c88-70ac-4486-8aea-6e2fbb34b16c|Ron Tooley]\r\n@ [7051f147-0f98-4679-a929-0ca365de9793|Jessie Wagner]\r\n@ [5ff6f6eb-31ad-4903-a3c3-4c9283fcde8b|Rosanne Cash]\r\n# and\r\n@ [5dca4d22-d6c8-4e70-8ca1-4543e43353c7|Kenny Chesney]\r\n@ [e8374874-4178-4869-b92e-fef6bf30dc04|Dropkick Murphys]\r\n# with\r\n@ [6a3ae3af-c1e5-44e9-9cac-38590f5dd0d7|Tim Brennan]\r\n@ [622083a6-a011-4354-af39-5fdbbfccd585|Ken Casey]\r\n# and\r\n@ [470ebb49-d510-4dae-95ee-c0a75c882dc7|New Breed Brass Band]\r\n# with\r\n@ [5f1c86e6-433d-45f4-ba97-82deec44ab6a|Jenard Andrews]\r\n# and\r\n@ [cae4fd51-4d58-4d48-92c1-6198cc2e45ed|Trombone Shorty]\r\n# and\r\n@ [ed241876-0c9e-4af9-b8d6-2dc41d3e438f|Shemekia Copeland]\r\n@ [20d7beef-118f-493c-99f9-3931835cb658|Brian Fallon]\r\n@ [b76c1bf7-f33b-460c-bfc3-f140d023fc94|Valerie June]\r\n@ [280ddd36-ac7d-4446-8689-a548d6f3458e|Keb’ Mo’]\r\n@ [685ec09c-79ee-43eb-b197-aa102fca0adc|John Leventhal]\r\n@ [4ee515b0-bbf1-4066-895c-2d625aefe6cd|Sister Sadie]\r\n# with\r\n@ [a6e1cd87-34d2-4a19-9a3a-12adc6a67beb|Katie Blomarz‐Kimball]\r\n@ [959f402a-1708-4afb-b463-2edfeee8898d|Gena Britt]\r\n@ [75c6abd5-b3fd-4f5f-916e-eb461417bea6|Dani Flowers]\r\n@ [d8626b55-b55b-456f-a291-8ef9e46472fc|Rainy Miatke]\r\n@ [3c0448f3-668d-4fcc-a1bb-caaf3bd1a70d|Deanie Richardson]\r\n@ [54a99c67-4e06-4747-863a-1536f9dcfa78|Jaelee Roberts]\r\n# and\r\n@ [4ff84a40-f048-4cb7-abef-e92146f9a330|Tony Trischka]\r\n\r\n# Scheduled: 19:00 Local Start Time ??:?? / End Time ??:??\r\n* [c33ef12f-8cf9-4a6a-a5ff-ecd17bb019bd|Plane Wreck at Los Gatos (Deportee)] (with [5ff6f6eb-31ad-4903-a3c3-4c9283fcde8b|Rosanne Cash])\r\n* [ca8235c6-1891-4d31-b55e-49f51ba3e613|This Land Is Your Land] (with [5dca4d22-d6c8-4e70-8ca1-4543e43353c7|Kenny Chesney])\r\n* [7f540e4c-8f5a-4186-a48f-34dee6cfeb60|I’m Shipping Up to Boston] (with [e8374874-4178-4869-b92e-fef6bf30dc04|Dropkick Murphys])\r\n* [0ab49f10-0a47-3c11-a919-8d173ed6cd8d|American Land] (with [e8374874-4178-4869-b92e-fef6bf30dc04|Dropkick Murphys])\r\n* [ca8235c6-1891-4d31-b55e-49f51ba3e613|This Land Is Your Land] (with [cae4fd51-4d58-4d48-92c1-6198cc2e45ed|Trombone Shorty] & the [470ebb49-d510-4dae-95ee-c0a75c882dc7|New Breed Brass Band] and all performers)",
+ "relations": [
+  {
+   "target-type": "artist",
+   "end": null,
+   "begin": null,
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "direction": "backward",
+   "source-credit": "",
+   "attribute-ids": {},
+   "attributes": [],
+   "target-credit": "",
+   "type": "main performer",
+   "attribute-values": {},
+   "artist": {
+    "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "disambiguation": "",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "country": "US",
+    "sort-name": "Springsteen, Bruce",
+    "type": "Person",
+    "name": "Bruce Springsteen"
+   },
+   "ended": false
+  },
+  {
+   "ended": false,
+   "type": "parts",
+   "attribute-values": {},
+   "event": {
+    "setlist": "",
+    "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+    "id": "313d4255-1bb3-4e8d-b34e-fd063a1ce59b",
+    "disambiguation": "",
+    "time": "",
+    "name": "Music America: The Songs That Shaped Us",
+    "type": "Concert",
+    "cancelled": false,
+    "life-span": {
+     "ended": true,
+     "begin": "2026-06-04",
+     "end": "2026-06-05"
+    }
+   },
+   "target-credit": "",
+   "source-credit": "",
+   "attribute-ids": {},
+   "attributes": [],
+   "direction": "backward",
+   "type-id": "65742183-b25c-469e-b094-ff6739e6699c",
+   "end": null,
+   "begin": null,
+   "target-type": "event"
+  },
+  {
+   "target-type": "place",
+   "end": null,
+   "begin": null,
+   "type-id": "e2c6f697-07dc-38b1-be0b-83d740165532",
+   "direction": "forward",
+   "attribute-ids": {},
+   "attributes": [],
+   "source-credit": "",
+   "place": {
+    "id": "47d8921c-16b2-4798-987d-962438b35a64",
+    "disambiguation": "",
+    "type-id": "cd92781a-a73f-30e8-a430-55d7521338db",
+    "address": "400 Cedar Avenue West Long Branch, New Jersey 07764",
+    "type": "Venue",
+    "name": "OceanFirst Bank Center",
+    "coordinates": {
+     "latitude": 40.279475,
+     "longitude": -74.007583
+    },
+    "area": {
+     "name": "West Long Branch",
+     "type": "City",
+     "disambiguation": "",
+     "id": "4c21ce68-e33e-4772-ac5f-0f52d9195d96",
+     "sort-name": "West Long Branch",
+     "type-id": "6fd8f29a-3d0a-32fc-980d-ea697b69da78"
+    }
+   },
+   "target-credit": "",
+   "attribute-values": {},
+   "type": "held at",
+   "ended": false
+  },
+  {
+   "target-type": "url",
+   "begin": null,
+   "end": null,
+   "type-id": "c26808b0-4e67-31a7-a587-913720dfb3f3",
+   "url": {
+    "resource": "https://springsteencenter.org/event/music-america-the-songs-that-shaped-us-night-one/",
+    "id": "1119cef1-1f6b-479a-8265-617e39eb8749"
+   },
+   "direction": "forward",
+   "source-credit": "",
+   "attributes": [],
+   "attribute-ids": {},
+   "target-credit": "",
+   "type": "official homepage",
+   "attribute-values": {},
+   "ended": false
+  },
+  {
+   "direction": "forward",
+   "target-type": "url",
+   "end": null,
+   "begin": null,
+   "type-id": "30ee8e92-5722-4dd7-943c-a2fa82b9aff4",
+   "url": {
+    "resource": "http://brucebase.wikidot.com/2026#040626",
+    "id": "09b31397-92a5-49b5-8c72-73b54a9eaa30"
+   },
+   "type": "review",
+   "attribute-values": {},
+   "ended": false,
+   "source-credit": "",
+   "attributes": [],
+   "attribute-ids": {},
+   "target-credit": ""
+  },
+  {
+   "target-type": "url",
+   "end": null,
+   "begin": null,
+   "type-id": "027fce0c-c621-4fd1-b728-1678ae08f280",
+   "url": {
+    "resource": "https://www.setlist.fm/setlist/bruce-springsteen/2026/oceanfirst-bank-center-west-long-branch-nj-737652e9.html",
+    "id": "fda2084f-8d68-44c8-856d-58d47016efe0"
+   },
+   "direction": "forward",
+   "source-credit": "",
+   "attribute-ids": {},
+   "attributes": [],
+   "target-credit": "",
+   "type": "setlistfm",
+   "attribute-values": {},
+   "ended": false
+  }
+ ],
+ "id": "cd595883-d26a-4e76-a033-eb588e0f9c55",
+ "disambiguation": "Music America: The Songs That Shaped Us",
+ "time": "19:00",
+ "life-span": {
+  "end": "2026-06-04",
+  "begin": "2026-06-04",
+  "ended": true
+ },
+ "name": "2026‐06‐04: OceanFirst Bank Center, West Long Branch, NJ, USA",
+ "type": "Concert",
+ "cancelled": false
+}

@@ -37363,25 +37363,73 @@
     }
 
     /**
+     * Relation attributes that are not instruments although their name does
+     * not say "vocals": MusicBrainz's generic attributes (link attribute
+     * types outside the instrument tree). An attribute's id is an
+     * instrument's MBID only for an instrument (probe 2026-10-08,
+     * scripts/probe-mb-entity-lookups.py --only attr-instruments: trumpet
+     * and "drums (drum set)" answer 200 as instruments, "lead vocals",
+     * "background vocals" and "time" 404); the names below are the ones seen
+     * in the captured fixtures (scripts/scan-relation-attributes.py) plus
+     * MusicBrainz's other generic ones.
+     * @type {Set<string>}
+     */
+    const _MB_POP_NON_INSTRUMENT_ATTRS = new Set(['additional', 'assistant', 'associate', 'bonus', 'co', 'cover',
+        'eponymous', 'executive', 'guest', 'instrumental', 'karaoke', 'live', 'medley', 'minor', 'number', 'original',
+        'parody', 'partial', 'primary', 'solo', 'sub', 'task', 'time', 'translated', 'transliterated', 'acappella',
+        'a cappella', 'demo', 'vocal']);
+
+    /**
+     * Whether a relation attribute is an instrument, so its id links
+     * `/instrument/<id>`: neither a vocal ("lead vocals", "spoken vocals")
+     * nor a generic attribute (`_MB_POP_NON_INSTRUMENT_ATTRS`).
+     *
+     * @param {string} name - The attribute as the Web Service names it.
+     * @returns {boolean}
+     */
+    function _mbPopIsInstrumentAttr(name) {
+        const n = String(name || '').toLowerCase();
+        return !!n && !/\bvocals?$/.test(n) && !_MB_POP_NON_INSTRUMENT_ATTRS.has(n);
+    }
+
+    /**
      * An entity of a relation as HTML: linked (a new tab) when it has an id,
-     * with the relation's attributes and credited name in brackets and its
-     * dates, dimmed.
+     * its disambiguation dimmed, then the relation's attributes (an
+     * instrument linked to its page: `_mbPopIsInstrumentAttr()`) and
+     * credited name in brackets and its dates, dimmed — "Chris Anderson
+     * (trumpet player) (trumpet)", as MusicBrainz writes it.
      *
      * @param {Object} r - A relation of the Web Service.
      * @param {string} type - Its target type: `artist`, `label`, `place`, `work`, …
      *   — the page segment (`release-group`).
      * @param {?Object} [entity] - The target, when not `r[type]` (a url
      *   lookup keys a release group `release_group`: `_mbPopRelEntity()`).
+     * @param {string} [after] - HTML right after the name (and its
+     *   disambiguation), before the attributes and dates: a place's " in
+     *   <area chain>" (`_mbPopPlaceRelHtml()`).
      * @returns {string}
      */
-    function _mbPopRelTargetHtml(r, type, entity = null) {
+    function _mbPopRelTargetHtml(r, type, entity = null, after = '') {
         const e = entity || r[type] || {};
         const name = _rgEsc(e.name || e.title || '');
-        const link = e.id ? `<a href="/${type}/${_rgEsc(e.id)}" target="_blank" rel="noopener">${name}</a>` : name;
-        const notes = [...(r.attributes || []), r['target-credit'] && r['target-credit'] !== (e.name || e.title) ? `as ${r['target-credit']}` : '']
-            .filter(Boolean);
+        // An event target carries its own life span (probe 2026-10-08, the
+        // OceanFirst show's "parts" relation): its days follow the name, as
+        // MusicBrainz writes "Music America: … (2026-06-04 – 2026-06-05)".
+        // Not when the name already starts with that day, as most event names
+        // do ("2025‐05‐20: Co‐op Live, …", written with U+2010).
+        const days = type === 'event' && !String(e.name || '').replace(/\u2010/g, '-').includes((e['life-span'] || {}).begin || '\u0000')
+            ? _mbPopEventDays(e) : '';
+        const link = (e.id ? `<a href="/${type}/${_rgEsc(e.id)}" target="_blank" rel="noopener">${name}</a>` : name) +
+            (e.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(e.disambiguation)})</span>` : '') +
+            (days ? ` <span class="mb-rg-dim">(${_rgEsc(days)})</span>` : '') + after;
+        const ids = r['attribute-ids'] || {};
+        const notes = [
+            ...(r.attributes || []).map(a => (_mbPopIsInstrumentAttr(a) && ids[a]
+                ? `<a href="/instrument/${_rgEsc(ids[a])}" target="_blank" rel="noopener">${_rgEsc(a)}</a>` : _rgEsc(a))),
+            r['target-credit'] && r['target-credit'] !== (e.name || e.title) ? _rgEsc(`as ${r['target-credit']}`) : '',
+        ].filter(Boolean);
         const when = [r.begin, r.end].filter(Boolean);
-        return link + (notes.length ? ` <span class="mb-rg-dim">(${_rgEsc(notes.join(', '))})</span>` : '') +
+        return link + (notes.length ? ` <span class="mb-rg-dim">(${notes.join(', ')})</span>` : '') +
             (when.length ? ` <span class="mb-rg-dim">${_rgEsc(when.length === 2 && when[0] !== when[1] ? `${when[0]} – ${when[1]}` : when[0])}</span>` : '');
     }
 
@@ -37406,23 +37454,26 @@
 
     /**
      * Relations grouped as label/value rows for `_mbPopKvHtml()`: the
-     * group's name (`_MB_POP_REL_LABELS`, else its type with the first
+     * group's name (`_MB_POP_REL_LABELS` by `<type>|<direction>|<target
+     * type>`, then by `<type>|<direction>`, else its type with the first
      * letter up, and an arrow for the direction when the type has both) and
      * its targets, one per line.
      *
      * @param {?Array<Object>} rels
      * @param {string} targetType
+     * @param {?function(Object): string} [fmt] - One target as HTML,
+     *   `_mbPopRelTargetHtml()` unless given (a place in its area chain: `_mbPopPlaceRelHtml()`).
      * @returns {Array<Array<string>>}
      */
-    function _mbPopRelRows(rels, targetType) {
+    function _mbPopRelRows(rels, targetType, fmt = null) {
         const groups = _mbPopRelsByType(rels, targetType);
         const types = groups.map(([k]) => k.split('|')[0]);
         return groups.map(([k, list]) => {
             const [type, dir] = k.split('|');
             const both = types.filter(x => x === type).length > 1;
-            const name = _MB_POP_REL_LABELS[k] ||
+            const name = _MB_POP_REL_LABELS[`${k}|${targetType}`] || _MB_POP_REL_LABELS[k] ||
                 type.charAt(0).toUpperCase() + type.slice(1) + (both ? (dir === 'forward' ? ' →' : ' ←') : '');
-            return [name, list.map(r => _mbPopRelTargetHtml(r, targetType)).join('<br>')];
+            return [name, list.map(r => (fmt ? fmt(r) : _mbPopRelTargetHtml(r, targetType))).join('<br>')];
         });
     }
 
@@ -37572,10 +37623,15 @@
      * `<type>|<direction>`, as MusicBrainz's pages word them; read off the
      * Phase 2 captures (Columbia owns Vocalion; New Jersey's 21 forward
      * "part of" are its counties; guitar's forward subtypes include slide
-     * guitar). Any other group is named by its type.
+     * guitar). Any other group is named by its type. A key with a third
+     * part, the target type, wins over the two-part one: an item's "part of"
+     * relation to a SERIES is forward (the series lookup
+     * ws2-pop-series-st.json has its items backward), so from an event, a
+     * release or another series it means "Part of", not "Parts".
      * @type {Object<string, string>}
      */
     const _MB_POP_REL_LABELS = {
+        'part of|forward|series': 'Part of',
         'part of|forward': 'Parts',
         'part of|backward': 'Part of',
         'label ownership|forward': 'Owns',
@@ -37735,43 +37791,314 @@
     const _MB_POP_RG_TYPES = [['album', 'Album'], ['single', 'Single'], ['ep', 'EP'], ['broadcast', 'Broadcast'], ['other', 'Other']];
 
     /**
+     * One `[mbid|name]` token of MusicBrainz's setlist markup (the name is
+     * optional). Case-INSENSITIVE: editors type mixed-case MBIDs — 14 of the
+     * 44 tokens of the Stone Pony show 26cead1c… are like
+     * `[E497263c-4f15-36c0-B27c-Dca99482962c|The Fever]` (probe 2026-10-08,
+     * scripts/probe-mb-entity-lookups.py --only event-details) — and a
+     * lowercase-only pattern left those as raw text.
+     * @type {RegExp}
+     */
+    const _MB_POP_SETLIST_TOKEN_RE = /\[([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})(?:\|([^\]]*))?\]/gi;
+
+    /**
+     * The guests of a song line, "(with A and B)", "(feat. A)": a token
+     * inside such a group is an artist, every other token of the line a
+     * work. Matched on the line with its tokens already replaced by
+     * placeholders, so a ")" in a name cannot end the group early.
+     * @type {RegExp}
+     */
+    const _MB_POP_SETLIST_GUESTS_RE = /\(\s*(?:with|feat\.?|featuring|ft\.?)\s[^()]*(?:\)|$)/gi;
+
+    /**
+     * One setlist line's body as text (names only) and as HTML (tokens
+     * linked, a new tab). The line's kind says what a token is: `@` an
+     * artist; `*` (and a bare line) a work, unless it is inside a guest
+     * group (`_MB_POP_SETLIST_GUESTS_RE`), then an artist; `#` a comment,
+     * where the markup says nothing, so its tokens stay names. MusicBrainz's
+     * own event page links every token of a song line as a work, the guests
+     * included (debug/mb-event-initial.html) — not followed here. The link
+     * takes the MBID lowercased, which `_MB_POP_PATH_RE` (previews,
+     * drill-down) requires.
+     *
+     * @param {string} body - The line without its kind character.
+     * @param {string} lineKind - `@`, `*` or `#`.
+     * @returns {{text: string, html: string}}
+     */
+    function _mbPopSetlistLine(body, lineKind) {
+        const toks = [];
+        const marked = body.replace(_MB_POP_SETLIST_TOKEN_RE, (m, id, name) => {
+            toks.push({ id: id.toLowerCase(), name: name === undefined ? id : name,
+                kind: lineKind === '@' ? 'artist' : (lineKind === '#' ? '' : 'work') });
+            return `\uE000${toks.length - 1}\uE001`;
+        });
+        if (lineKind === '*') {
+            marked.replace(_MB_POP_SETLIST_GUESTS_RE, grp => grp.replace(/\uE000(\d+)\uE001/g, (m, i) => {
+                toks[Number(i)].kind = 'artist';
+                return m;
+            }));
+        }
+        let text = '';
+        let html = '';
+        // split() with a capture: the token indexes are the odd parts.
+        marked.split(/\uE000(\d+)\uE001/).forEach((part, i) => {
+            if (i % 2 === 0) {
+                text += part;
+                html += _rgEsc(part);
+                return;
+            }
+            const tk = toks[Number(part)];
+            text += tk.name;
+            html += tk.kind ? `<a href="/${tk.kind}/${_rgEsc(tk.id)}" target="_blank" rel="noopener">${_rgEsc(tk.name)}</a>` : _rgEsc(tk.name);
+        });
+        return { text: text.trim(), html: html.trim() };
+    }
+
+    /**
      * An event's setlist as the Web Service gives it (MusicBrainz's setlist
      * markup, one entry per line): `@ ` an artist of the line-up, `# ` a
      * comment (between artists: the joining word, "&", "with"), `* ` a song,
-     * a blank line a break. Inline `[mbid|name]` tokens are shown by name
-     * only: the markup does not say whether a token inside a song line is a
-     * work or an artist ("(with [mbid|name])"), so a link would be a guess.
+     * a blank line a break. Each part comes as text (the card) and as HTML
+     * with its `[mbid|name]` tokens linked (the window, `_mbPopSetlistLine()`).
      *
      * @param {string} text - `setlist`.
-     * @returns {{lineup: string, songs: string[], notes: string[]}} The
-     *   line-up as one line ("A & B with C, D"), the songs in order, and the
-     *   comments that are not joining words.
+     * @returns {{lineup: string, lineupHtml: string, songs: string[], songsHtml: string[],
+     *   notes: string[], notesHtml: string[]}} The line-up as one line ("A & B
+     *   with C, D"), the songs in order, and the comments that are not
+     *   joining words.
      */
     function _mbPopSetlist(text) {
-        const name = s => s.replace(/\[[0-9a-f-]{36}\|([^\]]*)\]/g, '$1').trim();
         const lineup = [];
+        const lineupHtml = [];
         const songs = [];
+        const songsHtml = [];
         const notes = [];
+        const notesHtml = [];
         let join = '';
         String(text || '').split(/\r?\n/).forEach(line => {
             const kind = line.charAt(0);
-            const body = name(line.slice(1));
+            const prefixed = kind === '@' || kind === '#' || kind === '*';
+            const { text: body, html } = _mbPopSetlistLine(prefixed ? line.slice(1) : line, prefixed ? kind : '*');
             if (kind === '@' && !songs.length) {
                 // "A" + " & B" + " with C" + ", D": a joining word when the
                 // comment line before gave one, else a comma.
                 lineup.push(lineup.length ? `${join || ','} ${body}` : body);
+                lineupHtml.push(lineupHtml.length ? `${_rgEsc(join || ',')} ${html}` : html);
                 join = '';
             } else if (kind === '#' && !songs.length && lineup.length && /^(&|and|with|feat\.?|featuring)$/i.test(body)) {
                 join = ` ${body}`;
-            } else if (kind === '*') {
+            } else if (kind === '*' || (!prefixed && line.trim())) {
                 songs.push(body);
+                songsHtml.push(html);
             } else if (kind === '#' || kind === '@') {
-                if (body) notes.push(body);
-            } else if (line.trim()) {
-                songs.push(name(line));
+                if (body) {
+                    notes.push(body);
+                    notesHtml.push(html);
+                }
             }
         });
-        return { lineup: lineup.join(''), songs, notes };
+        return { lineup: lineup.join(''), lineupHtml: lineupHtml.join(''), songs, songsHtml, notes, notesHtml };
+    }
+
+    /**
+     * The area types MusicBrainz names after a place's own area: Country,
+     * Subdivision, City — musicbrainz-server's `load_containment`
+     * (lib/MusicBrainz/Server/Data/Area.pm, checked 2026-10-08) keeps parent
+     * area types 1, 2, 3. So a county is passed over: "Asbury Park, New
+     * Jersey, United States", not "…, Monmouth County, …".
+     * @type {Array<string>}
+     */
+    const _MB_POP_CONTAINMENT_TYPES = ['City', 'Subdivision', 'Country'];
+
+    /** How many areas up an event's "Held at" chain is followed at most. */
+    const _MB_POP_AREA_DEPTH = 8;
+
+    /**
+     * An area's parent: the target of its `part of` relation, backward (an
+     * area lookup with `area-rels` lists its parts forward and its parent
+     * backward; probe 2026-10-08: West Long Branch → Monmouth County → New
+     * Jersey → United States).
+     *
+     * @param {?Object} d - An area of the Web Service, with `relations`.
+     * @returns {?Object}
+     */
+    function _mbPopAreaParent(d) {
+        const r = ((d && d.relations) || []).find(x => x['target-type'] === 'area' && x.type === 'part of' &&
+            x.direction === 'backward' && x.area);
+        return r ? r.area : null;
+    }
+
+    /**
+     * Whether an area is a country, so the chain stops there without a
+     * lookup: a relation's area carries its `type`, but an entity's own
+     * `area`/`begin-area`/`end-area` has `type: null` (an artist, a label, a
+     * place lookup) — there a country is told by its ISO 3166-1 code, which
+     * only countries have (ws2-pop-artist-bruce.json: United States, "US";
+     * probe 2026-10-08: no city, county or subdivision of the chains has one).
+     * Without this an artist from the United States would look up its 26 KB
+     * area for nothing.
+     *
+     * @param {?Object} a
+     * @returns {boolean}
+     */
+    function _mbPopIsCountry(a) {
+        return !!a && (a.type === 'Country' || (a['iso-3166-1-codes'] || []).length > 0);
+    }
+
+    /**
+     * The areas MusicBrainz names for an area, read from memory only: the
+     * area itself, then each parent of a type in `_MB_POP_CONTAINMENT_TYPES`,
+     * up to a Country. Each step needs the area's `area-rels` lookup — the
+     * area card's own key, so the two share it, and every card of the
+     * engine (event, place, artist, label, recording) shares the steps — and
+     * the walk stops at the first one not loaded (`next`). A Country is
+     * never looked up: its child's relation names it (`_mbPopIsCountry()`).
+     *
+     * @param {?Object} area - An area of the Web Service.
+     * @returns {{areas: Array<Object>, next: string, complete: boolean}} `next`:
+     *   the area to look up next ('' when nothing is missing).
+     */
+    function _mbPopAreaChain(area) {
+        const areas = [];
+        if (!area || !area.id) return { areas, next: '', complete: true };
+        areas.push(area);
+        let cur = area;
+        for (let depth = 0; depth < _MB_POP_AREA_DEPTH && !_mbPopIsCountry(cur); depth++) {
+            const st = _mbPop.get(_mbPopLookup({ type: 'area', id: cur.id }, 'area-rels').key);
+            if (!st || st.status !== 'done' || !st.data) return { areas, next: cur.id, complete: false };
+            const parent = _mbPopAreaParent(st.data);
+            if (!parent || !parent.id) break;
+            if (_MB_POP_CONTAINMENT_TYPES.includes(parent.type)) areas.push(parent);
+            cur = parent;
+        }
+        return { areas, next: '', complete: true };
+    }
+
+    /**
+     * The `held at` relation of an event, null when it has none.
+     *
+     * @param {Object} d - An event of the Web Service.
+     * @returns {?Object}
+     */
+    function _mbPopEventPlaceRel(d) {
+        return (d.relations || []).find(r => r['target-type'] === 'place' && r.place) || null;
+    }
+
+    /**
+     * Starts the next step of each area's chain (`_mbPopAreaChain()`), from
+     * a window's `pin()`: one lookup per chain at a time, the next from the
+     * repaint its answer causes (`pin()` runs again); a failed step waits
+     * for ⟳ (`_mbPopPinLoad()`). Chains that meet (two studios in one city,
+     * an artist born where it is based) share their steps.
+     *
+     * @param {object} t - The window's target.
+     * @param {Array<?Object>} areas - The areas whose chains are shown.
+     * @param {boolean} again - ⟳.
+     * @param {function(): void} repaint
+     * @returns {void}
+     */
+    function _mbPopAreaChainLoad(t, areas, again, repaint) {
+        const next = new Set(areas.map(a => _mbPopAreaChain(a).next).filter(Boolean));
+        next.forEach(id => {
+            const q = _mbPopLookup({ type: 'area', id }, 'area-rels');
+            _mbPopPinLoad(t, q.key, q.url, again, repaint);
+        });
+    }
+
+    /**
+     * An area as MusicBrainz writes it, "West Long Branch, New Jersey,
+     * United States": the areas of `_mbPopAreaChain()` linked, a spinner
+     * while a step is loading; '' for none.
+     *
+     * @param {?Object} area
+     * @returns {string}
+     */
+    function _mbPopAreaChainHtml(area) {
+        const chain = _mbPopAreaChain(area);
+        const html = chain.areas.map(_mbPopAreaHtml).filter(Boolean).join(', ');
+        const st = chain.next ? _mbPop.get(_mbPopLookup({ type: 'area', id: chain.next }, 'area-rels').key) : null;
+        const loading = !chain.complete && !(st && st.status === 'failed');
+        return html + (html && loading ? ' <span class="mb-dp-spin">◌</span>' : '');
+    }
+
+    /**
+     * An area for a card as text: the whole chain when every step is in
+     * memory (a window walked it, or area cards did), else the area's own
+     * name; a card never asks for more.
+     *
+     * @param {?Object} area
+     * @returns {string}
+     */
+    function _mbPopAreaChainText(area) {
+        if (!area) return '';
+        const chain = _mbPopAreaChain(area);
+        return chain.complete ? chain.areas.map(a => a.name).join(', ') : (area.name || '');
+    }
+
+    /**
+     * A place relation as MusicBrainz writes it, "OceanFirst Bank Center in
+     * West Long Branch, New Jersey, United States": the place
+     * (`_mbPopRelTargetHtml()`) and its area chain (`_mbPopAreaChainHtml()`).
+     * An event's "Held at", a recording's "Recorded at" / "Mixed at".
+     *
+     * @param {Object} r - A relation whose target is a place.
+     * @returns {string}
+     */
+    function _mbPopPlaceRelHtml(r) {
+        const areas = _mbPopAreaChainHtml(r.place && r.place.area);
+        return _mbPopRelTargetHtml(r, 'place', null, areas ? ` in ${areas}` : '');
+    }
+
+    /**
+     * An event's place for the card as text: "Place in City, Subdivision,
+     * Country" when the whole chain is in memory, else the place and its own
+     * area ("Place, City"), as before the chain.
+     *
+     * @param {?Object} r - The `held at` relation.
+     * @returns {string}
+     */
+    function _mbPopHeldAtText(r) {
+        if (!r) return '';
+        const chain = _mbPopAreaChain(r.place.area);
+        if (chain.complete && chain.areas.length) return `${r.place.name} in ${chain.areas.map(a => a.name).join(', ')}`;
+        return [r.place.name, r.place.area && r.place.area.name].filter(Boolean).join(', ');
+    }
+
+    /**
+     * What an event is part of, as text for the card: the larger events
+     * (`parts`, backward) and the series (`part of`, forward), at most `max`
+     * and "+N".
+     *
+     * @param {Object} d - An event of the Web Service.
+     * @param {number} [max]
+     * @returns {string}
+     */
+    function _mbPopEventPartOf(d, max = 2) {
+        const names = (d.relations || []).filter(r =>
+            (r['target-type'] === 'event' && r.type === 'parts' && r.direction === 'backward' && r.event) ||
+            (r['target-type'] === 'series' && r.type === 'part of' && r.direction === 'forward' && r.series))
+            .map(r => (r.event || r.series).name).filter(Boolean);
+        return names.length > max ? `${names.slice(0, max).join(', ')} +${names.length - max}` : names.join(', ');
+    }
+
+    /**
+     * An entity's `url` relations as the window's "URLs" block: one row per
+     * relationship type, each address in full and its "[info]" link to the
+     * URL's MusicBrainz page (which has a card of its own); '' when there are
+     * none.
+     *
+     * @param {?Array<Object>} rels
+     * @returns {string}
+     */
+    function _mbPopUrlRowsHtml(rels) {
+        const urls = (rels || []).filter(r => r['target-type'] === 'url' && r.url && r.url.resource);
+        if (!urls.length) return '';
+        return `<h4>URLs · ${urls.length}</h4>` + _mbPopKvHtml(_mbPopRelsByType(urls, 'url').map(([k, list]) => {
+            const type = k.split('|')[0];
+            return [type.charAt(0).toUpperCase() + type.slice(1), list.map(r =>
+                `<a href="${_rgEsc(r.url.resource)}" target="_blank" rel="noopener noreferrer">${_rgEsc(r.url.resource)}</a>` +
+                (r.url.id ? ` [<a href="/url/${_rgEsc(r.url.id)}" target="_blank" rel="noopener">info</a>]` : '')).join('<br>')];
+        }));
     }
 
     /** Songs an event card lists before "+ N more". */
@@ -37785,9 +38112,19 @@
      * @returns {string}
      */
     function _mbPopEventWhen(d) {
+        return [_mbPopEventDays(d), d.time].filter(Boolean).join(' ');
+    }
+
+    /**
+     * An event's day, or its span of days ("2026-06-04 – 2026-06-05"); ''
+     * when unknown.
+     *
+     * @param {Object} d - An event of the Web Service, or a relation's event.
+     * @returns {string}
+     */
+    function _mbPopEventDays(d) {
         const ls = d['life-span'] || {};
-        const day = ls.begin && ls.end && ls.begin !== ls.end ? `${ls.begin} – ${ls.end}` : (ls.begin || '');
-        return [day, d.time].filter(Boolean).join(' ');
+        return ls.begin && ls.end && ls.begin !== ls.end ? `${ls.begin} – ${ls.end}` : (ls.begin || '');
     }
 
     /**
@@ -38158,7 +38495,7 @@
                     ]) +
                     _mbPopSectionHtml('Credits', _mbPop.get(pin.key), (p) => _mbPopKvHtml([
                         ..._mbPopRelRows(p.relations, 'artist'),
-                        ..._mbPopRelRows(p.relations, 'place'),
+                        ..._mbPopRelRows(p.relations, 'place', _mbPopPlaceRelHtml),
                         ..._mbPopRelRows(p.relations, 'event'),
                     ]) || '<div class="mb-dp-xsub">No credits.</div>');
                 const shown = full && total != null && total > rels.length
@@ -38174,10 +38511,17 @@
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
             // The credits lookup (10.8 KB), and — only when the lookup's
-            // release list is full — the count, from a browse with limit=1.
+            // release list is full — the count, from a browse with limit=1;
+            // once the credits are there, the area chains of their places
+            // (org/event-GPE.org).
             pin(t, d, again, repaint) {
                 const pin = _mbPopLookup(t, 'artist-rels+place-rels+event-rels');
                 _mbPopPinLoad(t, pin.key, pin.url, again, repaint);
+                const ps = _mbPop.get(pin.key);
+                if (ps && ps.status === 'done' && ps.data) {
+                    _mbPopAreaChainLoad(t, (ps.data.relations || []).filter(r => r['target-type'] === 'place' && r.place)
+                        .map(r => r.place.area), again, repaint);
+                }
                 if ((d.releases || []).length >= _MB_POP_SUBLIST_CAP) {
                     const count = _mbPopBrowse('release', `recording=${encodeURIComponent(t.id)}&limit=1`);
                     _mbPopPinLoad(t, count.key, count.url, again, repaint);
@@ -38250,9 +38594,9 @@
                 const head = `<div class="mb-tt-title">${_rgEsc(d.name)}` +
                     `${d.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(d.disambiguation)})</span>` : ''}</div>` +
                     `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([d.type, d.gender && d.gender !== 'Not applicable' ? d.gender : '',
-                        (d.area && d.area.name) || d.country, _mbPopLifeSpan(d['life-span'])])}</div><div class="mb-tt-rule"></div>`;
+                        _mbPopAreaChainText(d.area) || d.country, _mbPopLifeSpan(d['life-span'])])}</div><div class="mb-tt-rule"></div>`;
                 return head + _mbPopKvHtml([
-                    [d.type === 'Person' ? 'Born in' : 'Founded in', _rgEsc((d['begin-area'] && d['begin-area'].name) || '')],
+                    [d.type === 'Person' ? 'Born in' : 'Founded in', _rgEsc(_mbPopAreaChainText(d['begin-area']))],
                     ['Genres', _rgEsc(_mbPopGenres(d.genres))],
                     ['Rating', _rgEsc(_mbPopRating(d.rating))],
                     ['IPI', _rgEsc((d.ipis || []).join(', '))],
@@ -38268,9 +38612,9 @@
                     `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type, d.gender && d.gender !== 'Not applicable' ? d.gender : ''])}</div>` +
                     '<h4>Facts</h4>' + _mbPopKvHtml([
                         ['Sort name', _rgEsc(d['sort-name'] || '')],
-                        ['Area', _mbPopAreaHtml(d.area)],
-                        [d.type === 'Person' ? 'Born' : 'Founded', [_rgEsc(ls.begin || ''), _mbPopAreaHtml(d['begin-area'])].filter(Boolean).join(' · ')],
-                        [d.type === 'Person' ? 'Died' : 'Dissolved', [_rgEsc(ls.end || (ls.ended ? 'yes' : '')), _mbPopAreaHtml(d['end-area'])]
+                        ['Area', _mbPopAreaChainHtml(d.area)],
+                        [d.type === 'Person' ? 'Born' : 'Founded', [_rgEsc(ls.begin || ''), _mbPopAreaChainHtml(d['begin-area'])].filter(Boolean).join(' · ')],
+                        [d.type === 'Person' ? 'Died' : 'Dissolved', [_rgEsc(ls.end || (ls.ended ? 'yes' : '')), _mbPopAreaChainHtml(d['end-area'])]
                             .filter(Boolean).join(' · ')],
                         ['Rating', _rgEsc(_mbPopRating(d.rating))],
                         ['Genres', _rgEsc(_mbPopGenres(d.genres, 99))],
@@ -38296,6 +38640,7 @@
             pin(t, d, again, repaint) {
                 const links = _mbPopLookup(t, 'url-rels');
                 _mbPopPinLoad(t, links.key, links.url, again, repaint);
+                _mbPopAreaChainLoad(t, [d.area, d['begin-area'], d['end-area']], again, repaint);
                 _MB_POP_RG_TYPES.forEach(([type]) => {
                     const q = _mbPopBrowse('release-group', `artist=${encodeURIComponent(t.id)}&type=${type}&limit=1`);
                     _mbPopPinLoad(t, q.key, q.url, again, repaint);
@@ -38311,7 +38656,7 @@
                 const head = `<div class="mb-tt-title">${_rgEsc(d.name)}</div>` +
                     (d.disambiguation ? `<div class="mb-tt-comment">${_rgEsc(d.disambiguation)}</div>` : '') +
                     `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([d.type, _mbPopLabelCode(d['label-code']),
-                        (d.area && d.area.name) || d.country, _mbPopLifeSpan(d['life-span'])])}</div><div class="mb-tt-rule"></div>`;
+                        _mbPopAreaChainText(d.area) || d.country, _mbPopLifeSpan(d['life-span'])])}</div><div class="mb-tt-rule"></div>`;
                 return head + _mbPopKvHtml([
                     ['Genres', _rgEsc(_mbPopGenres(d.genres))],
                     ['IPI', _rgEsc((d.ipis || []).join(', '))],
@@ -38326,7 +38671,7 @@
                     (d.disambiguation ? `<div class="mb-dp-xsub">${_rgEsc(d.disambiguation)}</div>` : '') +
                     `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type, _mbPopLabelCode(d['label-code'])])}</div>` +
                     '<h4>Facts</h4>' + _mbPopKvHtml([
-                        ['Area', _mbPopAreaHtml(d.area)],
+                        ['Area', _mbPopAreaChainHtml(d.area)],
                         ['Active', _rgEsc(_mbPopLifeSpan(d['life-span']))],
                         ['Releases', cs && cs.status === 'done' && cs.data
                             ? `<a href="/label/${_rgEsc(d.id)}" target="_blank" rel="noopener">${_rgEsc(_mbPopNum(cs.data['release-count'] || 0))}</a>`
@@ -38346,6 +38691,7 @@
                 _mbPopPinLoad(t, pin.key, pin.url, again, repaint);
                 const count = _mbPopBrowse('release', `label=${encodeURIComponent(t.id)}&limit=1`);
                 _mbPopPinLoad(t, count.key, count.url, again, repaint);
+                _mbPopAreaChainLoad(t, [d.area], again, repaint);
             },
         })),
         // One lookup for card and window: type, ISO codes, the immediate
@@ -38402,21 +38748,25 @@
                     '<div class="mb-dp-xsub">None.</div>'}</div></div>`;
             },
         })),
-        // Card: one lookup with the line-up and the place (16 KB for the
-        // Manchester show); the setlist is a field of the event itself. Window:
-        // the recordings and releases recorded there (one lookup) and the
-        // poster from the Event Art Archive (R4: its own host, only on pin).
+        // Card: one lookup with the line-up, the place, what the event is part
+        // of and its URLs (16 KB for the Manchester show, 6.3 KB for the
+        // OceanFirst one: probe 2026-10-08); the setlist is a field of the
+        // event itself. Window: the recordings and releases recorded there
+        // (one lookup), the poster from the Event Art Archive (R4: its own
+        // host, only on pin) and the areas above the place, one lookup per
+        // level (org/event-GPE.org).
         event: Object.assign({ title: 'Event', wide: true }, _mbPopLookupKind({
-            cardInc: 'artist-rels+place-rels',
+            cardInc: 'artist-rels+place-rels+event-rels+series-rels+url-rels',
             cardHtml(d) {
-                const place = (d.relations || []).find(r => r['target-type'] === 'place' && r.place);
+                const place = _mbPopEventPlaceRel(d);
                 const sl = _mbPopSetlist(d.setlist);
                 const head = `<div class="mb-tt-title">${_rgEsc(d.name)}</div>` +
                     `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([d.type, _mbPopEventWhen(d), d.cancelled ? 'cancelled' : '',
                         sl.songs.length ? `${sl.songs.length} song${sl.songs.length === 1 ? '' : 's'}` : ''])}</div><div class="mb-tt-rule"></div>`;
                 const more = sl.songs.length - _MB_POP_CARD_SONGS;
                 return head + _mbPopKvHtml([
-                    ['Place', place ? _rgEsc([place.place.name, place.place.area && place.place.area.name].filter(Boolean).join(', ')) : ''],
+                    ['Place', _rgEsc(_mbPopHeldAtText(place))],
+                    ['Part of', _rgEsc(_mbPopEventPartOf(d))],
                     ['Line-up', _rgEsc(sl.lineup || _mbPopRelNames(d.relations, 'artist', ['main performer', 'support act', 'guest performer']))],
                 ]) + (sl.songs.length
                     ? '<ol class="mb-dp-tracks mb-pop-tracks">' + sl.songs.slice(0, _MB_POP_CARD_SONGS).map((x, i) =>
@@ -38431,26 +38781,31 @@
                     `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type, d.cancelled ? 'cancelled' : ''])}</div>` +
                     '<h4>Facts</h4>' + _mbPopKvHtml([
                         ['When', _rgEsc(_mbPopEventWhen(d))],
-                        ..._mbPopRelRows(d.relations, 'place'),
+                        ..._mbPopRelRows(d.relations, 'place', _mbPopPlaceRelHtml),
+                        ..._mbPopRelRows(d.relations, 'event'),
+                        ..._mbPopRelRows(d.relations, 'series'),
                         ..._mbPopRelRows(d.relations, 'artist'),
                     ]) +
+                    _mbPopUrlRowsHtml(d.relations) +
                     _mbPopGalleryHtml('Event art', _mbPopEventArt.get(d.id), 0) +
                     _mbPopSectionHtml('Recorded here', _mbPop.get(pin.key), (p) => _mbPopKvHtml([
                         ..._mbPopRelRows(p.relations, 'release').map(([k, v]) => [`${k} (releases)`, v]),
                         ..._mbPopRelRows(p.relations, 'recording').map(([k, v]) => [`${k} (recordings)`, v]),
                     ]) || '<div class="mb-dp-xsub">Nothing recorded here is in MusicBrainz.</div>');
                 const right = `<h4>Setlist${sl.songs.length ? ` · ${sl.songs.length}` : ''}</h4>` +
-                    (sl.lineup ? `<div class="mb-dp-xsub">${_rgEsc(sl.lineup)}</div>` : '') +
-                    (sl.songs.length ? '<ol class="mb-dp-tracks mb-pop-tracks">' + sl.songs.map((x, i) =>
-                        `<li><span class="mb-dp-pos">${i + 1}</span><span class="mb-pop-ttl">${_rgEsc(x)}</span></li>`).join('') + '</ol>'
+                    (sl.lineupHtml ? `<div class="mb-dp-xsub">${sl.lineupHtml}</div>` : '') +
+                    (sl.songs.length ? '<ol class="mb-dp-tracks mb-pop-tracks">' + sl.songsHtml.map((x, i) =>
+                        `<li><span class="mb-dp-pos">${i + 1}</span><span class="mb-pop-ttl">${x}</span></li>`).join('') + '</ol>'
                         : '<div class="mb-dp-xsub">MusicBrainz has no setlist for it.</div>') +
-                    sl.notes.map(n => `<div class="mb-dp-note">${_rgEsc(n)}</div>`).join('');
+                    sl.notesHtml.map(n => `<div class="mb-dp-note">${n}</div>`).join('');
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
             pin(t, d, again, repaint) {
                 const pin = _mbPopLookup(t, 'recording-rels+release-rels');
                 _mbPopPinLoad(t, pin.key, pin.url, again, repaint);
                 _mbPopArtLoad(_mbPopEventArt, EAA_CTX, 'event', d.id, again, repaint);
+                const place = _mbPopEventPlaceRel(d);
+                _mbPopAreaChainLoad(t, [place && place.place.area], again, repaint);
             },
         })),
         // Card and window: one lookup (2.3 KB): type, address, area,
@@ -38462,7 +38817,7 @@
                 const c = d.coordinates;
                 return `<div class="mb-tt-title">${_rgEsc(d.name)}` +
                     `${d.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(d.disambiguation)})</span>` : ''}</div>` +
-                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([d.type, d.area && d.area.name, _mbPopLifeSpan(d['life-span'])])}</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([d.type, _mbPopAreaChainText(d.area), _mbPopLifeSpan(d['life-span'])])}</div>` +
                     '<div class="mb-tt-rule"></div>' + _mbPopKvHtml([
                         ['Address', _rgEsc(d.address || '')],
                         ['Coordinates', c ? _rgEsc(`${c.latitude}, ${c.longitude}`) : ''],
@@ -38476,7 +38831,7 @@
                     (d.disambiguation ? `<div class="mb-dp-xsub">${_rgEsc(d.disambiguation)}</div>` : '') +
                     `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type])}</div><h4>Facts</h4>` + _mbPopKvHtml([
                         ['Address', _rgEsc(d.address || '')],
-                        ['Area', _mbPopAreaHtml(d.area)],
+                        ['Area', _mbPopAreaChainHtml(d.area)],
                         ['Coordinates', c ? `<a href="${_rgEsc(map)}" target="_blank" rel="noopener">${_rgEsc(`${c.latitude}, ${c.longitude}`)}</a>` : ''],
                         ['Open', _rgEsc(_mbPopLifeSpan(d['life-span']))],
                     ]) + _mbPopUrlLinksHtml(d.relations);
@@ -38499,6 +38854,7 @@
             pin(t, d, again, repaint) {
                 const browse = _mbPopBrowse('event', `place=${encodeURIComponent(t.id)}&limit=100`);
                 _mbPopPinLoad(t, browse.key, browse.url, again, repaint);
+                _mbPopAreaChainLoad(t, [d.area], again, repaint);
             },
         })),
         // Card and window: one lookup with every item kind's relation (R1:

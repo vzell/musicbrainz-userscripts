@@ -1,0 +1,65 @@
+* TODO event popup
+
+1.)
+
+When our MB GPE renders info for an event e.g. https://musicbrainz.org/event/26cead1c-a5fa-4677-873a-312412c6dc91 - 2001‐05‐27: The Stone Pony, Asbury Park, NJ, USA 
+
+#+begin_example
+@debug/mb-event-initial.html - initial raw HTML
+@debug/mb-event-popup.html - GPE rendered popup HTML
+#+end_example
+
+the "Setlist" info should be rendered as links to MB works and artists e.g.
+
+#+begin_example
+@ [d7bc97fb-4bd3-453b-98a1-9081f89c52f0|Southside Johnny & The Asbury Jukes] - everything after an "@" is an artist with its MB MBID
+* [69e3a597-8583-4e5b-ba77-818a56d85ac4|Why Is Love Such a Sacrifice] - everything after an "*" is a work with its MB MBID
+* [E497263c-4f15-36c0-B27c-Dca99482962c|The Fever] (with [70248960-Cb53-4ea4-943a-Edb18f7d336f|Bruce Springsteen]) - work, played by artists, everything in brackets with its MBID
+* [95fba578-26f7-43fe-Ae8c-91dd58e8da46|I’ve Been Working Too Hard] (with [70248960-Cb53-4ea4-943a-Edb18f7d336f|Bruce Springsteen] and [f9227504-4fa5-44ee-b205-5301a1f86936|Graham Parker]) - work, with multiple artists
+#+end_example
+
+2.)
+
+Also render e.g. in https://musicbrainz.org/event/cd595883-d26a-4e76-a033-eb588e0f9c55
+
+a.)
+
+
+the complete "held at" info for "Where"
+
+#+begin_example
+held at:	OceanFirst Bank Center in West Long Branch, New Jersey, United States
+#+end_example
+
+b.)
+
+the following types of information for an event (if present)
+
+#+begin_example
+part of:	Music America: The Songs That Shaped Us (2026-06-04 – 2026-06-05)
+URLS:
+  official homepages:	https://springsteencenter.org/event/music-america-the-songs-that-shaped-us-night-one/ [info]
+  setlist.fm:   	        https://www.setlist.fm/setlist/bruce-springsteen/2026/oceanfirst-bank-center-west-long-branch-nj-737652e9.html [info]
+  reviews:	        http://brucebase.wikidot.com/2026#040626 [info]
+#+end_example
+
+3.)
+
+Because we currently run on host "vzell-lap" only execute the new tests regarding the changed implementation, not the
+whole fixture suite, as it would take too long.
+
+We will do this at the end of the session, when I instruct you to do so.
+
+4.)
+
+Instruments for artist should also be renderd as hyperlinks, e.g.
+
+in main performers:	Chris Anderson (trumpet player) (trumpet)
+
+#+begin_example
+trumpet - https://musicbrainz.org/instrument/1c8f9780-2f16-4891-b66d-bb7aa0820dbd
+#+end_example
+
+5.)
+
+are there any other entity cards were the area chain could be used ?

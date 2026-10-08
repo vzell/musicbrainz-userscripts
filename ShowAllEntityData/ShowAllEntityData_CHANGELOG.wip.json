@@ -1,0 +1,34 @@
+[
+  {
+    "version": "WIP.2",
+    "date": "2026-10-08",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "MusicBrainz previews name areas as MusicBrainz writes them, down from the city: an event's \"Held at\" (\"OceanFirst Bank Center in West Long Branch, New Jersey, United States\"), a recording's \"Recorded at\" / \"Mixed at\" studios, and the area of a place, a label and an artist, plus where the artist was born and died. The window looks up the areas above, one per level. It keeps only cities, subdivisions and countries (a county or a district is passed over, as on MusicBrainz) and never looks up a country. The answers are shared by every card and the area card, so later cards in the same region cost nothing. Hover cards ask for nothing more and show the full line once it is known.",
+          "MusicBrainz event preview: the card and window show what the event is part of (a larger event with its dates, or a series), and the window lists the event's URLs by relationship, each address in full with its [info] link.",
+          "MusicBrainz previews: in the relationship lists of every window, an instrument is a link to its instrument page (\"Chris Anderson (trumpet player) (trumpet)\"), and each related entity shows its disambiguation, as MusicBrainz does. Vocals and generic attributes (\"guest\", \"additional\", …) stay text."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-10-08",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "MusicBrainz event preview: setlist entries whose MBIDs an editor typed in mixed case (\"[E497263c-…|The Fever]\") showed as raw markup; they now show their names."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "MusicBrainz event preview: the window's setlist is linked. Each song links its work, and every artist links the artist page: the line-up, and the guests in a song's \"(with …)\". MusicBrainz's own event page links those guests as works; the preview does not. The links open their own previews and drill down in the window like any other."
+        ]
+      }
+    ]
+  }
+]

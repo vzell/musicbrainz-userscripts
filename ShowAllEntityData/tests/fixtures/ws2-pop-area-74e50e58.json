@@ -1,0 +1,150 @@
+{
+ "sort-name": "New York",
+ "type-id": "6fd8f29a-3d0a-32fc-980d-ea697b69da78",
+ "relations": [
+  {
+   "area": {
+    "name": "New York",
+    "type": "Subdivision",
+    "id": "75e398a3-5f3f-4224-9cd8-0fe44715bc95",
+    "disambiguation": "",
+    "iso-3166-2-codes": [
+     "US-NY"
+    ],
+    "type-id": "fd3d44c5-80a1-3842-9745-2c4972d35afa",
+    "sort-name": "New York"
+   },
+   "direction": "backward",
+   "type-id": "de7cc874-8b1b-3a05-8272-f3834c968fb7",
+   "begin": null,
+   "end": null,
+   "target-type": "area",
+   "ended": false,
+   "type": "part of",
+   "attribute-values": {},
+   "target-credit": "",
+   "source-credit": "",
+   "attributes": [],
+   "attribute-ids": {}
+  },
+  {
+   "direction": "forward",
+   "area": {
+    "type-id": "84039871-5e47-38ca-a66a-45e512c8290f",
+    "sort-name": "Brooklyn",
+    "type": "District",
+    "name": "Brooklyn",
+    "id": "a71b0d32-7752-49e9-8594-2247ad6ac12c",
+    "disambiguation": ""
+   },
+   "begin": null,
+   "end": null,
+   "target-type": "area",
+   "type-id": "de7cc874-8b1b-3a05-8272-f3834c968fb7",
+   "attribute-values": {},
+   "type": "part of",
+   "ended": false,
+   "attribute-ids": {},
+   "attributes": [],
+   "source-credit": "",
+   "target-credit": ""
+  },
+  {
+   "begin": null,
+   "end": null,
+   "target-type": "area",
+   "type-id": "de7cc874-8b1b-3a05-8272-f3834c968fb7",
+   "direction": "forward",
+   "area": {
+    "sort-name": "Manhattan",
+    "type-id": "84039871-5e47-38ca-a66a-45e512c8290f",
+    "type": "District",
+    "name": "Manhattan",
+    "id": "261962ea-d8c2-4eaf-a80c-f14376ffadb0",
+    "disambiguation": ""
+   },
+   "source-credit": "",
+   "attributes": [],
+   "attribute-ids": {},
+   "target-credit": "",
+   "type": "part of",
+   "attribute-values": {},
+   "ended": false
+  },
+  {
+   "direction": "forward",
+   "area": {
+    "type": "District",
+    "name": "The Bronx",
+    "disambiguation": "",
+    "id": "eb4a386e-1178-4e3a-a371-30418dd6fd2e",
+    "type-id": "84039871-5e47-38ca-a66a-45e512c8290f",
+    "sort-name": "The Bronx"
+   },
+   "begin": null,
+   "end": null,
+   "target-type": "area",
+   "type-id": "de7cc874-8b1b-3a05-8272-f3834c968fb7",
+   "type": "part of",
+   "attribute-values": {},
+   "ended": false,
+   "source-credit": "",
+   "attribute-ids": {},
+   "attributes": [],
+   "target-credit": ""
+  },
+  {
+   "type-id": "de7cc874-8b1b-3a05-8272-f3834c968fb7",
+   "begin": null,
+   "end": null,
+   "target-type": "area",
+   "area": {
+    "name": "Queens",
+    "type": "District",
+    "id": "431a085b-9f4c-4fbb-82de-2ca7ce735da8",
+    "disambiguation": "",
+    "sort-name": "Queens",
+    "type-id": "84039871-5e47-38ca-a66a-45e512c8290f"
+   },
+   "direction": "forward",
+   "target-credit": "",
+   "attribute-ids": {},
+   "attributes": [],
+   "source-credit": "",
+   "ended": false,
+   "attribute-values": {},
+   "type": "part of"
+  },
+  {
+   "direction": "forward",
+   "area": {
+    "id": "a8c1d0e2-0837-454c-afa9-4190b3fe4d92",
+    "disambiguation": "",
+    "name": "Staten Island",
+    "type": "District",
+    "type-id": "84039871-5e47-38ca-a66a-45e512c8290f",
+    "sort-name": "Staten Island"
+   },
+   "end": null,
+   "begin": null,
+   "target-type": "area",
+   "type-id": "de7cc874-8b1b-3a05-8272-f3834c968fb7",
+   "type": "part of",
+   "attribute-values": {},
+   "ended": false,
+   "source-credit": "",
+   "attribute-ids": {},
+   "attributes": [],
+   "target-credit": ""
+  }
+ ],
+ "disambiguation": "",
+ "id": "74e50e58-5deb-4b99-93a2-decbb365c07f",
+ "name": "New York",
+ "type": "City",
+ "life-span": {
+  "end": null,
+  "begin": null,
+  "ended": false
+ }
+}

@@ -1,0 +1,37 @@
+{
+ "type": "City",
+ "name": "Midtown Manhattan",
+ "type-id": "6fd8f29a-3d0a-32fc-980d-ea697b69da78",
+ "id": "edd27a39-ff8a-4af4-8bbf-f369b0fb1899",
+ "relations": [
+  {
+   "end": null,
+   "attributes": [],
+   "attribute-ids": {},
+   "area": {
+    "type-id": "84039871-5e47-38ca-a66a-45e512c8290f",
+    "name": "Manhattan",
+    "type": "District",
+    "disambiguation": "",
+    "sort-name": "Manhattan",
+    "id": "261962ea-d8c2-4eaf-a80c-f14376ffadb0"
+   },
+   "type-id": "de7cc874-8b1b-3a05-8272-f3834c968fb7",
+   "attribute-values": {},
+   "ended": false,
+   "direction": "backward",
+   "target-credit": "",
+   "source-credit": "",
+   "begin": null,
+   "target-type": "area",
+   "type": "part of"
+  }
+ ],
+ "sort-name": "Midtown Manhattan",
+ "disambiguation": "",
+ "life-span": {
+  "end": null,
+  "begin": null,
+  "ended": false
+ }
+}

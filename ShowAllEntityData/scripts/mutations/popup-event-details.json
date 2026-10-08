@@ -1,0 +1,236 @@
+[
+    {
+        "name": "the setlist token pattern is lowercase-only again",
+        "why": "Editors type mixed-case MBIDs (14 of the Stone Pony show's 44 tokens): a lowercase-only pattern shows them as raw [mbid|name] markup (org/event-GPE.org).",
+        "edits": [
+            {
+                "find": "    const _MB_POP_SETLIST_TOKEN_RE = /\\[([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})(?:\\|([^\\]]*))?\\]/gi;",
+                "replace": "    const _MB_POP_SETLIST_TOKEN_RE = /\\[([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})(?:\\|([^\\]]*))?\\]/g;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the event window links its setlist",
+        "expect": "fail"
+    },
+    {
+        "name": "the link keeps the MBID's case",
+        "why": "_MB_POP_PATH_RE matches lowercase MBIDs only: a link as typed would neither preview nor drill down.",
+        "edits": [
+            {
+                "find": "            toks.push({ id: id.toLowerCase(), name: name === undefined ? id : name,",
+                "replace": "            toks.push({ id, name: name === undefined ? id : name,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the event window links its setlist",
+        "expect": "fail"
+    },
+    {
+        "name": "the \"(with …)\" guests are linked as works, as MusicBrainz's own page does",
+        "why": "A token inside a song line's guest group is an artist; /work/<an artist's MBID> is a dead link.",
+        "edits": [
+            {
+                "find": "                toks[Number(i)].kind = 'artist';",
+                "replace": "                toks[Number(i)].kind = 'work';"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the event window links its setlist",
+        "expect": "fail"
+    },
+    {
+        "name": "every attribute links an instrument, vocals included",
+        "why": "An attribute id is an instrument MBID only for an instrument; a vocal's /instrument/<id> answers 404 (probe --only attr-instruments).",
+        "edits": [
+            {
+                "find": "        return !!n && !/\\bvocals?$/.test(n) && !_MB_POP_NON_INSTRUMENT_ATTRS.has(n);",
+                "replace": "        return !!n;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the event window links its setlist",
+        "expect": "fail"
+    },
+    {
+        "name": "a county is named in the held-at chain",
+        "why": "MusicBrainz's load_containment keeps parent types Country/Subdivision/City only: \"West Long Branch, New Jersey, United States\", no Monmouth County.",
+        "edits": [
+            {
+                "find": "            if (_MB_POP_CONTAINMENT_TYPES.includes(parent.type)) areas.push(parent);",
+                "replace": "            areas.push(parent);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "held at with the whole area chain",
+        "expect": "fail"
+    },
+    {
+        "name": "the country is looked up too",
+        "why": "The walk stops at a Country without a lookup: its child's relation already names it, and every event would pay one request more.",
+        "edits": [
+            {
+                "find": "        for (let depth = 0; depth < _MB_POP_AREA_DEPTH && !_mbPopIsCountry(cur); depth++) {",
+                "replace": "        for (let depth = 0; depth < _MB_POP_AREA_DEPTH; depth++) {"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "held at with the whole area chain",
+        "expect": "fail"
+    },
+    {
+        "name": "the window never walks the area chain",
+        "why": "The area lookups start from pin(); without that call the window shows the place and its city forever.",
+        "edits": [
+            {
+                "find": "                _mbPopAreaChainLoad(t, [place && place.place.area], again, repaint);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "held at with the whole area chain",
+        "expect": "fail"
+    },
+    {
+        "name": "the hover card starts the area walk",
+        "why": "Decided 2026-10-08: the card stays one request; it shows the chain only from memory. Planted as a direct load: through _mbPopAreaChainLoad() with a made-up target, _mbPopWanted() says no and nothing is asked, which would test nothing.",
+        "edits": [
+            {
+                "find": "                const place = _mbPopEventPlaceRel(d);\n                const sl = _mbPopSetlist(d.setlist);\n",
+                "replace": "                const place = _mbPopEventPlaceRel(d);\n                if (place && place.place.area) {\n                    const q0 = _mbPopLookup({ type: 'area', id: place.place.area.id }, 'area-rels');\n                    _mbWsLoad(q0.key, q0.url, {});\n                }\n                const sl = _mbPopSetlist(d.setlist);\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "held at with the whole area chain",
+        "expect": "fail"
+    },
+    {
+        "name": "a failed chain step is asked again by every repaint",
+        "why": "_mbPopPinLoad() leaves a failed key alone until ⟳: a plain _mbWsLoad() would loop on a failing area.",
+        "edits": [
+            {
+                "find": "            const q = _mbPopLookup({ type: 'area', id }, 'area-rels');\n            _mbPopPinLoad(t, q.key, q.url, again, repaint);",
+                "replace": "            const q = _mbPopLookup({ type: 'area', id }, 'area-rels');\n            _mbWsLoad(q.key, q.url, { force: again, repaint, wanted: _mbPopWanted(t) });"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a failed step of the area chain",
+        "expect": "fail"
+    },
+    {
+        "name": "the event card asks for its old inc set",
+        "why": "Part of and URLs come from event-rels+series-rels+url-rels on the one card lookup.",
+        "edits": [
+            {
+                "find": "            cardInc: 'artist-rels+place-rels+event-rels+series-rels+url-rels',",
+                "replace": "            cardInc: 'artist-rels+place-rels',"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "held at with the whole area chain",
+        "expect": "fail"
+    },
+    {
+        "name": "a series target's forward \"part of\" is labelled Parts",
+        "why": "From an item's side the series relation is forward; the three-part label key makes it \"Part of\". Not covered by a fixture with a series relation: no captured event has one.",
+        "edits": [
+            {
+                "find": "        'part of|forward|series': 'Part of',\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "held at with the whole area chain",
+        "expect": "pass"
+    },
+    {
+        "name": "a country is told by its type only",
+        "why": "An entity's own area has type null: without the ISO 3166-1 test an artist or label in the United States looks up its 26 KB area for nothing.",
+        "edits": [
+            {
+                "find": "        return !!a && (a.type === 'Country' || (a['iso-3166-1-codes'] || []).length > 0);",
+                "replace": "        return !!a && a.type === 'Country';"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a country is never looked up",
+        "expect": "fail"
+    },
+    {
+        "name": "the place window never walks its area chain",
+        "why": "The place's Area row names its region as MusicBrainz does only once pin() starts the walk.",
+        "edits": [
+            {
+                "find": "                _mbPopPinLoad(t, browse.key, browse.url, again, repaint);\n                _mbPopAreaChainLoad(t, [d.area], again, repaint);\n",
+                "replace": "                _mbPopPinLoad(t, browse.key, browse.url, again, repaint);\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the place window: its area in the area chain",
+        "expect": "fail"
+    },
+    {
+        "name": "the place card ignores the chain in memory",
+        "why": "The card asks for nothing, but once a window walked the chain it shows the whole region.",
+        "edits": [
+            {
+                "find": "${_mbPopPillsHtml([d.type, _mbPopAreaChainText(d.area), _mbPopLifeSpan(d['life-span'])])}",
+                "replace": "${_mbPopPillsHtml([d.type, d.area && d.area.name, _mbPopLifeSpan(d['life-span'])])}"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the place window: its area in the area chain",
+        "expect": "fail"
+    },
+    {
+        "name": "the artist window never walks its area chains",
+        "why": "Area, Born and Died name their regions only once pin() starts the walks.",
+        "edits": [
+            {
+                "find": "                _mbPopAreaChainLoad(t, [d.area, d['begin-area'], d['end-area']], again, repaint);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the artist window: area and birthplace",
+        "expect": "fail"
+    },
+    {
+        "name": "the label window never walks its area chain",
+        "why": "A label's Area row names its region only once pin() starts the walk.",
+        "edits": [
+            {
+                "find": "                _mbPopPinLoad(t, count.key, count.url, again, repaint);\n                _mbPopAreaChainLoad(t, [d.area], again, repaint);\n",
+                "replace": "                _mbPopPinLoad(t, count.key, count.url, again, repaint);\n"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "an area below a country",
+        "expect": "fail"
+    },
+    {
+        "name": "the recording window never walks its studios' area chains",
+        "why": "Recorded at / Mixed at name each studio's region only once pin() starts the walks from the credits lookup.",
+        "edits": [
+            {
+                "find": "                    _mbPopAreaChainLoad(t, (ps.data.relations || []).filter(r => r['target-type'] === 'place' && r.place)\n                        .map(r => r.place.area), again, repaint);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "names each studio in its area chain",
+        "expect": "fail"
+    },
+    {
+        "name": "an event's dates are repeated after a name that starts with them",
+        "why": "Most event names begin with their day (\"2025‐05‐20: Co‐op Live, …\"): appending \"(2025-05-20)\" only repeats it.",
+        "edits": [
+            {
+                "find": "        const days = type === 'event' && !String(e.name || '').replace(/\\u2010/g, '-').includes((e['life-span'] || {}).begin || '\\u0000')",
+                "replace": "        const days = type === 'event'"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "named after its link while it loads",
+        "expect": "fail"
+    }
+]

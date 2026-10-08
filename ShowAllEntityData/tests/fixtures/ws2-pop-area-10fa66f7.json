@@ -1,0 +1,37 @@
+{
+ "relations": [
+  {
+   "attribute-ids": {},
+   "ended": false,
+   "area": {
+    "type-id": "bcecec27-8bdb-3e00-8254-d948dda502fa",
+    "type": "County",
+    "name": "Monmouth County",
+    "disambiguation": "",
+    "sort-name": "Monmouth County",
+    "id": "604b7841-36b7-4bea-9bdc-7eeb52520e35"
+   },
+   "attribute-values": {},
+   "type-id": "de7cc874-8b1b-3a05-8272-f3834c968fb7",
+   "target-credit": "",
+   "direction": "backward",
+   "end": null,
+   "attributes": [],
+   "type": "part of",
+   "source-credit": "",
+   "begin": null,
+   "target-type": "area"
+  }
+ ],
+ "id": "10fa66f7-aa08-4823-8af8-52108f350a5a",
+ "sort-name": "Asbury Park",
+ "type-id": "6fd8f29a-3d0a-32fc-980d-ea697b69da78",
+ "name": "Asbury Park",
+ "type": "City",
+ "life-span": {
+  "begin": null,
+  "end": null,
+  "ended": false
+ },
+ "disambiguation": ""
+}

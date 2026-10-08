@@ -181,9 +181,15 @@ hosts (kept, decided 2026-10-07).
   per `_MB_POP_RG_TYPES`; label — card `genres+aliases`, window
   `url-rels+label-rels` plus `release?label=…&limit=1`; area — `area-rels`;
   instrument — `instrument-rels+aliases`, no description from the Web Service
-  (9.99.1274); event — card `artist-rels+place-rels` (the setlist is a field of the
-  event), window `recording-rels+release-rels` plus the Event Art Archive index
-  (`_mbPopArtLoad(_mbPopEventArt, EAA_CTX, …)`, on pin only, R4); place — card
+  (9.99.1274); event — card `artist-rels+place-rels+event-rels+series-rels+url-rels`
+  (the setlist is a field of the event; the three later includes since WIP.2 for
+  "Part of" — an event's `parts` backward, whose target carries its `life-span`,
+  shown as "(2026-06-04 – 2026-06-05)" — and the window's "URLs": one row per
+  relationship type, each address in full plus an "[info]" link to
+  `/url/<id>`; 6.3 KB for the OceanFirst show), window `recording-rels+release-rels`
+  plus the Event Art Archive index
+  (`_mbPopArtLoad(_mbPopEventArt, EAA_CTX, …)`, on pin only, R4) plus the area
+  chain of "Held at" (below); place — card
   `area-rels+url-rels`, window `event?place=…&limit=100` sorted by date (the
   browse is not); series — one lookup with every item-kind relation (R1),
   items by `ordering-key` (the lookup is not in order) (9.99.1275); ISRC
@@ -199,10 +205,62 @@ hosts (kept, decided 2026-10-07).
   its card says "It is probably private." — still not kept, as any failure.
 - **The setlist is MusicBrainz's markup** (`_mbPopSetlist()`): `@ ` line-up
   artist, `# ` comment (between artists, the billing word "&"/"with"),
-  `* ` song. `[mbid|name]` tokens are shown by NAME only: inside a song line
-  the markup does not say whether one is a work or an artist. (The
+  `* ` song. The window LINKS `[mbid|name]` tokens (`_mbPopSetlistLine()`,
+  org/event-GPE.org, WIP.1): every token of an `@` line is an artist; in a
+  song line a token is a work, unless it sits inside a `(with …)` /
+  `(feat. …)` / `(featuring …)` / `(ft. …)` group, where it is an artist; a
+  `#` comment's tokens stay names (the markup says nothing there). The token
+  regex is case-INSENSITIVE and the link takes the MBID lowercased: editors
+  type mixed-case MBIDs (`[E497263c-…-Dca99482962c|The Fever]` on the Stone
+  Pony event `26cead1c…`, 14 of its 44 tokens), which the old lowercase-only
+  regex left as raw `[…|…]` text, and `_MB_POP_PATH_RE` (so drill-down)
+  matches lowercase only. MusicBrainz's own page links EVERY token of a song
+  line as `/work/`, the "with" artists included (`debug/mb-event-initial.html`)
+  — not a model to copy. The card keeps names only (plain text). (The
   event-overview page's `_eventSetlistParse()` reads the rendered HTML, a
   different input.)
+- **An area is named in its area chain** (`_mbPopAreaChain()`, WIP.2):
+  "OceanFirst Bank Center in West Long Branch, New Jersey, United States", as
+  MusicBrainz writes it — an event's "Held at" and a recording's "Recorded at"
+  / "Mixed at" (`_mbPopPlaceRelHtml()`: the chain right after the place's
+  name, before the relation's attributes and dates), and the Area row of a
+  place, a label and an artist, plus the artist's Born/Died areas
+  (`_mbPopAreaChainHtml()`). The Web Service gives an area without its
+  parents, so the WINDOW walks up, one `/ws/2/area/<id>?inc=area-rels` lookup
+  per level, following the `part of` backward relation
+  (`_mbPopAreaChainLoad(t, areas, …)`, from each kind's `pin()`; the
+  recording's once its credits lookup is there), and stops at a Country (no
+  lookup for it) or a missing parent, at most `_MB_POP_AREA_DEPTH` levels.
+  **A country is told by `_mbPopIsCountry()`**: a relation's area carries its
+  `type`, but an entity's own `area`/`begin-area`/`end-area` has `type: null`,
+  so there the ISO 3166-1 code decides (only countries have one) — otherwise
+  every artist and label in the United States would look up its 26 KB area.
+  The key is the area card's own (`pop:area:<id>:area-rels`), so every card
+  shares the steps: New Jersey is paid once for every event, studio, label and
+  birthplace there, and two chains that meet (two Manhattan studios) share
+  theirs. Shown are the start area and the ancestors of type
+  City/Subdivision/Country (`_MB_POP_CONTAINMENT_TYPES`) — musicbrainz-server's
+  `load_containment` (`Data/Area.pm`, checked 2026-10-08) keeps parent types
+  1, 2, 3, which is why "Monmouth County" and the district "Manhattan" are not
+  in the line ("Midtown Manhattan, New York, New York, United States"). Probes
+  (`scripts/probe-mb-entity-lookups.py --only event-details` and
+  `--only area-chains`, 2026-10-08): West Long Branch / Asbury Park / Long
+  Branch (City) → Monmouth County (County) → New Jersey (Subdivision) →
+  United States; Midtown Manhattan (City) → Manhattan (District) → New York
+  (City) → New York (Subdivision) → United States. A CARD makes no area
+  request: it shows the chain (`_mbPopAreaChainText()`, `_mbPopHeldAtText()`)
+  only when every step is already in memory, else the area's own name as
+  before. Cost: a window whose region is new pays about three 1/s rate slots
+  more, AFTER its own requests (the artist's links and five counts come
+  first).
+- **Instruments in relationship lists are links** (`_mbPopRelTargetHtml()`,
+  WIP.2, every kind): an instrument attribute's `attribute-ids` value IS the
+  instrument's MBID (probe `--only attr-instruments`: trumpet and "drums (drum
+  set)" answer 200 as instruments; "lead vocals", "background vocals" and
+  "time" answer 404). `_mbPopIsInstrumentAttr()` leaves out names ending in
+  "vocals" and `_MB_POP_NON_INSTRUMENT_ATTRS` (MusicBrainz's generic
+  attributes). The target's disambiguation follows its name, and an event
+  target's days follow it unless its name already starts with that day.
 - **Relations are grouped by type AND direction** (`_mbPopRelsByType()`), and
   `_MB_POP_REL_LABELS` names a group whose meaning turns on its direction, as
   read off the captures, not guessed: Columbia's forward "label ownership"
