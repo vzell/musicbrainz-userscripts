@@ -156,9 +156,27 @@ const measure = (page) => page.evaluate((sel) => {
         stage: rect(stageEl.getBoundingClientRect()),
         film: rect(v.querySelector('.mb-artv-film').getBoundingClientRect()),
         img: { left, top, right, bottom, width: right - left, height: bottom - top },
+        // Where the image's OWN top-left pixel is on screen: what a turn or a
+        // flip did to it (the rect alone cannot show a flip).
+        origin: corners[0],
         natural: { w: nw, h: nh },
     };
 }, VIEWER);
+
+/**
+ * Which corner of the image's on-screen rect its own top-left pixel sits at
+ * — "TL" upright, "TR" mirrored left-right or turned clockwise, "BL", "BR" —
+ * or "??" when it is at none.
+ *
+ * @param {{img: Object, origin: {x: number, y: number}}} g  From measure().
+ * @returns {string}
+ */
+function cornerOf(g) {
+    const near = (a, b) => Math.abs(a - b) < 1.5;
+    const v = near(g.origin.y, g.img.top) ? 'T' : near(g.origin.y, g.img.bottom) ? 'B' : '?';
+    const h = near(g.origin.x, g.img.left) ? 'L' : near(g.origin.x, g.img.right) ? 'R' : '?';
+    return v + h;
+}
 
 /**
  * Zooms with ↑ until the image is `times` its fitted size (0.5 per press).
@@ -217,6 +235,7 @@ const viewerUi = (page) => page.evaluate((sel) => {
         pan: v.dataset.mbArtvPan || null,
         fullscreen: document.fullscreenElement === v,
         fullscreenBtn: (q('[data-artv="fullscreen"]') || { getAttribute: () => null }).getAttribute('aria-pressed'),
+        flipBtn: (q('[data-artv="flip"]') || { getAttribute: () => null }).getAttribute('aria-pressed'),
         transform: img ? img.style.transform : null,
         natural: img ? { w: img.naturalWidth, h: img.naturalHeight } : null,
         stageBg: q('.mb-artv-stage') ? getComputedStyle(q('.mb-artv-stage')).backgroundImage + ' ' +
@@ -226,6 +245,6 @@ const viewerUi = (page) => page.evaluate((sel) => {
 
 module.exports = {
     URL, RECORD, BIG, BIG_RE, THUMB_RE, CORS, VIEWER, GUTTER, NARROW_GUTTER, svg,
-    openRelease, openViewerOnBigImage, noTransition, waitForBigImage, measure, zoomTo,
+    openRelease, openViewerOnBigImage, noTransition, waitForBigImage, measure, cornerOf, zoomTo,
     expectInsideGutters, viewerUi,
 };

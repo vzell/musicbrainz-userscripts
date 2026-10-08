@@ -103754,7 +103754,7 @@ a { color: #1565c0; }`;
     // archive record from `ctx.imagesCache` and makes no JSON request. While it
     // is open:
     //   • one window CAPTURE keydown listener takes every key first — the
-    //     viewer's own (← → Home End ↑ ↓ 0 1 Z R B F D P G I O Esc,
+    //     viewer's own (← → Home End ↑ ↓ 0 1 Z R H V B F D P G I O Esc,
     //     unmodified but for Shift+← → and Shift+R) and Tab (kept
     //     inside the overlay) — and stops every key from reaching the page, so
     //     Ctrl+M mode, the Ctrl shortcuts, ?, / and Shift+Esc cannot act on the
@@ -104094,7 +104094,7 @@ a { color: #1565c0; }`;
             i: list.includes(start) ? start : list[0],
             grid, gridStart: grid, info: true,
             zoom: zoomLevel !== 1, zoomLevel, pan: { x: 0, y: 0 }, ptr: null, geom: null,
-            rot: 0, oneToOne: false, panMode: _artViewerPanMode(),
+            rot: 0, flipX: false, flipY: false, oneToOne: false, panMode: _artViewerPanMode(),
             drag: null, touches: new Map(), pinch: null, swallowClick: false, dl: null,
             opener, title, prevOverflow,
             onGroupStep, rowPos, liFor, slideshow: 0,
@@ -104188,16 +104188,19 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * After a step: the rotation always starts over (R turns one sideways
-     * scan, not the next image); the zoom stays when
-     * `sa_art_viewer_remember_zoom` is on (Art Station's behaviour), and the
-     * image is fitted otherwise (the viewer's original behaviour).
+     * After a step: the rotation and the flips always start over (R turns one
+     * sideways scan, H mirrors one see-through matrix scan, not the next
+     * image); the zoom stays when `sa_art_viewer_remember_zoom` is on (Art
+     * Station's behaviour), and the image is fitted otherwise (the viewer's
+     * original behaviour).
      *
      * @param   {Object} st The viewer state.
      * @returns {void}
      */
     function _artViewerResetZoomOnStep(st) {
         st.rot = 0;
+        st.flipX = false;
+        st.flipY = false;
         if (Lib.settings.sa_art_viewer_remember_zoom !== false) return;
         _artViewerSetLevel(st, 1);
         st.oneToOne = false;
@@ -104393,9 +104396,13 @@ a { color: #1565c0; }`;
      * Writes the image's transform: nothing when fitted and upright; zoomed,
      * a scale about its centre plus a translate of at most the overhang, so
      * at a pan of ±1 the image's edge sits exactly on the frame's edge —
-     * fully in view, never past it (Art Station's clamped pan); a rotation
-     * between the two. The one writer of the transform, so it also updates
-     * the zoom readout.
+     * fully in view, never past it (Art Station's clamped pan); the flips
+     * and the rotation between the two. The order is the meaning: the
+     * translate stays outermost, so the pan is on screen whatever the image
+     * shows; the flips come before the rotation, so H mirrors left-right AS
+     * SEEN, also on a turned image. Flips are `scaleX()`/`scaleY()`, never
+     * `scale(-1, 1)`: specs read the zoom as the one `scale(…)` there is.
+     * The one writer of the transform, so it also updates the zoom readout.
      *
      * @param   {Object}           st  The viewer state.
      * @param   {HTMLImageElement} img
@@ -104407,6 +104414,8 @@ a { color: #1565c0; }`;
             const t = _artViewerTranslate(st);
             parts.push(`translate(${t.x.toFixed(1)}px, ${t.y.toFixed(1)}px)`);
         }
+        if (st.flipX) parts.push('scaleX(-1)');
+        if (st.flipY) parts.push('scaleY(-1)');
         if (st.rot) parts.push(`rotate(${st.rot}deg)`);
         if (st.zoom) parts.push(`scale(${+st.zoomLevel.toFixed(4)})`);
         img.style.transform = parts.join(' ');
@@ -104476,8 +104485,11 @@ a { color: #1565c0; }`;
 
     /**
      * R / Shift+R and the Rotate button: a quarter turn clockwise (`d` > 0)
-     * or anticlockwise, re-fitted so the turned image fits the frame. View
-     * only; a step starts upright again.
+     * or anticlockwise AS SEEN, re-fitted so the turned image fits the
+     * frame. The flips are applied after the rotation (on screen), and a
+     * mirror reverses a turn's direction — so while exactly one flip is on,
+     * the turn applied underneath goes the other way. View only; a step
+     * starts upright again.
      *
      * @param   {number} d +1 or -1.
      * @returns {void}
@@ -104486,8 +104498,30 @@ a { color: #1565c0; }`;
         const st = _artViewerState;
         const img = document.querySelector('#mb-art-viewer .mb-artv-stage .mb-artv-img');
         if (!st || !img) return;
-        st.rot = (st.rot + (d > 0 ? 90 : 270)) % 360;
+        const mirrored = st.flipX !== st.flipY;
+        st.rot = (st.rot + ((d > 0) !== mirrored ? 90 : 270)) % 360;
         _artViewerFit(st, img);
+    }
+
+    /**
+     * H / V and the Flip button: mirrors the image left-right (`'x'`) or
+     * upside-down (`'y'`) as seen on screen — for a scan of a CD's matrix
+     * area taken through the disc, whose numbers read backwards. Sizes do not
+     * change, so no re-fit; the Flip button shows the left-right state. View
+     * only; a step starts unflipped again.
+     *
+     * @param   {('x'|'y')} axis
+     * @returns {void}
+     */
+    function _artViewerFlip(axis) {
+        const st = _artViewerState;
+        const img = document.querySelector('#mb-art-viewer .mb-artv-stage .mb-artv-img');
+        if (!st || !img) return;
+        if (axis === 'y') st.flipY = !st.flipY;
+        else st.flipX = !st.flipX;
+        _artViewerApplyTransform(st, img);
+        const b = document.querySelector('#mb-art-viewer [data-artv="flip"]');
+        if (b) b.setAttribute('aria-pressed', String(st.flipX));
     }
 
     /** The viewer's backgrounds, in the order B cycles them. */
@@ -104903,7 +104937,7 @@ a { color: #1565c0; }`;
         panel.appendChild(sizes);
         panel.appendChild(_artvEl('div', 'mb-tt-foot',
             '← → step' + (st.onGroupStep ? ' · Shift+← → row' : '') +
-            ' · ↑ ↓ wheel zoom · 0 fit · 1 actual pixels · Z 2× · R rotate · B background · F fullscreen' +
+            ' · ↑ ↓ wheel zoom · 0 fit · 1 actual pixels · Z 2× · R rotate · H V flip · B background · F fullscreen' +
             ' · D download · P slideshow · G grid · I info · O original · Esc close'));
         return panel;
     }
@@ -104936,6 +104970,7 @@ a { color: #1565c0; }`;
         if (!st.grid) bar.appendChild(_artvBtn('info', 'Info (I)', st.info));
         if (!st.grid) bar.appendChild(_artvBtn('slideshow', 'Slideshow (P)', !!st.slideshow));
         if (!st.grid) bar.appendChild(_artvBtn('rotate', 'Rotate (R)'));
+        if (!st.grid) bar.appendChild(_artvBtn('flip', 'Flip (H)', st.flipX));
         bar.appendChild(_artvBtn('fullscreen', 'Fullscreen (F)', _artViewerIsFullscreen()));
         if (!st.grid) bar.appendChild(_artvBtn('download', 'Download (D)'));
         const orig = _artvEl('a', 'mb-artv-btn', 'Original (O)');
@@ -105151,6 +105186,10 @@ a { color: #1565c0; }`;
             _artViewerOneToOne();
         } else if (k === 'r' || k === 'R') {
             _artViewerRotate(e.shiftKey ? -1 : 1);
+        } else if (k === 'h' || k === 'H') {
+            _artViewerFlip('x');
+        } else if (k === 'v' || k === 'V') {
+            _artViewerFlip('y');
         } else if (k === 'b' || k === 'B') {
             _artViewerCycleBg();
         } else if (k === 'd' || k === 'D') {
@@ -105221,6 +105260,7 @@ a { color: #1565c0; }`;
         else if (action === 'prev') _artViewerStep(-1);
         else if (action === 'next') _artViewerStep(1);
         else if (action === 'rotate') _artViewerRotate(1);
+        else if (action === 'flip') _artViewerFlip('x');
         else if (action === 'fullscreen') _artViewerToggleFullscreen();
         else if (action === 'download') _artViewerDownload();
         else if (action === 'stage') _artViewerToggleZoom(e.clientX, e.clientY);
