@@ -167,7 +167,8 @@ test.describe('@include coverage', () => {
             'https://brucebase.wikidot.com/stats:songs-count',
             'https://brucebase.wikidot.com/song:1945',
             'https://brucebase.wikidot.com/stats:statistics',
-            'https://brucebase.wikidot.com/',
+            // (Not the start page: bb-home covers it by its own @include,
+            // asserted in "the start page, and nothing else" below.)
             // Another wiki on the same farm, and look-alike hosts.
             'https://otherwiki.wikidot.com/stats:songs',
             'https://www.brucebase.wikidot.com/stats:songs',

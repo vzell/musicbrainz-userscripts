@@ -21164,3 +21164,22 @@ left (`sa_bb_sidebar_right` false) at the user's request: never shipped on
 main, so no migration. Pinned by `tests/fixtures/bb-sidebar.spec.js` (Date
 under its h2 bar, collapsed and open; unscrolled no mask; re-measure on
 opening), mutation-checked.
+
+## 2026-10-09 — `npm run test:full` red on main after the bb-years merge: a stale @include spec
+
+Env: 2026-10-09T11:37:39Z–11:44:58Z · petri · WSL2 Ubuntu 24.04.3 (Linux
+6.18.40.1) · Chromium 151.0.7922.34 (Playwright 1.62.1) · no Tampermonkey (GM
+stubs)
+
+The first `test:full` on `main` after the `feature/bb-years` merge and fold
+(9.99.1301; the fold had been done on `vzell-lap`, where the suite was not
+run): 1458 passed, 1 failed, 7 m 19 s at 1459 tests. The failure was
+`sl-include-regex.spec.js` "brucebase.wikidot.com: stats:songs, and nothing
+else", which listed `https://brucebase.wikidot.com/` among the URLs no
+`@include` may match. WIP.2 (`d1dcf05`) added the start-page `@include` for
+`bb-home` on purpose, plus "the start page, and nothing else", which asserts
+the same URL IS matched: the two tests contradicted each other, and
+`injected()` tests every `@include`, not only the songs one. The userscript
+was right; the URL was dropped from the songs test's list, with a comment
+pointing at the start-page test. The spec failed 6/7 before (smoke run
+11:46:43Z) and passes 7/7 after.
