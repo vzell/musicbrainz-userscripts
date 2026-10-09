@@ -177,5 +177,31 @@
     "project": "chromium-mobile",
     "grep": "a tap outside closes",
     "expect": "fail"
+  },
+  {
+    "name": "the cache rows are never rendered",
+    "why": "_ajRender() drops the cache block, so a provider's IndexedDB rows never reach the card.",
+    "edits": [
+      {
+        "find": "        if (s.cache && s.cache.length) {\n",
+        "replace": "        if (false && s.cache && s.cache.length) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/async-pop.spec.js",
+    "grep": "the cache section shows",
+    "expect": "fail"
+  },
+  {
+    "name": "onOpen runs on every repaint-triggering show",
+    "why": "The wasOpen gate is gone: re-showing an already-open card re-starts its async refresh.",
+    "edits": [
+      {
+        "find": "        if (!wasOpen && p.onOpen) {\n",
+        "replace": "        if (p.onOpen) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/async-pop.spec.js",
+    "grep": "the cache section shows",
+    "expect": "fail"
   }
 ]

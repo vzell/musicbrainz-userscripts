@@ -153,6 +153,43 @@ test.describe('async job popup (_aj*)', () => {
         await expect(pop(page)).toContainText('Not loaded yet');
     });
 
+    test('the cache section shows, and onOpen fills it asynchronously once per opening', async ({ page }) => {
+        await setup(page);
+        await page.evaluate(() => {
+            window.__ajCache = { records: null, opens: 0 };
+            window.__saTest.asyncPop.register('test', {
+                glyph: '🧪', label: 'Test job',
+                snapshot: (scope, job) => ({
+                    phase: job ? job.phase : 'idle', summary: 'stand-in',
+                    cache: [
+                        ['Store', 'IndexedDB test-store, kept 30 days'],
+                        ['Records', window.__ajCache.records === null ? 'counting…' : String(window.__ajCache.records)],
+                    ],
+                }),
+                onOpen: (scope, repaint) => {
+                    window.__ajCache.opens++;
+                    setTimeout(() => { window.__ajCache.records = 1234; repaint(); }, 50);
+                },
+            });
+        });
+        await page.locator('#aj-anchor').hover();
+        await expect(pop(page)).toBeVisible();
+        await expect(pop(page).locator('.mb-tt-ajcache')).toContainText('IndexedDB test-store');
+        await expect(pop(page).locator('.mb-tt-ajcache')).toContainText('1234');
+        // A repaint while open does not start another refresh.
+        await startJob(page);
+        await step(page);
+        await expect(pop(page).locator('.mb-tt-ajcount')).toHaveCount(0); // no progress in this snapshot
+        expect(await page.evaluate(() => window.__ajCache.opens)).toBe(1);
+        // Closing and reopening does (off the anchor first: a pointer still
+        // resting on it after Esc sends no new mouseover).
+        await page.keyboard.press('Escape');
+        await page.mouse.move(0, 0);
+        await page.locator('#aj-anchor').hover();
+        await expect(pop(page)).toBeVisible();
+        expect(await page.evaluate(() => window.__ajCache.opens)).toBe(2);
+    });
+
     test('an action button reaches the provider', async ({ page }) => {
         await setup(page);
         await startJob(page);

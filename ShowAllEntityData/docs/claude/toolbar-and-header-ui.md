@@ -844,6 +844,17 @@ row walk. `act(scope, id)` calls the job's EXISTING functions; the card never
 starts a request of its own. Returning `null` from `snapshot()` shows nothing,
 and the anchor's own Liner-notes tooltip applies as before.
 
+**Cache rows, and the one async read a card may make.** A snapshot's `cache`
+(`[label, text]` pairs) renders under its own "💾 Cache" heading: the job's
+IndexedDB store and TTL, records in it, this run's memory / IndexedDB /
+network split, the last idle sweep — the per-job slice of what the Statistics
+panel lists for all stores. A store COUNT is asynchronous and `snapshot()` is
+not, so a provider may declare `onOpen(scope, repaint)`: it runs once per
+opening of the card (not on a repaint, not when a job start re-shows an
+already-open card), starts the read (`_artIdbCountStore()`), keeps the answer,
+and calls `repaint()` — the next snapshot shows it. Until then the row reads
+"counting…".
+
 **Anchors are found by attribute, never wired.** A control carrying
 `data-mb-aj="<key>"` is that job's anchor; the hover listeners are delegated on
 `document` (`_ajInitHover()`, installed from `_initStatTooltip()` at page
@@ -883,7 +894,7 @@ How it behaves, and why:
 
 `FIXTURE_SETTINGS_OVERRIDE` forces `sa_async_pop_auto_open` off: a card opened
 by a toggle click sits right over the header cells a spec clicks next. Specs
-that test the card seed it back on. Specs: `async-pop.spec.js` (9) and
+that test the card seed it back on. Specs: `async-pop.spec.js` (10) and
 `async-pop.mobile.spec.js` (2), driving the shipping framework with a stand-in
 provider through `__saTest.asyncPop`; mutations `scripts/mutations/async-pop.json`
-(13, all caught).
+(15, all caught).

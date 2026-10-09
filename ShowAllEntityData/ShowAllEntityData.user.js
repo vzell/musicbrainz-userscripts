@@ -65479,11 +65479,16 @@ a { color: #1565c0; }`;
      *          anchorFor?: function(?Element): ?Element,
      *          scopeOf?: function(Element): ?Element,
      *          snapshot: function(?Element, ?object): ?object,
+     *          onOpen?: function(?Element, function(): void): void,
      *          act?: function(?Element, string): void}} provider
      *   `snapshot(scope, job)` returns the card's content (see `_ajRender()`),
      *   or `null` to show nothing (the anchor's own tooltip then applies).
      *   `job` is the framework's record, or `null` before any job ran.
      *   `scopeOf(anchor)` defaults to the anchor's `<table>` (null outside one).
+     *   `onOpen(scope, repaint)` runs once each time the card opens on this
+     *   job — the place to start an async read such as an IndexedDB store
+     *   count, keep the answer, and call `repaint()` when it lands; the next
+     *   `snapshot()` then shows it in its `cache` rows.
      * @returns {void}
      */
     function _ajRegister(key, provider) {
@@ -65651,8 +65656,10 @@ a { color: #1565c0; }`;
      * @param {object} p - Provider (`glyph`, `label`).
      * @param {object} s - Snapshot: `phase`, `summary`, optional progress
      *   (`done`, `total`, `failed`, `cached`, `queued`, `unit`), `facts`
-     *   (`[label, text]` pairs), `actions` (`{id, label, kind}`), `foot`.
-     *   All text is escaped here.
+     *   (`[label, text]` pairs), `cache` (`[label, text]` pairs shown under
+     *   their own "💾 Cache" heading: store, TTL, records, this run's
+     *   memory/IndexedDB/network split, …), `actions` (`{id, label, kind}`),
+     *   `foot`. All text is escaped here.
      * @param {?object} job - The framework's record (its log is shown).
      * @param {string} anchorText - How the footer names the anchor, e.g. "▶🎼".
      * @returns {string}
@@ -65681,6 +65688,11 @@ a { color: #1565c0; }`;
         if (s.facts && s.facts.length) {
             h += '<div class="mb-tt-rule"></div><dl class="mb-tt-ajfacts">'
                + s.facts.map(([k, v]) => `<dt>${_ajEsc(k)}</dt><dd>${_ajEsc(v)}</dd>`).join('')
+               + '</dl>';
+        }
+        if (s.cache && s.cache.length) {
+            h += '<div class="mb-tt-rule"></div><div class="mb-tt-ajlog-h">💾 Cache</div><dl class="mb-tt-ajfacts mb-tt-ajcache">'
+               + s.cache.map(([k, v]) => `<dt>${_ajEsc(k)}</dt><dd>${_ajEsc(v)}</dd>`).join('')
                + '</dl>';
         }
         if (job && job.log.length) {
@@ -65741,10 +65753,23 @@ a { color: #1565c0; }`;
     function _ajShow(key, scope, anchor) {
         if (!_ajEnabled() || !_ajProviders.has(key)) return false;
         clearTimeout(_ajPop.leaveTimer);
+        const wasOpen = _ajPop.openId === _ajId(key, scope);
         _ajPop.openId = _ajId(key, scope);
         _ajPop.anchor = anchor;
         if (!_ajRepaint()) { _ajHide(); return false; }
         _ajListen(true);
+        // An async refresh the card wants (an IndexedDB store count, say):
+        // started once per opening, never from a repaint, and answered
+        // through _ajChanged(), which repaints only if the card is still
+        // open on this job.
+        const p = _ajProviders.get(key);
+        if (!wasOpen && p.onOpen) {
+            try {
+                p.onOpen(scope, () => _ajChanged(key, scope));
+            } catch (err) {
+                Lib.debug('ui', `async pop: onOpen of "${key}" threw: ${err.message || err}`);
+            }
+        }
         return true;
     }
 
