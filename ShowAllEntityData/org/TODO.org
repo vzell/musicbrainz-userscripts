@@ -1454,7 +1454,7 @@ I committed and pushed both commits to origin/feature/sticky-filter-bars, and di
   - The version bump and real changelog entry happen at merge time; the entries are in ShowAllEntityData_CHANGELOG.wip.json. It's your call when to merge.
     
 
-* TODO bug + new feature
+* DONE bug + new feature
 
 Next is:
 
@@ -1489,6 +1489,76 @@ should also be sticky when scrolling down, even before the h2 header line with t
 So basically I for ALL PTs I want the line with the action buttons + the line with the "mb-status-displays-container"
 ALWAYS be sticky too when srolling down.
 
-* TODO adapt the logging framework from majkinetor
 
-* TODO add instrument icons support
+* TODO adapt the logging framework and orig page shine through from majkinetor
+
+* TODO add instrument icons support, ONLY the icon should show up in the UVD
+
+* TODO menu in non-MB pages for PTs
+
+* !! separate on NB-xxxx - TODO almost feature-full - take out non mb code or try a build fraemwork
+
+* TODO non-MB detail pages
+
+* TODO integration with my onw BB userscript
+
+* TODO create a skill
+
+1.)
+
+There is a new third party userscript at @tests/fixtures/thirdPartyScripts/batch-add-recording-relationships.user.js
+
+a.)
+
+create a skill for wiring a new userscript into @tests/fixtures/live-userscripts
+
+2.)
+
+execute the new skill to tackle the following, optionally revising the skill if usefull/neccessary:
+
+On e.g. PT 'artist recordings' (and wherever it is involve) - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings
+implement the third party userscript "MusicBrainz: Batch-add "performance of" relationships" by @Michael Wiencek functionality:
+
+a.)
+
+add a new column "Recording of" with the actual work title after the "Name" column and add in brackets after it e.g
+"cover" etc, in light green and italic font after it's populated (see below)
+
+b.)
+
+the "Recording of" column should get the same treatment as the "Relationships" column, it should make API calls to the
+MB website to get the work of a recording and eventual attribues (find out) by eiter clicking a data cell specifig glyph
+for just that row, or a column header wide toogle glyph for getting all the info for all rows
+
+c.)
+
+add UVD sections as neccessary e.g "Suggested work" if something is not yet available
+
+d.)
+
+also store the info like what the third party userscript is doing in an indexdDB as usual (everything configurable). see eg
+
+#+begin_example
+1584 works loaded for Bruce Springsteen
+(cached Wed Jan 21 2026 23:28:59 GMT+0100 (Central European Standard Time))
+#+end_example
+
+for reusability
+
+e.)
+
+#+begin_example
+A-R-3rd-works.html - IP for https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings, with the third party uerscript active and already working - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings
+#+end_example
+
+f.)
+
+on the FRP also add a new multi-row column "Performance attributes"
+
+
+
+
+
+
+
+* maybe stack the h3 header in the multiu-table case when stickyness is involved
