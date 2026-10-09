@@ -1,4 +1,4 @@
-* TODO event popup
+* DONE event popup
 
 1.)
 
@@ -13,9 +13,9 @@ the "Setlist" info should be rendered as links to MB works and artists e.g.
 
 #+begin_example
 @ [d7bc97fb-4bd3-453b-98a1-9081f89c52f0|Southside Johnny & The Asbury Jukes] - everything after an "@" is an artist with its MB MBID
-* [69e3a597-8583-4e5b-ba77-818a56d85ac4|Why Is Love Such a Sacrifice] - everything after an "*" is a work with its MB MBID
-* [E497263c-4f15-36c0-B27c-Dca99482962c|The Fever] (with [70248960-Cb53-4ea4-943a-Edb18f7d336f|Bruce Springsteen]) - work, played by artists, everything in brackets with its MBID
-* [95fba578-26f7-43fe-Ae8c-91dd58e8da46|I’ve Been Working Too Hard] (with [70248960-Cb53-4ea4-943a-Edb18f7d336f|Bruce Springsteen] and [f9227504-4fa5-44ee-b205-5301a1f86936|Graham Parker]) - work, with multiple artists
+ * [69e3a597-8583-4e5b-ba77-818a56d85ac4|Why Is Love Such a Sacrifice] - everything after an "*" is a work with its MB MBID
+ * [E497263c-4f15-36c0-B27c-Dca99482962c|The Fever] (with [70248960-Cb53-4ea4-943a-Edb18f7d336f|Bruce Springsteen]) - work, played by artists, everything in brackets with its MBID
+ * [95fba578-26f7-43fe-Ae8c-91dd58e8da46|I’ve Been Working Too Hard] (with [70248960-Cb53-4ea4-943a-Edb18f7d336f|Bruce Springsteen] and [f9227504-4fa5-44ee-b205-5301a1f86936|Graham Parker]) - work, with multiple artists
 #+end_example
 
 2.)
