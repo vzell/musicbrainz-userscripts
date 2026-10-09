@@ -554,6 +554,25 @@ The harness lives under `tests/`; how to run each suite and what it costs:
   **`npm run test:full` is the merge gate**. The two `@slow` specs
   (`rel-auto-retry-failed` ~295 s, `resume-from-failed-page` ~84 s) spend
   their time in the rate gates and backoffs under test — do not shorten them.
+- **Announce every `npm run test:full` run as it starts**, in one line with
+  the UTC start time, host, branch and short HEAD SHA, and when it should
+  finish, e.g. "The suite started at 11:37:39 UTC on `petri`, on `main` at
+  `415e6ad`. I'll get a notification when it finishes, probably around
+  11:44–11:46 UTC." Take the start time, host and SHA from the run itself
+  (`date -u`, `hostname`, `git rev-parse --short HEAD`, logged as the run's
+  first line), and the finish window from that host's latest recorded
+  `test:full` wall clock in `tests/MEASUREMENTS.org`/`tests/README.org`,
+  scaled by test count (Playwright's `Running N tests` line) — the suite
+  grows fast, so a fixed minute figure goes stale. For a host with no
+  recorded run, say so instead of guessing.
+  **Run it as `python3 scripts/run-test-full.py --log <scratchpad>/test-full.log`**
+  (args after `--` go to Playwright): it runs `npm run test:full` unchanged,
+  prints that announcement line itself (`[run-test-full] The suite started
+  at …`), and keeps `~/.cache/sa-test-full/status.json` current, which
+  `~/.claude/statusline.sh` shows in the prompt's status line while the run
+  lasts (done/total, failures, ETA) and for an hour after. Its ETA baseline
+  is `~/.cache/sa-test-full/last-<host>.json`, the host's previous complete
+  full run.
 - **`chromium-mobile`** (`tests/fixtures/*.mobile.spec.js`, Pixel 7
   emulation: touch, no hover, zoomed-out viewport): `npm run test:mobile`,
   included in `npm test` and `test:full`. Chromium emulation, not Firefox

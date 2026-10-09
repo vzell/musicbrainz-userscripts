@@ -137,6 +137,19 @@ npm run test:full         # EVERY fixture test, @slow included
 python3 scripts/audit-docs.py          # must exit 0
 ```
 
+**As `npm run test:full` starts, tell the user when it started and when it
+should finish**, in one line, e.g. "The suite started at 11:37:39 UTC on
+`petri`, on `main` at `415e6ad`. I'll get a notification when it finishes,
+probably around 11:44–11:46 UTC." Log `date -u`, `hostname` and
+`git rev-parse --short HEAD` as the run's first line and quote those values;
+take the finish window from that host's latest recorded `test:full` wall clock
+(`tests/MEASUREMENTS.org`, `tests/README.org`), scaled by test count
+(Playwright's `Running N tests` line). For a host with no recorded run,
+say so instead of guessing. Run it through
+`python3 scripts/run-test-full.py --log <scratchpad>/test-full.log` (in the
+background): it prints that line itself and shows progress and the ETA in the
+prompt's status line. Rule and details: CLAUDE.md, "Testing (Playwright)".
+
 Report the pass count. Do not push a red tree.
 
 **`npm run test:full`, never plain `npm test`, and the difference is the whole
