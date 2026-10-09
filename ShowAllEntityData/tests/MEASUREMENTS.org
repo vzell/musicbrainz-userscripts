@@ -1350,6 +1350,30 @@ What this means for the design:
   survive — and one browse page that needs five attempts still beats 100 lookups
   that each might.
 
+** "Recording of" work-rels probe, 2026-10-09
+
+Env: 2026-10-09T22:13:01Z → 22:13:10Z · petri · WSL2 Ubuntu (Linux 6.18.40.1) · no
+browser (Python probe) · n/a. 8 requests (one 503, retried). Pure WS/2. Raw JSON:
+=debug/probe-recording-work-rels.json= (gitignored). Re-run:
+=python3 scripts/probe-recording-work-rels.py=.
+
+| Question                                                      | Answer                                                                                              |
+|---------------------------------------------------------------+-----------------------------------------------------------------------------------------------------|
+| =recording?artist=<Springsteen>&inc=work-rels&limit=100=        | 200; =recording-count= *74 567*; 100 per page; every record carries =relations=                     |
+| relation =type=s on page 1                                    | only =performance= (58 relations on 57 of 100 recordings — one medley carries two)                  |
+| relation keys                                                 | type, type-id, direction, attributes, attribute-ids, attribute-values, begin, end, ended, work{…}, … |
+| attributes seen                                               | =live= 49, =cover= 47; =attribute-values= always ={}=                                               |
+| browse vs lookup =recording/<mbid>?inc=work-rels= (4 sampled) | identical multisets, including the 2-relation medley                                                |
+| =work?artist=<Springsteen>&inc=aliases&limit=100=               | 200; =work-count= *1 587*; 100 per page → 16 requests for the suggestion list                       |
+| search =rid:(5)= + =inc=work-rels=                            | 5 returned, *0* with =relations= — search cannot feed this column                                  |
+
+What it means for the design: the browse source is valid (parity), and costs
+=ceil(74 567 / 100)= = 746 requests for the full catalogue against one lookup per
+distinct row otherwise — so the column takes whichever is smaller for the rows
+actually rendered, after the first browse page has told it the count. Only
+=type == "performance"= is rendered; the attribute words come from =attributes=,
+the date from =begin=/=end= (equal for a dated live performance).
+
 * Waits that do not fire, and how long they do not fire for
 
 Recorded so nobody reaches for them again on a large page.
