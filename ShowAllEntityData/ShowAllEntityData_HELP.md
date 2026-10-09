@@ -2145,14 +2145,20 @@ the Previous / Listing / Next line below stay. Everything is on the page;
 nothing is fetched.
 
 **The side bar:** on every Brucebase page the script handles, the wiki's
-side bar (Site Navigation, Gig Pages, …) starts hidden behind the same
-handle as the MusicBrainz sidebar, on the window's left edge: click it (or
-focus it and press Enter) to show or hide it. ⚙️ Settings → *📚 Brucebase* →
+side bar (Site Navigation, Gig Pages, …) stays in view while you scroll: at
+the top of the window when you scroll down, and at the window's edge when
+you scroll a wide table sideways. ⚙️ Settings → *📚 Brucebase* →
 *Show the Brucebase side bar on the right* moves it to the right, as on
-MusicBrainz, where it stays at the window's right edge next to a wide table.
-The MusicBrainz sidebar settings *Collabsable sidebar* and *Start with
-sidebar collapsed* apply here too. When you scroll a table sideways, its
-Date column stays in view, lined up under the table's heading bar.
+MusicBrainz. *Collabsable sidebar* in the same section (off by default, and
+separate from the MusicBrainz setting of that name) gives it the same handle
+as the MusicBrainz sidebar: click it (or focus it and press Enter) to show
+or hide the side bar. It then starts hidden while the MusicBrainz setting
+*Start with sidebar collapsed* is on, and collapses toward its own side.
+When you scroll a table sideways, its Date column stays in view, lined up
+under the table's heading bar, just right of the side bar.
+
+The status line ("Loaded 1 page …") sits right under the heading with the
+buttons, above the wiki's thin rule and the breadcrumbs.
 
 **Every year at once:** on the wiki's start page,
 `https://brucebase.wikidot.com`, the same switch adds a **Show all events of

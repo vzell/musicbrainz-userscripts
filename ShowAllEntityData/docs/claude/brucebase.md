@@ -142,18 +142,30 @@ numbers:
   rendered the sticky page headers widen the content to the table's width
   (5,000 px on a year page); the side bar's natural place is then far to the
   right and it sticks to the window's edge instead.
-- **Left** (the default): it stays first, in the flow, no z-index (sticky
-  there would sit on the sticky Date column; the docked Date column and its
-  mask paint over it once the page is scrolled).
+- **Left** (the default): it stays first, and is `position: sticky; left:
+  0`. Until 2026-10-09 it stayed in the flow with no z-index, and the docked
+  Date column and its mask painted over it once the page was scrolled
+  sideways; the user asked for it to stay in view ALWAYS (screenshots of
+  `/2026` scrolled down). Now it stays at the window's left edge, z-index
+  150, over the Date column's gutter mask, and Date docks at its natural
+  left, just right of it. A box-shadow mask is invisible to hit testing, so
+  `bb-sidebar.spec.js` reads a painted pixel of the side bar's padding.
+- **Both sides are `top: 0`**, capped at the window's height
+  (`max-height: calc(100vh - 2em - 2px)`, the theme's content-box padding
+  and borders off) and scrolling inside itself when taller.
 - **The handle** (`#mb-bb-sidebar-handle`): the MusicBrainz sidebar's look,
-  gated by the SAME settings (`sa_collabsable_sidebar`, start collapsed with
-  `sa_sidebar_collapsed`, both default on) — `initSidebarCollapse()` itself
-  is bound to MusicBrainz's `#sidebar`/`#page`/`#content`, so this is its own
-  small copy. It sits against the side bar's inner edge, or the window's edge
-  while collapsed, and collapses toward its own side. Re-placed on scroll,
-  resize and (ResizeObserver on `#content-wrap`) layout changes.
-- Right-hand side bar z-index 150: over the table's sticky header and
-  column (100/101), under the handle (10000).
+  behind its OWN setting since 2026-10-09, `sa_bb_collabsable_sidebar`
+  (default **off**, "Collabsable sidebar" above the right-hand option); it
+  used to share MusicBrainz's `sa_collabsable_sidebar` (default on). It
+  still starts collapsed with `sa_sidebar_collapsed`. `initSidebarCollapse()`
+  itself is bound to MusicBrainz's `#sidebar`/`#page`/`#content`, so this is
+  its own small copy. It sits against the side bar's inner edge, or the
+  window's edge while collapsed, and collapses toward its own side.
+  Re-placed on scroll, resize and (ResizeObserver on `#content-wrap`) layout
+  changes.
+- Side bar z-index 150 on either side: over the table's sticky header and
+  column (100/101) and the sticky filter bars (102/103), under the handle
+  (10000).
 - Opening/closing it moves the table sideways; the sticky page headers
   re-measure by themselves (the content bodies they observe change width),
   so Date still docks under its h2 bar — pinned by `bb-sidebar.spec.js`
@@ -168,9 +180,25 @@ numbers:
 
 Tests: `tests/fixtures/bb-sidebar.spec.js` (left by default and collapsing
 left, the right opt-in, starts hidden, open/close by click and keyboard, no
-handle without `sa_collabsable_sidebar`, untouched behind the gate, the
-right-hand post-render case, and Date docked under its h2 bar when scrolled,
-with nothing masked unscrolled); mutations `scripts/mutations/bb-sidebar.json`.
+handle without `sa_bb_collabsable_sidebar` nor by default with MusicBrainz's
+setting on, in view on both sides after scrolling down and sideways and
+painted over the gutter mask, untouched behind the gate, the right-hand
+post-render case, and Date docked under its h2 bar when scrolled, with
+nothing masked unscrolled); mutations `scripts/mutations/bb-sidebar.json`.
+
+## The status line — under the toolbar `<h1>`, above the theme's rule
+
+The theme draws a thin rule under every `<h1>` (flannel-ocean: `h1 {
+border-bottom: 1px dotted #AAA }`) and base pulls `#breadcrumbs` up by
+0.5em (`margin-top: -0.5em`), both meant for `#page-title`. The status line
+(`#mb-status-displays-wrapper`, no `p.subheader` here) is inserted right
+after the toolbar `<h1>`, so it sat below that rule and the breadcrumbs ran
+into it (reported 2026-10-09, stats:songs). `_ensureBbStyle()` moves the
+rule: `h1.mb-bb-h1:has(+ #mb-status-displays-wrapper)` loses it, the status
+line carries it with a 10 px bottom margin, so the order is h1, status,
+rule, breadcrumbs. The theme is stripped from the fixtures, so
+`bb-songs.spec.js` ("the status line sits between …") injects those two
+rules; mutation in `scripts/mutations/bb-support.json`.
 
 ## Year pages — `bb-year`
 
@@ -286,7 +314,9 @@ Previous / Listing / Next line stay. On the live document
   table docks only once the page is scrolled: `_sphUpdateColDocked()` adds
   `scrollX > 0` for `table.mb-bb-table` (a first sticky column otherwise
   counts as docked at scrollX 0 and its mask covers the gutter, here the
-  side bar). By then the side bar has scrolled away under the mask anyway.
+  side bar). Since 2026-10-09 the side bar is sticky with z-index 150 and
+  paints over the mask either way (see "The side bar" above); the guard
+  still keeps the unscrolled gutter clear.
   A first attempt instead left Brucebase tables out of the column alignment
   altogether; the user then saw Date dock at the window edge, left of its
   pinned "Events" bar, when scrolling right — aligned again now, and pinned

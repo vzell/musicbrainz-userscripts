@@ -312,3 +312,36 @@ test('_bbParseTabLabel reads the letter out of the tab labels', async ({ page })
     });
     expect(out).toEqual(['0-9', 'A', 'Z', 'Alt.', 'Q', 'News', '', '']);
 });
+
+test('the status line sits between the toolbar <h1> and the theme\'s rule, clear of the breadcrumbs', async ({ page }) => {
+    // Reported 2026-10-09 (screenshot of stats:songs): the status line sat
+    // BELOW the thin rule under the toolbar <h1>, and the breadcrumbs ran
+    // into it. The theme (stripped from the fixture, so injected here)
+    // underlines every h1 (flannel-ocean) and pulls #breadcrumbs up by
+    // 0.5em (base); the status line comes right after the h1. The rule now
+    // sits under the status line: h1, status, rule, breadcrumbs.
+    const errors = trackPageErrors(page);
+    await loadBbSongsPage(page);
+    await page.addStyleTag({ content: 'h1 { border-bottom: 1px dotted #AAA; } #breadcrumbs { margin-top: -0.5em; }' });
+    await showAll(page);
+    const s = await page.evaluate(() => {
+        const h1 = document.querySelector('h1.mb-bb-h1');
+        const wrap = document.getElementById('mb-status-displays-wrapper');
+        const crumbs = document.getElementById('breadcrumbs');
+        const box = (el) => el.getBoundingClientRect();
+        return {
+            follows: wrap.previousElementSibling === h1,
+            text: wrap.textContent.includes('Loaded'),
+            h1Rule: getComputedStyle(h1).borderBottomStyle,
+            wrapRule: getComputedStyle(wrap).borderBottomStyle,
+            h1Bottom: box(h1).bottom,
+            wrapTop: box(wrap).top,
+            wrapBottom: box(wrap).bottom,
+            crumbsTop: box(crumbs).top,
+        };
+    });
+    expect(s).toEqual(expect.objectContaining({ follows: true, text: true, h1Rule: 'none', wrapRule: 'dotted' }));
+    expect(s.wrapTop).toBeGreaterThanOrEqual(s.h1Bottom - 0.5);
+    expect(s.crumbsTop, 'the breadcrumbs start below the rule').toBeGreaterThanOrEqual(s.wrapBottom);
+    expect(errors).toEqual([]);
+});

@@ -1,0 +1,27 @@
+[
+  {
+    "version": "WIP.2",
+    "date": "2026-10-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Brucebase: the status line (\"Loaded 1 page …\") sat below the thin rule under the heading with the buttons, and on the song list the breadcrumbs ran into it. It now sits between the heading and the rule, with the breadcrumbs below."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-10-09",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Brucebase: the wiki's side bar (Site Navigation, Gig Pages, …) stays in view while you scroll: at the top of the window when you scroll down a year's events, and at the window's edge when you scroll the wide table sideways, with the Date column docking just right of it.",
+          "Brucebase: the side bar's collapse handle has its own setting, ⚙️ 📚 Brucebase → \"Collabsable sidebar\", off by default, so the side bar now shows without a handle. The MusicBrainz setting of that name no longer applies there; \"Start with sidebar collapsed\" still does once the handle is on."
+        ]
+      }
+    ]
+  }
+]

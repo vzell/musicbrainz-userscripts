@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1298+2026-10-08",
-    "schema_entries": 398,
+    "script_version": "9.99.1306+2026-10-09",
+    "schema_entries": 399,
     "sections": 48,
-    "settings": 350,
-    "settings_with_default": 345,
+    "settings": 351,
+    "settings_with_default": 346,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 177,
+      "checkbox": 178,
       "color_picker": 62,
       "number": 51,
       "divider": 48,
@@ -241,6 +241,7 @@
     "sa_auto_expand": "Auto-Expand Rows in Multi-Table page types",
     "sa_auto_resize_columns": "Auto-resize columns on load",
     "sa_auto_resize_columns_threshold": "Auto-resize columns threshold (rows)",
+    "sa_bb_collabsable_sidebar": "Collabsable sidebar",
     "sa_bb_detail_preview": "Preview song pages on the Brucebase song list",
     "sa_bb_sidebar_right": "Show the Brucebase side bar on the right",
     "sa_bb_year_pages": "Enable on the Brucebase year pages (event lists)",
@@ -593,6 +594,7 @@
     "sa_auto_expand": 50,
     "sa_auto_resize_columns": true,
     "sa_auto_resize_columns_threshold": 10000,
+    "sa_bb_collabsable_sidebar": false,
     "sa_bb_detail_preview": false,
     "sa_bb_sidebar_right": false,
     "sa_bb_year_pages": false,

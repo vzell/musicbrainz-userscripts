@@ -4261,16 +4261,27 @@
                          'those pages before touching them.'
         },
 
+        sa_bb_collabsable_sidebar: {
+            label: 'Collabsable sidebar',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default; needs one of the Brucebase settings above. Gives the ' +
+                         'wiki\'s side bar (Site Navigation, Gig Pages, …) the same collapse ' +
+                         'handle as the MusicBrainz sidebar; it then starts hidden while "Start ' +
+                         'with sidebar collapsed" is on, and collapses toward its own side. ' +
+                         'Separate from the MusicBrainz "Collabsable sidebar". Collapsible or ' +
+                         'not, the side bar stays in view while the page scrolls down or sideways.'
+        },
+
         sa_bb_sidebar_right: {
             label: 'Show the Brucebase side bar on the right',
             type: 'checkbox',
             default: false,
             description: 'Off by default; needs one of the Brucebase settings above. Moves the ' +
                          'wiki\'s side bar (Site Navigation, Gig Pages, …) from the left to the ' +
-                         'right of the page, as on MusicBrainz. Either way it gets the same ' +
-                         'collapse handle as the MusicBrainz sidebar (⚙️ "Collabsable sidebar"), ' +
-                         'and starts hidden while "Start with sidebar collapsed" is on; on the ' +
-                         'left it collapses to the left.'
+                         'right of the page, as on MusicBrainz. Either way it stays in view while ' +
+                         'the page scrolls, and with the setting above it collapses toward its ' +
+                         'own side.'
         },
 
         sa_bb_detail_preview: {
@@ -13951,6 +13962,20 @@
                 margin: 4px 0 10px;
                 line-height: 1.4;
             }
+            /* The theme underlines every h1 (flannel-ocean: 1px dotted #AAA)
+               and pulls #breadcrumbs up by 0.5em into whatever follows the
+               title. The status line sits right after this h1, so the rule
+               moves from the h1 to the status line: h1, status, rule,
+               breadcrumbs, as the wiki has title, rule, breadcrumbs. */
+            body.mb-sa-host-bb h1.mb-bb-h1:has(+ #mb-status-displays-wrapper) {
+                border-bottom: none;
+                margin-bottom: 0;
+            }
+            body.mb-sa-host-bb h1.mb-bb-h1 + #mb-status-displays-wrapper {
+                border-bottom: 1px dotted #AAA;
+                padding-bottom: 3px;
+                margin-bottom: 10px;
+            }
             body.mb-sa-host-bb h2.mb-bb-list-heading {
                 font-size: 18px;
                 margin: 10px 0;
@@ -13969,18 +13994,30 @@
                 flex: 1 1 auto;
                 min-width: 0;
             }
+            /* Always in view: sticky at the top on either side, capped at the
+               window's height (scrolling inside itself when taller), and at
+               the window's edge on its side while the page scrolls sideways;
+               z-index 150 over the table's sticky header and column (100/101)
+               and the Date column's gutter mask (see _bbArrangeSideBar()). */
             body.mb-sa-host-bb #content-wrap.mb-bb-cw > #side-bar {
                 float: none !important;
                 flex: 0 0 auto;
+                position: sticky;
+                top: 0;
+                z-index: 150;
+                align-self: flex-start;
+                /* content-box (the theme's width is 14em plus 1em padding):
+                   the padding and the two borders come off the cap. */
+                max-height: calc(100vh - 2em - 2px);
+                overflow-y: auto;
             }
             body.mb-sa-host-bb #content-wrap.mb-bb-sb-left > #side-bar {
                 margin-right: 13px !important;
+                left: 0;
             }
             body.mb-sa-host-bb #content-wrap.mb-bb-sb-right > #side-bar {
                 margin-left: 13px !important;
-                position: sticky;
                 right: 0;
-                z-index: 150;
             }
             body.mb-sa-host-bb #content-wrap.mb-bb-sb-collapsed > #side-bar {
                 display: none !important;
@@ -14109,11 +14146,17 @@
      * page), which puts the side bar's natural place far off to the right, so
      * it sticks to the window's right edge instead, z-index 150, over the
      * table's sticky header and column (100/101), under the handle (10000).
-     * On the left (the default since 2026-10-09: it looks better there) it
-     * stays in the flow with no z-index, so the docked Date column and its
-     * gutter mask paint over it once the page is scrolled sideways.
+     * On the left (the default since 2026-10-09: it looks better there) it is
+     * `position: sticky; left: 0` with the same z-index: scrolled sideways it
+     * stays at the window's left edge, over the docked Date column's gutter
+     * mask, and Date docks at its natural left, just right of it. On either
+     * side it is also `top: 0` (capped at the window's height, scrolling
+     * inside itself when taller), so it stays in view while the page scrolls
+     * down: a year table is thousands of pixels tall, the side bar 550.
      *
-     * With `sa_collabsable_sidebar` it gets the MusicBrainz sidebar's handle
+     * With `sa_bb_collabsable_sidebar` (default off; its own setting since
+     * 2026-10-09, it used to share MusicBrainz's `sa_collabsable_sidebar`)
+     * it gets the MusicBrainz sidebar's handle
      * (same look; `initSidebarCollapse()` itself is bound to MusicBrainz's
      * `#sidebar`, `#page` and `#content`), starting collapsed while
      * `sa_sidebar_collapsed` is on. It collapses toward its own side, so on
@@ -14132,7 +14175,7 @@
         if (right) wrap.appendChild(side);
         Lib.debug('init', `_bbArrangeSideBar: side bar on the ${right ? 'right' : 'left'}.`);
 
-        if (!Lib.settings.sa_collabsable_sidebar || document.getElementById('mb-bb-sidebar-handle')) return;
+        if (Lib.settings.sa_bb_collabsable_sidebar !== true || document.getElementById('mb-bb-sidebar-handle')) return;
         const handle = document.createElement('div');
         handle.id = 'mb-bb-sidebar-handle';
         handle.className = right ? 'mb-bb-handle-right' : 'mb-bb-handle-left';
@@ -32168,8 +32211,9 @@
             // counts as docked at scrollX 0 already, and its gutter mask then
             // paints over whatever sits left of the table: there, the wiki's
             // side bar (reported from a real browser, 2026-10-09). It docks
-            // only once the page is actually scrolled, when the side bar has
-            // scrolled away under the mask anyway.
+            // only once the page is actually scrolled. Since the side bar is
+            // sticky (z-index 150, _ensureBbStyle()) it paints over the mask
+            // either way; the guard still keeps the unscrolled gutter clear.
             const docked = scrollX >= p - 0.5 && (scrollX > 0 || !table.classList.contains('mb-bb-table'));
             if (table.classList.contains('mb-sph-col-docked') !== docked) {
                 table.classList.toggle('mb-sph-col-docked', docked);
