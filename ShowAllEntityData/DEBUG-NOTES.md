@@ -21019,3 +21019,51 @@ page-level route, which takes precedence. The spec also checks that
 which is a popup with an opener, not a background tab. It needs the tab
 object, and has not been seen flaking. If it ever does, this entry is the
 first suspect.
+
+## 2026-10-09 — Brucebase year pages: what four hand-read pages got wrong (branch feature/bb-years, WIP.1)
+
+**Context.** `org/BB-events.org` asked for the year pages
+(`brucebase.wikidot.com/<YYYY>`, `/1949-64`) to get the `bb-songs`
+treatment. The plan was written from `debug/bb-2026-initial.html` and six
+pages read through WebFetch (1949-64, 1969, 1975, 1985, 1999, 2016). A probe
+over ALL 63 pages (`scripts/probe-bb-year-pages.py`, cache in
+`debug/bb-year-cache/`) and a corpus run of the converter itself
+(`scripts/check-bb-year-converter.js`, Chromium, no userscript around it)
+then overturned five of the plan's assumptions before any spec was written:
+
+1. **"An entry starts at `<a name="ddmmyy">`."** 712 of 5,009 anchors carry
+   a letter (`000065a`: several entries on one date), and two sit in a
+   paragraph of their own. The first probe counted 4,293 entries. The opener
+   is now the heading paragraph: one date-led `<strong>`, anchor optional.
+   `_extBbParseYear()` (the MusicBrainz-side date-link reader) has the same
+   `\d{6}` assumption and was left alone (MusicBrainz must not change).
+2. **"The description is the `.list-pages-box`."** 2,732 entries write it as
+   plain paragraphs after the sets. The first probe therefore took every
+   description paragraph for a set paragraph: its "set note" table was full of
+   magazine names and stage quotes. Paragraphs are now classified by content
+   (`_bbSetParagraphKind()`): capitals outside parentheses = songs, judged per
+   " / " segment; a superscript-only paragraph and a lone `<em>` naming the
+   set = note; a lone `<em>` in capitals = a setlist in italics (2018).
+3. **"A non-US four-part heading is VENUE, CITY, REGION, COUNTRY."** Only for
+   the Australian states and GRAN CANARIA; every other one is VENUE,
+   SUB-VENUE, CITY, COUNTRY ("ICC BERLIN, SAAL 1, BERLIN, GERMANY"). Hence a
+   closed list, `_BB_REGIONS`.
+4. **"Icon titles name the icons."** They carry typos ("Newss", "Bootlef",
+   "Photos", "memorabilia"); the label is read from the image FILE.
+5. **"Tour boxes are Start of / End of."** There are legs, "Continuation of"
+   (a year opening mid-tour), "End Of", and combined
+   "End of … / Start of …" headings.
+
+Also found: two headings without " - " after the date, two without a link,
+`00` months (`1971-00-00`), a `CO/KS/NE` state group, the `nobruce:` prefix.
+
+**The fixture spec then caught one real bug and two of its own counting
+errors.** `_bbParseHeading()` read "Https" as the Type of an absolute href
+(the regex took the scheme). The spec had counted icons by file name, which
+is in `alt` too (doubled), and looked for `&quot;` in the browser-saved 2026
+snapshot, which writes `"`.
+
+**Result.** 5,009 rows for 5,009 headings over the 63 pages, 0 problems in
+the corpus check; `tests/fixtures/bb-year.spec.js` 20/20 on four real pages
+(2026, 1968, 1985, 2018). Rules and numbers: docs/claude/brucebase.md,
+"Year pages — `bb-year`".

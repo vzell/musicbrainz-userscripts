@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-09",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase year pages (brucebase.wikidot.com/1975, …, /2026, and /1949-64): a new \"Events\" button turns the year's shows, sessions, rehearsals, interviews and cancelled dates into one filterable, sortable table, one row per entry — Date (with DD/MM/YYYY/Day/Month; a day or month the wiki gives as 00 is left out), Type, Venue (linked to the entry's page), City, State, Country, Tour (from the wiki's tour and era boxes), Soundcheck and Setlist one song per row (other labelled sets such as \"Pre-show:\" stay in Setlist, tagged with their label), Set note, Notes (the description with its links; song links get the song preview), Media (the wiki's own icons, filterable by name) and Info wanted. Off by default: new setting \"Enable on the Brucebase year pages (event lists)\" (sa_bb_year_pages), which needs the Brucebase switch on too."
+        ]
+      }
+    ]
+  }
+]
