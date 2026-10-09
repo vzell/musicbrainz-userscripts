@@ -667,6 +667,65 @@ test.describe('MusicBrainz link previews: recording and work (WIP.2)', () => {
         expect(log.ws2).toEqual([expect.stringContaining(`/ws/2/recording/${REC_ID}?inc=artist-credits+isrcs+releases+work-rels&fmt=json`)]);
     });
 
+    test('a track named differently from its recording: the note above the card, no native box, the badge in the window', async ({ page }) => {
+        // Pins: jesus2099's "mb. INLINE STUFF" title on a recording link
+        // ("track name: …\n≠rec. name: …") is shown as #mb-dp-origin, a box
+        // stacked ABOVE the card (its bottom at the card's top, same left);
+        // the link's native title is parked while the card shows (else the
+        // browser draws its own box over the card) and comes back when it
+        // closes; the 📊 flag still reads it while parked; Space puts the same
+        // note in the window's title bar, after the title.
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const NOTE = 'track name: Thunder Road (version 7)\n≠rec. name: Thunder Road';
+        const a = await addLink(page, `/recording/${REC_ID}`, 'Thunder Road (version 7)');
+        await a.evaluate((el, t) => el.setAttribute('title', t), NOTE);
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        const origin = page.locator('#mb-dp-origin');
+        await expect(origin).toBeVisible();
+        await expect(origin.locator('dt')).toHaveText(['Track name', '≠ Recording']);
+        await expect(origin.locator('dd')).toHaveText(['Thunder Road (version 7)', 'Thunder Road']);
+        const box = await origin.boundingBox();
+        const cbox = await card(page).boundingBox();
+        expect(Math.abs((box.y + box.height + 4) - cbox.y)).toBeLessThan(1.5);
+        expect(Math.abs(box.x - cbox.x)).toBeLessThan(1);
+        // No native box while the card shows; the flag is still readable.
+        await expect(a).not.toHaveAttribute('title', /./);
+        await expect(a).toHaveAttribute('data-mb-dp-saved-title', NOTE);
+        expect(await a.evaluate((el) => window.__saTest.titleHasRecNameMismatch(el.closest('td')))).toBe(true);
+
+        await page.keyboard.press('Escape');
+        await expect(card(page)).toBeHidden();
+        await expect(origin).toBeHidden();
+        await expect(a).toHaveAttribute('title', NOTE);
+        await expect(a).not.toHaveAttribute('data-mb-dp-saved-title', /.*/);
+
+        await ctrlHover(page, a);
+        await expect(origin).toBeVisible();
+        await page.keyboard.press('Space');
+        const badge = dialog(page).locator(':scope > div > .mb-dp-origin');
+        await expect(badge).toBeVisible();
+        await expect(badge).toHaveText('from track “Thunder Road (version 7)” ≠ recording “Thunder Road”');
+        // Right after the title, before the controls.
+        await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Recording');
+        expect(await badge.evaluate((b) => b.previousElementSibling === b.parentElement.querySelector(':scope > span'))).toBe(true);
+        await expect(origin).toBeHidden();
+        await expect(a).toHaveAttribute('title', NOTE);
+    });
+
+    test('control: a recording link without a note shows no box and no badge, and keeps its own title', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, `/recording/${REC_ID}`, 'Thunder Road');
+        await a.evaluate((el) => el.setAttribute('title', 'Springsteen, Bruce'));
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(page.locator('#mb-dp-origin')).toBeHidden();
+        await expect(a).toHaveAttribute('title', 'Springsteen, Bruce');
+        await page.keyboard.press('Space');
+        await expect(dialog(page)).toBeVisible();
+        await expect(dialog(page).locator(':scope > div > .mb-dp-origin')).toBeHidden();
+    });
+
     test('the recording window: credits and the real release count, each asked once; ⟳ asks all again', async ({ page }) => {
         const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
         const a = await addLink(page, `/recording/${REC_ID}`, 'Thunder Road');

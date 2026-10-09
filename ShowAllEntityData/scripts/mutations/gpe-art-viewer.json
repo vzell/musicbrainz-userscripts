@@ -141,5 +141,96 @@
         "spec": "tests/fixtures/detail-preview.spec.js",
         "grep": "Brucebase: the card's count",
         "expect": "fail"
+    },
+    {
+        "name": "the note's native title is not parked while the card shows",
+        "why": "The browser then draws INLINE STUFF's own box over the recording card, the double box the note replaces.",
+        "edits": [
+            {
+                "find": "        if (!el || !el.hasAttribute || !el.hasAttribute('title') || !_dpOriginNote(el)) return;\n        el.setAttribute('data-mb-dp-saved-title', el.getAttribute('title'));",
+                "replace": "        if (el) return;\n        el.setAttribute('data-mb-dp-saved-title', el.getAttribute('title'));"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a track named differently from its recording",
+        "expect": "fail"
+    },
+    {
+        "name": "the parked title is never given back",
+        "why": "The link would lose INLINE STUFF's title for good after one card, and with it the 📊 flag once the parked attribute is gone.",
+        "edits": [
+            {
+                "find": "        if (!_dpPeek.stashed) return;\n        _dpPeek.stashed = false;",
+                "replace": "        if (_dpPeek.stashed || !_dpPeek.stashed) return;\n        _dpPeek.stashed = false;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a track named differently from its recording",
+        "expect": "fail"
+    },
+    {
+        "name": "the note box sits on the card instead of above it",
+        "why": "Not stacked: the box covers the card's first lines.",
+        "edits": [
+            {
+                "find": "            o.style.top = (top - oh) + 'px';",
+                "replace": "            o.style.top = top + 'px';"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a track named differently from its recording",
+        "expect": "fail"
+    },
+    {
+        "name": "the note box stays up after the card hides",
+        "why": "An orphan box would float over the table after Esc, a scroll or a click.",
+        "edits": [
+            {
+                "find": "        if (_dpPeek.origin) _dpPeek.origin.style.display = 'none';\n        _dpRestoreOriginTitles();",
+                "replace": "        _dpRestoreOriginTitles();"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a track named differently from its recording",
+        "expect": "fail"
+    },
+    {
+        "name": "the window shows no badge",
+        "why": "The window shows the recording's name; without the badge nothing says which track it came from.",
+        "edits": [
+            {
+                "find": "            badge.style.display = note ? '' : 'none';",
+                "replace": "            badge.style.display = 'none';"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a track named differently from its recording",
+        "expect": "fail"
+    },
+    {
+        "name": "the 📊 flag reads the bare title only",
+        "why": "While a card shows, the title is parked: a count, a finding stamp or a clone taken then would lose the ≠ flag.",
+        "edits": [
+            {
+                "find": "        return Array.from(cell.querySelectorAll('a[title], a[data-mb-dp-saved-title]')).some(a => _dpOriginTitle(a).includes('≠'));",
+                "replace": "        return Array.from(cell.querySelectorAll('a[title]')).some(a => a.title.includes('≠'));"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a track named differently from its recording",
+        "expect": "fail"
+    },
+    {
+        "name": "every title is parked, not just the note",
+        "why": "A link's other titles (MusicBrainz's sort names, other scripts') have no box of their own: parking them would hide them for good while the card shows.",
+        "edits": [
+            {
+                "find": "        if (!el || !el.hasAttribute || !el.hasAttribute('title') || !_dpOriginNote(el)) return;",
+                "replace": "        if (!el || !el.hasAttribute || !el.hasAttribute('title')) return;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "control: a recording link without a note",
+        "expect": "fail"
     }
 ]

@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-10-09",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "MusicBrainz recording preview on a release page: when jesus2099's \"mb. INLINE STUFF\" marks a track as named differently from its recording, the browser's small \"track name … ≠ rec. name …\" box no longer appears over the card. The same two names now sit in a box stacked just above the card. Once the card is pinned with Space, a maroon badge next to the window's title says which track it came from (\"from track “…” ≠ recording “…”\"). Other titles on the link stay as they were."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "2026-10-09",
     "sections": [

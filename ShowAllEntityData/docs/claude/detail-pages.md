@@ -429,6 +429,34 @@ floating hover tooltip.
   detail link opens the dialog INSTEAD of the page. A touch screen has no hover;
   the dialog's ↗ opens the page. The hover handler's own tap guard is covered
   by the mousedown hide (recorded `"expect": "pass"`).
+- **The track/recording name note (`#mb-dp-origin`, 2026-10-09).** jesus2099's
+  "mb. INLINE STUFF" gives a release page's recording link a native
+  `title="track name: …\n≠rec. name: …"` when the track is named differently
+  from its recording. The browser drew that box over the recording card. Now:
+  - `_dpStashOriginTitle()` parks the title in `data-mb-dp-saved-title` as
+    soon as a card is DUE (`_dpSchedulePeek()`, and `_dpShowPeek()` for Ctrl's
+    immediate card). That is before the browser's own delay runs out.
+  - The same content shows as `#mb-dp-origin`, a `.mb-tt-liner` box of its own
+    STACKED ABOVE the card: same left, 4 px gap, at most as wide as the card.
+    `_dpPlacePeek()` places the two as one unit.
+  - `_dpHidePeek()` hides the box, and `_dpRestoreOriginTitles()` gives back
+    every parked title, including any clone a re-render made of the row
+    meanwhile. It sweeps the document only after a stash
+    (`_dpPeek.stashed`), so a hide costs nothing on a page without notes.
+  - Only the note is parked, because only the note has a box of its own. A
+    link's other titles (MusicBrainz's sort names, other scripts') stay; a
+    mutation pins this.
+  - `_titleHasRecNameMismatch()` (the 📊 flag and the ⚠️ finding) reads the
+    title OR the parked attribute (`_dpOriginTitle()`), so a count, a stamp or
+    a clone taken while a card shows still sees the flag.
+  - In the window, `_dpShowInDialog()` writes the note as a badge
+    (`.mb-dp-origin`) right after the title in createInfoDialog()'s title bar:
+    "from track “…” ≠ recording “…”", maroon italic Georgia, ellipsed, with
+    the full text as its own tip. It takes `margin-right: auto` in the
+    `space-between` bar, so the controls stay right. Along a drill-down path
+    it keeps the page target's note (`stack[0]`, where ← → go on from too).
+  Covered by `popup-mb.spec.js` (the note and its control); mutation list
+  `gpe-art-viewer.json`.
 
 ## The dialog (`#mb-dp-dialog`)
 

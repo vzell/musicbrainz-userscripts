@@ -13411,10 +13411,111 @@
      * (`link`: a link, or a container such as a "#" cell) and that element's
      * target (`_popResolve()`), the pending show timer, and the previewable
      * element under the pointer (`hover`, kept whether or not a card is due,
-     * so that pressing Ctrl on it can show one).
-     * @type {{el: ?HTMLElement, link: ?Element, target: ?object, timer: number, typedAt: number, hover: ?Element}}
+     * so that pressing Ctrl on it can show one). `origin` is the box stacked
+     * above the card (`_dpOriginNote()`); `stashed` says a link's native
+     * title is parked in `data-mb-dp-saved-title` (`_dpStashOriginTitle()`).
+     * @type {{el: ?HTMLElement, link: ?Element, target: ?object, timer: number, typedAt: number, hover: ?Element, origin: ?HTMLElement, stashed: boolean}}
      */
-    const _dpPeek = { el: null, link: null, target: null, timer: 0, typedAt: 0, hover: null };
+    const _dpPeek = { el: null, link: null, target: null, timer: 0, typedAt: 0, hover: null, origin: null, stashed: false };
+
+    // ── Where the card comes from: a track name that differs from its
+    // recording's ─────────────────────────────────────────────────────────
+    //
+    // jesus2099's "mb. INLINE STUFF" (tests/fixtures/live-userscripts/
+    // mb_INLINE-STUFF.user.js) gives a release page's recording link a native
+    // `title="track name: …\n≠rec. name: …"` when the track is named
+    // differently from its recording (`_titleHasRecNameMismatch()` reads the
+    // same flag for the 📊 dropdown). That browser box used to appear over the
+    // recording card. While the card shows, the title is parked and its
+    // content is a small box stacked above the card. In the pinned window it
+    // is a badge beside the title, so the window always says which track it
+    // was opened from, even though it shows the recording's own name.
+
+    /** The note's shape: INLINE STUFF's own wording, two lines. */
+    const _DP_ORIGIN_TITLE_RE = /^track name: ([\s\S]*?)\n≠rec\. name: ([\s\S]*)$/;
+
+    /**
+     * An element's native title, or the one `_dpStashOriginTitle()` parked
+     * while the card showed. A re-render that clones a row during the card
+     * copies the parked attribute, never the bare title.
+     *
+     * @param {?Element} el
+     * @returns {string}
+     */
+    function _dpOriginTitle(el) {
+        if (!el || !el.getAttribute) return '';
+        return el.getAttribute('title') || el.getAttribute('data-mb-dp-saved-title') || '';
+    }
+
+    /**
+     * The track/recording name note on a link (see above): the two names, or
+     * — a "≠" title in another wording — the title's text as it is; null when
+     * the link carries none.
+     *
+     * @param {?Element} el
+     * @returns {?{track: string, rec: string, text: string}}
+     */
+    function _dpOriginNote(el) {
+        const s = _dpOriginTitle(el);
+        if (!s.includes('≠')) return null;
+        const m = _DP_ORIGIN_TITLE_RE.exec(s);
+        return m ? { track: m[1].trim(), rec: m[2].trim(), text: '' } : { track: '', rec: '', text: s.trim() };
+    }
+
+    /**
+     * Parks a link's note title while its card shows, so the browser does not
+     * draw its own box over the card; `_dpRestoreOriginTitles()` gives it
+     * back. Any other title stays: only the note has a box of its own.
+     *
+     * @param {?Element} el
+     * @returns {void}
+     */
+    function _dpStashOriginTitle(el) {
+        if (!el || !el.hasAttribute || !el.hasAttribute('title') || !_dpOriginNote(el)) return;
+        el.setAttribute('data-mb-dp-saved-title', el.getAttribute('title'));
+        el.removeAttribute('title');
+        _dpPeek.stashed = true;
+    }
+
+    /**
+     * Gives every parked note title back, on the link and on any clone a
+     * re-render made of its row meanwhile. Only after a stash, so a hide costs
+     * nothing on a page without notes.
+     *
+     * @returns {void}
+     */
+    function _dpRestoreOriginTitles() {
+        if (!_dpPeek.stashed) return;
+        _dpPeek.stashed = false;
+        document.querySelectorAll('[data-mb-dp-saved-title]').forEach((el) => {
+            if (!el.hasAttribute('title')) el.setAttribute('title', el.getAttribute('data-mb-dp-saved-title'));
+            el.removeAttribute('data-mb-dp-saved-title');
+        });
+    }
+
+    /**
+     * The box stacked above the card: the track's name, then the
+     * recording's, each labelled.
+     *
+     * @param {{track: string, rec: string, text: string}} n
+     * @returns {string}
+     */
+    function _dpOriginHtml(n) {
+        if (n.text) return `<div class="mb-tt-body">${n.text.split('\n').map(_mbttEscape).join('<br>')}</div>`;
+        return '<dl class="mb-dp-origin-kv">' +
+            `<dt>Track name</dt><dd class="mb-dp-origin-track">${_mbttEscape(n.track)}</dd>` +
+            `<dt>≠ Recording</dt><dd>${_mbttEscape(n.rec)}</dd></dl>`;
+    }
+
+    /**
+     * The window's badge text for a note: where the window was opened from.
+     *
+     * @param {{track: string, rec: string, text: string}} n
+     * @returns {string}
+     */
+    function _dpOriginBadgeText(n) {
+        return n.text ? n.text.replace(/\s*\n\s*/g, ' · ') : `from track “${n.track}” ≠ recording “${n.rec}”`;
+    }
 
     /**
      * Whether the card waits for Ctrl: true unless
@@ -14560,6 +14661,24 @@
     }
 
     /**
+     * Creates the box stacked above the card (`_dpOriginNote()`) once: a
+     * `.mb-tt-liner` card of its own, hidden until a link carries a note.
+     *
+     * @returns {HTMLElement}
+     */
+    function _dpEnsureOriginEl() {
+        if (_dpPeek.origin && _dpPeek.origin.isConnected) return _dpPeek.origin;
+        const el = document.createElement('div');
+        el.id = 'mb-dp-origin';
+        el.className = 'mb-tt-liner';
+        el.setAttribute('role', 'tooltip');
+        el.style.display = 'none';
+        document.body.appendChild(el);
+        _dpPeek.origin = el;
+        return el;
+    }
+
+    /**
      * Places the hover card beside its link: to the right of the link's text
      * when there is room, else to its left, else below it, and always inside
      * the window. Beside rather than below, so the rows under the pointer
@@ -14576,6 +14695,11 @@
         el.style.top = '0px';
         const w = el.offsetWidth;
         const h = el.offsetHeight;
+        // The box stacked above the card (`_dpOriginNote()`): the two move
+        // as one, the box 4 px above the card and as wide at most.
+        const o = _dpPeek.origin && _dpPeek.origin.style.display === 'block' ? _dpPeek.origin : null;
+        if (o) o.style.maxWidth = w + 'px';
+        const oh = o ? o.offsetHeight + 4 : 0;
         const vw = window.innerWidth;
         const vh = window.innerHeight;
         let x = r.right + 12;
@@ -14584,12 +14708,18 @@
             x = r.left - w - 12;
             if (x < 8) {
                 x = Math.min(Math.max(8, r.left), vw - w - 8);
-                y = r.bottom + 8;
+                y = r.bottom + 8 + oh;
                 if (y + h > vh - 8) y = r.top - h - 8;
             }
         }
-        el.style.left = Math.max(8, x) + 'px';
-        el.style.top = Math.max(8, Math.min(y, vh - h - 8)) + 'px';
+        const left = Math.max(8, x);
+        const top = Math.max(8 + oh, Math.min(y, vh - h - 8));
+        el.style.left = left + 'px';
+        el.style.top = top + 'px';
+        if (o) {
+            o.style.left = left + 'px';
+            o.style.top = (top - oh) + 'px';
+        }
     }
 
     /**
@@ -14612,6 +14742,8 @@
         _dpPeek.link = null;
         _dpPeek.target = null;
         if (_dpPeek.el) _dpPeek.el.style.display = 'none';
+        if (_dpPeek.origin) _dpPeek.origin.style.display = 'none';
+        _dpRestoreOriginTitles();
     }
 
     /**
@@ -14626,6 +14758,9 @@
         _dpHidePeek();
         _dpPeek.link = t.el;
         _dpPeek.target = t;
+        // A card is due: the browser's own box for a note would come up over
+        // it (its delay is about the card's), so the note's title goes now.
+        _dpStashOriginTitle(t.el);
         const d = Lib.settings.sa_rich_tooltip_delay_ms;
         _dpPeek.timer = setTimeout(() => _dpShowPeek(t), (typeof d === 'number' && d >= 0) ? d : 400);
     }
@@ -14647,6 +14782,14 @@
             el.innerHTML = t.src.card(t, false, repaint);
             _dpPlacePeek(t.el);
         };
+        // The link's track/recording name note, as a box above the card
+        // (Ctrl shows a card without the schedule, so the title is parked
+        // here too).
+        _dpStashOriginTitle(t.el);
+        const note = _dpOriginNote(t.el);
+        const o = _dpEnsureOriginEl();
+        o.style.display = note ? 'block' : 'none';
+        o.innerHTML = note ? _dpOriginHtml(note) : '';
         // Shown before the source is asked, so a request it starts finds
         // its card showing when its rate slot comes up.
         el.style.display = 'block';
@@ -15007,6 +15150,16 @@
         const kinds = _dpDialog.stack.concat([t]).map(x => x.kind || x.src.kind);
         if (title) title.textContent = (kinds.length > 3 ? ['…', ...kinds.slice(-3)] : kinds).join(' › ');
         if (_dpDialog.controls && _dpDialog.controls.back) _dpDialog.controls.back.style.display = _dpDialog.stack.length ? '' : 'none';
+        // Where the window was opened from: the page target's note (kept
+        // along a drill-down path, which starts from it, as ← → do).
+        const badge = _dpDialog.controls && _dpDialog.controls.origin;
+        if (badge) {
+            const from = _dpDialog.stack.length ? _dpDialog.stack[0] : t;
+            const note = _dpOriginNote(from.el);
+            badge.style.display = note ? '' : 'none';
+            badge.textContent = note ? _dpOriginBadgeText(note) : '';
+            if (note) _setTip(badge, note.text || `Opened from a track named “${note.track}”; its recording is named “${note.rec}”.`);
+        }
         // A drilled target's element is a link in the window, not a row of
         // the page: the page's row keeps its mark.
         if (!t.drilled) {
@@ -15251,6 +15404,14 @@
         if (!api) return;
         if (!GM_getValue('sa_dp_dialog_geometry', null)) api.dialog.style.height = 'min(640px, 86vh)';
         api.dialog.classList.add('mb-dp-dialog');
+        // The badge saying where the window was opened from (a track named
+        // differently from its recording, `_dpOriginNote()`), right after the
+        // title; `_dpShowInDialog()` fills or hides it.
+        const origin = document.createElement('span');
+        origin.className = 'mb-dp-origin';
+        origin.style.display = 'none';
+        const titleSpan = api.dialog.querySelector(':scope > div > span');
+        if (titleSpan) titleSpan.after(origin);
         api.scrollArea.classList.add('mb-dp-area');
         api.scrollArea.addEventListener('error', (e) => {
             if (e.target && e.target.tagName === 'IMG') e.target.remove();
@@ -15266,7 +15427,7 @@
             else if (_dpDialog.target && _dpDialog.target.src.onAreaClick) _dpDialog.target.src.onAreaClick(e, _dpDialog.target);
         });
         _dpDialog.api = api;
-        _dpDialog.controls = { pos, ex, live, open, back };
+        _dpDialog.controls = { pos, ex, live, open, back, origin };
         back.addEventListener('click', _dpBack);
         prev.addEventListener('click', () => _dpStep(-1));
         next.addEventListener('click', () => _dpStep(1));
@@ -15309,6 +15470,43 @@
                 min-width: 240px;
                 max-width: 420px;
                 pointer-events: none;
+            }
+            /* The track/recording name note stacked above the card
+               (_dpOriginNote()): the maroon INLINE STUFF gives such a track. */
+            #mb-dp-origin {
+                position: fixed;
+                pointer-events: none;
+                border-left: 3px solid #8b1a1a;
+                padding: 5px 10px;
+            }
+            #mb-dp-origin .mb-dp-origin-kv {
+                display: grid;
+                grid-template-columns: max-content minmax(0, 1fr);
+                gap: 1px 10px;
+                margin: 0;
+            }
+            #mb-dp-origin .mb-dp-origin-kv dt {
+                font: 600 10.5px/1.6 ui-monospace, Consolas, monospace;
+                letter-spacing: 0.06em;
+                text-transform: uppercase;
+                color: #8b1a1a;
+            }
+            #mb-dp-origin .mb-dp-origin-kv dd { margin: 0; overflow-wrap: anywhere; }
+            #mb-dp-origin .mb-dp-origin-track { font-weight: 700; }
+            /* The window's badge: where it was opened from, after the title. */
+            .mb-dp-dialog .mb-dp-origin {
+                flex: 0 1 auto;
+                min-width: 0;
+                margin: 0 auto 0 14px;
+                padding: 2px 10px;
+                border-left: 3px solid #8b1a1a;
+                border-radius: 2px;
+                background: #f8e9e6;
+                color: #8b1a1a;
+                font: italic 600 13px/1.4 Georgia, "Times New Roman", Times, serif;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
             #mb-dp-peek .mb-dp-head { display: flex; gap: 10px; align-items: flex-start; }
             #mb-dp-peek .mb-dp-headtext { min-width: 0; flex: 1; }
@@ -33260,11 +33458,16 @@
      * this is immune to exactly which third-party script produced it or how
      * its class names are versioned.
      *
+     * While a recording card shows, the popup engine parks that title in
+     * `data-mb-dp-saved-title` (`_dpStashOriginTitle()`), so both are read
+     * (`_dpOriginTitle()`): a count taken then, or a row cloned then, still
+     * sees the flag.
+     *
      * @param {Element} cell - A `<td>` in the 'Title' column.
      * @returns {boolean}
      */
     function _titleHasRecNameMismatch(cell) {
-        return Array.from(cell.querySelectorAll('a[title]')).some(a => a.title.includes('≠'));
+        return Array.from(cell.querySelectorAll('a[title], a[data-mb-dp-saved-title]')).some(a => _dpOriginTitle(a).includes('≠'));
     }
 
     /**
@@ -115835,6 +116038,15 @@ a { color: #1565c0; }`;
     // that is what keeps it honest.
     if (typeof window !== 'undefined' && window.__SA_TEST_MODE__) {
         window.__saTest = {
+            /**
+             * The Title cell's "track name ≠ recording name" flag
+             * (`_titleHasRecNameMismatch()`), which must still hold while the
+             * popup engine has the title parked (`_dpStashOriginTitle()`).
+             *
+             * @param {Element} cell
+             * @returns {boolean}
+             */
+            titleHasRecNameMismatch: (cell) => _titleHasRecNameMismatch(cell),
             /**
              * The "Liner notes" formatter (`_tipTextToHtml()`): a plain tooltip
              * text in, the card's HTML out. Pure, so a spec can pin its title /

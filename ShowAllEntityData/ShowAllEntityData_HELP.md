@@ -1615,6 +1615,13 @@ change.
   release page's Cover art, stepping through all of that release's or event's
   images. **Esc** returns to the window; Ctrl-click opens the image in a new
   tab instead.
+- **A track named differently from its recording.** With jesus2099's
+  *mb. INLINE STUFF* installed, a track whose name differs from its recording's
+  carries a note with both names. The browser used to show that note in its
+  own small box over the card. Now it is a box stacked just above the card,
+  and once pinned, a maroon badge next to the window's title ("from track
+  “…” ≠ recording “…”"). The window shows the recording, but always says which
+  track it came from.
 - **‹ ›** or **← →** step to the same kind of link in the **same column** of
   the next or previous row, on into the next sub-table. A row links a
   release, an artist and a label; the arrows stay with the one you started

@@ -21134,3 +21134,24 @@ Multi-line values travel as `\n`-joined strings, so the IndexedDB records and
 string assertions keep their shape. `_dpFieldsHtml()` renders `<br>` in the
 window and "; " in the card. `_DP_PARSER_VERSION` was bumped to 2, so cached
 records re-parse.
+
+**Track ≠ recording note over the recording card (WIP.5, same branch, the
+user's request).** On `release-tracks` with jesus2099's "mb. INLINE STUFF",
+the recording link carries a native `title="track name: …\n≠rec. name: …"`
+(mb_INLINE-STUFF.user.js line 178, set on the recording anchor itself, so
+on the card's own target). The browser drew it over the GPE card. The
+script's own tooltip engine already parks titles it shows itself
+(`_showMbtt()`'s `mbttSavedTitle`); the popup engine never did. Now
+`_dpStashOriginTitle()` parks only that note while a card is due or shown,
+`#mb-dp-origin` shows it stacked above the card, and the window badges it.
+Traps:
+- **Parking the title would blind `_titleHasRecNameMismatch()`** (📊 count,
+  ⚠️ finding) for as long as the card shows, and a single-table re-render
+  clones the live rows, so a clone made during the card would lose the title
+  for good. Fix: park into an ATTRIBUTE (it survives `cloneNode`), have the
+  flag read either, and restore by sweeping `[data-mb-dp-saved-title]`, not
+  just the one element.
+- **Ctrl shows a card without `_dpSchedulePeek()`** (the keydown path calls
+  `_dpShowPeek()` directly), so the park happens in both.
+- **Only the note.** Parking every title would hide MusicBrainz's sort-name
+  titles, which have no box of their own.
