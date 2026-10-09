@@ -21463,3 +21463,13 @@ as `wiencek-batch-performance` by the new `wire-live-userscript` skill.
    `sa_chunked_render_threshold`); `sortLargeArray()` already yields and has an
    unused progress callback. Decision (user): a `table-work` provider for the
    progress card now, a yielding `runFilter()` as a separate measured perf branch.
+6. **First `test:full` on the branch** (2026-10-09T23:01:17Z, petri, `f7de9fc`,
+   1531 tests, 451 s): 1526 passed, 5 failed, all test assumptions the change
+   made false, none a product defect. (a) `tests/support/idbFixture.js` opened the
+   art database at a hard-coded version 3; with the userscript at 4 the browser
+   refuses the lower version (VersionError) — `caa-metadata-transient-503.spec.js`.
+   Now 4, with the two new stores in its seed (the `artist-recordings-ms-batch`
+   seed too, which passed only because 3 → 4 upgrades cleanly). (b) Positional
+   cell indexes on artist-recordings fixtures (`isrc-column-format.spec.js`
+   `cells[2]`, `uniq-drop-length-deviation.spec.js` `liveIdx: 5`, `cells[1]/[5]`)
+   — the two inserted columns shift them by two; both now resolve by header name.

@@ -54,8 +54,12 @@ test.describe('ISRCs column: reformat, invalid-flagging, and the constituent dro
 
         const cells = await page.evaluate(() => {
             const rows = Array.from(document.querySelectorAll('table.tbl tbody tr'));
+            // By header name: artist-recordings inserts "Recording of" /
+            // "Performance attributes" after Name, so ISRCs is not at a fixed index.
+            const isrcIdx = Array.from(document.querySelectorAll('table.tbl thead tr:first-child th'))
+                .findIndex((th) => th.dataset.colName === 'ISRCs');
             return rows.map((tr) => {
-                const isrcTd = tr.cells[2]; // Name, Artist, ISRCs
+                const isrcTd = tr.cells[isrcIdx];
                 return Array.from(isrcTd.querySelectorAll('a')).map((a) => ({
                     text: a.textContent,
                     invalid: a.hasAttribute('data-mb-isrc-invalid'),
@@ -100,9 +104,12 @@ test.describe('ISRCs column: reformat, invalid-flagging, and the constituent dro
         const nameHeader = page.locator('table.tbl thead tr:first-child th[data-col-name="Name"]');
         await waitForSortSettled(page, () => nameHeader.locator('.sort-icon-btn', { hasText: '▲' }).first().click());
 
-        const stillHyphenated = await page.evaluate(() =>
-            Array.from(document.querySelectorAll('table.tbl tbody tr td:nth-child(3) a')).map((a) => a.textContent)
-        );
+        const stillHyphenated = await page.evaluate(() => {
+            const isrcIdx = Array.from(document.querySelectorAll('table.tbl thead tr:first-child th'))
+                .findIndex((th) => th.dataset.colName === 'ISRCs');
+            return Array.from(document.querySelectorAll('table.tbl tbody tr'))
+                .flatMap((tr) => Array.from(tr.cells[isrcIdx].querySelectorAll('a')).map((a) => a.textContent));
+        });
         expect(stillHyphenated.sort()).toEqual(['GB-AAA-99-12345', 'INVALIDISRC1', 'US-3L3-04-06433', 'US-3L3-04-06433'].sort());
     });
 

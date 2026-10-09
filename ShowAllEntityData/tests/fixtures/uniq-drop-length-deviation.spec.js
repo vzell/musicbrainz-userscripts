@@ -25,13 +25,16 @@ test.describe('unique-values dropdown: "Length info - Deviation" bucket section'
         // but is still bucketed against it — landing in the same
         // "50%+ longer" bucket as Row G.
         const averages = await page.evaluate(() => window.__saTest.getLengthColumnAverages('table.tbl'));
+        // By header name: artist-recordings inserts two columns after Name.
+        const attrIdx = await page.evaluate(() => Array.from(document.querySelectorAll('table.tbl thead tr:first-child th'))
+            .findIndex((th) => th.dataset.colName === 'Attributes'));
         expect(averages).toEqual({
             ready: true,
             referenceAvgSeconds: 200,
             studioAvgSeconds: 200,
             liveAvgSeconds: 700,
             hasLiveCol: true,
-            liveIdx: 5,
+            liveIdx: attrIdx,
             knownCount: 9,
             studioKnownCount: 8,
             liveKnownCount: 1,
@@ -150,8 +153,10 @@ test.describe('unique-values dropdown: "Length info - Deviation" bucket section'
         const highlightInfo = await page.evaluate(() => {
             const row = Array.from(document.querySelectorAll('table.tbl tbody tr'))
                 .find((r) => r.style.display !== 'none');
-            const lengthHighlighted = !!row.cells[1].querySelector('.mb-column-filter-highlight');
-            const attrHighlight = row.cells[5].querySelector('.mb-column-filter-highlight');
+            const ths = Array.from(document.querySelectorAll('table.tbl thead tr:first-child th'));
+            const at = (n) => ths.findIndex((th) => th.dataset.colName === n);
+            const lengthHighlighted = !!row.cells[at('Length')].querySelector('.mb-column-filter-highlight');
+            const attrHighlight = row.cells[at('Attributes')].querySelector('.mb-column-filter-highlight');
             return { lengthHighlighted, attrText: attrHighlight ? attrHighlight.textContent : null };
         });
         expect(highlightInfo.lengthHighlighted).toBe(false);
