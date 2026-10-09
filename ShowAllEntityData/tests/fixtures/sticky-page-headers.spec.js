@@ -59,6 +59,15 @@ const RATINGS_SHELL = path.join(__dirname, 'user-ratings-multigroup.html');
 
 const VIEWPORT = { width: 900, height: 800 };
 
+// The stacking tests below pin the sticky page headers' OWN z-index rules:
+// content bars without a base z-index, content bodies raised to 107 on
+// hover. The sticky filter bars (sa_enable_sticky_filter_bars, on by
+// default since 2026-10-09) deliberately change both — the data h2 and the
+// h3 bars get a base z-index, content bodies are capped under them — so
+// those tests run with that feature off. The combination is pinned in
+// sticky-filter-bars.spec.js.
+const SPH_ONLY = { sa_enable_sticky_filter_bars: false };
+
 // The refresh pass is debounced by SPH_REFRESH_DELAY_MS (60 ms) behind a
 // ResizeObserver round-trip, then runs in the next animation frame. Kept
 // generous (a busy frame can be late), so that a negative assertion cannot
@@ -290,7 +299,7 @@ test.describe('sticky page headers — single-table page', () => {
         // widened. Both have to hold the bars still.
         test(`pins header, entity header, tabs, h2 bars and footer (auto-resize ${autoResize ? 'on' : 'off'})`,
             async ({ page }) => {
-                await openSeries(page, { settingsOverride: { sa_auto_resize_columns: autoResize } });
+                await openSeries(page, { settingsOverride: { ...SPH_ONLY, sa_auto_resize_columns: autoResize } });
                 const ov = await overflow(page);
                 expect(ov.scrollWidth, 'premise: the table overflows the viewport')
                     .toBeGreaterThan(ov.clientWidth + 500);
@@ -590,7 +599,7 @@ test.describe('sticky page headers — stacking while the global filter has focu
     });
 
     test('focus resting in the global filter does not raise its bar; a focused button and an open history dropdown do', async ({ page }) => {
-        await openSeries(page);
+        await openSeries(page, { settingsOverride: SPH_ONLY });
         await waitEngaged(page);
 
         await page.evaluate(() => document.getElementById('mb-global-filter-input').focus({ preventScroll: true }));
@@ -619,7 +628,11 @@ test.describe('sticky page headers — stacking while the global filter has focu
     });
 
     test('with the global filter focused, the data h2 does not paint over a vertically sticky header', async ({ page }) => {
+        // With the sticky filter bars on, the data h2 docks UNDER such a
+        // header instead (sticky-filter-bars.spec.js); this pins the case
+        // where it scrolls under it.
         await openSeries(page, {
+            settingsOverride: SPH_ONLY,
             css: 'html > body > div.header { position: sticky; top: 0; z-index: 1; }',
         });
         await waitEngaged(page);
@@ -657,7 +670,7 @@ test.describe('sticky page headers — stacking while the global filter has focu
         // menu raises that bar through :hover. At an equal z-index the later
         // element in DOM order (the title bar) won and covered the menu, so
         // body-level chrome is raised one level higher (SPH_Z_CHROME_RAISED).
-        await openSeries(page);
+        await openSeries(page, { settingsOverride: SPH_ONLY });
         await waitEngaged(page);
 
         // MB's own script and CSS are not part of the fixture: open the menu
@@ -1265,7 +1278,12 @@ test.describe('sticky page headers — every block of content that is not a wide
         // would then paint over a vertically sticky header ("mb. STICKY
         // HEADER" userstyle) as they scroll under it.
         await page.setViewportSize({ width: 1300, height: 800 });
-        await loadUserscriptPage(page, { url: RATINGS_URL, fixtureFile: RATINGS_SHELL, testMode: true });
+        // Without the sticky filter bars: with them, the stuck data h2 and
+        // h3 bar sit right under the header, where this test rests the
+        // pointer on the table.
+        await loadUserscriptPage(page, {
+            url: RATINGS_URL, fixtureFile: RATINGS_SHELL, testMode: true, settingsOverride: SPH_ONLY,
+        });
         await page.addStyleTag({ content: 'html > body > div.header { position: sticky; top: 0; z-index: 1; '
             + 'height: 40px; background: #eee; } #content, #page { padding-left: 24px !important; } '
             + '#page { padding-bottom: 1500px !important; }' });

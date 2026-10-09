@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-10-09",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Sticky filter bars: scrolling down a table now keeps the section bar with the global filter and the row count at the top of the window, with the column headers right under it. On a page with several sub-tables the bar of the sub-table you are in, with its own filter, stays under the section bar, and the next sub-table's bar takes its place as you scroll into it. Under a fixed site header (springsteenlyrics.com's navbar, or a MusicBrainz header made sticky by a userstyle) the bars sit below it. ⚙️ 📌 Table stickiness → \"Enable Sticky Filter Bars\", on by default; off brings back the old behaviour, where only the column headers stay."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-10-09",
     "sections": [

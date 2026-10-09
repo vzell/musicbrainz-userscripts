@@ -1,0 +1,201 @@
+[
+    {
+        "name": "the data h2 is not sticky",
+        "why": "Requested 2026-10-09: scrolled down, the h2 with the global filter and the row count must stay at the top.",
+        "edits": [
+            {
+                "find": "            html.mb-vsb-on .mb-vsb-h2 {\n                position: sticky;\n",
+                "replace": "            html.mb-vsb-on .mb-vsb-h2 {\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "the data h2 sticks at the top|stays at the top and docked|dock below it",
+        "expect": "fail"
+    },
+    {
+        "name": "the data h2 is never stamped",
+        "why": "Without .mb-vsb-h2 no rule reaches the bar holding the global filter.",
+        "edits": [
+            {
+                "find": "        if (dataH2 && !dataH2.classList.contains('mb-vsb-h2')) dataH2.classList.add('mb-vsb-h2');\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "the data h2 sticks at the top",
+        "expect": "fail"
+    },
+    {
+        "name": "the h3 bars are not sticky",
+        "why": "On a multi-table page the h3 of the sub-table in view stays under the h2.",
+        "edits": [
+            {
+                "find": "            html.mb-vsb-on h3.mb-toggle-h3 {\n                position: sticky;\n",
+                "replace": "            html.mb-vsb-on h3.mb-toggle-h3 {\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "next h3 takes over",
+        "expect": "fail"
+    },
+    {
+        "name": "the thead keeps top 0 under the bars",
+        "why": "The thead must stick BELOW the stuck bars, not under them.",
+        "edits": [
+            {
+                "find": "            `html.mb-vsb-on body table.tbl > thead { top: ${theadTop}px; }`,\n",
+                "replace": "            `html.mb-vsb-on body table.tbl > thead { top: 0px; }`,\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "the data h2 sticks at the top",
+        "expect": "fail"
+    },
+    {
+        "name": "a sub-table's thead ignores its h3",
+        "why": "Under a stuck h3, the thead sticks at B + H2 + H3.",
+        "edits": [
+            {
+                "find": "            `html.mb-vsb-on body h3.mb-toggle-h3 ~ table.tbl > thead { top: ${theadTopH3}px; }`,\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "next h3 takes over",
+        "expect": "fail"
+    },
+    {
+        "name": "the userstyle sticky header is ignored",
+        "why": "Under jesus2099's sticky MB header the bars dock below it rather than sliding under it.",
+        "edits": [
+            {
+                "find": "        const stuck = cs.position === 'fixed' || (cs.position === 'sticky' && cs.top !== 'auto');\n",
+                "replace": "        const stuck = false;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "dock below it",
+        "expect": "fail"
+    },
+    {
+        "name": "the userstyle check takes the sticky page headers' sideways stickiness for it",
+        "why": "The sticky page headers make div.header position: sticky without a top; counting that put the bars 1,555 px down in the fixture.",
+        "edits": [
+            {
+                "find": "        const stuck = cs.position === 'fixed' || (cs.position === 'sticky' && cs.top !== 'auto');\n",
+                "replace": "        const stuck = cs.position === 'fixed' || cs.position === 'sticky';\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "stays at the top and docked",
+        "expect": "fail"
+    },
+    {
+        "name": "a hovered pinned body is raised over the stuck h2",
+        "why": "The sticky page headers raise a hovered body to 107; while the bars are on it is capped at 101.",
+        "edits": [
+            {
+                "find": "            html.mb-vsb-on body :not(body) > .mb-sph-target:not(.mb-vsb-h2, h3.mb-toggle-h3, .mb-sph-table, .mb-sph-chrome) {\n                --mb-sph-z-raised: ${VSB_Z_BODY_RAISED};\n            }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "hovered pinned body",
+        "expect": "fail"
+    },
+    {
+        "name": "the h3's indent is not masked",
+        "why": "The h3 is indented relative to its table; rows would show in the gap beside a stuck bar.",
+        "edits": [
+            {
+                "find": "                box-shadow: -1.5em 0 0 0 ${mask};\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "indent",
+        "expect": "fail"
+    },
+    {
+        "name": "the h3 bars do not share one height",
+        "why": "A taller passed bar would peek out under a shorter current one.",
+        "edits": [
+            {
+                "find": "            `html.mb-vsb-on h3.mb-toggle-h3 { top: ${h3Top}px; min-height: ${Math.ceil(content)}px; }`,\n",
+                "replace": "            `html.mb-vsb-on h3.mb-toggle-h3 { top: ${h3Top}px; }`,\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "tallest",
+        "expect": "fail"
+    },
+    {
+        "name": "the shared height is read from the bars' boxes (ratchet)",
+        "why": "Measured on the box, the min-height holds itself up: the bars never shrink back.",
+        "edits": [
+            {
+                "find": "        return range.getBoundingClientRect().height;\n",
+                "replace": "        return h3.getBoundingClientRect().height - 9;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "tallest",
+        "expect": "fail"
+    },
+    {
+        "name": "the h3 content is not watched",
+        "why": "A shrinking h3 keeps its box under the shared min-height, so only a MutationObserver hears of it.",
+        "edits": [
+            {
+                "find": "            if (typeof MutationObserver === 'function') _vsb.mutations = new MutationObserver(_vsbScheduleRefresh);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "tallest",
+        "expect": "fail"
+    },
+    {
+        "name": "the h2 is not raised by an open popup",
+        "why": "Guards the filter-history dropdown against anything above z-index 104 (the MB sidebar at 105 with auto-resize). In the fixture nothing between 104 and 107 overlaps it, so the dropdown test still passes.",
+        "edits": [
+            {
+                "find": "            html.mb-vsb-on .mb-vsb-h2:focus-within:not(:has(:is(input[type=\"search\"], input[type=\"text\"], input:not([type]), textarea):focus)),\n            html.mb-vsb-on .mb-vsb-h2:has([style*=\"position: absolute\"][style*=\"display: block\"][style*=\"z-index\"]) {\n                z-index: ${SPH_Z_RAISED};\n            }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "filter-history dropdown",
+        "expect": "pass"
+    },
+    {
+        "name": "springsteenlyrics.com: the bars ignore the navbar",
+        "why": "The site's navbar is fixed at the top once scrolled; the thead already stuck below it, the bars must too.",
+        "edits": [
+            {
+                "find": "            return Number.isFinite(v) && v > 0 ? v : 0;\n",
+                "replace": "            return 0;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-sticky-headers.spec.js",
+        "grep": "docks under the site's navbar",
+        "expect": "fail"
+    },
+    {
+        "name": "an absurd base offset is used as is",
+        "why": "springsteenlyrics.com's navbar measured without the site's CSS is 3,902 px; docking under it put the bars below the window and scroll-padding past it, so no row could be scrolled into view (14 SL specs timed out in the first full run).",
+        "edits": [
+            {
+                "find": "        const base = rawBase > window.innerHeight / 3 ? 0 : rawBase;\n",
+                "replace": "        const base = rawBase;\n"
+            },
+            {
+                "find": "        const pad = Math.min(Math.ceil((shown.length ? theadTopH3 : theadTop) + theadH),\n            Math.floor(window.innerHeight / 2));\n",
+                "replace": "        const pad = Math.ceil((shown.length ? theadTopH3 : theadTop) + theadH);\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-collection.spec.js",
+        "grep": "a column filter narrows the rows",
+        "expect": "fail"
+    }
+]

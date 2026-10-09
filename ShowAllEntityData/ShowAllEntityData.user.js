@@ -1285,6 +1285,18 @@
                          'when scrolling vertically (thead sticks to the top of the viewport).'
         },
 
+        sa_enable_sticky_filter_bars: {
+            label: 'Enable Sticky Filter Bars',
+            type: 'checkbox',
+            default: true,
+            description: 'Keep the section bar with the global filter and the row count at the ' +
+                         'top of the window while scrolling down, and on pages with several ' +
+                         'sub-tables the bar (with its filter) of the sub-table in view right under ' +
+                         'it: the next sub-table\'s bar takes its place as it arrives. The column ' +
+                         'headers (\'Enable Sticky Headers\') then stick below the bars. Off: only ' +
+                         'the column headers stick.'
+        },
+
         sa_enable_sticky_columns: {
             label: 'Enable Sticky Columns',
             type: 'checkbox',
@@ -31096,6 +31108,310 @@
         `);
         style.id = 'mb-sticky-headers-style';
         Lib.debug('ui', 'Sticky headers enabled - column headers will remain visible while scrolling');
+    }
+
+    // ============================================================================
+    // STICKY FILTER BARS (vertical pinning of the data h2 and the h3 bars)
+    // ============================================================================
+    //
+    // Requested 2026-10-09: scrolled down, only the column headers stayed; the
+    // h2 bar with the global filter and the row count went off the top, and
+    // on a multi-table page so did the sub-table's h3 bar with its filter. Now
+    // the data h2 (the one holding #mb-filter-container, stamped
+    // `.mb-vsb-h2`) sticks at the top, every `h3.mb-toggle-h3` sticks right
+    // under it, and each table's thead under those. h3 bars share one top
+    // and one z-index, so the next sub-table's h3 slides over the previous
+    // one as it arrives: the bar always names the sub-table in view.
+    //
+    // Mechanism — plain `position: sticky` with measured `top` offsets, like
+    // the sticky page headers: resolved by the compositor, no scroll
+    // listener. The offsets live in one generated stylesheet
+    // (#mb-vsb-dyn-style), rewritten only when a measured value changes:
+    //   B   base offset: 0, or what already sits at the top of the window
+    //       (jesus2099's "mb. STICKY HEADER" userstyle, springsteenlyrics.com's
+    //       fixed navbar — _vsbBaseOffset());
+    //   H2  the data h2's height;
+    //   H3  the h3 bars' height. Every h3 gets the same min-height (the
+    //       tallest bar's CONTENT height, read through a Range so the
+    //       min-height itself never feeds back into it): a taller earlier
+    //       bar would otherwise peek out under a shorter later one, since
+    //       every passed h3 stays stuck underneath.
+    // thead: B + H2 for every table, B + H2 + H3 for a table that follows an
+    // h3 bar. `scroll-padding-top` covers bars and header, so scrollIntoView
+    // and anchor jumps land below them.
+    //
+    // Stacking ladder (sticky thead 100, column resizer 101):
+    //   h3 102, raised 103; data h2 104, raised SPH_Z_RAISED (107);
+    //   Brucebase side bar 150 (_ensureBbStyle()).
+    // A bar is raised while hovered, focus is inside it (not merely resting
+    // in its text field) or it holds an open in-place popup (the
+    // filter-history dropdown) — the same three tests as the sticky page
+    // headers, whose own raise rules exist only while the page overflows
+    // horizontally. A raised h3 stays under the h2: an h3 still sliding in
+    // under the stuck h2 must not paint over it while hovered. For the same
+    // reason a pinned content body of the sticky page headers (status line,
+    // art strips, group intro, h1 block), which those raise to 107 on hover,
+    // is capped at 101 while these bars are on: it sits under the stuck bars
+    // once scrolled, and a hover on its visible part would lift all of it.
+
+    /** z-index of a stuck h3 sub-table bar: above the sticky thead (100) and the column resizer (101). */
+    const VSB_Z_H3 = 102;
+    /** z-index of a raised (hovered / focus / popup) h3 bar: above the other h3 bars, still under the data h2. */
+    const VSB_Z_H3_RAISED = 103;
+    /** z-index of the stuck data h2; raised to SPH_Z_RAISED (107). */
+    const VSB_Z_H2 = 104;
+    /** Raise level of a pinned content body of the sticky page headers while the bars are on: under the bars. */
+    const VSB_Z_BODY_RAISED = 101;
+
+    /**
+     * Mutable state of the sticky filter bars.
+     *
+     * @type {{
+     *   initialized: boolean,          - listeners/observer installed
+     *   observer:    ?ResizeObserver,  - watches the data h2 and the h3 bars
+     *   observed:    Set<Element>,     - elements currently observed
+     *   mutations:   ?MutationObserver,- watches the h3 bars' content (see _vsbRefresh())
+     *   watched:     Set<Element>,     - h3 bars `mutations` currently watches
+     *   pending:     boolean,          - a refresh is scheduled for the next frame
+     *   css:         string            - text last written to #mb-vsb-dyn-style
+     * }}
+     */
+    const _vsb = {
+        initialized: false,
+        observer:    null,
+        observed:    new Set(),
+        mutations:   null,
+        watched:     new Set(),
+        pending:     false,
+        css:         ''
+    };
+
+    /**
+     * Tells whether the sticky filter bars are wanted
+     * (`sa_enable_sticky_filter_bars`, default on).
+     *
+     * @returns {boolean}
+     */
+    function _stickyFilterBarsWanted() {
+        return Lib.settings.sa_enable_sticky_filter_bars !== false;
+    }
+
+    /**
+     * Installs the static stylesheet of the sticky filter bars once. Every
+     * rule is scoped under `html.mb-vsb-on`; the offsets are in the dynamic
+     * sheet (`_vsbRefresh()`). No `!important`, and lower specificity than
+     * the sticky page headers' raise rules, so those still raise a bar on
+     * hover; the h3 bar's level for them is set through their own
+     * `--mb-sph-z-raised` property.
+     *
+     * @returns {void}
+     */
+    function _vsbEnsureStyle() {
+        if (document.getElementById('mb-vsb-style')) return;
+        const pageBg = getComputedStyle(document.body).backgroundColor;
+        const mask = (!pageBg || pageBg === 'transparent' || pageBg === 'rgba(0, 0, 0, 0)') ? '#ffffff' : pageBg;
+        // GM_addStyle so this is exempt from page CSP style-src restrictions.
+        const style = GM_addStyle(`
+            html.mb-vsb-on .mb-vsb-h2 {
+                position: sticky;
+                z-index: ${VSB_Z_H2};
+            }
+            /* The h3 is indented (margin-left 1.5em) while the table under it
+               is not: a page-coloured copy of the bar, shifted left by that
+               margin, keeps the rows scrolling under it out of the gap. */
+            html.mb-vsb-on h3.mb-toggle-h3 {
+                position: sticky;
+                z-index: ${VSB_Z_H3};
+                box-shadow: -1.5em 0 0 0 ${mask};
+                --mb-sph-z-raised: ${VSB_Z_H3_RAISED};
+            }
+            html.mb-vsb-on .mb-vsb-h2:hover {
+                z-index: ${SPH_Z_RAISED};
+            }
+            html.mb-vsb-on h3.mb-toggle-h3:hover {
+                z-index: ${VSB_Z_H3_RAISED};
+            }
+            /* Separate rules: a browser without :has() drops only these. */
+            html.mb-vsb-on .mb-vsb-h2:focus-within:not(:has(:is(input[type="search"], input[type="text"], input:not([type]), textarea):focus)),
+            html.mb-vsb-on .mb-vsb-h2:has([style*="position: absolute"][style*="display: block"][style*="z-index"]) {
+                z-index: ${SPH_Z_RAISED};
+            }
+            html.mb-vsb-on h3.mb-toggle-h3:focus-within:not(:has(:is(input[type="search"], input[type="text"], input:not([type]), textarea):focus)),
+            html.mb-vsb-on h3.mb-toggle-h3:has([style*="position: absolute"][style*="display: block"][style*="z-index"]) {
+                z-index: ${VSB_Z_H3_RAISED};
+            }
+            /* The sticky page headers' pinned content bodies (not the bars,
+               not a table, not body-level chrome) stay under the bars when
+               raised. */
+            html.mb-vsb-on body :not(body) > .mb-sph-target:not(.mb-vsb-h2, h3.mb-toggle-h3, .mb-sph-table, .mb-sph-chrome) {
+                --mb-sph-z-raised: ${VSB_Z_BODY_RAISED};
+            }
+        `);
+        style.id = 'mb-vsb-style';
+    }
+
+    /**
+     * The height already taken at the top of the window by something that
+     * stays there, under which the bars dock: springsteenlyrics.com's fixed
+     * navbar (`--mb-sl-navbar-h`, measured by `_slPrepareLivePage()`), or a
+     * MusicBrainz header made sticky or fixed by a userstyle (jesus2099's
+     * "mb. STICKY HEADER": `html > body > div.header { position: sticky;
+     * top: 0 }`). 0 otherwise.
+     *
+     * @returns {number} Pixels.
+     */
+    function _vsbBaseOffset() {
+        if (_isSlHost) {
+            const v = parseFloat(document.documentElement.style.getPropertyValue('--mb-sl-navbar-h'));
+            return Number.isFinite(v) && v > 0 ? v : 0;
+        }
+        const hdr = document.querySelector('body > div.header');
+        if (!hdr) return 0;
+        const cs = getComputedStyle(hdr);
+        if (cs.display === 'none') return 0;
+        // Sticky WITH a top: the sticky page headers make the header
+        // position: sticky as well, but only sideways (left, never top), and
+        // that one scrolls away like any other.
+        const stuck = cs.position === 'fixed' || (cs.position === 'sticky' && cs.top !== 'auto');
+        if (!stuck) return 0;
+        return (parseFloat(cs.top) || 0) + hdr.getBoundingClientRect().height;
+    }
+
+    /**
+     * Height of an h3 bar's content, without its padding, border or the
+     * shared min-height: a Range over its children measures their boxes,
+     * which the bar's own min-height cannot change. 0 for a hidden bar.
+     *
+     * @param {HTMLElement} h3
+     * @returns {number} Pixels.
+     */
+    function _vsbH3ContentHeight(h3) {
+        if (!h3.getClientRects().length) return 0;
+        const range = document.createRange();
+        range.selectNodeContents(h3);
+        return range.getBoundingClientRect().height;
+    }
+
+    /**
+     * Measures the bars and rewrites the offsets (see the section comment).
+     * Stamps `.mb-vsb-h2` on the h2 that holds the global filter (and takes
+     * it off any other), keeps the ResizeObserver on the current bars, and
+     * writes `#mb-vsb-dyn-style` only when its text changes. Cheap: one h2
+     * and the h3 bars (a few dozen at most) are read, never a row.
+     *
+     * @returns {void}
+     */
+    function _vsbRefresh() {
+        if (!_vsb.initialized) return;
+        const h2 = filterContainer.isConnected ? filterContainer.parentElement?.closest('h2') : null;
+        const dataH2 = h2 && !h2.closest('table') ? h2 : null;
+        document.querySelectorAll('h2.mb-vsb-h2').forEach(el => {
+            if (el !== dataH2) el.classList.remove('mb-vsb-h2');
+        });
+        if (dataH2 && !dataH2.classList.contains('mb-vsb-h2')) dataH2.classList.add('mb-vsb-h2');
+        const h3s = Array.from(document.querySelectorAll('h3.mb-toggle-h3'));
+
+        if (_vsb.observer) {
+            const want = new Set(h3s);
+            if (dataH2) want.add(dataH2);
+            _vsb.observed.forEach(el => {
+                if (!want.has(el)) { _vsb.observer.unobserve(el); _vsb.observed.delete(el); }
+            });
+            want.forEach(el => {
+                if (!_vsb.observed.has(el)) { _vsb.observer.observe(el); _vsb.observed.add(el); }
+            });
+        }
+        // An h3 whose content SHRINKS keeps its box (the shared min-height
+        // holds it), so the ResizeObserver never hears of it and every bar
+        // would stay at the old height: watch the bars' content as well.
+        // A MutationObserver cannot drop single nodes, so it is re-armed
+        // whenever the set of bars changes (a re-render).
+        if (_vsb.mutations && (h3s.length !== _vsb.watched.size || h3s.some(h => !_vsb.watched.has(h)))) {
+            _vsb.mutations.disconnect();
+            _vsb.watched = new Set(h3s);
+            h3s.forEach(h => _vsb.mutations.observe(h, { childList: true, subtree: true, characterData: true }));
+        }
+
+        // A "header" taller than a third of the window is not one the bars
+        // can dock under (springsteenlyrics.com's navbar measured without
+        // the site's CSS is 3,902 px): dock at the top instead.
+        const rawBase = _vsbBaseOffset();
+        const base = rawBase > window.innerHeight / 3 ? 0 : rawBase;
+        const h2h = dataH2 && dataH2.getClientRects().length ? dataH2.getBoundingClientRect().height : 0;
+        let content = 0;
+        let h3Box = 0;
+        const shown = h3s.filter(h => h.getClientRects().length);
+        shown.forEach(h => { content = Math.max(content, _vsbH3ContentHeight(h)); });
+        if (shown.length) {
+            const cs = getComputedStyle(shown[0]);
+            h3Box = content + (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0) +
+                (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0);
+        }
+        // Floored: a bar may overlap the one above it by a fraction of a
+        // pixel (it paints under it), but never leave a seam rows show through.
+        const h3Top = Math.floor(base + h2h);
+        const theadTop = h3Top;
+        const theadTopH3 = Math.floor(base + h2h + h3Box);
+        const firstThead = Array.from(document.querySelectorAll('table.tbl > thead'))
+            .find(t => t.getClientRects().length);
+        const theadH = firstThead ? firstThead.getBoundingClientRect().height : 0;
+        // Never more than half the window: past that, scrollIntoView could
+        // not bring a row into view at all.
+        const pad = Math.min(Math.ceil((shown.length ? theadTopH3 : theadTop) + theadH),
+            Math.floor(window.innerHeight / 2));
+        const css = [
+            `html.mb-vsb-on .mb-vsb-h2 { top: ${Math.floor(base)}px; }`,
+            `html.mb-vsb-on h3.mb-toggle-h3 { top: ${h3Top}px; min-height: ${Math.ceil(content)}px; }`,
+            `html.mb-vsb-on body table.tbl > thead { top: ${theadTop}px; }`,
+            `html.mb-vsb-on body h3.mb-toggle-h3 ~ table.tbl > thead { top: ${theadTopH3}px; }`,
+            `html.mb-vsb-on { scroll-padding-top: ${pad}px; }`,
+        ].join('\n');
+        if (css === _vsb.css) return;
+        _vsb.css = css;
+        let dyn = document.getElementById('mb-vsb-dyn-style');
+        if (!dyn) {
+            dyn = GM_addStyle('');
+            dyn.id = 'mb-vsb-dyn-style';
+        }
+        dyn.textContent = css;
+        Lib.debug('ui', `Sticky filter bars: base ${base}px, h2 ${h2h}px, h3 ${h3Box}px (${shown.length} shown), thead at ${theadTop}/${theadTopH3}px.`);
+    }
+
+    /**
+     * Schedules one `_vsbRefresh()` for the next frame, coalescing bursts
+     * (observer callbacks, resizes, a re-render). No-op until the feature
+     * has been initialised.
+     *
+     * @returns {void}
+     */
+    function _vsbScheduleRefresh() {
+        if (!_vsb.initialized || _vsb.pending) return;
+        _vsb.pending = true;
+        requestAnimationFrame(() => {
+            _vsb.pending = false;
+            _vsbRefresh();
+        });
+    }
+
+    /**
+     * Turns the sticky filter bars on (`sa_enable_sticky_filter_bars`):
+     * installs the style, sets `html.mb-vsb-on`, a ResizeObserver on the
+     * bars and a resize listener, and measures once. Idempotent; called
+     * after every render, beside `applyStickyHeaders()`.
+     *
+     * @returns {void}
+     */
+    function initStickyFilterBars() {
+        if (!_stickyFilterBarsWanted()) return;
+        _vsbEnsureStyle();
+        document.documentElement.classList.add('mb-vsb-on');
+        if (!_vsb.initialized) {
+            _vsb.initialized = true;
+            if (typeof ResizeObserver === 'function') _vsb.observer = new ResizeObserver(_vsbScheduleRefresh);
+            if (typeof MutationObserver === 'function') _vsb.mutations = new MutationObserver(_vsbScheduleRefresh);
+            window.addEventListener('resize', _vsbScheduleRefresh, { passive: true });
+        }
+        _vsbRefresh();
     }
 
     // ============================================================================
@@ -76333,6 +76649,10 @@ a { color: #1565c0; }`;
                 applyStickyHeaders();
             }
 
+            // Keep the data h2 (global filter, row count) and the h3 sub-table
+            // bars at the top while scrolling down, the thead under them.
+            initStickyFilterBars();
+
             // Keep the page chrome (MB header, h1 block, tabs, h2/h3 bars) pinned
             // while a wide table is scrolled horizontally (opt-in on touch).
             if (_stickyPageHeadersWanted()) {
@@ -80934,6 +81254,9 @@ a { color: #1565c0; }`;
             ...(activeDefinition?.features?._workArColumnNames || []),
             ...(activeDefinition?.features?._dynamicArColumnGlyphs || []).map(g => g.columnName),
         ].forEach(_stampArColumnHeaderBg);
+
+        // A re-render can rebuild the h3 bars: re-measure the sticky filter bars.
+        _vsbScheduleRefresh();
     }
 
     /**
@@ -100787,6 +101110,10 @@ a { color: #1565c0; }`;
             if (Lib.settings.sa_enable_sticky_headers) {
                 applyStickyHeaders();
             }
+
+            // Keep the data h2 (global filter, row count) and the h3 sub-table
+            // bars at the top while scrolling down, the thead under them.
+            initStickyFilterBars();
 
             // Keep the page chrome (MB header, h1 block, tabs, h2/h3 bars) pinned
             // while a wide table is scrolled horizontally (opt-in on touch).

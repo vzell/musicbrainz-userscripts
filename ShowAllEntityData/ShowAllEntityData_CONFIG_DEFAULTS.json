@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1306+2026-10-09",
-    "schema_entries": 399,
+    "schema_entries": 400,
     "sections": 48,
-    "settings": 351,
-    "settings_with_default": 346,
+    "settings": 352,
+    "settings_with_default": 347,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 178,
+      "checkbox": 179,
       "color_picker": 62,
       "number": 51,
       "divider": 48,
@@ -372,6 +372,7 @@
     "sa_enable_springsteenlyrics": "Enable on springsteenlyrics.com collection and bootleg lists",
     "sa_enable_stats_panel": "Enable Quick Stats Panel",
     "sa_enable_sticky_columns": "Enable Sticky Columns",
+    "sa_enable_sticky_filter_bars": "Enable Sticky Filter Bars",
     "sa_enable_sticky_headers": "Enable Sticky Headers",
     "sa_enable_sticky_page_headers": "Enable Sticky Page Headers",
     "sa_enable_title_eti_style": "Show extra title information in green italics",
@@ -724,6 +725,7 @@
     "sa_enable_springsteenlyrics": false,
     "sa_enable_stats_panel": true,
     "sa_enable_sticky_columns": true,
+    "sa_enable_sticky_filter_bars": true,
     "sa_enable_sticky_headers": true,
     "sa_enable_sticky_page_headers": true,
     "sa_enable_title_eti_style": true,

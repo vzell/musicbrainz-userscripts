@@ -21319,3 +21319,54 @@ the same URL IS matched: the two tests contradicted each other, and
 was right; the URL was dropped from the songs test's list, with a comment
 pointing at the start-page test. The spec failed 6/7 before (smoke run
 11:46:43Z) and passes 7/7 after.
+
+## 2026-10-09 — Sticky filter bars; the Brucebase side bar always in view; the status line under the h1 (branch feature/sticky-filter-bars, WIP.1–WIP.3)
+
+Env: 2026-10-09T14:06:49Z–14:16:01Z (test:full) · petri · WSL2 Ubuntu 24.04.3
+(Linux 6.18.40.1) · Chromium 151.0.7922.34 (Playwright 1.62.1) · no
+Tampermonkey (GM stubs). Wikidot theme CSS read 2026-10-09 (n/a browser).
+
+Requests (screenshots of brucebase.wikidot.com/2026 and stats:songs): keep
+the global filter visible when scrolling down; the Brucebase side bar always
+in view; the status line above the thin rule under the toolbar h1.
+
+- **Status line under the rule (Brucebase).** Cause, from the theme files
+  (`common--theme/base/css/style.css`, `…/flannel-ocean/css/style.css`):
+  flannel-ocean underlines every `h1` (`border-bottom: 1px dotted #AAA`) and
+  base pulls `#breadcrumbs` up (`margin-top: -0.5em`); both are meant for
+  `#page-title`. Our `#mb-status-displays-wrapper` comes right after the
+  toolbar h1, so it sat under the rule and the breadcrumbs overlapped it.
+  The rule now moves to the status line (`_ensureBbStyle()`). The fixtures
+  strip the theme, so the spec injects those two rules.
+- **Side bar.** Sticky `top: 0` on either side and `left: 0` on the left,
+  z-index 150, over the docked Date column's gutter mask. The first z-index
+  mutation SURVIVED: `elementFromPoint` cannot see a box-shadow, so the spec
+  reads a painted pixel of the side bar's padding instead. The handle got
+  its own setting, `sa_bb_collabsable_sidebar` (default off).
+- **Sticky filter bars** (docs/claude/toolbar-and-header-ui.md, "Sticky
+  filter bars (vertical)"). Three things found on the way:
+  1. The first `_vsbBaseOffset()` took `body > div.header` for jesus2099's
+     sticky-header userstyle whenever its position was sticky, but the
+     sticky page headers make it `position: sticky` too (sideways only):
+     the bars docked 1,555 px down in the series fixture (the unstyled
+     header's height). Now only sticky WITH a `top`, or fixed.
+  2. Two mutations (bars not `position: sticky`) survived the first run:
+     on a page wider than the window the sticky page headers make every bar
+     sticky anyway. The core tests now run with those on and off.
+  3. The first `test:full` (1476 passed, 14 failed, 9 m 12 s at 1490
+     tests): every failure a springsteenlyrics.com spec timing out on
+     "element is not stable / outside of the viewport". Without the site's
+     CSS its navbar measures 3,902 px (`--mb-sl-navbar-h`); docking under it
+     put the bars below the window and `scroll-padding-top` past it, so no
+     row could be scrolled into view. A base offset over a third of the
+     window is now ignored and the scroll padding is capped at half of it.
+     All SL and detail-preview specs then passed (122/122, both projects),
+     mutation-checked.
+- The shared h3 min-height did not shrink back when a bar's content shrank
+  (the min-height holds the box, so the ResizeObserver never fires); a
+  MutationObserver on the bars' content fixes it, pinned by "every h3 bar
+  takes the tallest one's height, and gives it back".
+- Not done: `#mb-col-mode-pop` is placed in document coordinates and drifts
+  away from a stuck thead while scrolling (already true with the sticky
+  thead before this branch). The interaction perf comparison against `main`
+  was not run before the push.
