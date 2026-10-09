@@ -81,6 +81,8 @@ and context below.
 | C            | column                                         |                                                                                | In the "Title" C of ST "1-CD" => In the "title" column of sub-table "1-CD" |
 | AR           | advanced relationship                          | the release-tracks AR columns, _findAllArDts(), the split-ar-peer-column skill |                                                                            |
 | ETI          | extra title information                        | https://musicbrainz.org/doc/Style/Titles#Extra_title_information               | "(single version)" in "I Believe in Your Sweet Love (single version)"      |
+| IP           | initial page                                   | raw HTML on the initial page                                                   |                                                                            |
+| FRP          |                                                | raw HTML on the final rendered page                                            |                                                                            |
 
 ## Doc map — what to read, and when
 
