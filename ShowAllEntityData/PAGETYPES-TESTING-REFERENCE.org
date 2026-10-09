@@ -13,12 +13,12 @@ auxiliary =subType= companion, 91 array entries total) recognised by
 as the script grows) and gated by the
 =// @include= regexes in the userscript header (five for MusicBrainz, four
 for springsteenlyrics.com, one each for jungleland.it and brucespringsteen.it,
-two for brucebase.wikidot.com). The one routable type without a row here is
+three for brucebase.wikidot.com). The one routable type without a row here is
 =iswc= — pre-existing drift, noticed on 2026-10-04 while adding the
 springsteenlyrics.com types (#87/#88, and #89/#90 on 2026-10-05), which with the
 jungleland.it type (#91) and the brucespringsteen.it type (#92, both 2026-10-06),
 the later springsteenlyrics.com types (#94/#95) and the Brucebase types (#96,
-2026-10-07, and #97, 2026-10-09) are the only ones not on MusicBrainz at all (see
+2026-10-07, and #97/#98, 2026-10-09) are the only ones not on MusicBrainz at all (see
 docs/claude/springsteenlyrics.md, docs/claude/jungleland.md,
 docs/claude/brucespringsteen.md and docs/claude/brucebase.md). For each page type it gives
 a real, clickable MusicBrainz URL (using live MBIDs looked up via the
@@ -144,6 +144,7 @@ skill for turning a =planned= row into a =captured= one.
 | bs-records                                  | fixtures | Not MusicBrainz (brucespringsteen.it, opt-in, own tab only): two buttons whose =params= always FETCH page 1 (every format of their kind), own =bsRecordsToTable= converter that gives the live page only an empty table, injected =<h1>=/=<h2>=, shared table CSS. One fixture spec over three whole curl captures (=scripts/build-bs-fixtures.py=), plus the =@extended= live spec =tests/live/bs-records.spec.js=. See docs/claude/brucespringsteen.md.                                                                                                                                                                                                                                                                                                                                    |
 | bb-songs                                    | fixtures | Not MusicBrainz (brucebase.wikidot.com, opt-in): own =bbSongsToTable= converter (the letter YUI tabview → Title/Letter, one row per song, the Alt. repeats dropped), injected =<h1>=/=<h2>=, shared table CSS. One fixture spec over the whole snapshot (=scripts/build-bb-fixtures.py=), plus the =@extended= live spec =tests/live/bb-songs.spec.js=. See docs/claude/brucebase.md.                                                                                                                                                                                                                                                                                                                                                                                                        |
 | bb-year                                     | fixtures | Not MusicBrainz (brucebase.wikidot.com, opt-in twice: =sa_enable_brucebase= + =sa_bb_year_pages=): own =bbYearToTable= converter (flat entry blocks → Date/Type/Venue/City/State/Country/Tour/Soundcheck/Setlist/Set note/Notes/Media/Info wanted, dateParts), rules from a probe over all 63 year pages. Four-fixture spec (2026, 1968, 1985, 2018; =scripts/build-bb-fixtures.py=), mutations =scripts/mutations/bb-year.json=, =@extended= live spec =tests/live/bb-year.spec.js=. See docs/claude/brucebase.md.                                                                                                                                                                                                                                                                          |
+| bb-home                                     | fixtures | Not MusicBrainz (brucebase.wikidot.com start page, same opt-in as bb-year): pages through the side bar's year links by PATH (=features.pageKeys.pathRe=), each fetched year through =applyBbYearToTable()=, into an empty table on the start page. Fixture =bb-home.html= keeps four year links; =tests/fixtures/bb-home.spec.js=, mutations =scripts/mutations/bb-home.json=. See docs/claude/brucebase.md.                                                                                                                                                                                                                                                                                                                                                                                 |
 | event-overview                              | fixtures | The native page has no =table.tbl=: own =eventDetailsToTables= converter (=table.details= lists → one h3 + table per kind of related entity), per-group columns through =group.colHeaders= (generalised from user-ratings), every part a =sa_event_overview_*= setting. Fixture spec over a raw capture (=tests/fixtures/event-overview.html=); snapshot baseline =tests/snapshots/event-overview/= (event art seeded off). |
 
 * Quick reference table
@@ -247,6 +248,7 @@ skill for turning a =planned= row into a =captured= one.
 | 95 | sl-lyrics                     | single       | springsteenlyrics.com /lyrics.php              | NOT MusicBrainz, opt-in; 32 letter pages fetched by KEY (features.pageKeys), song lines → table, bracket split + dateParts |
 | 96 | bb-songs                      | single       | brucebase.wikidot.com /stats:songs             | NOT MusicBrainz, opt-in; letter tabs → table (bbSongsToTable), Title + Letter, one row per song                            |
 | 97 | bb-year                       | single       | brucebase.wikidot.com /<YYYY>, /1949-64        | NOT MusicBrainz, opt-in (+sa_bb_year_pages); year entries → table (bbYearToTable), one row per entry, dateParts            |
+| 98 | bb-home                       | single       | brucebase.wikidot.com /, /home                 | NOT MusicBrainz, opt-in (sa_bb_year_pages); pages through every year page (pageKeys.pathRe) into one bb-year table         |
 
 * Page type details
 ** 1. taglookup
@@ -894,6 +896,15 @@ lists converted into sortable tables), tableMode =multi=.
 - Not MusicBrainz, and opt-in twice: =sa_enable_brucebase= and =sa_bb_year_pages= (both default off); the year gate sits right after the host gate.
 - Features exercised: =bbYearToTable= (=applyBbYearToTable()=): an entry opens at a paragraph that is one date-led =<strong>= (anchor optional, 712 lettered); set paragraphs vs description by content (=_bbSetParagraphKind()=); Soundcheck/Setlist =<ul><li>= one song per row, other labelled sets in Setlist with =.mb-bb-set-label=; Tour from Start/End/Continuation boxes; Notes cloned with absolute links (song preview); Media from the icon FILE names, Help Us → Info wanted; Date (00 day/month dropped) through =dateParts=; =collapsableColumns= Soundcheck/Setlist/Notes.
 - Coverage: =tests/fixtures/bb-year.spec.js= (both gates, rows, heading split, sets, notes, tours, media, filters, Date sort, regions, letter anchors, italic setlists, no MusicBrainz request, Notes song preview, Save/Load twice, parser tables), =sl-include-regex.spec.js=; fixtures =bb-year-{2026,1968,1985,2018}.html= (=scripts/build-bb-fixtures.py=); probe =scripts/probe-bb-year-pages.py=, whole-corpus check =scripts/check-bb-year-converter.js=; live =tests/live/bb-year.spec.js= (=@extended=); mutations in =scripts/mutations/bb-year.json=.
+
+** 98. bb-home
+- URL: [[https://brucebase.wikidot.com/][brucebase.wikidot.com]] (and =/home=, its wiki name)
+- Match: =_BB_HOME_PATH_RE= ~/^\/(?:home\/?)?$/~, host =brucebase.wikidot.com= only. =@include=: its own header line.
+- Button: "Show all events of all years" (short label "All years")
+- tableMode: single
+- Not MusicBrainz; opt-in with the year pages (=sa_enable_brucebase= + =sa_bb_year_pages=).
+- Features exercised: =features.pageKeys= with =pathRe= / =unit= (first path-keyed use: the side bar's "Gig Pages" links, =#side-bar a[href]=, keyed by year); =bbYearToTable: 'all'= gives the live page an empty table (=_bbHomeEmptyTable()=) and converts each fetched year page; =_bbYearTableFeatures()= shared with bb-year (Date the sticky first column; Brucebase tables skip the sticky-header column alignment, =_sphMeasureStickyCols()=). A full run (63 pages, ~5,000 rows) passes the High Page Count and render-decision dialogs.
+- Coverage: =tests/fixtures/bb-home.spec.js= (gate, toolbar after "Brucebase — Home", one request per linked year in order, rows per year, table placement, sticky Date without a gutter mask, no MusicBrainz request), =sl-include-regex.spec.js=; fixture =bb-home.html= from =debug/bb-initial.html= (four year links kept); mutations =scripts/mutations/bb-home.json=.
 
 * Not independently routable
 

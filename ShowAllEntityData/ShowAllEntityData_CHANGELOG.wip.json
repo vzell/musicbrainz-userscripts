@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-10-09",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase start page (brucebase.wikidot.com): a \"Show all events of all years\" button after the \"Brucebase — Home\" heading reads every year page linked under Gig Pages (1949-64, 1965, …) into one table with the year-page columns of WIP.1, at the top of the start page. Same switch as the year pages (sa_bb_year_pages)."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Brucebase year table (WIP.1): on the real pages the Date column showed blank, header and all, and the wiki's side bar was cut off where the table began. The sticky page headers masked the gutter left of a sticky column in the page colour, and on Brucebase that gutter is the side bar. Date is now the first column and the one that stays in view when scrolling sideways, and Brucebase tables (the song list too) dock at the window edge without a mask."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-10-09",
     "sections": [

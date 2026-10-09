@@ -2077,10 +2077,11 @@ The page gets a heading with the usual toolbar and one action button,
 **Events**. Pressing it turns the year's entries into one table, one row per
 entry, with these columns:
 
-- **Date:** the entry's date. A day or month the wiki writes as `00` (not
+- **Date:** the entry's date, the first column, which stays in view when
+  you scroll the table sideways. A day or month the wiki writes as `00` (not
   known) is left out, so `1954-10-00` reads `1954-10`. **DD**, **MM**,
-  **YYYY**, **Day** and **Month** split it up as on MusicBrainz pages; Day
-  stays empty when the day is not known.
+  **YYYY**, **Day** and **Month** (at the end of the table) split it up as
+  on MusicBrainz pages; Day stays empty when the day is not known.
 - **Type:** *Gig*, *No gig* (cancelled or postponed), *Recording*,
   *Rehearsal*, *Interview* or *No Bruce*, from the kind of page the entry
   links to.
@@ -2115,6 +2116,16 @@ entry, with these columns:
 The table replaces the entries and the tour boxes. The icon legend above and
 the Previous / Listing / Next line below stay. Everything is on the page;
 nothing is fetched.
+
+**Every year at once:** on the wiki's start page,
+`https://brucebase.wikidot.com`, the same switch adds a **Show all events of
+all years** button after the "Brucebase — Home" heading. It reads every year
+page linked under *Gig Pages* in the side bar (1949-64, 1965, …, this year),
+one after the other, into one table with the columns above, at the top of
+the start page. That is over sixty pages and about 5,000 rows, so it takes a
+few minutes, and the script asks twice: first because the page count is
+above *Max Page Warning* (50), then, when everything is in, how to show that
+many rows (*Large Dataset Threshold*, 5000).
 
 </details>
 

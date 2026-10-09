@@ -208,6 +208,31 @@ test.describe('@include coverage', () => {
         expect(others.filter((u) => injected(u))).toEqual([]);
     });
 
+    test('brucebase.wikidot.com: the start page, and nothing else', () => {
+        const home = [
+            // (A bare `https://brucebase.wikidot.com` never reaches a
+            // pattern: the browser's location.href always has the slash.)
+            'https://brucebase.wikidot.com/',
+            'http://brucebase.wikidot.com/',
+            'https://brucebase.wikidot.com/#toc0',
+            'https://brucebase.wikidot.com/?x=1',
+            // Its wiki name.
+            'https://brucebase.wikidot.com/home',
+            'https://brucebase.wikidot.com/home/',
+        ];
+        const others = [
+            'https://brucebase.wikidot.com/homepage',
+            'https://brucebase.wikidot.com/home-x',
+            'https://brucebase.wikidot.com/home:x',
+            'https://brucebase.wikidot.com/news:news',
+            'https://otherwiki.wikidot.com/',
+            'https://www.brucebase.wikidot.com/',
+            'https://brucebase.wikidot.com.example.org/',
+        ];
+        expect(home.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
     test('MusicBrainz pages are still covered', () => {
         const mb = [
             'https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases',

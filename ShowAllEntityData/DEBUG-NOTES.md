@@ -21067,3 +21067,43 @@ snapshot, which writes `"`.
 the corpus check; `tests/fixtures/bb-year.spec.js` 20/20 on four real pages
 (2026, 1968, 1985, 2018). Rules and numbers: docs/claude/brucebase.md,
 "Year pages — `bb-year`".
+
+## 2026-10-09 — Brucebase: the Date column painted blank, the side bar cut off (branch feature/bb-years, WIP.2)
+
+**Symptom (user, real browser, side-by-side screenshot).** On a year page
+after "Show all events" the table started with Type; the space of the Date
+column was blank, header included, and the wiki's side bar ended exactly at
+the table's top edge. The user first read the empty column as an extra one to
+remove ("do not render `<th class="mb-original-column"`"), then identified it
+as Date. `debug/bb-2026-final.html` has the Date `<th>` and cells with their
+text — nothing wrong in the DOM.
+
+**Not reproducible in fixtures**: they carry no theme CSS, so the table's left
+offset is small. Live diagnostics (Playwright, real page): the Date cell's
+box at x=262, `elementFromPoint` returning the cell itself (no element
+covering it), yet nothing painted; computed `position: sticky` on cells 0–2
+although only Venue had it inline. Forcing the cells static brought the body
+dates back.
+
+**Root cause.** `stickyColumn: 'Venue'` made Date and Type "columns before
+the sticky one". The sticky page headers (`html.mb-sph-on`,
+`_sphEnsureColRules()`) dock those too and give each a gutter mask: a
+`box-shadow` in the page colour shifted left by the table's left offset L —
+here L = 262 px, the wiki's side bar. Type's mask (−262 px) covered all of
+Date (178 px wide, earlier in paint order). With Date made the sticky column
+the column painted again, but the side bar still ended at the table's top: a
+sticky first column at its natural place already counts as docked at scrollX
+0, and its own mask painted the side bar white. On MusicBrainz L is a small
+page margin, so neither mask has anything to hide — invisible there.
+
+**Fix (host-scoped).** `stickyColumn: 'Date'` for bb-year/bb-home, and
+`_sphMeasureStickyCols()` skips `table.mb-bb-table`: Brucebase tables keep
+`applyStickyColumn()`'s `left: 0`. Verified on the live 2026 page (side bar
+whole at scrollX 0, Date docked at the window edge when scrolled).
+`tests/fixtures/bb-home.spec.js` "no gutter mask" pins the structure (Date
+first and the one sticky column, no `data-mb-sph-col-left`, no cell
+box-shadow); both halves mutation-checked in `scripts/mutations/bb-home.json`.
+
+**Latent elsewhere:** any page where the gutter left of a table is NOT empty
+margin, with a sticky column, gets the same mask. MusicBrainz's own layout
+has none (its sidebar is on the right and already skipped).

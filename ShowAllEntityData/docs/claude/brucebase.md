@@ -227,6 +227,56 @@ Previous / Listing / Next line stay. On the live document
   label as its own 📊 entry with no engine change (the dropdown's per-`<li>`
   item values).
 - Date goes through the MusicBrainz `dateParts` extractor unchanged.
+- **Date is the sticky column, and must stay the FIRST one.** The first
+  version made Venue sticky. On a real page (not in a fixture: the fixtures
+  carry no theme CSS) the Date column then vanished, header and all, while
+  hit-testing still found it. The sticky page headers (`html.mb-sph-on`)
+  dock the columns before the sticky one as well and give each a gutter
+  mask: a page-coloured `box-shadow` shifted left by the table's left offset
+  (`_sphEnsureColRules()`). On MusicBrainz that offset is a small page
+  margin; on Brucebase it is the wiki's side bar, 262 px, so Type's mask
+  covered all of Date. And a sticky first column counts as docked already at
+  scrollX 0, so ITS mask painted the side bar white below the table's top.
+  Hence two host-scoped changes: `stickyColumn: 'Date'` (no columns before
+  it), and `_sphMeasureStickyCols()` skips `table.mb-bb-table` — Brucebase
+  tables (the song list too) keep `applyStickyColumn()`'s plain `left: 0`
+  and dock at the window edge. MusicBrainz tables never carry the class.
+
+### The start page — `bb-home`
+
+`https://brucebase.wikidot.com/` (and `/home`, its wiki name;
+`_BB_HOME_PATH_RE`, its own `@include` line) behind the SAME opt-in as the
+year pages: the year gate tests both paths. Its toolbar `<h1>` reads
+"Brucebase — Home"; its one button, "Show all events of all years" ("All
+years"), pages through the year links of the side bar's "Gig Pages"
+paragraph (`/1949-64`, `/1965` … `/2026`, read from the live page, so a new
+year joins by itself):
+
+- **Keys by path.** `features.pageKeys` gained `pathRe` (with `unit` for
+  the status line) next to `param`: `_readPageKeys()` keys a same-host link
+  by the first capture group of its pathname (`_BB_YEAR_PATH_RE_KEY`), and
+  the loop's "this page" key comes from the live path (never a year on the
+  start page, so every year is fetched). The lyrics index's `param` path is
+  untouched; no MusicBrainz pageType sets `pageKeys`.
+- **The live page gets an empty table** (`bbYearToTable: 'all'` →
+  `_bbHomeEmptyTable()`), at the top of `#page-content` under
+  `<h2 class="mb-bb-list-heading">Events — all years</h2>`; the start page's
+  own text stays below. Each fetched year page is converted by
+  `applyBbYearToTable()` as on its own page (its own tour boxes).
+- Both definitions share `_bbYearTableFeatures()` (a fresh object per call).
+- The table is placed at the top of `#page-content`, beside the side bar —
+  the same layout as a year page, so the same sticky-column rule applies.
+- **A full run hits two of the engine's gates, by design:** 63 pages is more
+  than `sa_max_page` (50, "⚠️ High Page Count"), and about 5,000 rows is at
+  `sa_render_threshold` (5000, the render-decision dialog). One request per
+  year; wikidot answers in 1 to 8 s.
+
+The fixture `tests/fixtures/bb-home.html` (from `debug/bb-initial.html`)
+keeps only the four fixture years' side-bar links, so
+`tests/fixtures/bb-home.spec.js` pages through exactly those (gate, toolbar,
+one request per year in order, rows per year, the sticky Date and no gutter
+mask with the sticky page headers on). Mutations:
+`scripts/mutations/bb-home.json`.
 
 ### Tests
 

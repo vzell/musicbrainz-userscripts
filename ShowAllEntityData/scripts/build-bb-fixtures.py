@@ -9,6 +9,7 @@ Input is a saved snapshot of each real page in `debug/`:
     debug/bb-year-cache/1968.html https://brucebase.wikidot.com/1968         (2026-10-09, probe)
     debug/bb-year-cache/1985.html https://brucebase.wikidot.com/1985         (2026-10-09, probe)
     debug/bb-year-cache/2018.html https://brucebase.wikidot.com/2018         (2026-10-09, probe)
+    debug/bb-initial.html         https://brucebase.wikidot.com/             (2026-10-09, browser)
 
 The year pages were picked for their shapes (scripts/probe-bb-year-pages.py
 read all 63): 2026 is the request's own page (Soundcheck, prefixed sets,
@@ -19,6 +20,11 @@ box, `00` days and superscript-only "No set details known." paragraphs;
 descriptions written as plain paragraphs, not a `.list-pages-box`; 2018
 has letter anchors (`180718a`) and setlists set in italics. The year pages
 are written whole, like the song list.
+
+The start page (`bb-home`) is written whole too, except that its side bar's
+"Gig Pages" links keep only the four fixture years: the button pages through
+the year links it finds there, and the spec serves exactly those four. Every
+other year stays on the page as plain text.
 
 The page is a Wikidot wiki page whose songs sit in one YUI tabview, a tab
 per first letter (`=- 0-9 -=`, `=- A -=` ... `=- Z -=`, `=- Alt. -=`), each
@@ -57,6 +63,9 @@ YEARS = [
     ('debug/bb-year-cache/1985.html', 'tests/fixtures/bb-year-1985.html'),
     ('debug/bb-year-cache/2018.html', 'tests/fixtures/bb-year-2018.html'),
 ]
+HOME = ('debug/bb-initial.html', 'tests/fixtures/bb-home.html')
+HOME_KEEP = {'1968', '1985', '2018', '2026'}
+YEAR_LINK_RE = re.compile(r'<a href="/(\d{4}|1949-64)">([^<]*)</a>')
 HEADING_RE = re.compile(r'<strong>(?:<a [^>]*>|<span[^>]*>)?\d{4}-\d\d-\d\d')
 
 SCRIPT_RE = re.compile(r'<script\b.*?</script>', re.S | re.I)
@@ -111,6 +120,27 @@ def main():
         with open(os.path.join(ROOT, out), 'w', encoding='utf-8', newline='\n') as fh:
             fh.write(note_for(src) + html)
         print(f'{src} -> {out}: {heads} dated headings')
+    build_home()
+
+
+def build_home():
+    """The start page, its side-bar year links trimmed to HOME_KEEP."""
+    src, out = HOME
+    if not os.path.exists(os.path.join(ROOT, src)):
+        print(f'{src}: not on this machine -- {out} left as it is')
+        return
+    html = sanitise(src)
+    a = html.find('id="side-bar"')
+    b = html.find('id="main-content"', a)
+    if a < 0 or b < 0:
+        sys.exit(f'{src}: no #side-bar / #main-content -- has the page changed shape?')
+    side = YEAR_LINK_RE.sub(lambda m: m.group(0) if m.group(1) in HOME_KEEP else m.group(2), html[a:b])
+    kept = sorted(m.group(1) for m in YEAR_LINK_RE.finditer(side))
+    if kept != sorted(HOME_KEEP):
+        sys.exit(f'{src}: side-bar year links {kept}, expected {sorted(HOME_KEEP)}')
+    with open(os.path.join(ROOT, out), 'w', encoding='utf-8', newline='\n') as fh:
+        fh.write(note_for(src) + html[:a] + side + html[b:])
+    print(f'{src} -> {out}: side-bar year links {", ".join(kept)}')
 
 
 if __name__ == '__main__':

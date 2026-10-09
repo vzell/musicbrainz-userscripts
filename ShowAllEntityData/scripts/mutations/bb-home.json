@@ -1,0 +1,67 @@
+[
+    {
+        "name": "path-keyed page links are not read",
+        "why": "The start page's year links carry no query parameter; without the pathRe branch _readPageKeys() finds no page and nothing is fetched.",
+        "edits": [
+            {
+                "find": "            if (cfg.pathRe) {\n                const m = url.host === new URL(doc.baseURI).host ? url.pathname.match(cfg.pathRe) : null;",
+                "replace": "            if (false) {\n                const m = url.host === new URL(doc.baseURI).host ? url.pathname.match(cfg.pathRe) : null;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-home.spec.js",
+        "grep": "pages through every linked year",
+        "expect": "fail"
+    },
+    {
+        "name": "the start page gets no table to render into",
+        "why": "The rows all come from fetched year pages; renderFinalTable() needs a table.tbl tbody on the live page, which only _bbHomeEmptyTable() provides.",
+        "edits": [
+            {
+                "find": "        if (def.features.bbYearToTable === 'all' && docContext === document) {\n            _bbHomeEmptyTable();",
+                "replace": "        if (def.features.bbYearToTable === 'all' && docContext === document) {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-home.spec.js",
+        "grep": "pages through every linked year",
+        "expect": "fail"
+    },
+    {
+        "name": "the start page is not behind the year-page switch",
+        "why": "The start page shares the year pages' opt-in; without its path in the gate the toolbar appears with sa_bb_year_pages off.",
+        "edits": [
+            {
+                "find": "if (_isBbHost && (_BB_YEAR_PATH_RE.test(window.location.pathname) || _BB_HOME_PATH_RE.test(window.location.pathname)) &&",
+                "replace": "if (_isBbHost && (_BB_YEAR_PATH_RE.test(window.location.pathname)) &&"
+            }
+        ],
+        "spec": "tests/fixtures/bb-home.spec.js",
+        "grep": "start page is left untouched",
+        "expect": "fail"
+    },
+    {
+        "name": "Brucebase tables join the sticky-header column alignment",
+        "why": "Aligned, the sticky column counts as docked at scrollX 0 and its page-coloured gutter mask paints over the wiki's side bar.",
+        "edits": [
+            {
+                "find": "            if (table.classList.contains('mb-bb-table')) return;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-home.spec.js",
+        "grep": "no gutter mask",
+        "expect": "fail"
+    },
+    {
+        "name": "Venue is the sticky column again",
+        "why": "A sticky column after Date makes Date and Type 'columns before the sticky one'; the spec pins Date as the one sticky column.",
+        "edits": [
+            {
+                "find": "            stickyColumn: 'Date'\n        };",
+                "replace": "            stickyColumn: 'Venue'\n        };"
+            }
+        ],
+        "spec": "tests/fixtures/bb-home.spec.js",
+        "grep": "no gutter mask",
+        "expect": "fail"
+    }
+]

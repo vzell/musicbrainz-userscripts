@@ -21,6 +21,7 @@
  * @module bbFixture
  */
 
+const fs = require('fs');
 const path = require('path');
 const { loadUserscriptPage } = require('./loadPage');
 
@@ -28,6 +29,8 @@ const BB_SONGS_URL = 'https://brucebase.wikidot.com/stats:songs';
 const BB_FIXTURE = path.join(__dirname, '..', 'fixtures', 'bb-songs.html');
 const BB_BUTTON = 'Show all songs';
 const BB_YEAR_BUTTON = 'Show all events';
+const BB_HOME_URL = 'https://brucebase.wikidot.com/';
+const BB_HOME_BUTTON = 'Show all events of all years';
 
 /**
  * The year page's URL and its fixture file.
@@ -88,6 +91,42 @@ async function loadBbYearPage(page, year, { enabled = true, years = true, settin
         settingsOverride: { sa_enable_brucebase: enabled, sa_bb_year_pages: years, ...settingsOverride },
     });
     return { requests };
+}
+
+/**
+ * Loads the start-page fixture ('bb-home') with the userscript injected, and
+ * serves the year pages its button fetches: each year in the fixture's side
+ * bar (1968, 1985, 2018, 2026; scripts/build-bb-fixtures.py trims the rest)
+ * from its year fixture, any other year path as a 404. The year route is
+ * registered after the loader's own, so it wins over the catch-all.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {{ years?: boolean, settingsOverride?: Object<string, *> }} [opts]
+ *   `years` seeds `sa_bb_year_pages` (default `true`); `sa_enable_brucebase`
+ *   is always on.
+ * @returns {Promise<{ requests: string[], served: string[] }>} Every request
+ *   URL, and the year URLs the route answered, in order.
+ */
+async function loadBbHomePage(page, { years = true, settingsOverride = {} } = {}) {
+    const requests = [];
+    const served = [];
+    page.on('request', (req) => requests.push(req.url()));
+    await page.route(/^https?:\/\//, (route) => route.abort('blockedbyclient'));
+    await loadUserscriptPage(page, {
+        url: BB_HOME_URL,
+        fixtureFile: path.join(__dirname, '..', 'fixtures', 'bb-home.html'),
+        testMode: true,
+        settingsOverride: { sa_enable_brucebase: true, sa_bb_year_pages: years, ...settingsOverride },
+    });
+    await page.route((url) => url.hostname === 'brucebase.wikidot.com' && /^\/(\d{4}|1949-64)\/?$/.test(url.pathname), (route) => {
+        const url = new URL(route.request().url());
+        served.push(url.href);
+        const file = bbYearFixture(url.pathname.replace(/\//g, '')).file;
+        return fs.existsSync(file)
+            ? route.fulfill({ path: file, contentType: 'text/html; charset=utf-8' })
+            : route.fulfill({ status: 404, contentType: 'text/html', body: '<html><body>Not found</body></html>' });
+    });
+    return { requests, served };
 }
 
 /**
@@ -164,4 +203,5 @@ function renderedBbHeaders(page) {
 module.exports = {
     BB_SONGS_URL, BB_FIXTURE, BB_BUTTON, loadBbSongsPage, renderedBbRows, renderedBbHeaders,
     BB_YEAR_BUTTON, bbYearFixture, loadBbYearPage, renderedBbYearRows,
+    BB_HOME_URL, BB_HOME_BUTTON, loadBbHomePage,
 };

@@ -26,6 +26,7 @@
 // @include      /^https?:\/\/(?:www\.)?brucespringsteen\.it\/(?:DB|db)\/records\.aspx(?:[?#].*)?$/
 // @include      /^https?:\/\/brucebase\.wikidot\.com\/stats:songs\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/brucebase\.wikidot\.com\/(?:\d{4}|1949-64)\/?(?:[?#].*)?$/
+// @include      /^https?:\/\/brucebase\.wikidot\.com\/(?:home\/?)?(?:[?#].*)?$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
 // @connect      eventartarchive.org
@@ -4254,8 +4255,10 @@
                          'date (with day, month, year and weekday columns), type, venue, city, ' +
                          'state, country, tour, soundcheck and setlist (one song per row), set ' +
                          'note, the description with its links, the site\'s media icons and ' +
-                         'whether Brucebase asks for more information. When off, the script ' +
-                         'exits on those pages before touching them.'
+                         'whether Brucebase asks for more information. On the wiki\'s start page ' +
+                         '(brucebase.wikidot.com) a "Show all events of all years" button reads ' +
+                         'every year page in turn into one table. When off, the script exits on ' +
+                         'those pages before touching them.'
         },
 
         sa_bb_detail_preview: {
@@ -5435,6 +5438,14 @@
     const _BB_YEAR_PATH_RE = /^\/(?:\d{4}|1949-64)\/?$/;
 
     /**
+     * The Brucebase start page's path: `/`, and `/home`, its wiki name
+     * (pageType `bb-home`, which pages through every year page). Read by the
+     * year-page opt-in gate below and by the `bb-home` definition's `match`.
+     * @type {RegExp}
+     */
+    const _BB_HOME_PATH_RE = /^\/(?:home\/?)?$/;
+
+    /**
      * The non-MusicBrainz host this page is on, as the `host` key of its
      * `pageDefinitions` entries spells it, or `null` on MusicBrainz.
      *
@@ -5498,8 +5509,10 @@
         return;
     }
     // Its year pages have a switch of their own (`sa_bb_year_pages`, default
-    // off) on top of that one, gated as early.
-    if (_isBbHost && _BB_YEAR_PATH_RE.test(window.location.pathname) && Lib.settings.sa_bb_year_pages !== true) {
+    // off) on top of that one, gated as early — and so has the start page,
+    // whose one button pages through all of them.
+    if (_isBbHost && (_BB_YEAR_PATH_RE.test(window.location.pathname) || _BB_HOME_PATH_RE.test(window.location.pathname)) &&
+        Lib.settings.sa_bb_year_pages !== true) {
         Lib.info('init', 'brucebase.wikidot.com year pages are off (sa_bb_year_pages) — nothing to do.');
         return;
     }
@@ -13812,12 +13825,21 @@
      * goes before the table, where `updateH2Count()` anchors the row count
      * and filter bar.
      *
+     * On the start page (`bb-home`, `bbYearToTable: 'all'`) the live document
+     * has no entries of its own: it gets an empty table to render into
+     * (`_bbHomeEmptyTable()`), and every fetched year page is converted as
+     * above.
+     *
      * @param {object}   def                   The active merged pageDefinition.
      * @param {Document} [docContext=document] The live or a fetched document.
      * @returns {void}
      */
     function applyBbYearToTable(def, docContext = document) {
         if (!def?.features?.bbYearToTable) return;
+        if (def.features.bbYearToTable === 'all' && docContext === document) {
+            _bbHomeEmptyTable();
+            return;
+        }
         const content = docContext.getElementById('page-content');
         const entries = content ? _bbYearEntries(content) : [];
         if (entries.length === 0) {
@@ -13861,6 +13883,39 @@
         }
 
         Lib.debug('init', `applyBbYearToTable: converted ${tbody.rows.length} entr${tbody.rows.length === 1 ? 'y' : 'ies'} → table.`);
+    }
+
+    /**
+     * Gives the Brucebase start page an empty year table to render into
+     * (`bb-home`): the rows all come from the fetched year pages, and
+     * `renderFinalTable()` needs a `table.tbl tbody` on the live page. It
+     * goes at the top of `#page-content`, under
+     * `<h2 class="mb-bb-list-heading">`, above the start page's own text.
+     * Idempotent.
+     *
+     * @returns {void}
+     */
+    function _bbHomeEmptyTable() {
+        if (document.querySelector('table.mb-bb-year-table')) return;
+        const content = document.getElementById('page-content') || document.body;
+        const table = document.createElement('table');
+        table.className = 'tbl mb-bb-table mb-bb-year-table';
+        const thead = document.createElement('thead');
+        const hr = document.createElement('tr');
+        _BB_YEAR_HEADERS.forEach(name => {
+            const th = document.createElement('th');
+            th.textContent = name;
+            hr.appendChild(th);
+        });
+        thead.appendChild(hr);
+        table.appendChild(thead);
+        table.appendChild(document.createElement('tbody'));
+        const h2 = document.createElement('h2');
+        h2.className = 'mb-bb-list-heading';
+        h2.textContent = 'Events — all years';
+        content.insertBefore(table, content.firstChild);
+        content.insertBefore(h2, table);
+        Lib.debug('init', 'applyBbYearToTable: start page — empty year table in place for the fetched year pages.');
     }
 
     /**
@@ -23475,6 +23530,43 @@
     // | Search                       | single table              | x         | p.pageselector-results               |
 
     // Define all supported page types, their detection logic, and specific UI configurations here.
+    /**
+     * A Brucebase year page's path with its year captured (`/1975` →
+     * `1975`, `/1949-64` → `1949-64`): the page key of `bb-home`'s
+     * `features.pageKeys`.
+     * @type {RegExp}
+     */
+    const _BB_YEAR_PATH_RE_KEY = /^\/(\d{4}|1949-64)\/?$/;
+
+    /**
+     * The table features the Brucebase year table has wherever it is built,
+     * on a year page (`bb-year`) or from the start page (`bb-home`); a fresh
+     * object per call, so neither definition shares arrays with the other.
+     *
+     * @returns {object}
+     */
+    function _bbYearTableFeatures() {
+        return {
+            // The converter writes Date as ISO with a 00 day or month
+            // dropped, so the MusicBrainz date splitter applies unchanged.
+            columnExtractors: [
+                { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
+            ],
+            integerColumns: [
+                { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' }
+            ],
+            collapsableColumns: [ 'Soundcheck', 'Setlist', 'Notes' ],
+            // The FIRST column is the sticky one, so no column sits before
+            // it. With a later one (Venue), the sticky page headers dock the
+            // columns before it too and give each a gutter mask (a box-shadow
+            // shifted left by the table's left offset, _sphEnsureColRules()).
+            // On Brucebase that offset is the wiki's side bar, 262 px: Type's
+            // mask painted over the whole Date column and Date's over the side
+            // bar (reported from a real browser, 2026-10-09).
+            stickyColumn: 'Date'
+        };
+    }
+
     const pageDefinitions = [
         // TagLookup pages
         {
@@ -26899,16 +26991,26 @@
             buttons: [ { label: 'Show all events', shortLabel: 'Events' } ],
             features: {
                 bbYearToTable: true,
-                // The converter writes Date as ISO with a 00 day or month
-                // dropped, so the MusicBrainz date splitter applies unchanged.
-                columnExtractors: [
-                    { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
-                ],
-                integerColumns: [
-                    { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' }
-                ],
-                collapsableColumns: [ 'Soundcheck', 'Setlist', 'Notes' ],
-                stickyColumn: 'Venue'
+                ..._bbYearTableFeatures()
+            },
+            tableMode: 'single'
+        },
+
+        // The Brucebase start page (`/`, `/home`): one button that pages
+        // through every year page linked in its side bar ("Gig Pages":
+        // 1949-64, 1965, …), keyed by path (`features.pageKeys.pathRe`), into
+        // one year table. The live page gets an empty table; each fetched
+        // year is converted by applyBbYearToTable(). Same opt-in as the year
+        // pages (`sa_bb_year_pages`). See docs/claude/brucebase.md.
+        {
+            type: 'bb-home',
+            host: 'brucebase.wikidot.com',
+            match: (path) => _BB_HOME_PATH_RE.test(path),
+            buttons: [ { label: 'Show all events of all years', shortLabel: 'All years' } ],
+            features: {
+                bbYearToTable: 'all',
+                pageKeys: { pathRe: _BB_YEAR_PATH_RE_KEY, selector: '#side-bar a[href]', unit: 'year' },
+                ..._bbYearTableFeatures()
             },
             tableMode: 'single'
         }
@@ -31340,6 +31442,13 @@
             const sticky = table.querySelector(':scope > thead > tr:first-child > .mb-sticky-col');
             if (!sticky || pinned.has(table)) return;
             if (sidebar && sidebar.contains(table)) return;
+            // Brucebase: the gutter left of the table is the wiki's side bar,
+            // not empty page margin, and a sticky first column already counts
+            // as docked at scrollX 0, so its mask (a box-shadow in the page
+            // colour, _sphEnsureColRules()) painted the side bar white below
+            // the table's top. Its tables keep applyStickyColumn()'s plain
+            // `left: 0` (reported from a real browser, 2026-10-09).
+            if (table.classList.contains('mb-bb-table')) return;
             if (table.parentElement && table.parentElement.closest('table')) return;
             if (table.getClientRects().length === 0) return;
             if (!_sph.colBorder && !table.dataset.mbSphColLeft) {
@@ -71783,7 +71892,10 @@ a { color: #1565c0; }`;
      * numbered: `features.pageKeys = { param, selector }`. Each link matching
      * `selector` in `doc` is one page; its `param` value is the page's key
      * (springsteenlyrics.com's lyrics index: `letter=(`, `letter=1`, …,
-     * `letter=z`). The link itself is what gets fetched, so the page's own
+     * `letter=z`). Pages named by their PATH instead (`/1975`) give
+     * `pathRe` in place of `param`: a same-host link whose pathname matches
+     * it is a page, keyed by its first capture group (the Brucebase start
+     * page's year links, `bb-home`); `unit` names a page in the status line. The link itself is what gets fetched, so the page's own
      * other parameters (`cmd=list`) come with it even when the run starts on
      * a page that lacks them (the lyrics landing page, `lyrics.php`).
      *
@@ -71805,7 +71917,13 @@ a { color: #1565c0; }`;
         doc.querySelectorAll(cfg.selector).forEach(a => {
             let url;
             try { url = new URL(a.getAttribute('href') || '', doc.baseURI); } catch (e) { return; }
-            const key = url.searchParams.get(cfg.param);
+            let key;
+            if (cfg.pathRe) {
+                const m = url.host === new URL(doc.baseURI).host ? url.pathname.match(cfg.pathRe) : null;
+                key = m ? (m[1] || m[0]) : null;
+            } else {
+                key = url.searchParams.get(cfg.param);
+            }
             if (!key || seen.has(key.toLowerCase())) return;
             seen.add(key.toLowerCase());
             keys.push({ key, href: url.toString() });
@@ -72987,8 +73105,9 @@ a { color: #1565c0; }`;
             if (maxPage === 0) {
                 Lib.warn('fetch', `features.pageKeys: no link matches "${activeDefinition.features.pageKeys.selector}" on this page — nothing to fetch.`);
             }
-            Lib.debug('fetch', `Context: pageKeys (${activeDefinition.features.pageKeys.param}): ${pageKeys.map(k => k.key).join(' ')}`);
-            globalStatusDisplay.textContent = `Getting number of pages to fetch... ${maxPage} pages, one per ${activeDefinition.features.pageKeys.param}`;
+            const _keyUnit = activeDefinition.features.pageKeys.unit || activeDefinition.features.pageKeys.param;
+            Lib.debug('fetch', `Context: pageKeys (${_keyUnit}): ${pageKeys.map(k => k.key).join(' ')}`);
+            globalStatusDisplay.textContent = `Getting number of pages to fetch... ${maxPage} pages, one per ${_keyUnit}`;
         } else if (isAmbiguousEditsPagination) {
             // MusicBrainz edit-listing pagination never reveals a true last page
             // (the widget is a sliding window around the current page, and
@@ -73134,8 +73253,10 @@ a { color: #1565c0; }`;
         // The pageKeys counterpart: the key this page itself shows ('' on a
         // page that shows none, e.g. the lyrics landing page — every key is
         // then fetched).
-        const currentPageKey = pageKeys
-            ? (currentUrlParams.get(activeDefinition.features.pageKeys.param) || '').toLowerCase() : '';
+        const _keyCfg = activeDefinition?.features?.pageKeys;
+        const currentPageKey = !pageKeys ? ''
+            : _keyCfg?.pathRe ? ((window.location.pathname.match(_keyCfg.pathRe) || [])[1] || '').toLowerCase()
+                : (currentUrlParams.get(_keyCfg?.param) || '').toLowerCase();
 
         // A resume continues the interrupted run's running totals rather than
         // restarting them, or the status line would say "Loaded 3 pages" over a
