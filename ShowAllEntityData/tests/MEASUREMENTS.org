@@ -34,12 +34,20 @@ be compared to a later one, so it is not evidence, it is decoration.
 
 * Machines
 
-| Host        | OS                                             | Cores | RAM   | Node     | Playwright |
-|-------------+------------------------------------------------+-------+-------+----------+------------|
-| =petri=     | WSL2 (Linux 6.18.33.2-microsoft)               |    24 | 31 GB | v24.16.0 |     1.62.1 |
-| =NB-3641=   | WSL2 (Linux 6.18.33.2-microsoft)               |    28 | 31 GB | v24.19.0 |     1.62.1 |
-| =vzell-lap= | WSL2 (Linux 6.18.33.2-microsoft-standard-WSL2) |     4 | 16 GB | v24.11.1 |     1.62.1 |
-| (unknown)   | —                                              |     — | —     | —        |          — |
+| Host        | OS                                             | Cores | RAM   | Node     | Playwright | Browser                | Tampermonkey    |
+|-------------+------------------------------------------------+-------+-------+----------+------------+------------------------+-----------------|
+| =petri=     | WSL2 (Linux 6.18.33.2-microsoft)               |    24 | 31 GB | v24.16.0 |     1.62.1 | Chromium 151.0.7922.34 | none (GM stubs) |
+| =NB-3641=   | WSL2 (Linux 6.18.33.2-microsoft)               |    28 | 31 GB | v24.19.0 |     1.62.1 | Chromium 151.0.7922.34 | none (GM stubs) |
+| =vzell-lap= | WSL2 (Linux 6.18.33.2-microsoft-standard-WSL2) |     4 | 16 GB | v24.11.1 |     1.62.1 | Chromium 151.0.7922.34 | none (GM stubs) |
+| (unknown)   | —                                              |     — | —     | —        |          — | —                      | —               |
+
+*Browser* and *Tampermonkey* are the harness's, since every row below is a
+Playwright capture: the Chromium build is the one Playwright 1.62.1 pins
+(=node_modules/playwright-core/browsers.json=, read on =petri= 2026-10-09; the
+other two hosts are derived from their recorded Playwright version, not read),
+and the harness never loads Tampermonkey. A measurement taken in a real browser
+records that browser and its Tampermonkey version in its own row, as given by
+the user (CLAUDE.md, "Environment stamp on every dated note").
 
 Rows marked =(unknown)= were captured before the harness recorded a host. The
 2026-08-24 arm is additionally known to be from a *different machine* than the

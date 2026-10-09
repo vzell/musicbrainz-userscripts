@@ -485,6 +485,45 @@ a channel with no call site and to omit a real one). What a naive grep will
 So three of the channel names exist only as data. Anything new that routes a
 channel through a variable should be added to this note.
 
+## Environment stamp on every dated note
+
+Every note that records an observation, a measurement or a test result carries
+an environment stamp, so a later reader can tell whether two notes are
+comparable:
+
+- **Date/time** — UTC, from `date -u +%FT%TZ` at the time of the run, not the
+  day the note was written up.
+- **Host** the Claude session runs on (`hostname`: `petri`, `NB-3641`,
+  `vzell-lap`, …).
+- **OS, browser version, Tampermonkey version.** OS from `/etc/os-release` +
+  `uname -r` (e.g. "WSL2 Ubuntu 24.04.3, Linux 6.18.40.1"). The browser and
+  Tampermonkey versions depend on WHERE the observation was made:
+  - the user's real browser → ask the user (or read it from the console log
+    or snapshot they supplied); never guess;
+  - Playwright → the Chromium build from the run itself plus the Playwright
+    version, and "no Tampermonkey (GM stubs)" — the harness never loads it;
+    `chromium-mobile` adds "Pixel 7 emulation";
+  - no browser involved (code reading, a Python probe) → "n/a".
+
+  Anything not known is written as `unknown` — the same rule
+  `tests/MEASUREMENTS.org` already applies to hosts.
+
+One line is enough, e.g.
+`Env: 2026-10-09T11:24Z · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.40.1) · <browser> <version> · Tampermonkey <version>`.
+
+Applies to (add a file here when it starts collecting dated results):
+
+| File                                   | Where the stamp goes                                                       |
+|----------------------------------------|----------------------------------------------------------------------------|
+| `DEBUG-NOTES.md`                       | First line under each new `## YYYY-MM-DD — …` heading                      |
+| `tests/MEASUREMENTS.org`               | Each row's host/time columns; a new host also gets a "Machines" table row  |
+| `PERFORMANCE.org`                      | Every new measured number quoted in a Step                                 |
+| `tests/live/registry.org`              | The "Passed N/N … host …" note of each run                                 |
+| `tests/snapshots/registry.org`         | Each (re-)capture note                                                     |
+| `debug/*.html` / `debug/*.log` entries | The `DEBUG-NOTES.md` entry that documents the snapshot                     |
+
+Existing entries are not back-filled.
+
 ## Debug material
 - HTML snapshots and console logs live in `debug/`
 - **`DEBUG-NOTES.md` is the dated root-cause log and lives at the project top
