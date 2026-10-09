@@ -88,6 +88,26 @@
                 "Non-visual: only on a user's bulk-tag click — fetch() to /ws/2/release-group|release?inc=…&fmt=json (fetchWithRetry, 1 s spacing) and POST /ws/2/tag?client=MusicBrainzNuclearTags-1.6 in chunks (1.1 s spacing, backoff on failure). Plain fetch(), not GM_xmlhttpRequest, so gmStubs.js does not intercept it.",
                 "Harness-compatible: classic GM_* only (GM_addStyle/GM_getValue/GM_setValue, all stubbed by gmStubs.js), no top-level await."
             ]
+        },
+        {
+            "id": "wiencek-batch-performance",
+            "file": "batch-add-recording-relationships.user.js",
+            "author": "Michael Wiencek",
+            "version": "2023.7.2",
+            "when": "init",
+            "touches": [
+                "No @run-at (Tampermonkey default document-idle, which would map to 'now'), registered as 'init' on purpose: it decorates the NATIVE artist-recordings table long before the user clicks a ShowAllEntityData button — debug/A-R-3rd-works.html is an IP snapshot with its markup already on the native rows. 'now' would instead run it over ShowAllEntityData's own rendered table, which never happens in a real browser.",
+                "@match *://*.musicbrainz.org/artist/*/recordings* only (pageType artist-recordings). It returns at once when no 'tr:has(a[href*=\"/recording/\"])' exists.",
+                "Page-context injection: the whole body is stringified into a <script> appended to document.body, with GM_info JSON-serialised into the source. It then uses the page's own jQuery ($, from MusicBrainz's synchronous jquery-global bundle) and MB.constants (LANGUAGE_MUL_ID/LANGUAGE_ZXX_ID). In the harness GM_info is gmStubs.js's, so its edit-note signature would read 'ShowAllEntityData (test)'.",
+                "Name cell: appends '<div class=\"work\">' ('<attrs> recording of <a href=/work/…>') for each performance relationship, and '<div class=\"suggested-work\">' (orange 'Looking for matching work… N/M' while matching, then green bold 'Suggested work:' + work link). Both are removed from ShowAllEntityData's Name column by the 'wiencek' columnEraser on artist-recordings (buildActiveColumnErasers, Strategy 4).",
+                "Header + every recording row: appends a '<th>Performance Attributes</th>' and a 'td.bpr_attrs' cell (clickable part./live/inst./cover spans, blue when 'checked', plus a yyyy-mm-dd input.bpr-date-input). Always stripped by cleanupHeaders()'s removalMapAlways (and its index-tracking copy) and, if it arrives late, by _stripForeignHeaderTh in _watchForLateJesus2099Injections().",
+                "Inserts its own control table (grey #F2F2F2 box: 'Relate checked recordings to…', 'Cached works' with 'N works loaded for <artist> (cached <date>)' + Reload, Edit Note textarea, filter input, 'Hide recordings with performance ARs' / '…pending edits' checkboxes) directly after the first 'div#content h2'.",
+                "Hides native rows with jQuery .hide() (filter input, the two hide checkboxes, which persist in localStorage) and re-stripes odd/even classes — on the native table only.",
+                "Non-visual: WS/2 through jQuery $.get with its own ~1 req/s RequestManager — /ws/2/recording?artist=<mbid>&inc=work-rels&limit=100&offset=…, /ws/2/recording/<mbid>?inc=work-rels (filtered pages), /ws/2/recording/<mbid>?inc=releases+release-groups (to guess 'live' from a Live release group), /ws/2/work?artist=<mbid>&inc=aliases&limit=100 (the cached work list), plus /dialog?path=/work/create and /release/add HTML scraped for the work-type and language selects.",
+                "Non-visual, outward-facing: only on a user's 'Go' click — POST /relationship-editor (link_type 278, performance) and POST /work/create, ~1 per 1.5 s. Never triggered by loading the page.",
+                "Non-visual: localStorage keys 'bpr_works <artistMbid>' (newline-separated '<mbid><title>' + optional '\\u00a0<comment>'), 'bpr_works_date <artistMbid>' (a Date().toString()), 'bpr_artists <artistMbid>' (extra artists whose works are loaded), and settings 'bpr_make_votable', 'bpr_hide_performed_recs', 'bpr_hide_pending_edits', 'bpr_work_type', 'bpr_work_language'.",
+                "Harness: no GM_* call besides reading GM_info (stubbed); no top-level await. Not runnable on a local fixture (needs the page's $ and MB). tests/pagetypes.json has no artist-recordings entry, so a smoke run needs --url plus --show-all-button."
+            ]
         }
     ],
     "combinations": {
@@ -96,6 +116,7 @@
         "sanojjonas-only": ["sanojjonas-visualise"],
         "nuclear-tags-only": ["aerozol-nuclear-tags"],
         "inline-stuff-plus-nuclear-tags": ["jesus2099-inline-stuff", "aerozol-nuclear-tags"],
-        "kitchen-sink": ["jesus2099-supermind", "jesus2099-inline-stuff", "right-side-flags-everywhere", "sanojjonas-visualise", "aerozol-nuclear-tags"]
+        "wiencek-batch-performance-only": ["wiencek-batch-performance"],
+        "kitchen-sink": ["jesus2099-supermind", "jesus2099-inline-stuff", "right-side-flags-everywhere", "sanojjonas-visualise", "aerozol-nuclear-tags", "wiencek-batch-performance"]
     }
 }
