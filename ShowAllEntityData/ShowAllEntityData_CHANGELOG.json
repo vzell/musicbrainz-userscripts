@@ -1,5 +1,81 @@
 [
   {
+    "version": "9.99.1306",
+    "date": "2026-10-09",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "MusicBrainz recording preview on a release page: when jesus2099's \"mb. INLINE STUFF\" marks a track as named differently from its recording, the browser's small \"track name … ≠ rec. name …\" box no longer appears over the card. The same two names now sit in a box stacked just above the card. Once the card is pinned with Space, a maroon badge next to the window's title says which track it came from (\"from track “…” ≠ recording “…”\"). Other titles on the link stay as they were."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1305",
+    "date": "2026-10-09",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Preview window: a click on an image opens the artwork viewer over the window, the same viewer as the release page's Cover art (zoom, ← → through the images, grid, download). This covers a release's front cover and Cover art strip, an event's posters, and on the Springsteen sites (or a link to them) a record's cover and scans, plus the picture of a linked page. MusicBrainz images come from the archive record the window already loaded, so the click asks for nothing. Another site's images keep their own URLs, stay out of the artwork cache and are loaded without a referrer, and the info panel shows only what is true for them. Esc closes the viewer and goes back to the window. Ctrl-click still opens the image in a new tab.",
+          "Brucebase song preview: \"Released on\" lists one release per line, each with its year and kind, and the live releases are a field of their own, \"Released live on\", each with its recording date."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Preview window: a tracklist on a single disc (springsteenlyrics.com) wrapped its titles onto two lines in a narrow column, with the rest of the window empty. It now takes the whole column, and two or more discs share it.",
+          "Preview window on jungleland.it: the cover linked its own thumbnail rather than the full front scan."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1304",
+    "date": "2026-10-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Global filter: the ✕ stayed hidden when the filter held only spaces, so they could not be cleared with it. It now shows whenever the field holds any text, as every other filter's ✕ already did."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1303",
+    "date": "2026-10-09",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "MusicBrainz previews name areas as MusicBrainz writes them, down from the city: an event's \"Held at\" (\"OceanFirst Bank Center in West Long Branch, New Jersey, United States\"), a recording's \"Recorded at\" / \"Mixed at\" studios, and the area of a place, a label and an artist, plus where the artist was born and died. The window looks up the areas above, one per level. It keeps only cities, subdivisions and countries (a county or a district is passed over, as on MusicBrainz) and never looks up a country. The answers are shared by every card and the area card, so later cards in the same region cost nothing. Hover cards ask for nothing more and show the full line once it is known.",
+          "MusicBrainz event preview: the card and window show what the event is part of (a larger event with its dates, or a series), and the window lists the event's URLs by relationship, each address in full with its [info] link.",
+          "MusicBrainz previews: in the relationship lists of every window, an instrument is a link to its instrument page (\"Chris Anderson (trumpet player) (trumpet)\"), and each related entity shows its disambiguation, as MusicBrainz does. Vocals and generic attributes (\"guest\", \"additional\", …) stay text."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1302",
+    "date": "2026-10-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "MusicBrainz event preview: setlist entries whose MBIDs an editor typed in mixed case (\"[E497263c-…|The Fever]\") showed as raw markup; they now show their names."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "MusicBrainz event preview: the window's setlist is linked. Each song links its work, and every artist links the artist page: the line-up, and the guests in a song's \"(with …)\". MusicBrainz's own event page links those guests as works; the preview does not. The links open their own previews and drill down in the window like any other."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1301",
     "date": "2026-10-09",
     "sections": [
