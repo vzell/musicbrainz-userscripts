@@ -4261,6 +4261,18 @@
                          'those pages before touching them.'
         },
 
+        sa_bb_sidebar_right: {
+            label: 'Show the Brucebase side bar on the right',
+            type: 'checkbox',
+            default: true,
+            description: 'On by default; needs one of the Brucebase settings above. Moves the ' +
+                         'wiki\'s side bar (Site Navigation, Gig Pages, …) from the left to the ' +
+                         'right of the page, as on MusicBrainz. Either way it gets the same ' +
+                         'collapse handle as the MusicBrainz sidebar (⚙️ "Collabsable sidebar"), ' +
+                         'and starts hidden while "Start with sidebar collapsed" is on; on the ' +
+                         'left it collapses to the left.'
+        },
+
         sa_bb_detail_preview: {
             label: 'Preview song pages on the Brucebase song list',
             type: 'checkbox',
@@ -13922,8 +13934,9 @@
      * Installs the Brucebase stylesheet, once per document.
      *
      * The table itself is styled by `_ensureForeignTableStyle()`, shared with
-     * the other non-MusicBrainz hosts; this adds only the injected
-     * `<h1>`/`<h2>` and `.mb-bb-hidden`. Every rule is scoped to
+     * the other non-MusicBrainz hosts; this adds the injected `<h1>`/`<h2>`,
+     * `.mb-bb-hidden`, the year table's media icons and set labels, and the
+     * side bar's flex layout and handle (`_bbArrangeSideBar()`). Every rule is scoped to
      * `body.mb-sa-host-bb`.
      *
      * @returns {void}
@@ -13945,6 +13958,64 @@
             body.mb-sa-host-bb .mb-bb-hidden {
                 display: none !important;
             }
+            body.mb-sa-host-bb #content-wrap.mb-bb-cw {
+                display: flex;
+                align-items: flex-start;
+            }
+            body.mb-sa-host-bb #content-wrap.mb-bb-cw > #main-content {
+                float: none !important;
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+                flex: 1 1 auto;
+                min-width: 0;
+            }
+            body.mb-sa-host-bb #content-wrap.mb-bb-cw > #side-bar {
+                float: none !important;
+                flex: 0 0 auto;
+                position: relative;
+                z-index: 150;
+            }
+            body.mb-sa-host-bb #content-wrap.mb-bb-sb-left > #side-bar {
+                margin-right: 13px !important;
+            }
+            body.mb-sa-host-bb #content-wrap.mb-bb-sb-right > #side-bar {
+                margin-left: 13px !important;
+                position: sticky;
+                right: 0;
+            }
+            body.mb-sa-host-bb #content-wrap.mb-bb-sb-collapsed > #side-bar {
+                display: none !important;
+            }
+            body.mb-sa-host-bb #mb-bb-sidebar-handle {
+                position: fixed;
+                top: 50%;
+                transform: translateY(-50%);
+                width: 14px;
+                height: 80px;
+                background-color: #f2f2f2;
+                border: 1px solid #ccc;
+                cursor: pointer;
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 9px;
+                color: #555;
+            }
+            body.mb-sa-host-bb #mb-bb-sidebar-handle.mb-bb-handle-right {
+                border-right: none;
+                border-radius: 8px 0 0 8px;
+                box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+            }
+            body.mb-sa-host-bb #mb-bb-sidebar-handle.mb-bb-handle-left {
+                border-left: none;
+                border-radius: 0 8px 8px 0;
+                box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            }
+            body.mb-sa-host-bb #mb-bb-sidebar-handle.mb-bb-handle-right::after { content: '▶'; }
+            body.mb-sa-host-bb #mb-bb-sidebar-handle.mb-bb-handle-right.mb-bb-handle-collapsed::after { content: '◀'; }
+            body.mb-sa-host-bb #mb-bb-sidebar-handle.mb-bb-handle-left::after { content: '◀'; }
+            body.mb-sa-host-bb #mb-bb-sidebar-handle.mb-bb-handle-left.mb-bb-handle-collapsed::after { content: '▶'; }
             body.mb-sa-host-bb ul.mb-bb-media {
                 list-style: none;
                 margin: 0;
@@ -13992,7 +14063,8 @@
      * for file names) reads it like a MusicBrainz h1.
      *
      * Also tags `<body>` with `mb-sa-host-bb` (the scope of every Brucebase
-     * style rule) and installs `_ensureBbStyle()`. Nothing else on the page
+     * style rule), installs `_ensureBbStyle()` and arranges the wiki's side
+     * bar (`_bbArrangeSideBar()`). Nothing else on the page
      * changes until the user presses the "Show all songs" button.
      *
      * @returns {?HTMLHeadingElement} The `<h1>` to use as header container, or
@@ -14005,6 +14077,7 @@
 
         document.body.classList.add('mb-sa-host-bb');
         _ensureBbStyle();
+        _bbArrangeSideBar();
         const pageTitle = document.getElementById('page-title');
         const title = pageTitle?.textContent.replace(/\s+/g, ' ').trim() || 'Songs';
         const h1 = document.createElement('h1');
@@ -14020,6 +14093,111 @@
             host.insertBefore(h1, host.firstChild);
         }
         return h1;
+    }
+
+    /**
+     * Arranges the Brucebase side bar (`#side-bar`, Site Navigation / Gig
+     * Pages) beside `#main-content` inside `#content-wrap`, its only two
+     * children (checked on the start page and a year page, 2026-10-09).
+     *
+     * The wiki floats the side bar left and gives `#main-content` a matching
+     * `margin-left` (223 px). Here `#content-wrap` becomes a flex row
+     * (`.mb-bb-cw`, styles in `_ensureBbStyle()`), so either order lays out
+     * without those numbers. With `sa_bb_sidebar_right` (default on) the side
+     * bar is moved AFTER `#main-content`, the MusicBrainz side, and is
+     * `position: sticky; right: 0`: once a table is rendered the sticky page
+     * headers widen the content to the table's width (5,000 px on a year
+     * page), which puts the side bar's natural place far off to the right, so
+     * it sticks to the window's right edge instead. On the left it stays in
+     * the flow (sticky there would sit on the sticky Date column). Either way
+     * it has its own background and z-index 150, over the table's sticky
+     * header and column (100/101), under the handle (10000).
+     *
+     * With `sa_collabsable_sidebar` it gets the MusicBrainz sidebar's handle
+     * (same look; `initSidebarCollapse()` itself is bound to MusicBrainz's
+     * `#sidebar`, `#page` and `#content`), starting collapsed while
+     * `sa_sidebar_collapsed` is on. It collapses toward its own side, so on
+     * the left it collapses to the left. Idempotent.
+     *
+     * @returns {void}
+     */
+    function _bbArrangeSideBar() {
+        const wrap = document.getElementById('content-wrap');
+        const side = document.getElementById('side-bar');
+        const main = document.getElementById('main-content');
+        if (!wrap || !side || !main || side.parentNode !== wrap || main.parentNode !== wrap) return;
+        if (wrap.classList.contains('mb-bb-cw')) return;
+        const right = Lib.settings.sa_bb_sidebar_right !== false;
+        wrap.classList.add('mb-bb-cw', right ? 'mb-bb-sb-right' : 'mb-bb-sb-left');
+        if (right) wrap.appendChild(side);
+        Lib.debug('init', `_bbArrangeSideBar: side bar on the ${right ? 'right' : 'left'}.`);
+
+        if (!Lib.settings.sa_collabsable_sidebar || document.getElementById('mb-bb-sidebar-handle')) return;
+        const handle = document.createElement('div');
+        handle.id = 'mb-bb-sidebar-handle';
+        handle.className = right ? 'mb-bb-handle-right' : 'mb-bb-handle-left';
+        handle.setAttribute('role', 'button');
+        handle.setAttribute('tabindex', '0');
+        _setTip(handle, 'Show or hide the side bar');
+
+        /**
+         * Puts the handle against the side bar's inner edge, or against the
+         * window's edge while the side bar is collapsed or scrolled out of
+         * view; sets its glyph and pressed state.
+         *
+         * @returns {void}
+         */
+        const place = () => {
+            const collapsed = wrap.classList.contains('mb-bb-sb-collapsed');
+            handle.classList.toggle('mb-bb-handle-collapsed', collapsed);
+            handle.setAttribute('aria-pressed', collapsed ? 'false' : 'true');
+            handle.setAttribute('aria-label', collapsed ? 'Show the side bar' : 'Hide the side bar');
+            const r = side.getBoundingClientRect();
+            if (right) {
+                handle.style.left = '';
+                handle.style.right = collapsed ? '0px' : `${Math.min(Math.max(0, window.innerWidth - r.left), window.innerWidth)}px`;
+            } else {
+                handle.style.right = '';
+                handle.style.left = collapsed ? '0px' : `${Math.min(Math.max(0, r.right), window.innerWidth)}px`;
+            }
+        };
+        /**
+         * Collapses or shows the side bar.
+         *
+         * @param {boolean} collapsed
+         * @returns {void}
+         */
+        const setCollapsed = (collapsed) => {
+            wrap.classList.toggle('mb-bb-sb-collapsed', collapsed);
+            requestAnimationFrame(place);
+        };
+        handle.addEventListener('click', () => setCollapsed(!wrap.classList.contains('mb-bb-sb-collapsed')));
+        handle.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            setCollapsed(!wrap.classList.contains('mb-bb-sb-collapsed'));
+        });
+        document.body.appendChild(handle);
+        if (Lib.settings.sa_sidebar_collapsed) wrap.classList.add('mb-bb-sb-collapsed');
+        place();
+        let pending = false;
+        /**
+         * Re-places the handle on the next frame, once per frame.
+         *
+         * @returns {void}
+         */
+        const schedule = () => {
+            if (pending) return;
+            pending = true;
+            requestAnimationFrame(() => {
+                pending = false;
+                place();
+            });
+        };
+        window.addEventListener('scroll', schedule, { passive: true });
+        window.addEventListener('resize', schedule, { passive: true });
+        // A rendered table widens the content and moves the side bar.
+        if (typeof ResizeObserver === 'function') new ResizeObserver(schedule).observe(wrap);
     }
 
     // =========================================================================
@@ -31078,6 +31256,21 @@
     }
 
     /**
+     * The side bar whose content is never pinned: MusicBrainz's `#sidebar`,
+     * and on Brucebase the wiki's `#side-bar`. That one is floated by the
+     * wiki, and floats are never eligible anyway, but `_bbArrangeSideBar()`
+     * lays it out with flex (`float: none`): it then became a pinned body,
+     * sticky against the LEFT, and was pushed past a wide table. Only the
+     * exclusion lookups use this; whether a sidebar blocks widening
+     * (`_sphSidebarBlocksWidening()`) stays MusicBrainz's `#sidebar` alone.
+     *
+     * @returns {?HTMLElement}
+     */
+    function _sphExcludedSidebar() {
+        return document.getElementById('sidebar') || (_isBbHost ? document.getElementById('side-bar') : null);
+    }
+
+    /**
      * Returns every block of page content that is not a data table, so that
      * all of it stays in view while a wide table is scrolled sideways: the
      * content of expanded sections (Credits, Annotation, Relationships, the
@@ -31128,7 +31321,7 @@
      */
     function _sphContentBodies() {
         const root    = document.getElementById('page') || document.body;
-        const sidebar = document.getElementById('sidebar');
+        const sidebar = _sphExcludedSidebar();
         const bodies  = [];
         /**
          * Collects the bodies among one container's children.
@@ -31182,7 +31375,7 @@
     function _sphCollectTargets() {
         const page    = document.getElementById('page');
         const content = document.getElementById('content');
-        const sidebar = document.getElementById('sidebar');
+        const sidebar = _sphExcludedSidebar();
         const found   = [];
         const seen    = new Set();
 

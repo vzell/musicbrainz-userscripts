@@ -1,0 +1,42 @@
+[
+    {
+        "name": "the side bar is not moved to the right",
+        "why": "sa_bb_sidebar_right (default on) puts #side-bar after #main-content; without the move it stays first.",
+        "edits": [{ "find": "        if (right) wrap.appendChild(side);\n", "replace": "" }],
+        "spec": "tests/fixtures/bb-sidebar.spec.js",
+        "grep": "moves to the right",
+        "expect": "fail"
+    },
+    {
+        "name": "the side bar does not start collapsed",
+        "why": "With sa_sidebar_collapsed (default on) the side bar starts hidden, as MusicBrainz's does.",
+        "edits": [{ "find": "        if (Lib.settings.sa_sidebar_collapsed) wrap.classList.add('mb-bb-sb-collapsed');\n", "replace": "" }],
+        "spec": "tests/fixtures/bb-sidebar.spec.js",
+        "grep": "moves to the right|collapses to the left",
+        "expect": "fail"
+    },
+    {
+        "name": "the side bar is pinned by the sticky page headers",
+        "why": "Without the exclusion the flex-laid-out side bar is a pinned body, sticky against the LEFT, pushed past the widened table.",
+        "edits": [{ "find": "        return document.getElementById('sidebar') || (_isBbHost ? document.getElementById('side-bar') : null);", "replace": "        return document.getElementById('sidebar');" }],
+        "spec": "tests/fixtures/bb-sidebar.spec.js",
+        "grep": "after a table is rendered",
+        "expect": "fail"
+    },
+    {
+        "name": "the right side bar is not sticky",
+        "why": "Once the content is widened to the table, the side bar's natural place is far to the right; sticky right: 0 keeps it at the window's edge.",
+        "edits": [{ "find": "                margin-left: 13px !important;\n                position: sticky;\n                right: 0;\n", "replace": "                margin-left: 13px !important;\n" }],
+        "spec": "tests/fixtures/bb-sidebar.spec.js",
+        "grep": "after a table is rendered",
+        "expect": "fail"
+    },
+    {
+        "name": "the handle does not follow layout changes",
+        "why": "A rendered table moves the side bar without a scroll or resize; the ResizeObserver re-places the handle.",
+        "edits": [{ "find": "        if (typeof ResizeObserver === 'function') new ResizeObserver(schedule).observe(wrap);\n", "replace": "" }],
+        "spec": "tests/fixtures/bb-sidebar.spec.js",
+        "grep": "after a table is rendered",
+        "expect": "fail"
+    }
+]

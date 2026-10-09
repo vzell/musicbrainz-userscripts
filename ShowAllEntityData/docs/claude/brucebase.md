@@ -127,6 +127,43 @@ other URL. Mutation list: `scripts/mutations/bb-support.json` (the
 first-tabview scoping is `"expect": "pass"`: every "Released" song is also in
 the letter tabs, so first-wins de-duplication hides it).
 
+## The side bar — `_bbArrangeSideBar()`
+
+On every Brucebase pageType (called from `_bbPrepareLivePage()`).
+`#content-wrap` holds exactly `#side-bar` and `#main-content`; the wiki
+floats the side bar left (210 px) and gives `#main-content` a 223 px
+`margin-left`. The script makes `#content-wrap` a flex row (`.mb-bb-cw`,
+both floats and margins reset), so either order lays out without those
+numbers:
+
+- **Right** (`sa_bb_sidebar_right`, default ON): `#side-bar` is moved after
+  `#main-content` and is `position: sticky; right: 0`. Once a table is
+  rendered the sticky page headers widen the content to the table's width
+  (5,000 px on a year page); the side bar's natural place is then far to the
+  right and it sticks to the window's edge instead.
+- **Left**: it stays first, in the flow (sticky there would sit on the
+  sticky Date column).
+- **The handle** (`#mb-bb-sidebar-handle`): the MusicBrainz sidebar's look,
+  gated by the SAME settings (`sa_collabsable_sidebar`, start collapsed with
+  `sa_sidebar_collapsed`, both default on) — `initSidebarCollapse()` itself
+  is bound to MusicBrainz's `#sidebar`/`#page`/`#content`, so this is its own
+  small copy. It sits against the side bar's inner edge, or the window's edge
+  while collapsed, and collapses toward its own side. Re-placed on scroll,
+  resize and (ResizeObserver on `#content-wrap`) layout changes.
+- Side bar z-index 150: over the table's sticky header and column (100/101),
+  under the handle (10000).
+- **The sticky page headers must leave it alone**: with `float: none` it
+  became a pinned body (`.mb-sph-target`, sticky against the LEFT).
+  `_sphExcludedSidebar()` returns `#side-bar` on this host for the two
+  exclusion lookups (`_sphCollectTargets()`, `_sphContentBodies()`); on
+  MusicBrainz it is `#sidebar` as before. `_sphSidebarBlocksWidening()` is
+  NOT given it.
+
+Tests: `tests/fixtures/bb-sidebar.spec.js` (right by default, starts hidden,
+open/close by click and keyboard, the left side collapsing left, no handle
+without `sa_collabsable_sidebar`, untouched behind the gate, and the
+post-render case); mutations `scripts/mutations/bb-sidebar.json`.
+
 ## Year pages — `bb-year`
 
 Written on branch `feature/bb-years` (org/BB-events.org, 2026-10-09). The

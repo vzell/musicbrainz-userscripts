@@ -21107,3 +21107,39 @@ box-shadow); both halves mutation-checked in `scripts/mutations/bb-home.json`.
 **Latent elsewhere:** any page where the gutter left of a table is NOT empty
 margin, with a sticky column, gets the same mask. MusicBrainz's own layout
 has none (its sidebar is on the right and already skipped).
+
+## 2026-10-09 — Brucebase start page "loads all pages, renders no table"; the side bar on the right (branch feature/bb-years, WIP.3)
+
+**"Loads all pages but renders no table" (`debug/bb-events-all.log`).** All
+63 year pages fetched and converted (5,009 rows), then `renderFinalTable`:
+"Abort: #tbody container not found", and "updateH2Count: No table.tbl". The
+log has NO line from `_bbHomeEmptyTable()` and no "no entries" warning
+either, i.e. the start-page branch of `applyBbYearToTable()` did not run.
+The committed code does run it: a live check on the real start page logs
+"start page — empty year table in place" right before the page-key list,
+and a full live run (63 pages, sa_max_page/sa_render_threshold raised)
+rendered one table of 5,010 rows. The log matches exactly the mutant
+"the start page gets no table to render into" of
+`scripts/mutations/bb-home.json`: mutation-check.py rewrites the
+working-tree userscript the user's Tampermonkey copy is taken from. Most
+likely a copy taken during a mutation run. No code change for it; the user
+is now warned before mutation runs.
+
+**The side bar on the right — two traps found on the live page, not in
+fixtures (no theme CSS there):**
+
+1. With the table rendered, the opened side bar vanished. The sticky page
+   headers widen the content to the table (content-wrap 5,017 px), so the
+   side bar's flex position became x = 4,833; and with the wiki's float
+   reset to `float: none` it had become a pinned body (`.mb-sph-target`,
+   sticky against the LEFT — floats are never eligible, which is why the
+   wiki's own layout never met this). Fix: `_sphExcludedSidebar()` treats
+   Brucebase's `#side-bar` like MusicBrainz's `#sidebar` for pinning, and
+   the right-hand side bar is `position: sticky; right: 0`.
+2. Before that, z-index 2 let the table's sticky header/column (100/101)
+   paint over it: now 150.
+
+The handle missed the side bar's edge by ~40 px after a render (placed only
+on scroll/resize/toggle): a ResizeObserver on `#content-wrap` re-places it.
+All three are pinned by `tests/fixtures/bb-sidebar.spec.js` "after a table
+is rendered", each mutation-checked (`scripts/mutations/bb-sidebar.json`).

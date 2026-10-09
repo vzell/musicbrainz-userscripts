@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-10-09",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Brucebase pages: the wiki's side bar moves to the right, as on MusicBrainz (new setting \"Show the Brucebase side bar on the right\", on by default), and gets the MusicBrainz sidebar's collapse handle, starting hidden (the MusicBrainz settings \"Collabsable sidebar\" and \"Start with sidebar collapsed\" apply). Next to a wide table it stays at the window's right edge. On the left it collapses to the left."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-10-09",
     "sections": [
