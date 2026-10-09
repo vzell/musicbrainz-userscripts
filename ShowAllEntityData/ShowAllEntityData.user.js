@@ -4264,8 +4264,8 @@
         sa_bb_sidebar_right: {
             label: 'Show the Brucebase side bar on the right',
             type: 'checkbox',
-            default: true,
-            description: 'On by default; needs one of the Brucebase settings above. Moves the ' +
+            default: false,
+            description: 'Off by default; needs one of the Brucebase settings above. Moves the ' +
                          'wiki\'s side bar (Site Navigation, Gig Pages, …) from the left to the ' +
                          'right of the page, as on MusicBrainz. Either way it gets the same ' +
                          'collapse handle as the MusicBrainz sidebar (⚙️ "Collabsable sidebar"), ' +
@@ -13972,8 +13972,6 @@
             body.mb-sa-host-bb #content-wrap.mb-bb-cw > #side-bar {
                 float: none !important;
                 flex: 0 0 auto;
-                position: relative;
-                z-index: 150;
             }
             body.mb-sa-host-bb #content-wrap.mb-bb-sb-left > #side-bar {
                 margin-right: 13px !important;
@@ -13982,6 +13980,7 @@
                 margin-left: 13px !important;
                 position: sticky;
                 right: 0;
+                z-index: 150;
             }
             body.mb-sa-host-bb #content-wrap.mb-bb-sb-collapsed > #side-bar {
                 display: none !important;
@@ -14103,15 +14102,16 @@
      * The wiki floats the side bar left and gives `#main-content` a matching
      * `margin-left` (223 px). Here `#content-wrap` becomes a flex row
      * (`.mb-bb-cw`, styles in `_ensureBbStyle()`), so either order lays out
-     * without those numbers. With `sa_bb_sidebar_right` (default on) the side
+     * without those numbers. With `sa_bb_sidebar_right` (default off) the side
      * bar is moved AFTER `#main-content`, the MusicBrainz side, and is
      * `position: sticky; right: 0`: once a table is rendered the sticky page
      * headers widen the content to the table's width (5,000 px on a year
      * page), which puts the side bar's natural place far off to the right, so
-     * it sticks to the window's right edge instead. On the left it stays in
-     * the flow (sticky there would sit on the sticky Date column). Either way
-     * it has its own background and z-index 150, over the table's sticky
-     * header and column (100/101), under the handle (10000).
+     * it sticks to the window's right edge instead, z-index 150, over the
+     * table's sticky header and column (100/101), under the handle (10000).
+     * On the left (the default since 2026-10-09: it looks better there) it
+     * stays in the flow with no z-index, so the docked Date column and its
+     * gutter mask paint over it once the page is scrolled sideways.
      *
      * With `sa_collabsable_sidebar` it gets the MusicBrainz sidebar's handle
      * (same look; `initSidebarCollapse()` itself is bound to MusicBrainz's
@@ -14127,7 +14127,7 @@
         const main = document.getElementById('main-content');
         if (!wrap || !side || !main || side.parentNode !== wrap || main.parentNode !== wrap) return;
         if (wrap.classList.contains('mb-bb-cw')) return;
-        const right = Lib.settings.sa_bb_sidebar_right !== false;
+        const right = Lib.settings.sa_bb_sidebar_right === true;
         wrap.classList.add('mb-bb-cw', right ? 'mb-bb-sb-right' : 'mb-bb-sb-left');
         if (right) wrap.appendChild(side);
         Lib.debug('init', `_bbArrangeSideBar: side bar on the ${right ? 'right' : 'left'}.`);
@@ -23740,7 +23740,9 @@
             // shifted left by the table's left offset, _sphEnsureColRules()).
             // On Brucebase that offset is the wiki's side bar, 262 px: Type's
             // mask painted over the whole Date column and Date's over the side
-            // bar (reported from a real browser, 2026-10-09).
+            // bar (reported from a real browser, 2026-10-09; the latter is
+            // why a Brucebase table docks only once scrolled,
+            // _sphUpdateColDocked()).
             stickyColumn: 'Date'
         };
     }
@@ -31635,13 +31637,6 @@
             const sticky = table.querySelector(':scope > thead > tr:first-child > .mb-sticky-col');
             if (!sticky || pinned.has(table)) return;
             if (sidebar && sidebar.contains(table)) return;
-            // Brucebase: the gutter left of the table is the wiki's side bar,
-            // not empty page margin, and a sticky first column already counts
-            // as docked at scrollX 0, so its mask (a box-shadow in the page
-            // colour, _sphEnsureColRules()) painted the side bar white below
-            // the table's top. Its tables keep applyStickyColumn()'s plain
-            // `left: 0` (reported from a real browser, 2026-10-09).
-            if (table.classList.contains('mb-bb-table')) return;
             if (table.parentElement && table.parentElement.closest('table')) return;
             if (table.getClientRects().length === 0) return;
             if (!_sph.colBorder && !table.dataset.mbSphColLeft) {
@@ -31823,7 +31818,9 @@
      * With `p > 0` the sticky column's mask, L px to its left, would cover
      * the still visible part of the columns before it ("#") until it has
      * docked over them; meanwhile those columns mask the gutter themselves
-     * (see `_sphEnsureColRules()`). Called from every refresh pass and from the scroll listener
+     * (see `_sphEnsureColRules()`). A Brucebase table (`.mb-bb-table`) docks
+     * only once `scrollX > 0`: its gutter is the wiki's side bar, not empty
+     * margin. Called from every refresh pass and from the scroll listener
      * while the feature is engaged: one compare per table per scroll event.
      *
      * @returns {void}
@@ -31831,7 +31828,13 @@
     function _sphUpdateColDocked() {
         const scrollX = window.scrollX;
         _sph.colTables.forEach(({ table, p }) => {
-            const docked = scrollX >= p - 0.5;
+            // A Brucebase table's sticky column is its FIRST (p = 0), which
+            // counts as docked at scrollX 0 already, and its gutter mask then
+            // paints over whatever sits left of the table: there, the wiki's
+            // side bar (reported from a real browser, 2026-10-09). It docks
+            // only once the page is actually scrolled, when the side bar has
+            // scrolled away under the mask anyway.
+            const docked = scrollX >= p - 0.5 && (scrollX > 0 || !table.classList.contains('mb-bb-table'));
             if (table.classList.contains('mb-sph-col-docked') !== docked) {
                 table.classList.toggle('mb-sph-col-docked', docked);
             }

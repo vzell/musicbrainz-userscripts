@@ -136,13 +136,15 @@ floats the side bar left (210 px) and gives `#main-content` a 223 px
 both floats and margins reset), so either order lays out without those
 numbers:
 
-- **Right** (`sa_bb_sidebar_right`, default ON): `#side-bar` is moved after
+- **Right** (`sa_bb_sidebar_right`, default OFF — it was on for a day; the
+  user found the left looks better): `#side-bar` is moved after
   `#main-content` and is `position: sticky; right: 0`. Once a table is
   rendered the sticky page headers widen the content to the table's width
   (5,000 px on a year page); the side bar's natural place is then far to the
   right and it sticks to the window's edge instead.
-- **Left**: it stays first, in the flow (sticky there would sit on the
-  sticky Date column).
+- **Left** (the default): it stays first, in the flow, no z-index (sticky
+  there would sit on the sticky Date column; the docked Date column and its
+  mask paint over it once the page is scrolled).
 - **The handle** (`#mb-bb-sidebar-handle`): the MusicBrainz sidebar's look,
   gated by the SAME settings (`sa_collabsable_sidebar`, start collapsed with
   `sa_sidebar_collapsed`, both default on) — `initSidebarCollapse()` itself
@@ -150,8 +152,13 @@ numbers:
   small copy. It sits against the side bar's inner edge, or the window's edge
   while collapsed, and collapses toward its own side. Re-placed on scroll,
   resize and (ResizeObserver on `#content-wrap`) layout changes.
-- Side bar z-index 150: over the table's sticky header and column (100/101),
-  under the handle (10000).
+- Right-hand side bar z-index 150: over the table's sticky header and
+  column (100/101), under the handle (10000).
+- Opening/closing it moves the table sideways; the sticky page headers
+  re-measure by themselves (the content bodies they observe change width),
+  so Date still docks under its h2 bar — pinned by `bb-sidebar.spec.js`
+  "re-measures". An explicit refresh call from the toggle was tried and
+  mutation-checked as redundant, so it is not there.
 - **The sticky page headers must leave it alone**: with `float: none` it
   became a pinned body (`.mb-sph-target`, sticky against the LEFT).
   `_sphExcludedSidebar()` returns `#side-bar` on this host for the two
@@ -159,10 +166,11 @@ numbers:
   MusicBrainz it is `#sidebar` as before. `_sphSidebarBlocksWidening()` is
   NOT given it.
 
-Tests: `tests/fixtures/bb-sidebar.spec.js` (right by default, starts hidden,
-open/close by click and keyboard, the left side collapsing left, no handle
-without `sa_collabsable_sidebar`, untouched behind the gate, and the
-post-render case); mutations `scripts/mutations/bb-sidebar.json`.
+Tests: `tests/fixtures/bb-sidebar.spec.js` (left by default and collapsing
+left, the right opt-in, starts hidden, open/close by click and keyboard, no
+handle without `sa_collabsable_sidebar`, untouched behind the gate, the
+right-hand post-render case, and Date docked under its h2 bar when scrolled,
+with nothing masked unscrolled); mutations `scripts/mutations/bb-sidebar.json`.
 
 ## Year pages — `bb-year`
 
@@ -274,10 +282,16 @@ Previous / Listing / Next line stay. On the live document
   margin; on Brucebase it is the wiki's side bar, 262 px, so Type's mask
   covered all of Date. And a sticky first column counts as docked already at
   scrollX 0, so ITS mask painted the side bar white below the table's top.
-  Hence two host-scoped changes: `stickyColumn: 'Date'` (no columns before
-  it), and `_sphMeasureStickyCols()` skips `table.mb-bb-table` — Brucebase
-  tables (the song list too) keep `applyStickyColumn()`'s plain `left: 0`
-  and dock at the window edge. MusicBrainz tables never carry the class.
+  Hence `stickyColumn: 'Date'` (no columns before it), and a Brucebase
+  table docks only once the page is scrolled: `_sphUpdateColDocked()` adds
+  `scrollX > 0` for `table.mb-bb-table` (a first sticky column otherwise
+  counts as docked at scrollX 0 and its mask covers the gutter, here the
+  side bar). By then the side bar has scrolled away under the mask anyway.
+  A first attempt instead left Brucebase tables out of the column alignment
+  altogether; the user then saw Date dock at the window edge, left of its
+  pinned "Events" bar, when scrolling right — aligned again now, and pinned
+  by `bb-sidebar.spec.js` ("stays under its h2 bar", collapsed and open, and
+  after opening the side bar). MusicBrainz tables never carry the class.
 
 ### The start page — `bb-home`
 

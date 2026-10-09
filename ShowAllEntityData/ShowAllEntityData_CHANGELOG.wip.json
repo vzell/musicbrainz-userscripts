@@ -6,7 +6,8 @@
       {
         "label": "✨ Improve",
         "items": [
-          "Brucebase pages: the wiki's side bar moves to the right, as on MusicBrainz (new setting \"Show the Brucebase side bar on the right\", on by default), and gets the MusicBrainz sidebar's collapse handle, starting hidden (the MusicBrainz settings \"Collabsable sidebar\" and \"Start with sidebar collapsed\" apply). Next to a wide table it stays at the window's right edge. On the left it collapses to the left."
+          "Brucebase pages: the wiki's side bar gets the MusicBrainz sidebar's collapse handle and starts hidden (the MusicBrainz settings \"Collabsable sidebar\" and \"Start with sidebar collapsed\" apply). It stays on the left, collapsing to the left; the new setting \"Show the Brucebase side bar on the right\" (off by default) moves it to the right, as on MusicBrainz, where it stays at the window's right edge next to a wide table.",
+          "Brucebase tables: scrolled sideways, the Date column stays lined up under the table's heading bar (it docked at the window's edge)."
         ]
       }
     ]

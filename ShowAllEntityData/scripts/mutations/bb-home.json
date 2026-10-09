@@ -39,16 +39,16 @@
         "expect": "fail"
     },
     {
-        "name": "Brucebase tables join the sticky-header column alignment",
-        "why": "Aligned, the sticky column counts as docked at scrollX 0 and its page-coloured gutter mask paints over the wiki's side bar.",
+        "name": "a Brucebase table docks at scrollX 0",
+        "why": "A first sticky column counts as docked unscrolled, and its page-coloured gutter mask painted over the wiki side bar.",
         "edits": [
             {
-                "find": "            if (table.classList.contains('mb-bb-table')) return;\n",
-                "replace": ""
+                "find": "(scrollX > 0 || !table.classList.contains('mb-bb-table'))",
+                "replace": "true"
             }
         ],
         "spec": "tests/fixtures/bb-home.spec.js",
-        "grep": "no gutter mask",
+        "grep": "masks nothing",
         "expect": "fail"
     },
     {
@@ -61,7 +61,7 @@
             }
         ],
         "spec": "tests/fixtures/bb-home.spec.js",
-        "grep": "no gutter mask",
+        "grep": "masks nothing",
         "expect": "fail"
     }
 ]

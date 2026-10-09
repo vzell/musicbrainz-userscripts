@@ -21143,3 +21143,24 @@ The handle missed the side bar's edge by ~40 px after a render (placed only
 on scroll/resize/toggle): a ResizeObserver on `#content-wrap` re-places it.
 All three are pinned by `tests/fixtures/bb-sidebar.spec.js` "after a table
 is rendered", each mutation-checked (`scripts/mutations/bb-sidebar.json`).
+
+## 2026-10-09 — Brucebase: Date off its h2 bar when scrolled; side bar back to the left (branch feature/bb-years, WIP.3)
+
+The user, real browser: scrolled to the right, the Date column docked at the
+window's edge while the "Events" h2 bar stayed pinned ~40 px further in. The
+cause was the fix of WIP.2 itself: `_sphMeasureStickyCols()` skipped
+Brucebase tables, so their sticky column kept `applyStickyColumn()`'s
+`left: 0`. The skip existed only because a first sticky column counts as
+docked at scrollX 0 (`scrollX >= p - 0.5` with p = 0), and its gutter mask
+then painted over the side bar. Replaced by the narrower rule: the skip is
+gone, and `_sphUpdateColDocked()` docks a `table.mb-bb-table` only once
+`scrollX > 0`. Opening the side bar moves the table; an explicit
+`scheduleStickyPageHeadersRefresh()` from the toggle was added on the
+assumption that no observer would notice, and the mutation check showed it
+redundant (the observed content bodies change width): removed, the spec
+"re-measures" keeps the guarantee. The left-hand side bar lost its
+z-index (the docked column must paint over it). Side bar default back to the
+left (`sa_bb_sidebar_right` false) at the user's request: never shipped on
+main, so no migration. Pinned by `tests/fixtures/bb-sidebar.spec.js` (Date
+under its h2 bar, collapsed and open; unscrolled no mask; re-measure on
+opening), mutation-checked.

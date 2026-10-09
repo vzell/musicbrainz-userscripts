@@ -594,7 +594,7 @@
     "sa_auto_resize_columns": true,
     "sa_auto_resize_columns_threshold": 10000,
     "sa_bb_detail_preview": false,
-    "sa_bb_sidebar_right": true,
+    "sa_bb_sidebar_right": false,
     "sa_bb_year_pages": false,
     "sa_bs_detail_preview": false,
     "sa_caa_big_img_size": 250,

@@ -8,8 +8,8 @@
 // applyBbYearToTable() into one table, rendered into an empty one at the top
 // of the start page. The fixture (scripts/build-bb-fixtures.py) keeps four
 // year links (1968, 1985, 2018, 2026), served from the year fixtures. Also
-// pins the year table's sticky Date column and its exemption from the sticky
-// page headers' gutter masks. See docs/claude/brucebase.md.
+// pins the year table's sticky Date column, which masks nothing while the
+// page is unscrolled. See docs/claude/brucebase.md.
 
 const fs = require('fs');
 const path = require('path');
@@ -114,23 +114,17 @@ test('the button pages through every linked year into one table', async ({ page 
     expect(errors).toEqual([]);
 });
 
-test('Date is the first, sticky column, and no gutter mask paints over the side bar', async ({ page }) => {
-    // Reported from a real browser (2026-10-09): with Venue sticky, the
-    // sticky page headers docked Date and Type as "columns before the sticky
-    // one" and gave each a gutter mask — a page-coloured box-shadow shifted
-    // left by the table's offset, which on Brucebase is the wiki's side bar —
-    // so Type's mask hid all of Date, and the first column's mask hid the
-    // side bar under the table. Now Date is the sticky column, and Brucebase
-    // tables are left out of the sticky-header column alignment altogether.
+test('Date is the first and the one sticky column; unscrolled, it masks nothing', async ({ page }) => {
+    // With Venue sticky, the columns before it (Date, Type) docked as well,
+    // each with a gutter mask shifted left by the table's offset (the wiki's
+    // side bar): Type's covered Date (reported from a real browser,
+    // 2026-10-09). Date is now the sticky column, and a Brucebase table
+    // docks only once the page is scrolled (bb-sidebar.spec.js pins the
+    // alignment under the h2 bar).
     const errors = trackPageErrors(page);
     await loadBbHomePage(page, { settingsOverride: { sa_enable_sticky_page_headers: true } });
     await showAll(page);
-    await page.evaluate(() => window.scrollTo(600, 0));
-    await expect.poll(() => page.evaluate(() => window.scrollX)).toBeGreaterThan(0);
-    // The sticky page headers re-measure in the frames after a scroll; a
-    // mask, if any, is there once two have passed.
-    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-    const readState = () => page.evaluate(() => {
+    const state = await page.evaluate(() => {
         const t = document.querySelector('table.tbl');
         const th0 = t.tHead.rows[0].cells[0];
         const td0 = t.tBodies[0].rows[0].cells[0];
@@ -139,13 +133,13 @@ test('Date is the first, sticky column, and no gutter mask paints over the side 
             visible: getComputedStyle(th0).display !== 'none' && getComputedStyle(td0).display !== 'none',
             sticky: th0.classList.contains('mb-sticky-col') && td0.classList.contains('mb-sticky-col'),
             stickyCount: t.tBodies[0].rows[0].querySelectorAll(':scope > .mb-sticky-col').length,
-            aligned: t.dataset.mbSphColLeft || null,
+            pre: t.dataset.mbSphColPre || null,
+            docked: t.classList.contains('mb-sph-col-docked'),
             shadows: Array.from(t.tBodies[0].rows[0].cells).slice(0, 3).map((c) => getComputedStyle(c).boxShadow),
         };
     });
-    const expected = {
-        first: 'Date', visible: true, sticky: true, stickyCount: 1, aligned: null, shadows: ['none', 'none', 'none'],
-    };
-    expect(await readState()).toEqual(expected);
+    expect(state).toEqual({
+        first: 'Date', visible: true, sticky: true, stickyCount: 1, pre: null, docked: false, shadows: ['none', 'none', 'none'],
+    });
     expect(errors).toEqual([]);
 });
