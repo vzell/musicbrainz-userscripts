@@ -1,0 +1,37 @@
+{
+ "id": "4c21ce68-e33e-4772-ac5f-0f52d9195d96",
+ "disambiguation": "",
+ "relations": [
+  {
+   "attributes": [],
+   "attribute-ids": {},
+   "source-credit": "",
+   "target-credit": "",
+   "attribute-values": {},
+   "type": "part of",
+   "ended": false,
+   "target-type": "area",
+   "end": null,
+   "begin": null,
+   "type-id": "de7cc874-8b1b-3a05-8272-f3834c968fb7",
+   "direction": "backward",
+   "area": {
+    "type": "County",
+    "name": "Monmouth County",
+    "disambiguation": "",
+    "id": "604b7841-36b7-4bea-9bdc-7eeb52520e35",
+    "sort-name": "Monmouth County",
+    "type-id": "bcecec27-8bdb-3e00-8254-d948dda502fa"
+   }
+  }
+ ],
+ "type-id": "6fd8f29a-3d0a-32fc-980d-ea697b69da78",
+ "sort-name": "West Long Branch",
+ "life-span": {
+  "end": null,
+  "begin": null,
+  "ended": false
+ },
+ "name": "West Long Branch",
+ "type": "City"
+}

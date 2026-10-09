@@ -46,9 +46,16 @@ video recording, so the studio "Thunder Road" (via its ISRC) is probed too.
 
 usage: python3 scripts/probe-mb-entity-lookups.py [--max-pages N] [--json OUT]
        (37 requests, about 45 s)
+       python3 scripts/probe-mb-entity-lookups.py --only event-details [--save-dir DIR]
+       (org/event-GPE.org: the event card inc and the area chain, ~6 requests)
+       python3 scripts/probe-mb-entity-lookups.py --only attr-instruments
+       (org/event-GPE.org item 4: relation attribute ids looked up as instruments, 5 requests)
+       python3 scripts/probe-mb-entity-lookups.py --only area-chains [--save-dir DIR] AREA_MBID ...
+       (org/event-GPE.org: the area chain above each area, one request per level)
 """
 import argparse
 import json
+import re
 import time
 import urllib.error
 import urllib.request
@@ -412,14 +419,148 @@ def section_eaa():
         print(f'   {name}: HTTP {s} · images {n} · {ms} ms')
 
 
+EVENT_PONY = '26cead1c-a5fa-4677-873a-312412c6dc91'
+EVENT_OCEAN = 'cd595883-d26a-4e76-a033-eb588e0f9c55'
+EVENT_CARD_INC = 'artist-rels+place-rels+event-rels+series-rels+url-rels'
+CONTAINMENT_TYPES = ('City', 'Subdivision', 'Country')
+
+
+def section_event_details(results, save_dir):
+    """org/event-GPE.org: what the event card's wider inc set returns, and
+    the area chain above an event's place.
+
+    - the setlist of EVENT_PONY carries mixed-case MBIDs (`[E497263c-…|…]`);
+    - an event-to-event relation's target carries its `life-span`, a url
+      relation its `url.id` (the "[info]" link);
+    - each area's `part of` backward relation names its parent and the
+      parent's type, so the window can stop at a Country and keep only
+      City/Subdivision/Country, as MusicBrainz's `load_containment` does.
+
+    With `save_dir`, every answer is written there as a fixture.
+    """
+    print(f'\n# Event details: inc={EVENT_CARD_INC}, and the area chain')
+
+    def save(name, data):
+        if save_dir and data is not None:
+            path = f'{save_dir}/{name}'
+            with open(path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=1, ensure_ascii=False)
+            print(f'   saved {path}')
+
+    for name, mbid, fixture in (('EVENT_PONY', EVENT_PONY, 'ws2-pop-event-stonepony.json'),
+                                ('EVENT_OCEAN', EVENT_OCEAN, 'ws2-pop-event-oceanfirst.json')):
+        s, d, b, ms = ws(f'event/{mbid}?inc={EVENT_CARD_INC}')
+        setlist = (d or {}).get('setlist') or ''
+        tokens = re.findall(r'\[([0-9A-Fa-f-]{36})\|', setlist)
+        upper = [t for t in tokens if t != t.lower()]
+        rows = [('relations by target type', rels_by(d)),
+                ('setlist tokens', len(tokens)),
+                ('of them mixed-case', len(upper))]
+        for r in (d or {}).get('relations') or []:
+            tt = r.get('target-type')
+            if tt == 'event':
+                e = r.get('event') or {}
+                rows.append((f'event rel {r.get("type")}|{r.get("direction")}',
+                             f'{e.get("name")} life-span={e.get("life-span")}'))
+            elif tt == 'series':
+                rows.append((f'series rel {r.get("type")}|{r.get("direction")}', (r.get('series') or {}).get('name')))
+            elif tt == 'url':
+                u = r.get('url') or {}
+                rows.append((f'url rel {r.get("type")}', f'{u.get("resource")} id={u.get("id")}'))
+            elif tt == 'place':
+                p = r.get('place') or {}
+                a = p.get('area') or {}
+                rows.append(('place', f'{p.get("name")} · area {a.get("name")} ({a.get("type")}) {a.get("id")}'))
+                results[f'place-area {name}'] = a.get('id')
+        show(f'event {name}: inc={EVENT_CARD_INC}', s, b, ms, rows)
+        save(fixture, d)
+
+    # Walk the chain above EVENT_OCEAN's place area, one lookup per level,
+    # as the window does.
+    walk_area_chain(results.get('place-area EVENT_OCEAN'), save, 'ws2-pop-area-chain-{depth}.json')
+
+
+def walk_area_chain(area_id, save, name_pattern):
+    """Walks up from one area as the popup window does: one
+    `area/<id>?inc=area-rels` lookup per level, following the `part of`
+    backward relation, stopping at a Country (no lookup for it), a missing
+    parent, or 8 levels. Each answer goes to `save(name, data)`;
+    `name_pattern` may use `{depth}` and `{id8}` (the id's first 8 hex)."""
+    depth = 0
+    while area_id and depth < 8:
+        s, d, b, ms = ws(f'area/{area_id}?inc=area-rels')
+        parents = [r for r in (d or {}).get('relations') or []
+                   if r.get('target-type') == 'area' and r.get('type') == 'part of' and r.get('direction') == 'backward']
+        show(f'area {(d or {}).get("name")} ({(d or {}).get("type")}): inc=area-rels', s, b, ms, [
+            ('parents (part of, backward)', [f'{(p.get("area") or {}).get("name")} ({(p.get("area") or {}).get("type")})'
+                                             for p in parents]),
+            ('iso-3166-1-codes', (d or {}).get('iso-3166-1-codes')),
+        ])
+        save(name_pattern.format(depth=depth, id8=area_id[:8]), d)
+        if not parents:
+            break
+        parent = parents[0].get('area') or {}
+        if parent.get('type') == 'Country':
+            print(f'   stops at the country {parent.get("name")}: no lookup needed')
+            break
+        area_id = parent.get('id')
+        depth += 1
+
+
+def section_area_chains(area_ids, save_dir):
+    """The area chains above the areas the place, artist, label and
+    recording fixtures name (scripts/list-fixture-areas.py), saved as
+    `ws2-pop-area-<id8>.json`, one file per area looked up."""
+    print('\n# Area chains (org/event-GPE.org: place, artist, label, recording)')
+
+    def save(name, data):
+        if save_dir and data is not None:
+            path = f'{save_dir}/{name}'
+            with open(path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=1, ensure_ascii=False)
+            print(f'   saved {path}')
+
+    for aid in area_ids:
+        walk_area_chain(aid, save, 'ws2-pop-area-{id8}.json')
+
+
+ATTRS = (('trumpet', '1c8f9780-2f16-4891-b66d-bb7aa0820dbd'),
+         ('drums (drum set)', '12092505-6ee1-46af-a15a-b5b468b6b155'),
+         ('lead vocals', '8e2a3255-87c2-4809-a174-98cb3704f1a5'),
+         ('background vocals', '75052401-7340-4e5b-a71d-ea024a128849'),
+         ('time', 'ebd303c3-7f57-452a-aa3b-d780ebad868d'))
+
+
+def section_attr_instruments():
+    """org/event-GPE.org item 4: is a relation attribute's id (`attribute-ids`)
+    the MBID of an instrument? Looked up as one: an instrument answers 200,
+    a vocal or a generic attribute ("time") should answer 404."""
+    print('\n# Relation attribute ids looked up as instruments')
+    for name, aid in ATTRS:
+        s, d, b, ms = ws(f'instrument/{aid}')
+        print(f'   {name:<20} HTTP {s} · {(d or {}).get("name")} · {ms} ms')
+
+
 def main():
     """Runs the four sections and optionally writes the summary as JSON."""
     ap = argparse.ArgumentParser()
     ap.add_argument('--max-pages', type=int, default=6)
     ap.add_argument('--json', default='')
+    ap.add_argument('--only', default='', help='"event-details", "area-chains" or "attr-instruments": run only that section')
+    ap.add_argument('--save-dir', default='', help='write the event-details / area-chains answers there as fixtures')
+    ap.add_argument('ids', nargs='*', help='area-chains: the area MBIDs to walk up from')
     args = ap.parse_args()
     results = {}
     print(f'Probe run {time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())}')
+    if args.only == 'area-chains':
+        section_area_chains(args.ids, args.save_dir)
+        return
+    if args.only == 'attr-instruments':
+        section_attr_instruments()
+        return
+    if args.only == 'event-details':
+        section_event_details(results, args.save_dir)
+        return
     section_lookups(results)
     section_rg_browse(results, args.max_pages)
     section_counts(results)

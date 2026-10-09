@@ -21020,6 +21020,142 @@ which is a popup with an opener, not a background tab. It needs the tab
 object, and has not been seen flaking. If it ever does, this entry is the
 first suspect.
 
+## 2026-10-08 — Event preview: raw `[mbid|name]` setlist tokens, guests as works (branch feature/event-popup-details, WIP.1/WIP.2)
+
+**Symptom (org/event-GPE.org, `debug/mb-event-popup.html`):** the window of
+the Stone Pony show (`/event/26cead1c-a5fa-4677-873a-312412c6dc91`) listed
+songs 14–20 as raw markup, e.g. `[E497263c-4f15-36c0-B27c-Dca99482962c|The
+Fever] (with [70248960-Cb53-…|Bruce Springsteen])`, while songs 1–13
+showed their names.
+
+**Root cause:** `_mbPopSetlist()` stripped tokens with
+`/\[[0-9a-f-]{36}\|([^\]]*)\]/g`, which is lowercase-only. An editor typed
+those MBIDs in mixed case: 14 of the 44 tokens (probe
+`scripts/probe-mb-entity-lookups.py --only event-details`, 2026-10-08).
+MusicBrainz accepts them, and its own page links them as typed. For the same
+lines it links EVERY token as `/work/`, the "(with …)" artists included
+(`debug/mb-event-initial.html`: `/work/70248960-…` for Bruce Springsteen). So
+the page is no model for which token is what.
+
+**Fix:** `_MB_POP_SETLIST_TOKEN_RE` is case-insensitive and its name part is
+optional. `_mbPopSetlistLine()` links tokens by line kind: `@` → artist; `*`
+→ work, except inside a `(with|feat.|featuring|ft. …)` group → artist; `#` →
+names only. Links use the lowercased MBID, because `_MB_POP_PATH_RE` (card,
+drill-down) matches lowercase only.
+
+**Same branch:**
+- "Held at" gets the area chain (`_mbPopAreaChain()`, Country/Subdivision/City
+  as musicbrainz-server's `load_containment`).
+- "Part of" and "URLs" come from `event-rels+series-rels+url-rels` on the card
+  lookup.
+- An instrument attribute links `/instrument/<attribute-id>`, which is the
+  instrument's MBID: probe `--only attr-instruments`, where trumpet and drums
+  answer 200 and "lead vocals", "background vocals" and "time" answer 404.
+  `_mbPopIsInstrumentAttr()` leaves out `…vocals` and
+  `_MB_POP_NON_INSTRUMENT_ATTRS`.
+- A series target's "part of" is FORWARD from the item's side
+  (`ws2-pop-series-st.json` lists the items backward), so
+  `_MB_POP_REL_LABELS` gained a three-part key
+  `'part of|forward|series': 'Part of'`. Without it an event's series would
+  be labelled "Parts".
+
+**Tests:** `popup-mb.spec.js`, the event describe block: three new tests
+(setlist links plus instruments; held at, part of and URLs plus the card from
+cache; a failed chain step plus ⟳).
+
+**Extended to place, artist, label and recording (the user, 2026-10-09).**
+`_mbPopAreaChainLoad(t, areas, …)` now takes the areas, and every kind's
+`pin()` calls it. The recording's call waits until its credits lookup is
+there, because the studios come from it.
+
+- **Trap: an entity's own area has `type: null`.** That covers an artist's
+  `area`/`begin-area`/`end-area`, a label's and a place's `area`; only a
+  RELATION's area carries its type. A walk that stops on
+  `type === 'Country'` would therefore look up the United States for every
+  US artist and label: 26 KB, and its `area-rels` lists every state.
+  `_mbPopIsCountry()` also accepts an ISO 3166-1 code, which only countries
+  carry. The 2026-10-08 probe chains confirm that no city, county or
+  subdivision has one.
+- **Test routing.** Before this, `popup-mb.spec.js` answered EVERY
+  `/ws/2/area/` request with New Jersey, which gives wrong chains (Asbury Park
+  → New Jersey's parent). `AREA_CHAIN_FIXTURES` routes the captured areas by
+  id ahead of that catch-all.
+- **The repeated event day.** An event target's days used to be repeated
+  after a name that starts with them ("2025‐05‐20: Co‐op Live, … (2025-05-20)",
+  a popup-ext.spec.js failure). Now they are skipped when the name, with U+2010
+  read as "-", contains the begin date.
+
+## 2026-10-09 — Window images open the artwork viewer; GF ✕ for blanks; one-disc tracklist wrap; Brucebase releases per line (branch feature/gpe-art-viewer, WIP.3/WIP.4)
+
+**Global filter ✕ hidden for a filter of blanks (WIP.3).** `_syncGfClearBtn`
+tested `stripFilterPrefix(value).trim() !== ''`. Every other ✕ (the column,
+sub-table and quick filters) tests the raw value, so only the global filter
+left typed spaces with no ✕. Dropped the `.trim()`. The query itself is still
+trimmed, so blanks still filter nothing. Pinned by
+`global-filter-clear.spec.js`; mutation "the global filter's ✕ trims again".
+
+**The popup window's images open `#mb-art-viewer` (WIP.4).** These are
+`_dpArtViewerClick()`, delegated on the scroll area, and the
+`data-mb-artv-*` attributes stamped when the HTML is built. The traps found
+while wiring it:
+- **The window closed under the viewer.** `createInfoDialog()` treats any
+  click outside the dialog as "close", and the viewer is outside. The art
+  gallery had already solved this with `keepOpenWithin: ['#mb-art-viewer']`,
+  so the window passes the same.
+- **Keys are already safe.** The viewer listens on `window` in the capture
+  phase and calls `stopImmediatePropagation()`. That runs before the dialog's
+  `document` Esc handler and `_dpDialogKeys`, so Esc closes only the viewer
+  and ← → step images, not rows.
+- **A foreign image through the art cache stays a thumbnail.**
+  `_artFetchCachedImage()` fetches through `GM_xmlhttpRequest`. In fixtures
+  that is the stub's 404; on the real site it would put jungleland's scans
+  into the archives' IndexedDB. External images take `new Image()` with
+  `no-referrer` instead. The spec asserts `data-artv-size="big"` and an
+  empty Referer on the routed request.
+- **`_artViewerThumbUrl()`/`_artViewerBigUrls()` strip `http:`.** That is fine
+  for the archives (https), wrong for a site that may serve http only.
+  `_artViewerUrl(im, u)` leaves an external record's URL alone.
+- **The jungleland cover linked itself.** `data.cover` is the front scan's
+  THUMBNAIL and the `<a>` linked `data.cover`. It now links the scan's `full`.
+
+**One-disc tracklist wrapped (reported from a real browser on
+springsteenlyrics.com, mid-branch).** `.mb-dp-discs` was
+`repeat(auto-fill, minmax(180px, 1fr))`. auto-fill keeps empty tracks, so
+one disc took one ~210 px track of a ~430 px column ("DOES THIS BUS STOP AT /
+82ND STREET?"). auto-fit collapses them. The spec measured the disc 229 px
+narrower than its column before the fix.
+
+**Brucebase "Released on" was one run-on paragraph (reported mid-branch).**
+The parser took the panel's `textContent`. The panel marks every release with
+`<em><a href="/retail:…">`, so `_bbReleaseLines()` starts a line at each such
+element and keeps the following text ("(Single, 1975)", "(recorded …)")
+with it. The "Live versions are released on" paragraph became its own field.
+Multi-line values travel as `\n`-joined strings, so the IndexedDB records and
+string assertions keep their shape. `_dpFieldsHtml()` renders `<br>` in the
+window and "; " in the card. `_DP_PARSER_VERSION` was bumped to 2, so cached
+records re-parse.
+
+**Track ≠ recording note over the recording card (WIP.5, same branch, the
+user's request).** On `release-tracks` with jesus2099's "mb. INLINE STUFF",
+the recording link carries a native `title="track name: …\n≠rec. name: …"`
+(mb_INLINE-STUFF.user.js line 178, set on the recording anchor itself, so
+on the card's own target). The browser drew it over the GPE card. The
+script's own tooltip engine already parks titles it shows itself
+(`_showMbtt()`'s `mbttSavedTitle`); the popup engine never did. Now
+`_dpStashOriginTitle()` parks only that note while a card is due or shown,
+`#mb-dp-origin` shows it stacked above the card, and the window badges it.
+Traps:
+- **Parking the title would blind `_titleHasRecNameMismatch()`** (📊 count,
+  ⚠️ finding) for as long as the card shows, and a single-table re-render
+  clones the live rows, so a clone made during the card would lose the title
+  for good. Fix: park into an ATTRIBUTE (it survives `cloneNode`), have the
+  flag read either, and restore by sweeping `[data-mb-dp-saved-title]`, not
+  just the one element.
+- **Ctrl shows a card without `_dpSchedulePeek()`** (the keydown path calls
+  `_dpShowPeek()` directly), so the park happens in both.
+- **Only the note.** Parking every title would hide MusicBrainz's sort-name
+  titles, which have no box of their own.
+
 ## 2026-10-09 — Brucebase year pages: what four hand-read pages got wrong (branch feature/bb-years, WIP.1)
 
 **Context.** `org/BB-events.org` asked for the year pages

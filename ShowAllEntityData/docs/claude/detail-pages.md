@@ -181,9 +181,15 @@ hosts (kept, decided 2026-10-07).
   per `_MB_POP_RG_TYPES`; label — card `genres+aliases`, window
   `url-rels+label-rels` plus `release?label=…&limit=1`; area — `area-rels`;
   instrument — `instrument-rels+aliases`, no description from the Web Service
-  (9.99.1274); event — card `artist-rels+place-rels` (the setlist is a field of the
-  event), window `recording-rels+release-rels` plus the Event Art Archive index
-  (`_mbPopArtLoad(_mbPopEventArt, EAA_CTX, …)`, on pin only, R4); place — card
+  (9.99.1274); event — card `artist-rels+place-rels+event-rels+series-rels+url-rels`
+  (the setlist is a field of the event; the three later includes since WIP.2 for
+  "Part of" — an event's `parts` backward, whose target carries its `life-span`,
+  shown as "(2026-06-04 – 2026-06-05)" — and the window's "URLs": one row per
+  relationship type, each address in full plus an "[info]" link to
+  `/url/<id>`; 6.3 KB for the OceanFirst show), window `recording-rels+release-rels`
+  plus the Event Art Archive index
+  (`_mbPopArtLoad(_mbPopEventArt, EAA_CTX, …)`, on pin only, R4) plus the area
+  chain of "Held at" (below); place — card
   `area-rels+url-rels`, window `event?place=…&limit=100` sorted by date (the
   browse is not); series — one lookup with every item-kind relation (R1),
   items by `ordering-key` (the lookup is not in order) (9.99.1275); ISRC
@@ -199,10 +205,62 @@ hosts (kept, decided 2026-10-07).
   its card says "It is probably private." — still not kept, as any failure.
 - **The setlist is MusicBrainz's markup** (`_mbPopSetlist()`): `@ ` line-up
   artist, `# ` comment (between artists, the billing word "&"/"with"),
-  `* ` song. `[mbid|name]` tokens are shown by NAME only: inside a song line
-  the markup does not say whether one is a work or an artist. (The
+  `* ` song. The window LINKS `[mbid|name]` tokens (`_mbPopSetlistLine()`,
+  org/event-GPE.org, WIP.1): every token of an `@` line is an artist; in a
+  song line a token is a work, unless it sits inside a `(with …)` /
+  `(feat. …)` / `(featuring …)` / `(ft. …)` group, where it is an artist; a
+  `#` comment's tokens stay names (the markup says nothing there). The token
+  regex is case-INSENSITIVE and the link takes the MBID lowercased: editors
+  type mixed-case MBIDs (`[E497263c-…-Dca99482962c|The Fever]` on the Stone
+  Pony event `26cead1c…`, 14 of its 44 tokens), which the old lowercase-only
+  regex left as raw `[…|…]` text, and `_MB_POP_PATH_RE` (so drill-down)
+  matches lowercase only. MusicBrainz's own page links EVERY token of a song
+  line as `/work/`, the "with" artists included (`debug/mb-event-initial.html`)
+  — not a model to copy. The card keeps names only (plain text). (The
   event-overview page's `_eventSetlistParse()` reads the rendered HTML, a
   different input.)
+- **An area is named in its area chain** (`_mbPopAreaChain()`, WIP.2):
+  "OceanFirst Bank Center in West Long Branch, New Jersey, United States", as
+  MusicBrainz writes it — an event's "Held at" and a recording's "Recorded at"
+  / "Mixed at" (`_mbPopPlaceRelHtml()`: the chain right after the place's
+  name, before the relation's attributes and dates), and the Area row of a
+  place, a label and an artist, plus the artist's Born/Died areas
+  (`_mbPopAreaChainHtml()`). The Web Service gives an area without its
+  parents, so the WINDOW walks up, one `/ws/2/area/<id>?inc=area-rels` lookup
+  per level, following the `part of` backward relation
+  (`_mbPopAreaChainLoad(t, areas, …)`, from each kind's `pin()`; the
+  recording's once its credits lookup is there), and stops at a Country (no
+  lookup for it) or a missing parent, at most `_MB_POP_AREA_DEPTH` levels.
+  **A country is told by `_mbPopIsCountry()`**: a relation's area carries its
+  `type`, but an entity's own `area`/`begin-area`/`end-area` has `type: null`,
+  so there the ISO 3166-1 code decides (only countries have one) — otherwise
+  every artist and label in the United States would look up its 26 KB area.
+  The key is the area card's own (`pop:area:<id>:area-rels`), so every card
+  shares the steps: New Jersey is paid once for every event, studio, label and
+  birthplace there, and two chains that meet (two Manhattan studios) share
+  theirs. Shown are the start area and the ancestors of type
+  City/Subdivision/Country (`_MB_POP_CONTAINMENT_TYPES`) — musicbrainz-server's
+  `load_containment` (`Data/Area.pm`, checked 2026-10-08) keeps parent types
+  1, 2, 3, which is why "Monmouth County" and the district "Manhattan" are not
+  in the line ("Midtown Manhattan, New York, New York, United States"). Probes
+  (`scripts/probe-mb-entity-lookups.py --only event-details` and
+  `--only area-chains`, 2026-10-08): West Long Branch / Asbury Park / Long
+  Branch (City) → Monmouth County (County) → New Jersey (Subdivision) →
+  United States; Midtown Manhattan (City) → Manhattan (District) → New York
+  (City) → New York (Subdivision) → United States. A CARD makes no area
+  request: it shows the chain (`_mbPopAreaChainText()`, `_mbPopHeldAtText()`)
+  only when every step is already in memory, else the area's own name as
+  before. Cost: a window whose region is new pays about three 1/s rate slots
+  more, AFTER its own requests (the artist's links and five counts come
+  first).
+- **Instruments in relationship lists are links** (`_mbPopRelTargetHtml()`,
+  WIP.2, every kind): an instrument attribute's `attribute-ids` value IS the
+  instrument's MBID (probe `--only attr-instruments`: trumpet and "drums (drum
+  set)" answer 200 as instruments; "lead vocals", "background vocals" and
+  "time" answer 404). `_mbPopIsInstrumentAttr()` leaves out names ending in
+  "vocals" and `_MB_POP_NON_INSTRUMENT_ATTRS` (MusicBrainz's generic
+  attributes). The target's disambiguation follows its name, and an event
+  target's days follow it unless its name already starts with that day.
 - **Relations are grouped by type AND direction** (`_mbPopRelsByType()`), and
   `_MB_POP_REL_LABELS` names a group whose meaning turns on its direction, as
   read off the captures, not guessed: Columbia's forward "label ownership"
@@ -324,7 +382,13 @@ markup.
   `#page-content` before the tabview; the tabview pairs label i with panel i,
   as on the song list, and panels are read by label (Performances, Released
   on Album, Released as Live Download; Credits, On The Tracks and Lyrics as
-  whole sections for the dialog).
+  whole sections for the dialog). Released on Album is prose, split into one
+  release per line by `_bbReleaseLines()` (2026-10-09, `_DP_PARSER_VERSION` 2).
+  A release starts at each `<em>` holding a link (or a bare `/retail:` or
+  `/stats:discography` link) and runs to the next one, so its year, kind and
+  "(recorded …)" stay with it. The paragraph beginning "Live versions" becomes
+  its own field, "Released live on". A paragraph with no such element is kept
+  whole.
 
 **`_dpBlockText()` collapses the source's whitespace before it turns `<br>`
 into a line break.** The sites write `line<br />\nline`; keeping that
@@ -365,6 +429,34 @@ floating hover tooltip.
   detail link opens the dialog INSTEAD of the page. A touch screen has no hover;
   the dialog's ↗ opens the page. The hover handler's own tap guard is covered
   by the mousedown hide (recorded `"expect": "pass"`).
+- **The track/recording name note (`#mb-dp-origin`, 2026-10-09).** jesus2099's
+  "mb. INLINE STUFF" gives a release page's recording link a native
+  `title="track name: …\n≠rec. name: …"` when the track is named differently
+  from its recording. The browser drew that box over the recording card. Now:
+  - `_dpStashOriginTitle()` parks the title in `data-mb-dp-saved-title` as
+    soon as a card is DUE (`_dpSchedulePeek()`, and `_dpShowPeek()` for Ctrl's
+    immediate card). That is before the browser's own delay runs out.
+  - The same content shows as `#mb-dp-origin`, a `.mb-tt-liner` box of its own
+    STACKED ABOVE the card: same left, 4 px gap, at most as wide as the card.
+    `_dpPlacePeek()` places the two as one unit.
+  - `_dpHidePeek()` hides the box, and `_dpRestoreOriginTitles()` gives back
+    every parked title, including any clone a re-render made of the row
+    meanwhile. It sweeps the document only after a stash
+    (`_dpPeek.stashed`), so a hide costs nothing on a page without notes.
+  - Only the note is parked, because only the note has a box of its own. A
+    link's other titles (MusicBrainz's sort names, other scripts') stay; a
+    mutation pins this.
+  - `_titleHasRecNameMismatch()` (the 📊 flag and the ⚠️ finding) reads the
+    title OR the parked attribute (`_dpOriginTitle()`), so a count, a stamp or
+    a clone taken while a card shows still sees the flag.
+  - In the window, `_dpShowInDialog()` writes the note as a badge
+    (`.mb-dp-origin`) right after the title in createInfoDialog()'s title bar:
+    "from track “…” ≠ recording “…”", maroon italic Georgia, ellipsed, with
+    the full text as its own tip. It takes `margin-right: auto` in the
+    `space-between` bar, so the controls stay right. Along a drill-down path
+    it keeps the page target's note (`stack[0]`, where ← → go on from too).
+  Covered by `popup-mb.spec.js` (the note and its control); mutation list
+  `gpe-art-viewer.json`.
 
 ## The dialog (`#mb-dp-dialog`)
 
@@ -377,6 +469,41 @@ current row carries `tr.mb-dp-current`, a transient class taken off by a
 `MutationObserver` when `createInfoDialog()` removes the dialog. The class is
 on a live row and never written to cell content, so the four post-render
 obligations (filter-and-cache-invariants.md) do not apply.
+
+**Images open the artwork viewer (2026-10-09).** A plain primary click on an
+image in the window opens `#mb-art-viewer` over it. `_dpArtViewerClick()` runs
+from the scroll area's delegated click listener, before `_dpDrill()`, so
+nothing needs re-wiring after a repaint. Ctrl, Shift, Alt and ⌘ leave the link
+alone, so the image opens in a new tab as before. The thumbnails are marked
+when the HTML is built:
+- `data-mb-artv-ctx`/`-path`/`-i` (`_mbPopArtvAttrs()`): a release's Cover art
+  strip and front cover, an event's Event art strip. The viewer reads
+  `ctx.imagesCache` and asks nothing. The front cover is marked only once the
+  record is there; until then it stays the `/cover-art` link;
+- `data-mb-artv-ext="<n>"`: another site's cover and scans
+  (`_dpExtractedCols()`, so also a Springsteen site's record seen from another
+  host, U4) and a linked page's picture (`_extLeftCol()`). The click builds the
+  list from every such link in the window, in that order, cover first. The
+  cover links its scan's FULL image (it used to link the thumbnail it shows).
+The dialog passes `keepOpenWithin: ['#mb-art-viewer']`, so a click in the viewer
+is not a click outside. Keys need nothing: the viewer's `window`-capture
+listener stops Esc and ← → before `createInfoDialog()`'s Esc handler and
+`_dpDialogKeys()`. Esc closes the viewer only, and focus returns to the
+thumbnail. Another site's images never touch the art IndexedDB and load with no
+referrer. The viewer's external mode is described in artwork-caa-eaa.md "Release
+page Cover art section and the viewer". The hover card's thumbnails are not
+clickable and stay as they are.
+
+**Tracklist columns.** `.mb-dp-discs` is
+`repeat(auto-fit, minmax(180px, 1fr))`. Until 2026-10-09 it was `auto-fill`,
+which keeps empty tracks, so a one-disc list sat in one ~180 px column and
+wrapped its titles next to empty space (springsteenlyrics.com, from a real
+browser).
+
+**A field value of several lines** (`\n`-joined) is one line each in the
+window (`<br>`, each line escaped) and one "; "-joined run in a card, where
+`maxLen` cuts it anyway (`_dpFieldsHtml()`). Brucebase's releases use it
+(`_bbReleaseLines()`, below).
 
 **Live page view.** An `<iframe sandbox="allow-same-origin allow-popups
 allow-popups-to-escape-sandbox">` whose `srcdoc` is a cleaned copy of the page

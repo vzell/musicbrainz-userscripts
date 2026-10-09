@@ -149,7 +149,35 @@ Add the same booleans also explicitely for mobile access, but with the defaults 
 
 
 * TODO Sidebar entries ==> collapsable h2/h3
-* TODO Images in NON-MB sites need viewer support
+* DONE Images in NON-MB sites need viewer support
+
+create a new branch starting from the current:
+
+1.)
+
+https://www.jungleland.it/html/list.htm ==> https://www.jungleland.it/html/20080531_7.htm - [Image #2]
+
+Is it possible to use our internal viewer on the images (by clicking them) when rendered by our GPE in a detail view
+(non MB detail pages but also the MB detail pages with images itself), like e.g. what is possible when clicking an image
+in the big pictur image stipe on a PT 'release-tracks' - [Image #3]
+
+2.)
+
+Bug fix:
+
+The global filter misses the "✕"
+
+#+begin_example
+<button id="mb-global-filter-clear"
+#+end_example
+
+when the filter string ist just blanks
+
+#+begin_example
+<input id="mb-global-filter-input" type="search" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" data-protonpass-ignore="true" placeholder="Global Filter… works across all sub-tables" data-mb-tip="" title="Enter global filter string (focus with 'Ctrl+G', use 'Ctrl+U' for unicode character map)" style="font-size: 1em; padding: 2px 6px; border-width: 2px; border-style: solid none solid solid; border-color: orange; border-image: none; border-radius: 3px 0px 0px 3px; width: 500px; height: 24px; box-sizing: border-box; transition: box-shadow 0.2s; outline: none; box-shadow: orange 0px 0px 2px 2px;">
+#+end_example
+
 * TODO BruceBase
 ** more userscript support for more PTs
 ** needs renderer for all kind of pages in URL engine - external link preview
+

@@ -319,7 +319,21 @@ test.describe('detail-page parsers (one record per saved page)', () => {
         expect(r.fields).toContainEqual(['Performed live', '280 times']);
         expect(r.fields).toContainEqual(['Last played', '2024-09-15 Beach, Surf Stage, Asbury Park, NJ']);
         expect(r.fields).toContainEqual(['Live downloads', '28']);
-        expect(r.fields.find(([k]) => k === 'Released on')[1]).toMatch(/^The Wild, The Innocent & The E Street Shuffle \(1973\)/);
+        // One release per line, its year, kind and recording date kept with
+        // it; the live releases are their own field.
+        expect(r.fields.find(([k]) => k === 'Released on')[1].split('\n')).toEqual([
+            'The Wild, The Innocent & The E Street Shuffle (1973)',
+            '4th Of July, Asbury Park (Sandy) (Single, 1975)',
+            'The Essential (2003)',
+            'Chapter And Verse (2016)',
+            'Best Of (2024)',
+        ]);
+        expect(r.fields.find(([k]) => k === 'Released live on')[1].split('\n')).toEqual([
+            'Live/1975–85 (1986) (recorded December 31, 1980)',
+            "Hammersmith Odeon, London '75 (2006) (recorded November 18, 1975)",
+            'Magic Tour Highlights (EP, 2008) (recorded March 20, 2008)',
+            'Live From Asbury Park (2026) (recorded September 15, 2024)',
+        ]);
         expect(r.sections.map((s) => s.label)).toEqual(['Credits', 'On The Tracks', 'Lyrics']);
         // The fixture's lyrics are blanked (build-detail-fixtures.py): pin the
         // shape, never the words.
@@ -599,6 +613,35 @@ test.describe('the other hosts', () => {
         expect(errors).toEqual([]);
     });
 
+    test('springsteenlyrics.com: a one-disc tracklist takes the whole column, two discs share it', async ({ page }) => {
+        // Pins: `.mb-dp-discs` leaves no empty grid tracks. With
+        // `auto-fill` a single disc sat in one ~180 px track of a ~430 px
+        // column and its titles wrapped ("DOES THIS BUS STOP AT / 82ND
+        // STREET?") with the rest of the column empty.
+        const errors = trackPageErrors(page);
+        await loadSlListPage(page, { kind: 'bootlegs', settingsOverride: { sa_sl_detail_preview: true } });
+        await routeDetailPages(page, 'sl');
+        await page.click(`button[data-label="${SL_KINDS.bootlegs.button}"]`);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        await peekAt(page, page.locator('table.tbl tbody td a[href*="item=4554"]').filter({ hasNot: page.locator('img') }));
+        await page.keyboard.press('Space');
+        const discs = page.locator('#mb-dp-dialog .mb-dp-discs');
+        await expect(discs.locator(':scope > div')).toHaveCount(1);
+        const widths = () => discs.evaluate((el) => ({
+            all: el.getBoundingClientRect().width,
+            each: Array.from(el.children, (d) => d.getBoundingClientRect().width),
+        }));
+        const one = await widths();
+        expect(one.all).toBeGreaterThan(360);
+        expect(Math.abs(one.each[0] - one.all)).toBeLessThan(1);
+        // Two discs: side by side, half each (less the 16 px gap).
+        await discs.evaluate((el) => { el.appendChild(el.firstElementChild.cloneNode(true)); });
+        const two = await widths();
+        expect(two.each).toHaveLength(2);
+        two.each.forEach((w) => expect(Math.abs(w - (two.all - 16) / 2)).toBeLessThan(1));
+        expect(errors).toEqual([]);
+    });
+
     test('springsteenlyrics.com lyrics index: a song\'s card, its dialog, and a song without lyrics', async ({ page }) => {
         const errors = trackPageErrors(page);
         await loadSlListPage(page, { kind: 'lyrics-b', settingsOverride: { sa_sl_detail_preview: true } });
@@ -663,6 +706,82 @@ test.describe('the other hosts', () => {
         expect(errors).toEqual([]);
     });
 
+    test('jungleland.it: a click on a scan opens the artwork viewer over the window; Esc closes only the viewer', async ({ page }) => {
+        // Pins: a plain click opens #mb-art-viewer on THAT image, with the
+        // cover first and the scans after it; the large image is the scan's
+        // full file, loaded without a referrer and outside the art cache
+        // (through the cache it would go to the GM stub's 404 and stay a
+        // thumbnail); a click in the viewer is not a click outside the
+        // window; Esc closes the viewer, not the window, and focus returns to
+        // the thumbnail; a Ctrl-click is left to the link.
+        const errors = trackPageErrors(page);
+        await loadJlListPage(page, { settingsOverride: { sa_jl_detail_preview: true } });
+        await routeDetailPages(page, 'jl');
+        const art = [];
+        await page.route(/^https:\/\/www\.jungleland\.it\/artwork\//, (route) => {
+            art.push({ url: route.request().url(), referer: route.request().headers().referer || '' });
+            return route.fulfill({ contentType: 'image/jpeg', body: ONE_PX_PNG });
+        });
+        await page.click(`button[data-label="${JL_BUTTON}"]`);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        await peekAt(page, page.locator('table.tbl tbody a', { hasText: 'Magic In The Köln Night' }));
+        await page.keyboard.press('Space');
+        const dialog = page.locator('#mb-dp-dialog');
+        await expect(dialog.locator('.mb-dp-gallery a')).toHaveCount(5);
+        // The cover (the front scan's thumbnail) links the front's full image.
+        await expect(dialog.locator('a:has(> img.mb-dp-xcover)')).toHaveAttribute('href', /\/artwork\/other\/Magic.*_front\.jpg$/);
+
+        // A Ctrl-click is the link's: nothing prevents it, no viewer opens.
+        const ctrlPrevented = await dialog.locator('.mb-dp-gallery a').nth(1).evaluate((a) => {
+            let prevented = null;
+            document.addEventListener('click', (e) => { prevented = e.defaultPrevented; e.preventDefault(); }, { once: true });
+            a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true }));
+            return prevented;
+        });
+        expect(ctrlPrevented).toBe(false);
+        await expect(page.locator('#mb-art-viewer:not([hidden])')).toHaveCount(0);
+
+        const cd1 = dialog.locator('.mb-dp-gallery a', { hasText: 'cd1' });
+        await cd1.click();
+        const viewer = page.locator('#mb-art-viewer');
+        await expect(viewer).toBeVisible();
+        await expect(viewer.locator('.mb-artv-title')).toHaveText('Magic In The Köln Night (2007-12-13)');
+        // front (the cover), back, cd1, …: cd1 is the third.
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText('3 / 6');
+        await expect(viewer.locator('.mb-artv-info .mb-tt-title')).toHaveText('cd1');
+        await expect(viewer.locator('.mb-artv-info')).toContainText('www.jungleland.it');
+        // None of the archive's rows.
+        await expect(viewer.locator('.mb-artv-info')).not.toContainText('Main front');
+        await expect(viewer.locator('.mb-artv-info')).not.toContainText('approved');
+        const stage = viewer.locator('.mb-artv-stage .mb-artv-img');
+        await expect(stage).toHaveAttribute('data-artv-size', 'big');
+        await expect(stage).toHaveAttribute('data-artv-url', /\/artwork\/other\/Magic.*_cd1\.jpg$/);
+        const full = art.filter((r) => /\/artwork\/other\/Magic.*_cd1\.jpg$/.test(r.url));
+        expect(full.length).toBeGreaterThan(0);
+        expect(full.every((r) => r.referer === '')).toBe(true);
+
+        await page.keyboard.press('ArrowRight');
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText('4 / 6');
+        await expect(viewer.locator('.mb-artv-info .mb-tt-title')).toHaveText('cd2');
+        // The grid is one run, not "(no type)".
+        await page.keyboard.press('g');
+        await expect(viewer.locator('.mb-artv-grid-hdr')).toHaveText(['Images × 6']);
+        await viewer.locator('.mb-artv-grid img').first().click();
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText('1 / 6');
+        await expect(viewer.locator('.mb-artv-info .mb-tt-title')).toHaveText('front');
+
+        // A click inside the viewer leaves the window open.
+        await viewer.locator('.mb-artv-info').click();
+        await expect(dialog).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(viewer).toBeHidden();
+        await expect(dialog).toBeVisible();
+        expect(await cd1.evaluate((a) => document.activeElement === a)).toBe(true);
+        await page.keyboard.press('Escape');
+        await expect(dialog).toHaveCount(0);
+        expect(errors).toEqual([]);
+    });
+
     test('Brucebase: the card\'s count and last show; the dialog\'s lyrics; the Live page with every tab', async ({ page }) => {
         const errors = trackPageErrors(page);
         await loadBbSongsPage(page, { settingsOverride: { sa_bb_detail_preview: true } });
@@ -678,6 +797,15 @@ test.describe('the other hosts', () => {
         await expect(dialog.locator('h4', { hasText: 'Lyrics' })).toBeVisible();
         expect(await dialog.locator('.mb-dp-section').last().evaluate((el) => el.textContent.split('\n').filter(Boolean).length))
             .toBeGreaterThan(20);
+        // The window shows the releases one per line ...
+        const released = dialog.locator('.mb-dp-kv dt:text-is("Released on") + dd');
+        expect(await released.evaluate((dd) => dd.innerText.split('\n'))).toEqual([
+            'The Wild, The Innocent & The E Street Shuffle (1973)', '4th Of July, Asbury Park (Sandy) (Single, 1975)',
+            'The Essential (2003)', 'Chapter And Verse (2016)', 'Best Of (2024)',
+        ]);
+        await expect(dialog.locator('.mb-dp-kv dt:text-is("Released live on") + dd br')).toHaveCount(3);
+        // ... and markup in a value is still text, not HTML.
+        expect(await released.evaluate((dd) => dd.querySelectorAll('*:not(br)').length)).toBe(0);
 
         await dialog.locator('button', { hasText: 'Live page' }).click();
         await expect.poll(() => page.evaluate(() => {

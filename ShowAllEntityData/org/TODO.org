@@ -1274,6 +1274,26 @@ The value for the "Annotation" C should be the FULL uncollapsed value, even if t
 
 
 * TODO track .ne. recording name minitooltip above popup
+** DONE i
+
+Is it possible to render the current native tooltip about track name differing from recording name in PT
+'release-tracks' as a small rich HTML based rectangle stacked above the GPE, and when pressing space so that the GPE popup opens the same information in the following container
+
+#+begin_example
+<div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 20px 12px; border-bottom: 2px solid rgb(221, 221, 221); cursor: move; user-select: none; flex-shrink: 0; border-radius: 8px 8px 0px 0px; background: rgb(248, 248, 248);"><span style="font-weight: 700; font-size: 1.15em; color: rgb(34, 34, 34);">Recording</span><div style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;"><button type="button" class="mb-dp-tbtn" data-mb-tip="" title="Back to what the window showed before (Backspace, Alt+←)" style="display: none;">← Back</button><button type="button" class="mb-dp-tbtn" data-mb-tip="" title="Previous row (←)">‹</button><span class="mb-dp-pos-label">2 / 2</span><button type="button" class="mb-dp-tbtn" data-mb-tip="" title="Next row (→)">›</button><span class="mb-dp-seg"><button type="button" class="mb-dp-tbtn" data-mb-tip="" title="What the script read from the page" aria-pressed="true">Extracted</button><button type="button" class="mb-dp-tbtn" data-mb-tip="" title="The site's own page, with its navigation hidden" aria-pressed="false">Live page</button></span><button type="button" class="mb-dp-tbtn" data-mb-tip="" title="Load the page again, bypassing the saved copy">⟳</button><a class="mb-dp-tbtn" target="_blank" rel="noopener" data-mb-tip="" title="Open the page in a new tab" href="https://musicbrainz.org/recording/62475144-1dae-46c0-a178-ff607a2ea42d">↗</a><button data-mb-tip="" title="Close (Escape)" style="background: none; border-width: medium; border-style: none; border-color: currentcolor; border-image: none; font-size: 1.2em; cursor: pointer; color: rgb(102, 102, 102); padding: 0px 4px; line-height: 1; user-select: none;">✕</button></div></div>
+#+end_example
+
+prominently in different font and colour, so it's always obvious where we are coming from
+
+** summary
+
+ Behaviour you might want changed:
+  - Clicking a link inside the window: the badge keeps showing the track you started from, the same row that ← → step from.
+  - ← → to another row: the badge follows that row, and hides if the row's track has no note.
+  - Without INLINE STUFF: nothing appears. It reuses that script's note and doesn't compare the track and recording names itself. It could, from the recording data the card already loads, if you want it
+    independent of that script.
+  - The ⚠️ and 📊 "≠" flag keeps working while the title is removed.
+
 
 * DONE BUG
 ** DONE initial

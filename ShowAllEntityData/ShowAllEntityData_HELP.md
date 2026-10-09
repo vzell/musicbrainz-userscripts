@@ -1557,7 +1557,8 @@ composer, lyricist and publishers. An artist card shows the type, area, life
 span, birthplace, genres, rating, IPI and ISNI; a label card the type, label
 code, area, years active and genres; an area card what it is part of and how
 many parts it has; an instrument card its type, subtypes and other names; an
-event card its date and time, place, line-up and first songs; a place card
+event card its date and time, place, what it is part of, line-up and first
+songs; a place card
 its address and coordinates; a series card its first items. An ISRC or ISWC
 card lists the recordings or works carrying the code; a disc ID card its
 tracks, length and releases; a collection card its type, size and editor
@@ -1582,19 +1583,45 @@ change.
   and the images in the Cover Art Archive; for a release group, every
   release in a sortable table beside the group's facts; for a recording, its
   credits (performers and their instruments, producers, engineers, where it
-  was recorded and mixed) and up to 25 of its releases with the real total;
+  was recorded and mixed — each studio with its city, state and country) and
+  up to 25 of its releases with the real total;
   for a work, its writers, publishers and related works, its society codes,
-  and its first 100 recordings with the total; for an artist, every external
-  link and how many release groups of each type; for a label, the labels it
-  owns, is owned by or is an imprint of, its links and its number of
-  releases; for an area, its parts; for an instrument, the related
+  and its first 100 recordings with the total; for an artist, its area and
+  birthplace named as MusicBrainz does (*Long Branch, New Jersey, United
+  States*), every external link and how many release groups of each type; for
+  a label, its area named the same way, the labels it owns, is owned by or is
+  an imprint of, its links and its number of releases; for an area, its parts; for an instrument, the related
   instruments and every alias (its description is on the Live page); for an
-  event, the whole setlist, what was recorded there and its posters; for a
-  place, a map link, its links and up to 100 of its events by date; for a
+  event, where it was held as MusicBrainz writes it (*OceanFirst Bank Center
+  in West Long Branch, New Jersey, United States* — the window looks up the
+  areas above the place, one per level, and remembers them for every other
+  event there), what it is part of with its dates, its URLs by relationship
+  (each with its **[info]** link), the whole setlist with every song linked to
+  its work and every artist — the line-up, and the guests in a song's
+  "(with …)" — linked to the artist, what was recorded there and its posters;
+  for a place, its area named the same way, a map link, its links and up to
+  100 of its events by date; for a
   series, every item in order. A part that could not be loaded says so, with
-  **Try again**.
+  **Try again**. Areas are named down from the city, as on MusicBrainz's
+  own pages: the window looks up each area above, one per level, and
+  remembers them for every other card; a card shows the whole line only once
+  it is known. In every relationship list an instrument links its instrument
+  page (*Chris Anderson (trumpet player) (trumpet)*); vocals and words such as
+  *guest* stay text.
 - **Live page**: the entity's own MusicBrainz page, without the site's header
   and footer, and without its scripts.
+- **Click an image** (a release's front cover or its Cover art strip, an
+  event's posters) to open it in the artwork viewer, the same one as the
+  release page's Cover art, stepping through all of that release's or event's
+  images. **Esc** returns to the window; Ctrl-click opens the image in a new
+  tab instead.
+- **A track named differently from its recording.** With jesus2099's
+  *mb. INLINE STUFF* installed, a track whose name differs from its recording's
+  carries a note with both names. The browser used to show that note in its
+  own small box over the card. Now it is a box stacked just above the card,
+  and once pinned, a maroon badge next to the window's title ("from track
+  “…” ≠ recording “…”"). The window shows the recording, but always says which
+  track it came from.
 - **‹ ›** or **← →** step to the same kind of link in the **same column** of
   the next or previous row, on into the next sub-table. A row links a
   release, an artist and a label; the arrows stay with the one you started
@@ -2177,9 +2204,13 @@ type into the filter box stays in the filter box. In the window:
 - **‹ ›** or the **← →** keys step to the previous or next row of the table,
   in the order the table shows them.
 - **Extracted** shows what the script read from the page, laid out for
-  reading: the fields, the scans (click one for the full size), the notes and
-  the whole tracklist. On Brucebase it also has the credits, the studio
-  versions and the lyrics; on the springsteenlyrics.com lyrics index, the
+  reading: the fields, the scans, the notes and the whole tracklist. Click
+  the cover or a scan to open it in the artwork viewer (the same one as the
+  release page's Cover art: zoom, ← → through every image of the page, grid,
+  download; **Esc** returns to the window). Ctrl-click opens the image in a
+  new tab instead. On Brucebase it also has the credits, the studio
+  versions and the lyrics, and lists the releases one per line, the live
+  releases apart; on the springsteenlyrics.com lyrics index, the
   whole lyrics and every section of the song's page (info, recording,
   releases, live history, covers, credits, the other versions).
 - **Live page** shows the site's own page inside the window. *Hide the site's

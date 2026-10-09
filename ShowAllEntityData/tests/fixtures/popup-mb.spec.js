@@ -47,6 +47,23 @@ const INC = 'inc=artist-credits+labels+recordings+release-groups+media';
 const json = (name) => fs.readFileSync(path.join(__dirname, name), 'utf8');
 const REC_ID = 'bbcedc0f-2fff-42f4-9ca6-6d2263d1a042';   // the studio "Thunder Road"
 const WORK_ID = '9893a23c-f282-3b07-a2db-b4f2f3b9f4b2';  // "Born to Run", the song
+// The area chains above the areas the event, place, artist and recording
+// fixtures name (org/event-GPE.org): one `area/<id>?inc=area-rels` answer per
+// level, real captures (scripts/probe-mb-entity-lookups.py --only
+// event-details / --only area-chains, 2026-10-08). No country is here: the
+// walk never looks one up.
+const AREA_CHAIN_FIXTURES = {
+    '4c21ce68-e33e-4772-ac5f-0f52d9195d96': 'ws2-pop-area-wlb.json',      // West Long Branch (City)
+    '10fa66f7-aa08-4823-8af8-52108f350a5a': 'ws2-pop-area-10fa66f7.json', // Asbury Park (City)
+    'bb0af2e9-6ae0-4c4f-b729-c8d6444d6380': 'ws2-pop-area-bb0af2e9.json', // Long Branch (City)
+    '604b7841-36b7-4bea-9bdc-7eeb52520e35': 'ws2-pop-area-monmouth.json', // Monmouth County (County)
+    'a36544c1-cb40-4f44-9e0e-7a5a69e403a8': 'ws2-pop-area-nj.json',       // New Jersey (Subdivision)
+    'edd27a39-ff8a-4af4-8bbf-f369b0fb1899': 'ws2-pop-area-edd27a39.json', // Midtown Manhattan (City)
+    '261962ea-d8c2-4eaf-a80c-f14376ffadb0': 'ws2-pop-area-261962ea.json', // Manhattan (District)
+    '74e50e58-5deb-4b99-93a2-decbb365c07f': 'ws2-pop-area-74e50e58.json', // New York (City)
+    '75e398a3-5f3f-4224-9cd8-0fe44715bc95': 'ws2-pop-area-75e398a3.json', // New York (Subdivision)
+};
+const areaLookups = (log) => log.ws2.filter(u => u.includes('/ws/2/area/')).map(u => u.match(/area\/([0-9a-f-]{36})/)[1]);
 // Real captures (scripts/capture-ws2-fixtures.py), by the request each answers.
 // Phase 3's pages, captured with scripts/fetch-mb-page-fixture.js: the user's
 // own applied edit logged in (--auth: editor and notes shown), an open edit
@@ -70,6 +87,7 @@ const WS2_FIXTURES = [
     [/\/ws\/2\/label\/[0-9a-f-]{36}\?inc=genres/, 'ws2-pop-label-columbia.json'],
     [/\/ws\/2\/label\/[0-9a-f-]{36}\?inc=url-rels/, 'ws2-pop-label-columbia-pin.json'],
     [/\/ws\/2\/release\?label=/, 'ws2-pop-label-columbia-count.json'],
+    ...Object.entries(AREA_CHAIN_FIXTURES).map(([id, f]) => [new RegExp(`/ws/2/area/${id}\\?inc=area-rels&`), f]),
     [/\/ws\/2\/area\/[0-9a-f-]{36}\?/, 'ws2-pop-area-nj.json'],
     [/\/ws\/2\/instrument\/[0-9a-f-]{36}\?/, 'ws2-pop-instrument-guitar.json'],
     [/\/ws\/2\/event\/[0-9a-f-]{36}\?inc=artist-rels/, 'ws2-pop-event-manchester.json'],
@@ -473,6 +491,27 @@ test.describe('MusicBrainz link previews (sa_pop_mb)', () => {
         expect(log.caa, 'one Cover Art Archive index, on pin').toEqual([`/release/${REL_ID}`]);
         expect(log.lookups).toHaveLength(1);
 
+        // A plain click on a strip image opens the artwork viewer on THAT
+        // image of the archive record the strip came from, over the window,
+        // asking the archive for nothing more; Esc closes only the viewer.
+        const viewer = page.locator('#mb-art-viewer');
+        await area.locator('.mb-dp-gallery a').nth(2).click();
+        await expect(viewer).toBeVisible();
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText('3 / 16');
+        await expect(viewer.locator('.mb-artv-title')).toHaveText('Greetings From Asbury Park, N.J.');
+        // The archive's own rows, unlike another site's image.
+        await expect(viewer.locator('.mb-artv-info')).toContainText('Status');
+        expect(log.caa, 'the viewer reads the record already loaded').toHaveLength(1);
+        await page.keyboard.press('Escape');
+        await expect(viewer).toBeHidden();
+        await expect(dialog(page)).toBeVisible();
+        // The front cover opens it on the main front.
+        await area.locator('a:has(> img.mb-dp-xcover)').click();
+        await expect(viewer.locator('.mb-artv-info .mb-tt-title')).toHaveText('★ Main front');
+        await page.keyboard.press('Escape');
+        await expect(viewer).toBeHidden();
+        await expect(dialog(page)).toBeVisible();
+
         await dialog(page).locator('button.mb-dp-tbtn', { hasText: '⟳' }).click();
         await expect.poll(() => log.lookups.length).toBe(2);
         await expect(area.locator('.mb-pop-tracks li')).toHaveCount(9);
@@ -628,6 +667,65 @@ test.describe('MusicBrainz link previews: recording and work (WIP.2)', () => {
         expect(log.ws2).toEqual([expect.stringContaining(`/ws/2/recording/${REC_ID}?inc=artist-credits+isrcs+releases+work-rels&fmt=json`)]);
     });
 
+    test('a track named differently from its recording: the note above the card, no native box, the badge in the window', async ({ page }) => {
+        // Pins: jesus2099's "mb. INLINE STUFF" title on a recording link
+        // ("track name: …\n≠rec. name: …") is shown as #mb-dp-origin, a box
+        // stacked ABOVE the card (its bottom at the card's top, same left);
+        // the link's native title is parked while the card shows (else the
+        // browser draws its own box over the card) and comes back when it
+        // closes; the 📊 flag still reads it while parked; Space puts the same
+        // note in the window's title bar, after the title.
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const NOTE = 'track name: Thunder Road (version 7)\n≠rec. name: Thunder Road';
+        const a = await addLink(page, `/recording/${REC_ID}`, 'Thunder Road (version 7)');
+        await a.evaluate((el, t) => el.setAttribute('title', t), NOTE);
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        const origin = page.locator('#mb-dp-origin');
+        await expect(origin).toBeVisible();
+        await expect(origin.locator('dt')).toHaveText(['Track name', '≠ Recording']);
+        await expect(origin.locator('dd')).toHaveText(['Thunder Road (version 7)', 'Thunder Road']);
+        const box = await origin.boundingBox();
+        const cbox = await card(page).boundingBox();
+        expect(Math.abs((box.y + box.height + 4) - cbox.y)).toBeLessThan(1.5);
+        expect(Math.abs(box.x - cbox.x)).toBeLessThan(1);
+        // No native box while the card shows; the flag is still readable.
+        await expect(a).not.toHaveAttribute('title', /./);
+        await expect(a).toHaveAttribute('data-mb-dp-saved-title', NOTE);
+        expect(await a.evaluate((el) => window.__saTest.titleHasRecNameMismatch(el.closest('td')))).toBe(true);
+
+        await page.keyboard.press('Escape');
+        await expect(card(page)).toBeHidden();
+        await expect(origin).toBeHidden();
+        await expect(a).toHaveAttribute('title', NOTE);
+        await expect(a).not.toHaveAttribute('data-mb-dp-saved-title', /.*/);
+
+        await ctrlHover(page, a);
+        await expect(origin).toBeVisible();
+        await page.keyboard.press('Space');
+        const badge = dialog(page).locator(':scope > div > .mb-dp-origin');
+        await expect(badge).toBeVisible();
+        await expect(badge).toHaveText('from track “Thunder Road (version 7)” ≠ recording “Thunder Road”');
+        // Right after the title, before the controls.
+        await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Recording');
+        expect(await badge.evaluate((b) => b.previousElementSibling === b.parentElement.querySelector(':scope > span'))).toBe(true);
+        await expect(origin).toBeHidden();
+        await expect(a).toHaveAttribute('title', NOTE);
+    });
+
+    test('control: a recording link without a note shows no box and no badge, and keeps its own title', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, `/recording/${REC_ID}`, 'Thunder Road');
+        await a.evaluate((el) => el.setAttribute('title', 'Springsteen, Bruce'));
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(page.locator('#mb-dp-origin')).toBeHidden();
+        await expect(a).toHaveAttribute('title', 'Springsteen, Bruce');
+        await page.keyboard.press('Space');
+        await expect(dialog(page)).toBeVisible();
+        await expect(dialog(page).locator(':scope > div > .mb-dp-origin')).toBeHidden();
+    });
+
     test('the recording window: credits and the real release count, each asked once; ⟳ asks all again', async ({ page }) => {
         const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
         const a = await addLink(page, `/recording/${REC_ID}`, 'Thunder Road');
@@ -653,6 +751,31 @@ test.describe('MusicBrainz link previews: recording and work (WIP.2)', () => {
         await expect.poll(() => [recLookups(log).length, recCredits(log).length, recCounts(log).length], { timeout: 15000 })
             .toEqual([2, 2, 2]);
         await expect(area.locator('h4', { hasText: 'Releases' })).toHaveText('Releases · 271');
+    });
+
+    test('the recording window names each studio in its area chain, each step asked once (org/event-GPE.org)', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, `/recording/${REC_ID}`, 'Thunder Road');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        expect(areaLookups(log), 'the card asks for no area').toEqual([]);
+        await page.keyboard.press('Space');
+        const credits = dialog(page).locator('.mb-dp-area h4:text-is("Credits") + .mb-dp-kv');
+        const recordedAt = credits.locator('dt:text-is("Recorded at") + dd');
+        // Midtown Manhattan (City) → Manhattan (District, passed over) →
+        // New York (City) → New York (Subdivision) → United States.
+        await expect(recordedAt).toContainText(`914 Sound Studios in New York, United States`);
+        // The Record Plant, with or without its "(New York)" disambiguation.
+        await expect(recordedAt).toContainText(/The Record Plant( \(New York\))? in Midtown Manhattan, New York, New York, United States/);
+        await expect(credits.locator('dt:text-is("Mixed at") + dd'))
+            .toContainText(/The Record Plant( \(New York\))? in Midtown Manhattan, New York, New York, United States/);
+        await expect(credits).not.toContainText(', Manhattan,');
+        await expect(credits.locator('.mb-dp-spin')).toHaveCount(0);
+        await expect(recordedAt.locator('a[href="/area/edd27a39-ff8a-4af4-8bbf-f369b0fb1899"]').first()).toHaveText('Midtown Manhattan');
+        // Two chains meet in the state of New York: each step once, no country.
+        const ids = areaLookups(log);
+        expect(ids.slice().sort()).toEqual(['edd27a39-ff8a-4af4-8bbf-f369b0fb1899', '261962ea-d8c2-4eaf-a80c-f14376ffadb0',
+            '74e50e58-5deb-4b99-93a2-decbb365c07f', '75e398a3-5f3f-4224-9cd8-0fe44715bc95'].sort());
     });
 
     test('a recording on fewer releases than a lookup lists asks for no count', async ({ page }) => {
@@ -761,6 +884,56 @@ test.describe('MusicBrainz link previews: artist, label, area, instrument (WIP.3
         expect(log.ws2.filter(u => u.includes('/ws/2/release-group?artist='))).toHaveLength(5);
     });
 
+    test('the artist window: area and birthplace in their area chains; a country is never looked up (org/event-GPE.org)', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        await ctrlHover(page, artistLink(page));
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-dp-kv dt:text-is("Born in") + dd')).toHaveText('Long Branch');
+        await page.keyboard.press('Space');
+        const facts = dialog(page).locator('.mb-dp-area h4:text-is("Facts") + .mb-dp-kv');
+        // Its links and five release-group counts take their rate slots first.
+        await expect(facts.locator('dt:text-is("Born") + dd')).toHaveText('1949-09-23 · Long Branch, New Jersey, United States', { timeout: 20000 });
+        await expect(facts.locator('dt:text-is("Born") + dd a')).toHaveCount(3);
+        // The artist's own area has no type: the ISO code says "country".
+        await expect(facts.locator('dt:text-is("Area") + dd')).toHaveText('United States');
+        expect(areaLookups(log)).toEqual(['bb0af2e9-6ae0-4c4f-b729-c8d6444d6380', '604b7841-36b7-4bea-9bdc-7eeb52520e35',
+            'a36544c1-cb40-4f44-9e0e-7a5a69e403a8']);
+        // The card again: the chain from memory, no request.
+        const before = log.ws2.length;
+        await page.keyboard.press('Escape');
+        await expect(dialog(page)).toBeHidden();
+        await ctrlHover(page, artistLink(page));
+        await expect(card(page).locator('.mb-dp-kv dt:text-is("Born in") + dd')).toHaveText('Long Branch, New Jersey, United States');
+        expect(log.ws2).toHaveLength(before);
+    });
+
+    test('the label window: a label in a country asks for no area (org/event-GPE.org)', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        await ctrlHover(page, labelLink(page));
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        const area = dialog(page).locator('.mb-dp-area');
+        await expect(area.locator('.mb-dp-kv').first()).toContainText('43,171');
+        await expect(area.locator('h4:text-is("Facts") + .mb-dp-kv dt:text-is("Area") + dd')).toHaveText('United States');
+        expect(areaLookups(log)).toEqual([]);
+    });
+
+    test('the label window: an area below a country in its area chain (org/event-GPE.org)', async ({ page }) => {
+        const label = JSON.parse(json('ws2-pop-label-columbia.json'));
+        label.area = { id: '10fa66f7-aa08-4823-8af8-52108f350a5a', name: 'Asbury Park', 'sort-name': 'Asbury Park', type: null, 'type-id': null };
+        const log = await open(page, {
+            settings: { sa_pop_mb: true }, showAll: false,
+            ws2: (url) => (/\/ws\/2\/label\/[0-9a-f-]{36}\?inc=genres/.test(url) ? { status: 200, body: JSON.stringify(label) } : null),
+        });
+        await ctrlHover(page, labelLink(page));
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('.mb-dp-area h4:text-is("Facts") + .mb-dp-kv dt:text-is("Area") + dd'))
+            .toHaveText('Asbury Park, New Jersey, United States', { timeout: 15000 });
+        expect(areaLookups(log)).toEqual(['10fa66f7-aa08-4823-8af8-52108f350a5a', '604b7841-36b7-4bea-9bdc-7eeb52520e35',
+            'a36544c1-cb40-4f44-9e0e-7a5a69e403a8']);
+    });
+
     test('the arrows stay in the Artist column', async ({ page }) => {
         await open(page, { settings: { sa_pop_mb: true } });
         const n = await page.evaluate(() => Array.from(document.querySelectorAll('table.tbl'))
@@ -847,7 +1020,7 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
         await expect(kv).toContainText('Bruce Springsteen & The E Street Band with Roy Bittan, Nils Lofgren');
         await expect(card(page).locator('.mb-pop-tracks li')).toHaveCount(5);
         await expect(card(page).locator('.mb-tt-dim')).toContainText('more');
-        expect(log.ws2).toEqual([expect.stringContaining(`/ws/2${EVENT}?inc=artist-rels+place-rels&fmt=json`)]);
+        expect(log.ws2).toEqual([expect.stringContaining(`/ws/2${EVENT}?inc=artist-rels+place-rels+event-rels+series-rels+url-rels&fmt=json`)]);
         expect(log.eaa, 'the poster only on pin').toEqual([]);
     });
 
@@ -867,7 +1040,160 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
         await expect(recorded.locator('dd').nth(1).locator('a')).toHaveCount(26);
         await expect(area.locator('.mb-dp-gallery img')).not.toHaveCount(0);
         expect(log.eaa).toEqual([EVENT]);
+        // A click on the event art opens the viewer on it, from the record already here.
+        await area.locator('.mb-dp-gallery a').first().click();
+        await expect(page.locator('#mb-art-viewer')).toBeVisible();
+        await expect(page.locator('#mb-art-viewer .mb-artv-pos')).toHaveText(/^1 \/ \d+$/);
+        await expect(page.locator('#mb-art-viewer')).toHaveAttribute('aria-label', 'EAA artwork viewer');
+        expect(log.eaa).toEqual([EVENT]);
+        await page.keyboard.press('Escape');
+        await expect(dialog(page)).toBeVisible();
         expect(log.ws2.filter(u => u.includes('inc=recording-rels+release-rels'))).toHaveLength(1);
+    });
+
+    // org/event-GPE.org. Real captures (scripts/probe-mb-entity-lookups.py
+    // --only event-details, 2026-10-08): the Stone Pony show, whose setlist
+    // has mixed-case MBIDs and "(with …)" guests; the OceanFirst show, part
+    // of a two-day event, with three URLs, held in West Long Branch → Monmouth
+    // County → New Jersey → United States.
+    const PONY = '/event/26cead1c-a5fa-4677-873a-312412c6dc91';
+    const OCEAN = '/event/cd595883-d26a-4e76-a033-eb588e0f9c55';
+    // West Long Branch → Monmouth County → New Jersey (→ United States, never asked).
+    const OCEAN_CHAIN = ['4c21ce68-e33e-4772-ac5f-0f52d9195d96', '604b7841-36b7-4bea-9bdc-7eeb52520e35',
+        'a36544c1-cb40-4f44-9e0e-7a5a69e403a8'];
+    const eventWs2 = (url) => {
+        if (url.includes(`/ws/2${PONY}?inc=artist-rels`)) return { status: 200, body: json('ws2-pop-event-stonepony.json') };
+        if (url.includes(`/ws/2${OCEAN}?inc=artist-rels`)) return { status: 200, body: json('ws2-pop-event-oceanfirst.json') };
+        if (/\/ws\/2\/event\/[0-9a-f-]{36}\?inc=recording-rels/.test(url)) return { status: 200, body: '{"relations":[]}' };
+        return null;
+    };
+
+    test('the event window links its setlist: works, the line-up and the "(with …)" guests as artists, mixed-case MBIDs too', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false, ws2: eventWs2 });
+        const a = await addLink(page, PONY, 'Stone Pony');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        // The card: names only, never a raw token.
+        await expect(card(page).locator('.mb-pop-tracks li').first()).toContainText('Cadillac Jack');
+        await expect(card(page).locator('.mb-pop-tracks a')).toHaveCount(0);
+        await page.keyboard.press('Space');
+        const area = dialog(page).locator('.mb-dp-area');
+        const songs = area.locator('h4:text-matches("^Setlist") ~ ol.mb-pop-tracks li');
+        await expect(songs).toHaveCount(20);
+        await expect(songs.filter({ hasText: /\[|\]/ }), 'no raw [mbid|name] token').toHaveCount(0);
+        // A mixed-case token: the work linked by its lowercased MBID, the
+        // guest in "(with …)" as an artist.
+        const fever = songs.nth(13);
+        await expect(fever).toContainText('The Fever (with Bruce Springsteen)');
+        await expect(fever.locator('a[href="/work/e497263c-4f15-36c0-b27c-dca99482962c"]')).toHaveText('The Fever');
+        await expect(fever.locator('a[href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f"]')).toHaveText('Bruce Springsteen');
+        const hard = songs.nth(15);
+        await expect(hard.locator('a[href^="/work/"]')).toHaveCount(1);
+        await expect(hard.locator('a[href^="/artist/"]')).toHaveText(['Bruce Springsteen', 'Graham Parker']);
+        // Two works before the guests: both works.
+        await expect(songs.nth(18).locator('a[href^="/work/"]')).toHaveText(['Chain of Fools', 'Born on the Bayou']);
+        // A song without a token stays text.
+        await expect(songs.nth(10)).toHaveText(/You Don’t Know/);
+        await expect(songs.nth(10).locator('a')).toHaveCount(0);
+        // MusicBrainz's own page links the guests as works: not here.
+        await expect(area.locator('a[href^="/work/70248960"], a[href^="/work/f9227504"]')).toHaveCount(0);
+        // The line-up: every artist linked.
+        const lineup = area.locator('h4:text-matches("^Setlist") + .mb-dp-xsub');
+        await expect(lineup.locator('a[href="/artist/d7bc97fb-4bd3-453b-98a1-9081f89c52f0"]')).toHaveText('Southside Johnny & The Asbury Jukes');
+        await expect(lineup.locator('a[href^="/artist/"]')).toHaveCount(12);
+        await expect(lineup).toContainText('Southside Johnny & The Asbury Jukes with Southside Johnny, Chris Anderson');
+        // org/event-GPE.org item 4: an instrument attribute links its
+        // instrument (its id is the instrument's MBID); a vocal does not
+        // (its id is not an instrument's). The artist's disambiguation is
+        // shown, as MusicBrainz shows it.
+        const main = area.locator('h4:text-is("Facts") + .mb-dp-kv dt:text-is("Main performer") + dd');
+        await expect(main).toContainText('Chris Anderson (trumpet player) (trumpet)');
+        await expect(main.locator('a[href="/instrument/1c8f9780-2f16-4891-b66d-bb7aa0820dbd"]')).toHaveText('trumpet');
+        await expect(main.locator('a[href="/instrument/12092505-6ee1-46af-a15a-b5b468b6b155"]')).toHaveText('drums (drum set)');
+        await expect(main).toContainText('lead vocals');
+        await expect(main.locator('a[href^="/instrument/"]', { hasText: /vocals/ })).toHaveCount(0);
+        // A linked work previews and drills down like any other link.
+        await fever.locator('a[href^="/work/"]').click();
+        await expect(dialog(page).locator(':scope > div > span').first()).toContainText('Work');
+    });
+
+    test('the event window: held at with the whole area chain, part of with its dates, URLs with [info]', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false, ws2: eventWs2 });
+        const a = await addLink(page, OCEAN, 'OceanFirst');
+        // Listening from before the hover: an area lookup started by the card
+        // would come one rate slot after its own, so "none yet" right after
+        // the card shows proves nothing.
+        const areaAsked = page.waitForRequest(/\/ws\/2\/area\//, { timeout: 3000 }).then(() => true, () => false);
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        // The card: one request, no area lookup; the place with its own area.
+        expect(await areaAsked, 'the card asks for no area').toBe(false);
+        expect(log.ws2).toEqual([expect.stringContaining(`/ws/2${OCEAN}?inc=artist-rels+place-rels+event-rels+series-rels+url-rels&fmt=json`)]);
+        const kv = card(page).locator('.mb-dp-kv');
+        await expect(kv.locator('dt:text-is("Place") + dd')).toHaveText('OceanFirst Bank Center, West Long Branch');
+        await expect(kv.locator('dt:text-is("Part of") + dd')).toHaveText('Music America: The Songs That Shaped Us');
+        await page.keyboard.press('Space');
+        const area = dialog(page).locator('.mb-dp-area');
+        const facts = area.locator('h4:text-is("Facts") + .mb-dp-kv');
+        // As MusicBrainz writes it: the county is passed over.
+        const heldAt = facts.locator('dt:text-is("Held at") + dd');
+        await expect(heldAt).toHaveText('OceanFirst Bank Center in West Long Branch, New Jersey, United States');
+        await expect(heldAt.locator('a')).toHaveCount(4);
+        await expect(heldAt.locator('a[href="/area/a36544c1-cb40-4f44-9e0e-7a5a69e403a8"]')).toHaveText('New Jersey');
+        await expect(heldAt).not.toContainText('Monmouth');
+        // One lookup per level, each once; none for the country.
+        expect(areaLookups(log)).toEqual(OCEAN_CHAIN);
+        const partOf = facts.locator('dt:text-is("Part of") + dd');
+        await expect(partOf).toHaveText('Music America: The Songs That Shaped Us (2026-06-04 – 2026-06-05)');
+        await expect(partOf.locator('a[href^="/event/"]')).toHaveCount(1);
+        // URLs: one row per relationship type, the address in full, [info].
+        const urls = area.locator('h4:text-is("URLs · 3") + .mb-dp-kv');
+        await expect(urls.locator('dt')).toHaveText(['Official homepage', 'Review', 'Setlistfm']);
+        const home = urls.locator('dt:text-is("Official homepage") + dd');
+        await expect(home.locator('a').first())
+            .toHaveAttribute('href', 'https://springsteencenter.org/event/music-america-the-songs-that-shaped-us-night-one/');
+        await expect(home.locator('a[href="/url/1119cef1-1f6b-479a-8265-617e39eb8749"]')).toHaveText('info');
+        await expect(urls.locator('a[href^="/url/"]')).toHaveCount(3);
+        await expect(urls.locator('dt:text-is("Review") + dd')).toHaveText('http://brucebase.wikidot.com/2026#040626 [info]');
+
+        // Closed and hovered again: the card shows the chain from memory,
+        // and asks nothing.
+        const before = log.ws2.length;
+        await page.keyboard.press('Escape');
+        await expect(dialog(page)).toBeHidden();
+        await ctrlHover(page, a);
+        await expect(card(page).locator('.mb-dp-kv dt:text-is("Place") + dd'))
+            .toHaveText('OceanFirst Bank Center in West Long Branch, New Jersey, United States');
+        expect(log.ws2).toHaveLength(before);
+    });
+
+    test('a failed step of the area chain shows what is known, is not retried by repaints, and ⟳ asks again', async ({ page }) => {
+        await page.clock.install();
+        let failNj = true;
+        const log = await open(page, {
+            settings: { sa_pop_mb: true }, showAll: false,
+            ws2: (url) => (failNj && url.includes('/ws/2/area/a36544c1-') ? { status: 500, body: '{}' } : eventWs2(url)),
+        });
+        const a = await addLink(page, OCEAN, 'OceanFirst');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        const heldAt = dialog(page).locator('.mb-dp-area h4:text-is("Facts") + .mb-dp-kv dt:text-is("Held at") + dd');
+        // West Long Branch and Monmouth County answered (the county's parent
+        // names New Jersey), New Jersey's own lookup did not, so its parent
+        // is unknown: the chain so far, and no spinner — the step has failed.
+        await expect(heldAt).toHaveText('OceanFirst Bank Center in West Long Branch, New Jersey');
+        const nj = () => areaLookups(log).filter(id => id.startsWith('a36544c1-')).length;
+        const tries = nj();
+        expect(tries, 'the failed step was asked').toBeGreaterThan(0);
+        // The window's other answers (recorded here, the poster) still repaint
+        // it: past a few rate slots, the failed step has not been asked again.
+        await page.clock.fastForward(5000);
+        await expect.poll(() => page.evaluate(() => window.__saTest.mbRateSlotWaitMs())).toBe(0);
+        expect(nj(), 'no repaint asks a failed step again').toBe(tries);
+        failNj = false;
+        await dialog(page).locator('button.mb-dp-tbtn', { hasText: '⟳' }).click();
+        await expect(heldAt).toHaveText('OceanFirst Bank Center in West Long Branch, New Jersey, United States');
     });
 
     test('the place card and window: address, coordinates with a map, its events by date', async ({ page }) => {
@@ -891,6 +1217,27 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
             return d.join('|') === [...d].sort().join('|');
         }, { message: 'the events are sorted by date' }).toBe(true);
         expect(log.ws2.filter(u => u.includes('/ws/2/event?place='))).toHaveLength(1);
+    });
+
+    test('the place window: its area in the area chain; the card shows it once known (org/event-GPE.org)', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, '/place/6a59a67c-fcc5-491f-949c-bfc45bc97463', 'The Stone Pony');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        expect(areaLookups(log), 'the card asks for no area').toEqual([]);
+        await page.keyboard.press('Space');
+        const areaRow = dialog(page).locator('.mb-dp-area h4:text-is("Facts") + .mb-dp-kv dt:text-is("Area") + dd');
+        // Asbury Park (City) → Monmouth County (County, passed over) → New Jersey → United States.
+        await expect(areaRow).toHaveText('Asbury Park, New Jersey, United States');
+        await expect(areaRow.locator('a')).toHaveCount(3);
+        expect(areaLookups(log)).toEqual(['10fa66f7-aa08-4823-8af8-52108f350a5a', '604b7841-36b7-4bea-9bdc-7eeb52520e35',
+            'a36544c1-cb40-4f44-9e0e-7a5a69e403a8']);
+        const before = log.ws2.length;
+        await page.keyboard.press('Escape');
+        await expect(dialog(page)).toBeHidden();
+        await ctrlHover(page, a);
+        await expect(card(page).locator('.mb-tt-pill')).toContainText(['Venue', 'Asbury Park, New Jersey, United States']);
+        expect(log.ws2).toHaveLength(before);
     });
 
     test('the series card and window: its items in order, with their numbers', async ({ page }) => {

@@ -1,0 +1,77 @@
+* BB events
+
+Give the year specific Bruce Springsteen pages e.g. https://brucebase.wikidot.com/2026 (only exception is
+https://brucebase.wikidot.com/1949-64) the same treatment as what we've done with the
+https://brucebase.wikidot.com/stats:songs page from the BB website.
+
+1.)
+
+Parse the URL @debug/bb-2026-initial.html and extract as much information as possible for each listed event, then let our userscript handle the rest. No need to do
+some other fancy stuff in the beginning.
+
+A typical entry has the following information
+
+
+#+begin_example
+2026-01-30 - FIRST AVENUE, MINNEAPOLIS, MN
+
+Soundcheck: STREETS OF MINNEAPOLIS / THE GHOST OF TOM JOAD (with Tom Morello)
+
+STREETS OF MINNEAPOLIS / THE GHOST OF TOM JOAD (with Tom Morello) / POWER TO THE PEOPLE (with all performers)
+
+Bruce takes part in 'A Concert of Solidarity & Resistance to Defend Minnesota!', organized by Tom Morello. He performs an acoustic rendition of "Streets Of Minneapolis" in its live premiere, followed by a version with Morello and his band of "The Ghost Of Tom Joad". The set closes with "Power To The People" featuring all the day's performers, Bruce's first ever performance of the song.
+
+00Photo-32.png00Story-32.png00News-32.png00Box-32.png00Video-32.png00Bootleg-32.png
+#+end_example
+
+a.)
+
+The line
+
+#+begin_example
+2026-01-30 - FIRST AVENUE, MINNEAPOLIS, MN
+#+end_example
+
+should be parsed in their own columns (the date column should also get our date parts extractor)
+
+b.)
+
+A line (optional)
+
+#+begin_example
+Soundcheck: STREETS OF MINNEAPOLIS / THE GHOST OF TOM JOAD (with Tom Morello)
+#+end_example
+
+should go as a multi-row cell (split by " / ") in a column named after in this case "Soundcheck"
+
+b.)
+
+A line (mostly present) represents the main setlist of the actual event, starts directlty with an UPPERCADE SONG TITLE
+
+#+begin_example
+STREETS OF MINNEAPOLIS / THE GHOST OF TOM JOAD (with Tom Morello) / POWER TO THE PEOPLE (with all performers)
+#+end_example
+
+should also go to a mlti-cell
+
+c.)
+
+Event description should also go to it's own column (multi row column with line breaks), with nice formatting and hyperlinks ("Song" detail support, plus generic URLs) 
+
+#+begin_example
+Bruce takes part in 'A Concert of Solidarity & Resistance to Defend Minnesota!', organized by Tom Morello. He performs an acoustic rendition of "Streets Of Minneapolis" in its live premiere, followed by a version with Morello and his band of "The Ghost Of Tom Joad". The set closes with "Power To The People" featuring all the day's performers, Bruce's first ever performance of the song.
+#+end_example
+
+d.)
+
+If the event has specific info attached to it in the event detail page
+
+#+begin_example
+00Photo-32.png00Story-32.png00News-32.png00Box-32.png00Video-32.png00Bootleg-32.png
+#+end_example
+
+Make some suggestions here how to present to the user in one or more columns, using the ssame glyphs
+
+2.)
+
+The whole feature should be configurable (default off, as the main userscript is normally used just with MusicBrainz)

@@ -435,6 +435,34 @@ mutation list `art-viewer-flip.json`; shared set-up
 `tests/support/artViewerFixture.js` (its `measure().origin` / `cornerOf()`
 follow the image's own top-left pixel, the only way to see a flip).
 
+**The viewer also opens from the popup window (2026-10-09, branch
+`feature/gpe-art-viewer`).** A plain click on an image in `#mb-dp-dialog` opens
+it (`_dpArtViewerClick()`, docs/claude/detail-pages.md "The dialog"). A
+release's Cover art strip, its front cover and an event's Event art strip pass
+`CAA_CTX`/`EAA_CTX` and the entity path. Their records are already in
+`ctx.imagesCache` (`_mbPopArtLoad()`), so this is the ordinary viewer and makes
+no request. Another site's images (a Springsteen site's cover and scans, a
+linked page's picture) pass `_DP_ART_CTX`, an **external** context: minimal
+records `{image, thumbnails: {250}, types: [], comment, external: true}`, and
+every viewer branch that differs asks `im.external`:
+- `_artViewerUrl()` keeps their URLs as they are. Archive URLs become
+  protocol-relative, but another site may not answer on https;
+- `_artViewerLoad(url, external)` never takes them through the art IndexedDB.
+  That is the archives' store, and through it the image would go to
+  `GM_xmlhttpRequest`. They load with `referrerPolicy = 'no-referrer'`, as do
+  the stage, the filmstrip and the grid;
+- `_artViewerInfoExternal()` shows caption, position, host, facts and the two
+  sizes the page links. Main front, Status, Added in and Archive id would all
+  be false here, so they are left out;
+- the grid is one run ("Images × N"), not "(no type)";
+- D downloads the image's own URL, `anonymous` (`_artGmFetchBlob()`'s
+  `opts.anonymous`), and names the file without a "none" type;
+- a scan whose link is its own thumbnail has no large image to wait for: the
+  "loading the large image" note is cleared, not turned into a failure.
+Covered by `detail-preview.spec.js` ("a click on a scan opens the artwork
+viewer") and `popup-mb.spec.js` (the release and event windows); mutation list
+`gpe-art-viewer.json`.
+
 ## The CAA/EAA column redesign: tiles, chips, cards, the column viewer
 
 `org/redesign-CAA-EAA-column.org` (A2, B1/B2, C1/C2, D1; decided 2026-10-06).

@@ -1,0 +1,400 @@
+{
+ "time": "16:00",
+ "disambiguation": "Southside Johnny & The Asbury Jukes Stone Pony 25th Anniversary Show",
+ "life-span": {
+  "end": "2001-05-27",
+  "ended": true,
+  "begin": "2001-05-27"
+ },
+ "type": "Concert",
+ "id": "26cead1c-a5fa-4677-873a-312412c6dc91",
+ "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+ "setlist": "@ [d7bc97fb-4bd3-453b-98a1-9081f89c52f0|Southside Johnny & The Asbury Jukes]\r\n# with\r\n@ [f826b4d1-2dc3-4c4f-ba70-69b472320338|Southside Johnny]\r\n@ [a5ab77f2-da3b-454c-aa5f-239f5c8ea096|Chris Anderson]\r\n@ [24eaae76-804b-4b8e-b63c-1cc40ae8eb18|Louie Appel]\r\n@ [358d8fde-ad5b-4df1-bcd8-193bada6edd5|Bobby Bandiera]\r\n@ [a69e4e44-1195-426c-af41-1f782fe75d7e|Jeff Kazee]\r\n@ [6a3394ba-6888-4dd0-93f3-06c1e35749d8|Ed Manion]\r\n@ [6ae5508c-cec6-4d23-a3df-92e8b1e988b2|Mark Pender]\r\n@ [bc7ceac9-a524-42bd-996a-380d2f1eb567|Steve “Muddy” Shews]\r\n@ [3644f94c-f682-4fcc-a7fc-b64a4f9cb096|Joey Stann]\r\n\r\n@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen] (guest)\r\n@ [f9227504-4fa5-44ee-b205-5301a1f86936|Graham Parker] (guest)\r\n\r\n# Scheduled: 16:00 Local Start Time ??:?? / End Time ??:??\r\n* [bb3d8e32-12e1-4476-94cb-1d9f1f6f3dd9|Cadillac Jack]\r\n* [8fd4fdf2-247a-449b-9d26-4de9d74099db|I Played the Fool]\r\n* [45785852-d36c-49d2-8703-ccb7f402351f|Love on the Wrong Side of Town]\r\n* [85cad5ff-68b8-430d-9d3a-5463e2fc9c63|Gin Soaked Boy]\r\n* [c908e556-a77f-422a-8cf0-a0e0f0c87d73|Talk to Me]\r\n* [36ab492d-b06e-4623-a0a6-7ae996a8e782|Take It Inside]\r\n* [48bb98b7-2997-4014-b59f-88b0e5cd6d2b|Paris]\r\n* [ea5de099-d7f6-4288-b13c-b21fc0366864|Coming Back]\r\n* [6a5228c0-b7d5-4681-93e8-e1b3b251e8aa|Tell ’em I’m Broke]\r\n* [7960406f-d357-4563-9ee5-38690feee3bc|Sinful]\r\n* You Don’t Know\r\n* [ce8a6518-c92f-464f-b8d9-5c11cfd7427f|Tired Skin]\r\n* [69e3a597-8583-4e5b-ba77-818a56d85ac4|Why Is Love Such a Sacrifice]\r\n* [E497263c-4f15-36c0-B27c-Dca99482962c|The Fever] (with [70248960-Cb53-4ea4-943a-Edb18f7d336f|Bruce Springsteen])\r\n* [E5500466-274a-48cd-9c75-Abff7ada71c5|I Don’t Want to Go Home] (with [70248960-Cb53-4ea4-943a-Edb18f7d336f|Bruce Springsteen])\r\n* [95fba578-26f7-43fe-Ae8c-91dd58e8da46|I’ve Been Working Too Hard] (with [70248960-Cb53-4ea4-943a-Edb18f7d336f|Bruce Springsteen] and [f9227504-4fa5-44ee-b205-5301a1f86936|Graham Parker])\r\n* [Be81408c-6e68-39db-Ad9c-6890dfaf7f73|Cold Sweat] (with [70248960-Cb53-4ea4-943a-Edb18f7d336f|Bruce Springsteen] and [f9227504-4fa5-44ee-b205-5301a1f86936|Graham Parker])\r\n* [Ec9c3c3e-9df7-4a81-A738-Cf8c5f602f2f|Trapped Again] (with [70248960-Cb53-4ea4-943a-Edb18f7d336f|Bruce Springsteen] and [f9227504-4fa5-44ee-b205-5301a1f86936|Graham Parker])\r\n* [5ef69804-345c-4e4f-92c0-1ccb38189da5|Chain of Fools] / [46aba62f-15ed-3642-9dab-Cdd8b4a312a9|Born on the Bayou] (with [70248960-Cb53-4ea4-943a-Edb18f7d336f|Bruce Springsteen] and [f9227504-4fa5-44ee-b205-5301a1f86936|Graham Parker])\r\n* [450b4d94-C768-3a43-9edc-253cf300199e|Having a Party] (with [70248960-Cb53-4ea4-943a-Edb18f7d336f|Bruce Springsteen] and [f9227504-4fa5-44ee-b205-5301a1f86936|Graham Parker])",
+ "name": "2001‐05‐27: The Stone Pony, Asbury Park, NJ, USA",
+ "relations": [
+  {
+   "target-type": "artist",
+   "type-id": "292df906-98a6-307e-86e8-df01a579a321",
+   "artist": {
+    "type": "Person",
+    "country": "GB",
+    "disambiguation": "",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Graham Parker",
+    "sort-name": "Parker, Graham",
+    "id": "f9227504-4fa5-44ee-b205-5301a1f86936"
+   },
+   "attribute-values": {},
+   "begin": null,
+   "target-credit": "",
+   "ended": false,
+   "attribute-ids": {},
+   "attributes": [],
+   "end": null,
+   "direction": "backward",
+   "source-credit": "",
+   "type": "guest performer"
+  },
+  {
+   "source-credit": "",
+   "type": "guest performer",
+   "target-type": "artist",
+   "artist": {
+    "disambiguation": "",
+    "country": "US",
+    "type": "Person",
+    "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+    "sort-name": "Springsteen, Bruce",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Bruce Springsteen"
+   },
+   "attribute-credits": {},
+   "type-id": "292df906-98a6-307e-86e8-df01a579a321",
+   "attribute-values": {},
+   "target-credit": "",
+   "ended": false,
+   "begin": null,
+   "attribute-ids": {
+    "electric guitar": "7ee8ebf5-3aed-4fc8-8004-49f4a8c45a87"
+   },
+   "end": null,
+   "attributes": [
+    "electric guitar"
+   ],
+   "direction": "backward"
+  },
+  {
+   "attributes": [
+    "trumpet"
+   ],
+   "end": null,
+   "direction": "backward",
+   "ended": false,
+   "target-credit": "",
+   "begin": null,
+   "attribute-ids": {
+    "trumpet": "1c8f9780-2f16-4891-b66d-bb7aa0820dbd"
+   },
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "attribute-credits": {},
+   "artist": {
+    "id": "a5ab77f2-da3b-454c-aa5f-239f5c8ea096",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Chris Anderson",
+    "sort-name": "Anderson, Chris",
+    "country": null,
+    "disambiguation": "trumpet player",
+    "type": "Person"
+   },
+   "attribute-values": {},
+   "target-type": "artist",
+   "type": "main performer",
+   "source-credit": ""
+  },
+  {
+   "direction": "backward",
+   "end": null,
+   "attributes": [
+    "drums (drum set)"
+   ],
+   "attribute-ids": {
+    "drums (drum set)": "12092505-6ee1-46af-a15a-b5b468b6b155"
+   },
+   "begin": null,
+   "target-credit": "",
+   "ended": false,
+   "attribute-values": {},
+   "artist": {
+    "name": "Louie Appel",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "sort-name": "Appel, Louie",
+    "id": "24eaae76-804b-4b8e-b63c-1cc40ae8eb18",
+    "type": "Person",
+    "country": "US",
+    "disambiguation": "drummer"
+   },
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "attribute-credits": {
+    "drums (drum set)": "drums"
+   },
+   "target-type": "artist",
+   "type": "main performer",
+   "source-credit": ""
+  },
+  {
+   "target-type": "artist",
+   "attribute-values": {},
+   "attribute-credits": {},
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "artist": {
+    "sort-name": "Bandiera, Bobby",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Bobby Bandiera",
+    "id": "358d8fde-ad5b-4df1-bcd8-193bada6edd5",
+    "type": "Person",
+    "disambiguation": "",
+    "country": "US"
+   },
+   "attribute-ids": {
+    "background vocals": "75052401-7340-4e5b-a71d-ea024a128849"
+   },
+   "target-credit": "",
+   "begin": null,
+   "ended": false,
+   "direction": "backward",
+   "attributes": [
+    "background vocals"
+   ],
+   "end": null,
+   "source-credit": "",
+   "type": "main performer"
+  },
+  {
+   "target-type": "artist",
+   "attribute-values": {},
+   "artist": {
+    "id": "358d8fde-ad5b-4df1-bcd8-193bada6edd5",
+    "sort-name": "Bandiera, Bobby",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Bobby Bandiera",
+    "disambiguation": "",
+    "country": "US",
+    "type": "Person"
+   },
+   "attribute-credits": {},
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "attribute-ids": {
+    "electric guitar": "7ee8ebf5-3aed-4fc8-8004-49f4a8c45a87"
+   },
+   "ended": false,
+   "target-credit": "",
+   "begin": null,
+   "direction": "backward",
+   "end": null,
+   "attributes": [
+    "electric guitar"
+   ],
+   "source-credit": "",
+   "type": "main performer"
+  },
+  {
+   "type": "main performer",
+   "source-credit": "",
+   "direction": "backward",
+   "attributes": [],
+   "end": null,
+   "attribute-ids": {},
+   "target-credit": "",
+   "begin": null,
+   "ended": false,
+   "attribute-values": {},
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "artist": {
+    "disambiguation": "Jeff Kazee is an American pianist, vocalist, songwriter and Hammond B3 organist for the Rock/Soul band Southside Johnny and the Asbury Jukes. He has also worked with Bon Jovi and with Jon Bon Jovi in his solo career",
+    "country": "US",
+    "type": "Person",
+    "id": "a69e4e44-1195-426c-af41-1f782fe75d7e",
+    "sort-name": "Kazee, Jeff",
+    "name": "Jeff Kazee",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+   },
+   "target-type": "artist"
+  },
+  {
+   "attribute-values": {},
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "artist": {
+    "disambiguation": "American saxophonist",
+    "country": "US",
+    "type": "Person",
+    "id": "6a3394ba-6888-4dd0-93f3-06c1e35749d8",
+    "sort-name": "Manion, Ed",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Ed Manion"
+   },
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [],
+   "end": null,
+   "attribute-ids": {},
+   "target-credit": "",
+   "begin": null,
+   "ended": false,
+   "source-credit": "",
+   "type": "main performer"
+  },
+  {
+   "type": "main performer",
+   "source-credit": "",
+   "attributes": [],
+   "end": null,
+   "direction": "backward",
+   "target-credit": "",
+   "begin": null,
+   "ended": false,
+   "attribute-ids": {},
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "artist": {
+    "sort-name": "Pender, Mark",
+    "name": "Mark Pender",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "id": "6ae5508c-cec6-4d23-a3df-92e8b1e988b2",
+    "type": "Person",
+    "disambiguation": "",
+    "country": "US"
+   },
+   "attribute-values": {},
+   "target-type": "artist"
+  },
+  {
+   "attribute-ids": {},
+   "target-credit": "Steve “Muddy” Shews",
+   "begin": null,
+   "ended": false,
+   "direction": "backward",
+   "attributes": [],
+   "end": null,
+   "target-type": "artist",
+   "attribute-values": {},
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "artist": {
+    "type": "Person",
+    "country": "US",
+    "disambiguation": "",
+    "name": "Steve Shews",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "sort-name": "Shews, Steve",
+    "id": "bc7ceac9-a524-42bd-996a-380d2f1eb567"
+   },
+   "type": "main performer",
+   "source-credit": ""
+  },
+  {
+   "type": "main performer",
+   "source-credit": "",
+   "direction": "backward",
+   "attributes": [
+    "lead vocals"
+   ],
+   "end": null,
+   "attribute-ids": {
+    "lead vocals": "8e2a3255-87c2-4809-a174-98cb3704f1a5"
+   },
+   "ended": false,
+   "target-credit": "",
+   "begin": null,
+   "attribute-values": {},
+   "attribute-credits": {},
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "artist": {
+    "id": "f826b4d1-2dc3-4c4f-ba70-69b472320338",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Southside Johnny",
+    "sort-name": "Southside Johnny",
+    "country": "US",
+    "disambiguation": "",
+    "type": "Person"
+   },
+   "target-type": "artist"
+  },
+  {
+   "attribute-ids": {},
+   "begin": null,
+   "target-credit": "",
+   "ended": false,
+   "direction": "backward",
+   "end": null,
+   "attributes": [],
+   "target-type": "artist",
+   "attribute-values": {},
+   "artist": {
+    "sort-name": "Southside Johnny & The Asbury Jukes",
+    "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+    "name": "Southside Johnny & The Asbury Jukes",
+    "id": "d7bc97fb-4bd3-453b-98a1-9081f89c52f0",
+    "type": "Group",
+    "disambiguation": "",
+    "country": "US"
+   },
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "type": "main performer",
+   "source-credit": ""
+  },
+  {
+   "direction": "backward",
+   "attributes": [],
+   "end": null,
+   "attribute-ids": {},
+   "ended": false,
+   "target-credit": "",
+   "begin": null,
+   "attribute-values": {},
+   "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+   "artist": {
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Joey Stann",
+    "sort-name": "Stann, Joey",
+    "id": "3644f94c-f682-4fcc-a7fc-b64a4f9cb096",
+    "type": "Person",
+    "country": "US",
+    "disambiguation": ""
+   },
+   "target-type": "artist",
+   "type": "main performer",
+   "source-credit": ""
+  },
+  {
+   "attributes": [],
+   "end": null,
+   "direction": "forward",
+   "place": {
+    "id": "6a59a67c-fcc5-491f-949c-bfc45bc97463",
+    "area": {
+     "sort-name": "Asbury Park",
+     "type": "City",
+     "name": "Asbury Park",
+     "type-id": "6fd8f29a-3d0a-32fc-980d-ea697b69da78",
+     "id": "10fa66f7-aa08-4823-8af8-52108f350a5a",
+     "disambiguation": ""
+    },
+    "type-id": "cd92781a-a73f-30e8-a430-55d7521338db",
+    "name": "The Stone Pony",
+    "disambiguation": "",
+    "coordinates": {
+     "longitude": -74.00058,
+     "latitude": 40.21995
+    },
+    "type": "Venue",
+    "address": "913 Ocean Avenue, Asbury Park, NJ 07712, USA"
+   },
+   "ended": false,
+   "target-credit": "",
+   "begin": null,
+   "attribute-ids": {},
+   "type-id": "e2c6f697-07dc-38b1-be0b-83d740165532",
+   "attribute-values": {},
+   "target-type": "place",
+   "type": "held at",
+   "source-credit": ""
+  },
+  {
+   "source-credit": "",
+   "type": "review",
+   "target-type": "url",
+   "attribute-values": {},
+   "type-id": "30ee8e92-5722-4dd7-943c-a2fa82b9aff4",
+   "attribute-ids": {},
+   "target-credit": "",
+   "begin": null,
+   "ended": false,
+   "direction": "forward",
+   "url": {
+    "id": "e6b969e9-733f-4b5a-954c-a7d5fead75eb",
+    "resource": "http://brucebase.wikidot.com/2001#270501"
+   },
+   "attributes": [],
+   "end": null
+  }
+ ],
+ "cancelled": false
+}

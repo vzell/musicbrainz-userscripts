@@ -83,6 +83,15 @@ and context below.
 | ETI          | extra title information                        | https://musicbrainz.org/doc/Style/Titles#Extra_title_information               | "(single version)" in "I Believe in Your Sweet Love (single version)"      |
 | IP           | initial page                                   | raw HTML on the initial page                                                   |                                                                            |
 | FRP          |                                                | raw HTML on the final rendered page                                            |                                                                            |
+| GPE          | generic popup engine                           | displays detail information in an iframe                                       |                                                                            |
+| MB           | MusicBrainz                                    |                                                                                |                                                                            |
+| SL           | SpringsteenLyrics website                      |                                                                                |                                                                            |
+| BB           | BruceBase website/wiki                         | https://brucebase.wikidot.com/                                                 |                                                                            |
+| KF           | italien KillingFloor website                   | https://www.brucespringsteen.it/                                               |                                                                            |
+| JL           | italian Jungleland website                     | https://www.jungleland.it/html/                                                |                                                                            |
+| DI           | Discogs website                                | https://www.discogs.com/                                                       |                                                                            |
+| MBID         | unique MusicBrainz identifier                  | 70248960-cb53-4ea4-943a-edb18f7d336f                                           | Bruce Springsteen                                                          |
+|              |                                                |                                                                                |                                                                            |
 
 ## Doc map — what to read, and when
 
