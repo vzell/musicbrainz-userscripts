@@ -772,3 +772,55 @@ is `"expect": "pass"`: nothing between 104 and 107 overlaps it in the
 fixture). The SPH-only stacking tests in `sticky-page-headers.spec.js` run
 with this setting off (`SPH_ONLY`), since it deliberately changes the
 "content bars have no base z-index" rule they pin.
+
+### The header block sticks above the bars
+
+A second request the same day: the line with the action buttons and the
+status line ("Loaded … Fetching …") stick too, above the data h2, on every
+pageType. `_vsbHeadBlocks()` picks them, `_vsbRefresh()` stacks them
+(`.mb-vsb-head` + `data-mb-vsb-head="i"`, one `top` rule per part; the h2,
+h3 and thead offsets start below them), z-index 105 (`VSB_Z_HEAD`).
+
+- **Which block:** the parent of `#mb-show-all-controls-container`'s `<h1>`
+  when that is a MusicBrainz entity header (a `<div>` with a class ending in
+  `header` and no table/h2 inside: `div.artistheader`, `div.seriesheader`, …
+  — it holds the h1 and the p.subheader where the status line sits), else
+  the bare `<h1>`; plus the status line's own line
+  (`#mb-status-displays-wrapper`) when it is not inside that block. NOT the
+  bare h1 inside an entity header: a sticky element only sticks inside its
+  parent, so an h1 stuck inside `div.artistheader` goes as soon as that small
+  div has scrolled by, and the subheader with the status line goes with it.
+- **From page init**, not only after a render: `initStickyFilterBars()` is
+  also called right after the status line is placed.
+- **Too tall for the window:** if heads + h2 + h3 + thead exceed
+  `VSB_MAX_STACK_SHARE` (60 %) of the window height, the header block is
+  not stamped and scrolls; the bars still stick.
+- **The MusicBrainz top header** sits right above the block and its long
+  menus open down over it. `_vsbLiftChrome()` gives a header in the flow
+  `.mb-vsb-chrome` (relative, z-index 108); one a userstyle made sticky/fixed
+  gets `.mb-vsb-chrome-stuck` (108 only while hovered or holding focus, its
+  own z-index otherwise — `sticky-page-headers.spec.js` pins z-index 1).
+  It is decided AFRESH on every refresh, after stripping both classes: the
+  first version decided once at page init, when a later userstyle was not
+  there yet, and its `relative` then overrode the userstyle's `sticky` (and
+  hid it from `_vsbBaseOffset()`), caught by that same SPH test.
+- **The backdrop, `#mb-vsb-mask`.** The block has no background and is
+  narrower than the table, so what scrolled under it showed through it and
+  beside it (reported the same day: artist releases, the tabs ran through
+  the status line; a recording page, rows behind and right of the h1). One
+  `position: fixed` element, window-wide, at the block's top and height
+  (dynamic sheet), z-index 103 (`VSB_Z_MASK`: under the h2 104 and the
+  block 105, under MB's sticky sidebar 105, over everything that scrolls).
+  It also covers the `VSB_HEAD_GAP` (6 px) the h2 docks below the block,
+  asked for so the bar does not sit glued to the stats line.
+  Shown (`.mb-vsb-mask-on`) only while the block is STUCK
+  (`_vsbUpdateMask()`: scrolled, and the first part at its sticky top; one
+  rectangle read, at most once per frame on scroll): in its natural place
+  it would cover the top of MusicBrainz's sidebar. Pinned on painted pixels
+  (green rows) in `sticky-filter-bars.spec.js`.
+- **Tests and the sticky constraint box:** a sticky element is held inside
+  its parent's CONTENT box, so padding on `#page`/`#content` gives no room to
+  scroll — `addSpacer()` in the spec appends a real element. The fixtures'
+  unstyled MB header is 1,555 px tall (taller than the window, ignored as a
+  base by the third-of-the-window clamp); a test that needs it as a base caps
+  it at 60 px.

@@ -38,7 +38,10 @@ const RATINGS_URL = 'https://musicbrainz.org/user/vzell/ratings';
 const RATINGS_SHELL = path.join(__dirname, 'user-ratings-multigroup.html');
 
 // Tall rows (the fixtures have few), and room to scroll past the last table.
-const TALL_ROWS = 'table.tbl > tbody > tr > td { height: 300px; } #page { padding-bottom: 2000px !important; }';
+// The space under the stuck header block before the h2 (VSB_HEAD_GAP).
+const HEAD_GAP = 6;
+
+const TALL_ROWS = 'table.tbl > tbody > tr > td { height: 500px; } #page { padding-bottom: 2000px !important; }';
 
 /**
  * Takes focus and pointer away from the bars once the post-render focus has
@@ -112,6 +115,26 @@ async function scrollToY(page, y, x = 0) {
 }
 
 /**
+ * Appends a 3,000 px spacer to the parent of the header block (and of the
+ * table), so the page can scroll far enough for the block to stick. A
+ * sticky element is held inside its parent's content box, so padding would
+ * not do.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<void>}
+ */
+async function addSpacer(page) {
+    await page.evaluate(() => {
+        const ctl = document.getElementById('mb-show-all-controls-container');
+        const h1 = ctl.closest('h1');
+        const host = h1.parentElement.matches('#content, #page') ? h1.parentElement : h1.parentElement.parentElement;
+        const spacer = document.createElement('div');
+        spacer.style.height = '3000px';
+        host.appendChild(spacer);
+    });
+}
+
+/**
  * Reads the bars' and a thead's boxes (viewport coordinates), plus where the
  * data h2 would be without sticking (its document offset minus scrollY).
  *
@@ -120,21 +143,28 @@ async function scrollToY(page, y, x = 0) {
  * @returns {Promise<Object>}
  */
 function bars(page, tableIndex = 0) {
-    return page.evaluate((ti) => {
+    return page.evaluate(([ti, gap]) => {
         const h2 = document.getElementById('mb-global-filter-input').closest('h2');
         const t = document.querySelectorAll('table.tbl')[ti];
         const box = (el) => {
             const r = el.getBoundingClientRect();
             return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, height: r.height };
         };
+        // The stuck header block (h1 with the buttons, the status line), in
+        // stacking order; the bars dock under its last part.
+        const heads = Array.from(document.querySelectorAll('.mb-vsb-head'))
+            .sort((a, b) => Number(a.dataset.mbVsbHead) - Number(b.dataset.mbVsbHead)).map(box);
         return {
+            heads,
+            // Where the h2 docks: under the block plus its gap (VSB_HEAD_GAP).
+            headBottom: heads.length ? heads[heads.length - 1].bottom + gap : 0,
             h2: box(h2),
             h2Class: h2.classList.contains('mb-vsb-h2'),
             thead: box(t.tHead),
             tableTop: t.getBoundingClientRect().top,
             input: box(document.getElementById('mb-global-filter-input')),
         };
-    }, tableIndex);
+    }, [tableIndex, HEAD_GAP]);
 }
 
 /**
@@ -177,7 +207,7 @@ test.describe('sticky filter bars — single-table page', () => {
             await scrollToY(page, y);
             const b = await bars(page);
             expect(b.tableTop, 'premise: the table starts above the window').toBeLessThan(-500);
-            expect(Math.abs(b.h2.top), 'the h2 is at the top').toBeLessThanOrEqual(1);
+            expect(Math.abs(b.h2.top - b.headBottom), 'the h2 docks under the header block').toBeLessThanOrEqual(1);
             expect(Math.abs(b.thead.top - b.h2.bottom), 'the thead is right under the h2').toBeLessThanOrEqual(1);
             const hit = await page.evaluate(({ x, yy }) => document.elementFromPoint(x, yy)?.id,
                 { x: b.input.left + b.input.height, yy: (b.input.top + b.input.bottom) / 2 });
@@ -254,7 +284,7 @@ test.describe('sticky filter bars — single-table page', () => {
         const y = await page.evaluate(() => document.querySelector('.mb-caa-bigbox').getBoundingClientRect().top + window.scrollY + 100);
         await scrollToY(page, y);
         const b = await bars(page);
-        expect(Math.abs(b.h2.top), 'premise: the h2 is stuck').toBeLessThanOrEqual(1);
+        expect(Math.abs(b.h2.top - b.headBottom), 'premise: the h2 is stuck').toBeLessThanOrEqual(1);
         await page.mouse.move(b.h2.left + 60, b.h2.bottom + 40);
         const probe = await page.evaluate(({ x, yy }) => {
             const strip = document.querySelector('.mb-caa-bigbox');
@@ -270,14 +300,22 @@ test.describe('sticky filter bars — single-table page', () => {
     });
 
     test('scrolled sideways too (sticky page headers engaged), the h2 stays at the top and docked', async ({ page }) => {
-        await openSeries(page, { viewport: { width: 900, height: 800 } });
+        // The MB header at a real height (unstyled it is taller than the
+        // window and would be ignored as a base anyway): the sticky page
+        // headers make it position: sticky, sideways only, and it must not
+        // be taken for a vertically stuck one — the stack starts at 0.
+        await openSeries(page, {
+            viewport: { width: 900, height: 800 },
+            css: `${TALL_ROWS} body > div.header { max-height: 60px; overflow: hidden; }`,
+        });
         await page.waitForFunction(() => document.documentElement.classList.contains('mb-sph-on'));
         const before = await bars(page);
         const y = await page.evaluate(() => document.querySelector('table.tbl').getBoundingClientRect().top + window.scrollY + 900);
         await scrollToY(page, y, 1500);
         expect(await page.evaluate(() => Math.round(window.scrollX)), 'premise: scrolled sideways').toBeGreaterThan(1000);
         const b = await bars(page);
-        expect(Math.abs(b.h2.top)).toBeLessThanOrEqual(1);
+        expect(Math.abs(b.heads.length ? b.heads[0].top : b.h2.top), 'the stack starts at the top').toBeLessThanOrEqual(1);
+        expect(Math.abs(b.h2.top - b.headBottom)).toBeLessThanOrEqual(1);
         expect(Math.abs(b.h2.left - before.h2.left), 'still at its own left').toBeLessThanOrEqual(1);
         expect(Math.abs(b.thead.top - b.h2.bottom)).toBeLessThanOrEqual(1);
     });
@@ -297,7 +335,9 @@ test.describe('sticky filter bars — single-table page', () => {
         });
         expect(Math.abs(hdr.top), 'premise: the header is stuck').toBeLessThanOrEqual(1);
         const b = await bars(page);
-        expect(Math.abs(b.h2.top - hdr.bottom), 'the h2 docks right under the header').toBeLessThanOrEqual(1);
+        expect(b.heads.length, 'premise: the header block is stuck').toBeGreaterThan(0);
+        expect(Math.abs(b.heads[0].top - hdr.bottom), 'the header block docks right under the header').toBeLessThanOrEqual(1);
+        expect(Math.abs(b.h2.top - b.headBottom), 'the h2 under the header block').toBeLessThanOrEqual(1);
         expect(Math.abs(b.thead.top - b.h2.bottom)).toBeLessThanOrEqual(1);
     });
 });
@@ -315,10 +355,11 @@ test.describe('sticky filter bars — multi-table page', () => {
                 const h3s = Array.from(document.querySelectorAll('h3.mb-toggle-h3'));
                 const t = document.querySelectorAll('table.tbl')[0];
                 const h3 = h3s[0].getBoundingClientRect();
+                const heads = Array.from(document.querySelectorAll('.mb-vsb-head'), (el) => el.getBoundingClientRect().bottom);
                 return { h2Top: h2.top, h2Bottom: h2.bottom, h3Top: h3.top, h3Bottom: h3.bottom,
-                    theadTop: t.tHead.getBoundingClientRect().top };
+                    theadTop: t.tHead.getBoundingClientRect().top, headBottom: heads.length ? Math.max(...heads) + 6 : 0 };
             });
-            expect(Math.abs(s0.h2Top)).toBeLessThanOrEqual(1);
+            expect(Math.abs(s0.h2Top - s0.headBottom), 'h2 under the header block').toBeLessThanOrEqual(1);
             expect(Math.abs(s0.h3Top - s0.h2Bottom), 'h3 right under the h2').toBeLessThanOrEqual(1);
             expect(Math.abs(s0.theadTop - s0.h3Bottom), 'thead right under the h3').toBeLessThanOrEqual(1);
 
@@ -394,5 +435,149 @@ test.describe('sticky filter bars — multi-table page', () => {
         await scrollToY(page, t2 + 150);
         const top = await page.evaluate(() => document.querySelectorAll('h3.mb-toggle-h3')[2].getBoundingClientRect().bottom);
         expect(top).toBeLessThan(0);
+    });
+});
+
+test.describe('sticky filter bars — the header block (h1 with the action buttons, the status line)', () => {
+    // Requested 2026-10-09, the same day as the bars: the line with the
+    // action buttons and the status line stick too, above the data h2 — on
+    // an entity page the whole entity header (h1 + p.subheader, where the
+    // status line sits), elsewhere the h1 and #mb-status-displays-wrapper.
+
+    test('entity page: the entity header sticks at the top, the h2 under it, the buttons stay usable', async ({ page }) => {
+        await openSeries(page);
+        const y = await page.evaluate(() => document.querySelector('table.tbl').getBoundingClientRect().top + window.scrollY + 900);
+        await scrollToY(page, y);
+        const b = await bars(page);
+        const head = await page.evaluate(() => {
+            const hdr = document.querySelector('#content > .seriesheader');
+            const btn = document.querySelector('#mb-show-all-controls-container button');
+            const r = btn.getBoundingClientRect();
+            const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+            return {
+                stamped: hdr.classList.contains('mb-vsb-head'),
+                holdsStatus: hdr.contains(document.getElementById('mb-status-displays-container')),
+                top: hdr.getBoundingClientRect().top,
+                buttonHit: !!(hit && btn.contains(hit)),
+            };
+        });
+        expect(head.stamped, 'the entity header is the stuck block').toBe(true);
+        expect(head.holdsStatus, 'premise: its p.subheader holds the status line').toBe(true);
+        expect(b.heads).toHaveLength(1);
+        expect(Math.abs(head.top), 'at the top').toBeLessThanOrEqual(1);
+        expect(head.buttonHit, 'an action button is on top').toBe(true);
+        expect(Math.abs(b.h2.top - b.heads[0].bottom - HEAD_GAP), 'the h2 a gap under it').toBeLessThanOrEqual(1);
+    });
+
+    test('report page: the h1 and the status line under it stick, then the h2', async ({ page }) => {
+        const url = 'https://musicbrainz.org/report/ASINsWithMultipleReleases';
+        const fixtureFile = path.join(__dirname, 'asins-with-multiple-releases.html');
+        await page.setViewportSize({ width: 1200, height: 800 });
+        await loadUserscriptPage(page, { url, fixtureFile, testMode: true });
+        await page.route(`${url}?**`, (route) => route.fulfill({ path: fixtureFile, contentType: 'text/html' }));
+        await page.click('button[data-label="Unfiltered"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        await settleFocusAndPointer(page);
+        // The report's table is short, and a sticky element is held inside
+        // its parent's CONTENT box (padding does not count): room to scroll
+        // comes from a spacer in that parent, after the table.
+        await addSpacer(page);
+        const y = await page.evaluate(() => document.querySelector('table.tbl').getBoundingClientRect().top + window.scrollY + 900);
+        await scrollToY(page, y);
+        const b = await bars(page);
+        const kinds = await page.evaluate(() => Array.from(document.querySelectorAll('.mb-vsb-head'))
+            .sort((x, z) => Number(x.dataset.mbVsbHead) - Number(z.dataset.mbVsbHead))
+            .map((el) => el.id || el.tagName));
+        expect(kinds).toEqual(['H1', 'mb-status-displays-wrapper']);
+        expect(Math.abs(b.heads[0].top)).toBeLessThanOrEqual(1);
+        expect(Math.abs(b.heads[1].top - b.heads[0].bottom), 'the status line right under the h1').toBeLessThanOrEqual(1);
+        expect(Math.abs(b.h2.top - b.heads[1].bottom - HEAD_GAP), 'the h2 a gap under the status line').toBeLessThanOrEqual(1);
+        // (The report's table is short and has scrolled away with its thead.)
+    });
+
+    test('nothing scrolling under the stuck header block shows through it or beside it', async ({ page }) => {
+        // Reported 2026-10-09 (artist releases: the tabs ran through the
+        // status line; a recording page: rows behind and right of the h1).
+        // The block is transparent and narrower than the table, so a
+        // window-wide backdrop sits behind it while it is stuck — and only
+        // then (in its natural place it would cover MB's sidebar top).
+        await openSeries(page, { css: `${TALL_ROWS} table.tbl > tbody > tr > td { background: rgb(0, 128, 0) !important; }` });
+        await scrollToY(page, 0);
+        expect(await page.evaluate(() => document.getElementById('mb-vsb-mask').classList.contains('mb-vsb-mask-on')),
+            'no backdrop in the natural place').toBe(false);
+        const y = await page.evaluate(() => document.querySelector('table.tbl').getBoundingClientRect().top + window.scrollY + 900);
+        await scrollToY(page, y);
+        const b = await bars(page);
+        expect(b.heads.length, 'premise: the header block is stuck').toBe(1);
+        const vw = page.viewportSize().width;
+        const band = (b.heads[0].top + b.heads[0].bottom) / 2;
+        // Inside the block's own box near its right end, and right of it.
+        for (const x of [Math.min(b.heads[0].right - 5, vw - 30), vw - 5]) {
+            expect(await pixelAt(page, x, band), `no row at x=${x}`).not.toBe('0,128,0');
+        }
+        // The gap under the block, before the h2 (asked for the same day).
+        expect(b.h2.top - b.heads[0].bottom, 'a gap under the stats line').toBeGreaterThanOrEqual(HEAD_GAP - 1);
+        expect(await pixelAt(page, vw - 5, (b.heads[0].bottom + b.h2.top) / 2), 'no row in the gap').not.toBe('0,128,0');
+        expect(await pixelAt(page, vw - 5, b.thead.bottom + 30), 'premise: rows are green below the bars').toBe('0,128,0');
+    });
+
+    test('before any button is pressed the header block already sticks', async ({ page }) => {
+        await page.setViewportSize({ width: 1200, height: 800 });
+        await loadUserscriptPage(page, { url: SERIES_URL, fixtureFile: SERIES_SHELL, testMode: true });
+        await addSpacer(page);
+        await expect.poll(() => page.evaluate(() => !!document.querySelector('.mb-vsb-head'))).toBe(true);
+        // Past the entity header (the fixture's unstyled MB header above it
+        // is taller than the window).
+        const y = await page.evaluate(() => Math.round(document.querySelector('#content > .seriesheader')
+            .getBoundingClientRect().top + window.scrollY + 1000));
+        await scrollToY(page, y);
+        const top = await page.evaluate(() => document.querySelector('#content > .seriesheader').getBoundingClientRect().top);
+        expect(Math.abs(top)).toBeLessThanOrEqual(1);
+    });
+
+    test('in a window too small for the whole stack the header block scrolls away', async ({ page }) => {
+        await openSeries(page, { viewport: { width: 1200, height: 220 } });
+        const y = await page.evaluate(() => document.querySelector('table.tbl').getBoundingClientRect().top + window.scrollY + 900);
+        await scrollToY(page, y);
+        const b = await bars(page);
+        expect(b.heads, 'nothing stamped').toEqual([]);
+        expect(Math.abs(b.h2.top), 'the h2 at the top').toBeLessThanOrEqual(1);
+    });
+
+    test('an open MusicBrainz header menu stays above the sticky entity header', async ({ page }) => {
+        // MB's long Editing menu opens down over the entity header right
+        // under it. The sticky entity header (z-index 105) would cover it;
+        // the header is lifted over it (_vsbLiftChrome()).
+        await openSeries(page, { settingsOverride: { sa_enable_sticky_page_headers: false } });
+        const geo = await page.evaluate(async () => {
+            const li = document.querySelector('body > div.header li.editing');
+            const menu = li.querySelector(':scope > ul');
+            const ent = document.querySelector('#content > .seriesheader');
+            // Out of flow FIRST (unstyled, the submenu is part of the
+            // header's height), then the entity header into view: the
+            // fixture's unstyled MB header is taller than the window.
+            li.style.position = 'relative';
+            Object.assign(menu.style, { position: 'absolute', width: '200px', margin: '0', background: '#fff' });
+            ent.scrollIntoView({ block: 'center' });
+            await new Promise((r) => requestAnimationFrame(() => r()));
+            const lr = li.getBoundingClientRect();
+            const er0 = ent.getBoundingClientRect();
+            menu.style.left = `${er0.left + 10 - lr.left}px`;
+            menu.style.top = `${er0.top - 20 - lr.top}px`;
+            await new Promise((r) => requestAnimationFrame(() => r()));
+            const mr = menu.getBoundingClientRect();
+            const er = ent.getBoundingClientRect();
+            const x = mr.left + 10;
+            const y = (Math.max(mr.top, er.top) + Math.min(mr.bottom, er.bottom)) / 2;
+            const hit = document.elementFromPoint(x, y);
+            return {
+                stuckBlock: ent.classList.contains('mb-vsb-head'),
+                overlap: Math.min(mr.bottom, er.bottom) - Math.max(mr.top, er.top),
+                hitMenu: !!(hit && menu.contains(hit)),
+            };
+        });
+        expect(geo.stuckBlock, 'premise: the entity header is the sticky block').toBe(true);
+        expect(geo.overlap, 'premise: the menu overlaps the entity header').toBeGreaterThan(4);
+        expect(geo.hitMenu, 'the menu is on top').toBe(true);
     });
 });

@@ -1289,11 +1289,13 @@
             label: 'Enable Sticky Filter Bars',
             type: 'checkbox',
             default: true,
-            description: 'Keep the section bar with the global filter and the row count at the ' +
+            description: 'Keep the page heading with the action buttons and the status line, and ' +
+                         'under them the section bar with the global filter and the row count, at the ' +
                          'top of the window while scrolling down, and on pages with several ' +
                          'sub-tables the bar (with its filter) of the sub-table in view right under ' +
                          'it: the next sub-table\'s bar takes its place as it arrives. The column ' +
-                         'headers (\'Enable Sticky Headers\') then stick below the bars. Off: only ' +
+                         'headers (\'Enable Sticky Headers\') then stick below the bars. In a ' +
+                         'window too small for all of it the heading scrolls away. Off: only ' +
                          'the column headers stick.'
         },
 
@@ -17982,10 +17984,17 @@
             return;
         }
 
-        // Third preference: after the first <h1> (no <h3> siblings yet).
+        // Third preference: after the first <h1> (no <h3> siblings yet) — but
+        // after the status line when it sits right under that <h1>: the init
+        // block puts #mb-status-displays-wrapper there on every page without
+        // a p.subheader, and the h1 + status line belong together (reported
+        // 2026-10-09 on report/AnnotationsEvents, report/ISRCsWithManyRecordings,
+        // cdstub/browse: the status line sat BELOW the data h2).
         const _firstH1 = _contentRoot.querySelector('h1');
         if (_firstH1) {
-            _firstH1.insertAdjacentElement('afterend', _h2);
+            const _status = _firstH1.nextElementSibling;
+            const _anchor = _status && _status.id === 'mb-status-displays-wrapper' ? _status : _firstH1;
+            _anchor.insertAdjacentElement('afterend', _h2);
             Lib.debug('init', `applyInsertH2: inserted <h2>"${_text}"</h2> after first <h1> in content area.`);
             return;
         }
@@ -31123,6 +31132,16 @@
     // and one z-index, so the next sub-table's h3 slides over the previous
     // one as it arrives: the bar always names the sub-table in view.
     //
+    // Above them all, since a second request the same day, the HEADER BLOCK
+    // sticks: the element holding the action buttons (an entity header such
+    // as div.artistheader with its h1 and p.subheader, or the bare h1) and
+    // the status line when that is a line of its own (#mb-status-displays-
+    // wrapper), stamped `.mb-vsb-head` + `data-mb-vsb-head` (_vsbHeadBlocks()),
+    // z-index 105 (VSB_Z_HEAD), from page init on. If the whole stack would
+    // take more than VSB_MAX_STACK_SHARE of the window the block is left to
+    // scroll. The MusicBrainz top header is lifted over it (_vsbLiftChrome()):
+    // its long menus open down over the block.
+    //
     // Mechanism — plain `position: sticky` with measured `top` offsets, like
     // the sticky page headers: resolved by the compositor, no scroll
     // listener. The offsets live in one generated stylesheet
@@ -31162,6 +31181,16 @@
     const VSB_Z_H2 = 104;
     /** Raise level of a pinned content body of the sticky page headers while the bars are on: under the bars. */
     const VSB_Z_BODY_RAISED = 101;
+    /** z-index of the stuck header block (h1 with the action buttons, the status line); raised to SPH_Z_RAISED (107). */
+    const VSB_Z_HEAD = 105;
+    /** z-index of the MusicBrainz top header while the header block is stuck, so its menus open over it. */
+    const VSB_Z_CHROME = 108;
+    /** Most of the window the whole stuck stack may take; past it the header block is left to scroll. */
+    const VSB_MAX_STACK_SHARE = 0.6;
+    /** Space (px) between the stuck header block's stats line and the h2 bar under it, filled by the backdrop (asked for 2026-10-09). */
+    const VSB_HEAD_GAP = 6;
+    /** z-index of the backdrop behind the stuck header block (#mb-vsb-mask): under the h2 (104) and the block (105), over everything that scrolls. */
+    const VSB_Z_MASK = 103;
 
     /**
      * Mutable state of the sticky filter bars.
@@ -31173,7 +31202,11 @@
      *   mutations:   ?MutationObserver,- watches the h3 bars' content (see _vsbRefresh())
      *   watched:     Set<Element>,     - h3 bars `mutations` currently watches
      *   pending:     boolean,          - a refresh is scheduled for the next frame
-     *   css:         string            - text last written to #mb-vsb-dyn-style
+     *   css:         string,           - text last written to #mb-vsb-dyn-style
+     *   mask:        ?HTMLElement,     - #mb-vsb-mask, the backdrop behind the stuck header block
+     *   head:        ?HTMLElement,     - the header block's first part (null: no block stuck)
+     *   headTop:     number,           - its sticky `top`, px
+     *   maskPending: boolean           - a mask update is scheduled for the next frame
      * }}
      */
     const _vsb = {
@@ -31183,7 +31216,11 @@
         mutations:   null,
         watched:     new Set(),
         pending:     false,
-        css:         ''
+        css:         '',
+        mask:        null,
+        head:        null,
+        headTop:     0,
+        maskPending: false
     };
 
     /**
@@ -31212,6 +31249,47 @@
         const mask = (!pageBg || pageBg === 'transparent' || pageBg === 'rgba(0, 0, 0, 0)') ? '#ffffff' : pageBg;
         // GM_addStyle so this is exempt from page CSP style-src restrictions.
         const style = GM_addStyle(`
+            html.mb-vsb-on .mb-vsb-head {
+                position: sticky;
+                z-index: ${VSB_Z_HEAD};
+            }
+            /* The header block has no background of its own, and the table
+               is wider than it: everything scrolling under it showed through
+               and beside it (reported 2026-10-09: the tabs in the status
+               line, rows behind and right of a recording's h1). A
+               window-wide backdrop of the block's height, behind it, shown
+               only while the block is stuck (_vsbUpdateMask()): in its
+               natural place it would cover MusicBrainz's sidebar top. */
+            html.mb-vsb-on #mb-vsb-mask {
+                position: fixed;
+                left: 0;
+                right: 0;
+                z-index: ${VSB_Z_MASK};
+                background: ${mask};
+                display: none;
+            }
+            html.mb-vsb-on #mb-vsb-mask.mb-vsb-mask-on {
+                display: block;
+            }
+            html.mb-vsb-on .mb-vsb-head:hover,
+            html.mb-vsb-on .mb-vsb-head:focus-within:not(:has(:is(input[type="search"], input[type="text"], input:not([type]), textarea):focus)) {
+                z-index: ${SPH_Z_RAISED};
+            }
+            html.mb-vsb-on .mb-vsb-head:has([style*="position: absolute"][style*="display: block"][style*="z-index"]) {
+                z-index: ${SPH_Z_RAISED};
+            }
+            /* The MusicBrainz top header sits right above the stuck header
+               block, and its long menus open down over it: lifted above it
+               (relative is layout-neutral here). A header a userstyle made
+               sticky or fixed keeps its own z-index, raised only while a menu
+               is in use. */
+            html.mb-vsb-on body > div.header.mb-vsb-chrome {
+                position: relative;
+                z-index: ${VSB_Z_CHROME};
+            }
+            html.mb-vsb-on body > div.header.mb-vsb-chrome-stuck:is(:hover, :focus-within) {
+                z-index: ${VSB_Z_CHROME};
+            }
             html.mb-vsb-on .mb-vsb-h2 {
                 position: sticky;
                 z-index: ${VSB_Z_H2};
@@ -31243,7 +31321,7 @@
             /* The sticky page headers' pinned content bodies (not the bars,
                not a table, not body-level chrome) stay under the bars when
                raised. */
-            html.mb-vsb-on body :not(body) > .mb-sph-target:not(.mb-vsb-h2, h3.mb-toggle-h3, .mb-sph-table, .mb-sph-chrome) {
+            html.mb-vsb-on body :not(body) > .mb-sph-target:not(.mb-vsb-head, .mb-vsb-h2, h3.mb-toggle-h3, .mb-sph-table, .mb-sph-chrome) {
                 --mb-sph-z-raised: ${VSB_Z_BODY_RAISED};
             }
         `);
@@ -31275,6 +31353,63 @@
         const stuck = cs.position === 'fixed' || (cs.position === 'sticky' && cs.top !== 'auto');
         if (!stuck) return 0;
         return (parseFloat(cs.top) || 0) + hdr.getBoundingClientRect().height;
+    }
+
+    /**
+     * The header block that sticks above the data h2: the element holding
+     * the action buttons (`#mb-show-all-controls-container`) — the
+     * MusicBrainz entity header around its `<h1>` (`div.artistheader` and
+     * the like: the h1 plus its p.subheader) or the bare `<h1>` — and the
+     * status line (`#mb-status-displays-container`'s line: that subheader,
+     * or `#mb-status-displays-wrapper` right under the h1) when it is not
+     * inside that block already. In DOM order; only visible blocks before
+     * the data h2, never one holding a table.
+     *
+     * @param {?HTMLElement} dataH2 - The stuck data h2, if any.
+     * @returns {HTMLElement[]}
+     */
+    function _vsbHeadBlocks(dataH2) {
+        const ctl = document.getElementById('mb-show-all-controls-container');
+        const h1 = ctl && ctl.isConnected ? ctl.closest('h1') : null;
+        if (!h1 || h1.closest('table, #sidebar')) return [];
+        const parent = h1.parentElement;
+        const entityHeader = parent && parent.tagName === 'DIV' &&
+            Array.from(parent.classList).some(c => /header$/.test(c)) &&
+            !parent.querySelector('table, h2');
+        const blocks = [entityHeader ? parent : h1];
+        const st = document.getElementById('mb-status-displays-container');
+        const line = st && st.isConnected ? st.closest('p.subheader, #mb-status-displays-wrapper') : null;
+        if (line && !blocks[0].contains(line) &&
+            (blocks[0].compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING)) {
+            blocks.push(line);
+        }
+        return blocks.filter(b => b.getClientRects().length &&
+            !b.querySelector('table.tbl') &&
+            !(dataH2 && (b.contains(dataH2) || !(b.compareDocumentPosition(dataH2) & Node.DOCUMENT_POSITION_FOLLOWING))));
+    }
+
+    /**
+     * Lifts the MusicBrainz top header (`body > div.header`) above the stuck
+     * header block while there is one: `.mb-vsb-chrome` (relative, z-index
+     * VSB_Z_CHROME) for a header in the flow, `.mb-vsb-chrome-stuck` (raised
+     * only while hovered or holding focus) for one a userstyle made sticky
+     * or fixed, which keeps its own z-index otherwise. Decided afresh on
+     * every refresh, from the header's OWN position: `_vsbRefresh()` calls
+     * it with `false` first, so a userstyle that arrives after page init is
+     * seen (and not overridden: `.mb-vsb-chrome`'s `relative` would beat the
+     * userstyle's `sticky` and hide it from `_vsbBaseOffset()` as well).
+     *
+     * @param {boolean} on - Whether a header block is stuck.
+     * @returns {void}
+     */
+    function _vsbLiftChrome(on) {
+        const hdr = document.querySelector('body > div.header');
+        if (!hdr) return;
+        hdr.classList.remove('mb-vsb-chrome', 'mb-vsb-chrome-stuck');
+        if (!on) return;
+        const cs = getComputedStyle(hdr);
+        const stuck = cs.position === 'fixed' || (cs.position === 'sticky' && cs.top !== 'auto');
+        hdr.classList.add(stuck ? 'mb-vsb-chrome-stuck' : 'mb-vsb-chrome');
     }
 
     /**
@@ -31310,9 +31445,10 @@
         });
         if (dataH2 && !dataH2.classList.contains('mb-vsb-h2')) dataH2.classList.add('mb-vsb-h2');
         const h3s = Array.from(document.querySelectorAll('h3.mb-toggle-h3'));
+        let heads = _vsbHeadBlocks(dataH2);
 
         if (_vsb.observer) {
-            const want = new Set(h3s);
+            const want = new Set([...heads, ...h3s]);
             if (dataH2) want.add(dataH2);
             _vsb.observed.forEach(el => {
                 if (!want.has(el)) { _vsb.observer.unobserve(el); _vsb.observed.delete(el); }
@@ -31332,6 +31468,8 @@
             h3s.forEach(h => _vsb.mutations.observe(h, { childList: true, subtree: true, characterData: true }));
         }
 
+        // The MB header's own position, without the lift (see _vsbLiftChrome()).
+        _vsbLiftChrome(false);
         // A "header" taller than a third of the window is not one the bars
         // can dock under (springsteenlyrics.com's navbar measured without
         // the site's CSS is 3,902 px): dock at the top instead.
@@ -31347,24 +31485,54 @@
             h3Box = content + (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0) +
                 (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0);
         }
-        // Floored: a bar may overlap the one above it by a fraction of a
-        // pixel (it paints under it), but never leave a seam rows show through.
-        const h3Top = Math.floor(base + h2h);
-        const theadTop = h3Top;
-        const theadTopH3 = Math.floor(base + h2h + h3Box);
         const firstThead = Array.from(document.querySelectorAll('table.tbl > thead'))
             .find(t => t.getClientRects().length);
         const theadH = firstThead ? firstThead.getBoundingClientRect().height : 0;
+        // The header block on top, unless the whole stack would then eat
+        // most of the window (a small window, a tall header): it scrolls.
+        let headHs = heads.map(b => b.getBoundingClientRect().height);
+        let headsH = headHs.reduce((a, b) => a + b, 0);
+        if (headsH + h2h + h3Box + theadH > window.innerHeight * VSB_MAX_STACK_SHARE) {
+            heads = [];
+            headHs = [];
+            headsH = 0;
+        }
+        document.querySelectorAll('.mb-vsb-head').forEach(el => {
+            if (!heads.includes(el)) { el.classList.remove('mb-vsb-head'); delete el.dataset.mbVsbHead; }
+        });
+        const headTops = [];
+        let acc = base;
+        heads.forEach((b, i) => {
+            if (!b.classList.contains('mb-vsb-head')) b.classList.add('mb-vsb-head');
+            if (b.dataset.mbVsbHead !== String(i)) b.dataset.mbVsbHead = String(i);
+            headTops.push(Math.floor(acc));
+            acc += headHs[i];
+        });
+        _vsbLiftChrome(heads.length > 0);
+        _vsb.head = heads[0] || null;
+        _vsb.headTop = headTops[0] || 0;
+        _vsbUpdateMask();
+        // A little space under the stats line, so the bar does not sit
+        // glued to it; the backdrop covers it.
+        const block = heads.length ? headsH + VSB_HEAD_GAP : 0;
+        // Floored: a bar may overlap the one above it by a fraction of a
+        // pixel (it paints under it), but never leave a seam rows show through.
+        const h2Top = Math.floor(base + block);
+        const h3Top = Math.floor(base + block + h2h);
+        const theadTop = h3Top;
+        const theadTopH3 = Math.floor(base + block + h2h + h3Box);
         // Never more than half the window: past that, scrollIntoView could
         // not bring a row into view at all.
         const pad = Math.min(Math.ceil((shown.length ? theadTopH3 : theadTop) + theadH),
             Math.floor(window.innerHeight / 2));
         const css = [
-            `html.mb-vsb-on .mb-vsb-h2 { top: ${Math.floor(base)}px; }`,
+            ...headTops.map((t, i) => `html.mb-vsb-on .mb-vsb-head[data-mb-vsb-head="${i}"] { top: ${t}px; }`),
+            `html.mb-vsb-on .mb-vsb-h2 { top: ${h2Top}px; }`,
             `html.mb-vsb-on h3.mb-toggle-h3 { top: ${h3Top}px; min-height: ${Math.ceil(content)}px; }`,
             `html.mb-vsb-on body table.tbl > thead { top: ${theadTop}px; }`,
             `html.mb-vsb-on body h3.mb-toggle-h3 ~ table.tbl > thead { top: ${theadTopH3}px; }`,
             `html.mb-vsb-on { scroll-padding-top: ${pad}px; }`,
+            `html.mb-vsb-on #mb-vsb-mask { top: ${Math.floor(base)}px; height: ${Math.ceil(block)}px; }`,
         ].join('\n');
         if (css === _vsb.css) return;
         _vsb.css = css;
@@ -31374,7 +31542,23 @@
             dyn.id = 'mb-vsb-dyn-style';
         }
         dyn.textContent = css;
-        Lib.debug('ui', `Sticky filter bars: base ${base}px, h2 ${h2h}px, h3 ${h3Box}px (${shown.length} shown), thead at ${theadTop}/${theadTopH3}px.`);
+        Lib.debug('ui', `Sticky filter bars: base ${base}px, header block ${headsH}px (${heads.length}), h2 ${h2h}px, h3 ${h3Box}px (${shown.length} shown), thead at ${theadTop}/${theadTopH3}px.`);
+    }
+
+    /**
+     * Shows the backdrop behind the header block (`#mb-vsb-mask`) while that
+     * block is stuck: its first part sits at its sticky `top` with the page
+     * scrolled. One rectangle read; called by `_vsbRefresh()` and, once per
+     * frame at most, on scroll.
+     *
+     * @returns {void}
+     */
+    function _vsbUpdateMask() {
+        if (!_vsb.mask) return;
+        const head = _vsb.head;
+        const on = !!(head && head.isConnected && window.scrollY > 0 &&
+            head.getBoundingClientRect().top <= _vsb.headTop + 0.5);
+        if (_vsb.mask.classList.contains('mb-vsb-mask-on') !== on) _vsb.mask.classList.toggle('mb-vsb-mask-on', on);
     }
 
     /**
@@ -31410,6 +31594,19 @@
             if (typeof ResizeObserver === 'function') _vsb.observer = new ResizeObserver(_vsbScheduleRefresh);
             if (typeof MutationObserver === 'function') _vsb.mutations = new MutationObserver(_vsbScheduleRefresh);
             window.addEventListener('resize', _vsbScheduleRefresh, { passive: true });
+            const mask = document.createElement('div');
+            mask.id = 'mb-vsb-mask';
+            mask.setAttribute('aria-hidden', 'true');
+            document.body.appendChild(mask);
+            _vsb.mask = mask;
+            window.addEventListener('scroll', () => {
+                if (_vsb.maskPending) return;
+                _vsb.maskPending = true;
+                requestAnimationFrame(() => {
+                    _vsb.maskPending = false;
+                    _vsbUpdateMask();
+                });
+            }, { passive: true });
         }
         _vsbRefresh();
     }
@@ -31513,7 +31710,16 @@
      */
     function _autoFocusInput(input) {
         if (_isTouchPrimaryDevice()) return false;
-        input.focus();
+        // Already fully in view (typically: in a stuck bar of the sticky
+        // filter bars): no scroll. Chrome scrolls a focused element inside a
+        // sticky bar toward the bar's natural place, which pulled a page
+        // scrolled to a /disc/N#<track> row back to the top.
+        // Vertically whole, sideways at least partly (a wide filter field
+        // may reach past the window's right edge).
+        const r = input.getBoundingClientRect();
+        const inView = r.height > 0 && r.top >= 0 && r.bottom <= window.innerHeight &&
+            r.right > 0 && r.left < window.innerWidth;
+        input.focus(inView ? { preventScroll: true } : undefined);
         return true;
     }
 
@@ -62030,6 +62236,11 @@ a { color: #1565c0; }`;
     requestAnimationFrame(alignStatusToFirstButton);
     window.addEventListener('resize', alignStatusToFirstButton);
 
+    // The header block (h1 with the action buttons, the status line) sticks
+    // from the start, before any button is pressed; the bars join it after
+    // the render (initStickyFilterBars() is called again there).
+    initStickyFilterBars();
+
     let allRows = [];
     let originalAllRows = [];
     let groupedRows = [];
@@ -76764,7 +76975,9 @@ a { color: #1565c0; }`;
                     // (silently rejecting the user's next keystroke) until a
                     // second, real click/focus.
                     _gfi.readOnly = false;
-                    _gfi.focus();
+                    // Through _autoFocusInput(): no scroll when the field is
+                    // already in view (a stuck sticky filter bar).
+                    _autoFocusInput(_gfi);
                     Lib.debug('ui', 'Auto-focused global filter input after final render');
                 }
             }, 150);

@@ -21370,3 +21370,51 @@ in view; the status line above the thin rule under the toolbar h1.
   away from a stuck thead while scrolling (already true with the sticky
   thead before this branch). The interaction perf comparison against `main`
   was not run before the push.
+
+## 2026-10-09 — Status line below the data h2 on report pages; the header block sticks too (branch feature/sticky-filter-bars, WIP.4, WIP.5)
+
+Env: 2026-10-09T14:47:53Z–15:06:38Z (two test:full runs; the second 1496/1496 green, 7 m 16 s) · petri · WSL2 Ubuntu
+24.04.3 (Linux 6.18.40.1) · Chromium 151.0.7922.34 (Playwright 1.62.1) · no
+Tampermonkey (GM stubs). Snapshot `debug/event-annotations.html` (FRP, saved
+by the user from report/AnnotationsEvents; browser/Tampermonkey versions
+unknown).
+
+- **WIP.4, status line below the h2** (report/AnnotationsEvents,
+  report/ISRCsWithManyRecordings, cdstub/browse). The snapshot's order under
+  `#content`'s h1: `h2[data-mb-injected-h2]`, then
+  `#mb-status-displays-wrapper`. The init block puts the wrapper right after
+  the h1 on every page without a p.subheader; at click time
+  `applyInsertH2()`, finding no tabs and no h3, takes its third path "after
+  the first h1" and lands between the two. That path now steps past the
+  wrapper. Pinned by `tests/fixtures/status-line-placement.spec.js`
+  (ASINsWithMultipleReleases fixture), mutation in
+  `scripts/mutations/status-line-placement.json`. The notes-received and
+  user-tags rendered snapshot baselines record the old order (and every
+  rendered baseline lacks the `.mb-vsb-*` classes): expected on their next
+  re-capture, not a regression.
+- **WIP.5, the header block** (docs/claude/toolbar-and-header-ui.md, "The
+  header block sticks above the bars"). Found on the way:
+  1. The MB-header lift was decided once at page init; the SPH spec's
+     userstyle test injects its `position: sticky` after init, and the
+     lift's `position: relative` then overrode it (z-index 108 instead of
+     the userstyle's 1). Now decided afresh every refresh.
+  2. The first test:full (1495 passed, 1 failed, 7 m 17 s at 1496 tests):
+     `release-tracks-track-target` — the /disc/1#<track> row scrolled into
+     view, then back out. The page first shrinks (868 → 126, pre-existing,
+     the same with the feature off), then the post-render focus of the
+     global filter scrolled to 0: it called `focus()` directly, and Chrome
+     scrolls a field inside a sticky bar toward the bar's NATURAL place.
+     The call now goes through `_autoFocusInput()`, which skips the scroll
+     when the field is already in view (vertically whole, sideways partly).
+  3. Test geometry, three times: a sticky element is held inside its
+     parent's CONTENT box (padding gives no room), the fixtures' unstyled
+     MB header is 1,555 px tall (the entity header starts below the
+     window at scroll 0), and the clamp that ignores a base over a third
+     of the window hid the "sideways-only sticky header" guard until the
+     test capped the header at 60 px.
+  4. Live check by the user (screenshots, artist releases and a recording
+     page; browser/Tampermonkey versions unknown): the stuck header block is
+     transparent and narrower than the table, so the tabs ran through the
+     status line and rows showed behind and right of the h1. Fixed with one
+     window-wide `position: fixed` backdrop (`#mb-vsb-mask`) behind the
+     block, shown only while it is stuck; pinned on painted pixels.

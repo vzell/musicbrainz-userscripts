@@ -69,8 +69,8 @@
         "why": "Under jesus2099's sticky MB header the bars dock below it rather than sliding under it.",
         "edits": [
             {
-                "find": "        const stuck = cs.position === 'fixed' || (cs.position === 'sticky' && cs.top !== 'auto');\n",
-                "replace": "        const stuck = false;\n"
+                "find": "        // that one scrolls away like any other.\n        const stuck = cs.position === 'fixed' || (cs.position === 'sticky' && cs.top !== 'auto');\n",
+                "replace": "        // that one scrolls away like any other.\n        const stuck = false;\n"
             }
         ],
         "spec": "tests/fixtures/sticky-filter-bars.spec.js",
@@ -82,8 +82,8 @@
         "why": "The sticky page headers make div.header position: sticky without a top; counting that put the bars 1,555 px down in the fixture.",
         "edits": [
             {
-                "find": "        const stuck = cs.position === 'fixed' || (cs.position === 'sticky' && cs.top !== 'auto');\n",
-                "replace": "        const stuck = cs.position === 'fixed' || cs.position === 'sticky';\n"
+                "find": "        // that one scrolls away like any other.\n        const stuck = cs.position === 'fixed' || (cs.position === 'sticky' && cs.top !== 'auto');\n",
+                "replace": "        // that one scrolls away like any other.\n        const stuck = cs.position === 'fixed' || cs.position === 'sticky';\n"
             }
         ],
         "spec": "tests/fixtures/sticky-filter-bars.spec.js",
@@ -95,7 +95,7 @@
         "why": "The sticky page headers raise a hovered body to 107; while the bars are on it is capped at 101.",
         "edits": [
             {
-                "find": "            html.mb-vsb-on body :not(body) > .mb-sph-target:not(.mb-vsb-h2, h3.mb-toggle-h3, .mb-sph-table, .mb-sph-chrome) {\n                --mb-sph-z-raised: ${VSB_Z_BODY_RAISED};\n            }\n",
+                "find": "            html.mb-vsb-on body :not(body) > .mb-sph-target:not(.mb-vsb-head, .mb-vsb-h2, h3.mb-toggle-h3, .mb-sph-table, .mb-sph-chrome) {\n                --mb-sph-z-raised: ${VSB_Z_BODY_RAISED};\n            }\n",
                 "replace": ""
             }
         ],
@@ -196,6 +196,153 @@
         ],
         "spec": "tests/fixtures/sl-collection.spec.js",
         "grep": "a column filter narrows the rows",
+        "expect": "fail"
+    },
+    {
+        "name": "the header block is never stuck",
+        "why": "Requested 2026-10-09: the line with the action buttons and the status line stick above the data h2.",
+        "edits": [
+            {
+                "find": "        const blocks = [entityHeader ? parent : h1];\n",
+                "replace": "        const blocks = [];\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "entity page|report page|before any button",
+        "expect": "fail"
+    },
+    {
+        "name": "the bare h1 is stuck instead of its entity header",
+        "why": "Inside div.artistheader & co. a stuck h1 could only stick within that small div, and the p.subheader with the status line would scroll away.",
+        "edits": [
+            {
+                "find": "        const blocks = [entityHeader ? parent : h1];\n",
+                "replace": "        const blocks = [h1];\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "entity page",
+        "expect": "fail"
+    },
+    {
+        "name": "the status line of its own is not stuck",
+        "why": "On a page without p.subheader the status line is #mb-status-displays-wrapper under the h1; it sticks under it.",
+        "edits": [
+            {
+                "find": "        if (line && !blocks[0].contains(line) &&\n",
+                "replace": "        if (false && line && !blocks[0].contains(line) &&\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "report page",
+        "expect": "fail"
+    },
+    {
+        "name": "the header block sticks in any window",
+        "why": "In a small window the whole stack would eat the window; the header block then scrolls.",
+        "edits": [
+            {
+                "find": "        if (headsH + h2h + h3Box + theadH > window.innerHeight * VSB_MAX_STACK_SHARE) {\n",
+                "replace": "        if (false) {\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "too small",
+        "expect": "fail"
+    },
+    {
+        "name": "the MB header is not lifted over the header block",
+        "why": "MB's long menus open down over the sticky entity header, which would cover them.",
+        "edits": [
+            {
+                "find": "        hdr.classList.add(stuck ? 'mb-vsb-chrome-stuck' : 'mb-vsb-chrome');\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "header menu",
+        "expect": "fail"
+    },
+    {
+        "name": "the MB header lift is decided once, at page init",
+        "why": "A userstyle that makes the header sticky after init would be overridden by the lift's position: relative (and hidden from _vsbBaseOffset()).",
+        "edits": [
+            {
+                "find": "        // The MB header's own position, without the lift (see _vsbLiftChrome()).\n        _vsbLiftChrome(false);\n",
+                "replace": ""
+            },
+            {
+                "find": "        hdr.classList.remove('mb-vsb-chrome', 'mb-vsb-chrome-stuck');\n        if (!on) return;\n",
+                "replace": "        if (!on) { hdr.classList.remove('mb-vsb-chrome', 'mb-vsb-chrome-stuck'); return; }\n        if (hdr.classList.contains('mb-vsb-chrome') || hdr.classList.contains('mb-vsb-chrome-stuck')) return;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-page-headers.spec.js",
+        "grep": "natively sticky header",
+        "expect": "fail"
+    },
+    {
+        "name": "the header block only sticks after a render",
+        "why": "Requested: ALWAYS sticky — also before any button is pressed.",
+        "edits": [
+            {
+                "find": "    // the render (initStickyFilterBars() is called again there).\n    initStickyFilterBars();\n",
+                "replace": "    // the render (initStickyFilterBars() is called again there).\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "before any button",
+        "expect": "fail"
+    },
+    {
+        "name": "the post-render focus scrolls to a stuck filter bar again",
+        "why": "Chrome scrolls a focused field inside a sticky bar toward the bar's natural place; with the header block on top that pulled a /disc/N#<track> page back to the top.",
+        "edits": [
+            {
+                "find": "                    _autoFocusInput(_gfi);\n",
+                "replace": "                    _gfi.focus();\n"
+            }
+        ],
+        "spec": "tests/fixtures/release-tracks-track-target.spec.js",
+        "grep": "stays highlighted after",
+        "expect": "fail"
+    },
+    {
+        "name": "no backdrop behind the stuck header block",
+        "why": "Reported 2026-10-09: tabs and rows showed through and beside the transparent header block.",
+        "edits": [
+            {
+                "find": "            html.mb-vsb-on #mb-vsb-mask.mb-vsb-mask-on {\n                display: block;\n            }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "shows through it or beside it",
+        "expect": "fail"
+    },
+    {
+        "name": "the backdrop is shown in the natural place too",
+        "why": "In its natural place a window-wide backdrop would cover MusicBrainz's sidebar top.",
+        "edits": [
+            {
+                "find": "        const on = !!(head && head.isConnected && window.scrollY > 0 &&\n            head.getBoundingClientRect().top <= _vsb.headTop + 0.5);\n",
+                "replace": "        const on = !!head;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "shows through it or beside it",
+        "expect": "fail"
+    },
+    {
+        "name": "no gap under the stats line",
+        "why": "Asked for 2026-10-09: a little space between the stuck stats line and the h2 bar under it.",
+        "edits": [
+            {
+                "find": "        const block = heads.length ? headsH + VSB_HEAD_GAP : 0;\n",
+                "replace": "        const block = heads.length ? headsH : 0;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "shows through it or beside it",
         "expect": "fail"
     }
 ]

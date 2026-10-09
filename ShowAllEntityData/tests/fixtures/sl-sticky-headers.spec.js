@@ -222,11 +222,18 @@ test('collection: scrolled down, the list h2 docks under the site\'s navbar and 
         const nav = parseFloat(document.documentElement.style.getPropertyValue('--mb-sl-navbar-h'));
         const h2 = document.getElementById('mb-global-filter-input').closest('h2').getBoundingClientRect();
         const t = document.querySelector('table.tbl');
+        const heads = Array.from(document.querySelectorAll('.mb-vsb-head'), (el) => el.getBoundingClientRect());
         return { nav, h2Top: h2.top, h2Bottom: h2.bottom, theadTop: t.tHead.getBoundingClientRect().top,
-            tableTop: t.getBoundingClientRect().top };
+            tableTop: t.getBoundingClientRect().top,
+            stackTop: heads.length ? Math.min(...heads.map((r) => r.top)) : h2.top,
+            // The h2 docks a 6 px gap under the block (VSB_HEAD_GAP).
+            headBottom: heads.length ? Math.max(...heads.map((r) => r.bottom)) + 6 : h2.top };
     });
     expect(g.nav, 'premise: the navbar height is known').toBeGreaterThan(0);
     expect(g.tableTop, 'premise: the table starts above the window').toBeLessThan(-500);
-    expect(Math.abs(g.h2Top - g.nav), 'the h2 docks at the navbar height').toBeLessThanOrEqual(1);
+    // The stuck stack (the header block, if it is stuck here, then the h2)
+    // starts at the navbar height.
+    expect(Math.abs(g.stackTop - g.nav), 'the stack docks at the navbar height').toBeLessThanOrEqual(1);
+    expect(Math.abs(g.h2Top - g.headBottom), 'the h2 under the header block').toBeLessThanOrEqual(1);
     expect(Math.abs(g.theadTop - g.h2Bottom), 'the thead docks under the h2').toBeLessThanOrEqual(1);
 });

@@ -324,6 +324,10 @@ test('the status line sits between the toolbar <h1> and the theme\'s rule, clear
     await loadBbSongsPage(page);
     await page.addStyleTag({ content: 'h1 { border-bottom: 1px dotted #AAA; } #breadcrumbs { margin-top: -0.5em; }' });
     await showAll(page);
+    // The layout in the page's flow: at the top (the render's focus scroll
+    // would otherwise leave the h1 and the status line stuck).
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
     const s = await page.evaluate(() => {
         const h1 = document.querySelector('h1.mb-bb-h1');
         const wrap = document.getElementById('mb-status-displays-wrapper');

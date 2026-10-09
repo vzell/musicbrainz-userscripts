@@ -664,9 +664,12 @@ restore the original order. The indicator goes `⇅ → ▲ → ▼`.
 their right edge, and a column can never be dragged narrower than its own
 header needs.
 
-**Scrolling down** keeps the section bar with the global filter and the row
-count at the top of the window, so you can see the counts and filter at any
-point of a long table. On a page with several sub-tables the bar of the
+**Scrolling down** keeps the page heading with the action buttons and the
+status line ("Loaded … Fetching …") at the top of the window, from the moment
+the page opens, and once the table is shown the section bar with the global
+filter and the row count right under them, so you can see the counts and
+filter at any point of a long table. In a window too small for all of that,
+the heading scrolls away and the bars still stay. On a page with several sub-tables the bar of the
 sub-table you are in (with its own filter) stays right under it, and the next
 sub-table's bar takes its place as you scroll into it. The column headers stay
 under the bars (*Enable Sticky Filter Bars* and *Enable Sticky Headers* in 📌

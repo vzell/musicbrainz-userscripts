@@ -1,5 +1,29 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-10-09",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Sticky filter bars (WIP.3) now also keep the page heading with the action buttons and the status line at the top of the window while scrolling down, on every page and from the moment it opens. On an artist, release or other entity page that is the whole entity header (the name and the line under it with the status); elsewhere the heading and the status line under it. The section bar with the global filter sits right under them. In a window too small for all of it, the heading scrolls away and the bars still stay. MusicBrainz's own menus at the top of the page still open over the heading."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.4",
+    "date": "2026-10-09",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Report pages (e.g. Event annotations, ISRCs with many recordings) and the CD stub list: the status line (\"Loaded … Fetching …\") sat below the section bar with the global filter instead of right under the page heading. It is back under the heading."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-10-09",
     "sections": [
