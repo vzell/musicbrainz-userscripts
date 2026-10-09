@@ -1,5 +1,48 @@
 [
   {
+    "version": "9.99.1301",
+    "date": "2026-10-09",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Brucebase pages: the wiki's side bar gets the MusicBrainz sidebar's collapse handle and starts hidden (the MusicBrainz settings \"Collabsable sidebar\" and \"Start with sidebar collapsed\" apply). It stays on the left, collapsing to the left; the new setting \"Show the Brucebase side bar on the right\" (off by default) moves it to the right, as on MusicBrainz, where it stays at the window's right edge next to a wide table.",
+          "Brucebase tables: scrolled sideways, the Date column stays lined up under the table's heading bar (it docked at the window's edge)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1300",
+    "date": "2026-10-09",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase start page (brucebase.wikidot.com): a \"Show all events of all years\" button after the \"Brucebase — Home\" heading reads every year page linked under Gig Pages (1949-64, 1965, …) into one table with the year-page columns of 9.99.1299, at the top of the start page. Same switch as the year pages (sa_bb_year_pages)."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Brucebase year table (9.99.1299): on the real pages the Date column showed blank, header and all, and the wiki's side bar was cut off where the table began. The sticky page headers masked the gutter left of a sticky column in the page colour, and on Brucebase that gutter is the side bar. Date is now the first column and the one that stays in view when scrolling sideways, and Brucebase tables (the song list too) dock at the window edge without a mask."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1299",
+    "date": "2026-10-09",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase year pages (brucebase.wikidot.com/1975, …, /2026, and /1949-64): a new \"Events\" button turns the year's shows, sessions, rehearsals, interviews and cancelled dates into one filterable, sortable table, one row per entry — Date (with DD/MM/YYYY/Day/Month; a day or month the wiki gives as 00 is left out), Type, Venue (linked to the entry's page), City, State, Country, Tour (from the wiki's tour and era boxes), Soundcheck and Setlist one song per row (other labelled sets such as \"Pre-show:\" stay in Setlist, tagged with their label), Set note, Notes (the description with its links; song links get the song preview), Media (the wiki's own icons, filterable by name) and Info wanted. Off by default: new setting \"Enable on the Brucebase year pages (event lists)\" (sa_bb_year_pages), which needs the Brucebase switch on too."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1298",
     "date": "2026-10-08",
     "sections": [

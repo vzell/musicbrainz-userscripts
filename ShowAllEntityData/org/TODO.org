@@ -1274,3 +1274,96 @@ The value for the "Annotation" C should be the FULL uncollapsed value, even if t
 
 
 * TODO track .ne. recording name minitooltip above popup
+
+* DONE BUG
+** DONE initial
+
+1.)
+
+On the final rendered page, do not render the column with header
+
+#+begin_example
+<th class="mb-original-column"
+#+end_example
+
+these are recording session setlists, and already flagged as such in the "Type" column.
+
+2.)
+
+Add support for the BB start page at https://brucebase.wikidot.com and offer an action button after "Home" which when
+pressed, pages through all year based event pages
+
+3.)
+
+Actually the first column should be the "Date" column (and always visible) as parsed from the event line like e.g.
+
+#+begin_example
+"2026-01-00 - STONE HILL STUDIO, COLTS NECK, NJ" ==> 2026-01-00
+#+end_example
+
+This is a side-by-side view how it looks like in the initial implementation, the date column is acutally missing. This
+is what I first thought should be removed with '<th class="mb-original-column"', but its the "Date" column wat should be
+visible in that place, see screenshot
+
+** DONE bugs
+
+1.)
+
+It seems to load all pages but doesn't render any table at all in the end:
+
+@debug/bb-events-all.log - console debug log
+
+2.)
+
+a.)
+
+Is it possible to reposition the sidebar on BB PTs to the right side (configurable, default: true), by reordering the following two containers
+
+#+begin_example
+<div id="side-bar">
+<div id="main-content">
+#+end_example
+
+inside
+
+#+begin_example
+<div id="content-wrap">
+#+end_example
+
+on the final rendered page
+
+b.)
+
+and use the same toggle side-bar feature as on MB PTs also on BB PTs when the side-bar is on the right side (default: do
+not show the side-bar)
+
+c.)
+
+Would it even be possible, when the side-bar stays on the left on BB PTs, that it still gets the side-bar toggle handle
+(like BB PTs) but collapses to the left
+
+
+* add to CLAUDE.md
+
+1.)
+
+add to CLAUDE.md the following info:
+
+Always add the following information
+
+#+begin_example
+Date/time
+Host on which the current Claude session runs like e.g. "petri", "vzell-lap" etc.
+OS, Browser version, Tampermonkey version
+#+end_example
+
+to relevant notes to the following files
+
+#+begin_example
+DEBUG-NOTES.md
+MEASUREMENTS.org
+etc. (if you think we need more in this list)
+#+end_example
+
+2.)
+
