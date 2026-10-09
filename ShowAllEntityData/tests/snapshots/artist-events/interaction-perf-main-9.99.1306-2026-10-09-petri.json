@@ -1,0 +1,71 @@
+{
+  "pageType": "artist-events",
+  "url": "https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events",
+  "tableMode": "single",
+  "subTableIndex": null,
+  "totalRows": 4174,
+  "picardArm": null,
+  "relArm": null,
+  "relSeedPath": null,
+  "relIconsRendered": null,
+  "relSettleMs": null,
+  "seedGmValues": {
+    "sa_pop_mb": false,
+    "sa_pop_mb_page": false,
+    "sa_pop_ext": false,
+    "sa_dp_hover_without_ctrl": false,
+    "sa_event_rg_tooltip_without_ctrl": false,
+    "sa_enable_caa_pics": false
+  },
+  "branch": "main",
+  "gitBranch": "main",
+  "capturedAt": "2026-10-09",
+  "startedAt": "2026-10-09T21:11:14.312Z",
+  "finishedAt": "2026-10-09T21:23:55.107Z",
+  "machine": {
+    "hostname": "petri",
+    "platform": "linux",
+    "release": "6.18.40.1-microsoft-standard-WSL2",
+    "cpus": 24,
+    "totalMemGb": 31,
+    "node": "v24.16.0",
+    "playwright": "1.62.1",
+    "uptimeHours": 139.4,
+    "claudeResident": {
+      "count": 1,
+      "oldestSessionHours": 10.1
+    },
+    "claudeSinceBoot": true
+  },
+  "scriptVersion": "9.99.1306+2026-10-09",
+  "interactions": {
+    "globalFilter": {
+      "medianMs": 3485,
+      "samples": 5
+    },
+    "columnFilter": {
+      "medianMs": 3263,
+      "samples": 5
+    },
+    "sort": {
+      "medianMs": 6036,
+      "samples": 5
+    },
+    "uniqDropCold": {
+      "medianMs": 28814,
+      "samples": 5
+    },
+    "uniqDropWarm": {
+      "medianMs": 1072,
+      "samples": 5
+    },
+    "headerCountsInitial": {
+      "medianMs": 7073,
+      "samples": 5
+    },
+    "headerCountsRestore": {
+      "medianMs": 6466,
+      "samples": 5
+    }
+  }
+}
