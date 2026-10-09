@@ -855,8 +855,14 @@ already-open card), starts the read (`_artIdbCountStore()`), keeps the answer,
 and calls `repaint()` — the next snapshot shows it. Until then the row reads
 "counting…".
 
-**Anchors are found by attribute, never wired.** A control carrying
-`data-mb-aj="<key>"` is that job's anchor; the hover listeners are delegated on
+**Anchors are found by attribute or selector, never wired.** A control
+carrying `data-mb-aj="<key>"` is that job's anchor — used only on NEW markup
+(▶🎼, which lives on a pageType with no baseline). An EXISTING control is
+named by the provider's `anchorSelector` instead (`.mb-ms-col-hdr-btn`,
+`.mb-rel-col-hdr-btn`, the status spans): writing `data-mb-aj` onto it would
+drift every snapshot baseline that contains it. `_ajRegister()` folds the
+selectors into `_ajPop.hoverSel`, and `_ajKeyOf()` resolves a hovered element
+to its key. The hover listeners are delegated on
 `document` (`_ajInitHover()`, installed from `_initStatTooltip()` at page
 init). The attribute survives `cloneNode(true)`, so a rebuilt `<thead>` needs
 nothing. `_ajInitHover()` sits ABOVE the `_aj*` const declarations in call
@@ -905,6 +911,21 @@ Specs: `async-pop-providers.spec.js`; mutations
 `scripts/mutations/async-pop-providers.json` (5 caught, 2 recorded
 `expect: "pass"`: the idle guards cannot fail while registration happens at
 the first job).
+
+**`tablework` (long sorts and filters, `_tw*`).** Sorting yields
+(`sortLargeArray()` chunks above 5000 rows) and now passes its progress
+callback, `_twSortProgress()`, which opens the card once a sort has run past
+500 ms (`_TW_OPEN_AFTER_MS`) — never for a short one. Filtering's matching
+loop does NOT yield, so the page cannot repaint during it; `runFilter()` only
+records its time and rows (`_twFilterRecord()`), the draw time follows from
+`_renderSettled`, and the breakdown shows when the user hovers the status
+line (`#mb-sort-status-display`, `#mb-filter-status-display`). A yielding
+`runFilter()` is a separate perf branch, decided 2026-10-10. Cost while the
+card is closed: one object write and one `.then()` per filter pass. Specs:
+`async-pop-tablework.spec.js` — the auto-open path through
+`__saTest.tableWork` with a fake clock, because no fixture reaches the 5000
+rows the live callback needs; mutations `scripts/mutations/async-pop-tablework.json`
+(5, all caught).
 
 `FIXTURE_SETTINGS_OVERRIDE` forces `sa_async_pop_auto_open` off: a card opened
 by a toggle click sits right over the header cells a spec clicks next. Specs

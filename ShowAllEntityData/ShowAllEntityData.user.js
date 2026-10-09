@@ -30172,6 +30172,7 @@
         _ajRegister('ms', {
             glyph: '⏱',
             label: 'Length to the millisecond',
+            anchorSelector: '.mb-ms-col-hdr-btn',
             scopeOf: () => null,
             snapshot: (scope, job) => {
                 if (!job) return null;
@@ -31037,7 +31038,6 @@
             if (!btn) {
                 btn = document.createElement('span');
                 btn.className = 'mb-ms-col-hdr-btn';
-                btn.dataset.mbAj = 'ms';
                 btn.setAttribute('role', 'button');
                 btn.tabIndex = 0;
                 const activate = (ev) => {
@@ -65658,7 +65658,7 @@ a { color: #1565c0; }`;
     /** @type {WeakMap<Element, number>} Stable ids for scope elements (tables). */
     const _ajScopeIds = new WeakMap();
     /** Popup state: which job is shown, its anchor, timers, pending repaint. */
-    const _ajPop = { el: null, openId: null, anchor: null, hoverTimer: 0, leaveTimer: 0, raf: 0, listening: false, nextScope: 1 };
+    const _ajPop = { el: null, openId: null, anchor: null, hoverTimer: 0, leaveTimer: 0, raf: 0, listening: false, nextScope: 1, hoverSel: '[data-mb-aj]' };
     /** Delay before a hover shows the card (ms). */
     const _AJ_HOVER_DELAY_MS = 250;
     /** Grace period after the pointer leaves the anchor or the card (ms). */
@@ -65694,11 +65694,13 @@ a { color: #1565c0; }`;
      *          scopeOf?: function(Element): ?Element,
      *          snapshot: function(?Element, ?object): ?object,
      *          onOpen?: function(?Element, function(): void): void,
+     *          anchorSelector?: string,
      *          act?: function(?Element, string): void}} provider
      *   `snapshot(scope, job)` returns the card's content (see `_ajRender()`),
      *   or `null` to show nothing (the anchor's own tooltip then applies).
      *   `job` is the framework's record, or `null` before any job ran.
      *   `scopeOf(anchor)` defaults to the anchor's `<table>` (null outside one).
+     *   `anchorSelector` makes existing controls anchors without an attribute.
      *   `onOpen(scope, repaint)` runs once each time the card opens on this
      *   job — the place to start an async read such as an IndexedDB store
      *   count, keep the answer, and call `repaint()` when it lands; the next
@@ -65707,6 +65709,26 @@ a { color: #1565c0; }`;
      */
     function _ajRegister(key, provider) {
         _ajProviders.set(key, provider);
+        // The hover delegate matches [data-mb-aj] plus every provider's
+        // anchorSelector — so an EXISTING control (the ⏱ toggle, a status
+        // span) can be an anchor without gaining an attribute, which would
+        // otherwise drift every snapshot baseline that contains it.
+        _ajPop.hoverSel = ['[data-mb-aj]'].concat(Array.from(_ajProviders.values())
+            .map(p => p.anchorSelector).filter(Boolean)).join(', ');
+    }
+
+    /**
+     * The job key a hovered anchor belongs to: its `data-mb-aj`, else the
+     * provider whose `anchorSelector` it matches.
+     * @param {Element} a
+     * @returns {?string}
+     */
+    function _ajKeyOf(a) {
+        if (a.dataset.mbAj) return a.dataset.mbAj;
+        for (const [key, p] of _ajProviders) {
+            if (p.anchorSelector && a.matches(p.anchorSelector)) return key;
+        }
+        return null;
     }
 
     /**
@@ -65840,7 +65862,7 @@ a { color: #1565c0; }`;
     function _ajAnchorFor(key, scope) {
         const p = _ajProviders.get(key);
         if (p && p.anchorFor) return p.anchorFor(scope);
-        return (scope || document).querySelector(`[data-mb-aj="${key}"]`);
+        return (scope || document).querySelector(p && p.anchorSelector ? p.anchorSelector : `[data-mb-aj="${key}"]`);
     }
 
     /**
@@ -66083,7 +66105,7 @@ a { color: #1565c0; }`;
      */
     function _ajOnPointerDown(e) {
         if (e.pointerType !== 'touch' || !_ajPop.el) return;
-        if (_ajPop.el.contains(e.target) || (e.target.closest && e.target.closest('[data-mb-aj]'))) return;
+        if (_ajPop.el.contains(e.target) || (e.target.closest && e.target.closest(_ajPop.hoverSel))) return;
         _ajHide();
     }
 
@@ -66098,19 +66120,20 @@ a { color: #1565c0; }`;
         if (_ajInitHover.done) return;
         _ajInitHover.done = true;
         document.addEventListener('mouseover', (e) => {
-            const a = e.target.closest && e.target.closest('[data-mb-aj]');
+            const a = e.target.closest && e.target.closest(_ajPop.hoverSel);
             if (!a || _isTouchCompatMouseEvent(e) || !_ajEnabled()) return;
             if (e.relatedTarget && a.contains(e.relatedTarget)) return;
+            const key = _ajKeyOf(a);
+            if (!key) return;
             clearTimeout(_ajPop.leaveTimer);
             clearTimeout(_ajPop.hoverTimer);
-            const key = a.dataset.mbAj;
             if (_ajPop.anchor === a && _ajPop.openId) return;
             _ajPop.hoverTimer = setTimeout(() => {
                 if (a.isConnected && a.matches(':hover')) _ajShow(key, _ajScopeOf(key, a), a);
             }, _AJ_HOVER_DELAY_MS);
         }, true);
         document.addEventListener('mouseout', (e) => {
-            const a = e.target.closest && e.target.closest('[data-mb-aj]');
+            const a = e.target.closest && e.target.closest(_ajPop.hoverSel);
             if (!a) return;
             if (e.relatedTarget && a.contains(e.relatedTarget)) return;
             clearTimeout(_ajPop.hoverTimer);
@@ -66118,6 +66141,128 @@ a { color: #1565c0; }`;
             clearTimeout(_ajPop.leaveTimer);
             _ajPop.leaveTimer = setTimeout(_ajHide, _AJ_LEAVE_GRACE_MS);
         }, true);
+    }
+
+
+    // ── "table work": long sorts and filters in the progress card ─────────────
+    // Sorting already yields (sortLargeArray() chunks above 5000 rows), so its
+    // progress can be shown live; filtering's matching does NOT yield yet — the
+    // page cannot repaint while it runs — so for a filter the card reports the
+    // breakdown afterwards, on hover of the status line. A yielding runFilter()
+    // is a separate, measured performance branch (DEBUG-NOTES 2026-10-10 item 5).
+    // Counters only: nothing here touches the DOM while the card is closed.
+
+    /** Timings of the last sort and the last filter, and a running sort's state. */
+    const _tw = { sort: null, filter: null, sortStart: 0, sortRows: 0, sortPct: 0, sortRunning: false };
+    /** A sort shorter than this never opens the card by itself (ms). */
+    const _TW_OPEN_AFTER_MS = 500;
+
+    /** Registers the table-work provider (idempotent). */
+    function _twRegister() {
+        if (_ajProviders.has('tablework')) return;
+        _ajRegister('tablework', {
+            glyph: '⏳',
+            label: 'Sorting and filtering',
+            anchorSelector: '#mb-sort-status-display, #mb-filter-status-display',
+            scopeOf: () => null,
+            snapshot: (scope, job) => _twSnapshot(job),
+        });
+    }
+
+    /**
+     * Formats milliseconds for the card.
+     * @param {number} ms
+     * @returns {string}
+     */
+    function _twMs(ms) {
+        return ms >= 1000 ? `${(ms / 1000).toFixed(1)} s` : `${Math.round(ms)} ms`;
+    }
+
+    /**
+     * A sort is starting.
+     * @param {number} rows
+     * @returns {void}
+     */
+    function _twSortBegin(rows) {
+        _twRegister();
+        Object.assign(_tw, { sortStart: performance.now(), sortRows: rows, sortPct: 0, sortRunning: true });
+    }
+
+    /**
+     * Sort progress (sortLargeArray()'s callback, 0–100). Opens the card once
+     * the sort has run longer than `_TW_OPEN_AFTER_MS` — the sort yields
+     * between chunks, so the card can paint while it works.
+     * @param {number} pct
+     * @returns {void}
+     */
+    function _twSortProgress(pct) {
+        _tw.sortPct = pct;
+        const job = _ajJob('tablework', null);
+        if ((!job || job.phase !== 'running') && performance.now() - _tw.sortStart > _TW_OPEN_AFTER_MS) {
+            _ajStart('tablework', null, { user: true, anchor: document.getElementById('mb-sort-status-display') });
+        }
+        _ajChanged('tablework', null);
+    }
+
+    /** The sort's own part is over (filtering and drawing follow). */
+    function _twSortEnd() {
+        _tw.sortRunning = false;
+        _tw.sort = { ms: performance.now() - _tw.sortStart, rows: _tw.sortRows, filterMs: null, drawMs: null };
+        _ajChanged('tablework', null);
+    }
+
+    /**
+     * runFilter()'s synchronous part has finished; the draw (chunked on a big
+     * single table) settles later.
+     * @param {number} ms
+     * @param {number} shown
+     * @returns {void}
+     */
+    function _twFilterRecord(ms, shown) {
+        _twRegister();
+        const drawStart = performance.now();
+        const rec = { ms, shown, drawMs: null };
+        _tw.filter = rec;
+        const afterSort = _tw.sort && _tw.sort.filterMs === null;
+        if (afterSort) _tw.sort.filterMs = ms;
+        _renderSettled.then(() => {
+            rec.drawMs = performance.now() - drawStart;
+            if (afterSort) _tw.sort.drawMs = rec.drawMs;
+            const job = _ajJob('tablework', null);
+            if (job && job.phase === 'running') _ajFinish('tablework', null, 0);
+            else _ajChanged('tablework', null);
+        });
+    }
+
+    /**
+     * The card: a running sort's progress, else the last sort's and the last
+     * filter's breakdown. Null until something was measured.
+     * @param {?object} job
+     * @returns {?object}
+     */
+    function _twSnapshot(job) {
+        if (!_tw.sort && !_tw.filter && !_tw.sortRunning) return null;
+        const fmt = n => Number(n).toLocaleString('en-US');
+        const facts = [];
+        if (_tw.sort) {
+            const s = _tw.sort;
+            facts.push(['Last sort', `${_twMs(s.ms)} for ${fmt(s.rows)} rows`]);
+            if (s.filterMs !== null) facts.push(['Then filtering', _twMs(s.filterMs)]);
+            if (s.drawMs !== null) facts.push(['Then drawing', _twMs(s.drawMs)]);
+        }
+        if (_tw.filter) {
+            facts.push(['Last filter', `${_twMs(_tw.filter.ms)}, ${fmt(_tw.filter.shown)} rows shown`]);
+            if (_tw.filter.drawMs !== null) facts.push(['Drawing', _twMs(_tw.filter.drawMs)]);
+        }
+        facts.push(['Note', 'Filtering cannot let the page repaint while it compares rows yet; drawing a large table comes in chunks of 500 rows.']);
+        const out = {
+            phase: job ? job.phase : 'done',
+            summary: _tw.sortRunning ? `Sorting ${fmt(_tw.sortRows)} rows` : 'The last sort and filter',
+            facts,
+            foot: job && job.phase === 'running' ? 'Esc closes · the sort keeps running' : 'Hover the status line to see this again',
+        };
+        if (_tw.sortRunning) Object.assign(out, { done: _tw.sortPct, total: 100, unit: '% sorted' });
+        return out;
     }
 
     /**
@@ -73474,6 +73619,9 @@ a { color: #1565c0; }`;
         // Calculate and display filter timing
         const filterEndTime = performance.now();
         const filterDuration = (filterEndTime - filterStartTime).toFixed(0);
+        _twFilterRecord(Number(filterDuration), activeDefinition.tableMode === 'multi'
+            ? filteredArray.reduce((sum, g) => sum + g.rows.length, 0)
+            : singleTableFilteredCount);
 
         if (filterStatusDisplay) {
             const rowCount = activeDefinition.tableMode === 'multi'
@@ -92121,7 +92269,12 @@ a { color: #1565c0; }`;
                                     compareFn = createSortComparator(index, state.sortState === 1, _sortColumnKind(cn), state.sortByLength);
                                 }
 
-                                await sortLargeArray(sortedData, compareFn, null);
+                                _twSortBegin(sortedData.length);
+                                try {
+                                    await sortLargeArray(sortedData, compareFn, _twSortProgress);
+                                } finally {
+                                    _twSortEnd();
+                                }
                             }
 
                             // === Apply sorted data ===
@@ -100133,6 +100286,7 @@ a { color: #1565c0; }`;
         _ajRegister('rel', {
             glyph: '🔗',
             label: 'Relationships',
+            anchorSelector: '.mb-rel-col-hdr-btn',
             scopeOf: () => null,
             snapshot: (scope, job) => {
                 if (!job) return null;
@@ -100234,7 +100388,6 @@ a { color: #1565c0; }`;
         if (!_btn) {
             _btn = document.createElement('span');
             _btn.className = 'mb-rel-col-hdr-btn';
-            _btn.dataset.mbAj = 'rel';
             _btn.setAttribute('role', 'button');
             _btn.tabIndex = 0;
             _flex.insertBefore(_btn, _flex.firstChild);
@@ -120370,6 +120523,16 @@ a { color: #1565c0; }`;
              * provider and drive a job through the shipping framework without
              * a network-backed feature in the way.
              */
+            /**
+             * The table-work provider's recording calls (`_tw*`), so a spec can
+             * drive a LONG sort (over sortLargeArray()'s 5000-row chunking
+             * threshold) without a 5000-row fixture.
+             */
+            tableWork: {
+                sortBegin: (rows) => _twSortBegin(rows),
+                sortProgress: (pct) => _twSortProgress(pct),
+                sortEnd: () => _twSortEnd(),
+            },
             /** The 💾 browser cache overview (`_idbo*`). */
             idbOverview: {
                 open: () => _idbOverviewOpen(null),

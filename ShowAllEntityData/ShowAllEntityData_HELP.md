@@ -191,6 +191,11 @@ card shows:
   long they are kept, and how this run split between memory, the browser
   cache and the network.
 
+A **long sort** (more than half a second) opens the same card with its
+progress. Filtering cannot show progress yet: while it compares rows the page
+cannot repaint. Hover the status line next to the filter box afterwards to see
+how long the last sort and filter took, and how long drawing the rows took.
+
 <kbd>Esc</kbd> closes it, and the job keeps running. Hovering the toggle shows
 it again, live; moving the pointer away closes it. You can move onto the card
 to press its buttons, such as **Retry failed**. On a phone, a tap outside

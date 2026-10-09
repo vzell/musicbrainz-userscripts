@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-10-10",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Long sorts no longer look frozen: a sort that takes more than half a second opens the progress card (WIP.1) with how far it has got. Filtering cannot show progress yet, because the page cannot repaint while it compares rows; hover the status line next to the filter box afterwards to see how long the last sort and filter took, and how long drawing the rows took."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "2026-10-10",
     "sections": [
