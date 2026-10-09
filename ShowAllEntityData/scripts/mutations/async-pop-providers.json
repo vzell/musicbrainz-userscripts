@@ -1,0 +1,93 @@
+[
+  {
+    "name": "Relationships: expanding starts no job",
+    "why": "The header delegate no longer calls _relAjBegin(), so no card opens.",
+    "edits": [
+      {
+        "find": "            if (_relTableExpanded(_table)) _relAjBegin(_btn);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/async-pop-providers.spec.js",
+    "grep": "Relationships:",
+    "expect": "fail"
+  },
+  {
+    "name": "Relationships: the progress stash is never written",
+    "why": "The card would sum nothing and read 0 / 0.",
+    "edits": [
+      {
+        "find": "        table._mbRelProgress = _p;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/async-pop-providers.spec.js",
+    "grep": "Relationships:",
+    "expect": "fail"
+  },
+  {
+    "name": "Relationships: the job never finishes",
+    "why": "The drain does not close the record, so the card says Running forever.",
+    "edits": [
+      {
+        "find": "                    _ajFinish('rel', null, _tierInfo.failed);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/async-pop-providers.spec.js",
+    "grep": "Relationships:",
+    "expect": "fail"
+  },
+  {
+    "name": "Relationships: an idle hover shows a card",
+    "why": "Defensive guard, recorded as not testable: this provider is registered only when its first job starts (_relAjBegin() / _msToggleLengthPrecision()), so before that an idle hover finds no provider at all and shows the toggle's own tooltip whatever snapshot() answers. The spec's idle check pins the user-visible property; this guard only matters if registration ever moves earlier.",
+    "edits": [
+      {
+        "find": "            label: 'Relationships',\n            scopeOf: () => null,\n            snapshot: (scope, job) => {\n                if (!job) return null;\n",
+        "replace": "            label: 'Relationships',\n            scopeOf: () => null,\n            snapshot: (scope, job) => {\n                job = job || { phase: 'idle', t0: Date.now(), t1: 0 };\n"
+      }
+    ],
+    "spec": "tests/fixtures/async-pop-providers.spec.js",
+    "grep": "Relationships:",
+    "expect": "pass"
+  },
+  {
+    "name": "⏱: the job never finishes",
+    "why": "The finally block no longer closes the record.",
+    "edits": [
+      {
+        "find": "                _ajFinish('ms', null, _msAj.outcome === 'error' || _msAj.outcome === 'partial' ? 1 : 0);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/async-pop-providers.spec.js",
+    "grep": "⏱ Length",
+    "expect": "fail"
+  },
+  {
+    "name": "⏱: batch progress is not reported",
+    "why": "The progress callback stops updating the card's counters.",
+    "edits": [
+      {
+        "find": "                            _msAj.done = done;\n                            _msAj.total = total;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/async-pop-providers.spec.js",
+    "grep": "⏱ Length",
+    "expect": "fail"
+  },
+  {
+    "name": "⏱: an idle hover shows a card",
+    "why": "Defensive guard, recorded as not testable: this provider is registered only when its first job starts (_relAjBegin() / _msToggleLengthPrecision()), so before that an idle hover finds no provider at all and shows the toggle's own tooltip whatever snapshot() answers. The spec's idle check pins the user-visible property; this guard only matters if registration ever moves earlier.",
+    "edits": [
+      {
+        "find": "            label: 'Length to the millisecond',\n            scopeOf: () => null,\n            snapshot: (scope, job) => {\n                if (!job) return null;\n",
+        "replace": "            label: 'Length to the millisecond',\n            scopeOf: () => null,\n            snapshot: (scope, job) => {\n                job = job || { phase: 'idle' };\n"
+      }
+    ],
+    "spec": "tests/fixtures/async-pop-providers.spec.js",
+    "grep": "⏱ Length",
+    "expect": "pass"
+  }
+]

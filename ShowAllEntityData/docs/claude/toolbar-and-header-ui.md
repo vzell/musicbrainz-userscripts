@@ -892,6 +892,20 @@ How it behaves, and why:
   its toggle stays `::after { content: attr() }`. It also never writes to
   `#mb-info-display-rel`, which `waitForRelationshipsComplete()` waits on.
 
+**Providers today**: `recof` (registered at render time, shows an idle
+preview), `rel` and `ms` (registered when their first user-started job
+starts, and `snapshot()` answers `null` without a job — so their toggles keep
+their own tooltips for anyone who never starts one). `rel` starts only from a
+▶🔗 expand click (`_relAjBegin()`), logs in `_relFetchWs2()`'s network branch,
+reads progress from the `table._mbRelProgress` stash `_relUpdateColHdrBtn()`
+writes (no cell walk per repaint), and finishes at the Phase-2 drain with the
+tier counts; a pass the script starts by itself creates no record. `ms` starts
+in `_msToggleLengthPrecision()`'s fetch branch and finishes in its `finally`.
+Specs: `async-pop-providers.spec.js`; mutations
+`scripts/mutations/async-pop-providers.json` (5 caught, 2 recorded
+`expect: "pass"`: the idle guards cannot fail while registration happens at
+the first job).
+
 `FIXTURE_SETTINGS_OVERRIDE` forces `sa_async_pop_auto_open` off: a card opened
 by a toggle click sits right over the header cells a spec clicks next. Specs
 that test the card seed it back on. Specs: `async-pop.spec.js` (10) and

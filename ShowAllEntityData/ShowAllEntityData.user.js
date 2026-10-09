@@ -30134,18 +30134,73 @@
     async function _msFetchOneBatch(ids) {
         const query = encodeURIComponent(`rid:(${ids.join(' OR ')})`);
         const url = `/ws/2/recording?query=${query}&limit=${_MS_BATCH_SIZE}&fmt=json`;
+        _msAj.requests++;
         const res = await _ws2GetJson(url, {
             tries: _MS_BATCH_TRIES,
             // The server's own `Retry-After` is a FLOOR on our widening backoff,
             // never a replacement for it — see `_ws2GetJson()`'s JSDoc.
-            beforeRetry: (attempt, retryAfterMs) => new Promise(
-                r => setTimeout(r, Math.max(_MS_BATCH_DELAY * attempt, retryAfterMs))),
+            beforeRetry: (attempt, retryAfterMs) => {
+                const wait = Math.max(_MS_BATCH_DELAY * attempt, retryAfterMs);
+                _ajLog('ms', null, `batch of ${ids.length}: retry ${attempt + 1} of ${_MS_BATCH_TRIES} in ${Math.round(wait / 100) / 10} s`, 'bad');
+                _msAj.requests++;
+                return new Promise(r => setTimeout(r, wait));
+            },
             dbg: _msDbg,
             label: '_msFetchOneBatch',
         });
+        _ajLog('ms', null, res.ok ? `batch of ${ids.length}: ${((res.data && res.data.recordings) || []).length} recordings` : `batch of ${ids.length}: ${res.detail}`,
+            res.ok ? 'good' : 'bad');
         return res.ok
             ? { ok: true, recordings: (res.data && res.data.recordings) || [], detail: '' }
             : { ok: false, recordings: [], detail: res.detail };
+    }
+
+    /**
+     * The ⏱ job's counters for the progress card: source, batches done/total,
+     * requests made, the outcome, and how the answers split across the
+     * memory / IndexedDB / network tiers.
+     */
+    const _msAj = { source: '', done: 0, total: 0, requests: 0, outcome: '', detail: '', tiers: null, storeCount: null, storeCountAt: 0 };
+
+    /**
+     * Registers the ⏱ millisecond-length provider of the async job popup.
+     * Shows nothing before a job ran (`snapshot()` → null), so the toggle's own
+     * tooltip is unchanged until then. Idempotent.
+     * @returns {void}
+     */
+    function _msRegisterProvider() {
+        _ajRegister('ms', {
+            glyph: '⏱',
+            label: 'Length to the millisecond',
+            scopeOf: () => null,
+            snapshot: (scope, job) => {
+                if (!job) return null;
+                const fmt = n => Number(n).toLocaleString('en-US');
+                const src = { batch: 'a recording search, 100 recordings per request',
+                              ws2: 'one request: the page entity\'s recording relationships',
+                              embedded: 'already in the page, plus one request for the rest' }[_msAj.source] || 'none';
+                const facts = [['Source', src], ['Requests', `${fmt(_msAj.requests)} made`]];
+                if (_msAj.outcome) facts.push(['Outcome', _msAj.outcome + (_msAj.detail ? ` (${_msAj.detail})` : '')]);
+                const d = Lib.settings.sa_ms_idb_ttl_days;
+                const cache = [
+                    ['Store', `IndexedDB ms-rec-len, kept ${typeof d === 'number' && d > 0 ? d : 30} days`],
+                    ['Records', _msAj.storeCount === null ? 'counting…' : fmt(_msAj.storeCount)],
+                    ['This session', `${fmt(_msBatchMemCache.size)} lengths in memory`],
+                ];
+                if (_msAj.tiers) cache.push(['This run', `${fmt(_msAj.tiers.mem)} memory · ${fmt(_msAj.tiers.idb)} IndexedDB · ${fmt(_msAj.tiers.net)} network`]);
+                return {
+                    phase: job.phase,
+                    summary: 'Millisecond track lengths for this page',
+                    done: _msAj.done, total: _msAj.total, unit: _msAj.total ? 'requests' : '',
+                    facts, cache,
+                };
+            },
+            onOpen: (scope, repaint) => {
+                if (Date.now() - _msAj.storeCountAt < 5000) return;
+                _msAj.storeCountAt = Date.now();
+                _artIdbCountStore('ms-rec-len').then(n => { _msAj.storeCount = n; repaint(); });
+            },
+        });
     }
 
     /**
@@ -30868,6 +30923,9 @@
             }
             _msToggleInFlight = true;
             _msRepaintColHdrBtns(false, 'loading');
+            Object.assign(_msAj, { source, done: 0, total: 0, requests: 0, outcome: '', detail: '', tiers: null });
+            _msRegisterProvider();
+            _ajStart('ms', null, { user: true, anchor: document.querySelector('.mb-ms-col-hdr-btn') });
             try {
                 if (source === 'embedded') {
                     // One request backfills BOTH duration columns at once —
@@ -30891,8 +30949,14 @@
                     const res = source === 'batch'
                         ? await _msFetchBatchRecordingLengths((done, total) => {
                             if (total > 1) _msRepaintColHdrBtns(false, 'loading', `${done}/${total}`);
+                            _msAj.done = done;
+                            _msAj.total = total;
+                            _ajChanged('ms', null);
                         })
                         : await _msFetchWs2RecordingLengths();
+                    _msAj.outcome = res.outcome;
+                    _msAj.detail = res.detail || '';
+                    if (res.tiers) _msAj.tiers = res.tiers;
                     if (res.map) _msStampSourceRowsFromMap(res.map);
                     // What matters now is whether the column can be shown at all,
                     // which is "is anything stamped" — not whether THIS run
@@ -30916,6 +30980,7 @@
                 }
             } finally {
                 _msToggleInFlight = false;
+                _ajFinish('ms', null, _msAj.outcome === 'error' || _msAj.outcome === 'partial' ? 1 : 0);
             }
         }
 
@@ -30972,6 +31037,7 @@
             if (!btn) {
                 btn = document.createElement('span');
                 btn.className = 'mb-ms-col-hdr-btn';
+                btn.dataset.mbAj = 'ms';
                 btn.setAttribute('role', 'button');
                 btn.tabIndex = 0;
                 const activate = (ev) => {
@@ -97655,13 +97721,17 @@ a { color: #1565c0; }`;
                 // still sits immediately in front of the request and the one
                 // request per `_REL_WS2_SPACING_MS` invariant is untouched.
                 beforeRetry: async (attempt, retryAfterMs) => {
-                    await new Promise(r => setTimeout(
-                        r, Math.max(_REL_WS2_SPACING_MS * attempt, retryAfterMs)));
+                    const _wait = Math.max(_REL_WS2_SPACING_MS * attempt, retryAfterMs);
+                    _ajLog('rel', null, `${ckey}: retry ${attempt + 1} of ${_REL_WS2_TRIES} in ${Math.round(_wait / 100) / 10} s`, 'bad');
+                    await new Promise(r => setTimeout(r, _wait));
                     await _relAwaitRateSlot();
+                    _relAj.requests++;
                 },
                 dbg: _dbg,
                 label: `_relFetchWs2 ${ckey}`,
             });
+            _relAj.requests++;
+            _ajLog('rel', null, res.ok ? `${ckey}: ok` : `${ckey}: ${res.detail || 'failed'}`, res.ok || res.status === 404 ? 'good' : 'bad');
             if (res.ok) {
                 const data = res.data || null;
                 const rels = (data && data.relations) || [];
@@ -99840,6 +99910,10 @@ a { color: #1565c0; }`;
     function _relUpdateColHdrBtn(btn, table, expanded) {
         btn.setAttribute('aria-pressed', expanded ? 'true' : 'false');
         const _p = _relTableProgress(table);
+        // The progress card reads this stash instead of walking cells on a
+        // repaint. A plain property: the <table> survives every re-render.
+        table._mbRelProgress = _p;
+        _ajChanged('rel', null);
         // The done/total badge is CSS `attr(data-rel-progress)`, so the header's
         // own text never changes. The attribute exists only while something is
         // still unloaded: a complete table shows no badge at all.
@@ -100023,7 +100097,80 @@ a { color: #1565c0; }`;
         ev.preventDefault();
         ev.stopPropagation();
         const _table = _btn.closest('table.tbl');
-        if (_table) _relToggleTable(_table);
+        if (_table) {
+            _relToggleTable(_table);
+            if (_relTableExpanded(_table)) _relAjBegin(_btn);
+        }
+    }
+
+    /** The Relationships job's counters for the progress card. */
+    const _relAj = { requests: 0, tiers: null, storeCount: null, storeCountAt: 0 };
+
+    /**
+     * A user expanded a Relationships column: start the progress card's job
+     * (or show the running one under this toggle).
+     * @param {Element} anchor
+     * @returns {void}
+     */
+    function _relAjBegin(anchor) {
+        _relRegisterProvider();
+        const job = _ajJob('rel', null);
+        if (job && job.phase === 'running') { _ajShow('rel', null, anchor); return; }
+        _relAj.requests = 0;
+        _relAj.tiers = null;
+        _ajStart('rel', null, { user: true, anchor });
+    }
+
+    /**
+     * Registers the Relationships provider of the async job popup. Shows
+     * nothing before a user-started job (`snapshot()` → null), so the toggle's
+     * own tooltip is unchanged. Progress sums the per-table stash
+     * `_relUpdateColHdrBtn()` writes, so a repaint never walks cells.
+     * Idempotent.
+     * @returns {void}
+     */
+    function _relRegisterProvider() {
+        _ajRegister('rel', {
+            glyph: '🔗',
+            label: 'Relationships',
+            scopeOf: () => null,
+            snapshot: (scope, job) => {
+                if (!job) return null;
+                const fmt = n => Number(n).toLocaleString('en-US');
+                let done = 0, total = 0, failed = 0;
+                document.querySelectorAll('table.tbl').forEach(t => {
+                    const pr = t._mbRelProgress;
+                    if (pr) { done += pr.done; total += pr.total; failed += pr.failed; }
+                });
+                const d = Lib.settings.sa_rel_idb_ttl_days;
+                const cache = [
+                    ['Store', `IndexedDB rel-ws2, kept ${typeof d === 'number' && d > 0 ? d : 30} days`],
+                    ['Records', _relAj.storeCount === null ? 'counting…' : fmt(_relAj.storeCount)],
+                    ['This session', `${fmt(_relWs2Cache.size)} answers in memory`],
+                ];
+                if (_relAj.tiers) cache.push(['This run', `${fmt(_relAj.tiers.cache)} memory · ${fmt(_relAj.tiers.idb)} IndexedDB · ${fmt(_relAj.tiers.net)} network`]);
+                const end = job.t1 || Date.now();
+                const secs = Math.round((end - job.t0) / 1000);
+                return {
+                    phase: job.phase,
+                    summary: `Relationship icons for ${fmt(total)} entit${total === 1 ? 'y' : 'ies'}`,
+                    done, total, failed, queued: Math.max(0, total - done - failed), unit: 'entities',
+                    facts: [
+                        ['Requests', `${fmt(_relAj.requests)} made`],
+                        ['Rate', 'one per 1.1 s, shared with the other columns'],
+                        ['Time', `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}${job.t1 ? '' : ' elapsed'}`],
+                    ],
+                    cache,
+                    actions: failed && job.phase !== 'running' ? [{ id: 'retry', label: `Retry ${fmt(failed)} failed`, kind: 'danger' }] : [],
+                };
+            },
+            onOpen: (scope, repaint) => {
+                if (Date.now() - _relAj.storeCountAt < 5000) return;
+                _relAj.storeCountAt = Date.now();
+                _artIdbCountStore('rel-ws2').then(n => { _relAj.storeCount = n; repaint(); });
+            },
+            act: (scope, id) => { if (id === 'retry') _relRetryFailedAll(); },
+        });
     }
 
     /**
@@ -100087,6 +100234,7 @@ a { color: #1565c0; }`;
         if (!_btn) {
             _btn = document.createElement('span');
             _btn.className = 'mb-rel-col-hdr-btn';
+            _btn.dataset.mbAj = 'rel';
             _btn.setAttribute('role', 'button');
             _btn.tabIndex = 0;
             _flex.insertBefore(_btn, _flex.firstChild);
@@ -101001,6 +101149,16 @@ a { color: #1565c0; }`;
                 browseRows:     _p15Rows,
                 browseRequests: _p15Requests,
             };
+            // Close the progress card's job, if a user started one (a pass the
+            // script started by itself has no record and stays silent).
+            _relAj.tiers = _tierInfo;
+            {
+                const _job = _ajJob('rel', null);
+                if (_job && _job.phase === 'running') {
+                    _ajLog('rel', null, `${_tierInfo.idb} from IndexedDB, ${_tierInfo.cache} from memory, ${_tierInfo.net} from the network`);
+                    _ajFinish('rel', null, _tierInfo.failed);
+                }
+            }
             if (_p2Failed) {
                 _relDbg(`initRelationshipsColumn: ${_p2Failed} request(s) failed after retries — ` +
                     'cells marked data-rel-error, not cached; collapse + expand or 🔗⟳ retries them');

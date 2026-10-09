@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-10-10",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The Relationships column and the ⏱ millisecond track lengths now report through the progress card (WIP.1) too. Expanding a Relationships column with ▶🔗, or pressing ⏱, opens the card under the toggle: entities or requests done, failures, each request with its outcome, and the browser cache with how this run split between memory, the cache and the network. \"Retry failed\" is on the Relationships card. Until you have started one of these jobs, hovering the toggle shows its usual tooltip."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-10-10",
     "sections": [

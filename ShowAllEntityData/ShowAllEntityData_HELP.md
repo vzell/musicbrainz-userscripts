@@ -175,9 +175,12 @@ look. Turn the cards off, or change their delay, in ⚙️ Settings → 💬 TOO
 
 ### The progress card
 
-A column that loads its data after the table appears (so far the [Recording
-of](#the-recording-of-column) column) reports through one card in the same
-look. When you start the job, it opens under the column's toggle. It shows:
+A column that loads its data after the table appears — [Recording
+of](#the-recording-of-column), [Relationships](#the-relationships-column) and
+the ⏱ millisecond [track lengths](#track-lengths) — reports through one card in
+the same look. When you start the job, it opens under the column's toggle.
+Until you have started one, hovering the toggle shows its usual tooltip. The
+card shows:
 
 - what is being loaded, and a bar that also counts cache hits and failures;
 - where the data comes from, and why that source was picked;
