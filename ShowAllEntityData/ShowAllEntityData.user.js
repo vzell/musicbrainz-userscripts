@@ -1882,6 +1882,93 @@
         },
 
         // ============================================================
+        // RECORDING OF COLUMN SECTION
+        // ============================================================
+        divider_recording_of: {
+            type: 'divider',
+            label: '🎼 RECORDING OF COLUMN'
+        },
+
+        sa_enable_recording_of_column: {
+            label: 'Show "Recording of" and "Performance attributes" columns',
+            type: 'checkbox',
+            default: true,
+            description: 'On an artist\'s Recordings page, adds a "Recording of" column right after "Name" '
+                         + '(the work each recording performs, with its attributes such as cover or live '
+                         + 'in brackets) and a "Performance attributes" column (one row per attribute, plus '
+                         + 'the date). Both are filled from the MusicBrainz Web Service only when you ask: '
+                         + 'click a cell\'s 🎼 to load one row, or the column header\'s ▶🎼 to load them all.'
+        },
+
+        sa_recording_of_cell_state_glyphs: {
+            label: '"Recording of": per-cell load-state glyphs',
+            type: 'checkbox',
+            default: true,
+            description: 'Shows in each cell whether it is loaded: 🎼 not loaded yet (click to load), '
+                         + '⋯ queued, ◌ loading, – no work, ⚠ failed (click to retry).'
+        },
+
+        sa_recording_of_browse_batch_enable: {
+            label: '"Recording of": load many rows with one request where cheaper',
+            type: 'checkbox',
+            default: true,
+            description: 'Loading the whole column first asks for the artist\'s recordings 100 at a time '
+                         + '(one request answers up to 100 rows). If the artist\'s catalogue is much larger '
+                         + 'than the rows on the page, it switches to one request per row instead, whichever '
+                         + 'needs fewer requests. When disabled, every row is looked up on its own.'
+        },
+
+        sa_recording_of_ttl_days: {
+            label: '"Recording of": cache TTL (days)',
+            type: 'number',
+            default: 30,
+            min: 1,
+            max: 365,
+            description: 'How long a loaded answer is kept in the browser (IndexedDB store "recof-ws2") '
+                         + 'before it is asked for again.'
+        },
+
+        sa_recording_of_suggest_enable: {
+            label: '"Recording of": suggest a work for recordings without one',
+            type: 'checkbox',
+            default: true,
+            description: 'For a recording that has no "recording of" relationship yet, suggests the '
+                         + 'artist\'s work with the closest title (shown in orange, marked "suggested"). '
+                         + 'Needs the artist\'s work list, which is loaded with the column and cached.'
+        },
+
+        sa_recording_of_suggest_max_distance_pct: {
+            label: '"Recording of": how different a suggested title may be (%)',
+            type: 'number',
+            default: 25,
+            min: 0,
+            max: 60,
+            description: 'The edit distance between the recording title and a work title, as a percentage '
+                         + 'of their average length, must be below this to suggest the work. 0 suggests '
+                         + 'exact matches only (ignoring case, spacing, punctuation style and a trailing '
+                         + '"(…)" such as "(live)"). 25 is the batch-add "performance of" userscript\'s value.'
+        },
+
+        sa_recording_of_works_ttl_days: {
+            label: '"Recording of": artist work list TTL (days)',
+            type: 'number',
+            default: 30,
+            min: 1,
+            max: 365,
+            description: 'How long the artist\'s work list behind the suggestions is kept (IndexedDB '
+                         + 'store "artist-works") before it is loaded again.'
+        },
+
+        sa_recording_of_import_bpr_cache: {
+            label: '"Recording of": reuse the batch-add userscript\'s cached work list',
+            type: 'checkbox',
+            default: true,
+            description: 'If the "MusicBrainz: Batch-add \'performance of\' relationships" userscript has '
+                         + 'already cached this artist\'s works in the browser, start from that list instead '
+                         + 'of loading it again. Read only — that script\'s data is never changed.'
+        },
+
+        // ============================================================
         // COLUMN RESIZE FEATURE SECTION
         // ============================================================
         divider_column_resize: {
@@ -27072,8 +27159,11 @@
                     { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                 ],
                 msTrackLengthBatch: true,   // no single lookup covers this — see _msLengthSource()
+                // "Recording of" + "Performance attributes" after "Name"
+                // (buildActiveRecordingOfColumns(), the _recOf* family).
+                recordingOf: true,
                 integerColumns: [ {sourceColumn: 'Length', align: ':'} ],
-                collapsableColumns: [ 'Release groups', 'CAA', 'ISRCs' ],
+                collapsableColumns: [ 'Release groups', 'CAA', 'ISRCs', 'Recording of', 'Performance attributes' ],
                 tooltipColumns: [ 'Release groups', 'Name', 'italic:Comment', 'Artist', '---', ['Length', '-', 'Video'], 'ISRCs' ],
                 addCAA: 'Release groups',
                 extractMainColumn: 'Name',
@@ -45087,6 +45177,16 @@
             const want = mode.slice(10);
             return !!cell && _findCellArtistRoles(cell).some(r => _splitArtistRoleTokens(r.roles).includes(want));
         }
+        if (mode.startsWith('recof-state-')) {
+            // Fixed-flag modes of openUniqDrop()'s "Recording of - Load state"
+            // section — the same classifier its counts use.
+            return _recOfCellLoadState(cell) === mode.slice('recof-state-'.length);
+        }
+        if (mode.startsWith('recofsugg:')) {
+            // Compound mode — one suggested work title of a "Recording of"
+            // cell (_findCellRecOfSuggestions()).
+            return !!cell && _findCellRecOfSuggestions(cell).includes(mode.slice(10));
+        }
         if (mode.startsWith('rel-state-')) {
             // Fixed-flag modes of openUniqDrop()'s "Relationships - Load state"
             // section, one per _relCellLoadState() answer — the same
@@ -56928,6 +57028,9 @@ a { color: #1565c0; }`;
     /** Release-events injected column list; parallel to activeInjectedColumns. */
     let activeReleaseEventColumns = [];
 
+    /** "Recording of" / "Performance attributes" columns (features.recordingOf), or []. */
+    let activeRecordingOfColumns = [];
+
     /** Attempts per Release-events lookup, including the first (see `_ws2GetJson()`). */
     const _RE_WS2_TRIES = 3;
 
@@ -60816,6 +60919,7 @@ a { color: #1565c0; }`;
         .mb-ms-col-hdr-btn,
         .mb-picard-col-hdr-btn,
         .mb-rel-col-hdr-btn,
+        .mb-recof-col-hdr-btn,
         .mb-re-col-hdr-btn,
         .mb-barcode-col-hdr-btn,
         .mb-col-collapse-hdr-btn,
@@ -60842,6 +60946,7 @@ a { color: #1565c0; }`;
         .mb-ms-col-hdr-btn:hover,
         .mb-picard-col-hdr-btn:hover,
         .mb-rel-col-hdr-btn:hover,
+        .mb-recof-col-hdr-btn:hover,
         .mb-re-col-hdr-btn:hover,
         .mb-barcode-col-hdr-btn:hover,
         .mb-col-collapse-hdr-btn:hover,
@@ -60854,6 +60959,7 @@ a { color: #1565c0; }`;
         .mb-ms-col-hdr-btn:focus-visible,
         .mb-picard-col-hdr-btn:focus-visible,
         .mb-rel-col-hdr-btn:focus-visible,
+        .mb-recof-col-hdr-btn:focus-visible,
         .mb-re-col-hdr-btn:focus-visible,
         .mb-barcode-col-hdr-btn:focus-visible {
             outline: 2px solid rgba(0, 100, 255, 0.55);
@@ -60867,6 +60973,7 @@ a { color: #1565c0; }`;
         .mb-ms-col-hdr-btn[aria-pressed="true"],
         .mb-picard-col-hdr-btn[aria-pressed="true"],
         .mb-rel-col-hdr-btn[aria-pressed="true"],
+        .mb-recof-col-hdr-btn[aria-pressed="true"],
         .mb-barcode-col-hdr-btn[aria-pressed="true"],
         .mb-col-collapse-hdr-btn[aria-expanded="true"] {
             background: var(--mb-hdr-pill-engaged-bg);
@@ -60903,6 +61010,22 @@ a { color: #1565c0; }`;
         .mb-re-col-hdr-btn[data-re-state="loading"]::before {
             content: "⏳";
         }
+
+        /* "Recording of" toggle (_recOfInitColHeaderToggles): glyph and
+           done/total badge are generated content, never element text, for
+           the same reason as the Release-events control above. */
+        .mb-recof-col-hdr-btn::before { content: "▶🎼︎"; }
+        .mb-recof-col-hdr-btn[aria-pressed="true"]::before { content: "▼🎼︎"; }
+        .mb-recof-col-hdr-btn[data-recof-progress]::after { content: " " attr(data-recof-progress); font-variant-numeric: tabular-nums; }
+        .mb-recof-col-hdr-btn[data-recof-state="error"] { background: rgba(255, 193, 7, 0.55); border-color: rgba(190, 140, 0, 0.70); }
+        /* "Recording of" cells: the attribute words in light green italics
+           (column-scoped, over the shared .mb-credit-attr colour), a
+           suggested work in orange italics. */
+        td.mb-recof-cell .mb-credit-attr { color: #43a047; font-style: italic; }
+        td.mb-recof-cell li.mb-recof-suggested, td.mb-recof-cell li.mb-recof-suggested a { color: #c76a12; font-style: italic; }
+        td.mb-recof-cell .mb-recof-sugg-mark { font-size: 0.9em; }
+        td.mb-recof-cell ul, td.mb-perfattr-cell ul { margin: 0; padding-left: 0; list-style: none; }
+        ${Lib.settings.sa_recording_of_cell_state_glyphs === false ? '' : 'td.mb-recof-cell:not([data-recof]), td.mb-recof-cell[data-recof="error"] { cursor: pointer; text-align: center; } ' + 'td.mb-recof-cell:not([data-recof])::before { content: "🎼︎"; opacity: 0.45; } ' + 'td.mb-recof-cell:not([data-recof]):hover::before { opacity: 1; } ' + 'td.mb-recof-cell[data-recof="queued"]::before { content: "⋯"; opacity: 0.6; } ' + 'td.mb-recof-cell[data-recof="loading"]::before { content: "◌"; } ' + 'td.mb-recof-cell[data-recof="none"]::before { content: "–"; opacity: 0.5; } ' + 'td.mb-recof-cell[data-recof="error"]::before { content: "⚠︎"; color: #b00020; } ' + 'td.mb-recof-cell[data-recof="error"]:hover::before { content: "⟳"; }'}
 
         /* Per-column ▶N▤/▼N▤ multi-row collapse toggle, inserted into the
            .mb-col-hdr-flex row immediately before the 📊 unique-values button.
@@ -68271,6 +68394,11 @@ a { color: #1565c0; }`;
         // none / failed) — a different question from which icons it holds, so
         // its own section. Classified by _relCellLoadState().
         relLoadState:  { label: 'Relationships - Load state', glyph: '📶' },
+        // "Recording of" column (features.recordingOf): its per-cell load
+        // state, classified by _recOfCellLoadState(), and the work titles it
+        // SUGGESTS for recordings without a relation (_findCellRecOfSuggestions()).
+        recofLoadState: { label: 'Recording of - Load state', glyph: '📥' },
+        recofSuggested: { label: 'Recording of - Suggested work', glyph: '💡' },
         // "CAA info"/"EAA info" each split into "- Type"/"- Comment" —
         // the image-type badge (controlled vocabulary, e.g. "Front") and
         // the free-text image comment are two distinct data facets that
@@ -68771,6 +68899,9 @@ a { color: #1565c0; }`;
         'pending-edits-yes': 'pendingEditsPresence', 'pending-edits-no': 'pendingEditsPresence',
         'rel-state-pending': 'relLoadState', 'rel-state-has': 'relLoadState',
         'rel-state-none': 'relLoadState', 'rel-state-error': 'relLoadState',
+        'recof-state-pending': 'recofLoadState', 'recof-state-has': 'recofLoadState',
+        'recof-state-suggested': 'recofLoadState', 'recof-state-none': 'recofLoadState',
+        'recof-state-error': 'recofLoadState',
     };
     // "Live title info - Separator …": 3 kinds × 5 facets, one section per
     // kind — and the same for "Event name info - Separator …" (`ev` prefix).
@@ -68821,6 +68952,7 @@ a { color: #1565c0; }`;
         formatsize: 'formatSize', formatcount: 'formatCount', formatcombo: 'formatCombo', formattype: 'formatType',
         recattr: 'recordingAttributes',
         workattrid: 'workAttrIdType',
+        recofsugg: 'recofSuggested',
         revcountry: 'releaseEventsCountry', revdate: 'releaseEventsDate', revweekday: 'releaseEventsWeekday',
         countryname: 'countryNameInfo', countrycode: 'countryCodeInfo',
         trackspermedium: 'tracksCount',
@@ -71328,6 +71460,26 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Highlights a `recofsugg:` entry's work title inside the suggested-work
+     * row of a "Recording of" cell — scoped to that row's own work link, so
+     * the same words elsewhere in the cell are left alone.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - e.g. `"recofsugg:Badlands"`.
+     */
+    function _highlightRecOfSuggestionMatch(cell, mode) {
+        if (!cell) return;
+        const want = mode.slice(10);
+        if (!want) return;
+        const re = new RegExp(want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+        cell.querySelectorAll('li.mb-recof-suggested a').forEach(a => {
+            if (a.textContent.trim() !== want) return;
+            a.normalize();
+            highlightCrossTag(a, re, 'mb-column-filter-highlight');
+        });
+    }
+
+    /**
      * Highlights the matched TYPE NAME for a `workattrid:` compound
      * structure-mode filter — re-derives from
      * `_findCellWorkAttributeIdentifiers()` directly, scoped to that
@@ -72153,6 +72305,8 @@ a { color: #1565c0; }`;
                                     _highlightRecAttrMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('workattrid:')) {
                                     _highlightWorkAttributeIdMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('recofsugg:')) {
+                                    _highlightRecOfSuggestionMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('role:')) {
                                     _highlightEventRoleMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('roletoken:')) {
@@ -72924,6 +73078,7 @@ a { color: #1565c0; }`;
             // unconditionally, because the gate below deliberately does NOT
             // fire on a settled page.
             _relInitColHeaderToggles();
+            _recOfInitColHeaderToggles();
             // Same reason as the line above: the <thead> this writes into may
             // have just been rebuilt from a clone. No-op unless the Release-events
             // lookup is loading or has failed.
@@ -73193,6 +73348,7 @@ a { color: #1565c0; }`;
                 // ▶🔗 toggle anyway: it is idempotent, and the gate below
                 // deliberately does not fire on a settled page.
                 _relInitColHeaderToggles();
+                _recOfInitColHeaderToggles();
                 // Same reason as the line above: the <thead> this writes into may
                 // have just been rebuilt from a clone. No-op unless the Release-events
                 // lookup is loading or has failed.
@@ -73852,6 +74008,10 @@ a { color: #1565c0; }`;
                 theadRow.appendChild(thInj);
             });
         }
+        // "Recording of" / "Performance attributes": inserted right after
+        // "Name", not appended — the row assembly puts their cells there too
+        // (_recOfInsertCells()), and _finalColNames names them at that place.
+        if (activeRecordingOfColumns.length) _recOfInjectHeaders(theadRow);
         // Inject headers for injected-column extractor synthetic columns LAST.
         // These are derived (third-pass) columns produced from injected-column cells
         // (e.g. 'Release country' / 'Release date' split from 'Release events').
@@ -74548,6 +74708,8 @@ a { color: #1565c0; }`;
             Object.keys(baseDef.entityFeatures).find(k => baseDef.entityFeatures[k] === entitySpecificFeatures)) || undefined;
         activeInjectedColumns = buildActiveInjectedColumns(activeDefinition, _entityKindHintFromH2);
         activeReleaseEventColumns = buildActiveReleaseEventColumns(activeDefinition);
+        activeRecordingOfColumns = buildActiveRecordingOfColumns(activeDefinition);
+        _recOf.pendingCount = null;
         // A fresh page gets its own automatic-retry budget rather than
         // inheriting one already spent by the previous fetch.
         _relAutoRetryReset();
@@ -75788,6 +75950,13 @@ a { color: #1565c0; }`;
                         if (!_srcPresent) return;
                         entry.syntheticColumns.forEach(cn => _finalColNames.push(cn));
                     });
+                    // 8. "Recording of" / "Performance attributes" sit right after
+                    //    "Name": _recOfInsertCells() puts their cells there BEFORE
+                    //    integer styling, so every colIdx below must count them.
+                    if (activeRecordingOfColumns.length) {
+                        const _nameAt = _finalColNames.indexOf('Name');
+                        if (_nameAt !== -1) _finalColNames.splice(_nameAt + 1, 0, ...activeRecordingOfColumns.map(e => e.colName));
+                    }
                     // Resolve colIdx for each integerColumns descriptor
                     activeIntegerColumns.forEach(entry => {
                         const idx = _finalColNames.indexOf(entry.sourceColumn);
@@ -75803,6 +75972,9 @@ a { color: #1565c0; }`;
                     'indices',
                     `Detected indices → mainColIdx=${mainColIdx} (${headerNames[mainColIdx] || 'N/A'}), extractors=[${extractorSummary}], syntheticExtractors=[${syntheticExtractorSummary}], erasers=[${eraserSummary}], renderMultiRow=[${multiRowSummary}], integerColumns=[${intColSummary}], excluded=[${indicesToExclude.join(',')}] for pageType: ${pageType}`
                 );
+                // Where each row's "Recording of" cells go (after "Name"), or -1.
+                const _recOfAfterIdx = activeRecordingOfColumns.length
+                    ? _recOfAnchorIndex(headerNames, indicesToExclude) : -1;
 
                 let rowsInThisPage = 0;
                 let pageCategoryMap = new Map();
@@ -76066,6 +76238,9 @@ a { color: #1565c0; }`;
 
                                 // 6. Apply integer-column styling (centered inline-block + L/R/C).
                                 // Must run AFTER all synthetic cells are appended so colIdx is valid.
+                                // 5d. "Recording of" cells, right after "Name" — before the styling
+                                // below, whose colIdx (_finalColNames) already counts them.
+                                if (_recOfAfterIdx >= 0) _recOfInsertCells(newRow, _recOfAfterIdx);
                                 if (Lib.settings.sa_enable_numeric_alignment !== false) {
                                     applyIntegerColumnStyling(newRow, activeIntegerColumns);
                                 }
@@ -76452,6 +76627,9 @@ a { color: #1565c0; }`;
                                     });
                                 }
                                 // 6. Integer-column styling
+                                // 5d. "Recording of" cells, right after "Name" — before the styling
+                                // below, whose colIdx (_finalColNames) already counts them.
+                                if (_recOfAfterIdx >= 0) _recOfInsertCells(newRow, _recOfAfterIdx);
                                 if (Lib.settings.sa_enable_numeric_alignment !== false) {
                                     applyIntegerColumnStyling(newRow, activeIntegerColumns);
                                 }
@@ -76901,6 +77079,9 @@ a { color: #1565c0; }`;
 
                                     // 6. Apply integer-column styling (centered inline-block + L/R/C).
                                     // Must run AFTER all synthetic cells are appended so colIdx is valid.
+                                    // 5d. "Recording of" cells, right after "Name" — before the styling
+                                    // below, whose colIdx (_finalColNames) already counts them.
+                                    if (_recOfAfterIdx >= 0) _recOfInsertCells(newRow, _recOfAfterIdx);
                                     if (Lib.settings.sa_enable_numeric_alignment !== false) {
                                         applyIntegerColumnStyling(newRow, activeIntegerColumns);
                                     }
@@ -77550,6 +77731,7 @@ a { color: #1565c0; }`;
             // table over sa_rel_collapse_threshold the fetch below does nothing
             // at all, and the toggle is the only way for the user to ask for it.
             _relInitColHeaderToggles();
+            _recOfInitColHeaderToggles();
             // Same reason as the line above: the <thead> this writes into may
             // have just been rebuilt from a clone. No-op unless the Release-events
             // lookup is loading or has failed.
@@ -86479,6 +86661,41 @@ a { color: #1565c0; }`;
             return counts;
         })() : null;
 
+        // "Recording of" column: load-state counts (one flag per visible row,
+        // from _recOfCellLoadState(), the classifier the recof-state-* matcher
+        // uses) and suggested-work titles (_findCellRecOfSuggestions()).
+        const isRecofCol = _uniqCacheHit ? _uniqCacheHit.isRecofCol : (() => {
+            if (!tbody) return false;
+            for (const row of tbody.rows) {
+                const cell = row.cells[colIndex];
+                if (cell) return cell.classList.contains('mb-recof-cell');
+            }
+            return false;
+        })();
+        const recofLoadStateCounts = _uniqCacheHit ? _uniqCacheHit.recofLoadStateCounts
+            : isRecofCol ? (() => {
+            const counts = { pending: 0, has: 0, suggested: 0, none: 0, error: 0 };
+            if (!tbody) return counts;
+            for (const row of tbody.rows) {
+                if (row.style.display === 'none') continue;
+                const st = _recOfCellLoadState(row.cells[colIndex]);
+                if (st) counts[st]++;
+            }
+            return counts;
+        })() : null;
+        const recofSuggValueCounts = _uniqCacheHit ? _uniqCacheHit.recofSuggValueCounts
+            : isRecofCol ? (() => {
+            const counts = new Map();
+            if (!tbody) return counts;
+            for (const row of tbody.rows) {
+                if (row.style.display === 'none') continue;
+                const cell = row.cells[colIndex];
+                if (!cell) continue;
+                new Set(_findCellRecOfSuggestions(cell)).forEach(t => counts.set(t, (counts.get(t) || 0) + 1));
+            }
+            return counts;
+        })() : new Map();
+
         // Is this the inline-thumbnail column for an addCAA or addEAA feature?
         // Detected by the presence of .mb-caa-inline-ph or .mb-eaa-inline-ph spans
         // in the column's visible cells.  Counts are derived directly from the DOM:
@@ -86567,6 +86784,7 @@ a { color: #1565c0; }`;
                 pendingEditValueCounts, pendingEditsYesCount, pendingEditsNoCount,
                 eventRoleValueCounts, roleTokenValueCounts, artTypeValueCounts, artCommentValueCounts,
                 flagIconMap, isRelCellCol, relIconCounts, relLoadStateCounts,
+                isRecofCol, recofLoadStateCounts, recofSuggValueCounts,
                 inlineArtType, inlineArtYes, inlineArtNo,
             });
         }
@@ -86636,6 +86854,7 @@ a { color: #1565c0; }`;
             ...isrcYearValueCounts.values(), ...isrcDesignationValueCounts.values(),
             ...barcodeFormatValueCounts.values(), ...barcodeSameAsValueCounts.values(),
             ...lengthBucketValueCounts.values(), ...timeOfDayValueCounts.values(), ...relTypeCreditValueCounts.values(),
+            ...recofSuggValueCounts.values(), ...(recofLoadStateCounts ? Object.values(recofLoadStateCounts) : []),
             ...dateDecadeValueCounts.values(), ...dateMonthValueCounts.values(),
             ...dateYearValueCounts.values(), ...dateWeekdayValueCounts.values(),
             ...partOfSeriesNameValueCounts.values(), ...partOfSeriesDateValueCounts.values(),
@@ -87303,7 +87522,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'recattr'|'workattrid'|'revcountry'|'revdate'|'revweekday'|'eventtype'|'eventcountry'|'countryname'|'countrycode'|'trackspermedium'|'trackstotal'|'catalogprefix'|'lengthbucket'|'timeofday'|'reltypecredit'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'titleageadded'|'titleagemodified'|'titlecount'|'titlepart'|'titleeti'|'titleseries'|'titleformat'|'liveshape'|'liveextra'|'liveloc'|'evliveshape'|'evliveextra'|'evliveloc'|'evstylemiss'|'evedition'|'rcliveshape'|'rcliveextra'|'rcliveloc'|'rctype'|'rcmiss'|'rcinfo'|'eventdetail'|'eventaddinfo'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'editoractivefor'|'editoractivesince'|'localelanguage'|'datedecade'|'datemonth'|'dateyear'|'dateweekday'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'recattr'|'workattrid'|'recofsugg'|'revcountry'|'revdate'|'revweekday'|'eventtype'|'eventcountry'|'countryname'|'countrycode'|'trackspermedium'|'trackstotal'|'catalogprefix'|'lengthbucket'|'timeofday'|'reltypecredit'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'titleageadded'|'titleagemodified'|'titlecount'|'titlepart'|'titleeti'|'titleseries'|'titleformat'|'liveshape'|'liveextra'|'liveloc'|'evliveshape'|'evliveextra'|'evliveloc'|'evstylemiss'|'evedition'|'rcliveshape'|'rcliveextra'|'rcliveloc'|'rctype'|'rcmiss'|'rcinfo'|'eventdetail'|'eventaddinfo'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'editoractivefor'|'editoractivesince'|'localelanguage'|'datedecade'|'datemonth'|'dateyear'|'dateweekday'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -87440,6 +87659,7 @@ a { color: #1565c0; }`;
                  : kind === 'barcodeformat'   ? '» format: '
                  : kind === 'barcodesameas'   ? '🔢 '
                  : kind === 'workattrid'    ? '» identifier: '
+                 : kind === 'recofsugg'     ? '» suggested: '
                  : kind === 'titleageadded'    ? '» added: '
                  : kind === 'titleagemodified' ? '» modified: '
                  : kind === 'titlecount'    ? '» titles: '
@@ -88455,6 +88675,21 @@ a { color: #1565c0; }`;
             if (relLoadStateCounts.error > 0)   makeSynItem('rel-state-error',   '⚠ request failed',    relLoadStateCounts.error);
         }
 
+        // ── "Recording of" column: load state, then suggested works ────────────
+        // makeSynItem()/makeValueSynItem() set dataset.mbUniqSynLabel, so both
+        // stay quickfilter-visible. Zero-count entries are omitted.
+        if (isRecofCol && recofLoadStateCounts) {
+            if (recofLoadStateCounts.pending > 0)   makeSynItem('recof-state-pending',   '🎼 not loaded yet',   recofLoadStateCounts.pending);
+            if (recofLoadStateCounts.has > 0)       makeSynItem('recof-state-has',       '✓ has a work',        recofLoadStateCounts.has);
+            if (recofLoadStateCounts.suggested > 0) makeSynItem('recof-state-suggested', '💡 work suggested',    recofLoadStateCounts.suggested);
+            if (recofLoadStateCounts.none > 0)      makeSynItem('recof-state-none',      '– no work',           recofLoadStateCounts.none);
+            if (recofLoadStateCounts.error > 0)     makeSynItem('recof-state-error',     '⚠ request failed',    recofLoadStateCounts.error);
+        }
+        if (isRecofCol && recofSuggValueCounts.size > 0) {
+            Array.from(recofSuggValueCounts.keys()).sort((a, b) => a.localeCompare(b))
+                .forEach(v => makeValueSynItem('recofsugg', v, recofSuggValueCounts.get(v)));
+        }
+
         // ── Relationships column: unique icon entries ─────────────────────────────────────────────
         if (isRelCellCol && relIconCounts.size > 0) {
             const _iconFor   = relIconCounts._iconFor || new Map();
@@ -89126,6 +89361,12 @@ a { color: #1565c0; }`;
         if (mode.startsWith('roletoken:')) return `» role: ${mode.slice(10)}`;
         if (mode.startsWith('arttype:'))    return `» image type: ${mode.slice(8)}`;
         if (mode.startsWith('artcomment:')) return `» image comment: ${mode.slice(11)}`;
+        if (mode === 'recof-state-pending')   return '🎼 not loaded yet';
+        if (mode === 'recof-state-has')       return '✓ has a work';
+        if (mode === 'recof-state-suggested') return '💡 work suggested';
+        if (mode === 'recof-state-none')      return '– no work';
+        if (mode === 'recof-state-error')     return '⚠ request failed';
+        if (mode.startsWith('recofsugg:'))    return `» suggested: ${mode.slice(10)}`;
         if (mode === 'rel-state-pending')   return '🔗 not loaded yet';
         if (mode === 'rel-state-has')       return '✓ has relationships';
         if (mode === 'rel-state-none')      return '– no relationships';
@@ -89342,6 +89583,12 @@ a { color: #1565c0; }`;
         if (mode.startsWith('roletoken:')) return 'One atomic role word decomposed from this artist\'s own combined credited-role text — unlike "Entity info - Role (combined)", this matches even when the role appears alongside others (e.g. selecting "composer" also matches an artist credited as "composer, lyricist").';
         if (mode.startsWith('arttype:')) return 'One of this CAA/EAA image\'s own type-badge pill labels (Front/Back/Booklet/…).';
         if (mode.startsWith('artcomment:')) return 'One of this CAA/EAA image\'s own free-text comment.';
+        if (mode === 'recof-state-pending') return 'This recording\'s work relationships have not been loaded yet — not asked for, queued or still loading.';
+        if (mode === 'recof-state-has') return 'Loaded: the recording is a "recording of" at least one work.';
+        if (mode === 'recof-state-suggested') return 'Loaded, no work yet — and the artist has a work with a matching title, shown in orange.';
+        if (mode === 'recof-state-none') return 'Loaded, no work, and no work title close enough to suggest — shown as – in the cell.';
+        if (mode === 'recof-state-error') return 'The Web Service request failed even after retries — shown as ⚠ in the cell; click it to try again.';
+        if (mode.startsWith('recofsugg:')) return 'A work suggested for recordings without a "recording of" relationship, by title.';
         if (mode === 'rel-state-pending') return 'This row\'s relationships have not been fetched yet — collapsed, queued or still loading.';
         if (mode === 'rel-state-has') return 'Fetched, and at least one relationship has an icon in this column.';
         if (mode === 'rel-state-none') return 'Fetched, and nothing with an icon — shown as – in the cell.';
@@ -95840,6 +96087,1107 @@ a { color: #1565c0; }`;
      */
 
     // ──────────────────────────────────────────────────────────────────────────
+    // "Recording of" / "Performance attributes" columns (features.recordingOf)
+    // — the _recOf* family. What the batch-add "performance of" userscript
+    // (Michael Wiencek) shows under each recording title, as two real columns.
+    // Design and traps: docs/claude/deferred-columns-picard-relationships.md,
+    // "Recording of column".
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /** Column names, in their order right after "Name". */
+    const _RECOF_COL = 'Recording of';
+    const _RECOF_ATTR_COL = 'Performance attributes';
+    /** Attempts per request, including the first (`_ws2GetJson()`). */
+    const _RECOF_TRIES = 3;
+    /** Recordings per browse page (the Web Service maximum). */
+    const _RECOF_PAGE = 100;
+    /** WS/2 relation type id of "performance" (scripts/probe-recording-work-rels.py). */
+    const _RECOF_PERF_TYPE_ID = 'a3005666-a872-32c3-ad06-98af558e99b0';
+    /**
+     * L1: recording MBID → its parsed performance relations, for every
+     * SUCCESSFUL answer this session (an empty array is an answer: "no work").
+     * A failure is never stored here or in IndexedDB.
+     * @type {Map<string, Array<object>>}
+     */
+    const _recOfMem = new Map();
+    /** Normalised recording title → suggested work (or null), per work list. */
+    const _recOfSuggestMemo = new Map();
+    /**
+     * Page-wide job state: one artist-recordings table per page, so one record.
+     * Counters are what the progress card reads (O(1)); `rerun` coalesces a
+     * second "load all" that arrives while one runs.
+     */
+    const _recOf = {
+        running: false, rerun: false, source: '', why: '', requests: 0, planned: 0,
+        total: 0, done: 0, failed: 0, mem: 0, idb: 0, net: 0,
+        browseCount: null, storeCount: null, storeCountAt: 0,
+        refreshTimer: 0, lastRefresh: 0,
+        // Cached count of unanswered rows (null = recompute). Read on every
+        // render tail through _recOfUpdateHdrBtns(), so it must not walk the
+        // rows there: only a write or a mark, or a new fetch, drops it.
+        pendingCount: null
+    };
+    /** The artist's work list behind the suggestions, once loaded. */
+    let _recOfWorks = null;
+
+    /**
+     * Builds the active "Recording of" column list from the page definition:
+     * both columns when the pageType declares `features.recordingOf` and
+     * `sa_enable_recording_of_column` is on, else none.
+     *
+     * @param {Object} def - Merged activeDefinition.
+     * @returns {{colName: string}[]}
+     */
+    function buildActiveRecordingOfColumns(def) {
+        if (!def?.features?.recordingOf || Lib.settings.sa_enable_recording_of_column === false) return [];
+        return [{ colName: _RECOF_COL }, { colName: _RECOF_ATTR_COL }];
+    }
+
+    /**
+     * The index the "Name" cell has in an assembled row, i.e. AFTER the
+     * excluded columns were deleted — where the two new cells go after.
+     *
+     * @param {string[]} headerNames      The fetched page's header texts.
+     * @param {number[]} indicesToExclude Original indices deleted from every row.
+     * @returns {number} `-1` when the page has no "Name" column.
+     */
+    function _recOfAnchorIndex(headerNames, indicesToExclude) {
+        const idx = headerNames.findIndex(n => n === 'Name');
+        if (idx < 0 || indicesToExclude.includes(idx)) return -1;
+        return idx - indicesToExclude.filter(i => i < idx).length;
+    }
+
+    /**
+     * Inserts the two column headers right after the "Name" header.
+     * Idempotent: a header row that already has them is left alone.
+     *
+     * @param {HTMLTableRowElement} theadRow
+     * @returns {void}
+     */
+    function _recOfInjectHeaders(theadRow) {
+        const cells = Array.from(theadRow.cells);
+        if (cells.some(th => th.dataset.colName === _RECOF_COL)) return;
+        const nameTh = cells.find(th => (th.dataset.colName || th.textContent.trim()) === 'Name');
+        if (!nameTh) return;
+        const bg = Lib.settings.sa_ui_thead_th_injected_bg || '#b8b8d0';
+        const mk = (name, tip) => {
+            const th = document.createElement('th');
+            th.textContent = name;
+            th.dataset.colName = name;
+            th.classList.add('mb-injected-column');
+            th.style.backgroundColor = bg;
+            _setTip(th, tip);
+            return th;
+        };
+        nameTh.after(
+            mk(_RECOF_COL, 'Injected column — the work each recording performs, with its attributes '
+                + '(cover, live, …) in brackets. Loaded from the MusicBrainz Web Service when you '
+                + 'click a cell\'s 🎼 or the ▶🎼 toggle.'),
+            mk(_RECOF_ATTR_COL, 'Injected column — the performance attributes of the recording\'s '
+                + '"recording of" relationships, one per row, plus the date.')
+        );
+        Lib.debug('cleanup', `Injected "${_RECOF_COL}" / "${_RECOF_ATTR_COL}" headers after "Name"`);
+    }
+
+    /**
+     * Inserts the two (empty) cells right after a row's "Name" cell, keyed by
+     * the recording MBID the Name cell links. Runs during row assembly, BEFORE
+     * integer-column styling, so `_finalColNames` (which names these columns
+     * at the same place) keeps every positional colIdx right.
+     *
+     * @param {HTMLTableRowElement} row
+     * @param {number} afterIdx - `_recOfAnchorIndex()`.
+     * @returns {void}
+     */
+    function _recOfInsertCells(row, afterIdx) {
+        const anchor = row.cells[afterIdx];
+        if (!anchor) return;
+        const mbid = _recOfRowMbid(anchor);
+        const bg = (Lib.settings.sa_ui_thead_th_injected_bg || '#b8b8d0') + '55';
+        const td1 = document.createElement('td');
+        td1.className = 'mb-recof-cell';
+        const td2 = document.createElement('td');
+        td2.className = 'mb-perfattr-cell';
+        [td1, td2].forEach(td => {
+            if (mbid) td.dataset.mbid = mbid;
+            td.style.backgroundColor = bg;
+        });
+        anchor.after(td1, td2);
+    }
+
+    /**
+     * The recording MBID a Name cell links.
+     * @param {Element} cell
+     * @returns {?string}
+     */
+    function _recOfRowMbid(cell) {
+        const a = cell && cell.querySelector('a[href*="/recording/"]');
+        const m = a && a.getAttribute('href').match(/\/recording\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/);
+        return m ? m[1] : null;
+    }
+
+    /**
+     * The recording's own title, from the Name cell left of a "Recording of"
+     * cell (the link text, without the disambiguation comment).
+     * @param {HTMLTableCellElement} td - A `td.mb-recof-cell`.
+     * @returns {string}
+     */
+    function _recOfRowTitle(td) {
+        const name = td.previousElementSibling;
+        const a = name && name.querySelector('a[href*="/recording/"]');
+        return a ? a.textContent.trim() : '';
+    }
+
+    /**
+     * The load state of a "Recording of" cell, as the 📊 "Recording of - Load
+     * state" section counts and filters it — ONE classifier for both, so a
+     * count and the rows its entry filters to cannot disagree.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?('pending'|'has'|'suggested'|'none'|'error')} null for any other cell.
+     */
+    function _recOfCellLoadState(cell) {
+        if (!cell || !cell.classList.contains('mb-recof-cell')) return null;
+        const st = cell.dataset.recof;
+        if (st === 'has' || st === 'suggested' || st === 'none' || st === 'error') return st;
+        return 'pending';   // not asked for, queued or loading
+    }
+
+    /**
+     * The work titles a "Recording of" cell suggests (its orange
+     * `li.mb-recof-suggested` rows). Reads `textContent`, so a highlight
+     * wrapper a previous filter pass put inside the link is read through.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {string[]}
+     */
+    function _findCellRecOfSuggestions(cell) {
+        if (!cell) return [];
+        return Array.from(cell.querySelectorAll('li.mb-recof-suggested a'))
+            .map(a => a.textContent.trim()).filter(Boolean);
+    }
+
+    /**
+     * Keeps the "performance" relations of a WS/2 recording and reduces each
+     * to what the two columns show.
+     *
+     * @param {?Array<object>} relations - WS/2 `relations` (inc=work-rels).
+     * @returns {Array<{work: {id: string, title: string, comment: string}, attrs: string[], begin: ?string, end: ?string}>}
+     */
+    function _recOfParseRels(relations) {
+        return (relations || [])
+            .filter(r => r && r['target-type'] === 'work' && r.work &&
+                         (r['type-id'] === _RECOF_PERF_TYPE_ID || r.type === 'performance'))
+            .map(r => ({
+                work: { id: r.work.id, title: r.work.title || '', comment: r.work.disambiguation || '' },
+                attrs: (r.attributes || []).map(a => String(a).toLowerCase()),
+                begin: r.begin || null,
+                end: r.end || null
+            }));
+    }
+
+    /**
+     * Attribute words in display order: `REC_OF_ATTRIBUTES` first (the order
+     * release-tracks uses), anything else after, alphabetically.
+     * @param {Iterable<string>} words
+     * @returns {string[]}
+     */
+    function _recOfSortAttrs(words) {
+        const set = new Set(words);
+        const known = REC_OF_ATTRIBUTES.filter(a => set.has(a));
+        const rest = Array.from(set).filter(a => !REC_OF_ATTRIBUTES.includes(a)).sort();
+        return known.concat(rest);
+    }
+
+    /**
+     * A relation's date as shown: the day, or "begin – end" when they differ.
+     * @param {{begin: ?string, end: ?string}} r
+     * @returns {string}
+     */
+    function _recOfDateText(r) {
+        if (!r.begin && !r.end) return '';
+        if (!r.end || r.end === r.begin) return r.begin;
+        if (!r.begin) return `until ${r.end}`;
+        return `${r.begin} – ${r.end}`;
+    }
+
+    /**
+     * Builds a work anchor the way MusicBrainz renders one.
+     * @param {{id: string, title: string}} work
+     * @returns {HTMLAnchorElement}
+     */
+    function _recOfWorkLink(work) {
+        const a = document.createElement('a');
+        a.href = `/work/${work.id}`;
+        const bdi = document.createElement('bdi');
+        bdi.textContent = work.title;
+        a.appendChild(bdi);
+        return a;
+    }
+
+    /**
+     * Writes one recording's answer into a "Recording of" cell and its
+     * "Performance attributes" neighbour, replacing whatever was there
+     * (idempotent). Attribute words reuse the `.mb-credit-attr` sentinel with
+     * words joined by "/", the shape the 📊 per-attribute entries already
+     * count; the date is a `.mb-credit-date`.
+     *
+     * @param {HTMLTableCellElement} td - `td.mb-recof-cell`.
+     * @param {Array<object>} rels - `_recOfParseRels()` output.
+     * @param {?{id: string, title: string, comment: string}} [suggestion]
+     * @returns {void}
+     */
+    function _recOfRenderCell(td, rels, suggestion) {
+        const attrTd = td.nextElementSibling && td.nextElementSibling.classList.contains('mb-perfattr-cell')
+            ? td.nextElementSibling : null;
+        td.textContent = '';
+        if (attrTd) attrTd.textContent = '';
+        delete td.dataset.recofLoading;
+        if (rels.length) {
+            const ul = document.createElement('ul');
+            rels.forEach(r => {
+                const li = document.createElement('li');
+                li.appendChild(_recOfWorkLink(r.work));
+                if (r.work.comment) {
+                    const c = document.createElement('span');
+                    c.className = 'comment';
+                    c.textContent = ` (${r.work.comment})`;
+                    li.appendChild(c);
+                }
+                const words = _recOfSortAttrs(r.attrs);
+                if (words.length) {
+                    li.appendChild(document.createTextNode(' ('));
+                    const s = document.createElement('span');
+                    s.className = 'mb-credit-attr';
+                    s.textContent = words.join('/');
+                    li.appendChild(s);
+                    li.appendChild(document.createTextNode(')'));
+                }
+                ul.appendChild(li);
+            });
+            td.appendChild(ul);
+            td.dataset.recof = 'has';
+            if (attrTd) {
+                const aul = document.createElement('ul');
+                _recOfSortAttrs(rels.flatMap(r => r.attrs)).forEach(w => {
+                    const li = document.createElement('li');
+                    const s = document.createElement('span');
+                    s.className = 'mb-credit-attr';
+                    s.textContent = w;
+                    li.appendChild(s);
+                    aul.appendChild(li);
+                });
+                Array.from(new Set(rels.map(_recOfDateText).filter(Boolean))).forEach(d => {
+                    const li = document.createElement('li');
+                    const s = document.createElement('span');
+                    s.className = 'mb-credit-date';
+                    s.textContent = d;
+                    li.appendChild(s);
+                    aul.appendChild(li);
+                });
+                if (aul.children.length) attrTd.appendChild(aul);
+            }
+        } else if (suggestion) {
+            const ul = document.createElement('ul');
+            const li = document.createElement('li');
+            li.className = 'mb-recof-suggested';
+            const mark = document.createElement('span');
+            mark.className = 'mb-recof-sugg-mark';
+            mark.textContent = 'suggested: ';
+            li.appendChild(mark);
+            li.appendChild(_recOfWorkLink(suggestion));
+            if (suggestion.comment) {
+                const c = document.createElement('span');
+                c.className = 'comment';
+                c.textContent = ` (${suggestion.comment})`;
+                li.appendChild(c);
+            }
+            ul.appendChild(li);
+            td.appendChild(ul);
+            td.dataset.recof = 'suggested';
+        } else {
+            td.dataset.recof = 'none';
+        }
+    }
+
+    /**
+     * Every "Recording of" cell for each MBID, live AND master — the live
+     * tables plus the source rows (`allRows`/`groupedRows`) the next re-render
+     * clones from. On a single-table page's first render the live row IS the
+     * source row, so the two sets are merged through a Set.
+     *
+     * @returns {Map<string, Set<HTMLTableCellElement>>}
+     */
+    function _recOfCellIndex() {
+        const map = new Map();
+        const add = td => {
+            const id = td.dataset.mbid;
+            if (!id) return;
+            let s = map.get(id);
+            if (!s) { s = new Set(); map.set(id, s); }
+            s.add(td);
+        };
+        document.querySelectorAll('table.tbl td.mb-recof-cell[data-mbid]').forEach(add);
+        _msSourceRows().forEach(row => {
+            const td = row.querySelector('td.mb-recof-cell[data-mbid]');
+            if (td) add(td);
+        });
+        return map;
+    }
+
+    /**
+     * Records a successful answer (memory, and IndexedDB unless it came from
+     * there) and writes it into every cell of that recording.
+     *
+     * @param {Map<string, Set<HTMLTableCellElement>>} index - `_recOfCellIndex()`.
+     * @param {string} mbid
+     * @param {Array<object>} rels
+     * @returns {number} Cells written.
+     */
+    function _recOfApply(index, mbid, rels) {
+        _recOfMem.set(mbid, rels);
+        _recOf.pendingCount = null;
+        const cells = index.get(mbid);
+        if (!cells) return 0;
+        const sugg = rels.length ? null : _recOfSuggestFor(cells.values().next().value);
+        cells.forEach(td => {
+            _recOfRenderCell(td, rels, sugg);
+            _recOfDropRowText(td);
+        });
+        return cells.size;
+    }
+
+    /**
+     * Drops a row's cached filter text after its "Recording of" cells changed
+     * (`_rowTextCache` sentinels: `cols` entries `undefined`, `full` null).
+     * @param {HTMLTableCellElement} td
+     * @returns {void}
+     */
+    function _recOfDropRowText(td) {
+        const row = td.parentElement;
+        const c = row && _rowTextCache.get(row);
+        if (c) { c.cols = []; c.full = null; }
+    }
+
+    /**
+     * Marks every cell of one recording with a transient load state
+     * (`queued`, `loading`, `error`) — CSS draws the glyph, the cell's text
+     * stays empty.
+     *
+     * @param {Map<string, Set<HTMLTableCellElement>>} index
+     * @param {string} mbid
+     * @param {string} state
+     * @returns {void}
+     */
+    function _recOfMark(index, mbid, state) {
+        _recOf.pendingCount = null;
+        const cells = index.get(mbid);
+        if (cells) cells.forEach(td => { td.dataset.recof = state; });
+    }
+
+    /**
+     * The 📊/filter side of a cell write, throttled: drops the uniq-dropdown
+     * and filter result caches, re-registers multi-row cells, and re-runs the
+     * filter only when one is active. While a bulk job runs this happens at
+     * most every 2 s; `now` forces it (a single-row click, the job's end).
+     *
+     * @param {boolean} [now]
+     * @returns {void}
+     */
+    function _recOfScheduleRefresh(now) {
+        clearTimeout(_recOf.refreshTimer);
+        const wait = now ? 0 : Math.max(0, 2000 - (Date.now() - _recOf.lastRefresh));
+        _recOf.refreshTimer = setTimeout(() => {
+            _recOf.lastRefresh = Date.now();
+            document.querySelectorAll('table.tbl').forEach(t => {
+                if (!t.querySelector('td.mb-recof-cell')) return;
+                _invalidateUniqDropDataCacheForTable(t);
+                initCollapsableColumns(t);
+            });
+            _invalidateFilterCache();
+            _recOfUpdateHdrBtns();
+            if (_anyFilterActive()) runFilter();
+        }, wait);
+    }
+
+    /**
+     * Distinct recording MBIDs on the page whose cells are not answered yet,
+     * in source-row order. Failed ones are included only when `withFailed`;
+     * rows being loaded right now (a click in flight) only when
+     * `withLoading` — a loader must not ask for them twice, but a COUNT of
+     * what is outstanding must include them.
+     *
+     * @param {Map<string, Set<HTMLTableCellElement>>} index
+     * @param {boolean} [withFailed]
+     * @param {boolean} [withLoading]
+     * @returns {string[]}
+     */
+    function _recOfPending(index, withFailed, withLoading) {
+        const out = [];
+        index.forEach((cells, mbid) => {
+            const st = cells.values().next().value.dataset.recof;
+            if (st === 'has' || st === 'none' || st === 'suggested') return;
+            if (st === 'loading' && !withLoading) return;
+            if (st === 'error' && !withFailed) return;
+            out.push(mbid);
+        });
+        return out;
+    }
+
+    /**
+     * How many rows are still unanswered (failed ones included), cached in
+     * `_recOf.pendingCount` until a write or a mark drops it.
+     * @returns {number}
+     */
+    function _recOfPendingCount() {
+        if (_recOf.pendingCount === null) _recOf.pendingCount = _recOfPending(_recOfCellIndex(), true, true).length;
+        return _recOf.pendingCount;
+    }
+
+    /**
+     * L2 read: a cached answer from IndexedDB, or null (missing, expired,
+     * IndexedDB unavailable). Key carries the inc set, so it can never collide
+     * with another store's record for the same recording.
+     *
+     * @param {string} mbid
+     * @returns {Promise<?Array<object>>}
+     */
+    function _recOfIdbGet(mbid) {
+        return _artIdbGet('recof-ws2', `recording:${mbid}|work-rels`)
+            .then(rec => {
+                if (!rec) return null;
+                const d = Lib.settings.sa_recording_of_ttl_days;
+                const ttl = (typeof d === 'number' && d > 0 ? d : 30) * 86400000;
+                if (Date.now() - (rec.ts || 0) > ttl) {
+                    _artIdbDelete('recof-ws2', rec.ckey).catch(() => {});
+                    return null;
+                }
+                return Array.isArray(rec.rels) ? rec.rels : null;
+            })
+            .catch(() => null);
+    }
+
+    /**
+     * L2 write, many answers in ONE transaction (a browse page is 100).
+     * Never rejects; a failed write only means the next visit asks again.
+     *
+     * @param {Array<[string, Array<object>]>} entries - `[mbid, rels]`.
+     * @returns {void}
+     */
+    function _recOfIdbPut(entries) {
+        if (!entries.length) return;
+        _artOpenIdb().then(db => {
+            const store = db.transaction('recof-ws2', 'readwrite').objectStore('recof-ws2');
+            const ts = Date.now();
+            entries.forEach(([mbid, rels]) => store.put({ ckey: `recording:${mbid}|work-rels`, mbid, rels, ts }));
+        }).catch(() => {});
+    }
+
+    /**
+     * One WS/2 GET through the shared rate gate and retry helper, logging
+     * every retry into the progress card.
+     *
+     * @param {string} url
+     * @param {string} label - For the log.
+     * @returns {Promise<{ok: boolean, status: number, data: ?Object, detail: string}>}
+     */
+    async function _recOfGet(url, label) {
+        await _relAwaitRateSlot();
+        _recOf.requests++;
+        const res = await _ws2GetJson(url, {
+            tries: _RECOF_TRIES,
+            beforeRetry: async (attempt, retryAfterMs) => {
+                const wait = Math.max(_REL_WS2_SPACING_MS * attempt, retryAfterMs);
+                _ajLog('recof', null, `${label}: retry ${attempt + 1} of ${_RECOF_TRIES} in ${Math.round(wait / 100) / 10} s`, 'bad');
+                await new Promise(r => setTimeout(r, wait));
+                await _relAwaitRateSlot();
+                _recOf.requests++;
+            },
+            dbg: (...a) => Lib.debug('recording-of', ...a),
+            label
+        });
+        if (res.ok) _ajLog('recof', null, `${label}: ok`, 'good');
+        else _ajLog('recof', null, `${label}: ${res.detail || 'failed'}`, 'bad');
+        return res;
+    }
+
+    /**
+     * The artist MBID of the page (`/artist/<mbid>/recordings`).
+     * @returns {?string}
+     */
+    function _recOfArtistMbid() {
+        const m = window.location.pathname.match(/^\/artist\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/);
+        return m ? m[1] : null;
+    }
+
+    /**
+     * Loads every unanswered row: memory, then IndexedDB, then the network —
+     * one browse page of the artist's recordings first (it answers up to 100
+     * rows AND tells how big the catalogue is), then whichever is cheaper for
+     * the rest: more browse pages, or one lookup per remaining row. A second
+     * call while one runs is coalesced into one follow-up pass.
+     *
+     * @param {{user?: boolean, anchor?: Element, withFailed?: boolean}} [opts]
+     * @returns {Promise<void>}
+     */
+    async function _recOfLoadAll(opts = {}) {
+        if (_recOf.running) {
+            _recOf.rerun = true;
+            if (opts.user && opts.anchor) _ajShow('recof', null, opts.anchor);
+            return;
+        }
+        _recOf.running = true;
+        try {
+            do {
+                _recOf.rerun = false;
+                await _recOfLoadAllOnce(opts);
+                opts = { ...opts, user: false };
+            } while (_recOf.rerun);
+        } finally {
+            _recOf.running = false;
+            _recOfUpdateHdrBtns();
+        }
+    }
+
+    /**
+     * One pass of `_recOfLoadAll()`.
+     * @param {{user?: boolean, anchor?: Element, withFailed?: boolean}} opts
+     * @returns {Promise<void>}
+     */
+    async function _recOfLoadAllOnce(opts) {
+        let index = _recOfCellIndex();
+        const todo = _recOfPending(index, opts.withFailed);
+        Object.assign(_recOf, { total: todo.length, done: 0, failed: 0, mem: 0, idb: 0, net: 0,
+            requests: 0, planned: 0, source: 'cache', why: '' });
+        _ajStart('recof', null, { user: !!opts.user, anchor: opts.anchor });
+        _recOfUpdateHdrBtns();
+        if (!todo.length) { _ajFinish('recof', null, 0); return; }
+        todo.forEach(id => _recOfMark(index, id, 'queued'));
+
+        // Tier 1 + 2: memory, then IndexedDB (in parallel).
+        const misses = [];
+        const fromIdb = await Promise.all(todo.map(id => (_recOfMem.has(id)
+            ? Promise.resolve({ id, rels: _recOfMem.get(id), tier: 'mem' })
+            : _recOfIdbGet(id).then(rels => ({ id, rels, tier: 'idb' })))));
+        fromIdb.forEach(({ id, rels, tier }) => {
+            if (!rels) { misses.push(id); return; }
+            _recOf[tier]++;
+            _recOf.done++;
+            _recOfApply(index, id, rels);
+        });
+        _ajLog('recof', null, `${_recOf.mem + _recOf.idb} from cache, ${misses.length} to load`);
+        _recOfScheduleRefresh();
+        _ajChanged('recof', null);
+
+        // Tier 3: network.
+        const wanted = new Set(misses);
+        const answer = (id, rels) => {
+            if (!wanted.delete(id)) return false;
+            _recOf.net++;
+            _recOf.done++;
+            _recOfApply(index, id, rels);
+            return true;
+        };
+        const artist = _recOfArtistMbid();
+        if (wanted.size > 1 && artist && Lib.settings.sa_recording_of_browse_batch_enable !== false) {
+            _recOf.source = 'browse';
+            _recOf.why = 'the first page also tells how big the catalogue is';
+            let offset = 0;
+            let pages = null;
+            while (wanted.size) {
+                index = _recOfCellIndex();
+                const res = await _recOfGet(
+                    `/ws/2/recording?artist=${artist}&inc=work-rels&limit=${_RECOF_PAGE}&offset=${offset}&fmt=json`,
+                    `browse offset ${offset}`);
+                if (!res.ok || !res.data) {
+                    _ajLog('recof', null, 'browse failed — looking up the rest one by one', 'bad');
+                    break;
+                }
+                const recs = res.data.recordings || [];
+                if (pages === null) {
+                    _recOf.browseCount = res.data['recording-count'] || recs.length;
+                    pages = Math.ceil(_recOf.browseCount / _RECOF_PAGE);
+                }
+                const puts = [];
+                let hit = 0;
+                recs.forEach(rec => {
+                    const rels = _recOfParseRels(rec.relations);
+                    puts.push([rec.id, rels]);
+                    if (answer(rec.id, rels)) hit++;
+                });
+                _recOfIdbPut(puts);
+                _ajLog('recof', null, `browse offset ${offset}: ${recs.length} recordings, ${hit} on this page`, 'good');
+                offset += _RECOF_PAGE;
+                const pagesLeft = pages - offset / _RECOF_PAGE;
+                _recOf.planned = _recOf.requests + Math.min(Math.max(0, pagesLeft), wanted.size);
+                if (!wanted.size || !recs.length || pagesLeft <= 0) break;
+                if (pagesLeft >= wanted.size) {
+                    _recOf.source = 'lookup';
+                    _recOf.why = `browsing would need ${pagesLeft} more requests, lookups ${wanted.size}`;
+                    _ajLog('recof', null, `switching to lookups: ${_recOf.why}`);
+                    break;
+                }
+                _recOf.why = `browsing needs ${pagesLeft} more requests, lookups would need ${wanted.size}`;
+                _recOfScheduleRefresh();
+                _ajChanged('recof', null);
+            }
+        } else if (wanted.size) {
+            _recOf.source = 'lookup';
+            _recOf.why = wanted.size === 1 ? 'one row' : 'browsing is turned off or not available here';
+        }
+        if (wanted.size) {
+            _recOf.planned = _recOf.requests + wanted.size;
+            for (const id of Array.from(wanted)) {
+                if (!wanted.has(id)) continue;
+                if (_recOfMem.has(id)) { answer(id, _recOfMem.get(id)); continue; } // a click answered it meanwhile
+                index = _recOfCellIndex();
+                _recOfMark(index, id, 'loading');
+                const res = await _recOfGet(`/ws/2/recording/${id}?inc=work-rels&fmt=json`, `lookup ${id.slice(0, 8)}`);
+                index = _recOfCellIndex();
+                if (res.ok || res.status === 404) {
+                    const rels = res.ok ? _recOfParseRels(res.data && res.data.relations) : [];
+                    _recOfIdbPut([[id, rels]]);
+                    answer(id, rels);
+                } else {
+                    wanted.delete(id);
+                    _recOf.failed++;
+                    _recOfMark(index, id, 'error');
+                }
+                _recOfScheduleRefresh();
+                _ajChanged('recof', null);
+            }
+        }
+        // Suggestions need the work list; loaded (or read from cache) once.
+        await _recOfSuggestAll(true);
+        _recOfScheduleRefresh(true);
+        _ajFinish('recof', null, _recOf.failed);
+    }
+
+    /**
+     * Loads ONE row, from a click on its cell: memory, IndexedDB, then one
+     * lookup. Writes live and master cells; a failure marks them ⚠ and is not
+     * cached. Also works while a bulk job runs (the job then skips the row).
+     *
+     * @param {HTMLTableCellElement} td - `td.mb-recof-cell`.
+     * @returns {Promise<void>}
+     */
+    async function _recOfLoadRow(td) {
+        const id = td.dataset.mbid;
+        if (!id || td.dataset.recof === 'loading') return;
+        let index = _recOfCellIndex();
+        _recOfMark(index, id, 'loading');
+        let rels = _recOfMem.has(id) ? _recOfMem.get(id) : await _recOfIdbGet(id);
+        if (!rels) {
+            const res = await _recOfGet(`/ws/2/recording/${id}?inc=work-rels&fmt=json`, `lookup ${id.slice(0, 8)}`);
+            if (res.ok || res.status === 404) {
+                rels = res.ok ? _recOfParseRels(res.data && res.data.relations) : [];
+                _recOfIdbPut([[id, rels]]);
+            }
+        }
+        index = _recOfCellIndex();
+        if (rels) {
+            if (!rels.length && !_recOfWorks) await _recOfEnsureWorks(false);
+            _recOfApply(index, id, rels);
+        } else {
+            _recOfMark(index, id, 'error');
+        }
+        _recOfScheduleRefresh(true);
+    }
+
+    // ── Suggestions ────────────────────────────────────────────────────────
+
+    /** Trailing " (…)" clauses, as the batch-add userscript strips them. */
+    const _RECOF_PAREN_RE = /^(.+?)(?:(?: \([^()]+\))+)?$/;
+    /** Typographic → ASCII punctuation, as the batch-add userscript maps it. */
+    const _RECOF_PUNCT = [
+        [/…/g, '...'], [/[‘’‚′]/g, '\''], [/[“”„″]/g, '"'], [/‹/g, '<'], [/›/g, '>'],
+        [/[‐‒–−—]/g, '-'], [/―/g, '--']
+    ];
+
+    /**
+     * Normalises a title for matching: drops trailing "(…)" clauses (only for
+     * recording titles), lowercases, removes whitespace, maps typographic
+     * punctuation to ASCII.
+     *
+     * @param {string} title
+     * @param {boolean} [stripParens]
+     * @returns {string}
+     */
+    function _recOfNormTitle(title, stripParens) {
+        let t = String(title || '');
+        if (stripParens) {
+            const m = t.match(_RECOF_PAREN_RE);
+            if (m) t = m[1];
+        }
+        t = t.toLowerCase().replace(/\s+/g, '');
+        _RECOF_PUNCT.forEach(([re, rep]) => { t = t.replace(re, rep); });
+        return t;
+    }
+
+    /**
+     * Levenshtein distance with an early exit: returns `max + 1` as soon as
+     * the distance is certain to exceed `max`. Two rows, O(len) memory.
+     *
+     * @param {string} a
+     * @param {string} b
+     * @param {number} max
+     * @returns {number}
+     */
+    function _recOfDistance(a, b, max) {
+        if (a === b) return 0;
+        if (Math.abs(a.length - b.length) > max) return max + 1;
+        let prev = new Array(b.length + 1);
+        let cur = new Array(b.length + 1);
+        for (let j = 0; j <= b.length; j++) prev[j] = j;
+        for (let i = 1; i <= a.length; i++) {
+            cur[0] = i;
+            let rowMin = cur[0];
+            const ca = a.charCodeAt(i - 1);
+            for (let j = 1; j <= b.length; j++) {
+                const cost = ca === b.charCodeAt(j - 1) ? 0 : 1;
+                cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost);
+                if (cur[j] < rowMin) rowMin = cur[j];
+            }
+            if (rowMin > max) return max + 1;
+            [prev, cur] = [cur, prev];
+        }
+        return prev[b.length];
+    }
+
+    /**
+     * The suggested work for a recording title, or null. Exact normalised
+     * match first (a Map lookup), else the work with the smallest distance
+     * relative to the average length, if it is within
+     * `sa_recording_of_suggest_max_distance_pct`. Memoised per normalised
+     * title, so a live set of 300 "Badlands" costs one search. Cost is
+     * bounded by a length pre-check: a work whose length differs by more than
+     * the threshold allows is never compared.
+     *
+     * @param {string} title - The recording's title.
+     * @returns {?{id: string, title: string, comment: string}}
+     */
+    function _recOfSuggestTitle(title) {
+        if (!_recOfWorks || Lib.settings.sa_recording_of_suggest_enable === false) return null;
+        const norm = _recOfNormTitle(title, true);
+        if (!norm) return null;
+        if (_recOfSuggestMemo.has(norm)) return _recOfSuggestMemo.get(norm);
+        let best = _recOfWorks.exact.get(norm) || null;
+        if (!best) {
+            const p = Lib.settings.sa_recording_of_suggest_max_distance_pct;
+            const thr = (typeof p === 'number' && p >= 0 ? p : 25) / 100;
+            let bestScore = Infinity;
+            if (thr > 0) {
+                for (const w of _recOfWorks.works) {
+                    const avg = (norm.length + w.norm.length) / 2;
+                    const max = Math.floor(thr * avg);
+                    if (Math.abs(norm.length - w.norm.length) > max) continue;
+                    const d = _recOfDistance(norm, w.norm, max);
+                    if (d > max) continue;
+                    const score = d / avg;
+                    if (score < bestScore) { bestScore = score; best = w; }
+                }
+            }
+        }
+        const out = best ? { id: best.id, title: best.title, comment: best.comment } : null;
+        _recOfSuggestMemo.set(norm, out);
+        return out;
+    }
+
+    /**
+     * The suggestion for one cell's row (null when suggestions are off or the
+     * work list is not loaded).
+     * @param {?HTMLTableCellElement} td
+     * @returns {?{id: string, title: string, comment: string}}
+     */
+    function _recOfSuggestFor(td) {
+        return td ? _recOfSuggestTitle(_recOfRowTitle(td)) : null;
+    }
+
+    /**
+     * Makes sure the artist's work list is in memory: IndexedDB first (within
+     * `sa_recording_of_works_ttl_days`), then the batch-add userscript's own
+     * localStorage cache (`sa_recording_of_import_bpr_cache`), then — only
+     * when `allowNetwork` — the Web Service, 100 works per request.
+     *
+     * @param {boolean} allowNetwork
+     * @param {boolean} [force] - Ignore both caches (the card's "Reload works").
+     * @returns {Promise<boolean>} Whether a list is loaded.
+     */
+    async function _recOfEnsureWorks(allowNetwork, force) {
+        const artist = _recOfArtistMbid();
+        if (!artist || Lib.settings.sa_recording_of_suggest_enable === false) return false;
+        if (_recOfWorks && _recOfWorks.artist === artist && !force) return true;
+        const d = Lib.settings.sa_recording_of_works_ttl_days;
+        const ttl = (typeof d === 'number' && d > 0 ? d : 30) * 86400000;
+        if (!force) {
+            const rec = await _artIdbGet('artist-works', artist).catch(() => null);
+            if (rec && Date.now() - (rec.ts || 0) <= ttl && Array.isArray(rec.works)) {
+                _recOfSetWorks(artist, rec.works, rec.ts, rec.source || 'IndexedDB');
+                return true;
+            }
+            const bpr = Lib.settings.sa_recording_of_import_bpr_cache !== false ? _recOfReadBprWorks(artist) : null;
+            if (bpr) {
+                _recOfSetWorks(artist, bpr.works, bpr.ts, 'batch-add userscript');
+                _artIdbPut('artist-works', { artist, works: bpr.works, ts: bpr.ts, source: 'batch-add userscript' }).catch(() => {});
+                _ajLog('recof', null, `${bpr.works.length} works taken from the batch-add userscript's cache`, 'good');
+                return true;
+            }
+        }
+        if (!allowNetwork) return false;
+        const works = [];
+        let offset = 0;
+        let count = null;
+        do {
+            const res = await _recOfGet(`/ws/2/work?artist=${artist}&inc=aliases&limit=${_RECOF_PAGE}&offset=${offset}&fmt=json`,
+                `works offset ${offset}`);
+            if (!res.ok || !res.data) return false;
+            if (count === null) count = res.data['work-count'] || 0;
+            (res.data.works || []).forEach(w => works.push({ id: w.id, title: w.title || '', comment: w.disambiguation || '' }));
+            offset += _RECOF_PAGE;
+            if (!(res.data.works || []).length) break;
+        } while (offset < count);
+        const ts = Date.now();
+        _recOfSetWorks(artist, works, ts, 'MusicBrainz');
+        _artIdbPut('artist-works', { artist, works, ts, source: 'MusicBrainz' }).catch(() => {});
+        return true;
+    }
+
+    /**
+     * Installs a work list in memory, with its exact-match index, and drops
+     * the suggestion memo (it belonged to the previous list).
+     *
+     * @param {string} artist
+     * @param {Array<{id: string, title: string, comment: string}>} works
+     * @param {number} ts - When the list was fetched.
+     * @param {string} source - Where it came from, for the card.
+     * @returns {void}
+     */
+    function _recOfSetWorks(artist, works, ts, source) {
+        const list = works.map(w => ({ ...w, norm: _recOfNormTitle(w.title, false) }));
+        const exact = new Map();
+        list.forEach(w => { if (w.norm && !exact.has(w.norm)) exact.set(w.norm, w); });
+        _recOfWorks = { artist, works: list, exact, ts, source };
+        _recOfSuggestMemo.clear();
+    }
+
+    /**
+     * Reads the batch-add "performance of" userscript's cached work list for
+     * an artist from localStorage, read-only. Its format: `bpr_works <mbid>`
+     * holds newline-separated `<work mbid><title>` with an optional
+     * ` <comment>`; `bpr_works_date <mbid>` a `Date().toString()`.
+     *
+     * @param {string} artist
+     * @returns {?{works: Array<{id: string, title: string, comment: string}>, ts: number}}
+     */
+    function _recOfReadBprWorks(artist) {
+        let raw;
+        let date;
+        try {
+            raw = window.localStorage.getItem(`bpr_works ${artist}`);
+            date = window.localStorage.getItem(`bpr_works_date ${artist}`);
+        } catch (_) {
+            return null;
+        }
+        if (!raw) return null;
+        const works = raw.split('\n').filter(l => l.length > 36).map(l => {
+            const [title, comment] = l.slice(36).split(' ');
+            return { id: l.slice(0, 36), title, comment: comment || '' };
+        }).filter(w => /^[a-f0-9-]{36}$/.test(w.id));
+        if (!works.length) return null;
+        const ts = Date.parse(date || '') || Date.now();
+        return { works, ts };
+    }
+
+    /**
+     * Fills a suggestion into every answered "no work" cell, in slices of
+     * ~8 ms so a large page never blocks; each DISTINCT title is searched
+     * once (memo). Loads the work list first when `allowNetwork`.
+     *
+     * @param {boolean} allowNetwork
+     * @returns {Promise<void>}
+     */
+    async function _recOfSuggestAll(allowNetwork) {
+        if (Lib.settings.sa_recording_of_suggest_enable === false) return;
+        if (!(await _recOfEnsureWorks(allowNetwork))) return;
+        const index = _recOfCellIndex();
+        const todo = [];
+        index.forEach((cells, id) => {
+            const first = cells.values().next().value;
+            if (first.dataset.recof === 'none' || first.dataset.recof === 'suggested') todo.push([id, cells]);
+        });
+        let sliceStart = performance.now();
+        let n = 0;
+        for (const [id, cells] of todo) {
+            const rels = _recOfMem.get(id) || [];
+            if (rels.length) continue;
+            const sugg = _recOfSuggestFor(cells.values().next().value);
+            if (sugg) {
+                cells.forEach(td => { _recOfRenderCell(td, [], sugg); _recOfDropRowText(td); });
+                n++;
+            }
+            if (performance.now() - sliceStart > 8) {
+                await new Promise(r => setTimeout(r, 0));
+                sliceStart = performance.now();
+            }
+        }
+        if (n) _ajLog('recof', null, `${n} work suggestion${n === 1 ? '' : 's'}`, 'good');
+    }
+
+    // ── Header toggle, cell clicks, progress card ──────────────────────────
+
+    /**
+     * Adds the ▶🎼 toggle to every "Recording of" header that lacks one and
+     * repaints its state. Called from every render path: a re-render rebuilds
+     * the `<thead>` from a clone. Also installs the click delegates once.
+     * @returns {void}
+     */
+    function _recOfInitColHeaderToggles() {
+        if (!activeRecordingOfColumns.length) return;
+        // Registered here, at render time, not at page init: _ajRegister()
+        // reads consts declared below the init call (TDZ). Idempotent.
+        _recOfRegisterProvider();
+        _recOfEnsureDelegates();
+        document.querySelectorAll('table.tbl thead th').forEach(th => {
+            if (th.dataset.colName !== _RECOF_COL || th.querySelector('.mb-recof-col-hdr-btn')) return;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'mb-recof-col-hdr-btn';
+            btn.dataset.mbAj = 'recof';
+            btn.dataset.mbAjName = '▶🎼';
+            btn.setAttribute('aria-pressed', 'false');
+            btn.setAttribute('aria-label', 'Load the "Recording of" column');
+            const flex = th.querySelector('.mb-col-hdr-flex');
+            (flex || th).prepend(btn);
+        });
+        _recOfUpdateHdrBtns();
+    }
+
+    /**
+     * Repaints every ▶🎼 toggle: pressed once nothing is left to load, a
+     * done/total badge (`::after attr()`) while a job runs.
+     * @returns {void}
+     */
+    function _recOfUpdateHdrBtns() {
+        const btns = document.querySelectorAll('.mb-recof-col-hdr-btn');
+        if (!btns.length) return;
+        const pending = _recOfPendingCount();
+        btns.forEach(b => {
+            b.setAttribute('aria-pressed', pending === 0 && !_recOf.running ? 'true' : 'false');
+            if (_recOf.running && _recOf.total) b.dataset.recofProgress = `${_recOf.done}/${_recOf.total}`;
+            else delete b.dataset.recofProgress;
+            if (!_recOf.running && _recOf.failed) b.dataset.recofState = 'error';
+            else delete b.dataset.recofState;
+        });
+    }
+
+    /**
+     * Installs the delegated click handlers once: the ▶🎼 toggle loads every
+     * row (capture phase, so the header's own sort click never sees it), a
+     * not-loaded or failed cell loads its own row.
+     * @returns {void}
+     */
+    function _recOfEnsureDelegates() {
+        if (_recOfEnsureDelegates.done) return;
+        _recOfEnsureDelegates.done = true;
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest && e.target.closest('.mb-recof-col-hdr-btn');
+            if (btn) {
+                e.preventDefault();
+                e.stopPropagation();
+                _recOfLoadAll({ user: true, anchor: btn, withFailed: true });
+                return;
+            }
+            const td = e.target.closest && e.target.closest('td.mb-recof-cell');
+            if (!td || e.target.closest('a')) return;
+            const st = td.dataset.recof;
+            if (st && st !== 'error') return;
+            e.preventDefault();
+            _recOfLoadRow(td);
+        }, true);
+    }
+
+    /**
+     * Registers the "Recording of" provider of the async job popup.
+     * @returns {void}
+     */
+    function _recOfRegisterProvider() {
+        _ajRegister('recof', {
+            glyph: '🎼',
+            label: 'Recording of',
+            scopeOf: () => null,
+            snapshot: (scope, job) => _recOfSnapshot(job),
+            onOpen: (scope, repaint) => {
+                if (Date.now() - _recOf.storeCountAt < 5000) return;
+                _recOf.storeCountAt = Date.now();
+                _artIdbCountStore('recof-ws2').then(n => { _recOf.storeCount = n; repaint(); });
+            },
+            act: (scope, id) => {
+                if (id === 'retry') _recOfLoadAll({ withFailed: true });
+                if (id === 'works') {
+                    _recOfEnsureWorks(true, true).then(ok => {
+                        if (ok) _recOfSuggestAll(false).then(() => _recOfScheduleRefresh(true));
+                        _ajChanged('recof', null);
+                    });
+                }
+            }
+        });
+    }
+
+    /**
+     * The progress card's content (see `_ajRender()`). O(1): the idle
+     * preview's row count is the cached `_recOfPendingCount()`.
+     * @param {?object} job
+     * @returns {object}
+     */
+    function _recOfSnapshot(job) {
+        const d = Lib.settings.sa_recording_of_ttl_days;
+        const ttl = typeof d === 'number' && d > 0 ? d : 30;
+        const fmt = n => Number(n).toLocaleString('en-US');
+        const cache = [
+            ['Store', `IndexedDB recof-ws2, kept ${ttl} days`],
+            ['Records', _recOf.storeCount === null ? 'counting…' : fmt(_recOf.storeCount)],
+            ['This session', `${fmt(_recOfMem.size)} answers in memory`]
+        ];
+        if (job) cache.push(['This run', `${fmt(_recOf.mem)} memory · ${fmt(_recOf.idb)} IndexedDB · ${fmt(_recOf.net)} network`]);
+        if (_recOfWorks) {
+            cache.push(['Work list', `${fmt(_recOfWorks.works.length)} works (${_recOfWorks.source}, ${new Date(_recOfWorks.ts).toLocaleString()})`]);
+        } else {
+            cache.push(['Work list', Lib.settings.sa_recording_of_suggest_enable === false ? 'suggestions are off' : 'not loaded yet']);
+        }
+        const actions = [];
+        if (!_recOf.running && _recOf.failed) actions.push({ id: 'retry', label: `Retry ${_recOf.failed} failed`, kind: 'danger' });
+        if (!_recOf.running && Lib.settings.sa_recording_of_suggest_enable !== false) actions.push({ id: 'works', label: '⟳ Reload work list', kind: 'primary' });
+        if (!job) {
+            const pending = _recOfPendingCount();
+            const facts = [['Rows', `${fmt(pending)} recordings not loaded`]];
+            if (_recOf.browseCount) facts.push(['Catalogue', `${fmt(_recOf.browseCount)} recordings by this artist`]);
+            return {
+                phase: 'idle',
+                summary: pending ? 'Not loaded. Click ▶🎼 to load every row, or a 🎼 cell to load one.' : 'Every row is loaded.',
+                facts, cache, actions
+            };
+        }
+        const queued = Math.max(0, _recOf.total - _recOf.done - _recOf.failed);
+        const facts = [
+            ['Source', _recOf.source === 'browse' ? 'the artist\'s recordings, 100 per request'
+                : _recOf.source === 'lookup' ? 'one request per recording' : 'cache only'],
+        ];
+        if (_recOf.why) facts.push(['Why', _recOf.why]);
+        facts.push(['Requests', _recOf.planned > _recOf.requests ? `${fmt(_recOf.requests)} made, about ${fmt(_recOf.planned)} in all` : `${fmt(_recOf.requests)} made`]);
+        facts.push(['Rate', 'one per 1.1 s, shared with the other columns']);
+        const end = job.t1 || Date.now();
+        const s = Math.round((end - job.t0) / 1000);
+        facts.push(['Time', `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}${job.t1 ? '' : ' elapsed'}`]);
+        return {
+            phase: job.phase,
+            summary: `Work relationships for ${fmt(_recOf.total)} recording${_recOf.total === 1 ? '' : 's'}`,
+            done: _recOf.done, total: _recOf.total, failed: _recOf.failed,
+            cached: _recOf.mem + _recOf.idb, queued, unit: 'recordings',
+            facts, cache, actions
+        };
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
     // Relationships column — constants, helpers and main init function.
     // Ported from DisplayShortcutForRelationshipWithCustomFavicons.user.js
     // ──────────────────────────────────────────────────────────────────────────
@@ -101495,6 +102843,10 @@ a { color: #1565c0; }`;
                 activeReleaseEventColumns = buildActiveReleaseEventColumns(activeDefinition);
                 Lib.debug('cache', `disk-load: rebuilt activeReleaseEventColumns (${activeReleaseEventColumns.length})`);
             }
+            if (!activeRecordingOfColumns.length) {
+                activeRecordingOfColumns = buildActiveRecordingOfColumns(activeDefinition);
+                _recOf.pendingCount = null;
+            }
             if (!activeInjectedColumnExtractors.length) {
                 activeInjectedColumnExtractors = buildActiveInjectedColumnExtractors(activeDefinition);
                 Lib.debug('cache', `disk-load: rebuilt activeInjectedColumnExtractors (${activeInjectedColumnExtractors.length})`);
@@ -101962,6 +103314,7 @@ a { color: #1565c0; }`;
             // cost, so collapsing it would be pure loss. See
             // _relTableExpanded()'s "the two defaults".
             _relInitColHeaderToggles();
+            _recOfInitColHeaderToggles();
             // Same reason as the line above: the <thead> this writes into may
             // have just been rebuilt from a clone. No-op unless the Release-events
             // lookup is loading or has failed.
@@ -104105,6 +105458,16 @@ a { color: #1565c0; }`;
     //                  many pageTypes, so one page's fetch warms every other.
     //                  Shares this database for the same reason 'rel-ws2' does.
     //
+    //     'recof-ws2' — added in version 4. Keyed by `ckey`
+    //                  ("recording:<mbid>|work-rels" — the inc set is part of
+    //                  the key). Value: { ckey, mbid, rels, ts }, `rels` the
+    //                  parsed performance relations (`[]` = "no work"). The
+    //                  "Recording of" column's L2 cache (_recOfIdbGet/_recOfIdbPut).
+    //
+    //     'artist-works' — added in version 4. Keyed by `artist` (MBID).
+    //                  Value: { artist, works, ts, source }: the artist's work
+    //                  list behind the "Recording of" suggestions.
+    //
     // Three-tier lookup for image blobs (_artFetchCachedImage):
     //   Tier 1 — per-session in-memory Map (_artIdbMemCache): zero overhead,
     //            covers sort/filter re-renders within the same page load.
@@ -104126,7 +105489,7 @@ a { color: #1565c0; }`;
 
     /** DB name and current schema version. */
     const _ART_IDB_NAME    = 'vz-mb-saed-art-cache';
-    const _ART_IDB_VERSION = 3;  // bumped to add rel-ws2, then ms-rec-len store
+    const _ART_IDB_VERSION = 4;  // bumped to add rel-ws2, then ms-rec-len, then recof-ws2 + artist-works
 
     /**
      * Cached IDB database connection promise.
@@ -104265,6 +105628,14 @@ a { color: #1565c0; }`;
                 // of them. See _msIdbGetLength().
                 if (!db.objectStoreNames.contains('ms-rec-len')) {
                     db.createObjectStore('ms-rec-len', { keyPath: 'gid' });
+                }
+                // "Recording of" column (version 4): per-recording work
+                // relations, and per-artist work lists for the suggestions.
+                if (!db.objectStoreNames.contains('recof-ws2')) {
+                    db.createObjectStore('recof-ws2', { keyPath: 'ckey' });
+                }
+                if (!db.objectStoreNames.contains('artist-works')) {
+                    db.createObjectStore('artist-works', { keyPath: 'artist' });
                 }
             };
             req.onsuccess  = (ev) => {
@@ -104654,11 +106025,17 @@ a { color: #1565c0; }`;
 
                 const relTtlMs = (Lib.settings.sa_rel_idb_ttl_days || 30) * 86400 * 1000;
                 const msTtlMs  = (Lib.settings.sa_ms_idb_ttl_days  || 30) * 86400 * 1000;
+                const _rd = Lib.settings.sa_recording_of_ttl_days;
+                const _wd = Lib.settings.sa_recording_of_works_ttl_days;
+                const recofTtlMs = (typeof _rd === 'number' && _rd > 0 ? _rd : 30) * 86400 * 1000;
+                const worksTtlMs = (typeof _wd === 'number' && _wd > 0 ? _wd : 30) * 86400 * 1000;
                 Promise.all([
                     sweepStore('images',     imgTtlMs),
                     sweepStore('metadata',   metaTtlMs),
                     sweepStore('rel-ws2',    relTtlMs),
                     sweepStore('ms-rec-len', msTtlMs),
+                    sweepStore('recof-ws2',  recofTtlMs),
+                    sweepStore('artist-works', worksTtlMs),
                 ]).then(() => {
                     _artIdbLastSweep = { deleted, ts: Date.now() };
                     Lib.debug('idb', `_artIdbSweepExpired: sweep complete — deleted ${deleted} expired record(s)`);

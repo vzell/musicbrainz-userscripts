@@ -1,0 +1,552 @@
+{
+  "artist": "89729b97-90a3-4f84-9e88-e16f96cab350",
+  "artistName": "Test Artist",
+  "recordings": [
+    {
+      "id": "bbbbbbbb-0000-4000-8000-000000000000",
+      "title": "Born to Run",
+      "disambiguation": "",
+      "length": null,
+      "video": false,
+      "relations": [
+        {
+          "type": "performance",
+          "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+          "target-type": "work",
+          "direction": "forward",
+          "attributes": [],
+          "attribute-ids": {},
+          "attribute-values": {},
+          "begin": null,
+          "end": null,
+          "ended": false,
+          "source-credit": "",
+          "target-credit": "",
+          "work": {
+            "id": "cccccccc-0000-4000-8000-000000000001",
+            "title": "Born to Run",
+            "disambiguation": "",
+            "type": "Song",
+            "attributes": [],
+            "iswcs": [],
+            "languages": [
+              "eng"
+            ],
+            "language": "eng"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bbbbbbbb-0000-4000-8000-000000000001",
+      "title": "Born to Run",
+      "disambiguation": "live, 1975-10-18: Hammersmith Odeon, London, UK",
+      "length": null,
+      "video": false,
+      "relations": [
+        {
+          "type": "performance",
+          "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+          "target-type": "work",
+          "direction": "forward",
+          "attributes": [
+            "live"
+          ],
+          "attribute-ids": {
+            "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+          },
+          "attribute-values": {},
+          "begin": "1975-10-18",
+          "end": "1975-10-18",
+          "ended": true,
+          "source-credit": "",
+          "target-credit": "",
+          "work": {
+            "id": "cccccccc-0000-4000-8000-000000000001",
+            "title": "Born to Run",
+            "disambiguation": "",
+            "type": "Song",
+            "attributes": [],
+            "iswcs": [],
+            "languages": [
+              "eng"
+            ],
+            "language": "eng"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bbbbbbbb-0000-4000-8000-000000000002",
+      "title": "Can’t Help Falling in Love",
+      "disambiguation": "live, 1981-04-18: Palais des Sports de Saint-Ouen, Paris, France",
+      "length": null,
+      "video": false,
+      "relations": [
+        {
+          "type": "performance",
+          "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+          "target-type": "work",
+          "direction": "forward",
+          "attributes": [
+            "cover",
+            "live"
+          ],
+          "attribute-ids": {
+            "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113",
+            "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+          },
+          "attribute-values": {},
+          "begin": "1981-04-18",
+          "end": "1981-04-18",
+          "ended": true,
+          "source-credit": "",
+          "target-credit": "",
+          "work": {
+            "id": "cccccccc-0000-4000-8000-000000000002",
+            "title": "Can’t Help Falling in Love",
+            "disambiguation": "",
+            "type": "Song",
+            "attributes": [],
+            "iswcs": [],
+            "languages": [
+              "eng"
+            ],
+            "language": "eng"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bbbbbbbb-0000-4000-8000-000000000003",
+      "title": "(Love Is Like a) Heatwave / Jackson Cage",
+      "disambiguation": "live, 1980-11-05",
+      "length": null,
+      "video": false,
+      "relations": [
+        {
+          "type": "performance",
+          "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+          "target-type": "work",
+          "direction": "forward",
+          "attributes": [
+            "cover",
+            "live",
+            "medley"
+          ],
+          "attribute-ids": {
+            "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113",
+            "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a",
+            "medley": "37da3398-5d6c-4e3e-8f8b-6a9ee1e5ef3d"
+          },
+          "attribute-values": {},
+          "begin": "1980-11-05",
+          "end": "1980-11-05",
+          "ended": true,
+          "source-credit": "",
+          "target-credit": "",
+          "work": {
+            "id": "cccccccc-0000-4000-8000-000000000003",
+            "title": "(Love Is Like a) Heat Wave",
+            "disambiguation": "",
+            "type": "Song",
+            "attributes": [],
+            "iswcs": [],
+            "languages": [
+              "eng"
+            ],
+            "language": "eng"
+          }
+        },
+        {
+          "type": "performance",
+          "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+          "target-type": "work",
+          "direction": "forward",
+          "attributes": [
+            "live",
+            "medley"
+          ],
+          "attribute-ids": {
+            "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a",
+            "medley": "37da3398-5d6c-4e3e-8f8b-6a9ee1e5ef3d"
+          },
+          "attribute-values": {},
+          "begin": "1980-11-05",
+          "end": "1980-11-05",
+          "ended": true,
+          "source-credit": "",
+          "target-credit": "",
+          "work": {
+            "id": "cccccccc-0000-4000-8000-000000000004",
+            "title": "Jackson Cage",
+            "disambiguation": "",
+            "type": "Song",
+            "attributes": [],
+            "iswcs": [],
+            "languages": [
+              "eng"
+            ],
+            "language": "eng"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bbbbbbbb-0000-4000-8000-000000000004",
+      "title": "Thunder Road",
+      "disambiguation": "partial",
+      "length": null,
+      "video": false,
+      "relations": [
+        {
+          "type": "performance",
+          "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+          "target-type": "work",
+          "direction": "forward",
+          "attributes": [
+            "partial"
+          ],
+          "attribute-ids": {
+            "partial": "d2b63be6-91ec-426a-987a-30b47f8aae2d"
+          },
+          "attribute-values": {},
+          "begin": null,
+          "end": null,
+          "ended": false,
+          "source-credit": "",
+          "target-credit": "",
+          "work": {
+            "id": "cccccccc-0000-4000-8000-000000000005",
+            "title": "Thunder Road",
+            "disambiguation": "",
+            "type": "Song",
+            "attributes": [],
+            "iswcs": [],
+            "languages": [
+              "eng"
+            ],
+            "language": "eng"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bbbbbbbb-0000-4000-8000-000000000005",
+      "title": "Jungleland",
+      "disambiguation": "instrumental",
+      "length": null,
+      "video": false,
+      "relations": [
+        {
+          "type": "performance",
+          "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+          "target-type": "work",
+          "direction": "forward",
+          "attributes": [
+            "instrumental"
+          ],
+          "attribute-ids": {
+            "instrumental": "c031ed4f-c9bb-4394-8cf5-e8ce4db512ae"
+          },
+          "attribute-values": {},
+          "begin": null,
+          "end": null,
+          "ended": false,
+          "source-credit": "",
+          "target-credit": "",
+          "work": {
+            "id": "cccccccc-0000-4000-8000-000000000006",
+            "title": "Jungleland",
+            "disambiguation": "",
+            "type": "Song",
+            "attributes": [],
+            "iswcs": [],
+            "languages": [
+              "eng"
+            ],
+            "language": "eng"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bbbbbbbb-0000-4000-8000-000000000006",
+      "title": "Badlands",
+      "disambiguation": "",
+      "length": null,
+      "video": false,
+      "relations": []
+    },
+    {
+      "id": "bbbbbbbb-0000-4000-8000-000000000007",
+      "title": "Prove It All Night (alternate take)",
+      "disambiguation": "",
+      "length": null,
+      "video": false,
+      "relations": []
+    },
+    {
+      "id": "bbbbbbbb-0000-4000-8000-000000000008",
+      "title": "Racing in the Streets",
+      "disambiguation": "",
+      "length": null,
+      "video": false,
+      "relations": []
+    },
+    {
+      "id": "bbbbbbbb-0000-4000-8000-000000000009",
+      "title": "Untitled Jam",
+      "disambiguation": "",
+      "length": null,
+      "video": false,
+      "relations": []
+    },
+    {
+      "id": "bbbbbbbb-0000-4000-8000-000000000010",
+      "title": "Thunder Road",
+      "disambiguation": "live, 1978-07-07: The Roxy, West Hollywood, CA, USA",
+      "length": null,
+      "video": false,
+      "relations": [
+        {
+          "type": "performance",
+          "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+          "target-type": "work",
+          "direction": "forward",
+          "attributes": [
+            "live"
+          ],
+          "attribute-ids": {
+            "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+          },
+          "attribute-values": {},
+          "begin": "1978-07-07",
+          "end": "1978-07-07",
+          "ended": true,
+          "source-credit": "",
+          "target-credit": "",
+          "work": {
+            "id": "cccccccc-0000-4000-8000-000000000005",
+            "title": "Thunder Road",
+            "disambiguation": "",
+            "type": "Song",
+            "attributes": [],
+            "iswcs": [],
+            "languages": [
+              "eng"
+            ],
+            "language": "eng"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bbbbbbbb-0000-4000-8000-000000000011",
+      "title": "Badlands",
+      "disambiguation": "live, 1978-09-19",
+      "length": null,
+      "video": false,
+      "relations": []
+    },
+    {
+      "id": "bbbbbbbb-0000-4000-8000-000000000012",
+      "title": "Darkness on the Edge of Town",
+      "disambiguation": "",
+      "length": null,
+      "video": false,
+      "relations": [
+        {
+          "type": "performance",
+          "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+          "target-type": "work",
+          "direction": "forward",
+          "attributes": [],
+          "attribute-ids": {},
+          "attribute-values": {},
+          "begin": null,
+          "end": null,
+          "ended": false,
+          "source-credit": "",
+          "target-credit": "",
+          "work": {
+            "id": "cccccccc-0000-4000-8000-000000000011",
+            "title": "Darkness on the Edge of Town",
+            "disambiguation": "",
+            "type": "Song",
+            "attributes": [],
+            "iswcs": [],
+            "languages": [
+              "eng"
+            ],
+            "language": "eng"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bbbbbbbb-0000-4000-8000-000000000013",
+      "title": "The Promised Land",
+      "disambiguation": "",
+      "length": null,
+      "video": false,
+      "relations": []
+    },
+    {
+      "id": "bbbbbbbb-0000-4000-8000-000000000014",
+      "title": "Rosalita (Come Out Tonight)",
+      "disambiguation": "",
+      "length": null,
+      "video": false,
+      "relations": [
+        {
+          "type": "performance",
+          "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+          "target-type": "work",
+          "direction": "forward",
+          "attributes": [],
+          "attribute-ids": {},
+          "attribute-values": {},
+          "begin": null,
+          "end": null,
+          "ended": false,
+          "source-credit": "",
+          "target-credit": "",
+          "work": {
+            "id": "cccccccc-0000-4000-8000-000000000013",
+            "title": "Rosalita (Come Out Tonight)",
+            "disambiguation": "",
+            "type": "Song",
+            "attributes": [],
+            "iswcs": [],
+            "languages": [
+              "eng"
+            ],
+            "language": "eng"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bbbbbbbb-0000-4000-8000-000000000015",
+      "title": "Hungry Heart",
+      "disambiguation": "",
+      "length": null,
+      "video": false,
+      "relations": [
+        {
+          "type": "performance",
+          "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+          "target-type": "work",
+          "direction": "forward",
+          "attributes": [],
+          "attribute-ids": {},
+          "attribute-values": {},
+          "begin": null,
+          "end": null,
+          "ended": false,
+          "source-credit": "",
+          "target-credit": "",
+          "work": {
+            "id": "cccccccc-0000-4000-8000-000000000014",
+            "title": "Hungry Heart",
+            "disambiguation": "",
+            "type": "Song",
+            "attributes": [],
+            "iswcs": [],
+            "languages": [
+              "eng"
+            ],
+            "language": "eng"
+          }
+        }
+      ]
+    }
+  ],
+  "works": [
+    {
+      "id": "cccccccc-0000-4000-8000-000000000001",
+      "title": "Born to Run",
+      "disambiguation": "",
+      "type": "Song",
+      "aliases": []
+    },
+    {
+      "id": "cccccccc-0000-4000-8000-000000000004",
+      "title": "Jackson Cage",
+      "disambiguation": "",
+      "type": "Song",
+      "aliases": []
+    },
+    {
+      "id": "cccccccc-0000-4000-8000-000000000005",
+      "title": "Thunder Road",
+      "disambiguation": "",
+      "type": "Song",
+      "aliases": []
+    },
+    {
+      "id": "cccccccc-0000-4000-8000-000000000006",
+      "title": "Jungleland",
+      "disambiguation": "",
+      "type": "Song",
+      "aliases": []
+    },
+    {
+      "id": "cccccccc-0000-4000-8000-000000000007",
+      "title": "Badlands",
+      "disambiguation": "",
+      "type": "Song",
+      "aliases": []
+    },
+    {
+      "id": "cccccccc-0000-4000-8000-000000000008",
+      "title": "Prove It All Night",
+      "disambiguation": "",
+      "type": "Song",
+      "aliases": []
+    },
+    {
+      "id": "cccccccc-0000-4000-8000-000000000010",
+      "title": "Racing in the Street ’78",
+      "disambiguation": "Darkness outtakes version",
+      "type": "Song",
+      "aliases": []
+    },
+    {
+      "id": "cccccccc-0000-4000-8000-000000000009",
+      "title": "Racing in the Street",
+      "disambiguation": "",
+      "type": "Song",
+      "aliases": []
+    },
+    {
+      "id": "cccccccc-0000-4000-8000-000000000011",
+      "title": "Darkness on the Edge of Town",
+      "disambiguation": "",
+      "type": "Song",
+      "aliases": []
+    },
+    {
+      "id": "cccccccc-0000-4000-8000-000000000012",
+      "title": "The Promised Land",
+      "disambiguation": "",
+      "type": "Song",
+      "aliases": []
+    },
+    {
+      "id": "cccccccc-0000-4000-8000-000000000013",
+      "title": "Rosalita (Come Out Tonight)",
+      "disambiguation": "",
+      "type": "Song",
+      "aliases": []
+    },
+    {
+      "id": "cccccccc-0000-4000-8000-000000000014",
+      "title": "Hungry Heart",
+      "disambiguation": "",
+      "type": "Song",
+      "aliases": []
+    }
+  ]
+}

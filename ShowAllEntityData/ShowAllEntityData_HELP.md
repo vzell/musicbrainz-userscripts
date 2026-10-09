@@ -30,6 +30,7 @@ will never need is folded into collapsible sections.
 - [Collapsing and expanding](#collapsing-and-expanding)
 - [Cover art](#cover-art)
 - [The Relationships column](#the-relationships-column)
+- [The Recording of column](#the-recording-of-column)
 - [Track lengths](#track-lengths)
 - [Save and load](#save-and-load)
 - [Export](#export)
@@ -170,6 +171,26 @@ MusicBrainz's own hover texts are left alone: an artist link's sort name, the
 rating stars, a country's full name. So are other userscripts' texts. The
 cover-art card, the Relationships panel and the prefix-key overlay use the same
 look. Turn the cards off, or change their delay, in ⚙️ Settings → 💬 TOOLTIPS.
+
+### The progress card
+
+A column that loads its data after the table appears (so far the [Recording
+of](#the-recording-of-column) column) reports through one card in the same
+look. When you start the job, it opens under the column's toggle. It shows:
+
+- what is being loaded, and a bar that also counts cache hits and failures;
+- where the data comes from, and why that source was picked;
+- how many requests went out and how many are left;
+- the last few requests with their outcome, so an `HTTP 503` and its retry
+  are visible without opening the console;
+- a **💾 Cache** part: the browser store, how many records it holds, how
+  long they are kept, and how this run split between memory, the browser
+  cache and the network.
+
+<kbd>Esc</kbd> closes it, and the job keeps running. Hovering the toggle shows
+it again, live; moving the pointer away closes it. You can move onto the card
+to press its buttons, such as **Retry failed**. On a phone, a tap outside
+closes it. Both switches are in ⚙️ Settings → 💬 TOOLTIPS.
 
 ---
 
@@ -899,6 +920,52 @@ after a 30-second pause, at most twice per page, and never at all when more than
 so you can filter to exactly the rows that failed.
 
 </details>
+
+---
+
+## The Recording of column
+
+On an artist's **Recordings** page, two columns follow **Name**:
+
+- **Recording of** — the work each recording performs, as a link. Its
+  attributes follow in light green italics, e.g.
+  *Can't Help Falling in Love (cover/live)*. A medley lists one row per work.
+- **Performance attributes** — the same attributes one per row (cover, live,
+  partial, instrumental, medley, …), plus the performance date.
+
+This is what the "MusicBrainz: Batch-add 'performance of' relationships"
+userscript writes under each title, as columns you can filter and sort. If
+that script is installed, its own lines and its "Performance Attributes"
+column are removed from the table. ShowAllEntityData only shows the data;
+it never adds relationships.
+
+**Nothing is loaded until you ask.** Each cell shows `🎼︎`: click it to load
+that one row. **▶🎼** in the header loads every row, with a `done/total` badge
+while it works and the [progress card](#the-progress-card) under it. When
+every row is loaded it reads **▼🎼**. A cell shows `⋯` while queued, `◌` while
+loading, `–` when the recording has no work, and `⚠︎` when the request
+failed; click a `⚠︎` to try again.
+
+**Few requests.** Loading every row first asks for the artist's recordings
+100 at a time, and that first answer also says how big the catalogue is. If
+the catalogue is much larger than the page, the rest is looked up one row
+at a time instead, whichever needs fewer requests. Answers are kept in the
+browser for 30 days, so a reload costs nothing.
+
+**Suggested works.** For a recording without a work, the column suggests
+the artist's work with the closest title, in orange and marked *suggested:*.
+"(alternate take)" and similar endings are ignored, and so are case,
+spacing and typographic quotes. The artist's work list is loaded with the
+column and kept for 30 days. If the batch-add userscript already holds that
+list in your browser, it is reused instead (read only). You can set how
+different a title may be, or turn suggestions off.
+
+**The 📊 dropdown** has two sections for this column: **Load state** (not
+loaded / has a work / work suggested / no work / failed) and **Suggested
+work** (one entry per suggested title). The attributes appear in the
+existing attribute entries.
+
+Settings: ⚙️ Settings → 🎼 RECORDING OF COLUMN.
 
 ---
 

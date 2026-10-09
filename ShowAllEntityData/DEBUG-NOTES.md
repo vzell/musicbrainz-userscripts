@@ -21418,3 +21418,48 @@ unknown).
      status line and rows showed behind and right of the h1. Fixed with one
      window-wide `position: fixed` backdrop (`#mb-vsb-mask`) behind the
      block, shown only while it is stuck; pinned on painted pixels.
+
+## 2026-10-10 — "Recording of" / "Performance attributes" columns and the async job popup (branch feature/recording-of-column, WIP.1–WIP.2)
+
+Env: 2026-10-09T22:13Z (probe) / 22:58Z (notes) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs) for the specs; the probe: no browser.
+
+Source: Michael Wiencek's "MusicBrainz: Batch-add 'performance of' relationships"
+2023.7.2, committed by mistake under `tests/fixtures/thirdPartyScripts/` (8d64fb6,
+pushed); moved to the gitignored `tests/fixtures/live-userscripts/` and registered
+as `wiencek-batch-performance` by the new `wire-live-userscript` skill.
+
+1. **Snapshot.** `debug/A-R-3rd-works.html` (supplied by the user, 1.1 MB): IP of
+   Bruce Springsteen's recordings page with that script active — its control
+   panel after `div#content h2`, `div.work` ("cover live recording of <work>") and
+   `div.suggested-work` in Name, a trailing `<th>Performance Attributes</th>` and
+   `td.bpr_attrs` per row. The browser/Tampermonkey versions of that capture are
+   unknown. A fixture was NOT cut from it (1.1 MB, real data); instead
+   `scripts/build-recording-of-fixture.py` writes `artist-recordings-recording-of-bpr.html`
+   with the same markup shape, copied from the snapshot. Finding while wiring:
+   nothing pinned the `'wiencek'` eraser or the foreign-header strip until
+   `recording-of-third-party.spec.js`.
+2. **Probe** (`scripts/probe-recording-work-rels.py`, results in
+   `tests/MEASUREMENTS.org`): browse `recording?artist=&inc=work-rels` is valid
+   (100/page, parity with lookups incl. a medley), `recording-count` 74 567, only
+   `performance` relations, work list 1 587, search carries no relations.
+3. **Audit — positional colIdx read after row assembly.** The two columns are the
+   first injected columns INSERTED (after Name) instead of appended. Readers of a
+   pre-render integer-column `colIdx` after assembly:
+   `finalizeSplitAlignedColumns()` / `finalizeRLCColumnWidths()` (after the fetch
+   and after a disk load) and `_repairTreleasesTd()` (positional lookup in a
+   rendered row). All stay right because `_recOfInsertCells()` runs BEFORE
+   `applyIntegerColumnStyling()` and `_finalColNames` names the two columns at the
+   same place. The first idea — move the cells after styling — would have put
+   Length's colon alignment on Rating. Readers resolving by header NAME
+   (`_msLengthColumnIndex()`, sticky, tooltip, collapsable columns) are unaffected.
+4. **Two defects found by the specs before they shipped.** (a) The ▼🎼 toggle
+   read "loaded" while the last lookup still waited for its rate slot: the
+   pending count skipped `loading` cells. Count now includes them, and "pressed"
+   also needs no job running. (b) `_recOfUpdateHdrBtns()` first walked every source
+   row on each render tail (it runs with `_relInitColHeaderToggles()` on every
+   single-table `runFilter()`) — now a cached count dropped only by writes.
+5. **Asked mid-session and answered:** long sorts/filters look blocked because
+   `runFilter()`'s matching loop is synchronous (only the render is chunked, above
+   `sa_chunked_render_threshold`); `sortLargeArray()` already yields and has an
+   unused progress callback. Decision (user): a `table-work` provider for the
+   progress card now, a yielding `runFilter()` as a separate measured perf branch.
