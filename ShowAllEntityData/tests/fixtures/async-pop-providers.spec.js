@@ -72,7 +72,7 @@ test.describe('progress card providers', () => {
         });
         await page.route(`${url}?**`, (route) => route.fulfill({ path: fixture, contentType: 'text/html' }));
         await page.click('button[data-label="⊚ All recordings"]');
-        await page.waitForSelector('#mb-filter-container');
+        await expect(page.locator('#mb-filter-container')).toBeVisible({ timeout: 30000 });
         await page.mouse.move(0, 0);
 
         await idleHoverShowsOwnTooltip(page, '.mb-ms-col-hdr-btn');
