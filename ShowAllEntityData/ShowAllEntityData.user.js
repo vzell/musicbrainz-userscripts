@@ -3516,6 +3516,18 @@
             label: '🗄️ ART ARCHIVE INDEXEDDB CACHE'
         },
 
+        sa_fn_idb_overview: {
+            label: '💾 Browser cache overview',
+            type: 'function',
+            default: '_idbOverviewOpenFromSettings',
+            description: 'Shows everything this script keeps in your browser (cover art, relationships, '
+                         + 'millisecond lengths, "Recording of" answers, artist work lists, link previews): '
+                         + 'how much space each part takes, how many entries it holds, how old they are, '
+                         + 'and what is past its keep time — with a chart, a list of every entry, and '
+                         + 'buttons to delete the expired entries, entries older than a given age, one part, '
+                         + 'one entry, or everything. Each delete asks first.'
+        },
+
         sa_art_idb_enable: {
             label: 'Enable IndexedDB art image/metadata cache',
             type: 'checkbox',
@@ -53238,6 +53250,14 @@ ${sections.join('\n')}
 
             const _idbTbl = _mkTbl(_idbPlaceholderRows);
             body.appendChild(_idbTbl);
+            const _idboBtn = document.createElement('button');
+            _idboBtn.type = 'button';
+            _idboBtn.id = 'mb-stats-idb-overview-btn';
+            _idboBtn.textContent = '💾 Open the browser cache overview';
+            _idboBtn.style.cssText = 'margin: 6px 0 10px; cursor: pointer;';
+            _setTip(_idboBtn, 'Space, age and number of entries of every part of the cache, with a chart and delete buttons');
+            _idboBtn.addEventListener('click', () => _idbOverviewOpen(_idboBtn));
+            body.appendChild(_idboBtn);
 
             // Tag placeholder <td> cells with their data-id so we can fill them in.
             _idbPlaceholderRows.forEach(row => {
@@ -62040,6 +62060,11 @@ a { color: #1565c0; }`;
     // row-count stat — which still independently gates its OWN data-mbtt via
     // sa_enable_count_stat_tooltip at the point it's set, further below.
     _initStatTooltip(); // create the custom #mb-stat-tooltip hover system once
+    // 💾 Browser cache overview from the Tampermonkey menu too (the callback
+    // runs long after the IIFE, so the _idbo* state it reads is initialised).
+    if (typeof GM_registerMenuCommand === 'function') {
+        GM_registerMenuCommand('💾 Browser cache', () => _idbOverviewOpen(null));
+    }
     initReleaseGroupLink(); // org/live-bootleg.org 4a: no request, the name is in the page
     initEventRgTooltip(); // the "#" cell's event card: delegated, requests only on hover
 
@@ -65824,9 +65849,11 @@ a { color: #1565c0; }`;
                    `<li><time>${e.t}</time><span class="mb-tt-ajlog-${e.kind || 'n'}">${_ajEsc(e.msg)}</span></li>`).join('')
                + '</ul>';
         }
-        if (s.actions && s.actions.length) {
+        // Every card that shows cache rows also offers the full overview.
+        const actions = (s.actions || []).concat(s.cache && s.cache.length ? [{ id: '__idb', label: '💾 Cache overview' }] : []);
+        if (actions.length) {
             h += '<div class="mb-tt-ajacts">'
-               + s.actions.map(a => `<button type="button" class="mb-tt-ajact${a.kind ? ' mb-tt-ajact-' + _ajEsc(a.kind) : ''}" data-mb-aj-act="${_ajEsc(a.id)}">${_ajEsc(a.label)}</button>`).join('')
+               + actions.map(a => `<button type="button" class="mb-tt-ajact${a.kind ? ' mb-tt-ajact-' + _ajEsc(a.kind) : ''}" data-mb-aj-act="${_ajEsc(a.id)}">${_ajEsc(a.label)}</button>`).join('')
                + '</div>';
         }
         h += `<div class="mb-tt-foot">${s.foot ? _ajEsc(s.foot) : `<kbd>Esc</kbd> closes · hover ${_ajEsc(anchorText)} to reopen`}</div>`;
@@ -65854,6 +65881,11 @@ a { color: #1565c0; }`;
         el.addEventListener('click', (e) => {
             const b = e.target.closest('[data-mb-aj-act]');
             if (!b || !_ajPop.openId) return;
+            if (b.dataset.mbAjAct === '__idb') {
+                _ajHide();
+                _idbOverviewOpen(null);
+                return;
+            }
             const job = _ajJobs.get(_ajPop.openId);
             const key = _ajPop.openId.split('#')[0];
             const p = _ajProviders.get(key);
@@ -101904,7 +101936,8 @@ a { color: #1565c0; }`;
         }
         Lib.configureSettings({
             functionRegistry: {
-                '_openEditPinnedFilterListFromSettings': _openEditPinnedFilterListFromSettings
+                '_openEditPinnedFilterListFromSettings': _openEditPinnedFilterListFromSettings,
+                '_idbOverviewOpenFromSettings': _idbOverviewOpenFromSettings
             },
             beforeOpen: _injectSettingsConfigButtons
         });
@@ -105743,6 +105776,575 @@ a { color: #1565c0; }`;
                 } catch (_) { resolve(0); }
             }))
             .catch(() => 0);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 💾 Browser cache overview (_idbo*) — everything the script keeps in this
+    // browser's IndexedDB, for the user: per part (object store) how many
+    // entries, roughly how much space, how old, what is past its keep time;
+    // a donut of the space; a drill-down with every key; deletes (expired,
+    // older than N days, one part, one entry, everything), each confirmed
+    // inside the dialog. Opened from ⚙️ Settings (sa_fn_idb_overview), the 📊
+    // Statistics panel, a progress card's 💾 Cache rows and the Tampermonkey
+    // menu. Mockup agreed 2026-10-10 (https://claude.ai/artifact/4UsPjhkP1gN6cb9wCnQw72).
+    // Talks to nothing but IndexedDB.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /** Days from a numeric TTL setting, `fallback` when unset/invalid. */
+    function _idboDays(v, fallback) {
+        return typeof v === 'number' && v > 0 ? v : fallback;
+    }
+
+    /**
+     * The parts the overview lists, in display order: which database, which
+     * store, a user-facing name, a colour, how its records stamp their age, and
+     * its keep time. A function, not a const, so nothing here is read before
+     * the database constants it names are initialised.
+     *
+     * @returns {Array<{id: string, db: string, dbLabel: string, store: string, label: string,
+     *                  color: string, ttlDays: number, open: function(): Promise<IDBDatabase>}>}
+     */
+    function _idboParts() {
+        const art = { db: _ART_IDB_NAME, dbLabel: 'art cache', open: _artOpenIdb };
+        const dp = { db: _DP_IDB_NAME, dbLabel: 'link previews', open: _dpOpenIdb };
+        const S = Lib.settings;
+        return [
+            { ...art, id: 'images', store: 'images', label: 'Cover art images', color: '#b5654a', ttlDays: _idboDays(S.sa_art_idb_image_ttl_days, 30) },
+            { ...art, id: 'metadata', store: 'metadata', label: 'Cover art lists', color: '#d49a5a', ttlDays: _idboDays(S.sa_art_idb_metadata_ttl_days, 30) },
+            { ...art, id: 'rel-ws2', store: 'rel-ws2', label: 'Relationships', color: '#4f7f9a', ttlDays: _idboDays(S.sa_rel_idb_ttl_days, 30) },
+            { ...art, id: 'ms-rec-len', store: 'ms-rec-len', label: 'Millisecond lengths', color: '#6f8f5e', ttlDays: _idboDays(S.sa_ms_idb_ttl_days, 30) },
+            { ...art, id: 'recof-ws2', store: 'recof-ws2', label: 'Recording of', color: '#8a6ca0', ttlDays: _idboDays(S.sa_recording_of_ttl_days, 30) },
+            { ...art, id: 'artist-works', store: 'artist-works', label: 'Artist work lists', color: '#c2a64a', ttlDays: _idboDays(S.sa_recording_of_works_ttl_days, 30) },
+            { ...dp, id: 'pages', store: 'pages', label: 'Link preview pages', color: '#7a8c8c', ttlDays: _DP_TTL_MS / 86400000 },
+        ];
+    }
+
+    /**
+     * When a record was stored: the stores stamp `storedAt` (artwork), `ts`
+     * (Web Service answers) or `at` (link previews).
+     * @param {*} v - The stored value.
+     * @returns {number} ms since the epoch, 0 when unknown.
+     */
+    function _idboStamp(v) {
+        return (v && (v.storedAt || v.ts || v.at)) || 0;
+    }
+
+    /**
+     * A rough size of one record: its JSON length, plus the byte size of any
+     * Blob in it (artwork images). An estimate — the browser's own on-disk
+     * size includes indexes and compression — but good enough to compare parts.
+     *
+     * @param {*} v
+     * @returns {number}
+     */
+    function _idboBytes(v) {
+        let blobs = 0;
+        let json = '';
+        try {
+            json = JSON.stringify(v, (k, x) => {
+                if (typeof Blob !== 'undefined' && x instanceof Blob) { blobs += x.size; return 0; }
+                return x;
+            }) || '';
+        } catch (_) { /* a value JSON cannot represent: count the blobs only */ }
+        return json.length + blobs;
+    }
+
+    /**
+     * Age bucket of a record: 0 under a day, 1 up to 7 days, 2 older but
+     * within its keep time, 3 past its keep time (expired).
+     * @param {number} ageMs
+     * @param {number} ttlDays
+     * @returns {number}
+     */
+    function _idboBucket(ageMs, ttlDays) {
+        if (ageMs > ttlDays * 86400000) return 3;
+        if (ageMs < 86400000) return 0;
+        if (ageMs < 7 * 86400000) return 1;
+        return 2;
+    }
+
+    /**
+     * Reads one part completely with a cursor: count, size estimate, age
+     * buckets, oldest/newest, and every key with its age and size (the
+     * drill-down's list). A part whose database or store cannot be opened
+     * reads as empty with `error` set.
+     *
+     * @param {object} part - One `_idboParts()` entry.
+     * @returns {Promise<object>}
+     */
+    function _idboScanPart(part) {
+        const out = { ...part, count: 0, bytes: 0, buckets: [0, 0, 0, 0], oldest: 0, newest: 0, keys: [], error: '' };
+        return part.open().then(db => new Promise(resolve => {
+            let req;
+            try {
+                req = db.transaction(part.store, 'readonly').objectStore(part.store).openCursor();
+            } catch (err) {
+                out.error = err.message || String(err);
+                resolve(out);
+                return;
+            }
+            const now = Date.now();
+            req.onsuccess = (ev) => {
+                const c = ev.target.result;
+                if (!c) { resolve(out); return; }
+                const ts = _idboStamp(c.value);
+                const bytes = _idboBytes(c.value);
+                out.count++;
+                out.bytes += bytes;
+                out.buckets[_idboBucket(ts ? now - ts : Infinity, part.ttlDays)]++;
+                if (ts && (!out.oldest || ts < out.oldest)) out.oldest = ts;
+                if (ts > out.newest) out.newest = ts;
+                out.keys.push({ key: c.primaryKey, ts, bytes });
+                c.continue();
+            };
+            req.onerror = () => { out.error = 'read failed'; resolve(out); };
+        })).catch(err => { out.error = err && err.message ? err.message : 'not available'; return out; });
+    }
+
+    /**
+     * Deletes the records of one part for which `keep` answers false, in one
+     * transaction. `keep` gets the record's stamp and key.
+     *
+     * @param {object} part
+     * @param {function(number, *): boolean} doomed - true = delete.
+     * @returns {Promise<number>} How many were deleted.
+     */
+    function _idboDeleteWhere(part, doomed) {
+        return part.open().then(db => new Promise(resolve => {
+            let n = 0;
+            const req = db.transaction(part.store, 'readwrite').objectStore(part.store).openCursor();
+            req.onsuccess = (ev) => {
+                const c = ev.target.result;
+                if (!c) { resolve(n); return; }
+                if (doomed(_idboStamp(c.value), c.primaryKey)) { c.delete(); n++; }
+                c.continue();
+            };
+            req.onerror = () => resolve(n);
+        })).catch(() => 0);
+    }
+
+    /**
+     * Empties one part.
+     * @param {object} part
+     * @returns {Promise<void>}
+     */
+    function _idboClear(part) {
+        return part.open().then(db => new Promise(resolve => {
+            const tx = db.transaction(part.store, 'readwrite');
+            tx.objectStore(part.store).clear();
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => resolve();
+        })).catch(() => {});
+    }
+
+    /** Dialog state while it is open. */
+    const _idbo = { el: null, parts: [], pick: 'images', pending: null, opener: null, estimate: null, query: '' };
+
+    /**
+     * Formats a byte count.
+     * @param {number} b
+     * @returns {string}
+     */
+    function _idboFmtB(b) {
+        if (b >= 1e9) return `${(b / 1e9).toFixed(2)} GB`;
+        if (b >= 1e6) return `${(b / 1e6).toFixed(1)} MB`;
+        if (b >= 1e3) return `${Math.round(b / 1e3)} kB`;
+        return `${Math.round(b)} B`;
+    }
+
+    /**
+     * Formats an age in ms as hours or days.
+     * @param {number} ms
+     * @returns {string}
+     */
+    function _idboFmtAge(ms) {
+        if (!ms || ms < 0) return '—';
+        const d = ms / 86400000;
+        if (d < 1) return `${Math.max(1, Math.round(d * 24))} h`;
+        return `${Math.round(d)} day${Math.round(d) === 1 ? '' : 's'}`;
+    }
+
+    /** Injects the dialog's stylesheet once (lazily, so no page carries it unused). */
+    function _idboEnsureStyle() {
+        if (document.getElementById('mb-idbo-style')) return;
+        const st = GM_addStyle(`
+            #mb-idb-overview { position: fixed; inset: 0; z-index: 2147483200; background: rgba(40, 30, 20, 0.35); display: flex; align-items: flex-start; justify-content: center; padding: 4vh 12px; overflow: auto; }
+            #mb-idb-overview .mb-idbo-dlg { width: min(1040px, 100%); background: #fbf8f1; color: #2b2622; border: 1px solid #d9cfbd; border-radius: 4px; font: 14px/1.5 Georgia, "Times New Roman", Times, serif; box-shadow: 0 1px 0 #e9e1d1, 0 18px 40px -16px rgba(60,40,20,0.45); outline: none; }
+            #mb-idb-overview .mb-idbo-h { display: flex; align-items: baseline; gap: 10px; padding: 12px 16px; border-bottom: 1px solid #d9cfbd; flex-wrap: wrap; }
+            #mb-idb-overview .mb-idbo-h b { font-size: 1.18em; flex: 1; min-width: 12ch; }
+            #mb-idb-overview .mb-idbo-dim { color: #7a6d5c; font-size: 0.88em; }
+            #mb-idb-overview .mb-idbo-b { padding: 14px 16px 16px; display: grid; gap: 16px; }
+            #mb-idb-overview .mb-idbo-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+            #mb-idb-overview .mb-idbo-stat { border: 1px solid #d9cfbd; border-radius: 3px; padding: 8px 10px; background: #fffdf8; }
+            #mb-idb-overview .mb-idbo-stat .k { font: 600 11px/1.3 system-ui, Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.06em; color: #7a6d5c; }
+            #mb-idb-overview .mb-idbo-stat .v { font-size: 1.35em; font-weight: 700; font-variant-numeric: tabular-nums; }
+            #mb-idb-overview .mb-idbo-quota { height: 6px; background: #ece4d4; border-radius: 3px; overflow: hidden; margin-top: 5px; display: flex; }
+            #mb-idb-overview .mb-idbo-quota span { display: block; height: 100%; }
+            #mb-idb-overview .mb-idbo-top { display: grid; grid-template-columns: minmax(0, 240px) minmax(0, 1fr); gap: 18px; align-items: center; }
+            #mb-idb-overview .mb-idbo-donut { position: relative; max-width: 240px; margin: 0 auto; width: 100%; }
+            #mb-idb-overview .mb-idbo-donut svg { width: 100%; height: auto; display: block; }
+            #mb-idb-overview .mb-idbo-donut-c { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; }
+            #mb-idb-overview .mb-idbo-donut-c b { font-size: 1.4em; font-variant-numeric: tabular-nums; }
+            #mb-idb-overview .mb-idbo-seg { cursor: pointer; opacity: 0.4; transition: opacity 0.15s; }
+            #mb-idb-overview .mb-idbo-seg:hover, #mb-idb-overview .mb-idbo-seg.on, #mb-idb-overview .mb-idbo-seg:focus-visible { opacity: 1; outline: none; }
+            #mb-idb-overview .mb-idbo-legend { display: grid; gap: 3px; }
+            #mb-idb-overview .mb-idbo-legend button { all: unset; display: grid; grid-template-columns: 12px minmax(0,1fr) max-content max-content; gap: 8px; align-items: center; padding: 3px 6px; border-radius: 3px; cursor: pointer; font-variant-numeric: tabular-nums; }
+            #mb-idb-overview .mb-idbo-legend button:hover, #mb-idb-overview .mb-idbo-legend button.on { background: #f1e9da; }
+            #mb-idb-overview .mb-idbo-legend button:focus-visible { outline: 2px solid #2f5f9e; }
+            #mb-idb-overview .mb-idbo-sw { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+            #mb-idb-overview .mb-idbo-key { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.86em; color: #7a6d5c; margin-bottom: 6px; }
+            #mb-idb-overview .mb-idbo-key i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; }
+            #mb-idb-overview .mb-idbo-scroll { overflow-x: auto; border: 1px solid #d9cfbd; border-radius: 3px; background: #fffdf8; }
+            #mb-idb-overview table.mb-idbo-t { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 13px; }
+            #mb-idb-overview table.mb-idbo-t th { font: 600 11px/1.3 system-ui, Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.05em; color: #7a6d5c; text-align: left; padding: 7px 8px; border-bottom: 1px solid #d9cfbd; white-space: nowrap; background: none; }
+            #mb-idb-overview table.mb-idbo-t td { padding: 6px 8px; border-bottom: 1px solid #efe7d8; vertical-align: middle; font-variant-numeric: tabular-nums; }
+            #mb-idb-overview table.mb-idbo-t tr.mb-idbo-row { cursor: pointer; }
+            #mb-idb-overview table.mb-idbo-t tr.mb-idbo-row:hover td, #mb-idb-overview table.mb-idbo-t tr.on td { background: #f6efe1; }
+            #mb-idb-overview .r { text-align: right; }
+            #mb-idb-overview .mb-idbo-agebar { display: flex; height: 9px; width: 130px; border-radius: 2px; overflow: hidden; border: 1px solid #d9cfbd; background: #fff; }
+            #mb-idb-overview .mb-idbo-agebar span, #mb-idb-overview .mb-idbo-hbar { display: block; height: 100%; }
+            #mb-idb-overview .mb-idbo-who small { display: block; color: #7a6d5c; font: 11px ui-monospace, Consolas, monospace; }
+            #mb-idb-overview .mb-idbo-act { font: 600 11.5px/1 system-ui, Arial, sans-serif; padding: 5px 8px; border-radius: 3px; border: 1px solid #cbbfa9; background: #fff; color: #2b2622; cursor: pointer; box-shadow: 0 1px 0 #cbbfa9; white-space: nowrap; }
+            #mb-idb-overview .mb-idbo-act:hover { background: #f4eee2; }
+            #mb-idb-overview .mb-idbo-act.danger { color: #9b2218; border-color: #e2b4ae; }
+            #mb-idb-overview .mb-idbo-act.primary { color: #2f5f9e; border-color: #b9c9e3; }
+            #mb-idb-overview .mb-idbo-act:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 1px; }
+            #mb-idb-overview .mb-idbo-acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+            #mb-idb-overview .mb-idbo-pill { display: inline-block; border: 1px solid #d9cfbd; border-radius: 3px; padding: 0 5px; font: 700 10.5px/1.6 system-ui, Arial, sans-serif; letter-spacing: 0.04em; text-transform: uppercase; background: #efe6d4; color: #4a3f33; }
+            #mb-idb-overview .mb-idbo-pill.warn { color: #9a6a00; background: #fbf3dc; border-color: #e3d09a; }
+            #mb-idb-overview .mb-idbo-drill { border: 1px solid #d9cfbd; border-radius: 3px; padding: 12px; background: #fffdf8; display: grid; gap: 12px; }
+            #mb-idb-overview .mb-idbo-drill h3 { margin: 0; font-size: 1.05em; border: none; padding: 0; }
+            #mb-idb-overview .mb-idbo-grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+            #mb-idb-overview .mb-idbo-hist { display: grid; grid-template-columns: max-content minmax(0,1fr) max-content; gap: 4px 8px; align-items: center; font-size: 0.9em; font-variant-numeric: tabular-nums; }
+            #mb-idb-overview .mb-idbo-hbar { height: 12px; border-radius: 2px; min-width: 1px; }
+            #mb-idb-overview .mb-idbo-keys { font: 12px/1.45 ui-monospace, Consolas, monospace; max-height: 14em; overflow: auto; border: 1px solid #efe7d8; border-radius: 3px; }
+            #mb-idb-overview .mb-idbo-keys > div { display: grid; grid-template-columns: minmax(0,1fr) max-content max-content max-content; gap: 10px; padding: 3px 6px; border-bottom: 1px solid #f3ecdf; align-items: center; }
+            #mb-idb-overview .mb-idbo-keys > div > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            #mb-idb-overview .mb-idbo-x { all: unset; cursor: pointer; color: #9b2218; font: 700 12px/1 system-ui, Arial, sans-serif; padding: 0 4px; }
+            #mb-idb-overview .mb-idbo-x:focus-visible { outline: 2px solid #2f5f9e; }
+            #mb-idb-overview input.mb-idbo-f, #mb-idb-overview select.mb-idbo-f { font: 13px system-ui, Arial, sans-serif; padding: 4px 6px; border: 1px solid #cbbfa9; border-radius: 3px; background: #fff; color: #2b2622; }
+            #mb-idb-overview .mb-idbo-confirm { border: 1px solid #e2b4ae; background: #fbefec; border-radius: 3px; padding: 8px 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+            #mb-idb-overview .mb-idbo-toast { font-size: 0.9em; color: #3f7a3a; min-height: 1.4em; }
+            #mb-idb-overview .mb-idbo-f-row { padding: 10px 16px; border-top: 1px solid #d9cfbd; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; font-size: 0.88em; color: #7a6d5c; }
+            @media (max-width: 720px) { #mb-idb-overview .mb-idbo-top, #mb-idb-overview .mb-idbo-grid2 { grid-template-columns: 1fr; } }
+        `);
+        st.id = 'mb-idbo-style';
+    }
+
+    /** Age-bucket colours and labels, shared by the bars, the key and the histogram. */
+    const _IDBO_AGE = [
+        ['#5f9a59', 'under 1 day'], ['#9cbf73', '1–7 days'], ['#d9c26a', 'older, within keep time'], ['#c0503f', 'past keep time (expired)']
+    ];
+
+    /**
+     * Opens the overview (or brings an open one forward) and scans every
+     * part. Safe on any page and any host: it only reads IndexedDB.
+     *
+     * @param {?Element} [opener] - Focus returns here on close.
+     * @returns {Promise<void>}
+     */
+    async function _idbOverviewOpen(opener) {
+        _idboEnsureStyle();
+        if (!_idbo.el || !_idbo.el.isConnected) {
+            const el = document.createElement('div');
+            el.id = 'mb-idb-overview';
+            el.innerHTML = '<div class="mb-idbo-dlg" role="dialog" aria-modal="true" aria-labelledby="mb-idbo-title" tabindex="-1"></div>';
+            el.addEventListener('mousedown', (e) => { if (e.target === el) _idbOverviewClose(); });
+            el.addEventListener('click', _idboOnClick);
+            el.addEventListener('input', (e) => {
+                if (e.target.id === 'mb-idbo-q') { _idbo.query = e.target.value; _idboPaintKeys(); }
+            });
+            el.addEventListener('keydown', (e) => {
+                if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('mb-idbo-seg')) {
+                    e.preventDefault();
+                    _idbo.pick = e.target.dataset.part;
+                    _idboPaint();
+                }
+            });
+            document.body.appendChild(el);
+            _idbo.el = el;
+            window.addEventListener('keydown', _idboOnKey, true);
+        }
+        _idbo.opener = opener || document.activeElement;
+        _idbo.pending = null;
+        _idbo.parts = [];
+        _idboPaintShell('Reading the browser cache…');
+        _idbo.el.querySelector('.mb-idbo-dlg').focus();
+        await _idboRescan();
+    }
+
+    /** Closes the overview and gives focus back. */
+    function _idbOverviewClose() {
+        if (!_idbo.el) return;
+        window.removeEventListener('keydown', _idboOnKey, true);
+        _idbo.el.remove();
+        _idbo.el = null;
+        if (_idbo.opener && _idbo.opener.isConnected && typeof _idbo.opener.focus === 'function') _idbo.opener.focus();
+    }
+
+    /**
+     * Esc: cancels an open confirmation first, then closes the dialog.
+     * @param {KeyboardEvent} e
+     */
+    function _idboOnKey(e) {
+        if (e.key !== 'Escape' || !_idbo.el) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (_idbo.pending) { _idbo.pending = null; _idboPaintConfirm(); return; }
+        _idbOverviewClose();
+    }
+
+    /** Re-reads every part (and the browser's own estimate), then repaints. */
+    async function _idboRescan() {
+        const parts = _idboParts();
+        const scanned = [];
+        for (const p of parts) {
+            _idboPaintShell(`Reading “${p.label}”…`);
+            scanned.push(await _idboScanPart(p));
+        }
+        try {
+            _idbo.estimate = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null;
+        } catch (_) {
+            _idbo.estimate = null;
+        }
+        _idbo.parts = scanned;
+        if (!_idbo.parts.find(p => p.id === _idbo.pick && p.count) && _idbo.parts.find(p => p.count)) {
+            _idbo.pick = _idbo.parts.find(p => p.count).id;
+        }
+        _idboPaint();
+    }
+
+    /**
+     * Paints the frame alone, with a status line (while scanning).
+     * @param {string} status
+     */
+    function _idboPaintShell(status) {
+        if (!_idbo.el) return;
+        const dlg = _idbo.el.querySelector('.mb-idbo-dlg');
+        if (_idbo.parts.length) return; // keep the last full view while a rescan runs
+        dlg.innerHTML = `<div class="mb-idbo-h"><b id="mb-idbo-title">💾 Browser cache</b><span class="mb-idbo-dim">${_ajEsc(location.hostname)} · this browser only · <kbd>Esc</kbd> closes</span></div>`
+            + `<div class="mb-idbo-b"><div class="mb-idbo-dim" data-mb-idbo-status>${_ajEsc(status)}</div></div>`;
+    }
+
+    /** Paints the whole dialog from `_idbo.parts`. */
+    function _idboPaint() {
+        if (!_idbo.el) return;
+        const parts = _idbo.parts;
+        const total = parts.reduce((s, p) => s + p.bytes, 0);
+        const keys = parts.reduce((s, p) => s + p.count, 0);
+        const expired = parts.reduce((s, p) => s + p.buckets[3], 0);
+        const fmtN = n => Number(n).toLocaleString('en-US');
+        const est = _idbo.estimate;
+        const sweep = _artIdbLastSweep.ts
+            ? `${new Date(_artIdbLastSweep.ts).toLocaleTimeString()} — removed ${fmtN(_artIdbLastSweep.deleted)}` : 'not run in this page yet';
+        const quota = est && est.quota
+            ? `<div class="mb-idbo-quota" title="this script / the rest of the site / free">`
+              + `<span style="width:${Math.min(100, total / est.quota * 100).toFixed(2)}%;background:#ba478f"></span>`
+              + `<span style="width:${Math.max(0, Math.min(100, ((est.usage || 0) - total) / est.quota * 100)).toFixed(2)}%;background:#c9bda6"></span></div>` : '';
+        const dbCount = new Set(parts.map(p => p.db)).size;
+        let h = `<div class="mb-idbo-h"><b id="mb-idbo-title">💾 Browser cache</b><span class="mb-idbo-dim">${_ajEsc(location.hostname)} · this browser only · <kbd>Esc</kbd> closes</span>`
+              + `<button type="button" class="mb-idbo-act" data-idbo="close" aria-label="Close">✕</button></div><div class="mb-idbo-b">`;
+        h += '<div class="mb-idbo-strip">'
+           + `<div class="mb-idbo-stat" data-idbo-stat="share"><div class="k">Script's share</div><div class="v">${_idboFmtB(total)}</div><div class="mb-idbo-dim">${parts.length} parts in ${dbCount} databases</div></div>`
+           + `<div class="mb-idbo-stat" data-idbo-stat="entries"><div class="k">Entries</div><div class="v">${fmtN(keys)}</div><div class="mb-idbo-dim">${fmtN(expired)} past their keep time</div></div>`
+           + `<div class="mb-idbo-stat"><div class="k">Site storage</div><div class="v">${est && est.usage ? _idboFmtB(est.usage) : '—'}</div><div class="mb-idbo-dim">${est && est.quota ? `of ${_idboFmtB(est.quota)} the browser allows` : 'the browser does not say'}</div>${quota}</div>`
+           + `<div class="mb-idbo-stat"><div class="k">Last clean-up</div><div class="v" style="font-size:1em">${_ajEsc(sweep)}</div><div class="mb-idbo-dim">expired entries are removed in the background</div></div>`
+           + '</div>';
+        h += `<div class="mb-idbo-top"><div class="mb-idbo-donut">${_idboDonut(parts, total)}</div><div class="mb-idbo-legend">`
+           + parts.map(p => `<button type="button" data-part="${p.id}" class="${p.id === _idbo.pick ? 'on' : ''}">`
+               + `<span class="mb-idbo-sw" style="background:${p.color}"></span><span>${_ajEsc(p.label)} <span class="mb-idbo-dim">· ${_ajEsc(p.dbLabel)}</span></span>`
+               + `<span class="mb-idbo-dim r">${_idboFmtB(p.bytes)}</span><span class="r"><b>${total ? (p.bytes / total * 100).toFixed(1) : '0.0'} %</b></span></button>`).join('')
+           + '</div></div>';
+        h += '<div><div class="mb-idbo-key">' + _IDBO_AGE.map(([c, l]) => `<span><i style="background:${c}"></i>${l}</span>`).join('') + '</div>'
+           + '<div class="mb-idbo-scroll"><table class="mb-idbo-t"><thead><tr><th>Part</th><th class="r">Entries</th><th class="r">Size</th><th>Age</th><th class="r">Oldest</th><th class="r">Kept</th><th>Actions</th></tr></thead><tbody>'
+           + parts.map(p => {
+               const n = p.count || 1;
+               const bar = p.buckets.map((c, i) => `<span style="width:${c / n * 100}%;background:${_IDBO_AGE[i][0]}"></span>`).join('');
+               const tip = p.buckets.map((c, i) => `${_IDBO_AGE[i][1]}: ${fmtN(c)}`).join(' · ');
+               return `<tr class="mb-idbo-row${p.id === _idbo.pick ? ' on' : ''}" data-part="${p.id}">`
+                   + `<td><div class="mb-idbo-who"><span class="mb-idbo-sw" style="background:${p.color}"></span> ${_ajEsc(p.label)}<small>${_ajEsc(p.dbLabel)} · ${_ajEsc(p.store)}${p.error ? ' · ' + _ajEsc(p.error) : ''}</small></div></td>`
+                   + `<td class="r" data-idbo-count>${fmtN(p.count)}</td><td class="r">${_idboFmtB(p.bytes)}</td>`
+                   + `<td><div class="mb-idbo-agebar" title="${_ajEsc(tip)}">${bar}</div></td>`
+                   + `<td class="r">${p.oldest ? _idboFmtAge(Date.now() - p.oldest) : '—'}</td><td class="r">${Math.round(p.ttlDays)} days</td>`
+                   + '<td><div class="mb-idbo-acts">'
+                   + (p.buckets[3] ? `<button type="button" class="mb-idbo-act primary" data-idbo="expired" data-part="${p.id}">Delete ${fmtN(p.buckets[3])} expired</button>` : '<span class="mb-idbo-pill">nothing expired</span>')
+                   + (p.count ? `<button type="button" class="mb-idbo-act danger" data-idbo="clear" data-part="${p.id}">Clear</button>` : '')
+                   + '</div></td></tr>';
+           }).join('')
+           + '</tbody></table></div></div>';
+        h += '<div class="mb-idbo-drill" data-idbo-drill></div>';
+        h += '<div data-idbo-confirm></div><div class="mb-idbo-toast" aria-live="polite" data-idbo-toast></div></div>';
+        h += '<div class="mb-idbo-f-row"><div class="mb-idbo-acts">'
+           + `<button type="button" class="mb-idbo-act primary" data-idbo="all-expired"${expired ? '' : ' disabled'}>Delete everything expired</button>`
+           + '<span class="mb-idbo-acts">Delete entries older than <select class="mb-idbo-f" id="mb-idbo-older" aria-label="Age">'
+           + '<option value="7">7 days</option><option value="30" selected>30 days</option><option value="90">90 days</option></select>'
+           + '<button type="button" class="mb-idbo-act" data-idbo="older">Delete</button></span>'
+           + `<button type="button" class="mb-idbo-act danger" data-idbo="all"${keys ? '' : ' disabled'}>Clear all</button></div>`
+           + '<span>Sizes are estimates. The browser counts the whole site, MusicBrainz\'s own storage included. This page keeps what it already loaded.</span></div>';
+        const dlg = _idbo.el.querySelector('.mb-idbo-dlg');
+        const toast = (dlg.querySelector('[data-idbo-toast]') || {}).textContent || '';
+        dlg.innerHTML = h;
+        dlg.querySelector('[data-idbo-toast]').textContent = toast;
+        _idboPaintDrill();
+        _idboPaintConfirm();
+    }
+
+    /**
+     * The donut: one arc per part with data, a minimum visible arc for tiny
+     * parts, the picked part's size and share in the middle.
+     * @param {Array<object>} parts
+     * @param {number} total
+     * @returns {string} SVG markup.
+     */
+    function _idboDonut(parts, total) {
+        const R = 80, C = 2 * Math.PI * R;
+        const withData = parts.filter(p => p.bytes > 0);
+        const pick = parts.find(p => p.id === _idbo.pick) || parts[0];
+        if (!withData.length) {
+            return '<svg viewBox="0 0 220 220" role="img" aria-label="The cache is empty"><circle r="80" cx="110" cy="110" fill="none" stroke="#e7dfcf" stroke-width="34"/></svg>'
+                 + '<div class="mb-idbo-donut-c"><b>empty</b></div>';
+        }
+        const fr = withData.map(p => Math.max(p.bytes / total, 0.012));
+        const sum = fr.reduce((a, b) => a + b, 0);
+        let off = 0;
+        const segs = withData.map((p, i) => {
+            const len = fr[i] / sum * C;
+            const seg = `<circle class="mb-idbo-seg${p.id === _idbo.pick ? ' on' : ''}" data-part="${p.id}" r="${R}" cx="110" cy="110" fill="none" stroke="${p.color}" stroke-width="34"`
+                + ` stroke-dasharray="${Math.max(0.5, len - 1.5).toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 110 110)"`
+                + ` tabindex="0" role="button" aria-label="${_ajEsc(p.label)}: ${_idboFmtB(p.bytes)}"><title>${_ajEsc(p.label)} — ${_idboFmtB(p.bytes)}, ${p.count.toLocaleString('en-US')} entries</title></circle>`;
+            off += len;
+            return seg;
+        }).join('');
+        return `<svg viewBox="0 0 220 220">${segs}</svg><div class="mb-idbo-donut-c"><b>${_idboFmtB(pick.bytes)}</b>`
+             + `<span class="mb-idbo-dim">${_ajEsc(pick.label)}</span><span class="mb-idbo-dim">${total ? (pick.bytes / total * 100).toFixed(1) : '0.0'} %</span></div>`;
+    }
+
+    /** Paints the drill-down of the picked part. */
+    function _idboPaintDrill() {
+        const box = _idbo.el && _idbo.el.querySelector('[data-idbo-drill]');
+        const p = _idbo.parts.find(x => x.id === _idbo.pick);
+        if (!box || !p) return;
+        const max = Math.max(...p.buckets, 1);
+        const fmtN = n => Number(n).toLocaleString('en-US');
+        box.innerHTML = `<h3>${_ajEsc(p.label)} <span class="mb-idbo-pill">${_ajEsc(p.dbLabel)} · ${_ajEsc(p.store)}</span>`
+            + (p.buckets[3] ? ` <span class="mb-idbo-pill warn">${fmtN(p.buckets[3])} expired</span>` : '') + '</h3>'
+            + '<div class="mb-idbo-grid2"><div><div class="mb-idbo-hist">'
+            + p.buckets.map((c, i) => `<span>${_IDBO_AGE[i][1]}</span><div class="mb-idbo-hbar" style="width:${c / max * 100}%;background:${_IDBO_AGE[i][0]}"></div><span>${fmtN(c)}</span>`).join('')
+            + `</div><p class="mb-idbo-dim" style="margin:8px 0 0">Average entry ${_idboFmtB(p.bytes / Math.max(1, p.count))}. Entries older than ${Math.round(p.ttlDays)} days are asked for again the next time they are needed.</p></div>`
+            + `<div><div class="mb-idbo-acts" style="margin-bottom:6px"><input class="mb-idbo-f" id="mb-idbo-q" placeholder="Find an entry…" aria-label="Find an entry" value="${_ajEsc(_idbo.query)}"><span class="mb-idbo-dim">${fmtN(p.count)} entries</span></div>`
+            + '<div class="mb-idbo-keys" data-idbo-keys></div></div></div>';
+        _idboPaintKeys();
+    }
+
+    /** Paints the picked part's key list, filtered by the search box (first 200 matches). */
+    function _idboPaintKeys() {
+        const box = _idbo.el && _idbo.el.querySelector('[data-idbo-keys]');
+        const p = _idbo.parts.find(x => x.id === _idbo.pick);
+        if (!box || !p) return;
+        const q = _idbo.query.trim().toLowerCase();
+        const hits = q ? p.keys.filter(k => String(k.key).toLowerCase().includes(q)) : p.keys;
+        const now = Date.now();
+        box.innerHTML = hits.slice(0, 200).map((k, i) => `<div data-idbo-key-row><span title="${_ajEsc(String(k.key))}">${_ajEsc(String(k.key))}</span>`
+            + `<span>${k.ts ? _idboFmtAge(now - k.ts) : '—'}</span><span>${_idboFmtB(k.bytes)}</span>`
+            + `<button type="button" class="mb-idbo-x" data-idbo="key" data-i="${p.keys.indexOf(k)}" aria-label="Delete ${_ajEsc(String(k.key))}">✕</button></div>`).join('')
+            + (hits.length > 200 ? `<div><span class="mb-idbo-dim">… ${(hits.length - 200).toLocaleString('en-US')} more — type to narrow</span><span></span><span></span><span></span></div>` : '')
+            + (!hits.length ? '<div><span class="mb-idbo-dim">nothing here</span><span></span><span></span><span></span></div>' : '');
+    }
+
+    /** Paints (or removes) the in-dialog confirmation. */
+    function _idboPaintConfirm() {
+        const box = _idbo.el && _idbo.el.querySelector('[data-idbo-confirm]');
+        if (!box) return;
+        if (!_idbo.pending) { box.innerHTML = ''; return; }
+        box.innerHTML = `<div class="mb-idbo-confirm" role="alertdialog"><span>${_ajEsc(_idbo.pending.text)}</span>`
+            + '<button type="button" class="mb-idbo-act danger" data-idbo="yes">Delete</button>'
+            + '<button type="button" class="mb-idbo-act" data-idbo="no">Cancel</button></div>';
+        box.querySelector('[data-idbo="yes"]').focus();
+    }
+
+    /**
+     * Asks before a delete; `run` performs it and resolves to the toast text.
+     * @param {string} text
+     * @param {function(): Promise<string>} run
+     */
+    function _idboAsk(text, run) {
+        _idbo.pending = { text, run };
+        _idboPaintConfirm();
+    }
+
+    /**
+     * One delegated click handler for the whole dialog.
+     * @param {MouseEvent} e
+     */
+    function _idboOnClick(e) {
+        const t = e.target.closest('[data-idbo], [data-part]');
+        if (!t) return;
+        const act = t.dataset.idbo;
+        const fmtN = n => Number(n).toLocaleString('en-US');
+        const part = id => _idbo.parts.find(p => p.id === id);
+        const now = Date.now();
+        if (act === 'close') { _idbOverviewClose(); return; }
+        if (act === 'no') { _idbo.pending = null; _idboPaintConfirm(); return; }
+        if (act === 'yes') {
+            const job = _idbo.pending;
+            _idbo.pending = null;
+            _idboPaintConfirm();
+            if (job) job.run().then(msg => _idboRescan().then(() => {
+                const toast = _idbo.el && _idbo.el.querySelector('[data-idbo-toast]');
+                if (toast) toast.textContent = msg;
+            }));
+            return;
+        }
+        if (act === 'expired') {
+            const p = part(t.dataset.part);
+            _idboAsk(`Delete ${fmtN(p.buckets[3])} expired entries from “${p.label}”?`,
+                () => _idboDeleteWhere(p, ts => now - ts > p.ttlDays * 86400000).then(n => `Deleted ${fmtN(n)} entries from “${p.label}”.`));
+            return;
+        }
+        if (act === 'clear') {
+            const p = part(t.dataset.part);
+            _idboAsk(`Clear “${p.label}”: ${fmtN(p.count)} entries, about ${_idboFmtB(p.bytes)}? They are loaded again when needed.`,
+                () => _idboClear(p).then(() => `Cleared “${p.label}”, freed about ${_idboFmtB(p.bytes)}.`));
+            return;
+        }
+        if (act === 'key') {
+            const p = part(_idbo.pick);
+            const k = p && p.keys[Number(t.dataset.i)];
+            if (!k) return;
+            _idboAsk(`Delete this entry from “${p.label}”? ${String(k.key)}`,
+                () => _idboDeleteWhere(p, (ts, key) => key === k.key || String(key) === String(k.key)).then(n => `Deleted ${fmtN(n)} entr${n === 1 ? 'y' : 'ies'}.`));
+            return;
+        }
+        if (act === 'all-expired') {
+            const n = _idbo.parts.reduce((s, p) => s + p.buckets[3], 0);
+            _idboAsk(`Delete all ${fmtN(n)} expired entries, in every part?`,
+                () => Promise.all(_idbo.parts.map(p => _idboDeleteWhere(p, ts => now - ts > p.ttlDays * 86400000)))
+                    .then(ns => `Deleted ${fmtN(ns.reduce((a, b) => a + b, 0))} expired entries.`));
+            return;
+        }
+        if (act === 'older') {
+            const d = Number((_idbo.el.querySelector('#mb-idbo-older') || {}).value || 30);
+            _idboAsk(`Delete every entry older than ${d} days, in every part?`,
+                () => Promise.all(_idbo.parts.map(p => _idboDeleteWhere(p, ts => now - ts > d * 86400000)))
+                    .then(ns => `Deleted ${fmtN(ns.reduce((a, b) => a + b, 0))} entries older than ${d} days.`));
+            return;
+        }
+        if (act === 'all') {
+            const total = _idbo.parts.reduce((s, p) => s + p.bytes, 0);
+            _idboAsk(`Clear everything the script keeps in this browser (about ${_idboFmtB(total)})? Settings are not touched.`,
+                () => Promise.all(_idbo.parts.map(_idboClear)).then(() => 'Cleared every part.'));
+            return;
+        }
+        if (t.dataset.part && !e.target.closest('.mb-idbo-acts')) {
+            _idbo.pick = t.dataset.part;
+            _idbo.query = '';
+            _idboPaint();
+        }
+    }
+
+    /** The ⚙️ Settings entry (`sa_fn_idb_overview`). */
+    function _idbOverviewOpenFromSettings() {
+        _idbOverviewOpen(null);
     }
 
     /**
@@ -119610,6 +120212,14 @@ a { color: #1565c0; }`;
              * provider and drive a job through the shipping framework without
              * a network-backed feature in the way.
              */
+            /** The 💾 browser cache overview (`_idbo*`). */
+            idbOverview: {
+                open: () => _idbOverviewOpen(null),
+                close: () => _idbOverviewClose(),
+                /** @returns {Promise<Array<{id: string, count: number, expired: number, bytes: number}>>} A fresh scan, no dialog. */
+                scan: () => Promise.all(_idboParts().map(_idboScanPart))
+                    .then(ps => ps.map(p => ({ id: p.id, count: p.count, expired: p.buckets[3], bytes: p.bytes, error: p.error }))),
+            },
             asyncPop: {
                 register: (key, provider) => _ajRegister(key, provider),
                 start: (key, scope, opts) => { _ajStart(key, scope || null, opts); },

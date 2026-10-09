@@ -81,14 +81,20 @@ something new:
   failing; `tests/support/authState.js` warns when the file exists but has
   expired.
 
-The `vz-mb-saed-art-cache` IndexedDB database is shared by three unrelated
+The `vz-mb-saed-art-cache` IndexedDB database is shared by four unrelated
 features purely so they get one sweep/count/clear code path: `images` +
-`metadata` (artwork), `rel-ws2` (Relationships column), and `ms-rec-len`
-(millisecond Length). Adding a store means bumping `_ART_IDB_VERSION`. Note
-the two record shapes timestamp themselves differently — `storedAt` for the
-artwork stores, `ts` for the other two — which `sweepStore()` must keep
-reading both of; keying on `storedAt` alone made the sweep a silent no-op for
-`rel-ws2` for its whole existence.
+`metadata` (artwork), `rel-ws2` (Relationships column), `ms-rec-len`
+(millisecond Length), and `recof-ws2` + `artist-works` ("Recording of",
+version 4). Adding a store means bumping `_ART_IDB_VERSION` — **and
+`tests/support/idbFixture.js`'s `ART_IDB_VERSION` plus its seed's store
+list**: a spec that opens the database at a LOWER version than the userscript
+already did gets a VersionError (the v3 → v4 bump failed
+`caa-metadata-transient-503.spec.js` exactly that way). Note the record
+shapes timestamp themselves differently — `storedAt` for the artwork stores,
+`ts` for the rest — which `sweepStore()` must keep reading both of; keying on
+`storedAt` alone made the sweep a silent no-op for `rel-ws2` for its whole
+existence. The 💾 browser cache overview (`_idboStamp()`) reads `storedAt`,
+`ts` and the link-preview database's `at`.
 
 **Snapshot regression coverage** (`tests/snapshots/<pageType>/{raw,
 rendered}.html`, captured via `node tests/support/capture-snapshots.js`) covers

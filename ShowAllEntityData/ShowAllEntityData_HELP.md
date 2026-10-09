@@ -35,6 +35,7 @@ will never need is folded into collapsible sections.
 - [Save and load](#save-and-load)
 - [Export](#export)
 - [Statistics](#statistics)
+- [The browser cache](#the-browser-cache)
 - [Keyboard shortcuts](#keyboard-shortcuts)
 - [Settings](#settings)
 - [Supported pages](#supported-pages)
@@ -1048,6 +1049,32 @@ counts.
 row and column counts, which columns are original, extracted or derived, how
 many cells are multi-row, artwork coverage, and per-column distinct-value
 counts.
+
+---
+
+## The browser cache
+
+The script keeps what it loads in your browser so a reload costs nothing:
+cover art and its lists, relationships, millisecond lengths, "Recording of"
+answers, artist work lists and link previews. **💾 Browser cache** shows all of
+it:
+
+- how much space each part takes, as a chart and in numbers;
+- how many entries each part holds;
+- how old they are, and how many are past their keep time;
+- every entry of a part, with a search box.
+
+You can delete the expired entries of one part, clear one part, delete a single
+entry, delete everything expired, delete everything older than 7, 30 or 90
+days, or clear it all. Every delete asks first, inside the dialog, and
+<kbd>Esc</kbd> cancels the question before it closes the dialog. Deleted
+entries are loaded again when they are needed; the page you are on keeps what
+it already loaded. Sizes are estimates. The site storage figure counts the
+whole site, including MusicBrainz's own storage.
+
+Open it from ⚙️ Settings → 🗄️ ART ARCHIVE INDEXEDDB CACHE, from the 📊
+Statistics panel, from the Tampermonkey menu, or with **💾 Cache overview** on
+any [progress card](#the-progress-card).
 
 ---
 

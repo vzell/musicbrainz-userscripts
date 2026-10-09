@@ -21473,3 +21473,11 @@ as `wiencek-batch-performance` by the new `wire-live-userscript` skill.
    cell indexes on artist-recordings fixtures (`isrc-column-format.spec.js`
    `cells[2]`, `uniq-drop-length-deviation.spec.js` `liveIdx: 5`, `cells[1]/[5]`)
    — the two inserted columns shift them by two; both now resolve by header name.
+7. **💾 Browser cache overview** (asked 2026-10-10, mockup approved, WIP.3):
+   `_idbo*`, both databases, estimates from JSON length + Blob size. Two test
+   lessons: an SVG donut arc's bounding-box centre is the donut's HOLE, so a
+   Playwright `click()` on an arc hits the `<svg>` (the spec drives the arc's
+   handler and its keyboard path instead); and `tests/fixtures/artist-recordings.html`
+   has never been rendered by any spec — use a fixture a spec renders when a
+   test needs the post-render toolbar. Not built: "merge" from the request — the
+   mockup had no merge action and was approved as drawn; open question for the user.

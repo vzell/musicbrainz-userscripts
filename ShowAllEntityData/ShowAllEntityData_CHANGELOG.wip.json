@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-10-10",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "New \"💾 Browser cache\" overview of everything the script keeps in your browser: cover art and its lists, relationships, millisecond lengths, \"Recording of\" answers (WIP.2), artist work lists and link previews. A chart shows how much space each part takes. A table shows, per part, how many entries it holds, how old they are, how many are past their keep time and what the oldest is. Click a part to see every entry, with a search box. You can delete the expired entries of one part, clear one part, delete a single entry, delete everything expired, delete everything older than 7, 30 or 90 days, or clear it all; every delete asks first, inside the dialog. Open it from ⚙️ Settings (🗄️ ART ARCHIVE INDEXEDDB CACHE), the 📊 Statistics panel, the Tampermonkey menu, or \"💾 Cache overview\" on any progress card (WIP.1)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-10-10",
     "sections": [

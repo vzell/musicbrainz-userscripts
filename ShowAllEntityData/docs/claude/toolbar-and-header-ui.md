@@ -898,3 +898,48 @@ that test the card seed it back on. Specs: `async-pop.spec.js` (10) and
 `async-pop.mobile.spec.js` (2), driving the shipping framework with a stand-in
 provider through `__saTest.asyncPop`; mutations `scripts/mutations/async-pop.json`
 (15, all caught).
+
+## 💾 Browser cache overview (`_idbo*`)
+
+A dialog, `#mb-idb-overview`, showing the user everything the script keeps in
+this browser's IndexedDB — the art cache database (six stores) and the
+link-preview database (`pages`). Mockup agreed 2026-10-10
+(`https://claude.ai/artifact/4UsPjhkP1gN6cb9wCnQw72`). Per part: entries, a
+size estimate, an age bar (under a day / 1–7 days / older within keep time /
+past keep time), the oldest entry and the keep time; a donut of the space; a
+drill-down with every key (searchable, first 200 shown) and a per-entry ✕;
+deletes for the expired entries of one part, one part, everything expired,
+everything older than 7/30/90 days, and everything. Every delete asks inside
+the dialog first; Esc cancels a pending question before it closes the dialog.
+
+**The parts list is `_idboParts()`, a function on purpose** — it names
+`_ART_IDB_NAME`/`_DP_IDB_NAME` and reads TTL settings; as a module-level const
+it would read them at IIFE time. A new store belongs in that list (and in the
+sweep, and in `tests/support/idbFixture.js`).
+
+**Sizes are estimates** (`_idboBytes()`: JSON length plus any Blob's
+`size`). Good enough to compare parts; the dialog says so, and shows
+`navigator.storage.estimate()` for the whole origin beside it — which includes
+MusicBrainz's own storage and other userscripts', so it is labelled "site
+storage", never the script's.
+
+**Deletes change IndexedDB, not this page's memory caches** (`_relWs2Cache`,
+`_msBatchMemCache`, `_recOfMem`, the artwork blob URLs). The footer says "This
+page keeps what it already loaded". Revoking the blob URLs would blank images
+on screen, so this is deliberate.
+
+**Four ways in, no toolbar row.** ⚙️ Settings (`sa_fn_idb_overview`, a
+`type: 'function'` entry, in `_registerSettingsIntegration()`'s
+`functionRegistry`), a button under the 📊 Statistics panel's IndexedDB rows
+(`#mb-stats-idb-overview-btn`), the Tampermonkey menu ("💾 Browser cache"),
+and an automatic "💾 Cache overview" action on every progress card whose
+snapshot has `cache` rows (`_ajRender()` adds it; `__idb` is the framework's
+own action id, handled before the provider's `act()`). A 📦 Data menu row was
+not added: that panel lives in `<body>` on every page, so it would drift every
+snapshot baseline. The stylesheet is injected on first open (`#mb-idbo-style`)
+for the same reason. z-index 2147483200: over the settings dialog and the
+Statistics panel, under the artwork viewer and every tooltip.
+
+Specs: `idb-overview.spec.js` (8, both databases seeded before the userscript
+opens them) and `idb-overview.mobile.spec.js`; mutations
+`scripts/mutations/idb-overview.json` (12, all caught).

@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "89fbe59bd131f7a2dd125242d1c0ce018faeecd1",
-    "revisions_walked": 860
+    "head": "7102548b24c9fb87894bff29702a4e9add56fd32",
+    "revisions_walked": 861
   },
   "changes": [
     {
@@ -583,6 +583,14 @@
     "sa_rel_tooltip_bg": "#fbf8f1",
     "sa_rel_tooltip_color": "#2b2622",
     "sa_ui_thead_th_injected_bg": "#b8b8d0",
+    "sa_enable_recording_of_column": true,
+    "sa_recording_of_cell_state_glyphs": true,
+    "sa_recording_of_browse_batch_enable": true,
+    "sa_recording_of_ttl_days": 30,
+    "sa_recording_of_suggest_enable": true,
+    "sa_recording_of_suggest_max_distance_pct": 25,
+    "sa_recording_of_works_ttl_days": 30,
+    "sa_recording_of_import_bpr_cache": true,
     "sa_enable_column_resizing": true,
     "sa_auto_resize_columns": true,
     "sa_auto_resize_columns_threshold": 10000,
