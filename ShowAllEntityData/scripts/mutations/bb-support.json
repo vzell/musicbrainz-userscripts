@@ -154,5 +154,18 @@
         "spec": "tests/fixtures/bb-songs.spec.js",
         "grep": "every song of the letter tabs|Alt. repeat keeps its own",
         "expect": "pass"
+    },
+    {
+        "name": "the status line sits below the theme's h1 rule again",
+        "why": "Reported 2026-10-09: the flannel-ocean theme underlines every h1 and pulls #breadcrumbs up by 0.5em; with the rule left on the toolbar h1 the status line sits under it and the breadcrumbs run into it.",
+        "edits": [
+            {
+                "find": "            body.mb-sa-host-bb h1.mb-bb-h1:has(+ #mb-status-displays-wrapper) {\n                border-bottom: none;\n                margin-bottom: 0;\n            }\n            body.mb-sa-host-bb h1.mb-bb-h1 + #mb-status-displays-wrapper {\n                border-bottom: 1px dotted #AAA;\n                padding-bottom: 3px;\n                margin-bottom: 10px;\n            }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-songs.spec.js",
+        "grep": "the status line sits between",
+        "expect": "fail"
     }
 ]

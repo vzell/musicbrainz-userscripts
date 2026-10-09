@@ -1271,9 +1271,7 @@ The value for the "Annotation" C should be the FULL uncollapsed value, even if t
 #+end_example
 
 
-
-
-* TODO track .ne. recording name minitooltip above popup
+* DONE track .ne. recording name minitooltip above popup
 ** DONE i
 
 Is it possible to render the current native tooltip about track name differing from recording name in PT
@@ -1363,7 +1361,7 @@ Would it even be possible, when the side-bar stays on the left on BB PTs, that i
 (like BB PTs) but collapses to the left
 
 
-* add to CLAUDE.md
+* DONE add to CLAUDE.md
 
 1.)
 
@@ -1385,28 +1383,182 @@ MEASUREMENTS.org
 etc. (if you think we need more in this list)
 #+end_example
 
-* On the other host:
 
-● I've committed the changelog fold and pushed main, but that commit also contains 93 lines of your org/TODO.org notes. They were uncommitted in your working tree (the "BUG" section with your notes from this session), and my git add -A . picked them up. Nothing of yours is lost;
-  the notes are just committed under my fold commit's message instead of on their own. I won't rewrite pushed history. If you'd rather have them separate, I can revert that part in a follow-up commit and re-add it as its own "add todo entries" commit.
+* TODO rework the sticky behaviour when scrolling down
+** DONE i
 
-  What's on origin now:
-  - main (c3d08cd): the merge e613bdf plus the fold commit, @version 9.99.1301+2026-10-09.
-  - Versions: WIP.1 became 9.99.1299 (year pages), WIP.2 became 9.99.1300 (start page, Date fix), WIP.3 became 9.99.1301 (side bar, Date under its heading bar).
-  - Audits: 2 cross-references rewritten; the changelog and docs audits are clean.
-  - Tests: test:full is not done. It was stopped at 411 of 1,459 with no failures, and the commit message says it still has to run.
-  - feature/bb-years: still exists locally and on origin.
+rework the sticky behaviour when scrolling down:
 
-  On the other host:
+1.)
 
-  git pull
-  cd ShowAllEntityData
-  npm run test:full
+currently only the column header line of a table/sub-table (in the multi-table PT case) gets sticky.
 
-  If it's green, finish with:
+I basically want the global h2 filter line always be visisble, so that we can see the stats and be able to filter all the time
 
-  git branch -d feature/bb-years
-  git push origin --delete feature/bb-years
+a.)
 
-  The ShowAllEntityData mirror is behind (9.99.1167 → 9.99.1301) and still needs a republish when you release; nothing published is broken.
-  
+in the single and multi-table case that the h2 header line with the global filter should already get sticky when
+scrolling down, in the multi-table case together with the h3 sub-table header line.
+
+b.)
+
+the h3 sub-table header line switching to the next sub-table header line when going down further
+
+2.)
+
+for BB PTs:
+
+a.)
+
+add a separate "Collabsable sidebar:" boolean (default: false) specifically for BB aboce "Show the Brucebase side bar on the right:"
+
+b.)
+
+left side-bar should ALWAYS be sticky, e.g. screenshots from https://brucebase.wikidot.com/2026
+
+#+begin_example
+[Image #2] - FRP
+[Image #3] - FRP when scrolling down, the left side-bar should ALWAYS be sticky like in the initial state after final rendering
+#+end_example
+
+3.)
+
+The '<div id="mb-status-displays-wrapper"' line should be rendered ABOVE the h1 header line '<h1 class="mb-bb-h1">'
+
+Right now it sits below the thin horizontal line (which is rendered below ht h1), [Image #4]
+I should sit above the thin horizontal line
+
+** summary
+
+I committed and pushed both commits to origin/feature/sticky-filter-bars, and did not merge into main.
+
+  - d982ee1, Brucebase:
+    - The side bar now always stays in view, both when you scroll down and when you scroll sideways. On the left, the Date column docks just to its right.
+    - The handle has its own "Collabsable sidebar" setting (default off), above "Show the Brucebase side bar on the right".
+    - The status line now sits between the toolbar h1 and the thin rule. The theme draws that rule under every h1 and pulls the breadcrumbs up by 0.5em, so the rule moved from the h1 to the status line.
+  - 47db6ec, sticky filter bars (new setting "Enable Sticky Filter Bars", default on):
+    - Scrolled down, the h2 bar with the global filter and row count stays at the top.
+    - On multi-table pages the current sub-table's h3 stays under it, and the next sub-table's h3 takes its place as you scroll into it.
+    - The column headers stick under the bars.
+
+  Tests:
+  - The first full run (14:06–14:16 UTC on petri) had 14 failures, all on springsteenlyrics.com, and they came from my change. The test pages have no site CSS, so the navbar measures 3,902 px. The bars docked under it and nothing could be scrolled into view. It works live because
+    the real navbar is about 50 px. The fix ignores a header taller than a third of the window and caps the scroll padding at half the window.
+  - After that fix I re-ran every springsteenlyrics.com spec and detail-preview on desktop and mobile: 122/122 passed. I did not re-run the whole suite after the fix. The other 1,476 tests passed in the first run.
+  - Every new or changed guard has a planted-defect check, and each one is caught as expected.
+  - Some existing sticky-page-headers tests assumed the bars had no z-index, which this feature deliberately gives them. Those tests now run with the new setting off, and the new sticky-filter-bars.spec.js covers the two features together.
+
+  Not done:
+  - I didn't run the performance comparison against main before pushing.
+  - When the table header is stuck, the column-filter mode pop-up (Cc/Rx/Ex) drifts away from its button as you scroll. That was already true before this branch.
+  - The version bump and real changelog entry happen at merge time; the entries are in ShowAllEntityData_CHANGELOG.wip.json. It's your call when to merge.
+    
+
+* DONE bug + new feature
+
+Next is:
+
+1.)
+
+On https://musicbrainz.org/report/AnnotationsEvents (@debug/event-annotations.html - FTP) but also others like e.g.
+
+#+begin_example
+https://musicbrainz.org/report/ISRCsWithManyRecordings
+https://musicbrainz.org/cdstub/browse
+etc.
+#+end_example
+
+the '<div id="mb-status-displays-container"' is rendered below the h2 header line instead of below the h1 directly
+
+#+begin_example
+<h1 class="mb-sph-target" style="--mb-sph-left: 16px; --mb-sph-maxw: 2140px;">Event annotations
+#+end_example
+
+2.)
+
+Add one more level of sticky container:
+
+Actually, the following type of container with its included h1 header line and the row with our '<div id="mb-status-displays-container"' e.g.
+
+#+begin_example
+<div class="wrap-anywhere artistheader person-icon mb-sph-target" style="--mb-sph-left: 20px; --mb-sph-maxw: 1990.61px;"><h1><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce">
+#+end_example
+
+should also be sticky when scrolling down, even before the h2 header line with the global filter
+
+So basically I for ALL PTs I want the line with the action buttons + the line with the "mb-status-displays-container"
+ALWAYS be sticky too when srolling down.
+
+
+* TODO adapt the logging framework and orig page shine through from majkinetor
+
+* TODO add instrument icons support, ONLY the icon should show up in the UVD
+
+* TODO menu in non-MB pages for PTs
+
+* !! separate on NB-xxxx - TODO almost feature-full - take out non mb code or try a build fraemwork
+
+* TODO non-MB detail pages
+
+* TODO integration with my onw BB userscript
+
+* TODO create a skill
+
+1.)
+
+There is a new third party userscript at @tests/fixtures/thirdPartyScripts/batch-add-recording-relationships.user.js
+
+a.)
+
+create a skill for wiring a new userscript into @tests/fixtures/live-userscripts
+
+2.)
+
+execute the new skill to tackle the following, optionally revising the skill if usefull/neccessary:
+
+On e.g. PT 'artist recordings' (and wherever it is involve) - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings
+implement the third party userscript "MusicBrainz: Batch-add "performance of" relationships" by @Michael Wiencek functionality:
+
+a.)
+
+add a new column "Recording of" with the actual work title after the "Name" column and add in brackets after it e.g
+"cover" etc, in light green and italic font after it's populated (see below)
+
+b.)
+
+the "Recording of" column should get the same treatment as the "Relationships" column, it should make API calls to the
+MB website to get the work of a recording and eventual attribues (find out) by eiter clicking a data cell specifig glyph
+for just that row, or a column header wide toogle glyph for getting all the info for all rows
+
+c.)
+
+add UVD sections as neccessary e.g "Suggested work" if something is not yet available
+
+d.)
+
+also store the info like what the third party userscript is doing in an indexdDB as usual (everything configurable). see eg
+
+#+begin_example
+1584 works loaded for Bruce Springsteen
+(cached Wed Jan 21 2026 23:28:59 GMT+0100 (Central European Standard Time))
+#+end_example
+
+for reusability
+
+e.)
+
+#+begin_example
+A-R-3rd-works.html - IP for https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings, with the third party uerscript active and already working - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings
+#+end_example
+
+f.)
+
+on the FRP also add a new multi-row column "Performance attributes"
+
+
+
+
+
+
+
+* maybe stack the h3 header in the multiu-table case when stickyness is involved

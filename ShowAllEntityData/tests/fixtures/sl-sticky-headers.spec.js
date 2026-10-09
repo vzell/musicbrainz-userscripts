@@ -200,3 +200,40 @@ for (const [kind, sels, settings, tag] of [
         expect(Math.abs(after.tdLeft - before.tableLeft), 'Title td docks at the table\'s natural left').toBeLessThanOrEqual(1);
     });
 }
+
+test('collection: scrolled down, the list h2 docks under the site\'s navbar and the thead under it', async ({ page }) => {
+    // The sticky filter bars (2026-10-09): the site's navbar is fixed at the
+    // top once the page scrolls (its "sticky" plugin), so the thead already
+    // stuck below it (--mb-sl-navbar-h); the list h2 now docks there, the
+    // thead below the h2. The fixture has no site CSS, so the navbar itself
+    // is not fixed here: what is pinned is the offset. Unstyled, the navbar
+    // measures thousands of px, which the bars ignore (no real fixed header
+    // is a third of the window), so a real one's height is set here.
+    await openSl(page, 'collection');
+    await page.addStyleTag({ content: 'table.tbl > tbody > tr > td { height: 200px; }' });
+    await page.evaluate(() => {
+        document.documentElement.style.setProperty('--mb-sl-navbar-h', '52px');
+        window.dispatchEvent(new Event('resize'));
+    });
+    const y = await page.evaluate(() => document.querySelector('table.tbl').getBoundingClientRect().top + window.scrollY + 1200);
+    await page.evaluate((v) => window.scrollTo(0, v), y);
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    const g = await page.evaluate(() => {
+        const nav = parseFloat(document.documentElement.style.getPropertyValue('--mb-sl-navbar-h'));
+        const h2 = document.getElementById('mb-global-filter-input').closest('h2').getBoundingClientRect();
+        const t = document.querySelector('table.tbl');
+        const heads = Array.from(document.querySelectorAll('.mb-vsb-head'), (el) => el.getBoundingClientRect());
+        return { nav, h2Top: h2.top, h2Bottom: h2.bottom, theadTop: t.tHead.getBoundingClientRect().top,
+            tableTop: t.getBoundingClientRect().top,
+            stackTop: heads.length ? Math.min(...heads.map((r) => r.top)) : h2.top,
+            // The h2 docks a 6 px gap under the block (VSB_HEAD_GAP).
+            headBottom: heads.length ? Math.max(...heads.map((r) => r.bottom)) + 6 : h2.top };
+    });
+    expect(g.nav, 'premise: the navbar height is known').toBeGreaterThan(0);
+    expect(g.tableTop, 'premise: the table starts above the window').toBeLessThan(-500);
+    // The stuck stack (the header block, if it is stuck here, then the h2)
+    // starts at the navbar height.
+    expect(Math.abs(g.stackTop - g.nav), 'the stack docks at the navbar height').toBeLessThanOrEqual(1);
+    expect(Math.abs(g.h2Top - g.headBottom), 'the h2 under the header block').toBeLessThanOrEqual(1);
+    expect(Math.abs(g.theadTop - g.h2Bottom), 'the thead docks under the h2').toBeLessThanOrEqual(1);
+});

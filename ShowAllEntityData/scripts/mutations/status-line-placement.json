@@ -1,0 +1,15 @@
+[
+    {
+        "name": "the injected data h2 goes right after the h1 again",
+        "why": "Reported 2026-10-09 (report/AnnotationsEvents, report/ISRCsWithManyRecordings, cdstub/browse): the status line ended up BELOW the data h2.",
+        "edits": [
+            {
+                "find": "            const _anchor = _status && _status.id === 'mb-status-displays-wrapper' ? _status : _firstH1;\n",
+                "replace": "            const _anchor = _firstH1;\n"
+            }
+        ],
+        "spec": "tests/fixtures/status-line-placement.spec.js",
+        "grep": "report page",
+        "expect": "fail"
+    }
+]

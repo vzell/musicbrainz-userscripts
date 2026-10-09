@@ -43,12 +43,12 @@
         "why": "Once the content is widened to the table, the side bar's natural place is far to the right; sticky right: 0 keeps it at the window's edge.",
         "edits": [
             {
-                "find": "                margin-left: 13px !important;\n                position: sticky;\n                right: 0;\n",
+                "find": "                margin-left: 13px !important;\n                right: 0;\n",
                 "replace": "                margin-left: 13px !important;\n"
             }
         ],
         "spec": "tests/fixtures/bb-sidebar.spec.js",
-        "grep": "after a table is rendered",
+        "grep": "after a table is rendered|the right side bar stays in view",
         "expect": "fail"
     },
     {
@@ -75,6 +75,58 @@
         ],
         "spec": "tests/fixtures/bb-sidebar.spec.js",
         "grep": "stays under its h2 bar",
+        "expect": "fail"
+    },
+    {
+        "name": "the left side bar is not sticky sideways",
+        "why": "Requested 2026-10-09: the side bar stays in view while the wide year table scrolls sideways; left: 0 keeps it at the window's left edge.",
+        "edits": [
+            {
+                "find": "                margin-right: 13px !important;\n                left: 0;\n",
+                "replace": "                margin-right: 13px !important;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-sidebar.spec.js",
+        "grep": "the left side bar stays in view",
+        "expect": "fail"
+    },
+    {
+        "name": "the side bar is not sticky vertically",
+        "why": "Requested 2026-10-09 (screenshots of /2026): scrolled down, the side bar went off the top with the page.",
+        "edits": [
+            {
+                "find": "                position: sticky;\n                top: 0;\n                z-index: 150;\n                align-self: flex-start;\n",
+                "replace": "                position: sticky;\n                z-index: 150;\n                align-self: flex-start;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-sidebar.spec.js",
+        "grep": "side bar stays in view",
+        "expect": "fail"
+    },
+    {
+        "name": "the left side bar has no z-index",
+        "why": "Scrolled sideways, the docked Date column's gutter mask (a page-coloured box-shadow as wide as the table's left offset) would paint over a side bar without one.",
+        "edits": [
+            {
+                "find": "                top: 0;\n                z-index: 150;\n                align-self: flex-start;\n",
+                "replace": "                top: 0;\n                align-self: flex-start;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-sidebar.spec.js",
+        "grep": "the left side bar stays in view",
+        "expect": "fail"
+    },
+    {
+        "name": "the handle follows MusicBrainz's sidebar setting again",
+        "why": "Requested 2026-10-09: Brucebase has its own 'Collabsable sidebar', default off; sa_collabsable_sidebar (default on) must not reach it.",
+        "edits": [
+            {
+                "find": "        if (Lib.settings.sa_bb_collabsable_sidebar !== true || document.getElementById('mb-bb-sidebar-handle')) return;",
+                "replace": "        if (!Lib.settings.sa_collabsable_sidebar || document.getElementById('mb-bb-sidebar-handle')) return;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-sidebar.spec.js",
+        "grep": "its own setting",
         "expect": "fail"
     }
 ]

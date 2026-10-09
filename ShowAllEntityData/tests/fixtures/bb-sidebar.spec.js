@@ -3,19 +3,22 @@
 // The Brucebase side bar (#side-bar) on every Brucebase pageType:
 // _bbArrangeSideBar() makes #content-wrap a flex row, keeps the side bar on
 // the left (or moves it to the RIGHT of #main-content with
-// sa_bb_sidebar_right, default off since 2026-10-09), and gives it the
-// MusicBrainz sidebar's collapse handle (sa_collabsable_sidebar), starting
-// collapsed while sa_sidebar_collapsed is on; it collapses toward its own
-// side. Also pins that the sticky Date column docks under its h2 bar when
-// the page is scrolled sideways, and masks nothing before. Fixture: the
+// sa_bb_sidebar_right, default off since 2026-10-09), keeps it in view while
+// the page scrolls down or sideways (sticky on both axes), and gives it the
+// MusicBrainz sidebar's collapse handle under its OWN setting
+// (sa_bb_collabsable_sidebar, default off), starting collapsed while
+// sa_sidebar_collapsed is on; it collapses toward its own side. Also pins
+// that the sticky Date column docks under its h2 bar when the page is
+// scrolled sideways, and masks nothing before. Fixture: the
 // 2026 year page (scripts/build-bb-fixtures.py). See docs/claude/brucebase.md.
 
 const { test, expect } = require('../support/test');
 const { loadBbYearPage } = require('../support/bbFixture');
 const { waitForRenderComplete } = require('../support/browser');
 
-// sa_bb_sidebar_right seeded as undefined: its schema default (off).
-const DEFAULTS = { sa_bb_sidebar_right: undefined, sa_collabsable_sidebar: true, sa_sidebar_collapsed: true };
+// sa_bb_sidebar_right seeded as undefined: its schema default (off). The
+// handle is opt-in (sa_bb_collabsable_sidebar), so most tests turn it on.
+const DEFAULTS = { sa_bb_sidebar_right: undefined, sa_bb_collabsable_sidebar: true, sa_sidebar_collapsed: true };
 const RIGHT = { ...DEFAULTS, sa_bb_sidebar_right: true };
 
 /**
@@ -55,6 +58,28 @@ function layout(page) {
             vw: window.innerWidth,
         };
     });
+}
+
+/**
+ * Reads the painted colour of one viewport pixel from a screenshot.
+ * @param {import('@playwright/test').Page} page
+ * @param {number} x
+ * @param {number} y
+ * @returns {Promise<string>} "r,g,b".
+ */
+async function pixelAt(page, x, y) {
+    const png = await page.screenshot({ clip: { x, y, width: 1, height: 1 } });
+    return page.evaluate(async (b64) => {
+        const img = new Image();
+        img.src = `data:image/png;base64,${b64}`;
+        await img.decode();
+        const c = document.createElement('canvas');
+        c.width = 1;
+        c.height = 1;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        return Array.from(ctx.getImageData(0, 0, 1, 1).data.slice(0, 3)).join(',');
+    }, png.toString('base64'));
 }
 
 test('on the right (opt-in) the side bar moves after the content, starts hidden, and the handle shows it', async ({ page }) => {
@@ -103,7 +128,7 @@ test('by default it stays on the left, first, and collapses to the left', async 
 
 test('without the collapsible sidebar there is no handle and the side bar shows', async ({ page }) => {
     const errors = trackPageErrors(page);
-    await loadBbYearPage(page, '2026', { settingsOverride: { ...RIGHT, sa_collabsable_sidebar: false } });
+    await loadBbYearPage(page, '2026', { settingsOverride: { ...RIGHT, sa_bb_collabsable_sidebar: false } });
     await expect(page.locator('h1.mb-bb-h1')).toHaveCount(1);
     const l = await layout(page);
     expect(l.handle).toBeNull();
@@ -112,6 +137,89 @@ test('without the collapsible sidebar there is no handle and the side bar shows'
     expect(l.side).not.toBeNull();
     expect(errors).toEqual([]);
 });
+
+test('the handle has its own setting: off by default, whatever MusicBrainz\'s sidebar setting says', async ({ page }) => {
+    // Requested 2026-10-09: a Brucebase-only "Collabsable sidebar", default
+    // off. MusicBrainz's sa_collabsable_sidebar (default on) no longer
+    // reaches this side bar.
+    const errors = trackPageErrors(page);
+    await loadBbYearPage(page, '2026', {
+        settingsOverride: { sa_bb_collabsable_sidebar: undefined, sa_collabsable_sidebar: true, sa_sidebar_collapsed: true },
+    });
+    await expect(page.locator('h1.mb-bb-h1')).toHaveCount(1);
+    const l = await layout(page);
+    expect(l.handle).toBeNull();
+    expect(l.cls).toEqual(['mb-bb-cw', 'mb-bb-sb-left']);
+    expect(l.side).not.toBeNull();
+    expect(errors).toEqual([]);
+});
+
+for (const [name, settings] of [['left', DEFAULTS], ['right', RIGHT]]) {
+    test(`the ${name} side bar stays in view when the rendered page scrolls down and sideways`, async ({ page }) => {
+        // Requested 2026-10-09 (screenshots of /2026): scrolled down, the
+        // side bar went off the top with the rest of the page. It is sticky
+        // on both axes now, and on the left it sits over the docked Date
+        // column's gutter mask, with Date docking just to its right.
+        const errors = trackPageErrors(page);
+        await loadBbYearPage(page, '2026', {
+            settingsOverride: { ...settings, sa_sidebar_collapsed: false, sa_enable_sticky_page_headers: true },
+        });
+        // The theme's side-bar box (base: width 14em, padding 1em;
+        // flannel-ocean: #F0F0F5), which the fixture strips: the gutter mask
+        // is page-coloured, so only a coloured side bar shows whether the
+        // mask paints over it, and the padding gives a pixel with no text.
+        await page.addStyleTag({ content: '#side-bar { width: 14em; padding: 1em; background-color: #F0F0F5; }' });
+        await page.click('button[data-label="Show all events"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+
+        /**
+         * Reads the side bar's box, whether a hit test at its centre lands
+         * in it, and the Date header's left edge.
+         * @returns {Promise<Object>}
+         */
+        const read = () => page.evaluate(() => {
+            const side = document.getElementById('side-bar');
+            const r = side.getBoundingClientRect();
+            const hit = document.elementFromPoint(r.left + r.width / 2, r.top + Math.min(r.height, window.innerHeight) / 2);
+            const th = document.querySelector('table.tbl').tHead.rows[0].cells[0];
+            return {
+                top: Math.round(r.top),
+                left: Math.round(r.left),
+                right: Math.round(r.right),
+                bottom: Math.round(r.bottom),
+                hitInside: side.contains(hit),
+                dateLeft: Math.round(th.getBoundingClientRect().left),
+                vw: window.innerWidth,
+                vh: window.innerHeight,
+            };
+        });
+        const natural = await read();
+        const scrollDown = Math.max(1500, natural.top + 500);
+        await page.evaluate((y) => window.scrollTo(0, y), scrollDown);
+        await expect.poll(() => page.evaluate(() => Math.round(window.scrollY))).toBe(scrollDown);
+        let s = await read();
+        expect(s.top, 'stuck at the top').toBe(0);
+        expect(s.bottom).toBeLessThanOrEqual(s.vh);
+        expect(s.hitInside).toBe(true);
+
+        await page.evaluate((y) => window.scrollTo(700, y), scrollDown);
+        await expect.poll(() => page.evaluate(() => Math.round(window.scrollX))).toBe(700);
+        await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+        s = await read();
+        expect(s.top).toBe(0);
+        expect(s.hitInside, 'over the table').toBe(true);
+        // A box-shadow is invisible to hit testing, so read the paint: the
+        // side bar's own padding, half way down, must keep its colour.
+        expect(await pixelAt(page, s.left + 3, Math.round(s.vh / 2)), 'painted over the gutter mask').toBe('240,240,245');
+        // At the window's edge on its own side; on the left, Date docks
+        // right of it.
+        const edge = name === 'left'
+            ? { atEdge: s.left === 0, dateClear: s.dateLeft >= s.right }
+            : { atEdge: s.right <= s.vw && s.left > s.vw / 2, dateClear: true };
+        expect(edge, JSON.stringify(s)).toEqual({ atEdge: true, dateClear: true });
+        expect(errors).toEqual([]);
+    });
+}
 
 test('with the year pages off the wiki\'s layout is left alone', async ({ page }) => {
     const errors = trackPageErrors(page);

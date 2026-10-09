@@ -664,6 +664,20 @@ restore the original order. The indicator goes `⇅ → ▲ → ▼`.
 their right edge, and a column can never be dragged narrower than its own
 header needs.
 
+**Scrolling down** keeps the page heading with the action buttons and the
+status line ("Loaded … Fetching …") at the top of the window, from the moment
+the page opens, and once the table is shown the section bar with the global
+filter and the row count right under them, so you can see the counts and
+filter at any point of a long table. In a window too small for all of that,
+the heading scrolls away and the bars still stay. On a page with several sub-tables the bar of the
+sub-table you are in (with its own filter) stays right under it, and the next
+sub-table's bar takes its place as you scroll into it. The column headers stay
+under the bars (*Enable Sticky Filter Bars* and *Enable Sticky Headers* in 📌
+Table stickiness; with the first off, only the column headers stay). Sections
+that come after the data in the page, which the script normally moves above it
+(*Relocate trailing h2 sections before data table*), scroll under the bar if
+that setting is off.
+
 **Scrolling a wide table sideways** keeps the first (sticky) column and the page
 around it in place: the MusicBrainz top header, the entity
 header with its action bar, the tabs and every h2/h3 bar stay where they are
@@ -1082,7 +1096,7 @@ you automatically.
 | 🎨 Edits page                                   | Per-category edit colours, collapse defaults, diff colours, zebra striping                                                                                                                                                                                            |
 | ⚡ Performance                                  | Debounce, sort chunk size, render and warning thresholds, history limit                                                                                                                                                                                               |
 | 🎨 UI features                                  | Column visibility, density control, sticky headers, default hidden columns per page type                                                                                                                                                                              |
-| 📌 Table stickiness                             | Sticky column and header configuration; sticky page headers (the MB header, tabs and h2/h3 bars stay put while a wide table scrolls sideways)                                                                                                                         |
+| 📌 Table stickiness                             | Sticky column and header configuration; sticky filter bars (the h2/h3 bars stay at the top while scrolling down); sticky page headers (the MB header, tabs and h2/h3 bars stay put while a wide table scrolls sideways)                                               |
 | 🖌️ Element UI styles                             | Action button base style, per-button colours (including the two halves of the ⚙️❓ pill), toolbar menu button colours, dividers, filter input styles, header cell colours                                                                                              |
 | 🔗 Relationships column                         | Enable, auto-collapse threshold, cell load-state glyphs, whole-page fetching                                                                                                                                                                                          |
 | ↔️ Column resize                                 | Enable resizing; auto-resize on load                                                                                                                                                                                                                                  |
@@ -2145,14 +2159,20 @@ the Previous / Listing / Next line below stay. Everything is on the page;
 nothing is fetched.
 
 **The side bar:** on every Brucebase page the script handles, the wiki's
-side bar (Site Navigation, Gig Pages, …) starts hidden behind the same
-handle as the MusicBrainz sidebar, on the window's left edge: click it (or
-focus it and press Enter) to show or hide it. ⚙️ Settings → *📚 Brucebase* →
+side bar (Site Navigation, Gig Pages, …) stays in view while you scroll: at
+the top of the window when you scroll down, and at the window's edge when
+you scroll a wide table sideways. ⚙️ Settings → *📚 Brucebase* →
 *Show the Brucebase side bar on the right* moves it to the right, as on
-MusicBrainz, where it stays at the window's right edge next to a wide table.
-The MusicBrainz sidebar settings *Collabsable sidebar* and *Start with
-sidebar collapsed* apply here too. When you scroll a table sideways, its
-Date column stays in view, lined up under the table's heading bar.
+MusicBrainz. *Collabsable sidebar* in the same section (off by default, and
+separate from the MusicBrainz setting of that name) gives it the same handle
+as the MusicBrainz sidebar: click it (or focus it and press Enter) to show
+or hide the side bar. It then starts hidden while the MusicBrainz setting
+*Start with sidebar collapsed* is on, and collapses toward its own side.
+When you scroll a table sideways, its Date column stays in view, lined up
+under the table's heading bar, just right of the side bar.
+
+The status line ("Loaded 1 page …") sits right under the heading with the
+buttons, above the wiki's thin rule and the breadcrumbs.
 
 **Every year at once:** on the wiki's start page,
 `https://brucebase.wikidot.com`, the same switch adds a **Show all events of
