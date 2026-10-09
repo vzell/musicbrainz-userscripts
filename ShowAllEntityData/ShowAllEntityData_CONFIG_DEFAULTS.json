@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1306+2026-10-09",
-    "schema_entries": 400,
+    "script_version": "9.99.1311+2026-10-09",
+    "schema_entries": 402,
     "sections": 48,
-    "settings": 352,
-    "settings_with_default": 347,
+    "settings": 354,
+    "settings_with_default": 349,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 179,
+      "checkbox": 181,
       "color_picker": 62,
       "number": 51,
       "divider": 48,
@@ -238,6 +238,8 @@
     "sa_art_viewer_remember_zoom": "Viewer: keep the zoom level",
     "sa_art_viewer_size": "Artwork viewer image size (1200 / original)",
     "sa_art_viewer_slideshow_secs": "Viewer: slideshow interval (seconds)",
+    "sa_async_pop_auto_open": "Open the progress card when I start a job",
+    "sa_async_pop_enable": "Progress card for background jobs",
     "sa_auto_expand": "Auto-Expand Rows in Multi-Table page types",
     "sa_auto_resize_columns": "Auto-resize columns on load",
     "sa_auto_resize_columns_threshold": "Auto-resize columns threshold (rows)",
@@ -592,6 +594,8 @@
     "sa_art_viewer_remember_zoom": true,
     "sa_art_viewer_size": "1200",
     "sa_art_viewer_slideshow_secs": 4,
+    "sa_async_pop_auto_open": true,
+    "sa_async_pop_enable": true,
     "sa_auto_expand": 50,
     "sa_auto_resize_columns": true,
     "sa_auto_resize_columns_threshold": 10000,

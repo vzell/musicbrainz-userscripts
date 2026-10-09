@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "d60e1979737482bd75022607a9b70b2192edbc7d",
-    "revisions_walked": 847
+    "head": "6961371f7211c2eaea98648a599a7c3d85949c67",
+    "revisions_walked": 858
   },
   "changes": [
     {
@@ -230,6 +230,15 @@
       "type": "checkbox",
       "from": false,
       "to": true
+    },
+    {
+      "sha": "91b558b1",
+      "date": "2026-10-09",
+      "version": "9.99.1298+2026-10-08",
+      "key": "sa_bb_sidebar_right",
+      "type": "checkbox",
+      "from": true,
+      "to": false
     }
   ],
   "stale": {
@@ -393,6 +402,13 @@
       "was": [
         false
       ]
+    },
+    "sa_bb_sidebar_right": {
+      "type": "checkbox",
+      "current": false,
+      "was": [
+        true
+      ]
     }
   },
   "orphans": {
@@ -515,6 +531,7 @@
     "sa_enable_column_visibility": true,
     "sa_enable_density_control": true,
     "sa_enable_sticky_headers": true,
+    "sa_enable_sticky_filter_bars": true,
     "sa_enable_sticky_columns": true,
     "sa_enable_sticky_page_headers": true,
     "sa_sticky_page_headers_on_touch": false,
@@ -752,7 +769,8 @@
     "sa_bs_detail_preview": false,
     "sa_enable_brucebase": false,
     "sa_bb_year_pages": false,
-    "sa_bb_sidebar_right": true,
+    "sa_bb_collabsable_sidebar": false,
+    "sa_bb_sidebar_right": false,
     "sa_bb_detail_preview": false,
     "sa_pop_mb": true,
     "sa_pop_mb_on_touch": false,

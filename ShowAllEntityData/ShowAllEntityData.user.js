@@ -510,6 +510,28 @@
                          + 'tooltips, which always appear at once.'
         },
 
+        sa_async_pop_enable: {
+            label: 'Progress card for background jobs',
+            type: 'checkbox',
+            default: true,
+            description: 'Jobs that load data in the background (the "Recording of" column, Relationships, '
+                         + 'millisecond Length, …) report through one "Liner notes" card: what is being '
+                         + 'loaded, a progress bar with failures and cache hits, where the data comes from, '
+                         + 'the last few requests and their outcome, and buttons such as "Retry failed". '
+                         + 'Hovering the job\'s column toggle shows it; Esc or moving the pointer away '
+                         + 'closes it, and the job keeps running. When disabled, no card is shown.'
+        },
+
+        sa_async_pop_auto_open: {
+            label: 'Open the progress card when I start a job',
+            type: 'checkbox',
+            default: true,
+            description: 'When enabled, starting a background job yourself (clicking a column toggle) '
+                         + 'opens its progress card under the control right away. Jobs the script starts '
+                         + 'on its own, such as an automatic retry pass, never open it. When disabled, the '
+                         + 'card only appears when you hover the toggle.'
+        },
+
         sa_enable_count_stat_tooltip: {
             label: 'Enable rich row-count tooltips on h2/h3 count spans',
             type: 'checkbox',
@@ -59527,6 +59549,39 @@ a { color: #1565c0; }`;
         .mb-tt-liner .mb-tt-annotation :is(ul, ol) { margin: 0 0 4px; padding-left: 1.2em; }
         .mb-tt-liner .mb-tt-annotation-more { display: none; }
         .mb-tt-liner kbd { display: inline-block; margin: 0 1px; padding: 0 5px; background: #ffffff; color: #2b2622; border: 1px solid #cbbfa9; border-radius: 3px; box-shadow: 0 1px 0 #cbbfa9; font: 600 0.82em/1.35 ui-monospace, Consolas, "Courier New", monospace; }
+        /* Async job popup (_ajRender): the one card every background job
+           reports through. Fixed, under the control that started the job;
+           unlike the hover cards it takes the pointer, for its actions. */
+        #mb-async-pop { position: fixed; width: 360px; max-width: calc(100vw - 16px); pointer-events: auto; }
+        .mb-tt-liner .mb-tt-ajhead { display: flex; align-items: baseline; gap: 8px; }
+        .mb-tt-liner .mb-tt-ajhead .mb-tt-title { flex: 1; min-width: 0; }
+        .mb-tt-liner .mb-tt-ajpill { display: inline-block; border: 1px solid #d9cfbd; border-radius: 3px; padding: 0 5px; font: 700 0.74em/1.6 system-ui, Arial, sans-serif; letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap; background: #efe6d4; color: #4a3f33; }
+        .mb-tt-liner .mb-tt-ajpill-run { color: #2f5f9e; border-color: #b9c9e3; background: #e9f0fa; }
+        .mb-tt-liner .mb-tt-ajpill-ok { color: #3f7a3a; border-color: #bcd6b8; background: #edf5eb; }
+        .mb-tt-liner .mb-tt-ajpill-warn { color: #9a6a00; border-color: #e3d09a; background: #fbf3dc; }
+        .mb-tt-liner .mb-tt-ajpill-err { color: #9b2218; border-color: #e2b4ae; background: #f9e9e6; }
+        .mb-tt-liner .mb-tt-ajpill-idle { color: #7a6d5c; }
+        .mb-tt-liner .mb-tt-ajbar { display: flex; height: 7px; border-radius: 2px; overflow: hidden; background: #ece4d4; margin: 7px 0 3px; border: 1px solid #d9cfbd; }
+        .mb-tt-liner .mb-tt-ajbar > span { display: block; height: 100%; }
+        .mb-tt-liner .mb-tt-ajbar-c { background: repeating-linear-gradient(135deg, #8fb98a 0 3px, #a9cba5 3px 6px); }
+        .mb-tt-liner .mb-tt-ajbar-d { background: #5f9a59; }
+        .mb-tt-liner .mb-tt-ajbar-f { background: #c0503f; }
+        .mb-tt-liner .mb-tt-ajbar-q { background: #c8d6ea; }
+        .mb-tt-liner .mb-tt-ajcount { display: flex; justify-content: space-between; gap: 8px; font-size: 0.92em; font-variant-numeric: tabular-nums; }
+        .mb-tt-liner .mb-tt-ajfacts { display: grid; grid-template-columns: max-content 1fr; gap: 1px 10px; font-size: 0.93em; margin: 0; }
+        .mb-tt-liner .mb-tt-ajfacts dt { color: #7a6d5c; font-style: italic; }
+        .mb-tt-liner .mb-tt-ajfacts dd { margin: 0; min-width: 0; }
+        .mb-tt-liner .mb-tt-ajlog-h { font: 700 0.78em/1.4 system-ui, Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.06em; color: #7a6d5c; }
+        .mb-tt-liner .mb-tt-ajlog { list-style: none; margin: 3px 0 0; padding: 0; font: 11.5px/1.45 ui-monospace, Consolas, "Courier New", monospace; max-height: 7.3em; overflow: auto; }
+        .mb-tt-liner .mb-tt-ajlog li { display: grid; grid-template-columns: max-content 1fr; gap: 7px; }
+        .mb-tt-liner .mb-tt-ajlog time { color: #7a6d5c; }
+        .mb-tt-liner .mb-tt-ajlog-bad { color: #9b2218; }
+        .mb-tt-liner .mb-tt-ajlog-good { color: #3f7a3a; }
+        .mb-tt-liner .mb-tt-ajacts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .mb-tt-liner .mb-tt-ajact { font: 600 11.5px/1 system-ui, Arial, sans-serif; padding: 5px 8px; border-radius: 3px; border: 1px solid #cbbfa9; background: #ffffff; color: #2b2622; cursor: pointer; box-shadow: 0 1px 0 #cbbfa9; }
+        .mb-tt-liner .mb-tt-ajact:hover { background: #f4eee2; }
+        .mb-tt-liner .mb-tt-ajact-primary { color: #2f5f9e; border-color: #b9c9e3; }
+        .mb-tt-liner .mb-tt-ajact-danger { color: #9b2218; border-color: #e2b4ae; }
         #mb-stat-tooltip {
             position: fixed;
             max-width: 520px;
@@ -65152,6 +65207,10 @@ a { color: #1565c0; }`;
      */
     function _initStatTooltip() {
         _installTouchInputTracker();
+        // Installs listeners only; reads no _aj* const until an event fires,
+        // which is after the IIFE has run (this call sits above their
+        // declarations — see "Async job popup" in toolbar-and-header-ui.md).
+        _ajInitHover();
         if (document.getElementById('mb-stat-tooltip')) return;
         const _tip = document.createElement('div');
         _tip.id = 'mb-stat-tooltip';
@@ -65160,7 +65219,7 @@ a { color: #1565c0; }`;
         document.body.appendChild(_tip);
 
         /** Rich tooltips that, while shown, rule out a card (see _showOwn). */
-        const _OTHER_RICH_TIPS = ['mb-art-bigbox-tooltip', 'mb-art-hover-preview', 'mb-rel-tooltip', 'mb-dp-peek'];
+        const _OTHER_RICH_TIPS = ['mb-art-bigbox-tooltip', 'mb-art-hover-preview', 'mb-rel-tooltip', 'mb-dp-peek', 'mb-async-pop'];
 
         let _target = null;     // element whose card is shown or pending
         let _own = false;       // _target is a data-mb-tip element (not data-mbtt)
@@ -65356,6 +65415,463 @@ a { color: #1565c0; }`;
             _tip.style.left = Math.max(4, x) + 'px';
             _tip.style.top  = Math.max(4, y) + 'px';
         }
+    }
+
+    // ============================================================
+    // ASYNC JOB POPUP (_aj*) — one "Liner notes" card for every
+    // background job (Recording of, Relationships, ⏱ Length, …).
+    // ============================================================
+    //
+    // A job registers a PROVIDER once (_ajRegister) and then reports its
+    // steps (_ajStart / _ajLog / _ajChanged / _ajFinish). The framework owns
+    // the one element (#mb-async-pop), its placement under the control that
+    // started the job, Esc, the hover-to-reopen behaviour, the repaint
+    // schedule and a short event log. A provider only answers "what is the
+    // state right now" (snapshot(), O(1), never a row walk) and runs its own
+    // actions (act()), which call the job's EXISTING functions — the popup
+    // never starts a request of its own.
+    //
+    // Anchors are found by attribute, not by wiring: a control carrying
+    // data-mb-aj="<key>" is the job's anchor. The attribute survives
+    // cloneNode(true), so a re-rendered header needs no re-wiring; the
+    // listeners are delegated on document. See docs/claude/toolbar-and-header-ui.md,
+    // "Async job popup (_asyncJobs)".
+
+    /** @type {Map<string, object>} Providers by job key. */
+    const _ajProviders = new Map();
+    /** @type {Map<string, object>} Job records by `"<key>#<scope id>"`. */
+    const _ajJobs = new Map();
+    /** @type {WeakMap<Element, number>} Stable ids for scope elements (tables). */
+    const _ajScopeIds = new WeakMap();
+    /** Popup state: which job is shown, its anchor, timers, pending repaint. */
+    const _ajPop = { el: null, openId: null, anchor: null, hoverTimer: 0, leaveTimer: 0, raf: 0, listening: false, nextScope: 1 };
+    /** Delay before a hover shows the card (ms). */
+    const _AJ_HOVER_DELAY_MS = 250;
+    /** Grace period after the pointer leaves the anchor or the card (ms). */
+    const _AJ_LEAVE_GRACE_MS = 300;
+    /** Entries kept in a job's event log. */
+    const _AJ_LOG_MAX = 8;
+    /** State pill per phase: [label, modifier class]. */
+    const _AJ_PHASES = {
+        idle:    ['Idle', 'idle'],
+        queued:  ['Queued', 'idle'],
+        running: ['Running', 'run'],
+        backoff: ['Backing off', 'warn'],
+        paused:  ['Paused', 'warn'],
+        done:    ['Done', 'ok'],
+        doneErr: ['Done with errors', 'err'],
+        error:   ['Failed', 'err']
+    };
+
+    /**
+     * Whether the popup is enabled at all (`sa_async_pop_enable`).
+     * @returns {boolean}
+     */
+    function _ajEnabled() {
+        return Lib.settings.sa_async_pop_enable !== false;
+    }
+
+    /**
+     * Registers a job provider. Idempotent: a second call replaces the first.
+     *
+     * @param {string} key - Job key, also the value of the anchors' `data-mb-aj`.
+     * @param {{glyph: string, label: string,
+     *          anchorFor?: function(?Element): ?Element,
+     *          scopeOf?: function(Element): ?Element,
+     *          snapshot: function(?Element, ?object): ?object,
+     *          act?: function(?Element, string): void}} provider
+     *   `snapshot(scope, job)` returns the card's content (see `_ajRender()`),
+     *   or `null` to show nothing (the anchor's own tooltip then applies).
+     *   `job` is the framework's record, or `null` before any job ran.
+     *   `scopeOf(anchor)` defaults to the anchor's `<table>` (null outside one).
+     * @returns {void}
+     */
+    function _ajRegister(key, provider) {
+        _ajProviders.set(key, provider);
+    }
+
+    /**
+     * A stable id for a scope element; `0` for the page-wide (null) scope.
+     * @param {?Element} scope
+     * @returns {number}
+     */
+    function _ajScopeId(scope) {
+        if (!scope) return 0;
+        let id = _ajScopeIds.get(scope);
+        if (!id) { id = _ajPop.nextScope++; _ajScopeIds.set(scope, id); }
+        return id;
+    }
+
+    /**
+     * The job-record id for a key and scope.
+     * @param {string} key
+     * @param {?Element} scope
+     * @returns {string}
+     */
+    function _ajId(key, scope) {
+        return `${key}#${_ajScopeId(scope)}`;
+    }
+
+    /**
+     * The job record for a key and scope, or `null` before any job ran there.
+     * @param {string} key
+     * @param {?Element} scope
+     * @returns {?object}
+     */
+    function _ajJob(key, scope) {
+        return _ajJobs.get(_ajId(key, scope)) || null;
+    }
+
+    /**
+     * Starts (or restarts) a job's record. A job the USER started opens the
+     * card under its anchor (unless `sa_async_pop_auto_open` is off); one the
+     * script started by itself (an automatic retry pass) only updates.
+     *
+     * @param {string} key
+     * @param {?Element} scope - The table the job runs for, or null.
+     * @param {{user?: boolean, anchor?: ?Element}} [opts]
+     * @returns {object} The job record.
+     */
+    function _ajStart(key, scope, opts = {}) {
+        const id = _ajId(key, scope);
+        const job = { key, scope, phase: 'running', t0: Date.now(), t1: 0, log: [], user: !!opts.user };
+        _ajJobs.set(id, job);
+        _ajLog(key, scope, 'started');
+        if (opts.user && _ajEnabled() && Lib.settings.sa_async_pop_auto_open !== false) {
+            const anchor = opts.anchor || _ajAnchorFor(key, scope);
+            if (anchor) _ajShow(key, scope, anchor);
+        } else {
+            _ajChanged(key, scope);
+        }
+        return job;
+    }
+
+    /**
+     * Appends one line to a job's event log (the newest `_AJ_LOG_MAX` are kept).
+     *
+     * @param {string} key
+     * @param {?Element} scope
+     * @param {string} msg - Plain text.
+     * @param {('good'|'bad'|'')} [kind]
+     * @returns {void}
+     */
+    function _ajLog(key, scope, msg, kind = '') {
+        const job = _ajJob(key, scope);
+        if (!job) return;
+        const t = new Date();
+        const hh = (n) => String(n).padStart(2, '0');
+        job.log.push({ t: `${hh(t.getHours())}:${hh(t.getMinutes())}:${hh(t.getSeconds())}`, msg, kind });
+        if (job.log.length > _AJ_LOG_MAX) job.log.shift();
+        _ajChanged(key, scope);
+    }
+
+    /**
+     * Sets a job's phase (see `_AJ_PHASES`) and repaints.
+     * @param {string} key
+     * @param {?Element} scope
+     * @param {string} phase
+     * @returns {void}
+     */
+    function _ajPhase(key, scope, phase) {
+        const job = _ajJob(key, scope);
+        if (!job || job.phase === phase) return;
+        job.phase = phase;
+        _ajChanged(key, scope);
+    }
+
+    /**
+     * Marks a job finished: `done`, or `doneErr` when `failed` is non-zero.
+     * @param {string} key
+     * @param {?Element} scope
+     * @param {number} [failed]
+     * @returns {void}
+     */
+    function _ajFinish(key, scope, failed = 0) {
+        const job = _ajJob(key, scope);
+        if (!job) return;
+        job.phase = failed ? 'doneErr' : 'done';
+        job.t1 = Date.now();
+        _ajLog(key, scope, failed ? `finished, ${failed} failed` : 'finished', failed ? 'bad' : 'good');
+    }
+
+    /**
+     * Schedules a repaint of the card if it is showing this job. Free while
+     * the card is closed or shows another job, so a job may call it on every
+     * step; at most one repaint per animation frame.
+     *
+     * @param {string} key
+     * @param {?Element} scope
+     * @returns {void}
+     */
+    function _ajChanged(key, scope) {
+        if (!_ajPop.openId || _ajPop.openId !== _ajId(key, scope) || _ajPop.raf) return;
+        _ajPop.raf = requestAnimationFrame(() => {
+            _ajPop.raf = 0;
+            _ajRepaint();
+        });
+    }
+
+    /**
+     * The anchor control for a job: the provider's `anchorFor(scope)`, else
+     * the first `[data-mb-aj="<key>"]` inside the scope (or the document).
+     * @param {string} key
+     * @param {?Element} scope
+     * @returns {?Element}
+     */
+    function _ajAnchorFor(key, scope) {
+        const p = _ajProviders.get(key);
+        if (p && p.anchorFor) return p.anchorFor(scope);
+        return (scope || document).querySelector(`[data-mb-aj="${key}"]`);
+    }
+
+    /**
+     * The scope a hovered anchor belongs to.
+     * @param {string} key
+     * @param {Element} anchor
+     * @returns {?Element}
+     */
+    function _ajScopeOf(key, anchor) {
+        const p = _ajProviders.get(key);
+        if (p && p.scopeOf) return p.scopeOf(anchor);
+        return anchor.closest('table');
+    }
+
+    /**
+     * Escapes text for HTML.
+     * @param {*} s
+     * @returns {string}
+     */
+    function _ajEsc(s) {
+        return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    }
+
+    /**
+     * Builds the card's HTML from a provider snapshot.
+     *
+     * @param {object} p - Provider (`glyph`, `label`).
+     * @param {object} s - Snapshot: `phase`, `summary`, optional progress
+     *   (`done`, `total`, `failed`, `cached`, `queued`, `unit`), `facts`
+     *   (`[label, text]` pairs), `actions` (`{id, label, kind}`), `foot`.
+     *   All text is escaped here.
+     * @param {?object} job - The framework's record (its log is shown).
+     * @param {string} anchorText - How the footer names the anchor, e.g. "▶🎼".
+     * @returns {string}
+     */
+    function _ajRender(p, s, job, anchorText) {
+        const ph = _AJ_PHASES[s.phase] || _AJ_PHASES.idle;
+        const fmt = (n) => Number(n || 0).toLocaleString('en-US');
+        let h = '<div class="mb-tt-ajhead">'
+              + `<span class="mb-tt-title">${_ajEsc(p.glyph)} ${_ajEsc(s.label || p.label)}</span>`
+              + `<span class="mb-tt-ajpill mb-tt-ajpill-${ph[1]}" data-mb-aj-phase="${_ajEsc(s.phase || 'idle')}">${ph[0]}</span></div>`;
+        if (s.summary) h += `<div class="mb-tt-dim">${_ajEsc(s.summary)}</div>`;
+        if (s.total > 0) {
+            const pct = (n) => `${(100 * Math.max(0, n || 0) / s.total).toFixed(2)}%`;
+            const cached = Math.min(s.cached || 0, s.done || 0);
+            h += `<div class="mb-tt-ajbar" role="progressbar" aria-valuemin="0" aria-valuemax="${s.total}" aria-valuenow="${s.done || 0}">`
+               + `<span class="mb-tt-ajbar-c" style="width:${pct(cached)}"></span>`
+               + `<span class="mb-tt-ajbar-d" style="width:${pct((s.done || 0) - cached)}"></span>`
+               + `<span class="mb-tt-ajbar-f" style="width:${pct(s.failed)}"></span>`
+               + `<span class="mb-tt-ajbar-q" style="width:${pct(s.queued)}"></span></div>`;
+            const right = [];
+            if (s.failed) right.push(`<span class="mb-tt-alert">${fmt(s.failed)} failed</span>`);
+            if (s.cached) right.push(`${fmt(s.cached)} from cache`);
+            h += `<div class="mb-tt-ajcount"><span>${fmt(s.done)} / ${fmt(s.total)}${s.unit ? ' ' + _ajEsc(s.unit) : ''}</span>`
+               + `<span>${right.join(' · ')}</span></div>`;
+        }
+        if (s.facts && s.facts.length) {
+            h += '<div class="mb-tt-rule"></div><dl class="mb-tt-ajfacts">'
+               + s.facts.map(([k, v]) => `<dt>${_ajEsc(k)}</dt><dd>${_ajEsc(v)}</dd>`).join('')
+               + '</dl>';
+        }
+        if (job && job.log.length) {
+            h += '<div class="mb-tt-rule"></div><div class="mb-tt-ajlog-h">Recent</div><ul class="mb-tt-ajlog">'
+               + job.log.slice().reverse().map(e =>
+                   `<li><time>${e.t}</time><span class="mb-tt-ajlog-${e.kind || 'n'}">${_ajEsc(e.msg)}</span></li>`).join('')
+               + '</ul>';
+        }
+        if (s.actions && s.actions.length) {
+            h += '<div class="mb-tt-ajacts">'
+               + s.actions.map(a => `<button type="button" class="mb-tt-ajact${a.kind ? ' mb-tt-ajact-' + _ajEsc(a.kind) : ''}" data-mb-aj-act="${_ajEsc(a.id)}">${_ajEsc(a.label)}</button>`).join('')
+               + '</div>';
+        }
+        h += `<div class="mb-tt-foot">${s.foot ? _ajEsc(s.foot) : `<kbd>Esc</kbd> closes · hover ${_ajEsc(anchorText)} to reopen`}</div>`;
+        return h;
+    }
+
+    /**
+     * Creates the card element once, with its delegated card-side listeners
+     * (hover grace, action clicks).
+     * @returns {HTMLElement}
+     */
+    function _ajEnsurePop() {
+        if (_ajPop.el && _ajPop.el.isConnected) return _ajPop.el;
+        const el = document.createElement('div');
+        el.id = 'mb-async-pop';
+        el.className = 'mb-tt-liner';
+        el.setAttribute('role', 'dialog');
+        el.setAttribute('aria-live', 'polite');
+        el.style.display = 'none';
+        el.addEventListener('mouseenter', () => clearTimeout(_ajPop.leaveTimer));
+        el.addEventListener('mouseleave', () => {
+            clearTimeout(_ajPop.leaveTimer);
+            _ajPop.leaveTimer = setTimeout(_ajHide, _AJ_LEAVE_GRACE_MS);
+        });
+        el.addEventListener('click', (e) => {
+            const b = e.target.closest('[data-mb-aj-act]');
+            if (!b || !_ajPop.openId) return;
+            const job = _ajJobs.get(_ajPop.openId);
+            const key = _ajPop.openId.split('#')[0];
+            const p = _ajProviders.get(key);
+            const scope = job ? job.scope : (_ajPop.anchor ? _ajScopeOf(key, _ajPop.anchor) : null);
+            if (p && p.act) p.act(scope, b.dataset.mbAjAct);
+            _ajRepaint();
+        });
+        document.body.appendChild(el);
+        _ajPop.el = el;
+        return el;
+    }
+
+    /**
+     * Shows the card for a job under its anchor.
+     * @param {string} key
+     * @param {?Element} scope
+     * @param {Element} anchor
+     * @returns {boolean} `true` when shown (the provider had something to say).
+     */
+    function _ajShow(key, scope, anchor) {
+        if (!_ajEnabled() || !_ajProviders.has(key)) return false;
+        clearTimeout(_ajPop.leaveTimer);
+        _ajPop.openId = _ajId(key, scope);
+        _ajPop.anchor = anchor;
+        if (!_ajRepaint()) { _ajHide(); return false; }
+        _ajListen(true);
+        return true;
+    }
+
+    /**
+     * Rebuilds the open card from its provider and re-places it.
+     * @returns {boolean} `false` when the provider returned nothing.
+     */
+    function _ajRepaint() {
+        if (!_ajPop.openId) return false;
+        _ajRepaint.count = (_ajRepaint.count || 0) + 1;
+        const key = _ajPop.openId.split('#')[0];
+        const p = _ajProviders.get(key);
+        const job = _ajJobs.get(_ajPop.openId) || null;
+        const scope = job ? job.scope : (_ajPop.anchor ? _ajScopeOf(key, _ajPop.anchor) : null);
+        const s = p ? p.snapshot(scope, job) : null;
+        if (!s) return false;
+        const el = _ajEnsurePop();
+        const anchorText = (_ajPop.anchor && (_ajPop.anchor.dataset.mbAjName || _ajPop.anchor.textContent.trim())) || p.glyph;
+        el.innerHTML = _ajRender(p, s, job, anchorText);
+        el.dataset.mbAjKey = key;
+        el.style.display = 'block';
+        _ajPlace();
+        return true;
+    }
+
+    /** Places the card under its anchor, flipped above when there is no room. */
+    function _ajPlace() {
+        const el = _ajPop.el, a = _ajPop.anchor;
+        if (!el || !a || !a.isConnected) return;
+        const r = a.getBoundingClientRect();
+        const vw = window.innerWidth, vh = window.innerHeight;
+        el.style.left = '0'; el.style.top = '0';
+        const w = el.offsetWidth, h = el.offsetHeight;
+        let x = Math.max(4, Math.min(r.left - 10, vw - w - 8));
+        let y = r.bottom + 8;
+        if (y + h > vh - 8 && r.top - h - 8 > 4) y = r.top - h - 8;
+        el.style.left = `${x}px`;
+        el.style.top = `${Math.max(4, y)}px`;
+    }
+
+    /** Hides the card. The job keeps running; hovering its anchor shows it again. */
+    function _ajHide() {
+        clearTimeout(_ajPop.leaveTimer);
+        clearTimeout(_ajPop.hoverTimer);
+        if (_ajPop.raf) { cancelAnimationFrame(_ajPop.raf); _ajPop.raf = 0; }
+        _ajPop.openId = null;
+        _ajPop.anchor = null;
+        if (_ajPop.el) _ajPop.el.style.display = 'none';
+        _ajListen(false);
+    }
+
+    /**
+     * Esc closes the card. The window-capture listener exists only while the
+     * card is open, and gives way to the artwork viewer, which owns every key
+     * while it is open. A touch outside the card closes it too.
+     * @param {boolean} on
+     * @returns {void}
+     */
+    function _ajListen(on) {
+        if (on === _ajPop.listening) return;
+        _ajPop.listening = on;
+        if (on) {
+            window.addEventListener('keydown', _ajOnKey, true);
+            document.addEventListener('pointerdown', _ajOnPointerDown, true);
+            window.addEventListener('resize', _ajPlace);
+        } else {
+            window.removeEventListener('keydown', _ajOnKey, true);
+            document.removeEventListener('pointerdown', _ajOnPointerDown, true);
+            window.removeEventListener('resize', _ajPlace);
+        }
+    }
+
+    /**
+     * Esc handler while the card is open.
+     * @param {KeyboardEvent} e
+     */
+    function _ajOnKey(e) {
+        if (e.key !== 'Escape' || !_ajPop.openId) return;
+        const viewer = document.getElementById('mb-art-viewer');
+        if (viewer && !viewer.hidden) return;
+        e.preventDefault();
+        e.stopPropagation();
+        _ajHide();
+    }
+
+    /**
+     * A touch outside the card and its anchor closes it (there is no
+     * mouseleave on touch).
+     * @param {PointerEvent} e
+     */
+    function _ajOnPointerDown(e) {
+        if (e.pointerType !== 'touch' || !_ajPop.el) return;
+        if (_ajPop.el.contains(e.target) || (e.target.closest && e.target.closest('[data-mb-aj]'))) return;
+        _ajHide();
+    }
+
+    /**
+     * Installs the delegated anchor hover listeners once: hovering a
+     * `[data-mb-aj]` control shows its job's card after `_AJ_HOVER_DELAY_MS`;
+     * leaving it closes the card after `_AJ_LEAVE_GRACE_MS` unless the pointer
+     * moved onto the card. A tap's compatibility mouse events are ignored.
+     * @returns {void}
+     */
+    function _ajInitHover() {
+        if (_ajInitHover.done) return;
+        _ajInitHover.done = true;
+        document.addEventListener('mouseover', (e) => {
+            const a = e.target.closest && e.target.closest('[data-mb-aj]');
+            if (!a || _isTouchCompatMouseEvent(e) || !_ajEnabled()) return;
+            if (e.relatedTarget && a.contains(e.relatedTarget)) return;
+            clearTimeout(_ajPop.leaveTimer);
+            clearTimeout(_ajPop.hoverTimer);
+            const key = a.dataset.mbAj;
+            if (_ajPop.anchor === a && _ajPop.openId) return;
+            _ajPop.hoverTimer = setTimeout(() => {
+                if (a.isConnected && a.matches(':hover')) _ajShow(key, _ajScopeOf(key, a), a);
+            }, _AJ_HOVER_DELAY_MS);
+        }, true);
+        document.addEventListener('mouseout', (e) => {
+            const a = e.target.closest && e.target.closest('[data-mb-aj]');
+            if (!a) return;
+            if (e.relatedTarget && a.contains(e.relatedTarget)) return;
+            clearTimeout(_ajPop.hoverTimer);
+            if (_ajPop.anchor !== a) return;
+            clearTimeout(_ajPop.leaveTimer);
+            _ajPop.leaveTimer = setTimeout(_ajHide, _AJ_LEAVE_GRACE_MS);
+        }, true);
     }
 
     /**
@@ -117686,6 +118202,24 @@ a { color: #1565c0; }`;
              */
             tipTextToHtml(text) {
                 return _tipTextToHtml(text);
+            },
+            /**
+             * The async job popup (`_aj*`), so a spec can register a stand-in
+             * provider and drive a job through the shipping framework without
+             * a network-backed feature in the way.
+             */
+            asyncPop: {
+                register: (key, provider) => _ajRegister(key, provider),
+                start: (key, scope, opts) => { _ajStart(key, scope || null, opts); },
+                log: (key, scope, msg, kind) => _ajLog(key, scope || null, msg, kind),
+                phase: (key, scope, phase) => _ajPhase(key, scope || null, phase),
+                finish: (key, scope, failed) => _ajFinish(key, scope || null, failed),
+                changed: (key, scope) => _ajChanged(key, scope || null),
+                hide: () => _ajHide(),
+                /** @returns {?string} The open job's id (`"<key>#<scope>"`), or null. */
+                openId: () => _ajPop.openId,
+                /** @returns {number} How many repaints ran, for the "free while closed" pin. */
+                repaints: () => _ajRepaint.count || 0
             },
             /**
              * Reserves `n` slots of the one MusicBrainz rate gate

@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-10",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "New progress card for background jobs. A column that loads its data from MusicBrainz after the table is shown now reports through one card in the familiar \"Liner notes\" look: what is being loaded, a progress bar that also shows failures and cache hits, where the data comes from and why, the last few requests with their outcome (an HTTP 503 and its retry are visible without opening the console), and buttons such as \"Retry failed\". It opens under the column's toggle when you start the job. Esc closes it and the job keeps running. Hovering the toggle shows it again; moving the pointer away closes it, and you can move onto the card to press its buttons. On a phone, a tap outside closes it. Two new settings under Tooltips: \"Progress card for background jobs\" and \"Open the progress card when I start a job\" (both on)."
+        ]
+      }
+    ]
+  }
+]

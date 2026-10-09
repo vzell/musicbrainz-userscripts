@@ -824,3 +824,66 @@ h3 and thead offsets start below them), z-index 105 (`VSB_Z_HEAD`).
   unstyled MB header is 1,555 px tall (taller than the window, ignored as a
   base by the third-of-the-window clamp); a test that needs it as a base caps
   it at 60 px.
+
+## Async job popup (`_asyncJobs`)
+
+One "Liner notes" card, `#mb-async-pop`, that every background job reports
+through: what is being loaded, a progress bar (from cache / loaded / failed /
+queued), where the data comes from and why, the last eight requests with their
+outcome, and actions such as "Retry N failed". Mockup and rules agreed on
+2026-10-09 (`https://claude.ai/artifact/P8LJjFQkURd6a8fHYVwrhq`). The code is
+the `ASYNC JOB POPUP (_aj*)` block right after `_initStatTooltip()`.
+
+**A job registers a provider and reports steps; the framework owns the rest.**
+`_ajRegister(key, {glyph, label, snapshot, act, anchorFor?, scopeOf?})` once;
+then `_ajStart(key, scope, {user, anchor})`, `_ajLog()`, `_ajPhase()`,
+`_ajChanged()`, `_ajFinish()`. `scope` is the job's `<table>` (null for a
+page-wide job). `snapshot(scope, job)` returns the card's content and is called
+on every repaint, so it must be O(1) — counters the job already keeps, never a
+row walk. `act(scope, id)` calls the job's EXISTING functions; the card never
+starts a request of its own. Returning `null` from `snapshot()` shows nothing,
+and the anchor's own Liner-notes tooltip applies as before.
+
+**Anchors are found by attribute, never wired.** A control carrying
+`data-mb-aj="<key>"` is that job's anchor; the hover listeners are delegated on
+`document` (`_ajInitHover()`, installed from `_initStatTooltip()` at page
+init). The attribute survives `cloneNode(true)`, so a rebuilt `<thead>` needs
+nothing. `_ajInitHover()` sits ABOVE the `_aj*` const declarations in call
+order: it only adds listeners and reads no const until an event fires, which
+is after the IIFE has run. Do not make it read state at install time (TDZ —
+see "Hover tooltips must ignore a tap" for the time that took down every
+action button).
+
+How it behaves, and why:
+- **Opens by itself only for a job the USER started** (`{user: true}`), and
+  only while `sa_async_pop_auto_open` is on. A job the script starts (an
+  automatic retry pass) updates the record and, if the card is open, the card.
+- **Esc hides it and nothing else** — the job keeps running and keeps
+  logging. The `keydown` listener exists only while the card is open
+  (`_ajListen()`), on window capture, and gives way to `#mb-art-viewer`, which
+  owns every key while it is open. While the card is open, Esc is the card's:
+  an Esc meant for a focused filter input closes the card first.
+- **Hover shows it again** after 250 ms (`_AJ_HOVER_DELAY_MS`), live; leaving
+  the anchor OR the card closes it after 300 ms (`_AJ_LEAVE_GRACE_MS`), and
+  moving from one to the other cancels that, so the action buttons are
+  reachable. An idle anchor (no job yet) shows the provider's preview — the
+  place for "this would cost N requests".
+- **Repaints are free while it is closed**: `_ajChanged()` returns unless the
+  card is open on THAT job, and coalesces to one repaint per animation frame.
+  A job may call it on every step. `__saTest.asyncPop.repaints()` pins this.
+- **One card, one layer.** It is a `.mb-tt-liner` (z-index from that rule) and
+  its id is in `_OTHER_RICH_TIPS`, so the anchor's own `_setTip` card stays
+  away while it shows. Its own rows are `.mb-tt-aj*` rules in the liner block
+  — no inline colours, same as every other tooltip.
+- **Touch**: the anchor hover handler returns on `_isTouchCompatMouseEvent()`
+  (a tap would leave it hanging); a touch outside the card closes it.
+- **Never in a table's text.** The card lives in `<body>`; a job's progress on
+  its toggle stays `::after { content: attr() }`. It also never writes to
+  `#mb-info-display-rel`, which `waitForRelationshipsComplete()` waits on.
+
+`FIXTURE_SETTINGS_OVERRIDE` forces `sa_async_pop_auto_open` off: a card opened
+by a toggle click sits right over the header cells a spec clicks next. Specs
+that test the card seed it back on. Specs: `async-pop.spec.js` (9) and
+`async-pop.mobile.spec.js` (2), driving the shipping framework with a stand-in
+provider through `__saTest.asyncPop`; mutations `scripts/mutations/async-pop.json`
+(13, all caught).
