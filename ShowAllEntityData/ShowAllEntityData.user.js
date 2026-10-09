@@ -25,6 +25,8 @@
 // @include      /^https?:\/\/(?:www\.)?jungleland\.it\/html\/list\.htm(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?brucespringsteen\.it\/(?:DB|db)\/records\.aspx(?:[?#].*)?$/
 // @include      /^https?:\/\/brucebase\.wikidot\.com\/stats:songs\/?(?:[?#].*)?$/
+// @include      /^https?:\/\/brucebase\.wikidot\.com\/(?:\d{4}|1949-64)\/?(?:[?#].*)?$/
+// @include      /^https?:\/\/brucebase\.wikidot\.com\/(?:home\/?)?(?:[?#].*)?$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
 // @connect      eventartarchive.org
@@ -4242,6 +4244,35 @@
                          'with MusicBrainz, so this can be switched on from either site.'
         },
 
+        sa_bb_year_pages: {
+            label: 'Enable on the Brucebase year pages (event lists)',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default; needs the setting above. When on, the script also runs on ' +
+                         'the Brucebase year pages (brucebase.wikidot.com/1975, /2026, … and ' +
+                         '/1949-64) and offers a "Show all events" button that turns the year\'s ' +
+                         'shows, sessions and appearances into one filterable, sortable table: ' +
+                         'date (with day, month, year and weekday columns), type, venue, city, ' +
+                         'state, country, tour, soundcheck and setlist (one song per row), set ' +
+                         'note, the description with its links, the site\'s media icons and ' +
+                         'whether Brucebase asks for more information. On the wiki\'s start page ' +
+                         '(brucebase.wikidot.com) a "Show all events of all years" button reads ' +
+                         'every year page in turn into one table. When off, the script exits on ' +
+                         'those pages before touching them.'
+        },
+
+        sa_bb_sidebar_right: {
+            label: 'Show the Brucebase side bar on the right',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default; needs one of the Brucebase settings above. Moves the ' +
+                         'wiki\'s side bar (Site Navigation, Gig Pages, …) from the left to the ' +
+                         'right of the page, as on MusicBrainz. Either way it gets the same ' +
+                         'collapse handle as the MusicBrainz sidebar (⚙️ "Collabsable sidebar"), ' +
+                         'and starts hidden while "Start with sidebar collapsed" is on; on the ' +
+                         'left it collapses to the left.'
+        },
+
         sa_bb_detail_preview: {
             label: 'Preview song pages on the Brucebase song list',
             type: 'checkbox',
@@ -5411,6 +5442,22 @@
     const _isBbHost = /(^|\.)brucebase\.wikidot\.com$/.test(window.location.hostname);
 
     /**
+     * A Brucebase year page's path: `/1975`, …, and the one exception
+     * `/1949-64` (pageType `bb-year`, docs/claude/brucebase.md). Read by the
+     * year-page opt-in gate below and by the `bb-year` definition's `match`.
+     * @type {RegExp}
+     */
+    const _BB_YEAR_PATH_RE = /^\/(?:\d{4}|1949-64)\/?$/;
+
+    /**
+     * The Brucebase start page's path: `/`, and `/home`, its wiki name
+     * (pageType `bb-home`, which pages through every year page). Read by the
+     * year-page opt-in gate below and by the `bb-home` definition's `match`.
+     * @type {RegExp}
+     */
+    const _BB_HOME_PATH_RE = /^\/(?:home\/?)?$/;
+
+    /**
      * The non-MusicBrainz host this page is on, as the `host` key of its
      * `pageDefinitions` entries spells it, or `null` on MusicBrainz.
      *
@@ -5471,6 +5518,14 @@
     // out by the @include line (docs/claude/brucebase.md).
     if (_isBbHost && Lib.settings.sa_enable_brucebase !== true) {
         Lib.info('init', 'brucebase.wikidot.com support is off (sa_enable_brucebase) — nothing to do.');
+        return;
+    }
+    // Its year pages have a switch of their own (`sa_bb_year_pages`, default
+    // off) on top of that one, gated as early — and so has the start page,
+    // whose one button pages through all of them.
+    if (_isBbHost && (_BB_YEAR_PATH_RE.test(window.location.pathname) || _BB_HOME_PATH_RE.test(window.location.pathname)) &&
+        Lib.settings.sa_bb_year_pages !== true) {
+        Lib.info('init', 'brucebase.wikidot.com year pages are off (sa_bb_year_pages) — nothing to do.');
         return;
     }
 
@@ -13206,12 +13261,682 @@
         Lib.debug('init', `applyBbSongsToTable: converted ${tbody.rows.length} song${tbody.rows.length === 1 ? '' : 's'} → table.`);
     }
 
+    // --- Brucebase year pages (`bb-year`) -------------------------------------
+    // One page per year (`/1975`, …, and `/1949-64`) listing every show,
+    // session and appearance of that year as flat blocks in #page-content.
+    // Opt-in via `sa_bb_year_pages`, on top of `sa_enable_brucebase`. See
+    // docs/claude/brucebase.md, "Year pages — `bb-year`".
+
+    /**
+     * Column headers of the Brucebase year table, in order.
+     * @type {string[]}
+     */
+    const _BB_YEAR_HEADERS = ['Date', 'Type', 'Venue', 'City', 'State', 'Country', 'Tour',
+        'Soundcheck', 'Setlist', 'Set note', 'Notes', 'Media', 'Info wanted'];
+
+    /**
+     * An entry's Type, by the prefix of its heading link (`/gig:…`). Any
+     * other prefix is shown capitalised, as written.
+     * @type {Object<string, string>}
+     */
+    const _BB_YEAR_TYPES = {
+        gig: 'Gig', nogig: 'No gig', recording: 'Recording', rehearsal: 'Rehearsal', interview: 'Interview',
+        nobruce: 'No Bruce'
+    };
+
+    /**
+     * Canadian province and territory codes: a heading ending in one of
+     * these is in Canada, any other two-letter code is a US state.
+     * @type {Set<string>}
+     */
+    const _BB_CA_PROVINCES = new Set(['AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT']);
+
+    /**
+     * The regions that sit between a non-US heading's city and its country
+     * ("SYDNEY, NEW SOUTH WALES, AUSTRALIA"). Every other four-part non-US
+     * heading is VENUE, SUB-VENUE, CITY, COUNTRY ("ICC BERLIN, SAAL 1,
+     * BERLIN, GERMANY"), so this is a list, not a rule: the whole set the
+     * probe found over every year page (scripts/probe-bb-year-pages.py,
+     * 2026-10-09).
+     * @type {Set<string>}
+     */
+    const _BB_REGIONS = new Set(['NEW SOUTH WALES', 'VICTORIA', 'QUEENSLAND', 'WESTERN AUSTRALIA', 'SOUTH AUSTRALIA',
+        'TASMANIA', 'NORTHERN TERRITORY', 'AUSTRALIAN CAPITAL TERRITORY', 'GRAN CANARIA']);
+
+    /**
+     * The image file stem of each entry icon (`…/00Photo-32.png`) and the
+     * label the table uses for it. Read from the file, not the `title`,
+     * because the titles carry typos ("Newss", "Bootlef", "Photos").
+     * @type {Object<string, string>}
+     */
+    const _BB_ICON_LABELS = {
+        photo: 'Photo', ticket: 'Ticket', setlist: 'Setlist', story: 'Storyteller', news: 'News',
+        box: 'Memorabilia', eye: 'Eyewitness', video: 'Video', audio: 'Audio', bootleg: 'Bootleg',
+        recording: 'LiveDL', retail: 'Retail', star: 'Featured', help: 'Help Us'
+    };
+
+    /**
+     * Matches an entry icon's image URL, capturing its file stem.
+     * @type {RegExp}
+     */
+    const _BB_ICON_SRC_RE = /\/00([A-Za-z]+)-32\.png$/;
+
+    /**
+     * Matches a set paragraph's label, the text before its first colon
+     * ("Soundcheck: …", "with Willie Nile: …"). Only a label holding a
+     * lowercase letter counts: song titles are written in capitals.
+     * @type {RegExp}
+     */
+    const _BB_SET_LABEL_RE = /^\s*([^:/]{1,80}?):\s*/;
+
+    /**
+     * Splits a Brucebase year-page entry heading into its columns.
+     *
+     * The heading is "DATE - VENUE, CITY, ST" (a few lack the " - "). A
+     * `00` day or month means "not known" and is dropped (`1954-10-00` →
+     * `1954-10`, `1971-00-00` → `1971`), so the date splitter leaves DD and
+     * Day empty instead of naming the weekday of "day 0"; the splitter itself
+     * is shared with MusicBrainz and stays untouched.
+     *
+     * The location is split from the right: a last part of two-letter codes
+     * ("NJ", "CO/KS/NE") is the state or province (country USA or CANADA),
+     * any other last part is the country, and a region of `_BB_REGIONS`
+     * before it is the State. The part before that is the city; whatever is
+     * left over is the venue, commas and all ("THE STONE PONY, SUMMER
+     * STAGE").
+     *
+     * @param {string} text The heading's text.
+     * @param {string} href The heading link's `href` (`/gig:2026-01-30-…`), or `''` when it has none.
+     * @returns {{date: string, type: string, venue: string, city: string, state: string, country: string}}
+     */
+    function _bbParseHeading(text, href) {
+        const t = String(text || '').replace(/\s+/g, ' ').trim();
+        const m = t.match(/^(\d{4})-(\d\d)-(\d\d)\b\s*(?:-\s+)?(.*)$/);
+        let date = '';
+        let loc = t;
+        if (m) {
+            date = m[2] === '00' ? m[1] : m[3] === '00' ? `${m[1]}-${m[2]}` : `${m[1]}-${m[2]}-${m[3]}`;
+            loc = m[4];
+        }
+        // The link's path prefix (`/gig:…`), also when the href is absolute.
+        const pm = String(href || '').replace(/^[a-z]+:\/\/[^/]+/i, '').match(/^\/?([a-z]+):/);
+        const prefix = pm ? pm[1] : '';
+        const type = _BB_YEAR_TYPES[prefix] || (prefix ? prefix.charAt(0).toUpperCase() + prefix.slice(1) : '');
+
+        const parts = loc.split(',').map(p => p.trim()).filter(Boolean);
+        let state = '';
+        let country = '';
+        if (parts.length >= 2) {
+            const last = parts.pop();
+            if (/^[A-Z]{2}(?:\/[A-Z]{2})*$/.test(last)) {
+                state = last;
+                country = _BB_CA_PROVINCES.has(last) ? 'CANADA' : 'USA';
+            } else {
+                country = last;
+                if (parts.length >= 3 && _BB_REGIONS.has(parts[parts.length - 1])) state = parts.pop();
+            }
+        }
+        const city = parts.length >= 2 ? parts.pop() : '';
+        return { date, type, venue: parts.join(', '), city, state, country };
+    }
+
+    /**
+     * Resolves a link of a Brucebase page to an absolute URL, against this
+     * page when the script runs on Brucebase (a fetched or parsed document's
+     * own base is not the wiki), otherwise against the wiki's https root.
+     * `javascript:` and `mailto:` links are returned as written.
+     *
+     * @param {string} raw An `href` attribute, as written.
+     * @returns {string} The absolute URL.
+     */
+    function _bbAbsHref(raw) {
+        const h = String(raw || '');
+        if (/^(?:javascript|mailto):/i.test(h)) return h;
+        try {
+            return new URL(h, _isBbHost ? window.location.href : 'https://brucebase.wikidot.com/').href;
+        } catch (e) {
+            return h;
+        }
+    }
+
+    /**
+     * Clones a node into `docContext` with every link made absolute
+     * (`_bbAbsHref()`), so a cell keeps working wherever the row lands.
+     *
+     * @param {Node}     node       The node to copy.
+     * @param {Document} docContext The document that will own the copy.
+     * @returns {Node} The copy.
+     */
+    function _bbCloneAbs(node, docContext) {
+        const copy = docContext.importNode(node, true);
+        const links = copy.nodeType === 1 ? [...(copy.matches('a[href]') ? [copy] : []), ...copy.querySelectorAll('a[href]')] : [];
+        links.forEach(a => a.setAttribute('href', _bbAbsHref(a.getAttribute('href'))));
+        return copy;
+    }
+
+    /**
+     * The visible text of an element, whitespace collapsed.
+     *
+     * @param {Node} el
+     * @returns {string}
+     */
+    function _bbText(el) {
+        return (el?.textContent || '').replace(/\s+/g, ' ').trim();
+    }
+
+    /**
+     * Tells whether an element of a year page's `#page-content` is an
+     * entry's heading paragraph: a `<p>` whose text is one date-led
+     * `<strong>` ("2026-01-30 - FIRST AVENUE, MINNEAPOLIS, MN"), usually
+     * linking the entry's page. The date anchor before it (`<a
+     * name="300126">`, `000065a` for several entries on one date) is NOT
+     * required: two entries have it in a paragraph of their own, and 712 of
+     * the 5,009 carry a letter after the six digits (probe, 2026-10-09).
+     *
+     * @param {Element} el A child of `#page-content`.
+     * @returns {?{heading: string, link: ?HTMLAnchorElement}} The heading's text and link, or `null`.
+     */
+    function _bbYearEntryHead(el) {
+        if (el.tagName !== 'P') return null;
+        const strong = el.querySelector(':scope > strong');
+        if (!strong) return null;
+        const heading = _bbText(strong);
+        if (!/^\d{4}-\d\d-\d\d\b/.test(heading) || _bbText(el) !== heading) return null;
+        return { heading, link: strong.querySelector('a[href]') };
+    }
+
+    /**
+     * Reads a year page's tour box heading. One heading can end one tour and
+     * start the next ("End of the "Castiles" era / Start of the "Earth"
+     * era"), so the parts are read in order and the last one decides:
+     * `{start: true, name: '"Earth" era'}`. Tour legs ("End of the 1st leg
+     * of …", "Start of the 2nd leg of … - Europe") are tours of their own,
+     * and a year that opens mid-tour says so with "Continuation of …",
+     * which starts it like a "Start of".
+     *
+     * @param {string} text The box heading's text.
+     * @returns {?{start: boolean, name: string}} `null` when it is neither a start nor an end.
+     */
+    function _bbParseTourHeading(text) {
+        let out = null;
+        String(text || '').replace(/\s+/g, ' ').trim().split(/\s+\/\s+(?=(?:Start|End|Continuation) of\b)/i).forEach(part => {
+            const m = part.match(/^(Start|End|Continuation) of (?:the )?(.*)$/i);
+            if (m) out = { start: !/^end$/i.test(m[1]), name: m[2].trim() };
+        });
+        return out;
+    }
+
+    /**
+     * Collects the entries of a Brucebase year page in one pass over
+     * `#page-content`'s children. An entry opens at its heading paragraph
+     * (`_bbYearEntryHead()`) and closes at the next `<hr>` or heading. A
+     * tour box (a block whose `<h2>` reads "Start of …"/"End of …"/
+     * "Continuation of …") sits
+     * between entries, after an `<hr>`: a start names the tour of every
+     * entry after it, an end clears it. Nothing is moved.
+     *
+     * @param {Element} content The page's `#page-content`.
+     * @returns {Array<{heading: string, link: ?HTMLAnchorElement, tour: string, top: Element, blocks: Element[]}>}
+     *   The entries in page order, each with its heading paragraph (`top`)
+     *   and the elements after it (`blocks`).
+     */
+    function _bbYearEntries(content) {
+        const entries = [];
+        let cur = null;
+        let tour = '';
+        Array.from(content.children).forEach(el => {
+            const head = _bbYearEntryHead(el);
+            if (head) {
+                cur = { heading: head.heading, link: head.link, tour, top: el, blocks: [] };
+                entries.push(cur);
+                return;
+            }
+            if (el.tagName === 'HR') {
+                cur = null;
+                return;
+            }
+            const h2 = el.matches('h2') ? el : el.querySelector('h2');
+            const box = h2 ? _bbParseTourHeading(h2.textContent) : null;
+            if (box) {
+                tour = box.start ? box.name : '';
+                cur = null;
+                return;
+            }
+            if (cur) cur.blocks.push(el);
+        });
+        return entries;
+    }
+
+    /**
+     * True when the letters of a text are (nearly) all capitals — how the
+     * site writes song titles. "Nearly": a title can hold a few lowercase
+     * letters ("4th OF JULY").
+     *
+     * @param {string} text
+     * @returns {boolean}
+     */
+    function _bbIsCapitals(text) {
+        const lower = (text.match(/[a-zß-ÿ]/g) || []).length;
+        const upper = (text.match(/[A-ZÀ-Þ]/g) || []).length;
+        return upper > 0 && lower / (lower + upper) < 0.15;
+    }
+
+    /**
+     * Classifies one leading paragraph of a year-page entry. A set paragraph
+     * is a song list: after an optional mixed-case label ("Soundcheck:"),
+     * and with what sits in parentheses set aside ("(with Tom Morello)"),
+     * its songs are written in capitals — judged per " / " segment when
+     * there are several, so one lowercase "blues improvisation" does not
+     * turn a setlist into prose. A paragraph that is only a note — a
+     * `<sup>`, or one `<em>` naming the set ("No set details known.") — is a
+     * note; one `<em>` in capitals is a setlist set in italics (the 2018
+     * Broadway tapings). Anything else is prose: the start of the description, for the
+     * 2,732 of 5,009 entries whose description is plain paragraphs rather
+     * than a `.list-pages-box` (probe, 2026-10-09).
+     *
+     * @param {HTMLParagraphElement} p
+     * @returns {?string} `'set'`, `'note'`, or `null` for prose.
+     */
+    function _bbSetParagraphKind(p) {
+        const body = Array.from(p.childNodes).filter(n => !(n.nodeType === 1 && n.tagName === 'SUP'));
+        let t = body.map(n => n.textContent).join('').replace(/\s+/g, ' ').trim();
+        if (!t) return p.querySelector('sup') ? 'note' : null;
+        const meaningful = body.filter(n => n.nodeType === 1 ? n.tagName !== 'BR' : n.textContent.trim());
+        if (meaningful.length === 1 && meaningful[0].nodeType === 1 && meaningful[0].tagName === 'EM' &&
+            !_bbIsCapitals(t.replace(/\([^()]*\)/g, ''))) {
+            return /\bset/i.test(t) ? 'note' : null;
+        }
+        const lm = t.match(_BB_SET_LABEL_RE);
+        if (lm && /[a-z]/.test(lm[1])) t = t.slice(lm[0].length);
+        let prev = null;
+        while (prev !== t) {
+            prev = t;
+            t = t.replace(/\([^()]*\)|\[[^[\]]*\]/g, '');
+        }
+        const segs = t.split(/\s\/\s/).filter(s => /[A-Za-zÀ-ÿ]/.test(s));
+        if (segs.length >= 2) return segs.filter(_bbIsCapitals).length / segs.length >= 0.6 ? 'set' : null;
+        return _bbIsCapitals(t) ? 'set' : null;
+    }
+
+    /**
+     * Splits one set paragraph of a year-page entry into its songs.
+     *
+     * Songs are separated by " / " in the paragraph's TOP-LEVEL text (a
+     * slash inside a title, "AC/DC", is not a separator); each song keeps
+     * its own markup (bold = tour premiere, italic) and its "(with …)". A
+     * `<br>` separates too. A `<sup>` holds a note ("Set details may be
+     * inaccurate."), and a paragraph that is one `<em>` is only a note ("No
+     * set details known."), unless it is in capitals (a setlist set in
+     * italics, whose songs are then its own); notes go to `notes`. A leading label ("Soundcheck:",
+     * "with Willie Nile:") is detached when it holds a lowercase letter.
+     *
+     * @param {HTMLParagraphElement} p          The paragraph.
+     * @param {Document}             docContext The document that will own the songs.
+     * @returns {{label: string, songs: DocumentFragment[], notes: string[]}}
+     */
+    function _bbSplitSet(p, docContext) {
+        const notes = [];
+        const nodes = [];
+        p.childNodes.forEach(n => {
+            if (n.nodeType === 1 && n.tagName === 'SUP') {
+                const note = _bbText(n);
+                if (note) notes.push(note);
+                return;
+            }
+            nodes.push(n);
+        });
+        const meaningful = nodes.filter(n => n.nodeType === 1 ? n.tagName !== 'BR' : n.textContent.trim());
+        if (meaningful.length === 1 && meaningful[0].nodeType === 1 && meaningful[0].tagName === 'EM') {
+            const em = meaningful[0];
+            if (!_bbIsCapitals(_bbText(em).replace(/\([^()]*\)/g, ''))) {
+                const note = _bbText(em);
+                if (note) notes.push(note);
+                return { label: '', songs: [], notes };
+            }
+            // A setlist set in italics: its songs are the <em>'s own nodes.
+            nodes.splice(nodes.indexOf(em), 1, ...Array.from(em.childNodes));
+        }
+
+        let label = '';
+        const segments = [[]];
+        let first = true;
+        nodes.forEach(n => {
+            if (n.nodeType === 1 && n.tagName === 'BR') {
+                segments.push([]);
+                return;
+            }
+            if (n.nodeType !== 3) {
+                segments[segments.length - 1].push(_bbCloneAbs(n, docContext));
+                if (n.textContent.trim()) first = false;
+                return;
+            }
+            let text = n.textContent;
+            if (first && text.trim()) {
+                const lm = text.match(_BB_SET_LABEL_RE);
+                if (lm && /[a-z]/.test(lm[1])) {
+                    label = lm[1].trim();
+                    text = text.slice(lm[0].length);
+                }
+                first = false;
+            }
+            text.split(/(?:^|\s)\/(?:\s|$)/).forEach((part, i) => {
+                if (i > 0) segments.push([]);
+                if (part) segments[segments.length - 1].push(docContext.createTextNode(part));
+            });
+        });
+
+        const songs = [];
+        segments.forEach(seg => {
+            if (!seg.some(n => n.textContent.trim())) return;
+            const frag = docContext.createDocumentFragment();
+            seg.forEach(n => frag.appendChild(n));
+            const head = frag.firstChild;
+            if (head && head.nodeType === 3) head.textContent = head.textContent.replace(/^\s+/, '');
+            const tail = frag.lastChild;
+            if (tail && tail.nodeType === 3) tail.textContent = tail.textContent.replace(/\s+$/, '');
+            songs.push(frag);
+        });
+        return { label, songs, notes };
+    }
+
+    /**
+     * The entry icon an element is, if any: an `<img>` of the site's icon
+     * set (`…/00Photo-32.png`), or a link or `div.image-container` holding
+     * only that. Its label comes from the file (`_BB_ICON_LABELS`).
+     *
+     * @param {Element} el A block of an entry, or an element inside one.
+     * @returns {Array<{img: HTMLImageElement, label: string, link: ?HTMLAnchorElement}>} The icons it holds; `[]` when it is not an icon block.
+     */
+    function _bbIconsOf(el) {
+        const imgs = el.tagName === 'IMG' ? [el] : Array.from(el.querySelectorAll('img'));
+        if (!imgs.length || !imgs.every(img => _BB_ICON_SRC_RE.test(img.getAttribute('src') || ''))) return [];
+        if (el.tagName !== 'IMG' && _bbText(el)) return [];
+        return imgs.map(img => {
+            const stem = (img.getAttribute('src').match(_BB_ICON_SRC_RE)[1] || '').toLowerCase();
+            return {
+                img,
+                label: _BB_ICON_LABELS[stem] || (img.getAttribute('title') || stem).trim(),
+                link: img.closest('a[href]'),
+            };
+        });
+    }
+
+    /**
+     * Builds one table row of the Brucebase year table, in `_BB_YEAR_HEADERS`
+     * order.
+     *
+     * An entry's blocks come in two phases. First the set paragraphs
+     * (`_bbSetParagraphKind()`), and a recording's blockquote of the songs
+     * recorded. Soundcheck and Setlist are `<ul><li>` lists, one song per
+     * row; a set paragraph with any other label ("Without Bruce:", "with
+     * Willie Nile:") joins the Setlist, its first row led by the label. Then
+     * the description: a `.list-pages-box`, or plain paragraphs (and lists,
+     * quotes) until the icons. Notes keeps it, paragraphs and links
+     * (absolute) intact, so its song links get the detail preview. Media is
+     * the entry's icon row, one `<li>` per icon: the site's own image and
+     * its label as text (shown by the icon, read by filters and the 📊
+     * dropdown). The "Help Us" icon and the request text after it are the
+     * Info wanted column instead.
+     *
+     * @param {{heading: string, link: ?HTMLAnchorElement, tour: string, blocks: Element[]}} entry One entry of `_bbYearEntries()`.
+     * @param {Document} docContext The document the row is built in.
+     * @returns {HTMLTableRowElement} The row.
+     */
+    function _bbYearBuildRow(entry, docContext) {
+        const href = entry.link ? entry.link.getAttribute('href') : '';
+        const h = _bbParseHeading(entry.heading, href);
+        const soundcheck = [];
+        const setlist = [];
+        const notes = [];
+        const description = [];
+        const media = [];
+        let infoWanted = false;
+
+        const takeSet = (p) => {
+            const s = _bbSplitSet(p, docContext);
+            notes.push(...s.notes);
+            if (/^soundcheck/i.test(s.label)) {
+                soundcheck.push(...s.songs);
+                return;
+            }
+            if (s.label && s.songs.length) {
+                const tag = docContext.createElement('span');
+                tag.className = 'mb-bb-set-label';
+                tag.textContent = s.label;
+                s.songs[0].insertBefore(docContext.createTextNode(' '), s.songs[0].firstChild);
+                s.songs[0].insertBefore(tag, s.songs[0].firstChild);
+            }
+            setlist.push(...s.songs);
+        };
+
+        let inSets = true;
+        entry.blocks.forEach(el => {
+            if (inSets) {
+                const ps = el.tagName === 'P' ? [el]
+                    : el.tagName === 'BLOCKQUOTE' ? Array.from(el.querySelectorAll(':scope > p')) : null;
+                if (ps && ps.length && ps.every(p => _bbSetParagraphKind(p) !== null)) {
+                    ps.forEach(takeSet);
+                    return;
+                }
+                inSets = false;
+            }
+            const icons = _bbIconsOf(el);
+            if (icons.length) {
+                icons.forEach(icon => {
+                    if (icon.label === 'Help Us') infoWanted = true;
+                    else media.push(icon);
+                });
+                return;
+            }
+            // The "Help Us" request text, and the line breaks between icon rows.
+            if (el.tagName === 'SUP' || el.tagName === 'BR') return;
+            if (el.matches('.list-pages-box')) {
+                const item = el.querySelector('.list-pages-item') || el;
+                item.childNodes.forEach(n => {
+                    if (n.nodeType !== 3 || n.textContent.trim()) description.push(n);
+                });
+                return;
+            }
+            description.push(el);
+        });
+
+        const tr = docContext.createElement('tr');
+        const textCell = (text) => {
+            const td = docContext.createElement('td');
+            td.textContent = text;
+            tr.appendChild(td);
+            return td;
+        };
+        const listCell = (frags) => {
+            const td = docContext.createElement('td');
+            if (frags.length) {
+                const ul = docContext.createElement('ul');
+                frags.forEach(f => {
+                    const li = docContext.createElement('li');
+                    li.appendChild(f);
+                    ul.appendChild(li);
+                });
+                td.appendChild(ul);
+            }
+            tr.appendChild(td);
+        };
+
+        textCell(h.date);
+        textCell(h.type);
+        const venueTd = docContext.createElement('td');
+        const venueText = h.venue || entry.heading;
+        if (href) {
+            const venueA = docContext.createElement('a');
+            venueA.setAttribute('href', _bbAbsHref(href));
+            venueA.textContent = venueText;
+            venueTd.appendChild(venueA);
+        } else {
+            venueTd.textContent = venueText;
+        }
+        tr.appendChild(venueTd);
+        textCell(h.city);
+        textCell(h.state);
+        textCell(h.country);
+        textCell(entry.tour);
+        listCell(soundcheck);
+        listCell(setlist);
+        textCell(notes.join(' '));
+
+        const notesTd = docContext.createElement('td');
+        description.forEach(n => notesTd.appendChild(_bbCloneAbs(n, docContext)));
+        tr.appendChild(notesTd);
+
+        const mediaTd = docContext.createElement('td');
+        if (media.length) {
+            const ul = docContext.createElement('ul');
+            ul.className = 'mb-bb-media';
+            media.forEach(m => {
+                const li = docContext.createElement('li');
+                const img = docContext.createElement('img');
+                img.setAttribute('src', m.img.getAttribute('src'));
+                img.setAttribute('alt', '');
+                img.setAttribute('loading', 'lazy');
+                const label = docContext.createElement('span');
+                label.className = 'mb-bb-media-label';
+                label.textContent = m.label;
+                if (m.link) {
+                    const a = docContext.createElement('a');
+                    a.setAttribute('href', _bbAbsHref(m.link.getAttribute('href')));
+                    a.appendChild(img);
+                    li.appendChild(a);
+                } else {
+                    li.appendChild(img);
+                }
+                li.appendChild(label);
+                _setTip(li, m.label);
+                ul.appendChild(li);
+            });
+            mediaTd.appendChild(ul);
+        }
+        tr.appendChild(mediaTd);
+        textCell(infoWanted ? 'yes' : '');
+        return tr;
+    }
+
+    /**
+     * Converts a Brucebase year page's entries into a `<table class="tbl">`,
+     * so the standard fetch / filter / sort pipeline can process it like any
+     * MusicBrainz table — the counterpart of `applyBbSongsToTable()` for the
+     * pageType carrying `features.bbYearToTable`.
+     *
+     * Called from the same three places as the other converters (click-time
+     * pre-processing of the live page, a fetched page, which is never reached
+     * today since the year is one page, and Load from Disk). Idempotent: once
+     * the entries are gone, a second call is a no-op.
+     *
+     * The table takes the place of the first entry; everything from there to
+     * the last entry's last element — the entries, the `<hr>`s between them,
+     * the tour boxes (their names live on in the Tour column) — is removed.
+     * The icon legend and year above, and the Previous / Listing / Next line
+     * below, stay. On the live document `<h2 class="mb-bb-list-heading">`
+     * goes before the table, where `updateH2Count()` anchors the row count
+     * and filter bar.
+     *
+     * On the start page (`bb-home`, `bbYearToTable: 'all'`) the live document
+     * has no entries of its own: it gets an empty table to render into
+     * (`_bbHomeEmptyTable()`), and every fetched year page is converted as
+     * above.
+     *
+     * @param {object}   def                   The active merged pageDefinition.
+     * @param {Document} [docContext=document] The live or a fetched document.
+     * @returns {void}
+     */
+    function applyBbYearToTable(def, docContext = document) {
+        if (!def?.features?.bbYearToTable) return;
+        if (def.features.bbYearToTable === 'all' && docContext === document) {
+            _bbHomeEmptyTable();
+            return;
+        }
+        const content = docContext.getElementById('page-content');
+        const entries = content ? _bbYearEntries(content) : [];
+        if (entries.length === 0) {
+            // Said out loud, like applyBbSongsToTable(): a page this function
+            // already converted is the one legitimate silent case.
+            if (!docContext.querySelector('table.mb-bb-table')) {
+                Lib.warn('init', `applyBbYearToTable: no entries found on the ${docContext === document ? 'live' : 'fetched'} page ` +
+                    `(${content ? `${content.querySelectorAll('a[name]').length} anchor(s), no paragraph that is one date-led <strong>`
+                        : 'no #page-content'}) — nothing converted.`);
+            }
+            return;
+        }
+
+        const table = docContext.createElement('table');
+        table.className = 'tbl mb-bb-table mb-bb-year-table';
+        const thead = docContext.createElement('thead');
+        const hr = docContext.createElement('tr');
+        _BB_YEAR_HEADERS.forEach(name => {
+            const th = docContext.createElement('th');
+            th.textContent = name;
+            hr.appendChild(th);
+        });
+        thead.appendChild(hr);
+        table.appendChild(thead);
+        const tbody = docContext.createElement('tbody');
+        entries.forEach(entry => tbody.appendChild(_bbYearBuildRow(entry, docContext)));
+        table.appendChild(tbody);
+
+        const last = entries[entries.length - 1];
+        const range = docContext.createRange();
+        range.setStartBefore(entries[0].top);
+        range.setEndAfter(last.blocks.length ? last.blocks[last.blocks.length - 1] : last.top);
+        range.deleteContents();
+        range.insertNode(table);
+
+        if (docContext === document && !document.querySelector('h2.mb-bb-list-heading')) {
+            const h2 = document.createElement('h2');
+            h2.className = 'mb-bb-list-heading';
+            h2.textContent = 'Events';
+            table.parentNode.insertBefore(h2, table);
+        }
+
+        Lib.debug('init', `applyBbYearToTable: converted ${tbody.rows.length} entr${tbody.rows.length === 1 ? 'y' : 'ies'} → table.`);
+    }
+
+    /**
+     * Gives the Brucebase start page an empty year table to render into
+     * (`bb-home`): the rows all come from the fetched year pages, and
+     * `renderFinalTable()` needs a `table.tbl tbody` on the live page. It
+     * goes at the top of `#page-content`, under
+     * `<h2 class="mb-bb-list-heading">`, above the start page's own text.
+     * Idempotent.
+     *
+     * @returns {void}
+     */
+    function _bbHomeEmptyTable() {
+        if (document.querySelector('table.mb-bb-year-table')) return;
+        const content = document.getElementById('page-content') || document.body;
+        const table = document.createElement('table');
+        table.className = 'tbl mb-bb-table mb-bb-year-table';
+        const thead = document.createElement('thead');
+        const hr = document.createElement('tr');
+        _BB_YEAR_HEADERS.forEach(name => {
+            const th = document.createElement('th');
+            th.textContent = name;
+            hr.appendChild(th);
+        });
+        thead.appendChild(hr);
+        table.appendChild(thead);
+        table.appendChild(document.createElement('tbody'));
+        const h2 = document.createElement('h2');
+        h2.className = 'mb-bb-list-heading';
+        h2.textContent = 'Events — all years';
+        content.insertBefore(table, content.firstChild);
+        content.insertBefore(h2, table);
+        Lib.debug('init', 'applyBbYearToTable: start page — empty year table in place for the fetched year pages.');
+    }
+
     /**
      * Installs the Brucebase stylesheet, once per document.
      *
      * The table itself is styled by `_ensureForeignTableStyle()`, shared with
-     * the other non-MusicBrainz hosts; this adds only the injected
-     * `<h1>`/`<h2>` and `.mb-bb-hidden`. Every rule is scoped to
+     * the other non-MusicBrainz hosts; this adds the injected `<h1>`/`<h2>`,
+     * `.mb-bb-hidden`, the year table's media icons and set labels, and the
+     * side bar's flex layout and handle (`_bbArrangeSideBar()`). Every rule is scoped to
      * `body.mb-sa-host-bb`.
      *
      * @returns {void}
@@ -13233,6 +13958,95 @@
             body.mb-sa-host-bb .mb-bb-hidden {
                 display: none !important;
             }
+            body.mb-sa-host-bb #content-wrap.mb-bb-cw {
+                display: flex;
+                align-items: flex-start;
+            }
+            body.mb-sa-host-bb #content-wrap.mb-bb-cw > #main-content {
+                float: none !important;
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+                flex: 1 1 auto;
+                min-width: 0;
+            }
+            body.mb-sa-host-bb #content-wrap.mb-bb-cw > #side-bar {
+                float: none !important;
+                flex: 0 0 auto;
+            }
+            body.mb-sa-host-bb #content-wrap.mb-bb-sb-left > #side-bar {
+                margin-right: 13px !important;
+            }
+            body.mb-sa-host-bb #content-wrap.mb-bb-sb-right > #side-bar {
+                margin-left: 13px !important;
+                position: sticky;
+                right: 0;
+                z-index: 150;
+            }
+            body.mb-sa-host-bb #content-wrap.mb-bb-sb-collapsed > #side-bar {
+                display: none !important;
+            }
+            body.mb-sa-host-bb #mb-bb-sidebar-handle {
+                position: fixed;
+                top: 50%;
+                transform: translateY(-50%);
+                width: 14px;
+                height: 80px;
+                background-color: #f2f2f2;
+                border: 1px solid #ccc;
+                cursor: pointer;
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 9px;
+                color: #555;
+            }
+            body.mb-sa-host-bb #mb-bb-sidebar-handle.mb-bb-handle-right {
+                border-right: none;
+                border-radius: 8px 0 0 8px;
+                box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+            }
+            body.mb-sa-host-bb #mb-bb-sidebar-handle.mb-bb-handle-left {
+                border-left: none;
+                border-radius: 0 8px 8px 0;
+                box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            }
+            body.mb-sa-host-bb #mb-bb-sidebar-handle.mb-bb-handle-right::after { content: '▶'; }
+            body.mb-sa-host-bb #mb-bb-sidebar-handle.mb-bb-handle-right.mb-bb-handle-collapsed::after { content: '◀'; }
+            body.mb-sa-host-bb #mb-bb-sidebar-handle.mb-bb-handle-left::after { content: '◀'; }
+            body.mb-sa-host-bb #mb-bb-sidebar-handle.mb-bb-handle-left.mb-bb-handle-collapsed::after { content: '▶'; }
+            body.mb-sa-host-bb ul.mb-bb-media {
+                list-style: none;
+                margin: 0;
+                padding: 0;
+                white-space: nowrap;
+            }
+            body.mb-sa-host-bb ul.mb-bb-media > li {
+                display: inline-block;
+                margin: 0 2px 0 0;
+                padding: 0;
+            }
+            body.mb-sa-host-bb ul.mb-bb-media img {
+                width: 16px;
+                height: 16px;
+                vertical-align: middle;
+                border: 0;
+            }
+            body.mb-sa-host-bb .mb-bb-media-label {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                overflow: hidden;
+                clip: rect(0 0 0 0);
+                white-space: nowrap;
+            }
+            body.mb-sa-host-bb .mb-bb-set-label {
+                font-size: 85%;
+                color: #666;
+                background: #eee;
+                border-radius: 3px;
+                padding: 0 4px;
+            }
         `);
         style.id = 'mb-bb-style';
     }
@@ -13248,7 +14062,8 @@
      * for file names) reads it like a MusicBrainz h1.
      *
      * Also tags `<body>` with `mb-sa-host-bb` (the scope of every Brucebase
-     * style rule) and installs `_ensureBbStyle()`. Nothing else on the page
+     * style rule), installs `_ensureBbStyle()` and arranges the wiki's side
+     * bar (`_bbArrangeSideBar()`). Nothing else on the page
      * changes until the user presses the "Show all songs" button.
      *
      * @returns {?HTMLHeadingElement} The `<h1>` to use as header container, or
@@ -13261,6 +14076,7 @@
 
         document.body.classList.add('mb-sa-host-bb');
         _ensureBbStyle();
+        _bbArrangeSideBar();
         const pageTitle = document.getElementById('page-title');
         const title = pageTitle?.textContent.replace(/\s+/g, ' ').trim() || 'Songs';
         const h1 = document.createElement('h1');
@@ -13276,6 +14092,112 @@
             host.insertBefore(h1, host.firstChild);
         }
         return h1;
+    }
+
+    /**
+     * Arranges the Brucebase side bar (`#side-bar`, Site Navigation / Gig
+     * Pages) beside `#main-content` inside `#content-wrap`, its only two
+     * children (checked on the start page and a year page, 2026-10-09).
+     *
+     * The wiki floats the side bar left and gives `#main-content` a matching
+     * `margin-left` (223 px). Here `#content-wrap` becomes a flex row
+     * (`.mb-bb-cw`, styles in `_ensureBbStyle()`), so either order lays out
+     * without those numbers. With `sa_bb_sidebar_right` (default off) the side
+     * bar is moved AFTER `#main-content`, the MusicBrainz side, and is
+     * `position: sticky; right: 0`: once a table is rendered the sticky page
+     * headers widen the content to the table's width (5,000 px on a year
+     * page), which puts the side bar's natural place far off to the right, so
+     * it sticks to the window's right edge instead, z-index 150, over the
+     * table's sticky header and column (100/101), under the handle (10000).
+     * On the left (the default since 2026-10-09: it looks better there) it
+     * stays in the flow with no z-index, so the docked Date column and its
+     * gutter mask paint over it once the page is scrolled sideways.
+     *
+     * With `sa_collabsable_sidebar` it gets the MusicBrainz sidebar's handle
+     * (same look; `initSidebarCollapse()` itself is bound to MusicBrainz's
+     * `#sidebar`, `#page` and `#content`), starting collapsed while
+     * `sa_sidebar_collapsed` is on. It collapses toward its own side, so on
+     * the left it collapses to the left. Idempotent.
+     *
+     * @returns {void}
+     */
+    function _bbArrangeSideBar() {
+        const wrap = document.getElementById('content-wrap');
+        const side = document.getElementById('side-bar');
+        const main = document.getElementById('main-content');
+        if (!wrap || !side || !main || side.parentNode !== wrap || main.parentNode !== wrap) return;
+        if (wrap.classList.contains('mb-bb-cw')) return;
+        const right = Lib.settings.sa_bb_sidebar_right === true;
+        wrap.classList.add('mb-bb-cw', right ? 'mb-bb-sb-right' : 'mb-bb-sb-left');
+        if (right) wrap.appendChild(side);
+        Lib.debug('init', `_bbArrangeSideBar: side bar on the ${right ? 'right' : 'left'}.`);
+
+        if (!Lib.settings.sa_collabsable_sidebar || document.getElementById('mb-bb-sidebar-handle')) return;
+        const handle = document.createElement('div');
+        handle.id = 'mb-bb-sidebar-handle';
+        handle.className = right ? 'mb-bb-handle-right' : 'mb-bb-handle-left';
+        handle.setAttribute('role', 'button');
+        handle.setAttribute('tabindex', '0');
+        _setTip(handle, 'Show or hide the side bar');
+
+        /**
+         * Puts the handle against the side bar's inner edge, or against the
+         * window's edge while the side bar is collapsed or scrolled out of
+         * view; sets its glyph and pressed state.
+         *
+         * @returns {void}
+         */
+        const place = () => {
+            const collapsed = wrap.classList.contains('mb-bb-sb-collapsed');
+            handle.classList.toggle('mb-bb-handle-collapsed', collapsed);
+            handle.setAttribute('aria-pressed', collapsed ? 'false' : 'true');
+            handle.setAttribute('aria-label', collapsed ? 'Show the side bar' : 'Hide the side bar');
+            const r = side.getBoundingClientRect();
+            if (right) {
+                handle.style.left = '';
+                handle.style.right = collapsed ? '0px' : `${Math.min(Math.max(0, window.innerWidth - r.left), window.innerWidth)}px`;
+            } else {
+                handle.style.right = '';
+                handle.style.left = collapsed ? '0px' : `${Math.min(Math.max(0, r.right), window.innerWidth)}px`;
+            }
+        };
+        /**
+         * Collapses or shows the side bar.
+         *
+         * @param {boolean} collapsed
+         * @returns {void}
+         */
+        const setCollapsed = (collapsed) => {
+            wrap.classList.toggle('mb-bb-sb-collapsed', collapsed);
+            requestAnimationFrame(place);
+        };
+        handle.addEventListener('click', () => setCollapsed(!wrap.classList.contains('mb-bb-sb-collapsed')));
+        handle.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            setCollapsed(!wrap.classList.contains('mb-bb-sb-collapsed'));
+        });
+        document.body.appendChild(handle);
+        if (Lib.settings.sa_sidebar_collapsed) wrap.classList.add('mb-bb-sb-collapsed');
+        place();
+        let pending = false;
+        /**
+         * Re-places the handle on the next frame, once per frame.
+         *
+         * @returns {void}
+         */
+        const schedule = () => {
+            if (pending) return;
+            pending = true;
+            requestAnimationFrame(() => {
+                pending = false;
+                place();
+            });
+        };
+        window.addEventListener('scroll', schedule, { passive: true });
+        window.addEventListener('resize', schedule, { passive: true });
+        // A rendered table widens the content and moves the side bar.
+        if (typeof ResizeObserver === 'function') new ResizeObserver(schedule).observe(wrap);
     }
 
     // =========================================================================
@@ -22786,6 +23708,45 @@
     // | Search                       | single table              | x         | p.pageselector-results               |
 
     // Define all supported page types, their detection logic, and specific UI configurations here.
+    /**
+     * A Brucebase year page's path with its year captured (`/1975` →
+     * `1975`, `/1949-64` → `1949-64`): the page key of `bb-home`'s
+     * `features.pageKeys`.
+     * @type {RegExp}
+     */
+    const _BB_YEAR_PATH_RE_KEY = /^\/(\d{4}|1949-64)\/?$/;
+
+    /**
+     * The table features the Brucebase year table has wherever it is built,
+     * on a year page (`bb-year`) or from the start page (`bb-home`); a fresh
+     * object per call, so neither definition shares arrays with the other.
+     *
+     * @returns {object}
+     */
+    function _bbYearTableFeatures() {
+        return {
+            // The converter writes Date as ISO with a 00 day or month
+            // dropped, so the MusicBrainz date splitter applies unchanged.
+            columnExtractors: [
+                { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
+            ],
+            integerColumns: [
+                { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' }
+            ],
+            collapsableColumns: [ 'Soundcheck', 'Setlist', 'Notes' ],
+            // The FIRST column is the sticky one, so no column sits before
+            // it. With a later one (Venue), the sticky page headers dock the
+            // columns before it too and give each a gutter mask (a box-shadow
+            // shifted left by the table's left offset, _sphEnsureColRules()).
+            // On Brucebase that offset is the wiki's side bar, 262 px: Type's
+            // mask painted over the whole Date column and Date's over the side
+            // bar (reported from a real browser, 2026-10-09; the latter is
+            // why a Brucebase table docks only once scrolled,
+            // _sphUpdateColDocked()).
+            stickyColumn: 'Date'
+        };
+    }
+
     const pageDefinitions = [
         // TagLookup pages
         {
@@ -26193,6 +27154,43 @@
             features: {
                 bbSongsToTable: true,
                 stickyColumn: 'Title'
+            },
+            tableMode: 'single'
+        },
+
+        // The Brucebase year pages (`/1975`, …, `/1949-64`): every show,
+        // session and appearance of the year as flat blocks. One static page,
+        // no pagination, so the live document is reused — no request.
+        // Opt-in via `sa_bb_year_pages` on top of `sa_enable_brucebase`.
+        // `bbYearToTable` turns the entries into the table; see
+        // applyBbYearToTable() and docs/claude/brucebase.md.
+        {
+            type: 'bb-year',
+            host: 'brucebase.wikidot.com',
+            match: (path) => _BB_YEAR_PATH_RE.test(path),
+            buttons: [ { label: 'Show all events', shortLabel: 'Events' } ],
+            features: {
+                bbYearToTable: true,
+                ..._bbYearTableFeatures()
+            },
+            tableMode: 'single'
+        },
+
+        // The Brucebase start page (`/`, `/home`): one button that pages
+        // through every year page linked in its side bar ("Gig Pages":
+        // 1949-64, 1965, …), keyed by path (`features.pageKeys.pathRe`), into
+        // one year table. The live page gets an empty table; each fetched
+        // year is converted by applyBbYearToTable(). Same opt-in as the year
+        // pages (`sa_bb_year_pages`). See docs/claude/brucebase.md.
+        {
+            type: 'bb-home',
+            host: 'brucebase.wikidot.com',
+            match: (path) => _BB_HOME_PATH_RE.test(path),
+            buttons: [ { label: 'Show all events of all years', shortLabel: 'All years' } ],
+            features: {
+                bbYearToTable: 'all',
+                pageKeys: { pathRe: _BB_YEAR_PATH_RE_KEY, selector: '#side-bar a[href]', unit: 'year' },
+                ..._bbYearTableFeatures()
             },
             tableMode: 'single'
         }
@@ -30260,6 +31258,21 @@
     }
 
     /**
+     * The side bar whose content is never pinned: MusicBrainz's `#sidebar`,
+     * and on Brucebase the wiki's `#side-bar`. That one is floated by the
+     * wiki, and floats are never eligible anyway, but `_bbArrangeSideBar()`
+     * lays it out with flex (`float: none`): it then became a pinned body,
+     * sticky against the LEFT, and was pushed past a wide table. Only the
+     * exclusion lookups use this; whether a sidebar blocks widening
+     * (`_sphSidebarBlocksWidening()`) stays MusicBrainz's `#sidebar` alone.
+     *
+     * @returns {?HTMLElement}
+     */
+    function _sphExcludedSidebar() {
+        return document.getElementById('sidebar') || (_isBbHost ? document.getElementById('side-bar') : null);
+    }
+
+    /**
      * Returns every block of page content that is not a data table, so that
      * all of it stays in view while a wide table is scrolled sideways: the
      * content of expanded sections (Credits, Annotation, Relationships, the
@@ -30310,7 +31323,7 @@
      */
     function _sphContentBodies() {
         const root    = document.getElementById('page') || document.body;
-        const sidebar = document.getElementById('sidebar');
+        const sidebar = _sphExcludedSidebar();
         const bodies  = [];
         /**
          * Collects the bodies among one container's children.
@@ -30364,7 +31377,7 @@
     function _sphCollectTargets() {
         const page    = document.getElementById('page');
         const content = document.getElementById('content');
-        const sidebar = document.getElementById('sidebar');
+        const sidebar = _sphExcludedSidebar();
         const found   = [];
         const seen    = new Set();
 
@@ -30805,7 +31818,9 @@
      * With `p > 0` the sticky column's mask, L px to its left, would cover
      * the still visible part of the columns before it ("#") until it has
      * docked over them; meanwhile those columns mask the gutter themselves
-     * (see `_sphEnsureColRules()`). Called from every refresh pass and from the scroll listener
+     * (see `_sphEnsureColRules()`). A Brucebase table (`.mb-bb-table`) docks
+     * only once `scrollX > 0`: its gutter is the wiki's side bar, not empty
+     * margin. Called from every refresh pass and from the scroll listener
      * while the feature is engaged: one compare per table per scroll event.
      *
      * @returns {void}
@@ -30813,7 +31828,13 @@
     function _sphUpdateColDocked() {
         const scrollX = window.scrollX;
         _sph.colTables.forEach(({ table, p }) => {
-            const docked = scrollX >= p - 0.5;
+            // A Brucebase table's sticky column is its FIRST (p = 0), which
+            // counts as docked at scrollX 0 already, and its gutter mask then
+            // paints over whatever sits left of the table: there, the wiki's
+            // side bar (reported from a real browser, 2026-10-09). It docks
+            // only once the page is actually scrolled, when the side bar has
+            // scrolled away under the mask anyway.
+            const docked = scrollX >= p - 0.5 && (scrollX > 0 || !table.classList.contains('mb-bb-table'));
             if (table.classList.contains('mb-sph-col-docked') !== docked) {
                 table.classList.toggle('mb-sph-col-docked', docked);
             }
@@ -71067,7 +72088,10 @@ a { color: #1565c0; }`;
      * numbered: `features.pageKeys = { param, selector }`. Each link matching
      * `selector` in `doc` is one page; its `param` value is the page's key
      * (springsteenlyrics.com's lyrics index: `letter=(`, `letter=1`, …,
-     * `letter=z`). The link itself is what gets fetched, so the page's own
+     * `letter=z`). Pages named by their PATH instead (`/1975`) give
+     * `pathRe` in place of `param`: a same-host link whose pathname matches
+     * it is a page, keyed by its first capture group (the Brucebase start
+     * page's year links, `bb-home`); `unit` names a page in the status line. The link itself is what gets fetched, so the page's own
      * other parameters (`cmd=list`) come with it even when the run starts on
      * a page that lacks them (the lyrics landing page, `lyrics.php`).
      *
@@ -71089,7 +72113,13 @@ a { color: #1565c0; }`;
         doc.querySelectorAll(cfg.selector).forEach(a => {
             let url;
             try { url = new URL(a.getAttribute('href') || '', doc.baseURI); } catch (e) { return; }
-            const key = url.searchParams.get(cfg.param);
+            let key;
+            if (cfg.pathRe) {
+                const m = url.host === new URL(doc.baseURI).host ? url.pathname.match(cfg.pathRe) : null;
+                key = m ? (m[1] || m[0]) : null;
+            } else {
+                key = url.searchParams.get(cfg.param);
+            }
             if (!key || seen.has(key.toLowerCase())) return;
             seen.add(key.toLowerCase());
             keys.push({ key, href: url.toString() });
@@ -72166,6 +73196,11 @@ a { color: #1565c0; }`;
         if (activeDefinition.features?.bbSongsToTable) {
             applyBbSongsToTable(activeDefinition);
         }
+        // The Brucebase year pages ('bb-year'): their entries become a
+        // <table class="tbl"> — see applyBbYearToTable's JSDoc.
+        if (activeDefinition.features?.bbYearToTable) {
+            applyBbYearToTable(activeDefinition);
+        }
 
         // ── bsRecordsToTable pre-processing ──────────────────────────────────
         // brucespringsteen.it ('bs-records'): tick every format in the site's
@@ -72266,8 +73301,9 @@ a { color: #1565c0; }`;
             if (maxPage === 0) {
                 Lib.warn('fetch', `features.pageKeys: no link matches "${activeDefinition.features.pageKeys.selector}" on this page — nothing to fetch.`);
             }
-            Lib.debug('fetch', `Context: pageKeys (${activeDefinition.features.pageKeys.param}): ${pageKeys.map(k => k.key).join(' ')}`);
-            globalStatusDisplay.textContent = `Getting number of pages to fetch... ${maxPage} pages, one per ${activeDefinition.features.pageKeys.param}`;
+            const _keyUnit = activeDefinition.features.pageKeys.unit || activeDefinition.features.pageKeys.param;
+            Lib.debug('fetch', `Context: pageKeys (${_keyUnit}): ${pageKeys.map(k => k.key).join(' ')}`);
+            globalStatusDisplay.textContent = `Getting number of pages to fetch... ${maxPage} pages, one per ${_keyUnit}`;
         } else if (isAmbiguousEditsPagination) {
             // MusicBrainz edit-listing pagination never reveals a true last page
             // (the widget is a sliding window around the current page, and
@@ -72413,8 +73449,10 @@ a { color: #1565c0; }`;
         // The pageKeys counterpart: the key this page itself shows ('' on a
         // page that shows none, e.g. the lyrics landing page — every key is
         // then fetched).
-        const currentPageKey = pageKeys
-            ? (currentUrlParams.get(activeDefinition.features.pageKeys.param) || '').toLowerCase() : '';
+        const _keyCfg = activeDefinition?.features?.pageKeys;
+        const currentPageKey = !pageKeys ? ''
+            : _keyCfg?.pathRe ? ((window.location.pathname.match(_keyCfg.pathRe) || [])[1] || '').toLowerCase()
+                : (currentUrlParams.get(_keyCfg?.param) || '').toLowerCase();
 
         // A resume continues the interrupted run's running totals rather than
         // restarting them, or the status line would say "Loaded 3 pages" over a
@@ -72638,6 +73676,9 @@ a { color: #1565c0; }`;
                 // And for Brucebase, for the same reason.
                 if (doc !== document && activeDefinition.features?.bbSongsToTable) {
                     applyBbSongsToTable(activeDefinition, doc);
+                }
+                if (doc !== document && activeDefinition.features?.bbYearToTable) {
+                    applyBbYearToTable(activeDefinition, doc);
                 }
                 // brucespringsteen.it: THE path — both buttons fetch page 1.
                 if (doc !== document && activeDefinition.features?.bsRecordsToTable) {
@@ -98109,6 +99150,10 @@ a { color: #1565c0; }`;
             if (activeDefinition.features?.bbSongsToTable) {
                 applyBbSongsToTable(activeDefinition);
             }
+            // And the year pages: the reloaded page holds the entries again.
+            if (activeDefinition.features?.bbYearToTable) {
+                applyBbYearToTable(activeDefinition);
+            }
             // And for brucespringsteen.it: the reloaded page holds the site's
             // record paragraphs again; an empty table takes their place.
             if (activeDefinition.features?.bsRecordsToTable) {
@@ -116245,6 +117290,30 @@ a { color: #1565c0; }`;
              */
             bbParseTabLabel(text) {
                 return _bbParseTabLabel(text);
+            },
+
+            /**
+             * Thin wrapper around `_bbParseHeading()` — splits a Brucebase
+             * year-page entry heading into date, type, venue, city, state and
+             * country.
+             *
+             * @param {string} text The heading's text.
+             * @param {string} href The heading link's href.
+             * @returns {{date: string, type: string, venue: string, city: string, state: string, country: string}}
+             */
+            bbParseHeading(text, href) {
+                return _bbParseHeading(text, href);
+            },
+
+            /**
+             * Thin wrapper around `_bbParseTourHeading()` — reads which tour
+             * a year page's tour box starts or ends.
+             *
+             * @param {string} text The box heading's text.
+             * @returns {?{start: boolean, name: string}}
+             */
+            bbParseTourHeading(text) {
+                return _bbParseTourHeading(text);
             },
 
             /**

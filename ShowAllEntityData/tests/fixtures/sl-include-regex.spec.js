@@ -7,8 +7,8 @@
 // wrapped in slashes is a regular expression) and checks the
 // springsteenlyrics.com lines admit exactly the list pages, the jungleland.it
 // line exactly its list.htm, the brucespringsteen.it line exactly its
-// DB/records.aspx, the Brucebase line exactly its stats:songs, while every
-// MusicBrainz sample still matches.
+// DB/records.aspx, the Brucebase lines exactly its stats:songs and its year
+// pages, while every MusicBrainz sample still matches.
 
 const fs = require('fs');
 const { test, expect } = require('../support/test');
@@ -175,6 +175,61 @@ test.describe('@include coverage', () => {
             'https://example.org/brucebase.wikidot.com/stats:songs',
         ];
         expect(lists.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
+    test('brucebase.wikidot.com: the year pages, and nothing else', () => {
+        const years = [
+            'https://brucebase.wikidot.com/2026',
+            'http://brucebase.wikidot.com/1975',
+            'https://brucebase.wikidot.com/1975/',
+            'https://brucebase.wikidot.com/2026#300126',
+            'https://brucebase.wikidot.com/1965#000065a',
+            'https://brucebase.wikidot.com/1985?x=1',
+            // The one page that is not a single year.
+            'https://brucebase.wikidot.com/1949-64',
+        ];
+        const others = [
+            // The year's "Listing" page, the tour statistics, a show's own
+            // page, and paths that only look like years.
+            'https://brucebase.wikidot.com/2026-list',
+            'https://brucebase.wikidot.com/stats:tour-statistics',
+            'https://brucebase.wikidot.com/gig:2026-01-30-first-avenue-minneapolis-mn',
+            'https://brucebase.wikidot.com/19750',
+            'https://brucebase.wikidot.com/197',
+            'https://brucebase.wikidot.com/1949-65',
+            'https://brucebase.wikidot.com/2026/html/0123abcd',
+            // Another wiki on the same farm, and look-alike hosts.
+            'https://otherwiki.wikidot.com/2026',
+            'https://www.brucebase.wikidot.com/2026',
+            'https://brucebase.wikidot.com.example.org/2026',
+        ];
+        expect(years.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
+    test('brucebase.wikidot.com: the start page, and nothing else', () => {
+        const home = [
+            // (A bare `https://brucebase.wikidot.com` never reaches a
+            // pattern: the browser's location.href always has the slash.)
+            'https://brucebase.wikidot.com/',
+            'http://brucebase.wikidot.com/',
+            'https://brucebase.wikidot.com/#toc0',
+            'https://brucebase.wikidot.com/?x=1',
+            // Its wiki name.
+            'https://brucebase.wikidot.com/home',
+            'https://brucebase.wikidot.com/home/',
+        ];
+        const others = [
+            'https://brucebase.wikidot.com/homepage',
+            'https://brucebase.wikidot.com/home-x',
+            'https://brucebase.wikidot.com/home:x',
+            'https://brucebase.wikidot.com/news:news',
+            'https://otherwiki.wikidot.com/',
+            'https://www.brucebase.wikidot.com/',
+            'https://brucebase.wikidot.com.example.org/',
+        ];
+        expect(home.filter((u) => !injected(u))).toEqual([]);
         expect(others.filter((u) => injected(u))).toEqual([]);
     });
 

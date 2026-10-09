@@ -1,0 +1,249 @@
+[
+    {
+        "name": "the year-page gate never stops the script",
+        "why": "Year pages are opt-in (sa_bb_year_pages, default off) on top of sa_enable_brucebase. Without their gate the toolbar appears with only the Brucebase switch on; the spec must see it appear.",
+        "edits": [
+            {
+                "find": "if (_isBbHost && _BB_YEAR_PATH_RE.test(window.location.pathname) && Lib.settings.sa_bb_year_pages !== true) {",
+                "replace": "if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "year pages off",
+        "expect": "fail"
+    },
+    {
+        "name": "a 00 day or month is kept in the date",
+        "why": "1954-10-00 must become 1954-10, or the shared date splitter names the weekday of 'day 0' (the last day of the month before). The spec pins Date, DD and Day of the 2026-01-00 row and the parser's table.",
+        "edits": [
+            {
+                "find": "date = m[2] === '00' ? m[1] : m[3] === '00' ? `${m[1]}-${m[2]}` : `${m[1]}-${m[2]}-${m[3]}`;",
+                "replace": "date = `${m[1]}-${m[2]}-${m[3]}`;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "heading splits|_bbParseHeading",
+        "expect": "fail"
+    },
+    {
+        "name": "a two-letter code is not read as a state",
+        "why": "Without the code test every US/Canadian heading's state lands in Country.",
+        "edits": [
+            {
+                "find": "            if (/^[A-Z]{2}(?:\\/[A-Z]{2})*$/.test(last)) {",
+                "replace": "            if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "heading splits|_bbParseHeading",
+        "expect": "fail"
+    },
+    {
+        "name": "regions are not taken out of the city",
+        "why": "SYDNEY, NEW SOUTH WALES, AUSTRALIA would give City 'NEW SOUTH WALES' and Venue 'SYDNEY ENTERTAINMENT CENTRE, SYDNEY'.",
+        "edits": [
+            {
+                "find": "                if (parts.length >= 3 && _BB_REGIONS.has(parts[parts.length - 1])) state = parts.pop();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "1985|_bbParseHeading",
+        "expect": "fail"
+    },
+    {
+        "name": "the type is read from an absolute href's scheme",
+        "why": "An absolute heading link (https://…/gig:…) once gave Type 'Https'. The live pages write relative links, so only the parser table sees this.",
+        "edits": [
+            {
+                "find": "        const pm = String(href || '').replace(/^[a-z]+:\\/\\/[^/]+/i, '').match(/^\\/?([a-z]+):/);",
+                "replace": "        const pm = String(href || '').match(/(?:^|\\/)([a-z]+):/);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "_bbParseHeading",
+        "expect": "fail"
+    },
+    {
+        "name": "an End of box does not clear the tour",
+        "why": "Entries after 'End of the … tour' would keep the tour's name. The spec pins the rows after the 2026 End box as empty.",
+        "edits": [
+            {
+                "find": "                tour = box.start ? box.name : '';",
+                "replace": "                if (box.start) tour = box.name;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "Tour carries",
+        "expect": "fail"
+    },
+    {
+        "name": "a combined End of / Start of heading is read as one",
+        "why": "'End of the \"Castiles\" era / Start of the \"Earth\" era' (1968) would end the tour and never start the next.",
+        "edits": [
+            {
+                "find": ".split(/\\s+\\/\\s+(?=(?:Start|End|Continuation) of\\b)/i)",
+                "replace": ".split(/$^/)"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "1968|_bbParseHeading",
+        "expect": "fail"
+    },
+    {
+        "name": "Continuation of does not start a tour",
+        "why": "A year that opens mid-tour (1985) says so with 'Continuation of …'; without it the entries before the next box have no tour.",
+        "edits": [
+            {
+                "find": "if (m) out = { start: !/^end$/i.test(m[1]), name: m[2].trim() };",
+                "replace": "if (m) out = { start: /^start$/i.test(m[1]), name: m[2].trim() };"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "1985|_bbParseHeading",
+        "expect": "fail"
+    },
+    {
+        "name": "set labels are not detached",
+        "why": "'Soundcheck:' would stay in the first setlist row and the soundcheck would join the Setlist; 'with Willie Nile:' would get no label.",
+        "edits": [
+            {
+                "find": "                if (lm && /[a-z]/.test(lm[1])) {\n                    label = lm[1].trim();",
+                "replace": "                if (false) {\n                    label = lm[1].trim();"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "Soundcheck and Setlist",
+        "expect": "fail"
+    },
+    {
+        "name": "songs are not split on ' / '",
+        "why": "Each setlist would be one row; the spec pins one song per row.",
+        "edits": [
+            {
+                "find": "            text.split(/(?:^|\\s)\\/(?:\\s|$)/).forEach((part, i) => {",
+                "replace": "            [text].forEach((part, i) => {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "Soundcheck and Setlist",
+        "expect": "fail"
+    },
+    {
+        "name": "the superscript set note stays in the setlist",
+        "why": "'Set details may be inaccurate.' would join the last song's row and leave Set note empty.",
+        "edits": [
+            {
+                "find": "            if (n.nodeType === 1 && n.tagName === 'SUP') {\n                const note = _bbText(n);",
+                "replace": "            if (false) {\n                const note = _bbText(n);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "set note is its own column",
+        "expect": "fail"
+    },
+    {
+        "name": "a superscript-only paragraph is read as prose",
+        "why": "<p><sup><em>No set details known.</em></sup></p> (1968) opens the description instead of being the set note.",
+        "edits": [
+            {
+                "find": "        if (!t) return p.querySelector('sup') ? 'note' : null;",
+                "replace": "        if (!t) return null;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "1968",
+        "expect": "fail"
+    },
+    {
+        "name": "an italic setlist is read as a note",
+        "why": "The 2018 Broadway tapings set the whole setlist in one <em>; without the capitals test it becomes prose in Notes.",
+        "edits": [
+            {
+                "find": "        if (meaningful.length === 1 && meaningful[0].nodeType === 1 && meaningful[0].tagName === 'EM' &&\n            !_bbIsCapitals(t.replace(/\\([^()]*\\)/g, ''))) {",
+                "replace": "        if (meaningful.length === 1 && meaningful[0].nodeType === 1 && meaningful[0].tagName === 'EM') {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "2018",
+        "expect": "fail"
+    },
+    {
+        "name": "plain-paragraph descriptions are dropped",
+        "why": "2,732 of 5,009 entries write their description as plain paragraphs, not a .list-pages-box (1985). The spec pins 1985's Notes text and links.",
+        "edits": [
+            {
+                "find": "                return;\n            }\n            description.push(el);\n        });",
+                "replace": "                return;\n            }\n        });"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "1985",
+        "expect": "fail"
+    },
+    {
+        "name": "Help Us is shown as a media icon",
+        "why": "The 'Help Us' icon is Info wanted, not media the gig page has.",
+        "edits": [
+            {
+                "find": "                    if (icon.label === 'Help Us') infoWanted = true;",
+                "replace": "                    if (false) infoWanted = true;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "Media shows",
+        "expect": "fail"
+    },
+    {
+        "name": "the media label carries no text",
+        "why": "The icons are images; their hidden label is what a Media filter (and the dropdown) reads.",
+        "edits": [
+            {
+                "find": "                label.textContent = m.label;",
+                "replace": "                label.textContent = '';"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "Media filter",
+        "expect": "fail"
+    },
+    {
+        "name": "the entries are left on the page",
+        "why": "The table must take the entries' place; without the removal every entry shows twice.",
+        "edits": [
+            {
+                "find": "        range.deleteContents();\n        range.insertNode(table);",
+                "replace": "        range.collapse(true);\n        range.insertNode(table);"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "every entry becomes one row",
+        "expect": "fail"
+    },
+    {
+        "name": "Load from Disk does not convert the reloaded page",
+        "why": "After a reload the page holds the entries again; without the hydrate-time call there is no table to render into.",
+        "edits": [
+            {
+                "find": "            // And the year pages: the reloaded page holds the entries again.\n            if (activeDefinition.features?.bbYearToTable) {\n                applyBbYearToTable(activeDefinition);\n            }\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "Load from Disk",
+        "expect": "fail"
+    },
+    {
+        "name": "copied links are not made absolute",
+        "why": "Recorded, not caught: on the live page a relative /song: link resolves against the page itself, so every spec reads the same absolute href with or without the rewrite. The rewrite is for a fetched or parsed document (another base), which no year page reaches today.",
+        "edits": [
+            {
+                "find": "        links.forEach(a => a.setAttribute('href', _bbAbsHref(a.getAttribute('href'))));",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "Notes keeps the description",
+        "expect": "pass"
+    }
+]

@@ -21019,3 +21019,148 @@ page-level route, which takes precedence. The spec also checks that
 which is a popup with an opener, not a background tab. It needs the tab
 object, and has not been seen flaking. If it ever does, this entry is the
 first suspect.
+
+## 2026-10-09 — Brucebase year pages: what four hand-read pages got wrong (branch feature/bb-years, WIP.1)
+
+**Context.** `org/BB-events.org` asked for the year pages
+(`brucebase.wikidot.com/<YYYY>`, `/1949-64`) to get the `bb-songs`
+treatment. The plan was written from `debug/bb-2026-initial.html` and six
+pages read through WebFetch (1949-64, 1969, 1975, 1985, 1999, 2016). A probe
+over ALL 63 pages (`scripts/probe-bb-year-pages.py`, cache in
+`debug/bb-year-cache/`) and a corpus run of the converter itself
+(`scripts/check-bb-year-converter.js`, Chromium, no userscript around it)
+then overturned five of the plan's assumptions before any spec was written:
+
+1. **"An entry starts at `<a name="ddmmyy">`."** 712 of 5,009 anchors carry
+   a letter (`000065a`: several entries on one date), and two sit in a
+   paragraph of their own. The first probe counted 4,293 entries. The opener
+   is now the heading paragraph: one date-led `<strong>`, anchor optional.
+   `_extBbParseYear()` (the MusicBrainz-side date-link reader) has the same
+   `\d{6}` assumption and was left alone (MusicBrainz must not change).
+2. **"The description is the `.list-pages-box`."** 2,732 entries write it as
+   plain paragraphs after the sets. The first probe therefore took every
+   description paragraph for a set paragraph: its "set note" table was full of
+   magazine names and stage quotes. Paragraphs are now classified by content
+   (`_bbSetParagraphKind()`): capitals outside parentheses = songs, judged per
+   " / " segment; a superscript-only paragraph and a lone `<em>` naming the
+   set = note; a lone `<em>` in capitals = a setlist in italics (2018).
+3. **"A non-US four-part heading is VENUE, CITY, REGION, COUNTRY."** Only for
+   the Australian states and GRAN CANARIA; every other one is VENUE,
+   SUB-VENUE, CITY, COUNTRY ("ICC BERLIN, SAAL 1, BERLIN, GERMANY"). Hence a
+   closed list, `_BB_REGIONS`.
+4. **"Icon titles name the icons."** They carry typos ("Newss", "Bootlef",
+   "Photos", "memorabilia"); the label is read from the image FILE.
+5. **"Tour boxes are Start of / End of."** There are legs, "Continuation of"
+   (a year opening mid-tour), "End Of", and combined
+   "End of … / Start of …" headings.
+
+Also found: two headings without " - " after the date, two without a link,
+`00` months (`1971-00-00`), a `CO/KS/NE` state group, the `nobruce:` prefix.
+
+**The fixture spec then caught one real bug and two of its own counting
+errors.** `_bbParseHeading()` read "Https" as the Type of an absolute href
+(the regex took the scheme). The spec had counted icons by file name, which
+is in `alt` too (doubled), and looked for `&quot;` in the browser-saved 2026
+snapshot, which writes `"`.
+
+**Result.** 5,009 rows for 5,009 headings over the 63 pages, 0 problems in
+the corpus check; `tests/fixtures/bb-year.spec.js` 20/20 on four real pages
+(2026, 1968, 1985, 2018). Rules and numbers: docs/claude/brucebase.md,
+"Year pages — `bb-year`".
+
+## 2026-10-09 — Brucebase: the Date column painted blank, the side bar cut off (branch feature/bb-years, WIP.2)
+
+**Symptom (user, real browser, side-by-side screenshot).** On a year page
+after "Show all events" the table started with Type; the space of the Date
+column was blank, header included, and the wiki's side bar ended exactly at
+the table's top edge. The user first read the empty column as an extra one to
+remove ("do not render `<th class="mb-original-column"`"), then identified it
+as Date. `debug/bb-2026-final.html` has the Date `<th>` and cells with their
+text — nothing wrong in the DOM.
+
+**Not reproducible in fixtures**: they carry no theme CSS, so the table's left
+offset is small. Live diagnostics (Playwright, real page): the Date cell's
+box at x=262, `elementFromPoint` returning the cell itself (no element
+covering it), yet nothing painted; computed `position: sticky` on cells 0–2
+although only Venue had it inline. Forcing the cells static brought the body
+dates back.
+
+**Root cause.** `stickyColumn: 'Venue'` made Date and Type "columns before
+the sticky one". The sticky page headers (`html.mb-sph-on`,
+`_sphEnsureColRules()`) dock those too and give each a gutter mask: a
+`box-shadow` in the page colour shifted left by the table's left offset L —
+here L = 262 px, the wiki's side bar. Type's mask (−262 px) covered all of
+Date (178 px wide, earlier in paint order). With Date made the sticky column
+the column painted again, but the side bar still ended at the table's top: a
+sticky first column at its natural place already counts as docked at scrollX
+0, and its own mask painted the side bar white. On MusicBrainz L is a small
+page margin, so neither mask has anything to hide — invisible there.
+
+**Fix (host-scoped).** `stickyColumn: 'Date'` for bb-year/bb-home, and
+`_sphMeasureStickyCols()` skips `table.mb-bb-table`: Brucebase tables keep
+`applyStickyColumn()`'s `left: 0`. Verified on the live 2026 page (side bar
+whole at scrollX 0, Date docked at the window edge when scrolled).
+`tests/fixtures/bb-home.spec.js` "no gutter mask" pins the structure (Date
+first and the one sticky column, no `data-mb-sph-col-left`, no cell
+box-shadow); both halves mutation-checked in `scripts/mutations/bb-home.json`.
+
+**Latent elsewhere:** any page where the gutter left of a table is NOT empty
+margin, with a sticky column, gets the same mask. MusicBrainz's own layout
+has none (its sidebar is on the right and already skipped).
+
+## 2026-10-09 — Brucebase start page "loads all pages, renders no table"; the side bar on the right (branch feature/bb-years, WIP.3)
+
+**"Loads all pages but renders no table" (`debug/bb-events-all.log`).** All
+63 year pages fetched and converted (5,009 rows), then `renderFinalTable`:
+"Abort: #tbody container not found", and "updateH2Count: No table.tbl". The
+log has NO line from `_bbHomeEmptyTable()` and no "no entries" warning
+either, i.e. the start-page branch of `applyBbYearToTable()` did not run.
+The committed code does run it: a live check on the real start page logs
+"start page — empty year table in place" right before the page-key list,
+and a full live run (63 pages, sa_max_page/sa_render_threshold raised)
+rendered one table of 5,010 rows. The log matches exactly the mutant
+"the start page gets no table to render into" of
+`scripts/mutations/bb-home.json`: mutation-check.py rewrites the
+working-tree userscript the user's Tampermonkey copy is taken from. Most
+likely a copy taken during a mutation run. No code change for it; the user
+is now warned before mutation runs.
+
+**The side bar on the right — two traps found on the live page, not in
+fixtures (no theme CSS there):**
+
+1. With the table rendered, the opened side bar vanished. The sticky page
+   headers widen the content to the table (content-wrap 5,017 px), so the
+   side bar's flex position became x = 4,833; and with the wiki's float
+   reset to `float: none` it had become a pinned body (`.mb-sph-target`,
+   sticky against the LEFT — floats are never eligible, which is why the
+   wiki's own layout never met this). Fix: `_sphExcludedSidebar()` treats
+   Brucebase's `#side-bar` like MusicBrainz's `#sidebar` for pinning, and
+   the right-hand side bar is `position: sticky; right: 0`.
+2. Before that, z-index 2 let the table's sticky header/column (100/101)
+   paint over it: now 150.
+
+The handle missed the side bar's edge by ~40 px after a render (placed only
+on scroll/resize/toggle): a ResizeObserver on `#content-wrap` re-places it.
+All three are pinned by `tests/fixtures/bb-sidebar.spec.js` "after a table
+is rendered", each mutation-checked (`scripts/mutations/bb-sidebar.json`).
+
+## 2026-10-09 — Brucebase: Date off its h2 bar when scrolled; side bar back to the left (branch feature/bb-years, WIP.3)
+
+The user, real browser: scrolled to the right, the Date column docked at the
+window's edge while the "Events" h2 bar stayed pinned ~40 px further in. The
+cause was the fix of WIP.2 itself: `_sphMeasureStickyCols()` skipped
+Brucebase tables, so their sticky column kept `applyStickyColumn()`'s
+`left: 0`. The skip existed only because a first sticky column counts as
+docked at scrollX 0 (`scrollX >= p - 0.5` with p = 0), and its gutter mask
+then painted over the side bar. Replaced by the narrower rule: the skip is
+gone, and `_sphUpdateColDocked()` docks a `table.mb-bb-table` only once
+`scrollX > 0`. Opening the side bar moves the table; an explicit
+`scheduleStickyPageHeadersRefresh()` from the toggle was added on the
+assumption that no observer would notice, and the mutation check showed it
+redundant (the observed content bodies change width): removed, the spec
+"re-measures" keeps the guarantee. The left-hand side bar lost its
+z-index (the docked column must paint over it). Side bar default back to the
+left (`sa_bb_sidebar_right` false) at the user's request: never shipped on
+main, so no migration. Pinned by `tests/fixtures/bb-sidebar.spec.js` (Date
+under its h2 bar, collapsed and open; unscrolled no mask; re-measure on
+opening), mutation-checked.

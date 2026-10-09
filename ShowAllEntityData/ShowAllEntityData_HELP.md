@@ -1107,7 +1107,7 @@ you automatically.
 | 🎸 springsteenlyrics.com                        | Switch on the springsteenlyrics.com collection and bootleg lists (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                            |
 | 🌴 jungleland.it                                | Switch on the jungleland.it bootleg artwork list (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                            |
 | 💿 brucespringsteen.it                          | Switch on the brucespringsteen.it record database (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                           |
-| 📚 Brucebase                                    | Switch on the Brucebase song list (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                                           |
+| 📚 Brucebase                                    | Switch on the Brucebase song list and, separately, its year pages (both off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                      |
 | 🔎 Link previews on MusicBrainz                 | The cards of the links on MusicBrainz pages (on by default; on a phone or tablet off unless you tick the *… on touch devices* boxes), how long their answers are kept, the release group window's size; see [Page-specific behaviour](#page-specific-behaviour)     |
 | 🔎 Every preview                                | Show the MusicBrainz link previews and the Springsteen sites' detail-page previews on a plain hover (on by default), or only while Ctrl is held                                                                                                                       |
 
@@ -1171,7 +1171,7 @@ an import brings your deletions back.
   category and the entry page), bootleg lists, CD and vinyl bootleg list
   and lyrics index, the **jungleland.it**
   bootleg artwork list, the **brucespringsteen.it** record database and
-  the **Brucebase** song list — each off until you switch it on, see
+  the **Brucebase** song list and year pages — each off until you switch it on, see
   [Page-specific behaviour](#page-specific-behaviour)
 
 </details>
@@ -2059,6 +2059,83 @@ replaced by the table; the second set of tabs further down (News, Media,
 Released) stays as it was. Everything is on that one page; nothing is
 fetched, unless you switch on the preview of the song pages (see
 *Previewing the detail pages* under [Page-specific behaviour](#page-specific-behaviour)).
+
+</details>
+
+<details>
+<summary>Brucebase year pages</summary>
+
+Brucebase lists everything Bruce Springsteen did in a year (shows, studio
+sessions, rehearsals, interviews, cancelled dates) on one page per year:
+`https://brucebase.wikidot.com/1975`, …, `/2026`, and `/1949-64` for the years
+before. These pages have a switch of their own, **off until you switch it
+on**: ⚙️ Settings → *📚 Brucebase* → *Enable on the Brucebase year pages
+(event lists)*. It needs *Enable on the Brucebase song list* on as well. While
+either is off, the script leaves the year pages untouched.
+
+The page gets a heading with the usual toolbar and one action button,
+**Events**. Pressing it turns the year's entries into one table, one row per
+entry, with these columns:
+
+- **Date:** the entry's date, the first column, which stays in view when
+  you scroll the table sideways. A day or month the wiki writes as `00` (not
+  known) is left out, so `1954-10-00` reads `1954-10`. **DD**, **MM**,
+  **YYYY**, **Day** and **Month** (at the end of the table) split it up as
+  on MusicBrainz pages; Day stays empty when the day is not known.
+- **Type:** *Gig*, *No gig* (cancelled or postponed), *Recording*,
+  *Rehearsal*, *Interview* or *No Bruce*, from the kind of page the entry
+  links to.
+- **Venue:** the venue as written, linked to the entry's own page. A second
+  part such as "SUMMER STAGE" stays with it.
+- **City**, **State** and **Country:** a US state or Canadian province code
+  goes in State, with USA or CANADA as the country. Elsewhere the country is
+  written out, and State holds the region where the wiki gives one ("NEW SOUTH
+  WALES").
+- **Tour:** the tour, tour leg or band era the entry belongs to, taken from
+  the wiki's "Start of …" / "Continuation of …" / "End of …" boxes. Entries
+  outside any box, such as those before a year's first box, are empty.
+- **Soundcheck:** the soundcheck, one song per row.
+- **Setlist:** the set, one song per row, as written: bold for a tour
+  premiere, "(with …)" for guests, " - " joining a medley. A recording
+  session's setlist is the songs recorded. A set with its own label in the
+  wiki ("Pre-show:", "With Bruce:", "with Willie Nile:") stays in this column,
+  its first row tagged with that label.
+- **Set note:** the wiki's note on the set: "No set details known.",
+  "Incomplete setlist.", "Set details may be inaccurate.", and so on.
+- **Notes:** the entry's description, paragraphs and links intact. With the
+  song preview switched on, a song mentioned there opens its card like a
+  title on the song list.
+- **Media:** the wiki's own icons for what the entry's page has: Photo,
+  Ticket, Setlist, Storyteller, News, Memorabilia, Eyewitness, Video, Audio,
+  Bootleg, LiveDL, Retail, Featured. Rest the pointer on an icon for its name.
+  Type a name in the column filter (e.g. "Bootleg"), or pick one from the 📊
+  list, to see the entries that have it.
+- **Info wanted:** *yes* where Brucebase asks for more information about the
+  date (its "Help Us" icon).
+
+The table replaces the entries and the tour boxes. The icon legend above and
+the Previous / Listing / Next line below stay. Everything is on the page;
+nothing is fetched.
+
+**The side bar:** on every Brucebase page the script handles, the wiki's
+side bar (Site Navigation, Gig Pages, …) starts hidden behind the same
+handle as the MusicBrainz sidebar, on the window's left edge: click it (or
+focus it and press Enter) to show or hide it. ⚙️ Settings → *📚 Brucebase* →
+*Show the Brucebase side bar on the right* moves it to the right, as on
+MusicBrainz, where it stays at the window's right edge next to a wide table.
+The MusicBrainz sidebar settings *Collabsable sidebar* and *Start with
+sidebar collapsed* apply here too. When you scroll a table sideways, its
+Date column stays in view, lined up under the table's heading bar.
+
+**Every year at once:** on the wiki's start page,
+`https://brucebase.wikidot.com`, the same switch adds a **Show all events of
+all years** button after the "Brucebase — Home" heading. It reads every year
+page linked under *Gig Pages* in the side bar (1949-64, 1965, …, this year),
+one after the other, into one table with the columns above, at the top of
+the start page. That is over sixty pages and about 5,000 rows, so it takes a
+few minutes, and the script asks twice: first because the page count is
+above *Max Page Warning* (50), then, when everything is in, how to show that
+many rows (*Large Dataset Threshold*, 5000).
 
 </details>
 

@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "8a193e5bfb4a2a9bceaa98412b41717c56489f6f",
-    "revisions_walked": 843
+    "head": "d60e1979737482bd75022607a9b70b2192edbc7d",
+    "revisions_walked": 847
   },
   "changes": [
     {
@@ -751,6 +751,8 @@
     "sa_enable_brucespringsteen": false,
     "sa_bs_detail_preview": false,
     "sa_enable_brucebase": false,
+    "sa_bb_year_pages": false,
+    "sa_bb_sidebar_right": true,
     "sa_bb_detail_preview": false,
     "sa_pop_mb": true,
     "sa_pop_mb_on_touch": false,
