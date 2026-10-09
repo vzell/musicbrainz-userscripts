@@ -1365,5 +1365,28 @@ MEASUREMENTS.org
 etc. (if you think we need more in this list)
 #+end_example
 
-2.)
+* On the other host:
 
+● I've committed the changelog fold and pushed main, but that commit also contains 93 lines of your org/TODO.org notes. They were uncommitted in your working tree (the "BUG" section with your notes from this session), and my git add -A . picked them up. Nothing of yours is lost;
+  the notes are just committed under my fold commit's message instead of on their own. I won't rewrite pushed history. If you'd rather have them separate, I can revert that part in a follow-up commit and re-add it as its own "add todo entries" commit.
+
+  What's on origin now:
+  - main (c3d08cd): the merge e613bdf plus the fold commit, @version 9.99.1301+2026-10-09.
+  - Versions: WIP.1 became 9.99.1299 (year pages), WIP.2 became 9.99.1300 (start page, Date fix), WIP.3 became 9.99.1301 (side bar, Date under its heading bar).
+  - Audits: 2 cross-references rewritten; the changelog and docs audits are clean.
+  - Tests: test:full is not done. It was stopped at 411 of 1,459 with no failures, and the commit message says it still has to run.
+  - feature/bb-years: still exists locally and on origin.
+
+  On the other host:
+
+  git pull
+  cd ShowAllEntityData
+  npm run test:full
+
+  If it's green, finish with:
+
+  git branch -d feature/bb-years
+  git push origin --delete feature/bb-years
+
+  The ShowAllEntityData mirror is behind (9.99.1167 → 9.99.1301) and still needs a republish when you release; nothing published is broken.
+  
