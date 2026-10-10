@@ -21591,3 +21591,31 @@ Two things the first spec draft got wrong, both premises rather than the fix:
   spec uses it); it now renders the series fixture through its own
   "Show all" button with sticky page headers off, since those pin a narrow
   table with `position: sticky !important`.
+
+## 2026-10-10 — Header-count badges published in batches (perf/faster-filtering, C2, WIP.3)
+
+Env: 2026-10-10T13:20Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+`_updateAllColHeaderCounts()` now queues each column's writes (both badges,
+`_setTip()` and `aria-label` on the 📊 wrap) and flushes them when
+`_COL_HEADER_COUNTS_FLUSH_MS` (500) has passed since the last flush, plus once
+at the end; a stale token drops the queue. Cause: the 2026-10-10 keystroke
+entry above, cause 2; PERFORMANCE.org Step 38.
+
+One spec regressed and the cause was the spec's premise:
+`uniq-drop-count-click-toggle.spec.js` clicked `.mb-col-uniq-count` straight
+after the render. Per-column writes had happened to fill the Length badge
+before that; with batching it was still empty (zero width), so Playwright
+waited ("element is not visible", then "not stable" as the batch landed) and
+clicked while the header was shifting — the dropdown stayed open. A throwaway
+copy that first waited for the badge to have text passed 3/3, so the toggle
+itself is intact; the spec now waits for the number (a premise), as a person
+must, since an empty badge has nothing to click.
+
+`npm test` on C1+C2 (2026-10-10T13:42Z, petri, 110d84a + this change):
+1538 passed, 1 failed — `popup-ext.spec.js` "a Brucebase show's window: …
+scrolled to the show and marked": the `.mb-dp-anchor` inside the year-page
+iframe was still empty after 5 s. It passed 3/3 run alone. The detail-popup
+iframe path touches neither table CSS nor the header-count scan, so this is
+recorded as a load-dependent flake to watch, not attributed to this change; a
+second failure of it should get its own entry.

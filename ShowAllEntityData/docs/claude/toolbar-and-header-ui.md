@@ -542,7 +542,9 @@ Both halves matter and the reasons are easy to get backwards.
   `▶🔗` / `▶🖼` / `▶⏱` toggles are injected into `.mb-col-hdr-flex` *after*
   `makeColumnsResizable()` runs, and the `.mb-col-uniq-count` /
   `.mb-col-collapse-count` digits are written later still by the idle-scheduled
-  `_updateAllColHeaderCounts()`. A floor frozen at set-up is short by 4-6 px on
+  `_updateAllColHeaderCounts()` — in batches, at most every 500 ms and at the
+  end of its pass (PERFORMANCE.org Step 38), so a badge can stay empty for a
+  while after the render. A floor frozen at set-up is short by 4-6 px on
   a plain column and by 43-126 px on one carrying a late toggle — which let a
   column be dragged narrower than its own header and clipped the 📊 pill.
 - **The fresh measurement REPLACES the stamped one; do not `max()` them.** The

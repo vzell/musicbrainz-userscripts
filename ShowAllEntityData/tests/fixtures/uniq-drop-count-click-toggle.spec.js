@@ -21,6 +21,14 @@ test.describe('unique-values dropdown: clicking the count badge toggles closed, 
         const wrap = page.locator('table.tbl thead th[data-col-name="Length"] .mb-col-uniq-wrap').first();
         const dropdown = page.locator('#mb-col-uniq-dropdown');
 
+        // Premise: the count badge has its number. It is written by the
+        // idle-time header-count scan, in batches since PERFORMANCE.org Step 38
+        // (header-counts-batched.spec.js), so right after the render it can
+        // still be empty — a zero-width span nobody can click. Clicking it
+        // then races the batch landing under the pointer, which is not the
+        // behaviour this spec is about.
+        await expect(wrap.locator('.mb-col-uniq-count')).not.toHaveText('', { timeout: 10000 });
+
         // Sanity control: the glyph already toggles correctly — open, then
         // close on a second click of the same spot.
         await wrap.locator('.mb-col-uniq-btn').click();

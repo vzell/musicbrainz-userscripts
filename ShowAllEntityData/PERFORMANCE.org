@@ -3578,6 +3578,50 @@ thead (jesus2099's sticky header, z-index 1). All 64 sticky specs pass.
 ~scripts/mutations/faster-filtering.json~ (5, all caught). Typed A/B against
 ~main~: pending (C3 of the plan).
 
+*** TODO Step 38: Batched header-badge publish
+
+/Branch/ ~perf/faster-filtering~ /(C2 of its plan), 2026-10-10. TODO until it is
+on/ ~main~.
+
+*Problem.* Measured with ~tests/support/probe-keystroke-cost.js~ (DEBUG-NOTES.md
+2026-10-10): for the first seconds after a render, the idle-time header-count
+scan (~_updateAllColHeaderCounts()~) writes each column's badges
+(~.mb-col-collapse-count~, ~.mb-col-uniq-count~, the 📊 tooltip) as soon as that
+column is done: 86 writes to 26 spans during one 14-key typing window on
+=artist-events=. A changed header cell in an auto-layout table makes the browser
+lay out the WHOLE table on its next frame, and while a person types that frame
+belongs to the next keystroke: 74-163 ms of layout plus a 70-150 ms paint per
+key. Stubbing the writes away (probe ~--init~) cut the window's layout from
+1654-2896 ms to 50 ms and keypress handling from 121-215 ms to 27 ms.
+
+Containing the badge itself does not work: a CSS slot
+(~display: inline-block; contain: strict~, fixed size) only reached
+1135-1189 ms, because ~.mb-col-uniq-count~ is a flex item and a flex item
+cannot be a relayout boundary.
+
+*Fix.* The scan collects each column's writes in a pending list and publishes
+them when ~_COL_HEADER_COUNTS_FLUSH_MS~ (500) has passed since the last
+publish, and once at the end of the pass, so a scan costs two or three table
+layouts instead of one per column. A superseded scan drops what it has not
+published. The Step 3 cache is unchanged (still published only by a complete
+pass). Your choice of "at most every 500 ms" over "all at once at the end":
+the numbers keep filling in during a long scan.
+
+*Relation to Step 28* (typing-idle gate, TODO): complementary. Step 28 would
+save the CPU of scans started and abandoned while typing; this step removes
+the layout cost of their writes, and makes an abandoned scan write nothing
+unpublished.
+
+*Visible change.* Badges fill in in batches; right after a render a badge can
+be empty for up to the scan's first 500 ms (on a small table, until the scan
+ends). ~uniq-drop-count-click-toggle.spec.js~ clicked the Length badge before
+it had a number and now waits for it (a premise, not the behaviour it pins).
+
+*Tests.* ~tests/fixtures/header-counts-batched.spec.js~ (one task writes every
+badge, with a per-column control; a scan superseded mid-way publishes nothing,
+via ~__saTest.colHeaderCounts~); 3 mutations, all caught. Typed A/B: pending
+(C3).
+
 ** Session summary: measured comparison, ~main~ vs ~perf-steps-1-4~ (2026-08-24)
 
 /Harvested from/ ~perf-steps-1-4~ (branch tip 2026-08-31). *Everything below

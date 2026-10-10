@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-10-10",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Typing right after a large table renders is no longer slowed by the column-header counts filling in. The counts are now written in batches, at most every half second and once at the end, instead of column by column; each write made the next keystroke lay out the whole table again, 74-163 ms each on a 4,174-row page (PERFORMANCE.org Step 38). A count scan replaced by a newer one no longer leaves a partial set of numbers behind."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Tests: tests/fixtures/header-counts-batched.spec.js (one task writes every badge, against a per-column control; a scan superseded mid-way publishes nothing), driven through the new __saTest.colHeaderCounts hooks; 3 more mutations in scripts/mutations/faster-filtering.json, all caught. uniq-drop-count-click-toggle.spec.js now waits for the count badge to have its number before clicking it."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-10-10",
     "sections": [

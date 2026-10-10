@@ -90767,6 +90767,28 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * How often, at most, a header-count scan publishes the numbers it has
+     * gathered so far, in ms. Every badge write changes a header cell, and a
+     * changed header cell in an auto-layout table makes the browser lay out the
+     * WHOLE table again on its next frame — paid by whatever comes next, which
+     * while a person types is the next keystroke: 74-163 ms of layout per write
+     * on `artist-events`, about 21 writes per scan (DEBUG-NOTES 2026-10-10,
+     * PERFORMANCE.org Step 38). Batching keeps the numbers filling in while a
+     * long scan runs, at two or three layouts instead of one per column.
+     */
+    const _COL_HEADER_COUNTS_FLUSH_MS = 500;
+
+    /**
+     * Test-only overrides for the header-count scan, set through
+     * `__saTest.colHeaderCounts`: `flushMs` replaces `_COL_HEADER_COUNTS_FLUSH_MS`,
+     * `afterColumn(colIndex)` runs after each recomputed column (before its
+     * yield), so a spec can supersede a scan at a known point. Both null in
+     * normal use; the scan reads them once per column.
+     * @type {{flushMs: ?number, afterColumn: ?function(number): (void|Promise<void>)}}
+     */
+    const _colHeaderCountsTest = { flushMs: null, afterColumn: null };
+
+    /**
      * Updates the two live count indicators in every column header of `table`:
      *
      *   1. `.mb-col-uniq-count` span (before 📊) — number of distinct non-empty
@@ -90795,12 +90817,20 @@ a { color: #1565c0; }`;
      * work — it does not break it up. One slice per column keeps each unbroken
      * stretch to a single column's worth of rows.
      *
-     * Consequence worth knowing: a scan cancelled mid-way leaves the columns it
-     * already reached updated and the rest showing the previous pass's numbers,
-     * until the newer scan catches up. Transient, and strictly better than the
-     * permanently-wrong counts this replaced. Such a pass writes NOTHING to
-     * `_colHeaderCountsCache` — see that cache's own comment for why publishing
-     * a half-filled result would make the transient state permanent.
+     * The numbers are written in BATCHES, not column by column: each column's
+     * writes (both badges, the 📊 tooltip and its aria-label) wait in a pending
+     * list that is flushed once `_COL_HEADER_COUNTS_FLUSH_MS` has passed since
+     * the last flush, and at the end of the pass. Every badge write costs the
+     * next frame a layout of the whole table, so per-column writes made each
+     * keystroke typed during a scan pay one (PERFORMANCE.org Step 38).
+     *
+     * Consequence worth knowing: a scan cancelled mid-way DROPS its unflushed
+     * numbers; columns an earlier flush reached keep the new values, the rest
+     * the previous pass's, until the newer scan catches up. Transient, and
+     * strictly better than the permanently-wrong counts this replaced. Such a
+     * pass writes NOTHING to `_colHeaderCountsCache` — see that cache's own
+     * comment for why publishing a half-filled result would make the transient
+     * state permanent.
      *
      * PERFORMANCE.org Step 3: the whole two-walks-per-column body below is
      * skipped when the visible row set is unchanged since the last COMPLETED
@@ -90853,6 +90883,17 @@ a { color: #1565c0; }`;
                 _inlineArtProbe = !!tbody.querySelector('.mb-caa-inline-ph, .mb-eaa-inline-ph');
             }
             return _inlineArtProbe;
+        };
+
+        // Badge and tooltip writes wait here and go out in batches; see this
+        // function's JSDoc. A stale pass drops what is still pending.
+        const _pending = [];
+        const _flushMs = _colHeaderCountsTest.flushMs ?? _COL_HEADER_COUNTS_FLUSH_MS;
+        let _lastFlush = performance.now();
+        const _flush = () => {
+            for (const write of _pending) write();
+            _pending.length = 0;
+            _lastFlush = performance.now();
         };
 
         // One pass per column: collect unique-value count and multi-row count.
@@ -90910,7 +90951,8 @@ a { color: #1565c0; }`;
                         if (_classifyCollapseCell(cell).isMultiRow) multiRowCount++;
                     }
                 }
-                countSpan.textContent = String(multiRowCount);
+                const _multiText = String(multiRowCount);
+                _pending.push(() => { countSpan.textContent = _multiText; });
             }
 
             // ── 2. Unique-value count ───────────────────────────────────────────
@@ -90939,7 +90981,8 @@ a { color: #1565c0; }`;
                     uniqCount = seen.size;
                 }
                 const n = uniqCount;
-                uniqCountSpan.textContent = n > 0 ? String(n) : '';
+                const _uniqText = n > 0 ? String(n) : '';
+                _pending.push(() => { uniqCountSpan.textContent = _uniqText; });
                 // Single tooltip on the wrapper (not the count span) so it shows
                 // wherever the user hovers within the clickable unit.
                 const uniqWrap = uniqCountSpan.closest('.mb-col-uniq-wrap');
@@ -90957,8 +91000,10 @@ a { color: #1565c0; }`;
                     const tip = (n > 0
                         ? `Show the ${n} different unique values in this column, with the ability to quick filter by either clicking or selecting with the keyboard and pressing "Enter" on an entry — ${_kbHint}`
                         : `Show unique values for this column — ${_kbHint}`) + _structHint;
-                    _setTip(uniqWrap, tip);
-                    uniqWrap.setAttribute('aria-label', tip);
+                    _pending.push(() => {
+                        _setTip(uniqWrap, tip);
+                        uniqWrap.setAttribute('aria-label', tip);
+                    });
                 }
             }
 
@@ -90981,12 +91026,16 @@ a { color: #1565c0; }`;
             // abandon a pass that had nothing left to do but write numbers it
             // already had.
             if (_usable) continue;
+            if (performance.now() - _lastFlush >= _flushMs) _flush();
+            if (_colHeaderCountsTest.afterColumn) await _colHeaderCountsTest.afterColumn(colIndex);
             await _yieldToEventLoop();
             if (_colHeaderCountsTokenStale(table, token)) {
-                Lib.debug('collapse', `_updateAllColHeaderCounts: token ${token} superseded — aborting scan.`);
+                Lib.debug('collapse', `_updateAllColHeaderCounts: token ${token} superseded — aborting scan, ${_pending.length} unflushed write(s) dropped.`);
+                _pending.length = 0;
                 return;
             }
         }
+        _flush();
 
         // Reached only by a pass that visited every column — see the cache's own
         // comment on why a partial pass must not publish. The per-cell tier is
@@ -120588,6 +120637,22 @@ a { color: #1565c0; }`;
                 sortBegin: (rows) => _twSortBegin(rows),
                 sortProgress: (pct) => _twSortProgress(pct),
                 sortEnd: () => _twSortEnd(),
+            },
+            /**
+             * The header-count scan (`_updateAllColHeaderCounts()`), for
+             * pinning how it publishes: `rescan(i)` drops table i's cached
+             * counts and runs a fresh scan through the real scheduler,
+             * resolving when it is over; `setFlushMs(ms)` / `setAfterColumn(fn)`
+             * set `_colHeaderCountsTest` (null restores the default).
+             */
+            colHeaderCounts: {
+                rescan: (i = 0) => {
+                    const t = document.querySelectorAll('table.tbl')[i];
+                    _invalidateColHeaderCountsCache(t);
+                    return _scheduleColHeaderCounts(t);
+                },
+                setFlushMs: (ms) => { _colHeaderCountsTest.flushMs = ms; },
+                setAfterColumn: (fn) => { _colHeaderCountsTest.afterColumn = fn; },
             },
             /** The 💾 browser cache overview (`_idbo*`). */
             idbOverview: {

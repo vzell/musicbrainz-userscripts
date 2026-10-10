@@ -31,5 +31,23 @@
     "why": "The thead loses its z-index inside the new stacking context, so a scrolled row's positioned cells could draw over it.",
     "edits": [{ "find": "                /* z-index 100 keeps it below the sidebar (105) but above table content */\n                z-index: 100;", "replace": "                /* z-index 100 keeps it below the sidebar (105) but above table content */\n                z-index: -1;" }],
     "spec": "tests/fixtures/table-paint-layer.spec.js", "grep": "still covered by it", "expect": "fail"
+  },
+  {
+    "name": "C2: badges flushed per column again",
+    "why": "Every recomputed column writes its badges at once, so each one costs the next frame a full table layout.",
+    "edits": [{ "find": "            if (performance.now() - _lastFlush >= _flushMs) _flush();\n", "replace": "            _flush();\n" }],
+    "spec": "tests/fixtures/header-counts-batched.spec.js", "grep": "writes every badge in one task", "expect": "fail"
+  },
+  {
+    "name": "C2: a superseded scan still publishes",
+    "why": "The stale scan flushes what it holds instead of dropping it, so the header gets a partial batch plus the new one.",
+    "edits": [{ "find": "                _pending.length = 0;\n                return;\n", "replace": "                _flush();\n                return;\n" }],
+    "spec": "tests/fixtures/header-counts-batched.spec.js", "grep": "superseded mid-way", "expect": "fail"
+  },
+  {
+    "name": "C2: the last batch is never written",
+    "why": "No flush at the end of the pass: a scan that never reached the interval writes nothing at all.",
+    "edits": [{ "find": "        }\n        _flush();\n\n        // Reached only by a pass that visited every column", "replace": "        }\n\n        // Reached only by a pass that visited every column" }],
+    "spec": "tests/fixtures/header-counts-batched.spec.js", "grep": "writes every badge in one task", "expect": "fail"
   }
 ]
