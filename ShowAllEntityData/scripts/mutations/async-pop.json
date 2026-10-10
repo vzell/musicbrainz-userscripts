@@ -1,0 +1,207 @@
+[
+  {
+    "name": "a script-started job opens the card too",
+    "why": "Drops the user check in _ajStart(): an automatic retry pass would throw a card over the page.",
+    "edits": [
+      {
+        "find": "        if (opts.user && _ajEnabled() && Lib.settings.sa_async_pop_auto_open !== false) {\n",
+        "replace": "        if (_ajEnabled() && Lib.settings.sa_async_pop_auto_open !== false) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/async-pop.spec.js",
+    "grep": "a user-started job opens the card",
+    "expect": "fail"
+  },
+  {
+    "name": "sa_async_pop_auto_open is ignored",
+    "why": "The card opens on start even with auto-open off.",
+    "edits": [
+      {
+        "find": "        if (opts.user && _ajEnabled() && Lib.settings.sa_async_pop_auto_open !== false) {\n",
+        "replace": "        if (opts.user && _ajEnabled()) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/async-pop.spec.js",
+    "grep": "sa_async_pop_auto_open off",
+    "expect": "fail"
+  },
+  {
+    "name": "sa_async_pop_enable is ignored on hover",
+    "why": "_ajShow() no longer asks the master setting: a hover shows the card although the feature is off.",
+    "edits": [
+      {
+        "find": "        if (!_ajEnabled() || !_ajProviders.has(key)) return false;\n",
+        "replace": "        if (!_ajProviders.has(key)) return false;\n"
+      },
+      {
+        "find": "            if (!a || _isTouchCompatMouseEvent(e) || !_ajEnabled()) return;\n",
+        "replace": "            if (!a || _isTouchCompatMouseEvent(e)) return;\n"
+      }
+    ],
+    "spec": "tests/fixtures/async-pop.spec.js",
+    "grep": "sa_async_pop_enable off",
+    "expect": "fail"
+  },
+  {
+    "name": "Esc does not close the card",
+    "why": "The keydown listener is never installed.",
+    "edits": [
+      {
+        "find": "            window.addEventListener('keydown', _ajOnKey, true);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/async-pop.spec.js",
+    "grep": "Esc hides it",
+    "expect": "fail"
+  },
+  {
+    "name": "Esc steals the artwork viewer's key",
+    "why": "_ajOnKey() no longer gives way to an open #mb-art-viewer.",
+    "edits": [
+      {
+        "find": "        if (viewer && !viewer.hidden) return;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/async-pop.spec.js",
+    "grep": "Esc belongs to the artwork viewer",
+    "expect": "fail"
+  },
+  {
+    "name": "repaints run while the card is closed",
+    "why": "_ajChanged() loses its open-job gate: every job step rebuilds a hidden card.",
+    "edits": [
+      {
+        "find": "        if (!_ajPop.openId || _ajPop.openId !== _ajId(key, scope) || _ajPop.raf) return;\n        _ajPop.raf = requestAnimationFrame(() => {\n            _ajPop.raf = 0;\n            _ajRepaint();\n        });\n",
+        "replace": "        if (_ajPop.raf) return;\n        _ajPop.raf = requestAnimationFrame(() => {\n            _ajPop.raf = 0;\n            if (!_ajPop.openId) _ajRepaint.count = (_ajRepaint.count || 0) + 1;\n            _ajRepaint();\n        });\n"
+      }
+    ],
+    "spec": "tests/fixtures/async-pop.spec.js",
+    "grep": "repaints stop while hidden",
+    "expect": "fail"
+  },
+  {
+    "name": "the card ignores the pointer resting on it",
+    "why": "No mouseenter grace on the card: it closes under the pointer, so its actions are unreachable.",
+    "edits": [
+      {
+        "find": "        el.addEventListener('mouseenter', () => clearTimeout(_ajPop.leaveTimer));\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/async-pop.spec.js",
+    "grep": "hover reopens it",
+    "expect": "fail"
+  },
+  {
+    "name": "leaving the anchor never closes the card",
+    "why": "The anchor mouseout no longer schedules the close.",
+    "edits": [
+      {
+        "find": "            if (_ajPop.anchor !== a) return;\n            clearTimeout(_ajPop.leaveTimer);\n            _ajPop.leaveTimer = setTimeout(_ajHide, _AJ_LEAVE_GRACE_MS);\n",
+        "replace": "            if (_ajPop.anchor !== a) return;\n"
+      },
+      {
+        "find": "        el.addEventListener('mouseleave', () => {\n            clearTimeout(_ajPop.leaveTimer);\n            _ajPop.leaveTimer = setTimeout(_ajHide, _AJ_LEAVE_GRACE_MS);\n        });\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/async-pop.spec.js",
+    "grep": "hover reopens it",
+    "expect": "fail"
+  },
+  {
+    "name": "action clicks do not reach the provider",
+    "why": "The card's click delegate drops the act() call.",
+    "edits": [
+      {
+        "find": "            if (p && p.act) p.act(scope, b.dataset.mbAjAct);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/async-pop.spec.js",
+    "grep": "an action button reaches the provider",
+    "expect": "fail"
+  },
+  {
+    "name": "the anchor's own tooltip card stacks on the popup",
+    "why": "mb-async-pop leaves _OTHER_RICH_TIPS, so the toggle's Liner-notes card draws over it.",
+    "edits": [
+      {
+        "find": "'mb-dp-peek', 'mb-async-pop'];",
+        "replace": "'mb-dp-peek'];"
+      }
+    ],
+    "spec": "tests/fixtures/async-pop.spec.js",
+    "grep": "own Liner-notes card stays away",
+    "expect": "fail"
+  },
+  {
+    "name": "the card is placed at the pointer, not under the anchor",
+    "why": "_ajPlace() stops running, so the card stays at 0/0.",
+    "edits": [
+      {
+        "find": "        el.style.display = 'block';\n        _ajPlace();\n        return true;\n",
+        "replace": "        el.style.display = 'block';\n        return true;\n"
+      }
+    ],
+    "spec": "tests/fixtures/async-pop.spec.js",
+    "grep": "a user-started job opens the card",
+    "expect": "fail"
+  },
+  {
+    "name": "a tap's compatibility mouseover shows the card",
+    "why": "The anchor hover handler loses its _isTouchCompatMouseEvent guard; on a phone the card would hang with no mouseleave to close it.",
+    "edits": [
+      {
+        "find": "            if (!a || _isTouchCompatMouseEvent(e) || !_ajEnabled()) return;\n",
+        "replace": "            if (!a || !_ajEnabled()) return;\n"
+      }
+    ],
+    "spec": "tests/fixtures/async-pop.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "a tap on the anchor never shows the card",
+    "expect": "fail"
+  },
+  {
+    "name": "a tap outside does not close the card",
+    "why": "The touch pointerdown listener is never installed.",
+    "edits": [
+      {
+        "find": "            document.addEventListener('pointerdown', _ajOnPointerDown, true);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/async-pop.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "a tap outside closes",
+    "expect": "fail"
+  },
+  {
+    "name": "the cache rows are never rendered",
+    "why": "_ajRender() drops the cache block, so a provider's IndexedDB rows never reach the card.",
+    "edits": [
+      {
+        "find": "        if (s.cache && s.cache.length) {\n",
+        "replace": "        if (false && s.cache && s.cache.length) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/async-pop.spec.js",
+    "grep": "the cache section shows",
+    "expect": "fail"
+  },
+  {
+    "name": "onOpen runs on every repaint-triggering show",
+    "why": "The wasOpen gate is gone: re-showing an already-open card re-starts its async refresh.",
+    "edits": [
+      {
+        "find": "        if (!wasOpen && p.onOpen) {\n",
+        "replace": "        if (p.onOpen) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/async-pop.spec.js",
+    "grep": "the cache section shows",
+    "expect": "fail"
+  }
+]

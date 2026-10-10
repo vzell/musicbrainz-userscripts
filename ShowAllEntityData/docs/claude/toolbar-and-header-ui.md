@@ -824,3 +824,157 @@ h3 and thead offsets start below them), z-index 105 (`VSB_Z_HEAD`).
   unstyled MB header is 1,555 px tall (taller than the window, ignored as a
   base by the third-of-the-window clamp); a test that needs it as a base caps
   it at 60 px.
+
+## Async job popup (`_asyncJobs`)
+
+One "Liner notes" card, `#mb-async-pop`, that every background job reports
+through: what is being loaded, a progress bar (from cache / loaded / failed /
+queued), where the data comes from and why, the last eight requests with their
+outcome, and actions such as "Retry N failed". Mockup and rules agreed on
+2026-10-09 (`https://claude.ai/artifact/P8LJjFQkURd6a8fHYVwrhq`). The code is
+the `ASYNC JOB POPUP (_aj*)` block right after `_initStatTooltip()`.
+
+**A job registers a provider and reports steps; the framework owns the rest.**
+`_ajRegister(key, {glyph, label, snapshot, act, anchorFor?, scopeOf?})` once;
+then `_ajStart(key, scope, {user, anchor})`, `_ajLog()`, `_ajPhase()`,
+`_ajChanged()`, `_ajFinish()`. `scope` is the job's `<table>` (null for a
+page-wide job). `snapshot(scope, job)` returns the card's content and is called
+on every repaint, so it must be O(1) — counters the job already keeps, never a
+row walk. `act(scope, id)` calls the job's EXISTING functions; the card never
+starts a request of its own. Returning `null` from `snapshot()` shows nothing,
+and the anchor's own Liner-notes tooltip applies as before.
+
+**Cache rows, and the one async read a card may make.** A snapshot's `cache`
+(`[label, text]` pairs) renders under its own "💾 Cache" heading: the job's
+IndexedDB store and TTL, records in it, this run's memory / IndexedDB /
+network split, the last idle sweep — the per-job slice of what the Statistics
+panel lists for all stores. A store COUNT is asynchronous and `snapshot()` is
+not, so a provider may declare `onOpen(scope, repaint)`: it runs once per
+opening of the card (not on a repaint, not when a job start re-shows an
+already-open card), starts the read (`_artIdbCountStore()`), keeps the answer,
+and calls `repaint()` — the next snapshot shows it. Until then the row reads
+"counting…".
+
+**Anchors are found by attribute or selector, never wired.** A control
+carrying `data-mb-aj="<key>"` is that job's anchor — used only on NEW markup
+(▶🎼, which lives on a pageType with no baseline). An EXISTING control is
+named by the provider's `anchorSelector` instead (`.mb-ms-col-hdr-btn`,
+`.mb-rel-col-hdr-btn`, the status spans): writing `data-mb-aj` onto it would
+drift every snapshot baseline that contains it. `_ajRegister()` folds the
+selectors into `_ajPop.hoverSel`, and `_ajKeyOf()` resolves a hovered element
+to its key. The hover listeners are delegated on
+`document` (`_ajInitHover()`, installed from `_initStatTooltip()` at page
+init). The attribute survives `cloneNode(true)`, so a rebuilt `<thead>` needs
+nothing. `_ajInitHover()` sits ABOVE the `_aj*` const declarations in call
+order: it only adds listeners and reads no const until an event fires, which
+is after the IIFE has run. Do not make it read state at install time (TDZ —
+see "Hover tooltips must ignore a tap" for the time that took down every
+action button).
+
+How it behaves, and why:
+- **Opens by itself only for a job the USER started** (`{user: true}`), and
+  only while `sa_async_pop_auto_open` is on. A job the script starts (an
+  automatic retry pass) updates the record and, if the card is open, the card.
+- **Esc hides it and nothing else** — the job keeps running and keeps
+  logging. The `keydown` listener exists only while the card is open
+  (`_ajListen()`), on window capture, and gives way to `#mb-art-viewer`, which
+  owns every key while it is open. While the card is open, Esc is the card's:
+  an Esc meant for a focused filter input closes the card first.
+- **Hover shows it again** after 250 ms (`_AJ_HOVER_DELAY_MS`), live; leaving
+  the anchor OR the card closes it after 300 ms (`_AJ_LEAVE_GRACE_MS`), and
+  moving from one to the other cancels that, so the action buttons are
+  reachable. An idle anchor (no job yet) shows the provider's preview — the
+  place for "this would cost N requests".
+- **Repaints are free while it is closed**: `_ajChanged()` returns unless the
+  card is open on THAT job, and coalesces to one repaint per animation frame.
+  A job may call it on every step. `__saTest.asyncPop.repaints()` pins this.
+- **One card, one layer.** It is a `.mb-tt-liner` (z-index from that rule) and
+  its id is in `_OTHER_RICH_TIPS`, so the anchor's own `_setTip` card stays
+  away while it shows. Its own rows are `.mb-tt-aj*` rules in the liner block
+  — no inline colours, same as every other tooltip.
+- **Touch**: the anchor hover handler returns on `_isTouchCompatMouseEvent()`
+  (a tap would leave it hanging); a touch outside the card closes it.
+- **Never in a table's text.** The card lives in `<body>`; a job's progress on
+  its toggle stays `::after { content: attr() }`. It also never writes to
+  `#mb-info-display-rel`, which `waitForRelationshipsComplete()` waits on.
+
+**Providers today**: `recof` (registered at render time, shows an idle
+preview), `rel` and `ms` (registered when their first user-started job
+starts, and `snapshot()` answers `null` without a job — so their toggles keep
+their own tooltips for anyone who never starts one). `rel` starts only from a
+▶🔗 expand click (`_relAjBegin()`), logs in `_relFetchWs2()`'s network branch,
+reads progress from the `table._mbRelProgress` stash `_relUpdateColHdrBtn()`
+writes (no cell walk per repaint), and finishes at the Phase-2 drain with the
+tier counts; a pass the script starts by itself creates no record. `ms` starts
+in `_msToggleLengthPrecision()`'s fetch branch and finishes in its `finally`.
+Specs: `async-pop-providers.spec.js`; mutations
+`scripts/mutations/async-pop-providers.json` (5 caught, 2 recorded
+`expect: "pass"`: the idle guards cannot fail while registration happens at
+the first job).
+
+**`tablework` (long sorts and filters, `_tw*`).** Sorting yields
+(`sortLargeArray()` chunks above 5000 rows) and now passes its progress
+callback, `_twSortProgress()`, which opens the card once a sort has run past
+500 ms (`_TW_OPEN_AFTER_MS`) — never for a short one. Filtering's matching
+loop does NOT yield, so the page cannot repaint during it; `runFilter()` only
+records its time and rows (`_twFilterRecord()`), the draw time follows from
+`_renderSettled`, and the breakdown shows when the user hovers the status
+line (`#mb-sort-status-display`, `#mb-filter-status-display`). A yielding
+`runFilter()` is a separate perf branch, decided 2026-10-10. Cost while the
+card is closed: one object write and one `.then()` per filter pass. Specs:
+`async-pop-tablework.spec.js` — the auto-open path through
+`__saTest.tableWork` with a fake clock, because no fixture reaches the 5000
+rows the live callback needs; mutations `scripts/mutations/async-pop-tablework.json`
+(5, all caught).
+
+`FIXTURE_SETTINGS_OVERRIDE` forces `sa_async_pop_auto_open` off: a card opened
+by a toggle click sits right over the header cells a spec clicks next. Specs
+that test the card seed it back on. Specs: `async-pop.spec.js` (10) and
+`async-pop.mobile.spec.js` (2), driving the shipping framework with a stand-in
+provider through `__saTest.asyncPop`; mutations `scripts/mutations/async-pop.json`
+(15, all caught).
+
+## 💾 Browser cache overview (`_idbo*`)
+
+A dialog, `#mb-idb-overview`, showing the user everything the script keeps in
+this browser's IndexedDB — the art cache database (six stores) and the
+link-preview database (`pages`). Mockup agreed 2026-10-10
+(`https://claude.ai/artifact/4UsPjhkP1gN6cb9wCnQw72`). Per part: entries, a
+size estimate, an age bar (under a day / 1–7 days / older within keep time /
+past keep time), the oldest entry and the keep time; a donut of the space; a
+drill-down with every key (searchable, first 200 shown) and a per-entry ✕;
+deletes for the expired entries of one part, one part, everything expired,
+everything older than 7/30/90 days, and everything. Every delete asks inside
+the dialog first; Esc cancels a pending question before it closes the dialog.
+
+**The parts list is `_idboParts()`, a function on purpose** — it names
+`_ART_IDB_NAME`/`_DP_IDB_NAME` and reads TTL settings; as a module-level const
+it would read them at IIFE time. A new store belongs in that list (and in the
+sweep, and in `tests/support/idbFixture.js`).
+
+**Sizes are estimates** (`_idboBytes()`: JSON length plus any Blob's
+`size`). Good enough to compare parts; the dialog says so, and shows
+`navigator.storage.estimate()` for the whole origin beside it — which includes
+MusicBrainz's own storage and other userscripts', so it is labelled "site
+storage", never the script's.
+
+**Deletes change IndexedDB, not this page's memory caches** (`_relWs2Cache`,
+`_msBatchMemCache`, `_recOfMem`, the artwork blob URLs). The footer says "This
+page keeps what it already loaded". Revoking the blob URLs would blank images
+on screen, so this is deliberate.
+
+**Four ways in, no toolbar row.** ⚙️ Settings (`sa_fn_idb_overview`, a
+`type: 'function'` entry, in `_registerSettingsIntegration()`'s
+`functionRegistry`), a button under the 📊 Statistics panel's IndexedDB rows
+(`#mb-stats-idb-overview-btn`), the Tampermonkey menu ("💾 Browser cache"),
+and an automatic "💾 Cache overview" action on every progress card whose
+snapshot has `cache` rows (`_ajRender()` adds it; `__idb` is the framework's
+own action id, handled before the provider's `act()`). A 📦 Data menu row was
+not added: that panel lives in `<body>` on every page, so it would drift every
+snapshot baseline. The stylesheet is injected on first open (`#mb-idbo-style`)
+for the same reason. z-index 2147483200: over the settings dialog and the
+Statistics panel, under the artwork viewer and every tooltip.
+
+Specs: `idb-overview.spec.js` (8, both databases seeded before the userscript
+opens them) and `idb-overview.mobile.spec.js`; mutations
+`scripts/mutations/idb-overview.json` (12, all caught).

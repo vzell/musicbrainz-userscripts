@@ -21418,3 +21418,85 @@ unknown).
      status line and rows showed behind and right of the h1. Fixed with one
      window-wide `position: fixed` backdrop (`#mb-vsb-mask`) behind the
      block, shown only while it is stuck; pinned on painted pixels.
+
+## 2026-10-10 — "Recording of" / "Performance attributes" columns and the async job popup (branch feature/recording-of-column, WIP.1–WIP.2)
+
+Env: 2026-10-09T22:13Z (probe) / 22:58Z (notes) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs) for the specs; the probe: no browser.
+
+Source: Michael Wiencek's "MusicBrainz: Batch-add 'performance of' relationships"
+2023.7.2, committed by mistake under `tests/fixtures/thirdPartyScripts/` (8d64fb6,
+pushed); moved to the gitignored `tests/fixtures/live-userscripts/` and registered
+as `wiencek-batch-performance` by the new `wire-live-userscript` skill.
+
+1. **Snapshot.** `debug/A-R-3rd-works.html` (supplied by the user, 1.1 MB): IP of
+   Bruce Springsteen's recordings page with that script active — its control
+   panel after `div#content h2`, `div.work` ("cover live recording of <work>") and
+   `div.suggested-work` in Name, a trailing `<th>Performance Attributes</th>` and
+   `td.bpr_attrs` per row. The browser/Tampermonkey versions of that capture are
+   unknown. A fixture was NOT cut from it (1.1 MB, real data); instead
+   `scripts/build-recording-of-fixture.py` writes `artist-recordings-recording-of-bpr.html`
+   with the same markup shape, copied from the snapshot. Finding while wiring:
+   nothing pinned the `'wiencek'` eraser or the foreign-header strip until
+   `recording-of-third-party.spec.js`.
+2. **Probe** (`scripts/probe-recording-work-rels.py`, results in
+   `tests/MEASUREMENTS.org`): browse `recording?artist=&inc=work-rels` is valid
+   (100/page, parity with lookups incl. a medley), `recording-count` 74 567, only
+   `performance` relations, work list 1 587, search carries no relations.
+3. **Audit — positional colIdx read after row assembly.** The two columns are the
+   first injected columns INSERTED (after Name) instead of appended. Readers of a
+   pre-render integer-column `colIdx` after assembly:
+   `finalizeSplitAlignedColumns()` / `finalizeRLCColumnWidths()` (after the fetch
+   and after a disk load) and `_repairTreleasesTd()` (positional lookup in a
+   rendered row). All stay right because `_recOfInsertCells()` runs BEFORE
+   `applyIntegerColumnStyling()` and `_finalColNames` names the two columns at the
+   same place. The first idea — move the cells after styling — would have put
+   Length's colon alignment on Rating. Readers resolving by header NAME
+   (`_msLengthColumnIndex()`, sticky, tooltip, collapsable columns) are unaffected.
+4. **Two defects found by the specs before they shipped.** (a) The ▼🎼 toggle
+   read "loaded" while the last lookup still waited for its rate slot: the
+   pending count skipped `loading` cells. Count now includes them, and "pressed"
+   also needs no job running. (b) `_recOfUpdateHdrBtns()` first walked every source
+   row on each render tail (it runs with `_relInitColHeaderToggles()` on every
+   single-table `runFilter()`) — now a cached count dropped only by writes.
+5. **Asked mid-session and answered:** long sorts/filters look blocked because
+   `runFilter()`'s matching loop is synchronous (only the render is chunked, above
+   `sa_chunked_render_threshold`); `sortLargeArray()` already yields and has an
+   unused progress callback. Decision (user): a `table-work` provider for the
+   progress card now, a yielding `runFilter()` as a separate measured perf branch.
+6. **First `test:full` on the branch** (2026-10-09T23:01:17Z, petri, `f7de9fc`,
+   1531 tests, 451 s): 1526 passed, 5 failed, all test assumptions the change
+   made false, none a product defect. (a) `tests/support/idbFixture.js` opened the
+   art database at a hard-coded version 3; with the userscript at 4 the browser
+   refuses the lower version (VersionError) — `caa-metadata-transient-503.spec.js`.
+   Now 4, with the two new stores in its seed (the `artist-recordings-ms-batch`
+   seed too, which passed only because 3 → 4 upgrades cleanly). (b) Positional
+   cell indexes on artist-recordings fixtures (`isrc-column-format.spec.js`
+   `cells[2]`, `uniq-drop-length-deviation.spec.js` `liveIdx: 5`, `cells[1]/[5]`)
+   — the two inserted columns shift them by two; both now resolve by header name.
+7. **💾 Browser cache overview** (asked 2026-10-10, mockup approved, WIP.3):
+   `_idbo*`, both databases, estimates from JSON length + Blob size. Two test
+   lessons: an SVG donut arc's bounding-box centre is the donut's HOLE, so a
+   Playwright `click()` on an arc hits the `<svg>` (the spec drives the arc's
+   handler and its keyboard path instead); and `tests/fixtures/artist-recordings.html`
+   has never been rendered by any spec — use a fixture a spec renders when a
+   test needs the post-render toolbar. Not built: "merge" from the request — the
+   mockup had no merge action and was approved as drawn; open question for the user.
+8. **Second `test:full`** (2026-10-09T23:53Z, petri, `a1ea751`, after the
+   Relationships/⏱/table-work providers and the cache overview): 1544/1544
+   passed, 452 s. Not done on this branch: the perf arms of plan §2.8
+   (artist-recordings has no committed perf baseline or harness config yet),
+   and the live interop smoke run with the batch-add userscript (needs the
+   user's go-ahead: it hits musicbrainz.org).
+9. **Perf baseline for artist-recordings, and a disk round-trip bug it exposed**
+   (2026-10-10T00:23Z–00:57Z, petri). New fixture: Tom Petty and the
+   Heartbreakers' recordings (2512 rows; sized with the new
+   `scripts/probe-artist-recording-counts.py`). The first capture, probed with
+   `scripts/probe-fixture-columns.js`, showed "Recording of" / "Performance
+   attributes" TWICE in the header after Load from Disk, every later column two
+   places off ("Artist" read ratings), and the cells without class/data-mbid.
+   Fixed (header guard by text, cell identity saved/restored, no columns for a
+   file without their cells), spec `recording-of-disk.spec.js`, fixture
+   re-captured. Then two arm pairs in opposite orders: header counts +5–8 %,
+   sort +5–6 %, the rest noise (tests/MEASUREMENTS.org). New tooling:
+   `scripts/run-perf-arms.py` + `reportProgress()` in the harness feed the
+   Claude Code status line (`~/.cache/sa-perf/status.json`).

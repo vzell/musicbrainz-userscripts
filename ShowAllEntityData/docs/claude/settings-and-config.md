@@ -171,8 +171,9 @@ forces `sa_enable_caa_pics`, `sa_enable_relationships_column`,
 `sa_enable_release_tracks_cover_art`, `sa_event_overview_event_art` and,
 since org/non-MB-sites.org (2026-10-08), the five link-preview keys
 (`sa_pop_mb`, `sa_pop_mb_page`, `sa_pop_ext`, `sa_dp_hover_without_ctrl`,
-`sa_event_rg_tooltip_without_ctrl`) OFF, and all nine DEFAULT to true, so any
-test that counts "changed" settings is off by nine unless it puts them back —
+`sa_event_rg_tooltip_without_ctrl`) and, since the async job popup,
+`sa_async_pop_auto_open` OFF, and all ten DEFAULT to true, so any
+test that counts "changed" settings is off by ten unless it puts them back —
 `settings-dialog.spec.js`'s `PRISTINE` is what that looks like (derived from
 the override's keys, each seeded `undefined`, which stores nothing). The five
 preview keys are also RETIRED defaults with a `_SETTINGS_MIGRATIONS` entry, so

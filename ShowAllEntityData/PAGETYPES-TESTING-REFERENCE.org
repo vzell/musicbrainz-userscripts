@@ -744,7 +744,7 @@ lists converted into sortable tables), tableMode =multi=.
 - URL: [[https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings?all=1][/artist/ARTIST/recordings?all=1]]
 - Buttons: "⊚ All recordings" (=?all=1=, shown above); "♫ Standalone" (=?standalone=1=); "🎬 Video" (=?video=1=)
 - tableMode: single
-- Features exercised: column erasers on Release groups/Name; video detection on Name; Comment → event-parts; numeric =mm:ss= Length; collapsible Release groups/CAA; CAA on Release groups; tooltips; sticky/main Name
+- Features exercised: column erasers on Release groups/Name; video detection on Name; Comment → event-parts; numeric =mm:ss= Length; collapsible Release groups/CAA; CAA on Release groups; tooltips; sticky/main Name; =recordingOf= — "Recording of" + "Performance attributes" INSERTED after Name, loaded on request (browse/lookup cost choice, IndexedDB), work suggestions (fixture specs =recording-of-*.spec.js=)
 
 ** 80. artist-works
 - URL: [[https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works][/artist/ARTIST/works]]

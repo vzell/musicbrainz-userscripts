@@ -473,6 +473,39 @@ about a minute before committing to a 3x8-minute run.
 
 Committed as =tests/snapshots/artist-releases-dylan/interaction-perf-*.json=.
 
+* Interaction latency — =artist-recordings-petty= (the "Recording of" columns, 2026-10-10)
+
+The first committed baseline for pageType =artist-recordings= (=tableMode= single):
+Tom Petty and the Heartbreakers' recordings tab, 2512 rows, 21 columns, disk fixture
+=tests/fixtures/saved-data/artist-recordings-petty.json.gz= (captured 2026-10-10T00:29:46Z,
+petri), descriptor =tests/support/pettyArtistRecordingsFixture.js=. The question: what
+the two columns INSERTED after Name ("Recording of", "Performance attributes", empty
+until loaded) cost. Answered with two fixtures of the same page on the same branch —
+WITH the columns (committed) and WITHOUT (=-nocols=, local, captured with
+=sa_enable_recording_of_column: false=) — so the ratio is the columns alone. A
+main-vs-branch pair on one fixture cannot answer it: the fixture stores its columns.
+
+Env: petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2), 24 cores,
+31 GB · Node v24.16.0 · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs) ·
+branch =feature/recording-of-column= (9.99.1311 + WIP.1–5) · 5 samples, median.
+
+| Pair | Arm (order)        | UTC run                       | globalFilter | columnFilter |   sort | uniqDropCold | uniqDropWarm | hdrCountsInit | hdrCountsRestore |
+|------+--------------------+-------------------------------+--------------+--------------+--------+--------------+--------------+---------------+------------------|
+| 1    | with (1st)         | 00:32:03 -> 00:38:22          |       1414.0 |       1812.0 | 4322.0 |       4958.0 |        244.0 |        3465.0 |           3704.0 |
+| 1    | without (2nd)      | 00:38:22 -> 00:44:17          |       1448.0 |       1664.0 | 4071.0 |       4982.0 |        243.0 |        3229.0 |           3428.0 |
+| 1    | ratio with/without |                               |        0.977 |        1.089 |  1.062 |        0.995 |        1.004 |         1.073 |            1.081 |
+| 2    | without (1st)      | 00:45:19 -> 00:51:20          |       1349.0 |       1792.0 | 4092.0 |       5066.0 |        276.0 |        3276.0 |           3551.0 |
+| 2    | with (2nd)         | 00:51:20 -> 00:57:38          |       1477.0 |       1774.0 | 4279.0 |       4887.0 |        313.0 |        3515.0 |           3739.0 |
+| 2    | ratio with/without |                               |        1.095 |        0.990 |  1.046 |        0.965 |        1.134 |         1.073 |            1.053 |
+
+Reading it: only what holds in BOTH orders is a result. Header counts +7.3 % / +5.3–8.1 %
+and sort +4.6–6.2 % hold — the cost of two more cells per row in the column-wise walks,
+about what 21 instead of 19 columns predicts (the same per-column residue PERFORMANCE.org
+Step 32 records as unfixable for a collapsed Picard column). The filter and 📊 metrics
+flip sign between the orders (global filter 0.977 vs 1.095, column filter 1.089 vs
+0.990), so they are noise at this sample size. JSON: =tests/snapshots/artist-recordings-petty{,-nocols}/interaction-perf-{feature-recording-of-column,reverse}-9.99.1311-2026-10-10-petri.json=.
+Pair 2 ran through =scripts/run-perf-arms.py= (status-line progress).
+
 * Instrumenting =artist-releasegroups= — the first multi-table arm (2026-09-10)
 
 | pageType             | tableMode | page title        | URL                                                            |
@@ -1349,6 +1382,30 @@ What this means for the design:
   took 12 minutes. That is the condition the column's retry and ⚠︎ state have to
   survive — and one browse page that needs five attempts still beats 100 lookups
   that each might.
+
+** "Recording of" work-rels probe, 2026-10-09
+
+Env: 2026-10-09T22:13:01Z → 22:13:10Z · petri · WSL2 Ubuntu (Linux 6.18.40.1) · no
+browser (Python probe) · n/a. 8 requests (one 503, retried). Pure WS/2. Raw JSON:
+=debug/probe-recording-work-rels.json= (gitignored). Re-run:
+=python3 scripts/probe-recording-work-rels.py=.
+
+| Question                                                      | Answer                                                                                              |
+|---------------------------------------------------------------+-----------------------------------------------------------------------------------------------------|
+| =recording?artist=<Springsteen>&inc=work-rels&limit=100=        | 200; =recording-count= *74 567*; 100 per page; every record carries =relations=                     |
+| relation =type=s on page 1                                    | only =performance= (58 relations on 57 of 100 recordings — one medley carries two)                  |
+| relation keys                                                 | type, type-id, direction, attributes, attribute-ids, attribute-values, begin, end, ended, work{…}, … |
+| attributes seen                                               | =live= 49, =cover= 47; =attribute-values= always ={}=                                               |
+| browse vs lookup =recording/<mbid>?inc=work-rels= (4 sampled) | identical multisets, including the 2-relation medley                                                |
+| =work?artist=<Springsteen>&inc=aliases&limit=100=               | 200; =work-count= *1 587*; 100 per page → 16 requests for the suggestion list                       |
+| search =rid:(5)= + =inc=work-rels=                            | 5 returned, *0* with =relations= — search cannot feed this column                                  |
+
+What it means for the design: the browse source is valid (parity), and costs
+=ceil(74 567 / 100)= = 746 requests for the full catalogue against one lookup per
+distinct row otherwise — so the column takes whichever is smaller for the rows
+actually rendered, after the first browse page has told it the count. Only
+=type == "performance"= is rendered; the attribute words come from =attributes=,
+the date from =begin=/=end= (equal for a dated live performance).
 
 * Waits that do not fire, and how long they do not fire for
 

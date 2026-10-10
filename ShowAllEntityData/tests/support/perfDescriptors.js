@@ -52,12 +52,20 @@
 const artistEvents = require('./artistEventsFixture');
 const dylanArtistReleases = require('./dylanArtistReleasesFixture');
 const springsteenArtistReleaseGroups = require('./springsteenArtistReleaseGroupsFixture');
+const pettyArtistRecordings = require('./pettyArtistRecordingsFixture');
 
 /** Every instrumented pageType, keyed by its `--pageType=` value. */
 const DESCRIPTORS = {
     'artist-events': artistEvents,
     'artist-releases-dylan': dylanArtistReleases,
     'artist-releasegroups': springsteenArtistReleaseGroups,
+    // The two arms of one question: the cost of the "Recording of" columns.
+    // Same constants; the -nocols fixture is local (git-ignored), captured
+    // with sa_enable_recording_of_column: false — see capture-fixture.js.
+    'artist-recordings-petty': pettyArtistRecordings,
+    'artist-recordings-petty-nocols': { ...pettyArtistRecordings,
+        FIXTURE_PATH: require('path').join(__dirname, '..', 'fixtures', 'local-large', 'artist-recordings-petty-nocols.json.gz'),
+        SEED_GM_VALUES: { ...pettyArtistRecordings.SEED_GM_VALUES, sa_enable_recording_of_column: false } },
 };
 
 /**
@@ -94,7 +102,7 @@ const PICARD_ARMS = {
 };
 
 /** pageTypes whose rows carry no `/release/<mbid>` link, so `--arm=` is a no-op. */
-const NO_PICARD_COLUMN = new Set(['artist-events', 'artist-releasegroups']);
+const NO_PICARD_COLUMN = new Set(['artist-events', 'artist-releasegroups', 'artist-recordings-petty', 'artist-recordings-petty-nocols']);
 
 /**
  * Relationships-column arms, selected with `--rel-arm=`.

@@ -1,0 +1,74 @@
+[
+  {
+    "name": "Blob bytes are not counted",
+    "why": "Artwork images would read as a few bytes each, so the chart would hide the largest part.",
+    "edits": [{ "find": "                if (typeof Blob !== 'undefined' && x instanceof Blob) { blobs += x.size; return 0; }", "replace": "                if (typeof Blob !== 'undefined' && x instanceof Blob) { return 0; }" }],
+    "spec": "tests/fixtures/idb-overview.spec.js", "grep": "lists every part", "expect": "fail"
+  },
+  {
+    "name": "nothing reads as expired",
+    "why": "The keep-time bucket is never chosen.",
+    "edits": [{ "find": "        if (ageMs > ttlDays * 86400000) return 3;\n", "replace": "" }],
+    "spec": "tests/fixtures/idb-overview.spec.js", "grep": "lists every part", "expect": "fail"
+  },
+  {
+    "name": "the donut draws an arc for an empty part",
+    "why": "withData no longer drops parts with no bytes.",
+    "edits": [{ "find": "        const withData = parts.filter(p => p.bytes > 0);", "replace": "        const withData = parts.filter(p => p.bytes >= 0);" }],
+    "spec": "tests/fixtures/idb-overview.spec.js", "grep": "lists every part", "expect": "fail"
+  },
+  {
+    "name": "the key search is ignored",
+    "why": "_idboPaintKeys() lists every key whatever is typed.",
+    "edits": [{ "find": "        const hits = q ? p.keys.filter(k => String(k.key).toLowerCase().includes(q)) : p.keys;", "replace": "        const hits = p.keys;" }],
+    "spec": "tests/fixtures/idb-overview.spec.js", "grep": "picking a part", "expect": "fail"
+  },
+  {
+    "name": "Cancel deletes anyway",
+    "why": "The confirmation is decorative: Cancel runs the pending delete.",
+    "edits": [{ "find": "        if (act === 'no') { _idbo.pending = null; _idboPaintConfirm(); return; }", "replace": "        if (act === 'no') { const j = _idbo.pending; _idbo.pending = null; _idboPaintConfirm(); if (j) j.run(); return; }" }],
+    "spec": "tests/fixtures/idb-overview.spec.js", "grep": "a delete asks first", "expect": "fail"
+  },
+  {
+    "name": "Delete expired deletes everything in the part",
+    "why": "The age predicate is dropped from the per-part expired delete.",
+    "edits": [{ "find": "                () => _idboDeleteWhere(p, ts => now - ts > p.ttlDays * 86400000).then(n => `Deleted ${fmtN(n)} entries from “${p.label}”.`));", "replace": "                () => _idboDeleteWhere(p, () => true).then(n => `Deleted ${fmtN(n)} entries from “${p.label}”.`));" }],
+    "spec": "tests/fixtures/idb-overview.spec.js", "grep": "a delete asks first", "expect": "fail"
+  },
+  {
+    "name": "a single-entry delete removes nothing",
+    "why": "The key comparison never matches.",
+    "edits": [{ "find": "                () => _idboDeleteWhere(p, (ts, key) => key === k.key || String(key) === String(k.key)).then(", "replace": "                () => _idboDeleteWhere(p, () => false).then(" }],
+    "spec": "tests/fixtures/idb-overview.spec.js", "grep": "Clear empties one part", "expect": "fail"
+  },
+  {
+    "name": "older than N days ignores the chosen age",
+    "why": "The global delete uses each part's keep time instead, so the 10-day entry survives a 7-day choice.",
+    "edits": [{ "find": "                () => Promise.all(_idbo.parts.map(p => _idboDeleteWhere(p, ts => now - ts > d * 86400000)))", "replace": "                () => Promise.all(_idbo.parts.map(p => _idboDeleteWhere(p, ts => now - ts > p.ttlDays * 86400000)))" }],
+    "spec": "tests/fixtures/idb-overview.spec.js", "grep": "global deletes", "expect": "fail"
+  },
+  {
+    "name": "Esc closes the dialog over a pending confirmation",
+    "why": "_idboOnKey() skips the cancel-first step.",
+    "edits": [{ "find": "        if (_idbo.pending) { _idbo.pending = null; _idboPaintConfirm(); return; }\n        _idbOverviewClose();", "replace": "        _idbOverviewClose();" }],
+    "spec": "tests/fixtures/idb-overview.spec.js", "grep": "Esc cancels", "expect": "fail"
+  },
+  {
+    "name": "the Tampermonkey menu entry is missing",
+    "why": "The command is never registered.",
+    "edits": [{ "find": "        GM_registerMenuCommand('💾 Browser cache', () => _idbOverviewOpen(null));", "replace": "        void 0;" }],
+    "spec": "tests/fixtures/idb-overview.spec.js", "grep": "the ways in", "expect": "fail"
+  },
+  {
+    "name": "a progress card's cache rows offer no overview",
+    "why": "_ajRender() stops adding the automatic action.",
+    "edits": [{ "find": "        const actions = (s.actions || []).concat(s.cache && s.cache.length ? [{ id: '__idb', label: '💾 Cache overview' }] : []);", "replace": "        const actions = s.actions || [];" }],
+    "spec": "tests/fixtures/idb-overview.spec.js", "grep": "the ways in", "expect": "fail"
+  },
+  {
+    "name": "the Statistics panel has no way in",
+    "why": "The panel's button is never appended.",
+    "edits": [{ "find": "            body.appendChild(_idboBtn);\n", "replace": "" }],
+    "spec": "tests/fixtures/idb-overview.spec.js", "grep": "Statistics panel opens it", "expect": "fail"
+  }
+]

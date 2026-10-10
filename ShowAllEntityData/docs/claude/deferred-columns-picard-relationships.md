@@ -517,3 +517,115 @@ twice, and no committed fixture has one. `__saTest.relFailedMbids()` exists
 because the set has no DOM surface once a filter has removed its rows, and the
 button's label is repainted only on a cell write, so asserting the label alone
 measures "the button was not repainted" instead.
+
+## Recording of column: two columns after "Name", loaded only on request
+
+`features.recordingOf` (artist-recordings) adds "Recording of" and
+"Performance attributes" — what Michael Wiencek's batch-add "performance of"
+userscript writes under each recording title, as two real columns. The code
+is the `_recOf*` family just above the Relationships section;
+`buildActiveRecordingOfColumns()` gates it (`sa_enable_recording_of_column`).
+Show only: no edit is ever submitted. API facts (browse parity, 74 567
+recordings for Springsteen, only `performance` relations, search carries no
+relations): `scripts/probe-recording-work-rels.py`, `tests/MEASUREMENTS.org`.
+
+**They are the only injected columns that are not appended.** Every other
+injected column goes at the row END, which is what lets the ⏱/Relationships
+code say "nothing they drop can shift Length". These two are INSERTED after
+"Name", and three things keep that from misplacing positional work:
+- `_recOfInsertCells()` runs in each of the three row-assembly sites BEFORE
+  `applyIntegerColumnStyling()`, not after;
+- `_finalColNames` splices the two names in after "Name", so every
+  integer-column `colIdx` (styling, `finalizeSplitAlignedColumns()`,
+  `finalizeRLCColumnWidths()`, `_repairTreleasesTd()`) is resolved against
+  the final layout;
+- `_recOfInjectHeaders()` inserts the `<th>`s after the "Name" `<th>` in
+  `cleanupHeaders()`.
+The audit that found the post-render `colIdx` readers is in DEBUG-NOTES
+(2026-10-10). Inserting after styling instead "works" for the inserted cells
+and silently moves Length's colon alignment two columns left — pinned by
+`recording-of-column.spec.js` "Length keeps its integer-column styling".
+Anything new that reads a pre-render `colIdx` after assembly must count them.
+
+**No collapse state, unlike Relationships.** Nothing loads until asked: a
+cell's 🎼 loads one row (`_recOfLoadRow()`), the header's ▶🎼 every row
+(`_recOfLoadAll()`); ▼🎼 only means "nothing left". A loaded cell stays
+loaded. That removes the whole collapsed-table writability problem the
+Relationships section above spends most of its length on.
+
+**State lives on the cell** (`data-recof`: absent = not asked, `queued`,
+`loading`, `has`, `suggested`, `none`, `error`), glyphs are CSS (only while
+`sa_recording_of_cell_state_glyphs` is on), and ONE classifier,
+`_recOfCellLoadState()`, feeds both the 📊 "Recording of - Load state" counts
+and its `recof-state-*` matcher. Writes go to live AND master cells through
+`_recOfCellIndex()` (live tables plus `_msSourceRows()`, merged by a Set — on
+a single-table first render they are the same cells).
+
+**Cost choice.** `_recOfLoadAllOnce()`: memory, IndexedDB (`recof-ws2`, key
+`recording:<mbid>|work-rels` so it can never collide with `rel-ws2`), then
+ONE browse page of the artist's recordings — it answers up to 100 rows and
+returns `recording-count` — then whichever is cheaper for the rest: more
+browse pages (`pagesLeft`) or one lookup per remaining row (`wanted.size`).
+Worst case one extra request. Every request waits on the shared
+`_relAwaitRateSlot()`, retries through `_ws2GetJson()`, and only a
+SUCCESSFUL answer is cached (404 = "no work", a 503 = ⚠).
+
+**The pending count is cached, and must count loading rows.**
+`_recOfUpdateHdrBtns()` runs on every render tail (it is called with
+`_relInitColHeaderToggles()`), so it reads `_recOf.pendingCount`, dropped
+only by a write, a mark or a new fetch — never a row walk per keystroke.
+`_recOfPending(…, withLoading)`: a loader must not re-ask for a row being
+loaded, but the COUNT must include it, and "pressed" also requires no job
+running — otherwise ▼🎼 appears while the last lookup is still waiting for
+its rate slot (found by `recording-of-column.spec.js` "batching off", which
+read the request log one request early).
+
+**Write path** (`_recOfApply()` + `_recOfScheduleRefresh()`): drop the row's
+`_rowTextCache` on each write; then, throttled (every 2 s while a bulk job
+runs, at once for a click and at the job's end), drop the 📊 and filter
+result caches, re-run `initCollapsableColumns()` (both columns are in the
+pageType's `collapsableColumns`, so a medley gets its ▶2▤ toggle) and
+`runFilter()` only when `_anyFilterActive()`.
+
+**Suggestions** (`_recOfSuggestTitle()`), for rows answered "no work": the
+batch-add userscript's normalisation (trailing ` (…)` clauses off the
+recording title, lower case, no whitespace, typographic → ASCII
+punctuation), an exact `Map` lookup first, then the CLOSEST work within
+`sa_recording_of_suggest_max_distance_pct` (default 25 %, that script's
+0.25). Bounded where that script is not: memoised per DISTINCT normalised
+title, a length pre-check skips any work that cannot be within the
+threshold, the distance itself exits early, and `_recOfSuggestAll()` yields
+every ~8 ms. The work list comes from IndexedDB (`artist-works`), else the
+batch-add userscript's own `bpr_works <artist>` localStorage list
+(read-only, `sa_recording_of_import_bpr_cache`), else the Web Service.
+
+**Progress card provider** `recof` (`_recOfRegisterProvider()`, registered at
+render time — `_ajRegister()` reads consts declared below the init call).
+Its `cache` rows show the store, its record count (`onOpen`, throttled to one
+count per 5 s), this run's memory/IndexedDB/network split and the work list
+with its source and date — "N works … (cached <date>)" as the batch-add
+userscript shows it.
+
+**Save / Load from Disk** (found 2026-10-10 while building the perf fixture —
+the first disk-loaded table had both headers TWICE and every later column two
+places off). Three parts, all needed: `_recOfInjectHeaders()` recognises the
+pair by TEXT as well as `data-col-name` (a header rebuilt from a file has no
+dataset); `_buildDiskCellData()` saves `recof`/`mbid`/`recofState` and
+`_recOfRestoreCell()` puts them back from a whitelist (a file is user data);
+and a file whose rows carry no `td.mb-recof-cell` (saved before the feature, or
+with it off) loads with `activeRecordingOfColumns = []`, so no header is added
+over cells that do not exist. Spec `recording-of-disk.spec.js`, mutations
+`scripts/mutations/recording-of-disk.json` (4, all caught).
+
+**Measured cost** (tests/MEASUREMENTS.org, 2026-10-10, two pairs in opposite
+orders on `artist-recordings-petty`): header counts +5–8 %, sort +5–6 % on
+artist-recordings with the columns present but empty; filter and 📊 metrics
+within noise. The per-column residue of two more cells per row.
+
+Specs: `recording-of-column.spec.js`, `recording-of-suggest.spec.js`,
+`recording-of-uniq.spec.js`, `recording-of-third-party.spec.js` (the batch-add
+userscript's markup: until this, nothing pinned the `'wiencek'` eraser or the
+foreign "Performance Attributes" strip). Fixtures come from
+`scripts/build-recording-of-fixture.py` (page, the `-bpr` variant, and
+`recording-of-data.json`, which the WS/2 mock in `tests/support/recordingOf.js`
+serves). Mutations: `scripts/mutations/recording-of.json`.

@@ -1,0 +1,257 @@
+[
+  {
+    "name": "cells are not inserted after Name",
+    "why": "The row assembly never calls _recOfInsertCells(): headers exist, cells do not, every later column shifts.",
+    "edits": [
+      {
+        "find": "        const anchor = row.cells[afterIdx];\n        if (!anchor) return;\n        const mbid = _recOfRowMbid(anchor);",
+        "replace": "        const anchor = row.cells[afterIdx];\n        if (!anchor || true) return;\n        const mbid = _recOfRowMbid(anchor);"
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-column.spec.js",
+    "grep": "the columns sit after Name",
+    "expect": "fail"
+  },
+  {
+    "name": "_finalColNames does not count the inserted columns",
+    "why": "Integer-column colIdx is resolved without them, so the positional styling lands two columns left of Length.",
+    "edits": [
+      {
+        "find": "                        if (_nameAt !== -1) _finalColNames.splice(_nameAt + 1, 0, ...activeRecordingOfColumns.map(e => e.colName));\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-column.spec.js",
+    "grep": "Length keeps its integer-column styling",
+    "expect": "fail"
+  },
+  {
+    "name": "the loader never switches from browsing to lookups",
+    "why": "The cost choice is gone: a 100 000-recording catalogue is paged through instead of looking up the 12 remaining rows.",
+    "edits": [
+      {
+        "find": "                if (pagesLeft >= wanted.size) {\n",
+        "replace": "                if (false) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-column.spec.js",
+    "grep": "a large catalogue",
+    "expect": "fail"
+  },
+  {
+    "name": "the loader never keeps browsing",
+    "why": "The cost choice always switches to lookups after the first page, even when one more page is cheaper.",
+    "edits": [
+      {
+        "find": "                if (pagesLeft >= wanted.size) {\n",
+        "replace": "                if (true) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-column.spec.js",
+    "grep": "keeps browsing",
+    "expect": "fail"
+  },
+  {
+    "name": "the browse kill switch is ignored",
+    "why": "sa_recording_of_browse_batch_enable off still browses.",
+    "edits": [
+      {
+        "find": "        if (wanted.size > 1 && artist && Lib.settings.sa_recording_of_browse_batch_enable !== false) {\n",
+        "replace": "        if (wanted.size > 1 && artist) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-column.spec.js",
+    "grep": "batching off",
+    "expect": "fail"
+  },
+  {
+    "name": "a failed row click is taken as 'no work'",
+    "why": "A transport failure becomes an answer ([]) — shown as – and cached as a fact instead of ⚠.",
+    "edits": [
+      {
+        "find": "        if (!rels) {\n            const res = await _recOfGet(`/ws/2/recording/${id}?inc=work-rels&fmt=json`, `lookup ${id.slice(0, 8)}`);\n            if (res.ok || res.status === 404) {",
+        "replace": "        if (!rels) {\n            const res = await _recOfGet(`/ws/2/recording/${id}?inc=work-rels&fmt=json`, `lookup ${id.slice(0, 8)}`);\n            if (true) {"
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-column.spec.js",
+    "grep": "a failed row shows",
+    "expect": "fail"
+  },
+  {
+    "name": "browse answers are not written to IndexedDB",
+    "why": "A reload asks the Web Service again for every row.",
+    "edits": [
+      {
+        "find": "                _recOfIdbPut(puts);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-column.spec.js",
+    "grep": "a reload answers from IndexedDB",
+    "expect": "fail"
+  },
+  {
+    "name": "a write leaves the row's cached filter text in place",
+    "why": "_rowTextCache keeps the empty text read before the load, so a filter typed before loading never finds the rows.",
+    "edits": [
+      {
+        "find": "        cells.forEach(td => {\n            _recOfRenderCell(td, rels, sugg);\n            _recOfDropRowText(td);\n        });",
+        "replace": "        cells.forEach(td => {\n            _recOfRenderCell(td, rels, sugg);\n        });"
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-column.spec.js",
+    "grep": "a filter typed BEFORE loading",
+    "expect": "fail"
+  },
+  {
+    "name": "the write path does not re-run an active filter",
+    "why": "Caches are dropped but nothing re-filters, so the rows stay hidden until the next keystroke.",
+    "edits": [
+      {
+        "find": "            _recOfUpdateHdrBtns();\n            if (_anyFilterActive()) runFilter();\n",
+        "replace": "            _recOfUpdateHdrBtns();\n"
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-column.spec.js",
+    "grep": "a filter typed BEFORE loading",
+    "expect": "fail"
+  },
+  {
+    "name": "the toggle reads 'loaded' while a row is still loading",
+    "why": "Both halves of the fix reverted: the pending count skips loading cells, and pressed ignores a running job.",
+    "edits": [
+      {
+        "find": "            if (st === 'loading' && !withLoading) return;\n",
+        "replace": "            if (st === 'loading') return;\n"
+      },
+      {
+        "find": "            b.setAttribute('aria-pressed', pending === 0 && !_recOf.running ? 'true' : 'false');",
+        "replace": "            b.setAttribute('aria-pressed', pending === 0 ? 'true' : 'false');"
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-column.spec.js",
+    "grep": "batching off",
+    "expect": "fail"
+  },
+  {
+    "name": "the first fuzzy hit wins instead of the closest",
+    "why": "With the decoy first in the catalogue, 'Racing in the Streets' is matched to 'Racing in the Street ’78'.",
+    "edits": [
+      {
+        "find": "                    if (score < bestScore) { bestScore = score; best = w; }\n",
+        "replace": "                    if (bestScore === Infinity) { bestScore = score; best = w; }\n"
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-suggest.spec.js",
+    "grep": "closest wins",
+    "expect": "fail"
+  },
+  {
+    "name": "trailing (…) clauses are not stripped from recording titles",
+    "why": "'Prove It All Night (alternate take)' no longer matches its work.",
+    "edits": [
+      {
+        "find": "        if (stripParens) {\n            const m = t.match(_RECOF_PAREN_RE);\n            if (m) t = m[1];\n        }\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-suggest.spec.js",
+    "grep": "closest wins",
+    "expect": "fail"
+  },
+  {
+    "name": "the 0 % threshold still allows fuzzy matches",
+    "why": "The thr > 0 gate is gone and the threshold read falls back to 25 on 0.",
+    "edits": [
+      {
+        "find": "            const thr = (typeof p === 'number' && p >= 0 ? p : 25) / 100;",
+        "replace": "            const thr = (p || 25) / 100;"
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-suggest.spec.js",
+    "grep": "0 % threshold",
+    "expect": "fail"
+  },
+  {
+    "name": "the batch-add userscript's cache is not reused",
+    "why": "The work list is always requested from the Web Service.",
+    "edits": [
+      {
+        "find": "            const bpr = Lib.settings.sa_recording_of_import_bpr_cache !== false ? _recOfReadBprWorks(artist) : null;",
+        "replace": "            const bpr = null;"
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-suggest.spec.js",
+    "grep": "cached work list is reused",
+    "expect": "fail"
+  },
+  {
+    "name": "the suggestions setting does not stop the work-list request",
+    "why": "_recOfEnsureWorks() ignores sa_recording_of_suggest_enable.",
+    "edits": [
+      {
+        "find": "        if (!artist || Lib.settings.sa_recording_of_suggest_enable === false) return false;\n        if (_recOfWorks && _recOfWorks.artist === artist && !force) return true;",
+        "replace": "        if (!artist) return false;\n        if (_recOfWorks && _recOfWorks.artist === artist && !force) return true;"
+      },
+      {
+        "find": "    async function _recOfSuggestAll(allowNetwork) {\n        if (Lib.settings.sa_recording_of_suggest_enable === false) return;\n",
+        "replace": "    async function _recOfSuggestAll(allowNetwork) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-suggest.spec.js",
+    "grep": "suggestions off",
+    "expect": "fail"
+  },
+  {
+    "name": "the load-state matcher disagrees with its count",
+    "why": "recof-state-* stops using _recOfCellLoadState(): ticking an entry matches every recording cell.",
+    "edits": [
+      {
+        "find": "            return _recOfCellLoadState(cell) === mode.slice('recof-state-'.length);",
+        "replace": "            return !!cell && cell.classList.contains('mb-recof-cell');"
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-uniq.spec.js",
+    "grep": "narrows to exactly those rows",
+    "expect": "fail"
+  },
+  {
+    "name": "suggested titles are not highlighted",
+    "why": "The testRowMatch() dispatch skips recofsugg: modes.",
+    "edits": [
+      {
+        "find": "                                    _highlightRecOfSuggestionMatch(row.cells[f.idx], mode);",
+        "replace": "                                    void 0;"
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-uniq.spec.js",
+    "grep": "every title is highlighted",
+    "expect": "fail"
+  },
+  {
+    "name": "the suggested-work extractor drops a link it highlighted",
+    "why": "Kept as a guard, recorded as not testable: the recofsugg: matcher runs on the SOURCE rows, and runFilter() highlights only the render clone, so a highlight wrapper never reaches a cell the extractor reads. Measured 2026-10-10: this mutation passes the two-entries-both-orders test. The read-through (textContent) stays so the extractor would survive a future in-place highlight.",
+    "edits": [
+      {
+        "find": "        return Array.from(cell.querySelectorAll('li.mb-recof-suggested a'))\n            .map(a => a.textContent.trim()).filter(Boolean);",
+        "replace": "        return Array.from(cell.querySelectorAll('li.mb-recof-suggested a'))\n            .map(a => (a.querySelector('bdi') && a.querySelector('bdi').firstChild && a.querySelector('bdi').firstChild.nodeType === 3 && a.querySelector('bdi').childNodes.length === 1 ? a.querySelector('bdi').firstChild.nodeValue : '').trim()).filter(Boolean);"
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-uniq.spec.js",
+    "grep": "every title is highlighted",
+    "expect": "pass"
+  },
+  {
+    "name": "our attribute column takes the third-party header's name",
+    "why": "Named 'Performance Attributes' it would be stripped as the batch-add userscript's column.",
+    "edits": [
+      {
+        "find": "    const _RECOF_ATTR_COL = 'Performance attributes';",
+        "replace": "    const _RECOF_ATTR_COL = 'Performance Attributes';"
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-third-party.spec.js",
+    "grep": "ours survive",
+    "expect": "fail"
+  }
+]

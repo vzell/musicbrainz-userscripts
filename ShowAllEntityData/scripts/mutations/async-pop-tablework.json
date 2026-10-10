@@ -1,0 +1,32 @@
+[
+  {
+    "name": "a finished sort is not recorded",
+    "why": "_twSortEnd() is never called, so the card has no 'Last sort' row.",
+    "edits": [{ "find": "                                } finally {\n                                    _twSortEnd();\n                                }", "replace": "                                } finally {\n                                    void 0;\n                                }" }],
+    "spec": "tests/fixtures/async-pop-tablework.spec.js", "grep": "breakdown on hover", "expect": "fail"
+  },
+  {
+    "name": "a filter is not recorded",
+    "why": "runFilter() stops reporting its time and rows.",
+    "edits": [{ "find": "        _twFilterRecord(Number(filterDuration), activeDefinition.tableMode === 'multi'", "replace": "        void (Number(filterDuration), activeDefinition.tableMode === 'multi'" }],
+    "spec": "tests/fixtures/async-pop-tablework.spec.js", "grep": "breakdown on hover", "expect": "fail"
+  },
+  {
+    "name": "the draw time is never recorded",
+    "why": "Nothing waits on _renderSettled, so 'Then drawing' never appears.",
+    "edits": [{ "find": "            if (afterSort) _tw.sort.drawMs = rec.drawMs;\n", "replace": "" }],
+    "spec": "tests/fixtures/async-pop-tablework.spec.js", "grep": "breakdown on hover", "expect": "fail"
+  },
+  {
+    "name": "a short sort opens the card too",
+    "why": "The 500 ms gate is gone: every chunked sort throws a card over the table.",
+    "edits": [{ "find": "        if ((!job || job.phase !== 'running') && performance.now() - _tw.sortStart > _TW_OPEN_AFTER_MS) {", "replace": "        if (!job || job.phase !== 'running') {" }],
+    "spec": "tests/fixtures/async-pop-tablework.spec.js", "grep": "over 500 ms", "expect": "fail"
+  },
+  {
+    "name": "a long sort never opens the card",
+    "why": "The progress callback only repaints; nothing starts the job.",
+    "edits": [{ "find": "            _ajStart('tablework', null, { user: true, anchor: document.getElementById('mb-sort-status-display') });\n", "replace": "" }],
+    "spec": "tests/fixtures/async-pop-tablework.spec.js", "grep": "over 500 ms", "expect": "fail"
+  }
+]

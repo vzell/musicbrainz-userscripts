@@ -60,6 +60,30 @@ archive above) — **kept side by side per arm, never overwritten** — so a
 `main` run and a `perf-steps-1-4` run, or the same branch captured on two
 different machines, can be diffed directly.
 
+## Running several arms, with progress in the status line
+
+```
+python3 scripts/run-perf-arms.py <pageType> [<pageType> ...] [--log PATH] [-- <harness args>]
+```
+
+Runs `capture-interaction-perf.js` once per arm, in order, and keeps
+`~/.cache/sa-perf/status.json` current; `~/.claude/statusline.sh` shows it as
+
+    📈 perf · <host> · <branch>@<sha> · arm 1/2 <pageType> · <metric> · sample 3/5 (14/30) · ETA ~HH:MM UTC
+
+while it runs and each arm's wall clock for an hour after. Progress inside an
+arm comes from the harness's `SA_PERF_PROGRESS` file (`reportProgress()`), the
+ETA from this host's previous run of the same arms
+(`~/.cache/sa-perf/last-<host>-<arm>.json`). Harness options (`--label=`,
+`--samples=`, `--arm=`) go after `--`. **Run an A/B pair twice, in opposite
+orders** (A,B then B,A): a single order cannot tell a real ratio from a
+warm-up effect.
+
+Registered arms for the "Recording of" columns: `artist-recordings-petty`
+(committed fixture, WITH the columns) and `artist-recordings-petty-nocols`
+(local fixture, captured with `sa_enable_recording_of_column: false`) —
+`tests/support/pettyArtistRecordingsFixture.js`.
+
 ## Comparing branches (the actual A/B workflow)
 
 1. On `main`: `git checkout main` (confirm `git status` is clean first —

@@ -230,13 +230,15 @@ test.describe('artist-recordings: millisecond Length precision via batched looku
             .map((i) => ({ gid: mbid(i), ms: msFor(i), ts: Date.now() }));
         await page.addInitScript(({ records }) => {
             window.__msSeedDone = false;
-            const req = indexedDB.open('vz-mb-saed-art-cache', 3);
+            const req = indexedDB.open('vz-mb-saed-art-cache', 4);
             req.onupgradeneeded = () => {
                 const db = req.result;
                 if (!db.objectStoreNames.contains('images')) db.createObjectStore('images', { keyPath: 'url' });
                 if (!db.objectStoreNames.contains('metadata')) db.createObjectStore('metadata', { keyPath: 'entityPath' });
                 if (!db.objectStoreNames.contains('rel-ws2')) db.createObjectStore('rel-ws2', { keyPath: 'ckey' });
                 if (!db.objectStoreNames.contains('ms-rec-len')) db.createObjectStore('ms-rec-len', { keyPath: 'gid' });
+                if (!db.objectStoreNames.contains('recof-ws2')) db.createObjectStore('recof-ws2', { keyPath: 'ckey' });
+                if (!db.objectStoreNames.contains('artist-works')) db.createObjectStore('artist-works', { keyPath: 'artist' });
             };
             req.onsuccess = () => {
                 const tx = req.result.transaction('ms-rec-len', 'readwrite');

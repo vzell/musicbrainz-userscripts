@@ -52,6 +52,11 @@ const USERSCRIPT_PATH = path.join(PROJECT_ROOT, 'ShowAllEntityData.user.js');
 // exercise. A spec that wants the schema default back passes the key as
 // `undefined` in `settingsOverride`: `JSON.stringify` drops it, so nothing is
 // seeded and `GM_getValue` falls back to `configSchema`.
+//
+// `sa_async_pop_auto_open` (default true) is the tenth: a background job the
+// spec starts by clicking a column toggle would open its progress card
+// (#mb-async-pop) right under that toggle, over the header cells a spec clicks
+// next. async-pop.spec.js and the job specs that test the card seed it back on.
 const FIXTURE_SETTINGS_OVERRIDE = {
     sa_enable_caa_pics: false,
     sa_enable_relationships_column: false,
@@ -62,6 +67,7 @@ const FIXTURE_SETTINGS_OVERRIDE = {
     sa_pop_ext: false,
     sa_dp_hover_without_ctrl: false,
     sa_event_rg_tooltip_without_ctrl: false,
+    sa_async_pop_auto_open: false,
 };
 
 // `_migrateFrozenSettings()` repairs a GM profile that VZ_MBLibrary's old SAVE

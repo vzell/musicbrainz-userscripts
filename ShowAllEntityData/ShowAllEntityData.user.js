@@ -510,6 +510,28 @@
                          + 'tooltips, which always appear at once.'
         },
 
+        sa_async_pop_enable: {
+            label: 'Progress card for background jobs',
+            type: 'checkbox',
+            default: true,
+            description: 'Jobs that load data in the background (the "Recording of" column, Relationships, '
+                         + 'millisecond Length, …) report through one "Liner notes" card: what is being '
+                         + 'loaded, a progress bar with failures and cache hits, where the data comes from, '
+                         + 'the last few requests and their outcome, and buttons such as "Retry failed". '
+                         + 'Hovering the job\'s column toggle shows it; Esc or moving the pointer away '
+                         + 'closes it, and the job keeps running. When disabled, no card is shown.'
+        },
+
+        sa_async_pop_auto_open: {
+            label: 'Open the progress card when I start a job',
+            type: 'checkbox',
+            default: true,
+            description: 'When enabled, starting a background job yourself (clicking a column toggle) '
+                         + 'opens its progress card under the control right away. Jobs the script starts '
+                         + 'on its own, such as an automatic retry pass, never open it. When disabled, the '
+                         + 'card only appears when you hover the toggle.'
+        },
+
         sa_enable_count_stat_tooltip: {
             label: 'Enable rich row-count tooltips on h2/h3 count spans',
             type: 'checkbox',
@@ -1857,6 +1879,93 @@
                          + 'Default #b8b8d0 (cool blue-grey), distinct from extracted (#b8c8b8) '
                          + 'and derived (#c8c8b0). Also used as the row-tint color in the '
                          + 'Statistics panel Table Details section and as the td loading background.'
+        },
+
+        // ============================================================
+        // RECORDING OF COLUMN SECTION
+        // ============================================================
+        divider_recording_of: {
+            type: 'divider',
+            label: '🎼 RECORDING OF COLUMN'
+        },
+
+        sa_enable_recording_of_column: {
+            label: 'Show "Recording of" and "Performance attributes" columns',
+            type: 'checkbox',
+            default: true,
+            description: 'On an artist\'s Recordings page, adds a "Recording of" column right after "Name" '
+                         + '(the work each recording performs, with its attributes such as cover or live '
+                         + 'in brackets) and a "Performance attributes" column (one row per attribute, plus '
+                         + 'the date). Both are filled from the MusicBrainz Web Service only when you ask: '
+                         + 'click a cell\'s 🎼 to load one row, or the column header\'s ▶🎼 to load them all.'
+        },
+
+        sa_recording_of_cell_state_glyphs: {
+            label: '"Recording of": per-cell load-state glyphs',
+            type: 'checkbox',
+            default: true,
+            description: 'Shows in each cell whether it is loaded: 🎼 not loaded yet (click to load), '
+                         + '⋯ queued, ◌ loading, – no work, ⚠ failed (click to retry).'
+        },
+
+        sa_recording_of_browse_batch_enable: {
+            label: '"Recording of": load many rows with one request where cheaper',
+            type: 'checkbox',
+            default: true,
+            description: 'Loading the whole column first asks for the artist\'s recordings 100 at a time '
+                         + '(one request answers up to 100 rows). If the artist\'s catalogue is much larger '
+                         + 'than the rows on the page, it switches to one request per row instead, whichever '
+                         + 'needs fewer requests. When disabled, every row is looked up on its own.'
+        },
+
+        sa_recording_of_ttl_days: {
+            label: '"Recording of": cache TTL (days)',
+            type: 'number',
+            default: 30,
+            min: 1,
+            max: 365,
+            description: 'How long a loaded answer is kept in the browser (IndexedDB store "recof-ws2") '
+                         + 'before it is asked for again.'
+        },
+
+        sa_recording_of_suggest_enable: {
+            label: '"Recording of": suggest a work for recordings without one',
+            type: 'checkbox',
+            default: true,
+            description: 'For a recording that has no "recording of" relationship yet, suggests the '
+                         + 'artist\'s work with the closest title (shown in orange, marked "suggested"). '
+                         + 'Needs the artist\'s work list, which is loaded with the column and cached.'
+        },
+
+        sa_recording_of_suggest_max_distance_pct: {
+            label: '"Recording of": how different a suggested title may be (%)',
+            type: 'number',
+            default: 25,
+            min: 0,
+            max: 60,
+            description: 'The edit distance between the recording title and a work title, as a percentage '
+                         + 'of their average length, must be below this to suggest the work. 0 suggests '
+                         + 'exact matches only (ignoring case, spacing, punctuation style and a trailing '
+                         + '"(…)" such as "(live)"). 25 is the batch-add "performance of" userscript\'s value.'
+        },
+
+        sa_recording_of_works_ttl_days: {
+            label: '"Recording of": artist work list TTL (days)',
+            type: 'number',
+            default: 30,
+            min: 1,
+            max: 365,
+            description: 'How long the artist\'s work list behind the suggestions is kept (IndexedDB '
+                         + 'store "artist-works") before it is loaded again.'
+        },
+
+        sa_recording_of_import_bpr_cache: {
+            label: '"Recording of": reuse the batch-add userscript\'s cached work list',
+            type: 'checkbox',
+            default: true,
+            description: 'If the "MusicBrainz: Batch-add \'performance of\' relationships" userscript has '
+                         + 'already cached this artist\'s works in the browser, start from that list instead '
+                         + 'of loading it again. Read only — that script\'s data is never changed.'
         },
 
         // ============================================================
@@ -3405,6 +3514,18 @@
         divider_art_idb: {
             type: 'divider',
             label: '🗄️ ART ARCHIVE INDEXEDDB CACHE'
+        },
+
+        sa_fn_idb_overview: {
+            label: '💾 Browser cache overview',
+            type: 'function',
+            default: '_idbOverviewOpenFromSettings',
+            description: 'Shows everything this script keeps in your browser (cover art, relationships, '
+                         + 'millisecond lengths, "Recording of" answers, artist work lists, link previews): '
+                         + 'how much space each part takes, how many entries it holds, how old they are, '
+                         + 'and what is past its keep time — with a chart, a list of every entry, and '
+                         + 'buttons to delete the expired entries, entries older than a given age, one part, '
+                         + 'one entry, or everything. Each delete asks first.'
         },
 
         sa_art_idb_enable: {
@@ -27050,8 +27171,11 @@
                     { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                 ],
                 msTrackLengthBatch: true,   // no single lookup covers this — see _msLengthSource()
+                // "Recording of" + "Performance attributes" after "Name"
+                // (buildActiveRecordingOfColumns(), the _recOf* family).
+                recordingOf: true,
                 integerColumns: [ {sourceColumn: 'Length', align: ':'} ],
-                collapsableColumns: [ 'Release groups', 'CAA', 'ISRCs' ],
+                collapsableColumns: [ 'Release groups', 'CAA', 'ISRCs', 'Recording of', 'Performance attributes' ],
                 tooltipColumns: [ 'Release groups', 'Name', 'italic:Comment', 'Artist', '---', ['Length', '-', 'Video'], 'ISRCs' ],
                 addCAA: 'Release groups',
                 extractMainColumn: 'Name',
@@ -30010,18 +30134,74 @@
     async function _msFetchOneBatch(ids) {
         const query = encodeURIComponent(`rid:(${ids.join(' OR ')})`);
         const url = `/ws/2/recording?query=${query}&limit=${_MS_BATCH_SIZE}&fmt=json`;
+        _msAj.requests++;
         const res = await _ws2GetJson(url, {
             tries: _MS_BATCH_TRIES,
             // The server's own `Retry-After` is a FLOOR on our widening backoff,
             // never a replacement for it — see `_ws2GetJson()`'s JSDoc.
-            beforeRetry: (attempt, retryAfterMs) => new Promise(
-                r => setTimeout(r, Math.max(_MS_BATCH_DELAY * attempt, retryAfterMs))),
+            beforeRetry: (attempt, retryAfterMs) => {
+                const wait = Math.max(_MS_BATCH_DELAY * attempt, retryAfterMs);
+                _ajLog('ms', null, `batch of ${ids.length}: retry ${attempt + 1} of ${_MS_BATCH_TRIES} in ${Math.round(wait / 100) / 10} s`, 'bad');
+                _msAj.requests++;
+                return new Promise(r => setTimeout(r, wait));
+            },
             dbg: _msDbg,
             label: '_msFetchOneBatch',
         });
+        _ajLog('ms', null, res.ok ? `batch of ${ids.length}: ${((res.data && res.data.recordings) || []).length} recordings` : `batch of ${ids.length}: ${res.detail}`,
+            res.ok ? 'good' : 'bad');
         return res.ok
             ? { ok: true, recordings: (res.data && res.data.recordings) || [], detail: '' }
             : { ok: false, recordings: [], detail: res.detail };
+    }
+
+    /**
+     * The ⏱ job's counters for the progress card: source, batches done/total,
+     * requests made, the outcome, and how the answers split across the
+     * memory / IndexedDB / network tiers.
+     */
+    const _msAj = { source: '', done: 0, total: 0, requests: 0, outcome: '', detail: '', tiers: null, storeCount: null, storeCountAt: 0 };
+
+    /**
+     * Registers the ⏱ millisecond-length provider of the async job popup.
+     * Shows nothing before a job ran (`snapshot()` → null), so the toggle's own
+     * tooltip is unchanged until then. Idempotent.
+     * @returns {void}
+     */
+    function _msRegisterProvider() {
+        _ajRegister('ms', {
+            glyph: '⏱',
+            label: 'Length to the millisecond',
+            anchorSelector: '.mb-ms-col-hdr-btn',
+            scopeOf: () => null,
+            snapshot: (scope, job) => {
+                if (!job) return null;
+                const fmt = n => Number(n).toLocaleString('en-US');
+                const src = { batch: 'a recording search, 100 recordings per request',
+                              ws2: 'one request: the page entity\'s recording relationships',
+                              embedded: 'already in the page, plus one request for the rest' }[_msAj.source] || 'none';
+                const facts = [['Source', src], ['Requests', `${fmt(_msAj.requests)} made`]];
+                if (_msAj.outcome) facts.push(['Outcome', _msAj.outcome + (_msAj.detail ? ` (${_msAj.detail})` : '')]);
+                const d = Lib.settings.sa_ms_idb_ttl_days;
+                const cache = [
+                    ['Store', `IndexedDB ms-rec-len, kept ${typeof d === 'number' && d > 0 ? d : 30} days`],
+                    ['Records', _msAj.storeCount === null ? 'counting…' : fmt(_msAj.storeCount)],
+                    ['This session', `${fmt(_msBatchMemCache.size)} lengths in memory`],
+                ];
+                if (_msAj.tiers) cache.push(['This run', `${fmt(_msAj.tiers.mem)} memory · ${fmt(_msAj.tiers.idb)} IndexedDB · ${fmt(_msAj.tiers.net)} network`]);
+                return {
+                    phase: job.phase,
+                    summary: 'Millisecond track lengths for this page',
+                    done: _msAj.done, total: _msAj.total, unit: _msAj.total ? 'requests' : '',
+                    facts, cache,
+                };
+            },
+            onOpen: (scope, repaint) => {
+                if (Date.now() - _msAj.storeCountAt < 5000) return;
+                _msAj.storeCountAt = Date.now();
+                _artIdbCountStore('ms-rec-len').then(n => { _msAj.storeCount = n; repaint(); });
+            },
+        });
     }
 
     /**
@@ -30744,6 +30924,9 @@
             }
             _msToggleInFlight = true;
             _msRepaintColHdrBtns(false, 'loading');
+            Object.assign(_msAj, { source, done: 0, total: 0, requests: 0, outcome: '', detail: '', tiers: null });
+            _msRegisterProvider();
+            _ajStart('ms', null, { user: true, anchor: document.querySelector('.mb-ms-col-hdr-btn') });
             try {
                 if (source === 'embedded') {
                     // One request backfills BOTH duration columns at once —
@@ -30767,8 +30950,14 @@
                     const res = source === 'batch'
                         ? await _msFetchBatchRecordingLengths((done, total) => {
                             if (total > 1) _msRepaintColHdrBtns(false, 'loading', `${done}/${total}`);
+                            _msAj.done = done;
+                            _msAj.total = total;
+                            _ajChanged('ms', null);
                         })
                         : await _msFetchWs2RecordingLengths();
+                    _msAj.outcome = res.outcome;
+                    _msAj.detail = res.detail || '';
+                    if (res.tiers) _msAj.tiers = res.tiers;
                     if (res.map) _msStampSourceRowsFromMap(res.map);
                     // What matters now is whether the column can be shown at all,
                     // which is "is anything stamped" — not whether THIS run
@@ -30792,6 +30981,7 @@
                 }
             } finally {
                 _msToggleInFlight = false;
+                _ajFinish('ms', null, _msAj.outcome === 'error' || _msAj.outcome === 'partial' ? 1 : 0);
             }
         }
 
@@ -45065,6 +45255,16 @@
             const want = mode.slice(10);
             return !!cell && _findCellArtistRoles(cell).some(r => _splitArtistRoleTokens(r.roles).includes(want));
         }
+        if (mode.startsWith('recof-state-')) {
+            // Fixed-flag modes of openUniqDrop()'s "Recording of - Load state"
+            // section — the same classifier its counts use.
+            return _recOfCellLoadState(cell) === mode.slice('recof-state-'.length);
+        }
+        if (mode.startsWith('recofsugg:')) {
+            // Compound mode — one suggested work title of a "Recording of"
+            // cell (_findCellRecOfSuggestions()).
+            return !!cell && _findCellRecOfSuggestions(cell).includes(mode.slice(10));
+        }
         if (mode.startsWith('rel-state-')) {
             // Fixed-flag modes of openUniqDrop()'s "Relationships - Load state"
             // section, one per _relCellLoadState() answer — the same
@@ -53116,6 +53316,14 @@ ${sections.join('\n')}
 
             const _idbTbl = _mkTbl(_idbPlaceholderRows);
             body.appendChild(_idbTbl);
+            const _idboBtn = document.createElement('button');
+            _idboBtn.type = 'button';
+            _idboBtn.id = 'mb-stats-idb-overview-btn';
+            _idboBtn.textContent = '💾 Open the browser cache overview';
+            _idboBtn.style.cssText = 'margin: 6px 0 10px; cursor: pointer;';
+            _setTip(_idboBtn, 'Space, age and number of entries of every part of the cache, with a chart and delete buttons');
+            _idboBtn.addEventListener('click', () => _idbOverviewOpen(_idboBtn));
+            body.appendChild(_idboBtn);
 
             // Tag placeholder <td> cells with their data-id so we can fill them in.
             _idbPlaceholderRows.forEach(row => {
@@ -55033,7 +55241,38 @@ a { color: #1565c0; }`;
             if (cell.dataset.mbColTip === '1' && cell.title) data.videoTip = cell.title;
         }
         if (cell.dataset.mbWorkFlag) data.workFlag = cell.dataset.mbWorkFlag;
+        // "Recording of" cells: their identity lives on the <td> (class,
+        // data-mbid, data-recof), not in the HTML — without these a reloaded
+        // row could neither show its 🎼 glyph nor be loaded. Only a SETTLED
+        // state is kept; queued/loading/error reload as "not loaded".
+        if (cell.classList.contains('mb-recof-cell') || cell.classList.contains('mb-perfattr-cell')) {
+            data.recof = cell.classList.contains('mb-recof-cell') ? 'cell' : 'attr';
+            data.mbid = cell.dataset.mbid || null;
+            const st = cell.dataset.recof;
+            if (st === 'has' || st === 'none' || st === 'suggested') data.recofState = st;
+        }
         return data;
+    }
+
+    /**
+     * Re-marks a hydrated "Recording of" / "Performance attributes" cell from
+     * its saved record (`recof`, `mbid`, `recofState`, written by
+     * `_buildDiskCellData()`). A saved file is user-supplied data, so only the
+     * known values are accepted and the MBID must look like one.
+     *
+     * @param {HTMLTableCellElement} td - The reconstructed cell.
+     * @param {Object} cellData - Its saved record.
+     * @returns {void}
+     */
+    function _recOfRestoreCell(td, cellData) {
+        if (!cellData || (cellData.recof !== 'cell' && cellData.recof !== 'attr')) return;
+        td.classList.add(cellData.recof === 'cell' ? 'mb-recof-cell' : 'mb-perfattr-cell');
+        if (typeof cellData.mbid === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(cellData.mbid)) {
+            td.dataset.mbid = cellData.mbid;
+        }
+        if (cellData.recof === 'cell' && ['has', 'none', 'suggested'].includes(cellData.recofState)) {
+            td.dataset.recof = cellData.recofState;
+        }
     }
 
     /**
@@ -56905,6 +57144,9 @@ a { color: #1565c0; }`;
 
     /** Release-events injected column list; parallel to activeInjectedColumns. */
     let activeReleaseEventColumns = [];
+
+    /** "Recording of" / "Performance attributes" columns (features.recordingOf), or []. */
+    let activeRecordingOfColumns = [];
 
     /** Attempts per Release-events lookup, including the first (see `_ws2GetJson()`). */
     const _RE_WS2_TRIES = 3;
@@ -59527,6 +59769,39 @@ a { color: #1565c0; }`;
         .mb-tt-liner .mb-tt-annotation :is(ul, ol) { margin: 0 0 4px; padding-left: 1.2em; }
         .mb-tt-liner .mb-tt-annotation-more { display: none; }
         .mb-tt-liner kbd { display: inline-block; margin: 0 1px; padding: 0 5px; background: #ffffff; color: #2b2622; border: 1px solid #cbbfa9; border-radius: 3px; box-shadow: 0 1px 0 #cbbfa9; font: 600 0.82em/1.35 ui-monospace, Consolas, "Courier New", monospace; }
+        /* Async job popup (_ajRender): the one card every background job
+           reports through. Fixed, under the control that started the job;
+           unlike the hover cards it takes the pointer, for its actions. */
+        #mb-async-pop { position: fixed; width: 360px; max-width: calc(100vw - 16px); pointer-events: auto; }
+        .mb-tt-liner .mb-tt-ajhead { display: flex; align-items: baseline; gap: 8px; }
+        .mb-tt-liner .mb-tt-ajhead .mb-tt-title { flex: 1; min-width: 0; }
+        .mb-tt-liner .mb-tt-ajpill { display: inline-block; border: 1px solid #d9cfbd; border-radius: 3px; padding: 0 5px; font: 700 0.74em/1.6 system-ui, Arial, sans-serif; letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap; background: #efe6d4; color: #4a3f33; }
+        .mb-tt-liner .mb-tt-ajpill-run { color: #2f5f9e; border-color: #b9c9e3; background: #e9f0fa; }
+        .mb-tt-liner .mb-tt-ajpill-ok { color: #3f7a3a; border-color: #bcd6b8; background: #edf5eb; }
+        .mb-tt-liner .mb-tt-ajpill-warn { color: #9a6a00; border-color: #e3d09a; background: #fbf3dc; }
+        .mb-tt-liner .mb-tt-ajpill-err { color: #9b2218; border-color: #e2b4ae; background: #f9e9e6; }
+        .mb-tt-liner .mb-tt-ajpill-idle { color: #7a6d5c; }
+        .mb-tt-liner .mb-tt-ajbar { display: flex; height: 7px; border-radius: 2px; overflow: hidden; background: #ece4d4; margin: 7px 0 3px; border: 1px solid #d9cfbd; }
+        .mb-tt-liner .mb-tt-ajbar > span { display: block; height: 100%; }
+        .mb-tt-liner .mb-tt-ajbar-c { background: repeating-linear-gradient(135deg, #8fb98a 0 3px, #a9cba5 3px 6px); }
+        .mb-tt-liner .mb-tt-ajbar-d { background: #5f9a59; }
+        .mb-tt-liner .mb-tt-ajbar-f { background: #c0503f; }
+        .mb-tt-liner .mb-tt-ajbar-q { background: #c8d6ea; }
+        .mb-tt-liner .mb-tt-ajcount { display: flex; justify-content: space-between; gap: 8px; font-size: 0.92em; font-variant-numeric: tabular-nums; }
+        .mb-tt-liner .mb-tt-ajfacts { display: grid; grid-template-columns: max-content 1fr; gap: 1px 10px; font-size: 0.93em; margin: 0; }
+        .mb-tt-liner .mb-tt-ajfacts dt { color: #7a6d5c; font-style: italic; }
+        .mb-tt-liner .mb-tt-ajfacts dd { margin: 0; min-width: 0; }
+        .mb-tt-liner .mb-tt-ajlog-h { font: 700 0.78em/1.4 system-ui, Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.06em; color: #7a6d5c; }
+        .mb-tt-liner .mb-tt-ajlog { list-style: none; margin: 3px 0 0; padding: 0; font: 11.5px/1.45 ui-monospace, Consolas, "Courier New", monospace; max-height: 7.3em; overflow: auto; }
+        .mb-tt-liner .mb-tt-ajlog li { display: grid; grid-template-columns: max-content 1fr; gap: 7px; }
+        .mb-tt-liner .mb-tt-ajlog time { color: #7a6d5c; }
+        .mb-tt-liner .mb-tt-ajlog-bad { color: #9b2218; }
+        .mb-tt-liner .mb-tt-ajlog-good { color: #3f7a3a; }
+        .mb-tt-liner .mb-tt-ajacts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .mb-tt-liner .mb-tt-ajact { font: 600 11.5px/1 system-ui, Arial, sans-serif; padding: 5px 8px; border-radius: 3px; border: 1px solid #cbbfa9; background: #ffffff; color: #2b2622; cursor: pointer; box-shadow: 0 1px 0 #cbbfa9; }
+        .mb-tt-liner .mb-tt-ajact:hover { background: #f4eee2; }
+        .mb-tt-liner .mb-tt-ajact-primary { color: #2f5f9e; border-color: #b9c9e3; }
+        .mb-tt-liner .mb-tt-ajact-danger { color: #9b2218; border-color: #e2b4ae; }
         #mb-stat-tooltip {
             position: fixed;
             max-width: 520px;
@@ -60761,6 +61036,7 @@ a { color: #1565c0; }`;
         .mb-ms-col-hdr-btn,
         .mb-picard-col-hdr-btn,
         .mb-rel-col-hdr-btn,
+        .mb-recof-col-hdr-btn,
         .mb-re-col-hdr-btn,
         .mb-barcode-col-hdr-btn,
         .mb-col-collapse-hdr-btn,
@@ -60787,6 +61063,7 @@ a { color: #1565c0; }`;
         .mb-ms-col-hdr-btn:hover,
         .mb-picard-col-hdr-btn:hover,
         .mb-rel-col-hdr-btn:hover,
+        .mb-recof-col-hdr-btn:hover,
         .mb-re-col-hdr-btn:hover,
         .mb-barcode-col-hdr-btn:hover,
         .mb-col-collapse-hdr-btn:hover,
@@ -60799,6 +61076,7 @@ a { color: #1565c0; }`;
         .mb-ms-col-hdr-btn:focus-visible,
         .mb-picard-col-hdr-btn:focus-visible,
         .mb-rel-col-hdr-btn:focus-visible,
+        .mb-recof-col-hdr-btn:focus-visible,
         .mb-re-col-hdr-btn:focus-visible,
         .mb-barcode-col-hdr-btn:focus-visible {
             outline: 2px solid rgba(0, 100, 255, 0.55);
@@ -60812,6 +61090,7 @@ a { color: #1565c0; }`;
         .mb-ms-col-hdr-btn[aria-pressed="true"],
         .mb-picard-col-hdr-btn[aria-pressed="true"],
         .mb-rel-col-hdr-btn[aria-pressed="true"],
+        .mb-recof-col-hdr-btn[aria-pressed="true"],
         .mb-barcode-col-hdr-btn[aria-pressed="true"],
         .mb-col-collapse-hdr-btn[aria-expanded="true"] {
             background: var(--mb-hdr-pill-engaged-bg);
@@ -60848,6 +61127,22 @@ a { color: #1565c0; }`;
         .mb-re-col-hdr-btn[data-re-state="loading"]::before {
             content: "⏳";
         }
+
+        /* "Recording of" toggle (_recOfInitColHeaderToggles): glyph and
+           done/total badge are generated content, never element text, for
+           the same reason as the Release-events control above. */
+        .mb-recof-col-hdr-btn::before { content: "▶🎼︎"; }
+        .mb-recof-col-hdr-btn[aria-pressed="true"]::before { content: "▼🎼︎"; }
+        .mb-recof-col-hdr-btn[data-recof-progress]::after { content: " " attr(data-recof-progress); font-variant-numeric: tabular-nums; }
+        .mb-recof-col-hdr-btn[data-recof-state="error"] { background: rgba(255, 193, 7, 0.55); border-color: rgba(190, 140, 0, 0.70); }
+        /* "Recording of" cells: the attribute words in light green italics
+           (column-scoped, over the shared .mb-credit-attr colour), a
+           suggested work in orange italics. */
+        td.mb-recof-cell .mb-credit-attr { color: #43a047; font-style: italic; }
+        td.mb-recof-cell li.mb-recof-suggested, td.mb-recof-cell li.mb-recof-suggested a { color: #c76a12; font-style: italic; }
+        td.mb-recof-cell .mb-recof-sugg-mark { font-size: 0.9em; }
+        td.mb-recof-cell ul, td.mb-perfattr-cell ul { margin: 0; padding-left: 0; list-style: none; }
+        ${Lib.settings.sa_recording_of_cell_state_glyphs === false ? '' : 'td.mb-recof-cell:not([data-recof]), td.mb-recof-cell[data-recof="error"] { cursor: pointer; text-align: center; } ' + 'td.mb-recof-cell:not([data-recof])::before { content: "🎼︎"; opacity: 0.45; } ' + 'td.mb-recof-cell:not([data-recof]):hover::before { opacity: 1; } ' + 'td.mb-recof-cell[data-recof="queued"]::before { content: "⋯"; opacity: 0.6; } ' + 'td.mb-recof-cell[data-recof="loading"]::before { content: "◌"; } ' + 'td.mb-recof-cell[data-recof="none"]::before { content: "–"; opacity: 0.5; } ' + 'td.mb-recof-cell[data-recof="error"]::before { content: "⚠︎"; color: #b00020; } ' + 'td.mb-recof-cell[data-recof="error"]:hover::before { content: "⟳"; }'}
 
         /* Per-column ▶N▤/▼N▤ multi-row collapse toggle, inserted into the
            .mb-col-hdr-flex row immediately before the 📊 unique-values button.
@@ -61862,6 +62157,11 @@ a { color: #1565c0; }`;
     // row-count stat — which still independently gates its OWN data-mbtt via
     // sa_enable_count_stat_tooltip at the point it's set, further below.
     _initStatTooltip(); // create the custom #mb-stat-tooltip hover system once
+    // 💾 Browser cache overview from the Tampermonkey menu too (the callback
+    // runs long after the IIFE, so the _idbo* state it reads is initialised).
+    if (typeof GM_registerMenuCommand === 'function') {
+        GM_registerMenuCommand('💾 Browser cache', () => _idbOverviewOpen(null));
+    }
     initReleaseGroupLink(); // org/live-bootleg.org 4a: no request, the name is in the page
     initEventRgTooltip(); // the "#" cell's event card: delegated, requests only on hover
 
@@ -65152,6 +65452,10 @@ a { color: #1565c0; }`;
      */
     function _initStatTooltip() {
         _installTouchInputTracker();
+        // Installs listeners only; reads no _aj* const until an event fires,
+        // which is after the IIFE has run (this call sits above their
+        // declarations — see "Async job popup" in toolbar-and-header-ui.md).
+        _ajInitHover();
         if (document.getElementById('mb-stat-tooltip')) return;
         const _tip = document.createElement('div');
         _tip.id = 'mb-stat-tooltip';
@@ -65160,7 +65464,7 @@ a { color: #1565c0; }`;
         document.body.appendChild(_tip);
 
         /** Rich tooltips that, while shown, rule out a card (see _showOwn). */
-        const _OTHER_RICH_TIPS = ['mb-art-bigbox-tooltip', 'mb-art-hover-preview', 'mb-rel-tooltip', 'mb-dp-peek'];
+        const _OTHER_RICH_TIPS = ['mb-art-bigbox-tooltip', 'mb-art-hover-preview', 'mb-rel-tooltip', 'mb-dp-peek', 'mb-async-pop'];
 
         let _target = null;     // element whose card is shown or pending
         let _own = false;       // _target is a data-mb-tip element (not data-mbtt)
@@ -65356,6 +65660,640 @@ a { color: #1565c0; }`;
             _tip.style.left = Math.max(4, x) + 'px';
             _tip.style.top  = Math.max(4, y) + 'px';
         }
+    }
+
+    // ============================================================
+    // ASYNC JOB POPUP (_aj*) — one "Liner notes" card for every
+    // background job (Recording of, Relationships, ⏱ Length, …).
+    // ============================================================
+    //
+    // A job registers a PROVIDER once (_ajRegister) and then reports its
+    // steps (_ajStart / _ajLog / _ajChanged / _ajFinish). The framework owns
+    // the one element (#mb-async-pop), its placement under the control that
+    // started the job, Esc, the hover-to-reopen behaviour, the repaint
+    // schedule and a short event log. A provider only answers "what is the
+    // state right now" (snapshot(), O(1), never a row walk) and runs its own
+    // actions (act()), which call the job's EXISTING functions — the popup
+    // never starts a request of its own.
+    //
+    // Anchors are found by attribute, not by wiring: a control carrying
+    // data-mb-aj="<key>" is the job's anchor. The attribute survives
+    // cloneNode(true), so a re-rendered header needs no re-wiring; the
+    // listeners are delegated on document. See docs/claude/toolbar-and-header-ui.md,
+    // "Async job popup (_asyncJobs)".
+
+    /** @type {Map<string, object>} Providers by job key. */
+    const _ajProviders = new Map();
+    /** @type {Map<string, object>} Job records by `"<key>#<scope id>"`. */
+    const _ajJobs = new Map();
+    /** @type {WeakMap<Element, number>} Stable ids for scope elements (tables). */
+    const _ajScopeIds = new WeakMap();
+    /** Popup state: which job is shown, its anchor, timers, pending repaint. */
+    const _ajPop = { el: null, openId: null, anchor: null, hoverTimer: 0, leaveTimer: 0, raf: 0, listening: false, nextScope: 1, hoverSel: '[data-mb-aj]' };
+    /** Delay before a hover shows the card (ms). */
+    const _AJ_HOVER_DELAY_MS = 250;
+    /** Grace period after the pointer leaves the anchor or the card (ms). */
+    const _AJ_LEAVE_GRACE_MS = 300;
+    /** Entries kept in a job's event log. */
+    const _AJ_LOG_MAX = 8;
+    /** State pill per phase: [label, modifier class]. */
+    const _AJ_PHASES = {
+        idle:    ['Idle', 'idle'],
+        queued:  ['Queued', 'idle'],
+        running: ['Running', 'run'],
+        backoff: ['Backing off', 'warn'],
+        paused:  ['Paused', 'warn'],
+        done:    ['Done', 'ok'],
+        doneErr: ['Done with errors', 'err'],
+        error:   ['Failed', 'err']
+    };
+
+    /**
+     * Whether the popup is enabled at all (`sa_async_pop_enable`).
+     * @returns {boolean}
+     */
+    function _ajEnabled() {
+        return Lib.settings.sa_async_pop_enable !== false;
+    }
+
+    /**
+     * Registers a job provider. Idempotent: a second call replaces the first.
+     *
+     * @param {string} key - Job key, also the value of the anchors' `data-mb-aj`.
+     * @param {{glyph: string, label: string,
+     *          anchorFor?: function(?Element): ?Element,
+     *          scopeOf?: function(Element): ?Element,
+     *          snapshot: function(?Element, ?object): ?object,
+     *          onOpen?: function(?Element, function(): void): void,
+     *          anchorSelector?: string,
+     *          act?: function(?Element, string): void}} provider
+     *   `snapshot(scope, job)` returns the card's content (see `_ajRender()`),
+     *   or `null` to show nothing (the anchor's own tooltip then applies).
+     *   `job` is the framework's record, or `null` before any job ran.
+     *   `scopeOf(anchor)` defaults to the anchor's `<table>` (null outside one).
+     *   `anchorSelector` makes existing controls anchors without an attribute.
+     *   `onOpen(scope, repaint)` runs once each time the card opens on this
+     *   job — the place to start an async read such as an IndexedDB store
+     *   count, keep the answer, and call `repaint()` when it lands; the next
+     *   `snapshot()` then shows it in its `cache` rows.
+     * @returns {void}
+     */
+    function _ajRegister(key, provider) {
+        _ajProviders.set(key, provider);
+        // The hover delegate matches [data-mb-aj] plus every provider's
+        // anchorSelector — so an EXISTING control (the ⏱ toggle, a status
+        // span) can be an anchor without gaining an attribute, which would
+        // otherwise drift every snapshot baseline that contains it.
+        _ajPop.hoverSel = ['[data-mb-aj]'].concat(Array.from(_ajProviders.values())
+            .map(p => p.anchorSelector).filter(Boolean)).join(', ');
+    }
+
+    /**
+     * The job key a hovered anchor belongs to: its `data-mb-aj`, else the
+     * provider whose `anchorSelector` it matches.
+     * @param {Element} a
+     * @returns {?string}
+     */
+    function _ajKeyOf(a) {
+        if (a.dataset.mbAj) return a.dataset.mbAj;
+        for (const [key, p] of _ajProviders) {
+            if (p.anchorSelector && a.matches(p.anchorSelector)) return key;
+        }
+        return null;
+    }
+
+    /**
+     * A stable id for a scope element; `0` for the page-wide (null) scope.
+     * @param {?Element} scope
+     * @returns {number}
+     */
+    function _ajScopeId(scope) {
+        if (!scope) return 0;
+        let id = _ajScopeIds.get(scope);
+        if (!id) { id = _ajPop.nextScope++; _ajScopeIds.set(scope, id); }
+        return id;
+    }
+
+    /**
+     * The job-record id for a key and scope.
+     * @param {string} key
+     * @param {?Element} scope
+     * @returns {string}
+     */
+    function _ajId(key, scope) {
+        return `${key}#${_ajScopeId(scope)}`;
+    }
+
+    /**
+     * The job record for a key and scope, or `null` before any job ran there.
+     * @param {string} key
+     * @param {?Element} scope
+     * @returns {?object}
+     */
+    function _ajJob(key, scope) {
+        return _ajJobs.get(_ajId(key, scope)) || null;
+    }
+
+    /**
+     * Starts (or restarts) a job's record. A job the USER started opens the
+     * card under its anchor (unless `sa_async_pop_auto_open` is off); one the
+     * script started by itself (an automatic retry pass) only updates.
+     *
+     * @param {string} key
+     * @param {?Element} scope - The table the job runs for, or null.
+     * @param {{user?: boolean, anchor?: ?Element}} [opts]
+     * @returns {object} The job record.
+     */
+    function _ajStart(key, scope, opts = {}) {
+        const id = _ajId(key, scope);
+        const job = { key, scope, phase: 'running', t0: Date.now(), t1: 0, log: [], user: !!opts.user };
+        _ajJobs.set(id, job);
+        _ajLog(key, scope, 'started');
+        if (opts.user && _ajEnabled() && Lib.settings.sa_async_pop_auto_open !== false) {
+            const anchor = opts.anchor || _ajAnchorFor(key, scope);
+            if (anchor) _ajShow(key, scope, anchor);
+        } else {
+            _ajChanged(key, scope);
+        }
+        return job;
+    }
+
+    /**
+     * Appends one line to a job's event log (the newest `_AJ_LOG_MAX` are kept).
+     *
+     * @param {string} key
+     * @param {?Element} scope
+     * @param {string} msg - Plain text.
+     * @param {('good'|'bad'|'')} [kind]
+     * @returns {void}
+     */
+    function _ajLog(key, scope, msg, kind = '') {
+        const job = _ajJob(key, scope);
+        if (!job) return;
+        const t = new Date();
+        const hh = (n) => String(n).padStart(2, '0');
+        job.log.push({ t: `${hh(t.getHours())}:${hh(t.getMinutes())}:${hh(t.getSeconds())}`, msg, kind });
+        if (job.log.length > _AJ_LOG_MAX) job.log.shift();
+        _ajChanged(key, scope);
+    }
+
+    /**
+     * Sets a job's phase (see `_AJ_PHASES`) and repaints.
+     * @param {string} key
+     * @param {?Element} scope
+     * @param {string} phase
+     * @returns {void}
+     */
+    function _ajPhase(key, scope, phase) {
+        const job = _ajJob(key, scope);
+        if (!job || job.phase === phase) return;
+        job.phase = phase;
+        _ajChanged(key, scope);
+    }
+
+    /**
+     * Marks a job finished: `done`, or `doneErr` when `failed` is non-zero.
+     * @param {string} key
+     * @param {?Element} scope
+     * @param {number} [failed]
+     * @returns {void}
+     */
+    function _ajFinish(key, scope, failed = 0) {
+        const job = _ajJob(key, scope);
+        if (!job) return;
+        job.phase = failed ? 'doneErr' : 'done';
+        job.t1 = Date.now();
+        _ajLog(key, scope, failed ? `finished, ${failed} failed` : 'finished', failed ? 'bad' : 'good');
+    }
+
+    /**
+     * Schedules a repaint of the card if it is showing this job. Free while
+     * the card is closed or shows another job, so a job may call it on every
+     * step; at most one repaint per animation frame.
+     *
+     * @param {string} key
+     * @param {?Element} scope
+     * @returns {void}
+     */
+    function _ajChanged(key, scope) {
+        if (!_ajPop.openId || _ajPop.openId !== _ajId(key, scope) || _ajPop.raf) return;
+        _ajPop.raf = requestAnimationFrame(() => {
+            _ajPop.raf = 0;
+            _ajRepaint();
+        });
+    }
+
+    /**
+     * The anchor control for a job: the provider's `anchorFor(scope)`, else
+     * the first `[data-mb-aj="<key>"]` inside the scope (or the document).
+     * @param {string} key
+     * @param {?Element} scope
+     * @returns {?Element}
+     */
+    function _ajAnchorFor(key, scope) {
+        const p = _ajProviders.get(key);
+        if (p && p.anchorFor) return p.anchorFor(scope);
+        return (scope || document).querySelector(p && p.anchorSelector ? p.anchorSelector : `[data-mb-aj="${key}"]`);
+    }
+
+    /**
+     * The scope a hovered anchor belongs to.
+     * @param {string} key
+     * @param {Element} anchor
+     * @returns {?Element}
+     */
+    function _ajScopeOf(key, anchor) {
+        const p = _ajProviders.get(key);
+        if (p && p.scopeOf) return p.scopeOf(anchor);
+        return anchor.closest('table');
+    }
+
+    /**
+     * Escapes text for HTML.
+     * @param {*} s
+     * @returns {string}
+     */
+    function _ajEsc(s) {
+        return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    }
+
+    /**
+     * Builds the card's HTML from a provider snapshot.
+     *
+     * @param {object} p - Provider (`glyph`, `label`).
+     * @param {object} s - Snapshot: `phase`, `summary`, optional progress
+     *   (`done`, `total`, `failed`, `cached`, `queued`, `unit`), `facts`
+     *   (`[label, text]` pairs), `cache` (`[label, text]` pairs shown under
+     *   their own "💾 Cache" heading: store, TTL, records, this run's
+     *   memory/IndexedDB/network split, …), `actions` (`{id, label, kind}`),
+     *   `foot`. All text is escaped here.
+     * @param {?object} job - The framework's record (its log is shown).
+     * @param {string} anchorText - How the footer names the anchor, e.g. "▶🎼".
+     * @returns {string}
+     */
+    function _ajRender(p, s, job, anchorText) {
+        const ph = _AJ_PHASES[s.phase] || _AJ_PHASES.idle;
+        const fmt = (n) => Number(n || 0).toLocaleString('en-US');
+        let h = '<div class="mb-tt-ajhead">'
+              + `<span class="mb-tt-title">${_ajEsc(p.glyph)} ${_ajEsc(s.label || p.label)}</span>`
+              + `<span class="mb-tt-ajpill mb-tt-ajpill-${ph[1]}" data-mb-aj-phase="${_ajEsc(s.phase || 'idle')}">${ph[0]}</span></div>`;
+        if (s.summary) h += `<div class="mb-tt-dim">${_ajEsc(s.summary)}</div>`;
+        if (s.total > 0) {
+            const pct = (n) => `${(100 * Math.max(0, n || 0) / s.total).toFixed(2)}%`;
+            const cached = Math.min(s.cached || 0, s.done || 0);
+            h += `<div class="mb-tt-ajbar" role="progressbar" aria-valuemin="0" aria-valuemax="${s.total}" aria-valuenow="${s.done || 0}">`
+               + `<span class="mb-tt-ajbar-c" style="width:${pct(cached)}"></span>`
+               + `<span class="mb-tt-ajbar-d" style="width:${pct((s.done || 0) - cached)}"></span>`
+               + `<span class="mb-tt-ajbar-f" style="width:${pct(s.failed)}"></span>`
+               + `<span class="mb-tt-ajbar-q" style="width:${pct(s.queued)}"></span></div>`;
+            const right = [];
+            if (s.failed) right.push(`<span class="mb-tt-alert">${fmt(s.failed)} failed</span>`);
+            if (s.cached) right.push(`${fmt(s.cached)} from cache`);
+            h += `<div class="mb-tt-ajcount"><span>${fmt(s.done)} / ${fmt(s.total)}${s.unit ? ' ' + _ajEsc(s.unit) : ''}</span>`
+               + `<span>${right.join(' · ')}</span></div>`;
+        }
+        if (s.facts && s.facts.length) {
+            h += '<div class="mb-tt-rule"></div><dl class="mb-tt-ajfacts">'
+               + s.facts.map(([k, v]) => `<dt>${_ajEsc(k)}</dt><dd>${_ajEsc(v)}</dd>`).join('')
+               + '</dl>';
+        }
+        if (s.cache && s.cache.length) {
+            h += '<div class="mb-tt-rule"></div><div class="mb-tt-ajlog-h">💾 Cache</div><dl class="mb-tt-ajfacts mb-tt-ajcache">'
+               + s.cache.map(([k, v]) => `<dt>${_ajEsc(k)}</dt><dd>${_ajEsc(v)}</dd>`).join('')
+               + '</dl>';
+        }
+        if (job && job.log.length) {
+            h += '<div class="mb-tt-rule"></div><div class="mb-tt-ajlog-h">Recent</div><ul class="mb-tt-ajlog">'
+               + job.log.slice().reverse().map(e =>
+                   `<li><time>${e.t}</time><span class="mb-tt-ajlog-${e.kind || 'n'}">${_ajEsc(e.msg)}</span></li>`).join('')
+               + '</ul>';
+        }
+        // Every card that shows cache rows also offers the full overview.
+        const actions = (s.actions || []).concat(s.cache && s.cache.length ? [{ id: '__idb', label: '💾 Cache overview' }] : []);
+        if (actions.length) {
+            h += '<div class="mb-tt-ajacts">'
+               + actions.map(a => `<button type="button" class="mb-tt-ajact${a.kind ? ' mb-tt-ajact-' + _ajEsc(a.kind) : ''}" data-mb-aj-act="${_ajEsc(a.id)}">${_ajEsc(a.label)}</button>`).join('')
+               + '</div>';
+        }
+        h += `<div class="mb-tt-foot">${s.foot ? _ajEsc(s.foot) : `<kbd>Esc</kbd> closes · hover ${_ajEsc(anchorText)} to reopen`}</div>`;
+        return h;
+    }
+
+    /**
+     * Creates the card element once, with its delegated card-side listeners
+     * (hover grace, action clicks).
+     * @returns {HTMLElement}
+     */
+    function _ajEnsurePop() {
+        if (_ajPop.el && _ajPop.el.isConnected) return _ajPop.el;
+        const el = document.createElement('div');
+        el.id = 'mb-async-pop';
+        el.className = 'mb-tt-liner';
+        el.setAttribute('role', 'dialog');
+        el.setAttribute('aria-live', 'polite');
+        el.style.display = 'none';
+        el.addEventListener('mouseenter', () => clearTimeout(_ajPop.leaveTimer));
+        el.addEventListener('mouseleave', () => {
+            clearTimeout(_ajPop.leaveTimer);
+            _ajPop.leaveTimer = setTimeout(_ajHide, _AJ_LEAVE_GRACE_MS);
+        });
+        el.addEventListener('click', (e) => {
+            const b = e.target.closest('[data-mb-aj-act]');
+            if (!b || !_ajPop.openId) return;
+            if (b.dataset.mbAjAct === '__idb') {
+                _ajHide();
+                _idbOverviewOpen(null);
+                return;
+            }
+            const job = _ajJobs.get(_ajPop.openId);
+            const key = _ajPop.openId.split('#')[0];
+            const p = _ajProviders.get(key);
+            const scope = job ? job.scope : (_ajPop.anchor ? _ajScopeOf(key, _ajPop.anchor) : null);
+            if (p && p.act) p.act(scope, b.dataset.mbAjAct);
+            _ajRepaint();
+        });
+        document.body.appendChild(el);
+        _ajPop.el = el;
+        return el;
+    }
+
+    /**
+     * Shows the card for a job under its anchor.
+     * @param {string} key
+     * @param {?Element} scope
+     * @param {Element} anchor
+     * @returns {boolean} `true` when shown (the provider had something to say).
+     */
+    function _ajShow(key, scope, anchor) {
+        if (!_ajEnabled() || !_ajProviders.has(key)) return false;
+        clearTimeout(_ajPop.leaveTimer);
+        const wasOpen = _ajPop.openId === _ajId(key, scope);
+        _ajPop.openId = _ajId(key, scope);
+        _ajPop.anchor = anchor;
+        if (!_ajRepaint()) { _ajHide(); return false; }
+        _ajListen(true);
+        // An async refresh the card wants (an IndexedDB store count, say):
+        // started once per opening, never from a repaint, and answered
+        // through _ajChanged(), which repaints only if the card is still
+        // open on this job.
+        const p = _ajProviders.get(key);
+        if (!wasOpen && p.onOpen) {
+            try {
+                p.onOpen(scope, () => _ajChanged(key, scope));
+            } catch (err) {
+                Lib.debug('ui', `async pop: onOpen of "${key}" threw: ${err.message || err}`);
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Rebuilds the open card from its provider and re-places it.
+     * @returns {boolean} `false` when the provider returned nothing.
+     */
+    function _ajRepaint() {
+        if (!_ajPop.openId) return false;
+        _ajRepaint.count = (_ajRepaint.count || 0) + 1;
+        const key = _ajPop.openId.split('#')[0];
+        const p = _ajProviders.get(key);
+        const job = _ajJobs.get(_ajPop.openId) || null;
+        const scope = job ? job.scope : (_ajPop.anchor ? _ajScopeOf(key, _ajPop.anchor) : null);
+        const s = p ? p.snapshot(scope, job) : null;
+        if (!s) return false;
+        const el = _ajEnsurePop();
+        const anchorText = (_ajPop.anchor && (_ajPop.anchor.dataset.mbAjName || _ajPop.anchor.textContent.trim())) || p.glyph;
+        el.innerHTML = _ajRender(p, s, job, anchorText);
+        el.dataset.mbAjKey = key;
+        el.style.display = 'block';
+        _ajPlace();
+        return true;
+    }
+
+    /** Places the card under its anchor, flipped above when there is no room. */
+    function _ajPlace() {
+        const el = _ajPop.el, a = _ajPop.anchor;
+        if (!el || !a || !a.isConnected) return;
+        const r = a.getBoundingClientRect();
+        const vw = window.innerWidth, vh = window.innerHeight;
+        el.style.left = '0'; el.style.top = '0';
+        const w = el.offsetWidth, h = el.offsetHeight;
+        let x = Math.max(4, Math.min(r.left - 10, vw - w - 8));
+        let y = r.bottom + 8;
+        if (y + h > vh - 8 && r.top - h - 8 > 4) y = r.top - h - 8;
+        el.style.left = `${x}px`;
+        el.style.top = `${Math.max(4, y)}px`;
+    }
+
+    /** Hides the card. The job keeps running; hovering its anchor shows it again. */
+    function _ajHide() {
+        clearTimeout(_ajPop.leaveTimer);
+        clearTimeout(_ajPop.hoverTimer);
+        if (_ajPop.raf) { cancelAnimationFrame(_ajPop.raf); _ajPop.raf = 0; }
+        _ajPop.openId = null;
+        _ajPop.anchor = null;
+        if (_ajPop.el) _ajPop.el.style.display = 'none';
+        _ajListen(false);
+    }
+
+    /**
+     * Esc closes the card. The window-capture listener exists only while the
+     * card is open, and gives way to the artwork viewer, which owns every key
+     * while it is open. A touch outside the card closes it too.
+     * @param {boolean} on
+     * @returns {void}
+     */
+    function _ajListen(on) {
+        if (on === _ajPop.listening) return;
+        _ajPop.listening = on;
+        if (on) {
+            window.addEventListener('keydown', _ajOnKey, true);
+            document.addEventListener('pointerdown', _ajOnPointerDown, true);
+            window.addEventListener('resize', _ajPlace);
+        } else {
+            window.removeEventListener('keydown', _ajOnKey, true);
+            document.removeEventListener('pointerdown', _ajOnPointerDown, true);
+            window.removeEventListener('resize', _ajPlace);
+        }
+    }
+
+    /**
+     * Esc handler while the card is open.
+     * @param {KeyboardEvent} e
+     */
+    function _ajOnKey(e) {
+        if (e.key !== 'Escape' || !_ajPop.openId) return;
+        const viewer = document.getElementById('mb-art-viewer');
+        if (viewer && !viewer.hidden) return;
+        e.preventDefault();
+        e.stopPropagation();
+        _ajHide();
+    }
+
+    /**
+     * A touch outside the card and its anchor closes it (there is no
+     * mouseleave on touch).
+     * @param {PointerEvent} e
+     */
+    function _ajOnPointerDown(e) {
+        if (e.pointerType !== 'touch' || !_ajPop.el) return;
+        if (_ajPop.el.contains(e.target) || (e.target.closest && e.target.closest(_ajPop.hoverSel))) return;
+        _ajHide();
+    }
+
+    /**
+     * Installs the delegated anchor hover listeners once: hovering a
+     * `[data-mb-aj]` control shows its job's card after `_AJ_HOVER_DELAY_MS`;
+     * leaving it closes the card after `_AJ_LEAVE_GRACE_MS` unless the pointer
+     * moved onto the card. A tap's compatibility mouse events are ignored.
+     * @returns {void}
+     */
+    function _ajInitHover() {
+        if (_ajInitHover.done) return;
+        _ajInitHover.done = true;
+        document.addEventListener('mouseover', (e) => {
+            const a = e.target.closest && e.target.closest(_ajPop.hoverSel);
+            if (!a || _isTouchCompatMouseEvent(e) || !_ajEnabled()) return;
+            if (e.relatedTarget && a.contains(e.relatedTarget)) return;
+            const key = _ajKeyOf(a);
+            if (!key) return;
+            clearTimeout(_ajPop.leaveTimer);
+            clearTimeout(_ajPop.hoverTimer);
+            if (_ajPop.anchor === a && _ajPop.openId) return;
+            _ajPop.hoverTimer = setTimeout(() => {
+                if (a.isConnected && a.matches(':hover')) _ajShow(key, _ajScopeOf(key, a), a);
+            }, _AJ_HOVER_DELAY_MS);
+        }, true);
+        document.addEventListener('mouseout', (e) => {
+            const a = e.target.closest && e.target.closest(_ajPop.hoverSel);
+            if (!a) return;
+            if (e.relatedTarget && a.contains(e.relatedTarget)) return;
+            clearTimeout(_ajPop.hoverTimer);
+            if (_ajPop.anchor !== a) return;
+            clearTimeout(_ajPop.leaveTimer);
+            _ajPop.leaveTimer = setTimeout(_ajHide, _AJ_LEAVE_GRACE_MS);
+        }, true);
+    }
+
+
+    // ── "table work": long sorts and filters in the progress card ─────────────
+    // Sorting already yields (sortLargeArray() chunks above 5000 rows), so its
+    // progress can be shown live; filtering's matching does NOT yield yet — the
+    // page cannot repaint while it runs — so for a filter the card reports the
+    // breakdown afterwards, on hover of the status line. A yielding runFilter()
+    // is a separate, measured performance branch (DEBUG-NOTES 2026-10-10 item 5).
+    // Counters only: nothing here touches the DOM while the card is closed.
+
+    /** Timings of the last sort and the last filter, and a running sort's state. */
+    const _tw = { sort: null, filter: null, sortStart: 0, sortRows: 0, sortPct: 0, sortRunning: false };
+    /** A sort shorter than this never opens the card by itself (ms). */
+    const _TW_OPEN_AFTER_MS = 500;
+
+    /** Registers the table-work provider (idempotent). */
+    function _twRegister() {
+        if (_ajProviders.has('tablework')) return;
+        _ajRegister('tablework', {
+            glyph: '⏳',
+            label: 'Sorting and filtering',
+            anchorSelector: '#mb-sort-status-display, #mb-filter-status-display',
+            scopeOf: () => null,
+            snapshot: (scope, job) => _twSnapshot(job),
+        });
+    }
+
+    /**
+     * Formats milliseconds for the card.
+     * @param {number} ms
+     * @returns {string}
+     */
+    function _twMs(ms) {
+        return ms >= 1000 ? `${(ms / 1000).toFixed(1)} s` : `${Math.round(ms)} ms`;
+    }
+
+    /**
+     * A sort is starting.
+     * @param {number} rows
+     * @returns {void}
+     */
+    function _twSortBegin(rows) {
+        _twRegister();
+        Object.assign(_tw, { sortStart: performance.now(), sortRows: rows, sortPct: 0, sortRunning: true });
+    }
+
+    /**
+     * Sort progress (sortLargeArray()'s callback, 0–100). Opens the card once
+     * the sort has run longer than `_TW_OPEN_AFTER_MS` — the sort yields
+     * between chunks, so the card can paint while it works.
+     * @param {number} pct
+     * @returns {void}
+     */
+    function _twSortProgress(pct) {
+        _tw.sortPct = pct;
+        const job = _ajJob('tablework', null);
+        if ((!job || job.phase !== 'running') && performance.now() - _tw.sortStart > _TW_OPEN_AFTER_MS) {
+            _ajStart('tablework', null, { user: true, anchor: document.getElementById('mb-sort-status-display') });
+        }
+        _ajChanged('tablework', null);
+    }
+
+    /** The sort's own part is over (filtering and drawing follow). */
+    function _twSortEnd() {
+        _tw.sortRunning = false;
+        _tw.sort = { ms: performance.now() - _tw.sortStart, rows: _tw.sortRows, filterMs: null, drawMs: null };
+        _ajChanged('tablework', null);
+    }
+
+    /**
+     * runFilter()'s synchronous part has finished; the draw (chunked on a big
+     * single table) settles later.
+     * @param {number} ms
+     * @param {number} shown
+     * @returns {void}
+     */
+    function _twFilterRecord(ms, shown) {
+        _twRegister();
+        const drawStart = performance.now();
+        const rec = { ms, shown, drawMs: null };
+        _tw.filter = rec;
+        const afterSort = _tw.sort && _tw.sort.filterMs === null;
+        if (afterSort) _tw.sort.filterMs = ms;
+        _renderSettled.then(() => {
+            rec.drawMs = performance.now() - drawStart;
+            if (afterSort) _tw.sort.drawMs = rec.drawMs;
+            const job = _ajJob('tablework', null);
+            if (job && job.phase === 'running') _ajFinish('tablework', null, 0);
+            else _ajChanged('tablework', null);
+        });
+    }
+
+    /**
+     * The card: a running sort's progress, else the last sort's and the last
+     * filter's breakdown. Null until something was measured.
+     * @param {?object} job
+     * @returns {?object}
+     */
+    function _twSnapshot(job) {
+        if (!_tw.sort && !_tw.filter && !_tw.sortRunning) return null;
+        const fmt = n => Number(n).toLocaleString('en-US');
+        const facts = [];
+        if (_tw.sort) {
+            const s = _tw.sort;
+            facts.push(['Last sort', `${_twMs(s.ms)} for ${fmt(s.rows)} rows`]);
+            if (s.filterMs !== null) facts.push(['Then filtering', _twMs(s.filterMs)]);
+            if (s.drawMs !== null) facts.push(['Then drawing', _twMs(s.drawMs)]);
+        }
+        if (_tw.filter) {
+            facts.push(['Last filter', `${_twMs(_tw.filter.ms)}, ${fmt(_tw.filter.shown)} rows shown`]);
+            if (_tw.filter.drawMs !== null) facts.push(['Drawing', _twMs(_tw.filter.drawMs)]);
+        }
+        facts.push(['Note', 'Filtering cannot let the page repaint while it compares rows yet; drawing a large table comes in chunks of 500 rows.']);
+        const out = {
+            phase: job ? job.phase : 'done',
+            summary: _tw.sortRunning ? `Sorting ${fmt(_tw.sortRows)} rows` : 'The last sort and filter',
+            facts,
+            foot: job && job.phase === 'running' ? 'Esc closes · the sort keeps running' : 'Hover the status line to see this again',
+        };
+        if (_tw.sortRunning) Object.assign(out, { done: _tw.sortPct, total: 100, unit: '% sorted' });
+        return out;
     }
 
     /**
@@ -67730,6 +68668,11 @@ a { color: #1565c0; }`;
         // none / failed) — a different question from which icons it holds, so
         // its own section. Classified by _relCellLoadState().
         relLoadState:  { label: 'Relationships - Load state', glyph: '📶' },
+        // "Recording of" column (features.recordingOf): its per-cell load
+        // state, classified by _recOfCellLoadState(), and the work titles it
+        // SUGGESTS for recordings without a relation (_findCellRecOfSuggestions()).
+        recofLoadState: { label: 'Recording of - Load state', glyph: '📥' },
+        recofSuggested: { label: 'Recording of - Suggested work', glyph: '💡' },
         // "CAA info"/"EAA info" each split into "- Type"/"- Comment" —
         // the image-type badge (controlled vocabulary, e.g. "Front") and
         // the free-text image comment are two distinct data facets that
@@ -68230,6 +69173,9 @@ a { color: #1565c0; }`;
         'pending-edits-yes': 'pendingEditsPresence', 'pending-edits-no': 'pendingEditsPresence',
         'rel-state-pending': 'relLoadState', 'rel-state-has': 'relLoadState',
         'rel-state-none': 'relLoadState', 'rel-state-error': 'relLoadState',
+        'recof-state-pending': 'recofLoadState', 'recof-state-has': 'recofLoadState',
+        'recof-state-suggested': 'recofLoadState', 'recof-state-none': 'recofLoadState',
+        'recof-state-error': 'recofLoadState',
     };
     // "Live title info - Separator …": 3 kinds × 5 facets, one section per
     // kind — and the same for "Event name info - Separator …" (`ev` prefix).
@@ -68280,6 +69226,7 @@ a { color: #1565c0; }`;
         formatsize: 'formatSize', formatcount: 'formatCount', formatcombo: 'formatCombo', formattype: 'formatType',
         recattr: 'recordingAttributes',
         workattrid: 'workAttrIdType',
+        recofsugg: 'recofSuggested',
         revcountry: 'releaseEventsCountry', revdate: 'releaseEventsDate', revweekday: 'releaseEventsWeekday',
         countryname: 'countryNameInfo', countrycode: 'countryCodeInfo',
         trackspermedium: 'tracksCount',
@@ -70787,6 +71734,26 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Highlights a `recofsugg:` entry's work title inside the suggested-work
+     * row of a "Recording of" cell — scoped to that row's own work link, so
+     * the same words elsewhere in the cell are left alone.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - e.g. `"recofsugg:Badlands"`.
+     */
+    function _highlightRecOfSuggestionMatch(cell, mode) {
+        if (!cell) return;
+        const want = mode.slice(10);
+        if (!want) return;
+        const re = new RegExp(want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+        cell.querySelectorAll('li.mb-recof-suggested a').forEach(a => {
+            if (a.textContent.trim() !== want) return;
+            a.normalize();
+            highlightCrossTag(a, re, 'mb-column-filter-highlight');
+        });
+    }
+
+    /**
      * Highlights the matched TYPE NAME for a `workattrid:` compound
      * structure-mode filter — re-derives from
      * `_findCellWorkAttributeIdentifiers()` directly, scoped to that
@@ -71612,6 +72579,8 @@ a { color: #1565c0; }`;
                                     _highlightRecAttrMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('workattrid:')) {
                                     _highlightWorkAttributeIdMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('recofsugg:')) {
+                                    _highlightRecOfSuggestionMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('role:')) {
                                     _highlightEventRoleMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('roletoken:')) {
@@ -72383,6 +73352,7 @@ a { color: #1565c0; }`;
             // unconditionally, because the gate below deliberately does NOT
             // fire on a settled page.
             _relInitColHeaderToggles();
+            _recOfInitColHeaderToggles();
             // Same reason as the line above: the <thead> this writes into may
             // have just been rebuilt from a clone. No-op unless the Release-events
             // lookup is loading or has failed.
@@ -72652,6 +73622,7 @@ a { color: #1565c0; }`;
                 // ▶🔗 toggle anyway: it is idempotent, and the gate below
                 // deliberately does not fire on a settled page.
                 _relInitColHeaderToggles();
+                _recOfInitColHeaderToggles();
                 // Same reason as the line above: the <thead> this writes into may
                 // have just been rebuilt from a clone. No-op unless the Release-events
                 // lookup is loading or has failed.
@@ -72679,6 +73650,9 @@ a { color: #1565c0; }`;
         // Calculate and display filter timing
         const filterEndTime = performance.now();
         const filterDuration = (filterEndTime - filterStartTime).toFixed(0);
+        _twFilterRecord(Number(filterDuration), activeDefinition.tableMode === 'multi'
+            ? filteredArray.reduce((sum, g) => sum + g.rows.length, 0)
+            : singleTableFilteredCount);
 
         if (filterStatusDisplay) {
             const rowCount = activeDefinition.tableMode === 'multi'
@@ -73311,6 +74285,10 @@ a { color: #1565c0; }`;
                 theadRow.appendChild(thInj);
             });
         }
+        // "Recording of" / "Performance attributes": inserted right after
+        // "Name", not appended — the row assembly puts their cells there too
+        // (_recOfInsertCells()), and _finalColNames names them at that place.
+        if (activeRecordingOfColumns.length) _recOfInjectHeaders(theadRow);
         // Inject headers for injected-column extractor synthetic columns LAST.
         // These are derived (third-pass) columns produced from injected-column cells
         // (e.g. 'Release country' / 'Release date' split from 'Release events').
@@ -74007,6 +74985,8 @@ a { color: #1565c0; }`;
             Object.keys(baseDef.entityFeatures).find(k => baseDef.entityFeatures[k] === entitySpecificFeatures)) || undefined;
         activeInjectedColumns = buildActiveInjectedColumns(activeDefinition, _entityKindHintFromH2);
         activeReleaseEventColumns = buildActiveReleaseEventColumns(activeDefinition);
+        activeRecordingOfColumns = buildActiveRecordingOfColumns(activeDefinition);
+        _recOf.pendingCount = null;
         // A fresh page gets its own automatic-retry budget rather than
         // inheriting one already spent by the previous fetch.
         _relAutoRetryReset();
@@ -75247,6 +76227,13 @@ a { color: #1565c0; }`;
                         if (!_srcPresent) return;
                         entry.syntheticColumns.forEach(cn => _finalColNames.push(cn));
                     });
+                    // 8. "Recording of" / "Performance attributes" sit right after
+                    //    "Name": _recOfInsertCells() puts their cells there BEFORE
+                    //    integer styling, so every colIdx below must count them.
+                    if (activeRecordingOfColumns.length) {
+                        const _nameAt = _finalColNames.indexOf('Name');
+                        if (_nameAt !== -1) _finalColNames.splice(_nameAt + 1, 0, ...activeRecordingOfColumns.map(e => e.colName));
+                    }
                     // Resolve colIdx for each integerColumns descriptor
                     activeIntegerColumns.forEach(entry => {
                         const idx = _finalColNames.indexOf(entry.sourceColumn);
@@ -75262,6 +76249,9 @@ a { color: #1565c0; }`;
                     'indices',
                     `Detected indices → mainColIdx=${mainColIdx} (${headerNames[mainColIdx] || 'N/A'}), extractors=[${extractorSummary}], syntheticExtractors=[${syntheticExtractorSummary}], erasers=[${eraserSummary}], renderMultiRow=[${multiRowSummary}], integerColumns=[${intColSummary}], excluded=[${indicesToExclude.join(',')}] for pageType: ${pageType}`
                 );
+                // Where each row's "Recording of" cells go (after "Name"), or -1.
+                const _recOfAfterIdx = activeRecordingOfColumns.length
+                    ? _recOfAnchorIndex(headerNames, indicesToExclude) : -1;
 
                 let rowsInThisPage = 0;
                 let pageCategoryMap = new Map();
@@ -75525,6 +76515,9 @@ a { color: #1565c0; }`;
 
                                 // 6. Apply integer-column styling (centered inline-block + L/R/C).
                                 // Must run AFTER all synthetic cells are appended so colIdx is valid.
+                                // 5d. "Recording of" cells, right after "Name" — before the styling
+                                // below, whose colIdx (_finalColNames) already counts them.
+                                if (_recOfAfterIdx >= 0) _recOfInsertCells(newRow, _recOfAfterIdx);
                                 if (Lib.settings.sa_enable_numeric_alignment !== false) {
                                     applyIntegerColumnStyling(newRow, activeIntegerColumns);
                                 }
@@ -75911,6 +76904,9 @@ a { color: #1565c0; }`;
                                     });
                                 }
                                 // 6. Integer-column styling
+                                // 5d. "Recording of" cells, right after "Name" — before the styling
+                                // below, whose colIdx (_finalColNames) already counts them.
+                                if (_recOfAfterIdx >= 0) _recOfInsertCells(newRow, _recOfAfterIdx);
                                 if (Lib.settings.sa_enable_numeric_alignment !== false) {
                                     applyIntegerColumnStyling(newRow, activeIntegerColumns);
                                 }
@@ -76360,6 +77356,9 @@ a { color: #1565c0; }`;
 
                                     // 6. Apply integer-column styling (centered inline-block + L/R/C).
                                     // Must run AFTER all synthetic cells are appended so colIdx is valid.
+                                    // 5d. "Recording of" cells, right after "Name" — before the styling
+                                    // below, whose colIdx (_finalColNames) already counts them.
+                                    if (_recOfAfterIdx >= 0) _recOfInsertCells(newRow, _recOfAfterIdx);
                                     if (Lib.settings.sa_enable_numeric_alignment !== false) {
                                         applyIntegerColumnStyling(newRow, activeIntegerColumns);
                                     }
@@ -77009,6 +78008,7 @@ a { color: #1565c0; }`;
             // table over sa_rel_collapse_threshold the fetch below does nothing
             // at all, and the toggle is the only way for the user to ask for it.
             _relInitColHeaderToggles();
+            _recOfInitColHeaderToggles();
             // Same reason as the line above: the <thead> this writes into may
             // have just been rebuilt from a clone. No-op unless the Release-events
             // lookup is loading or has failed.
@@ -85938,6 +86938,41 @@ a { color: #1565c0; }`;
             return counts;
         })() : null;
 
+        // "Recording of" column: load-state counts (one flag per visible row,
+        // from _recOfCellLoadState(), the classifier the recof-state-* matcher
+        // uses) and suggested-work titles (_findCellRecOfSuggestions()).
+        const isRecofCol = _uniqCacheHit ? _uniqCacheHit.isRecofCol : (() => {
+            if (!tbody) return false;
+            for (const row of tbody.rows) {
+                const cell = row.cells[colIndex];
+                if (cell) return cell.classList.contains('mb-recof-cell');
+            }
+            return false;
+        })();
+        const recofLoadStateCounts = _uniqCacheHit ? _uniqCacheHit.recofLoadStateCounts
+            : isRecofCol ? (() => {
+            const counts = { pending: 0, has: 0, suggested: 0, none: 0, error: 0 };
+            if (!tbody) return counts;
+            for (const row of tbody.rows) {
+                if (row.style.display === 'none') continue;
+                const st = _recOfCellLoadState(row.cells[colIndex]);
+                if (st) counts[st]++;
+            }
+            return counts;
+        })() : null;
+        const recofSuggValueCounts = _uniqCacheHit ? _uniqCacheHit.recofSuggValueCounts
+            : isRecofCol ? (() => {
+            const counts = new Map();
+            if (!tbody) return counts;
+            for (const row of tbody.rows) {
+                if (row.style.display === 'none') continue;
+                const cell = row.cells[colIndex];
+                if (!cell) continue;
+                new Set(_findCellRecOfSuggestions(cell)).forEach(t => counts.set(t, (counts.get(t) || 0) + 1));
+            }
+            return counts;
+        })() : new Map();
+
         // Is this the inline-thumbnail column for an addCAA or addEAA feature?
         // Detected by the presence of .mb-caa-inline-ph or .mb-eaa-inline-ph spans
         // in the column's visible cells.  Counts are derived directly from the DOM:
@@ -86026,6 +87061,7 @@ a { color: #1565c0; }`;
                 pendingEditValueCounts, pendingEditsYesCount, pendingEditsNoCount,
                 eventRoleValueCounts, roleTokenValueCounts, artTypeValueCounts, artCommentValueCounts,
                 flagIconMap, isRelCellCol, relIconCounts, relLoadStateCounts,
+                isRecofCol, recofLoadStateCounts, recofSuggValueCounts,
                 inlineArtType, inlineArtYes, inlineArtNo,
             });
         }
@@ -86095,6 +87131,7 @@ a { color: #1565c0; }`;
             ...isrcYearValueCounts.values(), ...isrcDesignationValueCounts.values(),
             ...barcodeFormatValueCounts.values(), ...barcodeSameAsValueCounts.values(),
             ...lengthBucketValueCounts.values(), ...timeOfDayValueCounts.values(), ...relTypeCreditValueCounts.values(),
+            ...recofSuggValueCounts.values(), ...(recofLoadStateCounts ? Object.values(recofLoadStateCounts) : []),
             ...dateDecadeValueCounts.values(), ...dateMonthValueCounts.values(),
             ...dateYearValueCounts.values(), ...dateWeekdayValueCounts.values(),
             ...partOfSeriesNameValueCounts.values(), ...partOfSeriesDateValueCounts.values(),
@@ -86762,7 +87799,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'recattr'|'workattrid'|'revcountry'|'revdate'|'revweekday'|'eventtype'|'eventcountry'|'countryname'|'countrycode'|'trackspermedium'|'trackstotal'|'catalogprefix'|'lengthbucket'|'timeofday'|'reltypecredit'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'titleageadded'|'titleagemodified'|'titlecount'|'titlepart'|'titleeti'|'titleseries'|'titleformat'|'liveshape'|'liveextra'|'liveloc'|'evliveshape'|'evliveextra'|'evliveloc'|'evstylemiss'|'evedition'|'rcliveshape'|'rcliveextra'|'rcliveloc'|'rctype'|'rcmiss'|'rcinfo'|'eventdetail'|'eventaddinfo'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'editoractivefor'|'editoractivesince'|'localelanguage'|'datedecade'|'datemonth'|'dateyear'|'dateweekday'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'recattr'|'workattrid'|'recofsugg'|'revcountry'|'revdate'|'revweekday'|'eventtype'|'eventcountry'|'countryname'|'countrycode'|'trackspermedium'|'trackstotal'|'catalogprefix'|'lengthbucket'|'timeofday'|'reltypecredit'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'titleageadded'|'titleagemodified'|'titlecount'|'titlepart'|'titleeti'|'titleseries'|'titleformat'|'liveshape'|'liveextra'|'liveloc'|'evliveshape'|'evliveextra'|'evliveloc'|'evstylemiss'|'evedition'|'rcliveshape'|'rcliveextra'|'rcliveloc'|'rctype'|'rcmiss'|'rcinfo'|'eventdetail'|'eventaddinfo'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'editoractivefor'|'editoractivesince'|'localelanguage'|'datedecade'|'datemonth'|'dateyear'|'dateweekday'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -86899,6 +87936,7 @@ a { color: #1565c0; }`;
                  : kind === 'barcodeformat'   ? '» format: '
                  : kind === 'barcodesameas'   ? '🔢 '
                  : kind === 'workattrid'    ? '» identifier: '
+                 : kind === 'recofsugg'     ? '» suggested: '
                  : kind === 'titleageadded'    ? '» added: '
                  : kind === 'titleagemodified' ? '» modified: '
                  : kind === 'titlecount'    ? '» titles: '
@@ -87914,6 +88952,21 @@ a { color: #1565c0; }`;
             if (relLoadStateCounts.error > 0)   makeSynItem('rel-state-error',   '⚠ request failed',    relLoadStateCounts.error);
         }
 
+        // ── "Recording of" column: load state, then suggested works ────────────
+        // makeSynItem()/makeValueSynItem() set dataset.mbUniqSynLabel, so both
+        // stay quickfilter-visible. Zero-count entries are omitted.
+        if (isRecofCol && recofLoadStateCounts) {
+            if (recofLoadStateCounts.pending > 0)   makeSynItem('recof-state-pending',   '🎼 not loaded yet',   recofLoadStateCounts.pending);
+            if (recofLoadStateCounts.has > 0)       makeSynItem('recof-state-has',       '✓ has a work',        recofLoadStateCounts.has);
+            if (recofLoadStateCounts.suggested > 0) makeSynItem('recof-state-suggested', '💡 work suggested',    recofLoadStateCounts.suggested);
+            if (recofLoadStateCounts.none > 0)      makeSynItem('recof-state-none',      '– no work',           recofLoadStateCounts.none);
+            if (recofLoadStateCounts.error > 0)     makeSynItem('recof-state-error',     '⚠ request failed',    recofLoadStateCounts.error);
+        }
+        if (isRecofCol && recofSuggValueCounts.size > 0) {
+            Array.from(recofSuggValueCounts.keys()).sort((a, b) => a.localeCompare(b))
+                .forEach(v => makeValueSynItem('recofsugg', v, recofSuggValueCounts.get(v)));
+        }
+
         // ── Relationships column: unique icon entries ─────────────────────────────────────────────
         if (isRelCellCol && relIconCounts.size > 0) {
             const _iconFor   = relIconCounts._iconFor || new Map();
@@ -88585,6 +89638,12 @@ a { color: #1565c0; }`;
         if (mode.startsWith('roletoken:')) return `» role: ${mode.slice(10)}`;
         if (mode.startsWith('arttype:'))    return `» image type: ${mode.slice(8)}`;
         if (mode.startsWith('artcomment:')) return `» image comment: ${mode.slice(11)}`;
+        if (mode === 'recof-state-pending')   return '🎼 not loaded yet';
+        if (mode === 'recof-state-has')       return '✓ has a work';
+        if (mode === 'recof-state-suggested') return '💡 work suggested';
+        if (mode === 'recof-state-none')      return '– no work';
+        if (mode === 'recof-state-error')     return '⚠ request failed';
+        if (mode.startsWith('recofsugg:'))    return `» suggested: ${mode.slice(10)}`;
         if (mode === 'rel-state-pending')   return '🔗 not loaded yet';
         if (mode === 'rel-state-has')       return '✓ has relationships';
         if (mode === 'rel-state-none')      return '– no relationships';
@@ -88801,6 +89860,12 @@ a { color: #1565c0; }`;
         if (mode.startsWith('roletoken:')) return 'One atomic role word decomposed from this artist\'s own combined credited-role text — unlike "Entity info - Role (combined)", this matches even when the role appears alongside others (e.g. selecting "composer" also matches an artist credited as "composer, lyricist").';
         if (mode.startsWith('arttype:')) return 'One of this CAA/EAA image\'s own type-badge pill labels (Front/Back/Booklet/…).';
         if (mode.startsWith('artcomment:')) return 'One of this CAA/EAA image\'s own free-text comment.';
+        if (mode === 'recof-state-pending') return 'This recording\'s work relationships have not been loaded yet — not asked for, queued or still loading.';
+        if (mode === 'recof-state-has') return 'Loaded: the recording is a "recording of" at least one work.';
+        if (mode === 'recof-state-suggested') return 'Loaded, no work yet — and the artist has a work with a matching title, shown in orange.';
+        if (mode === 'recof-state-none') return 'Loaded, no work, and no work title close enough to suggest — shown as – in the cell.';
+        if (mode === 'recof-state-error') return 'The Web Service request failed even after retries — shown as ⚠ in the cell; click it to try again.';
+        if (mode.startsWith('recofsugg:')) return 'A work suggested for recordings without a "recording of" relationship, by title.';
         if (mode === 'rel-state-pending') return 'This row\'s relationships have not been fetched yet — collapsed, queued or still loading.';
         if (mode === 'rel-state-has') return 'Fetched, and at least one relationship has an icon in this column.';
         if (mode === 'rel-state-none') return 'Fetched, and nothing with an icon — shown as – in the cell.';
@@ -91235,7 +92300,12 @@ a { color: #1565c0; }`;
                                     compareFn = createSortComparator(index, state.sortState === 1, _sortColumnKind(cn), state.sortByLength);
                                 }
 
-                                await sortLargeArray(sortedData, compareFn, null);
+                                _twSortBegin(sortedData.length);
+                                try {
+                                    await sortLargeArray(sortedData, compareFn, _twSortProgress);
+                                } finally {
+                                    _twSortEnd();
+                                }
                             }
 
                             // === Apply sorted data ===
@@ -95299,6 +96369,1111 @@ a { color: #1565c0; }`;
      */
 
     // ──────────────────────────────────────────────────────────────────────────
+    // "Recording of" / "Performance attributes" columns (features.recordingOf)
+    // — the _recOf* family. What the batch-add "performance of" userscript
+    // (Michael Wiencek) shows under each recording title, as two real columns.
+    // Design and traps: docs/claude/deferred-columns-picard-relationships.md,
+    // "Recording of column".
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /** Column names, in their order right after "Name". */
+    const _RECOF_COL = 'Recording of';
+    const _RECOF_ATTR_COL = 'Performance attributes';
+    /** Attempts per request, including the first (`_ws2GetJson()`). */
+    const _RECOF_TRIES = 3;
+    /** Recordings per browse page (the Web Service maximum). */
+    const _RECOF_PAGE = 100;
+    /** WS/2 relation type id of "performance" (scripts/probe-recording-work-rels.py). */
+    const _RECOF_PERF_TYPE_ID = 'a3005666-a872-32c3-ad06-98af558e99b0';
+    /**
+     * L1: recording MBID → its parsed performance relations, for every
+     * SUCCESSFUL answer this session (an empty array is an answer: "no work").
+     * A failure is never stored here or in IndexedDB.
+     * @type {Map<string, Array<object>>}
+     */
+    const _recOfMem = new Map();
+    /** Normalised recording title → suggested work (or null), per work list. */
+    const _recOfSuggestMemo = new Map();
+    /**
+     * Page-wide job state: one artist-recordings table per page, so one record.
+     * Counters are what the progress card reads (O(1)); `rerun` coalesces a
+     * second "load all" that arrives while one runs.
+     */
+    const _recOf = {
+        running: false, rerun: false, source: '', why: '', requests: 0, planned: 0,
+        total: 0, done: 0, failed: 0, mem: 0, idb: 0, net: 0,
+        browseCount: null, storeCount: null, storeCountAt: 0,
+        refreshTimer: 0, lastRefresh: 0,
+        // Cached count of unanswered rows (null = recompute). Read on every
+        // render tail through _recOfUpdateHdrBtns(), so it must not walk the
+        // rows there: only a write or a mark, or a new fetch, drops it.
+        pendingCount: null
+    };
+    /** The artist's work list behind the suggestions, once loaded. */
+    let _recOfWorks = null;
+
+    /**
+     * Builds the active "Recording of" column list from the page definition:
+     * both columns when the pageType declares `features.recordingOf` and
+     * `sa_enable_recording_of_column` is on, else none.
+     *
+     * @param {Object} def - Merged activeDefinition.
+     * @returns {{colName: string}[]}
+     */
+    function buildActiveRecordingOfColumns(def) {
+        if (!def?.features?.recordingOf || Lib.settings.sa_enable_recording_of_column === false) return [];
+        return [{ colName: _RECOF_COL }, { colName: _RECOF_ATTR_COL }];
+    }
+
+    /**
+     * The index the "Name" cell has in an assembled row, i.e. AFTER the
+     * excluded columns were deleted — where the two new cells go after.
+     *
+     * @param {string[]} headerNames      The fetched page's header texts.
+     * @param {number[]} indicesToExclude Original indices deleted from every row.
+     * @returns {number} `-1` when the page has no "Name" column.
+     */
+    function _recOfAnchorIndex(headerNames, indicesToExclude) {
+        const idx = headerNames.findIndex(n => n === 'Name');
+        if (idx < 0 || indicesToExclude.includes(idx)) return -1;
+        return idx - indicesToExclude.filter(i => i < idx).length;
+    }
+
+    /**
+     * Inserts the two column headers right after the "Name" header.
+     * Idempotent: a header row that already has them is left alone.
+     *
+     * @param {HTMLTableRowElement} theadRow
+     * @returns {void}
+     */
+    function _recOfInjectHeaders(theadRow) {
+        const cells = Array.from(theadRow.cells);
+        // By name OR text: a header rebuilt from a saved file (disk load)
+        // carries the text but no data-col-name — checking the dataset alone
+        // injected the pair a second time and shifted every later column.
+        const nameOf = th => th.dataset.colName || th.textContent.replace(/[\u21c5\u25b2\u25bc\u2702\u25b6\u25c0\u25a4]/g, '').trim();
+        if (cells.some(th => nameOf(th) === _RECOF_COL)) return;
+        const nameTh = cells.find(th => nameOf(th) === 'Name');
+        if (!nameTh) return;
+        const bg = Lib.settings.sa_ui_thead_th_injected_bg || '#b8b8d0';
+        const mk = (name, tip) => {
+            const th = document.createElement('th');
+            th.textContent = name;
+            th.dataset.colName = name;
+            th.classList.add('mb-injected-column');
+            th.style.backgroundColor = bg;
+            _setTip(th, tip);
+            return th;
+        };
+        nameTh.after(
+            mk(_RECOF_COL, 'Injected column — the work each recording performs, with its attributes '
+                + '(cover, live, …) in brackets. Loaded from the MusicBrainz Web Service when you '
+                + 'click a cell\'s 🎼 or the ▶🎼 toggle.'),
+            mk(_RECOF_ATTR_COL, 'Injected column — the performance attributes of the recording\'s '
+                + '"recording of" relationships, one per row, plus the date.')
+        );
+        Lib.debug('cleanup', `Injected "${_RECOF_COL}" / "${_RECOF_ATTR_COL}" headers after "Name"`);
+    }
+
+    /**
+     * Inserts the two (empty) cells right after a row's "Name" cell, keyed by
+     * the recording MBID the Name cell links. Runs during row assembly, BEFORE
+     * integer-column styling, so `_finalColNames` (which names these columns
+     * at the same place) keeps every positional colIdx right.
+     *
+     * @param {HTMLTableRowElement} row
+     * @param {number} afterIdx - `_recOfAnchorIndex()`.
+     * @returns {void}
+     */
+    function _recOfInsertCells(row, afterIdx) {
+        const anchor = row.cells[afterIdx];
+        if (!anchor) return;
+        const mbid = _recOfRowMbid(anchor);
+        const bg = (Lib.settings.sa_ui_thead_th_injected_bg || '#b8b8d0') + '55';
+        const td1 = document.createElement('td');
+        td1.className = 'mb-recof-cell';
+        const td2 = document.createElement('td');
+        td2.className = 'mb-perfattr-cell';
+        [td1, td2].forEach(td => {
+            if (mbid) td.dataset.mbid = mbid;
+            td.style.backgroundColor = bg;
+        });
+        anchor.after(td1, td2);
+    }
+
+    /**
+     * The recording MBID a Name cell links.
+     * @param {Element} cell
+     * @returns {?string}
+     */
+    function _recOfRowMbid(cell) {
+        const a = cell && cell.querySelector('a[href*="/recording/"]');
+        const m = a && a.getAttribute('href').match(/\/recording\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/);
+        return m ? m[1] : null;
+    }
+
+    /**
+     * The recording's own title, from the Name cell left of a "Recording of"
+     * cell (the link text, without the disambiguation comment).
+     * @param {HTMLTableCellElement} td - A `td.mb-recof-cell`.
+     * @returns {string}
+     */
+    function _recOfRowTitle(td) {
+        const name = td.previousElementSibling;
+        const a = name && name.querySelector('a[href*="/recording/"]');
+        return a ? a.textContent.trim() : '';
+    }
+
+    /**
+     * The load state of a "Recording of" cell, as the 📊 "Recording of - Load
+     * state" section counts and filters it — ONE classifier for both, so a
+     * count and the rows its entry filters to cannot disagree.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?('pending'|'has'|'suggested'|'none'|'error')} null for any other cell.
+     */
+    function _recOfCellLoadState(cell) {
+        if (!cell || !cell.classList.contains('mb-recof-cell')) return null;
+        const st = cell.dataset.recof;
+        if (st === 'has' || st === 'suggested' || st === 'none' || st === 'error') return st;
+        return 'pending';   // not asked for, queued or loading
+    }
+
+    /**
+     * The work titles a "Recording of" cell suggests (its orange
+     * `li.mb-recof-suggested` rows). Reads `textContent`, so a highlight
+     * wrapper a previous filter pass put inside the link is read through.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {string[]}
+     */
+    function _findCellRecOfSuggestions(cell) {
+        if (!cell) return [];
+        return Array.from(cell.querySelectorAll('li.mb-recof-suggested a'))
+            .map(a => a.textContent.trim()).filter(Boolean);
+    }
+
+    /**
+     * Keeps the "performance" relations of a WS/2 recording and reduces each
+     * to what the two columns show.
+     *
+     * @param {?Array<object>} relations - WS/2 `relations` (inc=work-rels).
+     * @returns {Array<{work: {id: string, title: string, comment: string}, attrs: string[], begin: ?string, end: ?string}>}
+     */
+    function _recOfParseRels(relations) {
+        return (relations || [])
+            .filter(r => r && r['target-type'] === 'work' && r.work &&
+                         (r['type-id'] === _RECOF_PERF_TYPE_ID || r.type === 'performance'))
+            .map(r => ({
+                work: { id: r.work.id, title: r.work.title || '', comment: r.work.disambiguation || '' },
+                attrs: (r.attributes || []).map(a => String(a).toLowerCase()),
+                begin: r.begin || null,
+                end: r.end || null
+            }));
+    }
+
+    /**
+     * Attribute words in display order: `REC_OF_ATTRIBUTES` first (the order
+     * release-tracks uses), anything else after, alphabetically.
+     * @param {Iterable<string>} words
+     * @returns {string[]}
+     */
+    function _recOfSortAttrs(words) {
+        const set = new Set(words);
+        const known = REC_OF_ATTRIBUTES.filter(a => set.has(a));
+        const rest = Array.from(set).filter(a => !REC_OF_ATTRIBUTES.includes(a)).sort();
+        return known.concat(rest);
+    }
+
+    /**
+     * A relation's date as shown: the day, or "begin – end" when they differ.
+     * @param {{begin: ?string, end: ?string}} r
+     * @returns {string}
+     */
+    function _recOfDateText(r) {
+        if (!r.begin && !r.end) return '';
+        if (!r.end || r.end === r.begin) return r.begin;
+        if (!r.begin) return `until ${r.end}`;
+        return `${r.begin} – ${r.end}`;
+    }
+
+    /**
+     * Builds a work anchor the way MusicBrainz renders one.
+     * @param {{id: string, title: string}} work
+     * @returns {HTMLAnchorElement}
+     */
+    function _recOfWorkLink(work) {
+        const a = document.createElement('a');
+        a.href = `/work/${work.id}`;
+        const bdi = document.createElement('bdi');
+        bdi.textContent = work.title;
+        a.appendChild(bdi);
+        return a;
+    }
+
+    /**
+     * Writes one recording's answer into a "Recording of" cell and its
+     * "Performance attributes" neighbour, replacing whatever was there
+     * (idempotent). Attribute words reuse the `.mb-credit-attr` sentinel with
+     * words joined by "/", the shape the 📊 per-attribute entries already
+     * count; the date is a `.mb-credit-date`.
+     *
+     * @param {HTMLTableCellElement} td - `td.mb-recof-cell`.
+     * @param {Array<object>} rels - `_recOfParseRels()` output.
+     * @param {?{id: string, title: string, comment: string}} [suggestion]
+     * @returns {void}
+     */
+    function _recOfRenderCell(td, rels, suggestion) {
+        const attrTd = td.nextElementSibling && td.nextElementSibling.classList.contains('mb-perfattr-cell')
+            ? td.nextElementSibling : null;
+        td.textContent = '';
+        if (attrTd) attrTd.textContent = '';
+        delete td.dataset.recofLoading;
+        if (rels.length) {
+            const ul = document.createElement('ul');
+            rels.forEach(r => {
+                const li = document.createElement('li');
+                li.appendChild(_recOfWorkLink(r.work));
+                if (r.work.comment) {
+                    const c = document.createElement('span');
+                    c.className = 'comment';
+                    c.textContent = ` (${r.work.comment})`;
+                    li.appendChild(c);
+                }
+                const words = _recOfSortAttrs(r.attrs);
+                if (words.length) {
+                    li.appendChild(document.createTextNode(' ('));
+                    const s = document.createElement('span');
+                    s.className = 'mb-credit-attr';
+                    s.textContent = words.join('/');
+                    li.appendChild(s);
+                    li.appendChild(document.createTextNode(')'));
+                }
+                ul.appendChild(li);
+            });
+            td.appendChild(ul);
+            td.dataset.recof = 'has';
+            if (attrTd) {
+                const aul = document.createElement('ul');
+                _recOfSortAttrs(rels.flatMap(r => r.attrs)).forEach(w => {
+                    const li = document.createElement('li');
+                    const s = document.createElement('span');
+                    s.className = 'mb-credit-attr';
+                    s.textContent = w;
+                    li.appendChild(s);
+                    aul.appendChild(li);
+                });
+                Array.from(new Set(rels.map(_recOfDateText).filter(Boolean))).forEach(d => {
+                    const li = document.createElement('li');
+                    const s = document.createElement('span');
+                    s.className = 'mb-credit-date';
+                    s.textContent = d;
+                    li.appendChild(s);
+                    aul.appendChild(li);
+                });
+                if (aul.children.length) attrTd.appendChild(aul);
+            }
+        } else if (suggestion) {
+            const ul = document.createElement('ul');
+            const li = document.createElement('li');
+            li.className = 'mb-recof-suggested';
+            const mark = document.createElement('span');
+            mark.className = 'mb-recof-sugg-mark';
+            mark.textContent = 'suggested: ';
+            li.appendChild(mark);
+            li.appendChild(_recOfWorkLink(suggestion));
+            if (suggestion.comment) {
+                const c = document.createElement('span');
+                c.className = 'comment';
+                c.textContent = ` (${suggestion.comment})`;
+                li.appendChild(c);
+            }
+            ul.appendChild(li);
+            td.appendChild(ul);
+            td.dataset.recof = 'suggested';
+        } else {
+            td.dataset.recof = 'none';
+        }
+    }
+
+    /**
+     * Every "Recording of" cell for each MBID, live AND master — the live
+     * tables plus the source rows (`allRows`/`groupedRows`) the next re-render
+     * clones from. On a single-table page's first render the live row IS the
+     * source row, so the two sets are merged through a Set.
+     *
+     * @returns {Map<string, Set<HTMLTableCellElement>>}
+     */
+    function _recOfCellIndex() {
+        const map = new Map();
+        const add = td => {
+            const id = td.dataset.mbid;
+            if (!id) return;
+            let s = map.get(id);
+            if (!s) { s = new Set(); map.set(id, s); }
+            s.add(td);
+        };
+        document.querySelectorAll('table.tbl td.mb-recof-cell[data-mbid]').forEach(add);
+        _msSourceRows().forEach(row => {
+            const td = row.querySelector('td.mb-recof-cell[data-mbid]');
+            if (td) add(td);
+        });
+        return map;
+    }
+
+    /**
+     * Records a successful answer (memory, and IndexedDB unless it came from
+     * there) and writes it into every cell of that recording.
+     *
+     * @param {Map<string, Set<HTMLTableCellElement>>} index - `_recOfCellIndex()`.
+     * @param {string} mbid
+     * @param {Array<object>} rels
+     * @returns {number} Cells written.
+     */
+    function _recOfApply(index, mbid, rels) {
+        _recOfMem.set(mbid, rels);
+        _recOf.pendingCount = null;
+        const cells = index.get(mbid);
+        if (!cells) return 0;
+        const sugg = rels.length ? null : _recOfSuggestFor(cells.values().next().value);
+        cells.forEach(td => {
+            _recOfRenderCell(td, rels, sugg);
+            _recOfDropRowText(td);
+        });
+        return cells.size;
+    }
+
+    /**
+     * Drops a row's cached filter text after its "Recording of" cells changed
+     * (`_rowTextCache` sentinels: `cols` entries `undefined`, `full` null).
+     * @param {HTMLTableCellElement} td
+     * @returns {void}
+     */
+    function _recOfDropRowText(td) {
+        const row = td.parentElement;
+        const c = row && _rowTextCache.get(row);
+        if (c) { c.cols = []; c.full = null; }
+    }
+
+    /**
+     * Marks every cell of one recording with a transient load state
+     * (`queued`, `loading`, `error`) — CSS draws the glyph, the cell's text
+     * stays empty.
+     *
+     * @param {Map<string, Set<HTMLTableCellElement>>} index
+     * @param {string} mbid
+     * @param {string} state
+     * @returns {void}
+     */
+    function _recOfMark(index, mbid, state) {
+        _recOf.pendingCount = null;
+        const cells = index.get(mbid);
+        if (cells) cells.forEach(td => { td.dataset.recof = state; });
+    }
+
+    /**
+     * The 📊/filter side of a cell write, throttled: drops the uniq-dropdown
+     * and filter result caches, re-registers multi-row cells, and re-runs the
+     * filter only when one is active. While a bulk job runs this happens at
+     * most every 2 s; `now` forces it (a single-row click, the job's end).
+     *
+     * @param {boolean} [now]
+     * @returns {void}
+     */
+    function _recOfScheduleRefresh(now) {
+        clearTimeout(_recOf.refreshTimer);
+        const wait = now ? 0 : Math.max(0, 2000 - (Date.now() - _recOf.lastRefresh));
+        _recOf.refreshTimer = setTimeout(() => {
+            _recOf.lastRefresh = Date.now();
+            document.querySelectorAll('table.tbl').forEach(t => {
+                if (!t.querySelector('td.mb-recof-cell')) return;
+                _invalidateUniqDropDataCacheForTable(t);
+                initCollapsableColumns(t);
+            });
+            _invalidateFilterCache();
+            _recOfUpdateHdrBtns();
+            if (_anyFilterActive()) runFilter();
+        }, wait);
+    }
+
+    /**
+     * Distinct recording MBIDs on the page whose cells are not answered yet,
+     * in source-row order. Failed ones are included only when `withFailed`;
+     * rows being loaded right now (a click in flight) only when
+     * `withLoading` — a loader must not ask for them twice, but a COUNT of
+     * what is outstanding must include them.
+     *
+     * @param {Map<string, Set<HTMLTableCellElement>>} index
+     * @param {boolean} [withFailed]
+     * @param {boolean} [withLoading]
+     * @returns {string[]}
+     */
+    function _recOfPending(index, withFailed, withLoading) {
+        const out = [];
+        index.forEach((cells, mbid) => {
+            const st = cells.values().next().value.dataset.recof;
+            if (st === 'has' || st === 'none' || st === 'suggested') return;
+            if (st === 'loading' && !withLoading) return;
+            if (st === 'error' && !withFailed) return;
+            out.push(mbid);
+        });
+        return out;
+    }
+
+    /**
+     * How many rows are still unanswered (failed ones included), cached in
+     * `_recOf.pendingCount` until a write or a mark drops it.
+     * @returns {number}
+     */
+    function _recOfPendingCount() {
+        if (_recOf.pendingCount === null) _recOf.pendingCount = _recOfPending(_recOfCellIndex(), true, true).length;
+        return _recOf.pendingCount;
+    }
+
+    /**
+     * L2 read: a cached answer from IndexedDB, or null (missing, expired,
+     * IndexedDB unavailable). Key carries the inc set, so it can never collide
+     * with another store's record for the same recording.
+     *
+     * @param {string} mbid
+     * @returns {Promise<?Array<object>>}
+     */
+    function _recOfIdbGet(mbid) {
+        return _artIdbGet('recof-ws2', `recording:${mbid}|work-rels`)
+            .then(rec => {
+                if (!rec) return null;
+                const d = Lib.settings.sa_recording_of_ttl_days;
+                const ttl = (typeof d === 'number' && d > 0 ? d : 30) * 86400000;
+                if (Date.now() - (rec.ts || 0) > ttl) {
+                    _artIdbDelete('recof-ws2', rec.ckey).catch(() => {});
+                    return null;
+                }
+                return Array.isArray(rec.rels) ? rec.rels : null;
+            })
+            .catch(() => null);
+    }
+
+    /**
+     * L2 write, many answers in ONE transaction (a browse page is 100).
+     * Never rejects; a failed write only means the next visit asks again.
+     *
+     * @param {Array<[string, Array<object>]>} entries - `[mbid, rels]`.
+     * @returns {void}
+     */
+    function _recOfIdbPut(entries) {
+        if (!entries.length) return;
+        _artOpenIdb().then(db => {
+            const store = db.transaction('recof-ws2', 'readwrite').objectStore('recof-ws2');
+            const ts = Date.now();
+            entries.forEach(([mbid, rels]) => store.put({ ckey: `recording:${mbid}|work-rels`, mbid, rels, ts }));
+        }).catch(() => {});
+    }
+
+    /**
+     * One WS/2 GET through the shared rate gate and retry helper, logging
+     * every retry into the progress card.
+     *
+     * @param {string} url
+     * @param {string} label - For the log.
+     * @returns {Promise<{ok: boolean, status: number, data: ?Object, detail: string}>}
+     */
+    async function _recOfGet(url, label) {
+        await _relAwaitRateSlot();
+        _recOf.requests++;
+        const res = await _ws2GetJson(url, {
+            tries: _RECOF_TRIES,
+            beforeRetry: async (attempt, retryAfterMs) => {
+                const wait = Math.max(_REL_WS2_SPACING_MS * attempt, retryAfterMs);
+                _ajLog('recof', null, `${label}: retry ${attempt + 1} of ${_RECOF_TRIES} in ${Math.round(wait / 100) / 10} s`, 'bad');
+                await new Promise(r => setTimeout(r, wait));
+                await _relAwaitRateSlot();
+                _recOf.requests++;
+            },
+            dbg: (...a) => Lib.debug('recording-of', ...a),
+            label
+        });
+        if (res.ok) _ajLog('recof', null, `${label}: ok`, 'good');
+        else _ajLog('recof', null, `${label}: ${res.detail || 'failed'}`, 'bad');
+        return res;
+    }
+
+    /**
+     * The artist MBID of the page (`/artist/<mbid>/recordings`).
+     * @returns {?string}
+     */
+    function _recOfArtistMbid() {
+        const m = window.location.pathname.match(/^\/artist\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/);
+        return m ? m[1] : null;
+    }
+
+    /**
+     * Loads every unanswered row: memory, then IndexedDB, then the network —
+     * one browse page of the artist's recordings first (it answers up to 100
+     * rows AND tells how big the catalogue is), then whichever is cheaper for
+     * the rest: more browse pages, or one lookup per remaining row. A second
+     * call while one runs is coalesced into one follow-up pass.
+     *
+     * @param {{user?: boolean, anchor?: Element, withFailed?: boolean}} [opts]
+     * @returns {Promise<void>}
+     */
+    async function _recOfLoadAll(opts = {}) {
+        if (_recOf.running) {
+            _recOf.rerun = true;
+            if (opts.user && opts.anchor) _ajShow('recof', null, opts.anchor);
+            return;
+        }
+        _recOf.running = true;
+        try {
+            do {
+                _recOf.rerun = false;
+                await _recOfLoadAllOnce(opts);
+                opts = { ...opts, user: false };
+            } while (_recOf.rerun);
+        } finally {
+            _recOf.running = false;
+            _recOfUpdateHdrBtns();
+        }
+    }
+
+    /**
+     * One pass of `_recOfLoadAll()`.
+     * @param {{user?: boolean, anchor?: Element, withFailed?: boolean}} opts
+     * @returns {Promise<void>}
+     */
+    async function _recOfLoadAllOnce(opts) {
+        let index = _recOfCellIndex();
+        const todo = _recOfPending(index, opts.withFailed);
+        Object.assign(_recOf, { total: todo.length, done: 0, failed: 0, mem: 0, idb: 0, net: 0,
+            requests: 0, planned: 0, source: 'cache', why: '' });
+        _ajStart('recof', null, { user: !!opts.user, anchor: opts.anchor });
+        _recOfUpdateHdrBtns();
+        if (!todo.length) { _ajFinish('recof', null, 0); return; }
+        todo.forEach(id => _recOfMark(index, id, 'queued'));
+
+        // Tier 1 + 2: memory, then IndexedDB (in parallel).
+        const misses = [];
+        const fromIdb = await Promise.all(todo.map(id => (_recOfMem.has(id)
+            ? Promise.resolve({ id, rels: _recOfMem.get(id), tier: 'mem' })
+            : _recOfIdbGet(id).then(rels => ({ id, rels, tier: 'idb' })))));
+        fromIdb.forEach(({ id, rels, tier }) => {
+            if (!rels) { misses.push(id); return; }
+            _recOf[tier]++;
+            _recOf.done++;
+            _recOfApply(index, id, rels);
+        });
+        _ajLog('recof', null, `${_recOf.mem + _recOf.idb} from cache, ${misses.length} to load`);
+        _recOfScheduleRefresh();
+        _ajChanged('recof', null);
+
+        // Tier 3: network.
+        const wanted = new Set(misses);
+        const answer = (id, rels) => {
+            if (!wanted.delete(id)) return false;
+            _recOf.net++;
+            _recOf.done++;
+            _recOfApply(index, id, rels);
+            return true;
+        };
+        const artist = _recOfArtistMbid();
+        if (wanted.size > 1 && artist && Lib.settings.sa_recording_of_browse_batch_enable !== false) {
+            _recOf.source = 'browse';
+            _recOf.why = 'the first page also tells how big the catalogue is';
+            let offset = 0;
+            let pages = null;
+            while (wanted.size) {
+                index = _recOfCellIndex();
+                const res = await _recOfGet(
+                    `/ws/2/recording?artist=${artist}&inc=work-rels&limit=${_RECOF_PAGE}&offset=${offset}&fmt=json`,
+                    `browse offset ${offset}`);
+                if (!res.ok || !res.data) {
+                    _ajLog('recof', null, 'browse failed — looking up the rest one by one', 'bad');
+                    break;
+                }
+                const recs = res.data.recordings || [];
+                if (pages === null) {
+                    _recOf.browseCount = res.data['recording-count'] || recs.length;
+                    pages = Math.ceil(_recOf.browseCount / _RECOF_PAGE);
+                }
+                const puts = [];
+                let hit = 0;
+                recs.forEach(rec => {
+                    const rels = _recOfParseRels(rec.relations);
+                    puts.push([rec.id, rels]);
+                    if (answer(rec.id, rels)) hit++;
+                });
+                _recOfIdbPut(puts);
+                _ajLog('recof', null, `browse offset ${offset}: ${recs.length} recordings, ${hit} on this page`, 'good');
+                offset += _RECOF_PAGE;
+                const pagesLeft = pages - offset / _RECOF_PAGE;
+                _recOf.planned = _recOf.requests + Math.min(Math.max(0, pagesLeft), wanted.size);
+                if (!wanted.size || !recs.length || pagesLeft <= 0) break;
+                if (pagesLeft >= wanted.size) {
+                    _recOf.source = 'lookup';
+                    _recOf.why = `browsing would need ${pagesLeft} more requests, lookups ${wanted.size}`;
+                    _ajLog('recof', null, `switching to lookups: ${_recOf.why}`);
+                    break;
+                }
+                _recOf.why = `browsing needs ${pagesLeft} more requests, lookups would need ${wanted.size}`;
+                _recOfScheduleRefresh();
+                _ajChanged('recof', null);
+            }
+        } else if (wanted.size) {
+            _recOf.source = 'lookup';
+            _recOf.why = wanted.size === 1 ? 'one row' : 'browsing is turned off or not available here';
+        }
+        if (wanted.size) {
+            _recOf.planned = _recOf.requests + wanted.size;
+            for (const id of Array.from(wanted)) {
+                if (!wanted.has(id)) continue;
+                if (_recOfMem.has(id)) { answer(id, _recOfMem.get(id)); continue; } // a click answered it meanwhile
+                index = _recOfCellIndex();
+                _recOfMark(index, id, 'loading');
+                const res = await _recOfGet(`/ws/2/recording/${id}?inc=work-rels&fmt=json`, `lookup ${id.slice(0, 8)}`);
+                index = _recOfCellIndex();
+                if (res.ok || res.status === 404) {
+                    const rels = res.ok ? _recOfParseRels(res.data && res.data.relations) : [];
+                    _recOfIdbPut([[id, rels]]);
+                    answer(id, rels);
+                } else {
+                    wanted.delete(id);
+                    _recOf.failed++;
+                    _recOfMark(index, id, 'error');
+                }
+                _recOfScheduleRefresh();
+                _ajChanged('recof', null);
+            }
+        }
+        // Suggestions need the work list; loaded (or read from cache) once.
+        await _recOfSuggestAll(true);
+        _recOfScheduleRefresh(true);
+        _ajFinish('recof', null, _recOf.failed);
+    }
+
+    /**
+     * Loads ONE row, from a click on its cell: memory, IndexedDB, then one
+     * lookup. Writes live and master cells; a failure marks them ⚠ and is not
+     * cached. Also works while a bulk job runs (the job then skips the row).
+     *
+     * @param {HTMLTableCellElement} td - `td.mb-recof-cell`.
+     * @returns {Promise<void>}
+     */
+    async function _recOfLoadRow(td) {
+        const id = td.dataset.mbid;
+        if (!id || td.dataset.recof === 'loading') return;
+        let index = _recOfCellIndex();
+        _recOfMark(index, id, 'loading');
+        let rels = _recOfMem.has(id) ? _recOfMem.get(id) : await _recOfIdbGet(id);
+        if (!rels) {
+            const res = await _recOfGet(`/ws/2/recording/${id}?inc=work-rels&fmt=json`, `lookup ${id.slice(0, 8)}`);
+            if (res.ok || res.status === 404) {
+                rels = res.ok ? _recOfParseRels(res.data && res.data.relations) : [];
+                _recOfIdbPut([[id, rels]]);
+            }
+        }
+        index = _recOfCellIndex();
+        if (rels) {
+            if (!rels.length && !_recOfWorks) await _recOfEnsureWorks(false);
+            _recOfApply(index, id, rels);
+        } else {
+            _recOfMark(index, id, 'error');
+        }
+        _recOfScheduleRefresh(true);
+    }
+
+    // ── Suggestions ────────────────────────────────────────────────────────
+
+    /** Trailing " (…)" clauses, as the batch-add userscript strips them. */
+    const _RECOF_PAREN_RE = /^(.+?)(?:(?: \([^()]+\))+)?$/;
+    /** Typographic → ASCII punctuation, as the batch-add userscript maps it. */
+    const _RECOF_PUNCT = [
+        [/…/g, '...'], [/[‘’‚′]/g, '\''], [/[“”„″]/g, '"'], [/‹/g, '<'], [/›/g, '>'],
+        [/[‐‒–−—]/g, '-'], [/―/g, '--']
+    ];
+
+    /**
+     * Normalises a title for matching: drops trailing "(…)" clauses (only for
+     * recording titles), lowercases, removes whitespace, maps typographic
+     * punctuation to ASCII.
+     *
+     * @param {string} title
+     * @param {boolean} [stripParens]
+     * @returns {string}
+     */
+    function _recOfNormTitle(title, stripParens) {
+        let t = String(title || '');
+        if (stripParens) {
+            const m = t.match(_RECOF_PAREN_RE);
+            if (m) t = m[1];
+        }
+        t = t.toLowerCase().replace(/\s+/g, '');
+        _RECOF_PUNCT.forEach(([re, rep]) => { t = t.replace(re, rep); });
+        return t;
+    }
+
+    /**
+     * Levenshtein distance with an early exit: returns `max + 1` as soon as
+     * the distance is certain to exceed `max`. Two rows, O(len) memory.
+     *
+     * @param {string} a
+     * @param {string} b
+     * @param {number} max
+     * @returns {number}
+     */
+    function _recOfDistance(a, b, max) {
+        if (a === b) return 0;
+        if (Math.abs(a.length - b.length) > max) return max + 1;
+        let prev = new Array(b.length + 1);
+        let cur = new Array(b.length + 1);
+        for (let j = 0; j <= b.length; j++) prev[j] = j;
+        for (let i = 1; i <= a.length; i++) {
+            cur[0] = i;
+            let rowMin = cur[0];
+            const ca = a.charCodeAt(i - 1);
+            for (let j = 1; j <= b.length; j++) {
+                const cost = ca === b.charCodeAt(j - 1) ? 0 : 1;
+                cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost);
+                if (cur[j] < rowMin) rowMin = cur[j];
+            }
+            if (rowMin > max) return max + 1;
+            [prev, cur] = [cur, prev];
+        }
+        return prev[b.length];
+    }
+
+    /**
+     * The suggested work for a recording title, or null. Exact normalised
+     * match first (a Map lookup), else the work with the smallest distance
+     * relative to the average length, if it is within
+     * `sa_recording_of_suggest_max_distance_pct`. Memoised per normalised
+     * title, so a live set of 300 "Badlands" costs one search. Cost is
+     * bounded by a length pre-check: a work whose length differs by more than
+     * the threshold allows is never compared.
+     *
+     * @param {string} title - The recording's title.
+     * @returns {?{id: string, title: string, comment: string}}
+     */
+    function _recOfSuggestTitle(title) {
+        if (!_recOfWorks || Lib.settings.sa_recording_of_suggest_enable === false) return null;
+        const norm = _recOfNormTitle(title, true);
+        if (!norm) return null;
+        if (_recOfSuggestMemo.has(norm)) return _recOfSuggestMemo.get(norm);
+        let best = _recOfWorks.exact.get(norm) || null;
+        if (!best) {
+            const p = Lib.settings.sa_recording_of_suggest_max_distance_pct;
+            const thr = (typeof p === 'number' && p >= 0 ? p : 25) / 100;
+            let bestScore = Infinity;
+            if (thr > 0) {
+                for (const w of _recOfWorks.works) {
+                    const avg = (norm.length + w.norm.length) / 2;
+                    const max = Math.floor(thr * avg);
+                    if (Math.abs(norm.length - w.norm.length) > max) continue;
+                    const d = _recOfDistance(norm, w.norm, max);
+                    if (d > max) continue;
+                    const score = d / avg;
+                    if (score < bestScore) { bestScore = score; best = w; }
+                }
+            }
+        }
+        const out = best ? { id: best.id, title: best.title, comment: best.comment } : null;
+        _recOfSuggestMemo.set(norm, out);
+        return out;
+    }
+
+    /**
+     * The suggestion for one cell's row (null when suggestions are off or the
+     * work list is not loaded).
+     * @param {?HTMLTableCellElement} td
+     * @returns {?{id: string, title: string, comment: string}}
+     */
+    function _recOfSuggestFor(td) {
+        return td ? _recOfSuggestTitle(_recOfRowTitle(td)) : null;
+    }
+
+    /**
+     * Makes sure the artist's work list is in memory: IndexedDB first (within
+     * `sa_recording_of_works_ttl_days`), then the batch-add userscript's own
+     * localStorage cache (`sa_recording_of_import_bpr_cache`), then — only
+     * when `allowNetwork` — the Web Service, 100 works per request.
+     *
+     * @param {boolean} allowNetwork
+     * @param {boolean} [force] - Ignore both caches (the card's "Reload works").
+     * @returns {Promise<boolean>} Whether a list is loaded.
+     */
+    async function _recOfEnsureWorks(allowNetwork, force) {
+        const artist = _recOfArtistMbid();
+        if (!artist || Lib.settings.sa_recording_of_suggest_enable === false) return false;
+        if (_recOfWorks && _recOfWorks.artist === artist && !force) return true;
+        const d = Lib.settings.sa_recording_of_works_ttl_days;
+        const ttl = (typeof d === 'number' && d > 0 ? d : 30) * 86400000;
+        if (!force) {
+            const rec = await _artIdbGet('artist-works', artist).catch(() => null);
+            if (rec && Date.now() - (rec.ts || 0) <= ttl && Array.isArray(rec.works)) {
+                _recOfSetWorks(artist, rec.works, rec.ts, rec.source || 'IndexedDB');
+                return true;
+            }
+            const bpr = Lib.settings.sa_recording_of_import_bpr_cache !== false ? _recOfReadBprWorks(artist) : null;
+            if (bpr) {
+                _recOfSetWorks(artist, bpr.works, bpr.ts, 'batch-add userscript');
+                _artIdbPut('artist-works', { artist, works: bpr.works, ts: bpr.ts, source: 'batch-add userscript' }).catch(() => {});
+                _ajLog('recof', null, `${bpr.works.length} works taken from the batch-add userscript's cache`, 'good');
+                return true;
+            }
+        }
+        if (!allowNetwork) return false;
+        const works = [];
+        let offset = 0;
+        let count = null;
+        do {
+            const res = await _recOfGet(`/ws/2/work?artist=${artist}&inc=aliases&limit=${_RECOF_PAGE}&offset=${offset}&fmt=json`,
+                `works offset ${offset}`);
+            if (!res.ok || !res.data) return false;
+            if (count === null) count = res.data['work-count'] || 0;
+            (res.data.works || []).forEach(w => works.push({ id: w.id, title: w.title || '', comment: w.disambiguation || '' }));
+            offset += _RECOF_PAGE;
+            if (!(res.data.works || []).length) break;
+        } while (offset < count);
+        const ts = Date.now();
+        _recOfSetWorks(artist, works, ts, 'MusicBrainz');
+        _artIdbPut('artist-works', { artist, works, ts, source: 'MusicBrainz' }).catch(() => {});
+        return true;
+    }
+
+    /**
+     * Installs a work list in memory, with its exact-match index, and drops
+     * the suggestion memo (it belonged to the previous list).
+     *
+     * @param {string} artist
+     * @param {Array<{id: string, title: string, comment: string}>} works
+     * @param {number} ts - When the list was fetched.
+     * @param {string} source - Where it came from, for the card.
+     * @returns {void}
+     */
+    function _recOfSetWorks(artist, works, ts, source) {
+        const list = works.map(w => ({ ...w, norm: _recOfNormTitle(w.title, false) }));
+        const exact = new Map();
+        list.forEach(w => { if (w.norm && !exact.has(w.norm)) exact.set(w.norm, w); });
+        _recOfWorks = { artist, works: list, exact, ts, source };
+        _recOfSuggestMemo.clear();
+    }
+
+    /**
+     * Reads the batch-add "performance of" userscript's cached work list for
+     * an artist from localStorage, read-only. Its format: `bpr_works <mbid>`
+     * holds newline-separated `<work mbid><title>` with an optional
+     * ` <comment>`; `bpr_works_date <mbid>` a `Date().toString()`.
+     *
+     * @param {string} artist
+     * @returns {?{works: Array<{id: string, title: string, comment: string}>, ts: number}}
+     */
+    function _recOfReadBprWorks(artist) {
+        let raw;
+        let date;
+        try {
+            raw = window.localStorage.getItem(`bpr_works ${artist}`);
+            date = window.localStorage.getItem(`bpr_works_date ${artist}`);
+        } catch (_) {
+            return null;
+        }
+        if (!raw) return null;
+        const works = raw.split('\n').filter(l => l.length > 36).map(l => {
+            const [title, comment] = l.slice(36).split(' ');
+            return { id: l.slice(0, 36), title, comment: comment || '' };
+        }).filter(w => /^[a-f0-9-]{36}$/.test(w.id));
+        if (!works.length) return null;
+        const ts = Date.parse(date || '') || Date.now();
+        return { works, ts };
+    }
+
+    /**
+     * Fills a suggestion into every answered "no work" cell, in slices of
+     * ~8 ms so a large page never blocks; each DISTINCT title is searched
+     * once (memo). Loads the work list first when `allowNetwork`.
+     *
+     * @param {boolean} allowNetwork
+     * @returns {Promise<void>}
+     */
+    async function _recOfSuggestAll(allowNetwork) {
+        if (Lib.settings.sa_recording_of_suggest_enable === false) return;
+        if (!(await _recOfEnsureWorks(allowNetwork))) return;
+        const index = _recOfCellIndex();
+        const todo = [];
+        index.forEach((cells, id) => {
+            const first = cells.values().next().value;
+            if (first.dataset.recof === 'none' || first.dataset.recof === 'suggested') todo.push([id, cells]);
+        });
+        let sliceStart = performance.now();
+        let n = 0;
+        for (const [id, cells] of todo) {
+            const rels = _recOfMem.get(id) || [];
+            if (rels.length) continue;
+            const sugg = _recOfSuggestFor(cells.values().next().value);
+            if (sugg) {
+                cells.forEach(td => { _recOfRenderCell(td, [], sugg); _recOfDropRowText(td); });
+                n++;
+            }
+            if (performance.now() - sliceStart > 8) {
+                await new Promise(r => setTimeout(r, 0));
+                sliceStart = performance.now();
+            }
+        }
+        if (n) _ajLog('recof', null, `${n} work suggestion${n === 1 ? '' : 's'}`, 'good');
+    }
+
+    // ── Header toggle, cell clicks, progress card ──────────────────────────
+
+    /**
+     * Adds the ▶🎼 toggle to every "Recording of" header that lacks one and
+     * repaints its state. Called from every render path: a re-render rebuilds
+     * the `<thead>` from a clone. Also installs the click delegates once.
+     * @returns {void}
+     */
+    function _recOfInitColHeaderToggles() {
+        if (!activeRecordingOfColumns.length) return;
+        // Registered here, at render time, not at page init: _ajRegister()
+        // reads consts declared below the init call (TDZ). Idempotent.
+        _recOfRegisterProvider();
+        _recOfEnsureDelegates();
+        document.querySelectorAll('table.tbl thead th').forEach(th => {
+            if (th.dataset.colName !== _RECOF_COL || th.querySelector('.mb-recof-col-hdr-btn')) return;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'mb-recof-col-hdr-btn';
+            btn.dataset.mbAj = 'recof';
+            btn.dataset.mbAjName = '▶🎼';
+            btn.setAttribute('aria-pressed', 'false');
+            btn.setAttribute('aria-label', 'Load the "Recording of" column');
+            const flex = th.querySelector('.mb-col-hdr-flex');
+            (flex || th).prepend(btn);
+        });
+        _recOfUpdateHdrBtns();
+    }
+
+    /**
+     * Repaints every ▶🎼 toggle: pressed once nothing is left to load, a
+     * done/total badge (`::after attr()`) while a job runs.
+     * @returns {void}
+     */
+    function _recOfUpdateHdrBtns() {
+        const btns = document.querySelectorAll('.mb-recof-col-hdr-btn');
+        if (!btns.length) return;
+        const pending = _recOfPendingCount();
+        btns.forEach(b => {
+            b.setAttribute('aria-pressed', pending === 0 && !_recOf.running ? 'true' : 'false');
+            if (_recOf.running && _recOf.total) b.dataset.recofProgress = `${_recOf.done}/${_recOf.total}`;
+            else delete b.dataset.recofProgress;
+            if (!_recOf.running && _recOf.failed) b.dataset.recofState = 'error';
+            else delete b.dataset.recofState;
+        });
+    }
+
+    /**
+     * Installs the delegated click handlers once: the ▶🎼 toggle loads every
+     * row (capture phase, so the header's own sort click never sees it), a
+     * not-loaded or failed cell loads its own row.
+     * @returns {void}
+     */
+    function _recOfEnsureDelegates() {
+        if (_recOfEnsureDelegates.done) return;
+        _recOfEnsureDelegates.done = true;
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest && e.target.closest('.mb-recof-col-hdr-btn');
+            if (btn) {
+                e.preventDefault();
+                e.stopPropagation();
+                _recOfLoadAll({ user: true, anchor: btn, withFailed: true });
+                return;
+            }
+            const td = e.target.closest && e.target.closest('td.mb-recof-cell');
+            if (!td || e.target.closest('a')) return;
+            const st = td.dataset.recof;
+            if (st && st !== 'error') return;
+            e.preventDefault();
+            _recOfLoadRow(td);
+        }, true);
+    }
+
+    /**
+     * Registers the "Recording of" provider of the async job popup.
+     * @returns {void}
+     */
+    function _recOfRegisterProvider() {
+        _ajRegister('recof', {
+            glyph: '🎼',
+            label: 'Recording of',
+            scopeOf: () => null,
+            snapshot: (scope, job) => _recOfSnapshot(job),
+            onOpen: (scope, repaint) => {
+                if (Date.now() - _recOf.storeCountAt < 5000) return;
+                _recOf.storeCountAt = Date.now();
+                _artIdbCountStore('recof-ws2').then(n => { _recOf.storeCount = n; repaint(); });
+            },
+            act: (scope, id) => {
+                if (id === 'retry') _recOfLoadAll({ withFailed: true });
+                if (id === 'works') {
+                    _recOfEnsureWorks(true, true).then(ok => {
+                        if (ok) _recOfSuggestAll(false).then(() => _recOfScheduleRefresh(true));
+                        _ajChanged('recof', null);
+                    });
+                }
+            }
+        });
+    }
+
+    /**
+     * The progress card's content (see `_ajRender()`). O(1): the idle
+     * preview's row count is the cached `_recOfPendingCount()`.
+     * @param {?object} job
+     * @returns {object}
+     */
+    function _recOfSnapshot(job) {
+        const d = Lib.settings.sa_recording_of_ttl_days;
+        const ttl = typeof d === 'number' && d > 0 ? d : 30;
+        const fmt = n => Number(n).toLocaleString('en-US');
+        const cache = [
+            ['Store', `IndexedDB recof-ws2, kept ${ttl} days`],
+            ['Records', _recOf.storeCount === null ? 'counting…' : fmt(_recOf.storeCount)],
+            ['This session', `${fmt(_recOfMem.size)} answers in memory`]
+        ];
+        if (job) cache.push(['This run', `${fmt(_recOf.mem)} memory · ${fmt(_recOf.idb)} IndexedDB · ${fmt(_recOf.net)} network`]);
+        if (_recOfWorks) {
+            cache.push(['Work list', `${fmt(_recOfWorks.works.length)} works (${_recOfWorks.source}, ${new Date(_recOfWorks.ts).toLocaleString()})`]);
+        } else {
+            cache.push(['Work list', Lib.settings.sa_recording_of_suggest_enable === false ? 'suggestions are off' : 'not loaded yet']);
+        }
+        const actions = [];
+        if (!_recOf.running && _recOf.failed) actions.push({ id: 'retry', label: `Retry ${_recOf.failed} failed`, kind: 'danger' });
+        if (!_recOf.running && Lib.settings.sa_recording_of_suggest_enable !== false) actions.push({ id: 'works', label: '⟳ Reload work list', kind: 'primary' });
+        if (!job) {
+            const pending = _recOfPendingCount();
+            const facts = [['Rows', `${fmt(pending)} recordings not loaded`]];
+            if (_recOf.browseCount) facts.push(['Catalogue', `${fmt(_recOf.browseCount)} recordings by this artist`]);
+            return {
+                phase: 'idle',
+                summary: pending ? 'Not loaded. Click ▶🎼 to load every row, or a 🎼 cell to load one.' : 'Every row is loaded.',
+                facts, cache, actions
+            };
+        }
+        const queued = Math.max(0, _recOf.total - _recOf.done - _recOf.failed);
+        const facts = [
+            ['Source', _recOf.source === 'browse' ? 'the artist\'s recordings, 100 per request'
+                : _recOf.source === 'lookup' ? 'one request per recording' : 'cache only'],
+        ];
+        if (_recOf.why) facts.push(['Why', _recOf.why]);
+        facts.push(['Requests', _recOf.planned > _recOf.requests ? `${fmt(_recOf.requests)} made, about ${fmt(_recOf.planned)} in all` : `${fmt(_recOf.requests)} made`]);
+        facts.push(['Rate', 'one per 1.1 s, shared with the other columns']);
+        const end = job.t1 || Date.now();
+        const s = Math.round((end - job.t0) / 1000);
+        facts.push(['Time', `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}${job.t1 ? '' : ' elapsed'}`]);
+        return {
+            phase: job.phase,
+            summary: `Work relationships for ${fmt(_recOf.total)} recording${_recOf.total === 1 ? '' : 's'}`,
+            done: _recOf.done, total: _recOf.total, failed: _recOf.failed,
+            cached: _recOf.mem + _recOf.idb, queued, unit: 'recordings',
+            facts, cache, actions
+        };
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
     // Relationships column — constants, helpers and main init function.
     // Ported from DisplayShortcutForRelationshipWithCustomFavicons.user.js
     // ──────────────────────────────────────────────────────────────────────────
@@ -95734,13 +97909,17 @@ a { color: #1565c0; }`;
                 // still sits immediately in front of the request and the one
                 // request per `_REL_WS2_SPACING_MS` invariant is untouched.
                 beforeRetry: async (attempt, retryAfterMs) => {
-                    await new Promise(r => setTimeout(
-                        r, Math.max(_REL_WS2_SPACING_MS * attempt, retryAfterMs)));
+                    const _wait = Math.max(_REL_WS2_SPACING_MS * attempt, retryAfterMs);
+                    _ajLog('rel', null, `${ckey}: retry ${attempt + 1} of ${_REL_WS2_TRIES} in ${Math.round(_wait / 100) / 10} s`, 'bad');
+                    await new Promise(r => setTimeout(r, _wait));
                     await _relAwaitRateSlot();
+                    _relAj.requests++;
                 },
                 dbg: _dbg,
                 label: `_relFetchWs2 ${ckey}`,
             });
+            _relAj.requests++;
+            _ajLog('rel', null, res.ok ? `${ckey}: ok` : `${ckey}: ${res.detail || 'failed'}`, res.ok || res.status === 404 ? 'good' : 'bad');
             if (res.ok) {
                 const data = res.data || null;
                 const rels = (data && data.relations) || [];
@@ -97919,6 +100098,10 @@ a { color: #1565c0; }`;
     function _relUpdateColHdrBtn(btn, table, expanded) {
         btn.setAttribute('aria-pressed', expanded ? 'true' : 'false');
         const _p = _relTableProgress(table);
+        // The progress card reads this stash instead of walking cells on a
+        // repaint. A plain property: the <table> survives every re-render.
+        table._mbRelProgress = _p;
+        _ajChanged('rel', null);
         // The done/total badge is CSS `attr(data-rel-progress)`, so the header's
         // own text never changes. The attribute exists only while something is
         // still unloaded: a complete table shows no badge at all.
@@ -98102,7 +100285,81 @@ a { color: #1565c0; }`;
         ev.preventDefault();
         ev.stopPropagation();
         const _table = _btn.closest('table.tbl');
-        if (_table) _relToggleTable(_table);
+        if (_table) {
+            _relToggleTable(_table);
+            if (_relTableExpanded(_table)) _relAjBegin(_btn);
+        }
+    }
+
+    /** The Relationships job's counters for the progress card. */
+    const _relAj = { requests: 0, tiers: null, storeCount: null, storeCountAt: 0 };
+
+    /**
+     * A user expanded a Relationships column: start the progress card's job
+     * (or show the running one under this toggle).
+     * @param {Element} anchor
+     * @returns {void}
+     */
+    function _relAjBegin(anchor) {
+        _relRegisterProvider();
+        const job = _ajJob('rel', null);
+        if (job && job.phase === 'running') { _ajShow('rel', null, anchor); return; }
+        _relAj.requests = 0;
+        _relAj.tiers = null;
+        _ajStart('rel', null, { user: true, anchor });
+    }
+
+    /**
+     * Registers the Relationships provider of the async job popup. Shows
+     * nothing before a user-started job (`snapshot()` → null), so the toggle's
+     * own tooltip is unchanged. Progress sums the per-table stash
+     * `_relUpdateColHdrBtn()` writes, so a repaint never walks cells.
+     * Idempotent.
+     * @returns {void}
+     */
+    function _relRegisterProvider() {
+        _ajRegister('rel', {
+            glyph: '🔗',
+            label: 'Relationships',
+            anchorSelector: '.mb-rel-col-hdr-btn',
+            scopeOf: () => null,
+            snapshot: (scope, job) => {
+                if (!job) return null;
+                const fmt = n => Number(n).toLocaleString('en-US');
+                let done = 0, total = 0, failed = 0;
+                document.querySelectorAll('table.tbl').forEach(t => {
+                    const pr = t._mbRelProgress;
+                    if (pr) { done += pr.done; total += pr.total; failed += pr.failed; }
+                });
+                const d = Lib.settings.sa_rel_idb_ttl_days;
+                const cache = [
+                    ['Store', `IndexedDB rel-ws2, kept ${typeof d === 'number' && d > 0 ? d : 30} days`],
+                    ['Records', _relAj.storeCount === null ? 'counting…' : fmt(_relAj.storeCount)],
+                    ['This session', `${fmt(_relWs2Cache.size)} answers in memory`],
+                ];
+                if (_relAj.tiers) cache.push(['This run', `${fmt(_relAj.tiers.cache)} memory · ${fmt(_relAj.tiers.idb)} IndexedDB · ${fmt(_relAj.tiers.net)} network`]);
+                const end = job.t1 || Date.now();
+                const secs = Math.round((end - job.t0) / 1000);
+                return {
+                    phase: job.phase,
+                    summary: `Relationship icons for ${fmt(total)} entit${total === 1 ? 'y' : 'ies'}`,
+                    done, total, failed, queued: Math.max(0, total - done - failed), unit: 'entities',
+                    facts: [
+                        ['Requests', `${fmt(_relAj.requests)} made`],
+                        ['Rate', 'one per 1.1 s, shared with the other columns'],
+                        ['Time', `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}${job.t1 ? '' : ' elapsed'}`],
+                    ],
+                    cache,
+                    actions: failed && job.phase !== 'running' ? [{ id: 'retry', label: `Retry ${fmt(failed)} failed`, kind: 'danger' }] : [],
+                };
+            },
+            onOpen: (scope, repaint) => {
+                if (Date.now() - _relAj.storeCountAt < 5000) return;
+                _relAj.storeCountAt = Date.now();
+                _artIdbCountStore('rel-ws2').then(n => { _relAj.storeCount = n; repaint(); });
+            },
+            act: (scope, id) => { if (id === 'retry') _relRetryFailedAll(); },
+        });
     }
 
     /**
@@ -99080,6 +101337,16 @@ a { color: #1565c0; }`;
                 browseRows:     _p15Rows,
                 browseRequests: _p15Requests,
             };
+            // Close the progress card's job, if a user started one (a pass the
+            // script started by itself has no record and stays silent).
+            _relAj.tiers = _tierInfo;
+            {
+                const _job = _ajJob('rel', null);
+                if (_job && _job.phase === 'running') {
+                    _ajLog('rel', null, `${_tierInfo.idb} from IndexedDB, ${_tierInfo.cache} from memory, ${_tierInfo.net} from the network`);
+                    _ajFinish('rel', null, _tierInfo.failed);
+                }
+            }
             if (_p2Failed) {
                 _relDbg(`initRelationshipsColumn: ${_p2Failed} request(s) failed after retries — ` +
                     'cells marked data-rel-error, not cached; collapse + expand or 🔗⟳ retries them');
@@ -100015,7 +102282,8 @@ a { color: #1565c0; }`;
         }
         Lib.configureSettings({
             functionRegistry: {
-                '_openEditPinnedFilterListFromSettings': _openEditPinnedFilterListFromSettings
+                '_openEditPinnedFilterListFromSettings': _openEditPinnedFilterListFromSettings,
+                '_idbOverviewOpenFromSettings': _idbOverviewOpenFromSettings
             },
             beforeOpen: _injectSettingsConfigButtons
         });
@@ -100703,6 +102971,7 @@ a { color: #1565c0; }`;
                             // for the Video column's medium-format flag.
                             _restoreLenMismatchFlag(td, cellData);
                             _restoreVideoMediumFlag(td, cellData);
+                            _recOfRestoreCell(td, cellData);
                             _restoreNoWorkFlag(td, cellData);
                             tr.appendChild(td);
                         });
@@ -100865,6 +103134,7 @@ a { color: #1565c0; }`;
                         // the Video column's medium-format flag.
                         _restoreLenMismatchFlag(td, cellData);
                         _restoreVideoMediumFlag(td, cellData);
+                        _recOfRestoreCell(td, cellData);
                         _restoreNoWorkFlag(td, cellData);
                         if (_beforeFp !== null) {
                             const _afterFp = _caaArtDebugFingerprint(td.innerHTML);
@@ -100953,6 +103223,10 @@ a { color: #1565c0; }`;
             if (!activeReleaseEventColumns.length) {
                 activeReleaseEventColumns = buildActiveReleaseEventColumns(activeDefinition);
                 Lib.debug('cache', `disk-load: rebuilt activeReleaseEventColumns (${activeReleaseEventColumns.length})`);
+            }
+            if (!activeRecordingOfColumns.length) {
+                activeRecordingOfColumns = buildActiveRecordingOfColumns(activeDefinition);
+                _recOf.pendingCount = null;
             }
             if (!activeInjectedColumnExtractors.length) {
                 activeInjectedColumnExtractors = buildActiveInjectedColumnExtractors(activeDefinition);
@@ -101145,6 +103419,15 @@ a { color: #1565c0; }`;
                     `disk-load: restored discography arrays — official=${h3_official_category_header_array.length}` +
                     ` all=${h3_all_category_header_array.length}` +
                     ` non-official=${h3_non_official_category_header_array.length}`);
+            }
+
+            // A file saved before the "Recording of" columns existed (or with
+            // them switched off) carries no cells for them: the header must not
+            // gain them either, or every later column shifts by two.
+            if (activeRecordingOfColumns.length &&
+                !allRows.concat(...groupedRows.map(g => g.rows)).some(r => r.querySelector('td.mb-recof-cell'))) {
+                activeRecordingOfColumns = [];
+                Lib.debug('cache', 'disk-load: no "Recording of" cells in this file — columns not added');
             }
 
             // Render
@@ -101421,6 +103704,7 @@ a { color: #1565c0; }`;
             // cost, so collapsing it would be pure loss. See
             // _relTableExpanded()'s "the two defaults".
             _relInitColHeaderToggles();
+            _recOfInitColHeaderToggles();
             // Same reason as the line above: the <thead> this writes into may
             // have just been rebuilt from a clone. No-op unless the Release-events
             // lookup is loading or has failed.
@@ -103564,6 +105848,16 @@ a { color: #1565c0; }`;
     //                  many pageTypes, so one page's fetch warms every other.
     //                  Shares this database for the same reason 'rel-ws2' does.
     //
+    //     'recof-ws2' — added in version 4. Keyed by `ckey`
+    //                  ("recording:<mbid>|work-rels" — the inc set is part of
+    //                  the key). Value: { ckey, mbid, rels, ts }, `rels` the
+    //                  parsed performance relations (`[]` = "no work"). The
+    //                  "Recording of" column's L2 cache (_recOfIdbGet/_recOfIdbPut).
+    //
+    //     'artist-works' — added in version 4. Keyed by `artist` (MBID).
+    //                  Value: { artist, works, ts, source }: the artist's work
+    //                  list behind the "Recording of" suggestions.
+    //
     // Three-tier lookup for image blobs (_artFetchCachedImage):
     //   Tier 1 — per-session in-memory Map (_artIdbMemCache): zero overhead,
     //            covers sort/filter re-renders within the same page load.
@@ -103585,7 +105879,7 @@ a { color: #1565c0; }`;
 
     /** DB name and current schema version. */
     const _ART_IDB_NAME    = 'vz-mb-saed-art-cache';
-    const _ART_IDB_VERSION = 3;  // bumped to add rel-ws2, then ms-rec-len store
+    const _ART_IDB_VERSION = 4;  // bumped to add rel-ws2, then ms-rec-len, then recof-ws2 + artist-works
 
     /**
      * Cached IDB database connection promise.
@@ -103725,6 +106019,14 @@ a { color: #1565c0; }`;
                 if (!db.objectStoreNames.contains('ms-rec-len')) {
                     db.createObjectStore('ms-rec-len', { keyPath: 'gid' });
                 }
+                // "Recording of" column (version 4): per-recording work
+                // relations, and per-artist work lists for the suggestions.
+                if (!db.objectStoreNames.contains('recof-ws2')) {
+                    db.createObjectStore('recof-ws2', { keyPath: 'ckey' });
+                }
+                if (!db.objectStoreNames.contains('artist-works')) {
+                    db.createObjectStore('artist-works', { keyPath: 'artist' });
+                }
             };
             req.onsuccess  = (ev) => {
                 const db = ev.target.result;
@@ -103831,6 +106133,575 @@ a { color: #1565c0; }`;
                 } catch (_) { resolve(0); }
             }))
             .catch(() => 0);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 💾 Browser cache overview (_idbo*) — everything the script keeps in this
+    // browser's IndexedDB, for the user: per part (object store) how many
+    // entries, roughly how much space, how old, what is past its keep time;
+    // a donut of the space; a drill-down with every key; deletes (expired,
+    // older than N days, one part, one entry, everything), each confirmed
+    // inside the dialog. Opened from ⚙️ Settings (sa_fn_idb_overview), the 📊
+    // Statistics panel, a progress card's 💾 Cache rows and the Tampermonkey
+    // menu. Mockup agreed 2026-10-10 (https://claude.ai/artifact/4UsPjhkP1gN6cb9wCnQw72).
+    // Talks to nothing but IndexedDB.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /** Days from a numeric TTL setting, `fallback` when unset/invalid. */
+    function _idboDays(v, fallback) {
+        return typeof v === 'number' && v > 0 ? v : fallback;
+    }
+
+    /**
+     * The parts the overview lists, in display order: which database, which
+     * store, a user-facing name, a colour, how its records stamp their age, and
+     * its keep time. A function, not a const, so nothing here is read before
+     * the database constants it names are initialised.
+     *
+     * @returns {Array<{id: string, db: string, dbLabel: string, store: string, label: string,
+     *                  color: string, ttlDays: number, open: function(): Promise<IDBDatabase>}>}
+     */
+    function _idboParts() {
+        const art = { db: _ART_IDB_NAME, dbLabel: 'art cache', open: _artOpenIdb };
+        const dp = { db: _DP_IDB_NAME, dbLabel: 'link previews', open: _dpOpenIdb };
+        const S = Lib.settings;
+        return [
+            { ...art, id: 'images', store: 'images', label: 'Cover art images', color: '#b5654a', ttlDays: _idboDays(S.sa_art_idb_image_ttl_days, 30) },
+            { ...art, id: 'metadata', store: 'metadata', label: 'Cover art lists', color: '#d49a5a', ttlDays: _idboDays(S.sa_art_idb_metadata_ttl_days, 30) },
+            { ...art, id: 'rel-ws2', store: 'rel-ws2', label: 'Relationships', color: '#4f7f9a', ttlDays: _idboDays(S.sa_rel_idb_ttl_days, 30) },
+            { ...art, id: 'ms-rec-len', store: 'ms-rec-len', label: 'Millisecond lengths', color: '#6f8f5e', ttlDays: _idboDays(S.sa_ms_idb_ttl_days, 30) },
+            { ...art, id: 'recof-ws2', store: 'recof-ws2', label: 'Recording of', color: '#8a6ca0', ttlDays: _idboDays(S.sa_recording_of_ttl_days, 30) },
+            { ...art, id: 'artist-works', store: 'artist-works', label: 'Artist work lists', color: '#c2a64a', ttlDays: _idboDays(S.sa_recording_of_works_ttl_days, 30) },
+            { ...dp, id: 'pages', store: 'pages', label: 'Link preview pages', color: '#7a8c8c', ttlDays: _DP_TTL_MS / 86400000 },
+        ];
+    }
+
+    /**
+     * When a record was stored: the stores stamp `storedAt` (artwork), `ts`
+     * (Web Service answers) or `at` (link previews).
+     * @param {*} v - The stored value.
+     * @returns {number} ms since the epoch, 0 when unknown.
+     */
+    function _idboStamp(v) {
+        return (v && (v.storedAt || v.ts || v.at)) || 0;
+    }
+
+    /**
+     * A rough size of one record: its JSON length, plus the byte size of any
+     * Blob in it (artwork images). An estimate — the browser's own on-disk
+     * size includes indexes and compression — but good enough to compare parts.
+     *
+     * @param {*} v
+     * @returns {number}
+     */
+    function _idboBytes(v) {
+        let blobs = 0;
+        let json = '';
+        try {
+            json = JSON.stringify(v, (k, x) => {
+                if (typeof Blob !== 'undefined' && x instanceof Blob) { blobs += x.size; return 0; }
+                return x;
+            }) || '';
+        } catch (_) { /* a value JSON cannot represent: count the blobs only */ }
+        return json.length + blobs;
+    }
+
+    /**
+     * Age bucket of a record: 0 under a day, 1 up to 7 days, 2 older but
+     * within its keep time, 3 past its keep time (expired).
+     * @param {number} ageMs
+     * @param {number} ttlDays
+     * @returns {number}
+     */
+    function _idboBucket(ageMs, ttlDays) {
+        if (ageMs > ttlDays * 86400000) return 3;
+        if (ageMs < 86400000) return 0;
+        if (ageMs < 7 * 86400000) return 1;
+        return 2;
+    }
+
+    /**
+     * Reads one part completely with a cursor: count, size estimate, age
+     * buckets, oldest/newest, and every key with its age and size (the
+     * drill-down's list). A part whose database or store cannot be opened
+     * reads as empty with `error` set.
+     *
+     * @param {object} part - One `_idboParts()` entry.
+     * @returns {Promise<object>}
+     */
+    function _idboScanPart(part) {
+        const out = { ...part, count: 0, bytes: 0, buckets: [0, 0, 0, 0], oldest: 0, newest: 0, keys: [], error: '' };
+        return part.open().then(db => new Promise(resolve => {
+            let req;
+            try {
+                req = db.transaction(part.store, 'readonly').objectStore(part.store).openCursor();
+            } catch (err) {
+                out.error = err.message || String(err);
+                resolve(out);
+                return;
+            }
+            const now = Date.now();
+            req.onsuccess = (ev) => {
+                const c = ev.target.result;
+                if (!c) { resolve(out); return; }
+                const ts = _idboStamp(c.value);
+                const bytes = _idboBytes(c.value);
+                out.count++;
+                out.bytes += bytes;
+                out.buckets[_idboBucket(ts ? now - ts : Infinity, part.ttlDays)]++;
+                if (ts && (!out.oldest || ts < out.oldest)) out.oldest = ts;
+                if (ts > out.newest) out.newest = ts;
+                out.keys.push({ key: c.primaryKey, ts, bytes });
+                c.continue();
+            };
+            req.onerror = () => { out.error = 'read failed'; resolve(out); };
+        })).catch(err => { out.error = err && err.message ? err.message : 'not available'; return out; });
+    }
+
+    /**
+     * Deletes the records of one part for which `keep` answers false, in one
+     * transaction. `keep` gets the record's stamp and key.
+     *
+     * @param {object} part
+     * @param {function(number, *): boolean} doomed - true = delete.
+     * @returns {Promise<number>} How many were deleted.
+     */
+    function _idboDeleteWhere(part, doomed) {
+        return part.open().then(db => new Promise(resolve => {
+            let n = 0;
+            const req = db.transaction(part.store, 'readwrite').objectStore(part.store).openCursor();
+            req.onsuccess = (ev) => {
+                const c = ev.target.result;
+                if (!c) { resolve(n); return; }
+                if (doomed(_idboStamp(c.value), c.primaryKey)) { c.delete(); n++; }
+                c.continue();
+            };
+            req.onerror = () => resolve(n);
+        })).catch(() => 0);
+    }
+
+    /**
+     * Empties one part.
+     * @param {object} part
+     * @returns {Promise<void>}
+     */
+    function _idboClear(part) {
+        return part.open().then(db => new Promise(resolve => {
+            const tx = db.transaction(part.store, 'readwrite');
+            tx.objectStore(part.store).clear();
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => resolve();
+        })).catch(() => {});
+    }
+
+    /** Dialog state while it is open. */
+    const _idbo = { el: null, parts: [], pick: 'images', pending: null, opener: null, estimate: null, query: '' };
+
+    /**
+     * Formats a byte count.
+     * @param {number} b
+     * @returns {string}
+     */
+    function _idboFmtB(b) {
+        if (b >= 1e9) return `${(b / 1e9).toFixed(2)} GB`;
+        if (b >= 1e6) return `${(b / 1e6).toFixed(1)} MB`;
+        if (b >= 1e3) return `${Math.round(b / 1e3)} kB`;
+        return `${Math.round(b)} B`;
+    }
+
+    /**
+     * Formats an age in ms as hours or days.
+     * @param {number} ms
+     * @returns {string}
+     */
+    function _idboFmtAge(ms) {
+        if (!ms || ms < 0) return '—';
+        const d = ms / 86400000;
+        if (d < 1) return `${Math.max(1, Math.round(d * 24))} h`;
+        return `${Math.round(d)} day${Math.round(d) === 1 ? '' : 's'}`;
+    }
+
+    /** Injects the dialog's stylesheet once (lazily, so no page carries it unused). */
+    function _idboEnsureStyle() {
+        if (document.getElementById('mb-idbo-style')) return;
+        const st = GM_addStyle(`
+            #mb-idb-overview { position: fixed; inset: 0; z-index: 2147483200; background: rgba(40, 30, 20, 0.35); display: flex; align-items: flex-start; justify-content: center; padding: 4vh 12px; overflow: auto; }
+            #mb-idb-overview .mb-idbo-dlg { width: min(1040px, 100%); background: #fbf8f1; color: #2b2622; border: 1px solid #d9cfbd; border-radius: 4px; font: 14px/1.5 Georgia, "Times New Roman", Times, serif; box-shadow: 0 1px 0 #e9e1d1, 0 18px 40px -16px rgba(60,40,20,0.45); outline: none; }
+            #mb-idb-overview .mb-idbo-h { display: flex; align-items: baseline; gap: 10px; padding: 12px 16px; border-bottom: 1px solid #d9cfbd; flex-wrap: wrap; }
+            #mb-idb-overview .mb-idbo-h b { font-size: 1.18em; flex: 1; min-width: 12ch; }
+            #mb-idb-overview .mb-idbo-dim { color: #7a6d5c; font-size: 0.88em; }
+            #mb-idb-overview .mb-idbo-b { padding: 14px 16px 16px; display: grid; gap: 16px; }
+            #mb-idb-overview .mb-idbo-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+            #mb-idb-overview .mb-idbo-stat { border: 1px solid #d9cfbd; border-radius: 3px; padding: 8px 10px; background: #fffdf8; }
+            #mb-idb-overview .mb-idbo-stat .k { font: 600 11px/1.3 system-ui, Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.06em; color: #7a6d5c; }
+            #mb-idb-overview .mb-idbo-stat .v { font-size: 1.35em; font-weight: 700; font-variant-numeric: tabular-nums; }
+            #mb-idb-overview .mb-idbo-quota { height: 6px; background: #ece4d4; border-radius: 3px; overflow: hidden; margin-top: 5px; display: flex; }
+            #mb-idb-overview .mb-idbo-quota span { display: block; height: 100%; }
+            #mb-idb-overview .mb-idbo-top { display: grid; grid-template-columns: minmax(0, 240px) minmax(0, 1fr); gap: 18px; align-items: center; }
+            #mb-idb-overview .mb-idbo-donut { position: relative; max-width: 240px; margin: 0 auto; width: 100%; }
+            #mb-idb-overview .mb-idbo-donut svg { width: 100%; height: auto; display: block; }
+            #mb-idb-overview .mb-idbo-donut-c { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; }
+            #mb-idb-overview .mb-idbo-donut-c b { font-size: 1.4em; font-variant-numeric: tabular-nums; }
+            #mb-idb-overview .mb-idbo-seg { cursor: pointer; opacity: 0.4; transition: opacity 0.15s; }
+            #mb-idb-overview .mb-idbo-seg:hover, #mb-idb-overview .mb-idbo-seg.on, #mb-idb-overview .mb-idbo-seg:focus-visible { opacity: 1; outline: none; }
+            #mb-idb-overview .mb-idbo-legend { display: grid; gap: 3px; }
+            #mb-idb-overview .mb-idbo-legend button { all: unset; display: grid; grid-template-columns: 12px minmax(0,1fr) max-content max-content; gap: 8px; align-items: center; padding: 3px 6px; border-radius: 3px; cursor: pointer; font-variant-numeric: tabular-nums; }
+            #mb-idb-overview .mb-idbo-legend button:hover, #mb-idb-overview .mb-idbo-legend button.on { background: #f1e9da; }
+            #mb-idb-overview .mb-idbo-legend button:focus-visible { outline: 2px solid #2f5f9e; }
+            #mb-idb-overview .mb-idbo-sw { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+            #mb-idb-overview .mb-idbo-key { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.86em; color: #7a6d5c; margin-bottom: 6px; }
+            #mb-idb-overview .mb-idbo-key i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; }
+            #mb-idb-overview .mb-idbo-scroll { overflow-x: auto; border: 1px solid #d9cfbd; border-radius: 3px; background: #fffdf8; }
+            #mb-idb-overview table.mb-idbo-t { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 13px; }
+            #mb-idb-overview table.mb-idbo-t th { font: 600 11px/1.3 system-ui, Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.05em; color: #7a6d5c; text-align: left; padding: 7px 8px; border-bottom: 1px solid #d9cfbd; white-space: nowrap; background: none; }
+            #mb-idb-overview table.mb-idbo-t td { padding: 6px 8px; border-bottom: 1px solid #efe7d8; vertical-align: middle; font-variant-numeric: tabular-nums; }
+            #mb-idb-overview table.mb-idbo-t tr.mb-idbo-row { cursor: pointer; }
+            #mb-idb-overview table.mb-idbo-t tr.mb-idbo-row:hover td, #mb-idb-overview table.mb-idbo-t tr.on td { background: #f6efe1; }
+            #mb-idb-overview .r { text-align: right; }
+            #mb-idb-overview .mb-idbo-agebar { display: flex; height: 9px; width: 130px; border-radius: 2px; overflow: hidden; border: 1px solid #d9cfbd; background: #fff; }
+            #mb-idb-overview .mb-idbo-agebar span, #mb-idb-overview .mb-idbo-hbar { display: block; height: 100%; }
+            #mb-idb-overview .mb-idbo-who small { display: block; color: #7a6d5c; font: 11px ui-monospace, Consolas, monospace; }
+            #mb-idb-overview .mb-idbo-act { font: 600 11.5px/1 system-ui, Arial, sans-serif; padding: 5px 8px; border-radius: 3px; border: 1px solid #cbbfa9; background: #fff; color: #2b2622; cursor: pointer; box-shadow: 0 1px 0 #cbbfa9; white-space: nowrap; }
+            #mb-idb-overview .mb-idbo-act:hover { background: #f4eee2; }
+            #mb-idb-overview .mb-idbo-act.danger { color: #9b2218; border-color: #e2b4ae; }
+            #mb-idb-overview .mb-idbo-act.primary { color: #2f5f9e; border-color: #b9c9e3; }
+            #mb-idb-overview .mb-idbo-act:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 1px; }
+            #mb-idb-overview .mb-idbo-acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+            #mb-idb-overview .mb-idbo-pill { display: inline-block; border: 1px solid #d9cfbd; border-radius: 3px; padding: 0 5px; font: 700 10.5px/1.6 system-ui, Arial, sans-serif; letter-spacing: 0.04em; text-transform: uppercase; background: #efe6d4; color: #4a3f33; }
+            #mb-idb-overview .mb-idbo-pill.warn { color: #9a6a00; background: #fbf3dc; border-color: #e3d09a; }
+            #mb-idb-overview .mb-idbo-drill { border: 1px solid #d9cfbd; border-radius: 3px; padding: 12px; background: #fffdf8; display: grid; gap: 12px; }
+            #mb-idb-overview .mb-idbo-drill h3 { margin: 0; font-size: 1.05em; border: none; padding: 0; }
+            #mb-idb-overview .mb-idbo-grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+            #mb-idb-overview .mb-idbo-hist { display: grid; grid-template-columns: max-content minmax(0,1fr) max-content; gap: 4px 8px; align-items: center; font-size: 0.9em; font-variant-numeric: tabular-nums; }
+            #mb-idb-overview .mb-idbo-hbar { height: 12px; border-radius: 2px; min-width: 1px; }
+            #mb-idb-overview .mb-idbo-keys { font: 12px/1.45 ui-monospace, Consolas, monospace; max-height: 14em; overflow: auto; border: 1px solid #efe7d8; border-radius: 3px; }
+            #mb-idb-overview .mb-idbo-keys > div { display: grid; grid-template-columns: minmax(0,1fr) max-content max-content max-content; gap: 10px; padding: 3px 6px; border-bottom: 1px solid #f3ecdf; align-items: center; }
+            #mb-idb-overview .mb-idbo-keys > div > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            #mb-idb-overview .mb-idbo-x { all: unset; cursor: pointer; color: #9b2218; font: 700 12px/1 system-ui, Arial, sans-serif; padding: 0 4px; }
+            #mb-idb-overview .mb-idbo-x:focus-visible { outline: 2px solid #2f5f9e; }
+            #mb-idb-overview input.mb-idbo-f, #mb-idb-overview select.mb-idbo-f { font: 13px system-ui, Arial, sans-serif; padding: 4px 6px; border: 1px solid #cbbfa9; border-radius: 3px; background: #fff; color: #2b2622; }
+            #mb-idb-overview .mb-idbo-confirm { border: 1px solid #e2b4ae; background: #fbefec; border-radius: 3px; padding: 8px 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+            #mb-idb-overview .mb-idbo-toast { font-size: 0.9em; color: #3f7a3a; min-height: 1.4em; }
+            #mb-idb-overview .mb-idbo-f-row { padding: 10px 16px; border-top: 1px solid #d9cfbd; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; font-size: 0.88em; color: #7a6d5c; }
+            @media (max-width: 720px) { #mb-idb-overview .mb-idbo-top, #mb-idb-overview .mb-idbo-grid2 { grid-template-columns: 1fr; } }
+        `);
+        st.id = 'mb-idbo-style';
+    }
+
+    /** Age-bucket colours and labels, shared by the bars, the key and the histogram. */
+    const _IDBO_AGE = [
+        ['#5f9a59', 'under 1 day'], ['#9cbf73', '1–7 days'], ['#d9c26a', 'older, within keep time'], ['#c0503f', 'past keep time (expired)']
+    ];
+
+    /**
+     * Opens the overview (or brings an open one forward) and scans every
+     * part. Safe on any page and any host: it only reads IndexedDB.
+     *
+     * @param {?Element} [opener] - Focus returns here on close.
+     * @returns {Promise<void>}
+     */
+    async function _idbOverviewOpen(opener) {
+        _idboEnsureStyle();
+        if (!_idbo.el || !_idbo.el.isConnected) {
+            const el = document.createElement('div');
+            el.id = 'mb-idb-overview';
+            el.innerHTML = '<div class="mb-idbo-dlg" role="dialog" aria-modal="true" aria-labelledby="mb-idbo-title" tabindex="-1"></div>';
+            el.addEventListener('mousedown', (e) => { if (e.target === el) _idbOverviewClose(); });
+            el.addEventListener('click', _idboOnClick);
+            el.addEventListener('input', (e) => {
+                if (e.target.id === 'mb-idbo-q') { _idbo.query = e.target.value; _idboPaintKeys(); }
+            });
+            el.addEventListener('keydown', (e) => {
+                if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('mb-idbo-seg')) {
+                    e.preventDefault();
+                    _idbo.pick = e.target.dataset.part;
+                    _idboPaint();
+                }
+            });
+            document.body.appendChild(el);
+            _idbo.el = el;
+            window.addEventListener('keydown', _idboOnKey, true);
+        }
+        _idbo.opener = opener || document.activeElement;
+        _idbo.pending = null;
+        _idbo.parts = [];
+        _idboPaintShell('Reading the browser cache…');
+        _idbo.el.querySelector('.mb-idbo-dlg').focus();
+        await _idboRescan();
+    }
+
+    /** Closes the overview and gives focus back. */
+    function _idbOverviewClose() {
+        if (!_idbo.el) return;
+        window.removeEventListener('keydown', _idboOnKey, true);
+        _idbo.el.remove();
+        _idbo.el = null;
+        if (_idbo.opener && _idbo.opener.isConnected && typeof _idbo.opener.focus === 'function') _idbo.opener.focus();
+    }
+
+    /**
+     * Esc: cancels an open confirmation first, then closes the dialog.
+     * @param {KeyboardEvent} e
+     */
+    function _idboOnKey(e) {
+        if (e.key !== 'Escape' || !_idbo.el) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (_idbo.pending) { _idbo.pending = null; _idboPaintConfirm(); return; }
+        _idbOverviewClose();
+    }
+
+    /** Re-reads every part (and the browser's own estimate), then repaints. */
+    async function _idboRescan() {
+        const parts = _idboParts();
+        const scanned = [];
+        for (const p of parts) {
+            _idboPaintShell(`Reading “${p.label}”…`);
+            scanned.push(await _idboScanPart(p));
+        }
+        try {
+            _idbo.estimate = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null;
+        } catch (_) {
+            _idbo.estimate = null;
+        }
+        _idbo.parts = scanned;
+        if (!_idbo.parts.find(p => p.id === _idbo.pick && p.count) && _idbo.parts.find(p => p.count)) {
+            _idbo.pick = _idbo.parts.find(p => p.count).id;
+        }
+        _idboPaint();
+    }
+
+    /**
+     * Paints the frame alone, with a status line (while scanning).
+     * @param {string} status
+     */
+    function _idboPaintShell(status) {
+        if (!_idbo.el) return;
+        const dlg = _idbo.el.querySelector('.mb-idbo-dlg');
+        if (_idbo.parts.length) return; // keep the last full view while a rescan runs
+        dlg.innerHTML = `<div class="mb-idbo-h"><b id="mb-idbo-title">💾 Browser cache</b><span class="mb-idbo-dim">${_ajEsc(location.hostname)} · this browser only · <kbd>Esc</kbd> closes</span></div>`
+            + `<div class="mb-idbo-b"><div class="mb-idbo-dim" data-mb-idbo-status>${_ajEsc(status)}</div></div>`;
+    }
+
+    /** Paints the whole dialog from `_idbo.parts`. */
+    function _idboPaint() {
+        if (!_idbo.el) return;
+        const parts = _idbo.parts;
+        const total = parts.reduce((s, p) => s + p.bytes, 0);
+        const keys = parts.reduce((s, p) => s + p.count, 0);
+        const expired = parts.reduce((s, p) => s + p.buckets[3], 0);
+        const fmtN = n => Number(n).toLocaleString('en-US');
+        const est = _idbo.estimate;
+        const sweep = _artIdbLastSweep.ts
+            ? `${new Date(_artIdbLastSweep.ts).toLocaleTimeString()} — removed ${fmtN(_artIdbLastSweep.deleted)}` : 'not run in this page yet';
+        const quota = est && est.quota
+            ? `<div class="mb-idbo-quota" title="this script / the rest of the site / free">`
+              + `<span style="width:${Math.min(100, total / est.quota * 100).toFixed(2)}%;background:#ba478f"></span>`
+              + `<span style="width:${Math.max(0, Math.min(100, ((est.usage || 0) - total) / est.quota * 100)).toFixed(2)}%;background:#c9bda6"></span></div>` : '';
+        const dbCount = new Set(parts.map(p => p.db)).size;
+        let h = `<div class="mb-idbo-h"><b id="mb-idbo-title">💾 Browser cache</b><span class="mb-idbo-dim">${_ajEsc(location.hostname)} · this browser only · <kbd>Esc</kbd> closes</span>`
+              + `<button type="button" class="mb-idbo-act" data-idbo="close" aria-label="Close">✕</button></div><div class="mb-idbo-b">`;
+        h += '<div class="mb-idbo-strip">'
+           + `<div class="mb-idbo-stat" data-idbo-stat="share"><div class="k">Script's share</div><div class="v">${_idboFmtB(total)}</div><div class="mb-idbo-dim">${parts.length} parts in ${dbCount} databases</div></div>`
+           + `<div class="mb-idbo-stat" data-idbo-stat="entries"><div class="k">Entries</div><div class="v">${fmtN(keys)}</div><div class="mb-idbo-dim">${fmtN(expired)} past their keep time</div></div>`
+           + `<div class="mb-idbo-stat"><div class="k">Site storage</div><div class="v">${est && est.usage ? _idboFmtB(est.usage) : '—'}</div><div class="mb-idbo-dim">${est && est.quota ? `of ${_idboFmtB(est.quota)} the browser allows` : 'the browser does not say'}</div>${quota}</div>`
+           + `<div class="mb-idbo-stat"><div class="k">Last clean-up</div><div class="v" style="font-size:1em">${_ajEsc(sweep)}</div><div class="mb-idbo-dim">expired entries are removed in the background</div></div>`
+           + '</div>';
+        h += `<div class="mb-idbo-top"><div class="mb-idbo-donut">${_idboDonut(parts, total)}</div><div class="mb-idbo-legend">`
+           + parts.map(p => `<button type="button" data-part="${p.id}" class="${p.id === _idbo.pick ? 'on' : ''}">`
+               + `<span class="mb-idbo-sw" style="background:${p.color}"></span><span>${_ajEsc(p.label)} <span class="mb-idbo-dim">· ${_ajEsc(p.dbLabel)}</span></span>`
+               + `<span class="mb-idbo-dim r">${_idboFmtB(p.bytes)}</span><span class="r"><b>${total ? (p.bytes / total * 100).toFixed(1) : '0.0'} %</b></span></button>`).join('')
+           + '</div></div>';
+        h += '<div><div class="mb-idbo-key">' + _IDBO_AGE.map(([c, l]) => `<span><i style="background:${c}"></i>${l}</span>`).join('') + '</div>'
+           + '<div class="mb-idbo-scroll"><table class="mb-idbo-t"><thead><tr><th>Part</th><th class="r">Entries</th><th class="r">Size</th><th>Age</th><th class="r">Oldest</th><th class="r">Kept</th><th>Actions</th></tr></thead><tbody>'
+           + parts.map(p => {
+               const n = p.count || 1;
+               const bar = p.buckets.map((c, i) => `<span style="width:${c / n * 100}%;background:${_IDBO_AGE[i][0]}"></span>`).join('');
+               const tip = p.buckets.map((c, i) => `${_IDBO_AGE[i][1]}: ${fmtN(c)}`).join(' · ');
+               return `<tr class="mb-idbo-row${p.id === _idbo.pick ? ' on' : ''}" data-part="${p.id}">`
+                   + `<td><div class="mb-idbo-who"><span class="mb-idbo-sw" style="background:${p.color}"></span> ${_ajEsc(p.label)}<small>${_ajEsc(p.dbLabel)} · ${_ajEsc(p.store)}${p.error ? ' · ' + _ajEsc(p.error) : ''}</small></div></td>`
+                   + `<td class="r" data-idbo-count>${fmtN(p.count)}</td><td class="r">${_idboFmtB(p.bytes)}</td>`
+                   + `<td><div class="mb-idbo-agebar" title="${_ajEsc(tip)}">${bar}</div></td>`
+                   + `<td class="r">${p.oldest ? _idboFmtAge(Date.now() - p.oldest) : '—'}</td><td class="r">${Math.round(p.ttlDays)} days</td>`
+                   + '<td><div class="mb-idbo-acts">'
+                   + (p.buckets[3] ? `<button type="button" class="mb-idbo-act primary" data-idbo="expired" data-part="${p.id}">Delete ${fmtN(p.buckets[3])} expired</button>` : '<span class="mb-idbo-pill">nothing expired</span>')
+                   + (p.count ? `<button type="button" class="mb-idbo-act danger" data-idbo="clear" data-part="${p.id}">Clear</button>` : '')
+                   + '</div></td></tr>';
+           }).join('')
+           + '</tbody></table></div></div>';
+        h += '<div class="mb-idbo-drill" data-idbo-drill></div>';
+        h += '<div data-idbo-confirm></div><div class="mb-idbo-toast" aria-live="polite" data-idbo-toast></div></div>';
+        h += '<div class="mb-idbo-f-row"><div class="mb-idbo-acts">'
+           + `<button type="button" class="mb-idbo-act primary" data-idbo="all-expired"${expired ? '' : ' disabled'}>Delete everything expired</button>`
+           + '<span class="mb-idbo-acts">Delete entries older than <select class="mb-idbo-f" id="mb-idbo-older" aria-label="Age">'
+           + '<option value="7">7 days</option><option value="30" selected>30 days</option><option value="90">90 days</option></select>'
+           + '<button type="button" class="mb-idbo-act" data-idbo="older">Delete</button></span>'
+           + `<button type="button" class="mb-idbo-act danger" data-idbo="all"${keys ? '' : ' disabled'}>Clear all</button></div>`
+           + '<span>Sizes are estimates. The browser counts the whole site, MusicBrainz\'s own storage included. This page keeps what it already loaded.</span></div>';
+        const dlg = _idbo.el.querySelector('.mb-idbo-dlg');
+        const toast = (dlg.querySelector('[data-idbo-toast]') || {}).textContent || '';
+        dlg.innerHTML = h;
+        dlg.querySelector('[data-idbo-toast]').textContent = toast;
+        _idboPaintDrill();
+        _idboPaintConfirm();
+    }
+
+    /**
+     * The donut: one arc per part with data, a minimum visible arc for tiny
+     * parts, the picked part's size and share in the middle.
+     * @param {Array<object>} parts
+     * @param {number} total
+     * @returns {string} SVG markup.
+     */
+    function _idboDonut(parts, total) {
+        const R = 80, C = 2 * Math.PI * R;
+        const withData = parts.filter(p => p.bytes > 0);
+        const pick = parts.find(p => p.id === _idbo.pick) || parts[0];
+        if (!withData.length) {
+            return '<svg viewBox="0 0 220 220" role="img" aria-label="The cache is empty"><circle r="80" cx="110" cy="110" fill="none" stroke="#e7dfcf" stroke-width="34"/></svg>'
+                 + '<div class="mb-idbo-donut-c"><b>empty</b></div>';
+        }
+        const fr = withData.map(p => Math.max(p.bytes / total, 0.012));
+        const sum = fr.reduce((a, b) => a + b, 0);
+        let off = 0;
+        const segs = withData.map((p, i) => {
+            const len = fr[i] / sum * C;
+            const seg = `<circle class="mb-idbo-seg${p.id === _idbo.pick ? ' on' : ''}" data-part="${p.id}" r="${R}" cx="110" cy="110" fill="none" stroke="${p.color}" stroke-width="34"`
+                + ` stroke-dasharray="${Math.max(0.5, len - 1.5).toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 110 110)"`
+                + ` tabindex="0" role="button" aria-label="${_ajEsc(p.label)}: ${_idboFmtB(p.bytes)}"><title>${_ajEsc(p.label)} — ${_idboFmtB(p.bytes)}, ${p.count.toLocaleString('en-US')} entries</title></circle>`;
+            off += len;
+            return seg;
+        }).join('');
+        return `<svg viewBox="0 0 220 220">${segs}</svg><div class="mb-idbo-donut-c"><b>${_idboFmtB(pick.bytes)}</b>`
+             + `<span class="mb-idbo-dim">${_ajEsc(pick.label)}</span><span class="mb-idbo-dim">${total ? (pick.bytes / total * 100).toFixed(1) : '0.0'} %</span></div>`;
+    }
+
+    /** Paints the drill-down of the picked part. */
+    function _idboPaintDrill() {
+        const box = _idbo.el && _idbo.el.querySelector('[data-idbo-drill]');
+        const p = _idbo.parts.find(x => x.id === _idbo.pick);
+        if (!box || !p) return;
+        const max = Math.max(...p.buckets, 1);
+        const fmtN = n => Number(n).toLocaleString('en-US');
+        box.innerHTML = `<h3>${_ajEsc(p.label)} <span class="mb-idbo-pill">${_ajEsc(p.dbLabel)} · ${_ajEsc(p.store)}</span>`
+            + (p.buckets[3] ? ` <span class="mb-idbo-pill warn">${fmtN(p.buckets[3])} expired</span>` : '') + '</h3>'
+            + '<div class="mb-idbo-grid2"><div><div class="mb-idbo-hist">'
+            + p.buckets.map((c, i) => `<span>${_IDBO_AGE[i][1]}</span><div class="mb-idbo-hbar" style="width:${c / max * 100}%;background:${_IDBO_AGE[i][0]}"></div><span>${fmtN(c)}</span>`).join('')
+            + `</div><p class="mb-idbo-dim" style="margin:8px 0 0">Average entry ${_idboFmtB(p.bytes / Math.max(1, p.count))}. Entries older than ${Math.round(p.ttlDays)} days are asked for again the next time they are needed.</p></div>`
+            + `<div><div class="mb-idbo-acts" style="margin-bottom:6px"><input class="mb-idbo-f" id="mb-idbo-q" placeholder="Find an entry…" aria-label="Find an entry" value="${_ajEsc(_idbo.query)}"><span class="mb-idbo-dim">${fmtN(p.count)} entries</span></div>`
+            + '<div class="mb-idbo-keys" data-idbo-keys></div></div></div>';
+        _idboPaintKeys();
+    }
+
+    /** Paints the picked part's key list, filtered by the search box (first 200 matches). */
+    function _idboPaintKeys() {
+        const box = _idbo.el && _idbo.el.querySelector('[data-idbo-keys]');
+        const p = _idbo.parts.find(x => x.id === _idbo.pick);
+        if (!box || !p) return;
+        const q = _idbo.query.trim().toLowerCase();
+        const hits = q ? p.keys.filter(k => String(k.key).toLowerCase().includes(q)) : p.keys;
+        const now = Date.now();
+        box.innerHTML = hits.slice(0, 200).map((k, i) => `<div data-idbo-key-row><span title="${_ajEsc(String(k.key))}">${_ajEsc(String(k.key))}</span>`
+            + `<span>${k.ts ? _idboFmtAge(now - k.ts) : '—'}</span><span>${_idboFmtB(k.bytes)}</span>`
+            + `<button type="button" class="mb-idbo-x" data-idbo="key" data-i="${p.keys.indexOf(k)}" aria-label="Delete ${_ajEsc(String(k.key))}">✕</button></div>`).join('')
+            + (hits.length > 200 ? `<div><span class="mb-idbo-dim">… ${(hits.length - 200).toLocaleString('en-US')} more — type to narrow</span><span></span><span></span><span></span></div>` : '')
+            + (!hits.length ? '<div><span class="mb-idbo-dim">nothing here</span><span></span><span></span><span></span></div>' : '');
+    }
+
+    /** Paints (or removes) the in-dialog confirmation. */
+    function _idboPaintConfirm() {
+        const box = _idbo.el && _idbo.el.querySelector('[data-idbo-confirm]');
+        if (!box) return;
+        if (!_idbo.pending) { box.innerHTML = ''; return; }
+        box.innerHTML = `<div class="mb-idbo-confirm" role="alertdialog"><span>${_ajEsc(_idbo.pending.text)}</span>`
+            + '<button type="button" class="mb-idbo-act danger" data-idbo="yes">Delete</button>'
+            + '<button type="button" class="mb-idbo-act" data-idbo="no">Cancel</button></div>';
+        box.querySelector('[data-idbo="yes"]').focus();
+    }
+
+    /**
+     * Asks before a delete; `run` performs it and resolves to the toast text.
+     * @param {string} text
+     * @param {function(): Promise<string>} run
+     */
+    function _idboAsk(text, run) {
+        _idbo.pending = { text, run };
+        _idboPaintConfirm();
+    }
+
+    /**
+     * One delegated click handler for the whole dialog.
+     * @param {MouseEvent} e
+     */
+    function _idboOnClick(e) {
+        const t = e.target.closest('[data-idbo], [data-part]');
+        if (!t) return;
+        const act = t.dataset.idbo;
+        const fmtN = n => Number(n).toLocaleString('en-US');
+        const part = id => _idbo.parts.find(p => p.id === id);
+        const now = Date.now();
+        if (act === 'close') { _idbOverviewClose(); return; }
+        if (act === 'no') { _idbo.pending = null; _idboPaintConfirm(); return; }
+        if (act === 'yes') {
+            const job = _idbo.pending;
+            _idbo.pending = null;
+            _idboPaintConfirm();
+            if (job) job.run().then(msg => _idboRescan().then(() => {
+                const toast = _idbo.el && _idbo.el.querySelector('[data-idbo-toast]');
+                if (toast) toast.textContent = msg;
+            }));
+            return;
+        }
+        if (act === 'expired') {
+            const p = part(t.dataset.part);
+            _idboAsk(`Delete ${fmtN(p.buckets[3])} expired entries from “${p.label}”?`,
+                () => _idboDeleteWhere(p, ts => now - ts > p.ttlDays * 86400000).then(n => `Deleted ${fmtN(n)} entries from “${p.label}”.`));
+            return;
+        }
+        if (act === 'clear') {
+            const p = part(t.dataset.part);
+            _idboAsk(`Clear “${p.label}”: ${fmtN(p.count)} entries, about ${_idboFmtB(p.bytes)}? They are loaded again when needed.`,
+                () => _idboClear(p).then(() => `Cleared “${p.label}”, freed about ${_idboFmtB(p.bytes)}.`));
+            return;
+        }
+        if (act === 'key') {
+            const p = part(_idbo.pick);
+            const k = p && p.keys[Number(t.dataset.i)];
+            if (!k) return;
+            _idboAsk(`Delete this entry from “${p.label}”? ${String(k.key)}`,
+                () => _idboDeleteWhere(p, (ts, key) => key === k.key || String(key) === String(k.key)).then(n => `Deleted ${fmtN(n)} entr${n === 1 ? 'y' : 'ies'}.`));
+            return;
+        }
+        if (act === 'all-expired') {
+            const n = _idbo.parts.reduce((s, p) => s + p.buckets[3], 0);
+            _idboAsk(`Delete all ${fmtN(n)} expired entries, in every part?`,
+                () => Promise.all(_idbo.parts.map(p => _idboDeleteWhere(p, ts => now - ts > p.ttlDays * 86400000)))
+                    .then(ns => `Deleted ${fmtN(ns.reduce((a, b) => a + b, 0))} expired entries.`));
+            return;
+        }
+        if (act === 'older') {
+            const d = Number((_idbo.el.querySelector('#mb-idbo-older') || {}).value || 30);
+            _idboAsk(`Delete every entry older than ${d} days, in every part?`,
+                () => Promise.all(_idbo.parts.map(p => _idboDeleteWhere(p, ts => now - ts > d * 86400000)))
+                    .then(ns => `Deleted ${fmtN(ns.reduce((a, b) => a + b, 0))} entries older than ${d} days.`));
+            return;
+        }
+        if (act === 'all') {
+            const total = _idbo.parts.reduce((s, p) => s + p.bytes, 0);
+            _idboAsk(`Clear everything the script keeps in this browser (about ${_idboFmtB(total)})? Settings are not touched.`,
+                () => Promise.all(_idbo.parts.map(_idboClear)).then(() => 'Cleared every part.'));
+            return;
+        }
+        if (t.dataset.part && !e.target.closest('.mb-idbo-acts')) {
+            _idbo.pick = t.dataset.part;
+            _idbo.query = '';
+            _idboPaint();
+        }
+    }
+
+    /** The ⚙️ Settings entry (`sa_fn_idb_overview`). */
+    function _idbOverviewOpenFromSettings() {
+        _idbOverviewOpen(null);
     }
 
     /**
@@ -104113,11 +106984,17 @@ a { color: #1565c0; }`;
 
                 const relTtlMs = (Lib.settings.sa_rel_idb_ttl_days || 30) * 86400 * 1000;
                 const msTtlMs  = (Lib.settings.sa_ms_idb_ttl_days  || 30) * 86400 * 1000;
+                const _rd = Lib.settings.sa_recording_of_ttl_days;
+                const _wd = Lib.settings.sa_recording_of_works_ttl_days;
+                const recofTtlMs = (typeof _rd === 'number' && _rd > 0 ? _rd : 30) * 86400 * 1000;
+                const worksTtlMs = (typeof _wd === 'number' && _wd > 0 ? _wd : 30) * 86400 * 1000;
                 Promise.all([
                     sweepStore('images',     imgTtlMs),
                     sweepStore('metadata',   metaTtlMs),
                     sweepStore('rel-ws2',    relTtlMs),
                     sweepStore('ms-rec-len', msTtlMs),
+                    sweepStore('recof-ws2',  recofTtlMs),
+                    sweepStore('artist-works', worksTtlMs),
                 ]).then(() => {
                     _artIdbLastSweep = { deleted, ts: Date.now() };
                     Lib.debug('idb', `_artIdbSweepExpired: sweep complete — deleted ${deleted} expired record(s)`);
@@ -117686,6 +120563,42 @@ a { color: #1565c0; }`;
              */
             tipTextToHtml(text) {
                 return _tipTextToHtml(text);
+            },
+            /**
+             * The async job popup (`_aj*`), so a spec can register a stand-in
+             * provider and drive a job through the shipping framework without
+             * a network-backed feature in the way.
+             */
+            /**
+             * The table-work provider's recording calls (`_tw*`), so a spec can
+             * drive a LONG sort (over sortLargeArray()'s 5000-row chunking
+             * threshold) without a 5000-row fixture.
+             */
+            tableWork: {
+                sortBegin: (rows) => _twSortBegin(rows),
+                sortProgress: (pct) => _twSortProgress(pct),
+                sortEnd: () => _twSortEnd(),
+            },
+            /** The 💾 browser cache overview (`_idbo*`). */
+            idbOverview: {
+                open: () => _idbOverviewOpen(null),
+                close: () => _idbOverviewClose(),
+                /** @returns {Promise<Array<{id: string, count: number, expired: number, bytes: number}>>} A fresh scan, no dialog. */
+                scan: () => Promise.all(_idboParts().map(_idboScanPart))
+                    .then(ps => ps.map(p => ({ id: p.id, count: p.count, expired: p.buckets[3], bytes: p.bytes, error: p.error }))),
+            },
+            asyncPop: {
+                register: (key, provider) => _ajRegister(key, provider),
+                start: (key, scope, opts) => { _ajStart(key, scope || null, opts); },
+                log: (key, scope, msg, kind) => _ajLog(key, scope || null, msg, kind),
+                phase: (key, scope, phase) => _ajPhase(key, scope || null, phase),
+                finish: (key, scope, failed) => _ajFinish(key, scope || null, failed),
+                changed: (key, scope) => _ajChanged(key, scope || null),
+                hide: () => _ajHide(),
+                /** @returns {?string} The open job's id (`"<key>#<scope>"`), or null. */
+                openId: () => _ajPop.openId,
+                /** @returns {number} How many repaints ran, for the "free while closed" pin. */
+                repaints: () => _ajRepaint.count || 0
             },
             /**
              * Reserves `n` slots of the one MusicBrainz rate gate
