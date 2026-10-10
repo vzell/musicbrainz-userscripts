@@ -6,7 +6,7 @@
       {
         "label": "🚀 Feature",
         "items": [
-          "Typing a filter on a table of more than 1,000 rows no longer freezes the page. The filter now compares rows a few milliseconds at a time and lets the page respond in between, so the keys you type show at once; a key typed while a filter runs replaces it, and the replaced filter changes nothing. Previously a key typed during a filter waited up to 1.9 s (PERFORMANCE.org Step 39).",
+          "Typing a filter on a table of more than 1,000 rows freezes the page far less. The filter now compares rows a few milliseconds at a time and lets the page respond in between; a key typed while a filter runs replaces it, and the replaced filter changes nothing. Measured: the slowest key typed during a filter fell from 1.6-1.9 s to 0.1-0.5 s on single-table pages, and from about 0.9 s to 0.6 s on a 47-table page, where drawing the result is still one step (PERFORMANCE.org Step 39).",
           "The ⏳ Sorting and filtering card now shows a long filter while it runs: what you are filtering for, the rows compared so far and how many match; afterwards the comparing and drawing times; its Recent list notes a filter replaced by a newer one."
         ]
       },
