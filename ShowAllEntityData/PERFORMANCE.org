@@ -3829,7 +3829,15 @@ simply takes the generation.
 
 *Quick check* (one sample, not publishable; Env 2026-10-10T21:2xZ petri, as above):
 =artist-events= after last key 446 ms at 400 ms keys (was 909-963 ms), 702 ms at 150 ms
-keys (was 1052-1085 ms), worst key 200 ms. The A/B follows.
+keys (was 1052-1085 ms), worst key 200 ms.
+
+*Typed A/B of the whole branch at =b62597d=* (tests/MEASUREMENTS.org "Typed filtering,
+whole branch after Step 43", Env 2026-10-10T21:25Z-22:02Z, petri, both orders): the
+wait after the last key holds the plan's +10 % limit on every page (−13 to +7.2 %;
+=artist-events= at 400 ms 376-379 ms vs 385 ms); with keys landing in a pass the worst
+keystroke falls 73-90 % and the longest frame 74-86 %. The longest frame of a single
+pass (150 ms) falls 45-60 %: three of eight runs miss "≥50 %" — release groups both
+orders (195/193 → 105/107 ms) and =artist-events= order 2 (648 → 338 ms).
 
 *Tests.* ~filter-sliced.spec.js~: an outdated pass never draws, keeps its complete
 result, and the next pass compares only that result's rows; an outdated pass stores
