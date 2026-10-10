@@ -55241,7 +55241,38 @@ a { color: #1565c0; }`;
             if (cell.dataset.mbColTip === '1' && cell.title) data.videoTip = cell.title;
         }
         if (cell.dataset.mbWorkFlag) data.workFlag = cell.dataset.mbWorkFlag;
+        // "Recording of" cells: their identity lives on the <td> (class,
+        // data-mbid, data-recof), not in the HTML — without these a reloaded
+        // row could neither show its 🎼 glyph nor be loaded. Only a SETTLED
+        // state is kept; queued/loading/error reload as "not loaded".
+        if (cell.classList.contains('mb-recof-cell') || cell.classList.contains('mb-perfattr-cell')) {
+            data.recof = cell.classList.contains('mb-recof-cell') ? 'cell' : 'attr';
+            data.mbid = cell.dataset.mbid || null;
+            const st = cell.dataset.recof;
+            if (st === 'has' || st === 'none' || st === 'suggested') data.recofState = st;
+        }
         return data;
+    }
+
+    /**
+     * Re-marks a hydrated "Recording of" / "Performance attributes" cell from
+     * its saved record (`recof`, `mbid`, `recofState`, written by
+     * `_buildDiskCellData()`). A saved file is user-supplied data, so only the
+     * known values are accepted and the MBID must look like one.
+     *
+     * @param {HTMLTableCellElement} td - The reconstructed cell.
+     * @param {Object} cellData - Its saved record.
+     * @returns {void}
+     */
+    function _recOfRestoreCell(td, cellData) {
+        if (!cellData || (cellData.recof !== 'cell' && cellData.recof !== 'attr')) return;
+        td.classList.add(cellData.recof === 'cell' ? 'mb-recof-cell' : 'mb-perfattr-cell');
+        if (typeof cellData.mbid === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(cellData.mbid)) {
+            td.dataset.mbid = cellData.mbid;
+        }
+        if (cellData.recof === 'cell' && ['has', 'none', 'suggested'].includes(cellData.recofState)) {
+            td.dataset.recof = cellData.recofState;
+        }
     }
 
     /**
@@ -96417,8 +96448,12 @@ a { color: #1565c0; }`;
      */
     function _recOfInjectHeaders(theadRow) {
         const cells = Array.from(theadRow.cells);
-        if (cells.some(th => th.dataset.colName === _RECOF_COL)) return;
-        const nameTh = cells.find(th => (th.dataset.colName || th.textContent.trim()) === 'Name');
+        // By name OR text: a header rebuilt from a saved file (disk load)
+        // carries the text but no data-col-name — checking the dataset alone
+        // injected the pair a second time and shifted every later column.
+        const nameOf = th => th.dataset.colName || th.textContent.replace(/[\u21c5\u25b2\u25bc\u2702\u25b6\u25c0\u25a4]/g, '').trim();
+        if (cells.some(th => nameOf(th) === _RECOF_COL)) return;
+        const nameTh = cells.find(th => nameOf(th) === 'Name');
         if (!nameTh) return;
         const bg = Lib.settings.sa_ui_thead_th_injected_bg || '#b8b8d0';
         const mk = (name, tip) => {
@@ -102936,6 +102971,7 @@ a { color: #1565c0; }`;
                             // for the Video column's medium-format flag.
                             _restoreLenMismatchFlag(td, cellData);
                             _restoreVideoMediumFlag(td, cellData);
+                            _recOfRestoreCell(td, cellData);
                             _restoreNoWorkFlag(td, cellData);
                             tr.appendChild(td);
                         });
@@ -103098,6 +103134,7 @@ a { color: #1565c0; }`;
                         // the Video column's medium-format flag.
                         _restoreLenMismatchFlag(td, cellData);
                         _restoreVideoMediumFlag(td, cellData);
+                        _recOfRestoreCell(td, cellData);
                         _restoreNoWorkFlag(td, cellData);
                         if (_beforeFp !== null) {
                             const _afterFp = _caaArtDebugFingerprint(td.innerHTML);
@@ -103382,6 +103419,15 @@ a { color: #1565c0; }`;
                     `disk-load: restored discography arrays — official=${h3_official_category_header_array.length}` +
                     ` all=${h3_all_category_header_array.length}` +
                     ` non-official=${h3_non_official_category_header_array.length}`);
+            }
+
+            // A file saved before the "Recording of" columns existed (or with
+            // them switched off) carries no cells for them: the header must not
+            // gain them either, or every later column shifts by two.
+            if (activeRecordingOfColumns.length &&
+                !allRows.concat(...groupedRows.map(g => g.rows)).some(r => r.querySelector('td.mb-recof-cell'))) {
+                activeRecordingOfColumns = [];
+                Lib.debug('cache', 'disk-load: no "Recording of" cells in this file — columns not added');
             }
 
             // Render

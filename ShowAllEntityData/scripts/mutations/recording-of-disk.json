@@ -1,0 +1,26 @@
+[
+  {
+    "name": "the header guard checks data-col-name only",
+    "why": "The original defect: a header rebuilt from a file has no data-col-name, so the pair is injected again and every later column shifts.",
+    "edits": [{ "find": "        if (cells.some(th => nameOf(th) === _RECOF_COL)) return;", "replace": "        if (cells.some(th => th.dataset.colName === _RECOF_COL)) return;" }],
+    "spec": "tests/fixtures/recording-of-disk.spec.js", "grep": "each header once", "expect": "fail"
+  },
+  {
+    "name": "the cell identity is not saved",
+    "why": "_buildDiskCellData() drops recof/mbid/recofState, so a reloaded cell is a bare <td>.",
+    "edits": [{ "find": "            data.recof = cell.classList.contains('mb-recof-cell') ? 'cell' : 'attr';\n", "replace": "            return data;\n" }],
+    "spec": "tests/fixtures/recording-of-disk.spec.js", "grep": "each header once", "expect": "fail"
+  },
+  {
+    "name": "the cell identity is not restored",
+    "why": "_recOfRestoreCell() does nothing, so the loaded answer reads as never loaded and no row can be loaded.",
+    "edits": [{ "find": "        if (!cellData || (cellData.recof !== 'cell' && cellData.recof !== 'attr')) return;\n        td.classList.add(", "replace": "        if (true) return;\n        td.classList.add(" }],
+    "spec": "tests/fixtures/recording-of-disk.spec.js", "grep": "each header once", "expect": "fail"
+  },
+  {
+    "name": "a file without the cells still gets the columns",
+    "why": "The legacy check is gone: a file saved before the feature gains two headers but no cells.",
+    "edits": [{ "find": "                activeRecordingOfColumns = [];\n                Lib.debug('cache', 'disk-load: no \"Recording of\" cells in this file — columns not added');", "replace": "                Lib.debug('cache', 'disk-load: no \"Recording of\" cells in this file — columns not added');" }],
+    "spec": "tests/fixtures/recording-of-disk.spec.js", "grep": "saved before the columns existed", "expect": "fail"
+  }
+]

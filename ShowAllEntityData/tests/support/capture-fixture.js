@@ -151,6 +151,41 @@ const FIXTURES = [
         renderTimeout: 1800000, // 30 min — 24 pages
     },
     {
+        // Tom Petty and the Heartbreakers' recordings tab (?all=1) — 2512
+        // rows across 26 native MB pages, single-table: the FOURTH
+        // interaction-perf arm, and the first `artist-recordings` one, i.e.
+        // the first carrying the two columns INSERTED after "Name" ("Recording
+        // of" / "Performance attributes", features.recordingOf). Sized with
+        // scripts/probe-artist-recording-counts.py: 82 of a sample 100
+        // recordings carry a performance relation, so loading the column has
+        // real content to write. Springsteen-connected artists are all either
+        // far too small (Nils Lofgren 893, Little Steven 322) or far too big
+        // (Springsteen 74 567, The E Street Band 51 277).
+        //
+        // Captured with the columns COLLAPSED (no request — they only load on
+        // a click), so the fixture holds the empty cells a real page renders.
+        pageType: 'artist-recordings-petty',
+        url: 'https://musicbrainz.org/artist/f93dbc64-6f08-4033-bcc7-8a0bb4689849/recordings',
+        showAllButtonSelector: 'button[data-label="⊚ All recordings"]',
+        seedGmValues: { sa_enable_caa_pics: false, sa_enable_relationships_column: false },
+        renderTimeout: 1800000,
+    },
+    {
+        // The same page WITHOUT the two "Recording of" columns
+        // (sa_enable_recording_of_column: false). Measured against the entry
+        // above on the SAME branch in the same session, the ratio is exactly
+        // the cost of carrying the two extra cells per row through filter,
+        // sort and the 📊 dropdown. Local only: it has no spec consumer, and a
+        // second 2512-row blob in git history buys nothing a re-capture
+        // cannot.
+        pageType: 'artist-recordings-petty-nocols',
+        url: 'https://musicbrainz.org/artist/f93dbc64-6f08-4033-bcc7-8a0bb4689849/recordings',
+        showAllButtonSelector: 'button[data-label="⊚ All recordings"]',
+        seedGmValues: { sa_enable_caa_pics: false, sa_enable_relationships_column: false, sa_enable_recording_of_column: false },
+        renderTimeout: 1800000,
+        local: true,
+    },
+    {
         // Bruce Springsteen's own release-groups tab (?all=1&va=0) — 2239 rows
         // across 47 sub-tables, one native MB page. The THIRD interaction-perf
         // arm, and the first `tableMode: 'multi'` one: every metric committed

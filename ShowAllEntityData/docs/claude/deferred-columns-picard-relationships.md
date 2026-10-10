@@ -606,6 +606,22 @@ count per 5 s), this run's memory/IndexedDB/network split and the work list
 with its source and date — "N works … (cached <date>)" as the batch-add
 userscript shows it.
 
+**Save / Load from Disk** (found 2026-10-10 while building the perf fixture —
+the first disk-loaded table had both headers TWICE and every later column two
+places off). Three parts, all needed: `_recOfInjectHeaders()` recognises the
+pair by TEXT as well as `data-col-name` (a header rebuilt from a file has no
+dataset); `_buildDiskCellData()` saves `recof`/`mbid`/`recofState` and
+`_recOfRestoreCell()` puts them back from a whitelist (a file is user data);
+and a file whose rows carry no `td.mb-recof-cell` (saved before the feature, or
+with it off) loads with `activeRecordingOfColumns = []`, so no header is added
+over cells that do not exist. Spec `recording-of-disk.spec.js`, mutations
+`scripts/mutations/recording-of-disk.json` (4, all caught).
+
+**Measured cost** (tests/MEASUREMENTS.org, 2026-10-10, two pairs in opposite
+orders on `artist-recordings-petty`): header counts +5–8 %, sort +5–6 % on
+artist-recordings with the columns present but empty; filter and 📊 metrics
+within noise. The per-column residue of two more cells per row.
+
 Specs: `recording-of-column.spec.js`, `recording-of-suggest.spec.js`,
 `recording-of-uniq.spec.js`, `recording-of-third-party.spec.js` (the batch-add
 userscript's markup: until this, nothing pinned the `'wiencek'` eraser or the

@@ -21487,3 +21487,16 @@ as `wiencek-batch-performance` by the new `wire-live-userscript` skill.
    (artist-recordings has no committed perf baseline or harness config yet),
    and the live interop smoke run with the batch-add userscript (needs the
    user's go-ahead: it hits musicbrainz.org).
+9. **Perf baseline for artist-recordings, and a disk round-trip bug it exposed**
+   (2026-10-10T00:23Z–00:57Z, petri). New fixture: Tom Petty and the
+   Heartbreakers' recordings (2512 rows; sized with the new
+   `scripts/probe-artist-recording-counts.py`). The first capture, probed with
+   `scripts/probe-fixture-columns.js`, showed "Recording of" / "Performance
+   attributes" TWICE in the header after Load from Disk, every later column two
+   places off ("Artist" read ratings), and the cells without class/data-mbid.
+   Fixed (header guard by text, cell identity saved/restored, no columns for a
+   file without their cells), spec `recording-of-disk.spec.js`, fixture
+   re-captured. Then two arm pairs in opposite orders: header counts +5–8 %,
+   sort +5–6 %, the rest noise (tests/MEASUREMENTS.org). New tooling:
+   `scripts/run-perf-arms.py` + `reportProgress()` in the harness feed the
+   Claude Code status line (`~/.cache/sa-perf/status.json`).

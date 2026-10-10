@@ -645,6 +645,25 @@ async function measureHeaderCountsRestoreOnce(browser, config) {
  * @param {ReturnType<typeof toArm>} config
  * @returns {Promise<Object>}
  */
+/**
+ * Writes the run's progress to the file named by `SA_PERF_PROGRESS`, if set —
+ * `scripts/run-perf-arms.py` reads it for the Claude Code status line. A
+ * no-op otherwise; a failed write never fails the run.
+ *
+ * @param {number} step - Measurements finished so far.
+ * @param {number} total - Measurements in the whole run.
+ * @param {string} metric - The one just finished.
+ * @param {number} sample - 1-based sample number.
+ * @returns {void}
+ */
+function reportProgress(step, total, metric, sample) {
+    const file = process.env.SA_PERF_PROGRESS;
+    if (!file) return;
+    try {
+        fs.writeFileSync(file, JSON.stringify({ step, total, metric, sample, samples: SAMPLES, at: new Date().toISOString() }));
+    } catch (_) { /* progress is a convenience */ }
+}
+
 async function runAll(browser, config) {
     const globalFilterMs = [];
     const columnFilterMs = [];
@@ -654,21 +673,29 @@ async function runAll(browser, config) {
     const headerCountsInitialMs = [];
     const headerCountsRestoreMs = [];
 
+    const total = SAMPLES * 6;
+    let step = 0;
     for (let i = 0; i < SAMPLES; i++) {
         globalFilterMs.push(await withRetry('globalFilter',
             () => measureGlobalFilterOnce(browser, config, config.filterValues[i])));
+        reportProgress(++step, total, 'globalFilter', i + 1);
         columnFilterMs.push(await withRetry('columnFilter',
             () => measureColumnFilterOnce(browser, config, config.filterValues[i])));
+        reportProgress(++step, total, 'columnFilter', i + 1);
         sortMs.push(await withRetry('sort',
             () => measureSortOnce(browser, config, i % 2 === 0)));
+        reportProgress(++step, total, 'sort', i + 1);
         const { coldMs, warmMs } = await withRetry('uniqDrop',
             () => measureUniqDropColdWarmOnce(browser, config));
         uniqDropColdMs.push(coldMs);
         uniqDropWarmMs.push(warmMs);
+        reportProgress(++step, total, 'uniqDrop', i + 1);
         headerCountsInitialMs.push(await withRetry('headerCountsInitial',
             () => measureHeaderCountsInitialOnce(browser, config)));
+        reportProgress(++step, total, 'headerCountsInitial', i + 1);
         headerCountsRestoreMs.push(await withRetry('headerCountsRestore',
             () => measureHeaderCountsRestoreOnce(browser, config)));
+        reportProgress(++step, total, 'headerCountsRestore', i + 1);
     }
 
     return {
