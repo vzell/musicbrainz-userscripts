@@ -147,8 +147,6 @@ Switch the following booleans to default:true
 
 Add the same booleans also explicitely for mobile access, but with the defaults "false"
 
-
-* TODO Sidebar entries ==> collapsable h2/h3
 * DONE Images in NON-MB sites need viewer support
 
 create a new branch starting from the current:

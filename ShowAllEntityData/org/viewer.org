@@ -1,4 +1,4 @@
-* TODO add more features to the internal image viewer
+* DONE add more features to the internal image viewer
 
 Currently our userscript uses an internal viewer for viewing CAA and EAA images, see
 

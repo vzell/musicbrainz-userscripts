@@ -716,8 +716,7 @@ Answers to the open questions:
 
 then commit and push
 
-
-* generalize to URLs
+* DONE generalize to URLs
 
 Lots of MusicBrainz PTs, but also the non MB PTs have non MusicBrainz related URL links, e.g.:
 

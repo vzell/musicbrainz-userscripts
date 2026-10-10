@@ -1428,7 +1428,7 @@ The '<div id="mb-status-displays-wrapper"' line should be rendered ABOVE the h1 
 Right now it sits below the thin horizontal line (which is rendered below ht h1), [Image #4]
 I should sit above the thin horizontal line
 
-** summary
+** TODO summary
 
 I committed and pushed both commits to origin/feature/sticky-filter-bars, and did not merge into main.
 
@@ -1492,7 +1492,10 @@ ALWAYS be sticky too when srolling down.
 
 * TODO adapt the logging framework and orig page shine through from majkinetor
 
-* TODO add instrument icons support, ONLY the icon should show up in the UVD
+* TODO add instrument icons support (), ONLY the icon should show up in the UVD
+
+* TODO add sanojjanos event stuff in a nice popup (cachable)
+
 
 * TODO menu in non-MB pages for PTs
 
@@ -1500,13 +1503,54 @@ ALWAYS be sticky too when srolling down.
 
 * TODO non-MB detail pages
 
-* TODO integration with my onw BB userscript
+* TODO integration with my own BB userscript
 
-* TODO create a skill
+
+* DONE maybe stack the h3 header in the multi-table case when stickyness is involved
+
+* TODO IDB overwhole - show info to the end-user; age, storage, delete possibilities/merge, remove etc (nice gpahical overview, cake diagram), number of keys
+
+* TODO increase the IDB lifetime, non-MB sites should basically be there forever
+
+* TODO sync add non-MB images with the CAA framework, but unlimited
+
+* TODO storeage forever for non-M sites, except SL
+
+* TODO make sure we can always run completely OFFLINE (especially non-MB sites, excetp SL and BB)
+
+* TODO filter checkboxes for every filter dialog if not overwritten
+
+* TODO add support BB pages
+** https://brucebase.wikidot.com/system:recent-changes - change to 200 revisions per page beforehand
+** "Relations
+
+* generalize popup framework in general (if not yet done)
+
+* TODO label CBS
+
+https://musicbrainz.org/label/b8d33bec-92cc-40d9-bd92-4eb089b401a9
+
+#+begin_example
+@debug/CBS-initial.html - IP
+@debug/CBS-final.html - FRP
+#+end_example
 
 1.)
 
-There is a new third party userscript at @tests/fixtures/thirdPartyScripts/batch-add-recording-relationships.user.js
+the "Renamed to" Columbia should sit directly under the "~Label" line
+
+2.) SEEMS to be working when you wait long enough
+
+long running CAA fetches doesn't seem to be covered by the autoresize column feature:
+the CAA column break
+
+
+* TODO create a skill - There is a new third party userscript batch-add-recording-relationships
+** i
+
+1.)
+
+There is a new third party userscript at @tests/fixtures/thirdPartyScripts/batch-add-recording-relationships.user.js - [Image #10]
 
 a.)
 
@@ -1555,10 +1599,117 @@ f.)
 
 on the FRP also add a new multi-row column "Performance attributes"
 
+g.)
+
+lets additionally introduce a generic popup framework (show me some nice HTML based mockups) for async interactions like
+e.g this one (or the "Relationships"/"Length" column toggle one), which initially popsup and vanishes on "Esc" key
+press, but show up again when hovering over the toggle glyph of the async column, to get exhaustive info about what
+going on (again, "Esc" or moving the mouse away should close the popup)
+
+** summary
+
+Everything you asked for is built on feature/recording-of-column, and the full suite passes: 1,544 of 1,544 in 452 s. Nothing is pushed or merged. Per CLAUDE.md, merging waits until you've tried it in your browser and said yes.
+
+  What's on the branch (11 commits; changelog entries WIP.1–WIP.5)
+
+  - Skill wire-live-userscript. I ran it on Wiencek's script: it moved the file out of thirdPartyScripts/ into the gitignored live-userscripts/, then registered it as wiencek-batch-performance. The run also found that nothing tested how ShowAllEntityData handles that script's
+    markup; there is a spec for it now.
+  - "Recording of" and "Performance attributes" columns on artist recordings, right after Name. They only show data and never submit edits.
+    - Loading: nothing loads until you click a cell's 🎼 or the header's ▶🎼. Loading everything takes one browse page of the artist's recordings first, then whichever is cheaper for the rest: more pages, or one lookup per row.
+    - Display: attributes appear as "(cover/live)" in light green italics, and a medley gets one row per work.
+    - Suggestions: rows with no work get the closest work title as a suggestion. If the batch-add script already cached the artist's work list in your browser, it is reused (read only).
+    - 📊 sections: "Load state" and "Suggested work".
+  - Progress card (from the approved mockup), used by Recording of, Relationships and ⏱.
+    - Behaviour: opens when you start a job, Esc closes it while the job keeps running, hovering the toggle brings it back.
+    - Cache section: each card has a 💾 Cache section and a link to the cache overview.
+    - Long sorts: a sort over half a second opens it too. Filtering still can't show live progress because the page can't repaint while it compares rows; hover the status line afterwards for the timings.
+  - 💾 Browser cache overview (from the approved mockup): donut chart, entries, size, age and keep time per part, a searchable entry list, and deletes that each ask first. Open it from ⚙️ Settings, the Statistics panel, the Tampermonkey menu, or any progress card.
+
+  Testing: about 50 new fixture tests. Each feature has a mutation list (planted defects the tests must catch); everything is caught except three guards recorded as untestable, each with the reason in the list. The first full run failed 5 tests, all from my changes rather than
+  real defects: a hard-coded IndexedDB version in a test helper, and hard-coded column positions. Both are fixed.
+
+  Not done:
+  - No performance measurement for artist recordings yet; there's no baseline set up for that page type.
+  - I haven't run the batch-add script against the live site; that needs your go-ahead.
+  - The "merge" from your cache request isn't built. The mockup had no merge action and you approved it as drawn.
+
+  Decisions for you:
+  - "Merge": did you mean export/import of the cache between browsers?
+  - Push: may I push the branch?
+  - Faster filtering: a separate branch to make filtering hand control back to the page between batches of rows (so it can show live progress), measured first?
+
+  Open https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings and try:
+  1. "⊚ All recordings", then ▶🎼, and compare with what the batch-add script shows.
+  2. Click a single 🎼 cell.
+  3. Reload, then press ▶🎼 again: no new requests should go out.
+  4. ▶🔗 or ⏱ on another page.
+  5. ⚙️ → 💾 Browser cache overview.
+
+  The mockups are at ⧉ https://claude.ai/artifact/P8LJjFQkURd6a8fHYVwrhq (progress card) and ⧉ https://claude.ai/artifact/4UsPjhkP1gN6cb9wCnQw72 (cache overview). Your edits in org/*.org were left alone.
+
+** implement
+
+Everything works/look BEAUTIFUL, go on like that, you ROCK.. it's exactly the "look and feel" I like, write it down to
+CLAUDE.md for further projects
+
+0.)
+
+make a performance measurement for artist recordings, create a baseline
+
+1.)
+
+tell me the exact prompt (after a /clear) to go on with the following:
+
+i.)
+
+implement export/import ("merge") of the cache between browsers
 
 
+ii.)
+
+implement "Faster filtering": make filtering hand control back to the page between batches of rows (so it can show live progress), measured first
+
+2.)
+
+commit, push then /merge-push-remove
 
 
+* TODO MusicBrainz sidebar entries ==> collapsable h2/h3
+
+The MusicBrainz sidebar entries (typically collapsed by default) need some overhaul:
+
+Make some suggestions with rich HTML based mockups beforehand how to handle the MusicBrainz sidebar entries. Could we
+generalize this (of course configurable), make some suggestions.
+
+1.)
+
+Should we make them to collapsable h2/h3 heading with corresponding entries
+
+2.)
+
+there are usually lots of third-party scripts active and render info/action based stuff to the side-bar, these shouldn't
+be parsed without checking with me beforehand or make them configurable
+
+3.)
+
+We already have a framework for rendering "Relationships" information into table based structures at PT which represents
+events e.g. https://musicbrainz.org/event/a40b40f8-2d88-4f78-b12f-ed5fe9c88f84
+
+Use this as a starting point
+
+4.)
+
+make some suggestions where we could display entity image icons (if available) e.g. places/labels/artist etc from the
+sidebar on the main page (of course with the internal viewer hovwer functionality, the side bar currently seems to still
+missing it)
 
 
-* maybe stack the h3 header in the multiu-table case when stickyness is involved
+* TODO switch to the new LAF everywhere
+
+* TODO reuse our LAF (Look and Feel) for MB PTs, maybe in UVD entity stats (hover over popups) or CAA/EAA stats (hover over popups)
+
+1.)
+
+reuse our LAF (Look and Feel) for MB PTs, maybe in UVD entity stats (hover over popups) or CAA/EAA stats (hover over
+popups)
+

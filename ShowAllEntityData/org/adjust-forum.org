@@ -1,3 +1,8 @@
+* TODO add skill
+** FORUM.org
+** prepare for relesae
+
+
 * TODO Resync HELP and create forum post
 
 For my upcoming userscript update/announcement at https://community.metabrainz.org/t/vzell-s-userscripts-support-thread/814844

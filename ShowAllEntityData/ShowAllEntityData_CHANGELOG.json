@@ -1,5 +1,69 @@
 [
   {
+    "version": "9.99.1316",
+    "date": "2026-10-10",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Long sorts no longer look frozen: a sort that takes more than half a second opens the progress card (9.99.1312) with how far it has got. Filtering cannot show progress yet, because the page cannot repaint while it compares rows; hover the status line next to the filter box afterwards to see how long the last sort and filter took, and how long drawing the rows took."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1315",
+    "date": "2026-10-10",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The Relationships column and the ⏱ millisecond track lengths now report through the progress card (9.99.1312) too. Expanding a Relationships column with ▶🔗, or pressing ⏱, opens the card under the toggle: entities or requests done, failures, each request with its outcome, and the browser cache with how this run split between memory, the cache and the network. \"Retry failed\" is on the Relationships card. Until you have started one of these jobs, hovering the toggle shows its usual tooltip."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1314",
+    "date": "2026-10-10",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "New \"💾 Browser cache\" overview of everything the script keeps in your browser: cover art and its lists, relationships, millisecond lengths, \"Recording of\" answers (9.99.1313), artist work lists and link previews. A chart shows how much space each part takes. A table shows, per part, how many entries it holds, how old they are, how many are past their keep time and what the oldest is. Click a part to see every entry, with a search box. You can delete the expired entries of one part, clear one part, delete a single entry, delete everything expired, delete everything older than 7, 30 or 90 days, or clear it all; every delete asks first, inside the dialog. Open it from ⚙️ Settings (🗄️ ART ARCHIVE INDEXEDDB CACHE), the 📊 Statistics panel, the Tampermonkey menu, or \"💾 Cache overview\" on any progress card (9.99.1312)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1313",
+    "date": "2026-10-10",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Artist Recordings pages get two new columns right after \"Name\": \"Recording of\" shows the work each recording performs, with its attributes in light green italics, e.g. \"Can't Help Falling in Love (cover/live)\", and one row per work for a medley. \"Performance attributes\" lists the attributes one per row, plus the performance date. This is what the \"Batch-add 'performance of' relationships\" userscript writes under each title, now as columns you can filter, sort and pick from in the 📊 dropdown. Nothing is loaded until you ask: click a cell's 🎼 to load that row, or ▶🎼 in the header to load them all. Loading them all asks for the artist's recordings 100 at a time, or one row at a time when that needs fewer requests. Answers are kept in the browser for 30 days, so a reload costs nothing. The progress card (9.99.1312) shows how it goes, including the browser cache.",
+          "For a recording that has no work yet, the column suggests the artist's work with the closest title, in orange and marked \"suggested:\". Endings like \"(alternate take)\", case, spacing and typographic quotes are ignored. The artist's work list is loaded with the column and kept for 30 days; if the batch-add userscript already holds it in your browser, that copy is reused instead (read only).",
+          "Two new 📊 sections for the column: \"Recording of - Load state\" (not loaded / has a work / work suggested / no work / failed) and \"Recording of - Suggested work\" (one entry per suggested title). The attributes appear in the existing attribute entries.",
+          "Save to Disk / Load from Disk keep both columns and what was already loaded in them; a file saved before these columns existed still loads, without them.",
+          "New settings in the \"🎼 RECORDING OF COLUMN\" section: the columns themselves, the cell glyphs, loading 100 rows per request, the cache times, the suggestions and how different a suggested title may be, and reusing the batch-add userscript's work list."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1312",
+    "date": "2026-10-10",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "New progress card for background jobs. A column that loads its data from MusicBrainz after the table is shown now reports through one card in the familiar \"Liner notes\" look: what is being loaded, a progress bar that also shows failures and cache hits, where the data comes from and why, the last few requests with their outcome (an HTTP 503 and its retry are visible without opening the console), and buttons such as \"Retry failed\". It opens under the column's toggle when you start the job. Esc closes it and the job keeps running. Hovering the toggle shows it again; moving the pointer away closes it, and you can move onto the card to press its buttons. On a phone, a tap outside closes it. Two new settings under Tooltips: \"Progress card for background jobs\" and \"Open the progress card when I start a job\" (both on)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1311",
     "date": "2026-10-09",
     "sections": [

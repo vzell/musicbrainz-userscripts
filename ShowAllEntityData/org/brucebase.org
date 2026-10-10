@@ -1,5 +1,4 @@
 ﻿* TODO add support for logged in case
-
 * DONE BruceBase - Songs
 ** DONE i
 
@@ -105,5 +104,5 @@ Make some suggestions here how to present to the user in one or more columns, us
 
 The whole feature should be configurable (default off, as the main userscript is normally used just with MusicBrainz)
 
-* enhancements
+
 
