@@ -43,3 +43,770 @@ dive deep into the code and make some safe suggestions WITHOUT breaking especial
 5.)
 
 add your response to this file because I eventually will pick up from another Claude session on another host
+
+* Response — 2026-10-10 (Claude Opus 5.5)
+
+Env (analysis): 2026-10-10T01:34Z · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · code reading, browser n/a
+Env (measurement): see 0.3 below
+
+*Basis.* ~ShowAllEntityData.user.js~ 9.99.1316+2026-10-10: 121,957 lines, 6,696,865 bytes,
+one IIFE from line 212 to the end. Branch ~docs/build-framework~, forked from ~main~ at
+~535dad8~. Every line number below is for that file and will drift on the next commit, so
+grep the identifier instead of trusting the number.
+
+*What this session changed.* Nothing in ~ShowAllEntityData.user.js~, the library, the
+changelog or HELP. Added: this section, ~scripts/measure-script-load-cost.js~ (read-only
+measurement) and one entry in ~tests/MEASUREMENTS.org~. No ~@version~ bump, because nothing
+shipped changed.
+
+*How it was gathered.* Three read-only code sweeps (non-MB inventory; size composition and
+single-file tooling; userscript interop and the link-preview engine), one adversarial review
+of the draft recommendations, the Tampermonkey docs and changelog (fetched 2026-10-10), and
+one measurement run. Where something is an inference rather than a measurement or a quote,
+it says so.
+
+** TL;DR
+
+- *Size costs time on every matched page, but it is not a wall yet.* Measured (Chromium,
+  no Tampermonkey, fast desktop): ≈103 ms per matched page today, ≈430 ms at 4× CPU
+  throttling. 10 MB of code would be ≈170 / ≈690 ms. Code costs ≈20 ms per MB even when it is
+  never called; comments ≈4.5 ms per MB. So stripping comments (−58 % bytes) buys only
+  −16 % time.
+- *Comments are 47 % of the bytes. The Springsteen code is only 4.9 %.* Splitting the
+  non-MB code out would make MusicBrainz pages at most ≈5 % cheaper, so it is a
+  maintainability decision, not a performance one.
+- *The cheapest real win is in the header, not the code.* ~@updateURL~ points at the full
+  6.7 MB file, so every update check downloads all of it. A header-only ~.meta.js~ fixes
+  that without touching runtime code.
+- *Stop pasting.* A generated "[DEV]" loader userscript that ~@require~s a staged
+  ~file://~ copy (Chrome-family browsers; Tampermonkey does not cache ~file://~ requires)
+  turns "paste 6.7 MB into the editor" into "run one command, reload the tab".
+- *A build pipeline: yes, in phases, never a bundler.* Phase 1 DERIVES artifacts from the
+  single file (dev stage, ~.meta.js~, optionally a comment-stripped publish copy that
+  keeps every line number). Splitting the source into fragments is an optional Phase 2,
+  done byte-identically and reversibly.
+- *Non-MB code: its own fragment, yes. Its own userscript, no.* MusicBrainz pages need half
+  of it anyway (link previews parse Springsteen pages ON MusicBrainz), the engine would be
+  duplicated, and settings would split across two GM stores.
+- *Cooperation:* SAED publishes no API or event today. Proposed: two namespaced DOM events
+  (~saed:ready~, ~saed:rendered~) with a JSON-string ~detail~, plus a ~data-saed-gen~
+  attribute for late listeners.
+- *Safe suggestions* are ranked in section 4. The zero-runtime ones (publishing, dev loop,
+  docs, measurement) can start today; the ones that touch MusicBrainz runtime each name the
+  spec that has to prove nothing changed.
+
+** 0. Is 10 MB a problem? Other problems from the sheer size?
+
+*** 0.1 What makes up the 6.7 MB
+
+| Kind                     |  Lines |     Bytes | % bytes |
+|--------------------------+--------+-----------+---------|
+| Comment lines            | 50,477 | 3,151,793 |    47.1 |
+| Code lines               | 64,846 | 3,538,438 |    52.8 |
+| Blank lines              |  6,634 |     6,634 |     0.1 |
+| (of all: leading indent) |        | 1,261,205 |    18.8 |
+
+A line counts as a comment if, after leading whitespace, it starts with ~//~, ~/*~ or ~*~.
+Comments are spread evenly (37–56 % of every 10k-line bucket). Nothing is minified, no line
+is longer than 1,024 characters, and there are no data blobs (one ≈120-character GIF data
+URI). So the file is big because it is a lot of code with a lot of prose, not because of
+embedded data that could be moved out.
+
+| Largest blocks                  |         Lines | Bytes   | Note                                    |
+|---------------------------------+---------------+---------+-----------------------------------------|
+| ~configSchema~                  |      315–4611 | 243,305 | mostly ~description~ strings            |
+| ~pageDefinitions~ (≈99 PTs)     |   24271–27721 | 209,024 | 75 KB of it comments                    |
+| main ~GM_addStyle~ CSS          |   59305–62026 | 135,324 | 42 ~GM_addStyle~ sites total ≈ 242 KB   |
+| ~__saTest~ hook                 | 120530–121956 | 70,454  | test-only, shipped to every user anyway |
+| ~ColumnDataExtractor~           |     6274–7518 | 66,426  |                                         |
+| ~_MB_KINDS~                     |   40500–41350 | 64,179  |                                         |
+| function ~openUniqDrop~         |   84494–89480 | ≈328 KB | one function                            |
+| function ~startFetchingProcess~ |   74910–78185 | ≈216 KB | one function                            |
+
+Growth: the published mirror (~/home/vzell/git/mb-userscripts~) is at 9.99.1167 with 5.0 MB.
+Dev is at 9.99.1316 with 6.7 MB, so +1.68 MB in 149 versions. At that rate 10 MB is roughly
+300 versions away.
+
+*** 0.2 What runs on every matched page
+
+- No ~@run-at~ (Tampermonkey's default, document-idle) and no ~@noframes~.
+- Every page an ~@include~ matches parses all 6.7 MB and runs top-level code down to the
+  pageType gate (~if (!pageType || !headerContainer)~ at ≈57092): the full ~configSchema~
+  object, ~new VZ_MBLibrary(…)~, settings migration, ≈299 top-level constants, the Ctrl+M
+  keydown listener. That is ≈3.05 MB of source executed at top level.
+- That includes bare entity pages (the first ~@include~ matches every
+  ~/artist/<mbid>~ etc.) where no pageType exists. Those exit at the gate and log at
+  ERROR level: ~Required elements not found. Terminating.~
+- The four foreign-site gates (5627–5676) ~return~ before almost all of that, so on a
+  Springsteen site with the site switched off the cost is the parse plus the first
+  ≈5,700 lines of top level (mostly the ~configSchema~ object).
+- The library's ~initRemoteContent()~ (~lib/VZ_MBLibrary.user.js~ 3562, called at 3804)
+  reads the cached changelog (~ShowAllEntityData_CHANGELOG.json~, 1.93 MB) from GM storage
+  and ~JSON.parse~s it on EVERY matched page, re-downloading it once an hour.
+
+*** 0.3 Measured
+
+Env: 2026-10-10T07:49:57Z–07:51:37Z · NB-3641 (28 cores, 31 GB) · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Chromium 151.0.7922.34 via Playwright 1.62.1 · no Tampermonkey (in-memory GM stubs)
+
+~node scripts/measure-script-load-cost.js --runs 15 --warmup 2 --throttle 1,4~, script
+9.99.1316+2026-10-10. A fresh BrowserContext per run (its own renderer, so no V8
+compilation cache carries over). The page is ~https://musicbrainz.org/__saed-measure~,
+routed locally, with no pageType, so every run stops at the gate; each run is checked for
+the gate's console line and for page errors (0 invalid runs). Timed: appending a
+~<script>~ with the arm's text, i.e. parse + compile + run to the gate. 15 kept runs per
+cell, 2 warm-up runs dropped. CPU ×4 is DevTools CPU throttling, a stand-in for a slow
+laptop or a phone.
+
+| Arm                                         |      Bytes | ×1 median ms |  ×1 p10–p90 | ×4 median ms |  ×4 p10–p90 | ScriptDuration ×1 ms |
+|---------------------------------------------+------------+--------------+-------------+--------------+-------------+----------------------|
+| real (today's file)                         |  6,696,865 |        102.6 |  99.8–105.2 |        428.6 | 419.9–444.4 |                 58.1 |
+| prescan (never-called wrapper: the floor)   |  6,696,899 |         44.0 |   42.6–46.3 |        181.1 | 175.0–189.1 |                  0.0 |
+| stripped (comments + indent, newlines kept) |  2,811,168 |         85.9 |   82.0–90.7 |        354.2 | 348.5–366.4 |                 53.2 |
+| pad-code-10MB (real + never-called code)    | 10,000,583 |        168.9 | 163.1–177.4 |        690.5 | 683.0–720.5 |                 87.7 |
+| pad-comment-10MB (real + comment lines)     | 10,000,073 |        117.4 | 113.1–119.9 |        484.2 | 475.4–494.8 |                 63.0 |
+
+The changelog, measured separately: with the library's changelog cache seeded, as in a
+normal profile, the time until two macrotasks after the script ("settled") goes from 103.3
+to 111.1 ms at ×1 and from 430.3 to 457.2 ms at ×4, i.e. +8 / +27 ms per page. ~JSON.parse~
+of the 1.93 MB text alone is 2.0 / 9.3 ms. JS heap retained after GC: +1.5 MB without it,
++4.7 MB with it.
+
+What the numbers say:
+
+- *Today:* ≈0.1 s per matched page on this desktop, ≈0.43 s at ×4, paid on every matched
+  page, including pages with no pageType. The script runs at document-idle, so the page is
+  already visible, but its main thread is blocked for that long.
+- *Where the 103 ms goes:* ≈44 ms is the floor of reading and pre-scanning 6.7 MB
+  (prescan). The other ≈58 ms (ScriptDuration) is compiling and running the IIFE's top
+  level down to the gate. V8 compiles a parenthesised function's body eagerly, and the
+  whole file is one.
+- *Marginal cost:* +3.3 MB of code adds 66 ms (×1) / 262 ms (×4), i.e. ≈20 / 79 ms per MB.
+  That is for NEVER-CALLED code (pre-parse only); code that runs at top level costs more.
+  +3.3 MB of comments adds 15 / 56 ms, i.e. ≈4.5 / 17 ms per MB.
+- *At 10 MB of code:* ≈170 ms on this desktop, ≈690 ms at ×4. On a fast desktop that is
+  noticeable but tolerable; on slow hardware it is a perceptible block on every matched
+  navigation, before Tampermonkey's own overhead (unmeasured, 0.5).
+- *Comment stripping* removes 58 % of the bytes but only 16 % of the time (−17 / −74 ms):
+  comments are cheap to scan, code is not. A modest win, not the fix.
+- *The changelog* costs more than the parse alone (+8 ms settled vs 2 ms ~JSON.parse~) and
+  keeps 3.2 MB of parsed entries alive in every tab, all for a dialog that is rarely
+  opened. Small in Chromium; how large the stored value is inside Tampermonkey is the open
+  part (0.5, step 3).
+- *Memory:* JS heap retained after GC is only +1.5 MB, most likely because the source text
+  is held outside the JS heap (by the DOM side), so this number does not include it. The text itself has 33,235 characters above U+00FF, so it is most
+  likely stored two-byte: ≈13.4 MB per tab (an estimate from the character count, not
+  measured). The stripped copy still has 4,510 such characters, so it stays two-byte at
+  ≈5.6 MB.
+- *So, is 10 MB a problem?* Not a wall, but a fixed per-navigation tax that grows with
+  CODE, not comments. The lever with the most effect would be less top-level work before
+  the gate on pages that don't need it, and that is exactly what section 4 lists as
+  not safe. Watch the ×4 column: it is what a slow device sees.
+
+*** 0.4 Other problems from the sheer size
+
+| Problem                       | Today                                                                                                                                                                                                                              | Evidence                              |
+|-------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+---------------------------------------|
+| Update checks download it all | ~@updateURL~ = ~@downloadURL~ = the full file, so every check fetches 6.7 MB, for every user, at every check interval                                                                                                              | header lines 9–10                     |
+| Tampermonkey editor           | Pasting 6.7 MB into the CodeMirror editor is the dev loop today; TM's auto-lint is size-dependent; TM 5.4.0's changelog has "Fixed importing large scripts" and "Fixed the 'Message length exceeded' error during script updates"  | tampermonkey.net/changelog.php        |
+| Memory per tab (estimate)     | 33,235 characters above U+00FF, so the source is most likely stored two-byte: ≈13.4 MB per tab just for the text (estimate from the character count; outside the JS heap, see 0.3). The stripped copy keeps 4,510 of them: ≈5.6 MB | character count of the file           |
+| Big single functions          | ~openUniqDrop~ (328 KB) and ~startFetchingProcess~ (216 KB) are compiled on first use; whether V8 still optimises functions that size is unverified. Check with ~--trace-opt~ before acting on it                                  | line spans above                      |
+| Greasy Fork is closed         | 2 MB cap, and minifying to fit is forbidden. Not used today, but it rules that channel out for good                                                                                                                                | greasyfork.org/help/code-rules        |
+| GitHub web view               | Likely refuses to render or blame a file this size (not verified; look at the mirror's file page once)                                                                                                                             | unverified                            |
+| Tooling and AI cost           | No one, human or Claude, can read the file whole: CLAUDE.md, the grep-anchor table and every skill are built around that. eslint, acorn (~regex-unicode-flag-guard.spec.js~) and mutation-check all do whole-file passes           | ShowAllEntityData/CLAUDE.md, scripts/ |
+| Growth                        | +1.68 MB in the last 149 versions                                                                                                                                                                                                  | mirror vs dev                         |
+
+*** 0.5 What the harness cannot see, and how to measure it in your browser
+
+The measurement injects the file as a plain ~<script>~ with in-memory GM stubs. It cannot
+see Tampermonkey reading the script and its stored values, handing them to the page, or its
+sandbox. That part needs your real browser, once:
+
+1. Chrome/Vivaldi DevTools → Performance → "Record and reload" on a matched page with no
+   pageType (e.g. a bare ~/artist/<mbid>~ page). Look for the long "Evaluate Script" /
+   "Compile Script" entries attributed to the userscript, and note the total.
+2. Same with the script disabled in the Tampermonkey dashboard. The difference is the real
+   per-page tax including Tampermonkey.
+3. Tampermonkey dashboard → the script → "Storage" tab: how big is the stored
+   ~showallentitydata-remote-changelog~ value? Tampermonkey makes ~GM_getValue~ synchronous
+   by handing a script's values to the page up front (an inference from the synchronous
+   API, not documented), so a 1.9 MB stored value probably travels on every page load.
+4. Record browser, Tampermonkey version and the numbers in ~tests/MEASUREMENTS.org~ with an
+   environment stamp, next to this session's row.
+
+** 1. Delivering a script this big, without annoying the developer
+
+*** 1.1 For users: keep ONE installed artifact
+
+One ~.user.js~ is still the right shape for users. Each extra ~@require~ is another URL that
+Tampermonkey caches separately and, since 4.16, refreshes ONLY when the main script itself
+updates ("External ~@require~ and ~@resource~ content is not updated by default anymore unless
+the script was updated"). It is one more thing that can be stale or unreachable (the
+2026-10-04 jsdelivr outage failed 72 tests before the harness vendored iro and pako).
+
+Three header changes, none of which touches runtime code:
+
+1. *Header-only ~ShowAllEntityData.meta.js~ as ~@updateURL~.* Lines 1–54 only (stop at the
+   FIRST ~// ==/UserScript==~; the credits block at 99–200 carries nine other scripts'
+   ~// @name~ / ~// @version~ / ~// @downloadURL~ lines). Keep ~@downloadURL~ on the full
+   file. Existing installs are safe: their next check still uses the old URL, which still
+   serves the full script, and installing that update brings the new header. Keep the old
+   URL alive forever. ~check-publish-ready.py~ must then fail when the mirror's ~.meta.js~
+   is not byte-equal to the mirror ~.user.js~'s header, ALWAYS, not only at parity: a stale
+   meta file silently stops updates for everyone who has switched.
+2. *Pin iro exactly.* ~@require https://cdn.jsdelivr.net/npm/@jaames/iro@5~ floats within
+   major 5; the harness already vendors exactly 5.5.2 (byte-identical to what jsdelivr serves
+   for ~@5~, checked 2026-10-04). Write ~@jaames/iro@5.5.2~ and tighten
+   ~tests/fixtures/harness-required-libs.spec.js~'s "major only" assertion to an exact match.
+3. *Optional: pin the library to an immutable URL, with SRI.* Today the library ~@require~
+   points at the mirror's ~master~ branch, so a user's library is whatever ~master~ held when
+   SAED last updated — which can be newer OR older than the SAED version it was tested with.
+   A tag or commit URL (~raw.githubusercontent.com/vzell/mb-userscripts/<tag>/lib/…~) plus
+   ~#sha256=…~ (Tampermonkey supports SRI on ~@require~, checked at install) makes the pair
+   exact. Cost: ~check-publish-ready.py~'s ~NETWORK_LIB_URL~ equality check becomes a pattern
+   plus "ref exists on origin/master, its ~@version~ equals the dev library's, the hash
+   matches"; ~check-publish-ready-gate.py~ needs planted cases for each; and a ~#sha256=~
+   suffix breaks the ~$~-anchored patterns in ~harness-required-libs.spec.js~ and
+   ~check-vendored-libs.py:31~.
+
+*** 1.2 For you: stop pasting 6.7 MB into the editor
+
+*Facts (Tampermonkey docs/changelog, 2026-10-10):* ~@require file://…~ works in Chrome and
+derivatives only (Vivaldi, Brave, Opera, Edge), needs "Allow access to file URLs" on the
+extension's details page (and possibly "Site access: on all sites"), and local files are NOT
+cached ("Don't cache file:// URIs", "Avoid caching of local files"). Code from a ~@require~
+runs in the same sandbox with the same grants as the installed script (SAED already relies on
+that for the library). A required file's own ~==UserScript==~ block is just a comment (the
+library already has one). Tampermonkey 5.5.0 (Chrome) also "Added support for opening a local
+userscript file and tracking its changes on disk".
+
+*Recommended dev loop:*
+
+1. A generator (~scripts/stage-dev.py~, not written yet) does two things:
+   - writes a *loader* userscript: SAED's header lines 1–54 with ~@name~ prefixed
+     "[DEV] ", ~@version <real>-dev~, ~@namespace~ changed, NO ~@updateURL~ /
+     ~@downloadURL~, and the ~@require~ list in the header's order — iro, pako, then
+     ~file:///V:/…/dist/dev/VZ_MBLibrary.user.js~, then
+     ~file:///V:/…/dist/dev/ShowAllEntityData.user.js~. The loader has no body.
+   - *stages* both working-copy files into ~dist/dev/~ (gitignored, eslint-ignored), each
+     written to a temp name and renamed, so Tampermonkey never reads half a file.
+2. Install the loader ONCE, in a *separate Chrome/Vivaldi profile* that has only the
+   loader, not the published SAED. Reasons: settings are per installed script (the loader
+   starts empty: export once from your daily profile, import once), but IndexedDB and
+   sessionStorage are per SITE, so two installs in one profile share caches and a dev-side
+   IndexedDB version bump would break the published install. There is no guard against
+   running twice either: with both enabled, everything runs twice.
+3. Loop: edit → ~python3 scripts/stage-dev.py~ → reload the tab. No paste.
+4. The library is ~file://~ too, on purpose: a loader without update URLs never refreshes an
+   https ~@require~, so a network library would stay frozen at the day you installed it.
+5. ~GM_info~ now describes the loader. That feeds ~SCRIPT_NAME~ (218), ~scriptVersion~,
+   the config-export metadata and the external User-Agent. The "[DEV]" name and ~-dev~
+   version make it obvious which copy produced a log or an export.
+6. Header changes (~@include~, ~@connect~, ~@grant~) do not propagate through a ~@require~.
+   The stage step keeps a hash of lines 1–54 and prints a loud "header changed —
+   reinstall the loader" when it moves.
+7. Firefox has no ~file://~ requires: keep pasting there, or serve ~dist/dev~ from
+   ~http://127.0.0.1:<port>/~ and press "force update externals" (Tampermonkey 5.3+) after
+   each stage.
+8. Try Tampermonkey 5.5's local-file tracking first, pointed at the staged
+   ~dist/dev/ShowAllEntityData.user.js~ (staged WITH the dev header). If it works from
+   ~V:~, it even picks up header changes and no loader is needed.
+
+*The mutation-check hazard gets worse, unless the stage step guards it.*
+~scripts/mutation-check.py~ plants each defect into the working copy IN PLACE for up to
+≈90 s per mutant (memory note 2026-10-05: a re-import during a run once installed a mutant
+and looked like a real bug). With a ~file://~ loader pointed at the working copy, EVERY
+reload during a run would load a mutant, silently. Two guards:
+
+- The loader requires the *staged* copy, never the working copy, and ~stage-dev.py~
+  refuses to run while any ~*.mutation-backup~ exists (mutation-check creates the backup
+  before it writes the first mutant).
+- Separately, mutation-check today also discards, silently, any edit made in the working
+  copy during a run: ~restore_all()~ copies the backup over the target, and the final SHA
+  check compares against the pre-run hash, so it passes. Fix: ~run_spec~ writes each mutant
+  into a temp directory and passes ~SAED_USERSCRIPT_PATH~ / ~SAED_MB_LIBRARY_PATH~ to the
+  Playwright subprocess; ~tests/support/loadPage.js:27-28~ reads them; ~subtableTab.js~
+  imports the paths from ~loadPage.js~ instead of redefining them;
+  ~settings-dialog-header.spec.js~ already uses ~MB_LIBRARY_PATH~. The eight harness-file
+  mutations (~loadPage.js~ ×6, ~filterSortAssertions~ ×2) can stay in place.
+
+*The ~@require~ line contradicts its own notes.* Line 15 requires the network library (flipped
+back in ~bfe0c7b~, 2026-10-01, "now that the lib is stable again"), while the in-file
+publishing note (lines 57–91), ShowAllEntityData/CLAUDE.md "Publishing" and
+~org/config-handling.org~ F6 still say the dev copy deliberately requires ~file://~. With a
+loader, the source file can keep the network URL permanently and the loader owns ~file://~:
+"copy the file and rewrite one line" becomes a plain byte-equality check in
+~check-publish-ready.py~.
+
+** 2. Would an automatic build pipeline be more effective?
+
+Yes — but split into "having a build" and "splitting the source", and never a bundler.
+
+*** 2.1 Why not the bundler (and what REFACTORING.org got right)
+
+~REFACTORING.org~ "NOT RECOMMENDED: full module split via bundler" (written at 65k lines)
+rejected webpack/esbuild/rollup because (1) no tooling existed, (2) shared mutable module
+state (~activeDefinition~, ~CAA_CTX~ caches, ~ctrlMFunctionMap~ …) crosses every boundary,
+and (3) "nothing changed" could not be verified (10 of 86 PTs had snapshots). (2) is still
+true and is the decisive one: a module system would need an import/export design at every
+boundary of a file with ≈600 top-level declarations that all see each other. The plan below
+keeps ONE scope, so (2) never arises; (1) shrinks to a ≈100-line Python script; (3) is
+answered by byte identity. Revisit that REFACTORING.org verdict with this section in hand,
+rather than re-litigating it from scratch.
+
+*** 2.2 Phase 0 — no build (do now)
+
+The dev loader + stage step (1.2) and the header fixes (1.1). Zero runtime change.
+
+*** 2.3 Phase 1 — a build that DERIVES artifacts from the single file
+
+~scripts/build-userscript.py~ reads today's ~ShowAllEntityData.user.js~ (still the only
+source, still edited by hand and by Claude exactly as now) and writes:
+
+- ~dist/dev/~ — the stage of 1.2;
+- ~ShowAllEntityData.meta.js~ — header lines 1–54, for the mirror;
+- optionally ~dist/publish/ShowAllEntityData.user.js~ — comments and leading indentation
+  removed with acorn TOKENS (never regex: the CSS at 59305 contains ~/* */~ and URLs contain
+  ~//~), EVERY newline kept so a user's stack-trace line number still points at the right
+  source line, lines 1–211 (header, licence, credits) kept verbatim, acorn pinned exactly
+  (today ~^8.18.0~). Measured: 6.70 MB → 2.81 MB, i.e. −58 % bytes but only −16 % load
+  time (0.3). Before publishing a stripped copy, run the fixture suite once against it
+  (needs the env-var redirect from 1.2), and change the publish rule to
+  "mirror == strip(dev)".
+
+Nothing that reads the file at its current path is affected, which is the whole point:
+the harness, mutation-check, ~check-publish-ready.py~, the history-walking scripts, eslint
+and the ~.claude~ hook keep working unchanged.
+
+*** 2.4 Phase 2 — optional: split the source into ordered fragments
+
+Only if editing the single file becomes the bottleneck. Design constraints found:
+
+- *Concatenation, not modules.* ~src/NN-name.js~ fragments joined in order back into the
+  same IIFE. Hoisting, TDZ order and shared mutable state are untouched, as long as
+  fragments are never reordered (make that a rule and a check).
+- *Byte-identical first cut is realistic and is the safety proof.* The file is LF-only,
+  has no BOM and ends with ~})();\n~. Join in binary mode, compare SHA-256 with today's file.
+- *Cut only at verified top-level boundaries.* Checked with acorn: 214, 4612, 5720, 9897,
+  14381, 24219, 27722, 31312, 38815, 42100, 56955, 57204, 62027, 83722, 90072, 96372,
+  97477, 105148, 106139, 118990, 120530. A line-based guess like 42773 falls inside the
+  declaration at 42756–42774. ~openUniqDrop~ and ~startFetchingProcess~ cannot be split at
+  all.
+- *Fragments are not valid scripts.* 31 top-level ~if (…) return;~ statements (the host
+  gates, the pageType gate) and the IIFE's open/close in the first/last fragment. So
+  ~node --check~ and eslint run on the BUILT file only (~tests/lint-baseline.json~ is
+  keyed by that path anyway); fragments get an acorn check with
+  ~allowReturnOutsideFunction~.
+- *Two-way tool.* Claude and 10 of the 12 skills name the built file and will keep editing
+  it. The tool must split AND join by anchors, and refuse to build over a hand-edited
+  artifact rather than silently drop the edit.
+- *Freshness as a fixture spec*, so ~npm run test:full~ (the merge gate) catches a stale
+  artifact. There are no git hooks and no CI.
+- *Merges.* Mark the artifact ~linguist-generated~; resolve artifact conflicts by rebuilding
+  (a keep-ours merge driver lives in local git config, so each host must set it up), and
+  make ~merge-push-remove~ rebuild after the merge.
+- *Watchers vs mutation-check.* A ~--watch~ rebuild would overwrite a running mutant, and
+  then ~restore_all()~ would leave the artifact stale. The env-var redirect (1.2) comes
+  first.
+- *History.* ~git blame -C -C -C~ follows lines across the split commit; history scripts
+  keep reading the artifact path.
+
+*** 2.5 Rejected: an MB-only flavour
+
+Building one copy without the Springsteen fragments saves ≈4–5 % for MusicBrainz users, but
+MusicBrainz pages USE the Springsteen parsers: hovering a link to one of those sites runs
+~_DP_SITES[host].parse~ through ~_extDpLoad~ (42469), ~_extDpLive~ and ~_EXT_READERS~
+(42756–42774, which mixes generic and Springsteen entries). It would also mean two published
+URLs and two update channels. Not worth it.
+
+** 3a. How deeply is the non-MB code wired in?
+
+Inventory as of 9.99.1316. Sizes are bytes of exact line ranges (comments included). Lines
+attributable to the foreign sites: ≈6,630 / ≈329 KB, i.e. 5.4 % of lines and 4.9 % of bytes.
+
+| Site                       | Lines | Bytes    | Main body                                               |
+|----------------------------+-------+----------+---------------------------------------------------------|
+| springsteenlyrics.com (SL) | 3,387 | 167.5 KB | 9897–12609 (compact scope bar alone 11112–12609, 71 KB) |
+| brucebase.wikidot.com (BB) | 1,835 | 89.0 KB  | 13229–14379                                             |
+| brucespringsteen.it (BS)   |   550 | 27.8 KB  | 12893–13227                                             |
+| jungleland.it (JL)         |   469 | 23.5 KB  | 12611–12891                                             |
+| shared foreign machinery   |   391 | 21.1 KB  | gates, ~_DP_SITES~, ~_ensureForeignTableStyle~ …        |
+
+The main body is one contiguous block, 9897–14379 (4,483 lines, ≈211 KB, order SL, JL, BS,
+BB) that contains no MusicBrainz code. Everything else is scattered.
+
+Prefix-grep traps: ~_sleepInterruptible~ matches ~_sl…~; ~_bbPrev~, ~_bbH3~, ~_bbStep~,
+~_bbIcon~ (83482–83497) are MusicBrainz "bigbox" locals that match ~_bb…~.
+
+*** Header
+
+|  Line | What                                                                           |
+|-------+--------------------------------------------------------------------------------|
+| 21–24 | 4 × SL ~@include~ (list pages; collection intro/~pg=~; bootlegs intro; lyrics) |
+|    25 | JL ~html/list.htm~                                                             |
+|    26 | BS ~DB/records.aspx~ (either case)                                             |
+| 27–29 | BB ~stats:songs~; year pages (~\d{4}~ and ~1949-64~); home                     |
+| 39–42 | ~@connect~ for the four hosts; plus ~@connect *~ at 43                         |
+
+No ~@noframes~, which is why JL and BS carry frame gates. ~_EXT_CONNECT_HOSTS~ (41453) must
+stay in step with 39–42.
+
+*** Shared foreign machinery
+
+| Identifier                                                   | Line                          | Size                         | Role                                                         |
+|--------------------------------------------------------------+-------------------------------+------------------------------+--------------------------------------------------------------|
+| ~_isSlHost~ / ~_isJlHost~ / ~_isBsHost~ / ~_isBbHost~        | 5553 / 5564 / 5577 / 5588     | gate block 5541–5676, 6.9 KB | hostname regexes                                             |
+| ~_foreignHost~                                               | 5615                          | 5 lines                      | host name or ~null~                                          |
+| ~_ensureForeignTableStyle~                                   | 10617                         | 44 lines, 2.2 KB             | ~#mb-foreign-table-style~, ~:where(body:is(.mb-sa-host-…)…)~ |
+| ~_DP_SITES~                                                  | 15149 (15126–15223)           | 98 lines, 5.4 KB             | per-host detail-preview config                               |
+| ~_dpActiveSite~, ~_dpSiteForLink~, ~_dpSiteSource~           | 15230, 15244, 15366           | ≈130 lines                   | turn ~_DP_SITES~ into popup sources                          |
+| ~_pageParamName~, ~_readPageKeys~                            | 74356, 74382                  | 60 lines, 3.0 KB             | engine extensions only foreign PTs use                       |
+| ~_extDpSiteKey~ / ~_extDpTest~ / ~_extDpLoad~ / ~_extDpLive~ | 42442 / 42453 / 42469 / 42493 | 86 lines, 3.8 KB             | MusicBrainz-side reader of links to the four sites           |
+| ~__saTest.dpParse~, ~popResolve~                             | 120665–120697                 | ≈33 lines                    | test mode only                                               |
+
+*** springsteenlyrics.com (SL) — 48 functions, 12 ~_SL_*~ consts, 3 module-level ~let~s
+
+| Block / identifier                                                                                                                                        |               Line(s) | Size                 | Role                                                                                  |
+|-----------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------+----------------------+---------------------------------------------------------------------------------------|
+| settings ~divider_springsteenlyrics~, ~sa_enable_springsteenlyrics~, ~sa_sl_detail_preview~, ~sa_sl_compact_nav~                                          |             4222–4283 | 62 lines, 4.4 KB     | settings dialog                                                                       |
+| opt-in gate                                                                                                                                               |             5627–5630 | 4 lines              | ~return~ from the IIFE                                                                |
+| ~_LOCATION_TEXT_*~, ~_parseLocationText~                                                                                                                  |             6175–6272 | 98 lines, 4.8 KB     | extractor helpers only SL uses                                                        |
+| ~ColumnDataExtractor.splitLocationText~                                                                                                                   |             6481–6519 | 39 lines, 1.9 KB     | extractor                                                                             |
+| tooltip ~case 'splitLocationText'~                                                                                                                        |           73895–73904 | 10 lines             | column tooltip                                                                        |
+| cards converter ~_slFindCards~ … ~applySlCardsToTable~ (10317)                                                                                            |            9897–10377 | 481 lines, 26.8 KB   | ~table.tbl.mb-sl-table~                                                               |
+| lyrics converter ~_SL_LYRICS_HEADERS~ … ~applySlLyricsToTable~ (10507)                                                                                    |           10379–10597 | 219 lines, 11.2 KB   | ~sl-lyrics~                                                                           |
+| ~_ensureSlStyle~                                                                                                                                          |           10644–11067 | 424 lines, 15.9 KB   | ~#mb-sl-style~; hides engine toolbar ids under ~.mb-sa-sl-nav-only~                   |
+| ~_slPrepareLivePage~                                                                                                                                      |           11069–11110 | 42 lines, 2.3 KB     | ~h1.mb-sl-h1 > bdi~, ~body.mb-sa-host-sl~, ~--mb-sl-navbar-h~                         |
+| compact scope bar ~_SL_FACET_LABELS~ … ~_slInstallScopeBar~ (12521)                                                                                       |           11112–12609 | 1,498 lines, 71.3 KB | largest foreign sub-block; GM keys ~mb_sa_sl_list_counts~, ~mb_sa_sl_recent_searches~ |
+| ~_DP_TRACK_RE~, ~_DP_DISC_RE~                                                                                                                             |           14438–14452 | 15 lines             | tracklist regexes                                                                     |
+| ~_dpSlTracklist~, ~_dpParseSl~, ~_dpParseSlSong~                                                                                                          |           14744–14916 | 173 lines, 9.1 KB    | detail-page parsers                                                                   |
+| ~_DP_SITES['springsteenlyrics.com']~                                                                                                                      |           15150–15166 | 17 lines             |                                                                                       |
+| PTs ~sl-collection~, ~sl-collection-intro~ (~pageParam:'pg'~), ~sl-bootlegs~, ~sl-bootlegs-intro~ (~slNavOnly~), ~sl-lyrics~ (~pageKeys~), ~sl-brucelegs~ |           27450–27594 | 145 lines, 8.4 KB    | all ~host:'springsteenlyrics.com'~                                                    |
+| ~__saTest~ wrappers                                                                                                                                       | 120704, 121525–121647 | ≈70 lines            | test mode only                                                                        |
+
+*** jungleland.it (JL) — 7 functions, 1 const; block 12611–12891 (281 lines, 13.3 KB)
+
+| Identifier                                                                            | Line                 | Role                                                |
+|---------------------------------------------------------------------------------------+----------------------+-----------------------------------------------------|
+| settings ~divider_jungleland~, ~sa_enable_jungleland~, ~sa_jl_detail_preview~         | 4284–4321 (2.4 KB)   |                                                     |
+| opt-in gate; frame gate ~window.top !== window~                                       | 5639–5642; 5643–5646 |                                                     |
+| ~_JL_HEADERS~, ~_jlVersionFromHref~, ~_jlParseItem~, ~_jlCollectItems~, ~_jlBuildRow~ | 12626–12715          |                                                     |
+| ~applyJlListToTable~                                                                  | 12760                | ~table.tbl.mb-jl-table~, ~h2.mb-jl-list-heading~    |
+| ~_ensureJlStyle~, ~_jlPrepareLivePage~                                                | 12832, 12877         | ~#mb-jl-style~; ~h1.mb-jl-h1~, ~body.mb-sa-host-jl~ |
+| ~_dpParseJl~                                                                          | 14918–14955          | detail parser                                       |
+| ~_DP_SITES['jungleland.it']~                                                          | 15167–15178          | charset ~windows-1252~                              |
+| PT ~jl-list~                                                                          | 27596–27625          |                                                     |
+
+*** brucespringsteen.it (BS) — 8 functions, 2 consts; block 12893–13227 (335 lines, 15.6 KB)
+
+| Identifier                                                                                | Line                 | Role                                                           |
+|-------------------------------------------------------------------------------------------+----------------------+----------------------------------------------------------------|
+| settings ~divider_brucespringsteen~, ~sa_enable_brucespringsteen~, ~sa_bs_detail_preview~ | 4322–4360 (2.5 KB)   |                                                                |
+| opt-in gate; frame gate                                                                   | 5652–5655; 5656–5659 |                                                                |
+| ~_BS_ALL_FORMATS~                                                                         | 12911                | also read INSIDE ~pageDefinitions~ (27647, 27652)              |
+| ~_BS_HEADERS~, ~_bsParseHead~, ~_bsFindRecords~, ~_bsReadRecord~, ~_bsBuildRow~           | 12919–13027          |                                                                |
+| ~applyBsRecordsToTable~                                                                   | 13077                | live doc gets an EMPTY table; the fetched doc gets the rows    |
+| ~_bsCheckAllFormats~, ~_ensureBsStyle~, ~_bsPrepareLivePage~                              | 13144, 13167, 13209  | the last adds a ~window~ ~load~ listener                       |
+| ~_dpParseBs~                                                                              | 14957–15017          | detail parser                                                  |
+| ~_DP_SITES['brucespringsteen.it']~                                                        | 15179–15189          |                                                                |
+| PT ~bs-records~                                                                           | 27627–27663          | ~non_paginated~, two buttons with ~params~ + button ~features~ |
+
+*** brucebase.wikidot.com (BB) — 24 functions (+5 ~_extBb*~), 12 ~_BB_*~ consts; block 13229–14379 (1,151 lines, 52.2 KB)
+
+| Block / identifier                                                                                                                                  | Line(s)              | Size               | Role                                                              |
+|-----------------------------------------------------------------------------------------------------------------------------------------------------+----------------------+--------------------+-------------------------------------------------------------------|
+| settings ~divider_brucebase~, ~sa_enable_brucebase~, ~sa_bb_year_pages~, ~sa_bb_collabsable_sidebar~, ~sa_bb_sidebar_right~, ~sa_bb_detail_preview~ | 4361–4436            | 76 lines, 4.8 KB   |                                                                   |
+| ~_BB_YEAR_PATH_RE~, ~_BB_HOME_PATH_RE~                                                                                                              | 5596, 5604           |                    | declared above the gate because of TDZ                            |
+| opt-in gate; year/home gate                                                                                                                         | 5665–5668; 5672–5676 |                    | no frame gate                                                     |
+| songs: ~_BB_HEADERS~ … ~applyBbSongsToTable~ (13364)                                                                                                | 13229–13408          | 180 lines, 8.3 KB  |                                                                   |
+| year: ~_BB_YEAR_HEADERS~ … ~applyBbYearToTable~ (13995), ~_bbHomeEmptyTable~                                                                        | 13410–14088          | 679 lines, 30.5 KB | ~_bbAbsHref~ reads ~_isBbHost~                                    |
+| ~_ensureBbStyle~                                                                                                                                    | 14090–14243          | 154 lines, 6.7 KB  | ~#mb-bb-style~; styles the engine's ~#mb-status-displays-wrapper~ |
+| ~_bbPrepareLivePage~, ~_bbArrangeSideBar~ (14302)                                                                                                   | 14244–14379          | 136 lines, 6.7 KB  | side bar; ~window~ scroll/resize listeners, ResizeObserver        |
+| ~_bbReleaseLines~, ~_dpParseBb~                                                                                                                     | 15019–15124          | 106 lines, 5.6 KB  | detail parsers                                                    |
+| ~_DP_SITES['brucebase.wikidot.com']~                                                                                                                | 15190–15222          | 33 lines           |                                                                   |
+| ~_BB_YEAR_PATH_RE_KEY~, ~_bbYearTableFeatures~                                                                                                      | 24232–24269          | 38 lines, 1.9 KB   | must stay ABOVE ~pageDefinitions~                                 |
+| PTs ~bb-songs~, ~bb-year~, ~bb-home~ (~pageKeys:{pathRe,selector,unit}~)                                                                            | 27665–27720          | 56 lines, 2.7 KB   |                                                                   |
+| MusicBrainz-side readers ~_EXT_BB_*~, ~_extBbYears~ … ~_extBbDateLiveUrl~                                                                           | 42503–42725          | 223 lines, 11.5 KB | *run on MusicBrainz*                                              |
+| ~_EXT_READERS~ entries ~bbdate~, ~springsteen~                                                                                                      | 42764–42772          | 9 lines            |                                                                   |
+
+*** Touchpoints in shared code
+
+"Cost on MB" is what the line costs on musicbrainz.org.
+
+|                                   Line | Shared function                                                       | What the foreign branch does                                                   | Cost on MB                                                    |
+|----------------------------------------+-----------------------------------------------------------------------+--------------------------------------------------------------------------------+---------------------------------------------------------------|
+|                              5553–5619 | IIFE top level                                                        | host flags, ~_foreignHost~                                                     | 4 regex tests, result ~null~                                  |
+|                              5627–5676 | IIFE gates                                                            | opt-in/frame/year gates ~return~ from the IIFE                                 | ≈6 short-circuited checks                                     |
+|                   6175–6272, 6481–6519 | ~ColumnDataExtractor~                                                 | location-text helpers                                                          | none (no MB PT names ~splitLocationText~)                     |
+|                            15294–15297 | ~_popSources()~                                                       | prepends 4 ~_dpSiteSource~ entries before the MB sources                       | see pitfall 9                                                 |
+|                                  16882 | ~_initDetailPreview()~                                                | installs if any source is enabled                                              | runs on MB                                                    |
+|                            31532–31535 | ~_vsbBaseOffset()~ (sticky filter bars)                               | on SL reads ~--mb-sl-navbar-h~                                                 | one boolean                                                   |
+|                            31664–31667 | ~_vsbRefresh()~                                                       | ignores a "header" taller than ⅓ of the window (added for SL)                  | *generic, applies on MB*                                      |
+|                           32343, 32430 | ~_sphIsFullWidthFloat()~ / ~_sphContentBodies()~                      | descend into a full-width float (added for SL)                                 | *generic, applies on MB*                                      |
+|                                  32363 | ~_sphExcludedSidebar()~                                               | ~#sidebar~, or ~#side-bar~ on BB                                               | one boolean                                                   |
+|                                  32929 | ~_sphUpdateColDocked()~                                               | ~table.classList.contains('mb-bb-table')~                                      | one call per aligned table per scroll event                   |
+|                                  34684 | ~_findCellRelIcons()~                                                 | ~PATH_SENSITIVE_HOSTS = ['springsteenlyrics.com']~                             | MB behaviour for links pointing to SL                         |
+|                    38755, 38793, 41377 | ~enabled()~ of ~_rgLinkSource~ / ~_eventRgSource~ / ~_mbEntitySource~ | off when ~_foreignHost~ is set                                                 | one boolean                                                   |
+|                            41453–41454 | ~_EXT_CONNECT_HOSTS~                                                  | lists the 4 hosts                                                              | data                                                          |
+|                                  41500 | ~_EXT_SKIP_SEL~                                                       | adds ~.top-bar, #top-bar, .footer-col, #login-status~ (foreign page chrome)    | *applies on MB too*                                           |
+|                            42416–42772 | ~_extDp*~, ~_extBb*~, ~_EXT_READERS~                                  | foreign parsers on fetched cross-origin HTML                                   | *runs on MB when ~sa_pop_ext~ is on*                          |
+|       42813, 43105, 43256, 43348–43350 | ~_extContext~ / ~_extMbQuery~ / ~_extSteps~ / ~_extSource().selector~ | host branches                                                                  | one boolean each                                              |
+|                            56964–56981 | detection loop                                                        | skips every definition whose ~host~ is not ~_foreignHost~ (56971)              | foreign PTs sit last; reached on MB only when nothing matched |
+|                            56987–56990 | init                                                                  | ~slNavOnly~ with ~sa_sl_compact_nav~ off → ~return~                            | one optional chain                                            |
+|                            57021–57050 | init header / toolbar anchor                                          | ~baseDefinition?.host === …~ → ~_*PrepareLivePage()~, SL bar install           | 4 string compares                                             |
+|                                  57056 | init                                                                  | ~_initDetailPreview()~ when pageType and header exist                          | runs on MB                                                    |
+|                                  65003 | ~performClutterCleanup()~                                             | returns early on any foreign host (lists all four ~_is*Host~)                  | 4 booleans                                                    |
+|                            74356–74358 | ~_pageParamName()~                                                    | ~features.pageParam~, else ~'page'~                                            | *on the MB pagination path*, returns ~'page'~                 |
+|                            74382–74403 | ~_readPageKeys()~                                                     | ~param~ / ~pathRe~ keys                                                        | dead on MB                                                    |
+|                                  74923 | ~startFetchingProcess~ merge                                          | spreads ~buttonConfig.features~ into the definition (BS button kinds use it)   | generic                                                       |
+|                            75450–75489 | ~startFetchingProcess~, live doc                                      | 6 ~features?.<flag>~ → converter on the live doc; BS also ~_bsCheckAllFormats~ | 6 falsy checks                                                |
+| 75534–75582, 75724–75802, 75830, 77450 | page count, fetch loop, resume, progress label                        | ~pageKeys~ branches                                                            | ~null~ checks                                                 |
+|                            75940–75962 | fetch loop, per page                                                  | converter on each fetched doc                                                  | 6 checks per page                                             |
+|                            92649–92650 | ~initNavigationGuard()~                                               | on SL and BS the query string is part of the page identity                     | 2 booleans per click                                          |
+|                          102712–102734 | ~_hydrateAndRenderFromSnapshotData()~ (Load from Disk)                | the 6 converters on the live doc                                               | 6 checks                                                      |
+
+No foreign branch in ~renderFinalTable~, ~renderGroupedTable~, ~parseDocumentForTables~,
+~updateH2Count~, ~fetchHtml~, ~initSidebarCollapse~, the art viewer or disk save.
+~_buildConfigJson~ iterates ~configSchema~ only, so the ~mb_sa_sl_*~ GM keys are never
+exported.
+
+*** Pitfalls for MusicBrainz (and what guards each)
+
+1. *The detection filter at 56971 is the only thing keeping definitions apart, and no test
+   sees it.* Foreign PTs are last, so MB detection normally breaks first. The mutations
+   "the detection loop ignores the host" and "compares 'has a host' instead of WHICH host"
+   are recorded as ~"expect": "pass"~ in ~scripts/mutations/jl-support.json~ /
+   ~sl-support.json~: invisible today, a guard for the next broad matcher.
+2. *Gate placement and TDZ.* 5627–5676 must stay before the migration notice and Ctrl+M
+   (5683 on) and use ~return~. ~_BB_YEAR_PATH_RE~ / ~_BB_HOME_PATH_RE~ are declared above
+   the gate; ~_BB_YEAR_PATH_RE_KEY~ (24238) above ~pageDefinitions~ (24271); ~_BS_ALL_FORMATS~
+   (12911) is read inside ~pageDefinitions~ (27647). Moving any of these below its first
+   use breaks startup.
+3. *Host lists are written out in seven places,* not derived from one: 5615–5618, the
+   ~:is()~ list in 10621–10637, ~_DP_SITES~ (15149), ~_EXT_CONNECT_HOSTS~ (41453), 65003
+   (all four ~_is*Host~), 92649 (SL and BS only), header 39–42. A fifth site that misses
+   one of them fails quietly.
+4. *Shared CSS* is keyed on ~body.mb-sa-host-*~ (added only by the ~_*PrepareLivePage~
+   functions, all after a gate) and wrapped in ~:where()~ (zero specificity), so it never
+   applies on MB unless a host class leaks.
+5. *Shared settings and storage.* All 13 foreign settings and 4 dividers are in the MB
+   settings dialog and the config export. Foreign code reads MB settings
+   (~sa_sidebar_collapsed~, ~sa_dp_hover_without_ctrl~, ~sa_pop_ext~, ~sa_render_threshold~,
+   ~sa_max_page~). SL's two GM keys sit next to the MB keys.
+6. *Engine code that only foreign sites need:* ~dateParts~ must never learn BB's ~00~
+   day/month (BB normalises in its converter); ~splitLocationText~ reuses
+   ~AREA_FLAG_REGION_SUBDIVISIONS~; the ~_sortColumnKind()~ name heuristic forces
+   "Cat. no." over "Cat #"; ~_pageParamName()~ is on the MB pagination path.
+7. *Sticky headers:* the full-width-float descent and the ⅓-window guard are generic and
+   run on MB; ~.mb-bb-table~ is checked on every scroll.
+8. *Converters run in three places* (live 75454–75489, fetched 75940–75962, disk load
+   102712–102734), each guarded only by ~activeDefinition.features?.<flag>~, which MB PTs
+   never set. A new site that forgets one of the three fails only in that path.
+9. *Popup engine cost on MB:* ~_popResolve~ (15311) calls ~node.closest(src.selector)~
+   for EVERY source BEFORE ~src.enabled()~, so each hover/focus/click on MB pays 4 extra
+   ~closest()~ calls for the four foreign sources that are always disabled there.
+10. *MB runs foreign parsers:* with ~sa_pop_ext~ on, ~_extDpLoad~ runs ~_DP_SITES[host].parse~
+    on cross-origin HTML; the IndexedDB version is ~_EXT_IDB_VERSION*100 + _DP_PARSER_VERSION~
+    (42771), so bumping ~_DP_PARSER_VERSION~ (14403) for a foreign parser invalidates
+    MB-side cached records. ~_EXT_SKIP_SEL~'s foreign additions apply on MB.
+11. *Global state set by foreign code:* body classes ~mb-sa-host-{sl,jl,bs,bb}~,
+    ~mb-sa-sl-nav-only~, ~--mb-sl-navbar-h~; listeners/observers (SL bar 12066–12091 and
+    12591, BS ~load~ 13218, BB 14375–14378); ~let~s ~_slScopePop~, ~_slScopeState~,
+    ~_slScopeRenderQueued~; caches ~_dpMem~ / ~_dpInflight~ / ~_dpRawMem~, ~_extBbYears~,
+    IndexedDB ~vz-saed-detail-pages~. ~_slLoadedTable~ (11481) reads ~isLoaded~/~allRows~,
+    a TDZ hazard guarded by testing for the filter row first.
+12. *Cross-block dependency:* ~_dpParseSl~ uses ~_slFindCards~, ~_slReadCardFields~,
+    ~_slCardSubtitle~ from the converter block.
+
+*** What a split-out file would need from the engine
+
+- Every converter: ~Lib.debug/warn/settings~, ~GM_addStyle~, ~def.features.<flag>~ of the
+  merged ~activeDefinition~, and an *output contract*: a ~<table class="tbl mb-XX-table">~
+  with ~thead > tr > th~ and a ~tbody~ before the engine's header scan, an ~<h2>~ before it
+  on the live doc, header names that match ~columnExtractors[].sourceColumn~ /
+  ~integerColumns~ / ~stickyColumn~, and an ~<h1>~ containing a ~<bdi>~ from each
+  ~*PrepareLivePage()~ (used as ~headerContainer~ and ~_cachedEntityName~).
+
+| Converter                              | Engine internals it uses                                                                                                                                                                                                               |
+|----------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ~applySlCardsToTable~                  | ~_setTip~                                                                                                                                                                                                                              |
+| ~applySlLyricsToTable~                 | Lib only                                                                                                                                                                                                                               |
+| SL bar (~_slInstallScopeBar~ …)        | ~applyUniqValueSet~, ~getCleanColumnText~, ~_findColIdxByName~, ~allRows~, ~isLoaded~, ~_setTip~, GM storage; DOM contracts ~tr.mb-col-filter-row~, ~.mb-col-filter-input[data-col-idx]~, ~data-mb-uniq-values~; ~initNavigationGuard~ |
+| ~applyJlListToTable~                   | Lib, ~_ensureForeignTableStyle~                                                                                                                                                                                                        |
+| ~applyBsRecordsToTable~                | Lib, ~_ensureForeignTableStyle~; engine ~overrideParams~, ~non_paginated~, the button-features merge                                                                                                                                   |
+| ~applyBbSongsToTable~                  | Lib                                                                                                                                                                                                                                    |
+| ~applyBbYearToTable~                   | ~_setTip~, ~_isBbHost~, ~collapsableColumns~; ~bb-home~ relies on ~pageKeys.pathRe~                                                                                                                                                    |
+| ~_bbArrangeSideBar~ / ~_ensureBbStyle~ | ~_setTip~, ~sa_sidebar_collapsed~ / ~sa_bb_*~, ~#mb-status-displays-wrapper~, the sticky z-index ladder                                                                                                                                |
+| ~_dpParse*~                            | ~_dpEmpty~, ~_dpText~, ~_dpBlockText~, ~_dpAbsUrl~, ~_DP_TRACK_RE~, ~_DP_DISC_RE~, the SL helpers                                                                                                                                      |
+
+And the engine reads back from foreign code: ~_foreignHost~ and the ~_is*Host~ flags,
+~_DP_SITES~, ~_BB_*_PATH_RE*~, ~_BS_ALL_FORMATS~, ~_bbYearTableFeatures~, the hoisted
+converter/prepare/install functions, the ~.mb-bb-table~ class, ~--mb-sl-navbar-h~ and the
+~__saTest~ targets.
+
+*Verdict for 3a:* the foreign code is *contained but not isolated*. It is well gated (it
+costs MusicBrainz a handful of booleans per event, plus four ~closest()~ calls per hover),
+but it is woven into ~startFetchingProcess~, the detection loop, the sticky headers, the
+popup engine and the settings, and half of the parser code runs ON MusicBrainz by design.
+
+** 3b. Split the non-MB code into its own files, or its own userscript?
+
+*Own fragment(s): yes, as part of Phase 2 (2.4).* The main body 9897–14379 is already one
+contiguous, cut-safe block (9897 and 14381 are verified top-level boundaries), so it can be
+the first fragment cut out. The settings, PTs, ~_DP_SITES~ and readers stay where the engine
+expects them, because of TDZ order and the ~pageDefinitions~ reads.
+
+*Own userscript: no, not today.* Reasons, strongest first:
+
+1. *The engine would be duplicated, not shared.* Tampermonkey runs each userscript in its own
+   scope; two scripts cannot share one engine instance short of exposing it on the page's
+   ~window~ (which with ~@grant~s on is a different world from both scripts'). So "SAED-
+   Springsteen.user.js" would ~@require~ or contain the whole engine: the same 6.7 MB parse,
+   just on fewer pages.
+2. *MusicBrainz needs the Springsteen parsers anyway* (link previews; 2.5).
+3. *Settings would split.* GM storage is per installed script: colours, filter defaults,
+   column choices and the art cache keys would be configured twice, and exported twice.
+4. *Two update channels, two changelogs, two HELP files*, and every engine change would have
+   to be released twice.
+
+*When that flips:* if the engine itself becomes a versioned ~@require~ library that both
+scripts load (a big refactor — the "engine" is ≈95 % of the file and full of module state),
+or if a site needs Tampermonkey features that conflict with MusicBrainz's (a different
+~@run-at~, ~@sandbox~, ~@noframes~). Neither is true today.
+
+** 3c. Making your other userscripts cooperate
+
+*** What exists today
+
+- SAED publishes no API and no events. Its only outward signal is ~stopOtherScripts()~
+  (65218): ~window.stopAllUserScripts = true~ plus ~window.dispatchEvent(new
+  CustomEvent('mb-stop-all-scripts'))~, sent when an action button is pressed. Nobody
+  listens: none of your scripts, not the library, none of the six registered third-party
+  scripts. The window flag is set on the script's sandboxed ~window~ and is probably
+  invisible to other scripts.
+- Everything else is defensive: ≈15 mechanisms detect, strip or absorb other scripts'
+  markup (jesus2099 SUPER MIND CONTROL and INLINE STUFF, Right/More Flags Everywhere,
+  sanojjonas, Nuclear Tags, Wiencek's batch-add, chaban …). One reads another script's data:
+  ~_recOfReadBprWorks()~ reads the batch-add script's ~localStorage['bpr_works <mbid>']~.
+- SAED re-renders rows with ~cloneNode(true)~ on every sort and filter (multi-table pages
+  even on the first render), so *any listener another script attached to a table row dies*
+  on the next render, and its added cells survive only if they are in the master rows.
+- Your scripts:
+
+| Script                               | Pages                                                                                | Overlap with SAED                                                                                                                                                                                                                                                                                                                                                                          |
+|--------------------------------------+--------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| SpringsteenCoverArtUploader 1.02.003 | MB ~release/*/cover-art~, ~event/*/event-art~; SL ~collection.php*~, ~bootlegs.php*~ | None in practice: it acts on SL only with ~item=…&cau_extract~, which SAED's SL ~@include~s do not match, and SAED does not include the MB art pages. Already has the only cross-script contract in your scripts: ~window.ArtStation?.registerProvider~ + ~document.dispatchEvent(new CustomEvent('artstation:register-provider'))~ and a ~postMessage({type:'cau_images'})~ to its opener |
+| SL UUID Paster 2.2 (+Helper 1.5)     | SL ~cmd=edit~ and ~item=…&category=…~ pages                                          | None: SAED's SL ~@include~s are list/intro/lyrics pages only                                                                                                                                                                                                                                                                                                                               |
+| Your BruceBase userscript            | not found under =~/git= (TODO.org: "integration with my own BB userscript")          | unknown — see the generic contract below and the open questions                                                                                                                                                                                                                                                                                                                            |
+| MB_PageEnhancer 1.0.12               | MB release and event overview pages                                                  | Same pages as ~release-tracks~ / ~event-overview~; shares VZ_MBLibrary (both add an Editing-menu entry); no coordination in either script                                                                                                                                                                                                                                                  |
+| GenerateRecordingCommentForRelease   | MB release page                                                                      | SAED deliberately keeps its ~#grcfr-header-controls~ (comment at ≈27286); SAED does nothing about its ~input.recording-comment~ cells                                                                                                                                                                                                                                                      |
+| MB_InlineRecordingTracks             | MB release page                                                                      | Inserts next to ~span#medium-toolbox~, which SAED removes after rendering (≈27292)                                                                                                                                                                                                                                                                                                         |
+
+*** Proposed contract (not implemented)
+
+Small, namespaced, versioned, and zero-cost when nobody listens:
+
+- ~saed:ready~ — once, right after the pageType gate passes. ~detail~ = JSON string
+  ~{"v":1,"pageType":"…","tableMode":"single|multi","host":"musicbrainz.org|…"}~.
+- ~saed:rendered~ — after every completed render, with ~reason~ = ~initial~ / ~filter~ /
+  ~sort~ / ~view~ / ~disk-load~ and ~{"v":1,"pageType","reason","rows","total","gen"}~.
+  One event instead of a separate ~saed:filtered~: filter typing is already debounced
+  (~sa_filter_debounce_delay~), every pass already clones rows, and a ≈100-byte JSON string is
+  noise next to that. Never put row data in it.
+- Dispatched on ~document~ through one helper ~_saedAnnounce(reason)~ on ~setTimeout(0)~:
+  listeners see the finished DOM, and a listener that types into a filter cannot re-enter
+  ~runFilter~ mid-pass. Call sites: ~_finishRender~ (≈79556, only when not superseded —
+  this also covers ~runFilter~'s single-table branch) and the end of ~runFilter~'s grouped
+  branch after the re-wiring, plus the initial grouped render.
+- *Why JSON strings:* with ~@grant~s, scripts run in isolated worlds. DOM events cross
+  worlds, but a ~CustomEvent.detail~ object arrives as ~null~ in another world unless it is
+  structured-cloneable, and Firefox needs ~cloneInto~. A string always arrives.
+  (SpringsteenCoverArtUploader passes objects containing functions; that only works while both
+  sides share one JS context, so the contract must not copy it.)
+- *Late listeners:* the order in which document-idle userscripts start is undefined, so
+  also mirror the state on ~document.documentElement~: ~data-saed="<pageType>"~ and
+  ~data-saed-gen="<n>"~. A script that starts after SAED's first render reads the attribute
+  instead of waiting for an event that already fired. (The harness can use ~data-saed-gen~
+  too, instead of guessing completion from ~#mb-render-heading~.)
+- *Rules for a cooperating script:* use event delegation on the ~table~ or ~document~, never
+  per-row listeners; or re-apply on every ~saed:rendered~ (idempotently, keyed by a marker
+  class). Mark your own injected elements with a ~data-saed-keep~ attribute if they must
+  survive SAED's cleanup passes — that would need one generic check in the strip passes
+  instead of the per-script exceptions SAED carries today (~#grcfr-header-controls~).
+- *Testing:* the harness injects SAED in the page's own context (~loadPage.js:215~), so it
+  cannot see the cross-world behaviour. A listener script under
+  ~tests/fixtures/thirdPartyScripts/~ covers the event timing; the ~null~-detail case needs
+  one manual check in Tampermonkey.
+
+*** Per script
+
+- *SpringsteenCoverArtUploader:* nothing to coordinate today. If it ever runs on an SL list
+  page SAED converts, it should listen for ~saed:rendered~ and work on ~table.mb-sl-table~,
+  because SAED replaces the site's cards with that table.
+- *SL UUID Paster (+Helper):* no overlap. If SAED ever converts the item/edit pages, the
+  same rule applies.
+- *Your BruceBase userscript:* depends on whether it touches ~stats:songs~, year or home
+  pages (SAED's ~bb-songs~ / ~bb-year~ / ~bb-home~). If it does: (a) decide per page who owns
+  the main content; (b) if it enriches the original wiki DOM before SAED converts it
+  (document-end runs before SAED's document-idle), SAED's converter could pick up a
+  documented annotation — e.g. ~data-saed-col-<name>="value"~ on the source element becomes
+  an extra column. That is a converter change, not a contract-only change, so it is listed
+  as an idea, not a safe suggestion.
+- *The reverse direction* already has a precedent: SAED reads Wiencek's ~bpr_works~ cache
+  (gated by ~sa_recording_of_import_bpr_cache~). Reading your own scripts' data the same
+  way (localStorage on the page's origin, a documented key) is the cheapest cooperation of
+  all, because it needs no timing guarantees.
+
+** 4. Safe suggestions (ranked by risk to MusicBrainz)
+
+"Runtime" = does it change what ~ShowAllEntityData.user.js~ or the library does in a user's
+browser.
+
+|  # | Suggestion                                                                                                                                     | Runtime?              | Risk to MB             | How to verify                                                                                                                                                 |
+|----+------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------+------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|  1 | Fix the stale docs about the library ~@require~ (in-file note 57–91, CLAUDE.md "Publishing", config-handling F6)                               | no                    | none                   | ~check-publish-ready.py~ output agrees with the docs                                                                                                          |
+|  2 | Record a real-browser measurement with the recipe in 0.5                                                                                       | no                    | none                   | a row in ~tests/MEASUREMENTS.org~                                                                                                                             |
+|  3 | Dev loader + ~stage-dev.py~ (staged copy, mutation-backup lock, header-hash warning, separate profile)                                         | no                    | none                   | install once; edit → stage → reload; a planted ~*.mutation-backup~ makes stage refuse                                                                         |
+|  4 | mutation-check env-var redirect (mutants in a temp dir)                                                                                        | no (harness)          | none                   | ~scripts/mutation-check.py~ on one list; working copy untouched during the run (mtime, hash)                                                                  |
+|  5 | Header-only ~.meta.js~ as ~@updateURL~ + the publish check                                                                                     | header only           | none                   | ~check-publish-ready.py --strict~; one manual "check for updates" in Tampermonkey                                                                             |
+|  6 | Pin ~@jaames/iro@5.5.2~ + tighten ~harness-required-libs.spec.js~                                                                              | header only           | very low               | ~check-vendored-libs.py~; the spec                                                                                                                            |
+|  7 | ~build-userscript.py~ Phase 1 (dev stage, meta.js; stripped copy NOT published yet)                                                            | no                    | none                   | the artifacts are byte-identical to what 3 and 5 produce by hand                                                                                              |
+|  8 | Downgrade ~Required elements not found. Terminating.~ from ~Lib.error~ to ~Lib.debug~                                                          | console only          | very low               | no spec asserts on it today (grep the specs first)                                                                                                            |
+|  9 | ~_popResolve~: test ~src.enabled()~ before ~node.closest(src.selector)~                                                                        | yes, popup hot path   | low                    | ~popup-*.spec.js~, ~detail-preview.spec.js~; same results, fewer ~closest()~ calls                                                                            |
+| 10 | Add the ~saed:ready~ / ~saed:rendered~ contract + ~data-saed-gen~ (3c)                                                                         | yes, additive         | low                    | a listener fixture script + a spec counting events per render; ~npm run test:full~                                                                            |
+| 11 | Derive the seven host lists from one table (pitfall 3)                                                                                         | yes, foreign gating   | low–medium             | ~sl-/jl-/bs-/bb-*~ specs AND the MB fixture suite; mutation lists ~*-support.json~                                                                            |
+| 12 | A spec that SEES the ~_foreignHost~ detection filter (pitfall 1): e.g. a fixture served at a foreign host whose path an MB matcher would claim | no (test)             | none                   | flip the two ~"expect": "pass"~ entries to ~"fail"~                                                                                                           |
+| 13 | Lazy changelog in the library: fetch/parse only when the 📜 dialog opens                                                                       | yes, library          | low                    | +8 ms per page and +3.2 MB heap per tab in Chromium (0.3); worth more if the real-browser recipe shows the stored value is costly; the changelog dialog specs |
+| 14 | Publish the comment-stripped copy (2.3)                                                                                                        | yes, whole artifact   | medium                 | buys −16 % load time (0.3); full fixture suite against the stripped file first; line numbers spot-checked                                                     |
+| 15 | Phase 2 split (2.4)                                                                                                                            | no, if byte-identical | low, process cost high | SHA-256 equality on the first cut; then the freshness spec                                                                                                    |
+
+*Not safe, do not do as a "cleanup":* moving top-level ~const~s to group the foreign code
+(TDZ: ~_BB_*_PATH_RE~ must stay above the gate, ~_BB_YEAR_PATH_RE_KEY~ and
+~_BS_ALL_FORMATS~ above ~pageDefinitions~); moving the pageType detection earlier to skip
+the 3 MB top level on pages with no pageType (much of what runs before it is what detection
+reads); merging the four ~_*PrepareLivePage~ functions.
+
+** Open questions for the next session
+
+1. Where is your BruceBase userscript, and which BB pages does it touch? (3c)
+2. Which phase to start: Phase 0 only, or Phase 0 + 1?
+3. Do you still live-test in Firefox? That decides whether the loader needs the
+   local-HTTP fallback.
+4. Downgrade the no-pageType ~Lib.error~ (suggestion 8)? It shows as an error in every
+   user's console on every bare entity page.
+5. After the real-browser measurement (0.5): is the per-page tax worth more work (stripped
+   publish copy, lazy changelog), or is it fine as is?
+6. REFACTORING.org's bundler verdict: annotate it with a pointer here, or leave it?
+
+** Resume checklist (another host, another session)
+
+1. ~git fetch && git checkout docs/build-framework~ (or ~main~ if it has been merged).
+2. Read this section, then ~REFACTORING.org~ "NOT RECOMMENDED: full module split via
+   bundler" and ~docs/claude/~ for the area you touch (the doc map in
+   ShowAllEntityData/CLAUDE.md).
+3. Re-check line numbers before relying on them: ~grep -n '_foreignHost) continue'
+   ShowAllEntityData.user.js~ etc.
+4. Re-measure on that host and quote ratios, never absolutes across hosts:
+   ~node scripts/measure-script-load-cost.js --out <scratch>/load-cost.json~
+   (≈5–10 min; ~--runs 3 --warmup 1 --throttle 1~ for a quick look).
+5. Before any runtime change: ~npm run test:full~ via ~python3 scripts/run-test-full.py~,
+   version bump + WIP changelog on the feature branch per CLAUDE.md.

@@ -3399,3 +3399,33 @@ without the pinning cost nothing. Raw:
 not kept — its numbers are copied from the console).
 Flagged to the user before going on, per the performance gate. Whether the
 cost grows with the row count was not measured.
+
+* 2026-10-10 — userscript load cost to the pageType gate, by file size (NB-3641)
+
+Env: 2026-10-10T07:49:57Z–07:51:37Z · NB-3641 (28 cores, 31 GB) · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Node v24.19.0 · Chromium 151.0.7922.34 via Playwright 1.62.1 · no Tampermonkey (in-memory GM stubs)
+
+What a matched page pays just for the file's size, before any table work:
+=node scripts/measure-script-load-cost.js --runs 15 --warmup 2 --throttle 1,4=,
+script 9.99.1316+2026-10-10, branch =docs/build-framework=. Page: a routed
+=https://musicbrainz.org/__saed-measure= with no pageType, so every run stops
+at the gate (checked per run; 0 invalid). Fresh BrowserContext per run;
+iro/pako/VZ_MBLibrary injected untimed; timed = appending a =<script>= with
+the arm's text (parse + compile + run to the gate). 15 kept runs per cell.
+
+| Arm                                         |      Bytes | ×1 median ms |  ×1 p10–p90 | ×4 median ms |  ×4 p10–p90 | ScriptDuration ×1 ms |
+|---------------------------------------------+------------+--------------+-------------+--------------+-------------+----------------------|
+| real (today's file)                         |  6,696,865 |        102.6 |  99.8–105.2 |        428.6 | 419.9–444.4 |                 58.1 |
+| prescan (never-called wrapper: the floor)   |  6,696,899 |         44.0 |   42.6–46.3 |        181.1 | 175.0–189.1 |                  0.0 |
+| stripped (comments + indent, newlines kept) |  2,811,168 |         85.9 |   82.0–90.7 |        354.2 | 348.5–366.4 |                 53.2 |
+| pad-code-10MB (real + never-called code)    | 10,000,583 |        168.9 | 163.1–177.4 |        690.5 | 683.0–720.5 |                 87.7 |
+| pad-comment-10MB (real + comment lines)     | 10,000,073 |        117.4 | 113.1–119.9 |        484.2 | 475.4–494.8 |                 63.0 |
+
+Changelog cache seeded (the library parses the 1.93 MB changelog after the
+IIFE): "settled" 103.3 → 111.1 ms (×1), 430.3 → 457.2 ms (×4); =JSON.parse=
+alone 2.0 / 9.3 ms; JS heap retained after GC +1.5 → +4.7 MB.
+
+*Read as:* ≈20 ms per MB of never-called code and ≈4.5 ms per MB of comments
+at ×1 (≈79 / 17 at ×4); stripping comments is −58 % bytes but −16 % time.
+Analysis and caveats (what Tampermonkey adds is not in these numbers):
+=org/build-framework.org=, section 0.3. Raw JSON not committed; the script
+re-creates it in about two minutes on this host.
