@@ -1,0 +1,17 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-10",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Measuring typed filtering. capture-interaction-perf.js --only=typed types each filter value one key at a time with a pause (--typing-delays=150,400) and records, per key and per sample, the slowest keystroke (Event Timing), the longest animation frame and task, the wait after the last key and the number of filter passes. Earlier filter numbers were single-pass; this is the first measure of a person typing. Its files carry a -typed suffix, and scripts/run-perf-arms.py keeps a separate ETA history for such runs.",
+          "Baselines for main (9.99.1316) on artist-events, artist-releases-dylan, artist-releasegroups and artist-recordings-petty, run twice in opposite orders (tests/MEASUREMENTS.org, \"Typed filtering\"; table from the new scripts/summarize-typed-perf.py). With a pause longer than the debounce, a keystroke waits 0.85-1.9 s and the page goes up to 1.96 s without painting.",
+          "New probe tests/support/probe-keystroke-cost.js: traces typing right after the render and once the header counts have settled, and lists every slow main-thread task with what ran in it; --css= and --init= test a remedy without changing the userscript. It found two costs outside runFilter(): each key repaints the whole visible table (about 75 ms; a paint layer on the table cuts it to about 18 ms), and right after the render each header-count badge write makes the next key re-lay out the whole table (DEBUG-NOTES.md, 2026-10-10).",
+          "No ShowAllEntityData.user.js changes."
+        ]
+      }
+    ]
+  }
+]

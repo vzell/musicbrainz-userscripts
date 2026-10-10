@@ -20,7 +20,8 @@ SA_PERF_PROGRESS file (reportProgress() in capture-interaction-perf.js).
 
 Per-host, per-arm history: ~/.cache/sa-perf/last-<host>-<arm>.json holds the
 previous complete run's wall clock; the ETA sums it over the arms still to run.
-Without history the ETA is extrapolated from the current arm's progress.
+Without history the ETA is extrapolated from the current arm's progress. A run
+limited with `-- --only=typed` keeps its own history (`last-<host>-<arm>-typed.json`).
 
 Exit status: the first failing run's, else 0.
 """
@@ -80,6 +81,16 @@ def history_path(host, arm):
     return os.path.join(STATE_DIR, f'last-{host}-{arm}.json')
 
 
+def history_name(arm, extra):
+    """The history name of one arm: a run limited with `--only=` is its own kind.
+
+    A typed run takes a fraction of a full run's time, so sharing one history
+    would make every later ETA wrong in one direction or the other.
+    """
+    only = next((a.split('=', 1)[1] for a in extra if a.startswith('--only=')), '')
+    return f'{arm}-{only}' if only else arm
+
+
 def main():
     """Runs the arms, keeping the status file current."""
     argv = sys.argv[1:]
@@ -109,7 +120,7 @@ def main():
 
     def eta_for(index, arm_start):
         """Expected finish: the history of the arms left, else extrapolation."""
-        hist = [read_json(history_path(host, a)) for a in args.arms[index:]]
+        hist = [read_json(history_path(host, history_name(a, extra))) for a in args.arms[index:]]
         if all(h and h.get('wall_s') for h in hist):
             return iso(arm_start + datetime.timedelta(seconds=sum(h['wall_s'] for h in hist)))
         prog = read_json(PROGRESS_PATH)
@@ -157,7 +168,7 @@ def main():
         wall = round((utc_now() - arm_start).total_seconds())
         status['results'].append({'arm': arm, 'exit': proc.returncode, 'wall_s': wall, 'file': written})
         if proc.returncode == 0:
-            with open(history_path(host, arm), 'w', encoding='utf-8') as f:
+            with open(history_path(host, history_name(arm, extra)), 'w', encoding='utf-8') as f:
                 json.dump({'wall_s': wall, 'finished': iso(utc_now())}, f)
         elif not exit_code:
             exit_code = proc.returncode

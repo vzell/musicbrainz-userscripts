@@ -96,6 +96,8 @@ another pass. PERFORMANCE.org's "Findings: the per-keystroke filter cost" sectio
 is about the repeated-pass behaviour, and nothing here observes it. A
 =--typing-delay= arm would; it is deliberately not built yet, since the steps it
 would judge are verifiable by count instead (see that file's Tier 0).
+/Update 2026-10-10:/ it now exists, as =--only=typed= — see "Typed filtering —
+per-keystroke latency and the longest block" below. The rows here stay single-pass.
 
 ** Results
 
@@ -505,6 +507,71 @@ Step 32 records as unfixable for a collapsed Picard column). The filter and 📊
 flip sign between the orders (global filter 0.977 vs 1.095, column filter 1.089 vs
 0.990), so they are noise at this sample size. JSON: =tests/snapshots/artist-recordings-petty{,-nocols}/interaction-perf-{feature-recording-of-column,reverse}-9.99.1311-2026-10-10-petri.json=.
 Pair 2 ran through =scripts/run-perf-arms.py= (status-line progress).
+
+* Typed filtering — per-keystroke latency and the longest block (=main=, 2026-10-10)
+
+The "measure first" half of the faster-filtering branch (=perf/faster-filtering=): how
+=main= behaves while a person TYPES into the global filter, which no row above observes.
+=capture-interaction-perf.js --only=typed= types each of the page's five =filterValues=
+one key at a time, pressing and then pausing 150 ms or 400 ms (=measureTypedFilterOnce()=).
+150 is under the 300 ms debounce floor, so the keys merge into one pass; 400 is over it,
+so a pass starts after nearly every key and the next key lands while it runs.
+
+Columns (each a median of 5 samples, one fresh page load per sample, fields taken
+independently):
+- /worst key/: the slowest keystroke, key down to next paint (Event Timing, longest entry
+  per interaction; under 16 ms is not reported and counts as 0). /keys ≥50/, /≥100/: how
+  many keystrokes took that long.
+- /longest frame/, /blocking/: the longest animation frame and its blocking time — the
+  longest stretch the page could not paint. /longest task/: the longest single task.
+- /after last key/: the page's last =input= event to the final pass's status line plus a
+  quiet main thread (no long frame for 750 ms), so the chunked render's tail counts.
+  /total/: first key to the same point, typing included. /passes/: filter passes started.
+
+Env: 2026-10-10T01:41:18Z -> 02:01:13Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux
+6.18.40.1-microsoft-standard-WSL2), 24 cores, 31 GB · Node v24.16.0 · Playwright 1.62.1
+bundled Chromium, no Tampermonkey (GM stubs) · branch =perf/faster-filtering= at
+=535dad8= with =ShowAllEntityData.user.js= byte-identical to =main= (9.99.1316) — the
+branch adds only the harness · via =scripts/run-perf-arms.py=, order 1 events -> dylan ->
+releasegroups -> petty, order 2 the reverse. Table from =scripts/summarize-typed-perf.py=.
+
+| pageType                  | delay | run               | worst key | keys ≥50 | keys ≥100 | longest frame | blocking | longest task | after last key | total | passes | UTC run        |
+|---------------------------+-------+-------------------+-----------+----------+-----------+---------------+----------+--------------+----------------+-------+--------+----------------|
+| =artist-events=           |   150 | main-typed-order1 |       272 |        5 |         5 |           709 |      653 |          699 |           1157 |  2706 |      1 | 01:41 -> 01:45 |
+| =artist-events=           |   150 | main-typed-order2 |       272 |        5 |         5 |           672 |      620 |          666 |           1064 |  2636 |      1 | 01:57 -> 02:01 |
+| =artist-events=           |   400 | main-typed-order1 |      1920 |        5 |         5 |          1927 |     1850 |         1614 |            412 |  6323 |      4 | 01:41 -> 01:45 |
+| =artist-events=           |   400 | main-typed-order2 |      1864 |        5 |         4 |          1955 |     1855 |         1634 |            392 |  5571 |      4 | 01:57 -> 02:01 |
+| =artist-releases-dylan=   |   150 | main-typed-order1 |       200 |        8 |         1 |           538 |      478 |          521 |            960 |  2777 |      1 | 01:45 -> 01:47 |
+| =artist-releases-dylan=   |   150 | main-typed-order2 |       200 |        7 |         1 |           525 |      468 |          513 |            939 |  2768 |      1 | 01:54 -> 01:57 |
+| =artist-releases-dylan=   |   400 | main-typed-order1 |      1688 |        5 |         4 |          1488 |     1438 |         1507 |            481 |  7345 |      7 | 01:45 -> 01:47 |
+| =artist-releases-dylan=   |   400 | main-typed-order2 |      1840 |        5 |         4 |          1671 |     1621 |         1692 |            505 |  7354 |      7 | 01:54 -> 01:57 |
+| =artist-releasegroups=    |   150 | main-typed-order1 |        80 |        1 |         0 |           198 |      142 |          189 |            513 |  1071 |      1 | 01:47 -> 01:49 |
+| =artist-releasegroups=    |   150 | main-typed-order2 |        72 |        1 |         0 |           212 |      154 |          201 |            519 |  1064 |      1 | 01:53 -> 01:54 |
+| =artist-releasegroups=    |   400 | main-typed-order1 |       848 |        4 |         3 |           955 |      855 |          870 |            383 |  2958 |      4 | 01:47 -> 01:49 |
+| =artist-releasegroups=    |   400 | main-typed-order2 |       880 |        3 |         3 |           962 |      862 |          878 |            377 |  2952 |      4 | 01:53 -> 01:54 |
+| =artist-recordings-petty= |   150 | main-typed-order1 |        88 |        6 |         0 |           393 |      332 |          380 |            717 |  2032 |      1 | 01:49 -> 01:51 |
+| =artist-recordings-petty= |   150 | main-typed-order2 |        80 |        4 |         0 |           411 |      355 |          402 |            718 |  1993 |      1 | 01:51 -> 01:53 |
+| =artist-recordings-petty= |   400 | main-typed-order1 |       912 |        4 |         3 |           976 |      876 |          702 |            391 |  5339 |      7 | 01:49 -> 01:51 |
+| =artist-recordings-petty= |   400 | main-typed-order2 |       976 |        5 |         3 |           964 |      892 |          965 |            389 |  5345 |      6 | 01:51 -> 01:53 |
+
+Reading it:
+- *The two orders agree* (every pair within about 10 %; the largest gap is Dylan's
+  longest frame at 400 ms, 1488 vs 1671), so the run order does not drive these numbers
+  and they can be quoted as =main='s state on this host.
+- *A person who pauses over the debounce waits 0.85-1.9 s for a keystroke to show.* At
+  400 ms the worst key is 848-1920 ms and the page goes 955-1955 ms without painting,
+  because the key lands inside a pass that does not yield. That is the faster-filtering
+  branch's target, and these are its baselines.
+- *One pass alone already blocks 0.2-0.7 s* (150 ms, longest frame 198-709). Yielding
+  between slices would shorten that block; it would not shorten the pass.
+- *Not all of it is the pass.* At 150 ms only one pass runs, yet =artist-events= still
+  has 5 keystrokes at ≥100 ms (worst 272) and Dylan 7-8 at ≥50 ms: work that runs on
+  every key, outside =runFilter()=. Yielding inside the match loop cannot reach it; it
+  needs its own look before the design is final.
+- /after last key/ is SMALLER at 400 ms than at 150 ms (377-505 vs 513-1157): at 400 the
+  final pass narrows the previous pass's matches (=_incrMatchSet=), at 150 it scans the
+  whole table once.
+JSON: =tests/snapshots/<pageType>/interaction-perf-main-typed-order{1,2}-9.99.1316-2026-10-10-petri.json=.
 
 * Instrumenting =artist-releasegroups= — the first multi-table arm (2026-09-10)
 

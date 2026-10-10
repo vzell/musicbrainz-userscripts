@@ -21500,3 +21500,73 @@ as `wiencek-batch-performance` by the new `wire-live-userscript` skill.
    sort +5–6 %, the rest noise (tests/MEASUREMENTS.org). New tooling:
    `scripts/run-perf-arms.py` + `reportProgress()` in the harness feed the
    Claude Code status line (`~/.cache/sa-perf/status.json`).
+
+## 2026-10-10 — What a keystroke in the global filter costs outside `runFilter()` (branch perf/faster-filtering, measuring only)
+
+Env: 2026-10-10T12:25Z–12:49Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs) · `ShowAllEntityData.user.js` byte-identical to `main` (9.99.1316).
+
+**Symptom.** The new typed metric (`capture-interaction-perf.js --only=typed`,
+tests/MEASUREMENTS.org "Typed filtering") showed that with a 150 ms pause
+between keys (under the 300 ms debounce, so ONE filter pass) `artist-events`
+still has five keystrokes of 100 ms or more, worst 272 ms. Not the pass.
+
+**Method.** `tests/support/probe-keystroke-cost.js` records a Chromium trace
+while typing "United Kingdom" (14 keys, 150 ms apart) twice on one page load:
+"fresh", straight after `waitForRenderComplete()`, and "settled", after the
+column-header counts stopped changing. It lists every main-thread task of
+16 ms or more with what ran inside it. `--css=` / `--init=` inject a style or
+an experiment script after the render (never the script as shipped; each arm
+below is named). One trace per window: a single trace across the header-count
+wait overflowed Chromium's buffer and lost the second window silently.
+
+**Two separate causes, both confirmed by experiment.**
+
+1. *Every key repaints the whole page layer, about 75 ms (settled state).*
+   Each key is one 13–26 ms task (keypress, textInput, 9–16 ms layout), then a
+   72–81 ms Paint task. The paint's rect is the full viewport on layer 0, the
+   root layer: the table has no paint layer of its own, so a one-character
+   change in the input re-records the whole visible table. Once a filter has
+   narrowed the table the same paint drops to 13–20 ms, so it scales with the
+   painted rows, not with the key.
+   - `#mb-global-filter-input { will-change: transform }`: no change
+     (1102 / 1083 ms paint over 14 keys vs 1105 / 1072 baseline).
+   - `table.tbl { position: relative; z-index: 0 }`: per-key paint 17–19 ms.
+   - `table.tbl { contain: paint }`: per-key paint 17–19 ms.
+   - `table.tbl { will-change: transform }`: 17–20 ms, but a composited layer
+     for a 4174-row table costs GPU memory; not a candidate.
+   Either of the first two gives the table a self-painting layer whose
+   painting is reused when only the input changed. Both create a stacking
+   context (and `contain: paint` clips and becomes a containing block), so
+   the sticky header/column z-index and anything positioned out of a cell
+   must be checked before either ships.
+
+2. *Right after the render, every header-badge write makes the next key pay
+   a full table layout (fresh state).* The idle-time header-count scan
+   (`_updateAllColHeaderCounts()` via `_yieldToEventLoop()`; its
+   `getCleanColumnText()` TreeWalker shows as `acceptNode`) runs slices of
+   22–162 ms — some far past an idle deadline — and writes
+   `.mb-col-collapse-count` / `.mb-col-uniq-count` text as it goes (86 writes
+   to 26 spans, 67 of them changing the text, during the window). A changed
+   header cell in an auto-layout table dirties the whole table, so the next
+   key's frame does 74–163 ms of layout plus a 70–150 ms paint.
+   - baseline fresh, 14 keys: layout 1654–2896 ms, keypress handling 121–215 ms.
+   - `--init` dropping those span writes (textContent setter stubbed per
+     instance): layout **50 ms**, keypress 27 ms. Confirms the writes.
+   - CSS-only slot (`display:inline-block; contain:strict; width:5ch;
+     height:1.3em`) on the two badge classes: layout 1135–1189 ms, i.e. only
+     part of it. `.mb-col-uniq-count` is a flex item (`flex-shrink: 0` in
+     `.mb-col-uniq-wrap`), and a flex item cannot be a relayout boundary, so
+     containment on the span itself cannot isolate it; the remedy has to be
+     structural (a non-flex wrapper slot, or writing all badges once at the
+     end of the scan instead of per slice).
+   - Ruled out: `root.normalize()` in `getCleanColumnText()` runs on live
+     cells (157,232 calls in the window) but merged NOTHING (0 calls changed
+     the text-node count), and stubbing it to a no-op left layout at 2930 ms.
+     Its comment ("never changes visible content") holds here.
+
+**Consequence for the faster-filtering design.** Neither cause is in the
+filter pass's match loop, so yielding inside `runFilter()` cannot reach them.
+They are cheaper, independent fixes and belong in the same plan, measured
+with the same typed metric: (1) is one CSS rule plus a stacking-context
+check; (2) is a change to how the header-count scan publishes its numbers.
+Raw probe outputs: scratchpad only (not committed); the probe is re-runnable.
