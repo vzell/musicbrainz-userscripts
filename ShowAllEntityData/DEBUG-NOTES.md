@@ -21707,3 +21707,43 @@ And it is cheap: ~15 ms per pass on the artist-releasegroups profile (the long
 frames there are layout/paint, not this). If it is ever removed, remove the
 EARLY one inside renderGroupedTable()'s filter path instead, and pin the
 "finding tint survives a row hover" property first.
+
+## 2026-10-10 — Clones in slices, a key retires the running pass, and the probe that hid a 613 ms task (C6e, WIP.7; C6d dropped)
+
+Env: 2026-10-10T19:45Z-20:12Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+C6d (skip unchanged hidden groups on artist-releasegroups) is not done: the
+profile showed typing changes most groups' match sets on every key until they
+are empty, and empty groups are already cheap; skipping hidden groups
+regardless would need lazy rendering, which many readers of hidden tables
+(counts, export, 📊, save) would have to learn. Not worth it here.
+
+C6e (PERFORMANCE.org Step 42) — the order things were found in, because the
+order is the lesson:
+
+1. After building clones in slices, the probe's trace of release groups showed
+   NO long task, yet keys arrived 800 ms late. `gap_tasks`-style counting of
+   every task between two keydowns: the main thread was 915 ms busy in 236
+   tasks, 811 ms of it in microtask checkpoints under BARE `RunTask` events.
+   The probe kept only `ThreadControllerImpl::RunTask` when that name
+   existed, so it never saw the async pass's continuations. Fixed: every
+   outermost task of either name. Then the probe also had to expand sub-table
+   29 (830 rows), as the typed metric does — without it nothing big was on
+   screen and the page looked fast.
+2. With the analyser fixed: one 613 ms task full of highlight TreeWalkers —
+   cloning, although the clones were prebuilt. `prebuiltUsed()` sampled at
+   every "✓" status write gave `0 "20", 47 "200", 47 "2005"`: the commit that
+   wrote "20" used none. Cause: pass "2" was still CURRENT when "0" was typed
+   (a pass went stale only when the next pass started, after the 300 ms
+   debounce), so it finished and committed by calling `runFilter()` — which
+   re-reads the input, "20", and filtered that synchronously. Fix: both filter
+   inputs take a generation on every key.
+3. After: release groups' key gaps 410-419 ms (none waits), longest task 79
+   ms; artist-events gaps 436-514 ms, longest 235 ms.
+
+Things tried and ruled out on the way: `scheduler.yield()` starving input —
+the same 800 ms gaps with the MessageChannel fallback (probe `--init` removing
+`scheduler.yield`), so not the yield; the `expandedCells` version check —
+nothing writes it during a pass (every writer is a click handler).
+A throwaway spec (deleted) confirmed per pass that the commit uses all 47
+prebuilt arrays once the fix is in.

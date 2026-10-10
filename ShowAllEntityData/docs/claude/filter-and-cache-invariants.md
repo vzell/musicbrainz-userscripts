@@ -428,7 +428,18 @@ synchronous `runFilter()`. The rules that keep the two from disagreeing:
 - **Stale means: a newer generation (`_filterGen`) or a replaced row array**
   (`_filterRowArrays()`, by identity), checked after every yield. Every
   synchronous `runFilter()` takes a generation, so a clear, a sort, a 📊
-  pick or a findings toggle cancels a pass in flight.
+  pick or a findings toggle cancels a pass in flight — and so does every KEY
+  in the global or a column filter, in its input handler, not when the
+  debounced pass starts: a pass still current at its end commits by calling
+  `runFilter()`, which re-reads the inputs, so a quicker key would be
+  filtered synchronously (Step 42).
+- **Prebuilt clones go to exactly one `runFilter()` call.** The pass builds the
+  clones in slices (`_buildFilterClone()`) and hands them over in
+  `_filterPrebuiltClones`, set just before the committing call and cleared in
+  its `finally`. `runFilter()`'s two clone maps must keep doing what
+  `_buildFilterClone()` does; the sliced-vs-synchronous equality specs catch a
+  drift. A change to `expandedCells` during the pass discards the clones
+  (`_expandedCellsVersion`).
 - **A stale pass writes NOTHING** — no cache entry, no narrowing state, no
   status, no render. Only a complete, current pass stores its results, so
   `_filterResultCache` and `_incrMatchSet` only ever hold complete answers.

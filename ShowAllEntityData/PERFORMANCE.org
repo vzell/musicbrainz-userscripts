@@ -3754,6 +3754,53 @@ every stored rest colour equals what the cell paints with, hover paints and
 restores the row; ~__saTest.sticky.apply(i)~. Mutations: reads back inside the
 write pass (caught: 56 groups), hover unwired (caught).
 
+*** TODO Step 42: The sliced pass builds its clones in slices; a key makes it stale at once
+
+/Branch/ ~perf/faster-filtering~ /(C6e), 2026-10-10. TODO until it is on/ ~main~.
+
+*Two changes, found together.*
+
+1. *Clones in slices.* After the match slices, ~runFilterSliced()~ builds the
+   rendered clones in slices too (~_buildFilterClone()~: clone, strip transient
+   state, replay art expand state, format ISRCs, highlight) for every group the
+   commit will draw — cache hits included, which ~runFilter({ collect: true })~
+   now reports with their rows — and hands them to the committing ~runFilter()~
+   in ~_filterPrebuiltClones~ (cleared when that call returns). ~runFilter()~'s
+   two clone maps take a prebuilt array when one exists for their key. A click
+   that changes ~expandedCells~ meanwhile (~_expandedCellsVersion~, bumped by a
+   wrapper around the Map's ~set~/~delete~/~clear~) discards them; the commit
+   then clones synchronously as before.
+2. *A key makes the running pass stale at once.* Found by checking which commit
+   drew without prebuilt clones (the probe, ~prebuiltUsed()~ sampled per commit):
+   the first commit after a quick second key. A pass only went stale when the
+   NEXT pass started, i.e. after the 300 ms debounce; a pass finishing before
+   that committed by calling ~runFilter()~, which reads the inputs afresh — the
+   new text — and filtered it synchronously: one 613 ms task on
+   =artist-releasegroups=. Both filter inputs' handlers now take a filter
+   generation on every key.
+
+*The probe lied first.* Its task view kept only one of ~RunTask~ /
+~ThreadControllerImpl::RunTask~, and the async pass's continuations (microtask
+checkpoints) come as bare ~RunTask~: the 613 ms task did not show at all, only
+800 ms gaps between keys. It now keeps every outermost task of either name. It
+also expands the measured sub-table on a multi-table page, as the typed metric
+does; without that nothing big was on screen.
+
+*Measured* (probe, Env: 2026-10-10T20:05Z-20:10Z, petri, as above; 400 ms
+between keys, settled window): =artist-releasegroups= key-to-key gaps 1158-1242
+ms → 410-419 ms (no key waits), longest task 822/613 ms → 79 ms;
+=artist-events= gaps 436-514 ms, longest task 235 ms (the render's layout).
+Typed A/B: C6f.
+
+*Tests.* ~filter-sliced.spec.js~: the commit draws the prebuilt clones (1 array
+single-table, one per group multi-table) and still matches a synchronous pass
+exactly; a changed expand state makes the commit clone afresh; a pass replaced
+while cloning writes nothing; a key typed mid-pass makes it stale at once (the
+first status naming the new query comes from a commit that used prebuilt
+clones). Mutations: never handed over, expand-state check ignored, clone phase
+not checking staleness, multi-table lookup ignored, key not taking a generation
+— all caught.
+
 ** Session summary: measured comparison, ~main~ vs ~perf-steps-1-4~ (2026-08-24)
 
 /Harvested from/ ~perf-steps-1-4~ (branch tip 2026-08-31). *Everything below

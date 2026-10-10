@@ -132,6 +132,7 @@ test.describe('time-sliced typing filter', () => {
         await sliceFinely(page);
         await waitForFilterSettled(page, () => typeGlobalFilter(page, 'Home'));
         const sliced = await shown(page);
+        expect(await page.evaluate(() => window.__saTest.filterSlicing.prebuiltUsed()), 'the commit drew the clones built in slices').toBe(1);
         const slices = await page.evaluate(() => window.__slices);
         expect(slices, 'premise: the pass was sliced, one slice per row').toBeGreaterThanOrEqual(56);
 
@@ -166,6 +167,7 @@ test.describe('time-sliced typing filter', () => {
         await sliceFinely(page);
         await waitForFilterSettled(page, () => typeGlobalFilter(page, 'CD'));
         const sliced = await shown(page);
+        expect(await page.evaluate(() => window.__saTest.filterSlicing.prebuiltUsed()), 'the commit drew the clones built in slices, one array per group').toBe(2);
         expect(await page.evaluate(() => window.__slices), 'premise: the pass was sliced').toBeGreaterThanOrEqual(7);
         expect(sliced.rows.length, 'premise: the query narrows the tables').toBeLessThan(7);
 
@@ -194,6 +196,87 @@ test.describe('time-sliced typing filter', () => {
         // Nor the narrowing state: the next key would narrow from a half-done set.
         expect(await page.evaluate(() => window.__saTest.filterSlicing.incr())).toEqual(incrBefore);
         await expect(page.locator('#mb-filter-status-display')).toContainText('GLOBAL:"Home"');
+    });
+
+    test('a key typed mid-pass makes it stale at once, not after the debounce', async ({ page }) => {
+        test.setTimeout(120000);
+        await openSingle(page);
+        await holdNextPassAtSlice5(page);
+        // Record, at the first status line that names the NEW query, whether
+        // the drawing came from a sliced pass (prebuilt clones used) or from
+        // a synchronous re-read of the inputs (none used).
+        await page.evaluate(() => {
+            window.__firstHome = null;
+            const st = document.querySelector('#mb-filter-status-display');
+            new MutationObserver(() => {
+                if (window.__firstHome === null && (st.textContent || '').includes('GLOBAL:"Home"')) {
+                    window.__firstHome = window.__saTest.filterSlicing.prebuiltUsed();
+                }
+            }).observe(st, { childList: true, characterData: true, subtree: true });
+        });
+        await typeGlobalFilter(page, 'Hom');
+        await expect.poll(() => page.evaluate(() => window.__held)).toBe(true);
+        // The new key, then release the held "Hom" pass BEFORE the debounced
+        // "Home" pass can start (300 ms). A pass still current here would
+        // commit by calling runFilter(), which reads the input afresh and
+        // filters "Home" synchronously — the long task this rule removed.
+        await page.locator('#mb-global-filter-input').press('e');
+        await page.evaluate(() => window.__release());
+        await expect(page.locator('#mb-filter-status-display')).toContainText('GLOBAL:"Home"', { timeout: 15000 });
+        expect(await page.evaluate(() => window.__firstHome),
+            '"Home" was drawn by its own sliced pass, not by the stale one re-reading the input').toBe(1);
+    });
+
+    test('a pass replaced while building its clones writes nothing', async ({ page }) => {
+        test.setTimeout(120000);
+        await openSingle(page);
+        await page.evaluate(() => {
+            let held = false;
+            window.__saTest.filterSlicing.set({
+                threshold: 0, rowsPerCheck: 1, budgetMs: 0,
+                onSlice: (done, total, phase) => {
+                    if (held || phase !== 'clone' || done < 2) return undefined;
+                    held = true;
+                    window.__held = true;
+                    return new Promise((r) => { window.__release = r; });
+                },
+            });
+        });
+        await typeGlobalFilter(page, 'Hom');
+        await expect.poll(() => page.evaluate(() => window.__held === true), { message: 'held in the clone phase' }).toBe(true);
+        await waitForFilterSettled(page, () => page.locator('#mb-global-filter-input').press('e'));
+        await expect(page.locator('#mb-filter-status-display')).toContainText('GLOBAL:"Home"');
+        const after = await releaseAndWatch(page);
+        expect(after.tbody, 'the replaced pass did not draw its clones').toBe(0);
+        expect(after.status).toBe(0);
+        expect(after.keysAfter.some((k) => k.includes('"g":"hom"')), 'nor cache its result').toBe(false);
+    });
+
+    test('a cell expand state changed mid-pass makes the commit clone afresh', async ({ page }) => {
+        test.setTimeout(120000);
+        await openSingle(page);
+        // Hold the pass at its first CLONE slice, change expandedCells as a
+        // click on a cell toggle would, then let it finish.
+        await page.evaluate(() => {
+            let held = false;
+            window.__saTest.filterSlicing.set({
+                threshold: 0, rowsPerCheck: 1, budgetMs: 0,
+                onSlice: (done, total, phase) => {
+                    if (held || phase !== 'clone') return undefined;
+                    held = true;
+                    window.__held = true;
+                    return new Promise((r) => { window.__release = r; });
+                },
+            });
+        });
+        await typeGlobalFilter(page, 'Home');
+        await expect.poll(() => page.evaluate(() => window.__held === true), { message: 'held in the clone phase' }).toBe(true);
+        await page.evaluate(() => { window.__saTest.filterSlicing.touchCellState(); window.__release(); });
+        await expect(page.locator('#mb-filter-status-display')).toContainText('GLOBAL:"Home"');
+        expect(await page.evaluate(() => window.__saTest.filterSlicing.prebuiltUsed()),
+            'the out-of-date prebuilt clones were not used').toBe(0);
+        const sliced = await shown(page);
+        expect(sliced.rows.length, 'the rows are still drawn').toBeGreaterThan(0);
     });
 
     test('a held pass keeps _renderSettled pending until it is drawn', async ({ page }) => {

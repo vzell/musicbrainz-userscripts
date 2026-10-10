@@ -34,7 +34,7 @@ const { chromium } = require('playwright');
 const { loadFromDiskFixture } = require('./diskFixture');
 const { seedGmValues } = require('./gmStubs');
 const { waitForRenderComplete } = require('./browser');
-const { waitForColHeaderCountsStable } = require('./filterSortAssertions');
+const { waitForColHeaderCountsStable, ensureSubTableVisible } = require('./filterSortAssertions');
 const { toArm } = require('./perfDescriptors');
 
 /** Same as capture-interaction-perf.js: link previews off, so a click is not a hover. */
@@ -71,7 +71,8 @@ function parseArgs(argv) {
         trace: get('trace'),
         css: get('css'),
         init: get('init'),
-        cpu: argv.includes('--cpu'),
+        cpu: argv.includes('--cpu') || argv.some((a) => a.startsWith('--cpu-callers=')),
+        cpuCallers: get('cpu-callers'),
     };
 }
 
@@ -136,9 +137,21 @@ function analyse(events) {
     for (const e of events) {
         if (e.pid === pid && e.cat && e.cat.includes('blink.user_timing') && /^probe-/.test(e.name)) marks[e.name] = e.ts;
     }
-    // Chromium records one task under BOTH names, nested; keep one of them.
-    const taskName = onMain.some((e) => e.name === 'ThreadControllerImpl::RunTask') ? 'ThreadControllerImpl::RunTask' : 'RunTask';
-    const tasks = onMain.filter((e) => e.name === taskName);
+    // A task appears as `ThreadControllerImpl::RunTask`, as `RunTask`, or as
+    // both nested — and NOT always both: the async filter pass's continuations
+    // (microtask checkpoints) come as bare `RunTask`. Keep every task event
+    // that no other task event on this thread contains, so each task counts
+    // once and none is lost. (Keeping only one of the two names hid an 800 ms
+    // commit on artist-releasegroups.)
+    const allTasks = onMain.filter((e) => e.name === 'ThreadControllerImpl::RunTask' || e.name === 'RunTask')
+        .sort((x, y) => x.ts - y.ts || y.dur - x.dur);
+    const tasks = [];
+    let openEnd = -1;
+    for (const e of allTasks) {
+        if (e.ts + e.dur <= openEnd) continue; // nested in the previous outermost task
+        tasks.push(e);
+        openEnd = e.ts + e.dur;
+    }
     const out = {};
     for (const tag of ['fresh', 'settled']) {
         const t0 = marks[`probe-${tag}-start`], t1 = marks[`probe-${tag}-end`];
@@ -209,6 +222,33 @@ function cpuInclusive(profile, top = 45) {
 }
 
 /**
+ * Who calls `fnName` in a CPU profile, and how much of its time each caller
+ * accounts for (`--cpu-callers=<name>`): every sample whose stack contains a
+ * node of that name is credited to that node's parent.
+ * @param {{nodes: object[], samples: number[], timeDeltas: number[]}} profile
+ * @param {string} fnName - A function name, or an exact `name:line` (for an anonymous function).
+ * @returns {Array<{caller: string, ms: number}>}
+ */
+function cpuCallers(profile, fnName) {
+    const byId = new Map(profile.nodes.map((n) => [n.id, n]));
+    const parent = new Map();
+    for (const n of profile.nodes) for (const c of n.children || []) parent.set(c, n.id);
+    const name = (n) => `${n.callFrame.functionName || '(anonymous)'}:${n.callFrame.lineNumber + 1}`;
+    const out = new Map();
+    profile.samples.forEach((id, i) => {
+        const dt = (profile.timeDeltas[i] || 0) / 1000;
+        for (let n = byId.get(id); n; n = byId.get(parent.get(n.id))) {
+            if (n.callFrame.functionName !== fnName && name(n) !== fnName) continue;
+            const p = byId.get(parent.get(n.id));
+            const k = p ? name(p) : '(root)';
+            out.set(k, (out.get(k) || 0) + dt);
+            break;
+        }
+    });
+    return [...out.entries()].sort((a, b) => b[1] - a[1]).map(([caller, ms]) => ({ caller, ms: Math.round(ms) }));
+}
+
+/**
  * `--cpu`: once the header counts have settled, type the value with the
  * given delay under a V8 CPU profile (0.1 ms sampling) and report inclusive
  * time per function — where a filter pass's time goes, which the trace's
@@ -218,7 +258,7 @@ function cpuInclusive(profile, top = 45) {
  * @param {number} delay
  * @returns {Promise<Array<{fn: string, inclMs: number, selfMs: number}>>}
  */
-async function cpuProfileTyping(page, value, delay) {
+async function cpuProfileTyping(page, value, delay, callersOf) {
     const cdp = await page.context().newCDPSession(page);
     await cdp.send('Profiler.enable');
     await cdp.send('Profiler.setSamplingInterval', { interval: 100 });
@@ -226,7 +266,7 @@ async function cpuProfileTyping(page, value, delay) {
     await typeMarked(page, value, delay, 'cpu');
     const { profile } = await cdp.send('Profiler.stop');
     await cdp.detach();
-    return cpuInclusive(profile);
+    return { top: cpuInclusive(profile), callers: callersOf ? cpuCallers(profile, callersOf) : undefined };
 }
 
 (async () => {
@@ -239,14 +279,18 @@ async function cpuProfileTyping(page, value, delay) {
         await seedGmValues(page, { ...PREVIEWS_OFF, ...config.seedGmValues });
         await loadFromDiskFixture(page, { url: config.url, fixturePath: config.fixturePath, testMode: true });
         await waitForRenderComplete(page, { waitForAutoResize: false, timeout: config.tableMode === 'multi' ? 120000 : 60000 });
+        // Same as the typed metric: on a multi-table page the measured sub-table is
+        // expanded (most render display:none), or nothing big is on screen.
+        if (config.tableMode === 'multi') await ensureSubTableVisible(page, config.subTableIndex);
         if (args.css) await page.addStyleTag({ content: args.css });
         if (args.init) await page.evaluate(args.init);
         if (args.cpu) {
             await waitForColHeaderCountsStable(page, { timeout: 120000 });
-            const cpu = await cpuProfileTyping(page, value, args.delay);
+            const cpu = await cpuProfileTyping(page, value, args.delay, args.cpuCallers);
             console.log(JSON.stringify({
                 pageType: config.pageType, value, delayMs: args.delay, host: os.hostname(),
-                at: new Date().toISOString(), cpu,
+                at: new Date().toISOString(), experiment: await page.evaluate(() => window.__probeOut || null),
+                cpu: cpu.top, callers: cpu.callers,
             }, null, 2));
             return;
         }

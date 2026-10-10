@@ -62637,10 +62637,26 @@ a { color: #1565c0; }`;
     // sliced), `rowsPerCheck`, `budgetMs`, and `onSlice(done, total)`, which
     // runs after each slice so a spec can act mid-pass. All null in normal use.
     const _filterSlicingTest = { threshold: null, rowsPerCheck: null, budgetMs: null, onSlice: null };
+    // Row clones a sliced pass built in slices, keyed like _filterResultCache,
+    // handed to the ONE runFilter() call that commits it and cleared right
+    // after (PERFORMANCE.org Step 42). Never set outside that call, so no other
+    // pass can pick up another query's clones.
+    let _filterPrebuiltClones = null;
+    // How many prebuilt clone arrays the last runFilter() used (test hook).
+    let _filterPrebuiltUsed = 0;
     // Source-of-truth for per-cell expand/collapse state, keyed "rowIdx:colIdx".
     // Updated by every toggle click; read by initCollapsableColumns, testRowMatch,
     // and openUniqDrop so they all agree even after renderFinalTable+init resets the DOM.
     const expandedCells = new Map();
+    // Bumped by every change to expandedCells. A time-sliced filter pass builds
+    // its row clones before it commits (PERFORMANCE.org Step 42); the clones
+    // replay expandedCells, so if it changed meanwhile (a click on a cell
+    // toggle) the commit discards them and clones afresh.
+    let _expandedCellsVersion = 0;
+    for (const _m of ['set', 'delete', 'clear']) {
+        const _orig = expandedCells[_m];
+        expandedCells[_m] = function (...args) { _expandedCellsVersion++; return _orig.apply(this, args); };
+    }
     // Settled inline-thumbnail state per cell, keyed "rowIdx:colIdx" exactly like
     // expandedCells, and reset alongside it. Value: {value, guid} — the sentinel
     // text _artSetInlineSortKey() stamps ('caa-inline-yes'/'caa-inline-no') and
@@ -68352,6 +68368,10 @@ a { color: #1565c0; }`;
                     // Keep caret at the end
                     input.setSelectionRange(input.value.length, input.value.length);
                 }
+                // A key makes any time-sliced pass still running stale NOW, not
+                // when the debounced pass for the new text starts (see the same
+                // line in the global filter's input handler).
+                _filterGen++;
                 debouncedColumnFilter();
             });
 
@@ -73158,7 +73178,7 @@ a { color: #1565c0; }`;
         const filterStartTime = performance.now();
         const _collect = opts && opts.collect ? [] : null;
         // A synchronous pass supersedes any time-sliced pass still comparing.
-        if (!_collect) _filterGen++;
+        if (!_collect) { _filterGen++; _filterPrebuiltUsed = 0; }
 
         // Show filtering indicator in filter status display
         const filterStatusDisplay = document.getElementById('mb-filter-status-display');
@@ -73361,7 +73381,12 @@ a { color: #1565c0; }`;
                 const _mk = _buildFilterKey(matchCtx, `m:${discographyViewState}:${groupIdx}`);
                 if (_collect) {
                     // A copy: matchCtx is rebuilt per group on this one object.
-                    if (!_filterResultCache.has(_mk)) _collect.push({ key: _mk, rows: _sourceRows, ctx: { ...matchCtx } });
+                    // A cache hit is reported too, with its rows already matched:
+                    // the sliced pass still builds its clones (Step 42).
+                    const _hitRows = _filterResultCache.get(_mk);
+                    _collect.push(_hitRows
+                        ? { key: _mk, matches: _hitRows, ctx: { ...matchCtx }, hit: true }
+                        : { key: _mk, rows: _sourceRows, ctx: { ...matchCtx } });
                     return; // continue forEach — collect mode renders nothing
                 }
                 let _matchingSrc = _filterResultCache.get(_mk);
@@ -73391,7 +73416,11 @@ a { color: #1565c0; }`;
                     return; // continue forEach
                 }
 
-                const matches = _matchingSrc.map(r => {
+                // Clones a committing sliced pass already built (Step 42), else
+                // built here; the steps are _buildFilterClone()'s.
+                const _preMulti = _filterPrebuiltClones && _filterPrebuiltClones.get(_mk);
+                if (_preMulti) _filterPrebuiltUsed++;
+                const matches = _preMulti || _matchingSrc.map(r => {
                     const clone = r.cloneNode(true);
                     // Strip CAA/EAA enrichment markers from every cell in the clone.
                     //
@@ -73589,6 +73618,9 @@ a { color: #1565c0; }`;
             let _matchingSrc = _filterResultCache.get(_sk);
             if (_matchingSrc) {
                 Lib.debug('filter', 'runFilter: cache hit single-table');
+                // Collect mode reports the hit too, so the sliced pass can
+                // still build the clones in slices (Step 42).
+                if (_collect) _collect.push({ key: _sk, matches: _matchingSrc, ctx: { ...matchCtx }, hit: true });
             } else {
                 // Incremental narrowing: if the new globalQuery is a plain-text
                 // extension of the previous scan's query, and no flags or column
@@ -73624,7 +73656,11 @@ a { color: #1565c0; }`;
                 }
             }
             if (_collect) return { jobs: _collect };
-            const filteredRows = _matchingSrc.map(row => {
+            // Clones a committing sliced pass already built (Step 42), else
+            // built here; the steps are _buildFilterClone()'s.
+            const _preSingle = _filterPrebuiltClones && _filterPrebuiltClones.get(_sk);
+            if (_preSingle) _filterPrebuiltUsed++;
+            const filteredRows = _preSingle || _matchingSrc.map(row => {
                 const clone = row.cloneNode(true);
                 // Strip CAA/EAA enrichment markers from every cell in the clone.
                 //
@@ -73997,6 +74033,31 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Builds one rendered clone of a matching source row, the way
+     * `runFilter()`'s two clone maps do: `cloneNode(true)`, transient cell
+     * state stripped (keeping live art), art expand state replayed from
+     * `expandedCells`, ISRC anchors formatted, then the highlight pass
+     * (`testRowMatch(clone, ctx)`). Used by `runFilterSliced()` to build the
+     * clones in slices (PERFORMANCE.org Step 42). The two maps in `runFilter()`
+     * keep their own bodies, with the comments explaining each step; a change
+     * to one must be made to the other — `filter-sliced.spec.js` compares a
+     * sliced pass's rendered rows, highlights and status with a synchronous
+     * pass's, which is what catches a drift.
+     *
+     * @param {HTMLTableRowElement} row - A source row.
+     * @param {object} ctx - The pass's match context.
+     * @returns {HTMLTableRowElement} The clone, highlighted.
+     */
+    function _buildFilterClone(row, ctx) {
+        const clone = row.cloneNode(true);
+        Array.from(clone.cells).forEach(td => _stripTransientCellState(td, { preserveLiveArt: true }));
+        _restoreArtExpandState(clone);
+        _formatIsrcAnchorsIn(clone);
+        testRowMatch(clone, ctx);
+        return clone;
+    }
+
+    /**
      * The filter pass for TYPING (the debounced global and column filters),
      * time-sliced and cancellable (PERFORMANCE.org Step 39).
      *
@@ -74009,15 +74070,22 @@ a { color: #1565c0; }`;
      *      a stale result (`_renderGeneration`), and publishes a pending
      *      `_renderSettled` so awaiters (the header-count scan, the ⏳ card)
      *      wait for this pass;
-     *   2. asks `runFilter({ collect: true })` for the cache misses — the same
+     *   2. asks `runFilter({ collect: true })` for its work (misses to match, hits
+     *      with their rows) — the same
      *      keys, contexts and narrowing decision the synchronous path uses;
      *   3. runs `testRowMatch(row, ctx, true)` over them in slices of
      *      `_FILTER_SLICE_MS`, yielding between slices and reporting progress to
      *      the ⏳ card; after every yield it stops, writing NOTHING, if a newer
      *      pass took the generation or a row array was replaced;
-     *   4. if still current, stores each result under its key (and the
-     *      narrowing state), then calls `runFilter()`, which finds every key
-     *      cached and clones, highlights, renders and reports as it always does.
+     *   4. builds the rendered clones in slices as well — for every group the
+     *      commit will draw, cache hits included (`_buildFilterClone()`,
+     *      PERFORMANCE.org Step 42) — dropping them if a cell's expand state
+     *      changed meanwhile (`_expandedCellsVersion`);
+     *   5. if still current, stores each result under its key (and the
+     *      narrowing state), hands the clones over in `_filterPrebuiltClones`
+     *      and calls `runFilter()`, which finds every key cached, takes the
+     *      prebuilt clones instead of cloning, and renders and reports as it
+     *      always does. The hand-over is cleared when that call returns.
      *
      * Below the threshold, and when nothing needs comparing, it is simply
      * `runFilter()`. Every other caller keeps the synchronous `runFilter()`,
@@ -74035,7 +74103,7 @@ a { color: #1565c0; }`;
         const gen = ++_filterGen;
         const plan = runFilter({ collect: true });
         if (!plan) return;                              // invalid regexp: the status says so
-        if (!plan.jobs.length) { runFilter(); return; } // every key already cached
+        if (!plan.jobs.length) { runFilter(); return; } // no group to draw at all
 
         // Stop a chunked render still drawing a stale result, and make
         // _renderSettled wait for this pass (resolved in `finally`).
@@ -74051,13 +74119,14 @@ a { color: #1565c0; }`;
         };
         const budget = _filterSlicingTest.budgetMs ?? _FILTER_SLICE_MS;
         const check = Math.max(1, _filterSlicingTest.rowsPerCheck ?? _FILTER_SLICE_CHECK);
-        const toCompare = plan.jobs.reduce((s, j) => s + j.rows.length, 0);
-        const narrowing = plan.jobs.length === 1 && !!plan.jobs[0].incr && plan.jobs[0].rows !== allRows;
+        const toMatch = plan.jobs.filter(j => !j.hit);
+        const toCompare = toMatch.reduce((s, j) => s + j.rows.length, 0);
+        const narrowing = toMatch.length === 1 && plan.jobs.length === 1 && !!toMatch[0].incr && toMatch[0].rows !== allRows;
         const query = stripFilterPrefix(filterInput.value) || 'the column filters';
         const twPass = _twFilterBegin(toCompare, query, narrowing);
         let done = 0, hits = 0;
         try {
-            for (const job of plan.jobs) {
+            for (const job of toMatch) {
                 job.matches = [];
                 const rows = job.rows;
                 let i = 0;
@@ -74079,8 +74148,43 @@ a { color: #1565c0; }`;
                 }
                 done += rows.length;
             }
-            // Commit: the only writes this pass makes, and only while current.
+
+            // Build the clones in slices too (Step 42) — clone, strip, restore
+            // art expand state, format ISRCs, highlight — for every group the
+            // commit will render, cache hits included. They are only HANDED to
+            // the committing runFilter(); a stale pass drops them with the rest.
+            const cellStateAtStart = _expandedCellsVersion;
+            const toClone = plan.jobs.reduce((s, j) => s + j.matches.length, 0);
+            let cloned = 0;
             for (const job of plan.jobs) {
+                job.clones = [];
+                const src = job.matches;
+                let k = 0;
+                while (k < src.length) {
+                    const sliceEnd = performance.now() + budget;
+                    while (k < src.length) {
+                        job.clones.push(_buildFilterClone(src[k], job.ctx));
+                        k++;
+                        if (k % check === 0 && performance.now() >= sliceEnd) break;
+                    }
+                    if (_filterSlicingTest.onSlice) await _filterSlicingTest.onSlice(cloned + k, toClone, 'clone');
+                    await _yieldToMain();
+                    if (isStale()) {
+                        _twFilterStale(twPass, toCompare);
+                        Lib.debug('filter', `runFilterSliced: replaced while cloning (${cloned + k} of ${toClone}) — nothing written.`);
+                        return;
+                    }
+                }
+                cloned += src.length;
+            }
+            // A click that changed a cell's expand state meanwhile makes the
+            // clones out of date: the commit then clones afresh, synchronously.
+            const prebuilt = _expandedCellsVersion === cellStateAtStart
+                ? new Map(plan.jobs.map(j => [j.key, j.clones]))
+                : null;
+
+            // Commit: the only writes this pass makes, and only while current.
+            for (const job of toMatch) {
                 _filterCacheSet(job.key, job.matches);
                 if (job.incr) {
                     _incrLastGlobalQuery = job.incr.query;
@@ -74089,7 +74193,12 @@ a { color: #1565c0; }`;
                 }
             }
             _twFilterCompared(twPass);
-            runFilter();
+            _filterPrebuiltClones = prebuilt;
+            try {
+                runFilter();
+            } finally {
+                _filterPrebuiltClones = null;
+            }
         } catch (err) {
             // Never leave the table unfiltered because a slice threw: log it
             // and, if nothing newer has started, do the pass synchronously.
@@ -74171,6 +74280,13 @@ a { color: #1565c0; }`;
             filterInput.value = prefix + typed;
             filterInput.setSelectionRange(filterInput.value.length, filterInput.value.length);
         }
+        // A key makes any time-sliced pass still running stale NOW. Waiting for
+        // the debounced pass to take the next generation is too late: a pass
+        // still current when it finishes commits by calling runFilter(), which
+        // reads the inputs afresh — the NEW text — and so filters that text
+        // synchronously, as one long task (measured: 613 ms on
+        // artist-releasegroups; PERFORMANCE.org Step 42).
+        _filterGen++;
         debouncedRunFilter();
     });
 
@@ -121040,6 +121156,10 @@ a { color: #1565c0; }`;
                 cacheKeys: () => Array.from(_filterResultCache.keys()),
                 clearCache: () => _invalidateFilterCache(),
                 gen: () => _filterGen,
+                /** @returns {number} Prebuilt clone arrays the last runFilter() used (Step 42). */
+                prebuiltUsed: () => _filterPrebuiltUsed,
+                /** Changes expandedCells as a cell-toggle click would (a harmless unused key). */
+                touchCellState: () => { expandedCells.set('__test__:0', false); expandedCells.delete('__test__:0'); },
                 /** @returns {{query: string, size: ?number}} The incremental-narrowing state. */
                 incr: () => ({ query: _incrLastGlobalQuery, size: _incrMatchSet ? _incrMatchSet.length : null }),
                 /** @returns {Promise<boolean>} Whether `_renderSettled` is still pending. */

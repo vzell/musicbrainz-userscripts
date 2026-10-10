@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.7",
+    "date": "2026-10-10",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Typing a filter on a large table keeps the page responsive while the result is prepared as well as while rows are compared: the filtered rows are now built and highlighted a few milliseconds at a time too, and each key you type retires the filter still running at once instead of after the typing pause. On the 47-table release groups page a key no longer waits at all, and the longest freeze fell from about 0.6-0.8 s to under 0.1 s (PERFORMANCE.org Step 42)."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Tests: four more in tests/fixtures/filter-sliced.spec.js (prebuilt clones drawn and equal to a synchronous pass, a cell expand-state change discards them, a pass replaced while cloning writes nothing, a key makes a running pass stale at once); 5 more mutations, all caught. The keystroke probe now counts every outermost main-thread task (it missed the async pass's continuations), expands the measured sub-table on multi-table pages, and gains --cpu-callers."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.6",
     "date": "2026-10-10",
     "sections": [

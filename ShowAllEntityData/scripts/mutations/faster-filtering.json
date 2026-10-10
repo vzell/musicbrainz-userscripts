@@ -126,8 +126,8 @@
     "why": "runFilter() stops taking a generation, so the ✕ clear's own pass leaves the sliced one current and it redraws the filtered rows afterwards.",
     "edits": [
       {
-        "find": "        if (!_collect) _filterGen++;\n",
-        "replace": ""
+        "find": "        if (!_collect) { _filterGen++; _filterPrebuiltUsed = 0; }\n",
+        "replace": "        if (!_collect) { _filterPrebuiltUsed = 0; }\n"
       }
     ],
     "spec": "tests/fixtures/filter-sliced.spec.js",
@@ -204,8 +204,8 @@
     "why": "The pass never reports that it finished comparing, so the card's last filter has no query and no Comparing row.",
     "edits": [
       {
-        "find": "            _twFilterCompared(twPass);\n            runFilter();",
-        "replace": "            runFilter();"
+        "find": "            _twFilterCompared(twPass);\n",
+        "replace": ""
       }
     ],
     "spec": "tests/fixtures/filter-sliced.spec.js",
@@ -269,8 +269,8 @@
     "why": "Each multi-table job is handed a context without the global query: the same slices, every row matches; seen through the touch path.",
     "edits": [
       {
-        "find": "                    if (!_filterResultCache.has(_mk)) _collect.push({ key: _mk, rows: _sourceRows, ctx: { ...matchCtx } });",
-        "replace": "                    if (!_filterResultCache.has(_mk)) _collect.push({ key: _mk, rows: _sourceRows, ctx: { ...matchCtx, globalQuery: '', globalQueryRaw: '' } });"
+        "find": "                        : { key: _mk, rows: _sourceRows, ctx: { ...matchCtx } });",
+        "replace": "                        : { key: _mk, rows: _sourceRows, ctx: { ...matchCtx, globalQuery: '', globalQueryRaw: '' } });"
       }
     ],
     "spec": "tests/fixtures/filter-sliced.mobile.spec.js",
@@ -315,6 +315,71 @@
     ],
     "spec": "tests/fixtures/sticky-column-batched.spec.js",
     "grep": "hovering a row paints it",
+    "expect": "fail"
+  },
+  {
+    "name": "C6e: the prebuilt clones are never handed over",
+    "why": "The commit clones synchronously again: the slices did the work for nothing and the long block is back.",
+    "edits": [
+      {
+        "find": "            _filterPrebuiltClones = prebuilt;",
+        "replace": "            _filterPrebuiltClones = null;"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "single-table: a sliced pass shows exactly",
+    "expect": "fail"
+  },
+  {
+    "name": "C6e: a changed cell expand state does not discard the clones",
+    "why": "Clones built before a cell-toggle click are drawn anyway, with that cell's old expand state.",
+    "edits": [
+      {
+        "find": "            const prebuilt = _expandedCellsVersion === cellStateAtStart",
+        "replace": "            const prebuilt = true"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "makes the commit clone afresh",
+    "expect": "fail"
+  },
+  {
+    "name": "C6e: the clone phase does not notice it was replaced",
+    "why": "No staleness check after a clone slice: a pass replaced while cloning commits its old result.",
+    "edits": [
+      {
+        "find": "                        _twFilterStale(twPass, toCompare);\n                        Lib.debug('filter', `runFilterSliced: replaced while cloning (${cloned + k} of ${toClone}) — nothing written.`);\n                        return;\n",
+        "replace": "                        void 0;\n"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "replaced while building its clones",
+    "expect": "fail"
+  },
+  {
+    "name": "C6e: the multi-table commit ignores the prebuilt clones",
+    "why": "runFilter's multi branch stops looking up the hand-over; only the single-table path would use it.",
+    "edits": [
+      {
+        "find": "                const _preMulti = _filterPrebuiltClones && _filterPrebuiltClones.get(_mk);",
+        "replace": "                const _preMulti = null;"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "multi-table: a sliced pass shows exactly",
+    "expect": "fail"
+  },
+  {
+    "name": "C6e: a key in the global filter no longer makes the running pass stale",
+    "why": "The pass stays current until the debounced pass starts; finishing first, it commits by re-reading the NEW text and filters it synchronously.",
+    "edits": [
+      {
+        "find": "        // synchronously, as one long task (measured: 613 ms on\n        // artist-releasegroups; PERFORMANCE.org Step 42).\n        _filterGen++;\n",
+        "replace": "        // synchronously, as one long task (measured: 613 ms on\n        // artist-releasegroups; PERFORMANCE.org Step 42).\n"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "stale at once",
     "expect": "fail"
   }
 ]
