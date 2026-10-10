@@ -3790,7 +3790,17 @@ does; without that nothing big was on screen.
 between keys, settled window): =artist-releasegroups= key-to-key gaps 1158-1242
 ms → 410-419 ms (no key waits), longest task 822/613 ms → 79 ms;
 =artist-events= gaps 436-514 ms, longest task 235 ms (the render's layout).
-Typed A/B: C6f.
+
+*Typed A/B of the whole branch* (tests/MEASUREMENTS.org "Typed filtering with the
+whole branch", Env 2026-10-10T20:19Z-20:57Z, petri, both orders, =92355c1= vs
+=main=): with 400 ms between keys the worst keystroke falls 80-91 % and the longest
+frame 72-87 % on all four pages; one pass alone (150 ms) has its longest frame
+halved (three cases at −49.4 to −49.5 %, a hair under the plan's 50 %). *The plan's
+other limit is broken once*: on =artist-events= at 400 ms the wait after the last key
+grows from 380 ms to 909-963 ms. Every key retires the running pass, a 4174-row pass
+outlasts a 400 ms key gap, so no pass finishes while typing and the last one cannot
+narrow from an earlier result — on =main= each blocking pass finished. Reported to
+the user before going further.
 
 *Tests.* ~filter-sliced.spec.js~: the commit draws the prebuilt clones (1 array
 single-table, one per group multi-table) and still matches a synchronous pass
