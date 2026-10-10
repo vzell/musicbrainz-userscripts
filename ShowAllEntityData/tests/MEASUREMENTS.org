@@ -573,6 +573,74 @@ Reading it:
   whole table once.
 JSON: =tests/snapshots/<pageType>/interaction-perf-main-typed-order{1,2}-9.99.1316-2026-10-10-petri.json=.
 
+** Typed filtering after the paint layer and batched badges (C1+C2) vs =main=, 2026-10-10
+
+Same metric and columns as the table above. Branch arm =perf/faster-filtering= at
+=03bcb79= (PERFORMANCE.org Steps 37 and 38); =main= arm =535dad8= (9.99.1316), its
+userscript placed in the branch's working tree for its runs only and restored
+(hash-checked) afterwards — so both arms use the same harness. Both arms were re-run
+in this one session rather than reusing the 01:41Z rows above (CLAUDE.md: never quote
+an absolute across sessions). Order 1: main then branch; order 2: branch then main,
+pages reversed. Script: =scratchpad run-c3-typed.sh= (not committed; the commands are
+four =run-perf-arms.py … -- --only=typed --label=…= calls).
+
+Env: 2026-10-10T13:51:09Z -> 14:30:53Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux
+6.18.40.1-microsoft-standard-WSL2), 24 cores, 31 GB · Node v24.16.0 · Playwright 1.62.1
+bundled Chromium, no Tampermonkey (GM stubs) · 5 samples, median.
+
+| pageType                  | delay | run                | worst key | keys ≥50 | keys ≥100 | longest frame | blocking | longest task | after last key | total | passes | UTC run        |
+|---------------------------+-------+--------------------+-----------+----------+-----------+---------------+----------+--------------+----------------+-------+--------+----------------|
+| =artist-events=           |   150 | branch-typed-c3-o1 |       272 |        3 |         2 |           658 |      603 |          648 |            983 |  2423 |      1 | 14:01 -> 14:04 |
+| =artist-events=           |   150 | branch-typed-c3-o2 |       352 |        3 |         2 |           681 |      628 |          675 |            990 |  2426 |      1 | 14:17 -> 14:20 |
+| =artist-events=           |   150 | main-typed-c3-o1   |       280 |        6 |         5 |           681 |      628 |          673 |           1104 |  2714 |      1 | 13:51 -> 13:54 |
+| =artist-events=           |   150 | main-typed-c3-o2   |       288 |        6 |         5 |           686 |      632 |          677 |           1148 |  2764 |      1 | 14:27 -> 14:30 |
+| =artist-events=           |   400 | branch-typed-c3-o1 |      1888 |        4 |         4 |          1915 |     1815 |         1599 |            381 |  5516 |      4 | 14:01 -> 14:04 |
+| =artist-events=           |   400 | branch-typed-c3-o2 |      1824 |        4 |         4 |          1848 |     1748 |         1594 |            381 |  5609 |      4 | 14:17 -> 14:20 |
+| =artist-events=           |   400 | main-typed-c3-o1   |      1776 |        5 |         4 |          1880 |     1780 |         1541 |            388 |  5223 |      4 | 13:51 -> 13:54 |
+| =artist-events=           |   400 | main-typed-c3-o2   |      1928 |        5 |         4 |          2007 |     1906 |         1662 |            384 |  5463 |      4 | 14:27 -> 14:30 |
+| =artist-releases-dylan=   |   150 | branch-typed-c3-o1 |       152 |        3 |         2 |           538 |      481 |          525 |            952 |  2723 |      1 | 14:04 -> 14:07 |
+| =artist-releases-dylan=   |   150 | branch-typed-c3-o2 |       136 |        2 |         2 |           523 |      464 |          507 |            929 |  2528 |      1 | 14:14 -> 14:17 |
+| =artist-releases-dylan=   |   150 | main-typed-c3-o1   |       128 |        5 |         2 |           493 |      438 |          483 |            895 |  2572 |      1 | 13:54 -> 13:57 |
+| =artist-releases-dylan=   |   150 | main-typed-c3-o2   |       192 |        6 |         2 |           586 |      526 |          568 |            987 |  2865 |      1 | 14:24 -> 14:27 |
+| =artist-releases-dylan=   |   400 | branch-typed-c3-o1 |      1584 |        6 |         4 |          1459 |     1408 |         1475 |            474 |  7411 |      7 | 14:04 -> 14:07 |
+| =artist-releases-dylan=   |   400 | branch-typed-c3-o2 |      1792 |        5 |         4 |          1682 |     1632 |         1700 |            488 |  7318 |      7 | 14:14 -> 14:17 |
+| =artist-releases-dylan=   |   400 | main-typed-c3-o1   |      1760 |        6 |         4 |          1636 |     1586 |         1651 |            480 |  7227 |      7 | 13:54 -> 13:57 |
+| =artist-releases-dylan=   |   400 | main-typed-c3-o2   |      1408 |        6 |         4 |          1637 |     1548 |         1624 |            474 |  7468 |      7 | 14:24 -> 14:27 |
+| =artist-releasegroups=    |   150 | branch-typed-c3-o1 |        24 |        0 |         0 |           206 |      150 |          197 |            513 |  1015 |      1 | 14:07 -> 14:08 |
+| =artist-releasegroups=    |   150 | branch-typed-c3-o2 |        48 |        0 |         0 |           195 |      136 |          181 |            504 |  1023 |      1 | 14:13 -> 14:14 |
+| =artist-releasegroups=    |   150 | main-typed-c3-o1   |        40 |        0 |         0 |           202 |      144 |          191 |            510 |  1030 |      1 | 13:57 -> 13:58 |
+| =artist-releasegroups=    |   150 | main-typed-c3-o2   |        48 |        0 |         0 |           205 |      150 |          197 |            512 |  1040 |      1 | 14:23 -> 14:24 |
+| =artist-releasegroups=    |   400 | branch-typed-c3-o1 |       872 |        3 |         3 |           984 |      884 |          892 |            386 |  3005 |      4 | 14:07 -> 14:08 |
+| =artist-releasegroups=    |   400 | branch-typed-c3-o2 |       912 |        3 |         3 |           990 |      889 |          905 |            380 |  2955 |      4 | 14:13 -> 14:14 |
+| =artist-releasegroups=    |   400 | main-typed-c3-o1   |       880 |        3 |         3 |           976 |      861 |          877 |            381 |  3076 |      4 | 13:57 -> 13:58 |
+| =artist-releasegroups=    |   400 | main-typed-c3-o2   |       936 |        3 |         3 |          1016 |      909 |          926 |            374 |  2942 |      4 | 14:23 -> 14:24 |
+| =artist-recordings-petty= |   150 | branch-typed-c3-o1 |        40 |        0 |         0 |           413 |      359 |          405 |            744 |  1804 |      1 | 14:08 -> 14:10 |
+| =artist-recordings-petty= |   150 | branch-typed-c3-o2 |        56 |        1 |         0 |           416 |      339 |          385 |            727 |  1837 |      1 | 14:10 -> 14:13 |
+| =artist-recordings-petty= |   150 | main-typed-c3-o1   |        80 |        6 |         0 |           391 |      334 |          380 |            699 |  1939 |      1 | 13:58 -> 14:01 |
+| =artist-recordings-petty= |   150 | main-typed-c3-o2   |        72 |        5 |         0 |           424 |      367 |          411 |            747 |  2010 |      1 | 14:20 -> 14:23 |
+| =artist-recordings-petty= |   400 | branch-typed-c3-o1 |      1032 |        4 |         3 |          1014 |      934 |         1010 |            393 |  5315 |      6 | 14:08 -> 14:10 |
+| =artist-recordings-petty= |   400 | branch-typed-c3-o2 |      1000 |        4 |         4 |           978 |      916 |          991 |            393 |  5492 |      6 | 14:10 -> 14:13 |
+| =artist-recordings-petty= |   400 | main-typed-c3-o1   |      1032 |        5 |         3 |          1001 |      928 |          998 |            390 |  5362 |      6 | 13:58 -> 14:01 |
+| =artist-recordings-petty= |   400 | main-typed-c3-o2   |       992 |        5 |         4 |           947 |      896 |          967 |            397 |  5501 |      6 | 14:20 -> 14:23 |
+
+Reading it (only what holds in BOTH orders):
+- *Keys between passes (150 ms) got cheaper.* Slow keystrokes fall on three of the four
+  pages: =artist-events= ≥50 ms 6 → 3 and ≥100 ms 5 → 2; Dylan ≥50 ms 5-6 → 2-3; Petty
+  ≥50 ms 5-6 → 0-1 (=artist-releasegroups= had none to lose). The wait after the last key
+  on =artist-events= drops 1104-1148 → 983-990 ms (−11 to −14 %), and the whole typing
+  window 2714-2764 → 2423-2426 ms; on the other pages it is inside the noise.
+- *Keys that land inside a pass (400 ms) are unchanged* — worst key 0.87-1.93 s, longest
+  frame 0.95-2.0 s on both arms, every page. Neither fix touches the pass itself, which is
+  the one long task those keys wait behind. That is what the time-sliced pass (plan C5)
+  is for; these rows are its baseline.
+- *One adverse gap holds in both orders, and it is small:* =artist-events= at 400 ms,
+  /total/ 5223 / 5463 (main) vs 5516 / 5609 (branch), +2.7 to +5.6 %. /after last key/
+  is equal there (381 vs 384-388), so it sits in the typing window itself — keys
+  waiting behind the four passes — not in the final pass; the slow-key counts are
+  equal or better. Watch it in the C5 A/B. Every other difference flips sign between
+  the orders (e.g. Dylan's worst key 1408-1792 on either arm): spread, not shift.
+JSON: =tests/snapshots/<pageType>/interaction-perf-{main,branch}-typed-c3-o{1,2}-9.99.1316-2026-10-10-petri.json=.
+
 * Instrumenting =artist-releasegroups= — the first multi-table arm (2026-09-10)
 
 | pageType             | tableMode | page title        | URL                                                            |

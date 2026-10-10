@@ -3575,8 +3575,14 @@ outside element at z-index 1-100 that overlaps a table now paints above the
 thead (jesus2099's sticky header, z-index 1). All 64 sticky specs pass.
 
 *Tests.* ~tests/fixtures/table-paint-layer{,.mobile}.spec.js~; mutations in
-~scripts/mutations/faster-filtering.json~ (5, all caught). Typed A/B against
-~main~: pending (C3 of the plan).
+~scripts/mutations/faster-filtering.json~ (5, all caught).
+
+*Typed A/B, with Step 38* (both measured together; tests/MEASUREMENTS.org "Typed
+filtering after the paint layer and batched badges", Env 2026-10-10T13:51Z-14:31Z,
+petri, both orders): with 150 ms between keys, slow keystrokes fall on three of
+four pages (=artist-events= ≥100 ms 5 → 2, Petty ≥50 ms 5-6 → 0-1) and the wait
+after the last key on =artist-events= by 11-14 %. Keys landing inside a pass
+(400 ms) are unchanged: the pass is the long task, which neither step touches.
 
 *** TODO Step 38: Batched header-badge publish
 
@@ -3619,8 +3625,8 @@ it had a number and now waits for it (a premise, not the behaviour it pins).
 
 *Tests.* ~tests/fixtures/header-counts-batched.spec.js~ (one task writes every
 badge, with a per-column control; a scan superseded mid-way publishes nothing,
-via ~__saTest.colHeaderCounts~); 3 mutations, all caught. Typed A/B: pending
-(C3).
+via ~__saTest.colHeaderCounts~); 3 mutations, all caught. Typed A/B: measured
+together with Step 37, see there.
 
 ** Session summary: measured comparison, ~main~ vs ~perf-steps-1-4~ (2026-08-24)
 
