@@ -177,28 +177,69 @@ test.describe('time-sliced typing filter', () => {
         expect(await shown(page)).toEqual(sliced);
     });
 
-    test('a pass replaced by a newer key writes nothing', async ({ page }) => {
+    test('a pass outdated by a newer key never draws; the next pass narrows from its result', async ({ page }) => {
+        test.setTimeout(120000);
+        await openSingle(page);
+        // Hold "Hom" after its 5th slice. Once released, record the totals the
+        // slices report: the "Home" pass's total is the rows it compares.
+        await page.evaluate(() => {
+            window.__held = false;
+            window.__released = false;
+            window.__totals = [];
+            window.__sawHom = false;
+            const st = document.querySelector('#mb-filter-status-display');
+            new MutationObserver(() => {
+                if ((st.textContent || '').includes('GLOBAL:"Hom"')) window.__sawHom = true;
+            }).observe(st, { childList: true, characterData: true, subtree: true });
+            let n = 0;
+            window.__saTest.filterSlicing.set({
+                threshold: 0, rowsPerCheck: 1, budgetMs: 0,
+                onSlice: (done, total, phase) => {
+                    if (window.__released && phase !== 'clone') window.__totals.push(total);
+                    if (window.__held || phase === 'clone' || ++n !== 5) return undefined;
+                    window.__held = true;
+                    return new Promise((r) => { window.__release = r; });
+                },
+            });
+        });
+        await typeGlobalFilter(page, 'Hom');
+        await expect.poll(() => page.evaluate(() => window.__held), { message: 'the "Hom" pass is held mid-way' }).toBe(true);
+        // The newer key. Its debounced pass waits for "Hom" to finish comparing,
+        // so nothing new is drawn while "Hom" is held — checked once that
+        // debounced call has really started (and is waiting).
+        const callsBefore = await page.evaluate(() => window.__saTest.filterSlicing.calls());
+        await page.locator('#mb-global-filter-input').press('e');
+        await expect.poll(() => page.evaluate(() => window.__saTest.filterSlicing.calls()),
+            { message: 'the "Home" pass was called' }).toBeGreaterThan(callsBefore);
+        await expect(page.locator('#mb-filter-status-display')).not.toContainText('GLOBAL:"Home"');
+        await page.evaluate(() => { window.__released = true; window.__release(); });
+        await expect(page.locator('#mb-filter-status-display')).toContainText('GLOBAL:"Home"', { timeout: 15000 });
+        expect(await page.evaluate(() => window.__sawHom), 'the outdated "Hom" pass drew nothing').toBe(false);
+        const keys = await page.evaluate(() => window.__saTest.filterSlicing.cacheKeys());
+        expect(keys.some((k) => k.includes('"g":"hom"')), '"Hom" kept its complete result').toBe(true);
+        const totals = await page.evaluate(() => window.__totals);
+        expect(totals.some((t) => t > 0 && t < 56),
+            `"Home" compared only "Hom"'s matches, not all 56 rows (slice totals ${JSON.stringify([...new Set(totals)])})`).toBe(true);
+        expect((await page.evaluate(() => window.__saTest.filterSlicing.incr())).query).toBe('home');
+    });
+
+    test('an outdated pass stores nothing once the cache was invalidated meanwhile', async ({ page }) => {
         test.setTimeout(120000);
         await openSingle(page);
         await holdNextPassAtSlice5(page);
         await typeGlobalFilter(page, 'Hom');
-        await expect.poll(() => page.evaluate(() => window.__held), { message: 'the "Hom" pass is held mid-way' }).toBe(true);
-        // The newer key: its own pass runs to the end while "Hom" is held.
-        await waitForFilterSettled(page, () => page.locator('#mb-global-filter-input').press('e'));
-        await expect(page.locator('#mb-filter-status-display')).toContainText('GLOBAL:"Home"');
-        const incrBefore = await page.evaluate(() => window.__saTest.filterSlicing.incr());
-        expect(incrBefore.query, 'premise: the newer pass set the narrowing state').toBe('home');
-        const after = await releaseAndWatch(page);
-        expect(after.tbody, 'the replaced pass did not touch the table').toBe(0);
-        expect(after.status, 'the replaced pass did not touch the status line').toBe(0);
-        expect(after.keysAfter, 'the replaced pass stored nothing').toEqual(after.keysBefore);
-        expect(after.keysAfter.some((k) => k.includes('"g":"hom"')), 'no cache entry for the replaced query').toBe(false);
-        // Nor the narrowing state: the next key would narrow from a half-done set.
-        expect(await page.evaluate(() => window.__saTest.filterSlicing.incr())).toEqual(incrBefore);
-        await expect(page.locator('#mb-filter-status-display')).toContainText('GLOBAL:"Home"');
+        await expect.poll(() => page.evaluate(() => window.__held)).toBe(true);
+        // Outdated by a key, then the cache is invalidated (as a sort, a
+        // collapse-state refresh or a content change would): its result may be
+        // built on what the invalidation removed, so it must not be put back.
+        await page.locator('#mb-global-filter-input').press('e');
+        await page.evaluate(() => { window.__saTest.filterSlicing.clearCache(); window.__release(); });
+        await expect(page.locator('#mb-filter-status-display')).toContainText('GLOBAL:"Home"', { timeout: 15000 });
+        const keys = await page.evaluate(() => window.__saTest.filterSlicing.cacheKeys());
+        expect(keys.some((k) => k.includes('"g":"hom"')), 'no entry for the outdated "Hom" after the invalidation').toBe(false);
     });
 
-    test('a key typed mid-pass makes it stale at once, not after the debounce', async ({ page }) => {
+    test('a key typed mid-pass makes it outdated at once, not after the debounce', async ({ page }) => {
         test.setTimeout(120000);
         await openSingle(page);
         await holdNextPassAtSlice5(page);
@@ -312,10 +353,13 @@ test.describe('time-sliced typing filter', () => {
         const pop = page.locator('#mb-async-pop');
         await expect(pop).toBeVisible({ timeout: 10000 });
         await expect(pop).toContainText('Filtering for “Hom”');
-        await waitForFilterSettled(page, () => page.locator('#mb-global-filter-input').press('e'));
+        // The new key, then let "Hom" go: it finishes comparing (outdated, kept
+        // for narrowing), and "Home", which waited for it, begins.
+        await page.locator('#mb-global-filter-input').press('e');
         await page.evaluate(() => window.__release());
+        await expect(page.locator('#mb-filter-status-display')).toContainText('GLOBAL:"Home"', { timeout: 15000 });
         await page.locator('#mb-filter-status-display').hover();
-        await expect(pop.locator('.mb-tt-ajlog')).toContainText('“Hom” replaced by “Home” after 8 of 56 rows');
+        await expect(pop.locator('.mb-tt-ajlog')).toContainText('“Hom” compared, then replaced by “Home”');
         await expect(pop.locator('.mb-tt-ajlog')).toContainText('“Home”:');
     });
 
@@ -327,10 +371,15 @@ test.describe('time-sliced typing filter', () => {
         await expect.poll(() => page.evaluate(() => window.__held)).toBe(true);
         await page.locator('#mb-global-filter-clear').click();
         await expect(page.locator('h2 .mb-row-count-stat')).toHaveText('(56)');
+        // A synchronous pass makes the held one STALE (not merely outdated):
+        // nothing at all may come from it — no rows, no status, no cache entry
+        // and no narrowing state (a half-done match set would be narrowed from).
+        const incrBefore = await page.evaluate(() => window.__saTest.filterSlicing.incr());
         const after = await releaseAndWatch(page);
         expect(after.tbody).toBe(0);
         expect(after.status).toBe(0);
         expect(after.keysAfter).toEqual(after.keysBefore);
+        expect(await page.evaluate(() => window.__saTest.filterSlicing.incr())).toEqual(incrBefore);
         await expect(page.locator('h2 .mb-row-count-stat')).toHaveText('(56)');
     });
 

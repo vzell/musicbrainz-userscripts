@@ -21747,3 +21747,31 @@ the same 800 ms gaps with the MessageChannel fallback (probe `--init` removing
 nothing writes it during a pass (every writer is a click handler).
 A throwaway spec (deleted) confirmed per pass that the commit uses all 47
 prebuilt arrays once the fix is in.
+
+## 2026-10-10 — The branch A/B broke the last-key limit once; outdated vs stale passes (C6f, C6g, WIP.8)
+
+Env: 2026-10-10T20:19Z-20:57Z (A/B) / 21:2xZ (one-sample check) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+The whole-branch A/B (tests/MEASUREMENTS.org) was a clear win on keys and frames,
+but `artist-events` at 400 ms between keys showed the wait after the last key at
+909-963 ms against `main`'s 380 ms — the plan's limit was +10 %. Mechanism: Step
+42 retired the running pass on every key; a 4174-row pass outlasts the key gap;
+no pass ever finished, so `_incrMatchSet` never advanced and the final pass
+compared and cloned everything. `main` blocks on every key, but each blocking
+pass finishes, so its last one only narrows. The user chose to fix it (Step 43).
+
+Design that came out of it: "no longer current" has two kinds. STALE (a newer
+generation — every synchronous runFilter() and a newer sliced pass — or a
+replaced row array) writes nothing. OUTDATED (only a key since it began) still
+finishes comparing and stores its complete result (correct for its own key),
+never draws, and stores nothing if the cache was invalidated meanwhile (new
+`_filterCacheEpoch`, bumped by all three invalidators — a new invalidator must
+bump it too). The next typed pass waits for an outdated predecessor when it
+will narrow from it (single table, extending plain text).
+
+Spec fallout worth knowing: the two specs that held a pass and then waited for
+the newer query's result now deadlocked — by design, the newer pass waits for
+the held one. They were rewritten to release first; the old "a newer key makes
+the pass write nothing" guarantee moved to the ✕-clear test (a synchronous
+pass = stale), which now also pins the narrowing state, and four C5 mutations
+were re-targeted there.

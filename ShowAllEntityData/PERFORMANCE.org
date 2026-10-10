@@ -3800,7 +3800,43 @@ other limit is broken once*: on =artist-events= at 400 ms the wait after the las
 grows from 380 ms to 909-963 ms. Every key retires the running pass, a 4174-row pass
 outlasts a 400 ms key gap, so no pass finishes while typing and the last one cannot
 narrow from an earlier result — on =main= each blocking pass finished. Reported to
-the user before going further.
+the user before going further; they chose Step 43.
+
+*** TODO Step 43: An outdated typed pass finishes comparing, and the next one narrows from it
+
+/Branch/ ~perf/faster-filtering~ /(C6g), 2026-10-10. TODO until it is on/ ~main~.
+
+*Problem.* Step 42 made every key retire the running pass. On =artist-events= a pass
+outlasts a 400 ms key gap, so no pass finished while typing, ~_incrMatchSet~ never
+advanced, and the last pass compared and cloned all 4174 rows: 909-963 ms after the
+last key against =main='s 380 ms (each of =main='s blocking passes finished, so its
+last one only narrowed).
+
+*Fix.* Two kinds of "no longer current":
+- /outdated/ — a key since the pass began (~_filterInputGen~, bumped by both filter
+  inputs). The pass keeps comparing in slices, then stores its complete result (cache
+  + narrowing state — correct for its own key) and stops: no clones, no drawing.
+- /stale/ — a newer generation (~_filterGen~: any synchronous ~runFilter()~, a newer
+  sliced pass) or a replaced row array. Writes nothing, as before.
+A stored result is only kept if nothing invalidated the cache meanwhile
+(~_filterCacheEpoch~, bumped by all three invalidators), or it could put back an entry
+the invalidation removed. The next typed pass WAITS for an outdated predecessor that is
+still comparing when its result will be the narrowing state (single table, plain text,
+the new text extends the old: ~_filterQueryExtends()~) — the outdated pass yields as it
+goes, so keys stay answered — and a call that waited gives way if a newer call began
+(~_filterSlicedCalls~). Multi-table pages do not narrow (Step 31), so there a newer pass
+simply takes the generation.
+
+*Quick check* (one sample, not publishable; Env 2026-10-10T21:2xZ petri, as above):
+=artist-events= after last key 446 ms at 400 ms keys (was 909-963 ms), 702 ms at 150 ms
+keys (was 1052-1085 ms), worst key 200 ms. The A/B follows.
+
+*Tests.* ~filter-sliced.spec.js~: an outdated pass never draws, keeps its complete
+result, and the next pass compares only that result's rows; an outdated pass stores
+nothing after a cache invalidation; the ✕ clear (stale) leaves cache AND narrowing state
+untouched. Mutations: outdated result thrown away, next pass not waiting, epoch ignored —
+caught; four C5 mutations re-targeted at the ✕ clear test (a key no longer makes a pass
+stale, only outdated).
 
 *Tests.* ~filter-sliced.spec.js~: the commit draws the prebuilt clones (1 array
 single-table, one per group multi-table) and still matches a synchronous pass

@@ -428,11 +428,19 @@ synchronous `runFilter()`. The rules that keep the two from disagreeing:
 - **Stale means: a newer generation (`_filterGen`) or a replaced row array**
   (`_filterRowArrays()`, by identity), checked after every yield. Every
   synchronous `runFilter()` takes a generation, so a clear, a sort, a 📊
-  pick or a findings toggle cancels a pass in flight — and so does every KEY
-  in the global or a column filter, in its input handler, not when the
-  debounced pass starts: a pass still current at its end commits by calling
-  `runFilter()`, which re-reads the inputs, so a quicker key would be
-  filtered synchronously (Step 42).
+  pick or a findings toggle cancels a pass in flight. A stale pass writes
+  nothing.
+- **Outdated means: a KEY since the pass began** (`_filterInputGen`, bumped in
+  both filter inputs' handlers — not when the debounced pass starts: a pass
+  still current at its end commits by calling `runFilter()`, which re-reads
+  the inputs, so a quicker key would be filtered synchronously, Step 42). An
+  outdated pass finishes COMPARING and stores that complete result (cache and
+  narrowing state, correct for its own key) — but never clones or draws, and
+  stores nothing if the cache was invalidated meanwhile (`_filterCacheEpoch`,
+  bumped by every invalidator). The next typed pass waits for it when it will
+  narrow from it (`_filterQueryExtends()`, single table only), Step 43. A new
+  invalidator must bump `_filterCacheEpoch`, or an outdated pass can put back
+  what it removed.
 - **Prebuilt clones go to exactly one `runFilter()` call.** The pass builds the
   clones in slices (`_buildFilterClone()`) and hands them over in
   `_filterPrebuiltClones`, set just before the committing call and cleared in

@@ -62628,6 +62628,22 @@ a { color: #1565c0; }`;
     // finds it changed after a yield is stale and stops without writing
     // anything (PERFORMANCE.org Step 39).
     let _filterGen = 0;
+    // Bumped by every KEY in the global or a column filter. A sliced pass that
+    // sees it change is OUTDATED, not stale: it may finish comparing and store
+    // its complete result (cache + narrowing state) for the next pass to narrow
+    // from, but it never clones or draws (PERFORMANCE.org Step 43).
+    let _filterInputGen = 0;
+    // Bumped by every invalidation of _filterResultCache. An outdated pass only
+    // stores its result if no invalidation happened since it began, or it would
+    // put back an entry the invalidation meant to remove (Step 43).
+    let _filterCacheEpoch = 0;
+    // The sliced pass currently comparing rows, if any:
+    // { queryRaw, narrowable, matchDone: Promise } — so the next typed pass can
+    // wait for an outdated one whose result it can narrow from (Step 43).
+    let _filterComparing = null;
+    // Each runFilterSliced() call takes a number; a call that waited for an
+    // outdated pass gives up if a newer call has started meanwhile.
+    let _filterSlicedCalls = 0;
     // A time-sliced pass compares rows for at most this many ms before it hands
     // the page back, checking the clock every _FILTER_SLICE_CHECK rows.
     const _FILTER_SLICE_MS = 8;
@@ -66323,8 +66339,12 @@ a { color: #1565c0; }`;
             // the progress it last reported.
             const reached = prev.replaced ? prev.doneAt : prev.done;
             Object.assign(prev, { logged: true, replaced: true, running: false, doneAt: reached });
-            _ajLog('tablework', null, `“${prev.query}” replaced by “${query}” after `
-                + `${Number(reached).toLocaleString('en-US')} of ${Number(prev.total).toLocaleString('en-US')} rows`, 'dim');
+            // An outdated pass compares to the end (its result is kept for the
+            // next pass to narrow from, Step 43); say that rather than "56 of 56".
+            _ajLog('tablework', null, reached >= prev.total
+                ? `“${prev.query}” compared, then replaced by “${query}”`
+                : `“${prev.query}” replaced by “${query}” after `
+                  + `${Number(reached).toLocaleString('en-US')} of ${Number(prev.total).toLocaleString('en-US')} rows`, 'dim');
         }
         _tw.pass = { query, total, done: 0, hits: 0, t0: performance.now(), narrowing,
                      running: true, replaced: false, logged: false, doneAt: 0, compareMs: null, slices: 0 };
@@ -68368,10 +68388,10 @@ a { color: #1565c0; }`;
                     // Keep caret at the end
                     input.setSelectionRange(input.value.length, input.value.length);
                 }
-                // A key makes any time-sliced pass still running stale NOW, not
-                // when the debounced pass for the new text starts (see the same
-                // line in the global filter's input handler).
-                _filterGen++;
+                // A key makes any time-sliced pass still running OUTDATED now,
+                // not when the debounced pass for the new text starts (see the
+                // same line in the global filter's input handler).
+                _filterInputGen++;
                 debouncedColumnFilter();
             });
 
@@ -72837,6 +72857,7 @@ a { color: #1565c0; }`;
 
     /** Clears the filter result cache and incremental-filter state. Call on fetch start, disk-load, and sort. */
     function _invalidateFilterCache() {
+        _filterCacheEpoch++;
         _filterResultCache.clear();
         _incrLastGlobalQuery = '';
         _incrLastPartialKey  = '';
@@ -72867,6 +72888,7 @@ a { color: #1565c0; }`;
      */
     function _invalidateFilterCacheForGroups(idxSet) {
         if (!idxSet || idxSet.size === 0) { _invalidateFilterCache(); return; }
+        _filterCacheEpoch++;
         for (const key of Array.from(_filterResultCache.keys())) {
             const m = /^m:[^:]*:(\d+)\|/.exec(key);
             if (m && idxSet.has(Number(m[1]))) _filterResultCache.delete(key);
@@ -72901,6 +72923,7 @@ a { color: #1565c0; }`;
      *   incremental partial key, returns true when that result could change.
      */
     function _invalidateFilterCacheWhere(affectsKey) {
+        _filterCacheEpoch++;
         for (const key of Array.from(_filterResultCache.keys())) {
             if (affectsKey(key)) _filterResultCache.delete(key);
         }
@@ -74100,7 +74123,22 @@ a { color: #1565c0; }`;
         const threshold = _filterSlicingTest.threshold ?? (Lib.settings.sa_chunked_render_threshold ?? 1000);
         if (total <= threshold) { runFilter(); return; }
 
+        // An OUTDATED pass still comparing rows whose result this one can
+        // narrow from (single table, the new text extends its text): let it
+        // finish first — it stores its result, and this pass then compares only
+        // those rows, as a synchronous pass after a synchronous pass would
+        // (Step 43). It yields as it goes, so keys stay answered. If a newer
+        // call starts while this one waits, this one gives way to it.
+        const call = ++_filterSlicedCalls;
+        const prev = _filterComparing;
+        if (prev && prev.narrowable && _filterQueryExtends(prev.queryRaw)) {
+            await prev.matchDone;
+            if (call !== _filterSlicedCalls) return;
+        }
+
         const gen = ++_filterGen;
+        const inputGen = _filterInputGen;
+        const epoch = _filterCacheEpoch;
         const plan = runFilter({ collect: true });
         if (!plan) return;                              // invalid regexp: the status says so
         if (!plan.jobs.length) { runFilter(); return; } // no group to draw at all
@@ -74117,6 +74155,14 @@ a { color: #1565c0; }`;
             const now = _filterRowArrays();
             return now.length !== rowsRef.length || now.some((a, i) => a !== rowsRef[i]);
         };
+        // A key since this pass began: finish comparing, store, never draw.
+        const isOutdated = () => _filterInputGen !== inputGen;
+        // Storing a complete result is safe while the rows are the same arrays
+        // and nothing invalidated the cache since this pass began.
+        const canStore = () => {
+            const now = _filterRowArrays();
+            return _filterCacheEpoch === epoch && now.length === rowsRef.length && now.every((a, i) => a === rowsRef[i]);
+        };
         const budget = _filterSlicingTest.budgetMs ?? _FILTER_SLICE_MS;
         const check = Math.max(1, _filterSlicingTest.rowsPerCheck ?? _FILTER_SLICE_CHECK);
         const toMatch = plan.jobs.filter(j => !j.hit);
@@ -74124,6 +74170,26 @@ a { color: #1565c0; }`;
         const narrowing = toMatch.length === 1 && plan.jobs.length === 1 && !!toMatch[0].incr && toMatch[0].rows !== allRows;
         const query = stripFilterPrefix(filterInput.value) || 'the column filters';
         const twPass = _twFilterBegin(toCompare, query, narrowing);
+        /** Stores every matched job's complete result (and the narrowing state). */
+        const storeMatches = () => {
+            for (const job of toMatch) {
+                _filterCacheSet(job.key, job.matches);
+                if (job.incr) {
+                    _incrLastGlobalQuery = job.incr.query;
+                    _incrLastPartialKey  = job.incr.partialKey;
+                    _incrMatchSet        = job.matches;
+                }
+            }
+        };
+        // Published so the next typed pass can wait for this one's comparing to
+        // end; narrowable = its result will be the narrowing state.
+        let _endMatch;
+        const comparing = {
+            queryRaw: stripFilterPrefix(filterInput.value),
+            narrowable: plan.jobs.length === 1 && toMatch.length === 1 && !!toMatch[0].incr,
+            matchDone: new Promise(resolve => { _endMatch = resolve; }),
+        };
+        _filterComparing = comparing;
         let done = 0, hits = 0;
         try {
             for (const job of toMatch) {
@@ -74148,6 +74214,15 @@ a { color: #1565c0; }`;
                 }
                 done += rows.length;
             }
+            // Comparing is complete. Outdated by a key: keep the result for the
+            // next pass to narrow from, but draw nothing (Step 43).
+            if (isOutdated()) {
+                if (canStore()) storeMatches();
+                _twFilterStale(twPass, toCompare);
+                Lib.debug('filter', `runFilterSliced: outdated by a key — compared all ${toCompare} rows, result stored, not drawn.`);
+                return;
+            }
+            _endMatch();
 
             // Build the clones in slices too (Step 42) — clone, strip, restore
             // art expand state, format ISRCs, highlight — for every group the
@@ -74174,6 +74249,12 @@ a { color: #1565c0; }`;
                         Lib.debug('filter', `runFilterSliced: replaced while cloning (${cloned + k} of ${toClone}) — nothing written.`);
                         return;
                     }
+                    if (isOutdated()) {
+                        // Comparing was complete: keep that, drop the clones.
+                        if (canStore()) storeMatches();
+                        _twFilterStale(twPass, toCompare);
+                        return;
+                    }
                 }
                 cloned += src.length;
             }
@@ -74184,14 +74265,7 @@ a { color: #1565c0; }`;
                 : null;
 
             // Commit: the only writes this pass makes, and only while current.
-            for (const job of toMatch) {
-                _filterCacheSet(job.key, job.matches);
-                if (job.incr) {
-                    _incrLastGlobalQuery = job.incr.query;
-                    _incrLastPartialKey  = job.incr.partialKey;
-                    _incrMatchSet        = job.matches;
-                }
-            }
+            storeMatches();
             _twFilterCompared(twPass);
             _filterPrebuiltClones = prebuilt;
             try {
@@ -74206,8 +74280,29 @@ a { color: #1565c0; }`;
             _twFilterStale(twPass, done);
             if (!isStale()) runFilter();
         } finally {
+            _endMatch();
+            if (_filterComparing === comparing) _filterComparing = null;
             _settlePass();
         }
+    }
+
+    /**
+     * Whether the global filter's text now EXTENDS `prevRaw` the way the
+     * incremental narrowing needs (`runFilter()`'s `_canNarrow`): plain text
+     * (no Rx, no Ex), longer, starting with it — case-insensitively unless Cc
+     * is on. Used by `runFilterSliced()` to decide whether waiting for an
+     * outdated pass is worth it (Step 43); the narrowing itself is still
+     * decided by `runFilter({ collect: true })`.
+     *
+     * @param {string} prevRaw - The outdated pass's text, prefix stripped.
+     * @returns {boolean}
+     */
+    function _filterQueryExtends(prevRaw) {
+        if (regexpCheckbox.checked || excludeCheckbox.checked) return false;
+        let cur = stripFilterPrefix(filterInput.value);
+        let prev = prevRaw || '';
+        if (!caseCheckbox.checked) { cur = cur.toLowerCase(); prev = prev.toLowerCase(); }
+        return cur.length > prev.length && cur.startsWith(prev);
     }
 
     stopBtn.addEventListener('click', (e) => {
@@ -74280,13 +74375,15 @@ a { color: #1565c0; }`;
             filterInput.value = prefix + typed;
             filterInput.setSelectionRange(filterInput.value.length, filterInput.value.length);
         }
-        // A key makes any time-sliced pass still running stale NOW. Waiting for
-        // the debounced pass to take the next generation is too late: a pass
-        // still current when it finishes commits by calling runFilter(), which
-        // reads the inputs afresh — the NEW text — and so filters that text
-        // synchronously, as one long task (measured: 613 ms on
-        // artist-releasegroups; PERFORMANCE.org Step 42).
-        _filterGen++;
+        // A key makes any time-sliced pass still running OUTDATED now. Waiting
+        // for the debounced pass to take the next generation is too late: a
+        // pass still current when it finishes commits by calling runFilter(),
+        // which reads the inputs afresh — the NEW text — and so filters that
+        // text synchronously, as one long task (measured: 613 ms on
+        // artist-releasegroups; PERFORMANCE.org Step 42). Outdated, not stale:
+        // it may still finish COMPARING and store that result, so the next
+        // pass can narrow from it (Step 43); it never draws.
+        _filterInputGen++;
         debouncedRunFilter();
     });
 
@@ -121156,6 +121253,8 @@ a { color: #1565c0; }`;
                 cacheKeys: () => Array.from(_filterResultCache.keys()),
                 clearCache: () => _invalidateFilterCache(),
                 gen: () => _filterGen,
+                /** @returns {number} runFilterSliced() calls so far (Step 43): a spec waits for a debounced call to start. */
+                calls: () => _filterSlicedCalls,
                 /** @returns {number} Prebuilt clone arrays the last runFilter() used (Step 42). */
                 prebuiltUsed: () => _filterPrebuiltUsed,
                 /** Changes expandedCells as a cell-toggle click would (a harmless unused key). */

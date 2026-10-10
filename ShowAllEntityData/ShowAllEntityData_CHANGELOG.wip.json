@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.8",
+    "date": "2026-10-10",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Typing with short pauses on a very large table shows the result sooner again: a filter you have already typed past now finishes comparing in the background (without drawing anything) so the next one only has to look at its matches, as before. On a 4,174-row page the result after the last key had grown to about 0.9 s with the responsive filtering; it is back near 0.4-0.5 s, while keys still never wait (PERFORMANCE.org Step 43)."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Tests: two more in tests/fixtures/filter-sliced.spec.js (an outdated pass never draws and the next narrows from it; nothing is stored after a cache invalidation), the ✕ clear test now also pins the narrowing state; 3 more mutations, caught, and four re-targeted."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.7",
     "date": "2026-10-10",
     "sections": [

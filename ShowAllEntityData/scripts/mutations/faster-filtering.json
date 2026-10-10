@@ -109,8 +109,8 @@
     "expect": "fail"
   },
   {
-    "name": "C5: a newer key no longer cancels the running pass",
-    "why": "The generation check after each yield is gone: the replaced pass runs on and commits its stale result over the newer one.",
+    "name": "C5: a newer generation no longer stops the running pass",
+    "why": "The generation check after each yield is gone: a pass a synchronous runFilter() (here the ✕ clear) replaced runs on and commits its result over the newer one.",
     "edits": [
       {
         "find": "            if (gen !== _filterGen) return true;\n",
@@ -118,7 +118,7 @@
       }
     ],
     "spec": "tests/fixtures/filter-sliced.spec.js",
-    "grep": "replaced by a newer key writes nothing",
+    "grep": "replaced by the ✕ clear",
     "expect": "fail"
   },
   {
@@ -144,7 +144,7 @@
       }
     ],
     "spec": "tests/fixtures/filter-sliced.spec.js",
-    "grep": "replaced by a newer key writes nothing",
+    "grep": "replaced by the ✕ clear",
     "expect": "fail"
   },
   {
@@ -157,7 +157,7 @@
       }
     ],
     "spec": "tests/fixtures/filter-sliced.spec.js",
-    "grep": "replaced by a newer key writes nothing",
+    "grep": "replaced by the ✕ clear",
     "expect": "fail"
   },
   {
@@ -183,7 +183,7 @@
       }
     ],
     "spec": "tests/fixtures/filter-sliced.spec.js",
-    "grep": "replaced by a newer key writes nothing",
+    "grep": "replaced by the ✕ clear",
     "expect": "pass"
   },
   {
@@ -217,8 +217,8 @@
     "why": "The card's Recent list no longer says which query replaced which.",
     "edits": [
       {
-        "find": "            _ajLog('tablework', null, `“${prev.query}” replaced by “${query}” after `",
-        "replace": "            void (`“${prev.query}” replaced by “${query}” after `"
+        "find": "            _ajLog('tablework', null, reached >= prev.total",
+        "replace": "            void (reached >= prev.total"
       }
     ],
     "spec": "tests/fixtures/filter-sliced.spec.js",
@@ -370,16 +370,55 @@
     "expect": "fail"
   },
   {
-    "name": "C6e: a key in the global filter no longer makes the running pass stale",
+    "name": "C6e: a key in the global filter no longer makes the running pass outdated",
     "why": "The pass stays current until the debounced pass starts; finishing first, it commits by re-reading the NEW text and filters it synchronously.",
     "edits": [
       {
-        "find": "        // synchronously, as one long task (measured: 613 ms on\n        // artist-releasegroups; PERFORMANCE.org Step 42).\n        _filterGen++;\n",
-        "replace": "        // synchronously, as one long task (measured: 613 ms on\n        // artist-releasegroups; PERFORMANCE.org Step 42).\n"
+        "find": "        // pass can narrow from it (Step 43); it never draws.\n        _filterInputGen++;\n",
+        "replace": "        // pass can narrow from it (Step 43); it never draws.\n"
       }
     ],
     "spec": "tests/fixtures/filter-sliced.spec.js",
-    "grep": "stale at once",
+    "grep": "outdated at once",
+    "expect": "fail"
+  },
+  {
+    "name": "C6g: an outdated pass throws its complete result away",
+    "why": "Outdated by a key, the pass finishes comparing but stores nothing, so the next pass compares the whole table again.",
+    "edits": [
+      {
+        "find": "            if (isOutdated()) {\n                if (canStore()) storeMatches();\n                _twFilterStale(twPass, toCompare);\n                Lib.debug('filter', `runFilterSliced: outdated by a key",
+        "replace": "            if (isOutdated()) {\n                _twFilterStale(twPass, toCompare);\n                Lib.debug('filter', `runFilterSliced: outdated by a key"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "narrows from its result",
+    "expect": "fail"
+  },
+  {
+    "name": "C6g: the next pass does not wait for an outdated one",
+    "why": "It takes a generation at once, so the outdated pass becomes stale, stores nothing, and the new pass compares everything.",
+    "edits": [
+      {
+        "find": "        if (prev && prev.narrowable && _filterQueryExtends(prev.queryRaw)) {",
+        "replace": "        if (false && prev) {"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "narrows from its result",
+    "expect": "fail"
+  },
+  {
+    "name": "C6g: an outdated pass stores after a cache invalidation",
+    "why": "The epoch is not checked: a result computed before an invalidation is put back into the cache.",
+    "edits": [
+      {
+        "find": "            return _filterCacheEpoch === epoch && now.length === rowsRef.length",
+        "replace": "            return now.length === rowsRef.length"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "invalidated meanwhile",
     "expect": "fail"
   }
 ]
