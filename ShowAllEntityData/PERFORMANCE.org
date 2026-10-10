@@ -3677,7 +3677,14 @@ mutations, 11 caught and 2 recorded ~expect: "pass"~ (the ~_renderGeneration~
 bump needs a two-chunk render no fixture has; the row-array check is covered
 by the generation when a sort replaces the arrays).
 
-*Typed A/B*: pending (to be recorded here and in tests/MEASUREMENTS.org).
+*Typed A/B* (tests/MEASUREMENTS.org "Typed filtering with the time-sliced pass",
+Env 2026-10-10T14:58Z-15:37Z, petri, both orders, branch =a8fa3dc= vs =main=):
+the worst keystroke while a pass runs falls 70-90 % on the three single-table
+pages (=artist-events= 1.77-1.85 s → 0.22-0.54 s) and 22-33 % on the multi-table
+=artist-releasegroups=; the wait after the last key stays within −46 to +3 %. The
+longest block falls by ≥50 % in 4 of 8 page × delay cases — the plan's stop rule
+asked for all — because the commit (clone, highlight, render) is still one task,
+largest on the multi-table page. Reported to the user before going further.
 
 ** Session summary: measured comparison, ~main~ vs ~perf-steps-1-4~ (2026-08-24)
 
