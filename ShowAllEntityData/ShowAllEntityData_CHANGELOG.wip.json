@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.6",
+    "date": "2026-10-10",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "The sticky first column's set-up now does all its style changes before reading any cell's colour back, instead of alternating cell by cell. The colours it stores, and the row hover, are unchanged; the time saved is small now that the collapse set-up no longer forces layout (PERFORMANCE.org Step 41)."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Tests: tests/fixtures/sticky-column-batched.spec.js (one read group; stored colours equal what the cells paint; hover paints and restores) through the new __saTest.sticky.apply hook; 2 more mutations, caught."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.5",
     "date": "2026-10-10",
     "sections": [

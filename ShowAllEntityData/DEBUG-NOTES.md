@@ -21684,3 +21684,26 @@ group" from "one per column" — the spec loads the committed 4174-row capture.
 And a bare `initCollapsableColumns()` call removes the EAA column's ▶N▤
 without rebuilding it (the art code owns it, `_artEnsureColCollapseProxy()`),
 which is old behaviour, so the outcome comparison leaves CAA/EAA out.
+
+## 2026-10-10 — Sticky column writes-then-reads (C6b, WIP.6); the duplicated multi-table passes kept on purpose (C6c dropped)
+
+Env: 2026-10-10T19:37Z (profile) / 19:38Z (`npm test`, 1553/1553) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+C6b (PERFORMANCE.org Step 41): `applyStickyColumn()` now writes all styles,
+then reads all computed backgrounds, then stores. Gain after Step 40: 423 → 397
+ms over the typed run, inside the spread — the recalculations had become cheap
+once the layout was clean; ~87k `getComputedStyle` calls remain, which is
+Step 24's (lazy snapshot) territory. Kept because it is correct, pinned and
+does no harm.
+
+C6c, planned as "drop runFilter's second `_applyPostRenderRowPasses()` in
+multi mode", is NOT done, and must not be done naively: in multi mode
+`renderGroupedTable()` runs zebra/normalize/sticky/barcode BEFORE `runFilter()`
+runs `initIswcValidation()` / `initBarcodeValidation()` (and the other
+re-wires), and those stamp finding tints. The later call is the one whose sticky
+snapshot (`data-mb-rest-bg`, restored INLINE on hover leave) includes those
+tints; dropping it would make a hover paint the pre-tint colour over a finding.
+And it is cheap: ~15 ms per pass on the artist-releasegroups profile (the long
+frames there are layout/paint, not this). If it is ever removed, remove the
+EARLY one inside renderGroupedTable()'s filter path instead, and pin the
+"finding tint survives a row hover" property first.

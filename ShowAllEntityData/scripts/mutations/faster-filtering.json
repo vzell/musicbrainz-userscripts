@@ -290,5 +290,31 @@
     "spec": "tests/fixtures/collapse-measure-batched.spec.js",
     "grep": "reads all columns in at most two groups",
     "expect": "fail"
+  },
+  {
+    "name": "C6b: applyStickyColumn reads inside the write pass again",
+    "why": "A getComputedStyle per row in pass 1, between that row's writes and the next row's: one style recalculation per row.",
+    "edits": [
+      {
+        "find": "                _rows.push({ tr, cell, _activeTintClass, others });",
+        "replace": "                _rows.push({ tr, cell, _activeTintClass, others, _early: getComputedStyle(cell).backgroundColor });"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-column-batched.spec.js",
+    "grep": "single group",
+    "expect": "fail"
+  },
+  {
+    "name": "C6b: the row hover is no longer wired",
+    "why": "The restructured pass 3 forgets the mouseenter listener: hovering a row no longer paints it.",
+    "edits": [
+      {
+        "find": "                tr.addEventListener('mouseenter', _enter);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sticky-column-batched.spec.js",
+    "grep": "hovering a row paints it",
+    "expect": "fail"
   }
 ]

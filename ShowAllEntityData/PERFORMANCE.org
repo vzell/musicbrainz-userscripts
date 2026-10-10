@@ -3724,6 +3724,36 @@ group), with the same toggles, header buttons and min-widths as the render's own
 pass; mutation "measures column by column again" caught (6 groups).
 ~__saTest.collapse.init(i)~ calls the function directly.
 
+*** TODO Step 41: ~applyStickyColumn()~ writes first, then reads
+
+/Branch/ ~perf/faster-filtering~ /(C6b), 2026-10-10. TODO until it is on/ ~main~.
+
+*Problem.* Per body cell it wrote the inline background, then read
+~getComputedStyle(td).backgroundColor~ back, cell after cell: every read
+recomputed style the previous write had just invalidated (87,738 snapshots per
+pass on =artist-events=, Step 24's count). 753 ms inclusive over the typed run
+before Step 40, 423 ms after it.
+
+*Fix.* Three passes over the rows: every style write (sticky position, tint
+class removed, inline backgrounds cleared or set to ~data-mb-custom-cell-bg~);
+every ~getComputedStyle~ read; then the stored snapshots, the tint restore and
+the hover listeners. No CSS rule makes a cell's computed background depend on
+another cell's inline style or classes (checked: no sibling or ~:has()~
+selector on ~.mb-sticky-col~ or the ~data-mb-*-bg~ attributes), so the values
+are the same.
+
+*Measured, honestly small* (probe ~--cpu~, Env: 2026-10-10T19:37Z, petri, same
+setup as Step 40): 423 → 397 ms (−6 %, inside run-to-run spread). Once Step 40
+left the layout clean the recalculations were cheap; what remains is the cost
+of ~87k ~getComputedStyle~ calls themselves. The real cut is Step 24 (snapshot
+lazily on first hover), which stays TODO.
+
+*Tests.* ~tests/fixtures/sticky-column-batched.spec.js~: one call reads in a
+single group (a ~getComputedStyle~ wrapper with ~MutationObserver.takeRecords()~),
+every stored rest colour equals what the cell paints with, hover paints and
+restores the row; ~__saTest.sticky.apply(i)~. Mutations: reads back inside the
+write pass (caught: 56 groups), hover unwired (caught).
+
 ** Session summary: measured comparison, ~main~ vs ~perf-steps-1-4~ (2026-08-24)
 
 /Harvested from/ ~perf-steps-1-4~ (branch tip 2026-08-31). *Everything below

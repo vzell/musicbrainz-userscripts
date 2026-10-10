@@ -33590,6 +33590,15 @@
             // Row hover highlight colour — read once, shared by all row handlers.
             const hoverBgColor = Lib.settings.sa_ui_row_hover_bg || '#c2d2e9';
 
+            // Three passes over the rows, not one (PERFORMANCE.org Step 41): every
+            // style WRITE first, then every getComputedStyle READ, then the
+            // writes that store what was read. Interleaved per cell — write the
+            // background, read it back, next cell — every read had to recompute
+            // the style of a page the previous write had just changed: 87,738
+            // recalculations per pass on artist-events. No rule makes one cell's
+            // computed background depend on another cell's inline style or
+            // classes, so the values read are the same.
+            const _rows = [];
             table.querySelectorAll('tbody tr').forEach(tr => {
                 const cell = tr.cells[stickyIdx];
                 if (!cell) return;
@@ -33644,7 +33653,22 @@
                     cell.style.removeProperty('background-color');
                 }
                 cell.style.background = '';
-                const cellBg = getComputedStyle(cell).backgroundColor;
+                // Non-sticky cells: clear the inline bg so CSS zebra wins —
+                // UNLESS the cell carries its own data-mb-custom-cell-bg marker
+                // (see the snapshot comment in the third pass below).
+                const others = Array.from(tr.cells).filter(td => td !== cell);
+                others.forEach(td => { td.style.background = td.dataset.mbCustomCellBg || ''; });
+                _rows.push({ tr, cell, _activeTintClass, others });
+            });
+
+            // Pass 2: every read, no write in between.
+            _rows.forEach(r => {
+                r.cellBg = getComputedStyle(r.cell).backgroundColor;
+                r.otherBgs = r.others.map(td => getComputedStyle(td).backgroundColor);
+            });
+
+            // Pass 3: store what was read, restore the tint, wire the hover.
+            _rows.forEach(({ tr, cell, _activeTintClass, others, cellBg, otherBgs }) => {
                 // A cell carrying its own data-mb-custom-cell-bg marker (e.g.
                 // the edits pageType's colored "Edit#" cell — see
                 // _buildEditRow) always wins over the computed zebra colour —
@@ -33680,12 +33704,11 @@
                 // just clearing to '') is what actually makes it win. Deliberately a
                 // per-cell, not per-row, check: this function stays page-type-agnostic
                 // and just respects whichever specific cell opted in, rather than
-                // knowing anything about 'edits'.
-                Array.from(tr.cells).forEach(td => {
-                    if (td === cell) return;
+                // knowing anything about 'edits'. (The inline write happened in
+                // pass 1 and the read in pass 2; this stores the snapshot.)
+                others.forEach((td, i) => {
                     const customBg = td.dataset.mbCustomCellBg;
-                    td.style.background = customBg || '';
-                    const bg = getComputedStyle(td).backgroundColor;
+                    const bg = otherBgs[i];
                     td.dataset.mbRestBg = customBg ||
                         ((bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') ? '#ffffff' : bg);
                 });
@@ -120996,6 +121019,10 @@ a { color: #1565c0; }`;
              */
             collapse: {
                 init: (i = 0) => initCollapsableColumns(document.querySelectorAll('table.tbl')[i]),
+            },
+            /** `applyStickyColumn(table)` on table i (PERFORMANCE.org Step 41). */
+            sticky: {
+                apply: (i = 0) => applyStickyColumn(document.querySelectorAll('table.tbl')[i]),
             },
             /**
              * The time-sliced typing pass (`runFilterSliced()`). `set({threshold,
