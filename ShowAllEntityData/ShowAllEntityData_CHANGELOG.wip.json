@@ -1,5 +1,25 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-10-10",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Typing a filter on a table of more than 1,000 rows no longer freezes the page. The filter now compares rows a few milliseconds at a time and lets the page respond in between, so the keys you type show at once; a key typed while a filter runs replaces it, and the replaced filter changes nothing. Previously a key typed during a filter waited up to 1.9 s (PERFORMANCE.org Step 39).",
+          "The ⏳ Sorting and filtering card now shows a long filter while it runs: what you are filtering for, the rows compared so far and how many match; afterwards the comparing and drawing times; its Recent list notes a filter replaced by a newer one."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Tests: tests/fixtures/filter-sliced.spec.js (9) and its mobile twin: same rows, order, status and highlights as a synchronous pass on single- and multi-table pages; column-filter typing sliced too; a pass replaced by a newer key, the ✕ clear or a sort writes nothing; _renderSettled held while comparing; the card's states and log. Driven through the new __saTest.filterSlicing hooks. 13 more mutations in scripts/mutations/faster-filtering.json: 11 caught, 2 recorded as expect pass with the reason.",
+          "Help: the progress card section now describes live filter progress. Docs: filter-and-cache-invariants.md (a sliced pass writes nothing until current and complete), toolbar-and-header-ui.md (the tablework provider), performance-rules.md (the typed metric and the keystroke probe)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-10-10",
     "sections": [

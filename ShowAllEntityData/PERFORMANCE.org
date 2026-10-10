@@ -3628,6 +3628,57 @@ badge, with a per-column control; a scan superseded mid-way publishes nothing,
 via ~__saTest.colHeaderCounts~); 3 mutations, all caught. Typed A/B: measured
 together with Step 37, see there.
 
+*** TODO Step 39: Time-sliced typing filter
+
+/Branch/ ~perf/faster-filtering~ /(C5 of its plan), 2026-10-10. TODO until it is
+on/ ~main~. /Card mockup approved 2026-10-10:/
+https://claude.ai/artifact/GCdE1u84VHcySfj3fSiNFf
+
+*Problem.* ~runFilter()~ compares every row in one task. With a pause between
+keys longer than the debounce, the next key lands inside that task and waits
+for all of it: worst keystroke 0.85-1.93 s and longest frame 0.95-2.0 s on the
+four measured pages, unchanged by Steps 37 and 38 (tests/MEASUREMENTS.org,
+"Typed filtering" and its C1+C2 follow-up).
+
+*Fix.* The debounced global and column filters call ~runFilterSliced()~. On a
+table over ~sa_chunked_render_threshold~ rows (1000) it:
+1. takes a filter generation (~_filterGen~), stops a stale chunked render
+   (~_renderGeneration++~) and publishes a pending ~_renderSettled~;
+2. asks ~runFilter({ collect: true })~ for the cache misses — the same keys,
+   contexts and narrowing decision the synchronous path computes, so they
+   cannot drift;
+3. runs ~testRowMatch(row, ctx, true)~ in slices of ~_FILTER_SLICE_MS~ (8),
+   checking the clock every 32 rows, yielding with ~scheduler.yield()~ or a
+   MessageChannel post; after every yield it stops, writing nothing, if a
+   newer generation exists or a row array was replaced;
+4. if still current, stores each result under its key (and the narrowing
+   state) and calls ~runFilter()~, which finds them cached and clones,
+   highlights, renders and reports as before.
+Below the threshold, or with every key cached, it is plain ~runFilter()~; all
+other callers stay synchronous and take a generation, cancelling a pass in
+flight. The ⏳ card shows the running pass (~_twFilter*~).
+
+*Deviation from the plan, by design:* the clone-and-highlight map is NOT
+sliced — it runs inside the committing ~runFilter()~, unchanged, so that one
+function still renders every filter result. The A/B below says whether the
+remaining block is short enough; slicing it would mean splitting
+~runFilter()~'s render half.
+
+*Rules*: docs/claude/filter-and-cache-invariants.md, "A time-sliced filter
+pass writes nothing until it is current and complete".
+
+*Tests.* ~tests/fixtures/filter-sliced{,.mobile}.spec.js~ (10): same rows,
+order, status and highlights as a synchronous pass on single- and multi-table
+pages (and on touch); column-filter typing sliced too; a pass replaced by a
+newer key, the ✕ clear or a sort writes nothing (tbody, status, cache keys and
+narrowing state unchanged after its release); ~_renderSettled~ pending while
+it compares; the card's Running → Done states and the "replaced by" log. 13
+mutations, 11 caught and 2 recorded ~expect: "pass"~ (the ~_renderGeneration~
+bump needs a two-chunk render no fixture has; the row-array check is covered
+by the generation when a sort replaces the arrays).
+
+*Typed A/B*: pending (to be recorded here and in tests/MEASUREMENTS.org).
+
 ** Session summary: measured comparison, ~main~ vs ~perf-steps-1-4~ (2026-08-24)
 
 /Harvested from/ ~perf-steps-1-4~ (branch tip 2026-08-31). *Everything below

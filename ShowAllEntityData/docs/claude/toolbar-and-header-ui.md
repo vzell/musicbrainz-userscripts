@@ -917,17 +917,35 @@ the first job).
 **`tablework` (long sorts and filters, `_tw*`).** Sorting yields
 (`sortLargeArray()` chunks above 5000 rows) and now passes its progress
 callback, `_twSortProgress()`, which opens the card once a sort has run past
-500 ms (`_TW_OPEN_AFTER_MS`) — never for a short one. Filtering's matching
-loop does NOT yield, so the page cannot repaint during it; `runFilter()` only
-records its time and rows (`_twFilterRecord()`), the draw time follows from
-`_renderSettled`, and the breakdown shows when the user hovers the status
-line (`#mb-sort-status-display`, `#mb-filter-status-display`). A yielding
-`runFilter()` is a separate perf branch, decided 2026-10-10. Cost while the
-card is closed: one object write and one `.then()` per filter pass. Specs:
+500 ms (`_TW_OPEN_AFTER_MS`) — never for a short one. The filter pass for
+TYPING on a table over `sa_chunked_render_threshold` rows yields too
+(`runFilterSliced()`, PERFORMANCE.org Step 39) and reports the same way:
+`_twFilterBegin()` returns a pass record that every later
+`_twFilterProgress()` / `_twFilterStale()` / `_twFilterCompared()` call
+names — a stale pass notices only at its next yield, by which time its
+successor may have begun, and a module-level "current pass" would let it
+write into the successor's record. While it runs the card shows Running,
+"Filtering for “q”" (plus "within the last result" when narrowing), rows
+compared of total and matches so far; afterwards the last filter with its
+query, Comparing (time, rows, slices) and Drawing; "Recent" logs a replaced
+pass ("“Hom” replaced by “Home” after N of M rows", kind `dim`) and each
+finished one. `_ajLog()` needs a job, so a pass too short to open the card
+logs nothing. The note reads "Filtering pauses every few milliseconds so the
+page keeps responding; a key typed meanwhile starts a new pass. Drawing a
+large table comes in chunks of 500 rows." Approved mockup:
+https://claude.ai/artifact/GCdE1u84VHcySfj3fSiNFf (2026-10-10). Every other
+filter caller is the synchronous `runFilter()`, which only records its time
+and rows (`_twFilterRecord()`); the draw time follows from `_renderSettled`,
+and the breakdown shows when the user hovers the status line
+(`#mb-sort-status-display`, `#mb-filter-status-display`). `_ajRender()` shows
+an optional `s.countNote` on the right of the count line (the "match so
+far"). Cost while the card is closed: one object write and one `.then()` per
+filter pass, plus one object write per slice. Specs:
 `async-pop-tablework.spec.js` — the auto-open path through
 `__saTest.tableWork` with a fake clock, because no fixture reaches the 5000
 rows the live callback needs; mutations `scripts/mutations/async-pop-tablework.json`
-(5, all caught).
+(5, all caught); the filter's card, through the real pass with
+`__saTest.filterSlicing`: `filter-sliced.spec.js`.
 
 `FIXTURE_SETTINGS_OVERRIDE` forces `sa_async_pop_auto_open` off: a card opened
 by a toggle click sits right over the header cells a spec clicks next. Specs

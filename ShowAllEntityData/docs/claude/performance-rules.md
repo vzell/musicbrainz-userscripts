@@ -113,3 +113,17 @@ much, and what the alternative would be.
 Note the warm uniq-dropdown figure: it was ~29 700 ms before caching landed. A
 change that reverts a win that large should be impossible to make by accident,
 which is the reason these baselines are committed.
+
+**Typing is measured separately (2026-10-10).** The `globalFilter` /
+`columnFilter` metrics above are SINGLE-pass numbers: they type with no delay,
+so the debounce swallows every key but the last. What a person typing feels is
+`capture-interaction-perf.js --only=typed` (`--typing-delays=150,400`): the
+slowest keystroke (Event Timing), the longest animation frame and task, the
+wait after the last key, and the passes run. 150 ms is under the debounce (one
+pass), 400 ms over it (a key lands inside a running pass). Run it through
+`scripts/run-perf-arms.py … -- --only=typed` (own ETA history) and tabulate
+with `scripts/summarize-typed-perf.py <label>…`. To find out WHY a keystroke
+is slow, `tests/support/probe-keystroke-cost.js` traces typing right after the
+render and once the header counts settle and lists every slow main-thread task
+with what ran in it; `--css=` / `--init=` try a remedy without touching the
+userscript. That probe is how Steps 37 and 38 were found.

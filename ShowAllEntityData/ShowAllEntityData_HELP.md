@@ -192,9 +192,13 @@ card shows:
   cache and the network.
 
 A **long sort** (more than half a second) opens the same card with its
-progress. Filtering cannot show progress yet: while it compares rows the page
-cannot repaint. Hover the status line next to the filter box afterwards to see
-how long the last sort and filter took, and how long drawing the rows took.
+progress. So does a long **filter while you type** on a table of more than
+1,000 rows: the card shows what you are filtering for, how many rows have
+been compared and how many match so far. Filtering pauses every few
+milliseconds, so the page keeps responding to your keys; a key typed while it
+runs starts a new pass, and the card's **Recent** list notes which one was
+replaced. Hover the status line next to the filter box afterwards to see how
+long the last sort and filter took, and how long drawing the rows took.
 
 <kbd>Esc</kbd> closes it, and the job keeps running. Hovering the toggle shows
 it again, live; moving the pointer away closes it. You can move onto the card

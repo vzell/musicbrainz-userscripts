@@ -394,3 +394,44 @@ consistent, each written after it had been broken (findings F3–F7 of
 the end of one cell plus the start of the next. Text nodes INSIDE one cell are
 still joined with a space — a name and its disambiguation comment must stay
 matchable, which the spec's `guard: F6` test pins.
+
+## A time-sliced filter pass writes nothing until it is current and complete
+
+Typing on a table over `sa_chunked_render_threshold` rows goes through
+`runFilterSliced()` (PERFORMANCE.org Step 39); every other caller is the
+synchronous `runFilter()`. The rules that keep the two from disagreeing:
+
+- **One preparation.** The sliced pass gets its work from
+  `runFilter({ collect: true })` — the same cache keys, the same per-group
+  `matchCtx` (copied: the multi branch rebuilds one object per group) and the
+  same incremental-narrowing decision. It then fills those keys and calls
+  `runFilter()`, which finds them cached. A new structural filter therefore
+  still needs its field in `_buildFilterKey()` and `_buildIncrPartialKey()`
+  (see above), and nothing else: never compute a key for the sliced path
+  separately.
+- **Collect mode is side-effect free where it matters**: no
+  `_filterCacheSet`, no `_incr*`, no `_activeFilterHighlightCtx`, no clone,
+  no render, no generation. It does write what the synchronous pass writes
+  BEFORE matching (the ⏳ status text, the global input's border,
+  `getColFilters()`'s per-input borders and h3 regexp errors) — idempotent
+  reflections of the inputs.
+- **Stale means: a newer generation (`_filterGen`) or a replaced row array**
+  (`_filterRowArrays()`, by identity), checked after every yield. Every
+  synchronous `runFilter()` takes a generation, so a clear, a sort, a 📊
+  pick or a findings toggle cancels a pass in flight.
+- **A stale pass writes NOTHING** — no cache entry, no narrowing state, no
+  status, no render. Only a complete, current pass stores its results, so
+  `_filterResultCache` and `_incrMatchSet` only ever hold complete answers.
+  The `_rowTextCache` memos it made are kept: they are per-row text, valid
+  whatever the query.
+- **`_renderSettled` stays pending while a pass compares** (published before
+  the first yield, resolved in `finally`), so the header-count scan never
+  scans a table that is about to be replaced.
+- **A sliced pass stops a stale chunked render at once** (`_renderGeneration++`
+  at its start): the table may show a partly drawn previous result while the
+  ⏳ status says filtering is under way (decided 2026-10-10).
+
+Specs: `filter-sliced{,.mobile}.spec.js`, driven through
+`__saTest.filterSlicing` (threshold 0, one row per slice, an awaited
+`onSlice` that holds a pass mid-way); mutations in
+`scripts/mutations/faster-filtering.json`.

@@ -21619,3 +21619,35 @@ iframe was still empty after 5 s. It passed 3/3 run alone. The detail-popup
 iframe path touches neither table CSS nor the header-count scan, so this is
 recorded as a load-dependent flake to watch, not attributed to this change; a
 second failure of it should get its own entry.
+
+## 2026-10-10 — Time-sliced typing filter (perf/faster-filtering, C5, WIP.4)
+
+Env: 2026-10-10T14:50Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+`runFilterSliced()` for the debounced global and column filters; design and
+rules in PERFORMANCE.org Step 39 and filter-and-cache-invariants.md ("A
+time-sliced filter pass writes nothing until it is current and complete").
+`npm test`: 1549/1549 (the popup-ext flake above did not recur).
+
+Found while building it, worth keeping:
+- **A stale pass notices only at its next yield.** By then its successor may
+  already have called `_twFilterBegin()`, so a module-level "current pass"
+  for the ⏳ card would let the stale pass mark its SUCCESSOR replaced.
+  `_twFilterBegin()` returns a record that every later call names, and a new
+  pass marks a still-running predecessor replaced itself.
+- **Mutations that shrink the work can be caught by the wrong assertion.**
+  Planting "the job compares half the rows" was caught — by the premise that
+  counts slices, not by the equality check it targeted. Replaced by "the job's
+  context loses the query" (same slices, every row matches), and the single-
+  table spec now compares BEFORE checking its narrowing premise, reading the
+  premise off the synchronous answer. Each "results differ" mutation now fails
+  on "the sliced pass shows what the synchronous one does".
+- **Mobile typing races the field's prefix.** Tapping the global filter and
+  typing at once put the first key in FRONT of the "🔍 " prefix ("B🔍 ru",
+  0 rows); the mobile spec waits for the prefix, as `typeGlobalFilter()` does
+  on desktop. The series fixture's header covers the field at Pixel 7 width,
+  so the spec uses the shared user-ratings helpers (`filterAutofocus.js`).
+- Two mutations are recorded `expect: "pass"`, with the reason: the
+  `_renderGeneration` bump needs a render of more than 500 rows in flight (no
+  fixture has one), and the row-array identity check is covered by the
+  generation whenever a sort replaces the arrays.
