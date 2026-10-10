@@ -3837,7 +3837,9 @@ wait after the last key holds the plan's +10 % limit on every page (−13 to +7.
 =artist-events= at 400 ms 376-379 ms vs 385 ms); with keys landing in a pass the worst
 keystroke falls 73-90 % and the longest frame 74-86 %. The longest frame of a single
 pass (150 ms) falls 45-60 %: three of eight runs miss "≥50 %" — release groups both
-orders (195/193 → 105/107 ms) and =artist-events= order 2 (648 → 338 ms).
+orders (195/193 → 105/107 ms) and =artist-events= order 2 (648 → 338 ms). The user
+accepted these three near-misses on 2026-10-10 (the remaining block is the commit's
+render of the visible rows); the merge gate ran next.
 
 *Tests.* ~filter-sliced.spec.js~: an outdated pass never draws, keeps its complete
 result, and the next pass compares only that result's rows; an outdated pass stores

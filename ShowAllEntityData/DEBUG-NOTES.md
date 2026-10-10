@@ -21775,3 +21775,22 @@ the held one. They were rewritten to release first; the old "a newer key makes
 the pass write nothing" guarantee moved to the ✕-clear test (a synchronous
 pass = stale), which now also pins the narrowing state, and four C5 mutations
 were re-targeted there.
+
+## 2026-10-10 — perf/faster-filtering: final A/B accepted, merge gate green
+
+Env: 2026-10-10T21:25Z-22:02Z (A/B) / 22:12:47Z-22:20:25Z (`test:full`) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs).
+
+Final typed A/B at `b62597d` (tests/MEASUREMENTS.org): wait after the last key
+within the +10 % limit on every page (−13 to +7.2 %); keys during a pass −73 to
+−90 %; longest frame −74 to −86 % with keys in passes, −45 to −60 % for a
+single pass, where three runs miss the plan's 50 % (release groups 105 ms,
+artist-events once 338 ms). The user accepted those near-misses.
+
+Merge gate: `python3 scripts/run-test-full.py` on `perf/faster-filtering` at
+`9ce4646`: 1571/1571 passed, 7 m 38 s (chromium-fixtures + chromium-mobile,
+`@slow` included). Mutation list `scripts/mutations/faster-filtering.json`:
+32 entries, 30 caught, 2 recorded `expect: "pass"` with their reasons.
+
+Not yet done, and required before any merge question (CLAUDE.md): the user's
+own try in a real browser on artist-events and artist-releasegroups. Nothing
+pushed.
