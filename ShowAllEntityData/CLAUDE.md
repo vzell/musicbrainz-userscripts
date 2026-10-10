@@ -91,7 +91,7 @@ and context below.
 | JL           | italian Jungleland website                     | https://www.jungleland.it/html/                                                |                                                                            |
 | DI           | Discogs website                                | https://www.discogs.com/                                                       |                                                                            |
 | MBID         | unique MusicBrainz identifier                  | 70248960-cb53-4ea4-943a-edb18f7d336f                                           | Bruce Springsteen                                                          |
-|              |                                                |                                                                                |                                                                            |
+| LAF          | UI look and feel                               | see ~/CLAUDE.md (## UI look and feel — all projects (approved 2026-10-10))     |                                                                            |
 
 ## Doc map — what to read, and when
 

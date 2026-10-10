@@ -1649,6 +1649,8 @@ Everything you asked for is built on feature/recording-of-column, and the full s
 
 ** implement
 
+*** i
+
 Everything works/look BEAUTIFUL, go on like that, you ROCK.. it's exactly the "look and feel" I like, write it down to
 CLAUDE.md for further projects
 
@@ -1673,6 +1675,47 @@ implement "Faster filtering": make filtering hand control back to the page betwe
 
 commit, push then /merge-push-remove
 
+*** DONE summary
+
+● The branch is merged into main and pushed, the WIP changelog is folded to 9.99.1312–9.99.1316, and the branch is deleted locally and on origin. The full suite passed on merged main: 1,546 of 1,546.
+
+  - Look and feel: written to your global ~/.claude/CLAUDE.md as "UI look and feel — all projects": mockup first, the
+    Liner-notes palette and type, pills, progress bars, donut, in-panel confirms, Esc and hover behaviour.
+  - Performance baseline for artist recordings: new committed fixture, Tom Petty and the Heartbreakers (2,512 rows). I
+    measured it twice, in opposite orders, against the same page without the two new columns. The empty columns cost
+    about +5–8 % on header counts and +5–6 % on sorting; filtering and the 📊 dropdown were within noise. You approved
+    merging as is. Numbers are in tests/MEASUREMENTS.org.
+  - Bug found by the baseline work, fixed before merging: after Load from Disk, the two headers appeared twice, every
+    later column was shifted by two, and the cells lost the identity they need for loading. Files saved before this
+    feature now load without the columns. It's covered by a new spec, and the mutation check catches all 4 planted
+    defects.
+  - Perf runs in the status line: scripts/run-perf-arms.py shows the arm, metric, sample and ETA, the same way test:full
+    does. You confirmed it worked in your prompt. The status line now also refreshes every 10 s on its own
+    (refreshInterval in ~/.claude/settings.json). Per the docs it runs locally and uses no tokens; it may need a restart
+    to take effect.
+  - Merge details:
+    - Your commit 041e038 picked up my uncommitted changelog fold and you pushed it, so the fold has no separate commit. The content is correct, the changelog audit is clean, and I didn't force-push.
+    - The "LAF" row you added to the project CLAUDE.md was stashed across the merge and restored; it's still uncommitted for you.
+    - The published mirror still has 9.99.1167, so a republish is pending.
+
+* TODO Prompts to continue after /clear:
+
+1.) Cache export/import ("merge"):
+Implement export/import ("merge") of the ShowAllEntityData browser cache between browsers, on a new feature branch.
+
+The 💾 Browser cache overview (_idbo*, docs/claude/toolbar-and-header-ui.md "💾 Browser cache overview") lists every IndexedDB part: the art cache DB (images, metadata, rel-ws2, ms-rec-len, recof-ws2, artist-works) and the link-preview DB (pages). Add to that dialog:
+- Export: choose parts (images are large — say how large before writing), one .json.gz download, Blobs base64, with script version, database versions and per-record timestamps.
+- Import: choose a file, preview per part (entries, size, age, how many are newer / older / missing here), then merge: newest timestamp wins per key, never overwrite a newer local record, skip expired records, validate every record against its store's shape (a file is
+user-supplied data), and say what was added/updated/skipped.
+Follow my global CLAUDE.md "UI look and feel": publish an interactive HTML mockup first and wait for approval. Then plan mode, fixture specs plus a mutation list, docs, WIP changelog, as usual. Measure export and import time on a large cache and record it in
+tests/MEASUREMENTS.org.
+
+2.) Faster filtering:
+Implement "Faster filtering" on a new feature branch: make runFilter()'s row-matching loop hand control back to the page between batches of rows, so the progress card (tablework provider, _tw*) can show live filter progress and the page stays responsive while it filters.
+
+Measure first, with scripts/run-perf-arms.py (status-line progress), each A/B pair run twice in opposite orders: main arms for artist-events, artist-releases-dylan, artist-releasegroups and artist-recordings-petty — per-keystroke filter latency and the longest main-thread
+block. Then design in plan mode: time budget per slice, cancelling a pass when a newer keystroke arrives (a stale pass must never write results), keeping _filterResultCache / _rowTextCache semantics, single- and multi-table paths, and ordering with renderFinalTable()'s chunked
+render. Flag the expected cost (total time may grow) with numbers before implementing and let me decide. Any change to the progress card follows my global UI look and feel (mockup first).
 
 * TODO MusicBrainz sidebar entries ==> collapsable h2/h3
 
@@ -1702,6 +1745,23 @@ Use this as a starting point
 make some suggestions where we could display entity image icons (if available) e.g. places/labels/artist etc from the
 sidebar on the main page (of course with the internal viewer hovwer functionality, the side bar currently seems to still
 missing it)
+
+5.) Cache export/import ("merge"):
+Implement export/import ("merge") of the ShowAllEntityData browser cache between browsers, on a new feature branch.
+
+The 💾 Browser cache overview (_idbo*, docs/claude/toolbar-and-header-ui.md "💾 Browser cache overview") lists every IndexedDB part: the art cache DB (images, metadata, rel-ws2, ms-rec-len, recof-ws2, artist-works) and the link-preview DB (pages). Add to that dialog:
+- Export: choose parts (images are large — say how large before writing), one .json.gz download, Blobs base64, with script version, database versions and per-record timestamps.
+- Import: choose a file, preview per part (entries, size, age, how many are newer / older / missing here), then merge: newest timestamp wins per key, never overwrite a newer local record, skip expired records, validate every record against its store's shape (a file is
+user-supplied data), and say what was added/updated/skipped.
+Follow my global CLAUDE.md "UI look and feel": publish an interactive HTML mockup first and wait for approval. Then plan mode, fixture specs plus a mutation list, docs, WIP changelog, as usual. Measure export and import time on a large cache and record it in
+tests/MEASUREMENTS.org.
+
+6.) Faster filtering:
+Implement "Faster filtering" on a new feature branch: make runFilter()'s row-matching loop hand control back to the page between batches of rows, so the progress card (tablework provider, _tw*) can show live filter progress and the page stays responsive while it filters.
+
+Measure first, with scripts/run-perf-arms.py (status-line progress), each A/B pair run twice in opposite orders: main arms for artist-events, artist-releases-dylan, artist-releasegroups and artist-recordings-petty — per-keystroke filter latency and the longest main-thread
+block. Then design in plan mode: time budget per slice, cancelling a pass when a newer keystroke arrives (a stale pass must never write results), keeping _filterResultCache / _rowTextCache semantics, single- and multi-table paths, and ordering with renderFinalTable()'s chunked
+render. Flag the expected cost (total time may grow) with numbers before implementing and let me decide. Any change to the progress card follows my global UI look and feel (mockup first).
 
 
 * TODO switch to the new LAF everywhere
