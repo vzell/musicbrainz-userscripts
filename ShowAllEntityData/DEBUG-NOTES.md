@@ -21481,3 +21481,9 @@ as `wiencek-batch-performance` by the new `wire-live-userscript` skill.
    has never been rendered by any spec — use a fixture a spec renders when a
    test needs the post-render toolbar. Not built: "merge" from the request — the
    mockup had no merge action and was approved as drawn; open question for the user.
+8. **Second `test:full`** (2026-10-09T23:53Z, petri, `a1ea751`, after the
+   Relationships/⏱/table-work providers and the cache overview): 1544/1544
+   passed, 452 s. Not done on this branch: the perf arms of plan §2.8
+   (artist-recordings has no committed perf baseline or harness config yet),
+   and the live interop smoke run with the batch-add userscript (needs the
+   user's go-ahead: it hits musicbrainz.org).
