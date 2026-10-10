@@ -193,12 +193,19 @@ card shows:
 
 A **long sort** (more than half a second) opens the same card with its
 progress. So does a long **filter while you type** on a table of more than
-1,000 rows: the card shows what you are filtering for, how many rows have
-been compared and how many match so far. Filtering pauses every few
+1,000 rows, in the global filter or in a column filter. The card shows what
+you are filtering for (a column filter by its column, and on a page with
+sub-tables by its sub-table too, e.g. “live” in Title (Album + Live)) and
+which step the filter is on. First it compares rows: how many have been
+compared and how many match so far. Then it prepares the matching rows for
+drawing, with its own count. A column filter compares only its own sub-table,
+so it spends most of its time preparing. Filtering pauses every few
 milliseconds, so the page keeps responding to your keys; a key typed while it
 runs starts a new pass, and the card's **Recent** list notes which one was
 replaced. Hover the status line next to the filter box afterwards to see how
-long the last sort and filter took, and how long drawing the rows took.
+long the last sort and filter took: comparing, preparing and drawing the rows.
+The 🔍 filter on a sub-table's heading still filters at once and does not
+show the card.
 
 <kbd>Esc</kbd> closes it, and the job keeps running. Hovering the toggle shows
 it again, live; moving the pointer away closes it. You can move onto the card

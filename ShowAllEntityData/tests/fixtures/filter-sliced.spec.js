@@ -23,11 +23,14 @@
 //    cache never holds the replaced query's key.
 // 3. The ⏳ card shows a pass that runs longer than 500 ms: Running, the
 //    query, rows compared; then Done with the comparing time.
+// 4. It does so for a column filter too, whose comparing is over at once: the
+//    card opens while the pass prepares rows, says which step it is on, and
+//    names the filter by column and sub-table.
 
 const path = require('path');
 const { test, expect } = require('../support/test');
 const { loadFromDiskFixture } = require('../support/diskFixture');
-const { waitForFilterSettled, waitForSortSettled, typeGlobalFilter } = require('../support/filterSortAssertions');
+const { waitForFilterSettled, waitForSortSettled, typeGlobalFilter, ensureSubTableVisible, columnIndex, columnFilterInput } = require('../support/filterSortAssertions');
 const { setupRecordingOf } = require('../support/recordingOf');
 
 // The BoDeans page: artist-releases, tableMode 'single', 56 rows.
@@ -432,5 +435,56 @@ test.describe('time-sliced typing filter', () => {
         await expect(pop.locator('.mb-tt-ajfacts')).toContainText('Comparing');
         await expect(pop.locator('.mb-tt-ajfacts')).toContainText('slices');
         await expect(pop.locator('.mb-tt-ajlog')).toContainText('“Badlands”:');
+    });
+
+    test('the ⏳ card opens for a column filter while it prepares rows, and names the column and sub-table', async ({ page }) => {
+        test.setTimeout(120000);
+        await loadFromDiskFixture(page, {
+            url: RG_URL, fixturePath: RG_FIXTURE, pageFixtureFile: RG_SHELL, testMode: true,
+            settingsOverride: { sa_async_pop_auto_open: true },
+        });
+        await expect(page.locator('table.tbl')).toHaveCount(2, { timeout: 30000 });
+        // Comparing runs unheld — far under 500 ms — so only the preparing step
+        // can open the card: the pass waits 700 ms after its first preparing
+        // slice, then is held at the second until released. A card already
+        // open while comparing would void the premise, so that is recorded.
+        await page.evaluate(() => {
+            window.__openWhileComparing = false;
+            let c = 0;
+            window.__saTest.filterSlicing.set({
+                threshold: 0, rowsPerCheck: 1, budgetMs: 0,
+                onSlice: (done, total, phase) => {
+                    if (phase !== 'clone') {
+                        const pop = document.querySelector('#mb-async-pop');
+                        if (pop && pop.style.display !== 'none') window.__openWhileComparing = true;
+                        return undefined;
+                    }
+                    c++;
+                    if (c === 1) return new Promise((r) => setTimeout(r, 700));
+                    if (c === 2) return new Promise((r) => { window.__release = r; });
+                    return undefined;
+                },
+            });
+        });
+        await ensureSubTableVisible(page, 0);
+        const input = columnFilterInput(page, await columnIndex(page, 'Format', { tableIndex: 0 }), { tableIndex: 0 });
+        await input.click();
+        await input.pressSequentially('a');
+        const pop = page.locator('#mb-async-pop');
+        await expect(pop).toBeVisible({ timeout: 10000 });
+        expect(await page.evaluate(() => window.__openWhileComparing), 'premise: the card was closed while comparing').toBe(false);
+        // Running, on its second step: the bar and count follow the preparing.
+        await expect(pop.locator('[data-mb-aj-phase]')).toHaveAttribute('data-mb-aj-phase', 'running');
+        await expect(pop.locator('.mb-tt-dim').first()).toHaveText('Filtering for “a” in Format (Official release)');
+        await expect(pop.locator('.mb-tt-ajstep-fin')).toHaveText('Compared ✓');
+        await expect(pop.locator('.mb-tt-ajstep-on')).toHaveText('Preparing');
+        await expect(pop.locator('.mb-tt-ajcount')).toContainText('2 / 2 rows prepared for drawing');
+        await page.evaluate(() => window.__release());
+        // Done: the breakdown names the filter and has the Preparing step.
+        await expect(pop.locator('[data-mb-aj-phase]')).toHaveAttribute('data-mb-aj-phase', 'done', { timeout: 15000 });
+        await expect(pop.locator('.mb-tt-ajsteps')).toHaveCount(0);
+        await expect(pop.locator('.mb-tt-ajfacts')).toContainText('“a” in Format (Official release)');
+        await expect(pop.locator('.mb-tt-ajfacts')).toContainText(/Preparing\s*[\d.]+ m?s, 2 rows in 2 slices/);
+        await expect(pop.locator('.mb-tt-ajlog')).toContainText('“a” in Format (Official release):');
     });
 });

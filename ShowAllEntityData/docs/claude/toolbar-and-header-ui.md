@@ -931,9 +931,29 @@ query, Comparing (time, rows, slices) and Drawing; "Recent" logs a replaced
 pass ("“Hom” replaced by “Home” after N of M rows", kind `dim`) and each
 finished one. `_ajLog()` needs a job, so a pass too short to open the card
 logs nothing. The note reads "Filtering pauses every few milliseconds so the
-page keeps responding; a key typed meanwhile starts a new pass. Drawing a
-large table comes in chunks of 500 rows." Approved mockup:
-https://claude.ai/artifact/GCdE1u84VHcySfj3fSiNFf (2026-10-10). Every other
+page keeps responding; a key typed meanwhile starts a new pass. Matching rows
+are prepared for drawing in the same short steps. Drawing a large table comes
+in chunks of 500 rows." Approved mockup:
+https://claude.ai/artifact/GCdE1u84VHcySfj3fSiNFf (2026-10-10).
+**The threshold is checked in BOTH steps of the pass** (`_twFilterMaybeOpen()`,
+called from `_twFilterProgress()` while comparing and from
+`_twFilterPrepProgress()` while the clones are built). It used to be checked
+only while comparing, and a column filter never opened the card: its pass
+compares only its own sub-table (8 ms for 2,143 rows on the release-groups
+capture, the other groups being cache hits) and spends the rest, about
+900 ms, preparing. `_twFilterPrepare()` switches the record to
+`step: 'prepare'` and fixes `compareMs` there; `_twFilterCompared()` then
+sets `prepMs`. The card shows the step line ("Comparing · Preparing", then
+"Compared ✓ · Preparing", `s.steps` in `_ajRender()`), the count in
+"rows prepared for drawing" during the second step, and a Preparing fact
+afterwards. The pass is named by `_twFilterLabel()`: the global text, then
+each column filter as `“v” in Column (Sub-table)` (the sub-table only on a
+multi-table page, read from the h3's own text before its count), past three
+parts counted; `all rows` when nothing is filtered. The record's `query` is
+that label, quotes included, so no caller adds quotes. Mockup approved
+2026-10-11: https://claude.ai/artifact/1ZBfeQbQzD3uWid1HEb7LV. The sub-table
+filter (`applySubFilter`, the h3 🔍) is a separate synchronous path and never
+shows the card (org/TODO.org). Every other
 filter caller is the synchronous `runFilter()`, which only records its time
 and rows (`_twFilterRecord()`); the draw time follows from `_renderSettled`,
 and the breakdown shows when the user hovers the status line

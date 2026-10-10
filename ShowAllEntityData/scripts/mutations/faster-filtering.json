@@ -420,5 +420,70 @@
     "spec": "tests/fixtures/filter-sliced.spec.js",
     "grep": "invalidated meanwhile",
     "expect": "fail"
+  },
+  {
+    "name": "C6h: the card checks its threshold only while comparing",
+    "why": "The open check is gone from the preparing slices: a column-filter pass, whose comparing is over at once, never opens the card (the reported bug).",
+    "edits": [
+      {
+        "find": "        p.pslices++;\n        _twFilterMaybeOpen(p);\n",
+        "replace": "        p.pslices++;\n        _ajChanged('tablework', null);\n"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "prepares rows",
+    "expect": "fail"
+  },
+  {
+    "name": "C6h: no preparing step",
+    "why": "The pass never enters its second step: the card has no step line to switch and no Preparing fact.",
+    "edits": [
+      {
+        "find": "            _twFilterPrepare(twPass, toClone);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "prepares rows",
+    "expect": "fail"
+  },
+  {
+    "name": "C6h: a column filter named without its sub-table",
+    "why": "The label drops the sub-table on a multi-table page, so two column filters of the same name read alike.",
+    "edits": [
+      {
+        "find": "                if (name) where = ` (${name})`;\n",
+        "replace": "                if (name) where = '';\n"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "prepares rows",
+    "expect": "fail"
+  },
+  {
+    "name": "C6h: the step line is not drawn",
+    "why": "_ajRender() ignores a snapshot's steps.",
+    "edits": [
+      {
+        "find": "        if (s.steps && s.steps.length) {\n",
+        "replace": "        if (false) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "prepares rows",
+    "expect": "fail"
+  },
+  {
+    "name": "C6h: no Preparing fact afterwards",
+    "why": "The breakdown keeps only Comparing and Drawing.",
+    "edits": [
+      {
+        "find": "                if (f.sliced.prepMs !== null) {\n",
+        "replace": "                if (false) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "prepares rows",
+    "expect": "fail"
   }
 ]

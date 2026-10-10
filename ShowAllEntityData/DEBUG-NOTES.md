@@ -21794,3 +21794,36 @@ Merge gate: `python3 scripts/run-test-full.py` on `perf/faster-filtering` at
 Not yet done, and required before any merge question (CLAUDE.md): the user's
 own try in a real browser on artist-events and artist-releasegroups. Nothing
 pushed.
+
+## 2026-10-11 — The ⏳ card never opened for a column filter (C6h, WIP.9)
+
+Env: 2026-10-10T23:30Z-23:55Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs). The report itself came from the user's browser on vzell-lap (browser and Tampermonkey versions unknown).
+
+Report (user, testing `c94bec5` on vzell-lap): "the new popup ONLY shows up when
+filtering with the global filter, not with the sub-table or column level
+filter".
+
+Two causes, one per filter:
+
+- **Sub-table filter (h3 🔍, `applySubFilter`):** a separate synchronous path the
+  branch never touched; it cannot report to the card. By design for now, added
+  to org/TODO.org.
+- **Column filter:** goes through `runFilterSliced()` like the global filter,
+  but the card's open check (`performance.now() - p.t0 > _TW_OPEN_AFTER_MS`)
+  lived only in `_twFilterProgress()`, called from the COMPARING slices. A
+  throwaway spec on the release-groups capture (sub-table 29 expanded, "live"
+  typed into its Title filter, `onSlice` timestamps per phase) showed why:
+  a column-filter pass compares only its own sub-table (2,143 rows in 8 ms; the
+  other groups are cache hits), then spends about 900 ms building clones in
+  ~90 slices, where nothing checked the threshold. The global filter compares
+  every row; on vzell-lap that crosses 500 ms, on petri it did not either (the
+  card opened for neither there, which is why the fixture suite never saw it).
+
+Fix (mockup approved: https://claude.ai/artifact/1ZBfeQbQzD3uWid1HEb7LV):
+`_twFilterMaybeOpen()` is called from both steps; `_twFilterPrepare()` /
+`_twFilterPrepProgress()` give the clone phase its own step on the card
+("Compared ✓ · Preparing", "N / M rows prepared for drawing", a Preparing fact
+afterwards), and `_twFilterLabel()` names a column filter by column and
+sub-table instead of "the column filters". Spec: `filter-sliced.spec.js`
+"opens for a column filter while it prepares rows" (comparing unheld, the card
+recorded closed while comparing as the premise); 5 mutations (C6h), all caught.

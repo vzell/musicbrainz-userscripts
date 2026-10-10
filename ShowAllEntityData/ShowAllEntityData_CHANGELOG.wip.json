@@ -1,5 +1,29 @@
 [
   {
+    "version": "WIP.9",
+    "date": "2026-10-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The ⏳ progress card now also opens for a long column filter, not only for the global filter. A column filter compares just its own sub-table, which is quick, and spends most of its time preparing the matching rows; the card only watched the comparing part, so it never opened."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The card says which step a filter is on (Comparing, then Preparing, with its own count) and names a column filter by its column and sub-table, e.g. “live” in Title (Album + Live), instead of “the column filters”. Afterwards it lists the preparing time too. The 🔍 filter on a sub-table heading still filters at once without the card."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Tests: one more in tests/fixtures/filter-sliced.spec.js (a column-filter pass opens the card while it prepares rows); 5 more mutations, caught."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.8",
     "date": "2026-10-10",
     "sections": [

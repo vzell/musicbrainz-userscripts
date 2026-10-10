@@ -59821,6 +59821,9 @@ a { color: #1565c0; }`;
         .mb-tt-liner .mb-tt-ajbar-f { background: #c0503f; }
         .mb-tt-liner .mb-tt-ajbar-q { background: #c8d6ea; }
         .mb-tt-liner .mb-tt-ajcount { display: flex; justify-content: space-between; gap: 8px; font-size: 0.92em; font-variant-numeric: tabular-nums; }
+        .mb-tt-liner .mb-tt-ajsteps { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 3px; font: 700 0.74em/1.5 system-ui, Arial, sans-serif; letter-spacing: 0.06em; text-transform: uppercase; color: #7a6d5c; }
+        .mb-tt-liner .mb-tt-ajstep-on { color: #2f5f9e; }
+        .mb-tt-liner .mb-tt-ajstep-fin { color: #3f7a3a; }
         .mb-tt-liner .mb-tt-ajfacts { display: grid; grid-template-columns: max-content 1fr; gap: 1px 10px; font-size: 0.93em; margin: 0; }
         .mb-tt-liner .mb-tt-ajfacts dt { color: #7a6d5c; font-style: italic; }
         .mb-tt-liner .mb-tt-ajfacts dd { margin: 0; min-width: 0; }
@@ -66006,6 +66009,8 @@ a { color: #1565c0; }`;
      *   (`[label, text]` pairs), `cache` (`[label, text]` pairs shown under
      *   their own "💾 Cache" heading: store, TTL, records, this run's
      *   memory/IndexedDB/network split, …), `actions` (`{id, label, kind}`),
+     *   `steps` (`{label, state}` with state `'on'`, `'fin'` or `''`: a short
+     *   step line under the summary, e.g. "Comparing · Preparing"),
      *   `foot`. All text is escaped here.
      * @param {?object} job - The framework's record (its log is shown).
      * @param {string} anchorText - How the footer names the anchor, e.g. "▶🎼".
@@ -66018,6 +66023,11 @@ a { color: #1565c0; }`;
               + `<span class="mb-tt-title">${_ajEsc(p.glyph)} ${_ajEsc(s.label || p.label)}</span>`
               + `<span class="mb-tt-ajpill mb-tt-ajpill-${ph[1]}" data-mb-aj-phase="${_ajEsc(s.phase || 'idle')}">${ph[0]}</span></div>`;
         if (s.summary) h += `<div class="mb-tt-dim">${_ajEsc(s.summary)}</div>`;
+        if (s.steps && s.steps.length) {
+            h += '<div class="mb-tt-ajsteps">'
+               + s.steps.map(st => `<span${st.state ? ` class="mb-tt-ajstep-${_ajEsc(st.state)}"` : ''}>${_ajEsc(st.label)}</span>`).join('<span>·</span>')
+               + '</div>';
+        }
         if (s.total > 0) {
             const pct = (n) => `${(100 * Math.max(0, n || 0) / s.total).toFixed(2)}%`;
             const cached = Math.min(s.cached || 0, s.done || 0);
@@ -66268,7 +66278,9 @@ a { color: #1565c0; }`;
     /**
      * Timings of the last sort and the last filter, a running sort's state, and
      * the time-sliced filter pass (`pass`: running or last; `{query, total, done,
-     * hits, t0, narrowing, replaced, doneAt, compareMs}`).
+     * hits, t0, narrowing, replaced, doneAt, compareMs}`, plus its prepare step:
+     * `{step, ptotal, pdone, pslices, p0, prepMs}`). `query` is a ready label
+     * with its own quotes (`_twFilterLabel()`).
      */
     const _tw = { sort: null, filter: null, sortStart: 0, sortRows: 0, sortPct: 0, sortRunning: false, pass: null };
     /** A sort shorter than this never opens the card by itself (ms). */
@@ -66322,11 +66334,52 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * What a pass filters for, as the card names it: the global filter's text,
+     * then each column filter by column (and sub-table on a multi-table page),
+     * e.g. `“wembley”, and “live” in Title (Album + Live)`. Past three parts the
+     * rest is counted. `all rows` when nothing is filtered.
+     * @returns {string}
+     */
+    function _twFilterLabel() {
+        const parts = [];
+        const g = stripFilterPrefix(filterInput.value);
+        if (g) parts.push(`“${g}”`);
+        const multi = activeDefinition && activeDefinition.tableMode === 'multi';
+        document.querySelectorAll('table.tbl thead tr.mb-col-filter-row .mb-col-filter-input').forEach(inp => {
+            const v = stripFilterPrefix(inp.value || '').trim();
+            if (!v) return;
+            const tbl = inp.closest('table.tbl');
+            const ths = tbl ? tbl.querySelectorAll('thead tr:first-child th') : [];
+            const idx = parseInt(inp.dataset.colIdx || '-1', 10);
+            const col = idx >= 0 && idx < ths.length ? _cleanColHeaderText(ths[idx]) : `column ${idx + 1}`;
+            let where = '';
+            if (multi) {
+                // The h3's own name: the text before its count, without the ▼/▲.
+                const h3 = findH3ForTable(tbl);
+                let name = '';
+                if (h3) {
+                    for (const n of h3.childNodes) {
+                        if (n.nodeType === 1 && n.classList.contains('mb-row-count-stat')) break;
+                        if (n.nodeType === 1 && n.classList.contains('mb-toggle-icon')) continue;
+                        name += n.textContent;
+                    }
+                }
+                name = name.replace(/\s+/g, ' ').trim();
+                if (name) where = ` (${name})`;
+            }
+            parts.push(`“${v}” in ${col}${where}`);
+        });
+        if (!parts.length) return 'all rows';
+        const shown = parts.length > 3 ? parts.slice(0, 2).concat([`${parts.length - 2} more filters`]) : parts;
+        return shown.length === 1 ? shown[0] : `${shown.slice(0, -1).join(', ')}, and ${shown[shown.length - 1]}`;
+    }
+
+    /**
      * A time-sliced filter pass is starting. A previous pass still running is
      * replaced by this one — it will notice at its next yield — and "Recent"
      * says so now, with both queries.
      * @param {number} total - Rows it will compare.
-     * @param {string} query - What is being filtered for, as typed.
+     * @param {string} query - What is being filtered for (`_twFilterLabel()`).
      * @param {boolean} narrowing - Comparing only the last result's rows.
      * @returns {object} The pass record; every later `_twFilter*()` call of
      *   this pass names it, so a stale pass can never write into its successor's.
@@ -66342,18 +66395,33 @@ a { color: #1565c0; }`;
             // An outdated pass compares to the end (its result is kept for the
             // next pass to narrow from, Step 43); say that rather than "56 of 56".
             _ajLog('tablework', null, reached >= prev.total
-                ? `“${prev.query}” compared, then replaced by “${query}”`
-                : `“${prev.query}” replaced by “${query}” after `
+                ? `${prev.query} compared, then replaced by ${query}`
+                : `${prev.query} replaced by ${query} after `
                   + `${Number(reached).toLocaleString('en-US')} of ${Number(prev.total).toLocaleString('en-US')} rows`, 'dim');
         }
         _tw.pass = { query, total, done: 0, hits: 0, t0: performance.now(), narrowing,
-                     running: true, replaced: false, logged: false, doneAt: 0, compareMs: null, slices: 0 };
+                     running: true, replaced: false, logged: false, doneAt: 0, compareMs: null, slices: 0,
+                     step: 'compare', ptotal: 0, pdone: 0, pslices: 0, p0: 0, prepMs: null };
         return _tw.pass;
     }
 
     /**
-     * Progress of a sliced pass, after each slice. Opens the card once the
-     * pass has run longer than `_TW_OPEN_AFTER_MS`, as a sort does.
+     * Opens the card once a sliced pass has run longer than `_TW_OPEN_AFTER_MS`
+     * in all, whichever step it is on — a column filter compares only its own
+     * sub-table and spends nearly all its time preparing rows.
+     * @param {object} p - The pass record from `_twFilterBegin()`.
+     * @returns {void}
+     */
+    function _twFilterMaybeOpen(p) {
+        const job = _ajJob('tablework', null);
+        if ((!job || job.phase !== 'running') && performance.now() - p.t0 > _TW_OPEN_AFTER_MS) {
+            _ajStart('tablework', null, { user: true, anchor: document.getElementById('mb-filter-status-display') });
+        }
+        _ajChanged('tablework', null);
+    }
+
+    /**
+     * Progress of a sliced pass, after each comparing slice.
      * @param {object} p - The pass record from `_twFilterBegin()`.
      * @param {number} done - Rows compared so far.
      * @param {number} hits - Rows matched so far.
@@ -66364,11 +66432,34 @@ a { color: #1565c0; }`;
         p.done = done;
         p.slices++;
         p.hits = hits;
-        const job = _ajJob('tablework', null);
-        if ((!job || job.phase !== 'running') && performance.now() - p.t0 > _TW_OPEN_AFTER_MS) {
-            _ajStart('tablework', null, { user: true, anchor: document.getElementById('mb-filter-status-display') });
-        }
+        _twFilterMaybeOpen(p);
+    }
+
+    /**
+     * A sliced pass has compared every row and starts preparing the rows it
+     * will draw (cloning and highlighting them, in slices too).
+     * @param {object} p - The pass record from `_twFilterBegin()`.
+     * @param {number} total - Rows it will prepare: every match it draws.
+     * @returns {void}
+     */
+    function _twFilterPrepare(p, total) {
+        if (!p || p !== _tw.pass || !p.running) return;
+        const now = performance.now();
+        Object.assign(p, { step: 'prepare', compareMs: now - p.t0, ptotal: total, pdone: 0, p0: now, hits: total });
         _ajChanged('tablework', null);
+    }
+
+    /**
+     * Progress of a sliced pass, after each preparing slice.
+     * @param {object} p - The pass record from `_twFilterBegin()`.
+     * @param {number} done - Rows prepared so far.
+     * @returns {void}
+     */
+    function _twFilterPrepProgress(p, done) {
+        if (!p || p !== _tw.pass || !p.running) return;
+        p.pdone = done;
+        p.pslices++;
+        _twFilterMaybeOpen(p);
     }
 
     /**
@@ -66388,14 +66479,15 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * A sliced pass has compared every row and is about to draw.
+     * A sliced pass has compared and prepared every row and is about to draw.
      * @param {object} p - The pass record from `_twFilterBegin()`.
      * @returns {void}
      */
     function _twFilterCompared(p) {
         if (!p || p !== _tw.pass) return;
         p.running = false;
-        p.compareMs = performance.now() - p.t0;
+        if (p.step === 'prepare') p.prepMs = performance.now() - p.p0;
+        else p.compareMs = performance.now() - p.t0;
     }
 
     /** The sort's own part is over (filtering and drawing follow). */
@@ -66422,10 +66514,11 @@ a { color: #1565c0; }`;
         let sliced = null;
         if (p && !p.running && p.compareMs !== null && !p.recorded) {
             p.recorded = true;
-            sliced = { query: p.query, compareMs: p.compareMs, compared: p.total, slices: p.slices };
+            sliced = { query: p.query, compareMs: p.compareMs, compared: p.total, slices: p.slices,
+                       prepMs: p.prepMs, prepared: p.ptotal, pslices: p.pslices };
         } else if (p && p.replaced && !p.logged) {
             p.logged = true;
-            _ajLog('tablework', null, `“${p.query}” replaced after `
+            _ajLog('tablework', null, `${p.query} replaced after `
                 + `${Number(p.doneAt).toLocaleString('en-US')} of ${Number(p.total).toLocaleString('en-US')} rows`, 'dim');
         }
         const rec = { ms, shown, drawMs: null, sliced };
@@ -66436,8 +66529,8 @@ a { color: #1565c0; }`;
             rec.drawMs = performance.now() - drawStart;
             if (afterSort) _tw.sort.drawMs = rec.drawMs;
             if (sliced) {
-                _ajLog('tablework', null, `“${sliced.query}”: ${Number(shown).toLocaleString('en-US')} rows shown, `
-                    + _twMs(sliced.compareMs + ms + rec.drawMs));
+                _ajLog('tablework', null, `${sliced.query}: ${Number(shown).toLocaleString('en-US')} rows shown, `
+                    + _twMs(sliced.compareMs + (sliced.prepMs || 0) + ms + rec.drawMs));
             }
             const job = _ajJob('tablework', null);
             if (job && job.phase === 'running') _ajFinish('tablework', null, 0);
@@ -66466,19 +66559,23 @@ a { color: #1565c0; }`;
             const f = _tw.filter;
             if (f.sliced) {
                 // A time-sliced pass: what was asked for, then where the time went.
-                facts.push(['Last filter', `“${f.sliced.query}”, ${fmt(f.shown)} rows shown`]);
-                facts.push(['Comparing', `${_twMs(f.sliced.compareMs)}, ${fmt(f.sliced.compared)} rows in ${fmt(f.sliced.slices)} slices`]);
+                const sl = (n) => `${fmt(n)} ${n === 1 ? 'slice' : 'slices'}`;
+                facts.push(['Last filter', `${f.sliced.query}, ${fmt(f.shown)} rows shown`]);
+                facts.push(['Comparing', `${_twMs(f.sliced.compareMs)}, ${fmt(f.sliced.compared)} rows in ${sl(f.sliced.slices)}`]);
+                if (f.sliced.prepMs !== null) {
+                    facts.push(['Preparing', `${_twMs(f.sliced.prepMs)}, ${fmt(f.sliced.prepared)} rows in ${sl(f.sliced.pslices)}`]);
+                }
             } else {
                 facts.push(['Last filter', `${_twMs(f.ms)}, ${fmt(f.shown)} rows shown`]);
             }
             if (f.drawMs !== null) facts.push(['Drawing', _twMs(f.drawMs)]);
         }
-        facts.push(['Note', 'Filtering pauses every few milliseconds so the page keeps responding; a key typed meanwhile starts a new pass. Drawing a large table comes in chunks of 500 rows.']);
+        facts.push(['Note', 'Filtering pauses every few milliseconds so the page keeps responding; a key typed meanwhile starts a new pass. Matching rows are prepared for drawing in the same short steps. Drawing a large table comes in chunks of 500 rows.']);
         const running = job && job.phase === 'running';
         const out = {
             phase: job ? job.phase : 'done',
             summary: _tw.sortRunning ? `Sorting ${fmt(_tw.sortRows)} rows`
-                : pass ? `Filtering for “${pass.query}”${pass.narrowing ? ' within the last result' : ''}`
+                : pass ? `Filtering for ${pass.query}${pass.narrowing ? ' within the last result' : ''}`
                 : 'The last sort and filter',
             facts,
             foot: !running ? 'Hover the status line to see this again'
@@ -66486,8 +66583,12 @@ a { color: #1565c0; }`;
         };
         if (_tw.sortRunning) Object.assign(out, { done: _tw.sortPct, total: 100, unit: '% sorted' });
         else if (pass) {
-            Object.assign(out, { done: pass.done, total: pass.total, unit: 'rows compared',
-                                 countNote: `${fmt(pass.hits)} match so far` });
+            const prep = pass.step === 'prepare';
+            out.steps = [{ label: prep ? 'Compared ✓' : 'Comparing', state: prep ? 'fin' : 'on' },
+                         { label: 'Preparing', state: prep ? 'on' : '' }];
+            Object.assign(out, prep
+                ? { done: pass.pdone, total: pass.ptotal, unit: 'rows prepared for drawing', countNote: `${fmt(pass.hits)} match` }
+                : { done: pass.done, total: pass.total, unit: 'rows compared', countNote: `${fmt(pass.hits)} match so far` });
         }
         return out;
     }
@@ -74168,8 +74269,7 @@ a { color: #1565c0; }`;
         const toMatch = plan.jobs.filter(j => !j.hit);
         const toCompare = toMatch.reduce((s, j) => s + j.rows.length, 0);
         const narrowing = toMatch.length === 1 && plan.jobs.length === 1 && !!toMatch[0].incr && toMatch[0].rows !== allRows;
-        const query = stripFilterPrefix(filterInput.value) || 'the column filters';
-        const twPass = _twFilterBegin(toCompare, query, narrowing);
+        const twPass = _twFilterBegin(toCompare, _twFilterLabel(), narrowing);
         /** Stores every matched job's complete result (and the narrowing state). */
         const storeMatches = () => {
             for (const job of toMatch) {
@@ -74230,6 +74330,9 @@ a { color: #1565c0; }`;
             // the committing runFilter(); a stale pass drops them with the rest.
             const cellStateAtStart = _expandedCellsVersion;
             const toClone = plan.jobs.reduce((s, j) => s + j.matches.length, 0);
+            // The card's second step; it may open here, as a column filter's
+            // comparing is usually over long before the half second.
+            _twFilterPrepare(twPass, toClone);
             let cloned = 0;
             for (const job of plan.jobs) {
                 job.clones = [];
@@ -74242,6 +74345,7 @@ a { color: #1565c0; }`;
                         k++;
                         if (k % check === 0 && performance.now() >= sliceEnd) break;
                     }
+                    _twFilterPrepProgress(twPass, cloned + k);
                     if (_filterSlicingTest.onSlice) await _filterSlicingTest.onSlice(cloned + k, toClone, 'clone');
                     await _yieldToMain();
                     if (isStale()) {
