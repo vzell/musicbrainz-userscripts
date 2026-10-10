@@ -21570,3 +21570,24 @@ They are cheaper, independent fixes and belong in the same plan, measured
 with the same typed metric: (1) is one CSS rule plus a stacking-context
 check; (2) is a change to how the header-count scan publishes its numbers.
 Raw probe outputs: scratchpad only (not committed); the probe is re-runnable.
+
+## 2026-10-10 — Table paint layer landed on the branch (perf/faster-filtering, C1, WIP.2)
+
+Env: 2026-10-10T13:05Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+`table.tbl { position: relative; z-index: 0 }` went into the always-on
+stylesheet (the `GM_addStyle` block that starts with the paint-layer comment,
+before `.mb-sorting-active`), not into `applyStickyHeaders()`'s, which only
+runs with `sa_enable_sticky_headers` on. Cause and probe numbers: the entry
+above and PERFORMANCE.org Step 37.
+
+Two things the first spec draft got wrong, both premises rather than the fix:
+- "the stuck thead covers a scrolled row" placed the row at the viewport's
+  top edge, but with sticky filter bars on the thead sticks BELOW the stuck
+  h2 bar; the spec now reads where the thead sits once stuck and puts the row
+  there. Mutated (thead `z-index: -1`) it fails with the point drawn by a TD.
+- the mobile twin first used `loadFromDiskFixture()`, whose 📦 Data menu
+  click is covered by the wrapped toolbar at Pixel 7 width (no other mobile
+  spec uses it); it now renders the series fixture through its own
+  "Show all" button with sticky page headers off, since those pin a narrow
+  table with `position: sticky !important`.

@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-10-10",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Typing in a filter box on a large table no longer repaints the whole visible table on every key. Every data table now has its own paint layer, so one character costs about 18 ms of painting instead of about 75 ms on a 4,174-row page (PERFORMANCE.org Step 37)."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Tests: tests/fixtures/table-paint-layer.spec.js (single- and multi-table, sticky headers off, the stuck header still covering scrolled rows) and its mobile twin; scripts/mutations/faster-filtering.json (5 planted defects, all caught). All 64 sticky-header specs pass with the new stacking context."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-10-10",
     "sections": [

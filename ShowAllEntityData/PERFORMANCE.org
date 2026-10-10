@@ -3539,6 +3539,45 @@ aborted it here (~tests/MEASUREMENTS.org~). That confirms from the measurement
 side what the bisect above found, and closes the hole. The gate's conclusion is
 unchanged either way, for the reason just given.
 
+*** TODO Step 37: Table paint layer
+
+/Branch/ ~perf/faster-filtering~ /(C1 of its plan), 2026-10-10. TODO until it is
+on/ ~main~.
+
+*Problem.* Measured with ~tests/support/probe-keystroke-cost.js~ (DEBUG-NOTES.md
+2026-10-10): once the page is idle, every keystroke in a filter box is followed
+by one 72-81 ms Paint task on =artist-events= (about 42 ms on
+=artist-releases-dylan=), while the key itself costs 13-26 ms. The Paint covers
+the full viewport on layer 0, the root layer: ~table.tbl~ had no paint layer of
+its own, so one character in an input re-records the whole visible table. The
+same paint falls to 13-20 ms once a filter has narrowed the table, so it scales
+with the rows on screen.
+
+*Fix.* ~table.tbl { position: relative; z-index: 0 }~ in the always-on
+stylesheet, not in ~applyStickyHeaders()~'s (that one depends on
+~sa_enable_sticky_headers~). The table becomes a self-painting layer whose
+painting is reused when only the input changed.
+
+*Probe A/B* (Env: 2026-10-10T12:36Z-12:40Z · petri · WSL2 Ubuntu 24.04.3 LTS,
+Linux 6.18.40.1-microsoft-standard-WSL2 · Playwright 1.62.1 bundled Chromium,
+no Tampermonkey (GM stubs); rule injected with ~--css=~ on ~main~ 9.99.1316):
+per-key paint 72-81 ms baseline, 17-19 ms with ~position: relative; z-index: 0~,
+17-19 ms with ~contain: paint~, 17-20 ms with ~will-change: transform~;
+~will-change~ on the input alone changed nothing. ~contain: paint~ is not used:
+it clips the sticky-column gutter mask, focus rings and the grouped-art
+~top: -14px~ header. ~will-change~ on the table would composite a 4174-row table.
+
+*Stacking.* The table is now a stacking context at z-index 0. Everything the
+script stacks above tables already sits at 102 or more (VSB/SPH bars, ~#sidebar~
+105, overlays), the thead's 100 now counts only inside the table, popups and
+menus live on ~document.body~, and nothing reads a cell's ~offsetParent~. An
+outside element at z-index 1-100 that overlaps a table now paints above the
+thead (jesus2099's sticky header, z-index 1). All 64 sticky specs pass.
+
+*Tests.* ~tests/fixtures/table-paint-layer{,.mobile}.spec.js~; mutations in
+~scripts/mutations/faster-filtering.json~ (5, all caught). Typed A/B against
+~main~: pending (C3 of the plan).
+
 ** Session summary: measured comparison, ~main~ vs ~perf-steps-1-4~ (2026-08-24)
 
 /Harvested from/ ~perf-steps-1-4~ (branch tip 2026-08-31). *Everything below

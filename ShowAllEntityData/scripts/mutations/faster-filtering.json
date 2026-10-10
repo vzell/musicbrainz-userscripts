@@ -1,0 +1,35 @@
+[
+  {
+    "name": "C1: no paint layer on tables",
+    "why": "The rule is gone: tables paint into the root layer again and every keystroke re-records the visible table.",
+    "edits": [{ "find": "        table.tbl { position: relative; z-index: 0; }\n", "replace": "" }],
+    "spec": "tests/fixtures/table-paint-layer.spec.js", "grep": "single-table: the table is relative", "expect": "fail"
+  },
+  {
+    "name": "C1: no paint layer on multi-table pages",
+    "why": "Same removal, seen on a page with two sub-tables.",
+    "edits": [{ "find": "        table.tbl { position: relative; z-index: 0; }\n", "replace": "" }],
+    "spec": "tests/fixtures/table-paint-layer.spec.js", "grep": "multi-table: every sub-table", "expect": "fail"
+  },
+  {
+    "name": "C1: the layer only with sticky headers on",
+    "why": "The rule moves into applyStickyHeaders()'s stylesheet, so turning sticky headers off silently loses the layer.",
+    "edits": [
+      { "find": "        table.tbl { position: relative; z-index: 0; }\n", "replace": "" },
+      { "find": "            table.tbl {\n                border-collapse: separate;\n                border-spacing: 0;\n            }", "replace": "            table.tbl {\n                border-collapse: separate;\n                border-spacing: 0;\n                position: relative;\n                z-index: 0;\n            }" }
+    ],
+    "spec": "tests/fixtures/table-paint-layer.spec.js", "grep": "with sticky headers off", "expect": "fail"
+  },
+  {
+    "name": "C1: no paint layer on mobile",
+    "why": "The removal, seen through the touch emulation.",
+    "edits": [{ "find": "        table.tbl { position: relative; z-index: 0; }\n", "replace": "" }],
+    "spec": "tests/fixtures/table-paint-layer.mobile.spec.js", "project": "chromium-mobile", "grep": "table paint layer on mobile", "expect": "fail"
+  },
+  {
+    "name": "C1: the stuck header no longer covers scrolled rows",
+    "why": "The thead loses its z-index inside the new stacking context, so a scrolled row's positioned cells could draw over it.",
+    "edits": [{ "find": "                /* z-index 100 keeps it below the sidebar (105) but above table content */\n                z-index: 100;", "replace": "                /* z-index 100 keeps it below the sidebar (105) but above table content */\n                z-index: -1;" }],
+    "spec": "tests/fixtures/table-paint-layer.spec.js", "grep": "still covered by it", "expect": "fail"
+  }
+]

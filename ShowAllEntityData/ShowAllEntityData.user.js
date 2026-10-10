@@ -59303,6 +59303,16 @@ a { color: #1565c0; }`;
     // (MusicBrainz's account/* pages serve a CSP with no 'unsafe-inline' for
     // style-src, which silently drops plain injected <style> tags).
     GM_addStyle(`
+        /* Every data table gets its own paint layer. Without one the table
+           paints into the page's root layer, so changing one character in a
+           filter box re-records the whole visible table: about 75 ms per key
+           on a 4174-row page, 17-19 ms with this rule (DEBUG-NOTES 2026-10-10,
+           PERFORMANCE.org "Table paint layer"). position plus z-index, not
+           contain: paint, which would clip the sticky-column gutter mask, focus
+           rings and anything drawn just outside the table. Everything the
+           script stacks above tables sits at z-index 102 or more. */
+        table.tbl { position: relative; z-index: 0; }
+
         .mb-sorting-active, .mb-sorting-active * { cursor: wait !important; }
         button.mb-show-all-btn-loading:disabled {
             cursor: default !important;
