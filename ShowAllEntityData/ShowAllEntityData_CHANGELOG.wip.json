@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-10-10",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Redrawing a large table after a filter is quicker on pages with several collapsible columns: the multi-row/prose collapse set-up now measures all columns in one go instead of one column at a time, each of which made the browser lay out the whole table again. On a 4,174-row events page that part fell by three quarters (PERFORMANCE.org Step 40)."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Tests: tests/fixtures/collapse-measure-batched.spec.js (reads in at most two groups, same outcome) through the new __saTest.collapse.init hook; one more mutation, caught. tests/support/probe-keystroke-cost.js gains --cpu (a V8 CPU profile of one typed run, inclusive time per function)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "2026-10-10",
     "sections": [

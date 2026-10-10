@@ -21651,3 +21651,36 @@ Found while building it, worth keeping:
   `_renderGeneration` bump needs a render of more than 500 rows in flight (no
   fixture has one), and the row-array identity check is covered by the
   generation whenever a sort replaces the arrays.
+
+## 2026-10-10 — The commit of a typed filter pass, profiled; initCollapsableColumns batched (perf/faster-filtering, C6a, WIP.5)
+
+Env: 2026-10-10T15:58Z (profile before) / 16:17Z (after) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+The C5 A/B left the longest block above the stop rule on 4 of 8 page × delay
+cases (PERFORMANCE.org Step 39). The trace view cannot say what that block is —
+it names only each task's entry point — so the probe got `--cpu`: a V8 CPU
+profile of one typed run (0.1 ms sampling), inclusive/self time per
+`function:line`.
+
+artist-events, 400 ms, 8 passes, before: `renderFinalTable` 4363 ms inclusive,
+its completion hook 3753 ms, of which `initCollapsableColumns` 2621 ms
+(1460 ms `getBoundingClientRect`) and `_applyPostRenderRowPasses` 986 ms
+(`applyStickyColumn` 753); the clone-and-highlight map 1935 ms. So the plan's
+"slice the commit" was mostly the wrong lever: most of the block was forced
+layout, which slicing would only spread out. artist-releasegroups, by contrast:
+770 ms of JS in total, its 650-1000 ms frames being style/layout/paint of what
+`renderGroupedTable()` rewrote (every group, unchanged ones too) and the post-
+render passes run twice (renderGroupedTable's own, then runFilter's multi
+branch). The C6 plan (approved) follows from these two profiles.
+
+C6a: `initCollapsableColumns()` measured column by column — up to two full
+layouts per collapsable column, five here. Now each column is a generator that
+yields its measurement request; a driver reads all columns in two batches
+(PERFORMANCE.org Step 40). After: 653 ms (−75 %), `getBoundingClientRect` 138 ms.
+
+Spec premise trap, kept for the next reader: the small artist-events HTML
+fixtures have ONE collapsable column with content, which cannot tell "one read
+group" from "one per column" — the spec loads the committed 4174-row capture.
+And a bare `initCollapsableColumns()` call removes the EAA column's ▶N▤
+without rebuilding it (the art code owns it, `_artEnsureColCollapseProxy()`),
+which is old behaviour, so the outcome comparison leaves CAA/EAA out.

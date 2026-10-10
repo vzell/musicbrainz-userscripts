@@ -3686,6 +3686,44 @@ longest block falls by ≥50 % in 4 of 8 page × delay cases — the plan's stop
 asked for all — because the commit (clone, highlight, render) is still one task,
 largest on the multi-table page. Reported to the user before going further.
 
+*** TODO Step 40: ~initCollapsableColumns()~ measures every column in one read phase
+
+/Branch/ ~perf/faster-filtering~ /(C6a), 2026-10-10. TODO until it is on/ ~main~.
+
+*Problem.* A V8 CPU profile of the commit (~probe-keystroke-cost.js --cpu~, the
+committed artist-events capture, 400 ms between keys, 8 passes) put
+~initCollapsableColumns()~ at 2621 ms inclusive — about 330 ms per pass — 1460 ms of
+it ~getBoundingClientRect~. It measured column by column: each column's writes
+(toggles, hidden ~<li>~s, clamp classes, then its header button and padding) came
+between one column's reads and the next, so every read batch laid out the whole
+4174-row table: up to two per collapsable column, five Location-derived prose
+columns here.
+
+*Fix.* The per-column body is a generator (~_colPass~): it does its writes, then
+yields what it needs measured (first ~<li>~s; prose wrappers when the clamp is on)
+and is resumed with the answers to finish. A driver measures every column in two
+batched reads — widths under ~max-content~, then prose overflow — then finishes
+the columns in declared order. Same decisions, same "replace, never ~max()~"
+min-width. Accepted difference: a column's overflow read no longer sees the header
+buttons and padding of the columns before it (it never saw those after it); only a
+cell right at the clamp edge could decide differently, and every collapse spec
+(61) is unchanged.
+
+*Measured* (probe ~--cpu~, Env: 2026-10-10T15:58Z (before) and 16:17Z (after) ·
+petri · WSL2 Ubuntu 24.04.3 LTS, Linux 6.18.40.1-microsoft-standard-WSL2 ·
+Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs); same typing run):
+~initCollapsableColumns~ 2621 → 653 ms (−75 %), ~getBoundingClientRect~ 1460 →
+138 ms (−91 %), ~renderFinalTable~ (the whole render path) 4363 → 1871 ms (−57 %),
+and ~applyStickyColumn~ 753 → 423 ms as a side effect (its style reads now meet a
+clean layout).
+
+*Tests.* ~tests/fixtures/collapse-measure-batched.spec.js~: one call on the
+artist-events capture reads in at most two groups (a read that finds the table
+mutated since the previous read, by ~MutationObserver.takeRecords()~, starts a
+group), with the same toggles, header buttons and min-widths as the render's own
+pass; mutation "measures column by column again" caught (6 groups).
+~__saTest.collapse.init(i)~ calls the function directly.
+
 ** Session summary: measured comparison, ~main~ vs ~perf-steps-1-4~ (2026-08-24)
 
 /Harvested from/ ~perf-steps-1-4~ (branch tip 2026-08-31). *Everything below

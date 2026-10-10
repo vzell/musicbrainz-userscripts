@@ -277,5 +277,18 @@
     "project": "chromium-mobile",
     "grep": "sliced typing filter on mobile",
     "expect": "fail"
+  },
+  {
+    "name": "C6a: initCollapsableColumns measures column by column again",
+    "why": "Each column is measured and finished before the next is measured, so every column's writes force the next column's reads to lay out the table again.",
+    "edits": [
+      {
+        "find": "        const _allFirstLis = _colPasses.flatMap(p => p.req.firstLis);\n        _allFirstLis.forEach(li => { li.style.width = 'max-content'; });\n        const _widths = _colPasses.map(p => p.req.firstLis.reduce(\n            (m, li) => Math.max(m, Math.ceil(li.getBoundingClientRect().width)), 0));\n        _allFirstLis.forEach(li => { li.style.width = ''; });\n        const _overflowing = _colPasses.map(p => p.req.prose.filter(({ inner }) =>\n            inner.scrollHeight > inner.clientHeight + 1));\n        _colPasses.forEach((p, i) => p.g.next({ maxFirstLiWidth: _widths[i], overflowing: _overflowing[i] }));",
+        "replace": "        _colPasses.forEach(p => {\n            p.req.firstLis.forEach(li => { li.style.width = 'max-content'; });\n            const w = p.req.firstLis.reduce((m, li) => Math.max(m, Math.ceil(li.getBoundingClientRect().width)), 0);\n            p.req.firstLis.forEach(li => { li.style.width = ''; });\n            const o = p.req.prose.filter(({ inner }) => inner.scrollHeight > inner.clientHeight + 1);\n            p.g.next({ maxFirstLiWidth: w, overflowing: o });\n        });"
+      }
+    ],
+    "spec": "tests/fixtures/collapse-measure-batched.spec.js",
+    "grep": "reads all columns in at most two groups",
+    "expect": "fail"
   }
 ]

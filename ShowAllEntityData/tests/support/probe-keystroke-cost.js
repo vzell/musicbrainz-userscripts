@@ -58,7 +58,9 @@ const SLOW_TASK_MS = 16;
  * counting or stubbing a DOM call). Neither is ever a measurement of the
  * script as shipped — say which arm a number came from.
  *
- * @returns {{pageType: string, delay: number, value: string|null, trace: string|null, css: string|null, init: string|null}}
+ * `--cpu` profiles one typed run instead of tracing two (see `cpuProfileTyping()`).
+ *
+ * @returns {{pageType: string, delay: number, value: string|null, trace: string|null, css: string|null, init: string|null, cpu: boolean}}
  */
 function parseArgs(argv) {
     const get = (k) => { const a = argv.find((x) => x.startsWith(`--${k}=`)); return a ? a.slice(k.length + 3) : null; };
@@ -69,6 +71,7 @@ function parseArgs(argv) {
         trace: get('trace'),
         css: get('css'),
         init: get('init'),
+        cpu: argv.includes('--cpu'),
     };
 }
 
@@ -171,6 +174,61 @@ function analyse(events) {
     return out;
 }
 
+/**
+ * Inclusive and self time per JS function from a V8 CPU profile
+ * (`Profiler.stop`'s `profile`). A sampled stack credits its time once to
+ * every distinct function on it (inclusive) and to its leaf (self). Names are
+ * `function:line` (1-based), so two closures of one name stay apart.
+ * @param {{nodes: object[], samples: number[], timeDeltas: number[]}} profile
+ * @param {number} [top]
+ * @returns {Array<{fn: string, inclMs: number, selfMs: number}>}
+ */
+function cpuInclusive(profile, top = 45) {
+    const byId = new Map(profile.nodes.map((n) => [n.id, n]));
+    const parent = new Map();
+    for (const n of profile.nodes) for (const c of n.children || []) parent.set(c, n.id);
+    const name = (n) => `${n.callFrame.functionName || '(anonymous)'}:${n.callFrame.lineNumber + 1}`;
+    const incl = new Map(), self = new Map();
+    profile.samples.forEach((id, i) => {
+        const dt = (profile.timeDeltas[i] || 0) / 1000;
+        const leaf = byId.get(id);
+        if (!leaf) return;
+        self.set(name(leaf), (self.get(name(leaf)) || 0) + dt);
+        const seen = new Set();
+        for (let n = leaf; n; n = byId.get(parent.get(n.id))) {
+            const k = name(n);
+            if (seen.has(k)) continue;
+            seen.add(k);
+            incl.set(k, (incl.get(k) || 0) + dt);
+        }
+    });
+    return [...incl.entries()]
+        .filter(([k]) => !/^\((root|program|idle)\)/.test(k))
+        .sort((a, b) => b[1] - a[1]).slice(0, top)
+        .map(([fn, ms]) => ({ fn, inclMs: Math.round(ms), selfMs: Math.round(self.get(fn) || 0) }));
+}
+
+/**
+ * `--cpu`: once the header counts have settled, type the value with the
+ * given delay under a V8 CPU profile (0.1 ms sampling) and report inclusive
+ * time per function — where a filter pass's time goes, which the trace's
+ * task view cannot say (it names only each task's entry point).
+ * @param {import('playwright').Page} page
+ * @param {string} value
+ * @param {number} delay
+ * @returns {Promise<Array<{fn: string, inclMs: number, selfMs: number}>>}
+ */
+async function cpuProfileTyping(page, value, delay) {
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Profiler.enable');
+    await cdp.send('Profiler.setSamplingInterval', { interval: 100 });
+    await cdp.send('Profiler.start');
+    await typeMarked(page, value, delay, 'cpu');
+    const { profile } = await cdp.send('Profiler.stop');
+    await cdp.detach();
+    return cpuInclusive(profile);
+}
+
 (async () => {
     const args = parseArgs(process.argv.slice(2));
     const config = toArm(args.pageType);
@@ -183,6 +241,15 @@ function analyse(events) {
         await waitForRenderComplete(page, { waitForAutoResize: false, timeout: config.tableMode === 'multi' ? 120000 : 60000 });
         if (args.css) await page.addStyleTag({ content: args.css });
         if (args.init) await page.evaluate(args.init);
+        if (args.cpu) {
+            await waitForColHeaderCountsStable(page, { timeout: 120000 });
+            const cpu = await cpuProfileTyping(page, value, args.delay);
+            console.log(JSON.stringify({
+                pageType: config.pageType, value, delayMs: args.delay, host: os.hostname(),
+                at: new Date().toISOString(), cpu,
+            }, null, 2));
+            return;
+        }
         // One trace per window: a single trace spanning the header-count wait
         // between them filled Chromium's buffer and silently lost the second.
         const result = {};

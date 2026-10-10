@@ -91556,7 +91556,20 @@ a { color: #1565c0; }`;
         // O(collapsableColumns × bodyRows) DOM walks; one shared query is O(1).
         const bodyRows = Array.from(table.querySelectorAll('tbody tr'));
 
-        collapsableColumns.forEach(colName => {
+        // ── One read phase for ALL columns (PERFORMANCE.org Step 40) ──────────
+        // Each column is a generator: it does its writes (toggles, hidden <li>s,
+        // prose wrappers and clamp classes), then YIELDS what it needs measured
+        // — its first-<li>s and, with the clamp on, its prose wrappers — and is
+        // resumed with the answers to finish (overflow toggles, header button,
+        // min-width, padding). The driver below the generator measures every
+        // column in two batched reads. Done per column, each read forced a full
+        // layout of the table, after the previous column's writes: up to two
+        // per column, 330 ms per filter pass on a 4174-row page.
+        // One consequence, accepted: a column's prose-overflow read no longer
+        // sees the header buttons and padding of the columns BEFORE it (it
+        // never saw those of the columns after it). Only a cell right at the
+        // clamp edge could decide differently.
+        const _colPass = function* (colName) {
             // ── Locate column index by clean header text ──────────────────────
             // Uses _cleanColHeaderText() (prefers th.dataset.colName, the stable
             // name makeTableSortableUnified() stamped once) rather than an ad-hoc
@@ -91652,7 +91665,7 @@ a { color: #1565c0; }`;
             // context and prevent content from sliding under the toggle.
             // NO click listener is attached here — all clicks are handled by
             // the delegation listener installed by ensureCollapseDelegate().
-            let maxFirstLiWidth = 0;
+            let maxFirstLiWidth; // set from the driver's batched read, on resume
             // Collect first-<li> refs here; measured in the batch pass AFTER
             // the forEach so all DOM writes are finished before any reads.
             const _firstLisForMeasure = [];
@@ -91771,12 +91784,8 @@ a { color: #1565c0; }`;
             // second property is needed.  Same reasoning, same cure, and the same
             // three-phase batch as `_measureHeaderMinWidth()`, which fixed this
             // identical failure mode for the column drag floor; see its JSDoc.
-            _firstLisForMeasure.forEach(li => { li.style.width = 'max-content'; });
-            _firstLisForMeasure.forEach(li => {
-                maxFirstLiWidth = Math.max(
-                    maxFirstLiWidth, Math.ceil(li.getBoundingClientRect().width));
-            });
-            _firstLisForMeasure.forEach(li => { li.style.width = ''; });
+            // The read itself happens in the driver after the generator, for
+            // all columns at once; the width arrives with the resume below.
 
             // ── Hidden-match indicator for art cells (CAA/EAA column) ─────────
             // Art cells were skipped in the loop above to avoid duplicate toggles,
@@ -91857,36 +91866,40 @@ a { color: #1565c0; }`;
             // column-header toggle's tooltip should mention its Ctrl+Click
             // "also expand all wiki sub-headings" shortcut.
             let columnHasNestedH2 = false;
-            if (proseCandidates.length > 0) {
-                // Pass 1: wrap (idempotent) — pure DOM writes, no reads yet.
-                const _proseWrapped = proseCandidates.map(td => {
-                    let inner = td.querySelector(':scope > .mb-text-clamp-marker');
-                    if (!inner) {
-                        inner = document.createElement('div');
-                        inner.className = 'mb-text-clamp-marker';
-                        while (td.firstChild) inner.appendChild(td.firstChild);
-                        td.appendChild(inner);
-                    }
-                    return { td, inner };
+            // Pass 1: wrap (idempotent) — pure DOM writes, no reads yet.
+            const _proseWrapped = proseCandidates.map(td => {
+                let inner = td.querySelector(':scope > .mb-text-clamp-marker');
+                if (!inner) {
+                    inner = document.createElement('div');
+                    inner.className = 'mb-text-clamp-marker';
+                    while (td.firstChild) inner.appendChild(td.firstChild);
+                    td.appendChild(inner);
+                }
+                return { td, inner };
+            });
+            // The top-of-function idempotent cleanup pass already reset every
+            // .mb-text-clamp-marker to bare state, so when the setting is off
+            // there is nothing further to do here — cells simply stay bare
+            // (full, unclamped text; no toggle).
+            if (_annotationCollapseEnabled) {
+                _proseWrapped.forEach(({ inner }) => {
+                    inner.classList.add('mb-text-clamp-inner');
+                    if (_isArsProseCol) inner.classList.add('mb-text-clamp-inner-ars');
                 });
+            }
 
-                // The top-of-function idempotent cleanup pass already reset every
-                // .mb-text-clamp-marker to bare state, so when the setting is off
-                // there is nothing further to do here — cells simply stay bare
-                // (full, unclamped text; no toggle).
-                const _proseOverflowing = _annotationCollapseEnabled
-                    ? (() => {
-                        _proseWrapped.forEach(({ inner }) => {
-                            inner.classList.add('mb-text-clamp-inner');
-                            if (_isArsProseCol) inner.classList.add('mb-text-clamp-inner-ars');
-                        });
-                        // Pass 2: batch-read scrollHeight/clientHeight — one layout
-                        // flush for the whole column instead of one per cell.
-                        return _proseWrapped.filter(({ inner }) =>
-                            inner.scrollHeight > inner.clientHeight + 1
-                        );
-                    })()
-                    : [];
+            // Every write this column makes before its measurements is done.
+            // Hand the driver what to measure; it resumes us with the answers.
+            const _measured = yield {
+                firstLis: _firstLisForMeasure,
+                prose: _annotationCollapseEnabled ? _proseWrapped : [],
+            };
+            maxFirstLiWidth = _measured.maxFirstLiWidth;
+
+            if (proseCandidates.length > 0) {
+                // Pass 2 (in the driver): scrollHeight/clientHeight, one layout
+                // flush for every column instead of one per column.
+                const _proseOverflowing = _measured.overflowing;
 
                 // "Edit details"/"Edit notes" default to expanded: on the
                 // FIRST pass over this column for the current fetch (guarded
@@ -92129,7 +92142,24 @@ a { color: #1565c0; }`;
                 const td = tr.cells[colIndex];
                 if (td) td.classList.add('mb-collapse-col-pad');
             });
-        });
+        };
+
+        // Drive the column passes: every column's writes, then two batched
+        // reads for all of them (first-<li> widths under max-content; prose
+        // overflow), then every column's finishing writes, in declared order.
+        const _colPasses = collapsableColumns.map(colName => {
+            const g = _colPass(colName);
+            const first = g.next();
+            return first.done ? null : { g, req: first.value };
+        }).filter(Boolean);
+        const _allFirstLis = _colPasses.flatMap(p => p.req.firstLis);
+        _allFirstLis.forEach(li => { li.style.width = 'max-content'; });
+        const _widths = _colPasses.map(p => p.req.firstLis.reduce(
+            (m, li) => Math.max(m, Math.ceil(li.getBoundingClientRect().width)), 0));
+        _allFirstLis.forEach(li => { li.style.width = ''; });
+        const _overflowing = _colPasses.map(p => p.req.prose.filter(({ inner }) =>
+            inner.scrollHeight > inner.clientHeight + 1));
+        _colPasses.forEach((p, i) => p.g.next({ maxFirstLiWidth: _widths[i], overflowing: _overflowing[i] }));
 
         // ── Wire global ▶/◀ toggle button ────────────────────────────────────
         // In single-table mode: wire directly here (only one table to handle).
@@ -120958,6 +120988,14 @@ a { color: #1565c0; }`;
                 },
                 setFlushMs: (ms) => { _colHeaderCountsTest.flushMs = ms; },
                 setAfterColumn: (fn) => { _colHeaderCountsTest.afterColumn = fn; },
+            },
+            /**
+             * `initCollapsableColumns(table)` on table i, for pinning how it
+             * measures (PERFORMANCE.org Step 40) without the filter pass and
+             * render that normally precede it.
+             */
+            collapse: {
+                init: (i = 0) => initCollapsableColumns(document.querySelectorAll('table.tbl')[i]),
             },
             /**
              * The time-sliced typing pass (`runFilterSliced()`). `set({threshold,

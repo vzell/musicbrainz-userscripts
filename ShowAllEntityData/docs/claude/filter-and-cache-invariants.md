@@ -146,6 +146,16 @@ gathering pass in `initCollapsableColumns`, its idempotent cleanup selector,
 `ensureCollapseDelegate`, `_applyCollapseState`, and
 `_syncCollapseHasMatchInTable`.
 
+**`initCollapsableColumns` never reads layout inside a column pass**
+(PERFORMANCE.org Step 40). Each column is the generator `_colPass`: it does its
+writes, `yield`s what it needs measured, and finishes with the answers; the
+driver after it measures ALL columns in two batched reads. A new cell kind that
+needs a measurement (a width, an overflow) adds it to the yielded request and
+reads it in the driver. A `getBoundingClientRect()`/`scrollHeight` inside the
+pass would bring back one full-table layout per column — 330 ms per filter
+pass on artist-events — and `collapse-measure-batched.spec.js` counts the read
+groups to catch exactly that.
+
 Wiki-rendered `<h2>` sub-headings nested *inside* a prose cell (e.g.
 "== Known performances ==" inside an Annotation cell) are a separate concern
 from the cell-level clamp/toggle above — see `makeH2sCollapsible()` /

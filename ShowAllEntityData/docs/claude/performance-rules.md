@@ -126,4 +126,7 @@ with `scripts/summarize-typed-perf.py <label>…`. To find out WHY a keystroke
 is slow, `tests/support/probe-keystroke-cost.js` traces typing right after the
 render and once the header counts settle and lists every slow main-thread task
 with what ran in it; `--css=` / `--init=` try a remedy without touching the
-userscript. That probe is how Steps 37 and 38 were found.
+userscript. That probe is how Steps 37 and 38 were found. Its `--cpu` mode
+records a V8 CPU profile of one typed run instead and lists inclusive/self time
+per `function:line` — the trace names only each task's entry point, the profile
+says what ran inside it. That is how Step 40 was found.
