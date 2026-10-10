@@ -1,0 +1,45 @@
+* TODO analyze the current codebase regarding the use of non-MusicBrainz stuff
+
+Currently our userscript has grown monolytically to almost 6.5 MB in size.
+Refactoring never has happened.
+
+0.)
+
+Is it a problem in general if a userscript grows lets say up to 10 MB in size, performance wise ?
+Are there other problems to expect from the sheer size ?
+
+1.)
+
+Is there a best practice how to deliver such big userscripts to the end-user, without annoying the developer itself, as
+right now I can simply copy/paste a new version for quick testing right into the Tampermonkey GUI
+
+2.)
+
+Would an automatic build pipeline be more efective
+
+3.)
+
+Analyze the current codebase regarding the use of non-MusicBrainz stuff.
+
+a.)
+
+Is it wired deeply into the current MusicBrainz code, create an exhaustive tabular summary and potential pitfalls
+regarding MB functionality
+
+b.)
+
+Is it better to split out the non MB stuff into their own files (or even their own userscript), but still leveraging our
+filtering/sorting (etc.) infrastructure
+
+c.)
+
+I have other userscripts by myself which are working on the same non-MB (sometimed even MB) pages (PTs), how can i make
+some cooperate with our userscript
+
+4.)
+
+dive deep into the code and make some safe suggestions WITHOUT breaking especially to the MusicBrain related code
+
+5.)
+
+add your response to this file because I eventually will pick up from another Claude session on another host
