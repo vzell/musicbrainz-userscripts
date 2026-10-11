@@ -146,6 +146,16 @@ gathering pass in `initCollapsableColumns`, its idempotent cleanup selector,
 `ensureCollapseDelegate`, `_applyCollapseState`, and
 `_syncCollapseHasMatchInTable`.
 
+**`initCollapsableColumns` never reads layout inside a column pass**
+(PERFORMANCE.org Step 40). Each column is the generator `_colPass`: it does its
+writes, `yield`s what it needs measured, and finishes with the answers; the
+driver after it measures ALL columns in two batched reads. A new cell kind that
+needs a measurement (a width, an overflow) adds it to the yielded request and
+reads it in the driver. A `getBoundingClientRect()`/`scrollHeight` inside the
+pass would bring back one full-table layout per column — 330 ms per filter
+pass on artist-events — and `collapse-measure-batched.spec.js` counts the read
+groups to catch exactly that.
+
 Wiki-rendered `<h2>` sub-headings nested *inside* a prose cell (e.g.
 "== Known performances ==" inside an Annotation cell) are a separate concern
 from the cell-level clamp/toggle above — see `makeH2sCollapsible()` /
@@ -394,3 +404,63 @@ consistent, each written after it had been broken (findings F3–F7 of
 the end of one cell plus the start of the next. Text nodes INSIDE one cell are
 still joined with a space — a name and its disambiguation comment must stay
 matchable, which the spec's `guard: F6` test pins.
+
+## A time-sliced filter pass writes nothing until it is current and complete
+
+Typing on a table over `sa_chunked_render_threshold` rows goes through
+`runFilterSliced()` (PERFORMANCE.org Step 39); every other caller is the
+synchronous `runFilter()`. The rules that keep the two from disagreeing:
+
+- **One preparation.** The sliced pass gets its work from
+  `runFilter({ collect: true })` — the same cache keys, the same per-group
+  `matchCtx` (copied: the multi branch rebuilds one object per group) and the
+  same incremental-narrowing decision. It then fills those keys and calls
+  `runFilter()`, which finds them cached. A new structural filter therefore
+  still needs its field in `_buildFilterKey()` and `_buildIncrPartialKey()`
+  (see above), and nothing else: never compute a key for the sliced path
+  separately.
+- **Collect mode is side-effect free where it matters**: no
+  `_filterCacheSet`, no `_incr*`, no `_activeFilterHighlightCtx`, no clone,
+  no render, no generation. It does write what the synchronous pass writes
+  BEFORE matching (the ⏳ status text, the global input's border,
+  `getColFilters()`'s per-input borders and h3 regexp errors) — idempotent
+  reflections of the inputs.
+- **Stale means: a newer generation (`_filterGen`) or a replaced row array**
+  (`_filterRowArrays()`, by identity), checked after every yield. Every
+  synchronous `runFilter()` takes a generation, so a clear, a sort, a 📊
+  pick or a findings toggle cancels a pass in flight. A stale pass writes
+  nothing.
+- **Outdated means: a KEY since the pass began** (`_filterInputGen`, bumped in
+  both filter inputs' handlers — not when the debounced pass starts: a pass
+  still current at its end commits by calling `runFilter()`, which re-reads
+  the inputs, so a quicker key would be filtered synchronously, Step 42). An
+  outdated pass finishes COMPARING and stores that complete result (cache and
+  narrowing state, correct for its own key) — but never clones or draws, and
+  stores nothing if the cache was invalidated meanwhile (`_filterCacheEpoch`,
+  bumped by every invalidator). The next typed pass waits for it when it will
+  narrow from it (`_filterQueryExtends()`, single table only), Step 43. A new
+  invalidator must bump `_filterCacheEpoch`, or an outdated pass can put back
+  what it removed.
+- **Prebuilt clones go to exactly one `runFilter()` call.** The pass builds the
+  clones in slices (`_buildFilterClone()`) and hands them over in
+  `_filterPrebuiltClones`, set just before the committing call and cleared in
+  its `finally`. `runFilter()`'s two clone maps must keep doing what
+  `_buildFilterClone()` does; the sliced-vs-synchronous equality specs catch a
+  drift. A change to `expandedCells` during the pass discards the clones
+  (`_expandedCellsVersion`).
+- **A stale pass writes NOTHING** — no cache entry, no narrowing state, no
+  status, no render. Only a complete, current pass stores its results, so
+  `_filterResultCache` and `_incrMatchSet` only ever hold complete answers.
+  The `_rowTextCache` memos it made are kept: they are per-row text, valid
+  whatever the query.
+- **`_renderSettled` stays pending while a pass compares** (published before
+  the first yield, resolved in `finally`), so the header-count scan never
+  scans a table that is about to be replaced.
+- **A sliced pass stops a stale chunked render at once** (`_renderGeneration++`
+  at its start): the table may show a partly drawn previous result while the
+  ⏳ status says filtering is under way (decided 2026-10-10).
+
+Specs: `filter-sliced{,.mobile}.spec.js`, driven through
+`__saTest.filterSlicing` (threshold 0, one row per slice, an awaited
+`onSlice` that holds a pass mid-way); mutations in
+`scripts/mutations/faster-filtering.json`.

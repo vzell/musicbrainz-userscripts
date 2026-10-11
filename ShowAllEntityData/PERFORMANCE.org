@@ -3539,6 +3539,324 @@ aborted it here (~tests/MEASUREMENTS.org~). That confirms from the measurement
 side what the bisect above found, and closes the hole. The gate's conclusion is
 unchanged either way, for the reason just given.
 
+*** TODO Step 37: Table paint layer
+
+/Branch/ ~perf/faster-filtering~ /(C1 of its plan), 2026-10-10. TODO until it is
+on/ ~main~.
+
+*Problem.* Measured with ~tests/support/probe-keystroke-cost.js~ (DEBUG-NOTES.md
+2026-10-10): once the page is idle, every keystroke in a filter box is followed
+by one 72-81 ms Paint task on =artist-events= (about 42 ms on
+=artist-releases-dylan=), while the key itself costs 13-26 ms. The Paint covers
+the full viewport on layer 0, the root layer: ~table.tbl~ had no paint layer of
+its own, so one character in an input re-records the whole visible table. The
+same paint falls to 13-20 ms once a filter has narrowed the table, so it scales
+with the rows on screen.
+
+*Fix.* ~table.tbl { position: relative; z-index: 0 }~ in the always-on
+stylesheet, not in ~applyStickyHeaders()~'s (that one depends on
+~sa_enable_sticky_headers~). The table becomes a self-painting layer whose
+painting is reused when only the input changed.
+
+*Probe A/B* (Env: 2026-10-10T12:36Z-12:40Z · petri · WSL2 Ubuntu 24.04.3 LTS,
+Linux 6.18.40.1-microsoft-standard-WSL2 · Playwright 1.62.1 bundled Chromium,
+no Tampermonkey (GM stubs); rule injected with ~--css=~ on ~main~ 9.99.1316):
+per-key paint 72-81 ms baseline, 17-19 ms with ~position: relative; z-index: 0~,
+17-19 ms with ~contain: paint~, 17-20 ms with ~will-change: transform~;
+~will-change~ on the input alone changed nothing. ~contain: paint~ is not used:
+it clips the sticky-column gutter mask, focus rings and the grouped-art
+~top: -14px~ header. ~will-change~ on the table would composite a 4174-row table.
+
+*Stacking.* The table is now a stacking context at z-index 0. Everything the
+script stacks above tables already sits at 102 or more (VSB/SPH bars, ~#sidebar~
+105, overlays), the thead's 100 now counts only inside the table, popups and
+menus live on ~document.body~, and nothing reads a cell's ~offsetParent~. An
+outside element at z-index 1-100 that overlaps a table now paints above the
+thead (jesus2099's sticky header, z-index 1). All 64 sticky specs pass.
+
+*Tests.* ~tests/fixtures/table-paint-layer{,.mobile}.spec.js~; mutations in
+~scripts/mutations/faster-filtering.json~ (5, all caught).
+
+*Typed A/B, with Step 38* (both measured together; tests/MEASUREMENTS.org "Typed
+filtering after the paint layer and batched badges", Env 2026-10-10T13:51Z-14:31Z,
+petri, both orders): with 150 ms between keys, slow keystrokes fall on three of
+four pages (=artist-events= ≥100 ms 5 → 2, Petty ≥50 ms 5-6 → 0-1) and the wait
+after the last key on =artist-events= by 11-14 %. Keys landing inside a pass
+(400 ms) are unchanged: the pass is the long task, which neither step touches.
+
+*** TODO Step 38: Batched header-badge publish
+
+/Branch/ ~perf/faster-filtering~ /(C2 of its plan), 2026-10-10. TODO until it is
+on/ ~main~.
+
+*Problem.* Measured with ~tests/support/probe-keystroke-cost.js~ (DEBUG-NOTES.md
+2026-10-10): for the first seconds after a render, the idle-time header-count
+scan (~_updateAllColHeaderCounts()~) writes each column's badges
+(~.mb-col-collapse-count~, ~.mb-col-uniq-count~, the 📊 tooltip) as soon as that
+column is done: 86 writes to 26 spans during one 14-key typing window on
+=artist-events=. A changed header cell in an auto-layout table makes the browser
+lay out the WHOLE table on its next frame, and while a person types that frame
+belongs to the next keystroke: 74-163 ms of layout plus a 70-150 ms paint per
+key. Stubbing the writes away (probe ~--init~) cut the window's layout from
+1654-2896 ms to 50 ms and keypress handling from 121-215 ms to 27 ms.
+
+Containing the badge itself does not work: a CSS slot
+(~display: inline-block; contain: strict~, fixed size) only reached
+1135-1189 ms, because ~.mb-col-uniq-count~ is a flex item and a flex item
+cannot be a relayout boundary.
+
+*Fix.* The scan collects each column's writes in a pending list and publishes
+them when ~_COL_HEADER_COUNTS_FLUSH_MS~ (500) has passed since the last
+publish, and once at the end of the pass, so a scan costs two or three table
+layouts instead of one per column. A superseded scan drops what it has not
+published. The Step 3 cache is unchanged (still published only by a complete
+pass). Your choice of "at most every 500 ms" over "all at once at the end":
+the numbers keep filling in during a long scan.
+
+*Relation to Step 28* (typing-idle gate, TODO): complementary. Step 28 would
+save the CPU of scans started and abandoned while typing; this step removes
+the layout cost of their writes, and makes an abandoned scan write nothing
+unpublished.
+
+*Visible change.* Badges fill in in batches; right after a render a badge can
+be empty for up to the scan's first 500 ms (on a small table, until the scan
+ends). ~uniq-drop-count-click-toggle.spec.js~ clicked the Length badge before
+it had a number and now waits for it (a premise, not the behaviour it pins).
+
+*Tests.* ~tests/fixtures/header-counts-batched.spec.js~ (one task writes every
+badge, with a per-column control; a scan superseded mid-way publishes nothing,
+via ~__saTest.colHeaderCounts~); 3 mutations, all caught. Typed A/B: measured
+together with Step 37, see there.
+
+*** TODO Step 39: Time-sliced typing filter
+
+/Branch/ ~perf/faster-filtering~ /(C5 of its plan), 2026-10-10. TODO until it is
+on/ ~main~. /Card mockup approved 2026-10-10:/
+https://claude.ai/artifact/GCdE1u84VHcySfj3fSiNFf
+
+*Problem.* ~runFilter()~ compares every row in one task. With a pause between
+keys longer than the debounce, the next key lands inside that task and waits
+for all of it: worst keystroke 0.85-1.93 s and longest frame 0.95-2.0 s on the
+four measured pages, unchanged by Steps 37 and 38 (tests/MEASUREMENTS.org,
+"Typed filtering" and its C1+C2 follow-up).
+
+*Fix.* The debounced global and column filters call ~runFilterSliced()~. On a
+table over ~sa_chunked_render_threshold~ rows (1000) it:
+1. takes a filter generation (~_filterGen~), stops a stale chunked render
+   (~_renderGeneration++~) and publishes a pending ~_renderSettled~;
+2. asks ~runFilter({ collect: true })~ for the cache misses — the same keys,
+   contexts and narrowing decision the synchronous path computes, so they
+   cannot drift;
+3. runs ~testRowMatch(row, ctx, true)~ in slices of ~_FILTER_SLICE_MS~ (8),
+   checking the clock every 32 rows, yielding with ~scheduler.yield()~ or a
+   MessageChannel post; after every yield it stops, writing nothing, if a
+   newer generation exists or a row array was replaced;
+4. if still current, stores each result under its key (and the narrowing
+   state) and calls ~runFilter()~, which finds them cached and clones,
+   highlights, renders and reports as before.
+Below the threshold, or with every key cached, it is plain ~runFilter()~; all
+other callers stay synchronous and take a generation, cancelling a pass in
+flight. The ⏳ card shows the running pass (~_twFilter*~).
+
+*Deviation from the plan, by design:* the clone-and-highlight map is NOT
+sliced — it runs inside the committing ~runFilter()~, unchanged, so that one
+function still renders every filter result. The A/B below says whether the
+remaining block is short enough; slicing it would mean splitting
+~runFilter()~'s render half.
+
+*Rules*: docs/claude/filter-and-cache-invariants.md, "A time-sliced filter
+pass writes nothing until it is current and complete".
+
+*Tests.* ~tests/fixtures/filter-sliced{,.mobile}.spec.js~ (10): same rows,
+order, status and highlights as a synchronous pass on single- and multi-table
+pages (and on touch); column-filter typing sliced too; a pass replaced by a
+newer key, the ✕ clear or a sort writes nothing (tbody, status, cache keys and
+narrowing state unchanged after its release); ~_renderSettled~ pending while
+it compares; the card's Running → Done states and the "replaced by" log. 13
+mutations, 11 caught and 2 recorded ~expect: "pass"~ (the ~_renderGeneration~
+bump needs a two-chunk render no fixture has; the row-array check is covered
+by the generation when a sort replaces the arrays).
+
+*Typed A/B* (tests/MEASUREMENTS.org "Typed filtering with the time-sliced pass",
+Env 2026-10-10T14:58Z-15:37Z, petri, both orders, branch =a8fa3dc= vs =main=):
+the worst keystroke while a pass runs falls 70-90 % on the three single-table
+pages (=artist-events= 1.77-1.85 s → 0.22-0.54 s) and 22-33 % on the multi-table
+=artist-releasegroups=; the wait after the last key stays within −46 to +3 %. The
+longest block falls by ≥50 % in 4 of 8 page × delay cases — the plan's stop rule
+asked for all — because the commit (clone, highlight, render) is still one task,
+largest on the multi-table page. Reported to the user before going further.
+
+*** TODO Step 40: ~initCollapsableColumns()~ measures every column in one read phase
+
+/Branch/ ~perf/faster-filtering~ /(C6a), 2026-10-10. TODO until it is on/ ~main~.
+
+*Problem.* A V8 CPU profile of the commit (~probe-keystroke-cost.js --cpu~, the
+committed artist-events capture, 400 ms between keys, 8 passes) put
+~initCollapsableColumns()~ at 2621 ms inclusive — about 330 ms per pass — 1460 ms of
+it ~getBoundingClientRect~. It measured column by column: each column's writes
+(toggles, hidden ~<li>~s, clamp classes, then its header button and padding) came
+between one column's reads and the next, so every read batch laid out the whole
+4174-row table: up to two per collapsable column, five Location-derived prose
+columns here.
+
+*Fix.* The per-column body is a generator (~_colPass~): it does its writes, then
+yields what it needs measured (first ~<li>~s; prose wrappers when the clamp is on)
+and is resumed with the answers to finish. A driver measures every column in two
+batched reads — widths under ~max-content~, then prose overflow — then finishes
+the columns in declared order. Same decisions, same "replace, never ~max()~"
+min-width. Accepted difference: a column's overflow read no longer sees the header
+buttons and padding of the columns before it (it never saw those after it); only a
+cell right at the clamp edge could decide differently, and every collapse spec
+(61) is unchanged.
+
+*Measured* (probe ~--cpu~, Env: 2026-10-10T15:58Z (before) and 16:17Z (after) ·
+petri · WSL2 Ubuntu 24.04.3 LTS, Linux 6.18.40.1-microsoft-standard-WSL2 ·
+Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs); same typing run):
+~initCollapsableColumns~ 2621 → 653 ms (−75 %), ~getBoundingClientRect~ 1460 →
+138 ms (−91 %), ~renderFinalTable~ (the whole render path) 4363 → 1871 ms (−57 %),
+and ~applyStickyColumn~ 753 → 423 ms as a side effect (its style reads now meet a
+clean layout).
+
+*Tests.* ~tests/fixtures/collapse-measure-batched.spec.js~: one call on the
+artist-events capture reads in at most two groups (a read that finds the table
+mutated since the previous read, by ~MutationObserver.takeRecords()~, starts a
+group), with the same toggles, header buttons and min-widths as the render's own
+pass; mutation "measures column by column again" caught (6 groups).
+~__saTest.collapse.init(i)~ calls the function directly.
+
+*** TODO Step 41: ~applyStickyColumn()~ writes first, then reads
+
+/Branch/ ~perf/faster-filtering~ /(C6b), 2026-10-10. TODO until it is on/ ~main~.
+
+*Problem.* Per body cell it wrote the inline background, then read
+~getComputedStyle(td).backgroundColor~ back, cell after cell: every read
+recomputed style the previous write had just invalidated (87,738 snapshots per
+pass on =artist-events=, Step 24's count). 753 ms inclusive over the typed run
+before Step 40, 423 ms after it.
+
+*Fix.* Three passes over the rows: every style write (sticky position, tint
+class removed, inline backgrounds cleared or set to ~data-mb-custom-cell-bg~);
+every ~getComputedStyle~ read; then the stored snapshots, the tint restore and
+the hover listeners. No CSS rule makes a cell's computed background depend on
+another cell's inline style or classes (checked: no sibling or ~:has()~
+selector on ~.mb-sticky-col~ or the ~data-mb-*-bg~ attributes), so the values
+are the same.
+
+*Measured, honestly small* (probe ~--cpu~, Env: 2026-10-10T19:37Z, petri, same
+setup as Step 40): 423 → 397 ms (−6 %, inside run-to-run spread). Once Step 40
+left the layout clean the recalculations were cheap; what remains is the cost
+of ~87k ~getComputedStyle~ calls themselves. The real cut is Step 24 (snapshot
+lazily on first hover), which stays TODO.
+
+*Tests.* ~tests/fixtures/sticky-column-batched.spec.js~: one call reads in a
+single group (a ~getComputedStyle~ wrapper with ~MutationObserver.takeRecords()~),
+every stored rest colour equals what the cell paints with, hover paints and
+restores the row; ~__saTest.sticky.apply(i)~. Mutations: reads back inside the
+write pass (caught: 56 groups), hover unwired (caught).
+
+*** TODO Step 42: The sliced pass builds its clones in slices; a key makes it stale at once
+
+/Branch/ ~perf/faster-filtering~ /(C6e), 2026-10-10. TODO until it is on/ ~main~.
+
+*Two changes, found together.*
+
+1. *Clones in slices.* After the match slices, ~runFilterSliced()~ builds the
+   rendered clones in slices too (~_buildFilterClone()~: clone, strip transient
+   state, replay art expand state, format ISRCs, highlight) for every group the
+   commit will draw — cache hits included, which ~runFilter({ collect: true })~
+   now reports with their rows — and hands them to the committing ~runFilter()~
+   in ~_filterPrebuiltClones~ (cleared when that call returns). ~runFilter()~'s
+   two clone maps take a prebuilt array when one exists for their key. A click
+   that changes ~expandedCells~ meanwhile (~_expandedCellsVersion~, bumped by a
+   wrapper around the Map's ~set~/~delete~/~clear~) discards them; the commit
+   then clones synchronously as before.
+2. *A key makes the running pass stale at once.* Found by checking which commit
+   drew without prebuilt clones (the probe, ~prebuiltUsed()~ sampled per commit):
+   the first commit after a quick second key. A pass only went stale when the
+   NEXT pass started, i.e. after the 300 ms debounce; a pass finishing before
+   that committed by calling ~runFilter()~, which reads the inputs afresh — the
+   new text — and filtered it synchronously: one 613 ms task on
+   =artist-releasegroups=. Both filter inputs' handlers now take a filter
+   generation on every key.
+
+*The probe lied first.* Its task view kept only one of ~RunTask~ /
+~ThreadControllerImpl::RunTask~, and the async pass's continuations (microtask
+checkpoints) come as bare ~RunTask~: the 613 ms task did not show at all, only
+800 ms gaps between keys. It now keeps every outermost task of either name. It
+also expands the measured sub-table on a multi-table page, as the typed metric
+does; without that nothing big was on screen.
+
+*Measured* (probe, Env: 2026-10-10T20:05Z-20:10Z, petri, as above; 400 ms
+between keys, settled window): =artist-releasegroups= key-to-key gaps 1158-1242
+ms → 410-419 ms (no key waits), longest task 822/613 ms → 79 ms;
+=artist-events= gaps 436-514 ms, longest task 235 ms (the render's layout).
+
+*Typed A/B of the whole branch* (tests/MEASUREMENTS.org "Typed filtering with the
+whole branch", Env 2026-10-10T20:19Z-20:57Z, petri, both orders, =92355c1= vs
+=main=): with 400 ms between keys the worst keystroke falls 80-91 % and the longest
+frame 72-87 % on all four pages; one pass alone (150 ms) has its longest frame
+halved (three cases at −49.4 to −49.5 %, a hair under the plan's 50 %). *The plan's
+other limit is broken once*: on =artist-events= at 400 ms the wait after the last key
+grows from 380 ms to 909-963 ms. Every key retires the running pass, a 4174-row pass
+outlasts a 400 ms key gap, so no pass finishes while typing and the last one cannot
+narrow from an earlier result — on =main= each blocking pass finished. Reported to
+the user before going further; they chose Step 43.
+
+*** TODO Step 43: An outdated typed pass finishes comparing, and the next one narrows from it
+
+/Branch/ ~perf/faster-filtering~ /(C6g), 2026-10-10. TODO until it is on/ ~main~.
+
+*Problem.* Step 42 made every key retire the running pass. On =artist-events= a pass
+outlasts a 400 ms key gap, so no pass finished while typing, ~_incrMatchSet~ never
+advanced, and the last pass compared and cloned all 4174 rows: 909-963 ms after the
+last key against =main='s 380 ms (each of =main='s blocking passes finished, so its
+last one only narrowed).
+
+*Fix.* Two kinds of "no longer current":
+- /outdated/ — a key since the pass began (~_filterInputGen~, bumped by both filter
+  inputs). The pass keeps comparing in slices, then stores its complete result (cache
+  + narrowing state — correct for its own key) and stops: no clones, no drawing.
+- /stale/ — a newer generation (~_filterGen~: any synchronous ~runFilter()~, a newer
+  sliced pass) or a replaced row array. Writes nothing, as before.
+A stored result is only kept if nothing invalidated the cache meanwhile
+(~_filterCacheEpoch~, bumped by all three invalidators), or it could put back an entry
+the invalidation removed. The next typed pass WAITS for an outdated predecessor that is
+still comparing when its result will be the narrowing state (single table, plain text,
+the new text extends the old: ~_filterQueryExtends()~) — the outdated pass yields as it
+goes, so keys stay answered — and a call that waited gives way if a newer call began
+(~_filterSlicedCalls~). Multi-table pages do not narrow (Step 31), so there a newer pass
+simply takes the generation.
+
+*Quick check* (one sample, not publishable; Env 2026-10-10T21:2xZ petri, as above):
+=artist-events= after last key 446 ms at 400 ms keys (was 909-963 ms), 702 ms at 150 ms
+keys (was 1052-1085 ms), worst key 200 ms.
+
+*Typed A/B of the whole branch at =b62597d=* (tests/MEASUREMENTS.org "Typed filtering,
+whole branch after Step 43", Env 2026-10-10T21:25Z-22:02Z, petri, both orders): the
+wait after the last key holds the plan's +10 % limit on every page (−13 to +7.2 %;
+=artist-events= at 400 ms 376-379 ms vs 385 ms); with keys landing in a pass the worst
+keystroke falls 73-90 % and the longest frame 74-86 %. The longest frame of a single
+pass (150 ms) falls 45-60 %: three of eight runs miss "≥50 %" — release groups both
+orders (195/193 → 105/107 ms) and =artist-events= order 2 (648 → 338 ms). The user
+accepted these three near-misses on 2026-10-10 (the remaining block is the commit's
+render of the visible rows); the merge gate ran next.
+
+*Tests.* ~filter-sliced.spec.js~: an outdated pass never draws, keeps its complete
+result, and the next pass compares only that result's rows; an outdated pass stores
+nothing after a cache invalidation; the ✕ clear (stale) leaves cache AND narrowing state
+untouched. Mutations: outdated result thrown away, next pass not waiting, epoch ignored —
+caught; four C5 mutations re-targeted at the ✕ clear test (a key no longer makes a pass
+stale, only outdated).
+
+*Tests.* ~filter-sliced.spec.js~: the commit draws the prebuilt clones (1 array
+single-table, one per group multi-table) and still matches a synchronous pass
+exactly; a changed expand state makes the commit clone afresh; a pass replaced
+while cloning writes nothing; a key typed mid-pass makes it stale at once (the
+first status naming the new query comes from a commit that used prebuilt
+clones). Mutations: never handed over, expand-state check ignored, clone phase
+not checking staleness, multi-table lookup ignored, key not taking a generation
+— all caught.
+
 ** Session summary: measured comparison, ~main~ vs ~perf-steps-1-4~ (2026-08-24)
 
 /Harvested from/ ~perf-steps-1-4~ (branch tip 2026-08-31). *Everything below

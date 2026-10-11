@@ -1,0 +1,490 @@
+'use strict';
+
+// The time-sliced, cancellable filter pass for typing (runFilterSliced(),
+// PERFORMANCE.org Step 39). On a table over the chunked-render threshold a
+// typed filter compares rows in slices of a few ms and hands the page back
+// between them, so a key typed meanwhile is handled at once; the next pass
+// replaces the running one, which must then write nothing.
+//
+// No fixture is over the 1000-row threshold, so every test lowers it through
+// `__saTest.filterSlicing.set()` to 0 and slices one row at a time: a 56-row
+// table becomes a 56-slice pass. `onSlice` is awaited by the pass, which lets
+// a test HOLD a pass after a given slice, do something, and release it.
+//
+// ── The guarantees pinned ───────────────────────────────────────────────────
+//
+// 1. Same answer: the rows a sliced pass shows, their order, the status line
+//    and the highlight marks equal a synchronous pass over the same query
+//    (computed independently — the result cache is cleared in between), on a
+//    single-table and a multi-table page. Premise: the pass really was sliced.
+// 2. A replaced pass writes nothing: held mid-way while a newer key, a ✕
+//    clear or a sort runs to the end, then released — after which the tbody,
+//    the status line and the result cache do not change at all, and the
+//    cache never holds the replaced query's key.
+// 3. The ⏳ card shows a pass that runs longer than 500 ms: Running, the
+//    query, rows compared; then Done with the comparing time.
+// 4. It does so for a column filter too, whose comparing is over at once: the
+//    card opens while the pass prepares rows, says which step it is on, and
+//    names the filter by column and sub-table.
+
+const path = require('path');
+const { test, expect } = require('../support/test');
+const { loadFromDiskFixture } = require('../support/diskFixture');
+const { waitForFilterSettled, waitForSortSettled, typeGlobalFilter, ensureSubTableVisible, columnIndex, columnFilterInput } = require('../support/filterSortAssertions');
+const { setupRecordingOf } = require('../support/recordingOf');
+
+// The BoDeans page: artist-releases, tableMode 'single', 56 rows.
+const BODEANS_URL = 'https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/releases';
+const BODEANS_FIXTURE = path.join(__dirname, 'saved-data', 'artist-releases-bodeans.json.gz');
+
+// "Tougher Than the Rest" — 7 releases across 2 groups, tableMode 'multi'.
+const RG_URL = 'https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c';
+const RG_SHELL = path.join(__dirname, '..', 'snapshots', 'releasegroup-releases', 'raw.html');
+const RG_FIXTURE = path.join(__dirname, 'saved-data', 'releasegroup-releases.json.gz');
+
+/**
+ * Loads the BoDeans single-table fixture.
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<void>}
+ */
+async function openSingle(page) {
+    await loadFromDiskFixture(page, {
+        url: BODEANS_URL, fixturePath: BODEANS_FIXTURE, testMode: true,
+        settingsOverride: { sa_enable_relationships_column: false },
+    });
+    await expect(page.locator('h2 .mb-row-count-stat')).toHaveText('(56)', { timeout: 30000 });
+}
+
+/**
+ * Slices every row on its own and counts slices in `window.__slices`.
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<void>}
+ */
+const sliceFinely = (page) => page.evaluate(() => {
+    window.__slices = 0;
+    window.__saTest.filterSlicing.set({
+        threshold: 0, rowsPerCheck: 1, budgetMs: 0,
+        onSlice: () => { window.__slices++; },
+    });
+});
+
+/**
+ * What a filter pass left on screen: every rendered row's source index in
+ * order, the highlight marks, and the status line without its timing.
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<{rows: string[], marks: number, status: string}>}
+ */
+const shown = (page) => page.evaluate(() => ({
+    rows: Array.from(document.querySelectorAll('table.tbl tbody tr'))
+        .filter((tr) => tr.style.display !== 'none').map((tr) => tr.dataset.mbRowIdx || tr.textContent.slice(0, 40)),
+    marks: document.querySelectorAll('table.tbl .mb-global-filter-highlight, table.tbl .mb-column-filter-highlight').length,
+    status: (document.querySelector('#mb-filter-status-display') || {}).textContent.replace(/ in \d+ms/, ''),
+}));
+
+/**
+ * Holds the NEXT sliced pass after its 5th slice until `window.__release()` is
+ * called. Only the first pass that reaches slice 5 is held.
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<void>}
+ */
+const holdNextPassAtSlice5 = (page) => page.evaluate(() => {
+    window.__held = false;
+    let n = 0;
+    window.__saTest.filterSlicing.set({
+        threshold: 0, rowsPerCheck: 1, budgetMs: 0,
+        onSlice: () => {
+            if (window.__held || ++n !== 5) return undefined;
+            window.__held = true;
+            return new Promise((r) => { window.__release = r; });
+        },
+    });
+});
+
+/**
+ * After the held pass is released: whether it changed anything. Watches the
+ * tbody and the status line, and the cache keys, for `ms` after the release.
+ * @param {import('@playwright/test').Page} page
+ * @param {number} [ms]
+ * @returns {Promise<{tbody: number, status: number, keysBefore: string[], keysAfter: string[]}>}
+ */
+const releaseAndWatch = (page, ms = 400) => page.evaluate(async (wait) => {
+    const rec = { tbody: 0, status: 0 };
+    const obs = [
+        [document.querySelector('table.tbl tbody'), 'tbody'],
+        [document.querySelector('#mb-filter-status-display'), 'status'],
+    ].map(([el, k]) => {
+        const o = new MutationObserver((rs) => { rec[k] += rs.length; });
+        if (el) o.observe(el, { childList: true, characterData: true, subtree: true });
+        return o;
+    });
+    const keysBefore = window.__saTest.filterSlicing.cacheKeys();
+    window.__release();
+    await new Promise((r) => setTimeout(r, wait));
+    obs.forEach((o) => o.disconnect());
+    return { ...rec, keysBefore, keysAfter: window.__saTest.filterSlicing.cacheKeys() };
+}, ms);
+
+test.describe('time-sliced typing filter', () => {
+    test.afterEach(async ({ page }) => {
+        await page.evaluate(() => window.__saTest && window.__saTest.filterSlicing.reset()).catch(() => {});
+    });
+
+    test('single-table: a sliced pass shows exactly what a synchronous one does', async ({ page }) => {
+        test.setTimeout(120000);
+        await openSingle(page);
+        await sliceFinely(page);
+        await waitForFilterSettled(page, () => typeGlobalFilter(page, 'Home'));
+        const sliced = await shown(page);
+        expect(await page.evaluate(() => window.__saTest.filterSlicing.prebuiltUsed()), 'the commit drew the clones built in slices').toBe(1);
+        const slices = await page.evaluate(() => window.__slices);
+        expect(slices, 'premise: the pass was sliced, one slice per row').toBeGreaterThanOrEqual(56);
+
+        // The same query, synchronously and from scratch.
+        await page.evaluate(() => { window.__saTest.filterSlicing.reset(); window.__saTest.filterSlicing.clearCache(); });
+        await waitForFilterSettled(page, () => page.locator('#mb-global-filter-clear').click());
+        await waitForFilterSettled(page, () => typeGlobalFilter(page, 'Home'));
+        const sync = await shown(page);
+        expect(sliced, 'the sliced pass shows what the synchronous one does').toEqual(sync);
+        // Premise, read off the synchronous answer: the query really narrows.
+        expect(sync.rows.length, 'premise: the query narrows the table').toBeLessThan(56);
+        expect(sync.rows.length).toBeGreaterThan(0);
+    });
+
+    test('typing in a column filter goes through the sliced pass too', async ({ page }) => {
+        test.setTimeout(120000);
+        await openSingle(page);
+        await sliceFinely(page);
+        // Any text column will do; the third filter input is past the "#" column.
+        const input = page.locator('table.tbl .mb-col-filter-input').nth(2);
+        await input.click();
+        await waitForFilterSettled(page, () => input.pressSequentially('a'));
+        expect(await page.evaluate(() => window.__slices), 'the column filter pass was sliced').toBeGreaterThanOrEqual(56);
+    });
+
+    test('multi-table: a sliced pass shows exactly what a synchronous one does', async ({ page }) => {
+        test.setTimeout(120000);
+        await loadFromDiskFixture(page, {
+            url: RG_URL, fixturePath: RG_FIXTURE, pageFixtureFile: RG_SHELL, testMode: true,
+        });
+        await expect(page.locator('table.tbl')).toHaveCount(2, { timeout: 30000 });
+        await sliceFinely(page);
+        await waitForFilterSettled(page, () => typeGlobalFilter(page, 'CD'));
+        const sliced = await shown(page);
+        expect(await page.evaluate(() => window.__saTest.filterSlicing.prebuiltUsed()), 'the commit drew the clones built in slices, one array per group').toBe(2);
+        expect(await page.evaluate(() => window.__slices), 'premise: the pass was sliced').toBeGreaterThanOrEqual(7);
+        expect(sliced.rows.length, 'premise: the query narrows the tables').toBeLessThan(7);
+
+        await page.evaluate(() => { window.__saTest.filterSlicing.reset(); window.__saTest.filterSlicing.clearCache(); });
+        await waitForFilterSettled(page, () => page.locator('#mb-global-filter-clear').click());
+        await waitForFilterSettled(page, () => typeGlobalFilter(page, 'CD'));
+        expect(await shown(page)).toEqual(sliced);
+    });
+
+    test('a pass outdated by a newer key never draws; the next pass narrows from its result', async ({ page }) => {
+        test.setTimeout(120000);
+        await openSingle(page);
+        // Hold "Hom" after its 5th slice. Once released, record the totals the
+        // slices report: the "Home" pass's total is the rows it compares.
+        await page.evaluate(() => {
+            window.__held = false;
+            window.__released = false;
+            window.__totals = [];
+            window.__sawHom = false;
+            const st = document.querySelector('#mb-filter-status-display');
+            new MutationObserver(() => {
+                if ((st.textContent || '').includes('GLOBAL:"Hom"')) window.__sawHom = true;
+            }).observe(st, { childList: true, characterData: true, subtree: true });
+            let n = 0;
+            window.__saTest.filterSlicing.set({
+                threshold: 0, rowsPerCheck: 1, budgetMs: 0,
+                onSlice: (done, total, phase) => {
+                    if (window.__released && phase !== 'clone') window.__totals.push(total);
+                    if (window.__held || phase === 'clone' || ++n !== 5) return undefined;
+                    window.__held = true;
+                    return new Promise((r) => { window.__release = r; });
+                },
+            });
+        });
+        await typeGlobalFilter(page, 'Hom');
+        await expect.poll(() => page.evaluate(() => window.__held), { message: 'the "Hom" pass is held mid-way' }).toBe(true);
+        // The newer key. Its debounced pass waits for "Hom" to finish comparing,
+        // so nothing new is drawn while "Hom" is held — checked once that
+        // debounced call has really started (and is waiting).
+        const callsBefore = await page.evaluate(() => window.__saTest.filterSlicing.calls());
+        await page.locator('#mb-global-filter-input').press('e');
+        await expect.poll(() => page.evaluate(() => window.__saTest.filterSlicing.calls()),
+            { message: 'the "Home" pass was called' }).toBeGreaterThan(callsBefore);
+        await expect(page.locator('#mb-filter-status-display')).not.toContainText('GLOBAL:"Home"');
+        await page.evaluate(() => { window.__released = true; window.__release(); });
+        await expect(page.locator('#mb-filter-status-display')).toContainText('GLOBAL:"Home"', { timeout: 15000 });
+        expect(await page.evaluate(() => window.__sawHom), 'the outdated "Hom" pass drew nothing').toBe(false);
+        const keys = await page.evaluate(() => window.__saTest.filterSlicing.cacheKeys());
+        expect(keys.some((k) => k.includes('"g":"hom"')), '"Hom" kept its complete result').toBe(true);
+        const totals = await page.evaluate(() => window.__totals);
+        expect(totals.some((t) => t > 0 && t < 56),
+            `"Home" compared only "Hom"'s matches, not all 56 rows (slice totals ${JSON.stringify([...new Set(totals)])})`).toBe(true);
+        expect((await page.evaluate(() => window.__saTest.filterSlicing.incr())).query).toBe('home');
+    });
+
+    test('an outdated pass stores nothing once the cache was invalidated meanwhile', async ({ page }) => {
+        test.setTimeout(120000);
+        await openSingle(page);
+        await holdNextPassAtSlice5(page);
+        await typeGlobalFilter(page, 'Hom');
+        await expect.poll(() => page.evaluate(() => window.__held)).toBe(true);
+        // Outdated by a key, then the cache is invalidated (as a sort, a
+        // collapse-state refresh or a content change would): its result may be
+        // built on what the invalidation removed, so it must not be put back.
+        await page.locator('#mb-global-filter-input').press('e');
+        await page.evaluate(() => { window.__saTest.filterSlicing.clearCache(); window.__release(); });
+        await expect(page.locator('#mb-filter-status-display')).toContainText('GLOBAL:"Home"', { timeout: 15000 });
+        const keys = await page.evaluate(() => window.__saTest.filterSlicing.cacheKeys());
+        expect(keys.some((k) => k.includes('"g":"hom"')), 'no entry for the outdated "Hom" after the invalidation').toBe(false);
+    });
+
+    test('a key typed mid-pass makes it outdated at once, not after the debounce', async ({ page }) => {
+        test.setTimeout(120000);
+        await openSingle(page);
+        await holdNextPassAtSlice5(page);
+        // Record, at the first status line that names the NEW query, whether
+        // the drawing came from a sliced pass (prebuilt clones used) or from
+        // a synchronous re-read of the inputs (none used).
+        await page.evaluate(() => {
+            window.__firstHome = null;
+            const st = document.querySelector('#mb-filter-status-display');
+            new MutationObserver(() => {
+                if (window.__firstHome === null && (st.textContent || '').includes('GLOBAL:"Home"')) {
+                    window.__firstHome = window.__saTest.filterSlicing.prebuiltUsed();
+                }
+            }).observe(st, { childList: true, characterData: true, subtree: true });
+        });
+        await typeGlobalFilter(page, 'Hom');
+        await expect.poll(() => page.evaluate(() => window.__held)).toBe(true);
+        // The new key, then release the held "Hom" pass BEFORE the debounced
+        // "Home" pass can start (300 ms). A pass still current here would
+        // commit by calling runFilter(), which reads the input afresh and
+        // filters "Home" synchronously — the long task this rule removed.
+        await page.locator('#mb-global-filter-input').press('e');
+        await page.evaluate(() => window.__release());
+        await expect(page.locator('#mb-filter-status-display')).toContainText('GLOBAL:"Home"', { timeout: 15000 });
+        expect(await page.evaluate(() => window.__firstHome),
+            '"Home" was drawn by its own sliced pass, not by the stale one re-reading the input').toBe(1);
+    });
+
+    test('a pass replaced while building its clones writes nothing', async ({ page }) => {
+        test.setTimeout(120000);
+        await openSingle(page);
+        await page.evaluate(() => {
+            let held = false;
+            window.__saTest.filterSlicing.set({
+                threshold: 0, rowsPerCheck: 1, budgetMs: 0,
+                onSlice: (done, total, phase) => {
+                    if (held || phase !== 'clone' || done < 2) return undefined;
+                    held = true;
+                    window.__held = true;
+                    return new Promise((r) => { window.__release = r; });
+                },
+            });
+        });
+        await typeGlobalFilter(page, 'Hom');
+        await expect.poll(() => page.evaluate(() => window.__held === true), { message: 'held in the clone phase' }).toBe(true);
+        await waitForFilterSettled(page, () => page.locator('#mb-global-filter-input').press('e'));
+        await expect(page.locator('#mb-filter-status-display')).toContainText('GLOBAL:"Home"');
+        const after = await releaseAndWatch(page);
+        expect(after.tbody, 'the replaced pass did not draw its clones').toBe(0);
+        expect(after.status).toBe(0);
+        expect(after.keysAfter.some((k) => k.includes('"g":"hom"')), 'nor cache its result').toBe(false);
+    });
+
+    test('a cell expand state changed mid-pass makes the commit clone afresh', async ({ page }) => {
+        test.setTimeout(120000);
+        await openSingle(page);
+        // Hold the pass at its first CLONE slice, change expandedCells as a
+        // click on a cell toggle would, then let it finish.
+        await page.evaluate(() => {
+            let held = false;
+            window.__saTest.filterSlicing.set({
+                threshold: 0, rowsPerCheck: 1, budgetMs: 0,
+                onSlice: (done, total, phase) => {
+                    if (held || phase !== 'clone') return undefined;
+                    held = true;
+                    window.__held = true;
+                    return new Promise((r) => { window.__release = r; });
+                },
+            });
+        });
+        await typeGlobalFilter(page, 'Home');
+        await expect.poll(() => page.evaluate(() => window.__held === true), { message: 'held in the clone phase' }).toBe(true);
+        await page.evaluate(() => { window.__saTest.filterSlicing.touchCellState(); window.__release(); });
+        await expect(page.locator('#mb-filter-status-display')).toContainText('GLOBAL:"Home"');
+        expect(await page.evaluate(() => window.__saTest.filterSlicing.prebuiltUsed()),
+            'the out-of-date prebuilt clones were not used').toBe(0);
+        const sliced = await shown(page);
+        expect(sliced.rows.length, 'the rows are still drawn').toBeGreaterThan(0);
+    });
+
+    test('a held pass keeps _renderSettled pending until it is drawn', async ({ page }) => {
+        test.setTimeout(120000);
+        await openSingle(page);
+        await holdNextPassAtSlice5(page);
+        await typeGlobalFilter(page, 'Home');
+        await expect.poll(() => page.evaluate(() => window.__held)).toBe(true);
+        // The header-count scan and the ⏳ card wait on _renderSettled; while a
+        // pass is still comparing they must not see a "settled" table.
+        expect(await page.evaluate(() => window.__saTest.filterSlicing.settledPending())).toBe(true);
+        await page.evaluate(() => window.__release());
+        await expect(page.locator('#mb-filter-status-display')).toContainText('GLOBAL:"Home"');
+        await expect.poll(() => page.evaluate(() => window.__saTest.filterSlicing.settledPending())).toBe(false);
+    });
+
+    test('the ⏳ card logs a pass replaced by a newer key', async ({ page }) => {
+        test.setTimeout(120000);
+        await openSingle(page);
+        await page.evaluate(() => {
+            let n = 0;
+            window.__saTest.filterSlicing.set({
+                threshold: 0, rowsPerCheck: 1, budgetMs: 0,
+                onSlice: () => {
+                    n++;
+                    if (n === 5) return new Promise((r) => setTimeout(r, 700)); // opens the card
+                    if (n === 8) return new Promise((r) => { window.__release = r; });
+                    return undefined;
+                },
+            });
+        });
+        await typeGlobalFilter(page, 'Hom');
+        const pop = page.locator('#mb-async-pop');
+        await expect(pop).toBeVisible({ timeout: 10000 });
+        await expect(pop).toContainText('Filtering for “Hom”');
+        // The new key, then let "Hom" go: it finishes comparing (outdated, kept
+        // for narrowing), and "Home", which waited for it, begins.
+        await page.locator('#mb-global-filter-input').press('e');
+        await page.evaluate(() => window.__release());
+        await expect(page.locator('#mb-filter-status-display')).toContainText('GLOBAL:"Home"', { timeout: 15000 });
+        await page.locator('#mb-filter-status-display').hover();
+        await expect(pop.locator('.mb-tt-ajlog')).toContainText('“Hom” compared, then replaced by “Home”');
+        await expect(pop.locator('.mb-tt-ajlog')).toContainText('“Home”:');
+    });
+
+    test('a pass replaced by the ✕ clear writes nothing', async ({ page }) => {
+        test.setTimeout(120000);
+        await openSingle(page);
+        await holdNextPassAtSlice5(page);
+        await typeGlobalFilter(page, 'Home');
+        await expect.poll(() => page.evaluate(() => window.__held)).toBe(true);
+        await page.locator('#mb-global-filter-clear').click();
+        await expect(page.locator('h2 .mb-row-count-stat')).toHaveText('(56)');
+        // A synchronous pass makes the held one STALE (not merely outdated):
+        // nothing at all may come from it — no rows, no status, no cache entry
+        // and no narrowing state (a half-done match set would be narrowed from).
+        const incrBefore = await page.evaluate(() => window.__saTest.filterSlicing.incr());
+        const after = await releaseAndWatch(page);
+        expect(after.tbody).toBe(0);
+        expect(after.status).toBe(0);
+        expect(after.keysAfter).toEqual(after.keysBefore);
+        expect(await page.evaluate(() => window.__saTest.filterSlicing.incr())).toEqual(incrBefore);
+        await expect(page.locator('h2 .mb-row-count-stat')).toHaveText('(56)');
+    });
+
+    test('a pass replaced by a sort writes nothing', async ({ page }) => {
+        test.setTimeout(120000);
+        await openSingle(page);
+        await holdNextPassAtSlice5(page);
+        await typeGlobalFilter(page, 'Home');
+        await expect.poll(() => page.evaluate(() => window.__held)).toBe(true);
+        const sortBtn = page.locator('table.tbl thead tr:first-child th .sort-icon-btn', { hasText: '▼' }).first();
+        // The sort's own runFilter() is synchronous and draws the sorted result.
+        await waitForSortSettled(page, () => sortBtn.click());
+        const after = await releaseAndWatch(page);
+        expect(after.tbody, 'the replaced pass did not redraw over the sort').toBe(0);
+        expect(after.status).toBe(0);
+        expect(after.keysAfter).toEqual(after.keysBefore);
+    });
+
+    test('the ⏳ card shows a pass that runs over 500 ms, then its result', async ({ page }) => {
+        test.setTimeout(120000);
+        await setupRecordingOf(page, { settings: { sa_async_pop_auto_open: true } });
+        // Hold the pass for 700 ms after its 5th slice: the next slice then
+        // reports progress past the 500 ms mark and opens the card. Hold it
+        // again after slice 8, until released, so the running card can be read.
+        await page.evaluate(() => {
+            let n = 0;
+            window.__saTest.filterSlicing.set({
+                threshold: 0, rowsPerCheck: 1, budgetMs: 0,
+                onSlice: () => {
+                    n++;
+                    if (n === 5) return new Promise((r) => setTimeout(r, 700));
+                    if (n === 8) return new Promise((r) => { window.__release = r; });
+                    return undefined;
+                },
+            });
+        });
+        await typeGlobalFilter(page, 'Badlands');
+        const pop = page.locator('#mb-async-pop');
+        await expect(pop).toBeVisible({ timeout: 10000 });
+        await expect(pop.locator('.mb-tt-title')).toContainText('Sorting and filtering');
+        await expect(pop.locator('[data-mb-aj-phase]')).toHaveAttribute('data-mb-aj-phase', 'running');
+        await expect(pop).toContainText('Filtering for “Badlands”');
+        await expect(pop.locator('.mb-tt-ajcount')).toContainText('8 / 16 rows compared');
+        await expect(pop.locator('.mb-tt-ajcount')).toContainText('match so far');
+        await expect(pop.locator('.mb-tt-foot')).toContainText('the filter keeps running');
+        await page.evaluate(() => window.__release());
+        // Done: the breakdown names the query and the comparing time.
+        await expect(pop.locator('[data-mb-aj-phase]')).toHaveAttribute('data-mb-aj-phase', 'done', { timeout: 15000 });
+        await expect(pop.locator('.mb-tt-ajfacts')).toContainText('“Badlands”');
+        await expect(pop.locator('.mb-tt-ajfacts')).toContainText('Comparing');
+        await expect(pop.locator('.mb-tt-ajfacts')).toContainText('slices');
+        await expect(pop.locator('.mb-tt-ajlog')).toContainText('“Badlands”:');
+    });
+
+    test('the ⏳ card opens for a column filter while it prepares rows, and names the column and sub-table', async ({ page }) => {
+        test.setTimeout(120000);
+        await loadFromDiskFixture(page, {
+            url: RG_URL, fixturePath: RG_FIXTURE, pageFixtureFile: RG_SHELL, testMode: true,
+            settingsOverride: { sa_async_pop_auto_open: true },
+        });
+        await expect(page.locator('table.tbl')).toHaveCount(2, { timeout: 30000 });
+        // Comparing runs unheld — far under 500 ms — so only the preparing step
+        // can open the card: the pass waits 700 ms after its first preparing
+        // slice, then is held at the second until released. A card already
+        // open while comparing would void the premise, so that is recorded.
+        await page.evaluate(() => {
+            window.__openWhileComparing = false;
+            let c = 0;
+            window.__saTest.filterSlicing.set({
+                threshold: 0, rowsPerCheck: 1, budgetMs: 0,
+                onSlice: (done, total, phase) => {
+                    if (phase !== 'clone') {
+                        const pop = document.querySelector('#mb-async-pop');
+                        if (pop && pop.style.display !== 'none') window.__openWhileComparing = true;
+                        return undefined;
+                    }
+                    c++;
+                    if (c === 1) return new Promise((r) => setTimeout(r, 700));
+                    if (c === 2) return new Promise((r) => { window.__release = r; });
+                    return undefined;
+                },
+            });
+        });
+        await ensureSubTableVisible(page, 0);
+        const input = columnFilterInput(page, await columnIndex(page, 'Format', { tableIndex: 0 }), { tableIndex: 0 });
+        await input.click();
+        await input.pressSequentially('a');
+        const pop = page.locator('#mb-async-pop');
+        await expect(pop).toBeVisible({ timeout: 10000 });
+        expect(await page.evaluate(() => window.__openWhileComparing), 'premise: the card was closed while comparing').toBe(false);
+        // Running, on its second step: the bar and count follow the preparing.
+        await expect(pop.locator('[data-mb-aj-phase]')).toHaveAttribute('data-mb-aj-phase', 'running');
+        await expect(pop.locator('.mb-tt-dim').first()).toHaveText('Filtering for “a” in Format (Official release)');
+        await expect(pop.locator('.mb-tt-ajstep-fin')).toHaveText('Compared ✓');
+        await expect(pop.locator('.mb-tt-ajstep-on')).toHaveText('Preparing');
+        await expect(pop.locator('.mb-tt-ajcount')).toContainText('2 / 2 rows prepared for drawing');
+        await page.evaluate(() => window.__release());
+        // Done: the breakdown names the filter and has the Preparing step.
+        await expect(pop.locator('[data-mb-aj-phase]')).toHaveAttribute('data-mb-aj-phase', 'done', { timeout: 15000 });
+        await expect(pop.locator('.mb-tt-ajsteps')).toHaveCount(0);
+        await expect(pop.locator('.mb-tt-ajfacts')).toContainText('“a” in Format (Official release)');
+        await expect(pop.locator('.mb-tt-ajfacts')).toContainText(/Preparing\s*[\d.]+ m?s, 2 rows in 2 slices/);
+        await expect(pop.locator('.mb-tt-ajlog')).toContainText('“a” in Format (Official release):');
+    });
+});

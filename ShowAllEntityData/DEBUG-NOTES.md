@@ -21500,3 +21500,330 @@ as `wiencek-batch-performance` by the new `wire-live-userscript` skill.
    sort +5–6 %, the rest noise (tests/MEASUREMENTS.org). New tooling:
    `scripts/run-perf-arms.py` + `reportProgress()` in the harness feed the
    Claude Code status line (`~/.cache/sa-perf/status.json`).
+
+## 2026-10-10 — What a keystroke in the global filter costs outside `runFilter()` (branch perf/faster-filtering, measuring only)
+
+Env: 2026-10-10T12:25Z–12:49Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs) · `ShowAllEntityData.user.js` byte-identical to `main` (9.99.1316).
+
+**Symptom.** The new typed metric (`capture-interaction-perf.js --only=typed`,
+tests/MEASUREMENTS.org "Typed filtering") showed that with a 150 ms pause
+between keys (under the 300 ms debounce, so ONE filter pass) `artist-events`
+still has five keystrokes of 100 ms or more, worst 272 ms. Not the pass.
+
+**Method.** `tests/support/probe-keystroke-cost.js` records a Chromium trace
+while typing "United Kingdom" (14 keys, 150 ms apart) twice on one page load:
+"fresh", straight after `waitForRenderComplete()`, and "settled", after the
+column-header counts stopped changing. It lists every main-thread task of
+16 ms or more with what ran inside it. `--css=` / `--init=` inject a style or
+an experiment script after the render (never the script as shipped; each arm
+below is named). One trace per window: a single trace across the header-count
+wait overflowed Chromium's buffer and lost the second window silently.
+
+**Two separate causes, both confirmed by experiment.**
+
+1. *Every key repaints the whole page layer, about 75 ms (settled state).*
+   Each key is one 13–26 ms task (keypress, textInput, 9–16 ms layout), then a
+   72–81 ms Paint task. The paint's rect is the full viewport on layer 0, the
+   root layer: the table has no paint layer of its own, so a one-character
+   change in the input re-records the whole visible table. Once a filter has
+   narrowed the table the same paint drops to 13–20 ms, so it scales with the
+   painted rows, not with the key.
+   - `#mb-global-filter-input { will-change: transform }`: no change
+     (1102 / 1083 ms paint over 14 keys vs 1105 / 1072 baseline).
+   - `table.tbl { position: relative; z-index: 0 }`: per-key paint 17–19 ms.
+   - `table.tbl { contain: paint }`: per-key paint 17–19 ms.
+   - `table.tbl { will-change: transform }`: 17–20 ms, but a composited layer
+     for a 4174-row table costs GPU memory; not a candidate.
+   Either of the first two gives the table a self-painting layer whose
+   painting is reused when only the input changed. Both create a stacking
+   context (and `contain: paint` clips and becomes a containing block), so
+   the sticky header/column z-index and anything positioned out of a cell
+   must be checked before either ships.
+
+2. *Right after the render, every header-badge write makes the next key pay
+   a full table layout (fresh state).* The idle-time header-count scan
+   (`_updateAllColHeaderCounts()` via `_yieldToEventLoop()`; its
+   `getCleanColumnText()` TreeWalker shows as `acceptNode`) runs slices of
+   22–162 ms — some far past an idle deadline — and writes
+   `.mb-col-collapse-count` / `.mb-col-uniq-count` text as it goes (86 writes
+   to 26 spans, 67 of them changing the text, during the window). A changed
+   header cell in an auto-layout table dirties the whole table, so the next
+   key's frame does 74–163 ms of layout plus a 70–150 ms paint.
+   - baseline fresh, 14 keys: layout 1654–2896 ms, keypress handling 121–215 ms.
+   - `--init` dropping those span writes (textContent setter stubbed per
+     instance): layout **50 ms**, keypress 27 ms. Confirms the writes.
+   - CSS-only slot (`display:inline-block; contain:strict; width:5ch;
+     height:1.3em`) on the two badge classes: layout 1135–1189 ms, i.e. only
+     part of it. `.mb-col-uniq-count` is a flex item (`flex-shrink: 0` in
+     `.mb-col-uniq-wrap`), and a flex item cannot be a relayout boundary, so
+     containment on the span itself cannot isolate it; the remedy has to be
+     structural (a non-flex wrapper slot, or writing all badges once at the
+     end of the scan instead of per slice).
+   - Ruled out: `root.normalize()` in `getCleanColumnText()` runs on live
+     cells (157,232 calls in the window) but merged NOTHING (0 calls changed
+     the text-node count), and stubbing it to a no-op left layout at 2930 ms.
+     Its comment ("never changes visible content") holds here.
+
+**Consequence for the faster-filtering design.** Neither cause is in the
+filter pass's match loop, so yielding inside `runFilter()` cannot reach them.
+They are cheaper, independent fixes and belong in the same plan, measured
+with the same typed metric: (1) is one CSS rule plus a stacking-context
+check; (2) is a change to how the header-count scan publishes its numbers.
+Raw probe outputs: scratchpad only (not committed); the probe is re-runnable.
+
+## 2026-10-10 — Table paint layer landed on the branch (perf/faster-filtering, C1, WIP.2)
+
+Env: 2026-10-10T13:05Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+`table.tbl { position: relative; z-index: 0 }` went into the always-on
+stylesheet (the `GM_addStyle` block that starts with the paint-layer comment,
+before `.mb-sorting-active`), not into `applyStickyHeaders()`'s, which only
+runs with `sa_enable_sticky_headers` on. Cause and probe numbers: the entry
+above and PERFORMANCE.org Step 37.
+
+Two things the first spec draft got wrong, both premises rather than the fix:
+- "the stuck thead covers a scrolled row" placed the row at the viewport's
+  top edge, but with sticky filter bars on the thead sticks BELOW the stuck
+  h2 bar; the spec now reads where the thead sits once stuck and puts the row
+  there. Mutated (thead `z-index: -1`) it fails with the point drawn by a TD.
+- the mobile twin first used `loadFromDiskFixture()`, whose 📦 Data menu
+  click is covered by the wrapped toolbar at Pixel 7 width (no other mobile
+  spec uses it); it now renders the series fixture through its own
+  "Show all" button with sticky page headers off, since those pin a narrow
+  table with `position: sticky !important`.
+
+## 2026-10-10 — Header-count badges published in batches (perf/faster-filtering, C2, WIP.3)
+
+Env: 2026-10-10T13:20Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+`_updateAllColHeaderCounts()` now queues each column's writes (both badges,
+`_setTip()` and `aria-label` on the 📊 wrap) and flushes them when
+`_COL_HEADER_COUNTS_FLUSH_MS` (500) has passed since the last flush, plus once
+at the end; a stale token drops the queue. Cause: the 2026-10-10 keystroke
+entry above, cause 2; PERFORMANCE.org Step 38.
+
+One spec regressed and the cause was the spec's premise:
+`uniq-drop-count-click-toggle.spec.js` clicked `.mb-col-uniq-count` straight
+after the render. Per-column writes had happened to fill the Length badge
+before that; with batching it was still empty (zero width), so Playwright
+waited ("element is not visible", then "not stable" as the batch landed) and
+clicked while the header was shifting — the dropdown stayed open. A throwaway
+copy that first waited for the badge to have text passed 3/3, so the toggle
+itself is intact; the spec now waits for the number (a premise), as a person
+must, since an empty badge has nothing to click.
+
+`npm test` on C1+C2 (2026-10-10T13:42Z, petri, 110d84a + this change):
+1538 passed, 1 failed — `popup-ext.spec.js` "a Brucebase show's window: …
+scrolled to the show and marked": the `.mb-dp-anchor` inside the year-page
+iframe was still empty after 5 s. It passed 3/3 run alone. The detail-popup
+iframe path touches neither table CSS nor the header-count scan, so this is
+recorded as a load-dependent flake to watch, not attributed to this change; a
+second failure of it should get its own entry.
+
+## 2026-10-10 — Time-sliced typing filter (perf/faster-filtering, C5, WIP.4)
+
+Env: 2026-10-10T14:50Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+`runFilterSliced()` for the debounced global and column filters; design and
+rules in PERFORMANCE.org Step 39 and filter-and-cache-invariants.md ("A
+time-sliced filter pass writes nothing until it is current and complete").
+`npm test`: 1549/1549 (the popup-ext flake above did not recur).
+
+Found while building it, worth keeping:
+- **A stale pass notices only at its next yield.** By then its successor may
+  already have called `_twFilterBegin()`, so a module-level "current pass"
+  for the ⏳ card would let the stale pass mark its SUCCESSOR replaced.
+  `_twFilterBegin()` returns a record that every later call names, and a new
+  pass marks a still-running predecessor replaced itself.
+- **Mutations that shrink the work can be caught by the wrong assertion.**
+  Planting "the job compares half the rows" was caught — by the premise that
+  counts slices, not by the equality check it targeted. Replaced by "the job's
+  context loses the query" (same slices, every row matches), and the single-
+  table spec now compares BEFORE checking its narrowing premise, reading the
+  premise off the synchronous answer. Each "results differ" mutation now fails
+  on "the sliced pass shows what the synchronous one does".
+- **Mobile typing races the field's prefix.** Tapping the global filter and
+  typing at once put the first key in FRONT of the "🔍 " prefix ("B🔍 ru",
+  0 rows); the mobile spec waits for the prefix, as `typeGlobalFilter()` does
+  on desktop. The series fixture's header covers the field at Pixel 7 width,
+  so the spec uses the shared user-ratings helpers (`filterAutofocus.js`).
+- Two mutations are recorded `expect: "pass"`, with the reason: the
+  `_renderGeneration` bump needs a render of more than 500 rows in flight (no
+  fixture has one), and the row-array identity check is covered by the
+  generation whenever a sort replaces the arrays.
+
+## 2026-10-10 — The commit of a typed filter pass, profiled; initCollapsableColumns batched (perf/faster-filtering, C6a, WIP.5)
+
+Env: 2026-10-10T15:58Z (profile before) / 16:17Z (after) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+The C5 A/B left the longest block above the stop rule on 4 of 8 page × delay
+cases (PERFORMANCE.org Step 39). The trace view cannot say what that block is —
+it names only each task's entry point — so the probe got `--cpu`: a V8 CPU
+profile of one typed run (0.1 ms sampling), inclusive/self time per
+`function:line`.
+
+artist-events, 400 ms, 8 passes, before: `renderFinalTable` 4363 ms inclusive,
+its completion hook 3753 ms, of which `initCollapsableColumns` 2621 ms
+(1460 ms `getBoundingClientRect`) and `_applyPostRenderRowPasses` 986 ms
+(`applyStickyColumn` 753); the clone-and-highlight map 1935 ms. So the plan's
+"slice the commit" was mostly the wrong lever: most of the block was forced
+layout, which slicing would only spread out. artist-releasegroups, by contrast:
+770 ms of JS in total, its 650-1000 ms frames being style/layout/paint of what
+`renderGroupedTable()` rewrote (every group, unchanged ones too) and the post-
+render passes run twice (renderGroupedTable's own, then runFilter's multi
+branch). The C6 plan (approved) follows from these two profiles.
+
+C6a: `initCollapsableColumns()` measured column by column — up to two full
+layouts per collapsable column, five here. Now each column is a generator that
+yields its measurement request; a driver reads all columns in two batches
+(PERFORMANCE.org Step 40). After: 653 ms (−75 %), `getBoundingClientRect` 138 ms.
+
+Spec premise trap, kept for the next reader: the small artist-events HTML
+fixtures have ONE collapsable column with content, which cannot tell "one read
+group" from "one per column" — the spec loads the committed 4174-row capture.
+And a bare `initCollapsableColumns()` call removes the EAA column's ▶N▤
+without rebuilding it (the art code owns it, `_artEnsureColCollapseProxy()`),
+which is old behaviour, so the outcome comparison leaves CAA/EAA out.
+
+## 2026-10-10 — Sticky column writes-then-reads (C6b, WIP.6); the duplicated multi-table passes kept on purpose (C6c dropped)
+
+Env: 2026-10-10T19:37Z (profile) / 19:38Z (`npm test`, 1553/1553) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+C6b (PERFORMANCE.org Step 41): `applyStickyColumn()` now writes all styles,
+then reads all computed backgrounds, then stores. Gain after Step 40: 423 → 397
+ms over the typed run, inside the spread — the recalculations had become cheap
+once the layout was clean; ~87k `getComputedStyle` calls remain, which is
+Step 24's (lazy snapshot) territory. Kept because it is correct, pinned and
+does no harm.
+
+C6c, planned as "drop runFilter's second `_applyPostRenderRowPasses()` in
+multi mode", is NOT done, and must not be done naively: in multi mode
+`renderGroupedTable()` runs zebra/normalize/sticky/barcode BEFORE `runFilter()`
+runs `initIswcValidation()` / `initBarcodeValidation()` (and the other
+re-wires), and those stamp finding tints. The later call is the one whose sticky
+snapshot (`data-mb-rest-bg`, restored INLINE on hover leave) includes those
+tints; dropping it would make a hover paint the pre-tint colour over a finding.
+And it is cheap: ~15 ms per pass on the artist-releasegroups profile (the long
+frames there are layout/paint, not this). If it is ever removed, remove the
+EARLY one inside renderGroupedTable()'s filter path instead, and pin the
+"finding tint survives a row hover" property first.
+
+## 2026-10-10 — Clones in slices, a key retires the running pass, and the probe that hid a 613 ms task (C6e, WIP.7; C6d dropped)
+
+Env: 2026-10-10T19:45Z-20:12Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+C6d (skip unchanged hidden groups on artist-releasegroups) is not done: the
+profile showed typing changes most groups' match sets on every key until they
+are empty, and empty groups are already cheap; skipping hidden groups
+regardless would need lazy rendering, which many readers of hidden tables
+(counts, export, 📊, save) would have to learn. Not worth it here.
+
+C6e (PERFORMANCE.org Step 42) — the order things were found in, because the
+order is the lesson:
+
+1. After building clones in slices, the probe's trace of release groups showed
+   NO long task, yet keys arrived 800 ms late. `gap_tasks`-style counting of
+   every task between two keydowns: the main thread was 915 ms busy in 236
+   tasks, 811 ms of it in microtask checkpoints under BARE `RunTask` events.
+   The probe kept only `ThreadControllerImpl::RunTask` when that name
+   existed, so it never saw the async pass's continuations. Fixed: every
+   outermost task of either name. Then the probe also had to expand sub-table
+   29 (830 rows), as the typed metric does — without it nothing big was on
+   screen and the page looked fast.
+2. With the analyser fixed: one 613 ms task full of highlight TreeWalkers —
+   cloning, although the clones were prebuilt. `prebuiltUsed()` sampled at
+   every "✓" status write gave `0 "20", 47 "200", 47 "2005"`: the commit that
+   wrote "20" used none. Cause: pass "2" was still CURRENT when "0" was typed
+   (a pass went stale only when the next pass started, after the 300 ms
+   debounce), so it finished and committed by calling `runFilter()` — which
+   re-reads the input, "20", and filtered that synchronously. Fix: both filter
+   inputs take a generation on every key.
+3. After: release groups' key gaps 410-419 ms (none waits), longest task 79
+   ms; artist-events gaps 436-514 ms, longest 235 ms.
+
+Things tried and ruled out on the way: `scheduler.yield()` starving input —
+the same 800 ms gaps with the MessageChannel fallback (probe `--init` removing
+`scheduler.yield`), so not the yield; the `expandedCells` version check —
+nothing writes it during a pass (every writer is a click handler).
+A throwaway spec (deleted) confirmed per pass that the commit uses all 47
+prebuilt arrays once the fix is in.
+
+## 2026-10-10 — The branch A/B broke the last-key limit once; outdated vs stale passes (C6f, C6g, WIP.8)
+
+Env: 2026-10-10T20:19Z-20:57Z (A/B) / 21:2xZ (one-sample check) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium, no Tampermonkey (GM stubs).
+
+The whole-branch A/B (tests/MEASUREMENTS.org) was a clear win on keys and frames,
+but `artist-events` at 400 ms between keys showed the wait after the last key at
+909-963 ms against `main`'s 380 ms — the plan's limit was +10 %. Mechanism: Step
+42 retired the running pass on every key; a 4174-row pass outlasts the key gap;
+no pass ever finished, so `_incrMatchSet` never advanced and the final pass
+compared and cloned everything. `main` blocks on every key, but each blocking
+pass finishes, so its last one only narrows. The user chose to fix it (Step 43).
+
+Design that came out of it: "no longer current" has two kinds. STALE (a newer
+generation — every synchronous runFilter() and a newer sliced pass — or a
+replaced row array) writes nothing. OUTDATED (only a key since it began) still
+finishes comparing and stores its complete result (correct for its own key),
+never draws, and stores nothing if the cache was invalidated meanwhile (new
+`_filterCacheEpoch`, bumped by all three invalidators — a new invalidator must
+bump it too). The next typed pass waits for an outdated predecessor when it
+will narrow from it (single table, extending plain text).
+
+Spec fallout worth knowing: the two specs that held a pass and then waited for
+the newer query's result now deadlocked — by design, the newer pass waits for
+the held one. They were rewritten to release first; the old "a newer key makes
+the pass write nothing" guarantee moved to the ✕-clear test (a synchronous
+pass = stale), which now also pins the narrowing state, and four C5 mutations
+were re-targeted there.
+
+## 2026-10-10 — perf/faster-filtering: final A/B accepted, merge gate green
+
+Env: 2026-10-10T21:25Z-22:02Z (A/B) / 22:12:47Z-22:20:25Z (`test:full`) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs).
+
+Final typed A/B at `b62597d` (tests/MEASUREMENTS.org): wait after the last key
+within the +10 % limit on every page (−13 to +7.2 %); keys during a pass −73 to
+−90 %; longest frame −74 to −86 % with keys in passes, −45 to −60 % for a
+single pass, where three runs miss the plan's 50 % (release groups 105 ms,
+artist-events once 338 ms). The user accepted those near-misses.
+
+Merge gate: `python3 scripts/run-test-full.py` on `perf/faster-filtering` at
+`9ce4646`: 1571/1571 passed, 7 m 38 s (chromium-fixtures + chromium-mobile,
+`@slow` included). Mutation list `scripts/mutations/faster-filtering.json`:
+32 entries, 30 caught, 2 recorded `expect: "pass"` with their reasons.
+
+Not yet done, and required before any merge question (CLAUDE.md): the user's
+own try in a real browser on artist-events and artist-releasegroups. Nothing
+pushed.
+
+## 2026-10-11 — The ⏳ card never opened for a column filter (C6h, WIP.9)
+
+Env: 2026-10-10T23:30Z-23:55Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs). The report itself came from the user's browser on vzell-lap (browser and Tampermonkey versions unknown).
+
+Report (user, testing `c94bec5` on vzell-lap): "the new popup ONLY shows up when
+filtering with the global filter, not with the sub-table or column level
+filter".
+
+Two causes, one per filter:
+
+- **Sub-table filter (h3 🔍, `applySubFilter`):** a separate synchronous path the
+  branch never touched; it cannot report to the card. By design for now, added
+  to org/TODO.org.
+- **Column filter:** goes through `runFilterSliced()` like the global filter,
+  but the card's open check (`performance.now() - p.t0 > _TW_OPEN_AFTER_MS`)
+  lived only in `_twFilterProgress()`, called from the COMPARING slices. A
+  throwaway spec on the release-groups capture (sub-table 29 expanded, "live"
+  typed into its Title filter, `onSlice` timestamps per phase) showed why:
+  a column-filter pass compares only its own sub-table (2,143 rows in 8 ms; the
+  other groups are cache hits), then spends about 900 ms building clones in
+  ~90 slices, where nothing checked the threshold. The global filter compares
+  every row; on vzell-lap that crosses 500 ms, on petri it did not either (the
+  card opened for neither there, which is why the fixture suite never saw it).
+
+Fix (mockup approved: https://claude.ai/artifact/1ZBfeQbQzD3uWid1HEb7LV):
+`_twFilterMaybeOpen()` is called from both steps; `_twFilterPrepare()` /
+`_twFilterPrepProgress()` give the clone phase its own step on the card
+("Compared ✓ · Preparing", "N / M rows prepared for drawing", a Preparing fact
+afterwards), and `_twFilterLabel()` names a column filter by column and
+sub-table instead of "the column filters". Spec: `filter-sliced.spec.js`
+"opens for a column filter while it prepares rows" (comparing unheld, the card
+recorded closed while comparing as the premise); 5 mutations (C6h), all caught.

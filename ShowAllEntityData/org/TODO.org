@@ -1773,3 +1773,9 @@ render. Flag the expected cost (total time may grow) with numbers before impleme
 reuse our LAF (Look and Feel) for MB PTs, maybe in UVD entity stats (hover over popups) or CAA/EAA stats (hover over
 popups)
 
+
+* TODO sub-table filter (STF) on the time-sliced pass and the ⏳ card
+
+The 🔍 filter on each sub-table heading (`applySubFilter`) still filters synchronously and never shows the ⏳ progress
+card; the global and column filters do since perf/faster-filtering (WIP.9). Move STF typing onto `runFilterSliced()` on its
+own branch, with its own typed A/B (the faster-filtering measurements do not cover it).

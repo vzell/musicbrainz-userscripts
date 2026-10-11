@@ -33590,6 +33590,15 @@
             // Row hover highlight colour — read once, shared by all row handlers.
             const hoverBgColor = Lib.settings.sa_ui_row_hover_bg || '#c2d2e9';
 
+            // Three passes over the rows, not one (PERFORMANCE.org Step 41): every
+            // style WRITE first, then every getComputedStyle READ, then the
+            // writes that store what was read. Interleaved per cell — write the
+            // background, read it back, next cell — every read had to recompute
+            // the style of a page the previous write had just changed: 87,738
+            // recalculations per pass on artist-events. No rule makes one cell's
+            // computed background depend on another cell's inline style or
+            // classes, so the values read are the same.
+            const _rows = [];
             table.querySelectorAll('tbody tr').forEach(tr => {
                 const cell = tr.cells[stickyIdx];
                 if (!cell) return;
@@ -33644,7 +33653,22 @@
                     cell.style.removeProperty('background-color');
                 }
                 cell.style.background = '';
-                const cellBg = getComputedStyle(cell).backgroundColor;
+                // Non-sticky cells: clear the inline bg so CSS zebra wins —
+                // UNLESS the cell carries its own data-mb-custom-cell-bg marker
+                // (see the snapshot comment in the third pass below).
+                const others = Array.from(tr.cells).filter(td => td !== cell);
+                others.forEach(td => { td.style.background = td.dataset.mbCustomCellBg || ''; });
+                _rows.push({ tr, cell, _activeTintClass, others });
+            });
+
+            // Pass 2: every read, no write in between.
+            _rows.forEach(r => {
+                r.cellBg = getComputedStyle(r.cell).backgroundColor;
+                r.otherBgs = r.others.map(td => getComputedStyle(td).backgroundColor);
+            });
+
+            // Pass 3: store what was read, restore the tint, wire the hover.
+            _rows.forEach(({ tr, cell, _activeTintClass, others, cellBg, otherBgs }) => {
                 // A cell carrying its own data-mb-custom-cell-bg marker (e.g.
                 // the edits pageType's colored "Edit#" cell — see
                 // _buildEditRow) always wins over the computed zebra colour —
@@ -33680,12 +33704,11 @@
                 // just clearing to '') is what actually makes it win. Deliberately a
                 // per-cell, not per-row, check: this function stays page-type-agnostic
                 // and just respects whichever specific cell opted in, rather than
-                // knowing anything about 'edits'.
-                Array.from(tr.cells).forEach(td => {
-                    if (td === cell) return;
+                // knowing anything about 'edits'. (The inline write happened in
+                // pass 1 and the read in pass 2; this stores the snapshot.)
+                others.forEach((td, i) => {
                     const customBg = td.dataset.mbCustomCellBg;
-                    td.style.background = customBg || '';
-                    const bg = getComputedStyle(td).backgroundColor;
+                    const bg = otherBgs[i];
                     td.dataset.mbRestBg = customBg ||
                         ((bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') ? '#ffffff' : bg);
                 });
@@ -59303,6 +59326,16 @@ a { color: #1565c0; }`;
     // (MusicBrainz's account/* pages serve a CSP with no 'unsafe-inline' for
     // style-src, which silently drops plain injected <style> tags).
     GM_addStyle(`
+        /* Every data table gets its own paint layer. Without one the table
+           paints into the page's root layer, so changing one character in a
+           filter box re-records the whole visible table: about 75 ms per key
+           on a 4174-row page, 17-19 ms with this rule (DEBUG-NOTES 2026-10-10,
+           PERFORMANCE.org "Table paint layer"). position plus z-index, not
+           contain: paint, which would clip the sticky-column gutter mask, focus
+           rings and anything drawn just outside the table. Everything the
+           script stacks above tables sits at z-index 102 or more. */
+        table.tbl { position: relative; z-index: 0; }
+
         .mb-sorting-active, .mb-sorting-active * { cursor: wait !important; }
         button.mb-show-all-btn-loading:disabled {
             cursor: default !important;
@@ -59788,6 +59821,9 @@ a { color: #1565c0; }`;
         .mb-tt-liner .mb-tt-ajbar-f { background: #c0503f; }
         .mb-tt-liner .mb-tt-ajbar-q { background: #c8d6ea; }
         .mb-tt-liner .mb-tt-ajcount { display: flex; justify-content: space-between; gap: 8px; font-size: 0.92em; font-variant-numeric: tabular-nums; }
+        .mb-tt-liner .mb-tt-ajsteps { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 3px; font: 700 0.74em/1.5 system-ui, Arial, sans-serif; letter-spacing: 0.06em; text-transform: uppercase; color: #7a6d5c; }
+        .mb-tt-liner .mb-tt-ajstep-on { color: #2f5f9e; }
+        .mb-tt-liner .mb-tt-ajstep-fin { color: #3f7a3a; }
         .mb-tt-liner .mb-tt-ajfacts { display: grid; grid-template-columns: max-content 1fr; gap: 1px 10px; font-size: 0.93em; margin: 0; }
         .mb-tt-liner .mb-tt-ajfacts dt { color: #7a6d5c; font-style: italic; }
         .mb-tt-liner .mb-tt-ajfacts dd { margin: 0; min-width: 0; }
@@ -59797,6 +59833,7 @@ a { color: #1565c0; }`;
         .mb-tt-liner .mb-tt-ajlog time { color: #7a6d5c; }
         .mb-tt-liner .mb-tt-ajlog-bad { color: #9b2218; }
         .mb-tt-liner .mb-tt-ajlog-good { color: #3f7a3a; }
+        .mb-tt-liner .mb-tt-ajlog-dim { color: #7a6d5c; }
         .mb-tt-liner .mb-tt-ajacts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
         .mb-tt-liner .mb-tt-ajact { font: 600 11.5px/1 system-ui, Arial, sans-serif; padding: 5px 8px; border-radius: 3px; border: 1px solid #cbbfa9; background: #ffffff; color: #2b2622; cursor: pointer; box-shadow: 0 1px 0 #cbbfa9; }
         .mb-tt-liner .mb-tt-ajact:hover { background: #f4eee2; }
@@ -62589,10 +62626,56 @@ a { color: #1565c0; }`;
     let _incrLastGlobalQuery = '';
     let _incrLastPartialKey  = '';
     let _incrMatchSet        = null;
+    // Generation of filter passes. Every synchronous runFilter() and every
+    // time-sliced pass (runFilterSliced()) takes a new one; a sliced pass that
+    // finds it changed after a yield is stale and stops without writing
+    // anything (PERFORMANCE.org Step 39).
+    let _filterGen = 0;
+    // Bumped by every KEY in the global or a column filter. A sliced pass that
+    // sees it change is OUTDATED, not stale: it may finish comparing and store
+    // its complete result (cache + narrowing state) for the next pass to narrow
+    // from, but it never clones or draws (PERFORMANCE.org Step 43).
+    let _filterInputGen = 0;
+    // Bumped by every invalidation of _filterResultCache. An outdated pass only
+    // stores its result if no invalidation happened since it began, or it would
+    // put back an entry the invalidation meant to remove (Step 43).
+    let _filterCacheEpoch = 0;
+    // The sliced pass currently comparing rows, if any:
+    // { queryRaw, narrowable, matchDone: Promise } — so the next typed pass can
+    // wait for an outdated one whose result it can narrow from (Step 43).
+    let _filterComparing = null;
+    // Each runFilterSliced() call takes a number; a call that waited for an
+    // outdated pass gives up if a newer call has started meanwhile.
+    let _filterSlicedCalls = 0;
+    // A time-sliced pass compares rows for at most this many ms before it hands
+    // the page back, checking the clock every _FILTER_SLICE_CHECK rows.
+    const _FILTER_SLICE_MS = 8;
+    const _FILTER_SLICE_CHECK = 32;
+    // Test-only overrides for runFilterSliced(), set through
+    // `__saTest.filterSlicing`: `threshold` (rows above which typing is
+    // sliced), `rowsPerCheck`, `budgetMs`, and `onSlice(done, total)`, which
+    // runs after each slice so a spec can act mid-pass. All null in normal use.
+    const _filterSlicingTest = { threshold: null, rowsPerCheck: null, budgetMs: null, onSlice: null };
+    // Row clones a sliced pass built in slices, keyed like _filterResultCache,
+    // handed to the ONE runFilter() call that commits it and cleared right
+    // after (PERFORMANCE.org Step 42). Never set outside that call, so no other
+    // pass can pick up another query's clones.
+    let _filterPrebuiltClones = null;
+    // How many prebuilt clone arrays the last runFilter() used (test hook).
+    let _filterPrebuiltUsed = 0;
     // Source-of-truth for per-cell expand/collapse state, keyed "rowIdx:colIdx".
     // Updated by every toggle click; read by initCollapsableColumns, testRowMatch,
     // and openUniqDrop so they all agree even after renderFinalTable+init resets the DOM.
     const expandedCells = new Map();
+    // Bumped by every change to expandedCells. A time-sliced filter pass builds
+    // its row clones before it commits (PERFORMANCE.org Step 42); the clones
+    // replay expandedCells, so if it changed meanwhile (a click on a cell
+    // toggle) the commit discards them and clones afresh.
+    let _expandedCellsVersion = 0;
+    for (const _m of ['set', 'delete', 'clear']) {
+        const _orig = expandedCells[_m];
+        expandedCells[_m] = function (...args) { _expandedCellsVersion++; return _orig.apply(this, args); };
+    }
     // Settled inline-thumbnail state per cell, keyed "rowIdx:colIdx" exactly like
     // expandedCells, and reset alongside it. Value: {value, guid} — the sentinel
     // text _artSetInlineSortKey() stamps ('caa-inline-yes'/'caa-inline-no') and
@@ -65926,6 +66009,8 @@ a { color: #1565c0; }`;
      *   (`[label, text]` pairs), `cache` (`[label, text]` pairs shown under
      *   their own "💾 Cache" heading: store, TTL, records, this run's
      *   memory/IndexedDB/network split, …), `actions` (`{id, label, kind}`),
+     *   `steps` (`{label, state}` with state `'on'`, `'fin'` or `''`: a short
+     *   step line under the summary, e.g. "Comparing · Preparing"),
      *   `foot`. All text is escaped here.
      * @param {?object} job - The framework's record (its log is shown).
      * @param {string} anchorText - How the footer names the anchor, e.g. "▶🎼".
@@ -65938,6 +66023,11 @@ a { color: #1565c0; }`;
               + `<span class="mb-tt-title">${_ajEsc(p.glyph)} ${_ajEsc(s.label || p.label)}</span>`
               + `<span class="mb-tt-ajpill mb-tt-ajpill-${ph[1]}" data-mb-aj-phase="${_ajEsc(s.phase || 'idle')}">${ph[0]}</span></div>`;
         if (s.summary) h += `<div class="mb-tt-dim">${_ajEsc(s.summary)}</div>`;
+        if (s.steps && s.steps.length) {
+            h += '<div class="mb-tt-ajsteps">'
+               + s.steps.map(st => `<span${st.state ? ` class="mb-tt-ajstep-${_ajEsc(st.state)}"` : ''}>${_ajEsc(st.label)}</span>`).join('<span>·</span>')
+               + '</div>';
+        }
         if (s.total > 0) {
             const pct = (n) => `${(100 * Math.max(0, n || 0) / s.total).toFixed(2)}%`;
             const cached = Math.min(s.cached || 0, s.done || 0);
@@ -65949,6 +66039,7 @@ a { color: #1565c0; }`;
             const right = [];
             if (s.failed) right.push(`<span class="mb-tt-alert">${fmt(s.failed)} failed</span>`);
             if (s.cached) right.push(`${fmt(s.cached)} from cache`);
+            if (s.countNote) right.push(_ajEsc(s.countNote));
             h += `<div class="mb-tt-ajcount"><span>${fmt(s.done)} / ${fmt(s.total)}${s.unit ? ' ' + _ajEsc(s.unit) : ''}</span>`
                + `<span>${right.join(' · ')}</span></div>`;
         }
@@ -66176,15 +66267,22 @@ a { color: #1565c0; }`;
 
 
     // ── "table work": long sorts and filters in the progress card ─────────────
-    // Sorting already yields (sortLargeArray() chunks above 5000 rows), so its
-    // progress can be shown live; filtering's matching does NOT yield yet — the
-    // page cannot repaint while it runs — so for a filter the card reports the
-    // breakdown afterwards, on hover of the status line. A yielding runFilter()
-    // is a separate, measured performance branch (DEBUG-NOTES 2026-10-10 item 5).
+    // Sorting yields (sortLargeArray() chunks above 5000 rows), and so does the
+    // filter pass for TYPING on a large table (runFilterSliced(), PERFORMANCE.org
+    // Step 39): both show live progress, and the card opens once either has run
+    // for _TW_OPEN_AFTER_MS. A synchronous runFilter() (every other caller) still
+    // reports only afterwards, on hover of the status line. A sliced pass that a
+    // newer one replaces is logged under "Recent", not shown as an error.
     // Counters only: nothing here touches the DOM while the card is closed.
 
-    /** Timings of the last sort and the last filter, and a running sort's state. */
-    const _tw = { sort: null, filter: null, sortStart: 0, sortRows: 0, sortPct: 0, sortRunning: false };
+    /**
+     * Timings of the last sort and the last filter, a running sort's state, and
+     * the time-sliced filter pass (`pass`: running or last; `{query, total, done,
+     * hits, t0, narrowing, replaced, doneAt, compareMs}`, plus its prepare step:
+     * `{step, ptotal, pdone, pslices, p0, prepMs}`). `query` is a ready label
+     * with its own quotes (`_twFilterLabel()`).
+     */
+    const _tw = { sort: null, filter: null, sortStart: 0, sortRows: 0, sortPct: 0, sortRunning: false, pass: null };
     /** A sort shorter than this never opens the card by itself (ms). */
     const _TW_OPEN_AFTER_MS = 500;
 
@@ -66235,6 +66333,163 @@ a { color: #1565c0; }`;
         _ajChanged('tablework', null);
     }
 
+    /**
+     * What a pass filters for, as the card names it: the global filter's text,
+     * then each column filter by column (and sub-table on a multi-table page),
+     * e.g. `“wembley”, and “live” in Title (Album + Live)`. Past three parts the
+     * rest is counted. `all rows` when nothing is filtered.
+     * @returns {string}
+     */
+    function _twFilterLabel() {
+        const parts = [];
+        const g = stripFilterPrefix(filterInput.value);
+        if (g) parts.push(`“${g}”`);
+        const multi = activeDefinition && activeDefinition.tableMode === 'multi';
+        document.querySelectorAll('table.tbl thead tr.mb-col-filter-row .mb-col-filter-input').forEach(inp => {
+            const v = stripFilterPrefix(inp.value || '').trim();
+            if (!v) return;
+            const tbl = inp.closest('table.tbl');
+            const ths = tbl ? tbl.querySelectorAll('thead tr:first-child th') : [];
+            const idx = parseInt(inp.dataset.colIdx || '-1', 10);
+            const col = idx >= 0 && idx < ths.length ? _cleanColHeaderText(ths[idx]) : `column ${idx + 1}`;
+            let where = '';
+            if (multi) {
+                // The h3's own name: the text before its count, without the ▼/▲.
+                const h3 = findH3ForTable(tbl);
+                let name = '';
+                if (h3) {
+                    for (const n of h3.childNodes) {
+                        if (n.nodeType === 1 && n.classList.contains('mb-row-count-stat')) break;
+                        if (n.nodeType === 1 && n.classList.contains('mb-toggle-icon')) continue;
+                        name += n.textContent;
+                    }
+                }
+                name = name.replace(/\s+/g, ' ').trim();
+                if (name) where = ` (${name})`;
+            }
+            parts.push(`“${v}” in ${col}${where}`);
+        });
+        if (!parts.length) return 'all rows';
+        const shown = parts.length > 3 ? parts.slice(0, 2).concat([`${parts.length - 2} more filters`]) : parts;
+        return shown.length === 1 ? shown[0] : `${shown.slice(0, -1).join(', ')}, and ${shown[shown.length - 1]}`;
+    }
+
+    /**
+     * A time-sliced filter pass is starting. A previous pass still running is
+     * replaced by this one — it will notice at its next yield — and "Recent"
+     * says so now, with both queries.
+     * @param {number} total - Rows it will compare.
+     * @param {string} query - What is being filtered for (`_twFilterLabel()`).
+     * @param {boolean} narrowing - Comparing only the last result's rows.
+     * @returns {object} The pass record; every later `_twFilter*()` call of
+     *   this pass names it, so a stale pass can never write into its successor's.
+     */
+    function _twFilterBegin(total, query, narrowing) {
+        _twRegister();
+        const prev = _tw.pass;
+        if (prev && (prev.running || prev.replaced) && !prev.logged) {
+            // Rows it got through: its own count if it already noticed, else
+            // the progress it last reported.
+            const reached = prev.replaced ? prev.doneAt : prev.done;
+            Object.assign(prev, { logged: true, replaced: true, running: false, doneAt: reached });
+            // An outdated pass compares to the end (its result is kept for the
+            // next pass to narrow from, Step 43); say that rather than "56 of 56".
+            _ajLog('tablework', null, reached >= prev.total
+                ? `${prev.query} compared, then replaced by ${query}`
+                : `${prev.query} replaced by ${query} after `
+                  + `${Number(reached).toLocaleString('en-US')} of ${Number(prev.total).toLocaleString('en-US')} rows`, 'dim');
+        }
+        _tw.pass = { query, total, done: 0, hits: 0, t0: performance.now(), narrowing,
+                     running: true, replaced: false, logged: false, doneAt: 0, compareMs: null, slices: 0,
+                     step: 'compare', ptotal: 0, pdone: 0, pslices: 0, p0: 0, prepMs: null };
+        return _tw.pass;
+    }
+
+    /**
+     * Opens the card once a sliced pass has run longer than `_TW_OPEN_AFTER_MS`
+     * in all, whichever step it is on — a column filter compares only its own
+     * sub-table and spends nearly all its time preparing rows.
+     * @param {object} p - The pass record from `_twFilterBegin()`.
+     * @returns {void}
+     */
+    function _twFilterMaybeOpen(p) {
+        const job = _ajJob('tablework', null);
+        if ((!job || job.phase !== 'running') && performance.now() - p.t0 > _TW_OPEN_AFTER_MS) {
+            _ajStart('tablework', null, { user: true, anchor: document.getElementById('mb-filter-status-display') });
+        }
+        _ajChanged('tablework', null);
+    }
+
+    /**
+     * Progress of a sliced pass, after each comparing slice.
+     * @param {object} p - The pass record from `_twFilterBegin()`.
+     * @param {number} done - Rows compared so far.
+     * @param {number} hits - Rows matched so far.
+     * @returns {void}
+     */
+    function _twFilterProgress(p, done, hits) {
+        if (!p || p !== _tw.pass || !p.running) return;
+        p.done = done;
+        p.slices++;
+        p.hits = hits;
+        _twFilterMaybeOpen(p);
+    }
+
+    /**
+     * A sliced pass has compared every row and starts preparing the rows it
+     * will draw (cloning and highlighting them, in slices too).
+     * @param {object} p - The pass record from `_twFilterBegin()`.
+     * @param {number} total - Rows it will prepare: every match it draws.
+     * @returns {void}
+     */
+    function _twFilterPrepare(p, total) {
+        if (!p || p !== _tw.pass || !p.running) return;
+        const now = performance.now();
+        Object.assign(p, { step: 'prepare', compareMs: now - p.t0, ptotal: total, pdone: 0, p0: now, hits: total });
+        _ajChanged('tablework', null);
+    }
+
+    /**
+     * Progress of a sliced pass, after each preparing slice.
+     * @param {object} p - The pass record from `_twFilterBegin()`.
+     * @param {number} done - Rows prepared so far.
+     * @returns {void}
+     */
+    function _twFilterPrepProgress(p, done) {
+        if (!p || p !== _tw.pass || !p.running) return;
+        p.pdone = done;
+        p.pslices++;
+        _twFilterMaybeOpen(p);
+    }
+
+    /**
+     * A sliced pass was replaced (a newer key, a sort, a clear) and wrote
+     * nothing. Logged when the replacing pass begins (already done if that
+     * began first), or by `_twFilterRecord()` when a synchronous pass replaced it.
+     * @param {object} p - The pass record from `_twFilterBegin()`.
+     * @param {number} doneAt - Rows it had compared.
+     * @returns {void}
+     */
+    function _twFilterStale(p, doneAt) {
+        if (!p) return;
+        p.running = false;
+        p.replaced = true;
+        if (!p.logged) p.doneAt = doneAt;
+        _ajChanged('tablework', null);
+    }
+
+    /**
+     * A sliced pass has compared and prepared every row and is about to draw.
+     * @param {object} p - The pass record from `_twFilterBegin()`.
+     * @returns {void}
+     */
+    function _twFilterCompared(p) {
+        if (!p || p !== _tw.pass) return;
+        p.running = false;
+        if (p.step === 'prepare') p.prepMs = performance.now() - p.p0;
+        else p.compareMs = performance.now() - p.t0;
+    }
+
     /** The sort's own part is over (filtering and drawing follow). */
     function _twSortEnd() {
         _tw.sortRunning = false;
@@ -66252,13 +66507,31 @@ a { color: #1565c0; }`;
     function _twFilterRecord(ms, shown) {
         _twRegister();
         const drawStart = performance.now();
-        const rec = { ms, shown, drawMs: null };
+        // A sliced pass that just finished comparing is what this render shows;
+        // its query and comparing time belong to this record. A pass replaced by
+        // this synchronous one is logged here, since no new pass will begin.
+        const p = _tw.pass;
+        let sliced = null;
+        if (p && !p.running && p.compareMs !== null && !p.recorded) {
+            p.recorded = true;
+            sliced = { query: p.query, compareMs: p.compareMs, compared: p.total, slices: p.slices,
+                       prepMs: p.prepMs, prepared: p.ptotal, pslices: p.pslices };
+        } else if (p && p.replaced && !p.logged) {
+            p.logged = true;
+            _ajLog('tablework', null, `${p.query} replaced after `
+                + `${Number(p.doneAt).toLocaleString('en-US')} of ${Number(p.total).toLocaleString('en-US')} rows`, 'dim');
+        }
+        const rec = { ms, shown, drawMs: null, sliced };
         _tw.filter = rec;
         const afterSort = _tw.sort && _tw.sort.filterMs === null;
         if (afterSort) _tw.sort.filterMs = ms;
         _renderSettled.then(() => {
             rec.drawMs = performance.now() - drawStart;
             if (afterSort) _tw.sort.drawMs = rec.drawMs;
+            if (sliced) {
+                _ajLog('tablework', null, `${sliced.query}: ${Number(shown).toLocaleString('en-US')} rows shown, `
+                    + _twMs(sliced.compareMs + (sliced.prepMs || 0) + ms + rec.drawMs));
+            }
             const job = _ajJob('tablework', null);
             if (job && job.phase === 'running') _ajFinish('tablework', null, 0);
             else _ajChanged('tablework', null);
@@ -66272,7 +66545,8 @@ a { color: #1565c0; }`;
      * @returns {?object}
      */
     function _twSnapshot(job) {
-        if (!_tw.sort && !_tw.filter && !_tw.sortRunning) return null;
+        const pass = _tw.pass && _tw.pass.running ? _tw.pass : null;
+        if (!_tw.sort && !_tw.filter && !_tw.sortRunning && !pass) return null;
         const fmt = n => Number(n).toLocaleString('en-US');
         const facts = [];
         if (_tw.sort) {
@@ -66282,17 +66556,40 @@ a { color: #1565c0; }`;
             if (s.drawMs !== null) facts.push(['Then drawing', _twMs(s.drawMs)]);
         }
         if (_tw.filter) {
-            facts.push(['Last filter', `${_twMs(_tw.filter.ms)}, ${fmt(_tw.filter.shown)} rows shown`]);
-            if (_tw.filter.drawMs !== null) facts.push(['Drawing', _twMs(_tw.filter.drawMs)]);
+            const f = _tw.filter;
+            if (f.sliced) {
+                // A time-sliced pass: what was asked for, then where the time went.
+                const sl = (n) => `${fmt(n)} ${n === 1 ? 'slice' : 'slices'}`;
+                facts.push(['Last filter', `${f.sliced.query}, ${fmt(f.shown)} rows shown`]);
+                facts.push(['Comparing', `${_twMs(f.sliced.compareMs)}, ${fmt(f.sliced.compared)} rows in ${sl(f.sliced.slices)}`]);
+                if (f.sliced.prepMs !== null) {
+                    facts.push(['Preparing', `${_twMs(f.sliced.prepMs)}, ${fmt(f.sliced.prepared)} rows in ${sl(f.sliced.pslices)}`]);
+                }
+            } else {
+                facts.push(['Last filter', `${_twMs(f.ms)}, ${fmt(f.shown)} rows shown`]);
+            }
+            if (f.drawMs !== null) facts.push(['Drawing', _twMs(f.drawMs)]);
         }
-        facts.push(['Note', 'Filtering cannot let the page repaint while it compares rows yet; drawing a large table comes in chunks of 500 rows.']);
+        facts.push(['Note', 'Filtering pauses every few milliseconds so the page keeps responding; a key typed meanwhile starts a new pass. Matching rows are prepared for drawing in the same short steps. Drawing a large table comes in chunks of 500 rows.']);
+        const running = job && job.phase === 'running';
         const out = {
             phase: job ? job.phase : 'done',
-            summary: _tw.sortRunning ? `Sorting ${fmt(_tw.sortRows)} rows` : 'The last sort and filter',
+            summary: _tw.sortRunning ? `Sorting ${fmt(_tw.sortRows)} rows`
+                : pass ? `Filtering for ${pass.query}${pass.narrowing ? ' within the last result' : ''}`
+                : 'The last sort and filter',
             facts,
-            foot: job && job.phase === 'running' ? 'Esc closes · the sort keeps running' : 'Hover the status line to see this again',
+            foot: !running ? 'Hover the status line to see this again'
+                : pass ? 'Esc closes · the filter keeps running' : 'Esc closes · the sort keeps running',
         };
         if (_tw.sortRunning) Object.assign(out, { done: _tw.sortPct, total: 100, unit: '% sorted' });
+        else if (pass) {
+            const prep = pass.step === 'prepare';
+            out.steps = [{ label: prep ? 'Compared ✓' : 'Comparing', state: prep ? 'fin' : 'on' },
+                         { label: 'Preparing', state: prep ? 'on' : '' }];
+            Object.assign(out, prep
+                ? { done: pass.pdone, total: pass.ptotal, unit: 'rows prepared for drawing', countNote: `${fmt(pass.hits)} match` }
+                : { done: pass.done, total: pass.total, unit: 'rows compared', countNote: `${fmt(pass.hits)} match so far` });
+        }
         return out;
     }
 
@@ -68160,7 +68457,8 @@ a { color: #1565c0; }`;
             // Use debounced version for typing in column filters
             const debouncedColumnFilter = debounce(() => {
                 Lib.debug('filter', `Column filter updated on column ${idx}: "${stripFilterPrefix(input.value)}"`);
-                runFilter();
+                // Typing: the time-sliced pass (plain runFilter() on small tables).
+                runFilterSliced();
             }, _adaptiveFilterDelay);
 
             input.addEventListener('input', (e) => {
@@ -68191,6 +68489,10 @@ a { color: #1565c0; }`;
                     // Keep caret at the end
                     input.setSelectionRange(input.value.length, input.value.length);
                 }
+                // A key makes any time-sliced pass still running OUTDATED now,
+                // not when the debounced pass for the new text starts (see the
+                // same line in the global filter's input handler).
+                _filterInputGen++;
                 debouncedColumnFilter();
             });
 
@@ -72656,6 +72958,7 @@ a { color: #1565c0; }`;
 
     /** Clears the filter result cache and incremental-filter state. Call on fetch start, disk-load, and sort. */
     function _invalidateFilterCache() {
+        _filterCacheEpoch++;
         _filterResultCache.clear();
         _incrLastGlobalQuery = '';
         _incrLastPartialKey  = '';
@@ -72686,6 +72989,7 @@ a { color: #1565c0; }`;
      */
     function _invalidateFilterCacheForGroups(idxSet) {
         if (!idxSet || idxSet.size === 0) { _invalidateFilterCache(); return; }
+        _filterCacheEpoch++;
         for (const key of Array.from(_filterResultCache.keys())) {
             const m = /^m:[^:]*:(\d+)\|/.exec(key);
             if (m && idxSet.has(Number(m[1]))) _filterResultCache.delete(key);
@@ -72720,6 +73024,7 @@ a { color: #1565c0; }`;
      *   incremental partial key, returns true when that result could change.
      */
     function _invalidateFilterCacheWhere(affectsKey) {
+        _filterCacheEpoch++;
         for (const key of Array.from(_filterResultCache.keys())) {
             if (affectsKey(key)) _filterResultCache.delete(key);
         }
@@ -72976,10 +73281,28 @@ a { color: #1565c0; }`;
      *      filters, mode flags, row count) to the global and per-table status
      *      displays.
      *
-     * @returns {void}
+     * **Collect mode** (`{ collect: true }`, used only by `runFilterSliced()`):
+     * runs step 1 and the preparation of step 3 exactly as above — the same
+     * keys, the same per-group `matchCtx`, the same incremental-narrowing
+     * decision — but instead of matching it returns the work a cache miss would
+     * do, as `{ jobs: [{ key, rows, ctx, incr? }] }`, and stops. It writes no
+     * cache entry, no `_incr*` state and no `_activeFilterHighlightCtx`, clones
+     * nothing and renders nothing, and it does not take a filter generation.
+     * The sliced pass matches the jobs in slices and, if still current, stores
+     * the results under those keys and calls `runFilter()` normally, which then
+     * finds every key cached. One function prepares both paths, so the keys
+     * the slices fill are by construction the keys the render reads.
+     *
+     * @param {{collect?: boolean}} [opts]
+     * @returns {void|{jobs: Array<{key: string, rows: HTMLTableRowElement[], ctx: object,
+     *   incr?: {query: string, partialKey: string}}>}} The jobs in collect mode;
+     *   undefined otherwise, and in collect mode when the regexp is invalid.
      */
-    function runFilter() {
+    function runFilter(opts) {
         const filterStartTime = performance.now();
+        const _collect = opts && opts.collect ? [] : null;
+        // A synchronous pass supersedes any time-sliced pass still comparing.
+        if (!_collect) { _filterGen++; _filterPrebuiltUsed = 0; }
 
         // Show filtering indicator in filter status display
         const filterStatusDisplay = document.getElementById('mb-filter-status-display');
@@ -73047,7 +73370,10 @@ a { color: #1565c0; }`;
         const _anyColFilter = () =>
             Array.from(document.querySelectorAll('.mb-col-filter-input'))
                 .some(inp => stripColFilterPrefix(inp.value) !== '');
-        if (globalQueryRaw || _anyColFilter()) {
+        if (_collect) {
+            // Collect mode publishes nothing: the committing runFilter() call
+            // sets the highlight context for the rows it actually renders.
+        } else if (globalQueryRaw || _anyColFilter()) {
             _activeFilterHighlightCtx = {
                 globalQueryRaw,
                 colFilters:      [],   // replaced at each getColFilters() call below
@@ -73106,7 +73432,7 @@ a { color: #1565c0; }`;
                 // with this sub-table's flags made the image rows highlight a
                 // global regexp as literal text whenever the sub-table's Rx was
                 // off (and vice versa for Cc).
-                if (_activeFilterHighlightCtx) {
+                if (_activeFilterHighlightCtx && !_collect) {
                     _activeFilterHighlightCtx.colFilters = matchCtx.colFilters;
                 }
 
@@ -73177,6 +73503,16 @@ a { color: #1565c0; }`;
                 }
 
                 const _mk = _buildFilterKey(matchCtx, `m:${discographyViewState}:${groupIdx}`);
+                if (_collect) {
+                    // A copy: matchCtx is rebuilt per group on this one object.
+                    // A cache hit is reported too, with its rows already matched:
+                    // the sliced pass still builds its clones (Step 42).
+                    const _hitRows = _filterResultCache.get(_mk);
+                    _collect.push(_hitRows
+                        ? { key: _mk, matches: _hitRows, ctx: { ...matchCtx }, hit: true }
+                        : { key: _mk, rows: _sourceRows, ctx: { ...matchCtx } });
+                    return; // continue forEach — collect mode renders nothing
+                }
                 let _matchingSrc = _filterResultCache.get(_mk);
                 if (_matchingSrc) {
                     Lib.debug('filter', `runFilter: cache hit group ${groupIdx}`);
@@ -73204,7 +73540,11 @@ a { color: #1565c0; }`;
                     return; // continue forEach
                 }
 
-                const matches = _matchingSrc.map(r => {
+                // Clones a committing sliced pass already built (Step 42), else
+                // built here; the steps are _buildFilterClone()'s.
+                const _preMulti = _filterPrebuiltClones && _filterPrebuiltClones.get(_mk);
+                if (_preMulti) _filterPrebuiltUsed++;
+                const matches = _preMulti || _matchingSrc.map(r => {
                     const clone = r.cloneNode(true);
                     // Strip CAA/EAA enrichment markers from every cell in the clone.
                     //
@@ -73260,6 +73600,7 @@ a { color: #1565c0; }`;
                 filteredArray.push({ ...group, rows: matches });
                 totalFiltered += matches.length;
             });
+            if (_collect) return { jobs: _collect };
 
             // Finalize colon-aligned columns on the filtered subset before re-render.
             //
@@ -73388,7 +73729,7 @@ a { color: #1565c0; }`;
             matchCtx.pendingEditsOnly = _pendingEditsFilterActive;
             // Keep _activeFilterHighlightCtx in sync so _artHighlightImageLi()
             // uses the correct column filters for this single-table render.
-            if (_activeFilterHighlightCtx) {
+            if (_activeFilterHighlightCtx && !_collect) {
                 _activeFilterHighlightCtx.colFilters      = matchCtx.colFilters;
                 _activeFilterHighlightCtx.isCaseSensitive = isCaseSensitive;
             }
@@ -73401,6 +73742,9 @@ a { color: #1565c0; }`;
             let _matchingSrc = _filterResultCache.get(_sk);
             if (_matchingSrc) {
                 Lib.debug('filter', 'runFilter: cache hit single-table');
+                // Collect mode reports the hit too, so the sliced pass can
+                // still build the clones in slices (Step 42).
+                if (_collect) _collect.push({ key: _sk, matches: _matchingSrc, ctx: { ...matchCtx }, hit: true });
             } else {
                 // Incremental narrowing: if the new globalQuery is a plain-text
                 // extension of the previous scan's query, and no flags or column
@@ -73421,14 +73765,26 @@ a { color: #1565c0; }`;
                         ? `runFilter: incremental scan (${_candidateRows.length} candidates of ${allRows.length})`
                         : `runFilter: full scan (${allRows.length} rows)`
                 );
-                _matchingSrc = _candidateRows.filter(row => testRowMatch(row, matchCtx, true));
-                _filterCacheSet(_sk, _matchingSrc);
-                // Update incremental state so the next keystroke can narrow further.
-                _incrLastGlobalQuery = globalQuery;
-                _incrLastPartialKey  = _partialKey;
-                _incrMatchSet        = _matchingSrc;
+                if (_collect) {
+                    // The narrowing state goes with the job: the sliced pass
+                    // writes it at commit, exactly as the lines below do here.
+                    _collect.push({ key: _sk, rows: _candidateRows, ctx: { ...matchCtx },
+                                    incr: { query: globalQuery, partialKey: _partialKey } });
+                } else {
+                    _matchingSrc = _candidateRows.filter(row => testRowMatch(row, matchCtx, true));
+                    _filterCacheSet(_sk, _matchingSrc);
+                    // Update incremental state so the next keystroke can narrow further.
+                    _incrLastGlobalQuery = globalQuery;
+                    _incrLastPartialKey  = _partialKey;
+                    _incrMatchSet        = _matchingSrc;
+                }
             }
-            const filteredRows = _matchingSrc.map(row => {
+            if (_collect) return { jobs: _collect };
+            // Clones a committing sliced pass already built (Step 42), else
+            // built here; the steps are _buildFilterClone()'s.
+            const _preSingle = _filterPrebuiltClones && _filterPrebuiltClones.get(_sk);
+            if (_preSingle) _filterPrebuiltUsed++;
+            const filteredRows = _preSingle || _matchingSrc.map(row => {
                 const clone = row.cloneNode(true);
                 // Strip CAA/EAA enrichment markers from every cell in the clone.
                 //
@@ -73765,6 +74121,294 @@ a { color: #1565c0; }`;
         }
     }
 
+    /**
+     * Hands the main thread back to the page for one turn, as briefly as the
+     * browser allows: `scheduler.yield()` where it exists, else a
+     * MessageChannel round trip. Not `setTimeout` (clamped to 4 ms after a few
+     * nestings) and not requestAnimationFrame (a whole frame per slice). Unlike
+     * `_yieldToEventLoop()` this does not wait for idle time: a filter pass
+     * wants to continue right after the keystroke or paint it let through.
+     *
+     * @returns {Promise<void>}
+     */
+    function _yieldToMain() {
+        if (typeof scheduler !== 'undefined' && scheduler && typeof scheduler.yield === 'function') {
+            return scheduler.yield();
+        }
+        return new Promise(resolve => {
+            const ch = new MessageChannel();
+            ch.port1.onmessage = () => resolve();
+            ch.port2.postMessage(0);
+        });
+    }
+
+    /**
+     * The row arrays a filter pass reads. A sort replaces `groupedRows[i].rows`
+     * / `allRows`, and a fetch or disk load replaces both, so a sliced pass
+     * compares these by identity after every yield and treats any change as
+     * stale even if no new filter generation was taken.
+     *
+     * @returns {Array<Array>}
+     */
+    function _filterRowArrays() {
+        return activeDefinition && activeDefinition.tableMode === 'multi'
+            ? [groupedRows, ...groupedRows.map(g => g.rows)]
+            : [allRows];
+    }
+
+    /**
+     * Builds one rendered clone of a matching source row, the way
+     * `runFilter()`'s two clone maps do: `cloneNode(true)`, transient cell
+     * state stripped (keeping live art), art expand state replayed from
+     * `expandedCells`, ISRC anchors formatted, then the highlight pass
+     * (`testRowMatch(clone, ctx)`). Used by `runFilterSliced()` to build the
+     * clones in slices (PERFORMANCE.org Step 42). The two maps in `runFilter()`
+     * keep their own bodies, with the comments explaining each step; a change
+     * to one must be made to the other — `filter-sliced.spec.js` compares a
+     * sliced pass's rendered rows, highlights and status with a synchronous
+     * pass's, which is what catches a drift.
+     *
+     * @param {HTMLTableRowElement} row - A source row.
+     * @param {object} ctx - The pass's match context.
+     * @returns {HTMLTableRowElement} The clone, highlighted.
+     */
+    function _buildFilterClone(row, ctx) {
+        const clone = row.cloneNode(true);
+        Array.from(clone.cells).forEach(td => _stripTransientCellState(td, { preserveLiveArt: true }));
+        _restoreArtExpandState(clone);
+        _formatIsrcAnchorsIn(clone);
+        testRowMatch(clone, ctx);
+        return clone;
+    }
+
+    /**
+     * The filter pass for TYPING (the debounced global and column filters),
+     * time-sliced and cancellable (PERFORMANCE.org Step 39).
+     *
+     * On a table of more than `sa_chunked_render_threshold` rows (1000 by
+     * default) a synchronous `runFilter()` compares every row in one task, and a
+     * key typed meanwhile waits for all of it: 0.85-1.9 s on the four measured
+     * pages (tests/MEASUREMENTS.org "Typed filtering"). This pass instead:
+     *
+     *   1. takes a new filter generation, stops a chunked render still drawing
+     *      a stale result (`_renderGeneration`), and publishes a pending
+     *      `_renderSettled` so awaiters (the header-count scan, the ⏳ card)
+     *      wait for this pass;
+     *   2. asks `runFilter({ collect: true })` for its work (misses to match, hits
+     *      with their rows) — the same
+     *      keys, contexts and narrowing decision the synchronous path uses;
+     *   3. runs `testRowMatch(row, ctx, true)` over them in slices of
+     *      `_FILTER_SLICE_MS`, yielding between slices and reporting progress to
+     *      the ⏳ card; after every yield it stops, writing NOTHING, if a newer
+     *      pass took the generation or a row array was replaced;
+     *   4. builds the rendered clones in slices as well — for every group the
+     *      commit will draw, cache hits included (`_buildFilterClone()`,
+     *      PERFORMANCE.org Step 42) — dropping them if a cell's expand state
+     *      changed meanwhile (`_expandedCellsVersion`);
+     *   5. if still current, stores each result under its key (and the
+     *      narrowing state), hands the clones over in `_filterPrebuiltClones`
+     *      and calls `runFilter()`, which finds every key cached, takes the
+     *      prebuilt clones instead of cloning, and renders and reports as it
+     *      always does. The hand-over is cleared when that call returns.
+     *
+     * Below the threshold, and when nothing needs comparing, it is simply
+     * `runFilter()`. Every other caller keeps the synchronous `runFilter()`,
+     * which takes a generation of its own and so cancels a pass in flight.
+     *
+     * @returns {Promise<void>}
+     */
+    async function runFilterSliced() {
+        const total = activeDefinition && activeDefinition.tableMode === 'multi'
+            ? groupedRows.reduce((s, g) => s + g.rows.length, 0)
+            : allRows.length;
+        const threshold = _filterSlicingTest.threshold ?? (Lib.settings.sa_chunked_render_threshold ?? 1000);
+        if (total <= threshold) { runFilter(); return; }
+
+        // An OUTDATED pass still comparing rows whose result this one can
+        // narrow from (single table, the new text extends its text): let it
+        // finish first — it stores its result, and this pass then compares only
+        // those rows, as a synchronous pass after a synchronous pass would
+        // (Step 43). It yields as it goes, so keys stay answered. If a newer
+        // call starts while this one waits, this one gives way to it.
+        const call = ++_filterSlicedCalls;
+        const prev = _filterComparing;
+        if (prev && prev.narrowable && _filterQueryExtends(prev.queryRaw)) {
+            await prev.matchDone;
+            if (call !== _filterSlicedCalls) return;
+        }
+
+        const gen = ++_filterGen;
+        const inputGen = _filterInputGen;
+        const epoch = _filterCacheEpoch;
+        const plan = runFilter({ collect: true });
+        if (!plan) return;                              // invalid regexp: the status says so
+        if (!plan.jobs.length) { runFilter(); return; } // no group to draw at all
+
+        // Stop a chunked render still drawing a stale result, and make
+        // _renderSettled wait for this pass (resolved in `finally`).
+        _renderGeneration++;
+        let _settlePass;
+        _renderSettled = new Promise(resolve => { _settlePass = resolve; });
+
+        const rowsRef = _filterRowArrays();
+        const isStale = () => {
+            if (gen !== _filterGen) return true;
+            const now = _filterRowArrays();
+            return now.length !== rowsRef.length || now.some((a, i) => a !== rowsRef[i]);
+        };
+        // A key since this pass began: finish comparing, store, never draw.
+        const isOutdated = () => _filterInputGen !== inputGen;
+        // Storing a complete result is safe while the rows are the same arrays
+        // and nothing invalidated the cache since this pass began.
+        const canStore = () => {
+            const now = _filterRowArrays();
+            return _filterCacheEpoch === epoch && now.length === rowsRef.length && now.every((a, i) => a === rowsRef[i]);
+        };
+        const budget = _filterSlicingTest.budgetMs ?? _FILTER_SLICE_MS;
+        const check = Math.max(1, _filterSlicingTest.rowsPerCheck ?? _FILTER_SLICE_CHECK);
+        const toMatch = plan.jobs.filter(j => !j.hit);
+        const toCompare = toMatch.reduce((s, j) => s + j.rows.length, 0);
+        const narrowing = toMatch.length === 1 && plan.jobs.length === 1 && !!toMatch[0].incr && toMatch[0].rows !== allRows;
+        const twPass = _twFilterBegin(toCompare, _twFilterLabel(), narrowing);
+        /** Stores every matched job's complete result (and the narrowing state). */
+        const storeMatches = () => {
+            for (const job of toMatch) {
+                _filterCacheSet(job.key, job.matches);
+                if (job.incr) {
+                    _incrLastGlobalQuery = job.incr.query;
+                    _incrLastPartialKey  = job.incr.partialKey;
+                    _incrMatchSet        = job.matches;
+                }
+            }
+        };
+        // Published so the next typed pass can wait for this one's comparing to
+        // end; narrowable = its result will be the narrowing state.
+        let _endMatch;
+        const comparing = {
+            queryRaw: stripFilterPrefix(filterInput.value),
+            narrowable: plan.jobs.length === 1 && toMatch.length === 1 && !!toMatch[0].incr,
+            matchDone: new Promise(resolve => { _endMatch = resolve; }),
+        };
+        _filterComparing = comparing;
+        let done = 0, hits = 0;
+        try {
+            for (const job of toMatch) {
+                job.matches = [];
+                const rows = job.rows;
+                let i = 0;
+                while (i < rows.length) {
+                    const sliceEnd = performance.now() + budget;
+                    while (i < rows.length) {
+                        if (testRowMatch(rows[i], job.ctx, true)) { job.matches.push(rows[i]); hits++; }
+                        i++;
+                        if (i % check === 0 && performance.now() >= sliceEnd) break;
+                    }
+                    _twFilterProgress(twPass, done + i, hits);
+                    if (_filterSlicingTest.onSlice) await _filterSlicingTest.onSlice(done + i, toCompare);
+                    await _yieldToMain();
+                    if (isStale()) {
+                        _twFilterStale(twPass, done + i);
+                        Lib.debug('filter', `runFilterSliced: replaced after ${done + i} of ${toCompare} rows — nothing written.`);
+                        return;
+                    }
+                }
+                done += rows.length;
+            }
+            // Comparing is complete. Outdated by a key: keep the result for the
+            // next pass to narrow from, but draw nothing (Step 43).
+            if (isOutdated()) {
+                if (canStore()) storeMatches();
+                _twFilterStale(twPass, toCompare);
+                Lib.debug('filter', `runFilterSliced: outdated by a key — compared all ${toCompare} rows, result stored, not drawn.`);
+                return;
+            }
+            _endMatch();
+
+            // Build the clones in slices too (Step 42) — clone, strip, restore
+            // art expand state, format ISRCs, highlight — for every group the
+            // commit will render, cache hits included. They are only HANDED to
+            // the committing runFilter(); a stale pass drops them with the rest.
+            const cellStateAtStart = _expandedCellsVersion;
+            const toClone = plan.jobs.reduce((s, j) => s + j.matches.length, 0);
+            // The card's second step; it may open here, as a column filter's
+            // comparing is usually over long before the half second.
+            _twFilterPrepare(twPass, toClone);
+            let cloned = 0;
+            for (const job of plan.jobs) {
+                job.clones = [];
+                const src = job.matches;
+                let k = 0;
+                while (k < src.length) {
+                    const sliceEnd = performance.now() + budget;
+                    while (k < src.length) {
+                        job.clones.push(_buildFilterClone(src[k], job.ctx));
+                        k++;
+                        if (k % check === 0 && performance.now() >= sliceEnd) break;
+                    }
+                    _twFilterPrepProgress(twPass, cloned + k);
+                    if (_filterSlicingTest.onSlice) await _filterSlicingTest.onSlice(cloned + k, toClone, 'clone');
+                    await _yieldToMain();
+                    if (isStale()) {
+                        _twFilterStale(twPass, toCompare);
+                        Lib.debug('filter', `runFilterSliced: replaced while cloning (${cloned + k} of ${toClone}) — nothing written.`);
+                        return;
+                    }
+                    if (isOutdated()) {
+                        // Comparing was complete: keep that, drop the clones.
+                        if (canStore()) storeMatches();
+                        _twFilterStale(twPass, toCompare);
+                        return;
+                    }
+                }
+                cloned += src.length;
+            }
+            // A click that changed a cell's expand state meanwhile makes the
+            // clones out of date: the commit then clones afresh, synchronously.
+            const prebuilt = _expandedCellsVersion === cellStateAtStart
+                ? new Map(plan.jobs.map(j => [j.key, j.clones]))
+                : null;
+
+            // Commit: the only writes this pass makes, and only while current.
+            storeMatches();
+            _twFilterCompared(twPass);
+            _filterPrebuiltClones = prebuilt;
+            try {
+                runFilter();
+            } finally {
+                _filterPrebuiltClones = null;
+            }
+        } catch (err) {
+            // Never leave the table unfiltered because a slice threw: log it
+            // and, if nothing newer has started, do the pass synchronously.
+            Lib.warn('filter', 'runFilterSliced: the sliced pass failed, filtering synchronously instead:', err);
+            _twFilterStale(twPass, done);
+            if (!isStale()) runFilter();
+        } finally {
+            _endMatch();
+            if (_filterComparing === comparing) _filterComparing = null;
+            _settlePass();
+        }
+    }
+
+    /**
+     * Whether the global filter's text now EXTENDS `prevRaw` the way the
+     * incremental narrowing needs (`runFilter()`'s `_canNarrow`): plain text
+     * (no Rx, no Ex), longer, starting with it — case-insensitively unless Cc
+     * is on. Used by `runFilterSliced()` to decide whether waiting for an
+     * outdated pass is worth it (Step 43); the narrowing itself is still
+     * decided by `runFilter({ collect: true })`.
+     *
+     * @param {string} prevRaw - The outdated pass's text, prefix stripped.
+     * @returns {boolean}
+     */
+    function _filterQueryExtends(prevRaw) {
+        if (regexpCheckbox.checked || excludeCheckbox.checked) return false;
+        let cur = stripFilterPrefix(filterInput.value);
+        let prev = prevRaw || '';
+        if (!caseCheckbox.checked) { cur = cur.toLowerCase(); prev = prev.toLowerCase(); }
+        return cur.length > prev.length && cur.startsWith(prev);
+    }
+
     stopBtn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -73795,7 +74439,9 @@ a { color: #1565c0; }`;
     }
 
     // Create debounced version of runFilter — delay adapts to current row count.
-    const debouncedRunFilter = debounce(runFilter, _adaptiveFilterDelay);
+    // Typing goes through the time-sliced pass (runFilterSliced()), which is
+    // plain runFilter() on tables at or under the chunked-render threshold.
+    const debouncedRunFilter = debounce(runFilterSliced, _adaptiveFilterDelay);
 
     // ── Global filter: the focus prefix is ALWAYS present in the value ───────────────────
     // Unlike column filters (where the prefix appears only while focused), the global filter
@@ -73833,6 +74479,15 @@ a { color: #1565c0; }`;
             filterInput.value = prefix + typed;
             filterInput.setSelectionRange(filterInput.value.length, filterInput.value.length);
         }
+        // A key makes any time-sliced pass still running OUTDATED now. Waiting
+        // for the debounced pass to take the next generation is too late: a
+        // pass still current when it finishes commits by calling runFilter(),
+        // which reads the inputs afresh — the NEW text — and so filters that
+        // text synchronously, as one long task (measured: 613 ms on
+        // artist-releasegroups; PERFORMANCE.org Step 42). Outdated, not stale:
+        // it may still finish COMPARING and store that result, so the next
+        // pass can narrow from it (Step 43); it never draws.
+        _filterInputGen++;
         debouncedRunFilter();
     });
 
@@ -90757,6 +91412,28 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * How often, at most, a header-count scan publishes the numbers it has
+     * gathered so far, in ms. Every badge write changes a header cell, and a
+     * changed header cell in an auto-layout table makes the browser lay out the
+     * WHOLE table again on its next frame — paid by whatever comes next, which
+     * while a person types is the next keystroke: 74-163 ms of layout per write
+     * on `artist-events`, about 21 writes per scan (DEBUG-NOTES 2026-10-10,
+     * PERFORMANCE.org Step 38). Batching keeps the numbers filling in while a
+     * long scan runs, at two or three layouts instead of one per column.
+     */
+    const _COL_HEADER_COUNTS_FLUSH_MS = 500;
+
+    /**
+     * Test-only overrides for the header-count scan, set through
+     * `__saTest.colHeaderCounts`: `flushMs` replaces `_COL_HEADER_COUNTS_FLUSH_MS`,
+     * `afterColumn(colIndex)` runs after each recomputed column (before its
+     * yield), so a spec can supersede a scan at a known point. Both null in
+     * normal use; the scan reads them once per column.
+     * @type {{flushMs: ?number, afterColumn: ?function(number): (void|Promise<void>)}}
+     */
+    const _colHeaderCountsTest = { flushMs: null, afterColumn: null };
+
+    /**
      * Updates the two live count indicators in every column header of `table`:
      *
      *   1. `.mb-col-uniq-count` span (before 📊) — number of distinct non-empty
@@ -90785,12 +91462,20 @@ a { color: #1565c0; }`;
      * work — it does not break it up. One slice per column keeps each unbroken
      * stretch to a single column's worth of rows.
      *
-     * Consequence worth knowing: a scan cancelled mid-way leaves the columns it
-     * already reached updated and the rest showing the previous pass's numbers,
-     * until the newer scan catches up. Transient, and strictly better than the
-     * permanently-wrong counts this replaced. Such a pass writes NOTHING to
-     * `_colHeaderCountsCache` — see that cache's own comment for why publishing
-     * a half-filled result would make the transient state permanent.
+     * The numbers are written in BATCHES, not column by column: each column's
+     * writes (both badges, the 📊 tooltip and its aria-label) wait in a pending
+     * list that is flushed once `_COL_HEADER_COUNTS_FLUSH_MS` has passed since
+     * the last flush, and at the end of the pass. Every badge write costs the
+     * next frame a layout of the whole table, so per-column writes made each
+     * keystroke typed during a scan pay one (PERFORMANCE.org Step 38).
+     *
+     * Consequence worth knowing: a scan cancelled mid-way DROPS its unflushed
+     * numbers; columns an earlier flush reached keep the new values, the rest
+     * the previous pass's, until the newer scan catches up. Transient, and
+     * strictly better than the permanently-wrong counts this replaced. Such a
+     * pass writes NOTHING to `_colHeaderCountsCache` — see that cache's own
+     * comment for why publishing a half-filled result would make the transient
+     * state permanent.
      *
      * PERFORMANCE.org Step 3: the whole two-walks-per-column body below is
      * skipped when the visible row set is unchanged since the last COMPLETED
@@ -90843,6 +91528,17 @@ a { color: #1565c0; }`;
                 _inlineArtProbe = !!tbody.querySelector('.mb-caa-inline-ph, .mb-eaa-inline-ph');
             }
             return _inlineArtProbe;
+        };
+
+        // Badge and tooltip writes wait here and go out in batches; see this
+        // function's JSDoc. A stale pass drops what is still pending.
+        const _pending = [];
+        const _flushMs = _colHeaderCountsTest.flushMs ?? _COL_HEADER_COUNTS_FLUSH_MS;
+        let _lastFlush = performance.now();
+        const _flush = () => {
+            for (const write of _pending) write();
+            _pending.length = 0;
+            _lastFlush = performance.now();
         };
 
         // One pass per column: collect unique-value count and multi-row count.
@@ -90900,7 +91596,8 @@ a { color: #1565c0; }`;
                         if (_classifyCollapseCell(cell).isMultiRow) multiRowCount++;
                     }
                 }
-                countSpan.textContent = String(multiRowCount);
+                const _multiText = String(multiRowCount);
+                _pending.push(() => { countSpan.textContent = _multiText; });
             }
 
             // ── 2. Unique-value count ───────────────────────────────────────────
@@ -90929,7 +91626,8 @@ a { color: #1565c0; }`;
                     uniqCount = seen.size;
                 }
                 const n = uniqCount;
-                uniqCountSpan.textContent = n > 0 ? String(n) : '';
+                const _uniqText = n > 0 ? String(n) : '';
+                _pending.push(() => { uniqCountSpan.textContent = _uniqText; });
                 // Single tooltip on the wrapper (not the count span) so it shows
                 // wherever the user hovers within the clickable unit.
                 const uniqWrap = uniqCountSpan.closest('.mb-col-uniq-wrap');
@@ -90947,8 +91645,10 @@ a { color: #1565c0; }`;
                     const tip = (n > 0
                         ? `Show the ${n} different unique values in this column, with the ability to quick filter by either clicking or selecting with the keyboard and pressing "Enter" on an entry — ${_kbHint}`
                         : `Show unique values for this column — ${_kbHint}`) + _structHint;
-                    _setTip(uniqWrap, tip);
-                    uniqWrap.setAttribute('aria-label', tip);
+                    _pending.push(() => {
+                        _setTip(uniqWrap, tip);
+                        uniqWrap.setAttribute('aria-label', tip);
+                    });
                 }
             }
 
@@ -90971,12 +91671,16 @@ a { color: #1565c0; }`;
             // abandon a pass that had nothing left to do but write numbers it
             // already had.
             if (_usable) continue;
+            if (performance.now() - _lastFlush >= _flushMs) _flush();
+            if (_colHeaderCountsTest.afterColumn) await _colHeaderCountsTest.afterColumn(colIndex);
             await _yieldToEventLoop();
             if (_colHeaderCountsTokenStale(table, token)) {
-                Lib.debug('collapse', `_updateAllColHeaderCounts: token ${token} superseded — aborting scan.`);
+                Lib.debug('collapse', `_updateAllColHeaderCounts: token ${token} superseded — aborting scan, ${_pending.length} unflushed write(s) dropped.`);
+                _pending.length = 0;
                 return;
             }
         }
+        _flush();
 
         // Reached only by a pass that visited every column — see the cache's own
         // comment on why a partial pass must not publish. The per-cell tier is
@@ -91192,7 +91896,20 @@ a { color: #1565c0; }`;
         // O(collapsableColumns × bodyRows) DOM walks; one shared query is O(1).
         const bodyRows = Array.from(table.querySelectorAll('tbody tr'));
 
-        collapsableColumns.forEach(colName => {
+        // ── One read phase for ALL columns (PERFORMANCE.org Step 40) ──────────
+        // Each column is a generator: it does its writes (toggles, hidden <li>s,
+        // prose wrappers and clamp classes), then YIELDS what it needs measured
+        // — its first-<li>s and, with the clamp on, its prose wrappers — and is
+        // resumed with the answers to finish (overflow toggles, header button,
+        // min-width, padding). The driver below the generator measures every
+        // column in two batched reads. Done per column, each read forced a full
+        // layout of the table, after the previous column's writes: up to two
+        // per column, 330 ms per filter pass on a 4174-row page.
+        // One consequence, accepted: a column's prose-overflow read no longer
+        // sees the header buttons and padding of the columns BEFORE it (it
+        // never saw those of the columns after it). Only a cell right at the
+        // clamp edge could decide differently.
+        const _colPass = function* (colName) {
             // ── Locate column index by clean header text ──────────────────────
             // Uses _cleanColHeaderText() (prefers th.dataset.colName, the stable
             // name makeTableSortableUnified() stamped once) rather than an ad-hoc
@@ -91288,7 +92005,7 @@ a { color: #1565c0; }`;
             // context and prevent content from sliding under the toggle.
             // NO click listener is attached here — all clicks are handled by
             // the delegation listener installed by ensureCollapseDelegate().
-            let maxFirstLiWidth = 0;
+            let maxFirstLiWidth; // set from the driver's batched read, on resume
             // Collect first-<li> refs here; measured in the batch pass AFTER
             // the forEach so all DOM writes are finished before any reads.
             const _firstLisForMeasure = [];
@@ -91407,12 +92124,8 @@ a { color: #1565c0; }`;
             // second property is needed.  Same reasoning, same cure, and the same
             // three-phase batch as `_measureHeaderMinWidth()`, which fixed this
             // identical failure mode for the column drag floor; see its JSDoc.
-            _firstLisForMeasure.forEach(li => { li.style.width = 'max-content'; });
-            _firstLisForMeasure.forEach(li => {
-                maxFirstLiWidth = Math.max(
-                    maxFirstLiWidth, Math.ceil(li.getBoundingClientRect().width));
-            });
-            _firstLisForMeasure.forEach(li => { li.style.width = ''; });
+            // The read itself happens in the driver after the generator, for
+            // all columns at once; the width arrives with the resume below.
 
             // ── Hidden-match indicator for art cells (CAA/EAA column) ─────────
             // Art cells were skipped in the loop above to avoid duplicate toggles,
@@ -91493,36 +92206,40 @@ a { color: #1565c0; }`;
             // column-header toggle's tooltip should mention its Ctrl+Click
             // "also expand all wiki sub-headings" shortcut.
             let columnHasNestedH2 = false;
-            if (proseCandidates.length > 0) {
-                // Pass 1: wrap (idempotent) — pure DOM writes, no reads yet.
-                const _proseWrapped = proseCandidates.map(td => {
-                    let inner = td.querySelector(':scope > .mb-text-clamp-marker');
-                    if (!inner) {
-                        inner = document.createElement('div');
-                        inner.className = 'mb-text-clamp-marker';
-                        while (td.firstChild) inner.appendChild(td.firstChild);
-                        td.appendChild(inner);
-                    }
-                    return { td, inner };
+            // Pass 1: wrap (idempotent) — pure DOM writes, no reads yet.
+            const _proseWrapped = proseCandidates.map(td => {
+                let inner = td.querySelector(':scope > .mb-text-clamp-marker');
+                if (!inner) {
+                    inner = document.createElement('div');
+                    inner.className = 'mb-text-clamp-marker';
+                    while (td.firstChild) inner.appendChild(td.firstChild);
+                    td.appendChild(inner);
+                }
+                return { td, inner };
+            });
+            // The top-of-function idempotent cleanup pass already reset every
+            // .mb-text-clamp-marker to bare state, so when the setting is off
+            // there is nothing further to do here — cells simply stay bare
+            // (full, unclamped text; no toggle).
+            if (_annotationCollapseEnabled) {
+                _proseWrapped.forEach(({ inner }) => {
+                    inner.classList.add('mb-text-clamp-inner');
+                    if (_isArsProseCol) inner.classList.add('mb-text-clamp-inner-ars');
                 });
+            }
 
-                // The top-of-function idempotent cleanup pass already reset every
-                // .mb-text-clamp-marker to bare state, so when the setting is off
-                // there is nothing further to do here — cells simply stay bare
-                // (full, unclamped text; no toggle).
-                const _proseOverflowing = _annotationCollapseEnabled
-                    ? (() => {
-                        _proseWrapped.forEach(({ inner }) => {
-                            inner.classList.add('mb-text-clamp-inner');
-                            if (_isArsProseCol) inner.classList.add('mb-text-clamp-inner-ars');
-                        });
-                        // Pass 2: batch-read scrollHeight/clientHeight — one layout
-                        // flush for the whole column instead of one per cell.
-                        return _proseWrapped.filter(({ inner }) =>
-                            inner.scrollHeight > inner.clientHeight + 1
-                        );
-                    })()
-                    : [];
+            // Every write this column makes before its measurements is done.
+            // Hand the driver what to measure; it resumes us with the answers.
+            const _measured = yield {
+                firstLis: _firstLisForMeasure,
+                prose: _annotationCollapseEnabled ? _proseWrapped : [],
+            };
+            maxFirstLiWidth = _measured.maxFirstLiWidth;
+
+            if (proseCandidates.length > 0) {
+                // Pass 2 (in the driver): scrollHeight/clientHeight, one layout
+                // flush for every column instead of one per column.
+                const _proseOverflowing = _measured.overflowing;
 
                 // "Edit details"/"Edit notes" default to expanded: on the
                 // FIRST pass over this column for the current fetch (guarded
@@ -91765,7 +92482,24 @@ a { color: #1565c0; }`;
                 const td = tr.cells[colIndex];
                 if (td) td.classList.add('mb-collapse-col-pad');
             });
-        });
+        };
+
+        // Drive the column passes: every column's writes, then two batched
+        // reads for all of them (first-<li> widths under max-content; prose
+        // overflow), then every column's finishing writes, in declared order.
+        const _colPasses = collapsableColumns.map(colName => {
+            const g = _colPass(colName);
+            const first = g.next();
+            return first.done ? null : { g, req: first.value };
+        }).filter(Boolean);
+        const _allFirstLis = _colPasses.flatMap(p => p.req.firstLis);
+        _allFirstLis.forEach(li => { li.style.width = 'max-content'; });
+        const _widths = _colPasses.map(p => p.req.firstLis.reduce(
+            (m, li) => Math.max(m, Math.ceil(li.getBoundingClientRect().width)), 0));
+        _allFirstLis.forEach(li => { li.style.width = ''; });
+        const _overflowing = _colPasses.map(p => p.req.prose.filter(({ inner }) =>
+            inner.scrollHeight > inner.clientHeight + 1));
+        _colPasses.forEach((p, i) => p.g.next({ maxFirstLiWidth: _widths[i], overflowing: _overflowing[i] }));
 
         // ── Wire global ▶/◀ toggle button ────────────────────────────────────
         // In single-table mode: wire directly here (only one table to handle).
@@ -120578,6 +121312,65 @@ a { color: #1565c0; }`;
                 sortBegin: (rows) => _twSortBegin(rows),
                 sortProgress: (pct) => _twSortProgress(pct),
                 sortEnd: () => _twSortEnd(),
+            },
+            /**
+             * The header-count scan (`_updateAllColHeaderCounts()`), for
+             * pinning how it publishes: `rescan(i)` drops table i's cached
+             * counts and runs a fresh scan through the real scheduler,
+             * resolving when it is over; `setFlushMs(ms)` / `setAfterColumn(fn)`
+             * set `_colHeaderCountsTest` (null restores the default).
+             */
+            colHeaderCounts: {
+                rescan: (i = 0) => {
+                    const t = document.querySelectorAll('table.tbl')[i];
+                    _invalidateColHeaderCountsCache(t);
+                    return _scheduleColHeaderCounts(t);
+                },
+                setFlushMs: (ms) => { _colHeaderCountsTest.flushMs = ms; },
+                setAfterColumn: (fn) => { _colHeaderCountsTest.afterColumn = fn; },
+            },
+            /**
+             * `initCollapsableColumns(table)` on table i, for pinning how it
+             * measures (PERFORMANCE.org Step 40) without the filter pass and
+             * render that normally precede it.
+             */
+            collapse: {
+                init: (i = 0) => initCollapsableColumns(document.querySelectorAll('table.tbl')[i]),
+            },
+            /** `applyStickyColumn(table)` on table i (PERFORMANCE.org Step 41). */
+            sticky: {
+                apply: (i = 0) => applyStickyColumn(document.querySelectorAll('table.tbl')[i]),
+            },
+            /**
+             * The time-sliced typing pass (`runFilterSliced()`). `set({threshold,
+             * rowsPerCheck, budgetMs, onSlice})` overrides `_filterSlicingTest`
+             * (null restores a default) so a small fixture is sliced finely and
+             * a spec can act after a given slice — `onSlice` is awaited, so it
+             * can hold a pass mid-way; `cacheKeys()` lists `_filterResultCache`'s
+             * keys, to prove a stale pass stored nothing; `clearCache()` drops
+             * them, so a synchronous pass after a sliced one really recomputes;
+             * `gen()` is the current filter generation.
+             */
+            filterSlicing: {
+                set: (o) => { Object.assign(_filterSlicingTest, o || {}); },
+                reset: () => { Object.assign(_filterSlicingTest, { threshold: null, rowsPerCheck: null, budgetMs: null, onSlice: null }); },
+                cacheKeys: () => Array.from(_filterResultCache.keys()),
+                clearCache: () => _invalidateFilterCache(),
+                gen: () => _filterGen,
+                /** @returns {number} runFilterSliced() calls so far (Step 43): a spec waits for a debounced call to start. */
+                calls: () => _filterSlicedCalls,
+                /** @returns {number} Prebuilt clone arrays the last runFilter() used (Step 42). */
+                prebuiltUsed: () => _filterPrebuiltUsed,
+                /** Changes expandedCells as a cell-toggle click would (a harmless unused key). */
+                touchCellState: () => { expandedCells.set('__test__:0', false); expandedCells.delete('__test__:0'); },
+                /** @returns {{query: string, size: ?number}} The incremental-narrowing state. */
+                incr: () => ({ query: _incrLastGlobalQuery, size: _incrMatchSet ? _incrMatchSet.length : null }),
+                /** @returns {Promise<boolean>} Whether `_renderSettled` is still pending. */
+                settledPending: () => {
+                    let resolved = false;
+                    _renderSettled.then(() => { resolved = true; });
+                    return new Promise(r => setTimeout(() => r(!resolved), 0));
+                },
             },
             /** The 💾 browser cache overview (`_idbo*`). */
             idbOverview: {

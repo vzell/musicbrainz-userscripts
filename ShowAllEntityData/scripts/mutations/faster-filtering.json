@@ -1,0 +1,489 @@
+[
+  {
+    "name": "C1: no paint layer on tables",
+    "why": "The rule is gone: tables paint into the root layer again and every keystroke re-records the visible table.",
+    "edits": [
+      {
+        "find": "        table.tbl { position: relative; z-index: 0; }\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/table-paint-layer.spec.js",
+    "grep": "single-table: the table is relative",
+    "expect": "fail"
+  },
+  {
+    "name": "C1: no paint layer on multi-table pages",
+    "why": "Same removal, seen on a page with two sub-tables.",
+    "edits": [
+      {
+        "find": "        table.tbl { position: relative; z-index: 0; }\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/table-paint-layer.spec.js",
+    "grep": "multi-table: every sub-table",
+    "expect": "fail"
+  },
+  {
+    "name": "C1: the layer only with sticky headers on",
+    "why": "The rule moves into applyStickyHeaders()'s stylesheet, so turning sticky headers off silently loses the layer.",
+    "edits": [
+      {
+        "find": "        table.tbl { position: relative; z-index: 0; }\n",
+        "replace": ""
+      },
+      {
+        "find": "            table.tbl {\n                border-collapse: separate;\n                border-spacing: 0;\n            }",
+        "replace": "            table.tbl {\n                border-collapse: separate;\n                border-spacing: 0;\n                position: relative;\n                z-index: 0;\n            }"
+      }
+    ],
+    "spec": "tests/fixtures/table-paint-layer.spec.js",
+    "grep": "with sticky headers off",
+    "expect": "fail"
+  },
+  {
+    "name": "C1: no paint layer on mobile",
+    "why": "The removal, seen through the touch emulation.",
+    "edits": [
+      {
+        "find": "        table.tbl { position: relative; z-index: 0; }\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/table-paint-layer.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "table paint layer on mobile",
+    "expect": "fail"
+  },
+  {
+    "name": "C1: the stuck header no longer covers scrolled rows",
+    "why": "The thead loses its z-index inside the new stacking context, so a scrolled row's positioned cells could draw over it.",
+    "edits": [
+      {
+        "find": "                /* z-index 100 keeps it below the sidebar (105) but above table content */\n                z-index: 100;",
+        "replace": "                /* z-index 100 keeps it below the sidebar (105) but above table content */\n                z-index: -1;"
+      }
+    ],
+    "spec": "tests/fixtures/table-paint-layer.spec.js",
+    "grep": "still covered by it",
+    "expect": "fail"
+  },
+  {
+    "name": "C2: badges flushed per column again",
+    "why": "Every recomputed column writes its badges at once, so each one costs the next frame a full table layout.",
+    "edits": [
+      {
+        "find": "            if (performance.now() - _lastFlush >= _flushMs) _flush();\n",
+        "replace": "            _flush();\n"
+      }
+    ],
+    "spec": "tests/fixtures/header-counts-batched.spec.js",
+    "grep": "writes every badge in one task",
+    "expect": "fail"
+  },
+  {
+    "name": "C2: a superseded scan still publishes",
+    "why": "The stale scan flushes what it holds instead of dropping it, so the header gets a partial batch plus the new one.",
+    "edits": [
+      {
+        "find": "                _pending.length = 0;\n                return;\n",
+        "replace": "                _flush();\n                return;\n"
+      }
+    ],
+    "spec": "tests/fixtures/header-counts-batched.spec.js",
+    "grep": "superseded mid-way",
+    "expect": "fail"
+  },
+  {
+    "name": "C2: the last batch is never written",
+    "why": "No flush at the end of the pass: a scan that never reached the interval writes nothing at all.",
+    "edits": [
+      {
+        "find": "        }\n        _flush();\n\n        // Reached only by a pass that visited every column",
+        "replace": "        }\n\n        // Reached only by a pass that visited every column"
+      }
+    ],
+    "spec": "tests/fixtures/header-counts-batched.spec.js",
+    "grep": "writes every badge in one task",
+    "expect": "fail"
+  },
+  {
+    "name": "C5: a newer generation no longer stops the running pass",
+    "why": "The generation check after each yield is gone: a pass a synchronous runFilter() (here the ✕ clear) replaced runs on and commits its result over the newer one.",
+    "edits": [
+      {
+        "find": "            if (gen !== _filterGen) return true;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "replaced by the ✕ clear",
+    "expect": "fail"
+  },
+  {
+    "name": "C5: a synchronous runFilter() no longer cancels a sliced pass",
+    "why": "runFilter() stops taking a generation, so the ✕ clear's own pass leaves the sliced one current and it redraws the filtered rows afterwards.",
+    "edits": [
+      {
+        "find": "        if (!_collect) { _filterGen++; _filterPrebuiltUsed = 0; }\n",
+        "replace": "        if (!_collect) { _filterPrebuiltUsed = 0; }\n"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "replaced by the ✕ clear",
+    "expect": "fail"
+  },
+  {
+    "name": "C5: a replaced pass stores its partial result",
+    "why": "On going stale the pass caches what it matched so far under its key.",
+    "edits": [
+      {
+        "find": "                        _twFilterStale(twPass, done + i);\n",
+        "replace": "                        _filterCacheSet(plan.jobs[0].key, job.matches);\n                        _twFilterStale(twPass, done + i);\n"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "replaced by the ✕ clear",
+    "expect": "fail"
+  },
+  {
+    "name": "C5: a replaced pass writes the narrowing state",
+    "why": "On going stale the pass leaves its half-done match set as _incrMatchSet, so the next key would narrow from it.",
+    "edits": [
+      {
+        "find": "                        _twFilterStale(twPass, done + i);\n",
+        "replace": "                        if (plan.jobs[0].incr) { _incrLastGlobalQuery = plan.jobs[0].incr.query; _incrMatchSet = job.matches; }\n                        _twFilterStale(twPass, done + i);\n"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "replaced by the ✕ clear",
+    "expect": "fail"
+  },
+  {
+    "name": "C5: _renderSettled is not held while the pass compares",
+    "why": "The pass no longer publishes its pending promise, so the header-count scan and the card see a settled table mid-pass.",
+    "edits": [
+      {
+        "find": "        _renderSettled = new Promise(resolve => { _settlePass = resolve; });\n",
+        "replace": "        new Promise(resolve => { _settlePass = resolve; });\n"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "keeps _renderSettled pending",
+    "expect": "fail"
+  },
+  {
+    "name": "C5: a stale chunked render keeps drawing",
+    "why": "KNOWN GAP, recorded honestly: the pass no longer bumps _renderGeneration, so a chunked render of the previous result would go on drawing. No fixture is over 500 rows, so renderRowsChunked never has a second chunk to abort in any spec; the perf A/B on artist-events is what exercises it.",
+    "edits": [
+      {
+        "find": "        _renderGeneration++;\n        let _settlePass;",
+        "replace": "        let _settlePass;"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "replaced by the ✕ clear",
+    "expect": "pass"
+  },
+  {
+    "name": "C5: no row-array identity check",
+    "why": "KNOWN OVERLAP, recorded honestly: without the identity check a sort is still caught, because the sort's own runFilter() takes a generation. The check is for a fetch or disk load that replaces the arrays without filtering at once, which no spec drives mid-pass.",
+    "edits": [
+      {
+        "find": "            return now.length !== rowsRef.length || now.some((a, i) => a !== rowsRef[i]);",
+        "replace": "            return false;"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "replaced by a sort writes nothing",
+    "expect": "pass"
+  },
+  {
+    "name": "C5: the card loses the query and the comparing time",
+    "why": "The pass never reports that it finished comparing, so the card's last filter has no query and no Comparing row.",
+    "edits": [
+      {
+        "find": "            _twFilterCompared(twPass);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "runs over 500 ms, then its result",
+    "expect": "fail"
+  },
+  {
+    "name": "C5: a replaced pass is not logged",
+    "why": "The card's Recent list no longer says which query replaced which.",
+    "edits": [
+      {
+        "find": "            _ajLog('tablework', null, reached >= prev.total",
+        "replace": "            void (reached >= prev.total"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "logs a pass replaced",
+    "expect": "fail"
+  },
+  {
+    "name": "C5: global-filter typing is not sliced",
+    "why": "The global filter's debounce calls runFilter() again.",
+    "edits": [
+      {
+        "find": "    const debouncedRunFilter = debounce(runFilterSliced, _adaptiveFilterDelay);",
+        "replace": "    const debouncedRunFilter = debounce(runFilter, _adaptiveFilterDelay);"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "single-table: a sliced pass shows exactly",
+    "expect": "fail"
+  },
+  {
+    "name": "C5: column-filter typing is not sliced",
+    "why": "The column filters' debounce calls runFilter() again.",
+    "edits": [
+      {
+        "find": "                // Typing: the time-sliced pass (plain runFilter() on small tables).\n                runFilterSliced();",
+        "replace": "                runFilter();"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "column filter goes through",
+    "expect": "fail"
+  },
+  {
+    "name": "C5: sliced and synchronous results differ",
+    "why": "The single-table job is handed a context without the global query, so it matches every row and caches that under the real key: the same number of slices, the wrong answer.",
+    "edits": [
+      {
+        "find": "                    _collect.push({ key: _sk, rows: _candidateRows, ctx: { ...matchCtx },",
+        "replace": "                    _collect.push({ key: _sk, rows: _candidateRows, ctx: { ...matchCtx, globalQuery: '', globalQueryRaw: '' },"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "single-table: a sliced pass shows exactly",
+    "expect": "fail"
+  },
+  {
+    "name": "C5 mobile: sliced and synchronous results differ",
+    "why": "Each multi-table job is handed a context without the global query: the same slices, every row matches; seen through the touch path.",
+    "edits": [
+      {
+        "find": "                        : { key: _mk, rows: _sourceRows, ctx: { ...matchCtx } });",
+        "replace": "                        : { key: _mk, rows: _sourceRows, ctx: { ...matchCtx, globalQuery: '', globalQueryRaw: '' } });"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "sliced typing filter on mobile",
+    "expect": "fail"
+  },
+  {
+    "name": "C6a: initCollapsableColumns measures column by column again",
+    "why": "Each column is measured and finished before the next is measured, so every column's writes force the next column's reads to lay out the table again.",
+    "edits": [
+      {
+        "find": "        const _allFirstLis = _colPasses.flatMap(p => p.req.firstLis);\n        _allFirstLis.forEach(li => { li.style.width = 'max-content'; });\n        const _widths = _colPasses.map(p => p.req.firstLis.reduce(\n            (m, li) => Math.max(m, Math.ceil(li.getBoundingClientRect().width)), 0));\n        _allFirstLis.forEach(li => { li.style.width = ''; });\n        const _overflowing = _colPasses.map(p => p.req.prose.filter(({ inner }) =>\n            inner.scrollHeight > inner.clientHeight + 1));\n        _colPasses.forEach((p, i) => p.g.next({ maxFirstLiWidth: _widths[i], overflowing: _overflowing[i] }));",
+        "replace": "        _colPasses.forEach(p => {\n            p.req.firstLis.forEach(li => { li.style.width = 'max-content'; });\n            const w = p.req.firstLis.reduce((m, li) => Math.max(m, Math.ceil(li.getBoundingClientRect().width)), 0);\n            p.req.firstLis.forEach(li => { li.style.width = ''; });\n            const o = p.req.prose.filter(({ inner }) => inner.scrollHeight > inner.clientHeight + 1);\n            p.g.next({ maxFirstLiWidth: w, overflowing: o });\n        });"
+      }
+    ],
+    "spec": "tests/fixtures/collapse-measure-batched.spec.js",
+    "grep": "reads all columns in at most two groups",
+    "expect": "fail"
+  },
+  {
+    "name": "C6b: applyStickyColumn reads inside the write pass again",
+    "why": "A getComputedStyle per row in pass 1, between that row's writes and the next row's: one style recalculation per row.",
+    "edits": [
+      {
+        "find": "                _rows.push({ tr, cell, _activeTintClass, others });",
+        "replace": "                _rows.push({ tr, cell, _activeTintClass, others, _early: getComputedStyle(cell).backgroundColor });"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-column-batched.spec.js",
+    "grep": "single group",
+    "expect": "fail"
+  },
+  {
+    "name": "C6b: the row hover is no longer wired",
+    "why": "The restructured pass 3 forgets the mouseenter listener: hovering a row no longer paints it.",
+    "edits": [
+      {
+        "find": "                tr.addEventListener('mouseenter', _enter);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sticky-column-batched.spec.js",
+    "grep": "hovering a row paints it",
+    "expect": "fail"
+  },
+  {
+    "name": "C6e: the prebuilt clones are never handed over",
+    "why": "The commit clones synchronously again: the slices did the work for nothing and the long block is back.",
+    "edits": [
+      {
+        "find": "            _filterPrebuiltClones = prebuilt;",
+        "replace": "            _filterPrebuiltClones = null;"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "single-table: a sliced pass shows exactly",
+    "expect": "fail"
+  },
+  {
+    "name": "C6e: a changed cell expand state does not discard the clones",
+    "why": "Clones built before a cell-toggle click are drawn anyway, with that cell's old expand state.",
+    "edits": [
+      {
+        "find": "            const prebuilt = _expandedCellsVersion === cellStateAtStart",
+        "replace": "            const prebuilt = true"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "makes the commit clone afresh",
+    "expect": "fail"
+  },
+  {
+    "name": "C6e: the clone phase does not notice it was replaced",
+    "why": "No staleness check after a clone slice: a pass replaced while cloning commits its old result.",
+    "edits": [
+      {
+        "find": "                        _twFilterStale(twPass, toCompare);\n                        Lib.debug('filter', `runFilterSliced: replaced while cloning (${cloned + k} of ${toClone}) — nothing written.`);\n                        return;\n",
+        "replace": "                        void 0;\n"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "replaced while building its clones",
+    "expect": "fail"
+  },
+  {
+    "name": "C6e: the multi-table commit ignores the prebuilt clones",
+    "why": "runFilter's multi branch stops looking up the hand-over; only the single-table path would use it.",
+    "edits": [
+      {
+        "find": "                const _preMulti = _filterPrebuiltClones && _filterPrebuiltClones.get(_mk);",
+        "replace": "                const _preMulti = null;"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "multi-table: a sliced pass shows exactly",
+    "expect": "fail"
+  },
+  {
+    "name": "C6e: a key in the global filter no longer makes the running pass outdated",
+    "why": "The pass stays current until the debounced pass starts; finishing first, it commits by re-reading the NEW text and filters it synchronously.",
+    "edits": [
+      {
+        "find": "        // pass can narrow from it (Step 43); it never draws.\n        _filterInputGen++;\n",
+        "replace": "        // pass can narrow from it (Step 43); it never draws.\n"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "outdated at once",
+    "expect": "fail"
+  },
+  {
+    "name": "C6g: an outdated pass throws its complete result away",
+    "why": "Outdated by a key, the pass finishes comparing but stores nothing, so the next pass compares the whole table again.",
+    "edits": [
+      {
+        "find": "            if (isOutdated()) {\n                if (canStore()) storeMatches();\n                _twFilterStale(twPass, toCompare);\n                Lib.debug('filter', `runFilterSliced: outdated by a key",
+        "replace": "            if (isOutdated()) {\n                _twFilterStale(twPass, toCompare);\n                Lib.debug('filter', `runFilterSliced: outdated by a key"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "narrows from its result",
+    "expect": "fail"
+  },
+  {
+    "name": "C6g: the next pass does not wait for an outdated one",
+    "why": "It takes a generation at once, so the outdated pass becomes stale, stores nothing, and the new pass compares everything.",
+    "edits": [
+      {
+        "find": "        if (prev && prev.narrowable && _filterQueryExtends(prev.queryRaw)) {",
+        "replace": "        if (false && prev) {"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "narrows from its result",
+    "expect": "fail"
+  },
+  {
+    "name": "C6g: an outdated pass stores after a cache invalidation",
+    "why": "The epoch is not checked: a result computed before an invalidation is put back into the cache.",
+    "edits": [
+      {
+        "find": "            return _filterCacheEpoch === epoch && now.length === rowsRef.length",
+        "replace": "            return now.length === rowsRef.length"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "invalidated meanwhile",
+    "expect": "fail"
+  },
+  {
+    "name": "C6h: the card checks its threshold only while comparing",
+    "why": "The open check is gone from the preparing slices: a column-filter pass, whose comparing is over at once, never opens the card (the reported bug).",
+    "edits": [
+      {
+        "find": "        p.pslices++;\n        _twFilterMaybeOpen(p);\n",
+        "replace": "        p.pslices++;\n        _ajChanged('tablework', null);\n"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "prepares rows",
+    "expect": "fail"
+  },
+  {
+    "name": "C6h: no preparing step",
+    "why": "The pass never enters its second step: the card has no step line to switch and no Preparing fact.",
+    "edits": [
+      {
+        "find": "            _twFilterPrepare(twPass, toClone);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "prepares rows",
+    "expect": "fail"
+  },
+  {
+    "name": "C6h: a column filter named without its sub-table",
+    "why": "The label drops the sub-table on a multi-table page, so two column filters of the same name read alike.",
+    "edits": [
+      {
+        "find": "                if (name) where = ` (${name})`;\n",
+        "replace": "                if (name) where = '';\n"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "prepares rows",
+    "expect": "fail"
+  },
+  {
+    "name": "C6h: the step line is not drawn",
+    "why": "_ajRender() ignores a snapshot's steps.",
+    "edits": [
+      {
+        "find": "        if (s.steps && s.steps.length) {\n",
+        "replace": "        if (false) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "prepares rows",
+    "expect": "fail"
+  },
+  {
+    "name": "C6h: no Preparing fact afterwards",
+    "why": "The breakdown keeps only Comparing and Drawing.",
+    "edits": [
+      {
+        "find": "                if (f.sliced.prepMs !== null) {\n",
+        "replace": "                if (false) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/filter-sliced.spec.js",
+    "grep": "prepares rows",
+    "expect": "fail"
+  }
+]

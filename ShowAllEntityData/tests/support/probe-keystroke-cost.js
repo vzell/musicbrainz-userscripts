@@ -1,0 +1,324 @@
+'use strict';
+
+/**
+ * What a single keystroke in the global filter costs, and why — a probe, not
+ * a metric. Run directly:
+ *
+ *   node tests/support/probe-keystroke-cost.js --pageType=artist-events [--delay=150] [--value=Germany]
+ *
+ * `capture-interaction-perf.js --only=typed` showed (tests/MEASUREMENTS.org,
+ * "Typed filtering", 2026-10-10) that with a 150 ms pause between keys —
+ * shorter than the debounce, so only ONE filter pass runs — `artist-events`
+ * still has five keystrokes of 100 ms or more. That metric cannot say where
+ * the time goes; this records a Chromium trace while typing and lists every
+ * main-thread task of 16 ms or more inside the typing window, with what ran
+ * in it (event dispatches, timers, idle callbacks, script by function and
+ * line, style, layout, paint).
+ *
+ * It types the value TWICE on one page load:
+ *   1. "fresh": straight after `waitForRenderComplete()`, the moment the
+ *      typed metric starts typing;
+ *   2. "settled": after the column-header counts have stopped changing and
+ *      the field was cleared, i.e. once the post-render background work is
+ *      over.
+ * If the slow keys are slow only in (1), they wait behind post-render work,
+ * not behind the keystroke's own handlers.
+ *
+ * Read-only towards the userscript; writes nothing into the repo. The trace
+ * is kept at `--trace=<path>` if given (one file per window, each large).
+ */
+
+const fs = require('fs');
+const os = require('os');
+const { chromium } = require('playwright');
+const { loadFromDiskFixture } = require('./diskFixture');
+const { seedGmValues } = require('./gmStubs');
+const { waitForRenderComplete } = require('./browser');
+const { waitForColHeaderCountsStable, ensureSubTableVisible } = require('./filterSortAssertions');
+const { toArm } = require('./perfDescriptors');
+
+/** Same as capture-interaction-perf.js: link previews off, so a click is not a hover. */
+const PREVIEWS_OFF = {
+    sa_pop_mb: false, sa_pop_mb_page: false, sa_pop_ext: false,
+    sa_dp_hover_without_ctrl: false, sa_event_rg_tooltip_without_ctrl: false,
+};
+
+/** Trace categories: top-level tasks, the timeline (events, script, style, layout, paint). */
+const CATEGORIES = ['toplevel', 'devtools.timeline', 'disabled-by-default-devtools.timeline', 'v8.execute', 'blink.user_timing'];
+
+/** Tasks at or above this many ms are listed. */
+const SLOW_TASK_MS = 16;
+
+/**
+ * Parses `--name=value` arguments.
+ * @param {string[]} argv
+ * `--css=<rules>` injects a stylesheet after the render and before the
+ * first window, to test a CSS-only remedy without touching the userscript.
+ * `--init=<js>` evaluates a script at the same point (an experiment hook:
+ * counting or stubbing a DOM call). Neither is ever a measurement of the
+ * script as shipped — say which arm a number came from.
+ *
+ * `--cpu` profiles one typed run instead of tracing two (see `cpuProfileTyping()`).
+ *
+ * @returns {{pageType: string, delay: number, value: string|null, trace: string|null, css: string|null, init: string|null, cpu: boolean}}
+ */
+function parseArgs(argv) {
+    const get = (k) => { const a = argv.find((x) => x.startsWith(`--${k}=`)); return a ? a.slice(k.length + 3) : null; };
+    return {
+        pageType: get('pageType') || 'artist-events',
+        delay: parseInt(get('delay') || '150', 10),
+        value: get('value'),
+        trace: get('trace'),
+        css: get('css'),
+        init: get('init'),
+        cpu: argv.includes('--cpu') || argv.some((a) => a.startsWith('--cpu-callers=')),
+        cpuCallers: get('cpu-callers'),
+    };
+}
+
+/**
+ * Types `value` key by key (press, then pause), marking the window with
+ * `performance.mark()` so it can be found in the trace.
+ * @param {import('playwright').Page} page
+ * @param {string} value
+ * @param {number} delay
+ * @param {string} tag
+ * @returns {Promise<void>}
+ */
+async function typeMarked(page, value, delay, tag) {
+    const input = page.locator('#mb-global-filter-input');
+    await input.click();
+    await page.evaluate((t) => performance.mark(`probe-${t}-start`), tag);
+    for (let k = 0; k < value.length; k++) {
+        await page.keyboard.press(value[k]);
+        if (k < value.length - 1) await page.waitForTimeout(delay);
+    }
+    // Let the debounced pass and its render run inside the window too.
+    await page.waitForTimeout(2500);
+    await page.evaluate((t) => performance.mark(`probe-${t}-end`), tag);
+}
+
+/**
+ * Clears the global filter back to its prefix-only value through the ✕,
+ * the same path a user takes, and waits for the pass it starts.
+ * @param {import('playwright').Page} page
+ * @returns {Promise<void>}
+ */
+async function clearFilter(page) {
+    const clear = page.locator('#mb-global-filter-clear');
+    if (await clear.count() && await clear.isVisible()) await clear.click();
+    else {
+        await page.locator('#mb-global-filter-input').click();
+        await page.keyboard.press('End');
+        for (let i = 0; i < 40; i++) await page.keyboard.press('Backspace');
+    }
+    await page.waitForTimeout(3000);
+}
+
+/**
+ * Lists the slow main-thread tasks in each marked window.
+ * @param {object[]} events - The trace's `traceEvents`.
+ * @returns {Object<string, object>} Per window: keys, tasks, and totals by kind.
+ */
+function analyse(events) {
+    // The renderer main thread is the one that dispatched our keydowns.
+    const keyThreads = new Map();
+    for (const e of events) {
+        if (e.name === 'EventDispatch' && e.args && e.args.data && e.args.data.type === 'keydown') {
+            const k = `${e.pid}:${e.tid}`;
+            keyThreads.set(k, (keyThreads.get(k) || 0) + 1);
+        }
+    }
+    const main = [...keyThreads.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (!main) throw new Error('no keydown EventDispatch in the trace');
+    const [pid, tid] = main[0].split(':').map(Number);
+    const onMain = events.filter((e) => e.pid === pid && e.tid === tid && e.ph === 'X' && typeof e.dur === 'number');
+    const marks = {};
+    for (const e of events) {
+        if (e.pid === pid && e.cat && e.cat.includes('blink.user_timing') && /^probe-/.test(e.name)) marks[e.name] = e.ts;
+    }
+    // A task appears as `ThreadControllerImpl::RunTask`, as `RunTask`, or as
+    // both nested — and NOT always both: the async filter pass's continuations
+    // (microtask checkpoints) come as bare `RunTask`. Keep every task event
+    // that no other task event on this thread contains, so each task counts
+    // once and none is lost. (Keeping only one of the two names hid an 800 ms
+    // commit on artist-releasegroups.)
+    const allTasks = onMain.filter((e) => e.name === 'ThreadControllerImpl::RunTask' || e.name === 'RunTask')
+        .sort((x, y) => x.ts - y.ts || y.dur - x.dur);
+    const tasks = [];
+    let openEnd = -1;
+    for (const e of allTasks) {
+        if (e.ts + e.dur <= openEnd) continue; // nested in the previous outermost task
+        tasks.push(e);
+        openEnd = e.ts + e.dur;
+    }
+    const out = {};
+    for (const tag of ['fresh', 'settled']) {
+        const t0 = marks[`probe-${tag}-start`], t1 = marks[`probe-${tag}-end`];
+        if (!t0 || !t1) continue;
+        const inWin = (e) => e.ts >= t0 && e.ts <= t1;
+        const keys = onMain.filter((e) => inWin(e) && e.name === 'EventDispatch' && e.args.data.type === 'keydown').map((e) => e.ts);
+        const slow = tasks.filter((e) => inWin(e) && e.dur >= SLOW_TASK_MS * 1000).map((task) => {
+            const inside = onMain.filter((e) => e !== task && e.ts >= task.ts && e.ts + e.dur <= task.ts + task.dur);
+            const kinds = {};
+            const add = (k, us) => { kinds[k] = (kinds[k] || 0) + us; };
+            for (const e of inside) {
+                const d = (e.args && e.args.data) || {};
+                if (e.name === 'EventDispatch') add(`event ${d.type}`, e.dur);
+                else if (e.name === 'TimerFire') add('TimerFire', e.dur);
+                else if (e.name === 'FireIdleCallback') add('FireIdleCallback', e.dur);
+                else if (e.name === 'FireAnimationFrame') add('FireAnimationFrame', e.dur);
+                else if (e.name === 'FunctionCall') add(`fn ${d.functionName || '(anon)'}:${d.lineNumber != null ? d.lineNumber + 1 : '?'}`, e.dur);
+                else if (e.name === 'UpdateLayoutTree' || e.name === 'RecalculateStyles') add('style', e.dur);
+                else if (e.name === 'Layout') add('layout', e.dur);
+                else if (e.name === 'Paint' || e.name === 'PaintImage' || e.name === 'Layerize' || e.name === 'PrePaint') add('paint', e.dur);
+                else if (e.name === 'MajorGC' || e.name === 'MinorGC' || e.name === 'V8.GC_SCAVENGER' || e.name === 'BlinkGC.AtomicPhase') add('gc', e.dur);
+            }
+            const nearestKey = keys.reduce((best, k) => (k <= task.ts + task.dur && (best == null || Math.abs(task.ts - k) < Math.abs(task.ts - best)) ? k : best), null);
+            return {
+                atMs: Math.round((task.ts - t0) / 1000),
+                durMs: Math.round(task.dur / 1000),
+                afterKeyMs: nearestKey != null ? Math.round((task.ts - nearestKey) / 1000) : null,
+                top: Object.entries(kinds).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, us]) => `${k} ${Math.round(us / 1000)}ms`),
+            };
+        });
+        out[tag] = { keys: keys.length, keyAtMs: keys.map((k) => Math.round((k - t0) / 1000)), slowTasks: slow };
+    }
+    return out;
+}
+
+/**
+ * Inclusive and self time per JS function from a V8 CPU profile
+ * (`Profiler.stop`'s `profile`). A sampled stack credits its time once to
+ * every distinct function on it (inclusive) and to its leaf (self). Names are
+ * `function:line` (1-based), so two closures of one name stay apart.
+ * @param {{nodes: object[], samples: number[], timeDeltas: number[]}} profile
+ * @param {number} [top]
+ * @returns {Array<{fn: string, inclMs: number, selfMs: number}>}
+ */
+function cpuInclusive(profile, top = 45) {
+    const byId = new Map(profile.nodes.map((n) => [n.id, n]));
+    const parent = new Map();
+    for (const n of profile.nodes) for (const c of n.children || []) parent.set(c, n.id);
+    const name = (n) => `${n.callFrame.functionName || '(anonymous)'}:${n.callFrame.lineNumber + 1}`;
+    const incl = new Map(), self = new Map();
+    profile.samples.forEach((id, i) => {
+        const dt = (profile.timeDeltas[i] || 0) / 1000;
+        const leaf = byId.get(id);
+        if (!leaf) return;
+        self.set(name(leaf), (self.get(name(leaf)) || 0) + dt);
+        const seen = new Set();
+        for (let n = leaf; n; n = byId.get(parent.get(n.id))) {
+            const k = name(n);
+            if (seen.has(k)) continue;
+            seen.add(k);
+            incl.set(k, (incl.get(k) || 0) + dt);
+        }
+    });
+    return [...incl.entries()]
+        .filter(([k]) => !/^\((root|program|idle)\)/.test(k))
+        .sort((a, b) => b[1] - a[1]).slice(0, top)
+        .map(([fn, ms]) => ({ fn, inclMs: Math.round(ms), selfMs: Math.round(self.get(fn) || 0) }));
+}
+
+/**
+ * Who calls `fnName` in a CPU profile, and how much of its time each caller
+ * accounts for (`--cpu-callers=<name>`): every sample whose stack contains a
+ * node of that name is credited to that node's parent.
+ * @param {{nodes: object[], samples: number[], timeDeltas: number[]}} profile
+ * @param {string} fnName - A function name, or an exact `name:line` (for an anonymous function).
+ * @returns {Array<{caller: string, ms: number}>}
+ */
+function cpuCallers(profile, fnName) {
+    const byId = new Map(profile.nodes.map((n) => [n.id, n]));
+    const parent = new Map();
+    for (const n of profile.nodes) for (const c of n.children || []) parent.set(c, n.id);
+    const name = (n) => `${n.callFrame.functionName || '(anonymous)'}:${n.callFrame.lineNumber + 1}`;
+    const out = new Map();
+    profile.samples.forEach((id, i) => {
+        const dt = (profile.timeDeltas[i] || 0) / 1000;
+        for (let n = byId.get(id); n; n = byId.get(parent.get(n.id))) {
+            if (n.callFrame.functionName !== fnName && name(n) !== fnName) continue;
+            const p = byId.get(parent.get(n.id));
+            const k = p ? name(p) : '(root)';
+            out.set(k, (out.get(k) || 0) + dt);
+            break;
+        }
+    });
+    return [...out.entries()].sort((a, b) => b[1] - a[1]).map(([caller, ms]) => ({ caller, ms: Math.round(ms) }));
+}
+
+/**
+ * `--cpu`: once the header counts have settled, type the value with the
+ * given delay under a V8 CPU profile (0.1 ms sampling) and report inclusive
+ * time per function — where a filter pass's time goes, which the trace's
+ * task view cannot say (it names only each task's entry point).
+ * @param {import('playwright').Page} page
+ * @param {string} value
+ * @param {number} delay
+ * @returns {Promise<Array<{fn: string, inclMs: number, selfMs: number}>>}
+ */
+async function cpuProfileTyping(page, value, delay, callersOf) {
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Profiler.enable');
+    await cdp.send('Profiler.setSamplingInterval', { interval: 100 });
+    await cdp.send('Profiler.start');
+    await typeMarked(page, value, delay, 'cpu');
+    const { profile } = await cdp.send('Profiler.stop');
+    await cdp.detach();
+    return { top: cpuInclusive(profile), callers: callersOf ? cpuCallers(profile, callersOf) : undefined };
+}
+
+(async () => {
+    const args = parseArgs(process.argv.slice(2));
+    const config = toArm(args.pageType);
+    const value = args.value || config.filterValues[0];
+    const browser = await chromium.launch();
+    try {
+        const page = await browser.newPage();
+        await seedGmValues(page, { ...PREVIEWS_OFF, ...config.seedGmValues });
+        await loadFromDiskFixture(page, { url: config.url, fixturePath: config.fixturePath, testMode: true });
+        await waitForRenderComplete(page, { waitForAutoResize: false, timeout: config.tableMode === 'multi' ? 120000 : 60000 });
+        // Same as the typed metric: on a multi-table page the measured sub-table is
+        // expanded (most render display:none), or nothing big is on screen.
+        if (config.tableMode === 'multi') await ensureSubTableVisible(page, config.subTableIndex);
+        if (args.css) await page.addStyleTag({ content: args.css });
+        if (args.init) await page.evaluate(args.init);
+        if (args.cpu) {
+            await waitForColHeaderCountsStable(page, { timeout: 120000 });
+            const cpu = await cpuProfileTyping(page, value, args.delay, args.cpuCallers);
+            console.log(JSON.stringify({
+                pageType: config.pageType, value, delayMs: args.delay, host: os.hostname(),
+                at: new Date().toISOString(), experiment: await page.evaluate(() => window.__probeOut || null),
+                cpu: cpu.top, callers: cpu.callers,
+            }, null, 2));
+            return;
+        }
+        // One trace per window: a single trace spanning the header-count wait
+        // between them filled Chromium's buffer and silently lost the second.
+        const result = {};
+        const traced = async (tag) => {
+            await browser.startTracing(page, { categories: CATEGORIES });
+            await typeMarked(page, value, args.delay, tag);
+            const buf = await browser.stopTracing();
+            if (args.trace) fs.writeFileSync(args.trace.replace(/(\.json)?$/, `-${tag}.json`), buf);
+            const trace = JSON.parse(buf.toString('utf8'));
+            Object.assign(result, analyse(trace.traceEvents || trace));
+        };
+        await traced('fresh');
+        await clearFilter(page);
+        await waitForColHeaderCountsStable(page, { timeout: 120000 });
+        await traced('settled');
+        // An `--init=` experiment may leave its own counts in window.__probeOut.
+        const experiment = await page.evaluate(() => window.__probeOut || null);
+        console.log(JSON.stringify({
+            pageType: config.pageType, value, delayMs: args.delay, host: os.hostname(),
+            at: new Date().toISOString(), css: args.css, init: args.init, experiment, ...result,
+        }, null, 2));
+    } finally {
+        await browser.close();
+    }
+})().catch((err) => {
+    console.error('probe-keystroke-cost failed:', err);
+    process.exit(1);
+});
