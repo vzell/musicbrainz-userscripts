@@ -1746,7 +1746,7 @@ make some suggestions where we could display entity image icons (if available) e
 sidebar on the main page (of course with the internal viewer hovwer functionality, the side bar currently seems to still
 missing it)
 
-5.) Cache export/import ("merge"):
+5.) DONE (9.99.1326, 2026-10-11) Cache export/import ("merge"):
 Implement export/import ("merge") of the ShowAllEntityData browser cache between browsers, on a new feature branch.
 
 The 💾 Browser cache overview (_idbo*, docs/claude/toolbar-and-header-ui.md "💾 Browser cache overview") lists every IndexedDB part: the art cache DB (images, metadata, rel-ws2, ms-rec-len, recof-ws2, artist-works) and the link-preview DB (pages). Add to that dialog:
@@ -1756,7 +1756,7 @@ user-supplied data), and say what was added/updated/skipped.
 Follow my global CLAUDE.md "UI look and feel": publish an interactive HTML mockup first and wait for approval. Then plan mode, fixture specs plus a mutation list, docs, WIP changelog, as usual. Measure export and import time on a large cache and record it in
 tests/MEASUREMENTS.org.
 
-6.) Faster filtering:
+6.) DONE (9.99.1317–9.99.1325, 2026-10-11) Faster filtering:
 Implement "Faster filtering" on a new feature branch: make runFilter()'s row-matching loop hand control back to the page between batches of rows, so the progress card (tablework provider, _tw*) can show live filter progress and the page stays responsive while it filters.
 
 Measure first, with scripts/run-perf-arms.py (status-line progress), each A/B pair run twice in opposite orders: main arms for artist-events, artist-releases-dylan, artist-releasegroups and artist-recordings-petty — per-keystroke filter latency and the longest main-thread
