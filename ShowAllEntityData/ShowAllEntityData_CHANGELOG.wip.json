@@ -1,0 +1,27 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-11",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The MusicBrainz sidebar remembers which sections you opened: after a table is shown, a section you opened before is open again on the same kind of page, and one you never opened starts closed. Each heading shows how many entries it holds, works with Enter and Space, and Ctrl+Click opens or closes every sidebar section. Open all / Close all sit at the top of the sidebar.",
+          "External links in the sidebar are grouped by kind (Official, Social, Streaming, Concerts, Lyrics, Databases, Stores, Other), each group opening and closing on its own; Genres / Other tags and the Collections lists open and close on their own too. Links are only reordered, never moved, and whatever other userscripts add stays where it is. New settings: Remember open sidebar sections, Open every sidebar section, Sidebar section counts, Group external links by kind."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Closing \"Artist information\" in the sidebar no longer hides the Tags section below it (MusicBrainz wraps Tags in its own element, which was taken as part of the section above)."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "New docs/claude/sidebar.md. Tests: tests/fixtures/sidebar-sections.spec.js (8) and its mobile twin (1); 12 mutations, all caught."
+        ]
+      }
+    ]
+  }
+]

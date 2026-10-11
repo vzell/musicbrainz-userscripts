@@ -464,6 +464,34 @@
             description: "Automatically collapse the sidebar when the consolidated view is first rendered, freeing up horizontal space immediately. Only takes effect when 'Collabsable sidebar' is also enabled."
         },
 
+        sa_sidebar_remember_sections: {
+            label: "Remember open sidebar sections",
+            type: "checkbox",
+            default: true,
+            description: "After a table is rendered, each sidebar section (Artist information, Tags, External links, …) opens as you last left it on that kind of page. A section you never opened starts closed. Off: every section starts closed."
+        },
+
+        sa_sidebar_open_all: {
+            label: "Open every sidebar section",
+            type: "checkbox",
+            default: false,
+            description: "After a table is rendered, open every sidebar section, whatever was remembered. The sidebar can get long."
+        },
+
+        sa_sidebar_section_counts: {
+            label: "Sidebar section counts",
+            type: "checkbox",
+            default: true,
+            description: "Show how many entries each sidebar section holds next to its heading."
+        },
+
+        sa_sidebar_link_groups: {
+            label: "Group external links by kind",
+            type: "checkbox",
+            default: true,
+            description: "Group the sidebar's external links under Official, Social, Streaming, Concerts, Lyrics, Databases, Stores and Other, each group opening and closing on its own. The links stay in their list; only their order changes."
+        },
+
         // ============================================================
         //  OVERFLOW TABLES SECTION
         // ============================================================
@@ -84005,6 +84033,7 @@ a { color: #1565c0; }`;
         Lib.debug('render', 'Initializing collapsible H2 headers...');
         // Capture all H2s currently in the document to allow peer filtering later
         const allH2s = Array.from(document.querySelectorAll('h2'));
+        const _sbSidebarEl = document.getElementById('sidebar');
 
         // Strip any stale processed state from a previous invocation (e.g. after "Load from Disk"
         // on an already-rendered page).  The h2 DOM nodes are reused across re-renders, so their
@@ -84035,10 +84064,15 @@ a { color: #1565c0; }`;
             // wrapped in a <span> in-place so they can be shown/hidden via the
             // same style.display mechanism as element siblings.
             const contentNodes = [];
+            // In the MusicBrainz sidebar a section can end at a wrapper that
+            // holds the next heading (Tags lives in its own div): stop there
+            // too, or closing "Artist information" hides Tags with it.
+            const _inSidebar = !!(_sbSidebarEl && _sbSidebarEl.contains(h2));
             let _cur = h2.nextSibling;
             while (_cur) {
                 const _nxt = _cur.nextSibling; // save before any DOM mutation
                 if (_cur.nodeType === Node.ELEMENT_NODE && _cur.tagName === 'H2') break;
+                if (_inSidebar && _cur.nodeType === Node.ELEMENT_NODE && _cur.querySelector('h2')) break;
                 if (_cur.nodeType === Node.TEXT_NODE && _cur.textContent.trim()) {
                     const _wrap = document.createElement('span');
                     _cur.parentNode.insertBefore(_wrap, _cur);
@@ -84255,6 +84289,361 @@ a { color: #1565c0; }`;
             h2._mbClickHandler = toggleFn;
             h2.addEventListener('click', toggleFn);
         });
+
+        // The MusicBrainz sidebar's own sections: remembered state, counts,
+        // keyboard, sub-headings, link groups (docs/claude/sidebar.md).
+        _sbEnhance(allH2s);
+    }
+
+    // ── MusicBrainz sidebar sections (_sb*) ───────────────────────────────────
+    // docs/claude/sidebar.md. Mockup approved 2026-10-10:
+    // https://claude.ai/artifact/9ZZtr9hR7uUGBPSk2ohvfW
+    // Runs at the end of every makeH2sCollapsible() pass, on #sidebar only:
+    // the main content's headings are untouched. Nothing another script wrote
+    // into the sidebar is read, moved or hidden; its headings just get the
+    // same toggle as MusicBrainz's own.
+
+    /** GM key of the remembered open/closed sections: `{ <entity type>: { <section kind>: bool } }`. */
+    const _SB_OPEN_KEY = 'sa_sidebar_open_sections';
+
+    /** External-link kinds in display order. */
+    const _SB_LINK_KIND_ORDER = ['Official', 'Social', 'Streaming', 'Concerts', 'Lyrics', 'Databases', 'Stores', 'Other'];
+
+    /** MusicBrainz's favicon class stem (`li.<stem>-favicon`) → link kind; anything else is "Other". */
+    const _SB_LINK_KINDS = {
+        home: 'Official', blog: 'Official',
+        twitter: 'Social', instagram: 'Social', facebook: 'Social', myspace: 'Social', youtube: 'Social', soundcloud: 'Social',
+        bandcamp: 'Social', tiktok: 'Social', threads: 'Social', bluesky: 'Social', mastodon: 'Social', vk: 'Social', weibo: 'Social', patreon: 'Social',
+        amazonmusic: 'Streaming', applemusic: 'Streaming', deezer: 'Streaming', spotify: 'Streaming', tidal: 'Streaming', youtubemusic: 'Streaming',
+        napster: 'Streaming', qobuz: 'Streaming', mora: 'Streaming', ototoy: 'Streaming', sevendigital: 'Streaming', migumusic: 'Streaming',
+        beatport: 'Streaming', melon: 'Streaming', kkbox: 'Streaming', audiomack: 'Streaming', boomkat: 'Streaming', junodownload: 'Streaming',
+        allmusic: 'Databases', bnfcatalogue: 'Databases', bookbrainz: 'Databases', discogs: 'Databases', dnb: 'Databases', ibdb: 'Databases',
+        imdb: 'Databases', imvdb: 'Databases', loc: 'Databases', snac: 'Databases', viaf: 'Databases', wikidata: 'Databases', wikipedia: 'Databases',
+        trove: 'Databases', muziekweb: 'Databases', castalbums: 'Databases', fortyfivecat: 'Databases', fortyfiveworlds: 'Databases',
+        musiksammler: 'Databases', secondhandsongs: 'Databases', whosampled: 'Databases', rateyourmusic: 'Databases', lastfm: 'Databases',
+        oclc: 'Databases', isni: 'Databases', worldcat: 'Databases', vgmdb: 'Databases',
+        bandsintown: 'Concerts', songkick: 'Concerts', setlistfm: 'Concerts', livefans: 'Concerts',
+        genius: 'Lyrics', musixmatch: 'Lyrics', muzikum: 'Lyrics', utaten: 'Lyrics', jlyric: 'Lyrics',
+        amazon: 'Stores', cdjapan: 'Stores', yesasia: 'Stores', tower: 'Stores', spiritofrock: 'Stores', ozonru: 'Stores',
+    };
+
+    /**
+     * The remembered state, read fresh.
+     * @returns {Object<string, Object<string, boolean>>}
+     */
+    function _sbOpenState() {
+        try {
+            const v = GM_getValue(_SB_OPEN_KEY, null);
+            const o = typeof v === 'string' ? JSON.parse(v) : v;
+            return o && typeof o === 'object' ? o : {};
+        } catch (_) {
+            return {};
+        }
+    }
+
+    /**
+     * The kind of page the sidebar belongs to: the entity type from the path
+     * (`artist`, `label`, `release-group`, …).
+     * @returns {string}
+     */
+    function _sbEntityType() {
+        const m = location.pathname.match(/^\/([a-z-]+)\//);
+        return m ? m[1] : 'page';
+    }
+
+    /**
+     * Remembers one section's (or sub-section's) state for this kind of page.
+     * @param {string} kind
+     * @param {boolean} open
+     * @returns {void}
+     */
+    function _sbRemember(kind, open) {
+        if (Lib.settings.sa_sidebar_remember_sections === false) return;
+        const all = _sbOpenState();
+        const type = _sbEntityType();
+        all[type] = { ...(all[type] || {}), [kind]: !!open };
+        try { GM_setValue(_SB_OPEN_KEY, JSON.stringify(all)); } catch (_) { /* storage unavailable: nothing remembered */ }
+    }
+
+    /**
+     * A sidebar heading's own text, without the toggle icon and count.
+     * @param {Element} h
+     * @returns {string}
+     */
+    function _sbHeadingText(h) {
+        let t = '';
+        h.childNodes.forEach(n => {
+            if (n.nodeType === Node.TEXT_NODE) t += n.textContent;
+            else if (n.nodeType === Node.ELEMENT_NODE && !n.matches('.mb-toggle-icon, .mb-sb-count, .mb-sb-h3-icon')) t += n.textContent;
+        });
+        return t.replace(/\s+/g, ' ').trim();
+    }
+
+    /**
+     * What a sidebar h2 is, for remembering it: its own MusicBrainz class
+     * (`external-links`), else its text (Tags has no class).
+     * @param {Element} h2
+     * @returns {string}
+     */
+    function _sbKind(h2) {
+        const own = Array.from(h2.classList).find(c => !/^mb-/.test(c));
+        return own || `text:${_sbHeadingText(h2).toLowerCase()}`;
+    }
+
+    /**
+     * The elements of a sidebar section: the h2's following siblings up to
+     * the next h2, or up to a wrapper that holds one (MusicBrainz puts Tags
+     * in its own div) — the same rule makeH2sCollapsible() uses in the sidebar.
+     * @param {Element} h2
+     * @returns {Element[]}
+     */
+    function _sbSectionNodes(h2) {
+        const out = [];
+        for (let el = h2.nextElementSibling; el && el.tagName !== 'H2' && !el.querySelector('h2'); el = el.nextElementSibling) out.push(el);
+        return out;
+    }
+
+    /**
+     * The entries of a section, for its count: list items (not separators,
+     * not our group headings) and definition terms in the nodes under the h2.
+     * @param {Element} h2
+     * @returns {number}
+     */
+    function _sbCount(h2) {
+        let n = 0;
+        for (const el of _sbSectionNodes(h2)) {
+            if (el.matches('ul, ol')) n += el.querySelectorAll(':scope > li:not(.separator):not(.mb-sbl-head):not(.all-relationships)').length;
+            else if (el.matches('dl')) n += el.querySelectorAll(':scope > dt').length;
+            else n += el.querySelectorAll('ul > li:not(.separator):not(.mb-sbl-head):not(.all-relationships), dl > dt').length;
+        }
+        return n;
+    }
+
+    /** Injects the sidebar sections' stylesheet once. */
+    function _sbEnsureStyle() {
+        if (document.getElementById('mb-sb-style')) return;
+        const st = GM_addStyle(`
+            #sidebar .mb-sb-count { margin-left: 6px; font: 600 10px/1 system-ui, Arial, sans-serif; letter-spacing: 0.04em; color: #7a6d5c; vertical-align: 1px; }
+            #sidebar h2.mb-toggle-h2:focus-visible, #sidebar .mb-sb-h3:focus-visible, #sidebar li.mb-sbl-head:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 1px; }
+            #sidebar .mb-sb-bar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 4px 0 8px; padding-bottom: 6px; border-bottom: 1px solid #d9cfbd; }
+            #sidebar .mb-sb-bar .k { font: 600 10px system-ui, Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.07em; color: #7a6d5c; margin-right: auto; }
+            #sidebar .mb-sb-bar button { font: 600 10.5px/1 system-ui, Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.06em; padding: 4px 8px; border: 1px solid #d9cfbd; background: #fbf8f1; color: #2b2622; border-radius: 3px; cursor: pointer; }
+            #sidebar .mb-sb-bar button:hover { border-color: #7a6d5c; }
+            #sidebar .mb-sb-h3 { cursor: pointer; user-select: none; }
+            #sidebar .mb-sb-h3-icon { display: inline-block; width: 1em; color: #7a6d5c; font-size: 0.85em; }
+            #sidebar ul.external_links.mb-sbl-grouped { display: flex; flex-direction: column; }
+            #sidebar ul.external_links.mb-sbl-grouped > li.mb-sbl-head { list-style: none; margin: 6px 0 2px -2px; font: bold 11.5px Arial, sans-serif; color: #555; cursor: pointer; user-select: none; background: none; padding-left: 0; }
+            #sidebar ul.external_links.mb-sbl-grouped > li.mb-sbl-head:first-child { margin-top: 2px; }
+        `);
+        st.id = 'mb-sb-style';
+    }
+
+    /**
+     * Makes one native sidebar h3 (Tags: Genres / Other tags; Collections)
+     * collapsible: it hides its siblings up to the next h3 or h2. Starts as
+     * remembered, else open.
+     * @param {Element} h3
+     * @param {string} parentKind - The owning h2's kind.
+     * @param {Object<string, boolean>} mem - This page type's remembered states.
+     * @returns {void}
+     */
+    function _sbWireH3(h3, parentKind, mem) {
+        const kind = `${parentKind}>${_sbHeadingText(h3).toLowerCase()}`;
+        h3.classList.add('mb-sb-h3');
+        h3.setAttribute('role', 'button');
+        h3.tabIndex = 0;
+        const icon = document.createElement('span');
+        icon.className = 'mb-sb-h3-icon';
+        h3.prepend(icon);
+        const nodes = () => {
+            const out = [];
+            for (let el = h3.nextElementSibling; el && !/^H[23]$/.test(el.tagName); el = el.nextElementSibling) out.push(el);
+            return out;
+        };
+        h3._mbSbOpen = mem[kind] !== false;
+        h3._mbSbApply = () => {
+            icon.textContent = h3._mbSbOpen ? '▾' : '▸';
+            h3.setAttribute('aria-expanded', String(h3._mbSbOpen));
+            nodes().forEach(n => { n.style.display = h3._mbSbOpen ? '' : 'none'; });
+        };
+        h3._mbSbToggle = () => {
+            h3._mbSbOpen = !h3._mbSbOpen;
+            h3._mbSbApply();
+            _sbRemember(kind, h3._mbSbOpen);
+        };
+        h3._mbSbClick = (e) => { e.preventDefault(); e.stopPropagation(); h3._mbSbToggle(); };
+        h3._mbSbKey = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); h3._mbSbToggle(); } };
+        h3.addEventListener('click', h3._mbSbClick);
+        h3.addEventListener('keydown', h3._mbSbKey);
+        icon.textContent = h3._mbSbOpen ? '▾' : '▸';
+        h3.setAttribute('aria-expanded', String(h3._mbSbOpen));
+    }
+
+    /**
+     * Groups `ul.external_links` by kind WITHOUT moving a link: every native
+     * item is tagged (`data-mb-sbl-kind`) and ordered with CSS `order`, and
+     * one heading item per kind is added. An item without a known favicon
+     * class (no favicon, or another script's) counts as "Other".
+     * @param {Element} ul
+     * @param {Object<string, boolean>} mem
+     * @returns {void}
+     */
+    function _sbGroupLinks(ul, mem) {
+        // "View all relationships" is MusicBrainz's own link, not an external
+        // site: it stays last, outside every group.
+        const tail = ul.querySelector(':scope > li.all-relationships');
+        if (tail) tail.style.order = String(_SB_LINK_KIND_ORDER.length * 10000);
+        const items = Array.from(ul.querySelectorAll(':scope > li')).filter(li => !li.classList.contains('mb-sbl-head') && li !== tail);
+        if (!items.length) return;
+        const counts = {};
+        items.forEach((li, i) => {
+            const stem = (Array.from(li.classList).find(c => /-favicon$/.test(c)) || '').replace(/-favicon$/, '');
+            const kind = _SB_LINK_KINDS[stem] || 'Other';
+            li.dataset.mbSblKind = kind;
+            li.style.order = String(_SB_LINK_KIND_ORDER.indexOf(kind) * 10000 + i + 1);
+            counts[kind] = (counts[kind] || 0) + 1;
+        });
+        const closed = new Set();
+        _SB_LINK_KIND_ORDER.filter(k => counts[k]).forEach(k => {
+            const memKey = `external-links>${k.toLowerCase()}`;
+            if (mem[memKey] === false) closed.add(k);
+            const head = document.createElement('li');
+            head.className = 'mb-sbl-head';
+            head.dataset.mbSblKind = k;
+            head.setAttribute('role', 'button');
+            head.tabIndex = 0;
+            head.style.order = String(_SB_LINK_KIND_ORDER.indexOf(k) * 10000);
+            head.innerHTML = `<span class="mb-sb-h3-icon"></span>${k}<span class="mb-sb-count">${counts[k]}</span>`;
+            const paint = () => {
+                const open = !closed.has(k);
+                head.querySelector('.mb-sb-h3-icon').textContent = open ? '▾' : '▸';
+                head.setAttribute('aria-expanded', String(open));
+                items.forEach(li => { if (li.dataset.mbSblKind === k) li.style.display = open ? '' : 'none'; });
+            };
+            const toggle = (e) => {
+                if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+                e.preventDefault();
+                e.stopPropagation();
+                if (closed.has(k)) closed.delete(k); else closed.add(k);
+                paint();
+                _sbRemember(memKey, !closed.has(k));
+            };
+            head.addEventListener('click', toggle);
+            head.addEventListener('keydown', toggle);
+            ul.appendChild(head);
+            paint();
+        });
+        ul.classList.add('mb-sbl-grouped');
+    }
+
+    /**
+     * Undoes a previous `_sbEnhance()` pass (makeH2sCollapsible() runs again
+     * after a disk load, and resets the headings it owns).
+     * @param {Element} sidebar
+     * @returns {void}
+     */
+    function _sbReset(sidebar) {
+        sidebar.querySelectorAll('.mb-sb-count, .mb-sb-bar, li.mb-sbl-head, .mb-sb-h3-icon').forEach(n => n.remove());
+        sidebar.querySelectorAll('h2').forEach(h2 => {
+            if (h2._mbSbKeyHandler) { h2.removeEventListener('keydown', h2._mbSbKeyHandler); h2._mbSbKeyHandler = null; }
+        });
+        sidebar.querySelectorAll('.mb-sb-h3').forEach(h3 => {
+            h3.removeEventListener('click', h3._mbSbClick);
+            h3.removeEventListener('keydown', h3._mbSbKey);
+            h3.classList.remove('mb-sb-h3');
+            h3._mbSbApply = null;
+        });
+        sidebar.querySelectorAll('ul.mb-sbl-grouped').forEach(ul => {
+            ul.classList.remove('mb-sbl-grouped');
+            ul.querySelectorAll(':scope > li').forEach(li => { li.style.order = ''; li.style.display = ''; delete li.dataset.mbSblKind; });
+        });
+    }
+
+    /**
+     * Re-applies the sub-section states under an h2 that just opened: its
+     * own expand shows every sibling under it, folded h3 lists included. (A
+     * folded link group needs nothing: the expand shows the list, never the
+     * items inside it.)
+     * @param {Element} h2
+     * @returns {void}
+     */
+    function _sbReapplyUnder(h2) {
+        for (const el of _sbSectionNodes(h2)) {
+            if (el._mbSbApply) el._mbSbApply();
+        }
+    }
+
+    /**
+     * The sidebar part of a `makeH2sCollapsible()` pass: for every h2 inside
+     * `#sidebar`, the remembered (or all-open) initial state, a count,
+     * keyboard access and `aria-expanded`; its native h3s collapsible; the
+     * external links grouped by kind; an Open all / Close all bar. A toggle
+     * by any route (click, Ctrl+Click on a peer, the bar, the keyboard) is
+     * remembered, because it goes through the h2's `_mbToggle`, wrapped here.
+     *
+     * @param {Element[]} allH2s - The pass's headings.
+     * @returns {void}
+     */
+    function _sbEnhance(allH2s) {
+        const sidebar = document.getElementById('sidebar');
+        if (!sidebar) return;
+        _sbReset(sidebar);
+        const h2s = allH2s.filter(h => sidebar.contains(h) && typeof h._mbToggle === 'function');
+        if (!h2s.length) return;
+        _sbEnsureStyle();
+        const S = Lib.settings;
+        const mem = (_sbOpenState()[_sbEntityType()]) || {};
+        h2s.forEach(h2 => {
+            const kind = _sbKind(h2);
+            const icon = h2.querySelector(':scope > .mb-toggle-icon');
+            // Sub-headings and link groups first: the count must not see the group heads.
+            for (const el of _sbSectionNodes(h2)) {
+                if (el.tagName === 'H3') _sbWireH3(el, kind, mem);
+                if (S.sa_sidebar_link_groups !== false && el.matches('ul.external_links')) _sbGroupLinks(el, mem);
+            }
+            if (S.sa_sidebar_section_counts !== false) {
+                const n = _sbCount(h2);
+                if (n) {
+                    const c = document.createElement('span');
+                    c.className = 'mb-sb-count';
+                    c.textContent = String(n);
+                    h2.appendChild(c);
+                }
+            }
+            h2.setAttribute('role', 'button');
+            h2.tabIndex = 0;
+            const orig = h2._mbToggle;
+            h2._mbToggle = (force) => {
+                const was = !!icon && icon.textContent === '▼';
+                orig(force);
+                const now = !!icon && icon.textContent === '▼';
+                h2.setAttribute('aria-expanded', String(now));
+                if (now) _sbReapplyUnder(h2);
+                if (now !== was && !h2._mbSbInit) _sbRemember(kind, now);
+            };
+            h2._mbSbKeyHandler = (e) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                e.preventDefault();
+                h2.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: e.ctrlKey }));
+            };
+            h2.addEventListener('keydown', h2._mbSbKeyHandler);
+            _setTip(h2, 'Click to open or close this sidebar section (Ctrl+Click: every sidebar section). Remembered for this kind of page.');
+            const open = S.sa_sidebar_open_all ? true : (S.sa_sidebar_remember_sections !== false && mem[kind] === true);
+            h2._mbSbInit = true;
+            h2._mbToggle(open);
+            h2._mbSbInit = false;
+            h2.setAttribute('aria-expanded', String(!!icon && icon.textContent === '▼'));
+        });
+        const bar = document.createElement('div');
+        bar.className = 'mb-sb-bar';
+        bar.innerHTML = '<span class="k">Sidebar</span><button type="button" data-mb-sb-all="1">Open all</button><button type="button" data-mb-sb-all="0">Close all</button>';
+        bar.addEventListener('click', (e) => {
+            const b = e.target.closest('[data-mb-sb-all]');
+            if (!b) return;
+            const to = b.dataset.mbSbAll === '1';
+            h2s.forEach(h => { if (h.isConnected) h._mbToggle(to); });
+        });
+        h2s[0].before(bar);
     }
 
     /**

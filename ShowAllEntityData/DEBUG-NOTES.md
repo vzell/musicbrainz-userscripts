@@ -21864,3 +21864,32 @@ docs/claude/toolbar-and-header-ui.md "Export and Import (`_idbx*`)":
 Specs: idb-export-import.spec.js 8/8 and .mobile 1/1 on the first run, so the
 17 mutations (scripts/mutations/idb-export-import.json) are the evidence the
 assertions bite: all 17 caught.
+
+## 2026-10-11 — Sidebar sections; closing "Artist information" hid Tags (feature/sidebar-overhaul, WIP.1)
+
+Env: 2026-10-11T01:40Z-02:09Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs).
+
+Commit 1 of the sidebar plan (docs/claude/sidebar.md). Two findings worth keeping:
+
+- **A pre-existing bug.** `makeH2sCollapsible()` walks an h2's siblings up to the next h2.
+  MusicBrainz renders the sidebar's Tags (its own h2, Genres / Other tags h3s
+  and the tag editor) inside a wrapper element, so for "Artist information"
+  the walk passed into that wrapper: the wrapper was a content node of Artist
+  information, and closing it hid Tags too. (It showed up as "element is not
+  visible" when the new spec tried to click Tags while Artist information was
+  closed.) Inside `#sidebar` only, the walk now also stops at an element that
+  contains an h2; the main content's walk is unchanged. A regression test pins
+  it, and its mutation (the stop removed) fails it.
+- **"View all relationships" is not an external link.** `li.all-relationships`
+  sits in `ul.external_links` but links to the entity's own Relationships tab.
+  The first count said 58, against 57 sites. It now stays last, outside the
+  groups and the count.
+
+The mobile spec took four attempts. On the zoomed-out Pixel 7 emulation the
+unstyled fixture's sidebar is a sticky block wider than the screen;
+`locator.tap()` scrolls its target to the top edge, under the sticky page
+header bar (`.mb-vsb-chrome`), which then takes the tap; and
+`getBoundingClientRect()` is in layout-viewport coordinates while a touch is in
+visual-viewport ones. The spec now adds MusicBrainz's phone layout rule for the
+sidebar, scrolls the target to the middle with its left edge in view, and taps
+with `page.touchscreen` at visual-viewport coordinates.

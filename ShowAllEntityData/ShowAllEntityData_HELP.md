@@ -28,6 +28,7 @@ will never need is folded into collapsible sections.
 - [Sorting](#sorting)
 - [Columns](#columns)
 - [Collapsing and expanding](#collapsing-and-expanding)
+- [The sidebar](#the-sidebar)
 - [Cover art](#cover-art)
 - [The Relationships column](#the-relationships-column)
 - [The Recording of column](#the-recording-of-column)
@@ -783,6 +784,33 @@ so a column of times reads as a column rather than as ragged text.
   *more* / *less* toggle.
 - `Ctrl+Click` a prose toggle, or a column header's toggle, to force-expand —
   including any wiki headings nested inside the cell.
+
+---
+
+## The sidebar
+
+After a table is shown, the MusicBrainz sidebar's sections (*Artist
+information*, *Tags*, *External links*, *Editing*, …) open and close with a
+click on their heading, or with Enter or Space. `Ctrl+Click` one to open or
+close every sidebar section; the headings of the main page are left alone.
+**Open all** and **Close all** at the top of the sidebar do the same.
+
+- **Remembered.** A section you open is open again the next time you show a
+  table on the same kind of page (artist pages, label pages, …). A section you
+  never opened starts closed. Turn this off with *Remember open sidebar
+  sections*, or open everything every time with *Open every sidebar section*.
+- **Counts.** Each heading shows how many entries its section holds.
+- **Sub-sections.** *Genres* and *Other tags* under Tags, and the two lists
+  under Collections, open and close on their own, and are remembered too.
+- **External links by kind.** The links are grouped under Official, Social,
+  Streaming, Concerts, Lyrics, Databases, Stores and Other, each group opening
+  and closing on its own. *View all relationships* stays at the end. Turn the
+  grouping off with *Group external links by kind*.
+- **Other scripts.** Whatever another userscript adds to the sidebar stays
+  where it put it. Its headings open and close like the others; nothing of it
+  is read or moved.
+
+The switches are in ⚙️ Settings, next to *Collabsable sidebar*.
 
 ---
 
