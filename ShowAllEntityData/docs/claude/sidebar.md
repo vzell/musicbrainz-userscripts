@@ -139,6 +139,19 @@ into the discography's pipeline on 2026-10-11.
 executed, so it must not read a module-level `const` from there (TDZ). That is
 why the path pattern is a literal inside it.
 
+**In the toolbar.**
+- It sits behind its own divider (`ownGroup`,
+  `.mb-button-own-group-divider`), so it does not read as one of the page
+  type's buttons, or as part of a group label like "RGs:".
+- Its tooltip is its own `description` ("… nothing is fetched"). The toolbar
+  now prefers that over its generic "Fetch …" texts.
+- Its painted text follows the toolbar convention, `🧮N Sidebar`: every button
+  carries 🧮 and its Ctrl+M number.
+- The full suite found the first two problems:
+  `action-button-shortlabel-and-rich-tooltip.spec.js` counted the artist
+  page's buttons, and now also pins the divider and the description (two
+  mutations).
+
 **The button object.** It sets `type`/`pageType: 'sidebar-tables'`,
 `tableMode: 'multi'`, `non_paginated`, `ownFeatures`, and its own features
 (`sidebarToTables`, `groupByH3`, `integerColumns` for # and Votes). It has no

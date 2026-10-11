@@ -57495,7 +57495,11 @@ a { color: #1565c0; }`;
         // Plain-text tooltip description, based on conf.label (never shortLabel) —
         // shortLabel only ever shortens what's painted on the button.
         let _tooltipDesc;
-        if (conf.label.includes('Show all') || conf.label === 'Unfiltered' || conf.label === 'Subscribed Only') {
+        if (conf.description) {
+            // A button that says what it does itself ("🗂 Sidebar as tables"
+            // fetches nothing, so no "Fetch …" text fits it).
+            _tooltipDesc = conf.description;
+        } else if (conf.label.includes('Show all') || conf.label === 'Unfiltered' || conf.label === 'Subscribed Only') {
             // Extract entity types from label (e.g., "Show all Releases for ReleaseGroup")
             _tooltipDesc = `Fetch all the table data from the MusicBrainz backend database`;
         } else if (conf.label.includes('Official VA RGs')) {
@@ -57546,6 +57550,16 @@ a { color: #1565c0; }`;
         // Pass the entire config object
         eb.dataset.label = conf.label;  // stable original label — survives superscript/textContent mutations
         eb.onclick = (e) => startFetchingProcess(e, conf, activeDefinition);
+        // A button that is not part of the page type's own run ("🗂 Sidebar as
+        // tables") gets a divider first, so it does not read as one of them
+        // (or as part of their "RGs:"-style group label).
+        if (conf.ownGroup) {
+            const div = document.createElement('span');
+            div.textContent = ' | ';
+            div.className = 'mb-button-own-group-divider';
+            div.style.cssText = uiButtonDividerCSS();
+            controlsContainer.appendChild(div);
+        }
         controlsContainer.appendChild(eb);
         allActionButtons.push(eb);
     });
@@ -84649,7 +84663,8 @@ a { color: #1565c0; }`;
         if (!/^\/(artist|label|event|release-group|recording|work)\/[0-9a-f-]{36}\/?$/.test(location.pathname)) return [];
         if (!document.querySelector('#sidebar dl.properties')) return [];
         return [{
-            label: '🗂 Sidebar as tables', shortLabel: 'Sidebar',
+            label: '🗂 Sidebar as tables', shortLabel: 'Sidebar', ownGroup: true,
+            description: "Show the sidebar's information, external links and tags as tables. Read from this page: nothing is fetched.",
             type: 'sidebar-tables', pageType: 'sidebar-tables', tableMode: 'multi', non_paginated: true, ownFeatures: true,
             features: {
                 sidebarToTables: true,
