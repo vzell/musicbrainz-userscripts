@@ -817,6 +817,15 @@ close every sidebar section; the headings of the main page are left alone.
   of the page heading, so it stays in sight with the sidebar closed. Nothing
   extra is loaded: it is the picture MusicBrainz already shows. Switches:
   *Sidebar picture: hover card and viewer*, *Sidebar picture beside the name*.
+- **🗂 Sidebar as tables.** On artist, label, event, release group, recording
+  and work pages this button shows the sidebar's information (*Sort name*,
+  *Born*, *Area*, …), its external links (with their site and kind) and its
+  tags (genre or tag, with votes) as tables. You can filter, sort and use the
+  📊 dropdown on them like on any other table. It reads the page itself, so
+  nothing is loaded, and the sidebar stays as it is. Pressing another button
+  afterwards reloads the page first, as every second press does. A saved
+  "Sidebar as tables" view cannot be loaded back from disk. Turn the button
+  off with *'Sidebar as tables' button*.
 
 The switches are in ⚙️ Settings, next to *Collabsable sidebar*.
 

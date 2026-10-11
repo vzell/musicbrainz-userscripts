@@ -506,6 +506,13 @@
             description: "Also show a small copy of the sidebar picture at the start of the page heading, so it stays in sight with the sidebar closed. Same hover card and viewer. Needs 'Sidebar picture: hover card and viewer'."
         },
 
+        sa_sidebar_tables_button: {
+            label: "'Sidebar as tables' button",
+            type: "checkbox",
+            default: true,
+            description: "On artist, label, event, release group, recording and work pages, add a '🗂 Sidebar as tables' button: it shows the sidebar's information, external links and tags as tables you can filter and sort like any other. Read from the page itself: no request. The sidebar stays as it is."
+        },
+
         // ============================================================
         //  OVERFLOW TABLES SECTION
         // ============================================================
@@ -57298,9 +57305,11 @@ a { color: #1565c0; }`;
     let _lastActiveBtn = null;
 
     // 4. Generate Buttons
-    const buttonsToRender = activeDefinition.buttons || [
+    // "🗂 Sidebar as tables" is appended on entity overview pages
+    // (_sbTablesButtons(), docs/claude/sidebar.md).
+    const buttonsToRender = (activeDefinition.buttons || [
         { label: `Show all ${pageType.replace('-', ' ')}` } // Default fallback
-    ];
+    ]).concat(_sbTablesButtons());
 
     // Superscript numerals for Ctrl-M + 1..9 mnemonic display on action buttons
     const SUPERSCRIPT_DIGITS = ['¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
@@ -75623,11 +75632,17 @@ a { color: #1565c0; }`;
         // feature set from the live H2 heading FIRST, so the merged features
         // reflect the actual entity type shown on the current page
         // (Releases, Events, Recordings, etc.).
-        const entitySpecificFeatures = resolveEntityFeaturesFromH2(baseDef);
+        // A button with `ownFeatures` (only "🗂 Sidebar as tables") renders
+        // something else than its page type, so none of the page type's
+        // features apply; and its `pageType` replaces the detected one for this
+        // render (a second press reloads the page, which detects it afresh).
+        const _ownFeatures = !!buttonConfig.ownFeatures;
+        if (buttonConfig.pageType) pageType = buttonConfig.pageType;
+        const entitySpecificFeatures = _ownFeatures ? {} : resolveEntityFeaturesFromH2(baseDef);
 
         const mergedFeatures = {
             ...(entitySpecificFeatures),       // entity-specific overrides (e.g. series-releases)
-            ...(baseDef.features || {}),       // base definition features (normally empty for series-releases)
+            ...(_ownFeatures ? {} : (baseDef.features || {})), // base definition features (normally empty for series-releases)
             ...(buttonConfig.features || {})   // per-button feature overrides (highest priority)
         };
 
@@ -76137,6 +76152,13 @@ a { color: #1565c0; }`;
             applyEventDetailsToTables(activeDefinition);
         }
 
+        // ── sidebarToTables pre-processing ───────────────────────────────────
+        // "🗂 Sidebar as tables": the sidebar's facts, links and tags become
+        // h3 + table.tbl groups in #content. Same ordering constraints.
+        if (activeDefinition.features?.sidebarToTables) {
+            applySidebarToTables(activeDefinition);
+        }
+
         // ── editsToTable pre-processing ─────────────────────────────────────
         // For the 'edits' pageType, convert the native div.edit-list block
         // sequence into a proper <table class="tbl"> the same way listToTable
@@ -76602,6 +76624,9 @@ a { color: #1565c0; }`;
                 }
                 if (doc !== document && activeDefinition.features?.eventDetailsToTables) {
                     applyEventDetailsToTables(activeDefinition, doc);
+                }
+                if (doc !== document && activeDefinition.features?.sidebarToTables) {
+                    applySidebarToTables(activeDefinition, doc);
                 }
 
                 // ── editsToTable on fetched pages ────────────────────────────
@@ -84589,6 +84614,124 @@ a { color: #1565c0; }`;
         for (const el of _sbSectionNodes(h2)) {
             if (el._mbSbApply) el._mbSbApply();
         }
+    }
+
+    // ── "🗂 Sidebar as tables" ───────────────────────────────────────────────
+    // A button on entity overview pages (`_sbTablesButtons()`) whose render is
+    // the sidebar's facts, external links and tags as ordinary h3 + table.tbl
+    // groups (`applySidebarToTables()`, built with `_eventBuildTable()` like
+    // the event overview's). Its own pageType ('sidebar-tables') and only its
+    // own features (`ownFeatures`), so nothing of the page type it sits on
+    // (the discography's views, Relationships, CAA) applies. The sidebar is
+    // only read; it stays as it is.
+
+    /**
+     * The "🗂 Sidebar as tables" button for this page, or none: MusicBrainz
+     * only, an entity overview page (artist, label, event, release group,
+     * recording, work) with a sidebar facts list, and
+     * `sa_sidebar_tables_button` on. Called while the toolbar is built at
+     * init, before this part of the file has run: it must not read a
+     * module-level `const` from here (TDZ), hence the literal pattern.
+     * @returns {Array<object>}
+     */
+    function _sbTablesButtons() {
+        if (_foreignHost || Lib.settings.sa_sidebar_tables_button === false) return [];
+        if (!/^\/(artist|label|event|release-group|recording|work)\/[0-9a-f-]{36}\/?$/.test(location.pathname)) return [];
+        if (!document.querySelector('#sidebar dl.properties')) return [];
+        return [{
+            label: '🗂 Sidebar as tables', shortLabel: 'Sidebar',
+            type: 'sidebar-tables', pageType: 'sidebar-tables', tableMode: 'multi', non_paginated: true, ownFeatures: true,
+            features: {
+                sidebarToTables: true,
+                groupByH3: true,
+                integerColumns: [ { sourceColumn: '#', align: 'R' }, { sourceColumn: 'Votes', align: 'R' } ],
+            },
+        }];
+    }
+
+    /**
+     * Clones a node's children (for a table cell), without our own additions.
+     * @param {Node} n
+     * @returns {Node[]}
+     */
+    function _sbCloneKids(n) {
+        return Array.from(n.childNodes).map(c => c.cloneNode(true)).filter(c =>
+            !(c.nodeType === Node.ELEMENT_NODE && c.matches('.mb-toggle-icon, .mb-sb-count, .mb-sb-h3-icon')));
+    }
+
+    /**
+     * Turns the sidebar into h3 + `table.tbl` groups in `#content`
+     * (`features.sidebarToTables`, the "🗂 Sidebar as tables" button):
+     *   - "<Entity> information": #, Property, Value (`dl.properties`);
+     *   - "External links": #, Site, Link, Kind, Details (`ul.external_links`,
+     *     MusicBrainz's own "View all relationships" left out);
+     *   - "Tags": #, Tag, Kind (Genre or Tag), Votes (`ul.genre-list`, `ul.tag-list`).
+     * A group with no rows is left out. The page's own tables and h3s in
+     * `#content` are removed from that document so only these groups are
+     * read; the groups go after a new h2 "Sidebar" at the top of `#content`.
+     * The sidebar is only read (clones). Idempotent (`data-mb-sidebar-tables`).
+     *
+     * @param {object}           def
+     * @param {Document|Element} [docContext=document]
+     * @returns {void}
+     */
+    function applySidebarToTables(def, docContext = document) {
+        if (!def?.features?.sidebarToTables) return;
+        const doc = docContext.nodeType === Node.DOCUMENT_NODE ? docContext : docContext.ownerDocument;
+        const root = doc.getElementById('content');
+        const side = doc.getElementById('sidebar');
+        if (!root || !side || root.dataset.mbSidebarTables) return;
+        root.dataset.mbSidebarTables = '1';
+        const frags = [];
+
+        const dl = side.querySelector('dl.properties');
+        if (dl) {
+            let h = dl.previousElementSibling;
+            while (h && h.tagName !== 'H2') h = h.previousElementSibling;
+            const name = (h && _sbHeadingText(h)) || 'Information';
+            const rows = [];
+            dl.querySelectorAll(':scope > dt').forEach(dt => {
+                const dd = dt.nextElementSibling && dt.nextElementSibling.tagName === 'DD' ? dt.nextElementSibling : null;
+                rows.push([String(rows.length + 1), dt.textContent.replace(/:\s*$/, '').trim(), dd ? _sbCloneKids(dd) : '']);
+            });
+            if (rows.length) frags.push(_eventBuildTable(doc, name, ['#', 'Property', 'Value'], rows));
+        }
+
+        const links = [];
+        side.querySelectorAll('ul.external_links > li').forEach(li => {
+            if (li.matches('.mb-sbl-head, .all-relationships')) return;
+            const a = li.querySelector('a[href]');
+            if (!a) return;
+            const stem = (Array.from(li.classList).find(c => /-favicon$/.test(c)) || '').replace(/-favicon$/, '');
+            let host;
+            try { host = new URL(a.getAttribute('href'), 'https://musicbrainz.org').hostname.replace(/^www\./, ''); } catch (_) { host = ''; }
+            const details = li.textContent.replace(a.textContent, '').replace(/\s+/g, ' ').trim();
+            links.push([String(links.length + 1), host, [a.cloneNode(true)], _SB_LINK_KINDS[stem] || 'Other', details]);
+        });
+        if (links.length) frags.push(_eventBuildTable(doc, 'External links', ['#', 'Site', 'Link', 'Kind', 'Details'], links));
+
+        const tags = [];
+        [['ul.genre-list', 'Genre'], ['ul.tag-list', 'Tag']].forEach(([sel, kind]) => {
+            side.querySelectorAll(`${sel} > li`).forEach(li => {
+                const a = li.querySelector('a[href]');
+                if (!a) return;
+                const votes = li.querySelector('.tag-count');
+                tags.push([String(tags.length + 1), [a.cloneNode(true)], kind, votes ? votes.textContent.trim() : '']);
+            });
+        });
+        if (tags.length) frags.push(_eventBuildTable(doc, 'Tags', ['#', 'Tag', 'Kind', 'Votes'], tags));
+
+        // Only these groups are read: the page's own tables (the discography,
+        // a release group's releases, …) and their h3s go from this document.
+        root.querySelectorAll('table.tbl').forEach(t => t.remove());
+        root.querySelectorAll('h3').forEach(h => h.remove());
+        const h2 = doc.createElement('h2');
+        h2.className = 'mb-sb-tables';
+        h2.textContent = 'Sidebar';
+        const firstH2 = root.querySelector(':scope > h2');
+        if (firstH2) firstH2.before(h2); else root.appendChild(h2);
+        h2.after(...frags);
+        Lib.debug('render', `applySidebarToTables: ${frags.length} groups (${links.length} links, ${tags.length} tags).`);
     }
 
     // ── The sidebar picture ──────────────────────────────────────────────────

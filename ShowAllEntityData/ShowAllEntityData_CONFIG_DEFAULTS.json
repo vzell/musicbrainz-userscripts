@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1326+2026-10-11",
-    "schema_entries": 418,
+    "schema_entries": 419,
     "sections": 49,
-    "settings": 369,
-    "settings_with_default": 364,
+    "settings": 370,
+    "settings_with_default": 365,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 192,
+      "checkbox": 193,
       "color_picker": 62,
       "number": 54,
       "divider": 49,
@@ -539,6 +539,7 @@
     "sa_sidebar_picture_in_header": "Sidebar picture beside the name",
     "sa_sidebar_remember_sections": "Remember open sidebar sections",
     "sa_sidebar_section_counts": "Sidebar section counts",
+    "sa_sidebar_tables_button": "'Sidebar as tables' button",
     "sa_sl_compact_nav": "Compact category and filter bar on springsteenlyrics.com lists",
     "sa_sl_detail_preview": "Preview item and song pages on springsteenlyrics.com lists",
     "sa_sort_chunk_size": "Sort chunk size",
@@ -906,6 +907,7 @@
     "sa_sidebar_picture_in_header": true,
     "sa_sidebar_remember_sections": true,
     "sa_sidebar_section_counts": true,
+    "sa_sidebar_tables_button": true,
     "sa_sl_compact_nav": false,
     "sa_sl_detail_preview": false,
     "sa_sort_chunk_size": 5000,

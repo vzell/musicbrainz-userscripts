@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-10-11",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "New \"🗂 Sidebar as tables\" button on artist, label, event, release group, recording and work pages: it shows the sidebar's information, external links (with site and kind) and tags (genre or tag, with votes) as tables you can filter, sort and use the 📊 dropdown on. It reads the page itself, so nothing is loaded, and the sidebar stays as it is. New setting: 'Sidebar as tables' button."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Tests: tests/fixtures/sidebar-tables.spec.js (5); 7 more mutations, 6 caught and 1 recorded as covered by another guard."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-10-11",
     "sections": [

@@ -122,3 +122,73 @@ images.
 A "left alone" test waits one macrotask turn (`observerRan()`): an observer
 callback is a microtask, so this is a real settle, not a sleep. There are 7
 mutations in `sidebar-overhaul.json`.
+
+## "🗂 Sidebar as tables"
+
+A button, not a part of any other render. You chose that over mixing the groups
+into the discography's pipeline on 2026-10-11.
+
+**Where it shows** (`_sbTablesButtons()`): appended to the toolbar's
+`buttonsToRender` at init when all of these hold:
+- the host is MusicBrainz;
+- `sa_sidebar_tables_button` is on (the default);
+- the path is an entity overview (`/artist|label|event|release-group|recording|work/<mbid>`);
+- the page has `#sidebar dl.properties`.
+
+`_sbTablesButtons()` runs during init, before the `_sb*` part of the file has
+executed, so it must not read a module-level `const` from there (TDZ). That is
+why the path pattern is a literal inside it.
+
+**The button object.** It sets `type`/`pageType: 'sidebar-tables'`,
+`tableMode: 'multi'`, `non_paginated`, `ownFeatures`, and its own features
+(`sidebarToTables`, `groupByH3`, `integerColumns` for # and Votes). It has no
+`params`, so page 1 is the live document: no request.
+
+**The two shared `startFetchingProcess()` changes.** Both are inert for
+every other button, because no other button sets these fields.
+- `buttonConfig.pageType` replaces the detected `pageType` for that render.
+  There is nothing to restore: a second press reloads the page, which detects
+  the type afresh. Without it, `artist-releasegroups`' own branches run on the
+  sidebar render; a mutation proves it.
+- `ownFeatures` drops the page type's features and entity features from the
+  merge. On today's pages this is covered: the leaked features find no column
+  of theirs, and the event page's `eventDetailsToTables` output is removed
+  again by the sidebar converter. The mutation is recorded as `expect:
+  "pass"` with that reason. `ownFeatures` stays as the guard for a page type
+  whose features WOULD act on `#`, `Kind` or `Votes`.
+
+**The converter** (`applySidebarToTables()`). It is called from the live
+pre-processing and for a fetched page, next to `applyEventDetailsToTables()`.
+It builds groups with `_eventBuildTable()`:
+
+| Group | Columns | Source |
+|---|---|---|
+| `<h2 text of dl.properties>` | #, Property, Value | `dl.properties` (dd cloned) |
+| External links | #, Site, Link, Kind, Details | Site = host; Kind = `_SB_LINK_KINDS`; Details = the item's text beside its link, e.g. "(as @x)"; `.all-relationships` left out |
+| Tags | #, Tag, Kind, Votes | Kind is Genre or Tag; Votes from `.tag-count` |
+
+- An empty group is left out.
+- It removes that document's own `table.tbl`s and h3s from `#content`, so only
+  its groups are read.
+- It puts an h2 "Sidebar" before the first h2 of `#content`, with the groups
+  after it.
+- The sidebar is only cloned from; our counts, icons and group heads are
+  filtered out of the clones.
+
+**Not supported: disk load of a saved "Sidebar as tables" view.** The plan
+listed the disk-load restore as a third call site. It was left out, because a
+save of this view would reload as its page type: Load from Disk keys on the
+detected pageType, and its mismatch prompt guards it. The rows are read from
+the page in milliseconds, so a saved copy adds nothing.
+
+**Specs.** `sidebar-tables.spec.js` (5), on the artist and event fixtures:
+- the three groups with their rows;
+- no discography view buttons, and no Relationships or CAA column even with
+  both switched on;
+- the global filter;
+- the sidebar unchanged;
+- no request;
+- no button off an overview page or with the switch off.
+
+There are 7 mutations in `sidebar-overhaul.json`, 6 caught and 1 recorded
+`expect: "pass"`, as above.
