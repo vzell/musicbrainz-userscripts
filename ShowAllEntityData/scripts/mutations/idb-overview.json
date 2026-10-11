@@ -50,7 +50,7 @@
   {
     "name": "Esc closes the dialog over a pending confirmation",
     "why": "_idboOnKey() skips the cancel-first step.",
-    "edits": [{ "find": "        if (_idbo.pending) { _idbo.pending = null; _idboPaintConfirm(); return; }\n        _idbOverviewClose();", "replace": "        _idbOverviewClose();" }],
+    "edits": [{ "find": "        if (_idbo.pending) { _idbo.pending = null; _idboPaintConfirm(); return; }\n        if (_idbxOnEscape()) return;\n        _idbOverviewClose();", "replace": "        if (_idbxOnEscape()) return;\n        _idbOverviewClose();" }],
     "spec": "tests/fixtures/idb-overview.spec.js", "grep": "Esc cancels", "expect": "fail"
   },
   {

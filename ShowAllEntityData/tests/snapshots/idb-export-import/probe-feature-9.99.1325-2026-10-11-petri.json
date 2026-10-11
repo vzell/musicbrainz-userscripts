@@ -1,0 +1,85 @@
+{
+  "started": "2026-10-11T00:47:57.976Z",
+  "finished": "2026-10-11T00:48:30.592Z",
+  "machine": {
+    "hostname": "petri",
+    "platform": "linux",
+    "release": "6.18.40.1-microsoft-standard-WSL2",
+    "cpus": 24,
+    "totalMemGb": 31,
+    "node": "v24.16.0",
+    "playwright": "1.62.1",
+    "uptimeHours": 166.8,
+    "claudeResident": {
+      "count": 1,
+      "oldestSessionHours": 37.5
+    },
+    "claudeSinceBoot": true
+  },
+  "chromium": "chromium",
+  "results": [
+    {
+      "run": 1,
+      "json": {
+        "n": 20000,
+        "bytes": 271524,
+        "exportMs": 327.3000000715256,
+        "checkMs": 127.60000002384186,
+        "mergeMs": 1930.6000000238419,
+        "error": "",
+        "added": 20000
+      },
+      "images": {
+        "n": 300,
+        "bytes": 45495381,
+        "exportMs": 3341,
+        "checkMs": 1020.1999999284744,
+        "mergeMs": 1106.8000000715256,
+        "error": "",
+        "added": 300
+      }
+    },
+    {
+      "run": 2,
+      "json": {
+        "n": 20000,
+        "bytes": 271527,
+        "exportMs": 337,
+        "checkMs": 129.39999997615814,
+        "mergeMs": 3276.600000023842,
+        "error": "",
+        "added": 20000
+      },
+      "images": {
+        "n": 300,
+        "bytes": 45495709,
+        "exportMs": 3378.399999976158,
+        "checkMs": 997.7999999523163,
+        "mergeMs": 1047.8000000715256,
+        "error": "",
+        "added": 300
+      }
+    },
+    {
+      "run": 3,
+      "json": {
+        "n": 20000,
+        "bytes": 271529,
+        "exportMs": 331,
+        "checkMs": 125.20000004768372,
+        "mergeMs": 2105.5,
+        "error": "",
+        "added": 20000
+      },
+      "images": {
+        "n": 300,
+        "bytes": 45495592,
+        "exportMs": 3449.2999999523163,
+        "checkMs": 1000.8999999761581,
+        "mergeMs": 1149.7000000476837,
+        "error": "",
+        "added": 300
+      }
+    }
+  ]
+}

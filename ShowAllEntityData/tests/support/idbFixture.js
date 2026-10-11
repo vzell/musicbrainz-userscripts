@@ -182,7 +182,69 @@ async function writeArtIdbMetadata(page, records) {
     }, { dbName: ART_IDB_NAME, dbVersion: ART_IDB_VERSION, stores: ART_IDB_STORES, recs: records });
 }
 
+/**
+ * Seeds BOTH databases the 💾 cache overview lists (art cache v4, link
+ * previews v1) before any script runs, with fresh and expired records in
+ * several parts and `ms-rec-len` left empty. Shared by the overview spec and
+ * the export/import spec, so both reason about one known cache:
+ *
+ *   images      a (fresh, 5000-byte PNG), b (40 days, expired)
+ *   metadata    /release/a (fresh), /release/b (2 days), /release/c (expired)
+ *   rel-ws2     release:aaa, release:bbb (fresh)
+ *   recof-ws2   r1 (fresh), r2 (10 days), r3 (expired)
+ *   artist-works x (fresh)
+ *   pages       Wikipedia (fresh), Discogs (expired)
+ *
+ * Sets `window.__seedDone` to 2 when both are written; the stamp every fresh
+ * record carries is `window.__seedNow`.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<void>}
+ */
+async function seedCacheOverview(page) {
+    await page.addInitScript(({ DAY }) => {
+        const now = Date.now();
+        const old = now - 40 * DAY;
+        window.__seedDone = 0;
+        window.__seedNow = now;
+        const art = indexedDB.open('vz-mb-saed-art-cache', 4);
+        art.onupgradeneeded = () => {
+            const db = art.result;
+            [['images', 'url'], ['metadata', 'entityPath'], ['rel-ws2', 'ckey'], ['ms-rec-len', 'gid'],
+                ['recof-ws2', 'ckey'], ['artist-works', 'artist']].forEach(([n, k]) => {
+                if (!db.objectStoreNames.contains(n)) db.createObjectStore(n, { keyPath: k });
+            });
+        };
+        art.onsuccess = () => {
+            const db = art.result;
+            const tx = db.transaction(['images', 'metadata', 'rel-ws2', 'recof-ws2', 'artist-works'], 'readwrite');
+            const blob = (n) => new Blob([new Uint8Array(n).map((_, i) => i % 251)], { type: 'image/png' });
+            tx.objectStore('images').put({ url: 'https://coverartarchive.org/release/a/front-250', blob: blob(5000), storedAt: now });
+            tx.objectStore('images').put({ url: 'https://coverartarchive.org/release/b/front-250', blob: blob(3000), storedAt: old });
+            tx.objectStore('metadata').put({ entityPath: '/release/a', count: 1, images: [], storedAt: now });
+            tx.objectStore('metadata').put({ entityPath: '/release/b', count: 1, images: [], storedAt: now - 2 * DAY });
+            tx.objectStore('metadata').put({ entityPath: '/release/c', count: 0, images: [], storedAt: old });
+            tx.objectStore('rel-ws2').put({ ckey: 'release:aaa', data: { relations: [] }, ts: now });
+            tx.objectStore('rel-ws2').put({ ckey: 'release:bbb', data: { relations: [] }, ts: now });
+            tx.objectStore('recof-ws2').put({ ckey: 'recording:r1|work-rels', rels: [], ts: now });
+            tx.objectStore('recof-ws2').put({ ckey: 'recording:r2|work-rels', rels: [], ts: now - 10 * DAY });
+            tx.objectStore('recof-ws2').put({ ckey: 'recording:r3|work-rels', rels: [], ts: old });
+            tx.objectStore('artist-works').put({ artist: 'x', works: [{ id: 'w', title: 'Badlands', comment: '' }], ts: now, source: 'MusicBrainz' });
+            tx.oncomplete = () => { db.close(); window.__seedDone++; };
+        };
+        const dp = indexedDB.open('vz-saed-detail-pages', 1);
+        dp.onupgradeneeded = () => { dp.result.createObjectStore('pages', { keyPath: 'url' }); };
+        dp.onsuccess = () => {
+            const db = dp.result;
+            const tx = db.transaction('pages', 'readwrite');
+            tx.objectStore('pages').put({ url: 'https://en.wikipedia.org/wiki/Born_to_Run', at: now, v: 1, data: { title: 'Born to Run' } });
+            tx.objectStore('pages').put({ url: 'https://www.discogs.com/release/1', at: old, v: 1, data: { title: 'Nebraska' } });
+            tx.oncomplete = () => { db.close(); window.__seedDone++; };
+        };
+    }, { DAY: 86400000 });
+}
+
 module.exports = {
-    seedArtIdbFixture, readArtIdbMetadata, writeArtIdbMetadata,
+    seedArtIdbFixture, readArtIdbMetadata, writeArtIdbMetadata, seedCacheOverview,
     ART_IDB_NAME, ART_IDB_VERSION, ART_IDB_STORES,
 };
