@@ -21926,3 +21926,21 @@ options:
   reader (P18 image), on Space only;
 - capture which request delivers the sidebar picture in the user's real
   browser (DevTools → Network) and probe that.
+
+## 2026-10-11 — One-off: column-filter-modes "never change a column's width" under a full run
+
+Env: 2026-10-11T02:40:13Z-02:47:59Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs).
+
+In the second `test:full` on `feature/sidebar-overhaul` (`42b519e`), 1600 of 1601
+passed. The one failure was `column-filter-modes.spec.js` "on or off, the switches
+never change a column's width": the widths came back as 132/140/… where 137/145/…
+were expected, off by about 5 px.
+
+It is not attributed to the branch:
+- the same test passed in the run before, and the only change since then is a
+  toolbar divider and tooltip;
+- it passed 3 of 3 alone;
+- the whole spec file passed 38 of 38 with 12 workers, run twice.
+
+This is the first recorded occurrence. If it comes back, the suspect is a
+measurement taken before the auto-resize settles under load, not the switches.
