@@ -1017,4 +1017,70 @@ Statistics panel, under the artwork viewer and every tooltip.
 
 Specs: `idb-overview.spec.js` (8, both databases seeded before the userscript
 opens them) and `idb-overview.mobile.spec.js`; mutations
-`scripts/mutations/idb-overview.json` (12, all caught).
+`scripts/mutations/idb-overview.json` (12, all caught). The seed is
+`seedCacheOverview()` in `tests/support/idbFixture.js`, shared with the
+export/import specs below; its link-preview records have the real
+`{url, v, at, data}` shape.
+
+### Export and Import (`_idbx*`)
+
+Two panes in the overview, opened by Export… / Import… in its header
+(`data-idbx="open-export"` / `"open-import"`, `aria-pressed`), painted into
+slots `_idboPaint()` leaves under the tile strip (`[data-idbx-slot]`), so a
+rescan repaints them from `_idbo.x`. Mockup approved 2026-10-10:
+`https://claude.ai/artifact/AsJhH3GAiNmfaDGz2ci4q6`; its four questions were
+answered as recommended (`.jsonl.gz`, images unticked, a part with another
+layout skipped whole, all link-preview entries exported), plus two later
+decisions: **Last import** is a fifth tile (Last clean-up stays), and another
+site's export is refused.
+
+**The file** is a gzip of one JSON object per line. Line 1 is the header:
+`kind: 'sa-cache-export'`, `format` (`_IDBX_FORMAT`, 1), script version,
+`origin`, `written`, `browser`, `layouts` (each database name → its schema
+version: `_ART_IDB_VERSION`, `_DP_IDB_VERSION`), and `parts` (id and count).
+Then `{p, v}` per entry, `v` the stored record verbatim; a Blob field becomes
+`{$blob: {type, b64}}`. The last line is `{kind: 'end', count}`. Without it the
+file was cut short, and the import refuses it.
+
+**Export** reads each ticked part in key order, `_IDBX_READ_BATCH` entries per
+`getAll()` with a lower bound past the last key. Each batch is its own
+transaction, because one held across the FileReader and gzip awaits would
+auto-commit under it. Expired entries, and entries without a stored date, are
+left out. Lines go through `pako.Deflate` (already `@require`d; no
+`CompressionStream`), and the chunks become a Blob handed to a plain
+`<a download>`. There is no filename dialog, as the mockup shows.
+
+**Import** reads the file twice, streaming both times (`_idbxLines()`:
+`file.stream()` → `pako.Inflate` → `TextDecoder` → lines; a 45 MB file is never
+held as text).
+- `_idbxCheck()` classifies every entry against a fresh scan's key → stamp
+  maps (`_idbxClassify()`: add / upd / same / exp / bad) and writes nothing.
+- `_idbxMerge()` re-reads the file, re-classifies with the SAME maps, and
+  writes only add and upd, in `readwrite` transactions of
+  `_IDBX_WRITE_BATCH`. A stop drops the pending batch and keeps the written
+  ones.
+- Refusals come from `_idbxHeader()` and the check: not an export (no header,
+  or not gzip), a newer format, another origin, a cut-short file.
+- A part whose `layouts[db]` differs from this browser's is skipped whole.
+- The shape check, `_idbxValidate()`, requires the store's `keyPath` field (from
+  `_idboParts()`, which now also carries `layout`), a stored date no more than a
+  day in the future, and the store's own fields. Its reasons are the "why" list.
+
+**Memory caches are not touched**, the same rule as deletes, and the Done text
+tells the user to reload open pages. Esc: a delete's question, then the merge
+question, then an open pane, then the dialog (`_idbxOnEscape()` sits between
+the first and the last in `_idboOnKey()`). Closing the dialog stops a running
+job and resets `_idbo.x`. The last import is stored in this origin's
+`localStorage` (`_IDBX_LAST_KEY`), like the cache itself, not in GM storage,
+which is shared across sites.
+
+Timings: `tests/support/probe-idb-export-import.js` (`__saTest.idbOverview.perfRoundTrip`)
+and tests/MEASUREMENTS.org, 2026-10-11. On petri, about 60,000 JSON
+entries/s and 13 MB/s of images to export; the merge is bound by IndexedDB
+writes. The pane's "Takes about" (`fileB / 12e6 + n / 50000` s) comes from
+there. Its JSON size ratio (`_IDBX_RATIO_JSON`, 0.15) is NOT calibrated: the
+synthetic cache compresses far better than a real one.
+
+Specs: `idb-export-import.spec.js` (8) and `idb-export-import.mobile.spec.js`
+(1); test hooks `__saTest.idbOverview.dump/holdAfterFlush/exportB64/perfRoundTrip`;
+mutations `scripts/mutations/idb-export-import.json` (17, all caught).

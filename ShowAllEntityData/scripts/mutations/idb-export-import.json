@@ -1,0 +1,223 @@
+[
+  {
+    "name": "expired entries exported",
+    "why": "The keep-time filter in _idbxReadPart() is gone: expired entries go into the file.",
+    "edits": [
+      {
+        "find": "            const live = batch.filter(v => { const ts = _idboStamp(v); return ts && now - ts <= ttl; });\n",
+        "replace": "            const live = batch;\n"
+      }
+    ],
+    "spec": "tests/fixtures/idb-export-import.spec.js",
+    "grep": "Write file downloads every live entry",
+    "expect": "fail"
+  },
+  {
+    "name": "images ticked by default",
+    "why": "The Export pane starts with every part ticked, cover art images included.",
+    "edits": [
+      {
+        "find": "        if (!ex.pick) ex.pick = new Set(_idbo.parts.filter(p => p.id !== 'images').map(p => p.id));\n",
+        "replace": "        if (!ex.pick) ex.pick = new Set(_idbo.parts.map(p => p.id));\n"
+      }
+    ],
+    "spec": "tests/fixtures/idb-export-import.spec.js",
+    "grep": "images unticked",
+    "expect": "fail"
+  },
+  {
+    "name": "no size notice for images",
+    "why": "Ticking images no longer warns how much they add.",
+    "edits": [
+      {
+        "find": "        if (img && ex.pick.has('images') && ex.state === 'idle' && img.live) {\n",
+        "replace": "        if (false) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/idb-export-import.spec.js",
+    "grep": "images unticked",
+    "expect": "fail"
+  },
+  {
+    "name": "no end line",
+    "why": "The export forgets the end line, so every file reads as cut short.",
+    "edits": [
+      {
+        "find": "        z.push(JSON.stringify({ kind: 'end', count: n }) + '\\n', true);\n",
+        "replace": "        z.push('', true);\n"
+      }
+    ],
+    "spec": "tests/fixtures/idb-export-import.spec.js",
+    "grep": "Write file downloads every live entry",
+    "expect": "fail"
+  },
+  {
+    "name": "Blob type lost",
+    "why": "An image is encoded without its MIME type.",
+    "edits": [
+      {
+        "find": "                out = { ...out, [k]: { $blob: { type: x.type || 'application/octet-stream', b64 } } };\n",
+        "replace": "                out = { ...out, [k]: { $blob: { type: 'application/octet-stream', b64 } } };\n"
+      }
+    ],
+    "spec": "tests/fixtures/idb-export-import.spec.js",
+    "grep": "round trip with images",
+    "expect": "fail"
+  },
+  {
+    "name": "a newer local entry is overwritten",
+    "why": "Any entry already here counts as newer in the file.",
+    "edits": [
+      {
+        "find": "        return { cls: ts > h ? 'upd' : 'same', reason: '' };\n",
+        "replace": "        return { cls: 'upd', reason: '' };\n"
+      }
+    ],
+    "spec": "tests/fixtures/idb-export-import.spec.js",
+    "grep": "Merge writes only new and newer",
+    "expect": "fail"
+  },
+  {
+    "name": "invalid entries written",
+    "why": "The shape check passes everything.",
+    "edits": [
+      {
+        "find": "        const reason = _idbxValidate(part, v, now);\n        if (reason) return { cls: 'bad', reason };\n",
+        "replace": "        const reason = '';\n"
+      }
+    ],
+    "spec": "tests/fixtures/idb-export-import.spec.js",
+    "grep": "Merge writes only new and newer",
+    "expect": "fail"
+  },
+  {
+    "name": "expired entries imported",
+    "why": "The import's keep-time check is gone.",
+    "edits": [
+      {
+        "find": "        if (now - ts > part.ttlDays * 86400000) return { cls: 'exp', reason: '' };\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/idb-export-import.spec.js",
+    "grep": "Merge writes only new and newer",
+    "expect": "fail"
+  },
+  {
+    "name": "the check writes",
+    "why": "Choosing a file merges at once, before the preview is confirmed.",
+    "edits": [
+      {
+        "find": "        Object.assign(im, { step: 'preview', state: 'idle' });\n        _idbxPaint();\n",
+        "replace": "        Object.assign(im, { step: 'preview', state: 'idle' });\n        _idbxPaint();\n        await _idbxMerge(file, ck, im.pick, () => {}, () => false);\n"
+      }
+    ],
+    "spec": "tests/fixtures/idb-export-import.spec.js",
+    "grep": "Merge writes only new and newer",
+    "expect": "fail"
+  },
+  {
+    "name": "Merge without the question",
+    "why": "Merge… writes at once instead of asking first.",
+    "edits": [
+      {
+        "find": "            case 'im-go': x.im.pending = true; _idbxPaint(); return true;\n",
+        "replace": "            case 'im-go': _idbxRunMerge(); return true;\n"
+      }
+    ],
+    "spec": "tests/fixtures/idb-export-import.spec.js",
+    "grep": "Merge writes only new and newer",
+    "expect": "fail"
+  },
+  {
+    "name": "layout check removed",
+    "why": "A part written with another database layout is merged like any other.",
+    "edits": [
+      {
+        "find": "                                            skip: inFile && fileLayout !== p.layout\n",
+        "replace": "                                            skip: false\n"
+      }
+    ],
+    "spec": "tests/fixtures/idb-export-import.spec.js",
+    "grep": "another layout is skipped whole",
+    "expect": "fail"
+  },
+  {
+    "name": "origin check removed",
+    "why": "Another site's export is accepted.",
+    "edits": [
+      {
+        "find": "        if (h.origin !== location.origin) return { header: h, error: 'origin', origin: String(h.origin || '') };\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/idb-export-import.spec.js",
+    "grep": "refused: not an export",
+    "expect": "fail"
+  },
+  {
+    "name": "a cut-short file accepted",
+    "why": "The end-line check is gone: a truncated file previews and merges.",
+    "edits": [
+      {
+        "find": "        if (!res.error && !res.ended) res.error = 'short';\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/idb-export-import.spec.js",
+    "grep": "refused: not an export",
+    "expect": "fail"
+  },
+  {
+    "name": "Esc closes the dialog over a pending merge question",
+    "why": "The panes' Esc step is skipped: one Esc closes everything.",
+    "edits": [
+      {
+        "find": "        if (_idbxOnEscape()) return;\n        _idbOverviewClose();\n",
+        "replace": "        _idbOverviewClose();\n"
+      }
+    ],
+    "spec": "tests/fixtures/idb-export-import.spec.js",
+    "grep": "Esc cancels the merge question",
+    "expect": "fail"
+  },
+  {
+    "name": "Stop finishes the merge anyway",
+    "why": "The stop request is ignored while merging.",
+    "edits": [
+      {
+        "find": "            c = await _idbxMerge(im.file, im.check, im.pick, (r) => { im.result = { ...r }; _idbxTick(); }, () => im.stop);\n",
+        "replace": "            c = await _idbxMerge(im.file, im.check, im.pick, (r) => { im.result = { ...r }; _idbxTick(); }, () => false);\n"
+      }
+    ],
+    "spec": "tests/fixtures/idb-export-import.spec.js",
+    "grep": "Stop during a merge",
+    "expect": "fail"
+  },
+  {
+    "name": "last import not saved",
+    "why": "The merge no longer records itself for the Last import tile.",
+    "edits": [
+      {
+        "find": "            window.localStorage.setItem(_IDBX_LAST_KEY, JSON.stringify(",
+        "replace": "            void (_IDBX_LAST_KEY, JSON.stringify("
+      }
+    ],
+    "spec": "tests/fixtures/idb-export-import.spec.js",
+    "grep": "Merge writes only new and newer",
+    "expect": "fail"
+  },
+  {
+    "name": "the clean-up tile dropped",
+    "why": "Last import replaces Last clean-up instead of joining it.",
+    "edits": [
+      {
+        "find": "           + `<div class=\"mb-idbo-stat\"><div class=\"k\">Last clean-up</div><div class=\"v\" style=\"font-size:1em\">${_ajEsc(sweep)}</div><div class=\"mb-idbo-dim\">expired entries are removed in the background</div></div>`\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/idb-export-import.spec.js",
+    "grep": "Merge writes only new and newer",
+    "expect": "fail"
+  }
+]

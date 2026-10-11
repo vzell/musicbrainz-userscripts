@@ -21827,3 +21827,40 @@ afterwards), and `_twFilterLabel()` names a column filter by column and
 sub-table instead of "the column filters". Spec: `filter-sliced.spec.js`
 "opens for a column filter while it prepares rows" (comparing unheld, the card
 recorded closed while comparing as the premise); 5 mutations (C6h), all caught.
+
+## 2026-10-11 — 💾 cache Export and Import (feature/cache-export-import, WIP.1)
+
+Env: 2026-10-11T00:30Z-01:00Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs).
+
+Built from the approved mockup (https://claude.ai/artifact/AsJhH3GAiNmfaDGz2ci4q6)
+with the user's two later decisions (Last import as a fifth tile; another
+site's export refused). Design notes worth keeping, beyond
+docs/claude/toolbar-and-header-ui.md "Export and Import (`_idbx*`)":
+
+- **One transaction per read batch.** An export awaits a FileReader per image
+  and yields between batches; an IndexedDB transaction auto-commits as soon as
+  control returns to the event loop with no request pending, so a cursor held
+  across those awaits would die mid-part. `getAll(lowerBound(lastKey, true), 500)`
+  per batch avoids it, at the price of key-ordered (not insertion-ordered)
+  files, which nothing depends on.
+- **Two streaming passes, not one held result.** The check keeps counts only;
+  the merge re-reads the File and re-classifies with the check's key → stamp
+  maps, so both passes decide identically, and memory stays flat for a 45 MB
+  file with images. The `File` object stays readable between the passes.
+- **The link-preview layout had no constant** (`indexedDB.open(_DP_IDB_NAME, 1)`).
+  It is now `_DP_IDB_VERSION`, because the export header records every
+  database's layout and the import compares them.
+- **The overview spec's link-preview seed had the wrong shape** (`html` where
+  the code writes `data`). Harmless for the overview, which only counts, but an
+  import's shape check rejects it, so the round-trip test would have failed on
+  the fixture rather than the code. The seed is now shared
+  (`seedCacheOverview()`) and uses `{url, v, at, data}`.
+- **Calibration:** the pane's first time estimate (from the mockup) said 3.3 s
+  for 20,000 JSON entries that took 0.33 s, and 1.1 s for 45 MB of images that
+  took 3.4 s. Now `fileB / 12e6 + n / 50000` s (tests/MEASUREMENTS.org,
+  2026-10-11). The JSON size ratio stays an uncalibrated 0.15: the synthetic
+  cache compresses far better than a real one.
+
+Specs: idb-export-import.spec.js 8/8 and .mobile 1/1 on the first run, so the
+17 mutations (scripts/mutations/idb-export-import.json) are the evidence the
+assertions bite: all 17 caught.

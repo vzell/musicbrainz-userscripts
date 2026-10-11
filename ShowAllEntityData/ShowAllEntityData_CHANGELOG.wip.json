@@ -1,0 +1,21 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-11",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "💾 Browser cache: Export… writes the cache to a file (sa-cache-<site>-<date>.jsonl.gz) so another browser or computer does not have to load it all again. Pick the parts; cover art images start unticked, since they are most of the size and can be fetched again. Entries past their keep time are left out, and the pane says how big the file will be and how long it takes.",
+          "💾 Browser cache: Import… merges such a file into this browser's cache. It first shows, part by part, what the merge would do (added, newer in the file, same or newer here, expired, invalid with the reasons) and changes nothing until you confirm. A newer entry here is never replaced, and expired or invalid entries are never written. An export from another site is refused, and a part written with a different cache layout is skipped. A new Last import tile shows when and from which file."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Tests: tests/fixtures/idb-export-import.spec.js (8) and its mobile twin (1); the cache seed is now shared with the overview spec (tests/support/idbFixture.js). 17 mutations, all caught. Timings of a 20,000-entry and a 45 MB export, check and merge in tests/MEASUREMENTS.org (tests/support/probe-idb-export-import.js)."
+        ]
+      }
+    ]
+  }
+]

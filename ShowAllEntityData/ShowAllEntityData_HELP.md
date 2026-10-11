@@ -1095,6 +1095,31 @@ Open it from ⚙️ Settings → 🗄️ ART ARCHIVE INDEXEDDB CACHE, from the �
 Statistics panel, from the Tampermonkey menu, or with **💾 Cache overview** on
 any [progress card](#the-progress-card).
 
+### Taking the cache to another browser
+
+**Export…** in the dialog's header writes the cache to a file
+(`sa-cache-musicbrainz.org-<date>.jsonl.gz`), so another browser or computer
+does not have to load it all again. Tick the parts you want. Cover art images
+start unticked: they are most of the size, the file grows by about as much as
+they take, and the other browser can fetch them again. Entries past their keep
+time are left out. The pane says how many entries go in, about how big the file
+will be and how long it takes; **Stop** ends it without saving anything.
+
+**Import…** merges such a file into this browser's cache. Choose the file (or
+drop it on the pane). The script reads it once and shows, part by part, what the
+merge would do: entries missing here are added, entries newer in the file
+replace the older ones here, and entries that are the same or newer here are
+kept as they are. Expired entries and entries that fail the check are never
+written; **why** lists the reasons. Nothing changes until you press **Merge…**
+and confirm. **Stop** during the merge keeps what was already written and
+leaves the rest as it was. Pages that are already open keep what they loaded;
+reload them to use the new entries. The **Last import** tile shows when you last
+imported, and from which file.
+
+The cache belongs to one site, so an export from musicbrainz.org can only be
+imported on musicbrainz.org. A part that was written by a script with a
+different cache layout is skipped and says so; the other parts still merge.
+
 ---
 
 ## Keyboard shortcuts

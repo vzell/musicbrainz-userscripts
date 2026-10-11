@@ -3724,3 +3724,29 @@ without the pinning cost nothing. Raw:
 not kept — its numbers are copied from the console).
 Flagged to the user before going on, per the performance gate. Whether the
 cost grows with the row count was not measured.
+
+* 2026-10-11 — 💾 cache Export and Import, synthetic cache (branch feature/cache-export-import, petri)
+
+Env: 2026-10-11T00:47:58Z–00:48:31Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs).
+
+=node tests/support/probe-idb-export-import.js --runs=3=: no pageType involved
+(the overview runs on any page; =artist-recordings= fixture, single-table, only
+as a host). Seeded: 20,000 JSON entries (8,000 Relationships answers of about
+1 kB, 6,000 cover art lists, 4,000 "Recording of", 2,000 millisecond lengths)
+and 300 images of 150 kB random bytes. Each run, inside the page: export,
+clear those parts, check the file, merge it.
+
+| Parts            | Entries | File    | Export, ms     | Check, ms     | Merge, ms      |
+|------------------+---------+---------+----------------+---------------+----------------|
+| JSON parts (4)   |  20,000 | 0.27 MB | 327/337/331    | 128/129/125   | 1931/3277/2106 |
+| Cover art images |     300 | 45.5 MB | 3341/3378/3449 | 1020/998/1001 | 1107/1048/1150 |
+
+*Read as:* export is about 60,000 entries/s for JSON and about 13 MB/s for
+images (base64 plus gzip of incompressible bytes); the check reads about
+45 MB/s; the merge is bound by IndexedDB writes (about 7,000–10,000 entries/s
+in batches of 200). The Export pane's "Takes about" uses fileB / 12e6 +
+n / 50000 s from these numbers (it said 3.3 s for the JSON parts and 1.1 s
+for the images before). The synthetic JSON repeats itself and compresses far
+better than a real cache (0.27 MB for 20,000 entries), so the pane's 0.15
+size ratio for JSON parts is NOT calibrated by this; a real export's size
+would. Raw: =tests/snapshots/idb-export-import/probe-feature-9.99.1325-2026-10-11-petri.json=.

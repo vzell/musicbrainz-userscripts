@@ -14412,6 +14412,13 @@
     const _DP_IDB_NAME = 'vz-saed-detail-pages';
 
     /**
+     * Its schema version (one store, `pages`). A cache export records it, so
+     * an import into a browser with another layout skips this part whole.
+     * @type {number}
+     */
+    const _DP_IDB_VERSION = 1;
+
+    /**
      * How long a parsed detail page is reused before it is fetched again.
      * @type {number}
      */
@@ -15487,7 +15494,7 @@
                 reject(new Error('IndexedDB not available'));
                 return;
             }
-            const req = indexedDB.open(_DP_IDB_NAME, 1);
+            const req = indexedDB.open(_DP_IDB_NAME, _DP_IDB_VERSION);
             req.onupgradeneeded = (ev) => {
                 const db = ev.target.result;
                 if (!db.objectStoreNames.contains('pages')) db.createObjectStore('pages', { keyPath: 'url' });
@@ -106892,21 +106899,25 @@ a { color: #1565c0; }`;
      * its keep time. A function, not a const, so nothing here is read before
      * the database constants it names are initialised.
      *
+     * `layout` is the database's schema version and `keyPath` the store's key
+     * field; a cache export records the first and the import checks both.
+     *
      * @returns {Array<{id: string, db: string, dbLabel: string, store: string, label: string,
-     *                  color: string, ttlDays: number, open: function(): Promise<IDBDatabase>}>}
+     *                  color: string, ttlDays: number, layout: number, keyPath: string,
+     *                  open: function(): Promise<IDBDatabase>}>}
      */
     function _idboParts() {
-        const art = { db: _ART_IDB_NAME, dbLabel: 'art cache', open: _artOpenIdb };
-        const dp = { db: _DP_IDB_NAME, dbLabel: 'link previews', open: _dpOpenIdb };
+        const art = { db: _ART_IDB_NAME, dbLabel: 'art cache', layout: _ART_IDB_VERSION, open: _artOpenIdb };
+        const dp = { db: _DP_IDB_NAME, dbLabel: 'link previews', layout: _DP_IDB_VERSION, open: _dpOpenIdb };
         const S = Lib.settings;
         return [
-            { ...art, id: 'images', store: 'images', label: 'Cover art images', color: '#b5654a', ttlDays: _idboDays(S.sa_art_idb_image_ttl_days, 30) },
-            { ...art, id: 'metadata', store: 'metadata', label: 'Cover art lists', color: '#d49a5a', ttlDays: _idboDays(S.sa_art_idb_metadata_ttl_days, 30) },
-            { ...art, id: 'rel-ws2', store: 'rel-ws2', label: 'Relationships', color: '#4f7f9a', ttlDays: _idboDays(S.sa_rel_idb_ttl_days, 30) },
-            { ...art, id: 'ms-rec-len', store: 'ms-rec-len', label: 'Millisecond lengths', color: '#6f8f5e', ttlDays: _idboDays(S.sa_ms_idb_ttl_days, 30) },
-            { ...art, id: 'recof-ws2', store: 'recof-ws2', label: 'Recording of', color: '#8a6ca0', ttlDays: _idboDays(S.sa_recording_of_ttl_days, 30) },
-            { ...art, id: 'artist-works', store: 'artist-works', label: 'Artist work lists', color: '#c2a64a', ttlDays: _idboDays(S.sa_recording_of_works_ttl_days, 30) },
-            { ...dp, id: 'pages', store: 'pages', label: 'Link preview pages', color: '#7a8c8c', ttlDays: _DP_TTL_MS / 86400000 },
+            { ...art, id: 'images', store: 'images', keyPath: 'url', label: 'Cover art images', color: '#b5654a', ttlDays: _idboDays(S.sa_art_idb_image_ttl_days, 30) },
+            { ...art, id: 'metadata', store: 'metadata', keyPath: 'entityPath', label: 'Cover art lists', color: '#d49a5a', ttlDays: _idboDays(S.sa_art_idb_metadata_ttl_days, 30) },
+            { ...art, id: 'rel-ws2', store: 'rel-ws2', keyPath: 'ckey', label: 'Relationships', color: '#4f7f9a', ttlDays: _idboDays(S.sa_rel_idb_ttl_days, 30) },
+            { ...art, id: 'ms-rec-len', store: 'ms-rec-len', keyPath: 'gid', label: 'Millisecond lengths', color: '#6f8f5e', ttlDays: _idboDays(S.sa_ms_idb_ttl_days, 30) },
+            { ...art, id: 'recof-ws2', store: 'recof-ws2', keyPath: 'ckey', label: 'Recording of', color: '#8a6ca0', ttlDays: _idboDays(S.sa_recording_of_ttl_days, 30) },
+            { ...art, id: 'artist-works', store: 'artist-works', keyPath: 'artist', label: 'Artist work lists', color: '#c2a64a', ttlDays: _idboDays(S.sa_recording_of_works_ttl_days, 30) },
+            { ...dp, id: 'pages', store: 'pages', keyPath: 'url', label: 'Link preview pages', color: '#7a8c8c', ttlDays: _DP_TTL_MS / 86400000 },
         ];
     }
 
@@ -107116,6 +107127,40 @@ a { color: #1565c0; }`;
             #mb-idb-overview input.mb-idbo-f, #mb-idb-overview select.mb-idbo-f { font: 13px system-ui, Arial, sans-serif; padding: 4px 6px; border: 1px solid #cbbfa9; border-radius: 3px; background: #fff; color: #2b2622; }
             #mb-idb-overview .mb-idbo-confirm { border: 1px solid #e2b4ae; background: #fbefec; border-radius: 3px; padding: 8px 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
             #mb-idb-overview .mb-idbo-toast { font-size: 0.9em; color: #3f7a3a; min-height: 1.4em; }
+            #mb-idb-overview .mb-idbo-act[disabled] { opacity: 0.45; cursor: default; }
+            #mb-idb-overview .mb-idbo-act.on { background: #f1e9da; }
+            #mb-idb-overview .mb-idbo-pill.run { color: #2f5f9e; background: #e4ebf5; border-color: #b9c9e3; }
+            #mb-idb-overview .mb-idbo-pill.ok { color: #3f7a3a; background: #e8f0e4; border-color: #bcd3b5; }
+            #mb-idb-overview .mb-idbo-pill.alert { color: #9b2218; background: #fbefec; border-color: #e2b4ae; }
+            #mb-idb-overview .mb-idbx-pane { border: 1px solid #d9cfbd; border-radius: 3px; padding: 12px; background: #fffdf8; display: grid; gap: 12px; }
+            #mb-idb-overview .mb-idbx-pane h3 { margin: 0; font-size: 1.05em; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; border: none; padding: 0; }
+            #mb-idb-overview .mb-idbx-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 14px; margin: 0; }
+            #mb-idb-overview .mb-idbx-facts dt { font-style: italic; color: #7a6d5c; }
+            #mb-idb-overview .mb-idbx-facts dd { margin: 0; font-variant-numeric: tabular-nums; min-width: 0; overflow-wrap: anywhere; }
+            #mb-idb-overview .mb-idbx-mono, #mb-idb-overview .mb-idbx-log { font: 12px/1.5 ui-monospace, Consolas, monospace; }
+            #mb-idb-overview .mb-idbx-notice { border: 1px solid #e3d09a; background: #fbf3dc; color: #5c4300; border-radius: 3px; padding: 8px 10px; }
+            #mb-idb-overview .mb-idbx-blue { border-color: #b9c9e3; background: #e4ebf5; }
+            #mb-idb-overview .mb-idbx-seg { display: flex; height: 8px; border-radius: 2px; overflow: hidden; border: 1px solid #d9cfbd; background: #fff; }
+            #mb-idb-overview .mb-idbx-seg span { display: block; height: 100%; }
+            #mb-idb-overview .mb-idbx-seg .done, #mb-idb-overview .mb-idbx-counts i.done { background: #3f7a3a; }
+            #mb-idb-overview .mb-idbx-seg .upd, #mb-idb-overview .mb-idbx-counts i.upd { background: #6f8fbf; }
+            #mb-idb-overview .mb-idbx-seg .fail, #mb-idb-overview .mb-idbx-counts i.fail { background: #9b2218; }
+            #mb-idb-overview .mb-idbx-seg .skip, #mb-idb-overview .mb-idbx-counts i.skip { background-color: #e7dcc6; background-image: repeating-linear-gradient(135deg, rgba(122,109,92,.35) 0 2px, transparent 2px 5px); }
+            #mb-idb-overview .mb-idbx-counts { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: #7a6d5c; font-variant-numeric: tabular-nums; margin-top: 4px; }
+            #mb-idb-overview .mb-idbx-counts i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; }
+            #mb-idb-overview .mb-idbx-counts .bad, #mb-idb-overview .mb-idbx-bad { color: #9b2218; }
+            #mb-idb-overview .mb-idbx-ok { color: #3f7a3a; }
+            #mb-idb-overview .mb-idbx-run { color: #2f5f9e; }
+            #mb-idb-overview .mb-idbx-drop { border: 1.5px dashed #cbbfa9; border-radius: 3px; padding: 14px; text-align: center; color: #7a6d5c; }
+            #mb-idb-overview .mb-idbx-drop.over { border-color: #2f5f9e; background: #e4ebf5; }
+            #mb-idb-overview .mb-idbx-reasons { margin: 4px 0 0; padding-left: 18px; font-size: 12.5px; }
+            #mb-idb-overview .mb-idbx-pane details summary { cursor: pointer; font-size: 0.88em; }
+            #mb-idb-overview .mb-idbx-log { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 1px 10px; }
+            #mb-idb-overview .mb-idbx-log .t { color: #7a6d5c; }
+            #mb-idb-overview tr.mb-idbx-skipped td { color: #7a6d5c; }
+            #mb-idb-overview .mb-idbx-pane table.mb-idbo-t td.r { white-space: nowrap; }
+            #mb-idb-overview .mb-idbx-pane table.mb-idbo-t tfoot td { border-top: 1px solid #d9cfbd; border-bottom: 0; font-weight: 700; color: #2b2622; }
+            #mb-idb-overview .mb-idbx-pane input[type=checkbox] { accent-color: #2f5f9e; }
             #mb-idb-overview .mb-idbo-f-row { padding: 10px 16px; border-top: 1px solid #d9cfbd; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; font-size: 0.88em; color: #7a6d5c; }
             @media (max-width: 720px) { #mb-idb-overview .mb-idbo-top, #mb-idb-overview .mb-idbo-grid2 { grid-template-columns: 1fr; } }
         `);
@@ -107145,6 +107190,8 @@ a { color: #1565c0; }`;
             el.addEventListener('input', (e) => {
                 if (e.target.id === 'mb-idbo-q') { _idbo.query = e.target.value; _idboPaintKeys(); }
             });
+            el.addEventListener('change', _idbxOnChange);
+            ['dragover', 'dragleave', 'drop'].forEach(ev => el.addEventListener(ev, _idbxOnDrag));
             el.addEventListener('keydown', (e) => {
                 if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('mb-idbo-seg')) {
                     e.preventDefault();
@@ -107164,9 +107211,16 @@ a { color: #1565c0; }`;
         await _idboRescan();
     }
 
-    /** Closes the overview and gives focus back. */
+    /**
+     * Closes the overview and gives focus back. A running export or import is
+     * stopped (a merge keeps the batches it already wrote).
+     */
     function _idbOverviewClose() {
         if (!_idbo.el) return;
+        _idbo.x.ex.stop = true;
+        _idbo.x.im.stop = true;
+        if (_idbo.x.ex.url) URL.revokeObjectURL(_idbo.x.ex.url);
+        _idbo.x = _idbxFresh();
         window.removeEventListener('keydown', _idboOnKey, true);
         _idbo.el.remove();
         _idbo.el = null;
@@ -107174,7 +107228,8 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Esc: cancels an open confirmation first, then closes the dialog.
+     * Esc: cancels an open confirmation first (a delete, then the merge
+     * question), then closes an open Export/Import pane, then the dialog.
      * @param {KeyboardEvent} e
      */
     function _idboOnKey(e) {
@@ -107182,6 +107237,7 @@ a { color: #1565c0; }`;
         e.preventDefault();
         e.stopPropagation();
         if (_idbo.pending) { _idbo.pending = null; _idboPaintConfirm(); return; }
+        if (_idbxOnEscape()) return;
         _idbOverviewClose();
     }
 
@@ -107233,14 +107289,23 @@ a { color: #1565c0; }`;
               + `<span style="width:${Math.min(100, total / est.quota * 100).toFixed(2)}%;background:#ba478f"></span>`
               + `<span style="width:${Math.max(0, Math.min(100, ((est.usage || 0) - total) / est.quota * 100)).toFixed(2)}%;background:#c9bda6"></span></div>` : '';
         const dbCount = new Set(parts.map(p => p.db)).size;
+        const last = _idbxLastImport();
+        const lastWhen = last
+            ? (new Date(last.at).toDateString() === new Date().toDateString()
+                ? `today, ${new Date(last.at).toTimeString().slice(0, 5)}` : new Date(last.at).toLocaleDateString()) : 'never';
         let h = `<div class="mb-idbo-h"><b id="mb-idbo-title">💾 Browser cache</b><span class="mb-idbo-dim">${_ajEsc(location.hostname)} · this browser only · <kbd>Esc</kbd> closes</span>`
-              + `<button type="button" class="mb-idbo-act" data-idbo="close" aria-label="Close">✕</button></div><div class="mb-idbo-b">`;
+              + '<span class="mb-idbo-acts"><button type="button" class="mb-idbo-act primary" data-idbx="open-export" aria-pressed="false">Export…</button>'
+              + '<button type="button" class="mb-idbo-act primary" data-idbx="open-import" aria-pressed="false">Import…</button>'
+              + `<button type="button" class="mb-idbo-act" data-idbo="close" aria-label="Close">✕</button></span></div><div class="mb-idbo-b">`;
         h += '<div class="mb-idbo-strip">'
            + `<div class="mb-idbo-stat" data-idbo-stat="share"><div class="k">Script's share</div><div class="v">${_idboFmtB(total)}</div><div class="mb-idbo-dim">${parts.length} parts in ${dbCount} databases</div></div>`
            + `<div class="mb-idbo-stat" data-idbo-stat="entries"><div class="k">Entries</div><div class="v">${fmtN(keys)}</div><div class="mb-idbo-dim">${fmtN(expired)} past their keep time</div></div>`
            + `<div class="mb-idbo-stat"><div class="k">Site storage</div><div class="v">${est && est.usage ? _idboFmtB(est.usage) : '—'}</div><div class="mb-idbo-dim">${est && est.quota ? `of ${_idboFmtB(est.quota)} the browser allows` : 'the browser does not say'}</div>${quota}</div>`
            + `<div class="mb-idbo-stat"><div class="k">Last clean-up</div><div class="v" style="font-size:1em">${_ajEsc(sweep)}</div><div class="mb-idbo-dim">expired entries are removed in the background</div></div>`
+           + `<div class="mb-idbo-stat" data-idbo-stat="import"><div class="k">Last import</div><div class="v" style="font-size:1em">${_ajEsc(lastWhen)}</div>`
+           + `<div class="mb-idbo-dim">${last ? _ajEsc(last.file) : 'from another browser’s export'}</div></div>`
            + '</div>';
+        h += '<div data-idbx-slot="ex"></div><div data-idbx-slot="im"></div>';
         h += `<div class="mb-idbo-top"><div class="mb-idbo-donut">${_idboDonut(parts, total)}</div><div class="mb-idbo-legend">`
            + parts.map(p => `<button type="button" data-part="${p.id}" class="${p.id === _idbo.pick ? 'on' : ''}">`
                + `<span class="mb-idbo-sw" style="background:${p.color}"></span><span>${_ajEsc(p.label)} <span class="mb-idbo-dim">· ${_ajEsc(p.dbLabel)}</span></span>`
@@ -107278,6 +107343,7 @@ a { color: #1565c0; }`;
         dlg.querySelector('[data-idbo-toast]').textContent = toast;
         _idboPaintDrill();
         _idboPaintConfirm();
+        _idbxPaint();
     }
 
     /**
@@ -107368,6 +107434,8 @@ a { color: #1565c0; }`;
      * @param {MouseEvent} e
      */
     function _idboOnClick(e) {
+        const xt = e.target.closest('[data-idbx]');
+        if (xt && _idbxOnClick(xt)) return;
         const t = e.target.closest('[data-idbo], [data-part]');
         if (!t) return;
         const act = t.dataset.idbo;
@@ -107436,6 +107504,916 @@ a { color: #1565c0; }`;
     /** The ⚙️ Settings entry (`sa_fn_idb_overview`). */
     function _idbOverviewOpenFromSettings() {
         _idbOverviewOpen(null);
+    }
+
+    // ── 💾 Export and Import (_idbx*) ─────────────────────────────────────────
+    // Two panes in the overview: write the cache to a gzip file of one JSON
+    // object per line (`.jsonl.gz`), and merge such a file into this browser's
+    // cache. Mockup approved 2026-10-10:
+    // https://claude.ai/artifact/AsJhH3GAiNmfaDGz2ci4q6
+    //
+    // File: line 1 is the header (`kind: 'sa-cache-export'`, format, script
+    // version, origin, written, browser, each database's layout, the parts),
+    // then `{p: <part id>, v: <the stored record>}` per entry (a Blob becomes
+    // `{$blob: {type, b64}}`), then `{kind: 'end', count}` — a file without it
+    // was cut short. An import reads the file twice, streaming both times: a
+    // check that classifies every entry and writes nothing, then the merge,
+    // which writes only what the check called new or newer. It never replaces a
+    // newer local entry, never writes an expired or invalid one, skips a part
+    // whose database layout differs, and refuses another site's export.
+    // Talks to nothing but IndexedDB, and only when the user asks.
+
+    /** The file's format number (the header's `format`). */
+    const _IDBX_FORMAT = 1;
+    /** Entries per IndexedDB read while exporting. */
+    const _IDBX_READ_BATCH = 500;
+    /** Entries per IndexedDB write transaction while merging. */
+    const _IDBX_WRITE_BATCH = 200;
+    /** localStorage key of the last import on this site. */
+    const _IDBX_LAST_KEY = 'vz-saed-idb-last-import';
+    /** Estimated gzip ratio per part (images are already compressed). */
+    const _IDBX_RATIO = { images: 1.0 };
+    /** Same, for every other part. */
+    const _IDBX_RATIO_JSON = 0.15;
+    /** Test knob: `afterFlush` is awaited after each merge batch is written (a spec holds a merge there). */
+    const _idbxTest = { afterFlush: null };
+
+    /**
+     * Fresh pane state.
+     * @returns {object}
+     */
+    function _idbxFresh() {
+        return {
+            pane: null,
+            ex: { pick: null, state: 'idle', done: 0, total: 0, cur: '', bytes: 0, url: '', name: '', size: 0, n: 0, parts: 0, ms: 0, stop: false, toast: '' },
+            im: { step: 'pick', state: 'idle', file: null, check: null, pick: null, pending: false, error: '',
+                  prog: null, result: null, stop: false, log: [] },
+        };
+    }
+    _idbo.x = _idbxFresh();
+
+    /**
+     * Parts the overview scanned, keyed by id.
+     * @returns {Object<string, object>}
+     */
+    function _idbxScanned() {
+        return Object.fromEntries(_idbo.parts.map(p => [p.id, p]));
+    }
+
+    /**
+     * What an export of the ticked parts would hold, from the last scan:
+     * entries still within their keep time, the expired ones left out, and the
+     * file size and time it will take, both estimates.
+     *
+     * @param {Array<object>} parts - Scanned parts.
+     * @param {Set<string>} pick - Ticked part ids.
+     * @returns {{rows: Array<{p: object, live: number, exp: number, fileB: number}>, n: number, skip: number, fileB: number, secs: number, parts: number}}
+     */
+    function _idbxExportPlan(parts, pick) {
+        const rows = parts.map(p => {
+            const exp = p.buckets[3];
+            const live = Math.max(0, p.count - exp);
+            const liveB = p.count ? p.bytes * live / p.count : 0;
+            return { p, live, exp, fileB: liveB * (_IDBX_RATIO[p.id] ?? _IDBX_RATIO_JSON) };
+        });
+        const sel = rows.filter(r => pick.has(r.p.id));
+        const n = sel.reduce((s, r) => s + r.live, 0);
+        const fileB = sel.reduce((s, r) => s + r.fileB, 0);
+        return { rows, n, skip: sel.reduce((s, r) => s + r.exp, 0), fileB,
+                 secs: Math.max(1, Math.round(fileB / 12e6 + n / 50000)), parts: sel.filter(r => r.live).length };
+    }
+
+    /**
+     * Reads one part's records in key order, in batches, each batch its own
+     * transaction (so nothing is held open across a yield). Expired records,
+     * and records without a stored date, are left out.
+     *
+     * @param {object} part - One `_idboParts()` entry.
+     * @param {function(Array<object>): Promise<void>} onBatch
+     * @param {function(): boolean} shouldStop
+     * @returns {Promise<boolean>} false when stopped.
+     */
+    async function _idbxReadPart(part, onBatch, shouldStop) {
+        const db = await part.open();
+        const ttl = part.ttlDays * 86400000;
+        let after;
+        for (;;) {
+            if (shouldStop()) return false;
+            const batch = await new Promise((resolve, reject) => {
+                const range = after === undefined ? null : IDBKeyRange.lowerBound(after, true);
+                const req = db.transaction(part.store, 'readonly').objectStore(part.store).getAll(range, _IDBX_READ_BATCH);
+                req.onsuccess = () => resolve(req.result || []);
+                req.onerror = () => reject(req.error);
+            });
+            if (!batch.length) return true;
+            after = batch[batch.length - 1][part.keyPath];
+            const now = Date.now();
+            const live = batch.filter(v => { const ts = _idboStamp(v); return ts && now - ts <= ttl; });
+            if (live.length) await onBatch(live);
+            if (batch.length < _IDBX_READ_BATCH) return true;
+        }
+    }
+
+    /**
+     * One file line for a record: the record verbatim, a Blob field as
+     * `{$blob: {type, b64}}`.
+     *
+     * @param {string} partId
+     * @param {object} v
+     * @returns {Promise<string>}
+     */
+    async function _idbxEncode(partId, v) {
+        let out = v;
+        for (const [k, x] of Object.entries(v)) {
+            if (typeof Blob !== 'undefined' && x instanceof Blob) {
+                const b64 = await new Promise((resolve, reject) => {
+                    const fr = new FileReader();
+                    fr.onload = () => resolve(String(fr.result).replace(/^data:[^,]*,/, ''));
+                    fr.onerror = () => reject(fr.error);
+                    fr.readAsDataURL(x);
+                });
+                out = { ...out, [k]: { $blob: { type: x.type || 'application/octet-stream', b64 } } };
+            }
+        }
+        return JSON.stringify({ p: partId, v: out });
+    }
+
+    /**
+     * Turns a decoded line's `$blob` fields back into Blobs.
+     * @param {object} v
+     * @returns {object}
+     */
+    function _idbxRevive(v) {
+        let out = v;
+        for (const [k, x] of Object.entries(v)) {
+            if (x && typeof x === 'object' && x.$blob) {
+                const bin = atob(x.$blob.b64);
+                const bytes = new Uint8Array(bin.length);
+                for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                out = { ...out, [k]: new Blob([bytes], { type: x.$blob.type }) };
+            }
+        }
+        return out;
+    }
+
+    /**
+     * The browser's name and major version, for the header ("Firefox 131").
+     * @returns {string}
+     */
+    function _idbxBrowser() {
+        const ua = navigator.userAgent || '';
+        const m = ua.match(/(Firefox|Edg|OPR|Chrome|Version)\/(\d+)/);
+        if (!m) return 'unknown browser';
+        const name = { Edg: 'Edge', OPR: 'Opera', Version: 'Safari' }[m[1]] || m[1];
+        return `${name} ${m[2]}`;
+    }
+
+    /**
+     * The download name: `sa-cache-<host>-<YYYY-MM-DD>.jsonl.gz` (local date).
+     * @returns {string}
+     */
+    function _idbxFileName() {
+        const d = new Date();
+        const p2 = n => String(n).padStart(2, '0');
+        return `sa-cache-${location.hostname}-${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}.jsonl.gz`;
+    }
+
+    /**
+     * Writes the ticked parts to a gzip Blob: header, one line per live entry,
+     * end line. Yields between batches; `shouldStop` ends it with null.
+     *
+     * @param {Set<string>} pick - Part ids.
+     * @param {function({done: number, cur: string, bytes: number}): void} onProgress
+     * @param {function(): boolean} shouldStop
+     * @returns {Promise<?{blob: Blob, n: number, parts: number}>}
+     */
+    async function _idbxExport(pick, onProgress, shouldStop) {
+        const parts = _idboParts().filter(p => pick.has(p.id));
+        const scanned = _idbxScanned();
+        const chunks = [];
+        let bytes = 0;
+        const z = new pako.Deflate({ gzip: true });
+        z.onData = (c) => { chunks.push(c); bytes += c.length; };
+        const header = {
+            kind: 'sa-cache-export', format: _IDBX_FORMAT, script: 'ShowAllEntityData', version: scriptVersion,
+            origin: location.origin, written: Date.now(), browser: _idbxBrowser(),
+            layouts: Object.fromEntries(_idboParts().map(p => [p.db, p.layout])),
+            parts: parts.map(p => ({ id: p.id, count: scanned[p.id] ? Math.max(0, scanned[p.id].count - scanned[p.id].buckets[3]) : 0 })),
+        };
+        z.push(JSON.stringify(header) + '\n', false);
+        let n = 0;
+        let withData = 0;
+        for (const part of parts) {
+            let had = false;
+            const ok = await _idbxReadPart(part, async (batch) => {
+                const lines = [];
+                for (const v of batch) lines.push(await _idbxEncode(part.id, v));
+                z.push(lines.join('\n') + '\n', false);
+                n += batch.length;
+                had = true;
+                onProgress({ done: n, cur: part.label, bytes });
+                await _yieldToMain();
+            }, shouldStop);
+            if (!ok) return null;
+            if (had) withData++;
+        }
+        if (shouldStop()) return null;
+        z.push(JSON.stringify({ kind: 'end', count: n }) + '\n', true);
+        if (z.err) throw new Error(z.msg || 'gzip failed');
+        return { blob: new Blob(chunks, { type: 'application/gzip' }), n, parts: withData };
+    }
+
+    /**
+     * Streams a gzip file's lines: `file.stream()` → `pako.Inflate` →
+     * `TextDecoder`, never holding the whole text. `onLine` may be async.
+     *
+     * @param {Blob} file
+     * @param {function(string): (void|Promise<void>)} onLine
+     * @param {function(): boolean} shouldStop
+     * @returns {Promise<'done'|'stopped'>}
+     * @throws {Error} With `notGzip` set when the file is not gzip.
+     */
+    async function _idbxLines(file, onLine, shouldStop) {
+        const reader = file.stream().getReader();
+        const dec = new TextDecoder();
+        const inf = new pako.Inflate();
+        const out = [];
+        let buf = '';
+        inf.onData = (chunk) => {
+            buf += dec.decode(chunk, { stream: true });
+            let start = 0;
+            let i;
+            while ((i = buf.indexOf('\n', start)) >= 0) { out.push(buf.slice(start, i)); start = i + 1; }
+            buf = buf.slice(start);
+        };
+        let last = performance.now();
+        for (;;) {
+            const { done, value } = await reader.read();
+            inf.push(done ? new Uint8Array(0) : value, done);
+            if (inf.err) {
+                try { reader.cancel(); } catch (_) { /* already closed */ }
+                const e = new Error(inf.msg || 'not gzip');
+                e.notGzip = true;
+                throw e;
+            }
+            if (done) {
+                buf += dec.decode();
+                if (buf) out.push(buf);
+            }
+            for (const line of out.splice(0)) {
+                if (line) await onLine(line);
+                if (shouldStop()) { try { reader.cancel(); } catch (_) { /* already closed */ } return 'stopped'; }
+                if (performance.now() - last > 30) { await _yieldToMain(); last = performance.now(); }
+            }
+            if (done) return 'done';
+        }
+    }
+
+    /**
+     * The shape check of one record from a file, for its part. Returns the
+     * reason it fails, in plain words, or '' when it may be written.
+     *
+     * @param {object} part - One `_idboParts()` entry.
+     * @param {*} v - The record as decoded (Blobs still `$blob`).
+     * @param {number} now
+     * @returns {string}
+     */
+    function _idbxValidate(part, v, now) {
+        if (!v || typeof v !== 'object' || Array.isArray(v)) return 'not a record';
+        const key = v[part.keyPath];
+        if (typeof key !== 'string' || !key) return `"${part.keyPath}" is missing`;
+        const ts = _idboStamp(v);
+        if (typeof ts !== 'number' || !isFinite(ts) || ts <= 0) return 'it has no stored date';
+        if (ts > now + 86400000) return 'the stored date lies in the future';
+        switch (part.id) {
+            case 'images': {
+                const b = v.blob && v.blob.$blob;
+                if (!b || typeof b.b64 !== 'string' || !/^image\//.test(b.type || '')) return 'the image is missing or not a picture';
+                if (!/^[A-Za-z0-9+/]*={0,2}$/.test(b.b64)) return 'the image data is damaged';
+                break;
+            }
+            case 'metadata':
+                if (typeof v.count !== 'number' || !Array.isArray(v.images)) return '"count" or "images" has the wrong type';
+                break;
+            case 'rel-ws2':
+                if (!('data' in v)) return '"data" is missing';
+                break;
+            case 'ms-rec-len':
+                if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(key)) return '"gid" is not an MBID';
+                if (v.ms !== null && typeof v.ms !== 'number') return '"ms" is not a number';
+                break;
+            case 'recof-ws2':
+                if (!Array.isArray(v.rels)) return '"rels" is not a list';
+                break;
+            case 'artist-works':
+                if (!Array.isArray(v.works)) return '"works" is not a list';
+                break;
+            case 'pages':
+                if (typeof v.v !== 'number' || !v.data || typeof v.data !== 'object') return '"v" or "data" has the wrong type';
+                break;
+            default:
+                break;
+        }
+        return '';
+    }
+
+    /**
+     * What a merge does with one record: `add` (not here), `upd` (newer in the
+     * file), `same` (same date or newer here), `exp` (past its keep time
+     * today) or `bad` (with the reason).
+     *
+     * @param {object} part
+     * @param {*} v
+     * @param {Map<string, number>} here - Key → stored date in this browser.
+     * @param {number} now
+     * @returns {{cls: string, reason: string}}
+     */
+    function _idbxClassify(part, v, here, now) {
+        const reason = _idbxValidate(part, v, now);
+        if (reason) return { cls: 'bad', reason };
+        const ts = _idboStamp(v);
+        if (now - ts > part.ttlDays * 86400000) return { cls: 'exp', reason: '' };
+        const h = here.get(String(v[part.keyPath]));
+        if (h === undefined) return { cls: 'add', reason: '' };
+        return { cls: ts > h ? 'upd' : 'same', reason: '' };
+    }
+
+    /**
+     * Parses a file's first line as an export header and checks it belongs
+     * here. Returns the header, or an error code: `notExport`, `format`,
+     * `origin` (with the file's origin).
+     *
+     * @param {string} line
+     * @returns {{header: ?object, error: string, origin: string}}
+     */
+    function _idbxHeader(line) {
+        let h;
+        try { h = JSON.parse(line); } catch (_) { h = null; }
+        if (!h || h.kind !== 'sa-cache-export') return { header: null, error: 'notExport', origin: '' };
+        if (h.format !== _IDBX_FORMAT) return { header: h, error: 'format', origin: '' };
+        if (h.origin !== location.origin) return { header: h, error: 'origin', origin: String(h.origin || '') };
+        return { header: h, error: '', origin: h.origin };
+    }
+
+    /**
+     * The import's first pass: reads the whole file and classifies every
+     * entry against this browser's cache. Writes nothing.
+     *
+     * @param {Blob} file
+     * @param {function(number, number): void} onProgress - (lines read, lines expected)
+     * @param {function(): boolean} shouldStop
+     * @returns {Promise<object>} `{header, error, origin, ended, lines, total, here, parts: {id: {...}}}`;
+     *   `error` is '' or `notExport` / `notGzip` / `format` / `origin` / `short` / `stopped`.
+     */
+    async function _idbxCheck(file, onProgress, shouldStop) {
+        const parts = _idboParts();
+        const byId = Object.fromEntries(parts.map(p => [p.id, p]));
+        const scans = await Promise.all(parts.map(_idboScanPart));
+        const here = Object.fromEntries(scans.map(s => [s.id, new Map(s.keys.map(k => [String(k.key), k.ts]))]));
+        const res = { header: null, error: '', origin: '', ended: false, lines: 0, total: 0, here, parts: {} };
+        const now = Date.now();
+        let first = true;
+        let entries = 0;
+        try {
+            const end = await _idbxLines(file, (line) => {
+                if (res.error) return;
+                if (first) {
+                    first = false;
+                    const h = _idbxHeader(line);
+                    res.header = h.header;
+                    res.error = h.error;
+                    res.origin = h.origin;
+                    if (res.error) return;
+                    res.total = (h.header.parts || []).reduce((s, p) => s + (Number(p.count) || 0), 0);
+                    for (const p of parts) {
+                        const inFile = (h.header.parts || []).some(x => x.id === p.id);
+                        const fileLayout = h.header.layouts ? h.header.layouts[p.db] : undefined;
+                        res.parts[p.id] = { inFile, n: 0, bytes: 0, oldest: 0, newest: 0, add: 0, upd: 0, same: 0, exp: 0, bad: 0,
+                                            addB: 0, reasons: {},
+                                            skip: inFile && fileLayout !== p.layout
+                                                ? `written with ${p.dbLabel} layout ${fileLayout === undefined ? 'unknown' : fileLayout}; this browser has ${p.layout}` : '' };
+                    }
+                    return;
+                }
+                let o;
+                try { o = JSON.parse(line); } catch (_) { o = null; }
+                if (o && o.kind === 'end') { res.ended = true; return; }
+                entries++;
+                res.lines = entries;
+                if (entries % 250 === 0) onProgress(entries, res.total);
+                const part = o && byId[o.p];
+                if (!part) return;
+                const r = res.parts[part.id];
+                r.n++;
+                const b = part.id === 'images' ? Math.round(line.length * 0.75) : line.length;
+                r.bytes += b;
+                const ts = _idboStamp(o.v);
+                if (ts && (!r.oldest || ts < r.oldest)) r.oldest = ts;
+                if (ts > r.newest) r.newest = ts;
+                if (r.skip) return;
+                const c = _idbxClassify(part, o.v, here[part.id], now);
+                r[c.cls]++;
+                if (c.cls === 'add' || c.cls === 'upd') r.addB += b;
+                if (c.reason) r.reasons[c.reason] = (r.reasons[c.reason] || 0) + 1;
+            }, () => shouldStop() || !!res.error);
+            if (end === 'stopped' && !res.error) res.error = 'stopped';
+        } catch (err) {
+            res.error = err && err.notGzip ? (first ? 'notExport' : 'short') : 'short';
+        }
+        if (!res.error && first) res.error = 'notExport';
+        if (!res.error && !res.ended) res.error = 'short';
+        onProgress(entries, res.total);
+        return res;
+    }
+
+    /**
+     * The import's second pass: reads the file again and writes only what the
+     * check classified `add` or `upd`, for the ticked parts, in transactions of
+     * `_IDBX_WRITE_BATCH`. A stop keeps the batches already written and drops
+     * the rest.
+     *
+     * @param {Blob} file
+     * @param {object} check - `_idbxCheck()`'s result.
+     * @param {Set<string>} pick - Part ids to merge.
+     * @param {function(object): void} onProgress - The running counts.
+     * @param {function(): boolean} shouldStop
+     * @returns {Promise<{added: number, updated: number, same: number, exp: number, bad: number, written: number, stopped: boolean}>}
+     */
+    async function _idbxMerge(file, check, pick, onProgress, shouldStop) {
+        const parts = _idboParts();
+        const byId = Object.fromEntries(parts.map(p => [p.id, p]));
+        const now = Date.now();
+        const c = { added: 0, updated: 0, same: 0, exp: 0, bad: 0, written: 0, lines: 0, stopped: false };
+        const queue = {};
+        const flush = async (id) => {
+            const recs = queue[id];
+            if (!recs || !recs.length) return;
+            queue[id] = [];
+            const part = byId[id];
+            const db = await part.open();
+            await new Promise((resolve, reject) => {
+                const tx = db.transaction(part.store, 'readwrite');
+                const st = tx.objectStore(part.store);
+                for (const r of recs) st.put(r.v);
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+                tx.onabort = () => reject(tx.error || new Error('write aborted'));
+            });
+            for (const r of recs) { c[r.cls === 'add' ? 'added' : 'updated']++; c.written += r.b; }
+            onProgress(c);
+            if (_idbxTest.afterFlush) await _idbxTest.afterFlush();
+        };
+        let first = true;
+        const end = await _idbxLines(file, async (line) => {
+            if (first) { first = false; return; }
+            let o;
+            try { o = JSON.parse(line); } catch (_) { o = null; }
+            if (!o || o.kind === 'end') return;
+            c.lines++;
+            const part = byId[o.p];
+            if (!part || !pick.has(part.id) || (check.parts[part.id] && check.parts[part.id].skip)) return;
+            const k = _idbxClassify(part, o.v, check.here[part.id], now);
+            if (k.cls === 'bad') { c.bad++; return; }
+            if (k.cls === 'exp') { c.exp++; return; }
+            if (k.cls === 'same') { c.same++; return; }
+            (queue[part.id] = queue[part.id] || []).push({ v: _idbxRevive(o.v), cls: k.cls, b: part.id === 'images' ? Math.round(line.length * 0.75) : line.length });
+            if (queue[part.id].length >= _IDBX_WRITE_BATCH) await flush(part.id);
+            if (c.lines % 250 === 0) onProgress(c);
+        }, shouldStop);
+        if (end === 'stopped') { c.stopped = true; onProgress(c); return c; }
+        for (const id of Object.keys(queue)) await flush(id);
+        onProgress(c);
+        return c;
+    }
+
+    /**
+     * The last import on this site, or null.
+     * @returns {?{at: number, file: string}}
+     */
+    function _idbxLastImport() {
+        try {
+            const v = JSON.parse(window.localStorage.getItem(_IDBX_LAST_KEY) || 'null');
+            return v && typeof v.at === 'number' ? v : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /**
+     * The import totals over the ticked parts that are not skipped.
+     * @param {object} check
+     * @param {Set<string>} pick
+     * @returns {{add: number, upd: number, same: number, exp: number, bad: number, bytes: number, skip: number}}
+     */
+    function _idbxTotals(check, pick) {
+        const t = { add: 0, upd: 0, same: 0, exp: 0, bad: 0, bytes: 0, skip: 0 };
+        for (const [id, r] of Object.entries(check.parts)) {
+            if (!r.inFile || r.skip || !pick.has(id)) continue;
+            t.add += r.add; t.upd += r.upd; t.same += r.same; t.exp += r.exp; t.bad += r.bad; t.bytes += r.addB;
+        }
+        t.skip = t.same + t.exp + t.bad;
+        return t;
+    }
+
+    /**
+     * The segmented bar: added, updated, skipped (hatched), invalid.
+     * @param {{add: number, upd: number, skip: number, bad: number}} t - Counts to draw.
+     * @param {number} all - The width's total.
+     * @returns {string}
+     */
+    function _idbxBar(t, all) {
+        const fmtN = n => Number(n).toLocaleString('en-US');
+        const w = x => `${(all ? x / all * 100 : 0).toFixed(2)}%`;
+        return `<div class="mb-idbx-seg"><span class="done" style="width:${w(t.add)}"></span><span class="upd" style="width:${w(t.upd)}"></span>`
+            + `<span class="skip" style="width:${w(t.skip)}"></span><span class="fail" style="width:${w(t.bad)}"></span></div>`
+            + `<div class="mb-idbx-counts"><span><i class="done"></i>${fmtN(t.add)} added</span><span><i class="upd"></i>${fmtN(t.upd)} updated</span>`
+            + `<span><i class="skip"></i>${fmtN(t.skip)} skipped</span><span class="${t.bad ? 'bad' : ''}"><i class="fail"></i>${fmtN(t.bad)} invalid</span></div>`;
+    }
+
+    /** The state pill's class and text. */
+    const _IDBX_PILL = {
+        idle: ['', 'Idle'], running: ['run', 'Running'], done: ['ok', 'Done'], stopped: ['warn', 'Stopped'],
+        donebad: ['warn', 'Done with errors'], failed: ['alert', 'Failed'],
+    };
+
+    /** Paints both panes' slots (the closed one empty). */
+    function _idbxPaint() {
+        _idbxPaintExport();
+        _idbxPaintImport();
+        if (!_idbo.el) return;
+        const x = _idbo.x;
+        for (const [id, pane] of [['ex', 'export'], ['im', 'import']]) {
+            const b = _idbo.el.querySelector(`[data-idbx="open-${pane}"]`);
+            if (b) { b.classList.toggle('on', x.pane === id); b.setAttribute('aria-pressed', String(x.pane === id)); }
+        }
+    }
+
+    /** Paints the Export pane into `[data-idbx-slot="ex"]`. */
+    function _idbxPaintExport() {
+        const box = _idbo.el && _idbo.el.querySelector('[data-idbx-slot="ex"]');
+        if (!box) return;
+        const x = _idbo.x;
+        if (x.pane !== 'ex') { box.innerHTML = ''; return; }
+        const ex = x.ex;
+        if (!ex.pick) ex.pick = new Set(_idbo.parts.filter(p => p.id !== 'images').map(p => p.id));
+        const fmtN = n => Number(n).toLocaleString('en-US');
+        const busy = ex.state === 'running';
+        const plan = _idbxExportPlan(_idbo.parts, ex.pick);
+        const img = plan.rows.find(r => r.p.id === 'images');
+        const [pc, pt] = _IDBX_PILL[ex.state];
+        let h = `<section class="mb-idbx-pane" data-idbx-pane="ex" aria-labelledby="mb-idbx-ex-h">`
+            + `<h3 id="mb-idbx-ex-h">Export to a file <span class="mb-idbo-pill">this browser → file</span> <span class="mb-idbo-pill ${pc}" data-idbx-state>${pt}</span></h3>`
+            + '<p class="mb-idbo-dim" style="margin:0">Pick what goes into the file. You can import it into ShowAllEntityData in another browser or on another computer. Entries past their keep time are left out.</p>'
+            + '<div class="mb-idbo-scroll"><table class="mb-idbo-t"><thead><tr><th></th><th>Part</th><th class="r">Entries</th><th class="r">Expired, left out</th><th class="r">Size here</th><th class="r">In the file, about</th></tr></thead><tbody>'
+            + plan.rows.map(r => `<tr data-idbx-ex-row="${r.p.id}"><td><input type="checkbox" id="mb-idbx-ex-${r.p.id}" data-idbx-ex="${r.p.id}"${ex.pick.has(r.p.id) ? ' checked' : ''}${busy ? ' disabled' : ''} aria-label="Export ${_ajEsc(r.p.label)}"></td>`
+                + `<td><label for="mb-idbx-ex-${r.p.id}" class="mb-idbo-who"><span class="mb-idbo-sw" style="background:${r.p.color}"></span> ${_ajEsc(r.p.label)}${r.p.id === 'images' ? ' <span class="mb-idbo-pill warn">large</span>' : ''}<small>${_ajEsc(r.p.dbLabel)} · ${_ajEsc(r.p.store)}</small></label></td>`
+                + `<td class="r">${fmtN(r.live)}</td><td class="r">${r.exp ? fmtN(r.exp) : '—'}</td><td class="r">${_idboFmtB(r.p.bytes)}</td><td class="r">${ex.pick.has(r.p.id) ? _idboFmtB(r.fileB) : '—'}</td></tr>`).join('')
+            + '</tbody></table></div>';
+        if (img && ex.pick.has('images') && ex.state === 'idle' && img.live) {
+            h += `<div class="mb-idbx-notice" data-idbx-notice><b>Cover art images add ${_idboFmtB(img.fileB)}.</b> The file grows by about the same, since pictures are already compressed. `
+               + `The browser holds the whole file in memory while it writes. Without the images the file would be about ${_idboFmtB(plan.fileB - img.fileB)}.</div>`;
+        }
+        h += '<dl class="mb-idbx-facts">'
+           + `<dt>Entries</dt><dd>${fmtN(plan.n)} from ${plan.parts} parts (${fmtN(plan.skip)} expired left out)</dd>`
+           + `<dt>File</dt><dd>about <b>${_idboFmtB(plan.fileB)}</b> · <span class="mb-idbx-mono">${_ajEsc(_idbxFileName())}</span></dd>`
+           + `<dt>Takes</dt><dd>about ${plan.secs} s on this computer</dd>`
+           + `<dt>Inside</dt><dd>Script version ${_ajEsc(scriptVersion)}, art cache layout ${_ART_IDB_VERSION}, link previews layout ${_DP_IDB_VERSION}, each entry with its stored date</dd></dl>`;
+        if (ex.state !== 'idle') {
+            const pct = ex.total ? Math.min(1, ex.done / ex.total) : 1;
+            h += `<div data-idbx-progress><div class="mb-idbx-seg"><span class="done" style="width:${(pct * 100).toFixed(2)}%"></span></div>`
+               + `<div class="mb-idbx-counts"><span><i class="done"></i>${fmtN(ex.done)} of ${fmtN(ex.total)} written</span><span>${busy && ex.cur ? 'now: ' + _ajEsc(ex.cur) : ''}</span><span>${_idboFmtB(ex.bytes)} so far</span></div></div>`;
+        }
+        h += '<div class="mb-idbo-acts">';
+        if (ex.state === 'idle') {
+            h += `<button type="button" class="mb-idbo-act primary" data-idbx="ex-go"${plan.n ? '' : ' disabled'}>Write file (${_idboFmtB(plan.fileB)})</button>`
+               + '<button type="button" class="mb-idbo-act" data-idbx="pane-close">Cancel</button>';
+        } else if (busy) {
+            h += '<button type="button" class="mb-idbo-act danger" data-idbx="ex-stop">Stop</button>';
+        } else {
+            if (ex.state === 'done') h += '<button type="button" class="mb-idbo-act primary" data-idbx="ex-again">Download again</button>';
+            h += '<button type="button" class="mb-idbo-act" data-idbx="ex-new">New export</button><button type="button" class="mb-idbo-act" data-idbx="pane-close">Close</button>';
+        }
+        h += `</div><div class="mb-idbo-toast" aria-live="polite" data-idbx-toast>${_ajEsc(ex.toast)}</div></section>`;
+        box.innerHTML = h;
+    }
+
+    /** Paints the Import pane into `[data-idbx-slot="im"]`. */
+    function _idbxPaintImport() {
+        const box = _idbo.el && _idbo.el.querySelector('[data-idbx-slot="im"]');
+        if (!box) return;
+        const x = _idbo.x;
+        if (x.pane !== 'im') { box.innerHTML = ''; return; }
+        const im = x.im;
+        const fmtN = n => Number(n).toLocaleString('en-US');
+        const [pc, pt] = _IDBX_PILL[im.state];
+        let h = `<section class="mb-idbx-pane" data-idbx-pane="im" aria-labelledby="mb-idbx-im-h">`
+            + `<h3 id="mb-idbx-im-h">Import from a file <span class="mb-idbo-pill">file → this browser</span> <span class="mb-idbo-pill ${pc}" data-idbx-state>${pt}</span></h3>`;
+        const fileFact = im.file ? `<dt>File</dt><dd class="mb-idbx-mono">${_ajEsc(im.file.name || 'file')} · ${_idboFmtB(im.file.size)}</dd>` : '';
+        if (im.step === 'pick') {
+            h += '<p class="mb-idbo-dim" style="margin:0">Choose a file written by Export in another browser. Nothing changes here until you confirm the merge.</p>'
+               + '<div class="mb-idbx-drop" data-idbx-drop>Drop the file here, or <button type="button" class="mb-idbo-act primary" data-idbx="im-choose">Choose a file…</button>'
+               + '<input type="file" id="mb-idbx-file" accept=".gz,application/gzip" hidden></div>'
+               + '<div class="mb-idbo-acts"><button type="button" class="mb-idbo-act" data-idbx="pane-close">Cancel</button></div>';
+            if (im.error) h += `<div class="mb-idbo-confirm" role="alert" data-idbx-error><span>${im.error}</span></div>`;
+        } else if (im.step === 'checking') {
+            const p = im.prog || { done: 0, total: 0 };
+            const pct = p.total ? Math.min(100, p.done / p.total * 100) : 0;
+            h += `<dl class="mb-idbx-facts">${fileFact}</dl><div><div class="mb-idbx-seg"><span class="done" style="width:${pct.toFixed(2)}%"></span></div>`
+               + `<div class="mb-idbx-counts"><span data-idbx-checking>Checking entries: ${fmtN(p.done)} of ${p.total ? fmtN(p.total) : '…'}</span><span>Nothing is written yet</span></div></div>`
+               + '<div class="mb-idbo-acts"><button type="button" class="mb-idbo-act" data-idbx="im-abort">Stop</button></div>';
+        } else {
+            const ck = im.check;
+            const hd = ck.header;
+            const t = _idbxTotals(ck, im.pick);
+            const parts = _idboParts();
+            const written = new Date(hd.written || 0);
+            const lay = parts.filter((p, i, a) => a.findIndex(q => q.db === p.db) === i).map(p => {
+                const f = hd.layouts ? hd.layouts[p.db] : undefined;
+                return `${_ajEsc(p.dbLabel)} ${f === undefined ? 'unknown' : f} (${f === p.layout ? 'same here' : `this browser has ${p.layout}`})`;
+            }).join(', ');
+            const notIn = parts.filter(p => !ck.parts[p.id] || !ck.parts[p.id].inFile).map(p => p.label);
+            h += `<dl class="mb-idbx-facts">${fileFact}`
+               + `<dt>Written</dt><dd>${_ajEsc(written.toLocaleString())} by ShowAllEntityData ${_ajEsc(hd.version || '?')} on ${_ajEsc(String(hd.origin || '').replace(/^https?:\/\//, ''))} (${_ajEsc(hd.browser || 'unknown browser')})</dd>`
+               + `<dt>Layouts</dt><dd>${lay}</dd>`
+               + (notIn.length ? `<dt>Not in the file</dt><dd>${_ajEsc(notIn.join(', '))}</dd>` : '') + '</dl>';
+            const busy = im.step !== 'preview';
+            h += '<div class="mb-idbo-scroll"><table class="mb-idbo-t"><thead><tr><th></th><th>Part</th><th class="r">In the file</th><th class="r">Size</th><th>Ages in the file</th>'
+               + '<th class="r" title="Not in this browser: will be added">Missing here</th><th class="r" title="Newer in the file: will replace the older one here">Newer in the file</th>'
+               + '<th class="r" title="Same date or newer here: kept as is">Same or newer here</th><th class="r" title="Past the keep time today: not imported">Expired</th>'
+               + '<th class="r" title="Did not pass the shape check">Invalid</th></tr></thead><tbody>'
+               + parts.map(p => {
+                   const r = ck.parts[p.id];
+                   const who = `<div class="mb-idbo-who"><span class="mb-idbo-sw" style="background:${p.color}"></span> ${_ajEsc(p.label)}<small>${_ajEsc(p.dbLabel)} · ${_ajEsc(p.store)}</small></div>`;
+                   if (!r || !r.inFile) return `<tr data-idbx-im-row="${p.id}"><td></td><td>${who}</td><td class="r mb-idbo-dim" colspan="8">not in this file</td></tr>`;
+                   const now = Date.now();
+                   // A stamp a little ahead of this clock (another computer's) reads as "1 h", not "—".
+                   const age = ts => _idboFmtAge(Math.max(60000, now - ts));
+                   const ages = !r.n ? '—' : age(r.newest) === age(r.oldest) ? age(r.oldest) : `${age(r.newest)} – ${age(r.oldest)}`;
+                   if (r.skip) {
+                       return `<tr data-idbx-im-row="${p.id}" class="mb-idbx-skipped"><td><input type="checkbox" disabled aria-label="Import ${_ajEsc(p.label)}"></td><td>${who}`
+                           + `<div class="mb-idbo-dim" data-idbx-skip>Skipped: ${_ajEsc(r.skip)}</div></td><td class="r">${fmtN(r.n)}</td><td class="r">${_idboFmtB(r.bytes)}</td><td>${ages}</td>`
+                           + '<td class="r">—</td><td class="r">—</td><td class="r">—</td><td class="r">—</td><td class="r">—</td></tr>';
+                   }
+                   const reasons = Object.entries(r.reasons);
+                   const why = reasons.length
+                       ? `<details data-idbx-why><summary class="mb-idbx-bad">${fmtN(r.bad)} invalid: why</summary><ul class="mb-idbx-reasons">`
+                         + reasons.map(([k, n]) => `<li>${fmtN(n)} × ${_ajEsc(k)}</li>`).join('') + '</ul></details>' : '';
+                   const n = v => (v ? fmtN(v) : '—');
+                   return `<tr data-idbx-im-row="${p.id}"><td><input type="checkbox" data-idbx-im="${p.id}"${im.pick.has(p.id) ? ' checked' : ''}${busy ? ' disabled' : ''} aria-label="Import ${_ajEsc(p.label)}"></td>`
+                       + `<td>${who}${why}</td><td class="r">${fmtN(r.n)}</td><td class="r">${_idboFmtB(r.bytes)}</td><td>${ages}</td>`
+                       + `<td class="r mb-idbx-ok" data-c="add">${n(r.add)}</td><td class="r mb-idbx-run" data-c="upd">${n(r.upd)}</td><td class="r" data-c="same">${n(r.same)}</td>`
+                       + `<td class="r" data-c="exp">${n(r.exp)}</td><td class="r${r.bad ? ' mb-idbx-bad' : ''}" data-c="bad">${n(r.bad)}</td></tr>`;
+               }).join('')
+               + `</tbody><tfoot><tr data-idbx-total><td></td><td>Will change</td><td></td><td class="r">${_idboFmtB(t.bytes)}</td><td></td><td class="r">${fmtN(t.add)}</td>`
+               + `<td class="r">${fmtN(t.upd)}</td><td class="r">${fmtN(t.same)}</td><td class="r">${fmtN(t.exp)}</td><td class="r">${fmtN(t.bad)}</td></tr></tfoot></table></div>`;
+            if (im.step === 'preview') {
+                h += `<p style="margin:0" data-idbx-plan>The merge adds <b>${fmtN(t.add)}</b> and updates <b>${fmtN(t.upd)}</b> entries (${_idboFmtB(t.bytes)}). `
+                   + `${fmtN(t.skip)} ${t.skip === 1 ? 'is' : 'are'} skipped: nothing newer here is replaced, and nothing expired or invalid is written.</p>`;
+                h += im.pending
+                    ? `<div class="mb-idbo-confirm mb-idbx-blue" role="alertdialog" data-idbx-ask><span>Merge ${fmtN(t.add + t.upd)} entries (${_idboFmtB(t.bytes)}) into this browser's cache?</span>`
+                      + '<button type="button" class="mb-idbo-act primary" data-idbx="im-yes">Merge</button><button type="button" class="mb-idbo-act" data-idbx="im-no">Cancel</button></div>'
+                    : `<div class="mb-idbo-acts"><button type="button" class="mb-idbo-act primary" data-idbx="im-go"${t.add + t.upd ? '' : ' disabled'}>Merge…</button>`
+                      + '<button type="button" class="mb-idbo-act" data-idbx="im-other">Choose another file</button><button type="button" class="mb-idbo-act" data-idbx="pane-close">Cancel</button></div>';
+            } else if (im.step === 'merging') {
+                const c = im.result || { added: 0, updated: 0, same: 0, exp: 0, bad: 0 };
+                h += `<div data-idbx-merging>${_idbxBar({ add: c.added, upd: c.updated, skip: c.same + c.exp, bad: c.bad }, t.add + t.upd + t.skip)}</div>`
+                   + '<div class="mb-idbo-acts"><button type="button" class="mb-idbo-act danger" data-idbx="im-stop">Stop</button><span class="mb-idbo-dim">Entries already written stay; the rest is left as it was.</span></div>';
+            } else if (im.step === 'done') {
+                const c = im.result;
+                const skipped = c.same + c.exp + c.bad;
+                h += `<div>${_idbxBar({ add: c.added, upd: c.updated, skip: c.same + c.exp, bad: c.bad }, Math.max(1, c.added + c.updated + skipped))}</div>`
+                   + `<p style="margin:0" data-idbx-done>${c.stopped ? '<b>Stopped.</b> ' : ''}<b>Added ${fmtN(c.added)}, updated ${fmtN(c.updated)}, skipped ${fmtN(skipped)}</b> `
+                   + `(${fmtN(c.same)} same or newer here, ${fmtN(c.exp)} expired${c.bad ? `, <span class="mb-idbx-bad">${fmtN(c.bad)} invalid</span>` : ''}). Took ${(c.ms / 1000).toFixed(1)} s. `
+                   + 'Pages already open keep what they loaded; reload them to use the new entries.</p>'
+                   + '<div class="mb-idbx-log">' + im.log.map(([tm, msg, bad]) => `<span class="t">${tm}</span><span${bad ? ' class="mb-idbx-bad"' : ''}>${_ajEsc(msg)}</span>`).join('') + '</div>'
+                   + '<div class="mb-idbo-acts"><button type="button" class="mb-idbo-act" data-idbx="im-other">Import another file</button><button type="button" class="mb-idbo-act" data-idbx="pane-close">Close</button></div>';
+            }
+        }
+        h += '</section>';
+        box.innerHTML = h;
+        const yes = box.querySelector('[data-idbx="im-yes"]');
+        if (yes) yes.focus();
+    }
+
+    /** Throttled repaint of one pane while a job runs (at most every 100 ms). */
+    function _idbxTick() {
+        const now = performance.now();
+        if (now - (_idbxTick.last || 0) < 100) return;
+        _idbxTick.last = now;
+        _idbxPaint();
+    }
+
+    /** Clock time for the import log. @returns {string} */
+    function _idbxClock() {
+        return new Date().toTimeString().slice(0, 8);
+    }
+
+    /**
+     * Starts an export of the ticked parts; downloads the file when done.
+     * @returns {Promise<void>}
+     */
+    async function _idbxRunExport() {
+        const x = _idbo.x;
+        const ex = x.ex;
+        const plan = _idbxExportPlan(_idbo.parts, ex.pick);
+        Object.assign(ex, { state: 'running', done: 0, total: plan.n, cur: '', bytes: 0, stop: false, toast: '' });
+        if (ex.url) { URL.revokeObjectURL(ex.url); ex.url = ''; }
+        _idbxPaint();
+        const t0 = performance.now();
+        let out;
+        try {
+            out = await _idbxExport(ex.pick, (p) => { Object.assign(ex, p); _idbxTick(); }, () => ex.stop || x !== _idbo.x);
+        } catch (err) {
+            ex.state = 'stopped';
+            ex.toast = `The file could not be written: ${err && err.message ? err.message : err}. Nothing was saved.`;
+            _idbxPaint();
+            return;
+        }
+        if (x !== _idbo.x) return;                       // the dialog closed meanwhile
+        if (!out) { ex.state = 'stopped'; ex.toast = 'Stopped. No file was saved.'; _idbxPaint(); return; }
+        Object.assign(ex, { state: 'done', done: out.n, total: out.n, bytes: out.blob.size, ms: performance.now() - t0,
+                            url: URL.createObjectURL(out.blob), name: _idbxFileName(), n: out.n, parts: out.parts });
+        ex.toast = `Saved ${ex.name} (${_idboFmtB(out.blob.size)}): ${Number(out.n).toLocaleString('en-US')} entries from ${out.parts} parts `
+                 + `in ${Math.max(1, Math.round(ex.ms / 1000))} s. Your browser asks where to put it.`;
+        _idbxDownload();
+        _idbxPaint();
+    }
+
+    /** Hands the written file to the browser's download. */
+    function _idbxDownload() {
+        const ex = _idbo.x.ex;
+        if (!ex.url) return;
+        const a = document.createElement('a');
+        a.href = ex.url;
+        a.download = ex.name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    }
+
+    /**
+     * The import's check of a chosen file.
+     * @param {Blob} file
+     * @returns {Promise<void>}
+     */
+    async function _idbxRunCheck(file) {
+        const x = _idbo.x;
+        const im = x.im;
+        Object.assign(im, { step: 'checking', state: 'running', file, check: null, pick: null, pending: false, error: '',
+                            prog: { done: 0, total: 0 }, result: null, stop: false, log: [] });
+        _idbxPaint();
+        const ck = await _idbxCheck(file, (done, total) => { im.prog = { done, total }; _idbxTick(); }, () => im.stop || x !== _idbo.x);
+        if (x !== _idbo.x) return;
+        if (ck.error) {
+            const host = String(ck.origin || '').replace(/^https?:\/\//, '');
+            const msg = {
+                notExport: '<b>That file is not a ShowAllEntityData cache export.</b> It has no export header (for example a saved table). Nothing was changed. Choose a file written by Export.',
+                notGzip: '<b>That file is not a ShowAllEntityData cache export.</b> Nothing was changed. Choose a file written by Export.',
+                format: '<b>That export was written by a newer ShowAllEntityData.</b> Nothing was changed. Update the script here, then import it.',
+                origin: `<b>This export is from ${_ajEsc(host)}.</b> Open the cache overview there to import it. Nothing was changed.`,
+                short: '<b>The file ends early.</b> It was cut short while saving or copying. Nothing was changed. Export it again.',
+                stopped: '',
+            }[ck.error];
+            Object.assign(im, { step: 'pick', state: ck.error === 'stopped' ? 'idle' : 'failed', error: msg || '' });
+            _idbxPaint();
+            return;
+        }
+        im.check = ck;
+        im.pick = new Set(Object.entries(ck.parts).filter(([, r]) => r.inFile && !r.skip).map(([id]) => id));
+        im.log.push([_idbxClock(), `Read ${file.name || 'the file'}: ${Number(ck.lines).toLocaleString('en-US')} entries in ${Object.values(ck.parts).filter(r => r.inFile).length} parts`, false]);
+        Object.assign(im, { step: 'preview', state: 'idle' });
+        _idbxPaint();
+    }
+
+    /**
+     * The merge, after the user confirmed it.
+     * @returns {Promise<void>}
+     */
+    async function _idbxRunMerge() {
+        const x = _idbo.x;
+        const im = x.im;
+        Object.assign(im, { step: 'merging', state: 'running', pending: false, stop: false,
+                            result: { added: 0, updated: 0, same: 0, exp: 0, bad: 0, written: 0 } });
+        _idbxPaint();
+        const t0 = performance.now();
+        let c;
+        try {
+            c = await _idbxMerge(im.file, im.check, im.pick, (r) => { im.result = { ...r }; _idbxTick(); }, () => im.stop);
+        } catch (err) {
+            im.log.push([_idbxClock(), `Writing failed: ${err && err.message ? err.message : err}`, true]);
+            c = { ...(im.result || {}), stopped: true };
+        }
+        c.ms = performance.now() - t0;
+        im.result = c;
+        im.log.push([_idbxClock(), `${c.stopped ? 'Stopped; ' : 'Merged, '}${_idboFmtB(c.written || 0)} written`, false]);
+        if (c.bad) im.log.push([_idbxClock(), `${Number(c.bad).toLocaleString('en-US')} invalid entries skipped (see the reasons above)`, true]);
+        Object.assign(im, { step: 'done', state: c.bad || c.stopped ? 'donebad' : 'done' });
+        try {
+            window.localStorage.setItem(_IDBX_LAST_KEY, JSON.stringify({ at: Date.now(), file: im.file.name || 'file', added: c.added, updated: c.updated }));
+        } catch (_) { /* storage blocked: the tile keeps "never" */ }
+        if (x !== _idbo.x) return;
+        await _idboRescan();
+        const toast = _idbo.el && _idbo.el.querySelector('[data-idbo-toast]');
+        if (toast) {
+            toast.textContent = `Imported: added ${Number(c.added).toLocaleString('en-US')}, updated ${Number(c.updated).toLocaleString('en-US')}, `
+                + `skipped ${Number(c.same + c.exp + c.bad).toLocaleString('en-US')}.`;
+        }
+    }
+
+    /**
+     * Clicks inside either pane (and the two header buttons). Returns true
+     * when it handled the click.
+     * @param {Element} t - The `[data-idbx]` element.
+     * @returns {boolean}
+     */
+    function _idbxOnClick(t) {
+        const x = _idbo.x;
+        const act = t.dataset.idbx;
+        const toggle = (id) => {
+            x.pane = x.pane === id ? null : id;
+            _idbxPaint();
+            const pane = _idbo.el && _idbo.el.querySelector(`[data-idbx-pane="${id}"]`);
+            if (pane && typeof pane.scrollIntoView === 'function') pane.scrollIntoView({ block: 'nearest' });
+        };
+        switch (act) {
+            case 'open-export': toggle('ex'); return true;
+            case 'open-import': toggle('im'); return true;
+            case 'pane-close': x.pane = null; _idbxPaint(); return true;
+            case 'ex-go': _idbxRunExport(); return true;
+            case 'ex-stop': x.ex.stop = true; return true;
+            case 'ex-again': _idbxDownload(); x.ex.toast = 'Your browser asks again where to save the file.'; _idbxPaint(); return true;
+            case 'ex-new': Object.assign(x.ex, { state: 'idle', toast: '' }); _idbxPaint(); return true;
+            case 'im-choose': { const f = _idbo.el.querySelector('#mb-idbx-file'); if (f) f.click(); return true; }
+            case 'im-abort': x.im.stop = true; return true;
+            case 'im-go': x.im.pending = true; _idbxPaint(); return true;
+            case 'im-no': x.im.pending = false; _idbxPaint(); { const g = _idbo.el.querySelector('[data-idbx="im-go"]'); if (g) g.focus(); } return true;
+            case 'im-yes': _idbxRunMerge(); return true;
+            case 'im-stop': x.im.stop = true; return true;
+            case 'im-other': Object.assign(x.im, _idbxFresh().im); _idbxPaint(); return true;
+            default: return false;
+        }
+    }
+
+    /**
+     * Checkbox and file-input changes inside the panes.
+     * @param {Event} e
+     * @returns {void}
+     */
+    function _idbxOnChange(e) {
+        const t = e.target;
+        const x = _idbo.x;
+        if (t.dataset.idbxEx) {
+            if (t.checked) x.ex.pick.add(t.dataset.idbxEx); else x.ex.pick.delete(t.dataset.idbxEx);
+            _idbxPaint();
+        } else if (t.dataset.idbxIm) {
+            if (t.checked) x.im.pick.add(t.dataset.idbxIm); else x.im.pick.delete(t.dataset.idbxIm);
+            _idbxPaint();
+        } else if (t.id === 'mb-idbx-file' && t.files && t.files.length) {
+            _idbxRunCheck(t.files[0]);
+        }
+    }
+
+    /**
+     * Drag and drop onto the Import pane's drop zone.
+     * @param {DragEvent} e
+     * @returns {void}
+     */
+    function _idbxOnDrag(e) {
+        const zone = e.target.closest && e.target.closest('[data-idbx-drop]');
+        if (!zone) return;
+        e.preventDefault();
+        if (e.type === 'dragover') zone.classList.add('over');
+        else if (e.type === 'dragleave') zone.classList.remove('over');
+        else if (e.type === 'drop') {
+            zone.classList.remove('over');
+            const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+            if (f) _idbxRunCheck(f);
+        }
+    }
+
+    /**
+     * Esc inside the panes: cancels the merge question first, then closes the
+     * open pane. Returns true when it handled the key.
+     * @returns {boolean}
+     */
+    function _idbxOnEscape() {
+        const x = _idbo.x;
+        if (x.im.pending) {
+            x.im.pending = false;
+            _idbxPaint();
+            const g = _idbo.el && _idbo.el.querySelector('[data-idbx="im-go"]');
+            if (g) g.focus();
+            return true;
+        }
+        if (x.pane) {
+            const id = x.pane;
+            x.pane = null;
+            _idbxPaint();
+            const b = _idbo.el && _idbo.el.querySelector(`[data-idbx="open-${id === 'ex' ? 'export' : 'import'}"]`);
+            if (b) b.focus();
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -121379,6 +122357,51 @@ a { color: #1565c0; }`;
                 /** @returns {Promise<Array<{id: string, count: number, expired: number, bytes: number}>>} A fresh scan, no dialog. */
                 scan: () => Promise.all(_idboParts().map(_idboScanPart))
                     .then(ps => ps.map(p => ({ id: p.id, count: p.count, expired: p.buckets[3], bytes: p.bytes, error: p.error }))),
+                /**
+                 * Every record of one part, straight from IndexedDB (Blobs as
+                 * `{blobSize, blobType}`), for round-trip assertions.
+                 * @returns {Promise<Array<object>>}
+                 */
+                dump: (id) => {
+                    const part = _idboParts().find(p => p.id === id);
+                    return part.open().then(db => new Promise(resolve => {
+                        const req = db.transaction(part.store, 'readonly').objectStore(part.store).getAll();
+                        req.onsuccess = () => resolve((req.result || []).map(v => Object.fromEntries(Object.entries(v).map(([k, x]) =>
+                            [k, x instanceof Blob ? { blobSize: x.size, blobType: x.type } : x]))));
+                    }));
+                },
+                /** Holds every merge after each written batch until `window.__idbxRelease()`; `null` clears it. */
+                holdAfterFlush: (on) => {
+                    _idbxTest.afterFlush = on ? () => new Promise(r => { window.__idbxHeld = (window.__idbxHeld || 0) + 1; window.__idbxRelease = r; }) : null;
+                },
+                /** @returns {Promise<string>} An export of the given part ids, gzip as base64 (the perf probe). */
+                exportB64: async (ids) => {
+                    if (!_idbo.parts.length) _idbo.parts = await Promise.all(_idboParts().map(_idboScanPart));
+                    const out = await _idbxExport(new Set(ids), () => {}, () => false);
+                    const buf = new Uint8Array(await out.blob.arrayBuffer());
+                    let s = '';
+                    for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+                    return btoa(s);
+                },
+                /**
+                 * The perf probe's round trip, all inside the page: export the
+                 * given parts, clear them, check the file, merge it. Timed.
+                 * @returns {Promise<{n: number, bytes: number, exportMs: number, checkMs: number, mergeMs: number, error: string, added: number}>}
+                 */
+                perfRoundTrip: async (ids) => {
+                    _idbo.parts = await Promise.all(_idboParts().map(_idboScanPart));
+                    const pick = new Set(ids);
+                    const t0 = performance.now();
+                    const out = await _idbxExport(pick, () => {}, () => false);
+                    const t1 = performance.now();
+                    for (const p of _idboParts().filter(q => pick.has(q.id))) await _idboClear(p);
+                    const t2 = performance.now();
+                    const check = await _idbxCheck(out.blob, () => {}, () => false);
+                    const t3 = performance.now();
+                    const merged = check.error ? { added: 0 } : await _idbxMerge(out.blob, check, pick, () => {}, () => false);
+                    const t4 = performance.now();
+                    return { n: out.n, bytes: out.blob.size, exportMs: t1 - t0, checkMs: t3 - t2, mergeMs: t4 - t3, error: check.error, added: merged.added };
+                },
             },
             asyncPop: {
                 register: (key, provider) => _ajRegister(key, provider),
