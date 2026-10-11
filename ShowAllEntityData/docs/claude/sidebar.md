@@ -83,3 +83,42 @@ Specs:
 - `locator.tap()` scrolls again by itself, to the top edge under the sticky
   header bar, and a zoomed-out phone's `getBoundingClientRect()` is in
   layout-viewport coordinates.
+
+## The sidebar picture
+
+MusicBrainz adds an entity's Wikimedia Commons picture to
+`#sidebar .entity-image .picture img` AFTER load: the raw page has none.
+`_sbInitPicture()` is called once at init, right after the required-elements
+check, on MusicBrainz only (`_foreignHost`). It wires a picture that is already
+there, or watches `#sidebar` with a MutationObserver for up to 15 s.
+
+**Nothing is requested.** The picture is MusicBrainz's own, already in the
+browser. The viewer loads it through the external path (`external: true`: no
+art cache, no referrer), like `_dpArtViewerClick()` does for another site's
+images.
+
+**Rules.**
+- **Only a Commons file** (`_sbCommonsFile()`: the host ends in `wikimedia.org`).
+  The event sidebar's event art already has the artwork viewer, and is left
+  alone.
+- **The picture's own control** (`_sbPictureControl()`): a `_setTip()` hover
+  card ("Artist image · Wikimedia Commons · <file>. Click to open it in the
+  viewer."), `role=button`, `tabindex=0`, and click, Enter or Space.
+- **The viewer context** is its own (`_SB_PIC_CTX`, column "Entity image"). A
+  shared context would make the bar read "Detail page" or "CAA".
+- **The viewer bar** shows an image's `pageUrl` as a link (`pageLabel`, here
+  "Open on Commons", `data-mb-artv-page`). That is an optional field, so
+  every other caller is unchanged.
+- **The copy beside the name** (`sa_sidebar_picture_in_header`) is a
+  `span.mb-sb-avatar` prepended to the header h1, 34 px with `object-fit:
+  cover`, with the same control. It stays in sight when the sidebar is
+  collapsed.
+
+**Settings.** `sa_sidebar_picture` (default on) and `sa_sidebar_picture_in_header`
+(default on).
+
+**Specs.** `sidebar-picture.spec.js` (5) and `sidebar-picture.mobile.spec.js`
+(1). They add the picture late and serve upload.wikimedia.org from a 1×1 PNG.
+A "left alone" test waits one macrotask turn (`observerRan()`): an observer
+callback is a microtask, so this is a real settle, not a sleep. There are 7
+mutations in `sidebar-overhaul.json`.

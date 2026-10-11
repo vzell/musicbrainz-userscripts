@@ -492,6 +492,20 @@
             description: "Group the sidebar's external links under Official, Social, Streaming, Concerts, Lyrics, Databases, Stores and Other, each group opening and closing on its own. The links stay in their list; only their order changes."
         },
 
+        sa_sidebar_picture: {
+            label: "Sidebar picture: hover card and viewer",
+            type: "checkbox",
+            default: true,
+            description: "The picture MusicBrainz shows in the sidebar (an artist's photo, a label's logo, from Wikimedia Commons) gets a hover card and opens in the artwork viewer on a click, Enter or Space. Uses the picture MusicBrainz already loaded: no extra request."
+        },
+
+        sa_sidebar_picture_in_header: {
+            label: "Sidebar picture beside the name",
+            type: "checkbox",
+            default: true,
+            description: "Also show a small copy of the sidebar picture at the start of the page heading, so it stays in sight with the sidebar closed. Same hover card and viewer. Needs 'Sidebar picture: hover card and viewer'."
+        },
+
         // ============================================================
         //  OVERFLOW TABLES SECTION
         // ============================================================
@@ -57152,6 +57166,10 @@ a { color: #1565c0; }`;
         return;
     }
 
+    // The sidebar picture's hover card and viewer (docs/claude/sidebar.md).
+    // MusicBrainz adds the picture after load, so this only starts watching.
+    _sbInitPicture();
+
     // Special case: recording page where "Appears on releases" section explicitly
     // states there are no releases.  Nothing to fetch or display, so do not
     // render any action buttons — but do log the situation to the console.
@@ -84571,6 +84589,138 @@ a { color: #1565c0; }`;
         for (const el of _sbSectionNodes(h2)) {
             if (el._mbSbApply) el._mbSbApply();
         }
+    }
+
+    // ── The sidebar picture ──────────────────────────────────────────────────
+    // MusicBrainz adds an artist's (or label's, place's) Wikimedia Commons
+    // picture to `#sidebar .entity-image .picture` after load. It gets a hover
+    // card and opens in the shared artwork viewer, the external way
+    // `_dpArtViewerClick()` opens another site's images; a copy goes beside the
+    // name. Nothing is requested: the browser already has the picture.
+
+    /** The viewer context of the sidebar picture (its own, so the bar says what it is). */
+    const _SB_PIC_CTX = { key: 'sidebar', column: 'Entity image', external: true, imagesCache: new Map() };
+
+    /**
+     * The Commons file name of an upload URL (`…/commons/3/3b/File.jpg`, or a
+     * thumbnail's `…/thumb/3/3b/File.jpg/250px-File.jpg`), '' when it is not one.
+     * @param {string} src
+     * @returns {string}
+     */
+    function _sbCommonsFile(src) {
+        try {
+            const u = new URL(src, location.href);
+            if (!/(^|\.)wikimedia\.org$/.test(u.hostname)) return '';
+            const parts = u.pathname.split('/').filter(Boolean);
+            const t = parts.indexOf('thumb');
+            const name = t >= 0 && parts.length > t + 3 ? parts[t + 3] : parts[parts.length - 1];
+            return decodeURIComponent(name || '');
+        } catch (_) {
+            return '';
+        }
+    }
+
+    /**
+     * Opens the sidebar picture in the artwork viewer.
+     * @param {HTMLImageElement} img - The sidebar's own picture.
+     * @param {Element} opener - Focus returns here on close.
+     * @returns {void}
+     */
+    function _sbOpenPicture(img, opener) {
+        const src = img.currentSrc || img.src;
+        if (!src) return;
+        const file = _sbCommonsFile(src);
+        const images = [{
+            image: src, thumbnails: { 250: src }, types: [], external: true, comment: file || '',
+            pageUrl: file ? `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(file.replace(/ /g, '_'))}` : '',
+            pageLabel: 'Open on Commons',
+        }];
+        _SB_PIC_CTX.imagesCache.clear();
+        _SB_PIC_CTX.imagesCache.set('sidebar', images);
+        _artViewerOpen(_SB_PIC_CTX, 'sidebar', null, 0, { opener, title: `${_cachedEntityName || document.title} — ${_sbEntityType()} image` });
+    }
+
+    /**
+     * Makes one element open the sidebar picture: hover card, click, Enter
+     * and Space.
+     * @param {Element} el - The picture or its copy beside the name.
+     * @param {HTMLImageElement} img - The sidebar's own picture.
+     * @returns {void}
+     */
+    function _sbPictureControl(el, img) {
+        const file = _sbCommonsFile(img.currentSrc || img.src);
+        const type = _sbEntityType();
+        el.setAttribute('role', 'button');
+        el.tabIndex = 0;
+        el.setAttribute('aria-label', `Open the ${type} image`);
+        el.classList.add('mb-sb-pic');
+        _setTip(el, `${type.charAt(0).toUpperCase() + type.slice(1)} image · Wikimedia Commons${file ? ' · ' + file : ''}. Click to open it in the viewer.`);
+        el.addEventListener('click', (e) => {
+            if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return;
+            e.preventDefault();
+            e.stopPropagation();
+            _sbOpenPicture(img, el);
+        });
+        el.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            _sbOpenPicture(img, el);
+        });
+    }
+
+    /**
+     * Wires the sidebar picture once it is there: its own control, and (with
+     * `sa_sidebar_picture_in_header`) a 34 px copy at the start of the heading.
+     * Only a Wikimedia picture: the event sidebar's event art already has the
+     * artwork viewer.
+     * @param {HTMLImageElement} img
+     * @returns {void}
+     */
+    function _sbWirePicture(img) {
+        if (img.dataset.mbSbPic) return;
+        if (!_sbCommonsFile(img.currentSrc || img.src)) return;
+        img.dataset.mbSbPic = '1';
+        if (!document.getElementById('mb-sb-pic-style')) {
+            const st = GM_addStyle(`
+                #sidebar img.mb-sb-pic, .mb-sb-avatar { cursor: zoom-in; }
+                #sidebar img.mb-sb-pic:focus-visible, .mb-sb-avatar:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 2px; }
+                .mb-sb-avatar { display: inline-block; width: 34px; height: 34px; margin-right: 8px; vertical-align: middle; border: 1px solid #d9cfbd; border-radius: 3px; overflow: hidden; background: #fbf8f1; }
+                .mb-sb-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
+            `);
+            st.id = 'mb-sb-pic-style';
+        }
+        _sbPictureControl(img, img);
+        const h1 = headerContainer && headerContainer.tagName === 'H1' ? headerContainer : document.querySelector('#content h1, h1');
+        if (Lib.settings.sa_sidebar_picture_in_header !== false && h1 && !h1.querySelector('.mb-sb-avatar')) {
+            const box = document.createElement('span');
+            box.className = 'mb-sb-avatar';
+            const copy = document.createElement('img');
+            copy.src = img.currentSrc || img.src;
+            copy.alt = '';
+            box.appendChild(copy);
+            _sbPictureControl(box, img);
+            h1.prepend(box);
+        }
+    }
+
+    /**
+     * Starts watching the sidebar for MusicBrainz's picture (it arrives after
+     * load) for up to 15 s, then wires it. MusicBrainz only.
+     * @returns {void}
+     */
+    function _sbInitPicture() {
+        if (_foreignHost || Lib.settings.sa_sidebar_picture === false) return;
+        const sidebar = document.getElementById('sidebar');
+        if (!sidebar) return;
+        const find = () => {
+            const img = sidebar.querySelector('.entity-image .picture img');
+            if (img && (img.currentSrc || img.src)) { _sbWirePicture(img); return true; }
+            return false;
+        };
+        if (find()) return;
+        const mo = new MutationObserver(() => { if (find()) { mo.disconnect(); clearTimeout(timer); } });
+        mo.observe(sidebar, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] });
+        const timer = setTimeout(() => mo.disconnect(), 15000);
     }
 
     /**
@@ -114838,6 +114988,15 @@ a { color: #1565c0; }`;
         orig.target = '_blank';
         orig.rel = im.external ? 'noopener noreferrer' : 'noopener';
         bar.appendChild(orig);
+        // An image with a page of its own (the sidebar picture's Commons file page).
+        if (im.pageUrl) {
+            const pg = _artvEl('a', 'mb-artv-btn', im.pageLabel || 'Source page');
+            pg.href = im.pageUrl;
+            pg.target = '_blank';
+            pg.rel = 'noopener noreferrer';
+            pg.dataset.mbArtvPage = '1';
+            bar.appendChild(pg);
+        }
         const close = _artvBtn('close', 'Close (Esc)');
         bar.appendChild(close);
         root.appendChild(bar);

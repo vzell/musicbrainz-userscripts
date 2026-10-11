@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-10-11",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The picture MusicBrainz shows at the top of the sidebar (an artist's photo, a label's logo, from Wikimedia Commons) now shows a card with its file name when you point at it and opens in the artwork viewer on a click, Enter or Space, with an Open on Commons link. A small copy sits at the start of the page heading, so it stays in sight with the sidebar closed. Nothing extra is loaded. New settings: Sidebar picture: hover card and viewer, Sidebar picture beside the name."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Tests: tests/fixtures/sidebar-picture.spec.js (5) and its mobile twin (1); 7 more mutations, all caught."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-10-11",
     "sections": [

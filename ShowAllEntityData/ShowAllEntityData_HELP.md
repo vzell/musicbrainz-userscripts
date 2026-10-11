@@ -809,6 +809,14 @@ close every sidebar section; the headings of the main page are left alone.
 - **Other scripts.** Whatever another userscript adds to the sidebar stays
   where it put it. Its headings open and close like the others; nothing of it
   is read or moved.
+- **The picture** (as soon as the page opens, no table needed). The photo or
+  logo MusicBrainz shows at the top of the sidebar (from Wikimedia Commons)
+  shows a card with its file name when you
+  point at it, and opens in the [artwork viewer](#cover-art) on a click, Enter
+  or Space, with *Open on Commons* in its bar. A small copy appears at the start
+  of the page heading, so it stays in sight with the sidebar closed. Nothing
+  extra is loaded: it is the picture MusicBrainz already shows. Switches:
+  *Sidebar picture: hover card and viewer*, *Sidebar picture beside the name*.
 
 The switches are in ⚙️ Settings, next to *Collabsable sidebar*.
 
