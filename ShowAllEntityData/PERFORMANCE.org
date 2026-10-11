@@ -12,7 +12,7 @@ is on ~main~. Several steps below were implemented and measured on a branch
 that was never merged; those stay TODO and say so in their own text, so that
 "what is true of the script people actually run" is readable straight off the
 keywords. As of this revision the DONE set is exactly Steps 3, 4, 8, 18, 19, 21,
-22, 25, 26, 32, 34, 35 and 36.
+22, 25, 26, 32, 34, 35, 36, 37, 38, 39, 40, 41, 42 and 43.
 
 *One canonical numbering.* Three copies of this file drifted into three
 incompatible schemes — ~main~, ~perf-steps-1-4~ and
@@ -3539,10 +3539,10 @@ aborted it here (~tests/MEASUREMENTS.org~). That confirms from the measurement
 side what the bisect above found, and closes the hole. The gate's conclusion is
 unchanged either way, for the reason just given.
 
-*** TODO Step 37: Table paint layer
+*** DONE Step 37: Table paint layer
 
-/Branch/ ~perf/faster-filtering~ /(C1 of its plan), 2026-10-10. TODO until it is
-on/ ~main~.
+/Branch/ ~perf/faster-filtering~ /(C1 of its plan), 2026-10-10. On/ ~main~ /since
+the 2026-10-11 merge (9.99.1317–9.99.1325).
 
 *Problem.* Measured with ~tests/support/probe-keystroke-cost.js~ (DEBUG-NOTES.md
 2026-10-10): once the page is idle, every keystroke in a filter box is followed
@@ -3584,10 +3584,10 @@ four pages (=artist-events= ≥100 ms 5 → 2, Petty ≥50 ms 5-6 → 0-1) and t
 after the last key on =artist-events= by 11-14 %. Keys landing inside a pass
 (400 ms) are unchanged: the pass is the long task, which neither step touches.
 
-*** TODO Step 38: Batched header-badge publish
+*** DONE Step 38: Batched header-badge publish
 
-/Branch/ ~perf/faster-filtering~ /(C2 of its plan), 2026-10-10. TODO until it is
-on/ ~main~.
+/Branch/ ~perf/faster-filtering~ /(C2 of its plan), 2026-10-10. On/ ~main~ /since
+the 2026-10-11 merge (9.99.1317–9.99.1325).
 
 *Problem.* Measured with ~tests/support/probe-keystroke-cost.js~ (DEBUG-NOTES.md
 2026-10-10): for the first seconds after a render, the idle-time header-count
@@ -3628,10 +3628,10 @@ badge, with a per-column control; a scan superseded mid-way publishes nothing,
 via ~__saTest.colHeaderCounts~); 3 mutations, all caught. Typed A/B: measured
 together with Step 37, see there.
 
-*** TODO Step 39: Time-sliced typing filter
+*** DONE Step 39: Time-sliced typing filter
 
-/Branch/ ~perf/faster-filtering~ /(C5 of its plan), 2026-10-10. TODO until it is
-on/ ~main~. /Card mockup approved 2026-10-10:/
+/Branch/ ~perf/faster-filtering~ /(C5 of its plan), 2026-10-10. On/ ~main~ /since
+the 2026-10-11 merge (9.99.1317–9.99.1325). /Card mockup approved 2026-10-10:/
 https://claude.ai/artifact/GCdE1u84VHcySfj3fSiNFf
 
 *Problem.* ~runFilter()~ compares every row in one task. With a pause between
@@ -3686,9 +3686,9 @@ longest block falls by ≥50 % in 4 of 8 page × delay cases — the plan's stop
 asked for all — because the commit (clone, highlight, render) is still one task,
 largest on the multi-table page. Reported to the user before going further.
 
-*** TODO Step 40: ~initCollapsableColumns()~ measures every column in one read phase
+*** DONE Step 40: ~initCollapsableColumns()~ measures every column in one read phase
 
-/Branch/ ~perf/faster-filtering~ /(C6a), 2026-10-10. TODO until it is on/ ~main~.
+/Branch/ ~perf/faster-filtering~ /(C6a), 2026-10-10. On/ ~main~ /since the 2026-10-11 merge (9.99.1317–9.99.1325).
 
 *Problem.* A V8 CPU profile of the commit (~probe-keystroke-cost.js --cpu~, the
 committed artist-events capture, 400 ms between keys, 8 passes) put
@@ -3724,9 +3724,9 @@ group), with the same toggles, header buttons and min-widths as the render's own
 pass; mutation "measures column by column again" caught (6 groups).
 ~__saTest.collapse.init(i)~ calls the function directly.
 
-*** TODO Step 41: ~applyStickyColumn()~ writes first, then reads
+*** DONE Step 41: ~applyStickyColumn()~ writes first, then reads
 
-/Branch/ ~perf/faster-filtering~ /(C6b), 2026-10-10. TODO until it is on/ ~main~.
+/Branch/ ~perf/faster-filtering~ /(C6b), 2026-10-10. On/ ~main~ /since the 2026-10-11 merge (9.99.1317–9.99.1325).
 
 *Problem.* Per body cell it wrote the inline background, then read
 ~getComputedStyle(td).backgroundColor~ back, cell after cell: every read
@@ -3754,9 +3754,9 @@ every stored rest colour equals what the cell paints with, hover paints and
 restores the row; ~__saTest.sticky.apply(i)~. Mutations: reads back inside the
 write pass (caught: 56 groups), hover unwired (caught).
 
-*** TODO Step 42: The sliced pass builds its clones in slices; a key makes it stale at once
+*** DONE Step 42: The sliced pass builds its clones in slices; a key makes it stale at once
 
-/Branch/ ~perf/faster-filtering~ /(C6e), 2026-10-10. TODO until it is on/ ~main~.
+/Branch/ ~perf/faster-filtering~ /(C6e), 2026-10-10. On/ ~main~ /since the 2026-10-11 merge (9.99.1317–9.99.1325).
 
 *Two changes, found together.*
 
@@ -3802,9 +3802,9 @@ outlasts a 400 ms key gap, so no pass finishes while typing and the last one can
 narrow from an earlier result — on =main= each blocking pass finished. Reported to
 the user before going further; they chose Step 43.
 
-*** TODO Step 43: An outdated typed pass finishes comparing, and the next one narrows from it
+*** DONE Step 43: An outdated typed pass finishes comparing, and the next one narrows from it
 
-/Branch/ ~perf/faster-filtering~ /(C6g), 2026-10-10. TODO until it is on/ ~main~.
+/Branch/ ~perf/faster-filtering~ /(C6g), 2026-10-10. On/ ~main~ /since the 2026-10-11 merge (9.99.1317–9.99.1325).
 
 *Problem.* Step 42 made every key retire the running pass. On =artist-events= a pass
 outlasts a 400 ms key gap, so no pass finished while typing, ~_incrMatchSet~ never
