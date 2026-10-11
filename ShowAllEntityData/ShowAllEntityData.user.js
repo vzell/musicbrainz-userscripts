@@ -84074,6 +84074,7 @@ a { color: #1565c0; }`;
      */
     function makeH2sCollapsible() {
         Lib.debug('render', 'Initializing collapsible H2 headers...');
+        const _h2PassT0 = performance.now();
         // Capture all H2s currently in the document to allow peer filtering later
         const allH2s = Array.from(document.querySelectorAll('h2'));
         const _sbSidebarEl = document.getElementById('sidebar');
@@ -84335,7 +84336,10 @@ a { color: #1565c0; }`;
 
         // The MusicBrainz sidebar's own sections: remembered state, counts,
         // keyboard, sub-headings, link groups (docs/claude/sidebar.md).
+        const _sbT0 = performance.now();
         _sbEnhance(allH2s);
+        _sbTiming.enhanceMs = performance.now() - _sbT0;
+        _sbTiming.passMs = performance.now() - _h2PassT0;
     }
 
     // ── MusicBrainz sidebar sections (_sb*) ───────────────────────────────────
@@ -84348,6 +84352,12 @@ a { color: #1565c0; }`;
 
     /** GM key of the remembered open/closed sections: `{ <entity type>: { <section kind>: bool } }`. */
     const _SB_OPEN_KEY = 'sa_sidebar_open_sections';
+
+    /**
+     * The last `makeH2sCollapsible()` pass, timed (`__saTest.sidebar.timing()`):
+     * the whole pass and its `_sbEnhance()` part, in ms.
+     */
+    const _sbTiming = { passMs: 0, enhanceMs: 0 };
 
     /** External-link kinds in display order. */
     const _SB_LINK_KIND_ORDER = ['Official', 'Social', 'Streaming', 'Concerts', 'Lyrics', 'Databases', 'Stores', 'Other'];
@@ -123042,6 +123052,10 @@ a { color: #1565c0; }`;
                 },
             },
             /** The 💾 browser cache overview (`_idbo*`). */
+            sidebar: {
+                /** @returns {{passMs: number, enhanceMs: number}} The last makeH2sCollapsible() pass and its sidebar part, in ms. */
+                timing: () => ({ ..._sbTiming }),
+            },
             idbOverview: {
                 open: () => _idbOverviewOpen(null),
                 close: () => _idbOverviewClose(),

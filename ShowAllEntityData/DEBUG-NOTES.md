@@ -21893,3 +21893,36 @@ header bar (`.mb-vsb-chrome`), which then takes the tap; and
 visual-viewport ones. The spec now adds MusicBrainz's phone layout rule for the
 sidebar, scrolls the target to the middle with its left edge in view, and taps
 with `page.touchscreen` at visual-viewport coordinates.
+
+## 2026-10-11 — The commons-image endpoint: blocked for scripts, empty for a browser (feature/sidebar-overhaul, part 4)
+
+Env: 2026-10-11T02:24Z-02:26Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Python 3 urllib / Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey.
+
+Part 4 of the sidebar plan (the picture in the entity hover card) was to use
+the endpoint MusicBrainz's own sidebar calls, `/<type>/<mbid>/commons-image`,
+which the web service documentation does not cover, so it was probed first.
+
+- `scripts/probe-commons-image.py` (urllib): every URL answered **HTTP 200,
+  text/html, "Verifying your browser"**, a bot challenge. A script gets nothing
+  from MusicBrainz's HTML side any more, so a 200 status proves nothing here.
+- `tests/support/probe-commons-image.js` (headless Chromium, `fetch()` from an
+  open artist page): JSON comes back.
+  - Bruce Springsteen: 200, `{"image": null}`, although his sidebar shows a
+    Commons picture in the user's browser (debug/bs-debug.html).
+  - Various Artists: 200, `{"image": null}`.
+  - Columbia (label): 200, `{"image": null}`.
+  - A place: 404, HTML.
+  - A non-existent MBID: 400, HTML.
+  - About 430 ms per answer.
+- MusicBrainz's own page showed **no** sidebar picture within 20 s in that
+  browser, and made no commons-image or Wikimedia request of its own.
+
+So the endpoint cannot be shown to deliver a picture, and how the user's
+browser gets one is not reproducible here. Per the plan, part 4 stops at this
+report and goes back to the user. Not built: no code calls the endpoint. Open
+options:
+- skip the card picture;
+- read the entity's Wikidata link through the popup engine's existing Wikidata
+  reader (P18 image), on Space only;
+- capture which request delivers the sidebar picture in the user's real
+  browser (DevTools → Network) and probe that.

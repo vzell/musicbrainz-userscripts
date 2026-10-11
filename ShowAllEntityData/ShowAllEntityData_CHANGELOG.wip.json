@@ -12,7 +12,8 @@
       {
         "label": "📝 Docs",
         "items": [
-          "Tests: tests/fixtures/sidebar-tables.spec.js (5); 7 more mutations, 6 caught and 1 recorded as covered by another guard."
+          "Tests: tests/fixtures/sidebar-tables.spec.js (5); 7 more mutations, 6 caught and 1 recorded as covered by another guard.",
+          "Probes: MusicBrainz's commons-image endpoint answers scripts with a browser check and a browser with no picture even where the sidebar shows one, so the picture in the entity hover card was not built (DEBUG-NOTES.md 2026-10-11). Measured: the sidebar part of a render takes about 1.2 ms (tests/MEASUREMENTS.org)."
         ]
       }
     ]

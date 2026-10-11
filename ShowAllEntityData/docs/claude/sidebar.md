@@ -192,3 +192,16 @@ the page in milliseconds, so a saved copy adds nothing.
 
 There are 7 mutations in `sidebar-overhaul.json`, 6 caught and 1 recorded
 `expect: "pass"`, as above.
+
+## The picture in the entity hover card (not built)
+
+Planned as part 4, it stopped at its probe (DEBUG-NOTES.md, 2026-10-11
+"The commons-image endpoint"). `/<type>/<mbid>/commons-image` answers scripts
+with a bot challenge, and a browser with `{"image": null}` even for an artist
+whose sidebar shows a picture. Do not build on it without new evidence. The
+probes: `scripts/probe-commons-image.py` (urllib, shows the challenge) and
+`tests/support/probe-commons-image.js` (from a browser page).
+
+Measured: `_sbEnhance()` is about 1.2 ms of a 1.5 ms `makeH2sCollapsible()`
+pass on the artist page (`tests/support/probe-sidebar-cost.js`,
+`__saTest.sidebar.timing()`, tests/MEASUREMENTS.org 2026-10-11).
