@@ -213,8 +213,10 @@ hosts (kept, decided 2026-10-07).
   regex is case-INSENSITIVE and the link takes the MBID lowercased: editors
   type mixed-case MBIDs (`[E497263c-…-Dca99482962c|The Fever]` on the Stone
   Pony event `26cead1c…`, 14 of its 44 tokens), which the old lowercase-only
-  regex left as raw `[…|…]` text, and `_MB_POP_PATH_RE` (so drill-down)
-  matches lowercase only. MusicBrainz's own page links EVERY token of a song
+  regex left as raw `[…|…]` text. `_MB_POP_PATH_RE` accepts uppercase hex
+  too since WIP.3 (2026-10-12: the event page's own setlist links keep the
+  case the editor typed, and were no preview target), and every reader
+  lowercases the MBID, so one entity has one cache key and one lookup. MusicBrainz's own page links EVERY token of a song
   line as `/work/`, the "with" artists included (`debug/mb-event-initial.html`)
   — not a model to copy. The card keeps names only (plain text). (The
   event-overview page's `_eventSetlistParse()` reads the rendered HTML, a

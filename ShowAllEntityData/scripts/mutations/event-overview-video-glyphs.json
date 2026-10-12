@@ -128,5 +128,44 @@
     "spec": "tests/fixtures/event-overview-video-glyphs.spec.js",
     "grep": "the tint setting turns the paint off",
     "expect": "fail"
+  },
+  {
+    "name": "popup path pattern lowercase only",
+    "why": "_MB_POP_PATH_RE without A-F: a setlist link whose MBID was typed with uppercase letters is no popup target, on the initial page as everywhere. Must fail on the popup test.",
+    "edits": [
+      {
+        "find": "([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})",
+        "replace": "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-video-glyphs.spec.js",
+    "grep": "popup previews a mixed-case",
+    "expect": "fail"
+  },
+  {
+    "name": "popup MBID not lowercased",
+    "why": "The card asks the Web Service, and keys its cache, with the MBID as the link spells it: one entity, two keys. Must fail on the popup test's lowercase request.",
+    "edits": [
+      {
+        "find": "        if (m) return { seg: m[1], type: m[1], id: m[2].toLowerCase() };",
+        "replace": "        if (m) return { seg: m[1], type: m[1], id: m[2] };"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-video-glyphs.spec.js",
+    "grep": "popup previews a mixed-case",
+    "expect": "fail"
+  },
+  {
+    "name": "group note not indented",
+    "why": "The .mb-group-intro wrapper sits flush with the container while its table is indented 1.5em. Must fail on the indentation test.",
+    "edits": [
+      {
+        "find": "                    introEl.style.marginLeft = table.style.marginLeft;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-video-glyphs.spec.js",
+    "grep": "indented like its table",
+    "expect": "fail"
   }
 ]

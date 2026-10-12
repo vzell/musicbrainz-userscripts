@@ -1565,7 +1565,7 @@ table.
 number that moves on at every joining word but "&" — and one table per part
 of the setlist (**Setlist: Soundcheck**, **Setlist: Concert**, …; **Setlist:
 Songs** when the setlist has no parts). A part's notes ("Scheduled: 19:30 |
-Local Start Time 19:40 / End Time 22:29") sit under its heading. **Song** is a
+Local Start Time 19:40 / End Time 22:29") sit under its heading, indented like its table. **Song** is a
 multi-row column: a medley line ("Land of Hope and Dreams / People Get
 Ready") stays one row with one list row per work. The artists of a "(with …)"
 line ("This Land Is Your Land (with Trombone Shorty & the New Breed Brass Band
@@ -1580,7 +1580,8 @@ without a work link is kept as text. A song or artist whose MBID was typed with
 uppercase letters ("[E497263c-…|The Fever]") is still recognised, and its cell
 is flagged ⚠️ "MBID contains uppercase letters" — MusicBrainz resolves the link,
 but the setlist should be edited to use the lowercase MBID (see
-[Warnings and errors](#warnings-and-errors)).
+[Warnings and errors](#warnings-and-errors)). Such a link gets its link preview
+like any other, on the event page itself too.
 
 **Video and entity icons.** When a recording carries MusicBrainz's video icon,
 **Recordings** and the setlist tables get a **Video** column right after

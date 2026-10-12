@@ -33,6 +33,14 @@
 //  5. A MIXED-CASE MBID IS STILL A WORK / AN ARTIST: the song is a work link in
 //     Song (not plain text), the "(with …)" artist an /artist/ link — both
 //     with their case kept, since the finding (6) reads it.
+//  7. THE POPUP ON THE INITIAL PAGE TAKES A MIXED-CASE MBID: Ctrl-hovering
+//     the native setlist's "Plane Wreck…" (work, "C33ef12f-…") and Rosanne
+//     Cash (artist, "5FF6f6eb-…") shows a card, and the Web Service is asked
+//     for the LOWERCASE MBID — one entity, one cache key, whatever the case.
+//     A lowercase-only path pattern makes them no target at all.
+//  8. A GROUP'S NOTE IS INDENTED LIKE ITS TABLE ("Scheduled: 19:00 …" under
+//     "Setlist: Songs"): same left edge as the table, not the container's
+//     (where it sat, flush left under an indented h3 and table).
 //  6. THE FINDING: the ⚠️ menu counts exactly the rows that carry it and
 //     filters to them (and back); the cell is tinted with the ⚠️; the tint
 //     setting turns the paint off but not the finding; Song and Additional
@@ -47,6 +55,8 @@ const { loadUserscriptPage } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
 const { clickToolbarItem } = require('../support/toolbarMenu');
 const { findingRow, clickFinding, findingRowState } = require('../support/findingsMenu');
+
+const json = (name) => fs.readFileSync(path.join(__dirname, name), 'utf8');
 
 const BUTTON = 'button[data-label="Show all Relationships for Event"]';
 const MAIN = {
@@ -231,6 +241,60 @@ test.describe('pageType event-overview: Video, header glyphs, setlist links (WIP
         expect(links.withArtists.every((h) => h.startsWith('/artist/')), links.withArtists.join(' ')).toBe(true);
         expect(links.songs.length).toBeGreaterThan(0);
         expect(links.songs.every((h) => h.startsWith('/work/')), 'the songs stay works').toBe(true);
+    });
+
+    test('the initial page\'s popup previews a mixed-case setlist link, asking for the lowercase MBID', async ({ page }) => {
+        const asked = [];
+        await page.context().route(/\/ws\/2\/(work|artist)\//, (route) => {
+            const url = route.request().url();
+            asked.push(url);
+            return route.fulfill({ status: 200, contentType: 'application/json',
+                body: json(url.includes('/work/') ? 'ws2-pop-work-btr.json' : 'ws2-pop-artist-bruce.json') });
+        });
+        await openEvent(page, {
+            fixture: WITH, rewrite: withUppercase, press: false,
+            settings: { sa_pop_mb: true, sa_pop_mb_page: true, sa_rich_tooltip_delay_ms: 0 },
+        });
+        const peek = page.locator('#mb-dp-peek');
+        const ctrlHover = async (el) => {
+            await page.mouse.move(0, 0);
+            await el.scrollIntoViewIfNeeded();
+            await page.keyboard.down('Control');
+            await el.hover();
+            await page.keyboard.up('Control');
+        };
+        const song = page.locator('#content p.setlist a[href="/work/C33ef12f-8cf9-4a6a-A5ff-ecd17bb019bd"]');
+        await expect(song, 'premise: the native link keeps its case').toHaveCount(1);
+        await ctrlHover(song);
+        await expect(peek).toContainText('fetched now');
+        expect(asked).toEqual([expect.stringContaining('/ws/2/work/c33ef12f-8cf9-4a6a-a5ff-ecd17bb019bd?')]);
+
+        const guest = page.locator('#content p.setlist a[href="/artist/5FF6f6eb-31ad-4903-a3c3-4c9283fcde8b"]');
+        await expect(guest, 'premise: re-pointed to the artist, case kept').toHaveCount(1);
+        await ctrlHover(guest);
+        await expect.poll(() => asked.length, { timeout: 15000 }).toBe(2);
+        expect(asked[1]).toContain('/ws/2/artist/5ff6f6eb-31ad-4903-a3c3-4c9283fcde8b?');
+        await expect(peek).toBeVisible();
+    });
+
+    test('a group\'s note is indented like its table, not flush with the container', async ({ page }) => {
+        await openEvent(page, { fixture: WITH });
+        // Collapsed sub-tables measure 0: open them, and check they are open.
+        const master = page.locator('.mb-master-toggle');
+        if (await master.count() && (await master.getAttribute('data-state')) === 'collapsed') await master.click();
+        await expect(page.locator('.mb-group-intro'), 'premise: the note is shown').toBeVisible();
+        const box = await page.evaluate(() => {
+            const intro = document.querySelector('.mb-group-intro');
+            let t = intro && intro.nextElementSibling;
+            while (t && t.tagName !== 'TABLE') t = t.nextElementSibling;
+            const left = (el) => el.getBoundingClientRect().left;
+            const p = intro && intro.querySelector('p');
+            return intro && t && p ? { text: p.textContent.trim(), intro: left(p), table: left(t), container: left(intro.parentElement) } : null;
+        });
+        expect(box, 'premise: the "Setlist: Songs" note is rendered').toBeTruthy();
+        expect(box.text).toBe('Scheduled: 19:00 Local Start Time ??:?? / End Time ??:??');
+        expect(box.intro, 'the note starts where its table starts').toBeCloseTo(box.table, 0);
+        expect(box.intro, 'not flush with the container').toBeGreaterThan(box.container + 10);
     });
 
     test('a mixed-case MBID is still a work in Song and an artist in Additional artists, case kept', async ({ page }) => {

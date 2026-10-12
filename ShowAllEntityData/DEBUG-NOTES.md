@@ -21981,3 +21981,15 @@ untouched), the 10th is the negative "no finding" case. Mutation list
 `scripts/mutations/event-overview-video-glyphs.json`: 9/9 caught, plus one
 guard no fixture can see (the converter's own `_eventSetlistFixLinks()` call —
 this single-page pageType always converts the live, already-repaired document).
+
+Follow-up (same day, user items 5–6), same Env:
+- **Link previews ignored mixed-case MBIDs on the initial page.** Root cause:
+  `_MB_POP_PATH_RE` matched `[0-9a-f]` only, so `_mbPopParsePath()` returned
+  null for `/work/C33ef12f-…` and the link was no popup target. Now A-F is
+  accepted and the MBID is lowercased by every reader (`_mbPopParsePath()`,
+  the edit page parser — `_MB_POP_PAGE_VERSION` 3).
+- **The setlist note sat flush left** under an indented h3 and table:
+  `renderGroupedTable()` gives each grouped table an inline `margin-left:
+  1.5em`, the `.mb-group-intro` wrapper got none. It now takes the table's.
+  This applies to every grouped page with a note, not only the event page.
+Mutation list now 12 caught + 1 unreachable guard; tested live by the user.

@@ -39401,8 +39401,10 @@
      * IndexedDB (`_mbPageLoad()`: an edit, an editor). Bump it whenever a
      * page parser's output changes, as `_DP_PARSER_VERSION` for the foreign
      * hosts, or users keep the old fields for `sa_pop_mb_ttl_hours`.
+     * 3: an edit's entities include a link whose MBID has uppercase letters
+     * (`_MB_POP_PATH_RE`), lowercased.
      */
-    const _MB_POP_PAGE_VERSION = 2;
+    const _MB_POP_PAGE_VERSION = 3;
 
     /**
      * Each entity card's Web Service answer, by cache key
@@ -39535,9 +39537,17 @@
      * the entity's tabs are not one. `url` (U2) is the "[info]" link beside
      * every URL relationship; `_mbParseEditPage()` reads this pattern too, so
      * an edit's entities now include URLs (`_MB_POP_PAGE_VERSION` 2).
+     *
+     * The MBID may carry uppercase letters: editors type them into setlists
+     * (`[E497263c-…-Dca99482962c|The Fever]`, event 26cead1c-…), MusicBrainz
+     * links them as typed and resolves them. Every reader of this pattern
+     * takes the MBID lowercased (`_mbPopParsePath()`, `_mbParseEditPage()`,
+     * `_MB_POP_PAGE_VERSION` 3), so one entity has one cache key, one Web
+     * Service lookup and one Live page whatever case a link spells it in.
+     * The entity type stays lowercase only — MusicBrainz's paths are.
      * @type {RegExp}
      */
-    const _MB_POP_PATH_RE = /^\/(artist|release-group|release|recording|work|label|event|place|area|series|instrument|collection|url)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/;
+    const _MB_POP_PATH_RE = /^\/(artist|release-group|release|recording|work|label|event|place|area|series|instrument|collection|url)\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\/?$/;
 
     /**
      * The page of a code a link may preview: an ISRC, an ISWC, a disc ID.
@@ -39570,7 +39580,7 @@
      */
     function _mbPopParsePath(pathname) {
         const m = _MB_POP_PATH_RE.exec(pathname);
-        if (m) return { seg: m[1], type: m[1], id: m[2] };
+        if (m) return { seg: m[1], type: m[1], id: m[2].toLowerCase() };
         const c = _MB_POP_CODE_RE.exec(pathname);
         if (c) return { seg: c[1], type: _MB_POP_CODE_TYPES[c[1]], id: c[2] };
         const p = _MB_POP_PAGE_RE.exec(pathname);
@@ -40503,8 +40513,8 @@
      * where the markup says nothing, so its tokens stay names. MusicBrainz's
      * own event page links every token of a song line as a work, the guests
      * included (debug/mb-event-initial.html) — not followed here. The link
-     * takes the MBID lowercased, which `_MB_POP_PATH_RE` (previews,
-     * drill-down) requires.
+     * takes the MBID lowercased, the form every preview and drill-down keys
+     * on (`_mbPopParsePath()`).
      *
      * @param {string} body - The line without its kind character.
      * @param {string} lineKind - `@`, `*` or `#`.
@@ -40947,8 +40957,9 @@
                 changes.push([_mbPopText(th).replace(/:$/, ''), value]);
                 tr.querySelectorAll('a[href]').forEach(a => {
                     const em = _MB_POP_PATH_RE.exec(a.getAttribute('href') || '');
-                    if (em && entities.length < 12 && !entities.some(e => e.id === em[2])) {
-                        entities.push({ type: em[1], id: em[2], name: _mbPopText(a) });
+                    const emId = em ? em[2].toLowerCase() : '';
+                    if (em && entities.length < 12 && !entities.some(e => e.id === emId)) {
+                        entities.push({ type: em[1], id: emId, name: _mbPopText(a) });
                     }
                 });
             });
@@ -83076,6 +83087,9 @@ a { color: #1565c0; }`;
                     introEl = document.createElement('div');
                     introEl.className = 'mb-group-intro';
                     introEl.innerHTML = group.introHtml;
+                    // Indented like the table it describes (table.style.marginLeft
+                    // above), so it reads as part of this sub-section, not of the page.
+                    introEl.style.marginLeft = table.style.marginLeft;
                     // Match the table's just-decided initial collapsed/expanded state
                     // (set above by the auto-expand logic) — every later toggle path
                     // (h3 click, Ctrl+Click all, Ctrl+3, master toggle) re-syncs via

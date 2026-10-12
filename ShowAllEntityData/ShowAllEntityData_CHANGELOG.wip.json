@@ -9,7 +9,9 @@
                     "Event page: the setlist's \"(with …)\" artists link to the artist on the page itself, as soon as it loads — MusicBrainz's setlist syntax renders them as work links (_eventSetlistFixLinks()).",
                     "Event page, \"Additional artists\": a lone leading \"the\" before a linked name is dropped (\"the New Breed Brass Band\" → \"New Breed Brass Band\"); an unlinked item (\"all performers\") is kept as it is.",
                     "Event page: a setlist song or \"(with …)\" artist whose MBID was typed with uppercase letters is recognised again (event 26cead1c-…: \"The Fever\" came out as plain text and Bruce Springsteen stayed a work link). The links keep their case.",
-                    "Event page, setlist tables: a recording that two relationships name (\"recording location for\" and \"shot for\") is listed once in its row's Recording cell."
+                    "Event page, setlist tables: a recording that two relationships name (\"recording location for\" and \"shot for\") is listed once in its row's Recording cell.",
+                    "Link previews: a MusicBrainz link whose MBID has uppercase letters (an event setlist's \"[E497263c-…|The Fever]\", on the initial page too) is previewed like any other; the card asks for, caches and opens the lowercase MBID (_MB_POP_PATH_RE, _mbPopParsePath(); _MB_POP_PAGE_VERSION 3).",
+                    "Multi-table pages: a sub-table's note (e.g. \"Scheduled: 17:00 Local Start Time ??:?? / End Time ??:??\" under \"Setlist: Songs\") is indented like its table instead of sitting flush left (.mb-group-intro)."
                 ]
             },
             {

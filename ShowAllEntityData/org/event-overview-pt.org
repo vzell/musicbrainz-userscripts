@@ -269,6 +269,13 @@ links, "the"), =debug/2001-05-27-*.html= (mixed-case MBIDs).
       =mbid-uppercase= (Song, Additional artists; =_findingUppercaseMbids()=,
       setting =sa_findings_tint_mbid_case=) reads their case to tell the user
       to fix the setlist on MusicBrainz. Decided with the user 2026-10-12.
-- [X] Spec =event-overview-video-glyphs.spec.js= (10); mutation list
-      =event-overview-video-glyphs.json=: 9 fail as expected + 1 guard no
-      fixture can see.
+- [X] Follow-up (user, same day, items 5–6): the link preview on the initial
+      page's setlist links with mixed-case MBIDs — =_MB_POP_PATH_RE= took
+      lowercase hex only, so such a link was no target; it now takes A-F and
+      every reader lowercases the MBID (one cache key, one lookup, one Live
+      page; =_MB_POP_PAGE_VERSION= 3 for the edit parser). The setlist note
+      ("Scheduled: …") above its table: =.mb-group-intro= gets the table's
+      =margin-left= (1.5em) — for every grouped page that has a note.
+- [X] Spec =event-overview-video-glyphs.spec.js= (12); mutation list
+      =event-overview-video-glyphs.json=: 12 fail as expected + 1 guard no
+      fixture can see. Tested live by the user 2026-10-12.
