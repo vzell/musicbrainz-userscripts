@@ -1,0 +1,227 @@
+'use strict';
+
+// Relationship tables (org/relationship-tables-pt.org, WIP.6) on every page
+// family besides the recording (rel-tables-recording.spec.js): the three new
+// overview pageTypes (place, area, instrument) and the "Relationships" /
+// "Relationship lists" / "Credits" button of series, work, label and artist
+// Relationships tab, release group and release.
+//
+// Fixtures: tests/fixtures/rel-<kind>-overview.html, raw captures taken
+// 2026-10-12T18:28Z on vzell-lap (tests/support/capture-raw-page.js), read
+// back with scripts/probe-rel-sections.js.
+//
+// What each test pins, and the neighbouring property it keeps apart:
+//
+//  1. THE GROUPS, per page: names, row counts, and every row as wide as its
+//     header. Row counts alone pass on a render that clones the first group's
+//     header for every group.
+//  2. THE BUTTONS: the overview pages have one; the others keep their own
+//     button FIRST and gain one. Pins `showIf` and the button order.
+//  3. THE MAIN SECTION IS GONE for this render (either/or) — including on the
+//     work page, where Relationships comes BEFORE the main table, so the
+//     render's "last h2 before the first table" anchor would otherwise be
+//     right by accident.
+//  4. THE ATTRIBUTES THE EVENT CONVERTER DOES NOT READ: "(… to present)",
+//     "(until 1931)", "(ended)", an area's parent chain, a series position
+//     with its date ("in 1997: number: 1997"), number ≠ order → two columns,
+//     number = order → one, and an ended URL (no link, struck through).
+//  5. NO PICARD COLUMN on a URL table whose links merely contain "/release/"
+//     (discogs.com/release/…, rateyourmusic.com/release/…). Fails before the
+//     initPicardTaggerColumn() guard was narrowed to MusicBrainz links.
+//  6. RELEASE CREDITS: the release's own lists and its group's, never the
+//     track credits; the group's title from the sidebar.
+
+const path = require('path');
+const { test, expect } = require('../support/test');
+const { loadUserscriptPage } = require('../support/loadPage');
+const { waitForRenderComplete } = require('../support/browser');
+
+const PAGES = {
+    place: ['https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463', 'Show all Relationships for Place'],
+    area: ['https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98', 'Show all Relationships for Area'],
+    instrument: ['https://musicbrainz.org/instrument/a1baa57d-6ab4-461e-89df-448d6fd2c597', 'Show all Relationships for Instrument'],
+    series: ['https://musicbrainz.org/series/f4818e95-a515-4821-ad6d-270703f72dcf', 'Show all Relationships for Series'],
+    work: ['https://musicbrainz.org/work/1f573511-eb4b-3106-8fb2-f15de52e4868', 'Show all Relationships for Work'],
+    'label-rels': ['https://musicbrainz.org/label/0b805b9c-ea03-4fc1-b50d-6dcef76433e0/relationships', 'Show all Relationship lists for Label'],
+    'artist-rels': ['https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships', 'Show all Relationship lists for Artist'],
+    'release-group': ['https://musicbrainz.org/release-group/d5f992ab-6238-3b28-bf2b-7b16d913c9f6', 'Show all Relationships for ReleaseGroup'],
+    release: ['https://musicbrainz.org/release/f50fcf09-4339-4e1c-91cd-e1d2a7b3a7bc', 'Show all Credits for Release'],
+};
+
+/**
+ * Loads one fixture (MusicBrainz's own bundles blocked, every page fetch
+ * answered with the same fixture, ws/2 refused) and, unless `press` is false,
+ * presses its relationship-tables button and waits for the render.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} kind  A key of PAGES.
+ * @param {{settings?: Object, press?: boolean}} [opts]
+ */
+async function open(page, kind, { settings = {}, press = true } = {}) {
+    const [url, label] = PAGES[kind];
+    const fixture = path.join(__dirname, `rel-${kind}-overview.html`);
+    await page.context().route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
+    await loadUserscriptPage(page, {
+        url, fixtureFile: fixture, testMode: true,
+        settingsOverride: { sa_enable_relationship_tables: true, sa_enable_release_tracks: true, ...settings },
+    });
+    await page.route('https://musicbrainz.org/ws/2/**', (route) => route.fulfill({ status: 404, body: '' }));
+    await page.route(/^https:\/\/musicbrainz\.org\/(?!ws\/)/, (route) => route.fulfill({ path: fixture, contentType: 'text/html' }));
+    await page.route('https://coverartarchive.org/**', (route) => route.fulfill({ status: 404, body: '' }));
+    if (!press) return;
+    await page.click(`button[data-label="${label}"]`);
+    await waitForRenderComplete(page, { waitForAutoResize: false });
+}
+
+/**
+ * Every rendered group as { name, heads, rows }, keyed by name.
+ *
+ * @param {import('@playwright/test').Page} page
+ */
+const groups = async (page) => Object.fromEntries((await page.evaluate(() => Array.from(document.querySelectorAll('h3.mb-toggle-h3')).map((h3) => {
+    let t = h3.nextElementSibling;
+    while (t && t.tagName !== 'TABLE') t = t.nextElementSibling;
+    const icon = h3.querySelector('.mb-toggle-icon');
+    const name = icon && icon.nextSibling ? icon.nextSibling.textContent.trim() : h3.textContent.trim();
+    const heads = t ? Array.from(t.querySelectorAll('thead tr:first-child th')).map((th) => (th.dataset.colName || th.textContent).replace(/[⇅▲▼📊]/gu, '').trim()) : [];
+    const rows = t ? Array.from(t.querySelectorAll('tbody tr')).map((tr) => Array.from(tr.cells).map((td) => td.textContent.replace(/\s+/g, ' ').trim())) : [];
+    return { name, heads, rows };
+}))).map((g) => [g.name, g]));
+
+/** A row of group `g` whose column `head` reads `text`, as { header: cell }. */
+const rowBy = (g, head, text) => {
+    const r = g.rows.find((x) => x[g.heads.indexOf(head)] === text);
+    return r ? Object.fromEntries(g.heads.map((h, i) => [h, r[i]])) : null;
+};
+
+/** Every group's rows are as wide as its header. */
+const expectAligned = (g) => Object.values(g).forEach((x) => x.rows.forEach((r, k) =>
+    expect(r.length, `${x.name} row ${k + 1}: cells = header cells`).toBe(x.heads.length)));
+
+const sizes = (g) => Object.values(g).map((x) => [x.name, x.rows.length]);
+
+test.describe('relationship tables: overview pageTypes (WIP.6)', () => {
+    test('place: one button, its links as a URL table', async ({ page }) => {
+        await open(page, 'place', { press: false });
+        expect(await page.evaluate(() => Array.from(document.querySelectorAll('button[data-label]')).map((b) => b.dataset.label)))
+            .toEqual(['Show all Relationships for Place']);
+        await page.click('button[data-label="Show all Relationships for Place"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const g = await groups(page);
+        expect(sizes(g)).toEqual([['URLs', 5]]);
+        expect(g.URLs.heads).toEqual(['#', 'Site', 'URL', 'Relationship']);
+        expect(rowBy(g.URLs, 'Relationship', 'fan pages').Site).toBe('brucebase.wikidot.com');
+    });
+
+    test('area: 279 targets; parent chain, "to present" and "until" read', async ({ page }) => {
+        await open(page, 'area');
+        const g = await groups(page);
+        expect(sizes(g)).toEqual([['Areas', 57], ['Genres', 139], ['Instruments', 3], ['Labels', 1], ['Series', 75], ['URLs', 2], ['Works', 2]]);
+        expectAligned(g);
+        expect(g.Areas.heads, 'the chain cannot share the target\'s "Area" header').toEqual(['#', 'Area', 'Relationship', 'Parent area']);
+        expect(rowBy(g.Areas, 'Area', 'Alabama')['Parent area']).toBe('United States');
+        const league = rowBy(g.Labels, 'Label', 'The League Label Group');
+        expect([league.Begin, league.End, league['B-YYYY'], league['E-YYYY']]).toEqual(['2022-01-01', 'present', '2022', '']);
+        const anthemUsa = g.Works.rows.find((r) => r[g.Works.heads.indexOf('Relationship')] === 'anthem (as USA)');
+        expect([anthemUsa[g.Works.heads.indexOf('Begin')], anthemUsa[g.Works.heads.indexOf('End')]], '"(until 1931)"').toEqual(['', '1931']);
+        expect(rowBy(g.Instruments, 'Instrument', 'frottoir').Relationship).toBe('instruments (as United States of America)');
+    });
+
+    test('instrument: the instrument it is part of, with its disambiguation', async ({ page }) => {
+        await open(page, 'instrument');
+        const g = await groups(page);
+        expect(sizes(g)).toEqual([['Instruments', 1], ['URLs', 3]]);
+        expect(rowBy(g.Instruments, 'Instrument', 'guitar family')).toMatchObject({ Relationship: 'part of', Disambiguation: 'DO NOT USE' });
+    });
+});
+
+test.describe('relationship tables: the second button (WIP.6)', () => {
+    test('series: the page\'s own button first, the main table gone for this render', async ({ page }) => {
+        await open(page, 'series', { press: false });
+        expect(await page.evaluate(() => Array.from(document.querySelectorAll('button[data-label]')).map((b) => b.dataset.label)))
+            .toEqual(['Show all Events for Series', 'Show all Relationships for Series']);
+        await page.click('button[data-label="Show all Relationships for Series"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const g = await groups(page);
+        expect(sizes(g)).toEqual([['Places', 1], ['URLs', 2]]);
+        expect(rowBy(g.Places, 'Place', 'SiriusXM Studio').Area).toBe('New York, New York, United States');
+        expect(await page.locator('#content h2', { hasText: 'Events' }).count(), 'the "Events" section is removed').toBe(0);
+    });
+
+    test('work: Relationships comes first on the page; Recordings is still removed', async ({ page }) => {
+        await open(page, 'work');
+        const g = await groups(page);
+        expect(sizes(g)).toEqual([['Artists', 2], ['Labels', 8], ['URLs', 6], ['Works', 1]]);
+        expectAligned(g);
+        expect(await page.locator('#content h2', { hasText: 'Recordings' }).count()).toBe(0);
+        expect(rowBy(g.Labels, 'Label', 'Rondor Music (France)').End, '"(ended)"').toBe('ended');
+        const laurel = rowBy(g.Labels, 'Label', 'Laurel Canyon Music Ltd.');
+        expect([laurel.Begin, laurel.End, laurel.Disambiguation]).toEqual(['1973', '1973', 'publishing company of Mike Appel and Jim Cretecos']);
+    });
+
+    test('label Relationships tab: "Relationship lists" beside the existing "Relationships"', async ({ page }) => {
+        await open(page, 'label-rels');
+        const g = await groups(page);
+        expect(sizes(g)).toEqual([['Labels', 6], ['URLs', 1]]);
+        expect(await page.locator('#content h2', { hasText: 'Appearances' }).count()).toBe(0);
+    });
+
+    test('artist Relationships tab: series positions, ended URLs', async ({ page }) => {
+        await open(page, 'artist-rels');
+        const g = await groups(page);
+        expect(sizes(g)).toEqual([['Artists', 51], ['Labels', 1], ['Series', 35], ['URLs', 75]]);
+        expectAligned(g);
+        expect(g.Series.heads.slice(0, 7), 'number ≠ order on some row: two columns')
+            .toEqual(['#', 'Series', 'Relationship', 'Number', 'Order', 'Begin', 'End']);
+        expect(rowBy(g.Series, 'Series', 'Super Bowl Halftime Show Headliners'), '"(on 2009-02-01: number: 43) (order: 19)"')
+            .toMatchObject({ Number: '43', Order: '19', Begin: '2009-02-01', End: '2009-02-01' });
+        expect(rowBy(g.Series, 'Series', 'Polar Music Prize')).toMatchObject({ Number: '1997', Order: '10', Begin: '1997' });
+        expect(rowBy(g.Series, 'Series', 'Q Awards 2019 Nominees – Q Best Act in the World Today'), 'only an order').toMatchObject({ Number: '', Order: '4' });
+        // An ended URL relationship has no link natively; it is still a URL row.
+        const ended = g.URLs.rows.find((r) => r[g.URLs.heads.indexOf('URL')].startsWith('https://play.google.com/store/music/artist?id=A6pay'));
+        expect(ended, 'the ended play.google.com link is a URL row').toBeTruthy();
+        expect(ended[g.URLs.heads.indexOf('Site')]).toBe('play.google.com');
+        expect(ended[g.URLs.heads.indexOf('End')]).toBe('2020-10-12');
+        expect(ended[g.URLs.heads.indexOf('URL')], '"[info]" stays with the link').toMatch(/\[info\]$/);
+        expect(Object.keys(g), 'no "Other" group of unparsed lines').not.toContain('Other');
+    });
+
+    test('release group: no Picard column on a URL table with "/release/" in external links', async ({ page }) => {
+        await open(page, 'release-group');
+        const g = await groups(page);
+        expect(sizes(g)).toEqual([['Release groups', 2], ['URLs', 10]]);
+        expect(g.URLs.heads).not.toContain('Picard');
+        expect(await page.locator('table.tbl th.mb-picard-th').count()).toBe(0);
+        expect(await page.locator('#content h2', { hasText: 'Album' }).count(), 'the "Album" section is removed').toBe(0);
+    });
+
+    test('release: "Credits" — the release\'s own lists and its group\'s, Number for a series part', async ({ page }) => {
+        await open(page, 'release');
+        const g = await groups(page);
+        expect(sizes(g)).toEqual([['Artists', 1], ['URLs', 1], ['Via release group: Live/1975–85', 11]]);
+        expectAligned(g);
+        const via = g['Via release group: Live/1975–85'];
+        expect(via.heads.slice(0, 5)).toEqual(['#', 'Target', 'Type', 'Relationship', 'Number']);
+        expect(via.heads, 'number = order: one column').not.toContain('Order');
+        expect(rowBy(via, 'Relationship', 'part of')).toMatchObject({ Type: 'Series', Number: '20', Disambiguation: '2015-04-29' });
+        expect(g.URLs.heads, 'discogs.com/release/… is not a MusicBrainz release').not.toContain('Picard');
+        const st = await page.evaluate(() => ({
+            tracklist: !!document.querySelector('#content h2.tracklist'),
+            bottom: !!document.getElementById('bottom-credits'),
+            details: document.querySelectorAll('#content table.details').length,
+        }));
+        expect(st).toEqual({ tracklist: false, bottom: false, details: 0 });
+    });
+
+    test('release, "Include related" off: the release group block stays native', async ({ page }) => {
+        await open(page, 'release', { settings: { sa_relationship_tables_related: false } });
+        const g = await groups(page);
+        expect(sizes(g)).toEqual([['Artists', 1], ['URLs', 1]]);
+        const native = await page.evaluate(() => {
+            const rg = document.getElementById('release-group-relationships');
+            return rg ? { h3: rg.querySelector('h3')?.textContent.trim(), details: rg.querySelectorAll('table.details').length } : null;
+        });
+        expect(native).toMatchObject({ details: 2 });
+        expect(native.h3).toContain('Release group');
+    });
+});

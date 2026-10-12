@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1326+2026-10-11",
-    "schema_entries": 414,
-    "sections": 49,
-    "settings": 365,
-    "settings_with_default": 360,
+    "schema_entries": 418,
+    "sections": 50,
+    "settings": 368,
+    "settings_with_default": 363,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,10 +15,10 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 188,
+      "checkbox": 191,
       "color_picker": 62,
       "number": 54,
-      "divider": 49,
+      "divider": 50,
       "keyboard_shortcut": 23,
       "text": 17,
       "popup_dialog": 14,
@@ -130,6 +130,10 @@
     {
       "key": "divider_event_overview",
       "label": "🎫 EVENT PAGE"
+    },
+    {
+      "key": "divider_relationship_tables",
+      "label": "🔗 RELATIONSHIP SECTIONS"
     },
     {
       "key": "divider_expand_rgs",
@@ -356,6 +360,7 @@
     "sa_enable_picard_tagger": "Enable Picard Tagger column",
     "sa_enable_recording_of_column": "Show \"Recording of\" and \"Performance attributes\" columns",
     "sa_enable_relationship_debug": "Enable Relationships column debug logging",
+    "sa_enable_relationship_tables": "Relationships as tables",
     "sa_enable_relationships_column": "Enable Relationships column",
     "sa_enable_release_events_column": "Enable Release events column",
     "sa_enable_release_events_debug": "Enable Release events column debug logging",
@@ -495,6 +500,8 @@
     "sa_rel_tooltip_bg": "Relationships rich tooltip: background color",
     "sa_rel_tooltip_color": "Relationships rich tooltip: text color",
     "sa_rel_url_icon_classes": "Relation type → icon CSS class",
+    "sa_relationship_tables_one_table": "One table for all relationships",
+    "sa_relationship_tables_related": "Include related works / the release group",
     "sa_release_rg_link": "Name the release group in the \"see all versions\" link, with a preview",
     "sa_release_tracks_length_mismatch_severe_bg": "Length-mismatch ❌ cell background color",
     "sa_release_tracks_length_mismatch_severe_factor": "Length-mismatch \"far over\" multiple",
@@ -722,6 +729,7 @@
     "sa_enable_picard_tagger": true,
     "sa_enable_recording_of_column": true,
     "sa_enable_relationship_debug": false,
+    "sa_enable_relationship_tables": true,
     "sa_enable_relationships_column": true,
     "sa_enable_release_events_column": true,
     "sa_enable_release_events_debug": false,
@@ -858,6 +866,8 @@
     "sa_rel_idb_ttl_days": 30,
     "sa_rel_tooltip_bg": "#fbf8f1",
     "sa_rel_tooltip_color": "#2b2622",
+    "sa_relationship_tables_one_table": false,
+    "sa_relationship_tables_related": true,
     "sa_release_rg_link": true,
     "sa_release_tracks_length_mismatch_severe_bg": "#f8d7da",
     "sa_release_tracks_length_mismatch_severe_factor": 3,

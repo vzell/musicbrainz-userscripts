@@ -1310,6 +1310,9 @@ an import brings your deletions back.
   the whole tracklist across every medium, consolidated
 - **Event pages** (`/event/<mbid>`) — the event's relationships and setlist as
   tables, and its Event Art Archive images
+- **Relationships as tables** on place, area and instrument pages, and as a
+  second button on series, work, release group, recording and release pages
+  and the artist and label Relationships tab
 - **Collections** — your own, subscribed ones, and their entity sub-tabs
 - **Tags** — entity tag pages, user tag pages, and the most-popular-tags page
 - **Search results** — every entity type
@@ -1611,6 +1614,62 @@ setlist* (off by default: every song in **Setlist: All songs** with a **Part**
 column), *Show an "Event art" section* and *The "Event art" tab opens the
 viewer*. With both table parts off the button is not offered (the Event art
 section comes with the button).
+
+</details>
+
+<details>
+<summary>Relationships as tables on other pages</summary>
+
+Most entity pages list their relationships the way an event page does: short
+lists under a **Relationships** heading, one target per line. The same tables
+the event page gets are available on:
+
+- **Place, area and instrument pages** (`/place/<mbid>`, `/area/<mbid>`,
+  `/instrument/<mbid>`): **Relationships for Place** (Area, Instrument) — the
+  only button there, since those lists are the page's data.
+- **Series, work, release group and recording pages**: a **Relationships**
+  button beside the page's own **Show all…** button.
+- **The artist and label Relationships tab** (`/artist/<mbid>/relationships`):
+  **Relationship lists**, beside the tab's existing **Relationships** button
+  (which consolidates the tables further down).
+- **Release pages**: **Credits**, beside **Tracks** — the release's own
+  credits under "Credits", never the track credits (those stay with
+  **Tracks**, also when MusicBrainz shows them at the bottom).
+
+The two buttons on one page are **either/or**: the page's own button renders
+as it always did, with the relationship lists left as a section you can
+collapse; the new button renders only the relationship tables and leaves the
+page's main table out. Press the other button to switch (the page reloads, as
+it does for every second press).
+
+The tables are the event page's — one per kind of related entity, each with
+the columns that fit it, the entity glyph in the column header — plus:
+
+- **Begin** and **End** for a relationship's dates: "(from 1977-06-27 until
+  1978-05-05)", "(in 1978)" and "(on 1978-04-11)" (Begin = End), "(until
+  1931)", "(… to present)" (End "present"), "(ended)". Both are split like
+  every other date into **B-DD**, **B-MM**, **B-YYYY**, **B-Day**,
+  **B-Month** and the same for **E-**, so you can filter for a year or a
+  weekday.
+- **Number** for a series position ("number: 20"), or **Number** and **Order**
+  when the two differ for some row in that table ("(on 2009-02-01: number:
+  43) (order: 19)").
+- **Parent area** for an area's own parent chain ("Alabama" → "United
+  States"), **Area** for a place's.
+- An ended URL relationship, which MusicBrainz shows struck through and
+  without a link, is still a row of the URLs table, with its end date.
+
+A recording's **Related works** and a release's **Release group** credits
+describe the work or the group, not the page's entity, so each gets its own
+**Via Badlands** / **Via release group: Live/1975–85** table with a **Type**
+column.
+
+Settings, in ⚙️ Settings → 🔗 RELATIONSHIP SECTIONS: *Relationships as tables*
+(off: no new button and no page type for place, area and instrument pages),
+*One table for all relationships* (off by default: one table with **Type** and
+**From** instead of one per kind), *Include related works / the release group*
+(off: those sections stay as MusicBrainz shows them). Save and Load work as on
+any page; a saved file loads back as the same button.
 
 </details>
 

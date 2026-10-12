@@ -302,3 +302,29 @@ Two more things the event page taught, both generic:
   default on) moves every h2 section that comes after the data h2 to just
   before it. On the event page a native "Setlist" therefore ends up above
   "Relationships" — by design, not a bug in the converter.
+
+## One live dataset per page: a second data section is an either/or button
+
+Added 2026-10-12 (org/relationship-tables-pt.org). Every render owns the
+page-wide state: `activeDefinition`, `pageType`, `allRows`/`groupedRows`,
+`_filterResultCache`, and the global filter's fixed `mb-global-filter-*` ids.
+So exactly one h2 carries the global filter, row-count stats, status line,
+Clear button and master toggle; h3 sub-tables under it each get their own
+filter and count. Two h2 data sections cannot be live at once.
+
+A page with a second data section therefore gets a second BUTTON, and the two
+are either/or. Two mechanisms exist:
+
+- `targetHeader` buttons (`area-releases`, `artist-aliases`): the "UI Cleanup"
+  block in `startFetchingProcess()` removes the sections of the OTHER buttons'
+  `targetHeader`s. Only works when every button names its header.
+- A button with its own `type` + `replaceFeatures` (the relationship-tables
+  buttons, `_relTablesButton()`, docs/claude/relationship-tables.md): it runs
+  as that pageType with only its own features, and its converter removes the
+  other data sections itself (`removeMain`). The page's own button keeps no
+  `targetHeader` and renders exactly as before.
+
+Both rely on the rule above: a second press reloads, so the switched `pageType`
+never outlives the render. A file saved from such a render records the
+button's `type`; the disk load activates that button
+(`_activateButtonForSavedPageType()`) before its pre-processing.

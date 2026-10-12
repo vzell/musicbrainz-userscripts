@@ -3034,6 +3034,48 @@
         },
 
         // ============================================================
+        // RELATIONSHIP SECTIONS (org/relationship-tables-pt.org)
+        // The event page's relationship-list converter, on every other
+        // entity page that carries such lists.
+        // ============================================================
+        divider_relationship_tables: {
+            type: 'divider',
+            label: '🔗 RELATIONSHIP SECTIONS'
+        },
+
+        sa_enable_relationship_tables: {
+            label: 'Relationships as tables',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds a "Relationships" button (on a release: "Credits") beside the page\'s ' +
+                         'own "Show all…" button on series, work, release group, recording, release ' +
+                         'and the artist/label Relationships tab, and a Relationships page type for ' +
+                         'place, area and instrument pages. It turns the relationship lists into ' +
+                         'filterable/sortable tables; the page\'s main table is left out of that ' +
+                         'render (press its own button again to get it back). The existing buttons ' +
+                         'are not changed.'
+        },
+
+        sa_relationship_tables_one_table: {
+            label: 'One table for all relationships',
+            type: 'checkbox',
+            default: false,
+            description: 'Off (default): one table per kind of related entity (Artists, Labels, ' +
+                         'Places, URLs, …), each with the columns that fit it. On: every relationship ' +
+                         'in a single table, with "Type" and "From" columns.'
+        },
+
+        sa_relationship_tables_related: {
+            label: 'Include related works / the release group',
+            type: 'checkbox',
+            default: true,
+            description: 'A recording page also lists the relationships of the works it is a ' +
+                         'recording of ("Related works"), and a release page those of its release ' +
+                         'group. On: each gets its own "Via …" table. Off: that native section is ' +
+                         'left as it is.'
+        },
+
+        // ============================================================
         // EXPAND RELEASE AND RELEASE GROUPS SECTION
         // Adapted from "MusicBrainz: Expand/collapse release groups"
         // by Michael Wiencek — injected post-render into the SA table.
@@ -17655,11 +17697,20 @@
      * Parses one target line of an event relationship list into its parts,
      * as cloned nodes.
      *
+     * With `opts.rel` (the relationship-tables pages only; the event page's
+     * output must not change):
+     *   - an ENDED URL relationship, which MusicBrainz prints without a link
+     *     (`<span class="deleted"><bdi>https://…</bdi></span> [info] (until
+     *     2020-10-12)`), is read as a URL target whose href is that text;
+     *   - a URL's "[info] (…)" stays in `extra`, so `_relRowAttrs()` can take
+     *     the date off it before putting "[info]" back with the link.
+     *
      * @param   {Node[]} nodes The line's child nodes (between two `<br>`s).
+     * @param   {{rel?: boolean}} [opts]
      * @returns {?{type: string, main: Node[], href: string, artist: Node[], area: Node[], extra: Node[], comment: Node[]}}
      *          null for an empty line.
      */
-    function _eventRelParseLine(nodes) {
+    function _eventRelParseLine(nodes, opts = {}) {
         const live = nodes.filter(n => n.nodeType !== Node.COMMENT_NODE);
         if (!live.some(n => n.textContent.trim())) return null;
         let i = 0;
@@ -17680,10 +17731,13 @@
             ? (mainNode.tagName === 'A' ? mainNode : mainNode.querySelector('a[href]'))
             : null;
         const clone = n => n.cloneNode(true);
-        if (!anchor) {
+        const endedUrl = !anchor && opts.rel && mainNode && mainNode.nodeType === Node.ELEMENT_NODE &&
+            mainNode.matches('span.deleted') && /^(?:https?:)?\/\//.test(mainNode.textContent.trim())
+            ? mainNode.textContent.trim() : '';
+        if (!anchor && !endedUrl) {
             return { type: 'text', main: _eventTrimNodes(live.map(clone)), href: '', artist: [], area: [], extra: [], comment: [] };
         }
-        const href = anchor.getAttribute('href') || '';
+        const href = endedUrl || anchor.getAttribute('href') || '';
         const type = _eventRelTargetType(href);
         const rest = live.slice(i + 1);
         const parts = { artist: [], area: [], extra: [], comment: [] };
@@ -17707,7 +17761,7 @@
             }
         }
         const main = [...lead, mainNode].map(clone);
-        if (type === 'url') {
+        if (type === 'url' && !opts.rel) {
             // "[info]" (the URL entity's own page) stays with the link it describes.
             const info = _eventTrimNodes(parts.extra);
             if (info.length) main.push(document.createTextNode(' '), ...info);
@@ -17730,9 +17784,10 @@
      *
      * @param   {Element[]} nodes Siblings of a section's h2 (up to the next h2).
      * @param   {?string}   from  The related series' name, null for the event's own.
+     * @param   {{rel?: boolean}} [opts] Passed to `_eventRelParseLine()`.
      * @returns {Array<Object>} Parsed lines (`_eventRelParseLine()`) plus `phrase` and `from`.
      */
-    function _eventRelRowsFrom(nodes, from) {
+    function _eventRelRowsFrom(nodes, from, opts) {
         const rows = [];
         nodes.forEach(n => {
             const tables = n.matches('table.details') ? [n] : Array.from(n.querySelectorAll('table.details'));
@@ -17742,7 +17797,7 @@
                 if (!th || !td) return;
                 const phrase = th.textContent.trim().replace(/:\s*$/, '');
                 _eventSplitAtBr(td).forEach(line => {
-                    const parsed = _eventRelParseLine(line);
+                    const parsed = _eventRelParseLine(line, opts);
                     if (parsed) rows.push({ ...parsed, phrase, from });
                 });
             }));
@@ -17895,6 +17950,7 @@
             if (_ENTITY_TYPE_GLYPH[type]) out[col] = _ENTITY_TYPE_GLYPH[type];
         });
         out.Area = 'arealink';
+        out['Parent area'] = 'arealink';
         out.Song = 'worklink';
         out['Additional artists'] = 'artistlink';
         return out;
@@ -17973,11 +18029,24 @@
      * @param   {Array<Object>} rows Rows of `_eventRelRowsFrom()`.
      * @param   {string} targetCol   Header of the target column.
      * @param   {boolean} withType
+     * With `opts.attrs` (the relationship-tables pages, never the event
+     * page — its output must not change) each row first goes through
+     * `_relRowAttrs()`: the date, "number:" and "order:" attributes at the end
+     * of the line leave Details/Credits for their own Begin / End and Number
+     * (or Number + Order, when the two ever differ in this table) columns,
+     * and an area target's ", <parent chain>" moves to Area.
+     *
+     * @param   {Array<Object>} rows Rows of `_eventRelRowsFrom()`.
+     * @param   {string} targetCol   Header of the target column.
+     * @param   {boolean} withType
      * @param   {boolean} withFrom   Add a "From" column (the related series' name, or "Event").
+     * @param   {{attrs?: boolean, fromLabel?: string}} [opts]
+     *          `fromLabel`: the From value of the page's own rows (default "Event").
      * @returns {{cols: string[], cells: Array<Array<Node[]|string|HTMLTableCellElement>>}}
      */
-    function _eventRelColumns(rows, targetCol, withType, withFrom) {
-        const has = key => rows.some(r => r[key].length);
+    function _eventRelColumns(rows, targetCol, withType, withFrom, opts = {}) {
+        if (opts.attrs) rows = rows.map(_relRowAttrs);
+        const has = key => rows.some(r => r[key] && r[key].length);
         const allUrls = rows.every(r => r.type === 'url');
         const allArtists = rows.every(r => r.type === 'artist');
         const split = allArtists ? rows.map(r => _eventSplitCredits(r.extra)) : null;
@@ -17996,13 +18065,25 @@
         if (withType) cols.push('Type');
         cols.push('Relationship');
         if (has('artist')) cols.push('Artist');
-        if (has('area')) cols.push('Area');
+        // An area target's own parent chain (opts.attrs) cannot share the
+        // target's "Area" header.
+        const areaCol = targetCol === 'Area' ? 'Parent area' : 'Area';
+        if (has('area')) cols.push(areaCol);
         if (split) {
             if (hasCredits) cols.push('Credits');
             if (hasTime) cols.push('Time');
         } else if (has('extra')) {
             cols.push('Details');
         }
+        // Number/Order (opts.attrs only): one column while no row carries both
+        // with different values, two as soon as one does (user decision,
+        // 2026-10-12). A row with only one of the two fills the one column.
+        const numOrderSplit = rows.some(r => r.number && r.order && r.number !== r.order);
+        const hasNumber = rows.some(r => r.number || r.order);
+        if (numOrderSplit) cols.push('Number', 'Order');
+        else if (hasNumber) cols.push('Number');
+        const hasDates = has('begin') || has('end');
+        if (hasDates) cols.push('Begin', 'End');
         if (has('comment')) cols.push('Disambiguation');
         if (withFrom) cols.push('From');
         const host = (href) => {
@@ -18016,18 +18097,149 @@
             if (withType) row.push(_EVENT_REL_TARGET_COLS[r.type] || 'Target');
             row.push(r.phrase);
             if (has('artist')) row.push(_eventStripGlyphs(r.artist.map(clone), glyphs.Artist));
-            if (has('area')) row.push(_eventStripGlyphs(r.area.map(clone), glyphs.Area));
+            if (has('area')) row.push(_eventStripGlyphs(r.area.map(clone), glyphs[areaCol]));
             if (split) {
                 if (hasCredits) row.push(_eventListCell(split[k].credits));
                 if (hasTime) row.push(split[k].time);
             } else if (has('extra')) {
                 row.push(r.extra.map(n => n.cloneNode(true)));
             }
+            if (numOrderSplit) row.push(r.number || '', r.order || '');
+            else if (hasNumber) row.push(r.number || r.order || '');
+            if (hasDates) row.push(r.begin || '', r.end || '');
             if (has('comment')) row.push(r.comment.map(n => n.cloneNode(true)));
-            if (withFrom) row.push(r.from ? r.from : 'Event');
+            if (withFrom) row.push(r.from ? r.from : (opts.fromLabel || 'Event'));
             return row;
         });
         return { cols, cells };
+    }
+
+    /**
+     * One attribute group of a relationship line, as MusicBrainz prints it in
+     * parentheses: a date phrase ("from 1977-06-27 until 1978-05-05", "in
+     * 1978", "on 1978-04-11", "until 1931", "from 2022-01-01 to present",
+     * "ended", a bare "2015-04-29"), or a series position ("number: 20",
+     * "order: 20"). Anything else is not an attribute this reads.
+     *
+     * Probed on 2026-10-12 (scripts/probe-rel-sections.js over
+     * tests/fixtures/rel-*-overview.html): these are every date and position
+     * form the ten pages carry.
+     *
+     * @param   {string} text One group, without its parentheses.
+     * @returns {?{begin?: string, end?: string, number?: string, order?: string}}
+     */
+    function _relClassifyAttr(text) {
+        const D = '[0-9?]{4}(?:-[0-9?]{2}){0,2}';
+        const g = text.trim();
+        let m;
+        if ((m = new RegExp(`^from (${D}) (?:until|to) (${D}|present)$`).exec(g))) return { begin: m[1], end: m[2] };
+        if ((m = new RegExp(`^from (${D})$`).exec(g))) return { begin: m[1] };
+        if ((m = new RegExp(`^until (${D})$`).exec(g))) return { end: m[1] };
+        if ((m = new RegExp(`^(?:in|on) (${D})$`).exec(g))) return { begin: m[1], end: m[1] };
+        if ((m = new RegExp(`^(${D})$`).exec(g))) return { begin: m[1], end: m[1] };
+        if (g === 'ended') return { end: 'ended' };
+        // A dated series position: "in 1997: number: 1997", "on 2009-02-01: number: 43".
+        if ((m = new RegExp(`^(?:in|on) (${D}): number: (.+)$`).exec(g))) return { begin: m[1], end: m[1], number: m[2].trim() };
+        if ((m = /^number: (.+)$/.exec(g))) return { number: m[1].trim() };
+        if ((m = /^order: (\d+)$/.exec(g))) return { order: m[1] };
+        return null;
+    }
+
+    /**
+     * Takes the trailing date / series-position attribute groups off a run of
+     * cloned nodes (`_relClassifyAttr()`), filling `out.begin`/`end`/`number`/
+     * `order` (a later group never overwritten by an earlier one).
+     *
+     * Only the LAST text node is read, so a group that contains a link (an
+     * instrument credit) always stays where it was.
+     *
+     * A line's `extra` may have lost one outer "(" … ")" pair
+     * (`_eventTrimNodes(…, true)` strips it when the run starts with "(" and
+     * ends with ")"), so "(2015-04-29) (number: 20) (order: 20)" arrives as
+     * "2015-04-29) (number: 20) (order: 20", and "(in 1978)" as "in 1978".
+     * Such a run is recognised by its text — no parenthesis at all, or a ")"
+     * before the first "(" — and the missing pair is put back for the scan and
+     * taken off what is left. A run that kept its parentheses ("foo (from …)",
+     * a place's area ending in " (from 1977-08-24 until 1978-05-05)") is read
+     * as printed.
+     *
+     * @param   {Node[]}  nodes    Cloned nodes (the tail text node is mutated).
+     * @param   {Object}  out      Receives begin/end/number/order.
+     * @returns {Node[]}  The nodes left.
+     */
+    function _relPeelAttrs(nodes, out) {
+        const merged = [];
+        nodes.forEach(n => {
+            const last = merged[merged.length - 1];
+            if (n.nodeType === Node.TEXT_NODE && last && last.nodeType === Node.TEXT_NODE) last.textContent += n.textContent;
+            else merged.push(n);
+        });
+        const tail = merged[merged.length - 1];
+        if (!tail || tail.nodeType !== Node.TEXT_NODE) return merged;
+        const full = merged.map(n => n.textContent).join('');
+        const firstParen = full.search(/[()]/);
+        const stripped = firstParen < 0 || full[firstParen] === ')';
+        const lead = stripped && merged.length === 1;
+        let text = (lead ? '(' : '') + tail.textContent + (stripped ? ')' : '');
+        let peeled = 0;
+        for (;;) {
+            const m = /\(([^()]*)\)\s*$/.exec(text);
+            const a = m ? _relClassifyAttr(m[1]) : null;
+            if (!a) break;
+            Object.keys(a).forEach(key => { if (!out[key]) out[key] = a[key]; });
+            text = text.slice(0, m.index);
+            peeled++;
+        }
+        if (!peeled) return merged;
+        if (stripped) {
+            text = text.replace(/\)\s*$/, '');
+            if (lead) text = text.replace(/^\(/, '');
+        }
+        if (text.trim()) tail.textContent = text.replace(/\s+$/, '');
+        else merged.pop();
+        return merged;
+    }
+
+    /**
+     * A copy of one relationship row (`_eventRelRowsFrom()`) with the date
+     * and series-position attributes taken off the end of its `extra` (and of
+     * a place's `area`, after which MusicBrainz prints them) into
+     * `begin`/`end`/`number`/`order` — `_relPeelAttrs()` — for the
+     * relationship-tables pages (`_eventRelColumns(…, { attrs: true })`).
+     * Never mutates `row`.
+     *
+     * An area target's parent chain (", United States" after the link,
+     * which `_eventRelParseLine()` leaves in `extra` for every type but
+     * place) moves to `area`, so it gets the Area column.
+     *
+     * @param   {Object} row A row of `_eventRelRowsFrom()`.
+     * @returns {Object} The row with `extra`/`area` replaced and the four
+     *          fields set (empty strings when absent).
+     */
+    function _relRowAttrs(row) {
+        const out = { ...row, begin: '', end: '', number: '', order: '' };
+        const clone = n => n.cloneNode(true);
+        let extra = row.extra.map(clone);
+        let area = row.area.map(clone);
+        if (row.type === 'area' && !area.length && extra.length &&
+                extra[0].nodeType === Node.TEXT_NODE && /^\s*,/.test(extra[0].textContent)) {
+            // ", <parent>, <grandparent>" — the whole run goes to Area.
+            extra[0].textContent = extra[0].textContent.replace(/^\s*,\s*/, '');
+            area = _relPeelAttrs(extra, out);
+            extra = [];
+        }
+        extra = _relPeelAttrs(extra, out);
+        if (area.length && row.type === 'place') area = _relPeelAttrs(area, out);
+        if (row.type === 'url') {
+            // "[info]" (the URL entity's own page) stays with the link it
+            // describes, as on the event page; only the date left it.
+            const info = _eventTrimNodes(extra);
+            out.main = info.length ? [...row.main.map(clone), document.createTextNode(' '), ...info] : row.main.map(clone);
+            extra = [];
+        }
+        out.extra = _eventTrimNodes(extra);
+        out.area = _eventTrimNodes(area);
+        return out;
     }
 
     /** Joining words between line-up artists ("Bruce Springsteen & The E Street Band with …"). */
@@ -18467,6 +18679,304 @@
         root.dataset.mbEventTables = '1';
         Lib.debug('init', `applyEventDetailsToTables: ${relBuilt ? own.length + seriesRows.length : 0} relationship row(s), ` +
             `${setGroups.length} setlist table(s) → tables.`);
+    }
+
+    /**
+     * The button of this page's definition that runs as `savedType` — a
+     * button with its own `type` (a relationship-tables button), whose
+     * renders are saved under that type, not under the page's.
+     *
+     * @param   {string} savedType The `pageType` a saved file records.
+     * @returns {?object} The button config, or null.
+     */
+    function _buttonForSavedPageType(savedType) {
+        if (!savedType || savedType === baseDefinition?.type) return null;
+        return (baseDefinition?.buttons || []).find(b => b.type === savedType) || null;
+    }
+
+    /**
+     * Before a disk load: when the file was saved from a button that runs as
+     * its own pageType, make that button's definition active the way
+     * `startFetchingProcess()` would (its features only, its pageType), so
+     * the pre-processing and render that follow are that button's.
+     *
+     * @param   {string} savedType The `pageType` the file records.
+     * @returns {boolean} Whether a button was activated.
+     */
+    function _activateButtonForSavedPageType(savedType) {
+        const btn = _buttonForSavedPageType(savedType);
+        if (!btn) return false;
+        activeDefinition = { ...baseDefinition, ...btn, features: { ...(btn.features || {}) } };
+        if (btn.replaceFeatures) delete activeDefinition.entityFeatures;
+        pageType = btn.type;
+        lastClickedButtonLabel = btn.label || null;
+        activeColumnExtractors = buildActiveColumnExtractors(activeDefinition);
+        activeIntegerColumns = buildActiveIntegerColumns(activeDefinition);
+        Lib.debug('cache', `disk-load: file was saved as '${savedType}' — running as that button ("${btn.label}").`);
+        return true;
+    }
+
+    /**
+     * Removes the page's OTHER data sections — every native `table.tbl` in
+     * `root` and the h2 section it belongs to — before the relationship
+     * tables go in (`relDetailsToTables.removeMain`, decided 2026-10-12: the
+     * "Relationships"/"Credits" button and the page's own "Show all…" button
+     * are either/or, as on 'area-releases').
+     *
+     * Why the whole section and not just the table: the render reads its
+     * anchor as the last h2 before the first `table.tbl`
+     * (`renderGroupedTable()`), and about twenty render-tail passes walk every
+     * `table.tbl` on the page; a native table left behind would be both the
+     * anchor's target and their input. An h2 section here is the h2 plus its
+     * following siblings up to the next h2 — stopping early at a sibling that
+     * holds `keep` (on a release page the Tracklist h2's siblings run on into
+     * `#bottom-credits`).
+     *
+     * @param   {Element} root  `#content`.
+     * @param   {Element} keep  The relationship section's anchor h2.
+     * @returns {number} Sections removed.
+     */
+    function _relRemoveMainSections(root, keep) {
+        const h2s = new Set();
+        root.querySelectorAll('table.tbl').forEach(t => {
+            if (t.dataset.mbEventTable) return;
+            let h2 = null;
+            for (let n = t; n && n !== root && !h2; n = n.parentElement) {
+                for (let p = n.previousElementSibling; p; p = p.previousElementSibling) {
+                    if (p.tagName === 'H2') { h2 = p; break; }
+                }
+            }
+            if (h2 && h2 !== keep) h2s.add(h2);
+            t.remove();
+        });
+        h2s.forEach(h2 => {
+            let n = h2.nextElementSibling;
+            while (n && n.tagName !== 'H2' && !n.contains(keep)) {
+                const next = n.nextElementSibling;
+                n.remove();
+                n = next;
+            }
+            h2.remove();
+        });
+        return h2s.size;
+    }
+
+    /**
+     * Turns an entity page's relationship lists into h3 + `table.tbl` groups —
+     * the relationship-tables pages (org/relationship-tables-pt.org,
+     * `features.relDetailsToTables`): the place / area / instrument overview
+     * pageTypes, and the "Relationships"/"Credits" button of series, work,
+     * release group, recording, release and the artist/label Relationships
+     * tab. Same parsing as the event page (`_eventRelRowsFrom()`), plus
+     * `_relRowAttrs()`'s Begin/End/Number/Order columns.
+     *
+     * `features.relDetailsToTables`:
+     *   - `credits: true` — a release page: the lists of
+     *     `#release-relationships` are the release's own, those of
+     *     `#release-group-relationships` the "related" block. Read by id, NEVER
+     *     as "everything under the Credits h2": in MusicBrainz's "Display
+     *     credits at bottom" layout that h2 also holds one block per medium
+     *     with every track's credits (scripts/probe-release-credits-layouts.js,
+     *     2026-10-12). The h2 moves out of `#bottom-credits` to anchor the
+     *     tables: `renderGroupedTable()`'s h3 sweep spares every h3 inside
+     *     `#bottom-credits`, so tables inserted there would be rendered twice.
+     *   - otherwise the lists under `h2.relationships`;
+     *   - `relatedH2: 'h2.related-works'` — a section of h3-led blocks (a
+     *     recording's related works), one "Via <h3>" table each;
+     *   - `ownLabel` — the From value of the page's own rows (one-table layout);
+     *   - `removeMain: true` — `_relRemoveMainSections()` first.
+     *
+     * Layout: one table per kind of target in first-appearance order, then one
+     * "Via …" table per related block (`sa_relationship_tables_related`;
+     * off: the block stays native, its h3s demoted to h4 so the render's h3
+     * sweep keeps their names), or everything in one table
+     * (`sa_relationship_tables_one_table`).
+     *
+     * Runs in the pre-processing block, on fetched pages and on a disk load,
+     * like `applyEventDetailsToTables()`. Idempotent (`#content` is marked
+     * `data-mb-rel-tables`). Does nothing when the page has no lists.
+     *
+     * @param {object}           def
+     * @param {Document|Element} [docContext=document]
+     * @returns {void}
+     */
+    function applyRelDetailsToTables(def, docContext = document) {
+        const cfg = def?.features?.relDetailsToTables;
+        if (!cfg) return;
+        const root = docContext.getElementById ? docContext.getElementById('content') : docContext.querySelector('#content');
+        if (!root || root.dataset.mbRelTables) return;
+        const doc = root.ownerDocument;
+        const withRelated = Lib.settings.sa_relationship_tables_related !== false;
+
+        let anchor;
+        let ownNodes = [];
+        const related = [];   // { name, from, nodes, remove: Element[] }
+        if (cfg.credits) {
+            const bc = root.querySelector('#bottom-credits');
+            const relDiv = root.querySelector('#release-relationships');
+            const rgDiv = root.querySelector('#release-group-relationships');
+            anchor = bc ? bc.querySelector(':scope > h2') : null;
+            if (relDiv) ownNodes = Array.from(relDiv.children).filter(c => c.tagName !== 'H3');
+            if (rgDiv) {
+                // The release group's title is in the sidebar, outside #content:
+                // the link to the group itself, its name in a <bdi> (not "see
+                // all ratings" → /release-group/<mbid>/ratings).
+                const rgLink = Array.from(doc.querySelectorAll('a[href*="/release-group/"]'))
+                    .find(a => !root.contains(a) && a.querySelector('bdi') &&
+                        /\/release-group\/[0-9a-f-]{36}\/?$/.test(a.getAttribute('href') || ''));
+                const rgName = rgLink ? rgLink.textContent.trim() : '';
+                related.push({
+                    name: rgName ? `Via release group: ${rgName}` : 'Via release group',
+                    from: 'Release group',
+                    nodes: Array.from(rgDiv.children).filter(c => c.tagName !== 'H3'),
+                    remove: [rgDiv]
+                });
+            }
+        } else {
+            anchor = root.querySelector('h2.relationships');
+            ownNodes = _eventSectionNodes(anchor);
+            const relH2 = cfg.relatedH2 ? root.querySelector(cfg.relatedH2) : null;
+            let cur = null;
+            _eventSectionNodes(relH2).forEach(n => {
+                if (n.tagName === 'H3') {
+                    const title = n.textContent.trim();
+                    cur = { name: `Via ${title}`, from: title, nodes: [], remove: [n], h3: n };
+                    related.push(cur);
+                } else if (cur) {
+                    cur.nodes.push(n);
+                    cur.remove.push(n);
+                }
+            });
+            if (relH2 && related.length) related.relH2 = relH2;
+        }
+        if (!anchor) return;
+
+        const own = _eventRelRowsFrom(ownNodes, null, { rel: true });
+        related.forEach(g => { g.rows = withRelated ? _eventRelRowsFrom(g.nodes, g.from, { rel: true }) : []; });
+        const relatedRows = related.flatMap(g => g.rows);
+        if (!own.length && !relatedRows.length) return;
+
+        if (cfg.removeMain) {
+            const n = _relRemoveMainSections(root, anchor);
+            Lib.debug('init', `applyRelDetailsToTables: removed ${n} main data section(s) for this render.`);
+        }
+
+        const frag = doc.createDocumentFragment();
+        const attrs = { attrs: true, fromLabel: cfg.ownLabel || 'Page' };
+        if (Lib.settings.sa_relationship_tables_one_table) {
+            const all = [...own, ...relatedRows];
+            const { cols, cells } = _eventRelColumns(all, 'Target', true, relatedRows.length > 0, attrs);
+            frag.appendChild(_eventBuildTable(doc, cfg.credits ? 'Credits' : 'Relationships', cols, cells));
+        } else {
+            const order = [];
+            own.forEach(r => { if (!order.includes(r.type)) order.push(r.type); });
+            order.forEach(t => {
+                const rows = own.filter(r => r.type === t);
+                const { cols, cells } = _eventRelColumns(rows, _EVENT_REL_TARGET_COLS[t] || 'Target', false, false, attrs);
+                frag.appendChild(_eventBuildTable(doc, _EVENT_REL_GROUP_NAMES[t] || 'Other', cols, cells));
+            });
+            related.forEach(g => {
+                if (!g.rows.length) return;
+                const { cols, cells } = _eventRelColumns(g.rows, 'Target', true, false, attrs);
+                frag.appendChild(_eventBuildTable(doc, g.name, cols, cells));
+            });
+        }
+
+        // The native lists the tables replace.
+        const bc = cfg.credits ? anchor.parentElement : null;
+        if (cfg.credits) {
+            const relDiv = root.querySelector('#release-relationships');
+            if (relDiv) relDiv.remove();
+            bc.before(anchor);
+        } else {
+            ownNodes.forEach(n => { if (n.matches('table.details') || n.querySelector('table.details')) n.remove(); });
+        }
+        if (withRelated) {
+            related.forEach(g => { if (g.rows.length) g.remove.forEach(n => n.remove()); });
+            if (related.relH2 && !_eventSectionNodes(related.relH2).length) related.relH2.remove();
+        } else {
+            related.forEach(g => {
+                if (!g.h3) return;
+                const h4 = doc.createElement('h4');
+                Array.from(g.h3.attributes).forEach(a => h4.setAttribute(a.name, a.value));
+                while (g.h3.firstChild) h4.appendChild(g.h3.firstChild);
+                g.h3.replaceWith(h4);
+            });
+        }
+        // What is left of #bottom-credits: the release group block when it
+        // stays native, the per-medium track credits in the "at bottom" layout.
+        if (bc && !bc.querySelector('table.details, h3')) bc.remove();
+        anchor.after(frag);
+        root.dataset.mbRelTables = '1';
+        Lib.debug('init', `applyRelDetailsToTables: ${own.length} own + ${relatedRows.length} related relationship row(s) → tables.`);
+    }
+
+    /**
+     * The features of a relationship-tables render (`applyRelDetailsToTables()`),
+     * shared by the overview pageTypes and every "Relationships"/"Credits"
+     * button: the converter's own config, h3 grouping, and the date split of
+     * the Begin/End columns through `dateParts` (the B- and E- date parts, as on
+     * series-releases' 'Artists' — user decision, 2026-10-12).
+     *
+     * @param   {object} cfg `features.relDetailsToTables`.
+     * @returns {object} A `features` block.
+     */
+    function _relTablesFeatures(cfg) {
+        return {
+            relDetailsToTables: cfg,
+            groupByH3: true,
+            columnExtractors: [
+                { sourceColumn: 'Begin', extractor: 'dateParts', syntheticColumns: ['B-DD', 'B-MM', 'B-YYYY', 'B-Day', 'B-Month'] },
+                { sourceColumn: 'End',   extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] }
+            ],
+            integerColumns: [
+                { sourceColumn: '#', align: 'R' }, { sourceColumn: 'Number', align: 'R' }, { sourceColumn: 'Order', align: 'R' },
+                { sourceColumn: 'B-DD', align: 'R' }, { sourceColumn: 'B-MM', align: 'R' }, { sourceColumn: 'B-YYYY', align: 'C' },
+                { sourceColumn: 'E-DD', align: 'R' }, { sourceColumn: 'E-MM', align: 'R' }, { sourceColumn: 'E-YYYY', align: 'C' }
+            ],
+            collapsableColumns: [ 'Credits' ]
+        };
+    }
+
+    /**
+     * The "Relationships" (on a release: "Credits") button an existing
+     * pageType gains for its relationship lists. It runs as its own pageType
+     * (`type`, e.g. 'recording-relationship-tables': the page's own
+     * pageType-keyed branches — release-tracks' AR columns, recording-releases'
+     * release columns, … — must not fire on these tables) and with ONLY its
+     * own features (`replaceFeatures`: nothing of the base definition's
+     * features or entityFeatures leaks in). Hidden while
+     * `sa_enable_relationship_tables` is off (`showIf`).
+     *
+     * @param   {string} type     The pageType this render runs as.
+     * @param   {string} entity   Entity name for the label ("Recording").
+     * @param   {object} cfg      `features.relDetailsToTables` (`removeMain` is added).
+     * @param   {string} [section='Relationships'] Button word ("Credits" on a release).
+     * @returns {object} A `buttons[]` entry.
+     */
+    function _relTablesButton(type, entity, cfg, section = 'Relationships') {
+        return {
+            label: `Show all ${section} for ${entity}`,
+            shortLabel: section,
+            type,
+            replaceFeatures: true,
+            tableMode: 'multi',
+            non_paginated: true,
+            showIf: () => Lib.settings.sa_enable_relationship_tables !== false,
+            features: _relTablesFeatures({ ownLabel: entity, removeMain: true, ...cfg })
+        };
+    }
+
+    /**
+     * Whether the current render is a relationship-tables render (an overview
+     * pageType or a "Relationships"/"Credits" button) — the per-group column
+     * and header-glyph paths that the event page takes key off this, not off a
+     * pageType name.
+     *
+     * @returns {boolean}
+     */
+    function _isRelTablesRun() {
+        return !!activeDefinition?.features?.relDetailsToTables;
     }
 
     /**
@@ -24025,7 +24535,7 @@
      */
     function _initColHeaderGlyph(columnName, glyphClass) {
         const _pt = activeDefinition?.type;
-        if (_pt !== 'release-tracks' && _pt !== 'event-overview') return;
+        if (_pt !== 'release-tracks' && _pt !== 'event-overview' && !_isRelTablesRun()) return;
         document.querySelectorAll('table.tbl').forEach(table => {
             const th = Array.from(table.querySelectorAll('thead th'))
                 .find(h => _cleanColHeaderText(h) === columnName);
@@ -26861,6 +27371,19 @@
             }
         },
         // Instrument pages
+        // The instrument overview (/instrument/<mbid>): its only data is the
+        // Relationships lists, turned into tables by applyRelDetailsToTables()
+        // (org/relationship-tables-pt.org). Anchored match: '/instrument/<mbid>/<tab>'
+        // has its own pageTypes. Off with sa_enable_relationship_tables.
+        {
+            type: 'instrument-overview',
+            match: (path) => Lib.settings.sa_enable_relationship_tables !== false &&
+                path.match(/^\/instrument\/[a-f0-9-]{36}\/?$/),
+            buttons: [ { label: 'Show all Relationships for Instrument', shortLabel: 'Relationships' } ],
+            features: _relTablesFeatures({ ownLabel: 'Instrument' }),
+            tableMode: 'multi',
+            non_paginated: true
+        },
         {
             type: 'instrument-artists',
             match: (path) => path.match(/\/instrument\/[a-f0-9-]{36}\/artists/),
@@ -27011,6 +27534,19 @@
             non_paginated: true
         },
         // Area pages
+        // The area overview (/area/<mbid>): its only data is the
+        // Relationships lists, turned into tables by applyRelDetailsToTables()
+        // (org/relationship-tables-pt.org). Anchored match: '/area/<mbid>/<tab>'
+        // has its own pageTypes. Off with sa_enable_relationship_tables.
+        {
+            type: 'area-overview',
+            match: (path) => Lib.settings.sa_enable_relationship_tables !== false &&
+                path.match(/^\/area\/[a-f0-9-]{36}\/?$/),
+            buttons: [ { label: 'Show all Relationships for Area', shortLabel: 'Relationships' } ],
+            features: _relTablesFeatures({ ownLabel: 'Area' }),
+            tableMode: 'multi',
+            non_paginated: true
+        },
         {
             type: 'area-artists',
             match: (path) => path.match(/\/area\/[a-f0-9-]{36}\/artists/),
@@ -27263,6 +27799,19 @@
             non_paginated: true
         },
         // Place pages
+        // The place overview (/place/<mbid>): its only data is the
+        // Relationships lists, turned into tables by applyRelDetailsToTables()
+        // (org/relationship-tables-pt.org). Anchored match: '/place/<mbid>/<tab>'
+        // has its own pageTypes. Off with sa_enable_relationship_tables.
+        {
+            type: 'place-overview',
+            match: (path) => Lib.settings.sa_enable_relationship_tables !== false &&
+                path.match(/^\/place\/[a-f0-9-]{36}\/?$/),
+            buttons: [ { label: 'Show all Relationships for Place', shortLabel: 'Relationships' } ],
+            features: _relTablesFeatures({ ownLabel: 'Place' }),
+            tableMode: 'multi',
+            non_paginated: true
+        },
         {
             type: 'place-events',
             match: (path) => path.match(/\/place\/[a-f0-9-]{36}\/events/),
@@ -27355,7 +27904,10 @@
             // header text that precedes the table and substitute it into the label so
             // the button reads "Show all <EntityType> for Series" dynamically.
             // Series pages can contain Releases, Events, Works, Recordings, etc.
-            buttons: [ { label: 'Show all Releases for Series', labelFromH2: true, shortLabel: 'Releases' } ],
+            buttons: [
+                { label: 'Show all Releases for Series', labelFromH2: true, shortLabel: 'Releases' },
+                _relTablesButton('series-relationship-tables', 'Series', {})
+            ],
             // entityFeatures maps each possible H2 entity-type heading to its own
             // feature set.  When the page is activated, resolveEntityFeaturesFromH2()
             // reads the live H2 text and picks the matching entry.  If no match is
@@ -27496,7 +28048,10 @@
         {
             type: 'label-relationships',
             match: (path, params) => path.match(/\/label\/[a-f0-9-]{36}\/relationships/) && !params.has('link_type_id'),
-            buttons: [ { label: 'Show all Relationships for Label', shortLabel: 'Relationships' } ],
+            buttons: [
+                { label: 'Show all Relationships for Label', shortLabel: 'Relationships' },
+                _relTablesButton('label-relationship-tables', 'Label', {}, 'Relationship lists')
+            ],
             features: {
                 columnExtractors: [
                     { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
@@ -27574,7 +28129,10 @@
         {
             type: 'work-recordings',
             match: (path, params) => path.match(/\/work\/[a-f0-9-]{36}/) && !params.has('link_type_id'),
-            buttons: [ { label: 'Show all Recordings for Work', shortLabel: 'Recordings' } ],
+            buttons: [
+                { label: 'Show all Recordings for Work', shortLabel: 'Recordings' },
+                _relTablesButton('work-relationship-tables', 'Work', {})
+            ],
             features: {
                 columnExtractors: [
                     { sourceColumn: 'Date',  extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] },
@@ -27624,7 +28182,12 @@
             type: 'artist-relationships',
             // Only match if NO link_type_id is present (the overview page)
             match: (path, params) => path.match(/\/artist\/[a-f0-9-]{36}\/relationships/) && !params.has('link_type_id'),
-            buttons: [ { label: 'Show all Relationships for Artist', shortLabel: 'Relationships' } ],
+            // Second button: the h2 "Relationships" lists above the
+            // appearance tables (the existing button's word is taken).
+            buttons: [
+                { label: 'Show all Relationships for Artist', shortLabel: 'Relationships' },
+                _relTablesButton('artist-relationship-tables', 'Artist', {}, 'Relationship lists')
+            ],
             features: {
                 columnErasers: [
                     { sourceColumn: 'Title', erasers: ['▶', '➕'] }
@@ -27814,7 +28377,10 @@
         {
             type: 'releasegroup-releases',
             match: (path) => path.includes('/release-group/'),
-            buttons: [ { label: 'Show all Releases for ReleaseGroup', shortLabel: 'Releases' } ],
+            buttons: [
+                { label: 'Show all Releases for ReleaseGroup', shortLabel: 'Releases' },
+                _relTablesButton('releasegroup-relationship-tables', 'ReleaseGroup', {})
+            ],
             features: {
                 columnErasers: [
                     { sourceColumn: 'Release', erasers: ['▶', '➕'] }
@@ -27865,7 +28431,11 @@
             // medium, usually with #<track MBID> highlighting one track (see
             // _stampTrackTarget(); the fragment is not part of `path`).
             match: (path) => Lib.settings.sa_enable_release_tracks && path.match(/^\/release\/[a-f0-9-]{36}(?:\/disc\/\d+)?\/?$/),
-            buttons: [ { label: 'Show all Tracks for Release', shortLabel: 'Tracks' } ],
+            buttons: [
+                { label: 'Show all Tracks for Release', shortLabel: 'Tracks' },
+                // The release's own and its release group's lists under "Credits".
+                _relTablesButton('release-credit-tables', 'Release', { credits: true }, 'Credits')
+            ],
             features: {
                 removeYomoWidget: true,          // strip the "Batch Add Recording Aliases" userscript's widget, if present
                 ensureCreditsInline: true,       // click + await native #toggle-credits if credits are "at bottom"
@@ -27979,7 +28549,11 @@
         {
             type: 'recording-releases',
             match: (path) => path.includes('/recording'),
-            buttons: [ { label: 'Show all Releases for Recording', shortLabel: 'Releases' } ],
+            buttons: [
+                { label: 'Show all Releases for Recording', shortLabel: 'Releases' },
+                // "Related works": one "Via <work>" table per work.
+                _relTablesButton('recording-relationship-tables', 'Recording', { relatedH2: 'h2.related-works' })
+            ],
             features: {
                 columnErasers: [
                     { sourceColumn: 'Release title', erasers: ['▶', 'jesus2099'] }
@@ -57793,6 +58367,9 @@ a { color: #1565c0; }`;
         if (_fixedWith) Lib.debug('init', `event-overview: ${_fixedWith} setlist "(with …)" link(s) re-pointed to /artist/.`);
     }
 
+    // Set below when a recording appears on no release but its Relationships
+    // lists can still become tables: only the relationship-tables button is drawn.
+    let _noMainButton = false;
     if (pageType === 'recording-releases') {
         const appearsH2 = document.querySelector('h2.appears-on-releases');
         if (appearsH2) {
@@ -57802,6 +58379,12 @@ a { color: #1565c0; }`;
                 sib = sib.nextSibling;
             }
             if (sib && sib.nodeName === 'P' &&
+                sib.textContent.trim().toLowerCase().startsWith('no releases found') &&
+                Lib.settings.sa_enable_relationship_tables !== false &&
+                document.querySelector('#content h2.relationships')) {
+                _noMainButton = true;
+                Lib.debug('init', 'recording-releases: no releases — only the Relationships button is drawn.');
+            } else if (sib && sib.nodeName === 'P' &&
                 sib.textContent.trim().toLowerCase().startsWith('no releases found')) {
                 const msg = `[VZ-${SCRIPT_BASE_NAME}: ${pageType}] Page has no releases ` +
                             `("${sib.textContent.trim()}") — skipping action button rendering.`;
@@ -57915,9 +58498,13 @@ a { color: #1565c0; }`;
     let _lastActiveBtn = null;
 
     // 4. Generate Buttons
-    const buttonsToRender = activeDefinition.buttons || [
+    // `showIf`: a button that exists only while a setting is on (the
+    // relationship-tables buttons, _relTablesButton()). `_noMainButton`: the
+    // page has nothing for its own button (a recording on no release) but the
+    // relationship-tables button still applies.
+    const buttonsToRender = (activeDefinition.buttons || [
         { label: `Show all ${pageType.replace('-', ' ')}` } // Default fallback
-    ];
+    ]).filter(b => (typeof b.showIf !== 'function' || b.showIf()) && !(_noMainButton && !b.type));
 
     // Superscript numerals for Ctrl-M + 1..9 mnemonic display on action buttons
     const SUPERSCRIPT_DIGITS = ['¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
@@ -65010,7 +65597,7 @@ a { color: #1565c0; }`;
                 // Validation: Check if the file matches the current page type.
                 // Handled here (Phase 1) so the dialog can react properly:
                 // on cancel, rawData/rawFile stay unset and Phase 2 is not revealed.
-                if (data.pageType !== pageType) {
+                if (data.pageType !== pageType && !_buttonForSavedPageType(data.pageType)) {
                     const loadAnywayConfirmed = await Lib.showCustomConfirm(
                         `Warning: This file appears to be for "${data.pageType}", but you are on a "${pageType}" page.\n\nTry loading anyway?`,
                         '\u26A0\uFE0F Page Type Mismatch',
@@ -76270,9 +76857,13 @@ a { color: #1565c0; }`;
         // feature set from the live H2 heading FIRST, so the merged features
         // reflect the actual entity type shown on the current page
         // (Releases, Events, Recordings, etc.).
-        const entitySpecificFeatures = resolveEntityFeaturesFromH2(baseDef);
+        // A button with `replaceFeatures` (the relationship-tables buttons,
+        // _relTablesButton()) runs with ITS features only: none of the base
+        // definition's features or entityFeatures apply to its tables.
+        const _replaceFeatures = !!buttonConfig.replaceFeatures;
+        const entitySpecificFeatures = _replaceFeatures ? null : resolveEntityFeaturesFromH2(baseDef);
 
-        const mergedFeatures = {
+        const mergedFeatures = _replaceFeatures ? { ...(buttonConfig.features || {}) } : {
             ...(entitySpecificFeatures),       // entity-specific overrides (e.g. series-releases)
             ...(baseDef.features || {}),       // base definition features (normally empty for series-releases)
             ...(buttonConfig.features || {})   // per-button feature overrides (highest priority)
@@ -76290,6 +76881,19 @@ a { color: #1565c0; }`;
             ...buttonConfig,
             features: mergedFeatures
         };
+        if (_replaceFeatures) {
+            // The base definition's per-heading feature map would otherwise be
+            // consulted per group (resolveEntityFeaturesFromH3()).
+            delete activeDefinition.entityFeatures;
+        }
+        // A button with its own `type` runs as that pageType: every
+        // pageType-keyed branch of the base definition (release-tracks' AR
+        // columns, recording-releases' release columns, …) stays out of its
+        // render. Every later press reloads the page, which re-detects.
+        if (buttonConfig.type && buttonConfig.type !== pageType) {
+            Lib.debug('init', `Button "${buttonConfig.label}" runs as pageType '${buttonConfig.type}' (page: '${pageType}').`);
+            pageType = buttonConfig.type;
+        }
 
         // Per-entity tableMode override: when the resolved entityFeatures block declares
         // its own tableMode (e.g. 'Release groups' in collections-releases is 'multi'
@@ -76783,6 +77387,10 @@ a { color: #1565c0; }`;
         if (activeDefinition.features?.eventDetailsToTables) {
             applyEventDetailsToTables(activeDefinition);
         }
+        // Same for the relationship-tables pages (org/relationship-tables-pt.org).
+        if (activeDefinition.features?.relDetailsToTables) {
+            applyRelDetailsToTables(activeDefinition);
+        }
 
         // ── editsToTable pre-processing ─────────────────────────────────────
         // For the 'edits' pageType, convert the native div.edit-list block
@@ -77249,6 +77857,9 @@ a { color: #1565c0; }`;
                 }
                 if (doc !== document && activeDefinition.features?.eventDetailsToTables) {
                     applyEventDetailsToTables(activeDefinition, doc);
+                }
+                if (doc !== document && activeDefinition.features?.relDetailsToTables) {
+                    applyRelDetailsToTables(activeDefinition, doc);
                 }
 
                 // ── editsToTable on fetched pages ────────────────────────────
@@ -78009,7 +78620,7 @@ a { color: #1565c0; }`;
                         // 'event-overview': each group has its own columns, so an integer
                         // column that is not in the FIRST table (the setlist's "Billing")
                         // would otherwise never resolve, and never get its numeric styling.
-                        if (pageType === 'tag-value' || pageType === 'user-tag-value' || pageType === 'user-ratings' || pageType === 'instrument-list' || pageType === 'artist-credit' || pageType === 'event-overview') {
+                        if (pageType === 'tag-value' || pageType === 'user-tag-value' || pageType === 'user-ratings' || pageType === 'instrument-list' || pageType === 'artist-credit' || pageType === 'event-overview' || _isRelTablesRun()) {
                             // Rebuild the active extractors/integer-columns/erasers from this
                             // group's own entity-specific features (entityFeatures map, if any),
                             // merged with the base features (listToTable, removeSelector, etc.) —
@@ -83810,7 +84421,7 @@ a { color: #1565c0; }`;
         );
         // Event page: every single-kind entity column shows its glyph in the
         // header; applyEventDetailsToTables() took it off the cells.
-        if (activeDefinition?.type === 'event-overview') {
+        if (activeDefinition?.type === 'event-overview' || _isRelTablesRun()) {
             Object.entries(_eventColGlyphs()).forEach(([columnName, glyphClass]) => _initColHeaderGlyph(columnName, glyphClass));
         }
 
@@ -104184,6 +104795,9 @@ a { color: #1565c0; }`;
                 inp.value = '';
                 inp.style.backgroundColor = '';
             });
+            // A file saved from a button that runs as its own pageType (a
+            // relationship-tables button) is loaded the way that button runs.
+            _activateButtonForSavedPageType(data.pageType);
             performClutterCleanup();
             cleanupAfterInitialLoad();
 
@@ -104242,6 +104856,9 @@ a { color: #1565c0; }`;
             // beside the restored tables.
             if (activeDefinition.features?.eventDetailsToTables) {
                 applyEventDetailsToTables(activeDefinition);
+            }
+            if (activeDefinition.features?.relDetailsToTables) {
+                applyRelDetailsToTables(activeDefinition);
             }
 
             // Restore table headers if they were saved
@@ -122325,10 +122942,15 @@ a { color: #1565c0; }`;
             // The :not([href*="/release-group/"]) exclusion is required because
             // "/release-group/" contains the substring "/release/" and would
             // otherwise produce false positives on release-group tables.
-            const _hasReleaseLink = !!table.querySelector(
+            // The href must also BE a MusicBrainz release link, not merely contain
+            // "/release/": a URL relationship such as discogs.com/release/726598
+            // or rateyourmusic.com/release/album/… gave the relationship tables'
+            // URL groups (org/relationship-tables-pt.org) a Picard column of
+            // their own.
+            const _hasReleaseLink = Array.from(table.querySelectorAll(
                 'tbody td:not(.mb-sticky-col):not(.mb-rel-cell) ' +
                 'a[href*="/release/"]:not([href*="/release-group/"])'
-            );
+            )).some(a => /^(?:(?:https?:)?\/\/[^/]*musicbrainz\.(?:org|eu))?\/release\/[0-9a-f]{8}-/i.test(a.getAttribute('href') || ''));
             if (!_hasReleaseLink) {
                 Lib.debug('picard',
                     `initPicardTaggerColumn: skipping table — no /release/<mbid> links in tbody.`);

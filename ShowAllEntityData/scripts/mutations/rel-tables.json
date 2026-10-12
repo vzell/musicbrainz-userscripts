@@ -1,0 +1,162 @@
+[
+    {
+        "name": "replaceFeatures ignored: the base definition's features leak into the Relationships button",
+        "why": "Without it the recording's Relationships render inherits recording-releases' features (Relationships injected column, CAA, MB-Name extraction, release columns). The spec asserts none of those headers appears.",
+        "edits": [
+            {
+                "find": "const _replaceFeatures = !!buttonConfig.replaceFeatures;",
+                "replace": "const _replaceFeatures = false;"
+            }
+        ],
+        "spec": "tests/fixtures/rel-tables-recording.spec.js",
+        "grep": "release columns do not leak in",
+        "expect": "fail"
+    },
+    {
+        "name": "removeMain off: the main data section stays beside the relationship tables",
+        "why": "Either/or (user decision 2026-10-12). With the releases table left in, it is the first table.tbl on the page: the render anchors to its h2 and the spec sees 'Appears on releases' still present.",
+        "edits": [
+            {
+                "find": "        if (cfg.removeMain) {\n            const n = _relRemoveMainSections(root, anchor);",
+                "replace": "        if (false) {\n            const n = _relRemoveMainSections(root, anchor);"
+            }
+        ],
+        "spec": "tests/fixtures/rel-tables-recording.spec.js",
+        "grep": "main section is gone",
+        "expect": "fail"
+    },
+    {
+        "name": "the button's own pageType is not switched to",
+        "why": "Without the switch the render runs as recording-releases, whose pageType-keyed branches act on the relationship tables. A saved file then records 'recording-releases' too, so the round trip loads it through the base definition (no converter) and the groups differ.",
+        "edits": [
+            {
+                "find": "        if (buttonConfig.type && buttonConfig.type !== pageType) {",
+                "replace": "        if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/rel-tables-recording.spec.js",
+        "grep": "round trip",
+        "expect": "fail"
+    },
+    {
+        "name": "a disk load never activates the saving button",
+        "why": "The file records 'recording-relationship-tables'; on a fresh recording page the load must run as that button. Without the activation the pageType check stops at a mismatch dialog and nothing renders.",
+        "edits": [
+            {
+                "find": "            _activateButtonForSavedPageType(data.pageType);\n",
+                "replace": ""
+            },
+            {
+                "find": "if (data.pageType !== pageType && !_buttonForSavedPageType(data.pageType)) {",
+                "replace": "if (data.pageType !== pageType) {"
+            }
+        ],
+        "spec": "tests/fixtures/rel-tables-recording.spec.js",
+        "grep": "round trip",
+        "expect": "fail"
+    },
+    {
+        "name": "the date attributes are not taken off the line",
+        "why": "Begin/End stay empty and the dates stay in the text: the spec pins Begin/End per row and the B-/E- date parts.",
+        "edits": [
+            {
+                "find": "        if (opts.attrs) rows = rows.map(_relRowAttrs);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/rel-tables-recording.spec.js",
+        "grep": "Begin/End",
+        "expect": "fail"
+    },
+    {
+        "name": "the per-group extractor re-resolution skips relationship-tables renders",
+        "why": "Begin/End sit at a different index in every group; resolved once, the B-/E- columns come out empty or from the wrong column.",
+        "edits": [
+            {
+                "find": "pageType === 'event-overview' || _isRelTablesRun()) {",
+                "replace": "pageType === 'event-overview') {"
+            }
+        ],
+        "spec": "tests/fixtures/rel-tables-recording.spec.js",
+        "grep": "dateParts",
+        "expect": "fail"
+    },
+    {
+        "name": "a place's date stays in its Area cell",
+        "why": "MusicBrainz prints a place relationship's date after the area chain; _eventRelParseLine() puts it in `area`.",
+        "edits": [
+            {
+                "find": "        if (area.length && row.type === 'place') area = _relPeelAttrs(area, out);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/rel-tables-recording.spec.js",
+        "grep": "date attributes become",
+        "expect": "fail"
+    },
+    {
+        "name": "Number and Order always one column",
+        "why": "User decision 2026-10-12: two columns as soon as one row's number and order differ (the artist's Super Bowl row: number 43, order 19).",
+        "edits": [
+            {
+                "find": "const numOrderSplit = rows.some(r => r.number && r.order && r.number !== r.order);",
+                "replace": "const numOrderSplit = false;"
+            }
+        ],
+        "spec": "tests/fixtures/rel-tables-pages.spec.js",
+        "grep": "series positions",
+        "expect": "fail"
+    },
+    {
+        "name": "an ended URL relationship is not read as a URL",
+        "why": "It has no link natively (span.deleted); unread, it lands in an 'Other' group with its date in the target text.",
+        "edits": [
+            {
+                "find": "        const endedUrl = !anchor && opts.rel && mainNode",
+                "replace": "        const endedUrl = false && mainNode"
+            }
+        ],
+        "spec": "tests/fixtures/rel-tables-pages.spec.js",
+        "grep": "series positions",
+        "expect": "fail"
+    },
+    {
+        "name": "Picard's release-link guard accepts any href containing /release/",
+        "why": "The old guard: discogs.com/release/… and rateyourmusic.com/release/… gave URL tables a Picard column.",
+        "edits": [
+            {
+                "find": ")).some(a => /^(?:(?:https?:)?\\/\\/[^/]*musicbrainz\\.(?:org|eu))?\\/release\\/[0-9a-f]{8}-/i.test(a.getAttribute('href') || ''));",
+                "replace": ")).length > 0;"
+            }
+        ],
+        "spec": "tests/fixtures/rel-tables-pages.spec.js",
+        "grep": "no Picard column",
+        "expect": "fail"
+    },
+    {
+        "name": "release credits read as everything under the Credits h2",
+        "why": "The release's own lists are found by #release-relationships. Reading every table.details of #bottom-credits instead would merge the release group's lists into the release's own groups (and, in the 'at bottom' layout, every track credit).",
+        "edits": [
+            {
+                "find": "            if (relDiv) ownNodes = Array.from(relDiv.children).filter(c => c.tagName !== 'H3');",
+                "replace": "            if (bc) ownNodes = Array.from(bc.querySelectorAll('table.details'));"
+            }
+        ],
+        "spec": "tests/fixtures/rel-tables-pages.spec.js",
+        "grep": "Credits",
+        "expect": "fail"
+    },
+    {
+        "name": "the existing main button converts the relationship lists too",
+        "why": "User decision 2026-10-12: the page's own 'Show all…' button renders as before, the native lists staying a collapsible section. Converting them on that press changes its output.",
+        "edits": [
+            {
+                "find": "        if (activeDefinition.features?.relDetailsToTables) {\n            applyRelDetailsToTables(activeDefinition);\n        }\n\n        // ── editsToTable pre-processing",
+                "replace": "        applyRelDetailsToTables({ features: { relDetailsToTables: { relatedH2: 'h2.related-works' } } });\n\n        // ── editsToTable pre-processing"
+            }
+        ],
+        "spec": "tests/fixtures/rel-tables-recording.spec.js",
+        "grep": "renders as before",
+        "expect": "fail"
+    }
+]

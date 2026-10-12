@@ -1,5 +1,26 @@
 [
     {
+        "version": "WIP.6",
+        "date": "2026-10-12",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "Relationships as tables beyond the event page: place, area and instrument pages get a \"Show all Relationships\" button (three new page types), and series, work, release group and recording pages, and the artist and label Relationships tab, get one beside their own \"Show all…\" button (on the Relationships tab it reads \"Relationship lists\", on a release \"Credits\"). It turns the native relationship lists into filterable, sortable tables, one per kind of related entity (Artists, Labels, Places, URLs, …), with the same converter as the event page. The page's own button is unchanged and still leaves those lists as a collapsible section; the two are either/or, so the new button leaves the page's main table out of its render (press the other button to get it back).",
+                    "A recording's \"Related works\" and a release's release-group credits each get a \"Via …\" table (\"Via Badlands\", \"Via release group: Live/1975–85\") with a Type column, so the work's or group's relationships are never mistaken for the page's own. A release's credits are read from its own two blocks only, never from the per-medium track credits MusicBrainz adds there in its \"Display credits at bottom\" layout.",
+                    "Dates become Begin and End columns: \"(from 1977-06-27 until 1978-05-05)\", \"(in 1978)\", \"(on 1978-04-11)\", \"(until 1931)\", \"(… to present)\", \"(ended)\", and both are split into B-/E- day, month, year, weekday and month name. A series position becomes Number, or Number and Order when the two differ for some row (\"(on 2009-02-01: number: 43) (order: 19)\"). An area's parent areas get their own column, and an ended URL relationship, which MusicBrainz shows without a link, is still a URL row with its end date.",
+                    "Settings: a new \"🔗 RELATIONSHIP SECTIONS\" group — \"Relationships as tables\" (on), \"One table for all relationships\" (off), \"Include related works / the release group\" (on). A file saved from one of these renders loads back as that render on the same page."
+                ]
+            },
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Picard column: a table only gets one when it links to a MusicBrainz release. A URL relationship such as discogs.com/release/… or rateyourmusic.com/release/… no longer counts as one."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.5",
         "date": "2026-10-12",
         "sections": [

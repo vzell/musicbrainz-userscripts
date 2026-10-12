@@ -1,0 +1,990 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- SKELETON-END: everything above this line is dropped when the page is published as an Artifact. -->
+<title>Relationship Tables Study</title>
+<!--
+  ShowAllEntityData design study, 2026-10-12. Companion to org/relationship-tables-pt.org,
+  branch feature/relationship-tables. Sibling of org/event-overview-mockups.html, whose stage
+  and specimen styling it reuses so the two read as one family.
+  Data is real: raw captures of ten MusicBrainz pages taken 2026-10-12T18:28Z on vzell-lap
+  (tests/fixtures/rel-*-overview.html, tests/support/capture-raw-page.js), read back with
+  scripts/probe-rel-sections.js. Nothing is invented; long lists are cut and say so.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: a design-review sheet. Sticky index, then one specimen per idea; each specimen is a
+   light "MusicBrainz stage" (a slice of the real page, always light like MusicBrainz itself)
+   with a caption strip of facts and costs underneath. */
+:root {
+    --bg: #f2f3f5;
+    --surface: #ffffff;
+    --ink: #1c2230;
+    --muted: #586174;
+    --rule: #d8dce3;
+    --accent: #ba478f;
+    --accent-ink: #ffffff;
+    --ok: #2f7d4f;
+    --warn: #a45a07;
+    --bad: #b42318;
+
+    --f-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+    --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, Consolas, "Courier New", monospace;
+
+    --st-bg: #ffffff;
+    --st-ink: #222222;
+    --st-even: #f4f4f4;
+    --st-rule: #c9c9c9;
+    --st-head: #eeeeee;
+    --st-link: #0b3fae;
+    --st-muted: #777777;
+    --st-tab: #f3f3f3;
+    --st-sel: #ffffff;
+    --st-hit: #fff2a8;
+    --st-gone-bg: #fbeff6;
+    --st-gone-ink: #8a2f68;
+    --st-font: Arial, Helvetica, sans-serif;
+
+    /* Entity glyph tints (header badges), as MusicBrainz's own icons are coloured. */
+    --g-artist: #3b6fb6;
+    --g-label: #b4572e;
+    --g-place: #4c8a3f;
+    --g-work: #7a52a8;
+    --g-area: #2f8a87;
+    --g-series: #a8842f;
+    --g-instrument: #8a3f5c;
+    --g-genre: #5f6b2e;
+    --g-url: #6b6b6b;
+    --g-release: #b6463b;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg: #121418;
+        --surface: #1a1d23;
+        --ink: #e7e9ee;
+        --muted: #9aa2b1;
+        --rule: #2d313a;
+        --accent: #e58cc4;
+        --accent-ink: #1d0c17;
+        --ok: #6cc28f;
+        --warn: #f0a35e;
+        --bad: #f08a80;
+        color-scheme: dark;
+    }
+}
+:root[data-theme="dark"] {
+    --bg: #121418;
+    --surface: #1a1d23;
+    --ink: #e7e9ee;
+    --muted: #9aa2b1;
+    --rule: #2d313a;
+    --accent: #e58cc4;
+    --accent-ink: #1d0c17;
+    --ok: #6cc28f;
+    --warn: #f0a35e;
+    --bad: #f08a80;
+    color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.55 var(--f-body);
+    padding-inline: 16px;
+    padding-block: 0 56px;
+}
+a { color: inherit; }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wrap { max-width: 1180px; margin: 0 auto; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; line-height: 1.15; margin: 0; }
+code, .mono { font-family: var(--f-mono); font-size: 0.88em; }
+p { margin: 0; max-width: 68ch; }
+
+.hero { padding-block: 36px 20px; display: grid; gap: 14px; }
+.eyebrow {
+    font: 600 12px/1 var(--f-display);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+}
+.hero h1 { font-size: clamp(30px, 5vw, 46px); font-weight: 700; letter-spacing: -0.01em; }
+.hero .lede { font-size: 17px; color: var(--muted); }
+.facts-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 22px;
+    margin: 4px 0 0;
+    padding: 12px 0 0;
+    border-top: 1px solid var(--rule);
+    font-size: 13px;
+}
+.facts-row div { display: flex; gap: 6px; min-width: 0; }
+.facts-row dt { color: var(--muted); }
+.facts-row dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; }
+
+.answer {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 16px 18px;
+    display: grid;
+    gap: 10px;
+}
+.answer h2 { font-size: 20px; font-weight: 600; }
+.answer ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; max-width: 80ch; }
+.answer .yesno { font: 700 13px/1 var(--f-mono); color: var(--bad); border: 1px solid currentColor; border-radius: 4px; padding: 3px 6px; margin-right: 8px; }
+
+.toc {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 20;
+    background: var(--bg);
+    border-bottom: 1px solid var(--rule);
+    margin-inline: -16px;
+    padding: 8px 16px;
+}
+.toc ul {
+    list-style: none;
+    margin: 0 auto;
+    padding: 0;
+    max-width: 1180px;
+    display: flex;
+    gap: 4px 18px;
+    flex-wrap: wrap;
+    font: 500 13px/1.6 var(--f-display);
+}
+.toc a { text-decoration: none; color: var(--muted); }
+.toc a:hover { color: var(--accent); }
+.toc b { color: var(--ink); font-weight: 600; margin-right: 4px; }
+
+section.spec { padding-block: 34px 0; display: grid; gap: 14px; scroll-margin-top: 48px; }
+.spec-head { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.spec-id {
+    font: 700 13px/1 var(--f-mono);
+    color: var(--accent-ink);
+    background: var(--accent);
+    border-radius: 4px;
+    padding: 4px 7px;
+}
+.spec-head h2 { font-size: 24px; font-weight: 600; }
+.verdict {
+    font: 600 12px/1 var(--f-display);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    padding: 4px 9px;
+}
+.v-rec { color: var(--ok); }
+.v-opt { color: var(--warn); }
+.v-ref { color: var(--muted); }
+.v-ask { color: var(--accent); }
+.spec > p { color: var(--muted); }
+.card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    overflow: hidden;
+}
+.cost {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border-top: 1px solid var(--rule);
+    font-size: 13px;
+    margin: 0;
+}
+.cost div { background: var(--surface); padding: 10px 14px; min-width: 0; }
+.cost dt {
+    font: 600 11px/1.4 var(--f-display);
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+.cost dd { margin: 2px 0 0; }
+.demo-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--rule);
+    font-size: 13px;
+    align-items: center;
+}
+.demo-bar .lbl { color: var(--muted); margin-right: 4px; }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 5px; overflow: hidden; }
+.seg button {
+    border: 0;
+    background: var(--surface);
+    color: var(--ink);
+    font: 12px/1 var(--f-body);
+    padding: 6px 10px;
+    cursor: pointer;
+}
+.seg button + button { border-left: 1px solid var(--rule); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.trio { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+.trio .card { min-width: 0; }
+
+/* ── Stage: a slice of a MusicBrainz page ───────────────────────────────── */
+.stage-scroll { overflow-x: auto; }
+.stage {
+    background: var(--st-bg);
+    color: var(--st-ink);
+    font: 12px/1.4 var(--st-font);
+    padding: 14px 16px 18px;
+    min-width: 0;
+    display: grid;
+    gap: 8px;
+}
+.stage a { color: var(--st-link); text-decoration: none; }
+.stage .st-title { font: bold 20px/1.25 var(--st-font); margin: 0; }
+.stage .st-title small { font-weight: normal; color: var(--st-muted); font-size: 13px; }
+.st-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-bottom: 1px solid var(--st-rule);
+}
+.st-tabs li span {
+    display: block;
+    padding: 4px 9px;
+    background: var(--st-tab);
+    border: 1px solid var(--st-rule);
+    border-bottom: 0;
+    border-radius: 4px 4px 0 0;
+    color: var(--st-link);
+    position: relative;
+    top: 1px;
+}
+.st-tabs li.sel span { background: var(--st-sel); color: var(--st-ink); font-weight: bold; }
+.st-toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.st-button {
+    font: 12px/1 var(--st-font);
+    border: 1px solid var(--st-rule);
+    background: var(--st-head);
+    border-radius: 3px;
+    padding: 5px 9px;
+    color: var(--st-ink);
+    cursor: pointer;
+}
+.st-button.new { box-shadow: 0 0 0 2px var(--accent) inset; }
+.st-button[aria-pressed="true"] { background: var(--st-ink); color: var(--st-bg); border-color: var(--st-ink); }
+.st-saed { font: 11px/1 var(--st-font); color: var(--st-muted); }
+.st-h2 {
+    font: bold 15px/1.3 var(--st-font);
+    border-bottom: 1px solid var(--st-rule);
+    padding-bottom: 3px;
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.st-h2 .tri, .st-h3 .tri { font-size: 10px; color: var(--st-muted); width: 10px; }
+.st-h2 .stat, .st-h3 .stat { font-weight: normal; font-size: 11px; color: var(--st-muted); font-variant-numeric: tabular-nums; }
+.st-h3 {
+    font: bold 13px/1.3 var(--st-font);
+    margin: 8px 0 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.st-h3.via { color: var(--st-gone-ink); }
+.st-filter {
+    font: 11px/1.2 var(--st-font);
+    border: 1px solid var(--st-rule);
+    border-radius: 3px;
+    padding: 2px 5px;
+    width: 140px;
+    max-width: 100%;
+    background: var(--st-bg);
+    color: var(--st-ink);
+}
+.st-filter.global { width: 180px; border-color: var(--st-ink); }
+.st-x { font: 11px/1 var(--st-font); color: var(--st-muted); cursor: pointer; border: 0; background: none; padding: 2px; }
+.st-native-h3 { font: bold 13px/1.3 var(--st-font); margin: 6px 0 0; }
+.st-details { border-collapse: collapse; width: 100%; font-size: 12px; }
+.st-details th { text-align: right; vertical-align: top; padding: 2px 8px 2px 0; white-space: nowrap; width: 1%; }
+.st-details td { padding: 2px 0; }
+.st-details .cm { color: var(--st-muted); }
+.st-tbl { border-collapse: collapse; width: 100%; font-size: 12px; }
+.st-tbl th {
+    background: var(--st-head);
+    text-align: left;
+    padding: 3px 6px;
+    border-bottom: 1px solid var(--st-rule);
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+}
+.st-tbl th .ar { color: var(--st-muted); font-size: 9px; margin-left: 3px; }
+.st-tbl td { padding: 2px 6px; vertical-align: top; }
+.st-tbl tbody tr:nth-child(even) td { background: var(--st-even); }
+.st-tbl td.num { width: 28px; color: var(--st-muted); font-variant-numeric: tabular-nums; text-align: right; }
+.st-tbl td.date { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.st-tbl .cm { color: var(--st-muted); }
+.st-tbl mark { background: var(--st-hit); color: inherit; }
+.st-type {
+    display: inline-block;
+    font: 10px/1.3 var(--st-font);
+    border: 1px solid var(--st-rule);
+    border-radius: 3px;
+    padding: 0 4px;
+    color: var(--st-muted);
+    white-space: nowrap;
+}
+.gl {
+    display: inline-grid;
+    place-items: center;
+    width: 13px;
+    height: 13px;
+    border-radius: 3px;
+    color: #ffffff;
+    font: bold 9px/1 var(--st-font);
+    margin-right: 4px;
+    vertical-align: -2px;
+}
+.gl-artist { background: var(--g-artist); }
+.gl-label { background: var(--g-label); }
+.gl-place { background: var(--g-place); }
+.gl-work { background: var(--g-work); }
+.gl-area { background: var(--g-area); }
+.gl-series { background: var(--g-series); }
+.gl-instrument { background: var(--g-instrument); }
+.gl-genre { background: var(--g-genre); }
+.gl-url { background: var(--g-url); }
+.gl-release { background: var(--g-release); }
+.st-more { font-size: 11px; color: var(--st-muted); font-style: italic; margin: 2px 0 0; }
+.st-gone {
+    background: var(--st-gone-bg);
+    color: var(--st-gone-ink);
+    border: 1px dashed currentColor;
+    border-radius: 4px;
+    padding: 6px 9px;
+    font-size: 11.5px;
+}
+.st-native-tbl { border-collapse: collapse; width: 100%; font-size: 12px; }
+.st-native-tbl th { background: var(--st-head); text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--st-rule); }
+.st-native-tbl td { padding: 2px 6px; }
+.st-native-tbl tr:nth-child(even) td { background: var(--st-even); }
+
+.tbl-wrap { overflow-x: auto; }
+table.plain { border-collapse: collapse; width: 100%; font-size: 13px; }
+table.plain th, table.plain td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+table.plain th { font: 600 11px/1.3 var(--f-display); letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+table.plain td:first-child { white-space: nowrap; }
+.prose { display: grid; gap: 12px; }
+.prose ul, .prose ol { margin: 0; padding-left: 20px; max-width: 76ch; display: grid; gap: 5px; }
+.prose h3 { font-size: 17px; font-weight: 600; margin-top: 6px; }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+    <header class="hero">
+        <div class="eyebrow">ShowAllEntityData · design study · relationship tables</div>
+        <h1>Relationships as tables, everywhere</h1>
+        <p class="lede">The event overview already turns its relationship lists into filterable, sortable tables.
+            This study applies the same converter to every other entity page that carries those lists: Place, Area
+            and Instrument (no pageType yet), and Series, Work, Release group, Label, Artist, Recording and Release
+            (which already have a main table). Every table below runs on real data from ten pages captured today.
+            Type in a filter, click a column header to sort.</p>
+        <dl class="facts-row">
+            <div><dt>Pages captured</dt><dd>10, 2026-10-12 18:28 UTC</dd></div>
+            <div><dt>Recording</dt><dd><a href="https://musicbrainz.org/recording/6719f5e8-9b80-4956-8e11-ee1614a6693a">Badlands</a> · 25 targets + 1 related work</dd></div>
+            <div><dt>Release</dt><dd><a href="https://musicbrainz.org/release/f50fcf09-4339-4e1c-91cd-e1d2a7b3a7bc">Live/1975–85</a> · 2 + 11 credits</dd></div>
+            <div><dt>Branch</dt><dd><code>feature/relationship-tables</code></dd></div>
+        </dl>
+    </header>
+
+    <div class="answer" id="q3">
+        <h2>Can several h2 sections each have their own filter?</h2>
+        <p><span class="yesno">NO</span>The script handles one dataset per page. One h2 carries the global filter,
+            the row-count stats, the status line, the Clear button and the master toggle. All of that is shared,
+            page-wide state: the merged page definition, the row arrays, the filter cache and the filter's fixed
+            element ids. What it does support:</p>
+        <ul>
+            <li>Many <b>h3 sub-tables</b> under that one h2, each with its own filter, count and collapse.</li>
+            <li>Several native h2 sections that can be <b>collapsed</b>, without filter or stats.</li>
+            <li><b>Either/or buttons</b> on pages with two data sections (<code>area-releases</code>,
+                <code>artist-aliases</code>). Pressing one removes the other section; pressing again reloads.</li>
+        </ul>
+        <p>So every page in this study gets a second button. Its main button works exactly as today. Specimen
+            <b>Q</b> shows this on the recording page.</p>
+    </div>
+</div>
+
+<nav class="toc" aria-label="Mockups">
+    <ul>
+        <li><a href="#q"><b>Q</b>Two buttons</a></li>
+        <li><a href="#r0"><b>R0</b>Recording today</a></li>
+        <li><a href="#r1"><b>R1</b>Recording tables</a></li>
+        <li><a href="#r2"><b>R2</b>Recording one table</a></li>
+        <li><a href="#l0"><b>L0</b>Release today</a></li>
+        <li><a href="#l1"><b>L1</b>Release credits</a></li>
+        <li><a href="#l2"><b>L2</b>Credits one table</a></li>
+        <li><a href="#o"><b>O</b>Place · Area · Instrument</a></li>
+        <li><a href="#w"><b>W</b>Work</a></li>
+        <li><a href="#rec"><b>✓</b>Decisions</a></li>
+    </ul>
+</nav>
+
+<main class="wrap">
+    <section class="spec" id="q">
+        <div class="spec-head"><span class="spec-id">Q</span><h2>Two buttons, one rendered section at a time</h2><span class="verdict v-rec">recommended</span></div>
+        <p>The recording page's toolbar gains “Relationships” beside the existing “Releases”. Press either one. The
+            other data section is taken off the page for that render, like on <code>area-releases</code> today. A
+            second press reloads the page, which is how every button already behaves.</p>
+        <div class="card">
+            <div class="stage-scroll"><div class="stage" id="stage-q"></div></div>
+            <dl class="cost">
+                <div><dt>Main button</dt><dd>Unchanged. The native Relationships lists stay below, untouched.</dd></div>
+                <div><dt>Relationships button</dt><dd>Its own features only: no CAA, no injected Relationships column, none of the release columns.</dd></div>
+                <div><dt>Requests</dt><dd>One page fetch, the same as the event overview.</dd></div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="spec" id="r0">
+        <div class="spec-head"><span class="spec-id">R0</span><h2>Recording today</h2><span class="verdict v-ref">reference</span></div>
+        <p>Below the releases table: five two-column lists with 21 phrases and 25 targets. Then “Related works” repeats
+            the same layout for every work the recording is a recording of. Nothing can be filtered or sorted.</p>
+        <div class="card"><div class="stage-scroll"><div class="stage" id="stage-r0"></div></div></div>
+    </section>
+
+    <section class="spec" id="r1">
+        <div class="spec-head"><span class="spec-id">R1</span><h2>Recording: one table per kind, then “Via” each work</h2><span class="verdict v-rec">recommended</span></div>
+        <p>One sub-table per kind of target, in MusicBrainz's order, each with only the columns it fills. Each related
+            work gets a “Via Badlands” table with a Type column, exactly like the event's “Via &lt;series&gt;”. Those
+            rows describe the work, not this recording, and the heading says so.</p>
+        <div class="card">
+            <div class="demo-bar">
+                <span class="lbl">Dates</span>
+                <div class="seg" role="group" aria-label="Date handling">
+                    <button type="button" id="dates-cols" aria-pressed="true">Begin / End columns</button>
+                    <button type="button" id="dates-details" aria-pressed="false">In “Details”, as on events</button>
+                </div>
+            </div>
+            <div class="stage-scroll"><div class="stage" id="stage-r1"></div></div>
+            <dl class="cost">
+                <div><dt>Tables</dt><dd>Artists 16 · Labels 1 · Places 3 · Works 1 · URLs 4 · Via Badlands 3</dd></div>
+                <div><dt>New</dt><dd>Begin/End columns. 17 of 25 targets carry “(from … until …)”, “(in 1978)” or “(on …)”. The event converter would put them in Details, or in Credits for performers.</dd></div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="spec" id="r2">
+        <div class="spec-head"><span class="spec-id">R2</span><h2>Recording: everything in one table</h2><span class="verdict v-opt">setting</span></div>
+        <p>The same rows in one table with Type and From columns. One filter covers everything, which is handy for a
+            quick “who played guitar”. This is the existing “one table” choice, now one setting for all these pages.</p>
+        <div class="card"><div class="stage-scroll"><div class="stage" id="stage-r2"></div></div></div>
+    </section>
+
+    <section class="spec" id="l0">
+        <div class="spec-head"><span class="spec-id">L0</span><h2>Release Credits today</h2><span class="verdict v-ref">reference</span></div>
+        <p>The release page has no “Relationships” h2. Its release-level lists sit under “Credits”, in two blocks:
+            “Release” and “Release group”. The Release group block repeats the group's own relationships.</p>
+        <div class="card"><div class="stage-scroll"><div class="stage" id="stage-l0"></div></div></div>
+    </section>
+
+    <section class="spec" id="l1">
+        <div class="spec-head"><span class="spec-id">L1</span><h2>Release: a “Credits” button</h2><span class="verdict v-rec">recommended</span></div>
+        <p>A second button beside “Tracks”. The release's own credits get one table per kind. The Release group block
+            becomes “Via release group: Live/1975–85”, so it can never be mistaken for a credit on this release.
+            Series attributes are split into their own columns instead of one bracketed string.</p>
+        <div class="card">
+            <div class="stage-scroll"><div class="stage" id="stage-l1"></div></div>
+            <dl class="cost">
+                <div><dt>Tables</dt><dd>Artists 1 · URLs 1 · Via release group 11</dd></div>
+                <div><dt>Not touched</dt><dd>Track-level credits stay with “Tracks” (the release-tracks AR columns).</dd></div>
+                <div><dt>New</dt><dd>“Number” for series parts. On events, “(2015-04-29) (number: 20) (order: 20)” lands in Details as one string.</dd></div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="spec" id="l2">
+        <div class="spec-head"><span class="spec-id">L2</span><h2>Release credits in one table</h2><span class="verdict v-opt">setting</span></div>
+        <p>The same 13 rows with Type and From (“Release” or “Release group”).</p>
+        <div class="card"><div class="stage-scroll"><div class="stage" id="stage-l2"></div></div></div>
+    </section>
+
+    <section class="spec" id="o">
+        <div class="spec-head"><span class="spec-id">O</span><h2>Place, Area, Instrument: new pageTypes</h2><span class="verdict v-rec">recommended</span></div>
+        <p>These overview pages have no pageType yet. Their only data is the Relationships section, so each one gets a
+            single button, like the event page. The Stone Pony has only links. The United States has 279 targets,
+            where filtering pays off most: 57 parts, 139 genres, 75 series. Long tables are cut here and say so.</p>
+        <div class="trio">
+            <div class="card"><div class="stage-scroll"><div class="stage" id="stage-place"></div></div></div>
+            <div class="card"><div class="stage-scroll"><div class="stage" id="stage-instrument"></div></div></div>
+        </div>
+        <div class="card">
+            <div class="stage-scroll"><div class="stage" id="stage-area"></div></div>
+            <dl class="cost">
+                <div><dt>Credited-as names</dt><dd>“instruments (as Appalachia)” keeps the phrase whole in Relationship; the 📊 dropdown lists each variant.</dd></div>
+                <div><dt>“(… to present)”</dt><dd>Begin filled, End “present”: sorts last, filters as text.</dd></div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="spec" id="w">
+        <div class="spec-head"><span class="spec-id">W</span><h2>Work: Relationships sits above the main table</h2><span class="verdict v-rec">recommended</span></div>
+        <p>On a work page, Relationships comes first and Recordings second. With either/or buttons the order doesn't
+            matter. Press “Relationships” here and the Recordings table is removed for that render.</p>
+        <div class="card">
+            <div class="stage-scroll"><div class="stage" id="stage-w"></div></div>
+            <dl class="cost">
+                <div><dt>Same everywhere</dt><dd>Series, Release group, Label and Artist /relationships use exactly this button.</dd></div>
+                <div><dt>Artist /relationships</dt><dd>41 phrases, 162 targets (Bruce Springsteen): the biggest case-2 page.</dd></div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="spec prose" id="rec">
+        <div class="spec-head"><span class="spec-id">✓</span><h2>Decisions for you</h2></div>
+        <div class="tbl-wrap">
+            <table class="plain">
+                <thead><tr><th>Point</th><th>Proposal</th><th>Why</th></tr></thead>
+                <tbody>
+                    <tr><td>Coexistence</td><td>Either/or second button (decided)</td><td>One dataset per page. No engine change, and every existing button behaves as today.</td></tr>
+                    <tr><td>Dates</td><td>Begin / End columns</td><td>Most credits on recordings, works and areas carry them, and they sort. Should event pages get them too? That would change event output, so it would ship separately.</td></tr>
+                    <tr><td>Series parts</td><td>Split “number” (and drop “order”) into a Number column</td><td>“(2015-04-29) (number: 20) (order: 20)” is three attributes, not one comment.</td></tr>
+                    <tr><td>Via tables</td><td>On by default, one setting to leave them native</td><td>Mirrors “Include the related series' own relationships” on events.</td></tr>
+                    <tr><td>Settings</td><td>New “🔗 RELATIONSHIP SECTIONS” group: enable (on), one table (off), via tables (on)</td><td>One switch removes every new button and the three new pageTypes.</td></tr>
+                    <tr><td>Release “inline credits”</td><td>Key on <code>#bottom-credits</code>, not on the h2 text</td><td>Not captured yet: the anonymous capture shows credits at the bottom only.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+
+<script>
+(() => {
+    'use strict';
+
+    // ── Data: every row is real (tests/fixtures/rel-*-overview.html) ──────────────
+    // Cells: plain strings; "@text" is an entity/URL link; "~text" is a muted comment.
+    const REC_OWN = [
+        { k: 'artist', t: '@Jimmy Iovine', p: 'recording engineer', b: '1977-06-27', e: '1978-05-05' },
+        { k: 'artist', t: '@Thom Panunzio', p: 'assistant engineer' },
+        { k: 'artist', t: '@Little Steven', p: 'assistant producer' },
+        { k: 'artist', t: '@Jon Landau', p: 'producer' },
+        { k: 'artist', t: '@Bruce Springsteen', p: 'producer' },
+        { k: 'artist', t: '@Jimmy Iovine', p: 'mixer' },
+        { k: 'artist', t: '@Chuck Plotkin', p: 'mixer', b: '1978-04-11', e: '1978-04-11', raw: 'on 1978-04-11' },
+        { k: 'artist', t: '@Garry Tallent', p: 'bass guitar', b: '1977-06-27', e: '1978-05-05' },
+        { k: 'artist', t: '@Max Weinberg', p: 'drums (drum set)', b: '1977-06-27', e: '1978-05-05' },
+        { k: 'artist', t: '@Little Steven', p: 'guitar', b: '1977-06-27', e: '1978-05-05' },
+        { k: 'artist', t: '@Bruce Springsteen', p: 'guitar and harmonica', b: '1977-06-27', e: '1978-05-05' },
+        { k: 'artist', t: '@Danny Federici', p: 'organ', b: '1977-06-27', e: '1978-05-05' },
+        { k: 'artist', t: '@Roy Bittan', p: 'piano', b: '1977-06-27', e: '1978-05-05' },
+        { k: 'artist', t: '@Clarence Clemons', p: 'saxophone', b: '1977-06-27', e: '1978-05-05' },
+        { k: 'artist', t: '@Bruce Springsteen', p: 'lead vocals', b: '1977-06-27', e: '1978-02-25' },
+        { k: 'artist', t: '@Bruce Springsteen', p: 'phonographic copyright (℗) by', b: '1978', e: '1978', raw: 'in 1978' },
+        { k: 'label', t: '@CBS Inc.', p: 'phonographic copyright (℗) by', c: 'US broadcasting company; file no releases here!', b: '1978', e: '1978', raw: 'in 1978' },
+        { k: 'place', t: '@Atlantic Audio Recording Studio', p: 'recorded at', b: '1977-06-27', e: '1977-07-13' },
+        { k: 'place', t: '@The Record Plant (New York)', p: 'recorded at', a: '@Midtown Manhattan, New York, New York, United States', b: '1977-08-24', e: '1978-05-05' },
+        { k: 'place', t: '@The Record Plant (New York)', p: 'mixed at', a: '@Midtown Manhattan, New York, New York, United States' },
+        { k: 'work', t: '@Badlands', p: 'recording of', b: '1977-06-27', e: '1978-05-05' },
+        { k: 'url', t: '@https://open.spotify.com/track/0M1YQiRGel1tTMjA3orfRd', p: 'stream for free' },
+        { k: 'url', t: '@https://www.youtube.com/watch?v=SDlSCeQXbPo', p: 'stream for free' },
+        { k: 'url', t: '@https://www.whosampled.com/Bruce-Springsteen/Badlands/', p: 'other databases' },
+        { k: 'url', t: '@https://secondhandsongs.com/performance/12362', p: 'SecondHandSongs' }
+    ];
+    const REC_VIA = [
+        { k: 'artist', t: '@Bruce Springsteen', p: 'publisher', b: '1978', e: '1978', raw: 'in 1978' },
+        { k: 'artist', t: '@Bruce Springsteen', p: 'lyricist and composer', b: '1977', e: '1978' },
+        { k: 'work', t: '@Steinland', p: 'later translated versions' }
+    ];
+    const REL_OWN = [
+        { k: 'artist', t: '@Bob Ludwig', p: 'mastering', c: 'mastering engineer' },
+        { k: 'url', t: '@https://www.discogs.com/release/726598', p: 'Discogs' }
+    ];
+    const REL_VIA = [
+        { k: 'series', t: '@Rolling Stone: 50 Greatest Live Albums of All Time', p: 'part of', b: '2015-04-29', e: '2015-04-29', n: '20', raw: '2015-04-29) (number: 20) (order: 20' },
+        { k: 'url', t: '@https://www.discogs.com/master/27684', p: 'Discogs' },
+        { k: 'url', t: '@https://www.discogs.com/master/523856', p: 'Discogs' },
+        { k: 'url', t: '@https://www.discogs.com/master/695822', p: 'Discogs' },
+        { k: 'url', t: '@https://www.discogs.com/master/1235203', p: 'Discogs' },
+        { k: 'url', t: '@https://www.discogs.com/master/1610752', p: 'Discogs' },
+        { k: 'url', t: '@https://rateyourmusic.com/release/album/bruce-springsteen/live_1975-85-7/', p: 'other databases' },
+        { k: 'url', t: '@https://www.allmusic.com/album/mw0000191831', p: 'Allmusic' },
+        { k: 'url', t: '@https://www.springsteenlyrics.com/collection.php?cmd=list&category=album&f_date_main=1986-11-10', p: 'standalone website' },
+        { k: 'url', t: '@https://www.springsteenlyrics.com/collection.php?cmd=list&category=sampler', p: 'standalone website' },
+        { k: 'url', t: '@Q1784977', p: 'Wikidata', site: 'wikidata.org' }
+    ];
+    const PLACE = [
+        { k: 'url', t: '@http://stoneponyonline.com/', p: 'official homepages' },
+        { k: 'url', t: '@https://commons.wikimedia.org/wiki/File:Stone_pony2_net.jpg', p: 'picture' },
+        { k: 'url', t: '@Q3989486', p: 'Wikidata', site: 'wikidata.org' },
+        { k: 'url', t: '@https://www.discogs.com/label/582871', p: 'Discogs' },
+        { k: 'url', t: '@http://brucebase.wikidot.com/venue:stone-pony-asbury-park-nj', p: 'fan pages' }
+    ];
+    const INSTRUMENT = [
+        { k: 'instrument', t: '@guitar family', p: 'part of', c: 'DO NOT USE' },
+        { k: 'url', t: '@https://static.metabrainz.org/irombook/tenor_guitar/tenor_guitar.png', p: 'picture' },
+        { k: 'url', t: '@Q963150', p: 'Wikidata', site: 'wikidata.org' },
+        { k: 'url', t: '@https://saisaibatake.ame-zaiku.com/musical/instruments_tenor_guitar.html', p: 'other databases' }
+    ];
+    // United States: first rows of each list, with the real list sizes (cut: true).
+    const AREA = [
+        { k: 'area', t: '@Alabama', p: 'parts', a: '@United States' },
+        { k: 'area', t: '@Alaska', p: 'parts', a: '@United States' },
+        { k: 'area', t: '@American Samoa', p: 'parts', a: '@United States' },
+        { k: 'genre', t: '@acoustic chicago blues', p: 'genres' },
+        { k: 'genre', t: '@acoustic texas blues', p: 'genres' },
+        { k: 'genre', t: '@american gamelan', p: 'genres' },
+        { k: 'instrument', t: '@Appalachian dulcimer', p: 'instruments (as Appalachia)', c: 'Folk drone zither from N. America' },
+        { k: 'instrument', t: '@frottoir', p: 'instruments (as United States of America)', c: 'Zydeco vest scraper' },
+        { k: 'instrument', t: '@washboard', p: 'instruments (as United States of America)', c: 'American scraped idiophone' },
+        { k: 'label', t: '@The League Label Group', p: 'houses headquarters for', b: '2022-01-01', e: 'present' },
+        { k: 'series', t: '@“Preacher’s Daughter” album release shows', p: 'location for' },
+        { k: 'series', t: '@(You Drive Me) Crazy Tour', p: 'location for' },
+        { k: 'series', t: '@1988 US Tour', p: 'location for', c: 'Frank Zappa' },
+        { k: 'series', t: '@Grammy Awards', p: 'location for (as United States of America)', c: 'generic parent for all Grammy award series', b: '1959-05-04', e: 'present' },
+        { k: 'work', t: '@The Star‐Spangled Banner', p: 'anthem', b: '1931-03-03', e: 'present' },
+        { k: 'work', t: '@America (My Country, ’Tis of Thee)', p: 'anthem (as USA)', e: '1931' },
+        { k: 'url', t: '@Q30', p: 'Wikidata', site: 'wikidata.org' },
+        { k: 'url', t: '@http://sws.geonames.org/6252001/', p: 'Geonames' }
+    ];
+    const AREA_TOTALS = { area: 57, genre: 139, instrument: 3, label: 1, series: 75, work: 2, url: 2 };
+    const WORK = [
+        { k: 'artist', t: '@Bruce Springsteen', p: 'lyricist and composer', b: '1973', e: '1973' },
+        { k: 'artist', t: '@Bruce Springsteen', p: 'arranger' },
+        { k: 'label', t: '@Bruce Springsteen Music', p: 'publisher' },
+        { k: 'label', t: '@Eldridge Publishing Co.', p: 'publisher' },
+        { k: 'label', t: '@Intersong Music Ltd.', p: 'publisher' },
+        { k: 'label', t: '@Sony/ATV Pop Music Publishing', p: 'publisher' },
+        { k: 'label', t: '@Laurel Canyon Music Ltd.', p: 'publisher', c: 'publishing company of Mike Appel and Jim Cretecos', b: '1973', e: '1973' },
+        { k: 'label', t: '@Rondor Music (France)', p: 'sub-publisher', e: 'ended' },
+        { k: 'label', t: '@フジパシフィックミュージック', p: 'sub-publisher', c: 'Fujipacific Music, Inc.', e: 'ended' },
+        { k: 'label', t: '@ソニー・ミュージックパブリッシング A事業部', p: 'sub-publisher', c: 'Sony Music Publishing (Japan) Inc., A Division' },
+        { k: 'work', t: '@Sanna', p: 'later versions', c: 'Nyårsafton Åre 1983' },
+        { k: 'url', t: '@https://genius.com/Bruce-springsteen-4th-of-july-asbury-park-sandy-lyrics', p: 'lyrics page' },
+        { k: 'url', t: '@https://secondhandsongs.com/work/28191', p: 'SecondHandSongs' },
+        { k: 'url', t: '@https://www.allmusic.com/song/mt0003492276', p: 'Allmusic' },
+        { k: 'url', t: '@http://www.songfacts.com/detail.php?id=971', p: 'Songfacts' },
+        { k: 'url', t: '@Q1997092', p: 'Wikidata', site: 'wikidata.org' },
+        { k: 'url', t: '@http://brucebase.wikidot.com/stats:wild-innocent-e-street-shuffle-studio-sessions#4thofjulyasburypark', p: 'work list entry' }
+    ];
+    const REC_RELEASES = [
+        ['@Darkness on the Edge of Town', '@Bruce Springsteen', '1/1', 'US 1978-06-02', '@Columbia'],
+        ['@Darkness on the Edge of Town', '@Bruce Springsteen', '1/1', 'GB 1978-06-02', '@CBS'],
+        ['@The Essential Bruce Springsteen', '@Bruce Springsteen', '1/9', 'US 2003-11-11', '@Columbia']
+    ];
+
+    const KIND = {
+        artist: ['Artists', 'Artist', 'A'], label: ['Labels', 'Label', 'L'], place: ['Places', 'Place', 'P'],
+        work: ['Works', 'Work', 'W'], area: ['Areas', 'Area', 'Ar'], series: ['Series', 'Series', 'S'],
+        instrument: ['Instruments', 'Instrument', 'I'], genre: ['Genres', 'Genre', 'G'], url: ['URLs', 'URL', '🔗'],
+        release: ['Releases', 'Release', 'R']
+    };
+    const ORDER = ['artist', 'release', 'work', 'label', 'area', 'place', 'series', 'instrument', 'genre', 'url'];
+
+    const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const cell = v => {
+        if (v == null || v === '') return '';
+        const s = String(v);
+        if (s[0] === '@') return `<a href="#" tabindex="-1">${esc(s.slice(1))}</a>`;
+        if (s[0] === '~') return `<span class="cm">${esc(s.slice(1))}</span>`;
+        return esc(s);
+    };
+    const glyph = k => k && KIND[k] ? `<i class="gl gl-${k}" aria-hidden="true">${KIND[k][2]}</i>` : '';
+    const host = r => {
+        if (r.site) return r.site;
+        try { return new URL(r.t.slice(1)).host.replace(/^www\./, ''); } catch (_) { return ''; }
+    };
+    let datesAsCols = true;
+    const dateDetails = r => r.raw || (r.b && r.e && r.b !== r.e ? `from ${r.b} ${r.e === 'present' ? 'to' : 'until'} ${r.e}` : r.e && !r.b ? r.e : r.b || '');
+
+    /**
+     * Columns for one group of rows, as the converter would choose them: only the
+     * columns some row fills.
+     */
+    function columns(rows, opts) {
+        const has = f => rows.some(r => r[f]);
+        const allUrls = rows.every(r => r.k === 'url');
+        const cols = [{ h: '#', num: true, v: (r, i) => String(i + 1) }];
+        if (allUrls) cols.push({ h: 'Site', v: r => host(r) });
+        const tk = opts.type ? null : rows[0].k;
+        cols.push({ h: opts.type ? 'Target' : KIND[tk][1], g: tk, v: r => r.t });
+        if (opts.type) cols.push({ h: 'Type', v: r => `<span class="st-type">${KIND[r.k][1]}</span>`, html: true, sort: r => KIND[r.k][1] });
+        cols.push({ h: 'Relationship', v: r => r.p });
+        if (has('a')) cols.push({ h: 'Area', g: 'area', v: r => r.a || '' });
+        if (has('n')) cols.push({ h: 'Number', num: true, v: r => r.n || '' });
+        if (datesAsCols || opts.forceCols) {
+            if (has('b') || has('e')) {
+                cols.push({ h: 'Begin', date: true, v: r => r.b || '' });
+                cols.push({ h: 'End', date: true, v: r => r.e || '' });
+            }
+        } else if (rows.some(r => dateDetails(r))) {
+            cols.push({ h: 'Details', v: r => dateDetails(r) });
+        }
+        if (has('c')) cols.push({ h: 'Disambiguation', v: r => r.c ? '~' + r.c : '' });
+        if (opts.from) cols.push({ h: 'From', v: r => r.from || '' });
+        return cols;
+    }
+
+    let tblSeq = 0;
+    /** One h3 + filter + table, or (bare) only the table. */
+    function table(name, rows, opts = {}) {
+        const id = 'tb' + (++tblSeq);
+        const cols = columns(rows, opts);
+        const cut = opts.total && opts.total > rows.length ? opts.total - rows.length : 0;
+        const body = rows.map((r, i) => `<tr>${cols.map(c => {
+            const raw = c.v(r, i);
+            const cls = c.num ? ' class="num"' : c.date ? ' class="date"' : '';
+            const sortKey = c.sort ? c.sort(r) : String(raw).replace(/^[@~]/, '');
+            return `<td${cls} data-s="${esc(sortKey)}">${c.html ? raw : cell(raw)}</td>`;
+        }).join('')}</tr>`).join('');
+        const count = opts.total || rows.length;
+        return `<div class="st-h3${opts.via ? ' via' : ''}"><span class="tri">▼</span>${esc(name)}
+                <span class="stat" data-stat="${id}">${count} ${count === 1 ? 'row' : 'rows'}</span>
+                <input class="st-filter" type="search" placeholder="Filter ${esc(name)}…" aria-label="Filter ${esc(name)}" data-for="${id}"></div>
+            <div class="stage-scroll"><table class="st-tbl" id="${id}" data-total="${count}" data-cut="${cut}"><thead><tr>${cols.map((c, k) =>
+                `<th data-k="${k}"${c.num ? ' data-num="1"' : ''}>${glyph(c.g)}${esc(c.h)}<span class="ar">⇅</span></th>`).join('')}</tr></thead>
+            <tbody>${body}</tbody></table></div>
+            ${cut ? `<p class="st-more">… ${cut} more rows on the real page</p>` : ''}`;
+    }
+
+    /** Per-kind tables in MusicBrainz's order. */
+    function perKind(rows, totals) {
+        const kinds = ORDER.filter(k => rows.some(r => r.k === k));
+        return kinds.map(k => table(KIND[k][0], rows.filter(r => r.k === k), { total: totals && totals[k] })).join('');
+    }
+
+    const h2 = (text, opts = {}) => `<div class="st-h2"><span class="tri">▼</span>${esc(text)}
+        ${opts.stat ? `<span class="stat" data-gstat="1">${esc(opts.stat)}</span>` : ''}
+        ${opts.filter ? `<input class="st-filter global" type="search" placeholder="Filter all tables…" aria-label="Global filter" data-global="1">
+            <button class="st-x" type="button" data-clear="1">✕ Clear</button>` : ''}</div>`;
+    const head = (title, kind, tabs, sel) => `<p class="st-title">${esc(title)} <small>${esc(kind)}</small></p>
+        <ul class="st-tabs">${tabs.map(t => `<li${t === sel ? ' class="sel"' : ''}><span>${esc(t)}</span></li>`).join('')}</ul>`;
+    const toolbar = (buttons, pressed) => `<div class="st-toolbar"><span class="st-saed">ShowAllEntityData:</span>${buttons.map(b =>
+        `<button type="button" class="st-button${b.isNew ? ' new' : ''}" data-btn="${esc(b.id)}" aria-pressed="${b.id === pressed}">${esc(b.label)}</button>`).join('')}</div>`;
+
+    /** The native two-column lists. */
+    function native(rows) {
+        const byPhrase = [];
+        rows.forEach(r => {
+            let g = byPhrase.find(x => x.p === r.p);
+            if (!g) { g = { p: r.p, lines: [] }; byPhrase.push(g); }
+            const extra = [r.c ? ` <span class="cm">(${esc(r.c)})</span>` : '', r.a ? ` in ${cell(r.a)}` : '',
+                dateDetails(r) ? ` (${esc(dateDetails(r))})` : ''].join('');
+            g.lines.push(`${cell(r.t)}${extra}${r.k === 'url' ? ' [<a href="#" tabindex="-1">info</a>]' : ''}`);
+        });
+        return `<table class="st-details"><tbody>${byPhrase.map(g => `<tr><th>${esc(g.p)}:</th><td>${g.lines.join('<br>')}</td></tr>`).join('')}</tbody></table>`;
+    }
+    const nativeMain = (cols, rows) => `<table class="st-native-tbl"><thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
+        <tbody>${rows.map(r => `<tr>${r.map(v => `<td>${cell(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+    const gone = text => `<div class="st-gone">${text}</div>`;
+
+    const REC_HEAD = head('Badlands', 'Recording by Bruce Springsteen & The E Street Band', ['Overview', 'Fingerprints', 'Aliases', 'Tags', 'Ratings', 'Details', 'Edits'], 'Overview');
+    const REL_HEAD = head('Live/1975–85', 'Release by Bruce Springsteen & The E Street Band', ['Overview', 'Disc IDs', 'Cover art', 'Aliases', 'Tags', 'Details', 'Edits'], 'Overview');
+    const recRows = () => REC_OWN.length + REC_VIA.length;
+
+    // ── Specimens ────────────────────────────────────────────────────────────────
+    const render = {
+        q(pressed) {
+            const btns = [{ id: 'rel', label: 'Releases' }, { id: 'rels', label: 'Relationships', isNew: true }];
+            let body;
+            if (pressed === 'rels') {
+                body = h2('Relationships', { stat: `${recRows()} of ${recRows()} rows · 6 tables`, filter: true }) +
+                    perKind(REC_OWN) + table('Via Badlands', REC_VIA, { type: true, via: true }) +
+                    gone('“Appears on releases” was removed for this render. Press “Releases” to reload the page and get it back.');
+            } else if (pressed === 'rel') {
+                body = h2('Appears on releases', { stat: '103 of 103 rows', filter: true }) +
+                    `<div class="st-h3"><span class="tri">▼</span>Album <span class="stat">3 rows shown here</span><input class="st-filter" type="search" placeholder="Filter Album…" aria-label="Filter Album"></div>` +
+                    nativeMain(['Release title', 'Release Artist', '#', 'Country/Date', 'Label'], REC_RELEASES) +
+                    `<p class="st-more">… the release-tracks columns, CAA and Relationships column as today</p>` +
+                    `<div class="st-h2"><span class="tri">▼</span>Relationships <span class="stat">native, unchanged</span></div>` + native(REC_OWN.slice(0, 5));
+            } else {
+                body = `<div class="st-h2"><span class="tri">▼</span>Appears on releases</div>` +
+                    nativeMain(['Release title', 'Release Artist', '#', 'Country/Date', 'Label'], REC_RELEASES) +
+                    `<div class="st-h2"><span class="tri">▼</span>Relationships</div>` + native(REC_OWN.slice(0, 5)) +
+                    `<p class="st-more">Press a button. Nothing is rendered yet.</p>`;
+            }
+            return REC_HEAD + toolbar(btns, pressed) + body;
+        },
+        r0() {
+            return REC_HEAD + `<div class="st-h2"><span class="tri">▼</span>Relationships</div>` + native(REC_OWN) +
+                `<div class="st-h2"><span class="tri">▼</span>Related works</div><p class="st-native-h3"><a href="#" tabindex="-1">Badlands</a></p>` + native(REC_VIA);
+        },
+        r1() {
+            return REC_HEAD + toolbar([{ id: 'rel', label: 'Releases' }, { id: 'rels', label: 'Relationships', isNew: true }], 'rels') +
+                h2('Relationships', { stat: `${recRows()} of ${recRows()} rows · 6 tables`, filter: true }) +
+                perKind(REC_OWN) + table('Via Badlands', REC_VIA, { type: true, via: true });
+        },
+        r2() {
+            const all = [...REC_OWN.map(r => ({ ...r, from: 'Recording' })), ...REC_VIA.map(r => ({ ...r, from: 'Badlands (work)' }))];
+            return toolbar([{ id: 'rel', label: 'Releases' }, { id: 'rels', label: 'Relationships', isNew: true }], 'rels') +
+                h2('Relationships', { stat: `${all.length} of ${all.length} rows`, filter: true }) +
+                table('Relationships', all, { type: true, from: true });
+        },
+        l0() {
+            return REL_HEAD + `<div class="st-h2"><span class="tri">▼</span>Credits</div>
+                <p class="st-native-h3">▼ Release</p>${native(REL_OWN)}
+                <p class="st-native-h3">▼ Release group</p>${native(REL_VIA)}`;
+        },
+        l1() {
+            return REL_HEAD + toolbar([{ id: 'tracks', label: 'Tracks' }, { id: 'credits', label: 'Credits', isNew: true }], 'credits') +
+                h2('Credits', { stat: '13 of 13 rows · 3 tables', filter: true }) + perKind(REL_OWN) +
+                table('Via release group: Live/1975–85', REL_VIA, { type: true, via: true }) +
+                gone('“Tracklist” was removed for this render. Press “Tracks” to reload the page and get it back.');
+        },
+        l2() {
+            const all = [...REL_OWN.map(r => ({ ...r, from: 'Release' })), ...REL_VIA.map(r => ({ ...r, from: 'Release group' }))];
+            return toolbar([{ id: 'tracks', label: 'Tracks' }, { id: 'credits', label: 'Credits', isNew: true }], 'credits') +
+                h2('Credits', { stat: `${all.length} of ${all.length} rows`, filter: true }) + table('Credits', all, { type: true, from: true });
+        },
+        place() {
+            return head('The Stone Pony', 'Place · Asbury Park', ['Overview', 'Events', 'Performances', 'Map', 'Aliases', 'Tags'], 'Overview') +
+                toolbar([{ id: 'p', label: 'Relationships', isNew: true }], 'p') +
+                h2('Relationships', { stat: '5 of 5 rows', filter: true }) + perKind(PLACE);
+        },
+        instrument() {
+            return head('tenor guitar', 'String instrument', ['Overview', 'Artists', 'Releases', 'Recordings', 'Aliases', 'Tags'], 'Overview') +
+                toolbar([{ id: 'i', label: 'Relationships', isNew: true }], 'i') +
+                h2('Relationships', { stat: '4 of 4 rows · 2 tables', filter: true }) + perKind(INSTRUMENT);
+        },
+        area() {
+            return head('United States', 'Country', ['Overview', 'Artists', 'Events', 'Labels', 'Releases', 'Recordings', 'Places', 'Works'], 'Overview') +
+                toolbar([{ id: 'a', label: 'Relationships', isNew: true }], 'a') +
+                h2('Relationships', { stat: '279 of 279 rows · 7 tables', filter: true }) + perKind(AREA, AREA_TOTALS);
+        },
+        w() {
+            return head('4th of July, Asbury Park (Sandy)', 'Song', ['Overview', 'Aliases', 'Tags', 'Ratings', 'Details', 'Edits'], 'Overview') +
+                toolbar([{ id: 'rec', label: 'Recordings' }, { id: 'rels', label: 'Relationships', isNew: true }], 'rels') +
+                h2('Relationships', { stat: '17 of 17 rows · 4 tables', filter: true }) + perKind(WORK) +
+                gone('“Recordings” was removed for this render. Press “Recordings” to reload the page and get it back.');
+        }
+    };
+
+    let qPressed = '';
+    function paint(id) {
+        const el = document.getElementById('stage-' + id);
+        if (!el) return;
+        el.innerHTML = id === 'q' ? render.q(qPressed) : render[id]();
+    }
+    function paintAll() { Object.keys(render).forEach(paint); }
+
+    // ── Filter and sort, the way the script does them ───────────────────────────
+    function applyFilters(stage) {
+        const g = (stage.querySelector('input[data-global]') || {}).value || '';
+        let shown = 0, total = 0, tables = 0;
+        stage.querySelectorAll('table.st-tbl').forEach(t => {
+            const own = (stage.querySelector(`input[data-for="${t.id}"]`) || {}).value || '';
+            const qs = [g, own].map(q => q.trim().toLowerCase()).filter(Boolean);
+            let n = 0;
+            t.querySelectorAll('tbody tr').forEach(tr => {
+                tr.querySelectorAll('mark').forEach(m => m.replaceWith(m.textContent));
+                tr.normalize();
+                const text = tr.textContent.toLowerCase();
+                const ok = qs.every(q => text.includes(q));
+                tr.hidden = !ok;
+                if (ok) {
+                    n++;
+                    qs.forEach(q => mark(tr, q));
+                }
+            });
+            const cut = +t.dataset.cut;
+            const all = +t.dataset.total;
+            const stat = stage.querySelector(`[data-stat="${t.id}"]`);
+            if (stat) stat.textContent = qs.length ? `${n} of ${all - cut} rows` : `${all} ${all === 1 ? 'row' : 'rows'}`;
+            shown += n;
+            total += all - cut;
+            tables++;
+        });
+        const gs = stage.querySelector('[data-gstat]');
+        if (gs && gs.dataset.orig === undefined) gs.dataset.orig = gs.textContent;
+        const anyQ = Array.from(stage.querySelectorAll('.st-filter')).some(i => i.value.trim());
+        if (gs) gs.textContent = anyQ ? `${shown} of ${total} rows · ${tables} tables` : gs.dataset.orig;
+    }
+    function mark(tr, q) {
+        const walker = document.createTreeWalker(tr, NodeFilter.SHOW_TEXT);
+        const hits = [];
+        while (walker.nextNode()) {
+            const n = walker.currentNode;
+            if (n.parentNode.closest('.st-type')) continue;
+            const i = n.textContent.toLowerCase().indexOf(q);
+            if (i >= 0) hits.push([n, i]);
+        }
+        hits.forEach(([n, i]) => {
+            const m = document.createElement('mark');
+            const r = document.createRange();
+            r.setStart(n, i);
+            r.setEnd(n, i + q.length);
+            r.surroundContents(m);
+        });
+    }
+    function sortBy(th) {
+        const t = th.closest('table');
+        const k = +th.dataset.k;
+        const dir = th.dataset.dir === 'asc' ? 'desc' : 'asc';
+        t.querySelectorAll('th').forEach(x => { delete x.dataset.dir; x.querySelector('.ar').textContent = '⇅'; });
+        th.dataset.dir = dir;
+        th.querySelector('.ar').textContent = dir === 'asc' ? '▲' : '▼';
+        const num = th.dataset.num === '1';
+        const rows = Array.from(t.tBodies[0].rows);
+        rows.sort((a, b) => {
+            const x = a.cells[k].dataset.s, y = b.cells[k].dataset.s;
+            if (!x && y) return 1;
+            if (x && !y) return -1;
+            const c = num ? (+x) - (+y) : x.localeCompare(y, undefined, { numeric: true });
+            return dir === 'asc' ? c : -c;
+        });
+        rows.forEach(r => t.tBodies[0].appendChild(r));
+    }
+
+    document.addEventListener('input', e => {
+        const stage = e.target.closest('.stage');
+        if (stage && e.target.matches('.st-filter')) applyFilters(stage);
+    });
+    document.addEventListener('click', e => {
+        const th = e.target.closest('.st-tbl th');
+        if (th) { sortBy(th); return; }
+        if (e.target.closest('a[href="#"]')) { e.preventDefault(); return; }
+        const clear = e.target.closest('[data-clear]');
+        if (clear) {
+            const stage = clear.closest('.stage');
+            stage.querySelectorAll('.st-filter').forEach(i => { i.value = ''; });
+            applyFilters(stage);
+            return;
+        }
+        const btn = e.target.closest('#stage-q .st-button');
+        if (btn) {
+            qPressed = btn.dataset.btn === qPressed ? '' : btn.dataset.btn;
+            paint('q');
+        }
+    });
+    const seg = (on, off, val) => {
+        document.getElementById(on).setAttribute('aria-pressed', 'true');
+        document.getElementById(off).setAttribute('aria-pressed', 'false');
+        datesAsCols = val;
+        paint('r1');
+    };
+    document.getElementById('dates-cols').addEventListener('click', () => seg('dates-cols', 'dates-details', true));
+    document.getElementById('dates-details').addEventListener('click', () => seg('dates-details', 'dates-cols', false));
+
+    paintAll();
+})();
+</script>
+</body>
+</html>

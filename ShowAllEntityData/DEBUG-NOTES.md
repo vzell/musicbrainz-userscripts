@@ -22023,3 +22023,54 @@ New fixture `tests/fixtures/bb-year-2012.html` (build-bb-fixtures.py).
 
 Fails-before: mutation lists run in scratch worktrees (live userscript
 untouched): `foreign-ip-popups.json` 5/5, `bb-year.json`'s two new entries 2/2.
+
+## 2026-10-12 — relationship tables on ten more page families (WIP.6, branch `feature/relationship-tables`)
+Env: 2026-10-12T18:28Z–19:52Z · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1) · Playwright 1.62.1 Chromium (captures, specs) · no Tampermonkey (GM stubs)
+
+Design record: `org/relationship-tables-pt.org`; rules: `docs/claude/relationship-tables.md`.
+
+**Captures.** Plain `curl` against musicbrainz.org now returns the
+"Verifying your browser" proof-of-work page (HTTP 200, `<title>Verifying your
+browser</title>`) — a probe that reads it as an empty page sees no h2 at all.
+The ten example pages were saved with `tests/support/capture-raw-page.js` as
+`tests/fixtures/rel-*-overview.html` and read with the new
+`scripts/probe-rel-sections.js`.
+
+**Release credit layouts** (`scripts/probe-release-credits-layouts.js`,
+19:12Z): opened logged out, a release shows credits INLINE (the toggle reads
+"Display credits at bottom"); `#bottom-credits` then holds only the Credits h2,
+`#release-relationships` and `#release-group-relationships`. In the "at bottom"
+layout it also holds one `div.bottom-credits` per medium (every track's
+credits) before those two. The choice survives a reload. The converter reads
+the two blocks by id.
+
+**Found while building, each pinned by a spec and a mutation:**
+- A place relationship's date is printed AFTER its area chain, so
+  `_eventRelParseLine()` puts "(from 1977-08-24 until 1978-05-05)" into `area`
+  ("…, United States (from …)" in the Area cell). `_relRowAttrs()` peels it.
+- `_eventTrimNodes(…, true)` strips one outer "(" … ")" pair only when the run
+  starts with "(" — so a line's `extra` may or may not have lost it.
+  `_relPeelAttrs()` decides from the text (no paren, or ")" before the first
+  "(") instead of assuming.
+- Ended URL relationships have NO link: `<span class="deleted"><bdi>https://…`
+  — they came out as an "Other" group of 4 rows on the artist's tab.
+- Series positions with a date: "(in 1997: number: 1997) (order: 10)".
+- Picard's per-table guard (`a[href*="/release/"]`) matched external links
+  (discogs.com/release/…, rateyourmusic.com/release/…): the URL tables got a
+  Picard column. Now a MusicBrainz release href only.
+- On a release page the tables must not be inserted inside `#bottom-credits`:
+  `renderGroupedTable()`'s initial h3 sweep spares every h3 there
+  (`el.closest('#bottom-credits')`), so they would have survived the sweep and
+  been rendered twice. The h2 moves out first.
+- A release-group title lookup that took the first sidebar `/release-group/`
+  link got "see all ratings".
+
+**Tests.** `rel-tables-recording.spec.js` 10/10, `rel-tables-pages.spec.js`
+10/10. `scripts/mutations/rel-tables.json` 12/12 fail as expected (live
+userscript restored and hash-verified). Regression run over the touched
+families (event-overview*, release-tracks*, picard*, recording-of*,
+artist-relationships-work-column, rel-column-disk-load-cells, series,
+place-performances*, area-*, status-line-placement; fixtures + mobile):
+212/213, the one failure `release-tracks-instrument-icons.spec.js` "a late
+icon updates the 📊 counts…" passed 3/3 when re-run alone — timing under
+load, not this change (it does not touch the instrument-icon path).
