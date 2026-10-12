@@ -22074,3 +22074,34 @@ place-performances*, area-*, status-line-placement; fixtures + mobile):
 212/213, the one failure `release-tracks-instrument-icons.spec.js` "a late
 icon updates the 📊 counts…" passed 3/3 when re-run alone — timing under
 load, not this change (it does not touch the instrument-icon path).
+
+## 2026-10-12 — relationship tables, review round 2 (WIP.7)
+Env: 2026-10-12T21:07Z · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs); user snapshots from their browser (version unknown)
+
+User snapshots read with the new `scripts/probe-snapshot-table-col.js`
+(rows of a saved page whose column has a value, with that cell's HTML):
+
+- `debug/area-USA-final.html`: 51 of 57 Areas rows had their parent chain in
+  a Details column. Cause, from `debug/area-USA-initial.html`: "MusicBrainz
+  More Flags Everywhere" wraps `span.arealink` + the area link + its flag
+  `<img>` + the "," that follows in one `span.mfe-flag-wrapper`
+  (`AREA_ICON_WRAPPER_SEL`). The comma was inside the target ("Alabama,"), the
+  rest began with " " + the country flag span, so the chain was never
+  recognised. The raw captures (no third-party scripts) never showed it — the
+  spec rebuilds that wrapping on the fixture.
+- `debug/work.html`: "(Fujipacific Music, Inc.)" is
+  `<span class="comment">(<bdi><i title="Primary alias">…</i></bdi>)</span>`.
+- `debug/member-of.html`: "(from 1964-12 until 1965-06: lead vocals,
+  <a>electric guitar</a>)" — the date LEADS the group and the group ends in a
+  link, so the end-of-run peeler never saw it.
+- `debug/CAA-EAA-beforetitle.html` (release 1d404e1d): release-group and event
+  targets in the "Via release group" Target column; captured raw as
+  `tests/fixtures/rel-release-art-overview.html` (24 "performed at" events,
+  11 release groups). `addCAA`/`addEAA` accept candidate arrays already
+  (report-detail), and each row's link picks CAA or EAA.
+
+The event page now passes the same parsing options; its spec's "(order: 150)"
+expectation moved from Details to Number (the only event assertion that
+changed). Tests: event-overview* + rel-tables* on fixtures and mobile 63/63;
+`scripts/mutations/rel-tables.json` 19/19 as expected (one "expect: pass":
+the strip link-scan scope is not visible to any spec yet).

@@ -1,5 +1,27 @@
 [
     {
+        "version": "WIP.7",
+        "date": "2026-10-12",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "Relationships as tables: a primary alias — the name MusicBrainz adds in parentheses for an entity named in another script, \"フジパシフィックミュージック (Fujipacific Music, Inc.)\" — gets its own \"Primary alias\" column instead of landing in Disambiguation.",
+                    "Relationships as tables: an artist's membership with a period and what was played — \"(from 1964-12 until 1965-06: lead vocals, electric guitar)\" — now fills Begin and End (with their day/month/year parts) and a multi-row Credits cell, instead of one Credits cell holding the date too.",
+                    "Relationships as tables: Genre and Instrument columns show their glyph once in the header, like the other single-kind columns.",
+                    "Relationships as tables: with inline CAA/EAA thumbnails on, a release group or release gets its small cover image before its name and an event its event art image — also in a mixed Target column, each row the picture that fits it.",
+                    "Event pages: the relationship tables get the same Begin/End (and their date parts) and Number/Order columns, and read primary aliases and ended URL relationships the same way. A series position such as \"(order: 150)\" is now Number instead of Details."
+                ]
+            },
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Relationships as tables, area pages: with \"MusicBrainz More Flags Everywhere\" installed, an area's parent chain (\"Alabama\" → \"United States\") went into a Details column for most rows, and the target kept a trailing comma; it is in Parent area again, and Details is gone."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.6",
         "date": "2026-10-12",
         "sections": [

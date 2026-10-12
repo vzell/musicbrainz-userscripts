@@ -30,6 +30,24 @@
 //     initPicardTaggerColumn() guard was narrowed to MusicBrainz links.
 //  6. RELEASE CREDITS: the release's own lists and its group's, never the
 //     track credits; the group's title from the sidebar.
+//
+// WIP.7 (user review 2026-10-12):
+//  7. A PRIMARY ALIAS (`<i title="Primary alias">` inside the disambiguation
+//     span) is its own column; a real disambiguation stays Disambiguation.
+//  8. A MEMBER'S PERIOD AND CREDITS — "(from 1964-12 until 1965-06: lead
+//     vocals, <a>electric guitar</a>)" — split into Begin, End (with their
+//     date parts) and a multi-row Credits cell. Checking only that Begin is
+//     filled passes on code that leaves the date in Credits too.
+//  9. "MusicBrainz More Flags Everywhere" WRAPS an area's link and the comma
+//     before its parent chain: the chain still lands in Parent area and no
+//     Details column appears. The wrapping is applied in the test exactly as
+//     that script leaves it (debug/area-USA-initial.html).
+// 10. GENRE / INSTRUMENT GLYPHS move to the header like the other kinds.
+// 11. INLINE ARTWORK: a cover-art placeholder before every release-group
+//     target and an event-art one before every event target of a mixed
+//     "Target" column, none on series/URL rows (fixture
+//     rel-release-art-overview.html, release 1d404e1d, 24 events and 11
+//     release groups in its release group's lists).
 
 const path = require('path');
 const { test, expect } = require('../support/test');
@@ -46,6 +64,7 @@ const PAGES = {
     'artist-rels': ['https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships', 'Show all Relationship lists for Artist'],
     'release-group': ['https://musicbrainz.org/release-group/d5f992ab-6238-3b28-bf2b-7b16d913c9f6', 'Show all Relationships for ReleaseGroup'],
     release: ['https://musicbrainz.org/release/f50fcf09-4339-4e1c-91cd-e1d2a7b3a7bc', 'Show all Credits for Release'],
+    'release-art': ['https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897', 'Show all Credits for Release'],
 };
 
 /**
@@ -57,7 +76,7 @@ const PAGES = {
  * @param {string} kind  A key of PAGES.
  * @param {{settings?: Object, press?: boolean}} [opts]
  */
-async function open(page, kind, { settings = {}, press = true } = {}) {
+async function open(page, kind, { settings = {}, press = true, before = null } = {}) {
     const [url, label] = PAGES[kind];
     const fixture = path.join(__dirname, `rel-${kind}-overview.html`);
     await page.context().route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
@@ -68,6 +87,8 @@ async function open(page, kind, { settings = {}, press = true } = {}) {
     await page.route('https://musicbrainz.org/ws/2/**', (route) => route.fulfill({ status: 404, body: '' }));
     await page.route(/^https:\/\/musicbrainz\.org\/(?!ws\/)/, (route) => route.fulfill({ path: fixture, contentType: 'text/html' }));
     await page.route('https://coverartarchive.org/**', (route) => route.fulfill({ status: 404, body: '' }));
+    await page.route('https://eventartarchive.org/**', (route) => route.fulfill({ status: 404, body: '' }));
+    if (before) await page.evaluate(before);
     if (!press) return;
     await page.click(`button[data-label="${label}"]`);
     await waitForRenderComplete(page, { waitForAutoResize: false });
@@ -223,5 +244,116 @@ test.describe('relationship tables: the second button (WIP.6)', () => {
         });
         expect(native).toMatchObject({ details: 2 });
         expect(native.h3).toContain('Release group');
+    });
+});
+
+test.describe('relationship tables: review fixes (WIP.7)', () => {
+    test('work: a primary alias is its own column, a disambiguation stays one', async ({ page }) => {
+        await open(page, 'work');
+        const g = await groups(page);
+        expectAligned(g);
+        expect(g.Labels.heads).toContain('Primary alias');
+        expect(rowBy(g.Labels, 'Label', 'フジパシフィックミュージック')).toMatchObject({ 'Primary alias': 'Fujipacific Music, Inc.', Disambiguation: '', End: 'ended' });
+        expect(rowBy(g.Labels, 'Label', 'ソニー・ミュージックパブリッシング A事業部'))
+            .toMatchObject({ 'Primary alias': 'Sony Music Publishing (Japan) Inc., A Division', Disambiguation: '' });
+        expect(rowBy(g.Labels, 'Label', 'Laurel Canyon Music Ltd.'))
+            .toMatchObject({ Disambiguation: 'publishing company of Mike Appel and Jim Cretecos', 'Primary alias': '' });
+    });
+
+    test('artist: a member\'s period and credits split into Begin, End and multi-row Credits', async ({ page }) => {
+        await open(page, 'artist-rels');
+        const g = await groups(page);
+        const a = g.Artists;
+        const rogues = rowBy(a, 'Artist', 'The Rogues');
+        expect(rogues).toMatchObject({ Relationship: 'member of', Begin: '1964-12', End: '1965-06', Disambiguation: 'Bruce Springsteen’s first band',
+            'B-MM': '12', 'B-YYYY': '1964', 'B-Month': 'December', 'E-MM': '6', 'E-YYYY': '1965' });
+        const credits = await page.evaluate(() => {
+            const t = Array.from(document.querySelectorAll('table.tbl')).find((x) => Array.from(x.querySelectorAll('thead th')).some((th) => th.dataset.colName === 'Artist'));
+            const k = Array.from(t.querySelectorAll('thead tr:first-child th')).findIndex((th) => th.dataset.colName === 'Credits');
+            const per = (name) => {
+                const tr = Array.from(t.querySelectorAll('tbody tr')).find((r) => r.cells[1].textContent.trim() === name);
+                return Array.from(tr.cells[k].querySelectorAll('li')).map((li) => li.textContent.trim());
+            };
+            return { rogues: per('The Rogues'), jersey: per('Jersey Artists for Mankind'), mammas: per('The Red Hot Mammas') };
+        });
+        expect(credits.rogues).toEqual(['lead vocals', 'electric guitar']);
+        expect(credits.jersey, '"(in 1986: electric guitar)"').toEqual(['electric guitar']);
+        expect(credits.mammas, '"(in 1971)" alone: no credits').toEqual([]);
+        expect(rowBy(a, 'Artist', 'Jersey Artists for Mankind')).toMatchObject({ Begin: '1986', End: '1986' });
+        a.rows.forEach((r) => expect(r[a.heads.indexOf('Credits')], 'no date left in Credits').not.toMatch(/\b(from|until|in) [0-9]{4}/));
+    });
+
+    test('area with "More Flags Everywhere": the parent chain still lands in Parent area, no Details column', async ({ page }) => {
+        // Rewrite each "parts" line the way that script leaves it: the glyph,
+        // the link, a flag <img> and the following "," in one wrapper span.
+        await open(page, 'area', {
+            press: false,
+            before: () => {
+                const th = Array.from(document.querySelectorAll('#content table.details th')).find((x) => x.textContent.trim() === 'parts:');
+                th.nextElementSibling.querySelectorAll(':scope > a.wrap-anywhere').forEach((a) => {
+                    const comma = a.nextSibling;
+                    if (!comma || comma.nodeType !== Node.TEXT_NODE || !comma.textContent.startsWith(',')) return;
+                    const glyph = a.previousElementSibling && a.previousElementSibling.matches('span.arealink') ? a.previousElementSibling : null;
+                    const w = document.createElement('span');
+                    w.className = 'mfe-flag-wrapper';
+                    a.before(w);
+                    if (glyph) w.appendChild(glyph);
+                    w.appendChild(a);
+                    const img = document.createElement('img');
+                    img.className = 'mb-hq-flag-img';
+                    w.appendChild(img);
+                    comma.textContent = comma.textContent.slice(1);
+                    w.appendChild(document.createTextNode(','));
+                });
+            },
+        });
+        expect(await page.locator('span.mfe-flag-wrapper').count(), 'the wrapping took').toBeGreaterThan(50);
+        await page.click('button[data-label="Show all Relationships for Area"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const g = await groups(page);
+        expect(g.Areas.heads).toEqual(['#', 'Area', 'Relationship', 'Parent area']);
+        expect(rowBy(g.Areas, 'Area', 'Alabama'), 'no comma left in the target').toMatchObject({ 'Parent area': 'United States' });
+        expect(g.Areas.rows.every((r) => r[3] === 'United States')).toBe(true);
+    });
+
+    test('Genre and Instrument show their glyph in the header, not on every cell', async ({ page }) => {
+        await open(page, 'area');
+        const st = await page.evaluate(() => {
+            const tableOf = (col) => Array.from(document.querySelectorAll('table.tbl')).find((t) => Array.from(t.querySelectorAll('thead th')).some((th) => th.dataset.colName === col));
+            const glyph = (col, cls) => {
+                const t = tableOf(col);
+                return { head: !!t.querySelector(`thead span.${cls}`), cells: t.querySelectorAll(`tbody span.${cls}`).length };
+            };
+            return { genre: glyph('Genre', 'genrelink'), instrument: glyph('Instrument', 'instrumentlink') };
+        });
+        expect(st).toEqual({ genre: { head: true, cells: 0 }, instrument: { head: true, cells: 0 } });
+    });
+
+    test('inline cover art before release groups, event art before events, in a mixed Target column', async ({ page }) => {
+        await open(page, 'release-art', { settings: { sa_enable_caa_pics: true, sa_caa_pics_inline: true } });
+        const g = await groups(page);
+        const via = Object.values(g).find((x) => x.name.startsWith('Via release group'));
+        expect(via, 'the release group\'s lists').toBeTruthy();
+        const st = await page.evaluate((name) => {
+            const h3 = Array.from(document.querySelectorAll('h3.mb-toggle-h3')).find((h) => h.textContent.includes(name));
+            let t = h3.nextElementSibling;
+            while (t && t.tagName !== 'TABLE') t = t.nextElementSibling;
+            const heads = Array.from(t.querySelectorAll('thead tr:first-child th')).map((th) => th.dataset.colName);
+            const k = heads.indexOf('Target');
+            const ty = heads.indexOf('Type');
+            const by = {};
+            Array.from(t.querySelectorAll('tbody tr')).forEach((tr) => {
+                const type = tr.cells[ty].textContent.trim();
+                const c = by[type] || (by[type] = { rows: 0, caa: 0, eaa: 0 });
+                c.rows++;
+                if (tr.cells[k].querySelector('.mb-caa-inline-ph')) c.caa++;
+                if (tr.cells[k].querySelector('.mb-eaa-inline-ph')) c.eaa++;
+            });
+            return by;
+        }, 'Via release group');
+        expect(st['Release group']).toEqual({ rows: 11, caa: 11, eaa: 0 });
+        expect(st.Event).toEqual({ rows: 24, caa: 0, eaa: 24 });
+        expect(st.Series).toMatchObject({ caa: 0, eaa: 0 });
+        expect(st.URL).toMatchObject({ caa: 0, eaa: 0 });
     });
 });

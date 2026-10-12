@@ -1552,10 +1552,12 @@ the columns that fit it:
   "held at", "recording location for", …);
 - for performers, **Credits** — one row per credit ("lead vocals",
   "harmonica", …, instrument links kept) — and **Time** ("19:40 - 22:29");
-  **Artist** for recordings and releases, **Area** for a place, **Details**
-  for anything else on the line ("order: 150" for a series), and
-  **Disambiguation** (without its parentheses) — each only when some row has
-  one;
+  **Artist** for recordings and releases, **Area** for a place, **Begin** and
+  **End** for a relationship's dates, **Number** (and **Order**) for a series
+  position ("order: 150"), **Details** for anything else on the line,
+  **Disambiguation** (without its parentheses) and **Primary alias** — each
+  only when some row has one (dates, positions and aliases are read the same
+  way as on other pages, see *Relationships as tables on other pages*);
 - for URLs, the **Site** and the link, with its **[info]** page.
 
 Under "Related series", MusicBrainz also lists the relationships of the
@@ -1658,6 +1660,19 @@ the columns that fit it, the entity glyph in the column header — plus:
   States"), **Area** for a place's.
 - An ended URL relationship, which MusicBrainz shows struck through and
   without a link, is still a row of the URLs table, with its end date.
+- **Primary alias**: a name MusicBrainz adds in parentheses for an entity
+  whose name is in another script ("フジパシフィックミュージック
+  (Fujipacific Music, Inc.)") — not mixed up with **Disambiguation**.
+- An artist's membership with a period and what they played — "(from 1964-12
+  until 1965-06: lead vocals, electric guitar)" — gives **Begin**, **End**
+  and a multi-row **Credits** cell, one row per credit.
+- **Genre** and **Instrument** show their glyph once in the column header,
+  like every other single-kind column.
+- With *Enable inline CAA/EAA thumbnails in Release/Title column* on (⚙️
+  Settings → 🖼️ CAA/EAA ILLUSTRATED DISCOGRAPHY), a release group
+  or release gets its small cover image in front of its name, and an event
+  its event art image — also in a mixed **Target** column, where each row
+  gets the picture that fits it.
 
 A recording's **Related works** and a release's **Release group** credits
 describe the work or the group, not the page's entity, so each gets its own

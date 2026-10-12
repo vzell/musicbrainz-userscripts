@@ -17697,17 +17697,26 @@
      * Parses one target line of an event relationship list into its parts,
      * as cloned nodes.
      *
-     * With `opts.rel` (the relationship-tables pages only; the event page's
-     * output must not change):
+     * With `opts.rel` (the relationship-tables pages, and the event page
+     * since WIP.7):
      *   - an ENDED URL relationship, which MusicBrainz prints without a link
      *     (`<span class="deleted"><bdi>https://…</bdi></span> [info] (until
      *     2020-10-12)`), is read as a URL target whose href is that text;
      *   - a URL's "[info] (…)" stays in `extra`, so `_relRowAttrs()` can take
-     *     the date off it before putting "[info]" back with the link.
+     *     the date off it before putting "[info]" back with the link;
+     *   - a target's primary alias, which MusicBrainz prints inside the
+     *     disambiguation span as `<i title="Primary alias">…</i>` (a name in
+     *     another script: "フジパシフィックミュージック (Fujipacific Music,
+     *     Inc.)"), goes to `alias`, not to `comment`;
+     *   - "MusicBrainz More Flags Everywhere" wraps an area's glyph, link,
+     *     flag image AND the ", " before its parent chain in one
+     *     `span.mfe-flag-wrapper` (AREA_ICON_WRAPPER_SEL); that comma is
+     *     moved back out of the target, or the chain lands in Details instead
+     *     of the area column (debug/area-USA-initial.html, 2026-10-12).
      *
      * @param   {Node[]} nodes The line's child nodes (between two `<br>`s).
      * @param   {{rel?: boolean}} [opts]
-     * @returns {?{type: string, main: Node[], href: string, artist: Node[], area: Node[], extra: Node[], comment: Node[]}}
+     * @returns {?{type: string, main: Node[], href: string, artist: Node[], area: Node[], extra: Node[], comment: Node[], alias: Node[]}}
      *          null for an empty line.
      */
     function _eventRelParseLine(nodes, opts = {}) {
@@ -17735,16 +17744,41 @@
             mainNode.matches('span.deleted') && /^(?:https?:)?\/\//.test(mainNode.textContent.trim())
             ? mainNode.textContent.trim() : '';
         if (!anchor && !endedUrl) {
-            return { type: 'text', main: _eventTrimNodes(live.map(clone)), href: '', artist: [], area: [], extra: [], comment: [] };
+            return { type: 'text', main: _eventTrimNodes(live.map(clone)), href: '', artist: [], area: [], extra: [], comment: [], alias: [] };
         }
         const href = endedUrl || anchor.getAttribute('href') || '';
         const type = _eventRelTargetType(href);
         const rest = live.slice(i + 1);
-        const parts = { artist: [], area: [], extra: [], comment: [] };
+        let mainClone = clone(mainNode);
+        if (opts.rel && mainClone.nodeType === Node.ELEMENT_NODE && mainClone.matches(AREA_ICON_WRAPPER_SEL)) {
+            const last = mainClone.lastChild;
+            if (last && last.nodeType === Node.TEXT_NODE && /,\s*$/.test(last.textContent)) {
+                last.textContent = last.textContent.replace(/,\s*$/, '');
+                rest.unshift(document.createTextNode(', '));
+            }
+        }
+        const parts = { artist: [], area: [], extra: [], comment: [], alias: [] };
         for (let k = 0; k < rest.length; k++) {
             const n = rest[k];
             if (n.nodeType === Node.ELEMENT_NODE && n.tagName === 'SPAN' && n.classList.contains('comment')) {
-                parts.comment.push(clone(n));
+                const c = clone(n);
+                const al = opts.rel ? c.querySelector('i[title="Primary alias"]') : null;
+                if (al) {
+                    parts.alias.push(...Array.from(al.childNodes).map(clone));
+                    al.remove();
+                    // What is left: "(" <bdi></bdi> ")", or "(…, disambiguation)".
+                    c.querySelectorAll('bdi').forEach(b => {
+                        if (b.firstChild && b.firstChild.nodeType === Node.TEXT_NODE) {
+                            b.firstChild.textContent = b.firstChild.textContent.replace(/^\s*,\s*/, '');
+                        }
+                        if (b.lastChild && b.lastChild.nodeType === Node.TEXT_NODE) {
+                            b.lastChild.textContent = b.lastChild.textContent.replace(/\s*,\s*$/, '');
+                        }
+                    });
+                    if (c.textContent.replace(/[\s(),]/g, '')) parts.comment.push(c);
+                } else {
+                    parts.comment.push(c);
+                }
             } else if (n.nodeType === Node.TEXT_NODE && /\bby\s*$/.test(n.textContent) && rest[k + 1] &&
                        rest[k + 1].nodeType === Node.ELEMENT_NODE && !parts.artist.length) {
                 // " by " + <bdi>artist credit</bdi>; any text before "by" belongs to extra.
@@ -17760,7 +17794,7 @@
                 parts.extra.push(clone(n));
             }
         }
-        const main = [...lead, mainNode].map(clone);
+        const main = [...lead.map(clone), mainClone];
         if (type === 'url' && !opts.rel) {
             // "[info]" (the URL entity's own page) stays with the link it describes.
             const info = _eventTrimNodes(parts.extra);
@@ -17775,7 +17809,8 @@
             // The span.comment's own content, without its "(" … ")" — the column
             // header already says what it is.
             comment: _eventTrimNodes(parts.comment.flatMap(n =>
-                (n.nodeType === Node.ELEMENT_NODE && n.classList.contains('comment')) ? Array.from(n.childNodes) : [n]), true)
+                (n.nodeType === Node.ELEMENT_NODE && n.classList.contains('comment')) ? Array.from(n.childNodes) : [n]), true),
+            alias: _eventTrimNodes(parts.alias)
         };
     }
 
@@ -17951,6 +17986,10 @@
         });
         out.Area = 'arealink';
         out['Parent area'] = 'arealink';
+        // Not in _ENTITY_TYPE_GLYPH, which also drives the 📊 entity-info
+        // sections on every page; MusicBrainz's stylesheet has both classes.
+        out.Genre = 'genrelink';
+        out.Instrument = 'instrumentlink';
         out.Song = 'worklink';
         out['Additional artists'] = 'artistlink';
         return out;
@@ -18029,8 +18068,8 @@
      * @param   {Array<Object>} rows Rows of `_eventRelRowsFrom()`.
      * @param   {string} targetCol   Header of the target column.
      * @param   {boolean} withType
-     * With `opts.attrs` (the relationship-tables pages, never the event
-     * page — its output must not change) each row first goes through
+     * With `opts.attrs` (the relationship-tables pages, and the event page
+     * since WIP.7) each row first goes through
      * `_relRowAttrs()`: the date, "number:" and "order:" attributes at the end
      * of the line leave Details/Credits for their own Begin / End and Number
      * (or Number + Order, when the two ever differ in this table) columns,
@@ -18085,6 +18124,7 @@
         const hasDates = has('begin') || has('end');
         if (hasDates) cols.push('Begin', 'End');
         if (has('comment')) cols.push('Disambiguation');
+        if (has('alias')) cols.push('Primary alias');
         if (withFrom) cols.push('From');
         const host = (href) => {
             try { return new URL(href, 'https://musicbrainz.org').host.replace(/^www\./, ''); } catch (_) { return ''; }
@@ -18108,6 +18148,7 @@
             else if (hasNumber) row.push(r.number || r.order || '');
             if (hasDates) row.push(r.begin || '', r.end || '');
             if (has('comment')) row.push(r.comment.map(n => n.cloneNode(true)));
+            if (has('alias')) row.push((r.alias || []).map(n => n.cloneNode(true)));
             if (withFrom) row.push(r.from ? r.from : (opts.fromLabel || 'Event'));
             return row;
         });
@@ -18201,6 +18242,35 @@
     }
 
     /**
+     * Takes a date that LEADS an attribute group off a run of cloned nodes:
+     * "(from 1964-12 until 1965-06: lead vocals, <a>electric guitar</a>)",
+     * "(in 1986: <a>electric guitar</a>)" — a member's period and what they
+     * played in it (debug/member-of.html, an artist's "member of" list). The
+     * group ends in a link, so `_relPeelAttrs()`, which reads the end of the
+     * run, never sees it. Reads the FIRST text node only, and only a date
+     * phrase `_relClassifyAttr()` knows followed by ":"; what is left (the
+     * credits) stays for Credits/Details.
+     *
+     * @param   {Node[]} nodes Cloned nodes (the first text node is mutated).
+     * @param   {Object} out   Receives begin/end (never overwrites).
+     * @returns {Node[]} The nodes left.
+     */
+    function _relPeelLeadingDate(nodes, out) {
+        const first = nodes[0];
+        if (!first || first.nodeType !== Node.TEXT_NODE) return nodes;
+        const m = /^\s*(\(?)\s*([^():]+?):\s*/.exec(first.textContent);
+        const a = m ? _relClassifyAttr(m[2]) : null;
+        if (!a || a.number || a.order) return nodes;
+        Object.keys(a).forEach(key => { if (!out[key]) out[key] = a[key]; });
+        first.textContent = first.textContent.slice(m[0].length);
+        const left = first.textContent.trim() ? nodes : nodes.slice(1);
+        // An unstripped group "(date: …)" also loses its closing ")".
+        const last = left[left.length - 1];
+        if (m[1] && last && last.nodeType === Node.TEXT_NODE) last.textContent = last.textContent.replace(/\)\s*$/, '');
+        return left;
+    }
+
+    /**
      * A copy of one relationship row (`_eventRelRowsFrom()`) with the date
      * and series-position attributes taken off the end of its `extra` (and of
      * a place's `area`, after which MusicBrainz prints them) into
@@ -18229,6 +18299,7 @@
             extra = [];
         }
         extra = _relPeelAttrs(extra, out);
+        extra = _relPeelLeadingDate(extra, out);
         if (area.length && row.type === 'place') area = _relPeelAttrs(area, out);
         if (row.type === 'url') {
             // "[info]" (the URL entity's own page) stays with the link it
@@ -18606,7 +18677,10 @@
         const doc = root.ownerDocument;
         const withSeries = !!Lib.settings.sa_event_overview_related_series;
         const ownNodes = _eventSectionNodes(relH2);
-        const own = _eventRelRowsFrom(ownNodes, null);
+        // Since WIP.7 (user request 2026-10-12) the event page reads its lists
+        // like the relationship-tables pages: ended URLs, primary aliases, and
+        // Begin/End + Number/Order columns (`rel` / `attrs` below).
+        const own = _eventRelRowsFrom(ownNodes, null, { rel: true });
 
         const seriesH2 = root.querySelector('h2.related-series');
         const seriesNodes = _eventSectionNodes(seriesH2);
@@ -18621,7 +18695,7 @@
                     cur.nodes.push(n);
                 }
             });
-            seriesGroups.forEach(g => { g.rows = _eventRelRowsFrom(g.nodes, g.name); });
+            seriesGroups.forEach(g => { g.rows = _eventRelRowsFrom(g.nodes, g.name, { rel: true }); });
         }
         const seriesRows = seriesGroups.flatMap(g => g.rows);
         const relBuilt = relOn && (own.length > 0 || seriesRows.length > 0);
@@ -18639,19 +18713,19 @@
             // Relationship tables not built: nothing to add here.
         } else if (Lib.settings.sa_event_overview_relationships_one_table) {
             const all = [...own, ...seriesRows];
-            const { cols, cells } = _eventRelColumns(all, 'Target', true, seriesRows.length > 0);
+            const { cols, cells } = _eventRelColumns(all, 'Target', true, seriesRows.length > 0, { attrs: true });
             frag.appendChild(_eventBuildTable(doc, 'Relationships', cols, cells));
         } else {
             const order = [];
             own.forEach(r => { if (!order.includes(r.type)) order.push(r.type); });
             order.forEach(t => {
                 const rows = own.filter(r => r.type === t);
-                const { cols, cells } = _eventRelColumns(rows, _EVENT_REL_TARGET_COLS[t] || 'Target', false, false);
+                const { cols, cells } = _eventRelColumns(rows, _EVENT_REL_TARGET_COLS[t] || 'Target', false, false, { attrs: true });
                 frag.appendChild(_eventBuildTable(doc, _EVENT_REL_GROUP_NAMES[t] || 'Other', cols, cells));
             });
             seriesGroups.forEach(g => {
                 if (!g.rows.length) return;
-                const { cols, cells } = _eventRelColumns(g.rows, 'Target', true, false);
+                const { cols, cells } = _eventRelColumns(g.rows, 'Target', true, false, { attrs: true });
                 frag.appendChild(_eventBuildTable(doc, `Via ${g.name}`, cols, cells));
             });
         }
@@ -18934,7 +19008,14 @@
                 { sourceColumn: 'B-DD', align: 'R' }, { sourceColumn: 'B-MM', align: 'R' }, { sourceColumn: 'B-YYYY', align: 'C' },
                 { sourceColumn: 'E-DD', align: 'R' }, { sourceColumn: 'E-MM', align: 'R' }, { sourceColumn: 'E-YYYY', align: 'C' }
             ],
-            collapsableColumns: [ 'Credits' ]
+            collapsableColumns: [ 'Credits' ],
+            // Inline cover art / event art before a release group, release or
+            // event target, as on artist-releasegroups' Title and
+            // artist-events' Event column (user request 2026-10-12). Each
+            // row's link decides (CAA_CTX/EAA_CTX.inlineLinkSel), so a mixed
+            // "Target" column gets the right one per row and the rest none.
+            addCAA: [ 'Target', 'Release group', 'Release' ],
+            addEAA: [ 'Target', 'Event' ]
         };
     }
 
@@ -28599,7 +28680,18 @@
             features: {
                 eventDetailsToTables: true,
                 groupByH3: true,
-                integerColumns: [ { sourceColumn: '#', align: 'R' }, { sourceColumn: 'Billing', align: 'R' } ],
+                // Begin/End through dateParts, as on the relationship-tables
+                // pages (_relTablesFeatures(), WIP.7).
+                columnExtractors: [
+                    { sourceColumn: 'Begin', extractor: 'dateParts', syntheticColumns: ['B-DD', 'B-MM', 'B-YYYY', 'B-Day', 'B-Month'] },
+                    { sourceColumn: 'End',   extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] }
+                ],
+                integerColumns: [
+                    { sourceColumn: '#', align: 'R' }, { sourceColumn: 'Billing', align: 'R' },
+                    { sourceColumn: 'Number', align: 'R' }, { sourceColumn: 'Order', align: 'R' },
+                    { sourceColumn: 'B-DD', align: 'R' }, { sourceColumn: 'B-MM', align: 'R' }, { sourceColumn: 'B-YYYY', align: 'C' },
+                    { sourceColumn: 'E-DD', align: 'R' }, { sourceColumn: 'E-MM', align: 'R' }, { sourceColumn: 'E-YYYY', align: 'C' }
+                ],
                 // Multi-row cells (a <ul> per cell, built by the converter).
                 collapsableColumns: [ 'Credits', 'Song', 'Additional artists', 'Recording' ]
             },
@@ -110350,7 +110442,11 @@ a { color: #1565c0; }`;
      */
     function _artEntityAnchorSelector(ctx, table) {
         const DEFAULT_SELECTOR = 'tbody td:not(.mb-sticky-col):not(.mb-rel-cell) a[href]';
-        if (!activeDefinition || activeDefinition.type !== 'report-detail') {
+        // The relationship-tables renders (docs/claude/relationship-tables.md)
+        // are column-scoped too: their addCAA/addEAA name the target columns,
+        // and a row's other cells (Artist credits, …) link entities that are
+        // not the row's own.
+        if (!activeDefinition || (activeDefinition.type !== 'report-detail' && !_isRelTablesRun())) {
             return DEFAULT_SELECTOR;
         }
         const addFeatureNames = activeDefinition.features && activeDefinition.features[ctx.addFeature];

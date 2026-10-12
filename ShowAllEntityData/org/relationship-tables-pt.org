@@ -97,10 +97,28 @@ Env: 2026-10-12T18:28Z · vzell-lap · WSL2 (Linux 6.18.40.1) · Playwright Chro
 - Found on the way, fixed: Picard's per-table release-link guard matched any
   href containing "/release/" (discogs.com/release/…, rateyourmusic.com/release/…).
 
-* Open / later
+* Review round 2 (user, 2026-10-12, WIP.7)
 
-- The event page could get the same Begin/End, Number/Order and ended-URL
-  handling; that changes event output, so it ships separately if wanted.
+1. Work: "フジパシフィックミュージック (Fujipacific Music, Inc.)" — the
+   parenthesis is MusicBrainz's =<i title="Primary alias">= inside the
+   disambiguation span → its own "Primary alias" column.
+2. Artist "member of": "(from 1964-12 until 1965-06: lead vocals, electric
+   guitar)" → Begin, End (both through =dateParts=) and a multi-row Credits
+   (=debug/member-of.html=). The date leads the group, which ends in a link.
+3. Area: a) on the user's live page "MusicBrainz More Flags Everywhere" wraps
+   the target and the following comma (=debug/area-USA-initial.html=), so the
+   chain fell into Details for 51 of 57 rows; the comma is moved back out,
+   one "Parent area" column remains. b) Genre and Instrument glyphs move to
+   the header.
+4. Inline cover art before release-group (and release) targets, event art
+   before event targets, also in a mixed Target column
+   (=debug/CAA-EAA-beforetitle.html=; fixture
+   =tests/fixtures/rel-release-art-overview.html=, release 1d404e1d).
+5. The event page gets the same Begin/End and Number/Order columns — and,
+   since it parses through the same options, ended URLs and primary aliases.
+   Its "(order: 150)" moved from Details to Number.
+
+* Open / later
 - No snapshot baselines for the three new pageTypes yet.
 - The ▶ "expand release group" toggle (=sa_enable_expand_rgs=) appears on
   release-group links in these tables, as on every other table on those pages.

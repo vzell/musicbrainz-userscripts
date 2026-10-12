@@ -23,11 +23,14 @@ same per-group columns (`_eventRelColumns()` → `data-mb-col-headers` →
 
 ## Rules that fail silently when broken
 
-**The event page's output must not change.** Everything this feature adds
-to the shared helpers is opt-in: `_eventRelColumns(…, opts)` with
-`opts.attrs`, `_eventRelRowsFrom(…, opts)` / `_eventRelParseLine(…, opts)`
-with `opts.rel`. The event converter never passes them. The event specs are
-the proof; run them after any change here.
+**The parsing options are shared with the event page.** What this feature
+added to the shared helpers is behind options — `_eventRelColumns(…, opts)`
+with `opts.attrs`, `_eventRelRowsFrom(…, opts)` / `_eventRelParseLine(…,
+opts)` with `opts.rel` — and since WIP.7 (user request 2026-10-12) the event
+converter passes them too, so the event page has the same Begin/End,
+Number/Order, Primary alias and ended-URL handling. A change here changes the
+event page: run the event-overview specs (and their mobile variant) with
+the rel-tables ones.
 
 **One dataset per page, so the buttons are either/or.** The engine keeps
 exactly one live dataset (`activeDefinition`, `allRows`/`groupedRows`, the
@@ -82,6 +85,34 @@ peeled too.
 
 **Number/Order:** one Number column unless some row in that table has both
 with different values; then Number and Order (user decision 2026-10-12).
+
+**A primary alias is not a disambiguation.** MusicBrainz prints it inside the
+same `span.comment`, as `<i title="Primary alias">…</i>` (a name in another
+script); `opts.rel` moves it to `alias` → a "Primary alias" column, and leaves
+a real disambiguation in place.
+
+**A date can also LEAD an attribute group**: "(from 1964-12 until 1965-06:
+lead vocals, <a>electric guitar</a>)" (an artist's "member of"). That group
+ends in a link, so `_relPeelAttrs()` never sees it; `_relPeelLeadingDate()`
+reads the first text node for a date phrase followed by ":", and the rest
+becomes the multi-row Credits.
+
+**Third-party markup inside a line.** "MusicBrainz More Flags Everywhere"
+wraps an area's glyph, link, flag image and the ", " before its parent chain
+in one `span.mfe-flag-wrapper` (`AREA_ICON_WRAPPER_SEL`). With `opts.rel` the
+comma is moved back out of the target, or the chain lands in Details.
+
+**Inline artwork** (`addCAA: ['Target', 'Release group', 'Release']`,
+`addEAA: ['Target', 'Event']` in `_relTablesFeatures()`): each row's link
+decides (`CAA_CTX`/`EAA_CTX.inlineLinkSel`), so a mixed Target column gets a
+cover-art placeholder on release-group/release rows and an event-art one on
+event rows. `_artEntityAnchorSelector()` scopes the big-image strips' link
+scan to those columns for these renders, as for `report-detail`; no spec
+sees that scope yet (recorded as an `"expect": "pass"` mutation).
+
+**Header glyphs**: Genre and Instrument are in `_eventColGlyphs()` only, never
+in `_ENTITY_TYPE_GLYPH`, which also drives the 📊 entity-info sections on every
+page.
 
 **An ended URL relationship has no link** (`<span class="deleted">`); with
 `opts.rel` it is read as a URL whose href is its text, and its "[info]" goes

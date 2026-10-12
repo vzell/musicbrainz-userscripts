@@ -158,5 +158,100 @@
         "spec": "tests/fixtures/rel-tables-recording.spec.js",
         "grep": "renders as before",
         "expect": "fail"
+    },
+    {
+        "name": "a primary alias stays in the disambiguation",
+        "why": "MusicBrainz prints it inside span.comment as <i title=\"Primary alias\">; unread, 'Fujipacific Music, Inc.' is the row's Disambiguation and no Primary alias column exists.",
+        "edits": [
+            {
+                "find": "const al = opts.rel ? c.querySelector('i[title=\"Primary alias\"]') : null;",
+                "replace": "const al = null;"
+            }
+        ],
+        "spec": "tests/fixtures/rel-tables-pages.spec.js",
+        "grep": "primary alias",
+        "expect": "fail"
+    },
+    {
+        "name": "a date leading an attribute group is not read",
+        "why": "'(from 1964-12 until 1965-06: lead vocals, <a>electric guitar</a>)' ends in a link, so only the leading-date pass sees the period; without it the date is a Credits row and Begin/End stay empty.",
+        "edits": [
+            {
+                "find": "        extra = _relPeelLeadingDate(extra, out);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/rel-tables-pages.spec.js",
+        "grep": "period and credits",
+        "expect": "fail"
+    },
+    {
+        "name": "More Flags' wrapped comma stays in the target",
+        "why": "The ', ' before the parent chain sits inside span.mfe-flag-wrapper; left there the chain starts without a comma and lands in Details.",
+        "edits": [
+            {
+                "find": "        if (opts.rel && mainClone.nodeType === Node.ELEMENT_NODE && mainClone.matches(AREA_ICON_WRAPPER_SEL)) {",
+                "replace": "        if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/rel-tables-pages.spec.js",
+        "grep": "More Flags",
+        "expect": "fail"
+    },
+    {
+        "name": "Genre and Instrument have no header glyph",
+        "why": "Without them in _eventColGlyphs() the header gets no glyph and every cell keeps its own.",
+        "edits": [
+            {
+                "find": "        out.Genre = 'genrelink';\n        out.Instrument = 'instrumentlink';\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/rel-tables-pages.spec.js",
+        "grep": "Genre and Instrument",
+        "expect": "fail"
+    },
+    {
+        "name": "no inline cover art / event art on the relationship tables",
+        "why": "addCAA/addEAA name the target columns; without them no placeholder is injected.",
+        "edits": [
+            {
+                "find": "            addCAA: [ 'Target', 'Release group', 'Release' ],\n            addEAA: [ 'Target', 'Event' ]\n",
+                "replace": ""
+            },
+            {
+                "find": "            collapsableColumns: [ 'Credits' ],\n            // Inline cover art",
+                "replace": "            collapsableColumns: [ 'Credits' ]\n            // Inline cover art"
+            }
+        ],
+        "spec": "tests/fixtures/rel-tables-pages.spec.js",
+        "grep": "inline cover art",
+        "expect": "fail"
+    },
+    {
+        "name": "the artwork link scan is not column-scoped on relationship tables",
+        "why": "Not visible to the inline-placeholder test, which reads per-row links (inlineLinkSel) and never this selector. The scope matters only to the big-image strips' counts (_artCountLinks), which no fixture spec here opens; recorded so the gap is known.",
+        "edits": [
+            {
+                "find": "if (!activeDefinition || (activeDefinition.type !== 'report-detail' && !_isRelTablesRun())) {",
+                "replace": "if (!activeDefinition || activeDefinition.type !== 'report-detail') {"
+            }
+        ],
+        "spec": "tests/fixtures/rel-tables-pages.spec.js",
+        "grep": "inline cover art",
+        "expect": "pass"
+    },
+    {
+        "name": "the event page keeps series positions in Details",
+        "why": "WIP.7 gives the event page the attrs columns; without them '(order: 150)' stays in Details.",
+        "edits": [
+            {
+                "find": "_EVENT_REL_TARGET_COLS[t] || 'Target', false, false, { attrs: true });",
+                "replace": "_EVENT_REL_TARGET_COLS[t] || 'Target', false, false);"
+            }
+        ],
+        "spec": "tests/fixtures/event-overview.spec.js",
+        "grep": "each part of a target line",
+        "expect": "fail"
     }
 ]

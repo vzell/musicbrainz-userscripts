@@ -122,7 +122,9 @@ test.describe('pageType event-overview: relationships as tables (WIP.1)', () => 
         const badlands = row('Recordings', 'Recording', 'Badlands');
         expect(badlands[col('Recordings', 'Artist')]).toBe('Bruce Springsteen & The E Street Band');
         expect(badlands[col('Recordings', 'Relationship')]).toBe('recording location for');
-        expect(row('Series', 'Series', '2023–25 International Tour')[col('Series', 'Details')]).toBe('order: 150');
+        // "(order: 150)" is a series position: its own Number column, not Details (WIP.7).
+        expect(row('Series', 'Series', '2023–25 International Tour')[col('Series', 'Number')]).toBe('150');
+        expect(g.Series.heads, 'nothing left for Details').not.toContain('Details');
         expect(row('URLs', 'Site', 'setlist.fm')[col('URLs', 'Relationship')]).toBe('setlist.fm');
 
         // The links are the native anchors: instrument links inside Credits, entity links in the target cell.
