@@ -1310,7 +1310,7 @@ an import brings your deletions back.
   the whole tracklist across every medium, consolidated
 - **Event pages** (`/event/<mbid>`) — the event's relationships and setlist as
   tables, and its Event Art Archive images
-- **Relationships as tables** on place, area and instrument pages, and as a
+- **Relationships as tables** on place, area, instrument and URL pages, and as a
   second button on series, work, release group, recording and release pages
   and the artist and label Relationships tab
 - **Collections** — your own, subscribed ones, and their entity sub-tabs
@@ -1626,9 +1626,11 @@ Most entity pages list their relationships the way an event page does: short
 lists under a **Relationships** heading, one target per line. The same tables
 the event page gets are available on:
 
-- **Place, area and instrument pages** (`/place/<mbid>`, `/area/<mbid>`,
-  `/instrument/<mbid>`): **Relationships for Place** (Area, Instrument) — the
-  only button there, since those lists are the page's data.
+- **Place, area, instrument and URL pages** (`/place/<mbid>`, `/area/<mbid>`,
+  `/instrument/<mbid>`, `/url/<mbid>`): **Relationships for Place** (Area,
+  Instrument, URL) — the only button there, since those lists are the page's
+  data. On a URL page they are the entities that link the URL; its "URL
+  details" stay as MusicBrainz shows them.
 - **Series, work, release group and recording pages**: a **Relationships**
   button beside the page's own **Show all…** button.
 - **The artist and label Relationships tab** (`/artist/<mbid>/relationships`):
@@ -1673,6 +1675,12 @@ the columns that fit it, the entity glyph in the column header — plus:
   or release gets its small cover image in front of its name, and an event
   its event art image — also in a mixed **Target** column, where each row
   gets the picture that fits it.
+
+In a table that mixes kinds (a **Via …** table, the one-table layout), the
+📊 dropdown of the **Target** and **Type** columns has an **Entity info -
+Type** section: one entry per kind of related entity — Artist, Release group,
+Event, Series, URL, … — with its icon and how many rows are of that kind.
+Tick one to keep only those rows. The event page's mixed tables have it too.
 
 A recording's **Related works** and a release's **Release group** credits
 describe the work or the group, not the page's entity, so each gets its own

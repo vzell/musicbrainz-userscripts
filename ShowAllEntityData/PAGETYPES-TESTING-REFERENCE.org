@@ -253,6 +253,7 @@ skill for turning a =planned= row into a =captured= one.
 | 99 | place-overview                | multi        | /place/PLACE                                   | relDetailsToTables (Relationships lists → one table per kind), Begin/End + dateParts, groupByH3 |
 | 100 | area-overview                | multi        | /area/AREA                                     | relDetailsToTables; Parent area column; 279 targets on United States                         |
 | 101 | instrument-overview          | multi        | /instrument/INSTRUMENT                         | relDetailsToTables                                                                           |
+| 102 | url-overview                 | multi        | /url/URL                                       | relDetailsToTables; first /url/ pageType (@include line names 'url')                         |
 
 * Page type details
 ** 1. taglookup
@@ -933,6 +934,14 @@ lists converted into sortable tables), tableMode =multi=.
 - tableMode: multi, =non_paginated=
 - Features exercised: as place-overview.
 - Coverage: =tests/fixtures/rel-tables-pages.spec.js= over =rel-instrument-overview.html=.
+
+** 102. url-overview
+- URL: [[https://musicbrainz.org/url/a333fbe2-2707-4799-aa2e-50d21be8081c][/url/URL]] (a rateyourmusic.com URL)
+- Match: ~Lib.settings.sa_enable_relationship_tables !== false && /^\/url\/[a-f0-9-]{36}\/?$/~; the @include line for bare entity pages names =url= (WIP.8)
+- Button: "Show all Relationships for URL"
+- tableMode: multi, =non_paginated=
+- Features exercised: as place-overview; the page's h2 "URL details" (a one-row =table.details= holding the link) is not a relationship list and stays native. Snapshot: =debug/url-overview.html=.
+- Coverage: =tests/fixtures/rel-tables-pages.spec.js= over =rel-url-overview.html=; =sl-include-regex.spec.js= for the @include line.
 
 ** Relationship-tables buttons on existing pageTypes (not pageTypes of their own)
 =_relTablesButton()= adds a second button to series-releases, work-recordings, releasegroup-releases, recording-releases (with "Related works" as "Via <work>" tables), label-relationships and artist-relationships ("Relationship lists"), and release-tracks ("Credits", the release's own =#release-relationships= and its group's =#release-group-relationships=, never the per-medium track credits). Each runs as its own pageType for that render (=series-relationship-tables=, =work-relationship-tables=, =releasegroup-relationship-tables=, =recording-relationship-tables=, =label-relationship-tables=, =artist-relationship-tables=, =release-credit-tables=; =buttonConfig.type= switches =pageType= in =startFetchingProcess()=), with only its own features (=replaceFeatures=), and removes the page's main data section (=removeMain=, =_relRemoveMainSections()=). A saved file records that pageType and loads back as the same button (=_activateButtonForSavedPageType()=). Hidden with =sa_enable_relationship_tables= off (=showIf=). Coverage: =tests/fixtures/rel-tables-recording.spec.js= (incl. the main button unchanged and a Save → Load round trip) and =rel-tables-pages.spec.js=, raw captures =tests/fixtures/rel-{series,work,label-rels,artist-rels,release-group,recording,release}-overview.html=.

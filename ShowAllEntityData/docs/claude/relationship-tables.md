@@ -16,7 +16,7 @@ same per-group columns (`_eventRelColumns()` → `data-mb-col-headers` →
 
 | Where                                   | How                                   | Runs as pageType                     |
 |-----------------------------------------|---------------------------------------|--------------------------------------|
-| `/place/<mbid>`, `/area/…`, `/instrument/…` | pageTypes `place-overview`, `area-overview`, `instrument-overview` | themselves |
+| `/place/<mbid>`, `/area/…`, `/instrument/…`, `/url/…` | pageTypes `place-overview`, `area-overview`, `instrument-overview`, `url-overview` | themselves |
 | series, work, release group, recording  | a second button, `_relTablesButton()` | `<entity>-relationship-tables`       |
 | artist / label `/relationships` tab     | second button "Relationship lists"    | `artist-` / `label-relationship-tables` |
 | release                                 | second button "Credits"               | `release-credit-tables`              |
@@ -113,6 +113,19 @@ sees that scope yet (recorded as an `"expect": "pass"` mutation).
 **Header glyphs**: Genre and Instrument are in `_eventColGlyphs()` only, never
 in `_ENTITY_TYPE_GLYPH`, which also drives the 📊 entity-info sections on every
 page.
+
+**📊 "Entity info - Type"** (modes `enttype-<type>`, section `entityTypeMix`):
+`_eventRelColumns()` stamps `data-mb-entity-type` on a mixed table's Target
+and Type cells (only `withType` tables), and the section counts that
+attribute (`_findCellEntityType()`), like "Video info - Medium format" —
+attribute-driven, so no column gate and no text highlight. Entries carry the
+kind's glyph through `makeSynItem()`'s `glyphClass` argument
+(`_entityTypeGlyphClass()`, from `_eventColGlyphs()`); a kind without one (URL)
+gets "🔗" in its label. Shared with the event page.
+
+**`url-overview`** needs `url` in the `@include` line for bare entity pages;
+the fixture harness injects unconditionally, so only
+`sl-include-regex.spec.js` sees that line.
 
 **An ended URL relationship has no link** (`<span class="deleted">`); with
 `opts.rel` it is read as a URL whose href is its text, and its "[info]" goes

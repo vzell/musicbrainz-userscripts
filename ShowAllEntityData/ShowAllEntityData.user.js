@@ -13,7 +13,7 @@
 // @require      https://cdn.jsdelivr.net/npm/@jaames/iro@5
 // @require      https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js
 // @require      https://raw.githubusercontent.com/vzell/mb-userscripts/master/lib/VZ_MBLibrary.user.js
-// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?(?:\?.*)?$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection|url)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings|edits|annotations)\/?(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/release\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/disc\/\d+)?\/?(?:\?[^#]*)?(?:#.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits\/?(?:\?.*)?|edit\/(?:subscribed(?:_editors)?|notes-received)\/?(?:\?.*)?|account\/applications\/?(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections\/?(?:\?.*)?|election\/.*|genres\/?(?:\?.*)?|cdstub\/.*|isrc\/.*|iswc\/.*|doc\/Edit_Types\/?(?:\?.*)?|instruments\/?(?:\?.*)?|privileged\/?(?:\?.*)?)$/
@@ -18129,12 +18129,23 @@
         const host = (href) => {
             try { return new URL(href, 'https://musicbrainz.org').host.replace(/^www\./, ''); } catch (_) { return ''; }
         };
+        // A mixed table's Target and Type cells carry their row's entity type
+        // (`data-mb-entity-type`), which the 📊 "Entity info - Type" section
+        // counts (_findCellEntityType()); an attribute survives every
+        // cloneNode(true) re-render and a Save/Load round trip.
+        const typedCell = (nodes, type) => {
+            const td = document.createElement('td');
+            if (typeof nodes === 'string') td.textContent = nodes;
+            else nodes.forEach(n => td.appendChild(n));
+            td.dataset.mbEntityType = type;
+            return td;
+        };
         const cells = rows.map((r, k) => {
             const row = [String(k + 1)];
             if (allUrls) row.push(host(r.href));
-            row.push(withType ? mains[k].nodes : _eventStripGlyphs(mains[k].nodes, glyphs[targetCol]));
+            row.push(withType ? typedCell(mains[k].nodes, r.type) : _eventStripGlyphs(mains[k].nodes, glyphs[targetCol]));
             if (hasVideo) row.push(_eventVideoCell(mains[k].video));
-            if (withType) row.push(_EVENT_REL_TARGET_COLS[r.type] || 'Target');
+            if (withType) row.push(typedCell(_EVENT_REL_TARGET_COLS[r.type] || 'Target', r.type));
             row.push(r.phrase);
             if (has('artist')) row.push(_eventStripGlyphs(r.artist.map(clone), glyphs.Artist));
             if (has('area')) row.push(_eventStripGlyphs(r.area.map(clone), glyphs[areaCol]));
@@ -28695,6 +28706,23 @@
                 // Multi-row cells (a <ul> per cell, built by the converter).
                 collapsableColumns: [ 'Credits', 'Song', 'Additional artists', 'Recording' ]
             },
+            tableMode: 'multi',
+            non_paginated: true
+        },
+        // URL pages
+        // The URL overview (/url/<mbid>, debug/URL.html): an h1 with the URL,
+        // h2 "URL details" (a one-row table.details holding the link itself,
+        // left native) and h2.relationships — the entities that link this URL,
+        // by relationship. Same converter as the place/area/instrument
+        // overviews (applyRelDetailsToTables()). No table.tbl, no pagination.
+        // Anchored match: '/url/<mbid>/edit' etc. are not pageTypes. The
+        // @include line for bare entity pages names 'url' for this entry.
+        {
+            type: 'url-overview',
+            match: (path) => Lib.settings.sa_enable_relationship_tables !== false &&
+                path.match(/^\/url\/[a-f0-9-]{36}\/?$/),
+            buttons: [ { label: 'Show all Relationships for URL', shortLabel: 'Relationships' } ],
+            features: _relTablesFeatures({ ownLabel: 'URL' }),
             tableMode: 'multi',
             non_paginated: true
         },
@@ -45148,6 +45176,33 @@
     }
 
     /**
+     * The entity type of a mixed relationship table's Target or Type cell —
+     * `data-mb-entity-type`, stamped by `_eventRelColumns()` (event overview
+     * and the relationship-tables pages, docs/claude/relationship-tables.md)
+     * — for the 📊 "Entity info - Type" section (modes `enttype-<type>`).
+     * Attribute-driven like `_findCellVideoMediumFlag()`: only those cells
+     * ever carry it, so the section needs no column gate.
+     *
+     * @param   {?HTMLTableCellElement} cell
+     * @returns {?string} A key of `_EVENT_REL_TARGET_COLS`, or null.
+     */
+    function _findCellEntityType(cell) {
+        return (cell && cell.dataset && cell.dataset.mbEntityType) || null;
+    }
+
+    /**
+     * The 📊 marker class for an "Entity info - Type" entry: the column glyph
+     * the event/relationship tables use for that kind (`_eventColGlyphs()`),
+     * or '' for a kind without one (a URL, unparsed text).
+     *
+     * @param   {string} type A key of `_EVENT_REL_TARGET_COLS`.
+     * @returns {string}
+     */
+    function _entityTypeGlyphClass(type) {
+        return _eventColGlyphs()[_EVENT_REL_TARGET_COLS[type]] || '';
+    }
+
+    /**
      * Reads a release-tracks Video cell's medium-format verdict — the
      * `data-mb-video-flag` attribute `_applyVideoMediumFlag()` stamps on a
      * video recording's cell: `mismatch` (its medium cannot carry video) or
@@ -46938,6 +46993,11 @@
             // Fixed flags — a duration cell's track-vs-recording mismatch
             // level, from _findCellLenFlag() (the data-mb-len-flag attribute).
             return !!cell && _findCellLenFlag(cell) === mode.slice(8);
+        }
+        if (mode.startsWith('enttype-')) {
+            // "Entity info - Type" — a mixed relationship table's Target/Type
+            // cell, from _findCellEntityType() (the data-mb-entity-type attribute).
+            return !!cell && _findCellEntityType(cell) === mode.slice(8);
         }
         if (mode === 'videomedium-mismatch' || mode === 'videomedium-ok') {
             // Fixed flags — a Video cell's medium-format verdict, from
@@ -70289,6 +70349,9 @@ a { color: #1565c0; }`;
         // own `entityType ? … : '» name: '` generic fallback).
         entity_other:             { label: 'Entity info - Other name',         glyph: '👤' },
         entityComment:            { label: 'Entity info - Comment',            glyph: '👤' },
+        // A mixed relationship table's Target/Type column: one entry per kind
+        // of related entity, with its glyph and row count (_findCellEntityType()).
+        entityTypeMix:            { label: 'Entity info - Type',               glyph: '🔣' },
         entityAlias:              { label: 'Entity info - Alias',              glyph: '👤' },
         entityTagCount:           { label: 'Entity info - Tag count',          glyph: '🏷️' },
         // 'Entity info - Event cancelled' — area-events/place-events/
@@ -70843,6 +70906,8 @@ a { color: #1565c0; }`;
         MB_UNIQ_MODE_TO_SECTION[`evlive-sep-${sep}-${facet}`] = `evLiveSep${kind}`;
         MB_UNIQ_MODE_TO_SECTION[`rclive-sep-${sep}-${facet}`] = `rcLiveSep${kind}`;
     }));
+    // "Entity info - Type": one `enttype-<type>` mode per kind of related entity.
+    Object.keys(_EVENT_REL_TARGET_COLS).forEach(t => { MB_UNIQ_MODE_TO_SECTION[`enttype-${t}`] = 'entityTypeMix'; });
     // "Findings - Warning/Error": one `finding-<id>` mode per FINDINGS entry.
     FINDINGS.forEach(f => {
         MB_UNIQ_MODE_TO_SECTION[`finding-${f.id}`] = f.level === 'error' ? 'findingsError' : 'findingsWarn';
@@ -87067,6 +87132,8 @@ a { color: #1565c0; }`;
         // data-mb-findings attribute stampFindings() writes. Not column-gated:
         // the stamp already applied each finding's own column gate.
         const findingCounts = (_uniqCacheHit && _uniqCacheHit.findingCounts) || new Map();
+        // "Entity info - Type": rows per kind of related entity (_findCellEntityType()).
+        const entityTypeCounts = (_uniqCacheHit && _uniqCacheHit.entityTypeCounts) || new Map();
         let lengthDeviationWithin10Count      = _uniqCacheHit ? _uniqCacheHit.lengthDeviationWithin10Count      : 0;
         let lengthDeviationShorter10to25Count = _uniqCacheHit ? _uniqCacheHit.lengthDeviationShorter10to25Count : 0;
         let lengthDeviationLonger10to25Count  = _uniqCacheHit ? _uniqCacheHit.lengthDeviationLonger10to25Count  : 0;
@@ -87690,6 +87757,8 @@ a { color: #1565c0; }`;
                 const _videoMediumFlag = _findCellVideoMediumFlag(cell);
                 if (_videoMediumFlag === 'mismatch') videoMediumMismatchCount++;
                 else if (_videoMediumFlag === 'ok')  videoMediumOkCount++;
+                const _entType = _findCellEntityType(cell);
+                if (_entType) entityTypeCounts.set(_entType, (entityTypeCounts.get(_entType) || 0) + 1);
                 if (isLengthCol) {
                     const _bucket = _findCellLengthBucket(cell);
                     if (_bucket) lengthBucketValueCounts.set(_bucket, (lengthBucketValueCounts.get(_bucket) || 0) + 1);
@@ -89159,7 +89228,7 @@ a { color: #1565c0; }`;
                 reportTrendUpCount, reportTrendDownCount, reportTrendFlatCount,
                 lengthMsPreciseCount, lengthMsWholeCount, lengthMsNoneCount,
                 lenFlagSevereCount, lenFlagWarnCount, videoMediumMismatchCount, videoMediumOkCount,
-                titleAnatomyCounts: _ta, liveTitleCounts: _tl, eventNameCounts: _te, recCommentCounts: _rc, ratingHasCount, ratingNoneCount, findingCounts,
+                titleAnatomyCounts: _ta, liveTitleCounts: _tl, eventNameCounts: _te, recCommentCounts: _rc, ratingHasCount, ratingNoneCount, findingCounts, entityTypeCounts,
                 lengthDeviationWithin10Count, lengthDeviationShorter10to25Count, lengthDeviationLonger10to25Count,
                 lengthDeviationShorter25to50Count, lengthDeviationLonger25to50Count,
                 lengthDeviationShorter50plusCount, lengthDeviationLonger50plusCount,
@@ -89195,7 +89264,7 @@ a { color: #1565c0; }`;
             lengthMsPreciseCount, lengthMsWholeCount, lengthMsNoneCount,
             lenFlagSevereCount, lenFlagWarnCount, videoMediumMismatchCount, videoMediumOkCount,
             _ta.medley, _ta.multi, _ta.eti, _ta.subtitle, _ta.series, _ta.truncated, _ta.ocRemix, _ta.allCaps,
-            _ta.noWork, _ta.hasWork, ratingHasCount, ratingNoneCount, ...findingCounts.values(),
+            _ta.noWork, _ta.hasWork, ratingHasCount, ratingNoneCount, ...findingCounts.values(), ...entityTypeCounts.values(),
             ..._ta.count.values(), ..._ta.part.values(), ..._ta.etiValue.values(),
             ..._ta.seriesNum.values(), ..._ta.format.values(),
             lengthDeviationWithin10Count, lengthDeviationShorter10to25Count, lengthDeviationLonger10to25Count,
@@ -89853,8 +89922,12 @@ a { color: #1565c0; }`;
          *   whatever real styling (strikethrough, colour, …) that class
          *   gets on musicbrainz.org itself, since this script runs on the
          *   same page and never defines its own rule for that class name.
+         * @param {string} [glyphClass] - A native MusicBrainz entity glyph
+         *   class (`rglink`, `eventlink`, …) shown in a fixed-width marker
+         *   slot before the label, as `makeValueSynItem()` does for entity
+         *   names — "Entity info - Type" entries.
          */
-        const makeSynItem = (mode, label, count, extraLabelClass) => {
+        const makeSynItem = (mode, label, count, extraLabelClass, glyphClass) => {
             const item = document.createElement('div');
             item.setAttribute('role', 'option');
             _setTip(item, label);
@@ -89882,6 +89955,21 @@ a { color: #1565c0; }`;
             badge.style.minWidth        = `${panelBadgeChWidth}ch`;
             badge.style.textAlign       = 'right';
             item.appendChild(badge);
+            if (glyphClass) {
+                const markerSlot = document.createElement('span');
+                markerSlot.setAttribute('aria-hidden', 'true');
+                markerSlot.style.display        = 'inline-flex';
+                markerSlot.style.alignItems     = 'center';
+                markerSlot.style.justifyContent = 'center';
+                markerSlot.style.width          = '16px';
+                markerSlot.style.marginRight    = '4px';
+                markerSlot.style.verticalAlign  = 'middle';
+                const marker = document.createElement('span');
+                marker.className = glyphClass;
+                _guardGlyphAgainstEmptySelectorHiding(marker);
+                markerSlot.appendChild(marker);
+                item.appendChild(markerSlot);
+            }
             const _labelSpan = _appendSynLabelText(item, label);
             if (extraLabelClass) _labelSpan.classList.add(extraLabelClass);
 
@@ -90689,7 +90777,7 @@ a { color: #1565c0; }`;
             releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 ||
             reportTrendUpCount > 0 || reportTrendDownCount > 0 || reportTrendFlatCount > 0 ||
             lengthMsPreciseCount > 0 || lengthMsWholeCount > 0 ||
-            lenFlagSevereCount > 0 || lenFlagWarnCount > 0 || videoMediumMismatchCount > 0 || videoMediumOkCount > 0 ||
+            lenFlagSevereCount > 0 || lenFlagWarnCount > 0 || videoMediumMismatchCount > 0 || videoMediumOkCount > 0 || entityTypeCounts.size > 0 ||
             lengthDeviationWithin10Count > 0 || lengthDeviationShorter10to25Count > 0 || lengthDeviationLonger10to25Count > 0 ||
             lengthDeviationShorter25to50Count > 0 || lengthDeviationLonger25to50Count > 0 ||
             lengthDeviationShorter50plusCount > 0 || lengthDeviationLonger50plusCount > 0 ||
@@ -90769,6 +90857,12 @@ a { color: #1565c0; }`;
             if (lenFlagWarnCount > 0)   makeSynItem('lenflag-warn', '⚠️ apart beyond the threshold', lenFlagWarnCount);
             if (videoMediumMismatchCount > 0) makeSynItem('videomedium-mismatch', '❌ video on a medium that cannot carry video', videoMediumMismatchCount);
             if (videoMediumOkCount > 0)       makeSynItem('videomedium-ok', '✅ video on a video-capable medium', videoMediumOkCount);
+            // "Entity info - Type" — a mixed relationship table's Target/Type
+            // column, kinds in MusicBrainz's order (_EVENT_REL_TARGET_COLS).
+            Object.keys(_EVENT_REL_TARGET_COLS).forEach(t => {
+                const n = entityTypeCounts.get(t);
+                if (n) makeSynItem(`enttype-${t}`, _structureModeLabel(`enttype-${t}`), n, undefined, _entityTypeGlyphClass(t));
+            });
             _renderTitleAndRatingItems();
             // "Length info - Live status" — surfaces the SAME live/studio
             // classification the buckets above already compute internally
@@ -90892,7 +90986,7 @@ a { color: #1565c0; }`;
                    releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 ||
                    reportTrendUpCount > 0 || reportTrendDownCount > 0 || reportTrendFlatCount > 0 ||
                    lengthMsPreciseCount > 0 || lengthMsWholeCount > 0 ||
-                   lenFlagSevereCount > 0 || lenFlagWarnCount > 0 || videoMediumMismatchCount > 0 || videoMediumOkCount > 0 ||
+                   lenFlagSevereCount > 0 || lenFlagWarnCount > 0 || videoMediumMismatchCount > 0 || videoMediumOkCount > 0 || entityTypeCounts.size > 0 ||
                    lengthDeviationWithin10Count > 0 || lengthDeviationShorter10to25Count > 0 || lengthDeviationLonger10to25Count > 0 ||
                    lengthDeviationShorter25to50Count > 0 || lengthDeviationLonger25to50Count > 0 ||
                    lengthDeviationShorter50plusCount > 0 || lengthDeviationLonger50plusCount > 0 ||
@@ -90950,6 +91044,12 @@ a { color: #1565c0; }`;
             if (lenFlagWarnCount > 0)   makeSynItem('lenflag-warn', '⚠️ apart beyond the threshold', lenFlagWarnCount);
             if (videoMediumMismatchCount > 0) makeSynItem('videomedium-mismatch', '❌ video on a medium that cannot carry video', videoMediumMismatchCount);
             if (videoMediumOkCount > 0)       makeSynItem('videomedium-ok', '✅ video on a video-capable medium', videoMediumOkCount);
+            // "Entity info - Type" — a mixed relationship table's Target/Type
+            // column, kinds in MusicBrainz's order (_EVENT_REL_TARGET_COLS).
+            Object.keys(_EVENT_REL_TARGET_COLS).forEach(t => {
+                const n = entityTypeCounts.get(t);
+                if (n) makeSynItem(`enttype-${t}`, _structureModeLabel(`enttype-${t}`), n, undefined, _entityTypeGlyphClass(t));
+            });
             _renderTitleAndRatingItems();
             if (_lengthColAvgs && _lengthColAvgs.hasLiveCol) {
                 if (_lengthColAvgs.liveKnownCount > 0)   makeSynItem('lengthlive-yes', '🎙️ Live recording', _lengthColAvgs.liveKnownCount);
@@ -91796,6 +91896,11 @@ a { color: #1565c0; }`;
         if (mode === 'length-ms-none')                return '∅ no millisecond data';
         if (mode === 'lenflag-severe')                return '❌ far apart from the other length';
         if (mode === 'lenflag-warn')                  return '⚠️ apart beyond the threshold';
+        if (mode.startsWith('enttype-')) {
+            const t = mode.slice(8);
+            const name = t === 'text' ? 'Other (no link)' : (_EVENT_REL_TARGET_COLS[t] || t);
+            return _entityTypeGlyphClass(t) ? name : `🔗 ${name}`;
+        }
         if (mode === 'videomedium-mismatch')          return '❌ video on a medium that cannot carry video';
         if (mode === 'videomedium-ok')                return '✅ video on a video-capable medium';
         if (mode === 'lengthdeviation-within10')      return '🎯 within 10% of average';
@@ -92020,6 +92125,7 @@ a { color: #1565c0; }`;
         if (mode === 'length-ms-none') return `∅ = this row's ${colName} carries no millisecond data (the ⏱ toggle was never pressed, none is on record, or the length is unknown).`;
         if (mode === 'lenflag-severe') return '❌ = this track\'s length and its recording\'s own length differ by more than the "far over" level (threshold × multiple) — the same cells tinted red with a ❌.';
         if (mode === 'lenflag-warn') return '⚠️ = this track\'s length and its recording\'s own length differ by more than the threshold, but not by the "far over" level — the same cells tinted yellow with a ⚠️.';
+        if (mode.startsWith('enttype-')) return `rows whose related entity is ${_structureModeLabel(mode).replace(/^🔗 /, '')} — every kind in this table, counted from the Target/Type cells`;
         if (mode === 'videomedium-mismatch') return '❌ = this recording is marked as a video, but its medium is a format that cannot carry video (a CD, a vinyl record, a cassette, …). Either the recording\'s video flag or the medium\'s format is wrong.';
         if (mode === 'videomedium-ok') return '✅ = this recording is marked as a video and its medium is a format that can carry video (DVD, Blu-ray, Digital Media, Enhanced CD, …).';
         if (mode === 'lengthdeviation-within10') return `🎯 = this row's ${colName} is within 10% of the page's average ${colName} (the studio-only average when a "live"-flagged row exists and was excluded from it, otherwise every known ${colName} on the page).`;

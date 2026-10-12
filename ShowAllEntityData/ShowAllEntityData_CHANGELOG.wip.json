@@ -1,5 +1,23 @@
 [
     {
+        "version": "WIP.8",
+        "date": "2026-10-12",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "URL pages (musicbrainz.org/url/<mbid>) get \"Show all Relationships for URL\": the entities that link the URL, by relationship, as tables — the same relationship tables as on place, area and instrument pages. \"URL details\" stays as MusicBrainz shows it."
+                ]
+            },
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "📊 dropdown: a new \"Entity info - Type\" section on the Target and Type columns of a relationship table that mixes kinds (\"Via …\" tables, the one-table layout, the event page): one entry per kind of related entity — Artist, Release group, Event, Series, URL, … — with its MusicBrainz glyph and the number of rows of that kind. Ticking one leaves only those rows."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.7",
         "date": "2026-10-12",
         "sections": [

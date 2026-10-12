@@ -22105,3 +22105,39 @@ expectation moved from Details to Number (the only event assertion that
 changed). Tests: event-overview* + rel-tables* on fixtures and mobile 63/63;
 `scripts/mutations/rel-tables.json` 19/19 as expected (one "expect: pass":
 the strip link-scan scope is not visible to any spec yet).
+
+## 2026-10-12 — url-overview pageType; 📊 "Entity info - Type" (WIP.8)
+Env: 2026-10-12T21:40Z · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+**URL page** (`debug/url-overview.html`, the user's IP snapshot, renamed from
+`debug/URL.html`; raw capture `tests/fixtures/rel-url-overview.html` via
+`tests/support/capture-raw-page.js`): `div#content` present; h1 in
+`.urlheader` (not one of the header selectors — the `h1 a bdi` fallback finds
+it, as for event/instrument pages); h2 "URL details" with a ONE-row
+`table.details` ("URL:" → the link itself), then `h2.relationships` with the
+entities linking the URL ("other databases: Born to Run by Bruce
+Springsteen"). No `table.tbl`, no pagination, nothing under it in a sidebar
+the converter reads. The script never ran on `/url/<mbid>` before: the
+`@include` line for bare entity pages had no `url` (now added; the URL's
+other tabs stay out). `sl-include-regex.spec.js` now lists the four overview
+URLs, because the fixture harness injects regardless of `@include`.
+
+**📊 "Entity info - Type"**: counts the new `data-mb-entity-type` attribute on
+the Target/Type cells of mixed tables (`withType` in `_eventRelColumns()`), so
+it also appears on the event page's "Via" / one-table layouts. Checked against
+a DOM oracle (the table's own Type cell texts) on release 1d404e1d's
+"Via release group" table: Event 24, Release group 11, Series 7, URL as many
+as Type says. Not highlighted (attribute-driven, like the video-medium flag).
+
+Tests (WIP.8): `scripts/mutations/rel-tables.json` now 25 entries, all as
+expected. Two of the six new ones were wrong at first and corrected: the glyph
+entry's `find` matched both render blocks (now planted in
+`_entityTypeGlyphClass()`), and the render-gate entry was recorded as
+`"expect": "pass"` but the spec DOES see it (the gates decide whether the
+synthetic sections render at all) → `"fail"`. Regression run over every
+📊/uvd/uniq spec plus event-overview*, rel-tables*, findings*,
+sl-include-regex, fixtures + mobile: 337/338. The one failure,
+`instrument-icons-uvd.spec.js` "a 📊 opened before the script stamped the
+fetched rows…", failed its PREMISE (104 rows already `data-ii-processed` when
+the panel opened — the third-party stub won the race under load); 5/5 when
+re-run alone.

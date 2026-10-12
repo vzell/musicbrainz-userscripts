@@ -253,5 +253,87 @@
         "spec": "tests/fixtures/event-overview.spec.js",
         "grep": "each part of a target line",
         "expect": "fail"
+    },
+    {
+        "name": "the @include line does not admit /url/<mbid>",
+        "why": "The fixture harness injects the script unconditionally, so only the header test sees an unreachable url-overview.",
+        "edits": [
+            {
+                "find": "|event|collection|url)\\/[0-9a-f]{8}",
+                "replace": "|event|collection)\\/[0-9a-f]{8}"
+            }
+        ],
+        "spec": "tests/fixtures/sl-include-regex.spec.js",
+        "grep": "MusicBrainz pages are still covered",
+        "expect": "fail"
+    },
+    {
+        "name": "the url-overview pageType is missing",
+        "why": "Without it a URL page gets no button at all.",
+        "edits": [
+            {
+                "find": "            type: 'url-overview',",
+                "replace": "            type: 'url-overview-disabled', host: 'nowhere.invalid',"
+            }
+        ],
+        "spec": "tests/fixtures/rel-tables-pages.spec.js",
+        "grep": "url:",
+        "expect": "fail"
+    },
+    {
+        "name": "Target/Type cells carry no entity type",
+        "why": "Without data-mb-entity-type the \"Entity info - Type\" section has nothing to count and never appears.",
+        "edits": [
+            {
+                "find": "            td.dataset.mbEntityType = type;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/rel-tables-pages.spec.js",
+        "grep": "entity types",
+        "expect": "fail"
+    },
+    {
+        "name": "an \"Entity info - Type\" entry never filters",
+        "why": "Rendered and counted but unmatched: the tick must leave exactly the rows of that kind.",
+        "edits": [
+            {
+                "find": "            return !!cell && _findCellEntityType(cell) === mode.slice(8);",
+                "replace": "            return true;"
+            }
+        ],
+        "spec": "tests/fixtures/rel-tables-pages.spec.js",
+        "grep": "ticking a kind",
+        "expect": "fail"
+    },
+    {
+        "name": "\"Entity info - Type\" entries carry no glyph",
+        "why": "The entry's marker slot must show the kind's MusicBrainz glyph.",
+        "edits": [
+            {
+                "find": "        return _eventColGlyphs()[_EVENT_REL_TARGET_COLS[type]] || '';",
+                "replace": "        return '';"
+            }
+        ],
+        "spec": "tests/fixtures/rel-tables-pages.spec.js",
+        "grep": "with its glyph",
+        "expect": "fail"
+    },
+    {
+        "name": "the render gates ignore the entity-type counts",
+        "why": "Both render gates decide whether the panel builds its synthetic sections at all; without the entity-type counts in them the section never renders and the spec sees it missing.",
+        "edits": [
+            {
+                "find": "\n            lenFlagSevereCount > 0 || lenFlagWarnCount > 0 || videoMediumMismatchCount > 0 || videoMediumOkCount > 0 || entityTypeCounts.size > 0 ||",
+                "replace": "\n            lenFlagSevereCount > 0 || lenFlagWarnCount > 0 || videoMediumMismatchCount > 0 || videoMediumOkCount > 0 ||"
+            },
+            {
+                "find": "\n                   lenFlagSevereCount > 0 || lenFlagWarnCount > 0 || videoMediumMismatchCount > 0 || videoMediumOkCount > 0 || entityTypeCounts.size > 0 ||",
+                "replace": "\n                   lenFlagSevereCount > 0 || lenFlagWarnCount > 0 || videoMediumMismatchCount > 0 || videoMediumOkCount > 0 ||"
+            }
+        ],
+        "spec": "tests/fixtures/rel-tables-pages.spec.js",
+        "grep": "entity types",
+        "expect": "fail"
     }
 ]

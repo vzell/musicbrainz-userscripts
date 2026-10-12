@@ -43,6 +43,11 @@
 //     Details column appears. The wrapping is applied in the test exactly as
 //     that script leaves it (debug/area-USA-initial.html).
 // 10. GENRE / INSTRUMENT GLYPHS move to the header like the other kinds.
+// 12. 📊 "Entity info - Type" on a mixed Target/Type column: one entry per
+//     kind, its glyph in the marker slot, its count equal to the table's own
+//     Type cells (a DOM oracle, not a second reading of the same attribute),
+//     and a tick that leaves exactly those rows. A count that only checks
+//     "the section exists" passes on entries that never filter.
 // 11. INLINE ARTWORK: a cover-art placeholder before every release-group
 //     target and an event-art one before every event target of a mixed
 //     "Target" column, none on series/URL rows (fixture
@@ -53,6 +58,7 @@ const path = require('path');
 const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
+const { waitForFilterSettled } = require('../support/filterSortAssertions');
 
 const PAGES = {
     place: ['https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463', 'Show all Relationships for Place'],
@@ -65,6 +71,7 @@ const PAGES = {
     'release-group': ['https://musicbrainz.org/release-group/d5f992ab-6238-3b28-bf2b-7b16d913c9f6', 'Show all Relationships for ReleaseGroup'],
     release: ['https://musicbrainz.org/release/f50fcf09-4339-4e1c-91cd-e1d2a7b3a7bc', 'Show all Credits for Release'],
     'release-art': ['https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897', 'Show all Credits for Release'],
+    url: ['https://musicbrainz.org/url/a333fbe2-2707-4799-aa2e-50d21be8081c', 'Show all Relationships for URL'],
 };
 
 /**
@@ -146,6 +153,25 @@ test.describe('relationship tables: overview pageTypes (WIP.6)', () => {
         const anthemUsa = g.Works.rows.find((r) => r[g.Works.heads.indexOf('Relationship')] === 'anthem (as USA)');
         expect([anthemUsa[g.Works.heads.indexOf('Begin')], anthemUsa[g.Works.heads.indexOf('End')]], '"(until 1931)"').toEqual(['', '1931']);
         expect(rowBy(g.Instruments, 'Instrument', 'frottoir').Relationship).toBe('instruments (as United States of America)');
+    });
+
+    test('url: the entities that link the URL; "URL details" stays native', async ({ page }) => {
+        await open(page, 'url', { press: false });
+        expect(await page.evaluate(() => Array.from(document.querySelectorAll('button[data-label]')).map((b) => b.dataset.label)),
+            'the page is reachable (@include) and has its one button').toEqual(['Show all Relationships for URL']);
+        await page.click('button[data-label="Show all Relationships for URL"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const g = await groups(page);
+        expect(sizes(g)).toEqual([['Release groups', 1]]);
+        const rg = rowBy(g['Release groups'], 'Relationship', 'other databases');
+        // "▶" is the expand-release-groups toggle (sa_enable_expand_rgs).
+        expect(rg['Release group'].replace(/^▶/, '')).toBe('Born to Run');
+        expect(rg.Artist).toBe('Bruce Springsteen');
+        const st = await page.evaluate(() => ({
+            details: !!document.querySelector('#content h2.url-details'),
+            urlRow: document.querySelectorAll('#content table.details').length,
+        }));
+        expect(st, 'the one-row "URL details" list is not a relationship list').toEqual({ details: true, urlRow: 1 });
     });
 
     test('instrument: the instrument it is part of, with its disambiguation', async ({ page }) => {
@@ -355,5 +381,59 @@ test.describe('relationship tables: review fixes (WIP.7)', () => {
         expect(st.Event).toEqual({ rows: 24, caa: 0, eaa: 24 });
         expect(st.Series).toMatchObject({ caa: 0, eaa: 0 });
         expect(st.URL).toMatchObject({ caa: 0, eaa: 0 });
+    });
+});
+
+test.describe('relationship tables: 📊 entity types of a mixed column', () => {
+    const SECTION = 'Entity info - Type';
+    /** Index of the "Via release group" table, and its Type cells as the oracle. */
+    const viaTable = (page) => page.evaluate(() => {
+        const tables = Array.from(document.querySelectorAll('table.tbl'));
+        const idx = tables.findIndex((t) => Array.from(t.querySelectorAll('thead th')).some((th) => th.dataset.colName === 'Target'));
+        const t = tables[idx];
+        const k = Array.from(t.querySelectorAll('thead tr:first-child th')).findIndex((th) => th.dataset.colName === 'Type');
+        const counts = {};
+        t.querySelectorAll('tbody tr').forEach((tr) => { const v = tr.cells[k].textContent.trim(); counts[v] = (counts[v] || 0) + 1; });
+        return { idx, counts };
+    });
+
+    for (const col of ['Target', 'Type']) {
+        test(`"${col}": one entry per kind with its glyph and row count`, async ({ page }) => {
+            await open(page, 'release-art');
+            const { idx, counts } = await viaTable(page);
+            expect(counts).toMatchObject({ Event: 24, 'Release group': 11 });
+            const sections = await page.evaluate(([c, i]) => window.__saTest.getUniqDropSections(c, i), [col, idx]);
+            const section = sections.find((x) => x.label === SECTION);
+            expect(section, `${SECTION} on ${col}`).toBeTruthy();
+            const got = Object.fromEntries(section.items.map((i) => [i.label.replace(/^🔗 /, ''), i.count]));
+            expect(got).toEqual(counts);
+            const glyphs = await page.evaluate((sec) => {
+                const out = {};
+                document.querySelectorAll('#mb-col-uniq-dropdown .mb-uniq-section').forEach((s) => {
+                    if (s.querySelector('.mb-uniq-section-label')?.textContent !== sec) return;
+                    s.querySelectorAll('.mb-col-uniq-item').forEach((it) => {
+                        const g = it.querySelector('span[aria-hidden="true"] > span');
+                        out[it.dataset.mbUniqSynLabel] = g ? g.className : '';
+                    });
+                });
+                return out;
+            }, SECTION);
+            expect(glyphs).toMatchObject({ Event: 'eventlink', 'Release group': 'rglink', Series: 'serieslink', '🔗 URL': '' });
+        });
+    }
+
+    test('ticking a kind leaves exactly its rows', async ({ page }) => {
+        await open(page, 'release-art');
+        const { idx, counts } = await viaTable(page);
+        await page.evaluate((i) => window.__saTest.getUniqDropSections('Target', i), idx);
+        await waitForFilterSettled(page, () => page.evaluate(() => Array.from(document.querySelectorAll('#mb-col-uniq-dropdown .mb-col-uniq-item'))
+            .find((el) => el.dataset.mbUniqSynLabel === 'Event').click()));
+        const types = await page.evaluate((i) => {
+            const t = document.querySelectorAll('table.tbl')[i];
+            const k = Array.from(t.querySelectorAll('thead tr:first-child th')).findIndex((th) => th.dataset.colName === 'Type');
+            return Array.from(t.querySelectorAll('tbody tr')).map((tr) => tr.cells[k].textContent.trim());
+        }, idx);
+        expect(types.length).toBe(counts.Event);
+        expect(new Set(types)).toEqual(new Set(['Event']));
     });
 });

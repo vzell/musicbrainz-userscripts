@@ -241,7 +241,14 @@ test.describe('@include coverage', () => {
             'https://beta.musicbrainz.org/search?query=springsteen&type=artist',
             'https://musicbrainz.org/user/vzell/ratings',
             'https://musicbrainz.org/cdstub/browse',
+            // The overview pages of the relationship-tables pageTypes (WIP.6/WIP.8).
+            'https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463',
+            'https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98',
+            'https://musicbrainz.org/instrument/a1baa57d-6ab4-461e-89df-448d6fd2c597',
+            'https://musicbrainz.org/url/a333fbe2-2707-4799-aa2e-50d21be8081c',
         ];
         expect(mb.filter((u) => !injected(u))).toEqual([]);
+        // A URL's other tabs have no pageType: the line admits the overview only.
+        expect(injected('https://musicbrainz.org/url/a333fbe2-2707-4799-aa2e-50d21be8081c/edit')).toBe(false);
     });
 });
