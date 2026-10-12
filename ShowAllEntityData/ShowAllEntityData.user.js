@@ -15559,16 +15559,31 @@
     }
 
     /**
+     * What a detail link OUTSIDE a table body never is: the script's own
+     * toolbar and menus, and the card and the window themselves (a link in
+     * the window's Extracted view is not a target of this source).
+     * @type {string}
+     */
+    const _DP_PAGE_SKIP = '#mb-show-all-controls-container, .mb-toolbar-menu-panel, #mb-dp-peek, #mb-dp-dialog';
+
+    /**
      * Tells whether a link is a detail link the preview handles: a text link
-     * (not the Cover thumbnail, which links to the same page) inside a data
-     * table's body, to a same-origin detail page of this host, with the
-     * host's preview setting on.
+     * (not the Cover thumbnail, which links to the same page) to a
+     * same-origin detail page of this host, with the host's preview setting
+     * on — inside a data table's body, or anywhere else on the page
+     * (`_DP_PAGE_SKIP` aside): the initial page, before any button, has the
+     * site's own lists (Brucebase's song tabview, "1945" on stats:songs),
+     * and they preview like the rendered table's rows. On a touch-primary
+     * device only the table body counts: there a target turns a tap into
+     * "open the window", and a native link must keep its navigation — the
+     * same reason `sa_pop_mb_page_on_touch` is off by default.
      *
      * @param {?Element} a
      * @returns {?object} The host's `_DP_SITES` entry, or null.
      */
     function _dpSiteForLink(a) {
-        if (!a || !a.matches || !a.matches('a[href]') || !a.closest('table.tbl > tbody') || a.querySelector('img')) return null;
+        if (!a || !a.matches || !a.matches('a[href]') || a.querySelector('img')) return null;
+        if (!a.closest('table.tbl > tbody') && (_isTouchPrimaryDevice() || a.closest(_DP_PAGE_SKIP))) return null;
         const site = _dpActiveSite();
         if (!site) return null;
         let u;
@@ -15743,7 +15758,7 @@
                 if (res && res.outcome === 'error') return _dpFailHtml(res.detail);
                 return exLoading;
             },
-            steps: (t) => _dpRowLinks(t.table),
+            steps: (t) => (t.el.closest('table.tbl > tbody') ? _dpRowLinks(t.table) : _dpPageLinks()),
             stepId: (el) => el.href,
         };
     }
@@ -16240,6 +16255,22 @@
             if (a) out.push(a);
         });
         return out;
+    }
+
+    /**
+     * The detail links outside any table body that are visible now (a
+     * tabview's hidden panels are left out), each page once, in page order:
+     * what ← and → step through from a link on the initial page.
+     *
+     * @returns {HTMLAnchorElement[]}
+     */
+    function _dpPageLinks() {
+        const seen = new Set();
+        return Array.from(document.querySelectorAll('a[href]')).filter(a => {
+            if (a.closest('table.tbl > tbody') || seen.has(a.href) || !a.getClientRects().length || !_dpSiteForLink(a)) return false;
+            seen.add(a.href);
+            return true;
+        });
     }
 
     /**
