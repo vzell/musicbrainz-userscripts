@@ -21864,3 +21864,36 @@ docs/claude/toolbar-and-header-ui.md "Export and Import (`_idbx*`)":
 Specs: idb-export-import.spec.js 8/8 and .mobile 1/1 on the first run, so the
 17 mutations (scripts/mutations/idb-export-import.json) are the evidence the
 assertions bite: all 17 caught.
+
+## 2026-10-12 — "MusicBrainz: Instrument Icons Everywhere" (@Lotheric): snapshots, and the icons SA drops
+
+Env: snapshots saved 2026-10-10T21:55Z (gfanj) and 2026-10-12T12:51Z (search), file mtimes · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Brave 1.97.56 (Chromium 155.0.8059.40) · Tampermonkey 5.5.1, with the script v2026-10-07.1444 installed.
+
+The script (registered as `lotheric-instrument-icons` in
+`tests/fixtures/live-userscripts/manifest.json`) stamps every visible
+`a[href*="/instrument/"]` `data-ii-processed="true"` and inserts an
+`<img class="mb-ii-icon">` (data: URL GIF, `title` = irombook folder name)
+immediately BEFORE it. `debug/instrument.html` is one such image on its own.
+
+- `debug/gfanj-intruments-initial.html` — IP of release-tracks, release
+  `3ce46b79-5e8c-470a-bcdc-45f301d09f60` (Greetings From Asbury Park, N.J.,
+  Pitman pressing). 20 stamped instrument links, 9 icons (piano ×4,
+  saxophone ×3, contrabass, harmonica); the rest (bass, percussion, …) are
+  stamped with NO icon — the script's `'NONE'` (GitHub 404) or still loading;
+  the DOM cannot tell which. The icons sit inside the track `dl.ars > dt`:
+  `<dt>   <img class="mb-ii-icon">…<a href="/instrument/…" data-ii-processed="true">piano</a>:</dt>`.
+- `debug/instrument-search.html` — FRP of
+  `search?query=guit&type=instrument&method=indexed` (`tableMode: 'single'`).
+  89 stamped links, 8 icons. The Name and MB-Name cells keep their icons
+  (rows are moved, and MB-Name clones the cell content with the image); the
+  📊 dropdown on Name shows none, and nothing counts rows with/without one.
+
+Root cause of the missing icons on release-tracks: `_buildInstrumentVocalsListItem()`
+cloned the instrument `<a>` alone. The clone kept the stamp and lost the
+icon (a previous sibling, not a child), and the script never decorates a
+stamped anchor again. `_parseInstrumentVocalsDt()` is not affected — an
+`<img>` is neither a text node nor an `<a>`, so it never changes how a `<dt>`
+component classifies.
+
+Nothing in `ShowAllEntityData.user.js` referred to `mb-ii-icon` or
+`data-ii-processed` before this branch.
