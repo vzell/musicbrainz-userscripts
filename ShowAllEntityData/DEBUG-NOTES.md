@@ -21897,3 +21897,47 @@ component classifies.
 
 Nothing in `ShowAllEntityData.user.js` referred to `mb-ii-icon` or
 `data-ii-processed` before this branch.
+
+### 2026-10-12 — the fix, and what testing it turned up (feature/instrument-icons-interop, WIP.1/WIP.2)
+
+Env: 2026-10-12T13:10Z-14:02Z · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs); the real script replaced by `tests/fixtures/thirdPartyScripts/ii-instrument-icons.js`.
+
+Three copy sites dropped the icon, not one: `_buildInstrumentVocalsListItem()`
+(Instruments column), `_buildCreditListItem()` (a credit's "(strings)"
+annotation) and `Name_Comment_Description` (instrument-list "Name"). All go
+through `_cloneInstrumentAnchorWithIcon()` now; `_iiReleaseIconlessAnchors()`
+is the net for any other bare `cloneNode(true)`. Checked and found nothing to
+do: instrument-artists/-releases/-recordings (instrument links only in the
+header, tabs and sidebar), and search `type=instrument` cells (rows come from a
+fresh fetch, unstamped, so the script decorates SA's own cells; `single` mode
+moves rows, so the icons are on the source rows already).
+
+Things worth knowing next time:
+
+- **`_iiPresent()` must not cache a "no".** Rows from a fetched page are
+  unstamped at render time; the script stamps them 120 ms later. A
+  version that cached the first answer hid the "Instrument info - Icon"
+  section on the search page entirely — hence the post-render re-checks in
+  `_iiInstallIconReconciler()` (`_II_RECHECK_MS`).
+- **The helper and the sweep cover for each other.** With the script's
+  default 120 ms debounce, a broken copy site still ends up with an icon a
+  moment later (sweep → script). The specs that pin the COPY stretch the
+  simulator's debounce to 2 s; each net's mutation alone passes, both
+  together fail.
+- **A freshly fetched release fixture must block `static.metabrainz.org/**`**
+  (release-tracks-and-length.md "Fixture trap"). Without it a
+  DOMContentLoaded edit to the fixture vanished: MusicBrainz's current bundle
+  re-rendered the tracklist from JSON.
+- A hang while writing the late-icon filter spec turned out to be the spec (an
+  unapplied helper edit plus Playwright retries), not a re-render loop — the
+  unguarded reconciler fired once in a probe. `_iiMirrorLateIcons()` re-runs
+  the filter only when a source row actually changed anyway, which rules a
+  loop out by construction.
+
+20 mutations (`scripts/mutations/instrument-icons.json`), all as expected.
+
+Partial merge gate. Env: 2026-10-12T14:02:37Z, stopped by the user at about 14:35Z · vzell-lap · same OS and Playwright as above. `test:full` at `f41f886` reached 754/1596 with 1 failure,
+`column-filter-modes.spec.js:492` ("on or off, the switches never change a
+column's width"). That test passes 3/3 alone (`--repeat-each=3`), so it is a
+load-sensitive flake under 2 workers, not this branch. The full suite is
+deferred until the follow-up work branched from here is done.
