@@ -2306,7 +2306,8 @@ entry, with these columns:
   outside any box, such as those before a year's first box, are empty.
 - **Soundcheck:** the soundcheck, one song per row.
 - **Setlist:** the set, one song per row, as written: bold for a tour
-  premiere, "(with …)" for guests, " - " joining a medley. A recording
+  premiere (also when the wiki sets a whole tour opener's setlist in bold,
+  as on 2012-03-18), "(with …)" for guests, " - " joining a medley. A recording
   session's setlist is the songs recorded. A set with its own label in the
   wiki ("Pre-show:", "With Bruce:", "with Willie Nile:") stays in this column,
   its first row tagged with that label.
@@ -2381,6 +2382,11 @@ Ctrl)* under ⚙️ Settings → *🔎 EVERY PREVIEW* (it covers the MusicBrainz
 previews too): then **hold Ctrl and rest the pointer on a title**, or rest the
 pointer on the title first and then press **Ctrl**, and the card opens at
 once.
+This works on the page as the site shows it too, before you press any
+button: rest the pointer on a song in Brucebase's own song list ("1945" on
+*stats:songs*), a title on a springsteenlyrics.com or jungleland.it list, and
+its card opens the same way (on a touch screen, a tap there still opens the
+page; only the script's table opens the window).
 The first time, it shows "Loading the detail page…" while the page is read in
 the background. The script reads at most one page a second, and a page you
 have already seen comes back at once: it is kept for 30 days. The card's last
@@ -2391,7 +2397,8 @@ pointer away closes the card, and so does **Esc**.
 type into the filter box stays in the filter box. In the window:
 
 - **‹ ›** or the **← →** keys step to the previous or next row of the table,
-  in the order the table shows them.
+  in the order the table shows them; from a title on the site's own page, to
+  the previous or next title you can see there (a hidden tab's are skipped).
 - **Extracted** shows what the script read from the page, laid out for
   reading: the fields, the scans, the notes and the whole tracklist. Click
   the cover or a scan to open it in the artwork viewer (the same one as the

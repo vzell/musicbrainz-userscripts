@@ -1,5 +1,29 @@
 [
     {
+        "version": "WIP.5",
+        "date": "2026-10-12",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Brucebase year pages: a setlist the wiki sets in bold as a whole (a tour opener: 2012-03-18, also 1984-06-29, 1999-04-09, 2009-04-01) is one song per row again instead of one long line; each song keeps its bold, and a bold run opening with the separator (\"<strong>/ LAND OF HOPE AND DREAMS</strong> - PEOPLE GET READY\") stays one medley row (_bbSplitInline())."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.4",
+        "date": "2026-10-12",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "Springsteen sites: the detail-page preview works on the page as the site shows it too, before any button — e.g. a song in Brucebase's own song list (\"1945\" on stats:songs). ‹ › step through the titles visible there; the script's own toolbar is never a target. On a touch screen only the script's table opens the window, so a tap on the site's own link still navigates (_dpSiteForLink(), _dpPageLinks())."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.3",
         "date": "2026-10-12",
         "sections": [

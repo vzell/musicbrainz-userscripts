@@ -14023,13 +14023,70 @@
         return _bbIsCapitals(t) ? 'set' : null;
     }
 
+    /** A song separator in a year page's set text: " / ", or "/ " / " /" at a text node's edge. */
+    const _BB_SET_SEP_RE = /(?:^|\s)\/(?:\s|$)/;
+
+    /**
+     * Splits an inline formatting element of a set paragraph (`<strong>`,
+     * `<b>`, `<em>`, `<i>`, `<span>`) that holds song separators itself into
+     * its songs, each wrapped in its own shallow copy of the element: the
+     * tour opener of 2012-03-18 bolds its whole setlist, eighteen songs in
+     * one `<strong>` ("WE TAKE CARE OF OUR OWN / WRECKING BALL / …"), and a
+     * run that starts with the separator ("<strong>/ LAND OF HOPE AND
+     * DREAMS</strong>"). Nested formatting is split the same way.
+     *
+     * @param {Element}  el         The element.
+     * @param {Document} docContext The document that will own the copies.
+     * @returns {Node[][]} The pieces, in order; between two pieces lies a
+     *          separator. A piece is empty when a separator opens or closes
+     *          the element.
+     */
+    function _bbSplitInline(el, docContext) {
+        const parts = [[]];
+        el.childNodes.forEach(c => {
+            if (c.nodeType === 3) {
+                c.textContent.split(_BB_SET_SEP_RE).forEach((piece, i) => {
+                    if (i > 0) parts.push([]);
+                    if (piece) parts[parts.length - 1].push(docContext.createTextNode(piece));
+                });
+            } else if (_bbIsSplittableInline(c)) {
+                const sub = _bbSplitInline(c, docContext);
+                sub.forEach((piece, i) => {
+                    if (i > 0) parts.push([]);
+                    parts[parts.length - 1].push(...piece);
+                });
+            } else {
+                parts[parts.length - 1].push(_bbCloneAbs(c, docContext));
+            }
+        });
+        return parts.map(piece => {
+            if (!piece.some(n => n.textContent.trim())) return [];
+            const wrap = docContext.importNode(el, false);
+            piece.forEach(n => wrap.appendChild(n));
+            return [wrap];
+        });
+    }
+
+    /**
+     * Whether an element of a set paragraph is inline formatting that holds
+     * a song separator, and so is split by `_bbSplitInline()` rather than
+     * kept whole as one song.
+     *
+     * @param {Node} n
+     * @returns {boolean}
+     */
+    function _bbIsSplittableInline(n) {
+        return n.nodeType === 1 && /^(?:STRONG|B|EM|I|SPAN)$/.test(n.tagName) && _BB_SET_SEP_RE.test(n.textContent);
+    }
+
     /**
      * Splits one set paragraph of a year-page entry into its songs.
      *
-     * Songs are separated by " / " in the paragraph's TOP-LEVEL text (a
-     * slash inside a title, "AC/DC", is not a separator); each song keeps
-     * its own markup (bold = tour premiere, italic) and its "(with …)". A
-     * `<br>` separates too. A `<sup>` holds a note ("Set details may be
+     * Songs are separated by " / " in the paragraph's text — top level, and
+     * inside a bold or italic run that spans several songs
+     * (`_bbSplitInline()`); a slash inside a title ("AC/DC") is not a
+     * separator. Each song keeps its own markup (bold = tour premiere,
+     * italic) and its "(with …)". A `<br>` separates too. A `<sup>` holds a note ("Set details may be
      * inaccurate."), and a paragraph that is one `<em>` is only a note ("No
      * set details known."), unless it is in capitals (a setlist set in
      * italics, whose songs are then its own); notes go to `notes`. A leading label ("Soundcheck:",
@@ -14070,6 +14127,14 @@
                 segments.push([]);
                 return;
             }
+            if (_bbIsSplittableInline(n)) {
+                _bbSplitInline(n, docContext).forEach((piece, i) => {
+                    if (i > 0) segments.push([]);
+                    segments[segments.length - 1].push(...piece);
+                });
+                first = false;
+                return;
+            }
             if (n.nodeType !== 3) {
                 segments[segments.length - 1].push(_bbCloneAbs(n, docContext));
                 if (n.textContent.trim()) first = false;
@@ -14084,7 +14149,7 @@
                 }
                 first = false;
             }
-            text.split(/(?:^|\s)\/(?:\s|$)/).forEach((part, i) => {
+            text.split(_BB_SET_SEP_RE).forEach((part, i) => {
                 if (i > 0) segments.push([]);
                 if (part) segments[segments.length - 1].push(docContext.createTextNode(part));
             });

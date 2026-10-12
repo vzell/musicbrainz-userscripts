@@ -287,8 +287,17 @@ Previous / Listing / Next line stay. On the live document
 `<h2 class="mb-bb-list-heading">Events</h2>` goes before the table.
 
 - Soundcheck and Setlist are `<ul><li>`, one song per row, split on " / " in
-  the paragraph's TOP-LEVEL text only (a song keeps its `<strong>`/`<em>` and
-  "(with …)"); `collapsableColumns` gives them the ▶N toggle.
+  the paragraph's top-level text AND inside an inline run that spans several
+  songs (`_bbSplitInline()`, `_bbIsSplittableInline()`; a song keeps its
+  `<strong>`/`<em>` — each piece gets its own shallow copy of the run — and
+  "(with …)"); `collapsableColumns` gives them the ▶N toggle. Top-level only
+  was the first version, and it left a tour opener set in bold as ONE row
+  (2012-03-18: eighteen songs in one `<strong>`, then "<strong>/ LAND OF HOPE
+  AND DREAMS</strong> - PEOPLE GET READY"). The probe cache has four such
+  openers (1984-06-29, 1999-04-09, 2009-04-01, 2012-03-18; +102 songs over
+  `check-bb-year-converter.js`, 0 problems); the italic runs with " / " in
+  the cache are lyrics in descriptions, which never reach the splitter.
+  Fixture `bb-year-2012.html`.
 - Notes clones the description with links made absolute (`_bbAbsHref()`),
   so its `/song:` links get the song preview (`_dpSiteForLink()` takes any
   `/song:` link in `table.tbl > tbody` when `sa_bb_detail_preview` is on).

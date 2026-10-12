@@ -9,6 +9,7 @@ Input is a saved snapshot of each real page in `debug/`:
     debug/bb-year-cache/1968.html https://brucebase.wikidot.com/1968         (2026-10-09, probe)
     debug/bb-year-cache/1985.html https://brucebase.wikidot.com/1985         (2026-10-09, probe)
     debug/bb-year-cache/2018.html https://brucebase.wikidot.com/2018         (2026-10-09, probe)
+    debug/bb-year-cache/2012.html https://brucebase.wikidot.com/2012         (2026-10-09, probe)
     debug/bb-initial.html         https://brucebase.wikidot.com/             (2026-10-09, browser)
 
 The year pages were picked for their shapes (scripts/probe-bb-year-pages.py
@@ -18,8 +19,11 @@ blockquote recordings, a tour box and its end, `00` days, Help Us, LiveDL);
 box, `00` days and superscript-only "No set details known." paragraphs;
 1985 has the Australian regions ("SYDNEY, NEW SOUTH WALES, AUSTRALIA") and
 descriptions written as plain paragraphs, not a `.list-pages-box`; 2018
-has letter anchors (`180718a`) and setlists set in italics. The year pages
-are written whole, like the song list.
+has letter anchors (`180718a`) and setlists set in italics; 2012 has a tour
+opener (2012-03-18) whose whole setlist is bold, eighteen songs in one
+`<strong>`, and a bold run that opens with the separator ("<strong>/ LAND OF
+HOPE AND DREAMS</strong>"). The year pages are written whole, like the song
+list.
 
 The start page (`bb-home`) is written whole too, except that its side bar's
 "Gig Pages" links keep only the four fixture years: the button pages through
@@ -62,6 +66,7 @@ YEARS = [
     ('debug/bb-year-cache/1968.html', 'tests/fixtures/bb-year-1968.html'),
     ('debug/bb-year-cache/1985.html', 'tests/fixtures/bb-year-1985.html'),
     ('debug/bb-year-cache/2018.html', 'tests/fixtures/bb-year-2018.html'),
+    ('debug/bb-year-cache/2012.html', 'tests/fixtures/bb-year-2012.html'),
 ]
 HOME = ('debug/bb-initial.html', 'tests/fixtures/bb-home.html')
 HOME_KEEP = {'1968', '1985', '2018', '2026'}

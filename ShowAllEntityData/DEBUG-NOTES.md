@@ -21993,3 +21993,33 @@ Follow-up (same day, user items 5–6), same Env:
   1.5em`, the `.mb-group-intro` wrapper got none. It now takes the table's.
   This applies to every grouped page with a note, not only the event page.
 Mutation list now 12 caught + 1 unreachable guard; tested live by the user.
+
+## 2026-10-12 — Springsteen sites: detail preview on the initial page (WIP.4); Brucebase bold setlists (WIP.5)
+
+Env: 2026-10-12T16:28Z · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.40.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs). The user's report: from their browser, versions unknown.
+
+**Preview on the initial page.** Report: hovering "1945" in Brucebase's own
+song list on `stats:songs` showed nothing; the same song in the rendered table
+showed its card. Root cause: `_dpSiteForLink()` required
+`a.closest('table.tbl > tbody')`, and before any button the page has no
+`table.tbl` — the engine itself was installed (`_initDetailPreview()` runs at
+init on any pageType). Now a desktop takes a detail link anywhere outside
+`_DP_PAGE_SKIP`; touch keeps the table-only scope (a target turns a tap into
+"open the window"). ‹ › from a native link: `_dpPageLinks()`. Pages with no
+pageType (a song page itself) still get no engine — the script stops at init
+there; not changed.
+
+**Brucebase 2012-03-18 as one long line.** `debug/bb-year-cache/2012.html`:
+the tour opener's setlist paragraph is
+`<strong>WE TAKE CARE OF OUR OWN / … / ROCKY GROUND</strong> <strong>/ LAND OF
+HOPE AND DREAMS</strong> - PEOPLE GET READY <strong>/ BORN TO RUN / …</strong>`.
+`_bbSplitSet()` split on " / " in TOP-LEVEL text nodes only, so the songs
+inside each `<strong>` never split. `_bbSplitInline()` now splits an inline
+run that holds a separator, each piece in a shallow copy of the run (the bold
+stays). `check-bb-year-converter.js` over all 63 cached years, before vs after
+(the pre-fix script in a scratch worktree): only 1984 (+31), 1999 (+24), 2009
+(+25) and 2012 (+22) change — each a bold tour opener — 0 problems either way.
+New fixture `tests/fixtures/bb-year-2012.html` (build-bb-fixtures.py).
+
+Fails-before: mutation lists run in scratch worktrees (live userscript
+untouched): `foreign-ip-popups.json` 5/5, `bb-year.json`'s two new entries 2/2.
