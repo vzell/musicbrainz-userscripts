@@ -2374,6 +2374,15 @@
                          'yellow with a ⚠️ when it names the event or venue differently from that title.'
         },
 
+        sa_findings_tint_mbid_case: {
+            label: 'Highlight setlist MBIDs written with uppercase letters as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Event page: tint a "Song" or "Additional artists" cell of a setlist table light yellow with a ⚠️ ' +
+                         'when one of its links uses an MBID typed with uppercase letters (e.g. "[E497263c-…|The Fever]"). ' +
+                         'MusicBrainz resolves such a link, but the setlist should be edited to use the lowercase MBID.'
+        },
+
         sa_findings_tint_event_state: {
             label: 'Highlight a missing state for USA/Canada as WARNING',
             type: 'checkbox',
@@ -17666,7 +17675,8 @@
      * @param   {Document} doc
      * @param   {string}   name    The group name (the h3 text).
      * @param   {string[]} cols    Column headers.
-     * @param   {Array<Array<Node[]|string>>} rows Cells per row: nodes or plain text.
+     * @param   {Array<Array<Node[]|string|HTMLTableCellElement>>} rows Cells per row: nodes,
+     *          plain text, or a ready `<td>`.
      * @param   {string}   [intro] HTML shown between the h3 and the table
      *          (`data-mb-intro-html` → `group.introHtml`).
      * @returns {DocumentFragment}
@@ -17694,6 +17704,8 @@
             const tr = doc.createElement('tr');
             tr.className = k % 2 ? 'even' : 'odd';
             cells.forEach(c => {
+                // A ready cell (the Video column's, ColumnDataExtractor.video()) goes in as is.
+                if (c && c.nodeType === Node.ELEMENT_NODE && c.tagName === 'TD') { tr.appendChild(c); return; }
                 const td = doc.createElement('td');
                 if (Array.isArray(c)) c.forEach(n => td.appendChild(n));
                 else td.textContent = c;
@@ -17768,6 +17780,86 @@
     }
 
     /**
+     * The entity glyph each event-table column shows in its header
+     * (`_initColHeaderGlyph()`, from the render tail) instead of on every
+     * cell, as release-tracks does: a typed target column ("Artist", "Place",
+     * "Recording", …, from `_EVENT_REL_TARGET_COLS` — only the types with a
+     * verified glyph class in `_ENTITY_TYPE_GLYPH`), the credit "Artist" and
+     * "Area" columns, and the setlist's "Song" and "Additional artists". A
+     * column of mixed kinds ("Target") has none and its cells keep theirs.
+     *
+     * A function, not a `const`: `_ENTITY_TYPE_GLYPH` is declared further
+     * down the file.
+     *
+     * @returns {Object<string, string>} Column header → glyph class.
+     */
+    function _eventColGlyphs() {
+        const out = {};
+        Object.entries(_EVENT_REL_TARGET_COLS).forEach(([type, col]) => {
+            if (_ENTITY_TYPE_GLYPH[type]) out[col] = _ENTITY_TYPE_GLYPH[type];
+        });
+        out.Area = 'arealink';
+        out.Song = 'worklink';
+        out['Additional artists'] = 'artistlink';
+        return out;
+    }
+
+    /**
+     * Removes the empty entity glyph spans of one class (`span.artistlink`,
+     * …) from cloned cell nodes — at the top level and nested (a credit's
+     * `<bdi>`). A country flag (`span.flag`, which wraps its link) is not a
+     * glyph span and stays.
+     *
+     * @param   {Node[]} nodes Cloned nodes (mutated).
+     * @param   {?string} cls  Glyph class; nothing is removed when empty.
+     * @returns {Node[]}
+     */
+    function _eventStripGlyphs(nodes, cls) {
+        if (!cls) return nodes;
+        const isGlyph = n => n.nodeType === Node.ELEMENT_NODE && n.tagName === 'SPAN' &&
+            n.classList.contains(cls) && !n.textContent.trim() && !n.querySelector('a');
+        return nodes.filter(n => {
+            if (isGlyph(n)) return false;
+            if (n.nodeType === Node.ELEMENT_NODE) n.querySelectorAll(`span.${cls}`).forEach(s => { if (isGlyph(s)) s.remove(); });
+            return true;
+        });
+    }
+
+    /**
+     * Takes every video icon (`span.video`, MusicBrainz's own "This recording
+     * is a video") out of cloned recording nodes.
+     *
+     * @param   {Node[]} nodes Cloned nodes (mutated).
+     * @returns {{nodes: Node[], video: ?Element}} The nodes left, and the
+     *          first icon taken (null when there was none).
+     */
+    function _eventTakeVideo(nodes) {
+        let video = null;
+        const take = s => { if (!video) video = s; s.remove(); };
+        const out = nodes.filter(n => {
+            if (n.nodeType !== Node.ELEMENT_NODE) return true;
+            if (n.matches('span.video')) { if (!video) video = n; return false; }
+            n.querySelectorAll('span.video').forEach(take);
+            return true;
+        });
+        return { nodes: out, video };
+    }
+
+    /**
+     * A Video cell, built by the shared `ColumnDataExtractor.video()` from
+     * the native icon: the icon, centred, and the hidden "video"/"audio" sort
+     * and 📊 key.
+     *
+     * @param   {?Element} icon A `span.video` taken by `_eventTakeVideo()`, or null.
+     * @returns {HTMLTableCellElement}
+     */
+    function _eventVideoCell(icon) {
+        const src = document.createElement('td');
+        if (icon) src.appendChild(icon);
+        return ColumnDataExtractor.video(src)[0];
+    }
+
+    /**
      * The tables for one group of relationship rows: '#', the target (and a
      * Site column for URLs), Relationship, then only those of Artist / Area /
      * Credits or Details / Disambiguation that some row actually fills. A group
@@ -17776,11 +17868,17 @@
      * `withType`, a Type column follows the target (one-table layout, and the
      * related series' groups, which mix kinds).
      *
+     * When a recording carries MusicBrainz's video icon, a Video column follows
+     * the target and the icon moves there (`_eventVideoCell()`). The entity
+     * glyphs of the single-kind columns move to the header
+     * (`_eventColGlyphs()`): a typed target column's, Artist's and Area's
+     * cells lose theirs; a mixed "Target" column (`withType`) keeps them.
+     *
      * @param   {Array<Object>} rows Rows of `_eventRelRowsFrom()`.
      * @param   {string} targetCol   Header of the target column.
      * @param   {boolean} withType
      * @param   {boolean} withFrom   Add a "From" column (the related series' name, or "Event").
-     * @returns {{cols: string[], cells: Array<Array<Node[]|string>>}}
+     * @returns {{cols: string[], cells: Array<Array<Node[]|string|HTMLTableCellElement>>}}
      */
     function _eventRelColumns(rows, targetCol, withType, withFrom) {
         const has = key => rows.some(r => r[key].length);
@@ -17789,9 +17887,16 @@
         const split = allArtists ? rows.map(r => _eventSplitCredits(r.extra)) : null;
         const hasCredits = !!split && split.some(x => x.credits.length);
         const hasTime = !!split && split.some(x => x.time);
+        const glyphs = _eventColGlyphs();
+        const clone = n => n.cloneNode(true);
+        const mains = rows.map(r => r.type === 'recording'
+            ? _eventTakeVideo(r.main.map(clone))
+            : { nodes: r.main.map(clone), video: null });
+        const hasVideo = mains.some(m => m.video);
         const cols = ['#'];
         if (allUrls) cols.push('Site');
         cols.push(targetCol);
+        if (hasVideo) cols.push('Video');
         if (withType) cols.push('Type');
         cols.push('Relationship');
         if (has('artist')) cols.push('Artist');
@@ -17810,11 +17915,12 @@
         const cells = rows.map((r, k) => {
             const row = [String(k + 1)];
             if (allUrls) row.push(host(r.href));
-            row.push(r.main.map(n => n.cloneNode(true)));
+            row.push(withType ? mains[k].nodes : _eventStripGlyphs(mains[k].nodes, glyphs[targetCol]));
+            if (hasVideo) row.push(_eventVideoCell(mains[k].video));
             if (withType) row.push(_EVENT_REL_TARGET_COLS[r.type] || 'Target');
             row.push(r.phrase);
-            if (has('artist')) row.push(r.artist.map(n => n.cloneNode(true)));
-            if (has('area')) row.push(r.area.map(n => n.cloneNode(true)));
+            if (has('artist')) row.push(_eventStripGlyphs(r.artist.map(clone), glyphs.Artist));
+            if (has('area')) row.push(_eventStripGlyphs(r.area.map(clone), glyphs.Area));
             if (split) {
                 if (hasCredits) row.push(_eventListCell(split[k].credits));
                 if (hasTime) row.push(split[k].time);
@@ -17845,6 +17951,59 @@
     }
 
     /**
+     * Drops a lone leading article ("the", "a", "an") from an Additional
+     * artists item when a link follows it: in "Trombone Shorty & the New Breed
+     * Brass Band" the "the" belongs to the sentence, the name is the link's.
+     * An item without a link ("all performers") is left as it is.
+     *
+     * @param   {Node[]} item One item of `_eventSplitNodes()` (trimmed).
+     * @returns {Node[]}
+     */
+    function _eventDropLeadingArticle(item) {
+        const firstEl = item.findIndex(n => n.nodeType === Node.ELEMENT_NODE);
+        if (firstEl <= 0) return item;
+        const linked = item.slice(firstEl).some(n => n.tagName === 'A' || (n.querySelector && n.querySelector('a[href]')));
+        if (!linked) return item;
+        const lead = item.slice(0, firstEl).map(n => n.textContent).join('');
+        return /^\s*(?:the|a|an)\s*$/i.test(lead) ? item.slice(firstEl) : item;
+    }
+
+    /**
+     * Re-points the "(with …)" artists of a setlist's song lines from /work/
+     * to /artist/, in place, on the initial page as well as on a fetched one.
+     *
+     * MusicBrainz's setlist syntax renders every `[mbid|name]` on a song line
+     * as a /work/ link — also an artist's, whose MBID is the artist's (see
+     * `_eventSetlistSong()`), so the native page links "Rosanne Cash" to a
+     * work that does not exist. Every link after the line's "(with" is an
+     * artist. The MBID is matched case-insensitively and keeps its case
+     * (the `mbid-uppercase` finding reads it; MusicBrainz resolves it).
+     * Idempotent: a re-pointed link no longer matches.
+     *
+     * @param   {?Element} p `p.setlist`.
+     * @returns {number} How many links were re-pointed.
+     */
+    function _eventSetlistFixLinks(p) {
+        if (!p) return 0;
+        const WITH = /\(\s*with\s+/i;
+        let fixed = 0;
+        _eventSplitAtBr(p).forEach(line => {
+            const k = line.findIndex(n => n.nodeType === Node.TEXT_NODE && WITH.test(n.textContent));
+            if (k === -1) return;
+            line.slice(k + 1).forEach(n => {
+                if (n.nodeType !== Node.ELEMENT_NODE) return;
+                (n.tagName === 'A' ? [n] : Array.from(n.querySelectorAll('a[href]'))).forEach(a => {
+                    const m = /^(.*?\/)work(\/[0-9a-f-]{36}.*)$/i.exec(a.getAttribute('href') || '');
+                    if (!m) return;
+                    a.setAttribute('href', `${m[1]}artist${m[2]}`);
+                    fixed++;
+                });
+            });
+        });
+        return fixed;
+    }
+
+    /**
      * One song line of the setlist: the song's works, its text, and the
      * artists of a trailing "(with …)" ("This Land Is Your Land (with
      * Trombone Shorty & the New Breed Brass Band and all performers)").
@@ -17853,10 +18012,17 @@
      * also the artists inside "(with …)" — whose MBIDs are artists' (probed
      * 2026-10-06 on event cd595883-…: each is the same MBID as that artist's
      * /artist/ link in the line-up). So only the links BEFORE "(with" are the
-     * song's works, and the ones after it are re-pointed to /artist/. The
-     * artists are split at ",", "&" and "and" in the text between links;
-     * unlinked words stay with their item ("the New Breed Brass Band", "all
-     * performers").
+     * song's works; the ones after it were already re-pointed to /artist/ by
+     * `_eventSetlistFixLinks()`. The artists are split at ",", "&" and "and"
+     * in the text between links; unlinked words stay with their item ("all
+     * performers"), except a lone leading article before a link ("the New
+     * Breed Brass Band" → "New Breed Brass Band"), which is the sentence's,
+     * not the name's.
+     *
+     * MBIDs are matched case-insensitively: a setlist can carry one typed with
+     * uppercase letters (event 26cead1c-…, "[E497263c-…|The Fever]"), which
+     * MusicBrainz still links and resolves. Such a link keeps its case — the
+     * `mbid-uppercase` finding reads it.
      *
      * @param   {Node[]} nodes The line's nodes (comments removed).
      * @returns {{kind: 'song', works: Element[], text: string, withItems: Node[][]}}
@@ -17875,20 +18041,13 @@
             const rest = [document.createTextNode(after), ...nodes.slice(k + 1).map(n => n.cloneNode(true))];
             const last = rest[rest.length - 1];
             if (last.nodeType === Node.TEXT_NODE) last.textContent = last.textContent.replace(/\)\s*$/, '');
-            rest.forEach(n => {
-                const anchors = el(n) ? (n.tagName === 'A' ? [n] : Array.from(n.querySelectorAll('a[href]'))) : [];
-                anchors.forEach(a => {
-                    const href = a.getAttribute('href') || '';
-                    if (/\/work\/[0-9a-f-]{36}/.test(href)) a.setAttribute('href', href.replace('/work/', '/artist/'));
-                });
-            });
-            withItems = _eventSplitNodes(rest, /\s*(?:,|&|\band\b)\s*/);
+            withItems = _eventSplitNodes(rest, /\s*(?:,|&|\band\b)\s*/).map(_eventDropLeadingArticle);
         }
         const works = [];
         songNodes.forEach(n => {
             if (!el(n)) return;
             (n.tagName === 'A' ? [n] : Array.from(n.querySelectorAll('a[href]'))).forEach(a => {
-                if (/\/work\/[0-9a-f-]{36}/.test(a.getAttribute('href') || '')) works.push(a);
+                if (/\/work\/[0-9a-f-]{36}/i.test(a.getAttribute('href') || '')) works.push(a);
             });
         });
         const text = songNodes.map(n => n.textContent).join('').replace(/\s+/g, ' ').trim();
@@ -17983,7 +18142,12 @@
      * Additional artists (a "(with …)" line's artists, one row each), Medley
      * (a line with several works), Also in (the other parts that play
      * one of its works, by work MBID) and Recording (the event's "recording
-     * location for" recordings whose title is the line's text).
+     * location for" recordings whose title is the line's text — each recording
+     * once, though several relationships may name it: "recording location
+     * for" and "shot for"), then Video when one of them carries MusicBrainz's
+     * video icon (per row: "video" when any of its recordings is one). The
+     * Recording cells lose their `recordinglink` glyph to the header
+     * (`_eventColGlyphs()`).
      *
      * @param   {Document} doc
      * @param   {Object}   parsed     `_eventSetlistParse()`.
@@ -18012,7 +18176,8 @@
         }
         if (!parts.length) return out;
 
-        const workId = a => ((a.getAttribute('href') || '').match(/\/work\/([0-9a-f-]{36})/) || [])[1] || '';
+        // Lowercased: a work typed with uppercase letters in one place is the same work.
+        const workId = a => (((a.getAttribute('href') || '').match(/\/work\/([0-9a-f-]{36})/i) || [])[1] || '').toLowerCase();
         const partsOfWork = new Map();
         parts.forEach(p => p.songs.forEach(s => s.works.forEach(a => {
             const id = workId(a);
@@ -18023,14 +18188,35 @@
         const recTitle = r => norm(r.main.map(n => n.textContent).join(''));
         // Song, Additional artists and Recording are multi-row cells (a <ul>,
         // also for one item) — collapsableColumns on the pageType.
-        const songRow = (s, partName) => ({
-            song: _eventListCell(s.works.length ? s.works.map(a => [a.cloneNode(true)]) : [[doc.createTextNode(s.text)]]),
-            withArtists: s.withItems.map(it => it.map(n => n.cloneNode(true))),
-            medley: s.works.length > 1 ? 'medley' : '',
-            also: Array.from(new Set(s.works.flatMap(a => Array.from(partsOfWork.get(workId(a)) || []))))
-                .filter(n => n !== partName).join(', '),
-            rec: recordings.filter(r => recTitle(r) === norm(s.text)).map(r => r.main.map(n => n.cloneNode(true)))
-        });
+        const songRecs = s => {
+            const seen = new Set();
+            let video = null;
+            const rec = recordings.filter(r => {
+                if (recTitle(r) !== norm(s.text)) return false;
+                const key = (r.href || '').toLowerCase();
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            }).map(r => {
+                const taken = _eventTakeVideo(r.main.map(n => n.cloneNode(true)));
+                if (taken.video && !video) video = taken.video;
+                return _eventStripGlyphs(taken.nodes, 'recordinglink');
+            });
+            return { rec, video };
+        };
+        const songRow = (s, partName) => {
+            const { rec, video } = songRecs(s);
+            return {
+                song: _eventListCell(s.works.length ? s.works.map(a => [a.cloneNode(true)]) : [[doc.createTextNode(s.text)]]),
+                withArtists: s.withItems.map(it => it.map(n => n.cloneNode(true))),
+                medley: s.works.length > 1 ? 'medley' : '',
+                also: Array.from(new Set(s.works.flatMap(a => Array.from(partsOfWork.get(workId(a)) || []))))
+                    .filter(n => n !== partName).join(', '),
+                rec,
+                // An array, so has('video') reads it like the other keys.
+                video: video ? [video] : []
+            };
+        };
         const table = (name, rows, withPart, intro) => {
             const has = key => rows.some(r => r[key].length);
             const cols = withPart ? ['Part', '#', 'Song'] : ['#', 'Song'];
@@ -18038,12 +18224,14 @@
             if (has('medley')) cols.push('Medley');
             if (has('also')) cols.push('Also in');
             if (has('rec')) cols.push('Recording');
+            if (has('video')) cols.push('Video');
             const cells = rows.map(r => {
                 const row = withPart ? [r.part, String(r.n), r.song] : [String(r.n), r.song];
                 if (has('withArtists')) row.push(_eventListCell(r.withArtists));
                 if (has('medley')) row.push(r.medley);
                 if (has('also')) row.push(r.also);
                 if (has('rec')) row.push(_eventListCell(r.rec));
+                if (has('video')) row.push(_eventVideoCell(r.video[0] || null));
                 return row;
             });
             return _eventBuildTable(doc, name, cols, cells, intro);
@@ -18129,6 +18317,8 @@
         }
         const seriesRows = seriesGroups.flatMap(g => g.rows);
         const relBuilt = relOn && (own.length > 0 || seriesRows.length > 0);
+        // Also on a fetched page, which never saw the initial-page pass.
+        if (setOn && setP) _eventSetlistFixLinks(setP);
         const setGroups = setOn && setP
             ? _eventSetlistGroups(doc, _eventSetlistParse(setP), own.filter(r => r.type === 'recording'),
                 !!Lib.settings.sa_event_overview_setlist_one_table)
@@ -23725,8 +23915,11 @@
      * Computed-panel comparison documented for `.worklink` to be needed.
      *
      * Called from the tail of `renderGroupedTable()`, alongside
-     * `initAcoustIdIsrcObserver()` — same release-tracks-only, re-run-
-     * safe, no-op-when-column-absent shape.
+     * `initAcoustIdIsrcObserver()` — same re-run-safe,
+     * no-op-when-column-absent shape. Scoped to release-tracks and
+     * event-overview (whose single-kind columns, `_eventColGlyphs()`, carry
+     * the same header glyph instead of one per cell): a column name like
+     * "Artist" means a different thing elsewhere.
      *
      * @param {string} columnName - Exact header text (matched via
      *   `_cleanColHeaderText`), e.g. `"Recording of"`.
@@ -23735,7 +23928,8 @@
      * @returns {void}
      */
     function _initColHeaderGlyph(columnName, glyphClass) {
-        if (activeDefinition?.type !== 'release-tracks') return;
+        const _pt = activeDefinition?.type;
+        if (_pt !== 'release-tracks' && _pt !== 'event-overview') return;
         document.querySelectorAll('table.tbl').forEach(table => {
             const th = Array.from(table.querySelectorAll('thead th'))
                 .find(h => _cleanColHeaderText(h) === columnName);
@@ -37381,6 +37575,24 @@
      *               detail?: function(HTMLTableCellElement, HTMLTableRowElement, object): ?string,
      *               tint: function(HTMLTableCellElement): boolean}>}
      */
+    /**
+     * The MBIDs of a cell's MusicBrainz work/artist links that contain an
+     * uppercase letter (the `mbid-uppercase` finding). Reads the links' own
+     * `href` attributes — source-row data, which `_eventSetlistFixLinks()`
+     * and the setlist converter leave in their original case.
+     *
+     * @param   {HTMLTableCellElement} cell
+     * @returns {string[]} Each offending MBID once, in cell order.
+     */
+    function _findingUppercaseMbids(cell) {
+        const out = [];
+        cell.querySelectorAll('a[href]').forEach(a => {
+            const m = /\/(?:work|artist)\/([0-9a-f-]{36})(?![0-9a-f-])/i.exec(a.getAttribute('href') || '');
+            if (m && /[A-F]/.test(m[1]) && !out.includes(m[1])) out.push(m[1]);
+        });
+        return out;
+    }
+
     const FINDINGS = [
         {
             id: 'len-warn', level: 'warn', glyph: '⏱️', scope: 'cell', coFlagged: true,
@@ -37429,6 +37641,18 @@
             cols: (name, plan) => plan.eventName(name),
             test: cell => { const ev = _findCellEventName(cell); return !!ev && ev.form === 'nearmiss'; },
             tint: _findingTintSetting('sa_findings_tint_event_style'),
+        },
+        {
+            id: 'mbid-uppercase', level: 'warn', glyph: '🔠', scope: 'cell',
+            label: 'MBID contains uppercase letters',
+            tip: 'Event setlist: a song or "(with …)" artist is linked by an MBID typed with uppercase letters, e.g. "* [E497263c-4f15-36c0-B27c-Dca99482962c|The Fever]". MusicBrainz still resolves the link, but an MBID is written in lowercase — edit the event\'s setlist on MusicBrainz.',
+            cols: name => activeDefinition?.type === 'event-overview' && (name === 'Song' || name === 'Additional artists'),
+            test: cell => _findingUppercaseMbids(cell).length > 0,
+            detail: cell => {
+                const ids = _findingUppercaseMbids(cell);
+                return ids.length ? ids.join(', ') : null;
+            },
+            tint: _findingTintSetting('sa_findings_tint_mbid_case'),
         },
         {
             id: 'rec-live-sep', level: 'warn', glyph: '➖', scope: 'cell',
@@ -57453,6 +57677,15 @@ a { color: #1565c0; }`;
     //
     // Detection: look for <h2 class="appears-on-releases"> whose next meaningful
     // sibling is a <p> containing "No releases found which feature this recording."
+    // Event page: the setlist's "(with …)" artists are /work/ links natively
+    // (MusicBrainz's setlist syntax links every name on a song line as a
+    // work) — point them at the artist on the initial page as well, before
+    // any button. The pageType itself is opt-in (sa_enable_event_overview).
+    if (pageType === 'event-overview') {
+        const _fixedWith = _eventSetlistFixLinks(document.querySelector('#content p.setlist'));
+        if (_fixedWith) Lib.debug('init', `event-overview: ${_fixedWith} setlist "(with …)" link(s) re-pointed to /artist/.`);
+    }
+
     if (pageType === 'recording-releases') {
         const appearsH2 = document.querySelector('h2.appears-on-releases');
         if (appearsH2) {
@@ -83465,6 +83698,11 @@ a { color: #1565c0; }`;
         (activeDefinition?.features?._dynamicArColumnGlyphs || []).forEach(
             ({ columnName, glyphClass }) => _initColHeaderGlyph(columnName, glyphClass)
         );
+        // Event page: every single-kind entity column shows its glyph in the
+        // header; applyEventDetailsToTables() took it off the cells.
+        if (activeDefinition?.type === 'event-overview') {
+            Object.entries(_eventColGlyphs()).forEach(([columnName, glyphClass]) => _initColHeaderGlyph(columnName, glyphClass));
+        }
 
         // Re-apply the "extracted column" header background to every
         // release-tracks column extracted from the Title cell's "ARs" data

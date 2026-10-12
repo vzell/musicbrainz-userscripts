@@ -21941,3 +21941,43 @@ Partial merge gate. Env: 2026-10-12T14:02:37Z, stopped by the user at about 14:3
 column's width"). That test passes 3/3 alone (`--repeat-each=3`), so it is a
 load-sensitive flake under 2 workers, not this branch. The full suite is
 deferred until the follow-up work branched from here is done.
+
+## 2026-10-12 — event-overview: Video column, header glyphs, setlist "(with …)" links, mixed-case MBIDs (WIP.3)
+
+Env: 2026-10-12T15:44Z · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.40.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs). Snapshots: from the user's browser, versions unknown.
+
+Snapshots (in `debug/`, gitignored):
+- `2024-05-23-initial.html` — event 4379731e-… (Grosvenor House). Despite its
+  name it is a RENDERED page: "Recordings" and "Setlist: Songs" both show
+  `<span class="recordinglink"></span><span class="video" title="This recording
+  is a video"></span>` in the Recording cell, and the setlist row lists "Thunder
+  Road" twice — one recording, named by "recording location for" AND "shot for".
+  Every typed column carries its entity glyph on each cell (`artistlink`,
+  `placelink`, `arealink` chain + `span.flag`, `recordinglink`).
+- `2026-06-04-initial.html` / `-final.html` — event cd595883-…. The native
+  `p.setlist` links every "(with …)" artist as `/work/<artist MBID>` (MusicBrainz's
+  setlist syntax: `[mbid|name]` on a `*` song line is always rendered as a work).
+  The converter already re-pointed them in the table; the initial page was left
+  wrong. FRP: "Trombone Shorty & the New Breed Brass Band" split into
+  "the New Breed Brass Band" — the "the" is the sentence's.
+- `2001-05-27-initial.html` / `-final.html` — event 26cead1c-… (Stone Pony).
+  The setlist's MBIDs were typed with uppercase letters:
+  `/work/E497263c-4f15-36c0-B27c-Dca99482962c` ("The Fever"),
+  `/work/70248960-Cb53-4ea4-943a-Edb18f7d336f` (Bruce Springsteen).
+
+**Root cause (2001-05-27):** every MBID regex on the setlist path was
+`/\/work\/[0-9a-f-]{36}/` without `/i` — `_eventSetlistSong()`'s works
+collection and its "(with …)" re-pointing, and `_eventSetlistGroups()`'s
+`workId`. "The Fever" matched no work link, so the song became plain text;
+Bruce Springsteen's link was never re-pointed and stayed a work. MusicBrainz
+resolves the mixed-case URLs (the user's check), so the fix matches with `/i`
+and keeps the case — which the new `mbid-uppercase` ⚠️ finding reads, to tell
+the user to edit the setlist.
+
+Fix and design: org/event-overview-pt.org, "WIP.3". Spec
+`tests/fixtures/event-overview-video-glyphs.spec.js` (10 tests): 9 fail on the
+pre-change code (checked in a scratch worktree of HEAD, the live userscript
+untouched), the 10th is the negative "no finding" case. Mutation list
+`scripts/mutations/event-overview-video-glyphs.json`: 9/9 caught, plus one
+guard no fixture can see (the converter's own `_eventSetlistFixLinks()` call —
+this single-page pageType always converts the live, already-repaired document).

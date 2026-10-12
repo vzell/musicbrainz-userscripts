@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1326+2026-10-11",
-    "schema_entries": 413,
+    "schema_entries": 414,
     "sections": 49,
-    "settings": 364,
-    "settings_with_default": 359,
+    "settings": 365,
+    "settings_with_default": 360,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 187,
+      "checkbox": 188,
       "color_picker": 62,
       "number": 54,
       "divider": 49,
@@ -430,6 +430,7 @@
     "sa_findings_tint_iswc": "Highlight invalid ISWCs as WARNING",
     "sa_findings_tint_live_credit": "Highlight live-recording credit dates as WARNING/ERROR",
     "sa_findings_tint_low_quality": "Highlight 🟠 low data quality releases as WARNING",
+    "sa_findings_tint_mbid_case": "Highlight setlist MBIDs written with uppercase letters as WARNING",
     "sa_findings_tint_no_front_image": "Highlight releases without a Front image as WARNING",
     "sa_findings_tint_no_medium_image": "Highlight physical releases without a Medium image as WARNING",
     "sa_findings_tint_pending": "Highlight cells with pending edits as WARNING",
@@ -795,6 +796,7 @@
     "sa_findings_tint_iswc": true,
     "sa_findings_tint_live_credit": true,
     "sa_findings_tint_low_quality": true,
+    "sa_findings_tint_mbid_case": true,
     "sa_findings_tint_no_front_image": true,
     "sa_findings_tint_no_medium_image": true,
     "sa_findings_tint_pending": true,

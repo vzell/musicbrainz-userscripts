@@ -1,5 +1,28 @@
 [
     {
+        "version": "WIP.3",
+        "date": "2026-10-12",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Event page: the setlist's \"(with …)\" artists link to the artist on the page itself, as soon as it loads — MusicBrainz's setlist syntax renders them as work links (_eventSetlistFixLinks()).",
+                    "Event page, \"Additional artists\": a lone leading \"the\" before a linked name is dropped (\"the New Breed Brass Band\" → \"New Breed Brass Band\"); an unlinked item (\"all performers\") is kept as it is.",
+                    "Event page: a setlist song or \"(with …)\" artist whose MBID was typed with uppercase letters is recognised again (event 26cead1c-…: \"The Fever\" came out as plain text and Bruce Springsteen stayed a work link). The links keep their case.",
+                    "Event page, setlist tables: a recording that two relationships name (\"recording location for\" and \"shot for\") is listed once in its row's Recording cell."
+                ]
+            },
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "Event page: a \"Video\" column after \"Recording\" in \"Recordings\" and the setlist tables, when a recording carries MusicBrainz's video icon — the icon moves there, with \"video\"/\"audio\" for sorting and the 📊 dropdown (shared ColumnDataExtractor.video()).",
+                    "Event page: each single-kind entity column (Artist, Place, Area, Recording, Release, Series, Song, Additional artists, …) shows its entity icon once in the header instead of on every cell, as on release tracklists (_eventColGlyphs(), _initColHeaderGlyph() now also on event-overview). Mixed \"Target\" columns keep their cell icons.",
+                    "New ⚠️ finding \"MBID contains uppercase letters\" (🔠, mbid-uppercase) on the event page's Song and Additional artists cells: tint and tooltip naming the MBID, a 📊 \"Findings - Warning\" entry in both columns, and a ⚠️ WARNING menu row. Its tint has its own setting, sa_findings_tint_mbid_case (on by default)."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.2",
         "date": "2026-10-12",
         "sections": [

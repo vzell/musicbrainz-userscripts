@@ -651,6 +651,7 @@ filter with a ✕ to remove it.
 | ⚠️     | Recording date and comment date differ in precision             | Release tracklist: Recording date           |
 | ⚠️     | Main-event track differs from the release group title           | Release tracklist: event columns            |
 | ⚠️     | No state code for a USA/Canada event location                   | Event-Country                               |
+| ⚠️     | Setlist MBID written with uppercase letters                     | Event page: Song, Additional artists        |
 | ⚠️     | Title in ALL UPPERCASE                                          | Title columns                               |
 | ⚠️     | Title truncated with "…"                                        | Title columns                               |
 | ⚠️     | Extra title information starts uppercase, e.g. "(Version 1)"    | Title columns                               |
@@ -1568,10 +1569,27 @@ Local Start Time 19:40 / End Time 22:29") sit under its heading. **Song** is a
 multi-row column: a medley line ("Land of Hope and Dreams / People Get
 Ready") stays one row with one list row per work. The artists of a "(with …)"
 line ("This Land Is Your Land (with Trombone Shorty & the New Breed Brass Band
-and all performers)") go into **Additional artists**, one row each, linked to
-the artist. **Also in** names the other parts that play the same work;
-**Recording** links the recording made at this event whose title is the song.
-A song without a work link is kept as text.
+and all performers)") go into **Additional artists**, one row each ("New
+Breed Brass Band", without the sentence's "the"), linked to the artist.
+MusicBrainz itself links them as works; the script points them at the artist
+on the page as soon as it loads, before any button. **Also in** names the
+other parts that play the same work; **Recording** links the recording made at
+this event whose title is the song, each recording once (even when two
+relationships, e.g. "recording location for" and "shot for", name it). A song
+without a work link is kept as text. A song or artist whose MBID was typed with
+uppercase letters ("[E497263c-…|The Fever]") is still recognised, and its cell
+is flagged ⚠️ "MBID contains uppercase letters" — MusicBrainz resolves the link,
+but the setlist should be edited to use the lowercase MBID (see
+[Warnings and errors](#warnings-and-errors)).
+
+**Video and entity icons.** When a recording carries MusicBrainz's video icon,
+**Recordings** and the setlist tables get a **Video** column right after
+**Recording**: the icon, and "video"/"audio" for sorting and the 📊 dropdown
+(a setlist row says "video" when any of its recordings is one). As on a release
+tracklist, a column that holds one kind of entity (**Artist**, **Place**,
+**Area**, **Recording**, **Release**, **Series**, **Song**, **Additional
+artists**, …) shows that entity's icon once in its header instead of on every
+cell; a column that mixes kinds (**Target**) keeps the icons on its cells.
 
 **Event art without leaving the page.** Above the tables, an **Event art (N)**
 section shows every Event Art Archive image of the event — posters, schedules,
