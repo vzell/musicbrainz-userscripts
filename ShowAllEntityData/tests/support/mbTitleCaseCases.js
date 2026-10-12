@@ -96,6 +96,19 @@ module.exports = [
     ['MY HOMETOWN', 'My Hometown'],
     ['', ''],
     ['1999', '1999'],
+    // A placeholder in MusicBrainz's special-purpose style stays as written.
+    ['[no title]', '[no title]'],
+    ['[unknown]', '[unknown]'],
+    // springsteenlyrics.com: card titles (every word capitalised) and the
+    // lyrics index (capitals).
+    ['The Promise: The Darkness On The Edge Of Town Story', 'The Promise: The Darkness on the Edge of Town Story'],
+    ['Pointer Sisters -- Fire / Love Is Like A Rolling Stone', 'Pointer Sisters — Fire / Love Is Like a Rolling Stone', { full: true }],
+    ['BABY I\'M SO COLD', 'Baby I’m So Cold', { full: true }],
+    ['BALLAD OF A SELF-LOADING PISTOL', 'Ballad of a Self‐Loading Pistol', { full: true }],
+    // Brucebase year pages: cities and countries.
+    ['THE NETHERLANDS', 'The Netherlands'],
+    ['NORTHERN IRELAND', 'Northern Ireland'],
+    ['ST. LOUIS', 'St. Louis'],
 
     // Typographic punctuation (`_mbTypography()`), on real titles.
     ['Don\'t Look Back', 'Don’t Look Back', { typo: true }],

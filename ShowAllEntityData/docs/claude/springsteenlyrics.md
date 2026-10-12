@@ -644,3 +644,14 @@ it over the toolbar once pinned).
 registered first (thumbnails and stray subresources), page 1 at the list URL,
 and a predicate route for every `page=N`/`pg=N` fetch (a glob cannot work: the
 list URL already contains `?`). Mutation list: `scripts/mutations/sl-support.json`.
+
+## Titles
+
+Since 2026-10-13 (`feature/bb-recent-changes-relations`) the Title column of
+the card lists (`_slBuildRow()`, all kinds) and of the lyrics index
+(`applySlLyricsToTable()`) is in MusicBrainz title style with typographic
+punctuation, the site's text as the cell's tooltip — `sa_foreign_mb_titles`,
+`sa_foreign_typography`, both on by default. The cover's `alt` keeps the
+site's text. The sl specs load with both OFF (`slFixture.js`'s `titles`);
+`tests/fixtures/mb-title-case.spec.js` covers the ON side. See
+docs/claude/foreign-title-case.md.

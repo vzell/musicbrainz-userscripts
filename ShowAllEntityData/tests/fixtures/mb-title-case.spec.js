@@ -18,6 +18,7 @@ const {
 } = require('../support/bbFixture');
 const { JL_BUTTON, loadJlListPage, renderedJlRows } = require('../support/jlFixture');
 const { loadBsRecordsPage, renderedBsRows } = require('../support/bsFixture');
+const { loadSlListPage, renderedSlRows } = require('../support/slFixture');
 const { waitForRenderComplete } = require('../support/browser');
 const { columnFilterInput } = require('../support/filterSortAssertions');
 
@@ -130,6 +131,26 @@ test('brucespringsteen.it: capitals become title case, "(THE)" moves to the fron
     expect(errors).toEqual([]);
 });
 
+test('springsteenlyrics.com bootlegs and lyrics: titles in MusicBrainz style', async ({ page }) => {
+    const errors = trackPageErrors(page);
+    let { spec } = await loadSlListPage(page, { kind: 'bootlegs', titles: true });
+    await press(page, spec.button);
+    let titles = (await renderedSlRows(page)).map((r) => r.Title);
+    expect(titles).toContain('Live at the Matrix');
+    expect(titles).toContain('A Night Worth Spending in Richmond');
+    expect(titles).not.toContain('Live At The Matrix');
+    expect(await cellTip(page, 'Title', 'Live at the Matrix')).toBe('As written on the site:\nLive At The Matrix');
+
+    ({ spec } = await loadSlListPage(page, { kind: 'lyrics-b', titles: true }));
+    await press(page, spec.button);
+    titles = (await renderedSlRows(page)).map((r) => r.Title);
+    expect(titles).toContain('Baby Doll');
+    expect(titles).toContain('Baby Don’t Go');
+    expect(titles).toContain('Baby & Me (Blondie)');
+    expect(titles.filter((t) => /^[A-Z '&()]{6,}$/.test(t))).toEqual([]);
+    expect(errors).toEqual([]);
+});
+
 test.describe('Brucebase year pages: Venue and the songs', () => {
     test('1985: venues and songs in MusicBrainz style; a lower-case filter still finds them', async ({ page }) => {
         const errors = trackPageErrors(page);
@@ -138,8 +159,14 @@ test.describe('Brucebase year pages: Venue and the songs', () => {
         const rows = await renderedBbYearRows(page);
         const hampton = rows.find((r) => r.Date === '1985-01-04');
         expect(hampton.Venue).toBe('Hampton Roads Coliseum');
-        // City, State and Country are not titles and stay as the site writes them.
-        expect(hampton.City).toBe('HAMPTON');
+        // City and Country too ("USA" stays); State is a code or a region and stays.
+        expect(hampton.City).toBe('Hampton');
+        expect(hampton.State).toBe('VA');
+        expect(hampton.Country).toBe('USA');
+        const sydney = rows.find((r) => r.City === 'Sydney');
+        expect(sydney && [sydney.State, sydney.Country]).toEqual(['NEW SOUTH WALES', 'Australia']);
+        expect(rows.filter((r) => /^[A-Z ]{4,}$/.test(r.City) || (r.Country !== 'USA' && /^[A-Z ]{4,}$/.test(r.Country)))).toEqual([]);
+        expect(await cellTip(page, 'City', 'Hampton')).toBe('As written on the site:\nHAMPTON');
         expect(hampton._setlist).toContain('Born in the U.S.A.');
         expect(hampton._setlist).toContain('I’m on Fire');
         expect(hampton._setlist).toContain('Santa Claus Is Comin’ to Town');

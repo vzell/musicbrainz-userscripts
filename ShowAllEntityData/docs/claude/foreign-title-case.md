@@ -22,15 +22,23 @@ converters, so nothing changes on MusicBrainz:
 
 | Site / pageType     | Column(s)                         | Through                                    |
 |---------------------|-----------------------------------|--------------------------------------------|
+| springsteenlyrics.com `sl-collection`, `sl-collection-intro`, `sl-bootlegs`, `sl-brucelegs` | Title | `_mbSiteTitleText()` in `_slBuildRow()` (the cover's alt text keeps the site's) |
+| springsteenlyrics.com `sl-lyrics` | Title                     | `_mbSetSiteTitle()` in `applySlLyricsToTable()` |
 | jungleland.it `jl-list` | Title                         | `_mbSetSiteTitle()` in `_jlBuildRow()`     |
 | brucespringsteen.it `bs-records` | Title                | `_mbSetSiteTitle()` in `_bsBuildRow()`     |
 | Brucebase `bb-songs` | Title                            | `_mbSetSiteTitle()` in `_bbBuildRow()`     |
-| Brucebase `bb-year` / `bb-home` | Venue                 | `_mbSetSiteTitle()` in `_bbYearBuildRow()` |
+| Brucebase `bb-year` / `bb-home` | Venue, City, Country (not "USA") | `_mbSetSiteTitle()` in `_bbYearBuildRow()` |
 | Brucebase `bb-year` / `bb-home` | Soundcheck, Setlist (each song row) | `_mbSiteTitleNodes(li, {capsOnly, skipSel})` |
 | Brucebase `bb-relations` | Name, Sort name (typography only — names, not titles) | `_bbRelationsBuildRow()` |
 
-Not: City, State, Country, Tour, Notes (prose), springsteenlyrics.com (not
-asked for), Recent changes (a log of page names).
+Not: State (a code, "NJ", or a region), Tour, Notes (prose), Recent changes
+(a log of page names). Country "USA" is left as it is by request; it is also
+in `_MBTC_ACRONYMS`, so the exception is belt and braces (its mutation is
+`"expect": "pass"`). springsteenlyrics.com and City/Country came with the
+user's second round (2026-10-13); the CD and vinyl bootleg list shares the
+card converter and so came along. A title wholly in square brackets
+("[no title]", "[unknown]", MusicBrainz's special-purpose style) is never
+touched.
 
 The site's own text stays reachable: a cell (or song row) whose text changed
 gets it as its tooltip, "As written on the site: …" (`_setTip()`, so the
@@ -111,7 +119,8 @@ song's `<strong>` (a tour premiere), `<em>` and link survive.
 
 `node scripts/check-mb-title-case.js --sample [--typo]` prints, for every
 saved snapshot in `debug/` (songs, jungleland.it, the three
-brucespringsteen.it lists, all 63 year pages' venues and songs), how many
+brucespringsteen.it lists, the springsteenlyrics.com cards and lyrics index,
+all 63 year pages' venues, cities, countries and songs), how many
 titles change and a spread of before → after. Use it to judge any rule change
 on the whole data, not just on the cases.
 
@@ -149,10 +158,10 @@ that reason, and its description says so.
 |---|---|
 | `tests/support/mbTitleCaseCases.js` | the cases, each a real title of one of the sites unless marked "constructed" |
 | `scripts/check-mb-title-case.js` | the cases in Node (no browser), `--sample [--typo]` over the snapshots |
-| `tests/fixtures/mb-title-case.spec.js` | the cases through `window.__saTest` in Chromium; per site the rendered titles (song list, jungleland.it, brucespringsteen.it "(THE)", 1985 venues and songs, 2018 notes kept, 2012 bold kept, set labels kept and the first song after one rewritten), the tooltips, a lower-case Setlist filter still matching, each setting alone |
-| `scripts/mutations/foreign-titles.json` | 15 planted defects; the per-node ellipsis is `"expect": "pass"` (no setlist in the year fixtures holds "..." or "--") |
+| `tests/fixtures/mb-title-case.spec.js` | the cases through `window.__saTest` in Chromium; per site the rendered titles (song list, jungleland.it, brucespringsteen.it "(THE)", springsteenlyrics.com bootlegs and lyrics, 1985 venues, cities, countries ("USA" kept, State untouched) and songs, 2018 notes kept, 2012 bold kept, set labels kept and the first song after one rewritten), the tooltips, a lower-case Setlist filter still matching, each setting alone |
+| `scripts/mutations/foreign-titles.json` | 20 planted defects; `"expect": "pass"`: the per-node ellipsis (no setlist in the year fixtures holds "..." or "--") and the "USA" exception (see above) |
 
 The converter specs (`bb-songs`, `bb-year`, `bb-home`, `jl-list`,
-`bs-records`) load with BOTH settings OFF: their loaders' `titles` option
-(default `false`, `tests/support/{bb,jl,bs}Fixture.js`) — they pin the sites'
+`bs-records`, every `sl-*` list spec) load with BOTH settings OFF: their
+loaders' `titles` option (default `false`, `tests/support/{bb,jl,bs,sl}Fixture.js`) — they pin the sites'
 text as written, which is what the converters read.

@@ -2069,7 +2069,9 @@ gets a heading with the usual toolbar and one action button: **Items** on a
 collection list or the entry page, **Bootlegs** on either bootleg list. Pressing it
 fetches every page of that list (100 items each), turns the item cards into
 one table, and gives you the usual filters, sorting, column controls, export
-and Save/Load.
+and Save/Load. The **Title** column writes the titles the MusicBrainz way
+("Live At The Matrix" reads "Live at the Matrix", see *Titles in MusicBrainz
+style* further down).
 
 The entry page holds the whole collection (over 5000 items in more than 50
 pages), so the usual "many pages" and "many rows" questions come up before it
@@ -2208,7 +2210,8 @@ pages) gets one button, **Lyrics**. The site lists its songs one first letter
 per page. Pressing it fetches every letter, whichever page you start on, and
 turns the over 3,500 song lines into one table:
 
-- **Title** links to the song's lyrics page. **Lyrics** is ✓ when that page
+- **Title** links to the song's lyrics page, written the MusicBrainz way
+  ("BABY I'M SO COLD" reads "Baby I’m So Cold"). **Lyrics** is ✓ when that page
   has lyrics, and ✗ when the site's plain icon says it has none.
 - **Version** is the site's text in brackets, as written ("Live 30 Sep 1987
   version", "Original Roy Orbison version"). It is also read into:
@@ -2384,7 +2387,9 @@ entry, with these columns:
 - **Venue:** the venue, linked to the entry's own page, written the
   MusicBrainz way ("HAMPTON ROADS COLISEUM" reads "Hampton Roads Coliseum").
   A second part such as "Summer Stage" stays with it.
-- **City**, **State** and **Country** (as the wiki writes them): a US state or Canadian province code
+- **City**, **State** and **Country** (City and Country written the
+  MusicBrainz way, "SYDNEY" reads "Sydney", "THE NETHERLANDS" "The
+  Netherlands"; a country of USA, and State, as the wiki writes them): a US state or Canadian province code
   goes in State, with USA or CANADA as the country. Elsewhere the country is
   written out, and State holds the region where the wiki gives one ("NEW SOUTH
   WALES").
@@ -2486,7 +2491,12 @@ The site's form still decides **what** is loaded: untick *ALL* and tick, say,
   meaning: N new page created, S content source text changed, T title
   changed, R page renamed/moved, A tags changed, M meta data changed, F
   file/attachment action. Filter it, or pick from its 📊 list.
-- **Date:** when, in your own time zone, as `2026-10-12 17:42:28`.
+- **Date** and **Time:** when, in your own time zone, as `2026-10-12` and
+  `17:42:28`. **DD**, **MM**, **YYYY**, **Day** and **Month** (at the end of
+  the table) split the date up as on MusicBrainz pages, and the 📊 lists of
+  Date and Time offer the same sections as there: the year, month and
+  weekday of the date, and the part of the day (morning, afternoon, evening,
+  night).
 - **Revision:** the page's revision number; 0 for a new page.
 - **User:** who made the change, linked to their Wikidot profile (new tab).
 - **Comment:** the change's comment, where there is one.
@@ -2500,10 +2510,12 @@ twice.
 <details>
 <summary>Titles in MusicBrainz style</summary>
 
-On jungleland.it, brucespringsteen.it and Brucebase the tables write titles
-the way MusicBrainz writes English titles rather than each site's own way —
-the bootleg and record titles, the Brucebase song titles, and on a Brucebase
-year page the venues and every song of Soundcheck and Setlist. Two settings,
+On springsteenlyrics.com, jungleland.it, brucespringsteen.it and Brucebase
+the tables write titles the way MusicBrainz writes English titles rather
+than each site's own way — the collection, bootleg, record and lyrics
+titles, the Brucebase song titles, and on a Brucebase year page the venues,
+cities, countries (a country of USA stays as it is) and every song of
+Soundcheck and Setlist. Two settings,
 both **on** by default, under ⚙️ Settings → *🔤 Titles on the other sites*:
 
 - **Write titles in MusicBrainz style:** capitals as MusicBrainz uses them:
@@ -2514,7 +2526,8 @@ both **on** by default, under ⚙️ Settings → *🔤 Titles on the other site
   "BOSS AT HIS BEST (THE)" reads "The Boss at His Best". Acronyms keep their
   capitals (USA, NJ, MTV, U.S.A.). On a setlist only the song titles change:
   "(with Patti Scialfa)", set labels and bold or italic songs stay as they
-  are. City, State and Country are not titles and stay as the wiki writes them.
+  are. State stays as the wiki writes it, and so does a placeholder such as
+  "[no title]".
 - **Write typographic punctuation in titles:** ’ for an apostrophe ("Don’t",
   "Rock ’n’ Roll"), “double” and ‘single’ quotation marks, … for "...", — for
   "--", an en dash for a range ("1975–1985") and between the songs of a

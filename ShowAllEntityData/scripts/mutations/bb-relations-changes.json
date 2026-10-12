@@ -3,7 +3,10 @@
         "name": "the loop ignores features.pageRequest and reuses the live document",
         "why": "Recent changes has no URL pages: without the hook the loop reads the site's own 20-change list as page 1 and never POSTs. The spec pins one POST and 200 rows.",
         "edits": [
-            { "find": "const _pageRequest = activeDefinition.features?.pageRequest;", "replace": "const _pageRequest = null;" }
+            {
+                "find": "const _pageRequest = activeDefinition.features?.pageRequest;",
+                "replace": "const _pageRequest = null;"
+            }
         ],
         "spec": "tests/fixtures/bb-recent-changes.spec.js",
         "grep": "\"200\": one POST",
@@ -13,7 +16,10 @@
         "name": "the request asks for the site's default 20 per page",
         "why": "The request's whole point (\"change to 200 revisions per page beforehand\"): the spec pins perpage=200 in every POST.",
         "edits": [
-            { "find": "            perpage: String(_BB_CHANGES_PER_PAGE),", "replace": "            perpage: '20'," }
+            {
+                "find": "            perpage: String(_BB_CHANGES_PER_PAGE),",
+                "replace": "            perpage: '20',"
+            }
         ],
         "spec": "tests/fixtures/bb-recent-changes.spec.js",
         "grep": "\"200\": one POST|\"1,000\"",
@@ -23,7 +29,10 @@
         "name": "the button's pageCount is ignored",
         "why": "\"1,000\" must POST pages 1 to 5; with maxPage fixed at 1 it would load 200.",
         "edits": [
-            { "find": "maxPage = Math.max(1, activeDefinition.features.pageCount || 1);", "replace": "maxPage = 1;" }
+            {
+                "find": "maxPage = Math.max(1, activeDefinition.features.pageCount || 1);",
+                "replace": "maxPage = 1;"
+            }
         ],
         "spec": "tests/fixtures/bb-recent-changes.spec.js",
         "grep": "\"1,000\"",
@@ -33,7 +42,10 @@
         "name": "the body's token is not the cookie's",
         "why": "Wikidot refuses a request whose wikidot_token7 field differs from the cookie (wrong_token7). The spec compares the two.",
         "edits": [
-            { "find": "            wikidot_token7: token\n", "replace": "            wikidot_token7: 'x'\n" }
+            {
+                "find": "            wikidot_token7: token\n",
+                "replace": "            wikidot_token7: 'x'\n"
+            }
         ],
         "spec": "tests/fixtures/bb-recent-changes.spec.js",
         "grep": "\"200\": one POST",
@@ -43,7 +55,10 @@
         "name": "the site's form is not read",
         "why": "What the press loads is what the site's form asks for (revision types, category); the spec ticks two types and a category.",
         "edits": [
-            { "find": "return { options: JSON.stringify(opts), categoryId: document.getElementById('rev-category')?.value || '' };", "replace": "return { options: '{\"all\":true}', categoryId: '' };" }
+            {
+                "find": "return { options: JSON.stringify(opts), categoryId: document.getElementById('rev-category')?.value || '' };",
+                "replace": "return { options: '{\"all\":true}', categoryId: '' };"
+            }
         ],
         "spec": "tests/fixtures/bb-recent-changes.spec.js",
         "grep": "the site's form decides",
@@ -53,7 +68,10 @@
         "name": "the category prefix stays in the Page title",
         "why": "The site prints \"song: Going Home …\"; Category holds the prefix and Page the title alone. The spec compares every Page cell with the title read independently.",
         "edits": [
-            { "find": "            title = title.slice(category.length + 1).trim();\n", "replace": "" }
+            {
+                "find": "            title = title.slice(category.length + 1).trim();\n",
+                "replace": ""
+            }
         ],
         "spec": "tests/fixtures/bb-recent-changes.spec.js",
         "grep": "\"200\": one POST",
@@ -63,7 +81,10 @@
         "name": "\"(new)\" is not revision 0",
         "why": "A new page's revision is \"(new)\" on the site, revision 0 in Wikidot; the integer column needs the number. The spec pins every Revision cell and a sort that starts at 0.",
         "edits": [
-            { "find": "cell(rm ? rm[0] : (/new/i.test(revText) ? '0' : revText));", "replace": "cell(rm ? rm[0] : revText);" }
+            {
+                "find": "cell(rm ? rm[0] : (/new/i.test(revText) ? '0' : revText));",
+                "replace": "cell(rm ? rm[0] : revText);"
+            }
         ],
         "spec": "tests/fixtures/bb-recent-changes.spec.js",
         "grep": "\"200\": one POST|Revision sorts",
@@ -73,7 +94,10 @@
         "name": "the time is UTC, not the reader's",
         "why": "The site's own script shows a change's time in the reader's zone; the spec runs in Europe/Berlin and pins every Date cell.",
         "edits": [
-            { "find": "`${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`", "replace": "`${z(d.getUTCHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`" }
+            {
+                "find": "`${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`",
+                "replace": "`${z(d.getUTCHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`"
+            }
         ],
         "spec": "tests/fixtures/bb-recent-changes.spec.js",
         "grep": "\"200\": one POST",
@@ -83,7 +107,10 @@
         "name": "a Wikidot error answer is taken as an empty page",
         "why": "status \"wrong_token7\" must fail the page (the loop stops), not render nothing and go on to pages 2-5.",
         "edits": [
-            { "find": "if (data?.status !== 'ok' || typeof data.body !== 'string') {", "replace": "if (false) {" }
+            {
+                "find": "if (data?.status !== 'ok' || typeof data.body !== 'string') {",
+                "replace": "if (false) {"
+            }
         ],
         "spec": "tests/fixtures/bb-recent-changes.spec.js",
         "grep": "Wikidot error answer",
@@ -93,7 +120,10 @@
         "name": "the site's own list stays visible above the table",
         "why": "The live page shows the table only; the spec pins #site-changes-list hidden.",
         "edits": [
-            { "find": "                list.classList.add('mb-bb-hidden');\n", "replace": "" }
+            {
+                "find": "                list.classList.add('mb-bb-hidden');\n",
+                "replace": ""
+            }
         ],
         "spec": "tests/fixtures/bb-recent-changes.spec.js",
         "grep": "\"200\": one POST",
@@ -103,7 +133,10 @@
         "name": "the site's select is not set to 200",
         "why": "The request: \"change to 200 revisions per page beforehand\". The spec pins #rev-perpage at 200 on load.",
         "edits": [
-            { "find": "        if (/^\\/system:recent-changes\\/?$/.test(window.location.pathname)) _bbChangesPerPageSelect();\n", "replace": "" }
+            {
+                "find": "        if (/^\\/system:recent-changes\\/?$/.test(window.location.pathname)) _bbChangesPerPageSelect();\n",
+                "replace": ""
+            }
         ],
         "spec": "tests/fixtures/bb-recent-changes.spec.js",
         "grep": "three buttons on the injected",
@@ -113,7 +146,10 @@
         "name": "Relations: the sort name is never turned round",
         "why": "Name is \"Bryan Adams\" for \"Adams, Bryan\"; the spec pins five such names.",
         "edits": [
-            { "find": "        if (parts.length !== 2 || !parts[0] || !parts[1] || parts[1].includes('&')) return t;", "replace": "        return t;" }
+            {
+                "find": "        if (parts.length !== 2 || !parts[0] || !parts[1] || parts[1].includes('&')) return t;",
+                "replace": "        return t;"
+            }
         ],
         "spec": "tests/fixtures/bb-relations.spec.js",
         "grep": "Name is the sort name",
@@ -123,7 +159,10 @@
         "name": "Relations: a band name with a comma is turned round too",
         "why": "\"Crosby, Stills & Nash\" is a name, not a sort form; the \"&\" after the comma tells them apart.",
         "edits": [
-            { "find": "        if (parts.length !== 2 || !parts[0] || !parts[1] || parts[1].includes('&')) return t;", "replace": "        if (parts.length !== 2 || !parts[0] || !parts[1]) return t;" }
+            {
+                "find": "        if (parts.length !== 2 || !parts[0] || !parts[1] || parts[1].includes('&')) return t;",
+                "replace": "        if (parts.length !== 2 || !parts[0] || !parts[1]) return t;"
+            }
         ],
         "spec": "tests/fixtures/bb-relations.spec.js",
         "grep": "Name is the sort name|_bbRelationDisplayName",
@@ -133,7 +172,10 @@
         "name": "Relations: the group heading is not mapped to a Type",
         "why": "\"Persons\"/\"Bands\" become Person/Band; the spec compares every row's Type.",
         "edits": [
-            { "find": "type = g === 'Persons' ? 'Person' : g === 'Bands' ? 'Band' : g;", "replace": "type = g;" }
+            {
+                "find": "type = g === 'Persons' ? 'Person' : g === 'Bands' ? 'Band' : g;",
+                "replace": "type = g;"
+            }
         ],
         "spec": "tests/fixtures/bb-relations.spec.js",
         "grep": "every entry of the tabs",
@@ -143,7 +185,10 @@
         "name": "Relations: the tabview finder still looks for song links",
         "why": "_bbFindSongTabview() takes the link prefix; with \"/song:\" fixed the Relations tabview is never found and nothing is converted.",
         "edits": [
-            { "find": "nav.querySelector(`a[href^=\"${prefix}\"]`) !== null;", "replace": "nav.querySelector('a[href^=\"/song:\"]') !== null;" }
+            {
+                "find": "nav.querySelector(`a[href^=\"${prefix}\"]`) !== null;",
+                "replace": "nav.querySelector('a[href^=\"/song:\"]') !== null;"
+            }
         ],
         "spec": "tests/fixtures/bb-relations.spec.js",
         "grep": "every entry of the tabs",
@@ -153,7 +198,10 @@
         "name": "Relations: names keep their keyboard apostrophes",
         "why": "With sa_foreign_typography on, \"D'Angelo\" is \"D’Angelo\" in both name columns.",
         "edits": [
-            { "find": "const typo = (t) => (_mbTypographyOn() ? _mbTypography(t) : t);", "replace": "const typo = (t) => t;" }
+            {
+                "find": "const typo = (t) => (_mbTypographyOn() ? _mbTypography(t) : t);",
+                "replace": "const typo = (t) => t;"
+            }
         ],
         "spec": "tests/fixtures/bb-relations.spec.js",
         "grep": "typographic apostrophes",
@@ -163,10 +211,39 @@
         "name": "Relations: Load from Disk does not convert the fresh page's tabs",
         "why": "The reloaded page holds the tabview again; without the converter the file renders with the tabs still there.",
         "edits": [
-            { "find": "            if (activeDefinition.features?.bbRelationsToTable) {\n                applyBbRelationsToTable(activeDefinition);\n            }\n            if (activeDefinition.features?.bbChangesToTable) {", "replace": "            if (activeDefinition.features?.bbChangesToTable) {" }
+            {
+                "find": "            if (activeDefinition.features?.bbRelationsToTable) {\n                applyBbRelationsToTable(activeDefinition);\n            }\n            if (activeDefinition.features?.bbChangesToTable) {",
+                "replace": "            if (activeDefinition.features?.bbChangesToTable) {"
+            }
         ],
         "spec": "tests/fixtures/bb-relations.spec.js",
         "grep": "Save to Disk",
+        "expect": "fail"
+    },
+    {
+        "name": "Recent changes: date and time stay in one Date cell",
+        "why": "Date is YYYY-MM-DD and Time HH:MM:SS, two columns, so Date takes the dateParts split and Time the time-of-day 📊 section.",
+        "edits": [
+            {
+                "find": "        cell(when.date);\n        cell(when.time);",
+                "replace": "        cell(`${when.date} ${when.time}`);\n        cell('');"
+            }
+        ],
+        "spec": "tests/fixtures/bb-recent-changes.spec.js",
+        "grep": "\"200\": one POST|split into DD|📊 sections",
+        "expect": "fail"
+    },
+    {
+        "name": "Recent changes: Date is not run through dateParts",
+        "why": "Without the extractor there are no DD / MM / YYYY / Day / Month columns and no \"Date info\" sections.",
+        "edits": [
+            {
+                "find": "                    { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }\n                ],\n                integerColumns: [\n                    { sourceColumn: 'Revision', align: 'R' },",
+                "replace": "                ],\n                integerColumns: [\n                    { sourceColumn: 'Revision', align: 'R' },"
+            }
+        ],
+        "spec": "tests/fixtures/bb-recent-changes.spec.js",
+        "grep": "split into DD|📊 sections",
         "expect": "fail"
     }
 ]

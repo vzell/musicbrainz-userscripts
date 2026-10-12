@@ -130,7 +130,12 @@ const SL_KINDS = {
  * Loads one SL list fixture with the userscript injected.
  *
  * @param {import('@playwright/test').Page} page
- * @param {{ kind: ('collection'|'collection-intro'|'sampler'|'memorabilia'|'bootlegs'|'brucelegs'|'lyrics-intro'|'lyrics-b'|'bootlegs-intro'), enabled?: boolean, settingsOverride?: Object<string, *>, startPage?: number, url?: string }} opts
+ * @param {{ kind: ('collection'|'collection-intro'|'sampler'|'memorabilia'|'bootlegs'|'brucelegs'|'lyrics-intro'|'lyrics-b'|'bootlegs-intro'), enabled?: boolean, titles?: boolean, settingsOverride?: Object<string, *>, startPage?: number, url?: string }} opts
+ *   `titles` seeds `sa_foreign_mb_titles` and `sa_foreign_typography`
+ *   (default `false` here, although both settings default to ON: these
+ *   loaders serve the converter specs, which pin the site's text as
+ *   written; tests/fixtures/mb-title-case.spec.js loads with
+ *   `titles: true`).
  *   `enabled` seeds `sa_enable_springsteenlyrics` (default `true`; the
  *   setting itself defaults to OFF). `startPage` (default 1) opens the list
  *   on that page: its file is the live document, at the list URL with the
@@ -142,7 +147,7 @@ const SL_KINDS = {
  *   page made from the moment of loading (for "no MusicBrainz call" checks),
  *   and the kind's {@link SL_KINDS} entry.
  */
-async function loadSlListPage(page, { kind, enabled = true, settingsOverride = {}, startPage = 1, url = null }) {
+async function loadSlListPage(page, { kind, enabled = true, titles = false, settingsOverride = {}, startPage = 1, url = null }) {
     const spec = SL_KINDS[kind];
     const startUrl = new URL(url || spec.url);
     if (startPage !== 1) startUrl.searchParams.set(spec.pageParam, String(startPage));
@@ -155,7 +160,9 @@ async function loadSlListPage(page, { kind, enabled = true, settingsOverride = {
         url: startUrl.toString(),
         fixtureFile: spec.pages[startPage - 1],
         testMode: true,
-        settingsOverride: { sa_enable_springsteenlyrics: enabled, ...settingsOverride },
+        settingsOverride: {
+            sa_enable_springsteenlyrics: enabled, sa_foreign_mb_titles: titles, sa_foreign_typography: titles, ...settingsOverride,
+        },
     });
 
     await page.route((url) => url.hostname === 'springsteenlyrics.com' && url.pathname === spec.pathname

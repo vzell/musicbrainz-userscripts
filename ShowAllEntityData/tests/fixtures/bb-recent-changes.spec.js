@@ -22,7 +22,9 @@ const { waitForRenderComplete } = require('../support/browser');
 const { waitForSortSettled, columnFilterInput } = require('../support/filterSortAssertions');
 const { clickToolbarItem } = require('../support/toolbarMenu');
 
-const HEADERS = ['Page', 'Category', 'Flags', 'Date', 'Revision', 'User', 'Comment'];
+const HEADERS = ['Page', 'Category', 'Flags', 'Date', 'Time', 'Revision', 'User', 'Comment'];
+// The Date column's dateParts split, appended after the converter's own columns.
+const DATE_PARTS = ['DD', 'MM', 'YYYY', 'Day', 'Month'];
 const TZ = 'Europe/Berlin';
 test.use({ timezoneId: TZ });
 
@@ -60,7 +62,8 @@ function expectedRows(file) {
             Category: cat,
             _flagItems: flags.map((f) => `${f} ${FLAG_TEXT[f]}`),
             _flags: flags,
-            Date: fmt.format(new Date(epoch * 1000)),
+            Date: fmt.format(new Date(epoch * 1000)).slice(0, 10),
+            Time: fmt.format(new Date(epoch * 1000)).slice(11),
             Revision: (rev.match(/\d+/) || ['0'])[0],
             User: user ? clean(user[2]) : '',
             _userHref: user ? user[1] : '',
@@ -181,12 +184,12 @@ test.describe('bb-recent-changes', () => {
         expect(cookie).not.toBe('');
         expect(p.wikidot_token7).toBe(cookie);
 
-        expect(await renderedBbHeaders(page)).toEqual(HEADERS);
+        expect(await renderedBbHeaders(page)).toEqual([...HEADERS, ...DATE_PARTS]);
         const rows = await renderedRows(page);
         expect(rows).toHaveLength(200);
         // Every field of every row, in the site's order (newest first).
         expect(rows.map((r) => ({
-            Page: r.Page, Category: r.Category, _flagItems: r._flagItems, _flags: r._flags, Date: r.Date, Revision: r.Revision,
+            Page: r.Page, Category: r.Category, _flagItems: r._flagItems, _flags: r._flags, Date: r.Date, Time: r.Time, Revision: r.Revision,
             User: r.User, _userHref: r._userHref, Comment: r.Comment, _href: r._href,
         }))).toEqual(P1);
         expect(rows.every((r) => r._userTarget === '_blank')).toBe(true);
@@ -251,6 +254,49 @@ test.describe('bb-recent-changes', () => {
         expect(filtered.every((r) => r._flags.includes('N'))).toBe(true);
     });
 
+    test('Date is split into DD / MM / YYYY / Day / Month, as on MusicBrainz pages', async ({ page }) => {
+        await loadBbChangesPage(page);
+        await press(page, 'Show the last 200 changes');
+        const rows = await renderedRows(page);
+        const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'UTC' });
+        const month = new Intl.DateTimeFormat('en-US', { month: 'long', timeZone: 'UTC' });
+        rows.forEach((r) => {
+            const [y, m, d] = r.Date.split('-');
+            const at = new Date(`${r.Date}T12:00:00Z`);
+            expect([r.DD, r.MM, r.YYYY, r.Day, r.Month], r.Date)
+                .toEqual([String(parseInt(d, 10)), String(parseInt(m, 10)), y, weekday.format(at), month.format(at)]);
+        });
+    });
+
+    test('Date and Time get the 📊 sections their MusicBrainz namesakes get', async ({ page }) => {
+        await loadBbChangesPage(page);
+        await press(page, 'Show the last 200 changes');
+        // Date: the "Date info" sections of every dateParts-fed column.
+        const dateSections = await page.evaluate(() => window.__saTest.getUniqDropSections('Date'));
+        const dateLabels = dateSections.map((s) => s.label);
+        for (const label of ['Date info - Year', 'Date info - Month', 'Date info - Weekday']) {
+            expect(dateLabels, label).toContain(label);
+        }
+        const years = dateSections.find((s) => s.label === 'Date info - Year');
+        const wantYears = new Map();
+        P1.forEach((r) => wantYears.set(r.Date.slice(0, 4), (wantYears.get(r.Date.slice(0, 4)) || 0) + 1));
+        expect(years.items.reduce((n, i) => n + i.count, 0)).toBe(200);
+        expect(years.items.length).toBe(wantYears.size);
+        // Time: "Time info - Time of day", by the column's name, as an event page's "Time".
+        const timeSections = await page.evaluate(() => window.__saTest.getUniqDropSections('Time'));
+        const tod = timeSections.find((s) => s.label === 'Time info - Time of day');
+        expect(tod, 'Time info - Time of day').toBeTruthy();
+        const bucket = (t) => {
+            const [h, m] = t.split(':').map(Number);
+            const min = h * 60 + m;
+            return min < 240 ? 'Night' : min < 720 ? 'Morning' : min < 780 ? 'Lunch' : min < 1080 ? 'Afternoon' : 'Evening';
+        };
+        const want = new Map();
+        P1.forEach((r) => want.set(bucket(r.Time), (want.get(bucket(r.Time)) || 0) + 1));
+        const got = new Map(tod.items.map((i) => [i.label.replace('» time of day: ', '').split(' ')[0], i.count]));
+        expect(got).toEqual(want);
+    });
+
     test('Revision sorts as a number', async ({ page }) => {
         await loadBbChangesPage(page);
         await press(page, 'Show the last 200 changes');
@@ -293,7 +339,7 @@ test.describe('Recent changes: Save to Disk → Load from Disk', () => {
         const source = await context.newPage();
         await loadBbChangesPage(source);
         await press(source, 'Show the last 200 changes');
-        const before = (await renderedRows(source)).map((r) => `${r._href} ${r.Revision} ${r.Date}`);
+        const before = (await renderedRows(source)).map((r) => `${r._href} ${r.Revision} ${r.Date} ${r.Time}`);
         const downloadPromise = source.waitForEvent('download', { timeout: 60000 });
         await clickToolbarItem(source, '#mb-save-to-disk-btn');
         await source.locator('#sa-sd-save-confirm').waitFor({ state: 'visible', timeout: 15000 });
@@ -311,7 +357,7 @@ test.describe('Recent changes: Save to Disk → Load from Disk', () => {
         await renderBtn.waitFor({ state: 'attached', timeout: 15000 });
         await renderBtn.evaluate((el) => el.click());
         await waitForRenderComplete(page, { waitForAutoResize: false });
-        expect((await renderedRows(page)).map((r) => `${r._href} ${r.Revision} ${r.Date}`)).toEqual(before);
+        expect((await renderedRows(page)).map((r) => `${r._href} ${r.Revision} ${r.Date} ${r.Time}`)).toEqual(before);
         expect(await page.locator('table.tbl').count()).toBe(1);
         await expect(page.locator('#site-changes-list')).toBeHidden();
         expect(posts).toEqual([]);

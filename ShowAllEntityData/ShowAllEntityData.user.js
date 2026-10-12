@@ -4356,12 +4356,14 @@
             type: 'checkbox',
             default: true,
             description: 'On by default; matters only where one of the sites below is switched on. ' +
-                         'The tables built on jungleland.it, brucespringsteen.it and Brucebase show ' +
+                         'The tables built on springsteenlyrics.com, jungleland.it, brucespringsteen.it ' +
+                         'and Brucebase show ' +
                          'their titles the way MusicBrainz writes English titles instead of the way ' +
                          'each site does: "BORN IN THE USA" and "Born In The U.S.A." become "Born in ' +
                          'the USA" and "Born in the U.S.A.", "BOSS AT HIS BEST (THE)" becomes "The ' +
                          'Boss at His Best", "(Version 2)" becomes "(version 2)". On Brucebase this ' +
-                         'covers the song list\'s titles and a year page\'s venues and songs; notes ' +
+                         'covers the song list\'s titles and a year page\'s venues, cities, countries ' +
+                         '(except "USA") and songs; notes ' +
                          'such as "(with Patti Scialfa)" stay as written. Only capital letters ' +
                          'change, and a cell that changed shows the site\'s own text when you rest ' +
                          'the pointer on it. The rules are applied by machine, so a title that needs ' +
@@ -10592,7 +10594,9 @@
     /**
      * Builds the table row for one springsteenlyrics.com card.
      *
-     * Columns follow `_SL_HEADERS[kind]`. Title and Cover keep the item link
+     * Columns follow `_SL_HEADERS[kind]`. Title is in MusicBrainz title
+     * style while `sa_foreign_mb_titles`/`sa_foreign_typography` are on
+     * (`_mbSiteTitleText()`). Title and Cover keep the item link
      * (relative `collection.php?item=…`/`bootlegs.php?item=…`, which resolves
      * against the same directory on the live and on a fetched page). Cover
      * re-emits the card's thumbnail with `loading="lazy"`, so a consolidated
@@ -10640,7 +10644,12 @@
         } else {
             textCell('');
         }
-        linkCell(docContext.createTextNode(title));
+        // The card's title in MusicBrainz style (sa_foreign_mb_titles,
+        // sa_foreign_typography), the site's own text as the tooltip; the
+        // cover's alt text keeps the site's.
+        const shownTitle = _mbSiteTitleText(title);
+        linkCell(docContext.createTextNode(shownTitle));
+        if (shownTitle !== title) _setTip(tr.lastElementChild, `As written on the site:\n${title}`);
 
         const notes = Array.from(body.querySelectorAll('.colored-text')).map(el => el.textContent.trim());
         if (kind === 'bootlegs') {
@@ -10968,7 +10977,9 @@
             const titleTd = docContext.createElement('td');
             const link = docContext.createElement('a');
             link.setAttribute('href', a.getAttribute('href'));
-            link.textContent = a.textContent.replace(/\s+/g, ' ').trim();
+            // In MusicBrainz title style ("BABY I'M SO COLD" → "Baby I’m So
+            // Cold"), the site's capitals as the tooltip.
+            _mbSetSiteTitle(link, a.textContent.replace(/\s+/g, ' ').trim(), titleTd);
             titleTd.appendChild(link);
             tr.appendChild(titleTd);
             // bi-file-earmark-text: lyrics on the song page; the plain
@@ -13239,7 +13250,8 @@
      * keeps every letter but a word's first. With `capsOnly` a mixed part is
      * left exactly as written: a setlist's songs are in capitals and its
      * notes ("(with Patti Scialfa)") are not titles. A parenthesised part
-     * made only of descriptive words (`_MBTC_ETI`) is all lower case.
+     * made only of descriptive words (`_MBTC_ETI`) is all lower case. A
+     * title wholly in square brackets ("[no title]") is left as it is.
      *
      * A part in capitals inside parentheses counts as one only when the
      * title is in capitals outside them too; otherwise it is a name or an
@@ -13257,6 +13269,9 @@
     function _mbTitleCase(text, opts = {}) {
         const src = String(text || '');
         if (!/\p{L}/u.test(src)) return src;
+        // A title wholly in square brackets is a placeholder, MusicBrainz's
+        // own special-purpose style ("[no title]", "[unknown]"): as written.
+        if (/^\[[^\]]*\]$/.test(src.trim())) return src;
         const parts = [];
         const partRe = /[([][^()[\]]*[)\]]|[^()[\]]+|[()[\]]/g;
         let pm;
@@ -14820,9 +14835,9 @@
      * dropdown). The "Help Us" icon and the request text after it are the
      * Info wanted column instead.
      *
-     * While `sa_foreign_mb_titles` is on, Venue and the songs of Soundcheck
-     * and Setlist are in MusicBrainz title style, the site's capitals as the
-     * tooltip; in a song row only the part in capitals changes, so "(with
+     * While `sa_foreign_mb_titles` is on, Venue, City, Country (not "USA")
+     * and the songs of Soundcheck and Setlist are in MusicBrainz title
+     * style, the site's capitals as the tooltip; in a song row only the part in capitals changes, so "(with
      * Patti Scialfa)" and a set label stay as written (`_mbSiteTitleNodes()`
      * with `capsOnly`), and their punctuation typographic while
      * `sa_foreign_typography` is on.
@@ -14924,9 +14939,13 @@
             _mbSetSiteTitle(venueTd, venueText);
         }
         tr.appendChild(venueTd);
-        textCell(h.city);
+        // City and Country in MusicBrainz style too ("HAMPTON" → "Hampton",
+        // "THE NETHERLANDS" → "The Netherlands"); "USA" stays as it is.
+        // State is a code ("NJ") or a region and is left alone.
+        _mbSetSiteTitle(textCell(''), h.city);
         textCell(h.state);
-        textCell(h.country);
+        if (h.country === 'USA') textCell(h.country);
+        else _mbSetSiteTitle(textCell(''), h.country);
         textCell(entry.tour);
         listCell(soundcheck);
         listCell(setlist);
@@ -15093,7 +15112,7 @@
      * Column headers of the Brucebase Recent changes table, in order.
      * @type {string[]}
      */
-    const _BB_CHANGES_HEADERS = ['Page', 'Category', 'Flags', 'Date', 'Revision', 'User', 'Comment'];
+    const _BB_CHANGES_HEADERS = ['Page', 'Category', 'Flags', 'Date', 'Time', 'Revision', 'User', 'Comment'];
 
     /**
      * Revisions per AJAX page: the most the site's own "Revisions per page"
@@ -15220,21 +15239,26 @@
     }
 
     /**
-     * A change's time as local "YYYY-MM-DD HH:MM:SS", read from the epoch
-     * seconds in its `odate time_<n>` class — what the site's own script
-     * turns into "12 Oct 2026 - 17:42:28" in the reader's time zone. Without
-     * that class, the span's text as written.
+     * A change's local date ("YYYY-MM-DD") and time ("HH:MM:SS"), read from
+     * the epoch seconds in its `odate time_<n>` class — what the site's own
+     * script turns into "12 Oct 2026 - 17:42:28" in the reader's time zone.
+     * Two values for two columns: Date goes through the `dateParts`
+     * extractor and gets the "Date info" 📊 sections, a column named "Time"
+     * gets "Time info - Time of day" — the same as on MusicBrainz pages.
+     * Without that class, the span's text as written, as Date.
      *
      * @param {?Element} span The change's `span.odate`.
-     * @returns {string}
+     * @returns {{date: string, time: string}}
      */
     function _bbChangeDate(span) {
         const m = (span?.className || '').match(/\btime_(\d+)\b/);
-        if (!m) return _bbText(span);
+        if (!m) return { date: _bbText(span), time: '' };
         const d = new Date(parseInt(m[1], 10) * 1000);
         const z = (n) => String(n).padStart(2, '0');
-        return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ` +
-            `${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`;
+        return {
+            date: `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`,
+            time: `${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`
+        };
     }
 
     /**
@@ -15246,7 +15270,7 @@
      * Category is that prefix, read from the link ("/song:…"), empty for a
      * page in no category. Flags is a list, one row per flag letter (three
      * changes in 200 carry two, "S" and "T"), the letter before its meaning.
-     * Revision is the number in "(rev. 34)", 0 for "(new)". User links the
+     * Date and Time are the local date and time (`_bbChangeDate()`). Revision is the number in "(rev. 34)", 0 for "(new)". User links the
      * Wikidot profile in a new tab. Comment is the change's comment line.
      *
      * @param {Element}  item       The change.
@@ -15298,7 +15322,9 @@
             flagsTd.appendChild(ul);
         }
 
-        cell(_bbChangeDate(item.querySelector('td.mod-date span.odate')));
+        const when = _bbChangeDate(item.querySelector('td.mod-date span.odate'));
+        cell(when.date);
+        cell(when.time);
         const revText = _bbText(item.querySelector('td.revision-no'));
         const rm = revText.match(/\d+/);
         cell(rm ? rm[0] : (/new/i.test(revText) ? '0' : revText));
@@ -30092,7 +30118,16 @@
                 bbChangesToTable: true,
                 pageRequest: (p) => _bbChangesRequest(p),
                 pageCount: 1,
-                integerColumns: [ { sourceColumn: 'Revision', align: 'R' } ],
+                // Date is ISO, so the MusicBrainz date splitter applies
+                // unchanged, and with it the "Date info" 📊 sections; the
+                // "Time" column gets "Time info - Time of day" by its name.
+                columnExtractors: [
+                    { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
+                ],
+                integerColumns: [
+                    { sourceColumn: 'Revision', align: 'R' },
+                    { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' }
+                ],
                 stickyColumn: 'Page'
             },
             tableMode: 'single'

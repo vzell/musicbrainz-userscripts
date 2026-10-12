@@ -22207,3 +22207,31 @@ declared, all `"fail"`. Shared fetch-loop code (`fetchHtml(url, init)`, the
 `pageRequest` branch) checked with html-fetch-transient, resume-from-failed-page,
 bb-home, sl-lyrics and the other foreign-site specs; `test:full` deferred to the
 end of the branch stack (vzell-lap).
+
+## 2026-10-13 — second round: Recent changes Date/Time; titles on springsteenlyrics.com and the year pages' City/Country (WIP.9–WIP.11 amended)
+
+Env: 2026-10-12T23:50Z–2026-10-13T00:20Z · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.40.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+**Date / Time on Recent changes.** The user asked for the MusicBrainz 📊
+treatment of both columns. Read off the engine, no change needed there: a
+column fed to `dateParts` gets the "Date info - …" sections
+(`_dateExprColumnNames()` → `isDateExprCol`), and a column NAMED "Time" gets
+"Time info - Time of day" (`isTimeCol`, `_findCellTimeBucket()` reads the
+leading HH:MM, so "17:42:28" buckets). So the converter writes two columns
+(`_bbChangeDate()` returns `{date, time}`), and the definition adds the
+`dateParts` extractor as jl-list does. The `dateTimeParts` extractor that
+annotations/elections use was NOT taken: it keeps the source column and adds
+"<x> date"/"<x> time" synthetics, and the time one is not called "Time".
+
+**Titles.** springsteenlyrics.com card titles are already "every word
+capitalised" (89 of 158 sampled change, small words), the lyrics index in
+capitals (all change). One find: "[no title]" — MusicBrainz's own
+special-purpose style — would have become "[No Title]"; a title wholly in
+square brackets is now left alone. Cities and countries sampled from the 63
+cached year pages (531 cities, 38 countries) all read right ("The
+Netherlands", "Northern Ireland", "Ivory Coast"); "USA" stays by request, and
+is an acronym anyway (its explicit exception is mutation `"pass"`).
+
+Tests: bb-recent-changes 13/13, mb-title-case 9/9 (+110 cases), sl-* /
+bb-year / bb-home 64/64 with the settings off. New mutations 7/7 as declared
+(foreign-titles.json now 20, bb-relations-changes.json 19).

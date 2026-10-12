@@ -503,8 +503,12 @@ under `<h2 class="mb-bb-list-heading">Recent changes</h2>`; each fetched AJAX
 answer becomes rows (`_bbChangesBuildRow()`): **Page** (the title without the
 category prefix, linked), **Category** (from the link, "" for none),
 **Flags** (one row per letter: `span.mb-bb-flag` + the meaning), **Date**
-(local "YYYY-MM-DD HH:MM:SS" from the epoch, as the site's script shows it),
-**Revision** (integer; "(new)" is 0), **User** (profile, new tab),
+and **Time** (local "YYYY-MM-DD" and "HH:MM:SS" from the epoch, as the site's
+script shows it; two columns since the user's second round, 2026-10-13, so
+that Date goes through `dateParts` — DD, MM, YYYY, Day, Month — and both get
+their MusicBrainz 📊 sections with no engine change: "Date info - …" for a
+`dateParts`-fed column, "Time info - Time of day" for a column named
+"Time"), **Revision** (integer; "(new)" is 0), **User** (profile, new tab),
 **Comment**. Rows are not de-duplicated across pages: a change made while the
 pages load shifts the list by one, and that row then shows twice.
 
@@ -513,9 +517,9 @@ pages load shifts the list by one, and that row then shows twice.
 | Spec / script | Pins |
 |---|---|
 | `tests/fixtures/bb-relations.spec.js` | gate, toolbar, the fixture's shape (28 tabs, all distinct, the comma names); every entry one row with its type, letter and (typographic) sort name; the tabview gone, the counts kept, `<h2>` before the table; display names (five shapes, the "&" exception); typography on names and its setting; a Type filter; `bbRelationDisplayName`; Save → Load from Disk |
-| `tests/fixtures/bb-recent-changes.spec.js` (`timezoneId: Europe/Berlin`) | gate, three buttons, the select at 200, no request before a press; "200": one POST, every field (`moduleName`, `page`, `perpage` 200, `categoryId`, `options`, token = cookie), every column of all 200 rows against an independent regex read of the answer; "1,000": pages 1–5 in order; the site's form decides types and category; Flags rows and a Flags filter; Revision sorts from 0; a Wikidot error answer stops the run; an HTTP 500 on page 3 keeps pages 1–2; Save → Load from Disk with no request |
+| `tests/fixtures/bb-recent-changes.spec.js` (`timezoneId: Europe/Berlin`) | gate, three buttons, the select at 200, no request before a press; "200": one POST, every field (`moduleName`, `page`, `perpage` 200, `categoryId`, `options`, token = cookie), every column of all 200 rows against an independent regex read of the answer; Date's DD/MM/YYYY/Day/Month; the 📊 "Date info" sections on Date and "Time info - Time of day" on Time, counts against the answer; "1,000": pages 1–5 in order; the site's form decides types and category; Flags rows and a Flags filter; Revision sorts from 0; a Wikidot error answer stops the run; an HTTP 500 on page 3 keeps pages 1–2; Save → Load from Disk with no request |
 | `tests/fixtures/sl-include-regex.spec.js` | the new `@include` line: in and out |
-| `scripts/mutations/bb-relations-changes.json` | 17 planted defects |
+| `scripts/mutations/bb-relations-changes.json` | 19 planted defects |
 
 Fixtures: `python3 scripts/build-bb-fixtures.py` writes
 `tests/fixtures/bb-relations.html`, `bb-recent-changes.html` and
