@@ -595,7 +595,8 @@ themselves:
 quick filter and then closes. The panel closes on an outside click.
 
 **Cosmetics worth knowing**: count badges use a uniform monospace width so the
-numbers right-align; flag icons are on by default and can be switched off; the
+numbers right-align; flag icons (and, with *Instrument Icons Everywhere*
+installed, instrument icons) are on by default and can be switched off; the
 visible row count before scrolling is configurable (default 30) and also drives
 whether the panel flips upward.
 
@@ -1353,6 +1354,17 @@ Also available: **AcoustIDs** and **ISRCs** columns (both off by default), a
 raw **ARs** column, and a flag on live-recording credit dates that disagree with
 the recording date (Recording engineer, Performer, Vocals, Instruments, Recorded
 at event, Recorded at place).
+
+**Instrument icons.** With the userscript *MusicBrainz: Instrument Icons
+Everywhere* (by Lotheric) installed, the small instrument pictures it puts in
+front of instrument names are kept everywhere the consolidated table shows
+those names: the *Instruments* column, instruments credited inside other
+credit columns, the *Name* column of the instrument list, and instrument search
+results. A picture that loads after the table is built still arrives and stays
+through sorting and filtering. In the 📊 dropdown, an entry shows the picture
+of its instrument, and an *Instrument info - Icon* section counts the rows
+with and without one. An instrument without a picture can be one the script
+has no picture for, or one it has not loaded yet.
 
 **Cover art without leaving the page.** After **Tracks for Release**, a
 **Cover art (N)** section opens above the tracklist with every Cover Art

@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1311+2026-10-09",
-    "schema_entries": 412,
+    "script_version": "9.99.1326+2026-10-11",
+    "schema_entries": 413,
     "sections": 49,
-    "settings": 363,
-    "settings_with_default": 358,
+    "settings": 364,
+    "settings_with_default": 359,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 186,
+      "checkbox": 187,
       "color_picker": 62,
       "number": 54,
       "divider": 49,
@@ -330,6 +330,7 @@
     "sa_enable_density_control": "Enable Table Density Control",
     "sa_enable_direct_ctrl_char_shortcuts": "Enable Direct Ctrl+Letter Shortcuts",
     "sa_enable_dropdown_flag_icons": "Show Flag Icons In Unique-Values Dropdown",
+    "sa_enable_dropdown_instrument_icons": "Show Instrument Icons In Unique-Values Dropdown",
     "sa_enable_edits_diff_colors": "Enable old/new value diff colors in \"Edit details\"",
     "sa_enable_edits_type_colors": "Enable \"Edit#\"/\"Edit action\" column background colors",
     "sa_enable_event_overview": "Enable Event overview consolidation",
@@ -694,6 +695,7 @@
     "sa_enable_density_control": true,
     "sa_enable_direct_ctrl_char_shortcuts": false,
     "sa_enable_dropdown_flag_icons": true,
+    "sa_enable_dropdown_instrument_icons": true,
     "sa_enable_edits_diff_colors": true,
     "sa_enable_edits_type_colors": true,
     "sa_enable_event_overview": true,

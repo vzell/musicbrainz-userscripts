@@ -63,11 +63,39 @@ from the live DOM silently skips whatever is filtered out — and if it runs onc
 per fetch, those rows never get the data at all (§3.3, `initReleaseEventsColumn()`).
 Collect from `groupedRows`/`allRows` as well, or mirror onto the master row.
 
+**A third-party image is a post-render write too.** "Instrument Icons
+Everywhere" inserts its `img.mb-ii-icon` into a live cell whenever an icon
+becomes available, which is often after the render. It changes no text, so
+`_rowTextCache` and the text the filters read are unaffected (item 3 does not
+apply). It still owes the rest:
+`_iiMirrorLateIcons()` copies the icon onto the SOURCE row's matching anchor
+(same `href`, same ordinal in the cell), because a multi-table re-render
+clones the source row and a 📊 "Instrument info - Icon" tick matches source
+rows. It then drops the uniq-dropdown cache (item 1) and the filter-result
+keys that read icon presence (`_filterKeyReadsInstrumentIcon()`, item 2), and
+re-runs the filter only when an `ii-icon-*` entry is ticked (item 4). The
+observer behind it, `_iiInstallIconReconciler()`, looks only at added nodes
+that ARE an `img.mb-ii-icon`. A re-render adds whole `<tr>`s, so those records
+are skipped at the first check. It re-runs the filter only when a source row
+actually gained an icon, so an icon it cannot place on a source row can never
+cause a re-render loop.
+
+It is installed from the render tail when `_iiPresent()`, and that check
+CANNOT be cached as "no". Rows taken from a FETCHED page (a search, any page
+but the current one) are unstamped at render time. The script stamps them only
+after its debounce. So when nothing is stamped yet but SA's tables hold
+instrument links, `_iiInstallIconReconciler()` checks again
+(`_II_RECHECK_MS`), and on install it treats the icons already placed as late
+ones. A version that cached the first "no" hid the whole feature on the
+instrument search page (spec "a 📊 opened before the script stamped the
+fetched rows is refreshed once it has").
+
 Worked examples, all with fixture specs and mutation lists:
 `_msApplyLengthPrecision()` (⏱, one-shot), `initReleaseEventsColumn()` (one
 answer for many rows), `_maybeCorrectAreaFlagRegion()` (a stream, coalesced per
 frame by `_scheduleAreaFlagFilterRefresh()`), `_artSetInlineSortKey()` /
-`_artSyncSearchTextToSourceRow()` (per-cell, key-predicate invalidation).
+`_artSyncSearchTextToSourceRow()` (per-cell, key-predicate invalidation),
+`_iiMirrorLateIcons()` (a third-party image, key-predicate invalidation).
 
 ## `collapsableColumns`: list vs. prose cells
 

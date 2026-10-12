@@ -988,6 +988,15 @@
                          "Place/Country-Date columns, and release-tracks' own \"Recorded at place\" column."
         },
 
+        sa_enable_dropdown_instrument_icons: {
+            label: "Show Instrument Icons In Unique-Values Dropdown",
+            type: "checkbox",
+            default: true,
+            description: "When the \"MusicBrainz: Instrument Icons Everywhere\" userscript is installed, " +
+                         "show its instrument icon after each 📊 dropdown entry whose cell shows one. " +
+                         "Has no effect without that userscript."
+        },
+
         sa_enable_uvd_title_subtitle: {
             label: "Unique-Values Dropdown: Title Subtitles",
             type: "checkbox",
@@ -6053,6 +6062,303 @@
         return icons;
     }
 
+    // "MusicBrainz: Instrument Icons Everywhere" (@Lotheric) puts this image
+    // IMMEDIATELY BEFORE every visible instrument link and stamps the LINK
+    // with II_STAMP_ATTR; it never looks at a stamped link again. See
+    // docs/claude/release-tracks-and-length.md, "Instruments column:
+    // third-party instrument icons".
+    const II_ICON_SEL   = 'img.mb-ii-icon';
+    const II_STAMP_ATTR = 'data-ii-processed';
+
+    /**
+     * Returns the "Instrument Icons Everywhere" icon decorating an
+     * instrument anchor — its immediate previous sibling, the same adjacency
+     * the script itself tests before inserting one — or `null`.
+     *
+     * @param {HTMLAnchorElement} anchor
+     * @returns {?HTMLImageElement}
+     */
+    function _findInstrumentLinkIcon(anchor) {
+        const prev = anchor.previousSibling;
+        return (prev && prev.nodeType === Node.ELEMENT_NODE && prev.matches(II_ICON_SEL)) ? prev : null;
+    }
+
+    /**
+     * Copies an instrument anchor for a cell this script builds, WITH its
+     * "Instrument Icons Everywhere" icon. Never copy one with a bare
+     * `cloneNode(true)`: the clone keeps the script's stamp and loses the
+     * icon (a sibling, not a child), and the script then never decorates it.
+     *
+     * - Source has an icon: the icon is cloned in front of the anchor and the
+     *   stamp is kept, so the script does not add a second one.
+     * - Source has none (still loading, or the script's 'NONE' — the DOM
+     *   cannot tell which): the stamp is REMOVED from the clone, so the
+     *   script decorates this cell itself once it has an icon. A late icon
+     *   then reaches the source row through `_iiInstallIconReconciler()`.
+     * - Script absent: a plain clone; nothing to remove.
+     *
+     * @param {HTMLAnchorElement} anchor
+     * @returns {{node: DocumentFragment, anchor: HTMLAnchorElement}} `node`
+     *   to insert (icon clone, then anchor clone); `anchor` is the anchor
+     *   clone inside it, for the caller to tag.
+     */
+    function _cloneInstrumentAnchorWithIcon(anchor) {
+        const node = document.createDocumentFragment();
+        const aClone = anchor.cloneNode(true);
+        const icon = _findInstrumentLinkIcon(anchor);
+        if (icon) node.appendChild(icon.cloneNode(true));
+        else aClone.removeAttribute(II_STAMP_ATTR);
+        node.appendChild(aClone);
+        return { node, anchor: aClone };
+    }
+
+    let _iiSeen = false;
+    /**
+     * Whether "Instrument Icons Everywhere" is at work on this page — it has
+     * stamped at least one instrument link. Memoised once true. A "no" is
+     * NOT memoised: on a search page this script's rows come from a fresh
+     * fetch and are unstamped at render time, and the script stamps them
+     * only after its debounce. Until then each call is one document-wide
+     * `querySelector`, made per render and per 📊 open (which itself scans
+     * every row of the column), so a user without the script pays next to
+     * nothing.
+     *
+     * @returns {boolean}
+     */
+    function _iiPresent() {
+        if (!_iiSeen) _iiSeen = !!document.querySelector('[' + II_STAMP_ATTR + ']');
+        return _iiSeen;
+    }
+
+    /**
+     * The instrument links in `cell` that "Instrument Icons Everywhere"
+     * decorates: those with visible text (it skips textless ones).
+     *
+     * @param {?Element} cell
+     * @returns {HTMLAnchorElement[]}
+     */
+    function _iiInstrumentLinks(cell) {
+        if (!cell) return [];
+        return Array.from(cell.querySelectorAll('a[href*="/instrument/"]'))
+            .filter(a => a.textContent.trim() !== '');
+    }
+
+    /**
+     * The "Instrument Icons Everywhere" icon of `root`'s ONLY instrument
+     * link, or `null` when it has none or several — what a 📊 entry for that
+     * cell (or list item) can honestly show as its own icon.
+     *
+     * @param {?Element} root - a cell or one `<li>` of it.
+     * @returns {?HTMLImageElement}
+     */
+    function _iiSoleIcon(root) {
+        const links = _iiInstrumentLinks(root);
+        return links.length === 1 ? _findInstrumentLinkIcon(links[0]) : null;
+    }
+
+    /**
+     * Wraps a copy of an instrument icon for the END of a 📊 entry — the
+     * same trailing slot a country flag gets (docs/claude/uniq-dropdown.md:
+     * a real image never goes in the leading marker slot). The script styles
+     * its image inline with `!important`, so the clone keeps its size.
+     *
+     * @param {HTMLImageElement} icon
+     * @returns {HTMLSpanElement}
+     */
+    function _iiTrailingIconSlot(icon) {
+        const slot = document.createElement('span');
+        slot.className = 'mb-uniq-ii-icon';
+        slot.setAttribute('aria-hidden', 'true');
+        slot.style.display       = 'inline-flex';
+        slot.style.alignItems    = 'center';
+        slot.style.marginLeft    = '4px';
+        slot.style.verticalAlign = 'middle';
+        slot.appendChild(icon.cloneNode(true));
+        return slot;
+    }
+
+    /**
+     * Whether a filter key can read instrument-icon presence: only a checked
+     * `ii-icon-yes`/`ii-icon-no` 📊 entry. The icon has no text, so no typed
+     * filter can.
+     *
+     * @param {string} key
+     * @returns {boolean}
+     */
+    function _filterKeyReadsInstrumentIcon(key) {
+        return key.includes('"ii-icon-');
+    }
+
+    /**
+     * Once per fetch (and disk load), right after the render: hands every
+     * STAMPED but icon-less instrument anchor in this script's tables back to
+     * "Instrument Icons Everywhere" by removing the stamp — on the live rows
+     * and on the source rows.
+     *
+     * The known copy sites go through `_cloneInstrumentAnchorWithIcon()`.
+     * This is the net under every other extractor that copies a cell's
+     * anchor with a bare `cloneNode(true)`: such a copy keeps the stamp and
+     * loses the icon, and the script never decorates a stamped anchor again.
+     * An anchor whose icon simply does not exist ('NONE') is re-stamped by
+     * the script with no icon; that costs it one in-memory lookup.
+     *
+     * Removing an attribute is not a `childList` mutation, which is all the
+     * script observes, so one empty comment is added and removed to make
+     * sure its next pass runs.
+     *
+     * @returns {void}
+     */
+    function _iiReleaseIconlessAnchors() {
+        if (!_iiPresent()) return;
+        const sel = 'a[href*="/instrument/"][' + II_STAMP_ATTR + ']';
+        const release = (root) => root.querySelectorAll(sel).forEach(a => {
+            if (!_findInstrumentLinkIcon(a)) a.removeAttribute(II_STAMP_ATTR);
+        });
+        document.querySelectorAll('table.tbl').forEach(release);
+        if (typeof allRows !== 'undefined') allRows.forEach(release);
+        if (typeof groupedRows !== 'undefined') groupedRows.forEach(g => g.rows.forEach(release));
+        document.body.appendChild(document.createComment('')).remove();
+    }
+
+    let _iiReconcilerInstalled = false;
+    let _iiRefreshScheduled = false;
+    /** Pending re-check of `_iiPresent()` after a render, or null. */
+    let _iiRecheckTimer = null;
+    /**
+     * Delays of the post-render re-checks in `_iiInstallIconReconciler()`.
+     * The script stamps 120 ms after the DOM settles; the later tries cover
+     * a page still busy rendering its async columns.
+     */
+    const _II_RECHECK_MS = [500, 1500, 4000];
+
+    /**
+     * Installs, once per page and only while `_iiPresent()`, the observer
+     * that carries an instrument icon arriving AFTER the render into the
+     * source row.
+     *
+     * "Instrument Icons Everywhere" decorates an unstamped anchor in a live
+     * cell (see `_cloneInstrumentAnchorWithIcon()`) whenever its icon becomes
+     * available. On `tableMode: 'multi'` that cell is a clone, so without
+     * this the next re-render clones the icon-less source row again, and the
+     * 📊 "Instrument icon" entries — which match SOURCE rows — never see it.
+     *
+     * Only an added node that IS an `img.mb-ii-icon` is looked at. A
+     * re-render adds whole rows, whose icons arrive inside them, so its
+     * records are skipped at the first check.
+     *
+     * @returns {void}
+     */
+    function _iiInstallIconReconciler() {
+        if (_iiReconcilerInstalled) return;
+        if (!_iiPresent()) {
+            // Rows from a FETCHED page (a search, any page but the current
+            // one) are unstamped at render time; the script stamps them only
+            // after its debounce. So when this script's tables hold
+            // instrument links, look again shortly — a few cheap checks, and
+            // none at all on a page without instrument links.
+            if (_iiRecheckTimer === null && document.querySelector('table.tbl a[href*="/instrument/"]')) {
+                let tries = 0;
+                const again = () => {
+                    _iiRecheckTimer = null;
+                    if (_iiReconcilerInstalled) return;
+                    if (_iiPresent()) { _iiInstallIconReconciler(); return; }
+                    if (++tries < _II_RECHECK_MS.length) _iiRecheckTimer = setTimeout(again, _II_RECHECK_MS[tries]);
+                };
+                _iiRecheckTimer = setTimeout(again, _II_RECHECK_MS[0]);
+            }
+            return;
+        }
+        _iiReconcilerInstalled = true;
+        let pending = [];
+        let queued = false;
+        new MutationObserver((records) => {
+            for (const rec of records) {
+                for (const n of rec.addedNodes) {
+                    if (n.nodeType === Node.ELEMENT_NODE && n.tagName === 'IMG' && n.classList.contains('mb-ii-icon')) pending.push(n);
+                }
+            }
+            if (pending.length && !queued) {
+                queued = true;
+                queueMicrotask(() => {
+                    queued = false;
+                    const icons = pending;
+                    pending = [];
+                    _iiMirrorLateIcons(icons);
+                });
+            }
+        }).observe(document.body, { childList: true, subtree: true });
+        Lib.debug('render', '_iiInstallIconReconciler: watching for late "Instrument Icons Everywhere" icons');
+        // Icons the script placed in this script's tables before the
+        // observer existed (the delayed install above) are "late" too.
+        const early = Array.from(document.querySelectorAll('table.tbl ' + II_ICON_SEL));
+        if (early.length) _iiMirrorLateIcons(early);
+    }
+
+    /**
+     * Copies late instrument icons from live SA cells onto the matching
+     * anchor of the source row, then settles what a post-render write owes
+     * (docs/claude/filter-and-cache-invariants.md, "the four things"): the
+     * uniq-dropdown cache and the filter-result keys that read icon presence,
+     * and a re-run of the filter when one of those is active. The icon has no
+     * text, so `_rowTextCache` is unaffected.
+     *
+     * The source anchor is the one with the same `href` at the same ordinal
+     * position in the same cell: a cell can credit one instrument more than
+     * once (one `<li>` per credited artist).
+     *
+     * @param {HTMLImageElement[]} icons
+     * @returns {void}
+     */
+    function _iiMirrorLateIcons(icons) {
+        // Only a SOURCE row that actually gained an icon counts. A live
+        // icon whose source anchor cannot be resolved (or already has one)
+        // changes nothing a filter reads, and re-running the filter for it
+        // would loop: the re-render clones the same icon-less source row,
+        // the script decorates the clone again, and so on.
+        const changed = new Set();
+        let index = null;
+        for (const icon of icons) {
+            if (!icon.isConnected) continue;
+            const a = icon.nextSibling;
+            if (!a || a.nodeType !== Node.ELEMENT_NODE || a.tagName !== 'A') continue;
+            const td = icon.closest('td');
+            const tr = td && td.parentElement;
+            const table = tr && tr.closest('table.tbl');
+            if (!table || !tr.dataset || tr.dataset.mbRowIdx === undefined) continue;
+            if (!index) index = _buildMasterRowIndex();
+            const hit = index.get(tr.dataset.mbRowIdx);
+            const master = hit && hit.row;
+            if (!master) continue;
+            if (master === tr) {
+                // tableMode 'single': the live row IS the source row.
+                changed.add(table);
+                continue;
+            }
+            const mTd = master.cells[td.cellIndex];
+            if (!mTd) continue;
+            const href = a.getAttribute('href');
+            const sameHref = (root) => Array.from(root.querySelectorAll('a')).filter(x => x.getAttribute('href') === href);
+            const mA = sameHref(mTd)[sameHref(td).indexOf(a)];
+            if (!mA || _findInstrumentLinkIcon(mA)) continue;
+            mA.parentNode.insertBefore(icon.cloneNode(true), mA);
+            mA.setAttribute(II_STAMP_ATTR, 'true');
+            changed.add(table);
+        }
+        if (!changed.size) return;
+        Lib.debug('render', `_iiMirrorLateIcons: ${icons.length} late icon(s), ${changed.size} table(s) changed`);
+        changed.forEach(t => _invalidateUniqDropDataCacheForTable(t));
+        if (_iiRefreshScheduled) return;
+        _iiRefreshScheduled = true;
+        requestAnimationFrame(() => {
+            _iiRefreshScheduled = false;
+            _invalidateFilterCacheWhere(_filterKeyReadsInstrumentIcon);
+            if (document.querySelector('[data-mb-uniq-values*="ii-icon-"]')) {
+                Lib.debug('render', '_iiMirrorLateIcons: re-running the active instrument-icon filter');
+                runFilter();
+            }
+        });
+    }
+
     /**
      * _routeAreaLink — routes ONE already-found '/area/' anchor to the correct
      * output container, shared by `splitLocation` (Location cells, which also
@@ -7404,7 +7710,9 @@
          *   [— <!-- -->Description text, which may itself contain nested
          *     <a> links (e.g. a family entry naming its member instruments)]
          *
-         * Name — the first top-level <a> (entity link), cloned verbatim.
+         * Name — the first top-level <a> (entity link), cloned verbatim,
+         * with the "Instrument Icons Everywhere" icon in front of it when
+         * that userscript decorated it (_cloneInstrumentAnchorWithIcon()).
          * Instrument entities never carry a preceding country-flag span, so
          * unlike the generic tag-value-entity shape this doesn't need to
          * check for one.
@@ -7430,7 +7738,9 @@
 
             if (sourceCell) {
                 const _a = sourceCell.querySelector(':scope > a');
-                if (_a) tdName.appendChild(_a.cloneNode(true));
+                // With its "Instrument Icons Everywhere" icon, if any — see
+                // _cloneInstrumentAnchorWithIcon().
+                if (_a) tdName.appendChild(_cloneInstrumentAnchorWithIcon(_a).node);
 
                 const _commentSpan = sourceCell.querySelector(':scope > span.comment');
                 const _commentBdi  = _commentSpan ? _commentSpan.querySelector('bdi') : null;
@@ -22074,7 +22384,9 @@
             li.appendChild(document.createTextNode(' ('));
             _instrumentAs.forEach((a, i) => {
                 if (i > 0) li.appendChild(document.createTextNode(', '));
-                li.appendChild(a.cloneNode(true));
+                // With its "Instrument Icons Everywhere" icon, if any — see
+                // _cloneInstrumentAnchorWithIcon().
+                li.appendChild(_cloneInstrumentAnchorWithIcon(a).node);
             });
             li.appendChild(document.createTextNode(')'));
         } else {
@@ -22283,10 +22595,11 @@
             // No extra wrapper span needed (unlike those two, which wrap
             // synthesized text): this is already a real, single element to
             // tag directly, and its href/click-to-instrument-page behavior
-            // must survive untouched.
-            const _instrClone = instrumentAnchor.cloneNode(true);
-            _instrClone.classList.add('mb-credit-instrument');
-            li.appendChild(_instrClone);
+            // must survive untouched. Copied WITH its "Instrument Icons
+            // Everywhere" icon, if any — see _cloneInstrumentAnchorWithIcon().
+            const _instr = _cloneInstrumentAnchorWithIcon(instrumentAnchor);
+            _instr.anchor.classList.add('mb-credit-instrument');
+            li.appendChild(_instr.node);
             li.appendChild(document.createTextNode(': '));
         }
         // See `_buildCreditListItem()`'s identical clone-wrapper comment —
@@ -46020,6 +46333,16 @@
             const want = mode.slice(12);
             return _findCellPendingEdits(cell).some(p => p.name === want);
         }
+        if (mode === 'ii-icon-yes' || mode === 'ii-icon-no') {
+            // Fixed flag pair — "Instrument info - Icon": at least one of
+            // this cell's instrument links has (yes) / lacks (no) an
+            // "Instrument Icons Everywhere" icon. Not mutually exclusive: a
+            // cell crediting two instruments can match both.
+            const links = _iiInstrumentLinks(cell);
+            return mode === 'ii-icon-yes'
+                ? links.some(a => _findInstrumentLinkIcon(a))
+                : links.some(a => !_findInstrumentLinkIcon(a));
+        }
         if (mode === 'instrument-has-comment') {
             // Fixed flag — true when this instrument-list first-column cell
             // carries a direct-child `<span class="comment">`.
@@ -68751,7 +69074,7 @@ a { color: #1565c0; }`;
         'Live title info':        'Release and release group titles checked against the live bootleg convention.',
         'Recording comment info': 'Recording comments checked against the live recording convention.',
         'Part of series':         'Series membership: series name, date and number.',
-        'Instrument info':        'Instrument comments, descriptions and cross-references.',
+        'Instrument info':        'Instrument comments, descriptions, cross-references and icons.',
         'Editor info':            'Editor accounts: deleted editors, memberships, comments, activity.',
         'Version history':        'Edit history of the entities in this column.',
         'Locale info':            'Locales: language, and whether the alias is the primary one.',
@@ -69365,6 +69688,12 @@ a { color: #1565c0; }`;
         // see `_findCellInstrumentFacets()`'s own JSDoc for why this
         // deliberately excludes literal escaped `&lt;a href=...&gt;` text.
         instrumentHasCrossReference: { label: 'Instrument info - Cross-reference', glyph: '↗️' },
+        // "Instrument info - Icon" — whether the "Instrument Icons
+        // Everywhere" userscript (@Lotheric) decorated this cell's instrument
+        // links. Column-agnostic like "Pending edits": offered on any column
+        // that holds an instrument link, and only while that userscript is
+        // at work on the page (`_iiPresent()`). See `_iiInstrumentLinks()`.
+        instrumentIcon: { label: 'Instrument info - Icon', glyph: '🎻' },
         // "Date info" — split into three independently-checkable facets
         // (mirrors Format info's/Tracks info's own "one flat cell, several
         // value families" split), applying automatically to every
@@ -69478,6 +69807,7 @@ a { color: #1565c0; }`;
         'instrument-has-comment': 'instrumentHasComment',
         'instrument-has-description': 'instrumentHasDescription',
         'instrument-has-crossreference': 'instrumentHasCrossReference',
+        'ii-icon-yes': 'instrumentIcon', 'ii-icon-no': 'instrumentIcon',
         'date-complete': 'dateExprPrecision', 'date-partial': 'dateExprPrecision', 'date-range': 'dateExprPrecision',
         'pending-edits-yes': 'pendingEditsPresence', 'pending-edits-no': 'pendingEditsPresence',
         'rel-state-pending': 'relLoadState', 'rel-state-has': 'relLoadState',
@@ -71808,6 +72138,27 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Highlights the instrument links a checked "Instrument info - Icon"
+     * entry matched: those WITH an "Instrument Icons Everywhere" icon for
+     * `ii-icon-yes`, those WITHOUT one for `ii-icon-no`. The icon itself has
+     * no text to mark, so the link name is what gets the plain
+     * `mb-column-filter-highlight` — already in `_COLLAPSE_MATCH_SEL`, so a
+     * match hidden in a collapsed cell still tints its toggle.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - `'ii-icon-yes'` or `'ii-icon-no'`.
+     * @returns {void}
+     */
+    function _highlightInstrumentIconMatch(cell, mode) {
+        const wantIcon = mode === 'ii-icon-yes';
+        _iiInstrumentLinks(cell).forEach(a => {
+            if (!!_findInstrumentLinkIcon(a) !== wantIcon) return;
+            a.normalize();
+            highlightCrossTag(a, /[\s\S]+/g, 'mb-column-filter-highlight');
+        });
+    }
+
+    /**
      * Row-level counterpart of `_highlightPendingEditsMatch()`, for the ⏳
      * filter-bar toggle.
      *
@@ -72862,6 +73213,8 @@ a { color: #1565c0; }`;
                                     _highlightLocalePrimaryMatch(row.cells[f.idx]);
                                 } else if (mode === 'pending-edits-yes' || mode.startsWith('pendingedit:')) {
                                     _highlightPendingEditsMatch(row.cells[f.idx], mode);
+                                } else if (mode === 'ii-icon-yes' || mode === 'ii-icon-no') {
+                                    _highlightInstrumentIconMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'instrument-has-comment') {
                                     _highlightInstrumentCommentMatch(row.cells[f.idx]);
                                 } else if (mode === 'instrument-has-description') {
@@ -78688,6 +79041,12 @@ a { color: #1565c0; }`;
             initIsrcFormatting();
             initIswcValidation();
             initBarcodeValidation();
+            // "Instrument Icons Everywhere": hand icon-less copies of its
+            // anchors back to it, then carry the icons that arrive after
+            // this render into the source rows. Both are no-ops unless that
+            // userscript is at work on the page.
+            _iiReleaseIconlessAnchors();
+            _iiInstallIconReconciler();
             // Live-title flags — once per fetch, onto the source rows too
             // (see stampLiveTitleFlags()), so re-renders need no call.
             stampLiveTitleFlags();
@@ -85683,6 +86042,20 @@ a { color: #1565c0; }`;
         let instrumentHasCommentCount        = _uniqCacheHit ? _uniqCacheHit.instrumentHasCommentCount        : 0;
         let instrumentHasDescriptionCount    = _uniqCacheHit ? _uniqCacheHit.instrumentHasDescriptionCount    : 0;
         let instrumentHasCrossReferenceCount = _uniqCacheHit ? _uniqCacheHit.instrumentHasCrossReferenceCount : 0;
+        // "Instrument info - Icon": rows with at least one instrument link
+        // that has / lacks an "Instrument Icons Everywhere" icon — counted
+        // independently (a row can count in both), on any column, and only
+        // while that userscript is at work (`_iiOn`). See
+        // `_cellMatchesStructureMode()`'s `ii-icon-*` modes.
+        const _iiOn = _iiPresent();
+        let iiIconYesCount = _uniqCacheHit ? _uniqCacheHit.iiIconYesCount : 0;
+        let iiIconNoCount  = _uniqCacheHit ? _uniqCacheHit.iiIconNoCount  : 0;
+        // Entry value (whole cell, list item, or "» instrument:" name) →
+        // the icon to show after it (`_iiSoleIcon()`); first one seen wins.
+        // Empty unless `sa_enable_dropdown_instrument_icons` and the
+        // userscript is at work.
+        const _iiDropIcons = _iiOn && Lib.settings.sa_enable_dropdown_instrument_icons !== false;
+        const iiIconMap = _uniqCacheHit ? _uniqCacheHit.iiIconMap : new Map();
         // EVERY column, EVERY page type: MusicBrainz's own native `<span
         // class="mp">` open-edits marker — a binary presence flag pair plus
         // one entry per distinct pending entity name (see
@@ -85990,6 +86363,10 @@ a { color: #1565c0; }`;
                 //       consistently with what the column filter actually matches.
                 const v = getCleanColumnText(cell);
                 if (v) valueCounts.set(v, (valueCounts.get(v) || 0) + 1);
+                if (_iiDropIcons && v && !iiIconMap.has(v)) {
+                    const _ic = _iiSoleIcon(cell);
+                    if (_ic) iiIconMap.set(v, _ic);
+                }
                 // Count cell-structure state using expandedCells as source of truth.
                 // Counting from DOM toggle.textContent would give wrong results after a
                 // runFilter() cycle because initCollapsableColumns resets all toggles to '▶'.
@@ -86017,6 +86394,10 @@ a { color: #1565c0; }`;
                     _findCellListItems(cell).forEach(li => {
                         const t = getCleanColumnText(li);
                         if (t) _rowItemTexts.add(t);
+                        if (_iiDropIcons && t && !iiIconMap.has(t)) {
+                            const _ic = _iiSoleIcon(li);
+                            if (_ic) iiIconMap.set(t, _ic);
+                        }
                     });
                     _rowItemTexts.forEach(t => itemValueCounts.set(t, (itemValueCounts.get(t) || 0) + 1));
                     if (_rowItemTexts.size > 1 && !valueItemSequence.has(v)) {
@@ -86371,6 +86752,11 @@ a { color: #1565c0; }`;
                     if (_instrumentFacets.hasDescription)    instrumentHasDescriptionCount++;
                     if (_instrumentFacets.hasCrossReference)  instrumentHasCrossReferenceCount++;
                 }
+                if (_iiOn) {
+                    const _iiLinks = _iiInstrumentLinks(cell);
+                    if (_iiLinks.some(a => _findInstrumentLinkIcon(a)))  iiIconYesCount++;
+                    if (_iiLinks.some(a => !_findInstrumentLinkIcon(a))) iiIconNoCount++;
+                }
                 if (Lib.settings.sa_enable_pending_edits_section) {
                     // No column gate — see pendingEditValueCounts' own
                     // comment above. Names are deduped per row (a joined
@@ -86448,6 +86834,11 @@ a { color: #1565c0; }`;
                 cell.querySelectorAll('.mb-credit-instrument').forEach(s => {
                     const t = s.textContent.trim();
                     if (t) _rowInstrumentValues.add(t);
+                    const _ikey = 'instrument:' + t;
+                    if (_iiDropIcons && t && !iiIconMap.has(_ikey)) {
+                        const _ic = _findInstrumentLinkIcon(s);
+                        if (_ic) iiIconMap.set(_ikey, _ic);
+                    }
                 });
                 _rowInstrumentValues.forEach(t => instrumentValueCounts.set(t, (instrumentValueCounts.get(t) || 0) + 1));
                 const _rowAltNameValues = new Set();
@@ -86887,6 +87278,10 @@ a { color: #1565c0; }`;
                     // Use appendChild (not textContent) to preserve the badge node
                     item.appendChild(document.createTextNode(displayText));
                 }
+                // "Instrument Icons Everywhere" icon of this value's cell or
+                // list item, after the label (see iiIconMap).
+                const _iiIcon = iiIconMap.get(v);
+                if (_iiIcon) item.appendChild(_iiTrailingIconSlot(_iiIcon));
 
                 item.addEventListener('mousedown', ev => ev.preventDefault());
                 // Unify mouse hover with keyboard arrow-key focus onto the same
@@ -87720,6 +88115,7 @@ a { color: #1565c0; }`;
                 acoustidLinkedCount, acoustidUnlinkedCount,
                 localeLanguageValueCounts, localePrimaryCount, localeNotPrimaryCount,
                 instrumentHasCommentCount, instrumentHasDescriptionCount, instrumentHasCrossReferenceCount,
+                iiIconYesCount, iiIconNoCount, iiIconMap,
                 pendingEditValueCounts, pendingEditsYesCount, pendingEditsNoCount,
                 eventRoleValueCounts, roleTokenValueCounts, artTypeValueCounts, artCommentValueCounts,
                 flagIconMap, isRelCellCol, relIconCounts, relLoadStateCounts,
@@ -87756,6 +88152,7 @@ a { color: #1565c0; }`;
             lengthDeviationShorter50plusCount, lengthDeviationLonger50plusCount,
             localePrimaryCount, localeNotPrimaryCount,
             instrumentHasCommentCount, instrumentHasDescriptionCount, instrumentHasCrossReferenceCount,
+            iiIconYesCount, iiIconNoCount,
             // "○ no pending edits" is normally the LARGEST count in the
             // whole panel (every row that isn't pending), so omitting it
             // here is what would visibly clip the badge column.
@@ -88392,7 +88789,7 @@ a { color: #1565c0; }`;
          * can be surfaced for every column type (plain text, extractor synthetic,
          * etc.), not only for columns with multi-row / collapsable structure.
          *
-         * @param {string} mode    - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | 'multi-medium' | 'catalog-has-prefix' | 'catalog-no-prefix' | 'catalog-none' | 'editor-any-deleted' | 'changelog-has-message' | 'changelog-no-message' | 'acoustid-linked' | 'acoustid-unlinked' | 'locale-primary' | 'locale-not-primary' | 'instrument-has-comment' | 'instrument-has-description' | 'instrument-has-crossreference' | 'pending-edits-yes' | 'pending-edits-no'
+         * @param {string} mode    - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | 'multi-medium' | 'catalog-has-prefix' | 'catalog-no-prefix' | 'catalog-none' | 'editor-any-deleted' | 'changelog-has-message' | 'changelog-no-message' | 'acoustid-linked' | 'acoustid-unlinked' | 'locale-primary' | 'locale-not-primary' | 'instrument-has-comment' | 'instrument-has-description' | 'instrument-has-crossreference' | 'ii-icon-yes' | 'ii-icon-no' | 'pending-edits-yes' | 'pending-edits-no'
          * @param {string} label   - Human-readable display text
          * @param {number} count   - Number of visible rows matching this mode
          * @param {string} [extraLabelClass] - An extra CSS class to add to
@@ -88729,6 +89126,11 @@ a { color: #1565c0; }`;
                         trailingFlagSlot.appendChild(_flagGlyph);
                     }
                     item.appendChild(trailingFlagSlot);
+                }
+                // "» instrument:" entries: the "Instrument Icons Everywhere"
+                // icon of that instrument, in the same trailing position.
+                if (kind === 'instrument' && iiIconMap.has('instrument:' + value)) {
+                    item.appendChild(_iiTrailingIconSlot(iiIconMap.get('instrument:' + value)));
                 }
             }
 
@@ -89245,7 +89647,8 @@ a { color: #1565c0; }`;
             dateCompleteCount > 0 || datePartialCount > 0 || dateRangeCount > 0 ||
             localePrimaryCount > 0 || localeNotPrimaryCount > 0 ||
             instrumentHasCommentCount > 0 || instrumentHasDescriptionCount > 0 ||
-            instrumentHasCrossReferenceCount > 0 || _titleRatingItems.length > 0 || _hasValueEntries)) {
+            instrumentHasCrossReferenceCount > 0 || iiIconYesCount > 0 || iiIconNoCount > 0 ||
+            _titleRatingItems.length > 0 || _hasValueEntries)) {
              // "empty cells" pinned first; remaining entries in ascending complexity order.
             // For CAA/EAA columns the generic structural labels are replaced with more
             // descriptive artwork-presence labels that match user intent:
@@ -89349,6 +89752,10 @@ a { color: #1565c0; }`;
             if (instrumentHasCommentCount > 0)     makeSynItem('instrument-has-comment', '💬 has comment', instrumentHasCommentCount);
             if (instrumentHasDescriptionCount > 0) makeSynItem('instrument-has-description', '📝 has description', instrumentHasDescriptionCount);
             if (instrumentHasCrossReferenceCount > 0) makeSynItem('instrument-has-crossreference', '↗️ has cross-reference', instrumentHasCrossReferenceCount);
+            // "Instrument info - Icon" — zero unless "Instrument Icons
+            // Everywhere" is at work AND this column holds instrument links.
+            if (iiIconYesCount > 0) makeSynItem('ii-icon-yes', '🎻 with instrument icon', iiIconYesCount);
+            if (iiIconNoCount > 0)  makeSynItem('ii-icon-no', '○ without instrument icon', iiIconNoCount);
             // "Pending edits - Presence"/"- Entity" — emitted together, and
             // ONLY when something in this column is actually pending. The
             // `pendingEditsYesCount > 0` gate is what keeps these two
@@ -89443,7 +89850,8 @@ a { color: #1565c0; }`;
                    dateCompleteCount > 0 || datePartialCount > 0 || dateRangeCount > 0 ||
                    localePrimaryCount > 0 || localeNotPrimaryCount > 0 ||
                    instrumentHasCommentCount > 0 || instrumentHasDescriptionCount > 0 ||
-                   instrumentHasCrossReferenceCount > 0 || _titleRatingItems.length > 0 || _hasValueEntries) {
+                   instrumentHasCrossReferenceCount > 0 || iiIconYesCount > 0 || iiIconNoCount > 0 ||
+                   _titleRatingItems.length > 0 || _hasValueEntries) {
             // Non-collapsable column (or a collapsable one with zero rows in
             // any multi-row-family state this render).
             if (emptyCellCount > 0)     makeSynItem('empty',          '○ empty cells',           emptyCellCount);
@@ -89511,6 +89919,10 @@ a { color: #1565c0; }`;
             if (instrumentHasCommentCount > 0)     makeSynItem('instrument-has-comment', '💬 has comment', instrumentHasCommentCount);
             if (instrumentHasDescriptionCount > 0) makeSynItem('instrument-has-description', '📝 has description', instrumentHasDescriptionCount);
             if (instrumentHasCrossReferenceCount > 0) makeSynItem('instrument-has-crossreference', '↗️ has cross-reference', instrumentHasCrossReferenceCount);
+            // "Instrument info - Icon" — zero unless "Instrument Icons
+            // Everywhere" is at work AND this column holds instrument links.
+            if (iiIconYesCount > 0) makeSynItem('ii-icon-yes', '🎻 with instrument icon', iiIconYesCount);
+            if (iiIconNoCount > 0)  makeSynItem('ii-icon-no', '○ without instrument icon', iiIconNoCount);
             // "Pending edits - Presence"/"- Entity" — see the identical
             // block in the collapsable-column branch above for why these
             // are gated on pendingEditsYesCount rather than emitted
@@ -90357,6 +90769,8 @@ a { color: #1565c0; }`;
         if (mode === 'instrument-has-comment')     return '💬 has comment';
         if (mode === 'instrument-has-description') return '📝 has description';
         if (mode === 'instrument-has-crossreference') return '↗️ has cross-reference';
+        if (mode === 'ii-icon-yes') return '🎻 with instrument icon';
+        if (mode === 'ii-icon-no')  return '○ without instrument icon';
         return '▶◀ multi-row: any';
     }
 
@@ -90579,6 +90993,8 @@ a { color: #1565c0; }`;
         if (mode === 'instrument-has-comment') return '💬 = this instrument\'s own cell carries a `<span class="comment">` (a short parenthetical, e.g. "(harmonica/accordion hybrid)").';
         if (mode === 'instrument-has-description') return '📝 = this instrument\'s own cell has free-text description content after its "—" separator.';
         if (mode === 'instrument-has-crossreference') return '↗️ = this instrument\'s own description contains a real link to another instrument (e.g. a family entry naming its members, or a "not to be confused with X" note).';
+        if (mode === 'ii-icon-yes') return '🎻 = at least one instrument link in this cell carries an icon from the "MusicBrainz: Instrument Icons Everywhere" userscript. A cell with several instruments can count under both entries.';
+        if (mode === 'ii-icon-no')  return '○ = at least one instrument link in this cell has no icon: either that userscript has none for it, or it has not loaded it yet — the page cannot tell which.';
         return '';
     }
 
@@ -104467,6 +104883,12 @@ a { color: #1565c0; }`;
             initIsrcFormatting();
             initIswcValidation();
             initBarcodeValidation();
+            // "Instrument Icons Everywhere": hand icon-less copies of its
+            // anchors back to it, then carry the icons that arrive after
+            // this render into the source rows. Both are no-ops unless that
+            // userscript is at work on the page.
+            _iiReleaseIconlessAnchors();
+            _iiInstallIconReconciler();
             stampLiveTitleFlags();
             stampFindings();
             styleTitleEti();

@@ -1,0 +1,26 @@
+[
+    {
+        "version": "WIP.2",
+        "date": "2026-10-12",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "📊 dropdown, with the \"MusicBrainz: Instrument Icons Everywhere\" userscript (@Lotheric) installed: a value entry whose cell shows one instrument's icon, and every \"» instrument:\" entry, shows that icon after its label (new setting \"Show Instrument Icons In Unique-Values Dropdown\", sa_enable_dropdown_instrument_icons, on by default, no effect without the userscript). A new \"Instrument info - Icon\" section (🎻) counts and filters the rows whose instrument links have / lack an icon (modes ii-icon-yes / ii-icon-no, _highlightInstrumentIconMatch()), on any column that holds an instrument link — e.g. \"Name\" on an instrument search, where neither existed before."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.1",
+        "date": "2026-10-12",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "With the \"MusicBrainz: Instrument Icons Everywhere\" userscript (@Lotheric) installed, the release \"Instruments\" column, a credit's \"(instrument)\" annotation and the instrument list's \"Name\" column lost every instrument icon: they copied the instrument link alone, so the copy kept the userscript's data-ii-processed stamp but not the icon in front of it, and the userscript never decorates a stamped link again. Links are now copied with their icon (_cloneInstrumentAnchorWithIcon()); an icon-less copy is handed back to the userscript (_iiReleaseIconlessAnchors()), and an icon that arrives after the table is built is carried onto the source row so it survives sorting and filtering (_iiInstallIconReconciler(), _iiMirrorLateIcons()). Nothing changes without that userscript."
+                ]
+            }
+        ]
+    }
+]

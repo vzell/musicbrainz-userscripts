@@ -1,0 +1,267 @@
+[
+  {
+    "name": "Instruments column: bare anchor clone",
+    "why": "_buildInstrumentVocalsListItem() copies the instrument link alone again: the copy keeps the stamp and loses the icon.",
+    "edits": [
+      {
+        "find": "            const _instr = _cloneInstrumentAnchorWithIcon(instrumentAnchor);\n",
+        "replace": "            const _instr = { node: instrumentAnchor.cloneNode(true) }; _instr.anchor = _instr.node;\n"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-instrument-icons.spec.js",
+    "grep": "a decorated instrument keeps its icon",
+    "expect": "fail"
+  },
+  {
+    "name": "helper does not copy the icon",
+    "why": "_cloneInstrumentAnchorWithIcon() returns the anchor without its icon.",
+    "edits": [
+      {
+        "find": "        if (icon) node.appendChild(icon.cloneNode(true));\n",
+        "replace": "        if (false) node.appendChild(icon.cloneNode(true));\n"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-instrument-icons.spec.js",
+    "grep": "a decorated instrument keeps its icon",
+    "expect": "fail"
+  },
+  {
+    "name": "credit annotation: bare anchor clone",
+    "why": "_buildCreditListItem() copies a credited instrument link alone again.",
+    "edits": [
+      {
+        "find": "                li.appendChild(_cloneInstrumentAnchorWithIcon(a).node);\n",
+        "replace": "                li.appendChild(a.cloneNode(true));\n"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-instrument-icons.spec.js",
+    "grep": "credited-instrument annotation",
+    "expect": "fail"
+  },
+  {
+    "name": "instrument-list Name: bare anchor clone",
+    "why": "Name_Comment_Description copies the Name link alone again.",
+    "edits": [
+      {
+        "find": "                if (_a) tdName.appendChild(_cloneInstrumentAnchorWithIcon(_a).node);\n",
+        "replace": "                if (_a) tdName.appendChild(_a.cloneNode(true));\n"
+      }
+    ],
+    "spec": "tests/fixtures/instrument-list-instrument-icons.spec.js",
+    "grep": "keeps each instrument",
+    "expect": "fail"
+  },
+  {
+    "name": "icon-less copy keeps the stamp (alone)",
+    "why": "_cloneInstrumentAnchorWithIcon() no longer removes the stamp from an icon-less copy. _iiReleaseIconlessAnchors() removes it after the render anyway, so the late icon still arrives: the two cover for each other.",
+    "edits": [
+      {
+        "find": "        else aClone.removeAttribute(II_STAMP_ATTR);\n",
+        "replace": "        else { /* stamp kept */ }\n"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-instrument-icons.spec.js",
+    "grep": "arrives after the render",
+    "expect": "pass"
+  },
+  {
+    "name": "no post-render sweep (alone)",
+    "why": "_iiReleaseIconlessAnchors() does nothing. Every copy site on the tested pages goes through the helper, which already removes the stamp: the two cover for each other.",
+    "edits": [
+      {
+        "find": "        if (!_iiPresent()) return;\n        const sel = 'a[href*=\"/instrument/\"][' + II_STAMP_ATTR + ']';\n",
+        "replace": "        return;\n        const sel = 'a[href*=\"/instrument/\"][' + II_STAMP_ATTR + ']';\n"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-instrument-icons.spec.js",
+    "grep": "arrives after the render",
+    "expect": "pass"
+  },
+  {
+    "name": "stamp kept AND no sweep",
+    "why": "Both ways of handing an icon-less copy back to the script are gone: it stays stamped, and a late icon never reaches the column.",
+    "edits": [
+      {
+        "find": "        else aClone.removeAttribute(II_STAMP_ATTR);\n",
+        "replace": "        else { /* stamp kept */ }\n"
+      },
+      {
+        "find": "        if (!_iiPresent()) return;\n        const sel = 'a[href*=\"/instrument/\"][' + II_STAMP_ATTR + ']';\n",
+        "replace": "        return;\n        const sel = 'a[href*=\"/instrument/\"][' + II_STAMP_ATTR + ']';\n"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-instrument-icons.spec.js",
+    "grep": "arrives after the render",
+    "expect": "fail"
+  },
+  {
+    "name": "reconciler never installed",
+    "why": "_iiInstallIconReconciler() returns at once: a late icon stays on the live clone and the next re-render loses it.",
+    "edits": [
+      {
+        "find": "        if (_iiReconcilerInstalled) return;\n        if (!_iiPresent()) {\n",
+        "replace": "        if (true) return;\n        if (!_iiPresent()) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-instrument-icons.spec.js",
+    "grep": "arrives after the render",
+    "expect": "fail"
+  },
+  {
+    "name": "late icon not mirrored onto the source row",
+    "why": "_iiMirrorLateIcons() resolves the source anchor but does not copy the icon onto it.",
+    "edits": [
+      {
+        "find": "            mA.parentNode.insertBefore(icon.cloneNode(true), mA);\n",
+        "replace": "            void 0;\n"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-instrument-icons.spec.js",
+    "grep": "arrives after the render",
+    "expect": "fail"
+  },
+  {
+    "name": "uniq cache not dropped on a late icon",
+    "why": "A late icon changes no visible row, so the 📊 scan cached before it is replayed: the bass entry never shows its icon.",
+    "edits": [
+      {
+        "find": "        changed.forEach(t => _invalidateUniqDropDataCacheForTable(t));\n",
+        "replace": "        void changed;\n"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-instrument-icons.spec.js",
+    "grep": "arrives after the render",
+    "expect": "fail"
+  },
+  {
+    "name": "filter-result cache not dropped on a late icon",
+    "why": "runFilter() replays the cached \"without instrument icon\" row list from before the icon arrived.",
+    "edits": [
+      {
+        "find": "            _invalidateFilterCacheWhere(_filterKeyReadsInstrumentIcon);\n",
+        "replace": "            void 0;\n"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-instrument-icons.spec.js",
+    "grep": "late icon updates",
+    "expect": "fail"
+  },
+  {
+    "name": "active icon filter not re-run on a late icon",
+    "why": "The caches are dropped but the table on screen keeps the rows filtered against the old icons.",
+    "edits": [
+      {
+        "find": "                Lib.debug('render', '_iiMirrorLateIcons: re-running the active instrument-icon filter');\n                runFilter();\n",
+        "replace": "                Lib.debug('render', '_iiMirrorLateIcons: re-running the active instrument-icon filter');\n"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-instrument-icons.spec.js",
+    "grep": "late icon updates",
+    "expect": "fail"
+  },
+  {
+    "name": "icon modes swapped",
+    "why": "_cellMatchesStructureMode() answers ii-icon-yes with the ii-icon-no test and vice versa.",
+    "edits": [
+      {
+        "find": "            return mode === 'ii-icon-yes'\n                ? links.some(a => _findInstrumentLinkIcon(a))\n                : links.some(a => !_findInstrumentLinkIcon(a));\n",
+        "replace": "            return mode === 'ii-icon-no'\n                ? links.some(a => _findInstrumentLinkIcon(a))\n                : links.some(a => !_findInstrumentLinkIcon(a));\n"
+      }
+    ],
+    "spec": "tests/fixtures/instrument-icons-uvd.spec.js",
+    "grep": "ticking an entry leaves exactly those rows",
+    "expect": "fail"
+  },
+  {
+    "name": "\"with instrument icon\" never counted",
+    "why": "The scan never increments iiIconYesCount.",
+    "edits": [
+      {
+        "find": "                    if (_iiLinks.some(a => _findInstrumentLinkIcon(a)))  iiIconYesCount++;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/instrument-icons-uvd.spec.js",
+    "grep": "counts equal the rows",
+    "expect": "fail"
+  },
+  {
+    "name": "matched links not highlighted",
+    "why": "_highlightInstrumentIconMatch() marks nothing.",
+    "edits": [
+      {
+        "find": "            highlightCrossTag(a, /[\\s\\S]+/g, 'mb-column-filter-highlight');\n        });\n    }\n",
+        "replace": "        });\n    }\n"
+      }
+    ],
+    "spec": "tests/fixtures/instrument-icons-uvd.spec.js",
+    "grep": "ticking an entry leaves exactly those rows",
+    "expect": "fail"
+  },
+  {
+    "name": "value entries without icon",
+    "why": "renderItems() no longer appends the cell's icon to a plain value entry.",
+    "edits": [
+      {
+        "find": "                if (_iiIcon) item.appendChild(_iiTrailingIconSlot(_iiIcon));\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/instrument-icons-uvd.spec.js",
+    "grep": "a value entry shows",
+    "expect": "fail"
+  },
+  {
+    "name": "\"» instrument:\" entries without icon",
+    "why": "makeValueSynItem() no longer appends the instrument's icon.",
+    "edits": [
+      {
+        "find": "                if (kind === 'instrument' && iiIconMap.has('instrument:' + value)) {\n",
+        "replace": "                if (false) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-instrument-icons.spec.js",
+    "grep": "entries carry the instrument",
+    "expect": "fail"
+  },
+  {
+    "name": "\"» instrument:\" entries without icon (mobile)",
+    "why": "Same plant, seen through a tap on chromium-mobile.",
+    "edits": [
+      {
+        "find": "                if (kind === 'instrument' && iiIconMap.has('instrument:' + value)) {\n",
+        "replace": "                if (false) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-instrument-icons.mobile.spec.js",
+    "grep": "show the icon",
+    "project": "chromium-mobile",
+    "expect": "fail"
+  },
+  {
+    "name": "section offered without the script",
+    "why": "The scan no longer asks _iiPresent(): a page without the script gets an \"Instrument info - Icon\" section counting every row as icon-less.",
+    "edits": [
+      {
+        "find": "        const _iiOn = _iiPresent();\n",
+        "replace": "        const _iiOn = true;\n"
+      }
+    ],
+    "spec": "tests/fixtures/instrument-icons-uvd.spec.js",
+    "grep": "without the script",
+    "expect": "fail"
+  },
+  {
+    "name": "no post-render re-check on a fetched page",
+    "why": "_iiInstallIconReconciler() gives up when nothing is stamped at render time: on a fetched page (search) a 📊 opened before the script stamped the rows keeps its cached scan, and the \"Instrument info - Icon\" section never appears.",
+    "edits": [
+      {
+        "find": "            if (_iiRecheckTimer === null && document.querySelector('table.tbl a[href*=\"/instrument/\"]')) {\n",
+        "replace": "            if (false) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/instrument-icons-uvd.spec.js",
+    "grep": "opened before the script",
+    "expect": "fail"
+  }
+]
