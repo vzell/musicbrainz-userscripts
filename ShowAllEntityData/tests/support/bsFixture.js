@@ -73,20 +73,27 @@ async function routeBsRecords(page) {
  * Loads the frameset's default list (`tipe=-1,4`) with the userscript injected.
  *
  * @param {import('@playwright/test').Page} page
- * @param {{ enabled?: boolean, settingsOverride?: Object<string, *> }} [opts]
+ * @param {{ enabled?: boolean, titles?: boolean, settingsOverride?: Object<string, *> }} [opts]
  *   `enabled` seeds `sa_enable_brucespringsteen` (default `true`; the
  *   setting itself defaults to OFF).
+ *   `titles` seeds `sa_foreign_mb_titles` and `sa_foreign_typography`
+ *   (default `false` here, although both settings default to ON: these
+ *   loaders serve the converter specs, which pin the site's text as
+ *   written; tests/fixtures/mb-title-case.spec.js loads with
+ *   `titles: true`).
  * @returns {Promise<{ requests: string[], served: string[] }>} Every request
  *   URL the page made, and every records.aspx URL the route served.
  */
-async function loadBsRecordsPage(page, { enabled = true, settingsOverride = {} } = {}) {
+async function loadBsRecordsPage(page, { enabled = true, titles = false, settingsOverride = {} } = {}) {
     const requests = [];
     page.on('request', (req) => requests.push(req.url()));
     const served = await routeBsRecords(page);
     await loadUserscriptPage(page, {
         url: BS_LIST_URL,
         testMode: true,
-        settingsOverride: { ...FIXTURE_SETTINGS_OVERRIDE, sa_enable_brucespringsteen: enabled, ...settingsOverride },
+        settingsOverride: {
+            ...FIXTURE_SETTINGS_OVERRIDE, sa_enable_brucespringsteen: enabled, sa_foreign_mb_titles: titles, sa_foreign_typography: titles, ...settingsOverride,
+        },
     });
     return { requests, served };
 }

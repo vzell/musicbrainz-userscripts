@@ -179,6 +179,36 @@ test.describe('@include coverage', () => {
         expect(others.filter((u) => injected(u))).toEqual([]);
     });
 
+    test('brucebase.wikidot.com: Relations and Recent changes, and nothing else', () => {
+        const pages = [
+            'https://brucebase.wikidot.com/stats:relations',
+            'http://brucebase.wikidot.com/stats:relations/',
+            'https://brucebase.wikidot.com/stats:relations#toc0',
+            'https://brucebase.wikidot.com/system:recent-changes',
+            'https://brucebase.wikidot.com/system:recent-changes/',
+            'https://brucebase.wikidot.com/system:recent-changes?x=1',
+        ];
+        const others = [
+            // The Relations page's siblings (its own links), a relation page.
+            'https://brucebase.wikidot.com/stats:relations-list',
+            'https://brucebase.wikidot.com/stats:relations-persons',
+            'https://brucebase.wikidot.com/stats:relations-bands',
+            'https://brucebase.wikidot.com/relation:bryan-adams',
+            // The AJAX endpoint the Recent changes buttons POST to, and the
+            // site's other management lists.
+            'https://brucebase.wikidot.com/ajax-module-connector.php',
+            'https://brucebase.wikidot.com/system:recent-changes/html/0123abcd',
+            'https://brucebase.wikidot.com/manage:page-history-list',
+            'https://brucebase.wikidot.com/system:page-tags',
+            // Another wiki on the same farm, and look-alike hosts.
+            'https://otherwiki.wikidot.com/system:recent-changes',
+            'https://www.brucebase.wikidot.com/stats:relations',
+            'https://brucebase.wikidot.com.example.org/stats:relations',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
     test('brucebase.wikidot.com: the year pages, and nothing else', () => {
         const years = [
             'https://brucebase.wikidot.com/2026',

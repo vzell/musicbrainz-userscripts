@@ -40,13 +40,18 @@ const JL_HOST_RE = /^https?:\/\/(?:www\.)?jungleland\.it\//;
  * Loads the list fixture with the userscript injected.
  *
  * @param {import('@playwright/test').Page} page
- * @param {{ enabled?: boolean, settingsOverride?: Object<string, *> }} [opts]
+ * @param {{ enabled?: boolean, titles?: boolean, settingsOverride?: Object<string, *> }} [opts]
  *   `enabled` seeds `sa_enable_jungleland` (default `true`; the setting
  *   itself defaults to OFF).
+ *   `titles` seeds `sa_foreign_mb_titles` and `sa_foreign_typography`
+ *   (default `false` here, although both settings default to ON: these
+ *   loaders serve the converter specs, which pin the site's text as
+ *   written; tests/fixtures/mb-title-case.spec.js loads with
+ *   `titles: true`).
  * @returns {Promise<{ requests: string[] }>} Every request URL the page made
  *   from the moment of loading (for "no MusicBrainz call" checks).
  */
-async function loadJlListPage(page, { enabled = true, settingsOverride = {} } = {}) {
+async function loadJlListPage(page, { enabled = true, titles = false, settingsOverride = {} } = {}) {
     const requests = [];
     page.on('request', (req) => requests.push(req.url()));
     await page.route(JL_HOST_RE, (route) => route.abort('blockedbyclient'));
@@ -54,7 +59,7 @@ async function loadJlListPage(page, { enabled = true, settingsOverride = {} } = 
         url: JL_LIST_URL,
         fixtureFile: JL_FIXTURE,
         testMode: true,
-        settingsOverride: { sa_enable_jungleland: enabled, ...settingsOverride },
+        settingsOverride: { sa_enable_jungleland: enabled, sa_foreign_mb_titles: titles, sa_foreign_typography: titles, ...settingsOverride },
     });
     return { requests };
 }

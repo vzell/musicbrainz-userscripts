@@ -25,6 +25,7 @@
 // @include      /^https?:\/\/(?:www\.)?jungleland\.it\/html\/list\.htm(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?brucespringsteen\.it\/(?:DB|db)\/records\.aspx(?:[?#].*)?$/
 // @include      /^https?:\/\/brucebase\.wikidot\.com\/stats:songs\/?(?:[?#].*)?$/
+// @include      /^https?:\/\/brucebase\.wikidot\.com\/(?:stats:relations|system:recent-changes)\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/brucebase\.wikidot\.com\/(?:\d{4}|1949-64)\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/brucebase\.wikidot\.com\/(?:home\/?)?(?:[?#].*)?$/
 // @connect      raw.githubusercontent.com
@@ -4342,6 +4343,49 @@
         },
 
         // ============================================================
+        // TITLES ON THE OTHER SITES (_mbTitleCase(),
+        // docs/claude/foreign-title-case.md)
+        // ============================================================
+        divider_foreign_titles: {
+            type: 'divider',
+            label: '🔤 TITLES ON THE OTHER SITES'
+        },
+
+        sa_foreign_mb_titles: {
+            label: 'Write titles in MusicBrainz style',
+            type: 'checkbox',
+            default: true,
+            description: 'On by default; matters only where one of the sites below is switched on. ' +
+                         'The tables built on jungleland.it, brucespringsteen.it and Brucebase show ' +
+                         'their titles the way MusicBrainz writes English titles instead of the way ' +
+                         'each site does: "BORN IN THE USA" and "Born In The U.S.A." become "Born in ' +
+                         'the USA" and "Born in the U.S.A.", "BOSS AT HIS BEST (THE)" becomes "The ' +
+                         'Boss at His Best", "(Version 2)" becomes "(version 2)". On Brucebase this ' +
+                         'covers the song list\'s titles and a year page\'s venues and songs; notes ' +
+                         'such as "(with Patti Scialfa)" stay as written. Only capital letters ' +
+                         'change, and a cell that changed shows the site\'s own text when you rest ' +
+                         'the pointer on it. The rules are applied by machine, so a title that needs ' +
+                         'judgement (a word used as part of a verb, an acronym nobody listed) can ' +
+                         'still come out differently from MusicBrainz. Takes effect the next time a ' +
+                         'table is built.'
+        },
+
+        sa_foreign_typography: {
+            label: 'Write typographic punctuation in titles',
+            type: 'checkbox',
+            default: true,
+            description: 'On by default; matters only where one of the sites below is switched on. ' +
+                         'The same titles get English typographic punctuation instead of the plain ' +
+                         'keyboard characters: ’ for an apostrophe ("Don’t", "Comin’", "Rock ’n’ ' +
+                         'Roll"), “double” and ‘single’ quotation marks, … for "...", — for "--", ' +
+                         'an en dash – for a range ("1975–1985") and for a spaced " - ", a hyphen ‐ ' +
+                         'between words ("Freeze‐Out") and in a date ("1999‐08‐12"), ″ for inches ' +
+                         '(7″) and × between two numbers. Independent of the setting above. Note ' +
+                         'that a filter then has to be typed with the same characters: "don\'t" ' +
+                         'no longer finds "Don’t". Takes effect the next time a table is built.'
+        },
+
+        // ============================================================
         // JUNGLELAND.IT SECTION
         // ============================================================
         divider_jungleland: {
@@ -4433,7 +4477,11 @@
             description: 'Off by default. When on, the script also runs on the Brucebase wiki\'s ' +
                          'song list (brucebase.wikidot.com/stats:songs) and offers a "Show all ' +
                          'songs" button that turns the 28 letter tabs into one filterable, ' +
-                         'sortable table with Title and Letter columns, one row per song. A ' +
+                         'sortable table with Title and Letter columns, one row per song. The ' +
+                         'same goes for Relations (stats:relations: every person and band, with ' +
+                         'name, sort name, type and letter) and Recent changes ' +
+                         '(system:recent-changes: the last 200, 1,000 or 5,000 edits of the wiki, ' +
+                         'loaded 200 at a time). A ' +
                          'song\'s own page is read only for the preview below. When off, the ' +
                          'script exits on that site before touching the page. Settings are shared ' +
                          'with MusicBrainz, so this can be switched on from either site.'
@@ -12969,6 +13017,521 @@
     }
 
     // -------------------------------------------------------------------------
+    // MusicBrainz title style on the non-MusicBrainz sites
+    // -------------------------------------------------------------------------
+    // The Springsteen sites write titles their own way: brucespringsteen.it
+    // and the Brucebase setlists in capitals ("BORN IN THE U.S.A.", "BOSS AT
+    // HIS BEST (THE)"), the Brucebase song list with every word capitalised
+    // ("Born In The U.S.A."), jungleland.it however the uploader typed it
+    // ("Fade away at the Madison Square Garden (Version 2)"). With
+    // `sa_foreign_mb_titles` (default on) the converters write them in
+    // MusicBrainz's English title case instead
+    // (https://musicbrainz.org/doc/Style/Language/English, checked
+    // 2026-10-13): first and last word capitalised; between them articles,
+    // coordinating conjunctions and the short prepositions in lower case;
+    // every other word capitalised; each part of a hyphenated word on its
+    // own; o', 'n' and n' lower case; extra title information that is only
+    // descriptive ("(Version 2)", "(HALF SPEED)") all lower case
+    // (https://musicbrainz.org/doc/Style/Titles). The site's own text stays
+    // reachable as the cell's tooltip. Only letter CASE changes (and, for a
+    // plain title, a trailing "(THE)" moves to the front), so a cell's text
+    // keeps its length and its markup. See docs/claude/foreign-title-case.md.
+
+    /**
+     * Words MusicBrainz's English rules keep in lower case between the first
+     * and the last word: articles, coordinating conjunctions, and the
+     * prepositions of three letters or fewer — except "up". MusicBrainz
+     * capitalises a preposition used as an adverb or as part of a verb ("Plug
+     * In Baby"), and on these sites "up" is that in nearly every title ("Held
+     * Up Without a Gun", "Hurry Up Sundown", "I'm Shipping Up to Boston", "I
+     * Can't Stand Up for Falling Down"), so it is always capitalised.
+     * @type {Set<string>}
+     */
+    const _MBTC_SMALL = new Set(['a', 'an', 'the', 'and', 'but', 'or', 'nor', 'as', 'at', 'by', 'for',
+        'in', 'of', 'on', 'to', 'cum', 'mid', 'off', 'per', 'qua', 're', 'via']);
+
+    /**
+     * Verbs after which "on", "off" or "in" is part of the verb and so
+     * capitalised ("Come On Over to My Place", "Hang On Sloopy", "Bring On
+     * the Night", "Turn Off the Light"). A short list on purpose: after any
+     * other word the preposition rule stands ("Born on the Bayou", "Darkness
+     * on the Edge of Town", "I'm on Fire").
+     * @type {Set<string>}
+     */
+    const _MBTC_PHRASAL = new Set(['come', 'comin', 'coming', 'hang', 'hangin', 'hanging', 'hold', 'holdin',
+        'holding', 'carry', 'carryin', 'carrying', 'move', 'movin', 'moving', 'turn', 'turnin', 'turning',
+        'bring', 'plug', 'kick', 'shut', 'switch', 'log', 'sign', 'check', 'drop', 'walk', 'walkin']);
+
+    /**
+     * The prepositions that `_MBTC_PHRASAL` capitalises.
+     * @type {Set<string>}
+     */
+    const _MBTC_PARTICLES_AFTER_VERB = new Set(['on', 'off', 'in']);
+
+    /**
+     * Contractions MusicBrainz keeps in lower case ("Truth o' Trash",
+     * "Rock 'n' Roll"), apostrophes straight or curly.
+     * @type {Set<string>}
+     */
+    const _MBTC_CONTRACTIONS = new Set(["o'", "'n'", "n'", "'n", 'o’', '’n’', 'n’', '’n']);
+
+    /**
+     * French, Italian and Spanish particles of the venue names on these
+     * sites ("PALAIS DES SPORTS", "STADE DE FRANCE"): written in lower case
+     * when the source is in capitals, left as written otherwise. Not "la",
+     * "le", "van", "von": those are capitalised as often as not ("Steven Van
+     * Zandt"), so they follow the English rule.
+     * @type {Set<string>}
+     */
+    const _MBTC_PARTICLES = new Set(['de', 'des', 'du', 'di', 'del', 'della', 'dello', 'dei', 'delle', 'degli']);
+
+    /**
+     * Descriptive words of extra title information. A parenthesised part made
+     * only of these (and numbers, Roman numerals, "&", "/", "-", "+", "and")
+     * is written all in lower case, as MusicBrainz writes "(live)" or
+     * "(single version)".
+     * @type {Set<string>}
+     */
+    const _MBTC_ETI = new Set(['live', 'version', 'versions', 'demo', 'demos', 'remix', 'remixed', 'mix', 'edit',
+        'edited', 'remaster', 'remastered', 'acoustic', 'instrumental', 'mono', 'stereo', 'single', 'alternate',
+        'alt', 'take', 'takes', 'outtake', 'outtakes', 'rehearsal', 'soundcheck', 'half', 'speed', 'promo',
+        'copy', 'repress', 'reissue', 'bonus', 'track', 'radio', 'extended', 'early', 'rough', 'unreleased',
+        'advance', 'press', 'pressing', 'test', 'reprise', 'intro', 'outro', 'excerpt', 'snippet', 'partial',
+        'incomplete', 'full', 'short', 'long', 'original', 'studio', 'session', 'sessions', 'bootleg', 'late',
+        'show', 'shows', 'matinee', 'first', 'second', 'third', 'night', 'one', 'sided', 'picture', 'disc',
+        'sleeve', 'colored', 'coloured', 'white', 'label', 'and']);
+
+    /**
+     * Acronyms kept in capitals when the source is in capitals, beyond the
+     * ones `_mbtcIsAcronym()` recognises by shape (no vowel, dotted letters,
+     * an "&" between letters, a Roman numeral). Collected from the titles and
+     * venues of the four sites (2026-10-13).
+     * @type {Set<string>}
+     */
+    const _MBTC_ACRONYMS = new Set(['USA', 'UK', 'EU', 'EP', 'HBO', 'NYC', 'NY', 'NYU', 'UCLA', 'USO', 'UFO',
+        'ICC', 'AC', 'OK', 'VIP', 'UNICEF', 'AOR', 'ABC', 'ESPN', 'UNO', 'JAP']);
+
+    /**
+     * Abbreviations that have no vowel but are not acronyms ("ST. JAMES",
+     * "DR. ZOOM", "VOL. 2"): written capitalised, never kept in capitals.
+     * @type {Set<string>}
+     */
+    const _MBTC_ABBREVIATIONS = new Set(['mr', 'mrs', 'ms', 'dr', 'jr', 'sr', 'st', 'mt', 'ft', 'pt', 'vs', 'nr']);
+
+    /**
+     * A word of a title: a letter or digit, then letters, digits,
+     * apostrophes, single dots, "&" and hyphens. A slash ends a word
+     * ("AC/DC", "copy/repress"), and so does an ellipsis ("BORDERLINE...WITH").
+     * @type {RegExp}
+     */
+    const _MBTC_WORD_RE = /[\p{L}\p{N}](?:[\p{L}\p{N}'’&-]|\.(?!\.))*/gu;
+
+    /**
+     * What, between two words, starts a new phrase whose first word is
+     * capitalised and ends the previous one, whose last word is: a
+     * parenthesis or bracket, a colon, question or exclamation mark, a
+     * slash, a semicolon, a dash or a spaced hyphen (a medley's " - "),
+     * quotation marks, an ellipsis.
+     * @type {RegExp}
+     */
+    const _MBTC_BREAK_RE = /[()[\]:?!/;—–"“”…]|\s-\s|\.\.\./;
+
+    /**
+     * Upper- or lower-cases one character, keeping it as it is when the
+     * other case would change its length ("ß" → "SS"), so a title's length
+     * never changes.
+     *
+     * @param {string}  ch The character.
+     * @param {boolean} up Upper case when true.
+     * @returns {string}
+     */
+    function _mbtcCase(ch, up) {
+        const r = up ? ch.toUpperCase() : ch.toLowerCase();
+        return r.length === ch.length ? r : ch;
+    }
+
+    /**
+     * Tells whether a word written in capitals is an acronym, kept in
+     * capitals: one of `_MBTC_ACRONYMS`; dotted letters ("U.S.A.", "D.M.C.",
+     * with or without a trailing "'S"); letters around an "&" ("A&M",
+     * "R&B"); a Roman numeral of two or more letters ("II", "XIV"); or two
+     * to five letters with no vowel and no "Y" ("NJ", "TCB", "PNC", "DVD") —
+     * except an abbreviation of `_MBTC_ABBREVIATIONS` ("ST.", "DR.").
+     *
+     * @param {string} word The word as written (capitals).
+     * @returns {boolean}
+     */
+    function _mbtcIsAcronym(word) {
+        const noPossessive = word.replace(/['’][sS]$/, '');
+        const bare = noPossessive.replace(/\.$/, '');
+        if (_MBTC_ACRONYMS.has(bare)) return true;
+        // Dotted letters, two or more of them: "U.S.A.", "U.S.A", "M.G.".
+        if (/^(?:\p{L}\.)+\p{L}?\.?$/u.test(noPossessive) && (noPossessive.match(/\p{L}/gu) || []).length >= 2) return true;
+        if (/^\p{L}+&\p{L}+$/u.test(bare)) return true;
+        if (/^(?=[IVX]{2,}$)X{0,3}(?:IX|IV|V?I{0,3})$/.test(bare)) return true;
+        return /^\p{L}{2,5}$/u.test(bare) && !/[AEIOUYÀ-ÖØ-Ý]/.test(bare) && !_MBTC_ABBREVIATIONS.has(bare.toLowerCase());
+    }
+
+    /**
+     * Rewrites one word (no hyphen) of a title, as an array of characters.
+     *
+     * In a part written in capitals (`caps`) the word is lowered and then
+     * capitalised by the rules — unless it is an acronym — with "O'Clock",
+     * "O'Brien", "D'Angelo", "L'Amore" and "McLoone" capitalised after the
+     * prefix too.
+     * In mixed case only the first letter changes: a small word goes to
+     * lower case unless it has a capital inside ("THE" in a mixed title stays),
+     * a lower-case word is capitalised unless it already has a capital
+     * inside ("iPhone") or is a particle, and anything else stays as written.
+     *
+     * @param {string}  word  The word.
+     * @param {boolean} caps  Whether its part of the title is written in capitals.
+     * @param {boolean} edge  Whether it is the first or last word of its phrase.
+     * @param {boolean} lower Whether its part is descriptive extra title information (all lower case).
+     * @returns {string} The rewritten word, same length.
+     */
+    function _mbtcWord(word, caps, edge, lower) {
+        const chars = Array.from(word);
+        const low = word.toLowerCase();
+        const key = low.replace(/\.$/, '');
+        const firstLetter = chars.findIndex(c => /\p{L}/u.test(c));
+        if (firstLetter < 0) return word;
+        // A word led by a digit ("10TH", "4th", "U2" is not one) is never
+        // capitalised: its letters are a suffix.
+        const digitLed = /^\p{N}/u.test(word);
+        if (caps && _mbtcIsAcronym(word)) {
+            // "M.G.'S" → "M.G.'s": the acronym stays, the possessive does not.
+            return word.replace(/['’]S$/, m => m[0] + 's');
+        }
+        if (caps) {
+            const out = chars.map(c => _mbtcCase(c, false));
+            if (lower || _MBTC_CONTRACTIONS.has(low) || (_MBTC_PARTICLES.has(key) && !edge) ||
+                (_MBTC_SMALL.has(key) && !edge)) {
+                return out.join('');
+            }
+            if (!digitLed) out[firstLetter] = _mbtcCase(out[firstLetter], true);
+            const m = low.match(/^([odl]['’]|mc)\p{L}{2,}/u);
+            if (m) out[m[1].length] = _mbtcCase(out[m[1].length], true);
+            return out.join('');
+        }
+        // Mixed case: only the first letter may change.
+        const rest = chars.slice(firstLetter + 1).join('');
+        const restHasCapital = /\p{Lu}/u.test(rest);
+        if (lower) {
+            return restHasCapital ? word : chars.map((c, i) => (i === firstLetter ? _mbtcCase(c, false) : c)).join('');
+        }
+        if (_MBTC_CONTRACTIONS.has(low) || _MBTC_PARTICLES.has(key)) return word;
+        if (_MBTC_SMALL.has(key) && !edge) {
+            return restHasCapital ? word : chars.map((c, i) => (i === firstLetter ? _mbtcCase(c, false) : c)).join('');
+        }
+        if (restHasCapital || digitLed) return word;
+        return chars.map((c, i) => (i === firstLetter ? _mbtcCase(c, true) : c)).join('');
+    }
+
+    /**
+     * Writes a title in MusicBrainz's English title case, changing only
+     * letter case (the result has the same length, so it can be written back
+     * over a cell's text nodes — `_mbSiteTitleNodes()`).
+     *
+     * The title is cut into parts at parentheses and brackets. A part with no
+     * lower-case letter (an ordinal's "th" aside: "4th OF JULY") is "in
+     * capitals" and rewritten word by word; any other part is mixed case and
+     * keeps every letter but a word's first. With `capsOnly` a mixed part is
+     * left exactly as written: a setlist's songs are in capitals and its
+     * notes ("(with Patti Scialfa)") are not titles. A parenthesised part
+     * made only of descriptive words (`_MBTC_ETI`) is all lower case.
+     *
+     * A part in capitals inside parentheses counts as one only when the
+     * title is in capitals outside them too; otherwise it is a name or an
+     * acronym and stays.
+     *
+     * Within a part, a phrase runs between the breaks of `_MBTC_BREAK_RE`;
+     * its first and last word are always capitalised, and so is "on", "off"
+     * or "in" right after a verb of `_MBTC_PHRASAL`. Each piece of a
+     * hyphenated word is a word of its own ("Freeze-Out", "Jack-in-the-Box").
+     *
+     * @param {string} text  The title.
+     * @param {{capsOnly?: boolean}} [opts]
+     * @returns {string} The title in MusicBrainz case.
+     */
+    function _mbTitleCase(text, opts = {}) {
+        const src = String(text || '');
+        if (!/\p{L}/u.test(src)) return src;
+        const parts = [];
+        const partRe = /[([][^()[\]]*[)\]]|[^()[\]]+|[()[\]]/g;
+        let pm;
+        while ((pm = partRe.exec(src)) !== null) parts.push(pm[0]);
+        const noLower = (t) => !/\p{Ll}/u.test(t.replace(/(\d)(?:st|nd|rd|th)\b/g, '$1'));
+        // A part in capitals inside a mixed-case title is a name or an
+        // acronym ("Out There in Radioland (JEMS)"), not a shouted title.
+        const outerCaps = noLower(parts.filter(t => !/^[([]/.test(t)).join(''));
+        return parts.map(part => {
+            const inParens = /^[([]/.test(part) && part.length > 1;
+            const caps = noLower(part) && /\p{Lu}/u.test(part) && (!inParens || outerCaps);
+            if (opts.capsOnly && !caps) return part;
+            const words = [];
+            let m;
+            _MBTC_WORD_RE.lastIndex = 0;
+            while ((m = _MBTC_WORD_RE.exec(part)) !== null) {
+                let w = m[0];
+                // A trailing hyphen is punctuation ("TWIST AND SHOUT- "), not word.
+                while (w.length > 1 && w.endsWith('-')) w = w.slice(0, -1);
+                words.push({ start: m.index, word: w });
+            }
+            if (!words.length) return part;
+            const lower = inParens && words.every(({ word }) => {
+                const k = word.toLowerCase().replace(/\.$/, '');
+                return _MBTC_ETI.has(k) || /^\p{N}+$/u.test(k) || /^(?=[ivx]+$)x{0,3}(?:ix|iv|v?i{0,3})$/.test(k);
+            });
+            let out = '';
+            let pos = 0;
+            words.forEach((w, i) => {
+                const gapBefore = part.slice(pos, w.start);
+                const gapAfter = i + 1 < words.length ? part.slice(w.start + w.word.length, words[i + 1].start) : '';
+                const first = i === 0 || _MBTC_BREAK_RE.test(gapBefore);
+                const last = i === words.length - 1 || _MBTC_BREAK_RE.test(gapAfter);
+                const prevKey = i > 0 && !first ? words[i - 1].word.toLowerCase().replace(/['’]$/, '') : '';
+                const particle = _MBTC_PHRASAL.has(prevKey) && _MBTC_PARTICLES_AFTER_VERB.has(w.word.toLowerCase());
+                const pieces = w.word.split('-');
+                const rewritten = pieces.map((piece, j) => {
+                    if (!piece) return piece;
+                    const edge = (j === 0 && (first || particle)) || (j === pieces.length - 1 && last);
+                    return _mbtcWord(piece, caps, edge, lower);
+                }).join('-');
+                out += gapBefore + rewritten;
+                pos = w.start + w.word.length;
+            });
+            return out + part.slice(pos);
+        }).join('');
+    }
+
+    /**
+     * Writes a plain title (a link's text, a cell's text) in MusicBrainz
+     * style: `_mbTitleCase()`, and a trailing article in parentheses, the
+     * sort form of brucespringsteen.it ("BOSS AT HIS BEST (THE)"), moved to
+     * the front ("The Boss at His Best").
+     *
+     * @param {string} text The title as the site writes it.
+     * @returns {string}
+     */
+    function _mbNormalizeTitle(text) {
+        let t = String(text || '');
+        const am = t.match(/^(.*\S)\s*\((the|a|an)\)$/i);
+        if (am) t = `${am[2]} ${am[1]}`;
+        return _mbTitleCase(t);
+    }
+
+    /**
+     * Words that an apostrophe at the start of a word shortens, so that
+     * apostrophe is one (’), never an opening quotation mark: "Rock ’n’
+     * Roll", "’Til", "’Cause", "’Em", "’Round", "Summer ’09".
+     * @type {RegExp}
+     */
+    const _MBTP_ELISION_RE = /^(?:n['’]?(?![\p{L}])|til|till|cause|cos|em|round|bout|tis|twas|cept|fore|neath|\p{N})/iu;
+
+    /**
+     * Rewrites a title's ASCII punctuation as English typography, one
+     * character for one, so the result has the same length and can be
+     * written back over a cell's text nodes (`_mbSiteTitleNodes()`):
+     *
+     *   - `'`, and the `´` and backtick that jungleland.it types for one
+     *     ("´72", "`Cause", "Rock `n` Roll"): an apostrophe ’
+     *     ("Don’t", "Comin’", "’n’", "’09"), or ‘ … ’ around a quotation
+     *     ("IRISH ‘SPRINGSTEEN PACK’") when a word-initial one that shortens
+     *     nothing (`_MBTP_ELISION_RE`) is closed later in the title;
+     *   - `"`: “ after a space, a bracket or the start, ” otherwise, and ″
+     *     (inches) right after a digit when no quotation is open ("7″");
+     *   - `-`: an en dash – when spaced (" - ", a medley or a subtitle) or
+     *     between two numbers (a range, "1975–1985"), a hyphen ‐ between
+     *     letters ("Freeze‐Out") and inside a date of three or more numbers
+     *     ("1999‐08‐12", "10‐18‐75");
+     *   - `x` between two numbers with spaces around it: ×.
+     *
+     * `...` → … and `--` → — change the length and are done by
+     * `_mbTypography()`.
+     *
+     * @param {string} text
+     * @returns {string} Same length as `text`.
+     */
+    function _mbTypographyFixed(text) {
+        const src = String(text || '');
+        const out = Array.from(src);
+        // Code points, so a surrogate pair is one position on both sides.
+        const ch = out.slice();
+        const isWord = (c) => !!c && /[\p{L}\p{N}]/u.test(c);
+        const isDigit = (c) => !!c && /\p{N}/u.test(c);
+        const isOpenCtx = (c) => !c || /[\s([{\-–—/“‘]/.test(c);
+        let doubleOpen = false;
+        let singleOpen = false;
+        for (let i = 0; i < ch.length; i++) {
+            const c = ch[i];
+            const prev = i > 0 ? ch[i - 1] : '';
+            const next = i + 1 < ch.length ? ch[i + 1] : '';
+            if (c === "'" || c === '´' || c === '`') {
+                if (isWord(prev)) {
+                    out[i] = '’';
+                    if (singleOpen && !isWord(next)) singleOpen = false;
+                } else if (isOpenCtx(prev) && isWord(next)) {
+                    const rest = ch.slice(i + 1).join('');
+                    if (_MBTP_ELISION_RE.test(rest)) {
+                        out[i] = '’';
+                    } else {
+                        // A quotation only when a closing ' follows, after a
+                        // word and before a non-word.
+                        const closes = /[\p{L}\p{N}.!?]'(?![\p{L}\p{N}])/u.test(rest);
+                        out[i] = closes ? '‘' : '’';
+                        if (closes) singleOpen = true;
+                    }
+                } else if (singleOpen) {
+                    out[i] = '’';
+                    singleOpen = false;
+                }
+            } else if (c === '"') {
+                if (isDigit(prev) && !doubleOpen) {
+                    out[i] = '″';
+                } else if (isOpenCtx(prev) && !doubleOpen) {
+                    out[i] = '“';
+                    doubleOpen = true;
+                } else {
+                    out[i] = '”';
+                    doubleOpen = false;
+                }
+            } else if (c === '-') {
+                if (prev === ' ' && next === ' ') {
+                    out[i] = '–';
+                } else if (isDigit(prev) && isDigit(next)) {
+                    // The whole run of numbers joined by hyphens: three or
+                    // more groups are a date (hyphens), two a range (en dash).
+                    let a = i;
+                    while (a > 0 && /[\p{N}-]/u.test(ch[a - 1])) a--;
+                    let b = i;
+                    while (b + 1 < ch.length && /[\p{N}-]/u.test(ch[b + 1])) b++;
+                    const groups = ch.slice(a, b + 1).join('').split('-').filter(Boolean).length;
+                    out[i] = groups >= 3 ? '‐' : '–';
+                } else if (isWord(prev) && isWord(next)) {
+                    out[i] = '‐';
+                }
+            } else if ((c === 'x' || c === 'X') && prev === ' ' && next === ' ' &&
+                isDigit(ch[i - 2]) && isDigit(ch[i + 2])) {
+                out[i] = '×';
+            }
+        }
+        return out.join('');
+    }
+
+    /**
+     * Rewrites a title's ASCII punctuation as English typography: an
+     * ellipsis … for "...", an em dash — for "--", then
+     * `_mbTypographyFixed()`.
+     *
+     * @param {string} text
+     * @returns {string}
+     */
+    function _mbTypography(text) {
+        return _mbTypographyFixed(String(text || '').replace(/\.{3}/g, '…').replace(/--/g, '—'));
+    }
+
+    /**
+     * Whether the converters write titles in MusicBrainz style
+     * (`sa_foreign_mb_titles`, default on).
+     *
+     * @returns {boolean}
+     */
+    function _mbTitlesOn() {
+        return Lib.settings.sa_foreign_mb_titles !== false;
+    }
+
+    /**
+     * Whether the converters write a title's punctuation typographically
+     * (`sa_foreign_typography`, default on).
+     *
+     * @returns {boolean}
+     */
+    function _mbTypographyOn() {
+        return Lib.settings.sa_foreign_typography !== false;
+    }
+
+    /**
+     * A site title as the converters show it: in MusicBrainz case
+     * (`_mbNormalizeTitle()`) and with typographic punctuation
+     * (`_mbTypography()`), each only while its setting is on.
+     *
+     * @param {string} text The title as the site writes it.
+     * @param {{caseOn?: boolean, typoOn?: boolean}} [opts] Defaults: the two settings.
+     * @returns {string}
+     */
+    function _mbSiteTitleText(text, opts = {}) {
+        let t = String(text || '');
+        if (opts.caseOn ?? _mbTitlesOn()) t = _mbNormalizeTitle(t);
+        if (opts.typoOn ?? _mbTypographyOn()) t = _mbTypography(t);
+        return t;
+    }
+
+    /**
+     * Sets an element's text to a site title as the converters show it
+     * (`_mbSiteTitleText()`), and gives `tipEl` the site's own text as its
+     * tooltip when that differs. With both settings off the text is written
+     * as the site has it, and there is no tooltip.
+     *
+     * @param {Element} el     The element whose text is the title (a link, a cell).
+     * @param {string}  text   The title as the site writes it, whitespace already collapsed.
+     * @param {Element} [tipEl=el] The element that carries the tooltip.
+     * @returns {void}
+     */
+    function _mbSetSiteTitle(el, text, tipEl = el) {
+        const shown = _mbSiteTitleText(text);
+        el.textContent = shown;
+        if (shown !== text) _setTip(tipEl, `As written on the site:\n${text}`);
+    }
+
+    /**
+     * Rewrites the text nodes under an element as a site title, in place,
+     * keeping its markup (a song's `<strong>`, its link). The text nodes are
+     * read as one string; letter case (`_mbTitleCase()`) and the one-for-one
+     * punctuation (`_mbTypographyFixed()`) keep its length, so each node gets
+     * its own slice back; then each node's "..." and "--" become … and —.
+     * Text under `skipSel` (a set label) is left out. When anything changed,
+     * the element gets the original text as its tooltip. Each step runs only
+     * while its setting is on.
+     *
+     * @param {Element} el The element (a setlist row, a cell).
+     * @param {{capsOnly?: boolean, skipSel?: string}} [opts]
+     * @returns {boolean} True when the text changed.
+     */
+    function _mbSiteTitleNodes(el, opts = {}) {
+        const caseOn = _mbTitlesOn();
+        const typoOn = _mbTypographyOn();
+        if ((!caseOn && !typoOn) || !el) return false;
+        const doc = el.ownerDocument;
+        const walker = doc.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+            acceptNode: (n) => (opts.skipSel && n.parentElement?.closest(opts.skipSel)
+                ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT)
+        });
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        const before = nodes.map(n => n.data).join('');
+        let after = before;
+        if (caseOn) after = _mbTitleCase(after, { capsOnly: !!opts.capsOnly });
+        if (typoOn) after = _mbTypographyFixed(after);
+        if (after.length !== before.length) return false;
+        let pos = 0;
+        let changed = after !== before;
+        nodes.forEach(n => {
+            const len = n.data.length;
+            let data = after.slice(pos, pos + len);
+            pos += len;
+            if (typoOn) {
+                const d2 = data.replace(/\.{3}/g, '…').replace(/--/g, '—');
+                if (d2 !== data) changed = true;
+                data = d2;
+            }
+            if (data !== n.data) n.data = data;
+        });
+        if (changed) _setTip(el, `As written on the site:\n${before.replace(/\s+/g, ' ').trim()}`);
+        return changed;
+    }
+
+    // -------------------------------------------------------------------------
     // jungleland.it: the bootleg artwork list (html/list.htm)
     // -------------------------------------------------------------------------
     // One static FrontPage page: a year jump menu, then one anchor heading per
@@ -13067,7 +13630,8 @@
      *
      * The Title cell links to the entry's artwork page by its resolved
      * absolute URL, in a new tab: standalone there is no `inferioredx1`
-     * frame for the site's own target to name.
+     * frame for the site's own target to name. Its text is in MusicBrainz
+     * title style while `sa_foreign_mb_titles` is on (`_mbSetSiteTitle()`).
      *
      * @param {{anchor: HTMLAnchorElement, section: string}} item  One entry from `_jlCollectItems()`.
      * @param {Document}                                      docContext The document the row is built in.
@@ -13081,7 +13645,7 @@
         link.href = item.anchor.href;
         link.target = '_blank';
         link.rel = 'noopener';
-        link.textContent = title;
+        _mbSetSiteTitle(link, title, titleTd);
         titleTd.appendChild(link);
         tr.appendChild(titleTd);
         [date, year, _jlVersionFromHref(item.anchor.getAttribute('href'))].forEach(value => {
@@ -13378,7 +13942,9 @@
      *
      * The Title cell links to the record's detail page by its absolute URL,
      * in a new tab: standalone there is no "principale" frame for the site's
-     * `<base target>` to name.
+     * `<base target>` to name. Its text is in MusicBrainz title style while
+     * `sa_foreign_mb_titles` is on (`_mbSetSiteTitle()`: "BOSS AT HIS BEST
+     * (THE)" → "The Boss at His Best").
      *
      * @param {HTMLParagraphElement} p          The record.
      * @param {('unofficial'|'official')} kind  Which column set.
@@ -13393,7 +13959,7 @@
         link.href = r.href;
         link.target = '_blank';
         link.rel = 'noopener';
-        link.textContent = r.title;
+        _mbSetSiteTitle(link, r.title, titleTd);
         titleTd.appendChild(link);
         tr.appendChild(titleTd);
         const values = kind === 'official'
@@ -13622,23 +14188,25 @@
     }
 
     /**
-     * Finds the song list's letter tabview.
+     * Finds a letter tabview: the song list's, or (with `prefix`
+     * "/relation:") the Relations page's.
      *
-     * The page holds a second YUI tabview further down (News, Media,
+     * The song page holds a second YUI tabview further down (News, Media,
      * "Released (Not on Springsteen Album)"), and its last tab links songs
      * too, so "any `/song:` link" is not the list. The letter tabview is the
      * `div.yui-navset` whose every tab label has the `=- … -=` shape and
-     * which links at least one song.
+     * which links at least one page under `prefix`.
      *
      * @param {Document} docContext The document to search.
+     * @param {string}   [prefix='/song:'] The link prefix of the list's entries.
      * @returns {?HTMLElement} The tabview, or `null` when the page has none.
      */
-    function _bbFindSongTabview(docContext) {
+    function _bbFindSongTabview(docContext, prefix = '/song:') {
         return Array.from(docContext.querySelectorAll('div.yui-navset')).find(nav => {
             const labels = Array.from(nav.querySelectorAll(':scope > ul.yui-nav > li'));
             return labels.length > 0 &&
                 labels.every(li => _BB_TAB_LABEL_RE.test(li.textContent.replace(/\s+/g, ' ').trim())) &&
-                nav.querySelector('a[href^="/song:"]') !== null;
+                nav.querySelector(`a[href^="${prefix}"]`) !== null;
         }) || null;
     }
 
@@ -13676,7 +14244,9 @@
      * Builds one table row (Title, Letter) for a Brucebase song.
      *
      * The Title cell links to the song's page by its resolved absolute URL,
-     * in the same tab, as the site's own list does.
+     * in the same tab, as the site's own list does. Its text is in
+     * MusicBrainz title style while `sa_foreign_mb_titles` is on
+     * (`_mbSetSiteTitle()`: "Born In The U.S.A." → "Born in the U.S.A.").
      *
      * @param {{anchor: HTMLAnchorElement, letter: string}} item       One song from `_bbCollectItems()`.
      * @param {Document}                                    docContext The document the row is built in.
@@ -13687,7 +14257,7 @@
         const titleTd = docContext.createElement('td');
         const link = docContext.createElement('a');
         link.href = item.anchor.href;
-        link.textContent = item.anchor.textContent.replace(/\s+/g, ' ').trim();
+        _mbSetSiteTitle(link, item.anchor.textContent.replace(/\s+/g, ' ').trim(), titleTd);
         titleTd.appendChild(link);
         tr.appendChild(titleTd);
         const letterTd = docContext.createElement('td');
@@ -14250,6 +14820,13 @@
      * dropdown). The "Help Us" icon and the request text after it are the
      * Info wanted column instead.
      *
+     * While `sa_foreign_mb_titles` is on, Venue and the songs of Soundcheck
+     * and Setlist are in MusicBrainz title style, the site's capitals as the
+     * tooltip; in a song row only the part in capitals changes, so "(with
+     * Patti Scialfa)" and a set label stay as written (`_mbSiteTitleNodes()`
+     * with `capsOnly`), and their punctuation typographic while
+     * `sa_foreign_typography` is on.
+     *
      * @param {{heading: string, link: ?HTMLAnchorElement, tour: string, blocks: Element[]}} entry One entry of `_bbYearEntries()`.
      * @param {Document} docContext The document the row is built in.
      * @returns {HTMLTableRowElement} The row.
@@ -14326,6 +14903,7 @@
                 frags.forEach(f => {
                     const li = docContext.createElement('li');
                     li.appendChild(f);
+                    _mbSiteTitleNodes(li, { capsOnly: true, skipSel: '.mb-bb-set-label' });
                     ul.appendChild(li);
                 });
                 td.appendChild(ul);
@@ -14340,10 +14918,10 @@
         if (href) {
             const venueA = docContext.createElement('a');
             venueA.setAttribute('href', _bbAbsHref(href));
-            venueA.textContent = venueText;
+            _mbSetSiteTitle(venueA, venueText, venueTd);
             venueTd.appendChild(venueA);
         } else {
-            venueTd.textContent = venueText;
+            _mbSetSiteTitle(venueTd, venueText);
         }
         tr.appendChild(venueTd);
         textCell(h.city);
@@ -14502,6 +15080,480 @@
         Lib.debug('init', 'applyBbYearToTable: start page — empty year table in place for the fetched year pages.');
     }
 
+    // --- Brucebase "Recent changes" (`bb-recent-changes`) ---------------------
+    // `system:recent-changes`: Wikidot's site-wide change log. Its list is
+    // NOT paginated by URL: the pager and "Update list" POST to
+    // /ajax-module-connector.php (SiteChangesListModule) and drop the answer's
+    // HTML into #site-changes-list. So the definition carries
+    // `features.pageRequest` (one POST per page, always 200 per page, the
+    // site's maximum) and each button a `pageCount`. Covered by
+    // `sa_enable_brucebase`. See docs/claude/brucebase.md, "Recent changes".
+
+    /**
+     * Column headers of the Brucebase Recent changes table, in order.
+     * @type {string[]}
+     */
+    const _BB_CHANGES_HEADERS = ['Page', 'Category', 'Flags', 'Date', 'Revision', 'User', 'Comment'];
+
+    /**
+     * Revisions per AJAX page: the most the site's own "Revisions per page"
+     * select offers, and what the request asked for ("change to 200 revisions
+     * per page beforehand").
+     * @type {number}
+     */
+    const _BB_CHANGES_PER_PAGE = 200;
+
+    /**
+     * The flag letters of a change, as the server's own `title`s explain them
+     * (scripts/probe-bb-recent-changes.py, 2026-10-12). The live page's
+     * hover-tip script empties those titles, so the letters are read and the
+     * text comes from here.
+     * @type {Object<string, string>}
+     */
+    const _BB_CHANGES_FLAGS = {
+        N: 'new page created',
+        S: 'content source text changed',
+        T: 'title changed',
+        R: 'page renamed/moved',
+        A: 'tags changed',
+        M: 'meta data changed',
+        F: 'file/attachment action'
+    };
+
+    /**
+     * The Wikidot AJAX token: the value of the `wikidot_token7` cookie, which
+     * every request to /ajax-module-connector.php must repeat in its body
+     * (Wikidot checks that the two match). The site sets the cookie on the
+     * first page view; should it be missing, one is set for the wiki's path,
+     * as Wikidot's own scripts do.
+     *
+     * @returns {string}
+     */
+    function _bbWikidotToken() {
+        const m = document.cookie.match(/(?:^|;\s*)wikidot_token7=([^;]*)/);
+        if (m && m[1]) return decodeURIComponent(m[1]);
+        const token = Math.random().toString(16).slice(2, 10);
+        document.cookie = `wikidot_token7=${token}; path=/`;
+        return token;
+    }
+
+    /**
+     * What the site's own form asks for, read at the time of the request:
+     * the ticked revision types ("ALL", "new pages", …) and the category
+     * ("Whole site" = ''). A form that is not there reads as "ALL" of the
+     * whole site.
+     *
+     * @returns {{options: string, categoryId: string}} `options` as the
+     *   JSON the site's SiteChangesModule.js sends.
+     */
+    function _bbChangesFormChoice() {
+        const opts = {};
+        const box = (id) => document.getElementById(id)?.checked === true;
+        if (box('rev-type-all')) opts.all = true;
+        if (box('rev-type-source')) opts.source = true;
+        if (box('rev-type-title')) opts.title = true;
+        if (box('rev-type-tags')) opts.tags = true;
+        if (box('rev-type-move')) opts.move = true;
+        if (box('rev-type-files')) opts.files = true;
+        if (box('rev-type-new')) opts['new'] = true;
+        if (box('rev-type-meta')) opts.meta = true;
+        if (Object.keys(opts).length === 0) opts.all = true;
+        return { options: JSON.stringify(opts), categoryId: document.getElementById('rev-category')?.value || '' };
+    }
+
+    /**
+     * The request for page `p` of the Recent changes list — the
+     * `features.pageRequest` of `bb-recent-changes`: a POST to Wikidot's AJAX
+     * module with the same fields the site's own "Update list" sends, at 200
+     * per page, and the form's current revision types and category.
+     *
+     * @param {number} p The page, from 1.
+     * @returns {{url: string, init: RequestInit, toHtml: function(string): string}}
+     */
+    function _bbChangesRequest(p) {
+        const choice = _bbChangesFormChoice();
+        const token = _bbWikidotToken();
+        const body = new URLSearchParams({
+            page: String(p),
+            perpage: String(_BB_CHANGES_PER_PAGE),
+            categoryId: choice.categoryId,
+            options: choice.options,
+            moduleName: 'changes/SiteChangesListModule',
+            wikidot_token7: token
+        });
+        return {
+            url: new URL('/ajax-module-connector.php', window.location.href).href,
+            init: {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                body: body.toString()
+            },
+            toHtml: _bbChangesResponseToHtml
+        };
+    }
+
+    /**
+     * Turns the AJAX module's JSON answer into a page the converter reads:
+     * its `body` (the list's HTML) inside `#site-changes-list`.
+     *
+     * @param {string} text The response text.
+     * @returns {string} An HTML document.
+     * @throws {Error} When the answer is not JSON or its `status` is not
+     *   "ok" ("wrong_token7", "no_permission", …): the loop then records the
+     *   page as failed, like an HTTP error.
+     */
+    function _bbChangesResponseToHtml(text) {
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            const err = new Error('Wikidot answered with something that is not JSON');
+            err.status = 0;
+            throw err;
+        }
+        if (data?.status !== 'ok' || typeof data.body !== 'string') {
+            const err = new Error(`Wikidot answered "${data?.status}"${data?.message ? `: ${data.message}` : ''}`);
+            err.status = 0;
+            throw err;
+        }
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><div id="site-changes-list">${data.body}</div></body></html>`;
+    }
+
+    /**
+     * A change's time as local "YYYY-MM-DD HH:MM:SS", read from the epoch
+     * seconds in its `odate time_<n>` class — what the site's own script
+     * turns into "12 Oct 2026 - 17:42:28" in the reader's time zone. Without
+     * that class, the span's text as written.
+     *
+     * @param {?Element} span The change's `span.odate`.
+     * @returns {string}
+     */
+    function _bbChangeDate(span) {
+        const m = (span?.className || '').match(/\btime_(\d+)\b/);
+        if (!m) return _bbText(span);
+        const d = new Date(parseInt(m[1], 10) * 1000);
+        const z = (n) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ` +
+            `${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`;
+    }
+
+    /**
+     * Builds one table row of the Recent changes table, in
+     * `_BB_CHANGES_HEADERS` order, from one `div.changes-list-item`.
+     *
+     * Page links the page (absolute, same tab) by its title without the
+     * category prefix the site prints before it ("song: Going Home …");
+     * Category is that prefix, read from the link ("/song:…"), empty for a
+     * page in no category. Flags is a list, one row per flag letter (three
+     * changes in 200 carry two, "S" and "T"), the letter before its meaning.
+     * Revision is the number in "(rev. 34)", 0 for "(new)". User links the
+     * Wikidot profile in a new tab. Comment is the change's comment line.
+     *
+     * @param {Element}  item       The change.
+     * @param {Document} docContext The document the row is built in.
+     * @returns {HTMLTableRowElement}
+     */
+    function _bbChangesBuildRow(item, docContext) {
+        const tr = docContext.createElement('tr');
+        const cell = (text) => {
+            const td = docContext.createElement('td');
+            if (text !== undefined) td.textContent = text;
+            tr.appendChild(td);
+            return td;
+        };
+
+        const link = item.querySelector('td.title a[href]');
+        const rawHref = link ? link.getAttribute('href') : '';
+        const cm = rawHref.match(/^\/([^/:]+):/);
+        const category = cm ? cm[1] : '';
+        let title = _bbText(link || item.querySelector('td.title'));
+        if (category && title.toLowerCase().startsWith(`${category.toLowerCase()}:`)) {
+            title = title.slice(category.length + 1).trim();
+        }
+        const pageTd = cell();
+        if (link) {
+            const a = docContext.createElement('a');
+            a.setAttribute('href', _bbAbsHref(rawHref));
+            a.textContent = title;
+            pageTd.appendChild(a);
+        } else {
+            pageTd.textContent = title;
+        }
+        cell(category);
+
+        const flagsTd = cell();
+        const letters = Array.from(item.querySelectorAll('td.flags span.spantip'))
+            .map(s => s.textContent.trim()).filter(Boolean);
+        if (letters.length) {
+            const ul = docContext.createElement('ul');
+            letters.forEach(letter => {
+                const li = docContext.createElement('li');
+                const tag = docContext.createElement('span');
+                tag.className = 'mb-bb-flag';
+                tag.textContent = letter;
+                li.appendChild(tag);
+                li.appendChild(docContext.createTextNode(` ${_BB_CHANGES_FLAGS[letter] || letter}`));
+                ul.appendChild(li);
+            });
+            flagsTd.appendChild(ul);
+        }
+
+        cell(_bbChangeDate(item.querySelector('td.mod-date span.odate')));
+        const revText = _bbText(item.querySelector('td.revision-no'));
+        const rm = revText.match(/\d+/);
+        cell(rm ? rm[0] : (/new/i.test(revText) ? '0' : revText));
+
+        const userTd = cell();
+        const userLink = item.querySelector('td.mod-by span.printuser a[href]');
+        if (userLink) {
+            const a = docContext.createElement('a');
+            a.setAttribute('href', _bbAbsHref(userLink.getAttribute('href')));
+            a.target = '_blank';
+            a.rel = 'noopener';
+            a.textContent = _bbText(userLink);
+            userTd.appendChild(a);
+        } else {
+            userTd.textContent = _bbText(item.querySelector('td.mod-by'));
+        }
+        cell(_bbText(item.querySelector('.comments')));
+        return tr;
+    }
+
+    /**
+     * Converts a Recent changes list into a `<table class="tbl">` — the
+     * counterpart of `applyBsRecordsToTable()` for the pageType carrying
+     * `features.bbChangesToTable`, and built the same way: the rows come from
+     * the FETCHED pages (`features.pageRequest`, the pagination loop,
+     * `doc !== document`), each one AJAX answer wrapped by
+     * `_bbChangesResponseToHtml()`; the live document only gets an EMPTY
+     * table, since its own list shows whatever the site's pager loaded last.
+     *
+     * On the live document (click-time pre-processing and Load from Disk)
+     * the site's list, `#site-changes-list` with both pagers, is hidden (not
+     * removed: the site's "Update list" still writes into it), and the empty
+     * table goes after it under `<h2 class="mb-bb-list-heading">Recent
+     * changes</h2>`. The form above stays: what it asks for is what the next
+     * press loads. Idempotent: a second press finds the table and leaves it.
+     *
+     * Never silent: a fetched page with no change on it logs a warning.
+     *
+     * @param {object}   def                   The active merged pageDefinition.
+     * @param {Document} [docContext=document] The live or a fetched document.
+     * @returns {void}
+     */
+    function applyBbChangesToTable(def, docContext = document) {
+        if (!def?.features?.bbChangesToTable) return;
+        const isLive = docContext === document;
+        if (isLive && docContext.querySelector('table.mb-bb-changes-table')) return;
+
+        const table = docContext.createElement('table');
+        table.className = 'tbl mb-bb-table mb-bb-changes-table';
+        const thead = docContext.createElement('thead');
+        const hr = docContext.createElement('tr');
+        _BB_CHANGES_HEADERS.forEach(h => {
+            const th = docContext.createElement('th');
+            th.textContent = h;
+            hr.appendChild(th);
+        });
+        thead.appendChild(hr);
+        table.appendChild(thead);
+        const tbody = docContext.createElement('tbody');
+        table.appendChild(tbody);
+
+        const list = docContext.getElementById('site-changes-list');
+        if (isLive) {
+            const host = list?.parentNode || docContext.getElementById('page-content') || docContext.body;
+            if (list) {
+                list.classList.add('mb-bb-hidden');
+                list.after(table);
+            } else {
+                host.appendChild(table);
+            }
+            const h2 = document.createElement('h2');
+            h2.className = 'mb-bb-list-heading';
+            h2.textContent = 'Recent changes';
+            table.parentNode.insertBefore(h2, table);
+            Lib.debug('init', 'applyBbChangesToTable: live page — site list hidden, empty table in place for the fetched pages.');
+            return;
+        }
+
+        const items = Array.from(docContext.querySelectorAll('.changes-list-item'));
+        if (items.length === 0) {
+            Lib.warn('init', 'applyBbChangesToTable: no changes on the fetched page — nothing converted.');
+            return;
+        }
+        items.forEach(item => tbody.appendChild(_bbChangesBuildRow(item, docContext)));
+        if (list) list.replaceWith(table);
+        else docContext.body.appendChild(table);
+        Lib.debug('init', `applyBbChangesToTable: converted ${tbody.rows.length} change(s) → table.`);
+    }
+
+    /**
+     * Sets the site's own "Revisions per page" select to 200 on the live
+     * Recent changes page, so its "Update list" and pager load as many as the
+     * buttons do. Only `.value`: nothing is reloaded.
+     *
+     * @returns {void}
+     */
+    function _bbChangesPerPageSelect() {
+        const sel = document.getElementById('rev-perpage');
+        if (sel && sel.querySelector(`option[value="${_BB_CHANGES_PER_PAGE}"]`)) sel.value = String(_BB_CHANGES_PER_PAGE);
+    }
+
+    // --- Brucebase "Relations" (`bb-relations`) --------------------------------
+    // `stats:relations`: everyone Bruce Springsteen shared a stage or a
+    // studio with, plus family and friends, in a YUI tabview like the song
+    // list — tabs `=- 0-9 -=`, `=- A -=` … `=- Z -=`, `=- & -=`, each a
+    // two-column table, "Persons" and "Bands", of `/relation:` links named
+    // in sort form ("Adams, Bryan", "Alliance Singers, The"). Covered by
+    // `sa_enable_brucebase`. See docs/claude/brucebase.md, "Relations".
+
+    /**
+     * Column headers of the Brucebase Relations table, in order.
+     * @type {string[]}
+     */
+    const _BB_RELATIONS_HEADERS = ['Name', 'Sort name', 'Type', 'Letter'];
+
+    /**
+     * The display name of a Relations entry from its sort name, as
+     * MusicBrainz keeps the two: "Adams, Bryan" → "Bryan Adams", "Alliance
+     * Singers, The" → "The Alliance Singers", "Edge, The" → "The Edge",
+     * "lang, k.d." → "k.d. lang". Only a name with exactly one ", " is turned
+     * round, and not when what follows it holds an "&": "Crosby, Stills &
+     * Nash" and "Crosby, Stills, Nash & Young" are band names with commas,
+     * not sort forms (all three such names of the page, 2026-10-13).
+     *
+     * @param {string} sortName The name as the site lists it.
+     * @returns {string}
+     */
+    function _bbRelationDisplayName(sortName) {
+        const t = String(sortName || '').replace(/\s+/g, ' ').trim();
+        const parts = t.split(', ');
+        if (parts.length !== 2 || !parts[0] || !parts[1] || parts[1].includes('&')) return t;
+        return `${parts[1]} ${parts[0]}`;
+    }
+
+    /**
+     * Collects the entries of the Relations tabview, each with the letter of
+     * its tab and its group ("Persons", "Bands" → Type "Person", "Band").
+     *
+     * Tab label i belongs to the i-th panel of `.yui-content`, as on the song
+     * list. Inside a panel each column opens with `<p><strong>Persons</strong>
+     * (77)</p>`; every `/relation:` link after it, up to the next such
+     * heading, is of that group. The count in parentheses is the site's own
+     * and is not checked: it is out of date on three tabs (C, F, M,
+     * 2026-10-13). An entry is kept once, by its link as written.
+     *
+     * @param {HTMLElement} tabview The tabview.
+     * @returns {Array<{anchor: HTMLAnchorElement, letter: string, type: string}>}
+     */
+    function _bbRelationsCollect(tabview) {
+        const labels = Array.from(tabview.querySelectorAll(':scope > ul.yui-nav > li'));
+        const panels = Array.from(tabview.querySelector(':scope > .yui-content')?.children || []);
+        const seen = new Set();
+        const items = [];
+        panels.forEach((panel, i) => {
+            const letter = labels[i] ? _bbParseTabLabel(labels[i].textContent) : '';
+            let type = '';
+            panel.querySelectorAll('p > strong, li > a[href^="/relation:"]').forEach(el => {
+                if (el.tagName === 'STRONG') {
+                    const g = _bbText(el);
+                    type = g === 'Persons' ? 'Person' : g === 'Bands' ? 'Band' : g;
+                    return;
+                }
+                const key = el.getAttribute('href');
+                if (seen.has(key)) return;
+                seen.add(key);
+                items.push({ anchor: el, letter, type });
+            });
+        });
+        return items;
+    }
+
+    /**
+     * Builds one row (Name, Sort name, Type, Letter) for a Relations entry.
+     * Name links the entry's page (absolute, same tab). With
+     * `sa_foreign_typography` on, both names get typographic punctuation
+     * ("D’Angelo"); their letter case is never changed — they are names, not
+     * titles.
+     *
+     * @param {{anchor: HTMLAnchorElement, letter: string, type: string}} item
+     * @param {Document} docContext The document the row is built in.
+     * @returns {HTMLTableRowElement}
+     */
+    function _bbRelationsBuildRow(item, docContext) {
+        const sortName = _bbText(item.anchor);
+        const typo = (t) => (_mbTypographyOn() ? _mbTypography(t) : t);
+        const tr = docContext.createElement('tr');
+        const nameTd = docContext.createElement('td');
+        const a = docContext.createElement('a');
+        a.setAttribute('href', _bbAbsHref(item.anchor.getAttribute('href')));
+        a.textContent = typo(_bbRelationDisplayName(sortName));
+        nameTd.appendChild(a);
+        tr.appendChild(nameTd);
+        [typo(sortName), item.type, item.letter].forEach(text => {
+            const td = docContext.createElement('td');
+            td.textContent = text;
+            tr.appendChild(td);
+        });
+        return tr;
+    }
+
+    /**
+     * Converts the Relations tabview into a `<table class="tbl">` — the
+     * counterpart of `applyBbSongsToTable()` for the pageType carrying
+     * `features.bbRelationsToTable`, and placed the same way: the table takes
+     * the tabview's place, the tabview and the inline script that built it
+     * are removed, and on the live document `<h2 class="mb-bb-list-heading">`
+     * goes before the table. The counts above the tabview stay. Idempotent;
+     * never silent.
+     *
+     * @param {object}   def                   The active merged pageDefinition.
+     * @param {Document} [docContext=document] The live or a fetched document.
+     * @returns {void}
+     */
+    function applyBbRelationsToTable(def, docContext = document) {
+        if (!def?.features?.bbRelationsToTable) return;
+        const tabview = _bbFindSongTabview(docContext, '/relation:');
+        const items = tabview ? _bbRelationsCollect(tabview) : [];
+        if (items.length === 0) {
+            if (!docContext.querySelector('table.mb-bb-relations-table')) {
+                Lib.warn('init', `applyBbRelationsToTable: no relations list found on the ${docContext === document ? 'live' : 'fetched'} page ` +
+                    `(${docContext.querySelectorAll('a[href^="/relation:"]').length} relation link(s) in the document, ` +
+                    `${tabview ? 'none in the letter tabs' : 'no letter tabview'}) — nothing converted.`);
+            }
+            return;
+        }
+
+        const table = docContext.createElement('table');
+        table.className = 'tbl mb-bb-table mb-bb-relations-table';
+        const thead = docContext.createElement('thead');
+        const hr = docContext.createElement('tr');
+        _BB_RELATIONS_HEADERS.forEach(h => {
+            const th = docContext.createElement('th');
+            th.textContent = h;
+            hr.appendChild(th);
+        });
+        thead.appendChild(hr);
+        table.appendChild(thead);
+        const tbody = docContext.createElement('tbody');
+        items.forEach(item => tbody.appendChild(_bbRelationsBuildRow(item, docContext)));
+        table.appendChild(tbody);
+
+        tabview.parentNode.insertBefore(table, tabview);
+        const next = tabview.nextElementSibling;
+        if (next?.tagName === 'SCRIPT' && /YAHOO\.widget\.TabView/.test(next.textContent)) next.remove();
+        tabview.remove();
+
+        if (docContext === document && !document.querySelector('h2.mb-bb-list-heading')) {
+            const h2 = document.createElement('h2');
+            h2.className = 'mb-bb-list-heading';
+            h2.textContent = 'Relations';
+            table.parentNode.insertBefore(h2, table);
+        }
+        Lib.debug('init', `applyBbRelationsToTable: converted ${tbody.rows.length} relation${tbody.rows.length === 1 ? '' : 's'} → table.`);
+    }
+
     /**
      * Installs the Brucebase stylesheet, once per document.
      *
@@ -14638,6 +15690,22 @@
                 clip: rect(0 0 0 0);
                 white-space: nowrap;
             }
+            body.mb-sa-host-bb .mb-bb-flag {
+                display: inline-block;
+                min-width: 1.2em;
+                text-align: center;
+                font-weight: bold;
+                font-size: 85%;
+                color: #555;
+                background: #eee;
+                border-radius: 3px;
+                margin-right: 2px;
+            }
+            body.mb-sa-host-bb table.mb-bb-changes-table td ul {
+                margin: 0;
+                padding: 0;
+                list-style: none;
+            }
             body.mb-sa-host-bb .mb-bb-set-label {
                 font-size: 85%;
                 color: #666;
@@ -14661,8 +15729,9 @@
      *
      * Also tags `<body>` with `mb-sa-host-bb` (the scope of every Brucebase
      * style rule), installs `_ensureBbStyle()` and arranges the wiki's side
-     * bar (`_bbArrangeSideBar()`). Nothing else on the page
-     * changes until the user presses the "Show all songs" button.
+     * bar (`_bbArrangeSideBar()`). On Recent changes it also sets the site's
+     * "Revisions per page" to 200 (`_bbChangesPerPageSelect()`). Nothing else
+     * on the page changes until the user presses a button.
      *
      * @returns {?HTMLHeadingElement} The `<h1>` to use as header container, or
      *   `null` when the document has no `<body>`.
@@ -14675,6 +15744,7 @@
         document.body.classList.add('mb-sa-host-bb');
         _ensureBbStyle();
         _bbArrangeSideBar();
+        if (/^\/system:recent-changes\/?$/.test(window.location.pathname)) _bbChangesPerPageSelect();
         const pageTitle = document.getElementById('page-title');
         const title = pageTitle?.textContent.replace(/\s+/g, ' ').trim() || 'Songs';
         const h1 = document.createElement('h1');
@@ -28982,6 +30052,48 @@
             features: {
                 bbSongsToTable: true,
                 stickyColumn: 'Title'
+            },
+            tableMode: 'single'
+        },
+
+        // Brucebase Relations (`stats:relations`): every person and band with
+        // a relation page, in a letter tabview like the song list. One static
+        // page, so the live document is reused — no request. Covered by
+        // `sa_enable_brucebase`. See applyBbRelationsToTable() and
+        // docs/claude/brucebase.md, "Relations".
+        {
+            type: 'bb-relations',
+            host: 'brucebase.wikidot.com',
+            match: (path) => /^\/stats:relations\/?$/.test(path),
+            buttons: [ { label: 'Show all relations', shortLabel: 'Relations' } ],
+            features: {
+                bbRelationsToTable: true,
+                stickyColumn: 'Name'
+            },
+            tableMode: 'single'
+        },
+
+        // Brucebase Recent changes (`system:recent-changes`): the wiki's
+        // change log, loaded through Wikidot's AJAX module, never from a URL
+        // (`features.pageRequest`, a POST per page at 200 per page; each
+        // button's `pageCount` says how many). The live page gets an empty
+        // table. Covered by `sa_enable_brucebase`. See applyBbChangesToTable()
+        // and docs/claude/brucebase.md, "Recent changes".
+        {
+            type: 'bb-recent-changes',
+            host: 'brucebase.wikidot.com',
+            match: (path) => /^\/system:recent-changes\/?$/.test(path),
+            buttons: [
+                { label: 'Show the last 200 changes', shortLabel: '200', features: { pageCount: 1 } },
+                { label: 'Show the last 1,000 changes', shortLabel: '1,000', features: { pageCount: 5 } },
+                { label: 'Show the last 5,000 changes', shortLabel: '5,000', features: { pageCount: 25 } }
+            ],
+            features: {
+                bbChangesToTable: true,
+                pageRequest: (p) => _bbChangesRequest(p),
+                pageCount: 1,
+                integerColumns: [ { sourceColumn: 'Revision', align: 'R' } ],
+                stickyColumn: 'Page'
             },
             tableMode: 'single'
         },
@@ -77597,6 +78709,15 @@ a { color: #1565c0; }`;
         if (activeDefinition.features?.bbYearToTable) {
             applyBbYearToTable(activeDefinition);
         }
+        // Brucebase Relations ('bb-relations'): the letter tabs become a table.
+        if (activeDefinition.features?.bbRelationsToTable) {
+            applyBbRelationsToTable(activeDefinition);
+        }
+        // Brucebase Recent changes ('bb-recent-changes'): the live page gets
+        // an empty table; the rows come from the AJAX pages fetched below.
+        if (activeDefinition.features?.bbChangesToTable) {
+            applyBbChangesToTable(activeDefinition);
+        }
 
         // ── bsRecordsToTable pre-processing ──────────────────────────────────
         // brucespringsteen.it ('bs-records'): tick every format in the site's
@@ -77700,6 +78821,12 @@ a { color: #1565c0; }`;
             const _keyUnit = activeDefinition.features.pageKeys.unit || activeDefinition.features.pageKeys.param;
             Lib.debug('fetch', `Context: pageKeys (${_keyUnit}): ${pageKeys.map(k => k.key).join(' ')}`);
             globalStatusDisplay.textContent = `Getting number of pages to fetch... ${maxPage} pages, one per ${_keyUnit}`;
+        } else if (activeDefinition?.features?.pageRequest) {
+            // Pages that are not URLs (Brucebase's Recent changes: a POST per
+            // page to Wikidot's AJAX module). The pressed button says how many.
+            maxPage = Math.max(1, activeDefinition.features.pageCount || 1);
+            Lib.debug('fetch', `Context: features.pageRequest, ${maxPage} page(s) by request.`);
+            globalStatusDisplay.textContent = `Getting number of pages to fetch... ${maxPage} page(s), as the button asks`;
         } else if (isAmbiguousEditsPagination) {
             // MusicBrainz edit-listing pagination never reveals a true last page
             // (the widget is a sliding window around the current page, and
@@ -77920,7 +79047,15 @@ a { color: #1565c0; }`;
                     const _isCurrentPage = pageKeys
                         ? pageKeys[p - 1].key.toLowerCase() === currentPageKey
                         : p === currentPageNum;
-                    if (!_isResume && !_isSearchPage && !buttonConfig.virtualPath && _isCurrentPage && (!overrideParams || Object.keys(overrideParams).length === 0)) {
+                    const _pageRequest = activeDefinition.features?.pageRequest;
+                    if (_pageRequest) {
+                        // Never the live document: what it shows is whatever
+                        // the site's own pager last loaded, not page p.
+                        const req = _pageRequest(p, activeDefinition);
+                        Lib.debug('fetch', `Requesting page ${p}: ${req.init?.method || 'GET'} ${req.url}`);
+                        const text = await fetchHtml(req.url, req.init || null);
+                        doc = new DOMParser().parseFromString(req.toHtml ? req.toHtml(text) : text, 'text/html');
+                    } else if (!_isResume && !_isSearchPage && !buttonConfig.virtualPath && _isCurrentPage && (!overrideParams || Object.keys(overrideParams).length === 0)) {
                         Lib.debug('fetch', `Page ${p} is current page. Using existing document.`);
                         doc = document;
                    } else {
@@ -78078,6 +79213,13 @@ a { color: #1565c0; }`;
                 }
                 if (doc !== document && activeDefinition.features?.bbYearToTable) {
                     applyBbYearToTable(activeDefinition, doc);
+                }
+                if (doc !== document && activeDefinition.features?.bbRelationsToTable) {
+                    applyBbRelationsToTable(activeDefinition, doc);
+                }
+                // Brucebase Recent changes: THE path — every page is an AJAX answer.
+                if (doc !== document && activeDefinition.features?.bbChangesToTable) {
+                    applyBbChangesToTable(activeDefinition, doc);
                 }
                 // brucespringsteen.it: THE path — both buttons fetch page 1.
                 if (doc !== document && activeDefinition.features?.bsRecordsToTable) {
@@ -96931,18 +98073,22 @@ a { color: #1565c0; }`;
      * total, not three per page (org/503-handling.org open question 4).
      *
      * @param {string} url - The URL to fetch (must be same-origin).
+     * @param {?RequestInit} [init=null] - Extra `fetch()` options (method,
+     *   headers, body), merged over `{ credentials: 'same-origin' }`. Only a
+     *   `features.pageRequest` pageType passes it (Brucebase's Recent changes,
+     *   a POST to Wikidot's AJAX module); every other caller sends a plain GET.
      * @returns {Promise<string>} Promise that resolves with the HTML response text.
      * @throws {Error} On a final failure. The error carries `status` (the last
      *   HTTP status seen, `0` when no response arrived) and `attempts`, so a
      *   caller can classify it without parsing `message`.
      */
-    async function fetchHtml(url) {
-        Lib.debug('fetch', `Initiating fetch for URL: ${url}`);
+    async function fetchHtml(url, init = null) {
+        Lib.debug('fetch', `Initiating fetch for URL: ${url}${init?.method ? ` (${init.method})` : ''}`);
         let lastErr = null;
         for (let attempt = 1; attempt <= _HTML_FETCH_TRIES; attempt++) {
             let retryAfterMs = 0;
             try {
-                const res = await fetch(url, { credentials: 'same-origin' });
+                const res = await fetch(url, init ? { credentials: 'same-origin', ...init } : { credentials: 'same-origin' });
                 if (res.ok) return await res.text();
                 const err = new Error(`HTTP ${res.status} ${res.statusText} for ${url}`);
                 err.status = res.status;
@@ -105043,6 +106189,14 @@ a { color: #1565c0; }`;
             // And the year pages: the reloaded page holds the entries again.
             if (activeDefinition.features?.bbYearToTable) {
                 applyBbYearToTable(activeDefinition);
+            }
+            // And Relations (the letter tabs again), and Recent changes (the
+            // site's list again; an empty table takes its place).
+            if (activeDefinition.features?.bbRelationsToTable) {
+                applyBbRelationsToTable(activeDefinition);
+            }
+            if (activeDefinition.features?.bbChangesToTable) {
+                applyBbChangesToTable(activeDefinition);
             }
             // And for brucespringsteen.it: the reloaded page holds the site's
             // record paragraphs again; an empty table takes their place.
@@ -125021,6 +126175,63 @@ a { color: #1565c0; }`;
              */
             bbParseTabLabel(text) {
                 return _bbParseTabLabel(text);
+            },
+
+            /**
+             * Thin wrapper around `_bbRelationDisplayName()` — a Brucebase
+             * Relations sort name in display order ("Adams, Bryan" →
+             * "Bryan Adams").
+             *
+             * @param {string} sortName
+             * @returns {string}
+             */
+            bbRelationDisplayName(sortName) {
+                return _bbRelationDisplayName(sortName);
+            },
+
+            /**
+             * Thin wrapper around `_mbTitleCase()` — a title in MusicBrainz's
+             * English letter case.
+             *
+             * @param {string} text
+             * @param {{capsOnly?: boolean}} [opts]
+             * @returns {string}
+             */
+            mbTitleCase(text, opts) {
+                return _mbTitleCase(text, opts || {});
+            },
+
+            /**
+             * Thin wrapper around `_mbNormalizeTitle()` — `mbTitleCase` plus
+             * a trailing "(THE)" moved to the front.
+             *
+             * @param {string} text
+             * @returns {string}
+             */
+            mbNormalizeTitle(text) {
+                return _mbNormalizeTitle(text);
+            },
+
+            /**
+             * Thin wrapper around `_mbTypography()` — a title's punctuation
+             * as English typography.
+             *
+             * @param {string} text
+             * @returns {string}
+             */
+            mbTypography(text) {
+                return _mbTypography(text);
+            },
+
+            /**
+             * Thin wrapper around `_mbSiteTitleText()` — a title as the
+             * converters write it, both steps forced on.
+             *
+             * @param {string} text
+             * @returns {string}
+             */
+            mbSiteTitleText(text) {
+                return _mbSiteTitleText(text, { caseOn: true, typoOn: true });
             },
 
             /**

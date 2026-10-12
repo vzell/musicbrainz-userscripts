@@ -22141,3 +22141,69 @@ sl-include-regex, fixtures + mobile: 337/338. The one failure,
 fetched rows…", failed its PREMISE (104 rows already `data-ii-processed` when
 the panel opened — the third-party stub won the race under load); 5/5 when
 re-run alone.
+
+## 2026-10-13 — Brucebase Relations and Recent changes; MusicBrainz title style and typography on the Springsteen sites (WIP.9–WIP.11, branch `feature/bb-recent-changes-relations`)
+
+Env: 2026-10-12T22:32Z–23:30Z · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.40.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs); probes: n/a
+
+**Snapshots.** The user's `debug/bb-recent-changes.html`,
+`debug/bb-relations-0-9.html` and `debug/bb-relations-a.html` are
+`#main-content` fragments (no `<head>`, header or side bar), so the fixtures
+come from the server's pages instead: `scripts/probe-bb-recent-changes.py`
+saved `debug/bb-recent-changes-raw.html`, `debug/bb-relations-raw.html` and
+two AJAX answers (`debug/bb-recent-changes-ajax-p{1,2}.json`). The two
+Relations snapshots differ only in which tab is active.
+
+**Recent changes is not a URL-paginated list.** Root of the design:
+Wikidot's `SiteChangesModule.js` (fetched, minified, 2026-10-12) builds
+`page`, `perpage` (= `#rev-perpage`), `categoryId`, `options` (ticked
+`rev-type-*` boxes as JSON) and POSTs them through `OZONE.ajax.requestModule`
+to `/ajax-module-connector.php` (`moduleName=changes/SiteChangesListModule`,
+plus `wikidot_token7`, which must equal the cookie). curl with a made-up
+token in both places answered `status: ok` with 200 changes. The pager
+shows no last page; at 200 a page, page 100 is 2025-10-17 and page 1,000 is
+2020-12-14 — so fixed 1/5/25-page buttons, no "all". The engine got its
+first non-URL page source, `features.pageRequest` + `pageCount`, and
+`fetchHtml()` an optional `init`; the loop's live-document shortcut is
+skipped for such a page. The user's snapshot shows every flag `title=""`:
+the site's hover-tip script moves the server's titles into its own tips, so
+the meanings ("content source text changed", …) are read off the SERVER
+HTML into `_BB_CHANGES_FLAGS`. Items: 3–4 of 200 carry two flags (always S+T);
+"(new)" is revision 0; ~75 % have a comment.
+
+**Relations.** 2,892 entries, no duplicates across tabs, the site's own
+per-tab counts stale on C, F and M. Exactly three names hold a comma that is
+not the sort form: two bands with "&" after it ("Crosby, Stills & Nash"),
+and "Fields, Elysian", which IS one — hence `_bbRelationDisplayName()`'s
+"one ', ', no '&' after it" rule.
+
+**Title style.** Sampled every title of the four sites from the snapshots
+(`scripts/check-mb-title-case.js --sample`): Brucebase song list every word
+capitalised (1,664/1,679), brucespringsteen.it in capitals (1,782/1,878
+unofficial, 1,182/1,186 official), jungleland.it as typed (3,814 every-word,
+1,877 mixed, 512 mostly lower, 123 capitals), year-page venues and setlist
+songs in capitals with mixed-case notes. Rules from
+https://musicbrainz.org/doc/Style/Language/English and /doc/Style/Titles; the
+first sample run turned "(JEMS)" into "(Jems)" (→ a parenthesised part counts
+as capitals only when the title is outside it too), "10TH" into "10Th"
+(→ a digit-led word is never capitalised), and "BORDERLINE...WITH" into one
+word (→ a dot followed by a dot ends a word). "up" and phrasal "on" are
+deliberate deviations, measured on the song list (Held Up, Hurry Up, Shipping
+Up, Stand Up; Come On, Hang On, Bring On). Typography: jungleland.it types
+´ and ` for apostrophes ("Spirit of ´76", "`Cause", "Rock `n` Roll") — found
+by listing every title with a quote character (527).
+
+**Filters do not fold punctuation** (no `’`/`'` equivalence anywhere in the
+filter path) — the reason typography is its own setting; left alone rather
+than changing the shared filter hot path.
+
+Tests: `bb-recent-changes.spec.js` 11/11, `bb-relations.spec.js` 10/10,
+`mb-title-case.spec.js` 8/8 (+ 101 shared cases), `sl-include-regex.spec.js`
+8/8; the converter specs (bb-songs, bb-year, bb-home, jl-list, bs-records,
+66 tests) pass with the two settings seeded off by their loaders. Mutations:
+`foreign-titles.json` 15/15 as declared (the per-node ellipsis `"pass"`: no
+year fixture holds "..." in a setlist). `bb-relations-changes.json` 17/17 as
+declared, all `"fail"`. Shared fetch-loop code (`fetchHtml(url, init)`, the
+`pageRequest` branch) checked with html-fetch-transient, resume-from-failed-page,
+bb-home, sl-lyrics and the other foreign-site specs; `test:full` deferred to the
+end of the branch stack (vzell-lap).

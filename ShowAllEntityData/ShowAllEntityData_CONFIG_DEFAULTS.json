@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1326+2026-10-11",
-    "schema_entries": 418,
-    "sections": 50,
-    "settings": 368,
-    "settings_with_default": 363,
+    "schema_entries": 421,
+    "sections": 51,
+    "settings": 370,
+    "settings_with_default": 365,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,10 +15,10 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 191,
+      "checkbox": 193,
       "color_picker": 62,
       "number": 54,
-      "divider": 50,
+      "divider": 51,
       "keyboard_shortcut": 23,
       "text": 17,
       "popup_dialog": 14,
@@ -202,6 +202,10 @@
     {
       "key": "divider_springsteenlyrics",
       "label": "🎸 SPRINGSTEENLYRICS.COM"
+    },
+    {
+      "key": "divider_foreign_titles",
+      "label": "🔤 TITLES ON THE OTHER SITES"
     },
     {
       "key": "divider_jungleland",
@@ -446,6 +450,8 @@
     "sa_findings_tint_truncated": "Highlight truncated titles as WARNING",
     "sa_fn_edit_pinned_filter_list": "Edit Pinned Filter List",
     "sa_fn_idb_overview": "💾 Browser cache overview",
+    "sa_foreign_mb_titles": "Write titles in MusicBrainz style",
+    "sa_foreign_typography": "Write typographic punctuation in titles",
     "sa_global_filter_border_active": "Global filter border — active (has filter text)",
     "sa_global_filter_border_idle": "Global filter border — idle (empty)",
     "sa_global_filter_highlight_bg": "Global Filter Highlight Background",
@@ -815,6 +821,8 @@
     "sa_findings_tint_truncated": true,
     "sa_fn_edit_pinned_filter_list": "_openEditPinnedFilterListFromSettings",
     "sa_fn_idb_overview": "_idbOverviewOpenFromSettings",
+    "sa_foreign_mb_titles": true,
+    "sa_foreign_typography": true,
     "sa_global_filter_border_active": "orange",
     "sa_global_filter_border_idle": "#000000",
     "sa_global_filter_highlight_bg": "#FFD700",

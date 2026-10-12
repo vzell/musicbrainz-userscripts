@@ -1259,9 +1259,10 @@ you automatically.
 | ⏱️ Resource timing                               | Cache-hint indicators and where they appear                                                                                                                                                                                                                           |
 | 🔤 Unicode picker                               | Enable, shortcut key, and the glyph table                                                                                                                                                                                                                             |
 | 🎸 springsteenlyrics.com                        | Switch on the springsteenlyrics.com collection and bootleg lists (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                            |
+| 🔤 Titles on the other sites                    | Titles in MusicBrainz style and with typographic punctuation on the Springsteen sites (both on by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                   |
 | 🌴 jungleland.it                                | Switch on the jungleland.it bootleg artwork list (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                            |
 | 💿 brucespringsteen.it                          | Switch on the brucespringsteen.it record database (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                           |
-| 📚 Brucebase                                    | Switch on the Brucebase song list and, separately, its year pages (both off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                      |
+| 📚 Brucebase                                    | Switch on the Brucebase song list, Relations and Recent changes and, separately, its year pages (all off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                         |
 | 🔎 Link previews on MusicBrainz                 | The cards of the links on MusicBrainz pages (on by default; on a phone or tablet off unless you tick the *… on touch devices* boxes), how long their answers are kept, the release group window's size; see [Page-specific behaviour](#page-specific-behaviour)     |
 | 🔎 Every preview                                | Show the MusicBrainz link previews and the Springsteen sites' detail-page previews on a plain hover (on by default), or only while Ctrl is held                                                                                                                       |
 
@@ -1328,7 +1329,7 @@ an import brings your deletions back.
   category and the entry page), bootleg lists, CD and vinyl bootleg list
   and lyrics index, the **jungleland.it**
   bootleg artwork list, the **brucespringsteen.it** record database and
-  the **Brucebase** song list and year pages — each off until you switch it on, see
+  the **Brucebase** song list, year pages, Relations and Recent changes — each off until you switch it on, see
   [Page-specific behaviour](#page-specific-behaviour)
 
 </details>
@@ -2254,8 +2255,9 @@ Once on, the page gets a heading with the usual toolbar and one action
 button, **Bootlegs**. Pressing it turns the whole list into one table with
 these columns:
 
-- **Title:** the bootleg's title, without the date the site appends to it.
-  It links to that bootleg's artwork page, which opens in a new tab.
+- **Title:** the bootleg's title, without the date the site appends to it,
+  written the MusicBrainz way (see *Titles in MusicBrainz style* below). It
+  links to that bootleg's artwork page, which opens in a new tab.
 - **Date:** that date as `1975-08-15`, so sorting it is chronological. It is
   empty for the undated entries the site files under "Others".
 - **Year:** the date's year. Filter or pick from its 📊 list to see one year,
@@ -2313,8 +2315,9 @@ turns them into one table:
 
 *Format* is the site's own text ("2 CD-R", "1 7 in."). *Notes* is the italic
 line some records carry ("Picture disc", "Lower 'Bruce Springsteen' - Little
-Steven Mix"). The title links to the record's detail page, which opens in a
-new tab. With the preview on, resting the pointer on a title shows the
+Steven Mix"). The title, written the MusicBrainz way ("BOSS AT HIS BEST (THE)" reads "The
+Boss at His Best", see *Titles in MusicBrainz style* below), links to the
+record's detail page, which opens in a new tab. With the preview on, resting the pointer on a title shows the
 record's tracklist and the shows its tracks come from (see
 *Previewing the detail pages* under [Page-specific behaviour](#page-specific-behaviour)).
 
@@ -2339,8 +2342,9 @@ page gets a heading with the usual toolbar and one action button, **Songs**.
 Pressing it turns the site's 28 letter tabs into one table with these
 columns:
 
-- **Title:** the song's title, as the wiki writes it. It links to that song's
-  page.
+- **Title:** the song's title, written the MusicBrainz way ("Born In The
+  U.S.A." reads "Born in the U.S.A.", see *Titles in MusicBrainz style*
+  below). It links to that song's page.
 - **Letter:** the tab the song is listed under: *0-9* or *A* to *Z*. Filter
   or pick from its 📊 list to see one letter, which is the job the tabs did.
 
@@ -2377,9 +2381,10 @@ entry, with these columns:
 - **Type:** *Gig*, *No gig* (cancelled or postponed), *Recording*,
   *Rehearsal*, *Interview* or *No Bruce*, from the kind of page the entry
   links to.
-- **Venue:** the venue as written, linked to the entry's own page. A second
-  part such as "SUMMER STAGE" stays with it.
-- **City**, **State** and **Country:** a US state or Canadian province code
+- **Venue:** the venue, linked to the entry's own page, written the
+  MusicBrainz way ("HAMPTON ROADS COLISEUM" reads "Hampton Roads Coliseum").
+  A second part such as "Summer Stage" stays with it.
+- **City**, **State** and **Country** (as the wiki writes them): a US state or Canadian province code
   goes in State, with USA or CANADA as the country. Elsewhere the country is
   written out, and State holds the region where the wiki gives one ("NEW SOUTH
   WALES").
@@ -2387,7 +2392,8 @@ entry, with these columns:
   the wiki's "Start of …" / "Continuation of …" / "End of …" boxes. Entries
   outside any box, such as those before a year's first box, are empty.
 - **Soundcheck:** the soundcheck, one song per row.
-- **Setlist:** the set, one song per row, as written: bold for a tour
+- **Setlist:** the set, one song per row, each title written the MusicBrainz
+  way ("I'M ON FIRE" reads "I’m on Fire"), the rest as the wiki has it: bold for a tour
   premiere (also when the wiki sets a whole tour opener's setlist in bold,
   as on 2012-03-18), "(with …)" for guests, " - " joining a medley. A recording
   session's setlist is the songs recorded. A set with its own label in the
@@ -2439,6 +2445,93 @@ many rows (*Large Dataset Threshold*, 5000).
 </details>
 
 <details>
+<summary>Brucebase Relations</summary>
+
+Brucebase lists everyone Bruce Springsteen shared a stage or a studio with —
+and family, friends and actors — at `https://brucebase.wikidot.com/stats:relations`,
+in 28 letter tabs (0-9, A to Z, and "&" for band names with an "&"). It comes
+with *Enable on the Brucebase song list*. The page gets a heading with the
+usual toolbar and one button, **Relations**, which turns the tabs into one
+table of the nearly 2,900 entries:
+
+- **Name:** the name in reading order, linked to the person's or band's page:
+  "Bryan Adams", "The Alliance Singers", "k.d. lang". A band whose name has a
+  comma of its own ("Crosby, Stills & Nash") keeps it.
+- **Sort name:** the name as the wiki lists it, "Adams, Bryan".
+- **Type:** *Person* or *Band*, the column the wiki lists it in.
+- **Letter:** the tab it is listed under.
+
+Names keep their capitals as the wiki writes them; only the punctuation
+becomes typographic ("D’Angelo"), see *Titles in MusicBrainz style* below.
+Everything is on the page; nothing is fetched.
+
+</details>
+
+<details>
+<summary>Brucebase Recent changes</summary>
+
+`https://brucebase.wikidot.com/system:recent-changes` is the wiki's log of
+every edit. It comes with *Enable on the Brucebase song list*. The page gets
+three buttons: **200**, **1,000** and **5,000** load the last 200, 1,000 or
+5,000 changes into one table. The site's own list shows 20 at a time; the
+buttons always load 200 per page (the most the site offers), and the site's
+"Revisions per page" is set to 200 as well, so its own *Update list* matches.
+The site's form still decides **what** is loaded: untick *ALL* and tick, say,
+*new pages*, or pick a category, before pressing a button. The columns:
+
+- **Page:** the page's title, linked to it.
+- **Category:** the part of the page's name before the colon (*gig*, *song*,
+  *gallery*, …); empty for a page in no category.
+- **Flags:** what changed, one row per flag, the site's letter and its
+  meaning: N new page created, S content source text changed, T title
+  changed, R page renamed/moved, A tags changed, M meta data changed, F
+  file/attachment action. Filter it, or pick from its 📊 list.
+- **Date:** when, in your own time zone, as `2026-10-12 17:42:28`.
+- **Revision:** the page's revision number; 0 for a new page.
+- **User:** who made the change, linked to their Wikidot profile (new tab).
+- **Comment:** the change's comment, where there is one.
+
+Each 200 changes is one request to the wiki, one after the other; 5,000 is 25
+requests and takes a minute or so. A change made while they load can show up
+twice.
+
+</details>
+
+<details>
+<summary>Titles in MusicBrainz style</summary>
+
+On jungleland.it, brucespringsteen.it and Brucebase the tables write titles
+the way MusicBrainz writes English titles rather than each site's own way —
+the bootleg and record titles, the Brucebase song titles, and on a Brucebase
+year page the venues and every song of Soundcheck and Setlist. Two settings,
+both **on** by default, under ⚙️ Settings → *🔤 Titles on the other sites*:
+
+- **Write titles in MusicBrainz style:** capitals as MusicBrainz uses them:
+  every word capitalised except, inside the title, *a, an, the, and, but, or,
+  nor* and the short prepositions (*as, at, by, for, in, of, on, to, …*).
+  "BORN IN THE USA" and "Born In The U.S.A." read "Born in the USA" and "Born
+  in the U.S.A."; "(Version 2)" reads "(version 2)"; brucespringsteen.it's
+  "BOSS AT HIS BEST (THE)" reads "The Boss at His Best". Acronyms keep their
+  capitals (USA, NJ, MTV, U.S.A.). On a setlist only the song titles change:
+  "(with Patti Scialfa)", set labels and bold or italic songs stay as they
+  are. City, State and Country are not titles and stay as the wiki writes them.
+- **Write typographic punctuation in titles:** ’ for an apostrophe ("Don’t",
+  "Rock ’n’ Roll"), “double” and ‘single’ quotation marks, … for "...", — for
+  "--", an en dash for a range ("1975–1985") and between the songs of a
+  medley, a hyphen ‐ inside a word ("Freeze‐Out") and a date, ″ for inches.
+  Brucebase Relations names get this too. **A filter then has to use the same
+  characters:** "don't" no longer finds "Don’t".
+
+Rest the pointer on a title that changed to see it as the site writes it.
+The rules are applied by machine, so a title that needs judgement — a word
+used as part of a verb ("Stand on It"), an acronym nobody listed — can still
+come out differently from MusicBrainz; "up" is always capitalised ("Held Up
+Without a Gun"), and so is "on" in "Come On", "Hang On" and the like. A change
+of either setting shows the next time a table is built.
+
+</details>
+
+<details>
 <summary>Previewing the detail pages</summary>
 
 Each row of these tables links to a page with more detail: a bootleg's
@@ -2455,7 +2548,7 @@ that site's own switch in ⚙️ Settings:
 | 🎸 springsteenlyrics.com | *Preview item and song pages on springsteenlyrics.com lists* | the tracklist by disc, the notes (lineage, edition), the artwork scans; on the lyrics index, the version, the first lines of the lyrics and the song's info |
 | 🌴 jungleland.it        | *Preview artwork pages on the jungleland.it list*        | the uploader and the scans (front, back, discs, booklet)                       |
 | 💿 brucespringsteen.it  | *Preview record pages in the brucespringsteen.it database* | the tracklist, the show each track comes from, the notes, the photo           |
-| 📚 Brucebase           | *Preview song pages on the Brucebase song list*          | the album it comes from, how often and when last it was played live, releases |
+| 📚 Brucebase                                    | *Preview song pages on the Brucebase song list*          | the album it comes from, how often and when last it was played live, releases                                                                                                                              |
 
 **Rest the pointer on a title** for a moment and a card opens beside it. If
 you would rather move the pointer across the table without opening cards or

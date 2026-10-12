@@ -1,5 +1,42 @@
 [
     {
+        "version": "WIP.11",
+        "date": "2026-10-13",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "jungleland.it, brucespringsteen.it and Brucebase tables: titles get typographic punctuation instead of the keyboard characters — ’ for an apostrophe (\"Don’t\", \"Comin’\", \"Rock ’n’ Roll\", \"Spirit of ’76\"), “double” and ‘single’ quotation marks, … for \"...\", — for \"--\", an en dash for a range (\"1975–1985\") and a medley's \" – \", a hyphen ‐ between words (\"Freeze‐Out\") and inside a date (\"1999‐08‐12\"), ″ for inches and × between two numbers. Brucebase Relations names get the same (\"D’Angelo\"). A setting of its own, \"Write typographic punctuation in titles\" (on by default): a column filter has to be typed with the same characters, so \"don't\" no longer finds \"Don’t\"."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.10",
+        "date": "2026-10-13",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "jungleland.it, brucespringsteen.it and Brucebase tables: titles are written the way MusicBrainz writes English titles instead of each site's own way — \"BORN IN THE USA\" and \"Born In The U.S.A.\" become \"Born in the USA\" and \"Born in the U.S.A.\", brucespringsteen.it's \"BOSS AT HIS BEST (THE)\" becomes \"The Boss at His Best\", jungleland.it's \"(Version 2)\" becomes \"(version 2)\". On Brucebase this covers the song list and, on a year page, the Venue column and every song of Soundcheck and Setlist; notes such as \"(with Patti Scialfa)\", set labels and bold or italic songs stay as they are. Acronyms (USA, NJ, MTV, PNC, U.S.A.) keep their capitals. Only capital letters change, and a cell that changed shows the site's own text when you rest the pointer on it. New setting \"Write titles in MusicBrainz style\" (on by default)."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.9",
+        "date": "2026-10-13",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "Brucebase \"Relations\" (brucebase.wikidot.com/stats:relations): \"Show all relations\" turns the 28 letter tabs into one filterable, sortable table of the 2,892 people and bands — Name (\"Bryan Adams\", \"The Alliance Singers\"), Sort name as the site lists it (\"Adams, Bryan\"), Type (Person or Band) and Letter.",
+                    "Brucebase \"Recent changes\" (brucebase.wikidot.com/system:recent-changes): three buttons load the last 200, 1,000 or 5,000 changes of the wiki — always 200 per page, whatever the site's own list shows — into one table: Page, Category, Flags (one row per flag with its meaning: new page, source changed, tags changed, file action, …), Date and time, Revision, User and Comment. The site's own form still decides which kinds of change and which category are loaded. Both pages come with \"Enable on the Brucebase song list\"."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.8",
         "date": "2026-10-12",
         "sections": [
