@@ -281,7 +281,11 @@ no matching row is hidden: its heading line and the table go together. Widen or
 clear the filter and it comes back exactly as it was, collapsed or expanded,
 with its artwork strip as you left it. A sub-table with a filter of its own (a
 column filter, its 🔍 sub-table filter or its ⏳ toggle) stays visible even when
-it is empty, so you can still reach that filter and change it. Hover the row
+it is empty, so you can still reach that filter and change it. When the filter
+matches nothing at all, nothing is hidden: every sub-table stays on screen,
+showing "(0 of N)", so the buttons in its column headers stay reachable (for
+example ⏱, which can turn a length like "3:11" into the "3:11.666" you typed).
+Hover the row
 count in the page heading to see how many sub-tables are hidden. Setting (🎨
 TABLE FILTER CONFIGURATION): **Hide Empty Sub-tables While Filtering** (on by
 default).

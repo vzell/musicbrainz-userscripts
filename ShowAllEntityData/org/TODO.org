@@ -1781,7 +1781,9 @@ The 🔍 filter on each sub-table heading (`applySubFilter`) still filters synch
 card; the global and column filters do since perf/faster-filtering (WIP.9). Move STF typing onto `runFilterSliced()` on its
 own branch, with its own typed A/B (the faster-filtering measurements do not cover it).
 
-* --------------------------------------------------------------- to add to TODO.org
+* ---------------------------------------------------------------
+
+* to add to TODO.org
 ** bug
 
 It works, but do NOT merge yet.

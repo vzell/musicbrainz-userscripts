@@ -145,20 +145,28 @@ test.describe('hide empty sub-tables under a page-wide filter', () => {
         expect(await state(page, PROMOTION)).toEqual({ ...before, marked: false });
     });
 
-    test('nothing matches: every sub-table is hidden', async ({ page }) => {
+    test('nothing matches: no sub-table is hidden, so their header controls stay reachable', async ({ page }) => {
+        // Hiding every sub-table would hide every thead, and with it every
+        // control there that changes what the global filter matches — e.g.
+        // the ⏱ toggle that ms-length-filter-after-toggle.spec.js test C
+        // needs. Shipped without this rule in 9.99.1338.
         test.setTimeout(120000);
         await load(page);
+        await setGlobal(page, 'Cassette');
+        await expect(h3(page, PROMOTION)).toBeHidden(); // one emptied: hidden as usual
+
         await setGlobal(page, 'zzzz-no-match');
-        await expect(h3(page, OFFICIAL)).toBeHidden();
-        await expect(h3(page, PROMOTION)).toBeHidden();
-        const tip = (await getRowCountTooltip(page)).replace(/<[^>]+>/g, '');
-        expect(tip).toContain('2 of 2 sub-tables hidden');
-        expect(tip).toContain('global filter');
+        await expect(h3(page, OFFICIAL)).toBeVisible();
+        await expect(h3(page, PROMOTION)).toBeVisible(); // ...and back once ALL are empty
+        await expect(h3(page, OFFICIAL).locator('.mb-row-count-stat')).toHaveText('(0 of 6)');
+        await expect(h3(page, PROMOTION).locator('.mb-row-count-stat')).toHaveText('(0 of 1)');
+        expect((await state(page, OFFICIAL)).marked).toBe(false);
+        expect((await state(page, PROMOTION)).marked).toBe(false);
+        expect(await getRowCountTooltip(page)).not.toContain('sub-tables hidden');
 
         await setGlobal(page, '');
         await expect(h3(page, OFFICIAL)).toBeVisible();
         await expect(h3(page, PROMOTION)).toBeVisible();
-        expect((await getRowCountTooltip(page))).not.toContain('sub-tables hidden');
     });
 
     test('a sub-table with its own sub-table filter stays visible when empty', async ({ page }) => {

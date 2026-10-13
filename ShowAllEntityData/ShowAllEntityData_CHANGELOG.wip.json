@@ -1,0 +1,14 @@
+[
+    {
+        "version": "WIP.1",
+        "date": "2026-10-13",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Pages with sub-tables: a global filter that matches nothing no longer hides every sub-table. When it would empty all of them, they all stay on screen showing \"(0 of N)\", as before 9.99.1338, so the buttons in their column headers stay reachable. Example: on a release, \"11.666\" typed into the global filter while lengths are shown in seconds hid the only medium, and with it the ⏱ button that switches to the milliseconds that would have matched. Sub-tables are still hidden while at least one keeps a matching row."
+                ]
+            }
+        ]
+    }
+]

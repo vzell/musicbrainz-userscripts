@@ -513,6 +513,14 @@ decides this at the tail of every `renderGroupedTable()`, just before
   CF or a 📊 pick, an STF text, or its ⏳ scope. Its inputs live in its h3 and
   thead, so hiding it would hide the only way to widen that filter again. For
   the same reason, the sub-table that holds the focused element stays visible.
+- **Never hide the last one.** When every sub-table would be hidden, none is.
+  Then they all show "(0 of N)". A header control can change what the GF
+  matches (⏱ turns "3:11" into "3:11.666"), and with every thead hidden there
+  is none left to click. Found by `ms-length-filter-after-toggle.spec.js` test
+  C (9.99.1338 shipped without this). While at least one sub-table stays on
+  screen, its header still offers every such control, so the others can go.
+  A table already hidden by the discography view (`mbDiscHidden`) does not
+  count as one that stays on screen.
 - **The hiding is a CLASS (`.mb-empty-subtable-hidden`, `display: none
   !important`) plus `data-mb-empty-hidden` on the table, never `style.display`.**
   `table.style.display` is the collapse state. The bigboxes' own display is the
