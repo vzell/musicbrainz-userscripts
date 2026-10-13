@@ -84123,6 +84123,12 @@ a { color: #1565c0; }`;
      * its ⏳ scope) is never hidden, because its inputs live in its h3/thead
      * and would vanish with it. The same goes for the one holding the focus.
      *
+     * Never the last one: when every sub-table on screen would be hidden, none
+     * is. Their theads hold controls that change what the filter matches (⏱
+     * turns "3:11" into the "3:11.666" just typed), and with all of them gone
+     * there is nothing left to click. A sub-table the discography view already
+     * hides (`mbDiscHidden`) does not count as one on screen.
+     *
      * Hidden by the `.mb-empty-subtable-hidden` class (plus
      * `data-mb-empty-hidden` on the table), never `style.display`: that holds
      * the collapse state, the art-strip state and the discography view, all of
@@ -84144,8 +84150,9 @@ a { color: #1565c0; }`;
             _findingRowFilter.size > 0 ||
             tables.some(t => colInputs(t).some(_isFindingOnlyColFilter)));
         const focused = document.activeElement;
-        let hidden = 0;
-        tables.forEach(table => {
+        // Decide every sub-table first: whether any is hidden depends on
+        // whether at least one other would stay on screen.
+        const plan = tables.map(table => {
             const h3 = findH3ForTable(table);
             let hide = false;
             if (pageWide && h3 && table.tBodies[0] && table.tBodies[0].rows.length === 0) {
@@ -84158,6 +84165,15 @@ a { color: #1565c0; }`;
                     (h3.contains(focused) || table.contains(focused));
                 hide = !ownFilter && !hasFocus;
             }
+            return { table, h3, hide };
+        });
+        const staysOnScreen = plan.some(p => !p.hide && !(p.h3 && p.h3.dataset.mbDiscHidden === 'true'));
+        if (!staysOnScreen && plan.some(p => p.hide)) {
+            Lib.debug('filter', '_syncEmptySubtableVisibility: the filter empties every sub-table — hiding none, so their header controls stay reachable.');
+            plan.forEach(p => { p.hide = false; });
+        }
+        let hidden = 0;
+        plan.forEach(({ table, h3, hide }) => {
             const parts = [table];
             if (h3) {
                 for (let el = h3; el && el !== table; el = el.nextElementSibling) parts.push(el);

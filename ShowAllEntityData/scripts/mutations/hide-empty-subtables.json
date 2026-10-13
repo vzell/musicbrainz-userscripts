@@ -87,7 +87,33 @@
       }
     ],
     "spec": "tests/fixtures/hide-empty-subtables.spec.js",
+    "grep": "the global filter empties is hidden",
+    "expect": "fail"
+  },
+  {
+    "name": "H8: the last sub-table is hidden too",
+    "why": "A filter that matches nothing hides every sub-table again (9.99.1338).",
+    "edits": [
+      {
+        "find": "        if (!staysOnScreen && plan.some(p => p.hide)) {",
+        "replace": "        if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/hide-empty-subtables.spec.js",
     "grep": "nothing matches",
+    "expect": "fail"
+  },
+  {
+    "name": "H9: the last sub-table is hidden too, seen from the ⏱ toggle",
+    "why": "Same removal: the only medium is hidden with its thead, so the ⏱ button that would make the global filter match is out of reach.",
+    "edits": [
+      {
+        "find": "        if (!staysOnScreen && plan.some(p => p.hide)) {",
+        "replace": "        if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/ms-length-filter-after-toggle.spec.js",
+    "grep": "C: a GLOBAL filter",
     "expect": "fail"
   }
 ]

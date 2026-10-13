@@ -1781,7 +1781,9 @@ The 🔍 filter on each sub-table heading (`applySubFilter`) still filters synch
 card; the global and column filters do since perf/faster-filtering (WIP.9). Move STF typing onto `runFilterSliced()` on its
 own branch, with its own typed A/B (the faster-filtering measurements do not cover it).
 
-* --------------------------------------------------------------- to add to TODO.org
+* ---------------------------------------------------------------
+
+* to add to TODO.org
 ** bug
 
 It works, but do NOT merge yet.
@@ -1924,7 +1926,7 @@ the "CAA" column should always be wide enough to hold the image, the type glyphs
 for large tables) - CAA-wrapped.png
 
 
-* fix the h2/h3 stretching problem to the right browser side
+* TODO fix the h2/h3 stretching problem to the right browser side
 
 fix the h2/h3 stretching problem to the right browser side - @debug/h2-stretching.png
 
@@ -2296,38 +2298,72 @@ my behalf
 gh pr ready https://github.com/Aerozol/metabrainz-userscripts/pull/26
 #+end_src
 
-* ● Your browser reaches MusicBrainz over IPv6. I can only use IPv4, and right now this network's IPv4 route to MusicBrainz's servers is being cut off. It isn't a Claude Code sandbox or proxy restriction: no
-  proxy is set, and other sites load fine from here.
+* ● Your browser reaches MusicBrainz over IPv6.
 
-  ┌───────────────────────────────┬───────────────────┬─────────────────────────────────────────────────────────────────┐
-  │             From              │     Protocol      │                             Result                              │
-  ├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
-  │ WSL (my shell, Playwright)    │ IPv4              │ connects, then the connection is reset during the TLS handshake │
-  ├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
-  │ WSL                           │ IPv6              │ fails: WSL has no IPv6 route                                    │
-  ├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
-  │ Windows curl.exe -4           │ IPv4              │ fails the same way                                              │
-  ├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
-  │ Windows curl.exe -6           │ IPv6              │ 200, via 2a01:4f8:c011:f68::1                                   │
-  ├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
-  │ Windows curl.exe, default     │ IPv6 is preferred │ 200, which is what your browser does                            │
-  ├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
-  │ WSL → github.com, example.com │ IPv4              │ 200                                                             │
-  └───────────────────────────────┴───────────────────┴─────────────────────────────────────────────────────────────────┘
+I can only use IPv4, and right now this network's IPv4 route to MusicBrainz's servers is being cut off. It isn't a Claude Code sandbox or proxy restriction: no
+proxy is set, and other sites load fine from here.
 
-  So:
-  - Windows prefers IPv6, so your browser never touches the broken IPv4 route.
-  - WSL2 in its default NAT mode has no IPv6, so curl and Playwright's Chromium fall back to IPv4.
-  - Every MetaBrainz host fails over IPv4, not just musicbrainz.org. coverartarchive.org, listenbrainz.org and metabrainz.org all behave the same, and they share one front end. Other IPv4 sites work.
+┌───────────────────────────────┬───────────────────┬─────────────────────────────────────────────────────────────────┐
+│             From              │     Protocol      │                             Result                              │
+├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
+│ WSL (my shell, Playwright)    │ IPv4              │ connects, then the connection is reset during the TLS handshake │
+├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
+│ WSL                           │ IPv6              │ fails: WSL has no IPv6 route                                    │
+├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
+│ Windows curl.exe -4           │ IPv4              │ fails the same way                                              │
+├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
+│ Windows curl.exe -6           │ IPv6              │ 200, via 2a01:4f8:c011:f68::1                                   │
+├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
+│ Windows curl.exe, default     │ IPv6 is preferred │ 200, which is what your browser does                            │
+├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
+│ WSL → github.com, example.com │ IPv4              │ 200                                                             │
+└───────────────────────────────┴───────────────────┴─────────────────────────────────────────────────────────────────┘
 
-  Why the IPv4 route fails, I can't confirm. It looks like your public IPv4 address is blocked or throttled on MetaBrainz's side: the connection succeeds and is then reset, it affects only their hosts, and it
-  hits Windows too. Their documented answer to too many requests is HTTP 503, and a reset during the TLS handshake looks more like an address-level block. Yesterday's full-suite run from this machine got 754
-  tests through, so it started recently. Whether our test traffic tripped it, I can't tell from here.
+So:
+- Windows prefers IPv6, so your browser never touches the broken IPv4 route.
+- WSL2 in its default NAT mode has no IPv6, so curl and Playwright's Chromium fall back to IPv4.
+- Every MetaBrainz host fails over IPv4, not just musicbrainz.org. coverartarchive.org, listenbrainz.org and metabrainz.org all behave the same, and they share one front end. Other IPv4 sites work.
 
-  What you can do:
-  - Give WSL your Windows IPv6: add networkingMode=mirrored under [wsl2] in %UserProfile%\.wslconfig, then run wsl --shutdown. WSL then shares Windows' network, IPv6 included, and Playwright should get through
-    like your browser. This changes WSL's networking for everything on this machine, so it's your call.
-  - Wait it out: check now and then with curl -4 -sI https://musicbrainz.org/ from WSL. If it's a temporary block, it should lift on its own.
-  - If it doesn't lift, try curl.exe -4 from another machine on the same network. If that fails too, the block is on your public IPv4 address, and it's worth asking MetaBrainz.
+Why the IPv4 route fails, I can't confirm. It looks like your public IPv4 address is blocked or throttled on MetaBrainz's side: the connection succeeds and is then reset, it affects only their hosts, and it
+hits Windows too. Their documented answer to too many requests is HTTP 503, and a reset during the TLS handshake looks more like an address-level block. Yesterday's full-suite run from this machine got 754
+tests through, so it started recently. Whether our test traffic tripped it, I can't tell from here.
 
-  I saved this as a memory, so next time I'll check this first rather than treat these failures as a code problem.
+What you can do:
+- Give WSL your Windows IPv6: add networkingMode=mirrored under [wsl2] in %UserProfile%\.wslconfig, then run wsl --shutdown. WSL then shares Windows' network, IPv6 included, and Playwright should get through
+  like your browser. This changes WSL's networking for everything on this machine, so it's your call.
+- Wait it out: check now and then with curl -4 -sI https://musicbrainz.org/ from WSL. If it's a temporary block, it should lift on its own.
+- If it doesn't lift, try curl.exe -4 from another machine on the same network. If that fails too, the block is on your public IPv4 address, and it's worth asking MetaBrainz.
+
+I saved this as a memory, so next time I'll check this first rather than treat these failures as a code problem.
+
+* ● The full run didn't finish
+WSL restarted at 08:55 UTC (my guess is the WSL update to kernel 6.18.54.1, since the kernel version changed) and killed it at 1593 of 1686 tests. main is clean and matches
+origin/main at b4bf048. I re-ran the three tests that failed. One real regression from the hide-empty-sub-tables feature has reached main.
+
+Where the run stopped: 1590 passed, 3 failed, 93 never ran. The logs were in /tmp and the restart wiped them. The progress file and Playwright's test-results/ folder survived, and that's where these numbers
+come from.
+
+The three failures:
+
+┌───────────────────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────┬──────────────────────────────────────────────────┐
+│                         Test                          │                                             Cause                                             │                      Rerun                       │
+├───────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ instrument-icons-uvd.spec.js:157                      │ timing; unrelated                                                                             │ passes                                           │
+├───────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ detail-preview.spec.js:571 (springsteenlyrics.com     │ flaky test from an earlier branch in the stack: its poll reads the iframe before the iframe   │ fails 1 in 8 runs even on the commit before my   │
+│ card)                                                 │ has a document                                                                                │ feature                                          │
+├───────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ ms-length-filter-after-toggle.spec.js:142 (test C)    │ my feature                                                                                    │ fails every time                                 │
+└───────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────┴──────────────────────────────────────────────────┘
+
+The regression: test C types the global filter "11.666" on a release with one medium. While lengths are shown in seconds, nothing matches, so the medium is hidden along with its column headers. The ⏱ button
+that switches to milliseconds (which would make "11.666" match) is in one of those headers. Neither the test nor a user can reach it. Any button in a column header that changes what the global filter matches
+has the same problem, and only once every sub-table is hidden: while one stays visible, its header controls are still reachable.
+
+Two ways to fix it:
+- Never hide every sub-table (my recommendation). If the filter would empty them all, show them all with "(0 of N)", as before. Hiding then only removes sub-tables while at least one stays on screen, and
+  that one keeps the header controls reachable. My "nothing matches: every sub-table is hidden" test would change to match.
+- Keep the behaviour and change test C to turn the setting off. To use ⏱ with no matches, a user would have to clear the filter, click ⏱, and type the filter again.
+
+Which way do you want? Either fix goes on a new branch with a regression test. I still owe a complete test:full on main, and I'll run it once the fix is in.
+  

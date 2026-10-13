@@ -22286,3 +22286,35 @@ load a shell from musicbrainz.org, and `curl https://musicbrainz.org/` failed
 the same way from this host at the time (SSL_ERROR_SYSCALL). They are
 unrelated to this branch and have to be re-run with the network up, at the
 latest in the end-of-stack `test:full`.
+
+## 2026-10-13 — hide-empty-sub-tables hid the LAST sub-table, and with it the ⏱ toggle (WIP.1, branch `fix/hide-empty-subtables-keep-one`)
+
+Env: 2026-10-13T21:33Z · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Found by the first `test:full` on `main` after the 9.99.1327–9.99.1338 stack
+was merged (started 05:42:15Z at `b4bf048`, 1686 tests, 2 workers). WSL
+restarted at 08:55:49Z (the kernel went from 6.18.40.1 to 6.18.54.1), which
+killed the run at 1593 of 1686: 1590 passed, 3 failed, 93 never ran. The log
+was in `/tmp` and was lost. `~/.cache/sa-test-full/status.json` and
+`test-results/` survived, and these numbers come from them.
+
+- `ms-length-filter-after-toggle.spec.js` test C: **caused by 9.99.1338**, and
+  fails on every rerun. Its release has one medium. The GF "11.666" matches
+  nothing while lengths are in seconds, so `_syncEmptySubtableVisibility()`
+  hid that medium, thead included, and the ⏱ button that would make the GF
+  match was out of reach. A user is in the same position.
+  Fix: never hide every sub-table on screen. Decide all of them first, and if
+  none would stay, hide none. A table the discography view already hides does
+  not count as staying. User's choice of the two options offered (the other
+  was to keep hiding everything and seed the setting off in test C).
+- `detail-preview.spec.js:571` (springsteenlyrics.com card): flaky and
+  unrelated. It fails 1 in 8 even at `993b60a` (before 9.99.1338). Its
+  `state()` poll reads `frame.contentDocument.documentElement.dataset` while
+  the iframe has a document but no `documentElement` yet, and the
+  `page.evaluate` throws instead of returning null. Not fixed here.
+- `instrument-icons-uvd.spec.js:157`: passed on rerun (timing).
+
+Tests: `hide-empty-subtables.spec.js` (the "nothing matches" test now pins
+"nothing hidden") plus `ms-length-filter-after-toggle.spec.js`, 14/14.
+`ms-length` test C fails on `main` and passes here. Mutations
+`hide-empty-subtables.json` 9/9 (new H8/H9 drop the keep-one guard).
