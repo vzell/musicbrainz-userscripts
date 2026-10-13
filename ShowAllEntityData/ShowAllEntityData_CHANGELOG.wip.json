@@ -19,7 +19,7 @@
         "label": "🐛 Fix",
         "items": [
           "Wide MusicBrainz pages: the collapsed sidebar no longer keeps an invisible strip about 80–120 px wide at the right end of the page. Because of that strip, every pinned h2/h3 bar stopped well short of the window's right edge, rows showed through the gap while the bars were pinned at the top, and the page could scroll past the end of the table. A collapsed sidebar now takes no space at all (it still slides in and out).",
-          "Pinned h2/h3 bars now reach as far right as the table under them: up to the window's right edge while the table runs past it, and up to the table's own end once you have scrolled all the way to the right, like the Wikipedia bar. They must stay a few pixels narrower than the window to remain pinned, and that last strip is now filled with the bar's colour, so no row text shows beside a bar that is pinned at the top."
+          "No more row text beside a pinned h2/h3 bar. The bars must stay a few pixels narrower than the window to remain pinned, and rows scrolling under a bar pinned at the top showed through that last strip. It is now covered in the page colour, so the bars still end exactly where the Annotation, Credits and Wikipedia bars end."
         ]
       }
     ]

@@ -407,17 +407,20 @@ test.describe('sticky filter bars — multi-table page', () => {
         expect(await pixelAt(page, geo.x, geo.y), 'no green row in the gap').not.toBe('0,128,0');
     });
 
-    test('scrolled both ways, the stuck h2 and h3 reach the window edge in their own colour, no rows beside them', async ({ page }) => {
+    test('scrolled both ways, no rows show beside the stuck h2 and h3, and the bars do not stretch to the window edge', async ({ page }) => {
         // A pinned bar is capped below the window width (the sticky page
         // headers need room for it to stay put); the strip between its
-        // right end and the window edge is painted in the bar's own
-        // background (--mb-sph-bleed). Before, rows scrolling under the
-        // stuck bars showed in that strip (reported 2026-10-14 on an area
-        // page: "Barry Manilow" beside the Series h3). The tables are made
-        // wider than the window so the sticky page headers engage, and
-        // #page (the bars' parent here) gets side padding like MB's (the
-        // fixture has none, so the bars would start at 0 and leave no gutter); the bleed is paint
-        // only, invisible to hit testing, hence pixels.
+        // right end and the window edge is masked in the PAGE colour
+        // (--mb-sph-bleed). Before, rows scrolling under the stuck bars
+        // showed in that strip (reported 2026-10-14 on an area page:
+        // "Barry Manilow" beside the Series h3). Painting it in the bar's
+        // own colour was rejected in the user's browser: the bars then
+        // reached further right than the Annotation / Credits bars. The
+        // tables are made wider than the window so the sticky page headers
+        // engage, and #page (the bars' parent here) gets side padding like
+        // MB's (the fixture has none, so the bars would start at 0 and
+        // leave no gutter); the mask is paint only, invisible to hit
+        // testing, hence pixels.
         await openRatings(page, {}, {
             css: `${TALL_ROWS} table.tbl { min-width: 2500px !important; }`
                 + ' #page { padding-left: 20px !important; padding-right: 20px !important; }',
@@ -437,7 +440,14 @@ test.describe('sticky filter bars — multi-table page', () => {
             };
             const h3 = Array.from(document.querySelectorAll('h3.mb-toggle-h3'))[1];
             const t = document.querySelectorAll('table.tbl')[1].getBoundingClientRect();
-            return { cw, h2: band(document.querySelector('h2.mb-vsb-h2')), h3: band(h3), tableTop: t.top };
+            // The page colour, read the way _sphGutterBg() reads it.
+            let bg = '255,255,255';
+            for (const el of [document.getElementById('page'), document.body, document.documentElement]) {
+                const c = el && getComputedStyle(el).backgroundColor;
+                const m = c && c.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/);
+                if (m && m[4] !== '0') { bg = `${m[1]},${m[2]},${m[3]}`; break; }
+            }
+            return { cw, h2: band(document.querySelector('h2.mb-vsb-h2')), h3: band(h3), tableTop: t.top, bg };
         });
         expect(geo.tableTop, 'premise: rows scroll under the bars').toBeLessThan(geo.h2.top);
         for (const key of ['h2', 'h3']) {
@@ -446,17 +456,18 @@ test.describe('sticky filter bars — multi-table page', () => {
             const own = await pixelAt(page, b.right - 2, b.y);
             const edge = await pixelAt(page, geo.cw - 2, b.y);
             expect(edge, `no green row beside the stuck ${key}`).not.toBe('0,128,0');
-            expect(edge, `the ${key} bar's own colour reaches the window edge`).toBe(own);
+            expect(edge, `the strip beside the ${key} is the page colour`).toBe(geo.bg);
+            expect(own, `premise: the ${key} bar's colour differs from the page`).not.toBe(geo.bg);
         }
     });
 
     test('scrolled to the far right, the stuck h2 and h3 stop where the table ends, not at the window edge', async ({ page }) => {
-        // Reported 2026-10-14 against the first version of the bleed, which
-        // had a fixed width: at maximum scroll the table ends a page padding
-        // short of the window edge, and so does a bar riding inside a
-        // pinned body (the Wikipedia h2), but the data h2 and the h3 bars
-        // painted on to the window edge, under the sidebar handle. The
-        // bleed reaches only as far as the content under the bar does.
+        // Reported 2026-10-14 against the first version of the strip, which
+        // was painted in the bar's own colour: at maximum scroll the table
+        // ends a page padding short of the window edge, and so does a bar
+        // riding inside a pinned body (the Wikipedia h2), but the data h2
+        // and the h3 bars reached on to the window edge, under the sidebar
+        // handle. The strip is the page colour now.
         await openRatings(page, {}, {
             css: `${TALL_ROWS} table.tbl { min-width: 2500px !important; }`
                 + ' #page { padding-left: 20px !important; padding-right: 20px !important; }',

@@ -22408,3 +22408,16 @@ object.
 A `test:full` started at 22:50:11Z was stopped at 381/1690 (all passed),
 because this change landed in the working tree under it. It was restarted
 afterwards.
+
+**Third round, same day (user's browser, release page, two screenshots):**
+fully scrolled, it looked right; part of the way, the data h2 and the h3
+bars still reached the window edge while the Annotation and Credits bars
+(riding inside pinned bodies) ended a gutter short "all the time", and
+those are the reference. So the strip is masked in the PAGE colour
+(`_sphGutterBg()`) at a fixed gutter + margin-right width: the option
+offered first and declined before the comparison was visible. The
+per-scroll clamp (`_sphUpdateBleed()`) is gone with it, since a
+page-coloured strip over page padding is invisible at maximum scroll anyway.
+The second `test:full` (23:15:16Z at `460ad13`) was stopped at 199/1691
+(all passed) for the same reason as the first. Mutations: 7/7 caught,
+including "the strip is painted in the bar's own colour".

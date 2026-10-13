@@ -13,7 +13,7 @@
         "expect": "fail"
     },
     {
-        "name": "no bleed rule: pinned bars end short of the window edge",
+        "name": "no mask rule: rows show beside a stuck bar",
         "why": "Rows scrolling under a vertically stuck h2/h3 showed in the strip between the capped bar and the window edge.",
         "edits": [
             {
@@ -22,46 +22,33 @@
             }
         ],
         "spec": "tests/fixtures/sticky-filter-bars.spec.js",
-        "grep": "reach the window edge in their own colour",
+        "grep": "do not stretch to the window edge",
         "expect": "fail"
     },
     {
-        "name": "the bleed is computed as 0",
-        "why": "The strip is gutter + margin-right wide; a zero width paints nothing.",
+        "name": "the mask width is computed as 0",
+        "why": "The strip is gutter + margin-right wide; a zero width masks nothing.",
         "edits": [
             {
-                "find": "            const w = Math.min(max, Math.max(0, parentRight - scrollX - right));\n",
-                "replace": "            const w = 0;\n"
+                "find": "                    ? Math.max(0, Math.ceil((gutter + marginRight) * 100) / 100) : null;\n",
+                "replace": "                    ? 0 : null;\n"
             }
         ],
         "spec": "tests/fixtures/sticky-filter-bars.spec.js",
-        "grep": "reach the window edge in their own colour",
+        "grep": "do not stretch to the window edge",
         "expect": "fail"
     },
     {
-        "name": "the bleed has a fixed width (to the window edge at every scroll position)",
-        "why": "The first version: at maximum scroll the data h2 and the h3 bars painted past the table's end, under the sidebar handle, while the Wikipedia h2 stopped at it (reported 2026-10-14).",
+        "name": "the strip is painted in the bar's own colour",
+        "why": "The first version (2026-10-14): the data h2 and the h3 bars then reached further right than the Annotation / Credits / Wikipedia bars, past the table's end at maximum scroll, under the sidebar handle. Rejected in the user's browser.",
         "edits": [
             {
-                "find": "            const w = Math.min(max, Math.max(0, parentRight - scrollX - right));\n",
-                "replace": "            const w = max;\n"
+                "find": "                background: ${_sphGutterBg()};\n",
+                "replace": "                background: inherit;\n"
             }
         ],
         "spec": "tests/fixtures/sticky-filter-bars.spec.js",
-        "grep": "stop where the table ends",
-        "expect": "fail"
-    },
-    {
-        "name": "a horizontal scroll does not resize the bleed",
-        "why": "The bleed depends on scrollX; only the scroll listener updates it between refresh passes.",
-        "edits": [
-            {
-                "find": "                    if (_sph.bleedBars.length) _sphUpdateBleed();\n",
-                "replace": ""
-            }
-        ],
-        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
-        "grep": "stop where the table ends",
+        "grep": "do not stretch to the window edge|stop where the table ends",
         "expect": "fail"
     },
     {
@@ -74,7 +61,7 @@
             }
         ],
         "spec": "tests/fixtures/sticky-filter-bars.spec.js",
-        "grep": "reach the window edge in their own colour",
+        "grep": "do not stretch to the window edge",
         "expect": "fail"
     },
     {
@@ -83,7 +70,7 @@
         "edits": [
             {
                 "find": "                    return { el, baseZ: false, table, inline: false, left: Math.max(0, _sphFloor2(left)), width: null, bleed: null };\n",
-                "replace": "                    return { el, baseZ: false, table, inline: false, left: Math.max(0, _sphFloor2(left)), width: null, bleed: { el, right: 0, parentRight: 1e6, max: 20 } };\n"
+                "replace": "                    return { el, baseZ: false, table, inline: false, left: Math.max(0, _sphFloor2(left)), width: null, bleed: 20 };\n"
             }
         ],
         "spec": "tests/fixtures/sticky-page-headers.spec.js",

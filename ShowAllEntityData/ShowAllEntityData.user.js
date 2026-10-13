@@ -34449,15 +34449,14 @@
     //
     // The right gutter itself (see _sphRefresh()) is what lets a capped bar
     // stay pinned up to the end of the scroll. The strip it leaves between a
-    // bar's right end and the window edge is painted in the bar's own
-    // background (`--mb-sph-bleed`, an ::after outside the layout), so rows
-    // scrolling under a vertically stuck bar never show beside it — but only
-    // as far as the bar's containing block reaches on screen
-    // (_sphUpdateBleed(), on scroll): while the table runs past the window
-    // that is the window edge; scrolled to the end it is the table's own end,
-    // where a bar riding inside a pinned body (the Wikipedia h2) stops too.
-    // A fixed-width bleed overshot there, under the sidebar handle
-    // (reported 2026-10-14).
+    // pinned h2/h3 bar's right end and the window edge is masked in the PAGE
+    // colour (`--mb-sph-bleed`, an ::after outside the layout), so rows
+    // scrolling under a vertically stuck bar never show beside it, while the
+    // bar itself ends where a bar riding inside a pinned body (Annotation,
+    // Credits, Wikipedia) ends, at every scroll position. Painting the
+    // strip in the bar's own colour was tried first (2026-10-14) and
+    // rejected in the user's browser: the data h2 and the h3 bars then
+    // reached further right than those section bars.
     //
     // The sticky COLUMN follows the same rule while engaged. applyStickyColumn()
     // pins its cells at `left: 0`, which made the column dock at the window
@@ -34537,7 +34536,7 @@
     const SPH_REFRESH_DELAY_MS = 60;
     /** Lower bound (px) for a pinned element's clamped width, so tiny viewports never collapse a bar. */
     const SPH_MIN_WIDTH_PX = 120;
-    /** The pinned bars whose background is painted on towards the window edge (`--mb-sph-bleed`, see _sphUpdateBleed()). */
+    /** The pinned bars whose strip to the window edge is masked in the page colour (`--mb-sph-bleed`, see _sphEnsureStyle()). */
     const _SPH_BLEED_SEL = 'h2.mb-toggle-h2, h3.mb-toggle-h3';
 
     /**
@@ -34563,10 +34562,6 @@
      *   colGutterBg:    string            - page colour of the gutter mask, read with the first rule
      *   colBorder:      ?{top: number, topC: string, bottom: number, bottomC: string}
      *                                     - MB's table.tbl top/bottom border, captured before the first stamp
-     *   bleedBars:      Array<{el: HTMLElement, right: number, parentRight: number, max: number}>
-     *                                     - pinned h2/h3 bars and what _sphUpdateBleed() needs for each:
-     *                                       the bar's right edge on screen, its containing block's
-     *                                       right edge (document px) and the room to the window edge
      * }}
      */
     const _sph = {
@@ -34583,8 +34578,7 @@
         colStyle:    null,
         colRules:    new Set(),
         colGutterBg: '#ffffff',
-        colBorder:   null,
-        bleedBars:   []
+        colBorder:   null
     };
 
     /**
@@ -34660,11 +34654,10 @@
             /* A pinned h2/h3 bar is capped below the window width (it needs
                room to stay pinned), so a strip stays between its right end
                and the window edge, and rows scrolling under a vertically
-               stuck bar showed through it. The bar's own background is
-               painted on into that strip, outside the layout, as far as
-               the content under it reaches on screen: the window edge
-               while the table runs past it, the table's end once scrolled
-               to it. The width is --mb-sph-bleed (_sphUpdateBleed()). */
+               stuck bar showed through it. That strip is masked in the page
+               colour, outside the layout: the bar still ends where the
+               Annotation / Credits bars end. The width is --mb-sph-bleed
+               (gutter + margin-right, _sphRefresh()). */
             html.mb-sph-on .mb-sph-target:is(${_SPH_BLEED_SEL})::after {
                 content: '';
                 position: absolute;
@@ -34672,7 +34665,7 @@
                 bottom: 0;
                 left: 100%;
                 width: var(--mb-sph-bleed, 0px);
-                background: inherit;
+                background: ${_sphGutterBg()};
                 pointer-events: none;
             }
             /* An inline body alone on its line, pinned on its own: sticky
@@ -35437,35 +35430,6 @@
     }
 
     /**
-     * Writes each pinned h2/h3 bar's `--mb-sph-bleed` for the current scroll
-     * position: the width its background is painted on past its right end,
-     *
-     *   clamp(parentRight − scrollX − right, 0, max)
-     *
-     * i.e. up to the window edge while the content under the bar runs past
-     * it, and only up to that content's own end once the page is scrolled
-     * to it — where a bar that rides inside a pinned body (the Wikipedia h2)
-     * stops as well. A fixed width (the first version) overshot the table's
-     * end at maximum scroll and ran under the sidebar handle (reported
-     * 2026-10-14). Rounded UP to 1/100 px, so no seam is left.
-     *
-     * Arithmetic only, on values `_sphRefresh()` measured (`_sph.bleedBars`):
-     * no layout read. Called from every refresh pass and from the scroll
-     * listener while engaged; it writes only when a value changes, which a
-     * vertical scroll never does and a horizontal one only within the last
-     * gutter's width of the scroll range.
-     *
-     * @returns {void}
-     */
-    function _sphUpdateBleed() {
-        const scrollX = window.scrollX;
-        _sph.bleedBars.forEach(({ el, right, parentRight, max }) => {
-            const w = Math.min(max, Math.max(0, parentRight - scrollX - right));
-            _sphSetVar(el, '--mb-sph-bleed', `${Math.ceil(w * 100) / 100}px`);
-        });
-    }
-
-    /**
      * Sets `.mb-sph-col-docked` on each aligned table whose sticky column has
      * docked (`scrollX >= p`), which switches its gutter mask on; writes only
      * when the state flips. With `p = 0` (sticky column first) the class is
@@ -35514,12 +35478,9 @@
      *   left        = parentLeft + margin-left   (its natural, unscrolled left)
      *   gutter      = max(parentLeft, extent − parentRight)
      *   width       = viewport − left − gutter − margin-right
-     *   bleed       = clamp(parentRight − scrollX − (left + width), 0,
-     *                       gutter + margin-right)
-     *                 (an h2/h3 bar paints its background on from its right
-     *                 end towards the window edge, but never past its
-     *                 containing block's right edge on screen; recomputed on
-     *                 every horizontal scroll by _sphUpdateBleed())
+     *   bleed       = gutter + margin-right   (an h2/h3 bar's right end →
+     *                 the window edge, masked in the page colour so rows
+     *                 never show beside a stuck bar; see _sphEnsureStyle())
      *
      * The right gutter mirrors the parent's left inset, but is widened to
      * however far the content extends past the parent: at maximum scroll the
@@ -35612,14 +35573,11 @@
                     if (!_sphFitsTable(el.getBoundingClientRect().width, room)) return null;
                     return { el, baseZ: false, table, inline: false, left: Math.max(0, _sphFloor2(left)), width: null, bleed: null };
                 }
-                // h2/h3 bars only: the property inherits (see _sphEnsureStyle()).
-                // `right` is the capped bar's right edge on screen (pinned, so
-                // the same at every scrollX); the bleed never goes past the
-                // window edge (`max`) nor past the containing block's right
-                // edge on screen (`parentRight`, document px).
-                const barRight = left + Math.max(SPH_MIN_WIDTH_PX, room);
+                // From the capped bar's right end to the window edge, rounded
+                // UP to 1/100 px so the mask never leaves a seam. h2/h3 bars
+                // only: the property inherits (see _sphEnsureStyle()).
                 const bleed = el.matches(_SPH_BLEED_SEL)
-                    ? { el, right: barRight, parentRight, max: Math.max(0, vw - barRight) } : null;
+                    ? Math.max(0, Math.ceil((gutter + marginRight) * 100) / 100) : null;
                 let width = Math.max(SPH_MIN_WIDTH_PX, room);
                 if (cs.boxSizing !== 'border-box') {
                     width -= (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0) +
@@ -35640,7 +35598,8 @@
             plans.forEach(({ el, baseZ, table, inline, left, width, bleed }) => {
                 _sphSetVar(el, '--mb-sph-left', `${left}px`);
                 _sphSetVar(el, '--mb-sph-maxw', width === null ? 'none' : `${width}px`);
-                if (bleed === null && el.style.getPropertyValue('--mb-sph-bleed')) el.style.removeProperty('--mb-sph-bleed');
+                if (bleed !== null) _sphSetVar(el, '--mb-sph-bleed', `${bleed}px`);
+                else if (el.style.getPropertyValue('--mb-sph-bleed')) el.style.removeProperty('--mb-sph-bleed');
                 // classList.add()/toggle() rewrite the class attribute even when
                 // nothing changes (DOM "update steps") — only write on change.
                 if (!el.classList.contains('mb-sph-target')) el.classList.add('mb-sph-target');
@@ -35649,8 +35608,6 @@
                 if (el.classList.contains('mb-sph-inline') !== inline) el.classList.toggle('mb-sph-inline', inline);
             });
             _sph.targets = next;
-            _sph.bleedBars = plans.map(p => p.bleed).filter(Boolean);
-            _sphUpdateBleed();
             _sphApplyStickyCols(cols);
 
             if (engaging) {
@@ -35734,8 +35691,7 @@
      * listener and a passive `scroll` listener (fallback: engages on the first
      * horizontal scroll should no observer have noticed the overflow; while
      * engaged it only flips each aligned table's docked state, see
-     * `_sphUpdateColDocked()`, and resizes the bars' bleed, see
-     * `_sphUpdateBleed()`); every
+     * `_sphUpdateColDocked()`); every
      * call then schedules a refresh, so re-renders (Load from Disk, re-fetch)
      * pick up their new h2/h3 bars.
      *
@@ -35758,9 +35714,8 @@
             window.addEventListener('scroll', () => {
                 if (!_sph.active) {
                     if (window.scrollX > 0) scheduleStickyPageHeadersRefresh();
-                } else {
-                    if (_sph.colTables.length) _sphUpdateColDocked();
-                    if (_sph.bleedBars.length) _sphUpdateBleed();
+                } else if (_sph.colTables.length) {
+                    _sphUpdateColDocked();
                 }
             }, { passive: true });
             _sph.initialized = true;
