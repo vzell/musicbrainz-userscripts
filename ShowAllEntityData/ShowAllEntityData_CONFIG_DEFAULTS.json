@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1326+2026-10-11",
-    "schema_entries": 421,
+    "schema_entries": 422,
     "sections": 51,
-    "settings": 370,
-    "settings_with_default": 365,
+    "settings": 371,
+    "settings_with_default": 366,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 193,
+      "checkbox": 194,
       "color_picker": 62,
       "number": 54,
       "divider": 51,
@@ -457,6 +457,7 @@
     "sa_global_filter_highlight_bg": "Global Filter Highlight Background",
     "sa_global_filter_highlight_color": "Global Filter Highlight Color",
     "sa_global_filter_initial_width": "Global filter initial width (px)",
+    "sa_hide_empty_subtables": "Hide Empty Sub-tables While Filtering",
     "sa_jl_detail_preview": "Preview artwork pages on the jungleland.it list",
     "sa_keyboard_shortcut_prefix": "Keyboard Shortcut Prefix",
     "sa_ld_auto_resize_after_load": "Auto-resize columns after loading from disk",
@@ -828,6 +829,7 @@
     "sa_global_filter_highlight_bg": "#FFD700",
     "sa_global_filter_highlight_color": "red",
     "sa_global_filter_initial_width": 500,
+    "sa_hide_empty_subtables": true,
     "sa_jl_detail_preview": false,
     "sa_keyboard_shortcut_prefix": "Ctrl+M",
     "sa_ld_auto_resize_after_load": false,

@@ -35,8 +35,12 @@ const RG_FIXTURE = path.join(__dirname, 'saved-data', 'releasegroup-releases.jso
 const BODEANS_URL = 'https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/releases';
 const BODEANS_FIXTURE = path.join(__dirname, 'saved-data', 'artist-releases-bodeans.json.gz');
 
-// Matches some rows of each fixture but not all of them.
-const RG_QUERY = 'CD';
+// Matches some rows of each fixture but not all of them. On the release-group
+// fixture it must also keep a row in EACH sub-table (Official 2 of 6, Promotion
+// 1 of 1): a sub-table the global filter empties is hidden
+// (sa_hide_empty_subtables), and a hidden h3's controls have no position to
+// compare. "CD" emptied Promotion.
+const RG_QUERY = 'Vinyl';
 const BODEANS_QUERY = 'Home';
 
 /**

@@ -275,6 +275,17 @@ that apply to each part in brackets:
 ✓ Sorted by: "Year"▲ (133 rows)
 ```
 
+**Empty sub-tables disappear.** On a page with sub-tables, while the global
+filter or a ⚠️ WARNING / ❌ ERROR menu filter is active, a sub-table left with
+no matching row is hidden: its heading line and the table go together. Widen or
+clear the filter and it comes back exactly as it was, collapsed or expanded,
+with its artwork strip as you left it. A sub-table with a filter of its own (a
+column filter, its 🔍 sub-table filter or its ⏳ toggle) stays visible even when
+it is empty, so you can still reach that filter and change it. Hover the row
+count in the page heading to see how many sub-tables are hidden. Setting (🎨
+TABLE FILTER CONFIGURATION): **Hide Empty Sub-tables While Filtering** (on by
+default).
+
 <details>
 <summary>Filter field states, focus indicators and history</summary>
 
@@ -308,8 +319,8 @@ MusicBrainz's own orange marker and painting over it would erase the signal you
 pressed the button to find. On multi-table pages each sub-section gets its own
 button and the one in the filter bar becomes a three-state master. (The
 **Pending edits** row of the ⚠️ WARNING menu is a separate filter: it narrows
-every sub-section, including those with no pending edits, which then show
-nothing.)
+every sub-section, and those with no pending edits are then hidden, see "Empty
+sub-tables disappear" above.)
 
 **Both filter fields are resizable** via the ⋮ handle to their right.
 

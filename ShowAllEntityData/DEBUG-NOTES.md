@@ -22235,3 +22235,54 @@ is an acronym anyway (its explicit exception is mutation `"pass"`).
 Tests: bb-recent-changes 13/13, mb-title-case 9/9 (+110 cases), sl-* /
 bb-year / bb-home 64/64 with the settings off. New mutations 7/7 as declared
 (foreign-titles.json now 20, bb-relations-changes.json 19).
+
+## 2026-10-13 — hide sub-tables a page-wide filter empties (WIP.12, branch `feature/hide-empty-subtables`)
+
+Env: 2026-10-13T00:11Z · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Request: on multi-table pageTypes, while filtering globally, hide every sub-table
+(h3 + table) with 0 filtered rows, and bring it back when a broader filter
+refills it. Before this change `renderGroupedTable()` deliberately kept every
+pair on screen ("Do not hide the table or H3 even if group.rows.length is 0"),
+which on long pages makes a GF a wall of "(0 of N)" headings.
+
+Design (full rules in docs/claude/filter-and-cache-invariants.md, "Empty
+sub-tables under a page-wide filter"):
+
+- `_syncEmptySubtableVisibility()` runs at the tail of every
+  `renderGroupedTable()`, before `_syncMasterToggleState()`. That one place
+  covers the sync and time-sliced filter passes, sorts (scoped re-renders keep
+  undisturbed tbodies, so `tbody.rows.length` is still right), disk loads and
+  the discography-view reset.
+- Page-wide means the GF text, `_findingRowFilter`, or a cell-scope finding's
+  📊 tick. **Trap found while planning:** `_setFinding()` writes a cell finding
+  into a column filter input of EVERY table, so a naive "this sub-table has a
+  column filter → keep it" exemption would have exempted every table and hidden
+  nothing for those findings. `_isFindingOnlyColFilter()` tells them apart.
+- Exempt: a sub-table with its own CF/📊/STF/⏳ (its inputs would vanish with
+  it), and the one holding the focus.
+- Hidden by class (`.mb-empty-subtable-hidden`, `!important`), never
+  `style.display`. That property holds the collapse state, and mutation H2
+  proves it: writing `style.display` brings a collapsed sub-table back expanded.
+  `_syncMasterToggleState()` had to learn the class (mutation H5).
+- The h2 count tooltip adds "N of M sub-tables hidden: no row matches the
+  global filter" (`_h2HiddenSubtablesNote()`).
+- Setting `sa_hide_empty_subtables`, default on.
+
+Known limitation, by design: an STF edit does not re-render, so clearing the
+last STF character of an empty sub-table (while a GF is active) leaves it
+visible until the next GF/CF change. Hiding it then would pull the input out
+from under the cursor.
+
+Tests: `hide-empty-subtables.spec.js` 9/9; mutations
+`scripts/mutations/hide-empty-subtables.json` 7/7 fail as declared. A targeted
+run of 23 related filter/multi-table specs (00:18–00:37Z): 157 passed, 18
+failed. One was real: `row-count-stat-fixed-width`'s multi-table test used the
+GF "CD", which empties the Promotion sub-table, so the h3 whose controls it
+measures was now hidden. Its query is now "Vinyl", which keeps a row in both
+sub-tables. The other 17 (and 27 on a rerun of `column-filter-modes` +
+`filter-sliced`) were all `page.goto: net::ERR_CONNECTION_CLOSED`. Those specs
+load a shell from musicbrainz.org, and `curl https://musicbrainz.org/` failed
+the same way from this host at the time (SSL_ERROR_SYSCALL). They are
+unrelated to this branch and have to be re-run with the network up, at the
+latest in the end-of-stack `test:full`.

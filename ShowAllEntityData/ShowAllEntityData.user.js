@@ -944,6 +944,18 @@
                          "could toggle a switch. 0 = always the three switches. Applies after a page reload."
         },
 
+        sa_hide_empty_subtables: {
+            label: "Hide Empty Sub-tables While Filtering",
+            type: "checkbox",
+            default: true,
+            description: "On pages with sub-tables: while the global filter or a ⚠️ WARNING / ❌ ERROR menu " +
+                         "filter is active, a sub-table with no matching row is hidden (its heading line and " +
+                         "the table). It comes back as it was, collapsed or expanded, once a row matches again. " +
+                         "A sub-table with a filter of its own (a column filter, its 🔍 sub-table filter or its " +
+                         "⏳ toggle) is never hidden, so that filter stays reachable. Off: every sub-table stays " +
+                         "on screen, showing \"(0 of N)\"."
+        },
+
         // ============================================================
         // UNIQUE COLUMN VALUES DROP DOWN CONFIGURATION SECTION
         // ============================================================
@@ -62792,6 +62804,10 @@ a { color: #1565c0; }`;
             background-color: ${Lib.settings.sa_ui_h3_hover_bg || '#eb7231'};
         }
         .mb-toggle-h3 { cursor: pointer; user-select: none; border-bottom: 1px solid #eee; padding: 4px 0; margin-left: 1.5em; background-color: ${Lib.settings.sa_ui_h3_bg || '#f7dfdf'}; }
+        /* A sub-table a page-wide filter left empty (_syncEmptySubtableVisibility):
+           h3, table and everything between them. A class, never style.display,
+           which holds the collapse, art-strip and discography-view states. */
+        .mb-empty-subtable-hidden { display: none !important; }
         .mb-credits-toggle-h3:hover,
         .mb-annotation-toggle-h3:hover {
             color: #222;
@@ -69155,6 +69171,43 @@ a { color: #1565c0; }`;
      * Returns an HTML string stored in `data-mbtt`; never used as `title`.
      */
     function _buildH2CountTooltip(filteredCount, totalCount, absoluteTotal) {
+        return _buildH2CountTooltipBase(filteredCount, totalCount, absoluteTotal) + _h2HiddenSubtablesNote();
+    }
+
+    /**
+     * The h2 tooltip's extra line on a multi-table page while
+     * `_syncEmptySubtableVisibility()` hides sub-tables: how many, out of how
+     * many, and which page-wide filter emptied them. Read from the DOM
+     * (`data-mb-empty-hidden`), which is current because `runFilter()` calls
+     * `updateH2Count()` after `renderGroupedTable()` returns. Empty string
+     * when nothing is hidden.
+     *
+     * @returns {string} HTML, starting with a `<br>`, or `''`.
+     */
+    function _h2HiddenSubtablesNote() {
+        if (!activeDefinition || activeDefinition.tableMode !== 'multi') return '';
+        const tables = Array.from(document.querySelectorAll('table.tbl'))
+            .filter(t => t.querySelector('.mb-col-filter-row'));
+        const hidden = tables.filter(t => t.dataset.mbEmptyHidden === '1').length;
+        if (!hidden) return '';
+        const byGf = stripFilterPrefix(filterInput.value) !== '';
+        const byFindings = _findingRowFilter.size > 0 ||
+            tables.some(t => Array.from(t.querySelectorAll('thead tr.mb-col-filter-row .mb-col-filter-input'))
+                .some(_isFindingOnlyColFilter));
+        const what = [byGf ? `the ${_mbttLabel('global', 'gf')} filter` : '',
+                      byFindings ? 'the findings filter' : ''].filter(Boolean).join(' and ');
+        return `<br>${_mbttCount(hidden)} of ${_mbttCount(tables.length)} sub-tables hidden: no row matches ${what}`;
+    }
+
+    /**
+     * The h2 tooltip text proper, without `_h2HiddenSubtablesNote()`.
+     *
+     * @param {number}      filteredCount
+     * @param {number}      totalCount
+     * @param {number|null} absoluteTotal
+     * @returns {string} HTML.
+     */
+    function _buildH2CountTooltipBase(filteredCount, totalCount, absoluteTotal) {
         /**
          * "There is 1 row" / "There are N rows", with N formatted by `_mbttCount()`.
          *
@@ -84043,6 +84096,85 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Whether a column filter input holds nothing but ⚠️/❌ findings-menu
+     * ticks (`_setFinding()`'s cell scope writes `finding-<id>` 📊 values into
+     * a column of EVERY table). Such an input is a page-wide filter wearing a
+     * column filter's clothes, not a filter the sub-table owns.
+     *
+     * @param {HTMLInputElement} inp
+     * @returns {boolean}
+     */
+    function _isFindingOnlyColFilter(inp) {
+        if (inp.dataset.mbUniqTypedText) return false;
+        const values = _findingInputValues(inp);
+        const prefix = MB_UNIQ_STRUCTURE_MODE_PREFIX + 'finding-';
+        return values.length > 0 && values.every(v => typeof v === 'string' && v.startsWith(prefix));
+    }
+
+    /**
+     * Hides every sub-table of a multi-table page that a page-wide filter
+     * left with no row, and shows it again once a row matches. "Sub-table"
+     * means its h3, the table and every element between them (the
+     * `.mb-group-intro`, the CAA/EAA bigboxes).
+     *
+     * Page-wide: the global filter text, `_findingRowFilter`, or a findings
+     * tick in a column filter (`_isFindingOnlyColFilter()`). A sub-table with
+     * a filter of its own (a typed column filter or 📊 pick, its STF text,
+     * its ⏳ scope) is never hidden, because its inputs live in its h3/thead
+     * and would vanish with it. The same goes for the one holding the focus.
+     *
+     * Hidden by the `.mb-empty-subtable-hidden` class (plus
+     * `data-mb-empty-hidden` on the table), never `style.display`: that holds
+     * the collapse state, the art-strip state and the discography view, all of
+     * which must survive. Called from `renderGroupedTable()`'s tail, before
+     * `_syncMasterToggleState()`. See docs/claude/filter-and-cache-invariants.md,
+     * "Empty sub-tables under a page-wide filter".
+     *
+     * @param {HTMLElement} container - Root element to scan for `table.tbl`.
+     * @returns {number} How many sub-tables are hidden after the pass.
+     */
+    function _syncEmptySubtableVisibility(container) {
+        if (!activeDefinition || activeDefinition.tableMode !== 'multi') return 0;
+        const enabled = Lib.settings.sa_hide_empty_subtables !== false;
+        const tables = Array.from(container.querySelectorAll('table.tbl'))
+            .filter(t => t.querySelector('.mb-col-filter-row'));
+        const colInputs = t => Array.from(t.querySelectorAll('thead tr.mb-col-filter-row .mb-col-filter-input'));
+        const pageWide = enabled && (
+            stripFilterPrefix(filterInput.value) !== '' ||
+            _findingRowFilter.size > 0 ||
+            tables.some(t => colInputs(t).some(_isFindingOnlyColFilter)));
+        const focused = document.activeElement;
+        let hidden = 0;
+        tables.forEach(table => {
+            const h3 = findH3ForTable(table);
+            let hide = false;
+            if (pageWide && h3 && table.tBodies[0] && table.tBodies[0].rows.length === 0) {
+                const stf = h3.querySelector('.mb-subtable-filter-container input[type="search"]');
+                const ownFilter =
+                    colInputs(table).some(inp => stripColFilterPrefix(inp.value) !== '' && !_isFindingOnlyColFilter(inp)) ||
+                    !!(stf && stf.value) ||
+                    _pendingEditsScopeActive(h3);
+                const hasFocus = !!focused && focused !== document.body &&
+                    (h3.contains(focused) || table.contains(focused));
+                hide = !ownFilter && !hasFocus;
+            }
+            const parts = [table];
+            if (h3) {
+                for (let el = h3; el && el !== table; el = el.nextElementSibling) parts.push(el);
+            }
+            parts.forEach(el => el.classList.toggle('mb-empty-subtable-hidden', hide));
+            if (hide) {
+                table.dataset.mbEmptyHidden = '1';
+                hidden++;
+            } else {
+                delete table.dataset.mbEmptyHidden;
+            }
+        });
+        if (hidden) Lib.debug('filter', `_syncEmptySubtableVisibility: ${hidden} of ${tables.length} sub-tables hidden (no row matches the page-wide filter).`);
+        return hidden;
+    }
+
+    /**
      * Removes every row carrying `markerAttr` (a `dataset` key, e.g.
      * 'mbSeeAllRow') from each given array, in place, matched BY THE MARKER
      * rather than by DOM reference/`indexOf`. Row insertion into a rendered
@@ -85450,6 +85582,11 @@ a { color: #1565c0; }`;
         // pass — this render-time call alone isn't enough for a view switch,
         // since discography section visibility is applied AFTER this
         // renderGroupedTable() call returns.
+        //
+        // Hide the sub-tables a page-wide filter emptied (and show the ones a
+        // broader filter refilled) FIRST, so the master toggle's label counts
+        // only what is still on screen.
+        _syncEmptySubtableVisibility(container);
         _syncMasterToggleState(container);
 
         // ── Wire global collapse button for multi-table mode ──────────────────
@@ -85953,8 +86090,11 @@ a { color: #1565c0; }`;
     function _syncMasterToggleState(container) {
         const _masterToggleEl = container.querySelector('.mb-master-toggle');
         if (!_masterToggleEl) return;
+        // A sub-table hidden because a page-wide filter emptied it keeps
+        // style.display '' (its collapse state) under the
+        // .mb-empty-subtable-hidden class — see _syncEmptySubtableVisibility().
         const _anyTableVisible = Array.from(container.querySelectorAll('table.tbl'))
-            .some(t => t.style.display !== 'none');
+            .some(t => t.style.display !== 'none' && !t.classList.contains('mb-empty-subtable-hidden'));
         _masterToggleEl.dataset.state = _anyTableVisible ? 'expanded' : 'collapsed';
         _masterToggleEl.textContent   = _anyTableVisible ? 'Hide all sub-sections' : 'Show all sub-sections';
         _setTip(_masterToggleEl, _anyTableVisible

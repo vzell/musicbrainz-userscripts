@@ -492,3 +492,41 @@ Specs: `filter-sliced{,.mobile}.spec.js`, driven through
 `__saTest.filterSlicing` (threshold 0, one row per slice, an awaited
 `onSlice` that holds a pass mid-way); mutations in
 `scripts/mutations/faster-filtering.json`.
+
+## Empty sub-tables under a page-wide filter
+
+Requested 2026-10-13 (branch `feature/hide-empty-subtables`). On a
+`tableMode: 'multi'` page, a sub-table left with no row by a **page-wide**
+filter is hidden: its h3, the table, and every element between them (the
+`.mb-group-intro` and the CAA/EAA bigboxes). `_syncEmptySubtableVisibility()`
+decides this at the tail of every `renderGroupedTable()`, just before
+`_syncMasterToggleState()`. Setting: `sa_hide_empty_subtables`, default on.
+
+- **Page-wide means the GF text or a findings filter.** A findings filter is
+  either `_findingRowFilter` or a cell-scope finding's 📊 tick
+  (`MB_UNIQ_STRUCTURE_MODE_PREFIX + 'finding-'`). A tick like that is written
+  into a column filter input of EVERY table. So when the code asks "does this
+  sub-table have its own filter", an input whose only content is finding ticks
+  does not count. Without that, a cell-scope finding would exempt every table
+  and hide none.
+- **A sub-table with a filter of its own is never hidden.** That means a typed
+  CF or a 📊 pick, an STF text, or its ⏳ scope. Its inputs live in its h3 and
+  thead, so hiding it would hide the only way to widen that filter again. For
+  the same reason, the sub-table that holds the focused element stays visible.
+- **The hiding is a CLASS (`.mb-empty-subtable-hidden`, `display: none
+  !important`) plus `data-mb-empty-hidden` on the table, never `style.display`.**
+  `table.style.display` is the collapse state. The bigboxes' own display is the
+  art-strip state, and the h3's is the discography view's `mbDiscHidden`.
+  Writing any of them would lose the state the sub-table must come back with.
+  The master toggle and Ctrl+click on an h3 write `style.display`, which the
+  class overrides, so neither can reveal a hidden empty sub-table.
+- **Anything that judges "is this table visible" by `t.style.display` must
+  also check the class.** `_syncMasterToggleState()` does. An empty hidden
+  table has `style.display === ''`, which would keep its label on "Hide all".
+- The decision reads the live `tbody.rows.length`. A scoped (sort-only)
+  re-render leaves undisturbed tbodies in place, so their count is still right.
+  Nothing is written to a cell, so the four obligations at the top of this
+  file do not apply.
+
+Specs: `tests/fixtures/hide-empty-subtables.spec.js`; mutations in
+`scripts/mutations/hide-empty-subtables.json`.

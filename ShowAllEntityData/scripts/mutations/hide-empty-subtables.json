@@ -1,0 +1,93 @@
+[
+  {
+    "name": "H1: the render tail never hides",
+    "why": "The call is gone: a sub-table the global filter empties stays on screen as (0 of N).",
+    "edits": [
+      {
+        "find": "        _syncEmptySubtableVisibility(container);\n        _syncMasterToggleState(container);",
+        "replace": "        _syncMasterToggleState(container);"
+      }
+    ],
+    "spec": "tests/fixtures/hide-empty-subtables.spec.js",
+    "grep": "the global filter empties is hidden",
+    "expect": "fail"
+  },
+  {
+    "name": "H2: hidden by style.display instead of the class",
+    "why": "Hiding writes table.style.display, so the collapse state is lost: an expanded sub-table comes back collapsed (or is never restored).",
+    "edits": [
+      {
+        "find": "            parts.forEach(el => el.classList.toggle('mb-empty-subtable-hidden', hide));",
+        "replace": "            parts.forEach(el => { el.style.display = hide ? 'none' : ''; });"
+      }
+    ],
+    "spec": "tests/fixtures/hide-empty-subtables.spec.js",
+    "grep": "COLLAPSED when it was collapsed",
+    "expect": "fail"
+  },
+  {
+    "name": "H3: no own-filter exemption (sub-table filter)",
+    "why": "A sub-table emptied by its own STF is hidden too, taking the STF input with it.",
+    "edits": [
+      {
+        "find": "                hide = !ownFilter && !hasFocus;",
+        "replace": "                hide = !hasFocus;"
+      }
+    ],
+    "spec": "tests/fixtures/hide-empty-subtables.spec.js",
+    "grep": "its own sub-table filter stays visible",
+    "expect": "fail"
+  },
+  {
+    "name": "H4: no own-filter exemption (column filter)",
+    "why": "Same removal, seen from a column filter.",
+    "edits": [
+      {
+        "find": "                hide = !ownFilter && !hasFocus;",
+        "replace": "                hide = !hasFocus;"
+      }
+    ],
+    "spec": "tests/fixtures/hide-empty-subtables.spec.js",
+    "grep": "its own column filter stays visible",
+    "expect": "fail"
+  },
+  {
+    "name": "H5: the master toggle counts a hidden sub-table as open",
+    "why": "An expanded but hidden sub-table keeps style.display '', so the label says Hide all while every visible sub-table is collapsed.",
+    "edits": [
+      {
+        "find": "            .some(t => t.style.display !== 'none' && !t.classList.contains('mb-empty-subtable-hidden'));",
+        "replace": "            .some(t => t.style.display !== 'none');"
+      }
+    ],
+    "spec": "tests/fixtures/hide-empty-subtables.spec.js",
+    "grep": "master toggle neither reveals",
+    "expect": "fail"
+  },
+  {
+    "name": "H6: the setting is ignored",
+    "why": "sa_hide_empty_subtables off still hides.",
+    "edits": [
+      {
+        "find": "        const enabled = Lib.settings.sa_hide_empty_subtables !== false;",
+        "replace": "        const enabled = true;"
+      }
+    ],
+    "spec": "tests/fixtures/hide-empty-subtables.spec.js",
+    "grep": "setting off",
+    "expect": "fail"
+  },
+  {
+    "name": "H7: no tooltip line",
+    "why": "The h2 tooltip no longer says how many sub-tables are hidden.",
+    "edits": [
+      {
+        "find": "        return _buildH2CountTooltipBase(filteredCount, totalCount, absoluteTotal) + _h2HiddenSubtablesNote();",
+        "replace": "        return _buildH2CountTooltipBase(filteredCount, totalCount, absoluteTotal);"
+      }
+    ],
+    "spec": "tests/fixtures/hide-empty-subtables.spec.js",
+    "grep": "nothing matches",
+    "expect": "fail"
+  }
+]

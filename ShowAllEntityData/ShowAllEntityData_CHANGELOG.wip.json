@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.12",
+        "date": "2026-10-13",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "Pages with sub-tables: while the global filter or a ⚠️ WARNING / ❌ ERROR menu filter is active, a sub-table with no matching row is hidden, heading line and table together, instead of staying on screen as \"(0 of N)\". Widen or clear the filter and it comes back as it was, collapsed or expanded, with its artwork strip as you left it. A sub-table with its own filter (a column filter, its 🔍 sub-table filter or its ⏳ toggle) stays visible even when empty, so that filter can still be reached. The row-count tooltip in the page heading says how many sub-tables are hidden. Setting: \"Hide Empty Sub-tables While Filtering\" (🎨 TABLE FILTER CONFIGURATION, on by default)."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.11",
         "date": "2026-10-13",
         "sections": [
