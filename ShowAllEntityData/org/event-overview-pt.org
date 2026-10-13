@@ -232,3 +232,50 @@ CLOSED: [2026-10-06 Tue]
 - Specs mirroring P1–P3 with =EAA_CTX=; re-run the P2–P4 mutation lists (the
   refactor touches every handler they guard); one =run-perf-comparison= on a
   release-tracks page before and after the refactor.
+
+*** DONE WIP.3 — Video column, header glyphs, setlist links, MBID case (2026-10-12)
+CLOSED: [2026-10-12 Mon]
+Branch =fix/event-overview-video-glyphs= (stacked on
+=feature/instrument-icons-interop=). Snapshots: =debug/2024-05-23-initial.html=
+(a rendered page despite its name: Video), =debug/2026-06-04-*.html= ("(with …)"
+links, "the"), =debug/2001-05-27-*.html= (mixed-case MBIDs).
+- [X] Video: =_eventTakeVideo()= takes MusicBrainz's =span.video= out of a
+      recording's cloned nodes, =_eventVideoCell()= builds the cell with the
+      shared =ColumnDataExtractor.video()= (icon + hidden "video"/"audio"
+      key). "Recordings" (and the one-table layout) after the target column;
+      the setlist tables after Recording, one value per row ("video" when any
+      of its recordings is one). =_eventBuildTable()= takes a ready =<td>=.
+- [X] Setlist Recording: each recording once per row (by href) — two
+      relationships to one recording ("recording location for", "shot for")
+      listed it twice.
+- [X] Header glyphs: =_eventColGlyphs()= (a function — =_ENTITY_TYPE_GLYPH= is
+      declared later) maps every single-kind column to its glyph: the typed
+      target columns (=_EVENT_REL_TARGET_COLS= × =_ENTITY_TYPE_GLYPH=), the
+      credit Artist, Area, the setlist's Song and Additional artists. The
+      converter strips that glyph from those cells (=_eventStripGlyphs()=;
+      =span.flag= wraps its link and stays); =_initColHeaderGlyph()= now also
+      runs on event-overview, from =renderGroupedTable()='s tail. Mixed columns
+      ("Target" with Type — one-table layout, "Via <series>"), URL, instrument
+      and genre keep their cell glyphs.
+- [X] "(with …)" links on the initial page: =_eventSetlistFixLinks()= runs at
+      init (pageType detected) and again in the converter on its =setP=
+      (idempotent; that second call only matters for a fetched copy, which
+      this single-page pageType never gets today — recorded =expect: pass= in
+      the mutation list).
+- [X] "the New Breed Brass Band" → "New Breed Brass Band":
+      =_eventDropLeadingArticle()= drops a lone the/a/an before a link.
+- [X] MBID case: every work/artist MBID regex on this path is =/i=. Links are
+      NOT lowercased — MusicBrainz resolves them, and the new ⚠️ finding
+      =mbid-uppercase= (Song, Additional artists; =_findingUppercaseMbids()=,
+      setting =sa_findings_tint_mbid_case=) reads their case to tell the user
+      to fix the setlist on MusicBrainz. Decided with the user 2026-10-12.
+- [X] Follow-up (user, same day, items 5–6): the link preview on the initial
+      page's setlist links with mixed-case MBIDs — =_MB_POP_PATH_RE= took
+      lowercase hex only, so such a link was no target; it now takes A-F and
+      every reader lowercases the MBID (one cache key, one lookup, one Live
+      page; =_MB_POP_PAGE_VERSION= 3 for the edit parser). The setlist note
+      ("Scheduled: …") above its table: =.mb-group-intro= gets the table's
+      =margin-left= (1.5em) — for every grouped page that has a note.
+- [X] Spec =event-overview-video-glyphs.spec.js= (12); mutation list
+      =event-overview-video-glyphs.json=: 12 fail as expected + 1 guard no
+      fixture can see. Tested live by the user 2026-10-12.

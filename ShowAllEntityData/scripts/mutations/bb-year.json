@@ -245,5 +245,31 @@
         "spec": "tests/fixtures/bb-year.spec.js",
         "grep": "Notes keeps the description",
         "expect": "pass"
+    },
+    {
+        "name": "a bold run spanning songs is one song",
+        "why": "The 2012-03-18 report: only the paragraph's top-level text is split, so a setlist set all in bold (18 songs in one <strong>) is one long row. Must fail on the 2012 test.",
+        "edits": [
+            {
+                "find": "            if (_bbIsSplittableInline(n)) {",
+                "replace": "            if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "2012: a setlist set all in bold",
+        "expect": "fail"
+    },
+    {
+        "name": "a split song loses its bold",
+        "why": "_bbSplitInline() returns its pieces unwrapped: the songs split, but the tour premieres no longer read as bold. Must fail on the 2012 test's bold count.",
+        "edits": [
+            {
+                "find": "            const wrap = docContext.importNode(el, false);\n            piece.forEach(n => wrap.appendChild(n));\n            return [wrap];",
+                "replace": "            return piece;"
+            }
+        ],
+        "spec": "tests/fixtures/bb-year.spec.js",
+        "grep": "2012: a setlist set all in bold",
+        "expect": "fail"
     }
 ]

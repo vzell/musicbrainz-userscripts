@@ -164,3 +164,12 @@ captures into `tests/fixtures/bs-records-{unofficial,official,lp}.html`,
 kept WHOLE with their inline script, minus the body background.
 `tests/support/bsFixture.js` serves every records.aspx request by its
 `tipe=`. Mutation list: `scripts/mutations/bs-support.json`.
+
+## Titles
+
+Since 2026-10-13 (`feature/bb-recent-changes-relations`) the Title column is
+in MusicBrainz title style with typographic punctuation, the site's text as
+the cell's tooltip — `sa_foreign_mb_titles`, `sa_foreign_typography`, both on
+by default. The converter specs load with both OFF (the fixture loader's
+`titles` option); `tests/fixtures/mb-title-case.spec.js` covers the ON side.
+See docs/claude/foreign-title-case.md.

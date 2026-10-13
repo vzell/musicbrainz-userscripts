@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "7102548b24c9fb87894bff29702a4e9add56fd32",
-    "revisions_walked": 861
+    "head": "1a277c0c0fc02110cd7fe3561a58d24cbf57a92d",
+    "revisions_walked": 885
   },
   "changes": [
     {
@@ -506,6 +506,7 @@
     "sa_uniq_count_color": "#111111",
     "sa_uniq_count_bg": "#fffacd",
     "sa_enable_dropdown_flag_icons": true,
+    "sa_enable_dropdown_instrument_icons": true,
     "sa_enable_uvd_title_subtitle": true,
     "sa_enable_uvd_title_series": true,
     "sa_enable_uvd_title_format": true,
@@ -629,6 +630,7 @@
     "sa_findings_tint_rec_date": true,
     "sa_findings_tint_rec_event": true,
     "sa_findings_tint_rg_title": true,
+    "sa_findings_tint_mbid_case": true,
     "sa_findings_tint_event_state": true,
     "sa_findings_tint_title_mismatch": true,
     "sa_findings_tint_low_quality": true,
@@ -680,6 +682,9 @@
     "sa_event_overview_setlist_one_table": false,
     "sa_event_overview_event_art": true,
     "sa_event_overview_art_tab": true,
+    "sa_enable_relationship_tables": true,
+    "sa_relationship_tables_one_table": false,
+    "sa_relationship_tables_related": true,
     "sa_enable_expand_rgs": true,
     "sa_enable_barcode_highlight": true,
     "sa_enable_barcode_validation": true,

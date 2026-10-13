@@ -1,0 +1,171 @@
+[
+  {
+    "name": "no Video column: the icon stays in Recording",
+    "why": "_eventRelColumns() never takes the icon out, so there is no Video column and the icon sits on every video recording's cell. Must fail on the Video test.",
+    "edits": [
+      {
+        "find": "        const mains = rows.map(r => r.type === 'recording'\n            ? _eventTakeVideo(r.main.map(clone))",
+        "replace": "        const mains = rows.map(r => false\n            ? _eventTakeVideo(r.main.map(clone))"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-video-glyphs.spec.js",
+    "grep": "Video is its own column",
+    "expect": "fail"
+  },
+  {
+    "name": "setlist recordings not deduplicated",
+    "why": "A recording two relationships name (\"recording location for\" + \"shot for\") is listed twice in its setlist row. Must fail on the dedupe test.",
+    "edits": [
+      {
+        "find": "                if (seen.has(key)) return false;\n                seen.add(key);",
+        "replace": "                seen.add(key);"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-video-glyphs.spec.js",
+    "grep": "listed once in its setlist row",
+    "expect": "fail"
+  },
+  {
+    "name": "header glyphs still release-tracks only",
+    "why": "_initColHeaderGlyph()'s old gate: the cells lose their glyphs but no header gets one. Must fail on the glyph test.",
+    "edits": [
+      {
+        "find": "        if (_pt !== 'release-tracks' && _pt !== 'event-overview') return;",
+        "replace": "        if (_pt !== 'release-tracks') return;"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-video-glyphs.spec.js",
+    "grep": "entity glyphs sit in the headers",
+    "expect": "fail"
+  },
+  {
+    "name": "cell glyphs not stripped",
+    "why": "_eventStripGlyphs() returns its input: every header has its glyph and every cell still has its own too. Must fail on the glyph test's cell half.",
+    "edits": [
+      {
+        "find": "    function _eventStripGlyphs(nodes, cls) {\n        if (!cls) return nodes;",
+        "replace": "    function _eventStripGlyphs(nodes, cls) {\n        return nodes;"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-video-glyphs.spec.js",
+    "grep": "entity glyphs sit in the headers",
+    "expect": "fail"
+  },
+  {
+    "name": "the initial page is not repaired",
+    "why": "Without the init-time call the native setlist keeps its \"(with …)\" artists as /work/ links until the button is pressed. Must fail on the initial-page test.",
+    "edits": [
+      {
+        "find": "        const _fixedWith = _eventSetlistFixLinks(document.querySelector('#content p.setlist'));",
+        "replace": "        const _fixedWith = 0;"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-video-glyphs.spec.js",
+    "grep": "the initial page links",
+    "expect": "fail"
+  },
+  {
+    "name": "the converter does not repair a fetched setlist",
+    "why": "Guard no fixture can see: event-overview is a single page, so the pre-processing block converts the LIVE document, which the init-time pass already repaired, and a second press reloads the page (init runs again). Only the fetch loop's `doc !== document` branch would hand the converter an unrepaired copy, and that branch never runs for this pageType today. The call stays as a guard for that branch (idempotent, one paragraph). A fixture that drove the fetch loop with a fetched page 1 would cover it.",
+    "edits": [
+      {
+        "find": "        if (setOn && setP) _eventSetlistFixLinks(setP);",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "linked to /artist/",
+    "expect": "pass"
+  },
+  {
+    "name": "MBIDs matched case-sensitively again",
+    "why": "The 2001-05-27 bug: a song whose work MBID has uppercase letters is not recognised as a work and comes out as plain text. Must fail on the mixed-case test.",
+    "edits": [
+      {
+        "find": "                if (/\\/work\\/[0-9a-f-]{36}/i.test(a.getAttribute('href') || '')) works.push(a);",
+        "replace": "                if (/\\/work\\/[0-9a-f-]{36}/.test(a.getAttribute('href') || '')) works.push(a);"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-video-glyphs.spec.js",
+    "grep": "a mixed-case MBID is still a work",
+    "expect": "fail"
+  },
+  {
+    "name": "the leading \"the\" is kept",
+    "why": "\"Trombone Shorty & the New Breed Brass Band\" gives \"the New Breed Brass Band\" again. Must fail on the existing \"(with …)\" test.",
+    "edits": [
+      {
+        "find": "            withItems = _eventSplitNodes(rest, /\\s*(?:,|&|\\band\\b)\\s*/).map(_eventDropLeadingArticle);",
+        "replace": "            withItems = _eventSplitNodes(rest, /\\s*(?:,|&|\\band\\b)\\s*/);"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "linked to /artist/",
+    "expect": "fail"
+  },
+  {
+    "name": "mbid-uppercase never matches",
+    "why": "The detector finds nothing: no tint, no 📊 entry, no menu row. Must fail on the menu test.",
+    "edits": [
+      {
+        "find": "            if (m && /[A-F]/.test(m[1]) && !out.includes(m[1])) out.push(m[1]);",
+        "replace": "            if (m && /[G]/.test(m[1]) && !out.includes(m[1])) out.push(m[1]);"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-video-glyphs.spec.js",
+    "grep": "the ⚠️ menu counts the rows",
+    "expect": "fail"
+  },
+  {
+    "name": "mbid-uppercase tint setting ignored",
+    "why": "The cells stay tinted with sa_findings_tint_mbid_case off. Must fail on the tint-setting test.",
+    "edits": [
+      {
+        "find": "            tint: _findingTintSetting('sa_findings_tint_mbid_case'),",
+        "replace": "            tint: () => true,"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-video-glyphs.spec.js",
+    "grep": "the tint setting turns the paint off",
+    "expect": "fail"
+  },
+  {
+    "name": "popup path pattern lowercase only",
+    "why": "_MB_POP_PATH_RE without A-F: a setlist link whose MBID was typed with uppercase letters is no popup target, on the initial page as everywhere. Must fail on the popup test.",
+    "edits": [
+      {
+        "find": "([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})",
+        "replace": "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-video-glyphs.spec.js",
+    "grep": "popup previews a mixed-case",
+    "expect": "fail"
+  },
+  {
+    "name": "popup MBID not lowercased",
+    "why": "The card asks the Web Service, and keys its cache, with the MBID as the link spells it: one entity, two keys. Must fail on the popup test's lowercase request.",
+    "edits": [
+      {
+        "find": "        if (m) return { seg: m[1], type: m[1], id: m[2].toLowerCase() };",
+        "replace": "        if (m) return { seg: m[1], type: m[1], id: m[2] };"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-video-glyphs.spec.js",
+    "grep": "popup previews a mixed-case",
+    "expect": "fail"
+  },
+  {
+    "name": "group note not indented",
+    "why": "The .mb-group-intro wrapper sits flush with the container while its table is indented 1.5em. Must fail on the indentation test.",
+    "edits": [
+      {
+        "find": "                    introEl.style.marginLeft = table.style.marginLeft;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-video-glyphs.spec.js",
+    "grep": "indented like its table",
+    "expect": "fail"
+  }
+]

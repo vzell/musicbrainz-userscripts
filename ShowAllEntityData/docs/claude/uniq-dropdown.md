@@ -244,3 +244,36 @@ Specs: the 📊 cases in `filter-autofocus.spec.js` /
 post-render global-filter focus fires 150 ms after the render. Opening 📊
 before it lands lets it take focus from the quick filter, and that closes the
 panel. `openSeries()` waits it out.
+
+## Instrument icons and the "Instrument info - Icon" section
+
+With "MusicBrainz: Instrument Icons Everywhere" (@Lotheric) at work on the
+page (`_iiPresent()`), two things appear in the 📊 panel:
+
+- **The icon on an entry.** A plain value entry whose cell (or list item) holds
+  exactly ONE instrument link that has an icon, and every "» instrument:" entry,
+  shows that icon AFTER its label, in the same trailing slot a country flag
+  uses (`_iiTrailingIconSlot()`; a real image never goes in the marker slot,
+  see "Flags in the dropdown" above), even though the script puts it BEFORE
+  the anchor in the cell. Detection is by CELL CONTENT (`iiIconMap`, filled
+  in the main scan and cached with the bundle), not by a column-name list like
+  `hasFlagIcons`, so any column that carries instrument links gets it. Gated
+  by `sa_enable_dropdown_instrument_icons` (default on, no effect without the
+  script). A cell with several instrument links (a Description naming its
+  relatives) gets no entry icon: one icon could not say which link it belongs
+  to.
+- **"Instrument info - Icon"** (🎻), two fixed entries with counts:
+  `ii-icon-yes` (at least one instrument link in the row has an icon) and
+  `ii-icon-no` (at least one has none). Column-agnostic like "Pending edits":
+  offered on any column that holds an instrument link. A cell that credits
+  several instruments can count under BOTH, and the tooltip says so.
+  "without" cannot tell "not loaded yet" from "no icon exists" (the script's
+  `'NONE'`). Reading the script's same-origin IndexedDB
+  (`MusicBrainzInstrumentIcons`) could tell them apart; it is not done.
+  A checked entry highlights the link names it matched
+  (`_highlightInstrumentIconMatch()`), since the icon has no text.
+
+Specs: `instrument-icons-uvd.spec.js` (search `type=instrument`: counts against
+a DOM oracle, ticks in both orders against a typed filter, entry icons, no
+section without the script), plus the "» instrument:" cases in
+`release-tracks-instrument-icons{,.mobile}.spec.js`.

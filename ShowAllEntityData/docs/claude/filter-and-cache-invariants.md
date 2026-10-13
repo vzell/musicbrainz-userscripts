@@ -63,11 +63,39 @@ from the live DOM silently skips whatever is filtered out — and if it runs onc
 per fetch, those rows never get the data at all (§3.3, `initReleaseEventsColumn()`).
 Collect from `groupedRows`/`allRows` as well, or mirror onto the master row.
 
+**A third-party image is a post-render write too.** "Instrument Icons
+Everywhere" inserts its `img.mb-ii-icon` into a live cell whenever an icon
+becomes available, which is often after the render. It changes no text, so
+`_rowTextCache` and the text the filters read are unaffected (item 3 does not
+apply). It still owes the rest:
+`_iiMirrorLateIcons()` copies the icon onto the SOURCE row's matching anchor
+(same `href`, same ordinal in the cell), because a multi-table re-render
+clones the source row and a 📊 "Instrument info - Icon" tick matches source
+rows. It then drops the uniq-dropdown cache (item 1) and the filter-result
+keys that read icon presence (`_filterKeyReadsInstrumentIcon()`, item 2), and
+re-runs the filter only when an `ii-icon-*` entry is ticked (item 4). The
+observer behind it, `_iiInstallIconReconciler()`, looks only at added nodes
+that ARE an `img.mb-ii-icon`. A re-render adds whole `<tr>`s, so those records
+are skipped at the first check. It re-runs the filter only when a source row
+actually gained an icon, so an icon it cannot place on a source row can never
+cause a re-render loop.
+
+It is installed from the render tail when `_iiPresent()`, and that check
+CANNOT be cached as "no". Rows taken from a FETCHED page (a search, any page
+but the current one) are unstamped at render time. The script stamps them only
+after its debounce. So when nothing is stamped yet but SA's tables hold
+instrument links, `_iiInstallIconReconciler()` checks again
+(`_II_RECHECK_MS`), and on install it treats the icons already placed as late
+ones. A version that cached the first "no" hid the whole feature on the
+instrument search page (spec "a 📊 opened before the script stamped the
+fetched rows is refreshed once it has").
+
 Worked examples, all with fixture specs and mutation lists:
 `_msApplyLengthPrecision()` (⏱, one-shot), `initReleaseEventsColumn()` (one
 answer for many rows), `_maybeCorrectAreaFlagRegion()` (a stream, coalesced per
 frame by `_scheduleAreaFlagFilterRefresh()`), `_artSetInlineSortKey()` /
-`_artSyncSearchTextToSourceRow()` (per-cell, key-predicate invalidation).
+`_artSyncSearchTextToSourceRow()` (per-cell, key-predicate invalidation),
+`_iiMirrorLateIcons()` (a third-party image, key-predicate invalidation).
 
 ## `collapsableColumns`: list vs. prose cells
 
@@ -464,3 +492,41 @@ Specs: `filter-sliced{,.mobile}.spec.js`, driven through
 `__saTest.filterSlicing` (threshold 0, one row per slice, an awaited
 `onSlice` that holds a pass mid-way); mutations in
 `scripts/mutations/faster-filtering.json`.
+
+## Empty sub-tables under a page-wide filter
+
+Requested 2026-10-13 (branch `feature/hide-empty-subtables`). On a
+`tableMode: 'multi'` page, a sub-table left with no row by a **page-wide**
+filter is hidden: its h3, the table, and every element between them (the
+`.mb-group-intro` and the CAA/EAA bigboxes). `_syncEmptySubtableVisibility()`
+decides this at the tail of every `renderGroupedTable()`, just before
+`_syncMasterToggleState()`. Setting: `sa_hide_empty_subtables`, default on.
+
+- **Page-wide means the GF text or a findings filter.** A findings filter is
+  either `_findingRowFilter` or a cell-scope finding's 📊 tick
+  (`MB_UNIQ_STRUCTURE_MODE_PREFIX + 'finding-'`). A tick like that is written
+  into a column filter input of EVERY table. So when the code asks "does this
+  sub-table have its own filter", an input whose only content is finding ticks
+  does not count. Without that, a cell-scope finding would exempt every table
+  and hide none.
+- **A sub-table with a filter of its own is never hidden.** That means a typed
+  CF or a 📊 pick, an STF text, or its ⏳ scope. Its inputs live in its h3 and
+  thead, so hiding it would hide the only way to widen that filter again. For
+  the same reason, the sub-table that holds the focused element stays visible.
+- **The hiding is a CLASS (`.mb-empty-subtable-hidden`, `display: none
+  !important`) plus `data-mb-empty-hidden` on the table, never `style.display`.**
+  `table.style.display` is the collapse state. The bigboxes' own display is the
+  art-strip state, and the h3's is the discography view's `mbDiscHidden`.
+  Writing any of them would lose the state the sub-table must come back with.
+  The master toggle and Ctrl+click on an h3 write `style.display`, which the
+  class overrides, so neither can reveal a hidden empty sub-table.
+- **Anything that judges "is this table visible" by `t.style.display` must
+  also check the class.** `_syncMasterToggleState()` does. An empty hidden
+  table has `style.display === ''`, which would keep its label on "Hide all".
+- The decision reads the live `tbody.rows.length`. A scoped (sort-only)
+  re-render leaves undisturbed tbodies in place, so their count is still right.
+  Nothing is written to a cell, so the four obligations at the top of this
+  file do not apply.
+
+Specs: `tests/fixtures/hide-empty-subtables.spec.js`; mutations in
+`scripts/mutations/hide-empty-subtables.json`.

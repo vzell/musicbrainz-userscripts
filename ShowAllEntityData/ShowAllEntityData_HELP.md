@@ -275,6 +275,17 @@ that apply to each part in brackets:
 ✓ Sorted by: "Year"▲ (133 rows)
 ```
 
+**Empty sub-tables disappear.** On a page with sub-tables, while the global
+filter or a ⚠️ WARNING / ❌ ERROR menu filter is active, a sub-table left with
+no matching row is hidden: its heading line and the table go together. Widen or
+clear the filter and it comes back exactly as it was, collapsed or expanded,
+with its artwork strip as you left it. A sub-table with a filter of its own (a
+column filter, its 🔍 sub-table filter or its ⏳ toggle) stays visible even when
+it is empty, so you can still reach that filter and change it. Hover the row
+count in the page heading to see how many sub-tables are hidden. Setting (🎨
+TABLE FILTER CONFIGURATION): **Hide Empty Sub-tables While Filtering** (on by
+default).
+
 <details>
 <summary>Filter field states, focus indicators and history</summary>
 
@@ -308,8 +319,8 @@ MusicBrainz's own orange marker and painting over it would erase the signal you
 pressed the button to find. On multi-table pages each sub-section gets its own
 button and the one in the filter bar becomes a three-state master. (The
 **Pending edits** row of the ⚠️ WARNING menu is a separate filter: it narrows
-every sub-section, including those with no pending edits, which then show
-nothing.)
+every sub-section, and those with no pending edits are then hidden, see "Empty
+sub-tables disappear" above.)
 
 **Both filter fields are resizable** via the ⋮ handle to their right.
 
@@ -595,7 +606,8 @@ themselves:
 quick filter and then closes. The panel closes on an outside click.
 
 **Cosmetics worth knowing**: count badges use a uniform monospace width so the
-numbers right-align; flag icons are on by default and can be switched off; the
+numbers right-align; flag icons (and, with *Instrument Icons Everywhere*
+installed, instrument icons) are on by default and can be switched off; the
 visible row count before scrolling is configurable (default 30) and also drives
 whether the panel flips upward.
 
@@ -650,6 +662,7 @@ filter with a ✕ to remove it.
 | ⚠️     | Recording date and comment date differ in precision             | Release tracklist: Recording date           |
 | ⚠️     | Main-event track differs from the release group title           | Release tracklist: event columns            |
 | ⚠️     | No state code for a USA/Canada event location                   | Event-Country                               |
+| ⚠️     | Setlist MBID written with uppercase letters                     | Event page: Song, Additional artists        |
 | ⚠️     | Title in ALL UPPERCASE                                          | Title columns                               |
 | ⚠️     | Title truncated with "…"                                        | Title columns                               |
 | ⚠️     | Extra title information starts uppercase, e.g. "(Version 1)"    | Title columns                               |
@@ -1257,9 +1270,10 @@ you automatically.
 | ⏱️ Resource timing                               | Cache-hint indicators and where they appear                                                                                                                                                                                                                           |
 | 🔤 Unicode picker                               | Enable, shortcut key, and the glyph table                                                                                                                                                                                                                             |
 | 🎸 springsteenlyrics.com                        | Switch on the springsteenlyrics.com collection and bootleg lists (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                            |
+| 🔤 Titles on the other sites                    | Titles in MusicBrainz style and with typographic punctuation on the Springsteen sites (both on by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                   |
 | 🌴 jungleland.it                                | Switch on the jungleland.it bootleg artwork list (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                            |
 | 💿 brucespringsteen.it                          | Switch on the brucespringsteen.it record database (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                           |
-| 📚 Brucebase                                    | Switch on the Brucebase song list and, separately, its year pages (both off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                      |
+| 📚 Brucebase                                    | Switch on the Brucebase song list, Relations and Recent changes and, separately, its year pages (all off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                         |
 | 🔎 Link previews on MusicBrainz                 | The cards of the links on MusicBrainz pages (on by default; on a phone or tablet off unless you tick the *… on touch devices* boxes), how long their answers are kept, the release group window's size; see [Page-specific behaviour](#page-specific-behaviour)     |
 | 🔎 Every preview                                | Show the MusicBrainz link previews and the Springsteen sites' detail-page previews on a plain hover (on by default), or only while Ctrl is held                                                                                                                       |
 
@@ -1308,6 +1322,9 @@ an import brings your deletions back.
   the whole tracklist across every medium, consolidated
 - **Event pages** (`/event/<mbid>`) — the event's relationships and setlist as
   tables, and its Event Art Archive images
+- **Relationships as tables** on place, area, instrument and URL pages, and as a
+  second button on series, work, release group, recording and release pages
+  and the artist and label Relationships tab
 - **Collections** — your own, subscribed ones, and their entity sub-tabs
 - **Tags** — entity tag pages, user tag pages, and the most-popular-tags page
 - **Search results** — every entity type
@@ -1323,7 +1340,7 @@ an import brings your deletions back.
   category and the entry page), bootleg lists, CD and vinyl bootleg list
   and lyrics index, the **jungleland.it**
   bootleg artwork list, the **brucespringsteen.it** record database and
-  the **Brucebase** song list and year pages — each off until you switch it on, see
+  the **Brucebase** song list, year pages, Relations and Recent changes — each off until you switch it on, see
   [Page-specific behaviour](#page-specific-behaviour)
 
 </details>
@@ -1353,6 +1370,17 @@ Also available: **AcoustIDs** and **ISRCs** columns (both off by default), a
 raw **ARs** column, and a flag on live-recording credit dates that disagree with
 the recording date (Recording engineer, Performer, Vocals, Instruments, Recorded
 at event, Recorded at place).
+
+**Instrument icons.** With the userscript *MusicBrainz: Instrument Icons
+Everywhere* (by Lotheric) installed, the small instrument pictures it puts in
+front of instrument names are kept everywhere the consolidated table shows
+those names: the *Instruments* column, instruments credited inside other
+credit columns, the *Name* column of the instrument list, and instrument search
+results. A picture that loads after the table is built still arrives and stays
+through sorting and filtering. In the 📊 dropdown, an entry shows the picture
+of its instrument, and an *Instrument info - Icon* section counts the rows
+with and without one. An instrument without a picture can be one the script
+has no picture for, or one it has not loaded yet.
 
 **Cover art without leaving the page.** After **Tracks for Release**, a
 **Cover art (N)** section opens above the tracklist with every Cover Art
@@ -1536,10 +1564,12 @@ the columns that fit it:
   "held at", "recording location for", …);
 - for performers, **Credits** — one row per credit ("lead vocals",
   "harmonica", …, instrument links kept) — and **Time** ("19:40 - 22:29");
-  **Artist** for recordings and releases, **Area** for a place, **Details**
-  for anything else on the line ("order: 150" for a series), and
-  **Disambiguation** (without its parentheses) — each only when some row has
-  one;
+  **Artist** for recordings and releases, **Area** for a place, **Begin** and
+  **End** for a relationship's dates, **Number** (and **Order**) for a series
+  position ("order: 150"), **Details** for anything else on the line,
+  **Disambiguation** (without its parentheses) and **Primary alias** — each
+  only when some row has one (dates, positions and aliases are read the same
+  way as on other pages, see *Relationships as tables on other pages*);
 - for URLs, the **Site** and the link, with its **[info]** page.
 
 Under "Related series", MusicBrainz also lists the relationships of the
@@ -1552,14 +1582,32 @@ table.
 number that moves on at every joining word but "&" — and one table per part
 of the setlist (**Setlist: Soundcheck**, **Setlist: Concert**, …; **Setlist:
 Songs** when the setlist has no parts). A part's notes ("Scheduled: 19:30 |
-Local Start Time 19:40 / End Time 22:29") sit under its heading. **Song** is a
+Local Start Time 19:40 / End Time 22:29") sit under its heading, indented like its table. **Song** is a
 multi-row column: a medley line ("Land of Hope and Dreams / People Get
 Ready") stays one row with one list row per work. The artists of a "(with …)"
 line ("This Land Is Your Land (with Trombone Shorty & the New Breed Brass Band
-and all performers)") go into **Additional artists**, one row each, linked to
-the artist. **Also in** names the other parts that play the same work;
-**Recording** links the recording made at this event whose title is the song.
-A song without a work link is kept as text.
+and all performers)") go into **Additional artists**, one row each ("New
+Breed Brass Band", without the sentence's "the"), linked to the artist.
+MusicBrainz itself links them as works; the script points them at the artist
+on the page as soon as it loads, before any button. **Also in** names the
+other parts that play the same work; **Recording** links the recording made at
+this event whose title is the song, each recording once (even when two
+relationships, e.g. "recording location for" and "shot for", name it). A song
+without a work link is kept as text. A song or artist whose MBID was typed with
+uppercase letters ("[E497263c-…|The Fever]") is still recognised, and its cell
+is flagged ⚠️ "MBID contains uppercase letters" — MusicBrainz resolves the link,
+but the setlist should be edited to use the lowercase MBID (see
+[Warnings and errors](#warnings-and-errors)). Such a link gets its link preview
+like any other, on the event page itself too.
+
+**Video and entity icons.** When a recording carries MusicBrainz's video icon,
+**Recordings** and the setlist tables get a **Video** column right after
+**Recording**: the icon, and "video"/"audio" for sorting and the 📊 dropdown
+(a setlist row says "video" when any of its recordings is one). As on a release
+tracklist, a column that holds one kind of entity (**Artist**, **Place**,
+**Area**, **Recording**, **Release**, **Series**, **Song**, **Additional
+artists**, …) shows that entity's icon once in its header instead of on every
+cell; a column that mixes kinds (**Target**) keeps the icons on its cells.
 
 **Event art without leaving the page.** Above the tables, an **Event art (N)**
 section shows every Event Art Archive image of the event — posters, schedules,
@@ -1580,6 +1628,83 @@ setlist* (off by default: every song in **Setlist: All songs** with a **Part**
 column), *Show an "Event art" section* and *The "Event art" tab opens the
 viewer*. With both table parts off the button is not offered (the Event art
 section comes with the button).
+
+</details>
+
+<details>
+<summary>Relationships as tables on other pages</summary>
+
+Most entity pages list their relationships the way an event page does: short
+lists under a **Relationships** heading, one target per line. The same tables
+the event page gets are available on:
+
+- **Place, area, instrument and URL pages** (`/place/<mbid>`, `/area/<mbid>`,
+  `/instrument/<mbid>`, `/url/<mbid>`): **Relationships for Place** (Area,
+  Instrument, URL) — the only button there, since those lists are the page's
+  data. On a URL page they are the entities that link the URL; its "URL
+  details" stay as MusicBrainz shows them.
+- **Series, work, release group and recording pages**: a **Relationships**
+  button beside the page's own **Show all…** button.
+- **The artist and label Relationships tab** (`/artist/<mbid>/relationships`):
+  **Relationship lists**, beside the tab's existing **Relationships** button
+  (which consolidates the tables further down).
+- **Release pages**: **Credits**, beside **Tracks** — the release's own
+  credits under "Credits", never the track credits (those stay with
+  **Tracks**, also when MusicBrainz shows them at the bottom).
+
+The two buttons on one page are **either/or**: the page's own button renders
+as it always did, with the relationship lists left as a section you can
+collapse; the new button renders only the relationship tables and leaves the
+page's main table out. Press the other button to switch (the page reloads, as
+it does for every second press).
+
+The tables are the event page's — one per kind of related entity, each with
+the columns that fit it, the entity glyph in the column header — plus:
+
+- **Begin** and **End** for a relationship's dates: "(from 1977-06-27 until
+  1978-05-05)", "(in 1978)" and "(on 1978-04-11)" (Begin = End), "(until
+  1931)", "(… to present)" (End "present"), "(ended)". Both are split like
+  every other date into **B-DD**, **B-MM**, **B-YYYY**, **B-Day**,
+  **B-Month** and the same for **E-**, so you can filter for a year or a
+  weekday.
+- **Number** for a series position ("number: 20"), or **Number** and **Order**
+  when the two differ for some row in that table ("(on 2009-02-01: number:
+  43) (order: 19)").
+- **Parent area** for an area's own parent chain ("Alabama" → "United
+  States"), **Area** for a place's.
+- An ended URL relationship, which MusicBrainz shows struck through and
+  without a link, is still a row of the URLs table, with its end date.
+- **Primary alias**: a name MusicBrainz adds in parentheses for an entity
+  whose name is in another script ("フジパシフィックミュージック
+  (Fujipacific Music, Inc.)") — not mixed up with **Disambiguation**.
+- An artist's membership with a period and what they played — "(from 1964-12
+  until 1965-06: lead vocals, electric guitar)" — gives **Begin**, **End**
+  and a multi-row **Credits** cell, one row per credit.
+- **Genre** and **Instrument** show their glyph once in the column header,
+  like every other single-kind column.
+- With *Enable inline CAA/EAA thumbnails in Release/Title column* on (⚙️
+  Settings → 🖼️ CAA/EAA ILLUSTRATED DISCOGRAPHY), a release group
+  or release gets its small cover image in front of its name, and an event
+  its event art image — also in a mixed **Target** column, where each row
+  gets the picture that fits it.
+
+In a table that mixes kinds (a **Via …** table, the one-table layout), the
+📊 dropdown of the **Target** and **Type** columns has an **Entity info -
+Type** section: one entry per kind of related entity — Artist, Release group,
+Event, Series, URL, … — with its icon and how many rows are of that kind.
+Tick one to keep only those rows. The event page's mixed tables have it too.
+
+A recording's **Related works** and a release's **Release group** credits
+describe the work or the group, not the page's entity, so each gets its own
+**Via Badlands** / **Via release group: Live/1975–85** table with a **Type**
+column.
+
+Settings, in ⚙️ Settings → 🔗 RELATIONSHIP SECTIONS: *Relationships as tables*
+(off: no new button and no page type for place, area and instrument pages),
+*One table for all relationships* (off by default: one table with **Type** and
+**From** instead of one per kind), *Include related works / the release group*
+(off: those sections stay as MusicBrainz shows them). Save and Load work as on
+any page; a saved file loads back as the same button.
 
 </details>
 
@@ -1955,7 +2080,9 @@ gets a heading with the usual toolbar and one action button: **Items** on a
 collection list or the entry page, **Bootlegs** on either bootleg list. Pressing it
 fetches every page of that list (100 items each), turns the item cards into
 one table, and gives you the usual filters, sorting, column controls, export
-and Save/Load.
+and Save/Load. The **Title** column writes the titles the MusicBrainz way
+("Live At The Matrix" reads "Live at the Matrix", see *Titles in MusicBrainz
+style* further down).
 
 The entry page holds the whole collection (over 5000 items in more than 50
 pages), so the usual "many pages" and "many rows" questions come up before it
@@ -2094,7 +2221,8 @@ pages) gets one button, **Lyrics**. The site lists its songs one first letter
 per page. Pressing it fetches every letter, whichever page you start on, and
 turns the over 3,500 song lines into one table:
 
-- **Title** links to the song's lyrics page. **Lyrics** is ✓ when that page
+- **Title** links to the song's lyrics page, written the MusicBrainz way
+  ("BABY I'M SO COLD" reads "Baby I’m So Cold"). **Lyrics** is ✓ when that page
   has lyrics, and ✗ when the site's plain icon says it has none.
 - **Version** is the site's text in brackets, as written ("Live 30 Sep 1987
   version", "Original Roy Orbison version"). It is also read into:
@@ -2141,8 +2269,9 @@ Once on, the page gets a heading with the usual toolbar and one action
 button, **Bootlegs**. Pressing it turns the whole list into one table with
 these columns:
 
-- **Title:** the bootleg's title, without the date the site appends to it.
-  It links to that bootleg's artwork page, which opens in a new tab.
+- **Title:** the bootleg's title, without the date the site appends to it,
+  written the MusicBrainz way (see *Titles in MusicBrainz style* below). It
+  links to that bootleg's artwork page, which opens in a new tab.
 - **Date:** that date as `1975-08-15`, so sorting it is chronological. It is
   empty for the undated entries the site files under "Others".
 - **Year:** the date's year. Filter or pick from its 📊 list to see one year,
@@ -2200,8 +2329,9 @@ turns them into one table:
 
 *Format* is the site's own text ("2 CD-R", "1 7 in."). *Notes* is the italic
 line some records carry ("Picture disc", "Lower 'Bruce Springsteen' - Little
-Steven Mix"). The title links to the record's detail page, which opens in a
-new tab. With the preview on, resting the pointer on a title shows the
+Steven Mix"). The title, written the MusicBrainz way ("BOSS AT HIS BEST (THE)" reads "The
+Boss at His Best", see *Titles in MusicBrainz style* below), links to the
+record's detail page, which opens in a new tab. With the preview on, resting the pointer on a title shows the
 record's tracklist and the shows its tracks come from (see
 *Previewing the detail pages* under [Page-specific behaviour](#page-specific-behaviour)).
 
@@ -2226,8 +2356,9 @@ page gets a heading with the usual toolbar and one action button, **Songs**.
 Pressing it turns the site's 28 letter tabs into one table with these
 columns:
 
-- **Title:** the song's title, as the wiki writes it. It links to that song's
-  page.
+- **Title:** the song's title, written the MusicBrainz way ("Born In The
+  U.S.A." reads "Born in the U.S.A.", see *Titles in MusicBrainz style*
+  below). It links to that song's page.
 - **Letter:** the tab the song is listed under: *0-9* or *A* to *Z*. Filter
   or pick from its 📊 list to see one letter, which is the job the tabs did.
 
@@ -2264,9 +2395,12 @@ entry, with these columns:
 - **Type:** *Gig*, *No gig* (cancelled or postponed), *Recording*,
   *Rehearsal*, *Interview* or *No Bruce*, from the kind of page the entry
   links to.
-- **Venue:** the venue as written, linked to the entry's own page. A second
-  part such as "SUMMER STAGE" stays with it.
-- **City**, **State** and **Country:** a US state or Canadian province code
+- **Venue:** the venue, linked to the entry's own page, written the
+  MusicBrainz way ("HAMPTON ROADS COLISEUM" reads "Hampton Roads Coliseum").
+  A second part such as "Summer Stage" stays with it.
+- **City**, **State** and **Country** (City and Country written the
+  MusicBrainz way, "SYDNEY" reads "Sydney", "THE NETHERLANDS" "The
+  Netherlands"; a country of USA, and State, as the wiki writes them): a US state or Canadian province code
   goes in State, with USA or CANADA as the country. Elsewhere the country is
   written out, and State holds the region where the wiki gives one ("NEW SOUTH
   WALES").
@@ -2274,8 +2408,10 @@ entry, with these columns:
   the wiki's "Start of …" / "Continuation of …" / "End of …" boxes. Entries
   outside any box, such as those before a year's first box, are empty.
 - **Soundcheck:** the soundcheck, one song per row.
-- **Setlist:** the set, one song per row, as written: bold for a tour
-  premiere, "(with …)" for guests, " - " joining a medley. A recording
+- **Setlist:** the set, one song per row, each title written the MusicBrainz
+  way ("I'M ON FIRE" reads "I’m on Fire"), the rest as the wiki has it: bold for a tour
+  premiere (also when the wiki sets a whole tour opener's setlist in bold,
+  as on 2012-03-18), "(with …)" for guests, " - " joining a medley. A recording
   session's setlist is the songs recorded. A set with its own label in the
   wiki ("Pre-show:", "With Bruce:", "with Willie Nile:") stays in this column,
   its first row tagged with that label.
@@ -2325,6 +2461,101 @@ many rows (*Large Dataset Threshold*, 5000).
 </details>
 
 <details>
+<summary>Brucebase Relations</summary>
+
+Brucebase lists everyone Bruce Springsteen shared a stage or a studio with —
+and family, friends and actors — at `https://brucebase.wikidot.com/stats:relations`,
+in 28 letter tabs (0-9, A to Z, and "&" for band names with an "&"). It comes
+with *Enable on the Brucebase song list*. The page gets a heading with the
+usual toolbar and one button, **Relations**, which turns the tabs into one
+table of the nearly 2,900 entries:
+
+- **Name:** the name in reading order, linked to the person's or band's page:
+  "Bryan Adams", "The Alliance Singers", "k.d. lang". A band whose name has a
+  comma of its own ("Crosby, Stills & Nash") keeps it.
+- **Sort name:** the name as the wiki lists it, "Adams, Bryan".
+- **Type:** *Person* or *Band*, the column the wiki lists it in.
+- **Letter:** the tab it is listed under.
+
+Names keep their capitals as the wiki writes them; only the punctuation
+becomes typographic ("D’Angelo"), see *Titles in MusicBrainz style* below.
+Everything is on the page; nothing is fetched.
+
+</details>
+
+<details>
+<summary>Brucebase Recent changes</summary>
+
+`https://brucebase.wikidot.com/system:recent-changes` is the wiki's log of
+every edit. It comes with *Enable on the Brucebase song list*. The page gets
+three buttons: **200**, **1,000** and **5,000** load the last 200, 1,000 or
+5,000 changes into one table. The site's own list shows 20 at a time; the
+buttons always load 200 per page (the most the site offers), and the site's
+"Revisions per page" is set to 200 as well, so its own *Update list* matches.
+The site's form still decides **what** is loaded: untick *ALL* and tick, say,
+*new pages*, or pick a category, before pressing a button. The columns:
+
+- **Page:** the page's title, linked to it.
+- **Category:** the part of the page's name before the colon (*gig*, *song*,
+  *gallery*, …); empty for a page in no category.
+- **Flags:** what changed, one row per flag, the site's letter and its
+  meaning: N new page created, S content source text changed, T title
+  changed, R page renamed/moved, A tags changed, M meta data changed, F
+  file/attachment action. Filter it, or pick from its 📊 list.
+- **Date** and **Time:** when, in your own time zone, as `2026-10-12` and
+  `17:42:28`. **DD**, **MM**, **YYYY**, **Day** and **Month** (at the end of
+  the table) split the date up as on MusicBrainz pages, and the 📊 lists of
+  Date and Time offer the same sections as there: the year, month and
+  weekday of the date, and the part of the day (morning, afternoon, evening,
+  night).
+- **Revision:** the page's revision number; 0 for a new page.
+- **User:** who made the change, linked to their Wikidot profile (new tab).
+- **Comment:** the change's comment, where there is one.
+
+Each 200 changes is one request to the wiki, one after the other; 5,000 is 25
+requests and takes a minute or so. A change made while they load can show up
+twice.
+
+</details>
+
+<details>
+<summary>Titles in MusicBrainz style</summary>
+
+On springsteenlyrics.com, jungleland.it, brucespringsteen.it and Brucebase
+the tables write titles the way MusicBrainz writes English titles rather
+than each site's own way — the collection, bootleg, record and lyrics
+titles, the Brucebase song titles, and on a Brucebase year page the venues,
+cities, countries (a country of USA stays as it is) and every song of
+Soundcheck and Setlist. Two settings,
+both **on** by default, under ⚙️ Settings → *🔤 Titles on the other sites*:
+
+- **Write titles in MusicBrainz style:** capitals as MusicBrainz uses them:
+  every word capitalised except, inside the title, *a, an, the, and, but, or,
+  nor* and the short prepositions (*as, at, by, for, in, of, on, to, …*).
+  "BORN IN THE USA" and "Born In The U.S.A." read "Born in the USA" and "Born
+  in the U.S.A."; "(Version 2)" reads "(version 2)"; brucespringsteen.it's
+  "BOSS AT HIS BEST (THE)" reads "The Boss at His Best". Acronyms keep their
+  capitals (USA, NJ, MTV, U.S.A.). On a setlist only the song titles change:
+  "(with Patti Scialfa)", set labels and bold or italic songs stay as they
+  are. State stays as the wiki writes it, and so does a placeholder such as
+  "[no title]".
+- **Write typographic punctuation in titles:** ’ for an apostrophe ("Don’t",
+  "Rock ’n’ Roll"), “double” and ‘single’ quotation marks, … for "...", — for
+  "--", an en dash for a range ("1975–1985") and between the songs of a
+  medley, a hyphen ‐ inside a word ("Freeze‐Out") and a date, ″ for inches.
+  Brucebase Relations names get this too. **A filter then has to use the same
+  characters:** "don't" no longer finds "Don’t".
+
+Rest the pointer on a title that changed to see it as the site writes it.
+The rules are applied by machine, so a title that needs judgement — a word
+used as part of a verb ("Stand on It"), an acronym nobody listed — can still
+come out differently from MusicBrainz; "up" is always capitalised ("Held Up
+Without a Gun"), and so is "on" in "Come On", "Hang On" and the like. A change
+of either setting shows the next time a table is built.
+
+</details>
+
+<details>
 <summary>Previewing the detail pages</summary>
 
 Each row of these tables links to a page with more detail: a bootleg's
@@ -2341,7 +2572,7 @@ that site's own switch in ⚙️ Settings:
 | 🎸 springsteenlyrics.com | *Preview item and song pages on springsteenlyrics.com lists* | the tracklist by disc, the notes (lineage, edition), the artwork scans; on the lyrics index, the version, the first lines of the lyrics and the song's info |
 | 🌴 jungleland.it        | *Preview artwork pages on the jungleland.it list*        | the uploader and the scans (front, back, discs, booklet)                       |
 | 💿 brucespringsteen.it  | *Preview record pages in the brucespringsteen.it database* | the tracklist, the show each track comes from, the notes, the photo           |
-| 📚 Brucebase           | *Preview song pages on the Brucebase song list*          | the album it comes from, how often and when last it was played live, releases |
+| 📚 Brucebase                                    | *Preview song pages on the Brucebase song list*          | the album it comes from, how often and when last it was played live, releases                                                                                                                              |
 
 **Rest the pointer on a title** for a moment and a card opens beside it. If
 you would rather move the pointer across the table without opening cards or
@@ -2350,6 +2581,11 @@ Ctrl)* under ⚙️ Settings → *🔎 EVERY PREVIEW* (it covers the MusicBrainz
 previews too): then **hold Ctrl and rest the pointer on a title**, or rest the
 pointer on the title first and then press **Ctrl**, and the card opens at
 once.
+This works on the page as the site shows it too, before you press any
+button: rest the pointer on a song in Brucebase's own song list ("1945" on
+*stats:songs*), a title on a springsteenlyrics.com or jungleland.it list, and
+its card opens the same way (on a touch screen, a tap there still opens the
+page; only the script's table opens the window).
 The first time, it shows "Loading the detail page…" while the page is read in
 the background. The script reads at most one page a second, and a page you
 have already seen comes back at once: it is kept for 30 days. The card's last
@@ -2360,7 +2596,8 @@ pointer away closes the card, and so does **Esc**.
 type into the filter box stays in the filter box. In the window:
 
 - **‹ ›** or the **← →** keys step to the previous or next row of the table,
-  in the order the table shows them.
+  in the order the table shows them; from a title on the site's own page, to
+  the previous or next title you can see there (a hidden tab's are skipped).
 - **Extracted** shows what the script read from the page, laid out for
   reading: the fields, the scans, the notes and the whole tracklist. Click
   the cover or a scan to open it in the artwork viewer (the same one as the

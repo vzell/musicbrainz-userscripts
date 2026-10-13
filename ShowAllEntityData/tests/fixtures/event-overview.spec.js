@@ -122,7 +122,9 @@ test.describe('pageType event-overview: relationships as tables (WIP.1)', () => 
         const badlands = row('Recordings', 'Recording', 'Badlands');
         expect(badlands[col('Recordings', 'Artist')]).toBe('Bruce Springsteen & The E Street Band');
         expect(badlands[col('Recordings', 'Relationship')]).toBe('recording location for');
-        expect(row('Series', 'Series', '2023–25 International Tour')[col('Series', 'Details')]).toBe('order: 150');
+        // "(order: 150)" is a series position: its own Number column, not Details (WIP.7).
+        expect(row('Series', 'Series', '2023–25 International Tour')[col('Series', 'Number')]).toBe('150');
+        expect(g.Series.heads, 'nothing left for Details').not.toContain('Details');
         expect(row('URLs', 'Site', 'setlist.fm')[col('URLs', 'Relationship')]).toBe('setlist.fm');
 
         // The links are the native anchors: instrument links inside Credits, entity links in the target cell.
@@ -215,6 +217,23 @@ test.describe('pageType event-overview: relationships as tables (WIP.1)', () => 
         } finally {
             fs.rmSync(tmpDir, { recursive: true, force: true });
         }
+    });
+
+    test('📊 "Entity info - Type" on the mixed "Via" table: one entry per kind, counted like its Type cells', async ({ page }) => {
+        await openEvent(page);
+        const { idx, counts } = await page.evaluate(() => {
+            const tables = Array.from(document.querySelectorAll('table.tbl'));
+            const i = tables.findIndex((t) => Array.from(t.querySelectorAll('thead th')).some((th) => th.dataset.colName === 'Type'));
+            const t = tables[i];
+            const k = Array.from(t.querySelectorAll('thead tr:first-child th')).findIndex((th) => th.dataset.colName === 'Type');
+            const c = {};
+            t.querySelectorAll('tbody tr').forEach((tr) => { const v = tr.cells[k].textContent.trim(); c[v] = (c[v] || 0) + 1; });
+            return { idx: i, counts: c };
+        });
+        const sections = await page.evaluate((i) => window.__saTest.getUniqDropSections('Type', i), idx);
+        const section = sections.find((x) => x.label === 'Entity info - Type');
+        expect(section).toBeTruthy();
+        expect(Object.fromEntries(section.items.map((it) => [it.label.replace(/^🔗 /, ''), it.count]))).toEqual(counts);
     });
 
     test('settings off: no button (the page itself, or every table part)', async ({ page }) => {

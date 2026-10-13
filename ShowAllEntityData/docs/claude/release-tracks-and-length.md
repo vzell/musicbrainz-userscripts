@@ -653,3 +653,51 @@ comments `scripts/build-multi-event-fixture.py` put into the server markup.
 Older fixtures name bundles that no longer exist, which is the only reason
 they never hit this. `release-tracks-event-consistency.spec.js` aborts
 `static.metabrainz.org/**`; any spec on a newly fetched release page must too.
+
+## Instruments column: third-party instrument icons
+
+"MusicBrainz: Instrument Icons Everywhere" (@Lotheric,
+`tests/fixtures/live-userscripts/manifest.json` id `lotheric-instrument-icons`)
+puts an `<img class="mb-ii-icon">` IMMEDIATELY BEFORE every visible
+`a[href*="/instrument/"]` and stamps the ANCHOR `data-ii-processed="true"`.
+It never looks at a stamped anchor again. release-tracks reads the live
+document, which the script decorated at DOMContentLoaded, so every instrument
+anchor a builder copies is already stamped.
+
+**Any builder that copies an instrument anchor must use
+`_cloneInstrumentAnchorWithIcon()`, never a bare `cloneNode(true)`.** A bare
+copy keeps the stamp and drops the icon, because the icon is a sibling and not
+a child. That is how the Instruments column showed no icon at all
+(`_buildInstrumentVocalsListItem()`), and the same was true of a credit's
+"(instrument)" annotation (`_buildCreditListItem()`) and instrument-list's
+Name column (`Name_Comment_Description`). The helper copies the icon in front
+of the anchor and keeps the stamp. When the source has no icon (still
+loading, or the script's `'NONE'`, which the DOM cannot tell apart), it removes
+the stamp, so the script decorates SA's cell itself.
+
+Two nets catch what the helper does not:
+
+- `_iiReleaseIconlessAnchors()` runs once per fetch and disk load, right after
+  the render. It removes the stamp from every icon-less instrument anchor in
+  the rendered tables and in the source rows, which covers any other extractor
+  that still copies with a bare `cloneNode(true)`.
+- `_iiInstallIconReconciler()` carries an icon that arrives AFTER the render
+  from the live clone to the source row (see filter-and-cache-invariants.md).
+
+The helper and the sweep cover for each other. Each one's mutation passes
+alone, and only removing both fails
+(`scripts/mutations/instrument-icons.json`). The specs that pin the COPY
+stretch the simulator's debounce to 2 s, so the script cannot have added the
+icon later by the time they read the table.
+
+`_parseInstrumentVocalsDt()` is unaffected: an `<img>` is neither a text node
+nor an `<a>`, so an icon never changes how a `<dt>` component classifies
+(pinned by the "without the script nothing changes" spec, which compares
+the entry text with and without the script).
+
+Everything is gated on `_iiPresent()` (any `[data-ii-processed]` in the
+document): for a user without the script, the only cost is one
+`querySelector` per call. Simulator:
+`tests/fixtures/thirdPartyScripts/ii-instrument-icons.js`. Specs:
+`release-tracks-instrument-icons{,.mobile}.spec.js`,
+`instrument-list-instrument-icons.spec.js`.

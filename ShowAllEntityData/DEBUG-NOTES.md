@@ -21864,3 +21864,425 @@ docs/claude/toolbar-and-header-ui.md "Export and Import (`_idbx*`)":
 Specs: idb-export-import.spec.js 8/8 and .mobile 1/1 on the first run, so the
 17 mutations (scripts/mutations/idb-export-import.json) are the evidence the
 assertions bite: all 17 caught.
+
+## 2026-10-12 — "MusicBrainz: Instrument Icons Everywhere" (@Lotheric): snapshots, and the icons SA drops
+
+Env: snapshots saved 2026-10-10T21:55Z (gfanj) and 2026-10-12T12:51Z (search), file mtimes · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Brave 1.97.56 (Chromium 155.0.8059.40) · Tampermonkey 5.5.1, with the script v2026-10-07.1444 installed.
+
+The script (registered as `lotheric-instrument-icons` in
+`tests/fixtures/live-userscripts/manifest.json`) stamps every visible
+`a[href*="/instrument/"]` `data-ii-processed="true"` and inserts an
+`<img class="mb-ii-icon">` (data: URL GIF, `title` = irombook folder name)
+immediately BEFORE it. `debug/instrument.html` is one such image on its own.
+
+- `debug/gfanj-intruments-initial.html` — IP of release-tracks, release
+  `3ce46b79-5e8c-470a-bcdc-45f301d09f60` (Greetings From Asbury Park, N.J.,
+  Pitman pressing). 20 stamped instrument links, 9 icons (piano ×4,
+  saxophone ×3, contrabass, harmonica); the rest (bass, percussion, …) are
+  stamped with NO icon — the script's `'NONE'` (GitHub 404) or still loading;
+  the DOM cannot tell which. The icons sit inside the track `dl.ars > dt`:
+  `<dt>   <img class="mb-ii-icon">…<a href="/instrument/…" data-ii-processed="true">piano</a>:</dt>`.
+- `debug/instrument-search.html` — FRP of
+  `search?query=guit&type=instrument&method=indexed` (`tableMode: 'single'`).
+  89 stamped links, 8 icons. The Name and MB-Name cells keep their icons
+  (rows are moved, and MB-Name clones the cell content with the image); the
+  📊 dropdown on Name shows none, and nothing counts rows with/without one.
+
+Root cause of the missing icons on release-tracks: `_buildInstrumentVocalsListItem()`
+cloned the instrument `<a>` alone. The clone kept the stamp and lost the
+icon (a previous sibling, not a child), and the script never decorates a
+stamped anchor again. `_parseInstrumentVocalsDt()` is not affected — an
+`<img>` is neither a text node nor an `<a>`, so it never changes how a `<dt>`
+component classifies.
+
+Nothing in `ShowAllEntityData.user.js` referred to `mb-ii-icon` or
+`data-ii-processed` before this branch.
+
+### 2026-10-12 — the fix, and what testing it turned up (feature/instrument-icons-interop, WIP.1/WIP.2)
+
+Env: 2026-10-12T13:10Z-14:02Z · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs); the real script replaced by `tests/fixtures/thirdPartyScripts/ii-instrument-icons.js`.
+
+Three copy sites dropped the icon, not one: `_buildInstrumentVocalsListItem()`
+(Instruments column), `_buildCreditListItem()` (a credit's "(strings)"
+annotation) and `Name_Comment_Description` (instrument-list "Name"). All go
+through `_cloneInstrumentAnchorWithIcon()` now; `_iiReleaseIconlessAnchors()`
+is the net for any other bare `cloneNode(true)`. Checked and found nothing to
+do: instrument-artists/-releases/-recordings (instrument links only in the
+header, tabs and sidebar), and search `type=instrument` cells (rows come from a
+fresh fetch, unstamped, so the script decorates SA's own cells; `single` mode
+moves rows, so the icons are on the source rows already).
+
+Things worth knowing next time:
+
+- **`_iiPresent()` must not cache a "no".** Rows from a fetched page are
+  unstamped at render time; the script stamps them 120 ms later. A
+  version that cached the first answer hid the "Instrument info - Icon"
+  section on the search page entirely — hence the post-render re-checks in
+  `_iiInstallIconReconciler()` (`_II_RECHECK_MS`).
+- **The helper and the sweep cover for each other.** With the script's
+  default 120 ms debounce, a broken copy site still ends up with an icon a
+  moment later (sweep → script). The specs that pin the COPY stretch the
+  simulator's debounce to 2 s; each net's mutation alone passes, both
+  together fail.
+- **A freshly fetched release fixture must block `static.metabrainz.org/**`**
+  (release-tracks-and-length.md "Fixture trap"). Without it a
+  DOMContentLoaded edit to the fixture vanished: MusicBrainz's current bundle
+  re-rendered the tracklist from JSON.
+- A hang while writing the late-icon filter spec turned out to be the spec (an
+  unapplied helper edit plus Playwright retries), not a re-render loop — the
+  unguarded reconciler fired once in a probe. `_iiMirrorLateIcons()` re-runs
+  the filter only when a source row actually changed anyway, which rules a
+  loop out by construction.
+
+20 mutations (`scripts/mutations/instrument-icons.json`), all as expected.
+
+Partial merge gate. Env: 2026-10-12T14:02:37Z, stopped by the user at about 14:35Z · vzell-lap · same OS and Playwright as above. `test:full` at `f41f886` reached 754/1596 with 1 failure,
+`column-filter-modes.spec.js:492` ("on or off, the switches never change a
+column's width"). That test passes 3/3 alone (`--repeat-each=3`), so it is a
+load-sensitive flake under 2 workers, not this branch. The full suite is
+deferred until the follow-up work branched from here is done.
+
+## 2026-10-12 — event-overview: Video column, header glyphs, setlist "(with …)" links, mixed-case MBIDs (WIP.3)
+
+Env: 2026-10-12T15:44Z · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.40.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs). Snapshots: from the user's browser, versions unknown.
+
+Snapshots (in `debug/`, gitignored):
+- `2024-05-23-initial.html` — event 4379731e-… (Grosvenor House). Despite its
+  name it is a RENDERED page: "Recordings" and "Setlist: Songs" both show
+  `<span class="recordinglink"></span><span class="video" title="This recording
+  is a video"></span>` in the Recording cell, and the setlist row lists "Thunder
+  Road" twice — one recording, named by "recording location for" AND "shot for".
+  Every typed column carries its entity glyph on each cell (`artistlink`,
+  `placelink`, `arealink` chain + `span.flag`, `recordinglink`).
+- `2026-06-04-initial.html` / `-final.html` — event cd595883-…. The native
+  `p.setlist` links every "(with …)" artist as `/work/<artist MBID>` (MusicBrainz's
+  setlist syntax: `[mbid|name]` on a `*` song line is always rendered as a work).
+  The converter already re-pointed them in the table; the initial page was left
+  wrong. FRP: "Trombone Shorty & the New Breed Brass Band" split into
+  "the New Breed Brass Band" — the "the" is the sentence's.
+- `2001-05-27-initial.html` / `-final.html` — event 26cead1c-… (Stone Pony).
+  The setlist's MBIDs were typed with uppercase letters:
+  `/work/E497263c-4f15-36c0-B27c-Dca99482962c` ("The Fever"),
+  `/work/70248960-Cb53-4ea4-943a-Edb18f7d336f` (Bruce Springsteen).
+
+**Root cause (2001-05-27):** every MBID regex on the setlist path was
+`/\/work\/[0-9a-f-]{36}/` without `/i` — `_eventSetlistSong()`'s works
+collection and its "(with …)" re-pointing, and `_eventSetlistGroups()`'s
+`workId`. "The Fever" matched no work link, so the song became plain text;
+Bruce Springsteen's link was never re-pointed and stayed a work. MusicBrainz
+resolves the mixed-case URLs (the user's check), so the fix matches with `/i`
+and keeps the case — which the new `mbid-uppercase` ⚠️ finding reads, to tell
+the user to edit the setlist.
+
+Fix and design: org/event-overview-pt.org, "WIP.3". Spec
+`tests/fixtures/event-overview-video-glyphs.spec.js` (10 tests): 9 fail on the
+pre-change code (checked in a scratch worktree of HEAD, the live userscript
+untouched), the 10th is the negative "no finding" case. Mutation list
+`scripts/mutations/event-overview-video-glyphs.json`: 9/9 caught, plus one
+guard no fixture can see (the converter's own `_eventSetlistFixLinks()` call —
+this single-page pageType always converts the live, already-repaired document).
+
+Follow-up (same day, user items 5–6), same Env:
+- **Link previews ignored mixed-case MBIDs on the initial page.** Root cause:
+  `_MB_POP_PATH_RE` matched `[0-9a-f]` only, so `_mbPopParsePath()` returned
+  null for `/work/C33ef12f-…` and the link was no popup target. Now A-F is
+  accepted and the MBID is lowercased by every reader (`_mbPopParsePath()`,
+  the edit page parser — `_MB_POP_PAGE_VERSION` 3).
+- **The setlist note sat flush left** under an indented h3 and table:
+  `renderGroupedTable()` gives each grouped table an inline `margin-left:
+  1.5em`, the `.mb-group-intro` wrapper got none. It now takes the table's.
+  This applies to every grouped page with a note, not only the event page.
+Mutation list now 12 caught + 1 unreachable guard; tested live by the user.
+
+## 2026-10-12 — Springsteen sites: detail preview on the initial page (WIP.4); Brucebase bold setlists (WIP.5)
+
+Env: 2026-10-12T16:28Z · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.40.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs). The user's report: from their browser, versions unknown.
+
+**Preview on the initial page.** Report: hovering "1945" in Brucebase's own
+song list on `stats:songs` showed nothing; the same song in the rendered table
+showed its card. Root cause: `_dpSiteForLink()` required
+`a.closest('table.tbl > tbody')`, and before any button the page has no
+`table.tbl` — the engine itself was installed (`_initDetailPreview()` runs at
+init on any pageType). Now a desktop takes a detail link anywhere outside
+`_DP_PAGE_SKIP`; touch keeps the table-only scope (a target turns a tap into
+"open the window"). ‹ › from a native link: `_dpPageLinks()`. Pages with no
+pageType (a song page itself) still get no engine — the script stops at init
+there; not changed.
+
+**Brucebase 2012-03-18 as one long line.** `debug/bb-year-cache/2012.html`:
+the tour opener's setlist paragraph is
+`<strong>WE TAKE CARE OF OUR OWN / … / ROCKY GROUND</strong> <strong>/ LAND OF
+HOPE AND DREAMS</strong> - PEOPLE GET READY <strong>/ BORN TO RUN / …</strong>`.
+`_bbSplitSet()` split on " / " in TOP-LEVEL text nodes only, so the songs
+inside each `<strong>` never split. `_bbSplitInline()` now splits an inline
+run that holds a separator, each piece in a shallow copy of the run (the bold
+stays). `check-bb-year-converter.js` over all 63 cached years, before vs after
+(the pre-fix script in a scratch worktree): only 1984 (+31), 1999 (+24), 2009
+(+25) and 2012 (+22) change — each a bold tour opener — 0 problems either way.
+New fixture `tests/fixtures/bb-year-2012.html` (build-bb-fixtures.py).
+
+Fails-before: mutation lists run in scratch worktrees (live userscript
+untouched): `foreign-ip-popups.json` 5/5, `bb-year.json`'s two new entries 2/2.
+
+## 2026-10-12 — relationship tables on ten more page families (WIP.6, branch `feature/relationship-tables`)
+Env: 2026-10-12T18:28Z–19:52Z · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1) · Playwright 1.62.1 Chromium (captures, specs) · no Tampermonkey (GM stubs)
+
+Design record: `org/relationship-tables-pt.org`; rules: `docs/claude/relationship-tables.md`.
+
+**Captures.** Plain `curl` against musicbrainz.org now returns the
+"Verifying your browser" proof-of-work page (HTTP 200, `<title>Verifying your
+browser</title>`) — a probe that reads it as an empty page sees no h2 at all.
+The ten example pages were saved with `tests/support/capture-raw-page.js` as
+`tests/fixtures/rel-*-overview.html` and read with the new
+`scripts/probe-rel-sections.js`.
+
+**Release credit layouts** (`scripts/probe-release-credits-layouts.js`,
+19:12Z): opened logged out, a release shows credits INLINE (the toggle reads
+"Display credits at bottom"); `#bottom-credits` then holds only the Credits h2,
+`#release-relationships` and `#release-group-relationships`. In the "at bottom"
+layout it also holds one `div.bottom-credits` per medium (every track's
+credits) before those two. The choice survives a reload. The converter reads
+the two blocks by id.
+
+**Found while building, each pinned by a spec and a mutation:**
+- A place relationship's date is printed AFTER its area chain, so
+  `_eventRelParseLine()` puts "(from 1977-08-24 until 1978-05-05)" into `area`
+  ("…, United States (from …)" in the Area cell). `_relRowAttrs()` peels it.
+- `_eventTrimNodes(…, true)` strips one outer "(" … ")" pair only when the run
+  starts with "(" — so a line's `extra` may or may not have lost it.
+  `_relPeelAttrs()` decides from the text (no paren, or ")" before the first
+  "(") instead of assuming.
+- Ended URL relationships have NO link: `<span class="deleted"><bdi>https://…`
+  — they came out as an "Other" group of 4 rows on the artist's tab.
+- Series positions with a date: "(in 1997: number: 1997) (order: 10)".
+- Picard's per-table guard (`a[href*="/release/"]`) matched external links
+  (discogs.com/release/…, rateyourmusic.com/release/…): the URL tables got a
+  Picard column. Now a MusicBrainz release href only.
+- On a release page the tables must not be inserted inside `#bottom-credits`:
+  `renderGroupedTable()`'s initial h3 sweep spares every h3 there
+  (`el.closest('#bottom-credits')`), so they would have survived the sweep and
+  been rendered twice. The h2 moves out first.
+- A release-group title lookup that took the first sidebar `/release-group/`
+  link got "see all ratings".
+
+**Tests.** `rel-tables-recording.spec.js` 10/10, `rel-tables-pages.spec.js`
+10/10. `scripts/mutations/rel-tables.json` 12/12 fail as expected (live
+userscript restored and hash-verified). Regression run over the touched
+families (event-overview*, release-tracks*, picard*, recording-of*,
+artist-relationships-work-column, rel-column-disk-load-cells, series,
+place-performances*, area-*, status-line-placement; fixtures + mobile):
+212/213, the one failure `release-tracks-instrument-icons.spec.js` "a late
+icon updates the 📊 counts…" passed 3/3 when re-run alone — timing under
+load, not this change (it does not touch the instrument-icon path).
+
+## 2026-10-12 — relationship tables, review round 2 (WIP.7)
+Env: 2026-10-12T21:07Z · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs); user snapshots from their browser (version unknown)
+
+User snapshots read with the new `scripts/probe-snapshot-table-col.js`
+(rows of a saved page whose column has a value, with that cell's HTML):
+
+- `debug/area-USA-final.html`: 51 of 57 Areas rows had their parent chain in
+  a Details column. Cause, from `debug/area-USA-initial.html`: "MusicBrainz
+  More Flags Everywhere" wraps `span.arealink` + the area link + its flag
+  `<img>` + the "," that follows in one `span.mfe-flag-wrapper`
+  (`AREA_ICON_WRAPPER_SEL`). The comma was inside the target ("Alabama,"), the
+  rest began with " " + the country flag span, so the chain was never
+  recognised. The raw captures (no third-party scripts) never showed it — the
+  spec rebuilds that wrapping on the fixture.
+- `debug/work.html`: "(Fujipacific Music, Inc.)" is
+  `<span class="comment">(<bdi><i title="Primary alias">…</i></bdi>)</span>`.
+- `debug/member-of.html`: "(from 1964-12 until 1965-06: lead vocals,
+  <a>electric guitar</a>)" — the date LEADS the group and the group ends in a
+  link, so the end-of-run peeler never saw it.
+- `debug/CAA-EAA-beforetitle.html` (release 1d404e1d): release-group and event
+  targets in the "Via release group" Target column; captured raw as
+  `tests/fixtures/rel-release-art-overview.html` (24 "performed at" events,
+  11 release groups). `addCAA`/`addEAA` accept candidate arrays already
+  (report-detail), and each row's link picks CAA or EAA.
+
+The event page now passes the same parsing options; its spec's "(order: 150)"
+expectation moved from Details to Number (the only event assertion that
+changed). Tests: event-overview* + rel-tables* on fixtures and mobile 63/63;
+`scripts/mutations/rel-tables.json` 19/19 as expected (one "expect: pass":
+the strip link-scan scope is not visible to any spec yet).
+
+## 2026-10-12 — url-overview pageType; 📊 "Entity info - Type" (WIP.8)
+Env: 2026-10-12T21:40Z · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+**URL page** (`debug/url-overview.html`, the user's IP snapshot, renamed from
+`debug/URL.html`; raw capture `tests/fixtures/rel-url-overview.html` via
+`tests/support/capture-raw-page.js`): `div#content` present; h1 in
+`.urlheader` (not one of the header selectors — the `h1 a bdi` fallback finds
+it, as for event/instrument pages); h2 "URL details" with a ONE-row
+`table.details` ("URL:" → the link itself), then `h2.relationships` with the
+entities linking the URL ("other databases: Born to Run by Bruce
+Springsteen"). No `table.tbl`, no pagination, nothing under it in a sidebar
+the converter reads. The script never ran on `/url/<mbid>` before: the
+`@include` line for bare entity pages had no `url` (now added; the URL's
+other tabs stay out). `sl-include-regex.spec.js` now lists the four overview
+URLs, because the fixture harness injects regardless of `@include`.
+
+**📊 "Entity info - Type"**: counts the new `data-mb-entity-type` attribute on
+the Target/Type cells of mixed tables (`withType` in `_eventRelColumns()`), so
+it also appears on the event page's "Via" / one-table layouts. Checked against
+a DOM oracle (the table's own Type cell texts) on release 1d404e1d's
+"Via release group" table: Event 24, Release group 11, Series 7, URL as many
+as Type says. Not highlighted (attribute-driven, like the video-medium flag).
+
+Tests (WIP.8): `scripts/mutations/rel-tables.json` now 25 entries, all as
+expected. Two of the six new ones were wrong at first and corrected: the glyph
+entry's `find` matched both render blocks (now planted in
+`_entityTypeGlyphClass()`), and the render-gate entry was recorded as
+`"expect": "pass"` but the spec DOES see it (the gates decide whether the
+synthetic sections render at all) → `"fail"`. Regression run over every
+📊/uvd/uniq spec plus event-overview*, rel-tables*, findings*,
+sl-include-regex, fixtures + mobile: 337/338. The one failure,
+`instrument-icons-uvd.spec.js` "a 📊 opened before the script stamped the
+fetched rows…", failed its PREMISE (104 rows already `data-ii-processed` when
+the panel opened — the third-party stub won the race under load); 5/5 when
+re-run alone.
+
+## 2026-10-13 — Brucebase Relations and Recent changes; MusicBrainz title style and typography on the Springsteen sites (WIP.9–WIP.11, branch `feature/bb-recent-changes-relations`)
+
+Env: 2026-10-12T22:32Z–23:30Z · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.40.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs); probes: n/a
+
+**Snapshots.** The user's `debug/bb-recent-changes.html`,
+`debug/bb-relations-0-9.html` and `debug/bb-relations-a.html` are
+`#main-content` fragments (no `<head>`, header or side bar), so the fixtures
+come from the server's pages instead: `scripts/probe-bb-recent-changes.py`
+saved `debug/bb-recent-changes-raw.html`, `debug/bb-relations-raw.html` and
+two AJAX answers (`debug/bb-recent-changes-ajax-p{1,2}.json`). The two
+Relations snapshots differ only in which tab is active.
+
+**Recent changes is not a URL-paginated list.** Root of the design:
+Wikidot's `SiteChangesModule.js` (fetched, minified, 2026-10-12) builds
+`page`, `perpage` (= `#rev-perpage`), `categoryId`, `options` (ticked
+`rev-type-*` boxes as JSON) and POSTs them through `OZONE.ajax.requestModule`
+to `/ajax-module-connector.php` (`moduleName=changes/SiteChangesListModule`,
+plus `wikidot_token7`, which must equal the cookie). curl with a made-up
+token in both places answered `status: ok` with 200 changes. The pager
+shows no last page; at 200 a page, page 100 is 2025-10-17 and page 1,000 is
+2020-12-14 — so fixed 1/5/25-page buttons, no "all". The engine got its
+first non-URL page source, `features.pageRequest` + `pageCount`, and
+`fetchHtml()` an optional `init`; the loop's live-document shortcut is
+skipped for such a page. The user's snapshot shows every flag `title=""`:
+the site's hover-tip script moves the server's titles into its own tips, so
+the meanings ("content source text changed", …) are read off the SERVER
+HTML into `_BB_CHANGES_FLAGS`. Items: 3–4 of 200 carry two flags (always S+T);
+"(new)" is revision 0; ~75 % have a comment.
+
+**Relations.** 2,892 entries, no duplicates across tabs, the site's own
+per-tab counts stale on C, F and M. Exactly three names hold a comma that is
+not the sort form: two bands with "&" after it ("Crosby, Stills & Nash"),
+and "Fields, Elysian", which IS one — hence `_bbRelationDisplayName()`'s
+"one ', ', no '&' after it" rule.
+
+**Title style.** Sampled every title of the four sites from the snapshots
+(`scripts/check-mb-title-case.js --sample`): Brucebase song list every word
+capitalised (1,664/1,679), brucespringsteen.it in capitals (1,782/1,878
+unofficial, 1,182/1,186 official), jungleland.it as typed (3,814 every-word,
+1,877 mixed, 512 mostly lower, 123 capitals), year-page venues and setlist
+songs in capitals with mixed-case notes. Rules from
+https://musicbrainz.org/doc/Style/Language/English and /doc/Style/Titles; the
+first sample run turned "(JEMS)" into "(Jems)" (→ a parenthesised part counts
+as capitals only when the title is outside it too), "10TH" into "10Th"
+(→ a digit-led word is never capitalised), and "BORDERLINE...WITH" into one
+word (→ a dot followed by a dot ends a word). "up" and phrasal "on" are
+deliberate deviations, measured on the song list (Held Up, Hurry Up, Shipping
+Up, Stand Up; Come On, Hang On, Bring On). Typography: jungleland.it types
+´ and ` for apostrophes ("Spirit of ´76", "`Cause", "Rock `n` Roll") — found
+by listing every title with a quote character (527).
+
+**Filters do not fold punctuation** (no `’`/`'` equivalence anywhere in the
+filter path) — the reason typography is its own setting; left alone rather
+than changing the shared filter hot path.
+
+Tests: `bb-recent-changes.spec.js` 11/11, `bb-relations.spec.js` 10/10,
+`mb-title-case.spec.js` 8/8 (+ 101 shared cases), `sl-include-regex.spec.js`
+8/8; the converter specs (bb-songs, bb-year, bb-home, jl-list, bs-records,
+66 tests) pass with the two settings seeded off by their loaders. Mutations:
+`foreign-titles.json` 15/15 as declared (the per-node ellipsis `"pass"`: no
+year fixture holds "..." in a setlist). `bb-relations-changes.json` 17/17 as
+declared, all `"fail"`. Shared fetch-loop code (`fetchHtml(url, init)`, the
+`pageRequest` branch) checked with html-fetch-transient, resume-from-failed-page,
+bb-home, sl-lyrics and the other foreign-site specs; `test:full` deferred to the
+end of the branch stack (vzell-lap).
+
+## 2026-10-13 — second round: Recent changes Date/Time; titles on springsteenlyrics.com and the year pages' City/Country (WIP.9–WIP.11 amended)
+
+Env: 2026-10-12T23:50Z–2026-10-13T00:20Z · vzell-lap · WSL2 Ubuntu 24.04.4 (Linux 6.18.40.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs)
+
+**Date / Time on Recent changes.** The user asked for the MusicBrainz 📊
+treatment of both columns. Read off the engine, no change needed there: a
+column fed to `dateParts` gets the "Date info - …" sections
+(`_dateExprColumnNames()` → `isDateExprCol`), and a column NAMED "Time" gets
+"Time info - Time of day" (`isTimeCol`, `_findCellTimeBucket()` reads the
+leading HH:MM, so "17:42:28" buckets). So the converter writes two columns
+(`_bbChangeDate()` returns `{date, time}`), and the definition adds the
+`dateParts` extractor as jl-list does. The `dateTimeParts` extractor that
+annotations/elections use was NOT taken: it keeps the source column and adds
+"<x> date"/"<x> time" synthetics, and the time one is not called "Time".
+
+**Titles.** springsteenlyrics.com card titles are already "every word
+capitalised" (89 of 158 sampled change, small words), the lyrics index in
+capitals (all change). One find: "[no title]" — MusicBrainz's own
+special-purpose style — would have become "[No Title]"; a title wholly in
+square brackets is now left alone. Cities and countries sampled from the 63
+cached year pages (531 cities, 38 countries) all read right ("The
+Netherlands", "Northern Ireland", "Ivory Coast"); "USA" stays by request, and
+is an acronym anyway (its explicit exception is mutation `"pass"`).
+
+Tests: bb-recent-changes 13/13, mb-title-case 9/9 (+110 cases), sl-* /
+bb-year / bb-home 64/64 with the settings off. New mutations 7/7 as declared
+(foreign-titles.json now 20, bb-relations-changes.json 19).
+
+## 2026-10-13 — hide sub-tables a page-wide filter empties (WIP.12, branch `feature/hide-empty-subtables`)
+
+Env: 2026-10-13T00:11Z · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Request: on multi-table pageTypes, while filtering globally, hide every sub-table
+(h3 + table) with 0 filtered rows, and bring it back when a broader filter
+refills it. Before this change `renderGroupedTable()` deliberately kept every
+pair on screen ("Do not hide the table or H3 even if group.rows.length is 0"),
+which on long pages makes a GF a wall of "(0 of N)" headings.
+
+Design (full rules in docs/claude/filter-and-cache-invariants.md, "Empty
+sub-tables under a page-wide filter"):
+
+- `_syncEmptySubtableVisibility()` runs at the tail of every
+  `renderGroupedTable()`, before `_syncMasterToggleState()`. That one place
+  covers the sync and time-sliced filter passes, sorts (scoped re-renders keep
+  undisturbed tbodies, so `tbody.rows.length` is still right), disk loads and
+  the discography-view reset.
+- Page-wide means the GF text, `_findingRowFilter`, or a cell-scope finding's
+  📊 tick. **Trap found while planning:** `_setFinding()` writes a cell finding
+  into a column filter input of EVERY table, so a naive "this sub-table has a
+  column filter → keep it" exemption would have exempted every table and hidden
+  nothing for those findings. `_isFindingOnlyColFilter()` tells them apart.
+- Exempt: a sub-table with its own CF/📊/STF/⏳ (its inputs would vanish with
+  it), and the one holding the focus.
+- Hidden by class (`.mb-empty-subtable-hidden`, `!important`), never
+  `style.display`. That property holds the collapse state, and mutation H2
+  proves it: writing `style.display` brings a collapsed sub-table back expanded.
+  `_syncMasterToggleState()` had to learn the class (mutation H5).
+- The h2 count tooltip adds "N of M sub-tables hidden: no row matches the
+  global filter" (`_h2HiddenSubtablesNote()`).
+- Setting `sa_hide_empty_subtables`, default on.
+
+Known limitation, by design: an STF edit does not re-render, so clearing the
+last STF character of an empty sub-table (while a GF is active) leaves it
+visible until the next GF/CF change. Hiding it then would pull the input out
+from under the cursor.
+
+Tests: `hide-empty-subtables.spec.js` 9/9; mutations
+`scripts/mutations/hide-empty-subtables.json` 7/7 fail as declared. A targeted
+run of 23 related filter/multi-table specs (00:18–00:37Z): 157 passed, 18
+failed. One was real: `row-count-stat-fixed-width`'s multi-table test used the
+GF "CD", which empties the Promotion sub-table, so the h3 whose controls it
+measures was now hidden. Its query is now "Vinyl", which keeps a row in both
+sub-tables. The other 17 (and 27 on a rerun of `column-filter-modes` +
+`filter-sliced`) were all `page.goto: net::ERR_CONNECTION_CLOSED`. Those specs
+load a shell from musicbrainz.org, and `curl https://musicbrainz.org/` failed
+the same way from this host at the time (SSL_ERROR_SYSCALL). They are
+unrelated to this branch and have to be re-run with the network up, at the
+latest in the end-of-stack `test:full`.

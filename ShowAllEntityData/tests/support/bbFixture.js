@@ -1,8 +1,10 @@
 'use strict';
 
 /**
- * Loads the Brucebase fixtures — the song list ('bb-songs') and the year
- * pages ('bb-year') — the way the bb-* fixture specs need them.
+ * Loads the Brucebase fixtures — the song list ('bb-songs'), the year
+ * pages ('bb-year'), the start page ('bb-home'), Relations ('bb-relations')
+ * and Recent changes ('bb-recent-changes', with its AJAX answers) — the way
+ * the bb-* fixture specs need them.
  *
  * The fixtures are built by scripts/build-bb-fixtures.py from saved real
  * pages (debug/bb-songs.html; the year pages from debug/bb-2026-initial.html
@@ -49,13 +51,18 @@ function bbYearFixture(year) {
  * Loads the song-list fixture with the userscript injected.
  *
  * @param {import('@playwright/test').Page} page
- * @param {{ enabled?: boolean, settingsOverride?: Object<string, *> }} [opts]
+ * @param {{ enabled?: boolean, titles?: boolean, settingsOverride?: Object<string, *> }} [opts]
  *   `enabled` seeds `sa_enable_brucebase` (default `true`; the setting itself
  *   defaults to OFF).
+ *   `titles` seeds `sa_foreign_mb_titles` and `sa_foreign_typography`
+ *   (default `false` here, although both settings default to ON: these
+ *   loaders serve the converter specs, which pin the site's text as
+ *   written; tests/fixtures/mb-title-case.spec.js loads with
+ *   `titles: true`).
  * @returns {Promise<{ requests: string[] }>} Every request URL the page made
  *   from the moment of loading (for "no MusicBrainz call" checks).
  */
-async function loadBbSongsPage(page, { enabled = true, settingsOverride = {} } = {}) {
+async function loadBbSongsPage(page, { enabled = true, titles = false, settingsOverride = {} } = {}) {
     const requests = [];
     page.on('request', (req) => requests.push(req.url()));
     await page.route(/^https?:\/\//, (route) => route.abort('blockedbyclient'));
@@ -63,7 +70,7 @@ async function loadBbSongsPage(page, { enabled = true, settingsOverride = {} } =
         url: BB_SONGS_URL,
         fixtureFile: BB_FIXTURE,
         testMode: true,
-        settingsOverride: { sa_enable_brucebase: enabled, ...settingsOverride },
+        settingsOverride: { sa_enable_brucebase: enabled, sa_foreign_mb_titles: titles, sa_foreign_typography: titles, ...settingsOverride },
     });
     return { requests };
 }
@@ -73,13 +80,18 @@ async function loadBbSongsPage(page, { enabled = true, settingsOverride = {} } =
  *
  * @param {import('@playwright/test').Page} page
  * @param {string} year Which fixture: '2026', '1968', '1985' or '2018'.
- * @param {{ enabled?: boolean, years?: boolean, settingsOverride?: Object<string, *> }} [opts]
+ * @param {{ enabled?: boolean, years?: boolean, titles?: boolean, settingsOverride?: Object<string, *> }} [opts]
  *   `enabled` seeds `sa_enable_brucebase`, `years` seeds `sa_bb_year_pages`
  *   (both default `true`; both settings themselves default to OFF).
+ *   `titles` seeds `sa_foreign_mb_titles` and `sa_foreign_typography`
+ *   (default `false` here, although both settings default to ON: these
+ *   loaders serve the converter specs, which pin the site's text as
+ *   written; tests/fixtures/mb-title-case.spec.js loads with
+ *   `titles: true`).
  * @returns {Promise<{ requests: string[] }>} Every request URL the page made
  *   from the moment of loading.
  */
-async function loadBbYearPage(page, year, { enabled = true, years = true, settingsOverride = {} } = {}) {
+async function loadBbYearPage(page, year, { enabled = true, years = true, titles = false, settingsOverride = {} } = {}) {
     const requests = [];
     page.on('request', (req) => requests.push(req.url()));
     await page.route(/^https?:\/\//, (route) => route.abort('blockedbyclient'));
@@ -88,7 +100,7 @@ async function loadBbYearPage(page, year, { enabled = true, years = true, settin
         url: fx.url,
         fixtureFile: fx.file,
         testMode: true,
-        settingsOverride: { sa_enable_brucebase: enabled, sa_bb_year_pages: years, ...settingsOverride },
+        settingsOverride: { sa_enable_brucebase: enabled, sa_bb_year_pages: years, sa_foreign_mb_titles: titles, sa_foreign_typography: titles, ...settingsOverride },
     });
     return { requests };
 }
@@ -101,13 +113,18 @@ async function loadBbYearPage(page, year, { enabled = true, years = true, settin
  * registered after the loader's own, so it wins over the catch-all.
  *
  * @param {import('@playwright/test').Page} page
- * @param {{ years?: boolean, settingsOverride?: Object<string, *> }} [opts]
+ * @param {{ years?: boolean, titles?: boolean, settingsOverride?: Object<string, *> }} [opts]
  *   `years` seeds `sa_bb_year_pages` (default `true`); `sa_enable_brucebase`
  *   is always on.
+ *   `titles` seeds `sa_foreign_mb_titles` and `sa_foreign_typography`
+ *   (default `false` here, although both settings default to ON: these
+ *   loaders serve the converter specs, which pin the site's text as
+ *   written; tests/fixtures/mb-title-case.spec.js loads with
+ *   `titles: true`).
  * @returns {Promise<{ requests: string[], served: string[] }>} Every request
  *   URL, and the year URLs the route answered, in order.
  */
-async function loadBbHomePage(page, { years = true, settingsOverride = {} } = {}) {
+async function loadBbHomePage(page, { years = true, titles = false, settingsOverride = {} } = {}) {
     const requests = [];
     const served = [];
     page.on('request', (req) => requests.push(req.url()));
@@ -116,7 +133,7 @@ async function loadBbHomePage(page, { years = true, settingsOverride = {} } = {}
         url: BB_HOME_URL,
         fixtureFile: path.join(__dirname, '..', 'fixtures', 'bb-home.html'),
         testMode: true,
-        settingsOverride: { sa_enable_brucebase: true, sa_bb_year_pages: years, ...settingsOverride },
+        settingsOverride: { sa_enable_brucebase: true, sa_bb_year_pages: years, sa_foreign_mb_titles: titles, sa_foreign_typography: titles, ...settingsOverride },
     });
     await page.route((url) => url.hostname === 'brucebase.wikidot.com' && /^\/(\d{4}|1949-64)\/?$/.test(url.pathname), (route) => {
         const url = new URL(route.request().url());
@@ -200,8 +217,83 @@ function renderedBbHeaders(page) {
         .map((th) => th.dataset.colName || th.textContent.trim()));
 }
 
+const BB_RELATIONS_URL = 'https://brucebase.wikidot.com/stats:relations';
+const BB_RELATIONS_FIXTURE = path.join(__dirname, '..', 'fixtures', 'bb-relations.html');
+const BB_RELATIONS_BUTTON = 'Show all relations';
+const BB_CHANGES_URL = 'https://brucebase.wikidot.com/system:recent-changes';
+const BB_CHANGES_FIXTURE = path.join(__dirname, '..', 'fixtures', 'bb-recent-changes.html');
+const BB_CHANGES_AJAX = [1, 2].map((n) => path.join(__dirname, '..', 'fixtures', `bb-recent-changes-p${n}.json`));
+const BB_AJAX_URL = 'https://brucebase.wikidot.com/ajax-module-connector.php';
+
+/**
+ * Loads the Relations fixture (`bb-relations`) with the userscript injected.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {{ enabled?: boolean, settingsOverride?: Object<string, *> }} [opts]
+ *   `enabled` seeds `sa_enable_brucebase` (default `true`).
+ * @returns {Promise<{ requests: string[] }>}
+ */
+async function loadBbRelationsPage(page, { enabled = true, settingsOverride = {} } = {}) {
+    const requests = [];
+    page.on('request', (req) => requests.push(req.url()));
+    await page.route(/^https?:\/\//, (route) => route.abort('blockedbyclient'));
+    await loadUserscriptPage(page, {
+        url: BB_RELATIONS_URL,
+        fixtureFile: BB_RELATIONS_FIXTURE,
+        testMode: true,
+        settingsOverride: { sa_enable_brucebase: enabled, ...settingsOverride },
+    });
+    return { requests };
+}
+
+/**
+ * Loads the Recent changes fixture (`bb-recent-changes`) with the userscript
+ * injected, and answers its AJAX requests: every POST to
+ * /ajax-module-connector.php gets one of the two saved answers (200 changes
+ * each, `page` 1 → p1, 2 → p2, 3 → p1 again, …), or — with `ajaxStatus` —
+ * a Wikidot error answer ("wrong_token7"), or — with `failPage` — an HTTP 500
+ * for that page. Each request's form fields are recorded, in order.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {{ enabled?: boolean, ajaxStatus?: string, failPage?: number, settingsOverride?: Object<string, *> }} [opts]
+ * @returns {Promise<{ requests: string[], posts: Array<Object<string, string>> }>}
+ */
+async function loadBbChangesPage(page, { enabled = true, ajaxStatus = 'ok', failPage = 0, settingsOverride = {} } = {}) {
+    const requests = [];
+    const posts = [];
+    page.on('request', (req) => requests.push(req.url()));
+    await page.route(/^https?:\/\//, (route) => route.abort('blockedbyclient'));
+    await loadUserscriptPage(page, {
+        url: BB_CHANGES_URL,
+        fixtureFile: BB_CHANGES_FIXTURE,
+        testMode: true,
+        settingsOverride: { sa_enable_brucebase: enabled, ...settingsOverride },
+    });
+    await page.route(BB_AJAX_URL, (route) => {
+        const req = route.request();
+        const fields = Object.fromEntries(new URLSearchParams(req.postData() || ''));
+        fields._method = req.method();
+        fields._contentType = req.headers()['content-type'] || '';
+        posts.push(fields);
+        const n = parseInt(fields.page || '1', 10);
+        if (failPage && n === failPage) {
+            return route.fulfill({ status: 500, contentType: 'text/html', body: 'error' });
+        }
+        if (ajaxStatus !== 'ok') {
+            return route.fulfill({
+                contentType: 'application/json',
+                body: JSON.stringify({ status: ajaxStatus, message: 'Wikidot says no.' }),
+            });
+        }
+        return route.fulfill({ path: BB_CHANGES_AJAX[(n - 1) % 2], contentType: 'application/json; charset=utf-8' });
+    });
+    return { requests, posts };
+}
+
 module.exports = {
     BB_SONGS_URL, BB_FIXTURE, BB_BUTTON, loadBbSongsPage, renderedBbRows, renderedBbHeaders,
     BB_YEAR_BUTTON, bbYearFixture, loadBbYearPage, renderedBbYearRows,
     BB_HOME_URL, BB_HOME_BUTTON, loadBbHomePage,
+    BB_RELATIONS_URL, BB_RELATIONS_FIXTURE, BB_RELATIONS_BUTTON, loadBbRelationsPage,
+    BB_CHANGES_URL, BB_CHANGES_FIXTURE, BB_CHANGES_AJAX, loadBbChangesPage,
 };

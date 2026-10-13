@@ -44,3 +44,19 @@ test('a tap on a detail link opens the dialog, not the page, and shows no hover 
     await expect(dialog.locator('a.mb-dp-tbtn')).toHaveAttribute('href', 'https://www.brucespringsteen.it/DB/detrec.aspx?code=CR1AD1');
     expect(errors).toEqual([]);
 });
+
+// On a touch screen the initial page's NATIVE detail links keep their
+// navigation (WIP.4): only a rendered table's links open the dialog, as
+// sa_pop_mb_page_on_touch keeps MusicBrainz's page-wide scope off on touch.
+test('on the initial page a tap on a native detail link opens no dialog', async ({ page }) => {
+    const { loadBbSongsPage } = require('../support/bbFixture');
+    await loadBbSongsPage(page, { settingsOverride: { sa_bb_detail_preview: true } });
+    const { served } = await routeDetailPages(page, 'bb');
+    const link = page.locator('#page-content a[href="/song:4th-of-july-asbury-park-sandy"]');
+    await link.scrollIntoViewIfNeeded();
+    await link.tap();
+    // The tap navigates to the song page (the route serves its fixture).
+    await expect.poll(() => page.url(), { timeout: 15000 }).toContain('/song:4th-of-july-asbury-park-sandy');
+    expect(await page.locator('#mb-dp-dialog').count()).toBe(0);
+    expect(served).toEqual(['https://brucebase.wikidot.com/song:4th-of-july-asbury-park-sandy']);
+});

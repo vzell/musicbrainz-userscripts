@@ -1492,14 +1492,14 @@ ALWAYS be sticky too when srolling down.
 
 * TODO adapt the logging framework and orig page shine through from majkinetor
 
-* TODO add instrument icons support (), ONLY the icon should show up in the UVD
+* DONE add instrument icons support (), ONLY the icon should show up in the UVD
 
 * TODO add sanojjanos event stuff in a nice popup (cachable)
 
 
 * TODO menu in non-MB pages for PTs
 
-* !! separate on NB-xxxx - TODO almost feature-full - take out non mb code or try a build fraemwork
+* !! separate on NB-xxxx - TODO almost feature-full - take out non MB code or try a build framework
 
 * TODO non-MB detail pages
 
@@ -1508,21 +1508,23 @@ ALWAYS be sticky too when srolling down.
 
 * DONE maybe stack the h3 header in the multi-table case when stickyness is involved
 
-* TODO IDB overwhole - show info to the end-user; age, storage, delete possibilities/merge, remove etc (nice gpahical overview, cake diagram), number of keys
+* DONE IDB overwhole - show info to the end-user; age, storage, delete possibilities/merge, remove etc (nice gpahical overview, cake diagram), number of keys
 
 * TODO increase the IDB lifetime, non-MB sites should basically be there forever
 
 * TODO sync add non-MB images with the CAA framework, but unlimited
-
 * TODO storeage forever for non-M sites, except SL
 
+
 * TODO make sure we can always run completely OFFLINE (especially non-MB sites, excetp SL and BB)
+
 
 * TODO filter checkboxes for every filter dialog if not overwritten
 
 * TODO add support BB pages
 ** https://brucebase.wikidot.com/system:recent-changes - change to 200 revisions per page beforehand
 ** "Relations
+
 
 * generalize popup framework in general (if not yet done)
 
@@ -1545,7 +1547,7 @@ long running CAA fetches doesn't seem to be covered by the autoresize column fea
 the CAA column break
 
 
-* TODO create a skill - There is a new third party userscript batch-add-recording-relationships
+* DONE create a skill - There is a new third party userscript batch-add-recording-relationships
 ** i
 
 1.)
@@ -1648,7 +1650,6 @@ Everything you asked for is built on feature/recording-of-column, and the full s
   The mockups are at ⧉ https://claude.ai/artifact/P8LJjFQkURd6a8fHYVwrhq (progress card) and ⧉ https://claude.ai/artifact/4UsPjhkP1gN6cb9wCnQw72 (cache overview). Your edits in org/*.org were left alone.
 
 ** implement
-
 *** i
 
 Everything works/look BEAUTIFUL, go on like that, you ROCK.. it's exactly the "look and feel" I like, write it down to

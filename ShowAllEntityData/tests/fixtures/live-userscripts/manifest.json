@@ -108,6 +108,25 @@
                 "Non-visual: localStorage keys 'bpr_works <artistMbid>' (newline-separated '<mbid><title>' + optional '\\u00a0<comment>'), 'bpr_works_date <artistMbid>' (a Date().toString()), 'bpr_artists <artistMbid>' (extra artists whose works are loaded), and settings 'bpr_make_votable', 'bpr_hide_performed_recs', 'bpr_hide_pending_edits', 'bpr_work_type', 'bpr_work_language'.",
                 "Harness: no GM_* call besides reading GM_info (stubbed); no top-level await. Not runnable on a local fixture (needs the page's $ and MB). tests/pagetypes.json has no artist-recordings entry, so a smoke run needs --url plus --show-all-button."
             ]
+        },
+        {
+            "id": "lotheric-instrument-icons",
+            "file": "MusicBrainz_Instrument_Icons_Everywhere.user.js",
+            "author": "Lotheric",
+            "version": "2026-10-07.1444",
+            "when": "init",
+            "touches": [
+                "@run-at document-start, @match https://musicbrainz.org/* (and beta). Registered as 'init': it decorates the NATIVE page at DOMContentLoaded, long before a ShowAllEntityData button is clicked — debug/gfanj-intruments-initial.html is an IP snapshot of release-tracks with its markup already in the native track dl.ars <dt>s.",
+                "processPage() selects 'a[href*=\"/instrument/\"]:not([data-ii-processed])' anywhere in the document, skips links inside '.tabs, ul.tabs, .subtabs, .page_tabs, [role=\"tablist\"], .tabs-wrap, nav' and links with no visible text, stamps data-ii-processed=\"true\" on the anchor, and inserts an '<img class=\"mb-ii-icon\">' (16x16 data: URL GIF, alt=\"\", aria-hidden, title = irombook folder name with '_' -> ' ', inline width/height/display/vertical-align/margin/object-fit/border all '!important') IMMEDIATELY before the anchor (link.parentNode.insertBefore).",
+                "The stamp goes on the anchor, the icon on its previous sibling: a cloneNode(true) of the anchor alone keeps the stamp and loses the icon, and the script never decorates a stamped anchor again — this is how ShowAllEntityData's release-tracks 'Instruments' column lost every icon (_buildInstrumentVocalsListItem()).",
+                "Icons arrive ASYNC (in-memory Map -> IndexedDB -> network), so a stamped anchor can still be icon-less for a while; a 404 from GitHub caches the sentinel 'NONE' and leaves the anchor stamped with NO icon for good. The DOM cannot tell the two apart.",
+                "MutationObserver on document.body ({childList, subtree}, 120 ms debounce) re-runs processPage() — so it decorates every ShowAllEntityData re-render whose instrument anchors are unstamped, and any /instrument/ link in DOM ShowAllEntityData appends to body (the 📊 panel's entries are text, not links).",
+                "Injects one <style> ('.mb-ii-icon { display:inline-block !important; vertical-align:middle !important }'). No other CSS; it does not touch table.tbl.",
+                "Non-visual: GM_xmlhttpRequest to https://musicbrainz.org/ws/2/instrument/<uuid>?fmt=json (name -> folder via nameToFolder() + an OVERRIDES table) and https://raw.githubusercontent.com/metabrainz/irombook-instrument-images/master/<folder>/icon.gif (responseType 'blob', read into a data: URL). No rate limiting of its own on the WS calls.",
+                "Non-visual: IndexedDB 'MusicBrainzInstrumentIcons' v1, stores 'instrumentMap' (uuid -> {folderName, cachedAt}, 30-day TTL) and 'icons' (folderName -> {dataUrl|'NONE', cachedAt}, 90-day TTL) — same origin as ShowAllEntityData.",
+                "Non-visual: exposes window.MBII_processPage.",
+                "Harness-compatible: classic GM_xmlhttpRequest only (blob responses are supported by realNetworkGmXhr.js), no GM.* dot syntax, no GM_info, no page globals, no top-level await. tests/pagetypes.json's release-tracks URL is a different release; for the snapshot's release pass --url=https://musicbrainz.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60. Simulated for fixture specs by tests/fixtures/thirdPartyScripts/ii-instrument-icons.js."
+            ]
         }
     ],
     "combinations": {
@@ -117,6 +136,7 @@
         "nuclear-tags-only": ["aerozol-nuclear-tags"],
         "inline-stuff-plus-nuclear-tags": ["jesus2099-inline-stuff", "aerozol-nuclear-tags"],
         "wiencek-batch-performance-only": ["wiencek-batch-performance"],
-        "kitchen-sink": ["jesus2099-supermind", "jesus2099-inline-stuff", "right-side-flags-everywhere", "sanojjonas-visualise", "aerozol-nuclear-tags", "wiencek-batch-performance"]
+        "lotheric-instrument-icons-only": ["lotheric-instrument-icons"],
+        "kitchen-sink": ["jesus2099-supermind", "jesus2099-inline-stuff", "right-side-flags-everywhere", "sanojjonas-visualise", "aerozol-nuclear-tags", "wiencek-batch-performance", "lotheric-instrument-icons"]
     }
 }

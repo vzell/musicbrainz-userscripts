@@ -170,3 +170,12 @@ is added. `tests/support/jlFixture.js` serves it behind a catch-all abort for
 the host. `loadJlFramesetPage()` routes `artwork.htm` to the site's own
 frameset markup and injects the userscript into the left frame. Mutation
 list: `scripts/mutations/jl-support.json`.
+
+## Titles
+
+Since 2026-10-13 (`feature/bb-recent-changes-relations`) the Title column is
+in MusicBrainz title style with typographic punctuation, the site's text as
+the cell's tooltip — `sa_foreign_mb_titles`, `sa_foreign_typography`, both on
+by default. The converter specs load with both OFF (the fixture loader's
+`titles` option); `tests/fixtures/mb-title-case.spec.js` covers the ON side.
+See docs/claude/foreign-title-case.md.
