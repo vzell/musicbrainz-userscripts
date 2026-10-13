@@ -22318,3 +22318,93 @@ Tests: `hide-empty-subtables.spec.js` (the "nothing matches" test now pins
 "nothing hidden") plus `ms-length-filter-after-toggle.spec.js`, 14/14.
 `ms-length` test C fails on `main` and passes here. Mutations
 `hide-empty-subtables.json` 9/9 (new H8/H9 drop the keep-one guard).
+
+## 2026-10-14 — pinned bars stop short of the right edge, rows show beside them; a sorted header is see-through on the Springsteen sites (WIP.1–WIP.2, branch `fix/sticky-gutter-and-sorted-thead`)
+
+Env: 2026-10-13T22:20Z–22:50Z (2026-10-14 local) · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs). The user's reports came from their own browser, version not stated (`unknown`).
+
+**Report 1 (MusicBrainz, area page `/area/489ce91b…`, Relationships, Series
+uncollapsed; `debug/USA-final.html` + three screenshots):** the h2/h3 bars
+ended ~120 px before the window's right edge. While they were stuck at the
+top, rows showed in that strip ("…y Barry Manilow" beside the Series h3).
+Scrolled to the far right, an empty strip stayed after the table.
+
+Probe (a scratch script, not kept): `debug/USA-final.html` rendered
+statically at 1913 px with MusicBrainz's own `common-aaaf2ca.css` (fetched
+from static.metabrainz.org; the fixtures never load it). Page right 3588,
+`#content` 3500, `#sidebar` 3500–3578, table 3490. `#page` is
+`display: table` and `#sidebar` a `table-cell`. A table cell never shrinks
+below its min-content width, so `.sidebar-collapsed { width: 0;
+margin-right: -240px }` did nothing (margins do not apply to cells either),
+and the opacity-0 sidebar kept 78 px. `_sphRefresh()`'s
+`gutter = max(parentLeft, extent − parentRight)` then came out ~98 px, and
+every bar was capped that far short. The ~20 px gutter that remains without
+the sidebar is by design (the bar's room to stay pinned to the end of the
+scroll), but nothing covered it on the right, while the left side has the
+h3 indent shadow and the sticky-column masks.
+
+Fix: a collapsed sidebar is `display: none` (`initSidebarCollapse()`, with
+`display 0.3s allow-discrete` so the slide-out still plays). Not scoped
+under `html.mb-sph-on`: engaging would then change the extent it engaged
+on. And the bars paint their own background over the gutter (user's choice
+over a page-coloured mask): `::after` with `background: inherit`, width
+`--mb-sph-bleed` = gutter + margin-right, h2/h3 bars only (`_SPH_BLEED_SEL`).
+
+Trap hit on the way: the first version registered `--mb-sph-bleed`
+`inherits: false` like the other three properties, and the `::after` came
+out 0 px wide. A pseudo-element sees only INHERITED values of its
+originating element. It is `inherits: true` now. That is why it must never
+be written on a table pinned whole: every cell would inherit it, and a
+change would restyle the whole table, which is the 249 ms trap the other
+properties were made non-inheriting for. Pinned by a mutation.
+
+Also: the Ctrl+M overlay placed itself left of `#sidebar`'s rect; a
+`display: none` sidebar's rect is all zeros, which would have pushed it off
+the left edge. Guarded with `getClientRects().length`.
+
+**Report 2 (brucespringsteen.it records, screenshot):** sort "Notes", scroll
+down, and "gatefold" showed through the sorted header. With a multi-sort,
+every sorted header was affected. `.mb-mscol-hdr-N` is a 60 % alpha
+`background-color !important` that replaces the cell's own colour. On
+MusicBrainz, MB's CSS paints a gradient image on `table.tbl thead` itself,
+behind the header cells; on the foreign hosts the thead had no background,
+so the rows under the sticky thead showed through. Fix:
+`table.tbl thead { background-color: inherit }` in `applyStickyHeaders()`.
+That is the table's colour: `#fff` on the foreign hosts (the colour the tint
+already blended with while nothing was under it, so the header looks the
+same), and transparent on MusicBrainz, where `table.tbl` has no colour, so
+MB is unchanged by construction.
+
+Tests: `sticky-page-headers.spec.js` "collapsed sidebar takes no space"
+(injects an excerpt of MB's layout CSS); the custom-property test and the
+"narrow sub-tables are pinned whole" test now also pin "no bleed on a
+table"; `sticky-filter-bars.spec.js` "reach the window edge in their own
+colour" (painted pixels beside the stuck h2 and h3, scrolled both ways);
+new `sorted-thead-opaque.spec.js` (bs fixture, one and two sorted columns,
+the same header pixel before and after rows scroll under). Mutations:
+`scripts/mutations/sticky-gutter-sorted-thead.json`, 6/6 caught.
+Performance: nothing on the filter, sort or render path. The sidebar has
+one box fewer; the bleed is one custom-property write per bar, made only
+when its value changes, from values the pass already has. No capture.
+
+**Second round, same day (user's browser, `debug/h2h3bug.html` + screenshot):**
+report 2 confirmed fixed. Report 1: scrolled to the far right, the
+Wikipedia h2 (it rides inside the pinned `.wikipedia-extract` body, so it
+has no bleed of its own) stopped where the content ends, a page padding
+short of the window edge, which the user liked. But the data h2 and the h3
+bars painted on to the window edge, under the sidebar handle, past the
+table's end: the snapshot shows a fixed `--mb-sph-bleed: 20px`. The bleed
+now reaches only as far as the bar's containing block reaches on screen,
+`clamp(parentRight − scrollX − barRight, 0, gutter + margin-right)`,
+recomputed in the existing passive scroll listener (`_sphUpdateBleed()`).
+That is arithmetic on values `_sphRefresh()` already has, with a write only
+when a value changes: never on a vertical scroll, and on a horizontal one
+only within the last gutter's width of the scroll range. Test: "stop where
+the table ends"; two more mutations (a fixed width; no update on scroll),
+8/8 caught. The mutation "bleed written on tables" had gone stale (a `0`
+was filtered out as falsy and never written) and was re-planted as an
+object.
+
+A `test:full` started at 22:50:11Z was stopped at 381/1690 (all passed),
+because this change landed in the working tree under it. It was restarted
+afterwards.

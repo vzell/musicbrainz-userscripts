@@ -150,6 +150,14 @@ so the render-decision dialog appears. That is expected, just as on SL's
   `body:is(.mb-sa-host-sl, .mb-sa-host-jl)` inside `:where()`. A further
   host extends that `:is()` list rather than copying the block, as
   brucespringsteen.it did (`.mb-sa-host-bs`).
+- **The table's `#fff` is also the sticky thead's backing.**
+  `applyStickyHeaders()` gives `table.tbl thead` `background-color:
+  inherit`, i.e. the table's colour. A sorted column's header tint
+  (`.mb-mscol-hdr-N`) is 60 % alpha and replaces the cell's own colour; with
+  no thead background, rows scrolling under the pinned header showed
+  through it (2026-10-14, brucespringsteen.it). Drop the table's background
+  here and that comes back. On MusicBrainz `table.tbl` has no colour and
+  MB's own thead image does the job. Spec: `sorted-thead-opaque.spec.js`.
 - **`_ensureJlStyle()`** adds only the injected headings, `.mb-jl-hidden`,
   and a guard against the site's `A:hover { font-weight: bold }`, which
   would reflow a table row under the pointer.

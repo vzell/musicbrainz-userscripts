@@ -745,6 +745,32 @@ render sites), `_vsbRefresh()`, `_vsbBaseOffset()`.
 - **The h3's indent** (`margin-left: 1.5em`, the table under it sits 4 px
   further left in the fixture) is masked with a page-coloured `box-shadow`
   shifted left, so rows never show beside a stuck bar.
+- **The right end: the bars bleed to the window edge** (2026-10-14). With
+  the sticky page headers engaged, a bar is capped (`--mb-sph-maxw`) a
+  gutter short of the window, the room it needs to stay pinned to the end
+  of the scroll (`_sphRefresh()`). Rows scrolling under a stuck bar showed
+  in that strip. An `::after` on a pinned `h2.mb-toggle-h2` /
+  `h3.mb-toggle-h3` (`_SPH_BLEED_SEL`) paints the bar's own background
+  (`background: inherit`) over `--mb-sph-bleed`, outside the layout. Its
+  width follows the scroll (`_sphUpdateBleed()`, from the scroll listener,
+  arithmetic on values the refresh pass measured):
+  `clamp(parentRight − scrollX − barRight, 0, gutter + margin-right)`, i.e.
+  to the window edge while the table runs past it, and only to the
+  table's end once scrolled there, where a bar riding inside a pinned body
+  (the Wikipedia h2) stops too. A fixed width (the first version) ran past
+  the table's end at maximum scroll, under the sidebar handle. That
+  property is the one sticky-page-headers
+  property registered `inherits: true` (a pseudo-element sees only an
+  inherited value), so it is written on those bars alone, never on a
+  table pinned whole. The gutter had also been ~100 px too wide on
+  MusicBrainz: under `#page { display: table }` a collapsed sidebar stayed
+  a table cell as wide as its min-content; it is `display: none` now
+  (`initSidebarCollapse()`). The fixtures carry no MB stylesheet, so
+  `sticky-page-headers.spec.js` injects that layout excerpt to see it.
+  Specs: "reach the window edge in their own colour" and "stop where the
+  table ends" (painted pixels), "collapsed sidebar takes no space";
+  mutations:
+  `scripts/mutations/sticky-gutter-sorted-thead.json`.
 - **Stacking ladder:** thead 100, column resizer 101, h3 102 (raised 103),
   data h2 104 (raised 107 = `SPH_Z_RAISED`), Brucebase side bar 150. A
   raised h3 stays UNDER the h2 (an h3 sliding in under the stuck h2 must

@@ -30413,7 +30413,9 @@
                 let left = Math.min(contentRect.right - tooltipRect.width - 10, window.innerWidth - tooltipRect.width - 10);
                 left = Math.max(left, contentRect.left + 10); // Don't go too far left
 
-                if (sidebarDiv) {
+                // A collapsed sidebar is display: none and has no box: its
+                // all-zero rect would push the tooltip off the left edge.
+                if (sidebarDiv && sidebarDiv.getClientRects().length > 0) {
                     // Ensure doesn't overlap sidebar
                     const sidebarRect = sidebarDiv.getBoundingClientRect();
                     left = Math.min(left, sidebarRect.left - tooltipRect.width - 10);
@@ -33702,6 +33704,20 @@
     /**
      * Applies sticky positioning to table headers so they remain visible while scrolling
      * Adds CSS styles that make both the main header row and filter row stick to the top of the viewport
+     *
+     * The sticky `<thead>` itself takes the table's background colour
+     * (`background-color: inherit`): a sorted column's header tint
+     * (`.mb-mscol-hdr-*`) is a 60 % alpha `background-color !important` that
+     * replaces the cell's own opaque one, so whatever is painted BEHIND that
+     * cell shows through. On MusicBrainz that is the thead's own gradient
+     * image from MB's stylesheet. On the other sites the thead had no
+     * background at all, and the rows scrolling under the pinned header
+     * showed through every sorted column's header (reported 2026-10-14 on
+     * brucespringsteen.it). Their table is `#fff` (`_ensureForeignTableStyle()`),
+     * the colour the tint already blended with while nothing was scrolled
+     * under it, so the header looks the same, now opaque. MB's `table.tbl`
+     * has no background colour, so on MusicBrainz this changes nothing, and
+     * MB's image still paints over it.
      */
     function applyStickyHeaders() {
         // Check if styles already added
@@ -33724,6 +33740,9 @@
                 top: 0;
                 /* z-index 100 keeps it below the sidebar (105) but above table content */
                 z-index: 100;
+                /* The table's colour behind a sorted column's translucent
+                   header tint (see the JSDoc above). */
+                background-color: inherit;
             }
 
             /* Ensure headers have a solid background so scrolling content doesn't bleed through */
@@ -34420,7 +34439,25 @@
     //      #page. While engaged its transform is dropped. That is layout
     //      neutral (transforms never affect layout), and the overflow test
     //      itself ignores transforms (_sphContentExtent()), so engaging can
-    //      never feed back into the decision to engage.
+    //      never feed back into the decision to engage. Since 2026-10-14 a
+    //      collapsed sidebar is `display: none` anyway (initSidebarCollapse()),
+    //      so it has no box at all. Before that, under MusicBrainz's
+    //      `#page { display: table }` it stayed a table cell as wide as its
+    //      min-content (78 px measured on an area page): the extent ran that
+    //      far past #content, and the right gutter below took every bar that
+    //      much short of the window edge.
+    //
+    // The right gutter itself (see _sphRefresh()) is what lets a capped bar
+    // stay pinned up to the end of the scroll. The strip it leaves between a
+    // bar's right end and the window edge is painted in the bar's own
+    // background (`--mb-sph-bleed`, an ::after outside the layout), so rows
+    // scrolling under a vertically stuck bar never show beside it — but only
+    // as far as the bar's containing block reaches on screen
+    // (_sphUpdateBleed(), on scroll): while the table runs past the window
+    // that is the window edge; scrolled to the end it is the table's own end,
+    // where a bar riding inside a pinned body (the Wikipedia h2) stops too.
+    // A fixed-width bleed overshot there, under the sidebar handle
+    // (reported 2026-10-14).
     //
     // The sticky COLUMN follows the same rule while engaged. applyStickyColumn()
     // pins its cells at `left: 0`, which made the column dock at the window
@@ -34500,6 +34537,8 @@
     const SPH_REFRESH_DELAY_MS = 60;
     /** Lower bound (px) for a pinned element's clamped width, so tiny viewports never collapse a bar. */
     const SPH_MIN_WIDTH_PX = 120;
+    /** The pinned bars whose background is painted on towards the window edge (`--mb-sph-bleed`, see _sphUpdateBleed()). */
+    const _SPH_BLEED_SEL = 'h2.mb-toggle-h2, h3.mb-toggle-h3';
 
     /**
      * Mutable module state of the sticky-page-headers feature.
@@ -34524,6 +34563,10 @@
      *   colGutterBg:    string            - page colour of the gutter mask, read with the first rule
      *   colBorder:      ?{top: number, topC: string, bottom: number, bottomC: string}
      *                                     - MB's table.tbl top/bottom border, captured before the first stamp
+     *   bleedBars:      Array<{el: HTMLElement, right: number, parentRight: number, max: number}>
+     *                                     - pinned h2/h3 bars and what _sphUpdateBleed() needs for each:
+     *                                       the bar's right edge on screen, its containing block's
+     *                                       right edge (document px) and the room to the window edge
      * }}
      */
     const _sph = {
@@ -34540,7 +34583,8 @@
         colStyle:    null,
         colRules:    new Set(),
         colGutterBg: '#ffffff',
-        colBorder:   null
+        colBorder:   null,
+        bleedBars:   []
     };
 
     /**
@@ -34558,7 +34602,7 @@
      * sticking vertically. See the section comment above for the `<body>`,
      * collapsed-sidebar and z-index rules.
      *
-     * The three custom properties are registered NON-inherited
+     * The custom properties are registered NON-inherited
      * (`@property … inherits: false`). An unregistered custom property
      * inherits, so a write on one element changes the computed style of its
      * whole subtree. The `<body>` floor used to be written on `<html>`, and
@@ -34566,7 +34610,11 @@
      * the entire document: traced at 249 ms on artist-events (4174 rows,
      * 2026-10-02), the only expensive event the feature added after a render.
      * `syntax: '*'` keeps the `var(…, fallback)` forms working, since a
-     * universal-syntax property has no initial value.
+     * universal-syntax property has no initial value. The one exception is
+     * `--mb-sph-bleed`: the bar's `::after` reads it, and a pseudo-element
+     * only sees an INHERITED value of its originating element. It is
+     * therefore written on h2/h3 bars alone (`_SPH_BLEED_SEL`), never on a
+     * table or a content body.
      *
      * Uses GM_addStyle so the rules are exempt from page CSP style-src
      * restrictions, like every other stylesheet of this script.
@@ -34581,6 +34629,11 @@
             @property --mb-sph-left { syntax: '*'; inherits: false; }
             @property --mb-sph-maxw { syntax: '*'; inherits: false; }
             @property --mb-sph-z-raised { syntax: '*'; inherits: false; }
+            /* Inherits, unlike the others: it is read by the bar's own
+               ::after, which never sees a non-inherited value of its
+               originating element. Written on h2/h3 bars only, whose
+               subtree is a handful of controls. */
+            @property --mb-sph-bleed { syntax: '*'; inherits: true; }
             /* Widen <body> to the scrolled content so its direct children
                (MB header, banners, footer) have room to stay pinned. Margins
                and box model are pinned down so the widening cannot feed back
@@ -34603,6 +34656,24 @@
             }
             html.mb-sph-on .mb-sph-target.mb-sph-chrome {
                 z-index: ${SPH_Z_CHROME};
+            }
+            /* A pinned h2/h3 bar is capped below the window width (it needs
+               room to stay pinned), so a strip stays between its right end
+               and the window edge, and rows scrolling under a vertically
+               stuck bar showed through it. The bar's own background is
+               painted on into that strip, outside the layout, as far as
+               the content under it reaches on screen: the window edge
+               while the table runs past it, the table's end once scrolled
+               to it. The width is --mb-sph-bleed (_sphUpdateBleed()). */
+            html.mb-sph-on .mb-sph-target:is(${_SPH_BLEED_SEL})::after {
+                content: '';
+                position: absolute;
+                top: 0;
+                bottom: 0;
+                left: 100%;
+                width: var(--mb-sph-bleed, 0px);
+                background: inherit;
+                pointer-events: none;
             }
             /* An inline body alone on its line, pinned on its own: sticky
                does not carry a block inside an inline box along. Without
@@ -34669,7 +34740,7 @@
 
     /**
      * Removes every trace of the feature from one element (classes + inline
-     * custom properties). Safe on elements already detached from the DOM.
+     * custom properties, the bar bleed included). Safe on elements already detached from the DOM.
      *
      * @param {HTMLElement} el - Previously marked element.
      * @returns {void}
@@ -34678,6 +34749,7 @@
         el.classList.remove('mb-sph-target', 'mb-sph-chrome', 'mb-sph-table', 'mb-sph-inline');
         el.style.removeProperty('--mb-sph-left');
         el.style.removeProperty('--mb-sph-maxw');
+        el.style.removeProperty('--mb-sph-bleed');
     }
 
     /**
@@ -35365,6 +35437,35 @@
     }
 
     /**
+     * Writes each pinned h2/h3 bar's `--mb-sph-bleed` for the current scroll
+     * position: the width its background is painted on past its right end,
+     *
+     *   clamp(parentRight − scrollX − right, 0, max)
+     *
+     * i.e. up to the window edge while the content under the bar runs past
+     * it, and only up to that content's own end once the page is scrolled
+     * to it — where a bar that rides inside a pinned body (the Wikipedia h2)
+     * stops as well. A fixed width (the first version) overshot the table's
+     * end at maximum scroll and ran under the sidebar handle (reported
+     * 2026-10-14). Rounded UP to 1/100 px, so no seam is left.
+     *
+     * Arithmetic only, on values `_sphRefresh()` measured (`_sph.bleedBars`):
+     * no layout read. Called from every refresh pass and from the scroll
+     * listener while engaged; it writes only when a value changes, which a
+     * vertical scroll never does and a horizontal one only within the last
+     * gutter's width of the scroll range.
+     *
+     * @returns {void}
+     */
+    function _sphUpdateBleed() {
+        const scrollX = window.scrollX;
+        _sph.bleedBars.forEach(({ el, right, parentRight, max }) => {
+            const w = Math.min(max, Math.max(0, parentRight - scrollX - right));
+            _sphSetVar(el, '--mb-sph-bleed', `${Math.ceil(w * 100) / 100}px`);
+        });
+    }
+
+    /**
      * Sets `.mb-sph-col-docked` on each aligned table whose sticky column has
      * docked (`scrollX >= p`), which switches its gutter mask on; writes only
      * when the state flips. With `p = 0` (sticky column first) the class is
@@ -35413,6 +35514,12 @@
      *   left        = parentLeft + margin-left   (its natural, unscrolled left)
      *   gutter      = max(parentLeft, extent − parentRight)
      *   width       = viewport − left − gutter − margin-right
+     *   bleed       = clamp(parentRight − scrollX − (left + width), 0,
+     *                       gutter + margin-right)
+     *                 (an h2/h3 bar paints its background on from its right
+     *                 end towards the window edge, but never past its
+     *                 containing block's right edge on screen; recomputed on
+     *                 every horizontal scroll by _sphUpdateBleed())
      *
      * The right gutter mirrors the parent's left inset, but is widened to
      * however far the content extends past the parent: at maximum scroll the
@@ -35497,13 +35604,22 @@
                 // Sticky keeps the MARGIN box inside the containing block, so the
                 // element's own margin-right (plain MB header: 16px) must come off
                 // too, or it widens by that much and is pushed back at max scroll.
-                const room = vw - left - gutter - (parseFloat(cs.marginRight) || 0);
+                const marginRight = parseFloat(cs.marginRight) || 0;
+                const room = vw - left - gutter - marginRight;
                 if (table) {
                     // Never capped: pinned whole while it fits, else left to
                     // scroll with its sticky column docked.
                     if (!_sphFitsTable(el.getBoundingClientRect().width, room)) return null;
-                    return { el, baseZ: false, table, inline: false, left: Math.max(0, _sphFloor2(left)), width: null };
+                    return { el, baseZ: false, table, inline: false, left: Math.max(0, _sphFloor2(left)), width: null, bleed: null };
                 }
+                // h2/h3 bars only: the property inherits (see _sphEnsureStyle()).
+                // `right` is the capped bar's right edge on screen (pinned, so
+                // the same at every scrollX); the bleed never goes past the
+                // window edge (`max`) nor past the containing block's right
+                // edge on screen (`parentRight`, document px).
+                const barRight = left + Math.max(SPH_MIN_WIDTH_PX, room);
+                const bleed = el.matches(_SPH_BLEED_SEL)
+                    ? { el, right: barRight, parentRight, max: Math.max(0, vw - barRight) } : null;
                 let width = Math.max(SPH_MIN_WIDTH_PX, room);
                 if (cs.boxSizing !== 'border-box') {
                     width -= (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0) +
@@ -35514,16 +35630,17 @@
                 // element keeps its own.
                 const baseZ = chrome && nat.position !== 'sticky' && nat.zIndex === 'auto';
                 const inline = nat.display.startsWith('inline');
-                return { el, baseZ, table, inline, left: Math.max(0, _sphFloor2(left)), width: Math.max(0, _sphFloor2(width)) };
+                return { el, baseZ, table, inline, left: Math.max(0, _sphFloor2(left)), width: Math.max(0, _sphFloor2(width)), bleed };
             }).filter(Boolean);
             const next = new Set(plans.map(p => p.el));
             const cols = _sphMeasureStickyCols(scrollX, next);
 
             // ── Write phase ─────────────────────────────────────────────────
             _sph.targets.forEach(el => { if (!next.has(el)) _sphUnmark(el); });
-            plans.forEach(({ el, baseZ, table, inline, left, width }) => {
+            plans.forEach(({ el, baseZ, table, inline, left, width, bleed }) => {
                 _sphSetVar(el, '--mb-sph-left', `${left}px`);
                 _sphSetVar(el, '--mb-sph-maxw', width === null ? 'none' : `${width}px`);
+                if (bleed === null && el.style.getPropertyValue('--mb-sph-bleed')) el.style.removeProperty('--mb-sph-bleed');
                 // classList.add()/toggle() rewrite the class attribute even when
                 // nothing changes (DOM "update steps") — only write on change.
                 if (!el.classList.contains('mb-sph-target')) el.classList.add('mb-sph-target');
@@ -35532,6 +35649,8 @@
                 if (el.classList.contains('mb-sph-inline') !== inline) el.classList.toggle('mb-sph-inline', inline);
             });
             _sph.targets = next;
+            _sph.bleedBars = plans.map(p => p.bleed).filter(Boolean);
+            _sphUpdateBleed();
             _sphApplyStickyCols(cols);
 
             if (engaging) {
@@ -35615,7 +35734,8 @@
      * listener and a passive `scroll` listener (fallback: engages on the first
      * horizontal scroll should no observer have noticed the overflow; while
      * engaged it only flips each aligned table's docked state, see
-     * `_sphUpdateColDocked()`); every
+     * `_sphUpdateColDocked()`, and resizes the bars' bleed, see
+     * `_sphUpdateBleed()`); every
      * call then schedules a refresh, so re-renders (Load from Disk, re-fetch)
      * pick up their new h2/h3 bars.
      *
@@ -35638,8 +35758,9 @@
             window.addEventListener('scroll', () => {
                 if (!_sph.active) {
                     if (window.scrollX > 0) scheduleStickyPageHeadersRefresh();
-                } else if (_sph.colTables.length) {
-                    _sphUpdateColDocked();
+                } else {
+                    if (_sph.colTables.length) _sphUpdateColDocked();
+                    if (_sph.bleedBars.length) _sphUpdateBleed();
                 }
             }, { passive: true });
             _sph.initialized = true;
@@ -59237,7 +59358,7 @@ a { color: #1565c0; }`;
         GM_addStyle(`
             /* Sidebar with proper overflow handling */
             #sidebar {
-                transition: transform 0.3s ease, width 0.3s ease, opacity 0.3s ease, margin-right 0.3s ease;
+                transition: transform 0.3s ease, width 0.3s ease, opacity 0.3s ease, margin-right 0.3s ease, display 0.3s allow-discrete;
                 overflow-y: auto;
                 overflow-x: hidden;
                 box-sizing: border-box;
@@ -59255,8 +59376,19 @@ a { color: #1565c0; }`;
                 /* overflow-y: auto; REMOVED: Breaks vertical sticky headers */
             }
 
-            /* Collapsed sidebar state */
+            /* Collapsed sidebar state. display: none takes it out of the
+               layout: MusicBrainz lays #page out as display: table with
+               #sidebar as a table-cell, and a table cell never shrinks
+               below its min-content width, whatever width or margin says.
+               The collapsed sidebar used to keep an invisible strip of
+               78 px and more at the right end of the page (measured on an
+               area page, 2026-10-14): every pinned bar stopped that far
+               short of the window edge and the page scrolled past the end
+               of the table. The discrete transition keeps it displayed
+               until the slide-out is over (browsers without
+               transition-behavior simply snap shut). */
             .sidebar-collapsed {
+                display: none !important;
                 transform: translateX(100%);
                 width: 0 !important;
                 min-width: 0 !important;

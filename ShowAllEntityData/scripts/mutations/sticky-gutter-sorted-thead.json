@@ -1,0 +1,106 @@
+[
+    {
+        "name": "a collapsed sidebar keeps its layout box",
+        "why": "Under MB's #page { display: table } a collapsed sidebar stays a table cell as wide as its min-content: the page runs past the table and every pinned bar stops that far short of the window edge (2026-10-14, area page).",
+        "edits": [
+            {
+                "find": "            .sidebar-collapsed {\n                display: none !important;\n",
+                "replace": "            .sidebar-collapsed {\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-page-headers.spec.js",
+        "grep": "collapsed sidebar takes no space",
+        "expect": "fail"
+    },
+    {
+        "name": "no bleed rule: pinned bars end short of the window edge",
+        "why": "Rows scrolling under a vertically stuck h2/h3 showed in the strip between the capped bar and the window edge.",
+        "edits": [
+            {
+                "find": "            html.mb-sph-on .mb-sph-target:is(${_SPH_BLEED_SEL})::after {\n",
+                "replace": "            html.mb-sph-on .mb-sph-target:is(${_SPH_BLEED_SEL})::mb-disabled-after {\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "reach the window edge in their own colour",
+        "expect": "fail"
+    },
+    {
+        "name": "the bleed is computed as 0",
+        "why": "The strip is gutter + margin-right wide; a zero width paints nothing.",
+        "edits": [
+            {
+                "find": "            const w = Math.min(max, Math.max(0, parentRight - scrollX - right));\n",
+                "replace": "            const w = 0;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "reach the window edge in their own colour",
+        "expect": "fail"
+    },
+    {
+        "name": "the bleed has a fixed width (to the window edge at every scroll position)",
+        "why": "The first version: at maximum scroll the data h2 and the h3 bars painted past the table's end, under the sidebar handle, while the Wikipedia h2 stopped at it (reported 2026-10-14).",
+        "edits": [
+            {
+                "find": "            const w = Math.min(max, Math.max(0, parentRight - scrollX - right));\n",
+                "replace": "            const w = max;\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "stop where the table ends",
+        "expect": "fail"
+    },
+    {
+        "name": "a horizontal scroll does not resize the bleed",
+        "why": "The bleed depends on scrollX; only the scroll listener updates it between refresh passes.",
+        "edits": [
+            {
+                "find": "                    if (_sph.bleedBars.length) _sphUpdateBleed();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "stop where the table ends",
+        "expect": "fail"
+    },
+    {
+        "name": "the bleed property does not inherit",
+        "why": "The bar's ::after reads --mb-sph-bleed and only ever sees an inherited value of its originating element: non-inherited, its width is 0 (the first version of this fix).",
+        "edits": [
+            {
+                "find": "            @property --mb-sph-bleed { syntax: '*'; inherits: true; }\n",
+                "replace": "            @property --mb-sph-bleed { syntax: '*'; inherits: false; }\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "reach the window edge in their own colour",
+        "expect": "fail"
+    },
+    {
+        "name": "the inheriting bleed is written on tables too",
+        "why": "--mb-sph-bleed inherits: written on a table pinned whole, every cell would carry it and a change would restyle the whole table.",
+        "edits": [
+            {
+                "find": "                    return { el, baseZ: false, table, inline: false, left: Math.max(0, _sphFloor2(left)), width: null, bleed: null };\n",
+                "replace": "                    return { el, baseZ: false, table, inline: false, left: Math.max(0, _sphFloor2(left)), width: null, bleed: { el, right: 0, parentRight: 1e6, max: 20 } };\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-page-headers.spec.js",
+        "grep": "narrow sub-tables are pinned whole",
+        "expect": "fail"
+    },
+    {
+        "name": "the sticky thead has no backing colour",
+        "why": "A sorted column's header tint is 60 % alpha; on the non-MusicBrainz sites nothing was behind it, and rows scrolling under the pinned header showed through (2026-10-14, brucespringsteen.it).",
+        "edits": [
+            {
+                "find": "                background-color: inherit;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sorted-thead-opaque.spec.js",
+        "grep": "sorted header stays opaque",
+        "expect": "fail"
+    }
+]

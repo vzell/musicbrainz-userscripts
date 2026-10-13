@@ -1,0 +1,27 @@
+[
+  {
+    "version": "WIP.2",
+    "date": "2026-10-14",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Sorted column headers no longer let table text show through while you scroll. On brucespringsteen.it, springsteenlyrics.com, jungleland.it and Brucebase, the header of a sorted non-sticky column (every sorted column after a multi-column sort) was partly transparent, so the rows scrolling under the pinned header showed through it (\"gatefold\" under \"Notes\"). The pinned header now has a solid background behind its sort colour."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-10-14",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Wide MusicBrainz pages: the collapsed sidebar no longer keeps an invisible strip about 80–120 px wide at the right end of the page. Because of that strip, every pinned h2/h3 bar stopped well short of the window's right edge, rows showed through the gap while the bars were pinned at the top, and the page could scroll past the end of the table. A collapsed sidebar now takes no space at all (it still slides in and out).",
+          "Pinned h2/h3 bars now reach as far right as the table under them: up to the window's right edge while the table runs past it, and up to the table's own end once you have scrolled all the way to the right, like the Wikipedia bar. They must stay a few pixels narrower than the window to remain pinned, and that last strip is now filled with the bar's colour, so no row text shows beside a bar that is pinned at the top."
+        ]
+      }
+    ]
+  }
+]

@@ -84,12 +84,15 @@ async function openSeries(page, { settingsOverride = {}, css = TALL_ROWS, viewpo
  *
  * @param {import('@playwright/test').Page} page
  * @param {object} [settingsOverride]
+ * @param {object} [opts]
+ * @param {string} [opts.css] - injected before the render
+ * @param {{width: number, height: number}} [opts.viewport]
  * @returns {Promise<void>}
  */
-async function openRatings(page, settingsOverride = {}) {
-    await page.setViewportSize({ width: 1300, height: 800 });
+async function openRatings(page, settingsOverride = {}, { css = TALL_ROWS, viewport = { width: 1300, height: 800 } } = {}) {
+    await page.setViewportSize(viewport);
     await loadUserscriptPage(page, { url: RATINGS_URL, fixtureFile: RATINGS_SHELL, testMode: true, settingsOverride });
-    await page.addStyleTag({ content: TALL_ROWS });
+    await page.addStyleTag({ content: css });
     await page.$eval('button[data-label="Show Ratings for User"]', (b) => b.click());
     await waitForRenderComplete(page);
     const anyHidden = () => page.evaluate(() => Array.from(document.querySelectorAll('table.tbl'))
@@ -402,6 +405,90 @@ test.describe('sticky filter bars — multi-table page', () => {
         });
         expect(geo.gap, 'premise: the h3 is indented relative to its table').toBeGreaterThan(2);
         expect(await pixelAt(page, geo.x, geo.y), 'no green row in the gap').not.toBe('0,128,0');
+    });
+
+    test('scrolled both ways, the stuck h2 and h3 reach the window edge in their own colour, no rows beside them', async ({ page }) => {
+        // A pinned bar is capped below the window width (the sticky page
+        // headers need room for it to stay put); the strip between its
+        // right end and the window edge is painted in the bar's own
+        // background (--mb-sph-bleed). Before, rows scrolling under the
+        // stuck bars showed in that strip (reported 2026-10-14 on an area
+        // page: "Barry Manilow" beside the Series h3). The tables are made
+        // wider than the window so the sticky page headers engage, and
+        // #page (the bars' parent here) gets side padding like MB's (the
+        // fixture has none, so the bars would start at 0 and leave no gutter); the bleed is paint
+        // only, invisible to hit testing, hence pixels.
+        await openRatings(page, {}, {
+            css: `${TALL_ROWS} table.tbl { min-width: 2500px !important; }`
+                + ' #page { padding-left: 20px !important; padding-right: 20px !important; }',
+            viewport: { width: 900, height: 800 },
+        });
+        await page.waitForFunction(() => document.documentElement.classList.contains('mb-sph-on'));
+        await page.addStyleTag({ content: 'table.tbl > tbody > tr > td { background: rgb(0, 128, 0) !important; }' });
+        const t1 = await page.evaluate(() => document.querySelectorAll('table.tbl')[1].tBodies[0].rows[0]
+            .getBoundingClientRect().top + window.scrollY);
+        await scrollToY(page, t1 + 150, 300);
+        expect(await page.evaluate(() => Math.round(window.scrollX)), 'premise: scrolled sideways').toBe(300);
+        const geo = await page.evaluate(() => {
+            const cw = document.documentElement.clientWidth;
+            const band = (el) => {
+                const r = el.getBoundingClientRect();
+                return { top: r.top, right: r.right, y: (r.top + r.bottom) / 2 };
+            };
+            const h3 = Array.from(document.querySelectorAll('h3.mb-toggle-h3'))[1];
+            const t = document.querySelectorAll('table.tbl')[1].getBoundingClientRect();
+            return { cw, h2: band(document.querySelector('h2.mb-vsb-h2')), h3: band(h3), tableTop: t.top };
+        });
+        expect(geo.tableTop, 'premise: rows scroll under the bars').toBeLessThan(geo.h2.top);
+        for (const key of ['h2', 'h3']) {
+            const b = geo[key];
+            expect(geo.cw - b.right, `premise: the ${key} bar ends short of the window edge`).toBeGreaterThan(4);
+            const own = await pixelAt(page, b.right - 2, b.y);
+            const edge = await pixelAt(page, geo.cw - 2, b.y);
+            expect(edge, `no green row beside the stuck ${key}`).not.toBe('0,128,0');
+            expect(edge, `the ${key} bar's own colour reaches the window edge`).toBe(own);
+        }
+    });
+
+    test('scrolled to the far right, the stuck h2 and h3 stop where the table ends, not at the window edge', async ({ page }) => {
+        // Reported 2026-10-14 against the first version of the bleed, which
+        // had a fixed width: at maximum scroll the table ends a page padding
+        // short of the window edge, and so does a bar riding inside a
+        // pinned body (the Wikipedia h2), but the data h2 and the h3 bars
+        // painted on to the window edge, under the sidebar handle. The
+        // bleed reaches only as far as the content under the bar does.
+        await openRatings(page, {}, {
+            css: `${TALL_ROWS} table.tbl { min-width: 2500px !important; }`
+                + ' #page { padding-left: 20px !important; padding-right: 20px !important; }',
+            viewport: { width: 900, height: 800 },
+        });
+        await page.waitForFunction(() => document.documentElement.classList.contains('mb-sph-on'));
+        const t1 = await page.evaluate(() => document.querySelectorAll('table.tbl')[1].tBodies[0].rows[0]
+            .getBoundingClientRect().top + window.scrollY);
+        const maxX = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        await scrollToY(page, t1 + 150, maxX);
+        const geo = await page.evaluate(() => {
+            const band = (el) => {
+                const r = el.getBoundingClientRect();
+                return { right: r.right, y: (r.top + r.bottom) / 2 };
+            };
+            return {
+                cw: document.documentElement.clientWidth,
+                scrollX: window.scrollX,
+                maxX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+                tableRight: document.querySelectorAll('table.tbl')[1].getBoundingClientRect().right,
+                h2: band(document.querySelector('h2.mb-vsb-h2')),
+                h3: band(Array.from(document.querySelectorAll('h3.mb-toggle-h3'))[1]),
+            };
+        });
+        expect(Math.abs(geo.scrollX - geo.maxX), 'premise: scrolled to the far right').toBeLessThanOrEqual(1);
+        expect(geo.cw - geo.tableRight, 'premise: the table ends a page padding short of the window edge').toBeGreaterThan(8);
+        for (const key of ['h2', 'h3']) {
+            const b = geo[key];
+            const own = await pixelAt(page, b.right - 2, b.y);
+            expect(await pixelAt(page, geo.tableRight - 2, b.y), `the ${key} bar's colour reaches the table's end`).toBe(own);
+            expect(await pixelAt(page, geo.cw - 3, b.y), `the ${key} bar's colour stops there`).not.toBe(own);
+        }
     });
 
     test('every h3 bar takes the tallest one\'s height, and gives it back', async ({ page }) => {
