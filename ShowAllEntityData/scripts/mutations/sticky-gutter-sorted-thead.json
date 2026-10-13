@@ -13,68 +13,55 @@
         "expect": "fail"
     },
     {
-        "name": "no mask rule: rows show beside a stuck bar",
-        "why": "Rows scrolling under a vertically stuck h2/h3 showed in the strip between the capped bar and the window edge.",
+        "name": "no right-edge mask",
+        "why": "A wide table ran on past the h2/h3 bars' line to the window edge, and rows showed beside a stuck bar (2026-10-14).",
         "edits": [
             {
-                "find": "            html.mb-sph-on .mb-sph-target:is(${_SPH_BLEED_SEL})::after {\n",
-                "replace": "            html.mb-sph-on .mb-sph-target:is(${_SPH_BLEED_SEL})::mb-disabled-after {\n"
+                "find": "        if (mask.classList.contains('mb-sph-rmask-on') !== (w > 0)) mask.classList.toggle('mb-sph-rmask-on', w > 0);\n",
+                "replace": ""
             }
         ],
         "spec": "tests/fixtures/sticky-filter-bars.spec.js",
-        "grep": "do not stretch to the window edge",
+        "grep": "ends on the h2/h3 bars' line",
         "expect": "fail"
     },
     {
-        "name": "the mask width is computed as 0",
-        "why": "The strip is gutter + margin-right wide; a zero width masks nothing.",
+        "name": "the mask is narrower than the bars' gap",
+        "why": "Its width is the smallest gap between a pinned h2/h3 bar and the window edge; narrower, the table runs on past the line.",
         "edits": [
             {
-                "find": "                    ? Math.max(0, Math.ceil((gutter + marginRight) * 100) / 100) : null;\n",
-                "replace": "                    ? 0 : null;\n"
+                "find": "        const w = gaps.length ? Math.ceil(Math.min(...gaps) * 100) / 100 : 0;\n",
+                "replace": "        const w = gaps.length ? Math.ceil(Math.min(...gaps) * 50) / 100 : 0;\n"
             }
         ],
         "spec": "tests/fixtures/sticky-filter-bars.spec.js",
-        "grep": "do not stretch to the window edge",
+        "grep": "ends on the h2/h3 bars' line",
         "expect": "fail"
     },
     {
-        "name": "the strip is painted in the bar's own colour",
-        "why": "The first version (2026-10-14): the data h2 and the h3 bars then reached further right than the Annotation / Credits / Wikipedia bars, past the table's end at maximum scroll, under the sidebar handle. Rejected in the user's browser.",
+        "name": "the mask lies under the table",
+        "why": "It must paint over what scrolls, the stuck thead included. A plant at z-index 99 (just under the thead's 100) is invisible in this fixture: the thead's 100 is scoped inside an ancestor stacking context there and the mask (fixed, on <body>) is hit over it even at 99 (probed 2026-10-14). On MusicBrainz the thead competes directly and 102 > 100 decides; under the page content altogether (-1) is what the fixture can see.",
         "edits": [
             {
-                "find": "                background: ${_sphGutterBg()};\n",
-                "replace": "                background: inherit;\n"
+                "find": "    const SPH_Z_RMASK = 102;\n",
+                "replace": "    const SPH_Z_RMASK = -1;\n"
             }
         ],
         "spec": "tests/fixtures/sticky-filter-bars.spec.js",
-        "grep": "do not stretch to the window edge|stop where the table ends",
+        "grep": "ends on the h2/h3 bars' line",
         "expect": "fail"
     },
     {
-        "name": "the bleed property does not inherit",
-        "why": "The bar's ::after reads --mb-sph-bleed and only ever sees an inherited value of its originating element: non-inherited, its width is 0 (the first version of this fix).",
+        "name": "the mask paints over body-level chrome (the footer)",
+        "why": "Only what scrolls is covered; the pinned MB footer (106) reaches the window edge and stays on top.",
         "edits": [
             {
-                "find": "            @property --mb-sph-bleed { syntax: '*'; inherits: true; }\n",
-                "replace": "            @property --mb-sph-bleed { syntax: '*'; inherits: false; }\n"
+                "find": "    const SPH_Z_RMASK = 102;\n",
+                "replace": "    const SPH_Z_RMASK = 1000;\n"
             }
         ],
         "spec": "tests/fixtures/sticky-filter-bars.spec.js",
-        "grep": "do not stretch to the window edge",
-        "expect": "fail"
-    },
-    {
-        "name": "the inheriting bleed is written on tables too",
-        "why": "--mb-sph-bleed inherits: written on a table pinned whole, every cell would carry it and a change would restyle the whole table.",
-        "edits": [
-            {
-                "find": "                    return { el, baseZ: false, table, inline: false, left: Math.max(0, _sphFloor2(left)), width: null, bleed: null };\n",
-                "replace": "                    return { el, baseZ: false, table, inline: false, left: Math.max(0, _sphFloor2(left)), width: null, bleed: 20 };\n"
-            }
-        ],
-        "spec": "tests/fixtures/sticky-page-headers.spec.js",
-        "grep": "narrow sub-tables are pinned whole",
+        "grep": "lies under chrome",
         "expect": "fail"
     },
     {

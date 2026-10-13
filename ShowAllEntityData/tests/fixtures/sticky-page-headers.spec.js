@@ -505,9 +505,6 @@ test.describe('sticky page headers — single-table page', () => {
         // and made the next measurement pay for a full-document style recalc
         // (traced at 249 ms on 4174 rows). They are registered with
         // `@property … inherits: false` now; a table cell must not see them.
-        // `--mb-sph-bleed` is the one that inherits (a bar's ::after reads
-        // it), so it must be written on h2/h3 bars alone: never on a table,
-        // whose cells would then all carry it.
         await openSeries(page, { settingsOverride: { sa_auto_resize_columns: false } });
         await waitEngaged(page);
         const props = await page.evaluate(() => {
@@ -522,16 +519,12 @@ test.describe('sticky page headers — single-table page', () => {
                 bar: read(bar).slice(1),
                 barChild: read(bar.firstElementChild || bar.firstChild.parentElement),
                 cell: read(document.querySelector('table.tbl tbody td')),
-                barBleed: getComputedStyle(bar).getPropertyValue('--mb-sph-bleed').trim(),
-                cellBleed: getComputedStyle(document.querySelector('table.tbl tbody td')).getPropertyValue('--mb-sph-bleed').trim(),
             };
         });
         expect(props.body, 'premise: <body> carries its floor').not.toBe('');
         expect(props.bar.every((v) => v !== ''), 'premise: a bar carries its offsets').toBe(true);
         expect(props.cell, 'a table cell inherits nothing').toEqual(['', '', '']);
         expect(props.barChild.slice(1), 'a bar\'s own child inherits nothing').toEqual(['', '']);
-        expect(props.barBleed, 'premise: a bar carries its bleed').toMatch(/px$/);
-        expect(props.cellBleed, 'a table cell does not see the bleed').toBe('');
     });
 
     test('disengages once the overflow is gone, and re-engages when it returns (no ratchet)', async ({ page }) => {
@@ -1281,8 +1274,6 @@ test.describe('sticky page headers — every block of content that is not a wide
             left: t.getBoundingClientRect().left,
             pinned: t.classList.contains('mb-sph-target') && t.classList.contains('mb-sph-table'),
             stamped: !!t.dataset.mbSphColLeft,
-            // The inheriting --mb-sph-bleed belongs to h2/h3 bars only.
-            bleed: getComputedStyle(t).getPropertyValue('--mb-sph-bleed').trim(),
         })));
         const at0 = await kinds();
         const vw = (await overflow(page)).clientWidth;
@@ -1293,7 +1284,6 @@ test.describe('sticky page headers — every block of content that is not a wide
         expect(narrow.every((t) => t.pinned), 'every sub-table that fits is pinned whole').toBe(true);
         expect(wide.some((t) => t.pinned), 'no wider one is pinned').toBe(false);
         expect(narrow.some((t) => t.stamped), 'a pinned table\'s column is not docked as well').toBe(false);
-        expect(narrow.filter((t) => t.bleed !== ''), 'a pinned table carries no bar bleed').toEqual([]);
 
         const sels = ['#page > #mb-status-displays-wrapper'];
         const before = await measure(page, sels);

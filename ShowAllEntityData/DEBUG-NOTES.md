@@ -22421,3 +22421,23 @@ page-coloured strip over page padding is invisible at maximum scroll anyway.
 The second `test:full` (23:15:16Z at `460ad13`) was stopped at 199/1691
 (all passed) for the same reason as the first. Mutations: 7/7 caught,
 including "the strip is painted in the bar's own colour".
+
+**Fourth round, same day (user's browser, release page and artist events,
+three screenshots):** the bars now line up, but the wide tables themselves
+still ran on to the window edge until scrolled to their end; the user asked
+for the tables to end on the bars' line from the start and during the
+scroll. So the per-bar `::after` (and its inheriting `--mb-sph-bleed`) is
+replaced by one window-tall, page-coloured strip fixed at the window's right
+edge (`#mb-sph-rmask`, `_sphUpdateRightMask()`), as wide as the smallest
+bar gap, at z-index 102: over the table and its stuck thead, under the
+raised h3, the stuck h2, the header block, MB's sidebar, the MB header and
+footer and every popup.
+
+A trap in the mutation run: a plant at z-index 99 (just under the thead's
+100) PASSED. The probe showed the mask is hit over the stuck thead even at
+99 in this fixture, because the thead's 100 is scoped inside an ancestor
+stacking context there. On MusicBrainz it competes directly, and 102 > 100
+decides. The plant was changed to "under the page content altogether" (-1),
+which the fixture can see, with the reason recorded in the mutation file.
+Mutations: 6/6 caught. The third `test:full` (23:30:16Z at `5ac6b54`) was
+stopped at 208/1691 (all passed) because this change landed under it.

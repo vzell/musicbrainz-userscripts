@@ -745,31 +745,36 @@ render sites), `_vsbRefresh()`, `_vsbBaseOffset()`.
 - **The h3's indent** (`margin-left: 1.5em`, the table under it sits 4 px
   further left in the fixture) is masked with a page-coloured `box-shadow`
   shifted left, so rows never show beside a stuck bar.
-- **The right end: a page-coloured mask, the bars do not stretch**
-  (2026-10-14). With the sticky page headers engaged, a bar is capped
-  (`--mb-sph-maxw`) a gutter short of the window, the room it needs to stay
-  pinned to the end of the scroll (`_sphRefresh()`). Rows scrolling under a
-  stuck bar showed in that strip. An `::after` on a pinned
-  `h2.mb-toggle-h2` / `h3.mb-toggle-h3` (`_SPH_BLEED_SEL`) masks it in the
-  page colour (`_sphGutterBg()`), `--mb-sph-bleed` = gutter + margin-right
-  wide, outside the layout: the mirror of the h3's left indent mask. The
-  bars therefore end where a bar riding inside a pinned body (Annotation,
-  Credits, Wikipedia) ends, at every scroll position — the user's
-  reference look. Two earlier versions were rejected in the user's
-  browser: the strip in the bar's own colour (fixed width: past the
-  table's end at maximum scroll, under the sidebar handle), then the same
-  clamped to the content's end on every scroll (still further right than
-  the section bars while not fully scrolled). That property is the one
-  sticky-page-headers property registered `inherits: true` (a
-  pseudo-element sees only an inherited value), so it is written on those
-  bars alone, never on a table pinned whole. The gutter had also been
-  ~100 px too wide on MusicBrainz: under `#page { display: table }` a
-  collapsed sidebar stayed a table cell as wide as its min-content; it is
-  `display: none` now (`initSidebarCollapse()`). The fixtures carry no MB
-  stylesheet, so `sticky-page-headers.spec.js` injects that layout excerpt
-  to see it. Specs: "do not stretch to the window edge" and "stop where
-  the table ends" (painted pixels), "collapsed sidebar takes no space";
-  mutations: `scripts/mutations/sticky-gutter-sorted-thead.json`.
+- **The right end: one page-coloured strip at the window edge**
+  (`#mb-sph-rmask`, 2026-10-14). With the sticky page headers engaged, a
+  bar is capped (`--mb-sph-maxw`) a gutter short of the window, the room it
+  needs to stay pinned to the end of the scroll (`_sphRefresh()`). A wide
+  table ran on past that line to the window edge, and rows scrolling under
+  a stuck bar showed beside it. `_sphUpdateRightMask()` now keeps one
+  `position: fixed` strip at the window's right edge, top to bottom, as
+  wide as the smallest gap between a pinned h2/h3 bar and the window edge,
+  in the page colour (`_sphGutterBg()`): a wide table, its rows and its
+  stuck thead end on the bars' line at every scroll position, like the
+  Annotation / Credits / Wikipedia bars. z-index `SPH_Z_RMASK` 102: over
+  the table (thead 100, resizer 101), under a raised h3 (103), the stuck
+  h2 (104), the header block and MB's sidebar (105), the MB header and
+  footer (106+) and every popup; `pointer-events` stay on, so nothing
+  hidden under it can be clicked. Hidden without a pinned bar (no line to
+  align to) and whenever the feature is disengaged. Three earlier
+  versions were rejected in the user's browser the same day, each a
+  per-bar `::after`: the strip beside the bar in the bar's colour (past
+  the table's end at maximum scroll), the same clamped to the content's
+  end on scroll (still further right than the section bars), and the same
+  in the page colour (the table itself still ran on past the line). The
+  gutter had also been ~100 px too wide on MusicBrainz: under
+  `#page { display: table }` a collapsed sidebar stayed a table cell as
+  wide as its min-content; it is `display: none` now
+  (`initSidebarCollapse()`). The fixtures carry no MB stylesheet, so
+  `sticky-page-headers.spec.js` injects that layout excerpt to see it.
+  Specs: "a wide table ends on the h2/h3 bars' line" (painted pixels at
+  scrollX 0 and with the bars stuck), "the right-edge mask lies under
+  chrome", "stop where the table ends", "collapsed sidebar takes no
+  space"; mutations: `scripts/mutations/sticky-gutter-sorted-thead.json`.
 - **Stacking ladder:** thead 100, column resizer 101, h3 102 (raised 103),
   data h2 104 (raised 107 = `SPH_Z_RAISED`), Brucebase side bar 150. A
   raised h3 stays UNDER the h2 (an h3 sliding in under the stuck h2 must
