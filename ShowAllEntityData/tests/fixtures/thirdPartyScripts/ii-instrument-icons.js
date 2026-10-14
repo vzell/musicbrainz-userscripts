@@ -11,7 +11,10 @@
  *   2. resolves the icon asynchronously (memory → IndexedDB → network) and,
  *      when there is one, inserts `<img class="mb-ii-icon">` IMMEDIATELY
  *      BEFORE the anchor (`insertIconBeforeLink()`, which also refuses to
- *      insert when the previous sibling already is one);
+ *      insert when the previous sibling already is one) — or, with the
+ *      script's `iconPosition` set to 'after', IMMEDIATELY AFTER it
+ *      (`insertIconAfterLink()`, which refuses when the NEXT sibling
+ *      already is one), with the left/right margins swapped;
  *   3. when there is none (a GitHub 404, cached as `'NONE'`), leaves the
  *      anchor stamped with no icon — for good.
  *
@@ -24,7 +27,9 @@
  * Provenance: hand-built from
  * tests/fixtures/live-userscripts/MusicBrainz_Instrument_Icons_Everywhere.user.js
  * v2026-10-07.1444 (`processPage()`, `shouldSkip()`, `processLink()`,
- * `createIconImg()`, `insertIconBeforeLink()`, `init()`). Re-verify if that
+ * `createIconImg()`, `insertIconBeforeLink()`, `init()`), and for the
+ * `position` option from v2026-10-12.2140 (`CONFIG.iconPosition`,
+ * `createIconImg(…, position)`, `insertIconAfterLink()`). Re-verify if that
  * script's shapes change.
  *
  * Config (optional, via `window.__thirdPartySim`):
@@ -36,6 +41,9 @@
  *     allIcons?: boolean,
  *       // …unless this is true: then every unlisted instrument gets an icon
  *       // at once, its folder taken from the link text.
+ *     position?: 'before' | 'after',
+ *       // the script's iconPosition setting, default 'before' (its
+ *       // first-run default).
  *     debounceMs?: number  // observer debounce, default 120 (the script's)
  *   }
  *
@@ -51,6 +59,7 @@
     const icons = cfg.icons || {};
     const allIcons = cfg.allIcons === true;
     const debounceMs = typeof cfg.debounceMs === 'number' ? cfg.debounceMs : 120;
+    const after = cfg.position === 'after';
     const PX = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
     const LINK_RE = /\/instrument\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?(?:\?[^#]*)?(?:#.*)?$/i;
 
@@ -70,23 +79,24 @@
         img.style.setProperty('height', '16px', 'important');
         img.style.setProperty('display', 'inline-block', 'important');
         img.style.setProperty('vertical-align', 'middle', 'important');
-        img.style.setProperty('margin-right', '0.30em', 'important');
-        img.style.setProperty('margin-left', '0.05em', 'important');
+        img.style.setProperty(after ? 'margin-left' : 'margin-right', '0.30em', 'important');
+        img.style.setProperty(after ? 'margin-right' : 'margin-left', '0.05em', 'important');
         img.style.setProperty('object-fit', 'contain', 'important');
         img.style.setProperty('border', 'none', 'important');
         return img;
     };
 
     /**
-     * Inserts the icon before `link`, unless one is already there.
+     * Inserts the icon before `link` (or after it, for `position: 'after'`),
+     * unless one is already on that side.
      * @param {HTMLAnchorElement} link
      * @param {string} folder
      */
     const insertIcon = (link, folder) => {
         if (!link.parentNode) return;
-        const prev = link.previousSibling;
-        if (prev && prev.nodeType === 1 && prev.classList.contains('mb-ii-icon')) return;
-        link.parentNode.insertBefore(makeImg(folder), link);
+        const sib = after ? link.nextSibling : link.previousSibling;
+        if (sib && sib.nodeType === 1 && sib.classList.contains('mb-ii-icon')) return;
+        link.parentNode.insertBefore(makeImg(folder), after ? link.nextSibling : link);
     };
 
     /**

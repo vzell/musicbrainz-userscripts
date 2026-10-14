@@ -7,7 +7,8 @@ const { injectThirdPartyScript } = require('../support/thirdPartyScripts');
 const { waitForSortSettled, waitForFilterSettled } = require('../support/filterSortAssertions');
 
 // "MusicBrainz: Instrument Icons Everywhere" (@Lotheric) puts an
-// <img class="mb-ii-icon"> BEFORE every instrument link and stamps the LINK
+// <img class="mb-ii-icon"> BEFORE (or, set to 'after', AFTER) every
+// instrument link and stamps the LINK
 // data-ii-processed="true". The release-tracks "Instruments" column used to
 // clone the link alone: the clone kept the stamp, lost the icon, and the
 // script never decorates a stamped link again — so the column never showed
@@ -47,6 +48,11 @@ const WITH_ICON = ['piano', 'saxophone', 'double bass'];
 // of the two would otherwise hide the other one's breakage.
 const SLOW = 2000;
 
+// Both settings of the script's 'iconPosition' (2026-10-12.2140): the icon is
+// the anchor's immediate previous sibling ('before', its first-run default)
+// or its immediate next sibling ('after'). Every test below runs in both.
+const POSITIONS = ['before', 'after'];
+
 /**
  * Loads the fixture, optionally with the simulator, and renders the tracks.
  * @param {import('@playwright/test').Page} page
@@ -79,14 +85,17 @@ async function scriptSettled(page) {
 
 /**
  * One record per instrument entry of every visible "Instruments" cell.
- * `iconBefore` is the folder title of an <img class="mb-ii-icon"> that is the
- * anchor's IMMEDIATE previous sibling (the script's own adjacency), `icons`
- * the number of icons in the whole <li> (so a double icon is caught).
+ * `icon` is the folder title of an <img class="mb-ii-icon"> that is the
+ * anchor's IMMEDIATE previous sibling ('before') or next sibling ('after') —
+ * the script's own adjacency, on the side `position` names, so an icon on
+ * the wrong side reads as none — and `icons` the number of icons in the
+ * whole <li> (so a double icon is caught).
  * @param {import('@playwright/test').Page} page
- * @returns {Promise<Array<{instrument: string, iconBefore: ?string, icons: number, text: string}>>}
+ * @param {'before'|'after'} position
+ * @returns {Promise<Array<{instrument: string, icon: ?string, icons: number, text: string}>>}
  */
-async function instrumentEntries(page) {
-    return page.evaluate(() => {
+async function instrumentEntries(page, position) {
+    return page.evaluate((pos) => {
         const out = [];
         document.querySelectorAll('table.tbl').forEach((tbl) => {
             const ths = Array.from(tbl.querySelectorAll('thead tr:first-child th'));
@@ -99,11 +108,11 @@ async function instrumentEntries(page) {
                 td.querySelectorAll('li').forEach((li) => {
                     const a = li.querySelector('a.mb-credit-instrument');
                     if (!a) return;
-                    const prev = a.previousSibling;
-                    const isIcon = !!(prev && prev.nodeType === 1 && prev.matches('img.mb-ii-icon'));
+                    const sib = pos === 'after' ? a.nextSibling : a.previousSibling;
+                    const isIcon = !!(sib && sib.nodeType === 1 && sib.matches('img.mb-ii-icon'));
                     out.push({
                         instrument: a.textContent.trim(),
-                        iconBefore: isIcon ? prev.getAttribute('title') : null,
+                        icon: isIcon ? sib.getAttribute('title') : null,
                         icons: li.querySelectorAll('img.mb-ii-icon').length,
                         text: li.textContent.replace(/\s+/g, ' ').trim(),
                     });
@@ -111,17 +120,18 @@ async function instrumentEntries(page) {
             });
         });
         return out;
-    });
+    }, position);
 }
 
 /**
  * Asserts the guarantee: every entry of a WITH_ICON instrument has exactly
- * one icon, right before its anchor; every other entry has none.
+ * one icon, right next to its anchor on the script's side; every other entry
+ * has none.
  * @param {Array} entries
  */
 function expectIconsOnExactlyTheDecoratedInstruments(entries) {
     expect(entries.length).toBeGreaterThanOrEqual(10);
-    const got = entries.map((e) => ({ entry: e.text, adjacentIcon: e.iconBefore !== null, icons: e.icons }));
+    const got = entries.map((e) => ({ entry: e.text, adjacentIcon: e.icon !== null, icons: e.icons }));
     const want = entries.map((e) => {
         const decorated = WITH_ICON.includes(e.instrument);
         return { entry: e.text, adjacentIcon: decorated, icons: decorated ? 1 : 0 };
@@ -147,211 +157,216 @@ async function sortByInstruments(page) {
     }), { statusLocator: sortStatus(page) });
 }
 
-test.describe('release-tracks: "Instrument Icons Everywhere" icons in the Instruments column', () => {
-    test('a decorated instrument keeps its icon in the column, across sort and filter re-renders', async ({ page }) => {
-        await renderTracks(page, { icons: REAL_ICONS, debounceMs: SLOW });
+for (const position of POSITIONS) {
+    test.describe(`release-tracks: "Instrument Icons Everywhere" icons in the Instruments column [icon ${position}]`, () => {
+        test('a decorated instrument keeps its icon in the column, across sort and filter re-renders', async ({ page }) => {
+            await renderTracks(page, { icons: REAL_ICONS, debounceMs: SLOW, position });
 
-        // Premise: the native page was decorated before the click.
-        expect(await page.evaluate(() => document.querySelectorAll('img.mb-ii-icon').length)).toBeGreaterThan(0);
+            // Premise: the native page was decorated before the click.
+            expect(await page.evaluate(() => document.querySelectorAll('img.mb-ii-icon').length)).toBeGreaterThan(0);
 
-        // Read at once: copied, not added later (see SLOW).
-        expectIconsOnExactlyTheDecoratedInstruments(await instrumentEntries(page));
+            // Read at once: copied, not added later (see SLOW).
+            expectIconsOnExactlyTheDecoratedInstruments(await instrumentEntries(page, position));
 
-        // Re-renders clone from the SOURCE rows: the icon must be there, not
-        // only on the first live render — and must not double up when the
-        // script's observer looks at the clones.
-        await sortByInstruments(page);
-        await scriptSettled(page);
-        expectIconsOnExactlyTheDecoratedInstruments(await instrumentEntries(page));
+            // Re-renders clone from the SOURCE rows: the icon must be there, not
+            // only on the first live render — and must not double up when the
+            // script's observer looks at the clones.
+            await sortByInstruments(page);
+            await scriptSettled(page);
+            expectIconsOnExactlyTheDecoratedInstruments(await instrumentEntries(page, position));
 
-        await waitForFilterSettled(page, () => page.fill('#mb-global-filter-input', 'Clemons'));
-        await waitForFilterSettled(page, () => page.fill('#mb-global-filter-input', ''));
-        await scriptSettled(page);
-        expectIconsOnExactlyTheDecoratedInstruments(await instrumentEntries(page));
-    });
-
-    test('an icon that arrives after the render reaches the source row and survives a re-render', async ({ page }) => {
-        // Bass: stamped at once, icon only after 6 s — long after the render.
-        await renderTracks(page, { icons: { ...REAL_ICONS, [BASS]: { folder: 'bass_guitar', delayMs: 6000 } } });
-
-        const bass = async () => (await instrumentEntries(page)).filter((e) => e.instrument === 'bass');
-        const before = await bass();
-        expect(before.length).toBeGreaterThan(0);
-        // Premise: the render really happened before the icon existed.
-        expect(before.every((e) => e.iconBefore === null)).toBe(true);
-
-        // The 📊 panel, opened before the icon exists, caches its scan…
-        const bassEntryIcon = async () => {
-            await page.evaluate(() => window.__saTest.closeUniqDrop());
-            await page.evaluate(() => window.__saTest.getUniqDropSections('Instruments'));
-            return page.evaluate(() => {
-                const el = document.querySelector('#mb-col-uniq-dropdown .mb-col-uniq-item[data-mb-uniq-syn-label="» instrument: bass"]');
-                const img = el && el.querySelector('.mb-uniq-ii-icon img.mb-ii-icon');
-                return img ? img.getAttribute('title') : null;
-            });
-        };
-        expect(await bassEntryIcon()).toBeNull();
-
-        await expect.poll(async () => (await bass()).every((e) => e.iconBefore === 'bass guitar'), { timeout: 15000 }).toBe(true);
-        // …and the late icon, which changes no visible row, must drop that
-        // cache: reopened, the entry shows it.
-        expect(await bassEntryIcon()).toBe('bass guitar');
-        await page.evaluate(() => window.__saTest.closeUniqDrop());
-
-        await sortByInstruments(page);
-        await scriptSettled(page);
-        const after = await bass();
-        expect(after.length).toBe(before.length);
-        for (const e of after) {
-            expect(e.iconBefore, e.text).toBe('bass guitar');
-            expect(e.icons, e.text).toBe(1);
-        }
-    });
-
-    test('a credited-instrument annotation in a credit column keeps its icon (_buildCreditListItem)', async ({ page }) => {
-        // MusicBrainz renders a credit's instrument as "<artist> (<a href=
-        // /instrument/…>strings</a>)" (debug/buggy-list-title.html, Ian
-        // Kagey). The fixture has none, so every "producer: Mike Appel and …"
-        // credit is given that shape, crediting piano, after the page loaded
-        // and before the click; the simulator's MBII_processPage() (the real
-        // script exposes the same) then decorates the new link.
-        await page.context().route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
-        await injectThirdPartyScript(page, 'ii-instrument-icons', { when: 'init', config: { icons: REAL_ICONS, debounceMs: SLOW } });
-        await loadUserscriptPage(page, {
-            url: RELEASE_URL,
-            fixtureFile: FIXTURE,
-            testMode: true,
-            settingsOverride: { sa_enable_release_tracks: true },
+            await waitForFilterSettled(page, () => page.fill('#mb-global-filter-input', 'Clemons'));
+            await waitForFilterSettled(page, () => page.fill('#mb-global-filter-input', ''));
+            await scriptSettled(page);
+            expectIconsOnExactlyTheDecoratedInstruments(await instrumentEntries(page, position));
         });
-        const added = await page.evaluate((piano) => {
-            let n = 0;
-            document.querySelectorAll('dl dt').forEach((dt) => {
-                if (dt.textContent.trim() !== 'producer:') return;
-                const a = dt.nextElementSibling && dt.nextElementSibling.querySelector('a[href^="/artist/"]');
-                if (!a) return;
-                const instr = document.createElement('a');
-                instr.setAttribute('href', `/instrument/${piano}`);
-                instr.textContent = 'piano';
-                a.after(document.createTextNode(' ('), instr, document.createTextNode(')'));
-                n++;
-            });
-            window.MBII_processPage();
-            return n;
-        }, PIANO);
-        expect(added).toBeGreaterThan(0);
-        await page.click('button[data-label="Show all Tracks for Release"]');
-        await expect(page.locator('#mb-filter-container')).toBeAttached();
 
-        const producers = await page.evaluate(() => {
-            const out = [];
-            document.querySelectorAll('table.tbl').forEach((tbl) => {
-                const ths = Array.from(tbl.querySelectorAll('thead tr:first-child th'));
-                const idx = ths.findIndex((t) => (t.dataset.colName || '') === 'Producer');
-                if (idx < 0) return;
-                tbl.querySelectorAll('tbody tr').forEach((tr) => {
-                    const td = tr.cells[idx];
-                    if (!td) return;
-                    td.querySelectorAll('a[href*="/instrument/"]').forEach((a) => {
-                        const prev = a.previousSibling;
-                        out.push({
-                            iconBefore: (prev && prev.nodeType === 1 && prev.matches('img.mb-ii-icon')) ? prev.getAttribute('title') : null,
-                            icons: a.closest('li').querySelectorAll('img.mb-ii-icon').length,
+        test('an icon that arrives after the render reaches the source row and survives a re-render', async ({ page }) => {
+            // Bass: stamped at once, icon only after 6 s — long after the render.
+            await renderTracks(page, { icons: { ...REAL_ICONS, [BASS]: { folder: 'bass_guitar', delayMs: 6000 } }, position });
+
+            const bass = async () => (await instrumentEntries(page, position)).filter((e) => e.instrument === 'bass');
+            const before = await bass();
+            expect(before.length).toBeGreaterThan(0);
+            // Premise: the render really happened before the icon existed.
+            expect(before.every((e) => e.icon === null)).toBe(true);
+
+            // The 📊 panel, opened before the icon exists, caches its scan…
+            const bassEntryIcon = async () => {
+                await page.evaluate(() => window.__saTest.closeUniqDrop());
+                await page.evaluate(() => window.__saTest.getUniqDropSections('Instruments'));
+                return page.evaluate(() => {
+                    const el = document.querySelector('#mb-col-uniq-dropdown .mb-col-uniq-item[data-mb-uniq-syn-label="» instrument: bass"]');
+                    const img = el && el.querySelector('.mb-uniq-ii-icon img.mb-ii-icon');
+                    return img ? img.getAttribute('title') : null;
+                });
+            };
+            expect(await bassEntryIcon()).toBeNull();
+
+            await expect.poll(async () => (await bass()).every((e) => e.icon === 'bass guitar'), { timeout: 15000 }).toBe(true);
+            // …and the late icon, which changes no visible row, must drop that
+            // cache: reopened, the entry shows it.
+            expect(await bassEntryIcon()).toBe('bass guitar');
+            await page.evaluate(() => window.__saTest.closeUniqDrop());
+
+            await sortByInstruments(page);
+            await scriptSettled(page);
+            const after = await bass();
+            expect(after.length).toBe(before.length);
+            for (const e of after) {
+                expect(e.icon, e.text).toBe('bass guitar');
+                expect(e.icons, e.text).toBe(1);
+            }
+        });
+
+        test('a credited-instrument annotation in a credit column keeps its icon (_buildCreditListItem)', async ({ page }) => {
+            // MusicBrainz renders a credit's instrument as "<artist> (<a href=
+            // /instrument/…>strings</a>)" (debug/buggy-list-title.html, Ian
+            // Kagey). The fixture has none, so every "producer: Mike Appel and …"
+            // credit is given that shape, crediting piano, after the page loaded
+            // and before the click; the simulator's MBII_processPage() (the real
+            // script exposes the same) then decorates the new link.
+            await page.context().route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
+            await injectThirdPartyScript(page, 'ii-instrument-icons', { when: 'init', config: { icons: REAL_ICONS, debounceMs: SLOW, position } });
+            await loadUserscriptPage(page, {
+                url: RELEASE_URL,
+                fixtureFile: FIXTURE,
+                testMode: true,
+                settingsOverride: { sa_enable_release_tracks: true },
+            });
+            const added = await page.evaluate((piano) => {
+                let n = 0;
+                document.querySelectorAll('dl dt').forEach((dt) => {
+                    if (dt.textContent.trim() !== 'producer:') return;
+                    const a = dt.nextElementSibling && dt.nextElementSibling.querySelector('a[href^="/artist/"]');
+                    if (!a) return;
+                    const instr = document.createElement('a');
+                    instr.setAttribute('href', `/instrument/${piano}`);
+                    instr.textContent = 'piano';
+                    a.after(document.createTextNode(' ('), instr, document.createTextNode(')'));
+                    n++;
+                });
+                window.MBII_processPage();
+                return n;
+            }, PIANO);
+            expect(added).toBeGreaterThan(0);
+            await page.click('button[data-label="Show all Tracks for Release"]');
+            await expect(page.locator('#mb-filter-container')).toBeAttached();
+
+            const producers = await page.evaluate((pos) => {
+                const out = [];
+                document.querySelectorAll('table.tbl').forEach((tbl) => {
+                    const ths = Array.from(tbl.querySelectorAll('thead tr:first-child th'));
+                    const idx = ths.findIndex((t) => (t.dataset.colName || '') === 'Producer');
+                    if (idx < 0) return;
+                    tbl.querySelectorAll('tbody tr').forEach((tr) => {
+                        const td = tr.cells[idx];
+                        if (!td) return;
+                        td.querySelectorAll('a[href*="/instrument/"]').forEach((a) => {
+                            const sib = pos === 'after' ? a.nextSibling : a.previousSibling;
+                            out.push({
+                                icon: (sib && sib.nodeType === 1 && sib.matches('img.mb-ii-icon')) ? sib.getAttribute('title') : null,
+                                icons: a.closest('li').querySelectorAll('img.mb-ii-icon').length,
+                            });
                         });
                     });
                 });
-            });
-            return out;
+                return out;
+            }, position);
+            expect(producers.length).toBeGreaterThan(0);
+            for (const p of producers) {
+                expect(p.icon).toBe('piano');
+                expect(p.icons).toBe(1);
+            }
         });
-        expect(producers.length).toBeGreaterThan(0);
-        for (const p of producers) {
-            expect(p.iconBefore).toBe('piano');
-            expect(p.icons).toBe(1);
-        }
-    });
 
-    test('📊 "» instrument:" entries carry the instrument\'s icon after the label', async ({ page }) => {
-        await renderTracks(page, { icons: REAL_ICONS });
-        await page.evaluate(() => window.__saTest.getUniqDropSections('Instruments'));
-        const entries = await page.evaluate(() => Array.from(document.querySelectorAll('#mb-col-uniq-dropdown .mb-col-uniq-item'))
-            .filter((el) => (el.dataset.mbUniqSynLabel || '').startsWith('» instrument: '))
-            .map((el) => ({
-                name: el.dataset.mbUniqSynLabel.slice('» instrument: '.length),
-                icon: el.querySelector('.mb-uniq-ii-icon img.mb-ii-icon')?.getAttribute('title') || null,
-            })));
-        const byName = Object.fromEntries(entries.map((e) => [e.name, e.icon]));
-        expect(byName).toMatchObject({ piano: 'piano', saxophone: 'saxophone', 'double bass': 'contrabass', bass: null });
-        expect(entries.filter((e) => !WITH_ICON.includes(e.name) && e.icon !== null)).toEqual([]);
-    });
-
-    test('a late icon updates the 📊 counts and an active "without instrument icon" filter', async ({ page }) => {
-        // Every instrument has an icon at once except bass, which gets its
-        // icon 5 s after the page loaded, i.e. after the render and after
-        // "without instrument icon" is ticked. Rows that lacked an icon only
-        // for bass must then leave the filtered table on their own
-        // (source row mirrored, filter-result cache dropped, filter re-run),
-        // and a re-opened 📊 must count them on the "with" side (uniq cache
-        // dropped).
-        await renderTracks(page, { allIcons: true, icons: { [BASS]: { folder: 'bass_guitar', delayMs: 5000 } } });
-
-        // Oracle, from the table before anything is filtered: the rows that
-        // still lack an icon once bass has one.
-        const oracle = await page.evaluate(() => {
-            const tbl = document.querySelector('table.tbl');
-            const idx = Array.from(tbl.querySelectorAll('thead tr:first-child th')).findIndex((t) => t.dataset.colName === 'Instruments');
-            const has = (a) => !!(a.previousSibling && a.previousSibling.nodeType === 1 && a.previousSibling.matches('img.mb-ii-icon'));
-            let before = 0, after = 0, bassRows = 0;
-            tbl.querySelectorAll('tbody tr').forEach((tr) => {
-                const links = Array.from(tr.cells[idx].querySelectorAll('a[href*="/instrument/"]')).filter((a) => a.textContent.trim());
-                const iconless = links.filter((a) => !has(a)).map((a) => a.textContent.trim());
-                if (iconless.length) before++;
-                if (iconless.some((n) => n !== 'bass')) after++;
-                if (iconless.includes('bass')) bassRows++;
-            });
-            return { before, after, bassRows };
+        test('📊 "» instrument:" entries carry the instrument\'s icon after the label', async ({ page }) => {
+            await renderTracks(page, { icons: REAL_ICONS, position });
+            await page.evaluate(() => window.__saTest.getUniqDropSections('Instruments'));
+            const entries = await page.evaluate(() => Array.from(document.querySelectorAll('#mb-col-uniq-dropdown .mb-col-uniq-item'))
+                .filter((el) => (el.dataset.mbUniqSynLabel || '').startsWith('» instrument: '))
+                .map((el) => ({
+                    name: el.dataset.mbUniqSynLabel.slice('» instrument: '.length),
+                    icon: el.querySelector('.mb-uniq-ii-icon img.mb-ii-icon')?.getAttribute('title') || null,
+                })));
+            const byName = Object.fromEntries(entries.map((e) => [e.name, e.icon]));
+            expect(byName).toMatchObject({ piano: 'piano', saxophone: 'saxophone', 'double bass': 'contrabass', bass: null });
+            expect(entries.filter((e) => !WITH_ICON.includes(e.name) && e.icon !== null)).toEqual([]);
         });
-        // Premise: some rows lack an icon only because of bass.
-        expect(oracle.bassRows).toBeGreaterThan(0);
-        expect(oracle.after).toBeLessThan(oracle.before);
 
-        const section = async () => {
-            await page.evaluate(() => window.__saTest.closeUniqDrop());
-            const sections = await page.evaluate(() => window.__saTest.getUniqDropSections('Instruments'));
-            // With every visible row filtered out, the panel has no
-            // section to show at all.
-            const sec = (sections || []).find((x) => x.label === 'Instrument info - Icon');
-            return sec ? Object.fromEntries(sec.items.map((i) => [i.label, i.count])) : {};
-        };
-        expect((await section())['○ without instrument icon']).toBe(oracle.before);
+        test('a late icon updates the 📊 counts and an active "without instrument icon" filter', async ({ page }) => {
+            // Every instrument has an icon at once except bass, which gets its
+            // icon 5 s after the page loaded, i.e. after the render and after
+            // "without instrument icon" is ticked. Rows that lacked an icon only
+            // for bass must then leave the filtered table on their own
+            // (source row mirrored, filter-result cache dropped, filter re-run),
+            // and a re-opened 📊 must count them on the "with" side (uniq cache
+            // dropped).
+            await renderTracks(page, { allIcons: true, icons: { [BASS]: { folder: 'bass_guitar', delayMs: 5000 } }, position });
 
-        await waitForFilterSettled(page, () => page.evaluate(() => {
-            Array.from(document.querySelectorAll('#mb-col-uniq-dropdown .mb-col-uniq-item'))
-                .find((el) => el.dataset.mbUniqSynLabel === '○ without instrument icon').click();
-        }));
-        const rows = () => page.evaluate(() => document.querySelectorAll('table.tbl tbody tr').length);
-        expect(await rows()).toBe(oracle.before);
+            // Oracle, from the table before anything is filtered: the rows that
+            // still lack an icon once bass has one.
+            const oracle = await page.evaluate((pos) => {
+                const tbl = document.querySelector('table.tbl');
+                const idx = Array.from(tbl.querySelectorAll('thead tr:first-child th')).findIndex((t) => t.dataset.colName === 'Instruments');
+                const has = (a) => {
+                    const sib = pos === 'after' ? a.nextSibling : a.previousSibling;
+                    return !!(sib && sib.nodeType === 1 && sib.matches('img.mb-ii-icon'));
+                };
+                let before = 0, after = 0, bassRows = 0;
+                tbl.querySelectorAll('tbody tr').forEach((tr) => {
+                    const links = Array.from(tr.cells[idx].querySelectorAll('a[href*="/instrument/"]')).filter((a) => a.textContent.trim());
+                    const iconless = links.filter((a) => !has(a)).map((a) => a.textContent.trim());
+                    if (iconless.length) before++;
+                    if (iconless.some((n) => n !== 'bass')) after++;
+                    if (iconless.includes('bass')) bassRows++;
+                });
+                return { before, after, bassRows };
+            }, position);
+            // Premise: some rows lack an icon only because of bass.
+            expect(oracle.bassRows).toBeGreaterThan(0);
+            expect(oracle.after).toBeLessThan(oracle.before);
 
-        await expect.poll(rows, { timeout: 15000 }).toBe(oracle.after);
-        // An entry with a count of 0 is not offered at all.
-        expect((await section())['○ without instrument icon'] ?? 0).toBe(oracle.after);
+            const section = async () => {
+                await page.evaluate(() => window.__saTest.closeUniqDrop());
+                const sections = await page.evaluate(() => window.__saTest.getUniqDropSections('Instruments'));
+                // With every visible row filtered out, the panel has no
+                // section to show at all.
+                const sec = (sections || []).find((x) => x.label === 'Instrument info - Icon');
+                return sec ? Object.fromEntries(sec.items.map((i) => [i.label, i.count])) : {};
+            };
+            expect((await section())['○ without instrument icon']).toBe(oracle.before);
+
+            await waitForFilterSettled(page, () => page.evaluate(() => {
+                Array.from(document.querySelectorAll('#mb-col-uniq-dropdown .mb-col-uniq-item'))
+                    .find((el) => el.dataset.mbUniqSynLabel === '○ without instrument icon').click();
+            }));
+            const rows = () => page.evaluate(() => document.querySelectorAll('table.tbl tbody tr').length);
+            expect(await rows()).toBe(oracle.before);
+
+            await expect.poll(rows, { timeout: 15000 }).toBe(oracle.after);
+            // An entry with a count of 0 is not offered at all.
+            expect((await section())['○ without instrument icon'] ?? 0).toBe(oracle.after);
+        });
+
+        test('without the script nothing changes: same text, no icon, no stamp', async ({ page, browser }) => {
+            await renderTracks(page, null);
+            const plain = await instrumentEntries(page, position);
+            expect(plain.length).toBeGreaterThanOrEqual(10);
+            expect(plain.every((e) => e.icons === 0)).toBe(true);
+            expect(await page.evaluate(() => document.querySelectorAll('[data-ii-processed], img.mb-ii-icon').length)).toBe(0);
+
+            // The icon-bearing <dt> classifies exactly like the plain one
+            // (_parseInstrumentVocalsDt ignores the <img>): same entries, same text.
+            const ctx = await browser.newContext();
+            const page2 = await ctx.newPage();
+            try {
+                await renderTracks(page2, { icons: REAL_ICONS, position });
+                const decorated = await instrumentEntries(page2, position);
+                expect(decorated.map((e) => e.text)).toEqual(plain.map((e) => e.text));
+            } finally {
+                await ctx.close();
+            }
+        });
     });
-
-    test('without the script nothing changes: same text, no icon, no stamp', async ({ page, browser }) => {
-        await renderTracks(page, null);
-        const plain = await instrumentEntries(page);
-        expect(plain.length).toBeGreaterThanOrEqual(10);
-        expect(plain.every((e) => e.icons === 0)).toBe(true);
-        expect(await page.evaluate(() => document.querySelectorAll('[data-ii-processed], img.mb-ii-icon').length)).toBe(0);
-
-        // The icon-bearing <dt> classifies exactly like the plain one
-        // (_parseInstrumentVocalsDt ignores the <img>): same entries, same text.
-        const ctx = await browser.newContext();
-        const page2 = await ctx.newPage();
-        try {
-            await renderTracks(page2, { icons: REAL_ICONS });
-            const decorated = await instrumentEntries(page2);
-            expect(decorated.map((e) => e.text)).toEqual(plain.map((e) => e.text));
-        } finally {
-            await ctx.close();
-        }
-    });
-});
+}

@@ -23046,3 +23046,56 @@ track is a video and nothing else opens the gate: caught.
 Full run 19:42:39Z → 19:50:55Z on this branch (`9806685` plus these
 changes): 1743/1743, the first clean full run of the branch. The
 filter-autofocus test took 3.6 s.
+
+## 2026-10-14 — Instrument Icons Everywhere 2026-10-12.2140: the icon AFTER the name (WIP.1, branch feat/ii-icon-after)
+
+Env: snapshots saved 2026-10-14T20:34Z (FRP) and 2026-10-14T20:35Z (UVD), file mtimes · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · browser unknown · Tampermonkey unknown, with the script v2026-10-12.2140 set to "after link ➡". Fixture runs: 2026-10-14T21:06Z · vzell-lap · same OS · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs).
+
+**What changed upstream.** The new version has a setting, `iconPosition`
+(`'before'`, the first-run default, or `'after'`). It is kept in the script's
+own GM storage and toggled from its Tampermonkey menu, which reloads the page.
+In 'after' mode `insertIconAfterLink()` puts the `img.mb-ii-icon` as the
+anchor's IMMEDIATE NEXT sibling, with its margins swapped (left 0.30em, right
+0.05em). The stamp still goes on the anchor. Manifest entry updated
+(commit 221f990); `run-live-interop.js` gained `--gm-value=key=value`, since
+an unseeded harness run is always 'before'.
+
+**Snapshots.** `debug/instuments-right.html` is an FRP of release-tracks for
+*Tunnel of Love Express I: Tougher Than the Rest*
+(release 3ec14d03-2c03-4764-a69d-8155817a040f). 18 stamped anchors, 2 icons,
+both harmonica: irombook has no icon for bass, drum machine, guitar,
+keyboard, mandolin, organ, percussion or acoustic guitar, on the native page
+too. One icon is in the native `<dt>` (`harmonica</a><img>, `), the other in
+SA's credit `<li>` (`harmonica</a><img>: Bruce Springsteen`).
+`debug/instuments-right-UVD.html` is the 📊 panel of that column: "Instrument
+info - Icon" lists only "○ without instrument icon (2)". "🎻 with instrument
+icon" is missing, and "» instrument: harmonica" has no trailing icon.
+
+**Root cause.** `_findInstrumentLinkIcon()` looked only at
+`anchor.previousSibling`, which was the script's only side until now. Every
+reader goes through it, so in 'after' mode every icon read as absent. SA's
+cell still SHOWED the harmonica icon, but only by accident:
+`_cloneInstrumentAnchorWithIcon()` saw no icon and removed the stamp, and the
+script decorated SA's copy again. Three more places assumed the before side:
+- `_cloneInstrumentAnchorWithIcon()` always put a copied icon in front.
+- `_iiMirrorLateIcons()` required `icon.nextSibling` to be the anchor, so in
+  'after' mode a late icon never reached the source row of a multi-table
+  page.
+- `_iiReleaseIconlessAnchors()` released anchors that did have an
+  after-icon. The script's own guard prevented a duplicate, so this was
+  harmless.
+
+**Fix.** `_findInstrumentLinkIcon()` checks the previous sibling, then the
+next sibling. The next-sibling image is skipped when it is directly followed
+by another instrument `<a>`, because in `<a1></a><img><a2>` it is a2's
+'before' icon. The clone and the mirror keep the side. The test hook gains
+`__saTest.findInstrumentLinkIcon`.
+
+**Tests.** The simulator `ii-instrument-icons.js` takes `position`. The
+release-tracks, instrument-search UVD and instrument-list icon specs now run
+over both positions; their oracles read the icon on the expected side only, so
+a copy on the wrong side fails. There is a new tie-break spec. 28/28 pass. In
+`scripts/mutations/instrument-icons.json`, four anchors that went stale with
+the code change were repointed, and four new mutations were added: lookup
+before-only, after-icon cloned in front, late after-icon not attributed, and
+no tie-break.

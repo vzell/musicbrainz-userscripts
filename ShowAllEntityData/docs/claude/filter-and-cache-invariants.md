@@ -69,7 +69,9 @@ becomes available, which is often after the render. It changes no text, so
 `_rowTextCache` and the text the filters read are unaffected (item 3 does not
 apply). It still owes the rest:
 `_iiMirrorLateIcons()` copies the icon onto the SOURCE row's matching anchor
-(same `href`, same ordinal in the cell), because a multi-table re-render
+(same `href`, same ordinal in the cell), on the same side. The anchor is the
+icon's next sibling or, with the script set to 'after', its previous sibling,
+and `_findInstrumentLinkIcon()` decides which. The copy is needed because a multi-table re-render
 clones the source row and a 📊 "Instrument info - Icon" tick matches source
 rows. It then drops the uniq-dropdown cache (item 1) and the filter-result
 keys that read icon presence (`_filterKeyReadsInstrumentIcon()`, item 2), and
