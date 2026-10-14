@@ -22936,7 +22936,7 @@ Brucebase guard in `_sphUpdateColDocked()`; "the open-popup rule no longer
 requires an inline z-index" matched 4 rules (3 sticky-filter-bar, 1 sticky
 page header) and now names the sticky page header's whole selector. All 3
 caught again. A sweep of every list (each `find` must occur exactly once)
-still finds 43 stale anchors in 22 other lists, not repointed here:
+still finds 43 stale anchors in 22 other lists (repointed in the next entry):
 event-overview 7; bb-support, popup-mb, uvd-title-sections 4 each;
 mobile-basics 3; async-pop-providers, bb-year, video-medium-flag,
 ws2-transient-classifier 2 each; art-viewer-extras, bs-support,
@@ -22981,7 +22981,8 @@ on 12 workers: not changed.
   gap is wider than its left inset (10 s); its mutation ("a collapsed sidebar
   keeps its layout box") is still caught.
 
-**Left as it is** (full run 16:43:11Z → 16:51:31Z, 1740/1741):
+**Left as it is at first** (full run 16:43:11Z → 16:51:31Z, 1740/1741;
+cause found and fixed in the next entry):
 `filter-autofocus.spec.js` "a sub-table filter's ✕ clears it and focuses it
 again" failed in `page.goto` itself ("Test timeout of 90000ms exceeded"),
 before any of its own steps; the same file failed the same way in the 12:31
@@ -22991,3 +22992,57 @@ out, so nothing was changed; if it comes back a third time, the place to look
 is what the fixture server is doing at that moment, not the spec. Each full
 run today surfaced a different load-sensitive test: all fixed above except
 this one.
+
+## 2026-10-14 — A fixture load waiting on archive.org through a coverartarchive.org redirect; 43 stale mutation anchors repointed (branch fix/phone-handle-mutations-flake)
+
+Env: 2026-10-14T19:27Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (fixture specs), no Tampermonkey (GM stubs)
+
+**The filter-autofocus timeout.** `filter-autofocus.spec.js` "a sub-table
+filter's ✕ clears it and focuses it again" timed out in `page.goto()` in two
+full runs, and in the others took anywhere from 4 s to 1.2 min. Its fixture,
+`user-ratings-multigroup.html`, shows two release-group thumbnails as
+`//coverartarchive.org/release-group/…/front-250`. A probe that timed every
+subresource of the load (scratch script, not committed) showed each one
+redirected to `archive.org/download/…` and on to a `dn7…ca.archive.org`
+mirror, which ended the load (1.7–2.1 s here, at a quiet moment). The
+2026-10-01 fix aborts archive.org images (`ARCHIVE_ORG_RE`), but a route only
+sees the FIRST url of a redirect chain: with that route in place the probe
+still loaded both mirrors. So a slow Internet Archive still held the load,
+one hop removed.
+
+`loadUserscriptPage()` now also aborts images from coverartarchive.org and
+eventartarchive.org (`ART_ARCHIVE_RE`), but only while `page.goto()` runs:
+the route is removed once the page has loaded. The images in the saved
+markup are the only ones the `load` event waits for; every request the
+userscript makes afterwards still reaches a spec's own mock, or the network,
+as before ("a coverartarchive.org mock registered BEFORE the load still
+answers its images" passes unchanged). New tests in
+`fixture-load-no-archive-org-wait.spec.js`: with a coverartarchive.org mock
+that never answers, the ratings fixture loads in under 20 s, both
+thumbnails are blocked, and the mock is reached again after the load; plus
+the pattern's own test. Mutations in `fixture-archive-org.json`: no block
+during the load (`page.goto` times out), and the block outliving the load
+(the CAA mock is never reached): both caught.
+
+**43 stale mutation anchors, repointed.** Every one that
+`scripts/check-mutation-anchors.py` reported (previous entry), in 22 lists;
+the check now reports 0 bad of 1754. Each new anchor matches the userscript
+exactly once and plants the same defect its entry describes, on the code as
+it is now. Most had drifted with a later edit to the same lines: a new
+`anchorSelector` row, a fourth/fifth `_OTHER_RICH_TIPS` member
+(`mb-dp-peek`, `mb-async-pop`), `_mbSetSiteTitle()` in place of
+`textContent`, `_recOfRestoreCell()` between two disk restores, the
+relationship-tables variants of shared code, a Retry-After log line. Two
+matched twice and were narrowed to the copy their spec runs (the art
+viewer's archive panel; the Brucebase song list, not the Relations page).
+The 40 entries involved were run with `scripts/mutation-check.py` (19:34Z): 39 as
+recorded (34 caught, 5 recorded `expect: "pass"` passing). The 40th,
+video-medium-flag's "the new counts are missing from the render gates",
+passed where it should fail: on the CD fixture the Video column's empty
+cells (`emptyCellCount`) open the 📊 gate on their own, so its test cannot
+see the video counts missing. Aimed at the DVD test instead, where every
+track is a video and nothing else opens the gate: caught.
+
+Full run 19:42:39Z → 19:50:55Z on this branch (`9806685` plus these
+changes): 1743/1743, the first clean full run of the branch. The
+filter-autofocus test took 3.6 s.

@@ -4,7 +4,7 @@
         "why": "Year pages are opt-in (sa_bb_year_pages, default off) on top of sa_enable_brucebase. Without their gate the toolbar appears with only the Brucebase switch on; the spec must see it appear.",
         "edits": [
             {
-                "find": "if (_isBbHost && _BB_YEAR_PATH_RE.test(window.location.pathname) && Lib.settings.sa_bb_year_pages !== true) {",
+                "find": "if (_isBbHost && (_BB_YEAR_PATH_RE.test(window.location.pathname) || _BB_HOME_PATH_RE.test(window.location.pathname)) &&\n        Lib.settings.sa_bb_year_pages !== true) {",
                 "replace": "if (false) {"
             }
         ],
@@ -121,7 +121,7 @@
         "why": "Each setlist would be one row; the spec pins one song per row.",
         "edits": [
             {
-                "find": "            text.split(/(?:^|\\s)\\/(?:\\s|$)/).forEach((part, i) => {",
+                "find": "            text.split(_BB_SET_SEP_RE).forEach((part, i) => {",
                 "replace": "            [text].forEach((part, i) => {"
             }
         ],

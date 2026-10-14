@@ -30,8 +30,8 @@
         "why": "The Alt. tab lists the 10 subtitle songs a second time; without the de-duplication they become 10 extra rows lettered Alt. The spec pins one row per distinct song and no Alt. letter.",
         "edits": [
             {
-                "find": "                if (seen.has(key)) return;\n",
-                "replace": ""
+                "find": "                if (seen.has(key)) return;\n                seen.add(key);\n                items.push({ anchor: a, letter });\n",
+                "replace": "                seen.add(key);\n                items.push({ anchor: a, letter });\n"
             }
         ],
         "spec": "tests/fixtures/bb-songs.spec.js",
@@ -56,8 +56,8 @@
         "why": "Without the label parser every Letter reads '=- A -=' rather than 'A'.",
         "edits": [
             {
-                "find": "        return m ? m[1] : t;\n    }\n\n    /**\n     * Finds the song list's letter tabview.",
-                "replace": "        return t;\n    }\n\n    /**\n     * Finds the song list's letter tabview."
+                "find": "        const m = t.match(_BB_TAB_LABEL_RE);\n        return m ? m[1] : t;\n",
+                "replace": "        return t;\n"
             }
         ],
         "spec": "tests/fixtures/bb-songs.spec.js",
@@ -69,8 +69,8 @@
         "why": "The tabs would stay below the table, every song shown twice. The spec pins exactly one yui-navset (the second one) after the press.",
         "edits": [
             {
-                "find": "        tabview.remove();\n\n        if (docContext === document && !document.querySelector('h2.mb-bb-list-heading')) {",
-                "replace": "\n        if (docContext === document && !document.querySelector('h2.mb-bb-list-heading')) {"
+                "find": "        items.forEach(item => tbody.appendChild(_bbBuildRow(item, docContext)));\n        table.appendChild(tbody);\n\n        tabview.parentNode.insertBefore(table, tabview);\n        const next = tabview.nextElementSibling;\n        if (next?.tagName === 'SCRIPT' && /YAHOO\\.widget\\.TabView/.test(next.textContent)) next.remove();\n        tabview.remove();\n",
+                "replace": "        items.forEach(item => tbody.appendChild(_bbBuildRow(item, docContext)));\n        table.appendChild(tbody);\n\n        tabview.parentNode.insertBefore(table, tabview);\n        const next = tabview.nextElementSibling;\n        if (next?.tagName === 'SCRIPT' && /YAHOO\\.widget\\.TabView/.test(next.textContent)) next.remove();\n"
             }
         ],
         "spec": "tests/fixtures/bb-songs.spec.js",
@@ -121,8 +121,8 @@
         "why": "Without the pre-processing call there is no table.tbl for the pipeline to read, and the button renders nothing.",
         "edits": [
             {
-                "find": "        if (activeDefinition.features?.bbSongsToTable) {\n            applyBbSongsToTable(activeDefinition);\n        }\n\n        // ── bsRecordsToTable pre-processing",
-                "replace": "\n        // ── bsRecordsToTable pre-processing"
+                "find": "        if (activeDefinition.features?.bbSongsToTable) {\n            applyBbSongsToTable(activeDefinition);\n        }\n        // The Brucebase year pages ('bb-year')",
+                "replace": "        // The Brucebase year pages ('bb-year')"
             }
         ],
         "spec": "tests/fixtures/bb-songs.spec.js",

@@ -26,5 +26,33 @@
     "spec": "tests/fixtures/fixture-load-no-archive-org-wait.spec.js",
     "grep": "mock registered BEFORE the load",
     "expect": "fail"
+  },
+  {
+    "name": "the art archives' images are not blocked during the load",
+    "why": "A coverartarchive.org thumbnail in the fixture's markup redirects to archive.org, a hop no route sees: page.goto() waits on the Internet Archive again (filter-autofocus.spec.js timed out this way, 2026-10-14).",
+    "file": "tests/support/loadPage.js",
+    "edits": [
+      {
+        "find": "    if (fixtureFile) await page.route(ART_ARCHIVE_RE, blockArtImage);\n",
+        "replace": "    if (0) await page.route(ART_ARCHIVE_RE, blockArtImage);\n"
+      }
+    ],
+    "spec": "tests/fixtures/fixture-load-no-archive-org-wait.spec.js",
+    "grep": "never waits on a coverartarchive.org thumbnail",
+    "expect": "fail"
+  },
+  {
+    "name": "the art-archive block outlives the load",
+    "why": "Every later coverartarchive.org/eventartarchive.org image is aborted too, so a CAA spec's own mock is never reached.",
+    "file": "tests/support/loadPage.js",
+    "edits": [
+      {
+        "find": "    if (fixtureFile) await page.unroute(ART_ARCHIVE_RE, blockArtImage);\n",
+        "replace": "\n"
+      }
+    ],
+    "spec": "tests/fixtures/fixture-load-no-archive-org-wait.spec.js",
+    "grep": "coverartarchive.org",
+    "expect": "fail"
   }
 ]

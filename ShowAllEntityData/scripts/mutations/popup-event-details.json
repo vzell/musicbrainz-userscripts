@@ -160,8 +160,8 @@
         "why": "The place's Area row names its region as MusicBrainz does only once pin() starts the walk.",
         "edits": [
             {
-                "find": "                _mbPopPinLoad(t, browse.key, browse.url, again, repaint);\n                _mbPopAreaChainLoad(t, [d.area], again, repaint);\n",
-                "replace": "                _mbPopPinLoad(t, browse.key, browse.url, again, repaint);\n"
+                "find": "                _mbPopImageLoad(t, d.relations || [], again, repaint);\n                _mbPopAreaChainLoad(t, [d.area], again, repaint);\n",
+                "replace": "                _mbPopImageLoad(t, d.relations || [], again, repaint);\n"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",

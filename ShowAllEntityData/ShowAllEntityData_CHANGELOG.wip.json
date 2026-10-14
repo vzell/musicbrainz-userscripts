@@ -12,7 +12,7 @@
       {
         "label": "📝 Docs",
         "items": [
-          "Tests: tests/fixtures/sidebar-collapse-handle.mobile.spec.js (1); two popup-ext.spec.js checks of a Live page now wait for the frame to be set up, column-filter-modes.spec.js compares settled column widths, and a popup-mb area chain and a sticky-page-headers sidebar check wait for the page to settle (timing failures under a full run). Mutations: 2 more in scripts/mutations/sidebar-overhaul.json (1 caught, 1 recorded as untestable: a pinch-zoom), 1 in column-filter-modes.json, caught; 3 stale anchors in scripts/mutations/sticky-page-headers.json repointed, all caught again."
+          "Tests: tests/fixtures/sidebar-collapse-handle.mobile.spec.js (1); two popup-ext.spec.js checks of a Live page now wait for the frame to be set up, column-filter-modes.spec.js compares settled column widths, and a popup-mb area chain and a sticky-page-headers sidebar check wait for the page to settle (timing failures under a full run). Mutations: 2 more in scripts/mutations/sidebar-overhaul.json (1 caught, 1 recorded as untestable: a pinch-zoom), 1 in column-filter-modes.json, caught; 3 stale anchors in scripts/mutations/sticky-page-headers.json repointed, all caught again, and the 43 left in 22 other lists repointed too (scripts/check-mutation-anchors.py: 0 bad). A fixture load no longer waits on a coverartarchive.org thumbnail in the saved page, which redirects to archive.org where no route can block it: tests/support/loadPage.js blocks the art archives' images while the page loads (fixture-load-no-archive-org-wait.spec.js, 2 more tests; 2 mutations in fixture-archive-org.json, caught)."
         ]
       }
     ]

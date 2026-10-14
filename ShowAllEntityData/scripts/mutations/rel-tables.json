@@ -151,8 +151,8 @@
         "why": "User decision 2026-10-12: the page's own 'Show all…' button renders as before, the native lists staying a collapsible section. Converting them on that press changes its output.",
         "edits": [
             {
-                "find": "        if (activeDefinition.features?.relDetailsToTables) {\n            applyRelDetailsToTables(activeDefinition);\n        }\n\n        // ── editsToTable pre-processing",
-                "replace": "        applyRelDetailsToTables({ features: { relDetailsToTables: { relatedH2: 'h2.related-works' } } });\n\n        // ── editsToTable pre-processing"
+                "find": "        if (activeDefinition.features?.relDetailsToTables) {\n            applyRelDetailsToTables(activeDefinition);\n        }\n\n        // ── sidebarToTables pre-processing",
+                "replace": "        applyRelDetailsToTables({ features: { relDetailsToTables: { relatedH2: 'h2.related-works' } } });\n\n        // ── sidebarToTables pre-processing"
             }
         ],
         "spec": "tests/fixtures/rel-tables-recording.spec.js",

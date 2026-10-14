@@ -114,7 +114,7 @@
   {
     "name": "the facts setting is ignored",
     "why": "sa_art_viewer_facts off: no Shown/Original lines.",
-    "edits": [{"find": "        if (Lib.settings.sa_art_viewer_facts !== false) {", "replace": "        if (true) {"}],
+    "edits": [{"find": "        // Filled in by _artViewerShowFacts() once the image has loaded.\n        if (Lib.settings.sa_art_viewer_facts !== false) {", "replace": "        // Filled in by _artViewerShowFacts() once the image has loaded.\n        if (true) {"}],
     "spec": "tests/fixtures/art-viewer-extras.spec.js",
     "grep": "with sa_art_viewer_facts off",
     "expect": "fail"

@@ -18,7 +18,7 @@
   {
     "name": "the gallery closes on a click inside the viewer",
     "why": "The viewer is outside the dialog; without keepOpenWithin its clicks count as \"click outside\".",
-    "edits": [{"find": "            keepOpenWithin: ['#mb-art-viewer'],\n", "replace": "\n"}],
+    "edits": [{"find": "            geoKey: MB_ART_GALLERY_GEO_KEY,\n            keepOpenWithin: ['#mb-art-viewer'],\n", "replace": "            geoKey: MB_ART_GALLERY_GEO_KEY,\n"}],
     "spec": "tests/fixtures/caa-gallery.spec.js",
     "grep": "the viewer never closes the gallery",
     "expect": "fail"

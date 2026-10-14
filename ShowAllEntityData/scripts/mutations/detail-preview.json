@@ -266,8 +266,8 @@
         "why": "The rule for every floating hover tooltip (toolbar-and-header-ui.md). No spec can see it: the card shows only while a detail link is hovered, and those links carry no script tooltip of their own. Recorded so the overlap is known.",
         "edits": [
             {
-                "find": "'mb-rel-tooltip', 'mb-dp-peek'];",
-                "replace": "'mb-rel-tooltip'];"
+                "find": "'mb-rel-tooltip', 'mb-dp-peek', 'mb-async-pop'];",
+                "replace": "'mb-rel-tooltip', 'mb-async-pop'];"
             }
         ],
         "spec": "tests/fixtures/detail-preview.spec.js",

@@ -115,8 +115,8 @@
     "why": "Makes the helper a plain focus(): the column ✕, the sub-table 🔍 reveal and the sub-table ✕ raise the keyboard again.",
     "edits": [
       {
-        "find": "        if (_isTouchPrimaryDevice()) return false;\n        input.focus();\n        return true;",
-        "replace": "        input.focus();\n        return true;"
+        "find": "    function _autoFocusInput(input) {\n        if (_isTouchPrimaryDevice()) return false;\n",
+        "replace": "    function _autoFocusInput(input) {\n"
       }
     ],
     "spec": "tests/fixtures/filter-autofocus.mobile.spec.js",
@@ -129,8 +129,8 @@
     "why": "The desktop half: with a mouse the three call sites must still move focus into the filter.",
     "edits": [
       {
-        "find": "        if (_isTouchPrimaryDevice()) return false;\n        input.focus();\n        return true;",
-        "replace": "        return false;"
+        "find": "    function _autoFocusInput(input) {\n        if (_isTouchPrimaryDevice()) return false;\n",
+        "replace": "    function _autoFocusInput(input) {\n        return false;\n"
       }
     ],
     "spec": "tests/fixtures/filter-autofocus.spec.js",
@@ -142,8 +142,8 @@
     "why": "Drops the focus call itself: the desktop spec must notice, which also proves the mobile negative is not vacuous.",
     "edits": [
       {
-        "find": "                    _gfi.readOnly = false;\n                    _gfi.focus();",
-        "replace": "                    _gfi.readOnly = false;"
+        "find": "                    _autoFocusInput(_gfi);\n                    Lib.debug('ui', 'Auto-focused global filter input after final render');",
+        "replace": "                    Lib.debug('ui', 'Auto-focused global filter input after final render');"
       }
     ],
     "spec": "tests/fixtures/filter-autofocus.spec.js",
