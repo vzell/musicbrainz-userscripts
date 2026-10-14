@@ -116,7 +116,11 @@ async function loadCollapsedRelPage(page, respond) {
     });
     await page.route('**/ws/2/**', async (route) => {
         const url = route.request().url();
-        ws2.push({ url, at: Date.now() });
+        // Monotonic, never Date.now(): WSL2 steps the wall clock back while
+        // it resyncs with the host, and a 3000 ms wait then measured as 2550
+        // (the page's and Node's performance.now() both said 3001-3012;
+        // DEBUG-NOTES.md, 2026-10-14).
+        ws2.push({ url, at: performance.now() });
         const r = (respond && respond(url)) || {};
         try {
             if (r.status && r.status !== 200) {
@@ -392,7 +396,7 @@ test.describe('the same classifier serves the ⏱ millisecond batch source', () 
             const url = new URL(route.request().url());
             const query = url.searchParams.get('query') || '';
             const ids = query.match(/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/g) || [];
-            calls.push({ ids, at: Date.now() });
+            calls.push({ ids, at: performance.now() });
             if (!failed) {
                 failed = true;
                 return route.fulfill({
@@ -507,7 +511,7 @@ test.describe('the same classifier serves the Relationships browse source', () =
             await page.route('**/ws/2/**', (route) => {
                 const u = route.request().url();
                 const kind = classifyWs2(u);
-                reqs.push({ kind, url: u, at: Date.now() });
+                reqs.push({ kind, url: u, at: performance.now() });
                 if (kind === 'browse' && !browseFailed) {
                     browseFailed = true;
                     return route.fulfill({

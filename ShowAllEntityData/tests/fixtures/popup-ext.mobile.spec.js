@@ -73,7 +73,7 @@ async function openEvent(page, settings) {
     }, SETLIST);
 
     page.on('framenavigated', (f) => { if (f === page.mainFrame()) seen.navigations.push(f.url()); });
-    await page.exposeFunction('__popPeekShown', () => seen.shown.push(Date.now()));
+    await page.exposeFunction('__popPeekShown', () => seen.shown.push(performance.now()));
     await page.evaluate(() => {
         new MutationObserver(() => {
             const p = document.getElementById('mb-dp-peek');

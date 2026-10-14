@@ -22826,3 +22826,38 @@ tree.
 these changes): 1736/1737. The one failure, `ws2-transient-classifier`
 "a 502 on a browse page is retried, and its Retry-After is honoured too", is
 the retry-gap flake that also fails 1 run in 5 on `main` alone.
+
+## 2026-10-14 — The retry-gap and rate-gate specs: WSL2 stepped the wall clock back, not a short wait
+
+Env: 2026-10-14T13:54Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (fixture specs), no Tampermonkey (GM stubs)
+
+**Symptom.** One run in a few failed a "gap too short" check under load, a
+different spec each time: `ws2-transient-classifier` (2307 and 2550 ms
+against ≥ 2900, `Retry-After: 3`), `html-fetch-transient`,
+`release-rg-popup` (2352 against ≥ 3000), `popup-mb` and `popup-ext` rate-gate
+tests. It also happened on `main` alone (1 in 5).
+
+**Probe.** "a Retry-After header is honoured as a floor on the backoff",
+`--repeat-each=60 --workers=12`: 8–10 short gaps per batch, all near 2550 ms.
+With `fetch` wrapped in the page and both clocks logged:
+- the page's `Date.now()` and the route's `Date.now()` in Node agreed:
+  2550 ms between the 503 answer and the retry;
+- the page's `performance.now()` said 3001 ms, and Node's `process.hrtime`
+  said 3012 ms.
+
+So the script waited the full 3000 ms (`beforeRetry`'s `setTimeout` runs on
+the monotonic clock), and the wall clock was stepped back about 460 ms
+during the wait: WSL2 resynchronising with the host. Every spec that timed
+an interval with `Date.now()` could see it.
+
+**Fix (tests only).** Every request log, `t0` and deadline in 12 fixture
+specs is on Node's `performance.now()` (24 sites). `release-rg-popup.spec.js`
+compared the page's `Date.now()` with Node's; its `t0` is now taken in Node
+after the reservation returns, which can only shorten the measured gap. The
+two HTTP-date lines in `ws2-transient-classifier.spec.js` keep `Date.now()`.
+Rule in docs/claude/testing-playwright.md. After it: the floor test 60/60
+(repeated under the same load), the two other `Retry-After` tests 60/60
+twice, and the 12 specs 163/163 plus `resume-from-failed-page` 7/7.
+
+Full suite after the fix (13:54:05Z → 14:02:24Z, 8 m 19 s, petri, `0ada5c7`
+plus these spec changes): 1737/1737, the first fully green run of the day.

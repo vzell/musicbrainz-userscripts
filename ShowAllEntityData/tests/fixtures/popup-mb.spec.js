@@ -142,7 +142,7 @@ async function open(page, { settings = {}, lookup = null, showAll = true, ws2 = 
     });
     await ctx.route(/\/ws\/2\/release\/[0-9a-f-]{36}\?/, (route) => {
         const url = route.request().url();
-        log.lookups.push({ url, at: Date.now() });
+        log.lookups.push({ url, at: performance.now() });
         const r = lookup ? lookup(url) : { status: 200, body: json('ws2-pop-release-greetings.json') };
         return route.fulfill({ status: r.status, contentType: 'application/json', body: r.body });
     });
@@ -471,7 +471,7 @@ test.describe('MusicBrainz link previews (sa_pop_mb)', () => {
 
         // Timed by the test's own clock: the route logs it, not the page's fake one.
         await page.evaluate(() => window.__saTest.reserveMbRateSlots(2));
-        const t0 = Date.now();
+        const t0 = performance.now();
         await ctrlHover(page, relLink(page));
         await expect(card(page)).toContainText('fetched now', { timeout: 10000 });
         expect(log.lookups).toHaveLength(1);

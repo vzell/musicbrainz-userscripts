@@ -37,9 +37,9 @@ test('a fixture load never waits on an archive.org image', async ({ page }) => {
         }
     });
 
-    const t0 = Date.now();
+    const t0 = performance.now();
     await loadUserscriptPage(page, { url: RELEASE_URL, fixtureFile: FIXTURE, testMode: true });
-    const loadMs = Date.now() - t0;
+    const loadMs = performance.now() - t0;
 
     expect(loadMs, 'the fixture loaded without waiting on archive.org').toBeLessThan(20000);
     expect(hangingRouteHit, 'the helper\'s abort route answered first').toBe(0);
