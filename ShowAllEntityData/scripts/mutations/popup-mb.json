@@ -30,8 +30,8 @@
         "why": "The CAA/EAA icon column links /release/<id>/cover-art (artwork has its own preview); /edit and the tabs are not the entity either.",
         "edits": [
             {
-                "find": "[0-9a-f]{4}-[0-9a-f]{12})\\/?$/;\n\n    /**\n     * The page of a code a link may preview",
-                "replace": "[0-9a-f]{4}-[0-9a-f]{12})(?:\\/.*)?$/;\n\n    /**\n     * The page of a code a link may preview"
+                "find": "[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\\/?$/;\n\n    /**\n     * The page of a code a link may preview",
+                "replace": "[0-9a-fA-F]{4}-[0-9a-fA-F]{12})(?:\\/.*)?$/;\n\n    /**\n     * The page of a code a link may preview"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -160,8 +160,8 @@
         "why": "One box at a time: while the card shows, #mb-stat-tooltip shows no card of the same link (_OTHER_RICH_TIPS).",
         "edits": [
             {
-                "find": "'mb-rel-tooltip', 'mb-dp-peek'];",
-                "replace": "'mb-rel-tooltip'];"
+                "find": "'mb-rel-tooltip', 'mb-dp-peek', 'mb-async-pop'];",
+                "replace": "'mb-rel-tooltip', 'mb-async-pop'];"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -252,7 +252,7 @@
         "why": "A label owns some labels and is owned by another; 'Label ownership' twice says neither. _MB_POP_REL_LABELS names them as MusicBrainz's pages do.",
         "edits": [
             {
-                "find": "            const name = _MB_POP_REL_LABELS[k] ||",
+                "find": "            const name = _MB_POP_REL_LABELS[`${k}|${targetType}`] || _MB_POP_REL_LABELS[k] ||",
                 "replace": "            const name = '' ||"
             }
         ],
@@ -317,8 +317,8 @@
         "why": "The Web Service gives the setlist in MusicBrainz's markup; a song shown as '[9893a23c-…|Born to Run]' is unreadable.",
         "edits": [
             {
-                "find": "        const name = s => s.replace(/\\[[0-9a-f-]{36}\\|([^\\]]*)\\]/g, '$1').trim();",
-                "replace": "        const name = s => s.trim();"
+                "find": "        const marked = body.replace(_MB_POP_SETLIST_TOKEN_RE, (m, id, name) => {",
+                "replace": "        const marked = body.replace(/(?!)/g, (m, id, name) => {"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",

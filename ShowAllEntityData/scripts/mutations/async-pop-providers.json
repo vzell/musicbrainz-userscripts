@@ -43,8 +43,8 @@
     "why": "Defensive guard, recorded as not testable: this provider is registered only when its first job starts (_relAjBegin() / _msToggleLengthPrecision()), so before that an idle hover finds no provider at all and shows the toggle's own tooltip whatever snapshot() answers. The spec's idle check pins the user-visible property; this guard only matters if registration ever moves earlier.",
     "edits": [
       {
-        "find": "            label: 'Relationships',\n            scopeOf: () => null,\n            snapshot: (scope, job) => {\n                if (!job) return null;\n",
-        "replace": "            label: 'Relationships',\n            scopeOf: () => null,\n            snapshot: (scope, job) => {\n                job = job || { phase: 'idle', t0: Date.now(), t1: 0 };\n"
+        "find": "            label: 'Relationships',\n            anchorSelector: '.mb-rel-col-hdr-btn',\n            scopeOf: () => null,\n            snapshot: (scope, job) => {\n                if (!job) return null;\n",
+        "replace": "            label: 'Relationships',\n            anchorSelector: '.mb-rel-col-hdr-btn',\n            scopeOf: () => null,\n            snapshot: (scope, job) => {\n                job = job || { phase: 'idle', t0: Date.now(), t1: 0 };\n"
       }
     ],
     "spec": "tests/fixtures/async-pop-providers.spec.js",
@@ -82,8 +82,8 @@
     "why": "Defensive guard, recorded as not testable: this provider is registered only when its first job starts (_relAjBegin() / _msToggleLengthPrecision()), so before that an idle hover finds no provider at all and shows the toggle's own tooltip whatever snapshot() answers. The spec's idle check pins the user-visible property; this guard only matters if registration ever moves earlier.",
     "edits": [
       {
-        "find": "            label: 'Length to the millisecond',\n            scopeOf: () => null,\n            snapshot: (scope, job) => {\n                if (!job) return null;\n",
-        "replace": "            label: 'Length to the millisecond',\n            scopeOf: () => null,\n            snapshot: (scope, job) => {\n                job = job || { phase: 'idle' };\n"
+        "find": "            label: 'Length to the millisecond',\n            anchorSelector: '.mb-ms-col-hdr-btn',\n            scopeOf: () => null,\n            snapshot: (scope, job) => {\n                if (!job) return null;\n",
+        "replace": "            label: 'Length to the millisecond',\n            anchorSelector: '.mb-ms-col-hdr-btn',\n            scopeOf: () => null,\n            snapshot: (scope, job) => {\n                job = job || { phase: 'idle' };\n"
       }
     ],
     "spec": "tests/fixtures/async-pop-providers.spec.js",

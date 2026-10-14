@@ -2722,6 +2722,9 @@ behave differently from a desktop, on purpose:
 - **Sticky Page Headers is off.** Pinch-zoom moves what you see independently
   of what the browser pins, so the bars cannot reliably stay in view. To try it
   anyway, tick *Sticky Page Headers on touch devices* in 📌 Table stickiness.
+- **The sidebar's ▶/◀ handle stays where you can tap it**, at the right edge
+  of what you see, also when the page is wider than the screen and you have
+  scrolled or zoomed.
 - **A tap on a title opens the detail preview's window** on the sites where
   you switched the preview on (*Previewing the detail pages* under
   [Page-specific behaviour](#page-specific-behaviour)), instead of the page

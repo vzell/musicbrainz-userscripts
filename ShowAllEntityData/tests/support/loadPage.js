@@ -107,6 +107,20 @@ const SETTINGS_MIGRATION_PRE_APPLIED = {
 // whatever other route applies.
 const ARCHIVE_ORG_RE = /^https?:\/\/(?:[^/]+\.)?archive\.org\//;
 
+// The same wait, one hop removed: a page's cover thumbnails are
+// `//coverartarchive.org/…/front-250` (or eventartarchive.org), which answers
+// with a redirect to archive.org. A route only ever sees the FIRST url of a
+// redirect chain, so ARCHIVE_ORG_RE never gets to block the second hop, and
+// `filter-autofocus.spec.js` (user-ratings-multigroup.html, two such
+// thumbnails) timed out in page.goto() in two full runs (2026-10-14).
+//
+// So the images IN THE FIXTURE'S OWN MARKUP are blocked at the first hop, and
+// only while page.goto() runs: that route is removed as soon as the page has
+// loaded, so every request the userscript makes afterwards (the CAA/EAA
+// columns, the art sections, the previews) reaches a spec's own mock, or the
+// network, exactly as before.
+const ART_ARCHIVE_RE = /^https?:\/\/(?:[^/]+\.)?(?:cover|event)artarchive\.org\//;
+
 // The other subresource that reached the real network: every saved
 // MusicBrainz page carries `<script src="/static/scripts/supported-browser-check.js">`,
 // which resolves to musicbrainz.org itself (the rest of MusicBrainz's JS comes
@@ -208,7 +222,15 @@ async function loadUserscriptPage(page, { url, fixtureFile, testMode, settingsOv
         await page.context().route(CDN_RE, (route) => route.abort('blockedbyclient'));
     }
 
+    // See ART_ARCHIVE_RE: during the load only, newer than any spec mock.
+    const blockArtImage = (route) => (route.request().resourceType() === 'image'
+        ? route.abort('blockedbyclient')
+        : route.fallback());
+    if (fixtureFile) await page.route(ART_ARCHIVE_RE, blockArtImage);
+
     await page.goto(url);
+
+    if (fixtureFile) await page.unroute(ART_ARCHIVE_RE, blockArtImage);
 
     await addRequiredLibs(page);
     await page.addScriptTag({ path: MB_LIBRARY_PATH });
@@ -230,6 +252,6 @@ async function addRequiredLibs(page) {
 }
 
 module.exports = {
-    loadUserscriptPage, addRequiredLibs, USERSCRIPT_PATH, MB_LIBRARY_PATH, ARCHIVE_ORG_RE,
+    loadUserscriptPage, addRequiredLibs, USERSCRIPT_PATH, MB_LIBRARY_PATH, ARCHIVE_ORG_RE, ART_ARCHIVE_RE,
     IRO_PATH, PAKO_PATH, CDN_RE, FIXTURE_SETTINGS_OVERRIDE, SETTINGS_MIGRATION_PRE_APPLIED,
 };

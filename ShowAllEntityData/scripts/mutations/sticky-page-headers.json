@@ -479,7 +479,7 @@
     "why": "Masks the gutter from scrollX 0 on, which with \"#\" before \"Title\" paints over the right part of the \"#\" column and its header buttons.",
     "edits": [
       {
-        "find": "            const docked = scrollX >= p - 0.5;\n",
+        "find": "            const docked = scrollX >= p - 0.5 && (scrollX > 0 || !table.classList.contains('mb-bb-table'));\n",
         "replace": "            const docked = true;\n"
       }
     ],
@@ -492,7 +492,7 @@
     "why": "The column docks in the right place, but the gutter to its left shows the cells scrolling past.",
     "edits": [
       {
-        "find": "            const docked = scrollX >= p - 0.5;\n",
+        "find": "            const docked = scrollX >= p - 0.5 && (scrollX > 0 || !table.classList.contains('mb-bb-table'));\n",
         "replace": "            const docked = false;\n"
       }
     ],
@@ -544,8 +544,8 @@
     "why": "The h1 toolbar's fetch progress fill is display:block + position:absolute for good (inside a hidden wrapper), so the entity header matches the popup rule and stays raised at 107, painting over MB's header menus (debug/mb-native-menu-bug.html). The menu test cannot see this one: there the header is raised to 108 anyway.",
     "edits": [
       {
-        "find": "[style*=\"display: block\"][style*=\"z-index\"])",
-        "replace": "[style*=\"display: block\"])"
+        "find": "html.mb-sph-on .mb-sph-target:has([style*=\"position: absolute\"][style*=\"display: block\"][style*=\"z-index\"])",
+        "replace": "html.mb-sph-on .mb-sph-target:has([style*=\"position: absolute\"][style*=\"display: block\"])"
       }
     ],
     "spec": "tests/fixtures/sticky-page-headers.spec.js",

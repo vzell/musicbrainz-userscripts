@@ -93,7 +93,7 @@
     "name": "the live-document shortcut is not disabled on a resume",
     "why": "KNOWN GAP, recorded rather than hidden. On a resume the render has already replaced the live table with the consolidated one, so `p === currentPageNum` would re-extract this script's own output as page N. It is reachable on a real page — standing on ?page=7 with page 5 failing — but NOT from this fixture, whose currentPageNum is 1 and whose resumed range starts at 2, so p can never equal it. Covering it needs a fixture loaded at a later page than the one that fails.",
     "edits": [
-      { "find": "                    if (!_isResume && !_isSearchPage && !buttonConfig.virtualPath", "replace": "                    if (!_isSearchPage && !buttonConfig.virtualPath" }
+      { "find": "                    } else if (!_isResume && !_isSearchPage && !buttonConfig.virtualPath", "replace": "                    } else if (!_isSearchPage && !buttonConfig.virtualPath" }
     ],
     "spec": "tests/fixtures/resume-from-failed-page.spec.js",
     "grep": "keeps the rows already loaded",

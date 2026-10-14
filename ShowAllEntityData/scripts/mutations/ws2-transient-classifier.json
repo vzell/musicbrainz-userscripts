@@ -121,8 +121,8 @@
     "why": "The floor is applied per call site, written out three times. This is the per-entity Relationships lookup — the one the click-to-load path uses.",
     "edits": [
       {
-        "find": "                beforeRetry: async (attempt, retryAfterMs) => {\n                    await new Promise(r => setTimeout(\n                        r, Math.max(_REL_WS2_SPACING_MS * attempt, retryAfterMs)));",
-        "replace": "                beforeRetry: async (attempt, retryAfterMs) => {\n                    await new Promise(r => setTimeout(\n                        r, _REL_WS2_SPACING_MS * attempt));"
+        "find": "                    const _wait = Math.max(_REL_WS2_SPACING_MS * attempt, retryAfterMs);\n                    _ajLog('rel', null,",
+        "replace": "                    const _wait = _REL_WS2_SPACING_MS * attempt;\n                    _ajLog('rel', null,"
       }
     ],
     "spec": "tests/fixtures/ws2-transient-classifier.spec.js",
@@ -134,8 +134,8 @@
     "why": "The second call site. A shared classifier that only one consumer actually honours is the failure this covers.",
     "edits": [
       {
-        "find": "            beforeRetry: (attempt, retryAfterMs) => new Promise(\n                r => setTimeout(r, Math.max(_MS_BATCH_DELAY * attempt, retryAfterMs))),",
-        "replace": "            beforeRetry: (attempt, retryAfterMs) => new Promise(\n                r => setTimeout(r, _MS_BATCH_DELAY * attempt)),"
+        "find": "                const wait = Math.max(_MS_BATCH_DELAY * attempt, retryAfterMs);\n",
+        "replace": "                const wait = _MS_BATCH_DELAY * attempt;\n"
       }
     ],
     "spec": "tests/fixtures/ws2-transient-classifier.spec.js",

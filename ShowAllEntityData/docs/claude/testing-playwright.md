@@ -311,6 +311,14 @@ Node-side one (two processes, two clock origins): take `t0` in Node, after
 the page call returns. `Date.now()` stays only where a real date is the
 point (an HTTP-date `Retry-After`).
 
+**A Live page frame is set up on its `load`, after `srcdoc`.** The hidden
+navigation (`.mb-dp-hide`), the anchor and the scroll come from
+`_dpIsolateFrame()` in the frame's load handler, so a check that reads the
+frame right after `toHaveAttribute('srcdoc', …)` races it. Poll, and wait for
+`documentElement.dataset.mbDpDone` first (`detail-preview.spec.js` always
+did; two `popup-ext.spec.js` reads did not, and one failed under a loaded
+full run on 2026-10-14).
+
 ## Lint rules for specs
 
 `eslint-plugin-playwright` runs on `tests/**/*.spec.js` under `npm run lint`

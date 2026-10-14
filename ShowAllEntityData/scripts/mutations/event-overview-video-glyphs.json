@@ -30,7 +30,7 @@
     "why": "_initColHeaderGlyph()'s old gate: the cells lose their glyphs but no header gets one. Must fail on the glyph test.",
     "edits": [
       {
-        "find": "        if (_pt !== 'release-tracks' && _pt !== 'event-overview') return;",
+        "find": "        if (_pt !== 'release-tracks' && _pt !== 'event-overview' && !_isRelTablesRun()) return;",
         "replace": "        if (_pt !== 'release-tracks') return;"
       }
     ],

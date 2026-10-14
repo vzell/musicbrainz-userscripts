@@ -472,8 +472,8 @@
         "why": "The \"[info]\" link beside every URL relationship (/url/<mbid>) is a MusicBrainz card kind (U2, answer 3).",
         "edits": [
             {
-                "find": "|instrument|collection|url)\\/([0-9a-f]{8}-",
-                "replace": "|instrument|collection)\\/([0-9a-f]{8}-"
+                "find": "|instrument|collection|url)\\/([0-9a-fA-F]{8}-",
+                "replace": "|instrument|collection)\\/([0-9a-fA-F]{8}-"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
