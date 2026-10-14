@@ -59784,8 +59784,10 @@ a { color: #1565c0; }`;
              */
             #sidebar-toggle-handle {
                 position: fixed;
-                /* top is set by updateHandlePosition(): the sidebar's top. */
+                /* left and top are set by updateHandlePosition(): against
+                   the sidebar's top-left corner, inside the visible part. */
                 top: 8px;
+                right: 0;
                 width: 14px;
                 height: 80px;
                 background-color: #f2f2f2;
@@ -59832,9 +59834,11 @@ a { color: #1565c0; }`;
          *  - sidebar CSS position changes introduced by toggleAutoResizeColumns
          *    (position: sticky / right: 0 on a page wider than the window)
          *
-         * When the sidebar is collapsed the handle snaps to the viewport's
-         * right edge (right: 0), at the top of `#content`, the row the sidebar
-         * shares. Either way it stays at least 8 px inside the window.
+         * When the sidebar is collapsed the handle snaps to the visible right
+         * edge, at the top of `#content`, the row the sidebar shares. Either
+         * way it stays inside the VISUAL viewport (8 px from its top and
+         * bottom), which on a phone is narrower than the one fixed elements
+         * are laid out in.
          *
          * This function is intentionally free of CSS transitions: it is called
          * on every scroll / resize event, so transitions would fight JS updates
@@ -59846,20 +59850,35 @@ a { color: #1565c0; }`;
             if (!handle) return;
 
             const isCollapsed = sidebar.classList.contains('sidebar-collapsed');
-            const topOf = (el) => (el ? el.getBoundingClientRect().top : 8);
+            // What is visible, in the coordinates getBoundingClientRect() and
+            // a fixed element share. On a desktop that is the window. On a
+            // phone MB's pages (no viewport meta) are laid out like a desktop
+            // page and a fixed element lives in a viewport wider than what is
+            // shown (964 vs 412 px, Pixel 7 emulation): `right: 0` put the
+            // handle where it could not be seen or tapped (2026-10-14).
+            const vv = window.visualViewport;
+            const visL = vv ? vv.offsetLeft : 0;
+            const visT = vv ? vv.offsetTop : 0;
+            const visW = vv ? vv.width : document.documentElement.clientWidth;
+            const visH = vv ? vv.height : window.innerHeight;
+            const hw = handle.offsetWidth || 15;
+            const hh = handle.offsetHeight || 80;
+            const topOf = (el) => (el ? el.getBoundingClientRect().top : visT + 8);
             const setTop = (y) => {
-                // Inside what is visible, both ways: on a phone the top of
-                // #content can be below the visual viewport, where a fixed
-                // handle can never be tapped (probed 2026-10-14).
-                const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
-                const maxTop = Math.max(8, vh - (handle.offsetHeight || 80) - 8);
-                const top = `${Math.round(Math.min(maxTop, Math.max(8, y)))}px`;
+                const top = `${Math.round(Math.min(visT + Math.max(8, visH - hh - 8), Math.max(visT + 8, y)))}px`;
                 if (handle.style.top !== top) handle.style.top = top;
+            };
+            // The handle's left edge for a given right edge, kept inside the
+            // visible part.
+            const setRightEdge = (x) => {
+                const left = `${Math.round(Math.min(visL + visW - hw, Math.max(visL, x - hw)))}px`;
+                if (handle.style.left !== left) handle.style.left = left;
+                if (handle.style.right) handle.style.right = '';
             };
 
             if (isCollapsed) {
-                // Sidebar is hidden — park handle at viewport right edge.
-                handle.style.right = '0px';
+                // Sidebar is hidden — park the handle at the visible right edge.
+                setRightEdge(visL + visW);
                 setTop(topOf(document.getElementById('content')));
                 return;
             }
@@ -59873,16 +59892,13 @@ a { color: #1565c0; }`;
             // Guard: if the rect is off-screen (shouldn't happen when expanded,
             // but be defensive) fall back to the nominal sidebar width.
             if (rect.width <= 0) {
-                handle.style.right = sidebarWidth;
+                setRightEdge(visL + visW - parseFloat(sidebarWidth));
                 setTop(topOf(document.getElementById('content')));
                 return;
             }
             setTop(rect.top);
-
-            // "right" for a position:fixed element is measured from the
-            // viewport's right edge, so:  right = viewportWidth - sidebarLeft
-            const distFromRight = window.innerWidth - rect.left;
-            handle.style.right = `${Math.max(0, distFromRight)}px`;
+            // Against the sidebar's left edge (same coordinates as `left`).
+            setRightEdge(rect.left);
         }
 
         let _handleFollowUntil = 0;
@@ -59981,6 +59997,20 @@ a { color: #1565c0; }`;
             }
         }, { passive: true });
         window.addEventListener('resize', () => updateHandlePosition(handle), { passive: true });
+        // On a phone, panning and pinch-zooming move what is visible without
+        // a window scroll: keep the handle inside it.
+        if (window.visualViewport) {
+            const _onVisualViewport = () => {
+                if (_scrollRafPending) return;
+                _scrollRafPending = true;
+                requestAnimationFrame(() => {
+                    _scrollRafPending = false;
+                    updateHandlePosition(handle);
+                });
+            };
+            window.visualViewport.addEventListener('scroll', _onVisualViewport, { passive: true });
+            window.visualViewport.addEventListener('resize', _onVisualViewport, { passive: true });
+        }
 
         // Observer to handle dynamic content replacement by the "Show All" logic
         // and layout changes caused by toggleAutoResizeColumns altering

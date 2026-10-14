@@ -388,7 +388,7 @@ test.describe('sticky page headers — single-table page', () => {
                 + ' #sidebar::before { content: ""; display: inline-block; width: 80px; height: 1px; }',
         });
         await waitEngaged(page);
-        const geo = await page.evaluate(() => {
+        const measure = () => page.evaluate(() => {
             const sidebar = document.getElementById('sidebar');
             const page = document.getElementById('page');
             const content = document.getElementById('content');
@@ -408,6 +408,13 @@ test.describe('sticky page headers — single-table page', () => {
                     }),
             };
         });
+        // The bars' offsets come from the sticky pass, which runs again once
+        // the collapsed sidebar has left the layout (a ResizeObserver round
+        // trip): under a loaded full run the first read came before it
+        // (2026-10-14). Wait for it; a lasting defect still fails below.
+        await expect.poll(async () => JSON.stringify((await measure()).bars.filter((b) => b.rightGap > b.left + 1)),
+            { timeout: 10000 }).toBe('[]');
+        const geo = await measure();
         expect(geo.collapsed, 'premise: the sidebar starts collapsed').toBe(true);
         expect(geo.pageDisplay, 'premise: MB\'s table layout is in place').toBe('table');
         expect(geo.bars.length, 'premise: pinned h2 bars').toBeGreaterThan(0);

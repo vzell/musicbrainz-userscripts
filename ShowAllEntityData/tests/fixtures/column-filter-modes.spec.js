@@ -502,12 +502,24 @@ test.describe('the setting', () => {
             return last;
         };
         await openBodeans(page, {});
-        const on = await widths(page);
+        await widths(page);
         const other = await browser.newPage();
         try {
             await openBodeans(other, { sa_enable_column_filter_modes: false });
-            const off = await widths(other);
-            expect(on).toEqual(off);
+            await widths(other);
+            // Settled widths are compared, so both pages are measured again
+            // until they agree. Under a loaded full run two equal reads 250 ms
+            // apart came before a late layout step: one page still had three
+            // columns 5-6 px narrower, and 3 s later both read the same
+            // (10 runs in 12 on 12 workers, 2026-10-14). A lasting difference
+            // still fails, with the diff below.
+            const read = (p) => p.evaluate(() => Array.from(document.querySelector('table.tbl thead tr:first-child').cells)
+                .map((th) => Math.round(th.getBoundingClientRect().width)));
+            await expect.poll(async () => {
+                const on = await read(page);
+                const off = await read(other);
+                return JSON.stringify(on) === JSON.stringify(off) ? 'same' : JSON.stringify({ on, off });
+            }, { message: 'column widths with the switches on and off', timeout: 15000, intervals: [250, 500, 1000] }).toBe('same');
         } finally {
             await other.close();
         }

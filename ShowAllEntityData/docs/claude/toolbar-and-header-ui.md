@@ -795,10 +795,21 @@ render sites), `_vsbRefresh()`, `_vsbBaseOffset()`.
   slide for 0.3 s and a single measurement landed 50 px off. Changes inside
   the sidebar keep the single rAF measurement, so a render is not slowed.
   Spec: `sidebar-collapse-handle.spec.js` (3); mutations in
-  `scripts/mutations/sidebar-overhaul.json` ("handle: …"). Not fixed: on
-  the phone emulation the handle is fixed to the layout viewport's right
-  edge (x 949 of 964) while only 412 px are visible, so it cannot be
-  tapped; that predates this change, and no mobile twin pins it.
+  `scripts/mutations/sidebar-overhaul.json` ("handle: …").
+  **On a phone** (fixed 2026-10-14, after 9.99.1347): MB's pages carry no
+  viewport meta, so a phone lays them out like a desktop page and a fixed
+  element lives in a viewport wider than what is shown (Pixel 7 emulation:
+  `innerWidth` 964, `visualViewport` 412). `right: 0` put the handle at
+  x 949, never tappable. `updateHandlePosition()` now sets `left` (the
+  coordinates `getBoundingClientRect()` and a fixed box share) and clamps
+  the handle inside `visualViewport` (offsetLeft/Top, width, height), and
+  `visualViewport` scroll/resize events re-place it. On a desktop the visual
+  viewport is the window, so nothing moves there; it also no longer uses
+  `innerWidth`, which counts the scrollbar while a fixed box's offsets do
+  not. Spec: `sidebar-collapse-handle.mobile.spec.js` (a real tap, also
+  after a pan). A pinch-zoom cannot be tested: headless Chromium ignores
+  `Input.synthesizePinchGesture`, so the listener's mutation is recorded
+  `expect: "pass"`.
 - **Stacking ladder:** thead 100, column resizer 101, h3 102 (raised 103),
   data h2 104 (raised 107 = `SPH_Z_RAISED`), Brucebase side bar 150. A
   raised h3 stays UNDER the h2 (an h3 sliding in under the stuck h2 must

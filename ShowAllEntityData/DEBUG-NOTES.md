@@ -22907,3 +22907,87 @@ right edge (x 949 of 964) while the visual viewport is 412 px wide. That
 was so before this change, which only moves it vertically; it now at least
 stays inside the visible height (it was at y 1117 of 839 for a moment).
 The twin was dropped rather than written around it.
+
+## 2026-10-14 — The sidebar handle on a phone; three stale sticky mutations; a popup-ext Live-page race (branch fix/phone-handle-mutations-flake)
+
+Env: 2026-10-14T16:15Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (fixture specs; chromium-mobile: Pixel 7 emulation), no Tampermonkey (GM stubs)
+
+**The handle on a phone.** MB's pages carry no viewport meta, so a phone lays
+them out like a desktop page. On the Pixel 7 emulation a fixed element lives
+in a viewport `innerWidth` 964 px wide while `visualViewport` (and
+`clientWidth`) is 412: `right: 0` put the handle at x 949, and Playwright's
+tap hit `<html>`. `updateHandlePosition()` now writes `left` in the
+coordinates `getBoundingClientRect()` and a fixed box share, clamped inside
+the visual viewport (offsetLeft/Top, width, height), and `visualViewport`
+scroll/resize re-place it. A desktop's visual viewport is the window, so the
+desktop spec (`sidebar-collapse-handle.spec.js`) is unchanged and passes; the
+expanded-sidebar case also stops using `innerWidth`, which counts a classic
+scrollbar while a fixed box's offsets do not.
+Spec: `sidebar-collapse-handle.mobile.spec.js` (tap opens, inside the visible
+part collapsed, opened and after a pan; a second tap closes). Mutations in
+`sidebar-overhaul.json`: the fixed viewport taken as the visible one, caught;
+no visualViewport scroll listener, recorded `expect: "pass"`, because a pan is
+a window scroll the old listener follows, and a pinch-zoom cannot be made
+here (`Input.synthesizePinchGesture` left `visualViewport.scale` at 1).
+
+**Stale mutations.** The 3 entries of `sticky-page-headers.json` already
+stale on `main`: the two "docked" entries target the line that gained the
+Brucebase guard in `_sphUpdateColDocked()`; "the open-popup rule no longer
+requires an inline z-index" matched 4 rules (3 sticky-filter-bar, 1 sticky
+page header) and now names the sticky page header's whole selector. All 3
+caught again. A sweep of every list (each `find` must occur exactly once)
+still finds 43 stale anchors in 22 other lists, not repointed here:
+event-overview 7; bb-support, popup-mb, uvd-title-sections 4 each;
+mobile-basics 3; async-pop-providers, bb-year, video-medium-flag,
+ws2-transient-classifier 2 each; art-viewer-extras, bs-support,
+caa-column-redesign, caa-gallery, detail-preview, event-overview-video-glyphs,
+jl-support, len-flag-disk-roundtrip, popup-event-details, popup-ext,
+rel-tables, resume-from-failed-page, rich-tooltips-liner 1 each. One of this
+branch's own ("handle: no top of its own") went stale with the handle's CSS
+comment and was repointed, caught again.
+
+**The popup-ext flake.** "a site's window: … its Live page from the hover's
+fetch" failed once under a full run (0 elements `.mb-dp-hide`). The classes
+are set by `_dpIsolateFrame()` on the frame's `load`, after `srcdoc`, and the
+test read the frame at once. It and its Wikipedia twin now poll, after
+`documentElement.dataset.mbDpDone`, as `detail-preview.spec.js` already did;
+84/84 repeated on 12 workers. Rule in docs/claude/testing-playwright.md.
+
+**The column-width check, too** (full run 16:15:58Z → 16:24:16Z on this
+branch: 1739/1741). `column-filter-modes.spec.js` "on or off, the switches
+never change a column's width", the recurring one (`3358368`, 11:18 today),
+failed 10 runs in 12 on 12 workers and passed alone. A probe measured both
+pages 3 s after the test's "settled" read: they agreed (348, 137, 145, 148,
+…); the losing page had three columns 5–6 px narrower at the first read. The
+test's settle (two equal reads 250 ms apart) comes before a late layout step
+under load. It now re-measures both pages until they agree (15 s), and a
+lasting difference fails with both lists: 12/12 under the same load. Waiting
+for the auto-resize button's "Restore…" title instead was tried and is wrong
+here: a disk load never runs that pass. No mutation covered the test; added
+"the switches claim room in the column" (a min-width on the wrapper), caught.
+Laying the chips out in flow passes: the wrapper's `container-type:
+inline-size` keeps its content from widening it. The other failure of that
+run, `rich-tooltips-liner.spec.js` "a mousedown hides the card", passed 12/12
+on 12 workers: not changed.
+
+**And two more of the same kind** (full run 16:29:38Z → 16:37:59Z,
+1739/1741), each passing 12/12 alone on 12 workers:
+- `popup-mb.spec.js` "the place window: its area in the area chain": the
+  row still read "Asbury Park, New Jersey ◌" after the default 5 s, behind
+  three area lookups on the 1 req/s gate. That expectation gets 15 s.
+- `sticky-page-headers.spec.js` "… a collapsed sidebar takes no space": a
+  bar's right gap was read before the sticky pass ran again after the
+  sidebar left the layout. The geometry is now polled until no bar's right
+  gap is wider than its left inset (10 s); its mutation ("a collapsed sidebar
+  keeps its layout box") is still caught.
+
+**Left as it is** (full run 16:43:11Z → 16:51:31Z, 1740/1741):
+`filter-autofocus.spec.js` "a sub-table filter's ✕ clears it and focuses it
+again" failed in `page.goto` itself ("Test timeout of 90000ms exceeded"),
+before any of its own steps; the same file failed the same way in the 12:31
+run. The file passed 36/36 repeated 6× on 12 workers. A fixture load that
+never finishes under a full suite's load is not something the test can wait
+out, so nothing was changed; if it comes back a third time, the place to look
+is what the fixture server is doing at that moment, not the spec. Each full
+run today surfaced a different load-sensitive test: all fixed above except
+this one.

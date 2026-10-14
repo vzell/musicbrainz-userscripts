@@ -1053,11 +1053,13 @@ test.describe('readers of known sites (U3): Wikipedia, Wikidata, Discogs', () =>
         await d.getByRole('button', { name: 'Live page' }).click();
         const frame = d.locator('iframe');
         await expect(frame).toHaveAttribute('srcdoc', /article-end/);
-        const hidden = await frame.evaluate((f) => {
+        // The classes are set on the frame's load (_dpIsolateFrame()), which
+        // comes after srcdoc: read them once that has run.
+        await expect.poll(() => frame.evaluate((f) => {
             const doc = f.contentDocument;
+            if (!doc || !doc.documentElement.dataset.mbDpDone) return null;
             return ['header.probe-head', 'nav.probe-nav', '#content'].map(s => doc.querySelector(s).classList.contains('mb-dp-hide'));
-        });
-        expect(hidden, 'the header and menus hidden, the article shown').toEqual([true, true, false]);
+        }), 'the header and menus hidden, the article shown').toEqual([true, true, false]);
         expect((await xhrFull(page)).map(r => r.url)).toEqual([EXT('wikipedia-greetings').url, W.greet]);
     });
 
@@ -1234,8 +1236,13 @@ test.describe('the Springsteen sites across hosts (U4)', () => {
         await d.getByRole('button', { name: 'Live page' }).click();
         const frame = d.locator('iframe');
         await expect(frame).toHaveAttribute('srcdoc', /blog-post/);
-        expect(await frame.evaluate((f) => f.contentDocument.querySelectorAll('.mb-dp-hide').length),
-            'springsteenlyrics.com\'s own liveRoot hides its navigation').toBeGreaterThan(0);
+        // Set on the frame's load (_dpIsolateFrame()), after srcdoc: read
+        // once that has run. Read at once, it failed under a loaded full run
+        // (0 hidden, 2026-10-14).
+        await expect.poll(() => frame.evaluate((f) => {
+            const doc = f.contentDocument;
+            return doc && doc.documentElement.dataset.mbDpDone ? doc.querySelectorAll('.mb-dp-hide').length : -1;
+        }), 'springsteenlyrics.com\'s own liveRoot hides its navigation').toBeGreaterThan(0);
         expect((await xhrFull(page)).map(r => r.url), 'one request: the Live page reuses the hover\'s').toEqual([SP.sl]);
     });
 

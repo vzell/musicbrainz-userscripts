@@ -1231,7 +1231,9 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
         await page.keyboard.press('Space');
         const areaRow = dialog(page).locator('.mb-dp-area h4:text-is("Facts") + .mb-dp-kv dt:text-is("Area") + dd');
         // Asbury Park (City) → Monmouth County (County, passed over) → New Jersey → United States.
-        await expect(areaRow).toHaveText('Asbury Park, New Jersey, United States');
+        // Three area lookups behind the 1 req/s gate: under a loaded full run
+        // the chain was still at "◌" after the default 5 s (2026-10-14).
+        await expect(areaRow).toHaveText('Asbury Park, New Jersey, United States', { timeout: 15000 });
         await expect(areaRow.locator('a')).toHaveCount(3);
         expect(areaLookups(log)).toEqual(['10fa66f7-aa08-4823-8af8-52108f350a5a', '604b7841-36b7-4bea-9bdc-7eeb52520e35',
             'a36544c1-cb40-4f44-9e0e-7a5a69e403a8']);
