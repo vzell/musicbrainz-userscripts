@@ -22467,3 +22467,16 @@ stopped at 208/1691 (all passed) because this change landed under it.
   children.
 
 Mutations: 8/8 caught.
+
+**Merge gate on `77bad5a`:** `test:full` 2026-10-14T00:35:36Z–01:55:20Z on
+`vzell-lap` (2 workers, 79 m 44 s): 1695 passed, 2 failed. Neither failure
+is caused by this branch. Each one was rerun with `--repeat-each=6`, on the
+branch and with `main`'s userscript swapped in (the spec and support files
+are identical on both):
+
+| test | branch | `main` |
+|---|---|---|
+| `rich-tooltips.spec.js:58` (heading title read once, right after the tooltip shows) | 1/6 failed | 2/6 failed |
+| `detail-preview.spec.js:571` (springsteenlyrics.com card, see 2026-10-13) | 2/6 failed | 3/6 failed |
+
+Not fixed here.
