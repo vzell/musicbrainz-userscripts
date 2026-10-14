@@ -23049,7 +23049,7 @@ filter-autofocus test took 3.6 s.
 
 ## 2026-10-14 — Instrument Icons Everywhere 2026-10-12.2140: the icon AFTER the name (WIP.1, branch feat/ii-icon-after)
 
-Env: snapshots saved 2026-10-14T20:34Z (FRP) and 2026-10-14T20:35Z (UVD), file mtimes · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · browser unknown · Tampermonkey unknown, with the script v2026-10-12.2140 set to "after link ➡". Fixture runs: 2026-10-14T21:06Z · vzell-lap · same OS · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs).
+Env: snapshots saved 2026-10-14T20:34Z (FRP) and 2026-10-14T20:35Z (UVD), file mtimes · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Brave 1.97.56 (Chromium 155.0.8059.40) · Tampermonkey 5.5.1, with the script v2026-10-12.2140 set to "after link ➡". Fixture runs: 2026-10-14T21:06Z · vzell-lap · same OS · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs).
 
 **What changed upstream.** The new version has a setting, `iconPosition`
 (`'before'`, the first-run default, or `'after'`). It is kept in the script's
@@ -23099,3 +23099,9 @@ a copy on the wrong side fails. There is a new tie-break spec. 28/28 pass. In
 the code change were repointed, and four new mutations were added: lookup
 before-only, after-icon cloned in front, late after-icon not attributed, and
 no tie-break.
+
+Mutation run 2026-10-14T21:15:59Z → 21:23:56Z · vzell-lap ·
+`scripts/mutation-check.py scripts/mutations/instrument-icons.json`: 24/24 as
+expected. The four new ones fail only their `[icon after]` arm. The two
+"(alone)" covers-for-each-other entries still pass, now in both arms. The
+userscript was restored and hash-verified.
