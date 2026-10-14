@@ -120,7 +120,7 @@ async function openEvent(page, { settings = {}, responses = {}, press = true, ws
     await ctx.route(/\/ws\/2\/url[/?]/, async (route) => {
         const url = route.request().url();
         log.ws2.push(url);
-        log.ws2At.push(Date.now());
+        log.ws2At.push(performance.now());
         const own = ws2 ? await ws2(url) : null;
         const known = url.startsWith(`https://musicbrainz.org/ws/2/url/${SETLIST_URL_ID}?`) ||
             url.includes(`resource=${encodeURIComponent(SETLIST)}&`);
@@ -927,7 +927,7 @@ test.describe('MusicBrainz URL entities (U2)', () => {
         await ctrlHover(page, setlistLink(page));
         await expect(card(page)).toContainText('Bruce Springsteen Setlist at Co-op Live, Manchester');
         await page.evaluate(() => window.__saTest.reserveMbRateSlots(2));
-        const t0 = Date.now();
+        const t0 = performance.now();
         await page.keyboard.press('Space');
         await expect(dialog(page).locator('.mb-dp-area a[href^="/event/"]')).toHaveText([SETLIST_EVENT], { timeout: 10000 });
         expect(log.ws2).toEqual([SETLIST_LOOKUP]);

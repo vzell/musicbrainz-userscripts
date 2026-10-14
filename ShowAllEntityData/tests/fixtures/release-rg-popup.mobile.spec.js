@@ -34,7 +34,7 @@ test('a tap on a "#" cell opens the release group window, and shows no hover car
     await waitForRenderComplete(page, { waitForAutoResize: false });
 
     const shown = [];
-    await page.exposeFunction('__rgPeekShown', () => shown.push(Date.now()));
+    await page.exposeFunction('__rgPeekShown', () => shown.push(performance.now()));
     await page.evaluate(() => {
         // The card element is created on its first show: watch for it.
         new MutationObserver(() => {

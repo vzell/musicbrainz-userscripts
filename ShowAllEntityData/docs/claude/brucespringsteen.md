@@ -147,7 +147,10 @@ Columns (`_BS_HEADERS`):
 ## Styling
 
 - `_ensureForeignTableStyle()`'s `:is()` list now names
-  `.mb-sa-host-bs` too.
+  `.mb-sa-host-bs` too. Its `table.tbl > thead { background-color: #fff }`
+  is the backing for a sorted column's translucent header tint (see
+  jungleland.md, "Styling"; reported here first, "gatefold" showing through
+  a sorted "Notes" header, 2026-10-14).
 - `_ensureBsStyle()` styles only the injected `<h1>`/`<h2>` and left-aligns
   them against the site's centred layout.
 

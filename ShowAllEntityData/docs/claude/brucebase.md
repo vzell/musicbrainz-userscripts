@@ -144,7 +144,9 @@ both floats and margins reset), so either order lays out without those
 numbers:
 
 - **Right** (`sa_bb_sidebar_right`, default OFF — it was on for a day; the
-  user found the left looks better): `#side-bar` is moved after
+  user found the left looks better; that day's `true` is in
+  `_SETTINGS_MIGRATIONS` since 2026-10-14, because the config audit walks
+  every revision, released or not): `#side-bar` is moved after
   `#main-content` and is `position: sticky; right: 0`. Once a table is
   rendered the sticky page headers widen the content to the table's width
   (5,000 px on a year page); the side bar's natural place is then far to the

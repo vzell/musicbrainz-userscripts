@@ -27,6 +27,7 @@ const path = require('path');
 const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
+const { loadJlListPage, JL_BUTTON } = require('../support/jlFixture');
 
 // series-releases: single-table page (12 rows, a table far wider than the
 // window, so the sticky page headers engage too).
@@ -84,12 +85,15 @@ async function openSeries(page, { settingsOverride = {}, css = TALL_ROWS, viewpo
  *
  * @param {import('@playwright/test').Page} page
  * @param {object} [settingsOverride]
+ * @param {object} [opts]
+ * @param {string} [opts.css] - injected before the render
+ * @param {{width: number, height: number}} [opts.viewport]
  * @returns {Promise<void>}
  */
-async function openRatings(page, settingsOverride = {}) {
-    await page.setViewportSize({ width: 1300, height: 800 });
+async function openRatings(page, settingsOverride = {}, { css = TALL_ROWS, viewport = { width: 1300, height: 800 } } = {}) {
+    await page.setViewportSize(viewport);
     await loadUserscriptPage(page, { url: RATINGS_URL, fixtureFile: RATINGS_SHELL, testMode: true, settingsOverride });
-    await page.addStyleTag({ content: TALL_ROWS });
+    await page.addStyleTag({ content: css });
     await page.$eval('button[data-label="Show Ratings for User"]', (b) => b.click());
     await waitForRenderComplete(page);
     const anyHidden = () => page.evaluate(() => Array.from(document.querySelectorAll('table.tbl'))
@@ -404,6 +408,152 @@ test.describe('sticky filter bars — multi-table page', () => {
         expect(await pixelAt(page, geo.x, geo.y), 'no green row in the gap').not.toBe('0,128,0');
     });
 
+    for (const [label, x, stuck] of [['at the left edge', 0, false], ['scrolled sideways, bars stuck at the top', 300, true]]) {
+        test(`a wide table ends on the h2/h3 bars' line, ${label}`, async ({ page }) => {
+            // Sticky page headers cap every bar a gutter short of the window
+            // edge (its room to stay pinned to the end of the scroll); a wide
+            // table used to run on past that line to the window edge, and
+            // rows scrolling under a stuck bar showed beside it (reported
+            // 2026-10-14). A page-coloured strip fixed at the window's right
+            // edge (#mb-sph-rmask) now ends the table on the bars' line at
+            // every scroll position. Two earlier answers were rejected in the
+            // user's browser: painting the strip beside each bar in the bar's
+            // own colour, then in the page colour (the table still ran on).
+            // The tables are made wider than the window so the sticky page
+            // headers engage, and #page (the bars' parent here) gets side
+            // padding like MB's (the fixture has none, so there would be no
+            // gutter). Paint, hence pixels.
+            await openRatings(page, {}, {
+                css: `${TALL_ROWS} table.tbl { min-width: 2500px !important; }`
+                    + ' #page { padding-left: 20px !important; padding-right: 20px !important; }',
+                viewport: { width: 900, height: 800 },
+            });
+            await page.waitForFunction(() => document.documentElement.classList.contains('mb-sph-on'));
+            await page.addStyleTag({ content: 'table.tbl > tbody > tr > td { background: rgb(0, 128, 0) !important; }' });
+            const t1 = await page.evaluate(() => document.querySelectorAll('table.tbl')[1].tBodies[0].rows[0]
+                .getBoundingClientRect().top + window.scrollY);
+            await scrollToY(page, stuck ? t1 + 150 : t1 - 200, x);
+            expect(await page.evaluate(() => Math.round(window.scrollX)), 'premise: scroll position').toBe(x);
+            const geo = await page.evaluate(() => {
+                const band = (el) => {
+                    const r = el.getBoundingClientRect();
+                    return { top: r.top, right: r.right, y: (r.top + r.bottom) / 2 };
+                };
+                const t = document.querySelectorAll('table.tbl')[1];
+                // A y inside the visible part of the body, below its thead
+                // (the rows are 500 px tall, TALL_ROWS).
+                const head = t.tHead.getBoundingClientRect();
+                const body = t.tBodies[0].getBoundingClientRect();
+                const top = Math.max(head.bottom, body.top, 0) + 10;
+                const bottom = Math.min(body.bottom, window.innerHeight) - 10;
+                const row = bottom > top ? { top, bottom } : null;
+                // The page colour, read the way _sphGutterBg() reads it.
+                let bg = '255,255,255';
+                for (const el of [document.getElementById('page'), document.body, document.documentElement]) {
+                    const c = el && getComputedStyle(el).backgroundColor;
+                    const m = c && c.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/);
+                    if (m && m[4] !== '0') { bg = `${m[1]},${m[2]},${m[3]}`; break; }
+                }
+                return {
+                    cw: document.documentElement.clientWidth,
+                    tableRight: t.getBoundingClientRect().right,
+                    tableTop: t.getBoundingClientRect().top,
+                    theadY: (head.top + head.bottom) / 2,
+                    rowY: row ? (row.top + row.bottom) / 2 : null,
+                    h2: band(document.querySelector('h2.mb-vsb-h2')),
+                    h3: band(Array.from(document.querySelectorAll('h3.mb-toggle-h3'))[1]),
+                    bg,
+                };
+            });
+            expect(geo.tableRight, 'premise: the table runs past the window edge').toBeGreaterThan(geo.cw + 100);
+            expect(geo.rowY, 'premise: a row in view').not.toBeNull();
+            const line = geo.h3.right;
+            expect(geo.cw - line, 'premise: the bars end a gutter short of the window edge').toBeGreaterThan(4);
+            expect(Math.abs(geo.h2.right - line), 'premise: h2 and h3 end on one line').toBeLessThanOrEqual(1);
+            expect(await pixelAt(page, line - 3, geo.rowY), 'the row is shown up to the bars\' line').toBe('0,128,0');
+            expect(await pixelAt(page, line + 2, geo.rowY), 'and not past it').toBe(geo.bg);
+            expect(await pixelAt(page, geo.cw - 2, geo.rowY), 'nor at the window edge').toBe(geo.bg);
+            // Only with the bars stuck: the strip beside them and the stuck
+            // thead, collected so every check runs unconditionally.
+            const stuckChecks = [];
+            if (stuck) {
+                stuckChecks.push(['premise: rows scroll under the bars', geo.tableTop < geo.h2.top, true]);
+                for (const key of ['h2', 'h3']) {
+                    stuckChecks.push([`no row beside the stuck ${key}`, await pixelAt(page, geo.cw - 2, geo[key].y), geo.bg]);
+                }
+                stuckChecks.push(['premise: the thead is shown up to the line', (await pixelAt(page, line - 3, geo.theadY)) !== geo.bg, true]);
+                stuckChecks.push(['the stuck thead ends on the line', await pixelAt(page, geo.cw - 2, geo.theadY), geo.bg]);
+            }
+            expect(stuckChecks.filter(([, got, want]) => got !== want), 'failed checks with the bars stuck').toEqual([]);
+        });
+    }
+
+    test('the right-edge mask lies under chrome that reaches the window edge (the footer)', async ({ page }) => {
+        // The mask (#mb-sph-rmask, z-index 102) only covers what scrolls;
+        // MB's footer (body-level chrome, 106 while pinned) spans to the
+        // window edge and must stay on top of it, clickable.
+        await openSeries(page, {
+            viewport: { width: 900, height: 800 },
+            css: `${TALL_ROWS} #content { padding-left: 20px !important; padding-right: 20px !important; }`,
+        });
+        await page.waitForFunction(() => document.documentElement.classList.contains('mb-sph-on'));
+        await expect.poll(() => page.evaluate(() => {
+            const m = document.getElementById('mb-sph-rmask');
+            return !!m && m.getBoundingClientRect().width > 4;
+        }), { message: 'premise: the mask is shown' }).toBe(true);
+        await page.evaluate(() => document.getElementById('footer').scrollIntoView({ block: 'center' }));
+        await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+        const hit = await page.evaluate(() => {
+            const f = document.getElementById('footer').getBoundingClientRect();
+            const cw = document.documentElement.clientWidth;
+            const el = document.elementFromPoint(cw - 2, (f.top + f.bottom) / 2);
+            return { reaches: f.right >= cw - 2, inFooter: !!(el && el.closest('#footer')), id: el && el.id };
+        });
+        expect(hit.reaches, 'premise: the footer reaches the window edge').toBe(true);
+        expect(hit, 'the footer, not the mask, is hit at the window edge').toMatchObject({ inFooter: true });
+    });
+
+    test('scrolled to the far right, the stuck h2 and h3 stop where the table ends, not at the window edge', async ({ page }) => {
+        // Reported 2026-10-14 against the first version of the strip, which
+        // was painted in the bar's own colour: at maximum scroll the table
+        // ends a page padding short of the window edge, and so does a bar
+        // riding inside a pinned body (the Wikipedia h2), but the data h2
+        // and the h3 bars reached on to the window edge, under the sidebar
+        // handle. The strip is the page colour now.
+        await openRatings(page, {}, {
+            css: `${TALL_ROWS} table.tbl { min-width: 2500px !important; }`
+                + ' #page { padding-left: 20px !important; padding-right: 20px !important; }',
+            viewport: { width: 900, height: 800 },
+        });
+        await page.waitForFunction(() => document.documentElement.classList.contains('mb-sph-on'));
+        const t1 = await page.evaluate(() => document.querySelectorAll('table.tbl')[1].tBodies[0].rows[0]
+            .getBoundingClientRect().top + window.scrollY);
+        const maxX = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        await scrollToY(page, t1 + 150, maxX);
+        const geo = await page.evaluate(() => {
+            const band = (el) => {
+                const r = el.getBoundingClientRect();
+                return { right: r.right, y: (r.top + r.bottom) / 2 };
+            };
+            return {
+                cw: document.documentElement.clientWidth,
+                scrollX: window.scrollX,
+                maxX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+                tableRight: document.querySelectorAll('table.tbl')[1].getBoundingClientRect().right,
+                h2: band(document.querySelector('h2.mb-vsb-h2')),
+                h3: band(Array.from(document.querySelectorAll('h3.mb-toggle-h3'))[1]),
+            };
+        });
+        expect(Math.abs(geo.scrollX - geo.maxX), 'premise: scrolled to the far right').toBeLessThanOrEqual(1);
+        expect(geo.cw - geo.tableRight, 'premise: the table ends a page padding short of the window edge').toBeGreaterThan(8);
+        for (const key of ['h2', 'h3']) {
+            const b = geo[key];
+            const own = await pixelAt(page, b.right - 2, b.y);
+            expect(await pixelAt(page, geo.tableRight - 2, b.y), `the ${key} bar's colour reaches the table's end`).toBe(own);
+            expect(await pixelAt(page, geo.cw - 3, b.y), `the ${key} bar's colour stops there`).not.toBe(own);
+        }
+    });
+
     test('every h3 bar takes the tallest one\'s height, and gives it back', async ({ page }) => {
         // Every passed h3 stays stuck under the current one: a taller one
         // would peek out below a shorter one. All bars share the tallest
@@ -518,7 +668,15 @@ test.describe('sticky filter bars — the header block (h1 with the action butto
         // The gap under the block, before the h2 (asked for the same day).
         expect(b.h2.top - b.heads[0].bottom, 'a gap under the stats line').toBeGreaterThanOrEqual(HEAD_GAP - 1);
         expect(await pixelAt(page, vw - 5, (b.heads[0].bottom + b.h2.top) / 2), 'no row in the gap').not.toBe('0,128,0');
-        expect(await pixelAt(page, vw - 5, b.thead.bottom + 30), 'premise: rows are green below the bars').toBe('0,128,0');
+        // Left of the right-edge mask (#mb-sph-rmask, 2026-10-14): the
+        // table now ends on the bars' line, so the window edge itself shows
+        // the page colour at every height.
+        const rowX = await page.evaluate((w) => {
+            const m = document.getElementById('mb-sph-rmask');
+            const r = m && m.getBoundingClientRect();
+            return (r && r.width ? r.left : w) - 5;
+        }, vw);
+        expect(await pixelAt(page, rowX, b.thead.bottom + 30), 'premise: rows are green below the bars').toBe('0,128,0');
     });
 
     test('before any button is pressed the header block already sticks', async ({ page }) => {
@@ -580,4 +738,51 @@ test.describe('sticky filter bars — the header block (h1 with the action butto
         expect(geo.overlap, 'premise: the menu overlaps the entity header').toBeGreaterThan(4);
         expect(geo.hitMenu, 'the menu is on top').toBe(true);
     });
+});
+
+test.describe('sticky filter bars — a data table that is a direct <body> child (jungleland.it)', () => {
+    for (const width of [1300, 2400]) {
+        test(`hovering a row never lifts the table over the stuck header block and h2 (window ${width} px)`, async ({ page }) => {
+            // jungleland.it has no MusicBrainz #page: its list table is a
+            // direct child of <body>. The sticky page headers collected it
+            // as body-level chrome: capped like a bar, and raised over every
+            // stuck bar while hovered, so with the pointer resting on a row
+            // the table's rows painted over the stuck h1, the status line
+            // and the h2 (reported 2026-10-14, debug/jl.html). A data table
+            // is never chrome now; it is pinned whole only while it fits,
+            // and never raised. Both widths: the table wider than the
+            // window, and narrower (pinned whole).
+            await page.setViewportSize({ width, height: 800 });
+            await loadJlListPage(page);
+            await page.click(`button[data-label="${JL_BUTTON}"]`);
+            await waitForRenderComplete(page, { waitForAutoResize: false });
+            await page.evaluate(() => { if (document.activeElement) document.activeElement.blur(); });
+            await scrollToY(page, 2000);
+            const geo = await page.evaluate(() => {
+                const mid = (el) => {
+                    const r = el.getBoundingClientRect();
+                    return { x: r.left + Math.min(40, r.width / 2), y: (r.top + r.bottom) / 2, top: r.top };
+                };
+                const t = document.querySelector('table.tbl');
+                return {
+                    h2: mid(document.querySelector('h2.mb-vsb-h2')),
+                    status: mid(document.getElementById('mb-status-displays-wrapper')),
+                    thead: t.tHead.getBoundingClientRect().bottom,
+                    // Pinned, it must be pinned AS A TABLE (never raised).
+                    table: { target: t.classList.contains('mb-sph-target'), asTable: t.classList.contains('mb-sph-table') },
+                };
+            });
+            expect(geo.h2.top, 'premise: the h2 is stuck at the top').toBeLessThan(150);
+            expect(geo.table.target && !geo.table.asTable, 'the table is not pinned as chrome').toBe(false);
+            // The pointer rests on a row below the stuck thead.
+            await page.mouse.move(geo.h2.x + 100, geo.thead + 120);
+            expect(await page.evaluate(() => !!document.querySelector('table.tbl tbody tr:hover')),
+                'premise: the pointer rests on a row').toBe(true);
+            const hits = await page.evaluate((g) => ['h2', 'status'].map((k) => {
+                const el = document.elementFromPoint(g[k].x, g[k].y);
+                return [k, !!(el && el.closest('table.tbl'))];
+            }), geo);
+            expect(hits, 'nothing of the table is hit over the stuck bars').toEqual([['h2', false], ['status', false]]);
+        });
+    }
 });

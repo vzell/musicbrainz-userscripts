@@ -209,6 +209,12 @@ hosts (kept, decided 2026-10-07).
   (`artist-credits`), ISWC, disc ID and collection — one lookup each, no extras
   (9.99.1276); url, the "[info]" link (U2, section "MusicBrainz URL entities"
   below). Browse keys: `pop:browse:<entity>?<query>` (`_mbPopBrowse()`).
+- **Pictures** (artist, label, place; `sa_pop_mb_image`, the sidebar overhaul's
+  part 4): the window shows the entity's Commons picture, from an `image`/`logo`
+  relationship or the Wikidata item's P18/P154 (`_mbPopImageLoad()`, from
+  `pin()` only), and a later card shows it from memory or IndexedDB
+  (`_mbPopImagePeek()`, `spec.cardAside`). A hover never asks Wikidata. Full
+  rules: docs/claude/sidebar.md, "The picture in the entity previews".
 - **Codes** are a second path pattern, `_MB_POP_CODE_RE` (`/isrc/`, `/iswc/`,
   `/cdtoc/`); `_MB_POP_CODE_TYPES` maps the page segment to the kind and Web
   Service path — a disc ID's page is `/cdtoc/<id>`, its lookup

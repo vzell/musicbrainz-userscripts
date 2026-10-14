@@ -465,6 +465,55 @@
             description: "Automatically collapse the sidebar when the consolidated view is first rendered, freeing up horizontal space immediately. Only takes effect when 'Collabsable sidebar' is also enabled."
         },
 
+        sa_sidebar_remember_sections: {
+            label: "Remember open sidebar sections",
+            type: "checkbox",
+            default: true,
+            description: "After a table is rendered, each sidebar section (Artist information, Tags, External links, …) opens as you last left it on that kind of page. A section you never opened starts closed. Off: every section starts closed."
+        },
+
+        sa_sidebar_open_all: {
+            label: "Open every sidebar section",
+            type: "checkbox",
+            default: false,
+            description: "After a table is rendered, open every sidebar section, whatever was remembered. The sidebar can get long."
+        },
+
+        sa_sidebar_section_counts: {
+            label: "Sidebar section counts",
+            type: "checkbox",
+            default: true,
+            description: "Show how many entries each sidebar section holds next to its heading."
+        },
+
+        sa_sidebar_link_groups: {
+            label: "Group external links by kind",
+            type: "checkbox",
+            default: true,
+            description: "Group the sidebar's external links under Official, Social, Streaming, Concerts, Lyrics, Databases, Stores and Other, each group opening and closing on its own. The links stay in their list; only their order changes."
+        },
+
+        sa_sidebar_picture: {
+            label: "Sidebar picture: hover card and viewer",
+            type: "checkbox",
+            default: true,
+            description: "The picture MusicBrainz shows in the sidebar (an artist's photo, a label's logo, from Wikimedia Commons) gets a hover card and opens in the artwork viewer on a click, Enter or Space. Uses the picture MusicBrainz already loaded: no extra request."
+        },
+
+        sa_sidebar_picture_in_header: {
+            label: "Sidebar picture beside the name",
+            type: "checkbox",
+            default: true,
+            description: "Also show a small copy of the sidebar picture at the start of the page heading, so it stays in sight with the sidebar closed. Same hover card and viewer. Needs 'Sidebar picture: hover card and viewer'."
+        },
+
+        sa_sidebar_tables_button: {
+            label: "'Sidebar as tables' button",
+            type: "checkbox",
+            default: true,
+            description: "On artist, label, event, release group, recording, work, release, series, place, area and instrument pages, add a '🗂 Sidebar as tables' button: it shows the sidebar's information, external links and tags as tables you can filter and sort like any other. Read from the page itself: no request. The sidebar stays as it is."
+        },
+
         // ============================================================
         //  OVERFLOW TABLES SECTION
         // ============================================================
@@ -4612,6 +4661,17 @@
                          'device previews are on at all, and none on a desktop browser.'
         },
 
+        sa_pop_mb_image: {
+            label: 'Pictures in artist, label and place previews',
+            type: 'checkbox',
+            default: true,
+            description: 'On by default. When Space opens the window on an artist, a label or a place, it shows ' +
+                         'the entity\'s picture: the Wikimedia Commons file MusicBrainz links as its image or ' +
+                         'logo, else the one its Wikidata item names (one or two small requests to Wikidata). ' +
+                         'Click it for the viewer. Asked only on Space, never on a hover; afterwards the card ' +
+                         'shows it too, from this browser\'s storage.'
+        },
+
         sa_pop_mb_ttl_hours: {
             label: 'Keep MusicBrainz answers for (hours)',
             type: 'number',
@@ -4878,6 +4938,9 @@
         { key: 'sa_art_idb_metadata_ttl_days',     was: [7] },
         { key: 'sa_auto_resize_columns',           was: [false] },
         { key: 'sa_auto_resize_columns_threshold', was: [2000] },
+        // true for one day inside one branch (d60e197 → 91b558b, 2026-10-09),
+        // never in a release; listed because the audit walks every revision.
+        { key: 'sa_bb_sidebar_right',              was: [true] },
         { key: 'sa_count_stat_tooltip_bg',         was: ['#1e1e2e'] },
         { key: 'sa_count_stat_tooltip_color',      was: ['#cdd6f4'] },
         { key: 'sa_dp_hover_without_ctrl',         was: [false] },
@@ -11068,6 +11131,19 @@
             }
             :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl) tr.even > td {
                 background-color: #f2f2f2;
+            }
+            /* NOT inside :where(), on purpose: the backing behind a sorted
+               column's header tint (.mb-mscol-hdr-N, a 60 % alpha
+               background-color !important that replaces the cell's own
+               colour) while rows scroll under the sticky thead. On
+               MusicBrainz, MB's stylesheet paints an image on the thead
+               itself; here nothing did, and the rows showed through every
+               sorted header (2026-10-14, brucespringsteen.it). It has to
+               outrank the site's own rules: springsteenlyrics.com's
+               Bootstrap 3.3.2 has table { background-color: transparent },
+               which also beats the zero-specificity table colour above. */
+            body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl > thead {
+                background-color: #fff;
             }
         `);
         style.id = 'mb-foreign-table-style';
@@ -17993,6 +18069,8 @@
             return {
                 image: l.href, thumbnails: { 250: thumb || l.href }, types: [], external: true,
                 comment: ((label && label.textContent) || (img && img.alt) || '').trim(),
+                // An entity's Commons picture (`_mbPopWindowPicture()`) links its file page.
+                ...(l.dataset.mbArtvPage ? { pageUrl: l.dataset.mbArtvPage, pageLabel: 'Open on Commons' } : {}),
             };
         });
         const k = links.indexOf(a);
@@ -18343,6 +18421,13 @@
             /* The MusicBrainz entity cards (_mbEntitySource()): one track per
                line with its length at the end. */
             #mb-dp-peek .mb-pop-card { width: 440px; max-width: 100%; }
+            /* An artist's, label's or place's picture (_mbPopCardPicture()),
+               known only after a Space: 64 px beside the facts. */
+            #mb-dp-peek .mb-pop-card-pic { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; align-items: start; }
+            #mb-dp-peek .mb-pop-pic img { display: block; width: 64px; height: 80px; object-fit: cover; border: 1px solid #d9cfbd; border-radius: 2px; background: #f3eee3; }
+            #mb-dp-peek .mb-pop-main { min-width: 0; }
+            .mb-dp-dialog .mb-pop-xpic { margin: 6px 0 4px; }
+            .mb-dp-dialog .mb-pop-xpic .mb-dp-xcover { margin: 0 0 3px; cursor: zoom-in; }
             #mb-dp-peek .mb-pop-tracks { columns: 1; }
             :is(#mb-dp-peek, .mb-dp-dialog) .mb-pop-tracks li { display: flex; gap: 6px; align-items: baseline; }
             :is(#mb-dp-peek, .mb-dp-dialog) .mb-pop-tracks .mb-dp-pos { flex: none; min-width: 1.6em; margin-right: 0; }
@@ -19884,7 +19969,7 @@
      */
     function _buttonForSavedPageType(savedType) {
         if (!savedType || savedType === baseDefinition?.type) return null;
-        return (baseDefinition?.buttons || []).find(b => b.type === savedType) || null;
+        return (baseDefinition?.buttons || []).concat(_sbTablesButtons()).find(b => b.type === savedType) || null;
     }
 
     /**
@@ -28577,9 +28662,12 @@
         // has its own pageTypes. Off with sa_enable_relationship_tables.
         {
             type: 'instrument-overview',
-            match: (path) => Lib.settings.sa_enable_relationship_tables !== false &&
+            // Also there for "🗂 Sidebar as tables" (_sbTablesButtons()) with
+            // the relationship tables off: then only that button shows.
+            match: (path) => (Lib.settings.sa_enable_relationship_tables !== false || Lib.settings.sa_sidebar_tables_button !== false) &&
                 path.match(/^\/instrument\/[a-f0-9-]{36}\/?$/),
-            buttons: [ { label: 'Show all Relationships for Instrument', shortLabel: 'Relationships' } ],
+            buttons: [ { label: 'Show all Relationships for Instrument', shortLabel: 'Relationships',
+                         showIf: () => Lib.settings.sa_enable_relationship_tables !== false } ],
             features: _relTablesFeatures({ ownLabel: 'Instrument' }),
             tableMode: 'multi',
             non_paginated: true
@@ -28740,9 +28828,12 @@
         // has its own pageTypes. Off with sa_enable_relationship_tables.
         {
             type: 'area-overview',
-            match: (path) => Lib.settings.sa_enable_relationship_tables !== false &&
+            // Also there for "🗂 Sidebar as tables" (_sbTablesButtons()) with
+            // the relationship tables off: then only that button shows.
+            match: (path) => (Lib.settings.sa_enable_relationship_tables !== false || Lib.settings.sa_sidebar_tables_button !== false) &&
                 path.match(/^\/area\/[a-f0-9-]{36}\/?$/),
-            buttons: [ { label: 'Show all Relationships for Area', shortLabel: 'Relationships' } ],
+            buttons: [ { label: 'Show all Relationships for Area', shortLabel: 'Relationships',
+                         showIf: () => Lib.settings.sa_enable_relationship_tables !== false } ],
             features: _relTablesFeatures({ ownLabel: 'Area' }),
             tableMode: 'multi',
             non_paginated: true
@@ -29005,9 +29096,12 @@
         // has its own pageTypes. Off with sa_enable_relationship_tables.
         {
             type: 'place-overview',
-            match: (path) => Lib.settings.sa_enable_relationship_tables !== false &&
+            // Also there for "🗂 Sidebar as tables" (_sbTablesButtons()) with
+            // the relationship tables off: then only that button shows.
+            match: (path) => (Lib.settings.sa_enable_relationship_tables !== false || Lib.settings.sa_sidebar_tables_button !== false) &&
                 path.match(/^\/place\/[a-f0-9-]{36}\/?$/),
-            buttons: [ { label: 'Show all Relationships for Place', shortLabel: 'Relationships' } ],
+            buttons: [ { label: 'Show all Relationships for Place', shortLabel: 'Relationships',
+                         showIf: () => Lib.settings.sa_enable_relationship_tables !== false } ],
             features: _relTablesFeatures({ ownLabel: 'Place' }),
             tableMode: 'multi',
             non_paginated: true
@@ -30413,7 +30507,9 @@
                 let left = Math.min(contentRect.right - tooltipRect.width - 10, window.innerWidth - tooltipRect.width - 10);
                 left = Math.max(left, contentRect.left + 10); // Don't go too far left
 
-                if (sidebarDiv) {
+                // A collapsed sidebar is display: none and has no box: its
+                // all-zero rect would push the tooltip off the left edge.
+                if (sidebarDiv && sidebarDiv.getClientRects().length > 0) {
                     // Ensure doesn't overlap sidebar
                     const sidebarRect = sidebarDiv.getBoundingClientRect();
                     left = Math.min(left, sidebarRect.left - tooltipRect.width - 10);
@@ -34420,7 +34516,28 @@
     //      #page. While engaged its transform is dropped. That is layout
     //      neutral (transforms never affect layout), and the overflow test
     //      itself ignores transforms (_sphContentExtent()), so engaging can
-    //      never feed back into the decision to engage.
+    //      never feed back into the decision to engage. Since 2026-10-14 a
+    //      collapsed sidebar is `display: none` anyway (initSidebarCollapse()),
+    //      so it has no box at all. Before that, under MusicBrainz's
+    //      `#page { display: table }` it stayed a table cell as wide as its
+    //      min-content (78 px measured on an area page): the extent ran that
+    //      far past #content, and the right gutter below took every bar that
+    //      much short of the window edge.
+    //
+    // The right gutter itself (see _sphRefresh()) is what lets a capped bar
+    // stay pinned up to the end of the scroll; it leaves a strip between the
+    // pinned h2/h3 bars' right end and the window edge. One window-tall,
+    // page-coloured strip of that width, fixed at the window's right edge
+    // (#mb-sph-rmask, _sphUpdateRightMask()), covers what scrolls there: a
+    // wide table and its stuck thead end on the bars' line at every scroll
+    // position, and rows scrolling under a vertically stuck bar never show
+    // beside it. It lies under the bars, the header block, the sidebar, the
+    // MB header and footer and every popup (z-index SPH_Z_RMASK). Two
+    // earlier versions were rejected in the user's browser (2026-10-14): a
+    // strip beside each bar in the bar's own colour (the data bars then
+    // reached further right than the Annotation / Credits bars), and the
+    // same in the page colour (the table still ran on past the bars' line
+    // until scrolled to its end).
     //
     // The sticky COLUMN follows the same rule while engaged. applyStickyColumn()
     // pins its cells at `left: 0`, which made the column dock at the window
@@ -34500,6 +34617,17 @@
     const SPH_REFRESH_DELAY_MS = 60;
     /** Lower bound (px) for a pinned element's clamped width, so tiny viewports never collapse a bar. */
     const SPH_MIN_WIDTH_PX = 120;
+    /** The pinned bars whose right end sets the width of the right-edge mask (`_sphUpdateRightMask()`). */
+    const _SPH_BAR_SEL = 'h2.mb-toggle-h2, h3.mb-toggle-h3';
+    /**
+     * z-index of the right-edge mask (#mb-sph-rmask): above the table (sticky
+     * thead 100, column resizer 101, sticky cells), equal to a resting h3 bar
+     * (102, which never reaches the strip; the mask comes later in the DOM),
+     * under a raised h3 (103, its popups), the stuck data h2 (104), the
+     * header block and MB's sidebar (105), the MB header and footer (106+)
+     * and every popup.
+     */
+    const SPH_Z_RMASK = 102;
 
     /**
      * Mutable module state of the sticky-page-headers feature.
@@ -34603,6 +34731,23 @@
             }
             html.mb-sph-on .mb-sph-target.mb-sph-chrome {
                 z-index: ${SPH_Z_CHROME};
+            }
+            /* The right-edge mask: a page-coloured strip as wide as the gap
+               between the pinned bars' right end and the window edge, so a
+               wide table ends on the bars' line at every scroll position
+               (see the section comment). Width set by _sphUpdateRightMask();
+               shown only while engaged and a bar defines the line. */
+            #mb-sph-rmask {
+                display: none;
+            }
+            html.mb-sph-on #mb-sph-rmask.mb-sph-rmask-on {
+                display: block;
+                position: fixed;
+                top: 0;
+                bottom: 0;
+                right: 0;
+                z-index: ${SPH_Z_RMASK};
+                background: ${_sphGutterBg()};
             }
             /* An inline body alone on its line, pinned on its own: sticky
                does not carry a block inside an inline box along. Without
@@ -34949,8 +35094,15 @@
             found.push({ el, chrome, table: kind === 'table' });
         }
 
+        // A data table is never chrome, even as a direct <body> child (a
+        // page without MB's #page: jungleland.it's list). Collected here it
+        // was capped like a bar and, as a pinned body-level element, raised
+        // over every stuck bar while hovered: with the pointer resting on
+        // it, its rows painted over the stuck h1, status line and h2
+        // (reported 2026-10-14). The table pass below handles it as on
+        // MusicBrainz: pinned whole only while it fits, never raised.
         for (const el of Array.from(document.body.children)) {
-            if (el !== page) add(el, true);
+            if (el !== page && !el.matches('table.tbl')) add(el, true);
         }
 
         [content, page].forEach(root => {
@@ -35365,6 +35517,35 @@
     }
 
     /**
+     * Sizes the right-edge mask (`#mb-sph-rmask`, created on first use): a
+     * page-coloured strip fixed at the window's right edge, as wide as the
+     * smallest gap between a pinned h2/h3 bar and the window edge, so a wide
+     * table (rows and stuck thead) ends on the bars' line at every scroll
+     * position and rows never show beside a vertically stuck bar. Without a
+     * pinned bar there is no line to align to and the strip is hidden.
+     * Rounded UP to 1/100 px so no seam is left; the bars themselves never
+     * reach into it (they are capped one gap short). Writes only on change.
+     *
+     * @param {Array<{gap: ?number}>} plans - This pass's target plans.
+     * @returns {void}
+     */
+    function _sphUpdateRightMask(plans) {
+        const gaps = plans.map(p => p.gap).filter(g => g !== null && g > 0);
+        const w = gaps.length ? Math.ceil(Math.min(...gaps) * 100) / 100 : 0;
+        let mask = document.getElementById('mb-sph-rmask');
+        if (!mask) {
+            if (!w) return;
+            mask = document.createElement('div');
+            mask.id = 'mb-sph-rmask';
+            mask.setAttribute('aria-hidden', 'true');
+            document.body.appendChild(mask);
+        }
+        const width = `${w}px`;
+        if (mask.style.width !== width) mask.style.width = width;
+        if (mask.classList.contains('mb-sph-rmask-on') !== (w > 0)) mask.classList.toggle('mb-sph-rmask-on', w > 0);
+    }
+
+    /**
      * Sets `.mb-sph-col-docked` on each aligned table whose sticky column has
      * docked (`scrollX >= p`), which switches its gutter mask on; writes only
      * when the state flips. With `p = 0` (sticky column first) the class is
@@ -35413,6 +35594,9 @@
      *   left        = parentLeft + margin-left   (its natural, unscrolled left)
      *   gutter      = max(parentLeft, extent − parentRight)
      *   width       = viewport − left − gutter − margin-right
+     *   gap         = gutter + margin-right   (an h2/h3 bar's right end →
+     *                 the window edge; the smallest one is the width of the
+     *                 right-edge mask, see _sphUpdateRightMask())
      *
      * The right gutter mirrors the parent's left inset, but is widened to
      * however far the content extends past the parent: at maximum scroll the
@@ -35429,9 +35613,14 @@
      * kept as a floor (`--mb-sph-body-native-minw`), since the engaged rule
      * replaces it.
      *
-     * Capping can never remove the overflow it reacts to (a capped bar only
-     * wraps text that could wrap anyway, and `_sphContentExtent()` skips the
-     * capped targets), so engaging/disengaging cannot oscillate.
+     * Capping usually cannot remove the overflow it reacts to (a capped bar
+     * only wraps text that could wrap anyway, and `_sphContentExtent()` skips
+     * the capped targets). It can when the overflow IS a capped bar: the
+     * header's status line (nowrap spans in an unwrapping inline-flex) past
+     * the window's edge, once a page's toolbar is long enough. That
+     * engaged and disengaged on every pass (2026-10-14, rich-tooltips.spec.js;
+     * DEBUG-NOTES.md), so a disengage first measures the disengaged layout
+     * and stays engaged when it would overflow again.
      *
      * @returns {void}
      */
@@ -35457,12 +35646,30 @@
             }
 
             if (!engage) {
-                if (_sph.active) {
-                    docEl.classList.remove('mb-sph-on');
+                if (!_sph.active) return;
+                // Measure the disengaged layout before committing to it: when
+                // the overflow came from a capped bar itself (a status line
+                // of nowrap spans in the header, past the window's edge),
+                // capping removed it, and disengaging would bring it back on
+                // the next pass — engaged and disengaged every frame. One
+                // extra layout, on a pass that would disengage only.
+                // Disengaged, <body> gets its margins back (8px each under
+                // MusicBrainz's stylesheet), which alone moves the content by
+                // up to their sum and can leave a few px of overflow that
+                // was never a bar's: only an overflow beyond that keeps it
+                // engaged, or a page whose tables were hidden would never
+                // let go (the "no ratchet" spec).
+                docEl.classList.remove('mb-sph-on');
+                const bcs = getComputedStyle(body);
+                const margins = (parseFloat(bcs.marginLeft) || 0) + (parseFloat(bcs.marginRight) || 0);
+                const extentOff = _sphContentExtent();
+                if (!(extentOff > vw + 1 && extentOff > extent + margins + 1 && !_sphSidebarBlocksWidening())) {
                     _sph.active = false;
                     Lib.debug('ui', 'Sticky page headers: disengaged (no horizontal overflow)');
+                    return;
                 }
-                return;
+                docEl.classList.add('mb-sph-on');
+                Lib.debug('ui', 'Sticky page headers: stay engaged (the overflow is a capped bar\'s own)');
             }
 
             // Engage BEFORE the read phase. html.mb-sph-on itself moves the
@@ -35497,13 +35704,17 @@
                 // Sticky keeps the MARGIN box inside the containing block, so the
                 // element's own margin-right (plain MB header: 16px) must come off
                 // too, or it widens by that much and is pushed back at max scroll.
-                const room = vw - left - gutter - (parseFloat(cs.marginRight) || 0);
+                const marginRight = parseFloat(cs.marginRight) || 0;
+                const room = vw - left - gutter - marginRight;
                 if (table) {
                     // Never capped: pinned whole while it fits, else left to
                     // scroll with its sticky column docked.
                     if (!_sphFitsTable(el.getBoundingClientRect().width, room)) return null;
-                    return { el, baseZ: false, table, inline: false, left: Math.max(0, _sphFloor2(left)), width: null };
+                    return { el, baseZ: false, table, inline: false, left: Math.max(0, _sphFloor2(left)), width: null, gap: null };
                 }
+                // A bar's gap to the window edge: what the right-edge mask
+                // covers (_sphUpdateRightMask()).
+                const gap = el.matches(_SPH_BAR_SEL) ? gutter + marginRight : null;
                 let width = Math.max(SPH_MIN_WIDTH_PX, room);
                 if (cs.boxSizing !== 'border-box') {
                     width -= (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0) +
@@ -35514,7 +35725,7 @@
                 // element keeps its own.
                 const baseZ = chrome && nat.position !== 'sticky' && nat.zIndex === 'auto';
                 const inline = nat.display.startsWith('inline');
-                return { el, baseZ, table, inline, left: Math.max(0, _sphFloor2(left)), width: Math.max(0, _sphFloor2(width)) };
+                return { el, baseZ, table, inline, left: Math.max(0, _sphFloor2(left)), width: Math.max(0, _sphFloor2(width)), gap };
             }).filter(Boolean);
             const next = new Set(plans.map(p => p.el));
             const cols = _sphMeasureStickyCols(scrollX, next);
@@ -35532,6 +35743,7 @@
                 if (el.classList.contains('mb-sph-inline') !== inline) el.classList.toggle('mb-sph-inline', inline);
             });
             _sph.targets = next;
+            _sphUpdateRightMask(plans);
             _sphApplyStickyCols(cols);
 
             if (engaging) {
@@ -41833,12 +42045,17 @@
      * @param {function(Object, object): string} body - The kind's card for a loaded answer.
      * @param {?function(string): string} [failNote] - The kind's word on a
      *   failure, from its detail ("It is probably private.").
+     * @param {string} [aside] - The entity's picture (`_mbPopCardPicture()`),
+     *   shown to the left of a loaded card.
      * @returns {string}
      */
-    function _mbPopCardShell(t, st, body, failNote = null) {
+    function _mbPopCardShell(t, st, body, failNote = null, aside = '') {
         if (st && st.status === 'done' && st.data) {
-            return `<div class="mb-pop-card">${body(st.data, t)}<div class="mb-tt-foot">` +
-                `${_rgEsc(_dpAgeText({ cached: st.cached, at: st.at }))} · <kbd>Space</kbd> more · <kbd>Esc</kbd> close</div></div>`;
+            const main = `${body(st.data, t)}<div class="mb-tt-foot">` +
+                `${_rgEsc(_dpAgeText({ cached: st.cached, at: st.at }))} · <kbd>Space</kbd> ${aside ? 'picture &amp; more' : 'more'} · <kbd>Esc</kbd> close</div>`;
+            return aside
+                ? `<div class="mb-pop-card mb-pop-card-pic">${aside}<div class="mb-pop-main">${main}</div></div>`
+                : `<div class="mb-pop-card">${main}</div>`;
         }
         const head = `<div class="mb-tt-title">${_rgEsc(t.name || t.kind)}</div><div class="mb-tt-comment">${_rgEsc(t.kind)}</div>` +
             '<div class="mb-tt-rule"></div>';
@@ -41885,8 +42102,9 @@
      * @param {{cardInc?: string, query?: function(object): {key: string, url: string},
      *   cardHtml: function(Object, object): string, windowHtml: function(Object, object): string,
      *   pin?: function(object, Object, boolean, function(): void): void,
-     *   failNote?: function(string): string}} spec - `query(t)`, when given,
-     *   feeds the kind from another request than its lookup (a search).
+     *   failNote?: function(string): string, cardAside?: function(object): string}} spec - `query(t)`,
+     *   when given, feeds the kind from another request than its lookup (a
+     *   search); `cardAside(t)`, the picture beside a loaded card.
      * @returns {{card: function(object, boolean, function(): void): string,
      *   extracted: function(object, boolean, boolean, function(): void): string}}
      */
@@ -41895,7 +42113,9 @@
             card(t, start, repaint) {
                 const q = spec.query ? spec.query(t) : _mbPopLookup(t, spec.cardInc);
                 if (start) _mbWsLoad(q.key, q.url, { repaint, wanted: _mbPopWanted(t) });
-                return _mbPopCardShell(t, _mbPop.get(q.key), spec.cardHtml, spec.failNote);
+                // A picture only from this browser's storage: a hover asks no one.
+                if (start && spec.cardAside) _mbPopImagePeek(t, repaint);
+                return _mbPopCardShell(t, _mbPop.get(q.key), spec.cardHtml, spec.failNote, spec.cardAside ? spec.cardAside(t) : '');
             },
             extracted(t, start, force, repaint) {
                 const q = spec.query ? spec.query(t) : _mbPopLookup(t, spec.cardInc);
@@ -42846,6 +43066,242 @@
         });
     }
 
+    // ── The entity's picture (docs/claude/sidebar.md, part 4) ────────────────
+    // What musicbrainz-server's Controller/Role/CommonsImage.pm would answer
+    // if its Commons switch were on (it is off on musicbrainz.org, DEBUG-NOTES
+    // 2026-10-11): an `image`/`logo` relationship to a Commons file, else the
+    // entity's Wikidata item's image (P18) or logo (P154). Asked only when
+    // Space opens the window, once its url-rels are there; a card shows it
+    // from memory or IndexedDB only. "No picture" is kept too.
+
+    /** Version of the picture records kept in IndexedDB (`_mbPopImageLoad()`); bump when their shape changes. */
+    const _MB_POP_IMG_VERSION = 1;
+
+    /**
+     * The kinds that show a picture, and the Wikidata properties each asks,
+     * in order. A label asks its logo first: Columbia's P18 is a photograph
+     * of something else (scripts/probe-wikidata-image.py, 2026-10-11), where
+     * MusicBrainz's server would ask P18 first.
+     * @type {Object<string, string[]>}
+     */
+    const _MB_POP_IMG_PROPS = { artist: ['P18', 'P154'], label: ['P154', 'P18'], place: ['P18', 'P154'] };
+
+    /** Picture records read from IndexedDB for a card (`_mbPopImagePeek()`), by key; `null` while reading or when none. */
+    const _mbPopImgPeek = new Map();
+
+    /** Picture keys a ⟳ asked for while the window's url-rels were still loading: the next start skips the caches. */
+    const _mbPopImgAgain = new Set();
+
+    /**
+     * The cache key of an entity's picture record.
+     * @param {object} t - A target of `_mbEntitySource()`.
+     * @returns {string}
+     */
+    function _mbPopImgKey(t) {
+        return `pop:img:${t.type}:${t.id}`;
+    }
+
+    /**
+     * Whether this target's kind shows a picture (`sa_pop_mb_image`, artist,
+     * label, place).
+     * @param {object} t
+     * @returns {boolean}
+     */
+    function _mbPopImgOn(t) {
+        return Lib.settings.sa_pop_mb_image !== false && Object.prototype.hasOwnProperty.call(_MB_POP_IMG_PROPS, t.type);
+    }
+
+    /**
+     * The Commons file of the first `image` or `logo` relationship that
+     * points at one (`https://commons.wikimedia.org/wiki/File:…`), '' when
+     * none; as the server's `relationships_by_link_type_names('image', 'logo')`.
+     * @param {Array<Object>} relations - The entity's url-rels.
+     * @returns {string} The file name with spaces.
+     */
+    function _mbPopCommonsFile(relations) {
+        for (const r of relations || []) {
+            if (r.type !== 'image' && r.type !== 'logo') continue;
+            const m = /^https?:\/\/commons\.wikimedia\.org\/wiki\/File:(.+)$/i.exec((r.url && r.url.resource) || '');
+            if (!m) continue;
+            try {
+                return decodeURIComponent(m[1]).replace(/_/g, ' ');
+            } catch (_) {
+                return m[1].replace(/_/g, ' ');
+            }
+        }
+        return '';
+    }
+
+    /**
+     * The Q-id of the entity's `wikidata` relationship, '' when none.
+     * @param {Array<Object>} relations
+     * @returns {string}
+     */
+    function _mbPopWikidataItem(relations) {
+        for (const r of relations || []) {
+            const m = r.type === 'wikidata' && /^https?:\/\/(?:www\.)?wikidata\.org\/wiki\/(Q[1-9]\d*)\/?$/.exec((r.url && r.url.resource) || '');
+            if (m) return m[1];
+        }
+        return '';
+    }
+
+    /**
+     * The file a `wbgetclaims` answer names for one property: a preferred
+     * value, else the first that is not deprecated; '' when none.
+     * @param {?Object} d - The answer.
+     * @param {string} prop - `P18`, `P154`.
+     * @returns {string}
+     */
+    function _mbPopClaimFile(d, prop) {
+        const cs = ((d && d.claims) || {})[prop] || [];
+        const val = (c) => {
+            const v = c && c.mainsnak && c.mainsnak.datavalue && c.mainsnak.datavalue.value;
+            return typeof v === 'string' ? v : '';
+        };
+        const pick = cs.find(c => c.rank === 'preferred' && val(c)) || cs.find(c => c.rank !== 'deprecated' && val(c));
+        return pick ? val(pick) : '';
+    }
+
+    /**
+     * The addresses of a Commons file: a 330 px thumbnail for the card and
+     * the window, 1280 px for the viewer, and its page. `Special:FilePath`
+     * redirects to upload.wikimedia.org (probe 2026-10-11).
+     * @param {string} file
+     * @returns {{thumb: string, large: string, page: string}}
+     */
+    function _mbPopImgUrls(file) {
+        const name = encodeURIComponent(file.replace(/ /g, '_'));
+        return {
+            thumb: `https://commons.wikimedia.org/wiki/Special:FilePath/${name}?width=330`,
+            large: `https://commons.wikimedia.org/wiki/Special:FilePath/${name}?width=1280`,
+            page: `https://commons.wikimedia.org/wiki/File:${name}`,
+        };
+    }
+
+    /**
+     * Starts the entity's picture lookup, from a kind's `pin()` (the window
+     * only). `relations` is null while the url-rels are still on their way:
+     * a later repaint calls again with them. A Commons relationship asks
+     * nothing; else one `wbgetclaims` per property of `_MB_POP_IMG_PROPS`
+     * until one names a file, through `_extGet()` (Wikidata's own rate gate,
+     * anonymous, `wanted()` after the slot). Kept in `_mbPop` and IndexedDB,
+     * "no picture" included; a failure waits for ⟳ or "Try again".
+     *
+     * @param {object} t
+     * @param {?Array<Object>} relations - The entity's url-rels, once loaded.
+     * @param {boolean} again - ⟳.
+     * @param {function(): void} repaint
+     * @returns {void}
+     */
+    function _mbPopImageLoad(t, relations, again, repaint) {
+        if (!_mbPopImgOn(t)) return;
+        const key = _mbPopImgKey(t);
+        if (again) _mbPopImgAgain.add(key);
+        if (!relations) return;
+        const force = _mbPopImgAgain.delete(key);
+        const s = _mbPop.get(key);
+        if (!force && s && s.status === 'failed') return;
+        _mbLoad(key, async (wanted) => {
+            const file = _mbPopCommonsFile(relations);
+            if (file) return { ok: true, data: { file, from: 'commons-rel', item: '' } };
+            const item = _mbPopWikidataItem(relations);
+            for (const prop of item ? _MB_POP_IMG_PROPS[t.type] : []) {
+                const url = `https://www.wikidata.org/w/api.php?action=wbgetclaims&format=json&entity=${item}&property=${prop}`;
+                const res = await _extGet(url, { wanted, fetchOpts: { accept: /\bjson\b/i, headers: { 'Api-User-Agent': _EXT_AGENT } } });
+                if (res.skipped) return { skipped: true };
+                if (res.error || res.status !== 200) return { ok: false, detail: _extFailText(res) };
+                const d = _extJson(res);
+                if (!d) return { ok: false, detail: 'Wikidata answered, but not with JSON' };
+                // An item Wikidata does not have (deleted, never existed): no picture.
+                if (d.error) break;
+                const f = _mbPopClaimFile(d, prop);
+                if (f) return { ok: true, data: { file: f, from: prop, item } };
+            }
+            return { ok: true, data: { file: '', from: '', item } };
+        }, { force, repaint, wanted: _mbPopWanted(t), version: _MB_POP_IMG_VERSION });
+    }
+
+    /**
+     * Reads the entity's picture record from IndexedDB for a card, once per
+     * key per page load, and repaints when it names a file. Never a request:
+     * only a Space asks Wikidata.
+     * @param {object} t
+     * @param {function(): void} repaint
+     * @returns {void}
+     */
+    function _mbPopImagePeek(t, repaint) {
+        if (!_mbPopImgOn(t)) return;
+        const key = _mbPopImgKey(t);
+        if (_mbPop.has(key) || _mbPopImgPeek.has(key)) return;
+        _mbPopImgPeek.set(key, null);
+        Promise.resolve(_rgIdbGet(key, _MB_POP_IMG_VERSION)).then((rec) => {
+            if (!rec || !rec.data) return;
+            _mbPopImgPeek.set(key, rec.data);
+            if (rec.data.file && repaint) repaint();
+        }, () => {});
+    }
+
+    /**
+     * The entity's picture record as far as this page knows it: the window's
+     * lookup, else what the card read from IndexedDB.
+     * @param {object} t
+     * @returns {?{file: string, from: string, item: string}}
+     */
+    function _mbPopImageRecord(t) {
+        const key = _mbPopImgKey(t);
+        const s = _mbPop.get(key);
+        if (s && s.status === 'done' && s.data) return s.data;
+        return _mbPopImgPeek.get(key) || null;
+    }
+
+    /**
+     * The card's picture, 64 px beside the facts, '' when none is known.
+     * @param {object} t
+     * @returns {string}
+     */
+    function _mbPopCardPicture(t) {
+        if (!_mbPopImgOn(t)) return '';
+        const rec = _mbPopImageRecord(t);
+        if (!rec || !rec.file) return '';
+        return `<div class="mb-pop-pic"><img src="${_rgEsc(_mbPopImgUrls(rec.file).thumb)}" alt="" referrerpolicy="no-referrer"></div>`;
+    }
+
+    /**
+     * The window's picture for its CURRENT state: a loading line, the
+     * failure with "Try again" (⟳), nothing when there is none, else the
+     * picture, which opens the artwork viewer (`_dpArtViewerClick()`), with
+     * where it came from.
+     * @param {object} t
+     * @returns {string}
+     */
+    function _mbPopWindowPicture(t) {
+        if (!_mbPopImgOn(t)) return '';
+        const s = _mbPop.get(_mbPopImgKey(t));
+        if (!s) return '';
+        if (s.status === 'loading') return '<div class="mb-dp-xsub mb-pop-xpic-wait"><span class="mb-dp-spin">◌</span> Looking for a picture…</div>';
+        if (s.status === 'failed') {
+            return `<div class="mb-dp-xsub mb-pop-xpic-fail">Could not ask Wikidata for a picture (${_rgEsc(s.detail)}).</div>` +
+                '<p><button type="button" class="mb-dp-retry">⟳ Try again</button></p>';
+        }
+        const rec = s.data || {};
+        if (!rec.file) return '';
+        const u = _mbPopImgUrls(rec.file);
+        const from = rec.from === 'P18' || rec.from === 'P154' ? ` · from Wikidata ${rec.item} (${rec.from === 'P154' ? 'logo' : 'image'})` : '';
+        return `<figure class="mb-pop-xpic"><a href="${_rgEsc(u.large)}" target="_blank" rel="noopener noreferrer" data-mb-artv-ext="0" ` +
+            `data-mb-artv-page="${_rgEsc(u.page)}"><img class="mb-dp-xcover" src="${_rgEsc(u.thumb)}" alt="${_rgEsc(rec.file)}" ` +
+            `referrerpolicy="no-referrer"></a><figcaption class="mb-dp-xsub"><a href="${_rgEsc(u.page)}" target="_blank" ` +
+            `rel="noopener noreferrer">Wikimedia Commons</a> · ${_rgEsc(rec.file)}${_rgEsc(from)}</figcaption></figure>`;
+    }
+
+    /**
+     * The url-rels a window's picture needs, once loaded; null before.
+     * @param {?Object} st - `_mbPop` state of the lookup that carries them.
+     * @returns {?Array<Object>}
+     */
+    function _mbPopLoadedRels(st) {
+        return st && st.status === 'done' && st.data ? (st.data.relations || []) : null;
+    }
+
     /**
      * A series' items in their order: its `part of` relations, by ordering
      * key, each with its number (`attribute-values.number`) and target.
@@ -43278,6 +43734,7 @@
                 const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
                     (d.disambiguation ? `<div class="mb-dp-xsub">${_rgEsc(d.disambiguation)}</div>` : '') +
                     `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type, d.gender && d.gender !== 'Not applicable' ? d.gender : ''])}</div>` +
+                    _mbPopWindowPicture(t) +
                     '<h4>Facts</h4>' + _mbPopKvHtml([
                         ['Sort name', _rgEsc(d['sort-name'] || '')],
                         ['Area', _mbPopAreaChainHtml(d.area)],
@@ -43305,9 +43762,11 @@
                     '<span class="mb-rg-dim">(official releases; the page filters the others)</span></p>';
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
+            cardAside: _mbPopCardPicture,
             pin(t, d, again, repaint) {
                 const links = _mbPopLookup(t, 'url-rels');
                 _mbPopPinLoad(t, links.key, links.url, again, repaint);
+                _mbPopImageLoad(t, _mbPopLoadedRels(_mbPop.get(links.key)), again, repaint);
                 _mbPopAreaChainLoad(t, [d.area, d['begin-area'], d['end-area']], again, repaint);
                 _MB_POP_RG_TYPES.forEach(([type]) => {
                     const q = _mbPopBrowse('release-group', `artist=${encodeURIComponent(t.id)}&type=${type}&limit=1`);
@@ -43338,6 +43797,7 @@
                 const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
                     (d.disambiguation ? `<div class="mb-dp-xsub">${_rgEsc(d.disambiguation)}</div>` : '') +
                     `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type, _mbPopLabelCode(d['label-code'])])}</div>` +
+                    _mbPopWindowPicture(t) +
                     '<h4>Facts</h4>' + _mbPopKvHtml([
                         ['Area', _mbPopAreaChainHtml(d.area)],
                         ['Active', _rgEsc(_mbPopLifeSpan(d['life-span']))],
@@ -43354,9 +43814,11 @@
                     (ps && ps.status === 'done' && ps.data ? _mbPopUrlLinksHtml(ps.data.relations) : '');
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
+            cardAside: _mbPopCardPicture,
             pin(t, d, again, repaint) {
                 const pin = _mbPopLookup(t, 'url-rels+label-rels');
                 _mbPopPinLoad(t, pin.key, pin.url, again, repaint);
+                _mbPopImageLoad(t, _mbPopLoadedRels(_mbPop.get(pin.key)), again, repaint);
                 const count = _mbPopBrowse('release', `label=${encodeURIComponent(t.id)}&limit=1`);
                 _mbPopPinLoad(t, count.key, count.url, again, repaint);
                 _mbPopAreaChainLoad(t, [d.area], again, repaint);
@@ -43497,7 +43959,7 @@
                 const map = c ? `https://www.openstreetmap.org/?mlat=${c.latitude}&mlon=${c.longitude}#map=17/${c.latitude}/${c.longitude}` : '';
                 const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
                     (d.disambiguation ? `<div class="mb-dp-xsub">${_rgEsc(d.disambiguation)}</div>` : '') +
-                    `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type])}</div><h4>Facts</h4>` + _mbPopKvHtml([
+                    `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type])}</div>${_mbPopWindowPicture(t)}<h4>Facts</h4>` + _mbPopKvHtml([
                         ['Address', _rgEsc(d.address || '')],
                         ['Area', _mbPopAreaChainHtml(d.area)],
                         ['Coordinates', c ? `<a href="${_rgEsc(map)}" target="_blank" rel="noopener">${_rgEsc(`${c.latitude}, ${c.longitude}`)}</a>` : ''],
@@ -43519,9 +43981,12 @@
                 });
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
+            cardAside: _mbPopCardPicture,
             pin(t, d, again, repaint) {
                 const browse = _mbPopBrowse('event', `place=${encodeURIComponent(t.id)}&limit=100`);
                 _mbPopPinLoad(t, browse.key, browse.url, again, repaint);
+                // The place's own lookup carries its url-rels.
+                _mbPopImageLoad(t, d.relations || [], again, repaint);
                 _mbPopAreaChainLoad(t, [d.area], again, repaint);
             },
         })),
@@ -58708,7 +59173,7 @@ a { color: #1565c0; }`;
 
         if (sidebar) {
             sidebar.style.position = '';
-            sidebar.style.left = '';
+            sidebar.style.right = '';
             sidebar.style.top = '';
             sidebar.style.alignSelf = '';
             sidebar.style.zIndex = '';
@@ -58886,10 +59351,15 @@ a { color: #1565c0; }`;
             content.style.overflowX = 'visible';
             content.style.overflowY = 'visible';
 
-            // Prevent sidebar from scrolling out of view horizontally and vertically
+            // Keep the sidebar in view horizontally and vertically. It is the
+            // last cell of MB's #page table, so on a page wider than the window
+            // its own place is past the right edge: `right: 0` holds it at the
+            // window's edge until the scroll reaches it (`left: 0` never
+            // applied there, and an opened sidebar stayed out of view until
+            // scrolled to, 2026-10-14).
             if (sidebar) {
                 sidebar.style.position = 'sticky';
-                sidebar.style.left = '0';
+                sidebar.style.right = '0';
                 sidebar.style.top = '0';
                 sidebar.style.alignSelf = 'flex-start';
                 sidebar.style.zIndex = '105'; // Must be above sticky table headers (z-index: 100)
@@ -59237,7 +59707,7 @@ a { color: #1565c0; }`;
         GM_addStyle(`
             /* Sidebar with proper overflow handling */
             #sidebar {
-                transition: transform 0.3s ease, width 0.3s ease, opacity 0.3s ease, margin-right 0.3s ease;
+                transition: transform 0.3s ease, width 0.3s ease, opacity 0.3s ease, margin-right 0.3s ease, display 0.3s allow-discrete;
                 overflow-y: auto;
                 overflow-x: hidden;
                 box-sizing: border-box;
@@ -59255,8 +59725,19 @@ a { color: #1565c0; }`;
                 /* overflow-y: auto; REMOVED: Breaks vertical sticky headers */
             }
 
-            /* Collapsed sidebar state */
+            /* Collapsed sidebar state. display: none takes it out of the
+               layout: MusicBrainz lays #page out as display: table with
+               #sidebar as a table-cell, and a table cell never shrinks
+               below its min-content width, whatever width or margin says.
+               The collapsed sidebar used to keep an invisible strip of
+               78 px and more at the right end of the page (measured on an
+               area page, 2026-10-14): every pinned bar stopped that far
+               short of the window edge and the page scrolled past the end
+               of the table. The discrete transition keeps it displayed
+               until the slide-out is over (browsers without
+               transition-behavior simply snap shut). */
             .sidebar-collapsed {
+                display: none !important;
                 transform: translateX(100%);
                 width: 0 !important;
                 min-width: 0 !important;
@@ -59303,8 +59784,8 @@ a { color: #1565c0; }`;
              */
             #sidebar-toggle-handle {
                 position: fixed;
-                top: 50%;
-                transform: translateY(-50%);
+                /* top is set by updateHandlePosition(): the sidebar's top. */
+                top: 8px;
                 width: 14px;
                 height: 80px;
                 background-color: #f2f2f2;
@@ -59345,15 +59826,15 @@ a { color: #1565c0; }`;
 
         /**
          * Dynamically position the sidebar toggle handle so that it always
-         * sits flush against the sidebar's actual LEFT boundary, regardless of:
+         * sits flush against the sidebar's actual LEFT boundary, at the
+         * sidebar's TOP, regardless of:
          *  - horizontal scroll position (window.scrollX)
          *  - sidebar CSS position changes introduced by toggleAutoResizeColumns
-         *    (which switches the sidebar from its default right-floated layout
-         *     to position:sticky / left:0, meaning it appears at the LEFT edge
-         *     of the viewport while scrolling — not the right)
+         *    (position: sticky / right: 0 on a page wider than the window)
          *
          * When the sidebar is collapsed the handle snaps to the viewport's
-         * right edge (right: 0).
+         * right edge (right: 0), at the top of `#content`, the row the sidebar
+         * shares. Either way it stays at least 8 px inside the window.
          *
          * This function is intentionally free of CSS transitions: it is called
          * on every scroll / resize event, so transitions would fight JS updates
@@ -59365,10 +59846,21 @@ a { color: #1565c0; }`;
             if (!handle) return;
 
             const isCollapsed = sidebar.classList.contains('sidebar-collapsed');
+            const topOf = (el) => (el ? el.getBoundingClientRect().top : 8);
+            const setTop = (y) => {
+                // Inside what is visible, both ways: on a phone the top of
+                // #content can be below the visual viewport, where a fixed
+                // handle can never be tapped (probed 2026-10-14).
+                const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+                const maxTop = Math.max(8, vh - (handle.offsetHeight || 80) - 8);
+                const top = `${Math.round(Math.min(maxTop, Math.max(8, y)))}px`;
+                if (handle.style.top !== top) handle.style.top = top;
+            };
 
             if (isCollapsed) {
                 // Sidebar is hidden — park handle at viewport right edge.
                 handle.style.right = '0px';
+                setTop(topOf(document.getElementById('content')));
                 return;
             }
 
@@ -59382,14 +59874,38 @@ a { color: #1565c0; }`;
             // but be defensive) fall back to the nominal sidebar width.
             if (rect.width <= 0) {
                 handle.style.right = sidebarWidth;
+                setTop(topOf(document.getElementById('content')));
                 return;
             }
+            setTop(rect.top);
 
             // "right" for a position:fixed element is measured from the
             // viewport's right edge, so:  right = viewportWidth - sidebarLeft
             const distFromRight = window.innerWidth - rect.left;
             handle.style.right = `${Math.max(0, distFromRight)}px`;
         }
+
+        let _handleFollowUntil = 0;
+        /**
+         * Places the handle again on every frame for `ms`: after a toggle the
+         * sidebar and the content containers slide for 0.3 s, and the sticky
+         * page headers switching on or off move a sidebar held at the
+         * window's edge, so one measurement lands mid-way (50 px off, probed
+         * 2026-10-14). A call while one runs extends it.
+         * @param {number} [ms=400]
+         * @returns {void}
+         */
+        const followHandle = (ms = 400) => {
+            const now = performance.now();
+            const running = now < _handleFollowUntil;
+            _handleFollowUntil = Math.max(_handleFollowUntil, now + ms);
+            if (running) return;
+            const step = () => {
+                updateHandlePosition(handle);
+                if (performance.now() < _handleFollowUntil) requestAnimationFrame(step);
+            };
+            requestAnimationFrame(step);
+        };
 
         const applyStretching = (isCollapsed) => {
             const containers = [document.getElementById("page"), document.getElementById("content")];
@@ -59418,10 +59934,9 @@ a { color: #1565c0; }`;
             handle.classList.toggle('handle-collapsed');
             applyStretching(isCollapsing);
 
-            // Re-position the handle after the DOM state change.
-            // Use rAF so the browser has committed the new layout before we
-            // read getBoundingClientRect(), avoiding stale geometry.
-            requestAnimationFrame(() => updateHandlePosition(handle));
+            // Re-position the handle while the sidebar and the content slide
+            // (followHandle(): one read per frame, from the next frame on).
+            followHandle();
 
             Lib.debug('meta', `Sidebar ${isCollapsing ? 'collapsed' : 'expanded'}. Full width applied.`);
         });
@@ -59435,7 +59950,15 @@ a { color: #1565c0; }`;
         // collapsed state immediately — equivalent to a single programmatic click
         // on the handle, but without animation so the page opens already collapsed.
         if (Lib.settings.sa_sidebar_collapsed) {
+            // Without its transition: the sidebar has been laid out already,
+            // so adding the class alone animates, and since the collapsed
+            // state ends in display: none (a discrete transition) the page
+            // kept the sidebar for 0.3 s and then reflowed under a pointer
+            // already resting on a link (popup-ext.spec.js, 2026-10-14).
+            sidebar.style.transition = 'none';
             sidebar.classList.add('sidebar-collapsed');
+            void sidebar.offsetWidth; // commit the collapsed style before the transition returns
+            sidebar.style.transition = '';
             handle.classList.add('handle-collapsed');
             applyStretching(true);
             // Re-position handle after collapsing so it parks at the viewport edge.
@@ -59492,6 +60015,11 @@ a { color: #1565c0; }`;
             childList: true, subtree: true,
             attributes: true, attributeFilter: ['class', 'style']
         });
+        // The sticky page headers switching on or off (html.mb-sph-on) widen
+        // or narrow the page, and a sidebar held at the window's edge
+        // (`right: 0`) moves with it: follow it while that settles.
+        new MutationObserver(() => followHandle())
+            .observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     }
 
     /**
@@ -59663,6 +60191,10 @@ a { color: #1565c0; }`;
         return;
     }
 
+    // The sidebar picture's hover card and viewer (docs/claude/sidebar.md).
+    // MusicBrainz adds the picture after load, so this only starts watching.
+    _sbInitPicture();
+
     // Special case: recording page where "Appears on releases" section explicitly
     // states there are no releases.  Nothing to fetch or display, so do not
     // render any action buttons — but do log the situation to the console.
@@ -59813,9 +60345,12 @@ a { color: #1565c0; }`;
     // relationship-tables buttons, _relTablesButton()). `_noMainButton`: the
     // page has nothing for its own button (a recording on no release) but the
     // relationship-tables button still applies.
+    // "🗂 Sidebar as tables" is appended on entity overview pages
+    // (_sbTablesButtons(), docs/claude/sidebar.md).
     const buttonsToRender = (activeDefinition.buttons || [
         { label: `Show all ${pageType.replace('-', ' ')}` } // Default fallback
-    ]).filter(b => (typeof b.showIf !== 'function' || b.showIf()) && !(_noMainButton && !b.type));
+    ]).filter(b => (typeof b.showIf !== 'function' || b.showIf()) && !(_noMainButton && !b.type))
+        .concat(_sbTablesButtons());
 
     // Superscript numerals for Ctrl-M + 1..9 mnemonic display on action buttons
     const SUPERSCRIPT_DIGITS = ['¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
@@ -60001,7 +60536,11 @@ a { color: #1565c0; }`;
         // Plain-text tooltip description, based on conf.label (never shortLabel) —
         // shortLabel only ever shortens what's painted on the button.
         let _tooltipDesc;
-        if (conf.label.includes('Show all') || conf.label === 'Unfiltered' || conf.label === 'Subscribed Only') {
+        if (conf.description) {
+            // A button that says what it does itself ("🗂 Sidebar as tables"
+            // fetches nothing, so no "Fetch …" text fits it).
+            _tooltipDesc = conf.description;
+        } else if (conf.label.includes('Show all') || conf.label === 'Unfiltered' || conf.label === 'Subscribed Only') {
             // Extract entity types from label (e.g., "Show all Releases for ReleaseGroup")
             _tooltipDesc = `Fetch all the table data from the MusicBrainz backend database`;
         } else if (conf.label.includes('Official VA RGs')) {
@@ -60052,6 +60591,16 @@ a { color: #1565c0; }`;
         // Pass the entire config object
         eb.dataset.label = conf.label;  // stable original label — survives superscript/textContent mutations
         eb.onclick = (e) => startFetchingProcess(e, conf, activeDefinition);
+        // A button that is not part of the page type's own run ("🗂 Sidebar as
+        // tables") gets a divider first, so it does not read as one of them
+        // (or as part of their "RGs:"-style group label).
+        if (conf.ownGroup) {
+            const div = document.createElement('span');
+            div.textContent = ' | ';
+            div.className = 'mb-button-own-group-divider';
+            div.style.cssText = uiButtonDividerCSS();
+            controlsContainer.appendChild(div);
+        }
         controlsContainer.appendChild(eb);
         allActionButtons.push(eb);
     });
@@ -78215,8 +78764,9 @@ a { color: #1565c0; }`;
         // reflect the actual entity type shown on the current page
         // (Releases, Events, Recordings, etc.).
         // A button with `replaceFeatures` (the relationship-tables buttons,
-        // _relTablesButton()) runs with ITS features only: none of the base
-        // definition's features or entityFeatures apply to its tables.
+        // _relTablesButton(); "🗂 Sidebar as tables", _sbTablesButtons()) runs
+        // with ITS features only: none of the base definition's features or
+        // entityFeatures apply to its tables.
         const _replaceFeatures = !!buttonConfig.replaceFeatures;
         const entitySpecificFeatures = _replaceFeatures ? null : resolveEntityFeaturesFromH2(baseDef);
 
@@ -78749,6 +79299,13 @@ a { color: #1565c0; }`;
             applyRelDetailsToTables(activeDefinition);
         }
 
+        // ── sidebarToTables pre-processing ───────────────────────────────────
+        // "🗂 Sidebar as tables": the sidebar's facts, links and tags become
+        // h3 + table.tbl groups in #content. Same ordering constraints.
+        if (activeDefinition.features?.sidebarToTables) {
+            applySidebarToTables(activeDefinition);
+        }
+
         // ── editsToTable pre-processing ─────────────────────────────────────
         // For the 'edits' pageType, convert the native div.edit-list block
         // sequence into a proper <table class="tbl"> the same way listToTable
@@ -79240,6 +79797,9 @@ a { color: #1565c0; }`;
                 }
                 if (doc !== document && activeDefinition.features?.relDetailsToTables) {
                     applyRelDetailsToTables(activeDefinition, doc);
+                }
+                if (doc !== document && activeDefinition.features?.sidebarToTables) {
+                    applySidebarToTables(activeDefinition, doc);
                 }
 
                 // ── editsToTable on fetched pages ────────────────────────────
@@ -86811,8 +87371,10 @@ a { color: #1565c0; }`;
      */
     function makeH2sCollapsible() {
         Lib.debug('render', 'Initializing collapsible H2 headers...');
+        const _h2PassT0 = performance.now();
         // Capture all H2s currently in the document to allow peer filtering later
         const allH2s = Array.from(document.querySelectorAll('h2'));
+        const _sbSidebarEl = document.getElementById('sidebar');
 
         // Strip any stale processed state from a previous invocation (e.g. after "Load from Disk"
         // on an already-rendered page).  The h2 DOM nodes are reused across re-renders, so their
@@ -86843,10 +87405,15 @@ a { color: #1565c0; }`;
             // wrapped in a <span> in-place so they can be shown/hidden via the
             // same style.display mechanism as element siblings.
             const contentNodes = [];
+            // In the MusicBrainz sidebar a section can end at a wrapper that
+            // holds the next heading (Tags lives in its own div): stop there
+            // too, or closing "Artist information" hides Tags with it.
+            const _inSidebar = !!(_sbSidebarEl && _sbSidebarEl.contains(h2));
             let _cur = h2.nextSibling;
             while (_cur) {
                 const _nxt = _cur.nextSibling; // save before any DOM mutation
                 if (_cur.nodeType === Node.ELEMENT_NODE && _cur.tagName === 'H2') break;
+                if (_inSidebar && _cur.nodeType === Node.ELEMENT_NODE && _cur.querySelector('h2')) break;
                 if (_cur.nodeType === Node.TEXT_NODE && _cur.textContent.trim()) {
                     const _wrap = document.createElement('span');
                     _cur.parentNode.insertBefore(_wrap, _cur);
@@ -87063,6 +87630,674 @@ a { color: #1565c0; }`;
             h2._mbClickHandler = toggleFn;
             h2.addEventListener('click', toggleFn);
         });
+
+        // The MusicBrainz sidebar's own sections: remembered state, counts,
+        // keyboard, sub-headings, link groups (docs/claude/sidebar.md).
+        const _sbT0 = performance.now();
+        _sbEnhance(allH2s);
+        _sbTiming.enhanceMs = performance.now() - _sbT0;
+        _sbTiming.passMs = performance.now() - _h2PassT0;
+    }
+
+    // ── MusicBrainz sidebar sections (_sb*) ───────────────────────────────────
+    // docs/claude/sidebar.md. Mockup approved 2026-10-10:
+    // https://claude.ai/artifact/9ZZtr9hR7uUGBPSk2ohvfW
+    // Runs at the end of every makeH2sCollapsible() pass, on #sidebar only:
+    // the main content's headings are untouched. Nothing another script wrote
+    // into the sidebar is read, moved or hidden; its headings just get the
+    // same toggle as MusicBrainz's own.
+
+    /** GM key of the remembered open/closed sections: `{ <entity type>: { <section kind>: bool } }`. */
+    const _SB_OPEN_KEY = 'sa_sidebar_open_sections';
+
+    /**
+     * The last `makeH2sCollapsible()` pass, timed (`__saTest.sidebar.timing()`):
+     * the whole pass and its `_sbEnhance()` part, in ms.
+     */
+    const _sbTiming = { passMs: 0, enhanceMs: 0 };
+
+    /** External-link kinds in display order. */
+    const _SB_LINK_KIND_ORDER = ['Official', 'Social', 'Streaming', 'Concerts', 'Lyrics', 'Databases', 'Stores', 'Other'];
+
+    /** MusicBrainz's favicon class stem (`li.<stem>-favicon`) → link kind; anything else is "Other". */
+    const _SB_LINK_KINDS = {
+        home: 'Official', blog: 'Official',
+        twitter: 'Social', instagram: 'Social', facebook: 'Social', myspace: 'Social', youtube: 'Social', soundcloud: 'Social',
+        bandcamp: 'Social', tiktok: 'Social', threads: 'Social', bluesky: 'Social', mastodon: 'Social', vk: 'Social', weibo: 'Social', patreon: 'Social',
+        amazonmusic: 'Streaming', applemusic: 'Streaming', deezer: 'Streaming', spotify: 'Streaming', tidal: 'Streaming', youtubemusic: 'Streaming',
+        napster: 'Streaming', qobuz: 'Streaming', mora: 'Streaming', ototoy: 'Streaming', sevendigital: 'Streaming', migumusic: 'Streaming',
+        beatport: 'Streaming', melon: 'Streaming', kkbox: 'Streaming', audiomack: 'Streaming', boomkat: 'Streaming', junodownload: 'Streaming',
+        allmusic: 'Databases', bnfcatalogue: 'Databases', bookbrainz: 'Databases', discogs: 'Databases', dnb: 'Databases', ibdb: 'Databases',
+        imdb: 'Databases', imvdb: 'Databases', loc: 'Databases', snac: 'Databases', viaf: 'Databases', wikidata: 'Databases', wikipedia: 'Databases',
+        trove: 'Databases', muziekweb: 'Databases', castalbums: 'Databases', fortyfivecat: 'Databases', fortyfiveworlds: 'Databases',
+        musiksammler: 'Databases', secondhandsongs: 'Databases', whosampled: 'Databases', rateyourmusic: 'Databases', lastfm: 'Databases',
+        oclc: 'Databases', isni: 'Databases', worldcat: 'Databases', vgmdb: 'Databases',
+        bandsintown: 'Concerts', songkick: 'Concerts', setlistfm: 'Concerts', livefans: 'Concerts',
+        genius: 'Lyrics', musixmatch: 'Lyrics', muzikum: 'Lyrics', utaten: 'Lyrics', jlyric: 'Lyrics',
+        amazon: 'Stores', cdjapan: 'Stores', yesasia: 'Stores', tower: 'Stores', spiritofrock: 'Stores', ozonru: 'Stores',
+    };
+
+    /**
+     * The remembered state, read fresh.
+     * @returns {Object<string, Object<string, boolean>>}
+     */
+    function _sbOpenState() {
+        try {
+            const v = GM_getValue(_SB_OPEN_KEY, null);
+            const o = typeof v === 'string' ? JSON.parse(v) : v;
+            return o && typeof o === 'object' ? o : {};
+        } catch (_) {
+            return {};
+        }
+    }
+
+    /**
+     * The kind of page the sidebar belongs to: the entity type from the path
+     * (`artist`, `label`, `release-group`, …).
+     * @returns {string}
+     */
+    function _sbEntityType() {
+        const m = location.pathname.match(/^\/([a-z-]+)\//);
+        return m ? m[1] : 'page';
+    }
+
+    /**
+     * Remembers one section's (or sub-section's) state for this kind of page.
+     * @param {string} kind
+     * @param {boolean} open
+     * @returns {void}
+     */
+    function _sbRemember(kind, open) {
+        if (Lib.settings.sa_sidebar_remember_sections === false) return;
+        const all = _sbOpenState();
+        const type = _sbEntityType();
+        all[type] = { ...(all[type] || {}), [kind]: !!open };
+        try { GM_setValue(_SB_OPEN_KEY, JSON.stringify(all)); } catch (_) { /* storage unavailable: nothing remembered */ }
+    }
+
+    /**
+     * A sidebar heading's own text, without the toggle icon and count.
+     * @param {Element} h
+     * @returns {string}
+     */
+    function _sbHeadingText(h) {
+        let t = '';
+        h.childNodes.forEach(n => {
+            if (n.nodeType === Node.TEXT_NODE) t += n.textContent;
+            else if (n.nodeType === Node.ELEMENT_NODE && !n.matches('.mb-toggle-icon, .mb-sb-count, .mb-sb-h3-icon')) t += n.textContent;
+        });
+        return t.replace(/\s+/g, ' ').trim();
+    }
+
+    /**
+     * What a sidebar h2 is, for remembering it: its own MusicBrainz class
+     * (`external-links`), else its text (Tags has no class).
+     * @param {Element} h2
+     * @returns {string}
+     */
+    function _sbKind(h2) {
+        const own = Array.from(h2.classList).find(c => !/^mb-/.test(c));
+        return own || `text:${_sbHeadingText(h2).toLowerCase()}`;
+    }
+
+    /**
+     * The elements of a sidebar section: the h2's following siblings up to
+     * the next h2, or up to a wrapper that holds one (MusicBrainz puts Tags
+     * in its own div) — the same rule makeH2sCollapsible() uses in the sidebar.
+     * @param {Element} h2
+     * @returns {Element[]}
+     */
+    function _sbSectionNodes(h2) {
+        const out = [];
+        for (let el = h2.nextElementSibling; el && el.tagName !== 'H2' && !el.querySelector('h2'); el = el.nextElementSibling) out.push(el);
+        return out;
+    }
+
+    /**
+     * The entries of a section, for its count: list items (not separators,
+     * not our group headings) and definition terms in the nodes under the h2.
+     * @param {Element} h2
+     * @returns {number}
+     */
+    function _sbCount(h2) {
+        let n = 0;
+        for (const el of _sbSectionNodes(h2)) {
+            if (el.matches('ul, ol')) n += el.querySelectorAll(':scope > li:not(.separator):not(.mb-sbl-head):not(.all-relationships)').length;
+            else if (el.matches('dl')) n += el.querySelectorAll(':scope > dt').length;
+            else n += el.querySelectorAll('ul > li:not(.separator):not(.mb-sbl-head):not(.all-relationships), dl > dt').length;
+        }
+        return n;
+    }
+
+    /** Injects the sidebar sections' stylesheet once. */
+    function _sbEnsureStyle() {
+        if (document.getElementById('mb-sb-style')) return;
+        const st = GM_addStyle(`
+            #sidebar .mb-sb-count { margin-left: 6px; font: 600 10px/1 system-ui, Arial, sans-serif; letter-spacing: 0.04em; color: #7a6d5c; vertical-align: 1px; }
+            #sidebar h2.mb-toggle-h2:focus-visible, #sidebar .mb-sb-h3:focus-visible, #sidebar li.mb-sbl-head:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 1px; }
+            #sidebar .mb-sb-bar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 4px 0 8px; padding-bottom: 6px; border-bottom: 1px solid #d9cfbd; }
+            #sidebar .mb-sb-bar .k { font: 600 10px system-ui, Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.07em; color: #7a6d5c; margin-right: auto; }
+            #sidebar .mb-sb-bar button { font: 600 10.5px/1 system-ui, Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.06em; padding: 4px 8px; border: 1px solid #d9cfbd; background: #fbf8f1; color: #2b2622; border-radius: 3px; cursor: pointer; }
+            #sidebar .mb-sb-bar button:hover { border-color: #7a6d5c; }
+            #sidebar .mb-sb-h3 { cursor: pointer; user-select: none; }
+            #sidebar .mb-sb-h3-icon { display: inline-block; width: 1em; color: #7a6d5c; font-size: 0.85em; }
+            #sidebar ul.external_links.mb-sbl-grouped { display: flex; flex-direction: column; }
+            #sidebar ul.external_links.mb-sbl-grouped > li.mb-sbl-head { list-style: none; margin: 6px 0 2px -2px; font: bold 11.5px Arial, sans-serif; color: #555; cursor: pointer; user-select: none; background: none; padding-left: 0; }
+            #sidebar ul.external_links.mb-sbl-grouped > li.mb-sbl-head:first-child { margin-top: 2px; }
+        `);
+        st.id = 'mb-sb-style';
+    }
+
+    /**
+     * Makes one native sidebar h3 (Tags: Genres / Other tags; Collections)
+     * collapsible: it hides its siblings up to the next h3 or h2. Starts as
+     * remembered, else open.
+     * @param {Element} h3
+     * @param {string} parentKind - The owning h2's kind.
+     * @param {Object<string, boolean>} mem - This page type's remembered states.
+     * @returns {void}
+     */
+    function _sbWireH3(h3, parentKind, mem) {
+        const kind = `${parentKind}>${_sbHeadingText(h3).toLowerCase()}`;
+        h3.classList.add('mb-sb-h3');
+        h3.setAttribute('role', 'button');
+        h3.tabIndex = 0;
+        const icon = document.createElement('span');
+        icon.className = 'mb-sb-h3-icon';
+        h3.prepend(icon);
+        const nodes = () => {
+            const out = [];
+            for (let el = h3.nextElementSibling; el && !/^H[23]$/.test(el.tagName); el = el.nextElementSibling) out.push(el);
+            return out;
+        };
+        h3._mbSbOpen = mem[kind] !== false;
+        h3._mbSbApply = () => {
+            icon.textContent = h3._mbSbOpen ? '▾' : '▸';
+            h3.setAttribute('aria-expanded', String(h3._mbSbOpen));
+            nodes().forEach(n => { n.style.display = h3._mbSbOpen ? '' : 'none'; });
+        };
+        h3._mbSbToggle = () => {
+            h3._mbSbOpen = !h3._mbSbOpen;
+            h3._mbSbApply();
+            _sbRemember(kind, h3._mbSbOpen);
+        };
+        h3._mbSbClick = (e) => { e.preventDefault(); e.stopPropagation(); h3._mbSbToggle(); };
+        h3._mbSbKey = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); h3._mbSbToggle(); } };
+        h3.addEventListener('click', h3._mbSbClick);
+        h3.addEventListener('keydown', h3._mbSbKey);
+        icon.textContent = h3._mbSbOpen ? '▾' : '▸';
+        h3.setAttribute('aria-expanded', String(h3._mbSbOpen));
+    }
+
+    /**
+     * Groups `ul.external_links` by kind WITHOUT moving a link: every native
+     * item is tagged (`data-mb-sbl-kind`) and ordered with CSS `order`, and
+     * one heading item per kind is added. An item without a known favicon
+     * class (no favicon, or another script's) counts as "Other".
+     * @param {Element} ul
+     * @param {Object<string, boolean>} mem
+     * @returns {void}
+     */
+    function _sbGroupLinks(ul, mem) {
+        // "View all relationships" is MusicBrainz's own link, not an external
+        // site: it stays last, outside every group.
+        const tail = ul.querySelector(':scope > li.all-relationships');
+        if (tail) tail.style.order = String(_SB_LINK_KIND_ORDER.length * 10000);
+        const items = Array.from(ul.querySelectorAll(':scope > li')).filter(li => !li.classList.contains('mb-sbl-head') && li !== tail);
+        if (!items.length) return;
+        const counts = {};
+        items.forEach((li, i) => {
+            const stem = (Array.from(li.classList).find(c => /-favicon$/.test(c)) || '').replace(/-favicon$/, '');
+            const kind = _SB_LINK_KINDS[stem] || 'Other';
+            li.dataset.mbSblKind = kind;
+            li.style.order = String(_SB_LINK_KIND_ORDER.indexOf(kind) * 10000 + i + 1);
+            counts[kind] = (counts[kind] || 0) + 1;
+        });
+        const closed = new Set();
+        _SB_LINK_KIND_ORDER.filter(k => counts[k]).forEach(k => {
+            const memKey = `external-links>${k.toLowerCase()}`;
+            if (mem[memKey] === false) closed.add(k);
+            const head = document.createElement('li');
+            head.className = 'mb-sbl-head';
+            head.dataset.mbSblKind = k;
+            head.setAttribute('role', 'button');
+            head.tabIndex = 0;
+            head.style.order = String(_SB_LINK_KIND_ORDER.indexOf(k) * 10000);
+            head.innerHTML = `<span class="mb-sb-h3-icon"></span>${k}<span class="mb-sb-count">${counts[k]}</span>`;
+            const paint = () => {
+                const open = !closed.has(k);
+                head.querySelector('.mb-sb-h3-icon').textContent = open ? '▾' : '▸';
+                head.setAttribute('aria-expanded', String(open));
+                items.forEach(li => { if (li.dataset.mbSblKind === k) li.style.display = open ? '' : 'none'; });
+            };
+            const toggle = (e) => {
+                if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+                e.preventDefault();
+                e.stopPropagation();
+                if (closed.has(k)) closed.delete(k); else closed.add(k);
+                paint();
+                _sbRemember(memKey, !closed.has(k));
+            };
+            head.addEventListener('click', toggle);
+            head.addEventListener('keydown', toggle);
+            ul.appendChild(head);
+            paint();
+        });
+        ul.classList.add('mb-sbl-grouped');
+    }
+
+    /**
+     * Undoes a previous `_sbEnhance()` pass (makeH2sCollapsible() runs again
+     * after a disk load, and resets the headings it owns).
+     * @param {Element} sidebar
+     * @returns {void}
+     */
+    function _sbReset(sidebar) {
+        sidebar.querySelectorAll('.mb-sb-count, .mb-sb-bar, li.mb-sbl-head, .mb-sb-h3-icon').forEach(n => n.remove());
+        sidebar.querySelectorAll('h2').forEach(h2 => {
+            if (h2._mbSbKeyHandler) { h2.removeEventListener('keydown', h2._mbSbKeyHandler); h2._mbSbKeyHandler = null; }
+        });
+        sidebar.querySelectorAll('.mb-sb-h3').forEach(h3 => {
+            h3.removeEventListener('click', h3._mbSbClick);
+            h3.removeEventListener('keydown', h3._mbSbKey);
+            h3.classList.remove('mb-sb-h3');
+            h3._mbSbApply = null;
+        });
+        sidebar.querySelectorAll('ul.mb-sbl-grouped').forEach(ul => {
+            ul.classList.remove('mb-sbl-grouped');
+            ul.querySelectorAll(':scope > li').forEach(li => { li.style.order = ''; li.style.display = ''; delete li.dataset.mbSblKind; });
+        });
+    }
+
+    /**
+     * Re-applies the sub-section states under an h2 that just opened: its
+     * own expand shows every sibling under it, folded h3 lists included. (A
+     * folded link group needs nothing: the expand shows the list, never the
+     * items inside it.)
+     * @param {Element} h2
+     * @returns {void}
+     */
+    function _sbReapplyUnder(h2) {
+        for (const el of _sbSectionNodes(h2)) {
+            if (el._mbSbApply) el._mbSbApply();
+        }
+    }
+
+    // ── "🗂 Sidebar as tables" ───────────────────────────────────────────────
+    // A button on entity overview pages (`_sbTablesButtons()`) whose render is
+    // the sidebar's facts, external links and tags as ordinary h3 + table.tbl
+    // groups (`applySidebarToTables()`, built with `_eventBuildTable()` like
+    // the event overview's). Its own pageType (`type: 'sidebar-tables'`) and
+    // only its own features (`replaceFeatures`, as the relationship-tables
+    // buttons), so nothing of the page type it sits on (the discography's
+    // views, Relationships, CAA) applies. The sidebar is only read; it stays
+    // as it is.
+
+    /**
+     * The "🗂 Sidebar as tables" button for this page, or none: MusicBrainz
+     * only, an entity overview page (artist, label, event, release group,
+     * recording, work, release (also `/disc/N`), series, place, area,
+     * instrument) with a sidebar facts list, and `sa_sidebar_tables_button`
+     * on. Place, area and instrument have a page type for it even with the
+     * relationship tables off (their `*-overview` definitions). Also asked by
+     * `_buttonForSavedPageType()` for a disk load. Called while the toolbar is built at
+     * init, before this part of the file has run: it must not read a
+     * module-level `const` from here (TDZ), hence the literal pattern.
+     * @returns {Array<object>}
+     */
+    function _sbTablesButtons() {
+        if (_foreignHost || Lib.settings.sa_sidebar_tables_button === false) return [];
+        if (!/^\/(?:(?:artist|label|event|release-group|recording|work|series|place|area|instrument)\/[0-9a-f-]{36}|release\/[0-9a-f-]{36}(?:\/disc\/\d+)?)\/?$/.test(location.pathname)) return [];
+        if (!document.querySelector('#sidebar dl.properties')) return [];
+        return [{
+            label: '🗂 Sidebar as tables', shortLabel: 'Sidebar', ownGroup: true,
+            description: "Show the sidebar's information, external links and tags as tables. Read from this page: nothing is fetched.",
+            type: 'sidebar-tables', tableMode: 'multi', non_paginated: true, replaceFeatures: true,
+            features: {
+                sidebarToTables: true,
+                groupByH3: true,
+                integerColumns: [ { sourceColumn: '#', align: 'R' }, { sourceColumn: 'Votes', align: 'R' } ],
+            },
+        }];
+    }
+
+    /**
+     * Clones a node's children (for a table cell), without our own additions.
+     * @param {Node} n
+     * @returns {Node[]}
+     */
+    function _sbCloneKids(n) {
+        return Array.from(n.childNodes).map(c => c.cloneNode(true)).filter(c =>
+            !(c.nodeType === Node.ELEMENT_NODE && c.matches('.mb-toggle-icon, .mb-sb-count, .mb-sb-h3-icon')));
+    }
+
+    /**
+     * Turns the sidebar into h3 + `table.tbl` groups in `#content`
+     * (`features.sidebarToTables`, the "🗂 Sidebar as tables" button), each
+     * named by its sidebar heading:
+     *   - every `dl.properties` ("<Entity> information"; a release also has
+     *     "Additional details"): #, Property, Value;
+     *   - a release's labels ("Labels", the `ul.links` whose items link a
+     *     label): #, Label, Catalog number;
+     *   - a release's events ("Release events", `ul.release-events`): #,
+     *     Country, Date;
+     *   - every `ul.external_links` ("External links"; a release also has
+     *     "Release group external links"): #, Site, Link, Kind, Details
+     *     (MusicBrainz's own "View all relationships" left out);
+     *   - "Tags": #, Tag, Kind (Genre or Tag), Votes (`ul.genre-list`, `ul.tag-list`).
+     * A group with no rows is left out. The page's own tables and h3s in
+     * `#content` are removed from that document so only these groups are
+     * read; the groups go after a new h2 "Sidebar" at the top of `#content`.
+     * The sidebar is only read (clones). Idempotent (`data-mb-sidebar-tables`).
+     *
+     * @param {object}           def
+     * @param {Document|Element} [docContext=document]
+     * @returns {void}
+     */
+    function applySidebarToTables(def, docContext = document) {
+        if (!def?.features?.sidebarToTables) return;
+        const doc = docContext.nodeType === Node.DOCUMENT_NODE ? docContext : docContext.ownerDocument;
+        const root = doc.getElementById('content');
+        const side = doc.getElementById('sidebar');
+        if (!root || !side || root.dataset.mbSidebarTables) return;
+        root.dataset.mbSidebarTables = '1';
+        const frags = [];
+
+        // The heading a sidebar list sits under: the h2 before it, or before
+        // the wrapper holding it (a release's events are in their own div).
+        const nameOf = (el, fallback) => {
+            let top = el;
+            while (top.parentElement && top.parentElement !== side) top = top.parentElement;
+            let h = top.previousElementSibling;
+            while (h && h.tagName !== 'H2') h = h.previousElementSibling;
+            return (h && _sbHeadingText(h)) || fallback;
+        };
+
+        side.querySelectorAll('dl.properties').forEach(dl => {
+            const rows = [];
+            dl.querySelectorAll(':scope > dt').forEach(dt => {
+                const dd = dt.nextElementSibling && dt.nextElementSibling.tagName === 'DD' ? dt.nextElementSibling : null;
+                rows.push([String(rows.length + 1), dt.textContent.replace(/:\s*$/, '').trim(), dd ? _sbCloneKids(dd) : '']);
+            });
+            if (rows.length) frags.push(_eventBuildTable(doc, nameOf(dl, 'Information'), ['#', 'Property', 'Value'], rows));
+        });
+
+        // A release's labels: each item a label's own page (or "[no label]")
+        // and its catalog number. Only a label's page: a label's Editing list
+        // links `/label/<mbid>/edit`, never this.
+        const labelLink = (li) => Array.from(li.querySelectorAll('a[href]'))
+            .find(a => /^(?:https?:\/\/[^/]+)?\/label\/[0-9a-f-]{36}\/?$/i.test(a.getAttribute('href'))) || null;
+        side.querySelectorAll('ul.links').forEach(ul => {
+            const items = Array.from(ul.querySelectorAll(':scope > li'));
+            if (!items.some(labelLink)) return;
+            const rows = items.map((li, i) => {
+                const a = labelLink(li);
+                const cat = li.querySelector('.catalog-number');
+                const label = a ? [a.cloneNode(true)] : li.textContent.replace(cat ? cat.textContent : '', '').trim();
+                return [String(i + 1), label, cat ? cat.textContent.trim() : ''];
+            });
+            frags.push(_eventBuildTable(doc, nameOf(ul, 'Labels'), ['#', 'Label', 'Catalog number'], rows));
+        });
+
+        // A release's events: country (its area link) and date.
+        side.querySelectorAll('ul.release-events').forEach(ul => {
+            const rows = Array.from(ul.querySelectorAll(':scope > li')).map((li, i) => {
+                const area = li.querySelector('.flag a, a[href*="/area/"]');
+                const date = li.querySelector('.release-date');
+                return [String(i + 1), area ? [area.cloneNode(true)] : '', date ? date.textContent.trim() : ''];
+            });
+            if (rows.length) frags.push(_eventBuildTable(doc, nameOf(ul, 'Release events'), ['#', 'Country', 'Date'], rows));
+        });
+
+        let nLinks = 0;
+        side.querySelectorAll('ul.external_links').forEach(ul => {
+            const links = [];
+            ul.querySelectorAll(':scope > li').forEach(li => {
+                if (li.matches('.mb-sbl-head, .all-relationships')) return;
+                const a = li.querySelector('a[href]');
+                if (!a) return;
+                const stem = (Array.from(li.classList).find(c => /-favicon$/.test(c)) || '').replace(/-favicon$/, '');
+                let host;
+                try { host = new URL(a.getAttribute('href'), 'https://musicbrainz.org').hostname.replace(/^www\./, ''); } catch (_) { host = ''; }
+                const details = li.textContent.replace(a.textContent, '').replace(/\s+/g, ' ').trim();
+                links.push([String(links.length + 1), host, [a.cloneNode(true)], _SB_LINK_KINDS[stem] || 'Other', details]);
+            });
+            nLinks += links.length;
+            if (links.length) frags.push(_eventBuildTable(doc, nameOf(ul, 'External links'), ['#', 'Site', 'Link', 'Kind', 'Details'], links));
+        });
+
+        const tags = [];
+        [['ul.genre-list', 'Genre'], ['ul.tag-list', 'Tag']].forEach(([sel, kind]) => {
+            side.querySelectorAll(`${sel} > li`).forEach(li => {
+                const a = li.querySelector('a[href]');
+                if (!a) return;
+                const votes = li.querySelector('.tag-count');
+                tags.push([String(tags.length + 1), [a.cloneNode(true)], kind, votes ? votes.textContent.trim() : '']);
+            });
+        });
+        if (tags.length) frags.push(_eventBuildTable(doc, 'Tags', ['#', 'Tag', 'Kind', 'Votes'], tags));
+
+        // Only these groups are read: the page's own tables (the discography,
+        // a release group's releases, …) and their h3s go from this document.
+        root.querySelectorAll('table.tbl').forEach(t => t.remove());
+        root.querySelectorAll('h3').forEach(h => h.remove());
+        const h2 = doc.createElement('h2');
+        h2.className = 'mb-sb-tables';
+        h2.textContent = 'Sidebar';
+        const firstH2 = root.querySelector(':scope > h2');
+        if (firstH2) firstH2.before(h2); else root.appendChild(h2);
+        h2.after(...frags);
+        Lib.debug('render', `applySidebarToTables: ${frags.length} groups (${nLinks} links, ${tags.length} tags).`);
+    }
+
+    // ── The sidebar picture ──────────────────────────────────────────────────
+    // An artist's (or label's, place's) Wikimedia Commons picture arrives in
+    // the sidebar after load: MusicBrainz's own `div.commons-image` (switched
+    // off on musicbrainz.org since at least 2026-10-11, DEBUG-NOTES.md), or
+    // another userscript's `div.entity-image`, decorated with the user's
+    // consent (only the img's address is read). It gets a hover card and
+    // opens in the shared artwork viewer, the external way
+    // `_dpArtViewerClick()` opens another site's images; a copy goes beside
+    // the name. Nothing is requested: the browser already has the picture.
+
+    /** The viewer context of the sidebar picture (its own, so the bar says what it is). */
+    const _SB_PIC_CTX = { key: 'sidebar', column: 'Entity image', external: true, imagesCache: new Map() };
+
+    /**
+     * The Commons file name of an upload URL (`…/commons/3/3b/File.jpg`, or a
+     * thumbnail's `…/thumb/3/3b/File.jpg/250px-File.jpg`), '' when it is not one.
+     * @param {string} src
+     * @returns {string}
+     */
+    function _sbCommonsFile(src) {
+        try {
+            const u = new URL(src, location.href);
+            if (!/(^|\.)wikimedia\.org$/.test(u.hostname)) return '';
+            const parts = u.pathname.split('/').filter(Boolean);
+            const t = parts.indexOf('thumb');
+            const name = t >= 0 && parts.length > t + 3 ? parts[t + 3] : parts[parts.length - 1];
+            return decodeURIComponent(name || '');
+        } catch (_) {
+            return '';
+        }
+    }
+
+    /**
+     * Opens the sidebar picture in the artwork viewer.
+     * @param {HTMLImageElement} img - The sidebar's own picture.
+     * @param {Element} opener - Focus returns here on close.
+     * @returns {void}
+     */
+    function _sbOpenPicture(img, opener) {
+        const src = img.currentSrc || img.src;
+        if (!src) return;
+        const file = _sbCommonsFile(src);
+        const images = [{
+            image: src, thumbnails: { 250: src }, types: [], external: true, comment: file || '',
+            pageUrl: file ? `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(file.replace(/ /g, '_'))}` : '',
+            pageLabel: 'Open on Commons',
+        }];
+        _SB_PIC_CTX.imagesCache.clear();
+        _SB_PIC_CTX.imagesCache.set('sidebar', images);
+        _artViewerOpen(_SB_PIC_CTX, 'sidebar', null, 0, { opener, title: `${_cachedEntityName || document.title} — ${_sbEntityType()} image` });
+    }
+
+    /**
+     * Makes one element open the sidebar picture: hover card, click, Enter
+     * and Space.
+     * @param {Element} el - The picture or its copy beside the name.
+     * @param {HTMLImageElement} img - The sidebar's own picture.
+     * @returns {void}
+     */
+    function _sbPictureControl(el, img) {
+        const file = _sbCommonsFile(img.currentSrc || img.src);
+        const type = _sbEntityType();
+        el.setAttribute('role', 'button');
+        el.tabIndex = 0;
+        el.setAttribute('aria-label', `Open the ${type} image`);
+        el.classList.add('mb-sb-pic');
+        _setTip(el, `${type.charAt(0).toUpperCase() + type.slice(1)} image · Wikimedia Commons${file ? ' · ' + file : ''}. Click to open it in the viewer.`);
+        el.addEventListener('click', (e) => {
+            if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return;
+            e.preventDefault();
+            e.stopPropagation();
+            _sbOpenPicture(img, el);
+        });
+        el.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            _sbOpenPicture(img, el);
+        });
+    }
+
+    /**
+     * Wires the sidebar picture once it is there: its own control, and (with
+     * `sa_sidebar_picture_in_header`) a 34 px copy at the start of the heading.
+     * Only a Wikimedia picture: the event sidebar's event art already has the
+     * artwork viewer.
+     * @param {HTMLImageElement} img
+     * @returns {void}
+     */
+    function _sbWirePicture(img) {
+        if (img.dataset.mbSbPic) return;
+        if (!_sbCommonsFile(img.currentSrc || img.src)) return;
+        img.dataset.mbSbPic = '1';
+        if (!document.getElementById('mb-sb-pic-style')) {
+            const st = GM_addStyle(`
+                #sidebar img.mb-sb-pic, .mb-sb-avatar { cursor: zoom-in; }
+                #sidebar img.mb-sb-pic:focus-visible, .mb-sb-avatar:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 2px; }
+                .mb-sb-avatar { display: inline-block; width: 34px; height: 34px; margin-right: 8px; vertical-align: middle; border: 1px solid #d9cfbd; border-radius: 3px; overflow: hidden; background: #fbf8f1; }
+                .mb-sb-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
+            `);
+            st.id = 'mb-sb-pic-style';
+        }
+        _sbPictureControl(img, img);
+        const h1 = headerContainer && headerContainer.tagName === 'H1' ? headerContainer : document.querySelector('#content h1, h1');
+        if (Lib.settings.sa_sidebar_picture_in_header !== false && h1 && !h1.querySelector('.mb-sb-avatar')) {
+            const box = document.createElement('span');
+            box.className = 'mb-sb-avatar';
+            const copy = document.createElement('img');
+            copy.src = img.currentSrc || img.src;
+            copy.alt = '';
+            box.appendChild(copy);
+            _sbPictureControl(box, img);
+            h1.prepend(box);
+        }
+    }
+
+    /**
+     * Starts watching the sidebar for its picture (it arrives after load)
+     * for up to 15 s, then wires it. MusicBrainz only. The selector is
+     * another script's markup, then MusicBrainz's own; it is a literal here
+     * because this runs at init, before this part of the file (TDZ).
+     * @returns {void}
+     */
+    function _sbInitPicture() {
+        if (_foreignHost || Lib.settings.sa_sidebar_picture === false) return;
+        const sidebar = document.getElementById('sidebar');
+        if (!sidebar) return;
+        const find = () => {
+            const img = sidebar.querySelector('.entity-image .picture img, .commons-image .picture img');
+            if (img && (img.currentSrc || img.src)) { _sbWirePicture(img); return true; }
+            return false;
+        };
+        if (find()) return;
+        const mo = new MutationObserver(() => { if (find()) { mo.disconnect(); clearTimeout(timer); } });
+        mo.observe(sidebar, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] });
+        const timer = setTimeout(() => mo.disconnect(), 15000);
+    }
+
+    /**
+     * The sidebar part of a `makeH2sCollapsible()` pass: for every h2 inside
+     * `#sidebar`, the remembered (or all-open) initial state, a count,
+     * keyboard access and `aria-expanded`; its native h3s collapsible; the
+     * external links grouped by kind; an Open all / Close all bar. A toggle
+     * by any route (click, Ctrl+Click on a peer, the bar, the keyboard) is
+     * remembered, because it goes through the h2's `_mbToggle`, wrapped here.
+     *
+     * @param {Element[]} allH2s - The pass's headings.
+     * @returns {void}
+     */
+    function _sbEnhance(allH2s) {
+        const sidebar = document.getElementById('sidebar');
+        if (!sidebar) return;
+        _sbReset(sidebar);
+        const h2s = allH2s.filter(h => sidebar.contains(h) && typeof h._mbToggle === 'function');
+        if (!h2s.length) return;
+        _sbEnsureStyle();
+        const S = Lib.settings;
+        const mem = (_sbOpenState()[_sbEntityType()]) || {};
+        h2s.forEach(h2 => {
+            const kind = _sbKind(h2);
+            const icon = h2.querySelector(':scope > .mb-toggle-icon');
+            // Sub-headings and link groups first: the count must not see the group heads.
+            for (const el of _sbSectionNodes(h2)) {
+                if (el.tagName === 'H3') _sbWireH3(el, kind, mem);
+                if (S.sa_sidebar_link_groups !== false && el.matches('ul.external_links')) _sbGroupLinks(el, mem);
+            }
+            if (S.sa_sidebar_section_counts !== false) {
+                const n = _sbCount(h2);
+                if (n) {
+                    const c = document.createElement('span');
+                    c.className = 'mb-sb-count';
+                    c.textContent = String(n);
+                    h2.appendChild(c);
+                }
+            }
+            h2.setAttribute('role', 'button');
+            h2.tabIndex = 0;
+            const orig = h2._mbToggle;
+            h2._mbToggle = (force) => {
+                const was = !!icon && icon.textContent === '▼';
+                orig(force);
+                const now = !!icon && icon.textContent === '▼';
+                h2.setAttribute('aria-expanded', String(now));
+                if (now) _sbReapplyUnder(h2);
+                if (now !== was && !h2._mbSbInit) _sbRemember(kind, now);
+            };
+            h2._mbSbKeyHandler = (e) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                e.preventDefault();
+                h2.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: e.ctrlKey }));
+            };
+            h2.addEventListener('keydown', h2._mbSbKeyHandler);
+            _setTip(h2, 'Click to open or close this sidebar section (Ctrl+Click: every sidebar section). Remembered for this kind of page.');
+            const open = S.sa_sidebar_open_all ? true : (S.sa_sidebar_remember_sections !== false && mem[kind] === true);
+            h2._mbSbInit = true;
+            h2._mbToggle(open);
+            h2._mbSbInit = false;
+            h2.setAttribute('aria-expanded', String(!!icon && icon.textContent === '▼'));
+        });
+        const bar = document.createElement('div');
+        bar.className = 'mb-sb-bar';
+        bar.innerHTML = '<span class="k">Sidebar</span><button type="button" data-mb-sb-all="1">Open all</button><button type="button" data-mb-sb-all="0">Close all</button>';
+        bar.addEventListener('click', (e) => {
+            const b = e.target.closest('[data-mb-sb-all]');
+            if (!b) return;
+            const to = b.dataset.mbSbAll === '1';
+            h2s.forEach(h => { if (h.isConnected) h._mbToggle(to); });
+        });
+        h2s[0].before(bar);
     }
 
     /**
@@ -106403,6 +107638,11 @@ a { color: #1565c0; }`;
             if (activeDefinition.features?.relDetailsToTables) {
                 applyRelDetailsToTables(activeDefinition);
             }
+            // And "🗂 Sidebar as tables": the reloaded page holds its own
+            // tables again; the sidebar groups take their place.
+            if (activeDefinition.features?.sidebarToTables) {
+                applySidebarToTables(activeDefinition);
+            }
 
             // Restore table headers if they were saved
             if (data.headers && data.headers.length > 0) {
@@ -117383,6 +118623,15 @@ a { color: #1565c0; }`;
         orig.target = '_blank';
         orig.rel = im.external ? 'noopener noreferrer' : 'noopener';
         bar.appendChild(orig);
+        // An image with a page of its own (the sidebar picture's Commons file page).
+        if (im.pageUrl) {
+            const pg = _artvEl('a', 'mb-artv-btn', im.pageLabel || 'Source page');
+            pg.href = im.pageUrl;
+            pg.target = '_blank';
+            pg.rel = 'noopener noreferrer';
+            pg.dataset.mbArtvPage = '1';
+            bar.appendChild(pg);
+        }
         const close = _artvBtn('close', 'Close (Esc)');
         bar.appendChild(close);
         root.appendChild(bar);
@@ -125290,6 +126539,10 @@ a { color: #1565c0; }`;
                 },
             },
             /** The 💾 browser cache overview (`_idbo*`). */
+            sidebar: {
+                /** @returns {{passMs: number, enhanceMs: number}} The last makeH2sCollapsible() pass and its sidebar part, in ms. */
+                timing: () => ({ ..._sbTiming }),
+            },
             idbOverview: {
                 open: () => _idbOverviewOpen(null),
                 close: () => _idbOverviewClose(),

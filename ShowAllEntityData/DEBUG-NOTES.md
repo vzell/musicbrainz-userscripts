@@ -21865,6 +21865,142 @@ Specs: idb-export-import.spec.js 8/8 and .mobile 1/1 on the first run, so the
 17 mutations (scripts/mutations/idb-export-import.json) are the evidence the
 assertions bite: all 17 caught.
 
+## 2026-10-11 — Sidebar sections; closing "Artist information" hid Tags (feature/sidebar-overhaul, WIP.1)
+
+Env: 2026-10-11T01:40Z-02:09Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs).
+
+Commit 1 of the sidebar plan (docs/claude/sidebar.md). Two findings worth keeping:
+
+- **A pre-existing bug.** `makeH2sCollapsible()` walks an h2's siblings up to the next h2.
+  MusicBrainz renders the sidebar's Tags (its own h2, Genres / Other tags h3s
+  and the tag editor) inside a wrapper element, so for "Artist information"
+  the walk passed into that wrapper: the wrapper was a content node of Artist
+  information, and closing it hid Tags too. (It showed up as "element is not
+  visible" when the new spec tried to click Tags while Artist information was
+  closed.) Inside `#sidebar` only, the walk now also stops at an element that
+  contains an h2; the main content's walk is unchanged. A regression test pins
+  it, and its mutation (the stop removed) fails it.
+- **"View all relationships" is not an external link.** `li.all-relationships`
+  sits in `ul.external_links` but links to the entity's own Relationships tab.
+  The first count said 58, against 57 sites. It now stays last, outside the
+  groups and the count.
+
+The mobile spec took four attempts. On the zoomed-out Pixel 7 emulation the
+unstyled fixture's sidebar is a sticky block wider than the screen;
+`locator.tap()` scrolls its target to the top edge, under the sticky page
+header bar (`.mb-vsb-chrome`), which then takes the tap; and
+`getBoundingClientRect()` is in layout-viewport coordinates while a touch is in
+visual-viewport ones. The spec now adds MusicBrainz's phone layout rule for the
+sidebar, scrolls the target to the middle with its left edge in view, and taps
+with `page.touchscreen` at visual-viewport coordinates.
+
+## 2026-10-11 — The commons-image endpoint: blocked for scripts, empty for a browser (feature/sidebar-overhaul, part 4)
+
+Env: 2026-10-11T02:24Z-02:26Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Python 3 urllib / Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey.
+
+Part 4 of the sidebar plan (the picture in the entity hover card) was to use
+the endpoint MusicBrainz's own sidebar calls, `/<type>/<mbid>/commons-image`,
+which the web service documentation does not cover, so it was probed first.
+
+- `scripts/probe-commons-image.py` (urllib): every URL answered **HTTP 200,
+  text/html, "Verifying your browser"**, a bot challenge. A script gets nothing
+  from MusicBrainz's HTML side any more, so a 200 status proves nothing here.
+- `tests/support/probe-commons-image.js` (headless Chromium, `fetch()` from an
+  open artist page): JSON comes back.
+  - Bruce Springsteen: 200, `{"image": null}`, although his sidebar shows a
+    Commons picture in the user's browser (debug/bs-debug.html).
+  - Various Artists: 200, `{"image": null}`.
+  - Columbia (label): 200, `{"image": null}`.
+  - A place: 404, HTML.
+  - A non-existent MBID: 400, HTML.
+  - About 430 ms per answer.
+- MusicBrainz's own page showed **no** sidebar picture within 20 s in that
+  browser, and made no commons-image or Wikimedia request of its own.
+
+So the endpoint cannot be shown to deliver a picture, and how the user's
+browser gets one is not reproducible here. Per the plan, part 4 stops at this
+report and goes back to the user. Not built: no code calls the endpoint. Open
+options:
+- skip the card picture;
+- read the entity's Wikidata link through the popup engine's existing Wikidata
+  reader (P18 image), on Space only;
+- capture which request delivers the sidebar picture in the user's real
+  browser (DevTools → Network) and probe that.
+
+## 2026-10-11 — One-off: column-filter-modes "never change a column's width" under a full run
+
+Env: 2026-10-11T02:40:13Z-02:47:59Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs).
+
+In the second `test:full` on `feature/sidebar-overhaul` (`42b519e`), 1600 of 1601
+passed. The one failure was `column-filter-modes.spec.js` "on or off, the switches
+never change a column's width": the widths came back as 132/140/… where 137/145/…
+were expected, off by about 5 px.
+
+It is not attributed to the branch:
+- the same test passed in the run before, and the only change since then is a
+  toolbar divider and tooltip;
+- it passed 3 of 3 alone;
+- the whole spec file passed 38 of 38 with 12 workers, run twice.
+
+This is the first recorded occurrence. If it comes back, the suspect is a
+measurement taken before the auto-resize settles under load, not the switches.
+
+## 2026-10-11 — Whose sidebar picture? MusicBrainz's is switched off; the one in the snapshots is another script's (feature/sidebar-overhaul, part 4)
+
+Env: 2026-10-11T07:06:21Z-07:06:44Z (probe) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Python 3 urllib (probe), source read through `gh api`; no browser.
+
+**Correction to the entry "The commons-image endpoint" above.** That entry
+left open how the user's browser gets the sidebar picture. The
+musicbrainz-server source (master, read 2026-10-11) answers it:
+
+- `lib/MusicBrainz/Server/Controller/Role/CommonsImage.pm`: the endpoint and
+  the page's cached image both return nothing unless
+  `DBDefs->WIKIMEDIA_COMMONS_IMAGES_ENABLED`. The file comes from an
+  `image`/`logo` relationship to Commons, else the Wikidata item's P242 (an
+  area), P18, then P154.
+- `root/static/scripts/common/components/CommonsImage.js` renders
+  `div.commons-image > div.picture > img` plus a "picture-note" link, "Image
+  from Wikimedia Commons".
+- The endpoint answers `{"image": null}` even for Bruce Springsteen, who has an
+  `image` relationship, and the live page shows no picture: the switch is
+  **off on musicbrainz.org**.
+- `debug/bs-debug.html` and `debug/multi-table-Artist_relationships.html` have
+  `div.entity-image > div.picture > img` with no picture-note and a
+  `?utm_source=commons.wikimedia.org&utm_campaign=rest&utm_content=thumbnail_unscaled`
+  address. That markup is not in the MusicBrainz source at all, so **another
+  userscript adds it**. Which one is unknown here.
+
+Decisions (user, 2026-10-11): part 2 keeps decorating `div.entity-image` (with
+consent; only the img's address is read) and also recognises
+`div.commons-image`. The previews (part 4) do what the server code would do,
+in the browser, on Space only.
+
+**Probe `scripts/probe-wikidata-image.py`:**
+- the Web Service answers scripts (unlike the HTML pages): 200 JSON, 377 ms
+  for Bruce Springsteen's url-rels (27,958 bytes);
+- **Bruce Springsteen** has an `image` relationship to
+  `File:Bruce_Springsteen_-_Roskilde_Festival_2012.jpg` (the same file the
+  other script shows) and Wikidata Q1225, whose P18 is "Bruce Springsteen
+  2025.jpg" (299 bytes, 314 ms); no P154;
+- **Columbia** has two `logo` relationships (Columbia_Records_logo.svg first)
+  and Q183387, whose **P18 is "AWomansSmileCraigCampbell.jpg"**, a photograph
+  of something else, and P154 "Columbia Records Colored Logo.svg". So a label
+  asks P154 before P18 (`_MB_POP_IMG_PROPS`), where the server asks P18 first;
+- **Various Artists**: Q3108914, no P18, no P154 (13 bytes each);
+- an id Wikidata cannot parse (`Q999999999999`) answers 200 with an `error`
+  object (`param-invalid`). `_mbPopImageLoad()` reads any `error` as "no
+  picture";
+- `Special:FilePath/<file>?width=330` answers 302 to
+  `Special:Redirect/file/…&width=330`, then the image: 28,399 bytes at 330 px
+  and 404,406 at 1280 for Bruce Springsteen's file; the SVG logo 10 KB / 44 KB;
+- the place MBID in the probe list answered 404 (a wrong id); the place path
+  is covered by the Stone Pony fixture (`image` relationship plus Q3989486).
+
+Built: `_mbPopImageLoad()` and friends (docs/claude/sidebar.md, "The picture
+in the entity previews"), `sa_pop_mb_image`, `pop-mb-image.spec.js` (8) and its
+mobile twin (1), and 11 more mutations in `scripts/mutations/sidebar-overhaul.json`
+(10 for the previews, 1 for MusicBrainz's own sidebar markup).
+
 ## 2026-10-12 — "MusicBrainz: Instrument Icons Everywhere" (@Lotheric): snapshots, and the icons SA drops
 
 Env: snapshots saved 2026-10-10T21:55Z (gfanj) and 2026-10-12T12:51Z (search), file mtimes · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Brave 1.97.56 (Chromium 155.0.8059.40) · Tampermonkey 5.5.1, with the script v2026-10-07.1444 installed.
@@ -22318,3 +22454,456 @@ Tests: `hide-empty-subtables.spec.js` (the "nothing matches" test now pins
 "nothing hidden") plus `ms-length-filter-after-toggle.spec.js`, 14/14.
 `ms-length` test C fails on `main` and passes here. Mutations
 `hide-empty-subtables.json` 9/9 (new H8/H9 drop the keep-one guard).
+
+## 2026-10-14 — pinned bars stop short of the right edge, rows show beside them; a sorted header is see-through on the Springsteen sites (WIP.1–WIP.2, branch `fix/sticky-gutter-and-sorted-thead`)
+
+Env: 2026-10-13T22:20Z–22:50Z (2026-10-14 local) · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs). The user's reports came from their own browser, version not stated (`unknown`).
+
+**Report 1 (MusicBrainz, area page `/area/489ce91b…`, Relationships, Series
+uncollapsed; `debug/USA-final.html` + three screenshots):** the h2/h3 bars
+ended ~120 px before the window's right edge. While they were stuck at the
+top, rows showed in that strip ("…y Barry Manilow" beside the Series h3).
+Scrolled to the far right, an empty strip stayed after the table.
+
+Probe (a scratch script, not kept): `debug/USA-final.html` rendered
+statically at 1913 px with MusicBrainz's own `common-aaaf2ca.css` (fetched
+from static.metabrainz.org; the fixtures never load it). Page right 3588,
+`#content` 3500, `#sidebar` 3500–3578, table 3490. `#page` is
+`display: table` and `#sidebar` a `table-cell`. A table cell never shrinks
+below its min-content width, so `.sidebar-collapsed { width: 0;
+margin-right: -240px }` did nothing (margins do not apply to cells either),
+and the opacity-0 sidebar kept 78 px. `_sphRefresh()`'s
+`gutter = max(parentLeft, extent − parentRight)` then came out ~98 px, and
+every bar was capped that far short. The ~20 px gutter that remains without
+the sidebar is by design (the bar's room to stay pinned to the end of the
+scroll), but nothing covered it on the right, while the left side has the
+h3 indent shadow and the sticky-column masks.
+
+Fix: a collapsed sidebar is `display: none` (`initSidebarCollapse()`, with
+`display 0.3s allow-discrete` so the slide-out still plays). Not scoped
+under `html.mb-sph-on`: engaging would then change the extent it engaged
+on. And the bars paint their own background over the gutter (user's choice
+over a page-coloured mask): `::after` with `background: inherit`, width
+`--mb-sph-bleed` = gutter + margin-right, h2/h3 bars only (`_SPH_BLEED_SEL`).
+
+Trap hit on the way: the first version registered `--mb-sph-bleed`
+`inherits: false` like the other three properties, and the `::after` came
+out 0 px wide. A pseudo-element sees only INHERITED values of its
+originating element. It is `inherits: true` now. That is why it must never
+be written on a table pinned whole: every cell would inherit it, and a
+change would restyle the whole table, which is the 249 ms trap the other
+properties were made non-inheriting for. Pinned by a mutation.
+
+Also: the Ctrl+M overlay placed itself left of `#sidebar`'s rect; a
+`display: none` sidebar's rect is all zeros, which would have pushed it off
+the left edge. Guarded with `getClientRects().length`.
+
+**Report 2 (brucespringsteen.it records, screenshot):** sort "Notes", scroll
+down, and "gatefold" showed through the sorted header. With a multi-sort,
+every sorted header was affected. `.mb-mscol-hdr-N` is a 60 % alpha
+`background-color !important` that replaces the cell's own colour. On
+MusicBrainz, MB's CSS paints a gradient image on `table.tbl thead` itself,
+behind the header cells; on the foreign hosts the thead had no background,
+so the rows under the sticky thead showed through. Fix:
+`table.tbl thead { background-color: inherit }` in `applyStickyHeaders()`.
+That is the table's colour: `#fff` on the foreign hosts (the colour the tint
+already blended with while nothing was under it, so the header looks the
+same), and transparent on MusicBrainz, where `table.tbl` has no colour, so
+MB is unchanged by construction.
+
+Tests: `sticky-page-headers.spec.js` "collapsed sidebar takes no space"
+(injects an excerpt of MB's layout CSS); the custom-property test and the
+"narrow sub-tables are pinned whole" test now also pin "no bleed on a
+table"; `sticky-filter-bars.spec.js` "reach the window edge in their own
+colour" (painted pixels beside the stuck h2 and h3, scrolled both ways);
+new `sorted-thead-opaque.spec.js` (bs fixture, one and two sorted columns,
+the same header pixel before and after rows scroll under). Mutations:
+`scripts/mutations/sticky-gutter-sorted-thead.json`, 6/6 caught.
+Performance: nothing on the filter, sort or render path. The sidebar has
+one box fewer; the bleed is one custom-property write per bar, made only
+when its value changes, from values the pass already has. No capture.
+
+**Second round, same day (user's browser, `debug/h2h3bug.html` + screenshot):**
+report 2 confirmed fixed. Report 1: scrolled to the far right, the
+Wikipedia h2 (it rides inside the pinned `.wikipedia-extract` body, so it
+has no bleed of its own) stopped where the content ends, a page padding
+short of the window edge, which the user liked. But the data h2 and the h3
+bars painted on to the window edge, under the sidebar handle, past the
+table's end: the snapshot shows a fixed `--mb-sph-bleed: 20px`. The bleed
+now reaches only as far as the bar's containing block reaches on screen,
+`clamp(parentRight − scrollX − barRight, 0, gutter + margin-right)`,
+recomputed in the existing passive scroll listener (`_sphUpdateBleed()`).
+That is arithmetic on values `_sphRefresh()` already has, with a write only
+when a value changes: never on a vertical scroll, and on a horizontal one
+only within the last gutter's width of the scroll range. Test: "stop where
+the table ends"; two more mutations (a fixed width; no update on scroll),
+8/8 caught. The mutation "bleed written on tables" had gone stale (a `0`
+was filtered out as falsy and never written) and was re-planted as an
+object.
+
+A `test:full` started at 22:50:11Z was stopped at 381/1690 (all passed),
+because this change landed in the working tree under it. It was restarted
+afterwards.
+
+**Third round, same day (user's browser, release page, two screenshots):**
+fully scrolled, it looked right; part of the way, the data h2 and the h3
+bars still reached the window edge while the Annotation and Credits bars
+(riding inside pinned bodies) ended a gutter short "all the time", and
+those are the reference. So the strip is masked in the PAGE colour
+(`_sphGutterBg()`) at a fixed gutter + margin-right width: the option
+offered first and declined before the comparison was visible. The
+per-scroll clamp (`_sphUpdateBleed()`) is gone with it, since a
+page-coloured strip over page padding is invisible at maximum scroll anyway.
+The second `test:full` (23:15:16Z at `460ad13`) was stopped at 199/1691
+(all passed) for the same reason as the first. Mutations: 7/7 caught,
+including "the strip is painted in the bar's own colour".
+
+**Fourth round, same day (user's browser, release page and artist events,
+three screenshots):** the bars now line up, but the wide tables themselves
+still ran on to the window edge until scrolled to their end; the user asked
+for the tables to end on the bars' line from the start and during the
+scroll. So the per-bar `::after` (and its inheriting `--mb-sph-bleed`) is
+replaced by one window-tall, page-coloured strip fixed at the window's right
+edge (`#mb-sph-rmask`, `_sphUpdateRightMask()`), as wide as the smallest
+bar gap, at z-index 102: over the table and its stuck thead, under the
+raised h3, the stuck h2, the header block, MB's sidebar, the MB header and
+footer and every popup.
+
+A trap in the mutation run: a plant at z-index 99 (just under the thead's
+100) PASSED. The probe showed the mask is hit over the stuck thead even at
+99 in this fixture, because the thead's 100 is scoped inside an ancestor
+stacking context there. On MusicBrainz it competes directly, and 102 > 100
+decides. The plant was changed to "under the page content altogether" (-1),
+which the fixture can see, with the reason recorded in the mutation file.
+Mutations: 6/6 caught. The third `test:full` (23:30:16Z at `5ac6b54`) was
+stopped at 208/1691 (all passed) because this change landed under it.
+
+**Fifth round, same day (user's browser; three screenshots, `debug/jl.html`):**
+
+- springsteenlyrics.com: sorted headers still showed rows through them. The
+  site's Bootstrap 3.3.2 (fetched from the live site, `bootstrap/css/
+  bootstrap.min.css`) has `table { background-color: transparent }`, which
+  outranks `_ensureForeignTableStyle()`'s zero-specificity table colour, so
+  the thead's `inherit` came out transparent. The fixtures load no site CSS,
+  which is why the brucespringsteen.it arm had passed. Now
+  `_ensureForeignTableStyle()` gives `table.tbl > thead` `#fff` outside
+  `:where()`. The `inherit` in `applyStickyHeaders()` became redundant
+  (`transparent` on MusicBrainz, overridden on the Springsteen sites) and
+  was taken out, so the shared code is the same as on `main`.
+- jungleland.it: rows ran over the stuck header block and h2. The snapshot
+  shows `table.tbl.mb-jl-table.mb-sph-target` WITHOUT `mb-sph-table`, capped
+  (`--mb-sph-maxw`): `_sphCollectTargets()` pinned every direct `<body>`
+  child as chrome, the list table included (no MB `#page` there). A pinned
+  non-table target is raised while hovered (107, and 108 for body-level
+  ones), and VSB's cap for pinned bodies skips `<body>` children, so with
+  the pointer on the list the whole table painted over the bars. The
+  fixture reproduces it (`probe`: the table classed as a target). This
+  predates the branch. Fix: the `<body>`-children pass skips `table.tbl`;
+  the table pass handles it. MusicBrainz tables are never `<body>`
+  children.
+
+Mutations: 8/8 caught.
+
+**Merge gate on `77bad5a`:** `test:full` 2026-10-14T00:35:36Z–01:55:20Z on
+`vzell-lap` (2 workers, 79 m 44 s): 1695 passed, 2 failed. Neither failure
+is caused by this branch. Each one was rerun with `--repeat-each=6`, on the
+branch and with `main`'s userscript swapped in (the spec and support files
+are identical on both):
+
+| test | branch | `main` |
+|---|---|---|
+| `rich-tooltips.spec.js:58` (heading title read once, right after the tooltip shows) | 1/6 failed | 2/6 failed |
+| `detail-preview.spec.js:571` (springsteenlyrics.com card, see 2026-10-13) | 2/6 failed | 3/6 failed |
+
+Not fixed here.
+
+## 2026-10-14 — Merged main into feature/sidebar-overhaul; "Sidebar as tables" on release, series, place, area and instrument (WIP.5)
+
+Env: 2026-10-14T10:06Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (fixture specs), no Tampermonkey (GM stubs)
+
+**Why the button was missing.** Release and series pages had a toolbar, but
+`_sbTablesButtons()` let only six kinds through. Place, area and instrument
+overviews had no page type on the branch at all, so the script stopped at
+init with no toolbar to join. Main's relationship tables (`06f4f74`) added
+`place-overview`, `area-overview` and `instrument-overview`, hence the merge
+first (main `d4f1c28`, 9.99.1339; merge commit `33e043a`).
+
+**Merge conflicts and how they were resolved.**
+- Toolbar button list: main's `showIf`/`_noMainButton` filter, then
+  `.concat(_sbTablesButtons())`.
+- `startFetchingProcess()`: main's `replaceFeatures` plus button `type` is
+  the branch's `ownFeatures` plus `pageType`, done more fully (it also drops
+  `entityFeatures`, and `_activateButtonForSavedPageType()` lets a disk load
+  find the button). Main's version kept; the Sidebar button now sets
+  `type: 'sidebar-tables', replaceFeatures: true`. Its two mutations were
+  rewritten to plant the same defects through the new fields; both behave as
+  before (one `expect: "pass"`, one caught).
+- Fetched-page pre-processing: both `relDetailsToTables` and `sidebarToTables`.
+- This file: both sides kept, in date order.
+Checked on the merged tree: 177/177 in the specs both sides touched;
+`sidebar-overhaul.json` 39/39.
+
+**The change.**
+- `_sbTablesButtons()` also lets through release (with `/disc/N`), series,
+  place, area and instrument.
+- The three overview definitions also match with `sa_sidebar_tables_button`
+  on; their Relationships button has `showIf` on
+  `sa_enable_relationship_tables`, so with that off only the Sidebar button
+  shows.
+- `applySidebarToTables()`: every `dl.properties` and every
+  `ul.external_links` is its own group, named by its heading (a release has
+  two of each). New for a release: Labels (the `ul.links` whose items link a
+  label's own page, so a label's Editing list, which links
+  `/label/<mbid>/edit`, is never taken for one) and Release events.
+- Disk load: `_buttonForSavedPageType()` also asks `_sbTablesButtons()`, and
+  the restore runs `applySidebarToTables()`. Without that call the groups
+  still render, but nested in the release's `div.tracklist-and-credits` with
+  no "Sidebar" heading (probed: the loaded `#content` has only the native
+  wrappers at top level); the round-trip test now checks where they sit.
+
+**Tried and undone: placing the groups earlier on a release.** A release has
+no direct h2 in `#content` (its headings are in `div.annotation` and
+`div.tracklist-and-credits`), so the "Sidebar" heading is appended at the
+bottom. Inserting it before the first child holding an h2 changed nothing:
+`_relocateTrailingH2Sections()` (`sa_enable_h2_section_relocation_on_final_page`,
+default on) moves every other h2 section above the data heading after the
+render, on every page. That is the design, so the change was reverted.
+
+**Found, not fixed (main's, not this branch's).** Refreshing
+`scripts/config-default-history.json` (11 settings added: main's three, this
+branch's eight) makes `audit-config-defaults.py` report
+`sa_bb_sidebar_right: no entry — was true, now false`. Both commits
+(`d60e197` true, `91b558b` false, 2026-10-09) are on main and were the same
+WIP.3, so the true default probably never shipped. A migration entry or an
+allowlist is the user's decision.
+
+Tests: `sidebar-tables.spec.js` 13/13 (8 new). Mutations: 9 new in
+`sidebar-overhaul.json`, all caught; "the saved Sidebar button is not found"
+fails by the spec's 90 s timeout (the pageType-mismatch prompt replaces the
+render button), not by an assertion.
+
+**Full suite** (`run-test-full.py`, start 2026-10-14T10:09:02Z, finish
+10:18:10Z, 9 m 8 s, petri, `33e043a` plus the uncommitted WIP.5 work):
+1719/1724.
+- `rel-tables-pages.spec.js` place and series pinned the exact toolbar
+  button list; the Sidebar button is now on both by design, so both lists
+  gained '🗂 Sidebar as tables'.
+- `popup-mb` (a hover that moved on before its rate slot) and
+  `ws2-transient-classifier` (a 502 batch retry gap of 2307 ms against
+  3000) passed on rerun: timing under a full parallel run.
+- `rich-tooltips.spec.js` "h2/h3 row-count stat … hands the heading title
+  back" fails every time, also on `main` alone and on this merge without the
+  WIP.5 work, and passes on the branch before the merge (`73350e7`).
+  `git bisect` between the merge base `33c8d48` and `main` names `06f4f74`
+  (main's relationship tables). The h2's own title ("Click to
+  collapse/uncollapse section …") is still set while the stat's card shows.
+  Main's regression; not fixed on this branch.
+
+Mutations on the final tree: `sidebar-overhaul.json` 48/48 as expected
+(47 caught, 1 `expect: "pass"`), after repointing "tables: the button on any
+page" at the rewritten path pattern in `_sbTablesButtons()`.
+
+## 2026-10-14 — Sticky page headers flip-flopped on an overflowing header status line; sa_bb_sidebar_right migration (WIP.5)
+
+Env: 2026-10-14T11:03Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (fixture specs), no Tampermonkey (GM stubs)
+
+Both "found, not fixed" items of the entry above, fixed on request.
+
+**The rich-tooltips failure was not a tooltip bug.** Probes on
+`releasegroup-releases-live-titles.html` (1280 px window, after the "Studio"
+global filter):
+- The h2's title came back because the pointer left the row-count stat: the
+  `mouseout` restored it, correctly.
+- The stat moved because the page re-laid itself out: width 1280 → 1401,
+  `<body>` margins 0 → 8, the tabs sticky → static, the header 38 px shorter.
+- A 20 ms timeline of `html` classes showed `mb-sph-on` toggling every
+  60–70 ms indefinitely: the sticky page headers engaging and disengaging.
+- Disengaged, `#page` was 1401 wide. The widest leaves: the header's status
+  line (`#mb-filter-status-display`, `white-space: nowrap`, to 1393;
+  `#mb-info-display-generic`, 566 px) in `#mb-status-displays-container`, an
+  `inline-flex` that never wraps. Engaged, that header bar is a capped target,
+  the line wraps, `#page` fits in 1280, and `_sphRefresh()` disengaged: the
+  overflow was the capped bar's own. `_sphRefresh()`'s JSDoc said this
+  "cannot oscillate".
+- Why `06f4f74`: its "Relationships" button lengthened the release group's
+  toolbar, which aligns the status line under the first button, pushing it
+  past the edge. A layout coincidence exposed a general flaw; the Sidebar
+  button (WIP.3/WIP.5) lengthens more toolbars the same way.
+
+**Fix** (`_sphRefresh()`): before disengaging, the pass removes
+`html.mb-sph-on`, measures the disengaged extent, and re-adds the class when
+that extent exceeds both the window and the engaged extent plus `<body>`'s
+own margins. The margins allowance is needed: the first version without it
+broke "disengages once the overflow is gone … (no ratchet)", whose bare
+fixture overflows by a few px with the feature off. The cost is one extra
+layout, on a pass that would disengage only, like the extra layout the
+engage pass already takes. Timeline after the fix: engaged once at ~750 ms,
+then stable.
+
+Test: `sticky-page-headers.spec.js` "a status line past the window edge
+engages once and does not flip back and forth". It asserts the feature
+engages (so the overflow is really there) and flips at most once over 60
+animation frames. Mutations: 2 more in `scripts/mutations/sticky-page-headers.json`,
+both caught (no disengaged check: the new test; no margins allowance: the
+"no ratchet" test). Sticky, tooltip and sl-sticky specs: 72/72.
+`rich-tooltips.spec.js`: 7/7.
+
+**`sa_bb_sidebar_right`:** a `_SETTINGS_MIGRATIONS` entry `was: [true]`. The
+true default lived one day inside one branch (`d60e197` → `91b558b`,
+2026-10-09, both "WIP.3", `@version` 9.99.1298 at the time) and never
+shipped, but `dump-default-history.py` walks every revision. The entry
+resets a stored `true` only in a profile that has not run migration level 1
+yet (it is not bumped). `audit-config-defaults.py` is clean again: 24 retired
+defaults, 4 orphaned keys, matching 898 revisions. `settings-migration.spec.js`
+18/18.
+
+**Full suite after these fixes, and one test race.** Two runs (11:03:15Z →
+11:13:08Z, 1723/1725; 11:18:29Z → 11:26:49Z, 1722/1725; petri) failed only on
+timing-sensitive tests, each passing alone: `ws2-transient-classifier` (a
+retry gap; also 1 in 5 on `main` alone), `column-filter-modes` "never change
+a column's width" (the one-off recorded in `3358368`), a `popup-mb` place
+window (6/6 alone). `caa-column-redesign.spec.js` "grid is the default … a
+collapsed cell keeps its width" failed in both (264 vs 270 px). A probe
+showed the column widening by 6 px on its own within ~100 ms of the render
+(page 5217 → 5223 px, sticky headers engaged throughout), so the test's first
+read could come before it. Same 24/24 under 12 parallel workers with and
+without the `_sphRefresh()` fix: not caused by it. The test now takes the
+collapsed width once two reads in a row agree.
+
+## 2026-10-14 — Merged fix/sticky-gutter-and-sorted-thead into feature/sidebar-overhaul; the initial sidebar collapse animated (WIP.6)
+
+Env: 2026-10-14T13:34Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (fixture specs), no Tampermonkey (GM stubs)
+
+**Merge** (`eac6013`): the userscript merged cleanly. The fix branch kept
+main's disengage path, so the `_sphRefresh()` stay-engaged check and its
+right-edge mask (`#mb-sph-rmask`, visible only under `html.mb-sph-on`) do not
+overlap. The WIP files: this branch's WIP.1–WIP.5 kept, the fix branch's
+WIP.1/WIP.2 appended as WIP.6/WIP.7. DEBUG-NOTES: both sides kept, in date
+order.
+
+**What broke, and on which branch.** The first full run after the merge
+(12:31:13Z → 12:39:37Z, 1729/1736) showed `popup-ext.spec.js` failing 7–8
+of 34 on every run, alone and on one worker too (the card or the window
+never showed after a hover). `main` and this branch before the merge
+(`0053015`): 34/34. The fix branch alone: 6 failed. `git bisect` over its
+commits names `460ad13`, and removing its one line `display: none
+!important` from `.sidebar-collapsed` gives 34/34. The fix branch's own new
+spec "collapsed sidebar takes no space" also failed 4/4 on petri, on the fix
+branch alone. Its merge gate ran on vzell-lap (2 workers), where both passed.
+
+**Cause.** `initSidebarCollapse()` applies `sa_sidebar_collapsed` at render
+"without animation so the page opens already collapsed", but only added the
+class. The sidebar was already laid out, so the transitions ran, and the fix
+branch's new `display 0.3s allow-discrete` kept the collapsed sidebar in
+the layout for 0.3 s. Then `#page` (a CSS table) reflowed into the freed
+width and the event page's links moved from under a pointer that was
+already resting on them. A slower machine had hovered only after the jump.
+
+**Fix:** the initial collapse sets `transition: none` on the sidebar, adds
+the class, forces the style (`offsetWidth`) and clears the inline
+transition, so a click on the handle still slides. Test:
+`sticky-page-headers.spec.js` "a page set to open with the sidebar
+collapsed has no sidebar box from the first frame (no slide-out)", which
+counts the boxes one frame after the class lands. Mutation "the initial
+sidebar collapse animates" in `scripts/mutations/sticky-page-headers.json`
+is caught. Then `popup-ext` passed 47/47 twice (with the mobile twin and
+the sticky spec), and the fix branch's spec passed as written (4/4 alone,
+8/8 on 8 workers).
+
+**Mutation anchors.** Of `sticky-page-headers.json`, 3 were repointed and
+caught again:
+- "the feature never lets go once engaged": staled by this branch's
+  `_sphRefresh()` change; it is now the stay-engaged check always holding;
+- "body-level chrome is no longer collected" and "a bar's own margin-right
+  is not subtracted": staled by the fix branch.
+3 more are already stale on `main` and were left alone: "the docked state
+ignores the columns before the sticky one", "the docked column is never
+masked" (0 matches) and "the open-popup rule no longer requires an inline
+z-index" (4 matches). `sticky-gutter-sorted-thead.json`: 8/8 on the merged
+tree.
+
+**Full suite** (13:26:13Z → 13:34:31Z, 8 m 18 s, petri, `eac6013` plus
+these changes): 1736/1737. The one failure, `ws2-transient-classifier`
+"a 502 on a browse page is retried, and its Retry-After is honoured too", is
+the retry-gap flake that also fails 1 run in 5 on `main` alone.
+
+## 2026-10-14 — The retry-gap and rate-gate specs: WSL2 stepped the wall clock back, not a short wait
+
+Env: 2026-10-14T13:54Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (fixture specs), no Tampermonkey (GM stubs)
+
+**Symptom.** One run in a few failed a "gap too short" check under load, a
+different spec each time: `ws2-transient-classifier` (2307 and 2550 ms
+against ≥ 2900, `Retry-After: 3`), `html-fetch-transient`,
+`release-rg-popup` (2352 against ≥ 3000), `popup-mb` and `popup-ext` rate-gate
+tests. It also happened on `main` alone (1 in 5).
+
+**Probe.** "a Retry-After header is honoured as a floor on the backoff",
+`--repeat-each=60 --workers=12`: 8–10 short gaps per batch, all near 2550 ms.
+With `fetch` wrapped in the page and both clocks logged:
+- the page's `Date.now()` and the route's `Date.now()` in Node agreed:
+  2550 ms between the 503 answer and the retry;
+- the page's `performance.now()` said 3001 ms, and Node's `process.hrtime`
+  said 3012 ms.
+
+So the script waited the full 3000 ms (`beforeRetry`'s `setTimeout` runs on
+the monotonic clock), and the wall clock was stepped back about 460 ms
+during the wait: WSL2 resynchronising with the host. Every spec that timed
+an interval with `Date.now()` could see it.
+
+**Fix (tests only).** Every request log, `t0` and deadline in 12 fixture
+specs is on Node's `performance.now()` (24 sites). `release-rg-popup.spec.js`
+compared the page's `Date.now()` with Node's; its `t0` is now taken in Node
+after the reservation returns, which can only shorten the measured gap. The
+two HTTP-date lines in `ws2-transient-classifier.spec.js` keep `Date.now()`.
+Rule in docs/claude/testing-playwright.md. After it: the floor test 60/60
+(repeated under the same load), the two other `Retry-After` tests 60/60
+twice, and the 12 specs 163/163 plus `resume-from-failed-page` 7/7.
+
+Full suite after the fix (13:54:05Z → 14:02:24Z, 8 m 19 s, petri, `0ada5c7`
+plus these spec changes): 1737/1737, the first fully green run of the day.
+
+## 2026-10-14 — The opened sidebar stayed out of view on wide pages; the handle at the sidebar's top (WIP.8)
+
+Env: 2026-10-14T15:07Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (fixture specs), no Tampermonkey (GM stubs). The report and the snapshots `debug/r-t-no-sidebar-content.html` and `debug/r-t-sidebar-content.html` came from the user's browser on vzell-lap (versions not given: unknown).
+
+**Report.** The handle opens the sidebar fine where nothing is wider than the
+window (an instrument page). On a release group with wide tables the opened
+sidebar showed no content, slid in while scrolling right, and was complete
+at the right end. Also asked for: the handle at the top of the sidebar.
+
+**Snapshots.** The FRP has `html.mb-vsb-on.mb-sph-on`, `#page` inline
+`min-width: 100%; width: fit-content` and `#sidebar` inline
+`position: sticky; left: 0px; top: 0px; … z-index: 105` (auto-resize).
+The second file ("the empty sidebar") is the right-edge mask, `<div
+id="mb-sph-rmask" class="mb-sph-rmask-on" style="width: 244px">`. It is NOT
+what hides the sidebar: its z-index is 102, under the sidebar's 105. The
+sidebar is simply not there: it is the last cell of MB's `#page` table,
+placed after the wide content, past the window's right edge. Sticky
+`left: 0` only stops it scrolling off the LEFT edge, which never happens.
+
+**Probe** (`rel-release-group-overview.html`, MB's table layout injected as
+`sticky-page-headers.spec.js` does, 1000 px window): opened, the sidebar at
+x 941–1159; at the right end of the scroll 766–984.
+
+**Fix.**
+- Auto-resize sets `right: 0` (cleared on restore): opened, the sidebar is at
+  782–1000.
+- The handle's top follows the sidebar's top (`#content`'s while collapsed),
+  clamped inside the visual viewport.
+- A frame-by-frame probe after the click showed the handle placed once at
+  sidebar x 794 while it settled at 782: the content containers slide for
+  0.3 s, and the sticky page headers' switch moves a sidebar held at the
+  edge. `followHandle()` places it every frame for 400 ms after a click or
+  an `html` class change. Sidebar subtree changes keep their single rAF
+  read.
+
+**Tests.** `sidebar-collapse-handle.spec.js` (3) passes 18/18 on 6 workers.
+Mutations (`sidebar-overhaul.json`, all caught): the old `left: 0`; no
+`top` of the handle's own; one measurement instead of the follow.
+
+**Not fixed: the handle on a phone.** A mobile twin found the handle
+untappable: on the Pixel 7 emulation it is fixed to the layout viewport's
+right edge (x 949 of 964) while the visual viewport is 412 px wide. That
+was so before this change, which only moves it vertically; it now at least
+stays inside the visible height (it was at y 1117 of 839 for a moment).
+The twin was dropped rather than written around it.

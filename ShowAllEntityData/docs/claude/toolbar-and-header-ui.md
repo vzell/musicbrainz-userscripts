@@ -745,6 +745,60 @@ render sites), `_vsbRefresh()`, `_vsbBaseOffset()`.
 - **The h3's indent** (`margin-left: 1.5em`, the table under it sits 4 px
   further left in the fixture) is masked with a page-coloured `box-shadow`
   shifted left, so rows never show beside a stuck bar.
+- **The right end: one page-coloured strip at the window edge**
+  (`#mb-sph-rmask`, 2026-10-14). With the sticky page headers engaged, a
+  bar is capped (`--mb-sph-maxw`) a gutter short of the window, the room it
+  needs to stay pinned to the end of the scroll (`_sphRefresh()`). A wide
+  table ran on past that line to the window edge, and rows scrolling under
+  a stuck bar showed beside it. `_sphUpdateRightMask()` now keeps one
+  `position: fixed` strip at the window's right edge, top to bottom, as
+  wide as the smallest gap between a pinned h2/h3 bar and the window edge,
+  in the page colour (`_sphGutterBg()`): a wide table, its rows and its
+  stuck thead end on the bars' line at every scroll position, like the
+  Annotation / Credits / Wikipedia bars. z-index `SPH_Z_RMASK` 102: over
+  the table (thead 100, resizer 101), under a raised h3 (103), the stuck
+  h2 (104), the header block and MB's sidebar (105), the MB header and
+  footer (106+) and every popup; `pointer-events` stay on, so nothing
+  hidden under it can be clicked. Hidden without a pinned bar (no line to
+  align to) and whenever the feature is disengaged. Three earlier
+  versions were rejected in the user's browser the same day, each a
+  per-bar `::after`: the strip beside the bar in the bar's colour (past
+  the table's end at maximum scroll), the same clamped to the content's
+  end on scroll (still further right than the section bars), and the same
+  in the page colour (the table itself still ran on past the line). The
+  gutter had also been ~100 px too wide on MusicBrainz: under
+  `#page { display: table }` a collapsed sidebar stayed a table cell as
+  wide as its min-content; it is `display: none` now
+  (`initSidebarCollapse()`), after the 0.3 s slide-out (a discrete
+  `display` transition). The initial collapse (`sa_sidebar_collapsed`)
+  runs with the transition off: otherwise a page set to open collapsed
+  kept the sidebar for 0.3 s and then reflowed under a pointer already
+  resting on a link (8 `popup-ext.spec.js` failures on petri, 2026-10-14;
+  spec "no sidebar box from the first frame"). The fixtures carry no MB stylesheet, so
+  `sticky-page-headers.spec.js` injects that layout excerpt to see it.
+  Specs: "a wide table ends on the h2/h3 bars' line" (painted pixels at
+  scrollX 0 and with the bars stuck), "the right-edge mask lies under
+  chrome", "stop where the table ends", "collapsed sidebar takes no
+  space"; mutations: `scripts/mutations/sticky-gutter-sorted-thead.json`.
+- **The opened sidebar and its handle on a wide page** (2026-10-14,
+  reported on a release group). Auto-resize makes `#sidebar`
+  `position: sticky` with `right: 0`. It is the last cell of MB's `#page`
+  table, so on a page wider than the window its own place is past the right
+  edge. It used to be `left: 0`, which never applies there, so an opened
+  sidebar stayed out of view and only slid in while scrolling right (the
+  page-coloured right-edge mask was NOT what hid it: the sidebar's z-index,
+  105, is above the mask's, 102). `initSidebarCollapse()`'s handle sits at
+  the sidebar's top (at `#content`'s top while collapsed), clamped inside
+  the visual viewport, instead of `top: 50%`. After a click, and whenever
+  `html`'s class changes (the sticky page headers switching), `followHandle()`
+  places it every frame for 400 ms: the sidebar and the content containers
+  slide for 0.3 s and a single measurement landed 50 px off. Changes inside
+  the sidebar keep the single rAF measurement, so a render is not slowed.
+  Spec: `sidebar-collapse-handle.spec.js` (3); mutations in
+  `scripts/mutations/sidebar-overhaul.json` ("handle: …"). Not fixed: on
+  the phone emulation the handle is fixed to the layout viewport's right
+  edge (x 949 of 964) while only 412 px are visible, so it cannot be
+  tapped; that predates this change, and no mobile twin pins it.
 - **Stacking ladder:** thead 100, column resizer 101, h3 102 (raised 103),
   data h2 104 (raised 107 = `SPH_Z_RAISED`), Brucebase side bar 150. A
   raised h3 stays UNDER the h2 (an h3 sliding in under the stuck h2 must

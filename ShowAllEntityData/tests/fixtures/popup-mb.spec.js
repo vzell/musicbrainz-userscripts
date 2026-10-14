@@ -129,6 +129,9 @@ async function open(page, { settings = {}, lookup = null, showAll = true, ws2 = 
     const log = { lookups: [], browses: [], rgLookups: [], caa: [], pages: [], ws2: [], eaa: [], html: [] };
     const ctx = page.context();
     await ctx.route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
+    // An artist's, label's or place's window shows its Commons picture
+    // (pop-mb-image.spec.js): served locally, so nothing reaches Wikimedia.
+    await ctx.route(/^https:\/\/(?:commons|upload)\.wikimedia\.org\//, (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
     await ctx.route('https://coverartarchive.org/**', (route) => {
         const u = new URL(route.request().url());
         if (/^\/release\/[0-9a-f-]{36}\/?$/.test(u.pathname)) {
@@ -139,7 +142,7 @@ async function open(page, { settings = {}, lookup = null, showAll = true, ws2 = 
     });
     await ctx.route(/\/ws\/2\/release\/[0-9a-f-]{36}\?/, (route) => {
         const url = route.request().url();
-        log.lookups.push({ url, at: Date.now() });
+        log.lookups.push({ url, at: performance.now() });
         const r = lookup ? lookup(url) : { status: 200, body: json('ws2-pop-release-greetings.json') };
         return route.fulfill({ status: r.status, contentType: 'application/json', body: r.body });
     });
@@ -468,7 +471,7 @@ test.describe('MusicBrainz link previews (sa_pop_mb)', () => {
 
         // Timed by the test's own clock: the route logs it, not the page's fake one.
         await page.evaluate(() => window.__saTest.reserveMbRateSlots(2));
-        const t0 = Date.now();
+        const t0 = performance.now();
         await ctrlHover(page, relLink(page));
         await expect(card(page)).toContainText('fetched now', { timeout: 10000 });
         expect(log.lookups).toHaveLength(1);

@@ -28,6 +28,7 @@ will never need is folded into collapsible sections.
 - [Sorting](#sorting)
 - [Columns](#columns)
 - [Collapsing and expanding](#collapsing-and-expanding)
+- [The sidebar](#the-sidebar)
 - [Cover art](#cover-art)
 - [The Relationships column](#the-relationships-column)
 - [The Recording of column](#the-recording-of-column)
@@ -800,6 +801,68 @@ so a column of times reads as a column rather than as ragged text.
   *more* / *less* toggle.
 - `Ctrl+Click` a prose toggle, or a column header's toggle, to force-expand —
   including any wiki headings nested inside the cell.
+
+---
+
+## The sidebar
+
+After a table is shown, the MusicBrainz sidebar's sections (*Artist
+information*, *Tags*, *External links*, *Editing*, …) open and close with a
+click on their heading, or with Enter or Space. `Ctrl+Click` one to open or
+close every sidebar section; the headings of the main page are left alone.
+**Open all** and **Close all** at the top of the sidebar do the same.
+
+- **Remembered.** A section you open is open again the next time you show a
+  table on the same kind of page (artist pages, label pages, …). A section you
+  never opened starts closed. Turn this off with *Remember open sidebar
+  sections*, or open everything every time with *Open every sidebar section*.
+- **Counts.** Each heading shows how many entries its section holds.
+- **Sub-sections.** *Genres* and *Other tags* under Tags, and the two lists
+  under Collections, open and close on their own, and are remembered too.
+- **External links by kind.** The links are grouped under Official, Social,
+  Streaming, Concerts, Lyrics, Databases, Stores and Other, each group opening
+  and closing on its own. *View all relationships* stays at the end. Turn the
+  grouping off with *Group external links by kind*.
+- **The handle** (*Collabsable sidebar*). The small ▶/◀ tab at the top-left
+  corner of the sidebar closes the whole sidebar and opens it again; closed,
+  the tab waits at the right edge of the window. On a page wider than the
+  window the opened sidebar stays at the window's right edge, in sight at
+  any horizontal scroll. *Start with sidebar collapsed* opens pages with it
+  closed, without the slide.
+- **Other scripts.** Whatever another userscript adds to the sidebar stays
+  where it put it. Its headings open and close like the others; nothing of it
+  is read or moved. The one exception is the sidebar picture below.
+- **The picture** (as soon as the page opens, no table needed). The photo or
+  logo from Wikimedia Commons at the top of the sidebar shows a card with its
+  file name when you point at it, and opens in the
+  [artwork viewer](#cover-art) on a click, Enter or Space, with *Open on
+  Commons* in its bar. A small copy appears at the start of the page heading,
+  so it stays in sight with the sidebar closed. Nothing extra is loaded: it is
+  the picture already shown. MusicBrainz has switched its own sidebar picture
+  off, so on musicbrainz.org today that picture comes from another userscript
+  you have installed; MusicBrainz's own works too, should it come back.
+  Switches: *Sidebar picture: hover card and viewer*, *Sidebar picture beside
+  the name*.
+- **The picture in previews.** The link previews of an artist, a label or a
+  place show its picture too, once you have pressed Space on one: see
+  *Link previews on MusicBrainz* under [Page-specific
+  behaviour](#page-specific-behaviour).
+- **🗂 Sidebar as tables.** On artist, label, event, release group,
+  recording, work, release, series, place, area and instrument pages this
+  button shows the sidebar's information (*Sort name*, *Born*, *Area*, …),
+  its external links (with their site and kind) and its tags (genre or tag,
+  with votes) as tables. On a release you also get its additional details,
+  its labels with their catalog numbers, its release events, and the release
+  group's external links, each as its own table. You can filter, sort and use
+  the 📊 dropdown on them like on any other table. It reads the page itself,
+  so nothing is loaded, and the sidebar stays as it is. Pressing another
+  button afterwards reloads the page first, as every second press does. A
+  saved "Sidebar as tables" view loads back from disk as the same tables.
+  Place, area and instrument pages keep the button with *Relationships as
+  tables* switched off. Turn the button off with *'Sidebar as tables'
+  button*.
+
+The switches are in ⚙️ Settings, next to *Collabsable sidebar*.
 
 ---
 
@@ -1882,7 +1945,13 @@ change.
   "(with …)" — linked to the artist, what was recorded there and its posters;
   for a place, its area named the same way, a map link, its links and up to
   100 of its events by date; for a
-  series, every item in order. A part that could not be loaded says so, with
+  series, every item in order. An **artist, label or place** window shows its
+  **picture** under the name: the Wikimedia Commons file MusicBrainz links as
+  its image or logo, else the one its Wikidata item names (one or two small
+  requests to Wikidata, a label's logo first). It is asked only here, never
+  for a card; after that the card shows it too, small, beside the facts, also
+  after a reload. Click it for the artwork viewer, with *Open on Commons*.
+  Switch: *Pictures in artist, label and place previews*. A part that could not be loaded says so, with
   **Try again**. Areas are named down from the city, as on MusicBrainz's
   own pages: the window looks up each area above, one per level, and
   remembers them for every other card; a card shows the whole line only once
@@ -1892,7 +1961,7 @@ change.
 - **Live page**: the entity's own MusicBrainz page, without the site's header
   and footer, and without its scripts.
 - **Click an image** (a release's front cover or its Cover art strip, an
-  event's posters) to open it in the artwork viewer, the same one as the
+  event's posters, an artist's, label's or place's picture) to open it in the artwork viewer, the same one as the
   release page's Cover art, stepping through all of that release's or event's
   images. **Esc** returns to the window; Ctrl-click opens the image in a new
   tab instead.

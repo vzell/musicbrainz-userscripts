@@ -61,7 +61,17 @@ test.describe('CAA/EAA column redesign', () => {
         expect(await page.evaluate(() => document.documentElement.dataset.mbArtLayout)).toBe('grid');
 
         const ul = cell(page, R.sixteen).locator('ul.mb-caa-art-ul');
-        const collapsed = await ul.evaluate((u) => ({ display: getComputedStyle(u).display, width: u.getBoundingClientRect().width }));
+        // The column still widens by a few px just after the render (264 →
+        // 270 px, probed 2026-10-14): under a loaded full run the first read
+        // came before that and the comparison below failed. Take the
+        // collapsed width once two reads in a row agree.
+        let collapsed = null;
+        await expect.poll(async () => {
+            const now = await ul.evaluate((u) => ({ display: getComputedStyle(u).display, width: u.getBoundingClientRect().width }));
+            const settled = !!collapsed && Math.round(now.width) === Math.round(collapsed.width);
+            collapsed = now;
+            return settled;
+        }, { intervals: [100, 100, 150, 200, 250] }).toBe(true);
         expect(collapsed.display, 'a collapsed cell is not a grid').not.toBe('grid');
 
         await expandCell(page, R.sixteen);

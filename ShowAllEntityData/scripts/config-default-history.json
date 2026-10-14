@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "1a277c0c0fc02110cd7fe3561a58d24cbf57a92d",
-    "revisions_walked": 885
+    "head": "33e043a860db797d9faacc0145f84267e184335f",
+    "revisions_walked": 898
   },
   "changes": [
     {
@@ -451,6 +451,13 @@
     "sa_enable_h2_section_relocation_on_final_page": true,
     "sa_collabsable_sidebar": true,
     "sa_sidebar_collapsed": true,
+    "sa_sidebar_remember_sections": true,
+    "sa_sidebar_open_all": false,
+    "sa_sidebar_section_counts": true,
+    "sa_sidebar_link_groups": true,
+    "sa_sidebar_picture": true,
+    "sa_sidebar_picture_in_header": true,
+    "sa_sidebar_tables_button": true,
     "sa_render_overflow_tables_in_new_tab": true,
     "sa_rich_tooltips": true,
     "sa_rich_tooltip_delay_ms": 400,
@@ -501,6 +508,7 @@
     "sa_filter_focus_prefix": "🔍 ",
     "sa_enable_column_filter_modes": true,
     "sa_column_filter_modes_compact_width": 160,
+    "sa_hide_empty_subtables": true,
     "sa_uniq_quickfilter_highlight_color": "#c0392b",
     "sa_uniq_quickfilter_highlight_bg": "#ffeaa7",
     "sa_uniq_count_color": "#111111",
@@ -778,6 +786,8 @@
     "sa_enable_springsteenlyrics": false,
     "sa_sl_detail_preview": false,
     "sa_sl_compact_nav": false,
+    "sa_foreign_mb_titles": true,
+    "sa_foreign_typography": true,
     "sa_enable_jungleland": false,
     "sa_jl_detail_preview": false,
     "sa_enable_brucespringsteen": false,
@@ -791,6 +801,7 @@
     "sa_pop_mb_on_touch": false,
     "sa_pop_mb_page": true,
     "sa_pop_mb_page_on_touch": false,
+    "sa_pop_mb_image": true,
     "sa_pop_mb_ttl_hours": 24,
     "sa_rg_window_max_releases": 500,
     "sa_pop_ext": true,

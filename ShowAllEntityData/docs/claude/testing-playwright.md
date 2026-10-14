@@ -300,6 +300,17 @@ eligible. A trigger that writes NOTHING still times out — so a spec whose
 trigger may be a genuine no-op must wait on what it asserts (a row set, a
 request count) instead. `harness-settled-text.spec.js` pins both halves.
 
+**Time intervals with `performance.now()`, never `Date.now()`.** WSL2 steps
+the wall clock back while it resyncs with the Windows host. On 2026-10-14 a
+`Retry-After: 3` wait measured 2550 ms by `Date.now()` (in the page and in
+Node alike) while both processes' `performance.now()` said 3001–3012 ms: the
+retry-gap, rate-gate and backoff specs failed one run in a few under load,
+always "too short". Every request log, `t0` and deadline in the fixture specs
+is on Node's monotonic clock now. Never compare a page-side time with a
+Node-side one (two processes, two clock origins): take `t0` in Node, after
+the page call returns. `Date.now()` stays only where a real date is the
+point (an HTTP-date `Retry-After`).
+
 ## Lint rules for specs
 
 `eslint-plugin-playwright` runs on `tests/**/*.spec.js` under `npm run lint`

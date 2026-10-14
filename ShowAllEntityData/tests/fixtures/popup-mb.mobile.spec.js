@@ -69,7 +69,7 @@ async function openPhone(page, settings) {
         settingsOverride: { sa_rich_tooltip_delay_ms: 0, ...settings },
     });
     page.on('framenavigated', (f) => { if (f === page.mainFrame()) log.navigations.push(f.url()); });
-    await page.exposeFunction('__popPeekShown', () => log.shown.push(Date.now()));
+    await page.exposeFunction('__popPeekShown', () => log.shown.push(performance.now()));
     await page.evaluate(() => {
         new MutationObserver(() => {
             const p = document.getElementById('mb-dp-peek');

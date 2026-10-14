@@ -131,8 +131,9 @@ const sizes = (g) => Object.values(g).map((x) => [x.name, x.rows.length]);
 test.describe('relationship tables: overview pageTypes (WIP.6)', () => {
     test('place: one button, its links as a URL table', async ({ page }) => {
         await open(page, 'place', { press: false });
+        // Plus "🗂 Sidebar as tables" (sidebar-tables.spec.js), last, behind its own divider.
         expect(await page.evaluate(() => Array.from(document.querySelectorAll('button[data-label]')).map((b) => b.dataset.label)))
-            .toEqual(['Show all Relationships for Place']);
+            .toEqual(['Show all Relationships for Place', '🗂 Sidebar as tables']);
         await page.click('button[data-label="Show all Relationships for Place"]');
         await waitForRenderComplete(page, { waitForAutoResize: false });
         const g = await groups(page);
@@ -186,7 +187,7 @@ test.describe('relationship tables: the second button (WIP.6)', () => {
     test('series: the page\'s own button first, the main table gone for this render', async ({ page }) => {
         await open(page, 'series', { press: false });
         expect(await page.evaluate(() => Array.from(document.querySelectorAll('button[data-label]')).map((b) => b.dataset.label)))
-            .toEqual(['Show all Events for Series', 'Show all Relationships for Series']);
+            .toEqual(['Show all Events for Series', 'Show all Relationships for Series', '🗂 Sidebar as tables']);
         await page.click('button[data-label="Show all Relationships for Series"]');
         await waitForRenderComplete(page, { waitForAutoResize: false });
         const g = await groups(page);

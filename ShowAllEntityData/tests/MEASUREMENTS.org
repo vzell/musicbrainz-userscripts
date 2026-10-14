@@ -3750,3 +3750,22 @@ for the images before). The synthetic JSON repeats itself and compresses far
 better than a real cache (0.27 MB for 20,000 entries), so the pane's 0.15
 size ratio for JSON parts is NOT calibrated by this; a real export's size
 would. Raw: =tests/snapshots/idb-export-import/probe-feature-9.99.1325-2026-10-11-petri.json=.
+
+* 2026-10-11 — Sidebar sections: what _sbEnhance() adds to the heading pass (branch feature/sidebar-overhaul, petri)
+
+Env: 2026-10-11T02:27Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs).
+
+=node tests/support/probe-sidebar-cost.js --runs=5= on =artist-releasegroups=
+(multi-table), Bruce Springsteen, the 2,144-row live-titles fixture (57
+external links in the sidebar). Both numbers come from the same
+=makeH2sCollapsible()= pass (=__saTest.sidebar.timing()=), so the share is
+the comparable figure; the plan's main-vs-branch A/B was replaced by this
+within-pass split, since =main= has no sidebar part to time.
+
+| Runs | Pass, median ms | of which _sbEnhance(), median ms | Share |
+|------+-----------------+----------------------------------+-------|
+|    5 |             1.5 |                              1.2 |   80% |
+
+*Read as:* the sidebar part is most of a pass that costs about 1.5 ms in all,
+once per render: nothing a user can notice, and not on the filter/sort/render
+hot path.

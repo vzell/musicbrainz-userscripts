@@ -92,11 +92,20 @@ test.describe('action buttons: shortLabel, buttonGroupLabel and rich hover toolt
 
         const row = await buttonRow(page);
         expect(row.groupLabel).toBe('RGs:');
-        expect(row.buttons).toHaveLength(2);
+        // The RG group's own two, then "🗂 Sidebar as tables" (docs/claude/sidebar.md)
+        // behind its own divider, with a description of its own: it fetches nothing.
+        expect(row.buttons).toHaveLength(3);
         expect(row.buttons[0].text).toBe('🧮¹ Artist');
         expect(row.buttons[0].dataLabel).toBe('🧮 Artist RGs');
         expect(row.buttons[1].text).toBe('🧮² Various Artists');
         expect(row.buttons[1].dataLabel).toBe('🧮 Various Artists RGs');
+        expect(row.buttons[2].dataLabel).toBe('🗂 Sidebar as tables');
+        expect(row.buttons[2].title).toContain('nothing is fetched');
+        expect(row.buttons[2].title).not.toContain('Fetch');
+        expect(await page.evaluate(() => {
+            const b = document.querySelector('#mb-show-all-controls-container button[data-label="🗂 Sidebar as tables"]');
+            return !!b.previousElementSibling && b.previousElementSibling.classList.contains('mb-button-own-group-divider');
+        }), 'its own divider separates it from the RGs group').toBe(true);
     });
 
     test('iswc: the rich tooltip restores the full label and the shortcut hint, and shows on hover', async ({ page }) => {
