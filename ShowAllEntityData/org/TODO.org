@@ -1718,30 +1718,30 @@ Measure first, with scripts/run-perf-arms.py (status-line progress), each A/B pa
 block. Then design in plan mode: time budget per slice, cancelling a pass when a newer keystroke arrives (a stale pass must never write results), keeping _filterResultCache / _rowTextCache semantics, single- and multi-table paths, and ordering with renderFinalTable()'s chunked
 render. Flag the expected cost (total time may grow) with numbers before implementing and let me decide. Any change to the progress card follows my global UI look and feel (mockup first).
 
-* TODO MusicBrainz sidebar entries ==> collapsable h2/h3
+* DONE MusicBrainz sidebar entries ==> collapsable h2/h3
 
 The MusicBrainz sidebar entries (typically collapsed by default) need some overhaul:
 
 Make some suggestions with rich HTML based mockups beforehand how to handle the MusicBrainz sidebar entries. Could we
 generalize this (of course configurable), make some suggestions.
 
-1.)
+1.) DONE (9.99.1340, 2026-10-14): collapsible, remembered sidebar sections with counts; external links grouped by kind.
 
 Should we make them to collapsable h2/h3 heading with corresponding entries
 
-2.)
+2.) DONE (9.99.1340, 2026-10-14): other scripts' sidebar content is never read or moved; the one exception is the sidebar picture, by consent (9.99.1341, 9.99.1343).
 
 there are usually lots of third-party scripts active and render info/action based stuff to the side-bar, these shouldn't
 be parsed without checking with me beforehand or make them configurable
 
-3.)
+3.) DONE (9.99.1342, 9.99.1344, 2026-10-14): "🗂 Sidebar as tables" on artist, label, event, release group, recording, work, release, series, place, area and instrument pages.
 
 We already have a framework for rendering "Relationships" information into table based structures at PT which represents
 events e.g. https://musicbrainz.org/event/a40b40f8-2d88-4f78-b12f-ed5fe9c88f84
 
 Use this as a starting point
 
-4.)
+4.) DONE (9.99.1341, 9.99.1343, 2026-10-14): the sidebar picture with hover card, viewer and a copy beside the name; pictures in artist, label and place previews.
 
 make some suggestions where we could display entity image icons (if available) e.g. places/labels/artist etc from the
 sidebar on the main page (of course with the internal viewer hovwer functionality, the side bar currently seems to still

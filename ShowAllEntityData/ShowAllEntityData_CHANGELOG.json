@@ -1,5 +1,166 @@
 [
   {
+    "version": "9.99.1347",
+    "date": "2026-10-14",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "On a page wider than the window (a release group's releases, for example), opening the sidebar with its handle shows it at the window's right edge at once. Before, its content stayed out of view and only slid in while you scrolled right."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The sidebar's ▶/◀ handle sits at the top of the sidebar instead of halfway down the window, and lines up with the sidebar's edge once it has finished sliding."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Tests: tests/fixtures/sidebar-collapse-handle.spec.js (3); 3 more mutations in scripts/mutations/sidebar-overhaul.json, all caught."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1346",
+    "date": "2026-10-14",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Sorted column headers no longer let table text show through while you scroll. On brucespringsteen.it, springsteenlyrics.com, jungleland.it and Brucebase, the header of a sorted non-sticky column (every sorted column after a multi-column sort) was partly transparent, so the rows scrolling under the pinned header showed through it (\"gatefold\" under \"Notes\"). The pinned header now has a solid background behind its sort colour.",
+          "jungleland.it: with the pointer resting on the list, its rows no longer cover the toolbar, the status line and the Bootlegs bar pinned at the top of the window."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1345",
+    "date": "2026-10-14",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Wide MusicBrainz pages: the collapsed sidebar no longer keeps an invisible strip about 80–120 px wide at the right end of the page. Because of that strip, every pinned h2/h3 bar stopped well short of the window's right edge, rows showed through the gap while the bars were pinned at the top, and the page could scroll past the end of the table. A collapsed sidebar now takes no space at all (it still slides in and out).",
+          "Wide tables now end on the same line as the h2/h3 bars above them, at every horizontal scroll position, instead of running on to the window's right edge. The bars must stay a few pixels narrower than the window to remain pinned; the table, its pinned column headers included, is now cut off at that line too, so no row text shows beside a bar pinned at the top either."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1344",
+    "date": "2026-10-14",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The \"🗂 Sidebar as tables\" button (9.99.1342) is also on release, series, place, area and instrument pages. On a release it also shows the additional details, the labels with their catalog numbers, the release events and the release group's external links, each as its own table. Place, area and instrument pages keep the button with 'Relationships as tables' switched off."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "A saved \"Sidebar as tables\" view loads back from disk as the same tables, instead of as the page's own table.",
+          "On a page whose header line (the buttons and the status messages) ran just past the window's edge, for example a release group after filtering, the page no longer jumps back and forth several times a second: the sticky page headers switched on and off in a loop."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Tests: 8 more in tests/fixtures/sidebar-tables.spec.js, on the release, series, place, area and instrument captures; 9 more mutations in scripts/mutations/sidebar-overhaul.json, all caught. Merged main (9.99.1339) into the branch first: the Sidebar button now runs through main's replaceFeatures and button type (DEBUG-NOTES.md 2026-10-14)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1343",
+    "date": "2026-10-14",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The link previews of an artist, a label or a place show its picture: when Space opens the window, it shows the Wikimedia Commons file MusicBrainz links as the entity's image or logo, else the one its Wikidata item names (one or two small requests to Wikidata, a label's logo first). Click it for the artwork viewer, with Open on Commons. A hover never asks for it; once known, the card shows it small beside the facts, also after a reload. New setting: Pictures in artist, label and place previews."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The sidebar picture (9.99.1341) also works with MusicBrainz's own Commons picture, should MusicBrainz switch it back on: today musicbrainz.org shows none, and the picture there comes from another userscript."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Tests: tests/fixtures/pop-mb-image.spec.js (8) and its mobile twin (1), one more sidebar-picture test; 11 more mutations, all caught. Probe: scripts/probe-wikidata-image.py (DEBUG-NOTES.md 2026-10-11)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1342",
+    "date": "2026-10-14",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "New \"🗂 Sidebar as tables\" button on artist, label, event, release group, recording and work pages: it shows the sidebar's information, external links (with site and kind) and tags (genre or tag, with votes) as tables you can filter, sort and use the 📊 dropdown on. It reads the page itself, so nothing is loaded, and the sidebar stays as it is. New setting: 'Sidebar as tables' button."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Tests: tests/fixtures/sidebar-tables.spec.js (5); 7 more mutations, 6 caught and 1 recorded as covered by another guard.",
+          "Probes: MusicBrainz's commons-image endpoint answers scripts with a browser check and a browser with no picture even where the sidebar shows one (MusicBrainz has its Commons pictures switched off), so the picture in the entity hover card takes another route (9.99.1343; DEBUG-NOTES.md 2026-10-11). Measured: the sidebar part of a render takes about 1.2 ms (tests/MEASUREMENTS.org)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1341",
+    "date": "2026-10-14",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The picture MusicBrainz shows at the top of the sidebar (an artist's photo, a label's logo, from Wikimedia Commons) now shows a card with its file name when you point at it and opens in the artwork viewer on a click, Enter or Space, with an Open on Commons link. A small copy sits at the start of the page heading, so it stays in sight with the sidebar closed. Nothing extra is loaded. New settings: Sidebar picture: hover card and viewer, Sidebar picture beside the name."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Tests: tests/fixtures/sidebar-picture.spec.js (5) and its mobile twin (1); 7 more mutations, all caught."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1340",
+    "date": "2026-10-14",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The MusicBrainz sidebar remembers which sections you opened: after a table is shown, a section you opened before is open again on the same kind of page, and one you never opened starts closed. Each heading shows how many entries it holds, works with Enter and Space, and Ctrl+Click opens or closes every sidebar section. Open all / Close all sit at the top of the sidebar.",
+          "External links in the sidebar are grouped by kind (Official, Social, Streaming, Concerts, Lyrics, Databases, Stores, Other), each group opening and closing on its own; Genres / Other tags and the Collections lists open and close on their own too. Links are only reordered, never moved, and whatever other userscripts add stays where it is. New settings: Remember open sidebar sections, Open every sidebar section, Sidebar section counts, Group external links by kind."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Closing \"Artist information\" in the sidebar no longer hides the Tags section below it (MusicBrainz wraps Tags in its own element, which was taken as part of the section above)."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "New docs/claude/sidebar.md. Tests: tests/fixtures/sidebar-sections.spec.js (8) and its mobile twin (1); 12 mutations, all caught."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1339",
     "date": "2026-10-13",
     "sections": [

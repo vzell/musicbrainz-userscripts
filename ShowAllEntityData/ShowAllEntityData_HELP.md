@@ -750,7 +750,8 @@ window's width meanwhile
 stops in line with the h2 or h3 bar above its table, not at the window's left
 edge, and nothing scrolls into the strip to its left. A column in front of it,
 such as "#" before "Title", stays at that line too, and the sticky column
-slides over it. A table that fits in the window, such as an artist's
+slides over it. On the right, a wide table ends on the same line as the bars
+above it, so no row shows beside a bar while the bars stay at the top. A table that fits in the window, such as an artist's
 one-column "Artist credits" or a short sub-table next to wide ones, stays
 completely in place while the page scrolls, like the bars.
 This only engages while the page really is wider than the window.
