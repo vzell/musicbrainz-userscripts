@@ -15,7 +15,7 @@ const { typeGlobalFilter, waitForFilterSettled } = require('../support/filterSor
 //     sidebar: Artist information (one row per fact), External links (57, no
 //     "View all relationships"), Tags (genres then tags, with votes);
 //   - nothing of the page type it sits on applies: no discography groups, no
-//     discography view buttons, no Relationships or CAA column (`ownFeatures`);
+//     discography view buttons, no Relationships or CAA column (`replaceFeatures`);
 //   - the global filter works on it like on any table;
 //   - the sidebar itself is unchanged by it;
 //   - no request is made for it.

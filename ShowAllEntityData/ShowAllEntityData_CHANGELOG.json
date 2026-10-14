@@ -1,5 +1,200 @@
 [
   {
+    "version": "9.99.1339",
+    "date": "2026-10-13",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Pages with sub-tables: a global filter that matches nothing no longer hides every sub-table. When it would empty all of them, they all stay on screen showing \"(0 of N)\", as before 9.99.1338, so the buttons in their column headers stay reachable. Example: on a release, \"11.666\" typed into the global filter while lengths are shown in seconds hid the only medium, and with it the ⏱ button that switches to the milliseconds that would have matched. Sub-tables are still hidden while at least one keeps a matching row."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1338",
+    "date": "2026-10-13",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Pages with sub-tables: while the global filter or a ⚠️ WARNING / ❌ ERROR menu filter is active, a sub-table with no matching row is hidden, heading line and table together, instead of staying on screen as \"(0 of N)\". Widen or clear the filter and it comes back as it was, collapsed or expanded, with its artwork strip as you left it. A sub-table with its own filter (a column filter, its 🔍 sub-table filter or its ⏳ toggle) stays visible even when empty, so that filter can still be reached. The row-count tooltip in the page heading says how many sub-tables are hidden. Setting: \"Hide Empty Sub-tables While Filtering\" (🎨 TABLE FILTER CONFIGURATION, on by default)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1337",
+    "date": "2026-10-13",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "springsteenlyrics.com, jungleland.it, brucespringsteen.it and Brucebase tables: titles get typographic punctuation instead of the keyboard characters — ’ for an apostrophe (\"Don’t\", \"Comin’\", \"Rock ’n’ Roll\", \"Spirit of ’76\"), “double” and ‘single’ quotation marks, … for \"...\", — for \"--\", an en dash for a range (\"1975–1985\") and a medley's \" – \", a hyphen ‐ between words (\"Freeze‐Out\") and inside a date (\"1999‐08‐12\"), ″ for inches and × between two numbers. Brucebase Relations names get the same (\"D’Angelo\"). A setting of its own, \"Write typographic punctuation in titles\" (on by default): a column filter has to be typed with the same characters, so \"don't\" no longer finds \"Don’t\"."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1336",
+    "date": "2026-10-13",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "springsteenlyrics.com, jungleland.it, brucespringsteen.it and Brucebase tables: titles are written the way MusicBrainz writes English titles instead of each site's own way — \"BORN IN THE USA\" and \"Born In The U.S.A.\" become \"Born in the USA\" and \"Born in the U.S.A.\", brucespringsteen.it's \"BOSS AT HIS BEST (THE)\" becomes \"The Boss at His Best\", jungleland.it's \"(Version 2)\" becomes \"(version 2)\". On springsteenlyrics.com this covers the collection, bootleg and CD/vinyl bootleg titles and the lyrics index; on Brucebase the song list and, on a year page, the Venue, City and Country columns (a country of \"USA\" stays as it is) and every song of Soundcheck and Setlist; notes such as \"(with Patti Scialfa)\", set labels and bold or italic songs stay as they are. Acronyms (USA, NJ, MTV, PNC, U.S.A.) keep their capitals, and a placeholder such as \"[no title]\" stays as written. Only capital letters change, and a cell that changed shows the site's own text when you rest the pointer on it. New setting \"Write titles in MusicBrainz style\" (on by default)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1335",
+    "date": "2026-10-13",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Brucebase \"Relations\" (brucebase.wikidot.com/stats:relations): \"Show all relations\" turns the 28 letter tabs into one filterable, sortable table of the 2,892 people and bands — Name (\"Bryan Adams\", \"The Alliance Singers\"), Sort name as the site lists it (\"Adams, Bryan\"), Type (Person or Band) and Letter.",
+          "Brucebase \"Recent changes\" (brucebase.wikidot.com/system:recent-changes): three buttons load the last 200, 1,000 or 5,000 changes of the wiki — always 200 per page, whatever the site's own list shows — into one table: Page, Category, Flags (one row per flag with its meaning: new page, source changed, tags changed, file action, …), Date and Time (in your own time zone), Revision, User and Comment. Date is split into day, month, year, weekday and month name like on MusicBrainz pages, and Date and Time get the same 📊 sections as there (Date info - Year, Month, Weekday, …; Time info - Time of day). The site's own form still decides which kinds of change and which category are loaded. Both pages come with \"Enable on the Brucebase song list\"."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1334",
+    "date": "2026-10-13",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "URL pages (musicbrainz.org/url/<mbid>) get \"Show all Relationships for URL\": the entities that link the URL, by relationship, as tables — the same relationship tables as on place, area and instrument pages. \"URL details\" stays as MusicBrainz shows it."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "📊 dropdown: a new \"Entity info - Type\" section on the Target and Type columns of a relationship table that mixes kinds (\"Via …\" tables, the one-table layout, the event page): one entry per kind of related entity — Artist, Release group, Event, Series, URL, … — with its MusicBrainz glyph and the number of rows of that kind. Ticking one leaves only those rows."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1333",
+    "date": "2026-10-13",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Relationships as tables: a primary alias — the name MusicBrainz adds in parentheses for an entity named in another script, \"フジパシフィックミュージック (Fujipacific Music, Inc.)\" — gets its own \"Primary alias\" column instead of landing in Disambiguation.",
+          "Relationships as tables: an artist's membership with a period and what was played — \"(from 1964-12 until 1965-06: lead vocals, electric guitar)\" — now fills Begin and End (with their day/month/year parts) and a multi-row Credits cell, instead of one Credits cell holding the date too.",
+          "Relationships as tables: Genre and Instrument columns show their glyph once in the header, like the other single-kind columns.",
+          "Relationships as tables: with inline CAA/EAA thumbnails on, a release group or release gets its small cover image before its name and an event its event art image — also in a mixed Target column, each row the picture that fits it.",
+          "Event pages: the relationship tables get the same Begin/End (and their date parts) and Number/Order columns, and read primary aliases and ended URL relationships the same way. A series position such as \"(order: 150)\" is now Number instead of Details."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Relationships as tables, area pages: with \"MusicBrainz More Flags Everywhere\" installed, an area's parent chain (\"Alabama\" → \"United States\") went into a Details column for most rows, and the target kept a trailing comma; it is in Parent area again, and Details is gone."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1332",
+    "date": "2026-10-13",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Relationships as tables beyond the event page: place, area and instrument pages get a \"Show all Relationships\" button (three new page types), and series, work, release group and recording pages, and the artist and label Relationships tab, get one beside their own \"Show all…\" button (on the Relationships tab it reads \"Relationship lists\", on a release \"Credits\"). It turns the native relationship lists into filterable, sortable tables, one per kind of related entity (Artists, Labels, Places, URLs, …), with the same converter as the event page. The page's own button is unchanged and still leaves those lists as a collapsible section; the two are either/or, so the new button leaves the page's main table out of its render (press the other button to get it back).",
+          "A recording's \"Related works\" and a release's release-group credits each get a \"Via …\" table (\"Via Badlands\", \"Via release group: Live/1975–85\") with a Type column, so the work's or group's relationships are never mistaken for the page's own. A release's credits are read from its own two blocks only, never from the per-medium track credits MusicBrainz adds there in its \"Display credits at bottom\" layout.",
+          "Dates become Begin and End columns: \"(from 1977-06-27 until 1978-05-05)\", \"(in 1978)\", \"(on 1978-04-11)\", \"(until 1931)\", \"(… to present)\", \"(ended)\", and both are split into B-/E- day, month, year, weekday and month name. A series position becomes Number, or Number and Order when the two differ for some row (\"(on 2009-02-01: number: 43) (order: 19)\"). An area's parent areas get their own column, and an ended URL relationship, which MusicBrainz shows without a link, is still a URL row with its end date.",
+          "Settings: a new \"🔗 RELATIONSHIP SECTIONS\" group — \"Relationships as tables\" (on), \"One table for all relationships\" (off), \"Include related works / the release group\" (on). A file saved from one of these renders loads back as that render on the same page."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Picard column: a table only gets one when it links to a MusicBrainz release. A URL relationship such as discogs.com/release/… or rateyourmusic.com/release/… no longer counts as one."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1331",
+    "date": "2026-10-13",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Brucebase year pages: a setlist the wiki sets in bold as a whole (a tour opener: 2012-03-18, also 1984-06-29, 1999-04-09, 2009-04-01) is one song per row again instead of one long line; each song keeps its bold, and a bold run opening with the separator (\"<strong>/ LAND OF HOPE AND DREAMS</strong> - PEOPLE GET READY\") stays one medley row (_bbSplitInline())."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1330",
+    "date": "2026-10-13",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Springsteen sites: the detail-page preview works on the page as the site shows it too, before any button — e.g. a song in Brucebase's own song list (\"1945\" on stats:songs). ‹ › step through the titles visible there; the script's own toolbar is never a target. On a touch screen only the script's table opens the window, so a tap on the site's own link still navigates (_dpSiteForLink(), _dpPageLinks())."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1329",
+    "date": "2026-10-13",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Event page: the setlist's \"(with …)\" artists link to the artist on the page itself, as soon as it loads — MusicBrainz's setlist syntax renders them as work links (_eventSetlistFixLinks()).",
+          "Event page, \"Additional artists\": a lone leading \"the\" before a linked name is dropped (\"the New Breed Brass Band\" → \"New Breed Brass Band\"); an unlinked item (\"all performers\") is kept as it is.",
+          "Event page: a setlist song or \"(with …)\" artist whose MBID was typed with uppercase letters is recognised again (event 26cead1c-…: \"The Fever\" came out as plain text and Bruce Springsteen stayed a work link). The links keep their case.",
+          "Event page, setlist tables: a recording that two relationships name (\"recording location for\" and \"shot for\") is listed once in its row's Recording cell.",
+          "Link previews: a MusicBrainz link whose MBID has uppercase letters (an event setlist's \"[E497263c-…|The Fever]\", on the initial page too) is previewed like any other; the card asks for, caches and opens the lowercase MBID (_MB_POP_PATH_RE, _mbPopParsePath(); _MB_POP_PAGE_VERSION 3).",
+          "Multi-table pages: a sub-table's note (e.g. \"Scheduled: 17:00 Local Start Time ??:?? / End Time ??:??\" under \"Setlist: Songs\") is indented like its table instead of sitting flush left (.mb-group-intro)."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Event page: a \"Video\" column after \"Recording\" in \"Recordings\" and the setlist tables, when a recording carries MusicBrainz's video icon — the icon moves there, with \"video\"/\"audio\" for sorting and the 📊 dropdown (shared ColumnDataExtractor.video()).",
+          "Event page: each single-kind entity column (Artist, Place, Area, Recording, Release, Series, Song, Additional artists, …) shows its entity icon once in the header instead of on every cell, as on release tracklists (_eventColGlyphs(), _initColHeaderGlyph() now also on event-overview). Mixed \"Target\" columns keep their cell icons.",
+          "New ⚠️ finding \"MBID contains uppercase letters\" (🔠, mbid-uppercase) on the event page's Song and Additional artists cells: tint and tooltip naming the MBID, a 📊 \"Findings - Warning\" entry in both columns, and a ⚠️ WARNING menu row. Its tint has its own setting, sa_findings_tint_mbid_case (on by default)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1328",
+    "date": "2026-10-13",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "📊 dropdown, with the \"MusicBrainz: Instrument Icons Everywhere\" userscript (@Lotheric) installed: a value entry whose cell shows one instrument's icon, and every \"» instrument:\" entry, shows that icon after its label (new setting \"Show Instrument Icons In Unique-Values Dropdown\", sa_enable_dropdown_instrument_icons, on by default, no effect without the userscript). A new \"Instrument info - Icon\" section (🎻) counts and filters the rows whose instrument links have / lack an icon (modes ii-icon-yes / ii-icon-no, _highlightInstrumentIconMatch()), on any column that holds an instrument link — e.g. \"Name\" on an instrument search, where neither existed before."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1327",
+    "date": "2026-10-13",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "With the \"MusicBrainz: Instrument Icons Everywhere\" userscript (@Lotheric) installed, the release \"Instruments\" column, a credit's \"(instrument)\" annotation and the instrument list's \"Name\" column lost every instrument icon: they copied the instrument link alone, so the copy kept the userscript's data-ii-processed stamp but not the icon in front of it, and the userscript never decorates a stamped link again. Links are now copied with their icon (_cloneInstrumentAnchorWithIcon()); an icon-less copy is handed back to the userscript (_iiReleaseIconlessAnchors()), and an icon that arrives after the table is built is carried onto the source row so it survives sorting and filtering (_iiInstallIconReconciler(), _iiMirrorLateIcons()). Nothing changes without that userscript."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1326",
     "date": "2026-10-11",
     "sections": [

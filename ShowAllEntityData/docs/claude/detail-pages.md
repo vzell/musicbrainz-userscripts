@@ -21,7 +21,20 @@ Design study, probes and the mockups the user chose from:
 | brucebase.wikidot.com | `sa_bb_detail_preview` | `/song:<slug>`                                                                                                  |
 
 All four default **off** and sit under their host's own `sa_enable_<site>`
-setting, which still has to be on. `_DP_SITES` is keyed by `_foreignHost`,
+setting, which still has to be on.
+
+**Scope (WIP.4, 2026-10-12):** `_dpSiteForLink()` takes a detail link in a
+`table.tbl > tbody` as before, AND — on a desktop — one anywhere on the page
+outside `_DP_PAGE_SKIP` (the script's toolbar and menus, the card, the
+window): the initial page, before any button, has the site's own lists
+(Brucebase's song tabview), and they preview like the table's rows. ‹ › from
+such a link walk `_dpPageLinks()` (the visible detail links, each URL once, in
+page order; a tabview's hidden panels are skipped) instead of a table. On a
+touch-primary device only the table body counts: a target turns a tap into
+"open the window", and a native link keeps its navigation — the reason
+`sa_pop_mb_page_on_touch` is off by default. Spec: detail-preview.spec.js
+"the initial page, before any button" (+ mobile); mutations
+`scripts/mutations/foreign-ip-popups.json` (5/5). `_DP_SITES` is keyed by `_foreignHost`,
 so on MusicBrainz `_dpActiveSite()` is null and no foreign source is
 enabled. Since the popup engine (next section) `_initDetailPreview()` is
 called on every page and installs only where a source is enabled: on
@@ -219,8 +232,10 @@ hosts (kept, decided 2026-10-07).
   regex is case-INSENSITIVE and the link takes the MBID lowercased: editors
   type mixed-case MBIDs (`[E497263c-…-Dca99482962c|The Fever]` on the Stone
   Pony event `26cead1c…`, 14 of its 44 tokens), which the old lowercase-only
-  regex left as raw `[…|…]` text, and `_MB_POP_PATH_RE` (so drill-down)
-  matches lowercase only. MusicBrainz's own page links EVERY token of a song
+  regex left as raw `[…|…]` text. `_MB_POP_PATH_RE` accepts uppercase hex
+  too since WIP.3 (2026-10-12: the event page's own setlist links keep the
+  case the editor typed, and were no preview target), and every reader
+  lowercases the MBID, so one entity has one cache key and one lookup. MusicBrainz's own page links EVERY token of a song
   line as `/work/`, the "with" artists included (`debug/mb-event-initial.html`)
   — not a model to copy. The card keeps names only (plain text). (The
   event-overview page's `_eventSetlistParse()` reads the rendered HTML, a

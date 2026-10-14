@@ -1492,14 +1492,14 @@ ALWAYS be sticky too when srolling down.
 
 * TODO adapt the logging framework and orig page shine through from majkinetor
 
-* TODO add instrument icons support (), ONLY the icon should show up in the UVD
+* DONE add instrument icons support (), ONLY the icon should show up in the UVD
 
 * TODO add sanojjanos event stuff in a nice popup (cachable)
 
 
 * TODO menu in non-MB pages for PTs
 
-* !! separate on NB-xxxx - TODO almost feature-full - take out non mb code or try a build fraemwork
+* !! separate on NB-xxxx - TODO almost feature-full - take out non MB code or try a build framework
 
 * TODO non-MB detail pages
 
@@ -1508,21 +1508,23 @@ ALWAYS be sticky too when srolling down.
 
 * DONE maybe stack the h3 header in the multi-table case when stickyness is involved
 
-* TODO IDB overwhole - show info to the end-user; age, storage, delete possibilities/merge, remove etc (nice gpahical overview, cake diagram), number of keys
+* DONE IDB overwhole - show info to the end-user; age, storage, delete possibilities/merge, remove etc (nice gpahical overview, cake diagram), number of keys
 
 * TODO increase the IDB lifetime, non-MB sites should basically be there forever
 
 * TODO sync add non-MB images with the CAA framework, but unlimited
-
 * TODO storeage forever for non-M sites, except SL
 
+
 * TODO make sure we can always run completely OFFLINE (especially non-MB sites, excetp SL and BB)
+
 
 * TODO filter checkboxes for every filter dialog if not overwritten
 
 * TODO add support BB pages
 ** https://brucebase.wikidot.com/system:recent-changes - change to 200 revisions per page beforehand
 ** "Relations
+
 
 * generalize popup framework in general (if not yet done)
 
@@ -1545,7 +1547,7 @@ long running CAA fetches doesn't seem to be covered by the autoresize column fea
 the CAA column break
 
 
-* TODO create a skill - There is a new third party userscript batch-add-recording-relationships
+* DONE create a skill - There is a new third party userscript batch-add-recording-relationships
 ** i
 
 1.)
@@ -1648,7 +1650,6 @@ Everything you asked for is built on feature/recording-of-column, and the full s
   The mockups are at ⧉ https://claude.ai/artifact/P8LJjFQkURd6a8fHYVwrhq (progress card) and ⧉ https://claude.ai/artifact/4UsPjhkP1gN6cb9wCnQw72 (cache overview). Your edits in org/*.org were left alone.
 
 ** implement
-
 *** i
 
 Everything works/look BEAUTIFUL, go on like that, you ROCK.. it's exactly the "look and feel" I like, write it down to
@@ -1779,3 +1780,590 @@ popups)
 The 🔍 filter on each sub-table heading (`applySubFilter`) still filters synchronously and never shows the ⏳ progress
 card; the global and column filters do since perf/faster-filtering (WIP.9). Move STF typing onto `runFilterSliced()` on its
 own branch, with its own typed A/B (the faster-filtering measurements do not cover it).
+
+* ---------------------------------------------------------------
+
+* to add to TODO.org
+** bug
+
+It works, but do NOT merge yet.
+
+But the new popup ONLY shows up when filtering with the global filter, not with the sub-table or column level filter
+
+** tested live
+
+- Tested live, looks good, commit and push; stop the suite for now, it takes too long on "vzell-lap", we will implement a couple more
+things and test with the whole suite before merging
+- the next upcoming implementation will branch from this one, feature/instrument-icons-interop
+- at the very end we will run the whole testsuite
+
+instead of branching from main, add the new features/bug fixes on a branch starting from feature/instrument-icons-interop
+
+
+* DONE add instrument support
+
+add instrument support when the third-party userscript "MusicBrainz: Instrument Icons Everywhere" from @Lotheric is present
+
+1.)
+
+use the skill "wire-live-userscript" for @tests/fixtures/live-userscripts/MusicBrainz_Instrument_Icons_Everywhere.user.js
+
+2.)
+
+#+begin_example
+@debug/instrument.html - this is how an instrument glph is renderd when the userscript is present 
+@debug/gfanj-intruments-initial.html - IP
+#+end_example
+
+3.)
+
+#+begin_example
+@debug/instrument-search.html - FRP for https://musicbrainz.org/search?query=guit&type=instrument&method=indexed
+#+end_example
+
+It's missing the instrument icons in the UVD oc column "Name" and a count of rows actually having/missing instrument icons
+
+4.)
+
+* DONE fix setlist on PT 'artist-events'
+
+fix the "Video" column, entity glyphs and setlist on PT 'event-overview':
+
+1.)
+
+https://musicbrainz.org/event/4379731e-7609-4197-bb9b-7739b326cb7c - 2024‐05‐23: Grosvenor House, London, England, UK
+
+a.)
+
+Add a new "Video" column if the video icon is present on recordings at the "Recording" column at the sub-tables
+"Recordings" and "Setlist: Songs"
+
+#+begin_example
+@debug/2024-05-23-initial.html - IP
+#+end_example
+
+b.)
+
+The glyphs currently on the entities in the data cells should go to the column header after the column names like what
+we do on 'relesase-tracks' PTs e.g.
+
+#+begin_example
+<div class="mb-col-hdr-flex" style="">Vocals <span class="artistlink" style="height: 14px; margin-left: 4px; margin-right: 4px;">
+#+end_example
+
+2.)
+
+The initial page should show an artist hyperlinked as an artist and not as a work + on the FRP concat words like "the "
+should not be rendered in the "Additional artist" C data cell
+
+https://musicbrainz.org/event/cd595883-d26a-4e76-a033-eb588e0f9c55 - 2026‐06‐04: OceanFirst Bank Center, West Long Branch, NJ, USA (2026-06-04)
+
+#+begin_example
+@debug/2026-06-04-initial.html -IP
+@debug/2026-06-04-final.html - FRP, "the New Breed Brass Band" ==> "New Breed Brass Band"
+#+end_example
+
+3.)
+
+On the FRP
+
+https://musicbrainz.org/event/26cead1c-a5fa-4677-873a-312412c6dc91 - 2001‐05‐27: The Stone Pony, Asbury Park, NJ, USA (2001-05-27)
+
+#+begin_example
+@debug/2001-05-27-initial.html - IP
+@debug/2001-05-27-final.html- "The Fever" in the "Song" C is not hyperlinked
+@debug/2001-05-27-final.html - "Bruce Springsteen" is rendered with a work anchor instead of an artist anchor
+#+end_example
+
+additionally add this bullet points
+
+4.)
+
+a.)
+
+In the "Setlist: Songs" subtable flag each cell in the "Song" and "Additional artists" columns with a warning icon (+
+descriptive tooltip) when the MBID contains uppercase characters like in e.g. "* [E497263c-4f15-36c0-B27c-Dca99482962c|The Fever] (with [70248960-Cb53-4ea4-943a-Edb18f7d336f|Bruce Springsteen])"
+
+Actually the MBIDs are still recognized when used in URLs, but the end-user should get a hint anyway so he/she can edit
+the data on MB
+
+b.)
+
+also add a UVD entry in these columns for this fact and in the '<button id="mb-findings-warn-menu-btn" type="button"' menu
+
+5.)
+
+The detail popup for work and artist URLs referenced from the "Setlist" section should aready work on the IP of PT
+'event-overview' even when the MBID contains uppercase chars
+
+6.)
+
+The following type of lines
+
+#+begin_example
+'Scheduled: 17:00 Local Start Time ??:?? / End Time ??:??'
+'Scheduled: 17:00 Local Start Time 20:00 / End Time 23:10'
+#+end_example
+
+should be indented below it's "Setlist: Songs" h3 section, see screenshot [Image #4]
+
+* DONE the detail dialog should already popup on the IP
+
+Create a new branch on top of fix/event-overview-video-glyphs:
+
+the detail dialog should already popup on the IP of ALL non-MB pages, e.g. when hovering the song "1945" on https://brucebase.wikidot.com/stats:songs
+[Image #6] - detail song page popup on the FRP
+
+* DONE BB - https://brucebase.wikidot.com/2012 - 2012-03-18
+
+On https://brucebase.wikidot.com/2012 the event on 2012-03-18 renders all songs in one long line instead of a multi-row
+cell
+
+
+* TODO the "CAA" column should always be wide enough to hold the image, the type glyphs + the optional warning icon (especially for large tables)
+
+the "CAA" column should always be wide enough to hold the image, the type glyphs + the optional warning icon (especially
+for large tables) - CAA-wrapped.png
+
+
+* TODO fix the h2/h3 stretching problem to the right browser side
+
+fix the h2/h3 stretching problem to the right browser side - @debug/h2-stretching.png
+
+
+* DONE Normalize titles in nonMB PTs according to MB style guidelines
+** DONE i
+
+Create a new branch on top of feature/relationship-tables:
+
+1.)
+
+add support for the new BB pageTypes
+
+#+begin_example
+"Recent changes" - https://brucebase.wikidot.com/system:recent-changes - change to 200 revisions per page beforehand
+"Relations" - https://brucebase.wikidot.com/stats:relations
+#+end_example
+
+a,)
+
+#+begin_example
+@debug/bb-recent-changes.html - IP - switched to 200 revisions per page <select id="rev-perpage">_
+#+end_example
+
+b.)
+
+Relations:
+#+begin_example
+@debug/bb-relations-0-9.html - IP on tab "0-9"
+@debug/bb-relations-a.html - IP on tab "A"
+#+end_example
+
+2.)
+
+Normalize titles in non-MB PTs
+
+#+begin_example
+https://www.brucespringsteen.it/DB/records.aspx?tipe=-1,0,1,2,3,4,5,6,7,8,9,10,11 - the "Title" column
+https://www.brucespringsteen.it/DB/records.aspx?tipe=-1,0,1,2,3,4,5,6,7,8,9,10,11 - the "Title" column
+https://www.jungleland.it/html/list.htm - the "Title" column
+https://brucebase.wikidot.com/stats:songs - the "Title" column
+https://brucebase.wikidot.com/<year> - the "Venue", "Soundcheck" and "Setlist" column
+#+end_example
+
+according to MB style guidelines
+
+see
+
+#+begin_example
+general - https://musicbrainz.org/doc/Style
+Specifically for english - https://musicbrainz.org/doc/Style/Language/English 
+#+end_example
+
+3.)
+
+Change the basic ASCII punctuation characters such as ' and " and use typographically-correct punctuation (such as ’ for
+the English apostrophe):
+
+Here the full list:
+
+hyphen         (‐)    - 2010 - 8208 - joins words and syllables of a word (e.g. “Tenth Avenue Freeze‐Out” or “co‐operate”)
+
+figure dash    (‒)    - 2012 - 8210 - used as a dash within numbers (e.g. 555‒1212)
+en dash        (–)    - 2013 - 8211 - indicates a range of numbers (e.g. 1989–90)
+em dash        (—)    - 2014 - 8212 - separate thoughts—like this
+minus sign     (−)    - 2212 - 8722 - indicates subtraction
+hyphen minus   (-)    - 2D   - 45   - minus on alphanumeric keys
+quotation dash (―)    - 2015 - 8213 - introduces quoted text in some cases (non‐standard for English dialect)
+
+' vs ’ vs ´
+" vs „“”
+... vs …
+
+    deutsch – for German „quotation marks“ and ‚single quotation marks‘ (default)
+    francais – for French «double quotation marks» and ‹single quotation marks›
+    deutsch-2 – for an alternative style of German »double« and ›single quotation marks‹
+    english – for English “double” and ‘single quotation marks’
+
+Preferred Unicode characters for English punctuation
+Preferred	Usage	Deprecates
+‐	Hyphen	Joins words and syllables of a word or dates 2012‐12‐15 (e.g. co‐operate).	-	Hyphen-minus
+‒	Figure Dash	Used as a dash within numbers (e.g. 555‒1212).
+–	- 2013 - - 8211 - AltGr-# - - En Dash	Indicates a range of numbers (e.g. 1989–90).
+−	Minus sign	Indicates subtraction.
+—	- 2014 - 2012 - AltGr-Shift- - Em Dash	Separate thoughts—like this.	--	Hyphen-minus ×2
+―	Horizontal bar aka Quotation dash	Introduces quoted text in some cases (non‐standard for English dialect).
+'       apostrophe on alphanumeric keys
+‘	- 2018 - 8216 - AltGr-' - Left single quotation mark	Indicates start of quoted text.	'	Apostrophe
+’	Right single quotation mark Apostrophe	Indicates end of quoted text, or omitted characters.
+′	- 2032 - 8242 - AltGr-^ - Prime	Minutes; feet
+“	Left double quotation mark	Indicates start of quoted text.	"	Quotation mark
+”	Right double quotation mark	Indicates end of quoted text.
+″	- 2033 - 8243 - AltGr-Shift-^ - Double prime	Seconds; inches
+〃	Ditto mark	Indicates that the word(s) or figure(s) below which it is placed are to be repeated.
+…	Horizontal ellipsis	Indicates intentional omission in original text…or a pause in speech or thought.	...	Full stop ×3
+×	Multiplication	Indicates a multiplication operation.	x	(the letter ‘X’) when used to indicate multiplication
+⁄	Fraction slash	Indicates arbitrary fractions of decimal numbers (e.g. 15⁄16). Hardcoded fractions: ¼, ½, ¾, ⅐, ⅑, ⅒, ⅓, ⅔, ⅕, ⅖, ⅗, ⅘, ⅙, ⅚, ⅛, ⅜, ⅝, ⅞, ⅟ and ↉.	/	Slash
+∕	Division slash	Indicates a division operation (e.g. 3.14∕2n).	/	Slash
+¤       AltGr-Shift-4
+
+** DONE bugs
+
+1.)
+
+a.)
+
+The current "Date" column on https://brucebase.wikidot.com/system:recent-changes should be split in "Date" and "Time"
+
+b.)
+
+The "Date" column should additionally be run through the dateParts extractor
+
+c.)
+
+Both columns should get the same UVD treatment as the same columns on MB pageTypes
+
+2.)
+
+Normalize titles also in non-MB PTs
+
+#+begin_example
+https://www.springsteenlyrics.com/bootlegs.php?cmd=list&category=<category> - "Title" column
+https://www.springsteenlyrics.com/collection.php?cmd=list&category=<category> - "Title" column
+https://www.springsteenlyrics.com/lyrics.php - "Title" column
+https://brucebase.wikidot.com/<year> - additionally the "City" and "Country" except when the country cell is "USA" (leave it as is)
+#+end_example
+ 
+* add UVD entries for titles which do NOT follow MB style guidelines on MB PTs
+
+
+* DONE on multi-table PTs when filtering globally, hide the sub-tables with 0 filtered rows (the h3 sub-table beader line + the sub-table itself)
+
+Create a new branch on top of feature/bb-recent-changes-relations:
+
+On multi-table PTs when filtering globally, hide the sub-tables with 0 filtered rows (the h3 sub-table header line + the
+sub-table itself). The sub-tables should reappear when at least on row satisfies the filter condition if that brodens
+the filter again.
+
+
+* 'release-tracks' PTs which have an h3 "Barcode and Other Identifiers" section, should render that section as a filterable/sortable table
+
+'release-tracks' PTs which have an h3 "Barcode and Other Identifiers" section
+
+#+begin_example
+<h3 class="mb-annotation-toggle-h3 mb-annotation-h3-processed" data-mb-tip="" title="Click to collapse this sub-section (Ctrl+Click to toggle ALL sub-sections of this section)"><span class="mb-toggle-icon">▼</span>Barcode and Other Identifiers</h3>
+#+end_example
+
+should render that section as a filterable/sortable table
+
+#+begin_example
+@debug/BarcodeAnOtherIdentifiers.html - FRP of https://musicbrainz.org/release/f50fcf09-4339-4e1c-91cd-e1d2a7b3a7bc
+#+end_example
+
+
+* "Name" column in https://musicbrainz.org/search?query=guit&type=instrument&method=indexed needs a UVD entry for comments
+
+"Name" column in https://musicbrainz.org/search?query=guit&type=instrument&method=indexed needs a UVD entry for comments
+
+
+* DONE tabelize more sections - relationship tables
+** i
+
+Create a new branch on top of feature/foreign-ip-popups:
+
+Tabelize more sections in MB PTs like what we already do for the PT 'artist-events' with the data below the h2
+"Relationships" section in the event-overview converter (applyEventDetailsToTables), e.g. https://musicbrainz.org/event/4379731e-7609-4197-bb9b-7739b326cb7c
+
+Model the new behaviour on the event-overview converter:
+
+1.)
+
+PTs which have on the "Overview" tab of the IP a h2 "Relationships" section 
+
+#+begin_example
+<h2 class="relationships">Relationships</h2>
+#+end_example
+
+e.g. (the following also do not yet have their own PT and @include directive
+
+#+begin_example
+Place -> "Overview" tab: https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463
+Area -> "Overview" tab: https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98
+Instrument -> "Overview" tab: https://musicbrainz.org/instrument/a1baa57d-6ab4-461e-89df-448d6fd2c597
+#+end_example
+
+2.)
+
+PTs which already have native table data but also have addtional h2 sections like e.g. "Relationships"
+
+#+begin_example
+Series -> "Overview" tab: https://musicbrainz.org/series/f4818e95-a515-4821-ad6d-270703f72dcf
+Work -> "Overview" tab: https://musicbrainz.org/work/1f573511-eb4b-3106-8fb2-f15de52e4868
+Label -> "Relationships" tab: https://musicbrainz.org/label/0b805b9c-ea03-4fc1-b50d-6dcef76433e0/relationships
+Artist -> "Relationships" tab: https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships
+Release group -> "Overview" tab: https://musicbrainz.org/release-group/d5f992ab-6238-3b28-bf2b-7b16d913c9f6
+#+end_example
+
+The following are somewhat special
+
+#+begin_example
+Recording -> "Overview" tab: https://musicbrainz.org/recording/6719f5e8-9b80-4956-8e11-ee1614a6693a + this PT has an additional h2 "Related works" section besides "Relationships"
+#+end_example
+
+#+begin_example
+Release: @debug/BarcodeAnOtherIdentifiers.html - FRP of https://musicbrainz.org/release/f50fcf09-4339-4e1c-91cd-e1d2a7b3a7bc - has an h2 "Credits" section + two h3 "Release" and "Release group" subsections instead of the "Relationships" section
+#+end_example
+
+Show me some nice HTML based mockups, especially for the Recording and Release cases above
+
+3.)
+
+In the case of 2.), will the old functionality of filtering and sorting the already existing PTs with their main
+table/sub-tables when we also give the "Relationships"/"Credit" h2 sections a global filter field (and the sub-sections
+their own sub-table filtering)
+
+Basically does our userscript support multiple h2 lines with their own filtering, stats overview, clear and toggle buttons, status display etc 
+
+** a
+
+ For pages that already have a main table (Series, Work, Recording, Release group, Release, Label/Artist relationships tab), how should the tabelized Relationships/Credits section coexist with the main table?
+
+❯ 1. Either/or buttons (Recommended)
+     A second toolbar button ('Relationships' / 'Credits') beside the existing one, like area-releases today. The page shows one rendered section at a time. No engine change, and existing MB flows are
+     untouched. Fits on this branch.
+  2. Fold into one dataset
+     The main button also turns Relationships into extra h3 sub-tables of the same multi-table render, all under ONE global filter. Only works for multi-table PTs (not series-releases). The main table's
+     features (CAA, injected Relationships column, main-column extractor) touch the new groups, so it is risky for existing behaviour.
+  3. Real multi-section engine
+     Refactor the singletons into per-section instances so each h2 gets its own global filter, stats, status line and clear/toggle buttons, all live at the same time. A large separate project (hundreds of call
+     sites); I'd plan it as its own branch and ship either/or first.
+     
+** q
+
+1.)
+
+Begin/End columns yes, but feed also both in our dateParts extractor, e.g.
+
+#+begin_example
+                        { sourceColumn: 'Begin',      extractor: 'dateParts', syntheticColumns: ['B-DD', 'B-MM', 'B-YYYY', 'B-Day', 'B-Month'] },
+                        { sourceColumn: 'End',        extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] }
+#+end_example
+
+2.)
+
+Number column yes, but if "number:" and "order:" ever differ for an entry use two separate columns
+
+#+begin_example
+Number
+Order
+#+end_example
+
+3.)
+
+What do you mean with 'Release “inline credits”	Key on #bottom-credits, not on the h2 text'
+
+4.)
+
+The standard/current "Show all..." button should still render the "Relationships"/"Credits" section as now, as a
+collapsable (non sortabe/filterable) h2 section. ONLY when pressing the new "Relationships"/"Credits" botton that data
+only should be renderded in tables
+
+** bugs
+
+1.)
+
+On the following page:
+
+@debug/work.html - IP - https://musicbrainz.org/work/1f573511-eb4b-3106-8fb2-f15de52e4868
+
+the following info
+
+#+begin_example
+Fujipacific Music, Inc.
+Sony Music Publishing (Japan) Inc., A Division
+#+end_example
+
+should actually go into a "Primary alias" column and not the "Disambiguation" column as "publishing company of Mike Appel and Jim Cretecos"
+
+2.)
+
+The dates, vocal and instrument info an artist sang/played in a specific period e.g. on https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships
+
+#+begin_example
+@debug/member-of.html
+#+end_example
+
+should be splitted in three oolumns, the first two already present
+
+#+begin_example
+Begin - should still be run through the dateParts converter
+End - should still be run through the dateParts converter
+Credits - multi-row cell column
+#+end_example
+
+instead of just one "Credits" column
+
+3.)
+
+On e.g. https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98
+
+a.)
+
+In the "Areas" sub-table why are sometimes the country "United States" rendered in the "Parent area" column and not the
+"Details" column. And why are there "Parent area" column and "Details" column present, it looks like one column would be
+enough
+
+b.)
+
+the following entity glyphs
+
+#+begin_example
+<span class="genrelink"></span>
+<span class="instrumentlink"></span>
+#+end_example
+
+4.)
+
+At e.g.
+
+#+begin_example
+CAA-EAA-beforetitle.html - FRP after clicking the "Relationships" action button - https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897 -  
+#+end_example
+
+Is it possible to render the release group CAA inline icon (if available) in the "Target" column in front of the release
+group name if the actual cell data is actually a "Release group" like in the "Title" column of PT 'artist-releasegroups'
+and the EAA inline event icon (if available) in front of the event name like in the "Event" column of
+e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events
+
+5.)
+
+Also give event pages the Begin/End and Number/Order columns
+
+
+* add the "work of" to more recording columns in other PTs
+
+* DONE add a new PT for "URL" e.g. https://musicbrainz.org/url/a333fbe2-2707-4799-aa2e-50d21be8081c
+
+1.)
+
+add a new PT for "URL" e.g. https://musicbrainz.org/url/a333fbe2-2707-4799-aa2e-50d21be8081c
+
+#+begin_example
+@debug/URL.html - IP
+#+end_example
+
+use the skill "add-pagetype-from-html"
+
+2.)
+
+the "Target" and "Type" columns which could hold a mix of different entity type on PTs
+
+#+begin_example
+https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897
+https://musicbrainz.org/recording/6719f5e8-9b80-4956-8e11-ee1614a6693a
+https://musicbrainz.org/event/a93485a0-7e5b-4ee5-b4a4-201b4d906e7a
+#+end_example
+
+need UVD entries with the MB entity type glyph (count of each entity type) on the FRP after the "Relationships" button action has bee pressed
+
+* DONE create a github PR
+
+create a real github pull request on https://github.com/Aerozol/metabrainz-userscripts/pulls with the patch at @debug/MusicBrainz-Nuclear-Tags-restore-checkbox-column.patch
+on my behalf
+
+create a real github pull request on https://github.com/Aerozol/metabrainz-userscripts/pulls with the uploaded patch on
+my behalf
+
+#+begin_src bash
+gh pr ready https://github.com/Aerozol/metabrainz-userscripts/pull/26
+#+end_src
+
+* ● Your browser reaches MusicBrainz over IPv6.
+
+I can only use IPv4, and right now this network's IPv4 route to MusicBrainz's servers is being cut off. It isn't a Claude Code sandbox or proxy restriction: no
+proxy is set, and other sites load fine from here.
+
+┌───────────────────────────────┬───────────────────┬─────────────────────────────────────────────────────────────────┐
+│             From              │     Protocol      │                             Result                              │
+├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
+│ WSL (my shell, Playwright)    │ IPv4              │ connects, then the connection is reset during the TLS handshake │
+├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
+│ WSL                           │ IPv6              │ fails: WSL has no IPv6 route                                    │
+├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
+│ Windows curl.exe -4           │ IPv4              │ fails the same way                                              │
+├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
+│ Windows curl.exe -6           │ IPv6              │ 200, via 2a01:4f8:c011:f68::1                                   │
+├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
+│ Windows curl.exe, default     │ IPv6 is preferred │ 200, which is what your browser does                            │
+├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
+│ WSL → github.com, example.com │ IPv4              │ 200                                                             │
+└───────────────────────────────┴───────────────────┴─────────────────────────────────────────────────────────────────┘
+
+So:
+- Windows prefers IPv6, so your browser never touches the broken IPv4 route.
+- WSL2 in its default NAT mode has no IPv6, so curl and Playwright's Chromium fall back to IPv4.
+- Every MetaBrainz host fails over IPv4, not just musicbrainz.org. coverartarchive.org, listenbrainz.org and metabrainz.org all behave the same, and they share one front end. Other IPv4 sites work.
+
+Why the IPv4 route fails, I can't confirm. It looks like your public IPv4 address is blocked or throttled on MetaBrainz's side: the connection succeeds and is then reset, it affects only their hosts, and it
+hits Windows too. Their documented answer to too many requests is HTTP 503, and a reset during the TLS handshake looks more like an address-level block. Yesterday's full-suite run from this machine got 754
+tests through, so it started recently. Whether our test traffic tripped it, I can't tell from here.
+
+What you can do:
+- Give WSL your Windows IPv6: add networkingMode=mirrored under [wsl2] in %UserProfile%\.wslconfig, then run wsl --shutdown. WSL then shares Windows' network, IPv6 included, and Playwright should get through
+  like your browser. This changes WSL's networking for everything on this machine, so it's your call.
+- Wait it out: check now and then with curl -4 -sI https://musicbrainz.org/ from WSL. If it's a temporary block, it should lift on its own.
+- If it doesn't lift, try curl.exe -4 from another machine on the same network. If that fails too, the block is on your public IPv4 address, and it's worth asking MetaBrainz.
+
+I saved this as a memory, so next time I'll check this first rather than treat these failures as a code problem.
+
+* ● The full run didn't finish
+WSL restarted at 08:55 UTC (my guess is the WSL update to kernel 6.18.54.1, since the kernel version changed) and killed it at 1593 of 1686 tests. main is clean and matches
+origin/main at b4bf048. I re-ran the three tests that failed. One real regression from the hide-empty-sub-tables feature has reached main.
+
+Where the run stopped: 1590 passed, 3 failed, 93 never ran. The logs were in /tmp and the restart wiped them. The progress file and Playwright's test-results/ folder survived, and that's where these numbers
+come from.
+
+The three failures:
+
+┌───────────────────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────┬──────────────────────────────────────────────────┐
+│                         Test                          │                                             Cause                                             │                      Rerun                       │
+├───────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ instrument-icons-uvd.spec.js:157                      │ timing; unrelated                                                                             │ passes                                           │
+├───────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ detail-preview.spec.js:571 (springsteenlyrics.com     │ flaky test from an earlier branch in the stack: its poll reads the iframe before the iframe   │ fails 1 in 8 runs even on the commit before my   │
+│ card)                                                 │ has a document                                                                                │ feature                                          │
+├───────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ ms-length-filter-after-toggle.spec.js:142 (test C)    │ my feature                                                                                    │ fails every time                                 │
+└───────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────┴──────────────────────────────────────────────────┘
+
+The regression: test C types the global filter "11.666" on a release with one medium. While lengths are shown in seconds, nothing matches, so the medium is hidden along with its column headers. The ⏱ button
+that switches to milliseconds (which would make "11.666" match) is in one of those headers. Neither the test nor a user can reach it. Any button in a column header that changes what the global filter matches
+has the same problem, and only once every sub-table is hidden: while one stays visible, its header controls are still reachable.
+
+Two ways to fix it:
+- Never hide every sub-table (my recommendation). If the filter would empty them all, show them all with "(0 of N)", as before. Hiding then only removes sub-tables while at least one stays on screen, and
+  that one keeps the header controls reachable. My "nothing matches: every sub-table is hidden" test would change to match.
+- Keep the behaviour and change test C to turn the setting off. To use ⏱ with no matches, a user would have to clear the filter, click ⏱, and type the filter again.
+
+Which way do you want? Either fix goes on a new branch with a regression test. I still owe a complete test:full on main, and I'll run it once the fix is in.
+  

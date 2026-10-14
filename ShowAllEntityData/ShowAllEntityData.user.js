@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.1326+2026-10-11
+// @version      9.99.1339+2026-10-13
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting. Optionally also springsteenlyrics.com collection and bootleg lists, the jungleland.it bootleg artwork list and the brucespringsteen.it record database.
 // @author       vzell
 // @tag          AI generated
@@ -13,7 +13,7 @@
 // @require      https://cdn.jsdelivr.net/npm/@jaames/iro@5
 // @require      https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js
 // @require      https://raw.githubusercontent.com/vzell/mb-userscripts/master/lib/VZ_MBLibrary.user.js
-// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?(?:\?.*)?$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection|url)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings|edits|annotations)\/?(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/release\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/disc\/\d+)?\/?(?:\?[^#]*)?(?:#.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits\/?(?:\?.*)?|edit\/(?:subscribed(?:_editors)?|notes-received)\/?(?:\?.*)?|account\/applications\/?(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections\/?(?:\?.*)?|election\/.*|genres\/?(?:\?.*)?|cdstub\/.*|isrc\/.*|iswc\/.*|doc\/Edit_Types\/?(?:\?.*)?|instruments\/?(?:\?.*)?|privileged\/?(?:\?.*)?)$/
@@ -25,6 +25,7 @@
 // @include      /^https?:\/\/(?:www\.)?jungleland\.it\/html\/list\.htm(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?brucespringsteen\.it\/(?:DB|db)\/records\.aspx(?:[?#].*)?$/
 // @include      /^https?:\/\/brucebase\.wikidot\.com\/stats:songs\/?(?:[?#].*)?$/
+// @include      /^https?:\/\/brucebase\.wikidot\.com\/(?:stats:relations|system:recent-changes)\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/brucebase\.wikidot\.com\/(?:\d{4}|1949-64)\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/brucebase\.wikidot\.com\/(?:home\/?)?(?:[?#].*)?$/
 // @connect      raw.githubusercontent.com
@@ -992,6 +993,18 @@
                          "could toggle a switch. 0 = always the three switches. Applies after a page reload."
         },
 
+        sa_hide_empty_subtables: {
+            label: "Hide Empty Sub-tables While Filtering",
+            type: "checkbox",
+            default: true,
+            description: "On pages with sub-tables: while the global filter or a ⚠️ WARNING / ❌ ERROR menu " +
+                         "filter is active, a sub-table with no matching row is hidden (its heading line and " +
+                         "the table). It comes back as it was, collapsed or expanded, once a row matches again. " +
+                         "A sub-table with a filter of its own (a column filter, its 🔍 sub-table filter or its " +
+                         "⏳ toggle) is never hidden, so that filter stays reachable. Off: every sub-table stays " +
+                         "on screen, showing \"(0 of N)\"."
+        },
+
         // ============================================================
         // UNIQUE COLUMN VALUES DROP DOWN CONFIGURATION SECTION
         // ============================================================
@@ -1035,6 +1048,15 @@
             description: "Decorate each entry in the 📊 unique-values filter dropdown with the same " +
                          "flag icon shown in the table cell, for Country/Area/Locality/Region/Location/" +
                          "Place/Country-Date columns, and release-tracks' own \"Recorded at place\" column."
+        },
+
+        sa_enable_dropdown_instrument_icons: {
+            label: "Show Instrument Icons In Unique-Values Dropdown",
+            type: "checkbox",
+            default: true,
+            description: "When the \"MusicBrainz: Instrument Icons Everywhere\" userscript is installed, " +
+                         "show its instrument icon after each 📊 dropdown entry whose cell shows one. " +
+                         "Has no effect without that userscript."
         },
 
         sa_enable_uvd_title_subtitle: {
@@ -2414,6 +2436,15 @@
                          'yellow with a ⚠️ when it names the event or venue differently from that title.'
         },
 
+        sa_findings_tint_mbid_case: {
+            label: 'Highlight setlist MBIDs written with uppercase letters as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Event page: tint a "Song" or "Additional artists" cell of a setlist table light yellow with a ⚠️ ' +
+                         'when one of its links uses an MBID typed with uppercase letters (e.g. "[E497263c-…|The Fever]"). ' +
+                         'MusicBrainz resolves such a link, but the setlist should be edited to use the lowercase MBID.'
+        },
+
         sa_findings_tint_event_state: {
             label: 'Highlight a missing state for USA/Canada as WARNING',
             type: 'checkbox',
@@ -3062,6 +3093,48 @@
             description: 'With the Event art section loaded, a plain click on the native "Event art ' +
                          '(N)" tab opens the images here, in the viewer\'s grid, instead of leaving ' +
                          'the page. Ctrl-click (or middle-click) still opens the archive page.'
+        },
+
+        // ============================================================
+        // RELATIONSHIP SECTIONS (org/relationship-tables-pt.org)
+        // The event page's relationship-list converter, on every other
+        // entity page that carries such lists.
+        // ============================================================
+        divider_relationship_tables: {
+            type: 'divider',
+            label: '🔗 RELATIONSHIP SECTIONS'
+        },
+
+        sa_enable_relationship_tables: {
+            label: 'Relationships as tables',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds a "Relationships" button (on a release: "Credits") beside the page\'s ' +
+                         'own "Show all…" button on series, work, release group, recording, release ' +
+                         'and the artist/label Relationships tab, and a Relationships page type for ' +
+                         'place, area and instrument pages. It turns the relationship lists into ' +
+                         'filterable/sortable tables; the page\'s main table is left out of that ' +
+                         'render (press its own button again to get it back). The existing buttons ' +
+                         'are not changed.'
+        },
+
+        sa_relationship_tables_one_table: {
+            label: 'One table for all relationships',
+            type: 'checkbox',
+            default: false,
+            description: 'Off (default): one table per kind of related entity (Artists, Labels, ' +
+                         'Places, URLs, …), each with the columns that fit it. On: every relationship ' +
+                         'in a single table, with "Type" and "From" columns.'
+        },
+
+        sa_relationship_tables_related: {
+            label: 'Include related works / the release group',
+            type: 'checkbox',
+            default: true,
+            description: 'A recording page also lists the relationships of the works it is a ' +
+                         'recording of ("Related works"), and a release page those of its release ' +
+                         'group. On: each gets its own "Via …" table. Off: that native section is ' +
+                         'left as it is.'
         },
 
         // ============================================================
@@ -4331,6 +4404,51 @@
         },
 
         // ============================================================
+        // TITLES ON THE OTHER SITES (_mbTitleCase(),
+        // docs/claude/foreign-title-case.md)
+        // ============================================================
+        divider_foreign_titles: {
+            type: 'divider',
+            label: '🔤 TITLES ON THE OTHER SITES'
+        },
+
+        sa_foreign_mb_titles: {
+            label: 'Write titles in MusicBrainz style',
+            type: 'checkbox',
+            default: true,
+            description: 'On by default; matters only where one of the sites below is switched on. ' +
+                         'The tables built on springsteenlyrics.com, jungleland.it, brucespringsteen.it ' +
+                         'and Brucebase show ' +
+                         'their titles the way MusicBrainz writes English titles instead of the way ' +
+                         'each site does: "BORN IN THE USA" and "Born In The U.S.A." become "Born in ' +
+                         'the USA" and "Born in the U.S.A.", "BOSS AT HIS BEST (THE)" becomes "The ' +
+                         'Boss at His Best", "(Version 2)" becomes "(version 2)". On Brucebase this ' +
+                         'covers the song list\'s titles and a year page\'s venues, cities, countries ' +
+                         '(except "USA") and songs; notes ' +
+                         'such as "(with Patti Scialfa)" stay as written. Only capital letters ' +
+                         'change, and a cell that changed shows the site\'s own text when you rest ' +
+                         'the pointer on it. The rules are applied by machine, so a title that needs ' +
+                         'judgement (a word used as part of a verb, an acronym nobody listed) can ' +
+                         'still come out differently from MusicBrainz. Takes effect the next time a ' +
+                         'table is built.'
+        },
+
+        sa_foreign_typography: {
+            label: 'Write typographic punctuation in titles',
+            type: 'checkbox',
+            default: true,
+            description: 'On by default; matters only where one of the sites below is switched on. ' +
+                         'The same titles get English typographic punctuation instead of the plain ' +
+                         'keyboard characters: ’ for an apostrophe ("Don’t", "Comin’", "Rock ’n’ ' +
+                         'Roll"), “double” and ‘single’ quotation marks, … for "...", — for "--", ' +
+                         'an en dash – for a range ("1975–1985") and for a spaced " - ", a hyphen ‐ ' +
+                         'between words ("Freeze‐Out") and in a date ("1999‐08‐12"), ″ for inches ' +
+                         '(7″) and × between two numbers. Independent of the setting above. Note ' +
+                         'that a filter then has to be typed with the same characters: "don\'t" ' +
+                         'no longer finds "Don’t". Takes effect the next time a table is built.'
+        },
+
+        // ============================================================
         // JUNGLELAND.IT SECTION
         // ============================================================
         divider_jungleland: {
@@ -4422,7 +4540,11 @@
             description: 'Off by default. When on, the script also runs on the Brucebase wiki\'s ' +
                          'song list (brucebase.wikidot.com/stats:songs) and offers a "Show all ' +
                          'songs" button that turns the 28 letter tabs into one filterable, ' +
-                         'sortable table with Title and Letter columns, one row per song. A ' +
+                         'sortable table with Title and Letter columns, one row per song. The ' +
+                         'same goes for Relations (stats:relations: every person and band, with ' +
+                         'name, sort name, type and letter) and Recent changes ' +
+                         '(system:recent-changes: the last 200, 1,000 or 5,000 edits of the wiki, ' +
+                         'loaded 200 at a time). A ' +
                          'song\'s own page is read only for the preview below. When off, the ' +
                          'script exits on that site before touching the page. Settings are shared ' +
                          'with MusicBrainz, so this can be switched on from either site.'
@@ -6113,6 +6235,303 @@
         return icons;
     }
 
+    // "MusicBrainz: Instrument Icons Everywhere" (@Lotheric) puts this image
+    // IMMEDIATELY BEFORE every visible instrument link and stamps the LINK
+    // with II_STAMP_ATTR; it never looks at a stamped link again. See
+    // docs/claude/release-tracks-and-length.md, "Instruments column:
+    // third-party instrument icons".
+    const II_ICON_SEL   = 'img.mb-ii-icon';
+    const II_STAMP_ATTR = 'data-ii-processed';
+
+    /**
+     * Returns the "Instrument Icons Everywhere" icon decorating an
+     * instrument anchor — its immediate previous sibling, the same adjacency
+     * the script itself tests before inserting one — or `null`.
+     *
+     * @param {HTMLAnchorElement} anchor
+     * @returns {?HTMLImageElement}
+     */
+    function _findInstrumentLinkIcon(anchor) {
+        const prev = anchor.previousSibling;
+        return (prev && prev.nodeType === Node.ELEMENT_NODE && prev.matches(II_ICON_SEL)) ? prev : null;
+    }
+
+    /**
+     * Copies an instrument anchor for a cell this script builds, WITH its
+     * "Instrument Icons Everywhere" icon. Never copy one with a bare
+     * `cloneNode(true)`: the clone keeps the script's stamp and loses the
+     * icon (a sibling, not a child), and the script then never decorates it.
+     *
+     * - Source has an icon: the icon is cloned in front of the anchor and the
+     *   stamp is kept, so the script does not add a second one.
+     * - Source has none (still loading, or the script's 'NONE' — the DOM
+     *   cannot tell which): the stamp is REMOVED from the clone, so the
+     *   script decorates this cell itself once it has an icon. A late icon
+     *   then reaches the source row through `_iiInstallIconReconciler()`.
+     * - Script absent: a plain clone; nothing to remove.
+     *
+     * @param {HTMLAnchorElement} anchor
+     * @returns {{node: DocumentFragment, anchor: HTMLAnchorElement}} `node`
+     *   to insert (icon clone, then anchor clone); `anchor` is the anchor
+     *   clone inside it, for the caller to tag.
+     */
+    function _cloneInstrumentAnchorWithIcon(anchor) {
+        const node = document.createDocumentFragment();
+        const aClone = anchor.cloneNode(true);
+        const icon = _findInstrumentLinkIcon(anchor);
+        if (icon) node.appendChild(icon.cloneNode(true));
+        else aClone.removeAttribute(II_STAMP_ATTR);
+        node.appendChild(aClone);
+        return { node, anchor: aClone };
+    }
+
+    let _iiSeen = false;
+    /**
+     * Whether "Instrument Icons Everywhere" is at work on this page — it has
+     * stamped at least one instrument link. Memoised once true. A "no" is
+     * NOT memoised: on a search page this script's rows come from a fresh
+     * fetch and are unstamped at render time, and the script stamps them
+     * only after its debounce. Until then each call is one document-wide
+     * `querySelector`, made per render and per 📊 open (which itself scans
+     * every row of the column), so a user without the script pays next to
+     * nothing.
+     *
+     * @returns {boolean}
+     */
+    function _iiPresent() {
+        if (!_iiSeen) _iiSeen = !!document.querySelector('[' + II_STAMP_ATTR + ']');
+        return _iiSeen;
+    }
+
+    /**
+     * The instrument links in `cell` that "Instrument Icons Everywhere"
+     * decorates: those with visible text (it skips textless ones).
+     *
+     * @param {?Element} cell
+     * @returns {HTMLAnchorElement[]}
+     */
+    function _iiInstrumentLinks(cell) {
+        if (!cell) return [];
+        return Array.from(cell.querySelectorAll('a[href*="/instrument/"]'))
+            .filter(a => a.textContent.trim() !== '');
+    }
+
+    /**
+     * The "Instrument Icons Everywhere" icon of `root`'s ONLY instrument
+     * link, or `null` when it has none or several — what a 📊 entry for that
+     * cell (or list item) can honestly show as its own icon.
+     *
+     * @param {?Element} root - a cell or one `<li>` of it.
+     * @returns {?HTMLImageElement}
+     */
+    function _iiSoleIcon(root) {
+        const links = _iiInstrumentLinks(root);
+        return links.length === 1 ? _findInstrumentLinkIcon(links[0]) : null;
+    }
+
+    /**
+     * Wraps a copy of an instrument icon for the END of a 📊 entry — the
+     * same trailing slot a country flag gets (docs/claude/uniq-dropdown.md:
+     * a real image never goes in the leading marker slot). The script styles
+     * its image inline with `!important`, so the clone keeps its size.
+     *
+     * @param {HTMLImageElement} icon
+     * @returns {HTMLSpanElement}
+     */
+    function _iiTrailingIconSlot(icon) {
+        const slot = document.createElement('span');
+        slot.className = 'mb-uniq-ii-icon';
+        slot.setAttribute('aria-hidden', 'true');
+        slot.style.display       = 'inline-flex';
+        slot.style.alignItems    = 'center';
+        slot.style.marginLeft    = '4px';
+        slot.style.verticalAlign = 'middle';
+        slot.appendChild(icon.cloneNode(true));
+        return slot;
+    }
+
+    /**
+     * Whether a filter key can read instrument-icon presence: only a checked
+     * `ii-icon-yes`/`ii-icon-no` 📊 entry. The icon has no text, so no typed
+     * filter can.
+     *
+     * @param {string} key
+     * @returns {boolean}
+     */
+    function _filterKeyReadsInstrumentIcon(key) {
+        return key.includes('"ii-icon-');
+    }
+
+    /**
+     * Once per fetch (and disk load), right after the render: hands every
+     * STAMPED but icon-less instrument anchor in this script's tables back to
+     * "Instrument Icons Everywhere" by removing the stamp — on the live rows
+     * and on the source rows.
+     *
+     * The known copy sites go through `_cloneInstrumentAnchorWithIcon()`.
+     * This is the net under every other extractor that copies a cell's
+     * anchor with a bare `cloneNode(true)`: such a copy keeps the stamp and
+     * loses the icon, and the script never decorates a stamped anchor again.
+     * An anchor whose icon simply does not exist ('NONE') is re-stamped by
+     * the script with no icon; that costs it one in-memory lookup.
+     *
+     * Removing an attribute is not a `childList` mutation, which is all the
+     * script observes, so one empty comment is added and removed to make
+     * sure its next pass runs.
+     *
+     * @returns {void}
+     */
+    function _iiReleaseIconlessAnchors() {
+        if (!_iiPresent()) return;
+        const sel = 'a[href*="/instrument/"][' + II_STAMP_ATTR + ']';
+        const release = (root) => root.querySelectorAll(sel).forEach(a => {
+            if (!_findInstrumentLinkIcon(a)) a.removeAttribute(II_STAMP_ATTR);
+        });
+        document.querySelectorAll('table.tbl').forEach(release);
+        if (typeof allRows !== 'undefined') allRows.forEach(release);
+        if (typeof groupedRows !== 'undefined') groupedRows.forEach(g => g.rows.forEach(release));
+        document.body.appendChild(document.createComment('')).remove();
+    }
+
+    let _iiReconcilerInstalled = false;
+    let _iiRefreshScheduled = false;
+    /** Pending re-check of `_iiPresent()` after a render, or null. */
+    let _iiRecheckTimer = null;
+    /**
+     * Delays of the post-render re-checks in `_iiInstallIconReconciler()`.
+     * The script stamps 120 ms after the DOM settles; the later tries cover
+     * a page still busy rendering its async columns.
+     */
+    const _II_RECHECK_MS = [500, 1500, 4000];
+
+    /**
+     * Installs, once per page and only while `_iiPresent()`, the observer
+     * that carries an instrument icon arriving AFTER the render into the
+     * source row.
+     *
+     * "Instrument Icons Everywhere" decorates an unstamped anchor in a live
+     * cell (see `_cloneInstrumentAnchorWithIcon()`) whenever its icon becomes
+     * available. On `tableMode: 'multi'` that cell is a clone, so without
+     * this the next re-render clones the icon-less source row again, and the
+     * 📊 "Instrument icon" entries — which match SOURCE rows — never see it.
+     *
+     * Only an added node that IS an `img.mb-ii-icon` is looked at. A
+     * re-render adds whole rows, whose icons arrive inside them, so its
+     * records are skipped at the first check.
+     *
+     * @returns {void}
+     */
+    function _iiInstallIconReconciler() {
+        if (_iiReconcilerInstalled) return;
+        if (!_iiPresent()) {
+            // Rows from a FETCHED page (a search, any page but the current
+            // one) are unstamped at render time; the script stamps them only
+            // after its debounce. So when this script's tables hold
+            // instrument links, look again shortly — a few cheap checks, and
+            // none at all on a page without instrument links.
+            if (_iiRecheckTimer === null && document.querySelector('table.tbl a[href*="/instrument/"]')) {
+                let tries = 0;
+                const again = () => {
+                    _iiRecheckTimer = null;
+                    if (_iiReconcilerInstalled) return;
+                    if (_iiPresent()) { _iiInstallIconReconciler(); return; }
+                    if (++tries < _II_RECHECK_MS.length) _iiRecheckTimer = setTimeout(again, _II_RECHECK_MS[tries]);
+                };
+                _iiRecheckTimer = setTimeout(again, _II_RECHECK_MS[0]);
+            }
+            return;
+        }
+        _iiReconcilerInstalled = true;
+        let pending = [];
+        let queued = false;
+        new MutationObserver((records) => {
+            for (const rec of records) {
+                for (const n of rec.addedNodes) {
+                    if (n.nodeType === Node.ELEMENT_NODE && n.tagName === 'IMG' && n.classList.contains('mb-ii-icon')) pending.push(n);
+                }
+            }
+            if (pending.length && !queued) {
+                queued = true;
+                queueMicrotask(() => {
+                    queued = false;
+                    const icons = pending;
+                    pending = [];
+                    _iiMirrorLateIcons(icons);
+                });
+            }
+        }).observe(document.body, { childList: true, subtree: true });
+        Lib.debug('render', '_iiInstallIconReconciler: watching for late "Instrument Icons Everywhere" icons');
+        // Icons the script placed in this script's tables before the
+        // observer existed (the delayed install above) are "late" too.
+        const early = Array.from(document.querySelectorAll('table.tbl ' + II_ICON_SEL));
+        if (early.length) _iiMirrorLateIcons(early);
+    }
+
+    /**
+     * Copies late instrument icons from live SA cells onto the matching
+     * anchor of the source row, then settles what a post-render write owes
+     * (docs/claude/filter-and-cache-invariants.md, "the four things"): the
+     * uniq-dropdown cache and the filter-result keys that read icon presence,
+     * and a re-run of the filter when one of those is active. The icon has no
+     * text, so `_rowTextCache` is unaffected.
+     *
+     * The source anchor is the one with the same `href` at the same ordinal
+     * position in the same cell: a cell can credit one instrument more than
+     * once (one `<li>` per credited artist).
+     *
+     * @param {HTMLImageElement[]} icons
+     * @returns {void}
+     */
+    function _iiMirrorLateIcons(icons) {
+        // Only a SOURCE row that actually gained an icon counts. A live
+        // icon whose source anchor cannot be resolved (or already has one)
+        // changes nothing a filter reads, and re-running the filter for it
+        // would loop: the re-render clones the same icon-less source row,
+        // the script decorates the clone again, and so on.
+        const changed = new Set();
+        let index = null;
+        for (const icon of icons) {
+            if (!icon.isConnected) continue;
+            const a = icon.nextSibling;
+            if (!a || a.nodeType !== Node.ELEMENT_NODE || a.tagName !== 'A') continue;
+            const td = icon.closest('td');
+            const tr = td && td.parentElement;
+            const table = tr && tr.closest('table.tbl');
+            if (!table || !tr.dataset || tr.dataset.mbRowIdx === undefined) continue;
+            if (!index) index = _buildMasterRowIndex();
+            const hit = index.get(tr.dataset.mbRowIdx);
+            const master = hit && hit.row;
+            if (!master) continue;
+            if (master === tr) {
+                // tableMode 'single': the live row IS the source row.
+                changed.add(table);
+                continue;
+            }
+            const mTd = master.cells[td.cellIndex];
+            if (!mTd) continue;
+            const href = a.getAttribute('href');
+            const sameHref = (root) => Array.from(root.querySelectorAll('a')).filter(x => x.getAttribute('href') === href);
+            const mA = sameHref(mTd)[sameHref(td).indexOf(a)];
+            if (!mA || _findInstrumentLinkIcon(mA)) continue;
+            mA.parentNode.insertBefore(icon.cloneNode(true), mA);
+            mA.setAttribute(II_STAMP_ATTR, 'true');
+            changed.add(table);
+        }
+        if (!changed.size) return;
+        Lib.debug('render', `_iiMirrorLateIcons: ${icons.length} late icon(s), ${changed.size} table(s) changed`);
+        changed.forEach(t => _invalidateUniqDropDataCacheForTable(t));
+        if (_iiRefreshScheduled) return;
+        _iiRefreshScheduled = true;
+        requestAnimationFrame(() => {
+            _iiRefreshScheduled = false;
+            _invalidateFilterCacheWhere(_filterKeyReadsInstrumentIcon);
+            if (document.querySelector('[data-mb-uniq-values*="ii-icon-"]')) {
+                Lib.debug('render', '_iiMirrorLateIcons: re-running the active instrument-icon filter');
+                runFilter();
+            }
+        });
+    }
+
     /**
      * _routeAreaLink — routes ONE already-found '/area/' anchor to the correct
      * output container, shared by `splitLocation` (Location cells, which also
@@ -7464,7 +7883,9 @@
          *   [— <!-- -->Description text, which may itself contain nested
          *     <a> links (e.g. a family entry naming its member instruments)]
          *
-         * Name — the first top-level <a> (entity link), cloned verbatim.
+         * Name — the first top-level <a> (entity link), cloned verbatim,
+         * with the "Instrument Icons Everywhere" icon in front of it when
+         * that userscript decorated it (_cloneInstrumentAnchorWithIcon()).
          * Instrument entities never carry a preceding country-flag span, so
          * unlike the generic tag-value-entity shape this doesn't need to
          * check for one.
@@ -7490,7 +7911,9 @@
 
             if (sourceCell) {
                 const _a = sourceCell.querySelector(':scope > a');
-                if (_a) tdName.appendChild(_a.cloneNode(true));
+                // With its "Instrument Icons Everywhere" icon, if any — see
+                // _cloneInstrumentAnchorWithIcon().
+                if (_a) tdName.appendChild(_cloneInstrumentAnchorWithIcon(_a).node);
 
                 const _commentSpan = sourceCell.querySelector(':scope > span.comment');
                 const _commentBdi  = _commentSpan ? _commentSpan.querySelector('bdi') : null;
@@ -10243,7 +10666,9 @@
     /**
      * Builds the table row for one springsteenlyrics.com card.
      *
-     * Columns follow `_SL_HEADERS[kind]`. Title and Cover keep the item link
+     * Columns follow `_SL_HEADERS[kind]`. Title is in MusicBrainz title
+     * style while `sa_foreign_mb_titles`/`sa_foreign_typography` are on
+     * (`_mbSiteTitleText()`). Title and Cover keep the item link
      * (relative `collection.php?item=…`/`bootlegs.php?item=…`, which resolves
      * against the same directory on the live and on a fetched page). Cover
      * re-emits the card's thumbnail with `loading="lazy"`, so a consolidated
@@ -10291,7 +10716,12 @@
         } else {
             textCell('');
         }
-        linkCell(docContext.createTextNode(title));
+        // The card's title in MusicBrainz style (sa_foreign_mb_titles,
+        // sa_foreign_typography), the site's own text as the tooltip; the
+        // cover's alt text keeps the site's.
+        const shownTitle = _mbSiteTitleText(title);
+        linkCell(docContext.createTextNode(shownTitle));
+        if (shownTitle !== title) _setTip(tr.lastElementChild, `As written on the site:\n${title}`);
 
         const notes = Array.from(body.querySelectorAll('.colored-text')).map(el => el.textContent.trim());
         if (kind === 'bootlegs') {
@@ -10619,7 +11049,9 @@
             const titleTd = docContext.createElement('td');
             const link = docContext.createElement('a');
             link.setAttribute('href', a.getAttribute('href'));
-            link.textContent = a.textContent.replace(/\s+/g, ' ').trim();
+            // In MusicBrainz title style ("BABY I'M SO COLD" → "Baby I’m So
+            // Cold"), the site's capitals as the tooltip.
+            _mbSetSiteTitle(link, a.textContent.replace(/\s+/g, ' ').trim(), titleTd);
             titleTd.appendChild(link);
             tr.appendChild(titleTd);
             // bi-file-earmark-text: lyrics on the song page; the plain
@@ -12668,6 +13100,525 @@
     }
 
     // -------------------------------------------------------------------------
+    // MusicBrainz title style on the non-MusicBrainz sites
+    // -------------------------------------------------------------------------
+    // The Springsteen sites write titles their own way: brucespringsteen.it
+    // and the Brucebase setlists in capitals ("BORN IN THE U.S.A.", "BOSS AT
+    // HIS BEST (THE)"), the Brucebase song list with every word capitalised
+    // ("Born In The U.S.A."), jungleland.it however the uploader typed it
+    // ("Fade away at the Madison Square Garden (Version 2)"). With
+    // `sa_foreign_mb_titles` (default on) the converters write them in
+    // MusicBrainz's English title case instead
+    // (https://musicbrainz.org/doc/Style/Language/English, checked
+    // 2026-10-13): first and last word capitalised; between them articles,
+    // coordinating conjunctions and the short prepositions in lower case;
+    // every other word capitalised; each part of a hyphenated word on its
+    // own; o', 'n' and n' lower case; extra title information that is only
+    // descriptive ("(Version 2)", "(HALF SPEED)") all lower case
+    // (https://musicbrainz.org/doc/Style/Titles). The site's own text stays
+    // reachable as the cell's tooltip. Only letter CASE changes (and, for a
+    // plain title, a trailing "(THE)" moves to the front), so a cell's text
+    // keeps its length and its markup. See docs/claude/foreign-title-case.md.
+
+    /**
+     * Words MusicBrainz's English rules keep in lower case between the first
+     * and the last word: articles, coordinating conjunctions, and the
+     * prepositions of three letters or fewer — except "up". MusicBrainz
+     * capitalises a preposition used as an adverb or as part of a verb ("Plug
+     * In Baby"), and on these sites "up" is that in nearly every title ("Held
+     * Up Without a Gun", "Hurry Up Sundown", "I'm Shipping Up to Boston", "I
+     * Can't Stand Up for Falling Down"), so it is always capitalised.
+     * @type {Set<string>}
+     */
+    const _MBTC_SMALL = new Set(['a', 'an', 'the', 'and', 'but', 'or', 'nor', 'as', 'at', 'by', 'for',
+        'in', 'of', 'on', 'to', 'cum', 'mid', 'off', 'per', 'qua', 're', 'via']);
+
+    /**
+     * Verbs after which "on", "off" or "in" is part of the verb and so
+     * capitalised ("Come On Over to My Place", "Hang On Sloopy", "Bring On
+     * the Night", "Turn Off the Light"). A short list on purpose: after any
+     * other word the preposition rule stands ("Born on the Bayou", "Darkness
+     * on the Edge of Town", "I'm on Fire").
+     * @type {Set<string>}
+     */
+    const _MBTC_PHRASAL = new Set(['come', 'comin', 'coming', 'hang', 'hangin', 'hanging', 'hold', 'holdin',
+        'holding', 'carry', 'carryin', 'carrying', 'move', 'movin', 'moving', 'turn', 'turnin', 'turning',
+        'bring', 'plug', 'kick', 'shut', 'switch', 'log', 'sign', 'check', 'drop', 'walk', 'walkin']);
+
+    /**
+     * The prepositions that `_MBTC_PHRASAL` capitalises.
+     * @type {Set<string>}
+     */
+    const _MBTC_PARTICLES_AFTER_VERB = new Set(['on', 'off', 'in']);
+
+    /**
+     * Contractions MusicBrainz keeps in lower case ("Truth o' Trash",
+     * "Rock 'n' Roll"), apostrophes straight or curly.
+     * @type {Set<string>}
+     */
+    const _MBTC_CONTRACTIONS = new Set(["o'", "'n'", "n'", "'n", 'o’', '’n’', 'n’', '’n']);
+
+    /**
+     * French, Italian and Spanish particles of the venue names on these
+     * sites ("PALAIS DES SPORTS", "STADE DE FRANCE"): written in lower case
+     * when the source is in capitals, left as written otherwise. Not "la",
+     * "le", "van", "von": those are capitalised as often as not ("Steven Van
+     * Zandt"), so they follow the English rule.
+     * @type {Set<string>}
+     */
+    const _MBTC_PARTICLES = new Set(['de', 'des', 'du', 'di', 'del', 'della', 'dello', 'dei', 'delle', 'degli']);
+
+    /**
+     * Descriptive words of extra title information. A parenthesised part made
+     * only of these (and numbers, Roman numerals, "&", "/", "-", "+", "and")
+     * is written all in lower case, as MusicBrainz writes "(live)" or
+     * "(single version)".
+     * @type {Set<string>}
+     */
+    const _MBTC_ETI = new Set(['live', 'version', 'versions', 'demo', 'demos', 'remix', 'remixed', 'mix', 'edit',
+        'edited', 'remaster', 'remastered', 'acoustic', 'instrumental', 'mono', 'stereo', 'single', 'alternate',
+        'alt', 'take', 'takes', 'outtake', 'outtakes', 'rehearsal', 'soundcheck', 'half', 'speed', 'promo',
+        'copy', 'repress', 'reissue', 'bonus', 'track', 'radio', 'extended', 'early', 'rough', 'unreleased',
+        'advance', 'press', 'pressing', 'test', 'reprise', 'intro', 'outro', 'excerpt', 'snippet', 'partial',
+        'incomplete', 'full', 'short', 'long', 'original', 'studio', 'session', 'sessions', 'bootleg', 'late',
+        'show', 'shows', 'matinee', 'first', 'second', 'third', 'night', 'one', 'sided', 'picture', 'disc',
+        'sleeve', 'colored', 'coloured', 'white', 'label', 'and']);
+
+    /**
+     * Acronyms kept in capitals when the source is in capitals, beyond the
+     * ones `_mbtcIsAcronym()` recognises by shape (no vowel, dotted letters,
+     * an "&" between letters, a Roman numeral). Collected from the titles and
+     * venues of the four sites (2026-10-13).
+     * @type {Set<string>}
+     */
+    const _MBTC_ACRONYMS = new Set(['USA', 'UK', 'EU', 'EP', 'HBO', 'NYC', 'NY', 'NYU', 'UCLA', 'USO', 'UFO',
+        'ICC', 'AC', 'OK', 'VIP', 'UNICEF', 'AOR', 'ABC', 'ESPN', 'UNO', 'JAP']);
+
+    /**
+     * Abbreviations that have no vowel but are not acronyms ("ST. JAMES",
+     * "DR. ZOOM", "VOL. 2"): written capitalised, never kept in capitals.
+     * @type {Set<string>}
+     */
+    const _MBTC_ABBREVIATIONS = new Set(['mr', 'mrs', 'ms', 'dr', 'jr', 'sr', 'st', 'mt', 'ft', 'pt', 'vs', 'nr']);
+
+    /**
+     * A word of a title: a letter or digit, then letters, digits,
+     * apostrophes, single dots, "&" and hyphens. A slash ends a word
+     * ("AC/DC", "copy/repress"), and so does an ellipsis ("BORDERLINE...WITH").
+     * @type {RegExp}
+     */
+    const _MBTC_WORD_RE = /[\p{L}\p{N}](?:[\p{L}\p{N}'’&-]|\.(?!\.))*/gu;
+
+    /**
+     * What, between two words, starts a new phrase whose first word is
+     * capitalised and ends the previous one, whose last word is: a
+     * parenthesis or bracket, a colon, question or exclamation mark, a
+     * slash, a semicolon, a dash or a spaced hyphen (a medley's " - "),
+     * quotation marks, an ellipsis.
+     * @type {RegExp}
+     */
+    const _MBTC_BREAK_RE = /[()[\]:?!/;—–"“”…]|\s-\s|\.\.\./;
+
+    /**
+     * Upper- or lower-cases one character, keeping it as it is when the
+     * other case would change its length ("ß" → "SS"), so a title's length
+     * never changes.
+     *
+     * @param {string}  ch The character.
+     * @param {boolean} up Upper case when true.
+     * @returns {string}
+     */
+    function _mbtcCase(ch, up) {
+        const r = up ? ch.toUpperCase() : ch.toLowerCase();
+        return r.length === ch.length ? r : ch;
+    }
+
+    /**
+     * Tells whether a word written in capitals is an acronym, kept in
+     * capitals: one of `_MBTC_ACRONYMS`; dotted letters ("U.S.A.", "D.M.C.",
+     * with or without a trailing "'S"); letters around an "&" ("A&M",
+     * "R&B"); a Roman numeral of two or more letters ("II", "XIV"); or two
+     * to five letters with no vowel and no "Y" ("NJ", "TCB", "PNC", "DVD") —
+     * except an abbreviation of `_MBTC_ABBREVIATIONS` ("ST.", "DR.").
+     *
+     * @param {string} word The word as written (capitals).
+     * @returns {boolean}
+     */
+    function _mbtcIsAcronym(word) {
+        const noPossessive = word.replace(/['’][sS]$/, '');
+        const bare = noPossessive.replace(/\.$/, '');
+        if (_MBTC_ACRONYMS.has(bare)) return true;
+        // Dotted letters, two or more of them: "U.S.A.", "U.S.A", "M.G.".
+        if (/^(?:\p{L}\.)+\p{L}?\.?$/u.test(noPossessive) && (noPossessive.match(/\p{L}/gu) || []).length >= 2) return true;
+        if (/^\p{L}+&\p{L}+$/u.test(bare)) return true;
+        if (/^(?=[IVX]{2,}$)X{0,3}(?:IX|IV|V?I{0,3})$/.test(bare)) return true;
+        return /^\p{L}{2,5}$/u.test(bare) && !/[AEIOUYÀ-ÖØ-Ý]/.test(bare) && !_MBTC_ABBREVIATIONS.has(bare.toLowerCase());
+    }
+
+    /**
+     * Rewrites one word (no hyphen) of a title, as an array of characters.
+     *
+     * In a part written in capitals (`caps`) the word is lowered and then
+     * capitalised by the rules — unless it is an acronym — with "O'Clock",
+     * "O'Brien", "D'Angelo", "L'Amore" and "McLoone" capitalised after the
+     * prefix too.
+     * In mixed case only the first letter changes: a small word goes to
+     * lower case unless it has a capital inside ("THE" in a mixed title stays),
+     * a lower-case word is capitalised unless it already has a capital
+     * inside ("iPhone") or is a particle, and anything else stays as written.
+     *
+     * @param {string}  word  The word.
+     * @param {boolean} caps  Whether its part of the title is written in capitals.
+     * @param {boolean} edge  Whether it is the first or last word of its phrase.
+     * @param {boolean} lower Whether its part is descriptive extra title information (all lower case).
+     * @returns {string} The rewritten word, same length.
+     */
+    function _mbtcWord(word, caps, edge, lower) {
+        const chars = Array.from(word);
+        const low = word.toLowerCase();
+        const key = low.replace(/\.$/, '');
+        const firstLetter = chars.findIndex(c => /\p{L}/u.test(c));
+        if (firstLetter < 0) return word;
+        // A word led by a digit ("10TH", "4th", "U2" is not one) is never
+        // capitalised: its letters are a suffix.
+        const digitLed = /^\p{N}/u.test(word);
+        if (caps && _mbtcIsAcronym(word)) {
+            // "M.G.'S" → "M.G.'s": the acronym stays, the possessive does not.
+            return word.replace(/['’]S$/, m => m[0] + 's');
+        }
+        if (caps) {
+            const out = chars.map(c => _mbtcCase(c, false));
+            if (lower || _MBTC_CONTRACTIONS.has(low) || (_MBTC_PARTICLES.has(key) && !edge) ||
+                (_MBTC_SMALL.has(key) && !edge)) {
+                return out.join('');
+            }
+            if (!digitLed) out[firstLetter] = _mbtcCase(out[firstLetter], true);
+            const m = low.match(/^([odl]['’]|mc)\p{L}{2,}/u);
+            if (m) out[m[1].length] = _mbtcCase(out[m[1].length], true);
+            return out.join('');
+        }
+        // Mixed case: only the first letter may change.
+        const rest = chars.slice(firstLetter + 1).join('');
+        const restHasCapital = /\p{Lu}/u.test(rest);
+        if (lower) {
+            return restHasCapital ? word : chars.map((c, i) => (i === firstLetter ? _mbtcCase(c, false) : c)).join('');
+        }
+        if (_MBTC_CONTRACTIONS.has(low) || _MBTC_PARTICLES.has(key)) return word;
+        if (_MBTC_SMALL.has(key) && !edge) {
+            return restHasCapital ? word : chars.map((c, i) => (i === firstLetter ? _mbtcCase(c, false) : c)).join('');
+        }
+        if (restHasCapital || digitLed) return word;
+        return chars.map((c, i) => (i === firstLetter ? _mbtcCase(c, true) : c)).join('');
+    }
+
+    /**
+     * Writes a title in MusicBrainz's English title case, changing only
+     * letter case (the result has the same length, so it can be written back
+     * over a cell's text nodes — `_mbSiteTitleNodes()`).
+     *
+     * The title is cut into parts at parentheses and brackets. A part with no
+     * lower-case letter (an ordinal's "th" aside: "4th OF JULY") is "in
+     * capitals" and rewritten word by word; any other part is mixed case and
+     * keeps every letter but a word's first. With `capsOnly` a mixed part is
+     * left exactly as written: a setlist's songs are in capitals and its
+     * notes ("(with Patti Scialfa)") are not titles. A parenthesised part
+     * made only of descriptive words (`_MBTC_ETI`) is all lower case. A
+     * title wholly in square brackets ("[no title]") is left as it is.
+     *
+     * A part in capitals inside parentheses counts as one only when the
+     * title is in capitals outside them too; otherwise it is a name or an
+     * acronym and stays.
+     *
+     * Within a part, a phrase runs between the breaks of `_MBTC_BREAK_RE`;
+     * its first and last word are always capitalised, and so is "on", "off"
+     * or "in" right after a verb of `_MBTC_PHRASAL`. Each piece of a
+     * hyphenated word is a word of its own ("Freeze-Out", "Jack-in-the-Box").
+     *
+     * @param {string} text  The title.
+     * @param {{capsOnly?: boolean}} [opts]
+     * @returns {string} The title in MusicBrainz case.
+     */
+    function _mbTitleCase(text, opts = {}) {
+        const src = String(text || '');
+        if (!/\p{L}/u.test(src)) return src;
+        // A title wholly in square brackets is a placeholder, MusicBrainz's
+        // own special-purpose style ("[no title]", "[unknown]"): as written.
+        if (/^\[[^\]]*\]$/.test(src.trim())) return src;
+        const parts = [];
+        const partRe = /[([][^()[\]]*[)\]]|[^()[\]]+|[()[\]]/g;
+        let pm;
+        while ((pm = partRe.exec(src)) !== null) parts.push(pm[0]);
+        const noLower = (t) => !/\p{Ll}/u.test(t.replace(/(\d)(?:st|nd|rd|th)\b/g, '$1'));
+        // A part in capitals inside a mixed-case title is a name or an
+        // acronym ("Out There in Radioland (JEMS)"), not a shouted title.
+        const outerCaps = noLower(parts.filter(t => !/^[([]/.test(t)).join(''));
+        return parts.map(part => {
+            const inParens = /^[([]/.test(part) && part.length > 1;
+            const caps = noLower(part) && /\p{Lu}/u.test(part) && (!inParens || outerCaps);
+            if (opts.capsOnly && !caps) return part;
+            const words = [];
+            let m;
+            _MBTC_WORD_RE.lastIndex = 0;
+            while ((m = _MBTC_WORD_RE.exec(part)) !== null) {
+                let w = m[0];
+                // A trailing hyphen is punctuation ("TWIST AND SHOUT- "), not word.
+                while (w.length > 1 && w.endsWith('-')) w = w.slice(0, -1);
+                words.push({ start: m.index, word: w });
+            }
+            if (!words.length) return part;
+            const lower = inParens && words.every(({ word }) => {
+                const k = word.toLowerCase().replace(/\.$/, '');
+                return _MBTC_ETI.has(k) || /^\p{N}+$/u.test(k) || /^(?=[ivx]+$)x{0,3}(?:ix|iv|v?i{0,3})$/.test(k);
+            });
+            let out = '';
+            let pos = 0;
+            words.forEach((w, i) => {
+                const gapBefore = part.slice(pos, w.start);
+                const gapAfter = i + 1 < words.length ? part.slice(w.start + w.word.length, words[i + 1].start) : '';
+                const first = i === 0 || _MBTC_BREAK_RE.test(gapBefore);
+                const last = i === words.length - 1 || _MBTC_BREAK_RE.test(gapAfter);
+                const prevKey = i > 0 && !first ? words[i - 1].word.toLowerCase().replace(/['’]$/, '') : '';
+                const particle = _MBTC_PHRASAL.has(prevKey) && _MBTC_PARTICLES_AFTER_VERB.has(w.word.toLowerCase());
+                const pieces = w.word.split('-');
+                const rewritten = pieces.map((piece, j) => {
+                    if (!piece) return piece;
+                    const edge = (j === 0 && (first || particle)) || (j === pieces.length - 1 && last);
+                    return _mbtcWord(piece, caps, edge, lower);
+                }).join('-');
+                out += gapBefore + rewritten;
+                pos = w.start + w.word.length;
+            });
+            return out + part.slice(pos);
+        }).join('');
+    }
+
+    /**
+     * Writes a plain title (a link's text, a cell's text) in MusicBrainz
+     * style: `_mbTitleCase()`, and a trailing article in parentheses, the
+     * sort form of brucespringsteen.it ("BOSS AT HIS BEST (THE)"), moved to
+     * the front ("The Boss at His Best").
+     *
+     * @param {string} text The title as the site writes it.
+     * @returns {string}
+     */
+    function _mbNormalizeTitle(text) {
+        let t = String(text || '');
+        const am = t.match(/^(.*\S)\s*\((the|a|an)\)$/i);
+        if (am) t = `${am[2]} ${am[1]}`;
+        return _mbTitleCase(t);
+    }
+
+    /**
+     * Words that an apostrophe at the start of a word shortens, so that
+     * apostrophe is one (’), never an opening quotation mark: "Rock ’n’
+     * Roll", "’Til", "’Cause", "’Em", "’Round", "Summer ’09".
+     * @type {RegExp}
+     */
+    const _MBTP_ELISION_RE = /^(?:n['’]?(?![\p{L}])|til|till|cause|cos|em|round|bout|tis|twas|cept|fore|neath|\p{N})/iu;
+
+    /**
+     * Rewrites a title's ASCII punctuation as English typography, one
+     * character for one, so the result has the same length and can be
+     * written back over a cell's text nodes (`_mbSiteTitleNodes()`):
+     *
+     *   - `'`, and the `´` and backtick that jungleland.it types for one
+     *     ("´72", "`Cause", "Rock `n` Roll"): an apostrophe ’
+     *     ("Don’t", "Comin’", "’n’", "’09"), or ‘ … ’ around a quotation
+     *     ("IRISH ‘SPRINGSTEEN PACK’") when a word-initial one that shortens
+     *     nothing (`_MBTP_ELISION_RE`) is closed later in the title;
+     *   - `"`: “ after a space, a bracket or the start, ” otherwise, and ″
+     *     (inches) right after a digit when no quotation is open ("7″");
+     *   - `-`: an en dash – when spaced (" - ", a medley or a subtitle) or
+     *     between two numbers (a range, "1975–1985"), a hyphen ‐ between
+     *     letters ("Freeze‐Out") and inside a date of three or more numbers
+     *     ("1999‐08‐12", "10‐18‐75");
+     *   - `x` between two numbers with spaces around it: ×.
+     *
+     * `...` → … and `--` → — change the length and are done by
+     * `_mbTypography()`.
+     *
+     * @param {string} text
+     * @returns {string} Same length as `text`.
+     */
+    function _mbTypographyFixed(text) {
+        const src = String(text || '');
+        const out = Array.from(src);
+        // Code points, so a surrogate pair is one position on both sides.
+        const ch = out.slice();
+        const isWord = (c) => !!c && /[\p{L}\p{N}]/u.test(c);
+        const isDigit = (c) => !!c && /\p{N}/u.test(c);
+        const isOpenCtx = (c) => !c || /[\s([{\-–—/“‘]/.test(c);
+        let doubleOpen = false;
+        let singleOpen = false;
+        for (let i = 0; i < ch.length; i++) {
+            const c = ch[i];
+            const prev = i > 0 ? ch[i - 1] : '';
+            const next = i + 1 < ch.length ? ch[i + 1] : '';
+            if (c === "'" || c === '´' || c === '`') {
+                if (isWord(prev)) {
+                    out[i] = '’';
+                    if (singleOpen && !isWord(next)) singleOpen = false;
+                } else if (isOpenCtx(prev) && isWord(next)) {
+                    const rest = ch.slice(i + 1).join('');
+                    if (_MBTP_ELISION_RE.test(rest)) {
+                        out[i] = '’';
+                    } else {
+                        // A quotation only when a closing ' follows, after a
+                        // word and before a non-word.
+                        const closes = /[\p{L}\p{N}.!?]'(?![\p{L}\p{N}])/u.test(rest);
+                        out[i] = closes ? '‘' : '’';
+                        if (closes) singleOpen = true;
+                    }
+                } else if (singleOpen) {
+                    out[i] = '’';
+                    singleOpen = false;
+                }
+            } else if (c === '"') {
+                if (isDigit(prev) && !doubleOpen) {
+                    out[i] = '″';
+                } else if (isOpenCtx(prev) && !doubleOpen) {
+                    out[i] = '“';
+                    doubleOpen = true;
+                } else {
+                    out[i] = '”';
+                    doubleOpen = false;
+                }
+            } else if (c === '-') {
+                if (prev === ' ' && next === ' ') {
+                    out[i] = '–';
+                } else if (isDigit(prev) && isDigit(next)) {
+                    // The whole run of numbers joined by hyphens: three or
+                    // more groups are a date (hyphens), two a range (en dash).
+                    let a = i;
+                    while (a > 0 && /[\p{N}-]/u.test(ch[a - 1])) a--;
+                    let b = i;
+                    while (b + 1 < ch.length && /[\p{N}-]/u.test(ch[b + 1])) b++;
+                    const groups = ch.slice(a, b + 1).join('').split('-').filter(Boolean).length;
+                    out[i] = groups >= 3 ? '‐' : '–';
+                } else if (isWord(prev) && isWord(next)) {
+                    out[i] = '‐';
+                }
+            } else if ((c === 'x' || c === 'X') && prev === ' ' && next === ' ' &&
+                isDigit(ch[i - 2]) && isDigit(ch[i + 2])) {
+                out[i] = '×';
+            }
+        }
+        return out.join('');
+    }
+
+    /**
+     * Rewrites a title's ASCII punctuation as English typography: an
+     * ellipsis … for "...", an em dash — for "--", then
+     * `_mbTypographyFixed()`.
+     *
+     * @param {string} text
+     * @returns {string}
+     */
+    function _mbTypography(text) {
+        return _mbTypographyFixed(String(text || '').replace(/\.{3}/g, '…').replace(/--/g, '—'));
+    }
+
+    /**
+     * Whether the converters write titles in MusicBrainz style
+     * (`sa_foreign_mb_titles`, default on).
+     *
+     * @returns {boolean}
+     */
+    function _mbTitlesOn() {
+        return Lib.settings.sa_foreign_mb_titles !== false;
+    }
+
+    /**
+     * Whether the converters write a title's punctuation typographically
+     * (`sa_foreign_typography`, default on).
+     *
+     * @returns {boolean}
+     */
+    function _mbTypographyOn() {
+        return Lib.settings.sa_foreign_typography !== false;
+    }
+
+    /**
+     * A site title as the converters show it: in MusicBrainz case
+     * (`_mbNormalizeTitle()`) and with typographic punctuation
+     * (`_mbTypography()`), each only while its setting is on.
+     *
+     * @param {string} text The title as the site writes it.
+     * @param {{caseOn?: boolean, typoOn?: boolean}} [opts] Defaults: the two settings.
+     * @returns {string}
+     */
+    function _mbSiteTitleText(text, opts = {}) {
+        let t = String(text || '');
+        if (opts.caseOn ?? _mbTitlesOn()) t = _mbNormalizeTitle(t);
+        if (opts.typoOn ?? _mbTypographyOn()) t = _mbTypography(t);
+        return t;
+    }
+
+    /**
+     * Sets an element's text to a site title as the converters show it
+     * (`_mbSiteTitleText()`), and gives `tipEl` the site's own text as its
+     * tooltip when that differs. With both settings off the text is written
+     * as the site has it, and there is no tooltip.
+     *
+     * @param {Element} el     The element whose text is the title (a link, a cell).
+     * @param {string}  text   The title as the site writes it, whitespace already collapsed.
+     * @param {Element} [tipEl=el] The element that carries the tooltip.
+     * @returns {void}
+     */
+    function _mbSetSiteTitle(el, text, tipEl = el) {
+        const shown = _mbSiteTitleText(text);
+        el.textContent = shown;
+        if (shown !== text) _setTip(tipEl, `As written on the site:\n${text}`);
+    }
+
+    /**
+     * Rewrites the text nodes under an element as a site title, in place,
+     * keeping its markup (a song's `<strong>`, its link). The text nodes are
+     * read as one string; letter case (`_mbTitleCase()`) and the one-for-one
+     * punctuation (`_mbTypographyFixed()`) keep its length, so each node gets
+     * its own slice back; then each node's "..." and "--" become … and —.
+     * Text under `skipSel` (a set label) is left out. When anything changed,
+     * the element gets the original text as its tooltip. Each step runs only
+     * while its setting is on.
+     *
+     * @param {Element} el The element (a setlist row, a cell).
+     * @param {{capsOnly?: boolean, skipSel?: string}} [opts]
+     * @returns {boolean} True when the text changed.
+     */
+    function _mbSiteTitleNodes(el, opts = {}) {
+        const caseOn = _mbTitlesOn();
+        const typoOn = _mbTypographyOn();
+        if ((!caseOn && !typoOn) || !el) return false;
+        const doc = el.ownerDocument;
+        const walker = doc.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+            acceptNode: (n) => (opts.skipSel && n.parentElement?.closest(opts.skipSel)
+                ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT)
+        });
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        const before = nodes.map(n => n.data).join('');
+        let after = before;
+        if (caseOn) after = _mbTitleCase(after, { capsOnly: !!opts.capsOnly });
+        if (typoOn) after = _mbTypographyFixed(after);
+        if (after.length !== before.length) return false;
+        let pos = 0;
+        let changed = after !== before;
+        nodes.forEach(n => {
+            const len = n.data.length;
+            let data = after.slice(pos, pos + len);
+            pos += len;
+            if (typoOn) {
+                const d2 = data.replace(/\.{3}/g, '…').replace(/--/g, '—');
+                if (d2 !== data) changed = true;
+                data = d2;
+            }
+            if (data !== n.data) n.data = data;
+        });
+        if (changed) _setTip(el, `As written on the site:\n${before.replace(/\s+/g, ' ').trim()}`);
+        return changed;
+    }
+
+    // -------------------------------------------------------------------------
     // jungleland.it: the bootleg artwork list (html/list.htm)
     // -------------------------------------------------------------------------
     // One static FrontPage page: a year jump menu, then one anchor heading per
@@ -12766,7 +13717,8 @@
      *
      * The Title cell links to the entry's artwork page by its resolved
      * absolute URL, in a new tab: standalone there is no `inferioredx1`
-     * frame for the site's own target to name.
+     * frame for the site's own target to name. Its text is in MusicBrainz
+     * title style while `sa_foreign_mb_titles` is on (`_mbSetSiteTitle()`).
      *
      * @param {{anchor: HTMLAnchorElement, section: string}} item  One entry from `_jlCollectItems()`.
      * @param {Document}                                      docContext The document the row is built in.
@@ -12780,7 +13732,7 @@
         link.href = item.anchor.href;
         link.target = '_blank';
         link.rel = 'noopener';
-        link.textContent = title;
+        _mbSetSiteTitle(link, title, titleTd);
         titleTd.appendChild(link);
         tr.appendChild(titleTd);
         [date, year, _jlVersionFromHref(item.anchor.getAttribute('href'))].forEach(value => {
@@ -13077,7 +14029,9 @@
      *
      * The Title cell links to the record's detail page by its absolute URL,
      * in a new tab: standalone there is no "principale" frame for the site's
-     * `<base target>` to name.
+     * `<base target>` to name. Its text is in MusicBrainz title style while
+     * `sa_foreign_mb_titles` is on (`_mbSetSiteTitle()`: "BOSS AT HIS BEST
+     * (THE)" → "The Boss at His Best").
      *
      * @param {HTMLParagraphElement} p          The record.
      * @param {('unofficial'|'official')} kind  Which column set.
@@ -13092,7 +14046,7 @@
         link.href = r.href;
         link.target = '_blank';
         link.rel = 'noopener';
-        link.textContent = r.title;
+        _mbSetSiteTitle(link, r.title, titleTd);
         titleTd.appendChild(link);
         tr.appendChild(titleTd);
         const values = kind === 'official'
@@ -13321,23 +14275,25 @@
     }
 
     /**
-     * Finds the song list's letter tabview.
+     * Finds a letter tabview: the song list's, or (with `prefix`
+     * "/relation:") the Relations page's.
      *
-     * The page holds a second YUI tabview further down (News, Media,
+     * The song page holds a second YUI tabview further down (News, Media,
      * "Released (Not on Springsteen Album)"), and its last tab links songs
      * too, so "any `/song:` link" is not the list. The letter tabview is the
      * `div.yui-navset` whose every tab label has the `=- … -=` shape and
-     * which links at least one song.
+     * which links at least one page under `prefix`.
      *
      * @param {Document} docContext The document to search.
+     * @param {string}   [prefix='/song:'] The link prefix of the list's entries.
      * @returns {?HTMLElement} The tabview, or `null` when the page has none.
      */
-    function _bbFindSongTabview(docContext) {
+    function _bbFindSongTabview(docContext, prefix = '/song:') {
         return Array.from(docContext.querySelectorAll('div.yui-navset')).find(nav => {
             const labels = Array.from(nav.querySelectorAll(':scope > ul.yui-nav > li'));
             return labels.length > 0 &&
                 labels.every(li => _BB_TAB_LABEL_RE.test(li.textContent.replace(/\s+/g, ' ').trim())) &&
-                nav.querySelector('a[href^="/song:"]') !== null;
+                nav.querySelector(`a[href^="${prefix}"]`) !== null;
         }) || null;
     }
 
@@ -13375,7 +14331,9 @@
      * Builds one table row (Title, Letter) for a Brucebase song.
      *
      * The Title cell links to the song's page by its resolved absolute URL,
-     * in the same tab, as the site's own list does.
+     * in the same tab, as the site's own list does. Its text is in
+     * MusicBrainz title style while `sa_foreign_mb_titles` is on
+     * (`_mbSetSiteTitle()`: "Born In The U.S.A." → "Born in the U.S.A.").
      *
      * @param {{anchor: HTMLAnchorElement, letter: string}} item       One song from `_bbCollectItems()`.
      * @param {Document}                                    docContext The document the row is built in.
@@ -13386,7 +14344,7 @@
         const titleTd = docContext.createElement('td');
         const link = docContext.createElement('a');
         link.href = item.anchor.href;
-        link.textContent = item.anchor.textContent.replace(/\s+/g, ' ').trim();
+        _mbSetSiteTitle(link, item.anchor.textContent.replace(/\s+/g, ' ').trim(), titleTd);
         titleTd.appendChild(link);
         tr.appendChild(titleTd);
         const letterTd = docContext.createElement('td');
@@ -13764,13 +14722,70 @@
         return _bbIsCapitals(t) ? 'set' : null;
     }
 
+    /** A song separator in a year page's set text: " / ", or "/ " / " /" at a text node's edge. */
+    const _BB_SET_SEP_RE = /(?:^|\s)\/(?:\s|$)/;
+
+    /**
+     * Splits an inline formatting element of a set paragraph (`<strong>`,
+     * `<b>`, `<em>`, `<i>`, `<span>`) that holds song separators itself into
+     * its songs, each wrapped in its own shallow copy of the element: the
+     * tour opener of 2012-03-18 bolds its whole setlist, eighteen songs in
+     * one `<strong>` ("WE TAKE CARE OF OUR OWN / WRECKING BALL / …"), and a
+     * run that starts with the separator ("<strong>/ LAND OF HOPE AND
+     * DREAMS</strong>"). Nested formatting is split the same way.
+     *
+     * @param {Element}  el         The element.
+     * @param {Document} docContext The document that will own the copies.
+     * @returns {Node[][]} The pieces, in order; between two pieces lies a
+     *          separator. A piece is empty when a separator opens or closes
+     *          the element.
+     */
+    function _bbSplitInline(el, docContext) {
+        const parts = [[]];
+        el.childNodes.forEach(c => {
+            if (c.nodeType === 3) {
+                c.textContent.split(_BB_SET_SEP_RE).forEach((piece, i) => {
+                    if (i > 0) parts.push([]);
+                    if (piece) parts[parts.length - 1].push(docContext.createTextNode(piece));
+                });
+            } else if (_bbIsSplittableInline(c)) {
+                const sub = _bbSplitInline(c, docContext);
+                sub.forEach((piece, i) => {
+                    if (i > 0) parts.push([]);
+                    parts[parts.length - 1].push(...piece);
+                });
+            } else {
+                parts[parts.length - 1].push(_bbCloneAbs(c, docContext));
+            }
+        });
+        return parts.map(piece => {
+            if (!piece.some(n => n.textContent.trim())) return [];
+            const wrap = docContext.importNode(el, false);
+            piece.forEach(n => wrap.appendChild(n));
+            return [wrap];
+        });
+    }
+
+    /**
+     * Whether an element of a set paragraph is inline formatting that holds
+     * a song separator, and so is split by `_bbSplitInline()` rather than
+     * kept whole as one song.
+     *
+     * @param {Node} n
+     * @returns {boolean}
+     */
+    function _bbIsSplittableInline(n) {
+        return n.nodeType === 1 && /^(?:STRONG|B|EM|I|SPAN)$/.test(n.tagName) && _BB_SET_SEP_RE.test(n.textContent);
+    }
+
     /**
      * Splits one set paragraph of a year-page entry into its songs.
      *
-     * Songs are separated by " / " in the paragraph's TOP-LEVEL text (a
-     * slash inside a title, "AC/DC", is not a separator); each song keeps
-     * its own markup (bold = tour premiere, italic) and its "(with …)". A
-     * `<br>` separates too. A `<sup>` holds a note ("Set details may be
+     * Songs are separated by " / " in the paragraph's text — top level, and
+     * inside a bold or italic run that spans several songs
+     * (`_bbSplitInline()`); a slash inside a title ("AC/DC") is not a
+     * separator. Each song keeps its own markup (bold = tour premiere,
+     * italic) and its "(with …)". A `<br>` separates too. A `<sup>` holds a note ("Set details may be
      * inaccurate."), and a paragraph that is one `<em>` is only a note ("No
      * set details known."), unless it is in capitals (a setlist set in
      * italics, whose songs are then its own); notes go to `notes`. A leading label ("Soundcheck:",
@@ -13811,6 +14826,14 @@
                 segments.push([]);
                 return;
             }
+            if (_bbIsSplittableInline(n)) {
+                _bbSplitInline(n, docContext).forEach((piece, i) => {
+                    if (i > 0) segments.push([]);
+                    segments[segments.length - 1].push(...piece);
+                });
+                first = false;
+                return;
+            }
             if (n.nodeType !== 3) {
                 segments[segments.length - 1].push(_bbCloneAbs(n, docContext));
                 if (n.textContent.trim()) first = false;
@@ -13825,7 +14848,7 @@
                 }
                 first = false;
             }
-            text.split(/(?:^|\s)\/(?:\s|$)/).forEach((part, i) => {
+            text.split(_BB_SET_SEP_RE).forEach((part, i) => {
                 if (i > 0) segments.push([]);
                 if (part) segments[segments.length - 1].push(docContext.createTextNode(part));
             });
@@ -13883,6 +14906,13 @@
      * its label as text (shown by the icon, read by filters and the 📊
      * dropdown). The "Help Us" icon and the request text after it are the
      * Info wanted column instead.
+     *
+     * While `sa_foreign_mb_titles` is on, Venue, City, Country (not "USA")
+     * and the songs of Soundcheck and Setlist are in MusicBrainz title
+     * style, the site's capitals as the tooltip; in a song row only the part in capitals changes, so "(with
+     * Patti Scialfa)" and a set label stay as written (`_mbSiteTitleNodes()`
+     * with `capsOnly`), and their punctuation typographic while
+     * `sa_foreign_typography` is on.
      *
      * @param {{heading: string, link: ?HTMLAnchorElement, tour: string, blocks: Element[]}} entry One entry of `_bbYearEntries()`.
      * @param {Document} docContext The document the row is built in.
@@ -13960,6 +14990,7 @@
                 frags.forEach(f => {
                     const li = docContext.createElement('li');
                     li.appendChild(f);
+                    _mbSiteTitleNodes(li, { capsOnly: true, skipSel: '.mb-bb-set-label' });
                     ul.appendChild(li);
                 });
                 td.appendChild(ul);
@@ -13974,15 +15005,19 @@
         if (href) {
             const venueA = docContext.createElement('a');
             venueA.setAttribute('href', _bbAbsHref(href));
-            venueA.textContent = venueText;
+            _mbSetSiteTitle(venueA, venueText, venueTd);
             venueTd.appendChild(venueA);
         } else {
-            venueTd.textContent = venueText;
+            _mbSetSiteTitle(venueTd, venueText);
         }
         tr.appendChild(venueTd);
-        textCell(h.city);
+        // City and Country in MusicBrainz style too ("HAMPTON" → "Hampton",
+        // "THE NETHERLANDS" → "The Netherlands"); "USA" stays as it is.
+        // State is a code ("NJ") or a region and is left alone.
+        _mbSetSiteTitle(textCell(''), h.city);
         textCell(h.state);
-        textCell(h.country);
+        if (h.country === 'USA') textCell(h.country);
+        else _mbSetSiteTitle(textCell(''), h.country);
         textCell(entry.tour);
         listCell(soundcheck);
         listCell(setlist);
@@ -14136,6 +15171,487 @@
         Lib.debug('init', 'applyBbYearToTable: start page — empty year table in place for the fetched year pages.');
     }
 
+    // --- Brucebase "Recent changes" (`bb-recent-changes`) ---------------------
+    // `system:recent-changes`: Wikidot's site-wide change log. Its list is
+    // NOT paginated by URL: the pager and "Update list" POST to
+    // /ajax-module-connector.php (SiteChangesListModule) and drop the answer's
+    // HTML into #site-changes-list. So the definition carries
+    // `features.pageRequest` (one POST per page, always 200 per page, the
+    // site's maximum) and each button a `pageCount`. Covered by
+    // `sa_enable_brucebase`. See docs/claude/brucebase.md, "Recent changes".
+
+    /**
+     * Column headers of the Brucebase Recent changes table, in order.
+     * @type {string[]}
+     */
+    const _BB_CHANGES_HEADERS = ['Page', 'Category', 'Flags', 'Date', 'Time', 'Revision', 'User', 'Comment'];
+
+    /**
+     * Revisions per AJAX page: the most the site's own "Revisions per page"
+     * select offers, and what the request asked for ("change to 200 revisions
+     * per page beforehand").
+     * @type {number}
+     */
+    const _BB_CHANGES_PER_PAGE = 200;
+
+    /**
+     * The flag letters of a change, as the server's own `title`s explain them
+     * (scripts/probe-bb-recent-changes.py, 2026-10-12). The live page's
+     * hover-tip script empties those titles, so the letters are read and the
+     * text comes from here.
+     * @type {Object<string, string>}
+     */
+    const _BB_CHANGES_FLAGS = {
+        N: 'new page created',
+        S: 'content source text changed',
+        T: 'title changed',
+        R: 'page renamed/moved',
+        A: 'tags changed',
+        M: 'meta data changed',
+        F: 'file/attachment action'
+    };
+
+    /**
+     * The Wikidot AJAX token: the value of the `wikidot_token7` cookie, which
+     * every request to /ajax-module-connector.php must repeat in its body
+     * (Wikidot checks that the two match). The site sets the cookie on the
+     * first page view; should it be missing, one is set for the wiki's path,
+     * as Wikidot's own scripts do.
+     *
+     * @returns {string}
+     */
+    function _bbWikidotToken() {
+        const m = document.cookie.match(/(?:^|;\s*)wikidot_token7=([^;]*)/);
+        if (m && m[1]) return decodeURIComponent(m[1]);
+        const token = Math.random().toString(16).slice(2, 10);
+        document.cookie = `wikidot_token7=${token}; path=/`;
+        return token;
+    }
+
+    /**
+     * What the site's own form asks for, read at the time of the request:
+     * the ticked revision types ("ALL", "new pages", …) and the category
+     * ("Whole site" = ''). A form that is not there reads as "ALL" of the
+     * whole site.
+     *
+     * @returns {{options: string, categoryId: string}} `options` as the
+     *   JSON the site's SiteChangesModule.js sends.
+     */
+    function _bbChangesFormChoice() {
+        const opts = {};
+        const box = (id) => document.getElementById(id)?.checked === true;
+        if (box('rev-type-all')) opts.all = true;
+        if (box('rev-type-source')) opts.source = true;
+        if (box('rev-type-title')) opts.title = true;
+        if (box('rev-type-tags')) opts.tags = true;
+        if (box('rev-type-move')) opts.move = true;
+        if (box('rev-type-files')) opts.files = true;
+        if (box('rev-type-new')) opts['new'] = true;
+        if (box('rev-type-meta')) opts.meta = true;
+        if (Object.keys(opts).length === 0) opts.all = true;
+        return { options: JSON.stringify(opts), categoryId: document.getElementById('rev-category')?.value || '' };
+    }
+
+    /**
+     * The request for page `p` of the Recent changes list — the
+     * `features.pageRequest` of `bb-recent-changes`: a POST to Wikidot's AJAX
+     * module with the same fields the site's own "Update list" sends, at 200
+     * per page, and the form's current revision types and category.
+     *
+     * @param {number} p The page, from 1.
+     * @returns {{url: string, init: RequestInit, toHtml: function(string): string}}
+     */
+    function _bbChangesRequest(p) {
+        const choice = _bbChangesFormChoice();
+        const token = _bbWikidotToken();
+        const body = new URLSearchParams({
+            page: String(p),
+            perpage: String(_BB_CHANGES_PER_PAGE),
+            categoryId: choice.categoryId,
+            options: choice.options,
+            moduleName: 'changes/SiteChangesListModule',
+            wikidot_token7: token
+        });
+        return {
+            url: new URL('/ajax-module-connector.php', window.location.href).href,
+            init: {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                body: body.toString()
+            },
+            toHtml: _bbChangesResponseToHtml
+        };
+    }
+
+    /**
+     * Turns the AJAX module's JSON answer into a page the converter reads:
+     * its `body` (the list's HTML) inside `#site-changes-list`.
+     *
+     * @param {string} text The response text.
+     * @returns {string} An HTML document.
+     * @throws {Error} When the answer is not JSON or its `status` is not
+     *   "ok" ("wrong_token7", "no_permission", …): the loop then records the
+     *   page as failed, like an HTTP error.
+     */
+    function _bbChangesResponseToHtml(text) {
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            const err = new Error('Wikidot answered with something that is not JSON');
+            err.status = 0;
+            throw err;
+        }
+        if (data?.status !== 'ok' || typeof data.body !== 'string') {
+            const err = new Error(`Wikidot answered "${data?.status}"${data?.message ? `: ${data.message}` : ''}`);
+            err.status = 0;
+            throw err;
+        }
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><div id="site-changes-list">${data.body}</div></body></html>`;
+    }
+
+    /**
+     * A change's local date ("YYYY-MM-DD") and time ("HH:MM:SS"), read from
+     * the epoch seconds in its `odate time_<n>` class — what the site's own
+     * script turns into "12 Oct 2026 - 17:42:28" in the reader's time zone.
+     * Two values for two columns: Date goes through the `dateParts`
+     * extractor and gets the "Date info" 📊 sections, a column named "Time"
+     * gets "Time info - Time of day" — the same as on MusicBrainz pages.
+     * Without that class, the span's text as written, as Date.
+     *
+     * @param {?Element} span The change's `span.odate`.
+     * @returns {{date: string, time: string}}
+     */
+    function _bbChangeDate(span) {
+        const m = (span?.className || '').match(/\btime_(\d+)\b/);
+        if (!m) return { date: _bbText(span), time: '' };
+        const d = new Date(parseInt(m[1], 10) * 1000);
+        const z = (n) => String(n).padStart(2, '0');
+        return {
+            date: `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`,
+            time: `${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`
+        };
+    }
+
+    /**
+     * Builds one table row of the Recent changes table, in
+     * `_BB_CHANGES_HEADERS` order, from one `div.changes-list-item`.
+     *
+     * Page links the page (absolute, same tab) by its title without the
+     * category prefix the site prints before it ("song: Going Home …");
+     * Category is that prefix, read from the link ("/song:…"), empty for a
+     * page in no category. Flags is a list, one row per flag letter (three
+     * changes in 200 carry two, "S" and "T"), the letter before its meaning.
+     * Date and Time are the local date and time (`_bbChangeDate()`). Revision is the number in "(rev. 34)", 0 for "(new)". User links the
+     * Wikidot profile in a new tab. Comment is the change's comment line.
+     *
+     * @param {Element}  item       The change.
+     * @param {Document} docContext The document the row is built in.
+     * @returns {HTMLTableRowElement}
+     */
+    function _bbChangesBuildRow(item, docContext) {
+        const tr = docContext.createElement('tr');
+        const cell = (text) => {
+            const td = docContext.createElement('td');
+            if (text !== undefined) td.textContent = text;
+            tr.appendChild(td);
+            return td;
+        };
+
+        const link = item.querySelector('td.title a[href]');
+        const rawHref = link ? link.getAttribute('href') : '';
+        const cm = rawHref.match(/^\/([^/:]+):/);
+        const category = cm ? cm[1] : '';
+        let title = _bbText(link || item.querySelector('td.title'));
+        if (category && title.toLowerCase().startsWith(`${category.toLowerCase()}:`)) {
+            title = title.slice(category.length + 1).trim();
+        }
+        const pageTd = cell();
+        if (link) {
+            const a = docContext.createElement('a');
+            a.setAttribute('href', _bbAbsHref(rawHref));
+            a.textContent = title;
+            pageTd.appendChild(a);
+        } else {
+            pageTd.textContent = title;
+        }
+        cell(category);
+
+        const flagsTd = cell();
+        const letters = Array.from(item.querySelectorAll('td.flags span.spantip'))
+            .map(s => s.textContent.trim()).filter(Boolean);
+        if (letters.length) {
+            const ul = docContext.createElement('ul');
+            letters.forEach(letter => {
+                const li = docContext.createElement('li');
+                const tag = docContext.createElement('span');
+                tag.className = 'mb-bb-flag';
+                tag.textContent = letter;
+                li.appendChild(tag);
+                li.appendChild(docContext.createTextNode(` ${_BB_CHANGES_FLAGS[letter] || letter}`));
+                ul.appendChild(li);
+            });
+            flagsTd.appendChild(ul);
+        }
+
+        const when = _bbChangeDate(item.querySelector('td.mod-date span.odate'));
+        cell(when.date);
+        cell(when.time);
+        const revText = _bbText(item.querySelector('td.revision-no'));
+        const rm = revText.match(/\d+/);
+        cell(rm ? rm[0] : (/new/i.test(revText) ? '0' : revText));
+
+        const userTd = cell();
+        const userLink = item.querySelector('td.mod-by span.printuser a[href]');
+        if (userLink) {
+            const a = docContext.createElement('a');
+            a.setAttribute('href', _bbAbsHref(userLink.getAttribute('href')));
+            a.target = '_blank';
+            a.rel = 'noopener';
+            a.textContent = _bbText(userLink);
+            userTd.appendChild(a);
+        } else {
+            userTd.textContent = _bbText(item.querySelector('td.mod-by'));
+        }
+        cell(_bbText(item.querySelector('.comments')));
+        return tr;
+    }
+
+    /**
+     * Converts a Recent changes list into a `<table class="tbl">` — the
+     * counterpart of `applyBsRecordsToTable()` for the pageType carrying
+     * `features.bbChangesToTable`, and built the same way: the rows come from
+     * the FETCHED pages (`features.pageRequest`, the pagination loop,
+     * `doc !== document`), each one AJAX answer wrapped by
+     * `_bbChangesResponseToHtml()`; the live document only gets an EMPTY
+     * table, since its own list shows whatever the site's pager loaded last.
+     *
+     * On the live document (click-time pre-processing and Load from Disk)
+     * the site's list, `#site-changes-list` with both pagers, is hidden (not
+     * removed: the site's "Update list" still writes into it), and the empty
+     * table goes after it under `<h2 class="mb-bb-list-heading">Recent
+     * changes</h2>`. The form above stays: what it asks for is what the next
+     * press loads. Idempotent: a second press finds the table and leaves it.
+     *
+     * Never silent: a fetched page with no change on it logs a warning.
+     *
+     * @param {object}   def                   The active merged pageDefinition.
+     * @param {Document} [docContext=document] The live or a fetched document.
+     * @returns {void}
+     */
+    function applyBbChangesToTable(def, docContext = document) {
+        if (!def?.features?.bbChangesToTable) return;
+        const isLive = docContext === document;
+        if (isLive && docContext.querySelector('table.mb-bb-changes-table')) return;
+
+        const table = docContext.createElement('table');
+        table.className = 'tbl mb-bb-table mb-bb-changes-table';
+        const thead = docContext.createElement('thead');
+        const hr = docContext.createElement('tr');
+        _BB_CHANGES_HEADERS.forEach(h => {
+            const th = docContext.createElement('th');
+            th.textContent = h;
+            hr.appendChild(th);
+        });
+        thead.appendChild(hr);
+        table.appendChild(thead);
+        const tbody = docContext.createElement('tbody');
+        table.appendChild(tbody);
+
+        const list = docContext.getElementById('site-changes-list');
+        if (isLive) {
+            const host = list?.parentNode || docContext.getElementById('page-content') || docContext.body;
+            if (list) {
+                list.classList.add('mb-bb-hidden');
+                list.after(table);
+            } else {
+                host.appendChild(table);
+            }
+            const h2 = document.createElement('h2');
+            h2.className = 'mb-bb-list-heading';
+            h2.textContent = 'Recent changes';
+            table.parentNode.insertBefore(h2, table);
+            Lib.debug('init', 'applyBbChangesToTable: live page — site list hidden, empty table in place for the fetched pages.');
+            return;
+        }
+
+        const items = Array.from(docContext.querySelectorAll('.changes-list-item'));
+        if (items.length === 0) {
+            Lib.warn('init', 'applyBbChangesToTable: no changes on the fetched page — nothing converted.');
+            return;
+        }
+        items.forEach(item => tbody.appendChild(_bbChangesBuildRow(item, docContext)));
+        if (list) list.replaceWith(table);
+        else docContext.body.appendChild(table);
+        Lib.debug('init', `applyBbChangesToTable: converted ${tbody.rows.length} change(s) → table.`);
+    }
+
+    /**
+     * Sets the site's own "Revisions per page" select to 200 on the live
+     * Recent changes page, so its "Update list" and pager load as many as the
+     * buttons do. Only `.value`: nothing is reloaded.
+     *
+     * @returns {void}
+     */
+    function _bbChangesPerPageSelect() {
+        const sel = document.getElementById('rev-perpage');
+        if (sel && sel.querySelector(`option[value="${_BB_CHANGES_PER_PAGE}"]`)) sel.value = String(_BB_CHANGES_PER_PAGE);
+    }
+
+    // --- Brucebase "Relations" (`bb-relations`) --------------------------------
+    // `stats:relations`: everyone Bruce Springsteen shared a stage or a
+    // studio with, plus family and friends, in a YUI tabview like the song
+    // list — tabs `=- 0-9 -=`, `=- A -=` … `=- Z -=`, `=- & -=`, each a
+    // two-column table, "Persons" and "Bands", of `/relation:` links named
+    // in sort form ("Adams, Bryan", "Alliance Singers, The"). Covered by
+    // `sa_enable_brucebase`. See docs/claude/brucebase.md, "Relations".
+
+    /**
+     * Column headers of the Brucebase Relations table, in order.
+     * @type {string[]}
+     */
+    const _BB_RELATIONS_HEADERS = ['Name', 'Sort name', 'Type', 'Letter'];
+
+    /**
+     * The display name of a Relations entry from its sort name, as
+     * MusicBrainz keeps the two: "Adams, Bryan" → "Bryan Adams", "Alliance
+     * Singers, The" → "The Alliance Singers", "Edge, The" → "The Edge",
+     * "lang, k.d." → "k.d. lang". Only a name with exactly one ", " is turned
+     * round, and not when what follows it holds an "&": "Crosby, Stills &
+     * Nash" and "Crosby, Stills, Nash & Young" are band names with commas,
+     * not sort forms (all three such names of the page, 2026-10-13).
+     *
+     * @param {string} sortName The name as the site lists it.
+     * @returns {string}
+     */
+    function _bbRelationDisplayName(sortName) {
+        const t = String(sortName || '').replace(/\s+/g, ' ').trim();
+        const parts = t.split(', ');
+        if (parts.length !== 2 || !parts[0] || !parts[1] || parts[1].includes('&')) return t;
+        return `${parts[1]} ${parts[0]}`;
+    }
+
+    /**
+     * Collects the entries of the Relations tabview, each with the letter of
+     * its tab and its group ("Persons", "Bands" → Type "Person", "Band").
+     *
+     * Tab label i belongs to the i-th panel of `.yui-content`, as on the song
+     * list. Inside a panel each column opens with `<p><strong>Persons</strong>
+     * (77)</p>`; every `/relation:` link after it, up to the next such
+     * heading, is of that group. The count in parentheses is the site's own
+     * and is not checked: it is out of date on three tabs (C, F, M,
+     * 2026-10-13). An entry is kept once, by its link as written.
+     *
+     * @param {HTMLElement} tabview The tabview.
+     * @returns {Array<{anchor: HTMLAnchorElement, letter: string, type: string}>}
+     */
+    function _bbRelationsCollect(tabview) {
+        const labels = Array.from(tabview.querySelectorAll(':scope > ul.yui-nav > li'));
+        const panels = Array.from(tabview.querySelector(':scope > .yui-content')?.children || []);
+        const seen = new Set();
+        const items = [];
+        panels.forEach((panel, i) => {
+            const letter = labels[i] ? _bbParseTabLabel(labels[i].textContent) : '';
+            let type = '';
+            panel.querySelectorAll('p > strong, li > a[href^="/relation:"]').forEach(el => {
+                if (el.tagName === 'STRONG') {
+                    const g = _bbText(el);
+                    type = g === 'Persons' ? 'Person' : g === 'Bands' ? 'Band' : g;
+                    return;
+                }
+                const key = el.getAttribute('href');
+                if (seen.has(key)) return;
+                seen.add(key);
+                items.push({ anchor: el, letter, type });
+            });
+        });
+        return items;
+    }
+
+    /**
+     * Builds one row (Name, Sort name, Type, Letter) for a Relations entry.
+     * Name links the entry's page (absolute, same tab). With
+     * `sa_foreign_typography` on, both names get typographic punctuation
+     * ("D’Angelo"); their letter case is never changed — they are names, not
+     * titles.
+     *
+     * @param {{anchor: HTMLAnchorElement, letter: string, type: string}} item
+     * @param {Document} docContext The document the row is built in.
+     * @returns {HTMLTableRowElement}
+     */
+    function _bbRelationsBuildRow(item, docContext) {
+        const sortName = _bbText(item.anchor);
+        const typo = (t) => (_mbTypographyOn() ? _mbTypography(t) : t);
+        const tr = docContext.createElement('tr');
+        const nameTd = docContext.createElement('td');
+        const a = docContext.createElement('a');
+        a.setAttribute('href', _bbAbsHref(item.anchor.getAttribute('href')));
+        a.textContent = typo(_bbRelationDisplayName(sortName));
+        nameTd.appendChild(a);
+        tr.appendChild(nameTd);
+        [typo(sortName), item.type, item.letter].forEach(text => {
+            const td = docContext.createElement('td');
+            td.textContent = text;
+            tr.appendChild(td);
+        });
+        return tr;
+    }
+
+    /**
+     * Converts the Relations tabview into a `<table class="tbl">` — the
+     * counterpart of `applyBbSongsToTable()` for the pageType carrying
+     * `features.bbRelationsToTable`, and placed the same way: the table takes
+     * the tabview's place, the tabview and the inline script that built it
+     * are removed, and on the live document `<h2 class="mb-bb-list-heading">`
+     * goes before the table. The counts above the tabview stay. Idempotent;
+     * never silent.
+     *
+     * @param {object}   def                   The active merged pageDefinition.
+     * @param {Document} [docContext=document] The live or a fetched document.
+     * @returns {void}
+     */
+    function applyBbRelationsToTable(def, docContext = document) {
+        if (!def?.features?.bbRelationsToTable) return;
+        const tabview = _bbFindSongTabview(docContext, '/relation:');
+        const items = tabview ? _bbRelationsCollect(tabview) : [];
+        if (items.length === 0) {
+            if (!docContext.querySelector('table.mb-bb-relations-table')) {
+                Lib.warn('init', `applyBbRelationsToTable: no relations list found on the ${docContext === document ? 'live' : 'fetched'} page ` +
+                    `(${docContext.querySelectorAll('a[href^="/relation:"]').length} relation link(s) in the document, ` +
+                    `${tabview ? 'none in the letter tabs' : 'no letter tabview'}) — nothing converted.`);
+            }
+            return;
+        }
+
+        const table = docContext.createElement('table');
+        table.className = 'tbl mb-bb-table mb-bb-relations-table';
+        const thead = docContext.createElement('thead');
+        const hr = docContext.createElement('tr');
+        _BB_RELATIONS_HEADERS.forEach(h => {
+            const th = docContext.createElement('th');
+            th.textContent = h;
+            hr.appendChild(th);
+        });
+        thead.appendChild(hr);
+        table.appendChild(thead);
+        const tbody = docContext.createElement('tbody');
+        items.forEach(item => tbody.appendChild(_bbRelationsBuildRow(item, docContext)));
+        table.appendChild(tbody);
+
+        tabview.parentNode.insertBefore(table, tabview);
+        const next = tabview.nextElementSibling;
+        if (next?.tagName === 'SCRIPT' && /YAHOO\.widget\.TabView/.test(next.textContent)) next.remove();
+        tabview.remove();
+
+        if (docContext === document && !document.querySelector('h2.mb-bb-list-heading')) {
+            const h2 = document.createElement('h2');
+            h2.className = 'mb-bb-list-heading';
+            h2.textContent = 'Relations';
+            table.parentNode.insertBefore(h2, table);
+        }
+        Lib.debug('init', `applyBbRelationsToTable: converted ${tbody.rows.length} relation${tbody.rows.length === 1 ? '' : 's'} → table.`);
+    }
+
     /**
      * Installs the Brucebase stylesheet, once per document.
      *
@@ -14272,6 +15788,22 @@
                 clip: rect(0 0 0 0);
                 white-space: nowrap;
             }
+            body.mb-sa-host-bb .mb-bb-flag {
+                display: inline-block;
+                min-width: 1.2em;
+                text-align: center;
+                font-weight: bold;
+                font-size: 85%;
+                color: #555;
+                background: #eee;
+                border-radius: 3px;
+                margin-right: 2px;
+            }
+            body.mb-sa-host-bb table.mb-bb-changes-table td ul {
+                margin: 0;
+                padding: 0;
+                list-style: none;
+            }
             body.mb-sa-host-bb .mb-bb-set-label {
                 font-size: 85%;
                 color: #666;
@@ -14295,8 +15827,9 @@
      *
      * Also tags `<body>` with `mb-sa-host-bb` (the scope of every Brucebase
      * style rule), installs `_ensureBbStyle()` and arranges the wiki's side
-     * bar (`_bbArrangeSideBar()`). Nothing else on the page
-     * changes until the user presses the "Show all songs" button.
+     * bar (`_bbArrangeSideBar()`). On Recent changes it also sets the site's
+     * "Revisions per page" to 200 (`_bbChangesPerPageSelect()`). Nothing else
+     * on the page changes until the user presses a button.
      *
      * @returns {?HTMLHeadingElement} The `<h1>` to use as header container, or
      *   `null` when the document has no `<body>`.
@@ -14309,6 +15842,7 @@
         document.body.classList.add('mb-sa-host-bb');
         _ensureBbStyle();
         _bbArrangeSideBar();
+        if (/^\/system:recent-changes\/?$/.test(window.location.pathname)) _bbChangesPerPageSelect();
         const pageTitle = document.getElementById('page-title');
         const title = pageTitle?.textContent.replace(/\s+/g, ' ').trim() || 'Songs';
         const h1 = document.createElement('h1');
@@ -15300,16 +16834,31 @@
     }
 
     /**
+     * What a detail link OUTSIDE a table body never is: the script's own
+     * toolbar and menus, and the card and the window themselves (a link in
+     * the window's Extracted view is not a target of this source).
+     * @type {string}
+     */
+    const _DP_PAGE_SKIP = '#mb-show-all-controls-container, .mb-toolbar-menu-panel, #mb-dp-peek, #mb-dp-dialog';
+
+    /**
      * Tells whether a link is a detail link the preview handles: a text link
-     * (not the Cover thumbnail, which links to the same page) inside a data
-     * table's body, to a same-origin detail page of this host, with the
-     * host's preview setting on.
+     * (not the Cover thumbnail, which links to the same page) to a
+     * same-origin detail page of this host, with the host's preview setting
+     * on — inside a data table's body, or anywhere else on the page
+     * (`_DP_PAGE_SKIP` aside): the initial page, before any button, has the
+     * site's own lists (Brucebase's song tabview, "1945" on stats:songs),
+     * and they preview like the rendered table's rows. On a touch-primary
+     * device only the table body counts: there a target turns a tap into
+     * "open the window", and a native link must keep its navigation — the
+     * same reason `sa_pop_mb_page_on_touch` is off by default.
      *
      * @param {?Element} a
      * @returns {?object} The host's `_DP_SITES` entry, or null.
      */
     function _dpSiteForLink(a) {
-        if (!a || !a.matches || !a.matches('a[href]') || !a.closest('table.tbl > tbody') || a.querySelector('img')) return null;
+        if (!a || !a.matches || !a.matches('a[href]') || a.querySelector('img')) return null;
+        if (!a.closest('table.tbl > tbody') && (_isTouchPrimaryDevice() || a.closest(_DP_PAGE_SKIP))) return null;
         const site = _dpActiveSite();
         if (!site) return null;
         let u;
@@ -15484,7 +17033,7 @@
                 if (res && res.outcome === 'error') return _dpFailHtml(res.detail);
                 return exLoading;
             },
-            steps: (t) => _dpRowLinks(t.table),
+            steps: (t) => (t.el.closest('table.tbl > tbody') ? _dpRowLinks(t.table) : _dpPageLinks()),
             stepId: (el) => el.href,
         };
     }
@@ -15981,6 +17530,22 @@
             if (a) out.push(a);
         });
         return out;
+    }
+
+    /**
+     * The detail links outside any table body that are visible now (a
+     * tabview's hidden panels are left out), each page once, in page order:
+     * what ← and → step through from a link on the initial page.
+     *
+     * @returns {HTMLAnchorElement[]}
+     */
+    function _dpPageLinks() {
+        const seen = new Set();
+        return Array.from(document.querySelectorAll('a[href]')).filter(a => {
+            if (a.closest('table.tbl > tbody') || seen.has(a.href) || !a.getClientRects().length || !_dpSiteForLink(a)) return false;
+            seen.add(a.href);
+            return true;
+        });
     }
 
     /**
@@ -17309,11 +18874,29 @@
      * Parses one target line of an event relationship list into its parts,
      * as cloned nodes.
      *
+     * With `opts.rel` (the relationship-tables pages, and the event page
+     * since WIP.7):
+     *   - an ENDED URL relationship, which MusicBrainz prints without a link
+     *     (`<span class="deleted"><bdi>https://…</bdi></span> [info] (until
+     *     2020-10-12)`), is read as a URL target whose href is that text;
+     *   - a URL's "[info] (…)" stays in `extra`, so `_relRowAttrs()` can take
+     *     the date off it before putting "[info]" back with the link;
+     *   - a target's primary alias, which MusicBrainz prints inside the
+     *     disambiguation span as `<i title="Primary alias">…</i>` (a name in
+     *     another script: "フジパシフィックミュージック (Fujipacific Music,
+     *     Inc.)"), goes to `alias`, not to `comment`;
+     *   - "MusicBrainz More Flags Everywhere" wraps an area's glyph, link,
+     *     flag image AND the ", " before its parent chain in one
+     *     `span.mfe-flag-wrapper` (AREA_ICON_WRAPPER_SEL); that comma is
+     *     moved back out of the target, or the chain lands in Details instead
+     *     of the area column (debug/area-USA-initial.html, 2026-10-12).
+     *
      * @param   {Node[]} nodes The line's child nodes (between two `<br>`s).
-     * @returns {?{type: string, main: Node[], href: string, artist: Node[], area: Node[], extra: Node[], comment: Node[]}}
+     * @param   {{rel?: boolean}} [opts]
+     * @returns {?{type: string, main: Node[], href: string, artist: Node[], area: Node[], extra: Node[], comment: Node[], alias: Node[]}}
      *          null for an empty line.
      */
-    function _eventRelParseLine(nodes) {
+    function _eventRelParseLine(nodes, opts = {}) {
         const live = nodes.filter(n => n.nodeType !== Node.COMMENT_NODE);
         if (!live.some(n => n.textContent.trim())) return null;
         let i = 0;
@@ -17334,17 +18917,45 @@
             ? (mainNode.tagName === 'A' ? mainNode : mainNode.querySelector('a[href]'))
             : null;
         const clone = n => n.cloneNode(true);
-        if (!anchor) {
-            return { type: 'text', main: _eventTrimNodes(live.map(clone)), href: '', artist: [], area: [], extra: [], comment: [] };
+        const endedUrl = !anchor && opts.rel && mainNode && mainNode.nodeType === Node.ELEMENT_NODE &&
+            mainNode.matches('span.deleted') && /^(?:https?:)?\/\//.test(mainNode.textContent.trim())
+            ? mainNode.textContent.trim() : '';
+        if (!anchor && !endedUrl) {
+            return { type: 'text', main: _eventTrimNodes(live.map(clone)), href: '', artist: [], area: [], extra: [], comment: [], alias: [] };
         }
-        const href = anchor.getAttribute('href') || '';
+        const href = endedUrl || anchor.getAttribute('href') || '';
         const type = _eventRelTargetType(href);
         const rest = live.slice(i + 1);
-        const parts = { artist: [], area: [], extra: [], comment: [] };
+        let mainClone = clone(mainNode);
+        if (opts.rel && mainClone.nodeType === Node.ELEMENT_NODE && mainClone.matches(AREA_ICON_WRAPPER_SEL)) {
+            const last = mainClone.lastChild;
+            if (last && last.nodeType === Node.TEXT_NODE && /,\s*$/.test(last.textContent)) {
+                last.textContent = last.textContent.replace(/,\s*$/, '');
+                rest.unshift(document.createTextNode(', '));
+            }
+        }
+        const parts = { artist: [], area: [], extra: [], comment: [], alias: [] };
         for (let k = 0; k < rest.length; k++) {
             const n = rest[k];
             if (n.nodeType === Node.ELEMENT_NODE && n.tagName === 'SPAN' && n.classList.contains('comment')) {
-                parts.comment.push(clone(n));
+                const c = clone(n);
+                const al = opts.rel ? c.querySelector('i[title="Primary alias"]') : null;
+                if (al) {
+                    parts.alias.push(...Array.from(al.childNodes).map(clone));
+                    al.remove();
+                    // What is left: "(" <bdi></bdi> ")", or "(…, disambiguation)".
+                    c.querySelectorAll('bdi').forEach(b => {
+                        if (b.firstChild && b.firstChild.nodeType === Node.TEXT_NODE) {
+                            b.firstChild.textContent = b.firstChild.textContent.replace(/^\s*,\s*/, '');
+                        }
+                        if (b.lastChild && b.lastChild.nodeType === Node.TEXT_NODE) {
+                            b.lastChild.textContent = b.lastChild.textContent.replace(/\s*,\s*$/, '');
+                        }
+                    });
+                    if (c.textContent.replace(/[\s(),]/g, '')) parts.comment.push(c);
+                } else {
+                    parts.comment.push(c);
+                }
             } else if (n.nodeType === Node.TEXT_NODE && /\bby\s*$/.test(n.textContent) && rest[k + 1] &&
                        rest[k + 1].nodeType === Node.ELEMENT_NODE && !parts.artist.length) {
                 // " by " + <bdi>artist credit</bdi>; any text before "by" belongs to extra.
@@ -17360,8 +18971,8 @@
                 parts.extra.push(clone(n));
             }
         }
-        const main = [...lead, mainNode].map(clone);
-        if (type === 'url') {
+        const main = [...lead.map(clone), mainClone];
+        if (type === 'url' && !opts.rel) {
             // "[info]" (the URL entity's own page) stays with the link it describes.
             const info = _eventTrimNodes(parts.extra);
             if (info.length) main.push(document.createTextNode(' '), ...info);
@@ -17375,7 +18986,8 @@
             // The span.comment's own content, without its "(" … ")" — the column
             // header already says what it is.
             comment: _eventTrimNodes(parts.comment.flatMap(n =>
-                (n.nodeType === Node.ELEMENT_NODE && n.classList.contains('comment')) ? Array.from(n.childNodes) : [n]), true)
+                (n.nodeType === Node.ELEMENT_NODE && n.classList.contains('comment')) ? Array.from(n.childNodes) : [n]), true),
+            alias: _eventTrimNodes(parts.alias)
         };
     }
 
@@ -17384,9 +18996,10 @@
      *
      * @param   {Element[]} nodes Siblings of a section's h2 (up to the next h2).
      * @param   {?string}   from  The related series' name, null for the event's own.
+     * @param   {{rel?: boolean}} [opts] Passed to `_eventRelParseLine()`.
      * @returns {Array<Object>} Parsed lines (`_eventRelParseLine()`) plus `phrase` and `from`.
      */
-    function _eventRelRowsFrom(nodes, from) {
+    function _eventRelRowsFrom(nodes, from, opts) {
         const rows = [];
         nodes.forEach(n => {
             const tables = n.matches('table.details') ? [n] : Array.from(n.querySelectorAll('table.details'));
@@ -17396,7 +19009,7 @@
                 if (!th || !td) return;
                 const phrase = th.textContent.trim().replace(/:\s*$/, '');
                 _eventSplitAtBr(td).forEach(line => {
-                    const parsed = _eventRelParseLine(line);
+                    const parsed = _eventRelParseLine(line, opts);
                     if (parsed) rows.push({ ...parsed, phrase, from });
                 });
             }));
@@ -17425,7 +19038,8 @@
      * @param   {Document} doc
      * @param   {string}   name    The group name (the h3 text).
      * @param   {string[]} cols    Column headers.
-     * @param   {Array<Array<Node[]|string>>} rows Cells per row: nodes or plain text.
+     * @param   {Array<Array<Node[]|string|HTMLTableCellElement>>} rows Cells per row: nodes,
+     *          plain text, or a ready `<td>`.
      * @param   {string}   [intro] HTML shown between the h3 and the table
      *          (`data-mb-intro-html` → `group.introHtml`).
      * @returns {DocumentFragment}
@@ -17453,6 +19067,8 @@
             const tr = doc.createElement('tr');
             tr.className = k % 2 ? 'even' : 'odd';
             cells.forEach(c => {
+                // A ready cell (the Video column's, ColumnDataExtractor.video()) goes in as is.
+                if (c && c.nodeType === Node.ELEMENT_NODE && c.tagName === 'TD') { tr.appendChild(c); return; }
                 const td = doc.createElement('td');
                 if (Array.isArray(c)) c.forEach(n => td.appendChild(n));
                 else td.textContent = c;
@@ -17527,6 +19143,91 @@
     }
 
     /**
+     * The entity glyph each event-table column shows in its header
+     * (`_initColHeaderGlyph()`, from the render tail) instead of on every
+     * cell, as release-tracks does: a typed target column ("Artist", "Place",
+     * "Recording", …, from `_EVENT_REL_TARGET_COLS` — only the types with a
+     * verified glyph class in `_ENTITY_TYPE_GLYPH`), the credit "Artist" and
+     * "Area" columns, and the setlist's "Song" and "Additional artists". A
+     * column of mixed kinds ("Target") has none and its cells keep theirs.
+     *
+     * A function, not a `const`: `_ENTITY_TYPE_GLYPH` is declared further
+     * down the file.
+     *
+     * @returns {Object<string, string>} Column header → glyph class.
+     */
+    function _eventColGlyphs() {
+        const out = {};
+        Object.entries(_EVENT_REL_TARGET_COLS).forEach(([type, col]) => {
+            if (_ENTITY_TYPE_GLYPH[type]) out[col] = _ENTITY_TYPE_GLYPH[type];
+        });
+        out.Area = 'arealink';
+        out['Parent area'] = 'arealink';
+        // Not in _ENTITY_TYPE_GLYPH, which also drives the 📊 entity-info
+        // sections on every page; MusicBrainz's stylesheet has both classes.
+        out.Genre = 'genrelink';
+        out.Instrument = 'instrumentlink';
+        out.Song = 'worklink';
+        out['Additional artists'] = 'artistlink';
+        return out;
+    }
+
+    /**
+     * Removes the empty entity glyph spans of one class (`span.artistlink`,
+     * …) from cloned cell nodes — at the top level and nested (a credit's
+     * `<bdi>`). A country flag (`span.flag`, which wraps its link) is not a
+     * glyph span and stays.
+     *
+     * @param   {Node[]} nodes Cloned nodes (mutated).
+     * @param   {?string} cls  Glyph class; nothing is removed when empty.
+     * @returns {Node[]}
+     */
+    function _eventStripGlyphs(nodes, cls) {
+        if (!cls) return nodes;
+        const isGlyph = n => n.nodeType === Node.ELEMENT_NODE && n.tagName === 'SPAN' &&
+            n.classList.contains(cls) && !n.textContent.trim() && !n.querySelector('a');
+        return nodes.filter(n => {
+            if (isGlyph(n)) return false;
+            if (n.nodeType === Node.ELEMENT_NODE) n.querySelectorAll(`span.${cls}`).forEach(s => { if (isGlyph(s)) s.remove(); });
+            return true;
+        });
+    }
+
+    /**
+     * Takes every video icon (`span.video`, MusicBrainz's own "This recording
+     * is a video") out of cloned recording nodes.
+     *
+     * @param   {Node[]} nodes Cloned nodes (mutated).
+     * @returns {{nodes: Node[], video: ?Element}} The nodes left, and the
+     *          first icon taken (null when there was none).
+     */
+    function _eventTakeVideo(nodes) {
+        let video = null;
+        const take = s => { if (!video) video = s; s.remove(); };
+        const out = nodes.filter(n => {
+            if (n.nodeType !== Node.ELEMENT_NODE) return true;
+            if (n.matches('span.video')) { if (!video) video = n; return false; }
+            n.querySelectorAll('span.video').forEach(take);
+            return true;
+        });
+        return { nodes: out, video };
+    }
+
+    /**
+     * A Video cell, built by the shared `ColumnDataExtractor.video()` from
+     * the native icon: the icon, centred, and the hidden "video"/"audio" sort
+     * and 📊 key.
+     *
+     * @param   {?Element} icon A `span.video` taken by `_eventTakeVideo()`, or null.
+     * @returns {HTMLTableCellElement}
+     */
+    function _eventVideoCell(icon) {
+        const src = document.createElement('td');
+        if (icon) src.appendChild(icon);
+        return ColumnDataExtractor.video(src)[0];
+    }
+
+    /**
      * The tables for one group of relationship rows: '#', the target (and a
      * Site column for URLs), Relationship, then only those of Artist / Area /
      * Credits or Details / Disambiguation that some row actually fills. A group
@@ -17535,56 +19236,269 @@
      * `withType`, a Type column follows the target (one-table layout, and the
      * related series' groups, which mix kinds).
      *
+     * When a recording carries MusicBrainz's video icon, a Video column follows
+     * the target and the icon moves there (`_eventVideoCell()`). The entity
+     * glyphs of the single-kind columns move to the header
+     * (`_eventColGlyphs()`): a typed target column's, Artist's and Area's
+     * cells lose theirs; a mixed "Target" column (`withType`) keeps them.
+     *
+     * @param   {Array<Object>} rows Rows of `_eventRelRowsFrom()`.
+     * @param   {string} targetCol   Header of the target column.
+     * @param   {boolean} withType
+     * With `opts.attrs` (the relationship-tables pages, and the event page
+     * since WIP.7) each row first goes through
+     * `_relRowAttrs()`: the date, "number:" and "order:" attributes at the end
+     * of the line leave Details/Credits for their own Begin / End and Number
+     * (or Number + Order, when the two ever differ in this table) columns,
+     * and an area target's ", <parent chain>" moves to Area.
+     *
      * @param   {Array<Object>} rows Rows of `_eventRelRowsFrom()`.
      * @param   {string} targetCol   Header of the target column.
      * @param   {boolean} withType
      * @param   {boolean} withFrom   Add a "From" column (the related series' name, or "Event").
-     * @returns {{cols: string[], cells: Array<Array<Node[]|string>>}}
+     * @param   {{attrs?: boolean, fromLabel?: string}} [opts]
+     *          `fromLabel`: the From value of the page's own rows (default "Event").
+     * @returns {{cols: string[], cells: Array<Array<Node[]|string|HTMLTableCellElement>>}}
      */
-    function _eventRelColumns(rows, targetCol, withType, withFrom) {
-        const has = key => rows.some(r => r[key].length);
+    function _eventRelColumns(rows, targetCol, withType, withFrom, opts = {}) {
+        if (opts.attrs) rows = rows.map(_relRowAttrs);
+        const has = key => rows.some(r => r[key] && r[key].length);
         const allUrls = rows.every(r => r.type === 'url');
         const allArtists = rows.every(r => r.type === 'artist');
         const split = allArtists ? rows.map(r => _eventSplitCredits(r.extra)) : null;
         const hasCredits = !!split && split.some(x => x.credits.length);
         const hasTime = !!split && split.some(x => x.time);
+        const glyphs = _eventColGlyphs();
+        const clone = n => n.cloneNode(true);
+        const mains = rows.map(r => r.type === 'recording'
+            ? _eventTakeVideo(r.main.map(clone))
+            : { nodes: r.main.map(clone), video: null });
+        const hasVideo = mains.some(m => m.video);
         const cols = ['#'];
         if (allUrls) cols.push('Site');
         cols.push(targetCol);
+        if (hasVideo) cols.push('Video');
         if (withType) cols.push('Type');
         cols.push('Relationship');
         if (has('artist')) cols.push('Artist');
-        if (has('area')) cols.push('Area');
+        // An area target's own parent chain (opts.attrs) cannot share the
+        // target's "Area" header.
+        const areaCol = targetCol === 'Area' ? 'Parent area' : 'Area';
+        if (has('area')) cols.push(areaCol);
         if (split) {
             if (hasCredits) cols.push('Credits');
             if (hasTime) cols.push('Time');
         } else if (has('extra')) {
             cols.push('Details');
         }
+        // Number/Order (opts.attrs only): one column while no row carries both
+        // with different values, two as soon as one does (user decision,
+        // 2026-10-12). A row with only one of the two fills the one column.
+        const numOrderSplit = rows.some(r => r.number && r.order && r.number !== r.order);
+        const hasNumber = rows.some(r => r.number || r.order);
+        if (numOrderSplit) cols.push('Number', 'Order');
+        else if (hasNumber) cols.push('Number');
+        const hasDates = has('begin') || has('end');
+        if (hasDates) cols.push('Begin', 'End');
         if (has('comment')) cols.push('Disambiguation');
+        if (has('alias')) cols.push('Primary alias');
         if (withFrom) cols.push('From');
         const host = (href) => {
             try { return new URL(href, 'https://musicbrainz.org').host.replace(/^www\./, ''); } catch (_) { return ''; }
         };
+        // A mixed table's Target and Type cells carry their row's entity type
+        // (`data-mb-entity-type`), which the 📊 "Entity info - Type" section
+        // counts (_findCellEntityType()); an attribute survives every
+        // cloneNode(true) re-render and a Save/Load round trip.
+        const typedCell = (nodes, type) => {
+            const td = document.createElement('td');
+            if (typeof nodes === 'string') td.textContent = nodes;
+            else nodes.forEach(n => td.appendChild(n));
+            td.dataset.mbEntityType = type;
+            return td;
+        };
         const cells = rows.map((r, k) => {
             const row = [String(k + 1)];
             if (allUrls) row.push(host(r.href));
-            row.push(r.main.map(n => n.cloneNode(true)));
-            if (withType) row.push(_EVENT_REL_TARGET_COLS[r.type] || 'Target');
+            row.push(withType ? typedCell(mains[k].nodes, r.type) : _eventStripGlyphs(mains[k].nodes, glyphs[targetCol]));
+            if (hasVideo) row.push(_eventVideoCell(mains[k].video));
+            if (withType) row.push(typedCell(_EVENT_REL_TARGET_COLS[r.type] || 'Target', r.type));
             row.push(r.phrase);
-            if (has('artist')) row.push(r.artist.map(n => n.cloneNode(true)));
-            if (has('area')) row.push(r.area.map(n => n.cloneNode(true)));
+            if (has('artist')) row.push(_eventStripGlyphs(r.artist.map(clone), glyphs.Artist));
+            if (has('area')) row.push(_eventStripGlyphs(r.area.map(clone), glyphs[areaCol]));
             if (split) {
                 if (hasCredits) row.push(_eventListCell(split[k].credits));
                 if (hasTime) row.push(split[k].time);
             } else if (has('extra')) {
                 row.push(r.extra.map(n => n.cloneNode(true)));
             }
+            if (numOrderSplit) row.push(r.number || '', r.order || '');
+            else if (hasNumber) row.push(r.number || r.order || '');
+            if (hasDates) row.push(r.begin || '', r.end || '');
             if (has('comment')) row.push(r.comment.map(n => n.cloneNode(true)));
-            if (withFrom) row.push(r.from ? r.from : 'Event');
+            if (has('alias')) row.push((r.alias || []).map(n => n.cloneNode(true)));
+            if (withFrom) row.push(r.from ? r.from : (opts.fromLabel || 'Event'));
             return row;
         });
         return { cols, cells };
+    }
+
+    /**
+     * One attribute group of a relationship line, as MusicBrainz prints it in
+     * parentheses: a date phrase ("from 1977-06-27 until 1978-05-05", "in
+     * 1978", "on 1978-04-11", "until 1931", "from 2022-01-01 to present",
+     * "ended", a bare "2015-04-29"), or a series position ("number: 20",
+     * "order: 20"). Anything else is not an attribute this reads.
+     *
+     * Probed on 2026-10-12 (scripts/probe-rel-sections.js over
+     * tests/fixtures/rel-*-overview.html): these are every date and position
+     * form the ten pages carry.
+     *
+     * @param   {string} text One group, without its parentheses.
+     * @returns {?{begin?: string, end?: string, number?: string, order?: string}}
+     */
+    function _relClassifyAttr(text) {
+        const D = '[0-9?]{4}(?:-[0-9?]{2}){0,2}';
+        const g = text.trim();
+        let m;
+        if ((m = new RegExp(`^from (${D}) (?:until|to) (${D}|present)$`).exec(g))) return { begin: m[1], end: m[2] };
+        if ((m = new RegExp(`^from (${D})$`).exec(g))) return { begin: m[1] };
+        if ((m = new RegExp(`^until (${D})$`).exec(g))) return { end: m[1] };
+        if ((m = new RegExp(`^(?:in|on) (${D})$`).exec(g))) return { begin: m[1], end: m[1] };
+        if ((m = new RegExp(`^(${D})$`).exec(g))) return { begin: m[1], end: m[1] };
+        if (g === 'ended') return { end: 'ended' };
+        // A dated series position: "in 1997: number: 1997", "on 2009-02-01: number: 43".
+        if ((m = new RegExp(`^(?:in|on) (${D}): number: (.+)$`).exec(g))) return { begin: m[1], end: m[1], number: m[2].trim() };
+        if ((m = /^number: (.+)$/.exec(g))) return { number: m[1].trim() };
+        if ((m = /^order: (\d+)$/.exec(g))) return { order: m[1] };
+        return null;
+    }
+
+    /**
+     * Takes the trailing date / series-position attribute groups off a run of
+     * cloned nodes (`_relClassifyAttr()`), filling `out.begin`/`end`/`number`/
+     * `order` (a later group never overwritten by an earlier one).
+     *
+     * Only the LAST text node is read, so a group that contains a link (an
+     * instrument credit) always stays where it was.
+     *
+     * A line's `extra` may have lost one outer "(" … ")" pair
+     * (`_eventTrimNodes(…, true)` strips it when the run starts with "(" and
+     * ends with ")"), so "(2015-04-29) (number: 20) (order: 20)" arrives as
+     * "2015-04-29) (number: 20) (order: 20", and "(in 1978)" as "in 1978".
+     * Such a run is recognised by its text — no parenthesis at all, or a ")"
+     * before the first "(" — and the missing pair is put back for the scan and
+     * taken off what is left. A run that kept its parentheses ("foo (from …)",
+     * a place's area ending in " (from 1977-08-24 until 1978-05-05)") is read
+     * as printed.
+     *
+     * @param   {Node[]}  nodes    Cloned nodes (the tail text node is mutated).
+     * @param   {Object}  out      Receives begin/end/number/order.
+     * @returns {Node[]}  The nodes left.
+     */
+    function _relPeelAttrs(nodes, out) {
+        const merged = [];
+        nodes.forEach(n => {
+            const last = merged[merged.length - 1];
+            if (n.nodeType === Node.TEXT_NODE && last && last.nodeType === Node.TEXT_NODE) last.textContent += n.textContent;
+            else merged.push(n);
+        });
+        const tail = merged[merged.length - 1];
+        if (!tail || tail.nodeType !== Node.TEXT_NODE) return merged;
+        const full = merged.map(n => n.textContent).join('');
+        const firstParen = full.search(/[()]/);
+        const stripped = firstParen < 0 || full[firstParen] === ')';
+        const lead = stripped && merged.length === 1;
+        let text = (lead ? '(' : '') + tail.textContent + (stripped ? ')' : '');
+        let peeled = 0;
+        for (;;) {
+            const m = /\(([^()]*)\)\s*$/.exec(text);
+            const a = m ? _relClassifyAttr(m[1]) : null;
+            if (!a) break;
+            Object.keys(a).forEach(key => { if (!out[key]) out[key] = a[key]; });
+            text = text.slice(0, m.index);
+            peeled++;
+        }
+        if (!peeled) return merged;
+        if (stripped) {
+            text = text.replace(/\)\s*$/, '');
+            if (lead) text = text.replace(/^\(/, '');
+        }
+        if (text.trim()) tail.textContent = text.replace(/\s+$/, '');
+        else merged.pop();
+        return merged;
+    }
+
+    /**
+     * Takes a date that LEADS an attribute group off a run of cloned nodes:
+     * "(from 1964-12 until 1965-06: lead vocals, <a>electric guitar</a>)",
+     * "(in 1986: <a>electric guitar</a>)" — a member's period and what they
+     * played in it (debug/member-of.html, an artist's "member of" list). The
+     * group ends in a link, so `_relPeelAttrs()`, which reads the end of the
+     * run, never sees it. Reads the FIRST text node only, and only a date
+     * phrase `_relClassifyAttr()` knows followed by ":"; what is left (the
+     * credits) stays for Credits/Details.
+     *
+     * @param   {Node[]} nodes Cloned nodes (the first text node is mutated).
+     * @param   {Object} out   Receives begin/end (never overwrites).
+     * @returns {Node[]} The nodes left.
+     */
+    function _relPeelLeadingDate(nodes, out) {
+        const first = nodes[0];
+        if (!first || first.nodeType !== Node.TEXT_NODE) return nodes;
+        const m = /^\s*(\(?)\s*([^():]+?):\s*/.exec(first.textContent);
+        const a = m ? _relClassifyAttr(m[2]) : null;
+        if (!a || a.number || a.order) return nodes;
+        Object.keys(a).forEach(key => { if (!out[key]) out[key] = a[key]; });
+        first.textContent = first.textContent.slice(m[0].length);
+        const left = first.textContent.trim() ? nodes : nodes.slice(1);
+        // An unstripped group "(date: …)" also loses its closing ")".
+        const last = left[left.length - 1];
+        if (m[1] && last && last.nodeType === Node.TEXT_NODE) last.textContent = last.textContent.replace(/\)\s*$/, '');
+        return left;
+    }
+
+    /**
+     * A copy of one relationship row (`_eventRelRowsFrom()`) with the date
+     * and series-position attributes taken off the end of its `extra` (and of
+     * a place's `area`, after which MusicBrainz prints them) into
+     * `begin`/`end`/`number`/`order` — `_relPeelAttrs()` — for the
+     * relationship-tables pages (`_eventRelColumns(…, { attrs: true })`).
+     * Never mutates `row`.
+     *
+     * An area target's parent chain (", United States" after the link,
+     * which `_eventRelParseLine()` leaves in `extra` for every type but
+     * place) moves to `area`, so it gets the Area column.
+     *
+     * @param   {Object} row A row of `_eventRelRowsFrom()`.
+     * @returns {Object} The row with `extra`/`area` replaced and the four
+     *          fields set (empty strings when absent).
+     */
+    function _relRowAttrs(row) {
+        const out = { ...row, begin: '', end: '', number: '', order: '' };
+        const clone = n => n.cloneNode(true);
+        let extra = row.extra.map(clone);
+        let area = row.area.map(clone);
+        if (row.type === 'area' && !area.length && extra.length &&
+                extra[0].nodeType === Node.TEXT_NODE && /^\s*,/.test(extra[0].textContent)) {
+            // ", <parent>, <grandparent>" — the whole run goes to Area.
+            extra[0].textContent = extra[0].textContent.replace(/^\s*,\s*/, '');
+            area = _relPeelAttrs(extra, out);
+            extra = [];
+        }
+        extra = _relPeelAttrs(extra, out);
+        extra = _relPeelLeadingDate(extra, out);
+        if (area.length && row.type === 'place') area = _relPeelAttrs(area, out);
+        if (row.type === 'url') {
+            // "[info]" (the URL entity's own page) stays with the link it
+            // describes, as on the event page; only the date left it.
+            const info = _eventTrimNodes(extra);
+            out.main = info.length ? [...row.main.map(clone), document.createTextNode(' '), ...info] : row.main.map(clone);
+            extra = [];
+        }
+        out.extra = _eventTrimNodes(extra);
+        out.area = _eventTrimNodes(area);
+        return out;
     }
 
     /** Joining words between line-up artists ("Bruce Springsteen & The E Street Band with …"). */
@@ -17604,6 +19518,59 @@
     }
 
     /**
+     * Drops a lone leading article ("the", "a", "an") from an Additional
+     * artists item when a link follows it: in "Trombone Shorty & the New Breed
+     * Brass Band" the "the" belongs to the sentence, the name is the link's.
+     * An item without a link ("all performers") is left as it is.
+     *
+     * @param   {Node[]} item One item of `_eventSplitNodes()` (trimmed).
+     * @returns {Node[]}
+     */
+    function _eventDropLeadingArticle(item) {
+        const firstEl = item.findIndex(n => n.nodeType === Node.ELEMENT_NODE);
+        if (firstEl <= 0) return item;
+        const linked = item.slice(firstEl).some(n => n.tagName === 'A' || (n.querySelector && n.querySelector('a[href]')));
+        if (!linked) return item;
+        const lead = item.slice(0, firstEl).map(n => n.textContent).join('');
+        return /^\s*(?:the|a|an)\s*$/i.test(lead) ? item.slice(firstEl) : item;
+    }
+
+    /**
+     * Re-points the "(with …)" artists of a setlist's song lines from /work/
+     * to /artist/, in place, on the initial page as well as on a fetched one.
+     *
+     * MusicBrainz's setlist syntax renders every `[mbid|name]` on a song line
+     * as a /work/ link — also an artist's, whose MBID is the artist's (see
+     * `_eventSetlistSong()`), so the native page links "Rosanne Cash" to a
+     * work that does not exist. Every link after the line's "(with" is an
+     * artist. The MBID is matched case-insensitively and keeps its case
+     * (the `mbid-uppercase` finding reads it; MusicBrainz resolves it).
+     * Idempotent: a re-pointed link no longer matches.
+     *
+     * @param   {?Element} p `p.setlist`.
+     * @returns {number} How many links were re-pointed.
+     */
+    function _eventSetlistFixLinks(p) {
+        if (!p) return 0;
+        const WITH = /\(\s*with\s+/i;
+        let fixed = 0;
+        _eventSplitAtBr(p).forEach(line => {
+            const k = line.findIndex(n => n.nodeType === Node.TEXT_NODE && WITH.test(n.textContent));
+            if (k === -1) return;
+            line.slice(k + 1).forEach(n => {
+                if (n.nodeType !== Node.ELEMENT_NODE) return;
+                (n.tagName === 'A' ? [n] : Array.from(n.querySelectorAll('a[href]'))).forEach(a => {
+                    const m = /^(.*?\/)work(\/[0-9a-f-]{36}.*)$/i.exec(a.getAttribute('href') || '');
+                    if (!m) return;
+                    a.setAttribute('href', `${m[1]}artist${m[2]}`);
+                    fixed++;
+                });
+            });
+        });
+        return fixed;
+    }
+
+    /**
      * One song line of the setlist: the song's works, its text, and the
      * artists of a trailing "(with …)" ("This Land Is Your Land (with
      * Trombone Shorty & the New Breed Brass Band and all performers)").
@@ -17612,10 +19579,17 @@
      * also the artists inside "(with …)" — whose MBIDs are artists' (probed
      * 2026-10-06 on event cd595883-…: each is the same MBID as that artist's
      * /artist/ link in the line-up). So only the links BEFORE "(with" are the
-     * song's works, and the ones after it are re-pointed to /artist/. The
-     * artists are split at ",", "&" and "and" in the text between links;
-     * unlinked words stay with their item ("the New Breed Brass Band", "all
-     * performers").
+     * song's works; the ones after it were already re-pointed to /artist/ by
+     * `_eventSetlistFixLinks()`. The artists are split at ",", "&" and "and"
+     * in the text between links; unlinked words stay with their item ("all
+     * performers"), except a lone leading article before a link ("the New
+     * Breed Brass Band" → "New Breed Brass Band"), which is the sentence's,
+     * not the name's.
+     *
+     * MBIDs are matched case-insensitively: a setlist can carry one typed with
+     * uppercase letters (event 26cead1c-…, "[E497263c-…|The Fever]"), which
+     * MusicBrainz still links and resolves. Such a link keeps its case — the
+     * `mbid-uppercase` finding reads it.
      *
      * @param   {Node[]} nodes The line's nodes (comments removed).
      * @returns {{kind: 'song', works: Element[], text: string, withItems: Node[][]}}
@@ -17634,20 +19608,13 @@
             const rest = [document.createTextNode(after), ...nodes.slice(k + 1).map(n => n.cloneNode(true))];
             const last = rest[rest.length - 1];
             if (last.nodeType === Node.TEXT_NODE) last.textContent = last.textContent.replace(/\)\s*$/, '');
-            rest.forEach(n => {
-                const anchors = el(n) ? (n.tagName === 'A' ? [n] : Array.from(n.querySelectorAll('a[href]'))) : [];
-                anchors.forEach(a => {
-                    const href = a.getAttribute('href') || '';
-                    if (/\/work\/[0-9a-f-]{36}/.test(href)) a.setAttribute('href', href.replace('/work/', '/artist/'));
-                });
-            });
-            withItems = _eventSplitNodes(rest, /\s*(?:,|&|\band\b)\s*/);
+            withItems = _eventSplitNodes(rest, /\s*(?:,|&|\band\b)\s*/).map(_eventDropLeadingArticle);
         }
         const works = [];
         songNodes.forEach(n => {
             if (!el(n)) return;
             (n.tagName === 'A' ? [n] : Array.from(n.querySelectorAll('a[href]'))).forEach(a => {
-                if (/\/work\/[0-9a-f-]{36}/.test(a.getAttribute('href') || '')) works.push(a);
+                if (/\/work\/[0-9a-f-]{36}/i.test(a.getAttribute('href') || '')) works.push(a);
             });
         });
         const text = songNodes.map(n => n.textContent).join('').replace(/\s+/g, ' ').trim();
@@ -17742,7 +19709,12 @@
      * Additional artists (a "(with …)" line's artists, one row each), Medley
      * (a line with several works), Also in (the other parts that play
      * one of its works, by work MBID) and Recording (the event's "recording
-     * location for" recordings whose title is the line's text).
+     * location for" recordings whose title is the line's text — each recording
+     * once, though several relationships may name it: "recording location
+     * for" and "shot for"), then Video when one of them carries MusicBrainz's
+     * video icon (per row: "video" when any of its recordings is one). The
+     * Recording cells lose their `recordinglink` glyph to the header
+     * (`_eventColGlyphs()`).
      *
      * @param   {Document} doc
      * @param   {Object}   parsed     `_eventSetlistParse()`.
@@ -17771,7 +19743,8 @@
         }
         if (!parts.length) return out;
 
-        const workId = a => ((a.getAttribute('href') || '').match(/\/work\/([0-9a-f-]{36})/) || [])[1] || '';
+        // Lowercased: a work typed with uppercase letters in one place is the same work.
+        const workId = a => (((a.getAttribute('href') || '').match(/\/work\/([0-9a-f-]{36})/i) || [])[1] || '').toLowerCase();
         const partsOfWork = new Map();
         parts.forEach(p => p.songs.forEach(s => s.works.forEach(a => {
             const id = workId(a);
@@ -17782,14 +19755,35 @@
         const recTitle = r => norm(r.main.map(n => n.textContent).join(''));
         // Song, Additional artists and Recording are multi-row cells (a <ul>,
         // also for one item) — collapsableColumns on the pageType.
-        const songRow = (s, partName) => ({
-            song: _eventListCell(s.works.length ? s.works.map(a => [a.cloneNode(true)]) : [[doc.createTextNode(s.text)]]),
-            withArtists: s.withItems.map(it => it.map(n => n.cloneNode(true))),
-            medley: s.works.length > 1 ? 'medley' : '',
-            also: Array.from(new Set(s.works.flatMap(a => Array.from(partsOfWork.get(workId(a)) || []))))
-                .filter(n => n !== partName).join(', '),
-            rec: recordings.filter(r => recTitle(r) === norm(s.text)).map(r => r.main.map(n => n.cloneNode(true)))
-        });
+        const songRecs = s => {
+            const seen = new Set();
+            let video = null;
+            const rec = recordings.filter(r => {
+                if (recTitle(r) !== norm(s.text)) return false;
+                const key = (r.href || '').toLowerCase();
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            }).map(r => {
+                const taken = _eventTakeVideo(r.main.map(n => n.cloneNode(true)));
+                if (taken.video && !video) video = taken.video;
+                return _eventStripGlyphs(taken.nodes, 'recordinglink');
+            });
+            return { rec, video };
+        };
+        const songRow = (s, partName) => {
+            const { rec, video } = songRecs(s);
+            return {
+                song: _eventListCell(s.works.length ? s.works.map(a => [a.cloneNode(true)]) : [[doc.createTextNode(s.text)]]),
+                withArtists: s.withItems.map(it => it.map(n => n.cloneNode(true))),
+                medley: s.works.length > 1 ? 'medley' : '',
+                also: Array.from(new Set(s.works.flatMap(a => Array.from(partsOfWork.get(workId(a)) || []))))
+                    .filter(n => n !== partName).join(', '),
+                rec,
+                // An array, so has('video') reads it like the other keys.
+                video: video ? [video] : []
+            };
+        };
         const table = (name, rows, withPart, intro) => {
             const has = key => rows.some(r => r[key].length);
             const cols = withPart ? ['Part', '#', 'Song'] : ['#', 'Song'];
@@ -17797,12 +19791,14 @@
             if (has('medley')) cols.push('Medley');
             if (has('also')) cols.push('Also in');
             if (has('rec')) cols.push('Recording');
+            if (has('video')) cols.push('Video');
             const cells = rows.map(r => {
                 const row = withPart ? [r.part, String(r.n), r.song] : [String(r.n), r.song];
                 if (has('withArtists')) row.push(_eventListCell(r.withArtists));
                 if (has('medley')) row.push(r.medley);
                 if (has('also')) row.push(r.also);
                 if (has('rec')) row.push(_eventListCell(r.rec));
+                if (has('video')) row.push(_eventVideoCell(r.video[0] || null));
                 return row;
             });
             return _eventBuildTable(doc, name, cols, cells, intro);
@@ -17869,7 +19865,10 @@
         const doc = root.ownerDocument;
         const withSeries = !!Lib.settings.sa_event_overview_related_series;
         const ownNodes = _eventSectionNodes(relH2);
-        const own = _eventRelRowsFrom(ownNodes, null);
+        // Since WIP.7 (user request 2026-10-12) the event page reads its lists
+        // like the relationship-tables pages: ended URLs, primary aliases, and
+        // Begin/End + Number/Order columns (`rel` / `attrs` below).
+        const own = _eventRelRowsFrom(ownNodes, null, { rel: true });
 
         const seriesH2 = root.querySelector('h2.related-series');
         const seriesNodes = _eventSectionNodes(seriesH2);
@@ -17884,10 +19883,12 @@
                     cur.nodes.push(n);
                 }
             });
-            seriesGroups.forEach(g => { g.rows = _eventRelRowsFrom(g.nodes, g.name); });
+            seriesGroups.forEach(g => { g.rows = _eventRelRowsFrom(g.nodes, g.name, { rel: true }); });
         }
         const seriesRows = seriesGroups.flatMap(g => g.rows);
         const relBuilt = relOn && (own.length > 0 || seriesRows.length > 0);
+        // Also on a fetched page, which never saw the initial-page pass.
+        if (setOn && setP) _eventSetlistFixLinks(setP);
         const setGroups = setOn && setP
             ? _eventSetlistGroups(doc, _eventSetlistParse(setP), own.filter(r => r.type === 'recording'),
                 !!Lib.settings.sa_event_overview_setlist_one_table)
@@ -17900,19 +19901,19 @@
             // Relationship tables not built: nothing to add here.
         } else if (Lib.settings.sa_event_overview_relationships_one_table) {
             const all = [...own, ...seriesRows];
-            const { cols, cells } = _eventRelColumns(all, 'Target', true, seriesRows.length > 0);
+            const { cols, cells } = _eventRelColumns(all, 'Target', true, seriesRows.length > 0, { attrs: true });
             frag.appendChild(_eventBuildTable(doc, 'Relationships', cols, cells));
         } else {
             const order = [];
             own.forEach(r => { if (!order.includes(r.type)) order.push(r.type); });
             order.forEach(t => {
                 const rows = own.filter(r => r.type === t);
-                const { cols, cells } = _eventRelColumns(rows, _EVENT_REL_TARGET_COLS[t] || 'Target', false, false);
+                const { cols, cells } = _eventRelColumns(rows, _EVENT_REL_TARGET_COLS[t] || 'Target', false, false, { attrs: true });
                 frag.appendChild(_eventBuildTable(doc, _EVENT_REL_GROUP_NAMES[t] || 'Other', cols, cells));
             });
             seriesGroups.forEach(g => {
                 if (!g.rows.length) return;
-                const { cols, cells } = _eventRelColumns(g.rows, 'Target', true, false);
+                const { cols, cells } = _eventRelColumns(g.rows, 'Target', true, false, { attrs: true });
                 frag.appendChild(_eventBuildTable(doc, `Via ${g.name}`, cols, cells));
             });
         }
@@ -17940,6 +19941,311 @@
         root.dataset.mbEventTables = '1';
         Lib.debug('init', `applyEventDetailsToTables: ${relBuilt ? own.length + seriesRows.length : 0} relationship row(s), ` +
             `${setGroups.length} setlist table(s) → tables.`);
+    }
+
+    /**
+     * The button of this page's definition that runs as `savedType` — a
+     * button with its own `type` (a relationship-tables button), whose
+     * renders are saved under that type, not under the page's.
+     *
+     * @param   {string} savedType The `pageType` a saved file records.
+     * @returns {?object} The button config, or null.
+     */
+    function _buttonForSavedPageType(savedType) {
+        if (!savedType || savedType === baseDefinition?.type) return null;
+        return (baseDefinition?.buttons || []).find(b => b.type === savedType) || null;
+    }
+
+    /**
+     * Before a disk load: when the file was saved from a button that runs as
+     * its own pageType, make that button's definition active the way
+     * `startFetchingProcess()` would (its features only, its pageType), so
+     * the pre-processing and render that follow are that button's.
+     *
+     * @param   {string} savedType The `pageType` the file records.
+     * @returns {boolean} Whether a button was activated.
+     */
+    function _activateButtonForSavedPageType(savedType) {
+        const btn = _buttonForSavedPageType(savedType);
+        if (!btn) return false;
+        activeDefinition = { ...baseDefinition, ...btn, features: { ...(btn.features || {}) } };
+        if (btn.replaceFeatures) delete activeDefinition.entityFeatures;
+        pageType = btn.type;
+        lastClickedButtonLabel = btn.label || null;
+        activeColumnExtractors = buildActiveColumnExtractors(activeDefinition);
+        activeIntegerColumns = buildActiveIntegerColumns(activeDefinition);
+        Lib.debug('cache', `disk-load: file was saved as '${savedType}' — running as that button ("${btn.label}").`);
+        return true;
+    }
+
+    /**
+     * Removes the page's OTHER data sections — every native `table.tbl` in
+     * `root` and the h2 section it belongs to — before the relationship
+     * tables go in (`relDetailsToTables.removeMain`, decided 2026-10-12: the
+     * "Relationships"/"Credits" button and the page's own "Show all…" button
+     * are either/or, as on 'area-releases').
+     *
+     * Why the whole section and not just the table: the render reads its
+     * anchor as the last h2 before the first `table.tbl`
+     * (`renderGroupedTable()`), and about twenty render-tail passes walk every
+     * `table.tbl` on the page; a native table left behind would be both the
+     * anchor's target and their input. An h2 section here is the h2 plus its
+     * following siblings up to the next h2 — stopping early at a sibling that
+     * holds `keep` (on a release page the Tracklist h2's siblings run on into
+     * `#bottom-credits`).
+     *
+     * @param   {Element} root  `#content`.
+     * @param   {Element} keep  The relationship section's anchor h2.
+     * @returns {number} Sections removed.
+     */
+    function _relRemoveMainSections(root, keep) {
+        const h2s = new Set();
+        root.querySelectorAll('table.tbl').forEach(t => {
+            if (t.dataset.mbEventTable) return;
+            let h2 = null;
+            for (let n = t; n && n !== root && !h2; n = n.parentElement) {
+                for (let p = n.previousElementSibling; p; p = p.previousElementSibling) {
+                    if (p.tagName === 'H2') { h2 = p; break; }
+                }
+            }
+            if (h2 && h2 !== keep) h2s.add(h2);
+            t.remove();
+        });
+        h2s.forEach(h2 => {
+            let n = h2.nextElementSibling;
+            while (n && n.tagName !== 'H2' && !n.contains(keep)) {
+                const next = n.nextElementSibling;
+                n.remove();
+                n = next;
+            }
+            h2.remove();
+        });
+        return h2s.size;
+    }
+
+    /**
+     * Turns an entity page's relationship lists into h3 + `table.tbl` groups —
+     * the relationship-tables pages (org/relationship-tables-pt.org,
+     * `features.relDetailsToTables`): the place / area / instrument overview
+     * pageTypes, and the "Relationships"/"Credits" button of series, work,
+     * release group, recording, release and the artist/label Relationships
+     * tab. Same parsing as the event page (`_eventRelRowsFrom()`), plus
+     * `_relRowAttrs()`'s Begin/End/Number/Order columns.
+     *
+     * `features.relDetailsToTables`:
+     *   - `credits: true` — a release page: the lists of
+     *     `#release-relationships` are the release's own, those of
+     *     `#release-group-relationships` the "related" block. Read by id, NEVER
+     *     as "everything under the Credits h2": in MusicBrainz's "Display
+     *     credits at bottom" layout that h2 also holds one block per medium
+     *     with every track's credits (scripts/probe-release-credits-layouts.js,
+     *     2026-10-12). The h2 moves out of `#bottom-credits` to anchor the
+     *     tables: `renderGroupedTable()`'s h3 sweep spares every h3 inside
+     *     `#bottom-credits`, so tables inserted there would be rendered twice.
+     *   - otherwise the lists under `h2.relationships`;
+     *   - `relatedH2: 'h2.related-works'` — a section of h3-led blocks (a
+     *     recording's related works), one "Via <h3>" table each;
+     *   - `ownLabel` — the From value of the page's own rows (one-table layout);
+     *   - `removeMain: true` — `_relRemoveMainSections()` first.
+     *
+     * Layout: one table per kind of target in first-appearance order, then one
+     * "Via …" table per related block (`sa_relationship_tables_related`;
+     * off: the block stays native, its h3s demoted to h4 so the render's h3
+     * sweep keeps their names), or everything in one table
+     * (`sa_relationship_tables_one_table`).
+     *
+     * Runs in the pre-processing block, on fetched pages and on a disk load,
+     * like `applyEventDetailsToTables()`. Idempotent (`#content` is marked
+     * `data-mb-rel-tables`). Does nothing when the page has no lists.
+     *
+     * @param {object}           def
+     * @param {Document|Element} [docContext=document]
+     * @returns {void}
+     */
+    function applyRelDetailsToTables(def, docContext = document) {
+        const cfg = def?.features?.relDetailsToTables;
+        if (!cfg) return;
+        const root = docContext.getElementById ? docContext.getElementById('content') : docContext.querySelector('#content');
+        if (!root || root.dataset.mbRelTables) return;
+        const doc = root.ownerDocument;
+        const withRelated = Lib.settings.sa_relationship_tables_related !== false;
+
+        let anchor;
+        let ownNodes = [];
+        const related = [];   // { name, from, nodes, remove: Element[] }
+        if (cfg.credits) {
+            const bc = root.querySelector('#bottom-credits');
+            const relDiv = root.querySelector('#release-relationships');
+            const rgDiv = root.querySelector('#release-group-relationships');
+            anchor = bc ? bc.querySelector(':scope > h2') : null;
+            if (relDiv) ownNodes = Array.from(relDiv.children).filter(c => c.tagName !== 'H3');
+            if (rgDiv) {
+                // The release group's title is in the sidebar, outside #content:
+                // the link to the group itself, its name in a <bdi> (not "see
+                // all ratings" → /release-group/<mbid>/ratings).
+                const rgLink = Array.from(doc.querySelectorAll('a[href*="/release-group/"]'))
+                    .find(a => !root.contains(a) && a.querySelector('bdi') &&
+                        /\/release-group\/[0-9a-f-]{36}\/?$/.test(a.getAttribute('href') || ''));
+                const rgName = rgLink ? rgLink.textContent.trim() : '';
+                related.push({
+                    name: rgName ? `Via release group: ${rgName}` : 'Via release group',
+                    from: 'Release group',
+                    nodes: Array.from(rgDiv.children).filter(c => c.tagName !== 'H3'),
+                    remove: [rgDiv]
+                });
+            }
+        } else {
+            anchor = root.querySelector('h2.relationships');
+            ownNodes = _eventSectionNodes(anchor);
+            const relH2 = cfg.relatedH2 ? root.querySelector(cfg.relatedH2) : null;
+            let cur = null;
+            _eventSectionNodes(relH2).forEach(n => {
+                if (n.tagName === 'H3') {
+                    const title = n.textContent.trim();
+                    cur = { name: `Via ${title}`, from: title, nodes: [], remove: [n], h3: n };
+                    related.push(cur);
+                } else if (cur) {
+                    cur.nodes.push(n);
+                    cur.remove.push(n);
+                }
+            });
+            if (relH2 && related.length) related.relH2 = relH2;
+        }
+        if (!anchor) return;
+
+        const own = _eventRelRowsFrom(ownNodes, null, { rel: true });
+        related.forEach(g => { g.rows = withRelated ? _eventRelRowsFrom(g.nodes, g.from, { rel: true }) : []; });
+        const relatedRows = related.flatMap(g => g.rows);
+        if (!own.length && !relatedRows.length) return;
+
+        if (cfg.removeMain) {
+            const n = _relRemoveMainSections(root, anchor);
+            Lib.debug('init', `applyRelDetailsToTables: removed ${n} main data section(s) for this render.`);
+        }
+
+        const frag = doc.createDocumentFragment();
+        const attrs = { attrs: true, fromLabel: cfg.ownLabel || 'Page' };
+        if (Lib.settings.sa_relationship_tables_one_table) {
+            const all = [...own, ...relatedRows];
+            const { cols, cells } = _eventRelColumns(all, 'Target', true, relatedRows.length > 0, attrs);
+            frag.appendChild(_eventBuildTable(doc, cfg.credits ? 'Credits' : 'Relationships', cols, cells));
+        } else {
+            const order = [];
+            own.forEach(r => { if (!order.includes(r.type)) order.push(r.type); });
+            order.forEach(t => {
+                const rows = own.filter(r => r.type === t);
+                const { cols, cells } = _eventRelColumns(rows, _EVENT_REL_TARGET_COLS[t] || 'Target', false, false, attrs);
+                frag.appendChild(_eventBuildTable(doc, _EVENT_REL_GROUP_NAMES[t] || 'Other', cols, cells));
+            });
+            related.forEach(g => {
+                if (!g.rows.length) return;
+                const { cols, cells } = _eventRelColumns(g.rows, 'Target', true, false, attrs);
+                frag.appendChild(_eventBuildTable(doc, g.name, cols, cells));
+            });
+        }
+
+        // The native lists the tables replace.
+        const bc = cfg.credits ? anchor.parentElement : null;
+        if (cfg.credits) {
+            const relDiv = root.querySelector('#release-relationships');
+            if (relDiv) relDiv.remove();
+            bc.before(anchor);
+        } else {
+            ownNodes.forEach(n => { if (n.matches('table.details') || n.querySelector('table.details')) n.remove(); });
+        }
+        if (withRelated) {
+            related.forEach(g => { if (g.rows.length) g.remove.forEach(n => n.remove()); });
+            if (related.relH2 && !_eventSectionNodes(related.relH2).length) related.relH2.remove();
+        } else {
+            related.forEach(g => {
+                if (!g.h3) return;
+                const h4 = doc.createElement('h4');
+                Array.from(g.h3.attributes).forEach(a => h4.setAttribute(a.name, a.value));
+                while (g.h3.firstChild) h4.appendChild(g.h3.firstChild);
+                g.h3.replaceWith(h4);
+            });
+        }
+        // What is left of #bottom-credits: the release group block when it
+        // stays native, the per-medium track credits in the "at bottom" layout.
+        if (bc && !bc.querySelector('table.details, h3')) bc.remove();
+        anchor.after(frag);
+        root.dataset.mbRelTables = '1';
+        Lib.debug('init', `applyRelDetailsToTables: ${own.length} own + ${relatedRows.length} related relationship row(s) → tables.`);
+    }
+
+    /**
+     * The features of a relationship-tables render (`applyRelDetailsToTables()`),
+     * shared by the overview pageTypes and every "Relationships"/"Credits"
+     * button: the converter's own config, h3 grouping, and the date split of
+     * the Begin/End columns through `dateParts` (the B- and E- date parts, as on
+     * series-releases' 'Artists' — user decision, 2026-10-12).
+     *
+     * @param   {object} cfg `features.relDetailsToTables`.
+     * @returns {object} A `features` block.
+     */
+    function _relTablesFeatures(cfg) {
+        return {
+            relDetailsToTables: cfg,
+            groupByH3: true,
+            columnExtractors: [
+                { sourceColumn: 'Begin', extractor: 'dateParts', syntheticColumns: ['B-DD', 'B-MM', 'B-YYYY', 'B-Day', 'B-Month'] },
+                { sourceColumn: 'End',   extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] }
+            ],
+            integerColumns: [
+                { sourceColumn: '#', align: 'R' }, { sourceColumn: 'Number', align: 'R' }, { sourceColumn: 'Order', align: 'R' },
+                { sourceColumn: 'B-DD', align: 'R' }, { sourceColumn: 'B-MM', align: 'R' }, { sourceColumn: 'B-YYYY', align: 'C' },
+                { sourceColumn: 'E-DD', align: 'R' }, { sourceColumn: 'E-MM', align: 'R' }, { sourceColumn: 'E-YYYY', align: 'C' }
+            ],
+            collapsableColumns: [ 'Credits' ],
+            // Inline cover art / event art before a release group, release or
+            // event target, as on artist-releasegroups' Title and
+            // artist-events' Event column (user request 2026-10-12). Each
+            // row's link decides (CAA_CTX/EAA_CTX.inlineLinkSel), so a mixed
+            // "Target" column gets the right one per row and the rest none.
+            addCAA: [ 'Target', 'Release group', 'Release' ],
+            addEAA: [ 'Target', 'Event' ]
+        };
+    }
+
+    /**
+     * The "Relationships" (on a release: "Credits") button an existing
+     * pageType gains for its relationship lists. It runs as its own pageType
+     * (`type`, e.g. 'recording-relationship-tables': the page's own
+     * pageType-keyed branches — release-tracks' AR columns, recording-releases'
+     * release columns, … — must not fire on these tables) and with ONLY its
+     * own features (`replaceFeatures`: nothing of the base definition's
+     * features or entityFeatures leaks in). Hidden while
+     * `sa_enable_relationship_tables` is off (`showIf`).
+     *
+     * @param   {string} type     The pageType this render runs as.
+     * @param   {string} entity   Entity name for the label ("Recording").
+     * @param   {object} cfg      `features.relDetailsToTables` (`removeMain` is added).
+     * @param   {string} [section='Relationships'] Button word ("Credits" on a release).
+     * @returns {object} A `buttons[]` entry.
+     */
+    function _relTablesButton(type, entity, cfg, section = 'Relationships') {
+        return {
+            label: `Show all ${section} for ${entity}`,
+            shortLabel: section,
+            type,
+            replaceFeatures: true,
+            tableMode: 'multi',
+            non_paginated: true,
+            showIf: () => Lib.settings.sa_enable_relationship_tables !== false,
+            features: _relTablesFeatures({ ownLabel: entity, removeMain: true, ...cfg })
+        };
+    }
+
+    /**
+     * Whether the current render is a relationship-tables render (an overview
+     * pageType or a "Relationships"/"Credits" button) — the per-group column
+     * and header-glyph paths that the event page takes key off this, not off a
+     * pageType name.
+     *
+     * @returns {boolean}
+     */
+    function _isRelTablesRun() {
+        return !!activeDefinition?.features?.relDetailsToTables;
     }
 
     /**
@@ -22143,7 +24449,9 @@
             li.appendChild(document.createTextNode(' ('));
             _instrumentAs.forEach((a, i) => {
                 if (i > 0) li.appendChild(document.createTextNode(', '));
-                li.appendChild(a.cloneNode(true));
+                // With its "Instrument Icons Everywhere" icon, if any — see
+                // _cloneInstrumentAnchorWithIcon().
+                li.appendChild(_cloneInstrumentAnchorWithIcon(a).node);
             });
             li.appendChild(document.createTextNode(')'));
         } else {
@@ -22352,10 +24660,11 @@
             // No extra wrapper span needed (unlike those two, which wrap
             // synthesized text): this is already a real, single element to
             // tag directly, and its href/click-to-instrument-page behavior
-            // must survive untouched.
-            const _instrClone = instrumentAnchor.cloneNode(true);
-            _instrClone.classList.add('mb-credit-instrument');
-            li.appendChild(_instrClone);
+            // must survive untouched. Copied WITH its "Instrument Icons
+            // Everywhere" icon, if any — see _cloneInstrumentAnchorWithIcon().
+            const _instr = _cloneInstrumentAnchorWithIcon(instrumentAnchor);
+            _instr.anchor.classList.add('mb-credit-instrument');
+            li.appendChild(_instr.node);
             li.appendChild(document.createTextNode(': '));
         }
         // See `_buildCreditListItem()`'s identical clone-wrapper comment —
@@ -23481,8 +25790,11 @@
      * Computed-panel comparison documented for `.worklink` to be needed.
      *
      * Called from the tail of `renderGroupedTable()`, alongside
-     * `initAcoustIdIsrcObserver()` — same release-tracks-only, re-run-
-     * safe, no-op-when-column-absent shape.
+     * `initAcoustIdIsrcObserver()` — same re-run-safe,
+     * no-op-when-column-absent shape. Scoped to release-tracks and
+     * event-overview (whose single-kind columns, `_eventColGlyphs()`, carry
+     * the same header glyph instead of one per cell): a column name like
+     * "Artist" means a different thing elsewhere.
      *
      * @param {string} columnName - Exact header text (matched via
      *   `_cleanColHeaderText`), e.g. `"Recording of"`.
@@ -23491,7 +25803,8 @@
      * @returns {void}
      */
     function _initColHeaderGlyph(columnName, glyphClass) {
-        if (activeDefinition?.type !== 'release-tracks') return;
+        const _pt = activeDefinition?.type;
+        if (_pt !== 'release-tracks' && _pt !== 'event-overview' && !_isRelTablesRun()) return;
         document.querySelectorAll('table.tbl').forEach(table => {
             const th = Array.from(table.querySelectorAll('thead th'))
                 .find(h => _cleanColHeaderText(h) === columnName);
@@ -26327,6 +28640,19 @@
             }
         },
         // Instrument pages
+        // The instrument overview (/instrument/<mbid>): its only data is the
+        // Relationships lists, turned into tables by applyRelDetailsToTables()
+        // (org/relationship-tables-pt.org). Anchored match: '/instrument/<mbid>/<tab>'
+        // has its own pageTypes. Off with sa_enable_relationship_tables.
+        {
+            type: 'instrument-overview',
+            match: (path) => Lib.settings.sa_enable_relationship_tables !== false &&
+                path.match(/^\/instrument\/[a-f0-9-]{36}\/?$/),
+            buttons: [ { label: 'Show all Relationships for Instrument', shortLabel: 'Relationships' } ],
+            features: _relTablesFeatures({ ownLabel: 'Instrument' }),
+            tableMode: 'multi',
+            non_paginated: true
+        },
         {
             type: 'instrument-artists',
             match: (path) => path.match(/\/instrument\/[a-f0-9-]{36}\/artists/),
@@ -26477,6 +28803,19 @@
             non_paginated: true
         },
         // Area pages
+        // The area overview (/area/<mbid>): its only data is the
+        // Relationships lists, turned into tables by applyRelDetailsToTables()
+        // (org/relationship-tables-pt.org). Anchored match: '/area/<mbid>/<tab>'
+        // has its own pageTypes. Off with sa_enable_relationship_tables.
+        {
+            type: 'area-overview',
+            match: (path) => Lib.settings.sa_enable_relationship_tables !== false &&
+                path.match(/^\/area\/[a-f0-9-]{36}\/?$/),
+            buttons: [ { label: 'Show all Relationships for Area', shortLabel: 'Relationships' } ],
+            features: _relTablesFeatures({ ownLabel: 'Area' }),
+            tableMode: 'multi',
+            non_paginated: true
+        },
         {
             type: 'area-artists',
             match: (path) => path.match(/\/area\/[a-f0-9-]{36}\/artists/),
@@ -26729,6 +29068,19 @@
             non_paginated: true
         },
         // Place pages
+        // The place overview (/place/<mbid>): its only data is the
+        // Relationships lists, turned into tables by applyRelDetailsToTables()
+        // (org/relationship-tables-pt.org). Anchored match: '/place/<mbid>/<tab>'
+        // has its own pageTypes. Off with sa_enable_relationship_tables.
+        {
+            type: 'place-overview',
+            match: (path) => Lib.settings.sa_enable_relationship_tables !== false &&
+                path.match(/^\/place\/[a-f0-9-]{36}\/?$/),
+            buttons: [ { label: 'Show all Relationships for Place', shortLabel: 'Relationships' } ],
+            features: _relTablesFeatures({ ownLabel: 'Place' }),
+            tableMode: 'multi',
+            non_paginated: true
+        },
         {
             type: 'place-events',
             match: (path) => path.match(/\/place\/[a-f0-9-]{36}\/events/),
@@ -26821,7 +29173,10 @@
             // header text that precedes the table and substitute it into the label so
             // the button reads "Show all <EntityType> for Series" dynamically.
             // Series pages can contain Releases, Events, Works, Recordings, etc.
-            buttons: [ { label: 'Show all Releases for Series', labelFromH2: true, shortLabel: 'Releases' } ],
+            buttons: [
+                { label: 'Show all Releases for Series', labelFromH2: true, shortLabel: 'Releases' },
+                _relTablesButton('series-relationship-tables', 'Series', {})
+            ],
             // entityFeatures maps each possible H2 entity-type heading to its own
             // feature set.  When the page is activated, resolveEntityFeaturesFromH2()
             // reads the live H2 text and picks the matching entry.  If no match is
@@ -26962,7 +29317,10 @@
         {
             type: 'label-relationships',
             match: (path, params) => path.match(/\/label\/[a-f0-9-]{36}\/relationships/) && !params.has('link_type_id'),
-            buttons: [ { label: 'Show all Relationships for Label', shortLabel: 'Relationships' } ],
+            buttons: [
+                { label: 'Show all Relationships for Label', shortLabel: 'Relationships' },
+                _relTablesButton('label-relationship-tables', 'Label', {}, 'Relationship lists')
+            ],
             features: {
                 columnExtractors: [
                     { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
@@ -27040,7 +29398,10 @@
         {
             type: 'work-recordings',
             match: (path, params) => path.match(/\/work\/[a-f0-9-]{36}/) && !params.has('link_type_id'),
-            buttons: [ { label: 'Show all Recordings for Work', shortLabel: 'Recordings' } ],
+            buttons: [
+                { label: 'Show all Recordings for Work', shortLabel: 'Recordings' },
+                _relTablesButton('work-relationship-tables', 'Work', {})
+            ],
             features: {
                 columnExtractors: [
                     { sourceColumn: 'Date',  extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] },
@@ -27090,7 +29451,12 @@
             type: 'artist-relationships',
             // Only match if NO link_type_id is present (the overview page)
             match: (path, params) => path.match(/\/artist\/[a-f0-9-]{36}\/relationships/) && !params.has('link_type_id'),
-            buttons: [ { label: 'Show all Relationships for Artist', shortLabel: 'Relationships' } ],
+            // Second button: the h2 "Relationships" lists above the
+            // appearance tables (the existing button's word is taken).
+            buttons: [
+                { label: 'Show all Relationships for Artist', shortLabel: 'Relationships' },
+                _relTablesButton('artist-relationship-tables', 'Artist', {}, 'Relationship lists')
+            ],
             features: {
                 columnErasers: [
                     { sourceColumn: 'Title', erasers: ['▶', '➕'] }
@@ -27280,7 +29646,10 @@
         {
             type: 'releasegroup-releases',
             match: (path) => path.includes('/release-group/'),
-            buttons: [ { label: 'Show all Releases for ReleaseGroup', shortLabel: 'Releases' } ],
+            buttons: [
+                { label: 'Show all Releases for ReleaseGroup', shortLabel: 'Releases' },
+                _relTablesButton('releasegroup-relationship-tables', 'ReleaseGroup', {})
+            ],
             features: {
                 columnErasers: [
                     { sourceColumn: 'Release', erasers: ['▶', '➕'] }
@@ -27331,7 +29700,11 @@
             // medium, usually with #<track MBID> highlighting one track (see
             // _stampTrackTarget(); the fragment is not part of `path`).
             match: (path) => Lib.settings.sa_enable_release_tracks && path.match(/^\/release\/[a-f0-9-]{36}(?:\/disc\/\d+)?\/?$/),
-            buttons: [ { label: 'Show all Tracks for Release', shortLabel: 'Tracks' } ],
+            buttons: [
+                { label: 'Show all Tracks for Release', shortLabel: 'Tracks' },
+                // The release's own and its release group's lists under "Credits".
+                _relTablesButton('release-credit-tables', 'Release', { credits: true }, 'Credits')
+            ],
             features: {
                 removeYomoWidget: true,          // strip the "Batch Add Recording Aliases" userscript's widget, if present
                 ensureCreditsInline: true,       // click + await native #toggle-credits if credits are "at bottom"
@@ -27445,7 +29818,11 @@
         {
             type: 'recording-releases',
             match: (path) => path.includes('/recording'),
-            buttons: [ { label: 'Show all Releases for Recording', shortLabel: 'Releases' } ],
+            buttons: [
+                { label: 'Show all Releases for Recording', shortLabel: 'Releases' },
+                // "Related works": one "Via <work>" table per work.
+                _relTablesButton('recording-relationship-tables', 'Recording', { relatedH2: 'h2.related-works' })
+            ],
             features: {
                 columnErasers: [
                     { sourceColumn: 'Release title', erasers: ['▶', 'jesus2099'] }
@@ -27491,10 +29868,38 @@
             features: {
                 eventDetailsToTables: true,
                 groupByH3: true,
-                integerColumns: [ { sourceColumn: '#', align: 'R' }, { sourceColumn: 'Billing', align: 'R' } ],
+                // Begin/End through dateParts, as on the relationship-tables
+                // pages (_relTablesFeatures(), WIP.7).
+                columnExtractors: [
+                    { sourceColumn: 'Begin', extractor: 'dateParts', syntheticColumns: ['B-DD', 'B-MM', 'B-YYYY', 'B-Day', 'B-Month'] },
+                    { sourceColumn: 'End',   extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] }
+                ],
+                integerColumns: [
+                    { sourceColumn: '#', align: 'R' }, { sourceColumn: 'Billing', align: 'R' },
+                    { sourceColumn: 'Number', align: 'R' }, { sourceColumn: 'Order', align: 'R' },
+                    { sourceColumn: 'B-DD', align: 'R' }, { sourceColumn: 'B-MM', align: 'R' }, { sourceColumn: 'B-YYYY', align: 'C' },
+                    { sourceColumn: 'E-DD', align: 'R' }, { sourceColumn: 'E-MM', align: 'R' }, { sourceColumn: 'E-YYYY', align: 'C' }
+                ],
                 // Multi-row cells (a <ul> per cell, built by the converter).
                 collapsableColumns: [ 'Credits', 'Song', 'Additional artists', 'Recording' ]
             },
+            tableMode: 'multi',
+            non_paginated: true
+        },
+        // URL pages
+        // The URL overview (/url/<mbid>, debug/URL.html): an h1 with the URL,
+        // h2 "URL details" (a one-row table.details holding the link itself,
+        // left native) and h2.relationships — the entities that link this URL,
+        // by relationship. Same converter as the place/area/instrument
+        // overviews (applyRelDetailsToTables()). No table.tbl, no pagination.
+        // Anchored match: '/url/<mbid>/edit' etc. are not pageTypes. The
+        // @include line for bare entity pages names 'url' for this entry.
+        {
+            type: 'url-overview',
+            match: (path) => Lib.settings.sa_enable_relationship_tables !== false &&
+                path.match(/^\/url\/[a-f0-9-]{36}\/?$/),
+            buttons: [ { label: 'Show all Relationships for URL', shortLabel: 'Relationships' } ],
+            features: _relTablesFeatures({ ownLabel: 'URL' }),
             tableMode: 'multi',
             non_paginated: true
         },
@@ -27754,6 +30159,57 @@
             features: {
                 bbSongsToTable: true,
                 stickyColumn: 'Title'
+            },
+            tableMode: 'single'
+        },
+
+        // Brucebase Relations (`stats:relations`): every person and band with
+        // a relation page, in a letter tabview like the song list. One static
+        // page, so the live document is reused — no request. Covered by
+        // `sa_enable_brucebase`. See applyBbRelationsToTable() and
+        // docs/claude/brucebase.md, "Relations".
+        {
+            type: 'bb-relations',
+            host: 'brucebase.wikidot.com',
+            match: (path) => /^\/stats:relations\/?$/.test(path),
+            buttons: [ { label: 'Show all relations', shortLabel: 'Relations' } ],
+            features: {
+                bbRelationsToTable: true,
+                stickyColumn: 'Name'
+            },
+            tableMode: 'single'
+        },
+
+        // Brucebase Recent changes (`system:recent-changes`): the wiki's
+        // change log, loaded through Wikidot's AJAX module, never from a URL
+        // (`features.pageRequest`, a POST per page at 200 per page; each
+        // button's `pageCount` says how many). The live page gets an empty
+        // table. Covered by `sa_enable_brucebase`. See applyBbChangesToTable()
+        // and docs/claude/brucebase.md, "Recent changes".
+        {
+            type: 'bb-recent-changes',
+            host: 'brucebase.wikidot.com',
+            match: (path) => /^\/system:recent-changes\/?$/.test(path),
+            buttons: [
+                { label: 'Show the last 200 changes', shortLabel: '200', features: { pageCount: 1 } },
+                { label: 'Show the last 1,000 changes', shortLabel: '1,000', features: { pageCount: 5 } },
+                { label: 'Show the last 5,000 changes', shortLabel: '5,000', features: { pageCount: 25 } }
+            ],
+            features: {
+                bbChangesToTable: true,
+                pageRequest: (p) => _bbChangesRequest(p),
+                pageCount: 1,
+                // Date is ISO, so the MusicBrainz date splitter applies
+                // unchanged, and with it the "Date info" 📊 sections; the
+                // "Time" column gets "Time info - Time of day" by its name.
+                columnExtractors: [
+                    { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
+                ],
+                integerColumns: [
+                    { sourceColumn: 'Revision', align: 'R' },
+                    { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' }
+                ],
+                stickyColumn: 'Page'
             },
             tableMode: 'single'
         },
@@ -37137,6 +39593,24 @@
      *               detail?: function(HTMLTableCellElement, HTMLTableRowElement, object): ?string,
      *               tint: function(HTMLTableCellElement): boolean}>}
      */
+    /**
+     * The MBIDs of a cell's MusicBrainz work/artist links that contain an
+     * uppercase letter (the `mbid-uppercase` finding). Reads the links' own
+     * `href` attributes — source-row data, which `_eventSetlistFixLinks()`
+     * and the setlist converter leave in their original case.
+     *
+     * @param   {HTMLTableCellElement} cell
+     * @returns {string[]} Each offending MBID once, in cell order.
+     */
+    function _findingUppercaseMbids(cell) {
+        const out = [];
+        cell.querySelectorAll('a[href]').forEach(a => {
+            const m = /\/(?:work|artist)\/([0-9a-f-]{36})(?![0-9a-f-])/i.exec(a.getAttribute('href') || '');
+            if (m && /[A-F]/.test(m[1]) && !out.includes(m[1])) out.push(m[1]);
+        });
+        return out;
+    }
+
     const FINDINGS = [
         {
             id: 'len-warn', level: 'warn', glyph: '⏱️', scope: 'cell', coFlagged: true,
@@ -37185,6 +39659,18 @@
             cols: (name, plan) => plan.eventName(name),
             test: cell => { const ev = _findCellEventName(cell); return !!ev && ev.form === 'nearmiss'; },
             tint: _findingTintSetting('sa_findings_tint_event_style'),
+        },
+        {
+            id: 'mbid-uppercase', level: 'warn', glyph: '🔠', scope: 'cell',
+            label: 'MBID contains uppercase letters',
+            tip: 'Event setlist: a song or "(with …)" artist is linked by an MBID typed with uppercase letters, e.g. "* [E497263c-4f15-36c0-B27c-Dca99482962c|The Fever]". MusicBrainz still resolves the link, but an MBID is written in lowercase — edit the event\'s setlist on MusicBrainz.',
+            cols: name => activeDefinition?.type === 'event-overview' && (name === 'Song' || name === 'Additional artists'),
+            test: cell => _findingUppercaseMbids(cell).length > 0,
+            detail: cell => {
+                const ids = _findingUppercaseMbids(cell);
+                return ids.length ? ids.join(', ') : null;
+            },
+            tint: _findingTintSetting('sa_findings_tint_mbid_case'),
         },
         {
             id: 'rec-live-sep', level: 'warn', glyph: '➖', scope: 'cell',
@@ -38933,8 +41419,10 @@
      * IndexedDB (`_mbPageLoad()`: an edit, an editor). Bump it whenever a
      * page parser's output changes, as `_DP_PARSER_VERSION` for the foreign
      * hosts, or users keep the old fields for `sa_pop_mb_ttl_hours`.
+     * 3: an edit's entities include a link whose MBID has uppercase letters
+     * (`_MB_POP_PATH_RE`), lowercased.
      */
-    const _MB_POP_PAGE_VERSION = 2;
+    const _MB_POP_PAGE_VERSION = 3;
 
     /**
      * Each entity card's Web Service answer, by cache key
@@ -39067,9 +41555,17 @@
      * the entity's tabs are not one. `url` (U2) is the "[info]" link beside
      * every URL relationship; `_mbParseEditPage()` reads this pattern too, so
      * an edit's entities now include URLs (`_MB_POP_PAGE_VERSION` 2).
+     *
+     * The MBID may carry uppercase letters: editors type them into setlists
+     * (`[E497263c-…-Dca99482962c|The Fever]`, event 26cead1c-…), MusicBrainz
+     * links them as typed and resolves them. Every reader of this pattern
+     * takes the MBID lowercased (`_mbPopParsePath()`, `_mbParseEditPage()`,
+     * `_MB_POP_PAGE_VERSION` 3), so one entity has one cache key, one Web
+     * Service lookup and one Live page whatever case a link spells it in.
+     * The entity type stays lowercase only — MusicBrainz's paths are.
      * @type {RegExp}
      */
-    const _MB_POP_PATH_RE = /^\/(artist|release-group|release|recording|work|label|event|place|area|series|instrument|collection|url)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/;
+    const _MB_POP_PATH_RE = /^\/(artist|release-group|release|recording|work|label|event|place|area|series|instrument|collection|url)\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\/?$/;
 
     /**
      * The page of a code a link may preview: an ISRC, an ISWC, a disc ID.
@@ -39102,7 +41598,7 @@
      */
     function _mbPopParsePath(pathname) {
         const m = _MB_POP_PATH_RE.exec(pathname);
-        if (m) return { seg: m[1], type: m[1], id: m[2] };
+        if (m) return { seg: m[1], type: m[1], id: m[2].toLowerCase() };
         const c = _MB_POP_CODE_RE.exec(pathname);
         if (c) return { seg: c[1], type: _MB_POP_CODE_TYPES[c[1]], id: c[2] };
         const p = _MB_POP_PAGE_RE.exec(pathname);
@@ -40043,8 +42539,8 @@
      * where the markup says nothing, so its tokens stay names. MusicBrainz's
      * own event page links every token of a song line as a work, the guests
      * included (debug/mb-event-initial.html) — not followed here. The link
-     * takes the MBID lowercased, which `_MB_POP_PATH_RE` (previews,
-     * drill-down) requires.
+     * takes the MBID lowercased, the form every preview and drill-down keys
+     * on (`_mbPopParsePath()`).
      *
      * @param {string} body - The line without its kind character.
      * @param {string} lineKind - `@`, `*` or `#`.
@@ -40723,8 +43219,9 @@
                 changes.push([_mbPopText(th).replace(/:$/, ''), value]);
                 tr.querySelectorAll('a[href]').forEach(a => {
                     const em = _MB_POP_PATH_RE.exec(a.getAttribute('href') || '');
-                    if (em && entities.length < 12 && !entities.some(e => e.id === em[2])) {
-                        entities.push({ type: em[1], id: em[2], name: _mbPopText(a) });
+                    const emId = em ? em[2].toLowerCase() : '';
+                    if (em && entities.length < 12 && !entities.some(e => e.id === emId)) {
+                        entities.push({ type: em[1], id: emId, name: _mbPopText(a) });
                     }
                 });
             });
@@ -44160,6 +46657,33 @@
     }
 
     /**
+     * The entity type of a mixed relationship table's Target or Type cell —
+     * `data-mb-entity-type`, stamped by `_eventRelColumns()` (event overview
+     * and the relationship-tables pages, docs/claude/relationship-tables.md)
+     * — for the 📊 "Entity info - Type" section (modes `enttype-<type>`).
+     * Attribute-driven like `_findCellVideoMediumFlag()`: only those cells
+     * ever carry it, so the section needs no column gate.
+     *
+     * @param   {?HTMLTableCellElement} cell
+     * @returns {?string} A key of `_EVENT_REL_TARGET_COLS`, or null.
+     */
+    function _findCellEntityType(cell) {
+        return (cell && cell.dataset && cell.dataset.mbEntityType) || null;
+    }
+
+    /**
+     * The 📊 marker class for an "Entity info - Type" entry: the column glyph
+     * the event/relationship tables use for that kind (`_eventColGlyphs()`),
+     * or '' for a kind without one (a URL, unparsed text).
+     *
+     * @param   {string} type A key of `_EVENT_REL_TARGET_COLS`.
+     * @returns {string}
+     */
+    function _entityTypeGlyphClass(type) {
+        return _eventColGlyphs()[_EVENT_REL_TARGET_COLS[type]] || '';
+    }
+
+    /**
      * Reads a release-tracks Video cell's medium-format verdict — the
      * `data-mb-video-flag` attribute `_applyVideoMediumFlag()` stamps on a
      * video recording's cell: `mismatch` (its medium cannot carry video) or
@@ -45951,6 +48475,11 @@
             // level, from _findCellLenFlag() (the data-mb-len-flag attribute).
             return !!cell && _findCellLenFlag(cell) === mode.slice(8);
         }
+        if (mode.startsWith('enttype-')) {
+            // "Entity info - Type" — a mixed relationship table's Target/Type
+            // cell, from _findCellEntityType() (the data-mb-entity-type attribute).
+            return !!cell && _findCellEntityType(cell) === mode.slice(8);
+        }
         if (mode === 'videomedium-mismatch' || mode === 'videomedium-ok') {
             // Fixed flags — a Video cell's medium-format verdict, from
             // _findCellVideoMediumFlag() (the data-mb-video-flag attribute).
@@ -46341,6 +48870,16 @@
             if (!Lib.settings.sa_enable_pending_edits_section) return false;
             const want = mode.slice(12);
             return _findCellPendingEdits(cell).some(p => p.name === want);
+        }
+        if (mode === 'ii-icon-yes' || mode === 'ii-icon-no') {
+            // Fixed flag pair — "Instrument info - Icon": at least one of
+            // this cell's instrument links has (yes) / lacks (no) an
+            // "Instrument Icons Everywhere" icon. Not mutually exclusive: a
+            // cell crediting two instruments can match both.
+            const links = _iiInstrumentLinks(cell);
+            return mode === 'ii-icon-yes'
+                ? links.some(a => _findInstrumentLinkIcon(a))
+                : links.some(a => !_findInstrumentLinkIcon(a));
         }
         if (mode === 'instrument-has-comment') {
             // Fixed flag — true when this instrument-list first-column cell
@@ -57456,6 +59995,18 @@ a { color: #1565c0; }`;
     //
     // Detection: look for <h2 class="appears-on-releases"> whose next meaningful
     // sibling is a <p> containing "No releases found which feature this recording."
+    // Event page: the setlist's "(with …)" artists are /work/ links natively
+    // (MusicBrainz's setlist syntax links every name on a song line as a
+    // work) — point them at the artist on the initial page as well, before
+    // any button. The pageType itself is opt-in (sa_enable_event_overview).
+    if (pageType === 'event-overview') {
+        const _fixedWith = _eventSetlistFixLinks(document.querySelector('#content p.setlist'));
+        if (_fixedWith) Lib.debug('init', `event-overview: ${_fixedWith} setlist "(with …)" link(s) re-pointed to /artist/.`);
+    }
+
+    // Set below when a recording appears on no release but its Relationships
+    // lists can still become tables: only the relationship-tables button is drawn.
+    let _noMainButton = false;
     if (pageType === 'recording-releases') {
         const appearsH2 = document.querySelector('h2.appears-on-releases');
         if (appearsH2) {
@@ -57465,6 +60016,12 @@ a { color: #1565c0; }`;
                 sib = sib.nextSibling;
             }
             if (sib && sib.nodeName === 'P' &&
+                sib.textContent.trim().toLowerCase().startsWith('no releases found') &&
+                Lib.settings.sa_enable_relationship_tables !== false &&
+                document.querySelector('#content h2.relationships')) {
+                _noMainButton = true;
+                Lib.debug('init', 'recording-releases: no releases — only the Relationships button is drawn.');
+            } else if (sib && sib.nodeName === 'P' &&
                 sib.textContent.trim().toLowerCase().startsWith('no releases found')) {
                 const msg = `[VZ-${SCRIPT_BASE_NAME}: ${pageType}] Page has no releases ` +
                             `("${sib.textContent.trim()}") — skipping action button rendering.`;
@@ -57578,11 +60135,16 @@ a { color: #1565c0; }`;
     let _lastActiveBtn = null;
 
     // 4. Generate Buttons
+    // `showIf`: a button that exists only while a setting is on (the
+    // relationship-tables buttons, _relTablesButton()). `_noMainButton`: the
+    // page has nothing for its own button (a recording on no release) but the
+    // relationship-tables button still applies.
     // "🗂 Sidebar as tables" is appended on entity overview pages
     // (_sbTablesButtons(), docs/claude/sidebar.md).
     const buttonsToRender = (activeDefinition.buttons || [
         { label: `Show all ${pageType.replace('-', ' ')}` } // Default fallback
-    ]).concat(_sbTablesButtons());
+    ]).filter(b => (typeof b.showIf !== 'function' || b.showIf()) && !(_noMainButton && !b.type))
+        .concat(_sbTablesButtons());
 
     // Superscript numerals for Ctrl-M + 1..9 mnemonic display on action buttons
     const SUPERSCRIPT_DIGITS = ['¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
@@ -60585,6 +63147,10 @@ a { color: #1565c0; }`;
             background-color: ${Lib.settings.sa_ui_h3_hover_bg || '#eb7231'};
         }
         .mb-toggle-h3 { cursor: pointer; user-select: none; border-bottom: 1px solid #eee; padding: 4px 0; margin-left: 1.5em; background-color: ${Lib.settings.sa_ui_h3_bg || '#f7dfdf'}; }
+        /* A sub-table a page-wide filter left empty (_syncEmptySubtableVisibility):
+           h3, table and everything between them. A class, never style.display,
+           which holds the collapse, art-strip and discography-view states. */
+        .mb-empty-subtable-hidden { display: none !important; }
         .mb-credits-toggle-h3:hover,
         .mb-annotation-toggle-h3:hover {
             color: #222;
@@ -64689,7 +67255,7 @@ a { color: #1565c0; }`;
                 // Validation: Check if the file matches the current page type.
                 // Handled here (Phase 1) so the dialog can react properly:
                 // on cancel, rawData/rawFile stay unset and Phase 2 is not revealed.
-                if (data.pageType !== pageType) {
+                if (data.pageType !== pageType && !_buttonForSavedPageType(data.pageType)) {
                     const loadAnywayConfirmed = await Lib.showCustomConfirm(
                         `Warning: This file appears to be for "${data.pageType}", but you are on a "${pageType}" page.\n\nTry loading anyway?`,
                         '\u26A0\uFE0F Page Type Mismatch',
@@ -66948,6 +69514,43 @@ a { color: #1565c0; }`;
      * Returns an HTML string stored in `data-mbtt`; never used as `title`.
      */
     function _buildH2CountTooltip(filteredCount, totalCount, absoluteTotal) {
+        return _buildH2CountTooltipBase(filteredCount, totalCount, absoluteTotal) + _h2HiddenSubtablesNote();
+    }
+
+    /**
+     * The h2 tooltip's extra line on a multi-table page while
+     * `_syncEmptySubtableVisibility()` hides sub-tables: how many, out of how
+     * many, and which page-wide filter emptied them. Read from the DOM
+     * (`data-mb-empty-hidden`), which is current because `runFilter()` calls
+     * `updateH2Count()` after `renderGroupedTable()` returns. Empty string
+     * when nothing is hidden.
+     *
+     * @returns {string} HTML, starting with a `<br>`, or `''`.
+     */
+    function _h2HiddenSubtablesNote() {
+        if (!activeDefinition || activeDefinition.tableMode !== 'multi') return '';
+        const tables = Array.from(document.querySelectorAll('table.tbl'))
+            .filter(t => t.querySelector('.mb-col-filter-row'));
+        const hidden = tables.filter(t => t.dataset.mbEmptyHidden === '1').length;
+        if (!hidden) return '';
+        const byGf = stripFilterPrefix(filterInput.value) !== '';
+        const byFindings = _findingRowFilter.size > 0 ||
+            tables.some(t => Array.from(t.querySelectorAll('thead tr.mb-col-filter-row .mb-col-filter-input'))
+                .some(_isFindingOnlyColFilter));
+        const what = [byGf ? `the ${_mbttLabel('global', 'gf')} filter` : '',
+                      byFindings ? 'the findings filter' : ''].filter(Boolean).join(' and ');
+        return `<br>${_mbttCount(hidden)} of ${_mbttCount(tables.length)} sub-tables hidden: no row matches ${what}`;
+    }
+
+    /**
+     * The h2 tooltip text proper, without `_h2HiddenSubtablesNote()`.
+     *
+     * @param {number}      filteredCount
+     * @param {number}      totalCount
+     * @param {number|null} absoluteTotal
+     * @returns {string} HTML.
+     */
+    function _buildH2CountTooltipBase(filteredCount, totalCount, absoluteTotal) {
         /**
          * "There is 1 row" / "There are N rows", with N formatted by `_mbttCount()`.
          *
@@ -69093,7 +71696,7 @@ a { color: #1565c0; }`;
         'Live title info':        'Release and release group titles checked against the live bootleg convention.',
         'Recording comment info': 'Recording comments checked against the live recording convention.',
         'Part of series':         'Series membership: series name, date and number.',
-        'Instrument info':        'Instrument comments, descriptions and cross-references.',
+        'Instrument info':        'Instrument comments, descriptions, cross-references and icons.',
         'Editor info':            'Editor accounts: deleted editors, memberships, comments, activity.',
         'Version history':        'Edit history of the entities in this column.',
         'Locale info':            'Locales: language, and whether the alias is the primary one.',
@@ -69289,6 +71892,9 @@ a { color: #1565c0; }`;
         // own `entityType ? … : '» name: '` generic fallback).
         entity_other:             { label: 'Entity info - Other name',         glyph: '👤' },
         entityComment:            { label: 'Entity info - Comment',            glyph: '👤' },
+        // A mixed relationship table's Target/Type column: one entry per kind
+        // of related entity, with its glyph and row count (_findCellEntityType()).
+        entityTypeMix:            { label: 'Entity info - Type',               glyph: '🔣' },
         entityAlias:              { label: 'Entity info - Alias',              glyph: '👤' },
         entityTagCount:           { label: 'Entity info - Tag count',          glyph: '🏷️' },
         // 'Entity info - Event cancelled' — area-events/place-events/
@@ -69707,6 +72313,12 @@ a { color: #1565c0; }`;
         // see `_findCellInstrumentFacets()`'s own JSDoc for why this
         // deliberately excludes literal escaped `&lt;a href=...&gt;` text.
         instrumentHasCrossReference: { label: 'Instrument info - Cross-reference', glyph: '↗️' },
+        // "Instrument info - Icon" — whether the "Instrument Icons
+        // Everywhere" userscript (@Lotheric) decorated this cell's instrument
+        // links. Column-agnostic like "Pending edits": offered on any column
+        // that holds an instrument link, and only while that userscript is
+        // at work on the page (`_iiPresent()`). See `_iiInstrumentLinks()`.
+        instrumentIcon: { label: 'Instrument info - Icon', glyph: '🎻' },
         // "Date info" — split into three independently-checkable facets
         // (mirrors Format info's/Tracks info's own "one flat cell, several
         // value families" split), applying automatically to every
@@ -69820,6 +72432,7 @@ a { color: #1565c0; }`;
         'instrument-has-comment': 'instrumentHasComment',
         'instrument-has-description': 'instrumentHasDescription',
         'instrument-has-crossreference': 'instrumentHasCrossReference',
+        'ii-icon-yes': 'instrumentIcon', 'ii-icon-no': 'instrumentIcon',
         'date-complete': 'dateExprPrecision', 'date-partial': 'dateExprPrecision', 'date-range': 'dateExprPrecision',
         'pending-edits-yes': 'pendingEditsPresence', 'pending-edits-no': 'pendingEditsPresence',
         'rel-state-pending': 'relLoadState', 'rel-state-has': 'relLoadState',
@@ -69836,6 +72449,8 @@ a { color: #1565c0; }`;
         MB_UNIQ_MODE_TO_SECTION[`evlive-sep-${sep}-${facet}`] = `evLiveSep${kind}`;
         MB_UNIQ_MODE_TO_SECTION[`rclive-sep-${sep}-${facet}`] = `rcLiveSep${kind}`;
     }));
+    // "Entity info - Type": one `enttype-<type>` mode per kind of related entity.
+    Object.keys(_EVENT_REL_TARGET_COLS).forEach(t => { MB_UNIQ_MODE_TO_SECTION[`enttype-${t}`] = 'entityTypeMix'; });
     // "Findings - Warning/Error": one `finding-<id>` mode per FINDINGS entry.
     FINDINGS.forEach(f => {
         MB_UNIQ_MODE_TO_SECTION[`finding-${f.id}`] = f.level === 'error' ? 'findingsError' : 'findingsWarn';
@@ -72150,6 +74765,27 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Highlights the instrument links a checked "Instrument info - Icon"
+     * entry matched: those WITH an "Instrument Icons Everywhere" icon for
+     * `ii-icon-yes`, those WITHOUT one for `ii-icon-no`. The icon itself has
+     * no text to mark, so the link name is what gets the plain
+     * `mb-column-filter-highlight` — already in `_COLLAPSE_MATCH_SEL`, so a
+     * match hidden in a collapsed cell still tints its toggle.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - `'ii-icon-yes'` or `'ii-icon-no'`.
+     * @returns {void}
+     */
+    function _highlightInstrumentIconMatch(cell, mode) {
+        const wantIcon = mode === 'ii-icon-yes';
+        _iiInstrumentLinks(cell).forEach(a => {
+            if (!!_findInstrumentLinkIcon(a) !== wantIcon) return;
+            a.normalize();
+            highlightCrossTag(a, /[\s\S]+/g, 'mb-column-filter-highlight');
+        });
+    }
+
+    /**
      * Row-level counterpart of `_highlightPendingEditsMatch()`, for the ⏳
      * filter-bar toggle.
      *
@@ -73204,6 +75840,8 @@ a { color: #1565c0; }`;
                                     _highlightLocalePrimaryMatch(row.cells[f.idx]);
                                 } else if (mode === 'pending-edits-yes' || mode.startsWith('pendingedit:')) {
                                     _highlightPendingEditsMatch(row.cells[f.idx], mode);
+                                } else if (mode === 'ii-icon-yes' || mode === 'ii-icon-no') {
+                                    _highlightInstrumentIconMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'instrument-has-comment') {
                                     _highlightInstrumentCommentMatch(row.cells[f.idx]);
                                 } else if (mode === 'instrument-has-description') {
@@ -75919,17 +78557,16 @@ a { color: #1565c0; }`;
         // feature set from the live H2 heading FIRST, so the merged features
         // reflect the actual entity type shown on the current page
         // (Releases, Events, Recordings, etc.).
-        // A button with `ownFeatures` (only "🗂 Sidebar as tables") renders
-        // something else than its page type, so none of the page type's
-        // features apply; and its `pageType` replaces the detected one for this
-        // render (a second press reloads the page, which detects it afresh).
-        const _ownFeatures = !!buttonConfig.ownFeatures;
-        if (buttonConfig.pageType) pageType = buttonConfig.pageType;
-        const entitySpecificFeatures = _ownFeatures ? {} : resolveEntityFeaturesFromH2(baseDef);
+        // A button with `replaceFeatures` (the relationship-tables buttons,
+        // _relTablesButton(); "🗂 Sidebar as tables", _sbTablesButtons()) runs
+        // with ITS features only: none of the base definition's features or
+        // entityFeatures apply to its tables.
+        const _replaceFeatures = !!buttonConfig.replaceFeatures;
+        const entitySpecificFeatures = _replaceFeatures ? null : resolveEntityFeaturesFromH2(baseDef);
 
-        const mergedFeatures = {
+        const mergedFeatures = _replaceFeatures ? { ...(buttonConfig.features || {}) } : {
             ...(entitySpecificFeatures),       // entity-specific overrides (e.g. series-releases)
-            ...(_ownFeatures ? {} : (baseDef.features || {})), // base definition features (normally empty for series-releases)
+            ...(baseDef.features || {}),       // base definition features (normally empty for series-releases)
             ...(buttonConfig.features || {})   // per-button feature overrides (highest priority)
         };
 
@@ -75945,6 +78582,19 @@ a { color: #1565c0; }`;
             ...buttonConfig,
             features: mergedFeatures
         };
+        if (_replaceFeatures) {
+            // The base definition's per-heading feature map would otherwise be
+            // consulted per group (resolveEntityFeaturesFromH3()).
+            delete activeDefinition.entityFeatures;
+        }
+        // A button with its own `type` runs as that pageType: every
+        // pageType-keyed branch of the base definition (release-tracks' AR
+        // columns, recording-releases' release columns, …) stays out of its
+        // render. Every later press reloads the page, which re-detects.
+        if (buttonConfig.type && buttonConfig.type !== pageType) {
+            Lib.debug('init', `Button "${buttonConfig.label}" runs as pageType '${buttonConfig.type}' (page: '${pageType}').`);
+            pageType = buttonConfig.type;
+        }
 
         // Per-entity tableMode override: when the resolved entityFeatures block declares
         // its own tableMode (e.g. 'Release groups' in collections-releases is 'multi'
@@ -76438,6 +79088,10 @@ a { color: #1565c0; }`;
         if (activeDefinition.features?.eventDetailsToTables) {
             applyEventDetailsToTables(activeDefinition);
         }
+        // Same for the relationship-tables pages (org/relationship-tables-pt.org).
+        if (activeDefinition.features?.relDetailsToTables) {
+            applyRelDetailsToTables(activeDefinition);
+        }
 
         // ── sidebarToTables pre-processing ───────────────────────────────────
         // "🗂 Sidebar as tables": the sidebar's facts, links and tags become
@@ -76493,6 +79147,15 @@ a { color: #1565c0; }`;
         // <table class="tbl"> — see applyBbYearToTable's JSDoc.
         if (activeDefinition.features?.bbYearToTable) {
             applyBbYearToTable(activeDefinition);
+        }
+        // Brucebase Relations ('bb-relations'): the letter tabs become a table.
+        if (activeDefinition.features?.bbRelationsToTable) {
+            applyBbRelationsToTable(activeDefinition);
+        }
+        // Brucebase Recent changes ('bb-recent-changes'): the live page gets
+        // an empty table; the rows come from the AJAX pages fetched below.
+        if (activeDefinition.features?.bbChangesToTable) {
+            applyBbChangesToTable(activeDefinition);
         }
 
         // ── bsRecordsToTable pre-processing ──────────────────────────────────
@@ -76597,6 +79260,12 @@ a { color: #1565c0; }`;
             const _keyUnit = activeDefinition.features.pageKeys.unit || activeDefinition.features.pageKeys.param;
             Lib.debug('fetch', `Context: pageKeys (${_keyUnit}): ${pageKeys.map(k => k.key).join(' ')}`);
             globalStatusDisplay.textContent = `Getting number of pages to fetch... ${maxPage} pages, one per ${_keyUnit}`;
+        } else if (activeDefinition?.features?.pageRequest) {
+            // Pages that are not URLs (Brucebase's Recent changes: a POST per
+            // page to Wikidot's AJAX module). The pressed button says how many.
+            maxPage = Math.max(1, activeDefinition.features.pageCount || 1);
+            Lib.debug('fetch', `Context: features.pageRequest, ${maxPage} page(s) by request.`);
+            globalStatusDisplay.textContent = `Getting number of pages to fetch... ${maxPage} page(s), as the button asks`;
         } else if (isAmbiguousEditsPagination) {
             // MusicBrainz edit-listing pagination never reveals a true last page
             // (the widget is a sliding window around the current page, and
@@ -76817,7 +79486,15 @@ a { color: #1565c0; }`;
                     const _isCurrentPage = pageKeys
                         ? pageKeys[p - 1].key.toLowerCase() === currentPageKey
                         : p === currentPageNum;
-                    if (!_isResume && !_isSearchPage && !buttonConfig.virtualPath && _isCurrentPage && (!overrideParams || Object.keys(overrideParams).length === 0)) {
+                    const _pageRequest = activeDefinition.features?.pageRequest;
+                    if (_pageRequest) {
+                        // Never the live document: what it shows is whatever
+                        // the site's own pager last loaded, not page p.
+                        const req = _pageRequest(p, activeDefinition);
+                        Lib.debug('fetch', `Requesting page ${p}: ${req.init?.method || 'GET'} ${req.url}`);
+                        const text = await fetchHtml(req.url, req.init || null);
+                        doc = new DOMParser().parseFromString(req.toHtml ? req.toHtml(text) : text, 'text/html');
+                    } else if (!_isResume && !_isSearchPage && !buttonConfig.virtualPath && _isCurrentPage && (!overrideParams || Object.keys(overrideParams).length === 0)) {
                         Lib.debug('fetch', `Page ${p} is current page. Using existing document.`);
                         doc = document;
                    } else {
@@ -76912,6 +79589,9 @@ a { color: #1565c0; }`;
                 if (doc !== document && activeDefinition.features?.eventDetailsToTables) {
                     applyEventDetailsToTables(activeDefinition, doc);
                 }
+                if (doc !== document && activeDefinition.features?.relDetailsToTables) {
+                    applyRelDetailsToTables(activeDefinition, doc);
+                }
                 if (doc !== document && activeDefinition.features?.sidebarToTables) {
                     applySidebarToTables(activeDefinition, doc);
                 }
@@ -76975,6 +79655,13 @@ a { color: #1565c0; }`;
                 }
                 if (doc !== document && activeDefinition.features?.bbYearToTable) {
                     applyBbYearToTable(activeDefinition, doc);
+                }
+                if (doc !== document && activeDefinition.features?.bbRelationsToTable) {
+                    applyBbRelationsToTable(activeDefinition, doc);
+                }
+                // Brucebase Recent changes: THE path — every page is an AJAX answer.
+                if (doc !== document && activeDefinition.features?.bbChangesToTable) {
+                    applyBbChangesToTable(activeDefinition, doc);
                 }
                 // brucespringsteen.it: THE path — both buttons fetch page 1.
                 if (doc !== document && activeDefinition.features?.bsRecordsToTable) {
@@ -77674,7 +80361,7 @@ a { color: #1565c0; }`;
                         // 'event-overview': each group has its own columns, so an integer
                         // column that is not in the FIRST table (the setlist's "Billing")
                         // would otherwise never resolve, and never get its numeric styling.
-                        if (pageType === 'tag-value' || pageType === 'user-tag-value' || pageType === 'user-ratings' || pageType === 'instrument-list' || pageType === 'artist-credit' || pageType === 'event-overview') {
+                        if (pageType === 'tag-value' || pageType === 'user-tag-value' || pageType === 'user-ratings' || pageType === 'instrument-list' || pageType === 'artist-credit' || pageType === 'event-overview' || _isRelTablesRun()) {
                             // Rebuild the active extractors/integer-columns/erasers from this
                             // group's own entity-specific features (entityFeatures map, if any),
                             // merged with the base features (listToTable, removeSelector, etc.) —
@@ -79046,6 +81733,12 @@ a { color: #1565c0; }`;
             initIsrcFormatting();
             initIswcValidation();
             initBarcodeValidation();
+            // "Instrument Icons Everywhere": hand icon-less copies of its
+            // anchors back to it, then carry the icons that arrive after
+            // this render into the source rows. Both are no-ops unless that
+            // userscript is at work on the page.
+            _iiReleaseIconlessAnchors();
+            _iiInstallIconReconciler();
             // Live-title flags — once per fetch, onto the source rows too
             // (see stampLiveTitleFlags()), so re-renders need no call.
             stampLiveTitleFlags();
@@ -81757,6 +84450,101 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Whether a column filter input holds nothing but ⚠️/❌ findings-menu
+     * ticks (`_setFinding()`'s cell scope writes `finding-<id>` 📊 values into
+     * a column of EVERY table). Such an input is a page-wide filter wearing a
+     * column filter's clothes, not a filter the sub-table owns.
+     *
+     * @param {HTMLInputElement} inp
+     * @returns {boolean}
+     */
+    function _isFindingOnlyColFilter(inp) {
+        if (inp.dataset.mbUniqTypedText) return false;
+        const values = _findingInputValues(inp);
+        const prefix = MB_UNIQ_STRUCTURE_MODE_PREFIX + 'finding-';
+        return values.length > 0 && values.every(v => typeof v === 'string' && v.startsWith(prefix));
+    }
+
+    /**
+     * Hides every sub-table of a multi-table page that a page-wide filter
+     * left with no row, and shows it again once a row matches. "Sub-table"
+     * means its h3, the table and every element between them (the
+     * `.mb-group-intro`, the CAA/EAA bigboxes).
+     *
+     * Page-wide: the global filter text, `_findingRowFilter`, or a findings
+     * tick in a column filter (`_isFindingOnlyColFilter()`). A sub-table with
+     * a filter of its own (a typed column filter or 📊 pick, its STF text,
+     * its ⏳ scope) is never hidden, because its inputs live in its h3/thead
+     * and would vanish with it. The same goes for the one holding the focus.
+     *
+     * Never the last one: when every sub-table on screen would be hidden, none
+     * is. Their theads hold controls that change what the filter matches (⏱
+     * turns "3:11" into the "3:11.666" just typed), and with all of them gone
+     * there is nothing left to click. A sub-table the discography view already
+     * hides (`mbDiscHidden`) does not count as one on screen.
+     *
+     * Hidden by the `.mb-empty-subtable-hidden` class (plus
+     * `data-mb-empty-hidden` on the table), never `style.display`: that holds
+     * the collapse state, the art-strip state and the discography view, all of
+     * which must survive. Called from `renderGroupedTable()`'s tail, before
+     * `_syncMasterToggleState()`. See docs/claude/filter-and-cache-invariants.md,
+     * "Empty sub-tables under a page-wide filter".
+     *
+     * @param {HTMLElement} container - Root element to scan for `table.tbl`.
+     * @returns {number} How many sub-tables are hidden after the pass.
+     */
+    function _syncEmptySubtableVisibility(container) {
+        if (!activeDefinition || activeDefinition.tableMode !== 'multi') return 0;
+        const enabled = Lib.settings.sa_hide_empty_subtables !== false;
+        const tables = Array.from(container.querySelectorAll('table.tbl'))
+            .filter(t => t.querySelector('.mb-col-filter-row'));
+        const colInputs = t => Array.from(t.querySelectorAll('thead tr.mb-col-filter-row .mb-col-filter-input'));
+        const pageWide = enabled && (
+            stripFilterPrefix(filterInput.value) !== '' ||
+            _findingRowFilter.size > 0 ||
+            tables.some(t => colInputs(t).some(_isFindingOnlyColFilter)));
+        const focused = document.activeElement;
+        // Decide every sub-table first: whether any is hidden depends on
+        // whether at least one other would stay on screen.
+        const plan = tables.map(table => {
+            const h3 = findH3ForTable(table);
+            let hide = false;
+            if (pageWide && h3 && table.tBodies[0] && table.tBodies[0].rows.length === 0) {
+                const stf = h3.querySelector('.mb-subtable-filter-container input[type="search"]');
+                const ownFilter =
+                    colInputs(table).some(inp => stripColFilterPrefix(inp.value) !== '' && !_isFindingOnlyColFilter(inp)) ||
+                    !!(stf && stf.value) ||
+                    _pendingEditsScopeActive(h3);
+                const hasFocus = !!focused && focused !== document.body &&
+                    (h3.contains(focused) || table.contains(focused));
+                hide = !ownFilter && !hasFocus;
+            }
+            return { table, h3, hide };
+        });
+        const staysOnScreen = plan.some(p => !p.hide && !(p.h3 && p.h3.dataset.mbDiscHidden === 'true'));
+        if (!staysOnScreen && plan.some(p => p.hide)) {
+            Lib.debug('filter', '_syncEmptySubtableVisibility: the filter empties every sub-table — hiding none, so their header controls stay reachable.');
+            plan.forEach(p => { p.hide = false; });
+        }
+        let hidden = 0;
+        plan.forEach(({ table, h3, hide }) => {
+            const parts = [table];
+            if (h3) {
+                for (let el = h3; el && el !== table; el = el.nextElementSibling) parts.push(el);
+            }
+            parts.forEach(el => el.classList.toggle('mb-empty-subtable-hidden', hide));
+            if (hide) {
+                table.dataset.mbEmptyHidden = '1';
+                hidden++;
+            } else {
+                delete table.dataset.mbEmptyHidden;
+            }
+        });
+        if (hidden) Lib.debug('filter', `_syncEmptySubtableVisibility: ${hidden} of ${tables.length} sub-tables hidden (no row matches the page-wide filter).`);
+        return hidden;
+    }
+
+    /**
      * Removes every row carrying `markerAttr` (a `dataset` key, e.g.
      * 'mbSeeAllRow') from each given array, in place, matched BY THE MARKER
      * rather than by DOM reference/`indexOf`. Row insertion into a rendered
@@ -82842,6 +85630,9 @@ a { color: #1565c0; }`;
                     introEl = document.createElement('div');
                     introEl.className = 'mb-group-intro';
                     introEl.innerHTML = group.introHtml;
+                    // Indented like the table it describes (table.style.marginLeft
+                    // above), so it reads as part of this sub-section, not of the page.
+                    introEl.style.marginLeft = table.style.marginLeft;
                     // Match the table's just-decided initial collapsed/expanded state
                     // (set above by the auto-expand logic) — every later toggle path
                     // (h3 click, Ctrl+Click all, Ctrl+3, master toggle) re-syncs via
@@ -83161,6 +85952,11 @@ a { color: #1565c0; }`;
         // pass — this render-time call alone isn't enough for a view switch,
         // since discography section visibility is applied AFTER this
         // renderGroupedTable() call returns.
+        //
+        // Hide the sub-tables a page-wide filter emptied (and show the ones a
+        // broader filter refilled) FIRST, so the master toggle's label counts
+        // only what is still on screen.
+        _syncEmptySubtableVisibility(container);
         _syncMasterToggleState(container);
 
         // ── Wire global collapse button for multi-table mode ──────────────────
@@ -83464,6 +86260,11 @@ a { color: #1565c0; }`;
         (activeDefinition?.features?._dynamicArColumnGlyphs || []).forEach(
             ({ columnName, glyphClass }) => _initColHeaderGlyph(columnName, glyphClass)
         );
+        // Event page: every single-kind entity column shows its glyph in the
+        // header; applyEventDetailsToTables() took it off the cells.
+        if (activeDefinition?.type === 'event-overview' || _isRelTablesRun()) {
+            Object.entries(_eventColGlyphs()).forEach(([columnName, glyphClass]) => _initColHeaderGlyph(columnName, glyphClass));
+        }
 
         // Re-apply the "extracted column" header background to every
         // release-tracks column extracted from the Title cell's "ARs" data
@@ -83659,8 +86460,11 @@ a { color: #1565c0; }`;
     function _syncMasterToggleState(container) {
         const _masterToggleEl = container.querySelector('.mb-master-toggle');
         if (!_masterToggleEl) return;
+        // A sub-table hidden because a page-wide filter emptied it keeps
+        // style.display '' (its collapse state) under the
+        // .mb-empty-subtable-hidden class — see _syncEmptySubtableVisibility().
         const _anyTableVisible = Array.from(container.querySelectorAll('table.tbl'))
-            .some(t => t.style.display !== 'none');
+            .some(t => t.style.display !== 'none' && !t.classList.contains('mb-empty-subtable-hidden'));
         _masterToggleEl.dataset.state = _anyTableVisible ? 'expanded' : 'collapsed';
         _masterToggleEl.textContent   = _anyTableVisible ? 'Hide all sub-sections' : 'Show all sub-sections';
         _setTip(_masterToggleEl, _anyTableVisible
@@ -84917,10 +87721,11 @@ a { color: #1565c0; }`;
     // A button on entity overview pages (`_sbTablesButtons()`) whose render is
     // the sidebar's facts, external links and tags as ordinary h3 + table.tbl
     // groups (`applySidebarToTables()`, built with `_eventBuildTable()` like
-    // the event overview's). Its own pageType ('sidebar-tables') and only its
-    // own features (`ownFeatures`), so nothing of the page type it sits on
-    // (the discography's views, Relationships, CAA) applies. The sidebar is
-    // only read; it stays as it is.
+    // the event overview's). Its own pageType (`type: 'sidebar-tables'`) and
+    // only its own features (`replaceFeatures`, as the relationship-tables
+    // buttons), so nothing of the page type it sits on (the discography's
+    // views, Relationships, CAA) applies. The sidebar is only read; it stays
+    // as it is.
 
     /**
      * The "🗂 Sidebar as tables" button for this page, or none: MusicBrainz
@@ -84938,7 +87743,7 @@ a { color: #1565c0; }`;
         return [{
             label: '🗂 Sidebar as tables', shortLabel: 'Sidebar', ownGroup: true,
             description: "Show the sidebar's information, external links and tags as tables. Read from this page: nothing is fetched.",
-            type: 'sidebar-tables', pageType: 'sidebar-tables', tableMode: 'multi', non_paginated: true, ownFeatures: true,
+            type: 'sidebar-tables', tableMode: 'multi', non_paginated: true, replaceFeatures: true,
             features: {
                 sidebarToTables: true,
                 groupByH3: true,
@@ -86642,6 +89447,8 @@ a { color: #1565c0; }`;
         // data-mb-findings attribute stampFindings() writes. Not column-gated:
         // the stamp already applied each finding's own column gate.
         const findingCounts = (_uniqCacheHit && _uniqCacheHit.findingCounts) || new Map();
+        // "Entity info - Type": rows per kind of related entity (_findCellEntityType()).
+        const entityTypeCounts = (_uniqCacheHit && _uniqCacheHit.entityTypeCounts) || new Map();
         let lengthDeviationWithin10Count      = _uniqCacheHit ? _uniqCacheHit.lengthDeviationWithin10Count      : 0;
         let lengthDeviationShorter10to25Count = _uniqCacheHit ? _uniqCacheHit.lengthDeviationShorter10to25Count : 0;
         let lengthDeviationLonger10to25Count  = _uniqCacheHit ? _uniqCacheHit.lengthDeviationLonger10to25Count  : 0;
@@ -86668,6 +89475,20 @@ a { color: #1565c0; }`;
         let instrumentHasCommentCount        = _uniqCacheHit ? _uniqCacheHit.instrumentHasCommentCount        : 0;
         let instrumentHasDescriptionCount    = _uniqCacheHit ? _uniqCacheHit.instrumentHasDescriptionCount    : 0;
         let instrumentHasCrossReferenceCount = _uniqCacheHit ? _uniqCacheHit.instrumentHasCrossReferenceCount : 0;
+        // "Instrument info - Icon": rows with at least one instrument link
+        // that has / lacks an "Instrument Icons Everywhere" icon — counted
+        // independently (a row can count in both), on any column, and only
+        // while that userscript is at work (`_iiOn`). See
+        // `_cellMatchesStructureMode()`'s `ii-icon-*` modes.
+        const _iiOn = _iiPresent();
+        let iiIconYesCount = _uniqCacheHit ? _uniqCacheHit.iiIconYesCount : 0;
+        let iiIconNoCount  = _uniqCacheHit ? _uniqCacheHit.iiIconNoCount  : 0;
+        // Entry value (whole cell, list item, or "» instrument:" name) →
+        // the icon to show after it (`_iiSoleIcon()`); first one seen wins.
+        // Empty unless `sa_enable_dropdown_instrument_icons` and the
+        // userscript is at work.
+        const _iiDropIcons = _iiOn && Lib.settings.sa_enable_dropdown_instrument_icons !== false;
+        const iiIconMap = _uniqCacheHit ? _uniqCacheHit.iiIconMap : new Map();
         // EVERY column, EVERY page type: MusicBrainz's own native `<span
         // class="mp">` open-edits marker — a binary presence flag pair plus
         // one entry per distinct pending entity name (see
@@ -86975,6 +89796,10 @@ a { color: #1565c0; }`;
                 //       consistently with what the column filter actually matches.
                 const v = getCleanColumnText(cell);
                 if (v) valueCounts.set(v, (valueCounts.get(v) || 0) + 1);
+                if (_iiDropIcons && v && !iiIconMap.has(v)) {
+                    const _ic = _iiSoleIcon(cell);
+                    if (_ic) iiIconMap.set(v, _ic);
+                }
                 // Count cell-structure state using expandedCells as source of truth.
                 // Counting from DOM toggle.textContent would give wrong results after a
                 // runFilter() cycle because initCollapsableColumns resets all toggles to '▶'.
@@ -87002,6 +89827,10 @@ a { color: #1565c0; }`;
                     _findCellListItems(cell).forEach(li => {
                         const t = getCleanColumnText(li);
                         if (t) _rowItemTexts.add(t);
+                        if (_iiDropIcons && t && !iiIconMap.has(t)) {
+                            const _ic = _iiSoleIcon(li);
+                            if (_ic) iiIconMap.set(t, _ic);
+                        }
                     });
                     _rowItemTexts.forEach(t => itemValueCounts.set(t, (itemValueCounts.get(t) || 0) + 1));
                     if (_rowItemTexts.size > 1 && !valueItemSequence.has(v)) {
@@ -87243,6 +90072,8 @@ a { color: #1565c0; }`;
                 const _videoMediumFlag = _findCellVideoMediumFlag(cell);
                 if (_videoMediumFlag === 'mismatch') videoMediumMismatchCount++;
                 else if (_videoMediumFlag === 'ok')  videoMediumOkCount++;
+                const _entType = _findCellEntityType(cell);
+                if (_entType) entityTypeCounts.set(_entType, (entityTypeCounts.get(_entType) || 0) + 1);
                 if (isLengthCol) {
                     const _bucket = _findCellLengthBucket(cell);
                     if (_bucket) lengthBucketValueCounts.set(_bucket, (lengthBucketValueCounts.get(_bucket) || 0) + 1);
@@ -87356,6 +90187,11 @@ a { color: #1565c0; }`;
                     if (_instrumentFacets.hasDescription)    instrumentHasDescriptionCount++;
                     if (_instrumentFacets.hasCrossReference)  instrumentHasCrossReferenceCount++;
                 }
+                if (_iiOn) {
+                    const _iiLinks = _iiInstrumentLinks(cell);
+                    if (_iiLinks.some(a => _findInstrumentLinkIcon(a)))  iiIconYesCount++;
+                    if (_iiLinks.some(a => !_findInstrumentLinkIcon(a))) iiIconNoCount++;
+                }
                 if (Lib.settings.sa_enable_pending_edits_section) {
                     // No column gate — see pendingEditValueCounts' own
                     // comment above. Names are deduped per row (a joined
@@ -87433,6 +90269,11 @@ a { color: #1565c0; }`;
                 cell.querySelectorAll('.mb-credit-instrument').forEach(s => {
                     const t = s.textContent.trim();
                     if (t) _rowInstrumentValues.add(t);
+                    const _ikey = 'instrument:' + t;
+                    if (_iiDropIcons && t && !iiIconMap.has(_ikey)) {
+                        const _ic = _findInstrumentLinkIcon(s);
+                        if (_ic) iiIconMap.set(_ikey, _ic);
+                    }
                 });
                 _rowInstrumentValues.forEach(t => instrumentValueCounts.set(t, (instrumentValueCounts.get(t) || 0) + 1));
                 const _rowAltNameValues = new Set();
@@ -87872,6 +90713,10 @@ a { color: #1565c0; }`;
                     // Use appendChild (not textContent) to preserve the badge node
                     item.appendChild(document.createTextNode(displayText));
                 }
+                // "Instrument Icons Everywhere" icon of this value's cell or
+                // list item, after the label (see iiIconMap).
+                const _iiIcon = iiIconMap.get(v);
+                if (_iiIcon) item.appendChild(_iiTrailingIconSlot(_iiIcon));
 
                 item.addEventListener('mousedown', ev => ev.preventDefault());
                 // Unify mouse hover with keyboard arrow-key focus onto the same
@@ -88698,13 +91543,14 @@ a { color: #1565c0; }`;
                 reportTrendUpCount, reportTrendDownCount, reportTrendFlatCount,
                 lengthMsPreciseCount, lengthMsWholeCount, lengthMsNoneCount,
                 lenFlagSevereCount, lenFlagWarnCount, videoMediumMismatchCount, videoMediumOkCount,
-                titleAnatomyCounts: _ta, liveTitleCounts: _tl, eventNameCounts: _te, recCommentCounts: _rc, ratingHasCount, ratingNoneCount, findingCounts,
+                titleAnatomyCounts: _ta, liveTitleCounts: _tl, eventNameCounts: _te, recCommentCounts: _rc, ratingHasCount, ratingNoneCount, findingCounts, entityTypeCounts,
                 lengthDeviationWithin10Count, lengthDeviationShorter10to25Count, lengthDeviationLonger10to25Count,
                 lengthDeviationShorter25to50Count, lengthDeviationLonger25to50Count,
                 lengthDeviationShorter50plusCount, lengthDeviationLonger50plusCount,
                 acoustidLinkedCount, acoustidUnlinkedCount,
                 localeLanguageValueCounts, localePrimaryCount, localeNotPrimaryCount,
                 instrumentHasCommentCount, instrumentHasDescriptionCount, instrumentHasCrossReferenceCount,
+                iiIconYesCount, iiIconNoCount, iiIconMap,
                 pendingEditValueCounts, pendingEditsYesCount, pendingEditsNoCount,
                 eventRoleValueCounts, roleTokenValueCounts, artTypeValueCounts, artCommentValueCounts,
                 flagIconMap, isRelCellCol, relIconCounts, relLoadStateCounts,
@@ -88733,7 +91579,7 @@ a { color: #1565c0; }`;
             lengthMsPreciseCount, lengthMsWholeCount, lengthMsNoneCount,
             lenFlagSevereCount, lenFlagWarnCount, videoMediumMismatchCount, videoMediumOkCount,
             _ta.medley, _ta.multi, _ta.eti, _ta.subtitle, _ta.series, _ta.truncated, _ta.ocRemix, _ta.allCaps,
-            _ta.noWork, _ta.hasWork, ratingHasCount, ratingNoneCount, ...findingCounts.values(),
+            _ta.noWork, _ta.hasWork, ratingHasCount, ratingNoneCount, ...findingCounts.values(), ...entityTypeCounts.values(),
             ..._ta.count.values(), ..._ta.part.values(), ..._ta.etiValue.values(),
             ..._ta.seriesNum.values(), ..._ta.format.values(),
             lengthDeviationWithin10Count, lengthDeviationShorter10to25Count, lengthDeviationLonger10to25Count,
@@ -88741,6 +91587,7 @@ a { color: #1565c0; }`;
             lengthDeviationShorter50plusCount, lengthDeviationLonger50plusCount,
             localePrimaryCount, localeNotPrimaryCount,
             instrumentHasCommentCount, instrumentHasDescriptionCount, instrumentHasCrossReferenceCount,
+            iiIconYesCount, iiIconNoCount,
             // "○ no pending edits" is normally the LARGEST count in the
             // whole panel (every row that isn't pending), so omitting it
             // here is what would visibly clip the badge column.
@@ -89377,7 +92224,7 @@ a { color: #1565c0; }`;
          * can be surfaced for every column type (plain text, extractor synthetic,
          * etc.), not only for columns with multi-row / collapsable structure.
          *
-         * @param {string} mode    - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | 'multi-medium' | 'catalog-has-prefix' | 'catalog-no-prefix' | 'catalog-none' | 'editor-any-deleted' | 'changelog-has-message' | 'changelog-no-message' | 'acoustid-linked' | 'acoustid-unlinked' | 'locale-primary' | 'locale-not-primary' | 'instrument-has-comment' | 'instrument-has-description' | 'instrument-has-crossreference' | 'pending-edits-yes' | 'pending-edits-no'
+         * @param {string} mode    - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | 'multi-medium' | 'catalog-has-prefix' | 'catalog-no-prefix' | 'catalog-none' | 'editor-any-deleted' | 'changelog-has-message' | 'changelog-no-message' | 'acoustid-linked' | 'acoustid-unlinked' | 'locale-primary' | 'locale-not-primary' | 'instrument-has-comment' | 'instrument-has-description' | 'instrument-has-crossreference' | 'ii-icon-yes' | 'ii-icon-no' | 'pending-edits-yes' | 'pending-edits-no'
          * @param {string} label   - Human-readable display text
          * @param {number} count   - Number of visible rows matching this mode
          * @param {string} [extraLabelClass] - An extra CSS class to add to
@@ -89390,8 +92237,12 @@ a { color: #1565c0; }`;
          *   whatever real styling (strikethrough, colour, …) that class
          *   gets on musicbrainz.org itself, since this script runs on the
          *   same page and never defines its own rule for that class name.
+         * @param {string} [glyphClass] - A native MusicBrainz entity glyph
+         *   class (`rglink`, `eventlink`, …) shown in a fixed-width marker
+         *   slot before the label, as `makeValueSynItem()` does for entity
+         *   names — "Entity info - Type" entries.
          */
-        const makeSynItem = (mode, label, count, extraLabelClass) => {
+        const makeSynItem = (mode, label, count, extraLabelClass, glyphClass) => {
             const item = document.createElement('div');
             item.setAttribute('role', 'option');
             _setTip(item, label);
@@ -89419,6 +92270,21 @@ a { color: #1565c0; }`;
             badge.style.minWidth        = `${panelBadgeChWidth}ch`;
             badge.style.textAlign       = 'right';
             item.appendChild(badge);
+            if (glyphClass) {
+                const markerSlot = document.createElement('span');
+                markerSlot.setAttribute('aria-hidden', 'true');
+                markerSlot.style.display        = 'inline-flex';
+                markerSlot.style.alignItems     = 'center';
+                markerSlot.style.justifyContent = 'center';
+                markerSlot.style.width          = '16px';
+                markerSlot.style.marginRight    = '4px';
+                markerSlot.style.verticalAlign  = 'middle';
+                const marker = document.createElement('span');
+                marker.className = glyphClass;
+                _guardGlyphAgainstEmptySelectorHiding(marker);
+                markerSlot.appendChild(marker);
+                item.appendChild(markerSlot);
+            }
             const _labelSpan = _appendSynLabelText(item, label);
             if (extraLabelClass) _labelSpan.classList.add(extraLabelClass);
 
@@ -89714,6 +92580,11 @@ a { color: #1565c0; }`;
                         trailingFlagSlot.appendChild(_flagGlyph);
                     }
                     item.appendChild(trailingFlagSlot);
+                }
+                // "» instrument:" entries: the "Instrument Icons Everywhere"
+                // icon of that instrument, in the same trailing position.
+                if (kind === 'instrument' && iiIconMap.has('instrument:' + value)) {
+                    item.appendChild(_iiTrailingIconSlot(iiIconMap.get('instrument:' + value)));
                 }
             }
 
@@ -90221,7 +93092,7 @@ a { color: #1565c0; }`;
             releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 ||
             reportTrendUpCount > 0 || reportTrendDownCount > 0 || reportTrendFlatCount > 0 ||
             lengthMsPreciseCount > 0 || lengthMsWholeCount > 0 ||
-            lenFlagSevereCount > 0 || lenFlagWarnCount > 0 || videoMediumMismatchCount > 0 || videoMediumOkCount > 0 ||
+            lenFlagSevereCount > 0 || lenFlagWarnCount > 0 || videoMediumMismatchCount > 0 || videoMediumOkCount > 0 || entityTypeCounts.size > 0 ||
             lengthDeviationWithin10Count > 0 || lengthDeviationShorter10to25Count > 0 || lengthDeviationLonger10to25Count > 0 ||
             lengthDeviationShorter25to50Count > 0 || lengthDeviationLonger25to50Count > 0 ||
             lengthDeviationShorter50plusCount > 0 || lengthDeviationLonger50plusCount > 0 ||
@@ -90230,7 +93101,8 @@ a { color: #1565c0; }`;
             dateCompleteCount > 0 || datePartialCount > 0 || dateRangeCount > 0 ||
             localePrimaryCount > 0 || localeNotPrimaryCount > 0 ||
             instrumentHasCommentCount > 0 || instrumentHasDescriptionCount > 0 ||
-            instrumentHasCrossReferenceCount > 0 || _titleRatingItems.length > 0 || _hasValueEntries)) {
+            instrumentHasCrossReferenceCount > 0 || iiIconYesCount > 0 || iiIconNoCount > 0 ||
+            _titleRatingItems.length > 0 || _hasValueEntries)) {
              // "empty cells" pinned first; remaining entries in ascending complexity order.
             // For CAA/EAA columns the generic structural labels are replaced with more
             // descriptive artwork-presence labels that match user intent:
@@ -90300,6 +93172,12 @@ a { color: #1565c0; }`;
             if (lenFlagWarnCount > 0)   makeSynItem('lenflag-warn', '⚠️ apart beyond the threshold', lenFlagWarnCount);
             if (videoMediumMismatchCount > 0) makeSynItem('videomedium-mismatch', '❌ video on a medium that cannot carry video', videoMediumMismatchCount);
             if (videoMediumOkCount > 0)       makeSynItem('videomedium-ok', '✅ video on a video-capable medium', videoMediumOkCount);
+            // "Entity info - Type" — a mixed relationship table's Target/Type
+            // column, kinds in MusicBrainz's order (_EVENT_REL_TARGET_COLS).
+            Object.keys(_EVENT_REL_TARGET_COLS).forEach(t => {
+                const n = entityTypeCounts.get(t);
+                if (n) makeSynItem(`enttype-${t}`, _structureModeLabel(`enttype-${t}`), n, undefined, _entityTypeGlyphClass(t));
+            });
             _renderTitleAndRatingItems();
             // "Length info - Live status" — surfaces the SAME live/studio
             // classification the buckets above already compute internally
@@ -90334,6 +93212,10 @@ a { color: #1565c0; }`;
             if (instrumentHasCommentCount > 0)     makeSynItem('instrument-has-comment', '💬 has comment', instrumentHasCommentCount);
             if (instrumentHasDescriptionCount > 0) makeSynItem('instrument-has-description', '📝 has description', instrumentHasDescriptionCount);
             if (instrumentHasCrossReferenceCount > 0) makeSynItem('instrument-has-crossreference', '↗️ has cross-reference', instrumentHasCrossReferenceCount);
+            // "Instrument info - Icon" — zero unless "Instrument Icons
+            // Everywhere" is at work AND this column holds instrument links.
+            if (iiIconYesCount > 0) makeSynItem('ii-icon-yes', '🎻 with instrument icon', iiIconYesCount);
+            if (iiIconNoCount > 0)  makeSynItem('ii-icon-no', '○ without instrument icon', iiIconNoCount);
             // "Pending edits - Presence"/"- Entity" — emitted together, and
             // ONLY when something in this column is actually pending. The
             // `pendingEditsYesCount > 0` gate is what keeps these two
@@ -90419,7 +93301,7 @@ a { color: #1565c0; }`;
                    releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 ||
                    reportTrendUpCount > 0 || reportTrendDownCount > 0 || reportTrendFlatCount > 0 ||
                    lengthMsPreciseCount > 0 || lengthMsWholeCount > 0 ||
-                   lenFlagSevereCount > 0 || lenFlagWarnCount > 0 || videoMediumMismatchCount > 0 || videoMediumOkCount > 0 ||
+                   lenFlagSevereCount > 0 || lenFlagWarnCount > 0 || videoMediumMismatchCount > 0 || videoMediumOkCount > 0 || entityTypeCounts.size > 0 ||
                    lengthDeviationWithin10Count > 0 || lengthDeviationShorter10to25Count > 0 || lengthDeviationLonger10to25Count > 0 ||
                    lengthDeviationShorter25to50Count > 0 || lengthDeviationLonger25to50Count > 0 ||
                    lengthDeviationShorter50plusCount > 0 || lengthDeviationLonger50plusCount > 0 ||
@@ -90428,7 +93310,8 @@ a { color: #1565c0; }`;
                    dateCompleteCount > 0 || datePartialCount > 0 || dateRangeCount > 0 ||
                    localePrimaryCount > 0 || localeNotPrimaryCount > 0 ||
                    instrumentHasCommentCount > 0 || instrumentHasDescriptionCount > 0 ||
-                   instrumentHasCrossReferenceCount > 0 || _titleRatingItems.length > 0 || _hasValueEntries) {
+                   instrumentHasCrossReferenceCount > 0 || iiIconYesCount > 0 || iiIconNoCount > 0 ||
+                   _titleRatingItems.length > 0 || _hasValueEntries) {
             // Non-collapsable column (or a collapsable one with zero rows in
             // any multi-row-family state this render).
             if (emptyCellCount > 0)     makeSynItem('empty',          '○ empty cells',           emptyCellCount);
@@ -90476,6 +93359,12 @@ a { color: #1565c0; }`;
             if (lenFlagWarnCount > 0)   makeSynItem('lenflag-warn', '⚠️ apart beyond the threshold', lenFlagWarnCount);
             if (videoMediumMismatchCount > 0) makeSynItem('videomedium-mismatch', '❌ video on a medium that cannot carry video', videoMediumMismatchCount);
             if (videoMediumOkCount > 0)       makeSynItem('videomedium-ok', '✅ video on a video-capable medium', videoMediumOkCount);
+            // "Entity info - Type" — a mixed relationship table's Target/Type
+            // column, kinds in MusicBrainz's order (_EVENT_REL_TARGET_COLS).
+            Object.keys(_EVENT_REL_TARGET_COLS).forEach(t => {
+                const n = entityTypeCounts.get(t);
+                if (n) makeSynItem(`enttype-${t}`, _structureModeLabel(`enttype-${t}`), n, undefined, _entityTypeGlyphClass(t));
+            });
             _renderTitleAndRatingItems();
             if (_lengthColAvgs && _lengthColAvgs.hasLiveCol) {
                 if (_lengthColAvgs.liveKnownCount > 0)   makeSynItem('lengthlive-yes', '🎙️ Live recording', _lengthColAvgs.liveKnownCount);
@@ -90496,6 +93385,10 @@ a { color: #1565c0; }`;
             if (instrumentHasCommentCount > 0)     makeSynItem('instrument-has-comment', '💬 has comment', instrumentHasCommentCount);
             if (instrumentHasDescriptionCount > 0) makeSynItem('instrument-has-description', '📝 has description', instrumentHasDescriptionCount);
             if (instrumentHasCrossReferenceCount > 0) makeSynItem('instrument-has-crossreference', '↗️ has cross-reference', instrumentHasCrossReferenceCount);
+            // "Instrument info - Icon" — zero unless "Instrument Icons
+            // Everywhere" is at work AND this column holds instrument links.
+            if (iiIconYesCount > 0) makeSynItem('ii-icon-yes', '🎻 with instrument icon', iiIconYesCount);
+            if (iiIconNoCount > 0)  makeSynItem('ii-icon-no', '○ without instrument icon', iiIconNoCount);
             // "Pending edits - Presence"/"- Entity" — see the identical
             // block in the collapsable-column branch above for why these
             // are gated on pendingEditsYesCount rather than emitted
@@ -91318,6 +94211,11 @@ a { color: #1565c0; }`;
         if (mode === 'length-ms-none')                return '∅ no millisecond data';
         if (mode === 'lenflag-severe')                return '❌ far apart from the other length';
         if (mode === 'lenflag-warn')                  return '⚠️ apart beyond the threshold';
+        if (mode.startsWith('enttype-')) {
+            const t = mode.slice(8);
+            const name = t === 'text' ? 'Other (no link)' : (_EVENT_REL_TARGET_COLS[t] || t);
+            return _entityTypeGlyphClass(t) ? name : `🔗 ${name}`;
+        }
         if (mode === 'videomedium-mismatch')          return '❌ video on a medium that cannot carry video';
         if (mode === 'videomedium-ok')                return '✅ video on a video-capable medium';
         if (mode === 'lengthdeviation-within10')      return '🎯 within 10% of average';
@@ -91342,6 +94240,8 @@ a { color: #1565c0; }`;
         if (mode === 'instrument-has-comment')     return '💬 has comment';
         if (mode === 'instrument-has-description') return '📝 has description';
         if (mode === 'instrument-has-crossreference') return '↗️ has cross-reference';
+        if (mode === 'ii-icon-yes') return '🎻 with instrument icon';
+        if (mode === 'ii-icon-no')  return '○ without instrument icon';
         return '▶◀ multi-row: any';
     }
 
@@ -91540,6 +94440,7 @@ a { color: #1565c0; }`;
         if (mode === 'length-ms-none') return `∅ = this row's ${colName} carries no millisecond data (the ⏱ toggle was never pressed, none is on record, or the length is unknown).`;
         if (mode === 'lenflag-severe') return '❌ = this track\'s length and its recording\'s own length differ by more than the "far over" level (threshold × multiple) — the same cells tinted red with a ❌.';
         if (mode === 'lenflag-warn') return '⚠️ = this track\'s length and its recording\'s own length differ by more than the threshold, but not by the "far over" level — the same cells tinted yellow with a ⚠️.';
+        if (mode.startsWith('enttype-')) return `rows whose related entity is ${_structureModeLabel(mode).replace(/^🔗 /, '')} — every kind in this table, counted from the Target/Type cells`;
         if (mode === 'videomedium-mismatch') return '❌ = this recording is marked as a video, but its medium is a format that cannot carry video (a CD, a vinyl record, a cassette, …). Either the recording\'s video flag or the medium\'s format is wrong.';
         if (mode === 'videomedium-ok') return '✅ = this recording is marked as a video and its medium is a format that can carry video (DVD, Blu-ray, Digital Media, Enhanced CD, …).';
         if (mode === 'lengthdeviation-within10') return `🎯 = this row's ${colName} is within 10% of the page's average ${colName} (the studio-only average when a "live"-flagged row exists and was excluded from it, otherwise every known ${colName} on the page).`;
@@ -91564,6 +94465,8 @@ a { color: #1565c0; }`;
         if (mode === 'instrument-has-comment') return '💬 = this instrument\'s own cell carries a `<span class="comment">` (a short parenthetical, e.g. "(harmonica/accordion hybrid)").';
         if (mode === 'instrument-has-description') return '📝 = this instrument\'s own cell has free-text description content after its "—" separator.';
         if (mode === 'instrument-has-crossreference') return '↗️ = this instrument\'s own description contains a real link to another instrument (e.g. a family entry naming its members, or a "not to be confused with X" note).';
+        if (mode === 'ii-icon-yes') return '🎻 = at least one instrument link in this cell carries an icon from the "MusicBrainz: Instrument Icons Everywhere" userscript. A cell with several instruments can count under both entries.';
+        if (mode === 'ii-icon-no')  return '○ = at least one instrument link in this cell has no icon: either that userscript has none for it, or it has not loaded it yet — the page cannot tell which.';
         return '';
     }
 
@@ -96343,18 +99246,22 @@ a { color: #1565c0; }`;
      * total, not three per page (org/503-handling.org open question 4).
      *
      * @param {string} url - The URL to fetch (must be same-origin).
+     * @param {?RequestInit} [init=null] - Extra `fetch()` options (method,
+     *   headers, body), merged over `{ credentials: 'same-origin' }`. Only a
+     *   `features.pageRequest` pageType passes it (Brucebase's Recent changes,
+     *   a POST to Wikidot's AJAX module); every other caller sends a plain GET.
      * @returns {Promise<string>} Promise that resolves with the HTML response text.
      * @throws {Error} On a final failure. The error carries `status` (the last
      *   HTTP status seen, `0` when no response arrived) and `attempts`, so a
      *   caller can classify it without parsing `message`.
      */
-    async function fetchHtml(url) {
-        Lib.debug('fetch', `Initiating fetch for URL: ${url}`);
+    async function fetchHtml(url, init = null) {
+        Lib.debug('fetch', `Initiating fetch for URL: ${url}${init?.method ? ` (${init.method})` : ''}`);
         let lastErr = null;
         for (let attempt = 1; attempt <= _HTML_FETCH_TRIES; attempt++) {
             let retryAfterMs = 0;
             try {
-                const res = await fetch(url, { credentials: 'same-origin' });
+                const res = await fetch(url, init ? { credentials: 'same-origin', ...init } : { credentials: 'same-origin' });
                 if (res.ok) return await res.text();
                 const err = new Error(`HTTP ${res.status} ${res.statusText} for ${url}`);
                 err.status = res.status;
@@ -104405,6 +107312,9 @@ a { color: #1565c0; }`;
                 inp.value = '';
                 inp.style.backgroundColor = '';
             });
+            // A file saved from a button that runs as its own pageType (a
+            // relationship-tables button) is loaded the way that button runs.
+            _activateButtonForSavedPageType(data.pageType);
             performClutterCleanup();
             cleanupAfterInitialLoad();
 
@@ -104453,6 +107363,14 @@ a { color: #1565c0; }`;
             if (activeDefinition.features?.bbYearToTable) {
                 applyBbYearToTable(activeDefinition);
             }
+            // And Relations (the letter tabs again), and Recent changes (the
+            // site's list again; an empty table takes its place).
+            if (activeDefinition.features?.bbRelationsToTable) {
+                applyBbRelationsToTable(activeDefinition);
+            }
+            if (activeDefinition.features?.bbChangesToTable) {
+                applyBbChangesToTable(activeDefinition);
+            }
             // And for brucespringsteen.it: the reloaded page holds the site's
             // record paragraphs again; an empty table takes their place.
             if (activeDefinition.features?.bsRecordsToTable) {
@@ -104463,6 +107381,9 @@ a { color: #1565c0; }`;
             // beside the restored tables.
             if (activeDefinition.features?.eventDetailsToTables) {
                 applyEventDetailsToTables(activeDefinition);
+            }
+            if (activeDefinition.features?.relDetailsToTables) {
+                applyRelDetailsToTables(activeDefinition);
             }
 
             // Restore table headers if they were saved
@@ -105452,6 +108373,12 @@ a { color: #1565c0; }`;
             initIsrcFormatting();
             initIswcValidation();
             initBarcodeValidation();
+            // "Instrument Icons Everywhere": hand icon-less copies of its
+            // anchors back to it, then carry the icons that arrive after
+            // this render into the source rows. Both are no-ops unless that
+            // userscript is at work on the page.
+            _iiReleaseIconlessAnchors();
+            _iiInstallIconReconciler();
             stampLiveTitleFlags();
             stampFindings();
             styleTitleEti();
@@ -109948,7 +112875,11 @@ a { color: #1565c0; }`;
      */
     function _artEntityAnchorSelector(ctx, table) {
         const DEFAULT_SELECTOR = 'tbody td:not(.mb-sticky-col):not(.mb-rel-cell) a[href]';
-        if (!activeDefinition || activeDefinition.type !== 'report-detail') {
+        // The relationship-tables renders (docs/claude/relationship-tables.md)
+        // are column-scoped too: their addCAA/addEAA name the target columns,
+        // and a row's other cells (Artist credits, …) link entities that are
+        // not the row's own.
+        if (!activeDefinition || (activeDefinition.type !== 'report-detail' && !_isRelTablesRun())) {
             return DEFAULT_SELECTOR;
         }
         const addFeatureNames = activeDefinition.features && activeDefinition.features[ctx.addFeature];
@@ -122549,10 +125480,15 @@ a { color: #1565c0; }`;
             // The :not([href*="/release-group/"]) exclusion is required because
             // "/release-group/" contains the substring "/release/" and would
             // otherwise produce false positives on release-group tables.
-            const _hasReleaseLink = !!table.querySelector(
+            // The href must also BE a MusicBrainz release link, not merely contain
+            // "/release/": a URL relationship such as discogs.com/release/726598
+            // or rateyourmusic.com/release/album/… gave the relationship tables'
+            // URL groups (org/relationship-tables-pt.org) a Picard column of
+            // their own.
+            const _hasReleaseLink = Array.from(table.querySelectorAll(
                 'tbody td:not(.mb-sticky-col):not(.mb-rel-cell) ' +
                 'a[href*="/release/"]:not([href*="/release-group/"])'
-            );
+            )).some(a => /^(?:(?:https?:)?\/\/[^/]*musicbrainz\.(?:org|eu))?\/release\/[0-9a-f]{8}-/i.test(a.getAttribute('href') || ''));
             if (!_hasReleaseLink) {
                 Lib.debug('picard',
                     `initPicardTaggerColumn: skipping table — no /release/<mbid> links in tbody.`);
@@ -124425,6 +127361,63 @@ a { color: #1565c0; }`;
              */
             bbParseTabLabel(text) {
                 return _bbParseTabLabel(text);
+            },
+
+            /**
+             * Thin wrapper around `_bbRelationDisplayName()` — a Brucebase
+             * Relations sort name in display order ("Adams, Bryan" →
+             * "Bryan Adams").
+             *
+             * @param {string} sortName
+             * @returns {string}
+             */
+            bbRelationDisplayName(sortName) {
+                return _bbRelationDisplayName(sortName);
+            },
+
+            /**
+             * Thin wrapper around `_mbTitleCase()` — a title in MusicBrainz's
+             * English letter case.
+             *
+             * @param {string} text
+             * @param {{capsOnly?: boolean}} [opts]
+             * @returns {string}
+             */
+            mbTitleCase(text, opts) {
+                return _mbTitleCase(text, opts || {});
+            },
+
+            /**
+             * Thin wrapper around `_mbNormalizeTitle()` — `mbTitleCase` plus
+             * a trailing "(THE)" moved to the front.
+             *
+             * @param {string} text
+             * @returns {string}
+             */
+            mbNormalizeTitle(text) {
+                return _mbNormalizeTitle(text);
+            },
+
+            /**
+             * Thin wrapper around `_mbTypography()` — a title's punctuation
+             * as English typography.
+             *
+             * @param {string} text
+             * @returns {string}
+             */
+            mbTypography(text) {
+                return _mbTypography(text);
+            },
+
+            /**
+             * Thin wrapper around `_mbSiteTitleText()` — a title as the
+             * converters write it, both steps forced on.
+             *
+             * @param {string} text
+             * @returns {string}
+             */
+            mbSiteTitleText(text) {
+                return _mbSiteTitleText(text, { caseOn: true, typoOn: true });
             },
 
             /**

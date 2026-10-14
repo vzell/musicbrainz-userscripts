@@ -98,6 +98,10 @@ test('the fixtures still have the shapes this spec relies on', () => {
     expect(EARTH_1968_ROWS).toBeGreaterThan(5);
     expect(html('1985')).toContain('Continuation of the "Born In The U.S.A." tour - U.S.');
     expect(html('2018')).toContain('<a name="180718a">');
+    // The 2012 tour opener bolds its whole setlist: songs inside one <strong>,
+    // and a <strong> that opens with the separator.
+    expect(html('2012')).toContain('<strong>WE TAKE CARE OF OUR OWN / WRECKING BALL / BADLANDS');
+    expect(html('2012')).toContain('<strong>/ LAND OF HOPE AND DREAMS</strong> - PEOPLE GET READY');
     expect(BOOTLEG_2026).toBeGreaterThan(0);
     expect(HELP_2026).toBeGreaterThan(0);
 });
@@ -344,6 +348,31 @@ test.describe('bb-year: the other fixtures', () => {
         expect(rows[0].Tour).toBe('"Born In The U.S.A." tour - U.S.');
         // Two entries on one date: the cancelled show and its replacement.
         expect(onDate(rows, '1985-03-31').map((r) => r.Type)).toEqual(['No gig', 'Gig']);
+        expect(errors).toEqual([]);
+    });
+
+    test('2012: a setlist set all in bold is one song per row, each keeping its bold', async ({ page }) => {
+        // The tour opener (2012-03-18) puts 18 songs in ONE <strong>; split on
+        // the paragraph's top-level text alone they were one long row.
+        const errors = trackPageErrors(page);
+        const rows = await rowsOf(page, '2012');
+        expect(rows).toHaveLength(headings(html('2012')));
+        const opener = onDate(rows, '2012-03-18')[0];
+        expect(opener._setlist).toHaveLength(23);
+        expect(opener._setlist.slice(0, 3)).toEqual(['WE TAKE CARE OF OUR OWN', 'WRECKING BALL', 'BADLANDS']);
+        // "<strong>/ LAND …</strong> - PEOPLE GET READY": a medley, one row,
+        // its bold part bold and the rest not.
+        expect(opener._setlist[18]).toBe('LAND OF HOPE AND DREAMS - PEOPLE GET READY');
+        expect(opener._setlist.slice(19)).toEqual(['BORN TO RUN', 'DANCING IN THE DARK', 'AMERICAN LAND', 'TENTH AVENUE FREEZE-OUT']);
+        expect(opener._bold).toHaveLength(23);
+        expect(opener._bold).toContain('LAND OF HOPE AND DREAMS');
+        expect(opener._bold).not.toContain('LAND OF HOPE AND DREAMS - PEOPLE GET READY');
+        // The soundcheck, written plainly, splits as before.
+        expect(opener._soundcheck).toHaveLength(5);
+        // The next night: only two premieres in bold, the rest plain.
+        const second = onDate(rows, '2012-03-19')[0];
+        expect(second._setlist).toHaveLength(23);
+        expect(second._bold).toEqual(['BECAUSE THE NIGHT', 'ROSALITA (COME OUT TONIGHT)']);
         expect(errors).toEqual([]);
     });
 

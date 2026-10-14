@@ -168,23 +168,26 @@ why the path pattern is a literal inside it.
   page's buttons, and now also pins the divider and the description (two
   mutations).
 
-**The button object.** It sets `type`/`pageType: 'sidebar-tables'`,
-`tableMode: 'multi'`, `non_paginated`, `ownFeatures`, and its own features
-(`sidebarToTables`, `groupByH3`, `integerColumns` for # and Votes). It has no
-`params`, so page 1 is the live document: no request.
+**The button object.** It sets `type: 'sidebar-tables'`,
+`tableMode: 'multi'`, `non_paginated`, `replaceFeatures`, and its own
+features (`sidebarToTables`, `groupByH3`, `integerColumns` for # and Votes).
+It has no `params`, so page 1 is the live document: no request.
 
-**The two shared `startFetchingProcess()` changes.** Both are inert for
-every other button, because no other button sets these fields.
-- `buttonConfig.pageType` replaces the detected `pageType` for that render.
+**How `startFetchingProcess()` treats it.** The same two fields main's
+relationship-tables buttons use (`_relTablesButton()`). The branch had its
+own `ownFeatures`/`pageType` pair for this; the merge of `main` on
+2026-10-14 replaced it with main's fuller version (it also drops
+`entityFeatures` and lets a disk load find the button again).
+- A button `type` replaces the detected `pageType` for that render.
   There is nothing to restore: a second press reloads the page, which detects
   the type afresh. Without it, `artist-releasegroups`' own branches run on the
   sidebar render; a mutation proves it.
-- `ownFeatures` drops the page type's features and entity features from the
-  merge. On today's pages this is covered: the leaked features find no column
-  of theirs, and the event page's `eventDetailsToTables` output is removed
-  again by the sidebar converter. The mutation is recorded as `expect:
-  "pass"` with that reason. `ownFeatures` stays as the guard for a page type
-  whose features WOULD act on `#`, `Kind` or `Votes`.
+- `replaceFeatures` drops the page type's features and entity features from
+  the merge. On today's pages this is covered: the leaked features find no
+  column of theirs, and the event page's `eventDetailsToTables` output is
+  removed again by the sidebar converter. The mutation is recorded as
+  `expect: "pass"` with that reason. `replaceFeatures` stays as the guard for
+  a page type whose features WOULD act on `#`, `Kind` or `Votes`.
 
 **The converter** (`applySidebarToTables()`). It is called from the live
 pre-processing and for a fetched page, next to `applyEventDetailsToTables()`.

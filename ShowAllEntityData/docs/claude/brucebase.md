@@ -17,6 +17,13 @@ Since `feature/bb-years` it also runs on the **year pages** (`/1975`, …,
 `sa_bb_year_pages`: see "Year pages — `bb-year`" below. The sections up to
 there describe `bb-songs`.
 
+Since `feature/bb-recent-changes-relations` it also runs on **Relations**
+(`stats:relations`, `bb-relations`) and **Recent changes**
+(`system:recent-changes`, `bb-recent-changes`, the one pageType whose pages
+are AJAX requests, `features.pageRequest`), both under `sa_enable_brucebase`:
+see the last two sections. Titles on every Brucebase table follow
+docs/claude/foreign-title-case.md.
+
 ## The page
 
 Checked on the snapshot `debug/bb-songs.html` (saved from the browser,
@@ -287,8 +294,17 @@ Previous / Listing / Next line stay. On the live document
 `<h2 class="mb-bb-list-heading">Events</h2>` goes before the table.
 
 - Soundcheck and Setlist are `<ul><li>`, one song per row, split on " / " in
-  the paragraph's TOP-LEVEL text only (a song keeps its `<strong>`/`<em>` and
-  "(with …)"); `collapsableColumns` gives them the ▶N toggle.
+  the paragraph's top-level text AND inside an inline run that spans several
+  songs (`_bbSplitInline()`, `_bbIsSplittableInline()`; a song keeps its
+  `<strong>`/`<em>` — each piece gets its own shallow copy of the run — and
+  "(with …)"); `collapsableColumns` gives them the ▶N toggle. Top-level only
+  was the first version, and it left a tour opener set in bold as ONE row
+  (2012-03-18: eighteen songs in one `<strong>`, then "<strong>/ LAND OF HOPE
+  AND DREAMS</strong> - PEOPLE GET READY"). The probe cache has four such
+  openers (1984-06-29, 1999-04-09, 2009-04-01, 2012-03-18; +102 songs over
+  `check-bb-year-converter.js`, 0 problems); the italic runs with " / " in
+  the cache are lyrics in descriptions, which never reach the splitter.
+  Fixture `bb-year-2012.html`.
 - Notes clones the description with links made absolute (`_bbAbsHref()`),
   so its `/song:` links get the song preview (`_dpSiteForLink()` takes any
   `/song:` link in `table.tbl > tbody` when `sa_bb_detail_preview` is on).
@@ -374,3 +390,140 @@ Fixtures: `python3 scripts/build-bb-fixtures.py` writes
 the server writes `&quot;`) and `debug/bb-year-cache/` (the probe's cache);
 a snapshot not on the machine is skipped and its fixture kept.
 `tests/support/bbFixture.js`'s `loadBbYearPage()` serves them.
+
+## Relations — `bb-relations`
+
+Written on branch `feature/bb-recent-changes-relations` (2026-10-13).
+`https://brucebase.wikidot.com/stats:relations`: everyone Bruce Springsteen
+shared a stage or a studio with, plus family and friends. Under the master
+switch `sa_enable_brucebase` (no setting of its own), its own `@include` line
+together with Recent changes.
+
+### The page
+
+Checked on the user's snapshots `debug/bb-relations-0-9.html` and
+`debug/bb-relations-a.html` (`#main-content` only, the same page with another
+tab active) and on the page as the server sends it
+(`debug/bb-relations-raw.html`, `scripts/probe-bb-recent-changes.py`,
+2026-10-12):
+
+- One YUI tabview like the song list's, 28 tabs: `=- 0-9 -=`, `=- A -=` …
+  `=- Z -=`, `=- & -=` (the band names with "&": "Bob Seger & The Silver
+  Bullet Band"). No second tabview.
+- Each panel is a two-column table: `<p><strong>Persons</strong> (77)</p>`,
+  `<hr>`, a `.list-pages-box` with `ul > li > a[href^="/relation:"]`; then the
+  same for **Bands**. No other group in the tabs (the "#1 Fan: 2" and
+  "Animals: 1" counts above it are not tabs).
+- **2,892 entries, all distinct** (no entry in two tabs); 2,627 persons, 265
+  bands. The site's own per-tab counts are out of date on C, F and M; nothing
+  compares against them.
+- **Names are in sort form**: "Adams, Bryan", "Alliance Singers, The", "Edge,
+  The", "lang, k.d.", "Fields, Elysian". 61 persons have no comma (Akil, Bono,
+  D'Angelo). Exactly three names have a comma that is not a sort form, all
+  bands: "Crosby, Stills & Nash", "Crosby, Stills, Nash & Young" (in "&") —
+  and "Fields, Elysian", which is one.
+
+### The converter — `applyBbRelationsToTable()`
+
+Gated by `features.bbRelationsToTable`, called from the same three places as
+the others. `_bbFindSongTabview(doc, '/relation:')` (the song-list finder,
+which now takes the link prefix), `_bbRelationsCollect()` pairs tab i with
+panel i and reads `p > strong` group headings and the links after them in
+document order. Rows: **Name** (linked, the display form), **Sort name** (as
+the site lists it), **Type** (Person / Band), **Letter**.
+`_bbRelationDisplayName()` turns the sort name round at its one ", " — not when
+there is more than one, and not when what follows holds an "&" — so "Adams,
+Bryan" → "Bryan Adams", "Alliance Singers, The" → "The Alliance Singers",
+"Crosby, Stills & Nash" stays. With `sa_foreign_typography` on both names get
+typographic punctuation ("D’Angelo", "1992–93 World Tour Band, The"); their
+case is never changed (docs/claude/foreign-title-case.md). Placement as on the
+song list: the table takes the tabview's place, the YUI script goes, `<h2
+class="mb-bb-list-heading">Relations</h2>` before it, the counts above stay.
+
+## Recent changes — `bb-recent-changes`
+
+Written on the same branch. `https://brucebase.wikidot.com/system:recent-changes`:
+Wikidot's change log of the whole wiki. Under `sa_enable_brucebase`.
+
+### The page — not paginated by URL
+
+- The user's snapshot `debug/bb-recent-changes.html` (`#main-content` only,
+  after switching "Revisions per page" to 200) and the server's page
+  (`debug/bb-recent-changes-raw.html`, 20 changes).
+- The list sits in `#site-changes-list`: a pager, then one
+  `div.changes-list-item` per change — a `<table>` with `td.title` (a link
+  whose text is "category: Title", the category only when the page has one),
+  `td.flags` (one `span.spantip` per flag letter), `td.mod-date`
+  (`span.odate time_<epoch>`), `td.revision-no` ("(rev. 34)", or "(new)"),
+  `td.mod-by` (`span.printuser` with the Wikidot profile link) — and, for
+  about three changes in four, a `div.comments`.
+- **The pager and "Update list" never change the URL.** Wikidot's
+  `SiteChangesModule.js` (fetched 2026-10-12) POSTs to
+  `/ajax-module-connector.php` with `moduleName=changes/SiteChangesListModule`,
+  `page`, `perpage` (10–200), `categoryId`, `options` (the ticked revision
+  types as JSON) and `wikidot_token7`, and drops the JSON answer's `body` into
+  `#site-changes-list`. The token must equal the `wikidot_token7` cookie
+  (`wrong_token7` otherwise).
+- **The flag letters' meaning is in the SERVER's `title`s** ("content source
+  text changed" …); the live page's hover-tip script empties them, which is
+  why the user's snapshot shows `title=""`. `_BB_CHANGES_FLAGS` holds the
+  seven, verbatim from the probe: N, S, T, R, A, M, F.
+- **The history is deep.** At 200 a page, page 100 is a year back
+  (2025-10-17) and page 1,000 is 2020-12-14; the pager never shows a last
+  page. So no "all" button.
+- `scripts/probe-bb-recent-changes.py` reads the page, AJAX pages 1 and 2 and
+  `stats:relations`, prints counts, flags and timings (0.7 s, 1.4 s, 1.1 s;
+  Relations 19.5 s), and saves them under `debug/` for the fixture builder.
+  Env: 2026-10-12T22:32Z · vzell-lap · WSL2 Ubuntu (Linux 6.18.40.1) · n/a.
+
+### The engine hook — `features.pageRequest`
+
+The one pageType whose pages are not URLs. `pageRequest(p, def)` returns
+`{url, init, toHtml}`; the loop calls `fetchHtml(url, init)` (its new optional
+`init`, merged over `{credentials: 'same-origin'}`), parses `toHtml(text)`,
+and never reuses the live document for such a page. `features.pageCount`
+(from the pressed button) is `maxPage`. Without `pageRequest` nothing in the
+loop changes, so MusicBrainz is untouched. A thrown `toHtml` (a non-JSON
+answer, a status other than "ok") is a failed page like an HTTP error: the
+run stops there and offers the rest (resume calls `pageRequest` again).
+
+### The pageType
+
+Three buttons: "Show the last 200 changes" (1 page), "… 1,000 …" (5),
+"… 5,000 …" (25 — 5,000 rows, exactly `sa_render_threshold`, so no dialog).
+Every request asks for 200 per page and repeats what the site's form says at
+that moment (revision types, category: `_bbChangesFormChoice()`), so the form
+still filters. At init `_bbPrepareLivePage()` also sets the site's own "Revisions
+per page" select to 200 (`_bbChangesPerPageSelect()`, the request's "change to
+200 revisions per page beforehand"), so its own "Update list" matches.
+
+`applyBbChangesToTable()` is built like `applyBsRecordsToTable()`: the live
+page gets an EMPTY table after the (hidden, not removed) `#site-changes-list`,
+under `<h2 class="mb-bb-list-heading">Recent changes</h2>`; each fetched AJAX
+answer becomes rows (`_bbChangesBuildRow()`): **Page** (the title without the
+category prefix, linked), **Category** (from the link, "" for none),
+**Flags** (one row per letter: `span.mb-bb-flag` + the meaning), **Date**
+and **Time** (local "YYYY-MM-DD" and "HH:MM:SS" from the epoch, as the site's
+script shows it; two columns since the user's second round, 2026-10-13, so
+that Date goes through `dateParts` — DD, MM, YYYY, Day, Month — and both get
+their MusicBrainz 📊 sections with no engine change: "Date info - …" for a
+`dateParts`-fed column, "Time info - Time of day" for a column named
+"Time"), **Revision** (integer; "(new)" is 0), **User** (profile, new tab),
+**Comment**. Rows are not de-duplicated across pages: a change made while the
+pages load shifts the list by one, and that row then shows twice.
+
+### Tests
+
+| Spec / script | Pins |
+|---|---|
+| `tests/fixtures/bb-relations.spec.js` | gate, toolbar, the fixture's shape (28 tabs, all distinct, the comma names); every entry one row with its type, letter and (typographic) sort name; the tabview gone, the counts kept, `<h2>` before the table; display names (five shapes, the "&" exception); typography on names and its setting; a Type filter; `bbRelationDisplayName`; Save → Load from Disk |
+| `tests/fixtures/bb-recent-changes.spec.js` (`timezoneId: Europe/Berlin`) | gate, three buttons, the select at 200, no request before a press; "200": one POST, every field (`moduleName`, `page`, `perpage` 200, `categoryId`, `options`, token = cookie), every column of all 200 rows against an independent regex read of the answer; Date's DD/MM/YYYY/Day/Month; the 📊 "Date info" sections on Date and "Time info - Time of day" on Time, counts against the answer; "1,000": pages 1–5 in order; the site's form decides types and category; Flags rows and a Flags filter; Revision sorts from 0; a Wikidot error answer stops the run; an HTTP 500 on page 3 keeps pages 1–2; Save → Load from Disk with no request |
+| `tests/fixtures/sl-include-regex.spec.js` | the new `@include` line: in and out |
+| `scripts/mutations/bb-relations-changes.json` | 19 planted defects |
+
+Fixtures: `python3 scripts/build-bb-fixtures.py` writes
+`tests/fixtures/bb-relations.html`, `bb-recent-changes.html` and
+`bb-recent-changes-p{1,2}.json` (the AJAX answers, verbatim) from the probe's
+saves; `tests/support/bbFixture.js`'s `loadBbRelationsPage()` and
+`loadBbChangesPage()` (which answers every POST with p1/p2 in turn, or an
+error, and records each request's fields).

@@ -1,0 +1,124 @@
+#+TITLE: Relationship tables on more MusicBrainz pageTypes
+#+DATE: 2026-10-12
+
+Branch =feature/relationship-tables= (on =feature/foreign-ip-popups=, 0a86cad).
+Changelog: WIP.6. Engineering notes: =docs/claude/relationship-tables.md=.
+Mockups: =org/relationship-tables-mockups.html= (published as a private
+Artifact for review).
+
+* The request
+
+Tabelize the "Relationships" sections of more pageTypes the way
+=event-overview= does (=applyEventDetailsToTables()=):
+
+1. Pages whose only data is that section and that had no pageType: place,
+   area, instrument overview.
+2. Pages with a main table plus that section: series, work, release group,
+   label and artist =/relationships= tab; recording (plus "Related works");
+   release (h2 "Credits" with h3 "Release" and "Release group").
+3. Question: can several h2 sections each have their own global filter,
+   stats, status line, Clear/toggle buttons?
+
+* Answer to 3
+
+No. The engine keeps one live dataset per page: =activeDefinition= (364
+references), =allRows= (142), =groupedRows= (204), =_filterResultCache=, and
+the global filter's fixed =mb-global-filter-*= ids (69). Within it, every h3
+sub-table has its own filter, count and collapse. Native h2 sections can be
+collapsed, without filter or stats. Pages with two data sections
+(=area-releases=, =artist-aliases=) use either/or buttons: pressing one
+removes the other section, pressing again reloads. A multi-section engine
+would be a separate, large refactor.
+
+* Decisions (user, 2026-10-12)
+
+- Coexistence: either/or buttons. Folding Relationships into the main
+  dataset was rejected as risky; a multi-section engine is out of scope.
+- The page's own "Show all…" button renders exactly as before; the native
+  Relationships/Credits section stays a collapsible, non-filterable h2
+  section. Only the new button builds tables.
+- The new button removes the main data section for its render.
+- Dates: Begin/End columns, both also through =dateParts= (B-*, E-*).
+- Series positions: one Number column; Number and Order as soon as the two
+  differ for an entry.
+- Mockups first, then stop for review (done; reviewed with the points above).
+
+* Probes
+
+Env: 2026-10-12T18:28Z · vzell-lap · WSL2 (Linux 6.18.40.1) · Playwright Chromium (capture), n/a (probe reading) · no Tampermonkey.
+
+- Plain =curl= now gets MusicBrainz's "Verifying your browser" proof-of-work
+  page; the ten example pages were captured with
+  =tests/support/capture-raw-page.js= as =tests/fixtures/rel-*-overview.html=.
+- =scripts/probe-rel-sections.js= (every h2 of =#content=, its
+  =table.details= phrases and target lines, h3 sub-blocks):
+  | Page          | h2 order                                     | lists / targets |
+  |---------------+----------------------------------------------+-----------------|
+  | place         | Relationships                                | 5 / 5           |
+  | area (US)     | Relationships                                | 11 / 279        |
+  | instrument    | Description, Relationships                   | 4 / 4           |
+  | series        | Events (tbl), Relationships                  | 2 / 3           |
+  | work          | Annotation, Relationships, Recordings (tbl)  | 11 / 17         |
+  | label rels    | Relationships, Appearances (tbl)             | 2 / 7           |
+  | artist rels   | Relationships, Appearances (tbl)             | 41 / 162        |
+  | release group | Wikipedia, Album (tbl), Relationships        | 8 / 12          |
+  | recording     | Appears on releases (tbl), Relationships, Related works (1 h3) | 21 / 25 + 3 |
+  | release       | Annotation, …, Tracklist (tbls), Credits (#bottom-credits: 2 h3) | 2 + 6 phrases / 13 |
+  No list on these pages is truncated or has a "show more" control.
+- Env: 2026-10-12T19:12Z · vzell-lap · Playwright Chromium, logged out.
+  =scripts/probe-release-credits-layouts.js f50fcf09-…=: opened anonymously the
+  release shows the INLINE layout (toggle reads "Display credits at bottom");
+  =#bottom-credits= = h2 "Credits", =#release-relationships=,
+  =#release-group-relationships=. After the toggle ("at bottom") it also
+  holds three =div.bottom-credits= blocks ("Medium 1 (CD)" …) with every
+  track's credits, BEFORE the two release blocks. The choice survives a
+  reload. Hence: read the two blocks by id.
+- Attribute forms seen across the ten pages: =(from X until Y)=, =(from X to
+  present)=, =(until X)=, =(in X)=, =(on X)=, =(ended)=, =(number: N) (order: N)=,
+  =(order: N)= alone, =(in 1997: number: 1997) (order: 10)=, =(on 2009-02-01:
+  number: 43) (order: 19)=. A series' own disambiguation can look like a date
+  ("Rolling Stone: 50 Greatest Live Albums of All Time (2015-04-29)" is a
+  =span.comment=), and stays Disambiguation.
+- Ended URL relationships: =<span class="deleted"><bdi>https://…</bdi></span>
+  [info] (until 2020-10-12)=, no link (4 on the artist's tab).
+
+* What was built
+
+- =applyRelDetailsToTables()= + =_relRemoveMainSections()=, =_relTablesFeatures()=,
+  =_relTablesButton()=, =_isRelTablesRun()=; attribute parsing =_relClassifyAttr()=,
+  =_relPeelAttrs()=, =_relRowAttrs()=; opt-in options on =_eventRelColumns()=,
+  =_eventRelRowsFrom()=, =_eventRelParseLine()=.
+- Button keys: =type= (runs as that pageType), =replaceFeatures=, =showIf=.
+  Disk load: =_buttonForSavedPageType()=, =_activateButtonForSavedPageType()=.
+- A recording on no release keeps its Relationships button
+  (=_noMainButton=) instead of drawing no toolbar.
+- Settings group "🔗 RELATIONSHIP SECTIONS": =sa_enable_relationship_tables=
+  (on), =sa_relationship_tables_one_table= (off), =sa_relationship_tables_related= (on).
+- Found on the way, fixed: Picard's per-table release-link guard matched any
+  href containing "/release/" (discogs.com/release/…, rateyourmusic.com/release/…).
+
+* Review round 2 (user, 2026-10-12, WIP.7)
+
+1. Work: "フジパシフィックミュージック (Fujipacific Music, Inc.)" — the
+   parenthesis is MusicBrainz's =<i title="Primary alias">= inside the
+   disambiguation span → its own "Primary alias" column.
+2. Artist "member of": "(from 1964-12 until 1965-06: lead vocals, electric
+   guitar)" → Begin, End (both through =dateParts=) and a multi-row Credits
+   (=debug/member-of.html=). The date leads the group, which ends in a link.
+3. Area: a) on the user's live page "MusicBrainz More Flags Everywhere" wraps
+   the target and the following comma (=debug/area-USA-initial.html=), so the
+   chain fell into Details for 51 of 57 rows; the comma is moved back out,
+   one "Parent area" column remains. b) Genre and Instrument glyphs move to
+   the header.
+4. Inline cover art before release-group (and release) targets, event art
+   before event targets, also in a mixed Target column
+   (=debug/CAA-EAA-beforetitle.html=; fixture
+   =tests/fixtures/rel-release-art-overview.html=, release 1d404e1d).
+5. The event page gets the same Begin/End and Number/Order columns — and,
+   since it parses through the same options, ended URLs and primary aliases.
+   Its "(order: 150)" moved from Details to Number.
+
+* Open / later
+- No snapshot baselines for the three new pageTypes yet.
+- The ▶ "expand release group" toggle (=sa_enable_expand_rgs=) appears on
+  release-group links in these tables, as on every other table on those pages.
