@@ -4539,6 +4539,17 @@
                          'device previews are on at all, and none on a desktop browser.'
         },
 
+        sa_pop_mb_image: {
+            label: 'Pictures in artist, label and place previews',
+            type: 'checkbox',
+            default: true,
+            description: 'On by default. When Space opens the window on an artist, a label or a place, it shows ' +
+                         'the entity\'s picture: the Wikimedia Commons file MusicBrainz links as its image or ' +
+                         'logo, else the one its Wikidata item names (one or two small requests to Wikidata). ' +
+                         'Click it for the viewer. Asked only on Space, never on a hover; afterwards the card ' +
+                         'shows it too, from this browser\'s storage.'
+        },
+
         sa_pop_mb_ttl_hours: {
             label: 'Keep MusicBrainz answers for (hours)',
             type: 'number',
@@ -16477,6 +16488,8 @@
             return {
                 image: l.href, thumbnails: { 250: thumb || l.href }, types: [], external: true,
                 comment: ((label && label.textContent) || (img && img.alt) || '').trim(),
+                // An entity's Commons picture (`_mbPopWindowPicture()`) links its file page.
+                ...(l.dataset.mbArtvPage ? { pageUrl: l.dataset.mbArtvPage, pageLabel: 'Open on Commons' } : {}),
             };
         });
         const k = links.indexOf(a);
@@ -16827,6 +16840,13 @@
             /* The MusicBrainz entity cards (_mbEntitySource()): one track per
                line with its length at the end. */
             #mb-dp-peek .mb-pop-card { width: 440px; max-width: 100%; }
+            /* An artist's, label's or place's picture (_mbPopCardPicture()),
+               known only after a Space: 64 px beside the facts. */
+            #mb-dp-peek .mb-pop-card-pic { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; align-items: start; }
+            #mb-dp-peek .mb-pop-pic img { display: block; width: 64px; height: 80px; object-fit: cover; border: 1px solid #d9cfbd; border-radius: 2px; background: #f3eee3; }
+            #mb-dp-peek .mb-pop-main { min-width: 0; }
+            .mb-dp-dialog .mb-pop-xpic { margin: 6px 0 4px; }
+            .mb-dp-dialog .mb-pop-xpic .mb-dp-xcover { margin: 0 0 3px; cursor: zoom-in; }
             #mb-dp-peek .mb-pop-tracks { columns: 1; }
             :is(#mb-dp-peek, .mb-dp-dialog) .mb-pop-tracks li { display: flex; gap: 6px; align-items: baseline; }
             :is(#mb-dp-peek, .mb-dp-dialog) .mb-pop-tracks .mb-dp-pos { flex: none; min-width: 1.6em; margin-right: 0; }
@@ -39386,12 +39406,17 @@
      * @param {function(Object, object): string} body - The kind's card for a loaded answer.
      * @param {?function(string): string} [failNote] - The kind's word on a
      *   failure, from its detail ("It is probably private.").
+     * @param {string} [aside] - The entity's picture (`_mbPopCardPicture()`),
+     *   shown to the left of a loaded card.
      * @returns {string}
      */
-    function _mbPopCardShell(t, st, body, failNote = null) {
+    function _mbPopCardShell(t, st, body, failNote = null, aside = '') {
         if (st && st.status === 'done' && st.data) {
-            return `<div class="mb-pop-card">${body(st.data, t)}<div class="mb-tt-foot">` +
-                `${_rgEsc(_dpAgeText({ cached: st.cached, at: st.at }))} · <kbd>Space</kbd> more · <kbd>Esc</kbd> close</div></div>`;
+            const main = `${body(st.data, t)}<div class="mb-tt-foot">` +
+                `${_rgEsc(_dpAgeText({ cached: st.cached, at: st.at }))} · <kbd>Space</kbd> ${aside ? 'picture &amp; more' : 'more'} · <kbd>Esc</kbd> close</div>`;
+            return aside
+                ? `<div class="mb-pop-card mb-pop-card-pic">${aside}<div class="mb-pop-main">${main}</div></div>`
+                : `<div class="mb-pop-card">${main}</div>`;
         }
         const head = `<div class="mb-tt-title">${_rgEsc(t.name || t.kind)}</div><div class="mb-tt-comment">${_rgEsc(t.kind)}</div>` +
             '<div class="mb-tt-rule"></div>';
@@ -39438,8 +39463,9 @@
      * @param {{cardInc?: string, query?: function(object): {key: string, url: string},
      *   cardHtml: function(Object, object): string, windowHtml: function(Object, object): string,
      *   pin?: function(object, Object, boolean, function(): void): void,
-     *   failNote?: function(string): string}} spec - `query(t)`, when given,
-     *   feeds the kind from another request than its lookup (a search).
+     *   failNote?: function(string): string, cardAside?: function(object): string}} spec - `query(t)`,
+     *   when given, feeds the kind from another request than its lookup (a
+     *   search); `cardAside(t)`, the picture beside a loaded card.
      * @returns {{card: function(object, boolean, function(): void): string,
      *   extracted: function(object, boolean, boolean, function(): void): string}}
      */
@@ -39448,7 +39474,9 @@
             card(t, start, repaint) {
                 const q = spec.query ? spec.query(t) : _mbPopLookup(t, spec.cardInc);
                 if (start) _mbWsLoad(q.key, q.url, { repaint, wanted: _mbPopWanted(t) });
-                return _mbPopCardShell(t, _mbPop.get(q.key), spec.cardHtml, spec.failNote);
+                // A picture only from this browser's storage: a hover asks no one.
+                if (start && spec.cardAside) _mbPopImagePeek(t, repaint);
+                return _mbPopCardShell(t, _mbPop.get(q.key), spec.cardHtml, spec.failNote, spec.cardAside ? spec.cardAside(t) : '');
             },
             extracted(t, start, force, repaint) {
                 const q = spec.query ? spec.query(t) : _mbPopLookup(t, spec.cardInc);
@@ -40399,6 +40427,242 @@
         });
     }
 
+    // ── The entity's picture (docs/claude/sidebar.md, part 4) ────────────────
+    // What musicbrainz-server's Controller/Role/CommonsImage.pm would answer
+    // if its Commons switch were on (it is off on musicbrainz.org, DEBUG-NOTES
+    // 2026-10-11): an `image`/`logo` relationship to a Commons file, else the
+    // entity's Wikidata item's image (P18) or logo (P154). Asked only when
+    // Space opens the window, once its url-rels are there; a card shows it
+    // from memory or IndexedDB only. "No picture" is kept too.
+
+    /** Version of the picture records kept in IndexedDB (`_mbPopImageLoad()`); bump when their shape changes. */
+    const _MB_POP_IMG_VERSION = 1;
+
+    /**
+     * The kinds that show a picture, and the Wikidata properties each asks,
+     * in order. A label asks its logo first: Columbia's P18 is a photograph
+     * of something else (scripts/probe-wikidata-image.py, 2026-10-11), where
+     * MusicBrainz's server would ask P18 first.
+     * @type {Object<string, string[]>}
+     */
+    const _MB_POP_IMG_PROPS = { artist: ['P18', 'P154'], label: ['P154', 'P18'], place: ['P18', 'P154'] };
+
+    /** Picture records read from IndexedDB for a card (`_mbPopImagePeek()`), by key; `null` while reading or when none. */
+    const _mbPopImgPeek = new Map();
+
+    /** Picture keys a ⟳ asked for while the window's url-rels were still loading: the next start skips the caches. */
+    const _mbPopImgAgain = new Set();
+
+    /**
+     * The cache key of an entity's picture record.
+     * @param {object} t - A target of `_mbEntitySource()`.
+     * @returns {string}
+     */
+    function _mbPopImgKey(t) {
+        return `pop:img:${t.type}:${t.id}`;
+    }
+
+    /**
+     * Whether this target's kind shows a picture (`sa_pop_mb_image`, artist,
+     * label, place).
+     * @param {object} t
+     * @returns {boolean}
+     */
+    function _mbPopImgOn(t) {
+        return Lib.settings.sa_pop_mb_image !== false && Object.prototype.hasOwnProperty.call(_MB_POP_IMG_PROPS, t.type);
+    }
+
+    /**
+     * The Commons file of the first `image` or `logo` relationship that
+     * points at one (`https://commons.wikimedia.org/wiki/File:…`), '' when
+     * none; as the server's `relationships_by_link_type_names('image', 'logo')`.
+     * @param {Array<Object>} relations - The entity's url-rels.
+     * @returns {string} The file name with spaces.
+     */
+    function _mbPopCommonsFile(relations) {
+        for (const r of relations || []) {
+            if (r.type !== 'image' && r.type !== 'logo') continue;
+            const m = /^https?:\/\/commons\.wikimedia\.org\/wiki\/File:(.+)$/i.exec((r.url && r.url.resource) || '');
+            if (!m) continue;
+            try {
+                return decodeURIComponent(m[1]).replace(/_/g, ' ');
+            } catch (_) {
+                return m[1].replace(/_/g, ' ');
+            }
+        }
+        return '';
+    }
+
+    /**
+     * The Q-id of the entity's `wikidata` relationship, '' when none.
+     * @param {Array<Object>} relations
+     * @returns {string}
+     */
+    function _mbPopWikidataItem(relations) {
+        for (const r of relations || []) {
+            const m = r.type === 'wikidata' && /^https?:\/\/(?:www\.)?wikidata\.org\/wiki\/(Q[1-9]\d*)\/?$/.exec((r.url && r.url.resource) || '');
+            if (m) return m[1];
+        }
+        return '';
+    }
+
+    /**
+     * The file a `wbgetclaims` answer names for one property: a preferred
+     * value, else the first that is not deprecated; '' when none.
+     * @param {?Object} d - The answer.
+     * @param {string} prop - `P18`, `P154`.
+     * @returns {string}
+     */
+    function _mbPopClaimFile(d, prop) {
+        const cs = ((d && d.claims) || {})[prop] || [];
+        const val = (c) => {
+            const v = c && c.mainsnak && c.mainsnak.datavalue && c.mainsnak.datavalue.value;
+            return typeof v === 'string' ? v : '';
+        };
+        const pick = cs.find(c => c.rank === 'preferred' && val(c)) || cs.find(c => c.rank !== 'deprecated' && val(c));
+        return pick ? val(pick) : '';
+    }
+
+    /**
+     * The addresses of a Commons file: a 330 px thumbnail for the card and
+     * the window, 1280 px for the viewer, and its page. `Special:FilePath`
+     * redirects to upload.wikimedia.org (probe 2026-10-11).
+     * @param {string} file
+     * @returns {{thumb: string, large: string, page: string}}
+     */
+    function _mbPopImgUrls(file) {
+        const name = encodeURIComponent(file.replace(/ /g, '_'));
+        return {
+            thumb: `https://commons.wikimedia.org/wiki/Special:FilePath/${name}?width=330`,
+            large: `https://commons.wikimedia.org/wiki/Special:FilePath/${name}?width=1280`,
+            page: `https://commons.wikimedia.org/wiki/File:${name}`,
+        };
+    }
+
+    /**
+     * Starts the entity's picture lookup, from a kind's `pin()` (the window
+     * only). `relations` is null while the url-rels are still on their way:
+     * a later repaint calls again with them. A Commons relationship asks
+     * nothing; else one `wbgetclaims` per property of `_MB_POP_IMG_PROPS`
+     * until one names a file, through `_extGet()` (Wikidata's own rate gate,
+     * anonymous, `wanted()` after the slot). Kept in `_mbPop` and IndexedDB,
+     * "no picture" included; a failure waits for ⟳ or "Try again".
+     *
+     * @param {object} t
+     * @param {?Array<Object>} relations - The entity's url-rels, once loaded.
+     * @param {boolean} again - ⟳.
+     * @param {function(): void} repaint
+     * @returns {void}
+     */
+    function _mbPopImageLoad(t, relations, again, repaint) {
+        if (!_mbPopImgOn(t)) return;
+        const key = _mbPopImgKey(t);
+        if (again) _mbPopImgAgain.add(key);
+        if (!relations) return;
+        const force = _mbPopImgAgain.delete(key);
+        const s = _mbPop.get(key);
+        if (!force && s && s.status === 'failed') return;
+        _mbLoad(key, async (wanted) => {
+            const file = _mbPopCommonsFile(relations);
+            if (file) return { ok: true, data: { file, from: 'commons-rel', item: '' } };
+            const item = _mbPopWikidataItem(relations);
+            for (const prop of item ? _MB_POP_IMG_PROPS[t.type] : []) {
+                const url = `https://www.wikidata.org/w/api.php?action=wbgetclaims&format=json&entity=${item}&property=${prop}`;
+                const res = await _extGet(url, { wanted, fetchOpts: { accept: /\bjson\b/i, headers: { 'Api-User-Agent': _EXT_AGENT } } });
+                if (res.skipped) return { skipped: true };
+                if (res.error || res.status !== 200) return { ok: false, detail: _extFailText(res) };
+                const d = _extJson(res);
+                if (!d) return { ok: false, detail: 'Wikidata answered, but not with JSON' };
+                // An item Wikidata does not have (deleted, never existed): no picture.
+                if (d.error) break;
+                const f = _mbPopClaimFile(d, prop);
+                if (f) return { ok: true, data: { file: f, from: prop, item } };
+            }
+            return { ok: true, data: { file: '', from: '', item } };
+        }, { force, repaint, wanted: _mbPopWanted(t), version: _MB_POP_IMG_VERSION });
+    }
+
+    /**
+     * Reads the entity's picture record from IndexedDB for a card, once per
+     * key per page load, and repaints when it names a file. Never a request:
+     * only a Space asks Wikidata.
+     * @param {object} t
+     * @param {function(): void} repaint
+     * @returns {void}
+     */
+    function _mbPopImagePeek(t, repaint) {
+        if (!_mbPopImgOn(t)) return;
+        const key = _mbPopImgKey(t);
+        if (_mbPop.has(key) || _mbPopImgPeek.has(key)) return;
+        _mbPopImgPeek.set(key, null);
+        Promise.resolve(_rgIdbGet(key, _MB_POP_IMG_VERSION)).then((rec) => {
+            if (!rec || !rec.data) return;
+            _mbPopImgPeek.set(key, rec.data);
+            if (rec.data.file && repaint) repaint();
+        }, () => {});
+    }
+
+    /**
+     * The entity's picture record as far as this page knows it: the window's
+     * lookup, else what the card read from IndexedDB.
+     * @param {object} t
+     * @returns {?{file: string, from: string, item: string}}
+     */
+    function _mbPopImageRecord(t) {
+        const key = _mbPopImgKey(t);
+        const s = _mbPop.get(key);
+        if (s && s.status === 'done' && s.data) return s.data;
+        return _mbPopImgPeek.get(key) || null;
+    }
+
+    /**
+     * The card's picture, 64 px beside the facts, '' when none is known.
+     * @param {object} t
+     * @returns {string}
+     */
+    function _mbPopCardPicture(t) {
+        if (!_mbPopImgOn(t)) return '';
+        const rec = _mbPopImageRecord(t);
+        if (!rec || !rec.file) return '';
+        return `<div class="mb-pop-pic"><img src="${_rgEsc(_mbPopImgUrls(rec.file).thumb)}" alt="" referrerpolicy="no-referrer"></div>`;
+    }
+
+    /**
+     * The window's picture for its CURRENT state: a loading line, the
+     * failure with "Try again" (⟳), nothing when there is none, else the
+     * picture, which opens the artwork viewer (`_dpArtViewerClick()`), with
+     * where it came from.
+     * @param {object} t
+     * @returns {string}
+     */
+    function _mbPopWindowPicture(t) {
+        if (!_mbPopImgOn(t)) return '';
+        const s = _mbPop.get(_mbPopImgKey(t));
+        if (!s) return '';
+        if (s.status === 'loading') return '<div class="mb-dp-xsub mb-pop-xpic-wait"><span class="mb-dp-spin">◌</span> Looking for a picture…</div>';
+        if (s.status === 'failed') {
+            return `<div class="mb-dp-xsub mb-pop-xpic-fail">Could not ask Wikidata for a picture (${_rgEsc(s.detail)}).</div>` +
+                '<p><button type="button" class="mb-dp-retry">⟳ Try again</button></p>';
+        }
+        const rec = s.data || {};
+        if (!rec.file) return '';
+        const u = _mbPopImgUrls(rec.file);
+        const from = rec.from === 'P18' || rec.from === 'P154' ? ` · from Wikidata ${rec.item} (${rec.from === 'P154' ? 'logo' : 'image'})` : '';
+        return `<figure class="mb-pop-xpic"><a href="${_rgEsc(u.large)}" target="_blank" rel="noopener noreferrer" data-mb-artv-ext="0" ` +
+            `data-mb-artv-page="${_rgEsc(u.page)}"><img class="mb-dp-xcover" src="${_rgEsc(u.thumb)}" alt="${_rgEsc(rec.file)}" ` +
+            `referrerpolicy="no-referrer"></a><figcaption class="mb-dp-xsub"><a href="${_rgEsc(u.page)}" target="_blank" ` +
+            `rel="noopener noreferrer">Wikimedia Commons</a> · ${_rgEsc(rec.file)}${_rgEsc(from)}</figcaption></figure>`;
+    }
+
+    /**
+     * The url-rels a window's picture needs, once loaded; null before.
+     * @param {?Object} st - `_mbPop` state of the lookup that carries them.
+     * @returns {?Array<Object>}
+     */
+    function _mbPopLoadedRels(st) {
+        return st && st.status === 'done' && st.data ? (st.data.relations || []) : null;
+    }
+
     /**
      * A series' items in their order: its `part of` relations, by ordering
      * key, each with its number (`attribute-values.number`) and target.
@@ -40830,6 +41094,7 @@
                 const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
                     (d.disambiguation ? `<div class="mb-dp-xsub">${_rgEsc(d.disambiguation)}</div>` : '') +
                     `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type, d.gender && d.gender !== 'Not applicable' ? d.gender : ''])}</div>` +
+                    _mbPopWindowPicture(t) +
                     '<h4>Facts</h4>' + _mbPopKvHtml([
                         ['Sort name', _rgEsc(d['sort-name'] || '')],
                         ['Area', _mbPopAreaChainHtml(d.area)],
@@ -40857,9 +41122,11 @@
                     '<span class="mb-rg-dim">(official releases; the page filters the others)</span></p>';
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
+            cardAside: _mbPopCardPicture,
             pin(t, d, again, repaint) {
                 const links = _mbPopLookup(t, 'url-rels');
                 _mbPopPinLoad(t, links.key, links.url, again, repaint);
+                _mbPopImageLoad(t, _mbPopLoadedRels(_mbPop.get(links.key)), again, repaint);
                 _mbPopAreaChainLoad(t, [d.area, d['begin-area'], d['end-area']], again, repaint);
                 _MB_POP_RG_TYPES.forEach(([type]) => {
                     const q = _mbPopBrowse('release-group', `artist=${encodeURIComponent(t.id)}&type=${type}&limit=1`);
@@ -40890,6 +41157,7 @@
                 const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
                     (d.disambiguation ? `<div class="mb-dp-xsub">${_rgEsc(d.disambiguation)}</div>` : '') +
                     `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type, _mbPopLabelCode(d['label-code'])])}</div>` +
+                    _mbPopWindowPicture(t) +
                     '<h4>Facts</h4>' + _mbPopKvHtml([
                         ['Area', _mbPopAreaChainHtml(d.area)],
                         ['Active', _rgEsc(_mbPopLifeSpan(d['life-span']))],
@@ -40906,9 +41174,11 @@
                     (ps && ps.status === 'done' && ps.data ? _mbPopUrlLinksHtml(ps.data.relations) : '');
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
+            cardAside: _mbPopCardPicture,
             pin(t, d, again, repaint) {
                 const pin = _mbPopLookup(t, 'url-rels+label-rels');
                 _mbPopPinLoad(t, pin.key, pin.url, again, repaint);
+                _mbPopImageLoad(t, _mbPopLoadedRels(_mbPop.get(pin.key)), again, repaint);
                 const count = _mbPopBrowse('release', `label=${encodeURIComponent(t.id)}&limit=1`);
                 _mbPopPinLoad(t, count.key, count.url, again, repaint);
                 _mbPopAreaChainLoad(t, [d.area], again, repaint);
@@ -41049,7 +41319,7 @@
                 const map = c ? `https://www.openstreetmap.org/?mlat=${c.latitude}&mlon=${c.longitude}#map=17/${c.latitude}/${c.longitude}` : '';
                 const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
                     (d.disambiguation ? `<div class="mb-dp-xsub">${_rgEsc(d.disambiguation)}</div>` : '') +
-                    `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type])}</div><h4>Facts</h4>` + _mbPopKvHtml([
+                    `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type])}</div>${_mbPopWindowPicture(t)}<h4>Facts</h4>` + _mbPopKvHtml([
                         ['Address', _rgEsc(d.address || '')],
                         ['Area', _mbPopAreaChainHtml(d.area)],
                         ['Coordinates', c ? `<a href="${_rgEsc(map)}" target="_blank" rel="noopener">${_rgEsc(`${c.latitude}, ${c.longitude}`)}</a>` : ''],
@@ -41071,9 +41341,12 @@
                 });
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
+            cardAside: _mbPopCardPicture,
             pin(t, d, again, repaint) {
                 const browse = _mbPopBrowse('event', `place=${encodeURIComponent(t.id)}&limit=100`);
                 _mbPopPinLoad(t, browse.key, browse.url, again, repaint);
+                // The place's own lookup carries its url-rels.
+                _mbPopImageLoad(t, d.relations || [], again, repaint);
                 _mbPopAreaChainLoad(t, [d.area], again, repaint);
             },
         })),
@@ -84760,11 +85033,14 @@ a { color: #1565c0; }`;
     }
 
     // ── The sidebar picture ──────────────────────────────────────────────────
-    // MusicBrainz adds an artist's (or label's, place's) Wikimedia Commons
-    // picture to `#sidebar .entity-image .picture` after load. It gets a hover
-    // card and opens in the shared artwork viewer, the external way
-    // `_dpArtViewerClick()` opens another site's images; a copy goes beside the
-    // name. Nothing is requested: the browser already has the picture.
+    // An artist's (or label's, place's) Wikimedia Commons picture arrives in
+    // the sidebar after load: MusicBrainz's own `div.commons-image` (switched
+    // off on musicbrainz.org since at least 2026-10-11, DEBUG-NOTES.md), or
+    // another userscript's `div.entity-image`, decorated with the user's
+    // consent (only the img's address is read). It gets a hover card and
+    // opens in the shared artwork viewer, the external way
+    // `_dpArtViewerClick()` opens another site's images; a copy goes beside
+    // the name. Nothing is requested: the browser already has the picture.
 
     /** The viewer context of the sidebar picture (its own, so the bar says what it is). */
     const _SB_PIC_CTX = { key: 'sidebar', column: 'Entity image', external: true, imagesCache: new Map() };
@@ -84872,8 +85148,10 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Starts watching the sidebar for MusicBrainz's picture (it arrives after
-     * load) for up to 15 s, then wires it. MusicBrainz only.
+     * Starts watching the sidebar for its picture (it arrives after load)
+     * for up to 15 s, then wires it. MusicBrainz only. The selector is
+     * another script's markup, then MusicBrainz's own; it is a literal here
+     * because this runs at init, before this part of the file (TDZ).
      * @returns {void}
      */
     function _sbInitPicture() {
@@ -84881,7 +85159,7 @@ a { color: #1565c0; }`;
         const sidebar = document.getElementById('sidebar');
         if (!sidebar) return;
         const find = () => {
-            const img = sidebar.querySelector('.entity-image .picture img');
+            const img = sidebar.querySelector('.entity-image .picture img, .commons-image .picture img');
             if (img && (img.currentSrc || img.src)) { _sbWirePicture(img); return true; }
             return false;
         };

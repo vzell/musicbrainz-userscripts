@@ -5,11 +5,13 @@ const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
 
 // The sidebar picture (docs/claude/sidebar.md "The sidebar picture").
-// MusicBrainz adds an artist's Wikimedia Commons picture to the sidebar AFTER
-// load; the raw page has none, so each test adds it late, as MusicBrainz does,
-// and serves the upload host from a 1×1 PNG. The guarantees pinned:
+// The artist's Wikimedia Commons picture arrives in the sidebar AFTER load,
+// as another userscript's `div.entity-image` (what the user's browser shows;
+// MusicBrainz's own Commons switch is off) or as MusicBrainz's own
+// `div.commons-image`; the raw page has none, so each test adds it late and
+// serves the upload host from a 1×1 PNG. The guarantees pinned:
 //   - a picture that arrives late is wired: hover card, keyboard, and a copy
-//     beside the name in the heading;
+//     beside the name in the heading; MusicBrainz's own markup too;
 //   - a click opens the shared artwork viewer on that picture, with an
 //     "Open on Commons" link to its file page; Esc closes it and gives focus
 //     back to what opened it; Enter on the copy opens it too;
@@ -49,6 +51,19 @@ const addPicture = (page, src = SRC) => page.evaluate((s) => {
     box.innerHTML = `<div class="picture"><img src="${s}" alt=""></div>`;
     document.getElementById('sidebar').prepend(box);
 }, src);
+
+/**
+ * Adds the picture as MusicBrainz's own CommonsImage component renders it
+ * (musicbrainz-server root/static/scripts/common/components/CommonsImage.js).
+ * @param {import('@playwright/test').Page} page
+ */
+const addNativePicture = (page) => page.evaluate((s) => {
+    const box = document.createElement('div');
+    box.className = 'commons-image';
+    box.innerHTML = `<div class="picture"><img src="${s}"><br><span class="picture-note">` +
+        '<a href="https://commons.wikimedia.org/wiki/File:x.jpg">Image from Wikimedia Commons</a></span></div>';
+    document.getElementById('sidebar').prepend(box);
+}, SRC);
 
 /**
  * Waits until the page's MutationObservers have seen the last change: their
@@ -93,6 +108,16 @@ test.describe('the sidebar picture', () => {
         expect(uploads.n, 'only the picture itself was fetched (and only from the upload host)').toBeGreaterThan(0);
         expect(await page.evaluate(() => performance.getEntriesByType('resource').filter((e) => /commons-image|\/ws\/2\//.test(e.name)).length),
             'no lookup was made for it').toBe(0);
+    });
+
+    test('MusicBrainz\'s own Commons picture markup is wired too', async ({ page }) => {
+        await open(page);
+        await addNativePicture(page);
+        const native = page.locator('#sidebar .commons-image .picture img');
+        await expect(native).toHaveClass(/mb-sb-pic/);
+        await expect(avatar(page)).toHaveCount(1);
+        await native.click();
+        await expect(viewer(page)).toBeVisible();
     });
 
     test('a picture that is not a Commons file is left alone', async ({ page }) => {

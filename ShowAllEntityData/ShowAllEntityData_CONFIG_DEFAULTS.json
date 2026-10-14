@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1326+2026-10-11",
-    "schema_entries": 419,
+    "schema_entries": 420,
     "sections": 49,
-    "settings": 370,
-    "settings_with_default": 365,
+    "settings": 371,
+    "settings_with_default": 366,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 193,
+      "checkbox": 194,
       "color_picker": 62,
       "number": 54,
       "divider": 49,
@@ -468,6 +468,7 @@
     "sa_pop_ext_on_touch": "Preview external links on touch devices",
     "sa_pop_ext_ttl_hours": "Keep external answers for (hours)",
     "sa_pop_mb": "Preview linked entities on hover",
+    "sa_pop_mb_image": "Pictures in artist, label and place previews",
     "sa_pop_mb_on_touch": "Preview linked entities on touch devices",
     "sa_pop_mb_page": "Also preview links outside tables",
     "sa_pop_mb_page_on_touch": "Also preview links outside tables on touch devices",
@@ -839,6 +840,7 @@
     "sa_pop_ext_on_touch": false,
     "sa_pop_ext_ttl_hours": 168,
     "sa_pop_mb": true,
+    "sa_pop_mb_image": true,
     "sa_pop_mb_on_touch": false,
     "sa_pop_mb_page": true,
     "sa_pop_mb_page_on_touch": false,

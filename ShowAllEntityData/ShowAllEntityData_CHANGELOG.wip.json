@@ -1,5 +1,29 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-10-11",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The link previews of an artist, a label or a place show its picture: when Space opens the window, it shows the Wikimedia Commons file MusicBrainz links as the entity's image or logo, else the one its Wikidata item names (one or two small requests to Wikidata, a label's logo first). Click it for the artwork viewer, with Open on Commons. A hover never asks for it; once known, the card shows it small beside the facts, also after a reload. New setting: Pictures in artist, label and place previews."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The sidebar picture (WIP.2) also works with MusicBrainz's own Commons picture, should MusicBrainz switch it back on: today musicbrainz.org shows none, and the picture there comes from another userscript."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Tests: tests/fixtures/pop-mb-image.spec.js (8) and its mobile twin (1), one more sidebar-picture test; 11 more mutations, all caught. Probe: scripts/probe-wikidata-image.py (DEBUG-NOTES.md 2026-10-11)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-10-11",
     "sections": [
@@ -13,7 +37,7 @@
         "label": "📝 Docs",
         "items": [
           "Tests: tests/fixtures/sidebar-tables.spec.js (5); 7 more mutations, 6 caught and 1 recorded as covered by another guard.",
-          "Probes: MusicBrainz's commons-image endpoint answers scripts with a browser check and a browser with no picture even where the sidebar shows one, so the picture in the entity hover card was not built (DEBUG-NOTES.md 2026-10-11). Measured: the sidebar part of a render takes about 1.2 ms (tests/MEASUREMENTS.org)."
+          "Probes: MusicBrainz's commons-image endpoint answers scripts with a browser check and a browser with no picture even where the sidebar shows one (MusicBrainz has its Commons pictures switched off), so the picture in the entity hover card takes another route (WIP.4; DEBUG-NOTES.md 2026-10-11). Measured: the sidebar part of a render takes about 1.2 ms (tests/MEASUREMENTS.org)."
         ]
       }
     ]

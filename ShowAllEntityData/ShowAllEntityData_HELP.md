@@ -808,15 +808,22 @@ close every sidebar section; the headings of the main page are left alone.
   grouping off with *Group external links by kind*.
 - **Other scripts.** Whatever another userscript adds to the sidebar stays
   where it put it. Its headings open and close like the others; nothing of it
-  is read or moved.
+  is read or moved. The one exception is the sidebar picture below.
 - **The picture** (as soon as the page opens, no table needed). The photo or
-  logo MusicBrainz shows at the top of the sidebar (from Wikimedia Commons)
-  shows a card with its file name when you
-  point at it, and opens in the [artwork viewer](#cover-art) on a click, Enter
-  or Space, with *Open on Commons* in its bar. A small copy appears at the start
-  of the page heading, so it stays in sight with the sidebar closed. Nothing
-  extra is loaded: it is the picture MusicBrainz already shows. Switches:
-  *Sidebar picture: hover card and viewer*, *Sidebar picture beside the name*.
+  logo from Wikimedia Commons at the top of the sidebar shows a card with its
+  file name when you point at it, and opens in the
+  [artwork viewer](#cover-art) on a click, Enter or Space, with *Open on
+  Commons* in its bar. A small copy appears at the start of the page heading,
+  so it stays in sight with the sidebar closed. Nothing extra is loaded: it is
+  the picture already shown. MusicBrainz has switched its own sidebar picture
+  off, so on musicbrainz.org today that picture comes from another userscript
+  you have installed; MusicBrainz's own works too, should it come back.
+  Switches: *Sidebar picture: hover card and viewer*, *Sidebar picture beside
+  the name*.
+- **The picture in previews.** The link previews of an artist, a label or a
+  place show its picture too, once you have pressed Space on one: see
+  *Link previews on MusicBrainz* under [Page-specific
+  behaviour](#page-specific-behaviour).
 - **🗂 Sidebar as tables.** On artist, label, event, release group, recording
   and work pages this button shows the sidebar's information (*Sort name*,
   *Born*, *Area*, …), its external links (with their site and kind) and its
@@ -1798,7 +1805,13 @@ change.
   "(with …)" — linked to the artist, what was recorded there and its posters;
   for a place, its area named the same way, a map link, its links and up to
   100 of its events by date; for a
-  series, every item in order. A part that could not be loaded says so, with
+  series, every item in order. An **artist, label or place** window shows its
+  **picture** under the name: the Wikimedia Commons file MusicBrainz links as
+  its image or logo, else the one its Wikidata item names (one or two small
+  requests to Wikidata, a label's logo first). It is asked only here, never
+  for a card; after that the card shows it too, small, beside the facts, also
+  after a reload. Click it for the artwork viewer, with *Open on Commons*.
+  Switch: *Pictures in artist, label and place previews*. A part that could not be loaded says so, with
   **Try again**. Areas are named down from the city, as on MusicBrainz's
   own pages: the window looks up each area above, one per level, and
   remembers them for every other card; a card shows the whole line only once
@@ -1808,7 +1821,7 @@ change.
 - **Live page**: the entity's own MusicBrainz page, without the site's header
   and footer, and without its scripts.
 - **Click an image** (a release's front cover or its Cover art strip, an
-  event's posters) to open it in the artwork viewer, the same one as the
+  event's posters, an artist's, label's or place's picture) to open it in the artwork viewer, the same one as the
   release page's Cover art, stepping through all of that release's or event's
   images. **Esc** returns to the window; Ctrl-click opens the image in a new
   tab instead.

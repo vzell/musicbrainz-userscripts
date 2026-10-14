@@ -129,6 +129,9 @@ async function open(page, { settings = {}, lookup = null, showAll = true, ws2 = 
     const log = { lookups: [], browses: [], rgLookups: [], caa: [], pages: [], ws2: [], eaa: [], html: [] };
     const ctx = page.context();
     await ctx.route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
+    // An artist's, label's or place's window shows its Commons picture
+    // (pop-mb-image.spec.js): served locally, so nothing reaches Wikimedia.
+    await ctx.route(/^https:\/\/(?:commons|upload)\.wikimedia\.org\//, (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
     await ctx.route('https://coverartarchive.org/**', (route) => {
         const u = new URL(route.request().url());
         if (/^\/release\/[0-9a-f-]{36}\/?$/.test(u.pathname)) {

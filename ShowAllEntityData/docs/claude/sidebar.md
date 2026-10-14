@@ -6,7 +6,8 @@ picture, and its facts as tables. Mockup approved 2026-10-10:
 opened; external links grouped by kind; other scripts' content left where it
 is (no per-script settings); facts as tables behind their own button with the
 sidebar kept; the picture in the sidebar, beside the name and in the entity
-hover card (not on the sidebar handle). Plan:
+hover card (not on the sidebar handle; the viewer opens from the window, not
+the card: decided 2026-10-11, the card closes on mousedown). Plan:
 `~/.claude/plans/` "MusicBrainz sidebar overhaul", branch `feature/sidebar-overhaul`.
 
 ## Sections
@@ -63,7 +64,10 @@ Zero shows nothing (Rating).
 
 **Other scripts.** Nothing of theirs is read, moved or hidden. Their h2s get
 the same toggle as MusicBrainz's own, as they always did. The mockup's
-gather/hide choices were not picked and are not built.
+gather/hide choices were not picked and are not built. The one exception, by
+the user's consent (2026-10-11): the sidebar picture another script adds
+(`div.entity-image`, below) gets a hover card and the viewer; only its img's
+address is read.
 
 **Re-runs.** `makeH2sCollapsible()` runs again after a disk load. `_sbReset()`
 removes our counts, bar, group heads and h3 icons, and unhooks our handlers
@@ -86,11 +90,23 @@ Specs:
 
 ## The sidebar picture
 
-MusicBrainz adds an entity's Wikimedia Commons picture to
-`#sidebar .entity-image .picture img` AFTER load: the raw page has none.
-`_sbInitPicture()` is called once at init, right after the required-elements
-check, on MusicBrainz only (`_foreignHost`). It wires a picture that is already
-there, or watches `#sidebar` with a MutationObserver for up to 15 s.
+**Whose picture it is** (musicbrainz-server source, read 2026-10-11):
+- MusicBrainz's own `CommonsImage` component renders
+  `div.commons-image > div.picture > img` plus an "Image from Wikimedia
+  Commons" note. Its server side returns nothing unless
+  `WIKIMEDIA_COMMONS_IMAGES_ENABLED`, and on musicbrainz.org it returns
+  `{"image": null}` for every entity and the page shows no picture: the switch
+  is off there.
+- The picture in the user's browser is `div.entity-image > div.picture > img`,
+  with no note: **another userscript adds it**. The user consented on
+  2026-10-11 to it being decorated; only the img's address is read.
+
+Both arrive AFTER load: the raw page has neither. `_sbInitPicture()` is called
+once at init, right after the required-elements check, on MusicBrainz only
+(`_foreignHost`). It wires a picture that is already there (selector
+`.entity-image .picture img, .commons-image .picture img`, a literal because
+this runs before its part of the file: TDZ), or watches `#sidebar` with a
+MutationObserver for up to 15 s.
 
 **Nothing is requested.** The picture is MusicBrainz's own, already in the
 browser. The viewer loads it through the external path (`external: true`: no
@@ -117,11 +133,11 @@ images.
 **Settings.** `sa_sidebar_picture` (default on) and `sa_sidebar_picture_in_header`
 (default on).
 
-**Specs.** `sidebar-picture.spec.js` (5) and `sidebar-picture.mobile.spec.js`
-(1). They add the picture late and serve upload.wikimedia.org from a 1×1 PNG.
-A "left alone" test waits one macrotask turn (`observerRan()`): an observer
-callback is a microtask, so this is a real settle, not a sleep. There are 7
-mutations in `sidebar-overhaul.json`.
+**Specs.** `sidebar-picture.spec.js` (6: both markups) and
+`sidebar-picture.mobile.spec.js` (1). They add the picture late and serve
+upload.wikimedia.org from a 1×1 PNG. A "left alone" test waits one macrotask
+turn (`observerRan()`): an observer callback is a microtask, so this is a real
+settle, not a sleep. There are 8 mutations in `sidebar-overhaul.json`.
 
 ## "🗂 Sidebar as tables"
 
@@ -206,14 +222,67 @@ the page in milliseconds, so a saved copy adds nothing.
 There are 7 mutations in `sidebar-overhaul.json`, 6 caught and 1 recorded
 `expect: "pass"`, as above.
 
-## The picture in the entity hover card (not built)
+## The picture in the entity previews (`_mbPopImageLoad()`)
 
-Planned as part 4, it stopped at its probe (DEBUG-NOTES.md, 2026-10-11
-"The commons-image endpoint"). `/<type>/<mbid>/commons-image` answers scripts
-with a bot challenge, and a browser with `{"image": null}` even for an artist
-whose sidebar shows a picture. Do not build on it without new evidence. The
-probes: `scripts/probe-commons-image.py` (urllib, shows the challenge) and
-`tests/support/probe-commons-image.js` (from a browser page).
+Part 4. MusicBrainz's `/<type>/<mbid>/commons-image` is no use: its switch
+is off (above), so it answers `{"image": null}` (DEBUG-NOTES.md, 2026-10-11,
+two entries). The popup engine does in the browser what that server code would
+do, and only on Space.
+
+**What is asked, in order** (`_mbPopImageLoad(t, relations, again, repaint)`):
+1. An `image` or `logo` relationship to `commons.wikimedia.org/wiki/File:…`
+   (`_mbPopCommonsFile()`) gives the file. No request. Bruce Springsteen and
+   Columbia both have one.
+2. Else the `wikidata` relationship's item: one `wbgetclaims` per property of
+   `_MB_POP_IMG_PROPS` until one names a file.
+   - An artist or a place asks P18 (image), then P154 (logo). **A label asks
+     P154 first**, unlike the server: Columbia's P18 is a photograph of
+     something else (`scripts/probe-wikidata-image.py`).
+   - A preferred value wins; a deprecated one is never taken
+     (`_mbPopClaimFile()`).
+   - Through `_extGet()`: Wikidata's own rate gate, anonymous,
+     `Api-User-Agent`, `wanted()` after the slot.
+3. Neither: "no picture".
+
+**Cache.** `_mbLoad()` under `pop:img:<type>:<id>`, version
+`_MB_POP_IMG_VERSION`, `_mbTtlMs()`. "No picture" is kept too, so a second
+Space asks nothing. A failure is retried only by ⟳ or "Try again".
+
+**When.** Only from the kinds' `pin()` (artist, label, place), once their
+url-rels answer is there: the artist's and label's window lookups, the place's
+own card lookup. `relations` is null before that; a ⟳ that comes while the
+url-rels reload is remembered in `_mbPopImgAgain`, so the next start skips the
+caches. Not area (locator maps), not event (event art).
+
+**The card never asks.** `_mbPopImagePeek()` reads the record from memory,
+else ONE IndexedDB read per key per page load, and repaints on a hit. The
+card is then a grid (`_mbPopCardShell()`'s `aside`, `spec.cardAside`): a
+64 px picture, then the facts; the foot says "Space picture & more". A place's
+card lookup carries the Wikidata link, and still starts nothing.
+
+**The window.** Under the title (`_mbPopWindowPicture()`): a ◌ line while
+loading, nothing when there is none, the failure with "Try again", else the
+picture as an `a[data-mb-artv-ext]` with `data-mb-artv-page`. A click goes
+through `_dpArtViewerClick()`, which now passes that page as the viewer's
+"Open on Commons" link (an optional field: other images are unchanged). The
+caption names the file and, for P18/P154, the item.
+
+**Addresses.** `commons.wikimedia.org/wiki/Special:FilePath/<file>?width=330`
+(the card and the window) and `?width=1280` (the viewer). They redirect to
+upload.wikimedia.org (probe: 28 KB and 404 KB for Bruce Springsteen's file).
+These hosts are first reached on that Space; a later card loads the 330 px
+thumbnail again, from the browser's cache.
+
+**Setting.** `sa_pop_mb_image` (default on), after the touch twins. Not a
+`_popSettingOn()` twin: it is part of `sa_pop_mb`, not a source.
+
+**Specs.** `pop-mb-image.spec.js` (8) and `pop-mb-image.mobile.spec.js` (1).
+Wikidata is the GM stub's `__gmXhrResponses`; Commons a local PNG.
+`popup-mb.spec.js` routes the Wikimedia hosts too, since its artist, label and
+place windows now show the Commons-relationship picture. A trap: the window's
+scroll area takes focus on `mouseenter`, which the closing viewer overlay fires
+under a pointer parked on the picture, so the focus test moves the pointer
+off first. There are 10 mutations in `sidebar-overhaul.json`.
 
 Measured: `_sbEnhance()` is about 1.2 ms of a 1.5 ms `makeH2sCollapsible()`
 pass on the artist page (`tests/support/probe-sidebar-cost.js`,

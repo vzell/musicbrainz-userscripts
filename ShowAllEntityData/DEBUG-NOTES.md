@@ -21944,3 +21944,59 @@ It is not attributed to the branch:
 
 This is the first recorded occurrence. If it comes back, the suspect is a
 measurement taken before the auto-resize settles under load, not the switches.
+
+## 2026-10-11 — Whose sidebar picture? MusicBrainz's is switched off; the one in the snapshots is another script's (feature/sidebar-overhaul, part 4)
+
+Env: 2026-10-11T07:06:21Z-07:06:44Z (probe) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Python 3 urllib (probe), source read through `gh api`; no browser.
+
+**Correction to the entry "The commons-image endpoint" above.** That entry
+left open how the user's browser gets the sidebar picture. The
+musicbrainz-server source (master, read 2026-10-11) answers it:
+
+- `lib/MusicBrainz/Server/Controller/Role/CommonsImage.pm`: the endpoint and
+  the page's cached image both return nothing unless
+  `DBDefs->WIKIMEDIA_COMMONS_IMAGES_ENABLED`. The file comes from an
+  `image`/`logo` relationship to Commons, else the Wikidata item's P242 (an
+  area), P18, then P154.
+- `root/static/scripts/common/components/CommonsImage.js` renders
+  `div.commons-image > div.picture > img` plus a "picture-note" link, "Image
+  from Wikimedia Commons".
+- The endpoint answers `{"image": null}` even for Bruce Springsteen, who has an
+  `image` relationship, and the live page shows no picture: the switch is
+  **off on musicbrainz.org**.
+- `debug/bs-debug.html` and `debug/multi-table-Artist_relationships.html` have
+  `div.entity-image > div.picture > img` with no picture-note and a
+  `?utm_source=commons.wikimedia.org&utm_campaign=rest&utm_content=thumbnail_unscaled`
+  address. That markup is not in the MusicBrainz source at all, so **another
+  userscript adds it**. Which one is unknown here.
+
+Decisions (user, 2026-10-11): part 2 keeps decorating `div.entity-image` (with
+consent; only the img's address is read) and also recognises
+`div.commons-image`. The previews (part 4) do what the server code would do,
+in the browser, on Space only.
+
+**Probe `scripts/probe-wikidata-image.py`:**
+- the Web Service answers scripts (unlike the HTML pages): 200 JSON, 377 ms
+  for Bruce Springsteen's url-rels (27,958 bytes);
+- **Bruce Springsteen** has an `image` relationship to
+  `File:Bruce_Springsteen_-_Roskilde_Festival_2012.jpg` (the same file the
+  other script shows) and Wikidata Q1225, whose P18 is "Bruce Springsteen
+  2025.jpg" (299 bytes, 314 ms); no P154;
+- **Columbia** has two `logo` relationships (Columbia_Records_logo.svg first)
+  and Q183387, whose **P18 is "AWomansSmileCraigCampbell.jpg"**, a photograph
+  of something else, and P154 "Columbia Records Colored Logo.svg". So a label
+  asks P154 before P18 (`_MB_POP_IMG_PROPS`), where the server asks P18 first;
+- **Various Artists**: Q3108914, no P18, no P154 (13 bytes each);
+- an id Wikidata cannot parse (`Q999999999999`) answers 200 with an `error`
+  object (`param-invalid`). `_mbPopImageLoad()` reads any `error` as "no
+  picture";
+- `Special:FilePath/<file>?width=330` answers 302 to
+  `Special:Redirect/file/…&width=330`, then the image: 28,399 bytes at 330 px
+  and 404,406 at 1280 for Bruce Springsteen's file; the SVG logo 10 KB / 44 KB;
+- the place MBID in the probe list answered 404 (a wrong id); the place path
+  is covered by the Stone Pony fixture (`image` relationship plus Q3989486).
+
+Built: `_mbPopImageLoad()` and friends (docs/claude/sidebar.md, "The picture
+in the entity previews"), `sa_pop_mb_image`, `pop-mb-image.spec.js` (8) and its
+mobile twin (1), and 11 more mutations in `scripts/mutations/sidebar-overhaul.json`
+(10 for the previews, 1 for MusicBrainz's own sidebar markup).
