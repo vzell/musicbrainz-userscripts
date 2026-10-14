@@ -823,6 +823,12 @@ close every sidebar section; the headings of the main page are left alone.
   Streaming, Concerts, Lyrics, Databases, Stores and Other, each group opening
   and closing on its own. *View all relationships* stays at the end. Turn the
   grouping off with *Group external links by kind*.
+- **The handle** (*Collabsable sidebar*). The small ▶/◀ tab at the top-left
+  corner of the sidebar closes the whole sidebar and opens it again; closed,
+  the tab waits at the right edge of the window. On a page wider than the
+  window the opened sidebar stays at the window's right edge, in sight at
+  any horizontal scroll. *Start with sidebar collapsed* opens pages with it
+  closed, without the slide.
 - **Other scripts.** Whatever another userscript adds to the sidebar stays
   where it put it. Its headings open and close like the others; nothing of it
   is read or moved. The one exception is the sidebar picture below.

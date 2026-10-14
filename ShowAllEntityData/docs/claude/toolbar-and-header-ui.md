@@ -780,6 +780,25 @@ render sites), `_vsbRefresh()`, `_vsbBaseOffset()`.
   scrollX 0 and with the bars stuck), "the right-edge mask lies under
   chrome", "stop where the table ends", "collapsed sidebar takes no
   space"; mutations: `scripts/mutations/sticky-gutter-sorted-thead.json`.
+- **The opened sidebar and its handle on a wide page** (2026-10-14,
+  reported on a release group). Auto-resize makes `#sidebar`
+  `position: sticky` with `right: 0`. It is the last cell of MB's `#page`
+  table, so on a page wider than the window its own place is past the right
+  edge. It used to be `left: 0`, which never applies there, so an opened
+  sidebar stayed out of view and only slid in while scrolling right (the
+  page-coloured right-edge mask was NOT what hid it: the sidebar's z-index,
+  105, is above the mask's, 102). `initSidebarCollapse()`'s handle sits at
+  the sidebar's top (at `#content`'s top while collapsed), clamped inside
+  the visual viewport, instead of `top: 50%`. After a click, and whenever
+  `html`'s class changes (the sticky page headers switching), `followHandle()`
+  places it every frame for 400 ms: the sidebar and the content containers
+  slide for 0.3 s and a single measurement landed 50 px off. Changes inside
+  the sidebar keep the single rAF measurement, so a render is not slowed.
+  Spec: `sidebar-collapse-handle.spec.js` (3); mutations in
+  `scripts/mutations/sidebar-overhaul.json` ("handle: …"). Not fixed: on
+  the phone emulation the handle is fixed to the layout viewport's right
+  edge (x 949 of 964) while only 412 px are visible, so it cannot be
+  tapped; that predates this change, and no mobile twin pins it.
 - **Stacking ladder:** thead 100, column resizer 101, h3 102 (raised 103),
   data h2 104 (raised 107 = `SPH_Z_RAISED`), Brucebase side bar 150. A
   raised h3 stays UNDER the h2 (an h3 sliding in under the stuck h2 must

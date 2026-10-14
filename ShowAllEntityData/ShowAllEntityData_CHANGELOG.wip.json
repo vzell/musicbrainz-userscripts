@@ -1,5 +1,29 @@
 [
   {
+    "version": "WIP.8",
+    "date": "2026-10-14",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "On a page wider than the window (a release group's releases, for example), opening the sidebar with its handle shows it at the window's right edge at once. Before, its content stayed out of view and only slid in while you scrolled right."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The sidebar's ▶/◀ handle sits at the top of the sidebar instead of halfway down the window, and lines up with the sidebar's edge once it has finished sliding."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Tests: tests/fixtures/sidebar-collapse-handle.spec.js (3); 3 more mutations in scripts/mutations/sidebar-overhaul.json, all caught."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.7",
     "date": "2026-10-14",
     "sections": [

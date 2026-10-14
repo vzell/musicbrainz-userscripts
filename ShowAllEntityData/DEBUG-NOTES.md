@@ -22861,3 +22861,49 @@ twice, and the 12 specs 163/163 plus `resume-from-failed-page` 7/7.
 
 Full suite after the fix (13:54:05Z → 14:02:24Z, 8 m 19 s, petri, `0ada5c7`
 plus these spec changes): 1737/1737, the first fully green run of the day.
+
+## 2026-10-14 — The opened sidebar stayed out of view on wide pages; the handle at the sidebar's top (WIP.8)
+
+Env: 2026-10-14T15:07Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (fixture specs), no Tampermonkey (GM stubs). The report and the snapshots `debug/r-t-no-sidebar-content.html` and `debug/r-t-sidebar-content.html` came from the user's browser on vzell-lap (versions not given: unknown).
+
+**Report.** The handle opens the sidebar fine where nothing is wider than the
+window (an instrument page). On a release group with wide tables the opened
+sidebar showed no content, slid in while scrolling right, and was complete
+at the right end. Also asked for: the handle at the top of the sidebar.
+
+**Snapshots.** The FRP has `html.mb-vsb-on.mb-sph-on`, `#page` inline
+`min-width: 100%; width: fit-content` and `#sidebar` inline
+`position: sticky; left: 0px; top: 0px; … z-index: 105` (auto-resize).
+The second file ("the empty sidebar") is the right-edge mask, `<div
+id="mb-sph-rmask" class="mb-sph-rmask-on" style="width: 244px">`. It is NOT
+what hides the sidebar: its z-index is 102, under the sidebar's 105. The
+sidebar is simply not there: it is the last cell of MB's `#page` table,
+placed after the wide content, past the window's right edge. Sticky
+`left: 0` only stops it scrolling off the LEFT edge, which never happens.
+
+**Probe** (`rel-release-group-overview.html`, MB's table layout injected as
+`sticky-page-headers.spec.js` does, 1000 px window): opened, the sidebar at
+x 941–1159; at the right end of the scroll 766–984.
+
+**Fix.**
+- Auto-resize sets `right: 0` (cleared on restore): opened, the sidebar is at
+  782–1000.
+- The handle's top follows the sidebar's top (`#content`'s while collapsed),
+  clamped inside the visual viewport.
+- A frame-by-frame probe after the click showed the handle placed once at
+  sidebar x 794 while it settled at 782: the content containers slide for
+  0.3 s, and the sticky page headers' switch moves a sidebar held at the
+  edge. `followHandle()` places it every frame for 400 ms after a click or
+  an `html` class change. Sidebar subtree changes keep their single rAF
+  read.
+
+**Tests.** `sidebar-collapse-handle.spec.js` (3) passes 18/18 on 6 workers.
+Mutations (`sidebar-overhaul.json`, all caught): the old `left: 0`; no
+`top` of the handle's own; one measurement instead of the follow.
+
+**Not fixed: the handle on a phone.** A mobile twin found the handle
+untappable: on the Pixel 7 emulation it is fixed to the layout viewport's
+right edge (x 949 of 964) while the visual viewport is 412 px wide. That
+was so before this change, which only moves it vertically; it now at least
+stays inside the visible height (it was at y 1117 of 839 for a moment).
+The twin was dropped rather than written around it.

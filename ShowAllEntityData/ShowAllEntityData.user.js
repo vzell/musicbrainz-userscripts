@@ -59173,7 +59173,7 @@ a { color: #1565c0; }`;
 
         if (sidebar) {
             sidebar.style.position = '';
-            sidebar.style.left = '';
+            sidebar.style.right = '';
             sidebar.style.top = '';
             sidebar.style.alignSelf = '';
             sidebar.style.zIndex = '';
@@ -59351,10 +59351,15 @@ a { color: #1565c0; }`;
             content.style.overflowX = 'visible';
             content.style.overflowY = 'visible';
 
-            // Prevent sidebar from scrolling out of view horizontally and vertically
+            // Keep the sidebar in view horizontally and vertically. It is the
+            // last cell of MB's #page table, so on a page wider than the window
+            // its own place is past the right edge: `right: 0` holds it at the
+            // window's edge until the scroll reaches it (`left: 0` never
+            // applied there, and an opened sidebar stayed out of view until
+            // scrolled to, 2026-10-14).
             if (sidebar) {
                 sidebar.style.position = 'sticky';
-                sidebar.style.left = '0';
+                sidebar.style.right = '0';
                 sidebar.style.top = '0';
                 sidebar.style.alignSelf = 'flex-start';
                 sidebar.style.zIndex = '105'; // Must be above sticky table headers (z-index: 100)
@@ -59779,8 +59784,8 @@ a { color: #1565c0; }`;
              */
             #sidebar-toggle-handle {
                 position: fixed;
-                top: 50%;
-                transform: translateY(-50%);
+                /* top is set by updateHandlePosition(): the sidebar's top. */
+                top: 8px;
                 width: 14px;
                 height: 80px;
                 background-color: #f2f2f2;
@@ -59821,15 +59826,15 @@ a { color: #1565c0; }`;
 
         /**
          * Dynamically position the sidebar toggle handle so that it always
-         * sits flush against the sidebar's actual LEFT boundary, regardless of:
+         * sits flush against the sidebar's actual LEFT boundary, at the
+         * sidebar's TOP, regardless of:
          *  - horizontal scroll position (window.scrollX)
          *  - sidebar CSS position changes introduced by toggleAutoResizeColumns
-         *    (which switches the sidebar from its default right-floated layout
-         *     to position:sticky / left:0, meaning it appears at the LEFT edge
-         *     of the viewport while scrolling — not the right)
+         *    (position: sticky / right: 0 on a page wider than the window)
          *
          * When the sidebar is collapsed the handle snaps to the viewport's
-         * right edge (right: 0).
+         * right edge (right: 0), at the top of `#content`, the row the sidebar
+         * shares. Either way it stays at least 8 px inside the window.
          *
          * This function is intentionally free of CSS transitions: it is called
          * on every scroll / resize event, so transitions would fight JS updates
@@ -59841,10 +59846,21 @@ a { color: #1565c0; }`;
             if (!handle) return;
 
             const isCollapsed = sidebar.classList.contains('sidebar-collapsed');
+            const topOf = (el) => (el ? el.getBoundingClientRect().top : 8);
+            const setTop = (y) => {
+                // Inside what is visible, both ways: on a phone the top of
+                // #content can be below the visual viewport, where a fixed
+                // handle can never be tapped (probed 2026-10-14).
+                const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+                const maxTop = Math.max(8, vh - (handle.offsetHeight || 80) - 8);
+                const top = `${Math.round(Math.min(maxTop, Math.max(8, y)))}px`;
+                if (handle.style.top !== top) handle.style.top = top;
+            };
 
             if (isCollapsed) {
                 // Sidebar is hidden — park handle at viewport right edge.
                 handle.style.right = '0px';
+                setTop(topOf(document.getElementById('content')));
                 return;
             }
 
@@ -59858,14 +59874,38 @@ a { color: #1565c0; }`;
             // but be defensive) fall back to the nominal sidebar width.
             if (rect.width <= 0) {
                 handle.style.right = sidebarWidth;
+                setTop(topOf(document.getElementById('content')));
                 return;
             }
+            setTop(rect.top);
 
             // "right" for a position:fixed element is measured from the
             // viewport's right edge, so:  right = viewportWidth - sidebarLeft
             const distFromRight = window.innerWidth - rect.left;
             handle.style.right = `${Math.max(0, distFromRight)}px`;
         }
+
+        let _handleFollowUntil = 0;
+        /**
+         * Places the handle again on every frame for `ms`: after a toggle the
+         * sidebar and the content containers slide for 0.3 s, and the sticky
+         * page headers switching on or off move a sidebar held at the
+         * window's edge, so one measurement lands mid-way (50 px off, probed
+         * 2026-10-14). A call while one runs extends it.
+         * @param {number} [ms=400]
+         * @returns {void}
+         */
+        const followHandle = (ms = 400) => {
+            const now = performance.now();
+            const running = now < _handleFollowUntil;
+            _handleFollowUntil = Math.max(_handleFollowUntil, now + ms);
+            if (running) return;
+            const step = () => {
+                updateHandlePosition(handle);
+                if (performance.now() < _handleFollowUntil) requestAnimationFrame(step);
+            };
+            requestAnimationFrame(step);
+        };
 
         const applyStretching = (isCollapsed) => {
             const containers = [document.getElementById("page"), document.getElementById("content")];
@@ -59894,10 +59934,9 @@ a { color: #1565c0; }`;
             handle.classList.toggle('handle-collapsed');
             applyStretching(isCollapsing);
 
-            // Re-position the handle after the DOM state change.
-            // Use rAF so the browser has committed the new layout before we
-            // read getBoundingClientRect(), avoiding stale geometry.
-            requestAnimationFrame(() => updateHandlePosition(handle));
+            // Re-position the handle while the sidebar and the content slide
+            // (followHandle(): one read per frame, from the next frame on).
+            followHandle();
 
             Lib.debug('meta', `Sidebar ${isCollapsing ? 'collapsed' : 'expanded'}. Full width applied.`);
         });
@@ -59976,6 +60015,11 @@ a { color: #1565c0; }`;
             childList: true, subtree: true,
             attributes: true, attributeFilter: ['class', 'style']
         });
+        // The sticky page headers switching on or off (html.mb-sph-on) widen
+        // or narrow the page, and a sidebar held at the window's edge
+        // (`right: 0`) moves with it: follow it while that settles.
+        new MutationObserver(() => followHandle())
+            .observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     }
 
     /**
