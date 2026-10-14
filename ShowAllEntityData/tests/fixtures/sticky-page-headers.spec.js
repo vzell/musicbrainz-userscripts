@@ -34,7 +34,12 @@
 // instead of #page's right-hand cell, and its translateX(100%) ghost box —
 // which the `#sidebar.sidebar-collapsed { transform: none }` rule exists to
 // remove — cannot occur. That guard is recorded as `"expect": "pass"` in
-// scripts/mutations/sticky-page-headers.json and needs a live spec.
+// scripts/mutations/sticky-page-headers.json and needs a live spec. Since
+// 2026-10-14 a collapsed sidebar is `display: none`, so the ghost box cannot
+// occur on MB either. The one test that needs MB's table layout ("collapsed
+// sidebar takes no space") injects an excerpt of it: under it a collapsed
+// sidebar used to stay a table cell as wide as its min-content, which this
+// blind spot hid for as long as the feature existed.
 //
 // Each negative assertion ("does NOT engage") is followed by a positive
 // control in the same test that makes it engage by removing exactly the one
@@ -365,6 +370,51 @@ test.describe('sticky page headers — single-table page', () => {
         const after = await measure(page, ['body > div.header']);
         expectPinned(before, after);
         expect(after.items[0].right).toBeLessThanOrEqual(after.clientWidth - 16 + 1);
+    });
+
+    test('under MB\'s table layout a collapsed sidebar takes no space: the bars reach the right as far as the left inset', async ({ page }) => {
+        // MusicBrainz lays #page out as a table with #sidebar as a cell, and
+        // a table cell never shrinks below its min-content width: collapsed
+        // (width 0, opacity 0) it kept an invisible strip at the right end of
+        // the page (78 px measured on an area page, 2026-10-14), the right
+        // gutter grew by that much, and every bar stopped that far short of
+        // the window edge. The excerpt below is MB's own layout rules
+        // (common-aaaf2ca.css), which the fixtures otherwise do not load; the
+        // ::before stands in for sidebar content that cannot wrap.
+        await openSeries(page, {
+            css: '#page { display: table; width: 100%; padding: 16px; box-sizing: border-box; }'
+                + ' #content { display: table-cell; padding-right: 16px; }'
+                + ' #sidebar { display: table-cell; vertical-align: top; padding-left: 16px; width: 218px; border-left: 1px solid #ddd; }'
+                + ' #sidebar::before { content: ""; display: inline-block; width: 80px; height: 1px; }',
+        });
+        await waitEngaged(page);
+        const geo = await page.evaluate(() => {
+            const sidebar = document.getElementById('sidebar');
+            const page = document.getElementById('page');
+            const content = document.getElementById('content');
+            const table = document.querySelector('table.tbl');
+            const pad = (el) => parseFloat(getComputedStyle(el).paddingRight) || 0;
+            return {
+                collapsed: sidebar.classList.contains('sidebar-collapsed'),
+                pageDisplay: getComputedStyle(page).display,
+                sidebarBoxes: sidebar.getClientRects().length,
+                pastTable: document.documentElement.scrollWidth - (table.getBoundingClientRect().right + window.scrollX),
+                padding: pad(content) + pad(page),
+                bars: Array.from(document.querySelectorAll('#content h2.mb-toggle-h2.mb-sph-target'))
+                    .filter((h) => h.getClientRects().length > 0)
+                    .map((h) => {
+                        const r = h.getBoundingClientRect();
+                        return { left: Math.round(r.left), rightGap: Math.round(document.documentElement.clientWidth - r.right) };
+                    }),
+            };
+        });
+        expect(geo.collapsed, 'premise: the sidebar starts collapsed').toBe(true);
+        expect(geo.pageDisplay, 'premise: MB\'s table layout is in place').toBe('table');
+        expect(geo.bars.length, 'premise: pinned h2 bars').toBeGreaterThan(0);
+        expect(geo.sidebarBoxes, 'a collapsed sidebar has no box').toBe(0);
+        expect(geo.pastTable, 'the page ends after the table\'s own padding, no strip beyond').toBeLessThanOrEqual(geo.padding + 1);
+        const short = geo.bars.filter((b) => b.rightGap > b.left + 1);
+        expect(short, 'bars whose right gap is wider than their left inset').toEqual([]);
     });
 
     test('offsets are already right on the pass that engages, not one observer round-trip later', async ({ page }) => {

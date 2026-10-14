@@ -11132,6 +11132,19 @@
             :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl) tr.even > td {
                 background-color: #f2f2f2;
             }
+            /* NOT inside :where(), on purpose: the backing behind a sorted
+               column's header tint (.mb-mscol-hdr-N, a 60 % alpha
+               background-color !important that replaces the cell's own
+               colour) while rows scroll under the sticky thead. On
+               MusicBrainz, MB's stylesheet paints an image on the thead
+               itself; here nothing did, and the rows showed through every
+               sorted header (2026-10-14, brucespringsteen.it). It has to
+               outrank the site's own rules: springsteenlyrics.com's
+               Bootstrap 3.3.2 has table { background-color: transparent },
+               which also beats the zero-specificity table colour above. */
+            body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl > thead {
+                background-color: #fff;
+            }
         `);
         style.id = 'mb-foreign-table-style';
     }
@@ -30494,7 +30507,9 @@
                 let left = Math.min(contentRect.right - tooltipRect.width - 10, window.innerWidth - tooltipRect.width - 10);
                 left = Math.max(left, contentRect.left + 10); // Don't go too far left
 
-                if (sidebarDiv) {
+                // A collapsed sidebar is display: none and has no box: its
+                // all-zero rect would push the tooltip off the left edge.
+                if (sidebarDiv && sidebarDiv.getClientRects().length > 0) {
                     // Ensure doesn't overlap sidebar
                     const sidebarRect = sidebarDiv.getBoundingClientRect();
                     left = Math.min(left, sidebarRect.left - tooltipRect.width - 10);
@@ -34501,7 +34516,28 @@
     //      #page. While engaged its transform is dropped. That is layout
     //      neutral (transforms never affect layout), and the overflow test
     //      itself ignores transforms (_sphContentExtent()), so engaging can
-    //      never feed back into the decision to engage.
+    //      never feed back into the decision to engage. Since 2026-10-14 a
+    //      collapsed sidebar is `display: none` anyway (initSidebarCollapse()),
+    //      so it has no box at all. Before that, under MusicBrainz's
+    //      `#page { display: table }` it stayed a table cell as wide as its
+    //      min-content (78 px measured on an area page): the extent ran that
+    //      far past #content, and the right gutter below took every bar that
+    //      much short of the window edge.
+    //
+    // The right gutter itself (see _sphRefresh()) is what lets a capped bar
+    // stay pinned up to the end of the scroll; it leaves a strip between the
+    // pinned h2/h3 bars' right end and the window edge. One window-tall,
+    // page-coloured strip of that width, fixed at the window's right edge
+    // (#mb-sph-rmask, _sphUpdateRightMask()), covers what scrolls there: a
+    // wide table and its stuck thead end on the bars' line at every scroll
+    // position, and rows scrolling under a vertically stuck bar never show
+    // beside it. It lies under the bars, the header block, the sidebar, the
+    // MB header and footer and every popup (z-index SPH_Z_RMASK). Two
+    // earlier versions were rejected in the user's browser (2026-10-14): a
+    // strip beside each bar in the bar's own colour (the data bars then
+    // reached further right than the Annotation / Credits bars), and the
+    // same in the page colour (the table still ran on past the bars' line
+    // until scrolled to its end).
     //
     // The sticky COLUMN follows the same rule while engaged. applyStickyColumn()
     // pins its cells at `left: 0`, which made the column dock at the window
@@ -34581,6 +34617,17 @@
     const SPH_REFRESH_DELAY_MS = 60;
     /** Lower bound (px) for a pinned element's clamped width, so tiny viewports never collapse a bar. */
     const SPH_MIN_WIDTH_PX = 120;
+    /** The pinned bars whose right end sets the width of the right-edge mask (`_sphUpdateRightMask()`). */
+    const _SPH_BAR_SEL = 'h2.mb-toggle-h2, h3.mb-toggle-h3';
+    /**
+     * z-index of the right-edge mask (#mb-sph-rmask): above the table (sticky
+     * thead 100, column resizer 101, sticky cells), equal to a resting h3 bar
+     * (102, which never reaches the strip; the mask comes later in the DOM),
+     * under a raised h3 (103, its popups), the stuck data h2 (104), the
+     * header block and MB's sidebar (105), the MB header and footer (106+)
+     * and every popup.
+     */
+    const SPH_Z_RMASK = 102;
 
     /**
      * Mutable module state of the sticky-page-headers feature.
@@ -34684,6 +34731,23 @@
             }
             html.mb-sph-on .mb-sph-target.mb-sph-chrome {
                 z-index: ${SPH_Z_CHROME};
+            }
+            /* The right-edge mask: a page-coloured strip as wide as the gap
+               between the pinned bars' right end and the window edge, so a
+               wide table ends on the bars' line at every scroll position
+               (see the section comment). Width set by _sphUpdateRightMask();
+               shown only while engaged and a bar defines the line. */
+            #mb-sph-rmask {
+                display: none;
+            }
+            html.mb-sph-on #mb-sph-rmask.mb-sph-rmask-on {
+                display: block;
+                position: fixed;
+                top: 0;
+                bottom: 0;
+                right: 0;
+                z-index: ${SPH_Z_RMASK};
+                background: ${_sphGutterBg()};
             }
             /* An inline body alone on its line, pinned on its own: sticky
                does not carry a block inside an inline box along. Without
@@ -35030,8 +35094,15 @@
             found.push({ el, chrome, table: kind === 'table' });
         }
 
+        // A data table is never chrome, even as a direct <body> child (a
+        // page without MB's #page: jungleland.it's list). Collected here it
+        // was capped like a bar and, as a pinned body-level element, raised
+        // over every stuck bar while hovered: with the pointer resting on
+        // it, its rows painted over the stuck h1, status line and h2
+        // (reported 2026-10-14). The table pass below handles it as on
+        // MusicBrainz: pinned whole only while it fits, never raised.
         for (const el of Array.from(document.body.children)) {
-            if (el !== page) add(el, true);
+            if (el !== page && !el.matches('table.tbl')) add(el, true);
         }
 
         [content, page].forEach(root => {
@@ -35446,6 +35517,35 @@
     }
 
     /**
+     * Sizes the right-edge mask (`#mb-sph-rmask`, created on first use): a
+     * page-coloured strip fixed at the window's right edge, as wide as the
+     * smallest gap between a pinned h2/h3 bar and the window edge, so a wide
+     * table (rows and stuck thead) ends on the bars' line at every scroll
+     * position and rows never show beside a vertically stuck bar. Without a
+     * pinned bar there is no line to align to and the strip is hidden.
+     * Rounded UP to 1/100 px so no seam is left; the bars themselves never
+     * reach into it (they are capped one gap short). Writes only on change.
+     *
+     * @param {Array<{gap: ?number}>} plans - This pass's target plans.
+     * @returns {void}
+     */
+    function _sphUpdateRightMask(plans) {
+        const gaps = plans.map(p => p.gap).filter(g => g !== null && g > 0);
+        const w = gaps.length ? Math.ceil(Math.min(...gaps) * 100) / 100 : 0;
+        let mask = document.getElementById('mb-sph-rmask');
+        if (!mask) {
+            if (!w) return;
+            mask = document.createElement('div');
+            mask.id = 'mb-sph-rmask';
+            mask.setAttribute('aria-hidden', 'true');
+            document.body.appendChild(mask);
+        }
+        const width = `${w}px`;
+        if (mask.style.width !== width) mask.style.width = width;
+        if (mask.classList.contains('mb-sph-rmask-on') !== (w > 0)) mask.classList.toggle('mb-sph-rmask-on', w > 0);
+    }
+
+    /**
      * Sets `.mb-sph-col-docked` on each aligned table whose sticky column has
      * docked (`scrollX >= p`), which switches its gutter mask on; writes only
      * when the state flips. With `p = 0` (sticky column first) the class is
@@ -35494,6 +35594,9 @@
      *   left        = parentLeft + margin-left   (its natural, unscrolled left)
      *   gutter      = max(parentLeft, extent − parentRight)
      *   width       = viewport − left − gutter − margin-right
+     *   gap         = gutter + margin-right   (an h2/h3 bar's right end →
+     *                 the window edge; the smallest one is the width of the
+     *                 right-edge mask, see _sphUpdateRightMask())
      *
      * The right gutter mirrors the parent's left inset, but is widened to
      * however far the content extends past the parent: at maximum scroll the
@@ -35601,13 +35704,17 @@
                 // Sticky keeps the MARGIN box inside the containing block, so the
                 // element's own margin-right (plain MB header: 16px) must come off
                 // too, or it widens by that much and is pushed back at max scroll.
-                const room = vw - left - gutter - (parseFloat(cs.marginRight) || 0);
+                const marginRight = parseFloat(cs.marginRight) || 0;
+                const room = vw - left - gutter - marginRight;
                 if (table) {
                     // Never capped: pinned whole while it fits, else left to
                     // scroll with its sticky column docked.
                     if (!_sphFitsTable(el.getBoundingClientRect().width, room)) return null;
-                    return { el, baseZ: false, table, inline: false, left: Math.max(0, _sphFloor2(left)), width: null };
+                    return { el, baseZ: false, table, inline: false, left: Math.max(0, _sphFloor2(left)), width: null, gap: null };
                 }
+                // A bar's gap to the window edge: what the right-edge mask
+                // covers (_sphUpdateRightMask()).
+                const gap = el.matches(_SPH_BAR_SEL) ? gutter + marginRight : null;
                 let width = Math.max(SPH_MIN_WIDTH_PX, room);
                 if (cs.boxSizing !== 'border-box') {
                     width -= (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0) +
@@ -35618,7 +35725,7 @@
                 // element keeps its own.
                 const baseZ = chrome && nat.position !== 'sticky' && nat.zIndex === 'auto';
                 const inline = nat.display.startsWith('inline');
-                return { el, baseZ, table, inline, left: Math.max(0, _sphFloor2(left)), width: Math.max(0, _sphFloor2(width)) };
+                return { el, baseZ, table, inline, left: Math.max(0, _sphFloor2(left)), width: Math.max(0, _sphFloor2(width)), gap };
             }).filter(Boolean);
             const next = new Set(plans.map(p => p.el));
             const cols = _sphMeasureStickyCols(scrollX, next);
@@ -35636,6 +35743,7 @@
                 if (el.classList.contains('mb-sph-inline') !== inline) el.classList.toggle('mb-sph-inline', inline);
             });
             _sph.targets = next;
+            _sphUpdateRightMask(plans);
             _sphApplyStickyCols(cols);
 
             if (engaging) {
@@ -59594,7 +59702,7 @@ a { color: #1565c0; }`;
         GM_addStyle(`
             /* Sidebar with proper overflow handling */
             #sidebar {
-                transition: transform 0.3s ease, width 0.3s ease, opacity 0.3s ease, margin-right 0.3s ease;
+                transition: transform 0.3s ease, width 0.3s ease, opacity 0.3s ease, margin-right 0.3s ease, display 0.3s allow-discrete;
                 overflow-y: auto;
                 overflow-x: hidden;
                 box-sizing: border-box;
@@ -59612,8 +59720,19 @@ a { color: #1565c0; }`;
                 /* overflow-y: auto; REMOVED: Breaks vertical sticky headers */
             }
 
-            /* Collapsed sidebar state */
+            /* Collapsed sidebar state. display: none takes it out of the
+               layout: MusicBrainz lays #page out as display: table with
+               #sidebar as a table-cell, and a table cell never shrinks
+               below its min-content width, whatever width or margin says.
+               The collapsed sidebar used to keep an invisible strip of
+               78 px and more at the right end of the page (measured on an
+               area page, 2026-10-14): every pinned bar stopped that far
+               short of the window edge and the page scrolled past the end
+               of the table. The discrete transition keeps it displayed
+               until the slide-out is over (browsers without
+               transition-behavior simply snap shut). */
             .sidebar-collapsed {
+                display: none !important;
                 transform: translateX(100%);
                 width: 0 !important;
                 min-width: 0 !important;

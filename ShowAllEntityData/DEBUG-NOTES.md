@@ -22455,6 +22455,168 @@ Tests: `hide-empty-subtables.spec.js` (the "nothing matches" test now pins
 `ms-length` test C fails on `main` and passes here. Mutations
 `hide-empty-subtables.json` 9/9 (new H8/H9 drop the keep-one guard).
 
+## 2026-10-14 — pinned bars stop short of the right edge, rows show beside them; a sorted header is see-through on the Springsteen sites (WIP.1–WIP.2, branch `fix/sticky-gutter-and-sorted-thead`)
+
+Env: 2026-10-13T22:20Z–22:50Z (2026-10-14 local) · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs). The user's reports came from their own browser, version not stated (`unknown`).
+
+**Report 1 (MusicBrainz, area page `/area/489ce91b…`, Relationships, Series
+uncollapsed; `debug/USA-final.html` + three screenshots):** the h2/h3 bars
+ended ~120 px before the window's right edge. While they were stuck at the
+top, rows showed in that strip ("…y Barry Manilow" beside the Series h3).
+Scrolled to the far right, an empty strip stayed after the table.
+
+Probe (a scratch script, not kept): `debug/USA-final.html` rendered
+statically at 1913 px with MusicBrainz's own `common-aaaf2ca.css` (fetched
+from static.metabrainz.org; the fixtures never load it). Page right 3588,
+`#content` 3500, `#sidebar` 3500–3578, table 3490. `#page` is
+`display: table` and `#sidebar` a `table-cell`. A table cell never shrinks
+below its min-content width, so `.sidebar-collapsed { width: 0;
+margin-right: -240px }` did nothing (margins do not apply to cells either),
+and the opacity-0 sidebar kept 78 px. `_sphRefresh()`'s
+`gutter = max(parentLeft, extent − parentRight)` then came out ~98 px, and
+every bar was capped that far short. The ~20 px gutter that remains without
+the sidebar is by design (the bar's room to stay pinned to the end of the
+scroll), but nothing covered it on the right, while the left side has the
+h3 indent shadow and the sticky-column masks.
+
+Fix: a collapsed sidebar is `display: none` (`initSidebarCollapse()`, with
+`display 0.3s allow-discrete` so the slide-out still plays). Not scoped
+under `html.mb-sph-on`: engaging would then change the extent it engaged
+on. And the bars paint their own background over the gutter (user's choice
+over a page-coloured mask): `::after` with `background: inherit`, width
+`--mb-sph-bleed` = gutter + margin-right, h2/h3 bars only (`_SPH_BLEED_SEL`).
+
+Trap hit on the way: the first version registered `--mb-sph-bleed`
+`inherits: false` like the other three properties, and the `::after` came
+out 0 px wide. A pseudo-element sees only INHERITED values of its
+originating element. It is `inherits: true` now. That is why it must never
+be written on a table pinned whole: every cell would inherit it, and a
+change would restyle the whole table, which is the 249 ms trap the other
+properties were made non-inheriting for. Pinned by a mutation.
+
+Also: the Ctrl+M overlay placed itself left of `#sidebar`'s rect; a
+`display: none` sidebar's rect is all zeros, which would have pushed it off
+the left edge. Guarded with `getClientRects().length`.
+
+**Report 2 (brucespringsteen.it records, screenshot):** sort "Notes", scroll
+down, and "gatefold" showed through the sorted header. With a multi-sort,
+every sorted header was affected. `.mb-mscol-hdr-N` is a 60 % alpha
+`background-color !important` that replaces the cell's own colour. On
+MusicBrainz, MB's CSS paints a gradient image on `table.tbl thead` itself,
+behind the header cells; on the foreign hosts the thead had no background,
+so the rows under the sticky thead showed through. Fix:
+`table.tbl thead { background-color: inherit }` in `applyStickyHeaders()`.
+That is the table's colour: `#fff` on the foreign hosts (the colour the tint
+already blended with while nothing was under it, so the header looks the
+same), and transparent on MusicBrainz, where `table.tbl` has no colour, so
+MB is unchanged by construction.
+
+Tests: `sticky-page-headers.spec.js` "collapsed sidebar takes no space"
+(injects an excerpt of MB's layout CSS); the custom-property test and the
+"narrow sub-tables are pinned whole" test now also pin "no bleed on a
+table"; `sticky-filter-bars.spec.js` "reach the window edge in their own
+colour" (painted pixels beside the stuck h2 and h3, scrolled both ways);
+new `sorted-thead-opaque.spec.js` (bs fixture, one and two sorted columns,
+the same header pixel before and after rows scroll under). Mutations:
+`scripts/mutations/sticky-gutter-sorted-thead.json`, 6/6 caught.
+Performance: nothing on the filter, sort or render path. The sidebar has
+one box fewer; the bleed is one custom-property write per bar, made only
+when its value changes, from values the pass already has. No capture.
+
+**Second round, same day (user's browser, `debug/h2h3bug.html` + screenshot):**
+report 2 confirmed fixed. Report 1: scrolled to the far right, the
+Wikipedia h2 (it rides inside the pinned `.wikipedia-extract` body, so it
+has no bleed of its own) stopped where the content ends, a page padding
+short of the window edge, which the user liked. But the data h2 and the h3
+bars painted on to the window edge, under the sidebar handle, past the
+table's end: the snapshot shows a fixed `--mb-sph-bleed: 20px`. The bleed
+now reaches only as far as the bar's containing block reaches on screen,
+`clamp(parentRight − scrollX − barRight, 0, gutter + margin-right)`,
+recomputed in the existing passive scroll listener (`_sphUpdateBleed()`).
+That is arithmetic on values `_sphRefresh()` already has, with a write only
+when a value changes: never on a vertical scroll, and on a horizontal one
+only within the last gutter's width of the scroll range. Test: "stop where
+the table ends"; two more mutations (a fixed width; no update on scroll),
+8/8 caught. The mutation "bleed written on tables" had gone stale (a `0`
+was filtered out as falsy and never written) and was re-planted as an
+object.
+
+A `test:full` started at 22:50:11Z was stopped at 381/1690 (all passed),
+because this change landed in the working tree under it. It was restarted
+afterwards.
+
+**Third round, same day (user's browser, release page, two screenshots):**
+fully scrolled, it looked right; part of the way, the data h2 and the h3
+bars still reached the window edge while the Annotation and Credits bars
+(riding inside pinned bodies) ended a gutter short "all the time", and
+those are the reference. So the strip is masked in the PAGE colour
+(`_sphGutterBg()`) at a fixed gutter + margin-right width: the option
+offered first and declined before the comparison was visible. The
+per-scroll clamp (`_sphUpdateBleed()`) is gone with it, since a
+page-coloured strip over page padding is invisible at maximum scroll anyway.
+The second `test:full` (23:15:16Z at `460ad13`) was stopped at 199/1691
+(all passed) for the same reason as the first. Mutations: 7/7 caught,
+including "the strip is painted in the bar's own colour".
+
+**Fourth round, same day (user's browser, release page and artist events,
+three screenshots):** the bars now line up, but the wide tables themselves
+still ran on to the window edge until scrolled to their end; the user asked
+for the tables to end on the bars' line from the start and during the
+scroll. So the per-bar `::after` (and its inheriting `--mb-sph-bleed`) is
+replaced by one window-tall, page-coloured strip fixed at the window's right
+edge (`#mb-sph-rmask`, `_sphUpdateRightMask()`), as wide as the smallest
+bar gap, at z-index 102: over the table and its stuck thead, under the
+raised h3, the stuck h2, the header block, MB's sidebar, the MB header and
+footer and every popup.
+
+A trap in the mutation run: a plant at z-index 99 (just under the thead's
+100) PASSED. The probe showed the mask is hit over the stuck thead even at
+99 in this fixture, because the thead's 100 is scoped inside an ancestor
+stacking context there. On MusicBrainz it competes directly, and 102 > 100
+decides. The plant was changed to "under the page content altogether" (-1),
+which the fixture can see, with the reason recorded in the mutation file.
+Mutations: 6/6 caught. The third `test:full` (23:30:16Z at `5ac6b54`) was
+stopped at 208/1691 (all passed) because this change landed under it.
+
+**Fifth round, same day (user's browser; three screenshots, `debug/jl.html`):**
+
+- springsteenlyrics.com: sorted headers still showed rows through them. The
+  site's Bootstrap 3.3.2 (fetched from the live site, `bootstrap/css/
+  bootstrap.min.css`) has `table { background-color: transparent }`, which
+  outranks `_ensureForeignTableStyle()`'s zero-specificity table colour, so
+  the thead's `inherit` came out transparent. The fixtures load no site CSS,
+  which is why the brucespringsteen.it arm had passed. Now
+  `_ensureForeignTableStyle()` gives `table.tbl > thead` `#fff` outside
+  `:where()`. The `inherit` in `applyStickyHeaders()` became redundant
+  (`transparent` on MusicBrainz, overridden on the Springsteen sites) and
+  was taken out, so the shared code is the same as on `main`.
+- jungleland.it: rows ran over the stuck header block and h2. The snapshot
+  shows `table.tbl.mb-jl-table.mb-sph-target` WITHOUT `mb-sph-table`, capped
+  (`--mb-sph-maxw`): `_sphCollectTargets()` pinned every direct `<body>`
+  child as chrome, the list table included (no MB `#page` there). A pinned
+  non-table target is raised while hovered (107, and 108 for body-level
+  ones), and VSB's cap for pinned bodies skips `<body>` children, so with
+  the pointer on the list the whole table painted over the bars. The
+  fixture reproduces it (`probe`: the table classed as a target). This
+  predates the branch. Fix: the `<body>`-children pass skips `table.tbl`;
+  the table pass handles it. MusicBrainz tables are never `<body>`
+  children.
+
+Mutations: 8/8 caught.
+
+**Merge gate on `77bad5a`:** `test:full` 2026-10-14T00:35:36Z–01:55:20Z on
+`vzell-lap` (2 workers, 79 m 44 s): 1695 passed, 2 failed. Neither failure
+is caused by this branch. Each one was rerun with `--repeat-each=6`, on the
+branch and with `main`'s userscript swapped in (the spec and support files
+are identical on both):
+
+| test | branch | `main` |
+|---|---|---|
+| `rich-tooltips.spec.js:58` (heading title read once, right after the tooltip shows) | 1/6 failed | 2/6 failed |
+| `detail-preview.spec.js:571` (springsteenlyrics.com card, see 2026-10-13) | 2/6 failed | 3/6 failed |
+
+Not fixed here.
+
 ## 2026-10-14 — Merged main into feature/sidebar-overhaul; "Sidebar as tables" on release, series, place, area and instrument (WIP.5)
 
 Env: 2026-10-14T10:06Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (fixture specs), no Tampermonkey (GM stubs)

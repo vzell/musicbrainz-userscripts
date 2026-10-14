@@ -1926,9 +1926,39 @@ the "CAA" column should always be wide enough to hold the image, the type glyphs
 for large tables) - CAA-wrapped.png
 
 
-* TODO fix the h2/h3 stretching problem to the right browser side
+* DONE fix the h2/h3 stretching problem to the right browser side
+** i
 
-fix the h2/h3 stretching problem to the right browser side - @debug/h2-stretching.png
+1.)
+
+There are two visual gliches which probably are related on the MB PTs:
+
+The h2/h3 header lines do NOT stretch to the right of the browser window, see
+e.g. https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98 and the table text is visible before the sticky
+headers
+
+#+begin_example
+@debug/USA-final.html - [Image #1] - FRP "Series" subtable uncollapsed, but the page has not been scrolled down
+[Image #2] - FRP "Series" subtable uncollapsed and scrolled down, "Barry Manilow" from the "Disambiguation" column is still visible during scrolling right after the non-stretched h2/h3 header lines 
+[Image #3] - FRP "Series" subtable uncollapsed and completely scrolled to the right, the sub-table then gets aligned with the non-stretched h2/h3 header lines but there is still empty space on the right side of the browser window
+#+end_example
+
+Is there anything we can fix here, propose some solutions
+
+2.)
+
+[Image #4] - On non MB PTs,
+e.g. https://www.brucespringsteen.it/DB/records.aspx?tipe=-2,0,1,2,3,4,5,6,7,8,9,10,11&sort=0&addon=0 when sorting a non
+sticky column like e.g. "Notes" and then scrolling down, the rows are srolling up but the contents is actually visible
+in the header column of the sort column, see e.g. the text "gatefold" from the "Notes" column
+When multisorting non-sticky columns the effect is visible in all sort columns.  
+
+** bug
+
+2.) is fixed.  1.) still doesn't look completely right. When scrolled to the complete right, the "Annotation" h2 line
+looks nice, cause it doesn't completely stretch to the right and leaves a small space more or less like the sidebar
+toggle width. The long sub-table also shows this behaviour, but the h2 line with the global filter and the h3 sub-table
+section headers stretch to the complete right, even under the sidebar toggle handle - @debug/h2h3bug.html
 
 
 * DONE Normalize titles in nonMB PTs according to MB style guidelines
@@ -2366,4 +2396,20 @@ Two ways to fix it:
 - Keep the behaviour and change test C to turn the setting off. To use ⏱ with no matches, a user would have to clear the filter, click ⏱, and type the filter again.
 
 Which way do you want? Either fix goes on a new branch with a regression test. I still owe a complete test:full on main, and I'll run it once the fix is in.
+* ● The fix is merged into main as 9.99.1339 and pushed
+
+main matches origin/main, and I didn't run the full suite, as you asked.
+
+- TODO.org: your newer edits are committed as fa11320 and went in with the merge.
+- Commits: merge 8697e52, changelog fold d4f1c28.
+- Fold: WIP.1 became 9.99.1339. No cross-references needed rewriting, and the entry already carried today's date. // @version is 9.99.1339+2026-10-13 and the WIP file is gone.
+- Checks on main: syntax check, changelog audit (1510 entries, clean) and docs audit all pass.
+- Branch: fix/hide-empty-subtables-keep-one is deleted locally and on origin.
+
+For tomorrow's test:full on the other host:
+- ms-length-filter-after-toggle test C should now pass; on the interrupted run it was the one real failure.
+- detail-preview.spec.js:571 (the springsteenlyrics.com card) may fail about one run in eight. That's a known flaky test, not this change.
+- On vzell-lap, the last recorded full run took 22 m 36 s for 439 tests. At 1686 tests that scales to about 87 minutes here; a faster host will be quicker.
+
+The published copy in vzell/mb-userscripts is still at 9.99.1167, so republishing (including the HELP the ❓ button serves) is still to do.
   
