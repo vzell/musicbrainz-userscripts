@@ -22454,3 +22454,156 @@ Tests: `hide-empty-subtables.spec.js` (the "nothing matches" test now pins
 "nothing hidden") plus `ms-length-filter-after-toggle.spec.js`, 14/14.
 `ms-length` test C fails on `main` and passes here. Mutations
 `hide-empty-subtables.json` 9/9 (new H8/H9 drop the keep-one guard).
+
+## 2026-10-14 — Merged main into feature/sidebar-overhaul; "Sidebar as tables" on release, series, place, area and instrument (WIP.5)
+
+Env: 2026-10-14T10:06Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (fixture specs), no Tampermonkey (GM stubs)
+
+**Why the button was missing.** Release and series pages had a toolbar, but
+`_sbTablesButtons()` let only six kinds through. Place, area and instrument
+overviews had no page type on the branch at all, so the script stopped at
+init with no toolbar to join. Main's relationship tables (`06f4f74`) added
+`place-overview`, `area-overview` and `instrument-overview`, hence the merge
+first (main `d4f1c28`, 9.99.1339; merge commit `33e043a`).
+
+**Merge conflicts and how they were resolved.**
+- Toolbar button list: main's `showIf`/`_noMainButton` filter, then
+  `.concat(_sbTablesButtons())`.
+- `startFetchingProcess()`: main's `replaceFeatures` plus button `type` is
+  the branch's `ownFeatures` plus `pageType`, done more fully (it also drops
+  `entityFeatures`, and `_activateButtonForSavedPageType()` lets a disk load
+  find the button). Main's version kept; the Sidebar button now sets
+  `type: 'sidebar-tables', replaceFeatures: true`. Its two mutations were
+  rewritten to plant the same defects through the new fields; both behave as
+  before (one `expect: "pass"`, one caught).
+- Fetched-page pre-processing: both `relDetailsToTables` and `sidebarToTables`.
+- This file: both sides kept, in date order.
+Checked on the merged tree: 177/177 in the specs both sides touched;
+`sidebar-overhaul.json` 39/39.
+
+**The change.**
+- `_sbTablesButtons()` also lets through release (with `/disc/N`), series,
+  place, area and instrument.
+- The three overview definitions also match with `sa_sidebar_tables_button`
+  on; their Relationships button has `showIf` on
+  `sa_enable_relationship_tables`, so with that off only the Sidebar button
+  shows.
+- `applySidebarToTables()`: every `dl.properties` and every
+  `ul.external_links` is its own group, named by its heading (a release has
+  two of each). New for a release: Labels (the `ul.links` whose items link a
+  label's own page, so a label's Editing list, which links
+  `/label/<mbid>/edit`, is never taken for one) and Release events.
+- Disk load: `_buttonForSavedPageType()` also asks `_sbTablesButtons()`, and
+  the restore runs `applySidebarToTables()`. Without that call the groups
+  still render, but nested in the release's `div.tracklist-and-credits` with
+  no "Sidebar" heading (probed: the loaded `#content` has only the native
+  wrappers at top level); the round-trip test now checks where they sit.
+
+**Tried and undone: placing the groups earlier on a release.** A release has
+no direct h2 in `#content` (its headings are in `div.annotation` and
+`div.tracklist-and-credits`), so the "Sidebar" heading is appended at the
+bottom. Inserting it before the first child holding an h2 changed nothing:
+`_relocateTrailingH2Sections()` (`sa_enable_h2_section_relocation_on_final_page`,
+default on) moves every other h2 section above the data heading after the
+render, on every page. That is the design, so the change was reverted.
+
+**Found, not fixed (main's, not this branch's).** Refreshing
+`scripts/config-default-history.json` (11 settings added: main's three, this
+branch's eight) makes `audit-config-defaults.py` report
+`sa_bb_sidebar_right: no entry — was true, now false`. Both commits
+(`d60e197` true, `91b558b` false, 2026-10-09) are on main and were the same
+WIP.3, so the true default probably never shipped. A migration entry or an
+allowlist is the user's decision.
+
+Tests: `sidebar-tables.spec.js` 13/13 (8 new). Mutations: 9 new in
+`sidebar-overhaul.json`, all caught; "the saved Sidebar button is not found"
+fails by the spec's 90 s timeout (the pageType-mismatch prompt replaces the
+render button), not by an assertion.
+
+**Full suite** (`run-test-full.py`, start 2026-10-14T10:09:02Z, finish
+10:18:10Z, 9 m 8 s, petri, `33e043a` plus the uncommitted WIP.5 work):
+1719/1724.
+- `rel-tables-pages.spec.js` place and series pinned the exact toolbar
+  button list; the Sidebar button is now on both by design, so both lists
+  gained '🗂 Sidebar as tables'.
+- `popup-mb` (a hover that moved on before its rate slot) and
+  `ws2-transient-classifier` (a 502 batch retry gap of 2307 ms against
+  3000) passed on rerun: timing under a full parallel run.
+- `rich-tooltips.spec.js` "h2/h3 row-count stat … hands the heading title
+  back" fails every time, also on `main` alone and on this merge without the
+  WIP.5 work, and passes on the branch before the merge (`73350e7`).
+  `git bisect` between the merge base `33c8d48` and `main` names `06f4f74`
+  (main's relationship tables). The h2's own title ("Click to
+  collapse/uncollapse section …") is still set while the stat's card shows.
+  Main's regression; not fixed on this branch.
+
+Mutations on the final tree: `sidebar-overhaul.json` 48/48 as expected
+(47 caught, 1 `expect: "pass"`), after repointing "tables: the button on any
+page" at the rewritten path pattern in `_sbTablesButtons()`.
+
+## 2026-10-14 — Sticky page headers flip-flopped on an overflowing header status line; sa_bb_sidebar_right migration (WIP.5)
+
+Env: 2026-10-14T11:03Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (fixture specs), no Tampermonkey (GM stubs)
+
+Both "found, not fixed" items of the entry above, fixed on request.
+
+**The rich-tooltips failure was not a tooltip bug.** Probes on
+`releasegroup-releases-live-titles.html` (1280 px window, after the "Studio"
+global filter):
+- The h2's title came back because the pointer left the row-count stat: the
+  `mouseout` restored it, correctly.
+- The stat moved because the page re-laid itself out: width 1280 → 1401,
+  `<body>` margins 0 → 8, the tabs sticky → static, the header 38 px shorter.
+- A 20 ms timeline of `html` classes showed `mb-sph-on` toggling every
+  60–70 ms indefinitely: the sticky page headers engaging and disengaging.
+- Disengaged, `#page` was 1401 wide. The widest leaves: the header's status
+  line (`#mb-filter-status-display`, `white-space: nowrap`, to 1393;
+  `#mb-info-display-generic`, 566 px) in `#mb-status-displays-container`, an
+  `inline-flex` that never wraps. Engaged, that header bar is a capped target,
+  the line wraps, `#page` fits in 1280, and `_sphRefresh()` disengaged: the
+  overflow was the capped bar's own. `_sphRefresh()`'s JSDoc said this
+  "cannot oscillate".
+- Why `06f4f74`: its "Relationships" button lengthened the release group's
+  toolbar, which aligns the status line under the first button, pushing it
+  past the edge. A layout coincidence exposed a general flaw; the Sidebar
+  button (WIP.3/WIP.5) lengthens more toolbars the same way.
+
+**Fix** (`_sphRefresh()`): before disengaging, the pass removes
+`html.mb-sph-on`, measures the disengaged extent, and re-adds the class when
+that extent exceeds both the window and the engaged extent plus `<body>`'s
+own margins. The margins allowance is needed: the first version without it
+broke "disengages once the overflow is gone … (no ratchet)", whose bare
+fixture overflows by a few px with the feature off. The cost is one extra
+layout, on a pass that would disengage only, like the extra layout the
+engage pass already takes. Timeline after the fix: engaged once at ~750 ms,
+then stable.
+
+Test: `sticky-page-headers.spec.js` "a status line past the window edge
+engages once and does not flip back and forth". It asserts the feature
+engages (so the overflow is really there) and flips at most once over 60
+animation frames. Mutations: 2 more in `scripts/mutations/sticky-page-headers.json`,
+both caught (no disengaged check: the new test; no margins allowance: the
+"no ratchet" test). Sticky, tooltip and sl-sticky specs: 72/72.
+`rich-tooltips.spec.js`: 7/7.
+
+**`sa_bb_sidebar_right`:** a `_SETTINGS_MIGRATIONS` entry `was: [true]`. The
+true default lived one day inside one branch (`d60e197` → `91b558b`,
+2026-10-09, both "WIP.3", `@version` 9.99.1298 at the time) and never
+shipped, but `dump-default-history.py` walks every revision. The entry
+resets a stored `true` only in a profile that has not run migration level 1
+yet (it is not bumped). `audit-config-defaults.py` is clean again: 24 retired
+defaults, 4 orphaned keys, matching 898 revisions. `settings-migration.spec.js`
+18/18.
+
+**Full suite after these fixes, and one test race.** Two runs (11:03:15Z →
+11:13:08Z, 1723/1725; 11:18:29Z → 11:26:49Z, 1722/1725; petri) failed only on
+timing-sensitive tests, each passing alone: `ws2-transient-classifier` (a
+retry gap; also 1 in 5 on `main` alone), `column-filter-modes` "never change
+a column's width" (the one-off recorded in `3358368`), a `popup-mb` place
+window (6/6 alone). `caa-column-redesign.spec.js` "grid is the default … a
+collapsed cell keeps its width" failed in both (264 vs 270 px). A probe
+showed the column widening by 6 px on its own within ~100 ms of the render
+(page 5217 → 5223 px, sticky headers engaged throughout), so the test's first
+read could come before it. Same 24/24 under 12 parallel workers with and
+without the `_sphRefresh()` fix: not caused by it. The test now takes the
+collapsed width once two reads in a row agree.

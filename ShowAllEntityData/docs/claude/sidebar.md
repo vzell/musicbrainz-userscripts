@@ -148,12 +148,25 @@ into the discography's pipeline on 2026-10-11.
 `buttonsToRender` at init when all of these hold:
 - the host is MusicBrainz;
 - `sa_sidebar_tables_button` is on (the default);
-- the path is an entity overview (`/artist|label|event|release-group|recording|work/<mbid>`);
+- the path is an entity overview
+  (`/artist|label|event|release-group|recording|work|series|place|area|instrument/<mbid>`,
+  or `/release/<mbid>` with an optional `/disc/N`);
 - the page has `#sidebar dl.properties`.
 
 `_sbTablesButtons()` runs during init, before the `_sb*` part of the file has
 executed, so it must not read a module-level `const` from there (TDZ). That is
 why the path pattern is a literal inside it.
+
+**A page type is needed first.** The button joins a toolbar, and a page with
+no page type gets none: the script stops at init. Release (`release-tracks`)
+and series (`series-releases`) have one. Place, area and instrument overviews
+got theirs from main's relationship tables (`place-overview`,
+`area-overview`, `instrument-overview`, merged into this branch 2026-10-14).
+Those match while `sa_enable_relationship_tables` OR
+`sa_sidebar_tables_button` is on; their own "Relationships" button carries
+`showIf` on the first, so with the relationship tables off only the Sidebar
+button shows. A release page needs `sa_enable_release_tracks` (default on)
+for the same reason.
 
 **In the toolbar.**
 - It sits behind its own divider (`ownGroup`,
@@ -195,23 +208,32 @@ It builds groups with `_eventBuildTable()`:
 
 | Group | Columns | Source |
 |---|---|---|
-| `<h2 text of dl.properties>` | #, Property, Value | `dl.properties` (dd cloned) |
-| External links | #, Site, Link, Kind, Details | Site = host; Kind = `_SB_LINK_KINDS`; Details = the item's text beside its link, e.g. "(as @x)"; `.all-relationships` left out |
+| `<h2 text of dl.properties>` | #, Property, Value | every `dl.properties` (dd cloned); a release has two: "Release information", "Additional details" |
+| Labels (release) | #, Label, Catalog number | the `ul.links` whose items link a label's own page (`/label/<mbid>`, never `/label/<mbid>/edit`: a label's Editing list); `.catalog-number` |
+| Release events (release) | #, Country, Date | `ul.release-events > li`: the `.flag` area link, `.release-date` |
+| `<h2 text of ul.external_links>` | #, Site, Link, Kind, Details | every `ul.external_links` (a release has "Release group external links" too); Site = host; Kind = `_SB_LINK_KINDS`; Details = the item's text beside its link, e.g. "(as @x)"; `.all-relationships` left out |
 | Tags | #, Tag, Kind, Votes | Kind is Genre or Tag; Votes from `.tag-count` |
 
 - An empty group is left out.
 - It removes that document's own `table.tbl`s and h3s from `#content`, so only
   its groups are read.
 - It puts an h2 "Sidebar" before the first h2 of `#content`, with the groups
-  after it.
+  after it. Where it starts does not decide where it ends:
+  `_relocateTrailingH2Sections()` (`sa_enable_h2_section_relocation_on_final_page`)
+  moves the page's other h2 sections above it after the render, as on every
+  page. On a release (headings in `div.annotation` and
+  `div.tracklist-and-credits`, no direct h2) the groups come last, under the
+  annotation and the emptied Tracklist heading; placing them earlier was
+  tried on 2026-10-14 and undone by that pass.
 - The sidebar is only cloned from; our counts, icons and group heads are
   filtered out of the clones.
 
-**Not supported: disk load of a saved "Sidebar as tables" view.** The plan
-listed the disk-load restore as a third call site. It was left out, because a
-save of this view would reload as its page type: Load from Disk keys on the
-detected pageType, and its mismatch prompt guards it. The rows are read from
-the page in milliseconds, so a saved copy adds nothing.
+**Disk load of a saved "Sidebar as tables" view.** Supported since the merge
+of main (2026-10-14). Before it, a save reloaded as its page type (Load from
+Disk keyed on the detected pageType), so the restore was left out. Main's
+`_activateButtonForSavedPageType()` makes the saved pageType's button active
+first; `_buttonForSavedPageType()` also asks `_sbTablesButtons()`, and the
+disk-load restore runs `applySidebarToTables()` beside the other converters.
 
 **Specs.** `sidebar-tables.spec.js` (5), on the artist and event fixtures:
 - the three groups with their rows;
@@ -224,6 +246,25 @@ the page in milliseconds, so a saved copy adds nothing.
 
 There are 7 mutations in `sidebar-overhaul.json`, 6 caught and 1 recorded
 `expect: "pass"`, as above.
+
+**Specs for the five more kinds** (2026-10-14, 8 more in the same file), on
+main's `rel-<kind>-overview.html` captures:
+- per kind (release, series, place, area, instrument): the button, a render
+  of sidebar groups only (every h3 is a sidebar heading), the first being the
+  kind's facts with one row per fact, and no request;
+- the release: both facts lists, Labels and Release events with their rows,
+  both external-links lists, no tracklist table;
+- with the relationship tables off: place, area and instrument keep the
+  button, and no Relationships button shows;
+- a disk round trip on the release: the same groups, under their own
+  "Sidebar" heading at the top level of `#content`. Without the converter on
+  the load path the groups still render, but nested in the release's
+  `div.tracklist-and-credits` with no heading; counting tables anywhere in
+  `#content` missed that, so the test also checks where they sit.
+
+9 more mutations, all caught. One ("the saved Sidebar button is not found")
+fails by the spec's timeout, not an assertion: Load from Disk's
+pageType-mismatch prompt comes up instead of the render button.
 
 ## The picture in the entity previews (`_mbPopImageLoad()`)
 

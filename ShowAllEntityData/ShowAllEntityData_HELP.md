@@ -841,15 +841,20 @@ close every sidebar section; the headings of the main page are left alone.
   place show its picture too, once you have pressed Space on one: see
   *Link previews on MusicBrainz* under [Page-specific
   behaviour](#page-specific-behaviour).
-- **🗂 Sidebar as tables.** On artist, label, event, release group, recording
-  and work pages this button shows the sidebar's information (*Sort name*,
-  *Born*, *Area*, …), its external links (with their site and kind) and its
-  tags (genre or tag, with votes) as tables. You can filter, sort and use the
-  📊 dropdown on them like on any other table. It reads the page itself, so
-  nothing is loaded, and the sidebar stays as it is. Pressing another button
-  afterwards reloads the page first, as every second press does. A saved
-  "Sidebar as tables" view cannot be loaded back from disk. Turn the button
-  off with *'Sidebar as tables' button*.
+- **🗂 Sidebar as tables.** On artist, label, event, release group,
+  recording, work, release, series, place, area and instrument pages this
+  button shows the sidebar's information (*Sort name*, *Born*, *Area*, …),
+  its external links (with their site and kind) and its tags (genre or tag,
+  with votes) as tables. On a release you also get its additional details,
+  its labels with their catalog numbers, its release events, and the release
+  group's external links, each as its own table. You can filter, sort and use
+  the 📊 dropdown on them like on any other table. It reads the page itself,
+  so nothing is loaded, and the sidebar stays as it is. Pressing another
+  button afterwards reloads the page first, as every second press does. A
+  saved "Sidebar as tables" view loads back from disk as the same tables.
+  Place, area and instrument pages keep the button with *Relationships as
+  tables* switched off. Turn the button off with *'Sidebar as tables'
+  button*.
 
 The switches are in ⚙️ Settings, next to *Collabsable sidebar*.
 

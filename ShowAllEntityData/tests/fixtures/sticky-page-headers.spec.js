@@ -1689,3 +1689,39 @@ test.describe('sticky page headers — the sticky column docks in line with its 
         expect(after[0].shadow).toBe('none');
     });
 });
+
+// A status line in the header that runs past the window is a capped bar's
+// own overflow: engaged, the bar is capped and the line wraps, so the
+// overflow is gone; disengaged, it is back. Before 2026-10-14 that engaged and
+// disengaged every frame (html.mb-sph-on toggling every ~70 ms, the page
+// jumping by its margins), found through rich-tooltips.spec.js, whose hover
+// target moved away mid-hover. Pinned: it engages (so the overflow is really
+// there) and then stays put.
+test.describe('sticky page headers — an overflowing header status line', () => {
+    test('a status line past the window edge engages once and does not flip back and forth', async ({ page }) => {
+        await page.setViewportSize({ width: 1280, height: 720 });
+        await loadUserscriptPage(page, { url: 'https://musicbrainz.org/release-group/aaaaaaaa-0000-0000-0000-000000000002',
+                                         fixtureFile: path.join(__dirname, 'releasegroup-releases-live-titles.html'), testMode: true });
+        await page.click('button[data-label="Show all Releases for ReleaseGroup"]');
+        await waitForRenderComplete(page);
+        await page.evaluate(() => {
+            window.__sphFlips = 0;
+            let on = document.documentElement.classList.contains('mb-sph-on');
+            new MutationObserver(() => {
+                const now = document.documentElement.classList.contains('mb-sph-on');
+                if (now !== on) { window.__sphFlips++; on = now; }
+            }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        });
+        await page.fill('#mb-global-filter-input', 'Studio');
+        await expect.poll(() => page.evaluate(() => document.documentElement.classList.contains('mb-sph-on')),
+            'the status line overflows the window, so the feature engages').toBe(true);
+        // 60 frames: the flip-flop took ~4 frames a cycle.
+        await page.evaluate(() => new Promise((done) => {
+            let n = 0;
+            const step = () => (++n >= 60 ? done() : requestAnimationFrame(step));
+            requestAnimationFrame(step);
+        }));
+        expect(await page.evaluate(() => window.__sphFlips), 'engaged once, then no flip-flop').toBeLessThanOrEqual(1);
+        expect(await page.evaluate(() => document.documentElement.classList.contains('mb-sph-on'))).toBe(true);
+    });
+});

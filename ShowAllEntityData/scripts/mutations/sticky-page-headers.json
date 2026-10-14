@@ -564,5 +564,31 @@
     "spec": "tests/fixtures/sticky-page-headers.spec.js",
     "grep": "an open MB header menu stays above",
     "expect": "fail"
+  },
+  {
+    "name": "a disengage does not check the disengaged layout",
+    "why": "The 9.99.1339 behaviour: the engaged extent alone decides, so a header status line past the window edge (a capped bar's own overflow) engages and disengages every frame.",
+    "edits": [
+      {
+        "find": "                if (!(extentOff > vw + 1 && extentOff > extent + margins + 1 && !_sphSidebarBlocksWidening())) {\n",
+        "replace": "                if (true) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "does not flip back and forth",
+    "expect": "fail"
+  },
+  {
+    "name": "the disengaged check ignores <body>'s margins",
+    "why": "A few px of overflow that only the restored margins cause keeps the feature engaged: a page whose overflow is gone never disengages (a ratchet).",
+    "edits": [
+      {
+        "find": "                if (!(extentOff > vw + 1 && extentOff > extent + margins + 1 && !_sphSidebarBlocksWidening())) {\n",
+        "replace": "                if (!(extentOff > vw + 1 && !_sphSidebarBlocksWidening())) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "no ratchet",
+    "expect": "fail"
   }
 ]

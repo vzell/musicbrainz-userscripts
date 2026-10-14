@@ -511,7 +511,7 @@
             label: "'Sidebar as tables' button",
             type: "checkbox",
             default: true,
-            description: "On artist, label, event, release group, recording and work pages, add a '🗂 Sidebar as tables' button: it shows the sidebar's information, external links and tags as tables you can filter and sort like any other. Read from the page itself: no request. The sidebar stays as it is."
+            description: "On artist, label, event, release group, recording, work, release, series, place, area and instrument pages, add a '🗂 Sidebar as tables' button: it shows the sidebar's information, external links and tags as tables you can filter and sort like any other. Read from the page itself: no request. The sidebar stays as it is."
         },
 
         // ============================================================
@@ -4938,6 +4938,9 @@
         { key: 'sa_art_idb_metadata_ttl_days',     was: [7] },
         { key: 'sa_auto_resize_columns',           was: [false] },
         { key: 'sa_auto_resize_columns_threshold', was: [2000] },
+        // true for one day inside one branch (d60e197 → 91b558b, 2026-10-09),
+        // never in a release; listed because the audit walks every revision.
+        { key: 'sa_bb_sidebar_right',              was: [true] },
         { key: 'sa_count_stat_tooltip_bg',         was: ['#1e1e2e'] },
         { key: 'sa_count_stat_tooltip_color',      was: ['#cdd6f4'] },
         { key: 'sa_dp_hover_without_ctrl',         was: [false] },
@@ -19953,7 +19956,7 @@
      */
     function _buttonForSavedPageType(savedType) {
         if (!savedType || savedType === baseDefinition?.type) return null;
-        return (baseDefinition?.buttons || []).find(b => b.type === savedType) || null;
+        return (baseDefinition?.buttons || []).concat(_sbTablesButtons()).find(b => b.type === savedType) || null;
     }
 
     /**
@@ -28646,9 +28649,12 @@
         // has its own pageTypes. Off with sa_enable_relationship_tables.
         {
             type: 'instrument-overview',
-            match: (path) => Lib.settings.sa_enable_relationship_tables !== false &&
+            // Also there for "🗂 Sidebar as tables" (_sbTablesButtons()) with
+            // the relationship tables off: then only that button shows.
+            match: (path) => (Lib.settings.sa_enable_relationship_tables !== false || Lib.settings.sa_sidebar_tables_button !== false) &&
                 path.match(/^\/instrument\/[a-f0-9-]{36}\/?$/),
-            buttons: [ { label: 'Show all Relationships for Instrument', shortLabel: 'Relationships' } ],
+            buttons: [ { label: 'Show all Relationships for Instrument', shortLabel: 'Relationships',
+                         showIf: () => Lib.settings.sa_enable_relationship_tables !== false } ],
             features: _relTablesFeatures({ ownLabel: 'Instrument' }),
             tableMode: 'multi',
             non_paginated: true
@@ -28809,9 +28815,12 @@
         // has its own pageTypes. Off with sa_enable_relationship_tables.
         {
             type: 'area-overview',
-            match: (path) => Lib.settings.sa_enable_relationship_tables !== false &&
+            // Also there for "🗂 Sidebar as tables" (_sbTablesButtons()) with
+            // the relationship tables off: then only that button shows.
+            match: (path) => (Lib.settings.sa_enable_relationship_tables !== false || Lib.settings.sa_sidebar_tables_button !== false) &&
                 path.match(/^\/area\/[a-f0-9-]{36}\/?$/),
-            buttons: [ { label: 'Show all Relationships for Area', shortLabel: 'Relationships' } ],
+            buttons: [ { label: 'Show all Relationships for Area', shortLabel: 'Relationships',
+                         showIf: () => Lib.settings.sa_enable_relationship_tables !== false } ],
             features: _relTablesFeatures({ ownLabel: 'Area' }),
             tableMode: 'multi',
             non_paginated: true
@@ -29074,9 +29083,12 @@
         // has its own pageTypes. Off with sa_enable_relationship_tables.
         {
             type: 'place-overview',
-            match: (path) => Lib.settings.sa_enable_relationship_tables !== false &&
+            // Also there for "🗂 Sidebar as tables" (_sbTablesButtons()) with
+            // the relationship tables off: then only that button shows.
+            match: (path) => (Lib.settings.sa_enable_relationship_tables !== false || Lib.settings.sa_sidebar_tables_button !== false) &&
                 path.match(/^\/place\/[a-f0-9-]{36}\/?$/),
-            buttons: [ { label: 'Show all Relationships for Place', shortLabel: 'Relationships' } ],
+            buttons: [ { label: 'Show all Relationships for Place', shortLabel: 'Relationships',
+                         showIf: () => Lib.settings.sa_enable_relationship_tables !== false } ],
             features: _relTablesFeatures({ ownLabel: 'Place' }),
             tableMode: 'multi',
             non_paginated: true
@@ -35498,9 +35510,14 @@
      * kept as a floor (`--mb-sph-body-native-minw`), since the engaged rule
      * replaces it.
      *
-     * Capping can never remove the overflow it reacts to (a capped bar only
-     * wraps text that could wrap anyway, and `_sphContentExtent()` skips the
-     * capped targets), so engaging/disengaging cannot oscillate.
+     * Capping usually cannot remove the overflow it reacts to (a capped bar
+     * only wraps text that could wrap anyway, and `_sphContentExtent()` skips
+     * the capped targets). It can when the overflow IS a capped bar: the
+     * header's status line (nowrap spans in an unwrapping inline-flex) past
+     * the window's edge, once a page's toolbar is long enough. That
+     * engaged and disengaged on every pass (2026-10-14, rich-tooltips.spec.js;
+     * DEBUG-NOTES.md), so a disengage first measures the disengaged layout
+     * and stays engaged when it would overflow again.
      *
      * @returns {void}
      */
@@ -35526,12 +35543,30 @@
             }
 
             if (!engage) {
-                if (_sph.active) {
-                    docEl.classList.remove('mb-sph-on');
+                if (!_sph.active) return;
+                // Measure the disengaged layout before committing to it: when
+                // the overflow came from a capped bar itself (a status line
+                // of nowrap spans in the header, past the window's edge),
+                // capping removed it, and disengaging would bring it back on
+                // the next pass — engaged and disengaged every frame. One
+                // extra layout, on a pass that would disengage only.
+                // Disengaged, <body> gets its margins back (8px each under
+                // MusicBrainz's stylesheet), which alone moves the content by
+                // up to their sum and can leave a few px of overflow that
+                // was never a bar's: only an overflow beyond that keeps it
+                // engaged, or a page whose tables were hidden would never
+                // let go (the "no ratchet" spec).
+                docEl.classList.remove('mb-sph-on');
+                const bcs = getComputedStyle(body);
+                const margins = (parseFloat(bcs.marginLeft) || 0) + (parseFloat(bcs.marginRight) || 0);
+                const extentOff = _sphContentExtent();
+                if (!(extentOff > vw + 1 && extentOff > extent + margins + 1 && !_sphSidebarBlocksWidening())) {
                     _sph.active = false;
                     Lib.debug('ui', 'Sticky page headers: disengaged (no horizontal overflow)');
+                    return;
                 }
-                return;
+                docEl.classList.add('mb-sph-on');
+                Lib.debug('ui', 'Sticky page headers: stay engaged (the overflow is a capped bar\'s own)');
             }
 
             // Engage BEFORE the read phase. html.mb-sph-on itself moves the
@@ -87730,15 +87765,18 @@ a { color: #1565c0; }`;
     /**
      * The "🗂 Sidebar as tables" button for this page, or none: MusicBrainz
      * only, an entity overview page (artist, label, event, release group,
-     * recording, work) with a sidebar facts list, and
-     * `sa_sidebar_tables_button` on. Called while the toolbar is built at
+     * recording, work, release (also `/disc/N`), series, place, area,
+     * instrument) with a sidebar facts list, and `sa_sidebar_tables_button`
+     * on. Place, area and instrument have a page type for it even with the
+     * relationship tables off (their `*-overview` definitions). Also asked by
+     * `_buttonForSavedPageType()` for a disk load. Called while the toolbar is built at
      * init, before this part of the file has run: it must not read a
      * module-level `const` from here (TDZ), hence the literal pattern.
      * @returns {Array<object>}
      */
     function _sbTablesButtons() {
         if (_foreignHost || Lib.settings.sa_sidebar_tables_button === false) return [];
-        if (!/^\/(artist|label|event|release-group|recording|work)\/[0-9a-f-]{36}\/?$/.test(location.pathname)) return [];
+        if (!/^\/(?:(?:artist|label|event|release-group|recording|work|series|place|area|instrument)\/[0-9a-f-]{36}|release\/[0-9a-f-]{36}(?:\/disc\/\d+)?)\/?$/.test(location.pathname)) return [];
         if (!document.querySelector('#sidebar dl.properties')) return [];
         return [{
             label: '🗂 Sidebar as tables', shortLabel: 'Sidebar', ownGroup: true,
@@ -87764,10 +87802,17 @@ a { color: #1565c0; }`;
 
     /**
      * Turns the sidebar into h3 + `table.tbl` groups in `#content`
-     * (`features.sidebarToTables`, the "🗂 Sidebar as tables" button):
-     *   - "<Entity> information": #, Property, Value (`dl.properties`);
-     *   - "External links": #, Site, Link, Kind, Details (`ul.external_links`,
-     *     MusicBrainz's own "View all relationships" left out);
+     * (`features.sidebarToTables`, the "🗂 Sidebar as tables" button), each
+     * named by its sidebar heading:
+     *   - every `dl.properties` ("<Entity> information"; a release also has
+     *     "Additional details"): #, Property, Value;
+     *   - a release's labels ("Labels", the `ul.links` whose items link a
+     *     label): #, Label, Catalog number;
+     *   - a release's events ("Release events", `ul.release-events`): #,
+     *     Country, Date;
+     *   - every `ul.external_links` ("External links"; a release also has
+     *     "Release group external links"): #, Site, Link, Kind, Details
+     *     (MusicBrainz's own "View all relationships" left out);
      *   - "Tags": #, Tag, Kind (Genre or Tag), Votes (`ul.genre-list`, `ul.tag-list`).
      * A group with no rows is left out. The page's own tables and h3s in
      * `#content` are removed from that document so only these groups are
@@ -87787,31 +87832,68 @@ a { color: #1565c0; }`;
         root.dataset.mbSidebarTables = '1';
         const frags = [];
 
-        const dl = side.querySelector('dl.properties');
-        if (dl) {
-            let h = dl.previousElementSibling;
+        // The heading a sidebar list sits under: the h2 before it, or before
+        // the wrapper holding it (a release's events are in their own div).
+        const nameOf = (el, fallback) => {
+            let top = el;
+            while (top.parentElement && top.parentElement !== side) top = top.parentElement;
+            let h = top.previousElementSibling;
             while (h && h.tagName !== 'H2') h = h.previousElementSibling;
-            const name = (h && _sbHeadingText(h)) || 'Information';
+            return (h && _sbHeadingText(h)) || fallback;
+        };
+
+        side.querySelectorAll('dl.properties').forEach(dl => {
             const rows = [];
             dl.querySelectorAll(':scope > dt').forEach(dt => {
                 const dd = dt.nextElementSibling && dt.nextElementSibling.tagName === 'DD' ? dt.nextElementSibling : null;
                 rows.push([String(rows.length + 1), dt.textContent.replace(/:\s*$/, '').trim(), dd ? _sbCloneKids(dd) : '']);
             });
-            if (rows.length) frags.push(_eventBuildTable(doc, name, ['#', 'Property', 'Value'], rows));
-        }
-
-        const links = [];
-        side.querySelectorAll('ul.external_links > li').forEach(li => {
-            if (li.matches('.mb-sbl-head, .all-relationships')) return;
-            const a = li.querySelector('a[href]');
-            if (!a) return;
-            const stem = (Array.from(li.classList).find(c => /-favicon$/.test(c)) || '').replace(/-favicon$/, '');
-            let host;
-            try { host = new URL(a.getAttribute('href'), 'https://musicbrainz.org').hostname.replace(/^www\./, ''); } catch (_) { host = ''; }
-            const details = li.textContent.replace(a.textContent, '').replace(/\s+/g, ' ').trim();
-            links.push([String(links.length + 1), host, [a.cloneNode(true)], _SB_LINK_KINDS[stem] || 'Other', details]);
+            if (rows.length) frags.push(_eventBuildTable(doc, nameOf(dl, 'Information'), ['#', 'Property', 'Value'], rows));
         });
-        if (links.length) frags.push(_eventBuildTable(doc, 'External links', ['#', 'Site', 'Link', 'Kind', 'Details'], links));
+
+        // A release's labels: each item a label's own page (or "[no label]")
+        // and its catalog number. Only a label's page: a label's Editing list
+        // links `/label/<mbid>/edit`, never this.
+        const labelLink = (li) => Array.from(li.querySelectorAll('a[href]'))
+            .find(a => /^(?:https?:\/\/[^/]+)?\/label\/[0-9a-f-]{36}\/?$/i.test(a.getAttribute('href'))) || null;
+        side.querySelectorAll('ul.links').forEach(ul => {
+            const items = Array.from(ul.querySelectorAll(':scope > li'));
+            if (!items.some(labelLink)) return;
+            const rows = items.map((li, i) => {
+                const a = labelLink(li);
+                const cat = li.querySelector('.catalog-number');
+                const label = a ? [a.cloneNode(true)] : li.textContent.replace(cat ? cat.textContent : '', '').trim();
+                return [String(i + 1), label, cat ? cat.textContent.trim() : ''];
+            });
+            frags.push(_eventBuildTable(doc, nameOf(ul, 'Labels'), ['#', 'Label', 'Catalog number'], rows));
+        });
+
+        // A release's events: country (its area link) and date.
+        side.querySelectorAll('ul.release-events').forEach(ul => {
+            const rows = Array.from(ul.querySelectorAll(':scope > li')).map((li, i) => {
+                const area = li.querySelector('.flag a, a[href*="/area/"]');
+                const date = li.querySelector('.release-date');
+                return [String(i + 1), area ? [area.cloneNode(true)] : '', date ? date.textContent.trim() : ''];
+            });
+            if (rows.length) frags.push(_eventBuildTable(doc, nameOf(ul, 'Release events'), ['#', 'Country', 'Date'], rows));
+        });
+
+        let nLinks = 0;
+        side.querySelectorAll('ul.external_links').forEach(ul => {
+            const links = [];
+            ul.querySelectorAll(':scope > li').forEach(li => {
+                if (li.matches('.mb-sbl-head, .all-relationships')) return;
+                const a = li.querySelector('a[href]');
+                if (!a) return;
+                const stem = (Array.from(li.classList).find(c => /-favicon$/.test(c)) || '').replace(/-favicon$/, '');
+                let host;
+                try { host = new URL(a.getAttribute('href'), 'https://musicbrainz.org').hostname.replace(/^www\./, ''); } catch (_) { host = ''; }
+                const details = li.textContent.replace(a.textContent, '').replace(/\s+/g, ' ').trim();
+                links.push([String(links.length + 1), host, [a.cloneNode(true)], _SB_LINK_KINDS[stem] || 'Other', details]);
+            });
+            nLinks += links.length;
+            if (links.length) frags.push(_eventBuildTable(doc, nameOf(ul, 'External links'), ['#', 'Site', 'Link', 'Kind', 'Details'], links));
+        });
 
         const tags = [];
         [['ul.genre-list', 'Genre'], ['ul.tag-list', 'Tag']].forEach(([sel, kind]) => {
@@ -87834,7 +87916,7 @@ a { color: #1565c0; }`;
         const firstH2 = root.querySelector(':scope > h2');
         if (firstH2) firstH2.before(h2); else root.appendChild(h2);
         h2.after(...frags);
-        Lib.debug('render', `applySidebarToTables: ${frags.length} groups (${links.length} links, ${tags.length} tags).`);
+        Lib.debug('render', `applySidebarToTables: ${frags.length} groups (${nLinks} links, ${tags.length} tags).`);
     }
 
     // ── The sidebar picture ──────────────────────────────────────────────────
@@ -107384,6 +107466,11 @@ a { color: #1565c0; }`;
             }
             if (activeDefinition.features?.relDetailsToTables) {
                 applyRelDetailsToTables(activeDefinition);
+            }
+            // And "🗂 Sidebar as tables": the reloaded page holds its own
+            // tables again; the sidebar groups take their place.
+            if (activeDefinition.features?.sidebarToTables) {
+                applySidebarToTables(activeDefinition);
             }
 
             // Restore table headers if they were saved

@@ -1,5 +1,30 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-10-14",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The \"🗂 Sidebar as tables\" button (WIP.3) is also on release, series, place, area and instrument pages. On a release it also shows the additional details, the labels with their catalog numbers, the release events and the release group's external links, each as its own table. Place, area and instrument pages keep the button with 'Relationships as tables' switched off."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "A saved \"Sidebar as tables\" view loads back from disk as the same tables, instead of as the page's own table.",
+          "On a page whose header line (the buttons and the status messages) ran just past the window's edge, for example a release group after filtering, the page no longer jumps back and forth several times a second: the sticky page headers switched on and off in a loop."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Tests: 8 more in tests/fixtures/sidebar-tables.spec.js, on the release, series, place, area and instrument captures; 9 more mutations in scripts/mutations/sidebar-overhaul.json, all caught. Merged main (9.99.1339) into the branch first: the Sidebar button now runs through main's replaceFeatures and button type (DEBUG-NOTES.md 2026-10-14)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "2026-10-11",
     "sections": [
