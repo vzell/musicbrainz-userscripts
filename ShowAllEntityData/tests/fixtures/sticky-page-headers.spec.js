@@ -417,6 +417,29 @@ test.describe('sticky page headers — single-table page', () => {
         expect(short, 'bars whose right gap is wider than their left inset').toEqual([]);
     });
 
+    test('a page set to open with the sidebar collapsed has no sidebar box from the first frame (no slide-out)', async ({ page }) => {
+        // initSidebarCollapse() says the initial collapse is "without
+        // animation so the page opens already collapsed". Adding the class
+        // to an already laid-out sidebar animated anyway, and with the
+        // collapsed state ending in display: none (a discrete transition)
+        // the sidebar stayed for 0.3 s and then the page reflowed: links
+        // moved from under a resting pointer (popup-ext.spec.js, 2026-10-14).
+        await openSeries(page, {
+            beforeRender: (p) => p.evaluate(() => {
+                const sidebar = document.getElementById('sidebar');
+                window.__sbBoxesNextFrame = null;
+                const mo = new MutationObserver(() => {
+                    if (!sidebar.classList.contains('sidebar-collapsed')) return;
+                    mo.disconnect();
+                    requestAnimationFrame(() => { window.__sbBoxesNextFrame = sidebar.getClientRects().length; });
+                });
+                mo.observe(sidebar, { attributes: true, attributeFilter: ['class'] });
+            }),
+        });
+        await expect.poll(() => page.evaluate(() => window.__sbBoxesNextFrame), 'premise: the sidebar was collapsed at render').not.toBeNull();
+        expect(await page.evaluate(() => window.__sbBoxesNextFrame), 'boxes one frame after the collapse').toBe(0);
+    });
+
     test('offsets are already right on the pass that engages, not one observer round-trip later', async ({ page }) => {
         // html.mb-sph-on itself moves the geometry the refresh pass measures:
         // <body> loses its margins (8px under the bare fixture's UA

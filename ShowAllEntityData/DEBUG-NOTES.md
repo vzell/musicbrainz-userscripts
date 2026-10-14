@@ -22769,3 +22769,60 @@ showed the column widening by 6 px on its own within ~100 ms of the render
 read could come before it. Same 24/24 under 12 parallel workers with and
 without the `_sphRefresh()` fix: not caused by it. The test now takes the
 collapsed width once two reads in a row agree.
+
+## 2026-10-14 — Merged fix/sticky-gutter-and-sorted-thead into feature/sidebar-overhaul; the initial sidebar collapse animated (WIP.6)
+
+Env: 2026-10-14T13:34Z · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (fixture specs), no Tampermonkey (GM stubs)
+
+**Merge** (`eac6013`): the userscript merged cleanly. The fix branch kept
+main's disengage path, so the `_sphRefresh()` stay-engaged check and its
+right-edge mask (`#mb-sph-rmask`, visible only under `html.mb-sph-on`) do not
+overlap. The WIP files: this branch's WIP.1–WIP.5 kept, the fix branch's
+WIP.1/WIP.2 appended as WIP.6/WIP.7. DEBUG-NOTES: both sides kept, in date
+order.
+
+**What broke, and on which branch.** The first full run after the merge
+(12:31:13Z → 12:39:37Z, 1729/1736) showed `popup-ext.spec.js` failing 7–8
+of 34 on every run, alone and on one worker too (the card or the window
+never showed after a hover). `main` and this branch before the merge
+(`0053015`): 34/34. The fix branch alone: 6 failed. `git bisect` over its
+commits names `460ad13`, and removing its one line `display: none
+!important` from `.sidebar-collapsed` gives 34/34. The fix branch's own new
+spec "collapsed sidebar takes no space" also failed 4/4 on petri, on the fix
+branch alone. Its merge gate ran on vzell-lap (2 workers), where both passed.
+
+**Cause.** `initSidebarCollapse()` applies `sa_sidebar_collapsed` at render
+"without animation so the page opens already collapsed", but only added the
+class. The sidebar was already laid out, so the transitions ran, and the fix
+branch's new `display 0.3s allow-discrete` kept the collapsed sidebar in
+the layout for 0.3 s. Then `#page` (a CSS table) reflowed into the freed
+width and the event page's links moved from under a pointer that was
+already resting on them. A slower machine had hovered only after the jump.
+
+**Fix:** the initial collapse sets `transition: none` on the sidebar, adds
+the class, forces the style (`offsetWidth`) and clears the inline
+transition, so a click on the handle still slides. Test:
+`sticky-page-headers.spec.js` "a page set to open with the sidebar
+collapsed has no sidebar box from the first frame (no slide-out)", which
+counts the boxes one frame after the class lands. Mutation "the initial
+sidebar collapse animates" in `scripts/mutations/sticky-page-headers.json`
+is caught. Then `popup-ext` passed 47/47 twice (with the mobile twin and
+the sticky spec), and the fix branch's spec passed as written (4/4 alone,
+8/8 on 8 workers).
+
+**Mutation anchors.** Of `sticky-page-headers.json`, 3 were repointed and
+caught again:
+- "the feature never lets go once engaged": staled by this branch's
+  `_sphRefresh()` change; it is now the stay-engaged check always holding;
+- "body-level chrome is no longer collected" and "a bar's own margin-right
+  is not subtracted": staled by the fix branch.
+3 more are already stale on `main` and were left alone: "the docked state
+ignores the columns before the sticky one", "the docked column is never
+masked" (0 matches) and "the open-popup rule no longer requires an inline
+z-index" (4 matches). `sticky-gutter-sorted-thead.json`: 8/8 on the merged
+tree.
+
+**Full suite** (13:26:13Z → 13:34:31Z, 8 m 18 s, petri, `eac6013` plus
+these changes): 1736/1737. The one failure, `ws2-transient-classifier`
+"a 502 on a browse page is retried, and its Retry-After is honoured too", is
+the retry-gap flake that also fails 1 run in 5 on `main` alone.

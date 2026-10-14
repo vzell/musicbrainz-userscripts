@@ -59911,7 +59911,15 @@ a { color: #1565c0; }`;
         // collapsed state immediately — equivalent to a single programmatic click
         // on the handle, but without animation so the page opens already collapsed.
         if (Lib.settings.sa_sidebar_collapsed) {
+            // Without its transition: the sidebar has been laid out already,
+            // so adding the class alone animates, and since the collapsed
+            // state ends in display: none (a discrete transition) the page
+            // kept the sidebar for 0.3 s and then reflowed under a pointer
+            // already resting on a link (popup-ext.spec.js, 2026-10-14).
+            sidebar.style.transition = 'none';
             sidebar.classList.add('sidebar-collapsed');
+            void sidebar.offsetWidth; // commit the collapsed style before the transition returns
+            sidebar.style.transition = '';
             handle.classList.add('handle-collapsed');
             applyStretching(true);
             // Re-position handle after collapsing so it parks at the viewport edge.

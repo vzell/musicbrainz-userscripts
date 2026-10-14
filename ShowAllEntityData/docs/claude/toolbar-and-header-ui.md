@@ -769,7 +769,12 @@ render sites), `_vsbRefresh()`, `_vsbBaseOffset()`.
   gutter had also been ~100 px too wide on MusicBrainz: under
   `#page { display: table }` a collapsed sidebar stayed a table cell as
   wide as its min-content; it is `display: none` now
-  (`initSidebarCollapse()`). The fixtures carry no MB stylesheet, so
+  (`initSidebarCollapse()`), after the 0.3 s slide-out (a discrete
+  `display` transition). The initial collapse (`sa_sidebar_collapsed`)
+  runs with the transition off: otherwise a page set to open collapsed
+  kept the sidebar for 0.3 s and then reflowed under a pointer already
+  resting on a link (8 `popup-ext.spec.js` failures on petri, 2026-10-14;
+  spec "no sidebar box from the first frame"). The fixtures carry no MB stylesheet, so
   `sticky-page-headers.spec.js` injects that layout excerpt to see it.
   Specs: "a wide table ends on the h2/h3 bars' line" (painted pixels at
   scrollX 0 and with the bars stuck), "the right-edge mask lies under
