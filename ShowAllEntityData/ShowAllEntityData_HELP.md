@@ -1441,7 +1441,8 @@ at event, Recorded at place).
 
 **Instrument icons.** With the userscript *MusicBrainz: Instrument Icons
 Everywhere* (by Lotheric) installed, the small instrument pictures it puts in
-front of instrument names are kept everywhere the consolidated table shows
+front of instrument names (or after them, if you set that script to) are
+kept everywhere the consolidated table shows
 those names: the *Instruments* column, instruments credited inside other
 credit columns, the *Name* column of the instrument list, and instrument search
 results. A picture that loads after the table is built still arrives and stays

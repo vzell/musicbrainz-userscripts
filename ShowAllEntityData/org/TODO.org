@@ -1784,7 +1784,7 @@ But the new popup ONLY shows up when filtering with the global filter, not with 
 
 ** tested live
 
-- Tested live, looks good, commit and push; stop the suite for now, it takes too long on "vzell-lap", we will implement a couple more things and test with the whole suite before merging
+- Tested live, looks good, commit and push; stop the suite for now, itg takes too long on "vzell-lap", we will implement a couple more things and test with the whole suite before merging
 - the next upcoming implementation will branch from this one, feature/instrument-icons-interop
 - at the very end we will run the whole testsuite
 
@@ -2422,4 +2422,10 @@ Add support for either case in our userscript:
 @debug/instuments-right.html - FRP with the option ON to render the instruments icon after (to the rigth of) the instrument name
 @debug/instuments-right-UVD.html - UVF for the above case, the instruments icon is MISSING
 #+end_example
+
+3.)
+
+Tested live, looks good, commit and push (inclusive the .org files)); stop the suite for now, it takes too long on
+"vzell-lap", /merge-push-remove now, will implement a couple more things and test with the whole suite later (possibly
+on a faster machine like "petri")
 

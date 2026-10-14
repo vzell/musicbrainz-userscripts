@@ -14,10 +14,14 @@
   },
   {
     "name": "helper does not copy the icon",
-    "why": "_cloneInstrumentAnchorWithIcon() returns the anchor without its icon.",
+    "why": "_cloneInstrumentAnchorWithIcon() returns the anchor without its icon, on either side.",
     "edits": [
       {
-        "find": "        if (icon) node.appendChild(icon.cloneNode(true));\n",
+        "find": "        if (icon && !iconAfter) node.appendChild(icon.cloneNode(true));\n",
+        "replace": "        if (false) node.appendChild(icon.cloneNode(true));\n"
+      },
+      {
+        "find": "        if (iconAfter) node.appendChild(icon.cloneNode(true));\n",
         "replace": "        if (false) node.appendChild(icon.cloneNode(true));\n"
       }
     ],
@@ -56,8 +60,8 @@
     "why": "_cloneInstrumentAnchorWithIcon() no longer removes the stamp from an icon-less copy. _iiReleaseIconlessAnchors() removes it after the render anyway, so the late icon still arrives: the two cover for each other.",
     "edits": [
       {
-        "find": "        else aClone.removeAttribute(II_STAMP_ATTR);\n",
-        "replace": "        else { /* stamp kept */ }\n"
+        "find": "        if (!icon) aClone.removeAttribute(II_STAMP_ATTR);\n",
+        "replace": "        if (!icon) { /* stamp kept */ }\n"
       }
     ],
     "spec": "tests/fixtures/release-tracks-instrument-icons.spec.js",
@@ -82,8 +86,8 @@
     "why": "Both ways of handing an icon-less copy back to the script are gone: it stays stamped, and a late icon never reaches the column.",
     "edits": [
       {
-        "find": "        else aClone.removeAttribute(II_STAMP_ATTR);\n",
-        "replace": "        else { /* stamp kept */ }\n"
+        "find": "        if (!icon) aClone.removeAttribute(II_STAMP_ATTR);\n",
+        "replace": "        if (!icon) { /* stamp kept */ }\n"
       },
       {
         "find": "        if (!_iiPresent()) return;\n        const sel = 'a[href*=\"/instrument/\"][' + II_STAMP_ATTR + ']';\n",
@@ -112,7 +116,7 @@
     "why": "_iiMirrorLateIcons() resolves the source anchor but does not copy the icon onto it.",
     "edits": [
       {
-        "find": "            mA.parentNode.insertBefore(icon.cloneNode(true), mA);\n",
+        "find": "            if (iconAfter) mA.after(icon.cloneNode(true));\n            else mA.before(icon.cloneNode(true));\n",
         "replace": "            void 0;\n"
       }
     ],
@@ -262,6 +266,62 @@
     ],
     "spec": "tests/fixtures/instrument-icons-uvd.spec.js",
     "grep": "opened before the script",
+    "expect": "fail"
+  },
+  {
+    "name": "icon looked up before the anchor only",
+    "why": "_findInstrumentLinkIcon() goes back to previousSibling only (the pre-2026-10-14 rule): with the script set to 'after', the 📊 \"🎻 with instrument icon\" entry disappears (debug/instuments-right-UVD.html).",
+    "edits": [
+      {
+        "find": "        const next = anchor.nextSibling;\n        if (!_isInstrumentIcon(next)) return null;\n",
+        "replace": "        const next = anchor.nextSibling;\n        if (true) return null;\n"
+      }
+    ],
+    "spec": "tests/fixtures/instrument-icons-uvd.spec.js",
+    "grep": "\\[icon after\\].*counts equal the rows",
+    "expect": "fail"
+  },
+  {
+    "name": "after-icon cloned in front of the anchor",
+    "why": "_cloneInstrumentAnchorWithIcon() always puts the icon copy before the anchor: in 'after' mode SA's cell shows it on the wrong side.",
+    "edits": [
+      {
+        "find": "        if (icon && !iconAfter) node.appendChild(icon.cloneNode(true));\n",
+        "replace": "        if (icon) node.appendChild(icon.cloneNode(true));\n"
+      },
+      {
+        "find": "        if (iconAfter) node.appendChild(icon.cloneNode(true));\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-instrument-icons.spec.js",
+    "grep": "\\[icon after\\].*a decorated instrument keeps its icon",
+    "expect": "fail"
+  },
+  {
+    "name": "late after-icon not attributed to its anchor",
+    "why": "_iiMirrorLateIcons() looks for the decorated anchor after the icon only: an 'after' icon never reaches the source row, so the 📊 entry never shows it.",
+    "edits": [
+      {
+        "find": "            else if (isAnchor(prev) && _findInstrumentLinkIcon(prev) === icon) a = prev;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-instrument-icons.spec.js",
+    "grep": "\\[icon after\\].*arrives after the render",
+    "expect": "fail"
+  },
+  {
+    "name": "next-sibling icon claimed despite a following instrument link",
+    "why": "_findInstrumentLinkIcon() drops the tie-break: in <a1></a><img><a2> a1 claims a2's 'before' icon.",
+    "edits": [
+      {
+        "find": "        return ownedByNext ? null : next;\n",
+        "replace": "        return next;\n"
+      }
+    ],
+    "spec": "tests/fixtures/instrument-list-instrument-icons.spec.js",
+    "grep": "between two adjacent instrument links",
     "expect": "fail"
   }
 ]

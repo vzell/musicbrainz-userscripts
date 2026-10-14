@@ -566,3 +566,9 @@ run is not coverage of anything.
 The userscript bodies it loads are gitignored — they are not ours to
 redistribute — so only the harness and =manifest.json= are committed. Without
 the bodies present the harness reports an empty set rather than failing.
+
+A third-party script's own setting is seeded with =--gm-value=key=value=
+(repeatable; merged over the pageType's =seedGmValues=). The GM stub store is
+fresh on every run, so without it a script always starts on its first-run
+default — e.g. Instrument Icons Everywhere runs =before= unless given
+=--gm-value=iconPosition=after=.

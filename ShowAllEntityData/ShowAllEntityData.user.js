@@ -6239,24 +6239,51 @@
     }
 
     // "MusicBrainz: Instrument Icons Everywhere" (@Lotheric) puts this image
-    // IMMEDIATELY BEFORE every visible instrument link and stamps the LINK
-    // with II_STAMP_ATTR; it never looks at a stamped link again. See
-    // docs/claude/release-tracks-and-length.md, "Instruments column:
-    // third-party instrument icons".
+    // IMMEDIATELY BEFORE every visible instrument link — or, since its
+    // 2026-10-12.2140 'iconPosition' setting, IMMEDIATELY AFTER it — and
+    // stamps the LINK with II_STAMP_ATTR; it never looks at a stamped link
+    // again. See docs/claude/release-tracks-and-length.md, "Instruments
+    // column: third-party instrument icons".
     const II_ICON_SEL   = 'img.mb-ii-icon';
     const II_STAMP_ATTR = 'data-ii-processed';
 
     /**
+     * Whether `node` is an "Instrument Icons Everywhere" icon image.
+     *
+     * @param {?Node} node
+     * @returns {boolean}
+     */
+    function _isInstrumentIcon(node) {
+        return !!node && node.nodeType === Node.ELEMENT_NODE && node.matches(II_ICON_SEL);
+    }
+
+    /**
      * Returns the "Instrument Icons Everywhere" icon decorating an
-     * instrument anchor — its immediate previous sibling, the same adjacency
-     * the script itself tests before inserting one — or `null`.
+     * instrument anchor, or `null`. The script puts it on ONE side, chosen
+     * by its `iconPosition` setting: the anchor's immediate previous sibling
+     * ('before', the default) or its immediate next sibling ('after') — the
+     * same strict adjacency, text nodes included, that the script itself
+     * tests before inserting one.
+     *
+     * The previous sibling is checked first. A next-sibling icon counts
+     * only when it is NOT directly followed by another instrument anchor:
+     * in `<a1></a><img><a2>` (no text between) the image is a2's in
+     * 'before' mode, and a1 must not claim it. MusicBrainz always puts
+     * text (", ", " and ") between two instrument links, so this only
+     * matters for markup this script builds.
      *
      * @param {HTMLAnchorElement} anchor
      * @returns {?HTMLImageElement}
      */
     function _findInstrumentLinkIcon(anchor) {
         const prev = anchor.previousSibling;
-        return (prev && prev.nodeType === Node.ELEMENT_NODE && prev.matches(II_ICON_SEL)) ? prev : null;
+        if (_isInstrumentIcon(prev)) return prev;
+        const next = anchor.nextSibling;
+        if (!_isInstrumentIcon(next)) return null;
+        const after = next.nextSibling;
+        const ownedByNext = after && after.nodeType === Node.ELEMENT_NODE && after.tagName === 'A'
+            && (after.getAttribute('href') || '').includes('/instrument/');
+        return ownedByNext ? null : next;
     }
 
     /**
@@ -6265,8 +6292,10 @@
      * `cloneNode(true)`: the clone keeps the script's stamp and loses the
      * icon (a sibling, not a child), and the script then never decorates it.
      *
-     * - Source has an icon: the icon is cloned in front of the anchor and the
-     *   stamp is kept, so the script does not add a second one.
+     * - Source has an icon: the icon is cloned on the SAME side of the
+     *   anchor (in front of it, or after it when the script is set to
+     *   'after') and the stamp is kept, so the script does not add a second
+     *   one.
      * - Source has none (still loading, or the script's 'NONE' — the DOM
      *   cannot tell which): the stamp is REMOVED from the clone, so the
      *   script decorates this cell itself once it has an icon. A late icon
@@ -6275,16 +6304,18 @@
      *
      * @param {HTMLAnchorElement} anchor
      * @returns {{node: DocumentFragment, anchor: HTMLAnchorElement}} `node`
-     *   to insert (icon clone, then anchor clone); `anchor` is the anchor
-     *   clone inside it, for the caller to tag.
+     *   to insert (icon clone and anchor clone, in the source's order);
+     *   `anchor` is the anchor clone inside it, for the caller to tag.
      */
     function _cloneInstrumentAnchorWithIcon(anchor) {
         const node = document.createDocumentFragment();
         const aClone = anchor.cloneNode(true);
         const icon = _findInstrumentLinkIcon(anchor);
-        if (icon) node.appendChild(icon.cloneNode(true));
-        else aClone.removeAttribute(II_STAMP_ATTR);
+        const iconAfter = !!icon && icon === anchor.nextSibling;
+        if (icon && !iconAfter) node.appendChild(icon.cloneNode(true));
+        if (!icon) aClone.removeAttribute(II_STAMP_ATTR);
         node.appendChild(aClone);
+        if (iconAfter) node.appendChild(icon.cloneNode(true));
         return { node, anchor: aClone };
     }
 
@@ -6482,6 +6513,12 @@
      * position in the same cell: a cell can credit one instrument more than
      * once (one `<li>` per credited artist).
      *
+     * The decorated anchor is the icon's next sibling ('before' mode) or its
+     * previous sibling ('after' mode), and the copy on the source row goes
+     * on the same side. Which of the two it is, is decided by
+     * `_findInstrumentLinkIcon()`, so a `<a1></a><img><a2>` run resolves
+     * the same way here as everywhere else.
+     *
      * @param {HTMLImageElement[]} icons
      * @returns {void}
      */
@@ -6493,10 +6530,16 @@
         // the script decorates the clone again, and so on.
         const changed = new Set();
         let index = null;
+        const isAnchor = (n) => !!n && n.nodeType === Node.ELEMENT_NODE && n.tagName === 'A';
         for (const icon of icons) {
             if (!icon.isConnected) continue;
-            const a = icon.nextSibling;
-            if (!a || a.nodeType !== Node.ELEMENT_NODE || a.tagName !== 'A') continue;
+            const next = icon.nextSibling;
+            const prev = icon.previousSibling;
+            let a = null;
+            if (isAnchor(next) && _findInstrumentLinkIcon(next) === icon) a = next;
+            else if (isAnchor(prev) && _findInstrumentLinkIcon(prev) === icon) a = prev;
+            if (!a) continue;
+            const iconAfter = a === prev;
             const td = icon.closest('td');
             const tr = td && td.parentElement;
             const table = tr && tr.closest('table.tbl');
@@ -6516,7 +6559,8 @@
             const sameHref = (root) => Array.from(root.querySelectorAll('a')).filter(x => x.getAttribute('href') === href);
             const mA = sameHref(mTd)[sameHref(td).indexOf(a)];
             if (!mA || _findInstrumentLinkIcon(mA)) continue;
-            mA.parentNode.insertBefore(icon.cloneNode(true), mA);
+            if (iconAfter) mA.after(icon.cloneNode(true));
+            else mA.before(icon.cloneNode(true));
             mA.setAttribute(II_STAMP_ATTR, 'true');
             changed.add(table);
         }
@@ -126483,6 +126527,16 @@ a { color: #1565c0; }`;
              * @returns {boolean}
              */
             titleHasRecNameMismatch: (cell) => _titleHasRecNameMismatch(cell),
+            /**
+             * The "Instrument Icons Everywhere" icon an instrument anchor
+             * owns (`_findInstrumentLinkIcon()`): before it, after it, or
+             * neither — so a spec can pin the side rule on markup no
+             * MusicBrainz page produces (`<a1></a><img><a2>`).
+             *
+             * @param {HTMLAnchorElement} anchor
+             * @returns {?HTMLImageElement}
+             */
+            findInstrumentLinkIcon: (anchor) => _findInstrumentLinkIcon(anchor),
             /**
              * The "Liner notes" formatter (`_tipTextToHtml()`): a plain tooltip
              * text in, the card's HTML out. Pure, so a spec can pin its title /

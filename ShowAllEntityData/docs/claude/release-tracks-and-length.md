@@ -660,7 +660,23 @@ they never hit this. `release-tracks-event-consistency.spec.js` aborts
 `tests/fixtures/live-userscripts/manifest.json` id `lotheric-instrument-icons`)
 puts an `<img class="mb-ii-icon">` IMMEDIATELY BEFORE every visible
 `a[href*="/instrument/"]` and stamps the ANCHOR `data-ii-processed="true"`.
-It never looks at a stamped anchor again. release-tracks reads the live
+It never looks at a stamped anchor again.
+
+**Since its 2026-10-12.2140 the icon can be on either side.** The script's
+`iconPosition` setting (its own GM storage, switched from its Tampermonkey
+menu, which reloads the page) is `'before'` (the first-run default) or
+`'after'`, where the image is the anchor's IMMEDIATE NEXT sibling. One page
+has one side. `_findInstrumentLinkIcon()` is the single place that knows
+this: previous sibling first, then the next sibling, unless that image is
+directly followed by another instrument `<a>` (in `<a1></a><img><a2>` with no
+text between, it is a2's 'before' icon). MusicBrainz always puts text between
+two instrument links, so only the tie-break spec builds that shape. Every
+reader (the 📊 counts, `ii-icon-*` filtering and highlighting,
+`_iiSoleIcon()`, the "» instrument:" trailing icon, the sweep) goes through
+it; nothing else may test `previousSibling`/`nextSibling` for an icon. Before
+2026-10-14 it looked only at the previous sibling, so in 'after' mode the 📊
+lost "🎻 with instrument icon" (debug/instuments-right-UVD.html, DEBUG-NOTES.md
+2026-10-14). release-tracks reads the live
 document, which the script decorated at DOMContentLoaded, so every instrument
 anchor a builder copies is already stamped.
 
@@ -670,8 +686,8 @@ copy keeps the stamp and drops the icon, because the icon is a sibling and not
 a child. That is how the Instruments column showed no icon at all
 (`_buildInstrumentVocalsListItem()`), and the same was true of a credit's
 "(instrument)" annotation (`_buildCreditListItem()`) and instrument-list's
-Name column (`Name_Comment_Description`). The helper copies the icon in front
-of the anchor and keeps the stamp. When the source has no icon (still
+Name column (`Name_Comment_Description`). The helper copies the icon on the
+same side of the anchor it was on, and keeps the stamp. When the source has no icon (still
 loading, or the script's `'NONE'`, which the DOM cannot tell apart), it removes
 the stamp, so the script decorates SA's cell itself.
 

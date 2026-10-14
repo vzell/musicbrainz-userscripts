@@ -31,13 +31,19 @@ const SECTION = 'Instrument info - Icon';
 const WITH = '🎻 with instrument icon';
 const WITHOUT = '○ without instrument icon';
 
+// Both settings of the script's 'iconPosition' (2026-10-12.2140): the icon is
+// the anchor's immediate previous sibling ('before', its first-run default)
+// or its immediate next sibling ('after'). Every test below runs in both.
+const POSITIONS = ['before', 'after'];
+
 /**
  * Loads the search fixture (with or without the simulator) and renders it.
  * @param {import('@playwright/test').Page} page
  * @param {boolean} withScript
+ * @param {'before'|'after'} [position] - the simulator's icon side.
  */
-async function render(page, withScript) {
-    if (withScript) await injectThirdPartyScript(page, 'ii-instrument-icons', { when: 'init', config: { icons: ICONS } });
+async function render(page, withScript, position = 'before') {
+    if (withScript) await injectThirdPartyScript(page, 'ii-instrument-icons', { when: 'init', config: { icons: ICONS, position } });
     await loadUserscriptPage(page, { url: SEARCH_URL, fixtureFile: FIXTURE, testMode: true });
     await page.route('https://musicbrainz.org/search**', (route) => route.fulfill({ path: FIXTURE, contentType: 'text/html' }));
     await page.click('button[data-label^="Show all Search Results"]');
@@ -50,24 +56,29 @@ async function render(page, withScript) {
 /**
  * Counts, from the table itself, the rows whose `colName` cell has at least
  * one instrument link with / without an icon — the independent oracle the
- * section's counts are checked against.
+ * section's counts are checked against. An icon counts only on the side
+ * `position` names.
  * @param {import('@playwright/test').Page} page
  * @param {string} colName
+ * @param {'before'|'after'} position
  */
-async function domIconCounts(page, colName) {
-    return page.evaluate((c) => {
+async function domIconCounts(page, colName, position) {
+    return page.evaluate(([c, pos]) => {
         const tbl = document.querySelector('table.tbl');
         const idx = Array.from(tbl.querySelectorAll('thead tr:first-child th')).findIndex((t) => t.dataset.colName === c);
         let withIcon = 0, without = 0, rows = 0;
         tbl.querySelectorAll('tbody tr').forEach((tr) => {
             rows++;
             const links = Array.from(tr.cells[idx].querySelectorAll('a[href*="/instrument/"]')).filter((a) => a.textContent.trim());
-            const has = (a) => !!(a.previousSibling && a.previousSibling.nodeType === 1 && a.previousSibling.matches('img.mb-ii-icon'));
+            const has = (a) => {
+                const sib = pos === 'after' ? a.nextSibling : a.previousSibling;
+                return !!(sib && sib.nodeType === 1 && sib.matches('img.mb-ii-icon'));
+            };
             if (links.some(has)) withIcon++;
             if (links.some((a) => !has(a))) without++;
         });
         return { withIcon, without, rows };
-    }, colName);
+    }, [colName, position]);
 }
 
 /**
@@ -86,105 +97,108 @@ async function clickEntry(page, label) {
 /** Rows left in the table. */
 const rowCount = (page) => page.evaluate(() => document.querySelectorAll('table.tbl tbody tr').length);
 
-test.describe('📊 dropdown with "Instrument Icons Everywhere": search type=instrument', () => {
-    test('"Instrument info - Icon" counts equal the rows that have / lack an icon', async ({ page }) => {
-        await render(page, true);
-        const dom = await domIconCounts(page, 'Name');
-        expect(dom.withIcon).toBeGreaterThan(0);
-        expect(dom.without).toBeGreaterThan(0);
-        expect(dom.withIcon + dom.without).toBe(dom.rows); // one link per Name cell
+for (const position of POSITIONS) {
+    test.describe(`📊 dropdown with "Instrument Icons Everywhere": search type=instrument [icon ${position}]`, () => {
+        test('"Instrument info - Icon" counts equal the rows that have / lack an icon', async ({ page }) => {
+            await render(page, true, position);
+            const dom = await domIconCounts(page, 'Name', position);
+            expect(dom.withIcon).toBeGreaterThan(0);
+            expect(dom.without).toBeGreaterThan(0);
+            expect(dom.withIcon + dom.without).toBe(dom.rows); // one link per Name cell
 
-        const sections = await page.evaluate(() => window.__saTest.getUniqDropSections('Name'));
-        const section = sections.find((s) => s.label === SECTION);
-        expect(section).toBeTruthy();
-        expect(section.items.find((i) => i.label === WITH).count).toBe(dom.withIcon);
-        expect(section.items.find((i) => i.label === WITHOUT).count).toBe(dom.without);
-    });
-
-    test('ticking an entry leaves exactly those rows', async ({ page }) => {
-        await render(page, true);
-        const dom = await domIconCounts(page, 'Name');
-        await page.evaluate(() => window.__saTest.getUniqDropSections('Name'));
-
-        await waitForFilterSettled(page, () => clickEntry(page, WITHOUT));
-        expect(await rowCount(page)).toBe(dom.without);
-        expect((await domIconCounts(page, 'Name')).withIcon).toBe(0);
-
-        // Both ticked: OR'd, every row again.
-        await waitForFilterSettled(page, () => clickEntry(page, WITH));
-        expect(await rowCount(page)).toBe(dom.rows);
-
-        await waitForFilterSettled(page, () => clickEntry(page, WITHOUT));
-        expect(await rowCount(page)).toBe(dom.withIcon);
-        expect((await domIconCounts(page, 'Name')).without).toBe(0);
-        // The matched link names are highlighted.
-        expect(await page.evaluate(() => document.querySelectorAll('table.tbl tbody a[href*="/instrument/"] .mb-column-filter-highlight').length)).toBeGreaterThan(0);
-    });
-
-    for (const order of ['typed filter first', 'tick first']) {
-        test(`a tick AND's with a typed global filter (${order})`, async ({ page }) => {
-            await render(page, true);
-            await page.evaluate(() => window.__saTest.getUniqDropSections('Name'));
-            const tick = () => waitForFilterSettled(page, () => clickEntry(page, WITH));
-            const type = () => waitForFilterSettled(page, () => page.fill('#mb-global-filter-input', 'bass'));
-            if (order === 'tick first') { await tick(); await type(); } else { await type(); await tick(); }
-            // "bass guitar" is the only decorated instrument whose row says
-            // "bass"; each fixture row is there twice (two fetched pages).
-            const names = await page.evaluate(() => Array.from(document.querySelectorAll('table.tbl tbody tr'))
-                .map((tr) => tr.cells[0].textContent.replace(/\s+/g, ' ').trim()));
-            expect(names.length).toBeGreaterThan(0);
-            for (const n of names) expect(n).toMatch(/^bass guitar/);
-        });
-    }
-
-    test('a value entry shows its cell\'s icon after the label; others show none', async ({ page }) => {
-        await render(page, true);
-        await page.evaluate(() => window.__saTest.getUniqDropSections('Name'));
-        const entries = await page.evaluate(() => Array.from(document.querySelectorAll('#mb-col-uniq-dropdown .mb-col-uniq-item'))
-            .filter((el) => !el.dataset.mbUniqSynLabel)
-            .map((el) => ({
-                text: el.textContent.replace(/\s+/g, ' ').trim(),
-                icon: el.querySelector('.mb-uniq-ii-icon img.mb-ii-icon')?.getAttribute('title') || null,
-                // The icon trails the label (flag rule): nothing after it.
-                last: !!el.lastElementChild && el.lastElementChild.classList.contains('mb-uniq-ii-icon'),
-            })));
-        const decorated = entries.filter((e) => e.icon);
-        expect(decorated.map((e) => e.icon).sort()).toEqual(['baroque guitar', 'bass guitar', 'tenor guitar']);
-        for (const e of decorated) expect(e.last, e.text).toBe(true);
-        expect(entries.length).toBeGreaterThan(decorated.length);
-    });
-
-    test('a 📊 opened before the script stamped the fetched rows is refreshed once it has', async ({ page }) => {
-        // A search page's rows come from a fresh fetch, unstamped; the script
-        // stamps SA's cells only after its debounce (stretched here to 1 s).
-        // A panel opened in between caches a scan with no instrument icons
-        // at all — the late install of the reconciler must drop that cache.
-        await injectThirdPartyScript(page, 'ii-instrument-icons', { when: 'init', config: { icons: ICONS, debounceMs: 1000 } });
-        await loadUserscriptPage(page, { url: SEARCH_URL, fixtureFile: FIXTURE, testMode: true });
-        await page.route('https://musicbrainz.org/search**', (route) => route.fulfill({ path: FIXTURE, contentType: 'text/html' }));
-        await page.click('button[data-label^="Show all Search Results"]');
-        await waitForRenderComplete(page, { waitForAutoResize: false });
-
-        const section = async () => {
-            await page.evaluate(() => window.__saTest.closeUniqDrop());
             const sections = await page.evaluate(() => window.__saTest.getUniqDropSections('Name'));
-            const sec = (sections || []).find((s) => s.label === SECTION);
-            return sec ? Object.fromEntries(sec.items.map((i) => [i.label, i.count])) : null;
-        };
-        // Premise: opened before the script got to SA's rows.
-        expect(await page.evaluate(() => document.querySelectorAll('table.tbl [data-ii-processed]').length)).toBe(0);
-        expect(await section()).toBeNull();
+            const section = sections.find((s) => s.label === SECTION);
+            expect(section).toBeTruthy();
+            expect(section.items.find((i) => i.label === WITH).count).toBe(dom.withIcon);
+            expect(section.items.find((i) => i.label === WITHOUT).count).toBe(dom.without);
+        });
 
-        await expect.poll(() => page.evaluate(() => window.__iiSimIdle === true
-            && document.querySelectorAll('table.tbl [data-ii-processed]').length > 0), { timeout: 10000 }).toBe(true);
-        const dom = await domIconCounts(page, 'Name');
-        await expect.poll(section, { timeout: 10000 }).toEqual({ [WITH]: dom.withIcon, [WITHOUT]: dom.without });
-    });
+        test('ticking an entry leaves exactly those rows', async ({ page }) => {
+            await render(page, true, position);
+            const dom = await domIconCounts(page, 'Name', position);
+            await page.evaluate(() => window.__saTest.getUniqDropSections('Name'));
 
-    test('without the script: no section, no icons', async ({ page }) => {
-        await render(page, false);
-        const sections = await page.evaluate(() => window.__saTest.getUniqDropSections('Name'));
-        expect(sections.some((s) => s.label === SECTION)).toBe(false);
-        expect(await page.evaluate(() => document.querySelectorAll('#mb-col-uniq-dropdown .mb-uniq-ii-icon').length)).toBe(0);
+            await waitForFilterSettled(page, () => clickEntry(page, WITHOUT));
+            expect(await rowCount(page)).toBe(dom.without);
+            expect((await domIconCounts(page, 'Name', position)).withIcon).toBe(0);
+
+            // Both ticked: OR'd, every row again.
+            await waitForFilterSettled(page, () => clickEntry(page, WITH));
+            expect(await rowCount(page)).toBe(dom.rows);
+
+            await waitForFilterSettled(page, () => clickEntry(page, WITHOUT));
+            expect(await rowCount(page)).toBe(dom.withIcon);
+            expect((await domIconCounts(page, 'Name', position)).without).toBe(0);
+            // The matched link names are highlighted.
+            expect(await page.evaluate(() => document.querySelectorAll('table.tbl tbody a[href*="/instrument/"] .mb-column-filter-highlight').length)).toBeGreaterThan(0);
+        });
+
+        for (const order of ['typed filter first', 'tick first']) {
+            test(`a tick AND's with a typed global filter (${order})`, async ({ page }) => {
+                await render(page, true, position);
+                await page.evaluate(() => window.__saTest.getUniqDropSections('Name'));
+                const tick = () => waitForFilterSettled(page, () => clickEntry(page, WITH));
+                const type = () => waitForFilterSettled(page, () => page.fill('#mb-global-filter-input', 'bass'));
+                if (order === 'tick first') { await tick(); await type(); } else { await type(); await tick(); }
+                // "bass guitar" is the only decorated instrument whose row says
+                // "bass"; each fixture row is there twice (two fetched pages).
+                const names = await page.evaluate(() => Array.from(document.querySelectorAll('table.tbl tbody tr'))
+                    .map((tr) => tr.cells[0].textContent.replace(/\s+/g, ' ').trim()));
+                expect(names.length).toBeGreaterThan(0);
+                for (const n of names) expect(n).toMatch(/^bass guitar/);
+            });
+        }
+
+        test('a value entry shows its cell\'s icon after the label; others show none', async ({ page }) => {
+            await render(page, true, position);
+            await page.evaluate(() => window.__saTest.getUniqDropSections('Name'));
+            const entries = await page.evaluate(() => Array.from(document.querySelectorAll('#mb-col-uniq-dropdown .mb-col-uniq-item'))
+                .filter((el) => !el.dataset.mbUniqSynLabel)
+                .map((el) => ({
+                    text: el.textContent.replace(/\s+/g, ' ').trim(),
+                    icon: el.querySelector('.mb-uniq-ii-icon img.mb-ii-icon')?.getAttribute('title') || null,
+                    // The icon trails the label (flag rule): nothing after it.
+                    last: !!el.lastElementChild && el.lastElementChild.classList.contains('mb-uniq-ii-icon'),
+                })));
+            const decorated = entries.filter((e) => e.icon);
+            expect(decorated.map((e) => e.icon).sort()).toEqual(['baroque guitar', 'bass guitar', 'tenor guitar']);
+            for (const e of decorated) expect(e.last, e.text).toBe(true);
+            expect(entries.length).toBeGreaterThan(decorated.length);
+        });
+
+        test('a 📊 opened before the script stamped the fetched rows is refreshed once it has', async ({ page }) => {
+            // A search page's rows come from a fresh fetch, unstamped; the script
+            // stamps SA's cells only after its debounce (stretched here to 1 s).
+            // A panel opened in between caches a scan with no instrument icons
+            // at all — the late install of the reconciler must drop that cache.
+            await injectThirdPartyScript(page, 'ii-instrument-icons', { when: 'init', config: { icons: ICONS, debounceMs: 1000, position } });
+            await loadUserscriptPage(page, { url: SEARCH_URL, fixtureFile: FIXTURE, testMode: true });
+            await page.route('https://musicbrainz.org/search**', (route) => route.fulfill({ path: FIXTURE, contentType: 'text/html' }));
+            await page.click('button[data-label^="Show all Search Results"]');
+            await waitForRenderComplete(page, { waitForAutoResize: false });
+
+            const section = async () => {
+                await page.evaluate(() => window.__saTest.closeUniqDrop());
+                const sections = await page.evaluate(() => window.__saTest.getUniqDropSections('Name'));
+                const sec = (sections || []).find((s) => s.label === SECTION);
+                return sec ? Object.fromEntries(sec.items.map((i) => [i.label, i.count])) : null;
+            };
+            // Premise: opened before the script got to SA's rows.
+            expect(await page.evaluate(() => document.querySelectorAll('table.tbl [data-ii-processed]').length)).toBe(0);
+            expect(await section()).toBeNull();
+
+            await expect.poll(() => page.evaluate(() => window.__iiSimIdle === true
+                && document.querySelectorAll('table.tbl [data-ii-processed]').length > 0), { timeout: 10000 }).toBe(true);
+            const dom = await domIconCounts(page, 'Name', position);
+            await expect.poll(section, { timeout: 10000 }).toEqual({ [WITH]: dom.withIcon, [WITHOUT]: dom.without });
+        });
+
+        // Position-independent: run once.
+        if (position === 'before') test('without the script: no section, no icons', async ({ page }) => {
+            await render(page, false);
+            const sections = await page.evaluate(() => window.__saTest.getUniqDropSections('Name'));
+            expect(sections.some((s) => s.label === SECTION)).toBe(false);
+            expect(await page.evaluate(() => document.querySelectorAll('#mb-col-uniq-dropdown .mb-uniq-ii-icon').length)).toBe(0);
+        });
     });
-});
+}
