@@ -1185,7 +1185,7 @@ e.g. https://musicbrainz.org/search?query=Born+to&type=instrument&limit=25&metho
 #+end_example
 
 
-* TODO todo
+* TODO todo - performance
 
 1. Event-name follow-ups
      E.g. cross-check the date in the event name against the row's Date column, or cut the +76 ms warm 📊 open cost on Event columns.
@@ -1196,7 +1196,6 @@ e.g. https://musicbrainz.org/search?query=Born+to&type=instrument&limit=25&metho
 * bug report for "Credited as" field in real MB edit relationships page
 
 #+begin_example
-
 As soon as I type "U", for "UK" in the "Credited as" field
 
 <img width="1070" height="708" alt="Image" src="https://github.com/user-attachments/assets/11c8c89e-5987-4f16-ad96-b79e72ebcf46" />
@@ -1270,7 +1269,6 @@ The value for the "Annotation" C should be the FULL uncollapsed value, even if t
 @debug/search-annotation-tooltip.html - full final rendered page of above URL, filtered by just one row
 #+end_example
 
-
 * DONE track .ne. recording name minitooltip above popup
 ** DONE i
 
@@ -1291,7 +1289,6 @@ prominently in different font and colour, so it's always obvious where we are co
   - Without INLINE STUFF: nothing appears. It reuses that script's note and doesn't compare the track and recording names itself. It could, from the recording data the card already loads, if you want it
     independent of that script.
   - The ⚠️ and 📊 "≠" flag keeps working while the title is removed.
-
 
 * DONE BUG
 ** DONE initial
@@ -1360,7 +1357,6 @@ c.)
 Would it even be possible, when the side-bar stays on the left on BB PTs, that it still gets the side-bar toggle handle
 (like BB PTs) but collapses to the left
 
-
 * DONE add to CLAUDE.md
 
 1.)
@@ -1383,8 +1379,7 @@ MEASUREMENTS.org
 etc. (if you think we need more in this list)
 #+end_example
 
-
-* TODO rework the sticky behaviour when scrolling down
+* DONE rework the sticky behaviour when scrolling down
 ** DONE i
 
 rework the sticky behaviour when scrolling down:
@@ -1428,7 +1423,7 @@ The '<div id="mb-status-displays-wrapper"' line should be rendered ABOVE the h1 
 Right now it sits below the thin horizontal line (which is rendered below ht h1), [Image #4]
 I should sit above the thin horizontal line
 
-** TODO summary
+** DONE summary
 
 I committed and pushed both commits to origin/feature/sticky-filter-bars, and did not merge into main.
 
@@ -1453,7 +1448,6 @@ I committed and pushed both commits to origin/feature/sticky-filter-bars, and di
   - When the table header is stuck, the column-filter mode pop-up (Cc/Rx/Ex) drifts away from its button as you scroll. That was already true before this branch.
   - The version bump and real changelog entry happen at merge time; the entries are in ShowAllEntityData_CHANGELOG.wip.json. It's your call when to merge.
     
-
 * DONE bug + new feature
 
 Next is:
@@ -1505,7 +1499,6 @@ ALWAYS be sticky too when srolling down.
 
 * TODO integration with my own BB userscript
 
-
 * DONE maybe stack the h3 header in the multi-table case when stickyness is involved
 
 * DONE IDB overwhole - show info to the end-user; age, storage, delete possibilities/merge, remove etc (nice gpahical overview, cake diagram), number of keys
@@ -1513,7 +1506,7 @@ ALWAYS be sticky too when srolling down.
 * TODO increase the IDB lifetime, non-MB sites should basically be there forever
 
 * TODO sync add non-MB images with the CAA framework, but unlimited
-* TODO storeage forever for non-M sites, except SL
+* TODO storeage forever for non-MB sites, except SL
 
 
 * TODO make sure we can always run completely OFFLINE (especially non-MB sites, excetp SL and BB)
@@ -1521,10 +1514,10 @@ ALWAYS be sticky too when srolling down.
 
 * TODO filter checkboxes for every filter dialog if not overwritten
 
-* TODO add support BB pages
-** https://brucebase.wikidot.com/system:recent-changes - change to 200 revisions per page beforehand
-** "Relations
-
+* DONE add support BB pages
+** DONE https://brucebase.wikidot.com/system:recent-changes - change to 200 revisions per page beforehand
+** DONE "Relations
+** TODO maybe more
 
 * generalize popup framework in general (if not yet done)
 
@@ -1544,7 +1537,7 @@ the "Renamed to" Columbia should sit directly under the "~Label" line
 2.) SEEMS to be working when you wait long enough
 
 long running CAA fetches doesn't seem to be covered by the autoresize column feature:
-the CAA column break
+the CAA column breaks
 
 
 * DONE create a skill - There is a new third party userscript batch-add-recording-relationships
@@ -1698,8 +1691,7 @@ commit, push then /merge-push-remove
     - Your commit 041e038 picked up my uncommitted changelog fold and you pushed it, so the fold has no separate commit. The content is correct, the changelog audit is clean, and I didn't force-push.
     - The "LAF" row you added to the project CLAUDE.md was stashed across the merge and restored; it's still uncommitted for you.
     - The published mirror still has 9.99.1167, so a republish is pending.
-
-* TODO Prompts to continue after /clear:
+* DONE Prompts to continue after /clear:
 
 1.) Cache export/import ("merge"):
 Implement export/import ("merge") of the ShowAllEntityData browser cache between browsers, on a new feature branch.
@@ -1792,38 +1784,12 @@ But the new popup ONLY shows up when filtering with the global filter, not with 
 
 ** tested live
 
-- Tested live, looks good, commit and push; stop the suite for now, it takes too long on "vzell-lap", we will implement a couple more
-things and test with the whole suite before merging
+- Tested live, looks good, commit and push; stop the suite for now, it takes too long on "vzell-lap", we will implement a couple more things and test with the whole suite before merging
 - the next upcoming implementation will branch from this one, feature/instrument-icons-interop
 - at the very end we will run the whole testsuite
 
 instead of branching from main, add the new features/bug fixes on a branch starting from feature/instrument-icons-interop
 
-
-* DONE add instrument support
-
-add instrument support when the third-party userscript "MusicBrainz: Instrument Icons Everywhere" from @Lotheric is present
-
-1.)
-
-use the skill "wire-live-userscript" for @tests/fixtures/live-userscripts/MusicBrainz_Instrument_Icons_Everywhere.user.js
-
-2.)
-
-#+begin_example
-@debug/instrument.html - this is how an instrument glph is renderd when the userscript is present 
-@debug/gfanj-intruments-initial.html - IP
-#+end_example
-
-3.)
-
-#+begin_example
-@debug/instrument-search.html - FRP for https://musicbrainz.org/search?query=guit&type=instrument&method=indexed
-#+end_example
-
-It's missing the instrument icons in the UVD oc column "Name" and a count of rows actually having/missing instrument icons
-
-4.)
 
 * DONE fix setlist on PT 'artist-events'
 
@@ -2412,4 +2378,48 @@ For tomorrow's test:full on the other host:
 - On vzell-lap, the last recorded full run took 22 m 36 s for 439 tests. At 1686 tests that scales to about 87 minutes here; a faster host will be quicker.
 
 The published copy in vzell/mb-userscripts is still at 9.99.1167, so republishing (including the HELP the ❓ button serves) is still to do.
-  
+
+
+* TODO add instrument support
+** DONE i
+
+add instrument support when the third-party userscript "MusicBrainz: Instrument Icons Everywhere" from @Lotheric is present
+
+1.)
+
+use the skill "wire-live-userscript" for @tests/fixtures/live-userscripts/MusicBrainz_Instrument_Icons_Everywhere.user.js
+
+2.)
+
+#+begin_example
+@debug/instrument.html - this is how an instrument glph is renderd when the userscript is present 
+@debug/gfanj-intruments-initial.html - IP
+#+end_example
+
+3.)
+
+#+begin_example
+@debug/instrument-search.html - FRP for https://musicbrainz.org/search?query=guit&type=instrument&method=indexed
+#+end_example
+
+It's missing the instrument icons in the UVD oc column "Name" and a count of rows actually having/missing instrument icons
+
+4.)
+
+** instrument icon support on the right side
+
+1.)
+
+There is a new version of the third-party userscript "MusicBrainz: Instrument Icons Everywhere" from @Lotheric.
+Use the skill "wire-live-userscript" for registering the new version at @tests/fixtures/live-userscripts/MusicBrainz_Instrument_Icons_Everywhere.user.js
+It supports no rendering the instrument icon after (to the right of) the instrument name.
+
+2.)
+
+Add support for either case in our userscript:
+
+#+begin_example
+@debug/instuments-right.html - FRP with the option ON to render the instruments icon after (to the rigth of) the instrument name
+@debug/instuments-right-UVD.html - UVF for the above case, the instruments icon is MISSING
+#+end_example
+
