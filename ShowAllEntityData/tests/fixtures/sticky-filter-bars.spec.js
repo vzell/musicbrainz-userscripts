@@ -27,6 +27,7 @@ const path = require('path');
 const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
+const { loadJlListPage, JL_BUTTON } = require('../support/jlFixture');
 
 // series-releases: single-table page (12 rows, a table far wider than the
 // window, so the sticky page headers engage too).
@@ -737,4 +738,51 @@ test.describe('sticky filter bars — the header block (h1 with the action butto
         expect(geo.overlap, 'premise: the menu overlaps the entity header').toBeGreaterThan(4);
         expect(geo.hitMenu, 'the menu is on top').toBe(true);
     });
+});
+
+test.describe('sticky filter bars — a data table that is a direct <body> child (jungleland.it)', () => {
+    for (const width of [1300, 2400]) {
+        test(`hovering a row never lifts the table over the stuck header block and h2 (window ${width} px)`, async ({ page }) => {
+            // jungleland.it has no MusicBrainz #page: its list table is a
+            // direct child of <body>. The sticky page headers collected it
+            // as body-level chrome: capped like a bar, and raised over every
+            // stuck bar while hovered, so with the pointer resting on a row
+            // the table's rows painted over the stuck h1, the status line
+            // and the h2 (reported 2026-10-14, debug/jl.html). A data table
+            // is never chrome now; it is pinned whole only while it fits,
+            // and never raised. Both widths: the table wider than the
+            // window, and narrower (pinned whole).
+            await page.setViewportSize({ width, height: 800 });
+            await loadJlListPage(page);
+            await page.click(`button[data-label="${JL_BUTTON}"]`);
+            await waitForRenderComplete(page, { waitForAutoResize: false });
+            await page.evaluate(() => { if (document.activeElement) document.activeElement.blur(); });
+            await scrollToY(page, 2000);
+            const geo = await page.evaluate(() => {
+                const mid = (el) => {
+                    const r = el.getBoundingClientRect();
+                    return { x: r.left + Math.min(40, r.width / 2), y: (r.top + r.bottom) / 2, top: r.top };
+                };
+                const t = document.querySelector('table.tbl');
+                return {
+                    h2: mid(document.querySelector('h2.mb-vsb-h2')),
+                    status: mid(document.getElementById('mb-status-displays-wrapper')),
+                    thead: t.tHead.getBoundingClientRect().bottom,
+                    // Pinned, it must be pinned AS A TABLE (never raised).
+                    table: { target: t.classList.contains('mb-sph-target'), asTable: t.classList.contains('mb-sph-table') },
+                };
+            });
+            expect(geo.h2.top, 'premise: the h2 is stuck at the top').toBeLessThan(150);
+            expect(geo.table.target && !geo.table.asTable, 'the table is not pinned as chrome').toBe(false);
+            // The pointer rests on a row below the stuck thead.
+            await page.mouse.move(geo.h2.x + 100, geo.thead + 120);
+            expect(await page.evaluate(() => !!document.querySelector('table.tbl tbody tr:hover')),
+                'premise: the pointer rests on a row').toBe(true);
+            const hits = await page.evaluate((g) => ['h2', 'status'].map((k) => {
+                const el = document.elementFromPoint(g[k].x, g[k].y);
+                return [k, !!(el && el.closest('table.tbl'))];
+            }), geo);
+            expect(hits, 'nothing of the table is hit over the stuck bars').toEqual([['h2', false], ['status', false]]);
+        });
+    }
 });

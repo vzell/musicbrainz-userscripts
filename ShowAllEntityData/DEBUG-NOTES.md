@@ -22441,3 +22441,29 @@ decides. The plant was changed to "under the page content altogether" (-1),
 which the fixture can see, with the reason recorded in the mutation file.
 Mutations: 6/6 caught. The third `test:full` (23:30:16Z at `5ac6b54`) was
 stopped at 208/1691 (all passed) because this change landed under it.
+
+**Fifth round, same day (user's browser; three screenshots, `debug/jl.html`):**
+
+- springsteenlyrics.com: sorted headers still showed rows through them. The
+  site's Bootstrap 3.3.2 (fetched from the live site, `bootstrap/css/
+  bootstrap.min.css`) has `table { background-color: transparent }`, which
+  outranks `_ensureForeignTableStyle()`'s zero-specificity table colour, so
+  the thead's `inherit` came out transparent. The fixtures load no site CSS,
+  which is why the brucespringsteen.it arm had passed. Now
+  `_ensureForeignTableStyle()` gives `table.tbl > thead` `#fff` outside
+  `:where()`. The `inherit` in `applyStickyHeaders()` became redundant
+  (`transparent` on MusicBrainz, overridden on the Springsteen sites) and
+  was taken out, so the shared code is the same as on `main`.
+- jungleland.it: rows ran over the stuck header block and h2. The snapshot
+  shows `table.tbl.mb-jl-table.mb-sph-target` WITHOUT `mb-sph-table`, capped
+  (`--mb-sph-maxw`): `_sphCollectTargets()` pinned every direct `<body>`
+  child as chrome, the list table included (no MB `#page` there). A pinned
+  non-table target is raised while hovered (107, and 108 for body-level
+  ones), and VSB's cap for pinned bodies skips `<body>` children, so with
+  the pointer on the list the whole table painted over the bars. The
+  fixture reproduces it (`probe`: the table classed as a target). This
+  predates the branch. Fix: the `<body>`-children pass skips `table.tbl`;
+  the table pass handles it. MusicBrainz tables are never `<body>`
+  children.
+
+Mutations: 8/8 caught.

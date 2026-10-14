@@ -1,7 +1,8 @@
 'use strict';
 
 // A sorted column's header stays opaque while rows scroll under the sticky
-// thead (applyStickyHeaders(): `table.tbl thead { background-color: inherit }`).
+// thead (applyStickyHeaders(): `table.tbl thead { background-color: inherit }`;
+// on the Springsteen sites `_ensureForeignTableStyle()`'s explicit `#fff`).
 //
 // Reported 2026-10-14 on brucespringsteen.it: sort "Notes", scroll down, and
 // the text of the rows passing under the pinned header showed through the
@@ -17,6 +18,12 @@
 // (always true, also while broken) and not a computed style (a wrong
 // stacking or a clipped background would pass that).
 //
+// springsteenlyrics.com carries Bootstrap 3.3.2, whose `table {
+// background-color: transparent }` outranks the zero-specificity table
+// colour of _ensureForeignTableStyle(): the thead inherited `transparent`
+// and the rows still showed through there after the first fix (reported
+// 2026-10-14). The fixtures load no site CSS, so that arm injects the rule.
+//
 // MusicBrainz itself is not an arm here: the fixtures load without MB's
 // stylesheet, so its thead image is missing and a pixel taken there would
 // describe a page no user sees. On MB the rule changes nothing by
@@ -25,6 +32,7 @@
 
 const { test, expect } = require('../support/test');
 const { loadBsRecordsPage } = require('../support/bsFixture');
+const { loadSlListPage, SL_KINDS } = require('../support/slFixture');
 const { waitForRenderComplete } = require('../support/browser');
 const { waitForSortSettled } = require('../support/filterSortAssertions');
 
@@ -103,44 +111,71 @@ async function scrollRowsUnderThead(page) {
     });
 }
 
-// Any non-sticky column shows it ("Title" is the sticky one, with an opaque
-// blended tint of its own). The reported "Notes" lies right of a 1300 px
-// window in the Unofficial list; "Format" and "Label" are in view.
-const ARMS = [
-    ['one sorted column', [['Format', false]]],
-    ['a multi-column sort (every sorted header)', [['Format', false], ['Label', true]]],
-];
-
-test.describe('sorted header stays opaque over rows scrolling under the sticky thead (brucespringsteen.it)', () => {
-    for (const [arm, sorts] of ARMS) {
-        test(arm, async ({ page }) => {
-            await page.setViewportSize({ width: 1300, height: 800 });
+// Any non-sticky column shows it ("Title" is the sticky one on both hosts,
+// with an opaque blended tint of its own). The reported "Notes" lies right
+// of a 1300 px window in the Unofficial list; "Format" and "Label" are in
+// view. On springsteenlyrics.com: "Version" and "Label", as reported.
+const HOSTS = [
+    {
+        name: 'brucespringsteen.it',
+        cols: ['Format', 'Label'],
+        css: '',
+        open: async (page) => {
             await loadBsRecordsPage(page);
             await page.click('h1.mb-bs-h1 button[data-label="Unofficial"]');
-            await waitForRenderComplete(page, { waitForAutoResize: false });
-            await page.addStyleTag({ content: LOUD_ROWS });
-            for (const [col, ctrl] of sorts) await sortAsc(page, col, { ctrl });
-            await page.evaluate(() => { if (document.activeElement) document.activeElement.blur(); });
-            await page.mouse.move(2, 790);
-            await page.evaluate(() => window.scrollTo(0, 0));
+        },
+    },
+    {
+        name: 'springsteenlyrics.com (Bootstrap: table { background-color: transparent })',
+        cols: ['Version', 'Label'],
+        css: 'table { background-color: transparent; }',
+        open: async (page) => {
+            await loadSlListPage(page, { kind: 'collection' });
+            await page.$eval(`button[data-label="${SL_KINDS.collection.button}"]`, (b) => b.click());
+        },
+    },
+];
 
-            const cols = sorts.map(([c]) => c);
-            const before = {};
-            for (const col of cols) {
-                const p = await headerPoint(page, col);
-                expect(p.tinted, `premise: the ${col} header carries its sort tint`).toBe(true);
-                before[col] = await pixelAt(page, p.x, p.y);
-            }
+for (const host of HOSTS) {
+    test.describe(`sorted header stays opaque over rows scrolling under the sticky thead (${host.name})`, () => {
+        const arms = [
+            ['one sorted column', [[host.cols[0], false]]],
+            ['a multi-column sort (every sorted header)', [[host.cols[0], false], [host.cols[1], true]]],
+        ];
+        for (const [arm, sorts] of arms) {
+            test(arm, async ({ page }) => {
+                await page.setViewportSize({ width: 1300, height: 800 });
+                await host.open(page);
+                await waitForRenderComplete(page, { waitForAutoResize: false });
+                await page.addStyleTag({ content: `${host.css}\n${LOUD_ROWS}` });
+                for (const [col, ctrl] of sorts) await sortAsc(page, col, { ctrl });
+                await page.evaluate(() => { if (document.activeElement) document.activeElement.blur(); });
+                await page.mouse.move(2, 790);
+                // The table's top 150 px down the window: the thead in its
+                // natural place, nothing under it (the unstyled SL fixture
+                // puts the table far below the fold).
+                await page.evaluate(() => window.scrollTo(0,
+                    document.querySelector('table.tbl').getBoundingClientRect().top + window.scrollY - 150));
+                await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 
-            const s = await scrollRowsUnderThead(page);
-            expect(s.rowsUnder, 'premise: rows have scrolled under the stuck thead').toBe(true);
-            for (const col of cols) {
-                const p = await headerPoint(page, col);
-                expect(Math.abs(p.y - 3 - s.theadTop), `premise: the ${col} header is in the stuck thead`).toBeLessThanOrEqual(1);
-                const after = await pixelAt(page, p.x, p.y);
-                expect(after, `the ${col} header shows no row through it`).toBe(before[col]);
-                expect(after, `the ${col} header is not the rows' colour`).not.toBe('255,0,0');
-            }
-        });
-    }
-});
+                const cols = sorts.map(([c]) => c);
+                const before = {};
+                for (const col of cols) {
+                    const p = await headerPoint(page, col);
+                    expect(p.tinted, `premise: the ${col} header carries its sort tint`).toBe(true);
+                    before[col] = await pixelAt(page, p.x, p.y);
+                }
+
+                const s = await scrollRowsUnderThead(page);
+                expect(s.rowsUnder, 'premise: rows have scrolled under the stuck thead').toBe(true);
+                for (const col of cols) {
+                    const p = await headerPoint(page, col);
+                    expect(Math.abs(p.y - 3 - s.theadTop), `premise: the ${col} header is in the stuck thead`).toBeLessThanOrEqual(1);
+                    const after = await pixelAt(page, p.x, p.y);
+                    expect(after, `the ${col} header shows no row through it`).toBe(before[col]);
+                    expect(after, `the ${col} header is not the rows' colour`).not.toBe('255,0,0');
+                }
+            });
+        }
+    });
+}

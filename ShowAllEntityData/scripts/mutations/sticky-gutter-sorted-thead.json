@@ -66,15 +66,41 @@
     },
     {
         "name": "the sticky thead has no backing colour",
-        "why": "A sorted column's header tint is 60 % alpha; on the non-MusicBrainz sites nothing was behind it, and rows scrolling under the pinned header showed through (2026-10-14, brucespringsteen.it).",
+        "why": "A sorted column's header tint is 60 % alpha; on the Springsteen sites nothing was behind it, and rows scrolling under the pinned header showed through (2026-10-14: brucespringsteen.it, then springsteenlyrics.com, whose Bootstrap table { background-color: transparent } also beat a zero-specificity backing).",
         "edits": [
             {
-                "find": "                background-color: inherit;\n",
+                "find": "            body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl > thead {\n                background-color: #fff;\n            }\n",
                 "replace": ""
             }
         ],
         "spec": "tests/fixtures/sorted-thead-opaque.spec.js",
         "grep": "sorted header stays opaque",
+        "expect": "fail"
+    },
+    {
+        "name": "the thead backing has no specificity (inside :where())",
+        "why": "springsteenlyrics.com's Bootstrap table { background-color: transparent } then wins, and the rows show through the sorted headers there; brucespringsteen.it has no such rule.",
+        "edits": [
+            {
+                "find": "            body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl > thead {\n                background-color: #fff;\n            }\n",
+                "replace": "            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl) > thead {\n                background-color: inherit;\n            }\n"
+            }
+        ],
+        "spec": "tests/fixtures/sorted-thead-opaque.spec.js",
+        "grep": "springsteenlyrics",
+        "expect": "fail"
+    },
+    {
+        "name": "a data table that is a direct <body> child is collected as chrome",
+        "why": "jungleland.it: capped like a bar and raised over every stuck bar while hovered, the table's rows painted over the stuck h1, status line and h2 (2026-10-14, debug/jl.html).",
+        "edits": [
+            {
+                "find": "            if (el !== page && !el.matches('table.tbl')) add(el, true);\n",
+                "replace": "            if (el !== page) add(el, true);\n"
+            }
+        ],
+        "spec": "tests/fixtures/sticky-filter-bars.spec.js",
+        "grep": "direct <body> child",
         "expect": "fail"
     }
 ]

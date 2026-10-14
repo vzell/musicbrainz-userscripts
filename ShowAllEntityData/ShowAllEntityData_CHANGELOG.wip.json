@@ -6,7 +6,8 @@
       {
         "label": "🐛 Fix",
         "items": [
-          "Sorted column headers no longer let table text show through while you scroll. On brucespringsteen.it, springsteenlyrics.com, jungleland.it and Brucebase, the header of a sorted non-sticky column (every sorted column after a multi-column sort) was partly transparent, so the rows scrolling under the pinned header showed through it (\"gatefold\" under \"Notes\"). The pinned header now has a solid background behind its sort colour."
+          "Sorted column headers no longer let table text show through while you scroll. On brucespringsteen.it, springsteenlyrics.com, jungleland.it and Brucebase, the header of a sorted non-sticky column (every sorted column after a multi-column sort) was partly transparent, so the rows scrolling under the pinned header showed through it (\"gatefold\" under \"Notes\"). The pinned header now has a solid background behind its sort colour.",
+          "jungleland.it: with the pointer resting on the list, its rows no longer cover the toolbar, the status line and the Bootlegs bar pinned at the top of the window."
         ]
       }
     ]

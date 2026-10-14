@@ -11069,6 +11069,19 @@
             :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl) tr.even > td {
                 background-color: #f2f2f2;
             }
+            /* NOT inside :where(), on purpose: the backing behind a sorted
+               column's header tint (.mb-mscol-hdr-N, a 60 % alpha
+               background-color !important that replaces the cell's own
+               colour) while rows scroll under the sticky thead. On
+               MusicBrainz, MB's stylesheet paints an image on the thead
+               itself; here nothing did, and the rows showed through every
+               sorted header (2026-10-14, brucespringsteen.it). It has to
+               outrank the site's own rules: springsteenlyrics.com's
+               Bootstrap 3.3.2 has table { background-color: transparent },
+               which also beats the zero-specificity table colour above. */
+            body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl > thead {
+                background-color: #fff;
+            }
         `);
         style.id = 'mb-foreign-table-style';
     }
@@ -33704,20 +33717,6 @@
     /**
      * Applies sticky positioning to table headers so they remain visible while scrolling
      * Adds CSS styles that make both the main header row and filter row stick to the top of the viewport
-     *
-     * The sticky `<thead>` itself takes the table's background colour
-     * (`background-color: inherit`): a sorted column's header tint
-     * (`.mb-mscol-hdr-*`) is a 60 % alpha `background-color !important` that
-     * replaces the cell's own opaque one, so whatever is painted BEHIND that
-     * cell shows through. On MusicBrainz that is the thead's own gradient
-     * image from MB's stylesheet. On the other sites the thead had no
-     * background at all, and the rows scrolling under the pinned header
-     * showed through every sorted column's header (reported 2026-10-14 on
-     * brucespringsteen.it). Their table is `#fff` (`_ensureForeignTableStyle()`),
-     * the colour the tint already blended with while nothing was scrolled
-     * under it, so the header looks the same, now opaque. MB's `table.tbl`
-     * has no background colour, so on MusicBrainz this changes nothing, and
-     * MB's image still paints over it.
      */
     function applyStickyHeaders() {
         // Check if styles already added
@@ -33740,9 +33739,6 @@
                 top: 0;
                 /* z-index 100 keeps it below the sidebar (105) but above table content */
                 z-index: 100;
-                /* The table's colour behind a sorted column's translucent
-                   header tint (see the JSDoc above). */
-                background-color: inherit;
             }
 
             /* Ensure headers have a solid background so scrolling content doesn't bleed through */
@@ -34609,7 +34605,7 @@
      * sticking vertically. See the section comment above for the `<body>`,
      * collapsed-sidebar and z-index rules.
      *
-     * The custom properties are registered NON-inherited
+     * The three custom properties are registered NON-inherited
      * (`@property … inherits: false`). An unregistered custom property
      * inherits, so a write on one element changes the computed style of its
      * whole subtree. The `<body>` floor used to be written on `<html>`, and
@@ -35017,8 +35013,15 @@
             found.push({ el, chrome, table: kind === 'table' });
         }
 
+        // A data table is never chrome, even as a direct <body> child (a
+        // page without MB's #page: jungleland.it's list). Collected here it
+        // was capped like a bar and, as a pinned body-level element, raised
+        // over every stuck bar while hovered: with the pointer resting on
+        // it, its rows painted over the stuck h1, status line and h2
+        // (reported 2026-10-14). The table pass below handles it as on
+        // MusicBrainz: pinned whole only while it fits, never raised.
         for (const el of Array.from(document.body.children)) {
-            if (el !== page) add(el, true);
+            if (el !== page && !el.matches('table.tbl')) add(el, true);
         }
 
         [content, page].forEach(root => {
