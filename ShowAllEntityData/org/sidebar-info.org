@@ -1,4 +1,44 @@
 * TODO Overwhole the sidebar info presentation
-** TODO initial
+** DONE initial
 
+Please explain and maybe implement a fix for the following:
 
+1.)
+
+The current userscript code renders a "Details" and "Picard" column in the "Via release group: Tougher Than the Rest"
+sub-table of https://musicbrainz.org/release/52c6808b-037d-47d5-b0c7-17331c9d36cd, see also [Image #4] - @debug/release-tracks-with-sidebar-initial.html
+
+2.)
+
+Older code actually rendered it like [Image #3] where the release group name renders right after the RG inline image and
+there is a also a big picture image stripe present
+
+3.)
+
+I actually want 2.) even with our current code 
+
+** DONE tested live
+
+Tested live, looks good, commit and push (inclusive the .org files); stop the suite for now, it takes too long on
+"vzell-lap", /merge-push-remove now, will implement a couple more things and test with the whole suite later (possibly
+on a faster machine like "petri")
+
+** TODO Overwhole
+
+We need another overwhole of the presentation of the information located in the sidebar of most of MB PTs.
+
+1.)
+
+currently we support a "Sidebar" button which when pressed renders the sidebar info as h3 headed sub-tables
+
+2.)
+
+make some suggestions (inclusive nice HTML based mockups) how the information from 1.) could be shown already when
+pressing the generic PT action button like e.g. "Tracks" for PT 'release-tracks' under the same named h3 headed but
+non-filterable/non-sortable subsections below the rendered h2 "Relationships"/"Credits" section on the FRP.
+
+3.)
+
+do the same (suggestions inclusive nice HTML based mockups) when pressing the "Relationships"/"Credits" action button if
+present on a PT, but in this case the info should show up as h3 headed but filterable/sortable subsections/sub-tables
+below the rendered h2 "Relationships"/"Credits" section on the FRP
