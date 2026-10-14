@@ -2380,7 +2380,7 @@ For tomorrow's test:full on the other host:
 The published copy in vzell/mb-userscripts is still at 9.99.1167, so republishing (including the HELP the ❓ button serves) is still to do.
 
 
-* TODO add instrument support
+* DONE add instrument support
 ** DONE i
 
 add instrument support when the third-party userscript "MusicBrainz: Instrument Icons Everywhere" from @Lotheric is present
@@ -2406,7 +2406,7 @@ It's missing the instrument icons in the UVD oc column "Name" and a count of row
 
 4.)
 
-** instrument icon support on the right side
+** DONE instrument icon support on the right side
 
 1.)
 
