@@ -53,6 +53,12 @@
 //     "Target" column, none on series/URL rows (fixture
 //     rel-release-art-overview.html, release 1d404e1d, 24 events and 11
 //     release groups in its release group's lists).
+// 13. jesus2099's COVER-ART ICON LINK before each release-group target
+//     (`<a href="/release/<mbid>/cover-art"><span class="caa-icon …">`, added
+//     once that script's lookup returns): the row stays a "Release group"
+//     with its name in Target and our own inline thumbnail, and no Details or
+//     Picard column appears. Checking only the Type passes on code that
+//     keeps the icon in the cell next to our thumbnail.
 
 const path = require('path');
 const { test, expect } = require('../support/test');
@@ -382,6 +388,65 @@ test.describe('relationship tables: review fixes (WIP.7)', () => {
         expect(st.Event).toEqual({ rows: 24, caa: 0, eaa: 24 });
         expect(st.Series).toMatchObject({ caa: 0, eaa: 0 });
         expect(st.URL).toMatchObject({ caa: 0, eaa: 0 });
+    });
+
+    test('jesus2099\'s cover-art icon before a release group is never the target', async ({ page }) => {
+        // Rewrite each release-group line the way "mb. SUPER MIND CONTROL"
+        // leaves it once its lookup returns: a text-less cover-art link of one
+        // of the group's releases before the group's own link, and its big box
+        // (debug/release-tracks-with-sidebar-initial.html).
+        await open(page, 'release-art', {
+            press: false,
+            settings: { sa_enable_caa_pics: true, sa_caa_pics_inline: true },
+            before: () => {
+                const rg = document.querySelector('#release-group-relationships');
+                const box = document.createElement('div');
+                box.className = 'jesus2099userjs154481bigbox';
+                rg.querySelector('h3').after(box);
+                rg.querySelectorAll('table.details a[href^="/release-group/"]').forEach((a) => {
+                    const icon = document.createElement('a');
+                    icon.href = 'https://musicbrainz.org/release/de3273d0-4906-4760-b8e2-51a7ffde946b/cover-art';
+                    icon.setAttribute('ref', a.getAttribute('href'));
+                    icon.title = '1 image found in this release';
+                    const span = document.createElement('span');
+                    span.className = 'caa-icon jesus2099userjs154481';
+                    icon.appendChild(span);
+                    a.before(icon);
+                    const big = document.createElement('a');
+                    big.href = a.getAttribute('href');
+                    box.appendChild(big);
+                });
+            },
+        });
+        expect(await page.locator('#release-group-relationships span.caa-icon.jesus2099userjs154481').count(), 'the icons are in').toBe(11);
+        await page.click('button[data-label="Show all Credits for Release"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const st = await page.evaluate(() => {
+            const h3 = Array.from(document.querySelectorAll('h3.mb-toggle-h3')).find((h) => h.textContent.includes('Via release group'));
+            let t = h3.nextElementSibling;
+            while (t && t.tagName !== 'TABLE') t = t.nextElementSibling;
+            const heads = Array.from(t.querySelectorAll('thead tr:first-child th')).map((th) => th.dataset.colName || th.textContent.trim());
+            const k = heads.indexOf('Target');
+            const ty = heads.indexOf('Type');
+            const types = {};
+            let named = 0;
+            let thumbs = 0;
+            Array.from(t.querySelectorAll('tbody tr')).forEach((tr) => {
+                const type = tr.cells[ty].textContent.trim();
+                types[type] = (types[type] || 0) + 1;
+                if (type !== 'Release group') return;
+                const link = tr.cells[k].querySelector('a[href*="/release-group/"]');
+                if (link && link.textContent.trim()) named++;
+                if (tr.cells[k].querySelector('.mb-caa-inline-ph')) thumbs++;
+            });
+            return { heads, types, named, thumbs, icons: t.querySelectorAll('span.caa-icon.jesus2099userjs154481').length };
+        });
+        expect(st.types['Release group'], 'the parse: still release groups').toBe(11);
+        expect(st.types.Release, 'no row read as the icon\'s release').toBeUndefined();
+        expect(st.named, 'the group\'s name in Target').toBe(11);
+        expect(st.heads.filter((h) => /Details|Picard/.test(h)), 'no Details/Picard column').toEqual([]);
+        expect(st.thumbs, 'our own inline thumbnail instead').toBe(11);
+        expect(st.icons, 'the third-party icon is gone').toBe(0);
     });
 });
 
