@@ -23105,3 +23105,50 @@ Mutation run 2026-10-14T21:15:59Z → 21:23:56Z · vzell-lap ·
 expected. The four new ones fail only their `[icon after]` arm. The two
 "(alone)" covers-for-each-other entries still pass, now in both arms. The
 userscript was restored and hash-verified.
+
+## 2026-10-14 — Release "Credits": jesus2099's cover-art icon taken as the "Via release group" target (WIP.1, branch fix/rel-tables-third-party-art-icon)
+
+Env: 2026-10-14T22:34Z · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs) for the tests; the user's browser for the report: unknown
+
+**Symptom.** On release 52c6808b-037d-47d5-b0c7-17331c9d36cd, the "Credits" button's "Via release
+group: Tougher Than the Rest" table had these faults:
+- Type read "Release".
+- The Target cell held only an icon.
+- The group's name sat in an extra Details column.
+- A Picard column appeared.
+- There was no CAA big-image strip and no CAA h3 buttons.
+
+In an earlier render the same table was right: Type "Release group", the name after our inline
+thumbnail, and the strip.
+
+**Snapshot.** `debug/release-tracks-with-sidebar-initial.html` (initial page). In
+`#release-group-relationships`, every release-group line reads
+`<span class="rglink"></span><a href="https://musicbrainz.org/release/<mbid>/cover-art" ref="/release-group/<mbid>"><span class="caa-icon jesus2099userjs154481"></span></a><a href="/release-group/<mbid>"><bdi>Tunnel of Love</bdi></a><br>`,
+and `div.jesus2099userjs154481bigbox` sits below the h3.
+
+**Root cause.** `_eventRelParseLine()` takes the first element after the empty marker spans as
+the target, and here that is jesus2099's icon link. From there:
+- `/release/…/cover-art` → `_eventRelTargetType()` = release, so the Type reads "Release".
+- The link has no text, so the Target cell looks empty.
+- The real release-group link went to `extra`, which became the Details column.
+- A MusicBrainz `/release/` link in the table brings in the Picard column.
+- No release-group link is left in Target, so the CAA inline thumbnail, the big-image strip and
+  the h3 buttons have nothing to work on.
+
+The converter's code had not changed. jesus2099 adds the link asynchronously, after its own
+lookup ("1 image found in this release"), so it is a race: in the earlier render the link was
+not there yet.
+
+**Fix.** The lead-skip loop of `_eventRelParseLine()` now also drops a text-less `<a>` holding
+only `span.caa-icon`/`span.eaa-icon`. It does this for every caller, the event page included.
+This matches columnEraser strategy 2 and `_stripLateJesus2099CaaIcon()`, which remove the same
+anchor elsewhere. The bigbox div was already harmless: it has no `table.details` and is removed
+with `#release-group-relationships`.
+
+**Tests.** A new spec in `rel-tables-pages.spec.js`, "jesus2099's cover-art icon before a
+release group is never the target", adds the icon links and the bigbox to `rel-release-art-overview.html`
+exactly as in the snapshot, then checks four things: 11 "Release group" rows and no "Release"
+row, the name in Target, no Details/Picard column, and 11 of our inline thumbnails with no icon
+left. A new mutation in `scripts/mutations/rel-tables.json` (skip disabled) fails as expected
+("the parse: still release groups"), and the userscript was restored and hash-verified. The
+rel-tables and event-overview specs pass on fixtures and mobile, 69/69. Lint is within the baseline.

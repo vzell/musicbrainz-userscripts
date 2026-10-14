@@ -102,6 +102,20 @@ wraps an area's glyph, link, flag image and the ", " before its parent chain
 in one `span.mfe-flag-wrapper` (`AREA_ICON_WRAPPER_SEL`). With `opts.rel` the
 comma is moved back out of the target, or the chain lands in Details.
 
+jesus2099's "mb. SUPER MIND CONTROL" puts a text-less cover-art link
+(`<a href="…/release/<mbid>/cover-art"><span class="caa-icon
+jesus2099userjs154481">`) before every release-group link of a release's
+"Via release group" lists, and its own `div.…bigbox` above them. It does this
+once its lookup returns, so whether the converter sees the link is a race.
+`_eventRelParseLine()` drops such a link (a text-less `<a>` holding only
+`span.caa-icon`/`span.eaa-icon`) before choosing the target, with or without
+`opts.rel`. If it were taken as the target, the row would read "Release", the
+group's link would land in Details, a Picard column would appear, and no
+cover art of ours would be drawn, since the Target cell holds no
+release-group link (2026-10-14, `debug/release-tracks-with-sidebar-initial.html`;
+pinned by "jesus2099's cover-art icon before a release group is never the
+target").
+
 **Inline artwork** (`addCAA: ['Target', 'Release group', 'Release']`,
 `addEAA: ['Target', 'Event']` in `_relTablesFeatures()`): each row's link
 decides (`CAA_CTX`/`EAA_CTX.inlineLinkSel`), so a mixed Target column gets a

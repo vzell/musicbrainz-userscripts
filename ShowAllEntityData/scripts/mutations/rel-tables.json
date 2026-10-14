@@ -335,5 +335,18 @@
         "spec": "tests/fixtures/rel-tables-pages.spec.js",
         "grep": "entity types",
         "expect": "fail"
+    },
+    {
+        "name": "a third-party artwork icon link is taken as the target",
+        "why": "jesus2099's text-less <a href=/release/<mbid>/cover-art><span class=caa-icon> sits before every release-group link of a release's 'Via release group' lists. Taken as the target, the row reads 'Release', the group's link goes to Details and a Picard column appears (debug/release-tracks-with-sidebar-initial.html, 2026-10-14).",
+        "edits": [
+            {
+                "find": "            if (n.nodeType === Node.ELEMENT_NODE && n.tagName === 'A' && !n.textContent.trim() &&\n                    n.querySelector(':scope > span.caa-icon, :scope > span.eaa-icon')) {",
+                "replace": "            if (false && n.nodeType === Node.ELEMENT_NODE && n.tagName === 'A' && !n.textContent.trim() &&\n                    n.querySelector(':scope > span.caa-icon, :scope > span.eaa-icon')) {"
+            }
+        ],
+        "spec": "tests/fixtures/rel-tables-pages.spec.js",
+        "grep": "cover-art icon before a release group",
+        "expect": "fail"
     }
 ]

@@ -18951,6 +18951,19 @@
      *     moved back out of the target, or the chain lands in Details instead
      *     of the area column (debug/area-USA-initial.html, 2026-10-12).
      *
+     * Always (with or without `opts.rel`): a text-less link holding only an
+     * artwork icon before the target is dropped. jesus2099's "mb. SUPER MIND
+     * CONTROL" puts `<a href="…/release/<mbid>/cover-art" ref="/release-group/…">
+     * <span class="caa-icon jesus2099userjs154481"></span></a>` before every
+     * release-group link of a release's "Via release group" lists, once its
+     * own lookup returns (so only when it ran first). Taken as the target it
+     * made the row a "Release" with an empty Target, the group's link a
+     * Details column, a Picard column, and no cover art of ours
+     * (debug/release-tracks-with-sidebar-initial.html, 2026-10-14). The
+     * columnEraser's `'jesus2099'` strategy and `_stripLateJesus2099CaaIcon()`
+     * remove the same anchor elsewhere: this script's own inline thumbnail
+     * takes its place.
+     *
      * @param   {Node[]} nodes The line's child nodes (between two `<br>`s).
      * @param   {{rel?: boolean}} [opts]
      * @returns {?{type: string, main: Node[], href: string, artist: Node[], area: Node[], extra: Node[], comment: Node[], alias: Node[]}}
@@ -18967,6 +18980,14 @@
             // The empty entity-icon marker (span.artistlink, span.placelink, … or a bare <span> before a URL).
             if (n.nodeType === Node.ELEMENT_NODE && n.tagName === 'SPAN' && !n.textContent.trim() && !n.querySelector('a')) {
                 lead.push(n);
+                i++;
+                continue;
+            }
+            // A third-party artwork icon link before the target (jesus2099's
+            // `<a href="/release/<mbid>/cover-art"><span class="caa-icon …">`):
+            // dropped, never the target — see the JSDoc above.
+            if (n.nodeType === Node.ELEMENT_NODE && n.tagName === 'A' && !n.textContent.trim() &&
+                    n.querySelector(':scope > span.caa-icon, :scope > span.eaa-icon')) {
                 i++;
                 continue;
             }
