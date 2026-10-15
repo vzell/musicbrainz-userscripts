@@ -2665,12 +2665,12 @@ the table.
 It is **off until you switch it on**, for each site separately, right under
 that site's own switch in ⚙️ Settings:
 
-| Site                   | Setting                                                  | The card shows                                                                 |
-|------------------------|----------------------------------------------------------|--------------------------------------------------------------------------------|
+| Site                     | Setting                                                      | The card shows                                                                                                                                              |
+|--------------------------|--------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 🎸 springsteenlyrics.com | *Preview item and song pages on springsteenlyrics.com lists* | the tracklist by disc, the notes (lineage, edition), the artwork scans; on the lyrics index, the version, the first lines of the lyrics and the song's info |
-| 🌴 jungleland.it        | *Preview artwork pages on the jungleland.it list*        | the uploader and the scans (front, back, discs, booklet)                       |
-| 💿 brucespringsteen.it  | *Preview record pages in the brucespringsteen.it database* | the tracklist, the show each track comes from, the notes, the photo           |
-| 📚 Brucebase                                    | *Preview song pages on the Brucebase song list*          | the album it comes from, how often and when last it was played live, releases                                                                                                                              |
+| 🌴 jungleland.it         | *Preview artwork pages on the jungleland.it list*            | the uploader and the scans (front, back, discs, booklet)                                                                                                    |
+| 💿 brucespringsteen.it   | *Preview record pages in the brucespringsteen.it database*   | the tracklist, the show each track comes from, the notes, the photo                                                                                         |
+| 📚 Brucebase             | *Preview song pages on the Brucebase song list*              | the album it comes from, how often and when last it was played live, releases                                                                               |
 
 **Rest the pointer on a title** for a moment and a card opens beside it. If
 you would rather move the pointer across the table without opening cards or
