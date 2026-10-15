@@ -326,8 +326,8 @@ much, and what the alternative would be.
   merge, then run `python3 scripts/audit-docs.py` (derives the "DONE set is
   exactly Steps …" sentence; fails on a `~:NNNNN~` line reference — name the
   symbol instead).
-- **Every timing records the machine and the wall-clock time** — host, UTC
-  start/finish; `capture-interaction-perf.js`/`capture-snapshots.js` write a
+- **Every timing records the machine and the wall-clock time** — host,
+  start/finish in Berlin time with offset; `capture-interaction-perf.js`/`capture-snapshots.js` write a
   `machine` block. Filenames carry version, capture date and hostname. Rows go
   in `tests/MEASUREMENTS.org` with the page's pageType, `tableMode` and title.
 - **Never quote an absolute across versions or sessions.** Capture your own
@@ -498,14 +498,35 @@ a channel with no call site and to omit a real one). What a naive grep will
 So three of the channel names exist only as data. Anything new that routes a
 channel through a variable should be added to this note.
 
+## Time zone: Europe/Berlin (since 2026-10-15)
+
+Every date/time Claude displays or stores is in Berlin time
+(`Europe/Berlin`, CET/CEST), not UTC. This covers the `test:full`
+announcement and its finish window, the prompt's status line, environment
+stamps, timings and every other dated note.
+
+- **Stored** (notes, logs, JSON, measurement rows): ISO 8601 WITH the
+  offset, from `TZ=Europe/Berlin date +%FT%T%:z`, e.g.
+  `2026-10-15T07:24:28+02:00`. The offset is required: when the clocks go
+  back, the hour from 02:00 to 03:00 happens twice, and a bare local time
+  is ambiguous.
+- **Displayed** (chat, status line): the local time plus the zone
+  abbreviation, e.g. `07:24:28 CEST` (`CET` in winter).
+- Existing UTC entries stay as they are, not converted. They are marked
+  `Z`/`UTC`, so they are still unambiguous.
+- `scripts/run-test-full.py` and `scripts/run-perf-arms.py` store and
+  print Berlin time. `~/.claude/statusline.sh` shows every stamp in
+  Berlin time, whether it is written with `+02:00` or the older `Z`.
+
 ## Environment stamp on every dated note
 
 Every note that records an observation, a measurement or a test result carries
 an environment stamp, so a later reader can tell whether two notes are
 comparable:
 
-- **Date/time** — UTC, from `date -u +%FT%TZ` at the time of the run, not the
-  day the note was written up.
+- **Date/time** — Berlin time with offset, from
+  `TZ=Europe/Berlin date +%FT%T%:z` at the time of the run, not the day the
+  note was written up (see "Time zone: Europe/Berlin" above).
 - **Host** the Claude session runs on (`hostname`: `petri`, `NB-3641`,
   `vzell-lap`, …).
 - **OS, browser version, Tampermonkey version.** OS from `/etc/os-release` +
@@ -522,7 +543,7 @@ comparable:
   `tests/MEASUREMENTS.org` already applies to hosts.
 
 One line is enough, e.g.
-`Env: 2026-10-09T11:24Z · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.40.1) · <browser> <version> · Tampermonkey <version>`.
+`Env: 2026-10-09T13:24+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.40.1) · <browser> <version> · Tampermonkey <version>`.
 
 Applies to (add a file here when it starts collecting dated results):
 
@@ -568,11 +589,11 @@ The harness lives under `tests/`; how to run each suite and what it costs:
   (`rel-auto-retry-failed` ~295 s, `resume-from-failed-page` ~84 s) spend
   their time in the rate gates and backoffs under test — do not shorten them.
 - **Announce every `npm run test:full` run as it starts**, in one line with
-  the UTC start time, host, branch and short HEAD SHA, and when it should
-  finish, e.g. "The suite started at 11:37:39 UTC on `petri`, on `main` at
+  the start time in Berlin time, host, branch and short HEAD SHA, and when it should
+  finish, e.g. "The suite started at 13:37:39 CEST on `petri`, on `main` at
   `415e6ad`. I'll get a notification when it finishes, probably around
-  11:44–11:46 UTC." Take the start time, host and SHA from the run itself
-  (`date -u`, `hostname`, `git rev-parse --short HEAD`, logged as the run's
+  13:44–13:46 CEST." Take the start time, host and SHA from the run itself
+  (`TZ=Europe/Berlin date`, `hostname`, `git rev-parse --short HEAD`, logged as the run's
   first line), and the finish window from that host's latest recorded
   `test:full` wall clock in `tests/MEASUREMENTS.org`/`tests/README.org`,
   scaled by test count (Playwright's `Running N tests` line) — the suite

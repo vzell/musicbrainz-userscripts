@@ -3769,3 +3769,27 @@ within-pass split, since =main= has no sidebar part to time.
 *Read as:* the sidebar part is most of a pass that costs about 1.5 ms in all,
 once per render: nothing a user can notice, and not on the filter/sort/render
 hot path.
+
+* 2026-10-15 — =npm run test:full= on =petri= after the =vzell-lap= merges (main at da5569e, 9.99.1353)
+
+Env: 2026-10-15T07:24:28+02:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · node v24.16.0 · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+=python3 scripts/run-test-full.py= on =main= at =da5569e= (the same commit as
+=origin/main=), so it includes everything merged from =vzell-lap= up to
+9.99.1353. chromium-fixtures plus chromium-mobile, with Playwright's default
+of 12 workers. This is the first entry in Berlin time (CLAUDE.md, "Time zone:
+Europe/Berlin"). The run started under the old runner, so its own log shows
+05:24:28Z–05:32:59Z.
+
+| Selection                             | Tests | Workers | Wall clock | Basis                                      |
+|---------------------------------------+-------+---------+------------+--------------------------------------------|
+| =npm run test:full=, cross-host check |  1774 |      12 | *8 m 31 s* | =run-test-full.py=, 07:24:28–07:32:59 CEST |
+
+All 1774 passed, with no flaky retries. The ETA came from the previous
+complete run on this host (=~/.cache/sa-test-full/last-petri.json=: 1743
+tests in 496 s, finished 2026-10-14 21:50:55 CEST; that file does not record
+its branch or commit). Scaled by test count, that gave 505 s, and the run
+took 511 s. Per test that is 0.288 s against 0.285 s, +1.2%, inside the ±2%
+noise band recorded above for this host. That band was fitted to
+chromium-fixtures-only runs of 446–534 tests, so it is only a rough guide at
+this size and project mix.

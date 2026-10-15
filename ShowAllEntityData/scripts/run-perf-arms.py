@@ -12,7 +12,7 @@ after `--` go to every run. The runs' output passes through unchanged (and is
 copied to --log). Alongside, this keeps ~/.cache/sa-perf/status.json, which
 ~/.claude/statusline.sh reads, so the prompt's status line shows
 
-    📈 perf · <host> · <branch>@<sha> · arm 1/2 artist-recordings-petty · sort 3/5 (14/30) · ETA ~HH:MM UTC
+    📈 perf · <host> · <branch>@<sha> · arm 1/2 artist-recordings-petty · sort 3/5 (14/30) · ETA ~HH:MM CEST
 
 while the arms run, and a one-line result (each arm's wall clock) for an hour
 afterwards. Progress inside an arm comes from the harness's own
@@ -22,6 +22,12 @@ Per-host, per-arm history: ~/.cache/sa-perf/last-<host>-<arm>.json holds the
 previous complete run's wall clock; the ETA sums it over the arms still to run.
 Without history the ETA is extrapolated from the current arm's progress. A run
 limited with `-- --only=typed` keeps its own history (`last-<host>-<arm>-typed.json`).
+
+Times are Berlin time (Europe/Berlin, CET/CEST; CLAUDE.md, "Time zone:
+Europe/Berlin"): stored as ISO 8601 with the offset
+(`2026-10-15T07:24:28+02:00`), printed as `07:24:28 CEST`. Arithmetic is done
+in UTC and only the result is converted. Older status/history files hold `…Z`
+stamps; statusline.sh reads both.
 
 Exit status: the first failing run's, else 0.
 """
@@ -35,7 +41,9 @@ import subprocess
 import sys
 import threading
 import time
+import zoneinfo
 
+BERLIN = zoneinfo.ZoneInfo('Europe/Berlin')
 STATE_DIR = os.path.expanduser('~/.cache/sa-perf')
 STATUS_PATH = os.path.join(STATE_DIR, 'status.json')
 PROGRESS_PATH = os.path.join(STATE_DIR, 'progress.json')
@@ -47,8 +55,13 @@ def utc_now():
 
 
 def iso(dt):
-    """`YYYY-MM-DDTHH:MM:SSZ`."""
-    return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+    """Berlin time, `YYYY-MM-DDTHH:MM:SS+HH:MM`."""
+    return dt.astimezone(BERLIN).isoformat(timespec='seconds')
+
+
+def hms(dt):
+    """Berlin wall time plus zone, e.g. `07:24:28 CEST`."""
+    return dt.astimezone(BERLIN).strftime('%H:%M:%S %Z')
 
 
 def git(*args):
@@ -104,16 +117,17 @@ def main():
     args = ap.parse_args(argv)
     os.makedirs(STATE_DIR, exist_ok=True)
     host = socket.gethostname()
+    start = utc_now()
     status = {
         'state': 'running', 'pid': os.getpid(), 'host': host,
         'branch': git('branch', '--show-current'), 'sha': git('rev-parse', '--short', 'HEAD'),
-        'start': iso(utc_now()), 'arms': args.arms, 'index': 0, 'arm': args.arms[0],
+        'start': iso(start), 'arms': args.arms, 'index': 0, 'arm': args.arms[0],
         'metric': '', 'step': 0, 'total': 0, 'sample': 0, 'samples': 0,
         'eta': None, 'results': [],
     }
     write_status(status)
     log = open(args.log, 'a', encoding='utf-8') if args.log else None
-    print(f"[run-perf-arms] {len(args.arms)} arm(s) started at {status['start'][11:19]} UTC on {host}, "
+    print(f"[run-perf-arms] {len(args.arms)} arm(s) started at {hms(start)} on {host}, "
           f"on {status['branch']} at {status['sha']}: {', '.join(args.arms)}", flush=True)
     exit_code = 0
     stop = threading.Event()
@@ -175,8 +189,7 @@ def main():
         write_status(status)
 
     status.update({'state': 'passed' if not exit_code else 'failed', 'finish': iso(utc_now()),
-                   'wall_s': round((utc_now() - datetime.datetime.strptime(status['start'], '%Y-%m-%dT%H:%M:%SZ')
-                                    .replace(tzinfo=datetime.timezone.utc)).total_seconds())})
+                   'wall_s': round((utc_now() - start).total_seconds())})
     write_status(status)
     if log:
         log.close()
