@@ -1057,7 +1057,9 @@ test.describe('readers of known sites (U3): Wikipedia, Wikidata, Discogs', () =>
         // comes after srcdoc: read them once that has run.
         await expect.poll(() => frame.evaluate((f) => {
             const doc = f.contentDocument;
-            if (!doc || !doc.documentElement.dataset.mbDpDone) return null;
+            // The srcdoc swap can leave the document without a root element
+            // for a moment: "not yet", not a throw.
+            if (!doc || !doc.documentElement || !doc.documentElement.dataset.mbDpDone) return null;
             return ['header.probe-head', 'nav.probe-nav', '#content'].map(s => doc.querySelector(s).classList.contains('mb-dp-hide'));
         }), 'the header and menus hidden, the article shown').toEqual([true, true, false]);
         expect((await xhrFull(page)).map(r => r.url)).toEqual([EXT('wikipedia-greetings').url, W.greet]);
@@ -1241,7 +1243,7 @@ test.describe('the Springsteen sites across hosts (U4)', () => {
         // (0 hidden, 2026-10-14).
         await expect.poll(() => frame.evaluate((f) => {
             const doc = f.contentDocument;
-            return doc && doc.documentElement.dataset.mbDpDone ? doc.querySelectorAll('.mb-dp-hide').length : -1;
+            return doc && doc.documentElement && doc.documentElement.dataset.mbDpDone ? doc.querySelectorAll('.mb-dp-hide').length : -1;
         }), 'springsteenlyrics.com\'s own liveRoot hides its navigation').toBeGreaterThan(0);
         expect((await xhrFull(page)).map(r => r.url), 'one request: the Live page reuses the hover\'s').toEqual([SP.sl]);
     });

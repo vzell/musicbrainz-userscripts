@@ -587,10 +587,13 @@ test.describe('the other hosts', () => {
         await expect(frame).toHaveAttribute('sandbox', 'allow-same-origin allow-popups allow-popups-to-escape-sandbox');
         // Seen from the list page: same origin, so the frame's document is
         // readable. "Rendered" is measured by client rects: a child of a hidden
-        // ancestor keeps its own computed display.
+        // ancestor keeps its own computed display. While the frame swaps its
+        // first about:blank for the srcdoc copy, the document can briefly have
+        // no root element: a poll landing then must read "not yet", not throw
+        // (seen once in a full run under load, 2026-10-15).
         const state = () => page.evaluate(() => {
             const doc = document.querySelector('#mb-dp-dialog iframe').contentDocument;
-            if (!doc || !doc.documentElement.dataset.mbDpDone) return null;
+            if (!doc || !doc.documentElement || !doc.documentElement.dataset.mbDpDone) return null;
             const shown = (sel) => doc.querySelector(sel).getClientRects().length > 0;
             return { topBar: shown('.top-bar'), footer: shown('footer'), detail: shown('.project-detail') };
         });
@@ -810,7 +813,7 @@ test.describe('the other hosts', () => {
         await dialog.locator('button', { hasText: 'Live page' }).click();
         await expect.poll(() => page.evaluate(() => {
             const doc = document.querySelector('#mb-dp-dialog iframe').contentDocument;
-            if (!doc || !doc.documentElement.dataset.mbDpDone) return null;
+            if (!doc || !doc.documentElement || !doc.documentElement.dataset.mbDpDone) return null;
             const panels = Array.from(doc.querySelectorAll('#page-content .yui-content > div'));
             return {
                 sideBar: getComputedStyle(doc.getElementById('side-bar')).display,

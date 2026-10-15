@@ -12,7 +12,7 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=musicbrainz.org
 // @require      https://cdn.jsdelivr.net/npm/@jaames/iro@5
 // @require      https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js
-// @require      https://raw.githubusercontent.com/vzell/mb-userscripts/master/lib/VZ_MBLibrary.user.js
+// @require      file:///V:/home/vzell/git/musicbrainz-userscripts/lib/VZ_MBLibrary.user.js
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection|url)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings|edits|annotations)\/?(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/release\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/disc\/\d+)?\/?(?:\?[^#]*)?(?:#.*)?$/
@@ -526,6 +526,25 @@
             type: "checkbox",
             default: false,
             description: "Start the 'Sidebar' heading of the setting above closed. Off: it starts open."
+        },
+
+        sa_sidebar_inline_cards_open: {
+            label: "… cards that start open",
+            type: "select",
+            default: 'info',
+            options: [
+                { value: 'none', label: 'No card', hint: 'Every card starts closed (▶).' },
+                { value: 'info', label: 'Information card', hint: 'Only the first information card (Artist information, Release information, …); every other card starts closed (▶).' },
+                { value: 'all', label: 'Every card', hint: 'Every card starts open. On a release the section can get long.' },
+            ],
+            description: "Which cards of the 'Sidebar' section start open. A card opens and closes on a click on its title; Ctrl+Click (Cmd+Click) opens or closes all of them."
+        },
+
+        sa_sidebar_inline_release_facts_open: {
+            label: "… on a release: also Additional details, Labels and Release events",
+            type: "checkbox",
+            default: true,
+            description: "After 'Show all Tracks for Release', with '… cards that start open' at 'Information card': open the release's Additional details, Labels and Release events cards too, next to Release information. The link and tag cards still start closed. Off: only Release information opens, as on every other page."
         },
 
         sa_sidebar_in_rel_tables: {
@@ -3364,25 +3383,31 @@
         },
 
         sa_caa_small_img_size: {
-            label: 'Small CAA/EAA image fetch size (250 / 500 / 1200)',
-            type: 'number',
+            label: 'Small CAA/EAA image fetch size',
+            type: 'select',
             default: 250,
-            min: 250,
-            max: 1200,
+            options: [
+                { value: 250, label: '250 px' },
+                { value: 500, label: '500 px' },
+                { value: 1200, label: '1200 px' },
+            ],
             description: 'Size suffix appended to the coverartarchive.org URL when fetching small ' +
-                         'CAA/EAA thumbnails (e.g. …/front-250). Valid values are 250, 500, and 1200. ' +
+                         'CAA/EAA thumbnails (e.g. …/front-250). The archive serves exactly these three sizes. ' +
                          'Maps to the hardcoded "/front-250" in jesus2099\'s loadCaaIcon().'
         },
 
         sa_caa_big_img_size: {
-            label: 'Big CAA/EAA image fetch size (250 / 500 / 1200)',
-            type: 'number',
+            label: 'Big CAA/EAA image fetch size',
+            type: 'select',
             default: 250,
-            min: 250,
-            max: 1200,
+            options: [
+                { value: 250, label: '250 px' },
+                { value: 500, label: '500 px' },
+                { value: 1200, label: '1200 px' },
+            ],
             description: 'Size suffix appended to the coverartarchive.org/eventartarchive.org URL when fetching big ' +
                          'CAA/EAA images in the picture strip above the table (e.g. …/front-250). ' +
-                         'Valid values are 250, 500, and 1200. ' +
+                         'The archive serves exactly these three sizes. ' +
                          'Maps to the hardcoded "/front-250" in jesus2099\'s big-pics loop.'
         },
 
@@ -3437,9 +3462,14 @@
         // chip reads the archive record already in ctx.imagesCache.
 
         sa_caa_cell_layout: {
-            label: 'Expanded CAA/EAA cell layout (grid / grouped / list)',
-            type: 'text',
+            label: 'Expanded CAA/EAA cell layout',
+            type: 'select',
             default: 'grid',
+            options: [
+                { value: 'grid', label: 'Grid', hint: 'A contact sheet of square tiles.' },
+                { value: 'grouped', label: 'Grouped', hint: 'The same tiles, grouped under each image\'s first type.' },
+                { value: 'list', label: 'List', hint: 'One line per image with an 18 px thumbnail.' },
+            ],
             description: 'How the images of an expanded CAA/EAA cell are laid out. "grid": a contact sheet of ' +
                          'square tiles with the image types and comment on the tile and ★ on the main front. ' +
                          '"grouped": the same tiles, grouped under each image\'s first type ("Medium ×3"). ' +
@@ -3546,9 +3576,13 @@
         },
 
         sa_art_viewer_size: {
-            label: 'Artwork viewer image size (1200 / original)',
-            type: 'text',
+            label: 'Artwork viewer image size',
+            type: 'select',
             default: '1200',
+            options: [
+                { value: '1200', label: '1200 px', hint: 'The archive\'s 1200 px rendition.' },
+                { value: 'original', label: 'Original', hint: 'The uploaded file, which can be many MB.' },
+            ],
             description: 'The image the artwork viewer loads after showing the thumbnail at once. "1200": the ' +
                          'archive\'s 1200 px rendition (records older than the archive\'s 1200 px renditions ' +
                          'list only small/large; the viewer asks for the 1200 px file all the same, which the ' +
@@ -3586,9 +3620,13 @@
         },
 
         sa_art_viewer_pan: {
-            label: 'Viewer: move a zoomed image by (follow / drag)',
-            type: 'text',
+            label: 'Viewer: move a zoomed image by',
+            type: 'select',
             default: 'follow',
+            options: [
+                { value: 'follow', label: 'Following the mouse', hint: 'Move toward a side to bring that edge into view.' },
+                { value: 'drag', label: 'Dragging', hint: 'The image stays put until you drag it; the wheel zooms toward the pointer.' },
+            ],
             description: '"follow": the zoomed image follows the mouse — move toward a side to bring that edge ' +
                          'into view. "drag": the image stays put until you drag it with the mouse button held; ' +
                          'the wheel then zooms toward the pointer, keeping the spot under it in place. A click ' +
@@ -3607,9 +3645,14 @@
         },
 
         sa_art_viewer_background: {
-            label: 'Viewer: image background (dark / light / checker)',
-            type: 'text',
+            label: 'Viewer: image background',
+            type: 'select',
             default: 'dark',
+            options: [
+                { value: 'dark', label: 'Dark' },
+                { value: 'light', label: 'Light', hint: 'Suits dark scans.' },
+                { value: 'checker', label: 'Checker', hint: 'Shows where a PNG is transparent.' },
+            ],
             description: 'The colour behind the image in the artwork viewer. "light" suits dark scans, ' +
                          '"checker" shows where a PNG is transparent. B in the viewer cycles through the three ' +
                          'and remembers the choice until this setting is changed.'
@@ -4919,6 +4962,60 @@
             Lib.settings[key] = Number.isFinite(num) ? num : cfg.default;
         }
     }
+
+    /**
+     * The option of a `type: 'select'` schema entry that `value` stands for,
+     * matched trimmed and case-insensitively ("List " is "list", "500" is
+     * 500), as the option's own typed value; `undefined` when it is none of
+     * them. Local, not the library's `selectValue()`: a profile can run
+     * against a VZ_MBLibrary older than 4.4.0, which has no select type and
+     * shows the row as a text box.
+     *
+     * @param {string} key   A configSchema key.
+     * @param {*}      value A stored, imported or typed value.
+     * @returns {*}
+     */
+    function _selectOptionValue(key, value) {
+        const opts = (configSchema[key] && configSchema[key].options) || [];
+        const norm = v => String(v ?? '').trim().toLowerCase();
+        for (const o of opts) {
+            const v = (o !== null && typeof o === 'object') ? o.value : o;
+            if (norm(v) === norm(value)) return v;
+        }
+        return undefined;
+    }
+
+    /**
+     * Reads a `type: 'select'` setting: its stored value if that is one of
+     * the options (canonical, see `_selectOptionValue()`), else the schema
+     * default. So a typo, an older library's text box, a hand-edited import
+     * and the stub `Lib` all end on a value the code knows.
+     *
+     * @param {string} key A configSchema key of `type: 'select'`.
+     * @returns {*}
+     */
+    function _selectSetting(key) {
+        const v = _selectOptionValue(key, Lib.settings[key]);
+        return v === undefined ? configSchema[key].default : v;
+    }
+
+    /**
+     * Puts every stored `type: 'select'` value in its canonical form, like
+     * `_coerceNumericSettings()` does for numbers and for the same reason
+     * (the many plain `Lib.settings.sa_*` reads): "500" stored while the
+     * image sizes were number settings becomes 500, "List " becomes "list".
+     * A value that is no option is left as it is, for its reader to judge;
+     * a key absent from `Lib.settings` stays absent (the stub path).
+     *
+     * @returns {void}
+     */
+    function _canonicalizeSelectSettings() {
+        for (const key of Object.keys(configSchema)) {
+            if (!configSchema[key] || configSchema[key].type !== 'select' || !(key in Lib.settings)) continue;
+            const v = _selectOptionValue(key, Lib.settings[key]);
+            if (v !== undefined) Lib.settings[key] = v;
+        }
+    }
     // ──────────────────────────────────────────────────────────────────────────
     // One-time repair of a profile frozen by VZ_MBLibrary's old SAVE handler
     //
@@ -5757,6 +5854,7 @@
 
     _migrateFrozenSettings();
     _coerceNumericSettings();
+    _canonicalizeSelectSettings();
     // Registered here rather than at each entry point, so the library's own two
     // menu paths open the same dialog the toolbar button does — see
     // _registerSettingsIntegration()'s JSDoc. Safe this early: it only records
@@ -88362,6 +88460,10 @@ a { color: #1565c0; }`;
             .mb-sb-card-count { color: #a07a7a; font-weight: normal; }
             .mb-sb-card-shut > .mb-sb-card-body { display: none; }
             .mb-sb-card-shut > .mb-sb-card-head { border-bottom: 0; }
+            /* A closed card says so: a marker before its title, as
+               pseudo-content so the title text stays the name. An open card
+               shows none. */
+            .mb-sb-card-shut > .mb-sb-card-head > span:first-child::before { content: '▶'; display: inline-block; margin-right: 5px; font-size: 9px; color: #a07a7a; }
             dl.mb-sb-card-body { margin: 0; padding: 6px 8px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; }
             dl.mb-sb-card-body > dt { margin: 0; color: #666; font-weight: normal; }
             dl.mb-sb-card-body > dd { margin: 0; min-width: 0; overflow-wrap: anywhere; overflow-x: auto; }
@@ -88382,26 +88484,60 @@ a { color: #1565c0; }`;
         st.id = 'mb-sb-inline-style';
     }
 
+    /** What a card of the read-only "Sidebar" section holds, by group kind (`_sbInlineCardTip()`). */
+    const _SB_INLINE_CARD_DESC = {
+        info:   'The facts the MusicBrainz sidebar lists under this heading, as name → value lines.',
+        labels: 'The release\'s labels, each with its catalog number.',
+        events: 'The release events: country → release date.',
+        links:  'The entity\'s external links, as chips grouped by kind (Official, Social, Streaming, …).',
+        tags:   'Genres and other tags, as pills with their votes.',
+    };
+
+    /**
+     * The rich hover card (`data-mbtt`) of a "Sidebar" card's heading: its
+     * name, what it holds, how many entries, and how it folds. Independent of
+     * the card's state, so a fold never has to rewrite a card on screen.
+     * @param {string} key   The group's kind (`_sbCollectGroups()`).
+     * @param {string} name  The heading.
+     * @param {number} count Its entries.
+     * @returns {string} HTML for `#mb-stat-tooltip`.
+     */
+    function _sbInlineCardTip(key, name, count) {
+        const desc = _SB_INLINE_CARD_DESC[key] || 'An entry group of the MusicBrainz sidebar.';
+        return `<div class="mb-tt-title">${_mbttEscape(name)}</div>` +
+            `<div class="mb-tt-body">${_mbttEscape(desc)} ${_mbttCount(count)} ` +
+            `${count === 1 ? 'entry' : 'entries'}, read from this page's sidebar: nothing is loaded.</div>` +
+            '<div class="mb-tt-body"><kbd>Click</kbd> (or <kbd>Enter</kbd> / <kbd>Space</kbd>): open or close this card.<br>' +
+            '<kbd>Ctrl</kbd>+<kbd>Click</kbd> (<kbd>Cmd</kbd>+<kbd>Click</kbd>): open or close every card, ' +
+            'following this one. ▶ marks a closed card.</div>' +
+            '<div class="mb-tt-foot">Which cards start open is configurable in ⚙️ Settings → ⭲ COLLABSABLE SIDEBAR ' +
+            '(… cards that start open).</div>';
+    }
+
     /**
      * One card of the read-only "Sidebar" section: a heading that folds it
-     * (click, Enter, Space; delegated on the section, see
-     * `_sbInlineBuild()`) and the group's body.
+     * (click, Enter, Space; Ctrl+Click every card; delegated on the section,
+     * see `_sbInlineBuild()`), with a rich hover card (`_sbInlineCardTip()`),
+     * and the group's body. A closed card carries `.mb-sb-card-shut`, which
+     * also draws its ▶ marker.
      * @param {string}  key   The group's kind (`_sbCollectGroups()`).
      * @param {string}  name  The heading.
      * @param {number}  count Its entries.
      * @param {Element} body  `.mb-sb-card-body`.
      * @param {boolean} wide  Spans the whole row (links, tags).
+     * @param {boolean} open  Starts open.
      * @returns {HTMLElement}
      */
-    function _sbInlineCard(key, name, count, body, wide) {
+    function _sbInlineCard(key, name, count, body, wide, open) {
         const card = document.createElement('section');
-        card.className = 'mb-sb-card' + (wide ? ' mb-sb-card-wide' : '');
+        card.className = 'mb-sb-card' + (wide ? ' mb-sb-card-wide' : '') + (open ? '' : ' mb-sb-card-shut');
         card.dataset.mbSbKey = key;
         const head = document.createElement('h4');
         head.className = 'mb-sb-card-head';
         head.setAttribute('role', 'button');
         head.tabIndex = 0;
-        head.setAttribute('aria-expanded', 'true');
+        head.setAttribute('aria-expanded', String(open));
+        head.dataset.mbtt = _sbInlineCardTip(key, name, count);
         const t = document.createElement('span');
         t.textContent = name;
         const c = document.createElement('span');
@@ -88430,14 +88566,25 @@ a { color: #1565c0; }`;
      * holding an h2 "Sidebar (N)" and `div.mb-sb-inline` with one card per
      * group. Facts, labels and events are `key → value` lists side by side;
      * links are chips grouped by kind (`_SB_LINK_KIND_ORDER`), tags pills
-     * with their votes, each across the whole row. Null when the sidebar has
-     * nothing to show.
+     * with their votes, each across the whole row. Which cards start open is
+     * `sa_sidebar_inline_cards_open` (a select): none, only the first
+     * information card, or every card. On `release-tracks` the information
+     * setting also opens every facts card (Additional details, Labels,
+     * Release events: keys `info`, `labels`, `events`), unless
+     * `sa_sidebar_inline_release_facts_open` is off. Null when the sidebar
+     * has nothing to show.
      * @returns {?HTMLElement}
      */
     function _sbInlineBuild() {
         const groups = _sbCollectGroups(document, _sbInlineOpts());
         if (!groups.length) return null;
         _sbInlineEnsureStyle();
+        const openMode = _selectSetting('sa_sidebar_inline_cards_open');
+        const firstInfo = openMode === 'info' ? groups.find(g => g.key === 'info') : null;
+        const releaseFacts = openMode === 'info' && activeDefinition?.type === 'release-tracks' &&
+            Lib.settings.sa_sidebar_inline_release_facts_open !== false;
+        const startsOpen = (g) => openMode === 'all' || g === firstInfo ||
+            (releaseFacts && (g.key === 'info' || g.key === 'labels' || g.key === 'events'));
         const cards = document.createElement('div');
         cards.className = 'mb-sb-cards';
         let total = 0;
@@ -88468,7 +88615,7 @@ a { color: #1565c0; }`;
                     });
                     body.appendChild(line);
                 });
-                cards.appendChild(_sbInlineCard(g.key, g.name, g.rows.length, body, true));
+                cards.appendChild(_sbInlineCard(g.key, g.name, g.rows.length, body, true, startsOpen(g)));
             } else if (g.key === 'tags') {
                 const body = document.createElement('div');
                 body.classList.add('mb-sb-chips');
@@ -88486,7 +88633,7 @@ a { color: #1565c0; }`;
                     line.appendChild(pill);
                 });
                 body.appendChild(line);
-                cards.appendChild(_sbInlineCard(g.key, g.name, g.rows.length, body, true));
+                cards.appendChild(_sbInlineCard(g.key, g.name, g.rows.length, body, true, startsOpen(g)));
             } else {
                 // info: Property → Value; labels: Label → Catalog number;
                 // events: Country → Date.
@@ -88495,7 +88642,7 @@ a { color: #1565c0; }`;
                     dl.appendChild(_sbFillCell(document.createElement('dt'), r[1]));
                     dl.appendChild(_sbFillCell(document.createElement('dd'), r[2]));
                 });
-                cards.appendChild(_sbInlineCard(g.key, g.name, g.rows.length, dl, false));
+                cards.appendChild(_sbInlineCard(g.key, g.name, g.rows.length, dl, false, startsOpen(g)));
             }
         });
 
@@ -88513,21 +88660,27 @@ a { color: #1565c0; }`;
         sec.appendChild(cards);
         wrap.append(h2, sec);
 
-        // Card folding, delegated: the section is never cloned.
-        const fold = (head) => {
-            const card = head.parentElement;
-            const shut = card.classList.toggle('mb-sb-card-shut');
-            head.setAttribute('aria-expanded', String(!shut));
+        // Card folding, delegated: the section is never cloned. With `all`
+        // (Ctrl/Cmd) every card follows the clicked one's new state, the rule
+        // of makeH2sCollapsible()'s Ctrl+Click on peer h2s.
+        const setShut = (card, shut) => {
+            card.classList.toggle('mb-sb-card-shut', shut);
+            card.querySelector(':scope > .mb-sb-card-head').setAttribute('aria-expanded', String(!shut));
+        };
+        const fold = (head, all) => {
+            const shut = !head.parentElement.classList.contains('mb-sb-card-shut');
+            if (all) sec.querySelectorAll('.mb-sb-card').forEach(c => setShut(c, shut));
+            else setShut(head.parentElement, shut);
         };
         sec.addEventListener('click', (e) => {
             const head = e.target.closest('.mb-sb-card-head');
-            if (head && !e.target.closest('a')) fold(head);
+            if (head && !e.target.closest('a')) fold(head, e.ctrlKey || e.metaKey);
         });
         sec.addEventListener('keydown', (e) => {
             const head = e.target.closest('.mb-sb-card-head');
             if (!head || (e.key !== 'Enter' && e.key !== ' ')) return;
             e.preventDefault();
-            fold(head);
+            fold(head, e.ctrlKey || e.metaKey);
         });
         return wrap;
     }
@@ -101163,6 +101316,10 @@ a { color: #1565c0; }`;
                 const rows = _configLiveTableRows(key);
                 if (!rows) continue;   // nothing stored — omit rather than invent
                 coerced = rows;
+            } else if (schemaCfg.type === 'select') {
+                // The value the code acts on, so the file never carries one
+                // that its own import would refuse.
+                coerced = _selectSetting(key);
             } else {
                 coerced = live;
             }
@@ -101368,6 +101525,11 @@ a { color: #1565c0; }`;
                     // Row arrays are stored as-is. NEVER String() — see above.
                     if (!Array.isArray(value)) { invalid++; continue; }
                     coerced = value;
+                } else if (schemaCfg.type === 'select') {
+                    // One of the options, stored as the option's own typed
+                    // value; anything else is refused like a bad number.
+                    coerced = _selectOptionValue(key, value);
+                    if (coerced === undefined) { invalid++; continue; }
                 } else {
                     // string / text / color_picker / popup_dialog / keyboard_shortcut
                     coerced = String(value);
@@ -127555,6 +127717,22 @@ a { color: #1565c0; }`;
                 for (const key of Object.keys(configSchema)) {
                     if (!configSchema[key] || configSchema[key].type !== 'number') continue;
                     out[key] = { value: Lib.settings[key], type: typeof Lib.settings[key] };
+                }
+                return out;
+            },
+
+            /**
+             * Every `type: 'select'` setting as `Lib.settings` holds it after
+             * `_canonicalizeSelectSettings()`, with its type, plus what
+             * `_selectSetting()` makes of it.
+             *
+             * @returns {Object<string, {value: *, type: string, read: *}>}
+             */
+            selectSettings() {
+                const out = {};
+                for (const key of Object.keys(configSchema)) {
+                    if (!configSchema[key] || configSchema[key].type !== 'select') continue;
+                    out[key] = { value: Lib.settings[key], type: typeof Lib.settings[key], read: _selectSetting(key) };
                 }
                 return out;
             },

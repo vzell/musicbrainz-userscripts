@@ -22,7 +22,11 @@
 //     an empty-query re-render;
 //   - ISOLATION: no table.tbl and no h3 inside it; folding Credits /
 //     Relationships does not fold it (the makeH2sCollapsible() boundary);
-//   - CONTENT: one card per group, as many entries as the sidebar has.
+//   - CONTENT: one card per group, as many entries as the sidebar has;
+//   - card folding: only the first information card starts open (INITIAL
+//     STATE, and the select's three values and a stray one); Ctrl+Click makes every card follow the
+//     clicked one (CTRL+CLICK ALL); a closed card shows ▶ (MARKER); every
+//     head has a rich hover card (TOOLTIP).
 
 const fs = require('fs');
 const os = require('os');
@@ -42,6 +46,10 @@ const PAGES = {
         'Show all Relationships for Place', null],
     artist: ['https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f', 'artist-releasegroups-live-titles.html',
         null, '🧮 Artist RGs'],
+    // Several facts cards (Work information, Work attributes, …): the page that sees
+    // whether the release-only facts rule leaks to other pageTypes.
+    work: ['https://musicbrainz.org/work/1f573511-eb4b-3106-8fb2-f15de52e4868', 'rel-work-overview.html',
+        'Show all Relationships for Work', 'Show all Recordings for Work'],
 };
 
 /**
@@ -448,4 +456,150 @@ test.describe('sidebar cards after the page render', () => {
         expect(s).not.toBeNull();
         expect(s.open).toBe(false);
     });
+
+    // ── Card folding (WIP.1): only the first information card starts open,
+    // Ctrl+Click folds every card, a closed card shows ▶, every head has a
+    // rich hover card. ─────────────────────────────────────────────────────
+
+    test('INITIAL STATE: only the first information card starts open (a release: every facts card); the switches, a stray value', async ({ page }) => {
+        /** Exactly the cards `want(card, index)` names are open. */
+        const openAre = (c, want, why) => c.forEach((x, i) => {
+            expect(x.shown, `${why} — ${x.name}: body on screen`).toBe(want(x, i));
+            expect(x.aria, `${why} — ${x.name}: aria-expanded`).toBe(String(want(x, i)));
+        });
+        const firstInfoOnly = (c) => { const f = c.findIndex((x) => x.key === 'info'); return (x, i) => i === f; };
+        const FACTS = ['info', 'labels', 'events'];
+        const factsOnly = (x) => FACTS.includes(x.key);
+
+        // A release (release-tracks): Release information, Additional details,
+        // Labels, Release events open; links (and tags) closed.
+        await open(page, 'release', 'own');
+        let c = await cardStates(page);
+        expect(c.filter((x) => x.key === 'info').length, 'premise: two information cards').toBe(2);
+        expect(c.some((x) => x.key === 'labels') && c.some((x) => x.key === 'events'), 'premise: labels and events').toBe(true);
+        expect(c.some((x) => !factsOnly(x)), 'premise: a card that is no facts card').toBe(true);
+        openAre(c, factsOnly, 'release default');
+
+        // GM values outlive a goto: every arm seeds the keys itself.
+        await page.goto('about:blank');
+        await open(page, 'release', 'own', { sa_sidebar_inline_release_facts_open: false });
+        c = await cardStates(page);
+        openAre(c, firstInfoOnly(c), 'release, switch off');
+
+        // Any other pageType: only the first information card — even a work,
+        // whose sidebar has a second facts card the release rule would open.
+        await page.goto('about:blank');
+        await open(page, 'release-group', 'own', { sa_sidebar_inline_release_facts_open: true });
+        c = await cardStates(page);
+        expect(c.length, 'premise: several cards on the release group').toBeGreaterThan(1);
+        openAre(c, firstInfoOnly(c), 'release group default');
+        await page.goto('about:blank');
+        await open(page, 'work', 'own', { sa_sidebar_inline_release_facts_open: true });
+        c = await cardStates(page);
+        expect(c.filter((x) => x.key === 'info').length, 'premise: more than one facts card on the work').toBeGreaterThan(1);
+        openAre(c, firstInfoOnly(c), 'work default');
+
+        await page.goto('about:blank');
+        await open(page, 'release', 'own', { sa_sidebar_inline_cards_open: 'all' });
+        c = await cardStates(page);
+        expect(c.filter((x) => !x.shown).map((x) => x.name), 'all: every card open').toEqual([]);
+
+        await page.goto('about:blank');
+        await open(page, 'release', 'own', { sa_sidebar_inline_cards_open: 'none' });
+        c = await cardStates(page);
+        expect(c.filter((x) => x.shown).map((x) => x.name), 'none: no card open').toEqual([]);
+
+        // Matched trimmed and case-insensitively, as a text box once stored it.
+        await page.goto('about:blank');
+        await open(page, 'release', 'own', { sa_sidebar_inline_cards_open: ' ALL ' });
+        c = await cardStates(page);
+        expect(c.filter((x) => !x.shown).map((x) => x.name), '" ALL " reads as all').toEqual([]);
+
+        // A value that is no option reads as the default.
+        await page.goto('about:blank');
+        await open(page, 'release', 'own', { sa_sidebar_inline_cards_open: 'bogus' });
+        openAre(await cardStates(page), factsOnly, 'a stray value');
+    });
+
+    test('CTRL+CLICK ALL: every card follows the clicked one, from a mixed state, both ways; a plain click folds one', async ({ page }) => {
+        await open(page, 'release', 'own');
+        const heads = page.locator('.mb-sb-card-head');
+        const shown = async () => (await cardStates(page)).map((x) => x.shown);
+        const n = (await shown()).length;
+        const mixed = await shown();
+        expect(mixed.includes(true) && mixed.includes(false), 'premise: a mixed state').toBe(true);
+        const shutIdx = mixed.indexOf(false);
+
+        await heads.nth(shutIdx).click({ modifiers: ['Control'] });
+        expect(await shown(), 'Ctrl+Click on a closed card opens all').toEqual(Array(n).fill(true));
+        await heads.nth(n - 1).click({ modifiers: ['Control'] });
+        expect(await shown(), 'Ctrl+Click again closes all').toEqual(Array(n).fill(false));
+
+        // A plain click folds only its own card: a mixed state again.
+        await heads.nth(1).click();
+        expect(await shown(), 'a plain click opens one').toEqual(Array.from({ length: n }, (_, i) => i === 1));
+        await heads.nth(1).click({ modifiers: ['Control'] });
+        expect(await shown(), 'Ctrl+Click on the one OPEN card closes all').toEqual(Array(n).fill(false));
+        await heads.nth(0).click({ modifiers: ['Meta'] });
+        expect(await shown(), 'Cmd+Click opens all').toEqual(Array(n).fill(true));
+
+        await heads.nth(0).focus();
+        await page.keyboard.press('Control+Enter');
+        expect(await shown(), 'Ctrl+Enter closes all').toEqual(Array(n).fill(false));
+        expect((await cardStates(page)).map((x) => x.aria), 'aria-expanded follows').toEqual(Array(n).fill('false'));
+    });
+
+    test('MARKER: a closed card shows ▶ before its title, an open one nothing, following each fold', async ({ page }) => {
+        await open(page, 'release', 'own');
+        let c = await cardStates(page);
+        c.forEach((x) => expect(x.marker, `${x.name}`).toBe(x.shown ? 'none' : '"▶"'));
+        expect(c.some((x) => x.marker === '"▶"') && c.some((x) => x.marker === 'none'), 'premise: both kinds').toBe(true);
+        const openIdx = c.findIndex((x) => x.shown);
+        const shutIdx = c.findIndex((x) => !x.shown);
+        await page.locator('.mb-sb-card-head').nth(openIdx).click();
+        await page.locator('.mb-sb-card-head').nth(shutIdx).click();
+        c = await cardStates(page);
+        expect(c[openIdx].marker, 'closed by a click: marked').toBe('"▶"');
+        expect(c[shutIdx].marker, 'opened by a click: unmarked').toBe('none');
+        expect(c[openIdx].name, 'the marker is no part of the title text').not.toMatch(/▶/);
+    });
+
+    test('TOOLTIP: every head carries a rich card with its name, count and the Ctrl+Click hint; hovering shows it', async ({ page }) => {
+        await open(page, 'release', 'own');
+        const tips = await page.evaluate(() => Array.from(document.querySelectorAll('.mb-sb-card')).map((c) => {
+            const h = c.querySelector('.mb-sb-card-head');
+            return { name: h.querySelector('span').textContent, count: h.querySelector('.mb-sb-card-count').textContent,
+                     tip: h.dataset.mbtt || '', title: h.getAttribute('title') };
+        }));
+        expect(tips.length).toBeGreaterThan(2);
+        tips.forEach((t) => {
+            expect(t.tip, `${t.name}: its name`).toContain(`<div class="mb-tt-title">${t.name}</div>`);
+            expect(t.tip, `${t.name}: its count`).toContain(`>${t.count}</span>`);
+            expect(t.tip, `${t.name}: the Ctrl+Click hint`).toContain('<kbd>Ctrl</kbd>+<kbd>Click</kbd>');
+            expect(t.title, `${t.name}: no native title on top`).toBeNull();
+        });
+        const last = page.locator('.mb-sb-card-head').last();
+        await last.hover();
+        const card = page.locator('#mb-stat-tooltip');
+        await expect(card).toBeVisible();
+        await expect(card.locator('.mb-tt-title')).toHaveText(tips[tips.length - 1].name);
+        await expect(card).toContainText('open or close every card');
+    });
 });
+
+/**
+ * Every card of the read-only section in order: its key, name, whether its
+ * body is on screen, its aria-expanded and its title's ::before content.
+ * @param {import('@playwright/test').Page} page
+ */
+const cardStates = (page) => page.evaluate(() => Array.from(document.querySelectorAll('.mb-sb-inline .mb-sb-card')).map((c) => {
+    const head = c.querySelector(':scope > .mb-sb-card-head');
+    const title = head.querySelector('span');
+    return {
+        key: c.dataset.mbSbKey,
+        name: title.textContent,
+        shown: c.querySelector(':scope > .mb-sb-card-body').getClientRects().length > 0,
+        aria: head.getAttribute('aria-expanded'),
+        marker: getComputedStyle(title, '::before').content,
+    };
+}));

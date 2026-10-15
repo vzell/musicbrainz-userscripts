@@ -25,7 +25,9 @@ accident instead of by a broken CDN.
 It is not hypothetical. This script's first run found
 `CustomizableMultiSelector.user.js` published at 2.0.0 since 2026-02-02 —
 nearly eight months — requiring
-`file:///V:/home/vzell/git/mb-userscripts/lib/VZMBLibrary.user.js`. Note that
+`file:///V:/home/vzell/git/mb-userscripts/lib/VZMBLibrary.user.js` (fixed in
+the mirror on 2026-09-25, commit 5245a18, which switched it to the network
+URL). Note that
 that script does not exist in the dev repo at all, which is why the `file://`
 sweep covers EVERY `.user.js` in the mirror rather than only the ones this repo
 can pair up. A check that only looked at what it knew about would have missed

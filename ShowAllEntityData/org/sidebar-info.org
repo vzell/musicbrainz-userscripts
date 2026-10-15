@@ -55,6 +55,54 @@ below the rendered h2 "Relationships"/"Credits" section on the FRP - so under [I
 
 make everything configurable as usual
 
+** DONE add some more functionality
+
+Add some more functionality:
+
+1.)
+
+Only the first card which renders the "<ENTITY> INFORMATION" e.g. "ARTIST INFORMATION" should be rendered initially
+uncollapsed
+
+#+begin_example
+<h4 class="mb-sb-card-head" role="button" tabindex="0" aria-expanded="true"><span>Artist information</span><span class="mb-sb-card-count">5</span></h4>
+#+end_example
+
+All other cards should stay collapsed initially.
+
+2.)
+
+Every card h4 header should get a descriptive rich HTML tooltip
+
+3.)
+
+Ctrl-click on one h4 header card (doesn't matter from which one) should act as a toggle for collapsing/uncollapsing all
+cards together (inclusive a tooltip which describes this behaviour). Additionally there should be a visual indication
+that a card is actually collapsed (for the uncollapsed state this visual indication is not needed)
+
+** the settings library lacks a select-type setting
+
+The settings library lacks a select-type setting. What needs to be done to support it.
+
+1.)
+
+Do a comprehensive analysis what kind of settings we currently support and what could additionally be implemented
+(specifically with our userscript in mind)
+
+2.)
+
+Show me some nice HTML based mockups for the settings
+
+3.)
+
+reimplement the current feature with the select-type setting
+
+** special case 'release-tracks' PT
+
+Special case 'release-tracks' PT regarding the displayed default cards:
+
+It should also get the sidebar sections "Additional details", "Labels" and Release events" in addition to "Release information" (configurable, default: true)
+
 *** Picks (2026-10-15)
 
 Mockup: https://claude.ai/artifact/FUdHYEuiLqhmrX3hqitzX4 — picked "P2 + A3 (start open), B1, skip

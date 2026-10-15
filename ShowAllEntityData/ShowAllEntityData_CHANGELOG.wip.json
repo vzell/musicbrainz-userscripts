@@ -1,0 +1,38 @@
+[
+  {
+    "version": "WIP.3",
+    "date": "2026-10-15",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "After \"Show all Tracks for Release\", the \"Sidebar\" cards (WIP.1) open the release's Additional details, Labels and Release events cards too, next to Release information; external links and tags still start closed. Every other page still opens only its first information card. Setting: \"… on a release: also Additional details, Labels and Release events\" (on), which applies while \"… cards that start open\" is at Information card."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.2",
+    "date": "2026-10-15",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Settings with a fixed set of choices are now a row of buttons, one per choice, instead of a text box or a pair of checkboxes (needs VZ_MBLibrary 4.4.0). Click one, or use the arrow keys; the Default column names the default choice and the tooltip lists them all. Converted: \"Expanded CAA/EAA cell layout\" (Grid / Grouped / List), \"Viewer: image background\" (Dark / Light / Checker), \"Viewer: move a zoomed image by\", \"Artwork viewer image size\", and the small and big CAA/EAA image fetch sizes (250 / 500 / 1200 px, which used to accept any number and so could ask the archive for a size it does not have). Your current values are kept. A configuration file with a value that is none of the choices now has that value refused on 📂 Load, like a bad number."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-10-15",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The \"Sidebar\" cards (9.99.1352) now start with only the first information card open (Artist information, Release information, …); the others start closed and show ▶ before their title. Ctrl+Click (Cmd+Click) on any card's title opens or closes every card at once, following the one you clicked; a plain click still opens or closes just that card. Hovering a card's title shows what it holds, how many entries, and how it folds. Setting: \"… cards that start open\" (No card / Information card / Every card; default: Information card)."
+        ]
+      }
+    ]
+  }
+]

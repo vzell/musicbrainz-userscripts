@@ -356,13 +356,14 @@ like a real one.
 
 **Shipping a `file://` `@require` fails silently for every user**: `Lib` falls
 back to a stub whose `settings` is `{}`, every setting resolves to its inline
-fallback, and nothing errors. `CustomizableMultiSelector.user.js` has been
-published in exactly that state since 2026-02-02.
+fallback, and nothing errors. `CustomizableMultiSelector.user.js` was
+published in exactly that state from 2026-02-02 until 2026-09-25 (mirror commit
+`5245a18` switched it to the network URL).
 
 So: `python3 scripts/check-publish-ready.py` before a republish, and
 `--strict` after one. It is read-only, it sweeps EVERY `.user.js` in the mirror
-for `file://` (the one real instance has no counterpart here, so a pairwise
-check misses it), and it treats "the mirror is behind" as pending rather than
+for `file://` (the one instance found so far had no counterpart here, so a
+pairwise check would have missed it), and it treats "the mirror is behind" as pending rather than
 broken — that is the normal state between releases, and a check that failed on
 it would stop being run. Its arms are mutation-checked by
 `scripts/check-publish-ready-gate.py` against a scratch mirror in a temp
