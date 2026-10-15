@@ -7,10 +7,10 @@ description: Run or interpret ShowAllEntityData's performance-comparison instrum
 
 There are two independent, purpose-built perf tools — don't conflate them:
 
-| Tool | Measures | Scope |
-|---|---|---|
-| `node tests/support/capture-snapshots.js --perf` | Initial "Show all" fetch+render wall time (fetch/render stage split via `performance.mark()`) | `artist-releasegroups` only by default (its pilot pageType — pass `--only=<pageType>` to target another) |
-| `node tests/support/capture-interaction-perf.js --pageType=artist-events` | Interaction latency: global filter, column filter, sort, uniq-dropdown open (cold vs warm) | `artist-events` only — hardcoded, not read from `tests/pagetypes.json` |
+| Tool                                                                      | Measures                                                                                      | Scope                                                                                                    |
+|---------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
+| `node tests/support/capture-snapshots.js --perf`                          | Initial "Show all" fetch+render wall time (fetch/render stage split via `performance.mark()`) | `artist-releasegroups` only by default (its pilot pageType — pass `--only=<pageType>` to target another) |
+| `node tests/support/capture-interaction-perf.js --pageType=artist-events` | Interaction latency: global filter, column filter, sort, uniq-dropdown open (cold vs warm)    | `artist-events` only — hardcoded, not read from `tests/pagetypes.json`                                   |
 
 Both are standalone Node scripts (not Playwright tests) — run them
 directly, not via `npm test`/`npm run test:live`.

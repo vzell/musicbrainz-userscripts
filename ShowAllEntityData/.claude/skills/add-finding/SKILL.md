@@ -120,13 +120,13 @@ is a priority").
 
 ## Known failure modes
 
-| Symptom | Cause |
-|---|---|
-| Menu row appears after one render, gone after a filter | `test()` reads a render-tail decoration, so master rows are never stamped |
-| Menu never appears though cells are stamped | a tally memo without the stamp generation (`_findingStampGen`) |
-| Count drops when a filter hides the rows | a tally of the live tbody instead of the source rows (AUDIT.md §3.6) |
-| Clicking leaves other sub-tables untouched | a tick written only to tables holding the finding — every table must be ticked |
-| Two-column finding shows almost nothing | a cell-scope finding in two unrelated columns: 📊 ticks AND; make it `'row'` |
-| ⚠️ on a red cell | a family-painted cell got `data-mb-finding` (step 3) |
-| Two glyphs in one cell | the cell has its own glyph but the finding lacks `inlineGlyph` |
-| Toggling off does nothing | a structural filter missing from `_buildFilterKey()` / `_buildIncrPartialKey()` |
+| Symptom                                                | Cause                                                                           |
+|--------------------------------------------------------|---------------------------------------------------------------------------------|
+| Menu row appears after one render, gone after a filter | `test()` reads a render-tail decoration, so master rows are never stamped       |
+| Menu never appears though cells are stamped            | a tally memo without the stamp generation (`_findingStampGen`)                  |
+| Count drops when a filter hides the rows               | a tally of the live tbody instead of the source rows (AUDIT.md §3.6)            |
+| Clicking leaves other sub-tables untouched             | a tick written only to tables holding the finding — every table must be ticked  |
+| Two-column finding shows almost nothing                | a cell-scope finding in two unrelated columns: 📊 ticks AND; make it `'row'`    |
+| ⚠️ on a red cell                                        | a family-painted cell got `data-mb-finding` (step 3)                            |
+| Two glyphs in one cell                                 | the cell has its own glyph but the finding lacks `inlineGlyph`                  |
+| Toggling off does nothing                              | a structural filter missing from `_buildFilterKey()` / `_buildIncrPartialKey()` |
