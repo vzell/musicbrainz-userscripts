@@ -80,7 +80,7 @@ Ctrl-click on one h4 header card (doesn't matter from which one) should act as a
 cards together (inclusive a tooltip which describes this behaviour). Additionally there should be a visual indication
 that a card is actually collapsed (for the uncollapsed state this visual indication is not needed)
 
-** the settings library lacks a select-type setting
+** DONE the settings library lacks a select-type setting
 
 The settings library lacks a select-type setting. What needs to be done to support it.
 
@@ -97,7 +97,7 @@ Show me some nice HTML based mockups for the settings
 
 reimplement the current feature with the select-type setting
 
-** special case 'release-tracks' PT
+** DONE special case 'release-tracks' PT
 
 Special case 'release-tracks' PT regarding the displayed default cards:
 
@@ -109,3 +109,12 @@ Mockup: https://claude.ai/artifact/FUdHYEuiLqhmrX3hqitzX4 — picked "P2 + A3 (s
 duplicate links on", and ~sa_sidebar_tables_button~ off by default. Implemented on
 ~feature/sidebar-inline~, merged 2026-10-15 (9.99.1351–9.99.1353); design in docs/claude/sidebar.md "The sidebar beside the
 page's own data". Tested live by the user, merged.
+
+
+* write a plan for what we discussed about the missing implementations in the library regarding userscript settings
+
+Write a plan for what we discussed about the missing implementations in the library regarding userscript
+settings. Currently we only implemented select lists and used them in OUR userscript.
+
+Generate the file at @org/library-configuration-handling.org so that I can work on it on different hosts in different
+Claude sessions later on.
