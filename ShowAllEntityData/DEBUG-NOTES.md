@@ -23210,3 +23210,27 @@ passed, 5 failed, 1773 tests, wall 91 m 21 s.
   it lives in the mobile project only, where the mutation fails as expected.
 After the fixes the five specs, `sidebar-inline` (both projects), and the
 mutation pass/fail as expected; the full suite was not re-run.
+
+## 2026-10-15 — Flaky "Live page view" polls: `contentDocument` without a root element during the srcdoc swap (branch feature/sidebar-cards-fold)
+
+Env: 2026-10-15T20:53:52+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless) · no Tampermonkey (GM stubs).
+
+- **Symptom.** One failure in a `test:full` of 1785 (20:17:55–20:27:59 CEST):
+  `detail-preview.spec.js:571` "springsteenlyrics.com: the card, then the
+  Live page view with the site's navigation hidden", `page.evaluate:
+  TypeError: Cannot read properties of null (reading 'dataset')`. It passed 5/5
+  alone and 145/145 with its file repeated on 14 workers; the same suite at
+  14:27 had passed. Unrelated to the branch's change (sidebar cards).
+- **Root cause: the spec, not the userscript.** The poll read
+  `doc.documentElement.dataset.mbDpDone` off the frame's `contentDocument`.
+  While the frame swaps its first about:blank for the srcdoc copy, that
+  document can briefly have no root element, and a poll landing then throws
+  instead of returning "not yet". `_dpIsolateFrame()` itself is safe: it
+  checks `!doc.body` before touching `documentElement`.
+- **Reproduced** under load: `detail-preview.spec.js` + `popup-ext.spec.js`,
+  `--repeat-each=6 --workers=28`: 1 failed / 377 passed, the same error.
+- **Fix.** `!doc.documentElement ||` in all four polls with the pattern
+  (`detail-preview.spec.js` ×2, `popup-ext.spec.js` ×2). After it, the same
+  two files `--repeat-each=12 --workers=28`: 756/756. A rare race cannot be
+  mutation-checked deterministically; the stress run at twice the repetitions
+  is the evidence.
