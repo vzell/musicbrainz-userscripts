@@ -62,7 +62,7 @@ async function openRecording(page, { settings = {}, press = REL_BUTTON } = {}) {
     await page.context().route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
     await loadUserscriptPage(page, {
         url: URL, fixtureFile: FIXTURE, testMode: true,
-        settingsOverride: { sa_enable_relationship_tables: true, ...settings },
+        settingsOverride: { sa_enable_relationship_tables: true, sa_sidebar_in_rel_tables: false, ...settings },
     });
     await page.route('https://musicbrainz.org/recording/**', (route) => route.fulfill({ path: FIXTURE, contentType: 'text/html' }));
     await page.route('https://musicbrainz.org/ws/2/**', (route) => route.fulfill({ status: 404, body: '' }));

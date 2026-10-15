@@ -33,12 +33,31 @@ currently we support a "Sidebar" button which when pressed renders the sidebar i
 
 2.)
 
+a.)
+
 make some suggestions (inclusive nice HTML based mockups) how the information from 1.) could be shown already when
 pressing the generic PT action button like e.g. "Tracks" for PT 'release-tracks' under the same named h3 headed but
-non-filterable/non-sortable subsections below the rendered h2 "Relationships"/"Credits" section on the FRP.
+non-filterable/non-sortable subsections below the rendered h2 "Relationships"/"Credits" section on the FRP. - [Image #10]
+
+b.)
+
+For "Part A" of the current plan also include mockups to show the sidebar information under it's own h2 "Sidebar" header
+plus h3 headed but non-filterable/non-sortable subsections. In this case the h2 "sidebar" should render below the
+already present h2 "Relationships"/"Credits" section
 
 3.)
 
 do the same (suggestions inclusive nice HTML based mockups) when pressing the "Relationships"/"Credits" action button if
 present on a PT, but in this case the info should show up as h3 headed but filterable/sortable subsections/sub-tables
-below the rendered h2 "Relationships"/"Credits" section on the FRP
+below the rendered h2 "Relationships"/"Credits" section on the FRP - so under [Image #11]
+
+4.)
+
+make everything configurable as usual
+
+*** Picks (2026-10-15)
+
+Mockup: https://claude.ai/artifact/FUdHYEuiLqhmrX3hqitzX4 — picked "P2 + A3 (start open), B1, skip
+duplicate links on", and ~sa_sidebar_tables_button~ off by default. Implemented on
+~feature/sidebar-inline~ (WIP.1–WIP.3); design in docs/claude/sidebar.md "The sidebar beside the
+page's own data". Waiting for a live test before the merge.

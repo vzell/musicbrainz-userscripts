@@ -510,8 +510,50 @@
         sa_sidebar_tables_button: {
             label: "'Sidebar as tables' button",
             type: "checkbox",
+            default: false,
+            description: "On artist, label, event, release group, recording, work, release, series, place, area and instrument pages, add a '🗂 Sidebar as tables' button: it shows ONLY the sidebar's information, external links and tags as tables you can filter and sort like any other. Read from the page itself: no request. The sidebar stays as it is. Off by default: the two settings below show the same information with the page's own data."
+        },
+
+        sa_sidebar_inline_main: {
+            label: "Sidebar facts below Credits/Relationships",
+            type: "checkbox",
             default: true,
-            description: "On artist, label, event, release group, recording, work, release, series, place, area and instrument pages, add a '🗂 Sidebar as tables' button: it shows the sidebar's information, external links and tags as tables you can filter and sort like any other. Read from the page itself: no request. The sidebar stays as it is."
+            description: "After the page's own button (Tracks, Releases, …) has rendered, show the sidebar's information, labels, release events, external links and tags as small cards under their own 'Sidebar' heading, right below the Credits or Relationships section (on a page without one: right above the table). Read-only: no filter, no sorting. Read from the page itself: no request."
+        },
+
+        sa_sidebar_inline_collapsed: {
+            label: "… start the 'Sidebar' section closed",
+            type: "checkbox",
+            default: false,
+            description: "Start the 'Sidebar' heading of the setting above closed. Off: it starts open."
+        },
+
+        sa_sidebar_in_rel_tables: {
+            label: "Sidebar tables in the Credits/Relationships view",
+            type: "checkbox",
+            default: true,
+            description: "After the 'Credits' or 'Relationships' button has rendered the relationship tables, add the sidebar's groups after them as tables named 'Sidebar: …' (Sidebar: Release information, Sidebar: Labels, …). They share the heading's filter and can be filtered and sorted like the others."
+        },
+
+        sa_sidebar_inline_skip_dup_links: {
+            label: "… skip links already in a relationship table",
+            type: "checkbox",
+            default: true,
+            description: "In the Credits/Relationships view, leave out a sidebar link that is already a row of a relationship table (a release's own URLs and its release group's URLs are both). A sidebar link table left with no rows is left out."
+        },
+
+        sa_sidebar_inline_links: {
+            label: "… include external links",
+            type: "checkbox",
+            default: true,
+            description: "Include the sidebar's external links, in both the 'Sidebar' cards and the 'Sidebar: …' tables."
+        },
+
+        sa_sidebar_inline_tags: {
+            label: "… include tags",
+            type: "checkbox",
+            default: true,
+            description: "Include the sidebar's genres and tags, in both the 'Sidebar' cards and the 'Sidebar: …' tables."
         },
 
         // ============================================================
@@ -4955,6 +4997,7 @@
         { key: 'sa_rel_tooltip_bg',                was: ['#ffffff'] },
         { key: 'sa_rel_tooltip_color',             was: ['#000000'] },
         { key: 'sa_sidebar_collapsed',             was: [false] },
+        { key: 'sa_sidebar_tables_button',         was: [true] },
         { key: 'sa_ui_artist_role_guest_performer_color', was: ['#e07000'] },
         { key: 'sa_ui_artist_role_main_performer_color',  was: ['#57ff5a'] },
         { key: 'sa_ui_help_btn_style',             was: ['#78909C|white|1px solid #607D8B'] },
@@ -20249,9 +20292,13 @@
         // What is left of #bottom-credits: the release group block when it
         // stays native, the per-medium track credits in the "at bottom" layout.
         if (bc && !bc.querySelector('table.details, h3')) bc.remove();
+        // The sidebar's groups as "Sidebar: …" tables after the relationship
+        // tables (sa_sidebar_in_rel_tables): the same dataset, so they share
+        // this h2's filter.
+        const nSb = _sbAppendRelTablesGroups(doc, frag);
         anchor.after(frag);
         root.dataset.mbRelTables = '1';
-        Lib.debug('init', `applyRelDetailsToTables: ${own.length} own + ${relatedRows.length} related relationship row(s) → tables.`);
+        Lib.debug('init', `applyRelDetailsToTables: ${own.length} own + ${relatedRows.length} related relationship row(s) → tables, ${nSb} sidebar table(s).`);
     }
 
     /**
@@ -20274,6 +20321,8 @@
             ],
             integerColumns: [
                 { sourceColumn: '#', align: 'R' }, { sourceColumn: 'Number', align: 'R' }, { sourceColumn: 'Order', align: 'R' },
+                // The "Sidebar: Tags" table (_sbAppendRelTablesGroups()).
+                { sourceColumn: 'Votes', align: 'R' },
                 { sourceColumn: 'B-DD', align: 'R' }, { sourceColumn: 'B-MM', align: 'R' }, { sourceColumn: 'B-YYYY', align: 'C' },
                 { sourceColumn: 'E-DD', align: 'R' }, { sourceColumn: 'E-MM', align: 'R' }, { sourceColumn: 'E-YYYY', align: 'C' }
             ],
@@ -28729,7 +28778,7 @@
             type: 'instrument-overview',
             // Also there for "🗂 Sidebar as tables" (_sbTablesButtons()) with
             // the relationship tables off: then only that button shows.
-            match: (path) => (Lib.settings.sa_enable_relationship_tables !== false || Lib.settings.sa_sidebar_tables_button !== false) &&
+            match: (path) => (Lib.settings.sa_enable_relationship_tables !== false || Lib.settings.sa_sidebar_tables_button === true) &&
                 path.match(/^\/instrument\/[a-f0-9-]{36}\/?$/),
             buttons: [ { label: 'Show all Relationships for Instrument', shortLabel: 'Relationships',
                          showIf: () => Lib.settings.sa_enable_relationship_tables !== false } ],
@@ -28895,7 +28944,7 @@
             type: 'area-overview',
             // Also there for "🗂 Sidebar as tables" (_sbTablesButtons()) with
             // the relationship tables off: then only that button shows.
-            match: (path) => (Lib.settings.sa_enable_relationship_tables !== false || Lib.settings.sa_sidebar_tables_button !== false) &&
+            match: (path) => (Lib.settings.sa_enable_relationship_tables !== false || Lib.settings.sa_sidebar_tables_button === true) &&
                 path.match(/^\/area\/[a-f0-9-]{36}\/?$/),
             buttons: [ { label: 'Show all Relationships for Area', shortLabel: 'Relationships',
                          showIf: () => Lib.settings.sa_enable_relationship_tables !== false } ],
@@ -29163,7 +29212,7 @@
             type: 'place-overview',
             // Also there for "🗂 Sidebar as tables" (_sbTablesButtons()) with
             // the relationship tables off: then only that button shows.
-            match: (path) => (Lib.settings.sa_enable_relationship_tables !== false || Lib.settings.sa_sidebar_tables_button !== false) &&
+            match: (path) => (Lib.settings.sa_enable_relationship_tables !== false || Lib.settings.sa_sidebar_tables_button === true) &&
                 path.match(/^\/place\/[a-f0-9-]{36}\/?$/),
             buttons: [ { label: 'Show all Relationships for Place', shortLabel: 'Relationships',
                          showIf: () => Lib.settings.sa_enable_relationship_tables !== false } ],
@@ -81861,6 +81910,7 @@ a { color: #1565c0; }`;
             // Make all H2s collapsible after rendering
             makeH2sCollapsible();
             if (_releaseArtH2 && _releaseArtH2._mbToggle) _releaseArtH2._mbToggle(true);
+            _sbInlineOpen();
 
             // Apply sticky headers for better scrolling experience
             if (Lib.settings.sa_enable_sticky_headers) {
@@ -87509,6 +87559,9 @@ a { color: #1565c0; }`;
                 const _nxt = _cur.nextSibling; // save before any DOM mutation
                 if (_cur.nodeType === Node.ELEMENT_NODE && _cur.tagName === 'H2') break;
                 if (_inSidebar && _cur.nodeType === Node.ELEMENT_NODE && _cur.querySelector('h2')) break;
+                // Our read-only "Sidebar" section (_sbInlineInsertSection())
+                // is its own h2 in a wrapper: the section before it ends there.
+                if (_cur.nodeType === Node.ELEMENT_NODE && _cur.classList.contains('mb-sb-inline-wrap')) break;
                 if (_cur.nodeType === Node.TEXT_NODE && _cur.textContent.trim()) {
                     const _wrap = document.createElement('span');
                     _cur.parentNode.insertBefore(_wrap, _cur);
@@ -88041,7 +88094,7 @@ a { color: #1565c0; }`;
      * @returns {Array<object>}
      */
     function _sbTablesButtons() {
-        if (_foreignHost || Lib.settings.sa_sidebar_tables_button === false) return [];
+        if (_foreignHost || Lib.settings.sa_sidebar_tables_button !== true) return [];
         if (!/^\/(?:(?:artist|label|event|release-group|recording|work|series|place|area|instrument)\/[0-9a-f-]{36}|release\/[0-9a-f-]{36}(?:\/disc\/\d+)?)\/?$/.test(location.pathname)) return [];
         if (!document.querySelector('#sidebar dl.properties')) return [];
         return [{
@@ -88067,36 +88120,35 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Turns the sidebar into h3 + `table.tbl` groups in `#content`
-     * (`features.sidebarToTables`, the "🗂 Sidebar as tables" button), each
-     * named by its sidebar heading:
-     *   - every `dl.properties` ("<Entity> information"; a release also has
-     *     "Additional details"): #, Property, Value;
-     *   - a release's labels ("Labels", the `ul.links` whose items link a
-     *     label): #, Label, Catalog number;
-     *   - a release's events ("Release events", `ul.release-events`): #,
-     *     Country, Date;
-     *   - every `ul.external_links` ("External links"; a release also has
-     *     "Release group external links"): #, Site, Link, Kind, Details
-     *     (MusicBrainz's own "View all relationships" left out);
-     *   - "Tags": #, Tag, Kind (Genre or Tag), Votes (`ul.genre-list`, `ul.tag-list`).
-     * A group with no rows is left out. The page's own tables and h3s in
-     * `#content` are removed from that document so only these groups are
-     * read; the groups go after a new h2 "Sidebar" at the top of `#content`.
-     * The sidebar is only read (clones). Idempotent (`data-mb-sidebar-tables`).
+     * Reads a document's sidebar into groups, each named by its sidebar
+     * heading — the one reader behind the "🗂 Sidebar as tables" button
+     * (`applySidebarToTables()`), the "Sidebar: …" tables of a
+     * relationship-tables render (`applyRelDetailsToTables()`) and the
+     * read-only "Sidebar" cards (`_sbInlineInsertSection()`):
+     *   - `info`: every `dl.properties` ("<Entity> information"; a release
+     *     also has "Additional details"): #, Property, Value;
+     *   - `labels`: a release's labels ("Labels", the `ul.links` whose items
+     *     link a label): #, Label, Catalog number;
+     *   - `events`: a release's events ("Release events",
+     *     `ul.release-events`): #, Country, Date;
+     *   - `links`: every `ul.external_links` ("External links"; a release
+     *     also has "Release group external links"): #, Site, Link, Kind,
+     *     Details (MusicBrainz's own "View all relationships" left out);
+     *   - `tags`: "Tags": #, Tag, Kind (Genre or Tag), Votes (`ul.genre-list`,
+     *     `ul.tag-list`).
+     * A group with no rows is left out. Cells are fresh clones (or text) on
+     * every call, so a caller may insert them; the sidebar itself is only
+     * read, and our own counts, icons and link-group heads are left out of
+     * the clones.
      *
-     * @param {object}           def
-     * @param {Document|Element} [docContext=document]
-     * @returns {void}
+     * @param   {Document} doc
+     * @param   {{links?: boolean, tags?: boolean}} [opts] `false` leaves that kind out.
+     * @returns {Array<{key: string, name: string, cols: string[], rows: Array<Array<Node[]|string>>}>}
      */
-    function applySidebarToTables(def, docContext = document) {
-        if (!def?.features?.sidebarToTables) return;
-        const doc = docContext.nodeType === Node.DOCUMENT_NODE ? docContext : docContext.ownerDocument;
-        const root = doc.getElementById('content');
+    function _sbCollectGroups(doc, opts = {}) {
         const side = doc.getElementById('sidebar');
-        if (!root || !side || root.dataset.mbSidebarTables) return;
-        root.dataset.mbSidebarTables = '1';
-        const frags = [];
+        if (!side) return [];
+        const groups = [];
 
         // The heading a sidebar list sits under: the h2 before it, or before
         // the wrapper holding it (a release's events are in their own div).
@@ -88114,7 +88166,7 @@ a { color: #1565c0; }`;
                 const dd = dt.nextElementSibling && dt.nextElementSibling.tagName === 'DD' ? dt.nextElementSibling : null;
                 rows.push([String(rows.length + 1), dt.textContent.replace(/:\s*$/, '').trim(), dd ? _sbCloneKids(dd) : '']);
             });
-            if (rows.length) frags.push(_eventBuildTable(doc, nameOf(dl, 'Information'), ['#', 'Property', 'Value'], rows));
+            if (rows.length) groups.push({ key: 'info', name: nameOf(dl, 'Information'), cols: ['#', 'Property', 'Value'], rows });
         });
 
         // A release's labels: each item a label's own page (or "[no label]")
@@ -88131,7 +88183,7 @@ a { color: #1565c0; }`;
                 const label = a ? [a.cloneNode(true)] : li.textContent.replace(cat ? cat.textContent : '', '').trim();
                 return [String(i + 1), label, cat ? cat.textContent.trim() : ''];
             });
-            frags.push(_eventBuildTable(doc, nameOf(ul, 'Labels'), ['#', 'Label', 'Catalog number'], rows));
+            groups.push({ key: 'labels', name: nameOf(ul, 'Labels'), cols: ['#', 'Label', 'Catalog number'], rows });
         });
 
         // A release's events: country (its area link) and date.
@@ -88141,11 +88193,10 @@ a { color: #1565c0; }`;
                 const date = li.querySelector('.release-date');
                 return [String(i + 1), area ? [area.cloneNode(true)] : '', date ? date.textContent.trim() : ''];
             });
-            if (rows.length) frags.push(_eventBuildTable(doc, nameOf(ul, 'Release events'), ['#', 'Country', 'Date'], rows));
+            if (rows.length) groups.push({ key: 'events', name: nameOf(ul, 'Release events'), cols: ['#', 'Country', 'Date'], rows });
         });
 
-        let nLinks = 0;
-        side.querySelectorAll('ul.external_links').forEach(ul => {
+        if (opts.links !== false) side.querySelectorAll('ul.external_links').forEach(ul => {
             const links = [];
             ul.querySelectorAll(':scope > li').forEach(li => {
                 if (li.matches('.mb-sbl-head, .all-relationships')) return;
@@ -88157,12 +88208,11 @@ a { color: #1565c0; }`;
                 const details = li.textContent.replace(a.textContent, '').replace(/\s+/g, ' ').trim();
                 links.push([String(links.length + 1), host, [a.cloneNode(true)], _SB_LINK_KINDS[stem] || 'Other', details]);
             });
-            nLinks += links.length;
-            if (links.length) frags.push(_eventBuildTable(doc, nameOf(ul, 'External links'), ['#', 'Site', 'Link', 'Kind', 'Details'], links));
+            if (links.length) groups.push({ key: 'links', name: nameOf(ul, 'External links'), cols: ['#', 'Site', 'Link', 'Kind', 'Details'], rows: links });
         });
 
         const tags = [];
-        [['ul.genre-list', 'Genre'], ['ul.tag-list', 'Tag']].forEach(([sel, kind]) => {
+        if (opts.tags !== false) [['ul.genre-list', 'Genre'], ['ul.tag-list', 'Tag']].forEach(([sel, kind]) => {
             side.querySelectorAll(`${sel} > li`).forEach(li => {
                 const a = li.querySelector('a[href]');
                 if (!a) return;
@@ -88170,7 +88220,34 @@ a { color: #1565c0; }`;
                 tags.push([String(tags.length + 1), [a.cloneNode(true)], kind, votes ? votes.textContent.trim() : '']);
             });
         });
-        if (tags.length) frags.push(_eventBuildTable(doc, 'Tags', ['#', 'Tag', 'Kind', 'Votes'], tags));
+        if (tags.length) groups.push({ key: 'tags', name: 'Tags', cols: ['#', 'Tag', 'Kind', 'Votes'], rows: tags });
+        return groups;
+    }
+
+    /**
+     * Turns the sidebar into h3 + `table.tbl` groups in `#content`
+     * (`features.sidebarToTables`, the "🗂 Sidebar as tables" button), one
+     * per `_sbCollectGroups()` group, named by its sidebar heading. The
+     * page's own tables and h3s in `#content` are removed from that document
+     * so only these groups are read; the groups go after a new h2 "Sidebar"
+     * at the top of `#content`. Always every group: the "… include external
+     * links / tags" switches are for the inline views only.
+     * Idempotent (`data-mb-sidebar-tables`).
+     *
+     * @param {object}           def
+     * @param {Document|Element} [docContext=document]
+     * @returns {void}
+     */
+    function applySidebarToTables(def, docContext = document) {
+        if (!def?.features?.sidebarToTables) return;
+        const doc = docContext.nodeType === Node.DOCUMENT_NODE ? docContext : docContext.ownerDocument;
+        const root = doc.getElementById('content');
+        const side = doc.getElementById('sidebar');
+        if (!root || !side || root.dataset.mbSidebarTables) return;
+        root.dataset.mbSidebarTables = '1';
+        const groups = _sbCollectGroups(doc);
+        const frags = groups.map(g => _eventBuildTable(doc, g.name, g.cols, g.rows));
+        const count = (key) => groups.filter(g => g.key === key).reduce((n, g) => n + g.rows.length, 0);
 
         // Only these groups are read: the page's own tables (the discography,
         // a release group's releases, …) and their h3s go from this document.
@@ -88182,7 +88259,347 @@ a { color: #1565c0; }`;
         const firstH2 = root.querySelector(':scope > h2');
         if (firstH2) firstH2.before(h2); else root.appendChild(h2);
         h2.after(...frags);
-        Lib.debug('render', `applySidebarToTables: ${frags.length} groups (${nLinks} links, ${tags.length} tags).`);
+        Lib.debug('render', `applySidebarToTables: ${frags.length} groups (${count('links')} links, ${count('tags')} tags).`);
+    }
+
+    // ── The sidebar beside the page's own data ───────────────────────────────
+    // Two views of the same `_sbCollectGroups()` groups, neither needing the
+    // "🗂 Sidebar as tables" button (mockup picked 2026-10-15,
+    // https://claude.ai/artifact/FUdHYEuiLqhmrX3hqitzX4: "P2 + A3, B1"):
+    //   - a relationship-tables render ("Credits"/"Relationships", the
+    //     place/area/instrument overviews) appends them as "Sidebar: …"
+    //     tables: the same dataset, so the h2's filter covers them
+    //     (`_sbAppendRelTablesGroups()`, sa_sidebar_in_rel_tables);
+    //   - every other render gets a read-only h2 "Sidebar" of cards right
+    //     below the Credits/Relationships section (`_sbInlineInsertSection()`,
+    //     sa_sidebar_inline_main). Never a `table.tbl`, never an h3: no table
+    //     pass, filter, sort or h3 sweep of the engine ever sees it.
+
+    /**
+     * Which kinds the inline views include (`sa_sidebar_inline_links`,
+     * `sa_sidebar_inline_tags`), as `_sbCollectGroups()` options.
+     * @returns {{links: boolean, tags: boolean}}
+     */
+    function _sbInlineOpts() {
+        return {
+            links: Lib.settings.sa_sidebar_inline_links !== false,
+            tags: Lib.settings.sa_sidebar_inline_tags !== false,
+        };
+    }
+
+    /**
+     * A link's address for "is this link already shown": host without
+     * `www.`, path without a trailing slash, query; the scheme is ignored.
+     * @param {string} href
+     * @returns {string}
+     */
+    function _sbLinkKey(href) {
+        try {
+            const u = new URL(href, 'https://musicbrainz.org');
+            return u.host.toLowerCase().replace(/^www\./, '') + u.pathname.replace(/\/+$/, '') + u.search;
+        } catch (_) {
+            return String(href || '').trim();
+        }
+    }
+
+    /**
+     * Appends the sidebar's groups to a relationship-tables render as
+     * "Sidebar: <heading>" h3 + `table.tbl` pairs (`_eventBuildTable()`), after
+     * the relationship tables already in `frag`. With
+     * `sa_sidebar_inline_skip_dup_links` a sidebar link that is already a
+     * link of those tables is left out (a release's own URLs and its release
+     * group's are both), and a link group left empty goes with it. Called by
+     * `applyRelDetailsToTables()`, so the live render, a fetched page and a
+     * disk load all get it. The prefix keeps a sidebar group apart from a
+     * relationship group of the same name ("Labels"): sub-table state is
+     * keyed by name.
+     *
+     * @param   {Document}         doc
+     * @param   {DocumentFragment} frag The relationship tables, before insertion.
+     * @returns {number} Tables appended.
+     */
+    function _sbAppendRelTablesGroups(doc, frag) {
+        if (_foreignHost || Lib.settings.sa_sidebar_in_rel_tables === false) return 0;
+        const groups = _sbCollectGroups(doc, _sbInlineOpts());
+        if (Lib.settings.sa_sidebar_inline_skip_dup_links !== false) {
+            const shown = new Set(Array.from(frag.querySelectorAll('a[href]')).map(a => _sbLinkKey(a.getAttribute('href'))));
+            groups.forEach(g => {
+                if (g.key !== 'links') return;
+                g.rows = g.rows.filter(r => !shown.has(_sbLinkKey(r[2][0].getAttribute('href'))));
+                g.rows.forEach((r, i) => { r[0] = String(i + 1); });
+            });
+        }
+        let n = 0;
+        groups.forEach(g => {
+            if (!g.rows.length) return;
+            frag.appendChild(_eventBuildTable(doc, `Sidebar: ${g.name}`, g.cols, g.rows));
+            n++;
+        });
+        return n;
+    }
+
+    /**
+     * The style of the read-only "Sidebar" section, added once.
+     * @returns {void}
+     */
+    function _sbInlineEnsureStyle() {
+        if (document.getElementById('mb-sb-inline-style')) return;
+        const st = GM_addStyle(`
+            .mb-sb-inline { margin: 4px 0 10px 1.5em; }
+            /* Facts cards are as wide as their content, side by side, wrapping:
+               a value can hold a line that never breaks (More Flags
+               Everywhere wraps each area with its flag in a white-space:
+               nowrap !important span), which a fixed grid column cut off.
+               Links and tags take a whole row. */
+            .mb-sb-cards { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px; }
+            .mb-sb-card { flex: 0 1 auto; min-width: min(220px, 100%); max-width: 100%; box-sizing: border-box; border: 1px solid #e3d2d2; border-radius: 4px; background: #fff; }
+            .mb-sb-card-wide { flex-basis: 100%; }
+            .mb-sb-card-head { margin: 0; display: flex; justify-content: space-between; gap: 6px; padding: 4px 8px; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.06em; color: #8b5b5b; background: #fbf1f1; border-bottom: 1px solid #ecdcdc; cursor: pointer; user-select: none; }
+            .mb-sb-card-head:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 1px; }
+            .mb-sb-card-count { color: #a07a7a; font-weight: normal; }
+            .mb-sb-card-shut > .mb-sb-card-body { display: none; }
+            .mb-sb-card-shut > .mb-sb-card-head { border-bottom: 0; }
+            dl.mb-sb-card-body { margin: 0; padding: 6px 8px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; }
+            dl.mb-sb-card-body > dt { margin: 0; color: #666; font-weight: normal; }
+            dl.mb-sb-card-body > dd { margin: 0; min-width: 0; overflow-wrap: anywhere; overflow-x: auto; }
+            .mb-sb-chips { padding: 6px 8px; display: grid; gap: 6px; }
+            .mb-sb-chip-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; }
+            .mb-sb-chip-kind { flex: none; width: 76px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #888; }
+            .mb-sb-chip, .mb-sb-pill { display: inline-flex; align-items: baseline; gap: 4px; max-width: 100%; min-width: 0; overflow-wrap: anywhere; border-radius: 10px; padding: 0 8px; }
+            .mb-sb-chip { border: 1px solid #d6dbe6; background: #f6f8fc; }
+            .mb-sb-chip-detail { color: #777; }
+            .mb-sb-pill { border: 1px solid #cfe2c4; background: #eef5ea; }
+            .mb-sb-pill-tag { border-color: #ddd; background: #f1f1f1; }
+            .mb-sb-pill-votes { color: #6b8f5a; font-size: 10px; }
+            @media (max-width: 600px) {
+                .mb-sb-inline { margin-left: 0; }
+                .mb-sb-card { flex-basis: 100%; }
+            }
+        `);
+        st.id = 'mb-sb-inline-style';
+    }
+
+    /**
+     * One card of the read-only "Sidebar" section: a heading that folds it
+     * (click, Enter, Space; delegated on the section, see
+     * `_sbInlineBuild()`) and the group's body.
+     * @param {string}  key   The group's kind (`_sbCollectGroups()`).
+     * @param {string}  name  The heading.
+     * @param {number}  count Its entries.
+     * @param {Element} body  `.mb-sb-card-body`.
+     * @param {boolean} wide  Spans the whole row (links, tags).
+     * @returns {HTMLElement}
+     */
+    function _sbInlineCard(key, name, count, body, wide) {
+        const card = document.createElement('section');
+        card.className = 'mb-sb-card' + (wide ? ' mb-sb-card-wide' : '');
+        card.dataset.mbSbKey = key;
+        const head = document.createElement('h4');
+        head.className = 'mb-sb-card-head';
+        head.setAttribute('role', 'button');
+        head.tabIndex = 0;
+        head.setAttribute('aria-expanded', 'true');
+        const t = document.createElement('span');
+        t.textContent = name;
+        const c = document.createElement('span');
+        c.className = 'mb-sb-card-count';
+        c.textContent = String(count);
+        head.append(t, c);
+        body.classList.add('mb-sb-card-body');
+        card.append(head, body);
+        return card;
+    }
+
+    /**
+     * Fills a node with a `_sbCollectGroups()` cell: nodes or text.
+     * @param {Element} el
+     * @param {Node[]|string} cell
+     * @returns {Element} `el`.
+     */
+    function _sbFillCell(el, cell) {
+        if (Array.isArray(cell)) cell.forEach(n => el.appendChild(n));
+        else el.textContent = cell;
+        return el;
+    }
+
+    /**
+     * Builds the read-only "Sidebar" section: `div.mb-sb-inline-wrap`
+     * holding an h2 "Sidebar (N)" and `div.mb-sb-inline` with one card per
+     * group. Facts, labels and events are `key → value` lists side by side;
+     * links are chips grouped by kind (`_SB_LINK_KIND_ORDER`), tags pills
+     * with their votes, each across the whole row. Null when the sidebar has
+     * nothing to show.
+     * @returns {?HTMLElement}
+     */
+    function _sbInlineBuild() {
+        const groups = _sbCollectGroups(document, _sbInlineOpts());
+        if (!groups.length) return null;
+        _sbInlineEnsureStyle();
+        const cards = document.createElement('div');
+        cards.className = 'mb-sb-cards';
+        let total = 0;
+        groups.forEach(g => {
+            total += g.rows.length;
+            if (g.key === 'links') {
+                const body = document.createElement('div');
+                body.classList.add('mb-sb-chips');
+                _SB_LINK_KIND_ORDER.forEach(kind => {
+                    const rows = g.rows.filter(r => r[3] === kind);
+                    if (!rows.length) return;
+                    const line = document.createElement('div');
+                    line.className = 'mb-sb-chip-row';
+                    const k = document.createElement('span');
+                    k.className = 'mb-sb-chip-kind';
+                    k.textContent = kind;
+                    line.appendChild(k);
+                    rows.forEach(r => {
+                        const chip = _sbFillCell(document.createElement('span'), r[2]);
+                        chip.className = 'mb-sb-chip';
+                        if (r[4]) {
+                            const d = document.createElement('span');
+                            d.className = 'mb-sb-chip-detail';
+                            d.textContent = r[4];
+                            chip.appendChild(d);
+                        }
+                        line.appendChild(chip);
+                    });
+                    body.appendChild(line);
+                });
+                cards.appendChild(_sbInlineCard(g.key, g.name, g.rows.length, body, true));
+            } else if (g.key === 'tags') {
+                const body = document.createElement('div');
+                body.classList.add('mb-sb-chips');
+                const line = document.createElement('div');
+                line.className = 'mb-sb-chip-row';
+                g.rows.forEach(r => {
+                    const pill = _sbFillCell(document.createElement('span'), r[1]);
+                    pill.className = 'mb-sb-pill' + (r[2] === 'Tag' ? ' mb-sb-pill-tag' : '');
+                    if (r[3]) {
+                        const v = document.createElement('span');
+                        v.className = 'mb-sb-pill-votes';
+                        v.textContent = r[3];
+                        pill.appendChild(v);
+                    }
+                    line.appendChild(pill);
+                });
+                body.appendChild(line);
+                cards.appendChild(_sbInlineCard(g.key, g.name, g.rows.length, body, true));
+            } else {
+                // info: Property → Value; labels: Label → Catalog number;
+                // events: Country → Date.
+                const dl = document.createElement('dl');
+                g.rows.forEach(r => {
+                    dl.appendChild(_sbFillCell(document.createElement('dt'), r[1]));
+                    dl.appendChild(_sbFillCell(document.createElement('dd'), r[2]));
+                });
+                cards.appendChild(_sbInlineCard(g.key, g.name, g.rows.length, dl, false));
+            }
+        });
+
+        const wrap = document.createElement('div');
+        wrap.className = 'mb-sb-inline-wrap';
+        const h2 = document.createElement('h2');
+        h2.className = 'mb-sb-inline-h2';
+        h2.append('Sidebar ');
+        const cnt = document.createElement('span');
+        cnt.className = 'mb-sb-inline-count';
+        cnt.textContent = `(${total})`;
+        h2.appendChild(cnt);
+        const sec = document.createElement('div');
+        sec.className = 'mb-sb-inline';
+        sec.appendChild(cards);
+        wrap.append(h2, sec);
+
+        // Card folding, delegated: the section is never cloned.
+        const fold = (head) => {
+            const card = head.parentElement;
+            const shut = card.classList.toggle('mb-sb-card-shut');
+            head.setAttribute('aria-expanded', String(!shut));
+        };
+        sec.addEventListener('click', (e) => {
+            const head = e.target.closest('.mb-sb-card-head');
+            if (head && !e.target.closest('a')) fold(head);
+        });
+        sec.addEventListener('keydown', (e) => {
+            const head = e.target.closest('.mb-sb-card-head');
+            if (!head || (e.key !== 'Enter' && e.key !== ' ')) return;
+            e.preventDefault();
+            fold(head);
+        });
+        return wrap;
+    }
+
+    /**
+     * Puts the "Sidebar" section where it belongs: right after a release's
+     * Credits (`#bottom-credits`), else right after the `h2.relationships`
+     * section (before the next h2, or an element holding one), else right
+     * above the data h2 (the one with `.mb-row-count-stat`), else at the end
+     * of `#content`. Re-run after every `_relocateTrailingH2Sections()`: that
+     * pass moves the Relationships section, and would move this h2 too.
+     * @param {Element} root `#content`.
+     * @param {Element} wrap `div.mb-sb-inline-wrap`.
+     * @returns {string} Where it went, for the debug log.
+     */
+    function _sbInlinePlace(root, wrap) {
+        const bc = root.querySelector('#bottom-credits');
+        if (bc) {
+            if (bc.nextElementSibling !== wrap) bc.after(wrap);
+            return 'after Credits';
+        }
+        const rel = Array.from(root.querySelectorAll('h2.relationships')).find(h => !h.closest('table.tbl'));
+        if (rel) {
+            let n = rel.nextSibling;
+            while (n && !(n.nodeType === Node.ELEMENT_NODE && (n.tagName === 'H2' || n.querySelector('h2')))) n = n.nextSibling;
+            if (n !== wrap) rel.parentNode.insertBefore(wrap, n);
+            return 'after Relationships';
+        }
+        const stat = root.querySelector('h2 .mb-row-count-stat');
+        const dataH2 = stat ? stat.closest('h2') : null;
+        if (dataH2 && !wrap.contains(dataH2)) {
+            if (dataH2.previousElementSibling !== wrap) dataH2.before(wrap);
+            return 'above the data';
+        }
+        if (wrap.parentNode !== root || root.lastElementChild !== wrap) root.appendChild(wrap);
+        return 'end of #content';
+    }
+
+    /**
+     * The read-only "Sidebar" section after a page's own render
+     * (sa_sidebar_inline_main): built once per page (the sidebar does not
+     * change), placed by `_sbInlinePlace()` on every call. Called from the
+     * render tails right after `_relocateTrailingH2Sections()` and before
+     * `makeH2sCollapsible()`, which makes the h2 collapsible like any other
+     * section; `_sbInlineOpen()` opens it afterwards. Not on a
+     * relationship-tables render (it gets the "Sidebar: …" tables instead),
+     * not on the "🗂 Sidebar as tables" render, MusicBrainz only.
+     * @returns {?HTMLElement} The section's h2, or null.
+     */
+    function _sbInlineInsertSection() {
+        const root = document.getElementById('content');
+        if (!root) return null;
+        let wrap = root.querySelector('.mb-sb-inline-wrap');
+        const f = activeDefinition?.features || {};
+        if (_foreignHost || Lib.settings.sa_sidebar_inline_main === false || !activeDefinition ||
+                f.relDetailsToTables || f.sidebarToTables) {
+            if (wrap) wrap.remove();
+            return null;
+        }
+        if (!wrap) wrap = _sbInlineBuild();
+        if (!wrap) return null;
+        const where = _sbInlinePlace(root, wrap);
+        Lib.debug('render', `_sbInlineInsertSection: "Sidebar" section ${where}.`);
+        return wrap.querySelector('h2');
+    }
+
+    /**
+     * Opens the "Sidebar" section after `makeH2sCollapsible()` (which starts
+     * every non-data h2 closed), unless sa_sidebar_inline_collapsed.
+     * @returns {void}
+     */
+    function _sbInlineOpen() {
+        if (Lib.settings.sa_sidebar_inline_collapsed === true) return;
+        const h2 = document.querySelector('#content .mb-sb-inline-wrap > h2');
+        if (h2 && typeof h2._mbToggle === 'function') h2._mbToggle(true);
     }
 
     // ── The sidebar picture ──────────────────────────────────────────────────
@@ -98699,6 +99116,11 @@ a { color: #1565c0; }`;
         // JSDoc. No-op on pages without a native Credits section.
         _makeCreditsH3sCollapsible();
 
+        // ── The sidebar's facts as a read-only "Sidebar" section ─────────────
+        // After the relocation (it is placed relative to the Credits /
+        // Relationships section) and before makeH2sCollapsible().
+        _sbInlineInsertSection();
+
         // ── list-merge-buttons-row-container hiding ──────────────────────────
         // When sa_remove_checkbox_cell is enabled, the checkboxes that drive
         // the MusicBrainz "merge" workflow are no longer visible in the table.
@@ -108526,7 +108948,12 @@ a { color: #1565c0; }`;
             // _relocateTrailingH2Sections() above — idempotent, harmless no-op.
             _makeCreditsH3sCollapsible();
 
+            // finalCleanup() placed the "Sidebar" section before this
+            // relocation ran: place it again (no rebuild).
+            _sbInlineInsertSection();
+
             makeH2sCollapsible();
+            _sbInlineOpen();
 
             // ── Artist-Releasegroups: inject discography view buttons ─────────
             // Mirror the equivalent block in startFetchingProcess (lines

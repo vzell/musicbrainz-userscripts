@@ -23152,3 +23152,28 @@ row, the name in Target, no Details/Picard column, and 11 of our inline thumbnai
 left. A new mutation in `scripts/mutations/rel-tables.json` (skip disabled) fails as expected
 ("the parse: still release groups"), and the userscript was restored and hash-verified. The
 rel-tables and event-overview specs pass on fixtures and mobile, 69/69. Lint is within the baseline.
+
+## 2026-10-15 — Sidebar cards: More Flags Everywhere's flags stuck out of the "Label information" card (branch feature/sidebar-inline)
+
+Env: 2026-10-15T00:15Z · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · user's browser (Brave, versions unknown) with Tampermonkey (version unknown) for the report; Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs) for the test.
+
+Reported by the user on PolyGram Distribution's Relationships tab
+(`/label/0b805b9c-…/relationships`, screenshot only, no snapshot): in the new
+read-only "Sidebar" cards (WIP.2) the flags of the Area value
+(Saint-Laurent, Montréal, Québec, Canada) were drawn past the card's right
+border. Root cause: "MusicBrainz More Flags Everywhere"
+(`tests/fixtures/live-userscripts/MusicBrainz_Right_Side_Flags_Everywhere.user.js`,
+lines 1784/1902/1987) wraps each area as `span.mfe-flag-wrapper` (link,
+comment, flag image, comma) and makes it and every descendant
+`white-space: nowrap !important`. The cards sat in fixed
+`repeat(auto-fill, minmax(220px, 1fr))` grid columns (~250 px), narrower
+than "Montréal (Montreal, city) 🏳," plus the dt column, and an unbreakable
+line overflows. Fix: the cards are a wrapping flex row; facts cards take the
+width of their content (`flex: 0 1 auto`, `min-width: min(220px, 100%)`,
+`max-width: 100%`), links and tags a whole row; a dd that still cannot fit
+(phone width) scrolls inside its card (`overflow-x: auto`). Test:
+`sidebar-inline.spec.js` "NO OVERFLOW" rebuilds the wrapper markup and the
+script's rule on the fixture's own sidebar (rel-label-rels-overview.html is
+the same label) and asserts nothing in the card ends past its right edge.
+Mutation "cards: a fixed grid column again" (the old grid) fails it as
+expected; the userscript was restored and hash-verified.

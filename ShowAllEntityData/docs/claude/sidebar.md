@@ -147,7 +147,7 @@ into the discography's pipeline on 2026-10-11.
 **Where it shows** (`_sbTablesButtons()`): appended to the toolbar's
 `buttonsToRender` at init when all of these hold:
 - the host is MusicBrainz;
-- `sa_sidebar_tables_button` is on (the default);
+- `sa_sidebar_tables_button` is on (off by default since the inline views, below);
 - the path is an entity overview
   (`/artist|label|event|release-group|recording|work|series|place|area|instrument/<mbid>`,
   or `/release/<mbid>` with an optional `/disc/N`);
@@ -331,3 +331,81 @@ off first. There are 10 mutations in `sidebar-overhaul.json`.
 Measured: `_sbEnhance()` is about 1.2 ms of a 1.5 ms `makeH2sCollapsible()`
 pass on the artist page (`tests/support/probe-sidebar-cost.js`,
 `__saTest.sidebar.timing()`, tests/MEASUREMENTS.org 2026-10-11).
+
+## The sidebar beside the page's own data (`_sbInline*`, `_sbAppendRelTablesGroups()`)
+
+Mockup picked 2026-10-15 (`https://claude.ai/artifact/FUdHYEuiLqhmrX3hqitzX4`,
+"P2 + A3, B1, skip duplicate links on"); request in org/sidebar-info.org
+"Overwhole". Branch `feature/sidebar-inline`. The same groups as the button
+above, without pressing it.
+
+**One reader.** `_sbCollectGroups(doc, {links, tags})` returns
+`[{ key, name, cols, rows }]` (`info`, `labels`, `events`, `links`, `tags`);
+every call clones afresh, so each consumer may insert the cells.
+`applySidebarToTables()` builds its tables from it (always every group), and
+so do the two views below. Change what is read there, once.
+
+**In a relationship-tables render** (`sa_sidebar_in_rel_tables`, default on).
+`applyRelDetailsToTables()` calls `_sbAppendRelTablesGroups(doc, frag)` just
+before inserting its fragment, so the live render, a fetched page and a disk
+load all get the tables, and the place / area / instrument overviews too.
+- Named `Sidebar: <heading>`: sub-table state is keyed by name, and a release
+  has a relationship "Labels" table as well as the sidebar's.
+- Same dataset as the relationship tables (the "one dataset per page" rule in
+  relationship-tables.md): the h2's global filter covers them; each has its
+  STF, CFs and 📊. `Votes` is in `_relTablesFeatures()`' integer columns.
+- Duplicates (`sa_sidebar_inline_skip_dup_links`, default on): a sidebar link
+  whose `_sbLinkKey()` (host without `www.`, path without trailing slash,
+  query; no scheme) is already a link in the fragment is dropped, the rows
+  renumbered, an empty links group dropped. On a release both link groups
+  usually go: its own URLs and its group's are relationship rows already.
+
+**After every other render: the read-only "Sidebar" section**
+(`sa_sidebar_inline_main`, default on; `sa_sidebar_inline_collapsed`,
+default off).
+- Markup: `div.mb-sb-inline-wrap > h2.mb-sb-inline-h2 + div.mb-sb-inline >
+  div.mb-sb-cards > section.mb-sb-card[data-mb-sb-key]`. **No `table.tbl`,
+  no h3**, so no table pass, filter, sort, Picard, CAA or the
+  `renderGroupedTable()` h3 sweep ever sees it. Cards fold through a
+  delegated listener on `div.mb-sb-inline` (never cloned).
+- **Cards are a wrapping flex row, never fixed grid columns.** A value can
+  hold a line that never breaks: More Flags Everywhere makes every area
+  `span.mfe-flag-wrapper` `white-space: nowrap !important`, and in a
+  220 px-minimum grid column its flags stuck out of the card (DEBUG-NOTES.md
+  2026-10-15). Facts cards take their content's width, links and tags a
+  whole row, a dd that still cannot fit scrolls inside its card. Pinned by
+  "NO OVERFLOW".
+- `_sbInlineInsertSection()` runs in the render tails right after
+  `_makeCreditsH3sCollapsible()`: in `finalCleanup()` and in the disk-load
+  tail, which relocates again after `finalCleanup()`. It builds once per
+  page and PLACES on every call (`_sbInlinePlace()`): after
+  `#bottom-credits`; else after the `h2.relationships` section (before the
+  next h2 or element holding one); else right above the data h2; else at the
+  end of `#content`. Placing again after each relocation is required: the
+  relocation treats our h2 as one more trailing section and would put it
+  BEFORE the Relationships section (reverse-order pass; pinned by the
+  release-group disk round trip in `sidebar-inline.spec.js`).
+- `makeH2sCollapsible()` makes the h2 an ordinary collapsible section and,
+  like every non-data h2, closes it; `_sbInlineOpen()` opens it right after
+  (both tails), as `_releaseArtInsertSection()`'s h2 is opened.
+- **The section boundary.** `makeH2sCollapsible()`'s sibling walk stops at a
+  `.mb-sb-inline-wrap`: without that, folding Credits / Relationships would
+  fold ours with it, because the walk only stops at an H2 element and ours
+  sits inside a div.
+- Skipped on a relationship-tables render (it gets the tables) and on the
+  "🗂 Sidebar as tables" render; MusicBrainz only.
+
+**`sa_sidebar_tables_button` is off by default** since this change (it
+duplicated the two views). Its reads are `=== true` / `!== true` so a stub
+`Lib` keeps it off; `_SETTINGS_MIGRATIONS` carries `was: [true]`.
+
+**Specs.** `sidebar-inline.spec.js` (15): order and columns of the
+`Sidebar:` tables, duplicates on/off, global filter + a sort that ORDERS,
+the place overview, the switches, a disk round trip; the cards' place on a
+release (after `#bottom-credits`), a release group (after Relationships,
+again after an empty-query re-render), an artist (above the data h2),
+folding (Credits leaves it open, its own h2, a card by click and Enter),
+content counts against the sidebar itself, the switches. The rel-tables
+specs seed `sa_sidebar_in_rel_tables: false` (they pin the relationship
+tables); `sidebar-tables.spec.js` seeds the button on and pins the new
+default. Mutations: `scripts/mutations/sidebar-inline.json`.

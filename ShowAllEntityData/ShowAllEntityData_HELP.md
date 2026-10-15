@@ -848,7 +848,31 @@ close every sidebar section; the headings of the main page are left alone.
   place show its picture too, once you have pressed Space on one: see
   *Link previews on MusicBrainz* under [Page-specific
   behaviour](#page-specific-behaviour).
-- **🗂 Sidebar as tables.** On artist, label, event, release group,
+- **The sidebar under Credits / Relationships.** After the page's own button
+  (*Tracks*, *Releases*, *Artist RGs*, …) has shown its table, a **Sidebar**
+  heading comes right below the *Credits* or *Relationships* section (on a
+  page without one: right above the table). Under it, the sidebar's
+  information, labels, release events, external links and tags are small
+  cards: facts as *name → value* lines side by side, links as chips grouped
+  by kind (Official, Social, Streaming, …), tags as pills with their votes.
+  They are for reading: no filter, no sorting. The heading opens and closes
+  like any other; each card closes on a click on its title (or Enter). It
+  reads the page itself, so nothing is loaded. Switches: *Sidebar facts below
+  Credits/Relationships*, *… start the 'Sidebar' section closed*.
+- **The sidebar in the Credits / Relationships view.** After *Credits* (on a
+  release) or *Relationships* (series, work, release group, recording; the
+  place, area and instrument pages' own button), the sidebar's groups follow
+  the relationship tables as tables of their own, named *Sidebar: Release
+  information*, *Sidebar: Labels*, … They share the heading's filter, and you
+  can sort them and use the 📊 dropdown on them like on the others. A sidebar
+  link that is already a row of a relationship table is left out (a
+  release's own URLs and its release group's are both there already); a
+  links table with nothing left is left out with it. Switches: *Sidebar
+  tables in the Credits/Relationships view*, *… skip links already in a
+  relationship table*. *… include external links* and *… include tags*
+  apply to both views.
+- **🗂 Sidebar as tables** (off by default; turn it on with *'Sidebar as
+  tables' button*). On artist, label, event, release group,
   recording, work, release, series, place, area and instrument pages this
   button shows the sidebar's information (*Sort name*, *Born*, *Area*, …),
   its external links (with their site and kind) and its tags (genre or tag,
@@ -860,8 +884,7 @@ close every sidebar section; the headings of the main page are left alone.
   button afterwards reloads the page first, as every second press does. A
   saved "Sidebar as tables" view loads back from disk as the same tables.
   Place, area and instrument pages keep the button with *Relationships as
-  tables* switched off. Turn the button off with *'Sidebar as tables'
-  button*.
+  tables* switched off.
 
 The switches are in ⚙️ Settings, next to *Collabsable sidebar*.
 

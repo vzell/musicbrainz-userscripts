@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "33e043a860db797d9faacc0145f84267e184335f",
-    "revisions_walked": 898
+    "head": "3c3f34667ddea5d592e34fe49a6fc171f7fc93e8",
+    "revisions_walked": 914
   },
   "changes": [
     {
@@ -239,6 +239,15 @@
       "type": "checkbox",
       "from": true,
       "to": false
+    },
+    {
+      "sha": "3c3f3466",
+      "date": "2026-10-15",
+      "version": "9.99.1350+2026-10-15",
+      "key": "sa_sidebar_tables_button",
+      "type": "checkbox",
+      "from": true,
+      "to": false
     }
   ],
   "stale": {
@@ -409,6 +418,13 @@
       "was": [
         true
       ]
+    },
+    "sa_sidebar_tables_button": {
+      "type": "checkbox",
+      "current": false,
+      "was": [
+        true
+      ]
     }
   },
   "orphans": {
@@ -457,7 +473,13 @@
     "sa_sidebar_link_groups": true,
     "sa_sidebar_picture": true,
     "sa_sidebar_picture_in_header": true,
-    "sa_sidebar_tables_button": true,
+    "sa_sidebar_tables_button": false,
+    "sa_sidebar_inline_main": true,
+    "sa_sidebar_inline_collapsed": false,
+    "sa_sidebar_in_rel_tables": true,
+    "sa_sidebar_inline_skip_dup_links": true,
+    "sa_sidebar_inline_links": true,
+    "sa_sidebar_inline_tags": true,
     "sa_render_overflow_tables_in_new_tab": true,
     "sa_rich_tooltips": true,
     "sa_rich_tooltip_delay_ms": 400,

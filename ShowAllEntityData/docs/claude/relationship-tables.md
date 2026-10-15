@@ -64,6 +64,13 @@ and `_activateButtonForSavedPageType()` makes that button's definition active
 before the disk-load pre-processing, which runs the converter again on the
 reloaded page.
 
+**The render ends with the sidebar's groups** (`sa_sidebar_in_rel_tables`,
+since the sidebar-inline branch, 2026-10-15): `_sbAppendRelTablesGroups()`
+appends `Sidebar: <heading>` tables to the fragment right before it is
+inserted, dropping sidebar links that are already relationship links. Specs
+that count this render's tables seed the setting off; design in
+docs/claude/sidebar.md "The sidebar beside the page's own data".
+
 **Release credits are read by block id.** `#release-relationships` (own) and
 `#release-group-relationships` ("Via release group: <title>", the title from
 the sidebar link with a `<bdi>`). Never "everything under the Credits h2": in
