@@ -355,6 +355,40 @@ Hovering the "4th Of July, Asbury Park (Sandy)" link, then pressing "Space" and 
 
 * TODO add support for logged in case
 
+For the SL and BB case I want to add logged in support with my site specific user and password:
+
+1.)
+
+Both sites present more information when logged in.
+
+a.)
+
+How can we handle this in our userscript so that you has not access to my personal info.
+
+b.)
+
+SL even uses Cloudfare as an additional bot protection
+
+2.)
+
+If you work 1.) out how will you find out what additional info is present on the PTs we currently support
+
+3.)
+
+specifically for the BB PT make suggestions with nice rich HTML based mockups what else can newly be supported and for
+the already supported pages what can additionally added (e.g. currently when hovering an BB event, the detail event page
+is shown, but it itself has a place specific further detail page which I also want to see)
+
+4.)
+
+For all non-MB PTs (where cover/event art is involved) make suggestions (nice rich HTML based mockups) how to present
+the cover/event art along the line what we currently do in the "CAA"/"EAA" columns of MB PTs. BUT the MB functionality
+should never break)
+
+5.)
+
+Add your analysis/plan to this file so that I can pick it up also on other hosts
+
 * TODO for eddy
 ** TODO Container is not defined
 
