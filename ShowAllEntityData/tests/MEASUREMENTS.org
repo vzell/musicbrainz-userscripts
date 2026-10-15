@@ -37,7 +37,7 @@ be compared to a later one, so it is not evidence, it is decoration.
 | Host        | OS                                             | Cores | RAM   | Node     | Playwright | Browser                | Tampermonkey    |
 |-------------+------------------------------------------------+-------+-------+----------+------------+------------------------+-----------------|
 | =petri=     | WSL2 (Linux 6.18.54.1-microsoft)               |    24 | 31 GB | v24.16.0 |     1.62.1 | Chromium 151.0.7922.34 | none (GM stubs) |
-| =NB-3641=   | WSL2 (Linux 6.18.33.2-microsoft)               |    28 | 31 GB | v24.19.0 |     1.62.1 | Chromium 151.0.7922.34 | none (GM stubs) |
+| =NB-3641=   | WSL2 (Linux 6.18.40.1-microsoft)               |    28 | 31 GB | v24.19.0 |     1.62.1 | Chromium 151.0.7922.34 | none (GM stubs) |
 | =vzell-lap= | WSL2 (Linux 6.18.33.2-microsoft-standard-WSL2) |     4 | 16 GB | v24.11.1 |     1.62.1 | Chromium 151.0.7922.34 | none (GM stubs) |
 | (unknown)   | —                                              |     — | —     | —        |          — | —                      | —               |
 
@@ -3793,3 +3793,31 @@ took 511 s. Per test that is 0.288 s against 0.285 s, +1.2%, inside the ±2%
 noise band recorded above for this host. That band was fitted to
 chromium-fixtures-only runs of 446–534 tests, so it is only a rough guide at
 this size and project mix.
+
+* 2026-10-15 — =npm run test:full= on =NB-3641= after the =vzell-lap= merges and =petri='s run (main at 711444c, 9.99.1353)
+
+Env: 2026-10-15T08:03:14+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · node v24.19.0 · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+=python3 scripts/run-test-full.py= on =main= at =711444c= (the same commit as
+=origin/main=). The only changes since =da5569e=, the commit =petri= ran
+above, are to docs and runner scripts. The userscript and the specs are the
+same, so this run checks the same code on a third host. chromium-fixtures plus
+chromium-mobile, with Playwright's default of 14 workers on this 28-core box.
+
+| Selection                             | Tests | Workers | Wall clock  | Basis                                      |
+|---------------------------------------+-------+---------+-------------+--------------------------------------------|
+| =npm run test:full=, cross-host check |  1774 |      14 | *10 m 57 s* | =run-test-full.py=, 08:03:14–08:14:11 CEST |
+
+All 1774 passed, with no flaky retries. Playwright's own figure was 10.9 m.
+There was no ETA: this is the first =run-test-full.py= run on this host, and
+it wrote =~/.cache/sa-test-full/last-NB-3641.json= (1774 tests in 657 s), the
+baseline for the next run here. The host's only earlier =test:full= (403
+tests in 5 m 18 s, 2026-09-20, above) is from a much smaller suite with a
+different project mix, so it is not scaled against this one.
+
+On the same tests, =petri= took 511 s with 12 workers, so this run was 29%
+slower (0.370 s against 0.288 s per test). The two runs were 40 minutes apart
+on different machines, and nothing here isolates a cause. The longest spec
+file was =rel-auto-retry-failed.spec.js= at 5.1 m: its time goes on the rate
+gates and backoffs under test, which is a floor for the whole run, not a
+measure of the host.

@@ -2518,9 +2518,8 @@ Tested live, looks good, commit and push (inclusive the .org files)); stop the s
 on a faster machine like "petri")
 
 
-* TODO rerun the full suite on "NB-3641" after the latest implementations on "vzell-lap" and rerun on "petri"
-
-* statusline.sh
+* DONE rerun the full test-suite on "NB-3641" after the latest implementations on "vzell-lap" and rerun just recently on "petri"
+* DONE statusline.sh
 
 #+begin_example
 #!/bin/bash
