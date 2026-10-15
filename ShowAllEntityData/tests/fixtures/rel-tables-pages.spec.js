@@ -95,7 +95,7 @@ async function open(page, kind, { settings = {}, press = true, before = null } =
     await page.context().route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
     await loadUserscriptPage(page, {
         url, fixtureFile: fixture, testMode: true,
-        settingsOverride: { sa_enable_relationship_tables: true, sa_enable_release_tracks: true, ...settings },
+        settingsOverride: { sa_enable_relationship_tables: true, sa_enable_release_tracks: true, sa_sidebar_in_rel_tables: false, ...settings },
     });
     await page.route('https://musicbrainz.org/ws/2/**', (route) => route.fulfill({ status: 404, body: '' }));
     await page.route(/^https:\/\/musicbrainz\.org\/(?!ws\/)/, (route) => route.fulfill({ path: fixture, contentType: 'text/html' }));
@@ -137,9 +137,9 @@ const sizes = (g) => Object.values(g).map((x) => [x.name, x.rows.length]);
 test.describe('relationship tables: overview pageTypes (WIP.6)', () => {
     test('place: one button, its links as a URL table', async ({ page }) => {
         await open(page, 'place', { press: false });
-        // Plus "🗂 Sidebar as tables" (sidebar-tables.spec.js), last, behind its own divider.
+        // "🗂 Sidebar as tables" (sidebar-tables.spec.js) is off by default since WIP.3.
         expect(await page.evaluate(() => Array.from(document.querySelectorAll('button[data-label]')).map((b) => b.dataset.label)))
-            .toEqual(['Show all Relationships for Place', '🗂 Sidebar as tables']);
+            .toEqual(['Show all Relationships for Place']);
         await page.click('button[data-label="Show all Relationships for Place"]');
         await waitForRenderComplete(page, { waitForAutoResize: false });
         const g = await groups(page);
@@ -193,7 +193,7 @@ test.describe('relationship tables: the second button (WIP.6)', () => {
     test('series: the page\'s own button first, the main table gone for this render', async ({ page }) => {
         await open(page, 'series', { press: false });
         expect(await page.evaluate(() => Array.from(document.querySelectorAll('button[data-label]')).map((b) => b.dataset.label)))
-            .toEqual(['Show all Events for Series', 'Show all Relationships for Series', '🗂 Sidebar as tables']);
+            .toEqual(['Show all Events for Series', 'Show all Relationships for Series']);
         await page.click('button[data-label="Show all Relationships for Series"]');
         await waitForRenderComplete(page, { waitForAutoResize: false });
         const g = await groups(page);

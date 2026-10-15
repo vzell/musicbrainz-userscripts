@@ -39,7 +39,7 @@ const BTN = 'button[data-label="🗂 Sidebar as tables"]';
  */
 async function open(page, url, fixture) {
     await loadUserscriptPage(page, { url, fixtureFile: fixture, testMode: true,
-                                     settingsOverride: { sa_enable_caa_pics: false, sa_enable_relationships_column: false, sa_collabsable_sidebar: false } });
+                                     settingsOverride: { sa_enable_caa_pics: false, sa_enable_relationships_column: false, sa_collabsable_sidebar: false, sa_sidebar_tables_button: true } });
     const reqs = { n: 0 };
     page.on('request', (r) => { if (/musicbrainz\.org\//.test(r.url()) && r.resourceType() !== 'image') reqs.n++; });
     const sidebar = await page.evaluate(() => document.getElementById('sidebar').outerHTML);
@@ -91,7 +91,7 @@ test.describe('🗂 Sidebar as tables', () => {
 
     test("with the Relationships column on, the page type's columns still stay out", async ({ page }) => {
         await loadUserscriptPage(page, { url: ARTIST_URL, fixtureFile: ARTIST, testMode: true,
-                                         settingsOverride: { sa_enable_caa_pics: true, sa_enable_relationships_column: true, sa_collabsable_sidebar: false } });
+                                         settingsOverride: { sa_enable_caa_pics: true, sa_enable_relationships_column: true, sa_collabsable_sidebar: false, sa_sidebar_tables_button: true } });
         await page.click(BTN);
         await waitForRenderComplete(page, { waitForAutoResize: false });
         await expect(page.locator('#content table.tbl')).toHaveCount(3);
@@ -132,6 +132,15 @@ test.describe('🗂 Sidebar as tables', () => {
         await expect(page.locator('button[data-label="🧮 Artist RGs"]')).toHaveCount(1);
         await expect(page.locator(BTN)).toHaveCount(0);
     });
+
+    // Off by default since the inline views (WIP.1/WIP.2) show the same
+    // information with the page's own data. `undefined` un-seeds the key, so
+    // this is the schema default, not a seeded false.
+    test('the button is off by default', async ({ page }) => {
+        await loadUserscriptPage(page, { url: ARTIST_URL, fixtureFile: ARTIST, testMode: true, settingsOverride: { sa_sidebar_tables_button: undefined } });
+        await expect(page.locator('button[data-label="🧮 Artist RGs"]')).toHaveCount(1);
+        await expect(page.locator(BTN)).toHaveCount(0);
+    });
 });
 
 // ── Release, series, place, area and instrument (2026-10-14) ────────────────
@@ -162,7 +171,7 @@ async function openOverview(page, kind, settings = {}) {
     const [url, file] = OVERVIEWS[kind];
     await page.context().route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
     await loadUserscriptPage(page, { url, fixtureFile: path.join(__dirname, file), testMode: true,
-                                     settingsOverride: { sa_enable_caa_pics: false, sa_enable_relationships_column: false, sa_collabsable_sidebar: false,
+                                     settingsOverride: { sa_enable_caa_pics: false, sa_enable_relationships_column: false, sa_collabsable_sidebar: false, sa_sidebar_tables_button: true,
                                                          sa_enable_relationship_tables: true, sa_enable_release_tracks: true, ...settings } });
     const reqs = { n: 0 };
     page.on('request', (r) => { if (/musicbrainz\.org\//.test(r.url()) && r.resourceType() !== 'image') reqs.n++; });
