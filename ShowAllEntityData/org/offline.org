@@ -30,10 +30,13 @@ data which has changed (and what) between different snapshots. Make some nice ri
 When our userscripts detects that the network is down, is there a way to inform the user and give him the chance to work
 with the last snapshotted data
 
-
 6.)
 
 Make a comprehensive analysis and report/suggstions
+
+7.)
+
+write the plan at the end of this file so that I can also work on it from other machines
 
 
 
