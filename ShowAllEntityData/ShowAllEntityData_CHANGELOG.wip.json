@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-10-15",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "After \"Show all Tracks for Release\", the \"Sidebar\" cards (WIP.1) open the release's Additional details, Labels and Release events cards too, next to Release information; external links and tags still start closed. Every other page still opens only its first information card. Setting: \"… on a release: also Additional details, Labels and Release events\" (on), which applies while \"… cards that start open\" is at Information card."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-10-15",
     "sections": [

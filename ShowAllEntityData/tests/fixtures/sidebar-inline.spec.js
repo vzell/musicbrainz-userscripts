@@ -46,6 +46,10 @@ const PAGES = {
         'Show all Relationships for Place', null],
     artist: ['https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f', 'artist-releasegroups-live-titles.html',
         null, '🧮 Artist RGs'],
+    // Several facts cards (Work information, Work attributes, …): the page that sees
+    // whether the release-only facts rule leaks to other pageTypes.
+    work: ['https://musicbrainz.org/work/1f573511-eb4b-3106-8fb2-f15de52e4868', 'rel-work-overview.html',
+        'Show all Relationships for Work', 'Show all Recordings for Work'],
 };
 
 /**
@@ -457,23 +461,44 @@ test.describe('sidebar cards after the page render', () => {
     // Ctrl+Click folds every card, a closed card shows ▶, every head has a
     // rich hover card. ─────────────────────────────────────────────────────
 
-    test('INITIAL STATE: only the first information card starts open; the select\'s three values, a stray one', async ({ page }) => {
-        /** Exactly the first information card is open. */
-        const onlyFirstInfo = (c, why) => {
-            const firstInfo = c.findIndex((x) => x.key === 'info');
-            expect(firstInfo, 'premise: an information card').toBeGreaterThanOrEqual(0);
-            c.forEach((x, i) => {
-                const want = i === firstInfo;
-                expect(x.shown, `${why} — ${x.name}: body on screen`).toBe(want);
-                expect(x.aria, `${why} — ${x.name}: aria-expanded`).toBe(String(want));
-            });
-        };
+    test('INITIAL STATE: only the first information card starts open (a release: every facts card); the switches, a stray value', async ({ page }) => {
+        /** Exactly the cards `want(card, index)` names are open. */
+        const openAre = (c, want, why) => c.forEach((x, i) => {
+            expect(x.shown, `${why} — ${x.name}: body on screen`).toBe(want(x, i));
+            expect(x.aria, `${why} — ${x.name}: aria-expanded`).toBe(String(want(x, i)));
+        });
+        const firstInfoOnly = (c) => { const f = c.findIndex((x) => x.key === 'info'); return (x, i) => i === f; };
+        const FACTS = ['info', 'labels', 'events'];
+        const factsOnly = (x) => FACTS.includes(x.key);
+
+        // A release (release-tracks): Release information, Additional details,
+        // Labels, Release events open; links (and tags) closed.
         await open(page, 'release', 'own');
         let c = await cardStates(page);
-        expect(c.length, 'premise: several cards').toBeGreaterThan(2);
-        onlyFirstInfo(c, 'default');
+        expect(c.filter((x) => x.key === 'info').length, 'premise: two information cards').toBe(2);
+        expect(c.some((x) => x.key === 'labels') && c.some((x) => x.key === 'events'), 'premise: labels and events').toBe(true);
+        expect(c.some((x) => !factsOnly(x)), 'premise: a card that is no facts card').toBe(true);
+        openAre(c, factsOnly, 'release default');
 
-        // GM values outlive a goto: every arm seeds the key itself.
+        // GM values outlive a goto: every arm seeds the keys itself.
+        await page.goto('about:blank');
+        await open(page, 'release', 'own', { sa_sidebar_inline_release_facts_open: false });
+        c = await cardStates(page);
+        openAre(c, firstInfoOnly(c), 'release, switch off');
+
+        // Any other pageType: only the first information card — even a work,
+        // whose sidebar has a second facts card the release rule would open.
+        await page.goto('about:blank');
+        await open(page, 'release-group', 'own', { sa_sidebar_inline_release_facts_open: true });
+        c = await cardStates(page);
+        expect(c.length, 'premise: several cards on the release group').toBeGreaterThan(1);
+        openAre(c, firstInfoOnly(c), 'release group default');
+        await page.goto('about:blank');
+        await open(page, 'work', 'own', { sa_sidebar_inline_release_facts_open: true });
+        c = await cardStates(page);
+        expect(c.filter((x) => x.key === 'info').length, 'premise: more than one facts card on the work').toBeGreaterThan(1);
+        openAre(c, firstInfoOnly(c), 'work default');
+
         await page.goto('about:blank');
         await open(page, 'release', 'own', { sa_sidebar_inline_cards_open: 'all' });
         c = await cardStates(page);
@@ -493,7 +518,7 @@ test.describe('sidebar cards after the page render', () => {
         // A value that is no option reads as the default.
         await page.goto('about:blank');
         await open(page, 'release', 'own', { sa_sidebar_inline_cards_open: 'bogus' });
-        onlyFirstInfo(await cardStates(page), 'a stray value');
+        openAre(await cardStates(page), factsOnly, 'a stray value');
     });
 
     test('CTRL+CLICK ALL: every card follows the clicked one, from a mixed state, both ways; a plain click folds one', async ({ page }) => {

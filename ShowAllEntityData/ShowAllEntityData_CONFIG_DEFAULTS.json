@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1353+2026-10-15",
-    "schema_entries": 437,
+    "schema_entries": 438,
     "sections": 51,
-    "settings": 386,
-    "settings_with_default": 381,
+    "settings": 387,
+    "settings_with_default": 382,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 208,
+      "checkbox": 209,
       "color_picker": 62,
       "number": 52,
       "divider": 51,
@@ -556,6 +556,7 @@
     "sa_sidebar_inline_collapsed": "… start the 'Sidebar' section closed",
     "sa_sidebar_inline_links": "… include external links",
     "sa_sidebar_inline_main": "Sidebar facts below Credits/Relationships",
+    "sa_sidebar_inline_release_facts_open": "… on a release: also Additional details, Labels and Release events",
     "sa_sidebar_inline_skip_dup_links": "… skip links already in a relationship table",
     "sa_sidebar_inline_tags": "… include tags",
     "sa_sidebar_link_groups": "Group external links by kind",
@@ -940,6 +941,7 @@
     "sa_sidebar_inline_collapsed": false,
     "sa_sidebar_inline_links": true,
     "sa_sidebar_inline_main": true,
+    "sa_sidebar_inline_release_facts_open": true,
     "sa_sidebar_inline_skip_dup_links": true,
     "sa_sidebar_inline_tags": true,
     "sa_sidebar_link_groups": true,

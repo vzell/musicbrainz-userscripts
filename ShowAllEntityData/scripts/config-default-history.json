@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "a8c5afdb751133d582e20a92b33ce3139bc5af34",
-    "revisions_walked": 916
+    "head": "29061360db9ed285e03d885e2c1a06c625692833",
+    "revisions_walked": 918
   },
   "changes": [
     {
@@ -476,6 +476,7 @@
     "sa_sidebar_tables_button": false,
     "sa_sidebar_inline_main": true,
     "sa_sidebar_inline_collapsed": false,
+    "sa_sidebar_inline_cards_open": "info",
     "sa_sidebar_in_rel_tables": true,
     "sa_sidebar_inline_skip_dup_links": true,
     "sa_sidebar_inline_links": true,

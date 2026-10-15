@@ -540,6 +540,13 @@
             description: "Which cards of the 'Sidebar' section start open. A card opens and closes on a click on its title; Ctrl+Click (Cmd+Click) opens or closes all of them."
         },
 
+        sa_sidebar_inline_release_facts_open: {
+            label: "… on a release: also Additional details, Labels and Release events",
+            type: "checkbox",
+            default: true,
+            description: "After 'Show all Tracks for Release', with '… cards that start open' at 'Information card': open the release's Additional details, Labels and Release events cards too, next to Release information. The link and tag cards still start closed. Off: only Release information opens, as on every other page."
+        },
+
         sa_sidebar_in_rel_tables: {
             label: "Sidebar tables in the Credits/Relationships view",
             type: "checkbox",
@@ -88561,8 +88568,11 @@ a { color: #1565c0; }`;
      * links are chips grouped by kind (`_SB_LINK_KIND_ORDER`), tags pills
      * with their votes, each across the whole row. Which cards start open is
      * `sa_sidebar_inline_cards_open` (a select): none, only the first
-     * information card, or every card. Null when the sidebar has nothing to
-     * show.
+     * information card, or every card. On `release-tracks` the information
+     * setting also opens every facts card (Additional details, Labels,
+     * Release events: keys `info`, `labels`, `events`), unless
+     * `sa_sidebar_inline_release_facts_open` is off. Null when the sidebar
+     * has nothing to show.
      * @returns {?HTMLElement}
      */
     function _sbInlineBuild() {
@@ -88571,7 +88581,10 @@ a { color: #1565c0; }`;
         _sbInlineEnsureStyle();
         const openMode = _selectSetting('sa_sidebar_inline_cards_open');
         const firstInfo = openMode === 'info' ? groups.find(g => g.key === 'info') : null;
-        const startsOpen = (g) => openMode === 'all' || g === firstInfo;
+        const releaseFacts = openMode === 'info' && activeDefinition?.type === 'release-tracks' &&
+            Lib.settings.sa_sidebar_inline_release_facts_open !== false;
+        const startsOpen = (g) => openMode === 'all' || g === firstInfo ||
+            (releaseFacts && (g.key === 'info' || g.key === 'labels' || g.key === 'events'));
         const cards = document.createElement('div');
         cards.className = 'mb-sb-cards';
         let total = 0;

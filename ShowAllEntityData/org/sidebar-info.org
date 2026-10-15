@@ -97,7 +97,11 @@ Show me some nice HTML based mockups for the settings
 
 reimplement the current feature with the select-type setting
 
+** special case 'release-tracks' PT
 
+Special case 'release-tracks' PT regarding the displayed default cards:
+
+It should also get the sidebar sections "Additional details", "Labels" and Release events" in addition to "Release information" (configurable, default: true)
 
 *** Picks (2026-10-15)
 

@@ -376,6 +376,13 @@ default off).
     info card has every card closed), `all` every card, `none` none. A stray
     stored value reads as `info` (settings-and-config.md, "Select
     settings"). Card states are not remembered.
+  - **Release special case** (`sa_sidebar_inline_release_facts_open`,
+    default on): on `release-tracks`, `info` opens EVERY facts card, keys
+    `info` (Release information, Additional details), `labels` and `events`;
+    links and tags stay closed. Keyed on `activeDefinition.type`, so it never
+    reaches another pageType: a work's sidebar also has several `info` cards
+    (Work information, Work attributes), and the spec loads it to pin that
+    only the first opens there (`PAGES.work`, `rel-work-overview.html`).
   - **Ctrl+Click / Cmd+Click** (and Ctrl+Enter / Ctrl+Space) on any head:
     every card takes the clicked card's NEW state, the rule of
     `makeH2sCollapsible()`'s Ctrl+Click on peer h2s. So it is a toggle from a
