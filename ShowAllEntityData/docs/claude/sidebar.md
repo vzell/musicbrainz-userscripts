@@ -368,6 +368,26 @@ default off).
   no h3**, so no table pass, filter, sort, Picard, CAA or the
   `renderGroupedTable()` h3 sweep ever sees it. Cards fold through a
   delegated listener on `div.mb-sb-inline` (never cloned).
+- **Card folding.**
+  - **Initial state** (`_sbInlineBuild()`'s `startsOpen`), from the select
+    `sa_sidebar_inline_cards_open` read through `_selectSetting()`: `info`
+    (default) opens only the FIRST `info` card (a release's "Additional
+    details" is a second `info` card and starts closed; a page without an
+    info card has every card closed), `all` every card, `none` none. A stray
+    stored value reads as `info` (settings-and-config.md, "Select
+    settings"). Card states are not remembered.
+  - **Ctrl+Click / Cmd+Click** (and Ctrl+Enter / Ctrl+Space) on any head:
+    every card takes the clicked card's NEW state, the rule of
+    `makeH2sCollapsible()`'s Ctrl+Click on peer h2s. So it is a toggle from a
+    mixed state too, and not "flip each card" (a mutation pins the
+    difference).
+  - **Closed marker**: `.mb-sb-card-shut > .mb-sb-card-head > span:first-child::before`
+    draws ▶. Pseudo-content on purpose: the title span's `textContent` stays
+    the group's name, which the specs and `inline()` read. Open cards get none.
+  - **Hover card**: `data-mbtt` from `_sbInlineCardTip()` (title, what the
+    kind holds from `_SB_INLINE_CARD_DESC`, the count, the click rules, a
+    settings foot). It does not depend on the card's state, so a fold never
+    rewrites a card on screen. No `title`, so no native box on top.
 - **Cards are a wrapping flex row, never fixed grid columns.** A value can
   hold a line that never breaks: More Flags Everywhere makes every area
   `span.mfe-flag-wrapper` `white-space: nowrap !important`, and in a
@@ -405,7 +425,10 @@ default off).
 duplicated the two views). Its reads are `=== true` / `!== true` so a stub
 `Lib` keeps it off; `_SETTINGS_MIGRATIONS` carries `was: [true]`.
 
-**Specs.** `sidebar-inline.spec.js` (15) and `sidebar-inline.mobile.spec.js` (1, the window cap): order and columns of the
+**Specs.** `sidebar-inline.spec.js` (19) and `sidebar-inline.mobile.spec.js` (1, the window cap): card folding (INITIAL STATE and its two
+switches, CTRL+CLICK ALL from a mixed state both ways plus Cmd and
+Ctrl+Enter, the ▶ MARKER following each fold, the TOOLTIP on every head and
+on hover); order and columns of the
 `Sidebar:` tables, duplicates on/off, global filter + a sort that ORDERS,
 the place overview, the switches, a disk round trip; the cards' place on a
 release (after `#bottom-credits`), a release group (after Relationships,

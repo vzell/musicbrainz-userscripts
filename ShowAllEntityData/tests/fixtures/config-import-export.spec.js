@@ -326,6 +326,35 @@ test.describe('config save/load round trip preserves the editable lookup tables'
         expect(after.sa_ui_h2_bg).toBe('#123456');
     });
 
+    test('a select imports only one of its options, in canonical typed form; the export never carries a stray one', async ({ page }) => {
+        // The select arm (VZ_MBLibrary 4.4.0). Without it a select falls into
+        // the String() catch-all and stores whatever the file says.
+        await loadSeriesPage(page);
+        const summary = await importConfig(page, {
+            sa_sidebar_inline_cards_open: 'all',   // an option
+            sa_caa_cell_layout: ' List ',          // an option, as a text box wrote it
+            sa_caa_small_img_size: '500',          // a NUMBER option given as a string
+            sa_art_viewer_pan: 'bogus',            // no option: refused
+            sa_art_viewer_background: 'dark',      // the default: pruned, not stored
+        });
+        expect(summary).toMatchObject({ applied: 4, skipped: 0, invalid: 1, pruned: 1 });
+        const after = await readGmValues(page, ['sa_sidebar_inline_cards_open', 'sa_caa_cell_layout',
+            'sa_caa_small_img_size', 'sa_art_viewer_pan', 'sa_art_viewer_background']);
+        expect(after).toEqual({
+            sa_sidebar_inline_cards_open: 'all',
+            sa_caa_cell_layout: 'list',
+            sa_caa_small_img_size: 500,
+            sa_art_viewer_pan: null,
+            sa_art_viewer_background: null,
+        });
+
+        // A stray stored value is exported as what the code acts on (the
+        // default), so the file's own import would accept it.
+        await page.evaluate(() => window.GM_setValue('sa_sidebar_inline_cards_open', 'bogus'));
+        await loadSeriesPage(page);
+        expect((await exportConfig(page)).settings.sa_sidebar_inline_cards_open).toBe('info');
+    });
+
     // ── User-visible behaviour ──────────────────────────────────────────────
 
     test('a column configured to start hidden still starts hidden after an import',

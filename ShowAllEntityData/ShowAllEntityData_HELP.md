@@ -856,9 +856,14 @@ close every sidebar section; the headings of the main page are left alone.
   cards: facts as *name → value* lines side by side, links as chips grouped
   by kind (Official, Social, Streaming, …), tags as pills with their votes.
   They are for reading: no filter, no sorting. The heading opens and closes
-  like any other; each card closes on a click on its title (or Enter). It
-  reads the page itself, so nothing is loaded. Switches: *Sidebar facts below
-  Credits/Relationships*, *… start the 'Sidebar' section closed*.
+  like any other. Only the first information card (*Artist information*,
+  *Release information*, …) starts open; the others start closed, marked
+  with ▶. A click on a card's title (or Enter) opens or closes it;
+  **Ctrl+Click** (Cmd+Click on a Mac) opens or closes every card at once,
+  following the one you clicked. Hovering a title shows what the card holds.
+  It reads the page itself, so nothing is loaded. Switches: *Sidebar facts below
+  Credits/Relationships*, *… start the 'Sidebar' section closed*, and *… cards
+  that start open* (No card / Information card / Every card).
 - **The sidebar in the Credits / Relationships view.** After *Credits* (on a
   release) or *Relationships* (series, work, release group, recording; the
   place, area and instrument pages' own button), the sidebar's groups follow
