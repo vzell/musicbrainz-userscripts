@@ -2294,6 +2294,7 @@ my behalf
 gh pr ready https://github.com/Aerozol/metabrainz-userscripts/pull/26
 #+end_src
 
+
 * ● Your browser reaches MusicBrainz over IPv6.
 
 I can only use IPv4, and right now this network's IPv4 route to MusicBrainz's servers is being cut off. It isn't a Claude Code sandbox or proxy restriction: no
@@ -2379,6 +2380,93 @@ For tomorrow's test:full on the other host:
 
 The published copy in vzell/mb-userscripts is still at 9.99.1167, so republishing (including the HELP the ❓ button serves) is still to do.
 
+* ● Committed as 047b717 and pushed
+
+feature/sidebar-overhaul on GitHub matches the local branch.
+
+  The branch is ready to merge into main whenever you say so. Merging would:
+  1. Turn WIP.1–WIP.8 into real version numbers and bump // @version.
+  2. Run the full suite on the merged main.
+  3. Mark org/TODO.org items 1–4 DONE, and re-read HELP and PERFORMANCE.org against what shipped.
+  4. Push main, then delete feature/sidebar-overhaul and fix/sticky-gutter-and-sorted-thead, locally and on GitHub. The fix branch is fully contained in this one.
+
+  Two things stay open after the merge: the phone handle that can't be tapped, and the three mutation entries in sticky-page-headers.json that were already stale on main.
+
+
+
+* DONE sidebar
+
+The "Sidebar" button/action is currently missing from the following PTs
+
+#+begin_example
+https://musicbrainz.org/release/230fd31d-f63f-4c01-8f10-432d36a1cb86
+https://musicbrainz.org/series/aa3694d3-a3d0-48ed-8f07-5b576de87908
+https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463
+https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98
+https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978
+#+end_example
+
+* merge
+
+1.)
+
+merge main into our feature branch "feature/sidebar-overhaul" as that one alreay has the missing pageTyes for place,
+area and instrument pages.
+
+2.)
+
+after the merge go on with our current plan
+
+* actually not yet
+
+Actually not yet, first merge the branch "fix/sticky-gutter-and-sorted-thead" into our "feature/sidebar-overhaul" to
+check if something breaks now as it's also sidebar related
+
+* TODO "Old" and "New" column have an artifical spacing between them
+
+On e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/annotations
+
+1.)
+
+"Old" and "New" column have an artifical spacing between them
+
+#+begin_example
+@debug/annotation-history.html  - FRP - [Image #]
+#+end_example
+
+2.)
+
+make the "Editor" column the sticky column
+
+
+* DONE bug with sidebar
+
+1.)
+
+The collapsing/uncollapsing of the sidebar with the sidebar toggle works fine on MB PTs where there is no wide
+table/sub-table to scroll to the right ==> it renders visisble as it should - see [Image #6], where the sidebar is
+uncollpased, e.g. https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978
+
+2.)
+
+when uncollapsing the sidebar on MB PTs where there are wide tables/sub-tables involved,
+e.g. https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c, the sidebar contetns is initially not
+visible [Image #5], but slides in when scrolling to the right [Image #3] and is completely visible when we have scrolled
+completely to the right [Image #4]
+
+#+begin_example
+r-t-no-sidebar-content.html - FTR with sidebar uncollapsed, no sidebar content visible
+r-t-sidebar-content.html - raw HTML from the empty sidebar
+#+end_example
+
+3.)
+
+is it possible to render the sidebar handle at the top/beginning of the sidebar, see e.g. [Image #6] where it's located
+in front of the end of the side bar content in front of the "My collections"
+
+* DONE instruments support on right side
+
+https://musicbrainz.org/search?query=guitar&type=instrument&method=indexed
 
 * DONE add instrument support
 ** DONE i
@@ -2429,3 +2517,152 @@ Tested live, looks good, commit and push (inclusive the .org files)); stop the s
 "vzell-lap", /merge-push-remove now, will implement a couple more things and test with the whole suite later (possibly
 on a faster machine like "petri")
 
+
+* TODO rerun the full suite on "NB-3641" after the latest implementations on "vzell-lap" and rerun on "petri"
+
+* statusline.sh
+
+#+begin_example
+#!/bin/bash
+input=$(cat)
+
+MODEL=$(echo "$input" | jq -r '.model.display_name')
+DIR=$(echo "$input" | jq -r '.workspace.current_dir')
+COST=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
+PCT=$(echo "$input" | jq -r '.context_window.used_percentage // 0' | cut -d. -f1)
+DURATION_MS=$(echo "$input" | jq -r '.cost.total_duration_ms // 0')
+
+CYAN='\033[36m'; GREEN='\033[32m'; YELLOW='\033[33m'; RED='\033[31m'; RESET='\033[0m'
+
+# Pick bar color based on context usage
+if [ "$PCT" -ge 90 ]; then BAR_COLOR="$RED"
+elif [ "$PCT" -ge 70 ]; then BAR_COLOR="$YELLOW"
+else BAR_COLOR="$GREEN"; fi
+
+FILLED=$((PCT / 10)); EMPTY=$((10 - FILLED))
+printf -v FILL "%${FILLED}s"; printf -v PAD "%${EMPTY}s"
+BAR="${FILL// /█}${PAD// /░}"
+
+MINS=$((DURATION_MS / 60000)); SECS=$(((DURATION_MS % 60000) / 1000))
+
+BRANCH=""
+git rev-parse --git-dir > /dev/null 2>&1 && BRANCH=" | 🌿 $(git branch --show-current 2>/dev/null)"
+
+echo -e "${CYAN}[$MODEL]${RESET} 📁 ${DIR##*/}$BRANCH"
+COST_FMT=$(printf '$%.2f' "$COST")
+echo -e "${BAR_COLOR}${BAR}${RESET} ${PCT}% | ${YELLOW}${COST_FMT}${RESET} | ⏱️ ${MINS}m ${SECS}s"
+
+# Claude.ai subscription rate limits (only present for subscribers)
+FIVE_PCT=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty')
+FIVE_RESET=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // empty')
+WEEK_PCT=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // empty')
+WEEK_RESET=$(echo "$input" | jq -r '.rate_limits.seven_day.resets_at // empty')
+
+pct_color() {
+    local p=$1
+    if [ "$p" -ge 90 ]; then echo "$RED"
+    elif [ "$p" -ge 70 ]; then echo "$YELLOW"
+    else echo "$GREEN"; fi
+}
+
+# Berlin wall time plus zone ("07:24:28 CEST") for any stamp date -d parses:
+# the newer "+02:00" stamps and the older "Z" ones alike. $2 = time format.
+bt() {
+    TZ=Europe/Berlin date -d "$1" "+${2:-%H:%M:%S} %Z"
+}
+
+fmt_remaining() {
+    local reset_epoch=$1 now diff h m
+    now=$(date +%s)
+    diff=$((reset_epoch - now)); [ "$diff" -lt 0 ] && diff=0
+    h=$((diff / 3600)); m=$(((diff % 3600) / 60))
+    printf "%dh %dm" "$h" "$m"
+}
+
+RATE_LINE=""
+if [ -n "$FIVE_PCT" ]; then
+    FIVE_INT=$(printf '%.0f' "$FIVE_PCT")
+    RATE_LINE="$(pct_color "$FIVE_INT")⏳ Session ${FIVE_INT}%${RESET} (${FIVE_RESET:+$(fmt_remaining "$FIVE_RESET")})"
+fi
+if [ -n "$WEEK_PCT" ]; then
+    WEEK_INT=$(printf '%.0f' "$WEEK_PCT")
+    WEEK_SEG="$(pct_color "$WEEK_INT")📆 Week ${WEEK_INT}%${RESET} (${WEEK_RESET:+$(fmt_remaining "$WEEK_RESET")})"
+    RATE_LINE="${RATE_LINE:+$RATE_LINE | }$WEEK_SEG"
+fi
+[ -n "$RATE_LINE" ] && echo -e "$RATE_LINE"
+
+# ShowAllEntityData test:full run, written by scripts/run-test-full.py.
+# Shown while it runs, and for an hour after it finishes.
+TF_FILE="$HOME/.cache/sa-test-full/status.json"
+if [ -f "$TF_FILE" ]; then
+    IFS=$'\t' read -r TF_STATE TF_HOST TF_BRANCH TF_SHA TF_START TF_TOTAL TF_PASS TF_FAIL TF_ETA TF_FINISH TF_WALL TF_PID < <(
+        jq -r '[.state, .host, .branch, .sha, .start, (.total // 0), .passed, .failed,
+                (.eta // "-"), (.finish // "-"), (.wall_s // 0), (.pid // 0)] | @tsv' "$TF_FILE" 2>/dev/null)
+    NOW=$(date +%s)
+    TF_HEAD="🧪 test:full · ${TF_HOST} · ${TF_BRANCH}@${TF_SHA}"
+    if [ "$TF_STATE" = "running" ]; then
+        if ! kill -0 "$TF_PID" 2>/dev/null; then
+            echo -e "${RED}${TF_HEAD} · started $(bt "$TF_START") · interrupted (${TF_PASS} passed, ${TF_FAIL} failed)${RESET}"
+        else
+            DONE=$((TF_PASS + TF_FAIL))
+            if [ "$TF_ETA" != "-" ]; then
+                ETA_TXT="ETA ~$(bt "$TF_ETA" %H:%M)"
+            elif [ "$DONE" -gt 0 ] && [ "$TF_TOTAL" -gt 0 ]; then
+                S0=$(date -d "$TF_START" +%s)
+                ETA_TXT="ETA ~$(bt "@$((S0 + (NOW - S0) * TF_TOTAL / DONE))" %H:%M) (extrapolated)"
+            else
+                ETA_TXT="ETA unknown"
+            fi
+            FAIL_TXT=""; [ "$TF_FAIL" -gt 0 ] && FAIL_TXT=" · ${RED}${TF_FAIL} failed${YELLOW}"
+            if [ "$TF_TOTAL" -gt 0 ]; then
+                echo -e "${YELLOW}${TF_HEAD} · since $(bt "$TF_START") · ${DONE}/${TF_TOTAL}${FAIL_TXT} · ${ETA_TXT}${RESET}"
+            else
+                echo -e "${YELLOW}${TF_HEAD} · since $(bt "$TF_START") · starting…${RESET}"
+            fi
+        fi
+    elif [ "$TF_FINISH" != "-" ]; then
+        AGE=$((NOW - $(date -d "$TF_FINISH" +%s)))
+        if [ "$AGE" -lt 3600 ]; then
+            WALL_TXT="$((TF_WALL / 60))m $((TF_WALL % 60))s"
+            if [ "$TF_STATE" = "passed" ]; then
+                echo -e "${GREEN}${TF_HEAD} · ✅ ${TF_PASS} passed in ${WALL_TXT} · finished $(bt "$TF_FINISH")${RESET}"
+            else
+                echo -e "${RED}${TF_HEAD} · ❌ ${TF_FAIL} failed, ${TF_PASS} passed in ${WALL_TXT} · finished $(bt "$TF_FINISH")${RESET}"
+            fi
+        fi
+    fi
+fi
+
+# ShowAllEntityData interaction-perf arms, written by scripts/run-perf-arms.py.
+# Shown while they run, and for an hour after they finish.
+PF_FILE="$HOME/.cache/sa-perf/status.json"
+if [ -f "$PF_FILE" ]; then
+    IFS=$'\t' read -r PF_STATE PF_HOST PF_BRANCH PF_SHA PF_START PF_NARMS PF_IDX PF_ARM PF_METRIC PF_SAMPLE PF_SAMPLES PF_STEP PF_TOTAL PF_ETA PF_FINISH PF_PID PF_RESULTS < <(
+        jq -r '[.state, .host, .branch, .sha, .start, (.arms | length), (.index // 0), (.arm // "-"),
+                ((.metric // "") | if . == "" then "-" else . end), (.sample // 0), (.samples // 0), (.step // 0), (.total // 0),
+                (.eta // "-"), (.finish // "-"), (.pid // 0),
+                ([.results[]? | "\(.arm) \(.wall_s / 60 | floor)m\(.wall_s % 60)s"] | join(", ") | if . == "" then "-" else . end)] | @tsv' "$PF_FILE" 2>/dev/null)
+    NOW=$(date +%s)
+    PF_HEAD="📈 perf · ${PF_HOST} · ${PF_BRANCH}@${PF_SHA}"
+    if [ "$PF_STATE" = "running" ]; then
+        if ! kill -0 "$PF_PID" 2>/dev/null; then
+            echo -e "${RED}${PF_HEAD} · started $(bt "$PF_START") · interrupted at arm $((PF_IDX + 1))/${PF_NARMS} ${PF_ARM}${RESET}"
+        else
+            ETA_TXT="ETA unknown"; [ "$PF_ETA" != "-" ] && ETA_TXT="ETA ~$(bt "$PF_ETA" %H:%M)"
+            STEP_TXT="starting…"
+            [ "$PF_TOTAL" -gt 0 ] && STEP_TXT="${PF_METRIC} · sample ${PF_SAMPLE}/${PF_SAMPLES} (${PF_STEP}/${PF_TOTAL})"
+            echo -e "${YELLOW}${PF_HEAD} · arm $((PF_IDX + 1))/${PF_NARMS} ${PF_ARM} · ${STEP_TXT} · ${ETA_TXT}${RESET}"
+        fi
+    elif [ "$PF_FINISH" != "-" ]; then
+        AGE=$((NOW - $(date -d "$PF_FINISH" +%s)))
+        if [ "$AGE" -lt 3600 ]; then
+            if [ "$PF_STATE" = "passed" ]; then
+                echo -e "${GREEN}${PF_HEAD} · ✅ ${PF_RESULTS} · finished $(bt "$PF_FINISH")${RESET}"
+            else
+                echo -e "${RED}${PF_HEAD} · ❌ ${PF_RESULTS} · finished $(bt "$PF_FINISH")${RESET}"
+            fi
+        fi
+    fi
+fi
+exit 0
+#+end_example
