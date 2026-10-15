@@ -368,6 +368,13 @@ default off).
   no h3**, so no table pass, filter, sort, Picard, CAA or the
   `renderGroupedTable()` h3 sweep ever sees it. Cards fold through a
   delegated listener on `div.mb-sb-inline` (never cloned).
+- **Cards are a wrapping flex row, never fixed grid columns.** A value can
+  hold a line that never breaks: More Flags Everywhere makes every area
+  `span.mfe-flag-wrapper` `white-space: nowrap !important`, and in a
+  220 px-minimum grid column its flags stuck out of the card (DEBUG-NOTES.md
+  2026-10-15). Facts cards take their content's width, links and tags a
+  whole row, a dd that still cannot fit scrolls inside its card. Pinned by
+  "NO OVERFLOW".
 - `_sbInlineInsertSection()` runs in the render tails right after
   `_makeCreditsH3sCollapsible()`: in `finalCleanup()` and in the disk-load
   tail, which relocates again after `finalCleanup()`. It builds once per
@@ -392,7 +399,7 @@ default off).
 duplicated the two views). Its reads are `=== true` / `!== true` so a stub
 `Lib` keeps it off; `_SETTINGS_MIGRATIONS` carries `was: [true]`.
 
-**Specs.** `sidebar-inline.spec.js` (11): order and columns of the
+**Specs.** `sidebar-inline.spec.js` (15): order and columns of the
 `Sidebar:` tables, duplicates on/off, global filter + a sort that ORDERS,
 the place overview, the switches, a disk round trip; the cards' place on a
 release (after `#bottom-credits`), a release group (after Relationships,

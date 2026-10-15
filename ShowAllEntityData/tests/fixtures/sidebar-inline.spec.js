@@ -384,6 +384,61 @@ test.describe('sidebar cards after the page render', () => {
         expect(s.cards.some((c) => c.key === 'links' && c.chips > 0)).toBe(true);
     });
 
+    // Reported 2026-10-15 on PolyGram Distribution's Relationships tab: with
+    // "MusicBrainz More Flags Everywhere" every area of the Area value is a
+    // `span.mfe-flag-wrapper` (name, comment, flag image, comma) that the
+    // script makes `white-space: nowrap !important`. In a fixed grid column
+    // the flags stuck out of the card. Here the script's markup and rule are
+    // rebuilt on the fixture's own sidebar before the render.
+    test('NO OVERFLOW: an Area value with More Flags Everywhere\'s unbreakable flag spans stays inside its card', async ({ page }) => {
+        const fixture = path.join(__dirname, 'rel-label-rels-overview.html');
+        await page.context().route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
+        await loadUserscriptPage(page, {
+            url: 'https://musicbrainz.org/label/0b805b9c-ea03-4fc1-b50d-6dcef76433e0/relationships', fixtureFile: fixture, testMode: true,
+            settingsOverride: { sa_enable_relationship_tables: true, sa_enable_caa_pics: false, sa_enable_relationships_column: false, sa_collabsable_sidebar: false },
+        });
+        await page.route('https://musicbrainz.org/ws/2/**', (route) => route.fulfill({ status: 404, body: '' }));
+        await page.route(/^https:\/\/musicbrainz\.org\/(?!ws\/)/, (route) => route.fulfill({ path: fixture, contentType: 'text/html' }));
+        await page.route('https://coverartarchive.org/**', (route) => route.fulfill({ status: 404, body: '' }));
+        await page.evaluate(() => {
+            const st = document.createElement('style');
+            st.textContent = '.mfe-flag-wrapper, .mfe-flag-wrapper * { white-space: nowrap !important; }';
+            document.head.appendChild(st);
+            const dd = document.querySelector('#sidebar dd.area');
+            dd.querySelectorAll('a[href*="/area/"]').forEach((a) => {
+                const w = document.createElement('span');
+                w.className = 'mfe-flag-wrapper';
+                a.before(w);
+                w.appendChild(a);
+                const next = w.nextSibling && w.nextSibling.nextSibling;
+                if (next && next.nodeType === 1 && next.matches('span.comment')) w.append(' ', next);
+                const img = document.createElement('img');
+                img.alt = '';
+                img.width = 22;
+                img.height = 14;
+                img.style.cssText = 'display:inline-block;width:22px;height:14px;margin-left:4px;background:#c33';
+                w.appendChild(img);
+                if (w.nextSibling && w.nextSibling.nodeType === 3 && /^,/.test(w.nextSibling.textContent)) {
+                    w.append(',');
+                    w.nextSibling.textContent = w.nextSibling.textContent.slice(1);
+                }
+            });
+        });
+        await page.click('button[data-label="Show all Relationships for Label"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const fit = await page.evaluate(() => {
+            const card = document.querySelector('.mb-sb-card[data-mb-sb-key="info"]');
+            const box = card.getBoundingClientRect();
+            const out = Array.from(card.querySelectorAll('*')).filter((el) => el.getBoundingClientRect().right > box.right + 1)
+                .map((el) => el.tagName + (el.className ? '.' + el.className : ''));
+            const dd = Array.from(card.querySelectorAll('dd')).find((d) => d.querySelector('.mfe-flag-wrapper'));
+            return { wrappers: card.querySelectorAll('.mfe-flag-wrapper').length, out, ddScrolls: dd.scrollWidth > dd.clientWidth + 1 };
+        });
+        expect(fit.wrappers, 'the flag spans were copied into the card').toBeGreaterThan(2);
+        expect(fit.out, 'nothing sticks out of the card').toEqual([]);
+        expect(fit.ddScrolls, 'at desktop width the value needs no scrolling').toBe(false);
+    });
+
     test('the switches: off; start closed', async ({ page }) => {
         await open(page, 'release', 'own', { sa_sidebar_inline_main: false });
         expect(await inline(page)).toBeNull();

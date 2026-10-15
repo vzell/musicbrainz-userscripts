@@ -88346,9 +88346,14 @@ a { color: #1565c0; }`;
         if (document.getElementById('mb-sb-inline-style')) return;
         const st = GM_addStyle(`
             .mb-sb-inline { margin: 4px 0 10px 1.5em; }
-            .mb-sb-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
-            .mb-sb-card { border: 1px solid #e3d2d2; border-radius: 4px; background: #fff; min-width: 0; }
-            .mb-sb-card-wide { grid-column: 1 / -1; }
+            /* Facts cards are as wide as their content, side by side, wrapping:
+               a value can hold a line that never breaks (More Flags
+               Everywhere wraps each area with its flag in a white-space:
+               nowrap !important span), which a fixed grid column cut off.
+               Links and tags take a whole row. */
+            .mb-sb-cards { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px; }
+            .mb-sb-card { flex: 0 1 auto; min-width: min(220px, 100%); max-width: 100%; box-sizing: border-box; border: 1px solid #e3d2d2; border-radius: 4px; background: #fff; }
+            .mb-sb-card-wide { flex-basis: 100%; }
             .mb-sb-card-head { margin: 0; display: flex; justify-content: space-between; gap: 6px; padding: 4px 8px; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.06em; color: #8b5b5b; background: #fbf1f1; border-bottom: 1px solid #ecdcdc; cursor: pointer; user-select: none; }
             .mb-sb-card-head:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 1px; }
             .mb-sb-card-count { color: #a07a7a; font-weight: normal; }
@@ -88356,7 +88361,7 @@ a { color: #1565c0; }`;
             .mb-sb-card-shut > .mb-sb-card-head { border-bottom: 0; }
             dl.mb-sb-card-body { margin: 0; padding: 6px 8px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; }
             dl.mb-sb-card-body > dt { margin: 0; color: #666; font-weight: normal; }
-            dl.mb-sb-card-body > dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+            dl.mb-sb-card-body > dd { margin: 0; min-width: 0; overflow-wrap: anywhere; overflow-x: auto; }
             .mb-sb-chips { padding: 6px 8px; display: grid; gap: 6px; }
             .mb-sb-chip-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; }
             .mb-sb-chip-kind { flex: none; width: 76px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #888; }
@@ -88368,7 +88373,7 @@ a { color: #1565c0; }`;
             .mb-sb-pill-votes { color: #6b8f5a; font-size: 10px; }
             @media (max-width: 600px) {
                 .mb-sb-inline { margin-left: 0; }
-                .mb-sb-cards { grid-template-columns: minmax(0, 1fr); }
+                .mb-sb-card { flex-basis: 100%; }
             }
         `);
         st.id = 'mb-sb-inline-style';
