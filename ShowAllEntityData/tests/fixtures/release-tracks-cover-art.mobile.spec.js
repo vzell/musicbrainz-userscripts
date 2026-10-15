@@ -62,6 +62,12 @@ async function openRelease(page) {
             sa_enable_release_tracks: true,
             sa_enable_release_tracks_cover_art: true,
             sa_art_idb_enable: false,
+            // The read-only Sidebar cards (9.99.1352) are switched off: with
+            // them the tiles sit ~400 px lower, and on this zoomed-out phone
+            // locator.tap() lands above the tile (on the cards, then tile 2)
+            // although nothing covers it (elementFromPoint at its centre is
+            // the tile; docs/claude/sidebar.md "Mobile trap").
+            sa_sidebar_inline_main: false,
         },
     });
     await page.route('https://coverartarchive.org/**',

@@ -133,7 +133,7 @@ test.describe('🗂 Sidebar as tables', () => {
         await expect(page.locator(BTN)).toHaveCount(0);
     });
 
-    // Off by default since the inline views (WIP.1/WIP.2) show the same
+    // Off by default since the inline views (9.99.1351/9.99.1352) show the same
     // information with the page's own data. `undefined` un-seeds the key, so
     // this is the schema default, not a seeded false.
     test('the button is off by default', async ({ page }) => {

@@ -88,7 +88,9 @@ test.describe('action buttons: shortLabel, buttonGroupLabel and rich hover toolt
     });
 
     test('artist-releasegroups: "RGs:" heading, "Artist"/"Various Artists" short labels', async ({ page }) => {
-        await loadFromDiskFixture(page, { url: ARTIST_RGS_URL, fixturePath: ARTIST_RGS_FIXTURE, testMode: true });
+        // The Sidebar button is off by default since 9.99.1353: switched on
+        // here, so its divider and description stay pinned.
+        await loadFromDiskFixture(page, { url: ARTIST_RGS_URL, fixturePath: ARTIST_RGS_FIXTURE, testMode: true, settingsOverride: { sa_sidebar_tables_button: true } });
 
         const row = await buttonRow(page);
         expect(row.groupLabel).toBe('RGs:');

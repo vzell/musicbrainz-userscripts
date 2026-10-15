@@ -129,7 +129,7 @@ const inline = (page) => page.evaluate(() => {
     };
 });
 
-// ── "Sidebar: …" tables in the relationship-tables render (WIP.1) ──────────
+// ── "Sidebar: …" tables in the relationship-tables render (9.99.1351) ──────────
 
 test.describe('sidebar in the Credits/Relationships view', () => {
     test('ORDER + CLEAN COLUMNS: "Sidebar: …" tables after every relationship table, with only their own columns', async ({ page }) => {
@@ -254,7 +254,7 @@ test.describe('sidebar in the Credits/Relationships view', () => {
     });
 });
 
-// ── The read-only "Sidebar" cards after the page's own render (WIP.2) ──────
+// ── The read-only "Sidebar" cards after the page's own render (9.99.1352) ──────
 
 test.describe('sidebar cards after the page render', () => {
     test('PLACE + CONTENT: release — right after Credits, open, one card per group', async ({ page }) => {

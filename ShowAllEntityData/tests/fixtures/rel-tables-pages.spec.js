@@ -137,7 +137,7 @@ const sizes = (g) => Object.values(g).map((x) => [x.name, x.rows.length]);
 test.describe('relationship tables: overview pageTypes (WIP.6)', () => {
     test('place: one button, its links as a URL table', async ({ page }) => {
         await open(page, 'place', { press: false });
-        // "🗂 Sidebar as tables" (sidebar-tables.spec.js) is off by default since WIP.3.
+        // "🗂 Sidebar as tables" (sidebar-tables.spec.js) is off by default since 9.99.1353.
         expect(await page.evaluate(() => Array.from(document.querySelectorAll('button[data-label]')).map((b) => b.dataset.label)))
             .toEqual(['Show all Relationships for Place']);
         await page.click('button[data-label="Show all Relationships for Place"]');

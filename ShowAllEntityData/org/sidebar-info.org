@@ -1,4 +1,4 @@
-* TODO Overwhole the sidebar info presentation
+* DONE Overwhole the sidebar info presentation
 ** DONE initial
 
 Please explain and maybe implement a fix for the following:
@@ -23,7 +23,7 @@ Tested live, looks good, commit and push (inclusive the .org files); stop the su
 "vzell-lap", /merge-push-remove now, will implement a couple more things and test with the whole suite later (possibly
 on a faster machine like "petri")
 
-** TODO Overwhole
+** DONE Overwhole
 
 We need another overwhole of the presentation of the information located in the sidebar of most of MB PTs.
 
@@ -59,5 +59,5 @@ make everything configurable as usual
 
 Mockup: https://claude.ai/artifact/FUdHYEuiLqhmrX3hqitzX4 — picked "P2 + A3 (start open), B1, skip
 duplicate links on", and ~sa_sidebar_tables_button~ off by default. Implemented on
-~feature/sidebar-inline~ (WIP.1–WIP.3); design in docs/claude/sidebar.md "The sidebar beside the
-page's own data". Waiting for a live test before the merge.
+~feature/sidebar-inline~, merged 2026-10-15 (9.99.1351–9.99.1353); design in docs/claude/sidebar.md "The sidebar beside the
+page's own data". Tested live by the user, merged.

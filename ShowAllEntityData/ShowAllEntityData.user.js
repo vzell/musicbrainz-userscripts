@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.1350+2026-10-15
+// @version      9.99.1353+2026-10-15
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting. Optionally also springsteenlyrics.com collection and bootleg lists, the jungleland.it bootleg artwork list and the brucespringsteen.it record database.
 // @author       vzell
 // @tag          AI generated
@@ -88345,7 +88345,10 @@ a { color: #1565c0; }`;
     function _sbInlineEnsureStyle() {
         if (document.getElementById('mb-sb-inline-style')) return;
         const st = GM_addStyle(`
-            .mb-sb-inline { margin: 4px 0 10px 1.5em; }
+            /* On a release the section sits in the tracklist's container, which
+               a wide tracklist makes thousands of px wide: capped to the
+               window like the Cover art section below it. */
+            .mb-sb-inline { margin: 4px 0 10px 1.5em; max-width: calc(100vw - 32px - 1.5em); }
             /* Facts cards are as wide as their content, side by side, wrapping:
                a value can hold a line that never breaks (More Flags
                Everywhere wraps each area with its flag in a white-space:

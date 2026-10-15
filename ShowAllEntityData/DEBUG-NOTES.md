@@ -23177,3 +23177,36 @@ script's rule on the fixture's own sidebar (rel-label-rels-overview.html is
 the same label) and asserts nothing in the card ends past its right edge.
 Mutation "cards: a fixed grid column again" (the old grid) fails it as
 expected; the userscript was restored and hash-verified.
+
+## 2026-10-15 — Merge of feature/sidebar-inline: test:full found 5 failures; the Sidebar cards were 8416 px wide on a phone
+
+Env: 2026-10-15T00:18Z–01:49Z · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs); chromium-mobile Pixel 7 emulation.
+
+`npm run test:full` on `main` at `f2d1f15` (the merge, before the fold): 1768
+passed, 5 failed, 1773 tests, wall 91 m 21 s.
+- `action-button-shortlabel-and-rich-tooltip` "artist-releasegroups": counted
+  three buttons; "🗂 Sidebar as tables" is off by default since 9.99.1353. The
+  test now switches it on, so its divider and description stay pinned.
+- `filter-sliced` "a pass outdated by a newer key never draws": passed alone
+  and in a five-spec re-run; a timing flake under the full load, not touched.
+- `title-el-without-bdi` "ticking » ETI: music video": the 📊 entry was
+  "outside of the viewport". The Sidebar cards push the DVD table's header
+  lower, and the panel opens partly below the window. The spec is about the
+  ETI entry, so it switches the cards off (`sa_sidebar_inline_main: false`).
+- `release-tracks-cover-art.mobile` (both tests): `locator.tap()` was
+  intercepted by our h2, our cards, then tile 2, all above the target tile.
+  A probe (temporary spec, deleted) showed `elementFromPoint()` at the tile's
+  centre IS the tile: nothing covers it; the zoomed-out phone's tap drifts
+  once the tiles sit ~400 px lower (the "Mobile trap" in
+  docs/claude/sidebar.md). The spec switches the cards off.
+  The same probe found a real defect: `.mb-sb-inline-wrap` sits in the
+  release's `div.tracklist-and-credits`, 8416 px wide on this fixture, and on
+  the phone the first facts card was 8416 px wide (on desktop it is sized to
+  its content; Chrome's mobile text autosizing is the likely difference, not
+  verified). Fixed with the Cover art section's own cap,
+  `max-width: calc(100vw - 32px - 1.5em)` on `.mb-sb-inline`. Pinned by
+  `sidebar-inline.mobile.spec.js`; a desktop version of the test passed with
+  the cap removed (mutation "cards: not capped to the window" UNEXPECTED), so
+  it lives in the mobile project only, where the mutation fails as expected.
+After the fixes the five specs, `sidebar-inline` (both projects), and the
+mutation pass/fail as expected; the full suite was not re-run.

@@ -374,7 +374,13 @@ default off).
   220 px-minimum grid column its flags stuck out of the card (DEBUG-NOTES.md
   2026-10-15). Facts cards take their content's width, links and tags a
   whole row, a dd that still cannot fit scrolls inside its card. Pinned by
-  "NO OVERFLOW".
+  "NO OVERFLOW". The section is also capped to the window
+  (`max-width: calc(100vw - 32px - 1.5em)`, the Cover art section's cap): on a
+  release it sits in the tracklist's wrapper, thousands of px wide with a
+  wide tracklist, and on a phone a facts card took all of it
+  (`sidebar-inline.mobile.spec.js`). Specs about other features on a release
+  page that are sensitive to the table's vertical position switch the cards
+  off (`title-el-without-bdi`, `release-tracks-cover-art.mobile`).
 - `_sbInlineInsertSection()` runs in the render tails right after
   `_makeCreditsH3sCollapsible()`: in `finalCleanup()` and in the disk-load
   tail, which relocates again after `finalCleanup()`. It builds once per
@@ -399,7 +405,7 @@ default off).
 duplicated the two views). Its reads are `=== true` / `!== true` so a stub
 `Lib` keeps it off; `_SETTINGS_MIGRATIONS` carries `was: [true]`.
 
-**Specs.** `sidebar-inline.spec.js` (15): order and columns of the
+**Specs.** `sidebar-inline.spec.js` (15) and `sidebar-inline.mobile.spec.js` (1, the window cap): order and columns of the
 `Sidebar:` tables, duplicates on/off, global filter + a sort that ORDERS,
 the place overview, the switches, a disk round trip; the cards' place on a
 release (after `#bottom-credits`), a release group (after Relationships,
