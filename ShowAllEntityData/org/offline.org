@@ -1,0 +1,39 @@
+* TODO make sure we can always run completely OFFLINE
+
+Is it possible to make our userscript run completely offline on MB and non-MB PTs:
+
+1.)
+
+We already have the Save/Load persistence framework
+
+2.)
+
+What else would be needed. CSS files etc ?
+
+3.)
+
+Especially the non-MB sites, except currently SL and BB are actually completely static. No new data is ever feed in
+anymore. Also the chance is high that their websites are eventually shutdown and then the data would be lost.
+
+a.)
+
+for the persistence storage we could maybe even setup our own filesystem area or use local opensource database systems
+(make some suggestions)
+
+4.)
+
+The non-MB sites should somehow periodically be snapshotted, so that we could generate some kind of diff view of the
+data which has changed (and what) between different snapshots. Make some nice rich HTML based mockup suggestions.
+
+5.)
+
+When our userscripts detects that the network is down, is there a way to inform the user and give him the chance to work
+with the last snapshotted data
+
+
+6.)
+
+Make a comprehensive analysis and report/suggstions
+
+
+

@@ -1,4 +1,4 @@
-﻿* TODO add support for logged in case
+﻿* DONE add support for logged in case
 
 One plan for both sites: [[file:springsteenlyrics.org]], "* TODO add support
 for logged in case", "** Answer (2026-10-16, …)". Brucebase-specific parts
@@ -108,6 +108,3 @@ Make some suggestions here how to present to the user in one or more columns, us
 2.)
 
 The whole feature should be configurable (default off, as the main userscript is normally used just with MusicBrainz)
-
-
-

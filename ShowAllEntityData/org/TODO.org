@@ -1508,10 +1508,6 @@ ALWAYS be sticky too when srolling down.
 * TODO sync add non-MB images with the CAA framework, but unlimited
 * TODO storeage forever for non-MB sites, except SL
 
-
-* TODO make sure we can always run completely OFFLINE (especially non-MB sites, excetp SL and BB)
-
-
 * TODO filter checkboxes for every filter dialog if not overwritten
 
 * DONE add support BB pages
