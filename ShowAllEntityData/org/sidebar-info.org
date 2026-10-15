@@ -111,7 +111,7 @@ duplicate links on", and ~sa_sidebar_tables_button~ off by default. Implemented 
 page's own data". Tested live by the user, merged.
 
 
-* write a plan for what we discussed about the missing implementations in the library regarding userscript settings
+* DONE write a plan for what we discussed about the missing implementations in the library regarding userscript settings
 
 Write a plan for what we discussed about the missing implementations in the library regarding userscript
 settings. Currently we only implemented select lists and used them in OUR userscript.

@@ -9,18 +9,18 @@ numbers (the files move on every commit).
 
 * Status
 
-| # | Item                                        | State | Where it landed                         |
-|---+---------------------------------------------+-------+-----------------------------------------|
-| 1 | =select= (segmented buttons)                | DONE  | lib 4.4.0, SAED 9.99.1355 (branch merged 2026-10-15) |
-| 2 | =number= bounds and =step= enforced         | TODO  |                                         |
-| 3 | =range= (slider + box)                      | TODO  | same branch as 2, recommended           |
-| 4 | Checkbox pairs/triples → =select=           | TODO  | needs a new migration kind first        |
-| 5 | =showIf= dependent rows                     | TODO  |                                         |
-| 6 | =checklist= (multi-select)                  | TODO  |                                         |
-| 7 | =string_list= (chips)                       | TODO  |                                         |
-| 8 | =key_value= (ordered pairs)                 | TODO  |                                         |
-| 9 | A library-only test harness                 | TODO  | would close the =expect: pass= gap of 1 |
-| 10 | Publish library 4.4.0 with the userscript  | TODO  | not yet in =vzell/mb-userscripts=       |
+|  # | Item                                      | State | Where it landed                                      |
+|----+-------------------------------------------+-------+------------------------------------------------------|
+|  1 | =select= (segmented buttons)              | DONE  | lib 4.4.0, SAED 9.99.1355 (branch merged 2026-10-15) |
+|  2 | =number= bounds and =step= enforced       | TODO  |                                                      |
+|  3 | =range= (slider + box)                    | TODO  | same branch as 2, recommended                        |
+|  4 | Checkbox pairs/triples → =select=         | TODO  | needs a new migration kind first                     |
+|  5 | =showIf= dependent rows                   | TODO  |                                                      |
+|  6 | =checklist= (multi-select)                | TODO  |                                                      |
+|  7 | =string_list= (chips)                     | TODO  |                                                      |
+|  8 | =key_value= (ordered pairs)               | TODO  |                                                      |
+|  9 | A library-only test harness               | TODO  | would close the =expect: pass= gap of 1              |
+| 10 | Publish library 4.4.0 with the userscript | TODO  | not yet in =vzell/mb-userscripts=                    |
 
 Ranking as agreed: 1 (done), then 2+3 together, then the rest by how much of
 the schema each cleans up. Only =select= was needed for the sidebar cards;
@@ -44,7 +44,6 @@ everything below is a proposal, nothing is promised.
   yet, so a new type is additive as long as no shared path changes behaviour.
 
 * Ground rules for any new type
-
 ** Branching and versions
 - Feature branch, never =main=. Userscript: WIP entries in
   =ShowAllEntityData_CHANGELOG.wip.json=, no =@version= bump on the branch.
@@ -228,20 +227,20 @@ way today to read old key A and B and write new key C.
   report them as skipped? Decide.
 
 *Candidates* (from the 2026-10-15 survey; re-verify each reader):
-| Keys                                                                  | One select would be                 |
-|-----------------------------------------------------------------------+-------------------------------------|
-| =sa_sidebar_remember_sections= + =sa_sidebar_open_all=                | closed / remember / all             |
-| =sa_event_rg_tooltip= + =sa_event_rg_tooltip_without_ctrl=            | off / with Ctrl / plain hover       |
-| =sa_dp_hover_without_ctrl=                                            | Ctrl / plain hover (2-way, maybe stays a checkbox) |
-| =sa_pop_mb= + =sa_pop_mb_on_touch=                                    | off / desktop / desktop + touch     |
-| =sa_pop_mb_page= + =sa_pop_mb_page_on_touch=                          | same                                |
-| =sa_pop_ext= + =sa_pop_ext_on_touch=                                  | same                                |
-| =sa_enable_sticky_page_headers= + =sa_sticky_page_headers_on_touch=   | same                                |
-| =sa_findings_no_front_image= + =sa_findings_tint_no_front_image=      | off / menu only / menu + tint       |
-| =sa_findings_no_medium_image= + its tint key                          | same                                |
-| =sa_relationship_tables_one_table=, =sa_event_overview_*_one_table=   | per kind / one table (2-way)        |
-| =sa_bb_sidebar_right=                                                 | left / right (2-way)                |
-| =sa_sidebar_inline_collapsed= (+ =sa_sidebar_inline_cards_open=)      | could join one "Sidebar section" select |
+| Keys                                                                | One select would be                                |
+|---------------------------------------------------------------------+----------------------------------------------------|
+| =sa_sidebar_remember_sections= + =sa_sidebar_open_all=              | closed / remember / all                            |
+| =sa_event_rg_tooltip= + =sa_event_rg_tooltip_without_ctrl=          | off / with Ctrl / plain hover                      |
+| =sa_dp_hover_without_ctrl=                                          | Ctrl / plain hover (2-way, maybe stays a checkbox) |
+| =sa_pop_mb= + =sa_pop_mb_on_touch=                                  | off / desktop / desktop + touch                    |
+| =sa_pop_mb_page= + =sa_pop_mb_page_on_touch=                        | same                                               |
+| =sa_pop_ext= + =sa_pop_ext_on_touch=                                | same                                               |
+| =sa_enable_sticky_page_headers= + =sa_sticky_page_headers_on_touch= | same                                               |
+| =sa_findings_no_front_image= + =sa_findings_tint_no_front_image=    | off / menu only / menu + tint                      |
+| =sa_findings_no_medium_image= + its tint key                        | same                                               |
+| =sa_relationship_tables_one_table=, =sa_event_overview_*_one_table= | per kind / one table (2-way)                       |
+| =sa_bb_sidebar_right=                                               | left / right (2-way)                               |
+| =sa_sidebar_inline_collapsed= (+ =sa_sidebar_inline_cards_open=)    | could join one "Sidebar section" select            |
 
 Caution: FIXTURE_SETTINGS_OVERRIDE forces several of these keys OFF
 (=sa_pop_mb=, =sa_pop_mb_page=, =sa_pop_ext=, =sa_dp_hover_without_ctrl=,
