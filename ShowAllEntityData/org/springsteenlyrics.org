@@ -389,6 +389,224 @@ should never break)
 
 Add your analysis/plan to this file so that I can pick it up also on other hosts
 
+** Answer (2026-10-16, no change to the userscript)
+
+Env: 2026-10-16T00:37:44+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux
+6.18.40.1) · code reading, anonymous curl of two Brucebase pages,
+Playwright Chromium for the probe check · no Tampermonkey.
+
+The same TODO in [[file:brucebase.org]] points here: one plan for both sites.
+
+Mockups (private Artifact): https://claude.ai/artifact/SbHLvHpoQZJMnPx4DgVdj9
+— local copy [[file:logged-in-mockups.html]].
+
+Decided (2026-10-16):
+- Discovery is an in-browser probe userscript, so the session cookie never
+  leaves the browser. Logged-in Playwright specs come later, behind a
+  =permissions.deny= rule for =playwright/.auth/**= in =.claude/settings.json=.
+  A =.gitignore= entry does not stop Claude's tools from reading a file, and
+  a deny rule is a policy rather than a wall. Only the probe is a hard
+  boundary.
+- This session: write-up, mockups and the probe. No userscript change, so no
+  version bump and no changelog entry.
+
+*** 1a. Credentials: how logged-in content gets in without the script holding them
+
+The script never asks for, stores or uses a user name or password, and never
+logs in by itself. You log in on the site in your browser, and the script
+rides on that session.
+
+What already happens today (code reading):
+- List fetches on SL and BB go through =fetchHtml()=, which is
+  =fetch(url, {credentials: 'same-origin'})=. They send your cookies, so a
+  logged-in tab already fetches logged-in pages. The BB recent-changes POST
+  does too: its token is the =wikidot_token7= cookie (=_bbWikidotToken()=).
+- Detail cards opened ON the site use =_dpFetchText()=, also same-origin with
+  cookies.
+- Cards opened from MusicBrainz or another site use =_extFetch()=, a
+  =GM_xmlhttpRequest= with =anonymous: true=. That is on purpose: the card
+  shows what everyone sees. =org/iframe.org= X9 measured Brucebase at 120,699 B
+  anonymous vs 123,822 B with your cookies.
+- So the converters already receive the extra content and simply ignore what
+  they don't know.
+
+What has to change in the implementation phase:
+1. Login detection from the page: =_slLoggedIn(doc)= (SL renders the
+   =hTxtPassword= log-in form to visitors) and =_bbLoggedIn(doc)= (Wikidot
+   renders "Sign in" in =#login-status= to visitors). The probe confirms
+   which markers the logged-in pages carry.
+2. *Cache collision.* The detail-card cache (IndexedDB
+   =vz-saed-detail-pages=, =_dpMem=, =_dpRawMem=) is keyed by URL only. A
+   public parse and a logged-in parse of one page replace each other for 30
+   days (=_DP_TTL_MS=). Fix: store the login state in each record, treat a
+   mismatch as a miss, and bump =_DP_PARSER_VERSION=.
+3. Converters add logged-in-only columns only when the pages have them, with
+   headers decided per run, so a logged-out run looks exactly as today.
+4. A login chip on the toolbar h1 ("● Logged in · your view" / "○ Public
+   view"), and a mixed run (session expired halfway) reported with the page
+   where it changed.
+5. Optional, per host: =sa_pop_ext_with_session= (default false) to drop
+   =anonymous= for SL/BB cards opened from MusicBrainz. Only after a probe
+   shows such a request passes Cloudflare.
+
+Rules: no =sa_*= setting for user or password; no cookie read except
+=wikidot_token7= (as now); a committed fixture made from a logged-in page
+goes through a scrub step first. MusicBrainz is untouched: all of this sits
+behind =_isSlHost= / =_isBbHost= and the sites' opt-in settings.
+
+*** 1b. Cloudflare on SL
+
+- *Where it does not bite:* in your tab. Same-origin requests carry the
+  clearance cookie and come from the real browser
+  (=docs/claude/springsteenlyrics.md=, "fetchHtml() is a same-origin
+  fetch()"). Logging in changes nothing here.
+- *Where it does:* cross-origin anonymous =GM_xmlhttpRequest= (no clearance
+  cookie; =_extFetch()= already recognises =cf-mitigated=), Python probes
+  (403; see the memory note on Python probe refusals), and later Playwright.
+  The clearance is tied to the browser and IP, so you solve it once in the
+  headed login window and the live specs must use the same user agent.
+- Today a challenged list page reads as "0 cards". Proposal: a
+  =_slIsChallenge(doc)= check, so =_fetchIncompleteSummary()= says "the site
+  sent its Cloudflare check instead of page N; open the site in this tab,
+  then Resume".
+- The probe records the Cloudflare outcome of its cookie-less requests. That
+  is the first real data point on how often it fires.
+
+*** 2. How we find out what logging in adds
+
+=scripts/probe-logged-in-diff.user.js= is a throwaway Tampermonkey script,
+never published.
+1. Install it, log in on the site, open any page of that site.
+2. In the Tampermonkey menu, run "Probe: what logging in adds (all pages)", or
+   "(this page)" for one page.
+3. When asked, type the terms to redact (your user name, real name). They
+   stay in the browser.
+4. Wait about 25 s per site: two requests per page, 1.1 s apart, 10–11 pages.
+5. Review the JSON in the box, press Download and put the file into
+   =debug/= (=logged-in-diff-sl-YYYYMMDD.json=, =…-bb-…=).
+
+Each page is fetched with =credentials: 'omit'= and with
+=credentials: 'include'=, parsed with DOMParser and compared. The report holds:
+- status, size, Cloudflare mark and login marker of both answers;
+- headings, tabs, table headers and forms only the logged-in page has;
+- link kinds and image counts that differ;
+- for each new block: its path, heading, link kinds, image count, form field
+  NAMES and a redacted excerpt of at most 120 characters.
+
+What is never read or reported:
+- cookies and input values (a textarea's content counts as a value);
+- the user name the page shows, plus your typed terms → =«USER»=;
+- e-mail addresses, long token-like strings, session-like URL parameters;
+- link URLs other than their kind.
+
+Checked with =node scripts/check-probe-logged-in-diff.js= (Playwright
+Chromium, no network). It plants a logged-in block in
+=debug/detail-sl-collection-7431.html= and asserts the block is found and no
+planted secret reaches the report. Mutation-checked: with =redact()= off, three
+checks fail; with the textarea guard off, one fails. The check found two real
+leaks while the probe was written: the user name behind an icon-only menu
+toggle, and a textarea's content. Both are fixed.
+
+Then, from the probe's JSON:
+- a table "extra when logged in", per pageType, in
+  =docs/claude/springsteenlyrics.md= and =docs/claude/brucebase.md=;
+- logged-in fixtures only from pages you choose to save, scrubbed;
+- later, logged-in live specs through =auth:login= extended to SL and BB,
+  with the deny rule in place first.
+
+*** 3. Brucebase: what else can be supported
+
+Facts (anonymous curl, 2026-10-16):
+- A =gig:= page starts with two links, "Info & Setlist" (=/2025#260325=) and
+  "Venue" (=/venue:carnegie-hall-new-york-city-ny=).
+- Its tabs are On Stage, Setlist, Performances, Gallery (33 photos on
+  Carnegie Hall 2025-03-26), Media, Recording, Storyteller, Eyewitness and
+  News/Memorabilia.
+- A =venue:= page has a Wikipedia summary, "Springsteen did 7 performances",
+  the gig list and its own gallery.
+- The venue slug cannot be derived from the gig slug: gig names are cut
+  short (=…-red-bank-n=) and some carry a letter (=2025-04-26b-=). Read the
+  Venue link from the gig page.
+- The 2025 year page links these unsupported kinds: =gig:= 27, =nogig:= 6,
+  =interview:= 14, =recording:= 3, =rehearsal:= 2, =retail:= 6,
+  =relation:= 108.
+
+Today:
+- =_DP_SITES['brucebase.wikidot.com']= previews only =song:= pages.
+- Links inside a card never open another card (=_DP_PAGE_SKIP=).
+- Drill-down (=_dpDrill=) works for MusicBrainz entities only.
+- =_dpParseBb= drops the song page's lyric-sheet scan and performance graph.
+
+Proposals, in order (mockups 3a–3d):
+1. Cards for =gig:=, =nogig:=, =venue:=, =relation:= and =retail:= pages, each
+   with its own parser.
+2. Drill-down inside the card window for Brucebase links: gig → venue → gig,
+   with a trail and Backspace to go back. Generalise =_dpDrill=; a step is a
+   click or key, never a hover.
+3. Gallery photos into the card, opening in the existing viewer through
+   =_DP_ART_CTX=. Keep the lyric sheet and graph in the song card.
+4. =bb-year= / =bb-home= deferred columns, loaded from the gig pages on
+   request (like the Relationships column): Venue page, Photos (count and
+   thumbnail), On stage. One gig page per second, cached per gig.
+5. New pageTypes: =stats:discography= (first pick: covers and a clean list),
+   =venue:= and =relation:= as tables, =stats:tour-statistics=,
+   =stats:scans-setlist= / =stats:scans-ticket=. Also check whether the year
+   table should keep interviews, recording sessions and rehearsals as their
+   own rows.
+
+*** 4. Artwork on the non-MusicBrainz pageTypes
+
+The CAA/EAA column pipeline is MusicBrainz-specific: archive URL builders,
+MBID patterns, the =caa= extractor, Path C's =/cover-art=. Reusing it would
+put MusicBrainz at risk. The artwork viewer (=_artViewerOpen=) and the
+summary panel already accept any image list: =_DP_ART_CTX= (=external:
+true=) does that for cards today. So foreign art gets its own small path:
+- one external ctx per site, modelled on =_DP_ART_CTX=;
+- its own sort-key class, added to =_CLEAN_STRIP_SEL= and =_sortCellText()=,
+  never =.mb-caa-sort-key=;
+- its own cache keys (=fa:<url>=), never an MBID path in the art cache;
+- its own setting per site (e.g. =sa_sl_art=, default false), under that
+  site's opt-in.
+
+Per pageType (mockups 4a–4c):
+- =sl-collection= / =-intro= / =sl-brucelegs=: the Cover column becomes Art.
+  It shows the thumbnail, a scan count once the item page is read (on
+  request), a strip per table and the viewer (←/→ scans, Shift+←/→ rows).
+- =sl-bootlegs=: the same, and presence sorts before any fetch, from the
+  Artwork yes/no flag.
+- =bs-records=: the cover URL comes from the row's code
+  (=blegs\images\<code>.jpg=), with no detail fetch; a failed load means "no".
+- =jl-list=: an Art column on request from the detail page; front, back and
+  booklet become type chips in the viewer.
+- =bb-year= / =bb-home=: the Photos column is Brucebase's event art. Use the
+  site's =…/thumbnail.jpg= in strips; the photographer's name comes from the
+  file name (=20250326_TaylorHill_01.jpg=) and Brucebase asks for credit.
+- =bb-songs=: images only in the song card. =sl-lyrics=, =bb-relations= and
+  =bb-recent-changes=: nothing.
+
+Guard: the foreign-site specs that assert zero CAA/EAA requests stay as they
+are, and the MusicBrainz fixture suite passes unchanged.
+
+*** Next steps
+
+1. You: run the probe on SL and on BB while logged in, and put both JSON files
+   into =debug/=. Use Tampermonkey in your real browser; Chrome and
+   Tampermonkey versions for the env stamp.
+2. Me: turn the JSON into the per-pageType "extra when logged in" tables, and
+   say which logged-in content is worth columns.
+3. Implementation, one branch each, in this order:
+   - login state in the detail cache, plus the login chip;
+   - BB gig/venue cards and drill-down;
+   - BB year deferred columns;
+   - the foreign-art path (SL bootlegs first, then BB photos).
+4. Later: logged-in Playwright for SL and BB, with the deny rule first.
+
+Open questions:
+- Which logged-in content matters most to you on SL (e.g. your collection
+  marks, ratings, more scans)? The probe will list what exists.
+- For cards opened from MusicBrainz: public view always, or your view when
+  you opt in?
+
 * TODO for eddy
 ** TODO Container is not defined
 

@@ -1,4 +1,9 @@
 ﻿* TODO add support for logged in case
+
+One plan for both sites: [[file:springsteenlyrics.org]], "* TODO add support
+for logged in case", "** Answer (2026-10-16, …)". Brucebase-specific parts
+are its sections 3 and 4.
+
 * DONE BruceBase - Songs
 ** DONE i
 
