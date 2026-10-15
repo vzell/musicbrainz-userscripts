@@ -36,7 +36,7 @@ be compared to a later one, so it is not evidence, it is decoration.
 
 | Host        | OS                                             | Cores | RAM   | Node     | Playwright | Browser                | Tampermonkey    |
 |-------------+------------------------------------------------+-------+-------+----------+------------+------------------------+-----------------|
-| =petri=     | WSL2 (Linux 6.18.33.2-microsoft)               |    24 | 31 GB | v24.16.0 |     1.62.1 | Chromium 151.0.7922.34 | none (GM stubs) |
+| =petri=     | WSL2 (Linux 6.18.54.1-microsoft)           |    24 | 31 GB | v24.16.0 |     1.62.1 | Chromium 151.0.7922.34 | none (GM stubs) |
 | =NB-3641=   | WSL2 (Linux 6.18.33.2-microsoft)               |    28 | 31 GB | v24.19.0 |     1.62.1 | Chromium 151.0.7922.34 | none (GM stubs) |
 | =vzell-lap= | WSL2 (Linux 6.18.33.2-microsoft-standard-WSL2) |     4 | 16 GB | v24.11.1 |     1.62.1 | Chromium 151.0.7922.34 | none (GM stubs) |
 | (unknown)   | —                                              |     — | —     | —        |          — | —                      | —               |
