@@ -2793,15 +2793,30 @@ etc
 
 * TODO revamp "Search in ..." card handling
 
-revamp "Search in ..." card handling, eg. at https://musicbrainz.org/release/d2f07004-ef30-435f-ae73-64507bc639c1
+1.)
 
-There are to many h4 lies starting with
+Revamp the h4 "Search ..." card handling, eg. at https://musicbrainz.org/release/d2f07004-ef30-435f-ae73-64507bc639c1
+
+#+begin_example
+@debug/DaD-collapsed.html - IP -  - @debug/Search-collapsed.png
+@debug/DaD-uncollapsed.html - FRP - all uncollapsed - @debug/Search-uncollapsed.png
+#+end_example
+
+There are too many h4 lines starting with
 
 #+begin_example
 "Search the web"
 "Search in the .."
 "Search further"
 #+end_example
+
+and stretch up to the rigth browser window. The actual number of all these "Search ..." URLs depends heavily which
+additional third-party userscripts are active. On a default page these are probably a few if nothing at all
+
+2.)
+
+Make some nice HTML based mockups
+
 
 * TODO the rich tooltips should show track/recording differences below each other in a diff like view, with differing chars/portions highlighted
 
@@ -2810,9 +2825,12 @@ There are to many h4 lies starting with
 the rich tooltips should show track/recording differences below each other in a diff like view, with differing
 chars/portions highlighted
 
+Curretn behaviour: @debug/title-diff-format.png
+
 2.)
 
 maybe there are other tooltips which show comparisons, fix them also
 
+3.)
 
-
+Make some nice HTML based mockups
