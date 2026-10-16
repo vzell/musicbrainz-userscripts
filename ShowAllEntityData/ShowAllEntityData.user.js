@@ -16313,12 +16313,23 @@
      * (`link`: a link, or a container such as a "#" cell) and that element's
      * target (`_popResolve()`), the pending show timer, and the previewable
      * element under the pointer (`hover`, kept whether or not a card is due,
-     * so that pressing Ctrl on it can show one). `origin` is the box stacked
-     * above the card (`_dpOriginNote()`); `stashed` says a link's native
-     * title is parked in `data-mb-dp-saved-title` (`_dpStashOriginTitle()`).
-     * @type {{el: ?HTMLElement, link: ?Element, target: ?object, timer: number, typedAt: number, hover: ?Element, origin: ?HTMLElement, stashed: boolean}}
+     * so that pressing Ctrl on it can show one). `notes` is the stack of
+     * boxes above the card (`_dpCollectNotes()`); `stashed` says a title is
+     * parked in `data-mb-dp-saved-title` (`_dpStashTitles()`).
+     * @type {{el: ?HTMLElement, link: ?Element, target: ?object, timer: number, typedAt: number, hover: ?Element, notes: ?HTMLElement, stashed: boolean}}
      */
-    const _dpPeek = { el: null, link: null, target: null, timer: 0, typedAt: 0, hover: null, origin: null, stashed: false };
+    const _dpPeek = { el: null, link: null, target: null, timer: 0, typedAt: 0, hover: null, notes: null, stashed: false };
+
+    /**
+     * `#mb-stat-tooltip`'s hooks for the hover card, set by
+     * `_initStatTooltip()`: `yieldTo(el)` hides its card while the hover card
+     * shows `el` (the card's stack shows the same tip), `resume()` brings it
+     * back once the hover card is gone and the pointer is still on its
+     * element. Declared here, above that function's call site, so the
+     * assignment is past the TDZ.
+     * @type {?{yieldTo: function(Element): void, resume: function(): void}}
+     */
+    let _statTipApi = null;
 
     // ── Where the card comes from: a track name that differs from its
     // recording's ─────────────────────────────────────────────────────────
@@ -16332,12 +16343,18 @@
     // content is a small box stacked above the card. In the pinned window it
     // is a badge beside the title, so the window always says which track it
     // was opened from, even though it shows the recording's own name.
+    //
+    // Since org/TODO.org "stacking multiple rich tooltips" (WIP.1) that box is
+    // one of a STACK (`#mb-dp-notes`): every title on the link (MusicBrainz's
+    // sort name on an artist link, another script's note) and the cell's own
+    // tip (a finding, "no work") get a box there too, and are parked the same
+    // way, so neither the browser nor `#mb-stat-tooltip` draws over the card.
 
     /** The note's shape: INLINE STUFF's own wording, two lines. */
     const _DP_ORIGIN_TITLE_RE = /^track name: ([\s\S]*?)\n≠rec\. name: ([\s\S]*)$/;
 
     /**
-     * An element's native title, or the one `_dpStashOriginTitle()` parked
+     * An element's native title, or the one `_dpStashTitles()` parked
      * while the card showed. A re-render that clones a row during the card
      * copies the parked attribute, never the bare title.
      *
@@ -16365,28 +16382,70 @@
     }
 
     /**
-     * Parks a link's note title while its card shows, so the browser does not
-     * draw its own box over the card; `_dpRestoreOriginTitles()` gives it
-     * back. Any other title stays: only the note has a box of its own.
+     * The elements whose titles the card's stack shows (`_dpCollectNotes()`):
+     * the card's own element, then each titled ancestor up to its table
+     * cell, the cell included — nearest first. "Titled" counts a title
+     * parked by `_dpStashTitles()` or stashed by `#mb-stat-tooltip`
+     * (`data-mb-tip-saved`), so the list is the same before and after.
      *
-     * @param {?Element} el
-     * @returns {void}
+     * @param {?Element} el - The card's element (`_dpPeek.link`).
+     * @returns {Element[]}
      */
-    function _dpStashOriginTitle(el) {
-        if (!el || !el.hasAttribute || !el.hasAttribute('title') || !_dpOriginNote(el)) return;
-        el.setAttribute('data-mb-dp-saved-title', el.getAttribute('title'));
-        el.removeAttribute('title');
-        _dpPeek.stashed = true;
+    function _dpTitledChain(el) {
+        const out = [];
+        if (!el || !el.getAttribute) return out;
+        const cell = el.closest('td, th');
+        for (let n = el; n && n.nodeType === 1; n = n.parentElement) {
+            if (_dpTitleText(n)) out.push(n);
+            if (n === cell || n === document.body) break;
+        }
+        return out;
     }
 
     /**
-     * Gives every parked note title back, on the link and on any clone a
-     * re-render made of its row meanwhile. Only after a stash, so a hide costs
-     * nothing on a page without notes.
+     * An element's tooltip text wherever it is right now: its `title`, the
+     * title `_dpStashTitles()` parked, or the one `#mb-stat-tooltip` stashed
+     * while its own card is up.
+     *
+     * @param {Element} el
+     * @returns {string}
+     */
+    function _dpTitleText(el) {
+        return el.getAttribute('title') || el.getAttribute('data-mb-dp-saved-title') ||
+            el.getAttribute('data-mb-tip-saved') || '';
+    }
+
+    /**
+     * Parks every title the card's stack shows (`_dpTitledChain()`: the
+     * link's own, and the cell's tip above it) while the card is due or
+     * shows, so the browser draws no box of its own over the card;
+     * `_dpRestoreTitles()` gives them back. Into an attribute, so a clone a
+     * re-render makes meanwhile keeps it. A title `#mb-stat-tooltip` has
+     * already stashed (an empty `title`) is left to that engine.
+     *
+     * Until WIP.1 only the track/recording note was parked: the other titles
+     * had no box of their own. Now each has one in the stack.
+     *
+     * @param {?Element} el - The card's element.
+     * @returns {void}
+     */
+    function _dpStashTitles(el) {
+        _dpTitledChain(el).forEach((n) => {
+            if (!n.getAttribute('title')) return;
+            n.setAttribute('data-mb-dp-saved-title', n.getAttribute('title'));
+            n.removeAttribute('title');
+            _dpPeek.stashed = true;
+        });
+    }
+
+    /**
+     * Gives every parked title back, on the link, its cell and on any clone
+     * a re-render made of its row meanwhile. Only after a stash, so a hide
+     * costs nothing when nothing was parked.
      *
      * @returns {void}
      */
-    function _dpRestoreOriginTitles() {
+    function _dpRestoreTitles() {
         if (!_dpPeek.stashed) return;
         _dpPeek.stashed = false;
         document.querySelectorAll('[data-mb-dp-saved-title]').forEach((el) => {
@@ -16407,6 +16466,42 @@
         return '<dl class="mb-dp-origin-kv">' +
             `<dt>Track name</dt><dd class="mb-dp-origin-track">${_mbttEscape(n.track)}</dd>` +
             `<dt>≠ Recording</dt><dd>${_mbttEscape(n.rec)}</dd></dl>`;
+    }
+
+    /**
+     * The boxes stacked above the card for a target, top to bottom (decided
+     * 2026-10-16): the tips of the cell and of the elements between it and
+     * the link (outermost first), then the link's own title. Each is what
+     * would otherwise be a second box over the card:
+     *   - `origin`: jesus2099's track/recording note (`_dpOriginNote()`),
+     *     as before, in `#mb-dp-origin`;
+     *   - `tip`: a tip of this script's own (`data-mb-tip`: a finding, "no
+     *     work"), as the "Liner notes" card `#mb-stat-tooltip` would show it;
+     *   - `title`: any other title, as plain text — MusicBrainz's sort name on
+     *     an artist or label link, labelled "Sort name". A title that only
+     *     repeats the link's text (MusicBrainz's on a recording with a
+     *     disambiguation) adds nothing and gets no box.
+     *
+     * @param {object} t - A target (`_popResolve()`).
+     * @returns {Array<{kind: string, html: string}>}
+     */
+    function _dpCollectNotes(t) {
+        const squash = s => String(s).replace(/\s+/g, ' ').trim().toLowerCase();
+        const own = t.el;
+        const sortName = t.src && t.src.id === 'mb-entity' && (t.type === 'artist' || t.type === 'label');
+        return _dpTitledChain(own).reverse().map((n) => {
+            const text = _dpTitleText(n).trim();
+            if (n === own) {
+                const note = _dpOriginNote(n);
+                if (note) return { kind: 'origin', html: _dpOriginHtml(note) };
+            }
+            if (n.hasAttribute('data-mb-tip')) return { kind: 'tip', html: _tipTextToHtml(text) };
+            if (n === own && squash(text) === squash(n.textContent)) return null;
+            if (n === own && sortName) {
+                return { kind: 'title', html: `<dl class="mb-dp-origin-kv"><dt>Sort name</dt><dd>${_mbttEscape(text)}</dd></dl>` };
+            }
+            return { kind: 'title', html: `<div class="mb-tt-body">${text.split('\n').map(_mbttEscape).join('<br>')}</div>` };
+        }).filter(Boolean);
     }
 
     /**
@@ -17578,21 +17673,85 @@
     }
 
     /**
-     * Creates the box stacked above the card (`_dpOriginNote()`) once: a
-     * `.mb-tt-liner` card of its own, hidden until a link carries a note.
+     * Creates the stack above the card (`_dpCollectNotes()`) once: a column
+     * of `.mb-tt-liner` boxes, hidden until a target has a note.
      *
      * @returns {HTMLElement}
      */
-    function _dpEnsureOriginEl() {
-        if (_dpPeek.origin && _dpPeek.origin.isConnected) return _dpPeek.origin;
+    function _dpEnsureNotesEl() {
+        if (_dpPeek.notes && _dpPeek.notes.isConnected) return _dpPeek.notes;
         const el = document.createElement('div');
-        el.id = 'mb-dp-origin';
-        el.className = 'mb-tt-liner';
-        el.setAttribute('role', 'tooltip');
+        el.id = 'mb-dp-notes';
         el.style.display = 'none';
         document.body.appendChild(el);
-        _dpPeek.origin = el;
+        _dpPeek.notes = el;
         return el;
+    }
+
+    /**
+     * Fills the stack above the card with a target's notes, one box each;
+     * the track/recording note's box is `#mb-dp-origin`. Hidden when there
+     * are none.
+     *
+     * @param {object} t - A target (`_popResolve()`).
+     * @returns {void}
+     */
+    function _dpFillNotes(t) {
+        const notes = _dpCollectNotes(t);
+        const box = _dpEnsureNotesEl();
+        box.style.display = notes.length ? 'flex' : 'none';
+        box.innerHTML = notes.map(n =>
+            `<div class="mb-tt-liner mb-dp-note mb-dp-note-${n.kind}" role="tooltip"${n.kind === 'origin' ? ' id="mb-dp-origin"' : ''}>${n.html}</div>`
+        ).join('');
+    }
+
+    /**
+     * MusicBrainz's own entity glyphs, by `_MB_KINDS` key: the svg stem
+     * under `/static/images/entity/`. Probe 2026-10-16 (vzell-lap, curl):
+     * artist, release, release_group, recording, work, label, area, place,
+     * event, series, instrument, genre, collection and editor answer 200
+     * `image/svg+xml`; url, isrc, iswc, cdtoc and the hyphenated
+     * `release-group` answer 404, so those kinds have none (genre has no
+     * kind here; `user` is the editor).
+     * @type {Object<string, string>}
+     */
+    const _MB_KIND_ICON = {
+        artist: 'artist', release: 'release', 'release-group': 'release_group', recording: 'recording',
+        work: 'work', label: 'label', area: 'area', place: 'place', event: 'event', series: 'series',
+        instrument: 'instrument', collection: 'collection', user: 'editor',
+    };
+
+    /**
+     * The URL of a MusicBrainz kind's own glyph (`_MB_KIND_ICON`), on this
+     * origin; '' for a kind without one or a target of another source.
+     *
+     * @param {?object} t - A target (`_popResolve()`).
+     * @returns {string}
+     */
+    function _mbKindIconUrl(t) {
+        if (!t || !t.src || t.src.id !== 'mb-entity') return '';
+        const stem = Object.prototype.hasOwnProperty.call(_MB_KIND_ICON, t.type) ? _MB_KIND_ICON[t.type] : '';
+        return stem ? `${window.location.origin}/static/images/entity/${stem}.svg` : '';
+    }
+
+    /**
+     * Puts the target's entity glyph in front of the card's title (the
+     * entity's name, or the link's text while loading). A DOM step after
+     * every paint, so every kind's own card HTML gets it.
+     *
+     * @param {HTMLElement} el - `#mb-dp-peek`.
+     * @param {object} t - Its target.
+     * @returns {void}
+     */
+    function _dpAddKindIcon(el, t) {
+        const src = _mbKindIconUrl(t);
+        const title = src ? el.querySelector('.mb-tt-title') : null;
+        if (!title || title.querySelector(':scope > img.mb-pop-kind-icon')) return;
+        const img = document.createElement('img');
+        img.className = 'mb-pop-kind-icon';
+        img.alt = '';
+        img.src = src;
+        title.prepend(img);
     }
 
     /**
@@ -17612,9 +17771,9 @@
         el.style.top = '0px';
         const w = el.offsetWidth;
         const h = el.offsetHeight;
-        // The box stacked above the card (`_dpOriginNote()`): the two move
-        // as one, the box 4 px above the card and as wide at most.
-        const o = _dpPeek.origin && _dpPeek.origin.style.display === 'block' ? _dpPeek.origin : null;
+        // The stack above the card (`_dpCollectNotes()`): the two move as
+        // one, the stack 4 px above the card and as wide at most.
+        const o = _dpPeek.notes && _dpPeek.notes.style.display === 'flex' ? _dpPeek.notes : null;
         if (o) o.style.maxWidth = w + 'px';
         const oh = o ? o.offsetHeight + 4 : 0;
         const vw = window.innerWidth;
@@ -17659,8 +17818,11 @@
         _dpPeek.link = null;
         _dpPeek.target = null;
         if (_dpPeek.el) _dpPeek.el.style.display = 'none';
-        if (_dpPeek.origin) _dpPeek.origin.style.display = 'none';
-        _dpRestoreOriginTitles();
+        if (_dpPeek.notes) _dpPeek.notes.style.display = 'none';
+        _dpRestoreTitles();
+        // The cell's own tip, which the stack showed, is its card again
+        // while the pointer stays on the cell.
+        if (_statTipApi) _statTipApi.resume();
     }
 
     /**
@@ -17675,9 +17837,9 @@
         _dpHidePeek();
         _dpPeek.link = t.el;
         _dpPeek.target = t;
-        // A card is due: the browser's own box for a note would come up over
-        // it (its delay is about the card's), so the note's title goes now.
-        _dpStashOriginTitle(t.el);
+        // A card is due: the browser's own box for a title would come up
+        // over it (its delay is about the card's), so the titles go now.
+        _dpStashTitles(t.el);
         const d = Lib.settings.sa_rich_tooltip_delay_ms;
         _dpPeek.timer = setTimeout(() => _dpShowPeek(t), (typeof d === 'number' && d >= 0) ? d : 400);
     }
@@ -17697,20 +17859,20 @@
         const repaint = () => {
             if (!_dpPeekShowing(t.el)) return;
             el.innerHTML = t.src.card(t, false, repaint);
+            _dpAddKindIcon(el, t);
             _dpPlacePeek(t.el);
         };
-        // The link's track/recording name note, as a box above the card
-        // (Ctrl shows a card without the schedule, so the title is parked
-        // here too).
-        _dpStashOriginTitle(t.el);
-        const note = _dpOriginNote(t.el);
-        const o = _dpEnsureOriginEl();
-        o.style.display = note ? 'block' : 'none';
-        o.innerHTML = note ? _dpOriginHtml(note) : '';
+        // The notes of the link and its cell, as boxes above the card (Ctrl
+        // shows a card without the schedule, so the titles are parked here
+        // too). The cell's tip card gives way: its text is in the stack.
+        _dpStashTitles(t.el);
+        if (_statTipApi) _statTipApi.yieldTo(t.el);
+        _dpFillNotes(t);
         // Shown before the source is asked, so a request it starts finds
         // its card showing when its rate slot comes up.
         el.style.display = 'block';
         el.innerHTML = t.src.card(t, true, repaint);
+        _dpAddKindIcon(el, t);
         _dpPlacePeek(t.el);
     }
 
@@ -18081,7 +18243,21 @@
         // ("Release group › Release"), its last three steps.
         const title = _dpDialog.api ? _dpDialog.api.dialog.querySelector(':scope > div > span') : null;
         const kinds = _dpDialog.stack.concat([t]).map(x => x.kind || x.src.kind);
-        if (title) title.textContent = (kinds.length > 3 ? ['…', ...kinds.slice(-3)] : kinds).join(' › ');
+        if (title) {
+            // MusicBrainz's glyph of the kind shown now, in front of the
+            // path: inside the span, so the bar's space-between leaves no
+            // gap, and the span's text stays the kinds alone.
+            const icon = _mbKindIconUrl(t);
+            const parts = [(kinds.length > 3 ? ['…', ...kinds.slice(-3)] : kinds).join(' › ')];
+            if (icon) {
+                const img = document.createElement('img');
+                img.className = 'mb-dp-kind-icon';
+                img.alt = '';
+                img.src = icon;
+                parts.unshift(img);
+            }
+            title.replaceChildren(...parts);
+        }
         if (_dpDialog.controls && _dpDialog.controls.back) _dpDialog.controls.back.style.display = _dpDialog.stack.length ? '' : 'none';
         // Where the window was opened from: the page target's note (kept
         // along a drill-down path, which starts from it, as ← → do).
@@ -18406,28 +18582,55 @@
                 max-width: 420px;
                 pointer-events: none;
             }
-            /* The track/recording name note stacked above the card
-               (_dpOriginNote()): the maroon INLINE STUFF gives such a track. */
-            #mb-dp-origin {
+            /* The stack of notes above the card (_dpCollectNotes()): the
+               cell's own tip, then the link's titles; one box each, with a
+               left rule per kind. The track/recording note (#mb-dp-origin)
+               keeps the maroon INLINE STUFF gives such a track. */
+            #mb-dp-notes {
                 position: fixed;
+                /* A fixed box is a stacking context of its own, so it needs
+                   the boxes' layer itself (.mb-tt-liner's). */
+                z-index: 2147483500;
                 pointer-events: none;
-                border-left: 3px solid #8b1a1a;
-                padding: 5px 10px;
+                flex-direction: column;
+                gap: 4px;
             }
-            #mb-dp-origin .mb-dp-origin-kv {
+            #mb-dp-notes .mb-dp-note {
+                position: static;
+                padding: 5px 10px;
+                border-left: 3px solid #8a7f6a;
+            }
+            #mb-dp-notes .mb-dp-note-tip { border-left-color: #c48a00; }
+            #mb-dp-origin { border-left-color: #8b1a1a; }
+            #mb-dp-notes .mb-dp-origin-kv {
                 display: grid;
                 grid-template-columns: max-content minmax(0, 1fr);
                 gap: 1px 10px;
                 margin: 0;
             }
-            #mb-dp-origin .mb-dp-origin-kv dt {
+            #mb-dp-notes .mb-dp-origin-kv dt {
                 font: 600 10.5px/1.6 ui-monospace, Consolas, monospace;
                 letter-spacing: 0.06em;
                 text-transform: uppercase;
-                color: #8b1a1a;
+                color: #6b5f48;
             }
-            #mb-dp-origin .mb-dp-origin-kv dd { margin: 0; overflow-wrap: anywhere; }
+            #mb-dp-origin .mb-dp-origin-kv dt { color: #8b1a1a; }
+            #mb-dp-notes .mb-dp-origin-kv dd { margin: 0; overflow-wrap: anywhere; }
             #mb-dp-origin .mb-dp-origin-track { font-weight: 700; }
+            /* MusicBrainz's own entity glyph before the card's title and the
+               window's kind (_MB_KIND_ICON). */
+            #mb-dp-peek .mb-pop-kind-icon {
+                width: 16px;
+                height: 16px;
+                margin-right: 5px;
+                vertical-align: -2px;
+            }
+            .mb-dp-dialog .mb-dp-kind-icon {
+                width: 18px;
+                height: 18px;
+                margin-right: 6px;
+                vertical-align: -3px;
+            }
             /* The window's badge: where it was opened from, after the title. */
             .mb-dp-dialog .mb-dp-origin {
                 flex: 0 1 auto;
@@ -38235,7 +38438,7 @@
      * its class names are versioned.
      *
      * While a recording card shows, the popup engine parks that title in
-     * `data-mb-dp-saved-title` (`_dpStashOriginTitle()`), so both are read
+     * `data-mb-dp-saved-title` (`_dpStashTitles()`), so both are read
      * (`_dpOriginTitle()`): a count taken then, or a row cloned then, still
      * sees the flag.
      *
@@ -40500,7 +40703,11 @@
             delete td.dataset.mbFindings;
             delete td.dataset.mbFinding;
             delete td.dataset.mbFindingInline;
-            if (td.dataset.mbFindingTip) { td.removeAttribute('title'); delete td.dataset.mbFindingTip; }
+            if (td.dataset.mbFindingTip) {
+                td.removeAttribute('title');
+                td.removeAttribute('data-mb-dp-saved-title'); // parked by a preview card
+                delete td.dataset.mbFindingTip;
+            }
             return;
         }
         td.dataset.mbFindings = ids.join(' ');
@@ -40516,7 +40723,9 @@
         else delete td.dataset.mbFindingInline;
         // A family-painted cell owns its tooltip too (its flag writes one,
         // or deliberately none — a disk record whose tooltip was not a string).
-        if (!familyPainted && (!td.hasAttribute('title') || td.dataset.mbFindingTip)) {
+        // A title a preview card parked (`_dpStashTitles()`) is still the
+        // cell's title.
+        if (!familyPainted && (!(td.hasAttribute('title') || td.hasAttribute('data-mb-dp-saved-title')) || td.dataset.mbFindingTip)) {
             _setTip(td, ids.map(id => {
                 const f = _FINDING_BY_ID.get(id);
                 return `${f.level === 'error' ? '❌' : '⚠️'} ${f.label}${details[id] ? `: ${details[id]}` : ''}`;
@@ -68903,7 +69112,9 @@ a { color: #1565c0; }`;
      * there exposed it to the browser: a control that re-tips itself on a
      * timer (the ⚠⟳ retry counts) drew a native box over its own card once
      * the pointer had rested for a second, because only a mousemove
-     * re-stashes (org/live-bootleg.org 1).
+     * re-stashes (org/live-bootleg.org 1). The same holds while the link
+     * preview card has the title parked (`data-mb-dp-saved-title`, the card's
+     * note stack, `_dpStashTitles()`): the text goes there.
      *
      * @param {Element} el    - The element the tooltip belongs to.
      * @param {string}  text  - Plain tooltip text; `\n` starts a new line.
@@ -68912,6 +69123,12 @@ a { color: #1565c0; }`;
      */
     function _setTip(el, text) {
         el.setAttribute('data-mb-tip', '');
+        // Parked by the link preview card (`_dpStashTitles()`): the new text
+        // waits there too, or the browser would draw it under the card.
+        if (!el.hasAttribute('title') && el.hasAttribute('data-mb-dp-saved-title')) {
+            el.setAttribute('data-mb-dp-saved-title', text);
+            return text;
+        }
         if (el.dataset.mbTipSaved === undefined || el.title) {
             el.title = text;
             return text;
@@ -69053,6 +69270,11 @@ a { color: #1565c0; }`;
                 const o = document.getElementById(id);
                 return o && o.style.display !== 'none' && o.style.display !== '';
             })) return;
+            // A link preview card is DUE for a link inside this element (its
+            // timer runs as long as this one): the card's stack shows this
+            // tip, so this card would be a second box under it, whichever
+            // timer fires first.
+            if (_dpPeek.link && _target && _target.contains(_dpPeek.link)) return;
             _tip.innerHTML = _tipTextToHtml(text);
             _tip.style.display = 'block';
             if (_lastMove) _positionTip(_lastMove);
@@ -69098,6 +69320,33 @@ a { color: #1565c0; }`;
                     delete el.dataset.mbTipAria;
                 }
             }
+        };
+
+        _statTipApi = {
+            /**
+             * Hides an own card whose element holds the link preview card's
+             * element: the preview's stack shows its text now. The title
+             * stays stashed and the hover is not dismissed, so `resume()`
+             * can bring the card back.
+             * @param {Element} link
+             */
+            yieldTo(link) {
+                if (!_target || !_own || !link || !_target.contains(link)) return;
+                clearTimeout(_showTimer);
+                _tip.style.display = 'none';
+            },
+            /**
+             * After the preview card is gone: the own card again, after the
+             * usual delay, if the pointer is still on its element.
+             */
+            resume() {
+                if (!_target || !_own || _dismissed || !_target.isConnected || !_target.matches(':hover')) return;
+                const text = _target.dataset.mbTipSaved;
+                if (!text) return;
+                clearTimeout(_showTimer);
+                const _d = Lib.settings.sa_rich_tooltip_delay_ms;
+                _showTimer = setTimeout(() => _showOwn(text), (typeof _d === 'number' && _d >= 0) ? _d : 400);
+            },
         };
 
         document.addEventListener('mouseover', (e) => {
@@ -127240,7 +127489,7 @@ a { color: #1565c0; }`;
             /**
              * The Title cell's "track name ≠ recording name" flag
              * (`_titleHasRecNameMismatch()`), which must still hold while the
-             * popup engine has the title parked (`_dpStashOriginTitle()`).
+             * popup engine has the title parked (`_dpStashTitles()`).
              *
              * @param {Element} cell
              * @returns {boolean}

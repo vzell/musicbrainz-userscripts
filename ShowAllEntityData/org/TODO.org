@@ -2424,7 +2424,7 @@ after the merge go on with our current plan
 Actually not yet, first merge the branch "fix/sticky-gutter-and-sorted-thead" into our "feature/sidebar-overhaul" to
 check if something breaks now as it's also sidebar related
 
-* TODO "Old" and "New" column have an artifical spacing between them
+* DONE "Old" and "New" column have an artifical spacing between them
 
 On e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/annotations
 
@@ -2433,13 +2433,17 @@ On e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/anno
 "Old" and "New" column have an artifical spacing between them
 
 #+begin_example
-@debug/annotation-history.html  - FRP - [Image #]
+annotations-old-new.initial.html - IP
+annotations-old-new.FINAL - FRP - [Image #15]
 #+end_example
 
 2.)
 
 make the "Editor" column the sticky column
 
+3.)
+
+Only run the impl specific tests, we are on vzell-lap, so no full test suite
 
 * DONE bug with sidebar
 
@@ -2518,7 +2522,6 @@ Add support for either case in our userscript:
 Tested live, looks good, commit and push (inclusive the .org files)); stop the suite for now, it takes too long on
 "vzell-lap", /merge-push-remove now, will implement a couple more things and test with the whole suite later (possibly
 on a faster machine like "petri")
-
 
 * DONE rerun the full test-suite on "NB-3641" after the latest implementations on "vzell-lap" and rerun just recently on "petri"
 * DONE statusline.sh
@@ -2667,3 +2670,66 @@ if [ -f "$PF_FILE" ]; then
 fi
 exit 0
 #+end_example
+
+* TODO Add a must have third-party userscripts section together with the end-user visible changes and what our userscript depends on
+
+Add a must have third-party userscripts section together with the end-user visible changes and what our userscript
+depends on
+
+1.)
+
+Analyse first
+
+2.)
+
+Suggestions for complete integration
+
+3.)
+
+etc
+
+* stacking multiple rich tooltips
+
+Goal: stacking multiple rich tooltips when existing on the same target, so they do not render above each other and the last one renders wins
+
+Currently only when the track title name differs from the recording name on PT 'track-releases', see [Image #20], the
+corresponding tooltip which shows the different namings is displayed above the detail content popup which can be further
+"Space" opened. The "track name differs from the recording name (warning message)" is still hidden by the detail popup
+
+1.)
+
+This feature should be extended to ALL popup tooltips, e.g when a recording is not linked to an associated work, when it
+has pending edits, when the track name differs from the recording name (warning message), etc - see the following examples
+
+#+begin_example
+[Image #17]
+[Image #18]
+[Image #19]
+#+end_example
+
+2.)
+
+the should be displayed algined above each other and NOT overwriting each other
+
+3.)
+
+On e.g. https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f there is another visual glitch regarding
+the native recording name tooltip popup on recording links in the "Title" column. They show up sometimes also we already
+have now the rich HTML based popup
+
+#+begin_example
+[Image #21] - "Born to Run" native popup when hovering over row 4 with a disambiguation comment
+[Image #22] - NO native popup present when hovering over a row with NO  disambiguation comment - row 1
+[Image #23] - the artist name native popup even sits over the artist detail popup in the "Artist" column 
+#+end_example
+
+4.)
+
+a.)
+
+The native MB entity glyph should be rendered in the initial entity link detail popup right in of the entity name
+
+b.)
+
+and when the detail popup is "Space" expanded also right in front of the entity name, [Image #24] here the name
+"Recording" at the very beginning

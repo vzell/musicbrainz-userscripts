@@ -147,8 +147,8 @@
         "why": "The browser then draws INLINE STUFF's own box over the recording card, the double box the note replaces.",
         "edits": [
             {
-                "find": "        if (!el || !el.hasAttribute || !el.hasAttribute('title') || !_dpOriginNote(el)) return;\n        el.setAttribute('data-mb-dp-saved-title', el.getAttribute('title'));",
-                "replace": "        if (el) return;\n        el.setAttribute('data-mb-dp-saved-title', el.getAttribute('title'));"
+                "find": "            if (!n.getAttribute('title')) return;\n            n.setAttribute('data-mb-dp-saved-title', n.getAttribute('title'));",
+                "replace": "            return;\n            n.setAttribute('data-mb-dp-saved-title', n.getAttribute('title'));"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -186,8 +186,8 @@
         "why": "An orphan box would float over the table after Esc, a scroll or a click.",
         "edits": [
             {
-                "find": "        if (_dpPeek.origin) _dpPeek.origin.style.display = 'none';\n        _dpRestoreOriginTitles();",
-                "replace": "        _dpRestoreOriginTitles();"
+                "find": "        if (_dpPeek.notes) _dpPeek.notes.style.display = 'none';\n        _dpRestoreTitles();",
+                "replace": "        _dpRestoreTitles();"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
@@ -221,16 +221,107 @@
         "expect": "fail"
     },
     {
-        "name": "every title is parked, not just the note",
-        "why": "A link's other titles (MusicBrainz's sort names, other scripts') have no box of their own: parking them would hide them for good while the card shows.",
+        "name": "only the track/recording note is parked again",
+        "why": "Before WIP.1 the other titles stayed (no box of their own); now they have one, and left in place the browser draws an artist's sort name over the card (org/TODO.org \"stacking multiple rich tooltips\" 3).",
         "edits": [
             {
-                "find": "        if (!el || !el.hasAttribute || !el.hasAttribute('title') || !_dpOriginNote(el)) return;",
-                "replace": "        if (!el || !el.hasAttribute || !el.hasAttribute('title')) return;"
+                "find": "            if (!n.getAttribute('title')) return;\n            n.setAttribute('data-mb-dp-saved-title', n.getAttribute('title'));",
+                "replace": "            if (!n.getAttribute('title') || !_dpOriginNote(n)) return;\n            n.setAttribute('data-mb-dp-saved-title', n.getAttribute('title'));"
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
-        "grep": "control: a recording link without a note",
+        "grep": "sort name: parked",
+        "expect": "fail"
+    },
+    {
+        "name": "the stack reads the card's own element only, not its cell",
+        "why": "The cell's tip (a finding, no work) is then neither in the stack nor a card of its own: the preview hid the card and showed nothing instead.",
+        "edits": [
+            {
+                "find": "            if (_dpTitleText(n)) out.push(n);",
+                "replace": "            if (_dpTitleText(n) && n === el) out.push(n);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the cell's tip, shown first",
+        "expect": "fail"
+    },
+    {
+        "name": "the cell's card does not give way to the preview card",
+        "why": "The bug of org/TODO.org images 17-20: two boxes on the same target, one over the other.",
+        "edits": [
+            {
+                "find": "        if (_statTipApi) _statTipApi.yieldTo(t.el);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the cell's tip, shown first",
+        "expect": "fail"
+    },
+    {
+        "name": "the cell's card ignores a DUE preview card",
+        "why": "Two timers of the same length: when the cell's fires first its card shows for the moment until the preview's yieldTo() hides it. yieldTo() covers the end state, so no spec sees the moment in between; recorded so that this is not mistaken for an untested guard.",
+        "edits": [
+            {
+                "find": "            if (_dpPeek.link && _target && _target.contains(_dpPeek.link)) return;",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the cell's tip, card first",
+        "expect": "pass"
+    },
+    {
+        "name": "the cell's card never comes back after the preview card",
+        "why": "The cell's tip would be gone for the rest of the hover once Esc closed the preview card.",
+        "edits": [
+            {
+                "find": "        if (_statTipApi) _statTipApi.resume();",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the cell's tip, shown first",
+        "expect": "fail"
+    },
+    {
+        "name": "a title that only repeats the link's name gets a box",
+        "why": "MusicBrainz titles a recording with a disambiguation by its bare name: a box saying the card's own title again.",
+        "edits": [
+            {
+                "find": "            if (n === own && squash(text) === squash(n.textContent)) return null;",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "only repeats its name",
+        "expect": "fail"
+    },
+    {
+        "name": "the card has no entity glyph",
+        "why": "org/TODO.org \"stacking multiple rich tooltips\" 4a.",
+        "edits": [
+            {
+                "find": "        if (!title || title.querySelector(':scope > img.mb-pop-kind-icon')) return;",
+                "replace": "        return;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the entity glyph",
+        "expect": "fail"
+    },
+    {
+        "name": "the window's title bar has no entity glyph",
+        "why": "org/TODO.org \"stacking multiple rich tooltips\" 4b.",
+        "edits": [
+            {
+                "find": "                parts.unshift(img);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the entity glyph",
         "expect": "fail"
     }
 ]

@@ -23297,3 +23297,64 @@ Env: 2026-10-16T02:38:00+02:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.
   4/4 fail as intended. The pixel check alone also caught the reverted mask,
   shown with the property assertion removed. Targeted run: 9 spec files,
   100/100 passed (5.2 min).
+
+## 2026-10-16 — link previews: notes stacked above the card, every title parked, entity glyphs (branch feature/stacked-tooltips, WIP.1)
+
+Env: 2026-10-16T12:47:22+02:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless) · no Tampermonkey (GM stubs). The report (org/TODO.org "stacking multiple rich tooltips", images 17-24) came from the user's real browser (browser/Tampermonkey versions not stated: unknown).
+
+- **Symptom 1 (images 17-20).** On release pages the Title cell's own tip
+  ("This recording is not linked to any work", "⚠️ Pending edits", "⚠️ Track
+  name differs from recording name") showed as a `#mb-stat-tooltip` card
+  beside or under the recording's GPE card (`#mb-dp-peek`).
+- **Root cause 1: two equal timers.** The tip is `_setTip()` text on the
+  `<td>` (`_writeFindingAttrs()`, `_applyNoWorkFlag()`). Hovering the link
+  inside it, `_initStatTooltip()`'s mouseover reaches the `<td>` (the link
+  has no title) and schedules its card with `sa_rich_tooltip_delay_ms`. The
+  popup engine schedules the preview with the same delay. `_showOwn()` gives
+  way only to a VISIBLE `_OTHER_RICH_TIPS` element, so whichever timer fired
+  first won, and the other box then appeared too. Only jesus2099's "≠" title
+  had a box in the stack (`#mb-dp-origin`, 2026-10-09).
+- **Symptom 2 (images 21-23): native boxes over the card.** MusicBrainz titles
+  a recording link that has a disambiguation with its bare name
+  (`debug/expand.html`: `title="Tougher Than the Rest"`; the user's "Born to
+  Run" row 4) and an artist link with its sort name ("Springsteen, Bruce").
+  The 2026-10-09 rule "Only the note is parked" left those titles in place on
+  purpose ("no box of their own"), so the browser drew them over the card.
+- **Fix.** The box above the card is now a stack, `#mb-dp-notes`
+  (`_dpCollectNotes()`, `_dpFillNotes()`): the cell's tips (outermost first,
+  `_tipTextToHtml()` for `data-mb-tip`), then the link's title (the "≠" note
+  as `#mb-dp-origin`; an artist's/label's sort name as "Sort name"; a title
+  that only repeats the link's text gets no box). `_dpStashTitles()` parks
+  EVERY title of that chain (`_dpTitledChain()`: the link up to its cell),
+  which supersedes "Only the note": each title has a box now.
+  `_statTipApi.yieldTo()` hides the cell's card when the preview shows, and
+  `resume()` brings it back once the preview closes with the pointer still on
+  the cell. `_setTip()` and `_writeFindingAttrs()` respect a parked title.
+- **Traps.**
+  - **A fixed container is a stacking context.** The boxes'
+    `.mb-tt-liner` z-index means nothing inside `#mb-dp-notes` unless the
+    container carries the same z-index itself.
+  - **The window's title bar is `space-between`.** A glyph `<img>` placed as
+    a sibling before the title span would get its own share of the free
+    space (a gap) whenever the badge is hidden. So it goes INSIDE the span,
+    and `_dpShowInDialog()` writes the span with `replaceChildren()`, no
+    longer `textContent`. The span's text stays "Recording", which the specs
+    read.
+  - **The `_showOwn()` "card due" guard has no observable end state.** Both
+    timers fire in the same tick, and `yieldTo()` hides the card before any
+    paint, so the mutation is recorded `"expect": "pass"` with the reason.
+- **Probe (glyph URLs, curl, vzell-lap, same session):**
+  `/static/images/entity/<stem>.svg` answers 200 for artist, release,
+  release_group, recording, work, label, area, place, event, series,
+  instrument, genre, collection and editor, and 404 for url, isrc, iswc,
+  cdtoc and `release-group`. Recorded at `_MB_KIND_ICON`.
+- **Tests.** `popup-mb.spec.js` "the note stack and the entity glyphs
+  (WIP.1)" (5 tests) plus the reworked control "…only repeats its name…"
+  (it used to pin that a non-note title stays in place, now the opposite).
+  `scripts/mutations/gpe-art-viewer.json`: 25/25 as expected (8 new entries,
+  1 retired, 2 `find`s updated for the renames). The old "every title is
+  parked" entry is gone: that is now the intended behaviour. `test:full` on
+  vzell-lap (started 12:46:52 CEST, `ea5a986`) was stopped at the user's
+  request after about 225 of 1794 tests, all passed. The full run is left
+  to `petri`. The user checked the change in a real browser and found it
+  OK before the merge.
