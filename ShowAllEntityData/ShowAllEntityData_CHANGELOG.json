@@ -1,5 +1,18 @@
 [
   {
+    "version": "9.99.1359",
+    "date": "2026-10-16",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Link previews: every note about the hovered link and its cell (pending edits, track name differs from recording name, no work linked, the artist's or label's sort name, …) is now stacked above the preview card, one box each, instead of covering the card or being covered by it. Neither the browser's own tooltip nor the cell's \"Liner notes\" card appears over the card any more; the cell's card comes back once the preview closes.",
+          "Link previews: the card and the Space window show MusicBrainz's own entity glyph in front of the name and in front of the kind (\"Recording\")."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1358",
     "date": "2026-10-16",
     "sections": [

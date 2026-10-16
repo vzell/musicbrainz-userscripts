@@ -2688,7 +2688,7 @@ Suggestions for complete integration
 
 etc
 
-* stacking multiple rich tooltips
+* DONE stacking multiple rich tooltips (9.99.1359)
 
 Goal: stacking multiple rich tooltips when existing on the same target, so they do not render above each other and the last one renders wins
 
