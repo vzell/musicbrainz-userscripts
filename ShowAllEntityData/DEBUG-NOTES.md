@@ -23254,3 +23254,46 @@ Env: 2026-10-16T01:43:01+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
   before `setOffline(true)` when the request should reach the browser's own
   offline path. The check does the latter for its "really offline" step and
   covers `route.abort('internetdisconnected')` separately.
+
+## 2026-10-16 — annotations: white strip over "Old"; Editor moved to the first column (branch fix/annotations-editor-first)
+
+Env: 2026-10-16T02:38:00+02:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless) · no Tampermonkey (GM stubs). The report itself came from the user's real browser (browser/Tampermonkey versions not stated: unknown).
+
+- **Symptom** (`/artist/70248960-…/annotations`, `debug/annotations-old-new.initial.html`
+  = IP, `debug/annotations-old-new.final.html` = FRP, plus a screenshot): a
+  ~16 px white strip between "Old" and "New", in the header, filter row and
+  every body row. Old's 📊 button and its filter's clear button were cut off.
+- **Root cause.** The FRP table carries `data-mb-sph-col-left="15.99"
+  data-mb-sph-col-pre="2"`: the sticky column (Editor) is third, so with
+  sticky page headers on, Old and New both dock under it
+  (`_sphMeasureStickyCols()`'s `pre`). `_sphEnsureColRules()` gave EVERY
+  `:nth-child(-n+pre)` cell the gutter mask, a page-coloured `box-shadow` L px
+  to its left. For the first cell that is the gutter. For New it is the last
+  L px of Old, painted over it at scrollX 0 (both z-index 0, New later in the
+  DOM). The JSDoc's "harmless at scrollX 0" held only for `pre === 1`, the one
+  case built against ("#" before "Title"). Generic: any table with two or more
+  columns before its sticky one.
+- **Fix.** Only the leftmost VISIBLE pre cell masks: `_sphMeasureStickyCols()`
+  returns `first` (its 1-based position; columns hidden through 👁️ are
+  `display: none` on every cell, so positions stay aligned), stamped as
+  `data-mb-sph-col-mask`, and the mask rule is
+  `[data-mb-sph-col-mask="first"] … > :nth-child(first)`. One mask is enough
+  because every pre cell docks at the same offset, and the first one sits
+  there from scrollX 0 on.
+- **Editor first** (user decision, same day: Editor was already
+  `stickyColumn`, but Old/New docking under it read as "Old is the sticky
+  column"). New generic `features.moveColumnFirst` →
+  `applyMoveColumnFirst()`: moves the named native column to the front of the
+  header and of every row shaped like it, in the same three places as the
+  converters (live page, fetched page, disk load), idempotent. Then `pre` is
+  0 on annotations, so the strip cannot occur there anyway. Fix 1 still
+  matters for other tables.
+- **Tests.** `sticky-page-headers.spec.js` "two columns before the sticky
+  one…" (series table plus an injected leading column, magenta-painted:
+  pixel strip at scrollX 0, computed shadows, gutter after both docks, and the
+  mask moving to "#" once the leading column is hidden);
+  `annotations-editor-first.spec.js` (order, row integrity, sticky index, no
+  `pre`, name-keyed extractors, radios). `scripts/mutations/annotations-editor-first.json`:
+  4/4 fail as intended. The pixel check alone also caught the reverted mask,
+  shown with the property assertion removed. Targeted run: 9 spec files,
+  100/100 passed (5.2 min).

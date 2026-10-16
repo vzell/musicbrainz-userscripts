@@ -20768,6 +20768,59 @@
     }
 
     /**
+     * Moves the native column named by `def.features.moveColumnFirst` to the
+     * front of every top-level `table.tbl` in `docContext`: its header cell and
+     * the matching cell of every row, BEFORE row extraction, so the whole
+     * pipeline (extractors, sticky column, filters) sees the new order as the
+     * page's own. Used by `annotations`, where the sticky "Editor" column sat
+     * third, behind the Old/New radios: those then docked underneath it while
+     * it was on its way (`_sphMeasureStickyCols()`'s `pre`).
+     *
+     * Runs in the same three places as the converters: the live page before
+     * the fetch, each fetched page, and a Load-from-Disk. Idempotent: a table
+     * whose column is already first (or that lacks it) is left alone, so a
+     * second press, which finds the RENDERED table, changes nothing. The
+     * column is looked up by `data-col-name` first (a rendered header carries
+     * button glyphs in its text), then by its trimmed text.
+     *
+     * Only rows shaped like the header are touched: exactly as many cells and
+     * no `colspan` > 1. Any other row (a section or "no results" row) is left
+     * as it is and logged, since moving a cell there would move the wrong one.
+     *
+     * @param {object} def - The active merged pageDefinition object.
+     * @param {Document|Element} [docContext=document] - The live document or a
+     *   fetched page.
+     * @returns {void}
+     */
+    function applyMoveColumnFirst(def, docContext = document) {
+        const name = def?.features?.moveColumnFirst;
+        if (!name) return;
+        docContext.querySelectorAll('table.tbl').forEach(table => {
+            if (table.parentElement && table.parentElement.closest('table')) return;
+            const headRow = table.querySelector(':scope > thead > tr');
+            if (!headRow) return;
+            const heads = Array.from(headRow.cells);
+            const idx = heads.findIndex(th =>
+                (th.dataset.colName || th.textContent.trim().replace(/\s+/g, ' ')) === name);
+            if (idx <= 0) return;
+            let moved = 0;
+            let skipped = 0;
+            table.querySelectorAll(':scope > thead > tr, :scope > tbody > tr').forEach(tr => {
+                const cells = tr.cells;
+                if (cells.length !== heads.length || Array.from(cells).some(c => c.colSpan > 1)) {
+                    skipped++;
+                    return;
+                }
+                tr.insertBefore(cells[idx], cells[0]);
+                moved++;
+            });
+            Lib.debug('parse', `applyMoveColumnFirst: "${name}" moved from column ${idx} to 0 in ${moved} row(s)` +
+                (skipped ? `, ${skipped} row(s) of another shape left as they are` : '') +
+                (docContext === document ? ' (live page)' : ' (fetched page)'));
+        });
+    }
+
+    /**
      * Clicks the "Show all tags." anchor on entity tag pages so that hidden
      * tags (score ≤ 0, downvoted) are exposed in the `<ul>` lists before the
      * `applyListToTable()` conversion runs.
@@ -29028,6 +29081,10 @@
                     { sourceColumn: 'Editor', extractor: 'editorActivity',  syntheticColumns: ['Deleted editor', 'Active for', 'Active since', 'Active start date', 'Active end date'] }
                 ],
                 extractMainColumn: 'Editor',
+                // First, not third: behind the Old/New radios the sticky
+                // Editor column had them dock under it while it was on its
+                // way (user request, 2026-10-16).
+                moveColumnFirst: 'Editor',
                 stickyColumn: 'Editor'
             },
             tableMode: 'single',
@@ -34762,8 +34819,10 @@
     // (`.mb-sph-col-docked`, _sphUpdateColDocked()): with columns before the
     // sticky one ("#" before "Title") the mask would otherwise cover them at
     // scrollX 0. Those columns dock at L as well, underneath the sticky one
-    // (`data-mb-sph-col-pre`), and mask the gutter themselves until it has
-    // docked over them, so nothing ever slides past the bar's line. MB's own
+    // (`data-mb-sph-col-pre`), and the leftmost visible one of them
+    // (`data-mb-sph-col-mask`, never a later one, whose mask would cover the
+    // columns before it) masks the gutter until the sticky column has docked
+    // over them, so nothing ever slides past the bar's line. MB's own
     // top/bottom border of `table.tbl` is moved onto the edge cells, where
     // the masks cover it. An attribute + per-value rule rather than a custom property on
     // the table, because an inherited custom property restyles the whole
@@ -35533,7 +35592,12 @@
      *          on its way (see `_sphEnsureColRules()`). 0 when any of them is
      *          rendered wider than the sticky column: it would stick out to
      *          the right of it for good, and the scrolling columns would pass
-     *          underneath that sliver.
+     *          underneath that sliver;
+     *   first = 1-based position (`cellIndex + 1`) of the leftmost VISIBLE
+     *          header cell before the sticky one: the one pre cell that masks
+     *          the gutter (`_sphEnsureColRules()`). 1 unless leading columns
+     *          are hidden (`toggleColumn()` sets `display: none` on every
+     *          cell, so positions stay aligned across rows).
      *
      * A measured table is never pinned itself (pinned ones are skipped, see
      * `pinned`), so its rect is natural geometry at
@@ -35545,7 +35609,7 @@
      * @param {Set<Element>} pinned - This pass's targets: a table pinned
      *   whole (`_sphFitsTable()`) is left out, it does not scroll, so its
      *   column has nothing to dock against, and its rect moves with the scroll.
-     * @returns {Array<{table: HTMLTableElement, left: string, p: number, pre: number}>}
+     * @returns {Array<{table: HTMLTableElement, left: string, p: number, pre: number, first: number}>}
      *   One entry per table; `left` is already formatted for the attribute.
      */
     function _sphMeasureStickyCols(scrollX, pinned) {
@@ -35571,14 +35635,16 @@
             const stickyW = sticky.getBoundingClientRect().width;
             let p = 0;
             let pre = sticky.cellIndex;
+            let first = 1;
             for (let c = sticky.previousElementSibling; c; c = c.previousElementSibling) {
                 if (c.getClientRects().length === 0) continue;
                 const w = c.getBoundingClientRect().width;
                 p += w;
+                first = c.cellIndex + 1;
                 if (w > stickyW + 0.5) pre = 0;
             }
             const left = Math.max(0, _sphFloor2(innerLeft + scrollX));
-            out.push({ table, left: String(left), p, pre: p > 0 ? pre : 0 });
+            out.push({ table, left: String(left), p, pre: p > 0 ? pre : 0, first });
         });
         return out;
     }
@@ -35651,10 +35717,15 @@
      *     their left;
      *   - with `pre` > 0 the first `pre` cells of every row dock at the same
      *     offset, one layer below the sticky column (z-index 0 against its 1
-     *     and 101), and mask the gutter all the time. "#" then stays at the
-     *     bar's line while "Title" slides over it, instead of sliding into
-     *     the gutter. Their mask is harmless at scrollX 0, where they sit at
-     *     their natural place and the gutter is page margin.
+     *     and 101). "#" then stays at the bar's line while "Title" slides over
+     *     it, instead of sliding into the gutter;
+     *   - of those, only the leftmost VISIBLE one (`nth-child(first)`) masks
+     *     the gutter, all the time. It sits at the docking offset from
+     *     scrollX 0 on, so its mask always covers the gutter, and at scrollX
+     *     0 the gutter is page margin anyway. A mask on any LATER pre cell
+     *     would land on the pre cells before it instead: with Old and New
+     *     before Editor (annotations), New's mask painted a 16 px page-white
+     *     strip over the right edge of Old (debug/annotations-old-new.final.html).
      *
      * Rules are only ever added, once per distinct offset / count (a page
      * normally has one or two). Their subjects are cells of the sticky
@@ -35671,9 +35742,12 @@
      * @param {string} left - Offset in px, as stamped in `data-mb-sph-col-left`.
      * @param {number} pre  - Cells before the sticky one, 0 for none (see
      *   `_sphMeasureStickyCols()`).
+     * @param {number} first - 1-based position of the leftmost visible cell
+     *   before the sticky one, the only pre cell that masks (1 unless leading
+     *   columns are hidden); ignored when `pre` is 0.
      * @returns {void}
      */
-    function _sphEnsureColRules(left, pre) {
+    function _sphEnsureColRules(left, pre, first) {
         const sel  = `html.mb-sph-on table.tbl[data-mb-sph-col-left="${left}"]`;
         const half = _sphFloor2(parseFloat(left) / 2);
         const mask = () => `-${left}px 0 0 0 ${_sph.colGutterBg}, -${half}px 0 0 0 ${_sph.colGutterBg}`;
@@ -35689,21 +35763,30 @@
         if (pre > 0 && !_sph.colRules.has(key)) {
             _sphAddColRules([
                 `${sel}[data-mb-sph-col-pre="${pre}"] > * > tr > :nth-child(-n+${pre}) ` +
-                `{ position: sticky !important; left: ${left}px !important; z-index: 0 !important; box-shadow: ${mask()}; }`
+                `{ position: sticky !important; left: ${left}px !important; z-index: 0 !important; }`
             ]);
             _sph.colRules.add(key);
+        }
+        const maskKey = `${left}|${pre}|${first}`;
+        if (pre > 0 && !_sph.colRules.has(maskKey)) {
+            _sphAddColRules([
+                `${sel}[data-mb-sph-col-pre="${pre}"][data-mb-sph-col-mask="${first}"] > * > tr > :nth-child(${first}) ` +
+                `{ box-shadow: ${mask()}; }`
+            ]);
+            _sph.colRules.add(maskKey);
         }
     }
 
     /**
      * Write phase of the sticky-column alignment: stamps each measured table
-     * with its offset and its count of docking columns before the sticky one
-     * (only on change), drops the stamps from tables that are no longer
+     * with its offset, its count of docking columns before the sticky one and
+     * the position of the one that masks (`data-mb-sph-col-mask`), only on
+     * change, drops the stamps from tables that are no longer
      * measured but still shown, and refreshes the docked state. A hidden
      * (collapsed) table keeps its stamps, so it is right again the moment it
      * is shown.
      *
-     * @param {Array<{table: HTMLTableElement, left: string, p: number, pre: number}>} cols
+     * @param {Array<{table: HTMLTableElement, left: string, p: number, pre: number, first: number}>} cols
      *   Output of `_sphMeasureStickyCols()`.
      * @returns {void}
      */
@@ -35713,15 +35796,21 @@
             if (keep.has(table) || (table.isConnected && table.getClientRects().length === 0)) return;
             delete table.dataset.mbSphColLeft;
             delete table.dataset.mbSphColPre;
+            delete table.dataset.mbSphColMask;
             table.classList.remove('mb-sph-col-docked');
         });
-        cols.forEach(({ table, left, pre }) => {
-            _sphEnsureColRules(left, pre);
+        cols.forEach(({ table, left, pre, first }) => {
+            _sphEnsureColRules(left, pre, first);
             if (table.dataset.mbSphColLeft !== left) table.dataset.mbSphColLeft = left;
             const preStr = pre > 0 ? String(pre) : undefined;
             if (table.dataset.mbSphColPre !== preStr) {
                 if (preStr) table.dataset.mbSphColPre = preStr;
                 else delete table.dataset.mbSphColPre;
+            }
+            const maskStr = pre > 0 ? String(first) : undefined;
+            if (table.dataset.mbSphColMask !== maskStr) {
+                if (maskStr) table.dataset.mbSphColMask = maskStr;
+                else delete table.dataset.mbSphColMask;
             }
         });
         _sph.colTables = cols.map(({ table, p }) => ({ table, p }));
@@ -79616,6 +79705,14 @@ a { color: #1565c0; }`;
             applyBsRecordsToTable(activeDefinition);
         }
 
+        // ── moveColumnFirst pre-processing ───────────────────────────────────
+        // 'annotations': "Editor" ahead of the Old/New radios, before any
+        // header or row is read (see applyMoveColumnFirst()). Last, so a
+        // converter's freshly built table is reordered too.
+        if (activeDefinition.features?.moveColumnFirst) {
+            applyMoveColumnFirst(activeDefinition);
+        }
+
         // Clear existing highlights immediately from DOM for visual feedback
         document.querySelectorAll('.mb-global-filter-highlight, .mb-column-filter-highlight').forEach(n => {
             n.replaceWith(document.createTextNode(n.textContent));
@@ -80114,6 +80211,10 @@ a { color: #1565c0; }`;
                 // brucespringsteen.it: THE path — both buttons fetch page 1.
                 if (doc !== document && activeDefinition.features?.bsRecordsToTable) {
                     applyBsRecordsToTable(activeDefinition, doc);
+                }
+                // Last, so a converter's freshly built table is reordered too.
+                if (doc !== document && activeDefinition.features?.moveColumnFirst) {
+                    applyMoveColumnFirst(activeDefinition, doc);
                 }
 
                 // Use parseDocumentForTables to filter which tables we actually process
@@ -108324,6 +108425,11 @@ a { color: #1565c0; }`;
             // tables again; the sidebar groups take their place.
             if (activeDefinition.features?.sidebarToTables) {
                 applySidebarToTables(activeDefinition);
+            }
+            // And moveColumnFirst ('annotations'): the reloaded native table
+            // has its own column order again.
+            if (activeDefinition.features?.moveColumnFirst) {
+                applyMoveColumnFirst(activeDefinition);
             }
 
             // Restore table headers if they were saved

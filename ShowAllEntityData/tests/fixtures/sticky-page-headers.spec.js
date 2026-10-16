@@ -1735,6 +1735,104 @@ test.describe('sticky page headers — the sticky column docks in line with its 
         expect((await stickyGeom(page))[0].docked, 'scrolling back takes the mask off again').toBe(false);
     });
 
+    test('two columns before the sticky one: the second does not mask the first; the first masks the gutter', async ({ page }) => {
+        // Every one of the `pre` cells used to carry the gutter mask, a
+        // page-coloured box-shadow reaching L px to its LEFT. For the first
+        // one that is the gutter; for the second it is the right edge of the
+        // first, which it painted white at scrollX 0: on annotations (Old,
+        // New, then the sticky Editor) a 16 px strip cut off Old's 📊 button
+        // (debug/annotations-old-new.final.html, 2026-10-16). The series
+        // table gets an extra column in front of "#", so "Release" has two
+        // before it. Column 1 is painted magenta, so a white strip over it is
+        // unmistakable whatever its own content.
+        const MAGENTA = 'table.tbl > tbody > tr > td:first-child { background: rgb(255, 0, 255) !important; }';
+        await openSeries(page, {
+            css: `${MB_TBL_CSS} ${MAGENTA}`,
+            beforeRender: (p) => p.evaluate(() => {
+                const t = document.querySelector('table.tbl');
+                const th = document.createElement('th');
+                th.textContent = 'Pick';
+                t.querySelector('thead tr').prepend(th);
+                t.querySelectorAll('tbody > tr').forEach((tr) => {
+                    const td = document.createElement('td');
+                    td.style.minWidth = '80px';
+                    tr.prepend(td);
+                });
+            }),
+        });
+        await waitEngaged(page);
+        const stamps = () => page.evaluate(() => {
+            const t = document.querySelector('table.tbl');
+            const hr = t.querySelector(':scope > thead > tr:first-child');
+            return {
+                pre: t.dataset.mbSphColPre || null,
+                mask: t.dataset.mbSphColMask || null,
+                left: parseFloat(t.dataset.mbSphColLeft),
+                shadows: Array.from(hr.cells).slice(0, 3).map((c) => getComputedStyle(c).boxShadow),
+                stickyIdx: hr.querySelector('.mb-sticky-col').cellIndex,
+            };
+        });
+        const s0 = await stamps();
+        expect(s0.stickyIdx, 'premise: the sticky column is third').toBe(2);
+        expect(s0.pre, 'premise: both columns before it dock').toBe('2');
+        expect(s0.mask).toBe('1');
+        expect(s0.shadows[0], 'the first column masks the gutter').toContain(`-${s0.left}px 0px 0px 0px`);
+        expect(s0.shadows[1], 'the second column carries no mask').toBe('none');
+
+        // What the user saw: the strip L px wide left of column 2's edge, in
+        // the body rows, must still be column 1 (magenta), not page white.
+        const box = await page.evaluate((L) => {
+            const t = document.querySelector('table.tbl');
+            const rows = t.querySelectorAll(':scope > tbody > tr');
+            const c2 = rows[0].cells[1].getBoundingClientRect();
+            const last = rows[Math.min(2, rows.length - 1)].getBoundingClientRect();
+            return {
+                x: Math.ceil(c2.left - L + 2),
+                y: Math.ceil(c2.top + 2),
+                width: Math.floor(L - 4),
+                height: Math.floor(last.bottom - c2.top - 4),
+            };
+        }, s0.left);
+        expect(box.width, 'premise: a strip wide enough to inspect').toBeGreaterThan(8);
+        const png = await page.screenshot({ clip: box });
+        const notMagenta = await page.evaluate(async (b64) => {
+            const img = new Image();
+            img.src = `data:image/png;base64,${b64}`;
+            await img.decode();
+            const c = document.createElement('canvas');
+            c.width = img.width;
+            c.height = img.height;
+            const ctx = c.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            const d = ctx.getImageData(0, 0, c.width, c.height).data;
+            let bad = 0;
+            for (let i = 0; i < d.length; i += 4) {
+                if (!(d[i] > 230 && d[i + 1] < 40 && d[i + 2] > 230)) bad++;
+            }
+            return { bad, total: d.length / 4 };
+        }, png.toString('base64'));
+        expect(notMagenta.bad, `pixels over column 1 that are not its own background (of ${notMagenta.total})`).toBe(0);
+
+        // The gutter is still fully masked once both columns and then the
+        // sticky one have docked.
+        const p = (await stickyGeom(page))[0].p;
+        await scrollToX(page, Math.round(p / 2));
+        const dirtMid = await gutterDirt(page);
+        expect(dirtMid.bad, `gutter pixels between the docks (first: ${dirtMid.sample})`).toBe(0);
+        await scrollToRightEnd(page);
+        const dirtEnd = await gutterDirt(page);
+        expect(dirtEnd.bad, `gutter pixels at the far right (first: ${dirtEnd.sample})`).toBe(0);
+        await scrollToX(page, 0);
+
+        // With column 1 hidden, "#" is the leftmost and takes the mask over.
+        await page.click('#mb-visible-btn');
+        await page.locator('label[for^="mb-col-vis-"]', { hasText: /Pick$/ }).evaluate((l) => l.click());
+        await expect.poll(async () => (await stamps()).mask, { message: 'the mask moves to "#"' }).toBe('2');
+        const s1 = await stamps();
+        expect(s1.pre).toBe('2');
+        expect(s1.shadows[1], '"#" now masks the gutter').toContain(`-${s1.left}px 0px 0px 0px`);
+    });
+
     test('a refresh pass while scrolled keeps the column docked and masked', async ({ page }) => {
         // The docking point p is the width of the columns before the sticky
         // one ("#" here). It used to be read from the right edge of "#",

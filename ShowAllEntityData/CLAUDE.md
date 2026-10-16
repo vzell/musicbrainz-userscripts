@@ -213,6 +213,9 @@ shape:
         eventDetailsToTables: true,   // event-overview: table.details lists → h3 + table.tbl
                                       // groups, each with its own columns (data-mb-col-headers
                                       // → group.colHeaders; see docs/claude/fetch-and-render-pipeline.md)
+        moveColumnFirst: 'Editor',    // move a native column to the front of every row
+                                      // (applyMoveColumnFirst(); live, fetched and disk-load
+                                      // docs); pair with stickyColumn so nothing docks under it
 
         // Column pipeline:
         columnExtractors: [ { extractor: 'name', sourceColumn: 'Col', syntheticColumns: ['A','B'] } ],
