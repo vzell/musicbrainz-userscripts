@@ -1,0 +1,16 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-16",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Release tracklist with the \"ISRC Scout\" userscript (by majkinetor): its \"ISRC\" column now works like the \"ISRCs\" column. One code per line, the column collapses like the other multi-row columns, codes are shown as CC-XXX-YY-NNNNN with ⚠️ on an invalid one, and the 📊 dropdown has the ISRC Country/Registrant/Year/Designation/Validity sections and the \"Invalid ISRC format\" warning.",
+          "Release tracklist with \"ISRC Scout\": its \"Links\" column can be filtered by platform. Type a platform name (\"Spotify\") into its filter, or tick one in the new 📊 section \"Links info - Platform\" (one entry per platform, with its row count and icon); the matching icons are outlined. The number beside 📊 now counts the different platform sets instead of the \"2\"/\"3\" link-count badges.",
+          "Release tracklist with \"ISRC Scout\" and jesus2099's \"SUPER MIND CONTROL\": the \"Links\" icons no longer wrap onto a second line. SUPER MIND CONTROL adds a red new-window marker and extra space to every link that opens in a new tab; it is left off these icons, which all open an outside page anyway."
+        ]
+      }
+    ]
+  }
+]

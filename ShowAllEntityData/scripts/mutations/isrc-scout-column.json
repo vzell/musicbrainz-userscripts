@@ -1,0 +1,175 @@
+[
+  {
+    "name": "the ISRC cell is never rebuilt into a list",
+    "why": "Without the rebuild the cell keeps ISRC Scout's sibling anchors: no <li>, so no multi-row cell and no collapse toggle, and no <code>, so no CC-XXX-YY-NNNNN display or segment spans.",
+    "edits": [
+      {
+        "find": "    function _normalizeIsrcScoutTd(td) {\n        if (td.querySelector(':scope > ul')) return;",
+        "replace": "    function _normalizeIsrcScoutTd(td) {\n        if (td) return;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-isrc-scout.spec.js",
+    "grep": "multi-row list",
+    "expect": "fail"
+  },
+  {
+    "name": "the ISRC column name gate only knows \"ISRCs\"",
+    "why": "The 📊 ISRC sections are gated by column name; with the old literal the ISRC column gets none of them.",
+    "edits": [
+      {
+        "find": "        return name === 'ISRCs' || name === 'ISRC';",
+        "replace": "        return name === 'ISRCs';"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-isrc-scout.spec.js",
+    "grep": "📊 on ISRC",
+    "expect": "fail"
+  },
+  {
+    "name": "the ISRC column name gate only knows \"ISRCs\" (finding)",
+    "why": "The same gate decides which columns the 'Invalid ISRC format' finding tests; the ISRC cell would never be flagged.",
+    "edits": [
+      {
+        "find": "        return name === 'ISRCs' || name === 'ISRC';",
+        "replace": "        return name === 'ISRCs';"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-isrc-scout.spec.js",
+    "grep": "Invalid ISRC format",
+    "expect": "fail"
+  },
+  {
+    "name": "ISRC is not a collapsable column",
+    "why": "The list alone is not enough: initCollapsableColumns() only builds toggles for declared columns, so the 2- and 3-ISRC cells get no ▶ and the header no collapse button.",
+    "edits": [
+      {
+        "find": "'ISRCs', 'ISRC', 'Recording engineer'",
+        "replace": "'ISRCs', 'Recording engineer'"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-isrc-scout.spec.js",
+    "grep": "multi-row list",
+    "expect": "fail"
+  },
+  {
+    "name": "the rebuilt cells lose ISRC Scout's ii-col class",
+    "why": "ISRC Scout's observer adds fresh cells to every row with no ':scope > .ii-col' child. A rebuild that renamed the cells would get a second, bare ISRC and Links cell in every row on the next DOM change.",
+    "edits": [
+      {
+        "find": "        td.replaceChildren(ul);\n    }",
+        "replace": "        td.replaceChildren(ul);\n        td.classList.remove('ii-col');\n    }"
+      },
+      {
+        "find": "    function _normalizeIsrcScoutLinksTd(td) {\n",
+        "replace": "    function _normalizeIsrcScoutLinksTd(td) {\n        td.classList.remove('ii-col');\n"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-isrc-scout.spec.js",
+    "grep": "no extra cells from ISRC Scout",
+    "expect": "fail"
+  },
+  {
+    "name": "the Links icons get no platform names",
+    "why": "Without the names the cell's only text is the 'N links' badge (stripped), so the column has no values at all: no count, no Platform section.",
+    "edits": [
+      {
+        "find": "    function _normalizeIsrcScoutLinksTd(td) {\n        td.querySelectorAll('a.ii-trk-ln').forEach(a => {",
+        "replace": "    function _normalizeIsrcScoutLinksTd(td) {\n        if (td) return;\n        td.querySelectorAll('a.ii-trk-ln').forEach(a => {"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-isrc-scout.spec.js",
+    "grep": "Links: the 📊 count",
+    "expect": "fail"
+  },
+  {
+    "name": "the 'N links' badge stays in the filter text",
+    "why": "The digits join the platform names ('Deezer Spotify 2 Tidal'), so a badge digit becomes part of a value and the count no longer means 'distinct platform sets'.",
+    "edits": [
+      {
+        "find": "        '.ii-trk-n';",
+        "replace": "        '.mb-no-such-class';"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-isrc-scout.spec.js",
+    "grep": "Links: the 📊 count",
+    "expect": "fail"
+  },
+  {
+    "name": "a ticked platform matches no row",
+    "why": "The entry is listed with the right count, but ticking it filters every row out.",
+    "edits": [
+      {
+        "find": "            return !!cell && _findCellLinkPlatforms(cell).some(p => p.name === want);",
+        "replace": "            return false;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-isrc-scout.spec.js",
+    "grep": "ticking a platform",
+    "expect": "fail"
+  },
+  {
+    "name": "a ticked platform is not highlighted",
+    "why": "The rows narrow correctly but nothing marks which icon matched: the hidden name gets no highlight span, so the outline rule has nothing to see.",
+    "edits": [
+      {
+        "find": "                                    _highlightLinkPlatformMatch(row.cells[f.idx], mode);",
+        "replace": "                                    void mode;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-isrc-scout.spec.js",
+    "grep": "ticking a platform",
+    "expect": "fail"
+  },
+  {
+    "name": "the outline rule never matches",
+    "why": "The highlight lands in a display:none span; only the :has() rule makes it visible as an outline on the icon.",
+    "edits": [
+      {
+        "find": "        a.ii-trk-ln:has(.mb-global-filter-highlight, .mb-column-filter-highlight,",
+        "replace": "        a.ii-trk-ln.mb-never:has(.mb-global-filter-highlight, .mb-column-filter-highlight,"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-isrc-scout.spec.js",
+    "grep": "ticking a platform",
+    "expect": "fail"
+  },
+  {
+    "name": "the outline rule never matches (typed column filter)",
+    "why": "A typed filter reaches the hidden names through the generic highlighter; the outline is still the only thing that shows it.",
+    "edits": [
+      {
+        "find": "        a.ii-trk-ln:has(.mb-global-filter-highlight, .mb-column-filter-highlight,",
+        "replace": "        a.ii-trk-ln.mb-never:has(.mb-global-filter-highlight, .mb-column-filter-highlight,"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-isrc-scout.spec.js",
+    "grep": "typed column filter",
+    "expect": "fail"
+  },
+  {
+    "name": "platform entries lose their icon",
+    "why": "The entries still filter; only the trailing icon is gone.",
+    "edits": [
+      {
+        "find": "                                linkPlatformIconMap.set(p.name, _icon);",
+        "replace": "                                void _icon;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-isrc-scout.spec.js",
+    "grep": "Links: the 📊 count",
+    "expect": "fail"
+  },
+  {
+    "name": "Links icons keep SUPER MIND CONTROL's new-tab padding",
+    "why": "Without the reset every icon is 16px wider and carries the red new-window sprite; six platforms with link counts wrap onto two lines (debug/links-overflow.html).",
+    "edits": [
+      {
+        "find": "        td.ii-col-links a.ii-trk-ln[target='_blank'] {\n            padding-right: 0;\n            background: none;\n        }",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-isrc-scout.spec.js",
+    "grep": "new-tab padding",
+    "expect": "fail"
+  }
+]

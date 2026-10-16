@@ -595,11 +595,15 @@ themselves:
   lists the parts of a slash-joined type separately: a `BUMA/STEMRA ID` badge
   is offered as `BUMA/STEMRA ID`, `BUMA` and `STEMRA ID`.
 - **ISRC info** — one sub-section per constituent (country, registrant, year,
-  designation) plus a validity flag, on any "ISRCs" column. An entry whose code
+  designation) plus a validity flag, on any "ISRCs" column and on ISRC
+  Scout's "ISRC" column. An entry whose code
   sits only inside a **collapsed** list item carries a ▶ marker: it is still
   offered (ticking it shows the row and tints the cell's ▶ toggle), the marker
   just says why nothing on screen shows it until the cell is expanded. **ISWC info** — a
   validity flag on any "ISWC" column. See "ISRC/ISWC codes" below.
+- **📡 Links info - Platform** — on ISRC Scout's "Links" column of a release
+  tracklist: one entry per platform (Spotify, Deezer, …) with the number of
+  rows linking to it and the platform's icon. Ticking one outlines its icons.
 - **Barcode info** — on any "Barcode" column: a validity flag (✅/⚠️), which
   GS1 format (UPC-A/EAN-13/EAN-8/GTIN-14) a conforming entry matches, and a
   "Same As" list, one entry per group of rows sharing a barcode number
@@ -673,7 +677,7 @@ filter with a ✕ to remove it.
 | ⚠️     | Extra title information starts uppercase, e.g. "(Version 1)"    | Title columns                               |
 | ⚠️     | Track name differs from recording name (jesus2099's "≠" marker) | Release tracklist: Title                    |
 | ⚠️     | 🟠 Release has low data quality                                 | Release / Title columns                     |
-| ⚠️     | Invalid ISRC / ISWC / barcode format                            | ISRCs, ISWC, Barcode                        |
+| ⚠️     | Invalid ISRC / ISWC / barcode format                            | ISRCs, ISRC, ISWC, Barcode                  |
 | ⚠️     | Artwork has no Front image (releases with artwork only)         | CAA                                         |
 | ⚠️     | Physical release artwork has no Medium image                    | CAA (needs a Format column)                 |
 | ⚠️     | Pending edits                                                   | any column                                  |
@@ -1482,6 +1486,20 @@ of its instrument, and an *Instrument info - Icon* section counts the rows
 with and without one. An instrument without a picture can be one the script
 has no picture for, or one it has not loaded yet.
 
+**ISRC Scout.** With the userscript *ISRC Scout* (by majkinetor) installed,
+its **ISRC** and **Links** columns are part of the consolidated table. They
+appear a moment after the page loads, because the script loads the release
+first, so press **Tracks** once they are there; pressed earlier, the
+script adds them afterwards as plain columns that cannot be sorted or
+filtered. **ISRC** lists one code per line, collapses like the other
+multi-row columns, and works like the **ISRCs** column (format, ⚠️ on an
+invalid code, the 📊 ISRC sections). **Links** keeps its icons, and you
+filter it by platform name: type `Spotify`, or tick a platform in the 📊
+section *Links info - Platform*; the matching icons are outlined. The
+script's own buttons, or a change to its settings, can replace both columns
+with its plain ones again; reload the page and press **Tracks** once the
+columns are back.
+
 **Cover art without leaving the page.** After **Tracks for Release**, a
 **Cover art (N)** section opens above the tracklist with every Cover Art
 Archive image of the release: its types, its comment, ★ on the archive's main
@@ -1812,7 +1830,8 @@ any page; a saved file loads back as the same button.
 <summary>ISRC/ISWC codes</summary>
 
 Wherever an **ISRCs** column appears (here, and on any native recordings
-listing), every code is shown as `CC-XXX-YY-NNNNN` with the country and year
+listing), and in ISRC Scout's **ISRC** column on a release tracklist, every
+code is shown as `CC-XXX-YY-NNNNN` with the country and year
 segments lightly tinted — regardless of whether MusicBrainz's own markup or a
 third-party script produced the cell. A code that doesn't match that shape is
 left as-is but gets a ⚠️ warning glyph and a tooltip explaining why.

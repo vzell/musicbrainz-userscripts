@@ -6526,6 +6526,30 @@
     }
 
     /**
+     * Wraps a copy of an ISRC Scout platform icon (its inline `<svg>`) for
+     * the END of a "» platform:" 📊 entry — the trailing slot
+     * `_iiTrailingIconSlot()` uses for instrument icons, at 14 px so it sits
+     * in a text line.
+     *
+     * @param {SVGElement} icon - A detached copy from `linkPlatformIconMap`.
+     * @returns {HTMLSpanElement}
+     */
+    function _linkPlatformTrailingIconSlot(icon) {
+        const slot = document.createElement('span');
+        slot.className = 'mb-uniq-link-platform-icon';
+        slot.setAttribute('aria-hidden', 'true');
+        slot.style.display       = 'inline-flex';
+        slot.style.alignItems    = 'center';
+        slot.style.marginLeft    = '4px';
+        slot.style.verticalAlign = 'middle';
+        const copy = icon.cloneNode(true);
+        copy.setAttribute('width', '14');
+        copy.setAttribute('height', '14');
+        slot.appendChild(copy);
+        return slot;
+    }
+
+    /**
      * Whether a filter key can read instrument-icon presence: only a checked
      * `ii-icon-yes`/`ii-icon-no` 📊 entry. The icon has no text, so no typed
      * filter can.
@@ -22692,6 +22716,14 @@
                 const _titleTd = _cells[_titleIdx];
                 if (!_titleTd) return;
 
+                // The third-party ISRC Scout's "ISRC"/"Links" cells, when it
+                // has added them by now — see _normalizeIsrcScoutTd() and
+                // _normalizeIsrcScoutLinksTd().
+                const _iiIsrcTd = row.querySelector(':scope > td.ii-col-isrc');
+                if (_iiIsrcTd) _normalizeIsrcScoutTd(_iiIsrcTd);
+                const _iiLinksTd = row.querySelector(':scope > td.ii-col-links');
+                if (_iiLinksTd) _normalizeIsrcScoutLinksTd(_iiLinksTd);
+
                 // Video: reuses the existing, generic `video`
                 // ColumnDataExtractor (see its own JSDoc) rather than
                 // duplicating its move-the-span/sort-key logic. Must run
@@ -25545,6 +25577,88 @@
         }
         if (ul.children.length) td.appendChild(ul);
         return td;
+    }
+
+    /**
+     * Rebuilds the third-party ISRC Scout (@majkinetor) "ISRC" cell,
+     * `td.ii-col.ii-col-isrc`, into the shape of this script's own "ISRCs"
+     * column: `<ul><li><a href="/isrc/CODE"><code>CODE</code></a></li>…</ul>`,
+     * one `<li>` per ISRC. ISRC Scout writes sibling
+     * `<a class="ii-trk-isrc" href="/isrc/CODE">` anchors, each holding either
+     * its own `span.ii-isrcf` segments or the plain code, and no `<code>`
+     * (debug/multiple-ISRC.html). As a list the cell is an ordinary multi-row
+     * cell (`collapsableColumns`), and with a `<code>` `initIsrcFormatting()`
+     * gives it the same CC-XXX-YY-NNNNN display, ⚠️ flag and segment spans
+     * the 📊 ISRC sections highlight in.
+     *
+     * The code comes from the anchor's `href`, never from its text, so it
+     * does not depend on ISRC Scout's own formatting setting. The anchors are
+     * MOVED, not cloned. The cell keeps its `ii-col` classes on purpose: ISRC
+     * Scout's own MutationObserver adds a fresh cell to any row that has no
+     * `:scope > .ii-col` child, so a renamed cell would get a second one next
+     * to it. Idempotent: a cell that already holds a `<ul>` is left alone.
+     *
+     * @param {HTMLTableCellElement} td - `td.ii-col-isrc` of one track row.
+     */
+    function _normalizeIsrcScoutTd(td) {
+        if (td.querySelector(':scope > ul')) return;
+        const anchors = Array.from(td.querySelectorAll('a[href^="/isrc/"]'));
+        if (!anchors.length) return;
+        const ul = document.createElement('ul');
+        anchors.forEach(a => {
+            const m = a.getAttribute('href').match(/\/isrc\/([^/?#]+)/);
+            if (!m) return;
+            const code = document.createElement('code');
+            code.textContent = decodeURIComponent(m[1]);
+            a.replaceChildren(code);
+            const li = document.createElement('li');
+            li.appendChild(a);
+            ul.appendChild(li);
+        });
+        td.replaceChildren(ul);
+    }
+
+    /**
+     * The platform name of one ISRC Scout "Links" icon link
+     * (`a.ii-trk-ln`), read from its `title`, which ISRC Scout writes as
+     * `"<Platform> · <url>"`, `"<Platform> (ended) · <url>"`, or
+     * `"<Platform> · N links\n<url>…"` for a platform with several links.
+     *
+     * @param {Element} a - An `a.ii-trk-ln`.
+     * @returns {string} E.g. `'Spotify'`, `'YouTube Music'`,
+     *   `'whosampled.com'`; `''` when the title has no name.
+     */
+    function _isrcScoutLinkPlatform(a) {
+        const title = a.getAttribute('title') || '';
+        return title.split(' · ')[0].replace(/\s*\(ended\)\s*$/, '').trim();
+    }
+
+    /**
+     * Gives every icon link of the third-party ISRC Scout "Links" cell,
+     * `td.ii-col.ii-col-links`, its platform name as filter text: a
+     * `data-mb-link-platform` stamp and a hidden `span.mb-ii-link-name`
+     * appended to the anchor. ISRC Scout's icons are inline SVG with no text,
+     * so before this the cell's only text was the "N links" badge digits
+     * (`sup.ii-trk-n`, now in `_CLEAN_STRIP_SEL`). With the names, the 📊
+     * count, the "Links info - Platform" section, typed filters and sorting
+     * all read platforms. A match in the hidden name is shown by outlining
+     * its icon (CSS, `a.ii-trk-ln:has(…)`). The icons look the same as before.
+     * Keeps the cell's `ii-col` classes for the reason given in
+     * `_normalizeIsrcScoutTd()`. Idempotent.
+     *
+     * @param {HTMLTableCellElement} td - `td.ii-col-links` of one track row.
+     */
+    function _normalizeIsrcScoutLinksTd(td) {
+        td.querySelectorAll('a.ii-trk-ln').forEach(a => {
+            if (a.querySelector(':scope > .mb-ii-link-name')) return;
+            const name = _isrcScoutLinkPlatform(a);
+            if (!name) return;
+            a.dataset.mbLinkPlatform = name;
+            const span = document.createElement('span');
+            span.className = 'mb-ii-link-name';
+            span.textContent = name;
+            a.appendChild(span);
+        });
     }
 
     /**
@@ -30281,8 +30395,9 @@
                 // dynamic-fallback classifier discovers at runtime (see
                 // `_classifyArDt`) is registered into this same array
                 // programmatically, since its name isn't known here at
-                // authoring time.
-                collapsableColumns: [ 'ARs', 'Streaming/Downloads', 'AcoustIDs', 'ISRCs', 'Recording engineer', 'Engineer', 'Producer', 'Mixer', 'Miscellaneous support', 'Mixed at place', 'Phonographic copyright (℗) by artist', 'Phonographic copyright (℗) by label', 'Produced for label', 'Recorded at place', 'Recorded in area', 'Performer', 'Instruments', 'Vocals' ],
+                // authoring time. "ISRC" is the third-party ISRC Scout's
+                // column, a list once _normalizeIsrcScoutTd() has rebuilt it.
+                collapsableColumns: [ 'ARs', 'Streaming/Downloads', 'AcoustIDs', 'ISRCs', 'ISRC', 'Recording engineer', 'Engineer', 'Producer', 'Mixer', 'Miscellaneous support', 'Mixed at place', 'Phonographic copyright (℗) by artist', 'Phonographic copyright (℗) by label', 'Produced for label', 'Recorded at place', 'Recorded in area', 'Performer', 'Instruments', 'Vocals' ],
                 stickyColumn: 'Title'
             },
             tableMode: 'multi',
@@ -40412,7 +40527,7 @@
             id: 'isrc-invalid', level: 'warn', glyph: '🔢', scope: 'cell', inlineGlyph: true,
             label: 'Invalid ISRC format',
             tip: 'An ISRC that is not in CC-XXX-YY-NNNNN form.',
-            cols: name => name === 'ISRCs',
+            cols: name => _isIsrcColumnName(name),
             test: cell => _findCellIsrcParts(cell).some(p => !p.valid),
             tint: _findingTintSetting('sa_findings_tint_isrc'),
         },
@@ -47636,6 +47751,44 @@
     }
 
     /**
+     * Whether a column of this name holds ISRC lists and gets the ISRC
+     * treatment: the 📊 Country/Registrant/Year/Designation/Validity sections
+     * and the "Invalid ISRC format" finding. Two names:
+     * - "ISRCs": MusicBrainz's native column, and the release-tracks column
+     *   this script builds from jesus2099's markup;
+     * - "ISRC": the release-tracks column of the third-party ISRC Scout
+     *   (@majkinetor), whose cells `_normalizeIsrcScoutTd()` turns into the
+     *   same shape.
+     * By name only, like every other column gate in the 📊 builder.
+     *
+     * @param {string} name - A column's header name.
+     * @returns {boolean}
+     */
+    function _isIsrcColumnName(name) {
+        return name === 'ISRCs' || name === 'ISRC';
+    }
+
+    /**
+     * Every platform link of an ISRC Scout "Links" cell, as stamped by
+     * `_normalizeIsrcScoutLinksTd()`: one entry per `a.ii-trk-ln` that has a
+     * `data-mb-link-platform`. The name is read from that ATTRIBUTE, never
+     * from the cell's text, so a filter highlight placed inside the hidden
+     * `span.mb-ii-link-name` on an earlier pass cannot change the result.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {Array<{name: string, el: Element, nameEl: ?Element}>} `el`
+     *   is the anchor, `nameEl` its hidden name span (what a highlight marks).
+     */
+    function _findCellLinkPlatforms(cell) {
+        if (!cell) return [];
+        return Array.from(cell.querySelectorAll('a.ii-trk-ln[data-mb-link-platform]'), a => ({
+            name: a.dataset.mbLinkPlatform,
+            el: a,
+            nameEl: a.querySelector(':scope > .mb-ii-link-name'),
+        }));
+    }
+
+    /**
      * Extracts every ISRC entry from a rendered "ISRCs" cell — the native
      * `<ul class="isrcs"><li class="isrc"><a href="/isrc/CODE">…` shape, or
      * this script's own release-tracks synthetic column built from
@@ -49248,6 +49401,12 @@
         if (mode.startsWith('isrcdesignation:')) {
             const want = mode.slice(16);
             return !!cell && _findCellIsrcParts(cell).some(p => p.valid && p.designation === want);
+        }
+        if (mode.startsWith('linkplatform:')) {
+            // Compound mode — one platform of an ISRC Scout "Links" cell
+            // (_findCellLinkPlatforms()).
+            const want = mode.slice(13);
+            return !!cell && _findCellLinkPlatforms(cell).some(p => p.name === want);
         }
         if (mode === 'isrc-valid') {
             // Binary flag — true when at least one "ISRCs" cell entry
@@ -64132,6 +64291,28 @@ a { color: #1565c0; }`;
             content: ' ⚠️';
             font-size: 0.9em;
         }
+        /* ISRC Scout's (@majkinetor) "Links" column: each icon link carries its
+           platform name as hidden filter text (_normalizeIsrcScoutLinksTd()).
+           A filter highlight inside that hidden name cannot be seen, so the
+           icon it belongs to is outlined instead, for every filter level. */
+        .mb-ii-link-name { display: none; }
+        a.ii-trk-ln:has(.mb-global-filter-highlight, .mb-column-filter-highlight,
+                        .mb-pre-filter-highlight, .mb-subtable-filter-highlight) {
+            outline: 2px solid ${Lib.settings.sa_global_filter_highlight_bg || '#FFD700'};
+            outline-offset: 1px;
+            border-radius: 3px;
+        }
+        /* The same icons open in a new tab, and jesus2099's SUPER MIND CONTROL
+           marks every a[target='_blank'] with 16px of right padding and a red
+           new-window sprite. ISRC Scout caps its icon row at 224px, so six
+           platforms with link counts wrapped onto two lines
+           (debug/links-overflow.html: 139px without the padding, 224px and two
+           lines with it). Every one of these icons is an outside link, so the
+           marker says nothing here; same idea as td.mb-rel-cell's reset. */
+        td.ii-col-links a.ii-trk-ln[target='_blank'] {
+            padding-right: 0;
+            background: none;
+        }
         /* Barcode format-validity glyph (org/barcode.org) — same idiom as
            the ISRC/ISWC rule above, driven off data-mb-barcode-invalid
            (see initBarcodeValidation()'s own JSDoc), except on the native
@@ -70910,7 +71091,13 @@ a { color: #1565c0; }`;
         // be included in filter text or highlight matching: a filter for "12" would
         // otherwise cross-tag-match the trailing "1" of a catalog number with the
         // "2" of the adjacent count badge, producing a spurious highlight span.
-        '.mb-cell-collapse-toggle';
+        '.mb-cell-collapse-toggle,' +
+        // .ii-trk-n is ISRC Scout's (@majkinetor) "N links" badge, a <sup>
+        // after a platform icon in its "Links" column. Those digits used to be
+        // the cell's ONLY text, so the 📊 count was the number of distinct
+        // badge numbers. The platform name (_normalizeIsrcScoutLinksTd()) is
+        // the cell's text instead.
+        '.ii-trk-n';
 
     /**
      * A CAA/EAA cell's art search index — image types and per-image comments,
@@ -72792,6 +72979,9 @@ a { color: #1565c0; }`;
         isrcYear:        { label: 'ISRC - Year',        glyph: '🕐' },
         isrcDesignation: { label: 'ISRC - Designation', glyph: '#️⃣' },
         isrcValidity:    { label: 'ISRC - Validity',    glyph: '⚠️' },
+        // The third-party ISRC Scout's "Links" column: one open-valued entry
+        // per platform (kind 'linkplatform', _findCellLinkPlatforms()).
+        linkPlatform:    { label: 'Links info - Platform', glyph: '📡' },
         // "ISWC info" — validity only (org/ISRC.org item 7); MusicBrainz's
         // native ISWC display is already correctly formatted, so there is
         // no constituent breakdown to offer here.
@@ -73286,6 +73476,7 @@ a { color: #1565c0; }`;
         catalogprefix: 'catalogPrefix',
         isrccountry: 'isrcCountry', isrcregistrant: 'isrcRegistrant',
         isrcyear: 'isrcYear', isrcdesignation: 'isrcDesignation',
+        linkplatform: 'linkPlatform',
         barcodeformat: 'barcodeFormat', barcodesameas: 'barcodeSameAs',
         lengthbucket: 'lengthBucket',
         timeofday: 'timeOfDay',
@@ -74626,6 +74817,29 @@ a { color: #1565c0; }`;
             const _escaped = _shown.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             target.normalize();
             highlightCrossTag(target, new RegExp(`\\b${_escaped}\\b`, 'g'), 'mb-column-filter-highlight');
+        });
+    }
+
+    /**
+     * Highlights the ticked platform of a `linkplatform:` entry in an ISRC
+     * Scout "Links" cell. The icon has no text, so the mark goes on that
+     * anchor's hidden `span.mb-ii-link-name`, and the CSS rule
+     * `a.ii-trk-ln:has(…)` outlines the icon that holds it — the same rule a
+     * typed filter that matches the hidden name relies on. Only the anchors
+     * of the ticked platform are marked.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode, e.g. `"linkplatform:Spotify"`.
+     */
+    function _highlightLinkPlatformMatch(cell, mode) {
+        if (!cell) return;
+        const want = mode.slice(13);
+        if (!want) return;
+        const _escaped = want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        _findCellLinkPlatforms(cell).forEach(p => {
+            if (p.name !== want || !p.nameEl) return;
+            p.nameEl.normalize();
+            highlightCrossTag(p.nameEl, new RegExp(_escaped, 'g'), 'mb-column-filter-highlight');
         });
     }
 
@@ -76575,6 +76789,8 @@ a { color: #1565c0; }`;
                                 } else if (mode.startsWith('isrccountry:') || mode.startsWith('isrcregistrant:') ||
                                            mode.startsWith('isrcyear:') || mode.startsWith('isrcdesignation:')) {
                                     _highlightIsrcPartMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('linkplatform:')) {
+                                    _highlightLinkPlatformMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'isrc-invalid') {
                                     _highlightIsrcInvalidMatch(row.cells[f.idx]);
                                 } else if (mode === 'isrc-valid') {
@@ -90572,6 +90788,11 @@ a { color: #1565c0; }`;
         const isrcRegistrantValueCounts  = _uniqCacheHit ? _uniqCacheHit.isrcRegistrantValueCounts  : new Map();
         const isrcYearValueCounts        = _uniqCacheHit ? _uniqCacheHit.isrcYearValueCounts        : new Map();
         const isrcDesignationValueCounts = _uniqCacheHit ? _uniqCacheHit.isrcDesignationValueCounts : new Map();
+        // ISRC Scout "Links" platforms — rows per platform, and one copy of
+        // each platform's icon for its entry (_findCellLinkPlatforms()).
+        // Column-gated (isIiLinksCol below).
+        const linkPlatformValueCounts = _uniqCacheHit ? _uniqCacheHit.linkPlatformValueCounts : new Map();
+        const linkPlatformIconMap     = _uniqCacheHit ? _uniqCacheHit.linkPlatformIconMap     : new Map();
         // Entries (`"<kind>:<value>"`) whose EVERY matching item sits inside a
         // collapsed (hidden) list item — rendered with a ▶ marker so a user is
         // not left hunting the page for a code that is not on screen until
@@ -90877,8 +91098,15 @@ a { color: #1565c0; }`;
         // constituent breakdown + validity flag (org/ISRC.org items 4/6) —
         // same convention as isFormatCol/isTracksCol/isCatalogCol/isEventCol
         // above (name-only, no page-type check), so this applies
-        // automatically to every pageType with an "ISRCs" column.
-        const isIsrcCol = _colHeaderName === 'ISRCs';
+        // automatically to every pageType with an "ISRCs" column — and to
+        // ISRC Scout's "ISRC" column (_isIsrcColumnName()).
+        const isIsrcCol = _isIsrcColumnName(_colHeaderName);
+        // ISRC Scout's "Links" column (its header keeps the class
+        // 'ii-col-links'): one "Links info - Platform" entry per platform —
+        // see _normalizeIsrcScoutLinksTd(). By class, not by the generic name
+        // "Links", so no other column called "Links" is affected.
+        const _iiLinksTh = table ? table.querySelectorAll('thead tr:first-child th')[colIndex] : null;
+        const isIiLinksCol = !!(_iiLinksTh && _iiLinksTh.classList.contains('ii-col-links'));
         // Column-name gate for the native "ISWC" column's validity flag
         // (org/ISRC.org item 7) — same convention as isIsrcCol above.
         const isIswcCol = _colHeaderName === 'ISWC';
@@ -91297,6 +91525,23 @@ a { color: #1565c0; }`;
                     _rowDesignationValues.forEach(t => isrcDesignationValueCounts.set(t, (isrcDesignationValueCounts.get(t) || 0) + 1));
                     if (_isrcParts.some(p => p.valid))  isrcValidCount++;
                     if (_isrcParts.some(p => !p.valid)) isrcInvalidCount++;
+                }
+                if (isIiLinksCol) {
+                    const _rowPlatforms = new Set();
+                    _findCellLinkPlatforms(cell).forEach(p => {
+                        _rowPlatforms.add(p.name);
+                        if (!linkPlatformIconMap.has(p.name)) {
+                            const _svg = p.el.querySelector('svg');
+                            if (_svg) {
+                                // A detached copy: the cached bundle must not
+                                // hold a live cell's node.
+                                const _icon = _svg.cloneNode(true);
+                                _icon.style.color = p.el.style.color || '';
+                                linkPlatformIconMap.set(p.name, _icon);
+                            }
+                        }
+                    });
+                    _rowPlatforms.forEach(t => linkPlatformValueCounts.set(t, (linkPlatformValueCounts.get(t) || 0) + 1));
                 }
                 if (isIswcCol) {
                     const _iswcParts = _findCellIswcParts(cell);
@@ -92804,6 +93049,7 @@ a { color: #1565c0; }`;
                 tracksPerMediumValueCounts, tracksTotalValueCounts, catalogPrefixValueCounts, lengthBucketValueCounts, timeOfDayValueCounts,
                 relTypeCreditValueCounts,
                 isrcCountryValueCounts, isrcRegistrantValueCounts, isrcYearValueCounts, isrcDesignationValueCounts,
+                linkPlatformValueCounts, linkPlatformIconMap,
                 dateDecadeValueCounts, dateMonthValueCounts, dateYearValueCounts, dateWeekdayValueCounts,
                 partOfSeriesNameValueCounts, partOfSeriesDateValueCounts, partOfSeriesNumberValueCounts,
                 editorDeletedValueCounts, editorAnyDeletedCount, editorRecordedNameValueCounts,
@@ -92894,6 +93140,7 @@ a { color: #1565c0; }`;
             ...tracksPerMediumValueCounts.values(), ...tracksTotalValueCounts.values(), ...catalogPrefixValueCounts.values(),
             ...isrcCountryValueCounts.values(), ...isrcRegistrantValueCounts.values(),
             ...isrcYearValueCounts.values(), ...isrcDesignationValueCounts.values(),
+            ...linkPlatformValueCounts.values(),
             ...barcodeFormatValueCounts.values(), ...barcodeSameAsValueCounts.values(),
             ...lengthBucketValueCounts.values(), ...timeOfDayValueCounts.values(), ...relTypeCreditValueCounts.values(),
             ...recofSuggValueCounts.values(), ...(recofLoadStateCounts ? Object.values(recofLoadStateCounts) : []),
@@ -93717,6 +93964,7 @@ a { color: #1565c0; }`;
                  : kind === 'isrcregistrant'  ? '» registrant: '
                  : kind === 'isrcyear'        ? '» year: '
                  : kind === 'isrcdesignation' ? '» designation: '
+                 : kind === 'linkplatform'    ? '» platform: '
                  : kind === 'barcodeformat'   ? '» format: '
                  : kind === 'barcodesameas'   ? '🔢 '
                  : kind === 'workattrid'    ? '» identifier: '
@@ -93856,6 +94104,11 @@ a { color: #1565c0; }`;
                 // icon of that instrument, in the same trailing position.
                 if (kind === 'instrument' && iiIconMap.has('instrument:' + value)) {
                     item.appendChild(_iiTrailingIconSlot(iiIconMap.get('instrument:' + value)));
+                }
+                // "» platform:" entries: ISRC Scout's own icon of that
+                // platform, in the same trailing position.
+                if (kind === 'linkplatform' && linkPlatformIconMap.has(value)) {
+                    item.appendChild(_linkPlatformTrailingIconSlot(linkPlatformIconMap.get(value)));
                 }
             }
 
@@ -94170,6 +94423,7 @@ a { color: #1565c0; }`;
         // Numeric ascending (not lexicographic), same reasoning as Decade/Year above.
         const _sortedIsrcYearValues        = Array.from(isrcYearValueCounts.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
         const _sortedIsrcDesignationValues = Array.from(isrcDesignationValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedLinkPlatformValues    = Array.from(linkPlatformValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         // Fixed display order by increasing length (EAN-8/UPC-A/EAN-13/
         // GTIN-14), not lexicographic — mirrors the Weekday/bucket-style
         // sorts above.
@@ -94244,6 +94498,7 @@ a { color: #1565c0; }`;
             _sortedTracksPerMediumValues.length > 0 || _sortedTracksTotalValues.length > 0 || _sortedCatalogPrefixValues.length > 0 ||
             _sortedIsrcCountryValues.length > 0 || _sortedIsrcRegistrantValues.length > 0 ||
             _sortedIsrcYearValues.length > 0 || _sortedIsrcDesignationValues.length > 0 ||
+            _sortedLinkPlatformValues.length > 0 ||
             _sortedBarcodeFormatValues.length > 0 || _sortedBarcodeSameAsValues.length > 0 ||
             _sortedLengthBucketValues.length > 0 || _sortedTimeOfDayValues.length > 0 || _sortedRelTypeCreditValues.length > 0 ||
             _sortedPartOfSeriesNameValues.length > 0 || _sortedPartOfSeriesDateValues.length > 0 || _sortedPartOfSeriesNumberValues.length > 0 ||
@@ -94541,6 +94796,7 @@ a { color: #1565c0; }`;
             _sortedIsrcRegistrantValues.forEach(v => makeValueSynItem('isrcregistrant', v, isrcRegistrantValueCounts.get(v)));
             _sortedIsrcYearValues.forEach(v => makeValueSynItem('isrcyear', v, isrcYearValueCounts.get(v)));
             _sortedIsrcDesignationValues.forEach(v => makeValueSynItem('isrcdesignation', v, isrcDesignationValueCounts.get(v)));
+            _sortedLinkPlatformValues.forEach(v => makeValueSynItem('linkplatform', v, linkPlatformValueCounts.get(v)));
             _sortedBarcodeFormatValues.forEach(v => makeValueSynItem('barcodeformat', v, barcodeFormatValueCounts.get(v)));
             _sortedBarcodeSameAsValues.forEach(v => makeValueSynItem('barcodesameas', v, barcodeSameAsValueCounts.get(v)));
             _sortedLengthBucketValues.forEach(v => makeValueSynItem('lengthbucket', v, lengthBucketValueCounts.get(v)));
@@ -94704,6 +94960,7 @@ a { color: #1565c0; }`;
             _sortedIsrcRegistrantValues.forEach(v => makeValueSynItem('isrcregistrant', v, isrcRegistrantValueCounts.get(v)));
             _sortedIsrcYearValues.forEach(v => makeValueSynItem('isrcyear', v, isrcYearValueCounts.get(v)));
             _sortedIsrcDesignationValues.forEach(v => makeValueSynItem('isrcdesignation', v, isrcDesignationValueCounts.get(v)));
+            _sortedLinkPlatformValues.forEach(v => makeValueSynItem('linkplatform', v, linkPlatformValueCounts.get(v)));
             _sortedBarcodeFormatValues.forEach(v => makeValueSynItem('barcodeformat', v, barcodeFormatValueCounts.get(v)));
             _sortedBarcodeSameAsValues.forEach(v => makeValueSynItem('barcodesameas', v, barcodeSameAsValueCounts.get(v)));
             _sortedLengthBucketValues.forEach(v => makeValueSynItem('lengthbucket', v, lengthBucketValueCounts.get(v)));
@@ -95439,6 +95696,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('isrcregistrant:'))  return `» registrant: ${mode.slice(15)}`;
         if (mode.startsWith('isrcyear:'))        return `» year: ${mode.slice(9)}`;
         if (mode.startsWith('isrcdesignation:')) return `» designation: ${mode.slice(16)}`;
+        if (mode.startsWith('linkplatform:'))    return `» platform: ${mode.slice(13)}`;
         if (mode.startsWith('lengthbucket:'))    return `» duration: ${mode.slice(13)}`;
         if (mode.startsWith('timeofday:'))       return `» time of day: ${mode.slice(10)}`;
         if (mode.startsWith('reltypecredit:'))   return `» ${mode.slice(14)}`;
@@ -95668,6 +95926,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('isrcregistrant:')) return 'One "ISRCs" entry\'s own 3-character registrant code (the XXX segment).';
         if (mode.startsWith('isrcyear:')) return 'One "ISRCs" entry\'s own year of reference, resolved to a 4-digit year from the 2-digit YY segment.';
         if (mode.startsWith('isrcdesignation:')) return 'One "ISRCs" entry\'s own 5-digit designation code (the NNNNN segment).';
+        if (mode.startsWith('linkplatform:')) return 'Rows with at least one link to this platform in the "Links" column of the "ISRC Scout" userscript (by @majkinetor). Ticked, it outlines that platform\'s icon.';
         if (mode.startsWith('reltypecredit:')) return 'One "Relationship types" item\'s credited-as name — the (as “…”) part — with its relationship type in front.';
         if (mode.startsWith('timeofday:')) return 'This "Time" cell\'s start time, bucketed into a part of the day (morning, lunch, afternoon, evening, night). An empty cell stays under "empty cells".';
         if (mode.startsWith('lengthbucket:')) return `This "${colName}" cell's own displayed duration, bucketed into a fixed "N to N+1 minutes" range (or "Unknown length" for MusicBrainz's own "?:??" placeholder).`;

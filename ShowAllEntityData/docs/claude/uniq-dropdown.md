@@ -277,3 +277,35 @@ Specs: `instrument-icons-uvd.spec.js` (search `type=instrument`: counts against
 a DOM oracle, ticks in both orders against a typed filter, entry icons, no
 section without the script), plus the "» instrument:" cases in
 `release-tracks-instrument-icons{,.mobile}.spec.js`.
+
+## ISRC Scout's columns: "ISRC" and "Links info - Platform"
+
+"ISRC Scout" (@majkinetor) adds an "ISRC" and a "Links" column to the
+release-tracks tracklist (docs/claude/release-tracks-and-length.md, "ISRC
+Scout's ISRC and Links columns").
+
+- **ISRC** gets the "ISRCs" sections (Country/Registrant/Year/Designation/
+  Validity) through one name gate, `_isIsrcColumnName()`, also used by the
+  `isrc-invalid` finding. No section code of its own.
+- **"Links info - Platform"** (📡, kind `linkplatform:`), one open-valued
+  entry per platform with its row count, sorted by name, the platform's icon
+  (an SVG copy from `linkPlatformIconMap`) after the label in the trailing
+  slot (`_linkPlatformTrailingIconSlot()`). Gated by the header CLASS
+  `ii-col-links` (`isIiLinksCol`), not the generic name "Links". Values come
+  from `_findCellLinkPlatforms()`, which reads `data-mb-link-platform`, never
+  text, so earlier highlights cannot change them. A tick marks the anchor's
+  hidden `span.mb-ii-link-name` (`_highlightLinkPlatformMatch()`) and CSS
+  outlines the icon.
+- The header count is the ordinary one, distinct per-row platform sets: the
+  hidden names are the cell's text and the "N links" badge (`.ii-trk-n`) is
+  stripped.
+
+A tick written into a column filter shows as `🔍 » platform: Spotify`. Typing
+into that same input afterwards replaces it with literal text (`🔍 Spotify`)
+that matches nothing. That is how every 📊 tick behaves, not this section's
+own; the spec therefore pairs a tick with the GLOBAL filter, as
+`instrument-icons-uvd.spec.js` does.
+
+Spec: `release-tracks-isrc-scout.spec.js` (counts, a tick narrowing and
+outlining, a tick AND a global filter on the same text in both orders, plain
+values free of badge digits).
