@@ -535,6 +535,31 @@ every art cell would load every thumbnail). **li-0 must wrap**: the first
 render's prose marker div holds the icon, hint and count, and as a shrinkable
 flex item beside the chips it collapsed to the icon's width.
 
+**The auto-resize reserves a fully loaded li-0 (2026-10-16).** Both resize
+paths (`toggleAutoResizeColumns()`, `toggleSubTableAutoResize()`) measure once,
+right after the render, before most archive records are in; the count badge
+and the chips arrive with the record. Because li-0 wraps, a column sized to
+its header put the chips on a second line wherever the table had no slack:
+the large multi-table pages (`debug/CAA-wrapped.png`, 46 sub-tables, CAA
+6 m 53 s after a 1.9 s resize). Small tables hid it, since the table grew past
+its set width for other columns. `_artReserveSummaryWidths()` builds one
+detached worst-case li-0 per art column (`_artBuildSummarySample()`: ▶, the
+cell's own icon content with the live icon's computed size, a two-digit count
+with the cache hint when it is on, every vocabulary chip with a two-digit
+repeat count, and ⏳) and measures them all in one layout read. The width
+floors the column AFTER the prose cap, which a still-plain art cell's marker
+div triggers. Rules:
+
+- **Measure detached, never inside the table.** Several MutationObservers
+  watch `tbody` subtrees and `document.body` for added nodes; a sample put
+  into a live cell, even for one synchronous read, reaches them. The sample
+  host is removed in the same task.
+- **It is a worst case on purpose**, so the width never changes while loading.
+  On the fixture it reserves 230 px for lines of 178–202 px.
+- Spec `caa-col-width-reserve.spec.js` (archive answers held until the resize
+  has finished); mutations `scripts/mutations/caa-col-width-reserve.json`.
+  `caaColumnFixture.js` counts art lists inside table cells only.
+
 ## The table-wide artwork gallery (D2)
 
 `org/redesign-CAA-EAA-column.org` P5; grep `// ── D2: the table-wide artwork gallery`.

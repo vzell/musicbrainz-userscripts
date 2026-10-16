@@ -59728,6 +59728,15 @@ a { color: #1565c0; }`;
                 }
             }
 
+            // CAA/EAA: never narrower than a fully loaded summary line (same
+            // as toggleAutoResizeColumns()).
+            (_artReserveSummaryWidths([table]).get(table) || new Map()).forEach((w, colIndex) => {
+                if (colIndex < columnCount && columnVisible[colIndex] && w > columnWidths[colIndex]) {
+                    Lib.debug('resize', `Sub-table "${categoryName}", Column ${colIndex}: ${columnWidths[colIndex]}px → ${w}px for the art summary line`);
+                    columnWidths[colIndex] = w;
+                }
+            });
+
             // Apply widths via colgroup
             let colgroup = table.querySelector('colgroup');
             if (!colgroup) {
@@ -60048,6 +60057,11 @@ a { color: #1565c0; }`;
         // Yield once so the overlay renders before the (now synchronous) batch pass.
         await new Promise(resolve => setTimeout(resolve, 0));
 
+        // CAA/EAA columns: the width a fully loaded summary line needs, for
+        // every table at once, since the records arrive after this pass (see
+        // _artBuildSummarySample()).
+        const _artReserved = _artReserveSummaryWidths(tables);
+
         for (const [tableIndex, table] of Array.from(tables).entries()) {
             // Remove any existing width constraints
             table.style.width = 'auto';
@@ -60195,6 +60209,16 @@ a { color: #1565c0; }`;
                     columnWidths[colIndex] = Math.min(columnWidths[colIndex], _getProseColumnMaxWidth(table, colIndex));
                 }
             }
+
+            // CAA/EAA: never narrower than a fully loaded summary line. After
+            // the prose cap, which a still-plain art cell's marker div can
+            // trigger.
+            (_artReserved.get(table) || new Map()).forEach((w, colIndex) => {
+                if (colIndex < columnCount && columnVisible[colIndex] && w > columnWidths[colIndex]) {
+                    Lib.debug('resize', `Table ${tableIndex}, Column ${colIndex}: ${columnWidths[colIndex]}px → ${w}px for the art summary line`);
+                    columnWidths[colIndex] = w;
+                }
+            });
 
             // Apply widths to table columns
             // Use colgroup for better performance
@@ -120608,6 +120632,131 @@ a { color: #1565c0; }`;
         }
         _setTip(wrap, tip.join(' · '));
         li0.appendChild(wrap);
+    }
+
+    /**
+     * A detached, fully loaded summary line (li-0) for one CAA/EAA cell, for
+     * the auto-resize to measure BEFORE the cell's archive record arrives.
+     *
+     * The resize measures each column once, right after the render; the art
+     * cells get their count badge and type chips only when their record comes
+     * in, and on a large page that is minutes later. li-0 is a wrapping flex
+     * row, so a column sized to the header put the chips on a second line
+     * once they arrived (debug/CAA-wrapped.png). This line is the widest the
+     * cell can get: the ▶ button, the cell's own icon content, a two-digit
+     * count (with the cache hint when that is on), and every chip of the
+     * vocabulary with a two-digit repeat count plus ⏳.
+     *
+     * The icon gets the live icon's computed size inline, since the rule
+     * that sizes it may need the table around it, which the clone lacks.
+     *
+     * @param   {ArtCtx}               ctx
+     * @param   {HTMLTableCellElement} td   A cell of the column holding the art anchor.
+     * @returns {?HTMLElement} The `ul.mb-caa-art-ul`, or null when the cell has no anchor.
+     */
+    function _artBuildSummarySample(ctx, td) {
+        const liveLi0 = td.querySelector(':scope > ul.mb-caa-art-ul > li.mb-caa-art-li-summary');
+        const src = Array.from((liveLi0 || td).childNodes).filter(n => n.nodeType !== 1 ||
+            !n.matches('[data-caa-expand-btn], .mb-caa-type-chips, .mb-cell-collapse-toggle, ul.mb-caa-art-ul'));
+        const ul = document.createElement('ul');
+        ul.className = 'mb-caa-art-ul';
+        const li0 = document.createElement('li');
+        li0.className = 'mb-caa-art-li mb-caa-art-li-summary';
+        li0.style.flexWrap = 'nowrap';
+        const btn = document.createElement('span');
+        btn.style.cssText = 'cursor:pointer; margin-right:4px; color:#777; user-select:none;';
+        btn.innerHTML = '&#9654;';
+        li0.appendChild(btn);
+        src.forEach(n => li0.appendChild(n.cloneNode(true)));
+        ul.appendChild(li0);
+        const anchor = li0.querySelector(`a[href$="${ctx.artSuffix}"]`);
+        if (!anchor) return null;
+        const liveIcon = td.querySelector('span.caa-icon, span.eaa-icon, span.artwork-icon');
+        const icon = anchor.querySelector('span.caa-icon, span.eaa-icon, span.artwork-icon');
+        if (liveIcon && icon) {
+            const ics = window.getComputedStyle(liveIcon);
+            icon.style.display = 'inline-block';
+            icon.style.width = ics.width;
+            icon.style.height = ics.height;
+        }
+        let badge = li0.querySelector('.' + ctx.badgeClass);
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.className = ctx.badgeClass;
+            let wrap = anchor.nextElementSibling;
+            if ((!wrap || !wrap.classList.contains('mb-art-cache-hint-col-wrap')) &&
+                    Lib.settings.sa_rt_enable && Lib.settings.sa_rt_show_icon_column) {
+                wrap = document.createElement('span');
+                wrap.className = 'mb-art-cache-hint-col-wrap';
+                const hint = document.createElement('span');
+                hint.className = 'mb-art-cache-hint-col';
+                hint.textContent = cacheStatusEmoji('idb');
+                wrap.appendChild(hint);
+                anchor.after(wrap);
+            }
+            if (wrap && wrap.classList.contains('mb-art-cache-hint-col-wrap')) wrap.appendChild(badge);
+            else anchor.after(badge);
+        }
+        if (badge.textContent.trim().length < 2) badge.textContent = '99';
+        const types = _artChipTypes(ctx).map(c => c.type);
+        const images = [];
+        for (let i = 0; i < 10; i++) {
+            types.forEach(t => images.push({ types: [t], approved: true }));
+            images.push({ types: [], approved: false });
+        }
+        _artRenderTypeChips(ctx, li0, images);
+        return ul;
+    }
+
+    /**
+     * The width each CAA/EAA column of `tables` needs for a fully loaded
+     * summary line (see `_artBuildSummarySample()`), as a cell's border-box
+     * width: the sample's width plus the cell's horizontal padding and
+     * borders. One sample per art column per table, all measured in ONE
+     * layout read, so a 46-table page costs two layouts, not 46.
+     *
+     * @param   {Iterable<HTMLTableElement>} tables
+     * @returns {Map<HTMLTableElement, Map<number, number>>} Per table, column
+     *   index → px. Tables without an art column, or whose art column has no
+     *   art anchor yet, are absent.
+     */
+    function _artReserveSummaryWidths(tables) {
+        const out = new Map();
+        const jobs = [];
+        for (const table of tables) {
+            for (const ctx of [CAA_CTX, EAA_CTX]) {
+                const colIdx = caaFindColumnByName(table, ctx.column);
+                if (colIdx < 0) continue;
+                const rows = table.tBodies[0] ? table.tBodies[0].rows : [];
+                let td = null;
+                for (let i = 0; i < rows.length && !td; i++) {
+                    const c = rows[i].cells[colIdx];
+                    if (c && c.querySelector(`a[href$="${ctx.artSuffix}"]`)) td = c;
+                }
+                if (!td) continue;
+                const cs = window.getComputedStyle(td);
+                const box = document.createElement('div');
+                box.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;display:inline-block;';
+                ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'lineHeight', 'letterSpacing']
+                    .forEach(p => { box.style[p] = cs[p]; });
+                const sample = _artBuildSummarySample(ctx, td);
+                if (!sample) continue;
+                box.appendChild(sample);
+                const extra = ['paddingLeft', 'paddingRight', 'borderLeftWidth', 'borderRightWidth']
+                    .reduce((s, p) => s + (parseFloat(cs[p]) || 0), 0);
+                jobs.push({ table, colIdx, box, extra });
+            }
+        }
+        if (!jobs.length) return out;
+        const host = document.createElement('div');
+        jobs.forEach(j => host.appendChild(j.box));
+        document.body.appendChild(host);
+        jobs.forEach(j => {
+            if (!out.has(j.table)) out.set(j.table, new Map());
+            out.get(j.table).set(j.colIdx, Math.ceil(j.box.getBoundingClientRect().width + j.extra));
+        });
+        host.remove();
+        return out;
     }
 
     /**

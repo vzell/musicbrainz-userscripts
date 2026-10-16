@@ -725,7 +725,9 @@ restore the original order. The indicator goes `⇅ → ▲ → ▼`.
 **👁️ Visible** hides and shows columns per table, remembered per page type.
 **↔️ Resize** fits every column to its content; columns can also be dragged by
 their right edge, and a column can never be dragged narrower than its own
-header needs.
+header needs. The CAA and EAA columns are fitted to a fully loaded artwork
+line from the start, so the image count and the type letters stay on one line
+even while the artwork is still arriving.
 
 **Scrolling down** keeps the page heading with the action buttons and the
 status line ("Loaded … Fetching …") at the top of the window, from the moment
