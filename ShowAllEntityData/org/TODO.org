@@ -1890,8 +1890,170 @@ cell
 
 * TODO the "CAA" column should always be wide enough to hold the image, the type glyphs + the optional warning icon (especially for large tables)
 
-the "CAA" column should always be wide enough to hold the image, the type glyphs + the optional warning icon (especially
-for large tables) - CAA-wrapped.png
+1.)
+
+Is the last thing you fixed probably the same problem that I sometimes see for especially large tables, which take long
+to download all the CAA images information, and during which the "CAA" column doesn't seem to be wide enough to hold ALL
+the following information (when the auto resize feature of columns is in effect)
+
+#+begin_example
+image
+type glyphs
+optional warning icon
+#+end_example
+
+See the following screenshot, during which not all info for every row had been fetched - @debug/CAA-wrapped.png
+
+For small tables the "CAA" column seems to be ALWAYS wide enough to render all the info in ONE line
+
+2.)
+
+If my diagnosis doesn't hold true it's something we need to tackle in a separate commit
+
+3.)
+
+The CAA/EAA column should ALWAYS be wide enough to hold ALL the information even during rendering
+
+* add UVD entries for titles which do NOT follow MB style guidelines on MB PTs
+
+
+* 'release-tracks' PTs which have an h3 "Barcode and Other Identifiers" section, should render that section as a filterable/sortable table
+
+'release-tracks' PTs which have an h3 "Barcode and Other Identifiers" section
+
+#+begin_example
+<h3 class="mb-annotation-toggle-h3 mb-annotation-h3-processed" data-mb-tip="" title="Click to collapse this sub-section (Ctrl+Click to toggle ALL sub-sections of this section)"><span class="mb-toggle-icon">▼</span>Barcode and Other Identifiers</h3>
+#+end_example
+
+should render that section as a filterable/sortable table
+
+#+begin_example
+@debug/BarcodeAnOtherIdentifiers.html - FRP of https://musicbrainz.org/release/f50fcf09-4339-4e1c-91cd-e1d2a7b3a7bc
+#+end_example
+
+
+* "Name" column in https://musicbrainz.org/search?query=guit&type=instrument&method=indexed needs a UVD entry for comments
+
+"Name" column in https://musicbrainz.org/search?query=guit&type=instrument&method=indexed needs a UVD entry for comments
+
+
+* add the "work of" to more recording columns in other PTs
+
+
+* ● Your browser reaches MusicBrainz over IPv6.
+
+I can only use IPv4, and right now this network's IPv4 route to MusicBrainz's servers is being cut off. It isn't a Claude Code sandbox or proxy restriction: no
+proxy is set, and other sites load fine from here.
+
+┌───────────────────────────────┬───────────────────┬─────────────────────────────────────────────────────────────────┐
+│             From              │     Protocol      │                             Result                              │
+├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
+│ WSL (my shell, Playwright)    │ IPv4              │ connects, then the connection is reset during the TLS handshake │
+├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
+│ WSL                           │ IPv6              │ fails: WSL has no IPv6 route                                    │
+├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
+│ Windows curl.exe -4           │ IPv4              │ fails the same way                                              │
+├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
+│ Windows curl.exe -6           │ IPv6              │ 200, via 2a01:4f8:c011:f68::1                                   │
+├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
+│ Windows curl.exe, default     │ IPv6 is preferred │ 200, which is what your browser does                            │
+├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
+│ WSL → github.com, example.com │ IPv4              │ 200                                                             │
+└───────────────────────────────┴───────────────────┴─────────────────────────────────────────────────────────────────┘
+
+So:
+- Windows prefers IPv6, so your browser never touches the broken IPv4 route.
+- WSL2 in its default NAT mode has no IPv6, so curl and Playwright's Chromium fall back to IPv4.
+- Every MetaBrainz host fails over IPv4, not just musicbrainz.org. coverartarchive.org, listenbrainz.org and metabrainz.org all behave the same, and they share one front end. Other IPv4 sites work.
+
+Why the IPv4 route fails, I can't confirm. It looks like your public IPv4 address is blocked or throttled on MetaBrainz's side: the connection succeeds and is then reset, it affects only their hosts, and it
+hits Windows too. Their documented answer to too many requests is HTTP 503, and a reset during the TLS handshake looks more like an address-level block. Yesterday's full-suite run from this machine got 754
+tests through, so it started recently. Whether our test traffic tripped it, I can't tell from here.
+
+What you can do:
+- Give WSL your Windows IPv6: add networkingMode=mirrored under [wsl2] in %UserProfile%\.wslconfig, then run wsl --shutdown. WSL then shares Windows' network, IPv6 included, and Playwright should get through
+  like your browser. This changes WSL's networking for everything on this machine, so it's your call.
+- Wait it out: check now and then with curl -4 -sI https://musicbrainz.org/ from WSL. If it's a temporary block, it should lift on its own.
+- If it doesn't lift, try curl.exe -4 from another machine on the same network. If that fails too, the block is on your public IPv4 address, and it's worth asking MetaBrainz.
+
+I saved this as a memory, so next time I'll check this first rather than treat these failures as a code problem.
+
+* ● The full run didn't finish
+WSL restarted at 08:55 UTC (my guess is the WSL update to kernel 6.18.54.1, since the kernel version changed) and killed it at 1593 of 1686 tests. main is clean and matches
+origin/main at b4bf048. I re-ran the three tests that failed. One real regression from the hide-empty-sub-tables feature has reached main.
+
+Where the run stopped: 1590 passed, 3 failed, 93 never ran. The logs were in /tmp and the restart wiped them. The progress file and Playwright's test-results/ folder survived, and that's where these numbers
+come from.
+
+The three failures:
+
+┌───────────────────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────┬──────────────────────────────────────────────────┐
+│                         Test                          │                                             Cause                                             │                      Rerun                       │
+├───────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ instrument-icons-uvd.spec.js:157                      │ timing; unrelated                                                                             │ passes                                           │
+├───────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ detail-preview.spec.js:571 (springsteenlyrics.com     │ flaky test from an earlier branch in the stack: its poll reads the iframe before the iframe   │ fails 1 in 8 runs even on the commit before my   │
+│ card)                                                 │ has a document                                                                                │ feature                                          │
+├───────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ ms-length-filter-after-toggle.spec.js:142 (test C)    │ my feature                                                                                    │ fails every time                                 │
+└───────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────┴──────────────────────────────────────────────────┘
+
+The regression: test C types the global filter "11.666" on a release with one medium. While lengths are shown in seconds, nothing matches, so the medium is hidden along with its column headers. The ⏱ button
+that switches to milliseconds (which would make "11.666" match) is in one of those headers. Neither the test nor a user can reach it. Any button in a column header that changes what the global filter matches
+has the same problem, and only once every sub-table is hidden: while one stays visible, its header controls are still reachable.
+
+Two ways to fix it:
+- Never hide every sub-table (my recommendation). If the filter would empty them all, show them all with "(0 of N)", as before. Hiding then only removes sub-tables while at least one stays on screen, and
+  that one keeps the header controls reachable. My "nothing matches: every sub-table is hidden" test would change to match.
+- Keep the behaviour and change test C to turn the setting off. To use ⏱ with no matches, a user would have to clear the filter, click ⏱, and type the filter again.
+
+Which way do you want? Either fix goes on a new branch with a regression test. I still owe a complete test:full on main, and I'll run it once the fix is in.
+* ● The fix is merged into main as 9.99.1339 and pushed
+
+main matches origin/main, and I didn't run the full suite, as you asked.
+
+- TODO.org: your newer edits are committed as fa11320 and went in with the merge.
+- Commits: merge 8697e52, changelog fold d4f1c28.
+- Fold: WIP.1 became 9.99.1339. No cross-references needed rewriting, and the entry already carried today's date. // @version is 9.99.1339+2026-10-13 and the WIP file is gone.
+- Checks on main: syntax check, changelog audit (1510 entries, clean) and docs audit all pass.
+- Branch: fix/hide-empty-subtables-keep-one is deleted locally and on origin.
+
+For tomorrow's test:full on the other host:
+- ms-length-filter-after-toggle test C should now pass; on the interrupted run it was the one real failure.
+- detail-preview.spec.js:571 (the springsteenlyrics.com card) may fail about one run in eight. That's a known flaky test, not this change.
+- On vzell-lap, the last recorded full run took 22 m 36 s for 439 tests. At 1686 tests that scales to about 87 minutes here; a faster host will be quicker.
+
+The published copy in vzell/mb-userscripts is still at 9.99.1167, so republishing (including the HELP the ❓ button serves) is still to do.
+
+* ● Committed as 047b717 and pushed
+
+feature/sidebar-overhaul on GitHub matches the local branch.
+
+  The branch is ready to merge into main whenever you say so. Merging would:
+  1. Turn WIP.1–WIP.8 into real version numbers and bump // @version.
+  2. Run the full suite on the merged main.
+  3. Mark org/TODO.org items 1–4 DONE, and re-read HELP and PERFORMANCE.org against what shipped.
+  4. Push main, then delete feature/sidebar-overhaul and fix/sticky-gutter-and-sorted-thead, locally and on GitHub. The fix branch is fully contained in this one.
+
+  Two things stay open after the merge: the phone handle that can't be tapped, and the three mutation entries in sticky-page-headers.json that were already stale on main.
+
+
+
+* merge
+
+1.)
+
+merge main into our feature branch "feature/sidebar-overhaul" as that one alreay has the missing pageTyes for place,
+area and instrument pages.
+
+2.)
+
+after the merge go on with our current plan
+
+* actually not yet
+
+Actually not yet, first merge the branch "fix/sticky-gutter-and-sorted-thead" into our "feature/sidebar-overhaul" to
+check if something breaks now as it's also sidebar related
 
 
 * DONE fix the h2/h3 stretching problem to the right browser side
@@ -1927,7 +2089,6 @@ When multisorting non-sticky columns the effect is visible in all sort columns.
 looks nice, cause it doesn't completely stretch to the right and leaves a small space more or less like the sidebar
 toggle width. The long sub-table also shows this behaviour, but the h2 line with the global filter and the h3 sub-table
 section headers stretch to the complete right, even under the sidebar toggle handle - @debug/h2h3bug.html
-
 
 * DONE Normalize titles in nonMB PTs according to MB style guidelines
 ** DONE i
@@ -2052,9 +2213,6 @@ https://www.springsteenlyrics.com/lyrics.php - "Title" column
 https://brucebase.wikidot.com/<year> - additionally the "City" and "Country" except when the country cell is "USA" (leave it as is)
 #+end_example
  
-* add UVD entries for titles which do NOT follow MB style guidelines on MB PTs
-
-
 * DONE on multi-table PTs when filtering globally, hide the sub-tables with 0 filtered rows (the h3 sub-table beader line + the sub-table itself)
 
 Create a new branch on top of feature/bb-recent-changes-relations:
@@ -2062,27 +2220,6 @@ Create a new branch on top of feature/bb-recent-changes-relations:
 On multi-table PTs when filtering globally, hide the sub-tables with 0 filtered rows (the h3 sub-table header line + the
 sub-table itself). The sub-tables should reappear when at least on row satisfies the filter condition if that brodens
 the filter again.
-
-
-* 'release-tracks' PTs which have an h3 "Barcode and Other Identifiers" section, should render that section as a filterable/sortable table
-
-'release-tracks' PTs which have an h3 "Barcode and Other Identifiers" section
-
-#+begin_example
-<h3 class="mb-annotation-toggle-h3 mb-annotation-h3-processed" data-mb-tip="" title="Click to collapse this sub-section (Ctrl+Click to toggle ALL sub-sections of this section)"><span class="mb-toggle-icon">▼</span>Barcode and Other Identifiers</h3>
-#+end_example
-
-should render that section as a filterable/sortable table
-
-#+begin_example
-@debug/BarcodeAnOtherIdentifiers.html - FRP of https://musicbrainz.org/release/f50fcf09-4339-4e1c-91cd-e1d2a7b3a7bc
-#+end_example
-
-
-* "Name" column in https://musicbrainz.org/search?query=guit&type=instrument&method=indexed needs a UVD entry for comments
-
-"Name" column in https://musicbrainz.org/search?query=guit&type=instrument&method=indexed needs a UVD entry for comments
-
 
 * DONE tabelize more sections - relationship tables
 ** i
@@ -2257,9 +2394,6 @@ e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events
 
 Also give event pages the Begin/End and Number/Order columns
 
-
-* add the "work of" to more recording columns in other PTs
-
 * DONE add a new PT for "URL" e.g. https://musicbrainz.org/url/a333fbe2-2707-4799-aa2e-50d21be8081c
 
 1.)
@@ -2296,106 +2430,6 @@ my behalf
 gh pr ready https://github.com/Aerozol/metabrainz-userscripts/pull/26
 #+end_src
 
-
-* ● Your browser reaches MusicBrainz over IPv6.
-
-I can only use IPv4, and right now this network's IPv4 route to MusicBrainz's servers is being cut off. It isn't a Claude Code sandbox or proxy restriction: no
-proxy is set, and other sites load fine from here.
-
-┌───────────────────────────────┬───────────────────┬─────────────────────────────────────────────────────────────────┐
-│             From              │     Protocol      │                             Result                              │
-├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
-│ WSL (my shell, Playwright)    │ IPv4              │ connects, then the connection is reset during the TLS handshake │
-├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
-│ WSL                           │ IPv6              │ fails: WSL has no IPv6 route                                    │
-├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
-│ Windows curl.exe -4           │ IPv4              │ fails the same way                                              │
-├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
-│ Windows curl.exe -6           │ IPv6              │ 200, via 2a01:4f8:c011:f68::1                                   │
-├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
-│ Windows curl.exe, default     │ IPv6 is preferred │ 200, which is what your browser does                            │
-├───────────────────────────────┼───────────────────┼─────────────────────────────────────────────────────────────────┤
-│ WSL → github.com, example.com │ IPv4              │ 200                                                             │
-└───────────────────────────────┴───────────────────┴─────────────────────────────────────────────────────────────────┘
-
-So:
-- Windows prefers IPv6, so your browser never touches the broken IPv4 route.
-- WSL2 in its default NAT mode has no IPv6, so curl and Playwright's Chromium fall back to IPv4.
-- Every MetaBrainz host fails over IPv4, not just musicbrainz.org. coverartarchive.org, listenbrainz.org and metabrainz.org all behave the same, and they share one front end. Other IPv4 sites work.
-
-Why the IPv4 route fails, I can't confirm. It looks like your public IPv4 address is blocked or throttled on MetaBrainz's side: the connection succeeds and is then reset, it affects only their hosts, and it
-hits Windows too. Their documented answer to too many requests is HTTP 503, and a reset during the TLS handshake looks more like an address-level block. Yesterday's full-suite run from this machine got 754
-tests through, so it started recently. Whether our test traffic tripped it, I can't tell from here.
-
-What you can do:
-- Give WSL your Windows IPv6: add networkingMode=mirrored under [wsl2] in %UserProfile%\.wslconfig, then run wsl --shutdown. WSL then shares Windows' network, IPv6 included, and Playwright should get through
-  like your browser. This changes WSL's networking for everything on this machine, so it's your call.
-- Wait it out: check now and then with curl -4 -sI https://musicbrainz.org/ from WSL. If it's a temporary block, it should lift on its own.
-- If it doesn't lift, try curl.exe -4 from another machine on the same network. If that fails too, the block is on your public IPv4 address, and it's worth asking MetaBrainz.
-
-I saved this as a memory, so next time I'll check this first rather than treat these failures as a code problem.
-
-* ● The full run didn't finish
-WSL restarted at 08:55 UTC (my guess is the WSL update to kernel 6.18.54.1, since the kernel version changed) and killed it at 1593 of 1686 tests. main is clean and matches
-origin/main at b4bf048. I re-ran the three tests that failed. One real regression from the hide-empty-sub-tables feature has reached main.
-
-Where the run stopped: 1590 passed, 3 failed, 93 never ran. The logs were in /tmp and the restart wiped them. The progress file and Playwright's test-results/ folder survived, and that's where these numbers
-come from.
-
-The three failures:
-
-┌───────────────────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────┬──────────────────────────────────────────────────┐
-│                         Test                          │                                             Cause                                             │                      Rerun                       │
-├───────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
-│ instrument-icons-uvd.spec.js:157                      │ timing; unrelated                                                                             │ passes                                           │
-├───────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
-│ detail-preview.spec.js:571 (springsteenlyrics.com     │ flaky test from an earlier branch in the stack: its poll reads the iframe before the iframe   │ fails 1 in 8 runs even on the commit before my   │
-│ card)                                                 │ has a document                                                                                │ feature                                          │
-├───────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
-│ ms-length-filter-after-toggle.spec.js:142 (test C)    │ my feature                                                                                    │ fails every time                                 │
-└───────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────┴──────────────────────────────────────────────────┘
-
-The regression: test C types the global filter "11.666" on a release with one medium. While lengths are shown in seconds, nothing matches, so the medium is hidden along with its column headers. The ⏱ button
-that switches to milliseconds (which would make "11.666" match) is in one of those headers. Neither the test nor a user can reach it. Any button in a column header that changes what the global filter matches
-has the same problem, and only once every sub-table is hidden: while one stays visible, its header controls are still reachable.
-
-Two ways to fix it:
-- Never hide every sub-table (my recommendation). If the filter would empty them all, show them all with "(0 of N)", as before. Hiding then only removes sub-tables while at least one stays on screen, and
-  that one keeps the header controls reachable. My "nothing matches: every sub-table is hidden" test would change to match.
-- Keep the behaviour and change test C to turn the setting off. To use ⏱ with no matches, a user would have to clear the filter, click ⏱, and type the filter again.
-
-Which way do you want? Either fix goes on a new branch with a regression test. I still owe a complete test:full on main, and I'll run it once the fix is in.
-* ● The fix is merged into main as 9.99.1339 and pushed
-
-main matches origin/main, and I didn't run the full suite, as you asked.
-
-- TODO.org: your newer edits are committed as fa11320 and went in with the merge.
-- Commits: merge 8697e52, changelog fold d4f1c28.
-- Fold: WIP.1 became 9.99.1339. No cross-references needed rewriting, and the entry already carried today's date. // @version is 9.99.1339+2026-10-13 and the WIP file is gone.
-- Checks on main: syntax check, changelog audit (1510 entries, clean) and docs audit all pass.
-- Branch: fix/hide-empty-subtables-keep-one is deleted locally and on origin.
-
-For tomorrow's test:full on the other host:
-- ms-length-filter-after-toggle test C should now pass; on the interrupted run it was the one real failure.
-- detail-preview.spec.js:571 (the springsteenlyrics.com card) may fail about one run in eight. That's a known flaky test, not this change.
-- On vzell-lap, the last recorded full run took 22 m 36 s for 439 tests. At 1686 tests that scales to about 87 minutes here; a faster host will be quicker.
-
-The published copy in vzell/mb-userscripts is still at 9.99.1167, so republishing (including the HELP the ❓ button serves) is still to do.
-
-* ● Committed as 047b717 and pushed
-
-feature/sidebar-overhaul on GitHub matches the local branch.
-
-  The branch is ready to merge into main whenever you say so. Merging would:
-  1. Turn WIP.1–WIP.8 into real version numbers and bump // @version.
-  2. Run the full suite on the merged main.
-  3. Mark org/TODO.org items 1–4 DONE, and re-read HELP and PERFORMANCE.org against what shipped.
-  4. Push main, then delete feature/sidebar-overhaul and fix/sticky-gutter-and-sorted-thead, locally and on GitHub. The fix branch is fully contained in this one.
-
-  Two things stay open after the merge: the phone handle that can't be tapped, and the three mutation entries in sticky-page-headers.json that were already stale on main.
-
-
-
 * DONE sidebar
 
 The "Sidebar" button/action is currently missing from the following PTs
@@ -2407,22 +2441,6 @@ https://musicbrainz.org/place/6a59a67c-fcc5-491f-949c-bfc45bc97463
 https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98
 https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978
 #+end_example
-
-* merge
-
-1.)
-
-merge main into our feature branch "feature/sidebar-overhaul" as that one alreay has the missing pageTyes for place,
-area and instrument pages.
-
-2.)
-
-after the merge go on with our current plan
-
-* actually not yet
-
-Actually not yet, first merge the branch "fix/sticky-gutter-and-sorted-thead" into our "feature/sidebar-overhaul" to
-check if something breaks now as it's also sidebar related
 
 * DONE "Old" and "New" column have an artifical spacing between them
 
@@ -2671,23 +2689,44 @@ fi
 exit 0
 #+end_example
 
-* TODO Add a must have third-party userscripts section together with the end-user visible changes and what our userscript depends on
+* DONE "ISRC" and "Links" now rendered addionally as columns after the "Artist" column on PT 'release-tracks'
+** DONE initial
 
-Add a must have third-party userscripts section together with the end-user visible changes and what our userscript
-depends on
+With the new version of the third-party userscript "ISRC Scout" by @majkinetor the "ISRC" and "Links" columns are now
+rendered (but asynchronously, so the action button can only be pressed when the columns appear on the IP) additionally
+after the "Artist" column on PT 'release-tracks', e.g. https://musicbrainz.org/release/230fd31d-f63f-4c01-8f10-432d36a1cb86
+
+#+begin_example
+DaD-ISRC-Links-initial.html - IP - after the columns have arrived
+DaD-ISRC-Links-final.html - FRP - after the columns have arrived
+#+end_example
 
 1.)
 
-Analyse first
+The "ISRC" column should get the same treatment regarding UVD as the "ISRCs" column and it should be a multi-row column
+as there can be multiple ISRCs per recording
 
 2.)
 
-Suggestions for complete integration
+Why do the "ISRC" and "Links" columns don't have the sort and UVD glyphs
 
 3.)
 
-etc
+the userscript is at @tests/fixtures/live-userscripts/ISRC-scout.js, register it with our skill first
 
+4.)
+
+@debug/multiple-ISRC.html - IP for https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 with multiple ISRs per cell
+
+5.)
+
+the missing glyphs were probably a racing issue, as the screenshot here shows them - [Image #2]
+
+** DONE bug
+
+Everything looks good and works, except a small glitch in the "Links" column, see [Image #4]:
+
+On row 18, the link icons are rendered over 2 lines, see the raw HTML at @debug/links-overflow.html
 * DONE stacking multiple rich tooltips (9.99.1359)
 
 Goal: stacking multiple rich tooltips when existing on the same target, so they do not render above each other and the last one renders wins
@@ -2734,6 +2773,24 @@ b.)
 and when the detail popup is "Space" expanded also right in front of the entity name, [Image #24] here the name
 "Recording" at the very beginning
 
+
+* TODO Add a must have third-party userscripts section together with the end-user visible changes and what our userscript depends on
+
+Add a must have third-party userscripts section together with the end-user visible changes and what our userscript
+depends on
+
+1.)
+
+Analyse first
+
+2.)
+
+Suggestions for complete integration
+
+3.)
+
+etc
+
 * TODO revamp "Search in ..." card handling
 
 revamp "Search in ..." card handling, eg. at https://musicbrainz.org/release/d2f07004-ef30-435f-ae73-64507bc639c1
@@ -2745,38 +2802,6 @@ There are to many h4 lies starting with
 "Search in the .."
 "Search further"
 #+end_example
-
-* TODO "ISRC" and "Links" now rendered addionally as columns after the "Artist" column on PT 'release-tracks'
-
-With the new version of the third-party userscript "ISRC Scout" by @majkinetor the "ISRC" and "Links" columns are now
-rendered (but asynchronously, so the action button can only be pressed when the columns appear on the IP) additionally
-after the "Artist" column on PT 'release-tracks', e.g. https://musicbrainz.org/release/230fd31d-f63f-4c01-8f10-432d36a1cb86
-
-#+begin_example
-DaD-ISRC-Links-initial.html - IP - after the columns have arrived
-DaD-ISRC-Links-final.html - FRP - after the columns have arrived
-#+end_example
-
-1.)
-
-The "ISRC" column should get the same treatment regarding UVD as the "ISRCs" column and it should be a multi-row column
-as there can be multiple ISRCs per recording
-
-2.)
-
-Why do the "ISRC" and "Links" columns don't have the sort and UVD glyphs
-
-3.)
-
-the userscript is at @tests/fixtures/live-userscripts/ISRC-scout.js, register it with our skill first
-
-4.)
-
-@debug/multiple-ISRC.html - IP for https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 with multiple ISRs per cell
-
-5.)
-
-the missing glyphs were probably a racing issue, as the screenshot here shows them - [Image #2]
 
 * TODO the rich tooltips should show track/recording differences below each other in a diff like view, with differing chars/portions highlighted
 
