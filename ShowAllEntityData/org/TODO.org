@@ -2817,13 +2817,28 @@ additional third-party userscripts are active. On a default page these are proba
 
 Make some nice HTML based mockups
 
+3.)
+
+Also the very long anchor text looks strange
+
+#+begin_example
+<span class="mb-sb-chip"><a href="https://jesus2099.gitlab.io/forward-request.html?_action=https://www.dramonline.org/search&amp;_method=post&amp;dram-search[q]=Devils%20%26%20Dust&amp;dram-search[t]=album">DRAM</a><span class="mb-sb-chip-detail">By genreClassicalEletronicPsyDBTraditionalIrish Traditional Music TunesMainly NorfolkThe SessionMetalMetal-ArchivesSpirit of MetalRockProg Archives (by barcode)Prog Archives (by name)Spirit of RockSoundtrackOverClock ReMixSoundtrackCollector (by barcode)SoundtrackCollector (by name)TheatreCastAlbums.orgLiteratureBookBrainzBookBrainz (all entities)Open LibraryGoodreadsLibriVox</span></span>
+#+end_example
+
+Make some suggestions how to shorten it or display it differently (actually where is it coming from at all ??)
+
+4.)
+
+With all the changes maybe the cards could be layout more efficiently ... please some suggestions
+
 
 * TODO the rich tooltips should show track/recording differences below each other in a diff like view, with differing chars/portions highlighted
 
 1.)
 
 the rich tooltips should show track/recording differences below each other in a diff like view, with differing
-chars/portions highlighted
+chars/portions highlighted... are there any algorithms out there we can use... it's all about presentation to the
+end-user, so he/she can spot right away where the differences are
 
 Curretn behaviour: @debug/title-diff-format.png
 
