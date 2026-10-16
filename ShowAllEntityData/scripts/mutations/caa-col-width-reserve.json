@@ -1,0 +1,67 @@
+[
+  {
+    "name": "the page-wide resize ignores the reserved art width",
+    "why": "Without it the CAA column keeps the header's width and a summary line that arrives later is wider than its column (debug/CAA-wrapped.png).",
+    "edits": [
+      {
+        "find": "                    Lib.debug('resize', `Table ${tableIndex}, Column ${colIndex}: ${columnWidths[colIndex]}px → ${w}px for the art summary line`);\n                    columnWidths[colIndex] = w;",
+        "replace": "                    Lib.debug('resize', `Table ${tableIndex}, Column ${colIndex}: ${columnWidths[colIndex]}px → ${w}px for the art summary line`);"
+      }
+    ],
+    "spec": "tests/fixtures/caa-col-width-reserve.spec.js",
+    "grep": "auto-resize on load",
+    "expect": "fail"
+  },
+  {
+    "name": "the per-sub-table resize ignores the reserved art width",
+    "why": "The sub-table button measures on its own path; without the same floor its CAA column is as narrow as before.",
+    "edits": [
+      {
+        "find": "                    Lib.debug('resize', `Sub-table \"${categoryName}\", Column ${colIndex}: ${columnWidths[colIndex]}px → ${w}px for the art summary line`);\n                    columnWidths[colIndex] = w;",
+        "replace": "                    Lib.debug('resize', `Sub-table \"${categoryName}\", Column ${colIndex}: ${columnWidths[colIndex]}px → ${w}px for the art summary line`);"
+      }
+    ],
+    "spec": "tests/fixtures/caa-col-width-reserve.spec.js",
+    "grep": "per-sub-table",
+    "expect": "fail"
+  },
+  {
+    "name": "no sample is built",
+    "why": "Without a sample there is nothing to reserve: both resize paths fall back to the header's width.",
+    "edits": [
+      {
+        "find": "        const anchor = li0.querySelector(`a[href$=\"${ctx.artSuffix}\"]`);\n        if (!anchor) return null;",
+        "replace": "        const anchor = li0.querySelector(`a[href$=\"${ctx.artSuffix}\"]`);\n        if (anchor) return null;"
+      }
+    ],
+    "spec": "tests/fixtures/caa-col-width-reserve.spec.js",
+    "grep": "auto-resize on load|per-sub-table",
+    "expect": "fail"
+  },
+  {
+    "name": "the sample has no type chips",
+    "why": "The chips are most of the line; a sample without them reserves too little.",
+    "edits": [
+      {
+        "find": "            images.push({ types: [], approved: false });\n        }\n        _artRenderTypeChips(ctx, li0, images);",
+        "replace": "            images.push({ types: [], approved: false });\n        }"
+      }
+    ],
+    "spec": "tests/fixtures/caa-col-width-reserve.spec.js",
+    "grep": "auto-resize on load",
+    "expect": "fail"
+  },
+  {
+    "name": "the measured samples stay in the page",
+    "why": "The host div is appended to the body for one layout read; left there, every page carries a hidden art list per art column outside any table.",
+    "edits": [
+      {
+        "find": "            out.get(j.table).set(j.colIdx, Math.ceil(j.box.getBoundingClientRect().width + j.extra));\n        });\n        host.remove();",
+        "replace": "            out.get(j.table).set(j.colIdx, Math.ceil(j.box.getBoundingClientRect().width + j.extra));\n        });"
+      }
+    ],
+    "spec": "tests/fixtures/caa-col-width-reserve.spec.js",
+    "grep": "never stays",
+    "expect": "fail"
+  }
+]

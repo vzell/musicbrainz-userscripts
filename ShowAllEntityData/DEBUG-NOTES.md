@@ -23442,3 +23442,34 @@ Env: 2026-10-16T21:39:36+02:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
   `release-tracks-isrc-scout.spec.js` 13/13; mutation "Links icons keep SUPER
   MIND CONTROL's new-tab padding" added, `scripts/mutations/isrc-scout-column.json`
   13/13 caught.
+
+## 2026-10-16 — CAA column too narrow while artwork loads on large pages: type chips on a second line (branch fix/caa-eaa-column-width, WIP.1)
+Env: 2026-10-16T22:23:11+02:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless) · no Tampermonkey (GM stubs). The screenshot `debug/CAA-wrapped.png` (artist Bruce Springsteen, discography, 22 pages, 2145 rows, 46 sub-tables) came from the user's real browser (browser/Tampermonkey versions not stated: unknown).
+
+- **Symptom:** during the CAA load of a large page, the CAA cells showed the
+  icon and the cache hint over the count on one line and the type chips
+  (F B Sp M Bk T) on a second. Small tables always fit on one line.
+- **Not the SUPER MIND CONTROL padding** of the ISRC Scout Links fix: no CAA
+  cell element carries `target="_blank"` (the new-tab links of the art code
+  are in the viewer and the summary panel), and the screenshot shows no
+  new-window marker in the column.
+- **Cause, from the code and a probe:** li-0 (`li.mb-caa-art-li-summary`) is
+  a flex row with `flex-wrap: wrap` by design ("the chips wrap to the next
+  line when the cell is too narrow for both"). The auto-resize measures once,
+  right after the render (1.90 s there), and the count badge and chips arrive
+  with each archive record (CAA 6 m 53 s there). Probe (fixture
+  release-group page, every archive answer held until the resize had run):
+  the CAA header got `min-width: 170px` while the loaded lines need
+  178–202 px. That fixture's table still had slack (set width 5028 px, laid
+  out at 5176 px for other columns), so it did not wrap there; the large
+  page has none, so the chips wrap.
+- **Fix (user's choice of two: reserve up front, not grow as records
+  arrive):** `_artReserveSummaryWidths()` measures one detached worst-case
+  li-0 per art column (`_artBuildSummarySample()`) in one layout read; both
+  resize paths floor the art column at it, after the prose cap. Fixture
+  result: min-width 250 px (230 reserved + the usual 20), lines 178–202 px.
+  Measured detached because several MutationObservers watch tbody subtrees.
+- **Tests:** `caa-col-width-reserve.spec.js` 3/3 (page-wide resize,
+  sub-table resize, no sample left in the page);
+  `scripts/mutations/caa-col-width-reserve.json` 5/5 caught. The CAA/EAA/
+  art/resize specs 200/200.
