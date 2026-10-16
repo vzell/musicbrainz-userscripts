@@ -3821,3 +3821,25 @@ on different machines, and nothing here isolates a cause. The longest spec
 file was =rel-auto-retry-failed.spec.js= at 5.1 m: its time goes on the rate
 gates and backoffs under test, which is a floor for the whole run, not a
 measure of the host.
+
+* 2026-10-16 — =npm run test:full= on =vzell-lap= after the annotations merge (main at a3891ce, 9.99.1358)
+
+Env: 2026-10-16T02:52:31+02:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · node v24.11.1 · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+=python3 scripts/run-test-full.py= on =main= at =a3891ce= (the same commit as
+=origin/main=): the merge of =fix/annotations-editor-first= (9.99.1357 sticky
+gutter mask on the first visible column only, 9.99.1358 =moveColumnFirst= and
+Editor first on =annotations=). chromium-fixtures plus chromium-mobile, with
+Playwright's default of 2 workers on this 4-core box.
+
+| Selection                         | Tests | Workers | Wall clock    | Basis                                      |
+|-----------------------------------+-------+---------+---------------+--------------------------------------------|
+| =npm run test:full=, merge check  |  1789 |       2 | *91 m 21 s*   | =run-test-full.py=, 02:52:31–04:23:52 CEST |
+
+All 1789 passed, with no flaky retries. The ETA came from the previous
+complete run on this host (=~/.cache/sa-test-full/last-vzell-lap.json= before
+this run overwrote it: 1773 tests in 5481 s, finished 2026-10-15 03:49:24
+CEST). Scaled by test count that gave about 04:24 CEST, and the run finished
+at 04:23:52 CEST, in the same 5481 s as the 1773-test run: 0.306 s against
+0.309 s per test. The longest spec files were =popup-mb.spec.js= (6.7 m) and
+=rel-auto-retry-failed.spec.js= (5.3 m).
