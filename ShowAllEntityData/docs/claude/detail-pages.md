@@ -318,7 +318,11 @@ hosts (kept, decided 2026-10-07).
 - **One box at a time.** `#mb-stat-tooltip`'s own-card path already gives way
   to `#mb-dp-peek` (`_OTHER_RICH_TIPS`); on a link with its own `data-mb-tip`
   text the card wins. Pinned with a control (previews off → the Liner notes
-  card shows).
+  card shows). Since WIP.1 (2026-10-16) the same holds for the CELL's own
+  tip (a finding, "no work"), which used to show beside or under the card
+  depending on which of two equal timers fired first. Its text is a box of
+  the card's note stack now, and its card comes back once the preview card is
+  gone ("The note stack" under "The card" below).
 
 **The detail pages match no `@include` line.** The script never runs ON them,
 in a tab or in the Live page frame. Everything is fetched (same origin) and
@@ -450,6 +454,62 @@ floating hover tooltip.
   detail link opens the dialog INSTEAD of the page. A touch screen has no hover;
   the dialog's ↗ opens the page. The hover handler's own tap guard is covered
   by the mousedown hide (recorded `"expect": "pass"`).
+- **The note stack (`#mb-dp-notes`, org/TODO.org "stacking multiple rich
+  tooltips", WIP.1, 2026-10-16).** The track/recording name note below was
+  the first box stacked above the card; it is now one box of a column of
+  them, `#mb-dp-notes` (fixed, flex column, 4 px gap, its own z-index, since
+  a fixed box is a stacking context of its own). `_dpCollectNotes(t)` builds
+  them from `_dpTitledChain(t.el)`: the card's element and every titled
+  ancestor up to its table cell (the cell included). "Titled" reads
+  `_dpTitleText()`: `title`, a title this engine parked
+  (`data-mb-dp-saved-title`), or one `#mb-stat-tooltip` stashed
+  (`data-mb-tip-saved`). Top to bottom (decided 2026-10-16):
+  - the cell's tips, outermost first. A `data-mb-tip` element (a finding's
+    tip from `_writeFindingAttrs()`, `_NO_WORK_FLAG_TIP`) is rendered with
+    `_tipTextToHtml()`, exactly as the "Liner notes" card it replaces
+    (`.mb-dp-note-tip`, amber rule). A native title is plain text;
+  - the link's own title: the "≠" note as `#mb-dp-origin` (below), its own
+    `data-mb-tip` as a tip, else plain text (`.mb-dp-note-title`). On an
+    artist or label target it is MusicBrainz's sort name and is labelled
+    "Sort name". A title that only repeats the link's text (MusicBrainz's on
+    a recording with a disambiguation, debug/expand.html) gets NO box.
+  - **Every** title of that chain is parked while the card is due or shows
+    (`_dpStashTitles()`, from `_dpSchedulePeek()` and `_dpShowPeek()`), and
+    `_dpRestoreTitles()` gives them back by sweeping
+    `[data-mb-dp-saved-title]` (clones included). This **supersedes** the
+    "Only the note is parked" rule of 2026-10-09: those titles had no box of
+    their own then, and the browser drew them over the card (images 21-23 of
+    the TODO: "Born to Run", "Springsteen, Bruce"). A title already stashed by
+    `#mb-stat-tooltip` (an empty `title`) is left to that engine.
+  - **`#mb-stat-tooltip` gives way** through `_statTipApi` (declared beside
+    `_dpPeek`, assigned in `_initStatTooltip()`): `_dpShowPeek()` calls
+    `yieldTo(el)`, which hides an own card whose element contains the link
+    (stash kept, hover not dismissed); `_dpHidePeek()` calls `resume()`,
+    which shows it again after the usual delay if the pointer is still on
+    its element and the hover was not dismissed by a mousedown. `_showOwn()`
+    also returns while a card is DUE for a link inside its element. That
+    guard only removes a moment in between, since both timers use
+    `sa_rich_tooltip_delay_ms`, so its mutation is `"expect": "pass"`.
+  - Writers respect the park: `_setTip()` on a parked element writes into
+    `data-mb-dp-saved-title`, and `_writeFindingAttrs()` counts a parked
+    title as the cell's title and removes it with the finding tip. Readers
+    that run only on a click (`_buildDiskCellData()` reading `cell.title`)
+    are safe: a mousedown hides the card, which restores the titles first.
+  - **Entity glyphs** (`_MB_KIND_ICON`, `_mbKindIconUrl()`): MusicBrainz's own
+    `/static/images/entity/<stem>.svg`, same origin, browser-cached, outside
+    the WS/2 rate gate. Probe 2026-10-16 (vzell-lap, curl): artist, release,
+    release_group, recording, work, label, area, place, event, series,
+    instrument, genre, collection and editor answer 200; url, isrc, iswc,
+    cdtoc and `release-group` answer 404. Those kinds have none. The card:
+    `_dpAddKindIcon()` prepends `img.mb-pop-kind-icon` to the first
+    `.mb-tt-title` after every paint, so every kind's own card HTML, the
+    loading shell and the failed shell get it. The window: `_dpShowInDialog()`
+    puts `img.mb-dp-kind-icon` INSIDE the title-bar span, before the kind path
+    (the current kind's glyph). Inside, because the bar is `space-between`, so
+    a sibling `<img>` would leave a gap; the span's text stays the kinds alone.
+  Covered by `popup-mb.spec.js` "the note stack and the entity glyphs (WIP.1)"
+  and its "only repeats its name" control; mutation list
+  `gpe-art-viewer.json`.
 - **The track/recording name note (`#mb-dp-origin`, 2026-10-09).** jesus2099's
   "mb. INLINE STUFF" gives a release page's recording link a native
   `title="track name: …\n≠rec. name: …"` when the track is named differently
@@ -464,9 +524,12 @@ floating hover tooltip.
     every parked title, including any clone a re-render made of the row
     meanwhile. It sweeps the document only after a stash
     (`_dpPeek.stashed`), so a hide costs nothing on a page without notes.
-  - Only the note is parked, because only the note has a box of its own. A
+  - ~~Only the note is parked, because only the note has a box of its own. A
     link's other titles (MusicBrainz's sort names, other scripts') stay; a
-    mutation pins this.
+    mutation pins this.~~ Superseded by the note stack (above, WIP.1): every
+    title has a box now, and every title is parked.
+  - The box is now a child of `#mb-dp-notes` (the stack above), built by
+    `_dpFillNotes()`; `_dpPlacePeek()` places the whole stack.
   - `_titleHasRecNameMismatch()` (the 📊 flag and the ⚠️ finding) reads the
     title OR the parked attribute (`_dpOriginTitle()`), so a count, a stamp or
     a clone taken while a card shows still sees the flag.

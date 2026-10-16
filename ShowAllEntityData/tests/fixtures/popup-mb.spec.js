@@ -716,17 +716,26 @@ test.describe('MusicBrainz link previews: recording and work (WIP.2)', () => {
         await expect(a).toHaveAttribute('title', NOTE);
     });
 
-    test('control: a recording link without a note shows no box and no badge, and keeps its own title', async ({ page }) => {
+    test('control: a recording link whose title only repeats its name: no box, no badge, the title parked and given back', async ({ page }) => {
+        // Pins (org/TODO.org "stacking multiple rich tooltips", WIP.1):
+        // MusicBrainz titles a recording link that has a disambiguation with
+        // its bare name. While the card shows the title is parked (else the
+        // browser draws "Thunder Road" over the card), and since it says
+        // nothing the card does not, it gets no box of its own.
         await open(page, { settings: { sa_pop_mb: true }, showAll: false });
         const a = await addLink(page, `/recording/${REC_ID}`, 'Thunder Road');
-        await a.evaluate((el) => el.setAttribute('title', 'Springsteen, Bruce'));
+        await a.evaluate((el) => el.setAttribute('title', 'Thunder Road'));
         await ctrlHover(page, a);
         await expect(card(page)).toContainText('fetched now');
-        await expect(page.locator('#mb-dp-origin')).toBeHidden();
-        await expect(a).toHaveAttribute('title', 'Springsteen, Bruce');
+        await expect(page.locator('#mb-dp-origin')).toHaveCount(0);
+        await expect(page.locator('#mb-dp-notes')).toBeHidden();
+        await expect(a).not.toHaveAttribute('title', /./);
+        await expect(a).toHaveAttribute('data-mb-dp-saved-title', 'Thunder Road');
         await page.keyboard.press('Space');
         await expect(dialog(page)).toBeVisible();
         await expect(dialog(page).locator(':scope > div > .mb-dp-origin')).toBeHidden();
+        await expect(a).toHaveAttribute('title', 'Thunder Road');
+        await expect(a).not.toHaveAttribute('data-mb-dp-saved-title', /.*/);
     });
 
     test('the recording window: credits and the real release count, each asked once; ⟳ asks all again', async ({ page }) => {
@@ -852,6 +861,158 @@ test.describe('MusicBrainz link previews: recording and work (WIP.2)', () => {
         expect(log.ws2.filter(u => u.includes('/ws/2/recording?work='))).toEqual([
             expect.stringContaining(`recording?work=${WORK_ID}&limit=100&inc=artist-credits`),
         ]);
+    });
+});
+
+test.describe('MusicBrainz link previews: the note stack and the entity glyphs (WIP.1)', () => {
+    // org/TODO.org "stacking multiple rich tooltips". Pins:
+    //   - a cell's own tip (a finding, "no work": `data-mb-tip` on the
+    //     `<td>`) is a box ABOVE the card, never `#mb-stat-tooltip` beside or
+    //     under it — whichever of the two shows first — and comes back as its
+    //     card once the preview card is gone and the pointer is still there;
+    //   - every box of the stack sits above the card, none overlaps another,
+    //     all share the card's left edge; the cell's tip on top, the link's
+    //     note under it;
+    //   - an artist link's MusicBrainz title (its sort name) is parked and is
+    //     a "Sort name" box; it comes back when the card closes;
+    //   - MusicBrainz's entity glyph sits in front of the card's title and of
+    //     the window's kind, and a kind without a glyph (ISRC) has none.
+    // Mutation list: scripts/mutations/gpe-art-viewer.json.
+    const ARTIST = '/artist/70248960-cb53-4ea4-943a-edb18f7d336f';
+    const TIP = '⚠️ Pending edits';
+    const SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16"/></svg>';
+    const stack = (page) => page.locator('#mb-dp-notes');
+    const statTip = (page) => page.locator('#mb-stat-tooltip');
+
+    /**
+     * Gives the cell holding `a` its own tip, as `_setTip()` writes one.
+     *
+     * @param {import('@playwright/test').Locator} a
+     * @param {string} text
+     * @returns {Promise<void>}
+     */
+    async function tipCell(a, text) {
+        await a.evaluate((el, t) => {
+            const td = el.closest('td');
+            td.setAttribute('data-mb-tip', '');
+            td.setAttribute('title', t);
+        }, text);
+    }
+
+    test.beforeEach(async ({ page }) => {
+        await page.context().route('**/static/images/entity/*.svg', (route) =>
+            route.fulfill({ status: 200, contentType: 'image/svg+xml', body: SVG }));
+    });
+
+    test('the cell\'s tip, shown first: Ctrl moves it into the stack above the card; Esc gives the cell its card back', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, `/recording/${REC_ID}`, 'Thunder Road');
+        await tipCell(a, TIP);
+        // A plain hover: the Ctrl gate holds the preview back, the cell's
+        // own card shows.
+        await page.mouse.move(0, 0);
+        await a.hover();
+        await expect(statTip(page)).toBeVisible();
+        await expect(statTip(page)).toContainText('Pending edits');
+        await page.keyboard.down('Control');
+        await page.keyboard.up('Control');
+        await expect(card(page)).toContainText('fetched now');
+        await expect(statTip(page)).toBeHidden();
+        await expect(stack(page).locator('.mb-dp-note')).toHaveCount(1);
+        await expect(stack(page).locator('.mb-dp-note-tip')).toContainText('Pending edits');
+        const sb = await stack(page).boundingBox();
+        const cb = await card(page).boundingBox();
+        expect(Math.abs((sb.y + sb.height + 4) - cb.y)).toBeLessThan(1.5);
+        expect(Math.abs(sb.x - cb.x)).toBeLessThan(1);
+        await page.keyboard.press('Escape');
+        await expect(card(page)).toBeHidden();
+        await expect(stack(page)).toBeHidden();
+        await expect(statTip(page)).toBeVisible();
+        await expect(statTip(page)).toContainText('Pending edits');
+    });
+
+    test('the cell\'s tip, card first: no "Liner notes" card at all, the tip parked and given back', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, `/recording/${REC_ID}`, 'Thunder Road');
+        await tipCell(a, TIP);
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(stack(page).locator('.mb-dp-note-tip')).toContainText('Pending edits');
+        await expect(statTip(page)).toBeHidden();
+        // No native box either: the cell's title is held while the card shows.
+        expect(await a.evaluate((el) => el.closest('td').getAttribute('title') || '')).toBe('');
+        await page.mouse.move(0, 0);
+        await expect(card(page)).toBeHidden();
+        expect(await a.evaluate((el) => el.closest('td').getAttribute('title'))).toBe(TIP);
+    });
+
+    test('a cell tip and the track/recording note: two boxes above the card, cell first, apart, aligned', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, `/recording/${REC_ID}`, 'Thunder Road (version 7)');
+        await a.evaluate((el) => el.setAttribute('title', 'track name: Thunder Road (version 7)\n≠rec. name: Thunder Road'));
+        await tipCell(a, '⚠️ Track name differs from recording name');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        const notes = stack(page).locator('.mb-dp-note');
+        await expect(notes).toHaveCount(2);
+        await expect(notes.nth(0)).toHaveClass(/mb-dp-note-tip/);
+        await expect(notes.nth(1)).toHaveAttribute('id', 'mb-dp-origin');
+        await expect(statTip(page)).toBeHidden();
+        const b0 = await notes.nth(0).boundingBox();
+        const b1 = await notes.nth(1).boundingBox();
+        const cb = await card(page).boundingBox();
+        expect(b0.y + b0.height).toBeLessThanOrEqual(b1.y + 0.5);
+        expect(b1.y + b1.height).toBeLessThanOrEqual(cb.y + 0.5);
+        expect(Math.abs(b0.x - cb.x)).toBeLessThan(1);
+        expect(Math.abs(b1.x - cb.x)).toBeLessThan(1);
+    });
+
+    test('an artist link\'s sort name: parked, a "Sort name" box, given back on Esc', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, ARTIST, 'Bruce Springsteen');
+        await a.evaluate((el) => el.setAttribute('title', 'Springsteen, Bruce'));
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('Bruce Springsteen');
+        const box = stack(page).locator('.mb-dp-note-title');
+        await expect(box).toBeVisible();
+        await expect(box.locator('dt')).toHaveText('Sort name');
+        await expect(box.locator('dd')).toHaveText('Springsteen, Bruce');
+        await expect(a).not.toHaveAttribute('title', /./);
+        await page.keyboard.press('Escape');
+        await expect(stack(page)).toBeHidden();
+        await expect(a).toHaveAttribute('title', 'Springsteen, Bruce');
+    });
+
+    test('the entity glyph: before the card\'s title (loaded and failed) and the window\'s kind; none for an ISRC', async ({ page }) => {
+        let fail = false;
+        await open(page, {
+            settings: { sa_pop_mb: true }, showAll: false,
+            ws2: (url) => (fail && url.includes('/ws/2/work/') ? { status: 500, body: '{}' } : null),
+        });
+        const a = await addLink(page, `/recording/${REC_ID}`, 'Thunder Road');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        const icon = card(page).locator('.mb-tt-title').first().locator(':scope > img.mb-pop-kind-icon:first-child');
+        await expect(icon).toHaveCount(1);
+        await expect(icon).toHaveAttribute('src', /\/static\/images\/entity\/recording\.svg$/);
+        await page.keyboard.press('Space');
+        const title = dialog(page).locator(':scope > div > span').first();
+        await expect(title).toHaveText('Recording');
+        await expect(title.locator(':scope > img.mb-dp-kind-icon:first-child')).toHaveAttribute('src', /\/recording\.svg$/);
+        await page.keyboard.press('Escape');
+        await expect(dialog(page)).toBeHidden();
+
+        // A failed card's head carries it too (the shell, not the kind's HTML).
+        fail = true;
+        const w = await addLink(page, `/work/${WORK_ID}`, 'Born to Run');
+        await ctrlHover(page, w);
+        await expect(card(page)).toContainText('Could not load it');
+        await expect(card(page).locator('.mb-tt-title img.mb-pop-kind-icon')).toHaveAttribute('src', /\/work\.svg$/);
+
+        const i = await addLink(page, '/isrc/USSM17500803', 'USSM17500803');
+        await ctrlHover(page, i);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('img.mb-pop-kind-icon')).toHaveCount(0);
     });
 });
 

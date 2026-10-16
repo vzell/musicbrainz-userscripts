@@ -2006,6 +2006,19 @@ change.
   and once pinned, a maroon badge next to the window's title ("from track
   “…” ≠ recording “…”"). The window shows the recording, but always says which
   track it came from.
+- **Notes stacked above the card.** Everything else the hovered link and its
+  cell would show as a tooltip is a box above the card too, one box each,
+  none covering the card or each other: the cell's warnings first (*Pending
+  edits*, *Track name differs from recording name*, *This recording is not
+  linked to any work*, …), then the link's own notes (the track/recording
+  names above, an artist's or label's **Sort name**). Neither the browser's
+  own grey tooltip nor the cell's "Liner notes" card appears over the card
+  any more. A tooltip that only repeats the link's name is left out. When the
+  card closes (Esc, or the pointer leaves the link but stays in the cell),
+  the cell's own card comes back.
+- **The entity's glyph.** The card and the window's title bar show
+  MusicBrainz's own icon of the kind (artist, release, recording, work, …)
+  in front of the name and in front of the kind ("Recording").
 - **‹ ›** or **← →** step to the same kind of link in the **same column** of
   the next or previous row, on into the next sub-table. A row links a
   release, an artist and a label; the arrows stay with the one you started

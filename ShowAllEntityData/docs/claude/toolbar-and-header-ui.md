@@ -614,6 +614,13 @@ How it behaves, and why:
   it. All three were found in a browser, not by a spec: an inline CAA
   thumbnail's "N images found" card on its own preview, a Relationships URL
   shown twice.
+- **The link preview card (`#mb-dp-peek`) takes the card's text over**
+  (WIP.1, 2026-10-16). When a preview card is due or shows for a link INSIDE
+  the card's element (a finding's tip on the Title `<td>`), the own card
+  gives way, `_statTipApi.yieldTo()`, and the text becomes a box of the
+  preview's note stack. `_statTipApi.resume()` brings it back when the
+  preview closes. Until then both showed on the same target, whichever timer
+  fired first. See docs/claude/detail-pages.md, "The note stack".
 - `[data-mbtt]` (ready-made HTML: row counts, action buttons) keeps its old
   path: shown at once, no delay, and not gated by `sa_rich_tooltips`.
 - `_tipTextToHtml()` only infers structure from plain text and escapes first.
