@@ -23234,3 +23234,23 @@ Env: 2026-10-15T20:53:52+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
   two files `--repeat-each=12 --workers=28`: 756/756. A rare race cannot be
   mutation-checked deterministically; the stress run at twice the repetitions
   is the evidence.
+
+## 2026-10-16 — Playwright: `context.setOffline(true)` does not stop routed requests (offline probe check)
+
+Env: 2026-10-16T01:43:01+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.40.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless) · no Tampermonkey (probe loaded without GM).
+
+- **Seen in** `scripts/check-probe-offline-capabilities.js` (org/offline.org,
+  "Answer"). With `context.route('https://probe.test/**', …)` in place,
+  `context.setOffline(true)` made `navigator.onLine` false, but a same-origin
+  `fetch('/ok')` was still fulfilled by the route handler (status 204), so the
+  probe's verdict read 'online'.
+- **Why it matters.** Request interception runs before the offline
+  emulation. Every fixture spec serves its pages and Web Service answers
+  through routes, so a future spec for offline handling (org/offline.org
+  phase 0) that only calls `setOffline(true)` tests nothing: its requests are
+  still answered.
+- **What to do instead.** Abort the routes (`route.abort('internetdisconnected')`
+  gives the same status-0 failure a real outage does), or `context.unroute()`
+  before `setOffline(true)` when the request should reach the browser's own
+  offline path. The check does the latter for its "really offline" step and
+  covers `route.abort('internetdisconnected')` separately.

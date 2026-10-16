@@ -1505,8 +1505,14 @@ ALWAYS be sticky too when srolling down.
 
 * TODO increase the IDB lifetime, non-MB sites should basically be there forever
 
+Planned as phase 1 of [[file:offline.org]] ("** Answer (2026-10-16, …)", "*** 7. Plan").
+
 * TODO sync add non-MB images with the CAA framework, but unlimited
+
+Planned as phase 1 of [[file:offline.org]] ("** Answer (2026-10-16, …)", "*** 7. Plan").
 * TODO storeage forever for non-MB sites, except SL
+
+Planned as phase 1 of [[file:offline.org]] ("** Answer (2026-10-16, …)", "*** 7. Plan").
 
 * TODO filter checkboxes for every filter dialog if not overwritten
 

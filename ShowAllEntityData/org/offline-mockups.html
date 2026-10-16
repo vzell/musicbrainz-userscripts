@@ -1,0 +1,870 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- SKELETON-END: everything above this line is dropped when the page is published as an Artifact. -->
+<title>Springsteen Sites Offline</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: the same test bench as logged-in-mockups.html and
+   detail-pages-mockups.html. Each proposal is a mock browser window showing
+   the page with the userscript's table, and a notes column beside it.
+   The mock sites stay light in both themes, as the real sites do. Row data
+   is EXAMPLE data, invented for the mockups. */
+:root {
+    --bg: #e9edf1;
+    --surface: #f8fafc;
+    --ink: #18202b;
+    --muted: #556070;
+    --line: #cfd6df;
+    --accent: #24527f;
+    --accent-soft: #dbe6f1;
+    --ok: #2c7347;
+    --ok-soft: #dcefe2;
+    --warn: #8f5a00;
+    --warn-soft: #f6e8cc;
+    --err: #9b2218;
+    --err-soft: #f6dcd8;
+    --shadow: 0 1px 0 rgba(20, 30, 45, 0.05), 0 12px 32px -18px rgba(20, 30, 45, 0.35);
+
+    /* The sites and the script's table: a light page in both themes. */
+    --site-bg: #ffffff;
+    --site-ink: #222222;
+    --site-dim: #6b6b6b;
+    --site-line: #dddddd;
+    --site-head: #e8e8e8;
+    --site-even: #f2f2f2;
+    --site-link: #1d4f96;
+    --site-chrome: #f1f3f6;
+    --site-chrome-ink: #4d5664;
+
+    /* Change states in the diff table (light, inside the site). */
+    --d-add: #1f6a3e;
+    --d-add-bg: #e3f4e8;
+    --d-del: #9b2218;
+    --d-del-bg: #fbe4e1;
+    --d-chg: #8a5300;
+    --d-chg-bg: #fdf1d6;
+    --d-off: #3c4a5c;
+    --d-off-bg: #e7ebf1;
+
+    /* The userscript's .mb-tt-liner card. */
+    --liner-bg: #fbf8f1;
+    --liner-ink: #2b2622;
+    --liner-line: #d9cfbd;
+    --liner-dim: #7a6d5c;
+
+    --f-display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+    --f-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, Consolas, "Courier New", monospace;
+    --f-liner: Georgia, "Times New Roman", Times, serif;
+    --f-site: Arial, Helvetica, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg: #11161d;
+        --surface: #19212b;
+        --ink: #e2e7ee;
+        --muted: #9aa5b4;
+        --line: #2c3746;
+        --accent: #86b4e2;
+        --accent-soft: #1f3248;
+        --ok: #74c494;
+        --ok-soft: #1c3326;
+        --warn: #e3ac4c;
+        --warn-soft: #3a2d14;
+        --err: #f08a7d;
+        --err-soft: #3d1f1b;
+        --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 14px 34px -16px rgba(0, 0, 0, 0.7);
+        color-scheme: dark;
+    }
+}
+:root[data-theme="dark"] {
+    --bg: #11161d;
+    --surface: #19212b;
+    --ink: #e2e7ee;
+    --muted: #9aa5b4;
+    --line: #2c3746;
+    --accent: #86b4e2;
+    --accent-soft: #1f3248;
+    --ok: #74c494;
+    --ok-soft: #1c3326;
+    --warn: #e3ac4c;
+    --warn-soft: #3a2d14;
+    --err: #f08a7d;
+    --err-soft: #3d1f1b;
+    --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 14px 34px -16px rgba(0, 0, 0, 0.7);
+    color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.55 var(--f-body);
+}
+.page {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding-block: 28px 64px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: grid;
+    gap: 40px;
+}
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(28px, 4vw, 40px); font-weight: 800; font-stretch: 85%; letter-spacing: -0.01em; }
+h2 { font-size: 24px; font-weight: 750; font-stretch: 90%; }
+h3 { font-size: 16px; font-weight: 700; }
+p { margin: 0; max-width: 68ch; }
+code, .mono { font-family: var(--f-mono); font-size: 0.86em; }
+a { color: var(--accent); }
+
+.intro { display: grid; gap: 12px; }
+.eyebrow {
+    font: 600 12px/1 var(--f-body);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+.jump { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.jump a {
+    text-decoration: none;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    padding: 5px 11px;
+    border-radius: 999px;
+    font-size: 13px;
+}
+.jump a:hover, .jump a:focus-visible { border-color: var(--accent); outline: none; }
+.jump b { color: var(--accent); font-family: var(--f-mono); font-weight: 500; margin-right: 4px; }
+
+section.item { display: grid; gap: 16px; scroll-margin-top: 12px; }
+.item-head { display: grid; gap: 6px; border-top: 2px solid var(--ink); padding-top: 12px; }
+.item-head .eyebrow b { color: var(--accent); }
+
+.bench { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+@media (max-width: 960px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+.notes {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 14px 16px;
+    display: grid;
+    gap: 10px;
+    font-size: 14px;
+}
+.notes h3 { font-size: 14px; }
+.notes ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.tag {
+    display: inline-block;
+    font: 600 11px/1 var(--f-body);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 3px;
+}
+.tag.ok { background: var(--ok-soft); color: var(--ok); }
+.tag.warn { background: var(--warn-soft); color: var(--warn); }
+.tag.err { background: var(--err-soft); color: var(--err); }
+.tag.info { background: var(--accent-soft); color: var(--accent); }
+
+/* A mock browser window. */
+.win {
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    background: var(--site-bg);
+    color: var(--site-ink);
+    min-width: 0;
+}
+.win-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--site-chrome);
+    color: var(--site-chrome-ink);
+    padding: 7px 10px;
+    font: 12px/1.2 var(--f-mono);
+    border-bottom: 1px solid var(--site-line);
+    min-width: 0;
+}
+.win-bar .dots { display: flex; gap: 5px; flex: none; }
+.win-bar .dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--site-line); display: block; }
+.win-bar .url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.win-bar .url b { color: var(--d-off); font-weight: 500; }
+.win-body { padding: 14px; font: 13px/1.45 var(--f-site); position: relative; overflow-x: auto; display: grid; gap: 10px; }
+.win-body h1.site { font: bold 20px/1.2 var(--f-site); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.win-body h2.site { font: bold 15px/1.2 var(--f-site); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.win-body a { color: var(--site-link); text-decoration: none; }
+.site-dim { color: var(--site-dim); }
+
+/* The script's toolbar buttons and chips on the h1. */
+.tb {
+    font: 12px/1 var(--f-site);
+    border: 1px solid #b9c0ca;
+    background: #f6f7f9;
+    color: #1d2733;
+    border-radius: 3px;
+    padding: 4px 8px;
+    white-space: nowrap;
+}
+.tb.primary { background: #24527f; border-color: #24527f; color: #fff; }
+.chip {
+    font: 600 11px/1 var(--f-site);
+    border-radius: 999px;
+    padding: 4px 9px;
+    white-space: nowrap;
+    border: 1px solid;
+}
+.chip.off { color: var(--d-off); border-color: #a8b3c2; background: var(--d-off-bg); }
+.chip.snap { color: #6b4a00; border-color: #e0bf72; background: #fdf3dc; }
+.chip.live { color: #1f6a3e; border-color: #8cc5a0; background: #e8f5ec; }
+
+/* Offline banner, under the h1. */
+.net-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    border: 1px solid #a8b3c2;
+    border-left: 4px solid var(--d-off);
+    background: var(--d-off-bg);
+    color: #1f2b3a;
+    padding: 8px 10px;
+    border-radius: 3px;
+    font: 12.5px/1.4 var(--f-site);
+}
+.net-banner b { font-weight: bold; }
+.net-banner .grow { flex: 1 1 260px; min-width: 0; }
+.menu {
+    border: 1px solid #b9c0ca;
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 10px 24px -12px rgba(20, 30, 45, 0.45);
+    font: 12.5px/1.35 var(--f-site);
+    width: min(430px, 100%);
+    justify-self: end;
+}
+.menu .mh { padding: 7px 10px; color: var(--site-dim); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--site-line); }
+.menu .mi { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 7px 10px; border-bottom: 1px solid var(--site-line); }
+.menu .mi:last-child { border-bottom: 0; }
+.menu .mi.sel { background: #eef4fb; }
+.menu .mi small { color: var(--site-dim); grid-column: 1 / -1; }
+
+/* The script's table. */
+.tbl { border-collapse: collapse; width: 100%; font: 12px/1.35 var(--f-site); }
+.tbl th {
+    background: var(--site-head);
+    text-align: left;
+    padding: 5px 7px;
+    border-bottom: 1px solid var(--site-line);
+    white-space: nowrap;
+    font-weight: bold;
+}
+.tbl td { padding: 5px 7px; border-bottom: 1px solid var(--site-line); vertical-align: top; }
+.tbl tbody tr:nth-child(even) td { background: var(--site-even); }
+.tbl .num { text-align: right; font-variant-numeric: tabular-nums; }
+.tbl .dim { color: var(--site-dim); }
+.tbl td.stale { color: var(--site-dim); font-style: italic; }
+.hdr-btn {
+    display: inline-block;
+    font: 11px/1 var(--f-site);
+    border: 1px solid #b9c0ca;
+    background: #fff;
+    border-radius: 3px;
+    padding: 2px 4px;
+    margin-left: 4px;
+    font-weight: normal;
+}
+.ic-off {
+    display: inline-block;
+    font: bold 10px/1 var(--f-site);
+    color: var(--d-off);
+    border: 1px dashed #a8b3c2;
+    border-radius: 2px;
+    padding: 2px 3px;
+}
+
+/* Diff marks. */
+.chg {
+    display: inline-block;
+    font: bold 10.5px/1 var(--f-site);
+    border-radius: 3px;
+    padding: 3px 5px;
+    white-space: nowrap;
+}
+.chg.add { color: var(--d-add); background: var(--d-add-bg); }
+.chg.del { color: var(--d-del); background: var(--d-del-bg); }
+.chg.mod { color: var(--d-chg); background: var(--d-chg-bg); }
+.tbl tr.r-add td { box-shadow: inset 3px 0 0 var(--d-add); }
+.tbl tr.r-del td { box-shadow: inset 3px 0 0 var(--d-del); color: var(--site-dim); }
+.tbl tr.r-del td:first-child ~ td { text-decoration: line-through; text-decoration-color: #c98b84; }
+.tbl tr.r-mod td { box-shadow: inset 3px 0 0 var(--d-chg); }
+.tbl tr.r-add td:first-child, .tbl tr.r-del td:first-child, .tbl tr.r-mod td:first-child { box-shadow: inset 3px 0 0 currentColor; }
+.tbl tr.r-add td:first-child { color: var(--d-add); }
+.tbl tr.r-del td:first-child { color: var(--d-del); }
+.tbl tr.r-mod td:first-child { color: var(--d-chg); }
+del.old { color: var(--d-del); background: var(--d-del-bg); text-decoration: line-through; padding: 0 2px; }
+ins.new { color: var(--d-add); background: var(--d-add-bg); text-decoration: none; padding: 0 2px; }
+.cell-diff { display: grid; gap: 2px; }
+
+/* 📊 dropdown look. */
+.uniq {
+    border: 1px solid #b9c0ca;
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 10px 24px -12px rgba(20, 30, 45, 0.45);
+    font: 12px/1.35 var(--f-site);
+    width: min(260px, 100%);
+}
+.uniq .sh { padding: 6px 9px; background: #f2f4f7; border-bottom: 1px solid var(--site-line); font-weight: bold; display: flex; justify-content: space-between; }
+.uniq label { display: flex; align-items: center; gap: 6px; padding: 4px 9px; }
+.uniq label span.n { margin-left: auto; color: var(--site-dim); font-variant-numeric: tabular-nums; }
+
+/* Timeline of snapshots. */
+.tl { display: grid; gap: 0; }
+.tl-row {
+    display: grid;
+    grid-template-columns: 112px 18px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    padding: 6px 0;
+    font: 12.5px/1.35 var(--f-site);
+    border-bottom: 1px solid var(--site-line);
+}
+.tl-row:last-child { border-bottom: 0; }
+.tl-row .when { font-family: var(--f-mono); font-size: 11.5px; color: var(--site-dim); font-variant-numeric: tabular-nums; }
+.tl-row .dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #24527f; background: #fff; justify-self: center; }
+.tl-row .dot.full { background: #24527f; }
+.tl-row .dot.same { border-color: #b4bcc7; }
+.tl-row .what { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; }
+.tl-row .acts { display: flex; gap: 6px; }
+@media (max-width: 560px) {
+    .tl-row { grid-template-columns: 18px minmax(0, 1fr); }
+    .tl-row .when { grid-column: 2; }
+    .tl-row .dot { grid-row: 1 / span 3; grid-column: 1; align-self: start; margin-top: 3px; }
+    .tl-row .what, .tl-row .acts { grid-column: 2; }
+}
+
+/* Row-count sparkline (SVG, drawn to scale; see the comment in the markup). */
+.spark { width: 100%; max-width: 560px; height: auto; display: block; }
+.spark .grid { stroke: #e3e6ea; stroke-width: 1; }
+.spark .area { fill: #dbe6f1; }
+.spark .ln { fill: none; stroke: #24527f; stroke-width: 2; }
+.spark .pt { fill: #24527f; }
+.spark .end { fill: #ffffff; stroke: #24527f; stroke-width: 2; }
+.spark text { fill: #6b6b6b; font: 10px var(--f-site); }
+
+/* Diff summary tiles. */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.tile { border: 1px solid var(--site-line); border-radius: 4px; padding: 9px 11px; display: grid; gap: 6px; font: 12.5px/1.35 var(--f-site); }
+.tile h4 { margin: 0; font: bold 12.5px/1.2 var(--f-site); display: flex; justify-content: space-between; gap: 6px; }
+.tile .counts { display: flex; flex-wrap: wrap; gap: 5px; }
+.tile .total { color: var(--site-dim); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.tile.quiet { background: #fafafa; }
+
+/* Per-column change bars. */
+.bars { display: grid; gap: 5px; font: 12px/1.3 var(--f-site); }
+.bar-row { display: grid; grid-template-columns: 96px minmax(0, 1fr) 36px; gap: 8px; align-items: center; }
+.bar-row .track { height: 10px; background: #eef0f3; border-radius: 2px; overflow: hidden; display: flex; }
+.bar-row .track i { display: block; height: 100%; background: var(--d-chg); }
+.bar-row .n { text-align: right; font-variant-numeric: tabular-nums; color: var(--site-dim); }
+
+/* Liner card for row history. */
+.liner {
+    background: var(--liner-bg);
+    color: var(--liner-ink);
+    border: 1px solid var(--liner-line);
+    border-radius: 6px;
+    box-shadow: 0 18px 40px -16px rgba(30, 20, 10, 0.45);
+    font: 13px/1.45 var(--f-body);
+    width: min(520px, 100%);
+    overflow: hidden;
+}
+.liner-top { padding: 12px 14px 8px; display: grid; gap: 3px; }
+.liner-crumbs { font: 11px/1.3 var(--f-body); color: var(--liner-dim); }
+.liner-title { font: 700 17px/1.25 var(--f-liner); }
+.liner-sec { border-top: 1px solid var(--liner-line); padding: 9px 14px; display: grid; gap: 6px; }
+.liner-sec h4 { margin: 0; font: 600 11px/1 var(--f-body); letter-spacing: 0.07em; text-transform: uppercase; color: var(--liner-dim); }
+.hist { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; font-size: 12.5px; }
+.hist dt { color: var(--liner-dim); font-family: var(--f-mono); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.hist dd { margin: 0; min-width: 0; }
+.liner-foot { border-top: 1px solid var(--liner-line); padding: 7px 14px; font-size: 11px; color: var(--liner-dim); display: flex; flex-wrap: wrap; gap: 4px 14px; }
+
+/* Archive manager. */
+.mgr { display: grid; gap: 12px; font: 12.5px/1.4 var(--f-site); }
+.quota { display: grid; gap: 5px; }
+.quota .track { height: 14px; border-radius: 3px; background: #eef0f3; display: flex; overflow: hidden; border: 1px solid var(--site-line); }
+.quota .track i { display: block; height: 100%; }
+.quota .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--site-dim); font-size: 11.5px; }
+.quota .legend span::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; background: var(--c); vertical-align: -1px; }
+.sw { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.sw i { width: 26px; height: 14px; border-radius: 999px; background: #c7ced8; position: relative; display: inline-block; }
+.sw i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: #fff; }
+.sw.on i { background: #2c7347; }
+.sw.on i::after { left: 14px; }
+
+/* Architecture zones. */
+.flow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
+@media (max-width: 1000px) { .flow { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .flow { grid-template-columns: minmax(0, 1fr); } }
+.zone {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--surface);
+    padding: 12px 14px;
+    display: grid;
+    gap: 8px;
+    align-content: start;
+    font-size: 13.5px;
+}
+.zone h3 { font-size: 14px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.zone ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.arrow-note { font: 12px/1.45 var(--f-mono); color: var(--muted); max-width: none; }
+
+.matrix-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+table.matrix { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 760px; }
+table.matrix th, table.matrix td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.matrix th { font: 600 12px/1.2 var(--f-body); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+table.matrix tr:last-child td { border-bottom: 0; }
+
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 760px) { .two { grid-template-columns: minmax(0, 1fr); } }
+.example-note { font: 11px/1.3 var(--f-site); color: var(--site-dim); }
+
+@media (prefers-reduced-motion: no-preference) {
+    .jump a { transition: border-color 0.15s; }
+}
+</style>
+</head>
+<body>
+<main class="page">
+
+<header class="intro">
+    <div class="eyebrow">ShowAllEntityData · org/offline.org · 2026-10-16</div>
+    <h1>Springsteen Sites Offline</h1>
+    <p>Mockups for the answer in <code>org/offline.org</code>: running without a network, keeping the
+    data of the four Springsteen sites after they change or close, and seeing what changed between two
+    snapshots. Nothing here is built yet. Every row is example data, invented for the mockups.</p>
+    <nav class="jump" aria-label="Mockups">
+        <a href="#arch"><b>0</b>How the parts fit</a>
+        <a href="#banner"><b>A</b>Offline banner</a>
+        <a href="#shell"><b>B</b>Local archive page</a>
+        <a href="#history"><b>C</b>Snapshot history</a>
+        <a href="#summary"><b>D</b>What changed</a>
+        <a href="#difftable"><b>E</b>Diff table</a>
+        <a href="#rowhist"><b>F</b>One row's history</a>
+        <a href="#manager"><b>G</b>Archive manager</a>
+        <a href="#stores"><b>H</b>Storage options</a>
+    </nav>
+</header>
+
+<!-- 0. Architecture -->
+<section class="item" id="arch">
+    <div class="item-head">
+        <div class="eyebrow"><b>0</b> · Overview</div>
+        <h2>How the parts fit</h2>
+        <p>When the network is down the browser cannot load musicbrainz.org or the Springsteen sites, so
+        Tampermonkey never starts the script there. A fully offline start therefore needs a page that
+        comes from this machine. The four parts below build on each other; each is useful on its own.</p>
+    </div>
+    <div class="flow">
+        <div class="zone">
+            <h3>1 · Live page <span class="tag info">phase 0</span></h3>
+            <ul>
+                <li>Notices the network is gone (failed requests, not just <code>navigator.onLine</code>).</li>
+                <li>Stops waiting on timeouts and serves expired cache entries instead of deleting them.</li>
+                <li>Offers the last snapshot of this page.</li>
+            </ul>
+        </div>
+        <div class="zone">
+            <h3>2 · Browser storage <span class="tag info">phase 1</span></h3>
+            <ul>
+                <li>Kept forever for the Springsteen sites (per site, opt-in).</li>
+                <li>Site images stored like cover art.</li>
+                <li>Asks the browser not to evict it (<code>navigator.storage.persist()</code>).</li>
+            </ul>
+        </div>
+        <div class="zone">
+            <h3>3 · Snapshots <span class="tag info">phases 2–3</span></h3>
+            <ul>
+                <li>📸 runs every button of a site and stores keyed rows.</li>
+                <li>Written to a local archive outside the browser.</li>
+                <li>Two snapshots compare row by row, shown as an ordinary table.</li>
+            </ul>
+        </div>
+        <div class="zone">
+            <h3>4 · Local archive page <span class="tag info">phase 4</span></h3>
+            <ul>
+                <li>A page on <code>127.0.0.1</code> (or <code>file://</code>, if the probe shows Tampermonkey runs there).</li>
+                <li>The script runs on it like on any site and loads snapshots.</li>
+                <li>Works with the network unplugged.</li>
+            </ul>
+        </div>
+    </div>
+    <p class="arrow-note">Separate from all of this, a raw copy of each site (WARC, made by a crawler on a schedule) is the insurance against a shutdown: it keeps everything, including the parts the script does not read.</p>
+</section>
+
+<!-- A. Offline banner -->
+<section class="item" id="banner">
+    <div class="item-head">
+        <div class="eyebrow"><b>A</b> · Phase 0 · any page the script runs on</div>
+        <h2>Offline banner and "open last snapshot"</h2>
+        <p>The network went away after the page loaded. The script tells the user once, switches to cached data
+        only, and offers the snapshots it knows for this page.</p>
+    </div>
+    <div class="bench">
+        <div class="win">
+            <div class="win-bar"><span class="dots"><i></i><i></i><i></i></span><span class="url">https://www.jungleland.it/html/list.htm</span></div>
+            <div class="win-body">
+                <h1 class="site">Jungleland · artwork list
+                    <span class="tb primary">Show all</span>
+                    <span class="tb">📦 Data ▾</span>
+                    <span class="chip off">📴 Offline</span>
+                </h1>
+                <div class="net-banner" role="status">
+                    <span>📴</span>
+                    <span class="grow"><b>No network since 14:02 CEST.</b> 3 requests failed in a row. The script
+                    now uses cached data only and does not wait for answers. Cover thumbnails that are not cached show as <span class="ic-off">offline</span>.</span>
+                    <span class="tb">Open last snapshot ▾</span>
+                    <span class="tb">Try again</span>
+                </div>
+                <div class="menu" aria-label="Snapshots of this page">
+                    <div class="mh">Snapshots of jl-list · local archive</div>
+                    <div class="mi sel"><b>2026-10-12 · 6,326 rows</b><span>Open</span><small>Full: rows, 1,940 detail pages, 3,880 images</small></div>
+                    <div class="mi"><b>2026-09-28 · 6,326 rows</b><span>Open</span><small>No change since 2026-09-14</small></div>
+                    <div class="mi"><b>2026-04-20 · 6,320 rows</b><span>Open</span><small>Rows only</small></div>
+                    <div class="mi"><span>Compare two snapshots…</span><span>D</span></div>
+                </div>
+            </div>
+        </div>
+        <aside class="notes">
+            <h3>Behaviour</h3>
+            <ul>
+                <li><b>When it fires:</b> two or three requests fail with status 0 or a timeout within a short time, or the
+                browser sends its <code>offline</code> event. <code>navigator.onLine</code> alone is not trusted: it stays
+                <code>true</code> on a LAN without internet.</li>
+                <li><b>Cached data only</b> means every fetcher answers at once from IndexedDB, including expired entries
+                (marked stale), and no expiry sweep runs.</li>
+                <li><b>It goes away</b> on the <code>online</code> event plus one successful request; queued retries then run once.</li>
+                <li>On MusicBrainz the same banner appears, and the menu lists Save-to-disk files only if the user points the script at a folder (phase 2).</li>
+            </ul>
+            <span class="tag warn">MusicBrainz unchanged while online</span>
+        </aside>
+    </div>
+</section>
+
+<!-- B. Local archive page -->
+<section class="item" id="shell">
+    <div class="item-head">
+        <div class="eyebrow"><b>B</b> · Phase 4 · works with the network unplugged</div>
+        <h2>Local archive page</h2>
+        <p>A small local server (or a <code>file://</code> page) serves the archive. The script matches it like a fifth
+        site and renders a snapshot through the normal pipeline, so filter, sort and 📊 work the same.</p>
+    </div>
+    <div class="bench">
+        <div class="win">
+            <div class="win-bar"><span class="dots"><i></i><i></i><i></i></span><span class="url"><b>http://127.0.0.1:8765/</b>archive/</span></div>
+            <div class="win-body">
+                <h1 class="site">Springsteen archive <span class="chip off">📴 Offline</span> <span class="chip snap">Local copy</span></h1>
+                <div style="overflow-x:auto">
+                <table class="tbl">
+                    <thead><tr><th>Site</th><th>Table</th><th class="num">Rows</th><th>Last snapshot</th><th>Changed since previous</th><th></th></tr></thead>
+                    <tbody>
+                        <tr><td>jungleland.it</td><td>Artwork list</td><td class="num">6,326</td><td>2026-10-12</td><td><span class="chg mod">no change</span></td><td><span class="tb">Open</span></td></tr>
+                        <tr><td>brucespringsteen.it</td><td>Records, unofficial</td><td class="num">1,878</td><td>2026-10-12</td><td><span class="chg mod">no change</span></td><td><span class="tb">Open</span></td></tr>
+                        <tr><td>brucespringsteen.it</td><td>Records, official</td><td class="num">1,186</td><td>2026-10-12</td><td><span class="chg mod">no change</span></td><td><span class="tb">Open</span></td></tr>
+                        <tr><td>brucebase</td><td>Gigs, all years</td><td class="num">5,014</td><td>2026-10-15</td><td><span class="chg add">+5</span> <span class="chg mod">~12</span></td><td><span class="tb">Open</span></td></tr>
+                        <tr><td>brucebase</td><td>Songs</td><td class="num">1,680</td><td>2026-10-15</td><td><span class="chg add">+1</span></td><td><span class="tb">Open</span></td></tr>
+                        <tr><td>springsteenlyrics</td><td>Collection</td><td class="num">5,371</td><td>2026-10-14</td><td><span class="chg add">+6</span> <span class="chg mod">~3</span></td><td><span class="tb">Open</span></td></tr>
+                        <tr><td>springsteenlyrics</td><td>Lyrics</td><td class="num">3,552</td><td>2026-10-14</td><td><span class="chg mod">no change</span></td><td><span class="tb">Open</span></td></tr>
+                    </tbody>
+                </table>
+                </div>
+                <p class="example-note">Example data. Row counts near the real ones recorded in docs/claude/*.md.</p>
+            </div>
+        </div>
+        <aside class="notes">
+            <h3>Why a local page</h3>
+            <ul>
+                <li>Offline, the real sites never load, so no <code>@include</code> line can match.</li>
+                <li>A localhost page needs only a new <code>@include</code> and a <code>host: 'local'</code> pageType; its loader is
+                <code>_hydrateAndRenderFromSnapshotData()</code>, unchanged.</li>
+                <li>Its own origin can hold a merged image cache for all four sites, which per-site IndexedDB cannot.</li>
+                <li>The probe answers whether Tampermonkey runs on <code>file://</code> in your browser. If it does, no server is needed for viewing.</li>
+            </ul>
+        </aside>
+    </div>
+</section>
+
+<!-- C. Snapshot history -->
+<section class="item" id="history">
+    <div class="item-head">
+        <div class="eyebrow"><b>C</b> · Phase 2 · one table of one site</div>
+        <h2>Snapshot history</h2>
+        <p>Every 📸 run of a table is one entry. Unchanged runs are stored as "same as" references, so a
+        weekly run of a frozen site costs almost nothing.</p>
+    </div>
+    <div class="bench">
+        <div class="win">
+            <div class="win-bar"><span class="dots"><i></i><i></i><i></i></span><span class="url">https://brucebase.wikidot.com/ · 📸 Snapshots</span></div>
+            <div class="win-body">
+                <h2 class="site">Brucebase · Gigs, all years <span class="chip live">● Online</span> <span class="tb primary">📸 Snapshot now</span></h2>
+                <!-- Sparkline: x = snapshot index 0..7 → 50..460 (step 410/7), y = rows 4,960..5,020 → 92..12
+                     (y = 92 - (rows - 4960) * 80 / 60). Points: 4968, 4975, 4983, 4990, 4997, 5003, 5009, 5014. -->
+                <svg class="spark" viewBox="0 0 480 110" role="img" aria-label="Row count over eight snapshots, from 4,968 to 5,014">
+                    <line class="grid" x1="20" y1="12" x2="460" y2="12"></line>
+                    <line class="grid" x1="20" y1="52" x2="460" y2="52"></line>
+                    <line class="grid" x1="20" y1="92" x2="460" y2="92"></line>
+                    <text x="2" y="15">5,020</text>
+                    <text x="2" y="55">4,990</text>
+                    <text x="2" y="95">4,960</text>
+                    <path class="area" d="M50 81.3 L108.6 72 L167.1 61.3 L225.7 52 L284.3 42.7 L342.9 34.7 L401.4 26.7 L460 20 L460 92 L50 92 Z"></path>
+                    <path class="ln" d="M50 81.3 L108.6 72 L167.1 61.3 L225.7 52 L284.3 42.7 L342.9 34.7 L401.4 26.7 L460 20"></path>
+                    <circle class="pt" cx="50" cy="81.3" r="2.5"></circle>
+                    <circle class="pt" cx="108.6" cy="72" r="2.5"></circle>
+                    <circle class="pt" cx="167.1" cy="61.3" r="2.5"></circle>
+                    <circle class="pt" cx="225.7" cy="52" r="2.5"></circle>
+                    <circle class="pt" cx="284.3" cy="42.7" r="2.5"></circle>
+                    <circle class="pt" cx="342.9" cy="34.7" r="2.5"></circle>
+                    <circle class="pt" cx="401.4" cy="26.7" r="2.5"></circle>
+                    <circle class="end" cx="460" cy="20" r="4"></circle>
+                    <text x="50" y="106">2026-08-27</text>
+                    <text x="400" y="106">2026-10-15</text>
+                </svg>
+                <div class="tl">
+                    <div class="tl-row"><span class="when">2026-10-15 22:10</span><span class="dot full"></span><span class="what"><b>5,014 rows</b><span class="chg add">+5</span><span class="chg mod">~12</span><span class="site-dim">63 pages, 4 min 10 s</span></span><span class="acts"><span class="tb">Open</span><span class="tb">Compare ▸</span></span></div>
+                    <div class="tl-row"><span class="when">2026-10-08 21:47</span><span class="dot full"></span><span class="what"><b>5,009 rows</b><span class="chg add">+7</span><span class="chg mod">~4</span><span class="chg del">−1</span></span><span class="acts"><span class="tb">Open</span><span class="tb">Compare ▸</span></span></div>
+                    <div class="tl-row"><span class="when">2026-10-01 20:02</span><span class="dot full"></span><span class="what"><b>5,003 rows</b><span class="chg add">+6</span><span class="chg mod">~9</span></span><span class="acts"><span class="tb">Open</span><span class="tb">Compare ▸</span></span></div>
+                    <div class="tl-row"><span class="when">2026-09-24 19:55</span><span class="dot"></span><span class="what"><b>4,997 rows</b><span class="chg add">+7</span><span class="site-dim">rows only, no detail pages</span></span><span class="acts"><span class="tb">Open</span><span class="tb">Compare ▸</span></span></div>
+                    <div class="tl-row"><span class="when">2026-09-20 11:05</span><span class="dot same"></span><span class="what"><span class="site-dim">Incomplete: page 41 of 63 failed. Not used for comparisons.</span></span><span class="acts"><span class="tb">Discard</span></span></div>
+                </div>
+            </div>
+        </div>
+        <aside class="notes">
+            <h3>What a snapshot is</h3>
+            <ul>
+                <li>One record per row: a <b>key</b> (the row's own link, e.g. <code>/gig:2026-04-16-…</code>), the visible cell
+                <b>text</b> per column, and the cell HTML for display.</li>
+                <li>Filled dot: rows plus detail pages. Hollow: rows only. Grey: incomplete, kept for the record but never compared, because a missing page would read as hundreds of removed rows.</li>
+                <li>A userscript cannot start on its own. Due runs show as a reminder on the next visit ("Brucebase: last snapshot 9 days ago"), or a scheduled Playwright job takes them.</li>
+            </ul>
+        </aside>
+    </div>
+</section>
+
+<!-- D. Diff summary -->
+<section class="item" id="summary">
+    <div class="item-head">
+        <div class="eyebrow"><b>D</b> · Phase 3 · two snapshots of a whole site</div>
+        <h2>What changed</h2>
+        <p>The summary before the detail: one tile per table, then which columns changed most. Clicking a
+        tile or a bar opens the diff table (E), filtered to it.</p>
+    </div>
+    <div class="bench">
+        <div class="win">
+            <div class="win-bar"><span class="dots"><i></i><i></i><i></i></span><span class="url"><b>http://127.0.0.1:8765/</b>diff/brucebase?from=2026-10-01&amp;to=2026-10-15</span></div>
+            <div class="win-body">
+                <h2 class="site">Brucebase · 2026-10-01 → 2026-10-15 <span class="tb">Swap</span> <span class="tb">Pick dates ▾</span></h2>
+                <div class="tiles">
+                    <div class="tile"><h4>Gigs, all years <span class="site-dim">63 p.</span></h4><div class="counts"><span class="chg add">+12 added</span><span class="chg mod">~16 changed</span><span class="chg del">−1 removed</span></div><div class="total">5,003 → 5,014 rows</div></div>
+                    <div class="tile"><h4>Songs</h4><div class="counts"><span class="chg add">+1 added</span></div><div class="total">1,679 → 1,680 rows</div></div>
+                    <div class="tile quiet"><h4>Relations</h4><div class="counts"><span class="site-dim">No change</span></div><div class="total">2,892 rows</div></div>
+                    <div class="tile"><h4>Gig detail pages</h4><div class="counts"><span class="chg mod">~38 changed</span></div><div class="total">Setlists and notes</div></div>
+                </div>
+                <h2 class="site">Gigs: changed cells by column</h2>
+                <!-- Bars to scale: widths are count / 16 (the largest). -->
+                <div class="bars">
+                    <div class="bar-row"><span>Setlist</span><span class="track"><i style="width:100%"></i></span><span class="n">16</span></div>
+                    <div class="bar-row"><span>Notes</span><span class="track"><i style="width:43.8%"></i></span><span class="n">7</span></div>
+                    <div class="bar-row"><span>Media</span><span class="track"><i style="width:31.3%"></i></span><span class="n">5</span></div>
+                    <div class="bar-row"><span>Venue</span><span class="track"><i style="width:12.5%"></i></span><span class="n">2</span></div>
+                    <div class="bar-row"><span>Date</span><span class="track"><i style="width:6.3%"></i></span><span class="n">1</span></div>
+                </div>
+                <p class="example-note">Example numbers. A changed row can count in several columns.</p>
+            </div>
+        </div>
+        <aside class="notes">
+            <h3>How rows are matched</h3>
+            <ul>
+                <li>By key, never by position: SL path plus <code>item</code>, lyrics <code>song=</code>; JL artwork link; KF Code; BB the page link
+                (two BB headings have none, so date plus anchor is the fallback).</li>
+                <li>A row whose key changed reads as one removed plus one added. A second pass pairs them when the
+                title and date match, and shows them as <b>moved</b>.</li>
+                <li>Text is compared after the same clean-up the filter uses (<code>getCleanColumnText()</code>), so
+                markup-only changes on the site do not flood the diff.</li>
+            </ul>
+        </aside>
+    </div>
+</section>
+
+<!-- E. Diff table -->
+<section class="item" id="difftable">
+    <div class="item-head">
+        <div class="eyebrow"><b>E</b> · Phase 3 · rendered by the normal engine</div>
+        <h2>Diff table</h2>
+        <p>The diff is an ordinary <code>table.tbl</code> made by a converter, with a <b>Change</b> column in front.
+        Changed cells show old and new, so filter, sort, the 📊 dropdown and Save to disk work unchanged.</p>
+    </div>
+    <div class="bench">
+        <div class="win">
+            <div class="win-bar"><span class="dots"><i></i><i></i><i></i></span><span class="url"><b>http://127.0.0.1:8765/</b>diff/brucebase/gigs?from=2026-10-01&amp;to=2026-10-15</span></div>
+            <div class="win-body">
+                <h2 class="site">Gigs: 29 rows differ <span class="tb">Hide unchanged ✓</span> <span class="tb">Only: Setlist ✕</span></h2>
+                <div style="overflow-x:auto">
+                <table class="tbl">
+                    <thead><tr><th>Change <span class="hdr-btn">📊</span></th><th>Date</th><th>Venue</th><th>City</th><th>Setlist <span class="hdr-btn">📊</span></th><th>Media</th></tr></thead>
+                    <tbody>
+                        <tr class="r-add"><td><span class="chg add">added</span></td><td>2026-09-27</td><td><a href="#difftable">Example Arena</a></td><td>Exampletown</td><td>18 songs</td><td class="dim">—</td></tr>
+                        <tr class="r-mod"><td><span class="chg mod">changed</span></td><td>2026-04-16</td><td><a href="#difftable">Sample Hall</a></td><td>Sampleville</td><td><div class="cell-diff"><del class="old">Song A, Song B, Song C</del><ins class="new">Song A, Song B, Song C, Song D</ins></div></td><td><div class="cell-diff"><del class="old">—</del><ins class="new">Audio</ins></div></td></tr>
+                        <tr class="r-mod"><td><span class="chg mod">changed</span></td><td>2026-04-13</td><td><div class="cell-diff"><del class="old">Placeholder Theatre</del><ins class="new"><a href="#difftable">Placeholder Theater</a></ins></div></td><td>Demoburg</td><td>22 songs</td><td>Video</td></tr>
+                        <tr class="r-del"><td><span class="chg del">removed</span></td><td>2026-03-31</td><td>Mock Club</td><td>Testford</td><td>4 songs</td><td>—</td></tr>
+                    </tbody>
+                </table>
+                </div>
+                <p class="example-note">Example rows: venue and song names are invented.</p>
+            </div>
+        </div>
+        <aside class="notes">
+            <h3>📊 Change column</h3>
+            <div class="uniq">
+                <div class="sh"><span>Change</span><span>29</span></div>
+                <label><input type="checkbox" checked> added <span class="n">12</span></label>
+                <label><input type="checkbox" checked> changed <span class="n">16</span></label>
+                <label><input type="checkbox" checked> removed <span class="n">1</span></label>
+                <label><input type="checkbox"> unchanged <span class="n">4,986</span></label>
+            </div>
+            <ul>
+                <li>The converter is a new <code>apply…ToTable()</code> beside the site converters: no new render, filter or sort path.</li>
+                <li>Filtering on a changed cell matches old and new text, so typing a removed song still finds the row.</li>
+                <li>Unchanged rows are hidden by default but stay in the table, so "what else did this venue have" is one click.</li>
+            </ul>
+        </aside>
+    </div>
+</section>
+
+<!-- F. Row history -->
+<section class="item" id="rowhist">
+    <div class="item-head">
+        <div class="eyebrow"><b>F</b> · Phase 3 · one row across all snapshots</div>
+        <h2>One row's history</h2>
+        <p>Hovering the Change cell (or pressing Space on it) opens the row's history in the usual liner-notes card.</p>
+    </div>
+    <div class="bench">
+        <div class="liner" role="dialog" aria-label="Row history">
+            <div class="liner-top">
+                <div class="liner-crumbs">Brucebase · Gigs · key <code>/gig:2026-04-16-…</code></div>
+                <div class="liner-title">2026-04-16 · Sample Hall, Sampleville</div>
+            </div>
+            <div class="liner-sec">
+                <h4>Changes, newest first</h4>
+                <dl class="hist">
+                    <dt>2026-10-15</dt><dd>Setlist: + Song D · Media: — → Audio</dd>
+                    <dt>2026-06-03</dt><dd>Notes: + "Soundcheck reported"</dd>
+                    <dt>2026-04-20</dt><dd><span class="chg add">added</span> 3 songs</dd>
+                </dl>
+            </div>
+            <div class="liner-sec">
+                <h4>Seen in</h4>
+                <p>9 snapshots, from 2026-04-20 to 2026-10-15. Not in any snapshot before that.</p>
+            </div>
+            <div class="liner-foot"><span>Space pins</span><span>Open snapshot 2026-06-03</span><span>Open live page</span></div>
+        </div>
+        <aside class="notes">
+            <h3>Cost</h3>
+            <ul>
+                <li>Built from the per-row change log the diff writes, never by re-reading every snapshot on hover.</li>
+                <li>Only on the archive page and on diff tables; the live MusicBrainz and site cards are untouched.</li>
+            </ul>
+        </aside>
+    </div>
+</section>
+
+<!-- G. Archive manager -->
+<section class="item" id="manager">
+    <div class="item-head">
+        <div class="eyebrow"><b>G</b> · Phases 1–2 · an extra tab of 💾 Browser cache</div>
+        <h2>Archive manager</h2>
+        <p>One place to see what is kept, where, and for how long. It extends the existing cache overview (<code>_idbo*</code>)
+        rather than adding a second dialog.</p>
+    </div>
+    <div class="bench">
+        <div class="win">
+            <div class="win-bar"><span class="dots"><i></i><i></i><i></i></span><span class="url">https://www.jungleland.it/html/list.htm · 💾 Browser cache › Archive</span></div>
+            <div class="win-body mgr">
+                <div class="quota">
+                    <b>This site's browser storage: 412 MB of about 2.1 GB allowed</b>
+                    <!-- Widths to scale against 2,100 MB: images 380 (18.1%), detail pages 24 (1.1%), other 8 (0.4%). -->
+                    <div class="track" aria-label="Storage use">
+                        <i style="width:18.1%;background:#24527f"></i>
+                        <i style="width:1.1%;background:#c99a1c"></i>
+                        <i style="width:0.4%;background:#8a96a6"></i>
+                    </div>
+                    <div class="legend">
+                        <span style="--c:#24527f">Images 380 MB</span>
+                        <span style="--c:#c99a1c">Detail pages 24 MB</span>
+                        <span style="--c:#8a96a6">Other 8 MB</span>
+                    </div>
+                </div>
+                <div style="overflow-x:auto">
+                <table class="tbl">
+                    <thead><tr><th>Setting</th><th>State</th><th></th></tr></thead>
+                    <tbody>
+                        <tr><td>Protected from browser clean-up</td><td><span class="sw on"><i></i> Yes, granted 2026-10-16</span></td><td class="dim">navigator.storage.persist()</td></tr>
+                        <tr><td>Keep this site's detail pages and images forever</td><td><span class="sw on"><i></i> On</span></td><td class="dim">today 30 days</td></tr>
+                        <tr><td>Snapshot archive folder</td><td><b>V:\sa-archive</b> <span class="tb">Change…</span></td><td class="dim">or the local server</td></tr>
+                        <tr><td>Remind me to snapshot after</td><td><b>14 days</b></td><td class="dim">0 = never</td></tr>
+                        <tr><td>Copy this site's cache to the archive</td><td><span class="tb">Export to archive</span></td><td class="dim">uses the _idbx format</td></tr>
+                    </tbody>
+                </table>
+                </div>
+                <p class="example-note">Example numbers. The probe reports the real quota and persist state for your browser.</p>
+            </div>
+        </div>
+        <aside class="notes">
+            <h3>Why per site</h3>
+            <ul>
+                <li>Browser storage belongs to one site address, so each of the four sites has its own quota, its own persist grant and its own toggles.</li>
+                <li>"Forever" is a separate switch, not a huge number of days, so a TTL setting read with <code>||</code> can never turn it back into 30.</li>
+                <li>MusicBrainz keeps its current TTLs; nothing here changes them.</li>
+            </ul>
+        </aside>
+    </div>
+</section>
+
+<!-- H. Storage options -->
+<section class="item" id="stores">
+    <div class="item-head">
+        <div class="eyebrow"><b>H</b> · Where snapshots could live</div>
+        <h2>Storage options compared</h2>
+        <p>The recommendation in <code>org/offline.org</code> is two tiers: a raw crawl for insurance, and keyed snapshots in a
+        local store for the diff. The probe decides between the first two rows.</p>
+    </div>
+    <div class="matrix-wrap">
+        <table class="matrix">
+            <thead><tr><th>Store</th><th>Setup</th><th>Other machines</th><th>Offline viewing</th><th>Diff and query</th><th>Verdict</th></tr></thead>
+            <tbody>
+                <tr><td><b>Local folder</b> via File System Access (<code>showDirectoryPicker</code>)</td><td>None; pick a folder once</td><td>Sync the folder (git, Syncthing, OneDrive)</td><td>Needs the local page (B)</td><td>Plain JSONL files; git diff for free</td><td><span class="tag ok">first choice if the probe confirms it</span></td></tr>
+                <tr><td><b>Small local server</b>, Python stdlib + SQLite (FTS5), browsable with Datasette</td><td>One script, start it when needed</td><td>Copy the .sqlite file, or keep it in a synced folder</td><td>Serves page B too</td><td>SQL, full-text search</td><td><span class="tag ok">first choice for Firefox</span></td></tr>
+                <tr><td>IndexedDB + <code>persist()</code></td><td>None</td><td>No; per browser and per site</td><td>Only on that site's page</td><td>In script only</td><td><span class="tag warn">cache, not an archive</span></td></tr>
+                <tr><td>OPFS (origin private file system)</td><td>None</td><td>No</td><td>Only on that site's page</td><td>In script only</td><td><span class="tag warn">same limits as IndexedDB</span></td></tr>
+                <tr><td>git repository of JSONL</td><td>A repo, a push</td><td>Yes, history included</td><td>With B</td><td>git log per row file</td><td><span class="tag info">good on top of a folder</span></td></tr>
+                <tr><td>DuckDB over the JSONL files</td><td>One binary</td><td>Same as the folder</td><td>No UI</td><td>Fast ad-hoc SQL across snapshots</td><td><span class="tag info">analysis add-on</span></td></tr>
+                <tr><td>PouchDB in the page, CouchDB at home</td><td>A CouchDB server</td><td>Built-in replication</td><td>With B</td><td>Map/reduce</td><td><span class="tag warn">heavy for one user</span></td></tr>
+                <tr><td>Raw WARC (browsertrix-crawler, ArchiveBox, wget --warc-file), replay with pywb</td><td>A crawler on a schedule</td><td>Copy the files</td><td>pywb shows the original sites</td><td>None (raw pages)</td><td><span class="tag ok">shutdown insurance, separate tier</span></td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+</main>
+</body>
+</html>
