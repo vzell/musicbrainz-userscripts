@@ -23358,3 +23358,87 @@ Env: 2026-10-16T12:47:22+02:00 · vzell-lap · WSL2 Ubuntu 24.04.4 LTS (Linux 6.
   request after about 225 of 1794 tests, all passed. The full run is left
   to `petri`. The user checked the change in a real browser and found it
   OK before the merge.
+
+## 2026-10-16 — ISRC Scout's "ISRC"/"Links" columns: ISRCs treatment, a real Links count, and the missing-glyph race (branch feature/isrc-scout-column, WIP.1)
+
+Env: 2026-10-16T19:06:32+02:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless) · no Tampermonkey (GM stubs). The snapshots and the screenshot came from the user's real browser (browser/Tampermonkey versions not stated: unknown); the script source read is ISRC Scout 2026.10.16.181657 (tests/fixtures/live-userscripts/ISRC-scout.user.js).
+
+Snapshots (debug/, gitignored):
+- `DaD-ISRC-Links-initial.html` / `DaD-ISRC-Links-final.html` /
+  `DaD-ISRC-Links-final-h4-uncollapsed.html` — release
+  230fd31d-f63f-4c01-8f10-432d36a1cb86, IP and FRP after the columns
+  arrived; one ISRC per track.
+- `multiple-ISRC.html` — IP of release 22a6802f-d22e-4f47-9f22-6aac257a4194,
+  several ISRCs per recording (track 2 two, track 7 three) and "N links"
+  badges (`sup.ii-trk-n` 2 and 3).
+
+- **Ask 1: "ISRC" should be like "ISRCs".** The cell is sibling
+  `a.ii-trk-isrc[href="/isrc/CODE"]` anchors with ISRC Scout's own
+  `span.ii-isrcf` segments and no `<code>`. `_findCellIsrcParts()` read it
+  already, but `_formatIsrcAnchor()` needs a `<code>`, the cell is no list,
+  and every ISRC gate was the literal name `'ISRCs'`. Fix: `_normalizeIsrcScoutTd()`
+  rebuilds it into `ul > li > a > code` (from the href), `'ISRC'` joins
+  release-tracks' `collapsableColumns`, and `_isIsrcColumnName()` replaces
+  the literal in `isIsrcCol` and the `isrc-invalid` finding.
+- **Ask 2: "Why do ISRC and Links have no sort/📊 glyphs?"** Not a defect of
+  ours: in both FRP snapshots the two headers have three `.sort-icon-btn`, a
+  `.mb-col-uniq-btn` and `data-col-name`, like every other header, and the
+  later screenshot shows them. Mechanism of the race, read from ISRC Scout's
+  source: the rendered tables keep `tr.subh` and each row's track-MBID `id`,
+  which is exactly what its `fillTrackData()` looks for. Its
+  `showTrackData()` removes every `.ii-col` in the document and re-adds bare
+  cells; it runs when its release load settles, on modal close, after a
+  Mission Control apply, on its column toggles/settings and after its link
+  editor. Its MutationObserver adds bare cells to rows lacking a
+  `:scope > .ii-col` child, so pressing "Tracks" before the columns arrive
+  ends the same way. Explained only, by the user's choice; a guard is a
+  separate change.
+- **Ask 3 (follow-up): "add count to Links UVD".** The Links header count was
+  the number of distinct badge digits — the cells' only text (the "2" in the
+  screenshot). Fix: `_normalizeIsrcScoutLinksTd()` stamps
+  `data-mb-link-platform` on each `a.ii-trk-ln` (from its title) and appends
+  a hidden `span.mb-ii-link-name`; `.ii-trk-n` joins `_CLEAN_STRIP_SEL`; a
+  `:has()` rule outlines an icon whose hidden name holds a filter highlight;
+  new 📊 section "Links info - Platform" (kind `linkplatform:`).
+- **Why the rebuilt cells keep `ii-col`:** a rebuilt cell without it would
+  make ISRC Scout's observer add a second, bare cell to the row. The
+  simulator reproduces that observer; mutation "the rebuilt cells lose ISRC
+  Scout's ii-col class" proves the spec sees it.
+- **Observed, not changed:** after a 📊 tick the column filter input reads
+  `🔍 » platform: Spotify`; typing into it then leaves `🔍 Spotify`, which
+  matches nothing. Generic tick behaviour (not specific to the new section,
+  not checked on `main`); the spec pairs ticks with the global filter instead.
+- **Tests:** `release-tracks-isrc-scout.spec.js` 12/12;
+  `scripts/mutations/isrc-scout-column.json` 12/12 caught (one needed a
+  stronger assertion first: the plain 📊 values, since a leaked badge digit
+  leaves every platform set distinct and the count unchanged). Related
+  specs (release-tracks-*, isrc-column-format, uniq-drop-code-highlights,
+  findings-*; fixtures + mobile) 184/184 on petri.
+
+## 2026-10-16 — ISRC Scout's "Links" icons wrap onto two lines with SUPER MIND CONTROL (branch feature/isrc-scout-column, WIP.1)
+Env: 2026-10-16T21:39:36+02:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless) · no Tampermonkey (GM stubs). The screenshot and `debug/links-overflow.html` (the row-18 cell of release 22a6802f-d22e-4f47-9f22-6aac257a4194) came from the user's real browser (browser/Tampermonkey versions not stated: unknown).
+
+- **Symptom:** on the rendered tracklist, row 18's Links icons (Deezer,
+  Tidal², Apple Music², Qobuz², Spotify³, YouTube) took two lines. Each icon
+  was followed by a red new-window marker.
+- **Cause, measured, not ShowAllEntityData's:** jesus2099's SUPER MIND
+  CONTROL (WARN_NEW_WINDOW, default on) adds
+  `a[target='_blank'] { padding-right: 16px; background: … new-window gif }`
+  to the whole page, and ISRC Scout's icon links open in a new tab. ISRC
+  Scout caps its icon row at `.ii-trk-lns { max-width: 224px }`. A scratch
+  Chromium measurement of the snapshot cell with ISRC Scout's own CSS: 139 px
+  on one line alone; 224 px and two lines with SUPER MIND's rule; 139 px and
+  one line again with the reset below. The hidden platform names
+  (`span.mb-ii-link-name`, `display: none`) take no space, so the same wrap
+  happens on the plain page without ShowAllEntityData.
+- **Fix:** `td.ii-col-links a.ii-trk-ln[target='_blank'] { padding-right: 0;
+  background: none; }` (specificity 0,3,2 beats 0,1,1; SUPER MIND's rule is
+  not `!important`). Scoped to these icons only: every one of them is an
+  outside link, so the marker said nothing there. Same idea as
+  `td.mb-rel-cell`'s reset of MusicBrainz's new-tab `::after`.
+- **Tests:** new test "Links icons carry no new-tab padding from SUPER MIND
+  CONTROL, other new-tab links keep it" (injects the rule; a new-tab link
+  outside the table keeps 16 px, so the reset is scoped);
+  `release-tracks-isrc-scout.spec.js` 13/13; mutation "Links icons keep SUPER
+  MIND CONTROL's new-tab padding" added, `scripts/mutations/isrc-scout-column.json`
+  13/13 caught.

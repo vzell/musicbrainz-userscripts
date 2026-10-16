@@ -717,3 +717,63 @@ document): for a user without the script, the only cost is one
 `tests/fixtures/thirdPartyScripts/ii-instrument-icons.js`. Specs:
 `release-tracks-instrument-icons{,.mobile}.spec.js`,
 `instrument-list-instrument-icons.spec.js`.
+
+## ISRC Scout's ISRC and Links columns
+
+"ISRC Scout" (@majkinetor, `tests/fixtures/live-userscripts/manifest.json`,
+`majkinetor-isrc-scout`) adds two columns to the native tracklist, before
+`.rating` (else `.treleases`): `th/td.ii-col.ii-col-isrc` "ISRC" and
+`.ii-col.ii-col-links` "Links". They arrive ASYNC, after its own WS/2 release
+load, so the "Tracks" button has to be pressed after they appear
+(debug/DaD-ISRC-Links-initial.html, debug/multiple-ISRC.html).
+
+`applyExtractTrackTitleData()` rebuilds both cells in its per-row loop:
+
+- **ISRC** (`_normalizeIsrcScoutTd()`): ISRC Scout writes sibling
+  `a.ii-trk-isrc[href="/isrc/CODE"]` anchors holding its own
+  `span.ii-isrcf` segments. They become `ul > li > a > code`, one `<li>` per
+  ISRC, the shape of this script's own "ISRCs" column. The code comes from the
+  `href`. From there nothing is special: `'ISRC'` is in `collapsableColumns`,
+  `initIsrcFormatting()` gives the CC-XXX-YY-NNNNN display and ⚠️, and
+  `_isIsrcColumnName()` ("ISRCs" or "ISRC") opens the 📊 ISRC sections and the
+  "Invalid ISRC format" finding to it.
+- **Links** (`_normalizeIsrcScoutLinksTd()`): the icons are inline SVG with no
+  text; the only text was the `sup.ii-trk-n` "N links" badge, so the 📊 count
+  was the number of distinct badge digits. Each `a.ii-trk-ln` now carries
+  `data-mb-link-platform` (from its `title`, "<Platform> · <url>", without
+  " (ended)") and a hidden `span.mb-ii-link-name`; `.ii-trk-n` is in
+  `_CLEAN_STRIP_SEL`. A filter highlight inside the hidden name is shown by
+  outlining its icon (`a.ii-trk-ln:has(<any highlight class>)`), and the 📊
+  "Links info - Platform" section (docs/claude/uniq-dropdown.md) lists the
+  platforms.
+
+**Both cells keep their `ii-col` classes, on purpose.** ISRC Scout's
+`fillTrackData()` (a MutationObserver on `documentElement`, one rAF per burst)
+adds fresh cells to every row with no `:scope > .ii-col` child, in every table
+holding a row whose `id` is a track MBID, and every header row `tr.subh`. The
+rendered tables keep both, so a rebuilt cell without the class would get a
+second, bare cell beside it on the next DOM change.
+
+**The race, not guarded (2026-10-16).** Because ISRC Scout treats the rendered
+tables as its own, its `showTrackData()` (remove EVERY `.ii-col` in the
+document, then `fillTrackData()`) replaces the decorated header and cells with
+bare ones: no sort buttons, no 📊, unknown to the column model, colspans bumped
+again. It runs when its release load settles, when its modal closes, after a
+Mission Control apply, when its column toggles or settings change, and after
+its link editor closes. Pressing "Tracks" before the columns arrive ends the
+same way via the observer. Reported as "the ISRC and Links columns have no sort
+and 📊 glyphs"; the FRP snapshot of the normal order has them all.
+
+**The icons lose SUPER MIND CONTROL's new-tab marker.** Its WARN_NEW_WINDOW
+rule pads every `a[target='_blank']` by 16px for a red new-window sprite, and
+ISRC Scout's icon links open in a new tab. Against ISRC Scout's
+`.ii-trk-lns { max-width: 224px }`, six platforms with link counts wrapped onto
+two lines (`debug/links-overflow.html`: 139px alone, 224px and two lines with
+the padding). `td.ii-col-links a.ii-trk-ln[target='_blank']` resets padding
+and background; every icon there is an outside link, so the marker said
+nothing. Scoped to those icons: a new-tab link anywhere else keeps it.
+
+Simulator: `tests/fixtures/thirdPartyScripts/isrc-scout-columns.js` (markup and
+the re-filling observer, not the wipe). Spec:
+`release-tracks-isrc-scout.spec.js`; mutations:
+`scripts/mutations/isrc-scout-column.json`.
