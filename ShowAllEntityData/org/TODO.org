@@ -2733,3 +2733,61 @@ b.)
 
 and when the detail popup is "Space" expanded also right in front of the entity name, [Image #24] here the name
 "Recording" at the very beginning
+
+* TODO revamp "Search in ..." card handling
+
+revamp "Search in ..." card handling, eg. at https://musicbrainz.org/release/d2f07004-ef30-435f-ae73-64507bc639c1
+
+There are to many h4 lies starting with
+
+#+begin_example
+"Search the web"
+"Search in the .."
+"Search further"
+#+end_example
+
+* TODO "ISRC" and "Links" now rendered addionally as columns after the "Artist" column on PT 'release-tracks'
+
+With the new version of the third-party userscript "ISRC Scout" by @majkinetor the "ISRC" and "Links" columns are now
+rendered (but asynchronously, so the action button can only be pressed when the columns appear on the IP) additionally
+after the "Artist" column on PT 'release-tracks', e.g. https://musicbrainz.org/release/230fd31d-f63f-4c01-8f10-432d36a1cb86
+
+#+begin_example
+DaD-ISRC-Links-initial.html - IP - after the columns have arrived
+DaD-ISRC-Links-final.html - FRP - after the columns have arrived
+#+end_example
+
+1.)
+
+The "ISRC" column should get the same treatment regarding UVD as the "ISRCs" column and it should be a multi-row column
+as there can be multiple ISRCs per recording
+
+2.)
+
+Why do the "ISRC" and "Links" columns don't have the sort and UVD glyphs
+
+3.)
+
+the userscript is at @tests/fixtures/live-userscripts/ISRC-scout.js, register it with our skill first
+
+4.)
+
+@debug/multiple-ISRC.html - IP for https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 with multiple ISRs per cell
+
+5.)
+
+the missing glyphs were probably a racing issue, as the screenshot here shows them - [Image #2]
+
+* TODO the rich tooltips should show track/recording differences below each other in a diff like view, with differing chars/portions highlighted
+
+1.)
+
+the rich tooltips should show track/recording differences below each other in a diff like view, with differing
+chars/portions highlighted
+
+2.)
+
+maybe there are other tooltips which show comparisons, fix them also
+
+
+
