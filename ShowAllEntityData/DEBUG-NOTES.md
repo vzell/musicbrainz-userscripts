@@ -23473,3 +23473,40 @@ Env: 2026-10-16T22:23:11+02:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
   sub-table resize, no sample left in the page);
   `scripts/mutations/caa-col-width-reserve.json` 5/5 caught. The CAA/EAA/
   art/resize specs 200/200.
+
+## 2026-10-17 — Flaky "a mousedown hides the card" (rich-tooltips-liner.spec.js): the toolbar moves under the pointer (branch fix/tooltip-mousedown-flake)
+Env: 2026-10-17T01:15:47+02:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless) · no Tampermonkey (GM stubs).
+
+- **Symptom:** `test:full` on `main` after the 9.99.1361 merge: 1809/1810,
+  the one failure "a mousedown hides the card for the rest of the hover"
+  (`#mb-stat-tooltip` still visible after `mouse.down()`). Run alone with
+  `--repeat-each=5` it failed 2/5 on the merged tree and 3/5 on the
+  pre-merge `49078c5`, so not the merge. The 2026-10-14 entry
+  (fix/phone-handle-mutations-flake) saw it once in a full run and 12/12
+  alone.
+- **Not the engine.** The failure screenshot shows the card of a DIFFERENT
+  element, "Relationships for ReleaseGroup". The trace has the pointer at
+  (214.4, 84.25): the test's element, the h1 status line "Loaded 1 page
+  (18 rows)", settles at (204, 143).
+- **Cause:** `openRg()` clicks "Show all sub-sections". Opening the
+  sub-tables widens the page, and the h1 with it (1264 → 4741 px), so the
+  toolbar fits on one line (h1 101 → 38 px tall) and the status line sits at
+  (212, 82). The debounced sticky-headers pass (`SPH_REFRESH_DELAY_MS`, 60)
+  then engages `html.mb-sph-on` and fits the h1 back to the window
+  (1280 px, two lines again), about 80–100 ms after the click. A box read
+  inside that window puts the pointer where the Relationships button lands
+  a moment later. Chromium sends mouseout/mouseover for the element now
+  under the still pointer, and `_initStatTooltip()` starts a NEW hover
+  (`_hide()` clears `_dismissed`), so the new element's card shows. That is
+  the right behaviour; the test's box was stale.
+- **Fix (test only):** after the master click, `openRg()` polls until the
+  h1 fits the window (`h1` width ≤ `clientWidth`). A first attempt waited
+  for `__saTest.sphRefreshPasses()` to rise: still 2/20, because a pass
+  left over from the render can land between reading the count and the
+  click (pass 2 at +70 ms, the fitting pass 3 at +200 ms).
+- **Verified:** the spec plus a load probe, `--repeat-each=30`: 330/330
+  (the test 30/30), where the same load failed it 2/8 before the fix.
+- **Not fixed, worth knowing:** the brief one-line toolbar is real in the
+  browser too, for up to one debounce plus a layout after "Show all
+  sub-sections". Users may see it as a flicker of the h1 toolbar. Not
+  measured in a real browser.

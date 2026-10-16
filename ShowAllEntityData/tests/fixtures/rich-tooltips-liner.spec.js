@@ -45,7 +45,18 @@ async function openRg(page, settings = {}) {
     await waitForRenderComplete(page, { waitForAutoResize: false });
     const master = page.locator('.mb-master-toggle');
     if (await master.count() && (await master.getAttribute('data-state')) === 'collapsed') {
+        // Opening the sub-tables widens the page, and the h1 with it, until
+        // the debounced sticky-headers pass fits it back to the window: for
+        // that moment the toolbar is one line, not two, and everything in it
+        // sits elsewhere. A box read then is where the pointer lands on a
+        // different element a moment later (DEBUG-NOTES 2026-10-17). Wait
+        // for the fitted h1, not for a pass count: a pass left over from the
+        // render can land between reading the count and the click.
         await master.click();
+        await expect.poll(() => page.evaluate(() => {
+            const h1 = document.querySelector('h1');
+            return h1.getBoundingClientRect().width <= document.documentElement.clientWidth;
+        }), 'the h1 fits the window again').toBe(true);
     }
     // Park the pointer: resting on an own-tip element stashes its title, and
     // the click above leaves it wherever the toggle was.
