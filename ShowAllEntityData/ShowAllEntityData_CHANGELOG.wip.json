@@ -1,0 +1,26 @@
+[
+  {
+    "version": "WIP.2",
+    "date": "2026-10-16",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Annotation history pages show the Editor column first, before Old and New, so the column that stays visible when you scroll sideways is now also the leftmost one. The Old/New radios and \"Compare versions\" work as before."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-10-16",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "With sticky page headers on, a table with two or more columns before its sticky column (e.g. Old and New before Editor on Annotation history) no longer shows a white strip over the right edge of the first of them that cut off its 📊 button and filter clear button."
+        ]
+      }
+    ]
+  }
+]

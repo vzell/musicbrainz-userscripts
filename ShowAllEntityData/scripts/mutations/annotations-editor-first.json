@@ -1,0 +1,54 @@
+[
+  {
+    "name": "every pre cell masks again",
+    "why": "The original defect, reverted verbatim: the gutter mask back on all `pre` cells. The second one paints its page-white shadow over the right edge of the first at scrollX 0 (annotations: 16 px over Old).",
+    "edits": [
+      {
+        "find": "`{ position: sticky !important; left: ${left}px !important; z-index: 0 !important; }`",
+        "replace": "`{ position: sticky !important; left: ${left}px !important; z-index: 0 !important; box-shadow: ${mask()}; }`"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "two columns before the sticky one",
+    "expect": "fail"
+  },
+  {
+    "name": "the mask stays on the first cell even when it is hidden",
+    "why": "`first` pinned to 1: with the leading column hidden by the user, no visible cell would mask the gutter.",
+    "edits": [
+      {
+        "find": "                first = c.cellIndex + 1;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "two columns before the sticky one",
+    "expect": "fail"
+  },
+  {
+    "name": "applyMoveColumnFirst does nothing",
+    "why": "Without the move, Editor stays third behind Old/New, which then dock under the sticky column.",
+    "edits": [
+      {
+        "find": "        const name = def?.features?.moveColumnFirst;\n        if (!name) return;",
+        "replace": "        const name = def?.features?.moveColumnFirst;\n        if (name || !name) return;"
+      }
+    ],
+    "spec": "tests/fixtures/annotations-editor-first.spec.js",
+    "grep": "Editor",
+    "expect": "fail"
+  },
+  {
+    "name": "only the header row is moved",
+    "why": "Row integrity: a move that reorders the header but not the body would put radios under Editor and vice versa.",
+    "edits": [
+      {
+        "find": "table.querySelectorAll(':scope > thead > tr, :scope > tbody > tr').forEach(tr => {",
+        "replace": "table.querySelectorAll(':scope > thead > tr').forEach(tr => {"
+      }
+    ],
+    "spec": "tests/fixtures/annotations-editor-first.spec.js",
+    "grep": "header and every row",
+    "expect": "fail"
+  }
+]

@@ -1875,7 +1875,8 @@ clamp the long *Edit details* and *Edit notes* columns with a *more* toggle.
 
 **Annotation history** pages get Editor and Version-history columns, always
 selectable Old/New comparison radios, and a relocated *Compare versions* button
-that can open in a new tab.
+that can open in a new tab. *Editor* is the first column, ahead of *Old* and
+*New*, and stays visible when you scroll sideways.
 
 **Auto-editor election** pages consolidate both the index and individual
 elections.

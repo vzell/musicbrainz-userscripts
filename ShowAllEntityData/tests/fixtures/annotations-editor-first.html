@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Bruce Springsteen - Annotation History - MusicBrainz</title>
+</head>
+<body>
+    <div id="page">
+    <div id="content">
+        <h1>Bruce Springsteen</h1>
+        <!--
+            annotations-editor-first.spec.js: the native Annotation history
+            shape of debug/annotations-old-new.initial.html (2026-10-16):
+            table#annotation-history inside its <form>, th.pos on Old/New,
+            input.old/input.new radios with data-index and MusicBrainz's
+            static `disabled` fallback (New only on the newest row, Old not
+            on it), Editor THIRD, and the "Compare versions" submit button
+            below the table. Four rows, so the moved cells can be told apart.
+        -->
+        <h2>Annotation history</h2>
+        <form action="/artist/70248960-cb53-4ea4-943a-edb18f7d336f/annotations-differences">
+            <div class="annotation-history-table">
+                <table class="tbl" id="annotation-history">
+                    <thead>
+                        <tr><th class="pos">Old</th><th class="pos">New</th><th>Editor</th><th>Date</th><th>Version history</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><input class="old" data-index="0" disabled type="radio" name="old" value="1076180"></td>
+                            <td><input class="new" data-index="0" type="radio" name="new" checked value="1076180"></td>
+                            <td><a href="/user/vzell"><bdi>vzell</bdi></a></td>
+                            <td>2022-12-24 12:08 GMT+1</td>
+                            <td><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f/annotation/1076180">View this version</a> (<em>no changelog specified</em>)</td>
+                        </tr>
+                        <tr>
+                            <td><input class="old" data-index="1" type="radio" name="old" checked value="801281"></td>
+                            <td><input class="new" data-index="1" disabled type="radio" name="new" value="801281"></td>
+                            <td><a href="/user/reosarevok"><bdi>reosarevok</bdi></a></td>
+                            <td>2020-02-14 15:46 GMT+1</td>
+                            <td><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f/annotation/801281">View this version</a> (<em>no changelog specified</em>)</td>
+                        </tr>
+                        <tr>
+                            <td><input class="old" data-index="2" type="radio" name="old" value="801280"></td>
+                            <td><input class="new" data-index="2" disabled type="radio" name="new" value="801280"></td>
+                            <td><a href="/user/zas"><bdi>zas</bdi></a></td>
+                            <td>2020-02-14 15:45 GMT+1</td>
+                            <td><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f/annotation/801280">View this version</a> (<em>no changelog specified</em>)</td>
+                        </tr>
+                        <tr>
+                            <td><input class="old" data-index="3" type="radio" name="old" value="801279"></td>
+                            <td><input class="new" data-index="3" disabled type="radio" name="new" value="801279"></td>
+                            <td><a href="/user/jesus2099"><bdi>jesus2099</bdi></a></td>
+                            <td>2020-02-14 15:44 GMT+1</td>
+                            <td><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f/annotation/801279">View this version</a> (<em>no changelog specified</em>)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="row no-margin"><span class="buttons"><button type="submit">Compare versions</button></span></div>
+        </form>
+    </div>
+    </div>
+</body>
+</html>
