@@ -470,9 +470,18 @@ and the tables reading the search lists too. Branch
   unless "every card" (it is no facts card); a switch (All + one button per
   heading, only with more than one) in `data-mb-sb-scope`; a find box over
   each entry's `data-mb-sb-find` (name, variants, path), with its count and
-  `.mb-sb-hit` marks; per heading an index in CSS columns (section with its
-  link count, group in italics, sites with a `·` drawn by CSS on every entry
-  but the line's first visible one, `.mb-sb-first`); a foot naming the empty
+  `.mb-sb-hit` marks; per heading an index of section boxes packed into CSS
+  columns (layout B, vzell 2026-10-17, mockup
+  https://claude.ai/artifact/QAHkW8x2BFdeVh8UsCQnud): a box per section with
+  its link count; inside it `.mb-sb-ix-gl`, a grid whose label column holds
+  the group names in italics (each group `.mb-sb-ix-g` is `display:
+  contents`: an `em` cell and a `.mb-sb-ix-s` flex-wrap cell of sites); a
+  heading with one section is one box in one row (`.mb-sb-ix-one`, Search
+  the web). Before it, the sites were spans with nothing between them, so a
+  line could break only inside a name ("Web | pages") and a name with no
+  space ran into the next column. Hiding a group relies on
+  `.mb-sb-inline [hidden]` (`!important`), which beats `display:
+  contents`; a foot naming the empty
   sections and groups, hidden while finding. Variants (`_sbMergeVariants()`,
   `_SB_VARIANT_RE`, full-width brackets too): "X", "X (by a)", "X (b)" → one
   entry linking X with variant links "a", "b"; a lone "X (a)" stays as
@@ -527,12 +536,12 @@ and the tables reading the search lists too. Branch
   `.mb-sb-inline` is a size container: below 760px of its own width the
   split stacks, the rail wrapping as the old row. With only one kind, the
   old wrapping row.
-- Specs: `sidebar-search-card.spec.js` (7), on
+- Specs: `sidebar-search-card.spec.js` (12; BOXES measures the boxes at 1400 and 560px), on
   `tests/fixtures/release-tracks-sidebar-search-links.html` (Devils & Dust,
   saved with the script active, `debug/DaD-ISRC-Links-initial.html`; built
   by `scripts/build-sidebar-search-fixture.py`, which removes the toolbar our
   own first pass had left in the save). Mutations:
-  `scripts/mutations/sidebar-search-card.json` (15; Esc in the find box is
+  `scripts/mutations/sidebar-search-card.json` (31; Esc in the find box is
   `expect: "pass"`: Chromium empties a search input on Esc by itself).
 
 **`sa_sidebar_tables_button` is off by default** since this change (it

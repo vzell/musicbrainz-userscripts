@@ -95,7 +95,7 @@ const index = (page) => page.evaluate(() => Array.from(document.querySelectorAll
         h: (s.querySelector('.mb-sb-ix-h') || { textContent: '' }).textContent,
         lines: Array.from(s.querySelectorAll('.mb-sb-ix-g')).filter((g) => !g.hidden).map((g) => ({
             group: (g.querySelector(':scope > em') || { textContent: '' }).textContent,
-            entries: Array.from(g.querySelectorAll(':scope > .mb-sb-ix-it')).filter((i) => !i.hidden).map((i) => ({
+            entries: Array.from(g.querySelectorAll('.mb-sb-ix-it')).filter((i) => !i.hidden).map((i) => ({
                 base: i.firstChild.textContent,
                 variants: Array.from(i.querySelectorAll('.mb-sb-ix-vv a')).map((a) => a.textContent),
             })),
@@ -198,6 +198,58 @@ test.describe('the Search card (jesus2099 mb. ALL LINKS)', () => {
         await expect(n).toHaveText(all);
         await expect(page.locator('.mb-sb-search'), 'Esc stopped at the box: the card is still open').toBeVisible();
         await expect(page.locator('.mb-sb-inline'), 'and the section too').toBeVisible();
+    });
+
+    test('BOXES: every section is a box its sites stay inside; group names line up; Search the web is one row', async ({ page }) => {
+        await open(page);
+        await openSearch(page);
+        // What the screenshot of 2026-10-17 showed broken: sites with no
+        // break between them ran out of their column into the next one,
+        // and "Web pages" broke after "Web".
+        const measure = () => page.evaluate(() => {
+            const out = { boxes: 0, unboxed: [], outside: [], split: [], misaligned: [], webRows: 0, webSplit: [] };
+            document.querySelectorAll('.mb-sb-ix-sec').forEach((sec) => {
+                if (!sec.checkVisibility()) return;
+                out.boxes++;
+                const name = (sec.querySelector('.mb-sb-ix-h') || { textContent: '(no name)' }).textContent;
+                if (getComputedStyle(sec).borderTopStyle !== 'solid') out.unboxed.push(name);
+                const box = sec.getBoundingClientRect();
+                sec.querySelectorAll('.mb-sb-ix-it').forEach((it) => {
+                    for (const r of it.getClientRects()) {
+                        if (r.left < box.left - 0.5 || r.right > box.right + 0.5) out.outside.push(it.textContent);
+                    }
+                    // A site's name (and its icon) on one line: the fixture
+                    // has no name wider than a box.
+                    const a = it.querySelector(':scope > a');
+                    if (a && a.getClientRects().length !== 1) out.split.push(it.textContent);
+                });
+                const lefts = new Set(Array.from(sec.querySelectorAll('.mb-sb-ix-s')).map((s) => Math.round(s.getBoundingClientRect().left)));
+                if (lefts.size > 1) out.misaligned.push(name);
+            });
+            const web = document.querySelector('.mb-sb-ix-part[data-mb-sb-source="Search the web"]');
+            const its = Array.from(web.querySelectorAll('.mb-sb-ix-it'));
+            out.webRows = new Set(its.map((it) => Math.round(it.getBoundingClientRect().top))).size;
+            its.forEach((it) => { if (it.querySelector('a').getClientRects().length !== 1) out.webSplit.push(it.textContent); });
+            out.webOne = web.querySelector('.mb-sb-ix').classList.contains('mb-sb-ix-one');
+            return out;
+        });
+        for (const width of [1400, 560]) {
+            await page.setViewportSize({ width, height: 900 });
+            const m = await measure();
+            expect(m.boxes, `${width}px: boxes shown`).toBeGreaterThan(5);
+            expect(m.unboxed, `${width}px: sections without a box`).toEqual([]);
+            expect(m.outside, `${width}px: sites outside their box`).toEqual([]);
+            expect(m.split, `${width}px: site names split over two lines`).toEqual([]);
+            expect(m.misaligned, `${width}px: boxes whose group sites start at different edges`).toEqual([]);
+            expect(m.webRows, `${width}px: Search the web in one row`).toBe(1);
+            expect(m.webSplit, `${width}px: no web link split over two lines`).toEqual([]);
+            expect(m.webOne, 'one section: one box in one row').toBe(true);
+        }
+        // Finding hides a whole group: its name goes with it, though the
+        // line itself has no box (display: contents).
+        await page.locator('.mb-sb-find').fill('prog');
+        const genre = page.locator('.mb-sb-ix-sec', { has: page.locator('.mb-sb-ix-h', { hasText: /^By genre/ }) });
+        await expect(genre.locator('.mb-sb-ix-g > em:visible')).toHaveText(['Rock']);
     });
 
     test('LAYOUT: facts in a column on the left, links beside them; stacked when narrow', async ({ page }) => {

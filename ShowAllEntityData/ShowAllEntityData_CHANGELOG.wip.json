@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-10-17",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Sidebar cards: in the Search card, sites no longer run out of their column into the next one, and a name is no longer broken in two (\"Web | pages\"). Each section (By genre, Lyrics, By area, …) is now a box of its own: the groups' names (Classical, Japan, …) form a column on the left, and their sites wrap beside them, each in one piece with its icon. Search the web is one row."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "2026-10-17",
     "sections": [

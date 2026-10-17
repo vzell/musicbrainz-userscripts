@@ -881,8 +881,9 @@ close every sidebar section; the headings of the main page are left alone.
   With jesus2099's *mb. ALL LINKS* installed, its *Search the web*, *Search in
   the whitelist* and *Search further* lists are one **Search** card (closed
   at first) between the link cards. It is an index: each section (*By genre*,
-  *By area*, …) with its groups in italics (*Rock*, *Japan*, …) and their
-  sites. Variants of one site are one entry with small links, for example
+  *By area*, …) is a box of its own, with its groups' names in italics in a
+  column on the left (*Rock*, *Japan*, …) and their sites beside them, each
+  site in one piece with its icon. *Search the web* is one row. Variants of one site are one entry with small links, for example
   *Prog Archives (barcode, name)*. Sections with nothing for this kind of page
   are named once at the foot. The switch at the top (*All*, *Web*,
   *Whitelist*, *Further*) shows one list at a time, and the box finds a site

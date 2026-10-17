@@ -23876,3 +23876,36 @@ Env: 2026-10-17T15:55:15+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1)
   3 caught, 1 recorded `"expect": "pass"` (the "still loading" check:
   Chromium parses this 300 KB copy before the first 50 ms check); lint
   within the baseline.
+
+## 2026-10-17 — Search card: sites ran out of their column, "Web | pages" (branch feat/sidebar-search-boxes, WIP.5)
+
+Env: 2026-10-17T20:09:20+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 bundled Chromium · no Tampermonkey (GM stubs); the symptom from vzell's screenshot of /artist/Dean Martin (browser and Tampermonkey version not stated)
+
+- **Symptom (vzell, screenshot):** in the Sidebar's Search card, sites
+  spilled out of their column into the next one ("SoundtrackCollector",
+  "IOBDb", "Theatricalia" over *Social networks*), and *Search the web*
+  showed "Web" on one line and "pages · Images · Videos" on the next.
+- **Root cause:** `_sbSearchBody()` appended each site as a span with no
+  text between two spans, and the `·` was a `::before`. A line therefore had
+  break opportunities only INSIDE names: "Web pages" broke at its space, and
+  a run of one-word names had none, so it overflowed its 14.5rem column
+  (CSS columns let content overflow into the gap and the next column).
+  Reproduced in the mockup's "Now" tab with the shipped rules (7 lines out
+  of their area at 1450px).
+- **Fix (layout B of the mockup, vzell's pick,
+  https://claude.ai/artifact/QAHkW8x2BFdeVh8UsCQnud):** every section is a
+  bordered box packed into columns (`columns: 21em`); inside it a grid
+  (`.mb-sb-ix-gl`) with the group names as a right-aligned label column and
+  each group's sites in a flex-wrap cell (`.mb-sb-ix-s`, gap instead of the
+  dot). A group stays `.mb-sb-ix-g`, now `display: contents`, so
+  `_sbSearchApply()` and the spec's index walker keep their shape; hiding it
+  works through the existing `.mb-sb-inline [hidden] { display: none
+  !important }` (a `[hidden]` rule of my own was redundant; its mutation
+  passed, which is how that showed). A heading with one section is one box
+  in one row (`.mb-sb-ix-one`). `.mb-sb-first` and its dot are gone.
+- **Verified:** new BOXES test in `sidebar-search-card.spec.js` (each
+  section boxed, no site outside its box, no site name over two lines, the
+  sites of a box starting at one edge, Search the web one row, at 1400 and
+  560px; finding hides a group's name with it); 4 new mutations in
+  `scripts/mutations/sidebar-search-card.json`, all caught;
+  `sidebar-search-card` + `sidebar-inline` 30/30.

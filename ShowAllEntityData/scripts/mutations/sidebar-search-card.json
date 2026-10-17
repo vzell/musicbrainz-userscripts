@@ -119,5 +119,57 @@
         "spec": "tests/fixtures/sidebar-search-card.spec.js",
         "grep": "ICONS in the Credits render",
         "expect": "fail"
+    },
+    {
+        "name": "Search boxes: nothing between two sites",
+        "why": "The sites cell is a plain block again, and the sites are spans with nothing between them: a line can only break inside a name (\"Web | pages\"), as in the screenshot of 2026-10-17.",
+        "edits": [
+            {
+                "find": "            .mb-sb-ix-s { display: flex; flex-wrap: wrap; gap: 1px 13px; min-width: 0; }\n",
+                "replace": "            .mb-sb-ix-s { display: block; min-width: 0; }\n"
+            }
+        ],
+        "spec": "tests/fixtures/sidebar-search-card.spec.js",
+        "grep": "BOXES",
+        "expect": "fail"
+    },
+    {
+        "name": "Search boxes: no label column",
+        "why": "A group line is a block again: its name sits above or before its sites, and the sites of one box start at different edges.",
+        "edits": [
+            {
+                "find": "            .mb-sb-ix-g { display: contents; }\n",
+                "replace": "            .mb-sb-ix-g { display: block; }\n"
+            }
+        ],
+        "spec": "tests/fixtures/sidebar-search-card.spec.js",
+        "grep": "BOXES",
+        "expect": "fail"
+    },
+    {
+        "name": "Search boxes: sections are not boxed",
+        "why": "A section has no border: the areas are not set apart.",
+        "edits": [
+            {
+                "find": "padding: 5px 8px 6px; border: 1px solid #d9cfbd; border-radius: 3px; background: #fbf8f1; }",
+                "replace": "padding: 5px 8px 6px; border-radius: 3px; background: #fbf8f1; }"
+            }
+        ],
+        "spec": "tests/fixtures/sidebar-search-card.spec.js",
+        "grep": "BOXES",
+        "expect": "fail"
+    },
+    {
+        "name": "Search boxes: a one-section heading flows in columns",
+        "why": "Search the web is not marked as one box in one row.",
+        "edits": [
+            {
+                "find": "            ix.className = 'mb-sb-ix' + (secs.size === 1 ? ' mb-sb-ix-one' : '');\n",
+                "replace": "            ix.className = 'mb-sb-ix';\n"
+            }
+        ],
+        "spec": "tests/fixtures/sidebar-search-card.spec.js",
+        "grep": "BOXES",
+        "expect": "fail"
     }
 ]

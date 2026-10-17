@@ -91365,7 +91365,7 @@ a { color: #1565c0; }`;
             .mb-sb-pill-tag { border-color: #ddd; background: #f1f1f1; }
             .mb-sb-pill-votes { color: #6b8f5a; font-size: 10px; }
             /* The Search card (mockup picks A3 + B1): a scope switch and a
-               find box, then an index that flows into columns. */
+               find box, then an index of section boxes (layout B, below). */
             .mb-sb-search { padding: 7px 9px; }
             .mb-sb-search-tools { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin-bottom: 8px; }
             .mb-sb-scope { display: inline-flex; flex-wrap: wrap; gap: 3px; }
@@ -91375,12 +91375,22 @@ a { color: #1565c0; }`;
             .mb-sb-find-n { color: #7a6d5c; font-variant-numeric: tabular-nums; }
             .mb-sb-ix-part + .mb-sb-ix-part { margin-top: 10px; }
             .mb-sb-ix-part-h { font: 600 10.5px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.08em; color: #2b2622; border-bottom: 1px solid #d9cfbd; padding-bottom: 2px; margin-bottom: 4px; }
-            .mb-sb-ix { columns: 14.5rem; column-gap: 26px; column-rule: 1px solid #d9cfbd; }
-            .mb-sb-ix-sec { break-inside: avoid; margin: 0 0 7px; }
-            .mb-sb-ix-h { font: 600 9.5px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.07em; color: #7a6d5c; margin-bottom: 1px; }
-            .mb-sb-ix-g { break-inside: avoid; padding-left: 0.9em; text-indent: -0.9em; }
-            .mb-sb-ix-g > em { color: #7a6d5c; }
-            .mb-sb-ix-it:not(.mb-sb-first)::before { content: '·'; color: #7a6d5c; margin: 0 5px; }
+            /* Layout B (mockup 2026-10-17): every section is a box, packed
+               into columns; inside it the group names form a label column
+               and each group's sites wrap beside it, a site never split
+               from its icon and never running out of its box. A heading
+               with one section (Search the web) is one box in one row. */
+            .mb-sb-ix { columns: 21em; column-gap: 8px; }
+            .mb-sb-ix-one { columns: auto; }
+            .mb-sb-ix-sec { break-inside: avoid; display: block; box-sizing: border-box; min-width: 0; margin: 0 0 8px; padding: 5px 8px 6px; border: 1px solid #d9cfbd; border-radius: 3px; background: #fbf8f1; }
+            .mb-sb-ix-one > .mb-sb-ix-sec { display: inline-block; max-width: 100%; vertical-align: top; }
+            .mb-sb-ix-h { font: 600 9.5px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.07em; color: #7a6d5c; border-bottom: 1px dotted #d9cfbd; padding-bottom: 2px; margin-bottom: 4px; }
+            .mb-sb-ix-gl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 10px; align-items: baseline; }
+            .mb-sb-ix-gl-1 { grid-template-columns: minmax(0, 1fr); }
+            .mb-sb-ix-g { display: contents; }
+            .mb-sb-ix-g > em { color: #7a6d5c; text-align: right; white-space: nowrap; }
+            .mb-sb-ix-s { display: flex; flex-wrap: wrap; gap: 1px 13px; min-width: 0; }
+            .mb-sb-ix-it { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
             .mb-sb-ix-vv { font-size: 0.86em; color: #7a6d5c; }
             .mb-sb-hit { box-shadow: 0 0 0 2px #e9c46a; border-radius: 3px; }
             .mb-sb-foot { margin-top: 8px; padding-top: 6px; border-top: 1px dotted #d9cfbd; color: #7a6d5c; font-style: italic; font-size: 0.92em; }
@@ -91563,9 +91573,13 @@ a { color: #1565c0; }`;
     /**
      * The body of the Search card (mockup picks A3 + B1): a switch between
      * the script's headings (when it has more than one), a find box with
-     * its count, then per heading an index that flows into columns:
-     * section (small caps, with its link count), each group in italics
-     * followed by its sites (`_sbMergeVariants()`), and a foot line naming
+     * its count, then per heading an index of boxes packed into columns
+     * (layout B, mockup https://claude.ai/artifact/QAHkW8x2BFdeVh8UsCQnud):
+     * one box per section (small caps, with its link count), inside it the
+     * group names in italics as a label column (`.mb-sb-ix-gl`, each group a
+     * `display: contents` line of label + `.mb-sb-ix-s`) and each group's
+     * sites wrapping beside it (`_sbMergeVariants()`); a heading with one
+     * section is one box in one row (`.mb-sb-ix-one`); and a foot line naming
      * the sections and groups with nothing for this kind of entity. Each
      * link has a hover card (`_sbLinkTip()`). Filtering and the switch are
      * `_sbSearchApply()`, delegated in `_sbInlineBuild()`.
@@ -91624,7 +91638,7 @@ a { color: #1565c0; }`;
                 grp.get(r[3]).push(r[5][0]);
             });
             const ix = document.createElement('div');
-            ix.className = 'mb-sb-ix';
+            ix.className = 'mb-sb-ix' + (secs.size === 1 ? ' mb-sb-ix-one' : '');
             secs.forEach((grps, secName) => {
                 const sec = document.createElement('div');
                 sec.className = 'mb-sb-ix-sec';
@@ -91636,18 +91650,25 @@ a { color: #1565c0; }`;
                     h.textContent = `${secName} · ${count}`;
                     sec.appendChild(h);
                 }
+                // Group names form a label column when any group has one.
+                const labelled = Array.from(grps.keys()).some(Boolean);
+                const gl = document.createElement('div');
+                gl.className = 'mb-sb-ix-gl' + (labelled ? '' : ' mb-sb-ix-gl-1');
                 grps.forEach((links, grpName) => {
                     const line = document.createElement('div');
                     line.className = 'mb-sb-ix-g';
-                    if (grpName) {
+                    if (labelled) {
                         const em = document.createElement('em');
                         em.textContent = grpName;
-                        line.append(em, ' ');
+                        line.appendChild(em);
                     }
+                    const sites = document.createElement('span');
+                    sites.className = 'mb-sb-ix-s';
+                    line.appendChild(sites);
                     const where = [src, secName, grpName].filter(Boolean).join(' › ');
-                    _sbMergeVariants(links).forEach((e, i) => {
+                    _sbMergeVariants(links).forEach(e => {
                         const it = document.createElement('span');
-                        it.className = 'mb-sb-ix-it' + (i ? '' : ' mb-sb-first');
+                        it.className = 'mb-sb-ix-it';
                         it.dataset.mbSbFind = [e.base, ...e.variants.map(v => v.label), where].join(' ').toLowerCase();
                         if (e.a) {
                             e.a.dataset.mbtt = _sbLinkTip(e.a, e.text, where, 'Searches');
@@ -91671,10 +91692,11 @@ a { color: #1565c0; }`;
                             vv.append(')');
                             it.appendChild(vv);
                         }
-                        line.appendChild(it);
+                        sites.appendChild(it);
                     });
-                    sec.appendChild(line);
+                    gl.appendChild(line);
                 });
+                sec.appendChild(gl);
                 ix.appendChild(sec);
             });
             part.appendChild(ix);
@@ -91691,8 +91713,9 @@ a { color: #1565c0; }`;
      * Applies the Search card's switch (`data-mb-sb-scope`: a heading, or
      * '' for all) and find box: an entry shows when its text, variants or
      * place contain the query (`data-mb-sb-find`), and is marked; a group,
-     * section or heading with no entry left goes; the first entry of a line
-     * loses its separator dot. Updates the count and the foot line (the
+     * section or heading with no entry left goes (`.mb-sb-inline [hidden]`
+     * wins over the boxed layout's display values, `display: contents`
+     * included). Updates the count and the foot line (the
      * empty sections and groups of the headings shown).
      * @param {?HTMLElement} body `div.mb-sb-search`.
      * @returns {void}
@@ -91713,10 +91736,7 @@ a { color: #1565c0; }`;
                 if (ok) hits++;
             });
             part.querySelectorAll('.mb-sb-ix-g').forEach(line => {
-                const its = Array.from(line.querySelectorAll(':scope > .mb-sb-ix-it'));
-                const first = its.find(it => !it.hidden);
-                its.forEach(it => it.classList.toggle('mb-sb-first', it === first));
-                line.hidden = !first;
+                line.hidden = !line.querySelector('.mb-sb-ix-it:not([hidden])');
             });
             part.querySelectorAll('.mb-sb-ix-sec').forEach(sec => { sec.hidden = !sec.querySelector('.mb-sb-ix-g:not([hidden])'); });
             part.hidden = !part.querySelector('.mb-sb-ix-sec:not([hidden])');
