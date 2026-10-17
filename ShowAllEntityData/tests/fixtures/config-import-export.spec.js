@@ -352,7 +352,7 @@ test.describe('config save/load round trip preserves the editable lookup tables'
         // default), so the file's own import would accept it.
         await page.evaluate(() => window.GM_setValue('sa_sidebar_inline_cards_open', 'bogus'));
         await loadSeriesPage(page);
-        expect((await exportConfig(page)).settings.sa_sidebar_inline_cards_open).toBe('info');
+        expect((await exportConfig(page)).settings.sa_sidebar_inline_cards_open).toBe('all-but-search');
     });
 
     // ── User-visible behaviour ──────────────────────────────────────────────

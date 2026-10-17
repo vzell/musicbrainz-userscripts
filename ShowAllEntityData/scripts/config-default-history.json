@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "29061360db9ed285e03d885e2c1a06c625692833",
-    "revisions_walked": 918
+    "head": "187bdae501b75a38a82d9393d54ae792ac338c40",
+    "revisions_walked": 940
   },
   "changes": [
     {
@@ -248,6 +248,15 @@
       "type": "checkbox",
       "from": true,
       "to": false
+    },
+    {
+      "sha": "187bdae5",
+      "date": "2026-10-17",
+      "version": "9.99.1365+2026-10-17",
+      "key": "sa_sidebar_inline_cards_open",
+      "type": "select",
+      "from": "info",
+      "to": "all-but-search"
     }
   ],
   "stale": {
@@ -425,6 +434,13 @@
       "was": [
         true
       ]
+    },
+    "sa_sidebar_inline_cards_open": {
+      "type": "select",
+      "current": "all-but-search",
+      "was": [
+        "info"
+      ]
     }
   },
   "orphans": {
@@ -476,7 +492,8 @@
     "sa_sidebar_tables_button": false,
     "sa_sidebar_inline_main": true,
     "sa_sidebar_inline_collapsed": false,
-    "sa_sidebar_inline_cards_open": "info",
+    "sa_sidebar_inline_cards_open": "all-but-search",
+    "sa_sidebar_inline_release_facts_open": true,
     "sa_sidebar_in_rel_tables": true,
     "sa_sidebar_inline_skip_dup_links": true,
     "sa_sidebar_inline_links": true,

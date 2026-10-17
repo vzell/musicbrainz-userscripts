@@ -23685,6 +23685,147 @@ Env: 2026-10-17T11:22:16+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1)
   within the baseline. HELP checked: it names only the role colours, no
   edit needed.
 
+## 2026-10-17 — The Discogs window: release sections, master versions (branch feat/discogs-rich-preview, WIP.1)
+
+Env: 2026-10-17T14:23:58+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 bundled Chromium · no Tampermonkey (GM stubs); probes: Python urllib, no browser, no token
+
+- **Request (vzell, screenshots of the Discogs card and window on release
+  1d404e1d-fcb6-3a52-b478-e706e893c897):** the window should carry what
+  discogs.com shows: a release's Tracklist with credits, Companies, Credits,
+  Notes, Barcode and Other Identifiers and the "More images"; a master's
+  versions. Mockup https://claude.ai/artifact/49tucEnfghTCMtyvwN6qaM,
+  answers: layout A, versions page 1 on opening and the rest on a button,
+  track credits closed, plus the master's tracklist/notes/images, the
+  release's videos, have/want and data quality.
+- **Finding:** the reader's one API answer (`releases/<id>`) already holds
+  every release section and every image (images come WITHOUT a token,
+  fixture `ext-discogs-release.json`), so the release half costs no
+  request. The versions are `masters/<id>/versions`: `per_page` capped at
+  100 (500 asked, 100 answered), master 26725 = 387 versions = 4 pages of
+  ~76 KB, `X-Discogs-Ratelimit: 25`, page 1 carries `filters.available`
+  (format, label, country, released) for all of them
+  (`scripts/probe-discogs-versions.py`). The `debug/discogs-*.html`
+  snapshots only confirmed the section names and the versions columns; the
+  pages sit behind Cloudflare (U0 X6), the reader stays on the API.
+- **Bugs found by the new specs before shipping:**
+  1. Stop before a page's slot left the bar "Running": `_mbLoad()` deletes
+     a skipped load WITHOUT notifying its listeners. The versions loader now
+     repaints after a skip (`setTimeout`, after the delete).
+  2. A tap (no card before the window) never asked for page 1: the record
+     arrived on a repaint, and repaints start nothing. Page 1 now also
+     starts on that repaint, once, while page 1 has no state (the
+     `_rgWindowFor()` exception). Only the mobile spec could see it: on
+     desktop the hover card had loaded the record.
+  3. Typing in the versions' filter while pages arrived lost the focus.
+     `createInfoDialog()` focuses its scroll area on `mouseenter`, and
+     Chrome fires `mouseenter` again when a repaint replaces the content
+     under a resting pointer. It no longer takes the focus from an element
+     inside it. Confirmed by mutation (reverting it fails the spec on
+     `toBeFocused`).
+- **Pre-existing, not this branch:** `popup-ext.spec.js` "a Brucebase
+  show's window: notes, gig page, and the year page as Live page,
+  scrolled to the show and marked" failed 5 runs in a row in the morning
+  (4 here, 1 with main's userscript), then passed alone and inside
+  `test:full` (1844/1844, 14:25:10–14:34:07+02:00, petri). Root cause and
+  fix: the entry "The Live page waited for every image" below (shipped
+  in 9.99.1366, merged into this branch).
+- **Verified:** the Discogs window block 6/6 and `popup-ext.mobile.spec.js`
+  4/4; `popup-ext`, `popup-ext-foreign`, `popup-mb`, `detail-preview`
+  148/149 (the Brucebase test above); 11 new mutations in
+  `scripts/mutations/popup-ext.json`, all caught (the card mutation only
+  after its test waited for the host's next slot); lint within the
+  baseline.
+
+## 2026-10-17 — The Discogs window: names as links, the title says release or master (branch feat/discogs-rich-preview, WIP.2)
+
+Env: 2026-10-17T16:41:12+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 bundled Chromium · no Tampermonkey (GM stubs); vzell's report: browser and Tampermonkey version unknown
+
+- **Report (vzell, screenshots of release 22a6802f…'s "Devils & Dust" windows):**
+  artists, labels and companies should link their Discogs pages, and the
+  title ("Discogs › Discogs" after a drill-down, "Discogs" otherwise) should
+  say whether the page is a release or a master.
+- **Change:** ids kept (`_EXT_DISCOGS_VERSION` 3), `_extDgLink()`, reader
+  hooks `factsHtml` and `kindFor`, `rec.subtitle` (which the approved
+  mockup already showed for a master and the first build had left out).
+  A browser that tried the branch holds version-2 records: the IndexedDB
+  test now seeds both 3 (before the branch) and 302 (the branch's first
+  build), each caught by its own mutation.
+- **Verified:** the 13 Discogs tests and the whole `popup-ext` spec with its
+  mobile sibling (45/45), 4 new mutations caught, lint
+  within the baseline.
+- **Versions’ labels (vzell: "the values under LABEL – CAT# are still not
+  hyperlinked"):** the versions rows give a label by NAME only (fields
+  checked on the capture: catno, country, format, id, label, major_formats,
+  released, resource_url, stats, status, thumb, title), so there is no
+  label page to link. vzell picked Discogs’ label search for the name, in a
+  new tab (`a.mb-dg-label`); one more assertion in the master test, one
+  more mutation, caught.
+
+## 2026-10-17 — Sidebar cards: the real sidebar's site icons; every card open but Search (branch feat/sidebar-icons-open, WIP.3 + WIP.4)
+
+Env: 2026-10-17T17:00:16+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 bundled Chromium · no Tampermonkey (GM stubs)
+
+- **Request (vzell, release 22a6802f-d22e-4f47-9f22-6aac257a4194):** the
+  "Sidebar" cards (External links, Search, Release group external links …)
+  should show the site icons the real sidebar shows; every card should
+  start open except Search. Answers: a new select option as the new
+  default; icons in the cards AND the Sidebar tables. Branched off
+  feat/discogs-rich-preview at 85b8062 (vzell's call), not main.
+- **How the icons are read:** both kinds are the `li`'s BACKGROUND —
+  MusicBrainz's from its stylesheet by the `*-favicon` class, jesus2099's
+  inline (`style="background-image: url(...favicon.ico)"`, checked in
+  `release-tracks-sidebar-search-links.html`). On the live page the computed
+  style gives both; a page that is not rendered gets the inline style, else
+  the class through a hidden probe item. The icon goes on the cloned link
+  as its own background, not as an `<img>` in the cell: the cards read a
+  cell's FIRST node as its link (`row[2][0]`, `r[5][0]`).
+- **The default change broke four specs, each for a reason worth keeping:**
+  settings-dialog's PICK (`hasText: 'Every card'` now matches two
+  segments: an exact match), sidebar-inline's CTRL+CLICK and MARKER (they
+  need a MIXED state: they seed `info`), sidebar-search-card's HOVER STACK
+  (it clicked External links OPEN; the click now closed it).
+- **Verified so far:** sidebar-inline, sidebar-search-card, settings-dialog
+  (+ config-import-export) green; 6 new mutations in
+  `scripts/mutations/sidebar-search-card.json`, all caught (the computed
+  style and the class probe cover for each other on a live page, so they
+  are mutated together); lint within the baseline;
+  `audit-config-defaults.py` agrees on every inline fallback and waits for
+  the history refresh after the commit. `test:full` 1848/1848
+  (17:00:16–17:09:31+02:00, petri, on 85b8062 + this working tree).
+- **vzell's browser check (same day):** most icons were still missing —
+  Discogs, every release-group link, most Search entries; only jesus2099's
+  inline icons showed. **Cause:** MusicBrainz draws every site icon as a
+  `data:image/png;base64,…` URI (`icons-f602321.css`), and `_sbBgUrl()`
+  took http(s) only. Read in a real Chromium (a plain HTTP fetch of
+  musicbrainz.org now gets a JavaScript challenge, "Verifying your
+  browser"). The ICONS spec had modelled MusicBrainz's rule with an https
+  URL, so it could not see this; it now uses a `data:` URI. Fix: `data:image/`
+  accepted; each icon written ONCE as a rule in `#mb-sb-ico-style`, named by
+  a hash of its URL, the link carrying only the name (a ~10 KB icon inline
+  on every link and table clone would have been hundreds of KB). Two more
+  mutations, both caught. While rewriting, one splice deleted `_sbIconOf()`
+  (a ReferenceError, caught by the fetch's error handler: no cards at all);
+  restored, sidebar-search-card 11/11.
+- **Live check** (2026-10-17T17:26:57+02:00, petri, Playwright 1.62.1 bundled Chromium, real
+  musicbrainz.org, userscript loaded, logged out, no third-party scripts):
+  release 6336b8db-… (Devils & Dust, PROF Records), "Show all Tracks": 10
+  of 10 sidebar links with an icon have it in the cards; Discogs's is the
+  `data:` icon. (jesus2099's Search card is not in that harness; the fixture
+  covers its inline icons and its MusicBrainz classes.)
+- **vzell: "make sure that the site icons also render when the Credits/etc.
+  action button is pressed"** (screenshot: "URLs" and "Via release group"
+  rows bare). A live check (release 6336b8db-…, Credits,
+  `sa_sidebar_inline_skip_dup_links` off) found the "Sidebar: …" tables'
+  10 icons all drawn and the 10 relationship URL rows bare: with the
+  duplicates skipped (the default) those rows are where the sidebar's links
+  ARE. `_sbIconRelLinks()` gives a row link the icon of the sidebar item
+  with the same `_sbLinkKey()`. The ICONS Credits spec now checks a URL row
+  ("URLs", "Via release group"), a class-drawn and an inline Search row,
+  and the Sidebar copy with duplicates kept; one more mutation, caught.
+- **Final run:** `test:full` 1848/1848 (17:33:32–17:42:37+02:00, petri), and the
+  live Credits check (default settings): 10 of 10 sidebar links with an icon
+  carry it in the tables, the URL rows included.
+
 ## 2026-10-17 — The Live page waited for every image; the Brucebase Live page test depended on the real site (branch fix/live-page-early, WIP.1)
 
 Env: 2026-10-17T15:55:15+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 bundled Chromium · no Tampermonkey (GM stubs)
@@ -23735,3 +23876,36 @@ Env: 2026-10-17T15:55:15+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1)
   3 caught, 1 recorded `"expect": "pass"` (the "still loading" check:
   Chromium parses this 300 KB copy before the first 50 ms check); lint
   within the baseline.
+
+## 2026-10-17 — Search card: sites ran out of their column, "Web | pages" (branch feat/sidebar-search-boxes, WIP.5)
+
+Env: 2026-10-17T20:09:20+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 bundled Chromium · no Tampermonkey (GM stubs); the symptom from vzell's screenshot of /artist/Dean Martin (browser and Tampermonkey version not stated)
+
+- **Symptom (vzell, screenshot):** in the Sidebar's Search card, sites
+  spilled out of their column into the next one ("SoundtrackCollector",
+  "IOBDb", "Theatricalia" over *Social networks*), and *Search the web*
+  showed "Web" on one line and "pages · Images · Videos" on the next.
+- **Root cause:** `_sbSearchBody()` appended each site as a span with no
+  text between two spans, and the `·` was a `::before`. A line therefore had
+  break opportunities only INSIDE names: "Web pages" broke at its space, and
+  a run of one-word names had none, so it overflowed its 14.5rem column
+  (CSS columns let content overflow into the gap and the next column).
+  Reproduced in the mockup's "Now" tab with the shipped rules (7 lines out
+  of their area at 1450px).
+- **Fix (layout B of the mockup, vzell's pick,
+  https://claude.ai/artifact/QAHkW8x2BFdeVh8UsCQnud):** every section is a
+  bordered box packed into columns (`columns: 21em`); inside it a grid
+  (`.mb-sb-ix-gl`) with the group names as a right-aligned label column and
+  each group's sites in a flex-wrap cell (`.mb-sb-ix-s`, gap instead of the
+  dot). A group stays `.mb-sb-ix-g`, now `display: contents`, so
+  `_sbSearchApply()` and the spec's index walker keep their shape; hiding it
+  works through the existing `.mb-sb-inline [hidden] { display: none
+  !important }` (a `[hidden]` rule of my own was redundant; its mutation
+  passed, which is how that showed). A heading with one section is one box
+  in one row (`.mb-sb-ix-one`). `.mb-sb-first` and its dot are gone.
+- **Verified:** new BOXES test in `sidebar-search-card.spec.js` (each
+  section boxed, no site outside its box, no site name over two lines, the
+  sites of a box starting at one edge, Search the web one row, at 1400 and
+  560px; finding hides a group's name with it); 4 new mutations in
+  `scripts/mutations/sidebar-search-card.json`, all caught;
+  `sidebar-search-card` + `sidebar-inline` 30/30.

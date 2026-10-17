@@ -1170,6 +1170,223 @@
         "expect": "fail"
     },
     {
+        "name": "Discogs: a card asks for a master's versions",
+        "why": "A card never asks for versions (one more Discogs request per hover, 25 a minute without a token): the window asks for page 1, the button for the rest. Both edits are needed, since wanted() also requires the window to show the master.",
+        "edits": [
+            {
+                "find": "        const st = _mbPop.get(_extDgVersionsKey(dg.id, 1));\n        if (st && st.status === 'done') {",
+                "replace": "        _extDiscogsVersionsLoad(t, dg.id, 1, {});\n        const st = _mbPop.get(_extDgVersionsKey(dg.id, 1));\n        if (st && st.status === 'done') {"
+            },
+            {
+                "find": "            force, repaint, wanted: () => _extDgShowing(t) && (page === 1 || !ui.stopped),",
+                "replace": "            force, repaint, wanted: () => true,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a master: no versions from a hover",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs: the reader's IndexedDB version not raised",
+        "why": "A record of the reader before 2026-10-17 has no window data (rec.discogs): _EXT_DISCOGS_VERSION makes it read again instead of served.",
+        "edits": [
+            {
+                "find": "            version: _EXT_IDB_VERSION * 100 + _EXT_DISCOGS_VERSION,\n            window: _extDiscogsWindow,",
+                "replace": "            version: _EXT_IDB_VERSION,\n            window: _extDiscogsWindow,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "earlier Discogs reader is not served",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs: a track keeps only its first credit",
+        "why": "Every credit of a track is kept (.filter, never take-first), as for the release-tracks AR finders.",
+        "edits": [
+            {
+                "find": "            credits: (x.extraartists || []).filter(a => a && a.name).map(_extDiscogsCredit),",
+                "replace": "            credits: (x.extraartists || []).filter(a => a && a.name).slice(0, 1).map(_extDiscogsCredit),"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a release: its sections",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs: the window's controls not wired to the reader",
+        "why": "The window repaints by innerHTML; its toggles, buttons and chips work only through the dialog's delegated click (src.onAreaClick to the reader).",
+        "edits": [
+            {
+                "find": "            onAreaClick: (e, t) => { if (t.reader.onAreaClick) t.reader.onAreaClick(e, t); },",
+                "replace": "            onAreaClick: () => {},"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a release: its sections",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs: a version shown without the master on the back stack",
+        "why": "A click on a version shows it in the window; Back returns to the master (the drill-down stack, as for MusicBrainz entities).",
+        "edits": [
+            {
+                "find": "        e.preventDefault();\n        _dpDialog.stack.push(cur);\n        _dpShowInDialog(Object.assign({ src: cur.src, el: a, drilled: true }, r));",
+                "replace": "        e.preventDefault();\n        _dpShowInDialog(Object.assign({ src: cur.src, el: a, drilled: true }, r));"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a master: no versions from a hover",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs: a skipped page of versions does not repaint",
+        "why": "_mbLoad() forgets a skipped load silently: after Stop before a page's turn, the window must be told, or its bar shows the page running for ever.",
+        "edits": [
+            {
+                "find": "                if (repaint) setTimeout(repaint, 0);\n                return { skipped: true };",
+                "replace": "                return { skipped: true };"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "Stop before the next page",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs: page 1 of the versions only from a call with start",
+        "why": "A tap opens the window before the master's record is known: page 1 must start on the repaint that brings it (once, while page 1 has no state), or the window waits for ever.",
+        "edits": [
+            {
+                "find": "            if (start || !_mbPop.get(_extDgVersionsKey(dg.id, 1))) _extDiscogsVersionsLoad(t, dg.id, 1, { force, repaint });",
+                "replace": "            if (start) _extDiscogsVersionsLoad(t, dg.id, 1, { force, repaint });"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "Discogs master",
+        "expect": "fail"
+    },
+    {
+        "name": "artwork viewer: the same image counted twice",
+        "why": "The Discogs window shows its primary image as the cover and first in the gallery: the viewer counts it once (5 images, not 6).",
+        "edits": [
+            {
+                "find": "            .filter(l => !seen.has(l.href) && seen.add(l.href));",
+                "replace": "            .filter(l => l.href || seen);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a release: its sections",
+        "expect": "fail"
+    },
+    {
+        "name": "dialog shell: mouseenter takes the focus from a field inside",
+        "why": "A repaint under a resting pointer fires mouseenter again (Chrome): the scroll area must not take the focus from the versions' filter being typed in.",
+        "edits": [
+            {
+                "find": "            if (!scrollArea.contains(document.activeElement) || document.activeElement === scrollArea) scrollArea.focus();",
+                "replace": "            scrollArea.focus();"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a master: no versions from a hover",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs: a version of no year sorts first when ascending",
+        "why": "Versions of no known year (Discogs' \"0\") go last in either direction.",
+        "edits": [
+            {
+                "find": "            if (!x !== !y) return x ? -1 : 1;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a master: no versions from a hover",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs: Stop does not end the run of pages",
+        "why": "Stop lets the page under way finish and asks nothing more; the chain asks the next page only while not stopped. Both edits: the chain's own check, and wanted(), which would otherwise skip the next page at its slot.",
+        "edits": [
+            {
+                "find": "        if (!next || ui.stopped || !_extDgShowing(t)) {",
+                "replace": "        if (!next || !_extDgShowing(t)) {"
+            },
+            {
+                "find": "            force, repaint, wanted: () => _extDgShowing(t) && (page === 1 || !ui.stopped),",
+                "replace": "            force, repaint, wanted: () => _extDgShowing(t),"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "Stop: the page under way finishes",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs: the window's title says only \"Discogs\"",
+        "why": "The window's title (and a drill-down's path) says what the link is: \"Discogs release\", \"Discogs master › Discogs release\" (vzell, 2026-10-17).",
+        "edits": [
+            {
+                "find": "kind: reader.kindFor ? reader.kindFor(u) : reader.kind,",
+                "replace": "kind: reader.kind,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "names link their Discogs pages",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs: the facts' artist and label are not linked",
+        "why": "The window's \"Discogs says\" links the artists and labels to their Discogs pages (the reader's factsHtml hook); the card keeps plain text.",
+        "edits": [
+            {
+                "find": "(own.length && t.reader.factsHtml ? t.reader.factsHtml(t, rec, facts) : _dpFieldsHtml(facts))",
+                "replace": "_dpFieldsHtml(facts)"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "names link their Discogs pages",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs: names are not linked",
+        "why": "Every credited artist, label and company with a Discogs id links its page (vzell, 2026-10-17); a plain click shows it in the window.",
+        "edits": [
+            {
+                "find": "        return id ? `<a class=\"mb-dg-name\" href=\"https://www.discogs.com/${kind}/${id}\" target=\"_blank\" rel=\"noopener noreferrer\">${html}</a>` : html;",
+                "replace": "        return html;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "names link their Discogs pages",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs: the reader's version not raised for the names' ids",
+        "why": "A record of reader version 2 has no ids for the names' links: _EXT_DISCOGS_VERSION 3 makes it read again.",
+        "edits": [
+            {
+                "find": "    const _EXT_DISCOGS_VERSION = 3;",
+                "replace": "    const _EXT_DISCOGS_VERSION = 2;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "earlier Discogs reader is not served",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs: a version's label is not linked",
+        "why": "A version's label links Discogs' label search for its name (the versions rows give no label id; vzell's pick, 2026-10-17).",
+        "edits": [
+            {
+                "find": "                `<td>${v.label ? `<a class=\"mb-dg-label\"",
+                "replace": "                `<td>${v.label && false ? `<a class=\"mb-dg-label\""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a master: no versions from a hover",
+        "expect": "fail"
+    },
+    {
         "name": "Live page: prepared only on the frame's load",
         "why": "The frame's load event waits for every image of the page (260 on a Brucebase year page): the page must be trimmed and the show marked and scrolled to as soon as it is parsed (_dpIsolateWhenParsed(), 2026-10-17).",
         "edits": [

@@ -26,7 +26,11 @@
 //   - LAYOUT: facts on the left, links beside them; stacked when narrow;
 //   - HOVER: a search link's card names the site behind the forwarding page;
 //   - TABLES: the Credits render gets ONE "Sidebar: Search" table with the
-//     section and group of each link, and clean link details.
+//     section and group of each link, and clean link details;
+//   - DEFAULT OPEN (2026-10-17): every card starts open but Search;
+//   - ICONS (2026-10-17): a link shows the site icon its sidebar item shows
+//     (MusicBrainz's *-favicon class, the script's inline background), in
+//     the cards and in the Sidebar tables; a variant link shows none.
 
 const path = require('path');
 const { test, expect } = require('../support/test');
@@ -35,14 +39,21 @@ const { waitForRenderComplete } = require('../support/browser');
 
 const URL_ = 'https://musicbrainz.org/release/6336b8db-ac72-4afa-a954-94b437b49abc';
 const FIXTURE = path.join(__dirname, 'release-tracks-sidebar-search-links.html');
+// MusicBrainz's own rule for a *-favicon class, as its icons-*.css writes it:
+// a data: URI (checked in a real browser 2026-10-17; the first ICONS spec used
+// an https URL and missed that the script dropped every data: icon).
+const DISCOGS_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+const DISCOGS_ICON_CSS = `ul.external_links li.discogs-favicon { background-image: url("${DISCOGS_ICON}"); }`;
 
 /**
  * Loads the fixture (network refused) and presses one of its buttons.
  * @param {import('@playwright/test').Page} page
  * @param {string} label The button's data-label.
  * @param {Object} [settings]
+ * @param {string} [css] A style sheet added before the button is pressed
+ *   (MusicBrainz's own, refused here, draws the sidebar's site icons).
  */
-async function open(page, label = 'Show all Tracks for Release', settings = {}) {
+async function open(page, label = 'Show all Tracks for Release', settings = {}, css = '') {
     await page.context().route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
     await loadUserscriptPage(page, {
         url: URL_, fixtureFile: FIXTURE, testMode: true,
@@ -52,6 +63,7 @@ async function open(page, label = 'Show all Tracks for Release', settings = {}) 
     await page.route('https://musicbrainz.org/ws/2/**', (route) => route.fulfill({ status: 404, body: '' }));
     await page.route(/^https:\/\/musicbrainz\.org\/(?!ws\/)/, (route) => route.fulfill({ path: FIXTURE, contentType: 'text/html' }));
     await page.route('https://coverartarchive.org/**', (route) => route.fulfill({ status: 404, body: '' }));
+    if (css) await page.addStyleTag({ content: css });
     await page.click(`button[data-label="${label}"]`);
     await waitForRenderComplete(page, { waitForAutoResize: false });
 }
@@ -83,7 +95,7 @@ const index = (page) => page.evaluate(() => Array.from(document.querySelectorAll
         h: (s.querySelector('.mb-sb-ix-h') || { textContent: '' }).textContent,
         lines: Array.from(s.querySelectorAll('.mb-sb-ix-g')).filter((g) => !g.hidden).map((g) => ({
             group: (g.querySelector(':scope > em') || { textContent: '' }).textContent,
-            entries: Array.from(g.querySelectorAll(':scope > .mb-sb-ix-it')).filter((i) => !i.hidden).map((i) => ({
+            entries: Array.from(g.querySelectorAll('.mb-sb-ix-it')).filter((i) => !i.hidden).map((i) => ({
                 base: i.firstChild.textContent,
                 variants: Array.from(i.querySelectorAll('.mb-sb-ix-vv a')).map((a) => a.textContent),
             })),
@@ -188,6 +200,58 @@ test.describe('the Search card (jesus2099 mb. ALL LINKS)', () => {
         await expect(page.locator('.mb-sb-inline'), 'and the section too').toBeVisible();
     });
 
+    test('BOXES: every section is a box its sites stay inside; group names line up; Search the web is one row', async ({ page }) => {
+        await open(page);
+        await openSearch(page);
+        // What the screenshot of 2026-10-17 showed broken: sites with no
+        // break between them ran out of their column into the next one,
+        // and "Web pages" broke after "Web".
+        const measure = () => page.evaluate(() => {
+            const out = { boxes: 0, unboxed: [], outside: [], split: [], misaligned: [], webRows: 0, webSplit: [] };
+            document.querySelectorAll('.mb-sb-ix-sec').forEach((sec) => {
+                if (!sec.checkVisibility()) return;
+                out.boxes++;
+                const name = (sec.querySelector('.mb-sb-ix-h') || { textContent: '(no name)' }).textContent;
+                if (getComputedStyle(sec).borderTopStyle !== 'solid') out.unboxed.push(name);
+                const box = sec.getBoundingClientRect();
+                sec.querySelectorAll('.mb-sb-ix-it').forEach((it) => {
+                    for (const r of it.getClientRects()) {
+                        if (r.left < box.left - 0.5 || r.right > box.right + 0.5) out.outside.push(it.textContent);
+                    }
+                    // A site's name (and its icon) on one line: the fixture
+                    // has no name wider than a box.
+                    const a = it.querySelector(':scope > a');
+                    if (a && a.getClientRects().length !== 1) out.split.push(it.textContent);
+                });
+                const lefts = new Set(Array.from(sec.querySelectorAll('.mb-sb-ix-s')).map((s) => Math.round(s.getBoundingClientRect().left)));
+                if (lefts.size > 1) out.misaligned.push(name);
+            });
+            const web = document.querySelector('.mb-sb-ix-part[data-mb-sb-source="Search the web"]');
+            const its = Array.from(web.querySelectorAll('.mb-sb-ix-it'));
+            out.webRows = new Set(its.map((it) => Math.round(it.getBoundingClientRect().top))).size;
+            its.forEach((it) => { if (it.querySelector('a').getClientRects().length !== 1) out.webSplit.push(it.textContent); });
+            out.webOne = web.querySelector('.mb-sb-ix').classList.contains('mb-sb-ix-one');
+            return out;
+        });
+        for (const width of [1400, 560]) {
+            await page.setViewportSize({ width, height: 900 });
+            const m = await measure();
+            expect(m.boxes, `${width}px: boxes shown`).toBeGreaterThan(5);
+            expect(m.unboxed, `${width}px: sections without a box`).toEqual([]);
+            expect(m.outside, `${width}px: sites outside their box`).toEqual([]);
+            expect(m.split, `${width}px: site names split over two lines`).toEqual([]);
+            expect(m.misaligned, `${width}px: boxes whose group sites start at different edges`).toEqual([]);
+            expect(m.webRows, `${width}px: Search the web in one row`).toBe(1);
+            expect(m.webSplit, `${width}px: no web link split over two lines`).toEqual([]);
+            expect(m.webOne, 'one section: one box in one row').toBe(true);
+        }
+        // Finding hides a whole group: its name goes with it, though the
+        // line itself has no box (display: contents).
+        await page.locator('.mb-sb-find').fill('prog');
+        const genre = page.locator('.mb-sb-ix-sec', { has: page.locator('.mb-sb-ix-h', { hasText: /^By genre/ }) });
+        await expect(genre.locator('.mb-sb-ix-g > em:visible')).toHaveText(['Rock']);
+    });
+
     test('LAYOUT: facts in a column on the left, links beside them; stacked when narrow', async ({ page }) => {
         await page.setViewportSize({ width: 1600, height: 1000 });
         await open(page);
@@ -253,7 +317,8 @@ test.describe('the Search card (jesus2099 mb. ALL LINKS)', () => {
         // The same for a link of MusicBrainz's own list.
         await page.mouse.move(5, 5);
         await expect(peek).toBeHidden();
-        await page.locator('.mb-sb-card-head', { hasText: /^External links/ }).click();
+        // Open from the start (the default since 2026-10-17).
+        await expect(page.locator('.mb-sb-card[data-mb-sb-key="links"]').first()).not.toHaveClass(/mb-sb-card-shut/);
         const discogs = page.locator('.mb-sb-chip a', { hasText: 'Discogs' }).first();
         await discogs.hover();
         await expect(peek).toBeVisible();
@@ -284,5 +349,77 @@ test.describe('the Search links in the Credits render', () => {
         expect(rg.rows.find((r) => /Wikidata/.test(r[2]))[4]).toBe('en: Devils & Dust');
         const ext = g.find((x) => x.name === 'Sidebar: External links');
         expect(ext.rows[0][4], 'no "edit"').toBe('');
+    });
+
+    test('DEFAULT OPEN: every card starts open but Search', async ({ page }) => {
+        await open(page);
+        const c = await cards(page);
+        expect(c.filter((x) => x.shut).map((x) => x.name), 'only Search starts closed').toEqual(['Search']);
+    });
+
+    test('ICONS: each link shows its sidebar item\'s site icon, in the cards and the tables; a variant link none', async ({ page }) => {
+        // MusicBrainz's own rule for its *-favicon classes (its stylesheet is refused here).
+        const CSS = DISCOGS_ICON_CSS;
+        await open(page, 'Show all Tracks for Release', {}, CSS);
+        /** The site icon a link shows: the URL in its background, '' for none. */
+        const iconOf = (loc) => loc.evaluate((a) => {
+            const m = /url\("?(.*?)"?\)/.exec(getComputedStyle(a).backgroundImage);
+            return a.classList.contains('mb-sb-ico') && m ? m[1] : '';
+        });
+        // MusicBrainz's class: as the real sidebar draws it.
+        const discogs = page.locator('.mb-sb-chip a', { hasText: 'Discogs' }).first();
+        expect(await iconOf(discogs)).toBe(DISCOGS_ICON);
+        // Written once in a style sheet, never inline on each link (a data: icon is ~10 KB).
+        expect(await discogs.evaluate((a) => a.style.backgroundImage), 'no inline icon').toBe('');
+        expect(await discogs.getAttribute('data-mb-sb-ico')).toMatch(/^[0-9a-z]+$/);
+        expect(await discogs.evaluate((a) => getComputedStyle(a).paddingLeft), 'room for it, left of the name').toBe('20px');
+        // A link whose item shows no icon gets none.
+        const plain = await page.evaluate(() => {
+            const li = Array.from(document.querySelectorAll('#sidebar ul.external_links:not(.jesus2099_all-links_searchLinks) > li'))
+                .find((x) => !x.closest('ul.jesus2099_all-links_searchLinks') && x.querySelector(':scope > a[href]') &&
+                    getComputedStyle(x).backgroundImage === 'none');
+            return li ? li.querySelector(':scope > a[href]').getAttribute('href') : null;
+        });
+        expect(plain, 'premise: an item without an icon').not.toBeNull();
+        expect(await iconOf(page.locator(`.mb-sb-chip a[href="${plain}"]`).first())).toBe('');
+        // The script's inline background on a search item.
+        await openSearch(page);
+        const web = page.locator('.mb-sb-ix-it a', { hasText: 'Web pages' }).first();
+        expect(await iconOf(web)).toBe('https://duckduckgo.com/favicon.ico');
+        // A merged entry shows its site's icon once, before its name: never on a variant link.
+        const variants = page.locator('.mb-sb-ix-vv a');
+        expect(await variants.count(), 'premise: variant links').toBeGreaterThan(0);
+        expect(await variants.evaluateAll((as) => as.filter((a) => a.classList.contains('mb-sb-ico')).length)).toBe(0);
+    });
+
+    test('ICONS in the Credits render: the URL rows and the Sidebar tables, duplicates skipped (the default) or not', async ({ page }) => {
+        // MusicBrainz's rules for two classes: Discogs (MusicBrainz's own link
+        // and a search site) and AllMusic (a search site of the whitelist).
+        const CSS = DISCOGS_ICON_CSS + ' ' + DISCOGS_ICON_CSS.replace('discogs-favicon', 'allmusic-favicon');
+        const iconOf = (loc) => loc.evaluate((a) => (a.classList.contains('mb-sb-ico') ? getComputedStyle(a).backgroundImage : 'none'));
+        /** The link in the first table under the h3 named `name` (the tables start collapsed: in the page, not on screen). */
+        const inTable = (name, href) => page.locator('h3.mb-toggle-h3', { hasText: name }).first()
+            .locator(`xpath=following-sibling::table[1]//a[@href="${href}"]`).first();
+
+        // The default: the release's and its group's links are relationship
+        // rows ("URLs", "Via release group"), left out of the Sidebar tables.
+        await open(page, 'Show all Credits for Release', {}, CSS);
+        const own = inTable('URLs', 'https://www.discogs.com/release/7644701');
+        await expect(own, 'the release\'s Discogs link is a URL row').toBeAttached();
+        expect(await iconOf(own), 'a URL row has the icon its sidebar item shows').toContain(DISCOGS_ICON);
+        const master = inTable('Via release group', 'https://www.discogs.com/master/27097');
+        await expect(master).toBeAttached();
+        expect(await iconOf(master)).toContain(DISCOGS_ICON);
+        // The Search table: a class-drawn icon (AllMusic) and an inline one (DuckDuckGo).
+        const search = page.locator('h3.mb-toggle-h3', { hasText: 'Sidebar: Search' }).first().locator('xpath=following-sibling::table[1]');
+        expect(await iconOf(search.locator('a', { hasText: /^AllMusic$/ }).first())).toContain(DISCOGS_ICON);
+        expect(await iconOf(search.locator('a', { hasText: 'Web pages' }).first())).toContain('duckduckgo.com/favicon.ico');
+
+        // Duplicates kept: the Sidebar tables' own copies have it too.
+        await page.goto('about:blank');
+        await open(page, 'Show all Credits for Release', { sa_sidebar_inline_skip_dup_links: false }, CSS);
+        const copy = inTable('Sidebar: External links', 'https://www.discogs.com/release/7644701');
+        await expect(copy).toBeAttached();
+        expect(await iconOf(copy)).toContain(DISCOGS_ICON);
     });
 });

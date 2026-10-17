@@ -874,13 +874,16 @@ close every sidebar section; the headings of the main page are left alone.
   pills with their votes. In a narrow window the facts come first and the
   links below them. A link's chip shows only the link; a link listed under it
   (the Wikipedia article under a Wikidata link) is a small *› en* link after
-  it. Pointing at a link shows its site and full address; with link previews
-  on, that box sits above the preview card, as elsewhere.
+  it. A link shows the same site icon in front of its name as in the real
+  sidebar (none where the sidebar shows none). Pointing at a link shows its
+  site and full address; with link previews on, that box sits above the
+  preview card, as elsewhere.
   With jesus2099's *mb. ALL LINKS* installed, its *Search the web*, *Search in
   the whitelist* and *Search further* lists are one **Search** card (closed
   at first) between the link cards. It is an index: each section (*By genre*,
-  *By area*, …) with its groups in italics (*Rock*, *Japan*, …) and their
-  sites. Variants of one site are one entry with small links, for example
+  *By area*, …) is a box of its own, with its groups' names in italics in a
+  column on the left (*Rock*, *Japan*, …) and their sites beside them, each
+  site in one piece with its icon. *Search the web* is one row. Variants of one site are one entry with small links, for example
   *Prog Archives (barcode, name)*. Sections with nothing for this kind of page
   are named once at the foot. The switch at the top (*All*, *Web*,
   *Whitelist*, *Further*) shows one list at a time, and the box finds a site
@@ -888,16 +891,18 @@ close every sidebar section; the headings of the main page are left alone.
   search link names the site it searches, also when the script sends the
   search through its forwarding page.
   They are for reading: no filter, no sorting. The heading opens and closes
-  like any other. Only the first information card (*Artist information*,
-  *Release group information*, …) starts open; the others start closed,
-  marked with ▶. After *Show all Tracks for Release* the release's
-  *Additional details*, *Labels* and *Release events* open too, next to
-  *Release information*. A click on a card's title (or Enter) opens or closes it;
+  like any other. Every card starts open except **Search**, which starts
+  closed, marked with ▶. With *Information card* chosen instead, only the
+  first information card (*Artist information*, *Release group information*,
+  …) starts open, and after *Show all Tracks for Release* the release's
+  *Additional details*, *Labels* and *Release events* too, next to *Release
+  information*. A click on a card's title (or Enter) opens or closes it;
   **Ctrl+Click** (Cmd+Click on a Mac) opens or closes every card at once,
   following the one you clicked. Hovering a title shows what the card holds.
   It reads the page itself, so nothing is loaded. Switches: *Sidebar facts below
   Credits/Relationships*, *… start the 'Sidebar' section closed*, *… cards
-  that start open* (No card / Information card / Every card), and *… on a
+  that start open* (No card / Information card / Every card but Search, the
+  default / Every card), and *… on a
   release: also Additional details, Labels and Release events*.
 - **The sidebar in the Credits / Relationships view.** After *Credits* (on a
   release) or *Relationships* (series, work, release group, recording; the
@@ -909,7 +914,10 @@ close every sidebar section; the headings of the main page are left alone.
   release's own URLs and its release group's are both there already); a
   links table with nothing left is left out with it. The search links of
   *mb. ALL LINKS* are one table, *Sidebar: Search*, with the list, section
-  and group each link is under. Switches: *Sidebar
+  and group each link is under. Links show their site icons here too, and
+  so do the URL rows of the relationship tables (a release's own links and
+  its release group's), with the icon the sidebar shows for the same link.
+  Switches: *Sidebar
   tables in the Credits/Relationships view*, *… skip links already in a
   relationship table*. *… include external links* and *… include tags*
   apply to both views.
@@ -2192,8 +2200,41 @@ once and without Tampermonkey asking first:
 - **Discogs** releases, masters, artists and labels: for a release the
   artist, year, country, format, label and catalogue number, genres and number
   of tracks, with the cover; for an artist or a label its profile, real name,
-  members or sublabels. No *Live page* (↗ opens Discogs). Discogs allows a
-  card every 2.5 seconds; with your own **Discogs personal access token**
+  members or sublabels. No *Live page* (↗ opens Discogs). A release's card
+  adds one line saying what its window holds ("8 tracks · 64 credits · 12
+  companies · 12 identifiers · 5 images").
+
+  The **window** (Space) shows what the Discogs page shows, at no extra cost:
+  all images (a click opens the artwork viewer, ← → step through them), the
+  **Tracklist** with each track's credits (closed at first: *▸ 7 credits*
+  opens one track, *Show all track credits* every one), the **Notes**, and
+  for a release also **Companies, etc.**, **Credits** (with the tracks they
+  cover), **Barcode and Other Identifiers**, **Videos**, and how many Discogs
+  users have or want it and its data quality. A name credited differently
+  from the artist's Discogs name has Discogs' `*`; point at it for the
+  Discogs name. Every artist, label and company is a link to its Discogs
+  page; a click shows that page in the same window (*Back* returns), and
+  Ctrl-click opens it in a new tab. The window's title says what the link is
+  — *Discogs release*, *Discogs master*, *Discogs artist*, *Discogs label* —
+  and after such a click the path, e.g. *Discogs master › Discogs release*.
+  Each heading opens and closes its section; a closed one
+  stays closed in the next Discogs window until the page is reloaded.
+
+  A **master**'s window adds its **Versions**. Discogs lists them 100 at a
+  time, so the window asks for the first 100 when it opens and the rest only
+  when you press *Load the other …* (it says how many requests that is and
+  about how long it takes); *Stop* lets the page under way finish and asks
+  nothing more. A bar shows each hundred (hatched: from the cache, green:
+  loaded, red: failed, which a button asks again). Filter the versions by
+  typing, or by the chips for format, country and decade (their counts cover
+  every version, loaded or not), and sort by a column heading. The master's
+  main release and a release this page links are marked. A version's label
+  links Discogs' label search for that name, in a new tab: the list of
+  versions names a label without saying which one. A click on a version
+  shows it in the same window, and *Back* returns to the master. A card never
+  asks for versions; once a window has, the master's card says how many there
+  are. Discogs allows a
+  request every 2.5 seconds; with your own **Discogs personal access token**
   (⚙️ Settings → 🔎 EXTERNAL LINK PREVIEWS → *Discogs personal access token*;
   on discogs.com: Settings → Developers → *Generate new token*) it allows one
   a second. The token is sent only to Discogs, shows as dots in the settings,

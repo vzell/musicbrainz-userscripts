@@ -373,12 +373,17 @@ default off).
   delegated listener on `div.mb-sb-inline` (never cloned).
 - **Card folding.**
   - **Initial state** (`_sbInlineBuild()`'s `startsOpen`), from the select
-    `sa_sidebar_inline_cards_open` read through `_selectSetting()`: `info`
-    (default) opens only the FIRST `info` card (a release's "Additional
-    details" is a second `info` card and starts closed; a page without an
-    info card has every card closed), `all` every card, `none` none. A stray
-    stored value reads as `info` (settings-and-config.md, "Select
-    settings"). Card states are not remembered.
+    `sa_sidebar_inline_cards_open` read through `_selectSetting()`:
+    `all-but-search` (the default since 2026-10-17, vzell: "except Search ALL
+    sections … uncollapsed by default"; `_SETTINGS_MIGRATIONS` moves a
+    stored `info` to it) opens every card but the `search` one; `info` opens
+    only the FIRST `info` card (a release's "Additional details" is a second
+    `info` card and starts closed; a page without an info card has every
+    card closed); `all` every card, Search too; `none` none. A stray stored
+    value reads as the default (settings-and-config.md, "Select settings").
+    Card states are not remembered. The specs that need a MIXED state to
+    start from (CTRL+CLICK, MARKER, the release-facts arms of INITIAL STATE)
+    seed `info`.
   - **Release special case** (`sa_sidebar_inline_release_facts_open`,
     default on): on `release-tracks`, `info` opens EVERY facts card, keys
     `info` (Release information, Additional details), `labels` and `events`;
@@ -465,14 +470,59 @@ and the tables reading the search lists too. Branch
   unless "every card" (it is no facts card); a switch (All + one button per
   heading, only with more than one) in `data-mb-sb-scope`; a find box over
   each entry's `data-mb-sb-find` (name, variants, path), with its count and
-  `.mb-sb-hit` marks; per heading an index in CSS columns (section with its
-  link count, group in italics, sites with a `·` drawn by CSS on every entry
-  but the line's first visible one, `.mb-sb-first`); a foot naming the empty
+  `.mb-sb-hit` marks; per heading an index of section boxes packed into CSS
+  columns (layout B, vzell 2026-10-17, mockup
+  https://claude.ai/artifact/QAHkW8x2BFdeVh8UsCQnud): a box per section with
+  its link count; inside it `.mb-sb-ix-gl`, a grid whose label column holds
+  the group names in italics (each group `.mb-sb-ix-g` is `display:
+  contents`: an `em` cell and a `.mb-sb-ix-s` flex-wrap cell of sites); a
+  heading with one section is one box in one row (`.mb-sb-ix-one`, Search
+  the web). Before it, the sites were spans with nothing between them, so a
+  line could break only inside a name ("Web | pages") and a name with no
+  space ran into the next column. Hiding a group relies on
+  `.mb-sb-inline [hidden]` (`!important`), which beats `display:
+  contents`; a foot naming the empty
   sections and groups, hidden while finding. Variants (`_sbMergeVariants()`,
   `_SB_VARIANT_RE`, full-width brackets too): "X", "X (by a)", "X (b)" → one
   entry linking X with variant links "a", "b"; a lone "X (a)" stays as
   written. Esc in a non-empty box empties it and stops there; the switch,
   the box and Esc are delegated on `div.mb-sb-inline` like the folding.
+- **Site icons** (2026-10-17, vzell): a link shows the icon its sidebar item
+  shows. `_sbCollectGroups()` reads it once per item (`_sbIconOf()`): on this
+  page the item's COMPUTED background (MusicBrainz draws it from its
+  stylesheet by the `*-favicon` class; jesus2099 sets it inline on its search
+  items); on a page that is not rendered (a fetched page, a disk load) the
+  inline background, else the class through a hidden probe item in the
+  sidebar (`_sbFaviconByClass`, once per class). **MusicBrainz's icons are
+  `data:image/png;base64,…` URIs** (its `icons-*.css` on
+  static.metabrainz.org, read in a real browser: a plain fetch of the page
+  gets a JavaScript challenge, "Verifying your browser"): `_sbBgUrl()` takes
+  `data:image/` as well as http(s). The first version took http(s) only and
+  showed jesus2099's inline icons but none of MusicBrainz's (vzell's report;
+  the spec had modelled MusicBrainz's rule with an https URL). A `data:` icon
+  is ~10 KB, so it is written ONCE, as a rule
+  `a.mb-sb-ico[data-mb-sb-ico="NAME"]` in `#mb-sb-ico-style`
+  (`_sbIconRef()`; NAME a FNV-1a hash of the URL, not a running number: a
+  page saved to disk keeps the attribute), and the link carries only that
+  name. `_sbWithIcon()` puts it on the cloned LINK (`a.mb-sb-ico`, 16px,
+  20px of room), never as an `<img>` in the cell: the cards and tables take a cell's first
+  node as its link (`row[2][0]`, `r[5][0]`), and the background survives a
+  table's `cloneNode` and adds no filter text. So the icon is in the cards,
+  the Search index (its variant links lose it: one icon per entry) and all
+  three table views (`_sbInlineEnsureStyle()` is called by
+  `_sbAppendRelTablesGroups()` and `applySidebarToTables()` for the rule).
+  **The relationship tables' own URL rows too** (`_sbIconRelLinks()`, called
+  by `applyRelDetailsToTables()` right before `_sbAppendRelTablesGroups()`,
+  whatever `sa_sidebar_in_rel_tables` says): with
+  `sa_sidebar_inline_skip_dup_links` on (default) a release's URLs and its
+  group's appear ONLY as relationship rows, so without this the Credits view
+  showed none of their icons (vzell's screenshot). A row link takes the
+  icon of the sidebar item with the same `_sbLinkKey()`, the duplicate
+  skipping's own key. A live check (real release, Credits) found the
+  "Sidebar: …" tables' icons all there and only these rows bare.
+  No request: the browser shows these icons already. The fixtures refuse
+  MusicBrainz's stylesheet, so the ICONS specs add the one `*-favicon` rule
+  they need (`open(…, css)`); jesus2099's inline icons are in the fixture.
 - **Hover cards on links** (`_sbLinkTip()`, `data-mbtt`): title, where it is
   listed, the site (for a `forward-request.html` link the `_action` host),
   the address (`.mb-sb-tt-url` wraps it). With `sa_pop_mb_page` the link
@@ -486,12 +536,12 @@ and the tables reading the search lists too. Branch
   `.mb-sb-inline` is a size container: below 760px of its own width the
   split stacks, the rail wrapping as the old row. With only one kind, the
   old wrapping row.
-- Specs: `sidebar-search-card.spec.js` (7), on
+- Specs: `sidebar-search-card.spec.js` (12; BOXES measures the boxes at 1400 and 560px), on
   `tests/fixtures/release-tracks-sidebar-search-links.html` (Devils & Dust,
   saved with the script active, `debug/DaD-ISRC-Links-initial.html`; built
   by `scripts/build-sidebar-search-fixture.py`, which removes the toolbar our
   own first pass had left in the save). Mutations:
-  `scripts/mutations/sidebar-search-card.json` (15; Esc in the find box is
+  `scripts/mutations/sidebar-search-card.json` (31; Esc in the find box is
   `expect: "pass"`: Chromium empties a search input on Esc by itself).
 
 **`sa_sidebar_tables_button` is off by default** since this change (it
