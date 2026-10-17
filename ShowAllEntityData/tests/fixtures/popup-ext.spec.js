@@ -45,6 +45,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 const { test, expect } = require('../support/test');
 const { loadUserscriptPage, addRequiredLibs, MB_LIBRARY_PATH, USERSCRIPT_PATH } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
@@ -133,6 +134,15 @@ async function openEvent(page, { settings = {}, responses = {}, press = true, ws
     // The real site is never asked: a page fetch() (instead of the stubbed
     // GM_xmlhttpRequest) fails here, as it would against CORS.
     await ctx.route('https://www.setlist.fm/**', (route) => route.abort('blockedbyclient'));
+    // A Live page's frame loads the site's own CSS and images (its <base> is
+    // the site): never from the network here. Brucebase's year page alone
+    // names 260 images on brucebase.wdfiles.com, and the frame's load event,
+    // which marked and scrolled to the show, waited for all of them: the
+    // Brucebase Live page test failed whenever the real site was slow
+    // (2026-10-17: 5 runs in a row, main too). A test that wants them answers
+    // them itself (a later route wins).
+    await ctx.route(/^https?:\/\/(?:[^/]+\.)?(?:wikidot\.com|wdfiles\.com|springsteenlyrics\.com|jungleland\.it|brucespringsteen\.it)\//,
+        (route) => route.abort('blockedbyclient'));
     await ctx.addInitScript((r) => { window.__gmXhrResponses = r; }, responses);
     await loadUserscriptPage(page, {
         url: URL_EVENT, fixtureFile: FIXTURE, testMode: true,
@@ -1270,6 +1280,12 @@ test.describe('the Discogs window (2026-10-17)', () => {
         // The master's main release, and the release this page links too.
         await expect(vers.locator('tr[data-mb-dg-vid="13896528"] .mb-dg-pill')).toHaveText('main');
         await expect(vers.locator('tr[data-mb-dg-vid="1874253"] .mb-dg-pill')).toHaveText('this page links it');
+        // A version's label: Discogs gives its name only, no id, so it links
+        // Discogs' label search for that name, in a new tab (not the window).
+        const label = vers.locator('tr[data-mb-dg-vid="1874253"] a.mb-dg-label');
+        await expect(label).toHaveText('Columbia');
+        await expect(label).toHaveAttribute('href', 'https://www.discogs.com/search/?q=Columbia&type=label');
+        await expect(label).toHaveAttribute('target', '_blank');
 
         await vers.getByRole('button', { name: 'Load the other 287 (3 requests, about 3 s)' }).click();
         // Typing while the pages arrive: each arrival repaints the window,
@@ -1472,6 +1488,34 @@ const BBD = {
     none: 'https://brucebase.wikidot.com/2025#010125',
 };
 
+/**
+ * A solid PNG of a given size: an image answer that takes room once it
+ * has loaded (a 1×1 pixel would not move anything on the page).
+ *
+ * @param {number} w
+ * @param {number} h
+ * @returns {Buffer}
+ */
+function solidPng(w, h) {
+    const chunk = (type, data) => {
+        const len = Buffer.alloc(4);
+        len.writeUInt32BE(data.length);
+        const td = Buffer.concat([Buffer.from(type, 'ascii'), data]);
+        const crc = Buffer.alloc(4);
+        crc.writeUInt32BE(zlib.crc32(td) >>> 0);
+        return Buffer.concat([len, td, crc]);
+    };
+    const ihdr = Buffer.alloc(13);
+    ihdr.writeUInt32BE(w, 0);
+    ihdr.writeUInt32BE(h, 4);
+    ihdr.set([8, 0, 0, 0, 0], 8);
+    // One filter byte (0) and w grey pixels per row.
+    const rows = Buffer.alloc((w + 1) * h, 0x99);
+    for (let y = 0; y < h; y++) rows[y * (w + 1)] = 0;
+    return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr),
+        chunk('IDAT', zlib.deflateSync(rows)), chunk('IEND', Buffer.alloc(0))]);
+}
+
 test.describe('the Springsteen sites across hosts (U4)', () => {
     test('which reader serves which link: the four sites\' detail pages, a Brucebase date; the rest generic', async ({ page }) => {
         await openEvent(page, { settings: { sa_pop_ext: true } });
@@ -1636,6 +1680,100 @@ test.describe('the Springsteen sites across hosts (U4)', () => {
             return se.scrollTop > 1000 && top >= 0 && top < 60;
         }), { timeout: 5000 }).toBe(true);
         expect((await xhrFull(page)).map(r => r.url)).toEqual([BB_YEAR, 'https://brucebase.wikidot.com/2025#261025']);
+    });
+
+    test('the Live page is prepared before its images are in, scrolled to the show again once they are, and a reader\'s scroll is kept', async ({ page }) => {
+        // The year page's 260 images on brucebase.wdfiles.com answer after
+        // 6 s, each a 40×40 picture that pushes the show down when it lands.
+        // Before 2026-10-17 nothing was trimmed, marked or scrolled until the
+        // frame's load event, i.e. until the last of them.
+        await openEvent(page, {
+            settings: { sa_pop_ext: true },
+            responses: {
+                [BB_YEAR]: htmlAnswer(page_('ext-bb-year-2025.html')),
+                'https://brucebase.wikidot.com/2025#261025': htmlAnswer(page_('ext-bb-year-2025.html')),
+            },
+        });
+        const IMG = solidPng(40, 40);
+        await page.context().route('https://brucebase.wdfiles.com/**', (route) => new Promise((resolve) => {
+            setTimeout(() => resolve(route.fulfill({ status: 200, contentType: 'image/png', body: IMG }).catch(() => {})), 6000);
+        }));
+        await addAnnotationLinks(page, [BBD.stonePony]);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page)).toContainText('3 tracks');
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        await d.getByRole('button', { name: 'Live page' }).click();
+        const frame = d.locator('iframe');
+        await expect(frame).toHaveAttribute('srcdoc', /name="261025"/);
+        const state = () => frame.evaluate((f) => {
+            const doc = f.contentDocument;
+            const m = doc && doc.documentElement && doc.querySelector('.mb-dp-anchor');
+            return {
+                loaded: !!doc && doc.URL !== 'about:blank' && doc.readyState === 'complete',
+                trimmed: !!doc && !!doc.documentElement && doc.documentElement.classList.contains('mb-dp-isolate'),
+                marked: m ? m.textContent.trim().slice(0, 44) : '',
+                top: m ? Math.round(m.getBoundingClientRect().top) : null,
+                scrollTop: doc && doc.scrollingElement ? doc.scrollingElement.scrollTop : 0,
+            };
+        });
+        // Long before the images: trimmed, marked and scrolled to the show.
+        await expect.poll(state, { timeout: 2500 }).toMatchObject({
+            loaded: false, trimmed: true, marked: '2025-10-26 - THE STONE PONY, ASBURY PARK, NJ',
+        });
+        await expect.poll(async () => { const s = await state(); return s.top >= 0 && s.top < 60 && s.scrollTop > 1000; }, { timeout: 2500 }).toBe(true);
+        // As in a browser without scroll anchoring (Chromium's keeps the show
+        // in place by itself while the images land, which would hide whether
+        // the script scrolls to it again).
+        await frame.evaluate((f) => { f.contentDocument.documentElement.style.overflowAnchor = 'none'; f.contentDocument.body.style.overflowAnchor = 'none'; });
+        // Once they are in, scrolled to it again (they pushed it down).
+        await expect.poll(async () => (await state()).loaded, { timeout: 20000 }).toBe(true);
+        await expect.poll(async () => { const s = await state(); return s.top >= 0 && s.top < 60; }, { timeout: 3000 }).toBe(true);
+    });
+
+    test('a reader who scrolls the Live page before its images are in is not pulled back to the show', async ({ page }) => {
+        await openEvent(page, {
+            settings: { sa_pop_ext: true },
+            responses: {
+                [BB_YEAR]: htmlAnswer(page_('ext-bb-year-2025.html')),
+                'https://brucebase.wikidot.com/2025#261025': htmlAnswer(page_('ext-bb-year-2025.html')),
+            },
+        });
+        const IMG = solidPng(40, 40);
+        await page.context().route('https://brucebase.wdfiles.com/**', (route) => new Promise((resolve) => {
+            setTimeout(() => resolve(route.fulfill({ status: 200, contentType: 'image/png', body: IMG }).catch(() => {})), 4000);
+        }));
+        await addAnnotationLinks(page, [BBD.stonePony]);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page)).toContainText('3 tracks');
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        await d.getByRole('button', { name: 'Live page' }).click();
+        const frame = d.locator('iframe');
+        const scrolled = () => frame.evaluate((f) => {
+            const doc = f.contentDocument;
+            return doc && doc.querySelector('.mb-dp-anchor') && doc.scrollingElement ? doc.scrollingElement.scrollTop : -1;
+        });
+        await expect.poll(scrolled, { timeout: 2500 }).toBeGreaterThan(1000);
+        // The reader turns the wheel back up the year page, right away
+        // (before the later scrolls at 0.3 and 1.5 s and the images at 4 s).
+        const box = await frame.boundingBox();
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+        await page.mouse.wheel(0, -1500);
+        const top = () => frame.evaluate((f) => f.contentDocument.scrollingElement.scrollTop);
+        let settled = -1;
+        await expect.poll(async () => { const v = await top(); const same = v === settled; settled = v; return same; }, { intervals: [250] }).toBe(true);
+        // Where the show sits in the view now: well below its top.
+        const markTop = () => frame.evaluate((f) => f.contentDocument.querySelector('.mb-dp-anchor').getBoundingClientRect().top);
+        expect(settled, 'the wheel moved the page').toBeGreaterThanOrEqual(0);
+        expect(await markTop(), 'the show is below the top of the view').toBeGreaterThan(300);
+        // Past the later scrolls and the images' arrival (load): the show is
+        // NOT brought back to the top. (scrollTop itself may change: Chrome's
+        // scroll anchoring keeps what the reader looks at in place while the
+        // images above it take their room — measured 9393 → 10541.)
+        await expect.poll(() => frame.evaluate((f) => f.contentDocument.readyState), { timeout: 20000 }).toBe('complete');
+        await page.evaluate(() => new Promise((r) => setTimeout(r, 300)));
+        expect(await markTop(), 'not pulled back').toBeGreaterThan(300);
     });
 
     test('a cancelled show: no setlist, "did not take place", its /nogig: page', async ({ page }) => {

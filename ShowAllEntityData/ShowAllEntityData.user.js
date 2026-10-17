@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.1365+2026-10-17
+// @version      9.99.1366+2026-10-17
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting. Optionally also springsteenlyrics.com collection and bootleg lists, the jungleland.it bootleg artwork list and the brucespringsteen.it record database.
 // @author       vzell
 // @tag          AI generated
@@ -17113,12 +17113,15 @@
      * - `liveCss`: page rules for the Live page view (scoped to
      *   `html.mb-dp-isolate` where they belong to "Hide site navigation").
      * - `livePrepare(doc)`: anything the page needs without its scripts.
+     *   Runs once the page is parsed, before its images are in; it may
+     *   return a function to run once the frame has loaded
+     *   (`_dpIsolateFrame()`).
      * - `extRoot`: the site's content area, where a link to ANOTHER site is
      *   previewed besides the table (`_extSource()` on this host, U5), or
      *   null for the table only. Never the site's chrome: its share bar,
      *   menus and footer are left out by `_EXT_SKIP_SEL`.
      *
-     * @type {Object<string, {setting: string, isDetailUrl: function(URL): boolean, charset: ?string, parse: function(Document, string): ?object, liveRoot: ?function(Document): ?Element, liveHide: string[], liveCss: string, livePrepare: ?function(Document): void, extRoot: ?string}>}
+     * @type {Object<string, {setting: string, isDetailUrl: function(URL): boolean, charset: ?string, parse: function(Document, string): ?object, liveRoot: ?function(Document): ?Element, liveHide: string[], liveCss: string, livePrepare: ?function(Document): ?function(): void, extRoot: ?string}>}
      */
     const _DP_SITES = {
         'springsteenlyrics.com': {
@@ -18166,6 +18169,10 @@
      * not load (the page's own `onerror` handlers do not run without its
      * scripts), and makes links open in a new tab.
      *
+     * Called as soon as the page is PARSED (`_dpIsolateWhenParsed()`), and
+     * again on the frame's load as the fallback; it does its work once. A
+     * document still loading is not touched yet.
+     *
      * The frame holds `_dpLiveDocHtml()`'s copy of the page as `srcdoc`,
      * with `sandbox="allow-same-origin …"`: its origin is the list page's,
      * so its document is the script's to change. The copy has no scripts,
@@ -18174,7 +18181,9 @@
      *
      * @param {HTMLIFrameElement} frame
      * @param {object}            site  The host's `_DP_SITES` entry.
-     * @returns {void}
+     * @returns {?function(): void} What `livePrepare` asked to run once the
+     *   frame has loaded (its images in place), or null — also when this
+     *   call did nothing.
      */
     function _dpIsolateFrame(frame, site) {
         let doc = null;
@@ -18185,7 +18194,7 @@
         }
         // A new frame first holds an empty about:blank document, and its load
         // event fires too: only the srcdoc copy (about:srcdoc) is the page.
-        if (!doc || !doc.body || doc.URL === 'about:blank' || doc.documentElement.dataset.mbDpDone) return;
+        if (!doc || !doc.body || doc.URL === 'about:blank' || doc.readyState === 'loading' || doc.documentElement.dataset.mbDpDone) return null;
         doc.documentElement.dataset.mbDpDone = '1';
         const style = doc.createElement('style');
         style.textContent = 'html.mb-dp-isolate .mb-dp-hide { display: none !important; }' +
@@ -18198,7 +18207,7 @@
             });
         }
         site.liveHide.forEach(sel => doc.querySelectorAll(sel).forEach(n => n.classList.add('mb-dp-hide')));
-        if (site.livePrepare) site.livePrepare(doc);
+        const afterLoad = site.livePrepare ? site.livePrepare(doc) : null;
         doc.querySelectorAll('img').forEach(img => {
             const drop = () => img.classList.add('mb-dp-broken');
             if (img.complete && img.getAttribute('src') && img.naturalWidth === 0) drop();
@@ -18209,6 +18218,44 @@
             a.rel = 'noopener';
         });
         doc.documentElement.classList.toggle('mb-dp-isolate', _dpDialog.hideNav);
+        return typeof afterLoad === 'function' ? afterLoad : null;
+    }
+
+    /** How often the Live page's frame is checked for its parsed page, ms (`_dpIsolateWhenParsed()`). */
+    const _DP_LIVE_PARSE_POLL_MS = 50;
+
+    /** How long that check goes on before the frame's load event is left to do it, ms. */
+    const _DP_LIVE_PARSE_WAIT_MS = 30000;
+
+    /**
+     * Prepares the Live page as soon as its copy is parsed, instead of on
+     * the frame's load event, which waits for EVERY image and stylesheet of
+     * the page: a Brucebase year page names 260 images, and on a slow site
+     * the page stayed untrimmed, its show unmarked, until the last one had
+     * come (2026-10-17). The frame runs no script and the new document
+     * exists only once the srcdoc navigation has started, so this window
+     * looks at it every `_DP_LIVE_PARSE_POLL_MS` until `prep()` has done
+     * its work, the frame is gone, or `_DP_LIVE_PARSE_WAIT_MS` have passed.
+     *
+     * @param {HTMLIFrameElement} frame
+     * @param {function(): void} prep - Runs `_dpIsolateFrame()` (a no-op until the page is parsed, and once done).
+     * @returns {void}
+     */
+    function _dpIsolateWhenParsed(frame, prep) {
+        const started = Date.now();
+        const tick = () => {
+            if (!frame.isConnected) return;
+            let doc;
+            try {
+                doc = frame.contentDocument;
+            } catch (_) {
+                return;
+            }
+            if (doc && doc.documentElement && doc.documentElement.dataset.mbDpDone) return;
+            prep();
+            if (Date.now() - started < _DP_LIVE_PARSE_WAIT_MS) setTimeout(tick, _DP_LIVE_PARSE_POLL_MS);
+        };
+        setTimeout(tick, 0);
     }
 
     /**
@@ -18297,8 +18344,27 @@
                 return;
             }
             status.remove();
-            frame.addEventListener('load', () => _dpIsolateFrame(frame, live));
+            // Prepared once parsed (`_dpIsolateWhenParsed()`); the load event
+            // is the fallback, and runs what the preparation asked for once
+            // the images are in (a Brucebase show: scroll to it again).
+            let afterLoad = null;
+            const prep = () => {
+                const f = _dpIsolateFrame(frame, live);
+                if (f) afterLoad = f;
+            };
+            frame.addEventListener('load', () => {
+                prep();
+                let doc = null;
+                try {
+                    doc = frame.contentDocument;
+                } catch (_) { /* not ours */ }
+                if (!afterLoad || !doc || doc.URL === 'about:blank') return;
+                const f = afterLoad;
+                afterLoad = null;
+                f();
+            });
             frame.srcdoc = _dpLiveDocHtml(raw.html, url);
+            _dpIsolateWhenParsed(frame, prep);
             return;
         }
         area.classList.remove('mb-dp-area-live');
@@ -46983,7 +47049,13 @@
                 `${v.id === dg.mainRelease ? ' <span class="mb-dg-pill mb-dg-ok">main</span>' : ''}` +
                 `${linked.has(v.id) ? ' <span class="mb-dg-pill mb-dg-run">this page links it</span>' : ''}` +
                 `<div class="mb-dg-dim">${_rgEsc(v.format)}</div></td>` +
-                `<td>${_rgEsc(v.label)}${v.catno ? ` <span class="mb-dg-cat">– ${_rgEsc(v.catno)}</span>` : ''}</td>` +
+                // Discogs' versions name a label but give no id (row fields:
+                // catno, country, format, id, label, …; checked 2026-10-17), so
+                // the label links Discogs' label search for its name (vzell's
+                // pick), in a new tab: a search is no page the window reads.
+                `<td>${v.label ? `<a class="mb-dg-label" href="https://www.discogs.com/search/?q=${encodeURIComponent(v.label)}&amp;type=label" ` +
+                    `target="_blank" rel="noopener noreferrer" data-mb-tip title="Search Discogs for the label ${_rgEsc(v.label)}">${_rgEsc(v.label)}</a>` : ''}` +
+                `${v.catno ? ` <span class="mb-dg-cat">– ${_rgEsc(v.catno)}</span>` : ''}</td>` +
                 `<td>${_rgEsc(v.country)}</td><td class="mb-dg-yr">${_rgEsc(v.year || '—')}</td></tr>`).join('') +
             '</tbody></table></div>';
     }
@@ -47362,7 +47434,8 @@
      * with `_EXT_LIVE`'s fetch and gate.
      *
      * @param {object} site - A `_DP_SITES` entry.
-     * @param {?function(Document): void} [prepare] - Run after the site's own `livePrepare`.
+     * @param {?function(Document): ?function(): void} [prepare] - Run after the site's own `livePrepare`;
+     *   what it returns runs once the frame has loaded.
      * @param {string} [css] - Added to the site's `liveCss`.
      * @returns {object}
      */
@@ -47371,7 +47444,7 @@
             charset: site.charset, liveRoot: site.liveRoot, liveHide: site.liveHide, liveCss: site.liveCss + css,
             livePrepare: (doc) => {
                 if (site.livePrepare) site.livePrepare(doc);
-                if (prepare) prepare(doc);
+                return prepare ? prepare(doc) : null;
             },
         });
     }
@@ -47563,7 +47636,10 @@
      * 'about:srcdoc'": the first version, reported from a real browser), and
      * `scrollIntoView()` would scroll the page behind the window too. Set
      * again a little later, when the icons above the show have taken their
-     * place.
+     * place, and once more when the frame has loaded (the page is prepared
+     * as soon as it is parsed: its images can come much later) — each time
+     * only until the reader has done something in the page (wheel, key,
+     * mouse button, touch), so a reader who has moved it is not pulled back.
      *
      * @param {URL} u
      * @returns {object}
@@ -47575,12 +47651,24 @@
             if (!a) return;
             const mark = a.closest('p') || a;
             mark.classList.add('mb-dp-anchor');
+            // Never again once the reader has done something in the page
+            // (wheel, key, mouse button, touch: these listeners, added from
+            // this window, do fire in the script-less frame — probed
+            // 2026-10-17). Not by comparing scroll positions: hiding the
+            // site's navigation moves the page right after the first scroll,
+            // and Chrome's scroll anchoring then changes it by itself.
+            let readerMoved = false;
+            ['wheel', 'keydown', 'mousedown', 'touchstart'].forEach(type =>
+                doc.addEventListener(type, () => { readerMoved = true; }, { passive: true, capture: true }));
             const scroll = () => {
                 const se = doc.scrollingElement || doc.documentElement;
-                if (mark.isConnected) se.scrollTop += mark.getBoundingClientRect().top - 8;
+                if (mark.isConnected && !readerMoved) se.scrollTop += mark.getBoundingClientRect().top - 8;
             };
             scroll();
             _EXT_BB_SCROLL_AGAIN_MS.forEach(ms => setTimeout(scroll, ms));
+            // Once more when the frame has loaded: the page is prepared as soon
+            // as it is parsed, and its images can come long after the timers.
+            return scroll;
         }, '.mb-dp-anchor { background: #fff3c4; outline: 2px solid #e0b84a; }');
     }
 

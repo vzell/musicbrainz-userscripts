@@ -30,7 +30,7 @@
       {
         "label": "✨ Improve",
         "items": [
-          "Discogs link previews: in the window every artist, label and company is a link to its Discogs page — in the facts, the credits, the track credits and \"Companies, etc.\". A click shows that page in the same window, and Back returns. The window's title says what the link is (\"Discogs release\", \"Discogs master\", \"Discogs artist\", \"Discogs label\"), and after such a click the path, for example \"Discogs master › Discogs release\"; card and window say it under the title too (\"Discogs · master release\")."
+          "Discogs link previews: in the window every artist, label and company is a link to its Discogs page — in the facts, the credits, the track credits and \"Companies, etc.\". A click shows that page in the same window, and Back returns. The window's title says what the link is (\"Discogs release\", \"Discogs master\", \"Discogs artist\", \"Discogs label\"), and after such a click the path, for example \"Discogs master › Discogs release\"; card and window say it under the title too (\"Discogs · master release\"). In a master's list of versions, a version's label links Discogs' label search for that name (Discogs gives the versions' labels by name only), in a new tab."
         ]
       }
     ]
