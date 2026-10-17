@@ -2817,6 +2817,7 @@ to misundertand what that URL actually means compared to the full list of URLs w
 which entry actually is filtered on
 
 * TODO revamp "Search in ..." card handling
+** DONE i
 
 1.)
 
@@ -2856,8 +2857,29 @@ Make some suggestions how to shorten it or display it differently (actually wher
 
 With all the changes maybe the cards could be layout more efficiently ... please some suggestions
 
+** add favicon icons
+
+For example on https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194:
+
+Add site icons/favicon in front of the site names to the "Sidebar" sections like "EXTERNAL LINKS", "SEARCH" etc. if the
+corresponding entries in the real sidebar have them
+
+#+begin_example
+ - current sidebar section on the FRP
+ - real sidebar with site icons in front of the site names
+#+end_example
+
 
 * TODO add the "work of" to more recording columns in other PTs
+
+Currently on the PT 'artist-recordings'
+e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings on the FRP we render the new
+"Recording of" and "Performanec attributes" columns after the "Name" column with the functionality of on demand loading
+of works associated to the recordings
+
+#+begin_example
+<button type="button" class="mb-recof-col-hdr-btn" data-mb-aj="recof" data-mb-aj-name="▶🎼" aria-pressed="true" aria-label="Load the &quot;Recording of&quot; column"></button>
+#+end_example
 
 
 * TODO add UVD entries for titles which do NOT follow MB style guidelines on MB PTs and user aour rich tooltip diff popup view to show whats differing
@@ -2885,5 +2907,47 @@ etc
 
 discogs submission list
 
+* TODO enrich the discogs URL detail parsers with more information
 
+Enrich the current discogs URL detail parsers when hovering over a discogs URL e.g. on https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897
 
+#+begin_example
+[Image #14] - specific discogs release page
+[Image #15] - specific discogs release page after pressing "Space"
+[Image #16] - specific discogs master page
+#+end_example
+
+with much more information from their respective URLs as we currently have
+
+#+begin_example
+@debug/discogs-release.html - specific discogs release page - https://www.discogs.com/release/1874253-Bruce-Springsteen-Born-To-Run - IP
+@debug/discogs-master.html -  specific discogs master page - https://www.discogs.com/master/26725-Bruce-Springsteen-Born-To-Run - IP
+#+end_example
+
+1.)
+
+a.)
+
+from a release page additionally the sections
+
+#+begin_example
+"Tracklist" with credits
+"Companies, etc."
+"Credits"
+"Notes"
+"Barcode and Other Identifiers
+#+end_example
+
+plus the rendered images from the "More images" link
+
+b.)
+
+from a master page additionally the sections
+
+#+begin_example
+all the different versions from the "<n> versions" section
+#+end_example
+
+2.)
+
+Make some nice HTML based mockups/suggestions
