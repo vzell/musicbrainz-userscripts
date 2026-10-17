@@ -2857,12 +2857,19 @@ Make some suggestions how to shorten it or display it differently (actually wher
 
 With all the changes maybe the cards could be layout more efficiently ... please some suggestions
 
-** add favicon icons
+** TODO add favicon icons
 
 For example on https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194:
 
-Add site icons/favicon in front of the site names to the "Sidebar" sections like "EXTERNAL LINKS", "SEARCH" etc. if the
-corresponding entries in the real sidebar have them
+Add site icons/favicon in front of the site names to the "Sidebar" sections like
+
+#+begin_example
+"EXTERNAL LINKS"
+"SEARCH"
+"RELEASE GROUP EXTERNAL LINKS"
+#+end_example
+
+etc. if the corresponding entries in the real sidebar have them
 
 #+begin_example
  - current sidebar section on the FRP
@@ -2874,7 +2881,7 @@ corresponding entries in the real sidebar have them
 
 Currently on the PT 'artist-recordings'
 e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings on the FRP we render the new
-"Recording of" and "Performanec attributes" columns after the "Name" column with the functionality of on demand loading
+"Recording of" and "Performance attributes" columns after the "Name" column with the functionality of on demand loading
 of works associated to the recordings
 
 #+begin_example
