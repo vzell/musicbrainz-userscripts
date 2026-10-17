@@ -1,0 +1,21 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-17",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Sidebar cards: with jesus2099's \"mb. ALL LINKS\" installed, a release page showed two dozen cards all named \"Search in the whitelist\" or \"Search further\", each link two or three times, and chips with hundreds of characters of run-together text after them (\"DRAM By genreClassicalEletronicPsyDB…\"). Each list the script nests inside another one was read as a card of its own, and an item's text included everything listed under it. Now only a section's outer list is a card, and a link's chip shows only the link itself: text another script puts next to it (\"edit\", \"choose languages\") is left out, and a link listed under it (the Wikipedia article under a Wikidata link) is a small \"› en\" link after it. The same applies to the Sidebar tables of the Credits/Relationships view and to \"Sidebar as tables\"."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Sidebar cards: the script's \"Search the web\", \"Search in the whitelist\" and \"Search further\" lists are one \"Search\" card, closed at first: an index of each section (By genre, By area, …), its groups in italics and their sites, flowing into as many columns as the width allows. Variants of one site are one entry (\"Prog Archives (barcode, name)\"), and sections with nothing for this kind of page are named once at the foot. A switch shows one list at a time, and a box finds a site by name, variant, section or group (Esc empties it). Pointing at a link shows its site and full address, also the site behind the script's forwarding page. In the tables the same links are one \"Sidebar: Search\" table with the list, section and group of each link.",
+          "Sidebar cards: the facts cards (information, labels, release events) are a column on the left with the link cards beside them, so the section is about as tall as the taller of the two; in a narrow window they stack. The cards have the Liner-notes look: warm paper, hairline rules, small-caps headings. Mockup: https://claude.ai/artifact/V9Pqx5r7K37Qe3PEm93cpc."
+        ]
+      }
+    ]
+  }
+]

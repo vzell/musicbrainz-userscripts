@@ -64,10 +64,12 @@ Zero shows nothing (Rating).
 
 **Other scripts.** Nothing of theirs is read, moved or hidden. Their h2s get
 the same toggle as MusicBrainz's own, as they always did. The mockup's
-gather/hide choices were not picked and are not built. The one exception, by
-the user's consent (2026-10-11): the sidebar picture another script adds
-(`div.entity-image`, below) gets a hover card and the viewer; only its img's
-address is read.
+gather/hide choices were not picked and are not built. Two exceptions, each
+by the user's consent: the sidebar picture another script adds
+(`div.entity-image`, below; 2026-10-11) gets a hover card and the viewer, and
+only its img's address is read; and jesus2099's search lists are read into
+the Sidebar cards and tables (2026-10-17, "The Search group" below). The
+sidebar itself is still left as it is.
 
 **Re-runs.** `makeH2sCollapsible()` runs again after a disk load. `_sbReset()`
 removes our counts, bar, group heads and h3 icons, and unhooks our handlers
@@ -211,7 +213,8 @@ It builds groups with `_eventBuildTable()`:
 | `<h2 text of dl.properties>` | #, Property, Value | every `dl.properties` (dd cloned); a release has two: "Release information", "Additional details" |
 | Labels (release) | #, Label, Catalog number | the `ul.links` whose items link a label's own page (`/label/<mbid>`, never `/label/<mbid>/edit`: a label's Editing list); `.catalog-number` |
 | Release events (release) | #, Country, Date | `ul.release-events > li`: the `.flag` area link, `.release-date` |
-| `<h2 text of ul.external_links>` | #, Site, Link, Kind, Details | every `ul.external_links` (a release has "Release group external links" too); Site = host; Kind = `_SB_LINK_KINDS`; Details = the item's text beside its link, e.g. "(as @x)"; `.all-relationships` left out |
+| `<h2 text of ul.external_links>` | #, Site, Link, Kind, Details | every OUTERMOST `ul.external_links` (a release has "Release group external links" too); Site = host; Kind = `_SB_LINK_KINDS`; Details = the item's own text beside its link, e.g. "(as @x)" (`_sbOwnText()`), then each link nested in it ("en: Devils & Dust"); `.all-relationships` left out |
+| Search | #, Search, Section, Group, Site, Link | jesus2099's search lists (`_SB_SEARCH_LIST_SEL`), all in ONE group where the first of them is; see "The Search group" |
 | Tags | #, Tag, Kind, Votes | Kind is Genre or Tag; Votes from `.tag-count` |
 
 - An empty group is left out.
@@ -427,6 +430,68 @@ default off).
   sits inside a div.
 - Skipped on a relationship-tables render (it gets the tables) and on the
   "🗂 Sidebar as tables" render; MusicBrainz only.
+
+**The Search group and the card layout** (2026-10-17). Mockup
+`https://claude.ai/artifact/V9Pqx5r7K37Qe3PEm93cpc`, picked "A3 + B1 + D2 +
+C1, variants merged, empty sections at the foot", with the Liner-notes look
+and the tables reading the search lists too. Branch
+`feat/sidebar-search-card`.
+- **What went wrong.** jesus2099's *mb. ALL LINKS* adds "Search the web",
+  "Search in the whitelist" and "Search further" and nests its lists three
+  deep: section `li` (an h3) → group `li` (its own text) → links, EVERY
+  level an `ul.external_links`. `_sbCollectGroups()` read
+  `querySelectorAll('ul.external_links')`, so each nested list became a group
+  named after the outer h2 (26 "Search …" cards on Devils & Dust), and an
+  item's details were `li.textContent` minus its first link: the whole tree
+  run together (378 characters). The same leak, smaller, put the script's
+  "edit" / "choose languages" controls into MusicBrainz's own link chips.
+- **The reader now.** Only a section's OUTERMOST `ul.external_links` is read.
+  An item's link is `_sbItemLink()` (a direct child, else one not in a
+  nested list); its Details are `_sbOwnText()` (its own text nodes and
+  link-free, list-free children; never `.icon`, never a list) plus
+  `_sbItemKids()` (the links of a list nested in it, labelled by their own
+  item's text, "en"). Rows carry `own` and `kids` as properties for the
+  cards; the filter in `_sbAppendRelTablesGroups()` keeps the same row
+  arrays, so they survive it.
+- **The Search group.** `_SB_SEARCH_LIST_SEL`
+  (`ul.jesus2099_all-links_searchLinks`) lists are ONE group `search`, placed
+  where the first of them is (between a release's two link groups); a walk
+  records each link's heading (Search), section and group path, and each
+  section or group with no link in `empty` (a section with no link at all is
+  listed once, not with each group). Left out with the links
+  (`opts.links === false`). No duplicate skipping: a search link is never a
+  relationship row.
+- **The Search card** (`_sbSearchBody()`, `_sbSearchApply()`): starts closed
+  unless "every card" (it is no facts card); a switch (All + one button per
+  heading, only with more than one) in `data-mb-sb-scope`; a find box over
+  each entry's `data-mb-sb-find` (name, variants, path), with its count and
+  `.mb-sb-hit` marks; per heading an index in CSS columns (section with its
+  link count, group in italics, sites with a `·` drawn by CSS on every entry
+  but the line's first visible one, `.mb-sb-first`); a foot naming the empty
+  sections and groups, hidden while finding. Variants (`_sbMergeVariants()`,
+  `_SB_VARIANT_RE`, full-width brackets too): "X", "X (by a)", "X (b)" → one
+  entry linking X with variant links "a", "b"; a lone "X (a)" stays as
+  written. Esc in a non-empty box empties it and stops there; the switch,
+  the box and Esc are delegated on `div.mb-sb-inline` like the folding.
+- **Hover cards on links** (`_sbLinkTip()`, `data-mbtt`): title, where it is
+  listed, the site (for a `forward-request.html` link the `_action` host),
+  the address (`.mb-sb-tt-url` wraps it). With `sa_pop_mb_page` the link
+  preview engine may claim the same links (`#page a[href]`), as it does for
+  any link with a `data-mbtt`.
+- **Layout** (`_sbInlineLayout()`): with facts AND other cards,
+  `.mb-sb-cards-split` is a grid `fit-content(26rem) minmax(0, 1fr)`: the
+  facts in `.mb-sb-rail`, links/search/tags in `.mb-sb-main`. A facts card
+  wider than 26rem scrolls its dd (the NO OVERFLOW rule above still holds).
+  `.mb-sb-inline` is a size container: below 760px of its own width the
+  split stacks, the rail wrapping as the old row. With only one kind, the
+  old wrapping row.
+- Specs: `sidebar-search-card.spec.js` (7), on
+  `tests/fixtures/release-tracks-sidebar-search-links.html` (Devils & Dust,
+  saved with the script active, `debug/DaD-ISRC-Links-initial.html`; built
+  by `scripts/build-sidebar-search-fixture.py`, which removes the toolbar our
+  own first pass had left in the save). Mutations:
+  `scripts/mutations/sidebar-search-card.json` (15; Esc in the find box is
+  `expect: "pass"`: Chromium empties a search input on Esc by itself).
 
 **`sa_sidebar_tables_button` is off by default** since this change (it
 duplicated the two views). Its reads are `=== true` / `!== true` so a stub
