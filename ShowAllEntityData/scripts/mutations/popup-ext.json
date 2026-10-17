@@ -1196,7 +1196,7 @@
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
-        "grep": "is not served from IndexedDB",
+        "grep": "earlier Discogs reader is not served",
         "expect": "fail"
     },
     {
@@ -1319,6 +1319,58 @@
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
         "grep": "Stop: the page under way finishes",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs: the window's title says only \"Discogs\"",
+        "why": "The window's title (and a drill-down's path) says what the link is: \"Discogs release\", \"Discogs master › Discogs release\" (vzell, 2026-10-17).",
+        "edits": [
+            {
+                "find": "kind: reader.kindFor ? reader.kindFor(u) : reader.kind,",
+                "replace": "kind: reader.kind,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "names link their Discogs pages",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs: the facts' artist and label are not linked",
+        "why": "The window's \"Discogs says\" links the artists and labels to their Discogs pages (the reader's factsHtml hook); the card keeps plain text.",
+        "edits": [
+            {
+                "find": "(own.length && t.reader.factsHtml ? t.reader.factsHtml(t, rec, facts) : _dpFieldsHtml(facts))",
+                "replace": "_dpFieldsHtml(facts)"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "names link their Discogs pages",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs: names are not linked",
+        "why": "Every credited artist, label and company with a Discogs id links its page (vzell, 2026-10-17); a plain click shows it in the window.",
+        "edits": [
+            {
+                "find": "        return id ? `<a class=\"mb-dg-name\" href=\"https://www.discogs.com/${kind}/${id}\" target=\"_blank\" rel=\"noopener noreferrer\">${html}</a>` : html;",
+                "replace": "        return html;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "names link their Discogs pages",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs: the reader's version not raised for the names' ids",
+        "why": "A record of reader version 2 has no ids for the names' links: _EXT_DISCOGS_VERSION 3 makes it read again.",
+        "edits": [
+            {
+                "find": "    const _EXT_DISCOGS_VERSION = 3;",
+                "replace": "    const _EXT_DISCOGS_VERSION = 2;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "earlier Discogs reader is not served",
         "expect": "fail"
     }
 ]

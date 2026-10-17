@@ -2204,7 +2204,12 @@ once and without Tampermonkey asking first:
   cover), **Barcode and Other Identifiers**, **Videos**, and how many Discogs
   users have or want it and its data quality. A name credited differently
   from the artist's Discogs name has Discogs' `*`; point at it for the
-  Discogs name. Each heading opens and closes its section; a closed one
+  Discogs name. Every artist, label and company is a link to its Discogs
+  page; a click shows that page in the same window (*Back* returns), and
+  Ctrl-click opens it in a new tab. The window's title says what the link is
+  — *Discogs release*, *Discogs master*, *Discogs artist*, *Discogs label* —
+  and after such a click the path, e.g. *Discogs master › Discogs release*.
+  Each heading opens and closes its section; a closed one
   stays closed in the next Discogs window until the page is reloaded.
 
   A **master**'s window adds its **Versions**. Discogs lists them 100 at a

@@ -23734,3 +23734,21 @@ Env: 2026-10-17T14:23:58+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1)
   `scripts/mutations/popup-ext.json`, all caught (the card mutation only
   after its test waited for the host's next slot); lint within the
   baseline.
+
+## 2026-10-17 — The Discogs window: names as links, the title says release or master (branch feat/discogs-rich-preview, WIP.2)
+
+Env: 2026-10-17T16:41:12+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 bundled Chromium · no Tampermonkey (GM stubs); vzell's report: browser and Tampermonkey version unknown
+
+- **Report (vzell, screenshots of release 22a6802f…'s "Devils & Dust" windows):**
+  artists, labels and companies should link their Discogs pages, and the
+  title ("Discogs › Discogs" after a drill-down, "Discogs" otherwise) should
+  say whether the page is a release or a master.
+- **Change:** ids kept (`_EXT_DISCOGS_VERSION` 3), `_extDgLink()`, reader
+  hooks `factsHtml` and `kindFor`, `rec.subtitle` (which the approved
+  mockup already showed for a master and the first build had left out).
+  A browser that tried the branch holds version-2 records: the IndexedDB
+  test now seeds both 3 (before the branch) and 302 (the branch's first
+  build), each caught by its own mutation.
+- **Verified:** the 13 Discogs tests and the whole `popup-ext` spec with its
+  mobile sibling (45/45), 4 new mutations caught, lint
+  within the baseline.

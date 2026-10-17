@@ -46290,10 +46290,11 @@
      * `_EXT_IDB_VERSION` (the reader's `version`): 2 since the window shows
      * the whole release and master (tracklist with credits, companies,
      * credits, identifiers, notes, images, videos), which a version-1 record
-     * does not carry. Only Discogs records are read again.
+     * does not carry; 3 since every artist, label and company keeps its
+     * Discogs id, for its link. Only Discogs records are read again.
      * @type {number}
      */
-    const _EXT_DISCOGS_VERSION = 2;
+    const _EXT_DISCOGS_VERSION = 3;
 
     /** How many versions of a master one request asks for: Discogs' own cap (asking for 500 answers 100; probe 2026-10-17). */
     const _EXT_DISCOGS_VERSIONS_PER_PAGE = 100;
@@ -46324,16 +46325,30 @@
      * One credited artist of a Discogs answer (`extraartists`), as the
      * window shows it: the name (without " (2)"), the name the release
      * credits them under (`anv`, '' when the same), the role, and the tracks
-     * a release-wide credit covers ('' for all).
+     * a release-wide credit covers ('' for all), and the artist's Discogs id
+     * (0 for none), for the link.
      *
      * @param {Object} a
-     * @returns {{name: string, anv: string, role: string, tracks: string}}
+     * @returns {{name: string, anv: string, role: string, tracks: string, id: number}}
      */
     function _extDiscogsCredit(a) {
         return {
             name: _extDiscogsName(a.name), anv: String(a.anv || '').trim(),
-            role: String(a.role || '').trim(), tracks: String(a.tracks || '').trim(),
+            role: String(a.role || '').trim(), tracks: String(a.tracks || '').trim(), id: Number(a.id) || 0,
         };
+    }
+
+    /**
+     * What a Discogs link is, for the window's title: "Discogs release",
+     * "Discogs master", "Discogs artist" or "Discogs label" (a drill-down's
+     * path then reads "Discogs master › Discogs release").
+     *
+     * @param {URL} u
+     * @returns {string}
+     */
+    function _extDiscogsKind(u) {
+        const m = _EXT_DISCOGS_PATH_RE.exec(u.pathname);
+        return m ? `Discogs ${m[1].toLowerCase()}` : 'Discogs';
     }
 
     /**
@@ -46413,6 +46428,8 @@
         const img = (d.images || []).find(i => i.type === 'primary') || (d.images || [])[0];
         rec.image = img && /^https?:\/\//i.test(img.uri150 || img.uri || '') ? (img.uri150 || img.uri) : '';
         rec.type = kind === 'master' ? 'master release' : kind;
+        // Under the title, in the card and the window: what the link is.
+        rec.subtitle = `Discogs · ${rec.type}`;
         if (kind === 'release' || kind === 'master') {
             const formats = (d.formats || []).map(f => `${Number(f.qty) > 1 ? `${f.qty}×` : ''}${f.name}` +
                 `${(f.descriptions || []).length ? `, ${f.descriptions.join(', ')}` : ''}`).join('; ');
@@ -46446,13 +46463,20 @@
             rec.discogs = {
                 kind, id: Number(id), tracklist: _extDiscogsTracklist(d.tracklist), images,
                 notes: String(d.notes || '').slice(0, 20000),
+                // The "Artist" and "Label" facts again, with their ids (`_extDiscogsFactsHtml()`).
+                artists: (d.artists || []).filter(a => a && a.name).map(a => ({
+                    name: _extDiscogsName(a.name), anv: String(a.anv || '').trim(), join: String(a.join || '').trim(), id: Number(a.id) || 0,
+                })),
+                labels: (d.labels || []).filter(l => l && l.name).map(l => ({
+                    name: _extDiscogsName(l.name), catno: l.catno && l.catno !== 'none' ? String(l.catno).trim() : '', id: Number(l.id) || 0,
+                })),
             };
             if (kind === 'release') {
                 Object.assign(rec.discogs, {
                     credits: (d.extraartists || []).filter(a => a && a.name).map(_extDiscogsCredit),
                     companies: (d.companies || []).filter(c => c && c.name).map(c => ({
                         role: String(c.entity_type_name || '').trim(), name: _extDiscogsName(c.name),
-                        catno: c.catno && c.catno !== 'none' ? String(c.catno).trim() : '',
+                        catno: c.catno && c.catno !== 'none' ? String(c.catno).trim() : '', id: Number(c.id) || 0,
                     })),
                     identifiers: (d.identifiers || []).filter(i => i && i.value).map(i => ({
                         type: String(i.type || '').trim(), value: String(i.value).trim(), desc: String(i.description || '').trim(),
@@ -46720,15 +46744,55 @@
     }
 
     /**
-     * A credited name: the name the release credits (`anv`) with Discogs'
-     * own `*`, the artist's Discogs name in its hover text; else the name.
+     * A link to a Discogs artist or label page by its id, around ready HTML;
+     * the HTML alone for id 0 (Discogs gives none to some names). A plain
+     * click shows that page in the window (`_extDgDrill()`).
      *
-     * @param {{name: string, anv: string}} c
+     * @param {string} kind - 'artist' or 'label'.
+     * @param {number} id
+     * @param {string} html
+     * @returns {string}
+     */
+    function _extDgLink(kind, id, html) {
+        return id ? `<a class="mb-dg-name" href="https://www.discogs.com/${kind}/${id}" target="_blank" rel="noopener noreferrer">${html}</a>` : html;
+    }
+
+    /**
+     * A credited name, linked to the artist's Discogs page: the name the
+     * release credits (`anv`) with Discogs' own `*`, the artist's Discogs
+     * name in its hover text; else the name.
+     *
+     * @param {{name: string, anv: string, id?: number}} c
      * @returns {string}
      */
     function _extDgNameHtml(c) {
-        if (!c.anv || c.anv === c.name) return _rgEsc(c.name);
-        return `<span class="mb-dg-anv" data-mb-tip title="${_rgEsc(`Credited as ${c.anv}; on Discogs: ${c.name}`)}">${_rgEsc(c.anv)}*</span>`;
+        if (!c.anv || c.anv === c.name) return _extDgLink('artist', c.id, _rgEsc(c.name));
+        return _extDgLink('artist', c.id,
+            `<span class="mb-dg-anv" data-mb-tip title="${_rgEsc(`Credited as ${c.anv}; on Discogs: ${c.name}`)}">${_rgEsc(c.anv)}*</span>`);
+    }
+
+    /**
+     * The window's "Discogs says" facts, as `_dpFieldsHtml()` writes them,
+     * but the artists and the labels linked to their Discogs pages (the
+     * reader's `factsHtml` hook). The card keeps the plain facts.
+     *
+     * @param {object} t
+     * @param {Object} rec
+     * @param {Array<[string, string]>} facts
+     * @returns {string}
+     */
+    function _extDiscogsFactsHtml(t, rec, facts) {
+        const dg = rec.discogs;
+        if (!dg) return _dpFieldsHtml(facts);
+        const artists = (dg.artists || []).map(a => `${_extDgNameHtml(a)}${a.join ? ` ${_rgEsc(a.join)}` : ''}`).join(' ')
+            .replace(/\s+,/g, ',');
+        const labels = (dg.labels || []).map(l => `${_extDgLink('label', l.id, _rgEsc(l.name))}${l.catno ? ` – ${_rgEsc(l.catno)}` : ''}`).join('; ');
+        const value = (k, v) => {
+            if (k === 'Artist' && artists) return artists;
+            if (k === 'Label' && labels) return labels;
+            return String(v).split('\n').map(_mbttEscape).join('<br>');
+        };
+        return '<dl class="mb-dp-kv">' + facts.map(([k, v]) => `<dt>${_mbttEscape(k)}</dt><dd>${value(k, v)}</dd>`).join('') + '</dl>';
     }
 
     /**
@@ -47032,7 +47096,7 @@
             if (dg.companies.length) {
                 out.right.push(_extDgSection('companies', 'Companies, etc.', dg.companies.length, '<div class="mb-dg-lines">' +
                     _extDgGroupBy(dg.companies, 'role').map(([role, list]) => `<div>${role ? `<span class="mb-dg-role">${_rgEsc(role)} –</span> ` : ''}` +
-                        list.map(c => `${_rgEsc(c.name)}${c.catno ? ` <span class="mb-dg-cat">${_rgEsc(c.catno)}</span>` : ''}`).join(', ') +
+                        list.map(c => `${_extDgLink('label', c.id, _rgEsc(c.name))}${c.catno ? ` <span class="mb-dg-cat">${_rgEsc(c.catno)}</span>` : ''}`).join(', ') +
                         '</div>').join('') + '</div>'));
             }
             if (dg.credits.length) out.right.push(_extDgSection('credits', 'Credits', dg.credits.length, _extDgCreditLines(dg.credits, true)));
@@ -47561,12 +47625,16 @@
      * `cardExtra(t, rec)` one line after the card's facts; `window(t, rec,
      * {start, force, repaint})` its own sections, `{left, right, full}` (HTML
      * parts added to the window's two columns, and a full-width part under
-     * them); `onAreaClick(e, t)` / `onAreaInput(e, t)` its controls there.
+     * them); `onAreaClick(e, t)` / `onAreaInput(e, t)` its controls there;
+     * `kindFor(u)` the window's title for one link in place of `kind`
+     * ("Discogs release"); `factsHtml(t, rec, facts)` the window's facts as
+     * HTML (links), in place of `_dpFieldsHtml()`.
      * @type {Array<{id: string, kind: string, test: function(URL): boolean, askHost: function(URL): string,
      *   load: function(object, function(): boolean): Promise<Object>, noLive: boolean, live?: object,
      *   liveFor?: function(URL): object, liveUrlFor?: function(URL): string, version?: number, loadingNote?: string,
      *   cardExtra?: function(object, Object): string, window?: function(object, Object, Object): {left: string[], right: string[], full: string[]},
-     *   onAreaClick?: function(MouseEvent, object): void, onAreaInput?: function(Event, object): void}>}
+     *   onAreaClick?: function(MouseEvent, object): void, onAreaInput?: function(Event, object): void,
+     *   kindFor?: function(URL): string, factsHtml?: function(object, Object, Array<[string, string]>): string}>}
      */
     const _EXT_READERS = [
         { id: 'youtube', kind: 'YouTube', test: _extYouTubeTest, askHost: () => 'www.youtube.com', load: _extYouTubeLoad, noLive: true },
@@ -47579,6 +47647,7 @@
             id: 'discogs', kind: 'Discogs', test: _extDiscogsTest, askHost: () => 'api.discogs.com', load: _extDiscogsLoad, noLive: true,
             version: _EXT_IDB_VERSION * 100 + _EXT_DISCOGS_VERSION,
             window: _extDiscogsWindow, cardExtra: _extDiscogsCardExtra, onAreaClick: _extDiscogsAreaClick, onAreaInput: _extDiscogsAreaInput,
+            kindFor: _extDiscogsKind, factsHtml: _extDiscogsFactsHtml,
         },
         {
             id: 'bbdate', kind: 'Brucebase show', test: _extBbDateTest, askHost: () => 'brucebase.wikidot.com', load: _extBbDateLoad,
@@ -47885,7 +47954,7 @@
             } else if (rec.state === 'ok') {
                 const img = rec.image ? `<img class="mb-ext-img" src="${_rgEsc(rec.image)}" alt="" referrerpolicy="no-referrer" loading="lazy">` : '';
                 body = `<div class="mb-ext-head">${img}<div class="mb-ext-headtext"><div class="mb-tt-title">${_rgEsc(rec.title || t.name)}</div>` +
-                    (rec.siteName ? `<div class="mb-tt-comment">${_rgEsc(rec.siteName)}</div>` : '') + '</div></div>' +
+                    (rec.subtitle || rec.siteName ? `<div class="mb-tt-comment">${_rgEsc(rec.subtitle || rec.siteName)}</div>` : '') + '</div></div>' +
                     (rec.description ? `<div class="mb-tt-body mb-ext-desc">${_rgEsc(_extCut(rec.description, 260))}</div>` : '') +
                     // An API reader's facts (U3): the first few, cut short.
                     _dpFieldsHtml((rec.facts || []).slice(0, _EXT_CARD_FACTS), 90) +
@@ -48026,7 +48095,11 @@
             ['Canonical URL', rec.canonical && rec.canonical !== rec.finalUrl ? rec.canonical : ''],
             ['Content', [(rec.contentType || '').split(';')[0].trim(), _extSize(rec.bytes)].filter(Boolean).join(', ')],
         ].filter(f => f[1]);
-        if (facts.length) right.push(`<h4>${own.length ? `${_rgEsc(rec.siteName || t.kind)} says` : 'The page says'}</h4>` + _dpFieldsHtml(facts));
+        if (facts.length) {
+            right.push(`<h4>${own.length ? `${_rgEsc(rec.siteName || t.kind)} says` : 'The page says'}</h4>` +
+                // A reader may link some of its facts (Discogs: the artists and labels).
+                (own.length && t.reader.factsHtml ? t.reader.factsHtml(t, rec, facts) : _dpFieldsHtml(facts)));
+        }
         if ((rec.links || []).length) {
             right.push('<h4>See also</h4>' + rec.links.map(([k, u]) =>
                 `<div class="mb-ext-url">${_rgEsc(k)}: ${link(u, u)}</div>`).join(''));
@@ -48056,7 +48129,7 @@
      */
     function _extLeftCol(t, rec) {
         const left = [`<div class="mb-dp-xtitle">${_rgEsc(rec.title || t.name)}</div>`];
-        if (rec.siteName) left.push(`<div class="mb-dp-xsub">${_rgEsc(rec.siteName)}</div>`);
+        if (rec.subtitle || rec.siteName) left.push(`<div class="mb-dp-xsub">${_rgEsc(rec.subtitle || rec.siteName)}</div>`);
         if (rec.state === 'ok') {
             if (rec.image) {
                 // A plain click opens the artwork viewer (`_dpArtViewerClick()`);
@@ -48152,7 +48225,9 @@
         const reader = _EXT_READERS.find(r => r.test(u));
         return {
             key: `ext:${reader.id}:${u.href}`, url: u.href, href, host, askHost: reader.askHost(u),
-            reader, noLive: reader.noLive, kind: reader.kind, live: reader.liveFor ? reader.liveFor(u) : (reader.live || null),
+            // A reader may name the link more closely (Discogs: "Discogs release").
+            reader, noLive: reader.noLive, kind: reader.kindFor ? reader.kindFor(u) : reader.kind,
+            live: reader.liveFor ? reader.liveFor(u) : (reader.live || null),
             liveUrl: reader.liveUrlFor ? reader.liveUrlFor(u) : '',
             // An icon's text is its hidden filter key (the URL): its site instead.
             name: relIcon ? _relLinkName(a) : (_dpText(a.textContent) || host),

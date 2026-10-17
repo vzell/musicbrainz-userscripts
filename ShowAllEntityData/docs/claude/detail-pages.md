@@ -1160,7 +1160,18 @@ subdomain, matched by `endsWith`), so a hover loads them from the first time.
   the dialog's delegated listeners through `_extSource()`. Sections are
   collapsible (`_extDgCollapsed`, page load, across Discogs windows); the
   per-target state (open track credits, filter, chips, sort, the load run)
-  is `_extDgUi`. The cover links the full primary image (`rec.imageFull`)
+  is `_extDgUi`. **Names are links** (vzell, 2026-10-17, after trying the
+  branch): every artist, label and company keeps its Discogs `id`
+  (`_EXT_DISCOGS_VERSION` 3) and `_extDgLink()` links `/artist/<id>` or
+  `/label/<id>` (id 0: plain text); the facts' "Artist" and "Label" go
+  through a fifth reader hook, `factsHtml(t, rec, facts)` (the card keeps
+  `_dpFieldsHtml()`'s plain text). A click drills down like a version's row.
+  **The title says what the link is**: a sixth hook, `kindFor(u)`, gives the
+  target its `kind` ("Discogs release" …, `_extDiscogsKind()`), so a
+  drill-down's path reads "Discogs master › Discogs release"; `rec.subtitle`
+  ("Discogs · master release", as the mockup had it) replaces `siteName`
+  under the title in card and window, while "Discogs says" keeps `siteName`.
+  The cover links the full primary image (`rec.imageFull`)
   and is the same file as the gallery's first: `_dpArtViewerClick()` counts
   a URL once.
   **Versions** (`_extDiscogsVersionsLoad()`, key

@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-10-17",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Discogs link previews: in the window every artist, label and company is a link to its Discogs page — in the facts, the credits, the track credits and \"Companies, etc.\". A click shows that page in the same window, and Back returns. The window's title says what the link is (\"Discogs release\", \"Discogs master\", \"Discogs artist\", \"Discogs label\"), and after such a click the path, for example \"Discogs master › Discogs release\"; card and window say it under the title too (\"Discogs · master release\")."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-10-17",
     "sections": [

@@ -1104,7 +1104,7 @@ test.describe('readers of known sites (U3): Wikipedia, Wikidata, Discogs', () =>
 
         await page.keyboard.press('Space');
         const d = dialog(page);
-        await expect(d.locator(':scope > div > span').first()).toHaveText('Discogs');
+        await expect(d.locator(':scope > div > span').first()).toHaveText('Discogs release');
         await expect(d.getByRole('button', { name: 'Live page' }), 'the API, not the page').toBeHidden();
         await expect(d).toContainText('Columbia – PC 33795');
         await expect(d).toContainText('Rock, Pop Rock, Rock & Roll');
@@ -1175,7 +1175,7 @@ async function openDiscogs(page, { settings = {}, responses = {} } = {}) {
     await openEvent(page, {
         settings: { sa_pop_ext: true, ...settings },
         responses: {
-            ...extAnswers('discogs-release', 'discogs-master', 'discogs-master-versions-p1', 'discogs-master-versions-p2',
+            ...extAnswers('discogs-release', 'discogs-master', 'discogs-artist', 'discogs-master-versions-p1', 'discogs-master-versions-p2',
                 'discogs-master-versions-p3', 'discogs-master-versions-p4'),
             ...responses,
         },
@@ -1319,7 +1319,7 @@ test.describe('the Discogs window (2026-10-17)', () => {
 
         // A click on a version's row shows that release in the window; Back returns.
         await vers.locator('tr[data-mb-dg-vid="1874253"] td:nth-child(4)').click();
-        await expect(d.locator(':scope > div > span').first()).toHaveText('Discogs › Discogs');
+        await expect(d.locator(':scope > div > span').first()).toHaveText('Discogs master › Discogs release');
         await expect(d.locator('.mb-dg-xh', { hasText: 'Companies, etc.' })).toBeVisible();
         await d.getByRole('button', { name: /Back/ }).click();
         await expect(d.locator('[data-mb-dg-sec="versions"] .mb-dg-counts').first()).toHaveText('387 of 387 loaded');
@@ -1386,34 +1386,67 @@ test.describe('the Discogs window (2026-10-17)', () => {
         expect(await dgVersionsLog(page), 'page 1 only').toEqual([DGV[0]]);
     });
 
-    test('a record of the reader before 2026-10-17 is not served from IndexedDB', async ({ page }) => {
+    test('names link their Discogs pages; the title and subtitle say what the link is; an artist opens in the window', async ({ page }) => {
+        await openDiscogs(page);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page).locator('.mb-ext-headtext .mb-tt-comment')).toHaveText('Discogs · release');
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const title = d.locator(':scope > div > span').first();
+        await expect(title).toHaveText('Discogs release');
+        await expect(d.locator('.mb-dp-xsub').first()).toHaveText('Discogs · release');
+        // The facts: the artist and the label link their pages.
+        await expect(d.locator('.mb-dp-kv a[href="https://www.discogs.com/artist/219986"]')).toHaveText('Bruce Springsteen');
+        await expect(d.locator('.mb-dp-kv a[href="https://www.discogs.com/label/1866"]')).toHaveText('Columbia');
+        await expect(d.locator('.mb-dp-kv')).toContainText('Columbia – PC 33795');
+        // A company and a credit, a name credited differently included.
+        await expect(d.locator('[data-mb-dg-sec="companies"] a[href="https://www.discogs.com/label/265540"]').first()).toHaveText('Record Plant, N.Y.C.');
+        const landau = d.locator('[data-mb-dg-sec="credits"] a.mb-dg-name', { hasText: 'Jon Landau' }).first();
+        await expect(landau).toHaveAttribute('href', /^https:\/\/www\.discogs\.com\/artist\/\d+$/);
+        const tl = d.locator('[data-mb-dg-sec="tracklist"]');
+        await tl.getByRole('button', { name: 'Show all track credits' }).click();
+        await expect(tl.locator('a[href="https://www.discogs.com/artist/254876"]').first()).toHaveText('Max M. Weinberg*');
+        // A click on the artist shows the artist in the window; Back returns.
+        await d.locator('.mb-dp-kv a[href="https://www.discogs.com/artist/219986"]').click();
+        await expect(title).toHaveText('Discogs release › Discogs artist');
+        await expect(d).toContainText('Bruce Frederick Joseph Springsteen');
+        await expect(d.locator('.mb-dp-xsub').first()).toHaveText('Discogs · artist');
+        await d.getByRole('button', { name: /Back/ }).click();
+        await expect(title).toHaveText('Discogs release');
+    });
+
+    test('a record of an earlier Discogs reader is not served from IndexedDB', async ({ page }) => {
         await openDiscogs(page);
         await ctrlHover(page, probe(page, 0));
         await expect(card(page).locator('.mb-dg-sum')).toBeVisible();
         const key = `mb:ext:discogs:${DG.release}`;
         await expect.poll(() => idbHas(page, key)).toBe(true);
-        // The same record as the old reader kept it: version 3, no window data.
-        await page.evaluate((k) => new Promise((resolve, reject) => {
-            const req = indexedDB.open('vz-saed-detail-pages');
-            req.onsuccess = () => {
-                const db = req.result;
-                const store = db.transaction('pages', 'readwrite').objectStore('pages');
-                const g = store.get(k);
-                g.onsuccess = () => {
-                    const r = g.result;
-                    r.v = 3;
-                    r.data = { ...r.data, title: 'OLD RECORD', discogs: undefined };
-                    store.put(r).onsuccess = () => { db.close(); resolve(); };
+        // The same record as an earlier reader kept it: version 3 (before
+        // 2026-10-17, no window data) and 302 (the window without the
+        // names' Discogs ids, which a browser that tried the branch holds).
+        for (const v of [3, 302]) {
+            await page.evaluate(([k, ver]) => new Promise((resolve, reject) => {
+                const req = indexedDB.open('vz-saed-detail-pages');
+                req.onsuccess = () => {
+                    const db = req.result;
+                    const store = db.transaction('pages', 'readwrite').objectStore('pages');
+                    const g = store.get(k);
+                    g.onsuccess = () => {
+                        const r = g.result;
+                        r.v = ver;
+                        r.data = { ...r.data, title: 'OLD RECORD', discogs: undefined };
+                        store.put(r).onsuccess = () => { db.close(); resolve(); };
+                    };
+                    g.onerror = reject;
                 };
-                g.onerror = reject;
-            };
-            req.onerror = reject;
-        }), key);
-        await reloadEvent(page);
-        await addAnnotationLinks(page, [DG.release, DG.master]);
-        await ctrlHover(page, probe(page, 0));
-        await expect(card(page).locator('.mb-tt-title')).toHaveText('Born To Run');
-        expect((await xhrFull(page)).map(r => r.url), 'asked again').toEqual(['https://api.discogs.com/releases/1874253']);
+                req.onerror = reject;
+            }), [key, v]);
+            await reloadEvent(page);
+            await addAnnotationLinks(page, [DG.release, DG.master]);
+            await ctrlHover(page, probe(page, 0));
+            await expect(card(page).locator('.mb-tt-title'), `version ${v}`).toHaveText('Born To Run');
+            expect((await xhrFull(page)).map(r => r.url), `version ${v}: asked again`).toEqual(['https://api.discogs.com/releases/1874253']);
+        }
     });
 });
 
