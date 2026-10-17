@@ -1171,6 +1171,12 @@ subdomain, matched by `endsWith`), so a hover loads them from the first time.
   drill-down's path reads "Discogs master › Discogs release"; `rec.subtitle`
   ("Discogs · master release", as the mockup had it) replaces `siteName`
   under the title in card and window, while "Discogs says" keeps `siteName`.
+  A VERSION's label has no id (the versions rows carry `catno, country,
+  format, id, label, major_formats, released, resource_url, stats, status,
+  thumb, title`; checked 2026-10-17), so it links Discogs' label SEARCH
+  (`/search/?q=<name>&type=label`, vzell's pick), `a.mb-dg-label`, new tab:
+  `_extDgDrill()` takes only the Discogs reader's pages, so a click on it
+  never opens the search in the window.
   The cover links the full primary image (`rec.imageFull`)
   and is the same file as the gallery's first: `_dpArtViewerClick()` counts
   a URL once.

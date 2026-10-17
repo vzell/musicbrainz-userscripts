@@ -1372,5 +1372,18 @@
         "spec": "tests/fixtures/popup-ext.spec.js",
         "grep": "earlier Discogs reader is not served",
         "expect": "fail"
+    },
+    {
+        "name": "Discogs: a version's label is not linked",
+        "why": "A version's label links Discogs' label search for its name (the versions rows give no label id; vzell's pick, 2026-10-17).",
+        "edits": [
+            {
+                "find": "                `<td>${v.label ? `<a class=\"mb-dg-label\"",
+                "replace": "                `<td>${v.label && false ? `<a class=\"mb-dg-label\""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a master: no versions from a hover",
+        "expect": "fail"
     }
 ]

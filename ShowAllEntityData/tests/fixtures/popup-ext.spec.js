@@ -1270,6 +1270,12 @@ test.describe('the Discogs window (2026-10-17)', () => {
         // The master's main release, and the release this page links too.
         await expect(vers.locator('tr[data-mb-dg-vid="13896528"] .mb-dg-pill')).toHaveText('main');
         await expect(vers.locator('tr[data-mb-dg-vid="1874253"] .mb-dg-pill')).toHaveText('this page links it');
+        // A version's label: Discogs gives its name only, no id, so it links
+        // Discogs' label search for that name, in a new tab (not the window).
+        const label = vers.locator('tr[data-mb-dg-vid="1874253"] a.mb-dg-label');
+        await expect(label).toHaveText('Columbia');
+        await expect(label).toHaveAttribute('href', 'https://www.discogs.com/search/?q=Columbia&type=label');
+        await expect(label).toHaveAttribute('target', '_blank');
 
         await vers.getByRole('button', { name: 'Load the other 287 (3 requests, about 3 s)' }).click();
         // Typing while the pages arrive: each arrival repaints the window,

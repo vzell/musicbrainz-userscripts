@@ -23752,3 +23752,10 @@ Env: 2026-10-17T16:41:12+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1)
 - **Verified:** the 13 Discogs tests and the whole `popup-ext` spec with its
   mobile sibling (45/45), 4 new mutations caught, lint
   within the baseline.
+- **Versions’ labels (vzell: "the values under LABEL – CAT# are still not
+  hyperlinked"):** the versions rows give a label by NAME only (fields
+  checked on the capture: catno, country, format, id, label, major_formats,
+  released, resource_url, stats, status, thumb, title), so there is no
+  label page to link. vzell picked Discogs’ label search for the name, in a
+  new tab (`a.mb-dg-label`); one more assertion in the master test, one
+  more mutation, caught.

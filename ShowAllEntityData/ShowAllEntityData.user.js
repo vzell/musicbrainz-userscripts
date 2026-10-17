@@ -46979,7 +46979,13 @@
                 `${v.id === dg.mainRelease ? ' <span class="mb-dg-pill mb-dg-ok">main</span>' : ''}` +
                 `${linked.has(v.id) ? ' <span class="mb-dg-pill mb-dg-run">this page links it</span>' : ''}` +
                 `<div class="mb-dg-dim">${_rgEsc(v.format)}</div></td>` +
-                `<td>${_rgEsc(v.label)}${v.catno ? ` <span class="mb-dg-cat">– ${_rgEsc(v.catno)}</span>` : ''}</td>` +
+                // Discogs' versions name a label but give no id (row fields:
+                // catno, country, format, id, label, …; checked 2026-10-17), so
+                // the label links Discogs' label search for its name (vzell's
+                // pick), in a new tab: a search is no page the window reads.
+                `<td>${v.label ? `<a class="mb-dg-label" href="https://www.discogs.com/search/?q=${encodeURIComponent(v.label)}&amp;type=label" ` +
+                    `target="_blank" rel="noopener noreferrer" data-mb-tip title="Search Discogs for the label ${_rgEsc(v.label)}">${_rgEsc(v.label)}</a>` : ''}` +
+                `${v.catno ? ` <span class="mb-dg-cat">– ${_rgEsc(v.catno)}</span>` : ''}</td>` +
                 `<td>${_rgEsc(v.country)}</td><td class="mb-dg-yr">${_rgEsc(v.year || '—')}</td></tr>`).join('') +
             '</tbody></table></div>';
     }

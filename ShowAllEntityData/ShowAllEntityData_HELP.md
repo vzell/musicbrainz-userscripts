@@ -2220,7 +2220,9 @@ once and without Tampermonkey asking first:
   loaded, red: failed, which a button asks again). Filter the versions by
   typing, or by the chips for format, country and decade (their counts cover
   every version, loaded or not), and sort by a column heading. The master's
-  main release and a release this page links are marked. A click on a version
+  main release and a release this page links are marked. A version's label
+  links Discogs' label search for that name, in a new tab: the list of
+  versions names a label without saying which one. A click on a version
   shows it in the same window, and *Back* returns to the master. A card never
   asks for versions; once a window has, the master's card says how many there
   are. Discogs allows a
