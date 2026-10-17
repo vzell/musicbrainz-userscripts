@@ -23909,3 +23909,45 @@ Env: 2026-10-17T20:09:20+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1)
   560px; finding hides a group's name with it); 4 new mutations in
   `scripts/mutations/sidebar-search-card.json`, all caught;
   `sidebar-search-card` + `sidebar-inline` 30/30.
+
+## 2026-10-18 — Discogs artist and label windows; the versions loader becomes one list loader (branch feat/discogs-artist-label, WIP.1)
+Env: 2026-10-18T01:05:58+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs); probes: n/a
+
+- **Request (vzell):** Discogs artist and label links get the window release
+  and master links have, modelled on `debug/discogs-artist.html` and
+  `debug/discogs-label.html`: the artist's Releases / Appearances / Unofficial
+  / Credits as collapsible master/release tables, the label's releases, every
+  image behind "More images". Mockup first:
+  https://claude.ai/artifact/WuBNbFTgNHJtxip4xBv6yc, approved 2026-10-18.
+- **Probe (`scripts/probe-discogs-artist-label.py`, 2026-10-17/18):**
+  `artists/<id>/releases?sort=year` is ordered BY ROLE, then year. A sample
+  of pages first suggested it carries no credits at all, and the user chose
+  "leave Credits out" on that; the full capture of all 68 pages of Bruce
+  Springsteen showed Producer 78 and Co-producer 2 on pages 4–5 (Max
+  Weinberg: Producer, Mixed by). Told the user; they chose to show the API's
+  credits plus a link to all of them on Discogs. Lesson: a claim of absence
+  from a list needs the whole list, not a sample of pages. Masters carry no
+  format (no Albums / Singles split); a label's list has releases only, no
+  facets, and Columbia has 3,967 pages, so it loads in batches of 5.
+- **Design:** `_EXT_DG_LISTS` (versions, artist, label) and one loader
+  (`_extDgListLoad()`, `_extDgLoadNext()`, `_extDgPeekCached()`,
+  `_extDgListState()`, `_extDgListStart()`), the run state per target and
+  list (`_extDgRun()`), instead of a copy of the versions loader. A role is
+  complete once the pages loaded without a gap from page 1 hold a later role
+  (`_extDgRoleState()`). Generic record fields `descInWindow` and
+  `cardFacts`. `_EXT_DISCOGS_VERSION` 4. Details: docs/claude/detail-pages.md.
+- **Verified:** the 14 existing Discogs specs unchanged and green after the
+  refactor; 6 new specs in `popup-ext.spec.js` and 1 in
+  `popup-ext.mobile.spec.js`; 27 Discogs mutations (`scripts/mutations/popup-ext.json`,
+  the 7 versions entries the refactor moved re-anchored, 12 new) all caught.
+  One new entry first SURVIVED ("Discogs artist: Stop does not end the run
+  of pages"): the spec's `expect.poll(...).toBe(loaded)` passed on its first
+  look, and the pill reads Idle for a moment between two pages of a run, so
+  nothing proved that no page followed Stop. Now it watches 2.5 s for a
+  request more (a poll that must time out; `waitForTimeout` is over the lint
+  baseline) and checks the pill after. `test:full` on petri 2026-10-18
+  01:11:45–01:21:20+02:00: 1858 passed. Three entries of popup-ext.json were
+  already stale on main ("a link around an image is previewed", "U3:
+  Discogs is asked without a User-Agent", "U3: a Discogs link has a Live
+  page": their `find` matches nothing) and are left as they were.
+  vzell tried the branch in the browser before the merge: OK.

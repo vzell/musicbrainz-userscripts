@@ -1174,11 +1174,11 @@
         "why": "A card never asks for versions (one more Discogs request per hover, 25 a minute without a token): the window asks for page 1, the button for the rest. Both edits are needed, since wanted() also requires the window to show the master.",
         "edits": [
             {
-                "find": "        const st = _mbPop.get(_extDgVersionsKey(dg.id, 1));\n        if (st && st.status === 'done') {",
-                "replace": "        _extDiscogsVersionsLoad(t, dg.id, 1, {});\n        const st = _mbPop.get(_extDgVersionsKey(dg.id, 1));\n        if (st && st.status === 'done') {"
+                "find": "        const st = _mbPop.get(_extDgListKey(_extDgList('versions', dg.id), 1));\n        if (st && st.status === 'done') {",
+                "replace": "        _extDgListLoad(t, _extDgList('versions', dg.id), 1, {});\n        const st = _mbPop.get(_extDgListKey(_extDgList('versions', dg.id), 1));\n        if (st && st.status === 'done') {"
             },
             {
-                "find": "            force, repaint, wanted: () => _extDgShowing(t) && (page === 1 || !ui.stopped),",
+                "find": "            force, repaint, wanted: () => _extDgShowing(t) && (page === 1 || !run.stopped),",
                 "replace": "            force, repaint, wanted: () => true,"
             }
         ],
@@ -1256,8 +1256,8 @@
         "why": "A tap opens the window before the master's record is known: page 1 must start on the repaint that brings it (once, while page 1 has no state), or the window waits for ever.",
         "edits": [
             {
-                "find": "            if (start || !_mbPop.get(_extDgVersionsKey(dg.id, 1))) _extDiscogsVersionsLoad(t, dg.id, 1, { force, repaint });",
-                "replace": "            if (start) _extDiscogsVersionsLoad(t, dg.id, 1, { force, repaint });"
+                "find": "        if (start || !_mbPop.get(_extDgListKey(list, 1))) _extDgListLoad(t, list, 1, { force, repaint });",
+                "replace": "        if (start) _extDgListLoad(t, list, 1, { force, repaint });"
             }
         ],
         "spec": "tests/fixtures/popup-ext.mobile.spec.js",
@@ -1296,8 +1296,8 @@
         "why": "Versions of no known year (Discogs' \"0\") go last in either direction.",
         "edits": [
             {
-                "find": "            if (!x !== !y) return x ? -1 : 1;\n",
-                "replace": ""
+                "find": "            const x = String(a[ui.sort] || ''), y = String(b[ui.sort] || '');\n            if (!x !== !y) return x ? -1 : 1;\n",
+                "replace": "            const x = String(a[ui.sort] || ''), y = String(b[ui.sort] || '');\n"
             }
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
@@ -1309,11 +1309,11 @@
         "why": "Stop lets the page under way finish and asks nothing more; the chain asks the next page only while not stopped. Both edits: the chain's own check, and wanted(), which would otherwise skip the next page at its slot.",
         "edits": [
             {
-                "find": "        if (!next || ui.stopped || !_extDgShowing(t)) {",
+                "find": "        if (!next || run.stopped || !_extDgShowing(t)) {",
                 "replace": "        if (!next || !_extDgShowing(t)) {"
             },
             {
-                "find": "            force, repaint, wanted: () => _extDgShowing(t) && (page === 1 || !ui.stopped),",
+                "find": "            force, repaint, wanted: () => _extDgShowing(t) && (page === 1 || !run.stopped),",
                 "replace": "            force, repaint, wanted: () => _extDgShowing(t),"
             }
         ],
@@ -1365,7 +1365,7 @@
         "why": "A record of reader version 2 has no ids for the names' links: _EXT_DISCOGS_VERSION 3 makes it read again.",
         "edits": [
             {
-                "find": "    const _EXT_DISCOGS_VERSION = 3;",
+                "find": "    const _EXT_DISCOGS_VERSION = 4;",
                 "replace": "    const _EXT_DISCOGS_VERSION = 2;"
             }
         ],
@@ -1436,6 +1436,171 @@
         ],
         "spec": "tests/fixtures/popup-ext.spec.js",
         "grep": "is not pulled back to the show",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs artist/label: a card asks for the discography or the releases",
+        "why": "A card never asks for a list (one more Discogs request per hover, 25 a minute without a token): the window asks for page 1. Both edits: wanted() also requires the window to show the target.",
+        "edits": [
+            {
+                "find": "            const st = firsts.map(l => _mbPop.get(_extDgListKey(l, 1))).find(x => x && x.status === 'done');",
+                "replace": "            firsts.forEach(l => _extDgListLoad(t, l, 1, {}));\n            const st = firsts.map(l => _mbPop.get(_extDgListKey(l, 1))).find(x => x && x.status === 'done');"
+            },
+            {
+                "find": "            force, repaint, wanted: () => _extDgShowing(t) && (page === 1 || !run.stopped),",
+                "replace": "            force, repaint, wanted: () => true,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "an artist: no discography from a hover",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs artist: a section counts as complete only once every page is in",
+        "why": "Discogs lists the discography by role, then year: a role is complete as soon as the pages loaded from page 1 hold a later role (Releases 2 after page 1, not \"2 so far\").",
+        "edits": [
+            {
+                "find": "        for (let i = 0; i < prefix && !done; i++) done = vs.list[i].st.data.rows.some(r => _extDgRoleOrd(r.role) > ord);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "an artist: no discography from a hover",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs artist/label: the profile shown twice",
+        "why": "The profile is the window's own section, with Discogs' links (descInWindow): the plain description above it would repeat it.",
+        "edits": [
+            {
+                "find": "            if (rec.description && !rec.descInWindow) left.push(",
+                "replace": "            if (rec.description) left.push("
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "an artist: no discography from a hover",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs artist/label: the card shows the window's data quality",
+        "why": "The card shows the counts only (cardFacts, as the mockup has it); the data quality is the window's, as for a release.",
+        "edits": [
+            {
+                "find": "Math.min(_EXT_CARD_FACTS, rec.cardFacts ?? _EXT_CARD_FACTS)",
+                "replace": "_EXT_CARD_FACTS"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "an artist: no discography from a hover",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs artist: a table shows every row at once",
+        "why": "A table shows 150 rows, then \"Show 500 more\" / \"Show all\" (vzell, 2026-10-18), so a 2,800-row section stays quick.",
+        "edits": [
+            {
+                "find": "        const limit = ui.alimit[role] || _EXT_DG_ARTIST_ROWS;",
+                "replace": "        const limit = Infinity;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "an artist's tables",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs artist: Stop does not end the run of pages",
+        "why": "The artist's run is the versions' (one loader): Stop lets the page under way finish and asks nothing more.",
+        "edits": [
+            {
+                "find": "        if (!next || run.stopped || !_extDgShowing(t)) {",
+                "replace": "        if (!next || !_extDgShowing(t)) {"
+            },
+            {
+                "find": "            force, repaint, wanted: () => _extDgShowing(t) && (page === 1 || !run.stopped),",
+                "replace": "            force, repaint, wanted: () => _extDgShowing(t),"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a later visit",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs artist: a later visit does not look up the cached pages",
+        "why": "Pages kept in IndexedDB show on a later visit, hatched, without a request (_extDgPeekCached()); without the lookup only page 1 would.",
+        "edits": [
+            {
+                "find": "        if (done1) _extDgPeekCached(t, list, vs.pages);\n        const all = _extDgLoadedRows(vs);\n        const status",
+                "replace": "        const all = _extDgLoadedRows(vs);\n        const status"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a later visit",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs artist/label: the profile's names are not linked",
+        "why": "A profile's [a=Name] links Discogs' search for the name, [l123] the label's page (the window's profile, names: true).",
+        "edits": [
+            {
+                "find": "        if (names) {\n            html = html",
+                "replace": "        if (names && false) {\n            html = html"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "Bruce Springsteen: page 1 of 68",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs label: a click loads every page",
+        "why": "A label can have thousands of pages (Columbia 3,967): a click loads the next 5 (vzell, 2026-10-18), never all.",
+        "edits": [
+            {
+                "find": "                _extDgStartRun(t, list, !batch ? 0 : gaps ? vs.list.length : Math.min(vs.pages, vs.list.length + batch));",
+                "replace": "                _extDgStartRun(t, list, 0);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a label: page 1 newest first",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs label: one order's pages shown for the other",
+        "why": "Newest and oldest first are two lists, each with its own cache key: the order is part of the key.",
+        "edits": [
+            {
+                "find": "            key: (sub, page) => `ext:discogs-label-releases:${sub}:${page}`,",
+                "replace": "            key: (sub, page) => `ext:discogs-label-releases:${String(sub).split(':')[0]}:${page}`,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "a label: page 1 newest first",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs: the reader's version not raised for the artist and label windows",
+        "why": "A record of reader version 3 has no artist or label window data (rec.discogs): _EXT_DISCOGS_VERSION 4 makes it read again.",
+        "edits": [
+            {
+                "find": "    const _EXT_DISCOGS_VERSION = 4;",
+                "replace": "    const _EXT_DISCOGS_VERSION = 3;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "an artist record of the reader before its window",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs artist: a master row's versions not asked on its toggle",
+        "why": "A master row's toggle asks for its versions (one request, on the click): a repaint never starts a request, so without it the row waits for ever.",
+        "edits": [
+            {
+                "find": "                ui.mopen.add(id);\n                const v = _extDgList('versions', id);\n                if (!_mbPop.get(_extDgListKey(v, 1))) _extDgListLoad(t, v, 1, { repaint: _dpDialog.repaint });",
+                "replace": "                ui.mopen.add(id);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "a tap opens a Discogs artist",
         "expect": "fail"
     }
 ]

@@ -189,3 +189,52 @@ test('a tap opens a Discogs master\'s window; its versions button and a track\'s
     expect(seen.navigations, 'the page stays').toEqual([]);
     expect(seen.errors).toEqual([]);
 });
+
+// The Discogs artist and label windows (2026-10-18) by touch: a tap on an
+// artist's link opens the window, and its controls answer taps — the run of
+// pages, a section heading, a master row's versions, the label's order.
+test('a tap opens a Discogs artist\'s window; "Load the other", a section, a master\'s versions answer taps; a label\'s order too', async ({ page }) => {
+    const ARTIST = 'https://www.discogs.com/artist/254876-Max-Weinberg';
+    const LABEL = 'https://www.discogs.com/label/1866-Columbia';
+    const answer = (name) => {
+        const f = JSON.parse(fs.readFileSync(path.join(__dirname, `ext-${name}.json`), 'utf8'));
+        return [f.url, { status: f.status, responseHeaders: `Content-Type: ${f.contentType}`, responseText: f.body }];
+    };
+    await page.context().route('https://i.discogs.com/**', (route) => route.fulfill({ status: 404, body: '' }));
+    const seen = await openEvent(page, { sa_pop_ext_on_touch: true, sa_pop_ext_discogs_token: 'tok-probe' }, Object.fromEntries(
+        ['discogs-artist-small', 'discogs-master-450426-versions-p1', 'discogs-label', 'discogs-label-releases-desc-p1',
+            'discogs-label-releases-asc-p1', ...[1, 2, 3, 4, 5, 6].map(p => `discogs-artist-small-p${p}`)].map(answer)));
+    await page.evaluate(([u, links]) => {
+        const a = document.querySelector(`table.tbl a[href="${u}"]`);
+        links.forEach(([href, text]) => {
+            const d = document.createElement('a');
+            d.setAttribute('href', href);
+            d.textContent = text;
+            a.before(d, document.createElement('br'));
+        });
+    }, [SETLIST, [[ARTIST, 'Discogs artist'], [LABEL, 'Discogs label']]]);
+    await tapLink(page, page.locator(`table.tbl a[href="${ARTIST}"]`).first());
+
+    const dialog = page.locator('#mb-dp-dialog');
+    const disco = dialog.locator('[data-mb-dg-disco="artist"]');
+    await expect(disco.locator('.mb-dg-counts').first()).toHaveText('100 of 528 loaded', { timeout: 10000 });
+    await tapLink(page, disco.getByRole('button', { name: /^Load the other 428/ }));
+    await expect(disco.locator('.mb-dg-counts').first()).toHaveText('528 of 528 loaded', { timeout: 20000 });
+    const head = disco.locator('[data-mb-dg-sec="a-unoff"] .mb-dg-xh');
+    await tapLink(page, head);
+    await expect(head).toHaveAttribute('aria-expanded', 'false');
+    const exp = disco.locator('[data-mb-dg-sec="a-c-Producer"] .mb-dg-exp').first();
+    await tapLink(page, exp);
+    await expect(disco.locator('[data-mb-dg-sec="a-c-Producer"] .mb-dg-nt tr')).toHaveCount(12, { timeout: 10000 });
+
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+    await tapLink(page, page.locator(`table.tbl a[href="${LABEL}"]`).first());
+    const rel = dialog.locator('[data-mb-dg-disco="label"]');
+    await expect(rel.locator('.mb-dg-counts').first()).toHaveText(/^100 of 396,611 loaded/, { timeout: 10000 });
+    await tapLink(page, rel.getByRole('button', { name: 'Oldest first' }));
+    await expect(rel.getByRole('button', { name: 'Oldest first' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(rel.locator('tbody > tr').first()).toContainText('Young Man With A Horn', { timeout: 10000 });
+    expect(seen.navigations, 'the page stays').toEqual([]);
+    expect(seen.errors).toEqual([]);
+});

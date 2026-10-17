@@ -11,7 +11,7 @@ as the text the API sent. A spec hands them to the GM_xmlhttpRequest stub
 
 Politeness, per the sites' own pages (read 2026-10-08 for U0): an
 identifying User-Agent (and Wikimedia's Api-User-Agent), one request per
-1.1 s overall, Discogs well inside its 25 a minute without a token. No token
+1.1 s overall (2.6 s for Discogs, inside its 25 a minute without a token). No token
 is sent, so the fixtures are what a user without one gets.
 
 usage: python3 scripts/capture-ext-fixtures.py [--list] [name ...]
@@ -26,6 +26,7 @@ import urllib.request
 
 UA = 'ShowAllEntityData-ext-fixtures/1.0 ( info@volkerzell.de )'
 SPACING_S = 1.1
+DISCOGS_SPACING_S = 2.6
 OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tests', 'fixtures')
 WP = 'https://en.wikipedia.org/api/rest_v1/page/summary/'
 WD = ('https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&ids={}'
@@ -57,6 +58,21 @@ FIXTURES = {
     # The master's versions, as _extDiscogsVersionsLoad() asks for them
     # (2026-10-17): 100 a page, 387 versions = 4 pages.
     **{f'discogs-master-versions-p{p}': DG + f'masters/26725/versions?per_page=100&page={p}' for p in range(1, 5)},
+    # The artist and label windows' lists, as _extDgListLoad() asks for them
+    # (2026-10-18). Max Weinberg (254876): 528 rows = 6 pages holding every
+    # kind of role in Discogs' order (Main, Producer, Mixed by, Appearance
+    # over pages 1-5, TrackAppearance, UnofficialRelease on pages 5-6).
+    'discogs-artist-small': DG + 'artists/254876',
+    **{f'discogs-artist-small-p{p}': DG + f'artists/254876/releases?sort=year&sort_order=asc&per_page=100&page={p}'
+       for p in range(1, 7)},
+    # Bruce Springsteen's page 1 of 68: every section but Releases "so far".
+    'discogs-artist-releases-p1': DG + 'artists/219986/releases?sort=year&sort_order=asc&per_page=100&page=1',
+    # Columbia: newest first, pages 1-6 (page 1, then one batch of 5), and oldest first, page 1.
+    **{f'discogs-label-releases-desc-p{p}': DG + f'labels/1866/releases?sort=year&sort_order=desc&per_page=100&page={p}'
+       for p in range(1, 7)},
+    'discogs-label-releases-asc-p1': DG + 'labels/1866/releases?sort=year&sort_order=asc&per_page=100&page=1',
+    # A master row's "versions" in Max Weinberg's list (John Eddie, Producer): page 1.
+    'discogs-master-450426-versions-p1': DG + 'masters/450426/versions?per_page=100&page=1',
 }
 
 _last = [0.0]
@@ -67,7 +83,7 @@ def get(url, attempts=4):
     headers = {'User-Agent': UA, 'Api-User-Agent': UA, 'Accept': 'application/json'}
     status, ctype, body = 0, '', b''
     for attempt in range(1, attempts + 1):
-        wait = _last[0] + SPACING_S - time.time()
+        wait = _last[0] + (DISCOGS_SPACING_S if url.startswith(DG) else SPACING_S) - time.time()
         if wait > 0:
             time.sleep(wait)
         _last[0] = time.time()

@@ -18994,7 +18994,7 @@
             .mb-dp-dialog .mb-dg-fc[aria-pressed="true"] .mb-dg-n { color: #d9cfbd; }
             .mb-dp-dialog .mb-dg-fc.mb-dg-more { color: #2f5f9e; border-style: dashed; }
             .mb-dp-dialog .mb-dg-vtools { margin: 6px 0; }
-            .mb-dp-dialog .mb-dg-vq { font: 13.5px Georgia, "Times New Roman", serif; padding: 3px 8px; border: 1px solid #d9cfbd; border-radius: 3px; width: min(340px, 100%); background: #fff; color: #2b2622; }
+            .mb-dp-dialog .mb-dg-vq, .mb-dp-dialog .mb-dg-aq, .mb-dp-dialog .mb-dg-lq { font: 13.5px Georgia, "Times New Roman", serif; padding: 3px 8px; border: 1px solid #d9cfbd; border-radius: 3px; width: min(340px, 100%); background: #fff; color: #2b2622; }
             .mb-dp-dialog .mb-dg-vwrap { overflow: auto; max-height: 460px; border: 1px solid #d9cfbd; border-radius: 3px; background: #fff; }
             .mb-dp-dialog .mb-dg-vt { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
             .mb-dp-dialog .mb-dg-vt th {
@@ -19012,6 +19012,54 @@
             .mb-dp-dialog .mb-dg-yr { white-space: nowrap; }
             .mb-dp-dialog .mb-dg-empty { padding: 14px; font-style: italic; color: #7a6d5c; }
             #mb-dp-peek .mb-dg-sum { margin-top: 4px; }
+            /* The Discogs artist and label windows (_extDgEntityWindow): the profile, the names,
+               and an artist's discography or a label's releases below both columns */
+            .mb-dp-dialog .mb-dg-profile { white-space: pre-wrap; max-height: 15em; overflow: auto; padding-right: 6px; }
+            .mb-dp-dialog .mb-dg-profile.mb-dg-whole { max-height: none; }
+            .mb-dp-dialog .mb-dg-names a { white-space: nowrap; }
+            .mb-dp-dialog .mb-dg-inact, .mb-dp-dialog .mb-dg-inact a { color: #7a6d5c; }
+            .mb-dp-dialog .mb-dg-sites { font: 12px ui-monospace, Consolas, monospace; word-break: break-all; }
+            .mb-dp-dialog .mb-dg-contact { white-space: pre-wrap; }
+            .mb-dp-dialog .mb-dg-disco { border-top: 1px solid #d9cfbd; padding-top: 10px; }
+            .mb-dp-dialog .mb-dg-disco > h3 { margin: 0 0 6px; font: 600 12px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; color: #2b2622; }
+            .mb-dp-dialog .mb-dg-disco .mb-dg-sec h4 { margin: 12px 0 4px; }
+            .mb-dp-dialog .mb-dg-disco > .mb-dg-sec > h4 { color: #2b2622; font-size: 12px; }
+            .mb-dp-dialog .mb-dg-subsec { margin-left: 14px; }
+            .mb-dp-dialog .mb-dg-c.mb-dg-sofar { color: #2f5f9e; }
+            .mb-dp-dialog .mb-dg-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font: 11.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #7a6d5c; margin: 3px 0; }
+            .mb-dp-dialog .mb-dg-legend i { display: inline-block; width: 12px; height: 7px; border-radius: 1px; margin-right: 4px; background: #e6dfd1; }
+            .mb-dp-dialog .mb-dg-legend i.mb-dg-seg-cache { background: repeating-linear-gradient(135deg, #3f7a3a 0 3px, #cfe2cb 3px 6px); }
+            .mb-dp-dialog .mb-dg-legend i.mb-dg-seg-loaded { background: #3f7a3a; }
+            .mb-dp-dialog .mb-dg-legend i.mb-dg-seg-failed { background: #9b2218; }
+            .mb-dp-dialog .mb-dg-legend i.mb-dg-seg-queued { background: #cfd9e8; }
+            .mb-dp-dialog .mb-dg-tools { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin: 8px 0 4px; }
+            .mb-dp-dialog .mb-dg-seg { display: inline-flex; }
+            .mb-dp-dialog .mb-dg-seg button {
+                font: 600 10.5px/1.5 system-ui, -apple-system, "Segoe UI", Arial, sans-serif; letter-spacing: 0.05em; text-transform: uppercase;
+                border: 1px solid #d9cfbd; background: #fff; color: #2b2622; padding: 2px 9px; cursor: pointer;
+            }
+            .mb-dp-dialog .mb-dg-seg button + button { border-left: 0; }
+            .mb-dp-dialog .mb-dg-seg button:first-child { border-radius: 3px 0 0 3px; }
+            .mb-dp-dialog .mb-dg-seg button:last-child { border-radius: 0 3px 3px 0; }
+            .mb-dp-dialog .mb-dg-seg button[aria-pressed="true"] { background: #2b2622; color: #fbf8f1; border-color: #2b2622; }
+            .mb-dp-dialog .mb-dg-seg button[disabled] { opacity: 0.5; cursor: default; }
+            .mb-dp-dialog .mb-dg-lt tbody tr { cursor: auto; }
+            .mb-dp-dialog .mb-dg-num { text-align: right; white-space: nowrap; }
+            .mb-dp-dialog .mb-dg-lt .mb-dg-pill { margin-left: 2px; vertical-align: 1px; }
+            .mb-dp-dialog .mb-dg-pill.mb-dg-m { color: #6b4a1f; background: #f6efe1; }
+            .mb-dp-dialog .mb-dg-exp { all: unset; cursor: pointer; margin-left: 8px; font: 12px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #7a6d5c; white-space: nowrap; }
+            .mb-dp-dialog .mb-dg-exp:hover { color: #2b2622; text-decoration: underline; }
+            .mb-dp-dialog .mb-dg-exp:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 1px; }
+            .mb-dp-dialog .mb-dg-vt .mb-dg-nest > td, .mb-dp-dialog .mb-dg-vt .mb-dg-nest:hover > td { background: #fbf8f1; padding: 6px 8px 10px 52px; }
+            .mb-dp-dialog .mb-dg-nt { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+            .mb-dp-dialog .mb-dg-vt .mb-dg-nt td, .mb-dp-dialog .mb-dg-vt .mb-dg-nt tr:hover td { padding: 2px 6px; border-bottom: 1px dotted #d9cfbd; background: transparent; }
+            .mb-dp-dialog .mb-dg-morerow {
+                padding: 6px 8px; font: 12.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #7a6d5c; border-top: 1px solid #d9cfbd; background: #fbf8f1;
+                display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center;
+            }
+            .mb-dp-dialog .mb-dg-state { font: italic 12.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #7a6d5c; margin: 2px 0 6px; }
+            .mb-dp-dialog .mb-dg-box { border: 1px dashed #d9cfbd; border-radius: 4px; padding: 8px 12px; background: #fff; margin-bottom: 6px; }
+            .mb-dp-dialog .mb-dg-warnbox { border: 1px solid #e7d3a1; background: #fcf6e6; border-radius: 4px; padding: 8px 12px; margin: 6px 0 8px; }
             .mb-dp-dialog .mb-dp-note { white-space: pre-wrap; margin-bottom: 6px; }
             .mb-dp-dialog .mb-dp-section { white-space: pre-wrap; }
             /* auto-fit, not auto-fill: the empty tracks collapse, so one disc takes the
@@ -46361,13 +46409,20 @@
      * the whole release and master (tracklist with credits, companies,
      * credits, identifiers, notes, images, videos), which a version-1 record
      * does not carry; 3 since every artist, label and company keeps its
-     * Discogs id, for its link. Only Discogs records are read again.
+     * Discogs id, for its link; 4 since an artist or a label has a window of
+     * its own (profile, images, names with ids, sites: 2026-10-18). Only
+     * Discogs records are read again.
      * @type {number}
      */
-    const _EXT_DISCOGS_VERSION = 3;
+    const _EXT_DISCOGS_VERSION = 4;
 
-    /** How many versions of a master one request asks for: Discogs' own cap (asking for 500 answers 100; probe 2026-10-17). */
-    const _EXT_DISCOGS_VERSIONS_PER_PAGE = 100;
+    /**
+     * How many rows of a list one request asks for (a master's versions, an
+     * artist's discography, a label's releases): Discogs' own cap (asking
+     * for 500 versions answers 100; probe 2026-10-17).
+     * @type {number}
+     */
+    const _EXT_DISCOGS_PER_PAGE = 100;
 
     /**
      * A Discogs name without the " (2)" Discogs adds to tell two artists or
@@ -46477,7 +46532,12 @@
      * videos, and two more facts, the community's have/want and the data
      * quality (after the card's `_EXT_CARD_FACTS`, so the window's only).
      * A master's versions are another request, made by its window only
-     * (`_extDiscogsVersionsLoad()`).
+     * (`_extDgListLoad()`). Since `_EXT_DISCOGS_VERSION` 4 an artist or a
+     * label keeps its window's part too: the profile with its markup, every
+     * image, the names with their ids (members, groups, aliases, name
+     * variations; parent label, sublabels), the sites, a label's contact
+     * info and the data quality. Its discography or its releases are
+     * requests of the window only, as a master's versions.
      *
      * @param {object} t
      * @param {function(): boolean} wanted
@@ -46565,9 +46625,43 @@
                 ['Real name', String(d.realname || '')],
                 ['Members', (d.members || []).length ? String(d.members.length) : ''],
                 ['Groups', (d.groups || []).length ? String(d.groups.length) : ''],
+                ['Aliases', (d.aliases || []).length ? String(d.aliases.length) : ''],
                 ['Parent label', d.parent_label ? String(d.parent_label.name || '').trim() : ''],
                 ['Sublabels', (d.sublabels || []).length ? String(d.sublabels.length) : ''],
             ].filter(f => f[1]);
+            // The card shows the counts above; the window's "Discogs says"
+            // is the reader's own (`_extDiscogsFactsHtml()`), its data quality
+            // the window's only.
+            rec.cardFacts = rec.facts.length;
+            if (d.data_quality) rec.facts.push(['Data quality', String(d.data_quality)]);
+            // Since `_EXT_DISCOGS_VERSION` 4 (2026-10-18): what the artist's
+            // or label's window shows, from the same answer. The profile is
+            // its own section there, with Discogs' links (`descInWindow`);
+            // `images` is every image, the "More images" set included.
+            const images = _extDiscogsImages(d.images);
+            const primary = images.find(i => i.type === 'primary') || images[0];
+            rec.imageFull = primary ? primary.full : '';
+            rec.descInWindow = true;
+            const names = (list) => (list || []).filter(x => x && x.name).map(x => ({
+                name: _extDiscogsName(x.name), id: Number(x.id) || 0, active: x.active !== false,
+            }));
+            rec.discogs = {
+                kind, id: Number(id), images, profile: String(d.profile || '').slice(0, 20000), quality: String(d.data_quality || ''),
+                urls: (d.urls || []).map(u => String(u || '').trim()).filter(u => /^https?:\/\//i.test(u)),
+            };
+            if (kind === 'artist') {
+                Object.assign(rec.discogs, {
+                    realname: String(d.realname || '').trim(), members: names(d.members), groups: names(d.groups), aliases: names(d.aliases),
+                    variations: (d.namevariations || []).map(s => String(s || '').trim()).filter(Boolean),
+                });
+            } else {
+                Object.assign(rec.discogs, {
+                    contact: String(d.contact_info || '').replace(/\r\n?/g, '\n').trim().slice(0, 4000),
+                    parent: d.parent_label && d.parent_label.name
+                        ? { name: _extDiscogsName(d.parent_label.name), id: Number(d.parent_label.id) || 0, active: true } : null,
+                    sublabels: names(d.sublabels),
+                });
+            }
         }
         return { ok: true, data: rec };
     }
@@ -46589,6 +46683,13 @@
     // when it opens; the other pages only on its button, one after the
     // other through the host's gate (`_extDgLoadNext()`). A card never asks
     // for versions.
+    //
+    // An artist's or a label's window (2026-10-18), mockup approved
+    // 2026-10-18: https://claude.ai/artifact/WuBNbFTgNHJtxip4xBv6yc — the
+    // profile, every image (the "More images" set included), the names and
+    // sites from the reader's one answer; below them an artist's discography
+    // (Releases, Appearances, Unofficial, Credits) or a label's releases,
+    // lists of their own that load as the versions do (`_EXT_DG_LISTS`).
 
     /**
      * Sections of a Discogs window the user closed (by id), for this page
@@ -46600,26 +46701,45 @@
     /**
      * What the user did in a Discogs window, by target key, for this page
      * load: the tracks whose credits are open, "all credits", the versions'
-     * filter, chips and sort, whether "Load the other" runs (`chain`), was
-     * stopped, and the pages tried in this run.
+     * filter, chips and sort; an artist's or label's profile shown whole,
+     * the names shown all, the discography's filter, chip, sorts and rows
+     * shown per table, the masters whose versions are open, the label's
+     * order, filter, chip, sort and rows shown; and each list's run of
+     * pages (`runs`, `_extDgRun()`).
      * @type {Map<string, Object>}
      */
     const _extDgUi = new Map();
+
+    /** How many rows an artist's table shows at first; "Show more" adds `_EXT_DG_MORE_ROWS` (the mockup's choice). */
+    const _EXT_DG_ARTIST_ROWS = 150;
+
+    /** How many more rows an artist's table shows per "Show more". */
+    const _EXT_DG_MORE_ROWS = 500;
+
+    /** How many rows a label's table shows before "Show all". */
+    const _EXT_DG_LABEL_ROWS = 200;
+
+    /** How many versions a master row of a discography shows ("Open the master here" shows them all). */
+    const _EXT_DG_NEST_ROWS = 12;
 
     /**
      * A Discogs target's window state (`_extDgUi`), made on first use.
      *
      * @param {object} t
      * @returns {{open: Set<number>, allCredits: boolean, q: string, format: string, country: string, decade: string,
-     *   sort: string, dir: number, moreCountries: boolean, chain: boolean, stopped: boolean, tried: Set<number>,
-     *   peeked: boolean}}
+     *   sort: string, dir: number, moreCountries: boolean, runs: Map<string, Object>, profFull: boolean, moreVar: boolean,
+     *   moreSub: boolean, aq: string, atype: string, asort: Object<string, {col: string, dir: number}>,
+     *   alimit: Object<string, number>, mopen: Set<number>, lorder: string, lq: string, lfmt: string,
+     *   lsort: {col: string, dir: number}, llimit: number}}
      */
     function _extDgUiOf(t) {
         let ui = _extDgUi.get(t.key);
         if (!ui) {
             ui = {
                 open: new Set(), allCredits: false, q: '', format: '', country: '', decade: '', sort: 'year', dir: 1,
-                moreCountries: false, chain: false, stopped: false, tried: new Set(), peeked: false,
+                moreCountries: false, runs: new Map(), profFull: false, moreVar: false, moreSub: false,
+                aq: '', atype: '', asort: {}, alimit: {}, mopen: new Set(),
+                lorder: 'desc', lq: '', lfmt: '', lsort: { col: '', dir: 0 }, llimit: _EXT_DG_LABEL_ROWS,
             };
             _extDgUi.set(t.key, ui);
         }
@@ -46627,15 +46747,133 @@
     }
 
     /**
-     * The cache key of one page of a master's versions (memory and
-     * IndexedDB, through `_mbLoad()`).
+     * A year of a Discogs list row as the window shows it: '' for Discogs'
+     * "0" (no known year) or none.
      *
-     * @param {number} masterId
+     * @param {*} y
+     * @returns {string}
+     */
+    function _extDgYear(y) {
+        const s = String(y == null ? '' : y).trim();
+        return /^0*$/.test(s) ? '' : s;
+    }
+
+    /**
+     * A thumbnail URL of a Discogs list row: http(s) only, else ''.
+     *
+     * @param {*} u
+     * @returns {string}
+     */
+    function _extDgThumb(u) {
+        return /^https?:\/\//i.test(u || '') ? String(u) : '';
+    }
+
+    /**
+     * The paged lists of the Discogs window, `_EXT_DISCOGS_PER_PAGE` rows a
+     * request, each named by its kind and `sub` (the id part of its keys):
+     *   - `versions`: a master's versions (`sub` the master's id); page 1
+     *     also counts ALL versions by format, country and year (`facets`);
+     *   - `artist`: an artist's discography (`sub` the artist's id), which
+     *     Discogs orders by role, then year (probe 2026-10-17,
+     *     scripts/probe-discogs-artist-label.py: Bruce Springsteen's 6,782
+     *     rows run Main p1–4, Producer and Co-producer p4–5, Appearance
+     *     p5–33, TrackAppearance p33–48, UnofficialRelease p48–68); a row is
+     *     a master (no format, no label) or a release;
+     *   - `label`: a label's releases (`sub` "<id>:desc" or "<id>:asc", by
+     *     year; releases only, no masters), asked `batch` pages a click, as a
+     *     large label has thousands (Columbia: 396,608 rows, 3,967 pages).
+     *
+     * @type {Object<string, {key: function(string, number): string, url: function(string, number): string, field: string,
+     *   what: string, row: function(Object): Object, facets?: function(Object): Object, batch?: number}>}
+     */
+    const _EXT_DG_LISTS = {
+        versions: {
+            key: (sub, page) => `ext:discogs-versions:${sub}:${page}`,
+            url: (sub, page) => `https://api.discogs.com/masters/${sub}/versions?per_page=${_EXT_DISCOGS_PER_PAGE}&page=${page}`,
+            field: 'versions',
+            what: 'a list of versions',
+            row: v => ({
+                id: Number(v.id) || 0, title: String(v.title || '').trim(), format: String(v.format || '').trim(),
+                label: _extDiscogsName(v.label), catno: String(v.catno || '').trim(), country: String(v.country || '').trim(),
+                // Discogs writes "0" for a version of no known year.
+                year: _extDgYear(v.released), major: (v.major_formats || []).map(String), thumb: _extDgThumb(v.thumb),
+            }),
+            facets: (d) => {
+                const avail = (d.filters && d.filters.available) || {};
+                const counts = (o) => (o && typeof o === 'object'
+                    ? Object.fromEntries(Object.entries(o).filter(([, n]) => typeof n === 'number')) : {});
+                return { format: counts(avail.format), country: counts(avail.country), released: counts(avail.released) };
+            },
+        },
+        artist: {
+            key: (sub, page) => `ext:discogs-artist-releases:${sub}:${page}`,
+            url: (sub, page) => `https://api.discogs.com/artists/${sub}/releases?sort=year&sort_order=asc&per_page=${_EXT_DISCOGS_PER_PAGE}&page=${page}`,
+            field: 'releases',
+            what: 'a discography',
+            row: (r) => {
+                const c = (r.stats && r.stats.community) || {};
+                return {
+                    id: Number(r.id) || 0, master: r.type === 'master', role: String(r.role || '').trim(),
+                    title: String(r.title || '').trim(), artist: _extDiscogsName(r.artist), year: _extDgYear(r.year),
+                    format: String(r.format || '').trim(), label: _extDiscogsName(r.label), thumb: _extDgThumb(r.thumb),
+                    have: Number(c.in_collection) || 0, want: Number(c.in_wantlist) || 0,
+                };
+            },
+        },
+        label: {
+            key: (sub, page) => `ext:discogs-label-releases:${sub}:${page}`,
+            url: (sub, page) => {
+                const [id, order] = String(sub).split(':');
+                return `https://api.discogs.com/labels/${id}/releases?sort=year&sort_order=${order}&per_page=${_EXT_DISCOGS_PER_PAGE}&page=${page}`;
+            },
+            field: 'releases',
+            what: 'a list of releases',
+            batch: 5,
+            row: r => ({
+                id: Number(r.id) || 0, title: String(r.title || '').trim(), artist: _extDiscogsName(r.artist), year: _extDgYear(r.year),
+                format: String(r.format || '').trim(), catno: String(r.catno || '').trim(), thumb: _extDgThumb(r.thumb),
+            }),
+        },
+    };
+
+    /**
+     * One list of `_EXT_DG_LISTS`, as the functions below take it.
+     *
+     * @param {string} kind - 'versions', 'artist' or 'label'.
+     * @param {number|string} sub - The id part of its keys.
+     * @returns {{kind: string, sub: string}}
+     */
+    function _extDgList(kind, sub) {
+        return { kind, sub: String(sub) };
+    }
+
+    /**
+     * The cache key of one page of a list (memory and IndexedDB, through
+     * `_mbLoad()`).
+     *
+     * @param {{kind: string, sub: string}} list
      * @param {number} page - From 1.
      * @returns {string}
      */
-    function _extDgVersionsKey(masterId, page) {
-        return `ext:discogs-versions:${masterId}:${page}`;
+    function _extDgListKey(list, page) {
+        return _EXT_DG_LISTS[list.kind].key(list.sub, page);
+    }
+
+    /**
+     * A list's run of pages in a target's window, made on first use: whether
+     * "Load the other" runs (`chain`), was stopped, the pages tried in this
+     * run, the last page it may ask (`upTo`, 0 for all: a label's batch),
+     * and whether the cached pages were looked up.
+     *
+     * @param {object} t
+     * @param {{kind: string, sub: string}} list
+     * @returns {{chain: boolean, stopped: boolean, tried: Set<number>, upTo: number, peeked: boolean}}
+     */
+    function _extDgRun(t, list) {
+        const runs = _extDgUiOf(t).runs;
+        const k = `${list.kind}:${list.sub}`;
+        if (!runs.has(k)) runs.set(k, { chain: false, stopped: false, tried: new Set(), upTo: 0, peeked: false });
+        return runs.get(k);
     }
 
     /**
@@ -46649,24 +46887,40 @@
     }
 
     /**
-     * Loads one page of a master's versions through `_mbLoad()` (memory,
-     * then IndexedDB younger than `_extTtlMs()`, then ONE request through
-     * `_extGet()`: the host's gate, the same headers as the reader). Wanted
-     * while the window shows the master and, past page 1, until Stop. Any
-     * answer but a list of versions is a failure (not kept: the button tries
-     * that page again). Called from the window only.
+     * Repaints the window soon, once for several calls in a row (pages read
+     * from IndexedDB arrive together), while it shows this target.
      *
-     * @param {object} t - The master's target.
-     * @param {number} masterId
+     * @param {object} t
+     * @returns {void}
+     */
+    function _extDgRepaintSoon(t) {
+        const ui = _extDgUiOf(t);
+        if (ui.repaintTimer) return;
+        ui.repaintTimer = setTimeout(() => {
+            ui.repaintTimer = 0;
+            if (_dpDialog.repaint && _extDgShowing(t)) _dpDialog.repaint();
+        }, 30);
+    }
+
+    /**
+     * Loads one page of a list through `_mbLoad()` (memory, then IndexedDB
+     * younger than `_extTtlMs()`, then ONE request through `_extGet()`: the
+     * host's gate, the same headers as the reader). Wanted while the window
+     * shows the target and, past page 1, until Stop. Any answer but the
+     * list's rows is a failure (not kept: the button tries that page again).
+     * Called from the window only.
+     *
+     * @param {object} t - The window's target.
+     * @param {{kind: string, sub: string}} list
      * @param {number} page
      * @param {{force?: boolean, repaint?: ?function(): void}} [opts]
      * @returns {void}
      */
-    function _extDiscogsVersionsLoad(t, masterId, page, { force = false, repaint = null } = {}) {
-        const ui = _extDgUiOf(t);
-        const url = `https://api.discogs.com/masters/${masterId}/versions?per_page=${_EXT_DISCOGS_VERSIONS_PER_PAGE}&page=${page}`;
-        _mbLoad(_extDgVersionsKey(masterId, page), async (wanted) => {
-            const res = await _extGet(url, { wanted, fetchOpts: { accept: /\bjson\b/i, headers: _extDiscogsHeaders() } });
+    function _extDgListLoad(t, list, page, { force = false, repaint = null } = {}) {
+        const spec = _EXT_DG_LISTS[list.kind];
+        const run = _extDgRun(t, list);
+        _mbLoad(_extDgListKey(list, page), async (wanted) => {
+            const res = await _extGet(spec.url(list.sub, page), { wanted, fetchOpts: { accept: /\bjson\b/i, headers: _extDiscogsHeaders() } });
             if (res.skipped) {
                 // `_mbLoad()` forgets a skipped load without a word: tell the
                 // window once it has (Stop before this page's slot came up),
@@ -46675,98 +46929,117 @@
                 return { skipped: true };
             }
             const d = res.status === 200 && !_extBotCheck(res) ? _extJson(res) : null;
-            if (!d || !Array.isArray(d.versions)) {
+            const rows = d && d[spec.field];
+            if (!Array.isArray(rows)) {
                 const out = _extApiOutcome(t, res, 'Discogs', '');
                 return {
                     ok: false,
                     detail: out && !out.ok ? out.detail
-                        : res.status === 200 ? 'Discogs answered, but not with a list of versions' : `Discogs answered HTTP ${res.status}`,
+                        : res.status === 200 ? `Discogs answered, but not with ${spec.what}` : `Discogs answered HTTP ${res.status}`,
                 };
             }
             const p = d.pagination || {};
-            const avail = (d.filters && d.filters.available) || {};
-            const counts = (o) => (o && typeof o === 'object'
-                ? Object.fromEntries(Object.entries(o).filter(([, n]) => typeof n === 'number')) : {});
             return {
                 ok: true,
                 data: {
-                    page, pages: Math.max(1, Number(p.pages) || 1), items: Number(p.items) || d.versions.length,
-                    rows: d.versions.map(v => ({
-                        id: Number(v.id) || 0, title: String(v.title || '').trim(), format: String(v.format || '').trim(),
-                        label: _extDiscogsName(v.label), catno: String(v.catno || '').trim(), country: String(v.country || '').trim(),
-                        // Discogs writes "0" for a version of no known year.
-                        year: /^0*$/.test(String(v.released || '').trim()) ? '' : String(v.released).trim(),
-                        major: (v.major_formats || []).map(String),
-                        thumb: /^https?:\/\//i.test(v.thumb || '') ? v.thumb : '',
-                    })).filter(v => v.id),
-                    facets: page === 1 ? { format: counts(avail.format), country: counts(avail.country), released: counts(avail.released) } : null,
+                    page, pages: Math.max(1, Number(p.pages) || 1), items: Number(p.items) || rows.length,
+                    rows: rows.map(spec.row).filter(r => r.id),
+                    facets: page === 1 && spec.facets ? spec.facets(d) : null,
                 },
             };
         }, {
-            force, repaint, wanted: () => _extDgShowing(t) && (page === 1 || !ui.stopped),
+            force, repaint, wanted: () => _extDgShowing(t) && (page === 1 || !run.stopped),
             version: _EXT_IDB_VERSION * 100 + _EXT_DISCOGS_VERSION, ttlMs: _extTtlMs(),
         });
     }
 
     /**
-     * "Load the other N": the next page of versions not tried in this run
-     * (none yet, or failed), then the next when it has answered — one at a
-     * time, so Stop leaves nothing waiting. Ends when every page was tried,
-     * on Stop, or when the window has moved on (the page is then not asked:
+     * "Load the other N" (a label: "Load 5 more pages"): the next page of a
+     * list not tried in this run (none yet, or failed), up to the run's
+     * `upTo`, then the next when it has answered — one at a time, so Stop
+     * leaves nothing waiting. Ends when every page was tried, on Stop, or
+     * when the window has moved on (the page is then not asked:
      * `_extGet()`'s `wanted()`).
      *
      * @param {object} t
-     * @param {number} masterId
+     * @param {{kind: string, sub: string}} list
      * @returns {void}
      */
-    function _extDgLoadNext(t, masterId) {
-        const ui = _extDgUiOf(t);
-        const first = _mbPop.get(_extDgVersionsKey(masterId, 1));
+    function _extDgLoadNext(t, list) {
+        const run = _extDgRun(t, list);
+        const first = _mbPop.get(_extDgListKey(list, 1));
         const pages = first && first.status === 'done' ? first.data.pages : 0;
+        const last = run.upTo ? Math.min(run.upTo, pages) : pages;
         let next = 0;
-        for (let p = 2; p <= pages && !next; p++) {
-            const st = _mbPop.get(_extDgVersionsKey(masterId, p));
-            if (!ui.tried.has(p) && (!st || st.status === 'failed')) next = p;
+        for (let p = 2; p <= last && !next; p++) {
+            const st = _mbPop.get(_extDgListKey(list, p));
+            if (!run.tried.has(p) && (!st || st.status === 'failed')) next = p;
         }
-        if (!next || ui.stopped || !_extDgShowing(t)) {
-            ui.chain = false;
+        if (!next || run.stopped || !_extDgShowing(t)) {
+            run.chain = false;
             if (_dpDialog.repaint && _extDgShowing(t)) _dpDialog.repaint();
             return;
         }
-        ui.tried.add(next);
-        const key = _extDgVersionsKey(masterId, next);
+        run.tried.add(next);
+        const key = _extDgListKey(list, next);
         const after = () => {
             if (_dpDialog.repaint && _extDgShowing(t)) _dpDialog.repaint();
             const st = _mbPop.get(key);
-            if (!st || st.status !== 'loading') _extDgLoadNext(t, masterId);
+            if (!st || st.status !== 'loading') _extDgLoadNext(t, list);
         };
-        _extDiscogsVersionsLoad(t, masterId, next, { repaint: after });
+        _extDgListLoad(t, list, next, { repaint: after });
     }
 
     /**
-     * The pages of versions a later visit already has in IndexedDB, read
-     * into memory once page 1 is there (no request: a page not cached stays
-     * for the button). Once per target and page load.
+     * Starts a run of a list's pages (a button), up to `upTo` (0: all).
      *
      * @param {object} t
-     * @param {number} masterId
+     * @param {{kind: string, sub: string}} list
+     * @param {number} upTo
+     * @returns {void}
+     */
+    function _extDgStartRun(t, list, upTo) {
+        Object.assign(_extDgRun(t, list), { chain: true, stopped: false, tried: new Set(), upTo });
+        _extDgLoadNext(t, list);
+    }
+
+    /**
+     * The pages of a list a later visit already has in IndexedDB, read into
+     * memory once page 1 is there (no request: a page not cached stays for
+     * the button). Once per target, list and page load. A label's pages are
+     * read in order and only up to the first one not kept: its batches start
+     * at page 1, and it has thousands.
+     *
+     * @param {object} t
+     * @param {{kind: string, sub: string}} list
      * @param {number} pages
      * @returns {void}
      */
-    function _extDgPeekCached(t, masterId, pages) {
-        const ui = _extDgUiOf(t);
-        if (ui.peeked) return;
-        ui.peeked = true;
+    function _extDgPeekCached(t, list, pages) {
+        const run = _extDgRun(t, list);
+        if (run.peeked) return;
+        run.peeked = true;
         const version = _EXT_IDB_VERSION * 100 + _EXT_DISCOGS_VERSION;
-        for (let p = 2; p <= pages; p++) {
-            const key = _extDgVersionsKey(masterId, p);
-            if (_mbPop.get(key)) continue;
-            _rgIdbGet(key, version, _extTtlMs()).then((rec) => {
-                if (!rec || _mbPop.get(key)) return;
-                _mbPop.set(key, { status: 'done', data: rec.data, at: rec.at, cached: true, detail: '', listeners: new Set(), wants: [] });
-                if (_dpDialog.repaint && _extDgShowing(t)) _dpDialog.repaint();
+        const peek = (p) => {
+            const key = _extDgListKey(list, p);
+            if (_mbPop.get(key)) return Promise.resolve(true);
+            return _rgIdbGet(key, version, _extTtlMs()).then((rec) => {
+                if (!rec) return false;
+                if (!_mbPop.get(key)) {
+                    _mbPop.set(key, { status: 'done', data: rec.data, at: rec.at, cached: true, detail: '', listeners: new Set(), wants: [] });
+                    _extDgRepaintSoon(t);
+                }
+                return true;
             });
+        };
+        if (_EXT_DG_LISTS[list.kind].batch) {
+            const step = (p) => {
+                if (p <= pages) peek(p).then((kept) => { if (kept) step(p + 1); });
+            };
+            step(2);
+            return;
         }
+        for (let p = 2; p <= pages; p++) peek(p);
     }
 
     /**
@@ -46776,18 +47049,33 @@
      * window, `_extDgDrill()`), `[a=Name]`/`[l=Name]` as the name, id-only
      * references and `[b]`/`[i]`/`[u]` dropped.
      *
+     * With `names` (an artist's or a label's profile, 2026-10-18), the names
+     * are links too: `[a123]`/`[l123]` to that artist or label (shown in the
+     * window), `[a=Name]`/`[l=Name]` to Discogs' search for the name in a new
+     * tab — the markup gives no id, so no page the window could read.
+     *
      * @param {string} s
+     * @param {{names?: boolean}} [opts]
      * @returns {string}
      */
-    function _extDiscogsMarkupHtml(s) {
+    function _extDiscogsMarkupHtml(s, { names = false } = {}) {
         const link = (u, text) => `<a href="${u}" target="_blank" rel="noopener noreferrer">${text}</a>`;
-        return _rgEsc(String(s || '').replace(/\r\n?/g, '\n'))
+        const kindOf = (k) => (k.toLowerCase() === 'a' ? 'artist' : 'label');
+        const raw = (h) => h.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+        let html = _rgEsc(String(s || '').replace(/\r\n?/g, '\n'))
             .replace(/\[url=(https?:\/\/[^\]\s]+)\]([\s\S]*?)\[\/url\]/gi, (_, u, text) => link(u, text))
             .replace(/\[url\](https?:\/\/[^[\s]+)\[\/url\]/gi, (_, u) => link(u, u))
             .replace(/\[([rm])=?(\d+)\]/gi, (_, k, n) => {
                 const kind = k.toLowerCase() === 'r' ? 'release' : 'master';
                 return link(`https://www.discogs.com/${kind}/${n}`, `${kind} ${n}`);
-            })
+            });
+        if (names) {
+            html = html
+                .replace(/\[([al])(\d+)\]/gi, (_, k, n) => _extDgLink(kindOf(k), Number(n), `${kindOf(k)} ${n}`))
+                .replace(/\[([al])=([^\]]+)\]/gi, (_, k, name) => `<a href="https://www.discogs.com/search/?q=${encodeURIComponent(raw(name))}&amp;type=${kindOf(k)}" ` +
+                    `target="_blank" rel="noopener noreferrer" data-mb-tip title="Search Discogs for the ${kindOf(k)} ${name}">${name}</a>`);
+        }
+        return html
             .replace(/\[(?:a|l)=([^\]]+)\]/gi, '$1')
             .replace(/\[(?:a|l)\d+\]/gi, '')
             .replace(/\[\/?[biu]\]/gi, '')
@@ -46801,15 +47089,16 @@
      *
      * @param {string} id
      * @param {string} title
-     * @param {?number} count - null for none.
+     * @param {?(number|string)} count - null for none; a string as written ("12 so far").
      * @param {string} body - HTML.
      * @param {string} [act] - HTML of the heading's action button.
+     * @param {string} [countCls] - A class of the count ('mb-dg-sofar': still loading).
      * @returns {string}
      */
-    function _extDgSection(id, title, count, body, act = '') {
+    function _extDgSection(id, title, count, body, act = '', countCls = '') {
         const open = !_extDgCollapsed.has(id);
-        return `<section class="mb-dg-sec" data-mb-dg-sec="${id}"><h4><button type="button" class="mb-dg-xh" aria-expanded="${open}">` +
-            `${_rgEsc(title)}${count != null ? ` <span class="mb-dg-c">${count}</span>` : ''}</button>` +
+        return `<section class="mb-dg-sec" data-mb-dg-sec="${_rgEsc(id)}"><h4><button type="button" class="mb-dg-xh" aria-expanded="${open}">` +
+            `${_rgEsc(title)}${count != null ? ` <span class="mb-dg-c${countCls ? ` ${countCls}` : ''}">${count}</span>` : ''}</button>` +
             `${open && act ? `<span class="mb-dg-act">${act}</span>` : ''}</h4>${open ? body : ''}</section>`;
     }
 
@@ -46854,6 +47143,7 @@
     function _extDiscogsFactsHtml(t, rec, facts) {
         const dg = rec.discogs;
         if (!dg) return _dpFieldsHtml(facts);
+        if (dg.kind === 'artist' || dg.kind === 'label') return _extDgEntityFactsHtml(t, rec);
         const artists = (dg.artists || []).map(a => `${_extDgNameHtml(a)}${a.join ? ` ${_rgEsc(a.join)}` : ''}`).join(' ')
             .replace(/\s+,/g, ',');
         const labels = (dg.labels || []).map(l => `${_extDgLink('label', l.id, _rgEsc(l.name))}${l.catno ? ` – ${_rgEsc(l.catno)}` : ''}`).join('; ');
@@ -46863,6 +47153,41 @@
             return String(v).split('\n').map(_mbttEscape).join('<br>');
         };
         return '<dl class="mb-dp-kv">' + facts.map(([k, v]) => `<dt>${_mbttEscape(k)}</dt><dd>${value(k, v)}</dd>`).join('') + '</dl>';
+    }
+
+    /**
+     * The window's "Discogs says" of an artist or a label, the names linked
+     * to their Discogs pages: an artist's real name, members, groups (a
+     * group no longer active muted), aliases, name variations (ten, then
+     * "+N more") and data quality; a label's parent label, how many releases
+     * it has once its window has read page 1, and data quality.
+     *
+     * @param {object} t
+     * @param {Object} rec
+     * @returns {string}
+     */
+    function _extDgEntityFactsHtml(t, rec) {
+        const dg = rec.discogs;
+        const ui = _extDgUiOf(t);
+        const rows = [];
+        if (dg.kind === 'artist') {
+            if (dg.realname) rows.push(['Real name', _rgEsc(dg.realname)]);
+            if (dg.members.length) rows.push(['Members', _extDgNamesHtml(dg.members, 'artist')]);
+            if (dg.groups.length) rows.push(['In groups', _extDgNamesHtml(dg.groups, 'artist')]);
+            if (dg.aliases.length) rows.push(['Aliases', _extDgNamesHtml(dg.aliases, 'artist')]);
+            if (dg.variations.length) {
+                const n = dg.variations.length;
+                rows.push(['Variations', (ui.moreVar ? dg.variations : dg.variations.slice(0, 10)).map(_rgEsc).join(', ') +
+                    (n > 10 ? ` <button type="button" class="mb-dg-btn" data-mb-dg-act="morevar">${ui.moreVar ? 'fewer' : `+${n - 10} more`}</button>` : '')]);
+            }
+        } else {
+            if (dg.parent) rows.push(['Parent label', _extDgNamesHtml([dg.parent], 'label')]);
+            const st = ['desc', 'asc'].map(o => _mbPop.get(_extDgListKey(_extDgList('label', `${dg.id}:${o}`), 1)))
+                .find(x => x && x.status === 'done');
+            if (st) rows.push(['Releases', _extDgNum(st.data.items)]);
+        }
+        if (dg.quality) rows.push(['Data quality', _rgEsc(dg.quality)]);
+        return '<dl class="mb-dp-kv">' + rows.map(([k, v]) => `<dt>${_mbttEscape(k)}</dt><dd>${v}</dd>`).join('') + '</dl>';
     }
 
     /**
@@ -46892,13 +47217,15 @@
      * same file, counted once).
      *
      * @param {Object[]} images - `_extDiscogsImages()`.
+     * @param {string} [primary] - The primary image's caption: 'front' (a
+     *   release's cover), 'primary' (an artist's or a label's picture).
      * @returns {string}
      */
-    function _extDgImagesHtml(images) {
+    function _extDgImagesHtml(images, primary = 'front') {
         return '<div class="mb-dp-gallery">' + images.map((im, i) =>
             `<a href="${_rgEsc(im.full)}" target="_blank" rel="noopener noreferrer" data-mb-artv-ext="${i + 1}">` +
             `<img src="${_rgEsc(im.thumb)}" alt="" referrerpolicy="no-referrer" loading="lazy">` +
-            `<span>${i === 0 && im.type === 'primary' ? 'front' : `image ${i + 1}`}</span></a>`).join('') + '</div>';
+            `<span>${i === 0 && im.type === 'primary' ? primary : `image ${i + 1}`}</span></a>`).join('') + '</div>';
     }
 
     /**
@@ -46958,33 +47285,55 @@
     }
 
     /**
-     * Every page of a master's versions as the window shows it: `running`
-     * (its request under way), `queued` ("Load the other" will ask it),
-     * `failed`, `cache` (read from IndexedDB), `loaded`, or `none`.
+     * Every page of a list as the window shows it: `running` (its request
+     * under way), `queued` (the run will ask it), `failed`, `cache` (read
+     * from IndexedDB), `loaded`, or `none`. A label's list (`batch`) shows
+     * only the pages it has or its run will ask, not its thousands.
      *
      * @param {object} t
-     * @param {number} masterId
+     * @param {{kind: string, sub: string}} list
      * @returns {{first: ?Object, pages: number, items: number,
      *   list: Array<{page: number, s: string, rows: number, st: ?Object}>}}
      */
-    function _extDgVersionsState(t, masterId) {
-        const ui = _extDgUiOf(t);
-        const first = _mbPop.get(_extDgVersionsKey(masterId, 1)) || null;
+    function _extDgListState(t, list) {
+        const run = _extDgRun(t, list);
+        const first = _mbPop.get(_extDgListKey(list, 1)) || null;
         const done1 = first && first.status === 'done';
         const pages = done1 ? first.data.pages : 1;
         const items = done1 ? first.data.items : 0;
-        const list = [];
-        for (let p = 1; p <= pages; p++) {
-            const st = _mbPop.get(_extDgVersionsKey(masterId, p)) || null;
+        const running = run.chain && !run.stopped;
+        let shown = pages;
+        if (_EXT_DG_LISTS[list.kind].batch) {
+            shown = 1;
+            for (let p = 2; p <= pages; p++) if (_mbPop.get(_extDgListKey(list, p))) shown = p;
+            if (running && run.upTo) shown = Math.max(shown, Math.min(pages, run.upTo));
+        }
+        const out = [];
+        for (let p = 1; p <= shown; p++) {
+            const st = _mbPop.get(_extDgListKey(list, p)) || null;
             let s = 'none';
             if (st && st.status === 'loading') s = 'running';
             else if (st && st.status === 'failed') s = 'failed';
             else if (st && st.status === 'done') s = st.cached ? 'cache' : 'loaded';
-            else if (ui.chain && !ui.stopped && !ui.tried.has(p)) s = 'queued';
-            const rows = done1 ? Math.max(0, Math.min(_EXT_DISCOGS_VERSIONS_PER_PAGE, items - (p - 1) * _EXT_DISCOGS_VERSIONS_PER_PAGE)) : 0;
-            list.push({ page: p, s, rows, st });
+            else if (running && !run.tried.has(p) && (!run.upTo || p <= run.upTo)) s = 'queued';
+            const rows = done1 ? Math.max(0, Math.min(_EXT_DISCOGS_PER_PAGE, items - (p - 1) * _EXT_DISCOGS_PER_PAGE)) : 0;
+            out.push({ page: p, s, rows, st });
         }
-        return { first, pages, items, list };
+        return { first, pages, items, list: out };
+    }
+
+    /**
+     * The rows of a list's loaded pages, in Discogs' order.
+     *
+     * @param {{list: Array<{st: ?Object}>}} vs - `_extDgListState()`.
+     * @returns {Object[]}
+     */
+    function _extDgLoadedRows(vs) {
+        const all = [];
+        vs.list.forEach((x) => {
+            if (x.st && x.st.status === 'done') all.push(...x.st.data.rows);
+        });
+        return all;
     }
 
     /**
@@ -46996,10 +47345,7 @@
      */
     function _extDgVersionRows(t, masterId) {
         const ui = _extDgUiOf(t);
-        const all = [];
-        _extDgVersionsState(t, masterId).list.forEach((x) => {
-            if (x.st && x.st.status === 'done') all.push(...x.st.data.rows);
-        });
+        const all = _extDgLoadedRows(_extDgListState(t, _extDgList('versions', masterId)));
         const q = ui.q.trim().toLowerCase();
         const decade = (y) => (parseInt(y, 10) ? `${Math.floor(parseInt(y, 10) / 10) * 10}s` : '');
         const shown = all.filter((v) => {
@@ -47030,7 +47376,7 @@
     function _extDgVersionsListHtml(t, rec) {
         const ui = _extDgUiOf(t);
         const dg = rec.discogs;
-        const { items } = _extDgVersionsState(t, dg.id);
+        const { items } = _extDgListState(t, _extDgList('versions', dg.id));
         const { all, shown } = _extDgVersionRows(t, dg.id);
         const filtered = !!(ui.q.trim() || ui.format || ui.country || ui.decade);
         const linked = _extDgLinkedReleases();
@@ -47072,13 +47418,15 @@
      * @returns {string}
      */
     function _extDgVersionsHtml(t, rec) {
-        const ui = _extDgUiOf(t);
         const dg = rec.discogs;
-        const vs = _extDgVersionsState(t, dg.id);
+        const list = _extDgList('versions', dg.id);
+        const run = _extDgRun(t, list);
+        const ui = _extDgUiOf(t);
+        const vs = _extDgListState(t, list);
         const first = vs.first;
         let body;
         if (!first || first.status === 'loading') {
-            body = `<div class="mb-dg-dim"><span class="mb-dp-spin">◌</span> Asking Discogs for the first ${_EXT_DISCOGS_VERSIONS_PER_PAGE} versions…</div>`;
+            body = `<div class="mb-dg-dim"><span class="mb-dp-spin">◌</span> Asking Discogs for the first ${_EXT_DISCOGS_PER_PAGE} versions…</div>`;
         } else if (first.status === 'failed') {
             body = `<div class="mb-dp-warn">Could not load the versions: ${_rgEsc(first.detail)}.</div>` +
                 '<button type="button" class="mb-dg-btn mb-dg-primary" data-mb-dg-act="vfirst">⟳ Try again</button>';
@@ -47086,7 +47434,7 @@
             const count = (s) => vs.list.filter(x => x.s === s);
             const rowsOf = (list) => list.reduce((n, x) => n + x.rows, 0);
             const failed = count('failed');
-            const busy = count('running').length > 0 || (ui.chain && !ui.stopped);
+            const busy = count('running').length > 0 || (run.chain && !run.stopped);
             const loadedRows = rowsOf(count('loaded')) + rowsOf(count('cache'));
             const todo = vs.list.filter(x => x.s === 'none' || x.s === 'failed');
             const pill = busy ? '<span class="mb-dg-pill mb-dg-run">Running</span>'
@@ -47094,7 +47442,7 @@
                     : loadedRows >= vs.items ? '<span class="mb-dg-pill mb-dg-ok">Done</span>' : '<span class="mb-dg-pill">Idle</span>';
             let btn = '';
             if (busy) {
-                btn = ui.stopped ? '<span class="mb-dg-dim">Stopping after this page…</span>'
+                btn = run.stopped ? '<span class="mb-dg-dim">Stopping after this page…</span>'
                     : '<button type="button" class="mb-dg-btn mb-dg-danger" data-mb-dg-act="vstop">Stop</button>';
             } else if (todo.length) {
                 const secs = Math.ceil(todo.length * _extSpacingMs('api.discogs.com') / 1000);
@@ -47137,9 +47485,528 @@
                 `<div class="mb-dg-vtools"><input type="search" class="mb-dg-vq" value="${_rgEsc(ui.q)}" data-mb-keep-focus="dg-vq" ` +
                 'placeholder="Filter versions: title, label, cat#, country, year" aria-label="Filter versions"></div>' +
                 `<div class="mb-dg-vbody">${_extDgVersionsListHtml(t, rec)}</div>`;
-            _extDgPeekCached(t, dg.id, vs.pages);
+            _extDgPeekCached(t, list, vs.pages);
         }
         return _extDgSection('versions', 'Versions', vs.items || null, body);
+    }
+
+    /**
+     * Asks for page 1 of a list when the window starts, or on the repaint
+     * that brings the target's own record when the window asked for that (a
+     * tap: no card loaded it first) — only then is the id known. Never again
+     * from a repaint once page 1 has a state: a failure waits for its
+     * button. A new visit ends the run of the last one (unless a page of it
+     * is still under way); ⟳ asks every page already loaded again.
+     *
+     * @param {object} t
+     * @param {{kind: string, sub: string}} list
+     * @param {{start: boolean, force: boolean, repaint: function(): void}} how
+     * @returns {void}
+     */
+    function _extDgListStart(t, list, { start, force, repaint }) {
+        if (start || !_mbPop.get(_extDgListKey(list, 1))) _extDgListLoad(t, list, 1, { force, repaint });
+        if (!start) return;
+        const vs = _extDgListState(t, list);
+        if (!vs.list.some(x => x.s === 'running' && x.page > 1)) Object.assign(_extDgRun(t, list), { chain: false, tried: new Set() });
+        if (force) {
+            vs.list.slice(1).filter(x => x.s === 'loaded' || x.s === 'cache')
+                .forEach(x => _extDgListLoad(t, list, x.page, { force: true, repaint }));
+        }
+    }
+
+    /**
+     * A count as the window writes it: "6,782".
+     *
+     * @param {number} n
+     * @returns {string}
+     */
+    function _extDgNum(n) {
+        return Number(n).toLocaleString('en-US');
+    }
+
+    /**
+     * A duration as the window's buttons say it: "13 s", "2 min 48 s",
+     * "2 h 45 min".
+     *
+     * @param {number} ms
+     * @returns {string}
+     */
+    function _extDgDur(ms) {
+        const s = Math.round(ms / 1000);
+        if (s < 90) return `${s} s`;
+        const m = Math.floor(s / 60);
+        const r = s % 60;
+        if (m < 60) return `${m} min${r ? ` ${r} s` : ''}`;
+        return `${Math.floor(m / 60)} h ${m % 60} min`;
+    }
+
+    /**
+     * Names linked to their Discogs pages, comma-separated; a member or
+     * group no longer active muted, with a hover text saying so.
+     *
+     * @param {Array<{name: string, id: number, active: boolean}>} list
+     * @param {string} kind - 'artist' or 'label'.
+     * @returns {string}
+     */
+    function _extDgNamesHtml(list, kind) {
+        return '<span class="mb-dg-names">' + list.map(x => (x.active ? _extDgLink(kind, x.id, _rgEsc(x.name))
+            : `<span class="mb-dg-inact" data-mb-tip title="No longer active">${_extDgLink(kind, x.id, _rgEsc(x.name))}</span>`)).join(', ') + '</span>';
+    }
+
+    /**
+     * The roles of an artist's discography in Discogs' order: Main 0, any
+     * credit (Producer, Co-producer, Mixed by, …) 1, Appearance 2,
+     * TrackAppearance 3, UnofficialRelease 4 (probe 2026-10-17).
+     * @type {Object<string, number>}
+     */
+    const _EXT_DG_ROLE_ORDER = { Main: 0, Appearance: 2, TrackAppearance: 3, UnofficialRelease: 4 };
+
+    /**
+     * A role's place in Discogs' order; 1 for a credit.
+     *
+     * @param {string} role
+     * @returns {number}
+     */
+    function _extDgRoleOrd(role) {
+        return Object.prototype.hasOwnProperty.call(_EXT_DG_ROLE_ORDER, role) ? _EXT_DG_ROLE_ORDER[role] : 1;
+    }
+
+    /**
+     * The sections of an artist's discography, each with its roles (and a
+     * sub-section's title when it has two). The credits follow as their own
+     * section, one sub-section per credit role loaded.
+     * @type {Array<{id: string, title: string, roles: Array<[string, string]>}>}
+     */
+    const _EXT_DG_ARTIST_SECS = [
+        { id: 'a-main', title: 'Releases', roles: [['Main', '']] },
+        { id: 'a-app', title: 'Appearances', roles: [['Appearance', 'On releases'], ['TrackAppearance', 'On tracks']] },
+        { id: 'a-unoff', title: 'Unofficial', roles: [['UnofficialRelease', '']] },
+    ];
+
+    /**
+     * How far a role of an artist's discography is loaded: `done` once the
+     * pages loaded without a gap from page 1 hold a LATER role (Discogs
+     * lists by role, then year), or are all of them; `n` the rows of the
+     * role loaded so far. The role '' stands for every credit role.
+     *
+     * @param {Object} vs - `_extDgListState()`.
+     * @param {Object[]} all - `_extDgLoadedRows(vs)`.
+     * @param {string} role
+     * @returns {{done: boolean, n: number}}
+     */
+    function _extDgRoleState(vs, all, role) {
+        const ord = role ? _extDgRoleOrd(role) : 1;
+        let prefix = 0;
+        while (prefix < vs.list.length && vs.list[prefix].st && vs.list[prefix].st.status === 'done') prefix++;
+        let done = !!vs.first && vs.first.status === 'done' && prefix === vs.pages;
+        for (let i = 0; i < prefix && !done; i++) done = vs.list[i].st.data.rows.some(r => _extDgRoleOrd(r.role) > ord);
+        const n = all.filter(r => (role ? r.role === role : _extDgRoleOrd(r.role) === 1)).length;
+        return { done, n };
+    }
+
+    /**
+     * A section's count while its role loads: the number once complete,
+     * "N so far" before, "…" while none has arrived.
+     *
+     * @param {{done: boolean, n: number}} st
+     * @returns {string}
+     */
+    function _extDgSoFar(st) {
+        if (st.done) return _extDgNum(st.n);
+        return st.n ? `${_extDgNum(st.n)} so far` : '…';
+    }
+
+    /**
+     * The status of a list's pages (an artist's discography, a label's
+     * releases), as the versions show theirs: the pill, the segmented bar,
+     * the one button that applies — Stop; "Try page N again"; an artist's
+     * "Load the other N (K requests, about …)"; a label's "Load 5 more
+     * pages (500 releases, about …)" — and the counts.
+     *
+     * @param {object} t
+     * @param {{kind: string, sub: string}} list
+     * @param {Object} vs - `_extDgListState()`.
+     * @param {string} unit - What a row is: 'entries', 'releases'.
+     * @returns {string}
+     */
+    function _extDgStatusHtml(t, list, vs, unit) {
+        const run = _extDgRun(t, list);
+        const batch = _EXT_DG_LISTS[list.kind].batch || 0;
+        const ref = _rgEsc(`${list.kind}:${list.sub}`);
+        const count = (s) => vs.list.filter(x => x.s === s);
+        const rowsOf = (l) => l.reduce((n, x) => n + x.rows, 0);
+        const failed = count('failed');
+        const busy = count('running').length > 0 || (run.chain && !run.stopped);
+        const loadedRows = rowsOf(count('loaded')) + rowsOf(count('cache'));
+        const pill = busy ? '<span class="mb-dg-pill mb-dg-run">Running</span>'
+            : failed.length ? '<span class="mb-dg-pill mb-dg-warn">Done with errors</span>'
+                : loadedRows >= vs.items ? '<span class="mb-dg-pill mb-dg-ok">Done</span>' : '<span class="mb-dg-pill">Idle</span>';
+        const spacing = _extSpacingMs('api.discogs.com');
+        let btn = '';
+        if (busy) {
+            if (run.chain) {
+                btn = run.stopped ? '<span class="mb-dg-dim">Stopping after this page…</span>'
+                    : `<button type="button" class="mb-dg-btn mb-dg-danger" data-mb-dg-act="lstop" data-mb-dg-list="${ref}">Stop</button>`;
+            }
+        } else {
+            const todo = vs.list.filter(x => x.s === 'none' || x.s === 'failed');
+            const shown = vs.list.length;
+            let what = '';
+            let n = todo.length;
+            if (todo.length && failed.length === todo.length) {
+                what = failed.length === 1 ? `Try page ${failed[0].page} again` : `Try the ${failed.length} failed pages again`;
+            } else if (todo.length) {
+                what = batch ? `Load the ${todo.length} missing page${todo.length === 1 ? '' : 's'}` : `Load the other ${_extDgNum(vs.items - loadedRows)}`;
+            } else if (batch && shown < vs.pages) {
+                n = Math.min(batch, vs.pages - shown);
+                const rows = Math.min(n * _EXT_DISCOGS_PER_PAGE, vs.items - shown * _EXT_DISCOGS_PER_PAGE);
+                what = `Load ${n} more page${n === 1 ? '' : 's'} (${_extDgNum(rows)} ${unit}`;
+            }
+            if (what) {
+                const cost = `${what.includes('(') ? ', ' : ' ('}${what.includes('(') ? '' : `${n} request${n === 1 ? '' : 's'}, `}about ${_extDgDur(n * spacing)})`;
+                btn = `<button type="button" class="mb-dg-btn mb-dg-primary" data-mb-dg-act="lrest" data-mb-dg-list="${ref}">${what}${cost}</button>`;
+            }
+        }
+        const counts = [`${_extDgNum(loadedRows)} of ${_extDgNum(vs.items)} loaded`];
+        const cached = rowsOf(count('cache'));
+        if (cached) counts.push(`${_extDgNum(cached)} from cache`);
+        const queued = rowsOf(count('queued')) + rowsOf(count('running'));
+        if (busy && queued) counts.push(`${_extDgNum(queued)} queued`);
+        if (failed.length) {
+            counts.push(`<span class="mb-dg-bad">${failed.length === 1 ? `page ${failed[0].page}` : `${failed.length} pages`} failed: ` +
+                `${_rgEsc(failed[0].st.detail)}</span>`);
+        }
+        if (batch) counts.push(`one segment = ${_EXT_DISCOGS_PER_PAGE} ${unit}`);
+        const width = batch ? ` style="width: min(${Math.max(40, vs.list.length * 26)}px, 100%)"` : '';
+        return `<div class="mb-dg-vstat">${pill}<span class="mb-dg-bar" aria-hidden="true"${width}>` +
+            vs.list.map(x => `<i class="mb-dg-seg-${x.s}"></i>`).join('') + `</span>${btn}</div>` +
+            `<div class="mb-dg-counts">${counts.join(' · ')}</div>`;
+    }
+
+    /**
+     * The first versions of a master row of a discography (its toggle: one
+     * request, `_EXT_DG_NEST_ROWS` of them shown) and a link that shows the
+     * master in the window, with all of them and the filters.
+     *
+     * @param {object} t
+     * @param {Object} r - The master's row.
+     * @returns {string}
+     */
+    function _extDgNestHtml(t, r) {
+        const st = _mbPop.get(_extDgListKey(_extDgList('versions', r.id), 1));
+        if (!st || st.status === 'loading') {
+            return `<span class="mb-dg-counts"><span class="mb-dp-spin">◌</span> Asking Discogs for the versions of ${_rgEsc(r.title)} (one request)…</span>`;
+        }
+        if (st.status === 'failed') {
+            return `<div class="mb-dp-warn">Could not load the versions: ${_rgEsc(st.detail)}.</div>` +
+                `<button type="button" class="mb-dg-btn mb-dg-primary" data-mb-dg-act="nvretry" data-mb-dg-id="${r.id}">⟳ Try again</button>`;
+        }
+        const rows = st.data.rows.slice(0, _EXT_DG_NEST_ROWS);
+        const items = st.data.items;
+        return `<div class="mb-dg-counts">${_extDgNum(items)} version${items === 1 ? '' : 's'}` +
+            `${items > rows.length ? ` · the first ${rows.length} in Discogs' order` : ''}. ` +
+            `<a href="https://www.discogs.com/master/${r.id}" target="_blank" rel="noopener noreferrer">Open the master here</a> for all of them with filters.</div>` +
+            '<table class="mb-dg-nt">' + rows.map(v => `<tr><td><a href="https://www.discogs.com/release/${v.id}" target="_blank" rel="noopener noreferrer">` +
+                `${_rgEsc(v.title)}</a> <span class="mb-dg-dim">${_rgEsc(v.format)}</span></td>` +
+                `<td>${_rgEsc(v.label)} <span class="mb-dg-cat">${_rgEsc(v.catno)}</span></td><td>${_rgEsc(v.country)}</td>` +
+                `<td class="mb-dg-yr">${_rgEsc(v.year || '—')}</td></tr>`).join('') + '</table>';
+    }
+
+    /**
+     * One role's table of an artist's discography: thumbnail, title (a
+     * master or release pill; a master's "▸ versions" toggle; a release's
+     * format and label), the artist where it is not this one, year, have
+     * and want; sortable, filtered by the discography's filter and chip,
+     * `_EXT_DG_ARTIST_ROWS` rows first and "Show more". Or why it has no
+     * rows yet.
+     *
+     * @param {object} t
+     * @param {Object} rec
+     * @param {Object} vs - `_extDgListState()`.
+     * @param {Object[]} all - The loaded rows.
+     * @param {string} role
+     * @returns {string}
+     */
+    function _extDgArtistTableHtml(t, rec, vs, all, role) {
+        const ui = _extDgUiOf(t);
+        const st = _extDgRoleState(vs, all, role);
+        if (!st.n) {
+            if (!vs.first || vs.first.status !== 'done') {
+                return `<div class="mb-dg-state"><span class="mb-dp-spin">◌</span> Asking Discogs for the first ${_EXT_DISCOGS_PER_PAGE} entries…</div>`;
+            }
+            return `<div class="mb-dg-state">${st.done ? 'None.'
+                : 'Not loaded yet. Discogs lists the discography by role, so these come after the entries above; "Load the other" brings them.'}</div>`;
+        }
+        const q = ui.aq.trim().toLowerCase();
+        let rows = all.filter(r => r.role === role && (!ui.atype || (ui.atype === 'm') === r.master) &&
+            (!q || [r.title, r.artist, r.year, r.format, r.label].join(' ').toLowerCase().includes(q)));
+        if (!rows.length) return '<div class="mb-dg-state">No loaded entry matches the filter.</div>';
+        const s = ui.asort[role] || null;
+        if (s) {
+            // Discogs' own order breaks ties; an empty value goes last either way.
+            const pos = new Map(rows.map((r, i) => [r, i]));
+            rows = rows.slice().sort((a, b) => {
+                const x = a[s.col], y = b[s.col];
+                if (!x !== !y) return x ? -1 : 1;
+                const c = typeof x === 'number' ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true });
+                return (c * s.dir) || (pos.get(a) - pos.get(b));
+            });
+        }
+        const limit = ui.alimit[role] || _EXT_DG_ARTIST_ROWS;
+        const showArtist = role !== 'Main' || rows.some(r => r.artist !== rec.title);
+        const esc = _rgEsc;
+        const th = (col, label, cls = '') => `<th data-mb-dg-asort="${col}" data-mb-dg-role="${esc(role)}"${cls ? ` class="${cls}"` : ''}` +
+            `${s && s.col === col ? ` aria-sort="${s.dir > 0 ? 'ascending' : 'descending'}"` : ''}>${label}</th>`;
+        const body = rows.slice(0, limit).map((r) => {
+            const kind = r.master ? 'master' : 'release';
+            const open = r.master && ui.mopen.has(r.id);
+            const exp = r.master ? `<button type="button" class="mb-dg-exp" data-mb-dg-mexp="${r.id}" aria-expanded="${open}">` +
+                `${open ? '▾' : '▸'} versions</button>` : '';
+            return `<tr><td>${r.thumb ? `<img class="mb-dg-vthumb" src="${esc(r.thumb)}" alt="" referrerpolicy="no-referrer" loading="lazy">` : ''}</td>` +
+                `<td><a href="https://www.discogs.com/${kind}/${r.id}" target="_blank" rel="noopener noreferrer">${esc(r.title)}</a>` +
+                ` <span class="mb-dg-pill${r.master ? ' mb-dg-m' : ''}">${kind}</span>${exp}` +
+                `${r.master ? '' : `<div class="mb-dg-dim">${esc(r.format)}${r.label ? ` · ${esc(r.label)}` : ''}</div>`}</td>` +
+                `${showArtist ? `<td>${esc(r.artist)}</td>` : ''}<td class="mb-dg-yr">${esc(r.year || '—')}</td>` +
+                `<td class="mb-dg-num">${_extDgNum(r.have)}</td><td class="mb-dg-num">${_extDgNum(r.want)}</td></tr>` +
+                (open ? `<tr class="mb-dg-nest"><td colspan="${showArtist ? 6 : 5}">${_extDgNestHtml(t, r)}</td></tr>` : '');
+        }).join('');
+        const rest = rows.length - limit;
+        const more = rest > 0 ? `<div class="mb-dg-morerow">Showing ${_extDgNum(limit)} of ${_extDgNum(rows.length)}. ` +
+            `<button type="button" class="mb-dg-btn" data-mb-dg-alimit="${esc(role)}">Show ${_extDgNum(Math.min(rest, _EXT_DG_MORE_ROWS))} more</button>` +
+            `${rest > _EXT_DG_MORE_ROWS ? ` <button type="button" class="mb-dg-btn" data-mb-dg-alimit-all="${esc(role)}">Show all</button>` : ''}</div>` : '';
+        return `<div class="mb-dg-vwrap" data-mb-keep-scroll="dg-a-${role.replace(/[^\w-]/g, '-')}"><table class="mb-dg-vt mb-dg-lt"><thead><tr>` +
+            `<th class="mb-dg-nosort"></th>${th('title', 'Title')}${showArtist ? th('artist', 'Artist') : ''}${th('year', 'Year')}` +
+            `${th('have', 'Have', 'mb-dg-num')}<th class="mb-dg-nosort mb-dg-num">Want</th></tr></thead><tbody>${body}</tbody></table>${more}</div>`;
+    }
+
+    /**
+     * An artist's discography below the window's two columns: the status of
+     * its pages, the filter and the Masters / Releases chips (over what is
+     * loaded), then Releases, Appearances (on releases, on tracks),
+     * Unofficial and Credits (what the API lists of them, and a link to all
+     * of them on Discogs), each collapsible, counted "so far" until a later
+     * role has arrived.
+     *
+     * @param {object} t
+     * @param {Object} rec
+     * @param {{kind: string, sub: string}} list
+     * @returns {string}
+     */
+    function _extDgArtistHtml(t, rec, list) {
+        const ui = _extDgUiOf(t);
+        const dg = rec.discogs;
+        const vs = _extDgListState(t, list);
+        const first = vs.first;
+        const head = (n) => `<h3>Discography${n ? ` <span class="mb-dg-c">${_extDgNum(n)}</span>` : ''}</h3>`;
+        if (first && first.status === 'failed') {
+            return `<section class="mb-dg-disco" data-mb-dg-disco="artist">${head(0)}<div class="mb-dp-warn">Could not load the discography: ` +
+                `${_rgEsc(first.detail)}.</div><button type="button" class="mb-dg-btn mb-dg-primary" data-mb-dg-act="lfirst" ` +
+                `data-mb-dg-list="${_rgEsc(`${list.kind}:${list.sub}`)}">⟳ Try again</button></section>`;
+        }
+        const done1 = !!first && first.status === 'done';
+        if (done1) _extDgPeekCached(t, list, vs.pages);
+        const all = _extDgLoadedRows(vs);
+        const status = done1 ? _extDgStatusHtml(t, list, vs, 'entries') +
+            '<div class="mb-dg-legend"><span><i class="mb-dg-seg-cache"></i>from cache</span><span><i class="mb-dg-seg-loaded"></i>loaded</span>' +
+            '<span><i class="mb-dg-seg-failed"></i>failed</span><span><i class="mb-dg-seg-queued"></i>queued</span>' +
+            `<span>one segment = ${_EXT_DISCOGS_PER_PAGE} entries</span></div>`
+            : '<div class="mb-dg-vstat"><span class="mb-dg-pill mb-dg-run">Running</span><span class="mb-dg-bar" aria-hidden="true" style="width: 40px">' +
+                '<i class="mb-dg-seg-running"></i></span></div>';
+        const nM = all.filter(r => r.master).length;
+        const chip = (v, label, n) => `<button type="button" class="mb-dg-fc" data-mb-dg-atype="${v}" aria-pressed="${ui.atype === v}">` +
+            `${label}<span class="mb-dg-n">${_extDgNum(n)}</span></button>`;
+        const filtered = !!(ui.aq.trim() || ui.atype);
+        const tools = `<div class="mb-dg-tools"><input type="search" class="mb-dg-aq" value="${_rgEsc(ui.aq)}" data-mb-keep-focus="dg-aq" ` +
+            'placeholder="Filter the discography: title, artist, label, format, year" aria-label="Filter the discography">' +
+            `<span>${chip('', 'All', all.length)}${chip('m', 'Masters', nM)}${chip('r', 'Releases', all.length - nM)}</span>` +
+            `${filtered ? '<button type="button" class="mb-dg-btn" data-mb-dg-act="aclear">Clear filters</button>' : ''}</div>` +
+            `<div class="mb-dg-counts">The filter and the chips see only what is loaded (${_extDgNum(all.length)} of ${_extDgNum(vs.items)}). ` +
+            'A master row opens its versions; a title shows that master or release here.</div>';
+        const sofar = (st) => (st.done ? '' : 'mb-dg-sofar');
+        const secs = _EXT_DG_ARTIST_SECS.map((sec) => {
+            const sts = sec.roles.map(([role]) => _extDgRoleState(vs, all, role));
+            if (sec.roles.length === 1) {
+                return _extDgSection(sec.id, sec.title, _extDgSoFar(sts[0]), _extDgArtistTableHtml(t, rec, vs, all, sec.roles[0][0]), '', sofar(sts[0]));
+            }
+            const parts = sec.roles.map(([role, sub], i) => `<div class="mb-dg-subsec">${_extDgSection(`a-${role}`, sub, _extDgSoFar(sts[i]),
+                _extDgArtistTableHtml(t, rec, vs, all, role), '', sofar(sts[i]))}</div>`).join('');
+            const sum = { done: sts.every(x => x.done), n: sts.reduce((n, x) => n + x.n, 0) };
+            return _extDgSection(sec.id, sec.title, _extDgSoFar(sum), parts, '', sofar(sum));
+        }).join('');
+        const cst = _extDgRoleState(vs, all, '');
+        const croles = [...new Set(all.filter(r => _extDgRoleOrd(r.role) === 1).map(r => r.role))];
+        const listed = !done1 ? '' : ` (for ${_rgEsc(rec.title)}: ${croles.length ? `${croles.map(_rgEsc).join(', ')}, ` +
+            `${_extDgNum(cst.n)} entr${cst.n === 1 ? 'y' : 'ies'}` : 'none'}${cst.done ? '' : ' so far'})`;
+        const box = `<div class="mb-dg-box">Discogs' API lists only some of an artist's credits, the production ones${listed}. ` +
+            'The website lists them all, written-by, instruments and vocals included. ' +
+            `<a href="https://www.discogs.com/artist/${dg.id}?type=Credits" target="_blank" rel="noopener noreferrer">All credits on Discogs ↗</a></div>`;
+        const cparts = croles.map((role) => {
+            const st = _extDgRoleState(vs, all, role);
+            return `<div class="mb-dg-subsec">${_extDgSection(`a-c-${role.replace(/[^\w-]/g, '-')}`, role, _extDgSoFar(st),
+                _extDgArtistTableHtml(t, rec, vs, all, role), '', sofar(st))}</div>`;
+        }).join('') || `<div class="mb-dg-state">${cst.done ? 'None in the API.' : done1
+            ? 'Not loaded yet: Discogs lists credits after the artist\'s own releases.'
+            : `<span class="mb-dp-spin">◌</span> Asking Discogs for the first ${_EXT_DISCOGS_PER_PAGE} entries…`}</div>`;
+        const credits = _extDgSection('a-credits', 'Credits', _extDgSoFar(cst), box + cparts, '', sofar(cst));
+        return `<section class="mb-dg-disco" data-mb-dg-disco="artist">${head(done1 ? vs.items : 0)}${status}${tools}${secs}${credits}</section>`;
+    }
+
+    /**
+     * The format a label's release is counted under for the chips: the
+     * first part of Discogs' format, without a quantity ("2xLP, Album" →
+     * "LP", '12", EP' → '12"').
+     *
+     * @param {string} f
+     * @returns {string}
+     */
+    function _extDgMajorFormat(f) {
+        return String(f || '').split(',')[0].replace(/^\d+\s*[x×]\s*/i, '').trim() || 'unknown';
+    }
+
+    /**
+     * A label's releases below the window's two columns: a plain warning
+     * for a large label (what loading all would cost), the status of the
+     * pages loaded in batches of `batch`, the order (newest or oldest first:
+     * another list, asked again), the filter and the format chips over what
+     * is loaded, and the table (artist, title with format, cat#, year;
+     * sortable; `_EXT_DG_LABEL_ROWS` rows, then "Show all").
+     *
+     * @param {object} t
+     * @param {Object} rec
+     * @param {{kind: string, sub: string}} list
+     * @returns {string}
+     */
+    function _extDgLabelHtml(t, rec, list) {
+        const ui = _extDgUiOf(t);
+        const vs = _extDgListState(t, list);
+        const first = vs.first;
+        const ref = _rgEsc(`${list.kind}:${list.sub}`);
+        const head = `<h3>Releases${first && first.status === 'done' ? ` <span class="mb-dg-c">${_extDgNum(vs.items)}</span>` : ''}</h3>`;
+        if (first && first.status === 'failed') {
+            return `<section class="mb-dg-disco" data-mb-dg-disco="label">${head}<div class="mb-dp-warn">Could not load the releases: ` +
+                `${_rgEsc(first.detail)}.</div><button type="button" class="mb-dg-btn mb-dg-primary" data-mb-dg-act="lfirst" ` +
+                `data-mb-dg-list="${ref}">⟳ Try again</button></section>`;
+        }
+        const done1 = !!first && first.status === 'done';
+        if (done1) _extDgPeekCached(t, list, vs.pages);
+        const run = _extDgRun(t, list);
+        const busy = vs.list.some(x => x.s === 'running') || (run.chain && !run.stopped);
+        const batch = _EXT_DG_LISTS.label.batch;
+        const spacing = _extSpacingMs('api.discogs.com');
+        const big = done1 && vs.pages > 20 ? `<div class="mb-dg-warnbox">${_rgEsc(rec.title)} has <b>${_extDgNum(vs.items)} releases</b> on Discogs. ` +
+            `Loading them all would take ${_extDgNum(vs.pages)} requests, about ${_extDgDur(vs.pages * spacing)}` +
+            `${spacing > 1000 ? ` (about ${_extDgDur(vs.pages * 1000)} with a token)` : ''}. So the window loads them ${batch} pages at a time, ` +
+            'newest or oldest first, and the filter works on what is loaded.</div>' : '';
+        const status = done1 ? _extDgStatusHtml(t, list, vs, 'releases')
+            : '<div class="mb-dg-vstat"><span class="mb-dg-pill mb-dg-run">Running</span><span class="mb-dg-bar" aria-hidden="true" style="width: 40px">' +
+                '<i class="mb-dg-seg-running"></i></span></div>';
+        const lock = busy ? ' disabled data-mb-tip title="Stop the running load first"' : '';
+        const order = `<span class="mb-dg-seg"><button type="button" data-mb-dg-lorder="desc" aria-pressed="${ui.lorder === 'desc'}"${lock}>Newest first</button>` +
+            `<button type="button" data-mb-dg-lorder="asc" aria-pressed="${ui.lorder === 'asc'}"${lock}>Oldest first</button></span>`;
+        const all = _extDgLoadedRows(vs);
+        const fmts = {};
+        all.forEach((r) => {
+            const m = _extDgMajorFormat(r.format);
+            fmts[m] = (fmts[m] || 0) + 1;
+        });
+        const chips = Object.entries(fmts).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([v, n]) =>
+            `<button type="button" class="mb-dg-fc" data-mb-dg-lfmt="${_rgEsc(v)}" aria-pressed="${ui.lfmt === v}">${_rgEsc(v)}` +
+            `<span class="mb-dg-n">${_extDgNum(n)}</span></button>`).join('');
+        const q = ui.lq.trim().toLowerCase();
+        let rows = all.filter(r => (!ui.lfmt || _extDgMajorFormat(r.format) === ui.lfmt) &&
+            (!q || [r.artist, r.title, r.format, r.catno, r.year].join(' ').toLowerCase().includes(q)));
+        const s = ui.lsort;
+        if (s.dir) {
+            rows = rows.slice().sort((a, b) => {
+                const x = a[s.col], y = b[s.col];
+                if (!x !== !y) return x ? -1 : 1;
+                return String(x).localeCompare(String(y), undefined, { numeric: true }) * s.dir;
+            });
+        }
+        const th = (col, label) => `<th data-mb-dg-lsort="${col}"${s.dir && s.col === col ? ` aria-sort="${s.dir > 0 ? 'ascending' : 'descending'}"` : ''}>${label}</th>`;
+        let table;
+        if (!done1) {
+            table = `<div class="mb-dg-state"><span class="mb-dp-spin">◌</span> Asking Discogs for the first ${_EXT_DISCOGS_PER_PAGE} releases…</div>`;
+        } else if (!rows.length) {
+            table = `<div class="mb-dg-state">${all.length ? 'No loaded release matches.' : 'None.'}</div>`;
+        } else {
+            table = '<div class="mb-dg-vwrap" data-mb-keep-scroll="dg-label"><table class="mb-dg-vt mb-dg-lt"><thead><tr><th class="mb-dg-nosort"></th>' +
+                `${th('artist', 'Artist')}${th('title', 'Title, format')}${th('catno', 'Cat#')}${th('year', 'Year')}</tr></thead><tbody>` +
+                rows.slice(0, ui.llimit).map(r => `<tr><td>${r.thumb
+                    ? `<img class="mb-dg-vthumb" src="${_rgEsc(r.thumb)}" alt="" referrerpolicy="no-referrer" loading="lazy">` : ''}</td>` +
+                    `<td>${_rgEsc(r.artist)}</td><td><a href="https://www.discogs.com/release/${r.id}" target="_blank" rel="noopener noreferrer">` +
+                    `${_rgEsc(r.title)}</a><div class="mb-dg-dim">${_rgEsc(r.format)}</div></td>` +
+                    `<td class="mb-dg-cat">${_rgEsc(r.catno)}</td><td class="mb-dg-yr">${_rgEsc(r.year || '—')}</td></tr>`).join('') + '</tbody></table>' +
+                (rows.length > ui.llimit ? `<div class="mb-dg-morerow">Showing ${_extDgNum(ui.llimit)} of ${_extDgNum(rows.length)}. ` +
+                    `<button type="button" class="mb-dg-btn" data-mb-dg-act="llimit">Show all ${_extDgNum(rows.length)}</button></div>` : '') + '</div>';
+        }
+        return `<section class="mb-dg-disco" data-mb-dg-disco="label" data-mb-dg-list="${ref}">${head}${big}${status}` +
+            `<div class="mb-dg-tools"><span class="mb-dg-fl">Order</span>${order}<input type="search" class="mb-dg-lq" value="${_rgEsc(ui.lq)}" ` +
+            'data-mb-keep-focus="dg-lq" placeholder="Filter loaded releases: artist, title, format, cat#, year" aria-label="Filter loaded releases">' +
+            `${ui.lq.trim() || ui.lfmt ? '<button type="button" class="mb-dg-btn" data-mb-dg-act="lclear">Clear filters</button>' : ''}</div>` +
+            `${chips ? `<div class="mb-dg-tools"><span class="mb-dg-fl">Format</span><span>${chips}</span></div>` : ''}` +
+            '<div class="mb-dg-counts">Changing the order asks Discogs again (each order is cached on its own). Chips count what is loaded.</div>' +
+            `${table}</section>`;
+    }
+
+    /**
+     * The window of a Discogs artist or label (mockup approved 2026-10-18,
+     * https://claude.ai/artifact/WuBNbFTgNHJtxip4xBv6yc): on the left the
+     * profile (Discogs' links kept, "Show it all" for a long one) and every
+     * image; on the right, after the reader's "Discogs says"
+     * (`_extDiscogsFactsHtml()`), the sites and a label's contact info and
+     * sublabels; below both the artist's discography or the label's
+     * releases, whose page 1 this call asks for when the window starts.
+     *
+     * @param {object} t
+     * @param {Object} rec
+     * @param {{start: boolean, force: boolean, repaint: function(): void}} how
+     * @returns {{left: string[], right: string[], full: string[]}}
+     */
+    function _extDgEntityWindow(t, rec, how) {
+        const out = { left: [], right: [], full: [] };
+        const dg = rec.discogs;
+        const ui = _extDgUiOf(t);
+        if (dg.profile) {
+            const long = dg.profile.length > 600;
+            out.left.push(_extDgSection('profile', 'Profile', null,
+                `<div class="mb-dg-profile${!long || ui.profFull ? ' mb-dg-whole' : ''}" data-mb-keep-scroll="dg-profile">` +
+                `${_extDiscogsMarkupHtml(dg.profile, { names: true })}</div>` +
+                (long ? `<button type="button" class="mb-dg-btn" data-mb-dg-act="prof">${ui.profFull ? 'Shorter' : 'Show it all'}</button>` : '')));
+        }
+        if (dg.images.length) {
+            out.left.push(_extDgSection('images', 'Images', dg.images.length, _extDgImagesHtml(dg.images, 'primary') +
+                '<div class="mb-dg-counts">Every image Discogs has, the "More images" set included. A click shows it in the viewer; ' +
+                `<kbd>←</kbd> <kbd>→</kbd> step through all ${dg.images.length}.</div>`));
+        }
+        if (dg.urls.length) {
+            out.right.push(_extDgSection('sites', 'Sites', dg.urls.length, '<div class="mb-dg-sites">' + dg.urls.map(u =>
+                `<div><a href="${_rgEsc(u)}" target="_blank" rel="noopener noreferrer">${_rgEsc(u)}</a></div>`).join('') + '</div>'));
+        }
+        if (dg.kind === 'label') {
+            if (dg.contact) out.right.push(_extDgSection('contact', 'Contact info', null, `<div class="mb-dg-contact">${_rgEsc(dg.contact)}</div>`));
+            if (dg.sublabels.length) {
+                const n = dg.sublabels.length;
+                out.right.push(_extDgSection('sublabels', 'Sublabels', n, _extDgNamesHtml(ui.moreSub ? dg.sublabels : dg.sublabels.slice(0, 24), 'label') +
+                    (n > 24 ? ` <button type="button" class="mb-dg-btn" data-mb-dg-act="moresub">${ui.moreSub ? 'fewer' : `+${n - 24} more`}</button>` : '')));
+            }
+            const list = _extDgList('label', `${dg.id}:${ui.lorder}`);
+            _extDgListStart(t, list, how);
+            out.full.push(_extDgLabelHtml(t, rec, list));
+        } else {
+            const list = _extDgList('artist', dg.id);
+            _extDgListStart(t, list, how);
+            if (how.start) {
+                // A master row left open on the last visit: its versions,
+                // when this page load has none of them yet.
+                ui.mopen.forEach((id) => {
+                    const v = _extDgList('versions', id);
+                    if (!_mbPop.get(_extDgListKey(v, 1))) _extDgListLoad(t, v, 1, { repaint: how.repaint });
+                });
+            }
+            out.full.push(_extDgArtistHtml(t, rec, list));
+        }
+        return out;
     }
 
     /**
@@ -47148,7 +48015,8 @@
      * tracklist and the notes; on the right a release's companies, credits,
      * identifiers and videos; below both a master's versions — whose page 1
      * this call asks for when the window starts or ⟳ forces it (⟳ also
-     * asks again every page already loaded).
+     * asks again every page already loaded). An artist or a label:
+     * `_extDgEntityWindow()`.
      *
      * @param {object} t
      * @param {Object} rec
@@ -47159,6 +48027,7 @@
         const out = { left: [], right: [], full: [] };
         const dg = rec.discogs;
         if (!dg) return out;
+        if (dg.kind === 'artist' || dg.kind === 'label') return _extDgEntityWindow(t, rec, { start, force, repaint });
         const ui = _extDgUiOf(t);
         if (dg.images.length) out.left.push(_extDgSection('images', 'Images', dg.images.length, _extDgImagesHtml(dg.images)));
         if (dg.tracklist.length) {
@@ -47189,31 +48058,17 @@
                     `${v.dur ? ` <span class="mb-dg-dim">${dur(v.dur)}</span>` : ''}</div>`).join('') + '</div>'));
             }
         } else {
-            // Page 1 is asked when the window starts, or on the repaint that
-            // brings the master's own record when the window asked for that
-            // (a tap: no card loaded it first) — only then is the master
-            // known. Never again from a repaint once page 1 has a state: a
-            // failure waits for its button.
-            if (start || !_mbPop.get(_extDgVersionsKey(dg.id, 1))) _extDiscogsVersionsLoad(t, dg.id, 1, { force, repaint });
-            if (start) {
-                // A new visit: no run of "Load the other" goes on from the last one.
-                if (!_extDgVersionsState(t, dg.id).list.some(x => x.s === 'running' && x.page > 1)) {
-                    Object.assign(ui, { chain: false, tried: new Set() });
-                }
-                if (force) {
-                    _extDgVersionsState(t, dg.id).list.slice(1).filter(x => x.s === 'loaded' || x.s === 'cache')
-                        .forEach(x => _extDiscogsVersionsLoad(t, dg.id, x.page, { force: true, repaint }));
-                }
-            }
+            _extDgListStart(t, _extDgList('versions', dg.id), { start, force, repaint });
             out.full.push(_extDgVersionsHtml(t, rec));
         }
         return out;
     }
 
     /**
-     * The Discogs card's summary line: what the window holds (a release),
-     * or how many versions a master has once its window has read them —
-     * the card never asks for versions.
+     * The Discogs card's summary line: what the window holds (a release);
+     * how many versions a master has, entries an artist's discography or
+     * releases a label has, once its window has read them — the card never
+     * asks for a list.
      *
      * @param {object} t
      * @param {Object} rec
@@ -47222,7 +48077,7 @@
     function _extDiscogsCardExtra(t, rec) {
         const dg = rec.discogs;
         if (!dg) return '';
-        const n = (k, one, many) => (k ? `${k} ${k === 1 ? one : many}` : '');
+        const n = (k, one, many) => (k ? `${_extDgNum(k)} ${k === 1 ? one : many}` : '');
         if (dg.kind === 'release') {
             const credits = dg.credits.length + dg.tracklist.reduce((s, x) => s + x.credits.length, 0);
             const parts = [
@@ -47232,7 +48087,17 @@
             ].filter(Boolean);
             return parts.length ? `<div class="mb-tt-dim mb-dg-sum">${parts.join(' · ')}</div>` : '';
         }
-        const st = _mbPop.get(_extDgVersionsKey(dg.id, 1));
+        if (dg.kind === 'artist' || dg.kind === 'label') {
+            const firsts = dg.kind === 'artist' ? [_extDgList('artist', dg.id)] : ['desc', 'asc'].map(o => _extDgList('label', `${dg.id}:${o}`));
+            const st = firsts.map(l => _mbPop.get(_extDgListKey(l, 1))).find(x => x && x.status === 'done');
+            const images = n(dg.images.length, 'image', 'images');
+            const known = st ? (dg.kind === 'artist' ? n(st.data.items, 'entry in the discography', 'entries in the discography')
+                : n(st.data.items, 'release on Discogs', 'releases on Discogs')) : '';
+            const ask = dg.kind === 'artist' ? 'discography: <kbd>Space</kbd> lists it' : 'releases: <kbd>Space</kbd> lists them';
+            const parts = st ? [known, images] : [images, ask];
+            return `<div class="mb-tt-dim mb-dg-sum">${parts.filter(Boolean).join(' · ')}</div>`;
+        }
+        const st = _mbPop.get(_extDgListKey(_extDgList('versions', dg.id), 1));
         if (st && st.status === 'done') {
             const f = st.data.facets || {};
             const countries = Object.keys(f.country || {}).length;
@@ -47246,10 +48111,11 @@
 
     /**
      * A Discogs link in the window (a version's row, See also, a link in
-     * the notes) shows that release or master in the same window, the
-     * current one going on the back stack (as `_dpDrill()` does for
-     * MusicBrainz entities). A plain left click only; Ctrl, Shift, Alt, ⌘
-     * keep the link's new tab.
+     * the notes, a name, a row of a discography or a label's list) shows
+     * that release, master, artist or label in the same window, the current
+     * one going on the back stack (as `_dpDrill()` does for MusicBrainz
+     * entities). A plain left click only; Ctrl, Shift, Alt, ⌘ keep the
+     * link's new tab.
      *
      * @param {MouseEvent} e
      * @param {Element} a
@@ -47267,10 +48133,135 @@
     }
 
     /**
+     * A list named by a control's `data-mb-dg-list` ("artist:219986",
+     * "label:1866:desc").
+     *
+     * @param {Element} el
+     * @returns {?{kind: string, sub: string}}
+     */
+    function _extDgListOf(el) {
+        const v = el && el.dataset.mbDgList;
+        if (!v) return null;
+        const i = v.indexOf(':');
+        const kind = v.slice(0, i);
+        return Object.prototype.hasOwnProperty.call(_EXT_DG_LISTS, kind) ? _extDgList(kind, v.slice(i + 1)) : null;
+    }
+
+    /**
+     * The window's buttons of an artist or a label (`data-mb-dg-act`):
+     * the profile whole or not, all names, a list's page 1 again, its run
+     * ("Load the other", a label's next batch or the missing pages), Stop,
+     * the filters cleared, a label's rows all shown, a master row's versions
+     * again.
+     *
+     * @param {Element} act
+     * @param {object} t
+     * @returns {boolean} Whether it was one of them.
+     */
+    function _extDgEntityAct(act, t) {
+        const ui = _extDgUiOf(t);
+        const list = _extDgListOf(act);
+        switch (act.dataset.mbDgAct) {
+        case 'prof':
+            ui.profFull = !ui.profFull;
+            return true;
+        case 'morevar':
+            ui.moreVar = !ui.moreVar;
+            return true;
+        case 'moresub':
+            ui.moreSub = !ui.moreSub;
+            return true;
+        case 'lfirst':
+            if (list) _extDgListLoad(t, list, 1, { repaint: _dpDialog.repaint });
+            return true;
+        case 'lrest':
+            if (list) {
+                const vs = _extDgListState(t, list);
+                const batch = _EXT_DG_LISTS[list.kind].batch;
+                const gaps = vs.list.some(x => x.page > 1 && (x.s === 'none' || x.s === 'failed'));
+                _extDgStartRun(t, list, !batch ? 0 : gaps ? vs.list.length : Math.min(vs.pages, vs.list.length + batch));
+            }
+            return true;
+        case 'lstop':
+            if (list) _extDgRun(t, list).stopped = true;
+            return true;
+        case 'aclear':
+            Object.assign(ui, { aq: '', atype: '' });
+            return true;
+        case 'lclear':
+            Object.assign(ui, { lq: '', lfmt: '' });
+            return true;
+        case 'llimit':
+            ui.llimit = Infinity;
+            return true;
+        case 'nvretry':
+            _extDgListLoad(t, _extDgList('versions', act.dataset.mbDgId), 1, { repaint: _dpDialog.repaint });
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    /**
+     * The other controls of an artist's or a label's window: the Masters /
+     * Releases chips, a label's format chips and order, the tables' sort
+     * headers ("Have" sorts most first; a third click goes back to Discogs'
+     * order), "Show more" / "Show all", and a master row's versions (one
+     * request, on the click).
+     *
+     * @param {MouseEvent} e
+     * @param {object} t
+     * @returns {boolean} Whether the click was one of them.
+     */
+    function _extDgEntityControl(e, t) {
+        const ui = _extDgUiOf(t);
+        const el = e.target.closest('[data-mb-dg-atype], [data-mb-dg-lfmt], [data-mb-dg-lorder], th[data-mb-dg-asort], th[data-mb-dg-lsort], ' +
+            '[data-mb-dg-alimit], [data-mb-dg-alimit-all], [data-mb-dg-mexp]');
+        if (!el || el.disabled) return !!el;
+        const d = el.dataset;
+        if (d.mbDgAtype != null) {
+            ui.atype = d.mbDgAtype;
+        } else if (d.mbDgLfmt != null) {
+            ui.lfmt = ui.lfmt === d.mbDgLfmt ? '' : d.mbDgLfmt;
+        } else if (d.mbDgLorder) {
+            // The other order is another list: the repaint below asks its
+            // page 1 when this page load has none (`_extDgListStart()`).
+            if (ui.lorder === d.mbDgLorder) return true;
+            Object.assign(ui, { lorder: d.mbDgLorder, lsort: { col: '', dir: 0 }, llimit: _EXT_DG_LABEL_ROWS });
+        } else if (d.mbDgAsort) {
+            const role = d.mbDgRole;
+            const col = d.mbDgAsort;
+            const cur = ui.asort[role];
+            ui.asort[role] = cur && cur.col === col ? (cur.dir > 0 ? { col, dir: -1 } : null) : { col, dir: col === 'have' ? -1 : 1 };
+        } else if (d.mbDgLsort) {
+            const col = d.mbDgLsort;
+            const s = ui.lsort;
+            ui.lsort = s.dir && s.col === col ? (s.dir > 0 ? { col, dir: -1 } : { col: '', dir: 0 }) : { col, dir: 1 };
+        } else if (d.mbDgAlimit) {
+            ui.alimit[d.mbDgAlimit] = (ui.alimit[d.mbDgAlimit] || _EXT_DG_ARTIST_ROWS) + _EXT_DG_MORE_ROWS;
+        } else if (d.mbDgAlimitAll) {
+            ui.alimit[d.mbDgAlimitAll] = Infinity;
+        } else if (d.mbDgMexp) {
+            const id = Number(d.mbDgMexp);
+            if (ui.mopen.has(id)) {
+                ui.mopen.delete(id);
+            } else {
+                ui.mopen.add(id);
+                const v = _extDgList('versions', id);
+                if (!_mbPop.get(_extDgListKey(v, 1))) _extDgListLoad(t, v, 1, { repaint: _dpDialog.repaint });
+            }
+        }
+        if (_dpDialog.repaint) _dpDialog.repaint();
+        return true;
+    }
+
+    /**
      * Clicks in a Discogs window (delegated by the dialog: every repaint
      * replaces the markup): a section heading opens or closes it; a track's
      * toggle and "Show all track credits"; the versions' buttons, chips,
-     * sort headers; a Discogs link or a version's row drills down.
+     * sort headers; an artist's or a label's controls
+     * (`_extDgEntityAct()`, `_extDgEntityControl()`); a Discogs link or a
+     * version's row drills down.
      *
      * @param {MouseEvent} e
      * @param {object} t
@@ -47304,21 +48295,21 @@
         }
         const act = e.target.closest('[data-mb-dg-act]');
         if (act) {
-            const id = rec.discogs.id;
+            if (act.disabled) return;
+            const versions = _extDgList('versions', rec.discogs.id);
             switch (act.dataset.mbDgAct) {
             case 'allcred':
                 ui.allCredits = !ui.allCredits;
                 ui.open.clear();
                 break;
             case 'vfirst':
-                _extDiscogsVersionsLoad(t, id, 1, { repaint: _dpDialog.repaint });
+                _extDgListLoad(t, versions, 1, { repaint: _dpDialog.repaint });
                 break;
             case 'vrest':
-                Object.assign(ui, { chain: true, stopped: false, tried: new Set() });
-                _extDgLoadNext(t, id);
+                _extDgStartRun(t, versions, 0);
                 break;
             case 'vstop':
-                ui.stopped = true;
+                _extDgRun(t, versions).stopped = true;
                 break;
             case 'vclear':
                 Object.assign(ui, { q: '', format: '', country: '', decade: '' });
@@ -47327,7 +48318,7 @@
                 ui.moreCountries = !ui.moreCountries;
                 break;
             default:
-                return;
+                if (!_extDgEntityAct(act, t)) return;
             }
             repaint();
             return;
@@ -47347,24 +48338,32 @@
             repaint();
             return;
         }
+        if (_extDgEntityControl(e, t)) return;
         const a = e.target.closest('a[href]');
         const row = e.target.closest('tr[data-mb-dg-vid]');
         _extDgDrill(e, a || (row && row.querySelector('a[href]')));
     }
 
     /**
-     * Typing in the versions' filter: only the list part is drawn again, so
-     * the field keeps its focus and caret.
+     * Typing in a filter of the window. The versions': only the list part
+     * is drawn again, so the field keeps its focus and caret. An artist's
+     * discography or a label's releases: the whole window, which keeps the
+     * field's focus and caret (`data-mb-keep-focus`) and the tables' scroll.
      *
      * @param {Event} e
      * @param {object} t
      * @returns {void}
      */
     function _extDiscogsAreaInput(e, t) {
-        if (!(e.target instanceof Element) || !e.target.matches('.mb-dg-vq')) return;
+        if (!(e.target instanceof Element) || !e.target.matches('.mb-dg-vq, .mb-dg-aq, .mb-dg-lq')) return;
         const st = _mbPop.get(t.key);
         const rec = st && st.status === 'done' ? st.data : null;
         if (!rec || !rec.discogs) return;
+        if (!e.target.matches('.mb-dg-vq')) {
+            _extDgUiOf(t)[e.target.matches('.mb-dg-aq') ? 'aq' : 'lq'] = e.target.value;
+            if (_dpDialog.repaint) _dpDialog.repaint();
+            return;
+        }
         _extDgUiOf(t).q = e.target.value;
         const body = e.target.closest('.mb-dg-vers, [data-mb-dg-sec="versions"]');
         const list = body && body.querySelector('.mb-dg-vbody');
@@ -48048,8 +49047,9 @@
                 body = `<div class="mb-ext-head">${img}<div class="mb-ext-headtext"><div class="mb-tt-title">${_rgEsc(rec.title || t.name)}</div>` +
                     (rec.subtitle || rec.siteName ? `<div class="mb-tt-comment">${_rgEsc(rec.subtitle || rec.siteName)}</div>` : '') + '</div></div>' +
                     (rec.description ? `<div class="mb-tt-body mb-ext-desc">${_rgEsc(_extCut(rec.description, 260))}</div>` : '') +
-                    // An API reader's facts (U3): the first few, cut short.
-                    _dpFieldsHtml((rec.facts || []).slice(0, _EXT_CARD_FACTS), 90) +
+                    // An API reader's facts (U3): the first few, cut short —
+                    // no more than the reader means for the card (`cardFacts`).
+                    _dpFieldsHtml((rec.facts || []).slice(0, Math.min(_EXT_CARD_FACTS, rec.cardFacts ?? _EXT_CARD_FACTS)), 90) +
                     // A reader's own summary line (Discogs: what its window holds).
                     (t.reader.cardExtra ? t.reader.cardExtra(t, rec) : '') +
                     (rec.moved ? `<div class="mb-ext-url">→ ${_rgEsc(rec.finalUrl)}</div>` : '') +
@@ -48229,7 +49229,9 @@
                 left.push(`<a href="${_rgEsc(rec.imageFull || rec.image)}" target="_blank" rel="noopener noreferrer" data-mb-artv-ext="0">` +
                     `<img class="mb-dp-xcover" src="${_rgEsc(rec.image)}" alt="" referrerpolicy="no-referrer"></a>`);
             }
-            if (rec.description) left.push(`<div class="mb-ext-xdesc">${_rgEsc(rec.description)}</div>`);
+            // A reader that shows the description as a section of its own
+            // (a Discogs artist's or label's profile, with its links) says so.
+            if (rec.description && !rec.descInWindow) left.push(`<div class="mb-ext-xdesc">${_rgEsc(rec.description)}</div>`);
         } else {
             left.push(`<div class="mb-dp-warn">${_rgEsc(_extStateText(rec))}</div>`);
         }
