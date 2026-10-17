@@ -1,5 +1,39 @@
 [
   {
+    "version": "9.99.1363",
+    "date": "2026-10-17",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Relationships column: hovering an icon now says what it is (the site, MusicBrainz's relationship type, the full URL) instead of the bare URL. While a filter matches the cell, a box above it lists all the row's links with the filter's marks and marks the icon you point at. The two boxes sit one under the other instead of side by side. With link previews on, the icons get the link's preview card too, with these boxes above it.",
+          "A cover icon in a relationship list (for example \"includes:\" in a release group's Relationships section) shows the release's artwork card on hover, and a click opens the artwork viewer on its images instead of leaving the page."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "A click on an image of the big-picture strip above a table opens the artwork viewer instead of asking \"You are about to leave this page\". The same question no longer comes up for a Ctrl-click or Shift-click, which opens a new tab or window and loses nothing."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1362",
+    "date": "2026-10-17",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Tooltips that compare two values now show them one under the other and mark only what differs, down to a single letter, an apostrophe ' against ’, or a hyphen ‐ against -. A line under them says in plain words what differs (\"1 letter in a different case: w → W\", \"Only in the recording name: (single version)\", \"Same words in a different order.\"). This covers the track/recording name note above a recording's preview card, its badge in the pinned window, and the Title cell's \"Track name differs from recording name\" warning, which now names both names.",
+          "The same view for the findings that compare two values: Recorded at event and Recorded at place against the recording comment, the release group title against a main-event track, and the Recording date against the comment's date (both dates are now named in the tooltip).",
+          "Track and recording length mismatch: the tooltip shows the hovered cell's length over the other one, digits aligned and the differing ones marked, with the gap as an amber (⚠️) or red (❌) label. Kept through Save to Disk and Load from Disk.",
+          "Titles shown in MusicBrainz style on the Springsteen sites: the tooltip shows the site's text above the title as shown, with the changed letters and marks marked."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1361",
     "date": "2026-10-17",
     "sections": [
