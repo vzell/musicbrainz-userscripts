@@ -861,8 +861,17 @@ generalize to URLs".
   U3's live spec hovered it no such link had a card at all; https is also
   how MusicBrainz stores it. Not the MetaBrainz family or the artwork archives
   (`_EXT_SKIP_HOST_RE`), not a share button (`_EXT_SKIP_URL_RE`), not around
-  `img:not(.avatar)`, not in `_EXT_SKIP_SEL` (chrome, `td.mb-rel-cell`, the
-  card and the window, `_MB_POP_PAGE_SKIP`). Scope: `_EXT_SCOPE_SEL` (table
+  `img:not(.avatar)`, not in `_EXT_SKIP_SEL` (chrome, the card and the
+  window, `_MB_POP_PAGE_SKIP`). **A Relationships column icon is the
+  exception to both (2026-10-17):** it is an image link that IS the link, so
+  it gets the card, named by its site (`_relLinkName()`, the icon's text is
+  its hidden filter key), and `_dpCollectNotes()` gives it the icon's own
+  boxes (`_relStackParts()`: the filter box while a filter matches the
+  cell, then the icon box) instead of its bare title and the cell's "click
+  outside the icons" hint; `_dpShowPeek()` hides the column's own stack
+  (`_relHideTooltip()`), whose timer also yields while `_dpPeek.link` is the
+  icon. Mockup https://claude.ai/artifact/NonAS8iqfjSMRUaXojzSnT;
+  `rel-icons.spec.js`, mutations `rel-icons.json`. Scope: `_EXT_SCOPE_SEL` (table
   bodies, `table.details`, `.annotation`, `ul.external_links`), plus `#page`
   with `sa_pop_mb_page` — a getter, read at every event.
 - **Fetching: `_extFetch()`, never `fetch()`** (another origin, no CORS):

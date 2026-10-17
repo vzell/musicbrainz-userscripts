@@ -996,6 +996,15 @@ at the last/first image continue into the next/previous row, and
 stepped through. Ctrl-click (or middle-click) the icon to follow the link
 instead.
 
+**The big-picture strip and the relationship lists open the viewer too.** A
+click on an image of the strip above a table opens the viewer on that
+release's (or event's) images, instead of leaving the page. So does a click on
+a small cover in a relationship list, such as the release group page's
+*Relationships* section ("includes:", "single/EP which was taken from:"),
+where hovering that cover shows the release's artwork card (its images, count
+and types). The card's record is fetched on the first hover, one request.
+Ctrl-click follows the link in a new tab, and asks nothing.
+
 **The gallery (🖼).** The 🖼 button among a table's artwork controls (after
 📊), or **🖼 Open gallery** in its 📊 summary, opens a window with every image
 of the releases the table currently shows — the rows the filters leave, in
@@ -1057,6 +1066,12 @@ failed. There is one of each per table and one page-wide; a single-table page
 shows only the page-wide `⚠⟳`, since it covers the same rows. The failed count is
 computed from the captured rows, not from what is on screen, so a filter cannot
 hide failures from it.
+
+**Hovering an icon** shows what it is: the site (Discogs, Amazon,
+SpringsteenLyrics, …), MusicBrainz's relationship type, and the full URL.
+While a filter matches the cell, a box above it lists all the row's links
+with the filter's marks and marks the icon you point at ("◂ this icon"). With
+link previews on, the link's preview card shows under those boxes.
 
 **An automatic follow-up pass** retries failures once the first load drains,
 after a 30-second pause, at most twice per page, and never at all when more than
@@ -2069,8 +2084,9 @@ hours (*Keep MusicBrainz answers for (hours)*); the card's foot says whether
 it was *fetched now* or *saved today*. A card that could not load says so;
 hover again to retry.
 
-Not previewed: the artwork column's links, a link around a picture (they have
-their own preview) and the Relationships column (its own tooltip). Links
+Not previewed: the artwork column's links and a link around a picture (they
+have their own preview). The Relationships column's icons are previewed like
+any other link (see *The Relationships column*). Links
 outside a table are previewed while *Also preview links outside tables* is on
 (same section, on by default): the header, an annotation, the sidebar and
 relationship lists have cards then, but not the tabs, the page navigation or

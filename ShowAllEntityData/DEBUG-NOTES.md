@@ -23562,3 +23562,46 @@ Env: 2026-10-17T02:17:42+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1)
 - **Not measured:** `stampFindings()` timing. `compare()` runs only for cells
   whose `test()` already matched, and builds a small JSON string; the diff
   itself runs on hover. Nothing on the filter/sort/render path changed.
+
+## 2026-10-17 — Relationships icons: popups, the filter stack, and the "leave this page?" dialog on artwork clicks (branch feat/tooltip-diff-view, WIP.2)
+
+Env: 2026-10-17T03:08:46+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 bundled Chromium · no Tampermonkey (GM stubs); vzell's live checks: browser and Tampermonkey version unknown
+
+- **Snapshots:** `debug/missing-CAA-hover.html` (release group f83d2211…,
+  FRP: the h2 "Relationships" list with two jesus2099 `caa-icon` links, and
+  the Relationships column's icons), `debug/hover.png` (column filter "disc"
+  on the Relationships column: the URL list box and a separate bare-URL box,
+  apart and unlabelled). Mockup approved 2026-10-17 (defaults: two-box stack,
+  type pill): https://claude.ai/artifact/NonAS8iqfjSMRUaXojzSnT
+- **Why the column's icons had no link card:** `_EXT_SKIP_SEL` listed
+  `td.mb-rel-cell`, and `_extTarget()` refuses any link around an
+  `<img>`. Both now let a Relationships icon through; its name is the site
+  (`_relLinkName()`), because its text is the hidden `.mb-rel-filter-key`
+  URL.
+- **Why two boxes side by side:** `#mb-rel-tooltip` (URL list) and
+  `#mb-rel-plain-tooltip` (the icon's title) were placed by hand, right of
+  each other. Now one stack (`_relStackParts()`), the same boxes in the
+  card's note stack; the plain tooltip is gone.
+- **The "You are about to leave this page" dialog (reported live twice: the
+  relationship-list cover icon after my change, and the big-picture strip
+  before it):** the navigation guard is a DOCUMENT capture click listener.
+  My first `_artIconClick()` was one too, so on the same node its
+  stopPropagation could not keep the guard from asking. The strip never had a
+  click handler at all: its images are plain links to the release page.
+  `docs/claude/artwork-caa-eaa.md` already said the column click listens on
+  `window` capture for exactly this reason. **I had not read that doc before
+  writing the handler**; the spec that should have caught it loaded the page
+  without rendering, so the guard (`isLoaded`) was not armed. The specs now
+  render first and fail on any dialog.
+- **Also fixed while there:** a click right after the hover dropped its
+  viewer, because the hover's load was already in flight and
+  `_artRelIconLoad()` ignored a second asker (now queued); and the guard
+  asked on Ctrl/⌘/Shift-clicks (a new tab or window), which three specs had
+  used as their proof that a Ctrl-click reached the link. They read
+  `defaultPrevented` at the link now.
+- **Verified:** `rel-icons.spec.js` (5), `bigbox-tooltip.spec.js` (+2),
+  the three rewritten `rich-tooltips.spec.js` tests, the three Ctrl-click
+  specs; the related set (popup, ext, CAA column, Relationships column,
+  guard specs) green; `scripts/mutations/rel-icons.json` 13/13 as recorded
+  (two guards that cover each other are `"expect": "pass"` alone, and fail
+  together). Full suite deferred to the end of the branch, as asked.

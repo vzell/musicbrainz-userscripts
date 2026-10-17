@@ -1,0 +1,179 @@
+[
+    {
+        "name": "the icon click listens on the document again",
+        "why": "Covered by the guard's defaultPrevented check: on the document my handler cancels the click first, and the guard then skips it. Only both reverted bring the 2026-10-17 dialog back (next entry).",
+        "edits": [
+            {
+                "find": "        window.addEventListener('click', _artIconClick, true);",
+                "replace": "        document.addEventListener('click', _artIconClick, true);"
+            }
+        ],
+        "spec": "tests/fixtures/rel-icons.spec.js",
+        "grep": "click: our viewer at the main front",
+        "expect": "pass"
+    },
+    {
+        "name": "the icon click on the document AND the guard blind to a cancelled click (the original bug)",
+        "why": "The 2026-10-17 report: the guard on the document asked 'You are about to leave this page' although the viewer took the click.",
+        "edits": [
+            {
+                "find": "        window.addEventListener('click', _artIconClick, true);",
+                "replace": "        document.addEventListener('click', _artIconClick, true);"
+            },
+            {
+                "find": "            if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.shiftKey) return;",
+                "replace": "            if (e.ctrlKey || e.metaKey || e.shiftKey) return;"
+            }
+        ],
+        "spec": "tests/fixtures/rel-icons.spec.js",
+        "grep": "click: our viewer at the main front",
+        "expect": "fail"
+    },
+    {
+        "name": "the guard asks on a click another handler already took",
+        "why": "Covered by the window listener's stopPropagation: the guard never sees an artwork icon's click (the entry above shows the two together); it protects any later handler that cancels a click on the document.",
+        "edits": [
+            {
+                "find": "            if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.shiftKey) return;",
+                "replace": "            if (e.ctrlKey || e.metaKey || e.shiftKey) return;"
+            }
+        ],
+        "spec": "tests/fixtures/rel-icons.spec.js",
+        "grep": "click: our viewer at the main front",
+        "expect": "pass"
+    },
+    {
+        "name": "the guard asks on a Ctrl-click",
+        "why": "A Ctrl-click opens a new tab and loses nothing, yet the guard asked and, on Cancel, swallowed the click.",
+        "edits": [
+            {
+                "find": "            if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.shiftKey) return;",
+                "replace": "            if (e.defaultPrevented) return;"
+            }
+        ],
+        "spec": "tests/fixtures/bigbox-tooltip.spec.js",
+        "grep": "releasegroup-releases \\(CAA\\): a click on a strip image",
+        "expect": "fail"
+    },
+    {
+        "name": "a click during the hover's load is dropped",
+        "why": "Playwright's click (and a quick user) hovers first: the card's load is on its way, and a second ask must wait for it, not vanish.",
+        "edits": [
+            {
+                "find": "        if (waiting) {\n            waiting.push(done);\n            return;\n        }",
+                "replace": "        if (waiting) {\n            return;\n        }"
+            }
+        ],
+        "spec": "tests/fixtures/rel-icons.spec.js",
+        "grep": "click: our viewer at the main front",
+        "expect": "fail"
+    },
+    {
+        "name": "strip images are not viewer targets",
+        "why": "A strip image then follows its link to the release page, which the guard stops with its dialog.",
+        "edits": [
+            {
+                "find": "        for (const ctx of [CAA_CTX, EAA_CTX]) {\n            const a = node.closest(`.${ctx.boxClass} a[href]`);",
+                "replace": "        for (const ctx of []) {\n            const a = node.closest(`.${ctx.boxClass} a[href]`);"
+            }
+        ],
+        "spec": "tests/fixtures/bigbox-tooltip.spec.js",
+        "grep": "artist-events \\(EAA\\): a click on a strip image",
+        "expect": "fail"
+    },
+    {
+        "name": "relationship-list icons get no card",
+        "why": "The icon keeps the browser's own '16 images found' box.",
+        "edits": [
+            {
+                "find": "                case 'art-rel': return _artRelIconCardHtml(el);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/rel-icons.spec.js",
+        "grep": "hover: the release's artwork card",
+        "expect": "fail"
+    },
+    {
+        "name": "Relationships icons are refused by the link preview",
+        "why": "The pre-2026-10-17 rule: a link around an image never gets the external card.",
+        "edits": [
+            {
+                "find": "        if ((!relIcon && a.querySelector('img:not(.avatar)')) || a.closest(_EXT_SKIP_SEL)) return null;",
+                "replace": "        if (a.querySelector('img:not(.avatar)') || a.closest(_EXT_SKIP_SEL)) return null;"
+            }
+        ],
+        "spec": "tests/fixtures/rel-icons.spec.js",
+        "grep": "the card, with the filter box",
+        "expect": "fail"
+    },
+    {
+        "name": "the card's note stack shows the generic titles for a Relationships icon",
+        "why": "It would show the bare URL and the cell's 'click outside the icons' hint instead of the filter and icon boxes.",
+        "edits": [
+            {
+                "find": "        if (relCell) return _relStackParts(relCell, own).map(p => ({ kind: p.kind === 'filter' ? 'rel' : 'title', html: p.html }));\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/rel-icons.spec.js",
+        "grep": "the card, with the filter box",
+        "expect": "fail"
+    },
+    {
+        "name": "the column's own stack shows under the card too",
+        "why": "Two stacks for one icon: the card's notes and #mb-rel-tooltip.",
+        "edits": [
+            {
+                "find": "                if (_dpPeek.link === _a) return;\n",
+                "replace": ""
+            },
+            {
+                "find": "        if (t.el.closest('td.mb-rel-cell')) _relHideTooltip();\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/rel-icons.spec.js",
+        "grep": "the card, with the filter box",
+        "expect": "fail"
+    },
+    {
+        "name": "the hovered icon is not marked in the filter box",
+        "why": "The reader cannot tell which of the listed URLs the icon under the pointer is.",
+        "edits": [
+            {
+                "find": "            const isHere = a === here;",
+                "replace": "            const isHere = false;"
+            }
+        ],
+        "spec": "tests/fixtures/rich-tooltips.spec.js",
+        "grep": "one stack: the filter box",
+        "expect": "fail"
+    },
+    {
+        "name": "the icon's own card is the bare URL again",
+        "why": "Without a filter the icon's card showed only its URL, with no site name.",
+        "edits": [
+            {
+                "find": "        if (el && el.tagName === 'A' && el.closest && el.closest('td.mb-rel-cell')) return _relLinkNoteHtml(el);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/rich-tooltips.spec.js",
+        "grep": "without a filter, no stack",
+        "expect": "fail"
+    },
+    {
+        "name": "the relationship type is not kept on the icon",
+        "why": "The icon box loses its type pill ('discogs').",
+        "edits": [
+            {
+                "find": "        if (relType) a.dataset.mbRelType = relType;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/rel-icons.spec.js",
+        "grep": "without a filter: the card and the icon box alone",
+        "expect": "fail"
+    }
+]

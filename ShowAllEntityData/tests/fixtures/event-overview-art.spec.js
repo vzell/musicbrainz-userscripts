@@ -31,6 +31,23 @@
 const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('../support/test');
+
+/**
+ * Dispatches a Ctrl-click on a link and returns whether it arrived there
+ * cancelled (`null`: it never arrived). Cancelled at the link afterwards, so
+ * no tab opens. Since 2026-10-17 the navigation guard asks nothing on a
+ * Ctrl-click (a new tab loses nothing), so its dialog no longer shows that
+ * the click reached the link; this does.
+ *
+ * @param {HTMLAnchorElement} a
+ * @returns {?boolean}
+ */
+const ctrlClickAtLink = (a) => {
+    let seen = null;
+    a.addEventListener('click', (e) => { seen = e.defaultPrevented; e.preventDefault(); }, { once: true });
+    a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true, button: 0 }));
+    return seen;
+};
 const { loadUserscriptPage } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
 
@@ -224,9 +241,9 @@ test.describe('pageType event-overview: the Event art section (WIP.3)', () => {
         await settled(page, 'ok');
         let dialogs = [];
         page.on('dialog', (d) => { dialogs.push(d.message()); d.dismiss(); });
-        await page.click(TAB, { modifiers: ['Control'] });
-        await expect.poll(() => dialogs.length, 'the navigation guard saw the Ctrl-click').toBe(1);
+        expect(await page.locator(TAB).evaluate(ctrlClickAtLink), 'the Ctrl-click reached the tab uncancelled').toBe(false);
         expect((await viewer(page)).open).toBe(false);
+        expect(dialogs, 'a new tab loses nothing: no leave-page confirm').toEqual([]);
 
         const second = await page.context().newPage();
         await openEvent(second, { settings: { sa_event_overview_art_tab: false } });

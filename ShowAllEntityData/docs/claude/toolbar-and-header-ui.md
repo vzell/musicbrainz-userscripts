@@ -608,8 +608,10 @@ How it behaves, and why:
   `#mb-art-bigbox-tooltip`, `#mb-art-hover-preview` or `#mb-rel-tooltip`
   shows (`_OTHER_RICH_TIPS`). The title stays stashed, so no grey box appears
   either. A Relationships icon whose cell a filter matches is skipped before
-  the stash: that tooltip's plain panel shows this very title, and a stash
-  would leave the panel empty. **Give any NEW floating hover tooltip's id to
+  the stash: its own stack (`#mb-rel-tooltip`, the filter box and the icon
+  box, `_relStackParts()`, since 2026-10-17) shows it. Without a matching
+  filter the card IS the icon box (`_tipTextToHtml()` returns
+  `_relLinkNoteHtml()` for a `td.mb-rel-cell a`). **Give any NEW floating hover tooltip's id to
   `_OTHER_RICH_TIPS`**, or its elements' own titles will draw a card on top of
   it. All three were found in a browser, not by a spec: an inline CAA
   thumbnail's "N images found" card on its own preview, a Relationships URL
@@ -635,7 +637,8 @@ is the top layer; only the page-corner notice (2147483000) comes close.
 
 **One look.** `.mb-tt-liner` in the main `GM_addStyle` block is the style of
 every floating tooltip: `#mb-stat-tooltip`, `#mb-art-bigbox-tooltip`,
-`#mb-rel-tooltip`, `#mb-rel-plain-tooltip` and `#mb-ctrl-m-tooltip`. Give a new
+the boxes of `#mb-rel-tooltip` (a stack since 2026-10-17; `#mb-rel-plain-tooltip`
+is gone) and `#mb-ctrl-m-tooltip`. Give a new
 one that class and its row classes (`.mb-tt-title`, `-body`, `-foot`,
 `-comment`, `-dim`, `-rule`, `-pill`, `-alert`). Never give it inline colours:
 the old dark panel's `#cdd6f4` / `#45475a` literals were what had to be hunted

@@ -1,5 +1,24 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-10-17",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Relationships column: hovering an icon now says what it is (the site, MusicBrainz's relationship type, the full URL) instead of the bare URL. While a filter matches the cell, a box above it lists all the row's links with the filter's marks and marks the icon you point at. The two boxes sit one under the other instead of side by side. With link previews on, the icons get the link's preview card too, with these boxes above it.",
+          "A cover icon in a relationship list (for example \"includes:\" in a release group's Relationships section) shows the release's artwork card on hover, and a click opens the artwork viewer on its images instead of leaving the page."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "A click on an image of the big-picture strip above a table opens the artwork viewer instead of asking \"You are about to leave this page\". The same question no longer comes up for a Ctrl-click or Shift-click, which opens a new tab or window and loses nothing."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-10-17",
     "sections": [
