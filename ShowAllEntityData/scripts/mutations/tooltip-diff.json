@@ -1,0 +1,210 @@
+[
+    {
+        "name": "no letter-level refine inside a replaced word",
+        "why": "Without it a case change marks the whole word ('with'/'With'), which is exactly the hunt the diff view removes.",
+        "edits": [
+            {
+                "find": "            if (x.eq !== undefined || !_cmpNear(x.del, x.ins)) { blocks.push(x); continue; }",
+                "replace": "            if (true) { blocks.push(x); continue; }"
+            }
+        ],
+        "spec": "tests/fixtures/tooltip-diff.spec.js",
+        "grep": "a case change marks the one letter",
+        "expect": "fail"
+    },
+    {
+        "name": "no token-level cleanup of spaces and punctuation between changes",
+        "why": "A reordered venue then breaks into four marks per row instead of one.",
+        "edits": [
+            {
+                "find": "        for (const x of _cmpFoldGlue(_cmpBlocks(_cmpLcsOps(ta, tb)))) {",
+                "replace": "        for (const x of (_cmpBlocks(_cmpLcsOps(ta, tb)))) {"
+            }
+        ],
+        "spec": "tests/fixtures/tooltip-diff.spec.js",
+        "grep": "a reorder is one mark per row",
+        "expect": "fail"
+    },
+    {
+        "name": "no reorder detection",
+        "why": "The summary then lists each moved piece as a change instead of saying the words moved.",
+        "edits": [
+            {
+                "find": "            reorder: _cmpIsReorder(a, b),",
+                "replace": "            reorder: false,"
+            }
+        ],
+        "spec": "tests/fixtures/tooltip-diff.spec.js",
+        "grep": "a reorder is one mark per row",
+        "expect": "fail"
+    },
+    {
+        "name": "an empty side counts as sharing little",
+        "why": "A date only the comment has would then be shown unmarked, as if the two were unrelated.",
+        "edits": [
+            {
+                "find": "            plain: !!a && !!b && 2 * shared / (a.length + b.length) < 0.4,",
+                "replace": "            plain: 2 * shared / (a.length + b.length) < 0.4,"
+            }
+        ],
+        "spec": "tests/fixtures/tooltip-diff.spec.js",
+        "grep": "added text marks only itself",
+        "expect": "fail"
+    },
+    {
+        "name": "a comparison shows whatever text the tip has now",
+        "why": "A tip rewritten by code that knows nothing about comparisons would show an old pair of values.",
+        "edits": [
+            {
+                "find": "            if (!data || String(data.t).trim() !== String(text).trim() || !Array.isArray(data.c)) return [];",
+                "replace": "            if (!data || !Array.isArray(data.c)) return [];"
+            }
+        ],
+        "spec": "tests/fixtures/tooltip-diff.spec.js",
+        "grep": "a comparison shows only for the text it was built for",
+        "expect": "fail"
+    },
+    {
+        "name": "the Liner notes card does not hand over its element",
+        "why": "Every comparison rides on the element's attribute; without it the hovered cell's card is the sentence alone.",
+        "edits": [
+            {
+                "find": "            _tip.innerHTML = _tipTextToHtml(text, _target);\n            _tip.style.display = 'block';",
+                "replace": "            _tip.innerHTML = _tipTextToHtml(text);\n            _tip.style.display = 'block';"
+            }
+        ],
+        "spec": "tests/fixtures/tooltip-diff.spec.js",
+        "grep": "each duration cell",
+        "expect": "fail"
+    },
+    {
+        "name": "the length card puts the track row first on both cells",
+        "why": "Each cell speaks from its own point of view; the Recording length cell must lead with the recording.",
+        "edits": [
+            {
+                "find": "        const isTrack = L.which === 'track';\n        const ownMs = isTrack ? L.trackMs : L.recMs;",
+                "replace": "        const isTrack = true;\n        const ownMs = isTrack ? L.trackMs : L.recMs;"
+            }
+        ],
+        "spec": "tests/fixtures/tooltip-diff.spec.js",
+        "grep": "each duration cell",
+        "expect": "fail"
+    },
+    {
+        "name": "findings write no comparison",
+        "why": "The card then shows the detail prose again instead of the two values one under the other.",
+        "edits": [
+            {
+                "find": "            _setTipCmp(td, text, cmp);\n            td.dataset.mbFindingTip = '1';",
+                "replace": "            _setTipCmp(td, text, null);\n            td.dataset.mbFindingTip = '1';"
+            }
+        ],
+        "spec": "tests/fixtures/tooltip-diff.spec.js",
+        "grep": "Recorded at place: the label",
+        "expect": "fail"
+    },
+    {
+        "name": "the note stack repeats the Title cell's comparison",
+        "why": "Under a preview card the link's note box already compares the names; the cell's box would show the same block twice.",
+        "edits": [
+            {
+                "find": "_tipTextToHtml(text, n, { noOrigin: hasOrigin })",
+                "replace": "_tipTextToHtml(text, n)"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "label alone above the note box",
+        "expect": "fail"
+    },
+    {
+        "name": "the note box keeps the plain two-row list",
+        "why": "The screenshot's case: the reader hunts for the one differing letter.",
+        "edits": [
+            {
+                "find": "        const cmp = _cmpHtml(_dpOriginCmp(n));\n        if (cmp) return cmp;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a track named differently from its recording",
+        "expect": "fail"
+    },
+    {
+        "name": "the window badge's tip has no comparison",
+        "why": "Its card would be the sentence alone.",
+        "edits": [
+            {
+                "find": "                    note.text ? null : [{ ..._dpOriginCmp(note), at: 0, head: 'Opened from a track whose name differs from its recording' }]);",
+                "replace": "                    null);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a track named differently from its recording",
+        "expect": "fail"
+    },
+    {
+        "name": "Recording date findings carry no comparison",
+        "why": "The card would show only the label, with neither date.",
+        "edits": [
+            {
+                "find": "        return v ? { la: 'Recording date', lb: 'Comment date', a: v.rec, b: v.comment } : null;",
+                "replace": "        return null;"
+            }
+        ],
+        "spec": "tests/fixtures/uvd-recording-comments.spec.js",
+        "grep": "Recording date findings",
+        "expect": "fail"
+    },
+    {
+        "name": "a site title's comparison names a line the tip does not have",
+        "why": "The card would be the two plain lines again, nothing marked.",
+        "edits": [
+            {
+                "find": "            at: 0, span: 2, head: 'As written on the site',",
+                "replace": "            at: 5, span: 2, head: 'As written on the site',"
+            }
+        ],
+        "spec": "tests/fixtures/mb-title-case.spec.js",
+        "grep": "Brucebase song list: titles in MusicBrainz style",
+        "expect": "fail"
+    },
+    {
+        "name": "Save to Disk drops the length comparison",
+        "why": "A reopened tracklist would show the sentence where the source showed the two lengths.",
+        "edits": [
+            {
+                "find": "                if (cmp.length) data.lenCmp = cmp;\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/len-flag-disk-roundtrip.spec.js",
+        "grep": "a reopened tracklist shows the same flags",
+        "expect": "fail"
+    },
+    {
+        "name": "Load from Disk ignores the saved length comparison",
+        "why": "Same loss on the reading side.",
+        "edits": [
+            {
+                "find": "            _setTipCmp(td, cellData.lenTip, Array.isArray(cellData.lenCmp) ? cellData.lenCmp : null);",
+                "replace": "            _setTip(td, cellData.lenTip);"
+            }
+        ],
+        "spec": "tests/fixtures/len-flag-disk-roundtrip.spec.js",
+        "grep": "a reopened tracklist shows the same flags",
+        "expect": "fail"
+    },
+    {
+        "name": "a saved length comparison is not checked",
+        "why": "File data reaches the card unchecked: a bad value renders as a broken card instead of falling back to the sentence.",
+        "edits": [
+            {
+                "find": "                  num(c.trackMs) && num(c.recMs) &&",
+                "replace": "                  num(c.recMs) &&"
+            }
+        ],
+        "spec": "tests/fixtures/len-flag-disk-roundtrip.spec.js",
+        "grep": "a tampered two-length card is dropped",
+        "expect": "fail"
+    }
+]

@@ -10933,7 +10933,7 @@
         // cover's alt text keeps the site's.
         const shownTitle = _mbSiteTitleText(title);
         linkCell(docContext.createTextNode(shownTitle));
-        if (shownTitle !== title) _setTip(tr.lastElementChild, `As written on the site:\n${title}`);
+        if (shownTitle !== title) _mbSiteTitleTip(tr.lastElementChild, title, shownTitle);
 
         const notes = Array.from(body.querySelectorAll('.colored-text')).map(el => el.textContent.trim());
         if (kind === 'bootlegs') {
@@ -13793,7 +13793,24 @@
     function _mbSetSiteTitle(el, text, tipEl = el) {
         const shown = _mbSiteTitleText(text);
         el.textContent = shown;
-        if (shown !== text) _setTip(tipEl, `As written on the site:\n${text}`);
+        if (shown !== text) _mbSiteTitleTip(tipEl, text, shown);
+    }
+
+    /**
+     * The tooltip of a site title shown in MusicBrainz style: "As written on
+     * the site:" and the site's text, and for the rich card the site's text
+     * over the shown one with what changed marked (`_cmpHtml()`).
+     *
+     * @param {Element} el       The element that carries the tooltip.
+     * @param {string}  original The title as the site writes it.
+     * @param {string}  shown    The title as the page shows it.
+     * @returns {void}
+     */
+    function _mbSiteTitleTip(el, original, shown) {
+        _setTipCmp(el, `As written on the site:\n${original}`, [{
+            at: 0, span: 2, head: 'As written on the site',
+            la: 'Site', lb: 'Shown', sa: 'site', sb: 'shown title', a: original, b: shown,
+        }]);
     }
 
     /**
@@ -13839,7 +13856,10 @@
             }
             if (data !== n.data) n.data = data;
         });
-        if (changed) _setTip(el, `As written on the site:\n${before.replace(/\s+/g, ' ').trim()}`);
+        if (changed) {
+            const flat = t => t.replace(/\s+/g, ' ').trim();
+            _mbSiteTitleTip(el, flat(before), flat(nodes.map(n => n.data).join('')));
+        }
         return changed;
     }
 
@@ -16479,14 +16499,29 @@
     }
 
     /**
+     * The comparison a track/recording note makes (`_cmpHtml()`): the track's
+     * name over the recording's.
+     *
+     * @param {{track: string, rec: string}} n
+     * @returns {{a: string, b: string, la: string, lb: string, sb: string}}
+     */
+    function _dpOriginCmp(n) {
+        return { la: 'Track name', lb: 'Recording', sb: 'recording name', a: n.track, b: n.rec };
+    }
+
+    /**
      * The box stacked above the card: the track's name, then the
-     * recording's, each labelled.
+     * recording's, each labelled, with what differs marked (`_cmpHtml()`,
+     * mockup https://claude.ai/artifact/7Nbqih988jfzpGxbiQTX75). Two equal
+     * names (a "≠" note that names none) keep the plain list.
      *
      * @param {{track: string, rec: string, text: string}} n
      * @returns {string}
      */
     function _dpOriginHtml(n) {
         if (n.text) return `<div class="mb-tt-body">${n.text.split('\n').map(_mbttEscape).join('<br>')}</div>`;
+        const cmp = _cmpHtml(_dpOriginCmp(n));
+        if (cmp) return cmp;
         return '<dl class="mb-dp-origin-kv">' +
             `<dt>Track name</dt><dd class="mb-dp-origin-track">${_mbttEscape(n.track)}</dd>` +
             `<dt>≠ Recording</dt><dd>${_mbttEscape(n.rec)}</dd></dl>`;
@@ -16513,13 +16548,21 @@
         const squash = s => String(s).replace(/\s+/g, ' ').trim().toLowerCase();
         const own = t.el;
         const sortName = t.src && t.src.id === 'mb-entity' && (t.type === 'artist' || t.type === 'label');
+        // A Relationships icon: the filter's view of the cell and the icon's
+        // own box (`_relStackParts()`), never its bare title or the cell's
+        // "click outside the icons" hint.
+        const relCell = own && own.tagName === 'A' && own.closest('td.mb-rel-cell');
+        if (relCell) return _relStackParts(relCell, own).map(p => ({ kind: p.kind === 'filter' ? 'rel' : 'title', html: p.html }));
+        // The link's note box compares the two names; the cell's finding box
+        // then gives the label alone, not the same comparison again.
+        const hasOrigin = !!_dpOriginNote(own);
         return _dpTitledChain(own).reverse().map((n) => {
             const text = _dpTitleText(n).trim();
             if (n === own) {
                 const note = _dpOriginNote(n);
                 if (note) return { kind: 'origin', html: _dpOriginHtml(note) };
             }
-            if (n.hasAttribute('data-mb-tip')) return { kind: 'tip', html: _tipTextToHtml(text) };
+            if (n.hasAttribute('data-mb-tip')) return { kind: 'tip', html: _tipTextToHtml(text, n, { noOrigin: hasOrigin }) };
             if (n === own && squash(text) === squash(n.textContent)) return null;
             if (n === own && sortName) {
                 return { kind: 'title', html: `<dl class="mb-dp-origin-kv"><dt>Sort name</dt><dd>${_mbttEscape(text)}</dd></dl>` };
@@ -17891,6 +17934,9 @@
         // too). The cell's tip card gives way: its text is in the stack.
         _dpStashTitles(t.el);
         if (_statTipApi) _statTipApi.yieldTo(t.el);
+        // A Relationships icon's own stack gives way too: the card's stack
+        // carries its boxes.
+        if (t.el.closest('td.mb-rel-cell')) _relHideTooltip();
         _dpFillNotes(t);
         // Shown before the source is asked, so a request it starts finds
         // its card showing when its rate slot comes up.
@@ -18291,7 +18337,13 @@
             const note = _dpOriginNote(from.el);
             badge.style.display = note ? '' : 'none';
             badge.textContent = note ? _dpOriginBadgeText(note) : '';
-            if (note) _setTip(badge, note.text || `Opened from a track named “${note.track}”; its recording is named “${note.rec}”.`);
+            if (note) {
+                // The rich card puts the two names one under the other, the
+                // difference marked (`_dpOriginCmp()`); the sentence stays the
+                // native fallback.
+                _setTipCmp(badge, note.text || `Opened from a track named “${note.track}”; its recording is named “${note.rec}”.`,
+                    note.text ? null : [{ ..._dpOriginCmp(note), at: 0, head: 'Opened from a track whose name differs from its recording' }]);
+            }
         }
         // A drilled target's element is a link in the window, not a row of
         // the page: the page's row keeps its mark.
@@ -32118,7 +32170,12 @@
         [[trackTd, 'track'], [recTd, 'recording']].forEach(([td, which]) => {
             if (!td) return;
             td.dataset.mbLenFlag = flag.kind;
-            _setTip(td, _lengthMismatchTooltip(flag, which, trackMs, recMs));
+            // The rich card shows the two lengths one under the other
+            // (`_cmpLenCardHtml()`); the sentence stays the native fallback.
+            _setTipCmp(td, _lengthMismatchTooltip(flag, which, trackMs, recMs), [{
+                kind: 'len', level: flag.kind, which, trackMs, recMs,
+                thresholdMs: flag.thresholdMs, severeMs: flag.severeMs,
+            }]);
             td.dataset.mbColTip   = '1';
         });
         return flag.kind;
@@ -38565,6 +38622,22 @@
     }
 
     /**
+     * The track/recording name note (`_dpOriginNote()`) of a Title cell's
+     * flagged link, when it names both: the `title-mismatch` finding's
+     * detail and comparison.
+     *
+     * @param {Element} cell - A `<td>` in the 'Title' column.
+     * @returns {?{track: string, rec: string, text: string}}
+     */
+    function _findingTitleNote(cell) {
+        for (const a of cell.querySelectorAll('a[title], a[data-mb-dp-saved-title]')) {
+            const n = _dpOriginNote(a);
+            if (n && !n.text) return n;
+        }
+        return null;
+    }
+
+    /**
      * Finds every native MusicBrainz "name variation" marker within (or AS)
      * a table cell — an element whose own class ends in `-variation`,
      * meaning "this credited/displayed name differs from the entity's
@@ -39987,6 +40060,49 @@
     }
 
     /**
+     * The two dates `_findingRecDate()` compares: the "Recording date" cell's
+     * and the one in the row's comment (`''` when either has none).
+     *
+     * @param {HTMLTableCellElement} cell
+     * @param {HTMLTableRowElement} row
+     * @param {{recPlainIdx: number}} plan
+     * @returns {?{rec: string, comment: string}}
+     */
+    function _findingRecDateValues(cell, row, plan) {
+        const src = row.cells[plan.recPlainIdx];
+        const rc = src ? _findCellRecordingComment(src, true) : null;
+        return rc ? { rec: cell.textContent.trim(), comment: rc.date || '' } : null;
+    }
+
+    /**
+     * The `rec-date-*` findings' detail: both dates, for the plain tooltip.
+     *
+     * @param {HTMLTableCellElement} cell
+     * @param {HTMLTableRowElement} row
+     * @param {{recPlainIdx: number}} plan
+     * @returns {?string}
+     */
+    function _findingRecDateDetail(cell, row, plan) {
+        const v = _findingRecDateValues(cell, row, plan);
+        const q = d => (d ? `"${d}"` : 'none');
+        return v ? `recording date ${q(v.rec)}, comment date ${q(v.comment)}` : null;
+    }
+
+    /**
+     * The `rec-date-*` findings' comparison (`_cmpHtml()`): the Recording
+     * date over the comment's date.
+     *
+     * @param {HTMLTableCellElement} cell
+     * @param {HTMLTableRowElement} row
+     * @param {{recPlainIdx: number}} plan
+     * @returns {?object}
+     */
+    function _findingRecDateCmp(cell, row, plan) {
+        const v = _findingRecDateValues(cell, row, plan);
+        return v ? { la: 'Recording date', lb: 'Comment date', a: v.rec, b: v.comment } : null;
+    }
+
+    /**
      * The event a live recording comment names, in the form an event name
      * takes: the comment without its "<type>, " prefix and "; info" tail
      * ("live, 1996‐04‐19: Saal 1, ICC Berlin, Berlin, Germany" →
@@ -40452,6 +40568,8 @@
             tip: 'Release tracklist: the "Recording date" and the date in the recording\'s comment ("live, 2004‐10‐02: …") agree as far as they go, but one is less precise (2004-10 vs 2004-10-02), or only one of them has a date.',
             cols: (name, plan) => name === 'Recording date' && plan.recPlainIdx >= 0,
             test: (cell, row, plan) => _findingRecDate(cell, row, plan) === 'imprecise',
+            detail: (cell, row, plan) => _findingRecDateDetail(cell, row, plan),
+            compare: (cell, row, plan) => _findingRecDateCmp(cell, row, plan),
             tint: _findingTintSetting('sa_findings_tint_rec_date'),
         },
         {
@@ -40463,6 +40581,17 @@
             detail: (cell, row, plan) => {
                 const m = _findingRgTitleMismatch(cell, row, plan);
                 return m ? `release group "${m.expected}", here "${m.found.join('", "')}"` : null;
+            },
+            compare: (cell, row, plan) => {
+                const m = _findingRgTitleMismatch(cell, row, plan);
+                if (!m) return null;
+                const name = plan.nameOf(cell.cellIndex);
+                const place = name === 'Recorded at place';
+                return {
+                    la: place ? 'Title venue' : 'Release group', sa: place ? 'release group title' : 'release group',
+                    lb: place ? 'Place' : name === 'Recorded at event' ? 'Event' : 'Comment',
+                    a: m.expected, b: _cmpClosest(m.expected, m.found),
+                };
             },
             tint: _findingTintSetting('sa_findings_tint_rg_title'),
         },
@@ -40511,6 +40640,16 @@
             tip: 'The track title and its recording title differ (the "≠" marker of jesus2099\'s "mb. SUPER MIND CONTROL Ⅱ X TURBO").',
             cols: name => name === 'Title',
             test: cell => _titleHasRecNameMismatch(cell),
+            detail: (cell) => {
+                const n = _findingTitleNote(cell);
+                return n ? `track "${n.track}", recording "${n.rec}"` : null;
+            },
+            // `origin`: the link's own note box shows this comparison when a
+            // preview card is up, so the cell's box there gives only the label.
+            compare: (cell) => {
+                const n = _findingTitleNote(cell);
+                return n ? { ..._dpOriginCmp(n), origin: true } : null;
+            },
             tint: _findingTintSetting('sa_findings_tint_title_mismatch'),
         },
         {
@@ -40671,6 +40810,8 @@
             tip: 'Release tracklist: the "Recording date" is a different date from the one in the recording\'s comment ("live, 2004‐10‐02: …").',
             cols: (name, plan) => name === 'Recording date' && plan.recPlainIdx >= 0,
             test: (cell, row, plan) => _findingRecDate(cell, row, plan) === 'mismatch',
+            detail: (cell, row, plan) => _findingRecDateDetail(cell, row, plan),
+            compare: (cell, row, plan) => _findingRecDateCmp(cell, row, plan),
             tint: _findingTintSetting('sa_findings_tint_rec_date'),
         },
         {
@@ -40683,6 +40824,10 @@
                 const m = _findingRecLinkMismatch(cell, row, plan, 'event');
                 return m ? `comment "${m.comment}", event "${m.linked.join('", "')}"` : null;
             },
+            compare: (cell, row, plan) => {
+                const m = _findingRecLinkMismatch(cell, row, plan, 'event');
+                return m ? { la: 'Comment', lb: 'Event', a: m.comment, b: _cmpClosest(m.comment, m.linked) } : null;
+            },
             tint: _findingTintSetting('sa_findings_tint_rec_event'),
         },
         {
@@ -40694,6 +40839,10 @@
             detail: (cell, row, plan) => {
                 const m = _findingRecLinkMismatch(cell, row, plan, 'place');
                 return m ? `comment venue "${m.comment}", place "${m.linked.join('", "')}"` : null;
+            },
+            compare: (cell, row, plan) => {
+                const m = _findingRecLinkMismatch(cell, row, plan, 'place');
+                return m ? { la: 'Comment venue', lb: 'Place', a: m.comment, b: _cmpClosest(m.comment, m.linked) } : null;
             },
             tint: _findingTintSetting('sa_findings_tint_rec_event'),
         },
@@ -40806,13 +40955,18 @@
      *   - `title`: the findings' labels, only on a cell with no tooltip of
      *     its own and no family flag (`data-mb-finding-tip` marks one this
      *     function wrote), each followed by the finding's `detail` for this
-     *     cell when it has one.
+     *     cell when it has one;
+     *   - `data-mb-tip-cmp`: with that title, the findings' `compare` values,
+     *     so the rich card shows the label and the two values one under the
+     *     other instead of the detail prose (`_setTipCmp()`).
      *
      * @param {HTMLTableCellElement} td
      * @param {string[]} ids
      * @param {Object<string, string>} [details] - Per-cell detail text by id.
+     * @param {Object<string, object>} [compares] - Per-cell comparison by id
+     *   (`_cmpHtml()`'s argument).
      */
-    function _writeFindingAttrs(td, ids, details = {}) {
+    function _writeFindingAttrs(td, ids, details = {}, compares = {}) {
         if (!ids.length) {
             if (td.dataset.mbFindings === undefined) return;
             delete td.dataset.mbFindings;
@@ -40821,6 +40975,7 @@
             if (td.dataset.mbFindingTip) {
                 td.removeAttribute('title');
                 td.removeAttribute('data-mb-dp-saved-title'); // parked by a preview card
+                td.removeAttribute('data-mb-tip-cmp');
                 delete td.dataset.mbFindingTip;
             }
             return;
@@ -40841,10 +40996,14 @@
         // A title a preview card parked (`_dpStashTitles()`) is still the
         // cell's title.
         if (!familyPainted && (!(td.hasAttribute('title') || td.hasAttribute('data-mb-dp-saved-title')) || td.dataset.mbFindingTip)) {
-            _setTip(td, ids.map(id => {
+            const head = f => `${f.level === 'error' ? '❌' : '⚠️'} ${f.label}`;
+            const cmp = [];
+            const text = ids.map((id, at) => {
                 const f = _FINDING_BY_ID.get(id);
-                return `${f.level === 'error' ? '❌' : '⚠️'} ${f.label}${details[id] ? `: ${details[id]}` : ''}`;
-            }).join('\n'));
+                if (compares[id]) cmp.push({ ...compares[id], at, head: head(f) });
+                return `${head(f)}${details[id] ? `: ${details[id]}` : ''}`;
+            }).join('\n');
+            _setTipCmp(td, text, cmp);
             td.dataset.mbFindingTip = '1';
         }
     }
@@ -40860,14 +41019,17 @@
         Array.from(row.cells).forEach((td, i) => {
             const ids = [];
             const details = {};
+            const compares = {};
             (plan.byCol.get(i) || []).forEach(f => {
                 if (!f.test(td, row, plan)) return;
                 ids.push(f.id);
                 const d = f.detail && f.detail(td, row, plan);
                 if (d) details[f.id] = d;
+                const c = f.compare && f.compare(td, row, plan);
+                if (c) compares[f.id] = c;
             });
             rowWide.forEach(f => { if (f.test(td, row, plan)) ids.push(f.id); });
-            _writeFindingAttrs(td, ids, details);
+            _writeFindingAttrs(td, ids, details, compares);
         });
     }
 
@@ -45106,16 +45268,18 @@
     const _EXT_SKIP_URL_RE = /\/sharer(?:\.php)?(?:[/?#]|$)|\/share(?:Article)?\?|\/intent\/(?:tweet|post)|whatsapp\.com\/send|\/submit\?url=/i;
 
     /**
-     * Where an external link never gets a card: the site's chrome, the
-     * Relationships column (its own tooltip), the card and the window
-     * themselves, and what the entity cards' page-wide scope leaves out.
+     * Where an external link never gets a card: the site's chrome, the card
+     * and the window themselves, and what the entity cards' page-wide scope
+     * leaves out. The Relationships column was here until 2026-10-17; its
+     * icons now get the card like any other external link, with their own
+     * boxes as its note stack (`_relStackParts()`).
      * Since U5 the Springsteen sites' chrome too: springsteenlyrics.com's
      * `.top-bar` and `.footer-col` (Facebook, X, Reddit), wikidot's
      * `#top-bar` menus and `#login-status` (the U5 census of their fixtures).
      * @type {string}
      */
     const _EXT_SKIP_SEL = '.header, #header, #footer, .top-social, .top-bar, #top-bar, .footer-col, #login-status, ' +
-        `td.mb-rel-cell, #mb-dp-peek, #mb-dp-dialog, ${_MB_POP_PAGE_SKIP}`;
+        `#mb-dp-peek, #mb-dp-dialog, ${_MB_POP_PAGE_SKIP}`;
 
     /** Where external links live on a MusicBrainz page, previewed without the page-wide setting. */
     const _EXT_SCOPE_SEL = 'table.tbl > tbody a[href], table.details a[href], .annotation a[href], ul.external_links a[href]';
@@ -46892,8 +47056,8 @@
      * What a link to another site previews, or null. An `http(s)` link
      * whose host is not this page's (`www.` aside), not in the MetaBrainz
      * family or the artwork archives (`_EXT_SKIP_HOST_RE`), not a share
-     * button, not around an image, and not in the chrome, the Relationships
-     * column, the card or the window (`_EXT_SKIP_SEL`). The URL is read from
+     * button, not around an image (a Relationships icon excepted), and not in
+     * the chrome, the card or the window (`_EXT_SKIP_SEL`). The URL is read from
      * the `href` ATTRIBUTE: `a.href` is the browser's normalised URL, and
      * MusicBrainz looks a URL up by its exact string (U0 X7); a
      * protocol-relative one (`//host/…`) is read as https. The first
@@ -46926,7 +47090,11 @@
         const bare = (h) => h.replace(/^www\./, '');
         if (bare(host) === bare(window.location.hostname.toLowerCase())) return null;
         if (_EXT_SKIP_HOST_RE.test(host) || _EXT_SKIP_URL_RE.test(href)) return null;
-        if (a.querySelector('img:not(.avatar)') || a.closest(_EXT_SKIP_SEL)) return null;
+        // A Relationships icon is an image link that IS the link: it gets
+        // the card (2026-10-17). Elsewhere a link around an image is the
+        // image's, which has its own preview.
+        const relIcon = !!a.closest('td.mb-rel-cell');
+        if ((!relIcon && a.querySelector('img:not(.avatar)')) || a.closest(_EXT_SKIP_SEL)) return null;
         const td = a.closest('td, th');
         const table = td && td.closest('table.tbl');
         const reader = _EXT_READERS.find(r => r.test(u));
@@ -46934,7 +47102,8 @@
             key: `ext:${reader.id}:${u.href}`, url: u.href, href, host, askHost: reader.askHost(u),
             reader, noLive: reader.noLive, kind: reader.kind, live: reader.liveFor ? reader.liveFor(u) : (reader.live || null),
             liveUrl: reader.liveUrlFor ? reader.liveUrlFor(u) : '',
-            name: _dpText(a.textContent) || host,
+            // An icon's text is its hidden filter key (the URL): its site instead.
+            name: relIcon ? _relLinkName(a) : (_dpText(a.textContent) || host),
             col: table ? _resolveColHeaderName(table, td.cellIndex) : '',
         };
     }
@@ -58903,7 +59072,8 @@ a { color: #1565c0; }`;
      * this is ever invoked on them.
      *
      * A release tracklist's LENGTH mismatch marking adds `lenFlag` (and
-     * `lenTip`, its tooltip). It lives ON the `<td>` as `data-mb-len-flag` —
+     * `lenTip`, its tooltip, and `lenCmp`, the rich card's two lengths from
+     * `data-mb-tip-cmp`). It lives ON the `<td>` as `data-mb-len-flag` —
      * attributes only, by design (see `_applyLengthMismatchFlag()`) — so
      * `html` alone cannot carry it, and a reopened tracklist used to come back
      * with every flag, tint and LENGTH button gone. The tooltip is taken only
@@ -58922,7 +59092,7 @@ a { color: #1565c0; }`;
      *
      * @param {HTMLTableCellElement} cell
      * @returns {{html: string, colSpan: number, rowSpan: number, mbid?: (string|null), relDone?: boolean,
-     *            lenFlag?: string, lenTip?: string, videoFlag?: string, videoTip?: string,
+     *            lenFlag?: string, lenTip?: string, lenCmp?: Array<object>, videoFlag?: string, videoTip?: string,
      *            workFlag?: string}}
      */
     function _buildDiskCellData(cell) {
@@ -58937,7 +59107,11 @@ a { color: #1565c0; }`;
         }
         if (cell.dataset.mbLenFlag) {
             data.lenFlag = cell.dataset.mbLenFlag;
-            if (cell.dataset.mbColTip === '1' && cell.title) data.lenTip = cell.title;
+            if (cell.dataset.mbColTip === '1' && cell.title) {
+                data.lenTip = cell.title;
+                const cmp = _cmpTipData(cell, cell.title);
+                if (cmp.length) data.lenCmp = cmp;
+            }
         }
         if (cell.dataset.mbVideoFlag) {
             data.videoFlag = cell.dataset.mbVideoFlag;
@@ -59026,7 +59200,9 @@ a { color: #1565c0; }`;
      *
      * A saved file is user-supplied data, so only the two kinds
      * `_lengthMismatchFlag()` produces — `warn`, `severe` — are ever written
-     * into the DOM, and the tooltip only when it is a string.
+     * into the DOM, and the tooltip only when it is a string. Its rich card's
+     * two lengths (`lenCmp`, a file saved before them has none: the card is
+     * then the sentence) are filtered by `_cmpTipData()` on every read.
      *
      * Restores the flag as it was SAVED; it does not re-derive it under the
      * current threshold. It cannot: the millisecond values the comparison ran
@@ -59050,7 +59226,9 @@ a { color: #1565c0; }`;
         if (Lib.settings.sa_enable_release_tracks_length_mismatch_flag === false) return;
         td.dataset.mbLenFlag = cellData.lenFlag;
         if (typeof cellData.lenTip === 'string' && cellData.lenTip) {
-            _setTip(td, cellData.lenTip);
+            // `lenCmp` is file data too: `_cmpTipData()` keeps only entries
+            // of the known shape when a card reads it.
+            _setTipCmp(td, cellData.lenTip, Array.isArray(cellData.lenCmp) ? cellData.lenCmp : null);
             td.dataset.mbColTip = '1';
         }
     }
@@ -63633,6 +63811,29 @@ a { color: #1565c0; }`;
         .mb-tt-liner .mb-tt-rule { height: 0; border-top: 1px solid #d9cfbd; margin: 5px 0; }
         .mb-tt-liner .mb-tt-pill { display: inline-block; background: #efe6d4; color: #4a3f33; border: 1px solid #d9cfbd; border-radius: 3px; padding: 0 5px; font-size: 0.88em; font-weight: 700; line-height: 1.45; white-space: nowrap; }
         .mb-tt-liner .mb-tt-alert { color: #9b2218; font-weight: 700; }
+        /* Comparison block (_cmpHtml, _cmpLenCardHtml): two values one under
+           the other, only what differs marked, in both rows (neither side is
+           the wrong one). Mockup approved 2026-10-17, variant A:
+           https://claude.ai/artifact/7Nbqih988jfzpGxbiQTX75 */
+        .mb-tt-liner .mb-tt-cmp { margin-top: 5px; display: grid; gap: 4px; }
+        .mb-tt-liner .mb-tt-cmp:first-child { margin-top: 0; }
+        .mb-tt-liner .mb-tt-cmp-grid { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 1px 10px; align-items: baseline; }
+        .mb-tt-liner .mb-tt-cmp-len { display: grid; grid-template-columns: max-content max-content minmax(0, 1fr); gap: 1px 12px; align-items: baseline; }
+        .mb-tt-liner .mb-tt-cmp-lbl { font: 600 10.5px/1.6 ui-monospace, Consolas, monospace; letter-spacing: 0.06em; text-transform: uppercase; color: #8b1a1a; white-space: nowrap; }
+        .mb-tt-liner .mb-tt-cmp-len .mb-tt-cmp-lbl { color: #7a6d5c; }
+        .mb-tt-liner .mb-tt-cmp-val { overflow-wrap: anywhere; min-width: 0; }
+        .mb-tt-liner .mb-tt-cmp-own { font-weight: 700; }
+        .mb-tt-liner .mb-tt-cmp-t { font-family: ui-monospace, Consolas, monospace; font-variant-numeric: tabular-nums; text-align: right; white-space: pre; }
+        .mb-tt-liner .mb-tt-cmp-d { background: #f2dc9b; color: inherit; border-radius: 2px; box-shadow: inset 0 -2px 0 #b8860b; padding: 0 1px; }
+        .mb-tt-liner .mb-tt-cmp-t .mb-tt-cmp-d { padding: 0; }
+        .mb-tt-liner .mb-tt-cmp-ws { color: #9a6a00; font-weight: 400; }
+        .mb-tt-liner .mb-tt-cmp-none { font-style: italic; font-weight: 400; color: #7a6d5c; }
+        .mb-tt-liner .mb-tt-cmp-sum { font: 12px/1.45 system-ui, Arial, sans-serif; color: #7a6d5c; }
+        .mb-tt-liner .mb-tt-cmp-key { font-family: ui-monospace, Consolas, monospace; color: #2b2622; background: #ffffff; border: 1px solid #d9cfbd; border-radius: 2px; padding: 0 3px; }
+        .mb-tt-liner .mb-tt-cmp-u { font-family: ui-monospace, Consolas, monospace; font-size: 0.9em; }
+        .mb-tt-liner .mb-tt-cmp-pill { display: inline-block; font: 600 11px/1.5 system-ui, Arial, sans-serif; letter-spacing: 0.04em; padding: 0 7px; border-radius: 3px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .mb-tt-liner .mb-tt-cmp-pill-warn { background: #f6e7bd; color: #6e4c00; }
+        .mb-tt-liner .mb-tt-cmp-pill-severe { background: #f3d1cb; color: #9b2218; }
         /* Annotation prose in the artwork card (_artTooltipAnnotation): the
            cell markup, kept compact. Height is capped per hover by
            _fitArtTooltipToViewport, which also reveals the "more" foot. */
@@ -66060,6 +66261,7 @@ a { color: #1565c0; }`;
     // row-count stat — which still independently gates its OWN data-mbtt via
     // sa_enable_count_stat_tooltip at the point it's set, further below.
     _initStatTooltip(); // create the custom #mb-stat-tooltip hover system once
+    _artInitRelIcons(); // cover icons in relationship lists: click opens the viewer
     // 💾 Browser cache overview from the Tampermonkey menu too (the callback
     // runs long after the IIFE, so the _idbo* state it reads is initialised).
     if (typeof GM_registerMenuCommand === 'function') {
@@ -69342,8 +69544,505 @@ a { color: #1565c0; }`;
         el.dataset.mbTipSaved = text;
         if (el.dataset.mbTipAria !== undefined) el.setAttribute('aria-description', text);
         const card = el.matches(':hover') ? document.getElementById('mb-stat-tooltip') : null;
-        if (card && card.style.display === 'block') card.innerHTML = _tipTextToHtml(text);
+        if (card && card.style.display === 'block') card.innerHTML = _tipTextToHtml(text, el);
         return text;
+    }
+
+    // ── Comparison tooltips: the diff view (org/TODO.org "the rich tooltips
+    // should show track/recording differences below each other") ─────────────
+    //
+    // Every tooltip that compares two values (the track/recording name note,
+    // the findings that name two values, the length mismatch, a foreign site's
+    // original title) shows them one under the other and marks only what
+    // differs. Mockup approved 2026-10-17 (variant A, "two rows, marked"):
+    // https://claude.ai/artifact/7Nbqih988jfzpGxbiQTX75
+    //
+    // The diff is a longest-common-subsequence over word/space/punctuation
+    // tokens, refined letter by letter inside a replaced pair of similar words
+    // (so "with"/"With" marks only the "w"), with diff-match-patch's
+    // "semantic cleanup" idea: an unchanged run of spaces and punctuation, or
+    // a single letter, between two changes joins them, so marks do not break
+    // up. Below 40 % shared text nothing is marked. Titles are short, so the
+    // O(n·m) table is instant; `_CMP_MAX_CELLS` caps it for anything that is
+    // not.
+    //
+    // The comparison travels as `data-mb-tip-cmp` beside the element's plain
+    // `title` (which stays the native fallback): an attribute, so it survives
+    // `cloneNode(true)`. It records the text it was built for, and a card
+    // shows it only while the title is still that text, so a later `_setTip()`
+    // from anywhere else can never pair a new tip with an old comparison.
+
+    /** Words, runs of white space, and single other characters. */
+    const _CMP_TOKEN_RE = /\s+|[\p{L}\p{N}]+|[^\s\p{L}\p{N}]/gu;
+
+    /** Above this many table cells (tokens × tokens) the two rows go unmarked. */
+    const _CMP_MAX_CELLS = 250000;
+
+    /**
+     * The edit script between two token arrays, by longest common
+     * subsequence: `['=', t]`, `['-', t]` (only in A) or `['+', t]` (only in
+     * B), in order.
+     *
+     * @param {string[]} A
+     * @param {string[]} B
+     * @returns {Array<[string, string]>}
+     */
+    function _cmpLcsOps(A, B) {
+        const n = A.length, m = B.length;
+        const L = [];
+        for (let i = 0; i <= n; i++) L.push(new Uint16Array(m + 1));
+        for (let i = n - 1; i >= 0; i--) {
+            for (let j = m - 1; j >= 0; j--) {
+                L[i][j] = A[i] === B[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+            }
+        }
+        const ops = [];
+        let i = 0, j = 0;
+        while (i < n && j < m) {
+            if (A[i] === B[j]) { ops.push(['=', A[i]]); i++; j++; }
+            else if (L[i + 1][j] >= L[i][j + 1]) { ops.push(['-', A[i]]); i++; }
+            else { ops.push(['+', B[j]]); j++; }
+        }
+        while (i < n) ops.push(['-', A[i++]]);
+        while (j < m) ops.push(['+', B[j++]]);
+        return ops;
+    }
+
+    /**
+     * Folds an edit script into blocks: `{eq}` for shared text, `{del, ins}`
+     * for a change (either side may be empty).
+     *
+     * @param {Array<[string, string]>} ops
+     * @returns {Array<{eq?: string, del?: string, ins?: string}>}
+     */
+    function _cmpBlocks(ops) {
+        const out = [];
+        for (const [o, t] of ops) {
+            const last = out[out.length - 1];
+            if (o === '=') {
+                if (last && last.eq !== undefined) last.eq += t;
+                else out.push({ eq: t });
+                continue;
+            }
+            let blk = last && last.eq === undefined ? last : null;
+            if (!blk) { blk = { del: '', ins: '' }; out.push(blk); }
+            if (o === '-') blk.del += t; else blk.ins += t;
+        }
+        return out;
+    }
+
+    /**
+     * Whether two replaced runs are close enough to compare letter by letter:
+     * the same letters in another case, or (up to 60 characters each) at least
+     * half their letters shared.
+     *
+     * @param {string} a
+     * @param {string} b
+     * @returns {boolean}
+     */
+    function _cmpNear(a, b) {
+        if (!a || !b) return false;
+        if (a.toLowerCase() === b.toLowerCase()) return true;
+        const ca = Array.from(a), cb = Array.from(b);
+        if (ca.length > 60 || cb.length > 60) return false;
+        const same = _cmpBlocks(_cmpLcsOps(ca, cb)).reduce((n, x) => n + (x.eq ? Array.from(x.eq).length : 0), 0);
+        return 2 * same / (ca.length + cb.length) >= 0.5;
+    }
+
+    /**
+     * Letter-level blocks of two similar runs. One unchanged letter between
+     * two changes joins them ("ab" → "xy" stays one mark, not "a…b").
+     *
+     * @param {string} a
+     * @param {string} b
+     * @returns {Array<{eq?: string, del?: string, ins?: string}>}
+     */
+    function _cmpCharBlocks(a, b) {
+        const blocks = _cmpBlocks(_cmpLcsOps(Array.from(a), Array.from(b)));
+        const out = [];
+        for (let k = 0; k < blocks.length; k++) {
+            const x = blocks[k];
+            const prev = out[out.length - 1];
+            const next = blocks[k + 1];
+            if (x.eq !== undefined && prev && prev.eq === undefined && next && next.eq === undefined &&
+                Array.from(x.eq).length <= 1 && /\S/.test(x.eq)) {
+                prev.del += x.eq;
+                prev.ins += x.eq;
+                continue;
+            }
+            if (x.eq === undefined && prev && prev.eq === undefined) {
+                prev.del += x.del;
+                prev.ins += x.ins;
+                continue;
+            }
+            out.push({ ...x });
+        }
+        return out;
+    }
+
+    /**
+     * Token-level cleanup: shared text made only of spaces and punctuation
+     * between two changes joins them, so a reordered "Saal 1, ICC Berlin" is
+     * one mark, not four.
+     *
+     * @param {Array<{eq?: string, del?: string, ins?: string}>} blocks
+     * @returns {Array<{eq?: string, del?: string, ins?: string}>}
+     */
+    function _cmpFoldGlue(blocks) {
+        const out = [];
+        for (let k = 0; k < blocks.length; k++) {
+            const x = blocks[k];
+            const prev = out[out.length - 1];
+            const next = blocks[k + 1];
+            if (x.eq !== undefined && prev && prev.eq === undefined && next && next.eq === undefined &&
+                !/[\p{L}\p{N}]/u.test(x.eq)) {
+                prev.del += x.eq + next.del;
+                prev.ins += x.eq + next.ins;
+                k++;
+                continue;
+            }
+            out.push({ ...x });
+        }
+        return out;
+    }
+
+    /**
+     * Whether two values hold the same words in a different order (case and
+     * punctuation aside).
+     *
+     * @param {string} a
+     * @param {string} b
+     * @returns {boolean}
+     */
+    function _cmpIsReorder(a, b) {
+        const words = s => (s.match(/[\p{L}\p{N}]+/gu) || []).map(x => x.toLowerCase());
+        const wa = words(a), wb = words(b);
+        return wa.join(' ') !== wb.join(' ') && [...wa].sort().join(' ') === [...wb].sort().join(' ');
+    }
+
+    /**
+     * The difference between two values, as blocks of shared and changed
+     * text. `plain` means "show both unmarked": both have text and share
+     * under 40 % of it, or they are too long to compare.
+     *
+     * @param {string} a
+     * @param {string} b
+     * @returns {{same: boolean, plain: boolean, reorder: boolean,
+     *            blocks: Array<{eq?: string, del?: string, ins?: string}>}}
+     */
+    function _cmpDiff(a, b) {
+        a = String(a ?? '');
+        b = String(b ?? '');
+        if (a === b) return { same: true, plain: false, reorder: false, blocks: a ? [{ eq: a }] : [] };
+        const ta = a.match(_CMP_TOKEN_RE) || [];
+        const tb = b.match(_CMP_TOKEN_RE) || [];
+        if (ta.length * tb.length > _CMP_MAX_CELLS) {
+            return { same: false, plain: true, reorder: false, blocks: [{ del: a, ins: b }] };
+        }
+        const blocks = [];
+        for (const x of _cmpFoldGlue(_cmpBlocks(_cmpLcsOps(ta, tb)))) {
+            if (x.eq !== undefined || !_cmpNear(x.del, x.ins)) { blocks.push(x); continue; }
+            for (const y of _cmpCharBlocks(x.del, x.ins)) {
+                const last = blocks[blocks.length - 1];
+                if (y.eq !== undefined && last && last.eq !== undefined) last.eq += y.eq;
+                else blocks.push(y);
+            }
+        }
+        const shared = blocks.reduce((n, x) => n + (x.eq ? x.eq.length : 0), 0);
+        return {
+            same: false,
+            // Only two values that both have text can "share little": an
+            // empty one (a date only the comment has) marks the other whole.
+            plain: !!a && !!b && 2 * shared / (a.length + b.length) < 0.4,
+            reorder: _cmpIsReorder(a, b),
+            blocks,
+        };
+    }
+
+    /** Names of the characters a summary line spells out. */
+    const _CMP_CHAR_NAME = {
+        "'": 'apostrophe', '’': 'right single quote', '‘': 'left single quote',
+        'ʼ': 'modifier apostrophe', '`': 'backtick', '´': 'acute accent',
+        '"': 'straight double quote', '“': 'left double quote', '”': 'right double quote',
+        '„': 'low double quote', '-': 'hyphen-minus', '‐': 'hyphen', '‑': 'non-breaking hyphen',
+        '‒': 'figure dash', '–': 'en dash', '—': 'em dash', '−': 'minus sign',
+        '…': 'ellipsis', ' ': 'space', ' ': 'no-break space', '​': 'zero-width space',
+        ' ': 'thin space', ' ': 'narrow no-break space', '&': 'ampersand', '×': 'multiplication sign',
+    };
+
+    /** What a marked run shows for a character that is otherwise invisible. */
+    const _CMP_WS_MARK = {
+        ' ': '·', ' ': '⍽', '​': '‸', '‌': '‸', '‍': '‸', '﻿': '‸',
+    };
+
+    /**
+     * A character's code point as "U+2010".
+     *
+     * @param {string} c
+     * @returns {string}
+     */
+    function _cmpUplus(c) {
+        return 'U+' + c.codePointAt(0).toString(16).toUpperCase().padStart(4, '0');
+    }
+
+    /**
+     * HTML-escapes a run, with each invisible character (space, no-break
+     * space, zero-width) shown as a visible mark.
+     *
+     * @param {string} s
+     * @returns {string}
+     */
+    function _cmpShowWs(s) {
+        return Array.from(String(s)).map(c => (_CMP_WS_MARK[c]
+            ? `<span class="mb-tt-cmp-ws">${_CMP_WS_MARK[c]}</span>` : _mbttEscape(c))).join('');
+    }
+
+    /**
+     * A run quoted as a small key in the summary line.
+     *
+     * @param {string} s
+     * @returns {string}
+     */
+    function _cmpKey(s) {
+        return `<span class="mb-tt-cmp-key">${_cmpShowWs(s)}</span>`;
+    }
+
+    /**
+     * White space in words: "1 space", "3 spaces", "no-break space".
+     *
+     * @param {string} s
+     * @returns {string}
+     */
+    function _cmpWsDesc(s) {
+        if (/^ +$/.test(s)) return s.length === 1 ? '1 space' : `${s.length} spaces`;
+        return Array.from(s).map(c => _CMP_CHAR_NAME[c] || _cmpUplus(c)).join(' + ');
+    }
+
+    /**
+     * One change in plain words, for the summary line (HTML).
+     *
+     * @param {string} del - The run only in the first value.
+     * @param {string} ins - The run only in the second value.
+     * @param {string} la - The first value's name, lower case ("track name").
+     * @param {string} lb - The second value's name.
+     * @returns {string}
+     */
+    function _cmpClassify(del, ins, la, lb) {
+        const lbl = _mbttEscape;
+        if (!del) return /^\s+$/.test(ins) ? `extra ${_cmpWsDesc(ins)} in the ${lbl(lb)}` : `only in the ${lbl(lb)}: ${_cmpKey(ins.trim() || ins)}`;
+        if (!ins) return /^\s+$/.test(del) ? `extra ${_cmpWsDesc(del)} in the ${lbl(la)}` : `only in the ${lbl(la)}: ${_cmpKey(del.trim() || del)}`;
+        if (/^\s+$/.test(del) && /^\s+$/.test(ins)) return `${_cmpWsDesc(del)} vs ${_cmpWsDesc(ins)}`;
+        if (del === '…' && ins === '...') return `ellipsis ${_cmpKey(del)} vs three dots ${_cmpKey(ins)}`;
+        if (del === '...' && ins === '…') return `three dots ${_cmpKey(del)} vs ellipsis ${_cmpKey(ins)}`;
+        const one = s => Array.from(s).length === 1;
+        if (one(del) && one(ins) && (_CMP_CHAR_NAME[del] || _CMP_CHAR_NAME[ins])) {
+            const nm = c => `${_CMP_CHAR_NAME[c] || 'character'} ${_cmpKey(c)} <span class="mb-tt-cmp-u">${_cmpUplus(c)}</span>`;
+            return `${nm(del)} vs ${nm(ins)}`;
+        }
+        return `${_cmpKey(del)} vs ${_cmpKey(ins)}`;
+    }
+
+    /**
+     * The summary under the two rows: what differs, in plain words, at most
+     * three lines plus "and N more". Case changes are counted together.
+     *
+     * @param {ReturnType<typeof _cmpDiff>} d
+     * @param {string} la - The first value's name, lower case.
+     * @param {string} lb - The second value's name, lower case.
+     * @returns {string[]} HTML lines.
+     */
+    function _cmpSummary(d, la, lb) {
+        if (d.same) return [];
+        if (d.plain) return ['The two share little, so nothing is marked.'];
+        if (d.reorder) return ['Same words in a different order.'];
+        const lines = [];
+        const caseEx = [];
+        let caseLetters = 0, caseRuns = 0;
+        for (const x of d.blocks) {
+            if (x.eq !== undefined) continue;
+            if (x.del && x.del.toLowerCase() === x.ins.toLowerCase()) {
+                const ci = Array.from(x.ins);
+                caseLetters += Array.from(x.del).filter((c, i) => c !== ci[i]).length;
+                caseRuns++;
+                if (caseEx.length < 2) caseEx.push(`${_cmpKey(x.del)} → ${_cmpKey(x.ins)}`);
+                continue;
+            }
+            const s = _cmpClassify(x.del, x.ins, la, lb);
+            if (!lines.includes(s)) lines.push(s);
+        }
+        if (caseLetters) {
+            lines.unshift(`${caseLetters} letter${caseLetters === 1 ? '' : 's'} in a different case: ` +
+                `${caseEx.join(', ')}${caseRuns > caseEx.length ? ', …' : ''}`);
+        }
+        const out = lines.length > 3
+            ? [...lines.slice(0, 3), `and ${lines.length - 3} more difference${lines.length === 4 ? '' : 's'}`]
+            : lines;
+        return out.map(s => s.charAt(0).toUpperCase() + s.slice(1));
+    }
+
+    /**
+     * One side of a comparison as HTML: shared text plain, this side's
+     * changed runs in `<mark class="mb-tt-cmp-d">`. An empty value reads
+     * "none".
+     *
+     * @param {ReturnType<typeof _cmpDiff>} d
+     * @param {('a'|'b')} side
+     * @returns {string}
+     */
+    function _cmpSideHtml(d, side) {
+        const html = d.blocks.map((x) => {
+            if (x.eq !== undefined) return _mbttEscape(x.eq);
+            const t = side === 'a' ? x.del : x.ins;
+            if (!t) return '';
+            return d.plain ? _mbttEscape(t) : `<mark class="mb-tt-cmp-d">${_cmpShowWs(t)}</mark>`;
+        }).join('');
+        return html || '<span class="mb-tt-cmp-none">none</span>';
+    }
+
+    /**
+     * The comparison block (variant A): two labelled rows, the second label
+     * prefixed "≠", differing runs marked in both, and the summary below.
+     * Nothing for two equal values.
+     *
+     * @param {{a: string, b: string, la: string, lb: string, sa?: string, sb?: string, own?: ('a'|'b')}} c
+     *   `la`/`lb` label the rows; `sa`/`sb` name them in the summary (default:
+     *   the labels in lower case); `own` is the bold row (default `a`).
+     * @returns {string}
+     */
+    function _cmpHtml(c) {
+        const d = _cmpDiff(c.a, c.b);
+        if (d.same) return '';
+        const own = c.own === 'b' ? 'b' : 'a';
+        const sum = _cmpSummary(d, c.sa || c.la.toLowerCase(), c.sb || c.lb.toLowerCase());
+        return '<div class="mb-tt-cmp"><div class="mb-tt-cmp-grid">' +
+            `<span class="mb-tt-cmp-lbl">${_mbttEscape(c.la)}</span>` +
+            `<span class="mb-tt-cmp-val${own === 'a' ? ' mb-tt-cmp-own' : ''}">${_cmpSideHtml(d, 'a')}</span>` +
+            `<span class="mb-tt-cmp-lbl">≠ ${_mbttEscape(c.lb)}</span>` +
+            `<span class="mb-tt-cmp-val${own === 'b' ? ' mb-tt-cmp-own' : ''}">${_cmpSideHtml(d, 'b')}</span>` +
+            '</div>' +
+            (sum.length ? `<div class="mb-tt-cmp-sum">${sum.map(s => `<div>${s}</div>`).join('')}</div>` : '') +
+            '</div>';
+    }
+
+    /**
+     * A duration with the digits that differ from the other one marked,
+     * position by position from the right (both are right-aligned).
+     *
+     * @param {string} s
+     * @param {string} other
+     * @returns {string}
+     */
+    function _cmpMarkDigits(s, other) {
+        const w = Math.max(s.length, other.length);
+        const a = s.padStart(w), b = other.padStart(w);
+        let out = '', open = false;
+        for (let i = 0; i < w; i++) {
+            const differs = a[i] !== b[i] && a[i] !== ' ';
+            if (differs && !open) { out += '<mark class="mb-tt-cmp-d">'; open = true; }
+            if (!differs && open) { out += '</mark>'; open = false; }
+            out += _mbttEscape(a[i]);
+        }
+        return out + (open ? '</mark>' : '');
+    }
+
+    /**
+     * The length mismatch card (`_lengthMismatchTooltip()`'s rich form): the
+     * hovered cell's own duration first, the other below, digits aligned and
+     * the differing ones marked, the gap as a pill in the flag's colour, then
+     * the level, why the two differ at all, and where to configure it. Always
+     * at full millisecond precision, like the plain text (see there).
+     *
+     * @param {{kind: 'len', level: ('warn'|'severe'), which: ('track'|'recording'), trackMs: number,
+     *          recMs: number, thresholdMs: number, severeMs: ?number}} L
+     * @returns {string}
+     */
+    function _cmpLenCardHtml(L) {
+        const isTrack = L.which === 'track';
+        const ownMs = isTrack ? L.trackMs : L.recMs;
+        const otherMs = isTrack ? L.recMs : L.trackMs;
+        const fo = _msFormatDuration(ownMs, false);
+        const ft = _msFormatDuration(otherMs, false);
+        const severe = L.level === 'severe';
+        const gap = _msFormatGapSeconds(ownMs - otherMs);
+        const pill = `<span class="mb-tt-cmp-pill mb-tt-cmp-pill-${severe ? 'severe' : 'warn'}">` +
+            `${ownMs > otherMs ? '+' : '−'}${gap} · ${ownMs > otherMs ? 'longer' : 'shorter'}</span>`;
+        const factor = L.severeMs && L.thresholdMs ? Math.round(L.severeMs / L.thresholdMs * 100) / 100 : null;
+        const level = severe
+            ? `Over the “far over” level, ${_msFormatGapSeconds(L.severeMs)}` +
+              (factor ? ` (threshold ${_msFormatGapSeconds(L.thresholdMs)} × ${factor})` : '') + '.'
+            : `Over the ${_msFormatGapSeconds(L.thresholdMs)} threshold.`;
+        const lbl = w => (w === 'track' ? 'Track length' : 'Recording length');
+        return `<div class="mb-tt-title">${severe ? '❌ Track and recording length far apart' : '⚠️ Track and recording length differ'}</div>` +
+            '<div class="mb-tt-cmp"><div class="mb-tt-cmp-len">' +
+            `<span class="mb-tt-cmp-lbl">${lbl(L.which)}</span><span class="mb-tt-cmp-t mb-tt-cmp-own">${_cmpMarkDigits(fo, ft)}</span><span>${pill}</span>` +
+            `<span class="mb-tt-cmp-lbl">${lbl(isTrack ? 'recording' : 'track')}</span><span class="mb-tt-cmp-t">${_cmpMarkDigits(ft, fo)}</span><span></span>` +
+            `</div><div class="mb-tt-cmp-sum"><div>${level}</div></div></div>` +
+            '<div class="mb-tt-body">Two different MusicBrainz fields: the track length belongs to this release\'s ' +
+            'tracklist, the recording length to the recording that every release using it shares.</div>' +
+            '<div class="mb-tt-foot">Configurable in ⚙️ Settings → 💿 RELEASE TRACKLIST.</div>';
+    }
+
+    /**
+     * Of several values, the one most like `target` (most shared text by
+     * `_cmpDiff()`): which linked event or place a comparison shows.
+     *
+     * @param {string} target
+     * @param {string[]} list
+     * @returns {string}
+     */
+    function _cmpClosest(target, list) {
+        let best = list[0] || '', bestN = -1;
+        list.forEach((v) => {
+            if (v === target) return;
+            const n = _cmpDiff(target, v).blocks.reduce((k, x) => k + (x.eq ? x.eq.length : 0), 0);
+            if (n > bestN) { best = v; bestN = n; }
+        });
+        return best;
+    }
+
+    /**
+     * The comparisons an element's tip carries (`data-mb-tip-cmp`), when they
+     * were built for exactly `text`; otherwise none. Each entry names the tip
+     * line it belongs to (`at`, counting non-empty lines), optionally how
+     * many lines it replaces (`span`, default 1) and the text the card shows
+     * instead of them (`head`); a `kind: 'len'` entry replaces the whole card.
+     *
+     * @param {?Element} el
+     * @param {string} text
+     * @returns {Array<object>}
+     */
+    function _cmpTipData(el, text) {
+        const raw = el && el.getAttribute ? el.getAttribute('data-mb-tip-cmp') : null;
+        if (!raw) return [];
+        try {
+            const data = JSON.parse(raw);
+            if (!data || String(data.t).trim() !== String(text).trim() || !Array.isArray(data.c)) return [];
+            const str = v => typeof v === 'string';
+            const num = v => typeof v === 'number' && Number.isFinite(v);
+            return data.c.filter(c => c && (c.kind === 'len'
+                ? (c.which === 'track' || c.which === 'recording') && (c.level === 'warn' || c.level === 'severe') &&
+                  num(c.trackMs) && num(c.recMs) &&
+                  num(c.thresholdMs) && (c.severeMs === null || num(c.severeMs))
+                : str(c.a) && str(c.b) && str(c.la) && str(c.lb)));
+        } catch (e) {
+            return [];
+        }
+    }
+
+    /**
+     * `_setTip()` with comparisons for the rich card: stores them (or removes
+     * a stale set when `cmp` is empty) BEFORE the title, so a card repainted
+     * by `_setTip()` already sees them.
+     *
+     * @param {Element} el
+     * @param {string} text - The plain tip, still the native fallback.
+     * @param {?Array<object>} cmp - See `_cmpTipData()`.
+     * @returns {string} `text`.
+     */
+    function _setTipCmp(el, text, cmp) {
+        if (cmp && cmp.length) el.setAttribute('data-mb-tip-cmp', JSON.stringify({ t: text, c: cmp }));
+        else el.removeAttribute('data-mb-tip-cmp');
+        return _setTip(el, text);
     }
 
     /**
@@ -69354,12 +70053,23 @@ a { color: #1565c0; }`;
      *     the title, and a single short block is a title on its own;
      *   - a block starting with "Configurable in" is a footnote;
      *   - key combinations ("Ctrl+R", "Alt+Shift+H", the key after "then" in
-     *     a prefix hint, "Escape") become `<kbd>` keycaps.
+     *     a prefix hint, "Escape") become `<kbd>` keycaps;
+     *   - a line the element's `data-mb-tip-cmp` names gets its comparison
+     *     block right after it (`_cmpHtml()`), its `head` instead of the
+     *     line's own text, and a line that has one is a title even when long;
+     *     a length entry is the whole card (`_cmpLenCardHtml()`). Only when
+     *     that attribute was built for exactly this text (`_cmpTipData()`).
      *
      * @param {string} text - The element's plain title text.
+     * @param {?Element} [el] - The element the text belongs to, for its
+     *   comparisons; without it the card is the text alone.
+     * @param {{noOrigin?: boolean}} [opts] - `noOrigin`: an entry marked
+     *   `origin` (the Title cell's track/recording names) shows its head
+     *   only, because the link's own note box beside it already compares
+     *   them (`_dpCollectNotes()`).
      * @returns {string} HTML for the tooltip card.
      */
-    function _tipTextToHtml(text) {
+    function _tipTextToHtml(text, el, opts = {}) {
         const MOD = '(?:Ctrl|Alt|Shift|Meta|Cmd)';
         const KEY = '(?:F\\d{1,2}|Escape|Esc|Enter|Tab|Space|Click|[A-Za-z0-9,.\\/?;\\-=+])';
         const comboRe = new RegExp(`(^|[\\s(/'])(${MOD}(?:\\+${MOD})*\\+${KEY})(?![A-Za-z0-9])`, 'g');
@@ -69372,13 +70082,30 @@ a { color: #1565c0; }`;
 
         const blocks = String(text).split('\n').map(s => s.trim()).filter(Boolean);
         if (!blocks.length) return '';
+        // A Relationships icon names its site and type, not only its URL
+        // (`_relLinkNoteHtml()`, mockup https://claude.ai/artifact/NonAS8iqfjSMRUaXojzSnT).
+        if (el && el.tagName === 'A' && el.closest && el.closest('td.mb-rel-cell')) return _relLinkNoteHtml(el);
+        const cmp = _cmpTipData(el, text);
+        const len = cmp.find(c => c.kind === 'len');
+        if (len) return _cmpLenCardHtml(len);
+        const at = new Map();
+        const skip = new Set();
+        cmp.forEach((c) => {
+            if (!Number.isInteger(c.at) || at.has(c.at)) return;
+            at.set(c.at, c);
+            for (let k = 1; k < (Number.isInteger(c.span) ? c.span : 1); k++) skip.add(c.at + k);
+        });
         const html = blocks.map((b, i) => {
-            const body = keycaps(_mbttEscape(b));
-            if (i === 0 && (blocks.length > 1 || b.length <= 60)) {
-                return `<div class="mb-tt-title">${body}</div>`;
+            if (skip.has(i)) return '';
+            const c = at.get(i);
+            const shown = c && typeof c.head === 'string' ? c.head : b;
+            const body = keycaps(_mbttEscape(shown));
+            const after = c && !(opts.noOrigin && c.origin) ? _cmpHtml(c) : '';
+            if (i === 0 && (blocks.length > 1 || shown.length <= 60 || c)) {
+                return `<div class="mb-tt-title">${body}</div>${after}`;
             }
-            if (/^Configurable in\b/.test(b)) return `<div class="mb-tt-foot">${body}</div>`;
-            return `<div class="mb-tt-body">${body}</div>`;
+            if (/^Configurable in\b/.test(shown)) return `<div class="mb-tt-foot">${body}</div>${after}`;
+            return `<div class="mb-tt-body">${body}</div>${after}`;
         });
         return html.join('');
     }
@@ -69480,7 +70207,7 @@ a { color: #1565c0; }`;
             // tip, so this card would be a second box under it, whichever
             // timer fires first.
             if (_dpPeek.link && _target && _target.contains(_dpPeek.link)) return;
-            _tip.innerHTML = _tipTextToHtml(text);
+            _tip.innerHTML = _tipTextToHtml(text, _target);
             _tip.style.display = 'block';
             if (_lastMove) _positionTip(_lastMove);
         };
@@ -69555,6 +70282,9 @@ a { color: #1565c0; }`;
         };
 
         document.addEventListener('mouseover', (e) => {
+            // A relationship list's cover icon, put in late by another
+            // script: marked for its artwork card before the lookup below.
+            _artRelIconStamp(e.target);
             const el = e.target.closest('[data-mbtt], [data-mbtt-fn], [title], [data-mb-tip-saved]');
             if (el === _target && _own) return; // still inside the same element
             // A resolver card is built once per hover: re-building it on every
@@ -69573,12 +70303,10 @@ a { color: #1565c0; }`;
             }
             if (!el || !el.hasAttribute('data-mb-tip') || !Lib.settings.sa_rich_tooltips) return;
             // A Relationships icon whose cell a filter matches belongs to the
-            // Relationships tooltip (_initRelTooltipListeners()): its rich
-            // URL panel plus a plain panel with this very title. A card here
-            // would be a third box, and stashing the title first would leave
-            // that plain panel empty. Without a matching filter the
-            // Relationships tooltip shows nothing, and the card is the
-            // icon's tooltip.
+            // Relationships tooltip stack (_initRelTooltipListeners()): the
+            // filter box and the icon's own box. A card here would be a
+            // third box. Without a matching filter the stack shows nothing,
+            // and this card is the icon's box (_tipTextToHtml()).
             const _relCell = el.closest('td.mb-rel-cell');
             if (_relCell && _relHasAnyActiveFilter(_relCell) && _relQueryMatchesCell(_relCell)) return;
             // A stash left behind on a node that was cloned mid-hover: the
@@ -69629,7 +70357,7 @@ a { color: #1565c0; }`;
                 _target.dataset.mbTipSaved = text;
                 if (_target.dataset.mbTipAria !== undefined) _target.setAttribute('aria-description', text);
                 _target.title = '';
-                if (!_dismissed && _tip.style.display === 'block') _tip.innerHTML = _tipTextToHtml(text);
+                if (!_dismissed && _tip.style.display === 'block') _tip.innerHTML = _tipTextToHtml(text, _target);
             }
             if (_tip.style.display === 'block') _positionTip(e);
         }, true);
@@ -98793,6 +99521,11 @@ a { color: #1565c0; }`;
         // ── Guard 1: Anchor click guard ─────────────────────────────────────────
         document.addEventListener('click', (e) => {
             if (!isLoaded) return;
+            // A click another handler already took (the artwork viewer on a
+            // cover icon or a strip image) navigates nowhere; nor does one
+            // that opens a new tab or window (Ctrl, ⌘, Shift): no session
+            // state is lost. Both used to ask anyway (2026-10-17).
+            if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.shiftKey) return;
 
             const anchor = e.target.closest('a[href]');
             if (!anchor) return;
@@ -103837,12 +104570,17 @@ a { color: #1565c0; }`;
      * @param {string}  iconUrl   Favicon img src
      * @param {boolean} ended     Whether the relationship has ended
      * @param {string}  [tooltip] Override tooltip text (defaults to url)
+     * @param {string}  [relType] MusicBrainz's relationship type ("discogs",
+     *   "purchase for mail-order"), kept as `data-mb-rel-type` for the icon's
+     *   box (`_relLinkNoteHtml()`); an attribute, so clones and saved pages
+     *   keep it.
      */
-    function _relAppendIcon(cell, url, iconUrl, ended, tooltip) {
+    function _relAppendIcon(cell, url, iconUrl, ended, tooltip, relType) {
         if (!iconUrl) return;
         const a = document.createElement('a');
         a.href = url;
         _setTip(a, tooltip || url);
+        if (relType) a.dataset.mbRelType = relType;
         a.target = '_blank';
         a.rel = 'noopener noreferrer';
         if (ended) a.style.opacity = '0.25';
@@ -104263,7 +105001,7 @@ a { color: #1565c0; }`;
                 // no GM_xmlhttpRequest, no async delay, no ghost).
                 const gUrl = _relGoogleFaviconUrl(tUrl);
                 _dbg(`_relWriteResult: discography entry favicon ${tUrl} → ${gUrl}`);
-                primary.forEach(td => _relAppendIcon(td, tUrl, gUrl, ended));
+                primary.forEach(td => _relAppendIcon(td, tUrl, gUrl, ended, '', relType));
                 continue;
             }
             // For known service types: filter using REL_*_CLASSES maps,
@@ -104276,7 +105014,7 @@ a { color: #1565c0; }`;
             _dbg(`_relWriteResult: type='${relType}' cls='${cls || 'none'}' url='${tUrl}'`);
             if (cls) {
                 const gUrl = _relGoogleFaviconUrl(tUrl);
-                primary.forEach(td => _relAppendIcon(td, tUrl, gUrl, ended));
+                primary.forEach(td => _relAppendIcon(td, tUrl, gUrl, ended, '', relType));
             }
         }
 
@@ -104321,7 +105059,7 @@ a { color: #1565c0; }`;
                 ? `${relType}: ${_entityTitle}\n${href}`
                 : href;
             _dbg(`_relWriteResult: non-url rel type='${relType}' href='${href}' title='${_entityTitle}' ended=${ended}`);
-            primary.forEach(td => _relAppendIcon(td, href, iconUrl, ended, _tooltip));
+            primary.forEach(td => _relAppendIcon(td, href, iconUrl, ended, _tooltip, relType));
         }
         // Immediately sync icon HTML to source-row cells so runFilter clones
         // carry the correct content even when the Phase-2 queue is still mid-flight.
@@ -105586,26 +106324,23 @@ a { color: #1565c0; }`;
     // ── Relationships column — rich HTML tooltip ──────────────────────────────
 
     /**
-     * Creates (once) and returns the singleton `div#mb-rel-tooltip` element
-     * used to display rich HTML tooltips for Relationships column icon anchors.
-     *
-     * Colors are applied dynamically at show-time from sa_rel_tooltip_bg /
-     * sa_rel_tooltip_color settings so changes take effect without a page reload.
+     * Creates (once) and returns the singleton `div#mb-rel-tooltip`: the
+     * stack of "Liner notes" boxes a Relationships icon shows while a filter
+     * matches its cell (`_relStackParts()`), one under the other, like the
+     * preview card's note stack. Its placement is CSS
+     * (`_ensureRelTooltipStyle()`); each box's colours come from the
+     * sa_rel_tooltip_* settings at show time, so a change applies without a
+     * reload.
      *
      * @returns {HTMLDivElement}
      */
     function _ensureRelTooltip() {
         let tip = document.getElementById('mb-rel-tooltip');
         if (tip) return tip;
-
+        _ensureRelTooltipStyle();
         tip = document.createElement('div');
         tip.id = 'mb-rel-tooltip';
-        // Look from the shared "Liner notes" class; colours from the
-        // sa_rel_tooltip_* settings are applied inline at show time.
-        tip.className = 'mb-tt-liner';
-        tip.style.cssText =
-            'position:fixed; pointer-events:none; display:none;' +
-            ' max-width:480px; word-break:break-all;';
+        tip.setAttribute('role', 'tooltip');
         document.body.appendChild(tip);
         return tip;
     }
@@ -105683,153 +106418,246 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Lazily injects the shared, id-guarded stylesheet for
-     * {@link _relBuildTooltipHTML}'s output. GM_addStyle so it is exempt
-     * from page CSP style-src restrictions. Fully static, safe to inject
-     * once per page load.
+     * Lazily injects the shared, id-guarded stylesheet of the Relationships
+     * icon boxes (`_relLinkNoteHtml()`, `_relFilterNoteHtml()`), which show
+     * in `#mb-rel-tooltip`, in the preview card's note stack
+     * (`#mb-dp-notes`) and in `#mb-stat-tooltip`. GM_addStyle so it is
+     * exempt from page CSP style-src restrictions. Fully static, safe to
+     * inject once per page load. Mockup approved 2026-10-17:
+     * https://claude.ai/artifact/NonAS8iqfjSMRUaXojzSnT
      */
     function _ensureRelTooltipStyle() {
         if (document.getElementById('sa-rel-tooltip-style')) return;
         const style = GM_addStyle(`
-            .sa-rel-tt-none { opacity:0.6; font-style:italic; }
-            .sa-rel-tt-img { width:16px; height:16px; vertical-align:middle; margin-right:5px; flex-shrink:0; }
-            .sa-rel-tt-ended { margin-left:5px; opacity:0.6; font-style:italic; }
-            .sa-rel-tt-row { display:flex; align-items:center; padding:2px 0; }
-            .sa-rel-tt-url { flex:1; min-width:0; }
+            #mb-rel-tooltip { position: fixed; pointer-events: none; display: none; flex-direction: column; gap: 4px; z-index: 2147483500; }
+            #mb-rel-tooltip > .mb-rel-note { position: static; padding: 5px 10px; border-left: 3px solid #8a7f6a; }
+            #mb-rel-tooltip > .mb-rel-note-filter, #mb-dp-notes .mb-dp-note-rel { border-left-color: #2f5f9e; }
+            .mb-rel-none { opacity: 0.6; font-style: italic; }
+            .mb-rel-fav { width: 16px; height: 16px; }
+            .mb-rel-fl-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+            .mb-rel-fl-head .mb-tt-title { font-size: 1em; }
+            .mb-rel-fl-row { display: grid; grid-template-columns: 16px max-content minmax(0, 1fr); gap: 2px 8px; align-items: center; padding: 2px 4px; margin: 0 -4px; border-radius: 2px; }
+            .mb-rel-fl-site { font: 600 11px/1.4 system-ui, Arial, sans-serif; letter-spacing: 0.03em; color: #7a6d5c; white-space: nowrap; }
+            .mb-rel-fl-url { font: 12px/1.4 ui-monospace, Consolas, monospace; overflow-wrap: anywhere; min-width: 0; }
+            .mb-rel-fl-row.mb-rel-miss .mb-rel-fl-url { color: #7a6d5c; }
+            .mb-rel-fl-row.mb-rel-here { background: #efe6d4; box-shadow: inset 3px 0 0 #8b1a1a; }
+            .mb-rel-fl-row.mb-rel-here .mb-rel-fl-site { color: #8b1a1a; }
+            .mb-rel-here-tag { font: 700 9.5px system-ui, Arial, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; color: #8b1a1a; margin-left: 4px; }
+            .mb-rel-ended { margin-left: 5px; opacity: 0.6; font-style: italic; }
+            .mb-rel-lk { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 2px 8px; align-items: center; }
+            .mb-rel-lk-url { grid-column: 2; font: 12px/1.4 ui-monospace, Consolas, monospace; overflow-wrap: anywhere; }
         `);
         style.id = 'sa-rel-tooltip-style';
     }
 
     /**
-     * Builds the HTML content for the Relationships rich tooltip by serialising
-     * the existing DOM highlight spans inside each anchor's `.mb-rel-filter-key`
-     * element directly — rather than re-applying filter strings from scratch.
-     *
-     * This is the authoritative approach because:
-     *   • The highlight pipeline (testRowMatch + applySubFilter + _highlightRelCellIcons)
-     *     already stamps the correct `mb-global-filter-highlight`,
-     *     `mb-subtable-filter-highlight`, and `mb-column-filter-highlight` spans
-     *     onto `.mb-rel-filter-key` text nodes with perfect accuracy.
-     *   • Re-applying filter strings here would only reflect ONE layer (the first
-     *     non-empty one), silently dropping all others.  Reading the DOM gives the
-     *     correct union of ALL active filter layers for free.
-     *
-     * Each `<a>` in the cell contributes one line:
-     *   favicon image  |  URL text with highlight marks  |  (ended) tag if applicable
-     *
-     * @param {HTMLTableCellElement} cell  The `td.mb-rel-cell` being displayed.
-     * @returns {string} Safe HTML string for `innerHTML`.
+     * Site names for the Relationships icons' boxes, by the link's host. A
+     * host not listed is named by itself, without "www.".
+     * @type {Array<[RegExp, string]>}
      */
-    function _relBuildTooltipHTML(cell) {
-        _ensureRelTooltipStyle();
-        /**
-         * Escapes a string for safe insertion as HTML text content.
-         * @param {string} s
-         * @returns {string}
-         */
-        const _esc = s => s
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
+    const _REL_SITE_NAMES = [
+        [/(?:^|\.)discogs\.com$/, 'Discogs'], [/(?:^|\.)amazon\.[a-z.]+$/, 'Amazon'],
+        [/(?:^|\.)springsteenlyrics\.com$/, 'SpringsteenLyrics'], [/(?:^|\.)brucebase\.wikidot\.com$/, 'Brucebase'],
+        [/(?:^|\.)jungleland\.it$/, 'Jungleland'], [/(?:^|\.)brucespringsteen\.it$/, 'Killing Floor'],
+        [/(?:^|\.)wikidata\.org$/, 'Wikidata'], [/(?:^|\.)wikipedia\.org$/, 'Wikipedia'],
+        [/(?:^|\.)allmusic\.com$/, 'AllMusic'], [/(?:^|\.)(?:youtube\.com|youtu\.be)$/, 'YouTube'],
+        [/(?:^|\.)spotify\.com$/, 'Spotify'], [/(?:^|\.)(?:music|itunes)\.apple\.com$/, 'Apple Music'],
+        [/(?:^|\.)bandcamp\.com$/, 'Bandcamp'], [/(?:^|\.)deezer\.com$/, 'Deezer'], [/(?:^|\.)tidal\.com$/, 'Tidal'],
+        [/(?:^|\.)last\.fm$/, 'Last.fm'], [/(?:^|\.)genius\.com$/, 'Genius'], [/(?:^|\.)rateyourmusic\.com$/, 'Rate Your Music'],
+        [/(?:^|\.)setlist\.fm$/, 'setlist.fm'], [/(?:^|\.)secondhandsongs\.com$/, 'SecondHandSongs'],
+        [/(?:^|\.)soundcloud\.com$/, 'SoundCloud'], [/(?:^|\.)imdb\.com$/, 'IMDb'], [/(?:^|\.)viaf\.org$/, 'VIAF'],
+        [/(?:^|\.)45cat\.com$/, '45cat'], [/(?:^|\.)45worlds\.com$/, '45worlds'], [/(?:^|\.)qobuz\.com$/, 'Qobuz'],
+    ];
 
-        /**
-         * Serialises the child nodes of a `.mb-rel-filter-key` span into an HTML
-         * string, converting filter-highlight `<span>` elements to `<span>` elements
-         * with the ORIGINAL class name — NOT a generic `<mark>` — so that the
-         * per-layer CSS rules defined in the userscript stylesheet apply inside the
-         * tooltip div and each filter layer is visually distinct.
-         *
-         * Mapping:
-         *   mb-global-filter-highlight   → <span class="mb-global-filter-highlight">
-         *   mb-subtable-filter-highlight → <span class="mb-subtable-filter-highlight">
-         *   mb-column-filter-highlight   → <span class="mb-column-filter-highlight">
-         *   mb-pre-filter-highlight      → <span class="mb-pre-filter-highlight">
-         *   Text node                    → escaped plain text
-         *   Any other element            → escaped textContent (fallback)
-         *
-         * @param {Element} keySpan  The `.mb-rel-filter-key` span element.
-         * @returns {string} HTML string
-         */
-        const _serialiseKeySpan = (keySpan) => {
-            /** @type {Set<string>} */
-            const _hlClasses = new Set([
-                'mb-global-filter-highlight',
-                'mb-subtable-filter-highlight',
-                'mb-column-filter-highlight',
-                'mb-pre-filter-highlight',
-            ]);
-
-            let _out = '';
-            keySpan.childNodes.forEach(node => {
-                if (node.nodeType === Node.TEXT_NODE) {
-                    _out += _esc(node.textContent);
-                } else if (node.nodeType === Node.ELEMENT_NODE && node.classList) {
-                    // Find the first matching highlight class on this element.
-                    const _hlClass = [..._hlClasses].find(c => node.classList.contains(c));
-                    if (_hlClass) {
-                        // Preserve the original class name so the per-layer CSS rule
-                        // (e.g. mb-subtable-filter-highlight may use a different bg color
-                        // than mb-global-filter-highlight) applies in the tooltip div.
-                        _out += `<span class="${_hlClass}">${_esc(node.textContent)}</span>`;
-                    } else {
-                        _out += _esc(node.textContent);
-                    }
-                }
-            });
-            return _out || _esc(keySpan.textContent);
-        };
-
-        const _anchors = Array.from(cell.querySelectorAll('a'));
-        if (!_anchors.length) {
-            return `<span class="sa-rel-tt-none">No relationships</span>`;
+    /**
+     * The name a Relationships icon is shown with: the site for a URL
+     * (`_REL_SITE_NAMES`, else the bare host); for a link to MusicBrainz
+     * itself (a "single from" release group), the entity's title from the
+     * icon's own tip ("single from: Title\n/release-group/…").
+     *
+     * @param {HTMLAnchorElement} a
+     * @returns {string}
+     */
+    function _relLinkName(a) {
+        const href = a.getAttribute('href') || '';
+        if (!/^(?:https?:)?\/\//i.test(href)) {
+            const first = (_relTipText(a).split('\n')[0] || '').trim();
+            const colon = first.indexOf(': ');
+            return colon > 0 ? first.slice(colon + 2) : 'MusicBrainz';
         }
-
-        const _lines = _anchors.map(a => {
-            const _keySpan = a.querySelector('.mb-rel-filter-key');
-            const _img     = a.querySelector('img');
-            const _imgHtml = _img
-                ? `<img src="${_esc(_img.src)}" class="sa-rel-tt-img">`
-                : '';
-            const _ended    = parseFloat(a.style.opacity || '1') < 0.5;
-            const _endedTag = _ended
-                ? `<span class="sa-rel-tt-ended">(ended)</span>`
-                : '';
-            const _urlHtml  = _keySpan
-                ? _serialiseKeySpan(_keySpan)
-                : _esc(a.href);
-            return `<div class="sa-rel-tt-row">` +
-                   `${_imgHtml}` +
-                   `<span class="sa-rel-tt-url">${_urlHtml}</span>` +
-                   `${_endedTag}` +
-                   `</div>`;
-        });
-
-        return _lines.join('');
+        try {
+            const host = new URL(href, window.location.href).hostname.toLowerCase();
+            const hit = _REL_SITE_NAMES.find(([re]) => re.test(host));
+            return hit ? hit[1] : host.replace(/^www\./, '');
+        } catch (_) {
+            return href;
+        }
     }
 
     /**
-     * Creates (once) and returns the singleton `div#mb-rel-plain-tooltip` element
-     * used to display the plain anchor title text to the right of the rich tooltip.
+     * A Relationships icon's own tip text wherever it is parked right now:
+     * its title, the stash of `#mb-stat-tooltip` or the preview card
+     * (`_dpTitleText()`), or this tooltip's own (`data-rel-title-saved`).
      *
-     * The native browser `title` tooltip is suppressed on hover (title attribute
-     * blanked and restored on leave) so that the custom plain tooltip can be
-     * positioned predictably to the right of the rich tooltip panel.
-     *
-     * @returns {HTMLDivElement}
+     * @param {HTMLAnchorElement} a
+     * @returns {string}
      */
-    function _ensureRelPlainTooltip() {
-        let tip = document.getElementById('mb-rel-plain-tooltip');
-        if (tip) return tip;
+    function _relTipText(a) {
+        const saved = a.dataset.relTitleSaved;
+        return _dpTitleText(a) || (saved && saved !== ' ' ? saved : '');
+    }
 
-        tip = document.createElement('div');
-        tip.id = 'mb-rel-plain-tooltip';
-        tip.className = 'mb-tt-liner';
-        tip.style.cssText =
-            'position:fixed; pointer-events:none; display:none;' +
-            ' max-width:340px; word-break:break-all; white-space:pre-wrap;';
-        document.body.appendChild(tip);
-        return tip;
+    /**
+     * Whether a Relationships icon's relationship has ended (`_relAppendIcon()`
+     * dims it to opacity 0.25).
+     *
+     * @param {HTMLAnchorElement} a
+     * @returns {boolean}
+     */
+    function _relIconEnded(a) {
+        return parseFloat(a.style.opacity || '1') < 0.5;
+    }
+
+    /**
+     * Serialises a `.mb-rel-filter-key` span for a box, keeping each filter
+     * layer's highlight span with its ORIGINAL class (not a generic `<mark>`),
+     * so the per-layer colours apply in the box as in the cell:
+     *   mb-global-filter-highlight / mb-subtable-filter-highlight /
+     *   mb-column-filter-highlight / mb-pre-filter-highlight → that span;
+     *   a text node → escaped text; any other element → its escaped text.
+     * Reading the cell's own highlight spans (rather than re-applying filter
+     * strings) gives the union of every active layer for free.
+     *
+     * @param {Element} keySpan  The `.mb-rel-filter-key` span element.
+     * @returns {string} HTML string
+     */
+    function _relKeySpanHtml(keySpan) {
+        const hlClasses = ['mb-global-filter-highlight', 'mb-subtable-filter-highlight',
+            'mb-column-filter-highlight', 'mb-pre-filter-highlight'];
+        let out = '';
+        keySpan.childNodes.forEach((node) => {
+            if (node.nodeType === Node.TEXT_NODE) {
+                out += _mbttEscape(node.textContent);
+            } else if (node.nodeType === Node.ELEMENT_NODE && node.classList) {
+                const cls = hlClasses.find(c => node.classList.contains(c));
+                out += cls ? `<span class="${cls}">${_mbttEscape(node.textContent)}</span>` : _mbttEscape(node.textContent);
+            }
+        });
+        return out || _mbttEscape(keySpan.textContent);
+    }
+
+    /**
+     * The active filter layers that reach a Relationships cell, as words for
+     * the filter box's head: 'the column filter "disc"', and the sub-table and
+     * global filters the same way, each query in its layer's colour.
+     *
+     * @param {HTMLTableCellElement} cell
+     * @returns {string} HTML ('' when none is active).
+     */
+    function _relActiveFilterWords(cell) {
+        const parts = [];
+        const table = cell.closest('table.tbl');
+        if (table) {
+            const cf = table.querySelector(`.mb-col-filter-input[data-col-idx="${cell.cellIndex}"]`);
+            const cq = cf ? stripColFilterPrefix(cf.value).trim() : '';
+            if (cq) parts.push(`the column filter ${_mbttLabel(_mbttEscape(cq), 'cf')}`);
+            const stf = _getStfInput(findH3ForTable(table));
+            const sq = stf ? stf.value.trim() : '';
+            if (sq) parts.push(`the sub-table filter ${_mbttLabel(_mbttEscape(sq), 'stf')}`);
+        }
+        const gf = document.getElementById('mb-global-filter-input');
+        const gq = gf ? stripFilterPrefix(gf.value).trim() : '';
+        if (gq) parts.push(`the global filter ${_mbttLabel(_mbttEscape(gq), 'gf')}`);
+        return parts.join(', ');
+    }
+
+    /**
+     * The box that says what a Relationships icon IS: its site (or entity)
+     * name, MusicBrainz's relationship type when the icon carries it
+     * (`data-mb-rel-type`, from `_relAppendIcon()`; a cell saved before it
+     * has none), "(ended)", and the full URL. Never a bare URL on its own.
+     *
+     * @param {HTMLAnchorElement} a
+     * @returns {string}
+     */
+    function _relLinkNoteHtml(a) {
+        _ensureRelTooltipStyle();
+        const img = a.querySelector('img');
+        const key = a.querySelector('.mb-rel-filter-key');
+        const url = key ? key.textContent : (a.getAttribute('href') || '');
+        const type = a.dataset.mbRelType || '';
+        return '<div class="mb-rel-lk">' +
+            (img ? `<img class="mb-rel-fav" src="${_mbttEscape(img.src)}" alt="">` : '<span></span>') +
+            `<span><b>${_mbttEscape(_relLinkName(a))}</b>` +
+            (type ? ` <span class="mb-tt-pill">${_mbttEscape(type)}</span>` : '') +
+            (_relIconEnded(a) ? '<span class="mb-rel-ended">(ended)</span>' : '') + '</span>' +
+            `<span class="mb-rel-lk-url">${_mbttEscape(url)}</span></div>`;
+    }
+
+    /**
+     * The box that says what the active filter sees in a Relationships cell:
+     * every link of the row with its site name and its URL as the cell's
+     * highlight spans mark it, the icon under the pointer marked
+     * "◂ this icon", and a head naming the filter and how many links it
+     * matches.
+     *
+     * @param {HTMLTableCellElement} cell
+     * @param {?HTMLAnchorElement} here - The hovered icon.
+     * @returns {string}
+     */
+    function _relFilterNoteHtml(cell, here) {
+        _ensureRelTooltipStyle();
+        const anchors = Array.from(cell.querySelectorAll('a'));
+        if (!anchors.length) return '<span class="mb-rel-none">No relationships</span>';
+        const hitSel = '.mb-rel-filter-key :is(.mb-global-filter-highlight, .mb-subtable-filter-highlight, ' +
+            '.mb-column-filter-highlight, .mb-pre-filter-highlight)';
+        const hits = anchors.filter(a => a.querySelector(hitSel)).length;
+        const words = _relActiveFilterWords(cell);
+        const rows = anchors.map((a) => {
+            const img = a.querySelector('img');
+            const key = a.querySelector('.mb-rel-filter-key');
+            const isHere = a === here;
+            return `<div class="mb-rel-fl-row${isHere ? ' mb-rel-here' : ''}${a.querySelector(hitSel) ? '' : ' mb-rel-miss'}">` +
+                (img ? `<img class="mb-rel-fav" src="${_mbttEscape(img.src)}" alt="">` : '<span></span>') +
+                `<span class="mb-rel-fl-site">${_mbttEscape(_relLinkName(a))}${isHere ? '<span class="mb-rel-here-tag">◂ this icon</span>' : ''}</span>` +
+                `<span class="mb-rel-fl-url">${key ? _relKeySpanHtml(key) : _mbttEscape(a.getAttribute('href') || '')}` +
+                `${_relIconEnded(a) ? '<span class="mb-rel-ended">(ended)</span>' : ''}</span></div>`;
+        }).join('');
+        return `<div class="mb-rel-fl-head"><span class="mb-tt-title">This row's ${anchors.length} link${anchors.length === 1 ? '' : 's'}</span>` +
+            `<span class="mb-tt-dim">${words || 'the filter'} matches ${hits}</span></div>` +
+            `<div class="mb-tt-rule"></div>${rows}`;
+    }
+
+    /**
+     * The boxes a hovered Relationships icon gets, top to bottom (mockup
+     * https://claude.ai/artifact/NonAS8iqfjSMRUaXojzSnT, approved
+     * 2026-10-17): the filter's view of the cell, while a filter matches it
+     * (`filter`), then the icon itself (`link`). `#mb-rel-tooltip` shows them
+     * when no preview card does; under a card they are its note stack
+     * (`_dpCollectNotes()`).
+     *
+     * @param {HTMLTableCellElement} cell
+     * @param {HTMLAnchorElement} a
+     * @returns {Array<{kind: ('filter'|'link'), html: string}>}
+     */
+    function _relStackParts(cell, a) {
+        const parts = [];
+        if (_relHasAnyActiveFilter(cell) && _relQueryMatchesCell(cell)) parts.push({ kind: 'filter', html: _relFilterNoteHtml(cell, a) });
+        parts.push({ kind: 'link', html: _relLinkNoteHtml(a) });
+        return parts;
+    }
+
+    /**
+     * Hides `#mb-rel-tooltip` and drops a pending show: the link's preview
+     * card is taking over (`_dpShowPeek()`), whose stack carries the same
+     * boxes.
+     *
+     * @returns {void}
+     */
+    function _relHideTooltip() {
+        clearTimeout(_relTooltipTimer);
+        const tip = document.getElementById('mb-rel-tooltip');
+        if (tip) tip.style.display = 'none';
     }
 
     /** Whether the document-level delegation listeners for rel tooltips are installed. */
@@ -105838,29 +106666,31 @@ a { color: #1565c0; }`;
     /** Timer handle for tooltip show delay. */
     let _relTooltipTimer = null;
 
-    /** The rich tooltip div element (lazily created by _ensureRelTooltip). */
+    /** The tooltip stack element (lazily created by _ensureRelTooltip). */
     let _relTooltipEl = null;
 
-    /** The plain-text tooltip div element (lazily created by _ensureRelPlainTooltip). */
-    let _relPlainTooltipEl = null;
-
     /**
-     * Installs body-level mouseenter/mouseleave delegation for the Relationships
-     * column rich-tooltip and plain-tooltip overlays.
+     * Installs body-level mouseenter/mouseleave delegation for the
+     * Relationships column's tooltip stack, `#mb-rel-tooltip`: while a filter
+     * matches the hovered icon's cell, the filter box and the icon's own box
+     * (`_relStackParts()`), one under the other below the icon. Not while the
+     * icon's preview card is due or showing (`_dpPeek.link`): that card's
+     * note stack carries the same boxes. Without a matching filter the icon's
+     * own tip shows as `#mb-stat-tooltip`'s card (the icon box, see
+     * `_tipTextToHtml()`).
+     *
+     * Until 2026-10-17 this drew two separate boxes side by side (the URL
+     * list and a "plain" box with the icon's bare title, debug/hover.png).
      *
      * Idempotent — guarded by `_relTooltipListenersInstalled`.  Must be called
      * once before any mb-rel-cell can show tooltips; called automatically by
      * `initRelationshipsColumn()` on its first invocation.
-     *
-     * Side-effects: creates (lazily) `_relTooltipEl` and `_relPlainTooltipEl`
-     * and sets `_relTooltipListenersInstalled = true`.
      */
     function _initRelTooltipListeners() {
         if (_relTooltipListenersInstalled) return;
         _relTooltipListenersInstalled = true;
 
-        _relTooltipEl      = _ensureRelTooltip();
-        _relPlainTooltipEl = _ensureRelPlainTooltip();
+        _relTooltipEl = _ensureRelTooltip();
 
         document.body.addEventListener('mouseenter', (e) => {
             const _a = e.target.closest('td.mb-rel-cell a');
@@ -105873,83 +106703,50 @@ a { color: #1565c0; }`;
 
             clearTimeout(_relTooltipTimer);
             _relTooltipTimer = setTimeout(() => {
-                // ── Determine whether any active filter matches this cell ─────
-                // Gate 1: cheap — check if any filter layer has a non-empty query.
-                // Gate 2: DOM-based — check if the live highlight spans confirm a
-                //         match in THIS cell.  Together they ensure we show the
-                //         rich tooltip only when a filter is active AND it matches
-                //         at least one URL in this specific cell.
+                // The icon's preview card is due or showing: its stack has
+                // these boxes already.
+                if (_dpPeek.link === _a) return;
+                // ── Only while an active filter matches this cell ─────────────
+                // Gate 1: cheap — any filter layer has a non-empty query.
+                // Gate 2: DOM-based — the live highlight spans confirm a match
+                //         in THIS cell.
                 if (!_relHasAnyActiveFilter(_cell) || !_relQueryMatchesCell(_cell)) return;
 
                 // ── Suppress the native title tooltip ─────────────────────────
-                // Only done when we are showing our custom panels, so that the
-                // native tooltip is preserved for cells with no matching filter.
+                // Only done when the stack shows, so that the icon's own card
+                // is preserved for cells with no matching filter.
                 if (!_a.dataset.relTitleSaved) {
-                    _a.dataset.relTitleSaved = _a.title || '\u00a0';
+                    _a.dataset.relTitleSaved = _a.title || ' ';
                     _a.title = '';
                 }
 
-                // ── Read configurable colors from settings ────────────────────
+                // ── Colours from settings (both boxes) ────────────────────────
                 const _bg    = Lib.settings.sa_rel_tooltip_bg    || '#fbf8f1';
                 const _color = Lib.settings.sa_rel_tooltip_color || '#2b2622';
-                // The "Liner notes" card border (.mb-tt-liner).
-                const _border = '#d9cfbd';
-
-                // Apply to both panels before measuring layout.
-                _relTooltipEl.style.background   = _bg;
-                _relTooltipEl.style.color         = _color;
-                _relTooltipEl.style.borderColor   = _border;
-                _relPlainTooltipEl.style.background  = _bg;
-                _relPlainTooltipEl.style.color        = _color;
-                _relPlainTooltipEl.style.borderColor  = _border;
-
-                // ── Rich tooltip ──────────────────────────────────────────────
-                _relTooltipEl.innerHTML = _relBuildTooltipHTML(_cell);
+                _relTooltipEl.innerHTML = _relStackParts(_cell, _a).map(p =>
+                    `<div class="mb-tt-liner mb-rel-note mb-rel-note-${p.kind}" style="background:${_mbttEscape(_bg)};color:${_mbttEscape(_color)}">${p.html}</div>`
+                ).join('');
 
                 const _rect  = _a.getBoundingClientRect();
-                const _richW = Math.min(480, window.innerWidth - 20);
-                let   _richL = _rect.left;
-                if (_richL + _richW > window.innerWidth - 10)
-                    _richL = window.innerWidth - _richW - 10;
-                if (_richL < 5) _richL = 5;
-
-                _relTooltipEl.style.display  = 'block';
-                _relTooltipEl.style.left     = `${_richL}px`;
+                const _w     = Math.min(480, window.innerWidth - 20);
+                let   _left  = _rect.left;
+                if (_left + _w > window.innerWidth - 10) _left = window.innerWidth - _w - 10;
+                if (_left < 5) _left = 5;
+                _relTooltipEl.style.maxWidth = `${_w}px`;
+                _relTooltipEl.style.left     = `${_left}px`;
                 _relTooltipEl.style.top      = `${_rect.bottom + 4}px`;
-                _relTooltipEl.style.maxWidth = `${_richW}px`;
-
-                // ── Plain tooltip — right of rich, top-aligned ────────────────
-                const _plainText = (_a.dataset.relTitleSaved || '').replace(/\u00a0/, '').trim();
-                if (_plainText) {
-                    const _richRect  = _relTooltipEl.getBoundingClientRect();
-                    const _plainMaxW = 340;
-                    const _gap       = 8;
-                    let   _plainL    = _richRect.right + _gap;
-                    let   _plainT    = _richRect.top;
-                    if (_plainL + _plainMaxW > window.innerWidth - 10)
-                        _plainL = _richRect.left - _plainMaxW - _gap;
-                    if (_plainL < 5) {
-                        // Fits on neither side: below the rich panel rather
-                        // than clamped to x=5, where it lay ON the rich one.
-                        _plainL = _richRect.left;
-                        _plainT = _richRect.bottom + _gap;
-                    }
-
-                    _relPlainTooltipEl.textContent = _plainText;
-                    _relPlainTooltipEl.style.display  = 'block';
-                    _relPlainTooltipEl.style.left     = `${_plainL}px`;
-                    _relPlainTooltipEl.style.top      = `${_plainT}px`;
-                    _relPlainTooltipEl.style.maxWidth = `${_plainMaxW}px`;
-                } else {
-                    _relPlainTooltipEl.style.display = 'none';
+                _relTooltipEl.style.display  = 'flex';
+                // Below the icon when it fits, else above it.
+                const _h = _relTooltipEl.offsetHeight;
+                if (_rect.bottom + 4 + _h > window.innerHeight - 6 && _rect.top - 4 - _h > 6) {
+                    _relTooltipEl.style.top = `${_rect.top - 4 - _h}px`;
                 }
             }, 300);
         }, true);  // capture phase
 
         const _hideAll = () => {
             clearTimeout(_relTooltipTimer);
-            if (_relTooltipEl)      _relTooltipEl.style.display      = 'none';
-            if (_relPlainTooltipEl) _relPlainTooltipEl.style.display = 'none';
+            if (_relTooltipEl) _relTooltipEl.style.display = 'none';
         };
 
         document.body.addEventListener('mouseleave', (e) => {
@@ -105957,7 +106754,7 @@ a { color: #1565c0; }`;
             if (!_a) return;
             // Restore the native title so keyboard-focus / next hover still works.
             if (_a.dataset.relTitleSaved) {
-                _a.title = _a.dataset.relTitleSaved === '\u00a0' ? '' : _a.dataset.relTitleSaved;
+                _a.title = _a.dataset.relTitleSaved === ' ' ? '' : _a.dataset.relTitleSaved;
                 delete _a.dataset.relTitleSaved;
             }
             _hideAll();
@@ -120896,6 +121693,7 @@ a { color: #1565c0; }`;
             switch (el.dataset.mbttFn) {
                 case 'art-sum': return _artCardSummaryHtml(el);
                 case 'art-img': return _artCardImageHtml(el);
+                case 'art-rel': return _artRelIconCardHtml(el);
                 default: return null;
             }
         } catch (err) {
@@ -120988,22 +121786,6 @@ a { color: #1565c0; }`;
         const liOf = i => td.querySelector(`li.mb-caa-art-li-image[data-mb-art-i="${i}"]`);
         const hit = i => { const li = liOf(i); return !!(li && li.querySelector(_COLLAPSE_MATCH_SEL)); };
         const title = _artRowTitle(td.closest('tr'), path) || `${ctx.column} artwork`;
-        const max = Math.round(_artNumSetting('sa_caa_tip_summary_tiles', 12, 1));
-        const tiles = order.slice(0, max).map(i => {
-            const im = images[i];
-            const cls = 'mb-art-card-tile' + (im.front ? ' mb-art-card-main' : '') +
-                (Lib.settings.sa_caa_tip_highlight !== false && hit(i) ? ' mb-art-card-hit' : '');
-            return `<span class="${cls}"><img src="${_rgEsc(_artViewerThumbUrl(im))}" alt="" loading="lazy"></span>`;
-        }).join('') + (order.length > max ? `<span class="mb-art-card-more">+${order.length - max}</span>` : '');
-        const tally = new Map();
-        images.forEach(im => ((im.types && im.types.length) ? im.types : ['(no type)'])
-            .forEach(t => tally.set(t, (tally.get(t) || 0) + 1)));
-        const pills = Array.from(tally).map(([t, n]) => `<span class="mb-tt-pill">${_rgEsc(t)}${n > 1 ? ` ×${n}` : ''}</span>`).join(' ');
-        const facts = [
-            images.some(im => im.front) ? '★ main front' : 'no main front',
-            ...(ctx.key === 'caa' ? [images.some(im => im.back) ? 'main back' : 'no main back'] : []),
-            ...(images.some(im => im.approved === false) ? [`${images.filter(im => im.approved === false).length} pending approval`] : []),
-        ].join(' · ');
         let matches = '';
         if (Lib.settings.sa_caa_tip_highlight !== false) {
             const rows = order.filter(hit).map(i => {
@@ -121018,14 +121800,282 @@ a { color: #1565c0; }`;
         const foot = Lib.settings.sa_caa_column_viewer !== false
             ? (Lib.settings.sa_caa_viewer_icon_click !== false ? 'Click: viewer · Ctrl-click: the artwork page' : 'Click an image of the expanded cell: viewer')
             : '';
+        return _artCardCoreHtml({ ctx, images, order, title, hit, matches, foot });
+    }
+
+    /**
+     * The body of the B1 artwork card, shared by a CAA/EAA cell's icon
+     * (`_artCardSummaryHtml()`) and a cover icon in a relationship list
+     * (`_artRelIconCardHtml()`): the title, the count and main front/back,
+     * the tiles (★ main front, outlined while `hit` says it holds a filter
+     * match), the type tally, then `matches` and the foot.
+     *
+     * @param   {{ctx: Object, images: Object[], order: number[], title: string,
+     *            hit: function(number): boolean, matches: string, foot: string}} o
+     * @returns {string}
+     */
+    function _artCardCoreHtml(o) {
+        const { ctx, images, order } = o;
+        const max = Math.round(_artNumSetting('sa_caa_tip_summary_tiles', 12, 1));
+        const tiles = order.slice(0, max).map(i => {
+            const im = images[i];
+            const cls = 'mb-art-card-tile' + (im.front ? ' mb-art-card-main' : '') +
+                (Lib.settings.sa_caa_tip_highlight !== false && o.hit(i) ? ' mb-art-card-hit' : '');
+            return `<span class="${cls}"><img src="${_rgEsc(_artViewerThumbUrl(im))}" alt="" loading="lazy"></span>`;
+        }).join('') + (order.length > max ? `<span class="mb-art-card-more">+${order.length - max}</span>` : '');
+        const tally = new Map();
+        images.forEach(im => ((im.types && im.types.length) ? im.types : ['(no type)'])
+            .forEach(t => tally.set(t, (tally.get(t) || 0) + 1)));
+        const pills = Array.from(tally).map(([t, n]) => `<span class="mb-tt-pill">${_rgEsc(t)}${n > 1 ? ` ×${n}` : ''}</span>`).join(' ');
+        const facts = [
+            images.some(im => im.front) ? '★ main front' : 'no main front',
+            ...(ctx.key === 'caa' ? [images.some(im => im.back) ? 'main back' : 'no main back'] : []),
+            ...(images.some(im => im.approved === false) ? [`${images.filter(im => im.approved === false).length} pending approval`] : []),
+        ].join(' · ');
         return `<div style="max-width:310px;">` +
-            `<div class="mb-tt-title">${_rgEsc(title)}</div>` +
+            `<div class="mb-tt-title">${_rgEsc(o.title)}</div>` +
             `<div class="mb-tt-dim">${images.length} image${images.length === 1 ? '' : 's'} · ${_rgEsc(facts)}</div>` +
             `<div class="mb-art-card-tiles">${tiles}</div>` +
             `<div class="mb-tt-body" style="display:flex;gap:4px;flex-wrap:wrap;">${pills}</div>` +
-            matches +
-            (foot ? `<div class="mb-tt-foot">${_rgEsc(foot)}</div>` : '') +
+            (o.matches || '') +
+            (o.foot ? `<div class="mb-tt-foot">${_rgEsc(o.foot)}</div>` : '') +
             `</div>`;
+    }
+
+    // ── Cover icons in relationship lists (2026-10-17) ───────────────────────
+    //
+    // jesus2099's "mb. SUPER MIND CONTROL" puts a cover icon before a release
+    // group link in a relationship list (`table.details`, e.g. the release
+    // group page's "Relationships" section: "single/EP which was taken
+    // from:", "includes:"): `<a href="…/release/<mbid>/cover-art"
+    // ref="/release-group/…" title="5 images found in this release"><span
+    // class="caa-icon jesus2099userjs154481">` (debug/missing-CAA-hover.html).
+    // Such an icon now behaves like the CAA column's: hover shows the B1
+    // artwork card of that release (`data-mbtt-fn="art-rel"`, stamped on
+    // the first hover because the icon arrives late, from that script's own
+    // lookup), and a plain click opens the viewer on its images
+    // (`_artRelIconClick()`); Ctrl-click keeps the artwork page. The record
+    // is the one the release page and the CAA column use
+    // (`_artFetchEntityImages()`: session, IndexedDB, then one request),
+    // asked on the first hover or click. A big-picture strip image gets the
+    // same click (`_artIconClick()`). Mockup approved 2026-10-17:
+    // https://claude.ai/artifact/NonAS8iqfjSMRUaXojzSnT
+
+    /** A cover icon's link in a relationship list. */
+    const _ART_REL_ICON_SEL = 'table.details a[href*="/cover-art"]';
+
+    /**
+     * The relationship-list icons' records being asked, by entity path: who
+     * waits for each (the hover's repaint, a click's viewer).
+     * @type {Map<string, Array<function(): void>>}
+     */
+    const _artRelIconLoading = new Map();
+
+    /**
+     * The release a relationship-list cover icon shows, or null for any other
+     * link: the entity path and the title of the release group link after it.
+     *
+     * @param   {?Element} a
+     * @returns {?{path: string, title: string}}
+     */
+    function _artRelIconInfo(a) {
+        if (!a || !a.matches || !a.matches(_ART_REL_ICON_SEL) || a.closest('table.tbl')) return null;
+        if (!a.querySelector(':scope > span.caa-icon')) return null;
+        const m = /\/release\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/cover-art(?:[?#]|$)/i
+            .exec(a.getAttribute('href') || '');
+        if (!m) return null;
+        const next = a.nextElementSibling;
+        const title = next && next.matches('a[href]') ? next.textContent.replace(/\s+/g, ' ').trim() : '';
+        return { path: `/release/${m[1].toLowerCase()}`, title };
+    }
+
+    /**
+     * Whether relationship-list cover icons get the artwork card: the CAA
+     * feature and its card (`sa_caa_tip_summary`) on.
+     *
+     * @returns {boolean}
+     */
+    function _artRelIconCardOn() {
+        return !!Lib.settings.sa_enable_caa_pics && Lib.settings.sa_caa_tip_summary !== false;
+    }
+
+    /**
+     * Whether a click on a relationship-list cover icon or a big-picture
+     * strip image opens the viewer: the CAA feature on, and the column
+     * viewer's own two switches.
+     *
+     * @returns {boolean}
+     */
+    function _artRelIconViewerOn() {
+        return !!Lib.settings.sa_enable_caa_pics && Lib.settings.sa_caa_column_viewer !== false &&
+            Lib.settings.sa_caa_viewer_icon_click !== false;
+    }
+
+    /**
+     * Marks a relationship-list cover icon under the pointer for
+     * `#mb-stat-tooltip`'s resolver cards (`data-mbtt-fn="art-rel"`). Called
+     * at the top of that engine's mouseover, before it looks for a target,
+     * because the icon is put in late by another script.
+     *
+     * @param   {?EventTarget} node
+     * @returns {void}
+     */
+    function _artRelIconStamp(node) {
+        const a = node && node.closest ? node.closest(_ART_REL_ICON_SEL) : null;
+        if (!a || a.dataset.mbttFn || !_artRelIconCardOn() || !_artRelIconInfo(a)) return;
+        a.dataset.mbttFn = 'art-rel';
+    }
+
+    /**
+     * Asks once for a relationship-list icon's release record, then runs
+     * `done` — and every other `done` that asked while it was on its way (a
+     * click right after the hover that started it).
+     *
+     * @param   {string}   path
+     * @param   {function(): void} done
+     * @param   {Object}   [ctx=CAA_CTX] The archive (a strip of event art asks EAA).
+     * @returns {void}
+     */
+    function _artRelIconLoad(path, done, ctx = CAA_CTX) {
+        const waiting = _artRelIconLoading.get(path);
+        if (waiting) {
+            waiting.push(done);
+            return;
+        }
+        _artRelIconLoading.set(path, [done]);
+        const end = () => {
+            const all = _artRelIconLoading.get(path) || [];
+            _artRelIconLoading.delete(path);
+            all.forEach(fn => fn());
+        };
+        _artFetchEntityImages(ctx, path).then(end, end);
+    }
+
+    /**
+     * The card of a relationship-list cover icon: the B1 artwork card of its
+     * release once its record is in; "Loading" while asked (the first hover
+     * asks); a line when the archive has no image or did not answer.
+     *
+     * @param   {HTMLAnchorElement} a
+     * @returns {?string}
+     */
+    function _artRelIconCardHtml(a) {
+        const info = _artRelIconInfo(a);
+        if (!info || !_artRelIconCardOn()) return null;
+        const title = info.title || 'Cover art';
+        const head = `<div class="mb-tt-title">${_rgEsc(title)}</div>`;
+        if (!CAA_CTX.countCache.has(info.path)) {
+            _artRelIconLoad(info.path, () => _artRelIconRepaint(a));
+            return `<div style="max-width:310px;">${head}<div class="mb-tt-comment"><span class="mb-dp-spin">◌</span> Loading the release's artwork…</div></div>`;
+        }
+        const images = CAA_CTX.imagesCache.get(info.path) || [];
+        if (!images.length) {
+            const why = CAA_CTX.failedCache.has(info.path) ? 'The Cover Art Archive did not answer.' : 'No artwork in the Cover Art Archive.';
+            return `<div style="max-width:310px;">${head}<div class="mb-tt-dim">${why}</div></div>`;
+        }
+        return _artCardCoreHtml({
+            ctx: CAA_CTX, images, order: images.map((_, i) => i), title, hit: () => false, matches: '',
+            foot: _artRelIconViewerOn() ? 'Click: viewer · Ctrl-click: the artwork page' : '',
+        });
+    }
+
+    /**
+     * Repaints `#mb-stat-tooltip` with a relationship-list icon's card when
+     * its record has arrived and the card still shows that icon.
+     *
+     * @param   {HTMLAnchorElement} a
+     * @returns {void}
+     */
+    function _artRelIconRepaint(a) {
+        const tip = document.getElementById('mb-stat-tooltip');
+        if (!tip || tip.style.display !== 'block' || !a.isConnected || !a.matches(':hover')) return;
+        const html = _mbttResolve(a);
+        if (html) tip.innerHTML = html;
+    }
+
+    /**
+     * What a click opens in the viewer, or null: a relationship-list cover
+     * icon (`_artRelIconInfo()`, its release) or an image of a big-picture
+     * strip above a table (`.mb-caa-bigbox` / `.mb-eaa-bigbox`, whose
+     * wrapper links the row's entity: `/release/…`, `/release-group/…`,
+     * `/event/…`).
+     *
+     * @param   {?EventTarget} node
+     * @returns {?{ctx: Object, path: string, title: string, a: HTMLAnchorElement}}
+     */
+    function _artIconViewerTarget(node) {
+        if (!node || !node.closest) return null;
+        const rel = node.closest(_ART_REL_ICON_SEL);
+        const info = _artRelIconInfo(rel);
+        if (info) return { ctx: CAA_CTX, path: info.path, title: info.title || 'Cover art', a: rel };
+        for (const ctx of [CAA_CTX, EAA_CTX]) {
+            const a = node.closest(`.${ctx.boxClass} a[href]`);
+            if (!a) continue;
+            const href = a.getAttribute('href') || '';
+            const type = ctx.entityTypes.find(t => new RegExp(`^/${t}/${_ART_GUID_RE_STR}$`).test(href));
+            if (!type) return null;
+            return { ctx, path: href.toLowerCase(), title: a.dataset.artTooltipName || `${ctx.column} artwork`, a };
+        }
+        return null;
+    }
+
+    /**
+     * A plain click on a relationship-list cover icon or on a big-picture
+     * strip image opens the viewer on that entity's images, at the main front
+     * (the record asked first when it is not in yet), instead of following
+     * the link: following it left the page, so the page's own "leave this
+     * page?" guard came up (2026-10-17, both reported). Ctrl, Shift, Alt or ⌘
+     * leave the link alone (a new tab). The click never navigates by itself:
+     * when the record turns out empty or the archive does not answer, nothing
+     * opens (a debug line says why), and a later click asks again.
+     *
+     * @param   {MouseEvent} e
+     * @returns {void}
+     */
+    function _artIconClick(e) {
+        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || !_artRelIconViewerOn()) return;
+        const t = _artIconViewerTarget(e.target);
+        if (!t) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const open = () => {
+            const images = t.ctx.imagesCache.get(t.path) || [];
+            if (!images.length) {
+                Lib.debug(t.ctx.key, `_artIconClick: no images for ${t.path}` +
+                    (t.ctx.failedCache.has(t.path) ? ' (the archive did not answer)' : ''));
+                return;
+            }
+            const front = images.findIndex(im => im.front);
+            _hideArtHoverPreview();
+            ['mb-stat-tooltip', 'mb-art-bigbox-tooltip'].forEach((id) => {
+                const tip = document.getElementById(id);
+                if (tip) tip.style.display = 'none';
+            });
+            _artViewerOpen(t.ctx, t.path, null, front < 0 ? 0 : front, { opener: t.a, title: t.title });
+        };
+        if (t.ctx.countCache.has(t.path) && !t.ctx.failedCache.has(t.path)) open();
+        else {
+            // A failed record is asked again on a click (not on a hover).
+            if (t.ctx.failedCache.has(t.path)) t.ctx.countCache.delete(t.path);
+            _artRelIconLoad(t.path, open, t.ctx);
+        }
+    }
+
+    /**
+     * Installs the artwork icons' click (delegated, once): relationship-list
+     * cover icons and big-picture strip images (`_artIconClick()`). On the
+     * WINDOW in the capture phase, like `_artColumnViewerOnClick()`, so it
+     * runs before the navigation guard on the document ("You are about to
+     * leave this page"), and its stopPropagation keeps the click from it.
+     * Listeners only: reads no `CAA_CTX` until a click, so it may run above
+     * that declaration.
+     *
+     * @returns {void}
+     */
+    function _artInitRelIcons() {
+        if (_artInitRelIcons.done) return;
+        _artInitRelIcons.done = true;
+        window.addEventListener('click', _artIconClick, true);
     }
 
     /**
@@ -127919,11 +128969,30 @@ a { color: #1565c0; }`;
              * body / footnote / keycap rules without hovering anything.
              *
              * @param {string} text
+             * @param {?Element} [el] - For its `data-mb-tip-cmp` comparisons.
+             * @param {object} [opts] - `_tipTextToHtml()`'s options.
              * @returns {string}
              */
-            tipTextToHtml(text) {
-                return _tipTextToHtml(text);
+            tipTextToHtml(text, el, opts) {
+                return _tipTextToHtml(text, el, opts);
             },
+            /**
+             * The comparison diff (`_cmpDiff()`): two values in, blocks of
+             * shared and changed text out. Pure.
+             *
+             * @param {string} a
+             * @param {string} b
+             * @returns {object}
+             */
+            cmpDiff: (a, b) => _cmpDiff(a, b),
+            /**
+             * The comparison block's HTML (`_cmpHtml()`) and its summary
+             * lines (`_cmpSummary()`), for specs that pin what is marked.
+             *
+             * @param {object} c
+             * @returns {string}
+             */
+            cmpHtml: c => _cmpHtml(c),
             /**
              * The async job popup (`_aj*`), so a spec can register a stand-in
              * provider and drive a job through the shipping framework without

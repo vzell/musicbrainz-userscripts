@@ -503,6 +503,28 @@ Grep `// ── CAA/EAA column redesign` for the code. Rules that fail silently:
   the icon is a link and the navigation guard's document-capture listener
   would ask "leave the page?" first. Tile and ▦ clicks go the same way; ▦ in
   capture also keeps a header click from sorting. A plain left click only.
+- **Relationship-list cover icons and big-picture strip images
+  (2026-10-17)** open the viewer the same way, `_artIconClick()` on `window`
+  capture (`_artInitRelIcons()`, installed after `_initStatTooltip()`, reads
+  no `CAA_CTX` until a click). The first version listened on the DOCUMENT and
+  the guard, on the same node, asked anyway: vzell saw the dialog in the
+  browser, a spec on an unrendered page (guard not armed) did not. The guard
+  now also skips a click already cancelled (`e.defaultPrevented`) and one
+  with Ctrl, ⌘ or Shift (a new tab or window loses nothing): the three
+  specs that used its dialog to prove "the Ctrl-click reached the link" read
+  `defaultPrevented` at the link instead (`ctrlClickAtLink`). A cover icon
+  in `table.details` (jesus2099's `<a href="…/release/<mbid>/cover-art">
+  <span class="caa-icon">`, put in late) is stamped `data-mbtt-fn="art-rel"`
+  at the top of `#mb-stat-tooltip`'s mouseover (`_artRelIconStamp()`) and
+  shows the B1 card (`_artCardCoreHtml()`, shared with
+  `_artCardSummaryHtml()`) from `_artFetchEntityImages()`, asked on the first
+  hover or click; waiting callers queue (`_artRelIconLoading`), because a
+  click right after the hover found the load already on its way and was
+  dropped. The click never navigates by itself. Gates: `sa_enable_caa_pics`
+  plus `sa_caa_tip_summary` (card) or `sa_caa_column_viewer` and
+  `sa_caa_viewer_icon_click` (click). Mockup
+  https://claude.ai/artifact/NonAS8iqfjSMRUaXojzSnT; `rel-icons.spec.js`,
+  `bigbox-tooltip.spec.js`, mutations `rel-icons.json`.
 - **The viewer steps the VISIBLE rows** (`_artColumnViewerRows()`: the live
   tbody, which `runFilter()` empties of rejected rows) with art in the cache,
   wrapping. `_artViewerStep()` crosses into the next row at either end only

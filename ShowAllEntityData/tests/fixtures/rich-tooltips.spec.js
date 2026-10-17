@@ -86,7 +86,7 @@ test.describe('rich tooltips: health check', () => {
         expect(errors).toEqual([]);
     });
 
-    test('Relationships cell: with a filter matching its URL, the rich and the plain panel both show', async ({ page }) => {
+    test('Relationships cell: with a filter matching its URL, one stack: the filter box (icon marked), then the icon box', async ({ page }) => {
         const errors = pageErrors(page);
         await loadUserscriptPage(page, {
             url: SERIES_URL, fixtureFile: SERIES_SHELL, testMode: true,
@@ -113,20 +113,32 @@ test.describe('rich tooltips: health check', () => {
         await expect(icon).toHaveCount(1);
         await icon.hover();
 
+        // One stack (mockup https://claude.ai/artifact/NonAS8iqfjSMRUaXojzSnT):
+        // the filter's view of the cell, then the hovered icon's own box.
         const rich = page.locator('#mb-rel-tooltip');
         await expect(rich).toBeVisible(); // after its 300 ms delay
-        await expect(rich).toContainText('springsteenlyrics');
-        await expect(rich.locator('.mb-global-filter-highlight')).not.toHaveCount(0);
+        const filterBox = rich.locator('> .mb-rel-note-filter');
+        const linkBox = rich.locator('> .mb-rel-note-link');
+        await expect(rich.locator('> .mb-rel-note')).toHaveCount(2);
+        await expect(filterBox).toContainText('the global filter');
+        await expect(filterBox.locator('.mb-global-filter-highlight')).not.toHaveCount(0);
+        // The hovered icon is marked in the list, by its site name.
+        await expect(filterBox.locator('.mb-rel-here')).toHaveCount(1);
+        await expect(filterBox.locator('.mb-rel-here')).toContainText('SpringsteenLyrics◂ this icon');
+        // The icon's box names the site and the relationship type, then the URL.
+        await expect(linkBox.locator('b')).toHaveText('SpringsteenLyrics');
+        await expect(linkBox.locator('.mb-tt-pill')).toHaveText('discogs');
+        await expect(linkBox.locator('.mb-rel-lk-url')).toContainText('springsteenlyrics.com/bootlegs.php?item=');
         // Liner notes look, colours from the sa_rel_tooltip_* defaults.
-        expect(await rich.evaluate((t) => getComputedStyle(t).backgroundColor)).toBe('rgb(251, 248, 241)');
-        expect(await rich.evaluate((t) => getComputedStyle(t).fontFamily)).toContain('Georgia');
-
-        // The icon's own title is the plain panel's text. The "Liner notes"
-        // card must stay out of the way here (2026-10-04: it showed the same
-        // URL as a third box, and its title stash emptied the plain panel).
-        const plain = page.locator('#mb-rel-plain-tooltip');
-        await expect(plain).toBeVisible();
-        await expect(plain).toContainText('springsteenlyrics');
+        expect(await filterBox.evaluate((t) => getComputedStyle(t).backgroundColor)).toBe('rgb(251, 248, 241)');
+        expect(await filterBox.evaluate((t) => getComputedStyle(t).fontFamily)).toContain('Georgia');
+        // Stacked: filter box over the icon's box, same left edge, apart.
+        const [fb, lb] = [await filterBox.boundingBox(), await linkBox.boundingBox()];
+        expect(Math.abs(fb.x - lb.x)).toBeLessThan(1);
+        expect(lb.y).toBeGreaterThanOrEqual(fb.y + fb.height);
+        // No loose box beside it any more (debug/hover.png), and the "Liner
+        // notes" card stays out of the way.
+        await expect(page.locator('#mb-rel-plain-tooltip')).toHaveCount(0);
         await page.waitForTimeout(700); // past the card's default 400 ms delay
         await expect(page.locator('#mb-stat-tooltip')).toBeHidden();
 
@@ -135,7 +147,7 @@ test.describe('rich tooltips: health check', () => {
         expect(errors).toEqual([]);
     });
 
-    test('Relationships cell: in a narrow window the plain panel goes below the rich one, not on top of it', async ({ page }) => {
+    test('Relationships cell: in a narrow window the two boxes still stack without overlapping, inside the window', async ({ page }) => {
         await loadUserscriptPage(page, {
             url: SERIES_URL, fixtureFile: SERIES_SHELL, testMode: true,
             // No sticky Title column: at 520 px it would cover the icon.
@@ -158,11 +170,10 @@ test.describe('rich tooltips: health check', () => {
             { timeout: 60000 }).toBe(0);
         await page.fill('#mb-global-filter-input', 'springsteenlyrics');
 
-        // Neither 480 px of rich panel plus 340 px of plain fits beside it.
+        // Narrow: the stack is one column, so nothing may land beside or on it.
         await page.setViewportSize({ width: 520, height: 800 });
         const icon = page.locator('td.mb-rel-cell a:has(.mb-rel-filter-key .mb-global-filter-highlight)').first();
-        // Centre the icon: the rich panel opens at its left edge, so there is
-        // room for the plain panel on neither side.
+        // Centre the icon: the stack opens at its left edge.
         await icon.evaluate((a) => a.scrollIntoView({ block: 'center', inline: 'center' }));
         const box = await icon.boundingBox();
         const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
@@ -171,17 +182,21 @@ test.describe('rich tooltips: health check', () => {
         await page.mouse.move(0, 0);
         await page.mouse.move(cx, cy, { steps: 3 });
         await expect(page.locator('#mb-rel-tooltip')).toBeVisible();
-        await expect(page.locator('#mb-rel-plain-tooltip')).toBeVisible();
-        const rects = await page.evaluate(() => ['mb-rel-tooltip', 'mb-rel-plain-tooltip'].map((id) => {
-            const r = document.getElementById(id).getBoundingClientRect();
+        const rects = await page.evaluate(() => Array.from(document.querySelectorAll('#mb-rel-tooltip > .mb-rel-note')).map((n) => {
+            const r = n.getBoundingClientRect();
             return { l: r.left, r: r.right, t: r.top, b: r.bottom };
         }));
+        expect(rects).toHaveLength(2);
         const [a, b] = rects;
         const overlap = a.l < b.r && a.r > b.l && a.t < b.b && a.b > b.t;
-        expect(overlap, `rich ${JSON.stringify(a)} vs plain ${JSON.stringify(b)}`).toBe(false);
+        expect(overlap, `filter ${JSON.stringify(a)} vs icon ${JSON.stringify(b)}`).toBe(false);
+        rects.forEach((r) => {
+            expect(r.l).toBeGreaterThanOrEqual(0);
+            expect(r.r).toBeLessThanOrEqual(520);
+        });
     });
 
-    test('Relationships cell: without a filter, no rich panel (the native title stays in charge)', async ({ page }) => {
+    test('Relationships cell: without a filter, no stack; the icon\'s own card names its site', async ({ page }) => {
         await loadUserscriptPage(page, {
             url: SERIES_URL, fixtureFile: SERIES_SHELL, testMode: true,
             settingsOverride: { sa_enable_relationships_column: true, sa_rel_collapse_threshold: 0 },
@@ -204,9 +219,11 @@ test.describe('rich tooltips: health check', () => {
             const t = document.getElementById('mb-rel-tooltip');
             return t ? t.style.display : 'none';
         })).not.toBe('block');
-        // With no filter, the icon's own title is a "Liner notes" card.
+        // With no filter, the icon's own title is a "Liner notes" card: the
+        // icon's box (site, type, URL), not the bare URL.
         await expect(page.locator('#mb-stat-tooltip')).toBeVisible();
-        await expect(page.locator('#mb-stat-tooltip')).toContainText('springsteenlyrics');
+        await expect(page.locator('#mb-stat-tooltip .mb-rel-lk b')).toHaveText('SpringsteenLyrics');
+        await expect(page.locator('#mb-stat-tooltip .mb-rel-lk-url')).toContainText('springsteenlyrics.com/bootlegs.php?item=0');
     });
 
     test('Ctrl+M overlay: lists the page action button and the function keys', async ({ page }) => {

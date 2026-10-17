@@ -23510,3 +23510,98 @@ Env: 2026-10-17T01:15:47+02:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
   browser too, for up to one debounce plus a layout after "Show all
   sub-sections". Users may see it as a flicker of the h1 toolbar. Not
   measured in a real browser.
+
+## 2026-10-17 — Comparison tooltips: the diff view (org/TODO.org "the rich tooltips should show track/recording differences below each other", branch feat/tooltip-diff-view, WIP.1)
+
+Env: 2026-10-17T02:17:42+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 bundled Chromium · no Tampermonkey (GM stubs)
+
+- **Snapshot:** `debug/title-diff-format.png` (vzell's browser): the
+  preview card's note box showed "TRACK NAME I Wanna Dance with Somebody (Who
+  Loves Me)" over "≠ RECORDING I Wanna Dance With Somebody (Who Loves Me)",
+  and the reader had to find the one `w`/`W`. Every other tooltip that
+  compares two values did the same in prose (`comment "…", event "…"`).
+- **Design:** one renderer for all of them (`_cmpHtml()`, `_cmpLenCardHtml()`),
+  fed by `data-mb-tip-cmp` beside the plain title. Mockup approved
+  2026-10-17, variant A ("two rows, marked"):
+  https://claude.ai/artifact/7Nbqih988jfzpGxbiQTX75. The diff is a token LCS
+  (words, space runs, single punctuation), refined letter by letter inside a
+  replaced pair of similar words, plus diff-match-patch's "semantic cleanup"
+  idea. No library: titles are short; `_CMP_MAX_CELLS` caps the table.
+- **Found while prototyping the diff in the mockup (each now has a test and
+  a mutation):**
+  - "same words in a different order" fired when only punctuation changed
+    (the sorted word lists matched): reorder now also needs the word
+    SEQUENCE to differ.
+  - A reordered venue ("Saal 1, ICC Berlin" vs "ICC Berlin, Saal 1") broke
+    into four marks, because the LCS kept the ", " and " " tokens between
+    them: shared runs of only spaces and punctuation between two changes are
+    folded into them (`_cmpFoldGlue()`).
+  - The visible-space marker, done as a chain of `.replace()`s, rewrote the
+    space inside its own inserted `<span class="ws">`: a no-break space came
+    out as broken markup. Now a per-character map (`_cmpShowWs()`).
+  - Found by the uvd-recording-comments extension, not the mockup: one side
+    empty (a date only the comment has) tripped the "share under 40 %"
+    fallback and showed nothing marked. The fallback now needs text on both
+    sides.
+- **Kept, against the plan:** the length card does NOT follow the ⏱
+  millisecond toggle. `_lengthMismatchTooltip()` documents why it always
+  quotes full milliseconds (at seconds precision the two can read the same,
+  which is exactly when the tooltip is needed); the card keeps that rule.
+- **No double comparison under a preview card:** the Title cell's
+  `title-mismatch` finding box sits right above the link's note box in
+  `#mb-dp-notes`, which compares the same names. Its entry is marked
+  `origin`, and `_dpCollectNotes()` renders it as the label alone there.
+- **Test trap:** hovering a cell's centre can land on a link inside it; the
+  engine (like the browser) takes the NEAREST titled element, so the cell's
+  card never shows. Specs hover the cell's padding (`position: {x: 2, y: 2}`)
+  or test the card through `__saTest.tipTextToHtml(title, el)`.
+- **Verified:** `tests/fixtures/tooltip-diff.spec.js` (10), extensions of
+  popup-mb, mb-title-case, uvd-recording-comments and len-flag-disk-roundtrip;
+  `scripts/mutations/tooltip-diff.json` 16/16 caught, the userscript restored
+  and hash-verified.
+- **Not measured:** `stampFindings()` timing. `compare()` runs only for cells
+  whose `test()` already matched, and builds a small JSON string; the diff
+  itself runs on hover. Nothing on the filter/sort/render path changed.
+
+## 2026-10-17 — Relationships icons: popups, the filter stack, and the "leave this page?" dialog on artwork clicks (branch feat/tooltip-diff-view, WIP.2)
+
+Env: 2026-10-17T03:08:46+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 bundled Chromium · no Tampermonkey (GM stubs); vzell's live checks: browser and Tampermonkey version unknown
+
+- **Snapshots:** `debug/missing-CAA-hover.html` (release group f83d2211…,
+  FRP: the h2 "Relationships" list with two jesus2099 `caa-icon` links, and
+  the Relationships column's icons), `debug/hover.png` (column filter "disc"
+  on the Relationships column: the URL list box and a separate bare-URL box,
+  apart and unlabelled). Mockup approved 2026-10-17 (defaults: two-box stack,
+  type pill): https://claude.ai/artifact/NonAS8iqfjSMRUaXojzSnT
+- **Why the column's icons had no link card:** `_EXT_SKIP_SEL` listed
+  `td.mb-rel-cell`, and `_extTarget()` refuses any link around an
+  `<img>`. Both now let a Relationships icon through; its name is the site
+  (`_relLinkName()`), because its text is the hidden `.mb-rel-filter-key`
+  URL.
+- **Why two boxes side by side:** `#mb-rel-tooltip` (URL list) and
+  `#mb-rel-plain-tooltip` (the icon's title) were placed by hand, right of
+  each other. Now one stack (`_relStackParts()`), the same boxes in the
+  card's note stack; the plain tooltip is gone.
+- **The "You are about to leave this page" dialog (reported live twice: the
+  relationship-list cover icon after my change, and the big-picture strip
+  before it):** the navigation guard is a DOCUMENT capture click listener.
+  My first `_artIconClick()` was one too, so on the same node its
+  stopPropagation could not keep the guard from asking. The strip never had a
+  click handler at all: its images are plain links to the release page.
+  `docs/claude/artwork-caa-eaa.md` already said the column click listens on
+  `window` capture for exactly this reason. **I had not read that doc before
+  writing the handler**; the spec that should have caught it loaded the page
+  without rendering, so the guard (`isLoaded`) was not armed. The specs now
+  render first and fail on any dialog.
+- **Also fixed while there:** a click right after the hover dropped its
+  viewer, because the hover's load was already in flight and
+  `_artRelIconLoad()` ignored a second asker (now queued); and the guard
+  asked on Ctrl/⌘/Shift-clicks (a new tab or window), which three specs had
+  used as their proof that a Ctrl-click reached the link. They read
+  `defaultPrevented` at the link now.
+- **Verified:** `rel-icons.spec.js` (5), `bigbox-tooltip.spec.js` (+2),
+  the three rewritten `rich-tooltips.spec.js` tests, the three Ctrl-click
+  specs; the related set (popup, ext, CAA column, Relationships column,
+  guard specs) green; `scripts/mutations/rel-icons.json` 13/13 as recorded
+  (two guards that cover each other are `"expect": "pass"` alone, and fail
+  together). Full suite deferred to the end of the branch, as asked.

@@ -36,6 +36,23 @@
 
 const path = require('path');
 const { test, expect } = require('../support/test');
+
+/**
+ * Dispatches a Ctrl-click on a link and returns whether it arrived there
+ * cancelled (`null`: it never arrived). Cancelled at the link afterwards, so
+ * no tab opens. Since 2026-10-17 the navigation guard asks nothing on a
+ * Ctrl-click (a new tab loses nothing), so its dialog no longer shows that
+ * the click reached the link; this does.
+ *
+ * @param {HTMLAnchorElement} a
+ * @returns {?boolean}
+ */
+const ctrlClickAtLink = (a) => {
+    let seen = null;
+    a.addEventListener('click', (e) => { seen = e.defaultPrevented; e.preventDefault(); }, { once: true });
+    a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true, button: 0 }));
+    return seen;
+};
 const { loadUserscriptPage } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
 const { collectPageErrors } = require('../support/liveAssertions');
@@ -245,18 +262,16 @@ test.describe('CAA/EAA column redesign', () => {
     test('D1: a plain icon click is the viewer\'s, a Ctrl-click the link\'s; with cross-rows off ← → wrap in the row', async ({ page }) => {
         test.setTimeout(120000);
         await open(page, { sa_art_viewer_cross_rows: false });
-        // The navigation guard asks before a link leaves the loaded page (a
-        // native confirm). So "the click reached the link" is observable as
-        // that dialog — and a plain click must never get there.
+        // A Ctrl-click reaches the link uncancelled (a new tab); a plain one
+        // is the viewer's. Neither brings the navigation guard's confirm.
         const dialogs = [];
         page.on('dialog', (d) => { dialogs.push(d.message()); d.dismiss(); });
         const icon = cell(page, R.sixteen).locator(`a[href="/release/${R.sixteen}/cover-art"]`);
-        await icon.click({ modifiers: ['Control'] });
-        await expect.poll(() => dialogs.length, 'the navigation guard saw the Ctrl-click').toBe(1);
+        expect(await icon.evaluate(ctrlClickAtLink), 'the Ctrl-click reached the link uncancelled').toBe(false);
         expect(await viewer(page)).toBeNull();
         await icon.click();
         await expect.poll(() => viewer(page)).toMatchObject({ pos: '1 / 16' });
-        expect(dialogs.length, 'a plain click opens the viewer, no leave-page confirm').toBe(1);
+        expect(dialogs, 'no leave-page confirm').toEqual([]);
         await page.keyboard.press('Escape');
 
         await expandCell(page, R.sixteen);

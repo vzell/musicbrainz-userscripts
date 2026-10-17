@@ -686,8 +686,15 @@ test.describe('MusicBrainz link previews: recording and work (WIP.2)', () => {
         await expect(card(page)).toContainText('fetched now');
         const origin = page.locator('#mb-dp-origin');
         await expect(origin).toBeVisible();
-        await expect(origin.locator('dt')).toHaveText(['Track name', '≠ Recording']);
-        await expect(origin.locator('dd')).toHaveText(['Thunder Road (version 7)', 'Thunder Road']);
+        // The two names one under the other, only what differs marked
+        // (the diff view, mockup https://claude.ai/artifact/7Nbqih988jfzpGxbiQTX75):
+        // " (version 7)" in the track row, its spaces shown as "·", nothing
+        // in the recording row.
+        await expect(origin.locator('.mb-tt-cmp-lbl')).toHaveText(['Track name', '≠ Recording']);
+        await expect(origin.locator('.mb-tt-cmp-val')).toHaveText(['Thunder Road·(version·7)', 'Thunder Road']);
+        await expect(origin.locator('.mb-tt-cmp-val').first().locator('mark.mb-tt-cmp-d')).toHaveText(['·(version·7)']);
+        await expect(origin.locator('.mb-tt-cmp-val').nth(1).locator('mark')).toHaveCount(0);
+        await expect(origin.locator('.mb-tt-cmp-sum')).toHaveText('Only in the track name: (version·7)');
         const box = await origin.boundingBox();
         const cbox = await card(page).boundingBox();
         expect(Math.abs((box.y + box.height + 4) - cbox.y)).toBeLessThan(1.5);
@@ -709,6 +716,12 @@ test.describe('MusicBrainz link previews: recording and work (WIP.2)', () => {
         const badge = dialog(page).locator(':scope > div > .mb-dp-origin');
         await expect(badge).toBeVisible();
         await expect(badge).toHaveText('from track “Thunder Road (version 7)” ≠ recording “Thunder Road”');
+        // Its own tip keeps the sentence as the native text; the rich card
+        // compares the two names.
+        await expect(badge).toHaveAttribute('title', 'Opened from a track named “Thunder Road (version 7)”; its recording is named “Thunder Road”.');
+        const badgeCard = await badge.evaluate((b) => window.__saTest.tipTextToHtml(b.title, b));
+        expect(badgeCard).toContain('<div class="mb-tt-title">Opened from a track whose name differs from its recording</div>');
+        expect(badgeCard).toContain('<mark class="mb-tt-cmp-d">');
         // Right after the title, before the controls.
         await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Recording');
         expect(await badge.evaluate((b) => b.previousElementSibling === b.parentElement.querySelector(':scope > span'))).toBe(true);
@@ -944,6 +957,31 @@ test.describe('MusicBrainz link previews: the note stack and the entity glyphs (
         await page.mouse.move(0, 0);
         await expect(card(page)).toBeHidden();
         expect(await a.evaluate((el) => el.closest('td').getAttribute('title'))).toBe(TIP);
+    });
+
+    test('the Title cell\'s track/recording finding gives its label alone above the note box, which compares the names', async ({ page }) => {
+        // Pins `_dpCollectNotes()`'s `noOrigin`: the finding's comparison is
+        // the note box's, so the stack shows it once (the diff view, mockup
+        // https://claude.ai/artifact/7Nbqih988jfzpGxbiQTX75). The cell's own
+        // card, which does compare them, is tooltip-diff.spec.js's.
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, `/recording/${REC_ID}`, 'Thunder Road (version 7)');
+        await a.evaluate((el) => el.setAttribute('title', 'track name: Thunder Road (version 7)\n≠rec. name: Thunder Road'));
+        const tipText = '⚠️ Track name differs from recording name: track "Thunder Road (version 7)", recording "Thunder Road"';
+        await a.evaluate((el, t) => {
+            const td = el.closest('td');
+            td.setAttribute('data-mb-tip', '');
+            td.setAttribute('title', t);
+            td.setAttribute('data-mb-tip-cmp', JSON.stringify({ t, c: [{
+                at: 0, head: '⚠️ Track name differs from recording name', origin: true,
+                la: 'Track name', lb: 'Recording', sb: 'recording name', a: 'Thunder Road (version 7)', b: 'Thunder Road',
+            }] }));
+        }, tipText);
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(stack(page).locator('.mb-dp-note-tip')).toHaveText('⚠️ Track name differs from recording name');
+        await expect(stack(page).locator('.mb-dp-note-tip .mb-tt-cmp')).toHaveCount(0);
+        await expect(stack(page).locator('#mb-dp-origin mark.mb-tt-cmp-d')).toHaveText(['·(version·7)']);
     });
 
     test('a cell tip and the track/recording note: two boxes above the card, cell first, apart, aligned', async ({ page }) => {

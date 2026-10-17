@@ -657,6 +657,14 @@ Problems that can sit in several different columns of one row (pending edits,
 live credit dates) filter by row instead, and show a chip beside the global
 filter with a ✕ to remove it.
 
+**A problem that compares two values shows them one under the other.** Rest
+the pointer on the cell: the track name over the recording name, the comment's
+venue over the place, the Recording date over the comment's date, the release
+group title over the event, the track length over the recording length. Only
+the part that differs is marked, down to a single letter or a hyphen ‐ against
+-, and a line under them says in words what differs. Two lengths line up digit
+by digit, with the gap in a small amber (⚠️) or red (❌) label.
+
 <details>
 <summary>What is checked</summary>
 
@@ -988,6 +996,15 @@ at the last/first image continue into the next/previous row, and
 stepped through. Ctrl-click (or middle-click) the icon to follow the link
 instead.
 
+**The big-picture strip and the relationship lists open the viewer too.** A
+click on an image of the strip above a table opens the viewer on that
+release's (or event's) images, instead of leaving the page. So does a click on
+a small cover in a relationship list, such as the release group page's
+*Relationships* section ("includes:", "single/EP which was taken from:"),
+where hovering that cover shows the release's artwork card (its images, count
+and types). The card's record is fetched on the first hover, one request.
+Ctrl-click follows the link in a new tab, and asks nothing.
+
 **The gallery (🖼).** The 🖼 button among a table's artwork controls (after
 📊), or **🖼 Open gallery** in its 📊 summary, opens a window with every image
 of the releases the table currently shows — the rows the filters leave, in
@@ -1049,6 +1066,12 @@ failed. There is one of each per table and one page-wide; a single-table page
 shows only the page-wide `⚠⟳`, since it covers the same rows. The failed count is
 computed from the captured rows, not from what is on screen, so a filter cannot
 hide failures from it.
+
+**Hovering an icon** shows what it is: the site (Discogs, Amazon,
+SpringsteenLyrics, …), MusicBrainz's relationship type, and the full URL.
+While a filter matches the cell, a box above it lists all the row's links
+with the filter's marks and marks the icon you point at ("◂ this icon"). With
+link previews on, the link's preview card shows under those boxes.
 
 **An automatic follow-up pass** retries failures once the first load drains,
 after a 30-second pause, at most twice per page, and never at all when more than
@@ -2024,9 +2047,12 @@ change.
   *mb. INLINE STUFF* installed, a track whose name differs from its recording's
   carries a note with both names. The browser used to show that note in its
   own small box over the card. Now it is a box stacked just above the card,
-  and once pinned, a maroon badge next to the window's title ("from track
-  “…” ≠ recording “…”"). The window shows the recording, but always says which
-  track it came from.
+  with the two names one under the other and **only what differs marked**
+  (one letter in another case, ' against ’, added text such as "(single
+  version)"), plus a line saying what it is. Once pinned, a maroon badge
+  next to the window's title says it again ("from track “…” ≠ recording
+  “…”"). The window shows the recording, but always says which track it came
+  from.
 - **Notes stacked above the card.** Everything else the hovered link and its
   cell would show as a tooltip is a box above the card too, one box each,
   none covering the card or each other: the cell's warnings first (*Pending
@@ -2058,8 +2084,9 @@ hours (*Keep MusicBrainz answers for (hours)*); the card's foot says whether
 it was *fetched now* or *saved today*. A card that could not load says so;
 hover again to retry.
 
-Not previewed: the artwork column's links, a link around a picture (they have
-their own preview) and the Relationships column (its own tooltip). Links
+Not previewed: the artwork column's links and a link around a picture (they
+have their own preview). The Relationships column's icons are previewed like
+any other link (see *The Relationships column*). Links
 outside a table are previewed while *Also preview links outside tables* is on
 (same section, on by default): the header, an annotation, the sidebar and
 relationship lists have cards then, but not the tabs, the page navigation or
@@ -2687,7 +2714,8 @@ both **on** by default, under ⚙️ Settings → *🔤 Titles on the other site
   Brucebase Relations names get this too. **A filter then has to use the same
   characters:** "don't" no longer finds "Don’t".
 
-Rest the pointer on a title that changed to see it as the site writes it.
+Rest the pointer on a title that changed to see it as the site writes it,
+above the title as shown, with the letters and marks that changed marked.
 The rules are applied by machine, so a title that needs judgement — a word
 used as part of a verb ("Stand on It"), an acronym nobody listed — can still
 come out differently from MusicBrainz; "up" is always capitalised ("Held Up

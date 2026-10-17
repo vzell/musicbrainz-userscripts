@@ -62,6 +62,8 @@ async function routeArchive(page, host) {
         if (m) {
             await route.fulfill({
                 status: 200,
+                // The viewer reads the record with fetch() (_artFetchEntityImages()).
+                headers: { 'access-control-allow-origin': '*' },
                 contentType: 'application/json',
                 body: JSON.stringify({
                     images: [{
@@ -171,6 +173,50 @@ test.describe('big-picture strip: rich hover tooltip', () => {
         expect(look.font).toContain('Georgia');
         expect(look.title).toBe(true);
     });
+
+    // A click on a strip image opens OUR viewer on that entity's images: it
+    // used to follow the link to the release (or event) page, and the
+    // page's "leave this page?" guard came up (reported 2026-10-17). Pins
+    // the viewer opening with the entity's title, the page staying, and
+    // Ctrl-click left to the link.
+    for (const arm of [
+        { name: 'releasegroup-releases (CAA)', url: RG_URL, fixture: RG_FIXTURE, host: 'coverartarchive.org',
+          button: 'Show all Releases for ReleaseGroup', boxSel: '.mb-caa-bigbox' },
+        { name: 'artist-events (EAA)', url: EVENTS_URL, fixture: EVENTS_FIXTURE, host: 'eventartarchive.org',
+          button: 'Show all Events for Artist', boxSel: '.mb-eaa-bigbox' },
+    ]) {
+        test(`${arm.name}: a click on a strip image opens our viewer and stays on the page, no "leave this page?"`, async ({ page }) => {
+            const errors = [];
+            const dialogs = [];
+            page.on('pageerror', (e) => errors.push(e.message));
+            page.on('dialog', (d) => { dialogs.push(d.message()); d.dismiss(); });
+            await open(page, arm);
+            const wrapper = page.locator(`${arm.boxSel} a`).first();
+            await wrapper.evaluate((a) => {
+                const img = a.querySelector('img');
+                if (img) { img.style.width = '48px'; img.style.height = '48px'; }
+            });
+            const name = await wrapper.getAttribute('data-art-tooltip-name');
+            const before = page.url();
+            await wrapper.click();
+            const viewer = page.locator('#mb-art-viewer');
+            await expect(viewer).toBeVisible();
+            await expect(viewer.locator('.mb-artv-title')).toHaveText(name);
+            await expect(viewer.locator('.mb-artv-pos')).toHaveText('1 / 1');
+            expect(page.url()).toBe(before);
+            await page.keyboard.press('Escape');
+            await expect(viewer).toBeHidden();
+            const prevented = await wrapper.evaluate((a) => {
+                let seen = null;
+                a.addEventListener('click', (e) => { seen = e.defaultPrevented; e.preventDefault(); }, { once: true });
+                a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true, button: 0 }));
+                return seen;
+            });
+            expect(prevented).toBe(false);
+            expect(dialogs, 'no navigation guard dialog').toEqual([]);
+            expect(errors).toEqual([]);
+        });
+    }
 
     test('an inline CAA thumbnail: its own title opens no "Liner notes" card over the preview and cover-art card', async ({ page }) => {
         // Reported 2026-10-04 with a screenshot: the thumbnail's title ("8

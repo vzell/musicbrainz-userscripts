@@ -530,6 +530,20 @@ floating hover tooltip.
     title has a box now, and every title is parked.
   - The box is now a child of `#mb-dp-notes` (the stack above), built by
     `_dpFillNotes()`; `_dpPlacePeek()` places the whole stack.
+  - **The diff view (2026-10-17, org/TODO.org "the rich tooltips should show
+    track/recording differences below each other").** `_dpOriginHtml()`
+    renders the two names with `_cmpHtml()`: one under the other, only the
+    differing runs marked (`mark.mb-tt-cmp-d`, in both rows), and a summary
+    line in plain words. The diff (`_cmpDiff()`) is a token LCS refined
+    letter by letter inside a replaced pair of similar words, with
+    diff-match-patch's "semantic cleanup" idea; below 40 % shared text
+    nothing is marked. The same renderer serves every comparison tooltip:
+    the findings that name two values, the length mismatch
+    (`_cmpLenCardHtml()`), the window badge's tip and a foreign site's
+    original title, through `data-mb-tip-cmp` (see docs/claude/findings.md,
+    "compare rides beside detail"). No parser output changed, so no
+    `_DP_PARSER_VERSION` bump. Mockup:
+    https://claude.ai/artifact/7Nbqih988jfzpGxbiQTX75 (variant A).
   - `_titleHasRecNameMismatch()` (the 📊 flag and the ⚠️ finding) reads the
     title OR the parked attribute (`_dpOriginTitle()`), so a count, a stamp or
     a clone taken while a card shows still sees the flag.
@@ -847,8 +861,17 @@ generalize to URLs".
   U3's live spec hovered it no such link had a card at all; https is also
   how MusicBrainz stores it. Not the MetaBrainz family or the artwork archives
   (`_EXT_SKIP_HOST_RE`), not a share button (`_EXT_SKIP_URL_RE`), not around
-  `img:not(.avatar)`, not in `_EXT_SKIP_SEL` (chrome, `td.mb-rel-cell`, the
-  card and the window, `_MB_POP_PAGE_SKIP`). Scope: `_EXT_SCOPE_SEL` (table
+  `img:not(.avatar)`, not in `_EXT_SKIP_SEL` (chrome, the card and the
+  window, `_MB_POP_PAGE_SKIP`). **A Relationships column icon is the
+  exception to both (2026-10-17):** it is an image link that IS the link, so
+  it gets the card, named by its site (`_relLinkName()`, the icon's text is
+  its hidden filter key), and `_dpCollectNotes()` gives it the icon's own
+  boxes (`_relStackParts()`: the filter box while a filter matches the
+  cell, then the icon box) instead of its bare title and the cell's "click
+  outside the icons" hint; `_dpShowPeek()` hides the column's own stack
+  (`_relHideTooltip()`), whose timer also yields while `_dpPeek.link` is the
+  icon. Mockup https://claude.ai/artifact/NonAS8iqfjSMRUaXojzSnT;
+  `rel-icons.spec.js`, mutations `rel-icons.json`. Scope: `_EXT_SCOPE_SEL` (table
   bodies, `table.details`, `.annotation`, `ul.external_links`), plus `#page`
   with `sa_pop_mb_page` — a getter, read at every event.
 - **Fetching: `_extFetch()`, never `fetch()`** (another origin, no CORS):
