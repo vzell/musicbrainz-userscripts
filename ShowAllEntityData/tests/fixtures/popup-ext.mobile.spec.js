@@ -36,9 +36,10 @@ const SETLIST_HTML = '<!doctype html><html><head><title>Concert Setlist | setlis
  *
  * @param {import('@playwright/test').Page} page
  * @param {Object} settings
+ * @param {Object} [responses] - More `GM_xmlhttpRequest` answers, by URL.
  * @returns {Promise<{errors: string[], navigations: string[], shown: number[], ws2: string[]}>}
  */
-async function openEvent(page, settings) {
+async function openEvent(page, settings, responses = {}) {
     const seen = { errors: [], navigations: [], shown: [], ws2: [] };
     const THIRD_PARTY = [/supported-browser-check/, /Unexpected token '<'/];
     page.on('pageerror', (e) => {
@@ -55,6 +56,7 @@ async function openEvent(page, settings) {
     });
     await ctx.addInitScript((r) => { window.__gmXhrResponses = r; }, {
         [SETLIST]: { status: 200, responseHeaders: 'Content-Type: text/html; charset=utf-8', responseText: SETLIST_HTML },
+        ...responses,
     });
     await loadUserscriptPage(page, {
         url: URL_EVENT, fixtureFile: FIXTURE, testMode: true,
@@ -150,5 +152,40 @@ test('with the touch twin at its default, a tap on a link to another site is not
     const calls = await page.evaluate((u) => (window.__gmXhrLog || []).filter(r => r.url === u).length, SETLIST);
     expect(calls, 'no preview request').toBe(0);
     expect(seen.shown).toEqual([]);
+    expect(seen.errors).toEqual([]);
+});
+
+// The Discogs window (2026-10-17) by touch: a tap on a master's link opens
+// it, and its controls answer taps (no hover-only dead ends).
+test('a tap opens a Discogs master\'s window; its versions button and a track\'s credits answer taps', async ({ page }) => {
+    const MASTER = 'https://www.discogs.com/master/26725-Bruce-Springsteen-Born-To-Run';
+    const answer = (name) => {
+        const f = JSON.parse(fs.readFileSync(path.join(__dirname, `ext-${name}.json`), 'utf8'));
+        return [f.url, { status: f.status, responseHeaders: `Content-Type: ${f.contentType}`, responseText: f.body }];
+    };
+    await page.context().route('https://i.discogs.com/**', (route) => route.fulfill({ status: 404, body: '' }));
+    const seen = await openEvent(page, { sa_pop_ext_on_touch: true, sa_pop_ext_discogs_token: 'tok-probe' }, Object.fromEntries(
+        ['discogs-master', 'discogs-master-versions-p1', 'discogs-master-versions-p2', 'discogs-master-versions-p3',
+            'discogs-master-versions-p4'].map(answer)));
+    // The link on its own line in the setlist.fm link's cell, before it (after
+    // it, the long URL would push it out of the zoomed-out view).
+    await page.evaluate(([u, m]) => {
+        const a = document.querySelector(`table.tbl a[href="${u}"]`);
+        const d = document.createElement('a');
+        d.setAttribute('href', m);
+        d.textContent = 'Discogs master';
+        a.before(d, document.createElement('br'));
+    }, [SETLIST, MASTER]);
+    await tapLink(page, page.locator(`table.tbl a[href="${MASTER}"]`).first());
+
+    const dialog = page.locator('#mb-dp-dialog');
+    const vers = dialog.locator('[data-mb-dg-sec="versions"]');
+    await expect(vers.locator('.mb-dg-counts').first()).toHaveText('100 of 387 loaded', { timeout: 10000 });
+    await tapLink(page, vers.getByRole('button', { name: /^Load the other 287/ }));
+    await expect(vers.locator('.mb-dg-counts').first()).toHaveText('387 of 387 loaded', { timeout: 15000 });
+    const toggle = dialog.locator('.mb-dg-cr').first();
+    await tapLink(page, toggle);
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(seen.navigations, 'the page stays').toEqual([]);
     expect(seen.errors).toEqual([]);
 });

@@ -2192,8 +2192,34 @@ once and without Tampermonkey asking first:
 - **Discogs** releases, masters, artists and labels: for a release the
   artist, year, country, format, label and catalogue number, genres and number
   of tracks, with the cover; for an artist or a label its profile, real name,
-  members or sublabels. No *Live page* (↗ opens Discogs). Discogs allows a
-  card every 2.5 seconds; with your own **Discogs personal access token**
+  members or sublabels. No *Live page* (↗ opens Discogs). A release's card
+  adds one line saying what its window holds ("8 tracks · 64 credits · 12
+  companies · 12 identifiers · 5 images").
+
+  The **window** (Space) shows what the Discogs page shows, at no extra cost:
+  all images (a click opens the artwork viewer, ← → step through them), the
+  **Tracklist** with each track's credits (closed at first: *▸ 7 credits*
+  opens one track, *Show all track credits* every one), the **Notes**, and
+  for a release also **Companies, etc.**, **Credits** (with the tracks they
+  cover), **Barcode and Other Identifiers**, **Videos**, and how many Discogs
+  users have or want it and its data quality. A name credited differently
+  from the artist's Discogs name has Discogs' `*`; point at it for the
+  Discogs name. Each heading opens and closes its section; a closed one
+  stays closed in the next Discogs window until the page is reloaded.
+
+  A **master**'s window adds its **Versions**. Discogs lists them 100 at a
+  time, so the window asks for the first 100 when it opens and the rest only
+  when you press *Load the other …* (it says how many requests that is and
+  about how long it takes); *Stop* lets the page under way finish and asks
+  nothing more. A bar shows each hundred (hatched: from the cache, green:
+  loaded, red: failed, which a button asks again). Filter the versions by
+  typing, or by the chips for format, country and decade (their counts cover
+  every version, loaded or not), and sort by a column heading. The master's
+  main release and a release this page links are marked. A click on a version
+  shows it in the same window, and *Back* returns to the master. A card never
+  asks for versions; once a window has, the master's card says how many there
+  are. Discogs allows a
+  request every 2.5 seconds; with your own **Discogs personal access token**
   (⚙️ Settings → 🔎 EXTERNAL LINK PREVIEWS → *Discogs personal access token*;
   on discogs.com: Settings → Developers → *Generate new token*) it allows one
   a second. The token is sent only to Discogs, shows as dots in the settings,

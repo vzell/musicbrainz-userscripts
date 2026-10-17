@@ -1145,6 +1145,50 @@ subdomain, matched by `endsWith`), so a hover loads them from the first time.
   the same header answered 60 to `Authorization: Discogs token=…`, probed
   with the user's token 2026-10-08 12:09Z, which also confirms the header
   form).
+- **The Discogs window (2026-10-17, mockup
+  https://claude.ai/artifact/49tucEnfghTCMtyvwN6qaM, layout A).** A release
+  or master record keeps `rec.discogs` (`_EXT_DISCOGS_VERSION` 2 on top of
+  `_EXT_IDB_VERSION`, the reader's own `version`, so only Discogs records are
+  read again): the tracklist with each track's `extraartists`, the images
+  (`_extDiscogsImages()`), the notes; a release also companies, credits,
+  identifiers, videos, and the facts "Community" and "Data quality" (after
+  `_EXT_CARD_FACTS`: window only). Same answer, no request more.
+  Rendering goes through three optional READER hooks, so `_extExtracted()`
+  and `_extCard()` stay generic: `window(t, rec, {start, force, repaint})`
+  → `{left, right, full}` (`_extDiscogsWindow()`), `cardExtra(t, rec)`
+  (`_extDiscogsCardExtra()`), and `onAreaClick`/`onAreaInput`, reached from
+  the dialog's delegated listeners through `_extSource()`. Sections are
+  collapsible (`_extDgCollapsed`, page load, across Discogs windows); the
+  per-target state (open track credits, filter, chips, sort, the load run)
+  is `_extDgUi`. The cover links the full primary image (`rec.imageFull`)
+  and is the same file as the gallery's first: `_dpArtViewerClick()` counts
+  a URL once.
+  **Versions** (`_extDiscogsVersionsLoad()`, key
+  `ext:discogs-versions:<master>:<page>`): `masters/<id>/versions`, 100 a
+  page — `per_page` is capped at 100 (probe 2026-10-17,
+  `scripts/probe-discogs-versions.py`: master 26725 = 387 versions, 4 pages
+  of ~76 KB; page 1 carries `filters.available`, counts for ALL versions).
+  Page 1 when the window starts — or, the `_rgWindowFor()` exception, on the
+  repaint that brings the master's own record when the window loaded it (a
+  tap: no card before), once, while page 1 has no state. Never from a card
+  (`wanted()` needs the window on the master). "Load the other N" runs
+  `_extDgLoadNext()`: ONE page at a time through the host's gate, so Stop
+  leaves nothing waiting; a failed page does not stop the run, and the
+  button then asks only the failed ones. **`_mbLoad()` forgets a skipped
+  load without notifying**, so the versions loader repaints itself after a
+  skip (found by the spec: Stop before a page's slot left the bar
+  "Running"). A later visit reads pages 2..N from IndexedDB once page 1 is
+  there (`_extDgPeekCached()`, no request). Year "0" is no year; empty
+  values sort last both ways. A Discogs link IN the window (a version's
+  row, See also, `[r=…]` in notes) drills down (`_extDgDrill()`,
+  `_extTarget(a, {inWindow: true})`), Back returns.
+  **Two engine changes came with it**: `_dpDialog.repaint` and
+  `_dpAreaRepaint()` (a repaint keeps `data-mb-keep-scroll` scroll positions
+  and the `data-mb-keep-focus` field's focus and caret), and
+  `createInfoDialog()`'s scroll area no longer takes the focus on
+  `mouseenter` from an element inside it — Chrome fires `mouseenter` again
+  when a repaint swaps the content under a resting pointer, which took the
+  focus out of the versions' filter while pages arrived (found by the spec).
 - **The token: `sa_pop_ext_discogs_token`** (text, default empty), read by
   `_extDiscogsToken()` (trimmed) and sent ONLY as `Authorization: Discogs
   token=…` to api.discogs.com — never in a URL, so `_extGet()`'s debug line
@@ -1164,7 +1208,18 @@ both entry points). Answers are captures: `python3
 scripts/capture-ext-fixtures.py` writes `tests/fixtures/ext-*.json`
 (`{url, status, contentType, body}`, each the exact request a reader builds
 for an English browser). Mutations: the `U3:` entries of
-`scripts/mutations/popup-ext.json`.
+`scripts/mutations/popup-ext.json`. The Discogs window: the block "the
+Discogs window (2026-10-17)" of the same spec (sections and counts from the
+release fixture, track credits, grouping, the gallery in the viewer; a
+master's versions — none from a hover, page 1 on opening, the rest on the
+button in order, typing through page arrivals, chips, sort ORDER with no-year
+last, memory on reopening, a version drilled into and Back; a failed page and
+its retry; Stop with a page under way and before a page's slot; an old reader
+version not served) and the last test of `popup-ext.mobile.spec.js` (a tap
+opens a master's window, page 1 comes on the record's repaint, the controls
+answer taps). Versions fixtures `ext-discogs-master-versions-p1..p4`
+(captured 2026-10-17). Mutations: the `Discogs:` entries, "artwork viewer:
+the same image counted twice" and "dialog shell: mouseenter …".
 
 ## The Springsteen sites across hosts (org/iframe.org "* generalize to URLs", U4)
 

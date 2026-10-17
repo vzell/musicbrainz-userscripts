@@ -16634,11 +16634,14 @@
      * site's own navigation; `stack` the targets a drill-down came from
      * (org/iframe.org Phase 5: a click on an entity link in the Extracted
      * view shows that entity in the same window; Back returns), oldest
-     * first — empty for a target opened from the page.
+     * first — empty for a target opened from the page. `repaint` redraws
+     * the current target's Extracted view without starting anything (set by
+     * `_dpRenderDialog()`; a source's own controls call it, the Discogs
+     * window's buttons and toggles).
      * @type {{api: ?object, target: ?object, url: string, view: string, hideNav: boolean, row: ?HTMLTableRowElement,
-     *   controls: ?object, stack: Array<object>}}
+     *   controls: ?object, stack: Array<object>, repaint: ?function(): void}}
      */
-    const _dpDialog = { api: null, target: null, url: '', view: 'ex', hideNav: true, row: null, controls: null, stack: [] };
+    const _dpDialog = { api: null, target: null, url: '', view: 'ex', hideNav: true, row: null, controls: null, stack: [], repaint: null };
 
     /**
      * Collapses whitespace (non-breaking spaces included) and trims.
@@ -17263,7 +17266,8 @@
      *   - `kind`: the window's title; `wide`: a wider card (a target may
      *     carry its own `kind` and `wide`, which win: one source serving
      *     several entity kinds, `_mbEntitySource()`);
-     *   - `onAreaClick(e, t)`, optional: a click in its Extracted view.
+     *   - `onAreaClick(e, t)`, optional: a click in its Extracted view;
+     *     `onAreaInput(e, t)`, optional: typing in a field of it.
      * The four foreign sites are one source each (`_dpSiteSource()`); a
      * MusicBrainz release page adds its two release-group sources, the
      * subheader link and the "#" cell (`_rgLinkSource()`, `_eventRgSource()`);
@@ -18298,9 +18302,48 @@
         area.classList.remove('mb-dp-area-live');
         const repaint = () => {
             if (_dpDialog.target !== t || !api.dialog.isConnected || _dpDialog.view !== 'ex') return;
-            area.innerHTML = src.extracted(t, false, false, repaint);
+            _dpAreaRepaint(area, src.extracted(t, false, false, repaint));
         };
+        _dpDialog.repaint = repaint;
         area.innerHTML = src.extracted(t, true, !!force, repaint);
+    }
+
+    /**
+     * Replaces the Extracted view with its repaint, keeping what the user
+     * was doing in it: the scroll position of every element marked
+     * `data-mb-keep-scroll="<name>"` (a list that scrolls on its own, the
+     * Discogs versions), and the focus and caret of a field marked
+     * `data-mb-keep-focus="<name>"` (the versions' filter, typed in while a
+     * page of versions arrives). Only a repaint of the SAME target: a new
+     * target starts at the top.
+     *
+     * @param {HTMLElement} area - The dialog's scroll area.
+     * @param {string} html
+     * @returns {void}
+     */
+    function _dpAreaRepaint(area, html) {
+        const scrolls = Array.from(area.querySelectorAll('[data-mb-keep-scroll]'))
+            .map(el => [el.dataset.mbKeepScroll, el.scrollTop, el.scrollLeft]);
+        const act = document.activeElement;
+        const focus = act && area.contains(act) && act.dataset && act.dataset.mbKeepFocus
+            ? { name: act.dataset.mbKeepFocus, from: act.selectionStart, to: act.selectionEnd } : null;
+        area.innerHTML = html;
+        scrolls.forEach(([name, top, left]) => {
+            const el = area.querySelector(`[data-mb-keep-scroll="${name}"]`);
+            if (el) {
+                el.scrollTop = top;
+                el.scrollLeft = left;
+            }
+        });
+        if (focus) {
+            const el = area.querySelector(`[data-mb-keep-focus="${focus.name}"]`);
+            if (el) {
+                el.focus({ preventScroll: true });
+                try {
+                    el.setSelectionRange(focus.from, focus.to);
+                } catch (_) { /* a field without a caret */ }
+            }
+        }
     }
 
     /**
@@ -18502,8 +18545,12 @@
             return true;
         }
         const area = e.currentTarget instanceof Element ? e.currentTarget : a.ownerDocument;
+        // One image once: the Discogs window shows its primary image as the
+        // cover AND first in its gallery; the first link to an image counts.
+        const seen = new Set();
         const links = Array.from(area.querySelectorAll('a[data-mb-artv-ext]'))
-            .sort((x, y) => Number(x.dataset.mbArtvExt) - Number(y.dataset.mbArtvExt));
+            .sort((x, y) => Number(x.dataset.mbArtvExt) - Number(y.dataset.mbArtvExt))
+            .filter(l => !seen.has(l.href) && seen.add(l.href));
         const images = links.map((l) => {
             const img = l.querySelector('img');
             const label = l.querySelector('span');
@@ -18515,7 +18562,7 @@
                 ...(l.dataset.mbArtvPage ? { pageUrl: l.dataset.mbArtvPage, pageLabel: 'Open on Commons' } : {}),
             };
         });
-        const k = links.indexOf(a);
+        const k = links.findIndex(l => l.href === a.href);
         if (k < 0) return false;
         e.preventDefault();
         const key = `dp:${images.map(im => im.image).join('|')}`;
@@ -18617,6 +18664,11 @@
             // A source's own controls in its Extracted view (a sortable
             // header): delegated here, since every repaint replaces them.
             else if (_dpDialog.target && _dpDialog.target.src.onAreaClick) _dpDialog.target.src.onAreaClick(e, _dpDialog.target);
+        });
+        // A source's own text field in its Extracted view (the Discogs
+        // versions' filter), delegated for the same reason.
+        api.scrollArea.addEventListener('input', (e) => {
+            if (_dpDialog.target && _dpDialog.target.src.onAreaInput) _dpDialog.target.src.onAreaInput(e, _dpDialog.target);
         });
         _dpDialog.api = api;
         _dpDialog.controls = { pos, ex, live, open, back, origin };
@@ -18803,6 +18855,95 @@
             .mb-dp-dialog .mb-dp-gallery { display: flex; flex-wrap: wrap; gap: 6px; }
             .mb-dp-dialog .mb-dp-gallery a { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; color: #7a6d5c; font-size: 11px; text-decoration: none; }
             .mb-dp-dialog .mb-dp-gallery img { height: 88px; max-width: 160px; object-fit: cover; border: 1px solid #d9cfbd; }
+            /* The Discogs window (_extDiscogsWindow): collapsible sections, the tracklist
+               with its credits, grouped credit lines, and a master's versions below both columns */
+            .mb-dp-dialog .mb-dg-sec h4 { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+            .mb-dp-dialog .mb-dg-xh { all: unset; cursor: pointer; display: inline-flex; gap: 6px; align-items: baseline; font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; }
+            .mb-dp-dialog .mb-dg-xh::before { content: "\\25BE"; font-size: 10px; }
+            .mb-dp-dialog .mb-dg-xh[aria-expanded="false"]::before { content: "\\25B8"; }
+            .mb-dp-dialog .mb-dg-xh:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 2px; }
+            .mb-dp-dialog .mb-dg-c { font-weight: 400; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+            .mb-dp-dialog .mb-dg-act { margin-left: auto; }
+            .mb-dp-dialog .mb-dg-btn {
+                font: 600 10.5px/1.5 system-ui, -apple-system, "Segoe UI", Arial, sans-serif; letter-spacing: 0.05em; text-transform: uppercase;
+                border: 1px solid #d9cfbd; background: #fff; color: #2b2622; border-radius: 3px; padding: 1px 7px; cursor: pointer;
+            }
+            .mb-dp-dialog .mb-dg-btn:hover { background: #f4eee2; }
+            .mb-dp-dialog .mb-dg-primary { color: #2f5f9e; border-color: #2f5f9e; }
+            .mb-dp-dialog .mb-dg-danger { color: #9b2218; border-color: #9b2218; }
+            .mb-dp-dialog .mb-dg-tl { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+            .mb-dp-dialog .mb-dg-tl td { padding: 3px 6px 3px 0; vertical-align: top; border-top: 1px solid #eee5d4; }
+            .mb-dp-dialog .mb-dg-pos { width: 2.8em; color: #7a6d5c; font: 12px ui-monospace, Consolas, monospace; padding-top: 5px !important; }
+            .mb-dp-dialog .mb-dg-dur { width: 3.4em; text-align: right; color: #7a6d5c; }
+            .mb-dp-dialog .mb-dg-tt { font-weight: 600; }
+            .mb-dp-dialog .mb-dg-thead td { font-style: italic; color: #7a6d5c; padding-top: 8px; }
+            .mb-dp-dialog .mb-dg-cr { all: unset; cursor: pointer; margin-left: 8px; font: 12px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #7a6d5c; }
+            .mb-dp-dialog .mb-dg-cr:hover { color: #2b2622; text-decoration: underline; }
+            .mb-dp-dialog .mb-dg-cr:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 1px; }
+            .mb-dp-dialog .mb-dg-tcred { margin: 3px 0 4px; font-size: 13px; }
+            .mb-dp-dialog .mb-dg-lines > div { padding-left: 1em; text-indent: -1em; }
+            .mb-dp-dialog .mb-dg-lines > div + div { margin-top: 2px; }
+            .mb-dp-dialog .mb-dg-role, .mb-dp-dialog .mb-dg-dim { color: #7a6d5c; }
+            .mb-dp-dialog .mb-dg-dim { font-size: 12.5px; }
+            .mb-dp-dialog .mb-dg-anv { border-bottom: 1px dotted #7a6d5c; }
+            .mb-dp-dialog .mb-dg-cat { font: 12px ui-monospace, Consolas, monospace; color: #7a6d5c; }
+            .mb-dp-dialog .mb-dg-idg + .mb-dg-idg { margin-top: 6px; }
+            .mb-dp-dialog .mb-dg-it { font-style: italic; color: #7a6d5c; }
+            .mb-dp-dialog .mb-dg-idg .mb-dg-cat { color: #2b2622; }
+            .mb-dp-dialog .mb-dg-notes { white-space: pre-wrap; }
+            .mb-dp-dialog .mb-dg-full { padding: 0 18px 12px; color: #2b2622; font: 13.5px/1.5 Georgia, "Times New Roman", Times, serif; }
+            .mb-dp-dialog .mb-dg-full > .mb-dg-sec { border-top: 1px solid #d9cfbd; padding-top: 8px; }
+            .mb-dp-dialog .mb-dg-full h4 { margin-top: 0; }
+            .mb-dp-dialog .mb-dg-pill {
+                display: inline-block; font: 600 10px/1.6 system-ui, -apple-system, "Segoe UI", Arial, sans-serif; letter-spacing: 0.05em;
+                text-transform: uppercase; padding: 0 7px; border-radius: 999px; border: 1px solid currentColor; color: #7a6d5c; background: #fff; white-space: nowrap;
+            }
+            .mb-dp-dialog .mb-dg-pill.mb-dg-ok { color: #3f7a3a; background: #eef5ec; }
+            .mb-dp-dialog .mb-dg-pill.mb-dg-run { color: #2f5f9e; background: #edf2fa; }
+            .mb-dp-dialog .mb-dg-pill.mb-dg-warn { color: #9a6a00; background: #faf3e2; }
+            .mb-dp-dialog .mb-dg-vstat { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
+            .mb-dp-dialog .mb-dg-bar { display: inline-flex; gap: 2px; height: 7px; width: min(360px, 100%); }
+            .mb-dp-dialog .mb-dg-bar i { flex: 1; border-radius: 1px; background: #e6dfd1; }
+            .mb-dp-dialog .mb-dg-bar i.mb-dg-seg-cache { background: repeating-linear-gradient(135deg, #3f7a3a 0 3px, #cfe2cb 3px 6px); }
+            .mb-dp-dialog .mb-dg-bar i.mb-dg-seg-loaded { background: #3f7a3a; }
+            .mb-dp-dialog .mb-dg-bar i.mb-dg-seg-running { background: repeating-linear-gradient(90deg, #2f5f9e 0 6px, #bcd0ec 6px 12px); background-size: 24px 100%; animation: mb-dg-slide 0.8s linear infinite; }
+            .mb-dp-dialog .mb-dg-bar i.mb-dg-seg-queued { background: #cfd9e8; }
+            .mb-dp-dialog .mb-dg-bar i.mb-dg-seg-failed { background: #9b2218; }
+            @keyframes mb-dg-slide { to { background-position: 24px 0; } }
+            @media (prefers-reduced-motion: reduce) {
+                .mb-dp-dialog .mb-dg-bar i.mb-dg-seg-running { animation: none; }
+            }
+            .mb-dp-dialog .mb-dg-counts { font: 12px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #7a6d5c; font-variant-numeric: tabular-nums; margin: 3px 0; }
+            .mb-dp-dialog .mb-dg-bad { color: #9b2218; }
+            .mb-dp-dialog .mb-dg-facets { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; margin: 8px 0 4px; align-items: start; }
+            .mb-dp-dialog .mb-dg-fl { font-style: italic; color: #7a6d5c; padding-top: 2px; }
+            .mb-dp-dialog .mb-dg-fc {
+                font: 12px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; border: 1px solid #d9cfbd; background: #fff; color: #2b2622;
+                border-radius: 999px; padding: 1px 8px; margin: 0 4px 4px 0; cursor: pointer; font-variant-numeric: tabular-nums;
+            }
+            .mb-dp-dialog .mb-dg-fc .mb-dg-n { color: #7a6d5c; margin-left: 4px; }
+            .mb-dp-dialog .mb-dg-fc[aria-pressed="true"] { background: #2b2622; color: #fbf8f1; border-color: #2b2622; }
+            .mb-dp-dialog .mb-dg-fc[aria-pressed="true"] .mb-dg-n { color: #d9cfbd; }
+            .mb-dp-dialog .mb-dg-fc.mb-dg-more { color: #2f5f9e; border-style: dashed; }
+            .mb-dp-dialog .mb-dg-vtools { margin: 6px 0; }
+            .mb-dp-dialog .mb-dg-vq { font: 13.5px Georgia, "Times New Roman", serif; padding: 3px 8px; border: 1px solid #d9cfbd; border-radius: 3px; width: min(340px, 100%); background: #fff; color: #2b2622; }
+            .mb-dp-dialog .mb-dg-vwrap { overflow: auto; max-height: 460px; border: 1px solid #d9cfbd; border-radius: 3px; background: #fff; }
+            .mb-dp-dialog .mb-dg-vt { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+            .mb-dp-dialog .mb-dg-vt th {
+                position: sticky; top: 0; z-index: 1; background: #f4eee2; text-align: left; white-space: nowrap; cursor: pointer; user-select: none;
+                font: 600 10.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; letter-spacing: 0.06em; text-transform: uppercase; color: #7a6d5c;
+                padding: 6px 8px; border-bottom: 1px solid #d9cfbd;
+            }
+            .mb-dp-dialog .mb-dg-vt th.mb-dg-nosort { cursor: default; }
+            .mb-dp-dialog .mb-dg-vt th[aria-sort="ascending"]::after { content: " \\25B2"; }
+            .mb-dp-dialog .mb-dg-vt th[aria-sort="descending"]::after { content: " \\25BC"; }
+            .mb-dp-dialog .mb-dg-vt td { padding: 4px 8px; border-bottom: 1px solid #f0eadf; vertical-align: middle; }
+            .mb-dp-dialog .mb-dg-vt tbody tr { cursor: pointer; }
+            .mb-dp-dialog .mb-dg-vt tbody tr:hover td { background: #fbf5e7; }
+            .mb-dp-dialog .mb-dg-vthumb { width: 40px; height: 40px; object-fit: cover; border: 1px solid #d9cfbd; display: block; }
+            .mb-dp-dialog .mb-dg-yr { white-space: nowrap; }
+            .mb-dp-dialog .mb-dg-empty { padding: 14px; font-style: italic; color: #7a6d5c; }
+            #mb-dp-peek .mb-dg-sum { margin-top: 4px; }
             .mb-dp-dialog .mb-dp-note { white-space: pre-wrap; margin-bottom: 6px; }
             .mb-dp-dialog .mb-dp-section { white-space: pre-wrap; }
             /* auto-fit, not auto-fill: the empty tracks collapse, so one disc takes the
@@ -46145,6 +46286,95 @@
     }
 
     /**
+     * Version of the Discogs reader's records in IndexedDB, on top of
+     * `_EXT_IDB_VERSION` (the reader's `version`): 2 since the window shows
+     * the whole release and master (tracklist with credits, companies,
+     * credits, identifiers, notes, images, videos), which a version-1 record
+     * does not carry. Only Discogs records are read again.
+     * @type {number}
+     */
+    const _EXT_DISCOGS_VERSION = 2;
+
+    /** How many versions of a master one request asks for: Discogs' own cap (asking for 500 answers 100; probe 2026-10-17). */
+    const _EXT_DISCOGS_VERSIONS_PER_PAGE = 100;
+
+    /**
+     * A Discogs name without the " (2)" Discogs adds to tell two artists or
+     * labels of one name apart.
+     *
+     * @param {string} s
+     * @returns {string}
+     */
+    function _extDiscogsName(s) {
+        return String(s || '').replace(/ \(\d+\)$/, '').trim();
+    }
+
+    /**
+     * The headers of every request to Discogs' API: the User-Agent Discogs
+     * requires, and the user's token when one is set (`_extDiscogsToken()`).
+     *
+     * @returns {Object<string, string>}
+     */
+    function _extDiscogsHeaders() {
+        const token = _extDiscogsToken();
+        return { 'User-Agent': _EXT_AGENT, ...(token ? { Authorization: `Discogs token=${token}` } : {}) };
+    }
+
+    /**
+     * One credited artist of a Discogs answer (`extraartists`), as the
+     * window shows it: the name (without " (2)"), the name the release
+     * credits them under (`anv`, '' when the same), the role, and the tracks
+     * a release-wide credit covers ('' for all).
+     *
+     * @param {Object} a
+     * @returns {{name: string, anv: string, role: string, tracks: string}}
+     */
+    function _extDiscogsCredit(a) {
+        return {
+            name: _extDiscogsName(a.name), anv: String(a.anv || '').trim(),
+            role: String(a.role || '').trim(), tracks: String(a.tracks || '').trim(),
+        };
+    }
+
+    /**
+     * A release's or master's tracklist for the window, in Discogs' order:
+     * tracks, headings (`type: 'heading'`) and an index track's title
+     * (`'index'`) followed by its sub-tracks. Each track keeps its own
+     * credits (`extraartists`).
+     *
+     * @param {Object[]} list - The answer's `tracklist`.
+     * @returns {Array<{type: string, pos: string, title: string, dur: string, credits: Object[]}>}
+     */
+    function _extDiscogsTracklist(list) {
+        const one = (x, type) => ({
+            type, pos: String(x.position || '').trim(), title: String(x.title || '').trim(), dur: String(x.duration || '').trim(),
+            credits: (x.extraartists || []).filter(a => a && a.name).map(_extDiscogsCredit),
+        });
+        const out = [];
+        (list || []).forEach((x) => {
+            const type = x.type_ === 'heading' || x.type_ === 'index' ? x.type_ : 'track';
+            out.push(one(x, type));
+            if (type === 'index') (x.sub_tracks || []).forEach(s => out.push(one(s, 'track')));
+        });
+        return out;
+    }
+
+    /**
+     * A Discogs answer's images for the window's gallery and the artwork
+     * viewer: the full image, the 150 px thumbnail, the size and Discogs'
+     * type (`primary` first, as Discogs lists them). Only http(s) URLs.
+     *
+     * @param {Object[]} list - The answer's `images`.
+     * @returns {Array<{type: string, full: string, thumb: string, w: number, h: number}>}
+     */
+    function _extDiscogsImages(list) {
+        return (list || []).filter(i => /^https?:\/\//i.test(i.uri || '')).map(i => ({
+            type: String(i.type || ''), full: i.uri, thumb: /^https?:\/\//i.test(i.uri150 || '') ? i.uri150 : i.uri,
+            w: Number(i.width) || 0, h: Number(i.height) || 0,
+        }));
+    }
+
+    /**
      * The Discogs reader (U0 X4, built in U3 as answer 3 allowed): ONE
      * request to `https://api.discogs.com/<kind>s/<id>` (15 to 25 KB), with
      * the User-Agent Discogs requires and, when the user set one, their
@@ -46155,6 +46385,15 @@
      * artist or a label: name, profile, members or sublabels. A 404 is a dead
      * link.
      *
+     * Since `_EXT_DISCOGS_VERSION` 2 a release or master also keeps, in
+     * `rec.discogs`, what its window shows below that (the same answer: no
+     * request more): the tracklist with each track's credits, the images
+     * and the notes; a release its companies, credits, identifiers and
+     * videos, and two more facts, the community's have/want and the data
+     * quality (after the card's `_EXT_CARD_FACTS`, so the window's only).
+     * A master's versions are another request, made by its window only
+     * (`_extDiscogsVersionsLoad()`).
+     *
      * @param {object} t
      * @param {function(): boolean} wanted
      * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>}
@@ -46162,16 +46401,14 @@
     async function _extDiscogsLoad(t, wanted) {
         const [, kindRaw, id] = _EXT_DISCOGS_PATH_RE.exec(new URL(t.url).pathname);
         const kind = kindRaw.toLowerCase();
-        const token = _extDiscogsToken();
-        const headers = { 'User-Agent': _EXT_AGENT, ...(token ? { Authorization: `Discogs token=${token}` } : {}) };
-        const res = await _extGet(`https://api.discogs.com/${kind}s/${id}`, { wanted, fetchOpts: { accept: /\bjson\b/i, headers } });
+        const res = await _extGet(`https://api.discogs.com/${kind}s/${id}`, { wanted, fetchOpts: { accept: /\bjson\b/i, headers: _extDiscogsHeaders() } });
         if (res.skipped) return { skipped: true };
         const out = _extApiOutcome(t, res, 'Discogs', `Discogs has no ${kind} ${id} (its API answered 404).`);
         if (out) return out;
         const d = _extJson(res);
         if (!d || !(d.title || d.name)) return { ok: false, detail: 'Discogs answered, but not with its data' };
         const rec = _extApiRecord(t, res.status, 'Discogs');
-        const artists = (d.artists || []).map(a => `${String(a.name || '').replace(/ \(\d+\)$/, '')}${a.join ? ` ${a.join}` : ''}`).join(' ')
+        const artists = (d.artists || []).map(a => `${_extDiscogsName(a.name)}${a.join ? ` ${a.join}` : ''}`).join(' ')
             .replace(/\s+,/g, ',').trim();
         const img = (d.images || []).find(i => i.type === 'primary') || (d.images || [])[0];
         rec.image = img && /^https?:\/\//i.test(img.uri150 || img.uri || '') ? (img.uri150 || img.uri) : '';
@@ -46179,9 +46416,11 @@
         if (kind === 'release' || kind === 'master') {
             const formats = (d.formats || []).map(f => `${Number(f.qty) > 1 ? `${f.qty}×` : ''}${f.name}` +
                 `${(f.descriptions || []).length ? `, ${f.descriptions.join(', ')}` : ''}`).join('; ');
-            const labels = (d.labels || []).map(l => `${String(l.name || '').replace(/ \(\d+\)$/, '')}${l.catno && l.catno !== 'none' ? ` – ${l.catno}` : ''}`)
+            const labels = (d.labels || []).map(l => `${_extDiscogsName(l.name)}${l.catno && l.catno !== 'none' ? ` – ${l.catno}` : ''}`)
                 .join('; ');
             const tracks = (d.tracklist || []).filter(x => !x.type_ || x.type_ === 'track').length;
+            const community = d.community || {};
+            const num = (n) => Number(n).toLocaleString('en-US');
             rec.title = String(d.title);
             rec.author = artists;
             rec.description = [artists, d.year || '', formats.split(';')[0]].filter(Boolean).join(' · ');
@@ -46193,10 +46432,40 @@
                 ['Label', labels],
                 ['Genre', [...(d.genres || []), ...(d.styles || [])].join(', ')],
                 ['Tracks', tracks ? String(tracks) : ''],
+                ['Community', kind === 'release' && typeof community.have === 'number'
+                    ? `${num(community.have)} have · ${num(community.want || 0)} want` : ''],
+                ['Data quality', kind === 'release' ? String(d.data_quality || '') : ''],
             ].filter(f => f[1] && f[1] !== '0');
             if (kind === 'master' && d.main_release) rec.links.push(['Main release', `https://www.discogs.com/release/${d.main_release}`]);
+            if (kind === 'release' && d.master_id) rec.links.push(['Master release', `https://www.discogs.com/master/${d.master_id}`]);
+            const images = _extDiscogsImages(d.images);
+            const primary = images.find(i => i.type === 'primary') || images[0];
+            // The window's cover links the full image, so the artwork viewer
+            // shows it at size and counts it once with the gallery.
+            rec.imageFull = primary ? primary.full : '';
+            rec.discogs = {
+                kind, id: Number(id), tracklist: _extDiscogsTracklist(d.tracklist), images,
+                notes: String(d.notes || '').slice(0, 20000),
+            };
+            if (kind === 'release') {
+                Object.assign(rec.discogs, {
+                    credits: (d.extraartists || []).filter(a => a && a.name).map(_extDiscogsCredit),
+                    companies: (d.companies || []).filter(c => c && c.name).map(c => ({
+                        role: String(c.entity_type_name || '').trim(), name: _extDiscogsName(c.name),
+                        catno: c.catno && c.catno !== 'none' ? String(c.catno).trim() : '',
+                    })),
+                    identifiers: (d.identifiers || []).filter(i => i && i.value).map(i => ({
+                        type: String(i.type || '').trim(), value: String(i.value).trim(), desc: String(i.description || '').trim(),
+                    })),
+                    videos: (d.videos || []).filter(v => /^https?:\/\//i.test(v.uri || '')).map(v => ({
+                        title: String(v.title || v.uri).trim(), url: v.uri, dur: Number(v.duration) || 0,
+                    })),
+                });
+            } else {
+                rec.discogs.mainRelease = Number(d.main_release) || 0;
+            }
         } else {
-            rec.title = String(d.name).replace(/ \(\d+\)$/, '');
+            rec.title = _extDiscogsName(d.name);
             rec.description = _extDiscogsText(d.profile).slice(0, 1200);
             rec.facts = [
                 ['Real name', String(d.realname || '')],
@@ -46207,6 +46476,759 @@
             ].filter(f => f[1]);
         }
         return { ok: true, data: rec };
+    }
+
+    // --- The Discogs window (2026-10-17) ---
+    //
+    // What a Discogs release or master page shows, in the window of its link
+    // (Space): the tracklist with each track's credits, the images, the notes;
+    // a release's companies, credits, identifiers and videos; a master's
+    // versions. All but the versions come in the reader's one answer
+    // (`rec.discogs`). Mockup approved 2026-10-17 (layout A):
+    // https://claude.ai/artifact/49tucEnfghTCMtyvwN6qaM
+    //
+    // The versions are another endpoint, `masters/<id>/versions`, 100 a
+    // request (probe 2026-10-17, scripts/probe-discogs-versions.py: asking
+    // for 500 answers 100; master 26725 has 387 versions, 4 requests of
+    // ~76 KB; page 1 also carries counts by format, label, country and year
+    // for ALL versions, `filters.available`). The window asks for page 1
+    // when it opens; the other pages only on its button, one after the
+    // other through the host's gate (`_extDgLoadNext()`). A card never asks
+    // for versions.
+
+    /**
+     * Sections of a Discogs window the user closed (by id), for this page
+     * load: the next Discogs window shows them closed too.
+     * @type {Set<string>}
+     */
+    const _extDgCollapsed = new Set();
+
+    /**
+     * What the user did in a Discogs window, by target key, for this page
+     * load: the tracks whose credits are open, "all credits", the versions'
+     * filter, chips and sort, whether "Load the other" runs (`chain`), was
+     * stopped, and the pages tried in this run.
+     * @type {Map<string, Object>}
+     */
+    const _extDgUi = new Map();
+
+    /**
+     * A Discogs target's window state (`_extDgUi`), made on first use.
+     *
+     * @param {object} t
+     * @returns {{open: Set<number>, allCredits: boolean, q: string, format: string, country: string, decade: string,
+     *   sort: string, dir: number, moreCountries: boolean, chain: boolean, stopped: boolean, tried: Set<number>,
+     *   peeked: boolean}}
+     */
+    function _extDgUiOf(t) {
+        let ui = _extDgUi.get(t.key);
+        if (!ui) {
+            ui = {
+                open: new Set(), allCredits: false, q: '', format: '', country: '', decade: '', sort: 'year', dir: 1,
+                moreCountries: false, chain: false, stopped: false, tried: new Set(), peeked: false,
+            };
+            _extDgUi.set(t.key, ui);
+        }
+        return ui;
+    }
+
+    /**
+     * The cache key of one page of a master's versions (memory and
+     * IndexedDB, through `_mbLoad()`).
+     *
+     * @param {number} masterId
+     * @param {number} page - From 1.
+     * @returns {string}
+     */
+    function _extDgVersionsKey(masterId, page) {
+        return `ext:discogs-versions:${masterId}:${page}`;
+    }
+
+    /**
+     * Whether the window is open on this target.
+     *
+     * @param {object} t
+     * @returns {boolean}
+     */
+    function _extDgShowing(t) {
+        return !!_dpDialog.target && _dpDialog.target.key === t.key && _dpDialogShowing(_dpDialog.target);
+    }
+
+    /**
+     * Loads one page of a master's versions through `_mbLoad()` (memory,
+     * then IndexedDB younger than `_extTtlMs()`, then ONE request through
+     * `_extGet()`: the host's gate, the same headers as the reader). Wanted
+     * while the window shows the master and, past page 1, until Stop. Any
+     * answer but a list of versions is a failure (not kept: the button tries
+     * that page again). Called from the window only.
+     *
+     * @param {object} t - The master's target.
+     * @param {number} masterId
+     * @param {number} page
+     * @param {{force?: boolean, repaint?: ?function(): void}} [opts]
+     * @returns {void}
+     */
+    function _extDiscogsVersionsLoad(t, masterId, page, { force = false, repaint = null } = {}) {
+        const ui = _extDgUiOf(t);
+        const url = `https://api.discogs.com/masters/${masterId}/versions?per_page=${_EXT_DISCOGS_VERSIONS_PER_PAGE}&page=${page}`;
+        _mbLoad(_extDgVersionsKey(masterId, page), async (wanted) => {
+            const res = await _extGet(url, { wanted, fetchOpts: { accept: /\bjson\b/i, headers: _extDiscogsHeaders() } });
+            if (res.skipped) {
+                // `_mbLoad()` forgets a skipped load without a word: tell the
+                // window once it has (Stop before this page's slot came up),
+                // or its bar would show the page under way for ever.
+                if (repaint) setTimeout(repaint, 0);
+                return { skipped: true };
+            }
+            const d = res.status === 200 && !_extBotCheck(res) ? _extJson(res) : null;
+            if (!d || !Array.isArray(d.versions)) {
+                const out = _extApiOutcome(t, res, 'Discogs', '');
+                return {
+                    ok: false,
+                    detail: out && !out.ok ? out.detail
+                        : res.status === 200 ? 'Discogs answered, but not with a list of versions' : `Discogs answered HTTP ${res.status}`,
+                };
+            }
+            const p = d.pagination || {};
+            const avail = (d.filters && d.filters.available) || {};
+            const counts = (o) => (o && typeof o === 'object'
+                ? Object.fromEntries(Object.entries(o).filter(([, n]) => typeof n === 'number')) : {});
+            return {
+                ok: true,
+                data: {
+                    page, pages: Math.max(1, Number(p.pages) || 1), items: Number(p.items) || d.versions.length,
+                    rows: d.versions.map(v => ({
+                        id: Number(v.id) || 0, title: String(v.title || '').trim(), format: String(v.format || '').trim(),
+                        label: _extDiscogsName(v.label), catno: String(v.catno || '').trim(), country: String(v.country || '').trim(),
+                        // Discogs writes "0" for a version of no known year.
+                        year: /^0*$/.test(String(v.released || '').trim()) ? '' : String(v.released).trim(),
+                        major: (v.major_formats || []).map(String),
+                        thumb: /^https?:\/\//i.test(v.thumb || '') ? v.thumb : '',
+                    })).filter(v => v.id),
+                    facets: page === 1 ? { format: counts(avail.format), country: counts(avail.country), released: counts(avail.released) } : null,
+                },
+            };
+        }, {
+            force, repaint, wanted: () => _extDgShowing(t) && (page === 1 || !ui.stopped),
+            version: _EXT_IDB_VERSION * 100 + _EXT_DISCOGS_VERSION, ttlMs: _extTtlMs(),
+        });
+    }
+
+    /**
+     * "Load the other N": the next page of versions not tried in this run
+     * (none yet, or failed), then the next when it has answered — one at a
+     * time, so Stop leaves nothing waiting. Ends when every page was tried,
+     * on Stop, or when the window has moved on (the page is then not asked:
+     * `_extGet()`'s `wanted()`).
+     *
+     * @param {object} t
+     * @param {number} masterId
+     * @returns {void}
+     */
+    function _extDgLoadNext(t, masterId) {
+        const ui = _extDgUiOf(t);
+        const first = _mbPop.get(_extDgVersionsKey(masterId, 1));
+        const pages = first && first.status === 'done' ? first.data.pages : 0;
+        let next = 0;
+        for (let p = 2; p <= pages && !next; p++) {
+            const st = _mbPop.get(_extDgVersionsKey(masterId, p));
+            if (!ui.tried.has(p) && (!st || st.status === 'failed')) next = p;
+        }
+        if (!next || ui.stopped || !_extDgShowing(t)) {
+            ui.chain = false;
+            if (_dpDialog.repaint && _extDgShowing(t)) _dpDialog.repaint();
+            return;
+        }
+        ui.tried.add(next);
+        const key = _extDgVersionsKey(masterId, next);
+        const after = () => {
+            if (_dpDialog.repaint && _extDgShowing(t)) _dpDialog.repaint();
+            const st = _mbPop.get(key);
+            if (!st || st.status !== 'loading') _extDgLoadNext(t, masterId);
+        };
+        _extDiscogsVersionsLoad(t, masterId, next, { repaint: after });
+    }
+
+    /**
+     * The pages of versions a later visit already has in IndexedDB, read
+     * into memory once page 1 is there (no request: a page not cached stays
+     * for the button). Once per target and page load.
+     *
+     * @param {object} t
+     * @param {number} masterId
+     * @param {number} pages
+     * @returns {void}
+     */
+    function _extDgPeekCached(t, masterId, pages) {
+        const ui = _extDgUiOf(t);
+        if (ui.peeked) return;
+        ui.peeked = true;
+        const version = _EXT_IDB_VERSION * 100 + _EXT_DISCOGS_VERSION;
+        for (let p = 2; p <= pages; p++) {
+            const key = _extDgVersionsKey(masterId, p);
+            if (_mbPop.get(key)) continue;
+            _rgIdbGet(key, version, _extTtlMs()).then((rec) => {
+                if (!rec || _mbPop.get(key)) return;
+                _mbPop.set(key, { status: 'done', data: rec.data, at: rec.at, cached: true, detail: '', listeners: new Set(), wants: [] });
+                if (_dpDialog.repaint && _extDgShowing(t)) _dpDialog.repaint();
+            });
+        }
+    }
+
+    /**
+     * Discogs' markup in notes as HTML, line breaks kept: `[url=…]text[/url]`
+     * and a bare `[url]…[/url]` as links (http(s) only), `[r=123]`/`[r123]`
+     * and `[m=…]` as links to that release or master (a click shows it in the
+     * window, `_extDgDrill()`), `[a=Name]`/`[l=Name]` as the name, id-only
+     * references and `[b]`/`[i]`/`[u]` dropped.
+     *
+     * @param {string} s
+     * @returns {string}
+     */
+    function _extDiscogsMarkupHtml(s) {
+        const link = (u, text) => `<a href="${u}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+        return _rgEsc(String(s || '').replace(/\r\n?/g, '\n'))
+            .replace(/\[url=(https?:\/\/[^\]\s]+)\]([\s\S]*?)\[\/url\]/gi, (_, u, text) => link(u, text))
+            .replace(/\[url\](https?:\/\/[^[\s]+)\[\/url\]/gi, (_, u) => link(u, u))
+            .replace(/\[([rm])=?(\d+)\]/gi, (_, k, n) => {
+                const kind = k.toLowerCase() === 'r' ? 'release' : 'master';
+                return link(`https://www.discogs.com/${kind}/${n}`, `${kind} ${n}`);
+            })
+            .replace(/\[(?:a|l)=([^\]]+)\]/gi, '$1')
+            .replace(/\[(?:a|l)\d+\]/gi, '')
+            .replace(/\[\/?[biu]\]/gi, '')
+            .trim();
+    }
+
+    /**
+     * One collapsible section of a Discogs window: its heading is a button
+     * (▾/▸, the count after the title), its state in `_extDgCollapsed`; an
+     * action button beside the heading only while it is open.
+     *
+     * @param {string} id
+     * @param {string} title
+     * @param {?number} count - null for none.
+     * @param {string} body - HTML.
+     * @param {string} [act] - HTML of the heading's action button.
+     * @returns {string}
+     */
+    function _extDgSection(id, title, count, body, act = '') {
+        const open = !_extDgCollapsed.has(id);
+        return `<section class="mb-dg-sec" data-mb-dg-sec="${id}"><h4><button type="button" class="mb-dg-xh" aria-expanded="${open}">` +
+            `${_rgEsc(title)}${count != null ? ` <span class="mb-dg-c">${count}</span>` : ''}</button>` +
+            `${open && act ? `<span class="mb-dg-act">${act}</span>` : ''}</h4>${open ? body : ''}</section>`;
+    }
+
+    /**
+     * A credited name: the name the release credits (`anv`) with Discogs'
+     * own `*`, the artist's Discogs name in its hover text; else the name.
+     *
+     * @param {{name: string, anv: string}} c
+     * @returns {string}
+     */
+    function _extDgNameHtml(c) {
+        if (!c.anv || c.anv === c.name) return _rgEsc(c.name);
+        return `<span class="mb-dg-anv" data-mb-tip title="${_rgEsc(`Credited as ${c.anv}; on Discogs: ${c.name}`)}">${_rgEsc(c.anv)}*</span>`;
+    }
+
+    /**
+     * Credits as Discogs lists them: one line per role (and, release-wide,
+     * per set of tracks), its names joined.
+     *
+     * @param {Object[]} list - `_extDiscogsCredit()` records.
+     * @param {boolean} withTracks - Release-wide credits: "(tracks: …)".
+     * @returns {string}
+     */
+    function _extDgCreditLines(list, withTracks) {
+        const groups = new Map();
+        list.forEach((c) => {
+            const k = `${c.role}\u0000${withTracks ? c.tracks : ''}`;
+            if (!groups.has(k)) groups.set(k, { role: c.role, tracks: withTracks ? c.tracks : '', names: [] });
+            groups.get(k).names.push(_extDgNameHtml(c));
+        });
+        return '<div class="mb-dg-lines">' + Array.from(groups.values()).map(g =>
+            `<div>${g.role ? `<span class="mb-dg-role">${_rgEsc(g.role)} –</span> ` : ''}${g.names.join(', ')}` +
+            `${g.tracks ? ` <span class="mb-dg-dim">(tracks: ${_rgEsc(g.tracks)})</span>` : ''}</div>`).join('') + '</div>';
+    }
+
+    /**
+     * The window's image gallery: every image (the primary one first, as
+     * Discogs lists them), each linking its full image for the artwork
+     * viewer (`_dpArtViewerClick()`; the cover above is image 0 and the
+     * same file, counted once).
+     *
+     * @param {Object[]} images - `_extDiscogsImages()`.
+     * @returns {string}
+     */
+    function _extDgImagesHtml(images) {
+        return '<div class="mb-dp-gallery">' + images.map((im, i) =>
+            `<a href="${_rgEsc(im.full)}" target="_blank" rel="noopener noreferrer" data-mb-artv-ext="${i + 1}">` +
+            `<img src="${_rgEsc(im.thumb)}" alt="" referrerpolicy="no-referrer" loading="lazy">` +
+            `<span>${i === 0 && im.type === 'primary' ? 'front' : `image ${i + 1}`}</span></a>`).join('') + '</div>';
+    }
+
+    /**
+     * The tracklist: position, title, duration; a track with credits has a
+     * "▸ N credits" toggle (closed unless opened, or "Show all"); headings
+     * and an index track's title as their own rows.
+     *
+     * @param {Object[]} list - `_extDiscogsTracklist()`.
+     * @param {Object} ui - `_extDgUiOf()`.
+     * @returns {string}
+     */
+    function _extDgTracklistHtml(list, ui) {
+        return '<table class="mb-dg-tl">' + list.map((x, i) => {
+            if (x.type !== 'track') return `<tr class="mb-dg-thead"><td colspan="3">${_rgEsc(x.title)}</td></tr>`;
+            const n = x.credits.length;
+            const open = n > 0 && (ui.allCredits || ui.open.has(i));
+            const toggle = n ? `<button type="button" class="mb-dg-cr" data-mb-dg-tr="${i}" aria-expanded="${open}">` +
+                `${open ? '▾' : '▸'} ${n} credit${n === 1 ? '' : 's'}</button>` : '';
+            return `<tr><td class="mb-dg-pos">${_rgEsc(x.pos)}</td><td><span class="mb-dg-tt">${_rgEsc(x.title)}</span>${toggle}` +
+                `${open ? `<div class="mb-dg-tcred">${_extDgCreditLines(x.credits, false)}</div>` : ''}</td>` +
+                `<td class="mb-dg-dur">${_rgEsc(x.dur)}</td></tr>`;
+        }).join('') + '</table>';
+    }
+
+    /**
+     * Rows grouped by their first field, in first-seen order.
+     *
+     * @param {Object[]} list
+     * @param {string} field
+     * @returns {Array<[string, Object[]]>}
+     */
+    function _extDgGroupBy(list, field) {
+        const m = new Map();
+        list.forEach((x) => {
+            if (!m.has(x[field])) m.set(x[field], []);
+            m.get(x[field]).push(x);
+        });
+        return Array.from(m.entries());
+    }
+
+    /**
+     * The Discogs ids of the releases this page links (outside the card and
+     * the window), for the versions' "this page links it" pill: no request.
+     *
+     * @returns {Set<number>}
+     */
+    function _extDgLinkedReleases() {
+        const out = new Set();
+        document.querySelectorAll('a[href*="discogs.com/"]').forEach((a) => {
+            if (a.closest('#mb-dp-dialog, #mb-dp-peek')) return;
+            try {
+                const m = _EXT_DISCOGS_PATH_RE.exec(new URL(a.getAttribute('href'), window.location.href).pathname);
+                if (m && m[1].toLowerCase() === 'release') out.add(Number(m[2]));
+            } catch (_) { /* not a URL */ }
+        });
+        return out;
+    }
+
+    /**
+     * Every page of a master's versions as the window shows it: `running`
+     * (its request under way), `queued` ("Load the other" will ask it),
+     * `failed`, `cache` (read from IndexedDB), `loaded`, or `none`.
+     *
+     * @param {object} t
+     * @param {number} masterId
+     * @returns {{first: ?Object, pages: number, items: number,
+     *   list: Array<{page: number, s: string, rows: number, st: ?Object}>}}
+     */
+    function _extDgVersionsState(t, masterId) {
+        const ui = _extDgUiOf(t);
+        const first = _mbPop.get(_extDgVersionsKey(masterId, 1)) || null;
+        const done1 = first && first.status === 'done';
+        const pages = done1 ? first.data.pages : 1;
+        const items = done1 ? first.data.items : 0;
+        const list = [];
+        for (let p = 1; p <= pages; p++) {
+            const st = _mbPop.get(_extDgVersionsKey(masterId, p)) || null;
+            let s = 'none';
+            if (st && st.status === 'loading') s = 'running';
+            else if (st && st.status === 'failed') s = 'failed';
+            else if (st && st.status === 'done') s = st.cached ? 'cache' : 'loaded';
+            else if (ui.chain && !ui.stopped && !ui.tried.has(p)) s = 'queued';
+            const rows = done1 ? Math.max(0, Math.min(_EXT_DISCOGS_VERSIONS_PER_PAGE, items - (p - 1) * _EXT_DISCOGS_VERSIONS_PER_PAGE)) : 0;
+            list.push({ page: p, s, rows, st });
+        }
+        return { first, pages, items, list };
+    }
+
+    /**
+     * The loaded versions after the filter, the chips and the sort.
+     *
+     * @param {object} t
+     * @param {number} masterId
+     * @returns {{all: Object[], shown: Object[]}}
+     */
+    function _extDgVersionRows(t, masterId) {
+        const ui = _extDgUiOf(t);
+        const all = [];
+        _extDgVersionsState(t, masterId).list.forEach((x) => {
+            if (x.st && x.st.status === 'done') all.push(...x.st.data.rows);
+        });
+        const q = ui.q.trim().toLowerCase();
+        const decade = (y) => (parseInt(y, 10) ? `${Math.floor(parseInt(y, 10) / 10) * 10}s` : '');
+        const shown = all.filter((v) => {
+            if (ui.format && !v.format.split(/,\s*/).concat(v.major).includes(ui.format)) return false;
+            if (ui.country && v.country !== ui.country) return false;
+            if (ui.decade && decade(v.year) !== ui.decade) return false;
+            return !q || [v.title, v.format, v.label, v.catno, v.country, v.year].join(' ').toLowerCase().includes(q);
+        });
+        // Discogs' own order breaks ties; an empty value goes last either way.
+        const pos = new Map(all.map((v, i) => [v.id, i]));
+        shown.sort((a, b) => {
+            const x = String(a[ui.sort] || ''), y = String(b[ui.sort] || '');
+            if (!x !== !y) return x ? -1 : 1;
+            return (x.localeCompare(y, undefined, { numeric: true }) * ui.dir) || (pos.get(a.id) - pos.get(b.id));
+        });
+        return { all, shown };
+    }
+
+    /**
+     * The versions' list part (re-rendered alone while typing in the
+     * filter, so the field keeps its focus): what is shown of what, the
+     * table, or why nothing.
+     *
+     * @param {object} t
+     * @param {Object} rec - The master's record.
+     * @returns {string}
+     */
+    function _extDgVersionsListHtml(t, rec) {
+        const ui = _extDgUiOf(t);
+        const dg = rec.discogs;
+        const { items } = _extDgVersionsState(t, dg.id);
+        const { all, shown } = _extDgVersionRows(t, dg.id);
+        const filtered = !!(ui.q.trim() || ui.format || ui.country || ui.decade);
+        const linked = _extDgLinkedReleases();
+        const missing = items - all.length;
+        const head = `<div class="mb-dg-counts">Showing ${shown.length} of ${all.length} loaded` +
+            `${missing > 0 ? ` · ${missing} not loaded yet${filtered ? ', so the filter cannot see them' : ''}` : ''}.` +
+            ` The chips count all ${items}. A click on a row shows that version here.` +
+            `${filtered ? ' <button type="button" class="mb-dg-btn" data-mb-dg-act="vclear">Clear filters</button>' : ''}</div>`;
+        if (!shown.length) return `${head}<div class="mb-dg-vwrap"><div class="mb-dg-empty">No loaded version matches.</div></div>`;
+        const th = (col, label) => `<th data-mb-dg-sort="${col}"${ui.sort === col ? ` aria-sort="${ui.dir > 0 ? 'ascending' : 'descending'}"` : ''}>${label}</th>`;
+        return head + '<div class="mb-dg-vwrap" data-mb-keep-scroll="dg-versions"><table class="mb-dg-vt"><thead><tr><th class="mb-dg-nosort"></th>' +
+            th('title', 'Title, format') + th('label', 'Label – Cat#') + th('country', 'Country') + th('year', 'Year') + '</tr></thead><tbody>' +
+            shown.map(v => `<tr data-mb-dg-vid="${v.id}"><td>${v.thumb
+                ? `<img class="mb-dg-vthumb" src="${_rgEsc(v.thumb)}" alt="" referrerpolicy="no-referrer" loading="lazy">` : ''}</td>` +
+                `<td><a href="https://www.discogs.com/release/${v.id}" target="_blank" rel="noopener noreferrer">${_rgEsc(v.title)}</a>` +
+                `${v.id === dg.mainRelease ? ' <span class="mb-dg-pill mb-dg-ok">main</span>' : ''}` +
+                `${linked.has(v.id) ? ' <span class="mb-dg-pill mb-dg-run">this page links it</span>' : ''}` +
+                `<div class="mb-dg-dim">${_rgEsc(v.format)}</div></td>` +
+                `<td>${_rgEsc(v.label)}${v.catno ? ` <span class="mb-dg-cat">– ${_rgEsc(v.catno)}</span>` : ''}</td>` +
+                `<td>${_rgEsc(v.country)}</td><td class="mb-dg-yr">${_rgEsc(v.year || '—')}</td></tr>`).join('') +
+            '</tbody></table></div>';
+    }
+
+    /**
+     * The versions section of a master's window: page 1's state, then the
+     * status pill, the segmented bar (one segment a page), the counts and
+     * the one button that applies (Stop / Try again / Load the other N),
+     * the filter, the chips (format and country: the ten most common;
+     * released: by decade) and the list.
+     *
+     * @param {object} t
+     * @param {Object} rec
+     * @returns {string}
+     */
+    function _extDgVersionsHtml(t, rec) {
+        const ui = _extDgUiOf(t);
+        const dg = rec.discogs;
+        const vs = _extDgVersionsState(t, dg.id);
+        const first = vs.first;
+        let body;
+        if (!first || first.status === 'loading') {
+            body = `<div class="mb-dg-dim"><span class="mb-dp-spin">◌</span> Asking Discogs for the first ${_EXT_DISCOGS_VERSIONS_PER_PAGE} versions…</div>`;
+        } else if (first.status === 'failed') {
+            body = `<div class="mb-dp-warn">Could not load the versions: ${_rgEsc(first.detail)}.</div>` +
+                '<button type="button" class="mb-dg-btn mb-dg-primary" data-mb-dg-act="vfirst">⟳ Try again</button>';
+        } else {
+            const count = (s) => vs.list.filter(x => x.s === s);
+            const rowsOf = (list) => list.reduce((n, x) => n + x.rows, 0);
+            const failed = count('failed');
+            const busy = count('running').length > 0 || (ui.chain && !ui.stopped);
+            const loadedRows = rowsOf(count('loaded')) + rowsOf(count('cache'));
+            const todo = vs.list.filter(x => x.s === 'none' || x.s === 'failed');
+            const pill = busy ? '<span class="mb-dg-pill mb-dg-run">Running</span>'
+                : failed.length ? '<span class="mb-dg-pill mb-dg-warn">Done with errors</span>'
+                    : loadedRows >= vs.items ? '<span class="mb-dg-pill mb-dg-ok">Done</span>' : '<span class="mb-dg-pill">Idle</span>';
+            let btn = '';
+            if (busy) {
+                btn = ui.stopped ? '<span class="mb-dg-dim">Stopping after this page…</span>'
+                    : '<button type="button" class="mb-dg-btn mb-dg-danger" data-mb-dg-act="vstop">Stop</button>';
+            } else if (todo.length) {
+                const secs = Math.ceil(todo.length * _extSpacingMs('api.discogs.com') / 1000);
+                const what = failed.length && failed.length === todo.length
+                    ? (failed.length === 1 ? `Try page ${failed[0].page} again` : `Try the ${failed.length} failed pages again`)
+                    : `Load the other ${vs.items - loadedRows}`;
+                btn = `<button type="button" class="mb-dg-btn mb-dg-primary" data-mb-dg-act="vrest">${what} ` +
+                    `(${todo.length} request${todo.length === 1 ? '' : 's'}, about ${secs} s)</button>`;
+            }
+            const counts = [`${loadedRows} of ${vs.items} loaded`];
+            const cached = rowsOf(count('cache'));
+            if (cached) counts.push(`${cached} from cache`);
+            const queued = rowsOf(count('queued')) + rowsOf(count('running'));
+            if (busy && queued) counts.push(`${queued} queued`);
+            if (failed.length) {
+                counts.push(`<span class="mb-dg-bad">${failed.length === 1 ? `page ${failed[0].page}` : `${failed.length} pages`} failed: ` +
+                    `${_rgEsc(failed[0].st.detail)}</span>`);
+            }
+            const f = first.data.facets || {};
+            const top = (o, n) => Object.entries(o || {}).sort((a, b) => b[1] - a[1]).slice(0, n);
+            const decades = {};
+            Object.entries(f.released || {}).forEach(([y, n]) => {
+                const d = parseInt(y, 10) ? `${Math.floor(parseInt(y, 10) / 10) * 10}s` : '';
+                if (d) decades[d] = (decades[d] || 0) + n;
+            });
+            const chip = (dim, v, n) => `<button type="button" class="mb-dg-fc" data-mb-dg-f="${dim}" data-mb-dg-v="${_rgEsc(v)}" ` +
+                `aria-pressed="${ui[dim] === v}">${_rgEsc(v)}<span class="mb-dg-n">${n}</span></button>`;
+            const nCountries = Object.keys(f.country || {}).length;
+            const facetRow = (label, chips) => (chips ? `<span class="mb-dg-fl">${label}</span><div>${chips}</div>` : '');
+            body = `<div class="mb-dg-vstat">${pill}<span class="mb-dg-bar" aria-hidden="true">` +
+                vs.list.map(x => `<i class="mb-dg-seg-${x.s}"></i>`).join('') + `</span>${btn}</div>` +
+                `<div class="mb-dg-counts">${counts.join(' · ')}</div>` +
+                '<div class="mb-dg-facets">' +
+                facetRow('Format', top(f.format, 10).map(([v, n]) => chip('format', v, n)).join('')) +
+                facetRow('Country', top(f.country, ui.moreCountries ? nCountries : 10).map(([v, n]) => chip('country', v, n)).join('') +
+                    (nCountries > 10 ? `<button type="button" class="mb-dg-fc mb-dg-more" data-mb-dg-act="vmorec">${ui.moreCountries ? 'fewer'
+                        : `+${nCountries - 10} more`}</button>` : '')) +
+                facetRow('Released', Object.entries(decades).sort().map(([v, n]) => chip('decade', v, n)).join('')) +
+                '</div>' +
+                `<div class="mb-dg-vtools"><input type="search" class="mb-dg-vq" value="${_rgEsc(ui.q)}" data-mb-keep-focus="dg-vq" ` +
+                'placeholder="Filter versions: title, label, cat#, country, year" aria-label="Filter versions"></div>' +
+                `<div class="mb-dg-vbody">${_extDgVersionsListHtml(t, rec)}</div>`;
+            _extDgPeekCached(t, dg.id, vs.pages);
+        }
+        return _extDgSection('versions', 'Versions', vs.items || null, body);
+    }
+
+    /**
+     * The Discogs reader's own window sections (`_extExtracted()`'s
+     * reader hook), layout A of the mockup: on the left the images, the
+     * tracklist and the notes; on the right a release's companies, credits,
+     * identifiers and videos; below both a master's versions — whose page 1
+     * this call asks for when the window starts or ⟳ forces it (⟳ also
+     * asks again every page already loaded).
+     *
+     * @param {object} t
+     * @param {Object} rec
+     * @param {{start: boolean, force: boolean, repaint: function(): void}} how
+     * @returns {{left: string[], right: string[], full: string[]}}
+     */
+    function _extDiscogsWindow(t, rec, { start, force, repaint }) {
+        const out = { left: [], right: [], full: [] };
+        const dg = rec.discogs;
+        if (!dg) return out;
+        const ui = _extDgUiOf(t);
+        if (dg.images.length) out.left.push(_extDgSection('images', 'Images', dg.images.length, _extDgImagesHtml(dg.images)));
+        if (dg.tracklist.length) {
+            const n = dg.tracklist.filter(x => x.type === 'track').length;
+            const act = dg.tracklist.some(x => x.credits.length)
+                ? `<button type="button" class="mb-dg-btn" data-mb-dg-act="allcred">${ui.allCredits ? 'Hide' : 'Show'} all track credits</button>` : '';
+            out.left.push(_extDgSection('tracklist', 'Tracklist', n, _extDgTracklistHtml(dg.tracklist, ui), act));
+        }
+        if (dg.notes) out.left.push(_extDgSection('notes', 'Notes', null, `<div class="mb-dg-notes">${_extDiscogsMarkupHtml(dg.notes)}</div>`));
+        if (dg.kind === 'release') {
+            if (dg.companies.length) {
+                out.right.push(_extDgSection('companies', 'Companies, etc.', dg.companies.length, '<div class="mb-dg-lines">' +
+                    _extDgGroupBy(dg.companies, 'role').map(([role, list]) => `<div>${role ? `<span class="mb-dg-role">${_rgEsc(role)} –</span> ` : ''}` +
+                        list.map(c => `${_rgEsc(c.name)}${c.catno ? ` <span class="mb-dg-cat">${_rgEsc(c.catno)}</span>` : ''}`).join(', ') +
+                        '</div>').join('') + '</div>'));
+            }
+            if (dg.credits.length) out.right.push(_extDgSection('credits', 'Credits', dg.credits.length, _extDgCreditLines(dg.credits, true)));
+            if (dg.identifiers.length) {
+                out.right.push(_extDgSection('identifiers', 'Barcode and Other Identifiers', dg.identifiers.length,
+                    _extDgGroupBy(dg.identifiers, 'type').map(([type, list]) => `<div class="mb-dg-idg"><div class="mb-dg-it">${_rgEsc(type)}</div>` +
+                        list.map(i => `<div><span class="mb-dg-cat">${_rgEsc(i.value)}</span>${i.desc ? ` <span class="mb-dg-dim">· ${_rgEsc(i.desc)}</span>` : ''}</div>`)
+                            .join('') + '</div>').join('')));
+            }
+            if (dg.videos.length) {
+                const dur = (s) => (s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : '');
+                out.right.push(_extDgSection('videos', 'Videos', dg.videos.length, '<div class="mb-dg-lines">' + dg.videos.map(v =>
+                    `<div><a href="${_rgEsc(v.url)}" target="_blank" rel="noopener noreferrer">${_rgEsc(v.title)}</a>` +
+                    `${v.dur ? ` <span class="mb-dg-dim">${dur(v.dur)}</span>` : ''}</div>`).join('') + '</div>'));
+            }
+        } else {
+            // Page 1 is asked when the window starts, or on the repaint that
+            // brings the master's own record when the window asked for that
+            // (a tap: no card loaded it first) — only then is the master
+            // known. Never again from a repaint once page 1 has a state: a
+            // failure waits for its button.
+            if (start || !_mbPop.get(_extDgVersionsKey(dg.id, 1))) _extDiscogsVersionsLoad(t, dg.id, 1, { force, repaint });
+            if (start) {
+                // A new visit: no run of "Load the other" goes on from the last one.
+                if (!_extDgVersionsState(t, dg.id).list.some(x => x.s === 'running' && x.page > 1)) {
+                    Object.assign(ui, { chain: false, tried: new Set() });
+                }
+                if (force) {
+                    _extDgVersionsState(t, dg.id).list.slice(1).filter(x => x.s === 'loaded' || x.s === 'cache')
+                        .forEach(x => _extDiscogsVersionsLoad(t, dg.id, x.page, { force: true, repaint }));
+                }
+            }
+            out.full.push(_extDgVersionsHtml(t, rec));
+        }
+        return out;
+    }
+
+    /**
+     * The Discogs card's summary line: what the window holds (a release),
+     * or how many versions a master has once its window has read them —
+     * the card never asks for versions.
+     *
+     * @param {object} t
+     * @param {Object} rec
+     * @returns {string}
+     */
+    function _extDiscogsCardExtra(t, rec) {
+        const dg = rec.discogs;
+        if (!dg) return '';
+        const n = (k, one, many) => (k ? `${k} ${k === 1 ? one : many}` : '');
+        if (dg.kind === 'release') {
+            const credits = dg.credits.length + dg.tracklist.reduce((s, x) => s + x.credits.length, 0);
+            const parts = [
+                n(dg.tracklist.filter(x => x.type === 'track').length, 'track', 'tracks'), n(credits, 'credit', 'credits'),
+                n(dg.companies.length, 'company', 'companies'), n(dg.identifiers.length, 'identifier', 'identifiers'),
+                n(dg.images.length, 'image', 'images'),
+            ].filter(Boolean);
+            return parts.length ? `<div class="mb-tt-dim mb-dg-sum">${parts.join(' · ')}</div>` : '';
+        }
+        const st = _mbPop.get(_extDgVersionsKey(dg.id, 1));
+        if (st && st.status === 'done') {
+            const f = st.data.facets || {};
+            const countries = Object.keys(f.country || {}).length;
+            const years = Object.keys(f.released || {}).map(y => parseInt(y, 10)).filter(y => y > 0);
+            return `<div class="mb-tt-dim mb-dg-sum">${n(st.data.items, 'version', 'versions')}` +
+                `${countries ? ` in ${n(countries, 'country', 'countries')}` : ''}` +
+                `${years.length ? `, ${Math.min(...years)}–${Math.max(...years)}` : ''}</div>`;
+        }
+        return '<div class="mb-tt-dim mb-dg-sum">Versions: <kbd>Space</kbd> lists them</div>';
+    }
+
+    /**
+     * A Discogs link in the window (a version's row, See also, a link in
+     * the notes) shows that release or master in the same window, the
+     * current one going on the back stack (as `_dpDrill()` does for
+     * MusicBrainz entities). A plain left click only; Ctrl, Shift, Alt, ⌘
+     * keep the link's new tab.
+     *
+     * @param {MouseEvent} e
+     * @param {Element} a
+     * @returns {boolean} Whether it drilled down.
+     */
+    function _extDgDrill(e, a) {
+        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return false;
+        const cur = _dpDialog.target;
+        const r = a && cur ? _extTarget(a, { inWindow: true }) : null;
+        if (!r || r.reader.id !== 'discogs' || r.key === cur.key) return false;
+        e.preventDefault();
+        _dpDialog.stack.push(cur);
+        _dpShowInDialog(Object.assign({ src: cur.src, el: a, drilled: true }, r));
+        return true;
+    }
+
+    /**
+     * Clicks in a Discogs window (delegated by the dialog: every repaint
+     * replaces the markup): a section heading opens or closes it; a track's
+     * toggle and "Show all track credits"; the versions' buttons, chips,
+     * sort headers; a Discogs link or a version's row drills down.
+     *
+     * @param {MouseEvent} e
+     * @param {object} t
+     * @returns {void}
+     */
+    function _extDiscogsAreaClick(e, t) {
+        const st = _mbPop.get(t.key);
+        const rec = st && st.status === 'done' ? st.data : null;
+        if (!rec || !rec.discogs || !(e.target instanceof Element)) return;
+        const ui = _extDgUiOf(t);
+        const repaint = () => { if (_dpDialog.repaint) _dpDialog.repaint(); };
+        const head = e.target.closest('.mb-dg-xh');
+        if (head) {
+            const id = head.closest('[data-mb-dg-sec]').dataset.mbDgSec;
+            if (_extDgCollapsed.has(id)) _extDgCollapsed.delete(id);
+            else _extDgCollapsed.add(id);
+            repaint();
+            return;
+        }
+        const tr = e.target.closest('[data-mb-dg-tr]');
+        if (tr) {
+            const i = Number(tr.dataset.mbDgTr);
+            if (ui.allCredits) {
+                ui.allCredits = false;
+                rec.discogs.tracklist.forEach((_, j) => ui.open.add(j));
+            }
+            if (ui.open.has(i)) ui.open.delete(i);
+            else ui.open.add(i);
+            repaint();
+            return;
+        }
+        const act = e.target.closest('[data-mb-dg-act]');
+        if (act) {
+            const id = rec.discogs.id;
+            switch (act.dataset.mbDgAct) {
+            case 'allcred':
+                ui.allCredits = !ui.allCredits;
+                ui.open.clear();
+                break;
+            case 'vfirst':
+                _extDiscogsVersionsLoad(t, id, 1, { repaint: _dpDialog.repaint });
+                break;
+            case 'vrest':
+                Object.assign(ui, { chain: true, stopped: false, tried: new Set() });
+                _extDgLoadNext(t, id);
+                break;
+            case 'vstop':
+                ui.stopped = true;
+                break;
+            case 'vclear':
+                Object.assign(ui, { q: '', format: '', country: '', decade: '' });
+                break;
+            case 'vmorec':
+                ui.moreCountries = !ui.moreCountries;
+                break;
+            default:
+                return;
+            }
+            repaint();
+            return;
+        }
+        const chip = e.target.closest('[data-mb-dg-f]');
+        if (chip) {
+            const dim = chip.dataset.mbDgF;
+            ui[dim] = ui[dim] === chip.dataset.mbDgV ? '' : chip.dataset.mbDgV;
+            repaint();
+            return;
+        }
+        const th = e.target.closest('th[data-mb-dg-sort]');
+        if (th) {
+            const col = th.dataset.mbDgSort;
+            ui.dir = ui.sort === col ? -ui.dir : 1;
+            ui.sort = col;
+            repaint();
+            return;
+        }
+        const a = e.target.closest('a[href]');
+        const row = e.target.closest('tr[data-mb-dg-vid]');
+        _extDgDrill(e, a || (row && row.querySelector('a[href]')));
+    }
+
+    /**
+     * Typing in the versions' filter: only the list part is drawn again, so
+     * the field keeps its focus and caret.
+     *
+     * @param {Event} e
+     * @param {object} t
+     * @returns {void}
+     */
+    function _extDiscogsAreaInput(e, t) {
+        if (!(e.target instanceof Element) || !e.target.matches('.mb-dg-vq')) return;
+        const st = _mbPop.get(t.key);
+        const rec = st && st.status === 'done' ? st.data : null;
+        if (!rec || !rec.discogs) return;
+        _extDgUiOf(t).q = e.target.value;
+        const body = e.target.closest('.mb-dg-vers, [data-mb-dg-sec="versions"]');
+        const list = body && body.querySelector('.mb-dg-vbody');
+        if (list) list.innerHTML = _extDgVersionsListHtml(t, rec);
     }
 
     // --- U4: the four Springsteen sites' parsers, across hosts ---
@@ -46535,9 +47557,16 @@
      * loading card says (Brucebase's year page takes seconds).
      * Discogs has no Live page: its page is another host than the API's,
      * which Tampermonkey would ask about, and the API already says more.
+     * A reader may add to the card and the window (Discogs since 2026-10-17):
+     * `cardExtra(t, rec)` one line after the card's facts; `window(t, rec,
+     * {start, force, repaint})` its own sections, `{left, right, full}` (HTML
+     * parts added to the window's two columns, and a full-width part under
+     * them); `onAreaClick(e, t)` / `onAreaInput(e, t)` its controls there.
      * @type {Array<{id: string, kind: string, test: function(URL): boolean, askHost: function(URL): string,
      *   load: function(object, function(): boolean): Promise<Object>, noLive: boolean, live?: object,
-     *   liveFor?: function(URL): object, liveUrlFor?: function(URL): string, version?: number, loadingNote?: string}>}
+     *   liveFor?: function(URL): object, liveUrlFor?: function(URL): string, version?: number, loadingNote?: string,
+     *   cardExtra?: function(object, Object): string, window?: function(object, Object, Object): {left: string[], right: string[], full: string[]},
+     *   onAreaClick?: function(MouseEvent, object): void, onAreaInput?: function(Event, object): void}>}
      */
     const _EXT_READERS = [
         { id: 'youtube', kind: 'YouTube', test: _extYouTubeTest, askHost: () => 'www.youtube.com', load: _extYouTubeLoad, noLive: true },
@@ -46546,7 +47575,11 @@
             askHost: (u) => `${_EXT_WIKIPEDIA_HOST_RE.exec(u.hostname.toLowerCase())[1]}.wikipedia.org`,
         },
         { id: 'wikidata', kind: 'Wikidata', test: _extWikidataTest, askHost: () => 'www.wikidata.org', load: _extWikidataLoad, noLive: false },
-        { id: 'discogs', kind: 'Discogs', test: _extDiscogsTest, askHost: () => 'api.discogs.com', load: _extDiscogsLoad, noLive: true },
+        {
+            id: 'discogs', kind: 'Discogs', test: _extDiscogsTest, askHost: () => 'api.discogs.com', load: _extDiscogsLoad, noLive: true,
+            version: _EXT_IDB_VERSION * 100 + _EXT_DISCOGS_VERSION,
+            window: _extDiscogsWindow, cardExtra: _extDiscogsCardExtra, onAreaClick: _extDiscogsAreaClick, onAreaInput: _extDiscogsAreaInput,
+        },
         {
             id: 'bbdate', kind: 'Brucebase show', test: _extBbDateTest, askHost: () => 'brucebase.wikidot.com', load: _extBbDateLoad,
             noLive: false, liveFor: _extBbDateLive, liveUrlFor: _extBbDateLiveUrl, version: _EXT_IDB_VERSION * 100 + _EXT_BB_YEAR_VERSION,
@@ -46856,6 +47889,8 @@
                     (rec.description ? `<div class="mb-tt-body mb-ext-desc">${_rgEsc(_extCut(rec.description, 260))}</div>` : '') +
                     // An API reader's facts (U3): the first few, cut short.
                     _dpFieldsHtml((rec.facts || []).slice(0, _EXT_CARD_FACTS), 90) +
+                    // A reader's own summary line (Discogs: what its window holds).
+                    (t.reader.cardExtra ? t.reader.cardExtra(t, rec) : '') +
                     (rec.moved ? `<div class="mb-ext-url">→ ${_rgEsc(rec.finalUrl)}</div>` : '') +
                     (rec.toHttps ? '<div class="mb-ext-url mb-ext-https">→ https</div>' : '');
             } else {
@@ -46997,8 +48032,16 @@
                 `<div class="mb-ext-url">${_rgEsc(k)}: ${link(u, u)}</div>`).join(''));
         }
         if (dpCols) right.push(...dpCols.right);
+        // A reader's own sections (the Discogs window): added to each column,
+        // plus a full-width part below them (a master's versions).
+        const readerParts = rec.state === 'ok' && t.reader.window ? t.reader.window(t, rec, { start, force, repaint }) : null;
+        if (readerParts) {
+            left.push(...readerParts.left);
+            right.push(...readerParts.right);
+        }
+        const full = readerParts && readerParts.full.length ? `<div class="mb-dg-full">${readerParts.full.join('')}</div>` : '';
         const age = rec.state === 'ok' ? _dpAgeText({ cached: st.cached, at: st.at }) : 'kept until the page is reloaded';
-        return `<div class="mb-dp-x"><div class="mb-dp-col">${left.join('')}</div><div class="mb-dp-col">${right.join('')}</div></div>` +
+        return `<div class="mb-dp-x"><div class="mb-dp-col">${left.join('')}</div><div class="mb-dp-col">${right.join('')}</div></div>` + full +
             `<div class="mb-dp-xfoot">${_rgEsc(age)} · ⟳ asks the site${mbq ? ' and MusicBrainz' : ''} again</div>`;
     }
 
@@ -47016,8 +48059,9 @@
         if (rec.siteName) left.push(`<div class="mb-dp-xsub">${_rgEsc(rec.siteName)}</div>`);
         if (rec.state === 'ok') {
             if (rec.image) {
-                // A plain click opens the artwork viewer (`_dpArtViewerClick()`).
-                left.push(`<a href="${_rgEsc(rec.image)}" target="_blank" rel="noopener noreferrer" data-mb-artv-ext="0">` +
+                // A plain click opens the artwork viewer (`_dpArtViewerClick()`);
+                // a reader may link the full image (`imageFull`, Discogs).
+                left.push(`<a href="${_rgEsc(rec.imageFull || rec.image)}" target="_blank" rel="noopener noreferrer" data-mb-artv-ext="0">` +
                     `<img class="mb-dp-xcover" src="${_rgEsc(rec.image)}" alt="" referrerpolicy="no-referrer"></a>`);
             }
             if (rec.description) left.push(`<div class="mb-ext-xdesc">${_rgEsc(rec.description)}</div>`);
@@ -47071,12 +48115,15 @@
      * contact, `noLive` hides the Live page, and `live` (a reader's own Live
      * page fields, else null) replaces the source's; `liveUrl`, when not
      * '', is the Live page's address (a reader's `liveUrlFor()`).
+     * `inWindow` takes a link IN the window (a Discogs window's own links,
+     * `_extDgDrill()`), which a hover never previews.
      *
      * @param {Element} a
+     * @param {{inWindow?: boolean}} [opts]
      * @returns {?{key: string, url: string, href: string, host: string, askHost: string, reader: object,
      *   noLive: boolean, kind: string, live: ?object, liveUrl: string, name: string, col: string}}
      */
-    function _extTarget(a) {
+    function _extTarget(a, { inWindow = false } = {}) {
         if (!a || a.tagName !== 'A') return null;
         const raw = (a.getAttribute('href') || '').trim();
         // MusicBrainz writes the sidebar's Wikidata link protocol-relative
@@ -47099,7 +48146,7 @@
         // the card (2026-10-17). Elsewhere a link around an image is the
         // image's, which has its own preview.
         const relIcon = !!a.closest('td.mb-rel-cell');
-        if ((!relIcon && a.querySelector('img:not(.avatar)')) || a.closest(_EXT_SKIP_SEL)) return null;
+        if ((!relIcon && a.querySelector('img:not(.avatar)')) || (!inWindow && a.closest(_EXT_SKIP_SEL))) return null;
         const td = a.closest('td, th');
         const table = td && td.closest('table.tbl');
         const reader = _EXT_READERS.find(r => r.test(u));
@@ -47156,6 +48203,9 @@
             liveUrl: (t) => t.liveUrl || t.url,
             card: _extCard,
             extracted: _extExtracted,
+            // A reader's own controls in its window (the Discogs window).
+            onAreaClick: (e, t) => { if (t.reader.onAreaClick) t.reader.onAreaClick(e, t); },
+            onAreaInput: (e, t) => { if (t.reader.onAreaInput) t.reader.onAreaInput(e, t); },
             steps: _extSteps,
             stepId: _extStepId,
         };
@@ -54452,7 +55502,13 @@ ${sections.join('\n')}
         const scrollArea = document.createElement('div');
         scrollArea.tabIndex = 0;
         scrollArea.style.cssText = 'overflow-y: auto; flex: 1; outline: none;';
-        scrollArea.addEventListener('mouseenter', () => scrollArea.focus());
+        // Never from something already focused INSIDE it (a field being typed
+        // in): a repaint that swaps the content under a resting pointer makes
+        // Chrome fire mouseenter again, which took the focus out of the
+        // Discogs versions' filter while its pages arrived (2026-10-17).
+        scrollArea.addEventListener('mouseenter', () => {
+            if (!scrollArea.contains(document.activeElement) || document.activeElement === scrollArea) scrollArea.focus();
+        });
         dialog.appendChild(scrollArea);
 
         // Patch the quick-filter helper with the now-created scrollArea reference

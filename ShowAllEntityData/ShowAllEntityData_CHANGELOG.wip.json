@@ -1,0 +1,21 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-17",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Discogs link previews: the window (Space) now shows what the Discogs page shows. For a release and a master: every image (a click opens the artwork viewer), the tracklist with each track's credits (closed at first; \"Show all track credits\" opens them all) and the notes. For a release also \"Companies, etc.\", the credits with the tracks they cover, \"Barcode and Other Identifiers\", the videos, and how many Discogs users have or want it and its data quality. All of it comes in the answer the card already asks for: no extra request. Each heading opens and closes its section. A release's card adds one line saying what its window holds. Mockup: https://claude.ai/artifact/49tucEnfghTCMtyvwN6qaM.",
+          "Discogs master previews: the window lists the master's versions. Discogs sends them 100 at a time, so the window asks for the first 100 when it opens and the rest only when you press \"Load the other …\", which says how many requests that takes and about how long; \"Stop\" lets the page under way finish. A bar shows each hundred (from the cache, loaded, failed), a failed page gets its own retry button, and pages already read come from the cache next time. Filter by typing or by the format, country and decade chips, sort by a column heading; the main release and a release this page links are marked. A click on a version shows it in the same window, and Back returns to the master. A card never asks for versions."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Preview windows: typing in a field inside the window no longer loses the focus when the window redraws under a resting mouse pointer."
+        ]
+      }
+    ]
+  }
+]

@@ -23684,3 +23684,53 @@ Env: 2026-10-17T11:22:16+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1)
   7/7; `scripts/mutations/event-tooltip-artist-lines.json` 2/2 caught; lint
   within the baseline. HELP checked: it names only the role colours, no
   edit needed.
+
+## 2026-10-17 — The Discogs window: release sections, master versions (branch feat/discogs-rich-preview, WIP.1)
+
+Env: 2026-10-17T14:23:58+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 bundled Chromium · no Tampermonkey (GM stubs); probes: Python urllib, no browser, no token
+
+- **Request (vzell, screenshots of the Discogs card and window on release
+  1d404e1d-fcb6-3a52-b478-e706e893c897):** the window should carry what
+  discogs.com shows: a release's Tracklist with credits, Companies, Credits,
+  Notes, Barcode and Other Identifiers and the "More images"; a master's
+  versions. Mockup https://claude.ai/artifact/49tucEnfghTCMtyvwN6qaM,
+  answers: layout A, versions page 1 on opening and the rest on a button,
+  track credits closed, plus the master's tracklist/notes/images, the
+  release's videos, have/want and data quality.
+- **Finding:** the reader's one API answer (`releases/<id>`) already holds
+  every release section and every image (images come WITHOUT a token,
+  fixture `ext-discogs-release.json`), so the release half costs no
+  request. The versions are `masters/<id>/versions`: `per_page` capped at
+  100 (500 asked, 100 answered), master 26725 = 387 versions = 4 pages of
+  ~76 KB, `X-Discogs-Ratelimit: 25`, page 1 carries `filters.available`
+  (format, label, country, released) for all of them
+  (`scripts/probe-discogs-versions.py`). The `debug/discogs-*.html`
+  snapshots only confirmed the section names and the versions columns; the
+  pages sit behind Cloudflare (U0 X6), the reader stays on the API.
+- **Bugs found by the new specs before shipping:**
+  1. Stop before a page's slot left the bar "Running": `_mbLoad()` deletes
+     a skipped load WITHOUT notifying its listeners. The versions loader now
+     repaints after a skip (`setTimeout`, after the delete).
+  2. A tap (no card before the window) never asked for page 1: the record
+     arrived on a repaint, and repaints start nothing. Page 1 now also
+     starts on that repaint, once, while page 1 has no state (the
+     `_rgWindowFor()` exception). Only the mobile spec could see it: on
+     desktop the hover card had loaded the record.
+  3. Typing in the versions' filter while pages arrived lost the focus.
+     `createInfoDialog()` focuses its scroll area on `mouseenter`, and
+     Chrome fires `mouseenter` again when a repaint replaces the content
+     under a resting pointer. It no longer takes the focus from an element
+     inside it. Confirmed by mutation (reverting it fails the spec on
+     `toBeFocused`).
+- **Pre-existing, not this branch:** `popup-ext.spec.js` "a Brucebase
+  show's window: notes, gig page, and the year page as Live page,
+  scrolled to the show and marked" failed 5 runs in a row in the morning
+  (4 here, 1 with main's userscript), then passed alone and inside
+  `test:full` (1844/1844, 14:25:10–14:34:07+02:00, petri). Root cause and
+  fix: the next entry (branch fix/live-page-early).
+- **Verified:** the Discogs window block 6/6 and `popup-ext.mobile.spec.js`
+  4/4; `popup-ext`, `popup-ext-foreign`, `popup-mb`, `detail-preview`
+  148/149 (the Brucebase test above); 11 new mutations in
+  `scripts/mutations/popup-ext.json`, all caught (the card mutation only
+  after its test waited for the host's next slot); lint within the
+  baseline.

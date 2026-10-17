@@ -54,6 +54,9 @@ FIXTURES = {
     'discogs-label': DG + 'labels/1866',
     # 404.
     'discogs-missing': DG + 'releases/999999999',
+    # The master's versions, as _extDiscogsVersionsLoad() asks for them
+    # (2026-10-17): 100 a page, 387 versions = 4 pages.
+    **{f'discogs-master-versions-p{p}': DG + f'masters/26725/versions?per_page=100&page={p}' for p in range(1, 5)},
 }
 
 _last = [0.0]

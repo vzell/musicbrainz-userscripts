@@ -1150,6 +1150,273 @@ test.describe('readers of known sites (U3): Wikipedia, Wikidata, Discogs', () =>
     });
 });
 
+// The Discogs window (2026-10-17, mockup https://claude.ai/artifact/49tucEnfghTCMtyvwN6qaM):
+// a release's tracklist with credits, companies, credits, identifiers,
+// notes, videos and images come in the reader's ONE answer; a master's
+// versions are their own request, 100 a page (ext-discogs-master-versions-p1..p4:
+// 387 versions, captured 2026-10-17), page 1 when the window opens, the rest
+// on its button. Images from i.discogs.com are answered with a pixel here.
+const DGV = [1, 2, 3, 4].map(p => `https://api.discogs.com/masters/26725/versions?per_page=100&page=${p}`);
+const DG_REL = JSON.parse(EXT('discogs-release').body);
+const dgVersionsLog = async (page) => (await xhrFull(page)).map(r => r.url).filter(u => u.includes('/versions?'));
+// How long the next request to Discogs' API would wait for its slot, ms (0: it would go now).
+const dgSlotWait = (page) => () => page.evaluate(() => window.__saTest.extRateSlotWaitMs('api.discogs.com'));
+
+/**
+ * The event page with the Discogs answers, and i.discogs.com's images as a
+ * pixel (the gallery and the versions' thumbnails are plain images).
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {{settings?: Object, responses?: Object}} [opts]
+ * @returns {Promise<void>}
+ */
+async function openDiscogs(page, { settings = {}, responses = {} } = {}) {
+    await page.context().route('https://i.discogs.com/**', (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+    await openEvent(page, {
+        settings: { sa_pop_ext: true, ...settings },
+        responses: {
+            ...extAnswers('discogs-release', 'discogs-master', 'discogs-master-versions-p1', 'discogs-master-versions-p2',
+                'discogs-master-versions-p3', 'discogs-master-versions-p4'),
+            ...responses,
+        },
+    });
+    await addAnnotationLinks(page, [DG.release, DG.master]);
+}
+
+test.describe('the Discogs window (2026-10-17)', () => {
+    test('a release: its sections from the one answer, track credits closed until opened, the gallery in the viewer', async ({ page }) => {
+        await openDiscogs(page);
+        await ctrlHover(page, probe(page, 0));
+        const c = card(page);
+        const trackCredits = DG_REL.tracklist.reduce((n, x) => n + (x.extraartists || []).length, 0);
+        // The card's summary line counts what the window holds.
+        await expect(c.locator('.mb-dg-sum')).toHaveText(
+            `8 tracks · ${trackCredits + DG_REL.extraartists.length} credits · 12 companies · 12 identifiers · 5 images`);
+        await expect(c, 'the new facts are the window\'s only').not.toContainText('Data quality');
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        await expect(d.locator('.mb-dg-xh')).toHaveText(['Images 5', 'Tracklist 8', 'Notes', 'Companies, etc. 12', 'Credits 18',
+            'Barcode and Other Identifiers 12', 'Videos 3']);
+        expect((await xhrFull(page)).map(r => r.url), 'no request more than the card\'s').toEqual(['https://api.discogs.com/releases/1874253']);
+        await expect(d).toContainText(`${DG_REL.community.have.toLocaleString('en-US')} have · ${DG_REL.community.want.toLocaleString('en-US')} want`);
+        await expect(d).toContainText('Needs Vote');
+
+        // Track credits: closed; one opens; "Show all" opens the eight; "Hide" closes them.
+        const tl = d.locator('[data-mb-dg-sec="tracklist"]');
+        await expect(tl.locator('.mb-dg-tcred')).toHaveCount(0);
+        await tl.locator('.mb-dg-cr').first().click();
+        await expect(tl.locator('.mb-dg-cr').first()).toHaveText('▾ 7 credits');
+        await expect(tl.locator('.mb-dg-tcred')).toHaveCount(1);
+        await expect(tl.locator('.mb-dg-tcred')).toContainText('Backing Vocals – Mike Appel, Steve Van Zandt');
+        await tl.getByRole('button', { name: 'Show all track credits' }).click();
+        await expect(tl.locator('.mb-dg-tcred')).toHaveCount(8);
+        // A name credited differently: Discogs' own *, its Discogs name on hover.
+        await expect(tl.locator('.mb-dg-anv').first()).toHaveText('Max M. Weinberg*');
+        await expect(tl.locator('.mb-dg-anv').first()).toHaveAttribute('title', /on Discogs: Max Weinberg/);
+        await tl.getByRole('button', { name: 'Hide all track credits' }).click();
+        await expect(tl.locator('.mb-dg-tcred')).toHaveCount(0);
+
+        // Grouped as Discogs lists them.
+        await expect(d.locator('[data-mb-dg-sec="companies"]')).toContainText('Recorded At – Record Plant, N.Y.C., 914 Sound Studios');
+        await expect(d.locator('[data-mb-dg-sec="credits"]')).toContainText('Producer – Jon Landau (tracks: A1 to A4, B2 to B4)');
+        const ids = d.locator('[data-mb-dg-sec="identifiers"]');
+        await expect(ids.locator('.mb-dg-it')).toHaveText(['Rights Society', 'Pressing Plant ID', 'Matrix / Runout']);
+        await expect(ids).toContainText('P AL 33795-1J · A-side deadwax, stamped, var. 3');
+        await expect(d.locator('[data-mb-dg-sec="notes"] a', { hasText: 'Canadian Pressing' })).toHaveAttribute('href', 'http://www.discogs.com/release/567824');
+        await expect(d.locator('[data-mb-dg-sec="videos"] a')).toHaveCount(3);
+
+        // A section closes and stays closed through a repaint (another track toggle would repaint it).
+        await d.locator('.mb-dg-xh', { hasText: 'Credits' }).click();
+        await expect(d.locator('.mb-dg-xh', { hasText: 'Credits' })).toHaveAttribute('aria-expanded', 'false');
+        await expect(d.locator('[data-mb-dg-sec="credits"] .mb-dg-lines')).toHaveCount(0);
+        await tl.locator('.mb-dg-cr').nth(1).click();
+        await expect(d.locator('[data-mb-dg-sec="credits"] .mb-dg-lines')).toHaveCount(0);
+        await d.locator('.mb-dg-xh', { hasText: 'Credits' }).click();
+        await expect(d.locator('[data-mb-dg-sec="credits"] .mb-dg-lines')).toHaveCount(1);
+
+        // The gallery: five images, the cover the same file as the first, so the viewer counts five.
+        const gal = d.locator('[data-mb-dg-sec="images"] .mb-dp-gallery a');
+        await expect(gal).toHaveCount(5);
+        await gal.nth(2).click();
+        const viewer = page.locator('#mb-art-viewer');
+        await expect(viewer).toBeVisible();
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText('3 / 5');
+        await page.keyboard.press('ArrowRight');
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText('4 / 5');
+    });
+
+    test('a master: no versions from a hover; page 1 when the window opens; the rest on the button; filter, chips, sort; a version in the window and back', async ({ page }) => {
+        // A token: 1 s apart, so the three pages take about 3 s.
+        await openDiscogs(page, { settings: { sa_pop_ext_discogs_token: 'tok-probe' } });
+        await ctrlHover(page, probe(page, 1));
+        const c = card(page);
+        await expect(c.locator('.mb-tt-title')).toHaveText('Born To Run');
+        await expect(c.locator('.mb-dg-sum')).toHaveText('Versions: Space lists them');
+        // Until the host's next slot has come (1 s apart with the token): a
+        // request the card had started would be made by then.
+        await expect.poll(dgSlotWait(page), { timeout: 5000 }).toBe(0);
+        await expect(c.locator('.mb-dg-sum')).toHaveText('Versions: Space lists them');
+        expect(await dgVersionsLog(page), 'a card never asks for versions').toEqual([]);
+
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const vers = d.locator('[data-mb-dg-sec="versions"]');
+        await expect(vers.locator('.mb-dg-counts').first()).toHaveText('100 of 387 loaded');
+        expect(await dgVersionsLog(page), 'page 1 only').toEqual([DGV[0]]);
+        await expect(d.locator('.mb-dg-xh')).toHaveText(['Images 7', 'Tracklist 8', 'Notes', 'Versions 387']);
+        await expect(vers.locator('.mb-dg-bar i')).toHaveCount(4);
+        await expect(vers.locator('.mb-dg-bar i.mb-dg-seg-loaded')).toHaveCount(1);
+        await expect(vers.locator('tbody tr')).toHaveCount(100);
+        // The master's main release, and the release this page links too.
+        await expect(vers.locator('tr[data-mb-dg-vid="13896528"] .mb-dg-pill')).toHaveText('main');
+        await expect(vers.locator('tr[data-mb-dg-vid="1874253"] .mb-dg-pill')).toHaveText('this page links it');
+
+        await vers.getByRole('button', { name: 'Load the other 287 (3 requests, about 3 s)' }).click();
+        // Typing while the pages arrive: each arrival repaints the window,
+        // and the field keeps its focus, caret and text through them.
+        const q = vers.locator('.mb-dg-vq');
+        await q.fill('Japan');
+        await expect(vers.locator('.mb-dg-counts').first()).toHaveText('387 of 387 loaded', { timeout: 15000 });
+        await expect(vers.locator('.mb-dg-pill').first()).toHaveText('Done');
+        expect(await dgVersionsLog(page), 'one after the other, each once').toEqual(DGV);
+        await expect(q).toBeFocused();
+        await expect(q).toHaveValue('Japan');
+        expect(await q.evaluate(el => el.selectionStart), 'the caret where it was').toBe(5);
+        await expect(vers.locator('tbody tr')).toHaveCount(37);
+        await vers.getByRole('button', { name: 'Clear filters' }).click();
+        await expect(vers.locator('tbody tr')).toHaveCount(387);
+        // A chip filters by its value; a second click lifts it.
+        await vers.locator('.mb-dg-fc[data-mb-dg-v="Japan"]').click();
+        await expect(vers.locator('tbody tr')).toHaveCount(37);
+        await expect(vers.locator('tbody tr td:nth-child(4)')).toHaveText(Array(37).fill('Japan'));
+        await vers.locator('.mb-dg-fc[data-mb-dg-v="Japan"]').click();
+        await expect(vers.locator('tbody tr')).toHaveCount(387);
+
+        // The sort ORDERS the rows (years ascending by default; a click on
+        // Year descends; versions of no year stay last either way).
+        const years = () => vers.locator('tbody tr td.mb-dg-yr').allTextContents();
+        const asNum = (list) => list.filter(y => y !== '—').map(y => parseInt(y, 10));
+        let ys = await years();
+        expect(asNum(ys), 'ascending').toEqual([...asNum(ys)].sort((a, b) => a - b));
+        expect(ys.includes('—'), 'the capture has versions of no year').toBe(true);
+        expect(ys.slice(ys.indexOf('—')).every(y => y === '—'), 'no year: last').toBe(true);
+        await vers.locator('th[data-mb-dg-sort="year"]').click();
+        await expect(vers.locator('th[data-mb-dg-sort="year"]')).toHaveAttribute('aria-sort', 'descending');
+        ys = await years();
+        expect(asNum(ys), 'descending').toEqual([...asNum(ys)].sort((a, b) => b - a));
+        expect(ys.slice(ys.indexOf('—')).every(y => y === '—'), 'no year: last').toBe(true);
+        await vers.locator('th[data-mb-dg-sort="country"]').click();
+        const countries = await vers.locator('tbody tr td:nth-child(4)').allTextContents();
+        expect(countries.filter(Boolean), 'countries A→Z').toEqual([...countries.filter(Boolean)].sort((a, b) => a.localeCompare(b)));
+
+        // Back on the card: the versions the window read; again in the window: no request.
+        await page.keyboard.press('Escape');
+        await ctrlHover(page, probe(page, 1));
+        await expect(c.locator('.mb-dg-sum')).toHaveText('387 versions in 33 countries, 1975–2025');
+        await page.keyboard.press('Space');
+        await expect(vers.locator('.mb-dg-counts').first()).toHaveText('387 of 387 loaded');
+        expect(await dgVersionsLog(page), 'memory: no request').toEqual(DGV);
+
+        // A click on a version's row shows that release in the window; Back returns.
+        await vers.locator('tr[data-mb-dg-vid="1874253"] td:nth-child(4)').click();
+        await expect(d.locator(':scope > div > span').first()).toHaveText('Discogs › Discogs');
+        await expect(d.locator('.mb-dg-xh', { hasText: 'Companies, etc.' })).toBeVisible();
+        await d.getByRole('button', { name: /Back/ }).click();
+        await expect(d.locator('[data-mb-dg-sec="versions"] .mb-dg-counts').first()).toHaveText('387 of 387 loaded');
+    });
+
+    test('a failed page: "Done with errors", the button asks that page only', async ({ page }) => {
+        await openDiscogs(page, {
+            settings: { sa_pop_ext_discogs_token: 'tok-probe' },
+            responses: { [DGV[2]]: { error: 'network down' } },
+        });
+        await ctrlHover(page, probe(page, 1));
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('Born To Run');
+        await page.keyboard.press('Space');
+        const vers = dialog(page).locator('[data-mb-dg-sec="versions"]');
+        await vers.getByRole('button', { name: /^Load the other 287/ }).click();
+        await expect(vers.locator('.mb-dg-pill').first()).toHaveText('Done with errors', { timeout: 15000 });
+        await expect(vers.locator('.mb-dg-counts').first()).toContainText('287 of 387 loaded');
+        await expect(vers.locator('.mb-dg-bad')).toContainText('page 3 failed');
+        await expect(vers.locator('.mb-dg-bar i.mb-dg-seg-failed')).toHaveCount(1);
+        expect(await dgVersionsLog(page), 'page 4 after the failed 3').toEqual(DGV);
+        await page.evaluate(([u, ok]) => { window.__gmXhrResponses[u] = ok; }, [DGV[2], extAnswers('discogs-master-versions-p3')[DGV[2]]]);
+        await vers.getByRole('button', { name: 'Try page 3 again (1 request, about 1 s)' }).click();
+        await expect(vers.locator('.mb-dg-pill').first()).toHaveText('Done', { timeout: 15000 });
+        expect(await dgVersionsLog(page), 'page 3 only, again').toEqual([...DGV, DGV[2]]);
+    });
+
+    test('Stop: the page under way finishes, nothing more is asked', async ({ page }) => {
+        const slow = extAnswers('discogs-master-versions-p2')[DGV[1]];
+        await openDiscogs(page, {
+            settings: { sa_pop_ext_discogs_token: 'tok-probe' },
+            responses: { [DGV[1]]: { ...slow, delayMs: 1500 } },
+        });
+        await ctrlHover(page, probe(page, 1));
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('Born To Run');
+        await page.keyboard.press('Space');
+        const vers = dialog(page).locator('[data-mb-dg-sec="versions"]');
+        await vers.getByRole('button', { name: /^Load the other 287/ }).click();
+        await expect(vers.locator('.mb-dg-pill').first()).toHaveText('Running');
+        await expect(vers.locator('.mb-dg-bar i.mb-dg-seg-queued')).toHaveCount(2);
+        // Stop while page 2's answer is under way (held back 1.5 s).
+        await expect.poll(() => dgVersionsLog(page)).toEqual([DGV[0], DGV[1]]);
+        await vers.getByRole('button', { name: 'Stop' }).click();
+        await expect(vers).toContainText('Stopping after this page');
+        await expect(vers.locator('.mb-dg-pill').first()).toHaveText('Idle', { timeout: 10000 });
+        await expect(vers.locator('.mb-dg-counts').first()).toHaveText('200 of 387 loaded');
+        // Page 3's slot would have come by now.
+        await expect.poll(dgSlotWait(page), { timeout: 5000 }).toBe(0);
+        expect(await dgVersionsLog(page), 'nothing after the page under way').toEqual([DGV[0], DGV[1]]);
+        await expect(vers.getByRole('button', { name: 'Load the other 187 (2 requests, about 2 s)' })).toBeVisible();
+    });
+
+    test('Stop before the next page\'s turn: nothing is asked, and the window says so', async ({ page }) => {
+        // Without a token: 2.5 s between requests, so page 2 waits its turn.
+        await openDiscogs(page);
+        await ctrlHover(page, probe(page, 1));
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('Born To Run', { timeout: 10000 });
+        await page.keyboard.press('Space');
+        const vers = dialog(page).locator('[data-mb-dg-sec="versions"]');
+        await expect(vers.locator('.mb-dg-counts').first()).toHaveText('100 of 387 loaded', { timeout: 10000 });
+        await vers.getByRole('button', { name: /^Load the other 287/ }).click();
+        await vers.getByRole('button', { name: 'Stop' }).click();
+        await expect(vers.locator('.mb-dg-pill').first()).toHaveText('Idle', { timeout: 10000 });
+        await expect(vers.locator('.mb-dg-bar i.mb-dg-seg-running, .mb-dg-bar i.mb-dg-seg-queued')).toHaveCount(0);
+        expect(await dgVersionsLog(page), 'page 1 only').toEqual([DGV[0]]);
+    });
+
+    test('a record of the reader before 2026-10-17 is not served from IndexedDB', async ({ page }) => {
+        await openDiscogs(page);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page).locator('.mb-dg-sum')).toBeVisible();
+        const key = `mb:ext:discogs:${DG.release}`;
+        await expect.poll(() => idbHas(page, key)).toBe(true);
+        // The same record as the old reader kept it: version 3, no window data.
+        await page.evaluate((k) => new Promise((resolve, reject) => {
+            const req = indexedDB.open('vz-saed-detail-pages');
+            req.onsuccess = () => {
+                const db = req.result;
+                const store = db.transaction('pages', 'readwrite').objectStore('pages');
+                const g = store.get(k);
+                g.onsuccess = () => {
+                    const r = g.result;
+                    r.v = 3;
+                    r.data = { ...r.data, title: 'OLD RECORD', discogs: undefined };
+                    store.put(r).onsuccess = () => { db.close(); resolve(); };
+                };
+                g.onerror = reject;
+            };
+            req.onerror = reject;
+        }), key);
+        await reloadEvent(page);
+        await addAnnotationLinks(page, [DG.release, DG.master]);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('Born To Run');
+        expect((await xhrFull(page)).map(r => r.url), 'asked again').toEqual(['https://api.discogs.com/releases/1874253']);
+    });
+});
+
 // U4: the four Springsteen sites' own parsers on links from MusicBrainz, and
 // the Brucebase date anchor. Pages are the detail-preview fixtures
 // (scripts/build-detail-fixtures.py; jungleland.it's is windows-1252 bytes,
