@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.1366",
+    "date": "2026-10-17",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Preview windows, Live page: the page is trimmed to its content as soon as its text has arrived, instead of after its last picture. On a slow site the menus, header and footer used to show for as long as the pictures took, and a Brucebase date link's year page (260 pictures) was neither marked nor scrolled to the show until then. It is now scrolled to the show at once, and again once the pictures above it have pushed it down, unless you have scrolled the page yourself by then."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1365",
     "date": "2026-10-17",
     "sections": [

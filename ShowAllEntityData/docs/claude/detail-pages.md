@@ -650,7 +650,20 @@ same rate gate. ⟳ bypasses that memory. A new frame first loads an empty
 `about:blank` document whose `load` fires too, so the listener is attached
 only once `srcdoc` is set, and `_dpIsolateFrame()` also skips `about:blank`.
 
-`_dpIsolateFrame()` runs on the copy's load:
+`_dpIsolateFrame()` runs as soon as the copy is PARSED (since 2026-10-17):
+the frame runs no script and its new document exists only once the srcdoc
+navigation has started, so `_dpIsolateWhenParsed()` looks at it from this
+window every `_DP_LIVE_PARSE_POLL_MS` (50) for up to
+`_DP_LIVE_PARSE_WAIT_MS` (30 s); a document still `loading` is left alone,
+and the copy's `load` stays as the fallback. **Before, it ran on `load`, which
+waits for every image and stylesheet of the page**: a Brucebase year page
+names 260 images, and on a slow site the page stayed untrimmed and its show
+unmarked until the last one had come (found because the spec's Brucebase
+Live page test was not network-free: it failed whenever wikidot was slow). A
+`livePrepare` may return a function, which runs on that `load` (Brucebase:
+scroll to the show once more). Listeners added from this window to the
+frame's document DO fire (wheel, keydown, mousedown, scroll; probed
+2026-10-17), unlike the frame's own `setTimeout`. What it does:
 - it hides every sibling of the host's `liveRoot` and of each of its ancestors,
   plus the `liveHide` selectors. Both go through
   `html.mb-dp-isolate .mb-dp-hide`, which the "Hide the site's navigation" box
@@ -1298,7 +1311,16 @@ the header's `@connect` and `_EXT_CONNECT_HOSTS` (the parent domain covers
   never fired (Chrome: "Blocked script execution in 'about:srcdoc'") and left
   the page at its top; `scrollIntoView()` would also scroll the page behind
   the window. Now the frame document's `scrollingElement.scrollTop` is set at
-  once and again at `_EXT_BB_SCROLL_AGAIN_MS`. And with the http link as its
+  once and again at `_EXT_BB_SCROLL_AGAIN_MS`, and once more on the frame's
+  `load` (the page is prepared when parsed, its images can come much later) —
+  each only until the reader has used the wheel, a key, a mouse button or
+  touch in the page. Not by comparing scroll positions: hiding the
+  navigation moves the page right after the first scroll, and Chrome's
+  scroll anchoring then changes `scrollTop` by itself (the first version of
+  this guard, 2026-10-17, stopped every later scroll that way). Chrome's
+  anchoring also keeps the show in place while images land, so the spec
+  turns it off (`overflow-anchor: none`) to see the scroll on `load`. And
+  with the http link as its
   base, the page's own relative form pointed at http from an https copy
   (Chrome: "Mixed Content"). Both reported from a real browser, both pinned
   by mutations.
@@ -1311,8 +1333,13 @@ window and its trimmed Live page from the hover's fetch; a Brucebase date
 (one year request for three dates, a date with no show, the year from
 IndexedDB after a reload; two dates asked while the year page loads share
 it — the only test that sees `_extBbYears`, since IndexedDB covers it once
-the year is kept), a show's window and marked Live page, and a cancelled
-show. Year page fixture: `tests/fixtures/ext-bb-year-2025.html`
+the year is kept), a show's window and marked Live page, the Live page
+prepared before its images (held back 6 s, 40×40 each: trimmed, marked and
+scrolled before they come, scrolled again on `load`) and a reader's wheel
+not undone (2026-10-17), and a cancelled show. **`openEvent()` refuses the
+four sites' hosts and wikidot/wdfiles** (a Live page frame fetches the site's
+own CSS and images; the Brucebase test failed whenever the real site was
+slow); a test that wants them answers them with a later route. Year page fixture: `tests/fixtures/ext-bb-year-2025.html`
 (`scripts/build-detail-fixtures.py`). Mutations: the `U4:` entries of
 `scripts/mutations/popup-ext.json`. The live spec's Brucebase review is the
 date reader's since U4, and its "U4: a work's annotation links" test runs on

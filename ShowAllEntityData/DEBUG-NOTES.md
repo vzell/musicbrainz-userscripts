@@ -23727,7 +23727,8 @@ Env: 2026-10-17T14:23:58+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1)
   scrolled to the show and marked" failed 5 runs in a row in the morning
   (4 here, 1 with main's userscript), then passed alone and inside
   `test:full` (1844/1844, 14:25:10–14:34:07+02:00, petri). Root cause and
-  fix: the next entry (branch fix/live-page-early).
+  fix: the entry "The Live page waited for every image" below (shipped
+  in 9.99.1366, merged into this branch).
 - **Verified:** the Discogs window block 6/6 and `popup-ext.mobile.spec.js`
   4/4; `popup-ext`, `popup-ext-foreign`, `popup-mb`, `detail-preview`
   148/149 (the Brucebase test above); 11 new mutations in
@@ -23759,3 +23760,54 @@ Env: 2026-10-17T16:41:12+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1)
   label page to link. vzell picked Discogs’ label search for the name, in a
   new tab (`a.mb-dg-label`); one more assertion in the master test, one
   more mutation, caught.
+
+## 2026-10-17 — The Live page waited for every image; the Brucebase Live page test depended on the real site (branch fix/live-page-early, WIP.1)
+
+Env: 2026-10-17T15:55:15+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 bundled Chromium · no Tampermonkey (GM stubs)
+
+- **Symptom:** `popup-ext.spec.js` "a Brucebase show's window: notes, gig
+  page, and the year page as Live page, scrolled to the show and marked"
+  failed 5 runs in a row in the morning (4 on feat/discogs-rich-preview, 1
+  with main's userscript stashed in): the frame never had a
+  `.mb-dp-anchor` within the 5 s poll. In the afternoon it passed alone and
+  inside `test:full` (1844/1844, 14:25:10–14:34:07+02:00, petri).
+- **Root cause — the spec was not network-free.** The Live page's frame
+  loads the year page's own CSS and images from the real site (its `<base>`
+  is brucebase.wikidot.com; `ext-bb-year-2025.html` names 260 images on
+  brucebase.wdfiles.com), and `_dpIsolateFrame()` — which runs the
+  Brucebase `livePrepare` that marks the show and scrolls to it — was called
+  only from the frame's `load` event, which waits for every one of them.
+  When the site was slow, `load` came after the poll. Proven with two
+  throwaway variants of the test: those hosts answering after 8 s → the
+  same failure ("Received string: \"\""); those hosts refused → pass.
+- **The same wait hit real users** (vzell chose to fix it, 2026-10-17): on
+  a slow site every Live page showed the site's navigation, and a Brucebase
+  year page was neither marked nor scrolled, until the LAST image had loaded.
+- **Fix, script:** `_dpIsolateWhenParsed()` prepares the page as soon as
+  the srcdoc copy is parsed (checked from this window every 50 ms, up to
+  30 s; `load` stays the fallback; a `loading` document is left alone).
+  `livePrepare` may return a function run on `load`: Brucebase scrolls to
+  the show once more there. The later scrolls stop once the reader has used
+  the wheel, a key, a mouse button or touch in the frame — listeners added
+  from this window DO fire in the script-less frame (probed: wheel 1,
+  scroll 11, keydown 1, mousedown 1). The first version of that guard
+  compared scroll positions and stopped every later scroll: hiding the
+  navigation moves the page right after the first scroll, and Chrome's
+  scroll anchoring changes `scrollTop` by itself (the original test failed
+  on it).
+- **Fix, spec:** `openEvent()` refuses wikidot.com, wdfiles.com and the
+  other three Springsteen sites' hosts, as it already refused
+  static.metabrainz.org. Two new tests hold the year's images back (6 s
+  and 4 s, 40×40 PNGs built in the spec, `solidPng()`): trimmed, marked and
+  scrolled before they come and again on `load` (with `overflow-anchor:
+  none`, or Chromium's anchoring hides whether the script scrolls again);
+  a reader's wheel is not undone (asserted as "the show stays below the top
+  of the view": `scrollTop` itself moved 9393 → 10541 by anchoring alone).
+  `detail-preview.spec.js` reads Live-page frames of the same sites and has
+  the same network exposure; it passed and is not changed here.
+- **Verified:** the three Brucebase Live page tests 9/9 (3 runs each);
+  `popup-ext`, `popup-ext-foreign`, `detail-preview` (+ mobile siblings) and
+  `popup-mb` 151/151; 4 new mutations in `scripts/mutations/popup-ext.json`,
+  3 caught, 1 recorded `"expect": "pass"` (the "still loading" check:
+  Chromium parses this 300 KB copy before the first 50 ms check); lint
+  within the baseline.
