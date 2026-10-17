@@ -115715,7 +115715,9 @@ a { color: #1565c0; }`;
      * ALL <li> elements are read regardless of their inline `display:none` style
      * (MusicBrainz collapses extras behind the ▶ toggle; we want the full list).
      *
-     * Each entry is rendered as "Name (role)", entries comma-separated on one line.
+     * Each entry is rendered as "Name (role)", one entry per line
+     * (`.mb-tt-artist-role`), so a long line-up reads as a list. Until
+     * 2026-10-17 the entries ran on one line, comma-separated.
      *
      * @param {HTMLTableRowElement} row  Data row.
      * @param {number}              ci   Column index of the Artists cell.
@@ -115765,9 +115767,10 @@ a { color: #1565c0; }`;
         }
 
         const d = document.createElement('div');
+        d.className = 'mb-tt-artist-roles';
         d.style.cssText = 'margin-bottom:2px;';
 
-        Array.from(ul.querySelectorAll('li')).forEach((li, idx) => {
+        Array.from(ul.querySelectorAll('li')).forEach((li) => {
             // Extract artist name from <bdi> inside the <li>.
             const bdi  = li.querySelector('bdi');
             const name = bdi ? bdi.textContent.replace(/\s+/g, ' ').trim() : '';
@@ -115781,12 +115784,14 @@ a { color: #1565c0; }`;
             }
             roleRaw = roleRaw.replace(/\s+/g, ' ').trim();
 
-            if (idx > 0) d.appendChild(document.createTextNode(', '));
-            d.appendChild(document.createTextNode(name));
+            const line = document.createElement('div');
+            line.className = 'mb-tt-artist-role';
+            line.appendChild(document.createTextNode(name));
             if (roleRaw) {
-                d.appendChild(document.createTextNode('\u00a0'));
-                d.appendChild(_roleSpan(roleRaw));
+                line.appendChild(document.createTextNode('\u00a0'));
+                line.appendChild(_roleSpan(roleRaw));
             }
+            d.appendChild(line);
         });
 
         if (!d.hasChildNodes()) return false;
@@ -116327,7 +116332,7 @@ a { color: #1565c0; }`;
                 } else if (_colName === 'Artists') {
                     // Rich rendering: extracts ALL <li> elements from .artist-roles
                     // (including MusicBrainz-collapsed ones) and renders them as
-                    // "Name (role)" entries comma-separated on a single tooltip line.
+                    // "Name (role)" entries, one per tooltip line.
                     _artTooltipArtistRoles(row, ci, tip);
                 } else if (_colName === 'Annotation') {
                     // Rich rendering: the whole prose cell as HTML, uncollapsed,

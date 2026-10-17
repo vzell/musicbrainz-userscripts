@@ -23605,3 +23605,22 @@ Env: 2026-10-17T03:08:46+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1)
   guard specs) green; `scripts/mutations/rel-icons.json` 13/13 as recorded
   (two guards that cover each other are `"expect": "pass"` alone, and fail
   together). Full suite deferred to the end of the branch, as asked.
+
+## 2026-10-17 — Event image card: the line-up one artist per line (branch feat/event-tooltip-artist-lines, WIP.1)
+
+Env: 2026-10-17T11:22:16+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 bundled Chromium · no Tampermonkey (GM stubs); vzell's report: browser and Tampermonkey version unknown
+
+- **Report (vzell's screenshot, The Stone Pony's events, place
+  6a59a67c-fcc5-491f-949c-bfc45bc97463):** hovering an EAA image (strip or
+  inline) showed the 17-artist line-up of 2025-12-14 as one comma-separated
+  paragraph. Wanted: artists and roles one under the other.
+- **Change:** `_artTooltipArtistRoles()` writes one `div.mb-tt-artist-role`
+  per `li` inside `div.mb-tt-artist-roles` instead of text nodes joined by
+  ", ". The role span (colour, bold) is unchanged; MusicBrainz's collapsed
+  entries are still read. No cap on the length: the card lists all of them.
+- **Verified:** new `event-tooltip-artist-lines.spec.js` on the hand-built
+  `tests/fixtures/place-events-lineup.html` (no fixture with event art had a
+  multi-artist line-up); `bigbox-tooltip` and `uniq-drop-role-sections`
+  7/7; `scripts/mutations/event-tooltip-artist-lines.json` 2/2 caught; lint
+  within the baseline. HELP checked: it names only the role colours, no
+  edit needed.
