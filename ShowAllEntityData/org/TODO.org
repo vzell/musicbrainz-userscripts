@@ -2941,6 +2941,8 @@ create nice rich HTML based mockups first
 
 * TODO support for discogs PTs
 
+Create a new plan first:
+
 1.)
 
 Is it possible to extend the non-MB PTs too support the native Discogs URLs as new PTs e.g
@@ -2953,6 +2955,11 @@ label - @debug/discogs-label.html
 #+end_example
 
 2.)
+
+Can we use the already introduced discogs readers (which are used for rendering the discogs URL detail popups) instead
+of reinventing the wheel
+
+3.)
 
 create nice rich HTML based mockups first
 
