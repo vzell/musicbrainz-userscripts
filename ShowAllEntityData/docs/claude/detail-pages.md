@@ -1151,7 +1151,8 @@ subdomain, matched by `endsWith`), so a hover loads them from the first time.
   styles, track count, the primary image; a master links its main release.
   Artist/label: name (Discogs' " (2)" suffix dropped), the profile with
   Discogs' markup removed (`_extDiscogsText()`: `[a=…]`, `[l123]`, `[url]`),
-  real name, members, groups, parent label, sublabels. `noLive`: the page is
+  real name, members, groups, aliases (since 2026-10-18), parent label,
+  sublabels — as counts on the card (`cardFacts`). `noLive`: the page is
   another host than the API's, which Tampermonkey would ask about, and the
   API says more. **Rate: `_extSpacingMs()`** — 2.5 s apart without a token
   (25 a minute, Discogs' own `X-Discogs-Ratelimit`, U0 X4), 1 s with one (60:
@@ -1193,8 +1194,8 @@ subdomain, matched by `endsWith`), so a hover loads them from the first time.
   The cover links the full primary image (`rec.imageFull`)
   and is the same file as the gallery's first: `_dpArtViewerClick()` counts
   a URL once.
-  **Versions** (`_extDiscogsVersionsLoad()`, key
-  `ext:discogs-versions:<master>:<page>`): `masters/<id>/versions`, 100 a
+  **Versions** (`_extDgListLoad()` on `_EXT_DG_LISTS.versions` since
+  2026-10-18, key `ext:discogs-versions:<master>:<page>`): `masters/<id>/versions`, 100 a
   page — `per_page` is capped at 100 (probe 2026-10-17,
   `scripts/probe-discogs-versions.py`: master 26725 = 387 versions, 4 pages
   of ~76 KB; page 1 carries `filters.available`, counts for ALL versions).
@@ -1219,6 +1220,56 @@ subdomain, matched by `endsWith`), so a hover loads them from the first time.
   `mouseenter` from an element inside it — Chrome fires `mouseenter` again
   when a repaint swaps the content under a resting pointer, which took the
   focus out of the versions' filter while pages arrived (found by the spec).
+- **The Discogs artist and label windows (2026-10-18, mockup
+  https://claude.ai/artifact/WuBNbFTgNHJtxip4xBv6yc, approved by vzell
+  2026-10-18 with: show the API's production credits plus a link to all of
+  them; a master row's "▸ versions" is the collapsible master table; label
+  batches of 5 pages; tables of 150 rows, then "Show more").** An artist or
+  label record keeps `rec.discogs` too (`_EXT_DISCOGS_VERSION` 4): the
+  profile WITH its markup, every image (the answer's `images` IS the "More
+  images" set: Bruce Springsteen 27, Columbia 74), the names with ids
+  (members, groups with `active`, aliases; parent label, sublabels), name
+  variations, sites, a label's contact info, the data quality. Two generic
+  record fields came with it: `descInWindow` (`_extLeftCol()` leaves the
+  description out: the window's Profile section shows it, with links —
+  `_extDiscogsMarkupHtml(s, {names: true})`: `[a123]`/`[l123]` link the page,
+  `[a=Name]`/`[l=Name]` Discogs' search, as a version's label) and
+  `cardFacts` (the card shows only the counts; "Data quality" is the
+  window's). "Discogs says" is the reader's own (`_extDgEntityFactsHtml()`).
+  **The lists are one loader**: `_EXT_DG_LISTS` names each list's key, URL,
+  answer field and row shape — `versions`, `artist`
+  (`artists/<id>/releases?sort=year&sort_order=asc`, key
+  `ext:discogs-artist-releases:<id>:<page>`), `label`
+  (`labels/<id>/releases?sort=year&sort_order=desc|asc`, key
+  `ext:discogs-label-releases:<id>:<order>:<page>`, `batch: 5`) — and
+  `_extDgListLoad()`, `_extDgLoadNext()`, `_extDgPeekCached()`,
+  `_extDgListState()`, `_extDgListStart()` serve all three; a list's run
+  (chain, Stop, tried pages, `upTo`) is `_extDgRun()`, per target and list.
+  Probe 2026-10-17/18 (`scripts/probe-discogs-artist-label.py`): an artist's
+  list is ordered **by role, then year** — Bruce Springsteen's 6,782 rows run
+  Main p1–4, Producer 78 and Co-producer 2 p4–5, Appearance p5–33,
+  TrackAppearance p33–48, UnofficialRelease p48–68; Max Weinberg's 528 (6
+  pages) hold Main, Producer, Mixed by, Appearance, TrackAppearance,
+  UnofficialRelease. So the sections (Releases = Main; Appearances = On
+  releases + On tracks; Unofficial; Credits = every other role) fill in that
+  order, and `_extDgRoleState()` calls a role complete once the pages loaded
+  without a gap from page 1 hold a LATER role (`_EXT_DG_ROLE_ORDER`; a
+  credit is 1); until then its count reads "N so far". The API's credits are
+  only the production ones (the website's 4,445 for Springsteen —
+  written-by, instruments, vocals — come from its own service), so Credits
+  links `?type=Credits` on Discogs. Masters carry no format, so the website's
+  Albums / Singles & EPs / Compilations split cannot be made: the chips are
+  All / Masters / Releases. A master row's "▸ versions" asks that master's
+  versions page 1 (the versions list's own key, shared with the master's
+  window) on the click and shows `_EXT_DG_NEST_ROWS` (12) with "Open the
+  master here". A label's list has releases only, no facets, and thousands
+  of pages (Columbia 396,611 = 3,967): it never loads all — "Load 5 more
+  pages" sets the run's `upTo`; its bar shows only the pages it has or will
+  ask; its later-visit lookup reads IndexedDB in order up to the first page
+  not kept; newest/oldest first are two lists (the order is in the key), and
+  the other order's page 1 comes from the repaint, as the master's does.
+  Typing in the artist's or label's filter repaints the whole window
+  (`data-mb-keep-focus` keeps the field), not a list part as the versions do.
 - **The token: `sa_pop_ext_discogs_token`** (text, default empty), read by
   `_extDiscogsToken()` (trimmed) and sent ONLY as `Authorization: Discogs
   token=…` to api.discogs.com — never in a URL, so `_extGet()`'s debug line
@@ -1249,7 +1300,21 @@ version not served) and the last test of `popup-ext.mobile.spec.js` (a tap
 opens a master's window, page 1 comes on the record's repaint, the controls
 answer taps). Versions fixtures `ext-discogs-master-versions-p1..p4`
 (captured 2026-10-17). Mutations: the `Discogs:` entries, "artwork viewer:
-the same image counted twice" and "dialog shell: mouseenter …".
+the same image counted twice" and "dialog shell: mouseenter …". The artist
+and label windows: the block "the Discogs artist and label windows
+(2026-10-18)" (no list from a hover; sections by role and "so far" after page
+1, complete after the rest; the credits box; 150 rows and "Show more"; sort;
+the filter and chips; a master row's versions, one request, shared between
+two roles; Springsteen's page 1 of 68 and the cost on its button without a
+token; the profile's links; 27 images in the viewer; a master drilled into
+and Back; a label's warning, its batch of 5 and no page more, Show all,
+format chips, the other order asked once; Stop and a later visit from
+IndexedDB; an artist record of reader version 3 not served) and the last test
+of `popup-ext.mobile.spec.js` (taps on the run, a section, a master's
+versions, a label's order). Fixtures `ext-discogs-artist-small*`,
+`ext-discogs-artist-releases-p1`, `ext-discogs-label-releases-*`,
+`ext-discogs-master-450426-versions-p1` (captured 2026-10-18). Mutations: the
+`Discogs artist…`/`Discogs label…` entries.
 
 ## The Springsteen sites across hosts (org/iframe.org "* generalize to URLs", U4)
 

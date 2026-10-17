@@ -2233,7 +2233,35 @@ once and without Tampermonkey asking first:
   versions names a label without saying which one. A click on a version
   shows it in the same window, and *Back* returns to the master. A card never
   asks for versions; once a window has, the master's card says how many there
-  are. Discogs allows a
+  are.
+
+  An **artist**'s or a **label**'s window shows the profile (with its links;
+  *Show it all* for a long one), every image — the ones behind Discogs'
+  *More images* too — and, under *Discogs says*, the real name, members,
+  groups, aliases and name variations, or the parent label; then the sites,
+  and for a label its contact info and sublabels. The card shows how many
+  images there are and, once a window has read it, how big the discography
+  or the label's list is.
+
+  Below, an artist's **Discography** is split as on Discogs: **Releases**,
+  **Appearances** (on releases, on tracks), **Unofficial** and **Credits**,
+  each a table you can close, sort by a heading and filter (by typing, or
+  *Masters* / *Releases*). Discogs lists the discography by role and then by
+  year, 100 at a time, so the window asks for the first 100 when it opens and
+  the rest on *Load the other …* (Bruce Springsteen: 67 requests, about 2 min
+  48 s without a token), and the sections fill in that order: a count that
+  reads "so far" is still growing. Discogs gives only the production credits
+  (producer, mixer …); *All credits on Discogs* opens the full list there. A
+  master's *▸ versions* shows its first versions in place (one request);
+  *Open the master here* shows all of them. A table shows 150 rows at first,
+  then *Show 500 more* or *Show all*.
+
+  A label's **Releases** can run to hundreds of thousands (Columbia: 396,611,
+  almost 4,000 requests), so the window loads 5 pages (500 releases) per
+  *Load 5 more pages*, newest or oldest first (another order asks Discogs
+  again; each is kept on its own). The filter and the format chips work on
+  what is loaded. Every list is kept for 7 days, like the card: a later
+  window shows it without asking again (hatched in the bar). Discogs allows a
   request every 2.5 seconds; with your own **Discogs personal access token**
   (⚙️ Settings → 🔎 EXTERNAL LINK PREVIEWS → *Discogs personal access token*;
   on discogs.com: Settings → Developers → *Generate new token*) it allows one

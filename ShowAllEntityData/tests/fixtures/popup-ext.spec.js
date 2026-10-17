@@ -1466,6 +1466,338 @@ test.describe('the Discogs window (2026-10-17)', () => {
     });
 });
 
+// The Discogs artist and label windows (2026-10-18, mockup
+// https://claude.ai/artifact/WuBNbFTgNHJtxip4xBv6yc): the profile, every
+// image, the names and sites come in the reader's ONE answer; an artist's
+// discography and a label's releases are lists of their own, 100 a page,
+// page 1 when the window opens. Fixtures (captured 2026-10-18,
+// scripts/capture-ext-fixtures.py): Max Weinberg (254876), 528 entries = 6
+// pages holding every kind of role in Discogs' order (page 1: Main 2,
+// Producer 7, Mixed by 2, Appearance 89; pages 2-4 Appearance; page 5
+// Appearance 35, TrackAppearance 7, UnofficialRelease 58; page 6
+// UnofficialRelease 28); Bruce Springsteen's page 1 of 68 (Main only);
+// Columbia newest first pages 1-6 and oldest first page 1 (396,611 releases).
+const DGA = {
+    small: 'https://www.discogs.com/artist/254876-Max-Weinberg',
+    pages: [1, 2, 3, 4, 5, 6].map(p => `https://api.discogs.com/artists/254876/releases?sort=year&sort_order=asc&per_page=100&page=${p}`),
+    bigP1: 'https://api.discogs.com/artists/219986/releases?sort=year&sort_order=asc&per_page=100&page=1',
+    nest: 'https://api.discogs.com/masters/450426/versions?per_page=100&page=1',
+};
+const DGL = (order, p) => `https://api.discogs.com/labels/1866/releases?sort=year&sort_order=${order}&per_page=100&page=${p}`;
+// The list requests made so far (not the readers' own records).
+const dgListLog = async (page) => (await xhrFull(page)).map(r => r.url).filter(u => /\/releases\?|\/versions\?/.test(u));
+
+/**
+ * The event page with the Discogs answers of the artist and label windows,
+ * the links in the annotation: Max Weinberg, Bruce Springsteen, Columbia.
+ * A token by default (1 s apart), so a run of pages takes seconds.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {{settings?: Object, responses?: Object}} [opts]
+ * @returns {Promise<void>}
+ */
+async function openDiscogsEntities(page, { settings = {}, responses = {} } = {}) {
+    await page.context().route('https://i.discogs.com/**', (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+    await openEvent(page, {
+        settings: { sa_pop_ext: true, sa_pop_ext_discogs_token: 'tok-probe', ...settings },
+        responses: {
+            ...extAnswers('discogs-artist', 'discogs-label', 'discogs-master', 'discogs-artist-small', 'discogs-artist-releases-p1',
+                'discogs-master-450426-versions-p1', 'discogs-label-releases-asc-p1',
+                ...[1, 2, 3, 4, 5, 6].map(p => `discogs-artist-small-p${p}`),
+                ...[1, 2, 3, 4, 5, 6].map(p => `discogs-label-releases-desc-p${p}`)),
+            ...responses,
+        },
+    });
+    await addAnnotationLinks(page, [DGA.small, DG.artist, DG.label]);
+}
+
+test.describe('the Discogs artist and label windows (2026-10-18)', () => {
+    test('an artist: no discography from a hover; the window\'s profile, images, names, sites; sections by role, "so far" until a later role; the rest on the button', async ({ page }) => {
+        await openDiscogsEntities(page);
+        await ctrlHover(page, probe(page, 0));
+        const c = card(page);
+        await expect(c.locator('.mb-tt-title')).toHaveText('Max Weinberg');
+        await expect(c.locator('.mb-dg-sum')).toHaveText('3 images · discography: Space lists it');
+        await expect(c, 'the data quality is the window\'s only').not.toContainText('Data quality');
+        await expect(c).toContainText('Aliases');
+        await expect.poll(dgSlotWait(page), { timeout: 5000 }).toBe(0);
+        expect(await dgListLog(page), 'a card never asks for the discography').toEqual([]);
+
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const disco = d.locator('[data-mb-dg-disco="artist"]');
+        await expect(disco.locator('.mb-dg-counts').first()).toHaveText('100 of 528 loaded');
+        expect(await dgListLog(page), 'page 1 only').toEqual([DGA.pages[0]]);
+        // Page 1 holds Main, the credits and the first Appearances: Releases
+        // and Credits are complete (a later role has arrived), Appearances not.
+        await expect(d.locator('.mb-dg-xh')).toHaveText(['Profile', 'Images 3', 'Sites 3', 'Releases 2', 'Appearances 89 so far',
+            'On releases 89 so far', 'On tracks …', 'Unofficial …', 'Credits 9', 'Producer 7', 'Mixed by 2']);
+        await expect(disco.locator('.mb-dg-c.mb-dg-sofar')).toHaveCount(4);
+        await expect(disco.locator('[data-mb-dg-sec="a-TrackAppearance"]')).toContainText('Not loaded yet');
+        await expect(disco.locator('[data-mb-dg-sec="a-credits"] .mb-dg-box'))
+            .toContainText('(for Max Weinberg: Producer, Mixed by, 9 entries)');
+        await expect(disco.locator('[data-mb-dg-sec="a-credits"] .mb-dg-box a')).toHaveAttribute('href', 'https://www.discogs.com/artist/254876?type=Credits');
+        // The profile is its own section, not the description again.
+        await expect(d.locator('.mb-ext-xdesc')).toHaveCount(0);
+        await expect(d.locator('[data-mb-dg-sec="profile"]')).toContainText('no junior Ginger Bakers');
+        // "Discogs says": the names linked to their pages, the data quality.
+        const kv = d.locator('.mb-dp-kv').last();
+        await expect(kv.locator('dt')).toHaveText(['Real name', 'In groups', 'Aliases', 'Variations', 'Data quality']);
+        await expect(kv.locator('a[href="https://www.discogs.com/artist/408247"]')).toHaveText('The E-Street Band');
+        await expect(kv.locator('a[href="https://www.discogs.com/artist/7670035"]')).toHaveText('Mighty Max');
+        // A release row: its format and label; a master row: no format, a versions toggle.
+        const main = disco.locator('[data-mb-dg-sec="a-main"] tbody > tr');
+        await expect(main).toHaveCount(2);
+        await expect(main.nth(0)).toContainText('13xFile, MP3, Single, 256 · Sha-La Music');
+        await expect(main.nth(0).locator('.mb-dg-pill')).toHaveText('release');
+        await expect(main.nth(1).locator('.mb-dg-pill')).toHaveText('master');
+        await expect(main.nth(1).locator('.mb-dg-exp')).toHaveText('▸ versions');
+        // Releases: by this artist (with others), so the artist column is there.
+        await expect(disco.locator('[data-mb-dg-sec="a-main"] th')).toHaveText(['', 'Title', 'Artist', 'Year', 'Have', 'Want']);
+
+        await disco.getByRole('button', { name: 'Load the other 428 (5 requests, about 5 s)' }).click();
+        await expect(disco.locator('.mb-dg-pill').first()).toHaveText('Running');
+        await expect(disco.getByRole('button', { name: 'Stop' })).toBeVisible();
+        await expect(disco.locator('.mb-dg-counts').first()).toHaveText('528 of 528 loaded', { timeout: 20000 });
+        await expect(disco.locator('.mb-dg-pill').first()).toHaveText('Done');
+        expect(await dgListLog(page), 'one after the other, each once').toEqual(DGA.pages);
+        await expect(d.locator('.mb-dg-xh')).toHaveText(['Profile', 'Images 3', 'Sites 3', 'Releases 2', 'Appearances 431',
+            'On releases 424', 'On tracks 7', 'Unofficial 86', 'Credits 9', 'Producer 7', 'Mixed by 2']);
+        await expect(disco.locator('.mb-dg-c.mb-dg-sofar')).toHaveCount(0);
+        await expect(disco.locator('.mb-dg-bar i.mb-dg-seg-loaded')).toHaveCount(6);
+    });
+
+    test('an artist\'s tables: 150 rows, then "Show more"; sort; the filter and chips over what is loaded; a master row\'s versions', async ({ page }) => {
+        await openDiscogsEntities(page);
+        await ctrlHover(page, probe(page, 0));
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const disco = d.locator('[data-mb-dg-disco="artist"]');
+        await disco.getByRole('button', { name: /^Load the other 428/ }).click();
+        await expect(disco.locator('.mb-dg-counts').first()).toHaveText('528 of 528 loaded', { timeout: 20000 });
+
+        const onRel = disco.locator('[data-mb-dg-sec="a-Appearance"]');
+        await expect(onRel.locator('tbody > tr')).toHaveCount(150);
+        await expect(onRel.locator('.mb-dg-morerow')).toContainText('Showing 150 of 424.');
+        await onRel.getByRole('button', { name: 'Show 274 more' }).click();
+        await expect(onRel.locator('tbody > tr')).toHaveCount(424);
+        await expect(onRel.locator('.mb-dg-morerow')).toHaveCount(0);
+
+        // Discogs' order (by year) first; "Have" sorts most first.
+        await expect(onRel.locator('tbody > tr').first()).toContainText('Love, Love, Love');
+        await onRel.locator('th[data-mb-dg-asort="have"]').click();
+        await expect(onRel.locator('th[data-mb-dg-asort="have"]')).toHaveAttribute('aria-sort', 'descending');
+        await expect(onRel.locator('tbody > tr').first()).toContainText('Born In The U.S.A.');
+        await expect(onRel.locator('tbody > tr').first().locator('td.mb-dg-num').first()).toHaveText('63,340');
+        // A second click: back to Discogs' order.
+        await onRel.locator('th[data-mb-dg-asort="have"]').click();
+        await expect(onRel.locator('th[data-mb-dg-asort="have"]')).not.toHaveAttribute('aria-sort', /./);
+        await expect(onRel.locator('tbody > tr').first()).toContainText('Love, Love, Love');
+
+        // The Masters chip and the filter narrow every section; the counts stay what Discogs has.
+        await disco.locator('.mb-dg-fc[data-mb-dg-atype="m"]').click();
+        await expect(disco.locator('.mb-dg-fc[data-mb-dg-atype="m"]')).toHaveText('Masters352');
+        await expect(disco.locator('[data-mb-dg-sec="a-main"] tbody > tr')).toHaveCount(1);
+        const q = disco.locator('.mb-dg-aq');
+        await q.fill('signal hill');
+        await expect(q).toBeFocused();
+        await expect(disco.locator('[data-mb-dg-sec="a-main"]')).toContainText('No loaded entry matches the filter.');
+        await expect(disco.locator('[data-mb-dg-sec="a-c-Producer"] tbody > tr')).toHaveCount(1);
+        await expect(disco.locator('[data-mb-dg-sec="a-c-Producer"] tbody > tr')).toContainText('Summer On Signal Hill');
+        await expect(d.locator('.mb-dg-xh', { hasText: 'Producer' })).toHaveText('Producer 7');
+        await disco.getByRole('button', { name: 'Clear filters' }).click();
+        await expect(q).toHaveValue('');
+        await expect(disco.locator('[data-mb-dg-sec="a-c-Producer"] tbody > tr')).toHaveCount(7);
+
+        // A master row's versions: one request, on the click only.
+        const before = await dgListLog(page);
+        expect(before.filter(u => u.includes('/versions?')), 'no versions before the click').toEqual([]);
+        const john = disco.locator('[data-mb-dg-sec="a-c-Producer"] tbody > tr', { hasText: 'John Eddie' }).first();
+        await john.locator('.mb-dg-exp').click();
+        const nest = disco.locator('[data-mb-dg-sec="a-c-Producer"] .mb-dg-nest');
+        await expect(nest.locator('.mb-dg-nt tr')).toHaveCount(12);
+        await expect(nest.locator('.mb-dg-counts')).toContainText('18 versions · the first 12 in Discogs\' order.');
+        await expect(nest.locator('a', { hasText: 'Open the master here' })).toHaveAttribute('href', 'https://www.discogs.com/master/450426');
+        expect((await dgListLog(page)).filter(u => u.includes('/versions?')), 'one request').toEqual([DGA.nest]);
+        // The same master under "Mixed by" is open too, from the same answer.
+        await expect(disco.locator('[data-mb-dg-sec="a-c-Mixed-by"] .mb-dg-nt tr')).toHaveCount(12);
+        expect((await dgListLog(page)).filter(u => u.includes('/versions?'))).toEqual([DGA.nest]);
+        await john.locator('.mb-dg-exp').click();
+        await expect(disco.locator('.mb-dg-nest')).toHaveCount(0);
+    });
+
+    test('Bruce Springsteen: page 1 of 68; the profile\'s names; 27 images in the viewer; a master opens in the window and Back returns', async ({ page }) => {
+        // No token: 2.5 s apart, as most users have it.
+        await openDiscogsEntities(page, { settings: { sa_pop_ext_discogs_token: '' } });
+        await ctrlHover(page, probe(page, 1));
+        const c = card(page);
+        await expect(c.locator('.mb-dg-sum')).toHaveText('27 images · discography: Space lists it');
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const disco = d.locator('[data-mb-dg-disco="artist"]');
+        await expect(disco.locator('.mb-dg-counts').first()).toHaveText('100 of 6,782 loaded');
+        await expect(disco.locator('h3')).toHaveText('Discography 6,782');
+        // Page 1 is Main only: nothing is complete yet, the button names the cost.
+        await expect(disco.locator('.mb-dg-xh')).toHaveText(['Releases 100 so far', 'Appearances …', 'On releases …', 'On tracks …',
+            'Unofficial …', 'Credits …']);
+        await expect(disco.getByRole('button', { name: 'Load the other 6,682 (67 requests, about 2 min 48 s)' })).toBeVisible();
+        await expect(disco.locator('.mb-dg-bar i')).toHaveCount(68);
+        await expect(disco.locator('[data-mb-dg-sec="a-credits"]')).toContainText('Not loaded yet: Discogs lists credits after the artist\'s own releases.');
+        // Some of his Main entries are splits with others: the artist column is there.
+        await expect(disco.locator('[data-mb-dg-sec="a-main"] th', { hasText: 'Artist' })).toHaveCount(1);
+
+        // The profile's names link Discogs' search (the markup gives no id).
+        const prof = d.locator('[data-mb-dg-sec="profile"]');
+        await expect(prof.locator('a', { hasText: 'Patti Scialfa' })).toHaveAttribute('href', 'https://www.discogs.com/search/?q=Patti%20Scialfa&type=artist');
+        await expect(prof).not.toContainText('[a=');
+        // Name variations: ten, then all.
+        const kv = d.locator('.mb-dp-kv').last();
+        await kv.getByRole('button', { name: '+31 more' }).click();
+        await expect(kv.getByRole('button', { name: 'fewer' })).toBeVisible();
+        await expect(kv.locator('dt')).toHaveText(['Real name', 'In groups', 'Aliases', 'Variations', 'Data quality']);
+
+        // Every image, the "More images" set included; the cover is the first, counted once.
+        const gal = d.locator('[data-mb-dg-sec="images"] .mb-dp-gallery a');
+        await expect(gal).toHaveCount(27);
+        await expect(gal.first().locator('span')).toHaveText('primary');
+        await gal.nth(26).click();
+        const viewer = page.locator('#mb-art-viewer');
+        await expect(viewer.locator('.mb-artv-pos')).toHaveText('27 / 27');
+        await page.keyboard.press('Escape');
+        await expect(viewer).toBeHidden();
+
+        // A master's title shows it in the window; Back returns to the discography.
+        await disco.locator('[data-mb-dg-sec="a-main"] a[href="https://www.discogs.com/master/26725"]').click();
+        await expect(d.locator(':scope > div > span').first()).toHaveText('Discogs artist › Discogs master');
+        await expect(d.locator('.mb-dg-xh', { hasText: 'Tracklist' })).toBeVisible();
+        await d.getByRole('button', { name: /Back/ }).click();
+        await expect(disco.locator('.mb-dg-counts').first()).toHaveText('100 of 6,782 loaded');
+    });
+
+    test('a label: page 1 newest first, a warning for its size; 5 more pages a click; the other order is asked once; format chips, filter, Show all', async ({ page }) => {
+        await openDiscogsEntities(page);
+        await ctrlHover(page, probe(page, 2));
+        const c = card(page);
+        await expect(c.locator('.mb-tt-title')).toHaveText('Columbia');
+        await expect(c.locator('.mb-dg-sum')).toHaveText('74 images · releases: Space lists them');
+        await expect(c).toContainText('Sony Music Entertainment');
+        await expect.poll(dgSlotWait(page), { timeout: 5000 }).toBe(0);
+        expect(await dgListLog(page), 'a card never asks for the releases').toEqual([]);
+
+        await page.keyboard.press('Space');
+        const d = dialog(page);
+        const rel = d.locator('[data-mb-dg-disco="label"]');
+        await expect(rel.locator('h3')).toHaveText('Releases 396,611');
+        await expect(rel.locator('.mb-dg-warnbox')).toContainText('Columbia has 396,611 releases on Discogs. Loading them all would take 3,967 requests');
+        await expect(rel.locator('.mb-dg-counts').first()).toHaveText('100 of 396,611 loaded · one segment = 100 releases');
+        expect(await dgListLog(page)).toEqual([DGL('desc', 1)]);
+        await expect(rel.locator('.mb-dg-bar i')).toHaveCount(1);
+        await expect(rel.locator('tbody > tr').first()).toContainText('Sweet FA');
+        // "Discogs says": the parent label linked, how many releases.
+        const kv = d.locator('.mb-dp-kv').last();
+        await expect(kv.locator('a[href="https://www.discogs.com/label/29073"]')).toHaveText('Sony Music Entertainment');
+        await expect(kv).toContainText('396,611');
+        // The profile's label references by id link the label's page.
+        await expect(d.locator('[data-mb-dg-sec="profile"] a[href="https://www.discogs.com/label/112015"]')).toHaveText('label 112015');
+        await expect(d.locator('.mb-dg-xh', { hasText: 'Contact info' })).toBeVisible();
+        const subs = d.locator('[data-mb-dg-sec="sublabels"]');
+        await expect(subs.locator('.mb-dg-names a')).toHaveCount(24);
+        await subs.getByRole('button', { name: '+193 more' }).click();
+        await expect(subs.locator('.mb-dg-names a')).toHaveCount(217);
+
+        await rel.getByRole('button', { name: 'Load 5 more pages (500 releases, about 5 s)' }).click();
+        await expect(rel.locator('.mb-dg-counts').first()).toHaveText('600 of 396,611 loaded · one segment = 100 releases', { timeout: 20000 });
+        expect(await dgListLog(page), 'the batch, and no page more').toEqual([1, 2, 3, 4, 5, 6].map(p => DGL('desc', p)));
+        await expect(rel.locator('.mb-dg-bar i.mb-dg-seg-loaded')).toHaveCount(6);
+        await expect(rel.getByRole('button', { name: 'Load 5 more pages (500 releases, about 5 s)' })).toBeVisible();
+
+        // 200 rows, then all of them.
+        await expect(rel.locator('tbody > tr')).toHaveCount(200);
+        await rel.getByRole('button', { name: 'Show all 600' }).click();
+        await expect(rel.locator('tbody > tr')).toHaveCount(600);
+        // Format chips count what is loaded; one narrows the table.
+        await expect(rel.locator('.mb-dg-fc').first()).toHaveText('LP314');
+        await rel.locator('.mb-dg-fc[data-mb-dg-lfmt="CD"]').click();
+        await expect(rel.locator('tbody > tr')).toHaveCount(100);
+        const q = rel.locator('.mb-dg-lq');
+        await rel.getByRole('button', { name: 'Clear filters' }).click();
+        await q.fill('Y4LPLY585');
+        await expect(rel.locator('tbody > tr')).toHaveCount(1);
+        await expect(q).toBeFocused();
+        await rel.getByRole('button', { name: 'Clear filters' }).click();
+
+        // Oldest first: another list, asked once; back to newest: no request, the 600 still there.
+        await rel.getByRole('button', { name: 'Oldest first' }).click();
+        await expect(rel.locator('.mb-dg-counts').first()).toHaveText('100 of 396,611 loaded · one segment = 100 releases');
+        await expect(rel.locator('tbody > tr').first().locator('.mb-dg-yr')).toHaveText('—');
+        await rel.getByRole('button', { name: 'Newest first' }).click();
+        await expect(rel.locator('.mb-dg-counts').first()).toHaveText('600 of 396,611 loaded · one segment = 100 releases');
+        expect(await dgListLog(page)).toEqual([...[1, 2, 3, 4, 5, 6].map(p => DGL('desc', p)), DGL('asc', 1)]);
+    });
+
+    test('a later visit: the discography from IndexedDB, hatched, without a request; Stop ends a run with the page under way', async ({ page }) => {
+        await openDiscogsEntities(page);
+        await ctrlHover(page, probe(page, 0));
+        await page.keyboard.press('Space');
+        const disco = dialog(page).locator('[data-mb-dg-disco="artist"]');
+        await disco.getByRole('button', { name: /^Load the other 428/ }).click();
+        await expect(disco.locator('.mb-dg-counts').first()).toHaveText(/^300 of 528 loaded/, { timeout: 20000 });
+        await disco.getByRole('button', { name: 'Stop' }).click();
+        await expect(disco.locator('.mb-dg-pill').first()).toHaveText('Idle', { timeout: 10000 });
+        const loaded = (await dgListLog(page)).length;
+        expect(loaded, 'the page under way finished, nothing more').toBeLessThanOrEqual(4);
+        await expect(disco.getByRole('button', { name: /^Load the other/ })).toBeVisible();
+        // "Nothing more" needs time to pass: with the token a page may go 1 s
+        // after the last, so watch for more than two slots for a request
+        // more (a poll for "still N" would pass on its first look). The pill
+        // reads Idle for a moment between two pages of a run, so it is
+        // checked after the watch too.
+        const more = await expect.poll(async () => (await dgListLog(page)).length, { timeout: 2500, intervals: [250] })
+            .toBeGreaterThan(loaded).then(() => true, () => false);
+        expect(more, 'no page after Stop').toBe(false);
+        await expect(disco.locator('.mb-dg-pill').first()).toHaveText('Idle');
+
+        await reloadEvent(page);
+        await addAnnotationLinks(page, [DGA.small, DG.artist, DG.label]);
+        await ctrlHover(page, probe(page, 0));
+        await page.keyboard.press('Space');
+        const again = dialog(page).locator('[data-mb-dg-disco="artist"]');
+        await expect(again.locator('.mb-dg-counts').first()).toHaveText(new RegExp(`^${loaded * 100} of 528 loaded · ${loaded * 100} from cache`));
+        await expect(again.locator('.mb-dg-bar i.mb-dg-seg-cache')).toHaveCount(loaded);
+        expect(await dgListLog(page), 'nothing asked again').toEqual([]);
+    });
+
+    test('an artist record of the reader before its window is not served from IndexedDB', async ({ page }) => {
+        await openDiscogsEntities(page);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page).locator('.mb-dg-sum')).toBeVisible();
+        const key = `mb:ext:discogs:${DGA.small}`;
+        await expect.poll(() => idbHas(page, key)).toBe(true);
+        // As reader version 3 kept it (2026-10-17): no window data.
+        await page.evaluate((k) => new Promise((resolve, reject) => {
+            const req = indexedDB.open('vz-saed-detail-pages');
+            req.onsuccess = () => {
+                const db = req.result;
+                const store = db.transaction('pages', 'readwrite').objectStore('pages');
+                const g = store.get(k);
+                g.onsuccess = () => {
+                    const r = g.result;
+                    r.v = 303;
+                    r.data = { ...r.data, title: 'OLD RECORD', discogs: undefined, descInWindow: undefined };
+                    store.put(r).onsuccess = () => { db.close(); resolve(); };
+                };
+                g.onerror = reject;
+            };
+            req.onerror = reject;
+        }), key);
+        await reloadEvent(page);
+        await addAnnotationLinks(page, [DGA.small, DG.artist, DG.label]);
+        await ctrlHover(page, probe(page, 0));
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('Max Weinberg');
+        expect((await xhrFull(page)).map(r => r.url), 'asked again').toEqual(['https://api.discogs.com/artists/254876']);
+    });
+});
+
 // U4: the four Springsteen sites' own parsers on links from MusicBrainz, and
 // the Brucebase date anchor. Pages are the detail-preview fixtures
 // (scripts/build-detail-fixtures.py; jungleland.it's is windows-1252 bytes,
