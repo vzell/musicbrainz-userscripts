@@ -476,8 +476,9 @@ and the tables reading the search lists too. Branch
 - **Hover cards on links** (`_sbLinkTip()`, `data-mbtt`): title, where it is
   listed, the site (for a `forward-request.html` link the `_action` host),
   the address (`.mb-sb-tt-url` wraps it). With `sa_pop_mb_page` the link
-  preview engine may claim the same links (`#page a[href]`), as it does for
-  any link with a `data-mbtt`.
+  preview engine claims the same links (`#page a[href]`): the hover card is
+  then a box of the preview's note stack, never a second box beside it
+  (detail-pages.md, "The note stack"; "HOVER STACK" in the spec).
 - **Layout** (`_sbInlineLayout()`): with facts AND other cards,
   `.mb-sb-cards-split` is a grid `fit-content(26rem) minmax(0, 1fr)`: the
   facts in `.mb-sb-rail`, links/search/tags in `.mb-sb-main`. A facts card

@@ -874,7 +874,8 @@ close every sidebar section; the headings of the main page are left alone.
   pills with their votes. In a narrow window the facts come first and the
   links below them. A link's chip shows only the link; a link listed under it
   (the Wikipedia article under a Wikidata link) is a small *› en* link after
-  it. Pointing at a link shows its site and full address.
+  it. Pointing at a link shows its site and full address; with link previews
+  on, that box sits above the preview card, as elsewhere.
   With jesus2099's *mb. ALL LINKS* installed, its *Search the web*, *Search in
   the whitelist* and *Search further* lists are one **Search** card (closed
   at first) between the link cards. It is an index: each section (*By genre*,

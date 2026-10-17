@@ -23656,3 +23656,12 @@ Env: 2026-10-17T03:48:32+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1)
   `sidebar-inline.json` 26/26 caught, three of its finds moved to the new
   CSS ("a fixed grid column" became "a fixed facts column": the split grid
   decides the facts' width on the NO OVERFLOW page now).
+- **Live check (vzell's browser, "Tougher Than the Rest", 2026-10-17):**
+  everything worked, but with link previews on a card link's hover card
+  (`data-mbtt`, `#mb-stat-tooltip`) and its preview card showed side by side.
+  The note stack and `_statTipApi.yieldTo()` knew only titles
+  (`data-mb-tip`), so a ready-made `data-mbtt` card neither went into the
+  stack nor gave way. Now `_dpCollectNotes()` adds the link's own
+  `data-mbtt` as the last box, `yieldTo()`/`resume()` cover it, and the
+  `data-mbtt` mouseover branch does not show it again over a preview of the
+  same link. Spec "HOVER STACK", three more mutations.

@@ -221,6 +221,45 @@ test.describe('the Search card (jesus2099 mb. ALL LINKS)', () => {
         await expect(card).toContainText('Search in the whitelist › By genre › Classical');
         await expect(card).toContainText('Searches dramonline.org through jesus2099\'s forwarding page');
     });
+
+    // Reported 2026-10-17 (vzell's browser, "Tougher Than the Rest"): with
+    // link previews on, a card link's hover card and the preview card showed
+    // side by side. Like every other tip, the link's card goes into the
+    // preview's note stack, and the separate box gives way.
+    test('HOVER STACK: with link previews on, the link\'s card is a box of the preview\'s stack, never a second box', async ({ page }) => {
+        await open(page, 'Show all Tracks for Release', { sa_pop_ext: true, sa_pop_mb_page: true, sa_dp_hover_without_ctrl: true });
+        await openSearch(page);
+        const link = page.locator('.mb-sb-ix-it a', { hasText: 'DRAM' });
+        await link.hover();
+        const peek = page.locator('#mb-dp-peek');
+        const notes = page.locator('#mb-dp-notes');
+        const tip = page.locator('#mb-stat-tooltip');
+        await expect(peek).toBeVisible();
+        await expect(notes, 'the link\'s card is in the stack').toContainText('Searches dramonline.org');
+        await expect(notes.locator('.mb-dp-note-tip .mb-tt-title')).toHaveText('DRAM');
+        await expect(tip, 'no second box').toBeHidden();
+        // A link with child elements (a <bdi> in it) gets a mouseover again
+        // each time the pointer crosses from a child back onto it, while its
+        // preview stays: no second box then either.
+        const box = await link.boundingBox();
+        await link.evaluate((a, p) => a.dispatchEvent(new MouseEvent('mouseover', {
+            bubbles: true, cancelable: true, view: window, clientX: p.x, clientY: p.y,
+            sourceCapabilities: window.InputDeviceCapabilities ? new window.InputDeviceCapabilities({ firesTouchEvents: false }) : undefined,
+        })), { x: box.x + 2, y: box.y + 2 });
+        // The card would show synchronously in that mouseover: nothing to wait for.
+        await expect(peek).toBeVisible();
+        await expect(tip, 'no second box when the pointer comes back onto the link').toBeHidden();
+
+        // The same for a link of MusicBrainz's own list.
+        await page.mouse.move(5, 5);
+        await expect(peek).toBeHidden();
+        await page.locator('.mb-sb-card-head', { hasText: /^External links/ }).click();
+        const discogs = page.locator('.mb-sb-chip a', { hasText: 'Discogs' }).first();
+        await discogs.hover();
+        await expect(peek).toBeVisible();
+        await expect(notes).toContainText('External links › Databases');
+        await expect(tip).toBeHidden();
+    });
 });
 
 test.describe('the Search links in the Credits render', () => {

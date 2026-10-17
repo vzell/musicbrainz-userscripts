@@ -16539,7 +16539,10 @@
      *   - `title`: any other title, as plain text — MusicBrainz's sort name on
      *     an artist or label link, labelled "Sort name". A title that only
      *     repeats the link's text (MusicBrainz's on a recording with a
-     *     disambiguation) adds nothing and gets no box.
+     *     disambiguation) adds nothing and gets no box;
+     *   - `tip`, last: the link's own ready-made card (`data-mbtt`, e.g. a
+     *     link of the Sidebar cards, `_sbLinkTip()`), as `#mb-stat-tooltip`
+     *     would show it; that card gives way meanwhile (`yieldTo()`).
      *
      * @param {object} t - A target (`_popResolve()`).
      * @returns {Array<{kind: string, html: string}>}
@@ -16556,7 +16559,7 @@
         // The link's note box compares the two names; the cell's finding box
         // then gives the label alone, not the same comparison again.
         const hasOrigin = !!_dpOriginNote(own);
-        return _dpTitledChain(own).reverse().map((n) => {
+        const notes = _dpTitledChain(own).reverse().map((n) => {
             const text = _dpTitleText(n).trim();
             if (n === own) {
                 const note = _dpOriginNote(n);
@@ -16569,6 +16572,8 @@
             }
             return { kind: 'title', html: `<div class="mb-tt-body">${text.split('\n').map(_mbttEscape).join('<br>')}</div>` };
         }).filter(Boolean);
+        if (own && own.dataset && own.dataset.mbtt) notes.push({ kind: 'tip', html: own.dataset.mbtt });
+        return notes;
     }
 
     /**
@@ -70256,22 +70261,30 @@ a { color: #1565c0; }`;
 
         _statTipApi = {
             /**
-             * Hides an own card whose element holds the link preview card's
-             * element: the preview's stack shows its text now. The title
-             * stays stashed and the hover is not dismissed, so `resume()`
-             * can bring the card back.
+             * Hides an own card, or the ready-made card (`data-mbtt`) of the
+             * link itself, whose element holds the link preview card's
+             * element: the preview's stack shows it now (`_dpCollectNotes()`).
+             * The title stays stashed and the hover is not dismissed, so
+             * `resume()` can bring the card back.
              * @param {Element} link
              */
             yieldTo(link) {
-                if (!_target || !_own || !link || !_target.contains(link)) return;
+                if (!_target || !link || !_target.contains(link)) return;
+                if (!_own && !(_target === link && link.dataset.mbtt)) return;
                 clearTimeout(_showTimer);
                 _tip.style.display = 'none';
             },
             /**
              * After the preview card is gone: the own card again, after the
-             * usual delay, if the pointer is still on its element.
+             * usual delay, if the pointer is still on its element; a link's
+             * ready-made card at once, as it first showed.
              */
             resume() {
+                if (_target && !_own && !_fnShown && _target.dataset.mbtt && !_dismissed && _target.isConnected &&
+                        _target.matches(':hover') && _lastMove) {
+                    _showMbtt(_target, _lastMove, null);
+                    return;
+                }
                 if (!_target || !_own || _dismissed || !_target.isConnected || !_target.matches(':hover')) return;
                 const text = _target.dataset.mbTipSaved;
                 if (!text) return;
@@ -70298,6 +70311,15 @@ a { color: #1565c0; }`;
             // element's plain title (if any) is used as usual.
             const fnHtml = el && el.dataset.mbttFn ? _mbttResolve(el) : null;
             if (el && (el.dataset.mbtt || fnHtml)) {
+                // The link's preview card shows: its stack carries this card
+                // (`_dpCollectNotes()`). Kept as the target, so `resume()`
+                // shows it once the preview is gone.
+                if (!fnHtml && _dpPeekShown() && _dpPeek.link === el) {
+                    if (_target !== el) _hide();
+                    _target = el;
+                    _own = false;
+                    return;
+                }
                 _showMbtt(el, e, fnHtml);
                 return;
             }
