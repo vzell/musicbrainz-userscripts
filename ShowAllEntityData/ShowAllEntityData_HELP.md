@@ -846,7 +846,9 @@ close every sidebar section; the headings of the main page are left alone.
   closed, without the slide.
 - **Other scripts.** Whatever another userscript adds to the sidebar stays
   where it put it. Its headings open and close like the others; nothing of it
-  is read or moved. The one exception is the sidebar picture below.
+  is read or moved. There are two exceptions: the sidebar picture below, and
+  the search links of jesus2099's *mb. ALL LINKS*, which the Sidebar cards
+  and tables below show as one *Search* group.
 - **The picture** (as soon as the page opens, no table needed). The photo or
   logo from Wikimedia Commons at the top of the sidebar shows a card with its
   file name when you point at it, and opens in the
@@ -867,8 +869,24 @@ close every sidebar section; the headings of the main page are left alone.
   heading comes right below the *Credits* or *Relationships* section (on a
   page without one: right above the table). Under it, the sidebar's
   information, labels, release events, external links and tags are small
-  cards: facts as *name → value* lines side by side, links as chips grouped
-  by kind (Official, Social, Streaming, …), tags as pills with their votes.
+  cards: facts as *name → value* lines in a column on the left, links as
+  chips grouped by kind (Official, Social, Streaming, …) beside them, tags as
+  pills with their votes. In a narrow window the facts come first and the
+  links below them. A link's chip shows only the link; a link listed under it
+  (the Wikipedia article under a Wikidata link) is a small *› en* link after
+  it. Pointing at a link shows its site and full address; with link previews
+  on, that box sits above the preview card, as elsewhere.
+  With jesus2099's *mb. ALL LINKS* installed, its *Search the web*, *Search in
+  the whitelist* and *Search further* lists are one **Search** card (closed
+  at first) between the link cards. It is an index: each section (*By genre*,
+  *By area*, …) with its groups in italics (*Rock*, *Japan*, …) and their
+  sites. Variants of one site are one entry with small links, for example
+  *Prog Archives (barcode, name)*. Sections with nothing for this kind of page
+  are named once at the foot. The switch at the top (*All*, *Web*,
+  *Whitelist*, *Further*) shows one list at a time, and the box finds a site
+  by its name, variant, section or group; Esc empties it. Pointing at a
+  search link names the site it searches, also when the script sends the
+  search through its forwarding page.
   They are for reading: no filter, no sorting. The heading opens and closes
   like any other. Only the first information card (*Artist information*,
   *Release group information*, …) starts open; the others start closed,
@@ -889,7 +907,9 @@ close every sidebar section; the headings of the main page are left alone.
   can sort them and use the 📊 dropdown on them like on the others. A sidebar
   link that is already a row of a relationship table is left out (a
   release's own URLs and its release group's are both there already); a
-  links table with nothing left is left out with it. Switches: *Sidebar
+  links table with nothing left is left out with it. The search links of
+  *mb. ALL LINKS* are one table, *Sidebar: Search*, with the list, section
+  and group each link is under. Switches: *Sidebar
   tables in the Credits/Relationships view*, *… skip links already in a
   relationship table*. *… include external links* and *… include tags*
   apply to both views.

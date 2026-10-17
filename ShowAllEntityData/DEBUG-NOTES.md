@@ -23605,3 +23605,63 @@ Env: 2026-10-17T03:08:46+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1)
   guard specs) green; `scripts/mutations/rel-icons.json` 13/13 as recorded
   (two guards that cover each other are `"expect": "pass"` alone, and fail
   together). Full suite deferred to the end of the branch, as asked.
+
+## 2026-10-17 — Sidebar cards: two dozen "Search …" cards and a 378-character chip (jesus2099 mb. ALL LINKS; branch feat/sidebar-search-card, WIP.1)
+
+Env: 2026-10-17T03:48:32+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 bundled Chromium · no Tampermonkey (GM stubs)
+
+- **Snapshots:** `debug/DaD-collapsed.html` (IP, cards closed) and
+  `debug/DaD-uncollapsed.html` (FRP, cards open) with
+  `debug/Search-initial.png` / `debug/Search-uncollapsed.png`, vzell's
+  browser, release 6336b8db-ac72-4afa-a954-94b437b49abc (Devils & Dust,
+  bootleg): under "Sidebar (99)" 28 link cards, 26 of them "Search the web",
+  "Search in the whitelist" (×21) or "Search further" (×5), and chips like
+  "DRAM By genreClassicalEletronicPsyDBTraditional…" running across the
+  window. `debug/DaD-ISRC-Links-initial.html` is the same page before a
+  button press; `scripts/build-sidebar-search-fixture.py` turns it into the
+  fixture.
+- **Root cause (two, both in `_sbCollectGroups()`):** jesus2099's
+  "mb. ALL LINKS" nests its search lists three deep (section li with an h3 →
+  group li with its own text → links), and every level is an
+  `ul.external_links`, MusicBrainz's own class. (1)
+  `side.querySelectorAll('ul.external_links')` took every nested list as a
+  group of its own, named by the h2 above the outermost one. (2) An item's
+  link was its FIRST `a[href]` anywhere inside, and its Details
+  `li.textContent` minus that link's text: for the "By genre" item, DRAM
+  plus the text of the whole genre tree, with no spaces (378 characters).
+  The same leak put the script's "edit" icon text and its "choose languages
+  en: Devils & Dust" under MusicBrainz's own Discogs and Wikidata chips. It
+  also broke the rule in `docs/claude/sidebar.md` that no other script's
+  content is read: by accident, because the script reuses the class.
+- **Fix (mockup https://claude.ai/artifact/V9Pqx5r7K37Qe3PEm93cpc, picked
+  "A3 + B1 + D2 + C1"):** only a section's outermost list is read; an item's
+  Details are its own text (`_sbOwnText()`) and the links nested in it
+  (`_sbItemKids()`); the script's lists are read on purpose into ONE group
+  `search` with each link's section and group (`_SB_SEARCH_LIST_SEL`), shown
+  as one closed "Search" card with an index, a switch and a find box, and as
+  one "Sidebar: Search" table. The cards got the facts/links split and the
+  Liner-notes look. Details: `docs/claude/sidebar.md`, "The Search group and
+  the card layout".
+- **Fixture trap:** the "initial" save already held our toolbar (saved after
+  init, before a press). Loaded as a fixture the script added a second one,
+  and `page.click('button[data-label=…]')` hit the saved, listener-less copy
+  first: the first run of every test timed out waiting for a render that
+  never started. The builder removes our toolbar, status display and stamps.
+- **Verified:** `sidebar-search-card.spec.js` 7/7; the sidebar set
+  (`sidebar-inline`, `-inline.mobile`, `sidebar-tables`, `sidebar-sections`,
+  `-sections.mobile`, the new spec) 49/49; lint within the baseline.
+  `scripts/mutations/sidebar-search-card.json` 15/15 as recorded: 14 caught,
+  and "find: Esc does nothing" recorded `"expect": "pass"`, because the box
+  is an `input type=search` and Chromium empties it on Esc by itself.
+  `sidebar-inline.json` 26/26 caught, three of its finds moved to the new
+  CSS ("a fixed grid column" became "a fixed facts column": the split grid
+  decides the facts' width on the NO OVERFLOW page now).
+- **Live check (vzell's browser, "Tougher Than the Rest", 2026-10-17):**
+  everything worked, but with link previews on a card link's hover card
+  (`data-mbtt`, `#mb-stat-tooltip`) and its preview card showed side by side.
+  The note stack and `_statTipApi.yieldTo()` knew only titles
+  (`data-mb-tip`), so a ready-made `data-mbtt` card neither went into the
+  stack nor gave way. Now `_dpCollectNotes()` adds the link's own
+  `data-mbtt` as the last box, `yieldTo()`/`resume()` cover it, and the
+  `data-mbtt` mouseover branch does not show it again over a preview of the
+  same link. Spec "HOVER STACK", three more mutations.

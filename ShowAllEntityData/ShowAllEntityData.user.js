@@ -16539,7 +16539,10 @@
      *   - `title`: any other title, as plain text — MusicBrainz's sort name on
      *     an artist or label link, labelled "Sort name". A title that only
      *     repeats the link's text (MusicBrainz's on a recording with a
-     *     disambiguation) adds nothing and gets no box.
+     *     disambiguation) adds nothing and gets no box;
+     *   - `tip`, last: the link's own ready-made card (`data-mbtt`, e.g. a
+     *     link of the Sidebar cards, `_sbLinkTip()`), as `#mb-stat-tooltip`
+     *     would show it; that card gives way meanwhile (`yieldTo()`).
      *
      * @param {object} t - A target (`_popResolve()`).
      * @returns {Array<{kind: string, html: string}>}
@@ -16556,7 +16559,7 @@
         // The link's note box compares the two names; the cell's finding box
         // then gives the label alone, not the same comparison again.
         const hasOrigin = !!_dpOriginNote(own);
-        return _dpTitledChain(own).reverse().map((n) => {
+        const notes = _dpTitledChain(own).reverse().map((n) => {
             const text = _dpTitleText(n).trim();
             if (n === own) {
                 const note = _dpOriginNote(n);
@@ -16569,6 +16572,8 @@
             }
             return { kind: 'title', html: `<div class="mb-tt-body">${text.split('\n').map(_mbttEscape).join('<br>')}</div>` };
         }).filter(Boolean);
+        if (own && own.dataset && own.dataset.mbtt) notes.push({ kind: 'tip', html: own.dataset.mbtt });
+        return notes;
     }
 
     /**
@@ -70256,22 +70261,30 @@ a { color: #1565c0; }`;
 
         _statTipApi = {
             /**
-             * Hides an own card whose element holds the link preview card's
-             * element: the preview's stack shows its text now. The title
-             * stays stashed and the hover is not dismissed, so `resume()`
-             * can bring the card back.
+             * Hides an own card, or the ready-made card (`data-mbtt`) of the
+             * link itself, whose element holds the link preview card's
+             * element: the preview's stack shows it now (`_dpCollectNotes()`).
+             * The title stays stashed and the hover is not dismissed, so
+             * `resume()` can bring the card back.
              * @param {Element} link
              */
             yieldTo(link) {
-                if (!_target || !_own || !link || !_target.contains(link)) return;
+                if (!_target || !link || !_target.contains(link)) return;
+                if (!_own && !(_target === link && link.dataset.mbtt)) return;
                 clearTimeout(_showTimer);
                 _tip.style.display = 'none';
             },
             /**
              * After the preview card is gone: the own card again, after the
-             * usual delay, if the pointer is still on its element.
+             * usual delay, if the pointer is still on its element; a link's
+             * ready-made card at once, as it first showed.
              */
             resume() {
+                if (_target && !_own && !_fnShown && _target.dataset.mbtt && !_dismissed && _target.isConnected &&
+                        _target.matches(':hover') && _lastMove) {
+                    _showMbtt(_target, _lastMove, null);
+                    return;
+                }
                 if (!_target || !_own || _dismissed || !_target.isConnected || !_target.matches(':hover')) return;
                 const text = _target.dataset.mbTipSaved;
                 if (!text) return;
@@ -70298,6 +70311,15 @@ a { color: #1565c0; }`;
             // element's plain title (if any) is used as usual.
             const fnHtml = el && el.dataset.mbttFn ? _mbttResolve(el) : null;
             if (el && (el.dataset.mbtt || fnHtml)) {
+                // The link's preview card shows: its stack carries this card
+                // (`_dpCollectNotes()`). Kept as the target, so `resume()`
+                // shows it once the preview is gone.
+                if (!fnHtml && _dpPeekShown() && _dpPeek.link === el) {
+                    if (_target !== el) _hide();
+                    _target = el;
+                    _own = false;
+                    return;
+                }
                 _showMbtt(el, e, fnHtml);
                 return;
             }
@@ -89536,6 +89558,66 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * The search lists jesus2099's "mb. ALL LINKS" adds to the sidebar
+     * ("Search the web", "Search in the whitelist", "Search further"). Each
+     * nests its lists three deep (a section `li` with an h3, a group `li`
+     * with its own text, the links), every level an `ul.external_links`
+     * like MusicBrainz's own. Read on purpose, by the user's choice
+     * (2026-10-17, mockup https://claude.ai/artifact/V9Pqx5r7K37Qe3PEm93cpc,
+     * "A3 + B1 + D2 + C1"): before, every nested list was a card of its
+     * own, and an item's "details" was the whole tree under it run together.
+     */
+    const _SB_SEARCH_LIST_SEL = 'ul.jesus2099_all-links_searchLinks';
+
+    /**
+     * An external-links item's own link: a direct child `a[href]`, else the
+     * first one that is not inside a list nested in the item.
+     * @param {Element} li
+     * @returns {?HTMLAnchorElement}
+     */
+    function _sbItemLink(li) {
+        return li.querySelector(':scope > a[href]') ||
+            Array.from(li.querySelectorAll('a[href]')).find(a => a.parentElement.closest('ul, ol') === li.parentElement) || null;
+    }
+
+    /**
+     * The text an item says itself, beside its link `a`: its own text nodes
+     * and the child elements that hold no link and no list. Leaves out a
+     * nested list, another link, and a control another script puts in (an
+     * `.icon` holding "edit" or "choose languages"), and our own counts.
+     * @param {Element} li
+     * @param {?Element} a The item's link, or null.
+     * @returns {string}
+     */
+    function _sbOwnText(li, a) {
+        let s = '';
+        li.childNodes.forEach(n => {
+            if (n === a) return;
+            if (n.nodeType === Node.TEXT_NODE) s += n.textContent;
+            else if (n.nodeType === Node.ELEMENT_NODE &&
+                     !n.matches('ul, ol, a, h3, h4, .icon, .mb-sb-count, .mb-sb-h3-icon, .mb-toggle-icon') &&
+                     !n.querySelector('a, ul, ol')) s += ' ' + n.textContent;
+        });
+        return s.replace(/\s+/g, ' ').trim();
+    }
+
+    /**
+     * The links nested in an external-links item (a list under it, e.g. the
+     * Wikipedia article another script lists under a Wikidata link), each
+     * with its label: the text of its own item beside it, without the
+     * colon ("en"), else its own text.
+     * @param {Element} li
+     * @returns {Array<{label: string, a: HTMLAnchorElement}>}
+     */
+    function _sbItemKids(li) {
+        return Array.from(li.querySelectorAll(':scope > ul a[href], :scope > ol a[href]')).map(a => {
+            const item = a.closest('li');
+            const label = item && item !== li ? _sbOwnText(item, a).replace(/:\s*$/, '').trim() : '';
+            return { label: label || a.textContent.replace(/\s+/g, ' ').trim(), a };
+        });
+    }
+
+    /**
      * Reads a document's sidebar into groups, each named by its sidebar
      * heading — the one reader behind the "🗂 Sidebar as tables" button
      * (`applySidebarToTables()`), the "Sidebar: …" tables of a
@@ -89550,6 +89632,16 @@ a { color: #1565c0; }`;
      *   - `links`: every `ul.external_links` ("External links"; a release
      *     also has "Release group external links"): #, Site, Link, Kind,
      *     Details (MusicBrainz's own "View all relationships" left out);
+     *     Details is the item's OWN text (`_sbOwnText()`) and the links nested
+     *     in it (`_sbItemKids()`), never another script's controls in it
+     *     ("edit", "choose languages"); each row also carries `own` (that
+     *     text) and `kids` (`{label, a}`) for the cards. Only a section's
+     *     OUTERMOST list is read: a list nested in an item belongs to it;
+     *   - `search`: the search lists another script adds
+     *     (`_SB_SEARCH_LIST_SEL`), all of them ONE group "Search", where the
+     *     first of them is: #, Search (the heading it is under), Section,
+     *     Group, Site, Link; plus `empty` (`{source, path}` of each section
+     *     or group with no link) and `sources` (the headings, in order);
      *   - `tags`: "Tags": #, Tag, Kind (Genre or Tag), Votes (`ul.genre-list`,
      *     `ul.tag-list`).
      * A group with no rows is left out. Cells are fresh clones (or text) on
@@ -89558,7 +89650,7 @@ a { color: #1565c0; }`;
      * the clones.
      *
      * @param   {Document} doc
-     * @param   {{links?: boolean, tags?: boolean}} [opts] `false` leaves that kind out.
+     * @param   {{links?: boolean, tags?: boolean}} [opts] `false` leaves that kind out (`links`: the search lists too).
      * @returns {Array<{key: string, name: string, cols: string[], rows: Array<Array<Node[]|string>>}>}
      */
     function _sbCollectGroups(doc, opts = {}) {
@@ -89612,20 +89704,86 @@ a { color: #1565c0; }`;
             if (rows.length) groups.push({ key: 'events', name: nameOf(ul, 'Release events'), cols: ['#', 'Country', 'Date'], rows });
         });
 
+        const hostOf = (a) => {
+            try { return new URL(a.getAttribute('href'), 'https://musicbrainz.org').hostname.replace(/^www\./, ''); } catch (_) { return ''; }
+        };
+        const searchUls = [];
+        // Where the search lists are in the sidebar: their one group goes
+        // there, filled below (left out again when they hold no link).
+        const searchGroup = { key: 'search', name: 'Search', cols: ['#', 'Search', 'Section', 'Group', 'Site', 'Link'], rows: [], empty: [], sources: [] };
         if (opts.links !== false) side.querySelectorAll('ul.external_links').forEach(ul => {
+            // Only a section's outermost list: a list nested in an item is
+            // part of that item (another script nests its own lists three
+            // deep, each one an `ul.external_links` too).
+            if (ul.parentElement && ul.parentElement.closest('ul.external_links')) return;
+            if (ul.matches(_SB_SEARCH_LIST_SEL)) {
+                if (!searchUls.length) groups.push(searchGroup);
+                searchUls.push(ul);
+                return;
+            }
             const links = [];
             ul.querySelectorAll(':scope > li').forEach(li => {
                 if (li.matches('.mb-sbl-head, .all-relationships')) return;
-                const a = li.querySelector('a[href]');
+                const a = _sbItemLink(li);
                 if (!a) return;
                 const stem = (Array.from(li.classList).find(c => /-favicon$/.test(c)) || '').replace(/-favicon$/, '');
-                let host;
-                try { host = new URL(a.getAttribute('href'), 'https://musicbrainz.org').hostname.replace(/^www\./, ''); } catch (_) { host = ''; }
-                const details = li.textContent.replace(a.textContent, '').replace(/\s+/g, ' ').trim();
-                links.push([String(links.length + 1), host, [a.cloneNode(true)], _SB_LINK_KINDS[stem] || 'Other', details]);
+                const own = _sbOwnText(li, a);
+                const kids = _sbItemKids(li);
+                // Details: the item's own text, then each link nested in it
+                // ("en: Devils & Dust" under a Wikidata link).
+                let details = own;
+                if (kids.length) {
+                    details = own ? [document.createTextNode(own + ' ')] : [];
+                    kids.forEach((k, i) => {
+                        details.push(document.createTextNode(`${i ? ', ' : ''}${k.label}: `), k.a.cloneNode(true));
+                    });
+                }
+                const row = [String(links.length + 1), hostOf(a), [a.cloneNode(true)], _SB_LINK_KINDS[stem] || 'Other', details];
+                row.own = own;
+                row.kids = kids.map(k => ({ label: k.label, a: k.a.cloneNode(true) }));
+                links.push(row);
             });
             if (links.length) groups.push({ key: 'links', name: nameOf(ul, 'External links'), cols: ['#', 'Site', 'Link', 'Kind', 'Details'], rows: links });
         });
+
+        // Another script's search lists, one group for all of them: each
+        // link with the heading it is under (Search) and the path of its
+        // section and group; a section or group with no link is listed in
+        // `empty`, by the same path.
+        if (searchUls.length) {
+            const rows = searchGroup.rows;
+            const empty = searchGroup.empty;
+            const walk = (list, source, path) => {
+                let n = 0;
+                const inner = [];
+                list.querySelectorAll(':scope > li').forEach(li => {
+                    if (li.matches('.mb-sbl-head, .all-relationships')) return;
+                    const a = li.querySelector(':scope > a[href]');
+                    if (a) {
+                        rows.push([String(rows.length + 1), source, path[0] || '', path.slice(1).join(' › '), hostOf(a), [a.cloneNode(true)]]);
+                        n++;
+                    }
+                    const sub = li.querySelector(':scope > ul, :scope > ol');
+                    if (!sub) return;
+                    const h = li.querySelector(':scope > h3, :scope > h4');
+                    const label = (h ? h.textContent.replace(/\s+/g, ' ').trim() : _sbOwnText(li, null));
+                    const p = label ? path.concat(label) : path;
+                    const r = walk(sub, source, p);
+                    n += r.n;
+                    // A section with no link at all is listed once, not
+                    // with each of its groups.
+                    if (!r.n && label) inner.push({ source, path: p });
+                    else inner.push(...r.empty);
+                });
+                return { n, empty: inner };
+            };
+            searchUls.forEach(ul => {
+                const source = nameOf(ul, 'Search');
+                empty.push(...walk(ul, source, []).empty);
+            });
+            searchGroup.sources = Array.from(new Set(rows.map(r => r[1])));
+            if (!rows.length) groups.splice(groups.indexOf(searchGroup), 1);
+        }
 
         const tags = [];
         if (opts.tags !== false) [['ul.genre-list', 'Genre'], ['ul.tag-list', 'Tag']].forEach(([sel, kind]) => {
@@ -89763,37 +89921,76 @@ a { color: #1565c0; }`;
         const st = GM_addStyle(`
             /* On a release the section sits in the tracklist's container, which
                a wide tracklist makes thousands of px wide: capped to the
-               window like the Cover art section below it. */
-            .mb-sb-inline { margin: 4px 0 10px 1.5em; max-width: calc(100vw - 32px - 1.5em); }
+               window like the Cover art section below it. A size container,
+               so the facts/links split stacks by the section's own width. */
+            .mb-sb-inline { margin: 4px 0 10px 1.5em; max-width: calc(100vw - 32px - 1.5em); container-type: inline-size; }
+            .mb-sb-inline [hidden] { display: none !important; }
             /* Facts cards are as wide as their content, side by side, wrapping:
                a value can hold a line that never breaks (More Flags
                Everywhere wraps each area with its flag in a white-space:
                nowrap !important span), which a fixed grid column cut off.
                Links and tags take a whole row. */
             .mb-sb-cards { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px; }
-            .mb-sb-card { flex: 0 1 auto; min-width: min(220px, 100%); max-width: 100%; box-sizing: border-box; border: 1px solid #e3d2d2; border-radius: 4px; background: #fff; }
+            /* Facts AND links (mockup pick D2): the facts cards in a column on
+               the left, as wide as their content up to 26rem (a value that
+               still does not fit scrolls in its card), the link cards beside
+               them. Below 760px of section width it stacks, facts first. */
+            .mb-sb-cards-split { display: grid; grid-template-columns: fit-content(26rem) minmax(0, 1fr); }
+            .mb-sb-rail, .mb-sb-main { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+            @container (max-width: 760px) {
+                .mb-sb-cards-split { display: flex; flex-direction: column; }
+                .mb-sb-rail { flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
+            }
+            /* The Liner-notes look (approved 2026-10-10): warm paper, hairline
+               rules, small-caps headings in a sans, the body in a serif. */
+            .mb-sb-card { flex: 0 1 auto; min-width: min(220px, 100%); max-width: 100%; box-sizing: border-box; border: 1px solid #d9cfbd; border-radius: 4px; background: #fffdf8; }
             .mb-sb-card-wide { flex-basis: 100%; }
-            .mb-sb-card-head { margin: 0; display: flex; justify-content: space-between; gap: 6px; padding: 4px 8px; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.06em; color: #8b5b5b; background: #fbf1f1; border-bottom: 1px solid #ecdcdc; cursor: pointer; user-select: none; }
+            .mb-sb-card-head { margin: 0; display: flex; justify-content: space-between; gap: 6px; padding: 5px 9px; font: 600 10.5px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.07em; color: #7a6d5c; background: #f3ede1; border-bottom: 1px solid #d9cfbd; border-radius: 4px 4px 0 0; cursor: pointer; user-select: none; }
             .mb-sb-card-head:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 1px; }
-            .mb-sb-card-count { color: #a07a7a; font-weight: normal; }
+            .mb-sb-card-count { color: #7a6d5c; font-weight: normal; font-variant-numeric: tabular-nums; }
             .mb-sb-card-shut > .mb-sb-card-body { display: none; }
-            .mb-sb-card-shut > .mb-sb-card-head { border-bottom: 0; }
+            .mb-sb-card-shut > .mb-sb-card-head { border-bottom: 0; border-radius: 4px; }
             /* A closed card says so: a marker before its title, as
                pseudo-content so the title text stays the name. An open card
                shows none. */
-            .mb-sb-card-shut > .mb-sb-card-head > span:first-child::before { content: '▶'; display: inline-block; margin-right: 5px; font-size: 9px; color: #a07a7a; }
-            dl.mb-sb-card-body { margin: 0; padding: 6px 8px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; }
-            dl.mb-sb-card-body > dt { margin: 0; color: #666; font-weight: normal; }
+            .mb-sb-card-shut > .mb-sb-card-head > span:first-child::before { content: '▶'; display: inline-block; margin-right: 5px; font-size: 9px; color: #7a6d5c; }
+            .mb-sb-card-body { font: 13px/1.5 Georgia, "Times New Roman", serif; color: #2b2622; }
+            .mb-sb-card-body a { color: #2f5f9e; }
+            dl.mb-sb-card-body { margin: 0; padding: 6px 9px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 1px 12px; }
+            dl.mb-sb-card-body > dt { margin: 0; color: #7a6d5c; font-style: italic; font-weight: normal; }
             dl.mb-sb-card-body > dd { margin: 0; min-width: 0; overflow-wrap: anywhere; overflow-x: auto; }
-            .mb-sb-chips { padding: 6px 8px; display: grid; gap: 6px; }
+            .mb-sb-chips { padding: 7px 9px; display: grid; gap: 5px; }
             .mb-sb-chip-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; }
-            .mb-sb-chip-kind { flex: none; width: 76px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #888; }
+            .mb-sb-chip-kind { flex: none; width: 92px; font: 600 9.5px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.07em; color: #7a6d5c; }
             .mb-sb-chip, .mb-sb-pill { display: inline-flex; align-items: baseline; gap: 4px; max-width: 100%; min-width: 0; overflow-wrap: anywhere; border-radius: 10px; padding: 0 8px; }
-            .mb-sb-chip { border: 1px solid #d6dbe6; background: #f6f8fc; }
-            .mb-sb-chip-detail { color: #777; }
+            .mb-sb-chip { border: 1px solid #d9cfbd; background: #fbf8f1; }
+            .mb-sb-chip-detail { color: #7a6d5c; }
+            .mb-sb-chip-kid { font-size: 0.86em; color: #7a6d5c; }
             .mb-sb-pill { border: 1px solid #cfe2c4; background: #eef5ea; }
             .mb-sb-pill-tag { border-color: #ddd; background: #f1f1f1; }
             .mb-sb-pill-votes { color: #6b8f5a; font-size: 10px; }
+            /* The Search card (mockup picks A3 + B1): a scope switch and a
+               find box, then an index that flows into columns. */
+            .mb-sb-search { padding: 7px 9px; }
+            .mb-sb-search-tools { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin-bottom: 8px; }
+            .mb-sb-scope { display: inline-flex; flex-wrap: wrap; gap: 3px; }
+            .mb-sb-scope-btn { font: 600 10px/1.2 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.07em; border: 1px solid #d9cfbd; background: #fffdf8; color: #7a6d5c; padding: 3px 7px; border-radius: 10px; cursor: pointer; }
+            .mb-sb-scope-btn[aria-pressed="true"] { color: #2b2622; background: #f3ede1; border-color: #7a6d5c; }
+            .mb-sb-find { font: 13px Georgia, "Times New Roman", serif; padding: 3px 8px; border: 1px solid #d9cfbd; border-radius: 3px; background: #fff; color: #2b2622; width: 14rem; max-width: 100%; box-sizing: border-box; }
+            .mb-sb-find-n { color: #7a6d5c; font-variant-numeric: tabular-nums; }
+            .mb-sb-ix-part + .mb-sb-ix-part { margin-top: 10px; }
+            .mb-sb-ix-part-h { font: 600 10.5px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.08em; color: #2b2622; border-bottom: 1px solid #d9cfbd; padding-bottom: 2px; margin-bottom: 4px; }
+            .mb-sb-ix { columns: 14.5rem; column-gap: 26px; column-rule: 1px solid #d9cfbd; }
+            .mb-sb-ix-sec { break-inside: avoid; margin: 0 0 7px; }
+            .mb-sb-ix-h { font: 600 9.5px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.07em; color: #7a6d5c; margin-bottom: 1px; }
+            .mb-sb-ix-g { break-inside: avoid; padding-left: 0.9em; text-indent: -0.9em; }
+            .mb-sb-ix-g > em { color: #7a6d5c; }
+            .mb-sb-ix-it:not(.mb-sb-first)::before { content: '·'; color: #7a6d5c; margin: 0 5px; }
+            .mb-sb-ix-vv { font-size: 0.86em; color: #7a6d5c; }
+            .mb-sb-hit { box-shadow: 0 0 0 2px #e9c46a; border-radius: 3px; }
+            .mb-sb-foot { margin-top: 8px; padding-top: 6px; border-top: 1px dotted #d9cfbd; color: #7a6d5c; font-style: italic; font-size: 0.92em; }
+            /* A link's hover card shows its address: long, so it wraps. */
+            .mb-sb-tt-url { font-family: ui-monospace, Consolas, "Liberation Mono", monospace; font-size: 11px; overflow-wrap: anywhere; word-break: break-all; }
             @media (max-width: 600px) {
                 .mb-sb-inline { margin-left: 0; }
                 .mb-sb-card { flex-basis: 100%; }
@@ -89808,6 +90005,8 @@ a { color: #1565c0; }`;
         labels: 'The release\'s labels, each with its catalog number.',
         events: 'The release events: country → release date.',
         links:  'The entity\'s external links, as chips grouped by kind (Official, Social, Streaming, …).',
+        search: 'Searches for this entity on other sites, which another script (jesus2099\'s mb. ALL LINKS) adds to the ' +
+                'sidebar: an index of section, group and sites. The switch shows one of its headings; type in the box to find a site.',
         tags:   'Genres and other tags, as pills with their votes.',
     };
 
@@ -89880,11 +90079,297 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * A link's hover card in a "Sidebar" card (`data-mbtt`): its text, where
+     * it is listed, the site it opens (a search sent through jesus2099's
+     * forwarding page names the site behind it), and its address.
+     * @param {HTMLAnchorElement} a
+     * @param {string} text  The link's full text, as the sidebar shows it.
+     * @param {string} where Where it is listed ("Search in the whitelist › By genre › Rock").
+     * @param {string} verb  "Opens" or "Searches".
+     * @returns {string} HTML for `#mb-stat-tooltip`.
+     */
+    function _sbLinkTip(a, text, where, verb) {
+        const href = a.href || a.getAttribute('href') || '';
+        let site;
+        try { site = new URL(href).hostname.replace(/^www\./, ''); } catch (_) { site = ''; }
+        const fwd = /jesus2099\.gitlab\.io\/forward-request/.test(href);
+        if (fwd) {
+            const m = href.match(/_action=(?:https?:)?\/\/([^/&]+)/);
+            if (m) site = m[1].replace(/^www\./, '');
+        }
+        return `<div class="mb-tt-title">${_mbttEscape(text)}</div>` +
+            (where ? `<div class="mb-tt-dim">${_mbttEscape(where)}</div>` : '') +
+            (site ? `<div class="mb-tt-body">${verb} <b>${_mbttEscape(site)}</b>` +
+                `${fwd ? ' through jesus2099\'s forwarding page (the site only takes a posted form).' : '.'}</div>` : '') +
+            `<div class="mb-tt-foot mb-sb-tt-url">${_mbttEscape(href)}</div>`;
+    }
+
+    /**
+     * One chip of a links card: the link, with its hover card; the item's
+     * own text after it (`row.own`); each link nested in the item as a
+     * small "› en" link (`row.kids`, mockup pick C1). Text another script
+     * puts into the item is not on the chip (`_sbOwnText()`).
+     * @param {Array} row   A `links` row of `_sbCollectGroups()`.
+     * @param {string} where Card › kind, for the hover card.
+     * @returns {HTMLElement}
+     */
+    function _sbLinkChip(row, where) {
+        const chip = document.createElement('span');
+        chip.className = 'mb-sb-chip';
+        const a = row[2][0];
+        a.dataset.mbtt = _sbLinkTip(a, a.textContent.replace(/\s+/g, ' ').trim(), where, 'Opens');
+        chip.appendChild(a);
+        if (row.own) {
+            const d = document.createElement('span');
+            d.className = 'mb-sb-chip-detail';
+            d.textContent = row.own;
+            chip.appendChild(d);
+        }
+        (row.kids || []).forEach(k => {
+            const s = document.createElement('span');
+            s.className = 'mb-sb-chip-kid';
+            s.append('› ');
+            const title = k.a.textContent.replace(/\s+/g, ' ').trim();
+            k.a.dataset.mbtt = _sbLinkTip(k.a, `${k.label}: ${title}`, `${where} › ${a.textContent.trim()}`, 'Opens');
+            k.a.textContent = k.label;
+            s.appendChild(k.a);
+            chip.appendChild(s);
+        });
+        return chip;
+    }
+
+    /** A site variant: "Name (by barcode)" or "Name（品番/POS）" → name, variant ("barcode"). */
+    const _SB_VARIANT_RE = /^(.*?)\s*[(（]\s*(?:by\s+)?([^)）]+?)\s*[)）]\s*$/;
+
+    /**
+     * One search group's links as entries (mockup "merge variants"): links
+     * whose text differs only in a trailing "(…)" are ONE entry, the name
+     * linking to the plain one when there is one, and each variant a small
+     * link after it ("Prog Archives (barcode, name)"). A lone "Name (x)"
+     * stays as written.
+     * @param {HTMLAnchorElement[]} links In the sidebar's order.
+     * @returns {Array<{base: string, text: string, a: ?HTMLAnchorElement, variants: Array<{label: string, text: string, a: HTMLAnchorElement}>}>}
+     */
+    function _sbMergeVariants(links) {
+        const out = [];
+        links.forEach(a => {
+            const text = a.textContent.replace(/\s+/g, ' ').trim();
+            const m = text.match(_SB_VARIANT_RE);
+            const base = m ? m[1] : text;
+            const prev = out.find(o => o.base === base);
+            if (prev && !m && !prev.a) { prev.a = a; prev.text = text; return; }
+            if (prev) { prev.variants.push({ label: m ? m[2] : text, text, a }); return; }
+            out.push(m ? { base, text, a: null, variants: [{ label: m[2], text, a }] } : { base, text, a, variants: [] });
+        });
+        return out.map(o => (!o.a && o.variants.length === 1)
+            ? { base: o.variants[0].text, text: o.variants[0].text, a: o.variants[0].a, variants: [] } : o);
+    }
+
+    /**
+     * The body of the Search card (mockup picks A3 + B1): a switch between
+     * the script's headings (when it has more than one), a find box with
+     * its count, then per heading an index that flows into columns:
+     * section (small caps, with its link count), each group in italics
+     * followed by its sites (`_sbMergeVariants()`), and a foot line naming
+     * the sections and groups with nothing for this kind of entity. Each
+     * link has a hover card (`_sbLinkTip()`). Filtering and the switch are
+     * `_sbSearchApply()`, delegated in `_sbInlineBuild()`.
+     * @param {{rows: Array, empty: Array<{source: string, path: string[]}>, sources: string[]}} g
+     * @returns {HTMLElement} `div.mb-sb-search`.
+     */
+    function _sbSearchBody(g) {
+        const body = document.createElement('div');
+        body.className = 'mb-sb-search';
+        body.dataset.mbSbScope = '';
+        body._mbSbEmpty = g.empty;
+        const tools = document.createElement('div');
+        tools.className = 'mb-sb-search-tools';
+        if (g.sources.length > 1) {
+            const scope = document.createElement('span');
+            scope.className = 'mb-sb-scope';
+            [['', 'All', g.rows.length]].concat(g.sources.map(src =>
+                [src, src.replace(/^Search\s+(?:in\s+)?(?:the\s+)?/i, '').replace(/^./, c => c.toUpperCase()),
+                    g.rows.filter(r => r[1] === src).length])).forEach(([key, label, n]) => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'mb-sb-scope-btn';
+                b.dataset.mbSbScope = key;
+                b.textContent = `${label} ${n}`;
+                scope.appendChild(b);
+            });
+            tools.appendChild(scope);
+        }
+        const find = document.createElement('input');
+        find.type = 'search';
+        find.className = 'mb-sb-find';
+        find.placeholder = 'Find a site…';
+        find.setAttribute('aria-label', 'Find a site in the Search card');
+        const n = document.createElement('span');
+        n.className = 'mb-sb-find-n';
+        tools.append(find, n);
+        body.appendChild(tools);
+
+        g.sources.forEach(src => {
+            const part = document.createElement('div');
+            part.className = 'mb-sb-ix-part';
+            part.dataset.mbSbSource = src;
+            const rows = g.rows.filter(r => r[1] === src);
+            if (g.sources.length > 1) {
+                const h = document.createElement('div');
+                h.className = 'mb-sb-ix-part-h';
+                h.textContent = `${src} · ${rows.length}`;
+                part.appendChild(h);
+            }
+            // Section → group → links, in the sidebar's order.
+            const secs = new Map();
+            rows.forEach(r => {
+                if (!secs.has(r[2])) secs.set(r[2], new Map());
+                const grp = secs.get(r[2]);
+                if (!grp.has(r[3])) grp.set(r[3], []);
+                grp.get(r[3]).push(r[5][0]);
+            });
+            const ix = document.createElement('div');
+            ix.className = 'mb-sb-ix';
+            secs.forEach((grps, secName) => {
+                const sec = document.createElement('div');
+                sec.className = 'mb-sb-ix-sec';
+                if (secName) {
+                    const h = document.createElement('div');
+                    h.className = 'mb-sb-ix-h';
+                    let count = 0;
+                    grps.forEach(l => { count += l.length; });
+                    h.textContent = `${secName} · ${count}`;
+                    sec.appendChild(h);
+                }
+                grps.forEach((links, grpName) => {
+                    const line = document.createElement('div');
+                    line.className = 'mb-sb-ix-g';
+                    if (grpName) {
+                        const em = document.createElement('em');
+                        em.textContent = grpName;
+                        line.append(em, ' ');
+                    }
+                    const where = [src, secName, grpName].filter(Boolean).join(' › ');
+                    _sbMergeVariants(links).forEach((e, i) => {
+                        const it = document.createElement('span');
+                        it.className = 'mb-sb-ix-it' + (i ? '' : ' mb-sb-first');
+                        it.dataset.mbSbFind = [e.base, ...e.variants.map(v => v.label), where].join(' ').toLowerCase();
+                        if (e.a) {
+                            e.a.dataset.mbtt = _sbLinkTip(e.a, e.text, where, 'Searches');
+                            it.appendChild(e.a);
+                        } else {
+                            it.append(e.base);
+                        }
+                        if (e.variants.length) {
+                            const vv = document.createElement('span');
+                            vv.className = 'mb-sb-ix-vv';
+                            vv.append(' (');
+                            e.variants.forEach((v, j) => {
+                                if (j) vv.append(', ');
+                                v.a.dataset.mbtt = _sbLinkTip(v.a, v.text, where, 'Searches');
+                                v.a.textContent = v.label;
+                                vv.appendChild(v.a);
+                            });
+                            vv.append(')');
+                            it.appendChild(vv);
+                        }
+                        line.appendChild(it);
+                    });
+                    sec.appendChild(line);
+                });
+                ix.appendChild(sec);
+            });
+            part.appendChild(ix);
+            body.appendChild(part);
+        });
+        const foot = document.createElement('div');
+        foot.className = 'mb-sb-foot';
+        body.appendChild(foot);
+        _sbSearchApply(body);
+        return body;
+    }
+
+    /**
+     * Applies the Search card's switch (`data-mb-sb-scope`: a heading, or
+     * '' for all) and find box: an entry shows when its text, variants or
+     * place contain the query (`data-mb-sb-find`), and is marked; a group,
+     * section or heading with no entry left goes; the first entry of a line
+     * loses its separator dot. Updates the count and the foot line (the
+     * empty sections and groups of the headings shown).
+     * @param {?HTMLElement} body `div.mb-sb-search`.
+     * @returns {void}
+     */
+    function _sbSearchApply(body) {
+        if (!body) return;
+        const input = body.querySelector('.mb-sb-find');
+        const q = (input ? input.value : '').trim().toLowerCase();
+        const scope = body.dataset.mbSbScope || '';
+        let hits = 0, total = 0;
+        body.querySelectorAll('.mb-sb-ix-part').forEach(part => {
+            if (scope && part.dataset.mbSbSource !== scope) { part.hidden = true; return; }
+            part.querySelectorAll('.mb-sb-ix-it').forEach(it => {
+                total++;
+                const ok = !q || it.dataset.mbSbFind.includes(q);
+                it.hidden = !ok;
+                it.classList.toggle('mb-sb-hit', !!q && ok);
+                if (ok) hits++;
+            });
+            part.querySelectorAll('.mb-sb-ix-g').forEach(line => {
+                const its = Array.from(line.querySelectorAll(':scope > .mb-sb-ix-it'));
+                const first = its.find(it => !it.hidden);
+                its.forEach(it => it.classList.toggle('mb-sb-first', it === first));
+                line.hidden = !first;
+            });
+            part.querySelectorAll('.mb-sb-ix-sec').forEach(sec => { sec.hidden = !sec.querySelector('.mb-sb-ix-g:not([hidden])'); });
+            part.hidden = !part.querySelector('.mb-sb-ix-sec:not([hidden])');
+        });
+        body.querySelectorAll('.mb-sb-scope-btn').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mbSbScope === scope)));
+        const n = body.querySelector('.mb-sb-find-n');
+        if (n) n.textContent = q ? `${hits} of ${total} entries` : `${total} entries`;
+        const foot = body.querySelector('.mb-sb-foot');
+        if (foot) {
+            const names = Array.from(new Set((body._mbSbEmpty || []).filter(e => !scope || e.source === scope)
+                .map(e => e.path.length > 1 ? `${e.path[e.path.length - 1]} (${e.path[0].toLowerCase()})` : e.path[0])));
+            const kind = (location.pathname.split('/')[1] || 'entity').replace(/-/g, ' ');
+            foot.textContent = names.length ? `Nothing for this ${kind} in: ${names.join(', ')}.` : '';
+            foot.hidden = !names.length || !!q;
+        }
+    }
+
+    /**
+     * The cards of the "Sidebar" section, laid out (mockup pick D2): with
+     * facts AND link/tag cards, the facts in a column on the left and the
+     * others beside them (`.mb-sb-cards-split`, stacking below 760px of
+     * section width); with only one of the two, today's wrapping row.
+     * @param {HTMLElement[]} facts  Information, labels, release events.
+     * @param {HTMLElement[]} others Links, search, tags.
+     * @returns {HTMLElement} `div.mb-sb-cards`.
+     */
+    function _sbInlineLayout(facts, others) {
+        const cards = document.createElement('div');
+        cards.className = 'mb-sb-cards';
+        if (!facts.length || !others.length) {
+            cards.append(...facts, ...others);
+            return cards;
+        }
+        cards.classList.add('mb-sb-cards-split');
+        const rail = document.createElement('div');
+        rail.className = 'mb-sb-rail';
+        rail.append(...facts);
+        const main = document.createElement('div');
+        main.className = 'mb-sb-main';
+        main.append(...others);
+        cards.append(rail, main);
+        return cards;
+    }
+
+    /**
      * Builds the read-only "Sidebar" section: `div.mb-sb-inline-wrap`
      * holding an h2 "Sidebar (N)" and `div.mb-sb-inline` with one card per
-     * group. Facts, labels and events are `key → value` lists side by side;
-     * links are chips grouped by kind (`_SB_LINK_KIND_ORDER`), tags pills
-     * with their votes, each across the whole row. Which cards start open is
+     * group, laid out by `_sbInlineLayout()`. Facts, labels and events are
+     * `key → value` lists; links are chips grouped by kind
+     * (`_SB_LINK_KIND_ORDER`, `_sbLinkChip()`), the search lists one index
+     * (`_sbSearchBody()`), tags pills with their votes. Which cards start open is
      * `sa_sidebar_inline_cards_open` (a select): none, only the first
      * information card, or every card. On `release-tracks` the information
      * setting also opens every facts card (Additional details, Labels,
@@ -89903,12 +90388,15 @@ a { color: #1565c0; }`;
             Lib.settings.sa_sidebar_inline_release_facts_open !== false;
         const startsOpen = (g) => openMode === 'all' || g === firstInfo ||
             (releaseFacts && (g.key === 'info' || g.key === 'labels' || g.key === 'events'));
-        const cards = document.createElement('div');
-        cards.className = 'mb-sb-cards';
+        // Facts on the left, links and tags beside them (`_sbInlineLayout()`).
+        const facts = [];
+        const others = [];
         let total = 0;
         groups.forEach(g => {
             total += g.rows.length;
-            if (g.key === 'links') {
+            if (g.key === 'search') {
+                others.push(_sbInlineCard(g.key, g.name, g.rows.length, _sbSearchBody(g), true, startsOpen(g)));
+            } else if (g.key === 'links') {
                 const body = document.createElement('div');
                 body.classList.add('mb-sb-chips');
                 _SB_LINK_KIND_ORDER.forEach(kind => {
@@ -89920,20 +90408,10 @@ a { color: #1565c0; }`;
                     k.className = 'mb-sb-chip-kind';
                     k.textContent = kind;
                     line.appendChild(k);
-                    rows.forEach(r => {
-                        const chip = _sbFillCell(document.createElement('span'), r[2]);
-                        chip.className = 'mb-sb-chip';
-                        if (r[4]) {
-                            const d = document.createElement('span');
-                            d.className = 'mb-sb-chip-detail';
-                            d.textContent = r[4];
-                            chip.appendChild(d);
-                        }
-                        line.appendChild(chip);
-                    });
+                    rows.forEach(r => line.appendChild(_sbLinkChip(r, `${g.name} › ${kind}`)));
                     body.appendChild(line);
                 });
-                cards.appendChild(_sbInlineCard(g.key, g.name, g.rows.length, body, true, startsOpen(g)));
+                others.push(_sbInlineCard(g.key, g.name, g.rows.length, body, true, startsOpen(g)));
             } else if (g.key === 'tags') {
                 const body = document.createElement('div');
                 body.classList.add('mb-sb-chips');
@@ -89951,7 +90429,7 @@ a { color: #1565c0; }`;
                     line.appendChild(pill);
                 });
                 body.appendChild(line);
-                cards.appendChild(_sbInlineCard(g.key, g.name, g.rows.length, body, true, startsOpen(g)));
+                others.push(_sbInlineCard(g.key, g.name, g.rows.length, body, true, startsOpen(g)));
             } else {
                 // info: Property → Value; labels: Label → Catalog number;
                 // events: Country → Date.
@@ -89960,9 +90438,10 @@ a { color: #1565c0; }`;
                     dl.appendChild(_sbFillCell(document.createElement('dt'), r[1]));
                     dl.appendChild(_sbFillCell(document.createElement('dd'), r[2]));
                 });
-                cards.appendChild(_sbInlineCard(g.key, g.name, g.rows.length, dl, false, startsOpen(g)));
+                facts.push(_sbInlineCard(g.key, g.name, g.rows.length, dl, false, startsOpen(g)));
             }
         });
+        const cards = _sbInlineLayout(facts, others);
 
         const wrap = document.createElement('div');
         wrap.className = 'mb-sb-inline-wrap';
@@ -89991,10 +90470,29 @@ a { color: #1565c0; }`;
             else setShut(head.parentElement, shut);
         };
         sec.addEventListener('click', (e) => {
+            // The Search card's switch: one heading, or all.
+            const scope = e.target.closest('.mb-sb-scope-btn');
+            if (scope) {
+                const body = scope.closest('.mb-sb-search');
+                body.dataset.mbSbScope = scope.dataset.mbSbScope;
+                _sbSearchApply(body);
+                return;
+            }
             const head = e.target.closest('.mb-sb-card-head');
             if (head && !e.target.closest('a')) fold(head, e.ctrlKey || e.metaKey);
         });
+        sec.addEventListener('input', (e) => {
+            if (e.target.matches('.mb-sb-find')) _sbSearchApply(e.target.closest('.mb-sb-search'));
+        });
         sec.addEventListener('keydown', (e) => {
+            // Esc in the find box empties it first; an empty box lets Esc go on.
+            if (e.key === 'Escape' && e.target.matches('.mb-sb-find') && e.target.value) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.target.value = '';
+                _sbSearchApply(e.target.closest('.mb-sb-search'));
+                return;
+            }
             const head = e.target.closest('.mb-sb-card-head');
             if (!head || (e.key !== 'Enter' && e.key !== ' ')) return;
             e.preventDefault();

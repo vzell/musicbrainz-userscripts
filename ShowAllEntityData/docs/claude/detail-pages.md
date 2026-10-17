@@ -473,6 +473,15 @@ floating hover tooltip.
     artist or label target it is MusicBrainz's sort name and is labelled
     "Sort name". A title that only repeats the link's text (MusicBrainz's on
     a recording with a disambiguation, debug/expand.html) gets NO box.
+  - last, the link's own ready-made card: a `data-mbtt` ON THE LINK (the
+    Sidebar cards' links, `_sbLinkTip()`, 2026-10-17), its HTML as is
+    (`.mb-dp-note-tip`). Before, that card and the preview showed side by
+    side (vzell's browser, "Tougher Than the Rest"). Only the link itself:
+    a `data-mbtt` on an ancestor is no note. Nothing is parked for it:
+    `#mb-stat-tooltip` gives way (below) and does not show it again over the
+    preview when the pointer comes back onto the link (the mouseover branch
+    for `data-mbtt` checks `_dpPeekShown() && _dpPeek.link === el` and keeps
+    the link as its target, so `resume()` can show it afterwards).
   - **Every** title of that chain is parked while the card is due or shows
     (`_dpStashTitles()`, from `_dpSchedulePeek()` and `_dpShowPeek()`), and
     `_dpRestoreTitles()` gives them back by sweeping
@@ -483,10 +492,13 @@ floating hover tooltip.
     `#mb-stat-tooltip` (an empty `title`) is left to that engine.
   - **`#mb-stat-tooltip` gives way** through `_statTipApi` (declared beside
     `_dpPeek`, assigned in `_initStatTooltip()`): `_dpShowPeek()` calls
-    `yieldTo(el)`, which hides an own card whose element contains the link
-    (stash kept, hover not dismissed); `_dpHidePeek()` calls `resume()`,
-    which shows it again after the usual delay if the pointer is still on
-    its element and the hover was not dismissed by a mousedown. `_showOwn()`
+    `yieldTo(el)`, which hides an own card whose element contains the link,
+    or the link's own `data-mbtt` card (stash kept, hover not dismissed);
+    `_dpHidePeek()` calls `resume()`, which shows an own card again after the
+    usual delay (a link's `data-mbtt` card at once, as it first showed) if
+    the pointer is still on its element and the hover was not dismissed by a
+    mousedown. Pinned for `data-mbtt` by `sidebar-search-card.spec.js`
+    "HOVER STACK" (three mutations in `sidebar-search-card.json`). `_showOwn()`
     also returns while a card is DUE for a link inside its element. That
     guard only removes a moment in between, since both timers use
     `sa_rich_tooltip_delay_ms`, so its mutation is `"expect": "pass"`.
