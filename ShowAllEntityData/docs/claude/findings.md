@@ -32,6 +32,7 @@ project skill `add-finding` (`.claude/skills/add-finding/SKILL.md`).
 | `cols(name, plan)`                     | Which columns are tested. `'*'` = every cell of a row that passes `rowGate()`.                                                                                                           |
 | `test(cell, row, plan)`                | The detector.                                                                                                                                                                            |
 | `detail(cell, row, plan)`              | Optional, cell scope: this cell's own text, appended to its tooltip line after the label (`rec-event-mismatch`/`rec-place-mismatch` name both values). Same source-row rule as `test()`. |
+| `compare(cell, row, plan)`             | Optional, cell scope: `{la, lb, a, b}` for the rich card, which shows the two values one under the other, the difference marked (`_cmpHtml()`).                                          |
 | `tint(cell)`                           | Whether this finding paints. `false` for the families that already had CSS (length, video, no-work, live titles); the rest read their `sa_findings_tint_*` setting.                      |
 
 **`test()` reads SOURCE-row data, never post-render decoration.** The stamp
@@ -101,6 +102,21 @@ the page), and pass 2 writes `data-mb-main-event` before the
 findings, because `rg-title-mismatch` reads it. `_forEachStampRow()` reaches
 a live clone AND its master, so anything that COUNTS rows there must dedupe
 by `data-mb-row-idx` (`_computeMainEventCtx()` once counted 76 tracks for 38).
+
+**`compare` rides beside `detail`, never instead of it.** The plain title
+keeps `detail`'s prose (the native fallback, and what specs and the disk file
+read); `_writeFindingAttrs()` writes each finding's `compare` value into
+`data-mb-tip-cmp` (`_setTipCmp()`), tagged with the tip line it belongs to
+and the label as its `head`, so the "Liner notes" card shows the label and
+the two values one under the other instead of the prose. The attribute also
+records the text it was built for: a card shows it only while the title is
+still that text (`_cmpTipData()`), so a tip rewritten by anything else never
+pairs with an old comparison. `title-mismatch` marks its entry `origin`: under
+a preview card the link's own note box compares the same two names, so the
+cell's box in the stack gives the label alone (`_dpCollectNotes()`,
+`noOrigin`). The diff and its look: mockup
+https://claude.ai/artifact/7Nbqih988jfzpGxbiQTX75 (approved 2026-10-17,
+variant A); mutation list `scripts/mutations/tooltip-diff.json`.
 
 Attributes only, so none of the "writing cell text after the render" duties
 apply (docs/claude/filter-and-cache-invariants.md) — except the 📊 cache,

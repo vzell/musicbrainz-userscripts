@@ -10933,7 +10933,7 @@
         // cover's alt text keeps the site's.
         const shownTitle = _mbSiteTitleText(title);
         linkCell(docContext.createTextNode(shownTitle));
-        if (shownTitle !== title) _setTip(tr.lastElementChild, `As written on the site:\n${title}`);
+        if (shownTitle !== title) _mbSiteTitleTip(tr.lastElementChild, title, shownTitle);
 
         const notes = Array.from(body.querySelectorAll('.colored-text')).map(el => el.textContent.trim());
         if (kind === 'bootlegs') {
@@ -13793,7 +13793,24 @@
     function _mbSetSiteTitle(el, text, tipEl = el) {
         const shown = _mbSiteTitleText(text);
         el.textContent = shown;
-        if (shown !== text) _setTip(tipEl, `As written on the site:\n${text}`);
+        if (shown !== text) _mbSiteTitleTip(tipEl, text, shown);
+    }
+
+    /**
+     * The tooltip of a site title shown in MusicBrainz style: "As written on
+     * the site:" and the site's text, and for the rich card the site's text
+     * over the shown one with what changed marked (`_cmpHtml()`).
+     *
+     * @param {Element} el       The element that carries the tooltip.
+     * @param {string}  original The title as the site writes it.
+     * @param {string}  shown    The title as the page shows it.
+     * @returns {void}
+     */
+    function _mbSiteTitleTip(el, original, shown) {
+        _setTipCmp(el, `As written on the site:\n${original}`, [{
+            at: 0, span: 2, head: 'As written on the site',
+            la: 'Site', lb: 'Shown', sa: 'site', sb: 'shown title', a: original, b: shown,
+        }]);
     }
 
     /**
@@ -13839,7 +13856,10 @@
             }
             if (data !== n.data) n.data = data;
         });
-        if (changed) _setTip(el, `As written on the site:\n${before.replace(/\s+/g, ' ').trim()}`);
+        if (changed) {
+            const flat = t => t.replace(/\s+/g, ' ').trim();
+            _mbSiteTitleTip(el, flat(before), flat(nodes.map(n => n.data).join('')));
+        }
         return changed;
     }
 
@@ -16479,14 +16499,29 @@
     }
 
     /**
+     * The comparison a track/recording note makes (`_cmpHtml()`): the track's
+     * name over the recording's.
+     *
+     * @param {{track: string, rec: string}} n
+     * @returns {{a: string, b: string, la: string, lb: string, sb: string}}
+     */
+    function _dpOriginCmp(n) {
+        return { la: 'Track name', lb: 'Recording', sb: 'recording name', a: n.track, b: n.rec };
+    }
+
+    /**
      * The box stacked above the card: the track's name, then the
-     * recording's, each labelled.
+     * recording's, each labelled, with what differs marked (`_cmpHtml()`,
+     * mockup https://claude.ai/artifact/7Nbqih988jfzpGxbiQTX75). Two equal
+     * names (a "≠" note that names none) keep the plain list.
      *
      * @param {{track: string, rec: string, text: string}} n
      * @returns {string}
      */
     function _dpOriginHtml(n) {
         if (n.text) return `<div class="mb-tt-body">${n.text.split('\n').map(_mbttEscape).join('<br>')}</div>`;
+        const cmp = _cmpHtml(_dpOriginCmp(n));
+        if (cmp) return cmp;
         return '<dl class="mb-dp-origin-kv">' +
             `<dt>Track name</dt><dd class="mb-dp-origin-track">${_mbttEscape(n.track)}</dd>` +
             `<dt>≠ Recording</dt><dd>${_mbttEscape(n.rec)}</dd></dl>`;
@@ -16513,13 +16548,16 @@
         const squash = s => String(s).replace(/\s+/g, ' ').trim().toLowerCase();
         const own = t.el;
         const sortName = t.src && t.src.id === 'mb-entity' && (t.type === 'artist' || t.type === 'label');
+        // The link's note box compares the two names; the cell's finding box
+        // then gives the label alone, not the same comparison again.
+        const hasOrigin = !!_dpOriginNote(own);
         return _dpTitledChain(own).reverse().map((n) => {
             const text = _dpTitleText(n).trim();
             if (n === own) {
                 const note = _dpOriginNote(n);
                 if (note) return { kind: 'origin', html: _dpOriginHtml(note) };
             }
-            if (n.hasAttribute('data-mb-tip')) return { kind: 'tip', html: _tipTextToHtml(text) };
+            if (n.hasAttribute('data-mb-tip')) return { kind: 'tip', html: _tipTextToHtml(text, n, { noOrigin: hasOrigin }) };
             if (n === own && squash(text) === squash(n.textContent)) return null;
             if (n === own && sortName) {
                 return { kind: 'title', html: `<dl class="mb-dp-origin-kv"><dt>Sort name</dt><dd>${_mbttEscape(text)}</dd></dl>` };
@@ -18291,7 +18329,13 @@
             const note = _dpOriginNote(from.el);
             badge.style.display = note ? '' : 'none';
             badge.textContent = note ? _dpOriginBadgeText(note) : '';
-            if (note) _setTip(badge, note.text || `Opened from a track named “${note.track}”; its recording is named “${note.rec}”.`);
+            if (note) {
+                // The rich card puts the two names one under the other, the
+                // difference marked (`_dpOriginCmp()`); the sentence stays the
+                // native fallback.
+                _setTipCmp(badge, note.text || `Opened from a track named “${note.track}”; its recording is named “${note.rec}”.`,
+                    note.text ? null : [{ ..._dpOriginCmp(note), at: 0, head: 'Opened from a track whose name differs from its recording' }]);
+            }
         }
         // A drilled target's element is a link in the window, not a row of
         // the page: the page's row keeps its mark.
@@ -32118,7 +32162,12 @@
         [[trackTd, 'track'], [recTd, 'recording']].forEach(([td, which]) => {
             if (!td) return;
             td.dataset.mbLenFlag = flag.kind;
-            _setTip(td, _lengthMismatchTooltip(flag, which, trackMs, recMs));
+            // The rich card shows the two lengths one under the other
+            // (`_cmpLenCardHtml()`); the sentence stays the native fallback.
+            _setTipCmp(td, _lengthMismatchTooltip(flag, which, trackMs, recMs), [{
+                kind: 'len', level: flag.kind, which, trackMs, recMs,
+                thresholdMs: flag.thresholdMs, severeMs: flag.severeMs,
+            }]);
             td.dataset.mbColTip   = '1';
         });
         return flag.kind;
@@ -38565,6 +38614,22 @@
     }
 
     /**
+     * The track/recording name note (`_dpOriginNote()`) of a Title cell's
+     * flagged link, when it names both: the `title-mismatch` finding's
+     * detail and comparison.
+     *
+     * @param {Element} cell - A `<td>` in the 'Title' column.
+     * @returns {?{track: string, rec: string, text: string}}
+     */
+    function _findingTitleNote(cell) {
+        for (const a of cell.querySelectorAll('a[title], a[data-mb-dp-saved-title]')) {
+            const n = _dpOriginNote(a);
+            if (n && !n.text) return n;
+        }
+        return null;
+    }
+
+    /**
      * Finds every native MusicBrainz "name variation" marker within (or AS)
      * a table cell — an element whose own class ends in `-variation`,
      * meaning "this credited/displayed name differs from the entity's
@@ -39987,6 +40052,49 @@
     }
 
     /**
+     * The two dates `_findingRecDate()` compares: the "Recording date" cell's
+     * and the one in the row's comment (`''` when either has none).
+     *
+     * @param {HTMLTableCellElement} cell
+     * @param {HTMLTableRowElement} row
+     * @param {{recPlainIdx: number}} plan
+     * @returns {?{rec: string, comment: string}}
+     */
+    function _findingRecDateValues(cell, row, plan) {
+        const src = row.cells[plan.recPlainIdx];
+        const rc = src ? _findCellRecordingComment(src, true) : null;
+        return rc ? { rec: cell.textContent.trim(), comment: rc.date || '' } : null;
+    }
+
+    /**
+     * The `rec-date-*` findings' detail: both dates, for the plain tooltip.
+     *
+     * @param {HTMLTableCellElement} cell
+     * @param {HTMLTableRowElement} row
+     * @param {{recPlainIdx: number}} plan
+     * @returns {?string}
+     */
+    function _findingRecDateDetail(cell, row, plan) {
+        const v = _findingRecDateValues(cell, row, plan);
+        const q = d => (d ? `"${d}"` : 'none');
+        return v ? `recording date ${q(v.rec)}, comment date ${q(v.comment)}` : null;
+    }
+
+    /**
+     * The `rec-date-*` findings' comparison (`_cmpHtml()`): the Recording
+     * date over the comment's date.
+     *
+     * @param {HTMLTableCellElement} cell
+     * @param {HTMLTableRowElement} row
+     * @param {{recPlainIdx: number}} plan
+     * @returns {?object}
+     */
+    function _findingRecDateCmp(cell, row, plan) {
+        const v = _findingRecDateValues(cell, row, plan);
+        return v ? { la: 'Recording date', lb: 'Comment date', a: v.rec, b: v.comment } : null;
+    }
+
+    /**
      * The event a live recording comment names, in the form an event name
      * takes: the comment without its "<type>, " prefix and "; info" tail
      * ("live, 1996‐04‐19: Saal 1, ICC Berlin, Berlin, Germany" →
@@ -40452,6 +40560,8 @@
             tip: 'Release tracklist: the "Recording date" and the date in the recording\'s comment ("live, 2004‐10‐02: …") agree as far as they go, but one is less precise (2004-10 vs 2004-10-02), or only one of them has a date.',
             cols: (name, plan) => name === 'Recording date' && plan.recPlainIdx >= 0,
             test: (cell, row, plan) => _findingRecDate(cell, row, plan) === 'imprecise',
+            detail: (cell, row, plan) => _findingRecDateDetail(cell, row, plan),
+            compare: (cell, row, plan) => _findingRecDateCmp(cell, row, plan),
             tint: _findingTintSetting('sa_findings_tint_rec_date'),
         },
         {
@@ -40463,6 +40573,17 @@
             detail: (cell, row, plan) => {
                 const m = _findingRgTitleMismatch(cell, row, plan);
                 return m ? `release group "${m.expected}", here "${m.found.join('", "')}"` : null;
+            },
+            compare: (cell, row, plan) => {
+                const m = _findingRgTitleMismatch(cell, row, plan);
+                if (!m) return null;
+                const name = plan.nameOf(cell.cellIndex);
+                const place = name === 'Recorded at place';
+                return {
+                    la: place ? 'Title venue' : 'Release group', sa: place ? 'release group title' : 'release group',
+                    lb: place ? 'Place' : name === 'Recorded at event' ? 'Event' : 'Comment',
+                    a: m.expected, b: _cmpClosest(m.expected, m.found),
+                };
             },
             tint: _findingTintSetting('sa_findings_tint_rg_title'),
         },
@@ -40511,6 +40632,16 @@
             tip: 'The track title and its recording title differ (the "≠" marker of jesus2099\'s "mb. SUPER MIND CONTROL Ⅱ X TURBO").',
             cols: name => name === 'Title',
             test: cell => _titleHasRecNameMismatch(cell),
+            detail: (cell) => {
+                const n = _findingTitleNote(cell);
+                return n ? `track "${n.track}", recording "${n.rec}"` : null;
+            },
+            // `origin`: the link's own note box shows this comparison when a
+            // preview card is up, so the cell's box there gives only the label.
+            compare: (cell) => {
+                const n = _findingTitleNote(cell);
+                return n ? { ..._dpOriginCmp(n), origin: true } : null;
+            },
             tint: _findingTintSetting('sa_findings_tint_title_mismatch'),
         },
         {
@@ -40671,6 +40802,8 @@
             tip: 'Release tracklist: the "Recording date" is a different date from the one in the recording\'s comment ("live, 2004‐10‐02: …").',
             cols: (name, plan) => name === 'Recording date' && plan.recPlainIdx >= 0,
             test: (cell, row, plan) => _findingRecDate(cell, row, plan) === 'mismatch',
+            detail: (cell, row, plan) => _findingRecDateDetail(cell, row, plan),
+            compare: (cell, row, plan) => _findingRecDateCmp(cell, row, plan),
             tint: _findingTintSetting('sa_findings_tint_rec_date'),
         },
         {
@@ -40683,6 +40816,10 @@
                 const m = _findingRecLinkMismatch(cell, row, plan, 'event');
                 return m ? `comment "${m.comment}", event "${m.linked.join('", "')}"` : null;
             },
+            compare: (cell, row, plan) => {
+                const m = _findingRecLinkMismatch(cell, row, plan, 'event');
+                return m ? { la: 'Comment', lb: 'Event', a: m.comment, b: _cmpClosest(m.comment, m.linked) } : null;
+            },
             tint: _findingTintSetting('sa_findings_tint_rec_event'),
         },
         {
@@ -40694,6 +40831,10 @@
             detail: (cell, row, plan) => {
                 const m = _findingRecLinkMismatch(cell, row, plan, 'place');
                 return m ? `comment venue "${m.comment}", place "${m.linked.join('", "')}"` : null;
+            },
+            compare: (cell, row, plan) => {
+                const m = _findingRecLinkMismatch(cell, row, plan, 'place');
+                return m ? { la: 'Comment venue', lb: 'Place', a: m.comment, b: _cmpClosest(m.comment, m.linked) } : null;
             },
             tint: _findingTintSetting('sa_findings_tint_rec_event'),
         },
@@ -40806,13 +40947,18 @@
      *   - `title`: the findings' labels, only on a cell with no tooltip of
      *     its own and no family flag (`data-mb-finding-tip` marks one this
      *     function wrote), each followed by the finding's `detail` for this
-     *     cell when it has one.
+     *     cell when it has one;
+     *   - `data-mb-tip-cmp`: with that title, the findings' `compare` values,
+     *     so the rich card shows the label and the two values one under the
+     *     other instead of the detail prose (`_setTipCmp()`).
      *
      * @param {HTMLTableCellElement} td
      * @param {string[]} ids
      * @param {Object<string, string>} [details] - Per-cell detail text by id.
+     * @param {Object<string, object>} [compares] - Per-cell comparison by id
+     *   (`_cmpHtml()`'s argument).
      */
-    function _writeFindingAttrs(td, ids, details = {}) {
+    function _writeFindingAttrs(td, ids, details = {}, compares = {}) {
         if (!ids.length) {
             if (td.dataset.mbFindings === undefined) return;
             delete td.dataset.mbFindings;
@@ -40821,6 +40967,7 @@
             if (td.dataset.mbFindingTip) {
                 td.removeAttribute('title');
                 td.removeAttribute('data-mb-dp-saved-title'); // parked by a preview card
+                td.removeAttribute('data-mb-tip-cmp');
                 delete td.dataset.mbFindingTip;
             }
             return;
@@ -40841,10 +40988,14 @@
         // A title a preview card parked (`_dpStashTitles()`) is still the
         // cell's title.
         if (!familyPainted && (!(td.hasAttribute('title') || td.hasAttribute('data-mb-dp-saved-title')) || td.dataset.mbFindingTip)) {
-            _setTip(td, ids.map(id => {
+            const head = f => `${f.level === 'error' ? '❌' : '⚠️'} ${f.label}`;
+            const cmp = [];
+            const text = ids.map((id, at) => {
                 const f = _FINDING_BY_ID.get(id);
-                return `${f.level === 'error' ? '❌' : '⚠️'} ${f.label}${details[id] ? `: ${details[id]}` : ''}`;
-            }).join('\n'));
+                if (compares[id]) cmp.push({ ...compares[id], at, head: head(f) });
+                return `${head(f)}${details[id] ? `: ${details[id]}` : ''}`;
+            }).join('\n');
+            _setTipCmp(td, text, cmp);
             td.dataset.mbFindingTip = '1';
         }
     }
@@ -40860,14 +41011,17 @@
         Array.from(row.cells).forEach((td, i) => {
             const ids = [];
             const details = {};
+            const compares = {};
             (plan.byCol.get(i) || []).forEach(f => {
                 if (!f.test(td, row, plan)) return;
                 ids.push(f.id);
                 const d = f.detail && f.detail(td, row, plan);
                 if (d) details[f.id] = d;
+                const c = f.compare && f.compare(td, row, plan);
+                if (c) compares[f.id] = c;
             });
             rowWide.forEach(f => { if (f.test(td, row, plan)) ids.push(f.id); });
-            _writeFindingAttrs(td, ids, details);
+            _writeFindingAttrs(td, ids, details, compares);
         });
     }
 
@@ -58903,7 +59057,8 @@ a { color: #1565c0; }`;
      * this is ever invoked on them.
      *
      * A release tracklist's LENGTH mismatch marking adds `lenFlag` (and
-     * `lenTip`, its tooltip). It lives ON the `<td>` as `data-mb-len-flag` —
+     * `lenTip`, its tooltip, and `lenCmp`, the rich card's two lengths from
+     * `data-mb-tip-cmp`). It lives ON the `<td>` as `data-mb-len-flag` —
      * attributes only, by design (see `_applyLengthMismatchFlag()`) — so
      * `html` alone cannot carry it, and a reopened tracklist used to come back
      * with every flag, tint and LENGTH button gone. The tooltip is taken only
@@ -58922,7 +59077,7 @@ a { color: #1565c0; }`;
      *
      * @param {HTMLTableCellElement} cell
      * @returns {{html: string, colSpan: number, rowSpan: number, mbid?: (string|null), relDone?: boolean,
-     *            lenFlag?: string, lenTip?: string, videoFlag?: string, videoTip?: string,
+     *            lenFlag?: string, lenTip?: string, lenCmp?: Array<object>, videoFlag?: string, videoTip?: string,
      *            workFlag?: string}}
      */
     function _buildDiskCellData(cell) {
@@ -58937,7 +59092,11 @@ a { color: #1565c0; }`;
         }
         if (cell.dataset.mbLenFlag) {
             data.lenFlag = cell.dataset.mbLenFlag;
-            if (cell.dataset.mbColTip === '1' && cell.title) data.lenTip = cell.title;
+            if (cell.dataset.mbColTip === '1' && cell.title) {
+                data.lenTip = cell.title;
+                const cmp = _cmpTipData(cell, cell.title);
+                if (cmp.length) data.lenCmp = cmp;
+            }
         }
         if (cell.dataset.mbVideoFlag) {
             data.videoFlag = cell.dataset.mbVideoFlag;
@@ -59026,7 +59185,9 @@ a { color: #1565c0; }`;
      *
      * A saved file is user-supplied data, so only the two kinds
      * `_lengthMismatchFlag()` produces — `warn`, `severe` — are ever written
-     * into the DOM, and the tooltip only when it is a string.
+     * into the DOM, and the tooltip only when it is a string. Its rich card's
+     * two lengths (`lenCmp`, a file saved before them has none: the card is
+     * then the sentence) are filtered by `_cmpTipData()` on every read.
      *
      * Restores the flag as it was SAVED; it does not re-derive it under the
      * current threshold. It cannot: the millisecond values the comparison ran
@@ -59050,7 +59211,9 @@ a { color: #1565c0; }`;
         if (Lib.settings.sa_enable_release_tracks_length_mismatch_flag === false) return;
         td.dataset.mbLenFlag = cellData.lenFlag;
         if (typeof cellData.lenTip === 'string' && cellData.lenTip) {
-            _setTip(td, cellData.lenTip);
+            // `lenCmp` is file data too: `_cmpTipData()` keeps only entries
+            // of the known shape when a card reads it.
+            _setTipCmp(td, cellData.lenTip, Array.isArray(cellData.lenCmp) ? cellData.lenCmp : null);
             td.dataset.mbColTip = '1';
         }
     }
@@ -63633,6 +63796,29 @@ a { color: #1565c0; }`;
         .mb-tt-liner .mb-tt-rule { height: 0; border-top: 1px solid #d9cfbd; margin: 5px 0; }
         .mb-tt-liner .mb-tt-pill { display: inline-block; background: #efe6d4; color: #4a3f33; border: 1px solid #d9cfbd; border-radius: 3px; padding: 0 5px; font-size: 0.88em; font-weight: 700; line-height: 1.45; white-space: nowrap; }
         .mb-tt-liner .mb-tt-alert { color: #9b2218; font-weight: 700; }
+        /* Comparison block (_cmpHtml, _cmpLenCardHtml): two values one under
+           the other, only what differs marked, in both rows (neither side is
+           the wrong one). Mockup approved 2026-10-17, variant A:
+           https://claude.ai/artifact/7Nbqih988jfzpGxbiQTX75 */
+        .mb-tt-liner .mb-tt-cmp { margin-top: 5px; display: grid; gap: 4px; }
+        .mb-tt-liner .mb-tt-cmp:first-child { margin-top: 0; }
+        .mb-tt-liner .mb-tt-cmp-grid { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 1px 10px; align-items: baseline; }
+        .mb-tt-liner .mb-tt-cmp-len { display: grid; grid-template-columns: max-content max-content minmax(0, 1fr); gap: 1px 12px; align-items: baseline; }
+        .mb-tt-liner .mb-tt-cmp-lbl { font: 600 10.5px/1.6 ui-monospace, Consolas, monospace; letter-spacing: 0.06em; text-transform: uppercase; color: #8b1a1a; white-space: nowrap; }
+        .mb-tt-liner .mb-tt-cmp-len .mb-tt-cmp-lbl { color: #7a6d5c; }
+        .mb-tt-liner .mb-tt-cmp-val { overflow-wrap: anywhere; min-width: 0; }
+        .mb-tt-liner .mb-tt-cmp-own { font-weight: 700; }
+        .mb-tt-liner .mb-tt-cmp-t { font-family: ui-monospace, Consolas, monospace; font-variant-numeric: tabular-nums; text-align: right; white-space: pre; }
+        .mb-tt-liner .mb-tt-cmp-d { background: #f2dc9b; color: inherit; border-radius: 2px; box-shadow: inset 0 -2px 0 #b8860b; padding: 0 1px; }
+        .mb-tt-liner .mb-tt-cmp-t .mb-tt-cmp-d { padding: 0; }
+        .mb-tt-liner .mb-tt-cmp-ws { color: #9a6a00; font-weight: 400; }
+        .mb-tt-liner .mb-tt-cmp-none { font-style: italic; font-weight: 400; color: #7a6d5c; }
+        .mb-tt-liner .mb-tt-cmp-sum { font: 12px/1.45 system-ui, Arial, sans-serif; color: #7a6d5c; }
+        .mb-tt-liner .mb-tt-cmp-key { font-family: ui-monospace, Consolas, monospace; color: #2b2622; background: #ffffff; border: 1px solid #d9cfbd; border-radius: 2px; padding: 0 3px; }
+        .mb-tt-liner .mb-tt-cmp-u { font-family: ui-monospace, Consolas, monospace; font-size: 0.9em; }
+        .mb-tt-liner .mb-tt-cmp-pill { display: inline-block; font: 600 11px/1.5 system-ui, Arial, sans-serif; letter-spacing: 0.04em; padding: 0 7px; border-radius: 3px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .mb-tt-liner .mb-tt-cmp-pill-warn { background: #f6e7bd; color: #6e4c00; }
+        .mb-tt-liner .mb-tt-cmp-pill-severe { background: #f3d1cb; color: #9b2218; }
         /* Annotation prose in the artwork card (_artTooltipAnnotation): the
            cell markup, kept compact. Height is capped per hover by
            _fitArtTooltipToViewport, which also reveals the "more" foot. */
@@ -69342,8 +69528,505 @@ a { color: #1565c0; }`;
         el.dataset.mbTipSaved = text;
         if (el.dataset.mbTipAria !== undefined) el.setAttribute('aria-description', text);
         const card = el.matches(':hover') ? document.getElementById('mb-stat-tooltip') : null;
-        if (card && card.style.display === 'block') card.innerHTML = _tipTextToHtml(text);
+        if (card && card.style.display === 'block') card.innerHTML = _tipTextToHtml(text, el);
         return text;
+    }
+
+    // ── Comparison tooltips: the diff view (org/TODO.org "the rich tooltips
+    // should show track/recording differences below each other") ─────────────
+    //
+    // Every tooltip that compares two values (the track/recording name note,
+    // the findings that name two values, the length mismatch, a foreign site's
+    // original title) shows them one under the other and marks only what
+    // differs. Mockup approved 2026-10-17 (variant A, "two rows, marked"):
+    // https://claude.ai/artifact/7Nbqih988jfzpGxbiQTX75
+    //
+    // The diff is a longest-common-subsequence over word/space/punctuation
+    // tokens, refined letter by letter inside a replaced pair of similar words
+    // (so "with"/"With" marks only the "w"), with diff-match-patch's
+    // "semantic cleanup" idea: an unchanged run of spaces and punctuation, or
+    // a single letter, between two changes joins them, so marks do not break
+    // up. Below 40 % shared text nothing is marked. Titles are short, so the
+    // O(n·m) table is instant; `_CMP_MAX_CELLS` caps it for anything that is
+    // not.
+    //
+    // The comparison travels as `data-mb-tip-cmp` beside the element's plain
+    // `title` (which stays the native fallback): an attribute, so it survives
+    // `cloneNode(true)`. It records the text it was built for, and a card
+    // shows it only while the title is still that text, so a later `_setTip()`
+    // from anywhere else can never pair a new tip with an old comparison.
+
+    /** Words, runs of white space, and single other characters. */
+    const _CMP_TOKEN_RE = /\s+|[\p{L}\p{N}]+|[^\s\p{L}\p{N}]/gu;
+
+    /** Above this many table cells (tokens × tokens) the two rows go unmarked. */
+    const _CMP_MAX_CELLS = 250000;
+
+    /**
+     * The edit script between two token arrays, by longest common
+     * subsequence: `['=', t]`, `['-', t]` (only in A) or `['+', t]` (only in
+     * B), in order.
+     *
+     * @param {string[]} A
+     * @param {string[]} B
+     * @returns {Array<[string, string]>}
+     */
+    function _cmpLcsOps(A, B) {
+        const n = A.length, m = B.length;
+        const L = [];
+        for (let i = 0; i <= n; i++) L.push(new Uint16Array(m + 1));
+        for (let i = n - 1; i >= 0; i--) {
+            for (let j = m - 1; j >= 0; j--) {
+                L[i][j] = A[i] === B[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+            }
+        }
+        const ops = [];
+        let i = 0, j = 0;
+        while (i < n && j < m) {
+            if (A[i] === B[j]) { ops.push(['=', A[i]]); i++; j++; }
+            else if (L[i + 1][j] >= L[i][j + 1]) { ops.push(['-', A[i]]); i++; }
+            else { ops.push(['+', B[j]]); j++; }
+        }
+        while (i < n) ops.push(['-', A[i++]]);
+        while (j < m) ops.push(['+', B[j++]]);
+        return ops;
+    }
+
+    /**
+     * Folds an edit script into blocks: `{eq}` for shared text, `{del, ins}`
+     * for a change (either side may be empty).
+     *
+     * @param {Array<[string, string]>} ops
+     * @returns {Array<{eq?: string, del?: string, ins?: string}>}
+     */
+    function _cmpBlocks(ops) {
+        const out = [];
+        for (const [o, t] of ops) {
+            const last = out[out.length - 1];
+            if (o === '=') {
+                if (last && last.eq !== undefined) last.eq += t;
+                else out.push({ eq: t });
+                continue;
+            }
+            let blk = last && last.eq === undefined ? last : null;
+            if (!blk) { blk = { del: '', ins: '' }; out.push(blk); }
+            if (o === '-') blk.del += t; else blk.ins += t;
+        }
+        return out;
+    }
+
+    /**
+     * Whether two replaced runs are close enough to compare letter by letter:
+     * the same letters in another case, or (up to 60 characters each) at least
+     * half their letters shared.
+     *
+     * @param {string} a
+     * @param {string} b
+     * @returns {boolean}
+     */
+    function _cmpNear(a, b) {
+        if (!a || !b) return false;
+        if (a.toLowerCase() === b.toLowerCase()) return true;
+        const ca = Array.from(a), cb = Array.from(b);
+        if (ca.length > 60 || cb.length > 60) return false;
+        const same = _cmpBlocks(_cmpLcsOps(ca, cb)).reduce((n, x) => n + (x.eq ? Array.from(x.eq).length : 0), 0);
+        return 2 * same / (ca.length + cb.length) >= 0.5;
+    }
+
+    /**
+     * Letter-level blocks of two similar runs. One unchanged letter between
+     * two changes joins them ("ab" → "xy" stays one mark, not "a…b").
+     *
+     * @param {string} a
+     * @param {string} b
+     * @returns {Array<{eq?: string, del?: string, ins?: string}>}
+     */
+    function _cmpCharBlocks(a, b) {
+        const blocks = _cmpBlocks(_cmpLcsOps(Array.from(a), Array.from(b)));
+        const out = [];
+        for (let k = 0; k < blocks.length; k++) {
+            const x = blocks[k];
+            const prev = out[out.length - 1];
+            const next = blocks[k + 1];
+            if (x.eq !== undefined && prev && prev.eq === undefined && next && next.eq === undefined &&
+                Array.from(x.eq).length <= 1 && /\S/.test(x.eq)) {
+                prev.del += x.eq;
+                prev.ins += x.eq;
+                continue;
+            }
+            if (x.eq === undefined && prev && prev.eq === undefined) {
+                prev.del += x.del;
+                prev.ins += x.ins;
+                continue;
+            }
+            out.push({ ...x });
+        }
+        return out;
+    }
+
+    /**
+     * Token-level cleanup: shared text made only of spaces and punctuation
+     * between two changes joins them, so a reordered "Saal 1, ICC Berlin" is
+     * one mark, not four.
+     *
+     * @param {Array<{eq?: string, del?: string, ins?: string}>} blocks
+     * @returns {Array<{eq?: string, del?: string, ins?: string}>}
+     */
+    function _cmpFoldGlue(blocks) {
+        const out = [];
+        for (let k = 0; k < blocks.length; k++) {
+            const x = blocks[k];
+            const prev = out[out.length - 1];
+            const next = blocks[k + 1];
+            if (x.eq !== undefined && prev && prev.eq === undefined && next && next.eq === undefined &&
+                !/[\p{L}\p{N}]/u.test(x.eq)) {
+                prev.del += x.eq + next.del;
+                prev.ins += x.eq + next.ins;
+                k++;
+                continue;
+            }
+            out.push({ ...x });
+        }
+        return out;
+    }
+
+    /**
+     * Whether two values hold the same words in a different order (case and
+     * punctuation aside).
+     *
+     * @param {string} a
+     * @param {string} b
+     * @returns {boolean}
+     */
+    function _cmpIsReorder(a, b) {
+        const words = s => (s.match(/[\p{L}\p{N}]+/gu) || []).map(x => x.toLowerCase());
+        const wa = words(a), wb = words(b);
+        return wa.join(' ') !== wb.join(' ') && [...wa].sort().join(' ') === [...wb].sort().join(' ');
+    }
+
+    /**
+     * The difference between two values, as blocks of shared and changed
+     * text. `plain` means "show both unmarked": both have text and share
+     * under 40 % of it, or they are too long to compare.
+     *
+     * @param {string} a
+     * @param {string} b
+     * @returns {{same: boolean, plain: boolean, reorder: boolean,
+     *            blocks: Array<{eq?: string, del?: string, ins?: string}>}}
+     */
+    function _cmpDiff(a, b) {
+        a = String(a ?? '');
+        b = String(b ?? '');
+        if (a === b) return { same: true, plain: false, reorder: false, blocks: a ? [{ eq: a }] : [] };
+        const ta = a.match(_CMP_TOKEN_RE) || [];
+        const tb = b.match(_CMP_TOKEN_RE) || [];
+        if (ta.length * tb.length > _CMP_MAX_CELLS) {
+            return { same: false, plain: true, reorder: false, blocks: [{ del: a, ins: b }] };
+        }
+        const blocks = [];
+        for (const x of _cmpFoldGlue(_cmpBlocks(_cmpLcsOps(ta, tb)))) {
+            if (x.eq !== undefined || !_cmpNear(x.del, x.ins)) { blocks.push(x); continue; }
+            for (const y of _cmpCharBlocks(x.del, x.ins)) {
+                const last = blocks[blocks.length - 1];
+                if (y.eq !== undefined && last && last.eq !== undefined) last.eq += y.eq;
+                else blocks.push(y);
+            }
+        }
+        const shared = blocks.reduce((n, x) => n + (x.eq ? x.eq.length : 0), 0);
+        return {
+            same: false,
+            // Only two values that both have text can "share little": an
+            // empty one (a date only the comment has) marks the other whole.
+            plain: !!a && !!b && 2 * shared / (a.length + b.length) < 0.4,
+            reorder: _cmpIsReorder(a, b),
+            blocks,
+        };
+    }
+
+    /** Names of the characters a summary line spells out. */
+    const _CMP_CHAR_NAME = {
+        "'": 'apostrophe', '’': 'right single quote', '‘': 'left single quote',
+        'ʼ': 'modifier apostrophe', '`': 'backtick', '´': 'acute accent',
+        '"': 'straight double quote', '“': 'left double quote', '”': 'right double quote',
+        '„': 'low double quote', '-': 'hyphen-minus', '‐': 'hyphen', '‑': 'non-breaking hyphen',
+        '‒': 'figure dash', '–': 'en dash', '—': 'em dash', '−': 'minus sign',
+        '…': 'ellipsis', ' ': 'space', ' ': 'no-break space', '​': 'zero-width space',
+        ' ': 'thin space', ' ': 'narrow no-break space', '&': 'ampersand', '×': 'multiplication sign',
+    };
+
+    /** What a marked run shows for a character that is otherwise invisible. */
+    const _CMP_WS_MARK = {
+        ' ': '·', ' ': '⍽', '​': '‸', '‌': '‸', '‍': '‸', '﻿': '‸',
+    };
+
+    /**
+     * A character's code point as "U+2010".
+     *
+     * @param {string} c
+     * @returns {string}
+     */
+    function _cmpUplus(c) {
+        return 'U+' + c.codePointAt(0).toString(16).toUpperCase().padStart(4, '0');
+    }
+
+    /**
+     * HTML-escapes a run, with each invisible character (space, no-break
+     * space, zero-width) shown as a visible mark.
+     *
+     * @param {string} s
+     * @returns {string}
+     */
+    function _cmpShowWs(s) {
+        return Array.from(String(s)).map(c => (_CMP_WS_MARK[c]
+            ? `<span class="mb-tt-cmp-ws">${_CMP_WS_MARK[c]}</span>` : _mbttEscape(c))).join('');
+    }
+
+    /**
+     * A run quoted as a small key in the summary line.
+     *
+     * @param {string} s
+     * @returns {string}
+     */
+    function _cmpKey(s) {
+        return `<span class="mb-tt-cmp-key">${_cmpShowWs(s)}</span>`;
+    }
+
+    /**
+     * White space in words: "1 space", "3 spaces", "no-break space".
+     *
+     * @param {string} s
+     * @returns {string}
+     */
+    function _cmpWsDesc(s) {
+        if (/^ +$/.test(s)) return s.length === 1 ? '1 space' : `${s.length} spaces`;
+        return Array.from(s).map(c => _CMP_CHAR_NAME[c] || _cmpUplus(c)).join(' + ');
+    }
+
+    /**
+     * One change in plain words, for the summary line (HTML).
+     *
+     * @param {string} del - The run only in the first value.
+     * @param {string} ins - The run only in the second value.
+     * @param {string} la - The first value's name, lower case ("track name").
+     * @param {string} lb - The second value's name.
+     * @returns {string}
+     */
+    function _cmpClassify(del, ins, la, lb) {
+        const lbl = _mbttEscape;
+        if (!del) return /^\s+$/.test(ins) ? `extra ${_cmpWsDesc(ins)} in the ${lbl(lb)}` : `only in the ${lbl(lb)}: ${_cmpKey(ins.trim() || ins)}`;
+        if (!ins) return /^\s+$/.test(del) ? `extra ${_cmpWsDesc(del)} in the ${lbl(la)}` : `only in the ${lbl(la)}: ${_cmpKey(del.trim() || del)}`;
+        if (/^\s+$/.test(del) && /^\s+$/.test(ins)) return `${_cmpWsDesc(del)} vs ${_cmpWsDesc(ins)}`;
+        if (del === '…' && ins === '...') return `ellipsis ${_cmpKey(del)} vs three dots ${_cmpKey(ins)}`;
+        if (del === '...' && ins === '…') return `three dots ${_cmpKey(del)} vs ellipsis ${_cmpKey(ins)}`;
+        const one = s => Array.from(s).length === 1;
+        if (one(del) && one(ins) && (_CMP_CHAR_NAME[del] || _CMP_CHAR_NAME[ins])) {
+            const nm = c => `${_CMP_CHAR_NAME[c] || 'character'} ${_cmpKey(c)} <span class="mb-tt-cmp-u">${_cmpUplus(c)}</span>`;
+            return `${nm(del)} vs ${nm(ins)}`;
+        }
+        return `${_cmpKey(del)} vs ${_cmpKey(ins)}`;
+    }
+
+    /**
+     * The summary under the two rows: what differs, in plain words, at most
+     * three lines plus "and N more". Case changes are counted together.
+     *
+     * @param {ReturnType<typeof _cmpDiff>} d
+     * @param {string} la - The first value's name, lower case.
+     * @param {string} lb - The second value's name, lower case.
+     * @returns {string[]} HTML lines.
+     */
+    function _cmpSummary(d, la, lb) {
+        if (d.same) return [];
+        if (d.plain) return ['The two share little, so nothing is marked.'];
+        if (d.reorder) return ['Same words in a different order.'];
+        const lines = [];
+        const caseEx = [];
+        let caseLetters = 0, caseRuns = 0;
+        for (const x of d.blocks) {
+            if (x.eq !== undefined) continue;
+            if (x.del && x.del.toLowerCase() === x.ins.toLowerCase()) {
+                const ci = Array.from(x.ins);
+                caseLetters += Array.from(x.del).filter((c, i) => c !== ci[i]).length;
+                caseRuns++;
+                if (caseEx.length < 2) caseEx.push(`${_cmpKey(x.del)} → ${_cmpKey(x.ins)}`);
+                continue;
+            }
+            const s = _cmpClassify(x.del, x.ins, la, lb);
+            if (!lines.includes(s)) lines.push(s);
+        }
+        if (caseLetters) {
+            lines.unshift(`${caseLetters} letter${caseLetters === 1 ? '' : 's'} in a different case: ` +
+                `${caseEx.join(', ')}${caseRuns > caseEx.length ? ', …' : ''}`);
+        }
+        const out = lines.length > 3
+            ? [...lines.slice(0, 3), `and ${lines.length - 3} more difference${lines.length === 4 ? '' : 's'}`]
+            : lines;
+        return out.map(s => s.charAt(0).toUpperCase() + s.slice(1));
+    }
+
+    /**
+     * One side of a comparison as HTML: shared text plain, this side's
+     * changed runs in `<mark class="mb-tt-cmp-d">`. An empty value reads
+     * "none".
+     *
+     * @param {ReturnType<typeof _cmpDiff>} d
+     * @param {('a'|'b')} side
+     * @returns {string}
+     */
+    function _cmpSideHtml(d, side) {
+        const html = d.blocks.map((x) => {
+            if (x.eq !== undefined) return _mbttEscape(x.eq);
+            const t = side === 'a' ? x.del : x.ins;
+            if (!t) return '';
+            return d.plain ? _mbttEscape(t) : `<mark class="mb-tt-cmp-d">${_cmpShowWs(t)}</mark>`;
+        }).join('');
+        return html || '<span class="mb-tt-cmp-none">none</span>';
+    }
+
+    /**
+     * The comparison block (variant A): two labelled rows, the second label
+     * prefixed "≠", differing runs marked in both, and the summary below.
+     * Nothing for two equal values.
+     *
+     * @param {{a: string, b: string, la: string, lb: string, sa?: string, sb?: string, own?: ('a'|'b')}} c
+     *   `la`/`lb` label the rows; `sa`/`sb` name them in the summary (default:
+     *   the labels in lower case); `own` is the bold row (default `a`).
+     * @returns {string}
+     */
+    function _cmpHtml(c) {
+        const d = _cmpDiff(c.a, c.b);
+        if (d.same) return '';
+        const own = c.own === 'b' ? 'b' : 'a';
+        const sum = _cmpSummary(d, c.sa || c.la.toLowerCase(), c.sb || c.lb.toLowerCase());
+        return '<div class="mb-tt-cmp"><div class="mb-tt-cmp-grid">' +
+            `<span class="mb-tt-cmp-lbl">${_mbttEscape(c.la)}</span>` +
+            `<span class="mb-tt-cmp-val${own === 'a' ? ' mb-tt-cmp-own' : ''}">${_cmpSideHtml(d, 'a')}</span>` +
+            `<span class="mb-tt-cmp-lbl">≠ ${_mbttEscape(c.lb)}</span>` +
+            `<span class="mb-tt-cmp-val${own === 'b' ? ' mb-tt-cmp-own' : ''}">${_cmpSideHtml(d, 'b')}</span>` +
+            '</div>' +
+            (sum.length ? `<div class="mb-tt-cmp-sum">${sum.map(s => `<div>${s}</div>`).join('')}</div>` : '') +
+            '</div>';
+    }
+
+    /**
+     * A duration with the digits that differ from the other one marked,
+     * position by position from the right (both are right-aligned).
+     *
+     * @param {string} s
+     * @param {string} other
+     * @returns {string}
+     */
+    function _cmpMarkDigits(s, other) {
+        const w = Math.max(s.length, other.length);
+        const a = s.padStart(w), b = other.padStart(w);
+        let out = '', open = false;
+        for (let i = 0; i < w; i++) {
+            const differs = a[i] !== b[i] && a[i] !== ' ';
+            if (differs && !open) { out += '<mark class="mb-tt-cmp-d">'; open = true; }
+            if (!differs && open) { out += '</mark>'; open = false; }
+            out += _mbttEscape(a[i]);
+        }
+        return out + (open ? '</mark>' : '');
+    }
+
+    /**
+     * The length mismatch card (`_lengthMismatchTooltip()`'s rich form): the
+     * hovered cell's own duration first, the other below, digits aligned and
+     * the differing ones marked, the gap as a pill in the flag's colour, then
+     * the level, why the two differ at all, and where to configure it. Always
+     * at full millisecond precision, like the plain text (see there).
+     *
+     * @param {{kind: 'len', level: ('warn'|'severe'), which: ('track'|'recording'), trackMs: number,
+     *          recMs: number, thresholdMs: number, severeMs: ?number}} L
+     * @returns {string}
+     */
+    function _cmpLenCardHtml(L) {
+        const isTrack = L.which === 'track';
+        const ownMs = isTrack ? L.trackMs : L.recMs;
+        const otherMs = isTrack ? L.recMs : L.trackMs;
+        const fo = _msFormatDuration(ownMs, false);
+        const ft = _msFormatDuration(otherMs, false);
+        const severe = L.level === 'severe';
+        const gap = _msFormatGapSeconds(ownMs - otherMs);
+        const pill = `<span class="mb-tt-cmp-pill mb-tt-cmp-pill-${severe ? 'severe' : 'warn'}">` +
+            `${ownMs > otherMs ? '+' : '−'}${gap} · ${ownMs > otherMs ? 'longer' : 'shorter'}</span>`;
+        const factor = L.severeMs && L.thresholdMs ? Math.round(L.severeMs / L.thresholdMs * 100) / 100 : null;
+        const level = severe
+            ? `Over the “far over” level, ${_msFormatGapSeconds(L.severeMs)}` +
+              (factor ? ` (threshold ${_msFormatGapSeconds(L.thresholdMs)} × ${factor})` : '') + '.'
+            : `Over the ${_msFormatGapSeconds(L.thresholdMs)} threshold.`;
+        const lbl = w => (w === 'track' ? 'Track length' : 'Recording length');
+        return `<div class="mb-tt-title">${severe ? '❌ Track and recording length far apart' : '⚠️ Track and recording length differ'}</div>` +
+            '<div class="mb-tt-cmp"><div class="mb-tt-cmp-len">' +
+            `<span class="mb-tt-cmp-lbl">${lbl(L.which)}</span><span class="mb-tt-cmp-t mb-tt-cmp-own">${_cmpMarkDigits(fo, ft)}</span><span>${pill}</span>` +
+            `<span class="mb-tt-cmp-lbl">${lbl(isTrack ? 'recording' : 'track')}</span><span class="mb-tt-cmp-t">${_cmpMarkDigits(ft, fo)}</span><span></span>` +
+            `</div><div class="mb-tt-cmp-sum"><div>${level}</div></div></div>` +
+            '<div class="mb-tt-body">Two different MusicBrainz fields: the track length belongs to this release\'s ' +
+            'tracklist, the recording length to the recording that every release using it shares.</div>' +
+            '<div class="mb-tt-foot">Configurable in ⚙️ Settings → 💿 RELEASE TRACKLIST.</div>';
+    }
+
+    /**
+     * Of several values, the one most like `target` (most shared text by
+     * `_cmpDiff()`): which linked event or place a comparison shows.
+     *
+     * @param {string} target
+     * @param {string[]} list
+     * @returns {string}
+     */
+    function _cmpClosest(target, list) {
+        let best = list[0] || '', bestN = -1;
+        list.forEach((v) => {
+            if (v === target) return;
+            const n = _cmpDiff(target, v).blocks.reduce((k, x) => k + (x.eq ? x.eq.length : 0), 0);
+            if (n > bestN) { best = v; bestN = n; }
+        });
+        return best;
+    }
+
+    /**
+     * The comparisons an element's tip carries (`data-mb-tip-cmp`), when they
+     * were built for exactly `text`; otherwise none. Each entry names the tip
+     * line it belongs to (`at`, counting non-empty lines), optionally how
+     * many lines it replaces (`span`, default 1) and the text the card shows
+     * instead of them (`head`); a `kind: 'len'` entry replaces the whole card.
+     *
+     * @param {?Element} el
+     * @param {string} text
+     * @returns {Array<object>}
+     */
+    function _cmpTipData(el, text) {
+        const raw = el && el.getAttribute ? el.getAttribute('data-mb-tip-cmp') : null;
+        if (!raw) return [];
+        try {
+            const data = JSON.parse(raw);
+            if (!data || String(data.t).trim() !== String(text).trim() || !Array.isArray(data.c)) return [];
+            const str = v => typeof v === 'string';
+            const num = v => typeof v === 'number' && Number.isFinite(v);
+            return data.c.filter(c => c && (c.kind === 'len'
+                ? (c.which === 'track' || c.which === 'recording') && (c.level === 'warn' || c.level === 'severe') &&
+                  num(c.trackMs) && num(c.recMs) &&
+                  num(c.thresholdMs) && (c.severeMs === null || num(c.severeMs))
+                : str(c.a) && str(c.b) && str(c.la) && str(c.lb)));
+        } catch (e) {
+            return [];
+        }
+    }
+
+    /**
+     * `_setTip()` with comparisons for the rich card: stores them (or removes
+     * a stale set when `cmp` is empty) BEFORE the title, so a card repainted
+     * by `_setTip()` already sees them.
+     *
+     * @param {Element} el
+     * @param {string} text - The plain tip, still the native fallback.
+     * @param {?Array<object>} cmp - See `_cmpTipData()`.
+     * @returns {string} `text`.
+     */
+    function _setTipCmp(el, text, cmp) {
+        if (cmp && cmp.length) el.setAttribute('data-mb-tip-cmp', JSON.stringify({ t: text, c: cmp }));
+        else el.removeAttribute('data-mb-tip-cmp');
+        return _setTip(el, text);
     }
 
     /**
@@ -69354,12 +70037,23 @@ a { color: #1565c0; }`;
      *     the title, and a single short block is a title on its own;
      *   - a block starting with "Configurable in" is a footnote;
      *   - key combinations ("Ctrl+R", "Alt+Shift+H", the key after "then" in
-     *     a prefix hint, "Escape") become `<kbd>` keycaps.
+     *     a prefix hint, "Escape") become `<kbd>` keycaps;
+     *   - a line the element's `data-mb-tip-cmp` names gets its comparison
+     *     block right after it (`_cmpHtml()`), its `head` instead of the
+     *     line's own text, and a line that has one is a title even when long;
+     *     a length entry is the whole card (`_cmpLenCardHtml()`). Only when
+     *     that attribute was built for exactly this text (`_cmpTipData()`).
      *
      * @param {string} text - The element's plain title text.
+     * @param {?Element} [el] - The element the text belongs to, for its
+     *   comparisons; without it the card is the text alone.
+     * @param {{noOrigin?: boolean}} [opts] - `noOrigin`: an entry marked
+     *   `origin` (the Title cell's track/recording names) shows its head
+     *   only, because the link's own note box beside it already compares
+     *   them (`_dpCollectNotes()`).
      * @returns {string} HTML for the tooltip card.
      */
-    function _tipTextToHtml(text) {
+    function _tipTextToHtml(text, el, opts = {}) {
         const MOD = '(?:Ctrl|Alt|Shift|Meta|Cmd)';
         const KEY = '(?:F\\d{1,2}|Escape|Esc|Enter|Tab|Space|Click|[A-Za-z0-9,.\\/?;\\-=+])';
         const comboRe = new RegExp(`(^|[\\s(/'])(${MOD}(?:\\+${MOD})*\\+${KEY})(?![A-Za-z0-9])`, 'g');
@@ -69372,13 +70066,27 @@ a { color: #1565c0; }`;
 
         const blocks = String(text).split('\n').map(s => s.trim()).filter(Boolean);
         if (!blocks.length) return '';
+        const cmp = _cmpTipData(el, text);
+        const len = cmp.find(c => c.kind === 'len');
+        if (len) return _cmpLenCardHtml(len);
+        const at = new Map();
+        const skip = new Set();
+        cmp.forEach((c) => {
+            if (!Number.isInteger(c.at) || at.has(c.at)) return;
+            at.set(c.at, c);
+            for (let k = 1; k < (Number.isInteger(c.span) ? c.span : 1); k++) skip.add(c.at + k);
+        });
         const html = blocks.map((b, i) => {
-            const body = keycaps(_mbttEscape(b));
-            if (i === 0 && (blocks.length > 1 || b.length <= 60)) {
-                return `<div class="mb-tt-title">${body}</div>`;
+            if (skip.has(i)) return '';
+            const c = at.get(i);
+            const shown = c && typeof c.head === 'string' ? c.head : b;
+            const body = keycaps(_mbttEscape(shown));
+            const after = c && !(opts.noOrigin && c.origin) ? _cmpHtml(c) : '';
+            if (i === 0 && (blocks.length > 1 || shown.length <= 60 || c)) {
+                return `<div class="mb-tt-title">${body}</div>${after}`;
             }
-            if (/^Configurable in\b/.test(b)) return `<div class="mb-tt-foot">${body}</div>`;
-            return `<div class="mb-tt-body">${body}</div>`;
+            if (/^Configurable in\b/.test(shown)) return `<div class="mb-tt-foot">${body}</div>${after}`;
+            return `<div class="mb-tt-body">${body}</div>${after}`;
         });
         return html.join('');
     }
@@ -69480,7 +70188,7 @@ a { color: #1565c0; }`;
             // tip, so this card would be a second box under it, whichever
             // timer fires first.
             if (_dpPeek.link && _target && _target.contains(_dpPeek.link)) return;
-            _tip.innerHTML = _tipTextToHtml(text);
+            _tip.innerHTML = _tipTextToHtml(text, _target);
             _tip.style.display = 'block';
             if (_lastMove) _positionTip(_lastMove);
         };
@@ -69629,7 +70337,7 @@ a { color: #1565c0; }`;
                 _target.dataset.mbTipSaved = text;
                 if (_target.dataset.mbTipAria !== undefined) _target.setAttribute('aria-description', text);
                 _target.title = '';
-                if (!_dismissed && _tip.style.display === 'block') _tip.innerHTML = _tipTextToHtml(text);
+                if (!_dismissed && _tip.style.display === 'block') _tip.innerHTML = _tipTextToHtml(text, _target);
             }
             if (_tip.style.display === 'block') _positionTip(e);
         }, true);
@@ -127919,11 +128627,30 @@ a { color: #1565c0; }`;
              * body / footnote / keycap rules without hovering anything.
              *
              * @param {string} text
+             * @param {?Element} [el] - For its `data-mb-tip-cmp` comparisons.
+             * @param {object} [opts] - `_tipTextToHtml()`'s options.
              * @returns {string}
              */
-            tipTextToHtml(text) {
-                return _tipTextToHtml(text);
+            tipTextToHtml(text, el, opts) {
+                return _tipTextToHtml(text, el, opts);
             },
+            /**
+             * The comparison diff (`_cmpDiff()`): two values in, blocks of
+             * shared and changed text out. Pure.
+             *
+             * @param {string} a
+             * @param {string} b
+             * @returns {object}
+             */
+            cmpDiff: (a, b) => _cmpDiff(a, b),
+            /**
+             * The comparison block's HTML (`_cmpHtml()`) and its summary
+             * lines (`_cmpSummary()`), for specs that pin what is marked.
+             *
+             * @param {object} c
+             * @returns {string}
+             */
+            cmpHtml: c => _cmpHtml(c),
             /**
              * The async job popup (`_aj*`), so a spec can register a stand-in
              * provider and drive a job through the shipping framework without

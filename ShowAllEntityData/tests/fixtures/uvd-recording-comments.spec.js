@@ -352,6 +352,28 @@ test.describe('📊 Recording comment info', () => {
         expect(dateTint.filter((r) => r.finding === 'warn').map((r) => r.name).sort()).toEqual(['Badlands', 'Prove It All Night', 'Two Hearts']);
         expect(await findingRow(page, 'error', 'rec-date-mismatch')).toMatchObject({ count: 2 });
         expect(await findingRow(page, 'warn', 'rec-date-imprecise')).toMatchObject({ count: 3 });
+        // Each flagged Recording date cell: the native title names both
+        // dates, the rich card puts them one under the other with what
+        // differs marked (the diff view). A mismatch marks in both rows.
+        const dateCards = await page.evaluate(() => Array.from(document.querySelectorAll('table.tbl tbody td'))
+            .filter((td) => /rec-date-/.test(td.dataset.mbFindings || '') && td.closest('tr').style.display !== 'none')
+            .map((td) => {
+                const div = document.createElement('div');
+                div.innerHTML = window.__saTest.tipTextToHtml(td.title, td);
+                return {
+                    kind: td.dataset.mbFindings.includes('rec-date-mismatch') ? 'mismatch' : 'imprecise',
+                    title: td.title,
+                    labels: Array.from(div.querySelectorAll('.mb-tt-cmp-lbl')).map((d) => d.textContent),
+                    marked: Array.from(div.querySelectorAll('.mb-tt-cmp-val')).map((v) => v.querySelectorAll('mark').length > 0),
+                };
+            }));
+        expect(dateCards.map((c) => c.kind).sort()).toEqual(['imprecise', 'imprecise', 'imprecise', 'mismatch', 'mismatch']);
+        dateCards.forEach((c) => {
+            expect(c.title).toMatch(/: recording date ("[^"]+"|none), comment date ("[^"]+"|none)$/);
+            expect(c.labels).toEqual(['Recording date', '≠ Comment date']);
+            expect(c.marked).toContain(true);
+        });
+        expect(dateCards.filter((c) => c.kind === 'mismatch').map((c) => c.marked)).toEqual([[true, true], [true, true]]);
         expect(await findingRow(page, 'warn', 'rec-live-sep')).toMatchObject({ count: 1 });
         expect(await findingRow(page, 'error', 'rec-live-invalid')).toMatchObject({ count: 1 });
         expect(await findingRow(page, 'error', 'rec-live-nearmiss')).toMatchObject({ count: 1 });

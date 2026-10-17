@@ -88,6 +88,26 @@ test('Brucebase song list: titles in MusicBrainz style, the site\'s text as the 
     expect(titles).toContain('Santa Claus Is Comin’ to Town');
     expect(titles).not.toContain('Born In The U.S.A.');
     expect(await cellTip(page, 'Title', 'Born in the U.S.A.')).toBe('As written on the site:\nBorn In The U.S.A.');
+    // Its rich card: the site's text over the shown one, only the two
+    // letters whose case changed marked (the diff view, mockup
+    // https://claude.ai/artifact/7Nbqih988jfzpGxbiQTX75).
+    const card = await page.evaluate(() => {
+        const td = Array.from(document.querySelectorAll('table.tbl tbody td[data-mb-tip]'))
+            .find((c) => c.textContent.trim() === 'Born in the U.S.A.');
+        const div = document.createElement('div');
+        div.innerHTML = window.__saTest.tipTextToHtml(td.getAttribute('title'), td);
+        return {
+            title: Array.from(div.querySelectorAll('.mb-tt-title')).map((d) => d.textContent),
+            labels: Array.from(div.querySelectorAll('.mb-tt-cmp-lbl')).map((d) => d.textContent),
+            marks: Array.from(div.querySelectorAll('.mb-tt-cmp-val')).map((v) => Array.from(v.querySelectorAll('mark')).map((m) => m.textContent)),
+            sum: Array.from(div.querySelectorAll('.mb-tt-cmp-sum > div')).map((d) => d.textContent),
+            body: div.querySelectorAll('.mb-tt-body').length,
+        };
+    });
+    expect(card).toEqual({
+        title: ['As written on the site'], labels: ['Site', '≠ Shown'],
+        marks: [['I', 'T'], ['i', 't']], sum: ['2 letters in a different case: I → i, T → t'], body: 0,
+    });
     // A title that needs no change carries no tooltip.
     expect(await cellTip(page, 'Title', 'Badlands')).toBe(null);
     expect(errors).toEqual([]);

@@ -23510,3 +23510,55 @@ Env: 2026-10-17T01:15:47+02:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
   browser too, for up to one debounce plus a layout after "Show all
   sub-sections". Users may see it as a flicker of the h1 toolbar. Not
   measured in a real browser.
+
+## 2026-10-17 — Comparison tooltips: the diff view (org/TODO.org "the rich tooltips should show track/recording differences below each other", branch feat/tooltip-diff-view, WIP.1)
+
+Env: 2026-10-17T02:17:42+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 bundled Chromium · no Tampermonkey (GM stubs)
+
+- **Snapshot:** `debug/title-diff-format.png` (vzell's browser): the
+  preview card's note box showed "TRACK NAME I Wanna Dance with Somebody (Who
+  Loves Me)" over "≠ RECORDING I Wanna Dance With Somebody (Who Loves Me)",
+  and the reader had to find the one `w`/`W`. Every other tooltip that
+  compares two values did the same in prose (`comment "…", event "…"`).
+- **Design:** one renderer for all of them (`_cmpHtml()`, `_cmpLenCardHtml()`),
+  fed by `data-mb-tip-cmp` beside the plain title. Mockup approved
+  2026-10-17, variant A ("two rows, marked"):
+  https://claude.ai/artifact/7Nbqih988jfzpGxbiQTX75. The diff is a token LCS
+  (words, space runs, single punctuation), refined letter by letter inside a
+  replaced pair of similar words, plus diff-match-patch's "semantic cleanup"
+  idea. No library: titles are short; `_CMP_MAX_CELLS` caps the table.
+- **Found while prototyping the diff in the mockup (each now has a test and
+  a mutation):**
+  - "same words in a different order" fired when only punctuation changed
+    (the sorted word lists matched): reorder now also needs the word
+    SEQUENCE to differ.
+  - A reordered venue ("Saal 1, ICC Berlin" vs "ICC Berlin, Saal 1") broke
+    into four marks, because the LCS kept the ", " and " " tokens between
+    them: shared runs of only spaces and punctuation between two changes are
+    folded into them (`_cmpFoldGlue()`).
+  - The visible-space marker, done as a chain of `.replace()`s, rewrote the
+    space inside its own inserted `<span class="ws">`: a no-break space came
+    out as broken markup. Now a per-character map (`_cmpShowWs()`).
+  - Found by the uvd-recording-comments extension, not the mockup: one side
+    empty (a date only the comment has) tripped the "share under 40 %"
+    fallback and showed nothing marked. The fallback now needs text on both
+    sides.
+- **Kept, against the plan:** the length card does NOT follow the ⏱
+  millisecond toggle. `_lengthMismatchTooltip()` documents why it always
+  quotes full milliseconds (at seconds precision the two can read the same,
+  which is exactly when the tooltip is needed); the card keeps that rule.
+- **No double comparison under a preview card:** the Title cell's
+  `title-mismatch` finding box sits right above the link's note box in
+  `#mb-dp-notes`, which compares the same names. Its entry is marked
+  `origin`, and `_dpCollectNotes()` renders it as the label alone there.
+- **Test trap:** hovering a cell's centre can land on a link inside it; the
+  engine (like the browser) takes the NEAREST titled element, so the cell's
+  card never shows. Specs hover the cell's padding (`position: {x: 2, y: 2}`)
+  or test the card through `__saTest.tipTextToHtml(title, el)`.
+- **Verified:** `tests/fixtures/tooltip-diff.spec.js` (10), extensions of
+  popup-mb, mb-title-case, uvd-recording-comments and len-flag-disk-roundtrip;
+  `scripts/mutations/tooltip-diff.json` 16/16 caught, the userscript restored
+  and hash-verified.
+- **Not measured:** `stampFindings()` timing. `compare()` runs only for cells
+  whose `test()` already matched, and builds a small JSON string; the diff
+  itself runs on hover. Nothing on the filter/sort/render path changed.

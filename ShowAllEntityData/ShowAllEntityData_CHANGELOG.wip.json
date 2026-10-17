@@ -1,0 +1,17 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-17",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Tooltips that compare two values now show them one under the other and mark only what differs, down to a single letter, an apostrophe ' against ’, or a hyphen ‐ against -. A line under them says in plain words what differs (\"1 letter in a different case: w → W\", \"Only in the recording name: (single version)\", \"Same words in a different order.\"). This covers the track/recording name note above a recording's preview card, its badge in the pinned window, and the Title cell's \"Track name differs from recording name\" warning, which now names both names.",
+          "The same view for the findings that compare two values: Recorded at event and Recorded at place against the recording comment, the release group title against a main-event track, and the Recording date against the comment's date (both dates are now named in the tooltip).",
+          "Track and recording length mismatch: the tooltip shows the hovered cell's length over the other one, digits aligned and the differing ones marked, with the gap as an amber (⚠️) or red (❌) label. Kept through Save to Disk and Load from Disk.",
+          "Titles shown in MusicBrainz style on the Springsteen sites: the tooltip shows the site's text above the title as shown, with the changed letters and marks marked."
+        ]
+      }
+    ]
+  }
+]

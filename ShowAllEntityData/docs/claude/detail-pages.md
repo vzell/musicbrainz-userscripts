@@ -530,6 +530,20 @@ floating hover tooltip.
     title has a box now, and every title is parked.
   - The box is now a child of `#mb-dp-notes` (the stack above), built by
     `_dpFillNotes()`; `_dpPlacePeek()` places the whole stack.
+  - **The diff view (2026-10-17, org/TODO.org "the rich tooltips should show
+    track/recording differences below each other").** `_dpOriginHtml()`
+    renders the two names with `_cmpHtml()`: one under the other, only the
+    differing runs marked (`mark.mb-tt-cmp-d`, in both rows), and a summary
+    line in plain words. The diff (`_cmpDiff()`) is a token LCS refined
+    letter by letter inside a replaced pair of similar words, with
+    diff-match-patch's "semantic cleanup" idea; below 40 % shared text
+    nothing is marked. The same renderer serves every comparison tooltip:
+    the findings that name two values, the length mismatch
+    (`_cmpLenCardHtml()`), the window badge's tip and a foreign site's
+    original title, through `data-mb-tip-cmp` (see docs/claude/findings.md,
+    "compare rides beside detail"). No parser output changed, so no
+    `_DP_PARSER_VERSION` bump. Mockup:
+    https://claude.ai/artifact/7Nbqih988jfzpGxbiQTX75 (variant A).
   - `_titleHasRecNameMismatch()` (the 📊 flag and the ⚠️ finding) reads the
     title OR the parked attribute (`_dpOriginTitle()`), so a count, a stamp or
     a clone taken while a card shows still sees the flag.
