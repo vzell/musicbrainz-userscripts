@@ -2925,7 +2925,8 @@ Make some nice HTML based mockups/suggestions
 
 1.)
 
-create support for discogs artist URLs for URL detail views on MB PTs, like we already do for discogs release and master
+create support for discogs artist and labels URLs for URL detail views on MB PTs, like we already do for discogs release
+and master
 
 #+begin_example
 @debug/discogs-artist.html - IP - https://www.discogs.com/artist/219986-Bruce-Springsteen - take into account the "Releases", "Appearances", "Unoffical" and "Credits" section which should hold collapsable master/release tables
