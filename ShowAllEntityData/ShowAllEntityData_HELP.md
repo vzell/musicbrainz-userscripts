@@ -2209,7 +2209,9 @@ site. They load on a hover from the first time, without Tampermonkey asking.
 A **Brucebase date** link (the "reviews:" link of many events,
 `brucebase.wikidot.com/2025#261025`) shows that one show of the year page:
 venue and date, the setlist, the people, the notes, and a link to the gig
-page; its *Live page* is the year page, scrolled to the show and marked. One
+page; its *Live page* is the year page, scrolled to the show and marked
+before the year's pictures have loaded, and scrolled to it again once they
+have (unless you have scrolled the page yourself by then). One
 request reads the whole year, so other dates of that year then cost nothing —
 but Brucebase is slow, and that first request can take several seconds. A
 date the year page has no show for, or a show that did not take place, says
@@ -2802,7 +2804,8 @@ type into the filter box stays in the filter box. In the window:
   is left. The page's own scripts do not run there: on Brucebase every tab is
   shown, one under the other, and an embedded video is a "▶ Watch on YouTube"
   link instead of a player. A page you have just hovered opens without being
-  read again.
+  read again. The page is trimmed as soon as its text is in, without waiting
+  for its pictures.
 - **⟳** reads the page again instead of using the saved copy.
 - **↗** opens the page in a new tab.
 

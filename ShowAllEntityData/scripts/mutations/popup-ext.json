@@ -1168,5 +1168,57 @@
         "spec": "tests/fixtures/popup-ext-foreign.spec.js",
         "grep": "nothing from MusicBrainz",
         "expect": "fail"
+    },
+    {
+        "name": "Live page: prepared only on the frame's load",
+        "why": "The frame's load event waits for every image of the page (260 on a Brucebase year page): the page must be trimmed and the show marked and scrolled to as soon as it is parsed (_dpIsolateWhenParsed(), 2026-10-17).",
+        "edits": [
+            {
+                "find": "            frame.srcdoc = _dpLiveDocHtml(raw.html, url);\n            _dpIsolateWhenParsed(frame, prep);",
+                "replace": "            frame.srcdoc = _dpLiveDocHtml(raw.html, url);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "the Live page is prepared before its images are in",
+        "expect": "fail"
+    },
+    {
+        "name": "Live page: a page still loading is prepared",
+        "why": "_dpIsolateFrame() leaves a document that is still being parsed alone: prepared then, the show's anchor may not exist yet, and the page is marked done for good. Not visible here: Chromium parses this 300 KB srcdoc copy before the first 50 ms check (_DP_LIVE_PARSE_POLL_MS), so the check never meets a page still loading; it guards a slower parse (measured 2026-10-17).",
+        "edits": [
+            {
+                "find": "doc.URL === 'about:blank' || doc.readyState === 'loading' || doc.documentElement.dataset.mbDpDone) return null;",
+                "replace": "doc.URL === 'about:blank' || doc.documentElement.dataset.mbDpDone) return null;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "the Live page is prepared before its images are in",
+        "expect": "pass"
+    },
+    {
+        "name": "Live page: nothing runs once the frame has loaded",
+        "why": "Prepared early, a Brucebase show is scrolled to before the images above it land; livePrepare's returned function scrolls to it again on the frame's load.",
+        "edits": [
+            {
+                "find": "                const f = afterLoad;\n                afterLoad = null;\n                f();",
+                "replace": "                afterLoad = null;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "the Live page is prepared before its images are in",
+        "expect": "fail"
+    },
+    {
+        "name": "Live page: a reader who has scrolled is pulled back to the show",
+        "why": "The later scrolls to a Brucebase show stop once the reader has used the wheel, a key, a mouse button or touch in the page.",
+        "edits": [
+            {
+                "find": "                if (mark.isConnected && !readerMoved) se.scrollTop += mark.getBoundingClientRect().top - 8;",
+                "replace": "                if (mark.isConnected) se.scrollTop += mark.getBoundingClientRect().top - 8;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-ext.spec.js",
+        "grep": "is not pulled back to the show",
+        "expect": "fail"
     }
 ]
