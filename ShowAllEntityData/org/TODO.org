@@ -2920,8 +2920,7 @@ all the different versions from the "<n> versions" section
 2.)
 
 Make some nice HTML based mockups/suggestions
-
-* create support for discogs artist URLs for URL detail views on MB PTs
+* DONE create support for discogs artist URLs for URL detail views on MB PTs
 
 1.)
 
@@ -2934,6 +2933,24 @@ and master
 #+end_example
 
 inclusive referenced images from the "More images" link
+
+2.)
+
+create nice rich HTML based mockups first
+
+
+* TODO support for discogs PTs
+
+1.)
+
+Is it possible to extend the non-MB PTs too support the native Discogs URLs as new PTs e.g
+
+#+begin_example
+master - @debug/discogs-master.html
+release - @debug/discogs-release.html
+artist - @debug/discogs-artist.html
+label - @debug/discogs-label.html
+#+end_example
 
 2.)
 
@@ -2977,7 +2994,7 @@ etc
 
 discogs submission list
 
-* TODO bugs
+* DONE bugs
 
 1.)
 
