@@ -2816,7 +2816,7 @@ The hovered over icon should be mentioned in the tooltip popup, currently only t
 to misundertand what that URL actually means compared to the full list of URLs which show with background highlightning
 which entry actually is filtered on
 
-* TODO revamp "Search in ..." card handling
+* DONE revamp "Search in ..." card handling
 ** DONE i
 
 1.)
@@ -2857,7 +2857,7 @@ Make some suggestions how to shorten it or display it differently (actually wher
 
 With all the changes maybe the cards could be layout more efficiently ... please some suggestions
 
-** TODO add favicon icons
+** DONE add favicon icons
 
 For example on https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194:
 
@@ -2876,45 +2876,7 @@ etc. if the corresponding entries in the real sidebar have them
  - real sidebar with site icons in front of the site names
 #+end_example
 
-
-* TODO add the "work of" to more recording columns in other PTs
-
-Currently on the PT 'artist-recordings'
-e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings on the FRP we render the new
-"Recording of" and "Performance attributes" columns after the "Name" column with the functionality of on demand loading
-of works associated to the recordings
-
-#+begin_example
-<button type="button" class="mb-recof-col-hdr-btn" data-mb-aj="recof" data-mb-aj-name="▶🎼" aria-pressed="true" aria-label="Load the &quot;Recording of&quot; column"></button>
-#+end_example
-
-
-* TODO add UVD entries for titles which do NOT follow MB style guidelines on MB PTs and user aour rich tooltip diff popup view to show whats differing
-
-
-* TODO Add a must have third-party userscripts section together with the end-user visible changes and what our userscript depends on
-
-Add a must have third-party userscripts section together with the end-user visible changes and what our userscript
-depends on
-
-1.)
-
-Analyse first and give a comprehensive summary in a nice HTML based view, with URLs to the original script (downlaod URL, homepage, documentaiotn URL, etc)
-
-2.)
-
-Suggestions for complete integration
-
-3.)
-
-etc
-
-
-* new non-MB PTs
-
-discogs submission list
-
-* TODO enrich the discogs URL detail parsers with more information
+* DONE enrich the discogs URL detail parsers with more information
 
 Enrich the current discogs URL detail parsers when hovering over a discogs URL e.g. on https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897
 
@@ -2958,3 +2920,92 @@ all the different versions from the "<n> versions" section
 2.)
 
 Make some nice HTML based mockups/suggestions
+
+* create support for discogs artist URLs for URL detail views on MB PTs
+
+1.)
+
+create support for discogs artist URLs for URL detail views on MB PTs, like we already do for discogs release and master
+
+#+begin_example
+@debug/discogs-artist.html - IP - https://www.discogs.com/artist/219986-Bruce-Springsteen - take into account the "Releases", "Appearances", "Unoffical" and "Credits" section which should hold collapsable master/release tables
+@debug/discogs-label.html - IP - https://www.discogs.com/label/1866-Columbia
+#+end_example
+
+inclusive referenced images from the "More images" link
+
+2.)
+
+create nice rich HTML based mockups first
+
+
+* TODO add the "work of" to more recording columns in other PTs
+
+Currently on the PT 'artist-recordings'
+e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings on the FRP we render the new
+"Recording of" and "Performance attributes" columns after the "Name" column with the functionality of on demand loading
+of works associated to the recordings
+
+#+begin_example
+<button type="button" class="mb-recof-col-hdr-btn" data-mb-aj="recof" data-mb-aj-name="▶🎼" aria-pressed="true" aria-label="Load the &quot;Recording of&quot; column"></button>
+#+end_example
+
+
+* TODO add UVD entries for titles which do NOT follow MB style guidelines on MB PTs and user aour rich tooltip diff popup view to show whats differing
+
+
+* TODO Add a must have third-party userscripts section together with the end-user visible changes and what our userscript depends on
+
+Add a must have third-party userscripts section together with the end-user visible changes and what our userscript
+depends on
+
+1.)
+
+Analyse first and give a comprehensive summary in a nice HTML based view, with URLs to the original script (downlaod URL, homepage, documentaiotn URL, etc)
+
+2.)
+
+Suggestions for complete integration
+
+3.)
+
+etc
+
+
+* TODO new non-MB PTs
+
+discogs submission list
+
+* TODO bugs
+
+1.)
+
+[Image #19] - all the artists, labels etc should be hyperlinked on the discogs detail pages when opened with "Space"
+
++ the header section in the detail popup should clearly tell if the page is a relase or master page at e.g. '<span style="font-weight: 700; font-size: 1.15em; color: rgb(34, 34, 34);">Discogs › Discogs</span>'
+
+[Image #20] - the header line should say that it's a master page
+[Image #21] - the header line should say that it's a release page
+
+2.)
+
+For example on https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194:
+
+Add site icons/favicon in front of the site names to the "Sidebar" sections like
+
+#+begin_example
+"EXTERNAL LINKS"
+"SEARCH"
+"RELEASE GROUP EXTERNAL LINKS"
+#+end_example
+
+etc. if the corresponding entries in the real sidebar have them
+
+#+begin_example
+ - current sidebar section on the FRP
+ - real sidebar with site icons in front of the site names
+#+end_example
+
+3.)
+
+Except the h4 "SEARCH" section ALL sections in the h2 "Sidebar" section should be uncollapsed by default
