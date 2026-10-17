@@ -373,12 +373,17 @@ default off).
   delegated listener on `div.mb-sb-inline` (never cloned).
 - **Card folding.**
   - **Initial state** (`_sbInlineBuild()`'s `startsOpen`), from the select
-    `sa_sidebar_inline_cards_open` read through `_selectSetting()`: `info`
-    (default) opens only the FIRST `info` card (a release's "Additional
-    details" is a second `info` card and starts closed; a page without an
-    info card has every card closed), `all` every card, `none` none. A stray
-    stored value reads as `info` (settings-and-config.md, "Select
-    settings"). Card states are not remembered.
+    `sa_sidebar_inline_cards_open` read through `_selectSetting()`:
+    `all-but-search` (the default since 2026-10-17, vzell: "except Search ALL
+    sections … uncollapsed by default"; `_SETTINGS_MIGRATIONS` moves a
+    stored `info` to it) opens every card but the `search` one; `info` opens
+    only the FIRST `info` card (a release's "Additional details" is a second
+    `info` card and starts closed; a page without an info card has every
+    card closed); `all` every card, Search too; `none` none. A stray stored
+    value reads as the default (settings-and-config.md, "Select settings").
+    Card states are not remembered. The specs that need a MIXED state to
+    start from (CTRL+CLICK, MARKER, the release-facts arms of INITIAL STATE)
+    seed `info`.
   - **Release special case** (`sa_sidebar_inline_release_facts_open`,
     default on): on `release-tracks`, `info` opens EVERY facts card, keys
     `info` (Release information, Additional details), `labels` and `events`;
@@ -473,6 +478,42 @@ and the tables reading the search lists too. Branch
   entry linking X with variant links "a", "b"; a lone "X (a)" stays as
   written. Esc in a non-empty box empties it and stops there; the switch,
   the box and Esc are delegated on `div.mb-sb-inline` like the folding.
+- **Site icons** (2026-10-17, vzell): a link shows the icon its sidebar item
+  shows. `_sbCollectGroups()` reads it once per item (`_sbIconOf()`): on this
+  page the item's COMPUTED background (MusicBrainz draws it from its
+  stylesheet by the `*-favicon` class; jesus2099 sets it inline on its search
+  items); on a page that is not rendered (a fetched page, a disk load) the
+  inline background, else the class through a hidden probe item in the
+  sidebar (`_sbFaviconByClass`, once per class). **MusicBrainz's icons are
+  `data:image/png;base64,…` URIs** (its `icons-*.css` on
+  static.metabrainz.org, read in a real browser: a plain fetch of the page
+  gets a JavaScript challenge, "Verifying your browser"): `_sbBgUrl()` takes
+  `data:image/` as well as http(s). The first version took http(s) only and
+  showed jesus2099's inline icons but none of MusicBrainz's (vzell's report;
+  the spec had modelled MusicBrainz's rule with an https URL). A `data:` icon
+  is ~10 KB, so it is written ONCE, as a rule
+  `a.mb-sb-ico[data-mb-sb-ico="NAME"]` in `#mb-sb-ico-style`
+  (`_sbIconRef()`; NAME a FNV-1a hash of the URL, not a running number: a
+  page saved to disk keeps the attribute), and the link carries only that
+  name. `_sbWithIcon()` puts it on the cloned LINK (`a.mb-sb-ico`, 16px,
+  20px of room), never as an `<img>` in the cell: the cards and tables take a cell's first
+  node as its link (`row[2][0]`, `r[5][0]`), and the background survives a
+  table's `cloneNode` and adds no filter text. So the icon is in the cards,
+  the Search index (its variant links lose it: one icon per entry) and all
+  three table views (`_sbInlineEnsureStyle()` is called by
+  `_sbAppendRelTablesGroups()` and `applySidebarToTables()` for the rule).
+  **The relationship tables' own URL rows too** (`_sbIconRelLinks()`, called
+  by `applyRelDetailsToTables()` right before `_sbAppendRelTablesGroups()`,
+  whatever `sa_sidebar_in_rel_tables` says): with
+  `sa_sidebar_inline_skip_dup_links` on (default) a release's URLs and its
+  group's appear ONLY as relationship rows, so without this the Credits view
+  showed none of their icons (vzell's screenshot). A row link takes the
+  icon of the sidebar item with the same `_sbLinkKey()`, the duplicate
+  skipping's own key. A live check (real release, Credits) found the
+  "Sidebar: …" tables' icons all there and only these rows bare.
+  No request: the browser shows these icons already. The fixtures refuse
+  MusicBrainz's stylesheet, so the ICONS specs add the one `*-favicon` rule
+  they need (`open(…, css)`); jesus2099's inline icons are in the fixture.
 - **Hover cards on links** (`_sbLinkTip()`, `data-mbtt`): title, where it is
   listed, the site (for a `forward-request.html` link the `_action` host),
   the address (`.mb-sb-tt-url` wraps it). With `sa_pop_mb_page` the link

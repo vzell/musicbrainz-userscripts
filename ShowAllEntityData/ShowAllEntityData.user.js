@@ -531,11 +531,12 @@
         sa_sidebar_inline_cards_open: {
             label: "… cards that start open",
             type: "select",
-            default: 'info',
+            default: 'all-but-search',
             options: [
                 { value: 'none', label: 'No card', hint: 'Every card starts closed (▶).' },
                 { value: 'info', label: 'Information card', hint: 'Only the first information card (Artist information, Release information, …); every other card starts closed (▶).' },
-                { value: 'all', label: 'Every card', hint: 'Every card starts open. On a release the section can get long.' },
+                { value: 'all-but-search', label: 'Every card but Search', hint: 'Every card starts open except Search, the long list of search links another script adds.' },
+                { value: 'all', label: 'Every card', hint: 'Every card starts open, Search too. On a release the section can get long.' },
             ],
             description: "Which cards of the 'Sidebar' section start open. A card opens and closes on a click on its title; Ctrl+Click (Cmd+Click) opens or closes all of them."
         },
@@ -5094,6 +5095,7 @@
         { key: 'sa_rel_tooltip_bg',                was: ['#ffffff'] },
         { key: 'sa_rel_tooltip_color',             was: ['#000000'] },
         { key: 'sa_sidebar_collapsed',             was: [false] },
+        { key: 'sa_sidebar_inline_cards_open',     was: ['info'] },
         { key: 'sa_sidebar_tables_button',         was: [true] },
         { key: 'sa_ui_artist_role_guest_performer_color', was: ['#e07000'] },
         { key: 'sa_ui_artist_role_main_performer_color',  was: ['#57ff5a'] },
@@ -20815,6 +20817,8 @@
         // What is left of #bottom-credits: the release group block when it
         // stays native, the per-medium track credits in the "at bottom" layout.
         if (bc && !bc.querySelector('table.details, h3')) bc.remove();
+        // A URL row's link with the site icon the sidebar shows for it.
+        _sbIconRelLinks(doc, frag);
         // The sidebar's groups as "Sidebar: …" tables after the relationship
         // tables (sa_sidebar_in_rel_tables): the same dataset, so they share
         // this h2's filter.
@@ -90749,6 +90753,169 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * The icon URL of each MusicBrainz `*-favicon` class, as this page's own
+     * stylesheet draws it (`_sbIconOf()` on a page that is not rendered:
+     * a fetched page, a disk load).
+     * @type {Map<string, string>}
+     */
+    const _sbFaviconByClass = new Map();
+
+    /**
+     * The image URL in a CSS `background-image` value ('' for none): an
+     * http(s) URL, or a `data:image/…` one — MusicBrainz draws EVERY site
+     * icon as one (its icons-*.css on static.metabrainz.org, checked in a
+     * real browser 2026-10-17); the first version took http(s) only and
+     * showed none of them.
+     * @param {string} bg
+     * @returns {string}
+     */
+    function _sbBgUrl(bg) {
+        const m = /url\(\s*(["']?)(.*?)\1\s*\)/.exec(bg || '');
+        if (!m || !m[2]) return '';
+        if (/^data:image\//i.test(m[2])) return m[2];
+        try {
+            const u = new URL(m[2], window.location.href);
+            return /^https?:$/.test(u.protocol) ? u.href : '';
+        } catch (_) {
+            return '';
+        }
+    }
+
+    /**
+     * The site icons already written into `#mb-sb-ico-style`, by their name
+     * (`_sbIconRef()`).
+     * @type {Set<string>}
+     */
+    const _sbIconRefs = new Set();
+
+    /**
+     * An icon's name in `#mb-sb-ico-style`, its rule
+     * (`a.mb-sb-ico[data-mb-sb-ico="NAME"] { background-image: … }`) added
+     * the first time: a `data:` icon is ~10 KB, so each is written ONCE, never
+     * inline on every link and every table clone of it. The name is a hash
+     * of the URL (FNV-1a, 32 bits), never a running number: a page saved to
+     * disk keeps the attribute, and a number would name another icon in the
+     * next session.
+     * @param {string} url
+     * @returns {string}
+     */
+    function _sbIconRef(url) {
+        let h = 0x811c9dc5;
+        for (let i = 0; i < url.length; i++) {
+            h ^= url.charCodeAt(i);
+            h = Math.imul(h, 0x01000193) >>> 0;
+        }
+        const name = h.toString(36);
+        if (_sbIconRefs.has(name)) return name;
+        _sbIconRefs.add(name);
+        let st = document.getElementById('mb-sb-ico-style');
+        if (!st) {
+            st = document.createElement('style');
+            st.id = 'mb-sb-ico-style';
+            (document.head || document.documentElement).appendChild(st);
+        }
+        st.appendChild(document.createTextNode(
+            `a.mb-sb-ico[data-mb-sb-ico="${name}"] { background-image: url("${url.replace(/["\\\n]/g, '\\$&')}"); }\n`));
+        return name;
+    }
+
+    /**
+     * The site icon an external-links item shows in the real sidebar
+     * (2026-10-17), '' for none: its background. MusicBrainz draws it from
+     * its stylesheet by the item's `*-favicon` class; jesus2099's "mb. ALL
+     * LINKS" sets it inline on its search items. On this page the computed
+     * style tells both; on a page that is not rendered the inline style, or
+     * the class as this page's stylesheet draws it (a hidden probe item in
+     * the sidebar, once per class). Nothing is requested: the browser shows
+     * these icons already.
+     * @param {Element} li
+     * @returns {string}
+     */
+    function _sbIconOf(li) {
+        if (li.ownerDocument === document && li.isConnected) {
+            const u = _sbBgUrl(getComputedStyle(li).backgroundImage);
+            if (u) return u;
+        }
+        const inline = _sbBgUrl(li.style ? li.style.backgroundImage : '');
+        if (inline) return inline;
+        const cls = Array.from(li.classList).find(c => /-favicon$/.test(c));
+        if (!cls) return '';
+        if (!_sbFaviconByClass.has(cls)) {
+            const host = document.getElementById('sidebar') || document.body;
+            const ul = document.createElement('ul');
+            ul.className = 'external_links';
+            ul.style.cssText = 'position: absolute; visibility: hidden; pointer-events: none;';
+            const item = document.createElement('li');
+            item.className = cls;
+            ul.appendChild(item);
+            host.appendChild(ul);
+            _sbFaviconByClass.set(cls, _sbBgUrl(getComputedStyle(item).backgroundImage));
+            ul.remove();
+        }
+        return _sbFaviconByClass.get(cls);
+    }
+
+    /**
+     * A cloned external link with its item's site icon (`_sbIconOf()`) as its
+     * own background, drawn by `a.mb-sb-ico` as the sidebar draws it: the
+     * icon goes with the link into the cards, the Search card and the
+     * "Sidebar: …" tables (a table's `cloneNode` keeps the attribute), and
+     * adds no text to filter or sort on. The link carries only the icon's
+     * name (`data-mb-sb-ico`, `_sbIconRef()`).
+     * @param {HTMLAnchorElement} a A clone.
+     * @param {Element} li The item it was cloned from.
+     * @returns {HTMLAnchorElement} `a`.
+     */
+    function _sbWithIcon(a, li) {
+        const url = _sbIconOf(li);
+        if (url) {
+            a.classList.add('mb-sb-ico');
+            a.dataset.mbSbIco = _sbIconRef(url);
+        }
+        return a;
+    }
+
+    /**
+     * The links of a relationship-tables render (Credits, Relationships)
+     * with the site icon the sidebar shows for the SAME link (vzell,
+     * 2026-10-17): matched by `_sbLinkKey()`, the key the duplicate skipping
+     * uses, so a release's URLs and its release group's — relationship rows,
+     * whose sidebar copies `sa_sidebar_inline_skip_dup_links` leaves out of
+     * the "Sidebar: …" tables — keep the icon the sidebar shows them with.
+     * Read from the document's own sidebar (`_sbIconOf()`), no request;
+     * MusicBrainz only. Runs whatever `sa_sidebar_in_rel_tables` says.
+     * @param {Document} doc The rendered page (live, fetched or from disk).
+     * @param {DocumentFragment|Element} frag The relationship tables.
+     * @returns {number} How many links got an icon.
+     */
+    function _sbIconRelLinks(doc, frag) {
+        if (_foreignHost) return 0;
+        const side = doc.getElementById('sidebar');
+        if (!side) return 0;
+        const icons = new Map();
+        side.querySelectorAll('ul.external_links li').forEach(li => {
+            const a = _sbItemLink(li);
+            if (!a) return;
+            const key = _sbLinkKey(a.getAttribute('href'));
+            if (icons.has(key)) return;
+            const url = _sbIconOf(li);
+            if (url) icons.set(key, url);
+        });
+        if (!icons.size) return 0;
+        _sbInlineEnsureStyle();
+        let n = 0;
+        frag.querySelectorAll('a[href]').forEach(a => {
+            if (a.classList.contains('mb-sb-ico')) return;
+            const url = icons.get(_sbLinkKey(a.getAttribute('href')));
+            if (!url) return;
+            a.classList.add('mb-sb-ico');
+            a.dataset.mbSbIco = _sbIconRef(url);
+            n++;
+        });
+        return n;
+    }
+
+    /**
      * Reads a document's sidebar into groups, each named by its sidebar
      * heading — the one reader behind the "🗂 Sidebar as tables" button
      * (`applySidebarToTables()`), the "Sidebar: …" tables of a
@@ -90767,7 +90934,9 @@ a { color: #1565c0; }`;
      *     in it (`_sbItemKids()`), never another script's controls in it
      *     ("edit", "choose languages"); each row also carries `own` (that
      *     text) and `kids` (`{label, a}`) for the cards. Only a section's
-     *     OUTERMOST list is read: a list nested in an item belongs to it;
+     *     OUTERMOST list is read: a list nested in an item belongs to it.
+     *     The link carries its site icon (`_sbWithIcon()`), here and in
+     *     `search`;
      *   - `search`: the search lists another script adds
      *     (`_SB_SEARCH_LIST_SEL`), all of them ONE group "Search", where the
      *     first of them is: #, Search (the heading it is under), Section,
@@ -90869,7 +91038,7 @@ a { color: #1565c0; }`;
                         details.push(document.createTextNode(`${i ? ', ' : ''}${k.label}: `), k.a.cloneNode(true));
                     });
                 }
-                const row = [String(links.length + 1), hostOf(a), [a.cloneNode(true)], _SB_LINK_KINDS[stem] || 'Other', details];
+                const row = [String(links.length + 1), hostOf(a), [_sbWithIcon(a.cloneNode(true), li)], _SB_LINK_KINDS[stem] || 'Other', details];
                 row.own = own;
                 row.kids = kids.map(k => ({ label: k.label, a: k.a.cloneNode(true) }));
                 links.push(row);
@@ -90891,7 +91060,7 @@ a { color: #1565c0; }`;
                     if (li.matches('.mb-sbl-head, .all-relationships')) return;
                     const a = li.querySelector(':scope > a[href]');
                     if (a) {
-                        rows.push([String(rows.length + 1), source, path[0] || '', path.slice(1).join(' › '), hostOf(a), [a.cloneNode(true)]]);
+                        rows.push([String(rows.length + 1), source, path[0] || '', path.slice(1).join(' › '), hostOf(a), [_sbWithIcon(a.cloneNode(true), li)]]);
                         n++;
                     }
                     const sub = li.querySelector(':scope > ul, :scope > ol');
@@ -90951,6 +91120,8 @@ a { color: #1565c0; }`;
         if (!root || !side || root.dataset.mbSidebarTables) return;
         root.dataset.mbSidebarTables = '1';
         const groups = _sbCollectGroups(doc);
+        // The links' site icons (`a.mb-sb-ico`) are drawn by its rules.
+        _sbInlineEnsureStyle();
         const frags = groups.map(g => _eventBuildTable(doc, g.name, g.cols, g.rows));
         const count = (key) => groups.filter(g => g.key === key).reduce((n, g) => n + g.rows.length, 0);
 
@@ -91026,6 +91197,8 @@ a { color: #1565c0; }`;
     function _sbAppendRelTablesGroups(doc, frag) {
         if (_foreignHost || Lib.settings.sa_sidebar_in_rel_tables === false) return 0;
         const groups = _sbCollectGroups(doc, _sbInlineOpts());
+        // The links' site icons (`a.mb-sb-ico`) are drawn by its rules.
+        _sbInlineEnsureStyle();
         if (Lib.settings.sa_sidebar_inline_skip_dup_links !== false) {
             const shown = new Set(Array.from(frag.querySelectorAll('a[href]')).map(a => _sbLinkKey(a.getAttribute('href'))));
             groups.forEach(g => {
@@ -91095,6 +91268,9 @@ a { color: #1565c0; }`;
             .mb-sb-chip-kind { flex: none; width: 92px; font: 600 9.5px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.07em; color: #7a6d5c; }
             .mb-sb-chip, .mb-sb-pill { display: inline-flex; align-items: baseline; gap: 4px; max-width: 100%; min-width: 0; overflow-wrap: anywhere; border-radius: 10px; padding: 0 8px; }
             .mb-sb-chip { border: 1px solid #d9cfbd; background: #fbf8f1; }
+            /* A link's site icon, as the real sidebar draws it (_sbWithIcon):
+               16px, left of the name. Also in the Sidebar tables. */
+            a.mb-sb-ico { padding-left: 20px; background-repeat: no-repeat; background-position: 0 50%; background-size: 16px 16px; }
             .mb-sb-chip-detail { color: #7a6d5c; }
             .mb-sb-chip-kid { font-size: 0.86em; color: #7a6d5c; }
             .mb-sb-pill { border: 1px solid #cfe2c4; background: #eef5ea; }
@@ -91399,6 +91575,9 @@ a { color: #1565c0; }`;
                                 if (j) vv.append(', ');
                                 v.a.dataset.mbtt = _sbLinkTip(v.a, v.text, where, 'Searches');
                                 v.a.textContent = v.label;
+                                // The entry shows the site's icon once, before its name.
+                                v.a.classList.remove('mb-sb-ico');
+                                delete v.a.dataset.mbSbIco;
                                 vv.appendChild(v.a);
                             });
                             vv.append(')');
@@ -91502,7 +91681,8 @@ a { color: #1565c0; }`;
      * (`_SB_LINK_KIND_ORDER`, `_sbLinkChip()`), the search lists one index
      * (`_sbSearchBody()`), tags pills with their votes. Which cards start open is
      * `sa_sidebar_inline_cards_open` (a select): none, only the first
-     * information card, or every card. On `release-tracks` the information
+     * information card, every card but Search (the default since
+     * 2026-10-17), or every card. On `release-tracks` the information
      * setting also opens every facts card (Additional details, Labels,
      * Release events: keys `info`, `labels`, `events`), unless
      * `sa_sidebar_inline_release_facts_open` is off. Null when the sidebar
@@ -91517,7 +91697,7 @@ a { color: #1565c0; }`;
         const firstInfo = openMode === 'info' ? groups.find(g => g.key === 'info') : null;
         const releaseFacts = openMode === 'info' && activeDefinition?.type === 'release-tracks' &&
             Lib.settings.sa_sidebar_inline_release_facts_open !== false;
-        const startsOpen = (g) => openMode === 'all' || g === firstInfo ||
+        const startsOpen = (g) => openMode === 'all' || (openMode === 'all-but-search' && g.key !== 'search') || g === firstInfo ||
             (releaseFacts && (g.key === 'info' || g.key === 'labels' || g.key === 'events'));
         // Facts on the left, links and tags beside them (`_sbInlineLayout()`).
         const facts = [];

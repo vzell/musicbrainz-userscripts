@@ -1,5 +1,29 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-10-17",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Sidebar cards: every card now starts open except Search, the long list of search links \"mb. ALL LINKS\" adds. The setting \"… cards that start open\" has the new choice \"Every card but Search\" as its default; if you had kept the old default (only the information card), you get the new one; any other choice you made stays."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.3",
+    "date": "2026-10-17",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Sidebar cards and the Sidebar tables: each link shows the same site icon in front of its name as the real sidebar (Discogs, AllMusic, Wikidata, …, and the search sites of \"mb. ALL LINKS\"). In the Credits and Relationships views the URL rows of the relationship tables (a release's own links and its release group's) show it too. Nothing is loaded for it: the page shows these icons already."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-10-17",
     "sections": [

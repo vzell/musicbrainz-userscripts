@@ -23752,3 +23752,68 @@ Env: 2026-10-17T16:41:12+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1)
 - **Verified:** the 13 Discogs tests and the whole `popup-ext` spec with its
   mobile sibling (45/45), 4 new mutations caught, lint
   within the baseline.
+
+## 2026-10-17 — Sidebar cards: the real sidebar's site icons; every card open but Search (branch feat/sidebar-icons-open, WIP.3 + WIP.4)
+
+Env: 2026-10-17T17:00:16+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 bundled Chromium · no Tampermonkey (GM stubs)
+
+- **Request (vzell, release 22a6802f-d22e-4f47-9f22-6aac257a4194):** the
+  "Sidebar" cards (External links, Search, Release group external links …)
+  should show the site icons the real sidebar shows; every card should
+  start open except Search. Answers: a new select option as the new
+  default; icons in the cards AND the Sidebar tables. Branched off
+  feat/discogs-rich-preview at 85b8062 (vzell's call), not main.
+- **How the icons are read:** both kinds are the `li`'s BACKGROUND —
+  MusicBrainz's from its stylesheet by the `*-favicon` class, jesus2099's
+  inline (`style="background-image: url(...favicon.ico)"`, checked in
+  `release-tracks-sidebar-search-links.html`). On the live page the computed
+  style gives both; a page that is not rendered gets the inline style, else
+  the class through a hidden probe item. The icon goes on the cloned link
+  as its own background, not as an `<img>` in the cell: the cards read a
+  cell's FIRST node as its link (`row[2][0]`, `r[5][0]`).
+- **The default change broke four specs, each for a reason worth keeping:**
+  settings-dialog's PICK (`hasText: 'Every card'` now matches two
+  segments: an exact match), sidebar-inline's CTRL+CLICK and MARKER (they
+  need a MIXED state: they seed `info`), sidebar-search-card's HOVER STACK
+  (it clicked External links OPEN; the click now closed it).
+- **Verified so far:** sidebar-inline, sidebar-search-card, settings-dialog
+  (+ config-import-export) green; 6 new mutations in
+  `scripts/mutations/sidebar-search-card.json`, all caught (the computed
+  style and the class probe cover for each other on a live page, so they
+  are mutated together); lint within the baseline;
+  `audit-config-defaults.py` agrees on every inline fallback and waits for
+  the history refresh after the commit. `test:full` 1848/1848
+  (17:00:16–17:09:31+02:00, petri, on 85b8062 + this working tree).
+- **vzell's browser check (same day):** most icons were still missing —
+  Discogs, every release-group link, most Search entries; only jesus2099's
+  inline icons showed. **Cause:** MusicBrainz draws every site icon as a
+  `data:image/png;base64,…` URI (`icons-f602321.css`), and `_sbBgUrl()`
+  took http(s) only. Read in a real Chromium (a plain HTTP fetch of
+  musicbrainz.org now gets a JavaScript challenge, "Verifying your
+  browser"). The ICONS spec had modelled MusicBrainz's rule with an https
+  URL, so it could not see this; it now uses a `data:` URI. Fix: `data:image/`
+  accepted; each icon written ONCE as a rule in `#mb-sb-ico-style`, named by
+  a hash of its URL, the link carrying only the name (a ~10 KB icon inline
+  on every link and table clone would have been hundreds of KB). Two more
+  mutations, both caught. While rewriting, one splice deleted `_sbIconOf()`
+  (a ReferenceError, caught by the fetch's error handler: no cards at all);
+  restored, sidebar-search-card 11/11.
+- **Live check** (2026-10-17T17:26:57+02:00, petri, Playwright 1.62.1 bundled Chromium, real
+  musicbrainz.org, userscript loaded, logged out, no third-party scripts):
+  release 6336b8db-… (Devils & Dust, PROF Records), "Show all Tracks": 10
+  of 10 sidebar links with an icon have it in the cards; Discogs's is the
+  `data:` icon. (jesus2099's Search card is not in that harness; the fixture
+  covers its inline icons and its MusicBrainz classes.)
+- **vzell: "make sure that the site icons also render when the Credits/etc.
+  action button is pressed"** (screenshot: "URLs" and "Via release group"
+  rows bare). A live check (release 6336b8db-…, Credits,
+  `sa_sidebar_inline_skip_dup_links` off) found the "Sidebar: …" tables'
+  10 icons all drawn and the 10 relationship URL rows bare: with the
+  duplicates skipped (the default) those rows are where the sidebar's links
+  ARE. `_sbIconRelLinks()` gives a row link the icon of the sidebar item
+  with the same `_sbLinkKey()`. The ICONS Credits spec now checks a URL row
+  ("URLs", "Via release group"), a class-drawn and an inline Search row,
+  and the Sidebar copy with duplicates kept; one more mutation, caught.
+- **Final run:** `test:full` 1848/1848 (17:33:32–17:42:37+02:00, petri), and the
+  live Credits check (default settings): 10 of 10 sidebar links with an icon
+  carry it in the tables, the URL rows included.

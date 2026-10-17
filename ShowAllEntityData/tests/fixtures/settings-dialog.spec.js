@@ -522,14 +522,14 @@ test.describe('type: select', () => {
         await headerFor(page, SIDEBAR).click();
         await expect(rowFor(page, KEY)).toBeVisible();
 
-        await expect(segs(page, KEY)).toHaveText(['No card', 'Information card', 'Every card']);
-        await expect(checked(page, KEY)).toHaveText('Information card');
+        await expect(segs(page, KEY)).toHaveText(['No card', 'Information card', 'Every card but Search', 'Every card']);
+        await expect(checked(page, KEY)).toHaveText('Every card but Search');
         await expect(checked(page, KEY), 'the checked segment is the group\'s tab stop').toHaveAttribute('tabindex', '0');
-        await expect(page.locator(`#${SID}-input-${KEY}`)).toHaveValue('info');
+        await expect(page.locator(`#${SID}-input-${KEY}`)).toHaveValue('all-but-search');
         await expect(rowFor(page, KEY).locator('[data-vz-settings-col="2"]'), 'the label, not the stored word')
-            .toHaveText('Information card');
+            .toHaveText('Every card but Search');
         expect(await rowFor(page, KEY).locator('.vz-setting-label').getAttribute('title'))
-            .toContain('Choices: No card · Information card · Every card');
+            .toContain('Choices: No card · Information card · Every card but Search · Every card');
         await expect(rowFor(page, KEY), 'an untouched select is not marked').not.toHaveClass(/vz-setting-changed/);
     });
 
@@ -539,7 +539,7 @@ test.describe('type: select', () => {
         await headerFor(page, SIDEBAR).click();
         await headerFor(page, CAA).click();
 
-        await segs(page, KEY).filter({ hasText: 'Every card' }).click();
+        await segs(page, KEY).filter({ hasText: /^Every card$/ }).click();
         await expect(checked(page, KEY)).toHaveText('Every card');
         await expect(rowFor(page, KEY)).toHaveClass(/vz-setting-changed/);
         await segs(page, 'sa_caa_small_img_size').filter({ hasText: '500 px' }).click();
@@ -567,8 +567,8 @@ test.describe('type: select', () => {
 
         await headerFor(page, SIDEBAR).locator('.vz-section-reset').click();
         await page.getByRole('button', { name: 'OK', exact: true }).click();
-        await expect(checked(page, KEY), 'the buttons follow the reset, not only the hidden input').toHaveText('Information card');
-        await expect(page.locator(`#${SID}-input-${KEY}`)).toHaveValue('info');
+        await expect(checked(page, KEY), 'the buttons follow the reset, not only the hidden input').toHaveText('Every card but Search');
+        await expect(page.locator(`#${SID}-input-${KEY}`)).toHaveValue('all-but-search');
         await expect(rowFor(page, KEY)).not.toHaveClass(/vz-setting-changed/);
 
         await page.evaluate(() => { window.__notReloaded = true; });
@@ -622,7 +622,7 @@ test.describe('type: select', () => {
         await headerFor(page, CAA).click();
         await expect(checked(page, 'sa_caa_cell_layout'), '"List " is the list option').toHaveText('List');
         await expect(rowFor(page, 'sa_caa_cell_layout')).toHaveClass(/vz-setting-changed/);
-        await expect(checked(page, KEY), 'a stray value shows the default').toHaveText('Information card');
+        await expect(checked(page, KEY), 'a stray value shows the default').toHaveText('Every card but Search');
 
         await page.click(`#${SID}-save-btn`);
         await expect(page.locator(OVERLAY)).toHaveCount(0);

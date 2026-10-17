@@ -2,7 +2,7 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1353+2026-10-15",
+    "script_version": "9.99.1365+2026-10-17",
     "schema_entries": 438,
     "sections": 51,
     "settings": 387,
@@ -937,7 +937,7 @@
     "sa_shortcut_unicode_chars": "Ctrl+U",
     "sa_sidebar_collapsed": true,
     "sa_sidebar_in_rel_tables": true,
-    "sa_sidebar_inline_cards_open": "info",
+    "sa_sidebar_inline_cards_open": "all-but-search",
     "sa_sidebar_inline_collapsed": false,
     "sa_sidebar_inline_links": true,
     "sa_sidebar_inline_main": true,

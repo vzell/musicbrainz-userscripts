@@ -874,8 +874,10 @@ close every sidebar section; the headings of the main page are left alone.
   pills with their votes. In a narrow window the facts come first and the
   links below them. A link's chip shows only the link; a link listed under it
   (the Wikipedia article under a Wikidata link) is a small *› en* link after
-  it. Pointing at a link shows its site and full address; with link previews
-  on, that box sits above the preview card, as elsewhere.
+  it. A link shows the same site icon in front of its name as in the real
+  sidebar (none where the sidebar shows none). Pointing at a link shows its
+  site and full address; with link previews on, that box sits above the
+  preview card, as elsewhere.
   With jesus2099's *mb. ALL LINKS* installed, its *Search the web*, *Search in
   the whitelist* and *Search further* lists are one **Search** card (closed
   at first) between the link cards. It is an index: each section (*By genre*,
@@ -888,16 +890,18 @@ close every sidebar section; the headings of the main page are left alone.
   search link names the site it searches, also when the script sends the
   search through its forwarding page.
   They are for reading: no filter, no sorting. The heading opens and closes
-  like any other. Only the first information card (*Artist information*,
-  *Release group information*, …) starts open; the others start closed,
-  marked with ▶. After *Show all Tracks for Release* the release's
-  *Additional details*, *Labels* and *Release events* open too, next to
-  *Release information*. A click on a card's title (or Enter) opens or closes it;
+  like any other. Every card starts open except **Search**, which starts
+  closed, marked with ▶. With *Information card* chosen instead, only the
+  first information card (*Artist information*, *Release group information*,
+  …) starts open, and after *Show all Tracks for Release* the release's
+  *Additional details*, *Labels* and *Release events* too, next to *Release
+  information*. A click on a card's title (or Enter) opens or closes it;
   **Ctrl+Click** (Cmd+Click on a Mac) opens or closes every card at once,
   following the one you clicked. Hovering a title shows what the card holds.
   It reads the page itself, so nothing is loaded. Switches: *Sidebar facts below
   Credits/Relationships*, *… start the 'Sidebar' section closed*, *… cards
-  that start open* (No card / Information card / Every card), and *… on a
+  that start open* (No card / Information card / Every card but Search, the
+  default / Every card), and *… on a
   release: also Additional details, Labels and Release events*.
 - **The sidebar in the Credits / Relationships view.** After *Credits* (on a
   release) or *Relationships* (series, work, release group, recording; the
@@ -909,7 +913,10 @@ close every sidebar section; the headings of the main page are left alone.
   release's own URLs and its release group's are both there already); a
   links table with nothing left is left out with it. The search links of
   *mb. ALL LINKS* are one table, *Sidebar: Search*, with the list, section
-  and group each link is under. Switches: *Sidebar
+  and group each link is under. Links show their site icons here too, and
+  so do the URL rows of the relationship tables (a release's own links and
+  its release group's), with the icon the sidebar shows for the same link.
+  Switches: *Sidebar
   tables in the Credits/Relationships view*, *… skip links already in a
   relationship table*. *… include external links* and *… include tags*
   apply to both views.
