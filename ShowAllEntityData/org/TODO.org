@@ -1758,10 +1758,8 @@ Measure first, with scripts/run-perf-arms.py (status-line progress), each A/B pa
 block. Then design in plan mode: time budget per slice, cancelling a pass when a newer keystroke arrives (a stale pass must never write results), keeping _filterResultCache / _rowTextCache semantics, single- and multi-table paths, and ordering with renderFinalTable()'s chunked
 render. Flag the expected cost (total time may grow) with numbers before implementing and let me decide. Any change to the progress card follows my global UI look and feel (mockup first).
 
-
-* TODO switch to the new LAF everywhere
-
-* TODO reuse our LAF (Look and Feel) for MB PTs, maybe in UVD entity stats (hover over popups) or CAA/EAA stats (hover over popups)
+* DONE switch to the new LAF everywhere
+* DONE reuse our LAF (Look and Feel) for MB PTs, maybe in UVD entity stats (hover over popups) or CAA/EAA stats (hover over popups)
 
 1.)
 
@@ -1774,6 +1772,7 @@ popups)
 The 🔍 filter on each sub-table heading (`applySubFilter`) still filters synchronously and never shows the ⏳ progress
 card; the global and column filters do since perf/faster-filtering (WIP.9). Move STF typing onto `runFilterSliced()` on its
 own branch, with its own typed A/B (the faster-filtering measurements do not cover it).
+
 
 * ---------------------------------------------------------------
 
@@ -1887,8 +1886,7 @@ the detail dialog should already popup on the IP of ALL non-MB pages, e.g. when 
 On https://brucebase.wikidot.com/2012 the event on 2012-03-18 renders all songs in one long line instead of a multi-row
 cell
 
-
-* TODO the "CAA" column should always be wide enough to hold the image, the type glyphs + the optional warning icon (especially for large tables)
+* DONE the "CAA" column should always be wide enough to hold the image, the type glyphs + the optional warning icon (especially for large tables)
 
 1.)
 
@@ -1914,8 +1912,6 @@ If my diagnosis doesn't hold true it's something we need to tackle in a separate
 
 The CAA/EAA column should ALWAYS be wide enough to hold ALL the information even during rendering
 
-* add UVD entries for titles which do NOT follow MB style guidelines on MB PTs
-
 
 * 'release-tracks' PTs which have an h3 "Barcode and Other Identifiers" section, should render that section as a filterable/sortable table
 
@@ -1935,9 +1931,6 @@ should render that section as a filterable/sortable table
 * "Name" column in https://musicbrainz.org/search?query=guit&type=instrument&method=indexed needs a UVD entry for comments
 
 "Name" column in https://musicbrainz.org/search?query=guit&type=instrument&method=indexed needs a UVD entry for comments
-
-
-* add the "work of" to more recording columns in other PTs
 
 
 * ● Your browser reaches MusicBrainz over IPv6.
@@ -2773,23 +2766,55 @@ b.)
 and when the detail popup is "Space" expanded also right in front of the entity name, [Image #24] here the name
 "Recording" at the very beginning
 
-
-* TODO Add a must have third-party userscripts section together with the end-user visible changes and what our userscript depends on
-
-Add a must have third-party userscripts section together with the end-user visible changes and what our userscript
-depends on
+* DONE the rich tooltips should show track/recording differences below each other in a diff like view, with differing chars/portions highlighted
 
 1.)
 
-Analyse first
+the rich tooltips should show track/recording differences below each other in a diff like view, with differing
+chars/portions highlighted... are there any algorithms out there we can use... it's all about presentation to the
+end-user, so he/she can spot right away where the differences are
+
+Current behaviour: @debug/title-diff-format.png
 
 2.)
 
-Suggestions for complete integration
+maybe there are other tooltips which show comparisons, fix them also
 
 3.)
 
-etc
+Make some nice HTML based mockups
+
+* DONE popup hover enhancements
+
+This is all on e.g. https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c - @debug/missing-CAA-hover.html
+
+1.)
+
+Inside the h2 "Relationships" section, when the standard action button on a PT has been pressed and we are on the FRP, if there are any cover icons present like in
+
+#+begin_example
+<table class="details mb-sph-target" style="width: 100%; --mb-sph-left: 19.99px; --mb-sph-maxw: 2147px;"><tbody><tr><th>single/EP which was taken from:</th><td style="word-break:break-all"><span class="rglink"></span><a href="https://musicbrainz.org/release/de3273d0-4906-4760-b8e2-51a7ffde946b/cover-art" ref="/release-group/b3559cb2-d7ad-32eb-a17e-54a873ce4122" title="1 image found in this release"><span class="caa-icon jesus2099userjs154481" style="background-size: contain; background-image: url(&quot;//coverartarchive.org/release-group/b3559cb2-d7ad-32eb-a17e-54a873ce4122/front-250&quot;);"></span></a><a href="/release-group/b3559cb2-d7ad-32eb-a17e-54a873ce4122"><bdi>Tunnel of Love</bdi></a><br></td></tr><tr><th>includes:</th><td style="word-break:break-all"><span class="rglink"></span><a href="https://musicbrainz.org/release/3dd269a3-c20b-4f29-bfa3-a92ca93c7fa2/cover-art" ref="/release-group/92b7f3ea-882a-4073-9e25-b3d158a67f57" title="5 images found in this release"><span class="caa-icon jesus2099userjs154481" style="background-size: contain; background-image: url(&quot;//coverartarchive.org/release-group/92b7f3ea-882a-4073-9e25-b3d158a67f57/front-250&quot;);"></span></a><a href="/release-group/92b7f3ea-882a-4073-9e25-b3d158a67f57"><bdi>Tunnel of Love Express</bdi></a><br></td></tr></tbody></table>
+#+end_example
+
+they should alos get the same treatment as other image icons regarding the popup hovering and internal viewer handling
+
+2.)
+
+The same for the icons under the "Relationships" column, they are not treated uniformly regarding our rich tooltip popup
+framework
+
+a.)
+
+when hovering they should show the detail URL based popup
+
+b.)
+
+when hovering and filtering (in this case column filtering) is in effect which filters on "Relationships" cells, two
+rich tooltips show up and they should stack over each other as in our generic tooltip stacking framework - [Image #]
+
+The hovered over icon should be mentioned in the tooltip popup, currently only the URL itself is shown, aand it's easy
+to misundertand what that URL actually means compared to the full list of URLs which show with background highlightning
+which entry actually is filtered on
 
 * TODO revamp "Search in ..." card handling
 
@@ -2832,20 +2857,33 @@ Make some suggestions how to shorten it or display it differently (actually wher
 With all the changes maybe the cards could be layout more efficiently ... please some suggestions
 
 
-* TODO the rich tooltips should show track/recording differences below each other in a diff like view, with differing chars/portions highlighted
+* TODO add the "work of" to more recording columns in other PTs
+
+
+* TODO add UVD entries for titles which do NOT follow MB style guidelines on MB PTs and user aour rich tooltip diff popup view to show whats differing
+
+
+* TODO Add a must have third-party userscripts section together with the end-user visible changes and what our userscript depends on
+
+Add a must have third-party userscripts section together with the end-user visible changes and what our userscript
+depends on
 
 1.)
 
-the rich tooltips should show track/recording differences below each other in a diff like view, with differing
-chars/portions highlighted... are there any algorithms out there we can use... it's all about presentation to the
-end-user, so he/she can spot right away where the differences are
-
-Curretn behaviour: @debug/title-diff-format.png
+Analyse first and give a comprehensive summary in a nice HTML based view, with URLs to the original script (downlaod URL, homepage, documentaiotn URL, etc)
 
 2.)
 
-maybe there are other tooltips which show comparisons, fix them also
+Suggestions for complete integration
 
 3.)
 
-Make some nice HTML based mockups
+etc
+
+
+* new non-MB PTs
+
+discogs submission list
+
+
+
