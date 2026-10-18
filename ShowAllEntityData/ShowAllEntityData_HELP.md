@@ -1430,6 +1430,7 @@ you automatically.
 | 🌴 jungleland.it                                | Switch on the jungleland.it bootleg artwork list (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                            |
 | 💿 brucespringsteen.it                          | Switch on the brucespringsteen.it record database (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                           |
 | 📚 Brucebase                                    | Switch on the Brucebase song list, Relations and Recent changes and, separately, its year pages (all off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                         |
+| 💿 Discogs                                      | Switch on discogs.com's master, release, artist and label pages (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                             |
 | 🔎 Link previews on MusicBrainz                 | The cards of the links on MusicBrainz pages (on by default; on a phone or tablet off unless you tick the *… on touch devices* boxes), how long their answers are kept, the release group window's size; see [Page-specific behaviour](#page-specific-behaviour)     |
 | 🔎 Every preview                                | Show the MusicBrainz link previews and the Springsteen sites' detail-page previews on a plain hover (on by default), or only while Ctrl is held                                                                                                                       |
 
@@ -1496,8 +1497,9 @@ an import brings your deletions back.
   category and the entry page), bootleg lists, CD and vinyl bootleg list
   and lyrics index, the **jungleland.it**
   bootleg artwork list, the **brucespringsteen.it** record database and
-  the **Brucebase** song list, year pages, Relations and Recent changes — each off until you switch it on, see
-  [Page-specific behaviour](#page-specific-behaviour)
+  the **Brucebase** song list, year pages, Relations and Recent changes, and
+  **discogs.com**'s master, release, artist and label pages — each off until
+  you switch it on, see [Page-specific behaviour](#page-specific-behaviour)
 
 </details>
 
@@ -2774,6 +2776,53 @@ The site's form still decides **what** is loaded: untick *ALL* and tick, say,
 Each 200 changes is one request to the wiki, one after the other; 5,000 is 25
 requests and takes a minute or so. A change made while they load can show up
 twice.
+
+</details>
+
+<details>
+<summary>discogs.com: masters, releases, artists and labels</summary>
+
+With ⚙️ Settings → *💿 Discogs* → *Enable on discogs.com* on (off by
+default), a master, release, artist or label page on discogs.com gets a
+section of its own above Discogs' page, with the toolbar and these buttons:
+
+- **Master — Show all versions:** every version in one table: a thumbnail,
+  title, format, label, catalogue number, country and year; ★ marks the
+  master's main release.
+- **Release — Show tracklist, credits and other versions:** five sub-tables:
+  **Tracklist** (with each track's credits), **Credits**, **Companies, etc.**,
+  **Barcode and Other Identifiers** and **Other versions** (every other
+  version of its master).
+- **Artist — Show the whole discography:** one sub-table per Discogs role, in
+  Discogs' order: **Releases**, the credits Discogs' API gives (*Credits:
+  Producer*, …), **Appearances**, **Track appearances**, **Unofficial**; with
+  type (master or release), title, artist, format, label, year, and how many
+  Discogs users have and want it. Discogs' own split into Albums, Singles &
+  EPs and Compilations, and credits such as written-by or instruments, are
+  not in its API.
+- **Label — Newest:** 500, 1,000 or 5,000 releases; **Oldest:** 500 or 1,000;
+  **Then:** all of them. A large label has hundreds of thousands (Columbia:
+  396,611), so "All" asks first how many pages that is.
+
+The rows come from Discogs' API, 100 a request, one after the other: a
+request every 2.5 seconds, or every second with your Discogs personal access
+token (⚙️ Settings → *🔎 External link previews*). Pointing at a button shows
+what it costs. Bruce Springsteen's discography is 68 requests, about 3
+minutes without a token; more than 50 pages asks you first, as on
+MusicBrainz. Discogs' own page stays as it is below the section. As
+everywhere, pressing a second button reloads the page; press it again then.
+
+Titles link their Discogs pages, and so do the names in a track's credits
+(one row each; a long list is collapsed, ▶ opens it). Discogs' lists name
+artists and labels without saying which ones, so those link Discogs' search
+for the name. A click on a thumbnail opens the artwork viewer on the table's
+thumbnails (← → step through them). The section starts at the window's left
+edge and is as wide as its widest table; scrolled sideways, the toolbar and
+the bars stay in view.
+
+With *Preview external links on hover* on, a Discogs link in the table or in
+the page's content (not Discogs' header or footer) gets the same card and
+window as on MusicBrainz.
 
 </details>
 

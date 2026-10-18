@@ -28,6 +28,7 @@
 // @include      /^https?:\/\/brucebase\.wikidot\.com\/(?:stats:relations|system:recent-changes)\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/brucebase\.wikidot\.com\/(?:\d{4}|1949-64)\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/brucebase\.wikidot\.com\/(?:home\/?)?(?:[?#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?(?:master|release|artist|label)\/\d+(?:-[^\/?#]*)?\/?(?:[?#].*)?$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
 // @connect      eventartarchive.org
@@ -4693,6 +4694,34 @@
         },
 
         // ============================================================
+        // DISCOGS SECTION (discogs.com's own pages, 2026-10-18;
+        // docs/claude/discogs.md)
+        // ============================================================
+        divider_discogs: {
+            type: 'divider',
+            label: '💿 DISCOGS'
+        },
+
+        sa_enable_discogs: {
+            label: 'Enable on discogs.com',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default. When on, the script also runs on discogs.com\'s master, ' +
+                         'release, artist and label pages and offers buttons that list a master\'s ' +
+                         'versions, a release\'s tracklist, credits, companies, identifiers and ' +
+                         'other versions, an artist\'s whole discography, or a label\'s newest or ' +
+                         'oldest releases as filterable, sortable tables, with a thumbnail of ' +
+                         'each. The rows come from Discogs\' API, 100 a request, as for the link ' +
+                         'previews (with a Discogs personal access token, under 🔎 EXTERNAL LINK ' +
+                         'PREVIEWS, a request a second instead of one every 2.5 seconds). With ' +
+                         '"Preview external links on hover" on, a Discogs link in the table or in ' +
+                         'the page\'s content (not its header or footer) gets ' +
+                         'the same card and window as on MusicBrainz. When off, the script exits ' +
+                         'on discogs.com before touching the page. Settings are shared with ' +
+                         'MusicBrainz, so this can be switched on from either site.'
+        },
+
+        // ============================================================
         // LINK PREVIEWS ON MUSICBRAINZ (the popup engine's entity cards,
         // org/iframe.org Phase 2)
         // ============================================================
@@ -5916,6 +5945,20 @@
     const _isBbHost = /(^|\.)brucebase\.wikidot\.com$/.test(window.location.hostname);
 
     /**
+     * True when this page is on discogs.com rather than MusicBrainz.
+     *
+     * The fifth non-MusicBrainz host (its `@include` line and
+     * docs/claude/discogs.md): a master, release, artist or label page, whose
+     * rows come from Discogs' API through the link previews' readers
+     * (`_EXT_DG_LISTS`, `_extDiscogsLoad()`). Read by its own opt-in and frame
+     * gates just below, through `_foreignHost` by the detection loop, by
+     * `performClutterCleanup()`, and by `_extTarget()` (a Discogs link is
+     * previewed on discogs.com itself).
+     * @type {boolean}
+     */
+    const _isDgHost = /(^|\.)discogs\.com$/.test(window.location.hostname);
+
+    /**
      * A Brucebase year page's path: `/1975`, …, and the one exception
      * `/1949-64` (pageType `bb-year`, docs/claude/brucebase.md). Read by the
      * year-page opt-in gate below and by the `bb-year` definition's `match`.
@@ -5944,6 +5987,7 @@
         : _isJlHost ? 'jungleland.it'
         : _isBsHost ? 'brucespringsteen.it'
         : _isBbHost ? 'brucebase.wikidot.com'
+        : _isDgHost ? 'www.discogs.com'
         : null;
 
     // springsteenlyrics.com support is opt-in (`sa_enable_springsteenlyrics`,
@@ -6000,6 +6044,21 @@
     if (_isBbHost && (_BB_YEAR_PATH_RE.test(window.location.pathname) || _BB_HOME_PATH_RE.test(window.location.pathname)) &&
         Lib.settings.sa_bb_year_pages !== true) {
         Lib.info('init', 'brucebase.wikidot.com year pages are off (sa_bb_year_pages) — nothing to do.');
+        return;
+    }
+
+    // discogs.com: opt-in (`sa_enable_discogs`, default off), gated as early
+    // as the others. The pages carry ad and consent frames; the script only
+    // ever belongs in the top window.
+    if (_isDgHost && Lib.settings.sa_enable_discogs !== true) {
+        Lib.info('init', 'discogs.com support is off (sa_enable_discogs) — nothing to do.');
+        return;
+    }
+    if (_isDgHost && window.top !== window) return;
+    // Cloudflare's "Just a moment…" check answers at the same URL and has no
+    // #app (seen 2026-10-18 in an automated browser): not a Discogs page.
+    if (_isDgHost && !document.getElementById('app')) {
+        Lib.info('init', 'discogs.com: no #app on this page (a security check?) — nothing to do.');
         return;
     }
 
@@ -11312,7 +11371,7 @@
      * borders, padding, header background and the `tr.even` zebra stripe
      * that `applyZebraStriping()` merely toggles classes for; neither site
      * has any of it. The rules are scoped to the hosts' body classes
-     * (`mb-sa-host-sl`, `mb-sa-host-jl`, `mb-sa-host-bs`, `mb-sa-host-bb`) and sit inside `:where()` so they
+     * (`mb-sa-host-sl`, `mb-sa-host-jl`, `mb-sa-host-bs`, `mb-sa-host-bb`, `mb-sa-host-dg`) and sit inside `:where()` so they
      * carry almost no specificity: any of this script's own table styling
      * (sticky header colours, finding tints, hover, highlights) still wins
      * wherever it applies. A further host extends the `:is()` list here
@@ -11324,23 +11383,23 @@
         if (document.getElementById('mb-foreign-table-style')) return;
         // GM_addStyle so this is exempt from page CSP style-src restrictions.
         const style = GM_addStyle(`
-            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl) {
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg) table.tbl) {
                 border-collapse: collapse;
                 background: #fff;
                 font-size: 13px;
                 margin: 6px 0;
             }
-            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl) th,
-            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl) td {
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg) table.tbl) th,
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg) table.tbl) td {
                 border: 1px solid #ddd;
                 padding: 3px 6px;
                 vertical-align: top;
             }
-            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl) thead th {
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg) table.tbl) thead th {
                 background-color: #e8e8e8;
                 text-align: left;
             }
-            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl) tr.even > td {
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg) table.tbl) tr.even > td {
                 background-color: #f2f2f2;
             }
             /* NOT inside :where(), on purpose: the backing behind a sorted
@@ -11353,7 +11412,7 @@
                outrank the site's own rules: springsteenlyrics.com's
                Bootstrap 3.3.2 has table { background-color: transparent },
                which also beats the zero-specificity table colour above. */
-            body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl > thead {
+            body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb, .mb-sa-host-dg) table.tbl > thead {
                 background-color: #fff;
             }
         `);
@@ -14487,6 +14546,537 @@
         return h1;
     }
 
+    // --- discogs.com (www.discogs.com) ---------------------------------------
+    // A master's, release's, artist's or label's own page on discogs.com
+    // (pageTypes dg-master, dg-release, dg-artist, dg-label; 2026-10-18,
+    // mockup https://claude.ai/artifact/KTtCM7SaYVHZDaQdNqjUAK). The page is a
+    // React app with generated class names that shows one slice of each list,
+    // so the rows come from Discogs' API instead, through the link previews'
+    // readers (`_EXT_DG_LISTS`, `_extDiscogsTracklist()`, `_extDiscogsHeaders()`,
+    // `_extGet()`): every page a `features.pageRequest` whose `fetchText()`
+    // goes through the host's gate and whose `toHtml()` builds `table.tbl`
+    // rows; the page count is asked first (`features.pageCountAsync`). Opt-in
+    // via `sa_enable_discogs`. See docs/claude/discogs.md.
+
+    /**
+     * Column headers of the Discogs tables: a list per pageType, the release
+     * page's per sub-table (in its order).
+     * @type {{artist: string[], label: string[], master: string[], release: Object<string, string[]>}}
+     */
+    const _DG_HEADERS = {
+        artist: ['Image', 'Type', 'Title', 'Artist', 'Format', 'Label', 'Year', 'Have', 'Want'],
+        label: ['Image', 'Artist', 'Title', 'Format', 'Cat#', 'Year'],
+        master: ['Image', 'Title', 'Format', 'Label', 'Cat#', 'Country', 'Year'],
+        release: {
+            Tracklist: ['Pos', 'Title', 'Duration', 'Credits'],
+            Credits: ['Role', 'Name', 'Tracks'],
+            'Companies, etc.': ['Role', 'Name', 'Cat#'],
+            'Barcode and Other Identifiers': ['Type', 'Value', 'Description'],
+            'Other versions': ['Image', 'Title', 'Format', 'Label', 'Cat#', 'Country', 'Year'],
+        },
+    };
+
+    /**
+     * The sub-table of an artist's discography a Discogs role goes to:
+     * Main → Releases, Appearance → Appearances, TrackAppearance → Track
+     * appearances, UnofficialRelease → Unofficial; any other role is a credit
+     * ("Credits: Producer"). Discogs lists by role, then year, so each one is
+     * a run of rows and the groups come in Discogs' order.
+     * @type {Object<string, string>}
+     */
+    const _DG_ROLE_GROUPS = { Main: 'Releases', Appearance: 'Appearances', TrackAppearance: 'Track appearances', UnofficialRelease: 'Unofficial' };
+
+    /**
+     * The answers a run already has, by URL: the page(s) `_dgPageCount()`
+     * asked to learn the page count, which the loop then takes instead of
+     * asking again. Emptied when a run starts.
+     * @type {Map<string, string>}
+     */
+    const _dgTexts = new Map();
+
+    /**
+     * What `_dgPageCount()` learned for the run under way: the release's
+     * master, whose versions are the release page's pages 2 and on, and a
+     * master's main release, marked ★ in its versions. 0 for none.
+     * @type {{masterId: number, mainId: number}}
+     */
+    const _dgRun = { masterId: 0, mainId: 0 };
+
+    /**
+     * What this discogs.com page is: its kind and Discogs id, read from the
+     * path (`_EXT_DISCOGS_PATH_RE`, the readers' own: a language prefix and a
+     * slug allowed).
+     *
+     * @param {string} [path]
+     * @returns {?{kind: string, id: number}}
+     */
+    function _dgPage(path = window.location.pathname) {
+        const m = _EXT_DISCOGS_PATH_RE.exec(path);
+        return m ? { kind: m[1].toLowerCase(), id: Number(m[2]) } : null;
+    }
+
+    /**
+     * One answer of Discogs' API as text, through the link previews' gate
+     * and headers (`_extGet()`: the host's spacing, 2.5 s apart without a
+     * token, 1 s with one; the User-Agent and the token). An answer the run
+     * already has is taken from `_dgTexts`. Not asked once Stop is pressed —
+     * except the page count's own requests (`stoppable` false): the engine
+     * clears Stop only after its gates, so a press after a stopped run
+     * would otherwise lose them and load one page.
+     *
+     * @param {string} url
+     * @param {boolean} [stoppable]
+     * @returns {Promise<string>}
+     * @throws {Error} With `status` (0: no answer, or stopped), so the loop
+     *   records the page as failed like any HTTP error.
+     */
+    async function _dgFetchText(url, stoppable = true) {
+        if (_dgTexts.has(url)) {
+            const kept = _dgTexts.get(url);
+            _dgTexts.delete(url);
+            return kept;
+        }
+        const res = await _extGet(url, {
+            wanted: stoppable ? () => !stopRequested : null, fetchOpts: { accept: /\bjson\b/i, headers: _extDiscogsHeaders() },
+        });
+        const fail = (message, status) => Object.assign(new Error(message), { status });
+        if (res.skipped) throw fail('Stopped before this page was asked', 0);
+        if (res.error) throw fail(`Discogs did not answer (${res.error}${res.detail ? `: ${res.detail}` : ''})`, 0);
+        if (res.status !== 200) throw fail(`HTTP ${res.status} from Discogs for ${url}`, res.status);
+        return String(res.body || '') + String(res.tail || '');
+    }
+
+    /**
+     * An API answer as JSON.
+     *
+     * @param {string} text
+     * @returns {Object}
+     * @throws {Error} When it is not JSON (`status` 0).
+     */
+    function _dgJson(text) {
+        try {
+            return JSON.parse(text);
+        } catch (_) {
+            throw Object.assign(new Error('Discogs answered with something that is not JSON'), { status: 0 });
+        }
+    }
+
+    /**
+     * The API URL of page `p` of this page's list: an artist's discography,
+     * a label's releases in the button's order (`features.dgOrder`), a
+     * master's versions; on a release page, page 1 is the release itself and
+     * the pages after it its master's versions.
+     *
+     * @param {number} p - From 1.
+     * @param {object} def - The active merged pageDefinition.
+     * @returns {string}
+     */
+    function _dgPageUrl(p, def) {
+        const pg = _dgPage();
+        if (pg.kind === 'artist') return _EXT_DG_LISTS.artist.url(String(pg.id), p);
+        if (pg.kind === 'label') return _EXT_DG_LISTS.label.url(`${pg.id}:${def.features.dgOrder === 'asc' ? 'asc' : 'desc'}`, p);
+        if (pg.kind === 'master') return _EXT_DG_LISTS.versions.url(String(pg.id), p);
+        return p === 1 ? `https://api.discogs.com/releases/${pg.id}` : _EXT_DG_LISTS.versions.url(String(_dgRun.masterId), p - 1);
+    }
+
+    /**
+     * `features.pageCountAsync` of the Discogs pageTypes: how many pages this
+     * run asks, from page 1 of the list (`pagination.pages`), at most the
+     * button's `features.pageCap` (a label's "Newest 500" is 5). A release
+     * asks for itself and, when it has a master, that master's versions
+     * page 1: 1 + their pages. A master also asks for its own record
+     * (`masters/<id>`), for its main release. What it asked is kept for the
+     * loop (`_dgTexts`).
+     *
+     * @param {object} def - The active merged pageDefinition.
+     * @returns {Promise<number>}
+     */
+    async function _dgPageCount(def) {
+        _dgTexts.clear();
+        _dgRun.masterId = 0;
+        _dgRun.mainId = 0;
+        const keep = async (url) => {
+            const text = await _dgFetchText(url, false);
+            _dgTexts.set(url, text);
+            return _dgJson(text);
+        };
+        const pages = (d) => Math.max(1, Number(d && d.pagination && d.pagination.pages) || 1);
+        if (_dgPage().kind === 'release') {
+            const rel = await keep(_dgPageUrl(1, def));
+            _dgRun.masterId = Number(rel.master_id) || 0;
+            return _dgRun.masterId ? 1 + pages(await keep(_dgPageUrl(2, def))) : 1;
+        }
+        if (_dgPage().kind === 'master') {
+            // Only for the ★: a failure here costs the mark, not the versions.
+            try {
+                const m = _dgJson(await _dgFetchText(`https://api.discogs.com/masters/${_dgPage().id}`, false));
+                _dgRun.mainId = Number(m.main_release) || 0;
+            } catch (err) {
+                Lib.warn('fetch', `Discogs master record: ${err && err.message} — no main release marked.`);
+            }
+        }
+        const n = pages(await keep(_dgPageUrl(1, def)));
+        const cap = Number(def.features.pageCap) || 0;
+        return cap ? Math.min(cap, n) : n;
+    }
+
+    /**
+     * `features.pageRequest` of the Discogs pageTypes: page `p` by its API
+     * URL, fetched through `_dgFetchText()`, turned into table rows by
+     * `_dgToHtml()`.
+     *
+     * @param {number} p - From 1.
+     * @param {object} def - The active merged pageDefinition.
+     * @returns {{url: string, fetchText: function(): Promise<string>, toHtml: function(string): string}}
+     */
+    function _dgPageRequest(p, def) {
+        const url = _dgPageUrl(p, def);
+        return { url, fetchText: () => _dgFetchText(url), toHtml: (text) => _dgToHtml(p, text) };
+    }
+
+    /**
+     * A table cell's HTML: the text, escaped; or a link to a Discogs page.
+     *
+     * @param {string} text
+     * @param {string} [href] - A Discogs URL ('' for none).
+     * @returns {string}
+     */
+    function _dgCell(text, href = '') {
+        const t = _rgEsc(text);
+        return `<td>${href ? `<a href="${_rgEsc(href)}">${t}</a>` : t}</td>`;
+    }
+
+    /**
+     * The Image cell: Discogs' 150 px thumbnail shown at 40, loaded as it
+     * scrolls into view; empty for none.
+     *
+     * @param {string} thumb
+     * @returns {string}
+     */
+    function _dgThumbCell(thumb) {
+        return `<td class="mb-dg-imgcell">${thumb ? `<a class="mb-dg-thumblink" href="${_rgEsc(thumb)}" target="_blank" rel="noopener noreferrer">` +
+            `<img class="mb-dg-thumb" src="${_rgEsc(thumb)}" alt="" width="40" height="40" loading="lazy" referrerpolicy="no-referrer"></a>` : ''}</td>`;
+    }
+
+    /**
+     * A name cell linked to Discogs' search for it: the lists give an artist
+     * or a label as text only, no id (rows: `artist`, `label`; checked
+     * 2026-10-17), so a link can only search, as a version's label does in
+     * the preview window. An artist cell is ONE link however many names it
+     * holds (vzell, 2026-10-18: splitting would break group names such as
+     * "Bruce Springsteen & The E-Street Band"); a label cell is split on
+     * ", " ("Columbia, Sony Music"), each its own link. Discogs' "*" (a
+     * name credited differently) is left out of the query.
+     *
+     * @param {string} text
+     * @param {string} type - 'artist' or 'label'.
+     * @returns {string}
+     */
+    function _dgSearchCell(text, type) {
+        const one = (name) => {
+            const q = name.replace(/\*/g, '').trim();
+            return q ? `<a href="https://www.discogs.com/search/?q=${encodeURIComponent(q)}&amp;type=${type}">${_rgEsc(name)}</a>` : _rgEsc(name);
+        };
+        const t = String(text || '').trim();
+        if (!t) return '<td></td>';
+        return `<td>${type === 'label' ? t.split(/,\s+/).map(one).join(', ') : one(t)}</td>`;
+    }
+
+    /**
+     * One table of a fetched page: its sub-table heading (multi-table
+     * pageTypes), its columns stamped as `data-mb-col-headers` (the fetch
+     * loop gives each group its own head), and its rows.
+     *
+     * @param {?string} heading
+     * @param {string[]} cols
+     * @param {string[]} rows - Each a `<tr>…</tr>`.
+     * @returns {string}
+     */
+    function _dgTableHtml(heading, cols, rows) {
+        return `${heading ? `<h3>${_rgEsc(heading)}</h3>` : ''}<table class="tbl" data-mb-col-headers="${_rgEsc(JSON.stringify(cols))}">` +
+            `<thead><tr>${cols.map(c => `<th>${_rgEsc(c)}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`;
+    }
+
+    /**
+     * A version's row (a master's versions, a release's other versions),
+     * in `_DG_HEADERS.master` order; the master's main release marked ★.
+     *
+     * @param {Object} v - `_EXT_DG_LISTS.versions.row()`.
+     * @param {number} mainId
+     * @returns {string}
+     */
+    function _dgVersionRow(v, mainId) {
+        const main = v.id && v.id === mainId ? ' <span class="mb-dg-main" title="Main release">★</span>' : '';
+        return `<tr>${_dgThumbCell(v.thumb)}<td><a href="https://www.discogs.com/release/${v.id}">${_rgEsc(v.title)}</a>${main}</td>` +
+            `${_dgCell(v.format)}${_dgSearchCell(v.label, 'label')}${_dgCell(v.catno)}${_dgCell(v.country)}${_dgCell(v.year)}</tr>`;
+    }
+
+    /**
+     * One page of the API as a document of `table.tbl` (the pageRequest's
+     * `toHtml`), its rows parsed by the readers' own row functions:
+     *   - artist: one sub-table per role run (`_DG_ROLE_GROUPS`);
+     *   - label, master: the one table;
+     *   - release page 1: Tracklist, Credits, Companies, etc. and Barcode
+     *     and Other Identifiers; pages 2 and on: Other versions (the release
+     *     itself left out).
+     *
+     * @param {number} p
+     * @param {string} text
+     * @returns {string} An HTML document.
+     * @throws {Error} When the answer is not the list or record expected
+     *   (`status` 0): the loop records the page as failed.
+     */
+    function _dgToHtml(p, text) {
+        const pg = _dgPage();
+        const d = _dgJson(text);
+        const bad = (what) => Object.assign(new Error(`Discogs answered, but not with ${what}`), { status: 0 });
+        let body;
+        if (pg.kind === 'release' && p === 1) {
+            if (!d || !d.title) throw bad('a release');
+            const H = _DG_HEADERS.release;
+            const artistLink = (c) => (c.id ? `https://www.discogs.com/artist/${c.id}` : '');
+            // A track's credits: one row each, "Role – Name" with the name
+            // linked to its artist page, a list the engine collapses like
+            // MusicBrainz's Instruments column (`collapsableColumns`).
+            const credits = (list) => (list.length ? '<td><ul>' + list.map(c => `<li>${c.role ? `${_rgEsc(c.role)} – ` : ''}` +
+                `${c.id ? `<a href="${artistLink(c)}">${_rgEsc(c.anv || c.name)}</a>` : _rgEsc(c.anv || c.name)}</li>`).join('') + '</ul></td>' : '<td></td>');
+            const tracks = _extDiscogsTracklist(d.tracklist).filter(x => x.type === 'track')
+                .map(x => `<tr>${_dgCell(x.pos)}${_dgCell(x.title)}${_dgCell(x.dur)}${credits(x.credits)}</tr>`);
+            const crs = (d.extraartists || []).filter(a => a && a.name).map(_extDiscogsCredit)
+                .map(c => `<tr>${_dgCell(c.role)}${_dgCell(c.anv || c.name, artistLink(c))}${_dgCell(c.tracks)}</tr>`);
+            const cos = (d.companies || []).filter(c => c && c.name).map(c => `<tr>${_dgCell(String(c.entity_type_name || '').trim())}` +
+                `${_dgCell(_extDiscogsName(c.name), c.id ? `https://www.discogs.com/label/${c.id}` : '')}` +
+                `${_dgCell(c.catno && c.catno !== 'none' ? String(c.catno).trim() : '')}</tr>`);
+            const ids = (d.identifiers || []).filter(i => i && i.value).map(i => `<tr>${_dgCell(String(i.type || '').trim())}` +
+                `${_dgCell(String(i.value).trim())}${_dgCell(String(i.description || '').trim())}</tr>`);
+            body = _dgTableHtml('Tracklist', H.Tracklist, tracks) + _dgTableHtml('Credits', H.Credits, crs) +
+                _dgTableHtml('Companies, etc.', H['Companies, etc.'], cos) +
+                _dgTableHtml('Barcode and Other Identifiers', H['Barcode and Other Identifiers'], ids);
+        } else {
+            const kind = pg.kind === 'artist' ? 'artist' : pg.kind === 'label' ? 'label' : 'versions';
+            const spec = _EXT_DG_LISTS[kind];
+            if (!d || !Array.isArray(d[spec.field])) throw bad(spec.what);
+            const rows = d[spec.field].map(spec.row).filter(r => r.id);
+            if (pg.kind === 'artist') {
+                const runs = [];
+                rows.forEach((r) => {
+                    const group = _DG_ROLE_GROUPS[r.role] || `Credits: ${r.role || 'other'}`;
+                    if (!runs.length || runs[runs.length - 1].group !== group) runs.push({ group, rows: [] });
+                    const kindOf = r.master ? 'master' : 'release';
+                    runs[runs.length - 1].rows.push(`<tr>${_dgThumbCell(r.thumb)}${_dgCell(r.master ? 'Master' : 'Release')}` +
+                        `${_dgCell(r.title, `https://www.discogs.com/${kindOf}/${r.id}`)}${_dgSearchCell(r.artist, 'artist')}${_dgCell(r.format)}` +
+                        `${_dgSearchCell(r.label, 'label')}${_dgCell(r.year)}${_dgCell(String(r.have))}${_dgCell(String(r.want))}</tr>`);
+                });
+                body = runs.map(x => _dgTableHtml(x.group, _DG_HEADERS.artist, x.rows)).join('');
+            } else if (pg.kind === 'label') {
+                body = _dgTableHtml(null, _DG_HEADERS.label, rows.map(r => `<tr>${_dgThumbCell(r.thumb)}${_dgSearchCell(r.artist, 'artist')}` +
+                    `${_dgCell(r.title, `https://www.discogs.com/release/${r.id}`)}${_dgCell(r.format)}${_dgCell(r.catno)}${_dgCell(r.year)}</tr>`));
+            } else if (pg.kind === 'master') {
+                body = _dgTableHtml(null, _DG_HEADERS.master, rows.map(v => _dgVersionRow(v, _dgRun.mainId)));
+            } else {
+                body = _dgTableHtml('Other versions', _DG_HEADERS.release['Other versions'],
+                    rows.filter(v => v.id !== pg.id).map(v => _dgVersionRow(v, 0)));
+            }
+        }
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${body}</body></html>`;
+    }
+
+    /**
+     * Styles of the Discogs pages: the section ShowAllEntityData adds above
+     * Discogs' page (`#mb-dg-root`), its `<h1>`/`<h2>` and the thumbnails.
+     * Every rule is scoped to `body.mb-sa-host-dg`; the table itself is the
+     * shared `_ensureForeignTableStyle()`.
+     *
+     * @returns {void}
+     */
+    function _ensureDgStyle() {
+        _ensureForeignTableStyle();
+        if (document.getElementById('mb-dg-style')) return;
+        // GM_addStyle so this is exempt from page CSP style-src restrictions.
+        const style = GM_addStyle(`
+            /* At the window's left edge (vzell: a table's first column at
+               the left of the window), as wide as its widest table (the
+               h2/h3 bars then span it, and no row shows past a stuck bar's
+               end), at least the window. */
+            body.mb-sa-host-dg #mb-dg-root {
+                box-sizing: border-box;
+                width: fit-content;
+                min-width: 100%;
+                margin: 8px 0 12px;
+                padding: 8px 8px 14px;
+                background: #fff;
+                color: #222;
+                font: 13px/1.4 Arial, Helvetica, sans-serif;
+                border-top: 1px solid #e5e5e5;
+                border-bottom: 1px solid #e5e5e5;
+            }
+            body.mb-sa-host-dg h1.mb-dg-h1 {
+                font: 700 22px/1.25 Arial, Helvetica, sans-serif;
+                margin: 0 0 6px;
+                color: #222;
+            }
+            body.mb-sa-host-dg h2.mb-dg-list-heading {
+                font: 700 18px/1.3 Arial, Helvetica, sans-serif;
+                margin: 10px 0 6px;
+                color: #222;
+            }
+            body.mb-sa-host-dg #mb-dg-root h3 { font: 700 15px/1.3 Arial, Helvetica, sans-serif; color: #222; }
+            body.mb-sa-host-dg #mb-dg-root table.tbl a { color: #1f4f99; }
+            body.mb-sa-host-dg td.mb-dg-imgcell { width: 44px; padding: 2px !important; }
+            body.mb-sa-host-dg img.mb-dg-thumb { display: block; width: 40px; height: 40px; object-fit: cover; border: 1px solid #ddd; }
+            body.mb-sa-host-dg .mb-dg-main { color: #b8860b; cursor: help; }
+        `);
+        style.id = 'mb-dg-style';
+    }
+
+    /**
+     * The artwork viewer's context for a discogs.com table's thumbnails.
+     * @type {ArtCtx}
+     */
+    const _DG_ART_CTX = { key: 'dg', column: 'Image', external: true, imagesCache: new Map() };
+
+    /**
+     * A plain click on a thumbnail of a discogs.com table opens the artwork
+     * viewer (vzell, 2026-10-18) on the thumbnails of that table's shown
+     * rows, in their order (← → step through them), each captioned with its
+     * row's title. Delegated on the document (capture), since every render
+     * clones the rows. The lists give Discogs' 150 px thumbnail only; its
+     * URL is signed, so no larger size can be made from it (the full image
+     * would be one request per release). Ctrl, Shift, Alt or ⌘ keep the
+     * link's new tab.
+     *
+     * @param {MouseEvent} e
+     * @returns {void}
+     */
+    function _dgThumbClick(e) {
+        if (e.button !== 0 || e.ctrlKey || e.shiftKey || e.altKey || e.metaKey || !(e.target instanceof Element)) return;
+        const a = e.target.closest('#mb-dg-root table.tbl a.mb-dg-thumblink');
+        if (!a) return;
+        const table = a.closest('table.tbl');
+        const links = Array.from(table.querySelectorAll('tbody > tr a.mb-dg-thumblink'))
+            .filter(l => l.closest('tr').style.display !== 'none' && l.getClientRects().length);
+        const k = links.indexOf(a);
+        if (k < 0) return;
+        const titleIdx = Array.from(table.querySelectorAll('thead tr:first-child th'))
+            .findIndex(th => (th.dataset.colName || th.textContent).trim().startsWith('Title'));
+        const images = links.map((l) => {
+            const cell = titleIdx >= 0 ? l.closest('tr').cells[titleIdx] : null;
+            return { image: l.href, thumbnails: { 250: l.href }, types: [], external: true, comment: cell ? cell.textContent.trim() : '' };
+        });
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        const key = `dg:${images.map(im => im.image).join('|')}`;
+        _DG_ART_CTX.imagesCache.clear();
+        _DG_ART_CTX.imagesCache.set(key, images);
+        const h1 = document.querySelector('#mb-dg-root h1.mb-dg-h1 bdi');
+        _artViewerOpen(_DG_ART_CTX, key, null, k, { opener: a, title: h1 ? h1.textContent : '' });
+    }
+
+    /**
+     * Prepares a discogs.com page at init, standing in for the MusicBrainz
+     * header lookup (the init block calls it for the Discogs definitions
+     * only). Adds ShowAllEntityData's own section, `<section id="mb-dg-root">`,
+     * between Discogs' header (`#__header_root_…`) and its page (`#app`):
+     * outside the part React renders, so Discogs' redraws leave it alone
+     * (checked on the live site 2026-10-18), and Discogs' own content stays
+     * as it is below. Its `<h1 class="mb-dg-h1">` holds the toolbar, its text
+     * in a `<bdi>` (the page's name, from Discogs' own `<h1>`) for the
+     * init-time entity name capture.
+     *
+     * Also tags `<body>` with `mb-sa-host-dg`, installs `_ensureDgStyle()`
+     * and the thumbnails' viewer click (`_dgThumbClick()`).
+     * Nothing else on the page changes until the user presses a button.
+     *
+     * @returns {?HTMLHeadingElement} The `<h1>` to use as header container, or
+     *   `null` when the document has no `<body>`.
+     */
+    function _dgPrepareLivePage() {
+        const existing = document.querySelector('h1.mb-dg-h1');
+        if (existing) return existing;
+        if (!document.body) return null;
+        document.body.classList.add('mb-sa-host-dg');
+        _ensureDgStyle();
+        document.addEventListener('click', _dgThumbClick, true);
+        const root = document.createElement('section');
+        root.id = 'mb-dg-root';
+        const h1 = document.createElement('h1');
+        h1.className = 'mb-dg-h1';
+        const bdi = document.createElement('bdi');
+        // Discogs' own <h1> (in the page as the server sends it); the
+        // document title only as a fallback: it is longer ("… Discography:
+        // Vinyl, CDs, & More | Discogs").
+        const own = document.querySelector('#app h1');
+        bdi.textContent = ((own && own.textContent.replace(/\s+/g, ' ').trim()) || document.title.split(' | ')[0] || 'Discogs').trim();
+        h1.appendChild(bdi);
+        root.appendChild(h1);
+        const app = document.getElementById('app');
+        if (app) app.before(root);
+        else document.body.insertBefore(root, document.body.firstChild);
+        return h1;
+    }
+
+    /**
+     * The live page's part of a Discogs pageType (`features.dgToTable`), at
+     * the press, on a Load from Disk and on every repeat: under
+     * `<h2 class="mb-dg-list-heading">` (where the row count anchors), an
+     * EMPTY `table.tbl` with this pageType's columns in `#mb-dg-root`. The
+     * rows come from the fetched pages only (`features.pageRequest`); a
+     * multi-table pageType gets its sub-tables from them. Idempotent.
+     *
+     * @param {object} def - The active merged pageDefinition.
+     * @returns {void}
+     */
+    function applyDgToTable(def) {
+        const kind = def?.features?.dgToTable;
+        if (!kind || document.querySelector('table.mb-dg-table')) return;
+        const root = document.getElementById('mb-dg-root') || _dgPrepareLivePage()?.parentNode;
+        if (!root) return;
+        const h2 = document.createElement('h2');
+        h2.className = 'mb-dg-list-heading';
+        h2.textContent = { artist: 'Discography', label: 'Releases', master: 'Versions', release: 'Release' }[kind] || 'Discogs';
+        const cols = kind === 'release' ? _DG_HEADERS.release.Tracklist : _DG_HEADERS[kind];
+        const table = document.createElement('table');
+        table.className = 'tbl mb-dg-table';
+        table.innerHTML = `<thead><tr>${cols.map(c => `<th>${_rgEsc(c)}</th>`).join('')}</tr></thead><tbody></tbody>`;
+        root.append(h2, table);
+        Lib.debug('init', `applyDgToTable: empty ${kind} table in place for the fetched pages.`);
+    }
+
+    /**
+     * What a Discogs button costs, for its hover text: the requests and the
+     * time at the host's spacing now (2.5 s apart without a token, 1 s with
+     * one), and the other case beside it.
+     *
+     * @param {string} what - What the button loads.
+     * @param {number} pages - Requests, at most.
+     * @returns {string}
+     */
+    function _dgCost(what, pages) {
+        const t = (ms) => {
+            const sec = Math.round(ms / 1000);
+            return sec < 90 ? `${sec} s` : `${Math.floor(sec / 60)} min${sec % 60 ? ` ${sec % 60} s` : ''}`;
+        };
+        const token = !!_extDiscogsToken();
+        return `${what} from Discogs' API, 100 a request: ${pages} request${pages === 1 ? '' : 's'}, about ` +
+            `${t(pages * (token ? 1000 : 2500))}${token ? ' with your token' : ` (about ${t(pages * 1000)} with a Discogs token)`}.`;
+    }
+
+    /**
+     * What a Discogs button costs when the page's own list decides how many
+     * requests: one per 100 rows, at the host's spacing now, with an
+     * example.
+     *
+     * @param {string} what - What the button loads.
+     * @param {string} unit - What a row is ('versions', 'entries', 'releases').
+     * @param {string} example
+     * @returns {string}
+     */
+    function _dgCostPer(what, unit, example) {
+        const spacing = _extDiscogsToken() ? 'a request a second with your token'
+            : 'a request every 2.5 seconds (a second with a Discogs token)';
+        return `${what} from Discogs' API: one request per 100 ${unit}, ${spacing} (${example}).`;
+    }
+
     // --- Brucebase (brucebase.wikidot.com) -----------------------------------
     // The wiki's song list, `stats:songs`: one static page whose songs sit in
     // a YUI tabview, one tab per first letter. Opt-in via
@@ -17098,7 +17688,7 @@
     }
 
     /**
-     * The four hosts' detail pages: which links lead to one, the setting that
+     * The foreign hosts' detail pages: which links lead to one, the setting that
      * switches the preview on, how to decode and parse a page, and how the
      * dialog's Live page view trims the site's own page. Keyed by
      * `_foreignHost`.
@@ -17116,12 +17706,15 @@
      *   Runs once the page is parsed, before its images are in; it may
      *   return a function to run once the frame has loaded
      *   (`_dpIsolateFrame()`).
+     * - `setting`: null for a host with no detail pages of its own
+     *   (discogs.com: its pages are the Discogs reader's), whose source then
+     *   never switches on.
      * - `extRoot`: the site's content area, where a link to ANOTHER site is
      *   previewed besides the table (`_extSource()` on this host, U5), or
      *   null for the table only. Never the site's chrome: its share bar,
      *   menus and footer are left out by `_EXT_SKIP_SEL`.
      *
-     * @type {Object<string, {setting: string, isDetailUrl: function(URL): boolean, charset: ?string, parse: function(Document, string): ?object, liveRoot: ?function(Document): ?Element, liveHide: string[], liveCss: string, livePrepare: ?function(Document): ?function(): void, extRoot: ?string}>}
+     * @type {Object<string, {setting: ?string, isDetailUrl: function(URL): boolean, charset: ?string, parse: function(Document, string): ?object, liveRoot: ?function(Document): ?Element, liveHide: string[], liveCss: string, livePrepare: ?function(Document): ?function(): void, extRoot: ?string}>}
      */
     const _DP_SITES = {
         'springsteenlyrics.com': {
@@ -17196,6 +17789,23 @@
             // The wiki's own text (estreetshuffle.com and the like, U5
             // census); its top bar, header and footer are wikidot's chrome.
             extRoot: '#page-content'
+        },
+        // discogs.com (2026-10-18): no detail pages of its own to parse —
+        // a Discogs link is the Discogs reader's (`_EXT_READERS`), which
+        // `_extTarget()` takes on this site too — so no setting: this
+        // source never switches on. Its content area is `#app`, Discogs'
+        // React page; the header (`#__header_root_…`) and the footer
+        // (`#esi-footer-root`) are outside it (vzell: main content only).
+        'www.discogs.com': {
+            setting: null,
+            isDetailUrl: () => false,
+            charset: null,
+            parse: () => null,
+            liveRoot: null,
+            liveHide: [],
+            liveCss: '',
+            livePrepare: null,
+            extRoot: '#app'
         }
     };
 
@@ -31177,6 +31787,96 @@
                 ..._bbYearTableFeatures()
             },
             tableMode: 'single'
+        },
+
+        // discogs.com's own pages (2026-10-18): a master's versions, a
+        // release's tracklist, credits, companies, identifiers and other
+        // versions, an artist's discography, a label's releases. The rows
+        // come from Discogs' API through the link previews' readers
+        // (`features.pageRequest` with its own `fetchText()`, the page count
+        // asked first by `features.pageCountAsync`); the live page gets an
+        // empty table in a section of our own above Discogs' page
+        // (`features.dgToTable`). Opt-in via `sa_enable_discogs`. See the
+        // "discogs.com" block above _dgPrepareLivePage() and
+        // docs/claude/discogs.md.
+        {
+            type: 'dg-master',
+            host: 'www.discogs.com',
+            match: (path) => _dgPage(path)?.kind === 'master',
+            buttons: [ { label: 'Show all versions', shortLabel: 'Versions', get description() { return _dgCostPer('Every version of this master', 'versions', 'Born To Run: 387 versions, 4 requests'); } } ],
+            features: {
+                dgToTable: 'master',
+                pageRequest: (p, def) => _dgPageRequest(p, def),
+                pageCountAsync: (def) => _dgPageCount(def),
+                integerColumns: [ { sourceColumn: 'Year', align: 'R' } ]
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'dg-release',
+            host: 'www.discogs.com',
+            match: (path) => _dgPage(path)?.kind === 'release',
+            buttons: [ {
+                label: 'Show tracklist, credits and other versions', shortLabel: 'Tracklist, credits, versions',
+                get description() { return _dgCostPer('The release, then every other version of its master', 'versions', 'one request more for the release'); }
+            } ],
+            features: {
+                dgToTable: 'release',
+                groupByH3: true,
+                // The Tracklist's per-track credits, one row each (vzell:
+                // like the Instruments column of release-tracks).
+                collapsableColumns: [ 'Credits' ],
+                pageRequest: (p, def) => _dgPageRequest(p, def),
+                pageCountAsync: (def) => _dgPageCount(def)
+            },
+            tableMode: 'multi'
+        },
+        {
+            type: 'dg-artist',
+            host: 'www.discogs.com',
+            match: (path) => _dgPage(path)?.kind === 'artist',
+            buttons: [ {
+                label: 'Show the whole discography', shortLabel: 'Discography',
+                get description() { return _dgCostPer('Every entry of the discography, by Discogs\' role', 'entries', 'Bruce Springsteen: 6,782 entries, 68 requests'); }
+            } ],
+            features: {
+                dgToTable: 'artist',
+                groupByH3: true,
+                pageRequest: (p, def) => _dgPageRequest(p, def),
+                pageCountAsync: (def) => _dgPageCount(def),
+                integerColumns: [ { sourceColumn: 'Year', align: 'R' }, { sourceColumn: 'Have', align: 'R' }, { sourceColumn: 'Want', align: 'R' } ]
+            },
+            tableMode: 'multi'
+        },
+        {
+            type: 'dg-label',
+            host: 'www.discogs.com',
+            match: (path) => _dgPage(path)?.kind === 'label',
+            // Newest 500 / 1,000 / 5,000, oldest 500 / 1,000, then all (vzell,
+            // 2026-10-18): a large label has thousands of pages (Columbia
+            // 3,967), so "All" meets "⚠️ High Page Count" first.
+            buttons: [
+                { label: 'Show the newest 500 releases', shortLabel: '500', groupLabel: 'Newest',
+                    features: { dgOrder: 'desc', pageCap: 5 }, get description() { return _dgCost('The newest 500 releases', 5); } },
+                { label: 'Show the newest 1,000 releases', shortLabel: '1,000',
+                    features: { dgOrder: 'desc', pageCap: 10 }, get description() { return _dgCost('The newest 1,000 releases', 10); } },
+                { label: 'Show the newest 5,000 releases', shortLabel: '5,000',
+                    features: { dgOrder: 'desc', pageCap: 50 }, get description() { return _dgCost('The newest 5,000 releases', 50); } },
+                { label: 'Show the oldest 500 releases', shortLabel: '500', groupLabel: 'Oldest',
+                    features: { dgOrder: 'asc', pageCap: 5 }, get description() { return _dgCost('The oldest 500 releases', 5); } },
+                { label: 'Show the oldest 1,000 releases', shortLabel: '1,000',
+                    features: { dgOrder: 'asc', pageCap: 10 }, get description() { return _dgCost('The oldest 1,000 releases', 10); } },
+                { label: 'Show all releases', shortLabel: 'All', groupLabel: 'Then',
+                    features: { dgOrder: 'desc', pageCap: 0 },
+                    get description() { return _dgCostPer('Every release of the label, newest first', 'releases', 'Columbia: 396,611 releases, 3,967 requests'); } }
+            ],
+            features: {
+                dgToTable: 'label',
+                pageRequest: (p, def) => _dgPageRequest(p, def),
+                pageCountAsync: (def) => _dgPageCount(def),
+                integerColumns: [ { sourceColumn: 'Year', align: 'R' } ]
+            },
+            tableMode: 'single'
         }
     ];
 
@@ -35882,6 +36582,22 @@
     }
 
     /**
+     * The element that plays MusicBrainz's `#page` for the sticky page
+     * headers: the content root, never pinned itself, whose h1, h2/h3 and
+     * content bodies are. On discogs.com (2026-10-18) that is our own
+     * `#mb-dg-root`: Discogs' page has a `#page` of its own inside `#app`,
+     * so the plain lookup took Discogs' content for the content, and our
+     * section — a `<body>` child — for chrome, pinned and capped whole with
+     * its tables (reported: columns cut off when scrolled right, Discogs'
+     * header shrunk to the left).
+     *
+     * @returns {?HTMLElement}
+     */
+    function _sphPageEl() {
+        return _isDgHost ? document.getElementById('mb-dg-root') : document.getElementById('page');
+    }
+
+    /**
      * Returns every block of page content that is not a data table, so that
      * all of it stays in view while a wide table is scrolled sideways: the
      * content of expanded sections (Credits, Annotation, Relationships, the
@@ -35890,7 +36606,7 @@
      * "Found 270,077 results"), the status line after a bare `<h1>`
      * (`#mb-status-displays-wrapper`) and the CAA/EAA big-image strips.
      *
-     * Walks the children of `#page` (else `<body>`), skipping `#sidebar`:
+     * Walks the children of `#page` (`_sphPageEl()`; else `<body>`), skipping `#sidebar`:
      *   - a `table.tbl` is a data table: never a body, never descended into
      *     (`_sphCollectTargets()` pins it whole only when it fits, see
      *     `_sphFitsTable()`);
@@ -35931,7 +36647,7 @@
      * @returns {HTMLElement[]} Content bodies, in document order.
      */
     function _sphContentBodies() {
-        const root    = document.getElementById('page') || document.body;
+        const root    = _sphPageEl() || document.body;
         const sidebar = _sphExcludedSidebar();
         const bodies  = [];
         /**
@@ -35984,7 +36700,7 @@
      *   `table` for a data table.
      */
     function _sphCollectTargets() {
-        const page    = document.getElementById('page');
+        const page    = _sphPageEl();
         const content = document.getElementById('content');
         const sidebar = _sphExcludedSidebar();
         const found   = [];
@@ -36137,7 +36853,7 @@
             }
         });
         const roots = [document.documentElement, document.body,
-                       document.getElementById('page'), document.getElementById('content'),
+                       _sphPageEl(), document.getElementById('content'),
                        document.getElementById('sidebar')];
         const tables = Array.from(document.querySelectorAll('table.tbl'));
         roots.concat(tables, _sphContentBodies()).forEach(el => {
@@ -36296,7 +37012,7 @@
      * @returns {string} A CSS colour.
      */
     function _sphGutterBg() {
-        for (const el of [document.getElementById('page'), document.body, document.documentElement]) {
+        for (const el of [_sphPageEl(), document.body, document.documentElement]) {
             if (!el) continue;
             const bg = getComputedStyle(el).backgroundColor;
             if (bg && bg !== 'transparent' && !/^rgba\(.*,\s*0\)$/.test(bg)) return bg;
@@ -49307,7 +50023,9 @@
         }
         const host = u.hostname.toLowerCase();
         const bare = (h) => h.replace(/^www\./, '');
-        if (bare(host) === bare(window.location.hostname.toLowerCase())) return null;
+        // A link to this site is not "another site", except on discogs.com
+        // a Discogs page the Discogs reader takes (2026-10-18).
+        if (bare(host) === bare(window.location.hostname.toLowerCase()) && !(_isDgHost && _extDiscogsTest(u))) return null;
         if (_EXT_SKIP_HOST_RE.test(host) || _EXT_SKIP_URL_RE.test(href)) return null;
         // A Relationships icon is an image link that IS the link: it gets
         // the card (2026-10-17). Elsewhere a link around an image is the
@@ -63275,6 +63993,10 @@ a { color: #1565c0; }`;
         // header, which the generic fallback above would pick — see
         // _bbPrepareLivePage().
         headerContainer = _bbPrepareLivePage();
+    } else if (baseDefinition?.host === 'www.discogs.com') {
+        // discogs.com's <h1> is inside Discogs' React page: the toolbar goes
+        // to a section of our own above it — see _dgPrepareLivePage().
+        headerContainer = _dgPrepareLivePage();
     }
 
     // The popup engine (hover card + pinned dialog), when one of its sources
@@ -63507,6 +64229,21 @@ a { color: #1565c0; }`;
     }
 
     buttonsToRender.forEach((conf, btnIndex) => {
+        // A button that opens a group of its own: the same "| <Label>:" as
+        // buttonGroupLabel above, before it (discogs.com's label page:
+        // "Newest:" 500 1,000 5,000 "Oldest:" 500 1,000 "Then:" All).
+        if (conf.groupLabel) {
+            const groupDivider = document.createElement('span');
+            groupDivider.textContent = ' | ';
+            groupDivider.className = 'mb-button-group-label-divider';
+            groupDivider.style.cssText = uiButtonDividerCSS();
+            controlsContainer.appendChild(groupDivider);
+            const groupLabelEl = document.createElement('strong');
+            groupLabelEl.className = 'mb-button-group-label';
+            groupLabelEl.textContent = `${conf.groupLabel}:`;
+            groupLabelEl.style.cssText = 'margin-right:2px; font-size:0.65em;';
+            controlsContainer.appendChild(groupLabelEl);
+        }
         const eb = document.createElement('button');
 
         // ── Dynamic label from page H2 header (labelFromH2: true) ──────────────
@@ -71381,7 +72118,7 @@ a { color: #1565c0; }`;
         // userscript's widget, and some removals (any <details> with more
         // than 5 images, any 700px-wide div) would hit unrelated content on
         // another site.
-        if (_isSlHost || _isJlHost || _isBsHost || _isBbHost) return;
+        if (_isSlHost || _isJlHost || _isBsHost || _isBbHost || _isDgHost) return;
         Lib.debug('cleanup', 'Starting clutter element removal.');
 
         // Remove Jesus2099 bigbox elements
@@ -83158,6 +83895,11 @@ a { color: #1565c0; }`;
         if (activeDefinition.features?.bbChangesToTable) {
             applyBbChangesToTable(activeDefinition);
         }
+        // discogs.com ('dg-*'): the live page gets an empty table in our own
+        // section; the rows come from Discogs' API pages fetched below.
+        if (activeDefinition.features?.dgToTable) {
+            applyDgToTable(activeDefinition);
+        }
 
         // ── bsRecordsToTable pre-processing ──────────────────────────────────
         // brucespringsteen.it ('bs-records'): tick every format in the site's
@@ -83269,6 +84011,21 @@ a { color: #1565c0; }`;
             const _keyUnit = activeDefinition.features.pageKeys.unit || activeDefinition.features.pageKeys.param;
             Lib.debug('fetch', `Context: pageKeys (${_keyUnit}): ${pageKeys.map(k => k.key).join(' ')}`);
             globalStatusDisplay.textContent = `Getting number of pages to fetch... ${maxPage} pages, one per ${_keyUnit}`;
+        } else if (activeDefinition?.features?.pageRequest && activeDefinition.features.pageCountAsync) {
+            // Pages that are not URLs and say themselves how many there are
+            // (discogs.com: an API list's page 1 carries `pagination.pages`):
+            // asked here, before the gates below, so "⚠️ High Page Count"
+            // sees the real number. A failure leaves one page, which the loop
+            // then asks again and records as failed like any other.
+            globalStatusDisplay.textContent = 'Getting number of pages to fetch... asking the site';
+            try {
+                maxPage = Math.max(1, Number(await activeDefinition.features.pageCountAsync(activeDefinition)) || 1);
+            } catch (err) {
+                Lib.warn('fetch', `features.pageCountAsync failed (${err && err.message}) — trying one page.`);
+                maxPage = 1;
+            }
+            Lib.debug('fetch', `Context: features.pageRequest, ${maxPage} page(s) as the site says.`);
+            globalStatusDisplay.textContent = `Getting number of pages to fetch... ${maxPage} page(s)`;
         } else if (activeDefinition?.features?.pageRequest) {
             // Pages that are not URLs (Brucebase's Recent changes: a POST per
             // page to Wikidot's AJAX module). The pressed button says how many.
@@ -83332,7 +84089,7 @@ a { color: #1565c0; }`;
             }
         } else if (!_isResume && maxPage > maxThreshold) {
             const proceedConfirmed = await Lib.showCustomConfirm(
-                `Warning: This MusicBrainz entity has ${maxPage} pages. It's more than the configured maximum value (${maxThreshold}) and could result in severe performance, memory consumption and timing issues.\n\nProceed?`,
+                `Warning: This ${_foreignHost ? 'list' : 'MusicBrainz entity'} has ${maxPage} pages. It's more than the configured maximum value (${maxThreshold}) and could result in severe performance, memory consumption and timing issues.\n\nProceed?`,
                 '⚠️ High Page Count',
                 activeBtn
             );
@@ -83501,7 +84258,9 @@ a { color: #1565c0; }`;
                         // the site's own pager last loaded, not page p.
                         const req = _pageRequest(p, activeDefinition);
                         Lib.debug('fetch', `Requesting page ${p}: ${req.init?.method || 'GET'} ${req.url}`);
-                        const text = await fetchHtml(req.url, req.init || null);
+                        // A request may bring its own fetch (discogs.com: another
+                        // host's API, through the link previews' gate and headers).
+                        const text = req.fetchText ? await req.fetchText() : await fetchHtml(req.url, req.init || null);
                         doc = new DOMParser().parseFromString(req.toHtml ? req.toHtml(text) : text, 'text/html');
                     } else if (!_isResume && !_isSearchPage && !buttonConfig.virtualPath && _isCurrentPage && (!overrideParams || Object.keys(overrideParams).length === 0)) {
                         Lib.debug('fetch', `Page ${p} is current page. Using existing document.`);
@@ -112654,6 +113413,9 @@ a { color: #1565c0; }`;
             }
             if (activeDefinition.features?.bbChangesToTable) {
                 applyBbChangesToTable(activeDefinition);
+            }
+            if (activeDefinition.features?.dgToTable) {
+                applyDgToTable(activeDefinition);
             }
             // And for brucespringsteen.it: the reloaded page holds the site's
             // record paragraphs again; an empty table takes their place.

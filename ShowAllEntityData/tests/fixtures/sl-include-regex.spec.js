@@ -8,6 +8,7 @@
 // springsteenlyrics.com lines admit exactly the list pages, the jungleland.it
 // line exactly its list.htm, the brucespringsteen.it line exactly its
 // DB/records.aspx, the Brucebase lines exactly its stats:songs and its year
+// pages, the discogs.com line exactly its master, release, artist and label
 // pages, while every MusicBrainz sample still matches.
 
 const fs = require('fs');
@@ -261,6 +262,36 @@ test.describe('@include coverage', () => {
             'https://brucebase.wikidot.com.example.org/',
         ];
         expect(home.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
+    test('discogs.com: a master, release, artist or label page, and nothing else', () => {
+        const pages = [
+            'https://www.discogs.com/master/26725-Bruce-Springsteen-Born-To-Run',
+            'https://www.discogs.com/release/1874253-Bruce-Springsteen-Born-To-Run',
+            'https://www.discogs.com/release/1874253',
+            'https://www.discogs.com/artist/219986-Bruce-Springsteen',
+            'https://www.discogs.com/artist/219986-Bruce-Springsteen?type=Credits',
+            'https://www.discogs.com/label/1866-Columbia',
+            'https://www.discogs.com/label/1866-Columbia?page=2#releases',
+            'https://discogs.com/release/1874253-Bruce-Springsteen-Born-To-Run',
+            'http://www.discogs.com/master/26725',
+            // A language prefix, as the site's own language links write it.
+            'https://www.discogs.com/de/release/1874253-Bruce-Springsteen-Born-To-Run',
+            'https://www.discogs.com/pt-BR/artist/219986'.toLowerCase(),
+        ];
+        const others = [
+            'https://www.discogs.com/',
+            'https://www.discogs.com/search/?q=Springsteen&type=all',
+            'https://www.discogs.com/sell/list?master_id=26725',
+            'https://www.discogs.com/release/1874253-Bruce-Springsteen-Born-To-Run/image/SW1hZ2U6NDYwODA1ODY=',
+            'https://www.discogs.com/user/vzell/collection',
+            'https://www.discogs.com/artist/Bruce-Springsteen',
+            'https://api.discogs.com/releases/1874253',
+            'https://www.discogs.com.example.org/release/1874253',
+            'https://example.org/www.discogs.com/release/1874253',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
         expect(others.filter((u) => injected(u))).toEqual([]);
     });
 

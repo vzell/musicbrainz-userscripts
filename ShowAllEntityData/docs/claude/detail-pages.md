@@ -1270,6 +1270,12 @@ subdomain, matched by `endsWith`), so a hover loads them from the first time.
   the other order's page 1 comes from the repaint, as the master's does.
   Typing in the artist's or label's filter repaints the whole window
   (`data-mb-keep-focus` keeps the field), not a list part as the versions do.
+- **On discogs.com itself (2026-10-18)** the readers also feed the
+  `dg-*` pageTypes' tables (`_EXT_DG_LISTS` rows, `_extDiscogsTracklist()`),
+  and a Discogs link there — the page's OWN host — is previewed:
+  `_extTarget()` takes it when `_extDiscogsTest()` does, and
+  `_DP_SITES['www.discogs.com']` (`setting: null`, `extRoot: '#app'`) limits
+  it to the table and Discogs' content. See docs/claude/discogs.md.
 - **The token: `sa_pop_ext_discogs_token`** (text, default empty), read by
   `_extDiscogsToken()` (trimmed) and sent ONLY as `Authorization: Discogs
   token=…` to api.discogs.com — never in a URL, so `_extGet()`'s debug line

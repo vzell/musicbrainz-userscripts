@@ -850,6 +850,12 @@ fixture). The SPH-only stacking tests in `sticky-page-headers.spec.js` run
 with this setting off (`SPH_ONLY`), since it deliberately changes the
 "content bars have no base z-index" rule they pin.
 
+**The sticky page headers' content root is `_sphPageEl()`** (2026-10-18):
+MusicBrainz's `#page`, except on discogs.com, where it is our own
+`#mb-dg-root`. Discogs' page has a `#page` of its own inside `#app`; taken
+for the content root, it made our section a `<body>`-level "chrome" target,
+pinned and capped whole with its tables (see docs/claude/discogs.md).
+
 ### The header block sticks above the bars
 
 A second request the same day: the line with the action buttons and the
