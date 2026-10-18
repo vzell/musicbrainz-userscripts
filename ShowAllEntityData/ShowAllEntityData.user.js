@@ -4724,6 +4724,29 @@
                          'MusicBrainz, so this can be switched on from either site.'
         },
 
+        sa_dg_mb_column: {
+            label: 'MusicBrainz column (with the Discogs importer userscript)',
+            type: 'checkbox',
+            default: true,
+            description: 'Only when the "Import Discogs releases to MusicBrainz" userscript (murdos) is ' +
+                         'installed: every Discogs table whose rows are releases, masters, artists or labels ' +
+                         'gets a "MusicBrainz" column with the MusicBrainz entities linked to that Discogs ' +
+                         'page, and a yellow search box for each kind without one. The links come from that ' +
+                         'script\'s own cache first (read only — its data is never changed), then from this ' +
+                         'script\'s own store, then from MusicBrainz. Without that userscript the column never ' +
+                         'appears.'
+        },
+
+        sa_dg_mb_auto_lookup: {
+            label: 'MusicBrainz column: look up missing rows automatically',
+            type: 'checkbox',
+            default: true,
+            description: 'Rows neither cache knows are looked up on MusicBrainz in the background after ' +
+                         'the table appears, 100 to a request, one request a second. Off: such rows keep a ' +
+                         'search box until you press the column header\'s ▶ button. Answers are kept 90 days ' +
+                         '(a "nothing found" 7 days).'
+        },
+
         // ============================================================
         // LINK PREVIEWS ON MUSICBRAINZ (the popup engine's entity cards,
         // org/iframe.org Phase 2)
@@ -15353,6 +15376,35 @@
             body.mb-sa-host-dg #mb-dg-root .mb-dgh-add { background: #dcefd5; }
             body.mb-sa-host-dg #mb-dg-root :is(.mb-dgh-chg, .mb-dgh-chg2) { background: #f6e7a8; }
             body.mb-sa-host-dg #mb-dg-root .mb-dgh-rem { background: #f3d2cc; text-decoration: line-through; }
+            /* The MusicBrainz column (murdos' importer present): one line of
+               search boxes and MusicBrainz icons, the importer's own look
+               (16 px boxes in #FFF7BE, the entity SVGs), under our own
+               class names so its CSS and selectors never reach our cells. */
+            body.mb-sa-host-dg td.mb-dg-mb-cell { white-space: nowrap; }
+            body.mb-sa-host-dg .mb-dg-mb-row { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; vertical-align: middle; }
+            body.mb-sa-host-dg a.mb-dg-mb-link { display: inline-flex; line-height: 0; }
+            body.mb-sa-host-dg a.mb-dg-mb-link img { width: 16px; height: 16px; }
+            body.mb-sa-host-dg a.mb-dg-mb-link.mb-dg-mb-ended img { filter: grayscale(1); opacity: 0.7; }
+            body.mb-sa-host-dg .mb-dg-mb-search {
+                display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px;
+                background: #FFF7BE; font: 11px/16px Arial, Helvetica, sans-serif; text-align: center;
+            }
+            body.mb-sa-host-dg #mb-dg-root .mb-dg-mb-search a { color: #888; text-decoration: none; }
+            body.mb-sa-host-dg .mb-dg-mb-search small { font-size: 8px; }
+            body.mb-sa-host-dg .mb-dg-mb-search[data-state] > * { display: none !important; }
+            body.mb-sa-host-dg .mb-dg-mb-search[data-state="pending"]::before {
+                content: ''; display: block; width: 11px; height: 11px; box-sizing: border-box;
+                border: 2px solid #d7ca75; border-top-color: #ba478f; border-radius: 50%;
+                animation: mb-dg-mb-spin 1.2s linear infinite;
+            }
+            body.mb-sa-host-dg .mb-dg-mb-search[data-state="error"] { cursor: pointer; }
+            body.mb-sa-host-dg .mb-dg-mb-search[data-state="error"]::before { content: '\\26A0'; color: #c62828; font-size: 13px; }
+            body.mb-sa-host-dg .mb-dg-mb-n { font: 11px Arial, Helvetica, sans-serif; color: #777; margin-left: 1px; }
+            body.mb-sa-host-dg .mb-dg-mb-ids { display: none; }
+            /* A ticked "MusicBrainz - Links" entry rings what it matched
+               (_highlightDgMbCountMatch(), the Relationships column's class). */
+            body.mb-sa-host-dg td.mb-dg-mb-cell .mb-rel-icon-match { outline: 2px solid red; outline-offset: 1px; }
+            @keyframes mb-dg-mb-spin { to { transform: rotate(360deg); } }
         `);
         style.id = 'mb-dg-style';
     }
@@ -15566,8 +15618,787 @@
         const table = document.createElement('table');
         table.className = 'tbl mb-dg-table';
         table.innerHTML = `<thead><tr>${cols.map(c => `<th>${_rgEsc(c)}</th>`).join('')}</tr></thead><tbody></tbody>`;
+        // A single table renders into THIS table's tbody, so its head needs
+        // the MusicBrainz column the fetched pages get (_dgMbDecorateDoc());
+        // a multi-table render builds every head from the fetched pages.
+        if (def.tableMode === 'single' && _dgMbOn()) _dgMbDecorateTable(table, '');
         root.append(h2, table);
         Lib.debug('init', `applyDgToTable: empty ${kind} table in place for the fetched pages.`);
+    }
+
+    // ── The MusicBrainz column (murdos' Discogs importer present) ───────────
+    //
+    // docs/claude/discogs.md, "The MusicBrainz column". With "Import Discogs
+    // releases to MusicBrainz" (murdos) installed, every table whose rows are
+    // Discogs entities gets a "MusicBrainz" column: the MusicBrainz entities
+    // linked to the row's Discogs page, and a search box for each kind
+    // without one — the icons that script puts on Discogs' React page only,
+    // never on our tables (they are built from Discogs' API). Sources, in
+    // order: the importer's localStorage cache (read only, never written),
+    // our own IndexedDB store, then MusicBrainz in the background.
+    //
+    // Probe: scripts/probe-mb-url-batch-by-discogs.py (2026-10-19, NB-3641).
+    // /ws/2/url?resource=…&resource=…&inc=… takes up to 100 resources and
+    // DROPS the 101st silently; answers in the server's order (matched by
+    // `resource` here); one unknown alone is a 404, several unknown a 200
+    // with url-count 0; matching is exact (https://www.discogs.com/<type>/<id>,
+    // no slug); several relationship incs in one request work, each relation
+    // naming its target under its own key; `ended` is on each relation.
+
+    /** The column's header. */
+    const _DG_MB_COL = 'MusicBrainz';
+    /** The importer's cache key: mblinks.js's `cache_version` (3 since 755843cf), then its own '1'. */
+    const _DG_MB_IMPORTER_KEY_RE = /^DISCOGS_MBLINKS_CACHE-v(\d+)(?:\.\d+)?$/;
+    /** How long a match is trusted: the importer's own 90 days. */
+    const _DG_MB_TTL_MS = 90 * 86400000;
+    /** How long a "nothing found" is kept (the importer keeps none). */
+    const _DG_MB_NONE_TTL_MS = 7 * 86400000;
+    /** Resources per request: the Web Service's limit (the probe: a 101st is dropped). */
+    const _DG_MB_BATCH = 100;
+    /** A search box's letter per MusicBrainz type (the importer's marks). */
+    const _DG_MB_MARK = { artist: 'A', label: 'L', place: 'P', release: 'R', 'release-group': 'G' };
+    const _DG_MB_IDB_NAME = 'vz-saed-dg-mblinks';
+    const _DG_MB_IDB_VERSION = 1;
+    /** A Discogs entity link of our tables (a language prefix, a slug, `/history` allowed). */
+    const _DG_MB_ENTITY_RE = /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:_[A-Za-z]{2})?\/)?(release|master|artist|label)\/(\d+)/;
+    /** Set once the importer was seen; never unset (it may stamp late). */
+    let _dgMbSeen = false;
+    /** The importer's cache, read at most every 30 s: `{at, map}` (key → urls). */
+    let _dgMbImp = null;
+    /** Our own answers this session, and those preloaded from IndexedDB: key → record. */
+    const _dgMbMem = new Map();
+    /** The lookup job's state, for the header buttons and the job popup. */
+    const _dgMb = {
+        running: false, stop: false, total: 0, done: 0, failed: 0, requests: 0, net: 0,
+        pendingCount: null, storeCount: null, storeCountAt: 0, refreshTimer: 0, lastRefresh: 0,
+    };
+    let _dgMbIdbPromise = null;
+    let _dgMbOwnPromise = null;
+
+    /**
+     * Whether murdos' importer runs on this page: its cache key in
+     * localStorage, or its marks on Discogs' page (`mlink_processed`,
+     * `span.mb_wrapper`). Remembered once true, like `_iiPresent()`: the
+     * script marks the page late, so a "no" is asked again next time.
+     *
+     * @returns {boolean}
+     */
+    function _dgMbImporterPresent() {
+        if (_dgMbSeen) return true;
+        try {
+            for (let i = 0; i < localStorage.length; i++) {
+                if (_DG_MB_IMPORTER_KEY_RE.test(localStorage.key(i) || '')) {
+                    _dgMbSeen = true;
+                    return true;
+                }
+            }
+        } catch (_) { /* storage blocked: the page marks below still count */ }
+        if (document.querySelector('[mlink_processed], span.mb_wrapper')) _dgMbSeen = true;
+        return _dgMbSeen;
+    }
+
+    /**
+     * Whether the MusicBrainz column is on: discogs.com, the setting, and
+     * the importer present.
+     *
+     * @returns {boolean}
+     */
+    function _dgMbOn() {
+        return _isDgHost && Lib.settings.sa_dg_mb_column !== false && _dgMbImporterPresent();
+    }
+
+    /**
+     * The importer's cache as a Map, its valid entries only (a match younger
+     * than 90 days; it stores "nothing found" as an empty list, which it
+     * never trusts either). Read only, tolerant of either URL shape
+     * (`"url"` or `{url, ended}`); the newest cache version wins.
+     *
+     * @returns {Map<string, Array<{url: string, ended: boolean}>>} Keyed
+     *   `"<discogs type>/<id>/<mb type>"`, the importer's own keys.
+     */
+    function _dgMbReadImporterCache() {
+        if (_dgMbImp && Date.now() - _dgMbImp.at < 30000) return _dgMbImp.map;
+        const map = new Map();
+        let raw = null;
+        try {
+            let best = -1;
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i) || '';
+                const m = _DG_MB_IMPORTER_KEY_RE.exec(k);
+                if (m && Number(m[1]) > best) {
+                    best = Number(m[1]);
+                    raw = localStorage.getItem(k);
+                }
+            }
+        } catch (_) {
+            raw = null;
+        }
+        let obj = null;
+        try {
+            obj = raw ? JSON.parse(raw) : null;
+        } catch (_) {
+            obj = null;
+        }
+        const now = Date.now();
+        if (obj && typeof obj === 'object') {
+            Object.keys(obj).forEach(key => {
+                const e = obj[key];
+                if (!e || !Array.isArray(e.urls) || !e.urls.length) return;
+                if (!(typeof e.timestamp === 'number' && now < e.timestamp + _DG_MB_TTL_MS)) return;
+                const urls = e.urls
+                    .map(u => (typeof u === 'string' ? { url: u, ended: false }
+                        : u && typeof u.url === 'string' ? { url: u.url, ended: !!u.ended } : null))
+                    .filter(u => u && /^https:\/\/musicbrainz\.org\/[a-z-]+\/[0-9a-f-]{36}$/.test(u.url));
+                if (urls.length) map.set(key, urls);
+            });
+        }
+        _dgMbImp = { at: now, map };
+        Lib.debug('dgmb', `importer cache: ${map.size} valid entr${map.size === 1 ? 'y' : 'ies'}`);
+        return map;
+    }
+
+    /**
+     * What a row's Discogs link asks MusicBrainz for, as the importer does:
+     * a release → release, a master → release-group, an artist → artist, a
+     * label → label, and in "Companies, etc." a place first (a studio or a
+     * pressing plant is a Discogs label but a MusicBrainz place; once one is
+     * found the label is not shown, the importer's `mlink_stop`).
+     *
+     * @param {string} href
+     * @param {boolean} companies - The row is in "Companies, etc.".
+     * @returns {?{dgType: string, id: string, types: string[]}}
+     */
+    function _dgMbSpec(href, companies) {
+        const m = _DG_MB_ENTITY_RE.exec(href || '');
+        if (!m) return null;
+        const dgType = m[1];
+        const types = dgType === 'master' ? ['release-group']
+            : dgType === 'label' ? (companies ? ['place', 'label'] : ['label']) : [dgType];
+        return { dgType, id: m[2], types };
+    }
+
+    /**
+     * The URL MusicBrainz knows a Discogs entity by: exact, no slug (the probe).
+     *
+     * @param {{dgType: string, id: string}} spec
+     * @returns {string}
+     */
+    function _dgMbResource(spec) {
+        return `https://www.discogs.com/${spec.dgType}/${spec.id}`;
+    }
+
+    /**
+     * What is known about one MusicBrainz type of a Discogs entity: the
+     * importer's cache, then our own (a "nothing found" for 7 days).
+     *
+     * @param {{dgType: string, id: string}} spec
+     * @param {string} type
+     * @returns {?Array<{url: string, ended: boolean}>} `null` when unknown.
+     */
+    function _dgMbKnown(spec, type) {
+        const key = `${spec.dgType}/${spec.id}/${type}`;
+        const imp = _dgMbReadImporterCache().get(key);
+        if (imp) return imp;
+        const own = _dgMbMem.get(key);
+        if (own && Date.now() < own.ts + (own.urls.length ? _DG_MB_TTL_MS : _DG_MB_NONE_TTL_MS)) return own.urls;
+        return null;
+    }
+
+    /**
+     * A search query as the importer writes it: Lucene's special characters
+     * escaped.
+     *
+     * @param {string} s
+     * @returns {string}
+     */
+    function _dgMbLucene(s) {
+        return String(s || '').replace(/([+\-&|!(){}[\]^"~*?:\\/])/g, '\\$1');
+    }
+
+    /**
+     * A MusicBrainz cell's content and state: first a search box per type
+     * with nothing found (a spinner while it is looked up, ⚠ after a failed
+     * lookup), then every MusicBrainz link (an ended release's grey), a
+     * count from two links up, and the hidden text filters and sorting read
+     * ("release <mbid> …"; the boxes and the count are in `_CLEAN_STRIP_SEL`).
+     *
+     * @param {{dgType: string, id: string, types: string[]}} spec
+     * @param {string} name - The row's Discogs name, for the search boxes.
+     * @param {boolean} failed - Its last lookup failed.
+     * @returns {{html: string, state: string, n: number}} `state`: 'done',
+     *   'pending' or 'error'.
+     */
+    function _dgMbCellInner(spec, name, failed) {
+        const boxes = [];
+        const links = [];
+        let open = false;
+        for (const type of spec.types) {
+            const urls = _dgMbKnown(spec, type);
+            if (!urls) {
+                open = true;
+                boxes.push({ type, state: failed ? 'error' : 'pending' });
+                continue;
+            }
+            if (!urls.length) {
+                boxes.push({ type, state: '' });
+                continue;
+            }
+            urls.forEach(u => links.push({ type, url: u.url, ended: !!u.ended }));
+            if (type === 'place') break;
+        }
+        const words = (type) => type.replace(/-/g, ' ');
+        const box = ({ type, state }) => {
+            const href = `https://musicbrainz.org/search?query=${encodeURIComponent(_dgMbLucene(name))}&type=${type.replace(/-/g, '_')}&indexed=1`;
+            const tip = state === 'pending' ? 'Looking up this entity on MusicBrainz'
+                : state === 'error' ? 'The MusicBrainz lookup failed: click to try again'
+                    : `Search this ${words(type)} on MusicBrainz (opens a new tab)`;
+            return `<span class="mb-dg-mb-search" data-type="${type}"${state ? ` data-state="${state}"` : ''} data-mb-tip title="${_rgEsc(tip)}">` +
+                `<a href="${_rgEsc(href)}"${_DG_NEW_TAB}><small>${_DG_MB_MARK[type] || ''}</small>?</a></span>`;
+        };
+        const link = (l) => `<a class="mb-dg-mb-link${l.ended ? ' mb-dg-mb-ended' : ''}" href="${_rgEsc(l.url)}"${_DG_NEW_TAB} data-mb-tip ` +
+            `title="${_rgEsc(`See this ${words(l.type)} on MusicBrainz${l.ended ? ' (the link has ended)' : ''}`)}">` +
+            `<img src="https://musicbrainz.org/static/images/entity/${l.type.replace(/-/g, '_')}.svg" alt="${words(l.type)}" width="16" height="16"></a>`;
+        const ids = links.map(l => `${l.type} ${l.url.slice(-36)}`).join(' ');
+        const html = `<span class="mb-dg-mb-row">${boxes.map(box).join('')}${links.map(link).join('')}` +
+            `${links.length > 1 ? `<span class="mb-dg-mb-n">${links.length}</span>` : ''}</span>` +
+            `${ids ? `<span class="mb-dg-mb-ids">${_rgEsc(ids)}</span>` : ''}`;
+        return { html, state: open ? (failed ? 'error' : 'pending') : 'done', n: links.length };
+    }
+
+    /**
+     * A MusicBrainz cell, as a fetched page's table gets it; an empty cell
+     * for a row without a Discogs entity link (a credit with no id).
+     *
+     * @param {?{dgType: string, id: string, types: string[]}} spec
+     * @param {string} name
+     * @returns {string}
+     */
+    function _dgMbCellHtml(spec, name) {
+        if (!spec) return '<td class="mb-dg-mb-cell"></td>';
+        const c = _dgMbCellInner(spec, name, false);
+        return `<td class="mb-dg-mb-cell" data-mb-dg-key="${spec.dgType}/${spec.id}" data-mb-dg-types="${spec.types.join(' ')}" ` +
+            `data-mb-dg-name="${_rgEsc(name)}" data-mb-dg-state="${c.state}" data-mb-dg-n="${c.n}">${c.html}</td>`;
+    }
+
+    /**
+     * Rewrites one MusicBrainz cell in place from what is known now, and
+     * drops its row's cached filter text (the row text cache's sentinels).
+     *
+     * @param {HTMLTableCellElement} td
+     * @param {boolean} failed
+     * @returns {void}
+     */
+    function _dgMbRenderCell(td, failed) {
+        const [dgType, id] = (td.dataset.mbDgKey || '').split('/');
+        if (!dgType || !id) return;
+        const spec = { dgType, id, types: (td.dataset.mbDgTypes || '').split(' ').filter(Boolean) };
+        const c = _dgMbCellInner(spec, td.dataset.mbDgName || '', failed);
+        td.innerHTML = c.html;
+        td.dataset.mbDgState = c.state;
+        td.dataset.mbDgN = String(c.n);
+        const row = td.parentElement;
+        const rc = row && _rowTextCache.get(row);
+        if (rc) { rc.cols = []; rc.full = null; }
+    }
+
+    /**
+     * Adds the MusicBrainz column to one table, right after its Title (or
+     * Name) column: a header, `data-mb-col-headers` (the multi-table render
+     * builds each head from it), and a cell per row from that column's
+     * Discogs link. Tracklist rows are tracks, not entities: left alone, as
+     * every table without a Title or Name column (Identifiers, a history).
+     *
+     * @param {HTMLTableElement} table
+     * @param {string} heading - The sub-table's `<h3>` ('' for none).
+     * @returns {void}
+     */
+    function _dgMbDecorateTable(table, heading) {
+        if (heading === 'Tracklist') return;
+        let cols;
+        try {
+            cols = JSON.parse(table.getAttribute('data-mb-col-headers') || 'null');
+        } catch (_) {
+            cols = null;
+        }
+        const ths = Array.from(table.querySelectorAll('thead tr:first-child th'));
+        if (!Array.isArray(cols)) cols = ths.map(th => th.textContent.trim());
+        const at = cols.includes('Title') ? cols.indexOf('Title') : cols.indexOf('Name');
+        if (at < 0 || cols.includes(_DG_MB_COL)) return;
+        cols.splice(at + 1, 0, _DG_MB_COL);
+        if (table.hasAttribute('data-mb-col-headers')) table.setAttribute('data-mb-col-headers', JSON.stringify(cols));
+        if (ths[at]) {
+            const th = table.ownerDocument.createElement('th');
+            th.textContent = _DG_MB_COL;
+            ths[at].after(th);
+        }
+        const companies = heading === 'Companies, etc.';
+        table.querySelectorAll('tbody > tr').forEach(tr => {
+            const idTd = tr.cells[at];
+            if (!idTd) return;
+            const a = idTd.querySelector('a[href]');
+            const spec = a ? _dgMbSpec(a.getAttribute('href'), companies) : null;
+            idTd.insertAdjacentHTML('afterend', _dgMbCellHtml(spec, a ? a.textContent.trim() : ''));
+        });
+        _dgMb.pendingCount = null;
+    }
+
+    /**
+     * `features.decorateDoc` of the Discogs pageTypes: each fetched page's
+     * tables get the MusicBrainz column before the engine reads their rows.
+     * Starts loading our own store, for the lookup after the render.
+     *
+     * @param {Document} doc
+     * @returns {void}
+     */
+    function _dgMbDecorateDoc(doc) {
+        if (!_dgMbOn()) return;
+        _dgMbLoadOwn();
+        doc.querySelectorAll('table.tbl').forEach(t => {
+            const h = t.previousElementSibling;
+            _dgMbDecorateTable(t, h && h.tagName === 'H3' ? h.textContent.trim() : '');
+        });
+    }
+
+    /**
+     * Opens (or reuses) our own store of answers.
+     *
+     * @returns {Promise<IDBDatabase>}
+     */
+    function _dgMbOpenIdb() {
+        if (_dgMbIdbPromise) return _dgMbIdbPromise;
+        _dgMbIdbPromise = new Promise((resolve, reject) => {
+            if (typeof indexedDB === 'undefined') {
+                reject(new Error('IndexedDB not available'));
+                return;
+            }
+            const req = indexedDB.open(_DG_MB_IDB_NAME, _DG_MB_IDB_VERSION);
+            req.onupgradeneeded = (ev) => {
+                const db = ev.target.result;
+                if (!db.objectStoreNames.contains('links')) db.createObjectStore('links', { keyPath: 'key' });
+            };
+            req.onsuccess = (ev) => {
+                const db = ev.target.result;
+                db.onversionchange = () => { db.close(); _dgMbIdbPromise = null; };
+                db.onclose = () => { _dgMbIdbPromise = null; };
+                resolve(db);
+            };
+            req.onerror = (ev) => { _dgMbIdbPromise = null; reject(ev.target.error); };
+            req.onblocked = () => { _dgMbIdbPromise = null; reject(new Error('IndexedDB open blocked by another tab')); };
+        });
+        return _dgMbIdbPromise;
+    }
+
+    /**
+     * Loads our own store into memory, once a page: every record still
+     * within its keep time. Never rejects.
+     *
+     * @returns {Promise<void>}
+     */
+    function _dgMbLoadOwn() {
+        if (_dgMbOwnPromise) return _dgMbOwnPromise;
+        _dgMbOwnPromise = _dgMbOpenIdb().then(db => new Promise(resolve => {
+            try {
+                const req = db.transaction('links', 'readonly').objectStore('links').getAll();
+                req.onsuccess = () => {
+                    const now = Date.now();
+                    (req.result || []).forEach(r => {
+                        if (!r || typeof r.key !== 'string' || !Array.isArray(r.urls) || typeof r.ts !== 'number') return;
+                        if (now >= r.ts + (r.urls.length ? _DG_MB_TTL_MS : _DG_MB_NONE_TTL_MS)) return;
+                        if (!_dgMbMem.has(r.key)) _dgMbMem.set(r.key, r);
+                    });
+                    resolve();
+                };
+                req.onerror = () => resolve();
+            } catch (_) {
+                resolve();
+            }
+        })).catch(() => {});
+        return _dgMbOwnPromise;
+    }
+
+    /**
+     * Writes answers to our own store. Never rejects.
+     *
+     * @param {Array<{key: string, urls: Array<{url: string, ended: boolean}>, ts: number}>} records
+     * @returns {Promise<void>}
+     */
+    function _dgMbPut(records) {
+        if (!records.length) return Promise.resolve();
+        return _dgMbOpenIdb().then(db => new Promise(resolve => {
+            try {
+                const tx = db.transaction('links', 'readwrite');
+                const st = tx.objectStore('links');
+                records.forEach(r => st.put(r));
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => resolve();
+                tx.onabort = () => resolve();
+            } catch (_) {
+                resolve();
+            }
+        })).catch(() => {});
+    }
+
+    /**
+     * Every MusicBrainz cell per Discogs entity ("release/123"), live AND
+     * master: the shown tables plus the source rows the next re-render
+     * clones from (a single table's live rows ARE its source rows, so the
+     * two are merged through a Set).
+     *
+     * @returns {Map<string, Set<HTMLTableCellElement>>}
+     */
+    function _dgMbCellIndex() {
+        const map = new Map();
+        const add = td => {
+            const k = td.dataset.mbDgKey;
+            if (!k) return;
+            let s = map.get(k);
+            if (!s) { s = new Set(); map.set(k, s); }
+            s.add(td);
+        };
+        document.querySelectorAll('#mb-dg-root table.tbl td.mb-dg-mb-cell[data-mb-dg-key]').forEach(add);
+        _msSourceRows().forEach(row => row.querySelectorAll('td.mb-dg-mb-cell[data-mb-dg-key]').forEach(add));
+        return map;
+    }
+
+    /**
+     * The entities still to ask for, each with the types it is missing (a
+     * failed one only when `withFailed`).
+     *
+     * @param {Map<string, Set<HTMLTableCellElement>>} index
+     * @param {boolean} withFailed
+     * @returns {Array<{dgType: string, id: string, types: string[]}>}
+     */
+    function _dgMbMisses(index, withFailed) {
+        const out = [];
+        index.forEach((cells, key) => {
+            const [dgType, id] = key.split('/');
+            const types = new Set();
+            cells.forEach(td => {
+                const st = td.dataset.mbDgState;
+                if (st !== 'pending' && !(withFailed && st === 'error')) return;
+                (td.dataset.mbDgTypes || '').split(' ').filter(Boolean)
+                    .forEach(t => { if (!_dgMbKnown({ dgType, id }, t)) types.add(t); });
+            });
+            if (types.size) out.push({ dgType, id, types: Array.from(types) });
+        });
+        return out;
+    }
+
+    /**
+     * Rows whose cell is not answered yet (pending or failed), counted on
+     * the source rows; cached until a cell changes.
+     *
+     * @returns {number}
+     */
+    function _dgMbPendingCount() {
+        if (_dgMb.pendingCount !== null) return _dgMb.pendingCount;
+        let n = 0;
+        _msSourceRows().forEach(row => {
+            const td = row.querySelector('td.mb-dg-mb-cell[data-mb-dg-key]');
+            if (td && td.dataset.mbDgState !== 'done') n++;
+        });
+        _dgMb.pendingCount = n;
+        return n;
+    }
+
+    /**
+     * Repaints every cell of the given entities (all of them when `keys` is
+     * null) from what is known now.
+     *
+     * @param {Map<string, Set<HTMLTableCellElement>>} index
+     * @param {?Iterable<string>} keys
+     * @param {boolean} failed
+     * @returns {number} Cells written.
+     */
+    function _dgMbRepaint(index, keys, failed) {
+        let n = 0;
+        (keys ? Array.from(keys) : Array.from(index.keys())).forEach(k => {
+            const cells = index.get(k);
+            if (!cells) return;
+            cells.forEach(td => {
+                _dgMbRenderCell(td, failed);
+                n++;
+            });
+        });
+        if (n) _dgMb.pendingCount = null;
+        return n;
+    }
+
+    /**
+     * After cells changed: the 📊 caches of their tables, every cached
+     * filter result, the header buttons, and the filter itself when one is
+     * set — at most every 1.5 s, or at once (`now`).
+     *
+     * @param {boolean} [now]
+     * @returns {void}
+     */
+    function _dgMbScheduleRefresh(now) {
+        clearTimeout(_dgMb.refreshTimer);
+        const wait = now ? 0 : Math.max(0, 1500 - (Date.now() - _dgMb.lastRefresh));
+        _dgMb.refreshTimer = setTimeout(() => {
+            _dgMb.lastRefresh = Date.now();
+            document.querySelectorAll('#mb-dg-root table.tbl').forEach(t => {
+                if (t.querySelector('td.mb-dg-mb-cell')) _invalidateUniqDropDataCacheForTable(t);
+            });
+            _invalidateFilterCache();
+            _dgMbUpdateHdrBtns();
+            if (_anyFilterActive()) runFilter();
+        }, wait);
+    }
+
+    /**
+     * One request for up to 100 entities, every type they miss in ONE `inc`
+     * (the probe: several relationship incs work). Records every answer
+     * (memory and our store), a "nothing found" too.
+     *
+     * @param {Array<{dgType: string, id: string, types: string[]}>} batch
+     * @returns {Promise<boolean>} Whether MusicBrainz answered.
+     */
+    async function _dgMbAsk(batch) {
+        const types = Array.from(new Set(batch.flatMap(s => s.types)));
+        const url = 'https://musicbrainz.org/ws/2/url?' + batch.map(s => `resource=${encodeURIComponent(_dgMbResource(s))}`).join('&') +
+            `&inc=${types.map(t => `${t}-rels`).join('+')}&fmt=json`;
+        await _relAwaitRateSlot();
+        if (_dgMb.stop) return false;
+        _dgMb.requests++;
+        const res = await _extGet(url, {
+            gate: false, wanted: () => !_dgMb.stop,
+            fetchOpts: { accept: /\bjson\b/i, headers: { 'User-Agent': _EXT_AGENT, Accept: 'application/json' } },
+        });
+        if (res.skipped) return false;
+        if (res.error || (res.status !== 200 && res.status !== 404)) {
+            Lib.warn('dgmb', `MusicBrainz did not answer for ${batch.length} entities: ${res.error || `HTTP ${res.status}`}`);
+            return false;
+        }
+        let data = null;
+        if (res.status === 200) {
+            try {
+                data = JSON.parse(String(res.body || '') + String(res.tail || ''));
+            } catch (_) {
+                return false;
+            }
+        }
+        const byRes = new Map();
+        const items = data ? (Array.isArray(data.urls) ? data.urls : data.resource ? [data] : []) : [];
+        items.forEach(u => { if (u && u.resource) byRes.set(u.resource, u.relations || []); });
+        const now = Date.now();
+        const records = [];
+        batch.forEach(s => {
+            const rels = byRes.get(_dgMbResource(s)) || [];
+            s.types.forEach(type => {
+                const k = type.replace(/-/g, '_');
+                const seen = new Set();
+                const urls = [];
+                rels.forEach(r => {
+                    const id = r && r[k] && r[k].id;
+                    if (!id || seen.has(id)) return;
+                    seen.add(id);
+                    urls.push({ url: `https://musicbrainz.org/${type}/${id}`, ended: !!r.ended });
+                });
+                const rec = { key: `${s.dgType}/${s.id}/${type}`, urls, ts: now };
+                _dgMbMem.set(rec.key, rec);
+                records.push(rec);
+            });
+        });
+        _dgMbPut(records);
+        return true;
+    }
+
+    /**
+     * Fills the MusicBrainz column: our own store first (repainting what it
+     * answers), then — automatically after a render
+     * (`sa_dg_mb_auto_lookup`), or on the header button or a failed cell —
+     * MusicBrainz for the rest, 100 entities a request, one request per
+     * 1.1 s (the shared WS rate slot), each answer written into its cells
+     * at once.
+     *
+     * @param {{user?: boolean, anchor?: ?Element, withFailed?: boolean}} [opts]
+     * @returns {Promise<void>}
+     */
+    async function _dgMbRun({ user = false, anchor = null, withFailed = false } = {}) {
+        if (!_dgMbOn() || _dgMb.running) return;
+        await _dgMbLoadOwn();
+        let index = _dgMbCellIndex();
+        const fromOwn = Array.from(index.entries()).filter(([, cells]) => Array.from(cells).some(td => td.dataset.mbDgState === 'pending')).map(([k]) => k);
+        if (_dgMbRepaint(index, fromOwn, false)) _dgMbScheduleRefresh(true);
+        const misses = _dgMbMisses(index, withFailed || user);
+        if (!misses.length || (!user && Lib.settings.sa_dg_mb_auto_lookup === false)) {
+            _dgMbUpdateHdrBtns();
+            return;
+        }
+        _dgMbRegisterProvider();
+        Object.assign(_dgMb, { running: true, stop: false, total: misses.length, done: 0, failed: 0, requests: 0, net: 0 });
+        _ajStart('dgmb', null, { user, anchor });
+        _ajLog('dgmb', null, `${misses.length} entit${misses.length === 1 ? 'y' : 'ies'} to ask MusicBrainz for`);
+        const keys = (b) => b.map(s => `${s.dgType}/${s.id}`);
+        _dgMbRepaint(index, keys(misses), false);
+        _dgMbUpdateHdrBtns();
+        for (let i = 0; i < misses.length && !_dgMb.stop; i += _DG_MB_BATCH) {
+            const batch = misses.slice(i, i + _DG_MB_BATCH);
+            const ok = await _dgMbAsk(batch);
+            index = _dgMbCellIndex();
+            if (ok) {
+                _dgMb.done += batch.length;
+                _dgMb.net += batch.length;
+                _ajLog('dgmb', null, `${batch.length} answered`, 'good');
+            } else if (!_dgMb.stop) {
+                _dgMb.failed += batch.length;
+                _ajLog('dgmb', null, `${batch.length} failed`, 'bad');
+            }
+            _dgMbRepaint(index, keys(batch), !ok);
+            _dgMbUpdateHdrBtns();
+            _ajChanged('dgmb', null);
+            _dgMbScheduleRefresh(false);
+        }
+        _dgMb.running = false;
+        _ajFinish('dgmb', null, _dgMb.failed);
+        _dgMbScheduleRefresh(true);
+    }
+
+    /**
+     * The render tail on discogs.com: the header toggles (a re-render
+     * rebuilds every head from a clone), and — after a fresh render or a
+     * disk load — the lookup. Nothing without MusicBrainz cells.
+     *
+     * @param {boolean} [start] - Run the lookup (the first render, a disk load).
+     * @returns {void}
+     */
+    function _dgMbAfterRender(start) {
+        if (!_isDgHost || !document.querySelector('#mb-dg-root td.mb-dg-mb-cell')) return;
+        _dgMbInitColHeaderToggles();
+        if (start) _dgMbRun();
+    }
+
+    /**
+     * Adds the ▶ MB toggle to every MusicBrainz header that lacks one and
+     * repaints its state; installs the click delegates once.
+     *
+     * @returns {void}
+     */
+    function _dgMbInitColHeaderToggles() {
+        _dgMbRegisterProvider();
+        _dgMbEnsureDelegates();
+        document.querySelectorAll('#mb-dg-root table.tbl thead th').forEach(th => {
+            if (th.dataset.colName !== _DG_MB_COL || th.querySelector('.mb-dgmb-col-hdr-btn')) return;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'mb-dgmb-col-hdr-btn';
+            btn.dataset.mbAj = 'dgmb';
+            btn.dataset.mbAjName = '▶ MB';
+            btn.setAttribute('aria-pressed', 'false');
+            btn.setAttribute('aria-label', 'Look up the MusicBrainz column');
+            const flex = th.querySelector('.mb-col-hdr-flex');
+            (flex || th).prepend(btn);
+        });
+        _dgMbUpdateHdrBtns();
+    }
+
+    /**
+     * Repaints every ▶ MB toggle: pressed once every row is answered, a
+     * done/total badge while a lookup runs, yellow after a failure.
+     *
+     * @returns {void}
+     */
+    function _dgMbUpdateHdrBtns() {
+        const btns = document.querySelectorAll('.mb-dgmb-col-hdr-btn');
+        if (!btns.length) return;
+        const pending = _dgMbPendingCount();
+        btns.forEach(b => {
+            b.setAttribute('aria-pressed', pending === 0 && !_dgMb.running ? 'true' : 'false');
+            if (_dgMb.running && _dgMb.total) b.dataset.dgmbProgress = `${_dgMb.done}/${_dgMb.total}`;
+            else delete b.dataset.dgmbProgress;
+            if (!_dgMb.running && _dgMb.failed) b.dataset.dgmbState = 'error';
+            else delete b.dataset.dgmbState;
+        });
+    }
+
+    /**
+     * The delegated clicks, installed once: the ▶ MB toggle asks for every
+     * row not answered (failed ones too; capture phase, so the header's sort
+     * never sees it), a failed cell's ⚠ does the same.
+     *
+     * @returns {void}
+     */
+    function _dgMbEnsureDelegates() {
+        if (_dgMbEnsureDelegates.done) return;
+        _dgMbEnsureDelegates.done = true;
+        document.addEventListener('click', (e) => {
+            const t = e.target;
+            const btn = t.closest && t.closest('.mb-dgmb-col-hdr-btn');
+            const failed = !btn && t.closest && t.closest('td.mb-dg-mb-cell .mb-dg-mb-search[data-state="error"]');
+            if (!btn && !failed) return;
+            e.preventDefault();
+            e.stopPropagation();
+            _dgMbRun({ user: true, anchor: btn || failed, withFailed: true });
+        }, true);
+    }
+
+    /**
+     * Registers the MusicBrainz column's provider of the async job popup.
+     *
+     * @returns {void}
+     */
+    function _dgMbRegisterProvider() {
+        _ajRegister('dgmb', {
+            glyph: 'MB',
+            label: 'MusicBrainz links',
+            scopeOf: () => null,
+            snapshot: (scope, job) => _dgMbSnapshot(job),
+            onOpen: (scope, repaint) => {
+                if (Date.now() - _dgMb.storeCountAt < 5000) return;
+                _dgMb.storeCountAt = Date.now();
+                _dgMbOpenIdb().then(db => new Promise(resolve => {
+                    const req = db.transaction('links', 'readonly').objectStore('links').count();
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => resolve(null);
+                })).catch(() => null).then(n => { _dgMb.storeCount = n; repaint(); });
+            },
+            act: (scope, id) => {
+                if (id === 'retry') _dgMbRun({ withFailed: true });
+                if (id === 'stop') _dgMb.stop = true;
+            },
+        });
+    }
+
+    /**
+     * The progress card's content (see `_ajRender()`); O(1) but for the
+     * cached pending count.
+     *
+     * @param {?object} job
+     * @returns {object}
+     */
+    function _dgMbSnapshot(job) {
+        const fmt = n => Number(n).toLocaleString('en-US');
+        const cache = [
+            ['Importer', `${fmt(_dgMbReadImporterCache().size)} links in its cache (read only)`],
+            ['Store', `IndexedDB ${_DG_MB_IDB_NAME}, matches 90 days, nothing found 7 days`],
+            ['Records', _dgMb.storeCount === null ? 'counting…' : fmt(_dgMb.storeCount)],
+        ];
+        const actions = [];
+        if (_dgMb.running) actions.push({ id: 'stop', label: 'Stop', kind: 'danger' });
+        else if (_dgMb.failed) actions.push({ id: 'retry', label: `Retry ${_dgMb.failed} failed`, kind: 'danger' });
+        if (!job) {
+            const pending = _dgMbPendingCount();
+            return {
+                phase: 'idle',
+                summary: pending ? `${fmt(pending)} rows not looked up yet. Click ▶ MB to ask MusicBrainz.` : 'Every row is answered.',
+                facts: [['Rows', `${fmt(pending)} not answered`]], cache, actions,
+            };
+        }
+        const s = Math.round(((job.t1 || Date.now()) - job.t0) / 1000);
+        return {
+            phase: job.phase,
+            summary: `MusicBrainz links for ${fmt(_dgMb.total)} Discogs entit${_dgMb.total === 1 ? 'y' : 'ies'}`,
+            done: _dgMb.done, total: _dgMb.total, failed: _dgMb.failed,
+            queued: Math.max(0, _dgMb.total - _dgMb.done - _dgMb.failed), unit: 'entities',
+            facts: [
+                ['Source', `/ws/2/url, up to ${_DG_MB_BATCH} Discogs links a request`],
+                ['Requests', `${fmt(_dgMb.requests)} made, about ${fmt(Math.ceil(_dgMb.total / _DG_MB_BATCH))} in all`],
+                ['Rate', 'one per 1.1 s'],
+                ['Time', `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}${job.t1 ? '' : ' elapsed'}`],
+            ],
+            cache, actions,
+        };
     }
 
     /**
@@ -32863,6 +33694,7 @@
             buttons: [ { label: 'Show all versions', shortLabel: 'Versions', get description() { return _dgCostPer('Every version of this master', 'versions', 'Born To Run: 387 versions, 4 requests'); } } ],
             features: {
                 dgToTable: 'master',
+                decorateDoc: (doc) => _dgMbDecorateDoc(doc),
                 pageRequest: (p, def) => _dgPageRequest(p, def),
                 pageCountAsync: (def) => _dgPageCount(def),
                 // Several catalog numbers in one cell, one row each (as Catalog#).
@@ -32882,6 +33714,7 @@
             } ],
             features: {
                 dgToTable: 'release',
+                decorateDoc: (doc) => _dgMbDecorateDoc(doc),
                 groupByH3: true,
                 // The Tracklist's per-track credits, one row each (vzell:
                 // like the Instruments column of release-tracks).
@@ -32901,6 +33734,7 @@
             } ],
             features: {
                 dgToTable: 'artist',
+                decorateDoc: (doc) => _dgMbDecorateDoc(doc),
                 groupByH3: true,
                 pageRequest: (p, def) => _dgPageRequest(p, def),
                 pageCountAsync: (def) => _dgPageCount(def),
@@ -32932,6 +33766,7 @@
             ],
             features: {
                 dgToTable: 'label',
+                decorateDoc: (doc) => _dgMbDecorateDoc(doc),
                 pageRequest: (p, def) => _dgPageRequest(p, def),
                 pageCountAsync: (def) => _dgPageCount(def),
                 collapsableColumns: [ 'Cat#' ],
@@ -32953,6 +33788,7 @@
             } ],
             features: {
                 dgToTable: 'submissions',
+                decorateDoc: (doc) => _dgMbDecorateDoc(doc),
                 pageRequest: (p) => _dgSubsPageRequest(p),
                 pageCountAsync: () => _dgSubsPageCount(),
                 // Date and time as separate columns, as on MusicBrainz's
@@ -32996,6 +33832,7 @@
             buttons: ['submissions', 'contributions', 'collection', 'wantlist'].map(_dgUserButton),
             features: {
                 dgToTable: 'user',
+                decorateDoc: (doc) => _dgMbDecorateDoc(doc),
                 groupByH3: true,
                 // Each API page has its own Releases / Artists / Labels.
                 groupMergeByName: true,
@@ -53902,6 +54739,24 @@
     }
 
     /**
+     * discogs.com's MusicBrainz column: how many MusicBrainz links a cell
+     * holds, read from the cell's own stamp (`data-mb-dg-n`, written with
+     * its content by `_dgMbCellInner()`), or 'pending'/'error' while its
+     * lookup is open or has failed. Attributes, not text, so a highlight
+     * wrapper inside the cell cannot change the answer.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?string} null for a cell that is not such a cell or has no
+     *   Discogs entity (a credit without an id).
+     */
+    function _findCellDgMbCount(cell) {
+        if (!cell || !cell.classList || !cell.classList.contains('mb-dg-mb-cell') || !cell.dataset.mbDgKey) return null;
+        const st = cell.dataset.mbDgState;
+        if (st === 'pending' || st === 'error') return st;
+        return String(parseInt(cell.dataset.mbDgN, 10) || 0);
+    }
+
+    /**
      * Extracts the "(cancelled)" marker's own text (e.g. "cancelled") from
      * an Events "Event" cell — re-derives from `span.cancelled` the exact
      * same way `ColumnDataExtractor.cancelledEvent` already does for its
@@ -54712,6 +55567,13 @@
             const want = mode.slice(12);
             const parts = cell && _findCellDateExpressionParts(cell);
             return !!parts && parts.atoms.some(atom => _dateAtomWeekday(atom) === want);
+        }
+        if (mode.startsWith('dgmbcount:')) {
+            // Compound mode — discogs.com's MusicBrainz column: the number
+            // of MusicBrainz links in the cell, or 'pending'/'error' while
+            // its lookup is open or failed (_findCellDgMbCount()).
+            const want = mode.slice(10);
+            return !!cell && _findCellDgMbCount(cell) === want;
         }
         if (mode.startsWith('tagcount:')) {
             // Compound mode — matches the leading integer tag-vote count of
@@ -70484,6 +71346,7 @@ a { color: #1565c0; }`;
         .mb-picard-col-hdr-btn,
         .mb-rel-col-hdr-btn,
         .mb-recof-col-hdr-btn,
+        .mb-dgmb-col-hdr-btn,
         .mb-re-col-hdr-btn,
         .mb-barcode-col-hdr-btn,
         .mb-col-collapse-hdr-btn,
@@ -70511,6 +71374,7 @@ a { color: #1565c0; }`;
         .mb-picard-col-hdr-btn:hover,
         .mb-rel-col-hdr-btn:hover,
         .mb-recof-col-hdr-btn:hover,
+        .mb-dgmb-col-hdr-btn:hover,
         .mb-re-col-hdr-btn:hover,
         .mb-barcode-col-hdr-btn:hover,
         .mb-col-collapse-hdr-btn:hover,
@@ -70524,6 +71388,7 @@ a { color: #1565c0; }`;
         .mb-picard-col-hdr-btn:focus-visible,
         .mb-rel-col-hdr-btn:focus-visible,
         .mb-recof-col-hdr-btn:focus-visible,
+        .mb-dgmb-col-hdr-btn:focus-visible,
         .mb-re-col-hdr-btn:focus-visible,
         .mb-barcode-col-hdr-btn:focus-visible {
             outline: 2px solid rgba(0, 100, 255, 0.55);
@@ -70538,6 +71403,7 @@ a { color: #1565c0; }`;
         .mb-picard-col-hdr-btn[aria-pressed="true"],
         .mb-rel-col-hdr-btn[aria-pressed="true"],
         .mb-recof-col-hdr-btn[aria-pressed="true"],
+        .mb-dgmb-col-hdr-btn[aria-pressed="true"],
         .mb-barcode-col-hdr-btn[aria-pressed="true"],
         .mb-col-collapse-hdr-btn[aria-expanded="true"] {
             background: var(--mb-hdr-pill-engaged-bg);
@@ -70582,6 +71448,12 @@ a { color: #1565c0; }`;
         .mb-recof-col-hdr-btn[aria-pressed="true"]::before { content: "▼🎼︎"; }
         .mb-recof-col-hdr-btn[data-recof-progress]::after { content: " " attr(data-recof-progress); font-variant-numeric: tabular-nums; }
         .mb-recof-col-hdr-btn[data-recof-state="error"] { background: rgba(255, 193, 7, 0.55); border-color: rgba(190, 140, 0, 0.70); }
+        /* Discogs MusicBrainz column toggle (_dgMbInitColHeaderToggles): the
+           same generated-content glyph and done/total badge. */
+        .mb-dgmb-col-hdr-btn::before { content: "▶ MB"; }
+        .mb-dgmb-col-hdr-btn[aria-pressed="true"]::before { content: "▼ MB"; }
+        .mb-dgmb-col-hdr-btn[data-dgmb-progress]::after { content: " " attr(data-dgmb-progress); font-variant-numeric: tabular-nums; }
+        .mb-dgmb-col-hdr-btn[data-dgmb-state="error"] { background: rgba(255, 193, 7, 0.55); border-color: rgba(190, 140, 0, 0.70); }
         /* "Recording of" cells: the attribute words in light green italics
            (column-scoped, over the shared .mb-credit-attr colour), a
            suggested work in orange italics. */
@@ -77197,6 +78069,10 @@ a { color: #1565c0; }`;
         // since everything else in the cell is stripped here too) and by the
         // saved-HTML `hasSortYes` probes.
         '.mb-caa-sort-key,.mb-eaa-sort-key,' +
+        // discogs.com's MusicBrainz column (_dgMbCellHtml()): a search box's
+        // "R?" and the link count badge are decoration; the column's text is
+        // the hidden .mb-dg-mb-ids ("release <mbid> …"), which stays.
+        '.mb-dg-mb-search,.mb-dg-mb-n,' +
         // .mb-cell-collapse-toggle is the UI widget injected into multi-row cells
         // (Catalog#, Label, …) that shows "▶ 2 ▤" (glyph + item-count + rack icon).
         // Its text content — especially the numeric count such as "2" — must never
@@ -78985,6 +79861,9 @@ a { color: #1565c0; }`;
         entityTypeMix:            { label: 'Entity info - Type',               glyph: '🔣' },
         entityAlias:              { label: 'Entity info - Alias',              glyph: '👤' },
         entityTagCount:           { label: 'Entity info - Tag count',          glyph: '🏷️' },
+        // discogs.com's MusicBrainz column (murdos' importer present): how many
+        // MusicBrainz links a row has, or that its lookup is open/failed.
+        dgMbCount:                { label: 'MusicBrainz - Links',              glyph: '🧠' },
         // 'Entity info - Event cancelled' — area-events/place-events/
         // artist-events only (see MB_UNIQ_KIND_TO_SECTION's 'entitycancelled'
         // key); a plain "Event info - Cancelled" (below) is used
@@ -79577,6 +80456,7 @@ a { color: #1565c0; }`;
         attr: 'creditAttr', task: 'creditTask', date: 'creditDate',
         instrument: 'creditInstrument', altname: 'creditAltName', dgrole: 'creditRole',
         comment: 'entityComment', alias: 'entityAlias', tagcount: 'entityTagCount',
+        dgmbcount: 'dgMbCount',
         joinphrase: 'joinPhrase',
         namevariation: 'nameVariation',
         role: 'roles', roletoken: 'entityRole',
@@ -81748,6 +82628,24 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Marks what a `dgmbcount:` entry matched in discogs.com's MusicBrainz
+     * column: its MusicBrainz links (a count of 1 or more), else its search
+     * boxes (0, pending, error). Icons have no text to wrap, so each gets
+     * the Relationships column's ring class, `mb-rel-icon-match`, which
+     * every filter pass already clears — never a highlight span, whose reset
+     * turns its content back into plain text.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g. `"dgmbcount:2"`.
+     * @returns {void}
+     */
+    function _highlightDgMbCountMatch(cell, mode) {
+        if (!cell || _findCellDgMbCount(cell) !== mode.slice(10)) return;
+        const links = cell.querySelectorAll('a.mb-dg-mb-link');
+        (links.length ? links : cell.querySelectorAll('.mb-dg-mb-search')).forEach(el => el.classList.add('mb-rel-icon-match'));
+    }
+
+    /**
      * Highlights the exact matched value for a `tagcount:` compound
      * structure-mode filter — re-derives from `_findCellTagCount()` directly
      * (matching `_highlightCatalogPrefixMatch()`'s own established
@@ -82987,6 +83885,8 @@ a { color: #1565c0; }`;
                                     _highlightDateAtomMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('tagcount:')) {
                                     _highlightTagCountMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('dgmbcount:')) {
+                                    _highlightDgMbCountMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('entitycancelled:') || mode.startsWith('eventcancelled:')) {
                                     _highlightEventCancelledMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('formatsize:') || mode.startsWith('formatcount:') ||
@@ -83809,6 +84709,8 @@ a { color: #1565c0; }`;
             // fire on a settled page.
             _relInitColHeaderToggles();
             _recOfInitColHeaderToggles();
+            // discogs.com's MusicBrainz column: its ▶ MB toggles.
+            _dgMbAfterRender(false);
             // Same reason as the line above: the <thead> this writes into may
             // have just been rebuilt from a clone. No-op unless the Release-events
             // lookup is loading or has failed.
@@ -84094,6 +84996,8 @@ a { color: #1565c0; }`;
                 // deliberately does not fire on a settled page.
                 _relInitColHeaderToggles();
                 _recOfInitColHeaderToggles();
+                // discogs.com's MusicBrainz column: its ▶ MB toggles.
+                _dgMbAfterRender(false);
                 // Same reason as the line above: the <thead> this writes into may
                 // have just been rebuilt from a clone. No-op unless the Release-events
                 // lookup is loading or has failed.
@@ -86652,6 +87556,10 @@ a { color: #1565c0; }`;
                         // host's API, through the link previews' gate and headers).
                         const text = req.fetchText ? await req.fetchText() : await fetchHtml(req.url, req.init || null);
                         doc = new DOMParser().parseFromString(req.toHtml ? req.toHtml(text) : text, 'text/html');
+                        // A pageType may add to each fetched document before its
+                        // rows are read (discogs.com: the MusicBrainz column,
+                        // _dgMbDecorateDoc()). Unset everywhere else.
+                        if (typeof activeDefinition.features.decorateDoc === 'function') activeDefinition.features.decorateDoc(doc);
                     } else if (!_isResume && !_isSearchPage && !buttonConfig.virtualPath && _isCurrentPage && (!overrideParams || Object.keys(overrideParams).length === 0)) {
                         Lib.debug('fetch', `Page ${p} is current page. Using existing document.`);
                         doc = document;
@@ -88902,6 +89810,8 @@ a { color: #1565c0; }`;
             // at all, and the toggle is the only way for the user to ask for it.
             _relInitColHeaderToggles();
             _recOfInitColHeaderToggles();
+            // discogs.com's MusicBrainz column: its ▶ MB toggles, then the lookup.
+            _dgMbAfterRender(true);
             // Same reason as the line above: the <thead> this writes into may
             // have just been rebuilt from a clone. No-op unless the Release-events
             // lookup is loading or has failed.
@@ -97489,6 +98399,9 @@ a { color: #1565c0; }`;
         // below (computed from activeColumnExtractors), a no-op Map for
         // any other column/page.
         const entityTagCountValueCounts = _uniqCacheHit ? _uniqCacheHit.entityTagCountValueCounts : new Map();
+        // discogs.com's MusicBrainz column: links per row ("0", "1", …) and
+        // "pending"/"error" — see _findCellDgMbCount(). Gated by isDgMbCol.
+        const dgMbCountValueCounts = _uniqCacheHit ? _uniqCacheHit.dgMbCountValueCounts : new Map();
         // Distinct "(cancelled)" marker values (normally just "cancelled")
         // from an Events "Event" cell — see _findCellEventCancelled()'s own
         // JSDoc. Gated below (computed from activeDefinition.type + the
@@ -98095,6 +99008,8 @@ a { color: #1565c0; }`;
         // 'user-tag-value-entity' (no 'tagCount' extractor exists there)
         // and every other page type.
         const isTagEntityCol = activeColumnExtractors.some(e => e.extractor === 'tagCount' && e.sourceColumn === _colHeaderName);
+        // discogs.com's MusicBrainz column (_dgMbDecorateTable()).
+        const isDgMbCol = _isDgHost && _colHeaderName === _DG_MB_COL;
         // Which 'cancelled' kind (if any) applies to the currently-open
         // "Event" column, decided purely by `activeDefinition.type` — the
         // page-load-scoped page type, unaffected by activeColumnExtractors'
@@ -98616,6 +99531,10 @@ a { color: #1565c0; }`;
                 if (isTagEntityCol) {
                     const _tagCount = _findCellTagCount(cell);
                     if (_tagCount !== null) entityTagCountValueCounts.set(_tagCount, (entityTagCountValueCounts.get(_tagCount) || 0) + 1);
+                }
+                if (isDgMbCol) {
+                    const _dgMbN = _findCellDgMbCount(cell);
+                    if (_dgMbN !== null) dgMbCountValueCounts.set(_dgMbN, (dgMbCountValueCounts.get(_dgMbN) || 0) + 1);
                 }
                 if (_eventCancelledKind) {
                     const _cancelled = _findCellEventCancelled(cell);
@@ -99898,7 +100817,7 @@ a { color: #1565c0; }`;
                 attrValueCounts, taskValueCounts, dateValueCounts, eventDateValueCounts,
                 instrumentValueCounts, altNameValueCounts, dgRoleValueCounts,
                 entityNameValueCounts, entityCommentValueCounts, entityAliasValueCounts,
-                entityTagCountValueCounts, eventCancelledValueCounts,
+                entityTagCountValueCounts, dgMbCountValueCounts, eventCancelledValueCounts,
                 entityNameGlyphMap, entityNameTypeMap, entityNameFlagMap, entityNameAnyValueCounts,
                 entityNameHrefsMap, entityHrefAnyValueCounts, entityHrefValueCounts,
                 entityHrefGlyphMap, entityHrefTypeMap, entityHrefFlagMap,
@@ -100693,7 +101612,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'recattr'|'workattrid'|'recofsugg'|'revcountry'|'revdate'|'revweekday'|'eventtype'|'eventcountry'|'countryname'|'countrycode'|'trackspermedium'|'trackstotal'|'catalogprefix'|'dgrole'|'lengthbucket'|'timeofday'|'reltypecredit'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'titleageadded'|'titleagemodified'|'titlecount'|'titlepart'|'titleeti'|'titleseries'|'titleformat'|'liveshape'|'liveextra'|'liveloc'|'evliveshape'|'evliveextra'|'evliveloc'|'evstylemiss'|'evedition'|'rcliveshape'|'rcliveextra'|'rcliveloc'|'rctype'|'rcmiss'|'rcinfo'|'eventdetail'|'eventaddinfo'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'editoractivefor'|'editoractivesince'|'localelanguage'|'datedecade'|'datemonth'|'dateyear'|'dateweekday'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'recattr'|'workattrid'|'recofsugg'|'revcountry'|'revdate'|'revweekday'|'eventtype'|'eventcountry'|'countryname'|'countrycode'|'trackspermedium'|'trackstotal'|'catalogprefix'|'dgrole'|'lengthbucket'|'timeofday'|'reltypecredit'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'titleageadded'|'titleagemodified'|'titlecount'|'titlepart'|'titleeti'|'titleseries'|'titleformat'|'liveshape'|'liveextra'|'liveloc'|'evliveshape'|'evliveextra'|'evliveloc'|'evstylemiss'|'evedition'|'rcliveshape'|'rcliveextra'|'rcliveloc'|'rctype'|'rcmiss'|'rcinfo'|'eventdetail'|'eventaddinfo'|'tagcount'|'dgmbcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'editoractivefor'|'editoractivesince'|'localelanguage'|'datedecade'|'datemonth'|'dateyear'|'dateweekday'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -100808,6 +101727,7 @@ a { color: #1565c0; }`;
                  : kind === 'comment'    ? '» comment: '
                  : kind === 'alias'      ? '» alias: '
                  : kind === 'tagcount'   ? '» tag count: '
+                 : kind === 'dgmbcount'  ? '» MB links: '
                  : kind === 'joinphrase' ? '» join phrase: '
                  : kind === 'namevariation' ? '» name variation: '
                  : kind === 'formatsize' ? '» size: '
@@ -101256,6 +102176,9 @@ a { color: #1565c0; }`;
         const _sortedAliasValues   = Array.from(entityAliasValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         // Numeric sort (not lexicographic) so "2" sorts before "10".
         const _sortedTagCountValues = Array.from(entityTagCountValueCounts.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+        // Counts in order, then "pending", then "error".
+        const _dgMbRank = (v) => (v === 'pending' ? 1e9 : v === 'error' ? 1e9 + 1 : parseInt(v, 10));
+        const _sortedDgMbCountValues = Array.from(dgMbCountValueCounts.keys()).sort((a, b) => _dgMbRank(a) - _dgMbRank(b));
         const _sortedEventCancelledValues = Array.from(eventCancelledValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedJoinPhraseValues = Array.from(joinPhraseValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedNameVariationValues = Array.from(nameVariationValueCounts.keys()).sort((a, b) => a.localeCompare(b));
@@ -101353,7 +102276,7 @@ a { color: #1565c0; }`;
             _sortedDateValues.length > 0 || _sortedEventDateValues.length > 0 || _sortedInstrumentValues.length > 0 ||
             _sortedAltNameValues.length > 0 || _sortedDgRoleValues.length > 0 ||
             _sortedNameValues.length > 0 || _sortedCommentValues.length > 0 || _sortedAliasValues.length > 0 ||
-            _sortedTagCountValues.length > 0 || _sortedEventCancelledValues.length > 0 ||
+            _sortedTagCountValues.length > 0 || _sortedDgMbCountValues.length > 0 || _sortedEventCancelledValues.length > 0 ||
             _sortedJoinPhraseValues.length > 0 || _sortedNameVariationValues.length > 0 ||
             _sortedFormatSizeValues.length > 0 || _sortedFormatCountValues.length > 0 || _sortedFormatComboValues.length > 0 || _sortedFormatTypeValues.length > 0 ||
             _sortedWorkAttrIdValues.length > 0 ||
@@ -101637,6 +102560,7 @@ a { color: #1565c0; }`;
             _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
             _sortedAliasValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('alias', v, entityAliasValueCounts.get(v)); });
             _sortedTagCountValues.forEach(v => makeValueSynItem('tagcount', v, entityTagCountValueCounts.get(v)));
+            _sortedDgMbCountValues.forEach(v => makeValueSynItem('dgmbcount', v, dgMbCountValueCounts.get(v)));
             if (_eventCancelledKind) _sortedEventCancelledValues.forEach(v => makeValueSynItem(_eventCancelledKind, v, eventCancelledValueCounts.get(v)));
             _sortedJoinPhraseValues.forEach(v => makeValueSynItem('joinphrase', v, joinPhraseValueCounts.get(v)));
             _sortedNameVariationValues.forEach(v => makeValueSynItem('namevariation', v, nameVariationValueCounts.get(v)));
@@ -101802,6 +102726,7 @@ a { color: #1565c0; }`;
             _sortedCommentValues.forEach(v => makeValueSynItem('comment', v, entityCommentValueCounts.get(v)));
             _sortedAliasValues.forEach(v => { if (!_alreadyOfferedBareNames.has(v)) makeValueSynItem('alias', v, entityAliasValueCounts.get(v)); });
             _sortedTagCountValues.forEach(v => makeValueSynItem('tagcount', v, entityTagCountValueCounts.get(v)));
+            _sortedDgMbCountValues.forEach(v => makeValueSynItem('dgmbcount', v, dgMbCountValueCounts.get(v)));
             if (_eventCancelledKind) _sortedEventCancelledValues.forEach(v => makeValueSynItem(_eventCancelledKind, v, eventCancelledValueCounts.get(v)));
             _sortedJoinPhraseValues.forEach(v => makeValueSynItem('joinphrase', v, joinPhraseValueCounts.get(v)));
             _sortedNameVariationValues.forEach(v => makeValueSynItem('namevariation', v, nameVariationValueCounts.get(v)));
@@ -102498,6 +103423,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('instrument:')) return `» instrument: ${mode.slice(11)}`;
         if (mode.startsWith('altname:'))    return `» credited as: ${mode.slice(8)}`;
         if (mode.startsWith('dgrole:'))     return `» role: ${mode.slice(7)}`;
+        if (mode.startsWith('dgmbcount:'))  return `» MB links: ${mode.slice(10)}`;
         if (mode.startsWith('name:'))    return `» name: ${mode.slice(5)}`;
         if (mode.startsWith('namehref:')) {
             const _rest = mode.slice(9);
@@ -102734,6 +103660,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('instrument:')) return 'The instrument type credited in one of this cell\'s items.';
         if (mode.startsWith('altname:')) return 'MusicBrainz\'s own credited-as alternate instrument/vocal-type name (the trailing "[…]" bracket).';
         if (mode.startsWith('dgrole:')) return 'A Discogs credit role of one of this cell\'s credits ("Guitar", "Producer"); its "[…]" modifiers are attributes.';
+        if (mode.startsWith('dgmbcount:')) return 'How many MusicBrainz entities are linked to this row\'s Discogs page; "pending" while it is still looked up, "error" when the lookup failed.';
         if (mode.startsWith('name:')) return 'An entity\'s own anchored/linked name — matches every row containing this entity, regardless of its disambiguation comment.';
         if (mode.startsWith('namehref:')) return 'This exact entity (by its own MusicBrainz identity), disambiguated because another, different entity shares the same display name — see the plain "» name:" entry for the broader, name-only match.';
         if (mode.startsWith('comment:')) return 'An entity\'s disambiguation comment text, excluding any primary alias.';
@@ -116852,6 +117779,8 @@ a { color: #1565c0; }`;
             // _relTableExpanded()'s "the two defaults".
             _relInitColHeaderToggles();
             _recOfInitColHeaderToggles();
+            // discogs.com's MusicBrainz column: its ▶ MB toggles, then the lookup.
+            _dgMbAfterRender(true);
             // Same reason as the line above: the <thead> this writes into may
             // have just been rebuilt from a clone. No-op unless the Release-events
             // lookup is loading or has failed.
@@ -119330,6 +120259,12 @@ a { color: #1565c0; }`;
             { ...art, id: 'recof-ws2', store: 'recof-ws2', keyPath: 'ckey', label: 'Recording of', color: '#8a6ca0', ttlDays: _idboDays(S.sa_recording_of_ttl_days, 30) },
             { ...art, id: 'artist-works', store: 'artist-works', keyPath: 'artist', label: 'Artist work lists', color: '#c2a64a', ttlDays: _idboDays(S.sa_recording_of_works_ttl_days, 30) },
             { ...dp, id: 'pages', store: 'pages', keyPath: 'url', label: 'Link preview pages', color: '#7a8c8c', ttlDays: _DP_TTL_MS / 86400000 },
+            // discogs.com only: the MusicBrainz column's answers (its own
+            // database, never opened on MusicBrainz).
+            ...(_isDgHost ? [{
+                db: _DG_MB_IDB_NAME, dbLabel: 'Discogs MusicBrainz column', layout: _DG_MB_IDB_VERSION, open: _dgMbOpenIdb,
+                id: 'dg-mblinks', store: 'links', keyPath: 'key', label: 'MusicBrainz links (Discogs)', color: '#ba478f', ttlDays: _DG_MB_TTL_MS / 86400000,
+            }] : []),
         ];
     }
 
@@ -120222,6 +121157,9 @@ a { color: #1565c0; }`;
                 break;
             case 'pages':
                 if (typeof v.v !== 'number' || !v.data || typeof v.data !== 'object') return '"v" or "data" has the wrong type';
+                break;
+            case 'dg-mblinks':
+                if (!Array.isArray(v.urls)) return '"urls" is not a list';
                 break;
             default:
                 break;

@@ -1430,7 +1430,7 @@ you automatically.
 | 🌴 jungleland.it                                | Switch on the jungleland.it bootleg artwork list (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                            |
 | 💿 brucespringsteen.it                          | Switch on the brucespringsteen.it record database (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                           |
 | 📚 Brucebase                                    | Switch on the Brucebase song list, Relations and Recent changes and, separately, its year pages (all off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                         |
-| 💿 Discogs                                      | Switch on discogs.com's master, release, artist, label, submissions and user pages (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                          |
+| 💿 Discogs                                      | Switch on discogs.com's master, release, artist, label, submissions and user pages (off by default), and the MusicBrainz column with murdos' importer userscript (on; its automatic lookups on); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                          |
 | 🔎 Link previews on MusicBrainz                 | The cards of the links on MusicBrainz pages (on by default; on a phone or tablet off unless you tick the *… on touch devices* boxes), how long their answers are kept, the release group window's size; see [Page-specific behaviour](#page-specific-behaviour)     |
 | 🔎 Every preview                                | Show the MusicBrainz link previews and the Springsteen sites' detail-page previews on a plain hover (on by default), or only while Ctrl is held                                                                                                                       |
 
@@ -2903,6 +2903,31 @@ artwork viewer at the largest size Discogs serves. On a submissions page a relea
 opens with the release's **edit history** (see *Link previews*), then the
 release as everywhere; once it has been read, the title's card shows the
 last change too.
+
+**MusicBrainz column.** With the userscript *Import Discogs releases to
+MusicBrainz* (by murdos) installed, every table whose rows are releases,
+masters, artists or labels gets a **MusicBrainz** column right after
+*Title* or *Name*: a master's versions, a release's *Credits*, *Companies,
+etc.* and *Other versions*, a discography, a label's releases, a
+submissions list and a user's lists (not a tracklist, the identifiers or a
+history). Each cell shows on one line the MusicBrainz entities linked to
+that Discogs page, as that script's icons do on Discogs' own page: a yellow
+search box (**R?**, **A?**, **L?**, **P?**, **G?**) for each kind with none,
+which searches MusicBrainz for the name, then one icon per entity (grey: the
+link has ended) and a count from two up. A company is looked for as a
+MusicBrainz **place** first (a studio, a pressing plant), and its label is
+not shown once a place is found. The links come from that script's own
+memory first (only read, never changed), then from this script's own,
+then from MusicBrainz in the background: 100 Discogs links a request, one
+request a second, a spinner in each cell until its answer arrives. **▶ MB**
+in the column's header shows the progress (pointing at it opens the
+progress card) and asks again for rows that failed (⚠, also a click on the
+⚠ itself). Answers are kept 90 days, "nothing found" 7 days, so a second
+visit asks MusicBrainz nothing. Filter the column by a MusicBrainz ID; the
+📊 section *MusicBrainz - Links* counts the links per row (*» MB links: 0, 1,
+2 …*, and *pending* / *error* while lookups run) and rings the matched icons.
+Switch it off, or only the automatic lookups (then ▶ MB asks), in ⚙️
+Settings → 💿 Discogs. Without that userscript the column never appears.
 
 </details>
 

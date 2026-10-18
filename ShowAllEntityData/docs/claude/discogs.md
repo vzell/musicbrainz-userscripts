@@ -25,7 +25,7 @@ empty or private; the Recent activity read from MusicBrainz too.
 
 ## What it is
 
-Six pageTypes on discogs.com's own pages, opt-in via `sa_enable_discogs`
+Seven pageTypes on discogs.com's own pages, opt-in via `sa_enable_discogs`
 (default off; the gate exits before anything visible, as for every foreign
 site), `host: 'www.discogs.com'`, three `@include` lines:
 
@@ -327,6 +327,86 @@ in our table or a Discogs link in the content gets the same card and window
 as on MusicBrainz (Ctrl + hover unless `sa_dp_hover_without_ctrl`; a tap opens
 the window). The MusicBrainz parts of the window stay off on a foreign host.
 
+## The MusicBrainz column (murdos' importer present, 2026-10-19)
+
+**Mockup (approved by vzell 2026-10-19):**
+https://claude.ai/artifact/6CmnUoNf4LHd44yxvp3rvu — the release's Credits,
+Companies and Other versions, the 📊 entries, background lookups with the
+job popup, cell anatomy. His answers: key on murdos' "Import Discogs releases
+to MusicBrainz" (registered as `murdos-discogs-importer` in
+`tests/fixtures/live-userscripts/manifest.json`; Anakunda's "Discogs API
+links", named first, makes no icons at all); reimplement its lookup and use
+its cache; look up automatically in the background; a cell covers the row's
+OWN entity; the column only with the importer present.
+
+**Why our tables never get the importer's icons.** It decorates Discogs'
+React page only (`#app`: `div[class^=info_]`, `#release-companies`,
+`table[class^=releases_]` …); all 120 `span.mb_wrapper` of
+`debug/discogs-release-withMB-icons.html` sit there. Its `$('h1')` reaches our
+`h1.mb-dg-h1` (it gets `mlink_processed` and the page's icon) — nothing else
+of ours.
+
+- **Gate:** `_dgMbOn()` = discogs.com + `sa_dg_mb_column` (default on) +
+  `_dgMbImporterPresent()`: its localStorage key
+  (`/^DISCOGS_MBLINKS_CACHE-v\d/`) or its page marks (`[mlink_processed],
+  span.mb_wrapper`), remembered once true.
+- **Where:** `features.decorateDoc` — a new, optional engine hook run on each
+  fetched `pageRequest` document before its rows are read (six dg-*
+  definitions set it; dg-history does not). `_dgMbDecorateTable()` adds the
+  header and `data-mb-col-headers` entry right after **Title** (else
+  **Name**) and a cell per row from that column's Discogs link; a table
+  headed Tracklist, or without Title/Name, is left alone. A single-table
+  pageType's EMPTY live table gets the header too (`applyDgToTable()`), since
+  the render fills its tbody.
+- **What a row asks for** (`_dgMbSpec()`, the importer's mapping): release →
+  release, master → release-group, artist → artist, label → label, and in
+  "Companies, etc." place first, label not shown once a place is found (its
+  `mlink_stop`). The resource is `https://www.discogs.com/<type>/<id>` (exact:
+  the probe found slugged, `http:` and no-www forms all 404).
+- **Sources, in order:** the importer's cache (`_dgMbReadImporterCache()`,
+  READ ONLY, re-read at most every 30 s; its entries `"<dgType>/<id>/<mbType>":
+  {timestamp, urls: ["url" | {url, ended}]}`, trusted while non-empty and
+  under 90 days, its own rule), our own IndexedDB `vz-saed-dg-mblinks`
+  (store `links`, keyPath `key`, same keys; a match 90 days, a "nothing found"
+  7 days, which the importer never keeps; preloaded once a page by
+  `_dgMbLoadOwn()`; listed in the browser cache overview on discogs.com only),
+  then MusicBrainz (`_dgMbAsk()`).
+- **Lookup:** `_dgMbRun()` after the first render and a disk load
+  (`_dgMbAfterRender(true)`; re-renders only re-add the toggles), when
+  `sa_dg_mb_auto_lookup` (default on), else on ▶ MB or a failed cell's ⚠.
+  Up to 100 entities a request with EVERY type the batch misses in one `inc`
+  (`artist-rels+label-rels+place-rels+release-rels` on a release page), via
+  `_extGet()` (GM_xmlhttpRequest, anonymous) after the shared WS rate slot
+  `_relAwaitRateSlot()` (1.1 s). A failure is not stored; the cells show ⚠.
+- **Cell** (`_dgMbCellInner()`): `span.mb-dg-mb-row` (nowrap) of search boxes
+  first (`.mb-dg-mb-search`, the importer's look; `data-state` pending →
+  spinner, error → ⚠), then `a.mb-dg-mb-link` per entity (MusicBrainz's own
+  entity SVG; `.mb-dg-mb-ended` grey), `.mb-dg-mb-n` from two links up, and a
+  hidden `.mb-dg-mb-ids` ("release <mbid> …") as the column's filter and
+  sort text. The boxes and the count are in `_CLEAN_STRIP_SEL`. The td carries
+  `data-mb-dg-key/-types/-name/-state/-n`; own class names, never `mb_*`, so
+  the importer's CSS and selectors leave our cells alone.
+- **Late writes** (filter-and-cache-invariants.md): `_dgMbCellIndex()`
+  indexes the live cells AND the source rows (`_msSourceRows()`), and
+  `_dgMbRenderCell()` rewrites both in place and drops the row's
+  `_rowTextCache`; `_dgMbScheduleRefresh()` (≤ every 1.5 s) drops the 📊
+  caches of those tables and the filter cache, repaints ▶ MB and re-runs an
+  active filter. The precedent is "Recording of" (`_recOfApply()`).
+- **📊:** section `dgMbCount` "MusicBrainz - Links" (🧠, kind `dgmbcount`,
+  `_findCellDgMbCount()` reads `data-mb-dg-n`/`-state`), entries "» MB links:
+  N", "pending", "error"; a ticked one rings the matched icons with the
+  Relationships column's `mb-rel-icon-match` (cleared by every filter pass —
+  a highlight span would not do: its reset turns its content into text).
+- A click on our MusicBrainz icons opens musicbrainz.org in a new tab: the
+  link previews skip musicbrainz.org hosts (`_EXT_SKIP_HOST_RE`).
+
+Probe: `scripts/probe-mb-url-batch-by-discogs.py` (2026-10-19, NB-3641; its
+docstring has the results): up to 100 resources a request, the 101st DROPPED
+SILENTLY; answers in the server's order (matched by `resource`); one unknown
+alone 404, several 200 with url-count 0; no paging; several relationship
+incs in one request; `ended` per relation. Its answers are the
+`tests/fixtures/mb-url-discogs-*.json` files.
+
 ## Known differences from the mockup (raised with vzell)
 
 - Sub-tables start collapsed ("Show all sub-sections"), as on every
@@ -346,6 +426,7 @@ the window). The MusicBrainz parts of the window stay off on a foreign host.
 | `tests/fixtures/sl-include-regex.spec.js`     | the `@include` line: the four page kinds (slug, language prefix, query, no www), not the image pages, search, sell, user pages or the API host                                                                                                                                                                                                                         |
 | `tests/fixtures/discogs-submissions.spec.js`  | submissions: flat view (section first in `<body>`, 12 flat pages same-origin in order, the split, every column), browser view (flat pages, the title), the check at a submissions URL; the history: a history link (card asks nothing, Space one request, 14 changes, filter, order, diff marked blocks / whole release, memory), a title ("History, then the release", one request each), a sign-in page; full size: a row's 5 images from one request, ← →, Shift+← →, back from the cache, a failure and "Try again"; MusicBrainz: a history link, an anonymous request on Space |
 | `tests/fixtures/discogs-links.spec.js`        | round 2: a plain click opens the window (every table link a new tab, the page stays); a search (25, Load 25 more = page 2, a result drilled, Back); in the history window a user (profile, the activity from their page, Back) and RSG §6.12.2 (the article, the section marked and in view, Back); View changes (6 buttons, 2 Images links, revision 8 → 10 only the Notes, Back to the latest, asked once); dg-user (only Submissions and Contributions, 642 in 7 requests, Releases 641 + Labels 1, columns; Contributions 3; the synthetic collection page: Collection, 2 pages, Added) |
+| `tests/fixtures/discogs-mb-column.spec.js`    | the MusicBrainz column: none without the importer (no request); after Name/Title on Credits, Companies, Other versions, never Tracklist/Identifiers; the importer's cache at once, the rest in ≤100-resource requests (one inc, anonymous, exact URLs, none asked twice), a place before a label, one line, the importer's localStorage unchanged; our store (a second visit asks nothing, a "nothing found" too); ended grey, count badge, filtered by MBID not by "R?"; 📊 "MusicBrainz - Links" (ticking 2, pending drains as answers arrive); a sort keeps late answers (source rows); ⚠ and retry; auto lookups off → ▶ MB |
 
 Since vzell's browser round `discogs-pages.spec.js` also pins: the search
 links (an artist cell one link, a label cell one per label), a track's
@@ -367,4 +448,4 @@ GuiBeal, vzell's submissions pages 1 and 7 — the specs serve page 1 for 2-6,
 ~600 KB a page —, contributions, GuiBeal's collection page 1, the Columbia
 label search pages 1-2, the support article). Mutations:
 `scripts/mutations/discogs-pages.json`, `scripts/mutations/discogs-submissions.json`,
-`scripts/mutations/discogs-links.json`.
+`scripts/mutations/discogs-links.json`, `scripts/mutations/discogs-mb-column.json`. `discogs-links.spec.js` also checks the column on a submissions list, a user's lists and its absence on a history page.

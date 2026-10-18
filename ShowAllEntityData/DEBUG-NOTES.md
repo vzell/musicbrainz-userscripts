@@ -24189,3 +24189,41 @@ Env: 2026-10-18T20:31+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) ·
   (`scripts/mutations/discogs-links.json`, `…/discogs-submissions.json`); lint
   within baseline. `test:full` on petri 2026-10-18T20:21:38–20:31:16+02:00
   (uncommitted on 77ad5df): 1900 passed.
+
+## 2026-10-19 — discogs.com: the MusicBrainz column with murdos' importer (branch feat/discogs-mb-column, WIP.1)
+
+Env: 2026-10-19T00:31+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1, Chromium build 1234, no Tampermonkey (GM stubs); snapshot from vzell's browser: browser/Tampermonkey versions unknown
+
+- **The request named the wrong script.** vzell asked for "Discogs API links"
+  (Anakunda) support; that script only adds a "View through API" link. The
+  icons in `debug/discogs-release-withMB-icons.html` (`span.mb_wrapper`,
+  `span.mb_valign.mb_searchit`, `mlink`/`mlink_done`, `mlink_processed`) are
+  murdos' "Import Discogs releases to MusicBrainz" (2026.10.14.2, its
+  mblinks.js@755843cf). vzell then copied that one into
+  `tests/fixtures/live-userscripts/` (registered `murdos-discogs-importer`).
+- **Snapshot:** all 120 `span.mb_wrapper` are inside Discogs' `#app`; our
+  section's tables have none — the importer's selectors are Discogs' React
+  class prefixes, and our rows come from the API. Its `$('h1')` does reach
+  our `h1.mb-dg-h1` (`mlink_processed="2"`, the release icon prepended). So
+  the column cannot come from the importer's DOM; it reimplements the lookup
+  and reads the importer's localStorage cache `DISCOGS_MBLINKS_CACHE-v3.1`
+  read only (docs/claude/discogs.md, "The MusicBrainz column").
+- **Probe** (`scripts/probe-mb-url-batch-by-discogs.py`, same env, no
+  browser): /ws/2/url drops a 101st `resource=` SILENTLY (200, no error) —
+  the importer's 75 is safe, our 100 is the limit, never more; several
+  relationship incs in one request work, so one request serves a whole
+  release page's artists, labels, places and releases; matching is exact
+  (slug, `http:`, no www all 404).
+- **Two traps met on the way:** `cleanColumnText` already existed on
+  `__saTest` (a second copy is a duplicate key, caught by the lint baseline);
+  a CSS escape like `"\25B6"` inside the `GM_addStyle` template literal is an
+  octal-escape SyntaxError — write the glyph itself. A highlight for icons
+  cannot be a `.mb-column-filter-highlight` span: every filter pass replaces
+  those spans with a text node of their text, which would delete the icons;
+  the ring reuses `mb-rel-icon-match`, which the passes remove as a class.
+- **Verified:** `tests/fixtures/discogs-mb-column.spec.js` (10 tests) and the
+  other Discogs specs; `scripts/mutations/discogs-mb-column.json` — 9 planted
+  defects, all caught (the `_CLEAN_STRIP_SEL` one only after the test read
+  the clean text itself: "R?" never matched as a filter anyway, the box's two
+  text nodes join with a space); lint within baseline. `test:full` on NB-3641
+  2026-10-19T00:34:03–00:45:36+02:00 (uncommitted on 7824778): 1911 passed.

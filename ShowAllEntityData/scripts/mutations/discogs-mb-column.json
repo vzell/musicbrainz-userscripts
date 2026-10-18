@@ -1,0 +1,119 @@
+[
+    {
+        "name": "MusicBrainz column: late answers written to the live cells only",
+        "why": "A multi-table re-render clones every row from groupedRows; an answer that never reached the source rows is gone after the next sort (CLAUDE.md, the two table modes).",
+        "edits": [
+            {
+                "find": "        _msSourceRows().forEach(row => row.querySelectorAll('td.mb-dg-mb-cell[data-mb-dg-key]').forEach(add));\n        return map;",
+                "replace": "        return map;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "a late answer reaches the source rows",
+        "expect": "fail"
+    },
+    {
+        "name": "MusicBrainz column: the search boxes' letters leak into the column's text",
+        "why": "The column's text is the hidden MBIDs; a box's 'R?' must never match a filter (_CLEAN_STRIP_SEL).",
+        "edits": [
+            {
+                "find": "        '.mb-dg-mb-search,.mb-dg-mb-n,' +",
+                "replace": "        '' +"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "never the box letters",
+        "expect": "fail"
+    },
+    {
+        "name": "MusicBrainz column: shown without the importer",
+        "why": "vzell 2026-10-19: the column appears only when murdos' importer is present.",
+        "edits": [
+            {
+                "find": "        return _isDgHost && Lib.settings.sa_dg_mb_column !== false && _dgMbImporterPresent();",
+                "replace": "        return _isDgHost && Lib.settings.sa_dg_mb_column !== false;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "without the importer",
+        "expect": "fail"
+    },
+    {
+        "name": "MusicBrainz column: the importer's cache is not read",
+        "why": "The importer's cache is the first source; what it knows is shown at render without a request.",
+        "edits": [
+            {
+                "find": "        const imp = _dgMbReadImporterCache().get(key);\n        if (imp) return imp;",
+                "replace": "        const imp = null;\n        if (imp) return imp;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "cells: the importer",
+        "expect": "fail"
+    },
+    {
+        "name": "MusicBrainz column: a found place no longer hides the label",
+        "why": "The importer's mlink_stop: in Companies a studio found as a MusicBrainz place is not asked as a label.",
+        "edits": [
+            {
+                "find": "            urls.forEach(u => links.push({ type, url: u.url, ended: !!u.ended }));\n            if (type === 'place') break;",
+                "replace": "            urls.forEach(u => links.push({ type, url: u.url, ended: !!u.ended }));"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "cells: the importer",
+        "expect": "fail"
+    },
+    {
+        "name": "MusicBrainz column: batches over the Web Service's 100",
+        "why": "The probe: a 101st resource is dropped silently (200, no error).",
+        "edits": [
+            {
+                "find": "    const _DG_MB_BATCH = 100;",
+                "replace": "    const _DG_MB_BATCH = 150;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "cells: the importer",
+        "expect": "fail"
+    },
+    {
+        "name": "MusicBrainz column: no filter pass after a late fill",
+        "why": "filter-and-cache-invariants: a post-render cell write re-runs an active filter.",
+        "edits": [
+            {
+                "find": "            _dgMbUpdateHdrBtns();\n            if (_anyFilterActive()) runFilter();",
+                "replace": "            _dgMbUpdateHdrBtns();"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "while a lookup is open",
+        "expect": "fail"
+    },
+    {
+        "name": "MusicBrainz column: the 📊 count always 0",
+        "why": "The 'MusicBrainz - Links' entries count each row's links (_findCellDgMbCount()).",
+        "edits": [
+            {
+                "find": "        return String(parseInt(cell.dataset.mbDgN, 10) || 0);",
+                "replace": "        return '0';"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "MusicBrainz - Links",
+        "expect": "fail"
+    },
+    {
+        "name": "MusicBrainz column: a 'nothing found' is not remembered",
+        "why": "Our own store keeps a 'nothing found' 7 days, so a second visit asks nothing (the importer keeps none).",
+        "edits": [
+            {
+                "find": "                if (!_dgMbMem.has(r.key)) _dgMbMem.set(r.key, r);",
+                "replace": "                if (r.urls.length && !_dgMbMem.has(r.key)) _dgMbMem.set(r.key, r);"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-mb-column.spec.js",
+        "grep": "our own store",
+        "expect": "fail"
+    }
+]

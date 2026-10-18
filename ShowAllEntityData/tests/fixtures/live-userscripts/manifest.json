@@ -149,6 +149,21 @@
                 "Not ISRC Scout: data-ii-processed / img.mb-ii-icon on the same pages are Lotheric's Instrument Icons Everywhere (lotheric-instrument-icons), the same 'ii' prefix by coincidence.",
                 "Harness caveats: GM_xmlhttpRequest, GM_getValue, GM_setValue, GM_deleteValue and GM_info are stubbed by tests/support/gmStubs.js. unsafeWindow is not, but every use is typeof-guarded. GM_openInTab is not stubbed either, and it is only reached from the Beatport harvester on user action, guarded with a window.open fallback. No GM.* dot syntax; every await is inside a function. tests/pagetypes.json's release-tracks URL works; for the snapshots' releases pass --url=https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 (several ISRCs per recording) or --url=https://musicbrainz.org/release/230fd31d-f63f-4c01-8f10-432d36a1cb86."
             ]
+        },
+        {
+            "id": "murdos-discogs-importer",
+            "file": "discogs_importer.user.js",
+            "author": "murdos (no @author line; @namespace http://userscripts.org/users/22504, @updateURL murdos/musicbrainz-userscripts)",
+            "version": "2026.10.14.2",
+            "when": "init",
+            "touches": [
+                "No @run-at (Tampermonkey's default, document-idle), but its body runs from $(document).ready and its listings are re-scanned by setInterval (1-1.5 s) and, on collection/wantlist pages, a MutationObserver on document.body ({childList, subtree, attributes: href}); registered as 'init' because it has long settled before ShowAllEntityData's button-driven Discogs render. @match https://www.discogs.com/* only: nothing on musicbrainz.org.",
+                "Discogs' own React page (#app): wraps each Discogs entity link it scans in span.mb_wrapper > span.mb_valign and stamps it mlink=\"<type>/<id>\" and mlink_done=\"<mb types asked>\"; the scanned container gets mlink_processed=\"N\" (magnifyLinks()). Per MusicBrainz type it first prepends a yellow search box span.mb_valign.mb_searchit > a.mb_search_link (<small>A|L|P|R|G|S</small>?, MBCreateLookupIndicator(), spinner/⚠ states mb_lookup_loading/mb_lookup_error), then one span.mb_valign > a > img(…/static/images/entity/<type>.svg) per MusicBrainz entity found, removing the box. Sections per page kind: release (#release-actions master, h1 artist, div[class^=info_] label+series, #release-companies place then label (mlink_stop once a place is found), #release-credits, #release-tracklist, #release-other-versions), master, artist and label (their React tables by class prefix), user collection and /mywantlist.",
+                "Reaches OUR section: $('h1') matches ShowAllEntityData's #mb-dg-root h1.mb-dg-h1 too, so it gets mlink_processed and the page entity's MusicBrainz icon prepended (seen in debug/discogs-release-withMB-icons.html). Its table selectors (table[class^=releases_], #versions tr[class^=row_], …) never match our table.tbl, so our rows are never decorated — ShowAllEntityData's own MusicBrainz column (_dgMbDecorateTable(), docs/claude/discogs.md) shows the same links instead.",
+                "Release pages: a 'MusicBrainz' sidebar section (div.section.musicbrainz) with an import form, inserted before #release-marketplace / #shopping-box-host / #release-stats; asks api.discogs.com/releases/<id> itself (jQuery $.ajax).",
+                "Non-visual: /ws/2/url?resource=<discogs url>…&inc=<type>-rels to musicbrainz.org via GM.xmlHttpRequest (75 resources a request, ≥1 s apart, retries on 5xx) — shares MusicBrainz's per-IP rate budget with ShowAllEntityData's own MusicBrainz-column lookups. Caches every answer in page localStorage 'DISCOGS_MBLINKS_CACHE-v3.1' (mblinks.js cache_version 3 + its own '1'; entries '<dgType>/<id>/<mbType>': {timestamp, urls: [{url, ended}]}, 90 days; 'nothing found' stored as an empty list and never trusted). ShowAllEntityData READS that key (read only) for its Discogs MusicBrainz column and as the importer's presence signal (_dgMbImporterPresent()).",
+                "Harness caveats: uses the GM.xmlHttpRequest dot syntax, which tests/support/gmStubs.js does not stub, and '@require lib/logger.js' is a RELATIVE path that injectOne()'s Node fetch cannot load (it rejects) — a harness run needs both fixed first. The run-live-interop pageTypes are musicbrainz.org pages, where this script does nothing; a Discogs run needs --url=https://www.discogs.com/… . Not added to 'kitchen-sink' for that reason (a MusicBrainz-only combination). Simulated for fixture specs by seeding its localStorage key (tests/fixtures/discogs-mb-column.spec.js)."
+            ]
         }
     ],
     "combinations": {
@@ -160,6 +175,7 @@
         "wiencek-batch-performance-only": ["wiencek-batch-performance"],
         "lotheric-instrument-icons-only": ["lotheric-instrument-icons"],
         "majkinetor-isrc-scout-only": ["majkinetor-isrc-scout"],
+        "murdos-discogs-importer-only": ["murdos-discogs-importer"],
         "kitchen-sink": ["jesus2099-supermind", "jesus2099-inline-stuff", "right-side-flags-everywhere", "sanojjonas-visualise", "aerozol-nuclear-tags", "wiencek-batch-performance", "lotheric-instrument-icons", "majkinetor-isrc-scout"]
     }
 }
