@@ -1,0 +1,305 @@
+[
+    {
+        "name": "Discogs tables: a plain click leaves the page again",
+        "why": "vzell 2026-10-18: a plain click on a link in our tables opens the preview window, never leaves the page.",
+        "edits": [
+            {
+                "find": "        return _isDgHost && !!(el && el.closest && el.closest('#mb-dg-root table.tbl'));",
+                "replace": "        return false;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-links.spec.js",
+        "grep": "a plain click on a table link",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs tables: a link opens in this tab",
+        "why": "Every link our Discogs tables write opens a new tab (_DG_NEW_TAB), so nothing ever leaves the page.",
+        "edits": [
+            {
+                "find": "    const _DG_NEW_TAB = ' target=\"_blank\" rel=\"noopener noreferrer\"';",
+                "replace": "    const _DG_NEW_TAB = '';"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-links.spec.js",
+        "grep": "a plain click on a table link",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs window: only Discogs releases, masters, artists and labels drill down",
+        "why": "vzell 2026-10-18: ALL links resolve inside the same window, with Back.",
+        "edits": [
+            {
+                "find": "        const r = a && cur ? _extTarget(a, { inWindow: true }) : null;\n        if (!r || r.key === cur.key) return false;",
+                "replace": "        const r = a && cur ? _extTarget(a, { inWindow: true }) : null;\n        if (!r || r.reader.id !== 'discogs' || r.key === cur.key) return false;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-links.spec.js",
+        "grep": "in the history window",
+        "expect": "fail"
+    },
+    {
+        "name": "Discogs window: the history window's links never drill",
+        "why": "The history reader's clicks end in _extDgFamilyClick() (the drill).",
+        "edits": [
+            {
+                "find": "        if (_extDgHistControl(e)) return;\n        _extDgFamilyClick(e);",
+                "replace": "        _extDgHistControl(e);"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-links.spec.js",
+        "grep": "in the history window",
+        "expect": "fail"
+    },
+    {
+        "name": "dguser: a user link on discogs.com is not previewed",
+        "why": "On discogs.com a same-host link is previewed only when _extDgSiteTest() admits its path (a user, a search).",
+        "edits": [
+            {
+                "find": "        return _extDiscogsTest(u) || _extDgUserTest(u) || _extDgSearchTest(u);",
+                "replace": "        return _extDiscogsTest(u);"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-links.spec.js",
+        "grep": "a plain click on a table link",
+        "expect": "fail"
+    },
+    {
+        "name": "dguser: the Recent activity only on a start render",
+        "why": "After a drill-down the user's record arrives on a repaint: the activity must start then (as _extDgListStart()).",
+        "edits": [
+            {
+                "find": "        if (start || !_mbPop.get(key)) {",
+                "replace": "        if (start) {"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-links.spec.js",
+        "grep": "in the history window",
+        "expect": "fail"
+    },
+    {
+        "name": "dgsupport: the article not marked at the link's section",
+        "why": "A support link names a section (#6.12.2): the window marks and scrolls to it.",
+        "edits": [
+            {
+                "find": "            const block = target && (target.closest('p, li, h1, h2, h3, h4, tr') || target);",
+                "replace": "            const block = null;"
+            },
+            {
+                "find": "        block.classList.add('mb-dgs-mark');",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-links.spec.js",
+        "grep": "in the history window",
+        "expect": "fail"
+    },
+    {
+        "name": "dgsearch: Load 25 more asks nothing",
+        "why": "vzell: 25 at a time, \"Load 25 more\" one request each.",
+        "edits": [
+            {
+                "find": "            _extDgListLoad(t, _extDgList('search', s.sub), ui.pages, { repaint: _dpDialog.repaint });",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-links.spec.js",
+        "grep": "a search: 25 results",
+        "expect": "fail"
+    },
+    {
+        "name": "View changes: the click does not load the revision",
+        "why": "View changes asks Discogs' ?diff=<rev> page and shows its diff.",
+        "edits": [
+            {
+                "find": "            if (ui.rev) _extDgHistDiffLoad(b.dataset.mbDghId, ui.rev, b.dataset.mbDghU || '');",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-links.spec.js",
+        "grep": "View changes",
+        "expect": "fail"
+    },
+    {
+        "name": "View changes: the diff's cells taken from the nested tracklist",
+        "why": "Each diff side holds the release page with a tracklist table: only the diff's own cells count.",
+        "edits": [
+            {
+                "find": "            const td = table.querySelectorAll(':scope > tbody > tr > td');",
+                "replace": "            const td = table.querySelectorAll('tbody > tr > td');"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-links.spec.js",
+        "grep": "View changes",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-user: a button for a list the page does not count",
+        "why": "vzell: an empty or private list's button is hidden.",
+        "edits": [
+            {
+                "find": "            showIf: () => _dgUserCount(kind) > 0,",
+                "replace": "            showIf: () => true,"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-links.spec.js",
+        "grep": "dg-user: Submissions and Contributions only",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-user: submissions' Artists and Labels groups dropped",
+        "why": "A user's submissions come as releases, artists and labels: each non-empty kind is a sub-table.",
+        "edits": [
+            {
+                "find": "                (lab.length ? _dgTableHtml('Labels', H.names, lab) : '');",
+                "replace": "                '';"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-links.spec.js",
+        "grep": "dg-user: Submissions and Contributions only",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-user: the user page taken for Cloudflare's check",
+        "why": "A user's page has no #app: the gate lets /user/<name> through with #page_content.",
+        "edits": [
+            {
+                "find": "        !((_DG_SUBS_PATH_RE.test(window.location.pathname) || _DG_USER_PATH_RE.test(window.location.pathname)) &&",
+                "replace": "        !((_DG_SUBS_PATH_RE.test(window.location.pathname)) &&"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-links.spec.js",
+        "grep": "dg-user: Submissions and Contributions only",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-user: groups not merged by name",
+        "why": "Every API page of a user's submissions has its own Releases / Artists / Labels: one group per kind (vzell's screenshot showed them split per page run).",
+        "edits": [
+            {
+                "find": "                groupMergeByName: true,",
+                "replace": "                groupMergeByName: false,"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-links.spec.js",
+        "grep": "dg-user: Submissions and Contributions only",
+        "expect": "fail"
+    },
+    {
+        "name": "dgsearch: a result's picture inside its link again",
+        "why": "_extTarget() leaves a link around an image to the image: a result with a thumbnail never opened in the window (vzell 2026-10-18).",
+        "edits": [
+            {
+                "find": "        const body = rows.length ? '<div class=\"mb-dgq-list\">' + rows.map(r => '<div class=\"mb-dgq-row\">' +\n            `${r.thumb ? `<img src=\"${_rgEsc(r.thumb)}\" alt=\"\" loading=\"lazy\" referrerpolicy=\"no-referrer\">` : '<span class=\"mb-dgq-ph\"></span>'}` +\n            `<span class=\"mb-dgq-t\"><a class=\"mb-dgq-a\" href=\"${_rgEsc(r.url)}\" target=\"_blank\" rel=\"noopener noreferrer\">${_rgEsc(r.title)}</a>` +",
+                "replace": "        const body = rows.length ? '<div class=\"mb-dgq-list\">' + rows.map(r => '<div class=\"mb-dgq-row\">' +\n            `<span class=\"mb-dgq-t\"><a class=\"mb-dgq-a\" href=\"${_rgEsc(r.url)}\" target=\"_blank\" rel=\"noopener noreferrer\">${r.thumb ? `<img src=\"${_rgEsc(r.thumb)}\" alt=\"\">` : ''}${_rgEsc(r.title)}</a>` +"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-links.spec.js",
+        "grep": "a search result with a thumbnail",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-user: date and time not split",
+        "why": "Date and time as separate columns, as on MusicBrainz's pageTypes (dateTimeParts).",
+        "edits": [
+            {
+                "find": "                    { sourceColumn: 'Added', extractor: 'dateTimeParts', syntheticColumns: ['Added date', 'Added time'] },",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-links.spec.js",
+        "grep": "dg-user: Submissions and Contributions only",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-history: the history page taken for Cloudflare's check",
+        "why": "No #app: the gate admits /release/<id>/history with #page_content.",
+        "edits": [
+            {
+                "find": "        !((_DG_SUBS_PATH_RE.test(window.location.pathname) || _DG_USER_PATH_RE.test(window.location.pathname) ||\n           _DG_HIST_PATH_RE.test(window.location.pathname)) &&",
+                "replace": "        !((_DG_SUBS_PATH_RE.test(window.location.pathname) || _DG_USER_PATH_RE.test(window.location.pathname)) &&"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-links.spec.js",
+        "grep": "dg-history",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-history: dg-release takes the history page too",
+        "why": "_EXT_DISCOGS_PATH_RE takes /release/<id>/history: dg-release must exclude it.",
+        "edits": [
+            {
+                "find": "            match: (path) => _dgPage(path)?.kind === 'release' && !_DG_HIST_PATH_RE.test(path),",
+                "replace": "            match: (path) => _dgPage(path)?.kind === 'release',"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-links.spec.js",
+        "grep": "dg-history",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-history: no diff sub-table",
+        "why": "vzell: the changes AND the diff.",
+        "edits": [
+            {
+                "find": "        if (p === 1 && h.diff) {\n            const list = (lines)",
+                "replace": "        if (false && h.diff) {\n            const list = (lines)"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-links.spec.js",
+        "grep": "dg-history",
+        "expect": "fail"
+    },
+    {
+        "name": "dghistory: a ?diff= link opens on the latest change",
+        "why": "\"View changes\" in dg-history opens the window on that revision's diff.",
+        "edits": [
+            {
+                "find": "        const rev = Number(u.searchParams.get('diff')) || 0;",
+                "replace": "        const rev = 0;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-links.spec.js",
+        "grep": "dg-history",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-history / dg-user: extractor columns not re-resolved per sub-table",
+        "why": "Sub-tables with different columns: the Changes table's date/time split ran on the Diff table's first column (vzell, debug/2columns-missing.html).",
+        "edits": [
+            {
+                "find": "                        if (pageType === 'tag-value' || pageType === 'user-tag-value' || pageType === 'user-ratings' || pageType === 'instrument-list' || pageType === 'artist-credit' || pageType === 'event-overview' || _isRelTablesRun() ||\n                            pageType === 'dg-history' || pageType === 'dg-user') {",
+                "replace": "                        if (pageType === 'tag-value' || pageType === 'user-tag-value' || pageType === 'user-ratings' || pageType === 'instrument-list' || pageType === 'artist-credit' || pageType === 'event-overview' || _isRelTablesRun()) {"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-links.spec.js",
+        "grep": "dg-history",
+        "expect": "fail"
+    },
+    {
+        "name": "dg avatars: a click on a picture does not open the viewer",
+        "why": "vzell: the picture at its largest in our viewer.",
+        "edits": [
+            {
+                "find": "        document.addEventListener('click', _dgAvatarClick, true);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-links.spec.js",
+        "grep": "a user's picture",
+        "expect": "fail"
+    },
+    {
+        "name": "dg avatars: the hover card keeps the small picture",
+        "why": "The card shows the largest picture once the profile's has come.",
+        "edits": [
+            {
+                "find": "            if (pic && big) pic.setAttribute('src', big);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-links.spec.js",
+        "grep": "a user's picture",
+        "expect": "fail"
+    }
+]

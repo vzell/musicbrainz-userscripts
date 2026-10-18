@@ -2939,7 +2939,7 @@ inclusive referenced images from the "More images" link
 create nice rich HTML based mockups first
 
 
-* TODO support for discogs PTs
+* DONE support for discogs PTs
 ** DONE i
 
 Create a new plan first:
@@ -2964,7 +2964,7 @@ of reinventing the wheel
 
 create nice rich HTML based mockups first
 
-** bugs
+** DONE bugs
 
 1.)
 
@@ -2996,13 +2996,176 @@ Is it possible to right align the complete h1 section with everything table rela
 
 Clicking the image in the first column should open our internal viewer
 
-** add support for submissions
+** DONE add support for submissions
 
-add support for submissions e.g. (Bruce Springsteen) https://www.discogs.com/submissions?mode=list&id=599283&page=1&view=flat
+1.)
+
+Implement full size images when clicking an image in the Discogs PTs
+
+2.)
+
+a.)
+
+add support for a new Discogs "Submissions" PT e.g. (Bruce Springsteen) https://www.discogs.com/submissions?mode=list&id=599283&page=1&view=flat
 
 #+begin_example
 @debug/discogs-submissions-flat.html - IP in flat view
 @debug/discogs-submissions.html - IP in detail view, where the '<div id="historyData">' shows the edit history of an entity
+#+end_example
+
+b.)
+
+when hovering over a release on the new PT, the detail view popup (after pressing "Space") should show the information
+of the '<div id="historyData">' in the non-flat view (implement a new reader for it)
+
+** DONE q
+
+1. Should the pageType also run on the browser view? YES
+2. Should "Artist – Title" be split into two columns: YES
+3. Should I cover other mode= submissions pages? NOT YET
+4. Should a title on this page open "History, then the release"; YES
+5. Should the history window work only on discogs.com, or also on MusicBrainz? ON BOTH
+6. For master rows in the viewer, should it show the master's own images? YES
+
+@debug/discogs-release-history.html - https://www.discogs.com//release/8164856-Human-Touch/history
+
+** DONE add missing "inline" support for clicking on URLs inside an already open detail popup (after pressing "Shift")
+*** DONE i
+
+1.)
+
+add missing "inline" support for clicking on URLs inside an already open detail popup (after pressing "Shift")
+
+#+begin_example
+@debug/missing-inline-urls.html - FRP on missing-inline-urls.html - https://www.discogs.com/submissions?mode=list&id=599283&page=1&view=flat - ALL links should be resolved inside the same popup with the same "Back" functionality 
+
+#+end_example
+<button type="button" class="mb-dp-tbtn" data-mb-tip="" title="Back to what the window showed before (Backspace, Alt+←)" style="">← Back</button>
+#+end_example
+
+2.)
+
+a.)
+
+On the Discogs PTs which currently would try to leave our current page e.g. [Image #44] - https://www.discogs.com/master/27097-Bruce-Springsteen-Devils-Dust
+when clicking the hyperlink on a "Columbia" label href e.g
+
+#+begin_example
+<td data-mb-rest-bg="#ffffff" style="background: rgb(255, 255, 255);"><a href="https://www.discogs.com/search/?q=Columbia&amp;type=label">Columbia</a></td>
+#+end_example
+
+I get the native browser popup
+
+b.)
+
+add support for Discogs support URLs which stay inside a hover popup 
+
+3.)
+
+The "View Changes" (currently separated hyperlinked entries) link in the "Discogs release history" popup detail should
+be just and and when clicked should render under the "LATEST CHANGE" section the corresponding changes
+
+#+begin_example
+<span class="mb-dgh-lk"><a href="https://www.discogs.com/release/32190612-Now-Thats-What-I-Call-Christmas/history?rev=6&amp;page=1" target="_blank" rel="noopener noreferrer">View</a><a href="https://www.discogs.com/release/32190612-Now-Thats-What-I-Call-Christmas/history?diff=6&amp;page=1" target="_blank" rel="noopener noreferrer">Changes</a></span>
+#+end_example
+
+*** DONE q
+
+1. One question: should search results show 25 at a time, with a "Load 25 more" button costing one request each: YES
+2. A saved page: please save a ?diff= page, e.g. https://www.discogs.com/release/8164856-Human-Touch/history?diff=10&page=1, as debug/discogs-release-history-diff.html. - PRESENT
+3.) for user profiles, if available also render the activity history in the popup:
+
+a.)
+
+support Discogs user pages e.g. https://www.discogs.com/user/vzell
+
+#+begin_example
+https://www.discogs.com/user/vzell - IP - @debug/discogs-user-vzell.html
+#+end_example
+
+as first class citizens PTs "discogs-user" (or whatever fits in the current scheme)
+
+b.)
+
+also add a new reader for rendering detail hover popups for that PT
+
+4.)
+
+add a skill for this kind of action
+
+*** DONE bug
+
+1.)
+
+The "Matched artist" column is not hyperlinked and the "History" column filterfield stretches too far right
+
+#+begin_example
+@debug/stretch.html - [Image #47]
+#+end_example
+
+2.)
+
+the user profile page is OK
+
+** DONE add additional functionality
+
+4.)
+
+On e.g. https://www.discogs.com/release/1132381-Bruce-Springsteen-Devils-Dust
+add a UVD section for the "Credits" column as we do with the "Instruments" column on MB PTs
+
+5.)
+
+On https://www.discogs.com/master/27097-Bruce-Springsteen-Devils-Dust give the "Cat#" column the same treatment as in the MB case for the "Catalog#" column on e.g
+https://musicbrainz.org/release-group/2872c420-5a5f-482e-b00c-199541c5b9b3
+
+6.)
+
+On https://www.discogs.com/label/582871-The-Stone-Pony treat the "Year" column like the "Date" column on MB pageTypes,
+so e.g "Decade" section support in the UVD
+
+7.)
+
+Split the "Changed" column in date/time columns and add our ususal treatment like on MB pages, e.g https://www.discogs.com/submissions?mode=list&id=599283&page=1&view=flat
+
+8.)
+
+Natively support URLs of the form https://www.discogs.com/release/8164856-Human-Touch/history?diff=10&page=1 as PTs
+
+9.)
+
+[Image #54] the "Changed by" column should get an editor/user icon
+
+10.)
+
+when hovering the avator it should be shown in highest resolution in our internal viewer
+
+11.)
+
+[Image #55] there are two column headers missing under the Diff - revision section" - @debug/2columns-missing.html
+ 
+* TODO add support for a "MusicBrainz" column
+
+On all new Discogs PTs add support for a "MusicBrainz" column when the third-party userscript "Discogs API links" by
+@Anakunda is present
+
+1.)
+
+register it from @tests/fixtures/live-userscripts/DisccogsAPIlinks.user.js
+
+2.)
+
+render all MB icons + the '<span class="mb_valign mb_searchit">' icon as one row in the new "MusicBrainz" column cell
+and add UVD entries for the number of MB links
+
+#+begin_example
+@debug/discogs-release-withMB-icons.html - https://www.discogs.com/release/1132381-Bruce-Springsteen-Devils-Dust - FRP with Musicbrainz icons
+#+end_example
+
+see e.g the "Columbia" label:
+
+#+begin_example
+<td><span class="mb_wrapper"><span class="mb_valign mb_searchit"><a class="mb_search_link" target="_blank" title="Search this series on MusicBrainz (open in a new tab)" href="https://musicbrainz.org/search?query=Columbia&amp;type=series&amp;indexed=1"><small>S</small>?</a></span><span class="mb_valign"><a href="https://musicbrainz.org/label/011d1192-6f65-45bd-85c4-0400dd45693e" title="See this label on MusicBrainz"><img src="https://musicbrainz.org/static/images/entity/label.svg" height="16" width="16"></a> </span><span class="mb_valign"><a href="https://musicbrainz.org/label/47692917-5bad-4c56-a352-9d7ab7648ede" title="See this label on MusicBrainz"><img src="https://musicbrainz.org/static/images/entity/label.svg" height="16" width="16"></a> </span><span class="mb_valign"><a href="https://musicbrainz.org/label/ad6f8706-c95e-443b-8579-8e3ecd27126c" title="See this label on MusicBrainz"><img src="https://musicbrainz.org/static/images/entity/label.svg" height="16" width="16"></a> </span><span class="mb_valign"><a class="MuiTypography-root MuiTypography-labelSmall MuiLink-root MuiLink-underlineAlways css-glhfjc" href="/label/1866-Columbia" mlink="label/1866" mlink_done="series,label">Columbia</a></span></span><span class="MuiTypography-root MuiTypography-labelSmall css-1kybk0l"> – C2 93900</span></td>
 #+end_example
 
 

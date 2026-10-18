@@ -311,5 +311,70 @@
         "spec": "tests/fixtures/discogs-pages.spec.js",
         "grep": "Cloudflare",
         "expect": "fail"
+    },
+    {
+        "name": "dg-release: credit roles without their sentinel",
+        "why": "The Credits column's roles are .mb-credit-role spans: the \"Credit details - Role\" section counts them (vzell 2026-10-18).",
+        "edits": [
+            {
+                "find": "            const credits = (list) => (list.length ? '<td><ul>' + list.map(c => `<li>${c.role ? `${_dgRoleHtml(c.role)} – ` : ''}` +",
+                "replace": "            const credits = (list) => (list.length ? '<td><ul>' + list.map(c => `<li>${c.role ? `${_rgEsc(c.role)} – ` : ''}` +"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "Credit details - Role",
+        "expect": "fail"
+    },
+    {
+        "name": "dgrole: ticking a role filters nothing",
+        "why": "The dgrole: compound mode must match its sentinel (_cellMatchesStructureMode).",
+        "edits": [
+            {
+                "find": "            const want = mode.slice(7);\n            return !!cell && Array.from(cell.querySelectorAll('.mb-credit-role'))",
+                "replace": "            const want = mode.slice(7) + '\\u0000';\n            return !!cell && Array.from(cell.querySelectorAll('.mb-credit-role'))"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "Credit details - Role",
+        "expect": "fail"
+    },
+    {
+        "name": "dg Cat#: several numbers in one line again",
+        "why": "One <li> per catalog number, as MusicBrainz's Catalog#.",
+        "edits": [
+            {
+                "find": "            `${_dgCell(v.format)}${_dgSearchCell(v.label, 'label')}${_dgCatnoCell(v.catno)}${_dgCell(v.country)}${_dgCell(v.year)}</tr>`;",
+                "replace": "            `${_dgCell(v.format)}${_dgSearchCell(v.label, 'label')}${_dgCell(v.catno)}${_dgCell(v.country)}${_dgCell(v.year)}</tr>`;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "a master's Cat#",
+        "expect": "fail"
+    },
+    {
+        "name": "dg Cat#: no Catalog info sections",
+        "why": "On discogs.com \"Cat#\" is a catalog column (isCatalogCol).",
+        "edits": [
+            {
+                "find": "        const isCatalogCol = _colHeaderName === 'Catalog#' || (_isDgHost && _colHeaderName === 'Cat#');",
+                "replace": "        const isCatalogCol = _colHeaderName === 'Catalog#';"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "a master's Cat#",
+        "expect": "fail"
+    },
+    {
+        "name": "dg Year: no Date info sections",
+        "why": "On discogs.com \"Year\" gets the Date column's sections (isDateExprCol).",
+        "edits": [
+            {
+                "find": "        const isDateExprCol = (_isDgHost && _colHeaderName === 'Year') || (table.dataset.mbEntityDateExprColumns",
+                "replace": "        const isDateExprCol = (false) || (table.dataset.mbEntityDateExprColumns"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "Year on the Discogs pages",
+        "expect": "fail"
     }
 ]

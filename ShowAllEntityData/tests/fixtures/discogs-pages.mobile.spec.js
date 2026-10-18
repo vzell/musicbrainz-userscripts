@@ -62,3 +62,33 @@ test('a tap loads a Discogs master\'s versions; a tap on a version opens its win
     expect(navigations, 'the page stays').toEqual([]);
     expect(errors).toEqual([]);
 });
+
+test('a submissions list on a phone: a tap loads the flat pages; a tap on a "history" link opens the edit history, not the page', async ({ page }) => {
+    const errors = [];
+    const navigations = [];
+    page.on('pageerror', (e) => errors.push(String(e.stack || e.message || e)));
+    await page.route(/^https?:\/\//, (route) => route.abort('blockedbyclient'));
+    // The flat view's pages (the saved page 1 for each) and a release's history page.
+    await page.route(/^https:\/\/www\.discogs\.com\/submissions\?.*view=flat/,
+        (route) => route.fulfill({ path: path.join(__dirname, 'dg-submissions-flat.html'), contentType: 'text/html' }));
+    await page.route(/^https:\/\/www\.discogs\.com\/release\/\d+[^/]*\/history/,
+        (route) => route.fulfill({ path: path.join(__dirname, 'dg-release-history.html'), contentType: 'text/html' }));
+    await loadUserscriptPage(page, {
+        url: 'https://www.discogs.com/submissions?mode=list&id=599283&page=1',
+        fixtureFile: path.join(__dirname, 'dg-submissions-browser.html'),
+        testMode: true,
+        settingsOverride: { sa_enable_discogs: true, sa_pop_ext_on_touch: true, sa_render_threshold: 100000 },
+    });
+    page.on('framenavigated', (f) => { if (f === page.mainFrame()) navigations.push(f.url()); });
+    await tap(page, page.locator('#mb-dg-root button[data-label="Show all submissions"]'));
+    await waitForRenderComplete(page, { waitForAutoResize: false });
+    const table = page.locator('#mb-dg-root table.tbl').first();
+    await expect(table.locator('tbody tr')).toHaveCount(1200);
+
+    await tap(page, table.locator('a[href$="/history"]').first());
+    const dialog = page.locator('#mb-dp-dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator('[data-mb-dg-sec="dgh-hist"] .mb-dg-c')).toHaveText('14', { timeout: 10000 });
+    expect(navigations, 'the page stays').toEqual([]);
+    expect(errors).toEqual([]);
+});

@@ -1,0 +1,48 @@
+[
+  {
+    "version": "WIP.2",
+    "date": "2026-10-18",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "discogs.com: a user's page (/user/<name>) gets buttons for their Submissions (as Releases, Artists and Labels), Contributions, Collection and Wantlist, read from Discogs' API, no token needed. A button shows only when the page counts that list, so an empty or private one has none.",
+          "Every link in a Discogs preview window now opens in that same window, with ← Back (Backspace, Alt+←): releases, masters, artists and labels as before, and now users, Discogs searches, support.discogs.com guidelines and other sites too, also in the history window.",
+          "Link previews: a Discogs user shows their public profile (name, location, member since, rank, contributions, collection and wantlist sizes) and, in the window, their Recent activity from their page. A Discogs search shows its results, 25 at a time with \"Load 25 more\", each one a link. A support.discogs.com guideline opens as the article, scrolled to the section the link names (e.g. §6.12.2) and marked.",
+          "In the edit history, Discogs' separate View and Changes links became one \"View changes\" button: it shows that revision's changes in the second section (\"Change · revision 8 → 10\", Discogs' own numbers), and \"Back to the latest change\" returns. One request per revision, only on the click."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "discogs.com: a release's history page (/release/<id>/history, also with ?diff=N) gets \"Show the changes and the diff\": a Changes sub-table (date and time apart, user, action, notes, revision, \"View changes\") and a Diff sub-table of the revision the page shows (each part of the release, old and new, marked where Discogs marked it). A plain click on \"View changes\" opens the preview window on that revision's changes.",
+          "A user's picture: pointing at it shows a card with the picture at its largest (500 px, the largest Discogs serves); a click opens it in the artwork viewer.",
+          "Discogs users' own pictures before their names: in a history (page and window) from the page itself, in a submissions list's \"Changed by\" from their profile — one request per user whose row comes on screen, one at a time, kept like every preview.",
+          "Discogs pages, 📊 dropdown: a release's Credits column gets a \"Credit details - Role\" section (each Discogs role: Backing Vocals, Guitar, Producer …) and its \"[…]\" modifiers the Attribute section, as MusicBrainz's Instruments column; Cat# gets MusicBrainz's Catalog# treatment (several numbers one row each, collapsible, the \"Catalog info\" sections); Year gets the Date column's sections (Decade, Year).",
+          "Discogs pages: date and time as separate columns, as on MusicBrainz's pages — a submissions list's Changed, and a user's lists' Added and Last changed (the release's dates: when it entered Discogs and when anyone last changed it; the user's own edit date is only in the release's history). The date columns get the Date info sections, the time columns \"Time info - Time of day\".",
+          "A Discogs search's results with pictures (artists, with a token) now open in the window too, with Back.",
+          "A Discogs release history's Diff table and a user's Artists and Labels tables no longer get two extra cells without a header: the date/time split of another sub-table ran on them.",
+          "On Discogs' older pages (a submissions list, a user's page) the column filter fields no longer run past their columns: Discogs' own stylesheet made them wider by their padding.",
+          "A user's Submissions: one sub-table per kind (Releases, Artists, Labels), whatever page of the list a row came from; they were split into a new sub-table each time the kind changed from one page to the next.",
+          "On a Discogs submissions page the Matched artist column links Discogs' artist search, as the Artist column does, so it gets the preview and opens in the window (Discogs links it by name only).",
+          "On the Discogs pages a plain click on a link in our tables (a title, an artist or label search) no longer leaves the page through the \"You are about to leave this page\" question: it opens the preview window, and Ctrl/⌘-click a new tab. With link previews off, every such link opens a new tab. Mockup: https://claude.ai/artifact/XRTM8v1aLNj3voVt6RxVJz"
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-10-18",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "discogs.com: a list's submissions page (e.g. Submissions from List, /submissions?mode=list&id=…) gets a \"Show all submissions\" button, in the flat view and in the browser view. It reads every page of the list from discogs.com itself (100 a page; pointing at the button shows how many) into one filterable, sortable table: Artist, Title, Changed by, Changed (date and time; the \"6 minutes ago\" on hover), Matched artist (the list's artist the release matched) and History. Behind the same \"Enable on discogs.com\" setting. On these pages our section sits at the very top, above Discogs' header.",
+          "Link previews: a release's edit history. A link to a Discogs release's history page (on discogs.com or on MusicBrainz) gets a card with the last change, how many changes and the data quality, and a window with every change: date, user, what it was (Submit Release, Edit Release, Images, Merge Pending, comments …), the note, and Discogs' own View / Changes / Images links. Filter by kind, newest or oldest first. Below, the latest change as Discogs shows it, old and new side by side with the changes marked: only the parts that changed, or the whole release. The history is read only when you press Space, never on a mere hover; on discogs.com with your own Discogs session.",
+          "On a submissions page, a release title's window opens with its edit history, then the release as on every Discogs page. Once read, the title's card also shows the last change.",
+          "Discogs pages: a click on a thumbnail now opens the artwork viewer on that row's images at full size, all of them (a master's own images for a master). The thumbnail shows at once with \"Loading the full size…\"; the full images replace it when Discogs' answer arrives, one request per row and only for the rows you look at. A release you already previewed costs nothing. ← → step through the row's images, Shift+← → through the rows. If Discogs does not answer, the viewer says why and offers \"Try again\". Mockup: https://claude.ai/artifact/Y69bUJTvYSksKTFRMcYJvZ"
+        ]
+      }
+    ]
+  }
+]
