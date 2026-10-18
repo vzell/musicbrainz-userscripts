@@ -1,0 +1,315 @@
+[
+    {
+        "name": "discogs.com: the opt-in gate is gone",
+        "why": "With sa_enable_discogs off the script must exit on discogs.com before touching the page.",
+        "edits": [
+            {
+                "find": "    if (_isDgHost && Lib.settings.sa_enable_discogs !== true) {",
+                "replace": "    if (_isDgHost && false) {"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "left untouched",
+        "expect": "fail"
+    },
+    {
+        "name": "discogs.com: our section inside Discogs' React page",
+        "why": "The section goes between Discogs' header and #app, outside React's tree (vzell's placement A).",
+        "edits": [
+            {
+                "find": "        if (app) app.before(root);",
+                "replace": "        if (app) app.prepend(root);"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "a master:",
+        "expect": "fail"
+    },
+    {
+        "name": "discogs.com: a page request's own fetch ignored",
+        "why": "Discogs' API is another host: its pages come through _extGet() (the gate, the headers), never the page's own fetch().",
+        "edits": [
+            {
+                "find": "const text = req.fetchText ? await req.fetchText() : await fetchHtml(req.url, req.init || null);",
+                "replace": "const text = await fetchHtml(req.url, req.init || null);"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "a master:",
+        "expect": "fail"
+    },
+    {
+        "name": "discogs.com: the page count not asked first",
+        "why": "Discogs' lists say how many pages they have; without pageCountAsync only one page would be loaded.",
+        "edits": [
+            {
+                "find": "        } else if (activeDefinition?.features?.pageRequest && activeDefinition.features.pageCountAsync) {",
+                "replace": "        } else if (false && activeDefinition.features.pageCountAsync) {"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "a master:",
+        "expect": "fail"
+    },
+    {
+        "name": "discogs.com: page 1 asked twice",
+        "why": "The page that told the count is kept for the loop (_dgTexts): one request, not two.",
+        "edits": [
+            {
+                "find": "        if (_dgTexts.has(url)) {",
+                "replace": "        if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "a master:",
+        "expect": "fail"
+    },
+    {
+        "name": "discogs.com: a master's main release not marked",
+        "why": "The master's record (masters/<id>) gives its main release, marked with a star in the versions.",
+        "edits": [
+            {
+                "find": "                _dgRun.mainId = Number(m.main_release) || 0;",
+                "replace": "                _dgRun.mainId = 0;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "a master:",
+        "expect": "fail"
+    },
+    {
+        "name": "discogs.com: a release lists itself among its other versions",
+        "why": "Other versions are the master's versions without this release.",
+        "edits": [
+            {
+                "find": "rows.filter(v => v.id !== pg.id).map(v => _dgVersionRow(v, 0))",
+                "replace": "rows.map(v => _dgVersionRow(v, 0))"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "a release:",
+        "expect": "fail"
+    },
+    {
+        "name": "discogs.com: an artist's roles in one table",
+        "why": "One sub-table per Discogs role run (Releases, Credits: Producer, …, Unofficial; vzell: by Discogs' role).",
+        "edits": [
+            {
+                "find": "                    const group = _DG_ROLE_GROUPS[r.role] || `Credits: ${r.role || 'other'}`;",
+                "replace": "                    const group = 'Releases';"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "an artist:",
+        "expect": "fail"
+    },
+    {
+        "name": "discogs.com: the toolbar named after the document title",
+        "why": "The toolbar's name is Discogs' own <h1>; the title is longer (\"… Discography: Vinyl, CDs, & More\").",
+        "edits": [
+            {
+                "find": "        const own = document.querySelector('#app h1');",
+                "replace": "        const own = null;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "an artist:",
+        "expect": "fail"
+    },
+    {
+        "name": "discogs.com: High Page Count calls a Discogs list a MusicBrainz entity",
+        "why": "On a foreign host the question says \"This list has N pages\".",
+        "edits": [
+            {
+                "find": "`Warning: This ${_foreignHost ? 'list' : 'MusicBrainz entity'} has ${maxPage} pages.",
+                "replace": "`Warning: This MusicBrainz entity has ${maxPage} pages."
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "68 pages",
+        "expect": "fail"
+    },
+    {
+        "name": "discogs.com: a label button's page cap ignored",
+        "why": "Newest 500 is five pages; without the cap Columbia's 3,967 would be asked.",
+        "edits": [
+            {
+                "find": "        return cap ? Math.min(cap, n) : n;",
+                "replace": "        return n;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "Newest 500 asks",
+        "expect": "fail"
+    },
+    {
+        "name": "discogs.com: the label buttons' groups not shown",
+        "why": "Newest: / Oldest: / Then: before their buttons (a button's groupLabel).",
+        "edits": [
+            {
+                "find": "        if (conf.groupLabel) {",
+                "replace": "        if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "Newest 500 asks",
+        "expect": "fail"
+    },
+    {
+        "name": "discogs.com: Oldest asks the newest",
+        "why": "The button's order is the list's: sort_order=asc for Oldest.",
+        "edits": [
+            {
+                "find": "_EXT_DG_LISTS.label.url(`${pg.id}:${def.features.dgOrder === 'asc' ? 'asc' : 'desc'}`, p)",
+                "replace": "_EXT_DG_LISTS.label.url(`${pg.id}:desc`, p)"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "Oldest 500",
+        "expect": "fail"
+    },
+    {
+        "name": "discogs.com: Discogs links not previewed on discogs.com",
+        "why": "On discogs.com a Discogs link is the Discogs reader's, though it is the page's own host.",
+        "edits": [
+            {
+                "find": "&& !(_isDgHost && _extDiscogsTest(u))) return null;",
+                "replace": ") return null;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "previews on discogs.com",
+        "expect": "fail"
+    },
+    {
+        "name": "discogs.com: the page's content not previewed",
+        "why": "The content area (#app) is previewed besides the table (vzell: main content only).",
+        "edits": [
+            {
+                "find": "            livePrepare: null,\n            extRoot: '#app'",
+                "replace": "            livePrepare: null,\n            extRoot: null"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "previews on discogs.com",
+        "expect": "fail"
+    },
+    {
+        "name": "discogs.com: the header and footer previewed too",
+        "why": "Only the content: Discogs' header and footer are left alone.",
+        "edits": [
+            {
+                "find": "            livePrepare: null,\n            extRoot: '#app'",
+                "replace": "            livePrepare: null,\n            extRoot: 'body'"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "previews on discogs.com",
+        "expect": "fail"
+    },
+    {
+        "name": "discogs.com: a tap on a version leaves the page",
+        "why": "On a phone a tap on a Discogs link in the table opens its window (the Discogs reader on its own host).",
+        "edits": [
+            {
+                "find": "&& !(_isDgHost && _extDiscogsTest(u))) return null;",
+                "replace": ") return null;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.mobile.spec.js",
+        "project": "chromium-mobile",
+        "grep": "a tap loads",
+        "expect": "fail"
+    },
+    {
+        "name": "discogs.com: artist and label names not linked",
+        "why": "The lists give artist and label as text only: they link Discogs' search (vzell, 2026-10-18).",
+        "edits": [
+            {
+                "find": "            return q ? `<a href=\"https://www.discogs.com/search/?q=${encodeURIComponent(q)}&amp;type=${type}\">${_rgEsc(name)}</a>` : _rgEsc(name);",
+                "replace": "            return _rgEsc(name);"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "an artist:",
+        "expect": "fail"
+    },
+    {
+        "name": "discogs.com: a cell of two labels one link",
+        "why": "A label cell is split on \", \", each label its own search link.",
+        "edits": [
+            {
+                "find": "t.split(/,\\s+/).map(one).join(', ')",
+                "replace": "one(t)"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "an artist:",
+        "expect": "fail"
+    },
+    {
+        "name": "discogs.com: a track's credits not a collapsible list",
+        "why": "Track credits are one row each, like MusicBrainz's Instruments column (vzell, 2026-10-18).",
+        "edits": [
+            {
+                "find": "                collapsableColumns: [ 'Credits' ],",
+                "replace": "                collapsableColumns: [],"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "a release:",
+        "expect": "fail"
+    },
+    {
+        "name": "discogs.com: a thumbnail opens Discogs' image instead of the viewer",
+        "why": "A thumbnail opens the script's artwork viewer (vzell, 2026-10-18).",
+        "edits": [
+            {
+                "find": "        document.addEventListener('click', _dgThumbClick, true);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "a thumbnail opens",
+        "expect": "fail"
+    },
+    {
+        "name": "discogs.com: Discogs' #page taken for the content",
+        "why": "On discogs.com #mb-dg-root plays MB's #page for the sticky page headers; Discogs' own #page made our section pinned chrome (cut-off columns, the header shrunk).",
+        "edits": [
+            {
+                "find": "        return _isDgHost ? document.getElementById('mb-dg-root') : document.getElementById('page');",
+                "replace": "        return document.getElementById('page');"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "wider than the window",
+        "expect": "fail"
+    },
+    {
+        "name": "discogs.com: the section capped instead of as wide as its tables",
+        "why": "The section grows with its widest table, so the h2/h3 bars span it and no row shows past a stuck bar.",
+        "edits": [
+            {
+                "find": "                width: fit-content;\n                min-width: 100%;\n                margin: 8px 0 12px;",
+                "replace": "                max-width: 1440px;\n                margin: 8px auto 12px;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "wider than the window",
+        "expect": "fail"
+    },
+    {
+        "name": "discogs.com: Cloudflare's check page gets the section",
+        "why": "A page at a Discogs URL without #app (the security check) is not a Discogs page.",
+        "edits": [
+            {
+                "find": "    if (_isDgHost && !document.getElementById('app')) {",
+                "replace": "    if (false) {"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-pages.spec.js",
+        "grep": "Cloudflare",
+        "expect": "fail"
+    }
+]

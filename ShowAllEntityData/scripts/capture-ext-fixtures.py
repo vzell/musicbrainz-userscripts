@@ -67,10 +67,12 @@ FIXTURES = {
        for p in range(1, 7)},
     # Bruce Springsteen's page 1 of 68: every section but Releases "so far".
     'discogs-artist-releases-p1': DG + 'artists/219986/releases?sort=year&sort_order=asc&per_page=100&page=1',
-    # Columbia: newest first, pages 1-6 (page 1, then one batch of 5), and oldest first, page 1.
+    # Columbia: newest first, pages 1-6 (page 1, then one batch of 5), and
+    # oldest first, pages 1-5 (the discogs.com label page's "Oldest 500").
     **{f'discogs-label-releases-desc-p{p}': DG + f'labels/1866/releases?sort=year&sort_order=desc&per_page=100&page={p}'
        for p in range(1, 7)},
-    'discogs-label-releases-asc-p1': DG + 'labels/1866/releases?sort=year&sort_order=asc&per_page=100&page=1',
+    **{f'discogs-label-releases-asc-p{p}': DG + f'labels/1866/releases?sort=year&sort_order=asc&per_page=100&page={p}'
+       for p in range(1, 6)},
     # A master row's "versions" in Max Weinberg's list (John Eddie, Producer): page 1.
     'discogs-master-450426-versions-p1': DG + 'masters/450426/versions?per_page=100&page=1',
 }

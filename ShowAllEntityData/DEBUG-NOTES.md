@@ -23951,3 +23951,86 @@ Env: 2026-10-18T01:05:58+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1)
   Discogs is asked without a User-Agent", "U3: a Discogs link has a Live
   page": their `find` matches nothing) and are left as they were.
   vzell tried the branch in the browser before the merge: OK.
+
+## 2026-10-18 — discogs.com's own pages as pageTypes (dg-master/-release/-artist/-label), fed by the link previews' readers (branch feat/discogs-pagetypes, WIP.1)
+Env: 2026-10-18T02:04:43+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (headless, live discogs.com probe; fixture specs with GM stubs, no Tampermonkey)
+
+- **Request (vzell):** pageTypes for discogs.com's master, release, artist
+  and label pages (`debug/discogs-{master,release,artist,label}.html`),
+  built on the Discogs readers of the link previews rather than new
+  scraping. Mockup https://claude.ai/artifact/KTtCM7SaYVHZDaQdNqjUAK, v2
+  approved 2026-10-18 (placement A, label buttons 500/1,000/5,000 newest,
+  500/1,000 oldest, All; five release sub-tables; an Image column; artist
+  sections by role; previews on discogs.com, main content only).
+- **Why the API, not the page:** the snapshots are a React app (`#app`)
+  with generated class names (`releases_mxLkA`, `labelReleasesTable_b3YFz`,
+  `table_Zlpb1`), each showing one slice: artist 392 rows of one tab, label
+  500 of 396,611, master 41 of 387 versions.
+- **Live probe (`scripts/probe-discogs-pages.js`):** Discogs' header is its
+  own root `#__header_root_<n>` (3576, 4134, 8239: the number changes per
+  load, so it is matched by prefix), the page is `#app`; a node put between
+  them survived the page's scripts; master → release is a full page load.
+  Hence `_dgPrepareLivePage()` mounts `#mb-dg-root` with `app.before()`.
+- **Engine:** `features.pageRequest` may now return `fetchText()` (API pages
+  through `_extGet()`), `features.pageCountAsync` asks the page count before
+  the gates, a button may carry `groupLabel`. Found while writing it: the
+  engine clears `stopRequested` only AFTER its gates, so the count requests
+  must not consult Stop (`_dgFetchText(url, false)`), or a press after a
+  stopped, unrendered run would load one page. And the "⚠️ High Page Count"
+  text called any list "This MusicBrainz entity", also on the Springsteen
+  sites: now "This list" on a foreign host.
+- **Found by the specs:** a second button press reloads the page (the
+  engine's rule, docs/claude/fetch-and-render-pipeline.md), so the label's
+  Newest and Oldest tests are two page loads; the first `@include` draft
+  also admitted a release's image page (`/release/<id>-…/image/…`), caught by
+  `sl-include-regex.spec.js` and tightened to an optional slug, then only a
+  query or hash.
+- **Raised with vzell, not changed:** sub-tables start collapsed (engine
+  default on every multi-table page; the mockup showed them open); the Image
+  column is as wide as its header controls, not the mockup's 48 px.
+- **Verified:** `discogs-pages.spec.js` 8/8, `discogs-pages.mobile.spec.js`
+  1/1, `sl-include-regex.spec.js` 9/9; 17 mutations
+  (`scripts/mutations/discogs-pages.json`), all caught. One first SURVIVED
+  ("the header and footer previewed too"): the spec asserted
+  `toBeHidden()` on a card that had not yet had its hover delay, which
+  passes at once. It now asks `__saTest.popResolve()` what the engine
+  would preview (header and footer null; a table link and a content link
+  resolve) — the same trap as "a poll for 'still N' passes on its first
+  look" in the Discogs artist/label entry above.
+- `test:full` on petri 2026-10-18 02:41:36–02:50:59+02:00 (branch
+  feat/discogs-pagetypes, uncommitted on baaa243): 1868 passed — every
+  MusicBrainz fixture spec unchanged by the engine's two optional hooks.
+
+## 2026-10-18 — discogs.com pageTypes, vzell's first browser round: names not linked, rows past the sticky bars, Discogs' header shrunk, columns cut off when scrolled right (branch feat/discogs-pagetypes, WIP.1)
+Env: 2026-10-18T03:35:36+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · vzell's browser: unknown (screenshots, artist 219986, master 27097, release 1132381, label 582871); reproduction: Playwright 1.62.1 Chromium, no Tampermonkey
+
+- **Reported (6 screenshots):** Artist/Label cells not linked (artist,
+  master, label pages); a track's Credits one run-on line (wanted: one row
+  each, linked, like MB's Instruments column); scrolled down, the outermost
+  columns showed beside the stuck h2/h3 bars on every Discogs page; on the
+  artist page (the widest table) Discogs' header shrank to the left and the
+  sticky columns broke when scrolled right; the section should sit at the
+  window's left edge; a thumbnail click should open our viewer.
+- **Root cause (layout):** the sticky page headers took Discogs' own `#page`
+  (inside `#app`) for the content root, so our `#mb-dg-root` — a `<body>`
+  child — was pinned and capped WHOLE as chrome with its tables; Discogs'
+  header, also chrome, was narrowed. Reproduced with the real script on the
+  saved `debug/discogs-artist.html` (scripts stripped, Discogs' CSS loaded)
+  served at Max Weinberg's live URL, API answers real: html `mb-sph-on`,
+  header 840 px of a 2000 px window, the section capped at 1,440 px in a
+  3,161 px page. Fix `_sphPageEl()` (#mb-dg-root on discogs.com) and the
+  section as wide as its widest table at the window's left edge: header
+  2000 px, the section 2,880 px from x 0, bars pinned on the sideways scroll.
+- **Found on the way:** the live page in an automated browser came back as
+  Cloudflare's "Just a moment…" check AT the Discogs URL, and the script put
+  its section on it. The gate now needs `#app`. Live page CSP blocks
+  injected scripts: the reproduction used `bypassCSP`.
+- **Decided with vzell:** an artist cell is one search link (no splitting of
+  "A & B"), a label cell one link per ", "-separated label; "right align"
+  meant the window's left edge. The viewer shows the lists' 150 px
+  thumbnails (the URL is signed; full size = one request per release).
+- **Verified:** `discogs-pages.spec.js` 11/11, the sticky-header specs and
+  the mobile spec 73/73; 7 new mutations, all caught (24 in
+  `scripts/mutations/discogs-pages.json`).
+- `test:full` on petri 2026-10-18 03:35:47–03:45:35+02:00 (uncommitted on
+  baaa243): 1871 passed. vzell tried the branch in the browser: OK.
