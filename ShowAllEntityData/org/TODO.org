@@ -2938,7 +2938,6 @@ inclusive referenced images from the "More images" link
 
 create nice rich HTML based mockups first
 
-
 * DONE support for discogs PTs
 ** DONE i
 
@@ -3144,6 +3143,23 @@ when hovering the avator it should be shown in highest resolution in our interna
 
 [Image #55] there are two column headers missing under the Diff - revision section" - @debug/2columns-missing.html
  
+
+* TODO todo for discogs
+
+● Pushed: main is at 3c335d0 on origin and feat/discogs-submissions is deleted. One test is still flaky, and it went out that way because you asked me to push first.
+
+  - Commits: 3d1c5ed commits the branch work that was still uncommitted (after syntax, lint and docs checks). fd923f6 is the merge into main, and 3c335d0 folds the changelog.
+  - Versions: WIP.1 became 9.99.1374 and WIP.2 became 9.99.1375. No cross-references needed rewriting, and both entries are dated 2026-10-18. @version is now 9.99.1375+2026-10-18 and the changelog audit passes.
+  - Branch: deleted locally. It was never on origin, so there was nothing to delete there.
+  - HELP: already covered everything in the release, so I didn't edit it. Since it changed, it has to be copied to the published repo; scripts/check-publish-ready.py will show what's out of date.
+
+  Tests: test:full passed 1,899 of 1,900 (9 m 41 s on petri). The failure is in the new discogs-links.spec.js:340 (a user's picture). The hover card never appeared within 5 s. When I re-ran that file on its own it failed 1 of 5 and then 4 of 8 runs.
+
+  It's a race, not a broken feature: a copy of the test that waits 1.5 s after the hover passed 72 of 72. I logged the events and ruled out a scroll hiding the card or the row being re-rendered. The traces of four failing runs are in
+  ShowAllEntityData/test-results/fixtures-discogs-links-dis-08ecb-… until the next Playwright run clears them. I couldn't save them anywhere else before stopping.
+
+  I'd fix it on a new branch: read the traces, fix the cause, and confirm the test fails before the fix and passes after.
+
 * TODO add support for a "MusicBrainz" column
 
 On all new Discogs PTs add support for a "MusicBrainz" column when the third-party userscript "Discogs API links" by
@@ -3151,7 +3167,7 @@ On all new Discogs PTs add support for a "MusicBrainz" column when the third-par
 
 1.)
 
-register it from @tests/fixtures/live-userscripts/DisccogsAPIlinks.user.js
+register it from @tests/fixtures/live-userscripts/DiscogsAPIlinks.user.js
 
 2.)
 
