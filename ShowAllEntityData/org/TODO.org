@@ -3145,6 +3145,7 @@ when hovering the avator it should be shown in highest resolution in our interna
  
 
 * TODO todo for discogs
+** i
 
 ● Pushed: main is at 3c335d0 on origin and feat/discogs-submissions is deleted. One test is still flaky, and it went out that way because you asked me to push first.
 
@@ -3160,6 +3161,19 @@ when hovering the avator it should be shown in highest resolution in our interna
 
   I'd fix it on a new branch: read the traces, fix the cause, and confirm the test fails before the fix and passes after.
 
+** bugs
+
+https://www.discogs.com/submissions?mode=list&id=599283&page=1&view=flat
+https://www.discogs.com/submissions?mode=list&id=599283&page=1
+
+not scrollable - https://www.discogs.com/submissions?mode=list&id=599283&page=1#mode=list&id=599283&page=1&item=%2Frelease%2F8164856-Human-Touch%2Fhistory
+
+
+* TODO column shift in "Release groups" and "Release" sections - https://musicbrainz.org/tag/arena%20rock
+
+column shift in "Release groups" and "Release" sections - https://musicbrainz.org/tag/arena%20rock
+
+  
 * TODO add support for a "MusicBrainz" column
 
 On all new Discogs PTs add support for a "MusicBrainz" column when the third-party userscript "Discogs API links" by
