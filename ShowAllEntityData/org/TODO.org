@@ -2940,6 +2940,7 @@ create nice rich HTML based mockups first
 
 
 * TODO support for discogs PTs
+** DONE i
 
 Create a new plan first:
 
@@ -2962,6 +2963,47 @@ of reinventing the wheel
 3.)
 
 create nice rich HTML based mockups first
+
+** bugs
+
+1.)
+
+There are the following problems with each new Discogs PT
+
+#+begin_example
+[Image #31] - https://www.discogs.com/artist/219986-Bruce-Springsteen - FRP- "Artist" and "Label" columns are not hyperlinked
+[Image #32] - https://www.discogs.com/artist/219986-Bruce-Springsteen - FRP - scrolled down, the outermost columns are visible inside the sticky h2/h3 header lines
+[Image #36] - https://www.discogs.com/artist/219986-Bruce-Springsteen - FRP - scrolled right, column stickyness seems broken here when scrolling to the right
+[Image #33] - https://www.discogs.com/master/27097-Bruce-Springsteen-Devils-Dust - FRP - "Label" column is not hyperlinked
+[Image #34] - https://www.discogs.com/release/1132381-Bruce-Springsteen-Devils-Dust - FRP - the artists in "Credits" column are not hyperlinked, "Credits" column should be a multi-row column like the "Instruments" column on MB PT 'release-tracks'
+[Image #35] - https://www.discogs.com/label/582871-The-Stone-Pony - FRP - "Artist" column is not hyperlinked
+#+end_example
+
+2.)
+
+the outermost columns are visible inside the sticky h2/h3 header lines is present on every Discogs PT
+
+3.)
+
+When you compare the screenhots in 1.) you realize that the Discogs header on artist PTs is rendered left aligned and
+cut off in the browser window compared to the other ones
+
+4.)
+
+Is it possible to right align the complete h1 section with everything table related below it
+
+5.)
+
+Clicking the image in the first column should open our internal viewer
+
+** add support for submissions
+
+add support for submissions e.g. (Bruce Springsteen) https://www.discogs.com/submissions?mode=list&id=599283&page=1&view=flat
+
+#+begin_example
+@debug/discogs-submissions-flat.html - IP in flat view
+@debug/discogs-submissions.html - IP in detail view, where the '<div id="historyData">' shows the edit history of an entity
+#+end_example
 
 
 * TODO add the "work of" to more recording columns in other PTs
