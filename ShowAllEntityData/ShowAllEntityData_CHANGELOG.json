@@ -1,5 +1,26 @@
 [
   {
+    "version": "9.99.1373",
+    "date": "2026-10-18",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "discogs.com: with the new setting \"Enable on discogs.com\" (⚙️ Settings → 💿 Discogs, off by default), a master, release, artist or label page on discogs.com gets a section of its own above Discogs' page, with the toolbar and filterable, sortable tables. Master: all its versions, the main release marked ★. Release: Tracklist, Credits, Companies, Barcode and Other Identifiers, and Other versions. Artist: the whole discography, one sub-table per Discogs role (Releases, the producer credits, Appearances, Track appearances, Unofficial). Label: the newest 500, 1,000 or 5,000 releases, the oldest 500 or 1,000, or all of them. Every list has a thumbnail column.",
+          "The rows come from Discogs' API through the same readers as the link previews, 100 a request: a request every 2.5 seconds, or every second with your Discogs token. Pointing at a button shows what it costs, and more than 50 pages asks first, as on MusicBrainz.",
+          "On these pages titles link their Discogs pages, a track's credits are one row each with their names linked (a long list collapses), and artists and labels, which Discogs' lists name without saying which one, link Discogs' search. A click on a thumbnail opens the artwork viewer. The section starts at the window's left edge and grows with its widest table; scrolled sideways, the toolbar and the bars stay in view.",
+          "Link previews on discogs.com: with \"Preview external links on hover\" on, a Discogs link in the table or in the page's content gets the same card and window as on MusicBrainz. Mockup: https://claude.ai/artifact/KTtCM7SaYVHZDaQdNqjUAK"
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The \"High Page Count\" question on another site (the Springsteen sites, Discogs) now says \"This list has N pages\" instead of calling it a MusicBrainz entity."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1372",
     "date": "2026-10-18",
     "sections": [
