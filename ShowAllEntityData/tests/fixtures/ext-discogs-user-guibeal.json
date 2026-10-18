@@ -1,0 +1,6 @@
+{
+ "url": "https://api.discogs.com/users/GuiBeal",
+ "status": 200,
+ "contentType": "application/json",
+ "body": "{\"id\":21497261,\"resource_url\":\"https://api.discogs.com/users/GuiBeal\",\"uri\":\"https://www.discogs.com/user/GuiBeal\",\"username\":\"GuiBeal\",\"name\":\"Guilherme Beal\",\"home_page\":\"\",\"location\":\"Rio Grande do Sul, Brasil\",\"profile\":\"\",\"registered\":\"2023-04-24T00:00:01-07:00\",\"rank\":635.0,\"num_pending\":118,\"num_for_sale\":0,\"num_lists\":0,\"releases_contributed\":47,\"releases_rated\":0,\"rating_avg\":0.0,\"inventory_url\":\"https://api.discogs.com/users/GuiBeal/inventory\",\"collection_folders_url\":\"https://api.discogs.com/users/GuiBeal/collection/folders\",\"collection_fields_url\":\"https://api.discogs.com/users/GuiBeal/collection/fields\",\"wantlist_url\":\"https://api.discogs.com/users/GuiBeal/wants\",\"avatar_url\":\"https://i.discogs.com/0zKFYRFfn-P5Ex8cqzPPHrYeD94MqoVuMiZMNH3SAck/rs:fill/g:sm/q:40/h:500/w:500/czM6Ly9kaXNjb2dz/LXVzZXItYXZhdGFy/cy9VLTIxNDk3MjYx/LTE3NzcyNTA2MjYu/anBlZw.jpeg\",\"curr_abbr\":\"\",\"activated\":true,\"marketplace_suspended\":false,\"banner_url\":\"\",\"buyer_rating\":0.0,\"buyer_rating_stars\":0.0,\"buyer_num_ratings\":0,\"seller_rating\":0.0,\"seller_rating_stars\":0.0,\"seller_num_ratings\":0,\"is_staff\":false,\"num_collection\":197,\"num_wantlist\":5}"
+}

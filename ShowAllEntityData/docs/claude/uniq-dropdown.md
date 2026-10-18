@@ -245,6 +245,20 @@ post-render global-filter focus fires 150 ms after the render. Opening 📊
 before it lands lets it take focus from the quick filter, and that closes the
 panel. `openSeries()` waits it out.
 
+## Discogs' columns (2026-10-18)
+
+- **"Credit details - Role"** (`creditRole`, 🎚️, kind `dgrole`, mode
+  `dgrole:<role>`, label "» role: …"): one entry per Discogs credit role,
+  counted from `.mb-credit-role` sentinels only the Discogs converter writes
+  (`_dgRoleHtml()`); matched in `_cellMatchesStructureMode()` and highlighted
+  by `_highlightCreditValueMatch()` like `instrument:`. Empty everywhere else.
+- Name gates that admit Discogs' column names on discogs.com only:
+  `isCatalogCol` ("Cat#"), `isDateExprCol` ("Year"), `isTimeCol` (a
+  `dateTimeParts` split's time half). Their matchers never check the
+  column's name, so the entries filter and highlight as on MusicBrainz.
+- Specs: `discogs-pages.spec.js` (Credits, Cat#, Year),
+  `discogs-submissions.spec.js` (Changed date/time).
+
 ## Instrument icons and the "Instrument info - Icon" section
 
 With "MusicBrainz: Instrument Icons Everywhere" (@Lotheric) at work on the

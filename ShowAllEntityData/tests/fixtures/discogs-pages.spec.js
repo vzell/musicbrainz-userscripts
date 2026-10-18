@@ -121,6 +121,35 @@ const apiLog = (page) => page.evaluate(() => (window.__gmXhrLog || []).map(r => 
 // The rendered table's header names (first header row).
 const heads = (table) => table.locator('thead tr:first-child th').evaluateAll(ths => ths.map(th => th.dataset.colName || th.textContent.trim()));
 
+/**
+ * Opens a column's 📊 dropdown (its header may be in a collapsed sub-table:
+ * clicked by script).
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {import('@playwright/test').Locator} table
+ * @param {string} col
+ * @returns {Promise<void>}
+ */
+async function openUniq(page, table, col) {
+    await table.evaluate((t, name) => {
+        const th = Array.from(t.querySelectorAll('thead tr:first-child th')).find(x => (x.dataset.colName || '') === name);
+        th.querySelector('.mb-col-uniq-wrap').click();
+    }, col);
+    await expect(page.locator('#mb-col-uniq-dropdown')).toBeVisible();
+}
+
+// The open dropdown's section labels.
+const sectionLabels = (page) => page.evaluate(() => Array.from(document.querySelectorAll('#mb-col-uniq-dropdown .mb-uniq-section-label'))
+    .map(s => s.textContent));
+
+// Clicks one synthetic dropdown entry by its section and entry label (as pending-edits-highlight-ring.spec.js).
+const clickSynItem = (page, sectionLabel, itemLabel) => page.evaluate(([sec, lbl]) => {
+    const sectionEl = Array.from(document.querySelectorAll('#mb-col-uniq-dropdown .mb-uniq-section'))
+        .find((s) => s.querySelector('.mb-uniq-section-label')?.textContent === sec);
+    const item = Array.from(sectionEl.querySelectorAll('.mb-col-uniq-item')).find((el) => el.dataset.mbUniqSynLabel === lbl);
+    item.click();
+}, [sectionLabel, itemLabel]);
+
 test.describe('discogs.com pages (2026-10-18)', () => {
     test('a master: all its versions from the API, the main release marked, an Image column', async ({ page }) => {
         const { errors } = await openDg(page, 'master');
@@ -144,7 +173,7 @@ test.describe('discogs.com pages (2026-10-18)', () => {
         expect(errors).toEqual([]);
     });
 
-    test('a thumbnail opens the artwork viewer on the table\'s thumbnails, captioned with the titles', async ({ page }) => {
+    test('a thumbnail opens the artwork viewer on that row, captioned with its title; Shift+→ steps to the next row', async ({ page }) => {
         const { errors } = await openDg(page, 'master');
         await press(page, 'Show all versions');
         const table = page.locator('#mb-dg-root table.tbl').first();
@@ -154,9 +183,13 @@ test.describe('discogs.com pages (2026-10-18)', () => {
         await thumbs.nth(2).click();
         const viewer = page.locator('#mb-art-viewer');
         await expect(viewer).toBeVisible();
-        await expect(viewer.locator('.mb-artv-pos')).toHaveText(`3 / ${n}`);
-        await page.keyboard.press('ArrowRight');
-        await expect(viewer.locator('.mb-artv-pos')).toHaveText(`4 / ${n}`);
+        // Since 2026-10-18 each row is its own group of full-size images
+        // (discogs-submissions.spec.js pins those); the rows are the steps.
+        await expect(viewer.locator('.mb-artv-rowpos')).toHaveText(`row 3 of ${n}`);
+        const title = (await (await cell(table, 2, 'Title')).textContent()).trim();
+        await expect(viewer.locator('.mb-artv-info .mb-tt-title')).toHaveText(title);
+        await page.keyboard.press('Shift+ArrowRight');
+        await expect(viewer.locator('.mb-artv-rowpos')).toHaveText(`row 4 of ${n}`);
         await page.keyboard.press('Escape');
         await expect(viewer).toBeHidden();
         expect(page.url(), 'the page stays').toBe(PAGES.master);
@@ -276,6 +309,53 @@ test.describe('discogs.com pages (2026-10-18)', () => {
         const table = page.locator('#mb-dg-root table.tbl').first();
         await expect(table.locator('tbody tr')).toHaveCount(500);
         await expect(table.locator('tbody tr').first()).toContainText('Young Man With A Horn');
+        expect(errors).toEqual([]);
+    });
+
+    test('a release\'s Credits column: a "Credit details - Role" 📊 section; ticking a role keeps its tracks and marks the role (vzell 2026-10-18)', async ({ page }) => {
+        const { errors } = await openDg(page, 'release');
+        await press(page, 'Show tracklist, credits and other versions');
+        const tl = page.locator('#mb-dg-root table.tbl').nth(0);
+        // The converter's sentinels: each role, each bracket word.
+        const roleRows = await tl.evaluate(t => Array.from(t.tBodies[0].rows)
+            .filter(r => Array.from(r.querySelectorAll('.mb-credit-role')).some(s => s.textContent.trim() === 'Backing Vocals')).length);
+        expect(roleRows).toBeGreaterThan(0);
+        await openUniq(page, tl, 'Credits');
+        expect(await sectionLabels(page)).toEqual(expect.arrayContaining(['Credit details - Role']));
+        await clickSynItem(page, 'Credit details - Role', '» role: Backing Vocals');
+        await expect(tl.locator('tbody > tr')).toHaveCount(roleRows);
+        await expect(tl.locator('tbody .mb-credit-role .mb-column-filter-highlight').first()).toHaveText('Backing Vocals');
+        expect(errors).toEqual([]);
+    });
+
+    test('a master\'s Cat#: several numbers one row each, and the "Catalog info" 📊 sections as MusicBrainz\'s Catalog# (vzell 2026-10-18)', async ({ page }) => {
+        const { errors } = await openDg(page, 'master');
+        await press(page, 'Show all versions');
+        const table = page.locator('#mb-dg-root table.tbl').first();
+        const i = (await heads(table)).indexOf('Cat#');
+        const lists = await table.evaluate((t, idx) => Array.from(t.tBodies[0].rows).map(r => r.cells[idx].querySelectorAll('li').length), i);
+        expect(Math.max(...lists), 'Discogs\' "S 69170, 69170" is two rows').toBeGreaterThan(1);
+        await openUniq(page, table, 'Cat#');
+        expect(await sectionLabels(page)).toEqual(expect.arrayContaining(['Catalog info - Prefix', 'Catalog info - Presence']));
+        await clickSynItem(page, 'Catalog info - Prefix', '» prefix: CBS');
+        const left = await table.evaluate((t, idx) => Array.from(t.tBodies[0].rows)
+            .map(r => Array.from(r.cells[idx].querySelectorAll('li')).some(li => /^CBS\b/.test(li.textContent.trim()))), i);
+        expect(left.length).toBeGreaterThan(0);
+        expect(left.every(Boolean), 'every row left has a CBS number').toBe(true);
+        expect(errors).toEqual([]);
+    });
+
+    test('Year on the Discogs pages: the Date column\'s 📊 sections, e.g. "Date info - Decade" (vzell 2026-10-18)', async ({ page }) => {
+        const { errors } = await openDg(page, 'master');
+        await press(page, 'Show all versions');
+        const table = page.locator('#mb-dg-root table.tbl').first();
+        await openUniq(page, table, 'Year');
+        expect(await sectionLabels(page)).toEqual(expect.arrayContaining(['Date info - Decade', 'Date info - Year']));
+        await clickSynItem(page, 'Date info - Decade', '» decade: 1970-1980');
+        const i = (await heads(table)).indexOf('Year');
+        const years = await table.evaluate((t, idx) => Array.from(t.tBodies[0].rows).map(r => Number(r.cells[idx].textContent.trim())), i);
+        expect(years.length).toBeGreaterThan(0);
+        expect(years.every(y => y >= 1970 && y < 1980), 'only the 1970s are left').toBe(true);
         expect(errors).toEqual([]);
     });
 

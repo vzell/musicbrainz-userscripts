@@ -1430,7 +1430,7 @@ you automatically.
 | 🌴 jungleland.it                                | Switch on the jungleland.it bootleg artwork list (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                            |
 | 💿 brucespringsteen.it                          | Switch on the brucespringsteen.it record database (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                           |
 | 📚 Brucebase                                    | Switch on the Brucebase song list, Relations and Recent changes and, separately, its year pages (all off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                         |
-| 💿 Discogs                                      | Switch on discogs.com's master, release, artist and label pages (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                             |
+| 💿 Discogs                                      | Switch on discogs.com's master, release, artist, label, submissions and user pages (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                          |
 | 🔎 Link previews on MusicBrainz                 | The cards of the links on MusicBrainz pages (on by default; on a phone or tablet off unless you tick the *… on touch devices* boxes), how long their answers are kept, the release group window's size; see [Page-specific behaviour](#page-specific-behaviour)     |
 | 🔎 Every preview                                | Show the MusicBrainz link previews and the Springsteen sites' detail-page previews on a plain hover (on by default), or only while Ctrl is held                                                                                                                       |
 
@@ -1498,7 +1498,7 @@ an import brings your deletions back.
   and lyrics index, the **jungleland.it**
   bootleg artwork list, the **brucespringsteen.it** record database and
   the **Brucebase** song list, year pages, Relations and Recent changes, and
-  **discogs.com**'s master, release, artist and label pages — each off until
+  **discogs.com**'s master, release, artist, label, submissions, user and release history pages — each off until
   you switch it on, see [Page-specific behaviour](#page-specific-behaviour)
 
 </details>
@@ -2270,6 +2270,39 @@ once and without Tampermonkey asking first:
   a second. The token is sent only to Discogs, shows as dots in the settings,
   is never written into a saved configuration file, and loading one leaves
   your token as it is.
+- A Discogs release's **edit history** (a link to its history page,
+  `discogs.com/release/…/history`): the card shows the last change, how many
+  changes there were and the data quality; the window lists every change —
+  date, user, what it was (*Submit Release*, *Edit Release*, *Images*,
+  *Merge Pending*, a comment …), the note, and **View changes** (an image
+  change: its *Images* link) — with the kinds as a filter and *Newest first* /
+  *Oldest first*. Below, the **latest change** as Discogs shows it: old and new
+  side by side, the changes marked (removed, changed, added): only the parts
+  that changed, or *The whole release*. *View changes* on another change shows
+  that one there instead (*Change · revision 8 → 10*: Discogs compares with
+  the last revision that changed something), one request the first time;
+  *Back to the latest change* returns. The history page is read only when
+  you press Space, never on a hover. On discogs.com it is read with your own
+  Discogs session; from MusicBrainz it is asked like any other site, and if
+  Discogs answers with its browser check, the window says so — ↗ opens the
+  page.
+- A Discogs **user** (`discogs.com/user/…`): the card shows their public
+  profile — name, location, member since, contributor rank, releases
+  contributed, pending submissions, collection and wantlist sizes; the window
+  adds their **Recent activity** (read from their page, only when you press
+  Space; from MusicBrainz it may meet Discogs' browser check) and links to
+  their pages on Discogs.
+- A Discogs **search** (`discogs.com/search/?q=…`, e.g. a label cell's link
+  on the Discogs pages): how many results; the window lists them, 25 at a
+  time (*Load 25 more*, one request each), each a link. No token needed.
+- A **support.discogs.com** guideline (e.g. "RSG §6.12.2" in a history note):
+  the article from Discogs' help centre, scrolled to the section the link
+  names and marked; a link to another section of it scrolls there.
+
+In a Discogs window **every link opens in the same window**: a release,
+master, artist or label, a user, a search, a guideline, or another site.
+**← Back** (Backspace, Alt+←) returns to what it showed before; Ctrl/⌘-click
+opens a new tab instead.
 
 Links to the four **Springsteen sites** the script supports get the same card
 those sites' own lists show (no setting of those sites is needed here): a
@@ -2780,7 +2813,7 @@ twice.
 </details>
 
 <details>
-<summary>discogs.com: masters, releases, artists and labels</summary>
+<summary>discogs.com: masters, releases, artists, labels, submissions and users</summary>
 
 With ⚙️ Settings → *💿 Discogs* → *Enable on discogs.com* on (off by
 default), a master, release, artist or label page on discogs.com gets a
@@ -2803,6 +2836,30 @@ section of its own above Discogs' page, with the toolbar and these buttons:
 - **Label — Newest:** 500, 1,000 or 5,000 releases; **Oldest:** 500 or 1,000;
   **Then:** all of them. A large label has hundreds of thousands (Columbia:
   396,611), so "All" asks first how many pages that is.
+- **Submissions — Show all submissions:** a list's submissions page (*Submissions
+  from List*, `/submissions?mode=list&id=…`), in the flat view or the browser
+  view: every submission in one table: **Artist** (a Discogs search link),
+  **Title** (the release), **Changed by**, **Changed** (date and time; point
+  at it for "6 minutes ago"), **Matched artist** (the list's artist the
+  release matched) and **History** (its history page). These rows come from
+  discogs.com's own pages, 100 a page, not from the API; pointing at the button
+  shows how many pages. On this page the section sits at the very top, above
+  Discogs' header.
+- **Release history — Show the changes and the diff:** a release's history
+  page (`/release/<id>/history`, also with `?diff=N`): **Changes** — when (date
+  and time also apart), the user with their picture, the action, the note,
+  the revision and *View changes*, which opens the preview window on that
+  revision's changes —, and **Diff · revision 8 → 10**: each part of the
+  release in the revision the page shows, old and new, *Marked* "changed"
+  where Discogs marked it. Read from the page itself.
+- **User — Show the submissions / contributions / collection / wantlist:** a
+  user's page (`/user/<name>`): their submissions (sub-tables **Releases**,
+  **Artists**, **Labels**, the empty ones left out), contributions,
+  collection and wantlist, from Discogs' API (no token needed; 642
+  submissions are 7 requests). A button shows only when the page counts that
+  list: an empty or private collection or wantlist has none. Columns as on the
+  other Discogs pages, plus Discogs' **Status** (the collection and wantlist:
+  **Added**). Here too the section sits at the very top.
 
 The rows come from Discogs' API, 100 a request, one after the other: a
 request every 2.5 seconds, or every second with your Discogs personal access
@@ -2813,16 +2870,39 @@ MusicBrainz. Discogs' own page stays as it is below the section. As
 everywhere, pressing a second button reloads the page; press it again then.
 
 Titles link their Discogs pages, and so do the names in a track's credits
-(one row each; a long list is collapsed, ▶ opens it). Discogs' lists name
+(one row each; a long list is collapsed, ▶ opens it). The 📊 dropdown knows
+these columns as it knows MusicBrainz's: a track's **Credits** have *Credit
+details - Role* (Backing Vocals, Guitar, Producer …) and *- Attribute* (the
+words in Discogs' "[…]"), as the Instruments column; **Cat#** is one row per
+catalog number with the *Catalog info* sections, as Catalog#; **Year** has
+the Date column's sections (*Decade*, *Year*). Dates with a time (a
+submissions list's *Changed*, a user's *Added* and *Last changed*) also come
+as separate date and time columns, with the *Date info* and *Time info - Time
+of day* sections. A plain click on any
+link in these tables never leaves the page: with *Preview external links on
+hover* on it opens the preview window there, otherwise — and with
+Ctrl/⌘-click — a new tab. Discogs' lists name
 artists and labels without saying which ones, so those link Discogs' search
-for the name. A click on a thumbnail opens the artwork viewer on the table's
-thumbnails (← → step through them). The section starts at the window's left
-edge and is as wide as its widest table; scrolled sideways, the toolbar and
-the bars stay in view.
+for the name. A click on a thumbnail opens the artwork viewer on that row's
+images at full size, every one of them (a master row: the master's own
+images). The thumbnail shows at once with "Loading the full size…"; the
+full images take its place when Discogs answers: one request per row, and
+only for the rows you look at (a release you already previewed costs
+nothing). ← → step through the row's images, Shift+← → through the rows; if
+Discogs does not answer, the viewer says why and offers *Try again*. The
+section starts at the window's left edge and is as wide as its widest
+table; scrolled sideways, the toolbar and the bars stay in view.
 
 With *Preview external links on hover* on, a Discogs link in the table or in
 the page's content (not Discogs' header or footer) gets the same card and
-window as on MusicBrainz.
+window as on MusicBrainz. A user's name carries their own picture: in a
+history it comes with the page; in a submissions list it is read from the
+user's profile once their row is on screen (one request each, one at a time).
+Pointing at a picture shows it larger in a card; a click opens it in the
+artwork viewer at the largest size Discogs serves. On a submissions page a release title's window
+opens with the release's **edit history** (see *Link previews*), then the
+release as everywhere; once it has been read, the title's card shows the
+last change too.
 
 </details>
 

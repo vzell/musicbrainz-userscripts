@@ -295,6 +295,58 @@ test.describe('@include coverage', () => {
         expect(others.filter((u) => injected(u))).toEqual([]);
     });
 
+    test('discogs.com: a submissions list, either view, a language prefix; no other /submissions… path', () => {
+        const pages = [
+            'https://www.discogs.com/submissions?mode=list&id=599283&page=1&view=flat',
+            'https://www.discogs.com/submissions?mode=list&id=599283&page=1',
+            'https://www.discogs.com/submissions',
+            'https://discogs.com/submissions?mode=saved',
+            'https://www.discogs.com/de/submissions?mode=list&id=599283&page=1&view=flat',
+            'https://www.discogs.com/pt_BR/submissions?mode=list&id=599283&page=1&view=flat',
+        ];
+        const others = [
+            'https://www.discogs.com/submissions/599283',
+            'https://www.discogs.com/submissionsx?mode=list',
+            'https://www.discogs.com.example.org/submissions?mode=list',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
+    test('discogs.com: a release\'s history page (dg-history), with or without ?diff=', () => {
+        const pages = [
+            'https://www.discogs.com/release/8164856-Human-Touch/history?diff=10&page=1',
+            'https://www.discogs.com/release/8164856-Human-Touch/history',
+            'https://www.discogs.com/release/8164856/history',
+            'https://www.discogs.com/de/release/8164856-Human-Touch/history?rev=4',
+        ];
+        const others = [
+            'https://www.discogs.com/release/8164856-Human-Touch/images/history?rev=7',
+            'https://www.discogs.com/master/27146/history',
+            'https://www.discogs.com/release/8164856-Human-Touch/historyx',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
+    test('discogs.com: a user\'s page (dg-user), a language prefix; not its sub-pages', () => {
+        const pages = [
+            'https://www.discogs.com/user/vzell',
+            'https://www.discogs.com/user/vzell/',
+            'https://discogs.com/user/GuiBeal?tab=1',
+            'https://www.discogs.com/de/user/vzell',
+            'https://www.discogs.com/pt_BR/user/vzell',
+        ];
+        const others = [
+            'https://www.discogs.com/user/vzell/collection',
+            'https://www.discogs.com/user/vzell/submissions',
+            'https://www.discogs.com/user/',
+            'https://www.discogs.com/users/ratings/vzell',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
     test('MusicBrainz pages are still covered', () => {
         const mb = [
             'https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases',

@@ -75,6 +75,22 @@ FIXTURES = {
        for p in range(1, 6)},
     # A master row's "versions" in Max Weinberg's list (John Eddie, Producer): page 1.
     'discogs-master-450426-versions-p1': DG + 'masters/450426/versions?per_page=100&page=1',
+    # 2026-10-18, the user, search and support readers and pageType dg-user:
+    # vzell (642 submissions = 7 pages, 3 contributions, no public
+    # collection), GuiBeal (a history's user; a public collection).
+    'discogs-user-vzell': DG + 'users/vzell',
+    'discogs-user-guibeal': DG + 'users/GuiBeal',
+    # Pages 1 and 7 only (the specs serve page 1 for 2-6: ~600 KB a page).
+    **{f'discogs-user-vzell-submissions-p{p}': DG + f'users/vzell/submissions?per_page=100&page={p}' for p in (1, 7)},
+    'discogs-user-vzell-contributions-p1': DG + 'users/vzell/contributions?sort=added&sort_order=desc&per_page=100&page=1',
+    'discogs-user-guibeal-collection-p1': DG + 'users/GuiBeal/collection/folders/0/releases?sort=added&sort_order=desc&per_page=100&page=1',
+    # A label cell's search link (25 a request, vzell): pages 1 and 2.
+    **{f'discogs-search-columbia-label-p{p}': DG + f'database/search?q=Columbia&type=label&per_page=25&page={p}' for p in (1, 2)},
+    # A submissions row's Artist search: results WITH thumbnails (a result
+    # around its picture was not drilled into: vzell 2026-10-18).
+    'discogs-search-springsteen-artist-p1': DG + 'database/search?q=Bruce%20Springsteen&type=artist&per_page=25&page=1',
+    # A history note's "RSG §6.12.2" link: support.discogs.com's Help Center API.
+    'discogs-support-360005006654': 'https://support.discogs.com/api/v2/help_center/articles/360005006654.json',
 }
 
 _last = [0.0]

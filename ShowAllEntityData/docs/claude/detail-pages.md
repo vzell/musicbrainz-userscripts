@@ -1322,6 +1322,121 @@ versions, a label's order). Fixtures `ext-discogs-artist-small*`,
 `ext-discogs-master-450426-versions-p1` (captured 2026-10-18). Mutations: the
 `Discogs artist…`/`Discogs label…` entries.
 
+### A Discogs release's edit history (2026-10-18)
+
+Mockup https://claude.ai/artifact/Y69bUJTvYSksKTFRMcYJvZ, tab C; vzell's
+answers: on discogs.com AND on MusicBrainz; on a submissions list a title
+opens "History, then the release" (docs/claude/discogs.md, "Submissions").
+
+- **Reader `dghistory`, BEFORE `discogs` in `_EXT_READERS`**:
+  `_EXT_DISCOGS_PATH_RE` ends in `(?:[-/]|$)`, so the Discogs reader takes
+  `/release/<id>/history` too — `_extDgHistTest()` must win first.
+- **The page**: `/release/<id>/history` (saved as
+  `debug/discogs-release-history.html`) holds the same parts as the
+  submissions browser view's `#historyData` pane: `#editing_header` (name,
+  100 px picture, `[r…]`), `table#hist` (one `tr.datarow` per change, the
+  newest `#latest`; `.linked_username`, `.hili` — none for a comment —,
+  `.history_notes_content`, the date in `span[title]` as "Feb 24, 2016
+  01:24 PM", View/Changes/Images links, `href` on the standalone page,
+  `data-sb-navigate` in the pane), `#rating .vote_info_helper`, and
+  `table.diff` (two cells, each the whole release page as it was, marks
+  `hl_added`/`hl_changed1`/`hl_changed2`; Discogs' legend: removed, changed,
+  added). `_extDgHistParse()` reads either; `_extDgHistHtml()` keeps text,
+  breaks, links, bold and the marks, nothing else; `_extDgHistBlocks()` cuts
+  a diff side into named blocks (the profile's facts, each section) and a
+  block is `changed` when either side has a mark.
+- **Only on Space** (`windowOnly`: the card says "Not read yet" until the
+  window has read it) — a new reader flag in `_extCard()`. ONE request,
+  `_extDgHistGet()`: on discogs.com a same-origin `fetch()` with the
+  browser's session (an anonymous request there would meet the browser
+  check that session has already passed), through the host's slot; on
+  MusicBrainz `_extGet()` (anonymous, as every external request), and a
+  Cloudflare answer is the usual `checked` record. `_extHostKnown()` counts
+  the page's own host as known (a same-origin request never prompts).
+- **One cache entry per release**: `keyUrl` (new reader option) makes the
+  key `ext:dghistory:https://www.discogs.com/release/<id>/history` whatever
+  the link's slug or language, and `_extDgHistTarget()` builds the same
+  target for a release's window, so a history link and a title share one
+  request. Records: `_EXT_IDB_VERSION * 100 + _EXT_DGH_VERSION` — bump
+  `_EXT_DGH_VERSION` when the parser's output changes.
+- **The window**: card facts Last change, Changes ("15: 9 edits, 2 images,
+  …"), Data quality, First; sections `dgh-hist` (every change: ISO date with
+  Discogs' relative time on hover, user, kind pill, note cut to two lines
+  with more/less, links; kinds as a filter, Newest/Oldest first; state per
+  release in `_extDgHistUi`) and `dgh-diff` ("revision 13 → 14", only the
+  marked blocks unless *The whole release*). Controls:
+  `_extDgHistControl()`, from the reader's own `onAreaClick` and from
+  `_extDiscogsAreaClick()` (the release window on a submissions list).
+- **New window part `top`**: a reader's `window()` may return `top`, drawn
+  full width ABOVE the two columns (`_extExtracted()`); only the release
+  window on a submissions list uses it.
+- **`_extLoad(t, {wanted})`**: a caller other than the card or the window
+  on `t` passes who still wants the answer (the release window asking for
+  its history; the artwork viewer on a Discogs row, docs/claude/discogs.md).
+
+Tests: `tests/fixtures/discogs-submissions.spec.js` (the history link, the
+title, a sign-in page, the MusicBrainz link) and the last test of
+`discogs-pages.mobile.spec.js`. Fixture `dg-release-history.html`
+(`scripts/build-discogs-fixtures.py`). Mutations:
+`scripts/mutations/discogs-submissions.json`, the `dghistory:` entries.
+
+**View changes (round 2, 2026-10-18).** Discogs' View and Changes links are
+one button per change that has a diff (`e.rev`, from its links;
+`_EXT_DGH_VERSION` 2); an image change keeps its Images link. The click sets
+`_extDgHistUi.rev` and starts `_extDgHistDiffLoad()`: ONE request for the
+`?diff=<rev>` page (saved as `debug/discogs-release-history-diff.html` — the
+same markup, its diff the one asked, the changed row `highlight`, no rating
+or form), key `ext:dghistory-diff:<id>:<rev>`. The second section then
+reads "Change · revision 8 → 10" — Discogs' numbers from the page: it
+compares 10 with 8 when 9 changed no data — with "Back to the latest
+change". **Each diff side holds the release page, whose tracklist is a
+table too:** the parser takes `:scope > thead/tbody` of `table.diff` only
+(it took a tracklist cell as the "new" side before; revision 14 came out
+right by luck).
+
+### Discogs users, searches, support articles; every link in the window (2026-10-18)
+
+Mockup https://claude.ai/artifact/XRTM8v1aLNj3voVt6RxVJz, tab B. Three
+readers, after `discogs` and before `generic` (their paths are not
+`_EXT_DISCOGS_PATH_RE`'s), each with `keyUrl` and `_EXT_DGX_VERSION`:
+
+- **`dguser`** (`/user/<name>`): `api.discogs.com/users/<name>` (no token):
+  the card's facts (`cardFacts` 6); the window adds the **Recent activity**
+  (`_extDgUserActivity()`: the user's page through `_extDgHistGet()`,
+  `table.broadcast_table` rows — kind from the icon's `aria-label`, the text
+  with its links, the date; saved as `debug/discogs-user-vzell.html`) and the
+  user's Discogs pages.
+- **`dgsearch`** (`/search/?q=…[&type=…]`): `database/search` — Discogs'
+  docs say it needs authentication, it answered 200 without (probe
+  2026-10-18); page 1 in the record, "Load 25 more" via
+  `_EXT_DG_LISTS.search` and `_extDgListLoad()` (25 a request, vzell).
+- **`dgsupport`** (support.discogs.com `/hc/…/articles/<id>`): the pages
+  answer with Cloudflare's check, the Help Center API
+  `/api/v2/help_center/articles/<id>.json` does not; `_extDgSupportHtml()`
+  keeps the article's structure and links, its anchors as
+  `data-mb-dgs-anchor` (never ids in our page), marks the block of the
+  link's `#section`; the window scrolls to it once per opening
+  (`scrolledFor`); a link to another section of the article scrolls there.
+
+**A secondary request inside a window starts on `start` OR while it has no
+state yet** (as `_extDgListStart()`): after a drill-down the target's own
+record arrives on a repaint, which is not a `start` render — the activity
+and a release window's history never started then (`discogs-links.spec.js`
+caught it; the release case had passed only because the card had loaded the
+release first).
+
+**Every link in a Discogs window drills** (`_extDgDrill()`: any reader, not
+only `discogs`; vzell: "ALL links should be resolved inside the same
+popup"), from every Discogs-family window (`_extDgFamilyClick()`: section
+heads, "Load 25 more", in-article anchors, then the drill). On discogs.com a
+same-host link gets a target only through `_extDgSiteTest()`.
+
+Tests: `tests/fixtures/discogs-links.spec.js`. Fixtures
+`ext-discogs-user-*`, `ext-discogs-search-columbia-label-p1/p2`,
+`ext-discogs-support-360005006654` (`scripts/capture-ext-fixtures.py`),
+`dg-user-vzell.html`, `dg-release-history-diff.html`. Mutations:
+`scripts/mutations/discogs-links.json`.
+
 ## The Springsteen sites across hosts (org/iframe.org "* generalize to URLs", U4)
 
 Two readers in `_EXT_READERS`, before the generic one; the four hosts are in

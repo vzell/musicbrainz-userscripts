@@ -24034,3 +24034,158 @@ Env: 2026-10-18T03:35:36+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1)
   `scripts/mutations/discogs-pages.json`).
 - `test:full` on petri 2026-10-18 03:35:47–03:45:35+02:00 (uncommitted on
   baaa243): 1871 passed. vzell tried the branch in the browser: OK.
+
+## 2026-10-18 — discogs.com: Submissions pageType, a release's edit history, full-size images in the viewer (branch feat/discogs-submissions, WIP.1)
+
+Env: 2026-10-18T10:33+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Mockup https://claude.ai/artifact/Y69bUJTvYSksKTFRMcYJvZ, vzell's answers in
+docs/claude/discogs.md. Snapshots: `debug/discogs-submissions-flat.html`
+(flat view), `debug/discogs-submissions.html` (browser view, its
+`#historyData` pane), `debug/discogs-release-history.html` (a release's
+standalone history page, saved by vzell logged in).
+
+- **The submissions page is not React.** No `#app` (the Cloudflare gate's
+  test), so the gate lets `/submissions` through when `#page_content` is
+  there. Header and page share `#main_wrapper`: our section must be the
+  first `<body>` child, or `_sphCollectTargets()` pins `#main_wrapper` — all
+  of Discogs' page — as chrome (the same bug class as the artist page's
+  round, entry above). A mutation plants exactly that.
+- **The browser view's list carries no release ids** (`a.sublink`,
+  `href="javascript:void(0)"`, `data-sublink-id` is the index), so both views
+  read the FLAT pages (`view=flat` forced); the page count is on the live
+  page in both ("… of 1,140", the flat view's "Jump to" `max`). Discogs'
+  flat row has a fourth cell no header names: the list's artist matched.
+- **`/release/<id>/history` and `#historyData` are the same markup**
+  (`#editing_header`, `table#hist`, `#rating`, `table.diff`), except the
+  View/Changes links: `href` standalone, `data-sb-navigate` in the pane.
+  `_EXT_DISCOGS_PATH_RE` ends in `(?:[-/]|$)`, so the Discogs API reader
+  took history links too: the new reader sits before it.
+- **Two harness traps in the new spec**, not script bugs: a flat page URL
+  equal to the fixture's own URL is served by `loadUserscriptPage()`'s route
+  (registered last, so it wins) and never reaches the spec's logging route —
+  the fixture is loaded without `page=`; and `cell(table, 'Changed')` took
+  "Changed by" (prefix match) — exact name first now.
+- **Not checked:** a request from MusicBrainz to `www.discogs.com` is
+  anonymous like every external request; whether Cloudflare lets it through
+  is for vzell's browser round (the window says so if not).
+- **Verified:** `discogs-submissions.spec.js` 9/9, `discogs-pages.spec.js`,
+  the mobile spec, `sl-include-regex.spec.js`; 15 mutations, all caught
+  (`scripts/mutations/discogs-submissions.json`); lint within baseline.
+  `test:full` on petri 2026-10-18T10:23:53–10:33:29+02:00 (uncommitted on
+  77ad5df): 1882 passed.
+
+## 2026-10-18 — discogs.com round 2: table clicks that stay, every link in the window, View changes, dg-user (branch feat/discogs-submissions, WIP.2)
+
+Env: 2026-10-18T18:26+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Mockup https://claude.ai/artifact/XRTM8v1aLNj3voVt6RxVJz (v2). Snapshots:
+`debug/missing-inline-urls.html` (FRP of the release window on the
+submissions list: its user, history and support links opened new tabs),
+`debug/discogs-release-history-diff.html` (`?diff=10`),
+`debug/discogs-user-vzell.html` (IP of a user page). Probes:
+`scripts/probe-discogs-links.py`, `scripts/probe-discogs-user.py`.
+
+- **Discogs' docs vs. the API:** `database/search` is documented as needing
+  authentication; it answered 200 without a token (thumbnails empty).
+  support.discogs.com's article pages answer Cloudflare's check (403), its
+  Zendesk Help Center API (`/api/v2/help_center/articles/<id>.json`) does not.
+  A user's profile, submissions (642 = the page's "Pending"), contributions,
+  collection, wantlist and lists all answer without a token.
+- **The script's own "You are about to leave this page"** fired on a plain
+  click on a label search link of our tables (vzell's screenshot). Our
+  tables' links now open a new tab, and a plain click opens the window.
+- **A `start`-only load inside a window never starts after a drill-down**:
+  the target's record arrives on a repaint (not `start`); the user's Recent
+  activity stayed at "Reading…". The release window's history part had the
+  same flaw, hidden because the specs hovered first (the card had loaded the
+  release). Both now start while their key has no state (as
+  `_extDgListStart()`).
+- **`table.diff`'s cells hold the release page, tracklist table included**:
+  `tbody > tr > td` picked a tracklist cell as the "new" side; revision 14
+  came out right by luck, revision 10 showed nothing. `:scope >` now.
+- **Discogs compares revision 10 with 8** (9 changed no data): labels come
+  from the page.
+- **Open (vzell's live test):** everything else works live;
+  `https://www.discogs.com/user/vzell` showed nothing, although the spec
+  renders the saved page at that URL with both buttons. Suspected: the
+  installed script's header lacks the new `@include` line. Asked for the
+  Tampermonkey icon state / an FRP snapshot.
+- **Verified:** `discogs-links.spec.js` 7/7 and the Discogs and popup-ext
+  specs 92/92; 13 mutations, all caught (`scripts/mutations/discogs-links.json`);
+  lint within baseline. `test:full` on petri 2026-10-18T18:17:02–18:26:48+02:00
+  (uncommitted on 77ad5df): 1890 passed.
+
+## 2026-10-18 — discogs.com round 2, vzell's live round: Matched artist unlinked, filters past their columns, split Submissions groups (branch feat/discogs-submissions, WIP.2)
+
+Env: 2026-10-18T19:00+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs); vzell's screenshots: browser and Tampermonkey versions unknown
+
+- **User page "not supported"** was the installed header without the new
+  `@include` line; vzell: "the user profile page is OK" afterwards.
+- **Matched artist "not hyperlinked":** Discogs links it by name
+  (`/artist/Bruce+Springsteen`), no id, so no reader took it (no card; a
+  click a new tab). A search link now, as the Artist column.
+- **Column filters ran past their columns** (`debug/stretch.html`, twice:
+  submissions and a user's page). Not reproducible on the fixture, nor on the
+  snapshot rendered with scripts and remote CSS blocked — the measuring
+  script itself hid the cause. Served with st.discogs.com's `discogs.css`
+  (fetched 2026-10-18, 290 KB) every input ended ~86 px past its column:
+  `input[type=search]{box-sizing:content-box}` beats `.mb-col-filter-input`.
+  Lesson: measure a foreign page's FRP WITH the site's stylesheets.
+- **Submissions split into a sub-table per page run** ("Releases 199,
+  Labels 1, Releases 97, Artists 3, …"): the `groupByH3` loop starts a group
+  whenever the heading changes; the fixture served page 1 for pages 2-6, so
+  the kinds never mixed. `features.groupMergeByName` (dg-user only); the spec
+  now serves page 7 as page 3.
+- **Verified:** discogs-submissions 10/10, discogs-links 7/7 (the search test
+  flaked once under load at 5 s: 10 s wait now); mutations for all three,
+  caught.
+
+## 2026-10-18 — discogs.com: the columns as MusicBrainz's (Credits role section, Cat#, Year, date/time splits), search results with pictures (branch feat/discogs-submissions, WIP.2)
+
+Env: 2026-10-18T19:53+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+- **A search result with a picture never opened in the window**: each row was
+  ONE link around its thumbnail, and `_extTarget()` leaves a link around an
+  image to the image. The label results of the spec had no thumbnails
+  (without a token Discogs sends none), so it passed. The picture is now
+  outside the link; the title's link covers the row (`::after`).
+- **Credits / Cat# / Year / date-time**: sentinels (`.mb-credit-role`,
+  `.mb-credit-attr`, `.catalog-number` lists) and name gates scoped to
+  discogs.com (`isCatalogCol`, `isDateExprCol`, `isTimeCol`); the new 📊
+  section "Credit details - Role" (kind `dgrole`). Discogs joins several
+  catalog numbers with ", " (86 of 387 Born To Run versions).
+- **"When was the edit done"**: the API gives a release's `date_added` and
+  `date_changed` only (anyone's last change), not the user's own edit date,
+  which is only in the release's history (one request each): vzell chose the
+  two release dates as columns.
+- **Verified:** discogs-pages 14/14, discogs-submissions, discogs-links;
+  8 new mutations, all caught; lint within baseline. `test:full` on petri
+  2026-10-18T19:43:54–19:53:48+02:00 (uncommitted on 77ad5df): 1896 passed.
+
+## 2026-10-18 — discogs.com: dg-history, users' pictures (viewer, card), sub-tables with their own columns (branch feat/discogs-submissions, WIP.2)
+
+Env: 2026-10-18T20:31+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+- **dg-history** (`/release/<id>/history[?diff=N]`): rows from the history
+  reader's `_extDgHistParse()`; `dg-release` must exclude the path
+  (`_EXT_DISCOGS_PATH_RE` takes `/history`), pinned by a mutation.
+- **Two cells without a header in the Diff table** (vzell,
+  `debug/2columns-missing.html`): the fetch loop re-resolves extractors per
+  sub-table only for a list of pageTypes; dg-history's Changes split
+  ("Changed" at column 0) ran on the Diff table's Section ("Companies, etc."
+  → "Companies," / "etc."), and dg-user's on Artists/Labels. My dg-user test
+  counted rows only: the new assertions count cells against headers.
+- **Users' pictures:** a history carries them; a submissions list does not
+  (one profile request per user on screen, one at a time). Render cost of
+  the re-fill observer, 1,200 rows: 0.48/0.48/0.49 s with, 0.48/0.47/0.47 s
+  without (2026-10-18T20:02+02:00) — noise. Largest picture = the profile's
+  `avatar_url` (500 px; Discogs' image URLs are signed): hover card + viewer.
+- **Stray `sleep 5` processes** vzell noticed: waiting loops of two earlier
+  sessions, `until ! pgrep -f "mutation-check.py"; do sleep 5; done` — `pgrep
+  -f` matches the loop's OWN command line, so they never end. Never wait that
+  way: use a background task's completion notice.
+- **Verified:** discogs specs, popup-ext; every new guard mutation-checked
+  (`scripts/mutations/discogs-links.json`, `…/discogs-submissions.json`); lint
+  within baseline. `test:full` on petri 2026-10-18T20:21:38–20:31:16+02:00
+  (uncommitted on 77ad5df): 1900 passed.
