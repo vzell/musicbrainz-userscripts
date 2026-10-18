@@ -1,4 +1,4 @@
-* DONE Add abbrev section to CLAUDE.md
+Q* DONE Add abbrev section to CLAUDE.md
 ** DONE i
 
 Add the following abbreviation section to CLAUDE.md, so whenever I use an abbreviation in my prompt it's recognized with
@@ -3176,12 +3176,12 @@ column shift in "Release groups" and "Release" sections - https://musicbrainz.or
   
 * TODO add support for a "MusicBrainz" column
 
-On all new Discogs PTs add support for a "MusicBrainz" column when the third-party userscript "Discogs API links" by
-@Anakunda is present
+On all new Discogs PTs add support for a "MusicBrainz" column when the third-party userscript "Import Discogs releases to MusicBrainz" by
+@murdos is present
 
 1.)
 
-register it from @tests/fixtures/live-userscripts/DiscogsAPIlinks.user.js
+register it from @tests/fixtures/live-userscripts/discogs_importer.user.js
 
 2.)
 
@@ -3198,6 +3198,9 @@ see e.g the "Columbia" label:
 <td><span class="mb_wrapper"><span class="mb_valign mb_searchit"><a class="mb_search_link" target="_blank" title="Search this series on MusicBrainz (open in a new tab)" href="https://musicbrainz.org/search?query=Columbia&amp;type=series&amp;indexed=1"><small>S</small>?</a></span><span class="mb_valign"><a href="https://musicbrainz.org/label/011d1192-6f65-45bd-85c4-0400dd45693e" title="See this label on MusicBrainz"><img src="https://musicbrainz.org/static/images/entity/label.svg" height="16" width="16"></a> </span><span class="mb_valign"><a href="https://musicbrainz.org/label/47692917-5bad-4c56-a352-9d7ab7648ede" title="See this label on MusicBrainz"><img src="https://musicbrainz.org/static/images/entity/label.svg" height="16" width="16"></a> </span><span class="mb_valign"><a href="https://musicbrainz.org/label/ad6f8706-c95e-443b-8579-8e3ecd27126c" title="See this label on MusicBrainz"><img src="https://musicbrainz.org/static/images/entity/label.svg" height="16" width="16"></a> </span><span class="mb_valign"><a class="MuiTypography-root MuiTypography-labelSmall MuiLink-root MuiLink-underlineAlways css-glhfjc" href="/label/1866-Columbia" mlink="label/1866" mlink_done="series,label">Columbia</a></span></span><span class="MuiTypography-root MuiTypography-labelSmall css-1kybk0l"> – C2 93900</span></td>
 #+end_example
 
+3.)
+
+maybe we can reimplement what the third-party userscript does and use the Importer's cache
 
 * TODO add the "work of" to more recording columns in other PTs
 
