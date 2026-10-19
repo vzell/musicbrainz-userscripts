@@ -108,3 +108,10 @@ Make some suggestions here how to present to the user in one or more columns, us
 2.)
 
 The whole feature should be configurable (default off, as the main userscript is normally used just with MusicBrainz)
+
+
+* TODO create userscript which directly scrolls to the first difference on http://brucebase.wikidot.com/song:streets-of-minneapolis pages when clicking history
+
+create userscript which directly scrolls to the first difference on
+http://brucebase.wikidot.com/song:streets-of-minneapolis pages when clicking history
+

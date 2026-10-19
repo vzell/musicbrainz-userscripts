@@ -79,6 +79,24 @@ Two smaller things worth knowing:
   path — there every pass really does rebuild every cell, which is the case the
   helper's JSDoc exists for.
 
+**On discogs.com the column comes from the MusicBrainz column** (2026-10-19,
+docs/claude/discogs.md, "The MusicBrainz column"). Its `a.mb-dg-mb-link`
+icons link `https://musicbrainz.org/release/<mbid>`, which the release-link
+guard and `_picardExtractRowEntities()` take as they are. Three things are
+Discogs-only, all scoped by host or by the column's own markup:
+- the guard also admits a table with a `td.mb-dg-mb-cell` whose
+  `data-mb-dg-types` names `release` — the answers arrive AFTER the render,
+  so a guard on links alone gave master/release pages the column only from
+  the importer's cache, and the ratings page never;
+- `_dgMbRenderCell()` refills the row's Picard cell when the table's column
+  is open (a source row is not in a table; its next clone is filled by the
+  render's own pass);
+- `_picardBuildTaggerUrl()`'s `resource` is `https://musicbrainz.org` on any
+  `_foreignHost`, and an icon link's empty text falls back to the cell's
+  `data-mb-dg-name` for the button's tooltip.
+Specs: the Picard tests of `tests/fixtures/discogs-ratings.spec.js`
+(`__saTest.picardTaggerUrl()` for the URL).
+
 **A release's own tracklist has no Picard column**, and that trips people up
 when picking a test page: `release-tracks` rows link `/recording/<mbid>`, and
 the guard asks for `/release/<mbid>`. `org/picard.org` named a release URL as

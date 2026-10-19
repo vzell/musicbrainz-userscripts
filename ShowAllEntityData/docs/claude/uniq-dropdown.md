@@ -256,8 +256,18 @@ panel. `openSeries()` waits it out.
   `isCatalogCol` ("Cat#"), `isDateExprCol` ("Year"), `isTimeCol` (a
   `dateTimeParts` split's time half). Their matchers never check the
   column's name, so the entries filter and highlight as on MusicBrainz.
+- **A user's picture on an entry** (2026-10-19: "Changed by" on a
+  submissions list, "User" on a history): a plain value entry whose cell
+  holds `img.mb-dg-avatar[src]` shows that picture AFTER the name
+  (`_dgAvatarTrailingSlot()`, the flags' trailing slot). Read by the main
+  scan into `dgAvatarMap` (cached with the bundle, like `iiIconMap`), and at
+  render also from `_dgAvatars` — a submissions list's pictures arrive as
+  rows come on screen, after a cached bundle was read. Opening the panel
+  asks for no picture; a user never on screen has none. `_isDgHost` only.
 - Specs: `discogs-pages.spec.js` (Credits, Cat#, Year),
-  `discogs-submissions.spec.js` (Changed date/time).
+  `discogs-submissions.spec.js` (Changed date/time; the 📊 pictures of
+  "Changed by" and a history's "User", mutations
+  `scripts/mutations/discogs-uvd-avatars.json`).
 
 ## Instrument icons and the "Instrument info - Icon" section
 

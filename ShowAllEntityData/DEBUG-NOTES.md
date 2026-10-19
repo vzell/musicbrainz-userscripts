@@ -24190,6 +24190,44 @@ Env: 2026-10-18T20:31+02:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.54.1) ·
   within baseline. `test:full` on petri 2026-10-18T20:21:38–20:31:16+02:00
   (uncommitted on 77ad5df): 1900 passed.
 
+## 2026-10-19 — discogs.com: the MusicBrainz column with murdos' importer (branch feat/discogs-mb-column, WIP.1)
+
+Env: 2026-10-19T00:31+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1, Chromium build 1234, no Tampermonkey (GM stubs); snapshot from vzell's browser: browser/Tampermonkey versions unknown
+
+- **The request named the wrong script.** vzell asked for "Discogs API links"
+  (Anakunda) support; that script only adds a "View through API" link. The
+  icons in `debug/discogs-release-withMB-icons.html` (`span.mb_wrapper`,
+  `span.mb_valign.mb_searchit`, `mlink`/`mlink_done`, `mlink_processed`) are
+  murdos' "Import Discogs releases to MusicBrainz" (2026.10.14.2, its
+  mblinks.js@755843cf). vzell then copied that one into
+  `tests/fixtures/live-userscripts/` (registered `murdos-discogs-importer`).
+- **Snapshot:** all 120 `span.mb_wrapper` are inside Discogs' `#app`; our
+  section's tables have none — the importer's selectors are Discogs' React
+  class prefixes, and our rows come from the API. Its `$('h1')` does reach
+  our `h1.mb-dg-h1` (`mlink_processed="2"`, the release icon prepended). So
+  the column cannot come from the importer's DOM; it reimplements the lookup
+  and reads the importer's localStorage cache `DISCOGS_MBLINKS_CACHE-v3.1`
+  read only (docs/claude/discogs.md, "The MusicBrainz column").
+- **Probe** (`scripts/probe-mb-url-batch-by-discogs.py`, same env, no
+  browser): /ws/2/url drops a 101st `resource=` SILENTLY (200, no error) —
+  the importer's 75 is safe, our 100 is the limit, never more; several
+  relationship incs in one request work, so one request serves a whole
+  release page's artists, labels, places and releases; matching is exact
+  (slug, `http:`, no www all 404).
+- **Two traps met on the way:** `cleanColumnText` already existed on
+  `__saTest` (a second copy is a duplicate key, caught by the lint baseline);
+  a CSS escape like `"\25B6"` inside the `GM_addStyle` template literal is an
+  octal-escape SyntaxError — write the glyph itself. A highlight for icons
+  cannot be a `.mb-column-filter-highlight` span: every filter pass replaces
+  those spans with a text node of their text, which would delete the icons;
+  the ring reuses `mb-rel-icon-match`, which the passes remove as a class.
+- **Verified:** `tests/fixtures/discogs-mb-column.spec.js` (10 tests) and the
+  other Discogs specs; `scripts/mutations/discogs-mb-column.json` — 9 planted
+  defects, all caught (the `_CLEAN_STRIP_SEL` one only after the test read
+  the clean text itself: "R?" never matched as a filter anyway, the box's two
+  text nodes join with a space); lint within baseline. `test:full` on NB-3641
+  2026-10-19T00:34:03–00:45:36+02:00 (uncommitted on 7824778): 1911 passed.
+
 ## 2026-10-19 — tag pages: "Artist" header missing when Artists is the first section; artist comment read as the entity's Comment (branch fix/tag-value-artist-header, WIP.1)
 
 Env: 2026-10-19T11:31+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
@@ -24256,3 +24294,88 @@ plus a screenshot of the CAA card showing "Van Halen" as the title).
   three slots) now get the same. The exact-text match is unchanged, so a
   chain stuck at "◌" still fails. Not reproducible on demand: 28 parallel
   copies of the two tests alone passed before the change.
+
+## 2026-10-19 — dg-submissions browser view: the rendered page cannot scroll down or right (branch feat/discogs-mb-column, WIP.2)
+
+Env: 2026-10-19T15:21+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1, Chromium build 1234, no Tampermonkey (GM stubs); snapshot and screenshot from vzell's browser: browser/Tampermonkey versions unknown
+
+- **Report** (vzell, `debug/discogs-scroll-bug.html` = FRP, plus a
+  screenshot of `…/submissions?mode=list&id=599283&page=1#…&item=%2Frelease%2F12931010-Eesti-Hit-13%2Fhistory`):
+  after the render the page shows one window's worth of the 1143 rows, the
+  columns run off the right edge, no scrollbars at all; filtering and
+  sorting work.
+- **Root cause: Discogs' own stylesheet.** The browser view (no `view=flat`;
+  `pageCategory: "history.browser"`) links
+  `stylesheets/sections/subbrowser.css`, whose first rule is
+  `body{overflow:hidden;margin:0;padding:0;height:100%;width:100%}`.
+  `<html>` has no overflow of its own, so the body's value is used for the
+  viewport: the window itself cannot be scrolled by the user. Discogs'
+  layout depends on it — `table#browser` holds `aside#items` and
+  `#hpane_wrap`, both set to the window's height by `submissions.js`
+  (`i.resize`) and scrolling inside themselves. Our `section#mb-dg-root` is
+  the first `<body>` child, in the page's flow, so it was cut at the
+  window's edges.
+- **Ruled out, with the snapshot:** the `item=` hash (Discogs' own: its
+  hashchange handler loads that history into `#historyData`; the userscript
+  never writes `location.hash`); our art viewer's lock (`<html>` has no
+  inline style); `mb-sph`/`mb-vsb` CSS (no overflow rule on html/body); an
+  open dialog (none in the DOM).
+- **Why the tests never saw it:** `tests/fixtures/dg-submissions-browser.html`
+  was built without Discogs' stylesheets and without the split pane. It is
+  now built (scripts/build-discogs-fixtures.py, `SUBBROWSER_CSS`) inside
+  `table#browser` with subbrowser.css's layout rules in its head.
+- **Fix:** `_dgPrepareLivePage()` tags `<body>` `mb-dg-unlock-scroll` when
+  `table#browser`/`#hpane_wrap` is present; `_ensureDgStyle()` gives that
+  body `overflow: visible !important; height: auto !important`. Host- and
+  page-scoped; MusicBrainz and every other Discogs page untouched (the flat
+  view asserted untagged).
+- **Test trap:** the first version of the regression test scrolled with
+  `window.scrollTo()` and passed WITH the lock — `overflow: hidden` only
+  stops the user, not a script. The test now scrolls with the mouse wheel
+  (down, then right) and asserts neither html nor body computes to
+  `overflow-y: hidden`. Mutation-checked: dropping the tag or the CSS rule
+  fails it ("the wheel scrolls the window down"); tagging every Discogs page
+  fails the flat-view test.
+- **Stale mutation entries repaired in passing** in
+  `scripts/mutations/discogs-submissions.json`: "our section inside Discogs'
+  #main_wrapper" (the avatar init now follows the insert) and "the diff
+  shows every block" (`h.diff` became `diff`); the Cloudflare-gate entry is
+  re-anchored with the ratings pageType, which changes that line again.
+
+## 2026-10-19 — discogs.com: "HTTP 429 from Discogs" on dg-release and the other API pageTypes (branch feat/discogs-mb-column, WIP.4)
+
+Env: 2026-10-19T16:10+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1, Chromium build 1234, no Tampermonkey (GM stubs); console log from vzell's browser (`debug/discogs-429.html`, userscript 9.99.1376, library 4.4.0): browser/Tampermonkey versions unknown
+
+- **Report:** on `…/release/8164856-Bruce-Springsteen-Human-Touch` and other
+  Discogs pages, `features.pageCountAsync failed (HTTP 429 from Discogs for
+  https://api.discogs.com/releases/8164856) — trying one page`, then
+  `Error fetching/parsing page 1: HTTP 429`. The page loaded at 13:42:20,
+  the page count failed at :25 (first ask + one retry), page 1 at :30.
+- **Root cause (vzell's answers): no token and 4+ Discogs tabs open.**
+  Discogs' API allows 25 requests a minute per IP without a token (60 per
+  token), as a moving minute. Each tab's `_extAwaitSlot()` spaced only its
+  own requests (2.5 s), so N tabs asked N × 24 a minute, beside murdos'
+  importer (`discogs_importer.user.js:70`: one unauthenticated
+  `api.discogs.com/releases/<id>` per release page load), users' pictures on
+  a scrolled submissions list, and previews. Setting the token cured it for
+  vzell — 60 a minute, and the importer's requests no longer share it.
+- **Second defect, whatever the cause:** `_extGet()` retried a 429 ONCE,
+  `max(1.5 s, Retry-After)` later — inside the same moving minute, so it
+  could never succeed; one bad minute killed the whole run.
+- **Fix:** `_EXT_SHARED_SLOT_HOSTS` (`api.discogs.com`): the next slot also
+  in GM storage (`sa_ext_next_slot:api.discogs.com`), read and written by
+  every tab's `_extReserveSlot()`; a value more than 2 min ahead ignored. A
+  429, or `X-Discogs-Ratelimit-Remaining: 0`, pushes that slot a minute
+  ahead for every tab (`_extNoteBudget()`), and the request is asked again
+  from the gate up to `_EXT_SHARED_TRIES` (4) times. The slot wait is
+  interruptible on `!wanted()` (Stop), and a run's status line names a wait
+  over 5 s. Other hosts unchanged (2 tries, 1.5 s floor).
+- **Not established:** whether Discogs sends `Retry-After` or
+  `X-Discogs-Ratelimit-Remaining` on a 429 — forcing one costs the user's
+  budget for a minute, so it was not probed; the code honours both if
+  present and does not need either.
+- **Tests:** `tests/fixtures/discogs-rate-limit.spec.js` (5) and
+  `scripts/mutations/discogs-rate-limit.json` (6, all caught). The test
+  pause had to be LONGER than the 2.5 s spacing (4 s): at 1.5 s a missing
+  pause was hidden by the spacing itself. Discogs, link-preview and include
+  specs: 136 passed; lint within baseline.

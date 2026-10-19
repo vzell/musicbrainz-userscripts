@@ -381,4 +381,37 @@ test.describe('discogs.com: links that stay, every link in the window, View chan
         expect(heads).toEqual(expect.arrayContaining(['Image', 'Artist', 'Title', 'Added']));
         expect(errors).toEqual([]);
     });
+
+    // The MusicBrainz column (docs/claude/discogs.md, "The MusicBrainz
+    // column"; its own spec is discogs-mb-column.spec.js): on these pages
+    // too, keyed by the row's own Discogs entity. The importer is simulated
+    // by its cache key; automatic lookups off (nothing to answer them here).
+    test('MusicBrainz column: submissions (a release from its /history link), dg-user releases and names; never on a history page', async ({ page }) => {
+        await page.context().addInitScript(() => localStorage.setItem('DISCOGS_MBLINKS_CACHE-v3.1', '{}'));
+        const off = { sa_dg_mb_auto_lookup: false };
+        const cols = (t) => t.locator('thead tr:first-child th').evaluateAll(ths => ths.map(th => th.dataset.colName || th.textContent.trim()));
+        const { errors } = await openDg(page, { settings: off });
+        await press(page, 'Show all submissions');
+        let t = page.locator('#mb-dg-root table.tbl').first();
+        expect((await cols(t)).slice(0, 3)).toEqual(['Artist', 'Title', 'MusicBrainz']);
+        const keys = await t.locator('td.mb-dg-mb-cell').evaluateAll(tds => tds.slice(0, 5).map(td => td.dataset.mbDgKey));
+        keys.forEach(k => expect(k).toMatch(/^release\/\d+$/));
+        await openDg(page, { url: 'https://www.discogs.com/user/vzell', file: 'dg-user-vzell.html', settings: off });
+        await press(page, 'Show the contributions');
+        t = page.locator('#mb-dg-root table.tbl').first();
+        const c = await cols(t);
+        expect(c[c.indexOf('Title') + 1]).toBe('MusicBrainz');
+        // The submissions' Labels table: a name row, keyed by its label.
+        await openDg(page, { url: 'https://www.discogs.com/user/vzell', file: 'dg-user-vzell.html', settings: off });
+        await press(page, 'Show the submissions');
+        const labels = page.locator('#mb-dg-root h3').filter({ hasText: 'Labels' }).first().locator('xpath=following-sibling::table[1]');
+        expect((await cols(labels)).slice(0, 2)).toEqual(['Name', 'MusicBrainz']);
+        expect(await labels.locator('td.mb-dg-mb-cell').first().getAttribute('data-mb-dg-key')).toMatch(/^label\/\d+$/);
+        await openDg(page, { url: 'https://www.discogs.com/release/8164856-Human-Touch/history?diff=10&page=1', file: 'dg-release-history-diff.html', settings: off });
+        await press(page, 'Show the changes and the diff');
+        const all = await page.locator('#mb-dg-root table.tbl').evaluateAll(ts => ts.map(x => Array.from(x.querySelectorAll('thead tr:first-child th'))
+            .map(th => th.dataset.colName || th.textContent.trim())));
+        all.forEach(x => expect(x).not.toContain('MusicBrainz'));
+        expect(errors).toEqual([]);
+    });
 });

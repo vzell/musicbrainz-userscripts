@@ -911,7 +911,11 @@ generalize to URLs".
   transient status.
 - **One rate gate per HOST: `_extAwaitSlot(host)`** (`_extSpacingMs(host)`:
   `_EXT_SPACING_MS`, except Discogs' API since U3), reserved synchronously. Never `_relAwaitRateSlot()`: another site, another
-  budget. `__saTest.extRateSlotWaitMs(host)` reads it.
+  budget. `__saTest.extRateSlotWaitMs(host)` reads it. **Discogs' API is
+  shared by every tab** since 2026-10-19 (`_EXT_SHARED_SLOT_HOSTS`: its next
+  slot also in GM storage, a 429 or `X-Discogs-Ratelimit-Remaining: 0` pauses
+  every tab for a minute, up to `_EXT_SHARED_TRIES` asks): see
+  docs/claude/discogs.md, "Discogs' request limit, shared by every tab".
 - **First contact (answer 7).** With only `@connect *` covering a host,
   Tampermonkey asks the user once before the first request to it (X9, B1).
   So `_extCard()` makes NO request for a host that is neither in

@@ -1,0 +1,165 @@
+{
+ "url-offset": 0,
+ "url-count": 3,
+ "urls": [
+  {
+   "id": "4ee79166-dcbd-476c-9e82-e153579c0089",
+   "relations": [
+    {
+     "type": "discogs",
+     "direction": "backward",
+     "source-credit": "",
+     "attributes": [],
+     "release": {
+      "disambiguation": "",
+      "country": "CA",
+      "status": null,
+      "text-representation": {
+       "language": "eng",
+       "script": "Latn"
+      },
+      "status-id": null,
+      "packaging-id": null,
+      "date": "2005-04-26",
+      "release-events": [
+       {
+        "area": {
+         "type-id": null,
+         "type": null,
+         "iso-3166-1-codes": [
+          "CA"
+         ],
+         "sort-name": "Canada",
+         "disambiguation": "",
+         "id": "71bbafaa-e825-3e15-8ca9-017dcad1748b",
+         "name": "Canada"
+        },
+        "date": "2005-04-26"
+       }
+      ],
+      "id": "86a7ac30-d876-4e1d-8eb9-cbe7687a718d",
+      "barcode": "827969196021",
+      "packaging": null,
+      "quality": "normal",
+      "title": "Devils & Dust"
+     },
+     "target-credit": "",
+     "end": null,
+     "type-id": "4a78823c-1c53-4176-a5f3-58026c76f2bc",
+     "begin": null,
+     "attribute-ids": {},
+     "ended": false,
+     "target-type": "release",
+     "attribute-values": {}
+    }
+   ],
+   "resource": "https://www.discogs.com/release/1131342"
+  },
+  {
+   "relations": [
+    {
+     "attribute-values": {},
+     "ended": false,
+     "attribute-ids": {},
+     "target-type": "release",
+     "target-credit": "",
+     "end": null,
+     "type-id": "4a78823c-1c53-4176-a5f3-58026c76f2bc",
+     "begin": null,
+     "release": {
+      "packaging-id": null,
+      "status-id": null,
+      "text-representation": {
+       "script": "Latn",
+       "language": "eng"
+      },
+      "status": null,
+      "country": "US",
+      "disambiguation": "",
+      "title": "Devils & Dust",
+      "quality": "normal",
+      "barcode": "827969390016",
+      "packaging": null,
+      "id": "dd145ca9-034b-4c1f-b743-507267b1b85e",
+      "release-events": [
+       {
+        "area": {
+         "name": "United States",
+         "id": "489ce91b-6658-3307-9877-795b68554c98",
+         "disambiguation": "",
+         "sort-name": "United States",
+         "type": null,
+         "iso-3166-1-codes": [
+          "US"
+         ],
+         "type-id": null
+        },
+        "date": "2005-04-26"
+       }
+      ],
+      "date": "2005-04-26"
+     },
+     "attributes": [],
+     "source-credit": "",
+     "direction": "backward",
+     "type": "discogs"
+    }
+   ],
+   "id": "ccbc3eb9-df1c-434e-9802-f1a51720e517",
+   "resource": "https://www.discogs.com/release/1132381"
+  },
+  {
+   "relations": [
+    {
+     "attribute-values": {},
+     "target-type": "release",
+     "ended": false,
+     "attribute-ids": {},
+     "type-id": "4a78823c-1c53-4176-a5f3-58026c76f2bc",
+     "begin": null,
+     "target-credit": "",
+     "end": null,
+     "release": {
+      "country": "XE",
+      "disambiguation": "age‐restricted symbol on DVD",
+      "packaging-id": null,
+      "text-representation": {
+       "script": "Latn",
+       "language": "eng"
+      },
+      "status-id": null,
+      "status": null,
+      "id": "998bcde9-e209-482f-bc26-2a45c03039c7",
+      "release-events": [
+       {
+        "date": "2005-04-25",
+        "area": {
+         "sort-name": "Europe",
+         "type": null,
+         "iso-3166-1-codes": [
+          "XE"
+         ],
+         "type-id": null,
+         "name": "Europe",
+         "id": "89a675c2-3e37-3518-b83c-418bad59a85a",
+         "disambiguation": ""
+        }
+       }
+      ],
+      "date": "2005-04-25",
+      "title": "Devils & Dust",
+      "quality": "normal",
+      "barcode": "5099752000029",
+      "packaging": null
+     },
+     "attributes": [],
+     "source-credit": "",
+     "direction": "backward",
+     "type": "discogs"
+    }
+   ],
+   "id": "d1d7ee2d-33f4-44e6-adbb-fcc05daaeb63",
+   "resource": "https://www.discogs.com/release/460636"
+  }
+ ]
+}

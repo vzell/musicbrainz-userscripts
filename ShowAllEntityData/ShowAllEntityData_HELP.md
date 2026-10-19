@@ -1430,7 +1430,7 @@ you automatically.
 | 🌴 jungleland.it                                | Switch on the jungleland.it bootleg artwork list (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                            |
 | 💿 brucespringsteen.it                          | Switch on the brucespringsteen.it record database (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                           |
 | 📚 Brucebase                                    | Switch on the Brucebase song list, Relations and Recent changes and, separately, its year pages (all off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                         |
-| 💿 Discogs                                      | Switch on discogs.com's master, release, artist, label, submissions and user pages (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                          |
+| 💿 Discogs                                      | Switch on discogs.com's master, release, artist, label, submissions, user and ratings pages (off by default), and the MusicBrainz column with murdos' importer userscript (on; its automatic lookups on); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                          |
 | 🔎 Link previews on MusicBrainz                 | The cards of the links on MusicBrainz pages (on by default; on a phone or tablet off unless you tick the *… on touch devices* boxes), how long their answers are kept, the release group window's size; see [Page-specific behaviour](#page-specific-behaviour)     |
 | 🔎 Every preview                                | Show the MusicBrainz link previews and the Springsteen sites' detail-page previews on a plain hover (on by default), or only while Ctrl is held                                                                                                                       |
 
@@ -1498,7 +1498,7 @@ an import brings your deletions back.
   and lyrics index, the **jungleland.it**
   bootleg artwork list, the **brucespringsteen.it** record database and
   the **Brucebase** song list, year pages, Relations and Recent changes, and
-  **discogs.com**'s master, release, artist, label, submissions, user and release history pages — each off until
+  **discogs.com**'s master, release, artist, label, submissions, user, ratings and release history pages — each off until
   you switch it on, see [Page-specific behaviour](#page-specific-behaviour)
 
 </details>
@@ -2813,7 +2813,7 @@ twice.
 </details>
 
 <details>
-<summary>discogs.com: masters, releases, artists, labels, submissions and users</summary>
+<summary>discogs.com: masters, releases, artists, labels, submissions, users and ratings</summary>
 
 With ⚙️ Settings → *💿 Discogs* → *Enable on discogs.com* on (off by
 default), a master, release, artist or label page on discogs.com gets a
@@ -2860,11 +2860,22 @@ section of its own above Discogs' page, with the toolbar and these buttons:
   list: an empty or private collection or wantlist has none. Columns as on the
   other Discogs pages, plus Discogs' **Status** (the collection and wantlist:
   **Added**). Here too the section sits at the very top.
+- **Ratings — Show all ratings:** a user's ratings page
+  (`/users/ratings/<name>`): every release they rated in one table: a
+  thumbnail, **Artist**, **Title**, **Format**, **Label**, **Cat#**, **Year**,
+  **Rating** (1 to 5, sorted as a number) and Discogs' **Data quality**. Read
+  from discogs.com's own pages, 250 a page (Discogs' API has no such list);
+  your own sort on the page is kept. Pointing at the button shows how many
+  pages. Here too the section sits at the very top.
 
 The rows come from Discogs' API, 100 a request, one after the other: a
 request every 2.5 seconds, or every second with your Discogs personal access
-token (⚙️ Settings → *🔎 External link previews*). Pointing at a button shows
-what it costs. Bruce Springsteen's discography is 68 requests, about 3
+token (⚙️ Settings → *🔎 External link previews*). Discogs counts those
+requests for your whole connection (or your token), not per tab, so all
+your Discogs tabs share them; when Discogs says the minute's requests are
+used up, every tab waits a minute and then asks again, and the status line
+says so. With several Discogs tabs open, the token helps most. Pointing at
+a button shows what it costs. Bruce Springsteen's discography is 68 requests, about 3
 minutes without a token; more than 50 pages asks you first, as on
 MusicBrainz. Discogs' own page stays as it is below the section. As
 everywhere, pressing a second button reloads the page; press it again then.
@@ -2888,7 +2899,11 @@ images at full size, every one of them (a master row: the master's own
 images). The thumbnail shows at once with "Loading the full size…"; the
 full images take its place when Discogs answers: one request per row, and
 only for the rows you look at (a release you already previewed costs
-nothing). ← → step through the row's images, Shift+← → through the rows; if
+nothing). **Pointing at a thumbnail** shows a card with every image of that
+row — the primary one starred — as the Cover Art column does on
+MusicBrainz; the first time it is one request for that row, which the
+viewer then reuses (off: ⚙️ Settings → 💿 Discogs → *Image column: all
+images of a row on hover*). In the viewer, ← → step through the row's images, Shift+← → through the rows; if
 Discogs does not answer, the viewer says why and offers *Try again*. The
 section starts at the window's left edge and is as wide as its widest
 table; scrolled sideways, the toolbar and the bars stay in view.
@@ -2898,11 +2913,45 @@ the page's content (not Discogs' header or footer) gets the same card and
 window as on MusicBrainz. A user's name carries their own picture: in a
 history it comes with the page; in a submissions list it is read from the
 user's profile once their row is on screen (one request each, one at a time).
+The 📊 list of that column shows each user's picture after their name too —
+every picture known by then; opening it asks for none.
 Pointing at a picture shows it larger in a card; a click opens it in the
 artwork viewer at the largest size Discogs serves. On a submissions page a release title's window
 opens with the release's **edit history** (see *Link previews*), then the
 release as everywhere; once it has been read, the title's card shows the
 last change too.
+
+**MusicBrainz column.** With the userscript *Import Discogs releases to
+MusicBrainz* (by murdos) installed, every table whose rows are releases,
+masters, artists or labels gets a **MusicBrainz** column right after
+*Title* or *Name*: a master's versions, a release's *Credits*, *Companies,
+etc.* and *Other versions*, a discography, a label's releases, a
+submissions list and a user's lists (not a tracklist, the identifiers or a
+history). Each cell shows on one line the MusicBrainz entities linked to
+that Discogs page, as that script's icons do on Discogs' own page: a yellow
+search box (**R?**, **A?**, **L?**, **P?**, **G?**) for each kind with none,
+which searches MusicBrainz for the name, then one icon per entity (grey: the
+link has ended) and a count from two up. A company is looked for as a
+MusicBrainz **place** first (a studio, a pressing plant), and its label is
+not shown once a place is found. The links come from that script's own
+memory first (only read, never changed), then from this script's own,
+then from MusicBrainz in the background: 100 Discogs links a request, one
+request a second, a spinner in each cell until its answer arrives. **▶ MB**
+in the column's header shows the progress (pointing at it opens the
+progress card) and asks again for rows that failed (⚠, also a click on the
+⚠ itself). Answers are kept 90 days, "nothing found" 7 days, so a second
+visit asks MusicBrainz nothing. Filter the column by a MusicBrainz ID; the
+📊 section *MusicBrainz - Links* counts the links per row (*» MB links: 0, 1,
+2 …*, and *pending* / *error* while lookups run) and rings the matched icons.
+Switch it off, or only the automatic lookups (then ▶ MB asks), in ⚙️
+Settings → 💿 Discogs. Without that userscript the column never appears.
+
+A table whose rows are releases (a master's versions, a release's other
+versions, a label's releases, a user's lists and ratings …) also gets the
+**Picard** column, as on MusicBrainz: open it with **▶♪** and each row whose
+Discogs release has a MusicBrainz release gets a ♪ that loads that release
+into Picard — rows still being looked up get theirs as soon as MusicBrainz
+answers.
 
 </details>
 

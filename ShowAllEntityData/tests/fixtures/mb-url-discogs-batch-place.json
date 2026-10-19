@@ -1,0 +1,56 @@
+{
+ "url-offset": 0,
+ "urls": [
+  {
+   "relations": [],
+   "resource": "https://www.discogs.com/label/93330",
+   "id": "1ee33f57-9f08-4a97-80f1-768de39ff73e"
+  },
+  {
+   "relations": [
+    {
+     "direction": "backward",
+     "attributes": [],
+     "end": null,
+     "attribute-ids": {},
+     "place": {
+      "coordinates": null,
+      "type": "Studio",
+      "address": "USA",
+      "disambiguation": "Springsteen’s home studios",
+      "type-id": "05fa6a09-ff92-3d34-bdbb-5141d3c24f38",
+      "name": "Thrill Hill Recording",
+      "id": "17a358af-0983-472a-a351-b10effbe1c54",
+      "area": {
+       "sort-name": "United States",
+       "type-id": "06dd0ae4-8c74-30bb-b43d-95dcedf961de",
+       "name": "United States",
+       "iso-3166-1-codes": [
+        "US"
+       ],
+       "id": "489ce91b-6658-3307-9877-795b68554c98",
+       "type": "Country",
+       "disambiguation": ""
+      }
+     },
+     "ended": false,
+     "target-credit": "",
+     "begin": null,
+     "attribute-values": {},
+     "type-id": "1c140ac8-8dc2-449e-92cb-52c90d525640",
+     "target-type": "place",
+     "type": "discogs",
+     "source-credit": ""
+    }
+   ],
+   "id": "bed31789-05d9-4dfe-aca7-16b8b6b6efa2",
+   "resource": "https://www.discogs.com/label/275307"
+  },
+  {
+   "resource": "https://www.discogs.com/label/1866",
+   "id": "ed9d3c6a-fa7f-4f10-ac3a-523dc2b4b0a5",
+   "relations": []
+  }
+ ],
+ "url-count": 3
+}

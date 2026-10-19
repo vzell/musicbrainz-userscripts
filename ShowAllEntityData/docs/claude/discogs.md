@@ -25,7 +25,7 @@ empty or private; the Recent activity read from MusicBrainz too.
 
 ## What it is
 
-Six pageTypes on discogs.com's own pages, opt-in via `sa_enable_discogs`
+Seven pageTypes on discogs.com's own pages, opt-in via `sa_enable_discogs`
 (default off; the gate exits before anything visible, as for every foreign
 site), `host: 'www.discogs.com'`, three `@include` lines:
 
@@ -188,6 +188,23 @@ neither; `dg-challenge.html` at a submissions URL is still left alone).
   is the flat view's `.browser_flat_title > h1` (its document title is just
   "Discogs"), on the browser view the document title (its only `<h1>` is the
   selected release's history).
+- **The browser view locks the window's scrolling; we unlock it** (vzell,
+  2026-10-19: "the page is NOT scrollable downwards and to the right").
+  Its `sections/subbrowser.css` has `body{overflow:hidden;height:100%;
+  width:100%}`; `<html>` has no overflow of its own, so the body's reaches
+  the viewport. Discogs' split pane (`table#browser`: the list in
+  `aside#items`, the history in `#hpane_wrap`, both sized to the window by
+  `submissions.js`) scrolls inside itself, but our section is in the
+  page's flow above it and was cut at the window's edges, scrollbars and
+  all. `_dgPrepareLivePage()` tags `<body>` `mb-dg-unlock-scroll` when
+  `table#browser`/`#hpane_wrap` is there, and `_ensureDgStyle()` sets that
+  body back to `overflow: visible; height: auto` (`!important`). The split
+  pane keeps working below our section. The flat view, a user's page and
+  the React pages never load that stylesheet and are not tagged. **A spec
+  must scroll with the mouse wheel**: `overflow: hidden` still lets
+  `window.scrollTo()` move the window, so a scripted scroll passes with the
+  lock in place. The `item=/release/…/history` in the URL's hash is Discogs'
+  own (its hashchange handler loads that history into the pane), not ours.
 - **A release title's window opens with its edit history** (vzell: "History,
   then the release"): `_extDiscogsWindow()` puts `_extDgHistReleaseParts()`
   in the window's `top` part when `_dgOnSubmissions()`. It is the history
@@ -250,6 +267,77 @@ pager was not seen yet. A plain click on "View changes" opens the window;
 the history reader reads `?diff=<rev>` from the link and opens on that
 revision (`revFor`: once per opening).
 
+## A user's ratings (`dg-ratings`, 2026-10-19)
+
+`/users/ratings/<name>` (language prefix allowed; snapshot
+`debug/discogs-user-ratings.html`): the releases a user rated. An older page
+like the submissions list (no `#app`, the gate admits it with
+`#page_content`, our section first in `<body>`, the toolbar named from
+`#user_header h1`). **Not in the API** — it has one release's rating by one
+user, no list — so the rows come from these pages, fetched same-origin by
+`fetchHtml()` with the browser's session, as the submissions list's are.
+
+- **The pages asked** (`_dgRatingsPageUrl()`): the live URL with
+  `limit=250` (the largest "Show" choice), `page=N` and `layout=med`. The
+  layout matters: "Large Covers" (`layout=big`) is cards, not a table, and
+  Discogs remembers a user's choice. The user's own `sort`/`sort_order` stay
+  in the query, so the rows come in their order. The page count is the live
+  page's `.pagination_total` ("1 – 2 of 2") at 250 a page, no request
+  (`_dgRatingsSize()`); the live page's own `limit` does not matter.
+- **The row** (`_dgRatingsToHtml()`, `table.release_list_table`): the
+  thumbnail (`_dgThumbCell()`, so the viewer and the Image card work as
+  elsewhere); `td.status [data-title]` → *Data quality* ("New Submission");
+  one cell "Artist - Title (Label - Cat#)" of links, split by NODES around
+  the release link — before it the artists (the text between artist links
+  kept, the trailing " - " dropped), after it each label link followed by
+  " - <cat#>" (`_dgRatingsLinksCell()`, `_dgCatnoCell()`: "none" is no
+  number); `td[data-header=Format]`, `td[data-header=Year]`; and
+  `span.rating[data-value]` → *Rating* (`integerColumns`). "Added" is a sort
+  key on Discogs' page, never shown in its rows, so there is no such column.
+- **A page without the table** (a sign-in page, a browser check) throws
+  `status` 0: a FAILED page, logged with its reason, never zero rows.
+- **Unseen so far:** the snapshot has 2 rows, one artist and one label each,
+  and one page. Several artists or labels in a row and the multi-page pager
+  are parsed by the rules above but not checked against real markup; the
+  "of 300" fixture is SYNTHETIC.
+
+## The Image column's hover card (2026-10-19)
+
+vzell: "when hovering the Image column in Discogs PTs make all images shown
+in a popup like what we do in the CAA/EAA column on MB PTs". Every
+`_dgThumbCell()` link carries `data-mbtt-fn="dg-img"`, so the shared tooltip
+engine (`_initStatTooltip()`, `#mb-stat-tooltip`) resolves it through
+`_mbttResolve()` → `_dgImgCardHtml()`: delegated, so it survives every
+re-render's clones with no re-wiring.
+
+- **The card is the B1 artwork card** (`_artCardCoreHtml()`): the row's
+  title, the count, up to `sa_caa_tip_summary_tiles` tiles, the type tally.
+  Discogs' `primary` image takes the ★ (as MusicBrainz's main front) and the
+  tally reads primary / secondary; the facts line says "★ primary" / "no
+  primary" for an external context (`ctx.external`), never "main front".
+- **The record is the viewer's and the link preview's** (`_extLoad()` on
+  `_dgArtRowFor()`'s target — the row's Title link read by the Discogs
+  reader; `_dgThumbClick()` builds its rows with the same helper): memory,
+  IndexedDB, else ONE request for the hovered row, never a neighbour's.
+  Until it is in, "Loading" with the list's thumbnail; `repaint` re-resolves
+  the card while it still shows; `wanted` is `_dgImgCardShows()` (the card
+  on screen, the pointer on the link), asked after the rate slot — a row the
+  pointer only passed over costs nothing. A later click or Space costs
+  nothing either.
+- **Plain hover, no Ctrl** (vzell's choice): like the CAA column's card and
+  the users' picture card. `api.discogs.com` is an `@connect` host, so no
+  first-contact rule applies.
+- **Off** with `sa_dg_tip_images` (default on); no card for a row without a
+  release or master link (`_extTarget()` gives none).
+- **A viewer spec must switch it off**: a Playwright click moves the pointer
+  over the thumbnail first, so the card asks for the record before the
+  click, and the viewer then truthfully says "the cache"
+  (`discogs-submissions.spec.js`'s full-size test).
+- Specs: `tests/fixtures/discogs-image-card.spec.js` (tiles, ★, tally, one
+  request; second hover and click ask nothing; moved on before its slot →
+  "no longer wanted, not asked"; setting off); mutations
+  `scripts/mutations/discogs-image-card.json`.
+
 ## Users' pictures (2026-10-18)
 
 vzell: "the user's own avatar". A history (page and window) carries every
@@ -264,6 +352,12 @@ every render makes. Cost measured 2026-10-18T20:02+02:00 on petri (fixture,
 1,200 rows, the engine's "Rendering"): 0.48/0.48/0.49 s with it,
 0.48/0.47/0.47 s without — within noise. The picture is never inside the
 name's link (`_extTarget()` leaves a link around an image to the image).
+
+**In the 📊 list too** (vzell, 2026-10-19): the "Changed by" and "User"
+entries show the user's picture after the name — what the cells hold, plus
+`_dgAvatars` for a submissions list's pictures that came after the panel's
+data was cached; the panel never asks for one. See
+docs/claude/uniq-dropdown.md, "Discogs' columns".
 
 **The picture at its largest** (vzell: "in highest resolution in our
 internal viewer"; his answer: click opens the viewer, hover a card): Discogs
@@ -306,6 +400,45 @@ discogs.com where a name test could reach MusicBrainz:
   date half; `isTimeCol` takes its time half on discogs.com ("Time info -
   Time of day"; on MusicBrainz still only "Time").
 
+## Discogs' request limit, shared by every tab (2026-10-19)
+
+vzell, with no token and 4+ Discogs tabs open: "HTTP 429 from Discogs" on
+dg-release and the other API pageTypes (`debug/discogs-429.html`: the page
+count's first request answered 429, retried once 1.5 s later, 429 again,
+then page 1 the same). Setting the token cured it. Discogs counts per IP
+(per token with one) over a moving minute (25 / 60 a minute), and every
+tab spaced only its OWN requests, beside murdos' importer (one unauthenticated
+request per release page load), users' pictures, previews and the like.
+
+- **One slot for every tab** (`_EXT_SHARED_SLOT_HOSTS`, only
+  `api.discogs.com`): `_extReserveSlot()` takes the later of this tab's
+  slot and GM storage's `sa_ext_next_slot:api.discogs.com` (Tampermonkey
+  shares GM values across tabs) and writes the next one back. A stored slot
+  more than 2 minutes ahead is ignored (`_EXT_SHARED_SLOT_MAX_AHEAD_MS`: a
+  wrong clock or an old pause never blocks every tab). Not a lock: two tabs
+  reserving in the same few ms can take one slot — the pause below catches
+  what slips through.
+- **A spent budget pauses every tab** (`_extNoteBudget()`): a 429, or
+  `X-Discogs-Ratelimit-Remaining: 0` before one, pushes the shared slot a
+  minute ahead (`_extRateLimitPauseMs`; a longer `Retry-After` wins) — the
+  window resets after a minute without requests, so EVERY tab has to hold
+  off. The request is then asked again from the gate, up to
+  `_EXT_SHARED_TRIES` (4) times in all; the old single retry 1.5 s later sat
+  inside the same minute and could never succeed.
+- **The wait ends on Stop**: `_extGet()` sleeps with
+  `_sleepInterruptible()` on `!wanted()`, so a run's Stop (and a hover that
+  moved on) does not sit out a minute. A run's status line says
+  "Discogs' request limit is reached — waiting N s…" for a wait over 5 s
+  (`_dgFetchText()`'s `onWait`).
+- **Specs:** `tests/fixtures/discogs-rate-limit.spec.js` (three 429s then
+  the list; four 429s fail as a 429; another tab's slot honoured and ours
+  written back; a slot an hour ahead ignored; Remaining 0 pauses), with
+  `__saTest.setExtRateLimitPauseMs()` at 4 s (longer than the 2.5 s
+  spacing, so a pause shows apart from it); mutations
+  `scripts/mutations/discogs-rate-limit.json`. Two real tabs are not
+  tested: the GM stub caches a key per tab once read, so a second page
+  would not see the first's later writes as Tampermonkey's would.
+
 ## Links in our tables never leave the page (2026-10-18)
 
 A plain click on "Columbia" (a label search link) left the page through the
@@ -327,6 +460,93 @@ in our table or a Discogs link in the content gets the same card and window
 as on MusicBrainz (Ctrl + hover unless `sa_dp_hover_without_ctrl`; a tap opens
 the window). The MusicBrainz parts of the window stay off on a foreign host.
 
+## The MusicBrainz column (murdos' importer present, 2026-10-19)
+
+**Mockup (approved by vzell 2026-10-19):**
+https://claude.ai/artifact/6CmnUoNf4LHd44yxvp3rvu — the release's Credits,
+Companies and Other versions, the 📊 entries, background lookups with the
+job popup, cell anatomy. His answers: key on murdos' "Import Discogs releases
+to MusicBrainz" (registered as `murdos-discogs-importer` in
+`tests/fixtures/live-userscripts/manifest.json`; Anakunda's "Discogs API
+links", named first, makes no icons at all); reimplement its lookup and use
+its cache; look up automatically in the background; a cell covers the row's
+OWN entity; the column only with the importer present.
+
+**The Picard column rides on it** (vzell, 2026-10-19: master and release
+pages had it, the ratings page not): a table whose MusicBrainz column looks
+up releases gets the Picard column from the render on, an open one takes a
+late answer per row, and Picard is sent the MusicBrainz release page. See
+docs/claude/deferred-columns-picard-relationships.md, "On discogs.com the
+column comes from the MusicBrainz column".
+
+**Why our tables never get the importer's icons.** It decorates Discogs'
+React page only (`#app`: `div[class^=info_]`, `#release-companies`,
+`table[class^=releases_]` …); all 120 `span.mb_wrapper` of
+`debug/discogs-release-withMB-icons.html` sit there. Its `$('h1')` reaches our
+`h1.mb-dg-h1` (it gets `mlink_processed` and the page's icon) — nothing else
+of ours.
+
+- **Gate:** `_dgMbOn()` = discogs.com + `sa_dg_mb_column` (default on) +
+  `_dgMbImporterPresent()`: its localStorage key
+  (`/^DISCOGS_MBLINKS_CACHE-v\d/`) or its page marks (`[mlink_processed],
+  span.mb_wrapper`), remembered once true.
+- **Where:** `features.decorateDoc` — a new, optional engine hook run on each
+  fetched `pageRequest` document before its rows are read (six dg-*
+  definitions set it; dg-history does not). `_dgMbDecorateTable()` adds the
+  header and `data-mb-col-headers` entry right after **Title** (else
+  **Name**) and a cell per row from that column's Discogs link; a table
+  headed Tracklist, or without Title/Name, is left alone. A single-table
+  pageType's EMPTY live table gets the header too (`applyDgToTable()`), since
+  the render fills its tbody.
+- **What a row asks for** (`_dgMbSpec()`, the importer's mapping): release →
+  release, master → release-group, artist → artist, label → label, and in
+  "Companies, etc." place first, label not shown once a place is found (its
+  `mlink_stop`). The resource is `https://www.discogs.com/<type>/<id>` (exact:
+  the probe found slugged, `http:` and no-www forms all 404).
+- **Sources, in order:** the importer's cache (`_dgMbReadImporterCache()`,
+  READ ONLY, re-read at most every 30 s; its entries `"<dgType>/<id>/<mbType>":
+  {timestamp, urls: ["url" | {url, ended}]}`, trusted while non-empty and
+  under 90 days, its own rule), our own IndexedDB `vz-saed-dg-mblinks`
+  (store `links`, keyPath `key`, same keys; a match 90 days, a "nothing found"
+  7 days, which the importer never keeps; preloaded once a page by
+  `_dgMbLoadOwn()`; listed in the browser cache overview on discogs.com only),
+  then MusicBrainz (`_dgMbAsk()`).
+- **Lookup:** `_dgMbRun()` after the first render and a disk load
+  (`_dgMbAfterRender(true)`; re-renders only re-add the toggles), when
+  `sa_dg_mb_auto_lookup` (default on), else on ▶ MB or a failed cell's ⚠.
+  Up to 100 entities a request with EVERY type the batch misses in one `inc`
+  (`artist-rels+label-rels+place-rels+release-rels` on a release page), via
+  `_extGet()` (GM_xmlhttpRequest, anonymous) after the shared WS rate slot
+  `_relAwaitRateSlot()` (1.1 s). A failure is not stored; the cells show ⚠.
+- **Cell** (`_dgMbCellInner()`): `span.mb-dg-mb-row` (nowrap) of search boxes
+  first (`.mb-dg-mb-search`, the importer's look; `data-state` pending →
+  spinner, error → ⚠), then `a.mb-dg-mb-link` per entity (MusicBrainz's own
+  entity SVG; `.mb-dg-mb-ended` grey), `.mb-dg-mb-n` from two links up, and a
+  hidden `.mb-dg-mb-ids` ("release <mbid> …") as the column's filter and
+  sort text. The boxes and the count are in `_CLEAN_STRIP_SEL`. The td carries
+  `data-mb-dg-key/-types/-name/-state/-n`; own class names, never `mb_*`, so
+  the importer's CSS and selectors leave our cells alone.
+- **Late writes** (filter-and-cache-invariants.md): `_dgMbCellIndex()`
+  indexes the live cells AND the source rows (`_msSourceRows()`), and
+  `_dgMbRenderCell()` rewrites both in place and drops the row's
+  `_rowTextCache`; `_dgMbScheduleRefresh()` (≤ every 1.5 s) drops the 📊
+  caches of those tables and the filter cache, repaints ▶ MB and re-runs an
+  active filter. The precedent is "Recording of" (`_recOfApply()`).
+- **📊:** section `dgMbCount` "MusicBrainz - Links" (🧠, kind `dgmbcount`,
+  `_findCellDgMbCount()` reads `data-mb-dg-n`/`-state`), entries "» MB links:
+  N", "pending", "error"; a ticked one rings the matched icons with the
+  Relationships column's `mb-rel-icon-match` (cleared by every filter pass —
+  a highlight span would not do: its reset turns its content into text).
+- A click on our MusicBrainz icons opens musicbrainz.org in a new tab: the
+  link previews skip musicbrainz.org hosts (`_EXT_SKIP_HOST_RE`).
+
+Probe: `scripts/probe-mb-url-batch-by-discogs.py` (2026-10-19, NB-3641; its
+docstring has the results): up to 100 resources a request, the 101st DROPPED
+SILENTLY; answers in the server's order (matched by `resource`); one unknown
+alone 404, several 200 with url-count 0; no paging; several relationship
+incs in one request; `ended` per relation. Its answers are the
+`tests/fixtures/mb-url-discogs-*.json` files.
+
 ## Known differences from the mockup (raised with vzell)
 
 - Sub-tables start collapsed ("Show all sub-sections"), as on every
@@ -346,6 +566,8 @@ the window). The MusicBrainz parts of the window stay off on a foreign host.
 | `tests/fixtures/sl-include-regex.spec.js`     | the `@include` line: the four page kinds (slug, language prefix, query, no www), not the image pages, search, sell, user pages or the API host                                                                                                                                                                                                                         |
 | `tests/fixtures/discogs-submissions.spec.js`  | submissions: flat view (section first in `<body>`, 12 flat pages same-origin in order, the split, every column), browser view (flat pages, the title), the check at a submissions URL; the history: a history link (card asks nothing, Space one request, 14 changes, filter, order, diff marked blocks / whole release, memory), a title ("History, then the release", one request each), a sign-in page; full size: a row's 5 images from one request, ← →, Shift+← →, back from the cache, a failure and "Try again"; MusicBrainz: a history link, an anonymous request on Space |
 | `tests/fixtures/discogs-links.spec.js`        | round 2: a plain click opens the window (every table link a new tab, the page stays); a search (25, Load 25 more = page 2, a result drilled, Back); in the history window a user (profile, the activity from their page, Back) and RSG §6.12.2 (the article, the section marked and in view, Back); View changes (6 buttons, 2 Images links, revision 8 → 10 only the Notes, Back to the latest, asked once); dg-user (only Submissions and Contributions, 642 in 7 requests, Releases 641 + Labels 1, columns; Contributions 3; the synthetic collection page: Collection, 2 pages, Added) |
+| `tests/fixtures/discogs-ratings.spec.js`      | dg-ratings: the section first, the name, the button's count, nothing before the press; one page `limit=250&page=1&layout=med`, every column (links absolute, Cat# "none" dropped, Rating 5/4, Data quality); Rating ▲/▼; 300 ratings = 2 pages with the page's sort kept; a sign-in page fails, logged; a thumbnail opens the viewer |
+| `tests/fixtures/discogs-mb-column.spec.js`    | the MusicBrainz column: none without the importer (no request); after Name/Title on Credits, Companies, Other versions, never Tracklist/Identifiers; the importer's cache at once, the rest in ≤100-resource requests (one inc, anonymous, exact URLs, none asked twice), a place before a label, one line, the importer's localStorage unchanged; our store (a second visit asks nothing, a "nothing found" too); ended grey, count badge, filtered by MBID not by "R?"; 📊 "MusicBrainz - Links" (ticking 2, pending drains as answers arrive); a sort keeps late answers (source rows); ⚠ and retry; auto lookups off → ▶ MB |
 
 Since vzell's browser round `discogs-pages.spec.js` also pins: the search
 links (an artist cell one link, a label cell one per label), a track's
@@ -360,11 +582,12 @@ roots, Discogs' `<h1>`, five Discogs links, a header and a footer link;
 since 2026-10-18 also `dg-submissions-flat.html`, `dg-submissions-browser.html`
 and `dg-release-history.html`, the older pages' `#main_wrapper` shell;
 round 2: `dg-release-history-diff.html`, `dg-user-vzell.html`, the synthetic
-`dg-user-collection.html`);
+`dg-user-collection.html`; 2026-10-19: `dg-user-ratings.html` and the synthetic
+`dg-user-ratings-300.html`);
 the API answers are `scripts/capture-ext-fixtures.py`'s `ext-discogs-*.json`
 (Columbia oldest-first pages 2-5 added 2026-10-18; round 2: users vzell and
 GuiBeal, vzell's submissions pages 1 and 7 — the specs serve page 1 for 2-6,
 ~600 KB a page —, contributions, GuiBeal's collection page 1, the Columbia
 label search pages 1-2, the support article). Mutations:
 `scripts/mutations/discogs-pages.json`, `scripts/mutations/discogs-submissions.json`,
-`scripts/mutations/discogs-links.json`.
+`scripts/mutations/discogs-links.json`, `scripts/mutations/discogs-mb-column.json`. `discogs-links.spec.js` also checks the column on a submissions list, a user's lists and its absence on a history page.

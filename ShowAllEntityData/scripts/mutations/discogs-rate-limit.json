@@ -1,0 +1,80 @@
+[
+    {
+        "name": "ext gate: a shared host retried once, as any other",
+        "why": "Discogs' window is a moving minute: one retry after the pause is not enough for three 429s in a row.",
+        "edits": [
+            {
+                "find": "        const tries = _EXT_SHARED_SLOT_HOSTS.has(host) ? _EXT_SHARED_TRIES : 2;",
+                "replace": "        const tries = 2;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-rate-limit.spec.js",
+        "grep": "three 429s in a row",
+        "expect": "fail"
+    },
+    {
+        "name": "ext gate: a 429 starts no pause",
+        "why": "Without the pause the retry comes inside the same minute (and other tabs keep asking).",
+        "edits": [
+            {
+                "find": "        if (res.status !== 429 && !(Number.isFinite(left) && left <= 0)) return 0;",
+                "replace": "        if (res.status !== 429 && !(Number.isFinite(left) && left <= 0)) return 0;\n        if (res.status === 429) return 0;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-rate-limit.spec.js",
+        "grep": "three 429s in a row",
+        "expect": "fail"
+    },
+    {
+        "name": "ext gate: Remaining 0 not read",
+        "why": "The budget is spent before the 429: the next request would be the 429.",
+        "edits": [
+            {
+                "find": "        if (res.status !== 429 && !(Number.isFinite(left) && left <= 0)) return 0;",
+                "replace": "        if (res.status !== 429) return 0;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-rate-limit.spec.js",
+        "grep": "Ratelimit-Remaining: 0",
+        "expect": "fail"
+    },
+    {
+        "name": "ext gate: the other tabs' slot not read",
+        "why": "Each tab spacing its own requests is what spent the budget with 4+ tabs open.",
+        "edits": [
+            {
+                "find": "        const at = Math.max(now, _extNextSlotAt.get(host) || 0, shared ? _extSharedSlotAt(host) : 0);",
+                "replace": "        const at = Math.max(now, _extNextSlotAt.get(host) || 0);"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-rate-limit.spec.js",
+        "grep": "another tab's reservation",
+        "expect": "fail"
+    },
+    {
+        "name": "ext gate: our slot not written for the other tabs",
+        "why": "The other tabs must see this tab's reservations.",
+        "edits": [
+            {
+                "find": "            GM_setValue(_extSharedSlotKey(host), at);",
+                "replace": "            void at;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-rate-limit.spec.js",
+        "grep": "another tab's reservation",
+        "expect": "fail"
+    },
+    {
+        "name": "ext gate: a shared slot an hour ahead believed",
+        "why": "A tab's wrong clock or an old pause must not block every tab.",
+        "edits": [
+            {
+                "find": "        return v > Date.now() + _EXT_SHARED_SLOT_MAX_AHEAD_MS ? 0 : v;",
+                "replace": "        return v;"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-rate-limit.spec.js",
+        "grep": "a slot far in the future",
+        "expect": "fail"
+    }
+]

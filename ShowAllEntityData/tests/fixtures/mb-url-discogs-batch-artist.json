@@ -1,0 +1,64 @@
+{
+ "url-offset": 0,
+ "urls": [
+  {
+   "id": "95ff85aa-9039-432f-ad1e-d431c94b209f",
+   "resource": "https://www.discogs.com/artist/219986",
+   "relations": [
+    {
+     "artist": {
+      "name": "Bruce Springsteen",
+      "type": "Person",
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "country": "US",
+      "disambiguation": "",
+      "sort-name": "Springsteen, Bruce"
+     },
+     "target-credit": "",
+     "end": null,
+     "ended": false,
+     "type-id": "04a5b104-a4c2-4bac-99a1-7b837c37d9e4",
+     "source-credit": "",
+     "attribute-ids": {},
+     "type": "discogs",
+     "begin": null,
+     "attribute-values": {},
+     "direction": "backward",
+     "target-type": "artist",
+     "attributes": []
+    }
+   ]
+  },
+  {
+   "relations": [
+    {
+     "end": null,
+     "type-id": "04a5b104-a4c2-4bac-99a1-7b837c37d9e4",
+     "ended": false,
+     "source-credit": "",
+     "type": "discogs",
+     "attribute-ids": {},
+     "artist": {
+      "id": "2c048a96-2b43-453d-82d2-b2dfe8f542ed",
+      "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+      "name": "Toby Scott",
+      "type": "Person",
+      "sort-name": "Scott, Toby",
+      "country": "US",
+      "disambiguation": ""
+     },
+     "target-credit": "",
+     "direction": "backward",
+     "target-type": "artist",
+     "attributes": [],
+     "begin": null,
+     "attribute-values": {}
+    }
+   ],
+   "id": "c787d40a-e9c8-4f3f-b241-6a746bb4dd7d",
+   "resource": "https://www.discogs.com/artist/293630"
+  }
+ ],
+ "url-count": 2
+}
