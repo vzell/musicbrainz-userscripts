@@ -3309,7 +3309,8 @@ if the "Relationships" column on MP PTs has multiple Discogs URL relationship ic
 
 1.)
 
-add "Space" on the image hover popup in the CAA/EAA column to show ALL images (right now it shows a couple and the a "+ 69"), e.g. on https://musicbrainz.org/release-group/f731060c-05d4-439d-8351-59e5e5eb91a0
+add "Space" on the image hover popup in the CAA/EAA column to show ALL images (right now it shows a couple and then the
+additional ones as a number e.g "+69"), e.g. on https://musicbrainz.org/release-group/f731060c-05d4-439d-8351-59e5e5eb91a0
 
 2.)
 
@@ -3332,6 +3333,97 @@ Make a comprehensive report of MB PTs where we also render recording type column
 2.)
 
 Is it feasible to also add the same treatment to these columns as we do on the PT 'artist-recordings', if yes make it configurable
+
+** Answer (2026-10-19, branch feat/recording-of-more-pts)
+
+*** 1.) MB pageTypes that render recordings
+
+One recording per row (anchor = the column that links /recording/):
+
+| pageType                                                           | tableMode    | anchor                | WS/2 browse parent | done in WIP.1               | tested in browser |
+|--------------------------------------------------------------------+--------------+-----------------------+--------------------+-----------------------------+-------------------|
+| artist-recordings                                                  | single       | Name                  | artist             | (already, with suggestions) | yes               |
+| instrument-recordings                                              | single       | Name                  | —                  | yes                         | yes               |
+| search (type=recording)                                            | single       | Name                  | —                  | yes                         | bug               |
+| series-releases → Recordings                                       | single       | Name                  | —                  | yes                         | yes               |
+| collections-releases → Recordings                                  | single       | Name                  | collection         | yes (no fixture yet)        | yes               |
+| isrc                                                               | single       | Title                 | —                  | yes                         | yes               |
+| area-recordings / -filtered                                        | multi/single | Title                 | —                  | yes                         | yes               |
+| place-performances / -filtered                                     | multi/single | Title                 | —                  | yes                         | yes               |
+| work-recordings / -filtered                                        | multi/single | Title                 | work               | yes                         | yes               |
+| tag-value-entity → Recordings                                      | single       | Recording             | —                  | yes                         | yes               |
+| user-tag-value-entity → Recordings                                 | single       | Recording             | —                  | yes (no fixture)            | yes               |
+| user-ratings-type → Recordings                                     | single       | Recording             | —                  | yes                         | yes               |
+| artist-credit-entity → Recordings                                  | single       | Recording             | — (id not an MBID) | yes                         | yes               |
+| tag-value, user-tag-value, user-ratings, artist-credit (all kinds) | multi        | Recording (one group) | —                  | later: per-table anchoring  |                   |
+| report-detail / report-multiple-linked (recording reports)         | single       | Recording             | —                  | later                       |                   |
+
+Recording is one column among other entities — not in scope: release-tracks
+(already shows "Recording of work" from the page itself, no requests),
+artist-/label-relationships (mixed sections), the relationship-table renders
+and area/place/instrument/url overviews, event-overview, the edits pages.
+No recording column: recording-releases, recording-fingerprints,
+releasegroup-releases, label-releases, iswc, cd-stub, recording-tags.
+
+*** 2.) Feasible — done for the one-recording-per-row lists
+
+=features.recordingOf: { after, browseBy, suggest, setting }=; one checkbox
+per page group (=sa_recording_of_on_*=, default on) under the master switch.
+Browse batching on work and collection pages (probed), lookups elsewhere,
+suggestions on artist-recordings only. Details:
+docs/claude/deferred-columns-picard-relationships.md, "Recording of column".
+
+*** fixtures
+**** q
+
+Are the following the right URL you are missing for the fixtures
+
+#+begin_example
+collections-releases → Recordings - https://musicbrainz.org/collection/17ee2e77-21e7-40f1-89b1-4238c9b73428
+user-tag-value-entity → Recordings - https://musicbrainz.org/user/vzell/tag/acoustic%20rock/recording
+#+end_example
+
+If yes, I will provide the raw HTML of them in the @debug folder
+
+**** a
+
+They are in place:
+
+#+begin_example
+- debug/collection-recordings-initial.html
+- debug/user-tag-recording-initial.html
+#+end_example
+
+*** bug
+
+1.)
+
+OK, both debug files are overwritten with the IPs
+
+2.)
+
+There is a rendering bug on PT 'search (type=recording)' e.g https://musicbrainz.org/search?query=Born+to+Run&type=recording&limit=25&method=indexed
+
+#+begin_example
+@debug/OF-WORK-search-recordings-initial.html - IP
+@debug/OF-WORK-search-recordings-final-ok.html - FRP - before the addition of the two new columns "Recording of" and "Performance attributes"
+@debug/OF-WORK-search-recordings-final-bug.html - FRP - after the addition of the two new columns 
+#+end_example
+
+
+* TODO add support for images in the sidebar of instruments PTs
+
+add support for images in the sidebar of instruments PTs and add them to the h1 line in front of the instrument name (IP and FRP)
+(like we do e.g for the picture for artists/places etc.)
+
+* TODO add a reader for collection detail popups
+
+add a reader for collection detail popups on e.g.https://musicbrainz.org/user/chaban/collections
+
+#+begin_example
+@debug/chaban-collections-initial.html 
+#+end_example
+
 
 * DONE add support for a tag reader
 

@@ -1,0 +1,184 @@
+[
+  {
+    "name": "cell anchor hard-coded back to Name",
+    "why": "On a Title/Recording page the rows get no cells while the headers are injected: every later column shifts two places.",
+    "edits": [
+      {
+        "find": "        const idx = headerNames.findIndex(n => n === _recOfDecl.after);",
+        "replace": "        const idx = headerNames.findIndex(n => n === 'Name');"
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-pagetypes.spec.js",
+    "grep": "isrc: the pair sits after",
+    "expect": "fail"
+  },
+  {
+    "name": "header anchor hard-coded back to Name",
+    "why": "On a Title/Recording page the cells are inserted but no header names them.",
+    "edits": [
+      {
+        "find": "        const nameTh = cells.find(th => nameOf(th) === _recOfDecl.after);",
+        "replace": "        const nameTh = cells.find(th => nameOf(th) === 'Name');"
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-pagetypes.spec.js",
+    "grep": "area-recordings: the pair sits after",
+    "expect": "fail"
+  },
+  {
+    "name": "_finalColNames splice anchored on Name",
+    "why": "On a Title page integer-column colIdx is resolved without the pair, so Length's styling lands two columns left.",
+    "edits": [
+      {
+        "find": "                        const _nameAt = _finalColNames.indexOf(_recOfDecl.after);",
+        "replace": "                        const _nameAt = _finalColNames.indexOf('Name');"
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-pagetypes.spec.js",
+    "grep": "isrc: Length keeps its integer-column styling",
+    "expect": "fail"
+  },
+  {
+    "name": "group setting ignored",
+    "why": "Unticking a page group's checkbox (sa_recording_of_on_*) no longer removes the pair.",
+    "edits": [
+      {
+        "find": "        if (decl.setting && Lib.settings[decl.setting] === false) return [];\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-pagetypes.spec.js",
+    "grep": "sa_recording_of_on_work off removes the pair",
+    "expect": "fail"
+  },
+  {
+    "name": "browseBy declaration dropped",
+    "why": "work-recordings looks up every row instead of answering them with one browse page.",
+    "edits": [
+      {
+        "find": "        const by = _recOfDecl.browseBy;\n        if (!by) return null;",
+        "replace": "        const by = null;\n        if (!by) return null;"
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-pagetypes.spec.js",
+    "grep": "work-recordings: ▶🎼 loads every row",
+    "expect": "fail"
+  },
+  {
+    "name": "browse parent taken from the URL, not the declaration",
+    "why": "Any artist/work/collection URL would browse by its own entity, declared or not. No lookup-only fixture page has such a URL (every one is search/isrc/instrument/series/ratings/tag/artist-credit/area), so the spec cannot see it; recorded so the gap is named, not hidden.",
+    "edits": [
+      {
+        "find": "        return m && m[1] === by ? { by, mbid: m[2] } : null;",
+        "replace": "        return m ? { by: m[1], mbid: m[2] } : null;"
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-pagetypes.spec.js",
+    "grep": "loads every row",
+    "expect": "pass"
+  },
+  {
+    "name": "glyph CSS not scoped to cells with an mbid",
+    "why": "A row whose anchor links no recording shows a 🎼 it cannot load.",
+    "edits": [
+      {
+        "find": "'td.mb-recof-cell[data-mbid]:not([data-recof])::before { content: \"🎼︎\"; opacity: 0.45; } '",
+        "replace": "'td.mb-recof-cell:not([data-recof])::before { content: \"🎼︎\"; opacity: 0.45; } '"
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-pagetypes.spec.js",
+    "grep": "links no recording",
+    "expect": "fail"
+  },
+  {
+    "name": "load-state classifier counts cells without an mbid",
+    "why": "📊 'Recording of - Load state' promises a row as 'not loaded yet' that can never load.",
+    "edits": [
+      {
+        "find": "        if (!cell || !cell.classList.contains('mb-recof-cell') || !cell.dataset.mbid) return null;",
+        "replace": "        if (!cell || !cell.classList.contains('mb-recof-cell')) return null;"
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-pagetypes.spec.js",
+    "grep": "links no recording",
+    "expect": "fail"
+  },
+  {
+    "name": "suggestions not gated on the declaration",
+    "why": "_recOfArtistMbid() already returns null off /artist/<mbid>, and no declared non-artist page has such a URL, so ungating suggestions changes nothing today; the gate keeps a future /artist/<mbid>/… declaration without `suggest` from loading a work list. Recorded as invisible.",
+    "edits": [
+      {
+        "find": "        if (!artist || !_recOfSuggestOn()) return false;",
+        "replace": "        if (!artist) return false;"
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-pagetypes.spec.js",
+    "grep": "loads every row",
+    "expect": "pass"
+  },
+  {
+    "name": "a restored Recording-of cell is taken for a Relationships cell (multi)",
+    "why": "Hydration tags both cells mb-rel-cell (their record carries an mbid), so the Relationships pass can remove one and shift every later column.",
+    "edits": [
+      {
+        "find": "                            if (_supportsRelAndCdtocFastPath && cellData.mbid && !cellData.recof) {",
+        "replace": "                            if (_supportsRelAndCdtocFastPath && cellData.mbid) {"
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-pagetypes.spec.js",
+    "grep": "Save / Load from Disk keeps the pair",
+    "expect": "fail"
+  },
+  {
+    "name": "a restored Recording-of cell is taken for a Relationships cell (single)",
+    "why": "Same as the multi branch, in the single-table restore: the cells carry mb-rel-cell after a disk load.",
+    "edits": [
+      {
+        "find": "                        // an mbid too — see the multi-table branch above.\n                        if (_supportsRelAndCdtocFastPath && cellData.mbid && !cellData.recof) {",
+        "replace": "                        // an mbid too — see the multi-table branch above.\n                        if (_supportsRelAndCdtocFastPath && cellData.mbid) {"
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-disk.spec.js",
+    "grep": "each header once",
+    "expect": "fail"
+  },
+  {
+    "name": "a restored Recording-of cell is taken for a Relationships cell (single, sub-table tab)",
+    "why": "On place-performances the Relationships pass removes the mis-tagged cell: the sub-table tab shows the Video value under Length.",
+    "edits": [
+      {
+        "find": "                        // an mbid too — see the multi-table branch above.\n                        if (_supportsRelAndCdtocFastPath && cellData.mbid && !cellData.recof) {",
+        "replace": "                        // an mbid too — see the multi-table branch above.\n                        if (_supportsRelAndCdtocFastPath && cellData.mbid) {"
+      }
+    ],
+    "spec": "tests/fixtures/subtable-tab-handoff.spec.js",
+    "grep": "hydrates from the captured snapshot",
+    "expect": "fail"
+  },
+  {
+    "name": "continuation merge ignores the inserted pair",
+    "why": "On search results a recording's extra releases are merged two columns early: Medium/Type keep one item, Picard misses releases.",
+    "edits": [
+      {
+        "find": "            if (insertedAfter >= 0 && dstIdx > insertedAfter) dstIdx += insertedCount;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/search-recordings-continuation.spec.js",
+    "grep": "continuation rows fold into the preceding row",
+    "expect": "fail"
+  },
+  {
+    "name": "continuation merge ignores the inserted pair (user's Born to Run search)",
+    "why": "The user-reported symptom: a recording's extra releases are merged under Artist/ISRCs, Medium/Type keep one item.",
+    "edits": [
+      {
+        "find": "            if (insertedAfter >= 0 && dstIdx > insertedAfter) dstIdx += insertedCount;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/recording-of-pagetypes.spec.js",
+    "grep": "releases never land under Artist",
+    "expect": "fail"
+  }
+]

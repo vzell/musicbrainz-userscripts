@@ -2028,14 +2028,95 @@
         },
 
         sa_enable_recording_of_column: {
-            label: 'Show "Recording of" and "Performance attributes" columns',
+            label: 'Show "Recording of" and "Performance attributes" columns on recording lists',
             type: 'checkbox',
             default: true,
-            description: 'On an artist\'s Recordings page, adds a "Recording of" column right after "Name" '
+            description: 'On an artist\'s Recordings page (and on the other recording lists chosen below), '
+                         + 'adds a "Recording of" column right after the recording\'s own column '
                          + '(the work each recording performs, with its attributes such as cover or live '
                          + 'in brackets) and a "Performance attributes" column (one row per attribute, plus '
                          + 'the date). Both are filled from the MusicBrainz Web Service only when you ask: '
-                         + 'click a cell\'s 🎼 to load one row, or the column header\'s ▶🎼 to load them all.'
+                         + 'click a cell\'s 🎼 to load one row, or the column header\'s ▶🎼 to load them all. '
+                         + 'When disabled, no page shows them.'
+        },
+
+        sa_recording_of_on_search: {
+            label: '"Recording of": also on recording search results',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds the two columns after "Name" on /search?type=recording. Loaded one recording per request.'
+        },
+
+        sa_recording_of_on_instrument: {
+            label: '"Recording of": also on an instrument\'s Recordings page',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds the two columns after "Name" on /instrument/…/recordings. Loaded one recording per request.'
+        },
+
+        sa_recording_of_on_series: {
+            label: '"Recording of": also on a recording series',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds the two columns after "Name" on a series of recordings (/series/…). '
+                         + 'Loaded one recording per request.'
+        },
+
+        sa_recording_of_on_collection: {
+            label: '"Recording of": also on a recording collection',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds the two columns after "Name" on a collection of recordings (/collection/…). '
+                         + 'Loading the whole column asks for the collection\'s recordings 100 at a time '
+                         + 'where that needs fewer requests (see "load many rows with one request" below).'
+        },
+
+        sa_recording_of_on_isrc: {
+            label: '"Recording of": also on an ISRC page',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds the two columns after "Title" on /isrc/…. Loaded one recording per request.'
+        },
+
+        sa_recording_of_on_area_place: {
+            label: '"Recording of": also on an area\'s Recordings and a place\'s Performances',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds the two columns after "Title" on /area/…/recordings and /place/…/performances. '
+                         + 'Loaded one recording per request.'
+        },
+
+        sa_recording_of_on_work: {
+            label: '"Recording of": also on a work\'s recordings',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds the two columns after "Title" on a work page (/work/…). Every row performs this '
+                         + 'work, so the columns mostly show the other works of a medley and the date. '
+                         + 'Loading the whole column asks for the work\'s recordings 100 at a time.'
+        },
+
+        sa_recording_of_on_tags: {
+            label: '"Recording of": also on tagged recordings',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds the two columns after "Recording" on /tag/…/recording and '
+                         + '/user/…/tag/…/recording. Loaded one recording per request.'
+        },
+
+        sa_recording_of_on_ratings: {
+            label: '"Recording of": also on a user\'s rated recordings',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds the two columns after "Recording" on /user/…/ratings/recording. '
+                         + 'Loaded one recording per request.'
+        },
+
+        sa_recording_of_on_artist_credit: {
+            label: '"Recording of": also on an artist credit\'s recordings',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds the two columns after "Recording" on /artist-credit/…/recording. '
+                         + 'Loaded one recording per request.'
         },
 
         sa_recording_of_cell_state_glyphs: {
@@ -2050,10 +2131,12 @@
             label: '"Recording of": load many rows with one request where cheaper',
             type: 'checkbox',
             default: true,
-            description: 'Loading the whole column first asks for the artist\'s recordings 100 at a time '
-                         + '(one request answers up to 100 rows). If the artist\'s catalogue is much larger '
-                         + 'than the rows on the page, it switches to one request per row instead, whichever '
-                         + 'needs fewer requests. When disabled, every row is looked up on its own.'
+            description: 'Loading the whole column first asks for the page\'s recordings 100 at a time '
+                         + '(one request answers up to 100 rows): the artist\'s on an artist\'s Recordings '
+                         + 'page, the work\'s on a work page, the collection\'s on a collection. If that '
+                         + 'catalogue is much larger than the rows on the page, it switches to one request '
+                         + 'per row instead, whichever needs fewer requests. Other pages always look up '
+                         + 'one row per request. When disabled, every row is looked up on its own.'
         },
 
         sa_recording_of_ttl_days: {
@@ -2070,9 +2153,11 @@
             label: '"Recording of": suggest a work for recordings without one',
             type: 'checkbox',
             default: true,
-            description: 'For a recording that has no "recording of" relationship yet, suggests the '
-                         + 'artist\'s work with the closest title (shown in orange, marked "suggested"). '
-                         + 'Needs the artist\'s work list, which is loaded with the column and cached.'
+            description: 'On an artist\'s Recordings page, for a recording that has no "recording of" '
+                         + 'relationship yet, suggests the artist\'s work with the closest title (shown in '
+                         + 'orange, marked "suggested"). Needs the artist\'s work list, which is loaded with '
+                         + 'the column and cached. Other recording lists have no single artist, so they '
+                         + 'show no suggestions.'
         },
 
         sa_recording_of_suggest_max_distance_pct: {
@@ -30339,12 +30424,21 @@
      * foreign userscript column or a setting-gated removal (Rating,
      * checkbox-cell, …) shifts everything left.
      *
+     * The base row also carries the "Recording of" / "Performance attributes"
+     * cells `_recOfInsertCells()` INSERTED after its anchor (search: "Name"),
+     * which no original index knows about: every destination right of the
+     * anchor moves right by that many cells, or Release's merged items land
+     * in Length and Medium/Type keep a single item.
+     *
      * @param {HTMLTableRowElement} baseRow          The preceding, fully-processed data row.
      * @param {HTMLTableRowElement} contRow          The raw continuation row from the fetched document.
      * @param {number}              headerCount      Number of ORIGINAL (pre-deletion) columns.
      * @param {number[]}            indicesToExclude Original indices deleted from every data row.
+     * @param {number}              [insertedAfter=-1] Post-deletion index of the cell the
+     *   "Recording of" pair follows (`_recOfAnchorIndex()`), or -1 when the row has none.
+     * @param {number}              [insertedCount=0]  How many cells were inserted there.
      */
-    function _mergeContinuationRowInto(baseRow, contRow, headerCount, indicesToExclude) {
+    function _mergeContinuationRowInto(baseRow, contRow, headerCount, indicesToExclude, insertedAfter = -1, insertedCount = 0) {
         const padded = _buildContinuationSourceRow(contRow);
 
         // Reuse the ordinary pipeline on the padded row so the merged content is
@@ -30361,6 +30455,7 @@
 
             let dstIdx = i;
             for (const ex of excluded) if (ex < i) dstIdx--;
+            if (insertedAfter >= 0 && dstIdx > insertedAfter) dstIdx += insertedCount;
 
             const src = padded.cells[i];
             const dst = baseRow.cells[dstIdx];
@@ -30561,6 +30656,9 @@
                     stickyColumn: 'Release'
                 },
                 'Recordings': {
+                    // "Recording of" + "Performance attributes" after the recording column (the _recOf* family; docs/claude/deferred-columns-picard-relationships.md).
+                    recordingOf: { after: 'Recording', setting: 'sa_recording_of_on_artist_credit' },
+                    collapsableColumns: [ 'Recording of', 'Performance attributes' ],
                     columnExtractors: [
                         { sourceColumn: 'Recording', extractor: 'video', syntheticColumns: ['Video'] }
                     ],
@@ -30979,6 +31077,9 @@
                     tooltipColumns: [ 'Artist', 'MB-Name' ]
                 },
                 'Recordings': {
+                    // "Recording of" + "Performance attributes" after the recording column (the _recOf* family; docs/claude/deferred-columns-picard-relationships.md).
+                    recordingOf: { after: 'Recording', setting: 'sa_recording_of_on_ratings' },
+                    collapsableColumns: [ 'Recording of', 'Performance attributes' ],
                     columnExtractors: [
                         { sourceColumn: 'Recording', extractor: 'video', syntheticColumns: ['Video'] }
                     ],
@@ -31464,6 +31565,9 @@
             match: (path) => path.match(/^\/isrc\/[^/]+\/?$/),
             buttons: [ { label: 'Show all Recordings' } ],
             features: {
+                // "Recording of" + "Performance attributes" after the recording column (the _recOf* family; docs/claude/deferred-columns-picard-relationships.md).
+                recordingOf: { after: 'Title', setting: 'sa_recording_of_on_isrc' },
+                collapsableColumns: [ 'Recording of', 'Performance attributes' ],
                 syntheticColumnExtractors: [
                     { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                 ],
@@ -31691,6 +31795,9 @@
                     tooltipColumns: [ 'MB-Name', ['(', 'Comment', ')'], 'Artist' ]
                 },
                 'Recordings': {
+                    // "Recording of" + "Performance attributes" after the recording column (the _recOf* family; docs/claude/deferred-columns-picard-relationships.md).
+                    recordingOf: { after: 'Recording', setting: 'sa_recording_of_on_tags' },
+                    collapsableColumns: [ 'Recording of', 'Performance attributes' ],
                     columnExtractors: [ { sourceColumn: 'Recording', extractor: 'artistCredit', syntheticColumns: ['Artist'] } ],
                     syntheticColumnExtractors: [
                         { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
@@ -31856,6 +31963,9 @@
                     tooltipColumns: [ 'MB-Name', 'Artist', '---', ['Tag count'] ]
                 },
                 'Recordings': {
+                    // "Recording of" + "Performance attributes" after the recording column (the _recOf* family; docs/claude/deferred-columns-picard-relationships.md).
+                    recordingOf: { after: 'Recording', setting: 'sa_recording_of_on_tags' },
+                    collapsableColumns: [ 'Recording of', 'Performance attributes' ],
                     columnExtractors: [
                         { sourceColumn: 'Recording', extractor: 'tagCount',     syntheticColumns: ['Tag count'] },
                         { sourceColumn: 'Recording', extractor: 'artistCredit', syntheticColumns: ['Artist'] }
@@ -32078,6 +32188,10 @@
                     stickyColumn: 'Label'
                 },
                 'Recordings': {
+                    // "Recording of" + "Performance attributes" after the recording column (the _recOf* family; docs/claude/deferred-columns-picard-relationships.md).
+                    // browseBy probed 2026-10-19 (scripts/probe-recording-work-rels.py --by): browse = lookup relations on every sample.
+                    recordingOf: { after: 'Name', browseBy: 'collection', setting: 'sa_recording_of_on_collection' },
+                    collapsableColumns: [ 'Recording of', 'Performance attributes' ],
                     columnExtractors: [
                         { sourceColumn: 'Name', extractor: 'video', syntheticColumns: ['Video'] }
                     ],
@@ -32346,6 +32460,8 @@
                     stickyColumn: 'Release group'
                 },
                 'Recordings': {
+                    // "Recording of" + "Performance attributes" after the recording column (the _recOf* family; docs/claude/deferred-columns-picard-relationships.md).
+                    recordingOf: { after: 'Name', setting: 'sa_recording_of_on_search' },
                     // 'jesus2099' eraser — see WIP.81 (doubled CAA inline images).
                     columnErasers: [ { sourceColumn: 'Release', erasers: ['jesus2099'] } ],
                     columnExtractors: [
@@ -32365,7 +32481,7 @@
                     // structure as a ten-release one.
                     mergeContinuationRows: true,
                     renderMultiRowCell: [ 'Release', 'Track', 'Medium', 'Type' ],
-                    collapsableColumns: [ 'ISRCs', 'Release', 'Track', 'Medium', 'Type' ],
+                    collapsableColumns: [ 'ISRCs', 'Release', 'Track', 'Medium', 'Type', 'Recording of', 'Performance attributes' ],
                     msTrackLengthBatch: true,   // results span every entity — see _msLengthSource()
                     integerColumns: [
                         { sourceColumn: 'Medium', align: 'R' },
@@ -32533,6 +32649,8 @@
             match: (path) => path.match(/\/instrument\/[a-f0-9-]{36}\/recordings/),
             buttons: [ { label: 'Show all Recordings for Instrument', shortLabel: 'Recordings' } ],
             features: {
+                // "Recording of" + "Performance attributes" after the recording column (the _recOf* family; docs/claude/deferred-columns-picard-relationships.md).
+                recordingOf: { after: 'Name', setting: 'sa_recording_of_on_instrument' },
                 columnExtractors: [
                     { sourceColumn: 'Name', extractor: 'video', syntheticColumns: ['Video'] }
                 ],
@@ -32540,7 +32658,7 @@
                     { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                 ],
                 renderMultiRowCell: [ 'Relationship types' ],
-                collapsableColumns: [ 'ISRCs', 'Relationship types' ],
+                collapsableColumns: [ 'ISRCs', 'Relationship types', 'Recording of', 'Performance attributes' ],
                 msTrackLengthBatch: true,   // instrument inc=recording-rels is empty — see _msWs2PageKey()
                 integerColumns: [
                     { sourceColumn: 'Length', align: ':' }
@@ -32830,6 +32948,9 @@
             match: (path, params) => path.match(/\/area\/[a-f0-9-]{36}\/recordings/) && params.has('link_type_id'),
             buttons: [ { label: 'Show all Recordings for Area (complete)', shortLabel: 'Recordings (complete)' } ],
             features: {
+                // "Recording of" + "Performance attributes" after the recording column (the _recOf* family; docs/claude/deferred-columns-picard-relationships.md).
+                recordingOf: { after: 'Title', setting: 'sa_recording_of_on_area_place' },
+                collapsableColumns: [ 'Recording of', 'Performance attributes' ],
                 columnExtractors: [
                     { sourceColumn: 'Title', extractor: 'video', syntheticColumns: ['Video'] },
                     { sourceColumn: 'Date',  extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
@@ -32852,6 +32973,9 @@
             match: (path, params) => path.match(/\/area\/[a-f0-9-]{36}\/recordings/) && !params.has('link_type_id'),
             buttons: [ { label: 'Show all Recordings for Area', shortLabel: 'Recordings' } ],
             features: {
+                // "Recording of" + "Performance attributes" after the recording column (the _recOf* family; docs/claude/deferred-columns-picard-relationships.md).
+                recordingOf: { after: 'Title', setting: 'sa_recording_of_on_area_place' },
+                collapsableColumns: [ 'Recording of', 'Performance attributes' ],
                 columnExtractors: [
                     { sourceColumn: 'Title', extractor: 'video', syntheticColumns: ['Video'] },
                     { sourceColumn: 'Date',  extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
@@ -32950,6 +33074,8 @@
             match: (path, params) => path.match(/\/place\/[a-f0-9-]{36}\/performances/) && params.has('link_type_id'),
             buttons: [ { label: 'Show all Performances for Place (complete)', shortLabel: 'Performances (complete)' } ],
             features: {
+                // "Recording of" + "Performance attributes" after the recording column (the _recOf* family; docs/claude/deferred-columns-picard-relationships.md).
+                recordingOf: { after: 'Title', setting: 'sa_recording_of_on_area_place' },
                 columnExtractors: [
                     { sourceColumn: 'Title', extractor: 'video',     syntheticColumns: ['Video'] },
                     { sourceColumn: 'Date',  extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
@@ -32968,7 +33094,7 @@
                     {sourceColumn: 'R-DD',   align: 'R'}, {sourceColumn: 'R-MM', align: 'R'}, {sourceColumn: 'R-YYYY', align: 'C'},
                     {sourceColumn: 'Length', align: ':'}
                 ],
-                collapsableColumns: [ 'Release events', 'Release country', 'Release date' ],
+                collapsableColumns: [ 'Release events', 'Release country', 'Release date', 'Recording of', 'Performance attributes' ],
                 addCAA: 'Title',
                 extractMainColumn: 'Title',
                 stickyColumn: 'Title'
@@ -32980,6 +33106,8 @@
             match: (path, params) => path.match(/\/place\/[a-f0-9-]{36}\/performances/) && !params.has('link_type_id'),
             buttons: [ { label: 'Show all Performances for Place', shortLabel: 'Performances' } ],
             features: {
+                // "Recording of" + "Performance attributes" after the recording column (the _recOf* family; docs/claude/deferred-columns-picard-relationships.md).
+                recordingOf: { after: 'Title', setting: 'sa_recording_of_on_area_place' },
                 columnExtractors: [
                     { sourceColumn: 'Title', extractor: 'video',     syntheticColumns: ['Video'] },
                     { sourceColumn: 'Date',  extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
@@ -32998,7 +33126,7 @@
                     {sourceColumn: 'R-DD',   align: 'R'}, {sourceColumn: 'R-MM', align: 'R'}, {sourceColumn: 'R-YYYY', align: 'C'},
                     {sourceColumn: 'Length', align: ':'}
                 ],
-                collapsableColumns: [ 'Release events', 'Release country', 'Release date' ],
+                collapsableColumns: [ 'Release events', 'Release country', 'Release date', 'Recording of', 'Performance attributes' ],
                 addCAA: 'Title',
                 extractMainColumn: 'Title',
                 stickyColumn: 'Title'
@@ -33104,6 +33232,9 @@
                     stickyColumn: 'Title'
                 },
                 'Recordings': {
+                    // "Recording of" + "Performance attributes" after the recording column (the _recOf* family; docs/claude/deferred-columns-picard-relationships.md).
+                    recordingOf: { after: 'Name', setting: 'sa_recording_of_on_series' },
+                    collapsableColumns: [ 'Recording of', 'Performance attributes' ],
                     columnExtractors: [
                         { sourceColumn: 'Name', extractor: 'video', syntheticColumns: ['Video'] }
                     ],
@@ -33222,6 +33353,10 @@
             match: (path, params) => path.match(/\/work\/[a-f0-9-]{36}/) && params.has('link_type_id'),
             buttons: [ { label: 'Show all Recordings for Work (complete)', shortLabel: 'Recordings (complete)' } ],
             features: {
+                // "Recording of" + "Performance attributes" after the recording column (the _recOf* family; docs/claude/deferred-columns-picard-relationships.md).
+                // browseBy probed 2026-10-19 (scripts/probe-recording-work-rels.py --by): browse = lookup relations on every sample.
+                recordingOf: { after: 'Title', browseBy: 'work', setting: 'sa_recording_of_on_work' },
+                collapsableColumns: [ 'Recording of', 'Performance attributes' ],
                 columnExtractors: [
                     { sourceColumn: 'Date',  extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] },
                     { sourceColumn: 'Title', extractor: 'video',     syntheticColumns: ['Video'] }
@@ -33244,6 +33379,10 @@
                 _relTablesButton('work-relationship-tables', 'Work', {})
             ],
             features: {
+                // "Recording of" + "Performance attributes" after the recording column (the _recOf* family; docs/claude/deferred-columns-picard-relationships.md).
+                // browseBy probed 2026-10-19 (scripts/probe-recording-work-rels.py --by): browse = lookup relations on every sample.
+                recordingOf: { after: 'Title', browseBy: 'work', setting: 'sa_recording_of_on_work' },
+                collapsableColumns: [ 'Recording of', 'Performance attributes' ],
                 columnExtractors: [
                     { sourceColumn: 'Date',  extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] },
                     { sourceColumn: 'Title', extractor: 'video',     syntheticColumns: ['Video'] }
@@ -33455,8 +33594,10 @@
                 ],
                 msTrackLengthBatch: true,   // no single lookup covers this — see _msLengthSource()
                 // "Recording of" + "Performance attributes" after "Name"
-                // (buildActiveRecordingOfColumns(), the _recOf* family).
-                recordingOf: true,
+                // (buildActiveRecordingOfColumns(), the _recOf* family). The
+                // only pageType with suggestions: the artist's work list.
+                // Browse by artist probed: scripts/probe-recording-work-rels.py.
+                recordingOf: { after: 'Name', browseBy: 'artist', suggest: true },
                 integerColumns: [ {sourceColumn: 'Length', align: ':'} ],
                 collapsableColumns: [ 'Release groups', 'CAA', 'ISRCs', 'Recording of', 'Performance attributes' ],
                 tooltipColumns: [ 'Release groups', 'Name', 'italic:Comment', 'Artist', '---', ['Length', '-', 'Video'], 'ISRCs' ],
@@ -72288,7 +72429,7 @@ a { color: #1565c0; }`;
         td.mb-recof-cell li.mb-recof-suggested, td.mb-recof-cell li.mb-recof-suggested a { color: #c76a12; font-style: italic; }
         td.mb-recof-cell .mb-recof-sugg-mark { font-size: 0.9em; }
         td.mb-recof-cell ul, td.mb-perfattr-cell ul { margin: 0; padding-left: 0; list-style: none; }
-        ${Lib.settings.sa_recording_of_cell_state_glyphs === false ? '' : 'td.mb-recof-cell:not([data-recof]), td.mb-recof-cell[data-recof="error"] { cursor: pointer; text-align: center; } ' + 'td.mb-recof-cell:not([data-recof])::before { content: "🎼︎"; opacity: 0.45; } ' + 'td.mb-recof-cell:not([data-recof]):hover::before { opacity: 1; } ' + 'td.mb-recof-cell[data-recof="queued"]::before { content: "⋯"; opacity: 0.6; } ' + 'td.mb-recof-cell[data-recof="loading"]::before { content: "◌"; } ' + 'td.mb-recof-cell[data-recof="none"]::before { content: "–"; opacity: 0.5; } ' + 'td.mb-recof-cell[data-recof="error"]::before { content: "⚠︎"; color: #b00020; } ' + 'td.mb-recof-cell[data-recof="error"]:hover::before { content: "⟳"; }'}
+        ${Lib.settings.sa_recording_of_cell_state_glyphs === false ? '' : 'td.mb-recof-cell[data-mbid]:not([data-recof]), td.mb-recof-cell[data-recof="error"] { cursor: pointer; text-align: center; } ' + 'td.mb-recof-cell[data-mbid]:not([data-recof])::before { content: "🎼︎"; opacity: 0.45; } ' + 'td.mb-recof-cell[data-mbid]:not([data-recof]):hover::before { opacity: 1; } ' + 'td.mb-recof-cell[data-recof="queued"]::before { content: "⋯"; opacity: 0.6; } ' + 'td.mb-recof-cell[data-recof="loading"]::before { content: "◌"; } ' + 'td.mb-recof-cell[data-recof="none"]::before { content: "–"; opacity: 0.5; } ' + 'td.mb-recof-cell[data-recof="error"]::before { content: "⚠︎"; color: #b00020; } ' + 'td.mb-recof-cell[data-recof="error"]:hover::before { content: "⟳"; }'}
 
         /* Per-column ▶N▤/▼N▤ multi-row collapse toggle, inserted into the
            .mb-col-hdr-flex row immediately before the 📊 unique-values button.
@@ -88887,10 +89028,11 @@ a { color: #1565c0; }`;
                         entry.syntheticColumns.forEach(cn => _finalColNames.push(cn));
                     });
                     // 8. "Recording of" / "Performance attributes" sit right after
-                    //    "Name": _recOfInsertCells() puts their cells there BEFORE
-                    //    integer styling, so every colIdx below must count them.
+                    //    the anchor (_recOfDecl.after: "Name", "Title" or
+                    //    "Recording"): _recOfInsertCells() puts their cells there
+                    //    BEFORE integer styling, so every colIdx below must count them.
                     if (activeRecordingOfColumns.length) {
-                        const _nameAt = _finalColNames.indexOf('Name');
+                        const _nameAt = _finalColNames.indexOf(_recOfDecl.after);
                         if (_nameAt !== -1) _finalColNames.splice(_nameAt + 1, 0, ...activeRecordingOfColumns.map(e => e.colName));
                     }
                     // Resolve colIdx for each integerColumns descriptor
@@ -89787,7 +89929,8 @@ a { color: #1565c0; }`;
                                         : (allRows.length > 0 ? allRows[allRows.length - 1] : null);
 
                                     if (_contBaseRow) {
-                                        _mergeContinuationRowInto(_contBaseRow, node, headerNames.length, indicesToExclude);
+                                        _mergeContinuationRowInto(_contBaseRow, node, headerNames.length, indicesToExclude,
+                                            _recOfAfterIdx, _recOfAfterIdx >= 0 ? activeRecordingOfColumns.length : 0);
                                     } else {
                                         Lib.warn('parse', 'mergeContinuationRows: continuation row with no preceding data row — dropped');
                                     }
@@ -111474,7 +111617,7 @@ a { color: #1565c0; }`;
     const _recOf = {
         running: false, rerun: false, source: '', why: '', requests: 0, planned: 0,
         total: 0, done: 0, failed: 0, mem: 0, idb: 0, net: 0,
-        browseCount: null, storeCount: null, storeCountAt: 0,
+        browseCount: null, browseBy: 'artist', storeCount: null, storeCountAt: 0,
         refreshTimer: 0, lastRefresh: 0,
         // Cached count of unanswered rows (null = recompute). Read on every
         // render tail through _recOfUpdateHdrBtns(), so it must not walk the
@@ -111483,37 +111626,72 @@ a { color: #1565c0; }`;
     };
     /** The artist's work list behind the suggestions, once loaded. */
     let _recOfWorks = null;
+    /**
+     * The page's normalised `features.recordingOf` declaration, set by
+     * `buildActiveRecordingOfColumns()`. `after` is the header the two
+     * columns follow, `browseBy` the WS/2 browse parent for "load all"
+     * (absent = lookups only), `suggest` whether the artist's work list
+     * feeds suggestions. The default is artist-recordings' own declaration.
+     * @type {{after: string, browseBy: ?string, suggest: boolean}}
+     */
+    let _recOfDecl = { after: 'Name', browseBy: 'artist', suggest: true };
+
+    /**
+     * Normalises a `features.recordingOf` value: `true` is artist-recordings'
+     * declaration (after "Name", browse by artist, suggestions on); an object
+     * names its own anchor, browse parent and group setting.
+     *
+     * @param {true|{after?: string, browseBy?: string, suggest?: boolean, setting?: string}} raw
+     * @returns {{after: string, browseBy: ?string, suggest: boolean, setting: ?string}}
+     */
+    function _recOfNormDecl(raw) {
+        if (raw === true) return { after: 'Name', browseBy: 'artist', suggest: true, setting: null };
+        return {
+            after: raw.after || 'Name',
+            browseBy: raw.browseBy || null,
+            suggest: raw.suggest === true,
+            setting: raw.setting || null
+        };
+    }
 
     /**
      * Builds the active "Recording of" column list from the page definition:
-     * both columns when the pageType declares `features.recordingOf` and
-     * `sa_enable_recording_of_column` is on, else none.
+     * both columns when the pageType declares `features.recordingOf`,
+     * `sa_enable_recording_of_column` is on and the declaration's own group
+     * setting (`setting`, e.g. `sa_recording_of_on_search`) is not off, else
+     * none. Also records the declaration in `_recOfDecl`.
      *
      * @param {Object} def - Merged activeDefinition.
      * @returns {{colName: string}[]}
      */
     function buildActiveRecordingOfColumns(def) {
-        if (!def?.features?.recordingOf || Lib.settings.sa_enable_recording_of_column === false) return [];
+        const raw = def?.features?.recordingOf;
+        if (!raw || Lib.settings.sa_enable_recording_of_column === false) return [];
+        const decl = _recOfNormDecl(raw);
+        if (decl.setting && Lib.settings[decl.setting] === false) return [];
+        _recOfDecl = decl;
         return [{ colName: _RECOF_COL }, { colName: _RECOF_ATTR_COL }];
     }
 
     /**
-     * The index the "Name" cell has in an assembled row, i.e. AFTER the
-     * excluded columns were deleted — where the two new cells go after.
+     * The index the anchor cell (`_recOfDecl.after`: "Name", "Title" or
+     * "Recording") has in an assembled row, i.e. AFTER the excluded columns
+     * were deleted — where the two new cells go after.
      *
      * @param {string[]} headerNames      The fetched page's header texts.
      * @param {number[]} indicesToExclude Original indices deleted from every row.
-     * @returns {number} `-1` when the page has no "Name" column.
+     * @returns {number} `-1` when the page has no anchor column.
      */
     function _recOfAnchorIndex(headerNames, indicesToExclude) {
-        const idx = headerNames.findIndex(n => n === 'Name');
+        const idx = headerNames.findIndex(n => n === _recOfDecl.after);
         if (idx < 0 || indicesToExclude.includes(idx)) return -1;
         return idx - indicesToExclude.filter(i => i < idx).length;
     }
 
     /**
-     * Inserts the two column headers right after the "Name" header.
-     * Idempotent: a header row that already has them is left alone.
+     * Inserts the two column headers right after the anchor header
+     * (`_recOfDecl.after`). Idempotent: a header row that already has them
+     * is left alone.
      *
      * @param {HTMLTableRowElement} theadRow
      * @returns {void}
@@ -111525,7 +111703,7 @@ a { color: #1565c0; }`;
         // injected the pair a second time and shifted every later column.
         const nameOf = th => th.dataset.colName || th.textContent.replace(/[\u21c5\u25b2\u25bc\u2702\u25b6\u25c0\u25a4]/g, '').trim();
         if (cells.some(th => nameOf(th) === _RECOF_COL)) return;
-        const nameTh = cells.find(th => nameOf(th) === 'Name');
+        const nameTh = cells.find(th => nameOf(th) === _recOfDecl.after);
         if (!nameTh) return;
         const bg = Lib.settings.sa_ui_thead_th_injected_bg || '#b8b8d0';
         const mk = (name, tip) => {
@@ -111544,12 +111722,13 @@ a { color: #1565c0; }`;
             mk(_RECOF_ATTR_COL, 'Injected column — the performance attributes of the recording\'s '
                 + '"recording of" relationships, one per row, plus the date.')
         );
-        Lib.debug('cleanup', `Injected "${_RECOF_COL}" / "${_RECOF_ATTR_COL}" headers after "Name"`);
+        Lib.debug('cleanup', `Injected "${_RECOF_COL}" / "${_RECOF_ATTR_COL}" headers after "${_recOfDecl.after}"`);
     }
 
     /**
-     * Inserts the two (empty) cells right after a row's "Name" cell, keyed by
-     * the recording MBID the Name cell links. Runs during row assembly, BEFORE
+     * Inserts the two (empty) cells right after a row's anchor cell, keyed by
+     * the recording MBID the anchor cell links (none when it links no
+     * recording: such a cell stays inert, see `_recOfCellLoadState()`). Runs during row assembly, BEFORE
      * integer-column styling, so `_finalColNames` (which names these columns
      * at the same place) keeps every positional colIdx right.
      *
@@ -111574,7 +111753,7 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * The recording MBID a Name cell links.
+     * The recording MBID an anchor cell links.
      * @param {Element} cell
      * @returns {?string}
      */
@@ -111585,7 +111764,7 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * The recording's own title, from the Name cell left of a "Recording of"
+     * The recording's own title, from the anchor cell left of a "Recording of"
      * cell (the link text, without the disambiguation comment).
      * @param {HTMLTableCellElement} td - A `td.mb-recof-cell`.
      * @returns {string}
@@ -111602,10 +111781,11 @@ a { color: #1565c0; }`;
      * count and the rows its entry filters to cannot disagree.
      *
      * @param {?HTMLTableCellElement} cell
-     * @returns {?('pending'|'has'|'suggested'|'none'|'error')} null for any other cell.
+     * @returns {?('pending'|'has'|'suggested'|'none'|'error')} null for any
+     *   other cell, and for one whose row links no recording (nothing to load).
      */
     function _recOfCellLoadState(cell) {
-        if (!cell || !cell.classList.contains('mb-recof-cell')) return null;
+        if (!cell || !cell.classList.contains('mb-recof-cell') || !cell.dataset.mbid) return null;
         const st = cell.dataset.recof;
         if (st === 'has' || st === 'suggested' || st === 'none' || st === 'error') return st;
         return 'pending';   // not asked for, queued or loading
@@ -111979,6 +112159,46 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * What `_recOfSnapshot()` calls a browse parent: `[catalogue suffix,
+     * owner]` — "N recordings by this artist", "the artist's recordings".
+     */
+    const _RECOF_BROWSE_NOUN = {
+        artist: ['by this artist', 'the artist\'s'],
+        work: ['of this work', 'the work\'s'],
+        collection: ['in this collection', 'the collection\'s']
+    };
+
+    /**
+     * The WS/2 browse source "load all" may use on this page, or null:
+     * `/ws/2/recording?<by>=<mbid>`. Declared per pageType as
+     * `recordingOf.browseBy` — only for a parent whose browse answer equals
+     * the lookup's (scripts/probe-recording-work-rels.py, tests/MEASUREMENTS.org),
+     * because a browse answer is cached under the lookup's key. The URL's own
+     * entity must be that parent too: some `match()` functions are looser than
+     * the page they are named for (the `_relBrowseSource()` guard).
+     *
+     * @returns {?{by: string, mbid: string}}
+     */
+    function _recOfBrowseSource() {
+        const by = _recOfDecl.browseBy;
+        if (!by) return null;
+        const m = window.location.pathname.match(
+            /^\/(artist|work|collection)\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/
+        );
+        return m && m[1] === by ? { by, mbid: m[2] } : null;
+    }
+
+    /**
+     * Whether this page's rows get work suggestions: only where the page
+     * declares them (artist-recordings — the work list is the artist's) and
+     * `sa_recording_of_suggest_enable` is on.
+     * @returns {boolean}
+     */
+    function _recOfSuggestOn() {
+        return _recOfDecl.suggest && Lib.settings.sa_recording_of_suggest_enable !== false;
+    }
+
+    /**
      * Loads every unanswered row: memory, then IndexedDB, then the network —
      * one browse page of the artist's recordings first (it answers up to 100
      * rows AND tells how big the catalogue is), then whichever is cheaper for
@@ -112046,16 +112266,17 @@ a { color: #1565c0; }`;
             _recOfApply(index, id, rels);
             return true;
         };
-        const artist = _recOfArtistMbid();
-        if (wanted.size > 1 && artist && Lib.settings.sa_recording_of_browse_batch_enable !== false) {
+        const src = _recOfBrowseSource();
+        if (wanted.size > 1 && src && Lib.settings.sa_recording_of_browse_batch_enable !== false) {
             _recOf.source = 'browse';
+            _recOf.browseBy = src.by;
             _recOf.why = 'the first page also tells how big the catalogue is';
             let offset = 0;
             let pages = null;
             while (wanted.size) {
                 index = _recOfCellIndex();
                 const res = await _recOfGet(
-                    `/ws/2/recording?artist=${artist}&inc=work-rels&limit=${_RECOF_PAGE}&offset=${offset}&fmt=json`,
+                    `/ws/2/recording?${src.by}=${src.mbid}&inc=work-rels&limit=${_RECOF_PAGE}&offset=${offset}&fmt=json`,
                     `browse offset ${offset}`);
                 if (!res.ok || !res.data) {
                     _ajLog('recof', null, 'browse failed — looking up the rest one by one', 'bad');
@@ -112144,7 +112365,7 @@ a { color: #1565c0; }`;
         }
         index = _recOfCellIndex();
         if (rels) {
-            if (!rels.length && !_recOfWorks) await _recOfEnsureWorks(false);
+            if (!rels.length && !_recOfWorks && _recOfSuggestOn()) await _recOfEnsureWorks(false);
             _recOfApply(index, id, rels);
         } else {
             _recOfMark(index, id, 'error');
@@ -112273,7 +112494,7 @@ a { color: #1565c0; }`;
      */
     async function _recOfEnsureWorks(allowNetwork, force) {
         const artist = _recOfArtistMbid();
-        if (!artist || Lib.settings.sa_recording_of_suggest_enable === false) return false;
+        if (!artist || !_recOfSuggestOn()) return false;
         if (_recOfWorks && _recOfWorks.artist === artist && !force) return true;
         const d = Lib.settings.sa_recording_of_works_ttl_days;
         const ttl = (typeof d === 'number' && d > 0 ? d : 30) * 86400000;
@@ -112456,7 +112677,7 @@ a { color: #1565c0; }`;
                 return;
             }
             const td = e.target.closest && e.target.closest('td.mb-recof-cell');
-            if (!td || e.target.closest('a')) return;
+            if (!td || !td.dataset.mbid || e.target.closest('a')) return;
             const st = td.dataset.recof;
             if (st && st !== 'error') return;
             e.preventDefault();
@@ -112507,18 +112728,19 @@ a { color: #1565c0; }`;
             ['This session', `${fmt(_recOfMem.size)} answers in memory`]
         ];
         if (job) cache.push(['This run', `${fmt(_recOf.mem)} memory · ${fmt(_recOf.idb)} IndexedDB · ${fmt(_recOf.net)} network`]);
+        // The work list exists only where suggestions apply (artist-recordings).
         if (_recOfWorks) {
             cache.push(['Work list', `${fmt(_recOfWorks.works.length)} works (${_recOfWorks.source}, ${new Date(_recOfWorks.ts).toLocaleString()})`]);
-        } else {
+        } else if (_recOfDecl.suggest) {
             cache.push(['Work list', Lib.settings.sa_recording_of_suggest_enable === false ? 'suggestions are off' : 'not loaded yet']);
         }
         const actions = [];
         if (!_recOf.running && _recOf.failed) actions.push({ id: 'retry', label: `Retry ${_recOf.failed} failed`, kind: 'danger' });
-        if (!_recOf.running && Lib.settings.sa_recording_of_suggest_enable !== false) actions.push({ id: 'works', label: '⟳ Reload work list', kind: 'primary' });
+        if (!_recOf.running && _recOfSuggestOn()) actions.push({ id: 'works', label: '⟳ Reload work list', kind: 'primary' });
         if (!job) {
             const pending = _recOfPendingCount();
             const facts = [['Rows', `${fmt(pending)} recordings not loaded`]];
-            if (_recOf.browseCount) facts.push(['Catalogue', `${fmt(_recOf.browseCount)} recordings by this artist`]);
+            if (_recOf.browseCount) facts.push(['Catalogue', `${fmt(_recOf.browseCount)} recordings ${(_RECOF_BROWSE_NOUN[_recOf.browseBy] || [''])[0]}`.trim()]);
             return {
                 phase: 'idle',
                 summary: pending ? 'Not loaded. Click ▶🎼 to load every row, or a 🎼 cell to load one.' : 'Every row is loaded.',
@@ -112527,7 +112749,7 @@ a { color: #1565c0; }`;
         }
         const queued = Math.max(0, _recOf.total - _recOf.done - _recOf.failed);
         const facts = [
-            ['Source', _recOf.source === 'browse' ? 'the artist\'s recordings, 100 per request'
+            ['Source', _recOf.source === 'browse' ? `${(_RECOF_BROWSE_NOUN[_recOf.browseBy] || ['', 'the page\'s'])[1]} recordings, 100 per request`
                 : _recOf.source === 'lookup' ? 'one request per recording' : 'cache only'],
         ];
         if (_recOf.why) facts.push(['Why', _recOf.why]);
@@ -118122,7 +118344,11 @@ a { color: #1565c0; }`;
                             // _ensureRelCell()/initRelationshipsColumn() see it
                             // as already populated and skip re-fetching it —
                             // see saveTableDataToDisk's _buildDiskCellData().
-                            if (_supportsRelAndCdtocFastPath && cellData.mbid) {
+                            // A "Recording of" cell record carries an mbid too
+                            // (`recof`): it is NOT a Relationships cell, and
+                            // taking it for one let the Relationships pass
+                            // remove it, shifting every later column.
+                            if (_supportsRelAndCdtocFastPath && cellData.mbid && !cellData.recof) {
                                 td.className = 'mb-rel-cell';
                                 td.dataset.mbid = cellData.mbid;
                                 if (cellData.relDone) td.dataset.relDone = '1';
@@ -118286,8 +118512,10 @@ a { color: #1565c0; }`;
                         // Mark a restored Relationships cell so
                         // _ensureRelCell()/initRelationshipsColumn() see it as
                         // already populated and skip re-fetching it — see
-                        // saveTableDataToDisk's _buildDiskCellData().
-                        if (_supportsRelAndCdtocFastPath && cellData.mbid) {
+                        // saveTableDataToDisk's _buildDiskCellData(). Not a
+                        // "Recording of" cell record (`recof`), which carries
+                        // an mbid too — see the multi-table branch above.
+                        if (_supportsRelAndCdtocFastPath && cellData.mbid && !cellData.recof) {
                             td.className = 'mb-rel-cell';
                             td.dataset.mbid = cellData.mbid;
                             if (cellData.relDone) td.dataset.relDone = '1';

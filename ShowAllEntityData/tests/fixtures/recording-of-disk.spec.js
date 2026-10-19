@@ -65,6 +65,12 @@ test.describe('"Recording of" through Save / Load from Disk', () => {
         const rec = await columnCells(page2, 'Recording of');
         const row = DATA.recordings.findIndex((r) => r.title === 'Jungleland');
         expect(rec[row]).toMatchObject({ state: 'has', text: 'Jungleland (instrumental)' });
+        // Neither restored cell is taken for a Relationships cell: both carry
+        // an mbid in the file, and on a page WITH a Relationships column
+        // (place-performances, subtable-tab-handoff.spec.js) the
+        // Relationships pass removed the one it took, shifting every column.
+        await expect(page2.locator('td.mb-recof-cell, td.mb-perfattr-cell')).not.toHaveCount(0);
+        await expect(page2.locator('td.mb-recof-cell.mb-rel-cell, td.mb-perfattr-cell.mb-rel-cell')).toHaveCount(0);
         // A row that was not loaded is still loadable after the round trip.
         const other = DATA.recordings.findIndex((r) => r.title === 'Hungry Heart');
         expect(rec[other].state).toBeNull();

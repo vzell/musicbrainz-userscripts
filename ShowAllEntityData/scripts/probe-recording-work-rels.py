@@ -22,9 +22,14 @@ Questions:
 
 Every request is spaced >= 1.1 s and 503s are retried with a widening backoff.
 
+With `--by ENTITY:MBID` (repeatable) only questions 1 and 2 run, browsing
+by that parent instead of the artist — the gate for `recordingOf.browseBy`
+on work-recordings (`work`) and collections' Recordings (`collection`).
+
 usage:
   python3 scripts/probe-recording-work-rels.py
   python3 scripts/probe-recording-work-rels.py --sample 6 --out debug/probe-recording-work-rels.json
+  python3 scripts/probe-recording-work-rels.py --sample 8 --by work:<mbid> --by collection:<mbid>
 """
 import argparse
 import datetime
@@ -91,13 +96,69 @@ def multiset(rels):
     return out
 
 
+def probe_by(by, mbid, sample):
+    """Questions 1 and 2 only, for a browse parent other than the artist.
+
+    Gates `recordingOf.browseBy` on the other recording pageTypes
+    (work-recordings: `work`, collections-releases' Recordings: `collection`):
+    a parent is declared only when browse is accepted, pages at 100, carries
+    `relations` on every record, and equals the lookup on every sampled
+    recording — browse answers are cached under the lookup's key.
+
+    @param by:     WS/2 browse parameter (`work`, `collection`, `release`).
+    @param mbid:   The parent entity's MBID.
+    @param sample: How many recordings of page 1 to compare with a lookup.
+    @return:       dict with `browse` and `parity`.
+    """
+    out = {'by': by, 'mbid': mbid}
+    print(f'== 1. recording browse by {by}, inc=work-rels ==', flush=True)
+    st, data = fetch(f'{BASE}/recording?{by}={mbid}&inc=work-rels&limit=100&offset=0&fmt=json')
+    recs = data.get('recordings', []) if isinstance(data, dict) else []
+    out['browse'] = {
+        'status': st,
+        'recording-count': data.get('recording-count') if isinstance(data, dict) else None,
+        'page_size': len(recs),
+        'records_without_relations_key': sum(1 for r in recs if 'relations' not in r),
+        'records_with_a_performance_rel': sum(1 for r in recs if any(x.get('type') == 'performance' for x in r.get('relations') or [])),
+    }
+    print(json.dumps(out['browse'], indent=2), flush=True)
+    print(f'== 2. parity browse by {by} vs lookup ==', flush=True)
+    by_rels = sorted(recs, key=lambda r: -len(r.get('relations') or []))
+    picked = by_rels[:max(1, sample // 2)] + recs[:sample - max(1, sample // 2)]
+    seen, parity = set(), []
+    for r in picked:
+        if r['id'] in seen:
+            continue
+        seen.add(r['id'])
+        st2, look = fetch(f'{BASE}/recording/{r["id"]}?inc=work-rels&fmt=json')
+        same = isinstance(look, dict) and multiset(look.get('relations')) == multiset(r.get('relations'))
+        parity.append({'id': r['id'], 'title': r.get('title'), 'browse_rels': len(r.get('relations') or []),
+                       'lookup_rels': len(look.get('relations') or []) if isinstance(look, dict) else None,
+                       'status': st2, 'equal': same})
+        print(f'  {r["id"]} {r.get("title")!r}: browse {parity[-1]["browse_rels"]} lookup {parity[-1]["lookup_rels"]} equal={same}', flush=True)
+    out['parity'] = parity
+    return out
+
+
 def main():
     """Runs the five questions and prints/saves the findings."""
     ap = argparse.ArgumentParser()
     ap.add_argument('--sample', type=int, default=5)
     ap.add_argument('--out', default='')
+    ap.add_argument('--by', action='append', default=[],
+                    help='ENTITY:MBID — only questions 1+2, browsing by that parent (repeatable)')
     args = ap.parse_args()
     started = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    if args.by:
+        res = {'started': started, 'host': socket.gethostname(),
+               'parents': [probe_by(*spec.split(':', 1), args.sample) for spec in args.by]}
+        res['finished'] = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        res['requests'] = _count[0]
+        print(f'== done: {_count[0]} requests, {started} → {res["finished"]} on {res["host"]} ==')
+        if args.out:
+            with open(args.out, 'w', encoding='utf-8') as f:
+                json.dump(res, f, indent=2, ensure_ascii=False)
+        return
     res = {'started': started, 'host': socket.gethostname(), 'artist': ARTIST}
 
     print('== 1. recording browse, inc=work-rels ==', flush=True)
