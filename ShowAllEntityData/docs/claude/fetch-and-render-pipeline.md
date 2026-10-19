@@ -302,6 +302,18 @@ Two more things the event page taught, both generic:
   default on) moves every h2 section that comes after the data h2 to just
   before it. On the event page a native "Setlist" therefore ends up above
   "Relationships" — by design, not a bug in the converter.
+- **The groups go in right after the target h2, so a native paragraph
+  between that h2 and the first table ends up below the LAST table.** On
+  `/tag/<name>` (`tag-value`, `debug/tag-entity-initial.html` vs
+  `-final.html`, 2026-10-19) that was "212,773 entities found".
+  `features.keepH2Intro` (on `tag-value` and `user-tag-value` only) makes
+  `_keepH2Intro()` put the run of `<p>` right after the h2, plus any
+  `.mb-h2-intro` an earlier render or a disk load left elsewhere, back under
+  the h2 on every render, and the pairs start after them. `_alignH2Intro()`
+  then copies the first h3's computed `margin-left` onto them: the h3 rule's
+  `1.5em` is in the h3's larger font, so `1.5em` on a paragraph falls 4 px
+  short (the stylesheet keeps it as the fallback). Pinned by
+  `tag-value-intro.spec.js`.
 
 ## One live dataset per page: a second data section is an either/or button
 

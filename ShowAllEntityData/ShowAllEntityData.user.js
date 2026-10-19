@@ -21953,6 +21953,8 @@
             .mb-dp-dialog .mb-dp-discs { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 16px; }
             .mb-dp-dialog .mb-dp-group + .mb-dp-group { margin-top: 10px; }
             .mb-dp-dialog .mb-dp-gname { font-style: italic; color: #7a6d5c; }
+            /* A tag's window: each kind's first ten entities */
+            .mb-dp-dialog .mb-pop-taglist { margin: 2px 0; padding-left: 1.3em; }
             .mb-dp-dialog .mb-dp-warn, #mb-dp-peek .mb-dp-warn { border-left: 3px solid #9b2218; background: #f6e6dc; padding: 4px 8px; margin: 4px 0 8px; }
             .mb-dp-dialog .mb-dp-xfoot { padding: 0 18px 12px; font: italic 12px Georgia, serif; color: #7a6d5c; }
             .mb-dp-dialog .mb-dp-live { position: absolute; inset: 0; display: flex; flex-direction: column; }
@@ -31781,7 +31783,10 @@
                 // above replace its function and the form is no longer needed.
                 removeSelector: 'form:has(select[name="show_downvoted"])',
                 // Single native column always at index 0 (one entity kind per group table).
-                extractMainColumn: 0
+                extractMainColumn: 0,
+                // As tag-value: an intro paragraph under the h2 stays there
+                // (_keepH2Intro(); a no-op when the page has none).
+                keepH2Intro: true
             },
             tableMode: 'multi'
         },
@@ -31941,7 +31946,11 @@
                 // Empty sectionId triggers Structure D in applyListToTable.
                 listToTable: [ '' ],
                 // Single native column always at index 0 (one entity kind per group table).
-                extractMainColumn: 0
+                extractMainColumn: 0,
+                // "212,773 entities found" stays under the h2, indented like
+                // the h3s (_keepH2Intro(); debug/tag-entity-final.html had it
+                // below the last table).
+                keepH2Intro: true
             },
             tableMode: 'multi'
         },
@@ -46006,15 +46015,18 @@
     /**
      * The pages whose cards are read from the page itself (Phase 3): an
      * edit (`/edit/<number>`) and an editor's profile (`/user/<name>`, the
-     * name percent-encoded as in the link). Their tabs (`/user/<name>/edits`,
-     * `/edit/<n>/data`) are not previewed.
+     * name percent-encoded as in the link), and a tag (`/tag/<name>`, the
+     * same encoding, 2026-10-19: the Web Service has no lookup of a tag by
+     * name).
+     * Their tabs (`/user/<name>/edits`, `/edit/<n>/data`, `/tag/<name>/artist`)
+     * and an editor's own tag (`/user/<name>/tag/<name>`) are not previewed.
      * @type {RegExp}
      */
-    const _MB_POP_PAGE_RE = /^\/(?:(edit)\/(\d+)|(user)\/([^/]+))\/?$/;
+    const _MB_POP_PAGE_RE = /^\/(?:(edit)\/(\d+)|(user)\/([^/]+)|(tag)\/([^/]+))\/?$/;
 
     /**
      * The kind a MusicBrainz page path previews as: an entity by MBID
-     * (`_MB_POP_PATH_RE`), a code (`_MB_POP_CODE_RE`), an edit or an editor
+     * (`_MB_POP_PATH_RE`), a code (`_MB_POP_CODE_RE`), an edit, an editor or a tag
      * (`_MB_POP_PAGE_RE`); `seg` is the path's own first segment (a disc ID's
      * page is /cdtoc/, its kind `discid`). `null` for any other path.
      *
@@ -46027,7 +46039,7 @@
         const c = _MB_POP_CODE_RE.exec(pathname);
         if (c) return { seg: c[1], type: _MB_POP_CODE_TYPES[c[1]], id: c[2] };
         const p = _MB_POP_PAGE_RE.exec(pathname);
-        if (p) return { seg: p[1] || p[3], type: p[1] || p[3], id: p[2] || p[4] };
+        if (p) return { seg: p[1] || p[3] || p[5], type: p[1] || p[3] || p[5], id: p[2] || p[4] || p[6] };
         return null;
     }
 
@@ -47708,6 +47720,88 @@
     }
 
     /**
+     * A tag's page (`/tag/<name>`) as a record for its card and window. The
+     * Web Service has no lookup of a tag by name, only a search that answers
+     * names and scores (MusicBrainz_API, checked 2026-10-19), so the page is
+     * the source. Its #content is (tests/fixtures/tag-page-alternative-rock.html):
+     * `.tagheader h1 a` (the name); under an h2 "Genre", a link to the genre
+     * when the tag is one; "N entities found"; then per entity kind an h3
+     * ("Artists") and a list of its first ten entities, ending in
+     * "See all N artists" when there are more. A kind's count is that
+     * number, else its list's length; a kind with no entity has no h3.
+     * Text only, so it can be kept. `null` when the page is not a tag's.
+     *
+     * @param {Document} doc
+     * @returns {?{name: string, genre: ?{id: string, name: string}, total: string,
+     *   sections: Array<{kind: string, count: number, more: string,
+     *   items: Array<{type: string, id: string, name: string, extra: string}>}>}}
+     */
+    function _mbParseTagPage(doc) {
+        const content = doc.getElementById('content');
+        const name = _mbPopText(content && content.querySelector('.tagheader h1 a[href^="/tag/"]'));
+        if (!name) return null;
+        const g = content.querySelector('a[href^="/genre/"]');
+        const total = Array.from(content.querySelectorAll(':scope > p'))
+            .map(p => /^([\d,.]+) entit(?:y|ies) found/.exec(_mbPopText(p))).find(Boolean);
+        const sections = [];
+        content.querySelectorAll(':scope > h3').forEach(h3 => {
+            const ul = h3.nextElementSibling;
+            if (!ul || ul.tagName !== 'UL') return;
+            const items = [];
+            let more = null;
+            ul.querySelectorAll(':scope > li').forEach(li => {
+                const all = li.querySelector(':scope > em > a[href]');
+                if (all) {
+                    more = all;
+                    return;
+                }
+                const a = Array.from(li.querySelectorAll('a[href]')).find(x => _MB_POP_PATH_RE.test(x.getAttribute('href') || ''));
+                if (!a) return;
+                const m = _MB_POP_PATH_RE.exec(a.getAttribute('href'));
+                const nm = _mbPopText(a);
+                const rest = _mbPopText(li);
+                items.push({ type: m[1], id: m[2].toLowerCase(), name: nm, extra: rest.startsWith(nm) ? rest.slice(nm.length).trim() : '' });
+            });
+            const n = more && /([\d,.]+)/.exec(_mbPopText(more));
+            sections.push({
+                kind: _mbPopText(h3), items,
+                count: n ? Number(n[1].replace(/[,.]/g, '')) : items.length,
+                more: more ? more.getAttribute('href') : '',
+            });
+        });
+        return {
+            name, genre: g ? { id: (g.getAttribute('href').split('/')[2] || ''), name: _mbPopText(g) } : null,
+            total: total ? total[1] : '', sections,
+        };
+    }
+
+    /**
+     * A tag's kinds by how many of each it tags, largest first (page order
+     * among equals).
+     *
+     * @param {Object} d - `_mbParseTagPage()`'s record.
+     * @returns {Array<{kind: string, count: number, more: string, items: Array<Object>}>}
+     */
+    function _mbPopTagKinds(d) {
+        return (d.sections || []).map((s, i) => ({ s, i })).sort((a, b) => (b.s.count - a.s.count) || (a.i - b.i)).map(x => x.s);
+    }
+
+    /**
+     * The page of a tag's entities of one kind (`/tag/<name>/artist`): the
+     * page's own "See all" link, else built from the kind's h3 name
+     * (`SA_TAG_VALUE_CATEGORY_SLUGS`); '' for a kind it does not know.
+     *
+     * @param {string} tagId - The tag as in its link (percent-encoded).
+     * @param {{kind: string, more: string}} s - A section of the record.
+     * @returns {string}
+     */
+    function _mbPopTagKindHref(tagId, s) {
+        if (s.more) return s.more;
+        const slug = SA_TAG_VALUE_CATEGORY_SLUGS[s.kind];
+        return slug ? `/tag/${tagId}/${slug}` : '';
+    }
+
+    /**
      * A kind fed by a MusicBrainz PAGE rather than the Web Service
      * (`_mbPageLoad()`), in the shape of `_mbPopLookupKind()`: the card and
      * the window show the same parsed record.
@@ -48484,6 +48578,45 @@
                         ['Member since', _rgEsc(d.since)], ['Subscribers', _rgEsc(d.subscribers)],
                     ]) + `</div><div class="mb-dp-col"><h4>Edits</h4>${_mbPopTableHtml(['', 'Count'], d.stats.map(([k, v]) => [_rgEsc(k), _rgEsc(v)]), [1])}` +
                     `<p><a href="/user/${encodeURIComponent(d.name)}/edits" target="_blank" rel="noopener">Their edits</a></p></div></div>`;
+            },
+        })),
+        // A tag (2026-10-19): read from its page (`_mbParseTagPage()`), the
+        // Web Service has no lookup of a tag by name. Card: is it a genre,
+        // how many entities, how many of each kind. Window: the same, plus
+        // each kind's first ten, linked so they drill down (Phase 5).
+        tag: Object.assign({ title: 'Tag', wide: false }, _mbPopPageKind({
+            parse: _mbParseTagPage,
+            cardHtml(d) {
+                const kinds = _mbPopTagKinds(d);
+                const shown = kinds.slice(0, 6);
+                return `<div class="mb-tt-title">${_rgEsc(d.name)}</div>` +
+                    `<div class="mb-tt-comment">${d.genre ? `Tag of the genre ${_rgEsc(d.genre.name)}` : 'Tag'}</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([d.genre ? 'Genre' : '',
+                        d.total ? `${d.total} ${d.total === '1' ? 'entity' : 'entities'}` : ''])}</div>` +
+                    '<div class="mb-tt-rule"></div>' +
+                    (shown.length ? _mbPopKvHtml(shown.map(s => [s.kind, _rgEsc(s.count.toLocaleString('en-US'))])) +
+                        (kinds.length > shown.length ? `<div class="mb-tt-dim">+ ${kinds.length - shown.length} more kinds</div>` : '')
+                        : '<div class="mb-tt-comment">Nothing is tagged with it.</div>');
+            },
+            windowHtml(d, t) {
+                const kinds = _mbPopTagKinds(d);
+                const kindLink = (s) => {
+                    const href = _mbPopTagKindHref(t.id, s);
+                    return href ? `<a href="${_rgEsc(href)}" target="_blank" rel="noopener">${_rgEsc(s.kind)}</a>` : _rgEsc(s.kind);
+                };
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
+                    `<div class="mb-rg-pills">${_mbPopPillsHtml([d.genre ? 'Genre' : 'Tag'])}</div><h4>Tag</h4>` + _mbPopKvHtml([
+                        ['Genre', d.genre ? `<a href="/genre/${_rgEsc(d.genre.id)}" target="_blank" rel="noopener">${_rgEsc(d.genre.name)}</a>` : 'none'],
+                        ['Entities', _rgEsc(d.total)],
+                    ]) + (kinds.length ? '<h4>By kind</h4>' + _mbPopTableHtml(['Kind', 'Count'],
+                        kinds.map(s => [kindLink(s), _rgEsc(s.count.toLocaleString('en-US'))]), [1]) : '');
+                const right = kinds.length ? kinds.map(s => '<div class="mb-dp-group">' +
+                    `<div class="mb-dp-gname">${_rgEsc(s.kind)} · ${_rgEsc(s.count.toLocaleString('en-US'))}</div>` +
+                    '<ul class="mb-pop-taglist">' + s.items.map(e => `<li><a href="/${_rgEsc(e.type)}/${_rgEsc(e.id)}" target="_blank" rel="noopener">` +
+                        `${_rgEsc(e.name)}</a>${e.extra ? ` <span class="mb-rg-dim">${_rgEsc(e.extra)}</span>` : ''}</li>`).join('') + '</ul>' +
+                    (s.count > s.items.length ? `<div class="mb-dp-xsub">${kindLink({ kind: `See all ${s.count.toLocaleString('en-US')}`, more: _mbPopTagKindHref(t.id, s) })}</div>` : '') +
+                    '</div>').join('') : '<div class="mb-dp-xsub">Nothing is tagged with it.</div>';
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
         })),
         // Phase 4: a barcode cell. One release search on the indexed
@@ -71173,6 +71306,9 @@ a { color: #1565c0; }`;
             background-color: ${Lib.settings.sa_ui_h3_hover_bg || '#eb7231'};
         }
         .mb-toggle-h3 { cursor: pointer; user-select: none; border-bottom: 1px solid #eee; padding: 4px 0; margin-left: 1.5em; background-color: ${Lib.settings.sa_ui_h3_bg || '#f7dfdf'}; }
+        /* features.keepH2Intro (_keepH2Intro()): the h2's own intro paragraph,
+           indented like the h3s below it. */
+        .mb-h2-intro { margin-left: 1.5em; }
         /* A sub-table a page-wide filter left empty (_syncEmptySubtableVisibility):
            h3, table and everything between them. A class, never style.display,
            which holds the collapse, art-strip and discography-view states. */
@@ -93292,6 +93428,53 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * `features.keepH2Intro`: puts the native paragraph(s) that introduce the
+     * target h2's section — "212,773 entities found" on /tag/<name> — right
+     * under that h2, marked `.mb-h2-intro` (indented like the h3s), and
+     * returns the last one, where the h3/table pairs start. They are the
+     * `.mb-h2-intro` elements of an earlier render (by then below the last
+     * table, or anywhere a disk load left them) plus the run of `<p>`
+     * directly after the h2. Moving them is a no-op when they are already in
+     * place, so this runs on every render. Null without the feature or
+     * without such a paragraph: the pairs then start at the h2, as before.
+     *
+     * @param {HTMLElement} targetHeader - The h2 the sub-tables belong to.
+     * @param {HTMLElement} container - Where the rendered sub-tables live.
+     * @returns {?HTMLElement}
+     */
+    function _keepH2Intro(targetHeader, container) {
+        if (!activeDefinition?.features?.keepH2Intro) return null;
+        const intro = Array.from(container.querySelectorAll('.mb-h2-intro'))
+            .filter(el => el.parentNode === targetHeader.parentNode);
+        for (let sib = targetHeader.nextElementSibling; sib && sib.tagName === 'P'; sib = sib.nextElementSibling) {
+            if (!intro.includes(sib)) intro.push(sib);
+        }
+        if (!intro.length) return null;
+        intro.forEach(el => el.classList.add('mb-h2-intro'));
+        targetHeader.after(...intro);
+        return intro[intro.length - 1];
+    }
+
+    /**
+     * Gives the `.mb-h2-intro` paragraphs (`_keepH2Intro()`) the indent of
+     * the h3 that follows them. The h3 rule's `margin-left: 1.5em` is in the
+     * h3's own, larger font, so the same `em` on a paragraph falls short (32
+     * against 36 px with the browser's default sizes); the stylesheet's
+     * `1.5em` stays as the fallback for a render without an h3.
+     *
+     * @param {HTMLElement} lastIntro - The last intro paragraph.
+     * @returns {void}
+     */
+    function _alignH2Intro(lastIntro) {
+        const h3 = lastIntro.nextElementSibling;
+        if (!h3 || !h3.matches('h3.mb-toggle-h3')) return;
+        const indent = getComputedStyle(h3).marginLeft;
+        for (let el = lastIntro; el && el.classList.contains('mb-h2-intro'); el = el.previousElementSibling) {
+            el.style.marginLeft = indent;
+        }
+    }
+
+    /**
      * Whether a column filter input holds nothing but ⚠️/❌ findings-menu
      * ticks (`_setFinding()`'s cell scope writes `finding-<id>` 📊 values into
      * a column of EVERY table). Such an input is a page-wide filter wearing a
@@ -93646,6 +93829,12 @@ a { color: #1565c0; }`;
 
         // Track where to insert the elements
         let lastInsertedElement = targetHeader;
+        // features.keepH2Intro: the native paragraph(s) right under the
+        // target h2 ("212,773 entities found" on /tag/<name>) stay there.
+        // Without this, every h3/table pair goes in between, via
+        // `targetHeader.after()`, and pushes them below the last table.
+        const introEnd = targetHeader ? _keepH2Intro(targetHeader, container) : null;
+        if (introEnd) lastInsertedElement = introEnd;
 
         dataArray.forEach((group, index) => {
             // Defensive check: ensure category exists
@@ -94810,6 +94999,9 @@ a { color: #1565c0; }`;
         // only what is still on screen.
         _syncEmptySubtableVisibility(container);
         _syncMasterToggleState(container);
+        // features.keepH2Intro: the h3s exist now, so the intro can take
+        // their indent.
+        if (introEnd) _alignH2Intro(introEnd);
 
         // ── Wire global collapse button for multi-table mode ──────────────────
         // Must run after the forEach loop so that every sub-table's
@@ -97385,6 +97577,32 @@ a { color: #1565c0; }`;
         return chip;
     }
 
+    /**
+     * The hover card of a tag pill's vote number in the "Sidebar" Tags card:
+     * the number is the tag's vote total on this entity (MusicBrainz's
+     * `.tag-count`). As documented (checked 2026-10-19): tagging "is in fact
+     * 'upvoting' it (which will add 1 to the vote count for the tag).
+     * Downvoting is the inverse operation, and will subtract 1"
+     * (https://musicbrainz.org/doc/MusicBrainz_API), and "The total of votes
+     * has to be positive for the tag to be displayed"
+     * (https://musicbrainz.org/doc/Folksonomy_Tagging).
+     * @param {string} name  The tag.
+     * @param {string} kind  'Genre' or 'Tag' (`_sbCollectGroups()`).
+     * @param {string} votes The number, as the sidebar shows it.
+     * @returns {string} HTML for `data-mbtt`.
+     */
+    function _sbTagVotesTip(name, kind, votes) {
+        const seg = window.location.pathname.split('/')[1] || '';
+        const entity = seg && seg !== 'tag' ? seg.replace(/-/g, ' ') : 'entity';
+        const n = Number(votes);
+        return `<div class="mb-tt-title">Score ${_mbttEscape(votes)}</div>` +
+            `<div class="mb-tt-dim">${kind === 'Genre' ? 'Genre' : 'Tag'} “${_mbttEscape(name)}”</div>` +
+            `<div class="mb-tt-body">The ${kind === 'Genre' ? 'genre' : 'tag'}’s vote total on this ${_mbttEscape(entity)}` +
+            `${Number.isFinite(n) ? ` (${n === 1 ? '1 vote' : `${_mbttEscape(votes)} votes`} more up than down)` : ''}: ` +
+            'tagging or upvoting it adds 1, a downvote takes 1 away. MusicBrainz shows a tag only while its total is above 0.</div>' +
+            '<div class="mb-tt-foot">Vote with + / − in MusicBrainz’s own sidebar.</div>';
+    }
+
     /** A site variant: "Name (by barcode)" or "Name（品番/POS）" → name, variant ("barcode"). */
     const _SB_VARIANT_RE = /^(.*?)\s*[(（]\s*(?:by\s+)?([^)）]+?)\s*[)）]\s*$/;
 
@@ -97685,6 +97903,7 @@ a { color: #1565c0; }`;
                         const v = document.createElement('span');
                         v.className = 'mb-sb-pill-votes';
                         v.textContent = r[3];
+                        v.dataset.mbtt = _sbTagVotesTip(pill.textContent.replace(/\s+/g, ' ').trim(), r[2], r[3]);
                         pill.appendChild(v);
                     }
                     line.appendChild(pill);

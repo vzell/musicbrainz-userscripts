@@ -24412,3 +24412,29 @@ Env: 2026-10-19T18:04+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) 
   `rel-multi-discogs` finding (docs/claude/uniq-dropdown.md, findings.md).
   `scripts/mutations/link-site-uvd.json`: 18 entries, 16 caught, 2 recorded
   `"expect": "pass"` with the reason.
+
+## 2026-10-19 — tag-value: "N entities found" pushed below the last table; tag link previews (branch feat/tag-reader, WIP.1/WIP.2)
+
+Env: 2026-10-19T18:39:21+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (build 1234), no Tampermonkey (GM stubs); snapshots: user's browser, unknown versions
+
+- **Snapshots:** `debug/tag-entity-initial.html` (IP of /tag/alternative%20rock:
+  `<h2>Entities tagged as …</h2><p>212,773 entities found</p><h3>Areas</h3>…`),
+  `debug/tag-entity-final.html` (FRP: the same `<p>` is the LAST child of
+  `#content`, after the Works table), `debug/bo-deans-tag-buttons.html` (FRP
+  of a BoDeans artist page: the "Sidebar" Tags card's pills
+  `span.mb-sb-pill > a[href="/tag/…"] + span.mb-sb-pill-votes`).
+- **Root cause (WIP.1):** `renderGroupedTable()` inserts every h3/table pair
+  from `lastInsertedElement = targetHeader`, i.e. `h2.after(h3)`, so all
+  pairs land between the h2 and its native paragraph. Not a CSS or late-DOM
+  issue: the paragraph is never touched, only overtaken. **Fix:**
+  `features.keepH2Intro` (tag-value, user-tag-value only) → `_keepH2Intro()`
+  moves the `<p>` run (and any earlier `.mb-h2-intro`) back under the h2 and
+  starts the pairs after it, on every render; `_alignH2Intro()` copies the
+  first h3's computed `margin-left`, because `1.5em` on the paragraph is in
+  its own smaller font (32 vs 36 px in the fixture with default sizes —
+  the first spec run caught that). Spec `tag-value-intro.spec.js`.
+- **WIP.2:** a `tag` page kind in the popup engine (no Web Service lookup of
+  a tag by name; docs/claude/detail-pages.md, "MusicBrainz: tag cards") and
+  `_sbTagVotesTip()` on the pill's number. The number is a sibling of the
+  link, so the two hover cards never compete.
+- `scripts/mutations/tag-reader.json`: 7 entries, 7 caught.

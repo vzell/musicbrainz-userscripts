@@ -1,0 +1,32 @@
+[
+    {
+        "version": "WIP.2",
+        "date": "2026-10-19",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "Tag links get a link preview: hovering any link to a tag page (for example a pill in the \"Sidebar\" Tags card, or MusicBrainz's own genre and tag lists) shows a card with whether the tag is a genre, how many entities carry it, and how many of each kind. Space opens a window with the counts per kind, each linked to its tag page, and the ten top entities of every kind, which you can click through like any other entity in the window. The card is read from the tag's own page (one request, which the Live page view reuses), because the MusicBrainz web service cannot look up a tag by name. Uses the existing link-preview settings."
+                ]
+            },
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "The number on each pill of the \"Sidebar\" Tags card has a hover card that explains it: the tag's vote total on this entity, where tagging or upvoting adds 1 and a downvote takes 1 away, and MusicBrainz shows a tag only while its total is above 0."
+                ]
+            }
+        ]
+    },
+    {
+        "version": "WIP.1",
+        "date": "2026-10-19",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "Tag pages (/tag/<name>, and an editor's /user/<name>/tag/<name>): \"N entities found\" stays right under the \"Entities tagged as …\" heading with the global filter, indented like the sub-section headings, instead of being pushed below the last table."
+                ]
+            }
+        ]
+    }
+]

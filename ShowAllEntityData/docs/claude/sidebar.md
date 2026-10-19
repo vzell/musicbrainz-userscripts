@@ -403,6 +403,15 @@ default off).
     kind holds from `_SB_INLINE_CARD_DESC`, the count, the click rules, a
     settings foot). It does not depend on the card's state, so a fold never
     rewrites a card on screen. No `title`, so no native box on top.
+- **The Tags card's pills (2026-10-19).** A pill is the tag's link plus its
+  vote number (`span.mb-sb-pill-votes`, MusicBrainz's `.tag-count`). The
+  number carries `data-mbtt` from `_sbTagVotesTip()`: "Score N", genre or
+  tag, and what the number is — the vote total on this entity, +1 per tag or
+  upvote, −1 per downvote, shown only while above 0 (quoted from
+  MusicBrainz_API and Folksonomy_Tagging in its JSDoc). The link itself is
+  a target of the popup engine's `tag` kind (detail-pages.md, "MusicBrainz:
+  tag cards"); the number is its sibling, so hovering one never shows the
+  other's card. Pinned by `sidebar-inline.spec.js` "tag pills".
 - **Cards are a wrapping flex row, never fixed grid columns.** A value can
   hold a line that never breaks: More Flags Everywhere makes every area
   `span.mfe-flag-wrapper` `white-space: nowrap !important`, and in a

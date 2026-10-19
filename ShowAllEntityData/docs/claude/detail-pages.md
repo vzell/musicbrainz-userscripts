@@ -208,7 +208,8 @@ hosts (kept, decided 2026-10-07).
   items by `ordering-key` (the lookup is not in order) (9.99.1275); ISRC
   (`artist-credits`), ISWC, disc ID and collection — one lookup each, no extras
   (9.99.1276); url, the "[info]" link (U2, section "MusicBrainz URL entities"
-  below). Browse keys: `pop:browse:<entity>?<query>` (`_mbPopBrowse()`).
+  below); tag, read from its page (section "MusicBrainz: tag cards" below).
+  Browse keys: `pop:browse:<entity>?<query>` (`_mbPopBrowse()`).
 - **Pictures** (artist, label, place; `sa_pop_mb_image`, the sidebar overhaul's
   part 4): the window shows the entity's Commons picture, from an `image`/`logo`
   relationship or the Wikidata item's P18/P154 (`_mbPopImageLoad()`, from
@@ -780,6 +781,42 @@ preferences. Committed: the user's OWN applied edit (logged in, editor and
 note shown), an open edit captured LOGGED OUT (no other editor's name or
 notes), and the user's own profile logged out with its age, gender and
 location rows removed. Never commit another editor's profile.
+
+## MusicBrainz: tag cards, read from the page (2026-10-19)
+
+A tag is the third PAGE kind (`tag`, `_mbPopPageKind()`), beside the edit and
+the editor: the Web Service has no lookup of a tag by name. Lookups go by
+MBID, and the tag search answers names and scores only (MusicBrainz_API and
+MusicBrainz_API/Search, checked 2026-10-19). Its page, `/tag/<name>`, has
+everything the card needs in one request.
+
+- **Path:** `_MB_POP_PAGE_RE`'s third branch, `/tag/<name>` bare. The id is
+  the name percent-encoded as in the link (`tag:alternative%20rock`), like
+  `user`. Not previewed: the tabs (`/tag/<name>/artist`), an editor's own tag
+  (`/user/<name>/tag/<name>`, the regex is anchored) and `/tags`.
+- **`_mbParseTagPage()`** reads `#content`: the name from `.tagheader h1 a`,
+  the genre from the first `a[href^="/genre/"]` (only a tag that is a genre
+  has one), "N entities found", and per `h3` (one per entity kind, and only
+  for a kind that has entities) its list of the first ten. A kind's count
+  is the number in its "See all N …" `em > a` when there is one, otherwise
+  its list's length (Areas: two, no link). Text and `{type, id, name, extra}`
+  only, so it can be stored in IndexedDB for `sa_pop_mb_ttl_hours`.
+- **Card:** name, "Tag of the genre …" or "Tag", pills (Genre, the total),
+  the six largest kinds with counts (`_mbPopTagKinds()`: largest first).
+  **Window:** the genre (a link to `/genre/<id>`, new tab: genres are no
+  kind), the total, a Kind/Count table linking each kind's
+  `/tag/<name>/<slug>` (`_mbPopTagKindHref()`: the page's "See all" link,
+  else `SA_TAG_VALUE_CATEGORY_SLUGS`), and per kind its entities as plain
+  entity links, so they drill down (Phase 5).
+- **Where:** every `/tag/<name>` link, e.g. MusicBrainz's own
+  `ul.genre-list`/`ul.tag-list`, the "Sidebar" Tags card's pills
+  (`.mb-sb-pill`), tags tables. Outside a table body only with
+  `sa_pop_mb_page`, as for every kind. The pill's vote number is a SIBLING
+  of the link and has its own hover card (sidebar.md).
+- Fixture: `tests/fixtures/tag-page-alternative-rock.html`
+  (`scripts/fetch-mb-page-fixture.js /tag/alternative%20rock`). Specs:
+  `popup-mb.spec.js` "tags, read from the page", `sidebar-inline.spec.js`
+  "tag pills"; mutations `scripts/mutations/tag-reader.json`.
 
 ## MusicBrainz: beyond table links (org/iframe.org, Phase 4)
 

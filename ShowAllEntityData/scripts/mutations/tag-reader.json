@@ -1,0 +1,93 @@
+[
+    {
+        "name": "keepH2Intro off: the h3/table pairs start at the h2 again",
+        "why": "Without the anchor every pair goes in between the h2 and its intro paragraph, which ends up below the last table (debug/tag-entity-final.html).",
+        "edits": [
+            {
+                "find": "        const introEnd = targetHeader ? _keepH2Intro(targetHeader, container) : null;",
+                "replace": "        const introEnd = null;"
+            }
+        ],
+        "spec": "tests/fixtures/tag-value-intro.spec.js",
+        "grep": "PLACE",
+        "expect": "fail"
+    },
+    {
+        "name": "the intro keeps the stylesheet's 1.5em: short of the h3s' indent",
+        "why": "The h3 rule's 1.5em is in the h3's own, larger font, so the same em on a paragraph starts left of the h3s; _alignH2Intro() copies the h3's computed margin.",
+        "edits": [
+            {
+                "find": "        if (introEnd) _alignH2Intro(introEnd);",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/tag-value-intro.spec.js",
+        "grep": "INDENT",
+        "expect": "fail"
+    },
+    {
+        "name": "the tag path is not previewed",
+        "why": "A tag link must be a target of the page kind tag; without it in _MB_POP_PAGE_RE no tag link has a card.",
+        "edits": [
+            {
+                "find": "    const _MB_POP_PAGE_RE = /^\\/(?:(edit)\\/(\\d+)|(user)\\/([^/]+)|(tag)\\/([^/]+))\\/?$/;",
+                "replace": "    const _MB_POP_PAGE_RE = /^\\/(?:(edit)\\/(\\d+)|(user)\\/([^/]+)|(tagx)\\/([^/]+))\\/?$/;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "what is previewed: a tag",
+        "expect": "fail"
+    },
+    {
+        "name": "a kind's count is its list's length, ignoring \"See all N\"",
+        "why": "The page lists ten entities per kind; the real count is the See all link's number (59,674 release groups).",
+        "edits": [
+            {
+                "find": "                count: n ? Number(n[1].replace(/[,.]/g, '')) : items.length,",
+                "replace": "                count: items.length,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the card: genre, total and the kinds by count",
+        "expect": "fail"
+    },
+    {
+        "name": "a kind without \"See all\" counts nothing",
+        "why": "Areas lists two entities and has no See all link: its count is the list's length.",
+        "edits": [
+            {
+                "find": "                count: n ? Number(n[1].replace(/[,.]/g, '')) : items.length,",
+                "replace": "                count: n ? Number(n[1].replace(/[,.]/g, '')) : 0,"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the window: counts by kind",
+        "expect": "fail"
+    },
+    {
+        "name": "the pill's vote number has no hover card",
+        "why": "The number on a Tags card pill is a vote total; its rich card says so.",
+        "edits": [
+            {
+                "find": "                        v.dataset.mbtt = _sbTagVotesTip(pill.textContent.replace(/\\s+/g, ' ').trim(), r[2], r[3]);\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/sidebar-inline.spec.js",
+        "grep": "VOTES",
+        "expect": "fail"
+    },
+    {
+        "name": "the pill's tag link is no preview target",
+        "why": "The Tags card's pills are outside any table: they are previewed through the page-wide scope; a kind check that rejects tag leaves them without a card.",
+        "edits": [
+            {
+                "find": "        tag: Object.assign({ title: 'Tag', wide: false }, _mbPopPageKind({",
+                "replace": "        tagx: Object.assign({ title: 'Tag', wide: false }, _mbPopPageKind({"
+            }
+        ],
+        "spec": "tests/fixtures/sidebar-inline.spec.js",
+        "grep": "TAG CARD",
+        "expect": "fail"
+    }
+]

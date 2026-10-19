@@ -3333,7 +3333,7 @@ Make a comprehensive report of MB PTs where we also render recording type column
 
 Is it feasible to also add the same treatment to these columns as we do on the PT 'artist-recordings', if yes make it configurable
 
-* TODO add support for a tag reader
+* DONE add support for a tag reader
 
 1.)
 
