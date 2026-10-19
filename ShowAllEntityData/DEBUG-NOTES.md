@@ -24379,3 +24379,36 @@ Env: 2026-10-19T16:10+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) 
   pause had to be LONGER than the 2.5 s spacing (4 s): at 1.5 s a missing
   pause was hidden by the spacing itself. Discogs, link-preview and include
   specs: 136 passed; lint within baseline.
+
+## 2026-10-19 — event page URL table without the review icon; YouTube Music button after Credits (branch feat/link-site-uvd, WIP.1/WIP.2)
+
+Env: 2026-10-19T18:04+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1, Chromium (fixture project), no Tampermonkey (GM stubs); snapshots from vzell's browser (`debug/event-review-glyph.html`, `debug/release-missing-glyphs.html`): browser/Tampermonkey versions unknown
+
+- **Report 1 (org/TODO.org):** on event 47b84024… the sidebar's
+  `li.review-favicon` link (brucebase.wikidot.com) showed its icon in the
+  "Sidebar" card but not in the "URLs" table.
+- **Evidence:** in `debug/event-review-glyph.html` the card's link is
+  `a.mb-sb-ico[data-mb-sb-ico="erm2cn"]`, the table's
+  `<a class="wrap-anywhere" href="http://brucebase.wikidot.com/2025#261025">`
+  has neither. In `debug/release-missing-glyphs.html` (release Credits) every
+  URL row link HAS the icon. So `review-favicon` is read fine (`_sbIconOf()`
+  has no class list); the table pass is what was missing.
+- **Root cause:** `_sbIconRelLinks(doc, frag)` was called only by
+  `applyRelDetailsToTables()`; `event-overview` builds its tables with its
+  own converter, `applyEventDetailsToTables()`. **Fix:** the event converter
+  calls it before inserting its tables (live, fetched and disk-load docs).
+  Spec `tests/fixtures/event-overview-url-icons.spec.js`.
+- **Report 2:** the "MBz YouTube Music Lookup" button (@afro) stayed at the
+  foot of release 9d451257… after **Credits** (the Tracks render already
+  removed it).
+- **Root cause:** the Credits button is `_relTablesButton(…)` with
+  `replaceFeatures: true`: none of the release definition's features reach
+  that render, its `removeSelectors` included. **Fix:** one constant
+  `_YTM_LOOKUP_SEL`, used by Tracks and by the Credits button through
+  `_relTablesButton()`'s new `extraFeatures` parameter. Spec: a Credits case
+  in `release-tracks-third-party-youtube-lookup.spec.js`.
+- **Same branch, no bug behind them:** the 📊 "Links info - Site"/"- Site
+  kind" and "Relationship icons - Site kind" sections and the
+  `rel-multi-discogs` finding (docs/claude/uniq-dropdown.md, findings.md).
+  `scripts/mutations/link-site-uvd.json`: 18 entries, 16 caught, 2 recorded
+  `"expect": "pass"` with the reason.

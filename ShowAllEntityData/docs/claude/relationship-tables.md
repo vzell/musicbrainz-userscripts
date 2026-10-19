@@ -32,6 +32,15 @@ Number/Order, Primary alias and ended-URL handling. A change here changes the
 event page: run the event-overview specs (and their mobile variant) with
 the rel-tables ones.
 
+**The link columns have their own 📊 sections** (2026-10-19): "URL",
+"Target" and "Link" of these renders (and of the event page and "Sidebar as
+tables") get "Links info - Site" / "- Site kind", gated by name AND render —
+docs/claude/uniq-dropdown.md, "Sites of a link column". A page-specific
+feature a "Relationships"/"Credits" render needs too goes through
+`_relTablesButton()`'s `extraFeatures`, because `replaceFeatures` drops the
+page's own: the release's Credits button names `_YTM_LOOKUP_SEL` (the "MBz
+YouTube Music Lookup" button) in its `removeSelectors` that way.
+
 **One dataset per page, so the buttons are either/or.** The engine keeps
 exactly one live dataset (`activeDefinition`, `allRows`/`groupedRows`, the
 filter cache, the `mb-global-filter-*` ids), so two h2 sections cannot each

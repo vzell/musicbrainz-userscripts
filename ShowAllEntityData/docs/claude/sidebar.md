@@ -520,6 +520,16 @@ and the tables reading the search lists too. Branch
   icon of the sidebar item with the same `_sbLinkKey()`, the duplicate
   skipping's own key. A live check (real release, Credits) found the
   "Sidebar: …" tables' icons all there and only these rows bare.
+  **The event page too** (2026-10-19, WIP.1 of `feat/link-site-uvd`):
+  `event-overview` builds its tables with its own converter,
+  `applyEventDetailsToTables()`, which never ran this pass, so a review link
+  had its icon in the sidebar card and none in the "URLs" table
+  (`debug/event-review-glyph.html`). It now calls `_sbIconRelLinks()` before
+  inserting its tables. Spec: `event-overview-url-icons.spec.js`.
+  The 📊 dropdown of these link columns reuses the icon by NAME
+  (`span.mb-uniq-site-icon[data-mb-sb-ico]`, the same `#mb-sb-ico-style`
+  rule, whose selector covers that span too): see "Links info - Site" in
+  docs/claude/uniq-dropdown.md.
   No request: the browser shows these icons already. The fixtures refuse
   MusicBrainz's stylesheet, so the ICONS specs add the one `*-favicon` rule
   they need (`open(…, css)`); jesus2099's inline icons are in the fixture.
