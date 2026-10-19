@@ -73,6 +73,9 @@ const PAGE_FIXTURES = [
     [/\/edit\/126930910\/?$/, 'edit-page-applied.html'],
     [/\/edit\/154299713\/?$/, 'edit-page-open.html'],
     [/\/user\/vzell\/?$/, 'user-page-vzell.html'],
+    // A tag's page as the server sends it (scripts/fetch-mb-page-fixture.js,
+    // 2026-10-19): a genre, 212,773 entities, eleven kinds.
+    [/\/tag\/alternative%20rock\/?$/, 'tag-page-alternative-rock.html'],
 ];
 const WS2_FIXTURES = [
     [/\/ws\/2\/recording\/[0-9a-f-]{36}\?inc=artist-credits\+isrcs/, 'ws2-pop-recording-thunder.json'],
@@ -175,8 +178,8 @@ async function open(page, { settings = {}, lookup = null, showAll = true, ws2 = 
     await ctx.route('**/ws/2/release?label=**', other);
     await ctx.route('**/ws/2/release?query=**', other);
     await ctx.route('**/ws/2/release-group?artist=**', other);
-    // Phase 3: edit and editor pages, by URL (`pageFixture` may answer instead).
-    await ctx.route(/^https:\/\/musicbrainz\.org\/(edit|user)\//, (route) => {
+    // Phase 3: edit, editor and tag pages, by URL (`pageFixture` may answer instead).
+    await ctx.route(/^https:\/\/musicbrainz\.org\/(edit|user|tag)\//, (route) => {
         const url = route.request().url();
         log.html.push(url);
         const own = pageFixture ? pageFixture(url) : null;
@@ -1648,6 +1651,107 @@ test.describe('MusicBrainz link previews: edit and editor, read from the page (P
             pageFixture: () => (login ? { status: 200, contentType: 'text/html', body: '<html><body><div id="page"><h1>Log in</h1></div></body></html>' } : null),
         });
         const a = await addLink(page, APPLIED, 'Edit #126930910');
+        await ctrlHover(page, a);
+        await expect(card(page).locator('.mb-tt-alert')).toContainText('not the page expected');
+        login = false;
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        expect(log.html).toHaveLength(2);
+    });
+});
+
+// A tag (2026-10-19): read from its page, like an edit or an editor. Pinned:
+// WHAT is previewed (the bare tag only), the CARD's facts — counts from the
+// "See all N" link where the page has one and from the list where it has
+// not (Areas: 2 items, no link) — the WINDOW's lists with drillable entity
+// links, ONE request shared with the Live page, and a page that is not a
+// tag's failing unkept.
+test.describe('MusicBrainz link previews: tags, read from the page', () => {
+    const TAG = '/tag/alternative%20rock';
+
+    test('what is previewed: a tag, not its tabs nor an editor\'s own tag', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const r = await page.evaluate(() => {
+            const td = document.querySelector('table.tbl tbody tr td:first-child');
+            const res = (href) => {
+                const a = document.createElement('a');
+                a.href = href;
+                a.textContent = 'x';
+                td.appendChild(a);
+                return window.__saTest.popResolve(a);
+            };
+            return {
+                tag: res('/tag/alternative%20rock'), tab: res('/tag/alternative%20rock/artist'),
+                mine: res('/user/vzell/tag/alternative%20rock'), all: res('/tags'),
+            };
+        });
+        expect(r.tag).toBe('mb-entity|tag:alternative%20rock');
+        expect(r.tab).toBeNull();
+        expect(r.mine).toBeNull();
+        expect(r.all).toBeNull();
+    });
+
+    test('the card: genre, total and the kinds by count, from one page request', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, TAG, 'alternative rock');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('alternative rock');
+        await expect(card(page).locator('.mb-tt-pill')).toHaveText(['Genre', '212,773 entities']);
+        const kv = card(page).locator('.mb-dp-kv');
+        // Largest first, the six biggest of eleven.
+        await expect(kv.locator('dt')).toHaveText(['Recordings', 'Release groups', 'Releases', 'Artists', 'Works', 'Series']);
+        await expect(kv.locator('dd').nth(1)).toHaveText('59,674');
+        await expect(card(page)).toContainText('+ 5 more kinds');
+        expect(log.html).toEqual([`https://musicbrainz.org${TAG}`]);
+    });
+
+    test('the window: counts by kind (from the list when there is no "See all"), linked entities, the Live page from the same request', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, TAG, 'alternative rock');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator(':scope > div > span').first()).toHaveText('Tag');
+        const area = dialog(page).locator('.mb-dp-area');
+        const rows = area.locator('.mb-rg-wtable tbody tr');
+        await expect(rows).toHaveCount(11);
+        await expect(rows.filter({ hasText: 'Areas' })).toContainText('2');
+        await expect(rows.filter({ hasText: 'Instruments' })).toContainText('3');
+        await expect(rows.filter({ hasText: 'Artists' }).locator('a')).toHaveAttribute('href', '/tag/alternative%20rock/artist');
+        await expect(area.locator('.mb-dp-kv a[href="/genre/ceeaa283-5d7b-4202-8d1d-e25d116b2a18"]')).toHaveText('alternative rock');
+        const artists = area.locator('.mb-dp-group', { hasText: 'Artists · 5,695' });
+        await expect(artists.locator('li')).toHaveCount(10);
+        await expect(artists.locator('a[href="/artist/a74b1b7f-71a5-4011-9441-d0b5e4122711"]')).toHaveText('Radiohead');
+        await expect(artists).toContainText('(UK rock band)');
+        await dialog(page).locator('button.mb-dp-tbtn', { hasText: 'Live page' }).click();
+        const frame = page.frameLocator('#mb-dp-dialog iframe');
+        await expect(frame.locator('.tagheader h1')).toContainText('alternative rock', { timeout: 15000 });
+        expect(log.html, 'the Live page reuses the hover\'s page').toHaveLength(1);
+    });
+
+    test('a tag that is no genre: no Genre pill, "none" in the window', async ({ page }) => {
+        const body = json('tag-page-alternative-rock.html').replace(/<h2>Genre<\/h2><p>.*?<\/p>/, '');
+        expect(body).not.toContain('/genre/');
+        await open(page, {
+            settings: { sa_pop_mb: true }, showAll: false,
+            pageFixture: () => ({ status: 200, contentType: 'text/html', body }),
+        });
+        const a = await addLink(page, TAG, 'alternative rock');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-pill')).toHaveText(['212,773 entities']);
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('.mb-dp-area .mb-dp-kv')).toContainText('none');
+    });
+
+    test('a page that is not a tag\'s (a login page) fails and is not kept', async ({ page }) => {
+        let login = true;
+        const log = await open(page, {
+            settings: { sa_pop_mb: true }, showAll: false,
+            pageFixture: () => (login ? { status: 200, contentType: 'text/html', body: '<html><body><div id="page"><h1>Log in</h1></div></body></html>' } : null),
+        });
+        const a = await addLink(page, TAG, 'alternative rock');
         await ctrlHover(page, a);
         await expect(card(page).locator('.mb-tt-alert')).toContainText('not the page expected');
         login = false;

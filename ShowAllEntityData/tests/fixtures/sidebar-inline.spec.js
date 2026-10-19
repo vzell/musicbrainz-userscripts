@@ -613,3 +613,65 @@ const cardStates = (page) => page.evaluate(() => Array.from(document.querySelect
         marker: getComputedStyle(title, '::before').content,
     };
 }));
+
+// ── The Tags card: a tag preview and the votes' hover card (2026-10-19) ─────────
+//
+// Pinned: a pill's tag link is a target of the popup engine's `tag` kind
+// (TAG CARD: hover shows #mb-dp-peek, Space the window), and the pill's
+// number carries its own rich card that explains the vote total (VOTES) — a
+// sibling of the link, so hovering it never opens the tag preview.
+test.describe('sidebar cards: tag pills', () => {
+    const TAG_FIXTURE = path.join(__dirname, 'tag-page-alternative-rock.html');
+
+    /**
+     * Opens the artist page's own render with the link previews on, every
+     * /tag/ page answered with the captured alternative-rock tag page.
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<{tagPages: string[]}>}
+     */
+    async function openWithTags(page) {
+        await open(page, 'artist', 'own', {
+            sa_pop_mb: true, sa_pop_mb_page: true, sa_dp_hover_without_ctrl: true, sa_rich_tooltip_delay_ms: 0,
+        });
+        const log = { tagPages: [] };
+        // Registered after open()'s catch-all route, so it wins for /tag/.
+        await page.route(/^https:\/\/musicbrainz\.org\/tag\//, (route) => {
+            log.tagPages.push(route.request().url());
+            return route.fulfill({ path: TAG_FIXTURE, contentType: 'text/html' });
+        });
+        await page.mouse.move(0, 0);
+        return log;
+    }
+
+    test('TAG CARD: a pill\'s tag link previews the tag page; Space opens its window', async ({ page }) => {
+        const log = await openWithTags(page);
+        const link = page.locator('.mb-sb-inline .mb-sb-pill > a[href="/tag/heartland%20rock"]');
+        await link.scrollIntoViewIfNeeded();
+        await link.hover();
+        const peek = page.locator('#mb-dp-peek');
+        // Every /tag/ page is answered with the alternative-rock capture.
+        await expect(peek.locator('.mb-tt-title')).toHaveText('alternative rock');
+        await expect(peek.locator('.mb-tt-pill')).toHaveText(['Genre', '212,773 entities']);
+        expect(log.tagPages).toEqual(['https://musicbrainz.org/tag/heartland%20rock']);
+        await page.keyboard.press('Space');
+        await expect(page.locator('#mb-dp-dialog .mb-dp-area .mb-dp-group').first()).toBeVisible();
+    });
+
+    test('VOTES: the number explains itself in a rich card, and is not the tag\'s preview', async ({ page }) => {
+        await openWithTags(page);
+        const votes = page.locator('.mb-sb-inline .mb-sb-pill', { has: page.locator('a[href="/tag/rock"]') }).locator('.mb-sb-pill-votes');
+        await expect(votes).toHaveText('18');
+        const tip = await votes.getAttribute('data-mbtt');
+        expect(tip).toContain('<div class="mb-tt-title">Score 18</div>');
+        expect(tip).toContain('Genre “rock”');
+        expect(tip).toContain('on this artist');
+        expect(tip).toContain('a downvote takes 1 away');
+        await votes.scrollIntoViewIfNeeded();
+        await votes.hover();
+        const card = page.locator('#mb-stat-tooltip');
+        await expect(card).toBeVisible();
+        await expect(card.locator('.mb-tt-title')).toHaveText('Score 18');
+        await expect(card).toContainText('above 0');
+        await expect(page.locator('#mb-dp-peek')).toBeHidden();
+    });
+});
