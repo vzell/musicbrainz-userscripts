@@ -31,6 +31,7 @@
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?(?:master|release|artist|label)\/\d+(?:-[^\/?#]*)?\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?submissions\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?user\/[^\/?#]+\/?(?:[?#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?users\/ratings\/[^\/?#]+\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?discogs\.com\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?release\/\d+(?:-[^\/?#]*)?\/history\/?(?:[?#].*)?$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
@@ -6003,6 +6004,14 @@
     const _DG_USER_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?user\/([^/?#]+)\/?$/;
 
     /**
+     * A discogs.com user's ratings, `/users/ratings/<name>` (language prefix
+     * allowed): pageType `dg-ratings` (2026-10-19), plain HTML without
+     * `#app`. Read by the `#app` gate below and the definition's `match`.
+     * @type {RegExp}
+     */
+    const _DG_RATINGS_PATH_RE = /^\/(?:[a-z]{2}(?:[-_][a-zA-Z]{2})?\/)?users\/ratings\/([^/?#]+)\/?$/;
+
+    /**
      * A discogs.com release's history page, `/release/<id>[-slug]/history`
      * (with or without `?diff=<rev>`): pageType `dg-history` (2026-10-18),
      * plain HTML without `#app`. Read by the `#app` gate below, the
@@ -6110,11 +6119,12 @@
     if (_isDgHost && window.top !== window) return;
     // Cloudflare's "Just a moment…" check answers at the same URL and has no
     // #app (seen 2026-10-18 in an automated browser): not a Discogs page.
-    // The submissions list and a user's page are older pages without #app:
+    // The submissions list, a user's page, their ratings and a release's
+    // history are older pages without #app:
     // plain HTML, whose content root is #page_content (the check has neither).
     if (_isDgHost && !document.getElementById('app') &&
         !((_DG_SUBS_PATH_RE.test(window.location.pathname) || _DG_USER_PATH_RE.test(window.location.pathname) ||
-           _DG_HIST_PATH_RE.test(window.location.pathname)) &&
+           _DG_HIST_PATH_RE.test(window.location.pathname) || _DG_RATINGS_PATH_RE.test(window.location.pathname)) &&
           document.getElementById('page_content'))) {
         Lib.info('init', 'discogs.com: no #app on this page (a security check?) — nothing to do.');
         return;
@@ -14665,6 +14675,7 @@
             'Other versions': ['Image', 'Title', 'Format', 'Label', 'Cat#', 'Country', 'Year'],
         },
         submissions: ['Artist', 'Title', 'Changed by', 'Changed', 'Matched artist', 'History'],
+        ratings: ['Image', 'Artist', 'Title', 'Format', 'Label', 'Cat#', 'Year', 'Rating', 'Data quality'],
         history: {
             Changes: ['Changed', 'User', 'Action', 'Notes', 'Revision', 'View'],
             Diff: ['Section', 'Old', 'New', 'Marked'],
@@ -15654,7 +15665,7 @@
         const h2 = document.createElement('h2');
         h2.className = 'mb-dg-list-heading';
         h2.textContent = kind === 'user' ? (_DG_USER_LISTS[def.features.dgUserList] || {}).heading || 'Lists'
-            : { artist: 'Discography', label: 'Releases', master: 'Versions', release: 'Release', submissions: 'Submissions', history: 'History' }[kind] || 'Discogs';
+            : { artist: 'Discography', label: 'Releases', master: 'Versions', release: 'Release', submissions: 'Submissions', history: 'History', ratings: 'Ratings' }[kind] || 'Discogs';
         const cols = kind === 'release' ? _DG_HEADERS.release.Tracklist : kind === 'user' ? _DG_HEADERS.user.releases
             : kind === 'history' ? _DG_HEADERS.history.Changes : _DG_HEADERS[kind];
         const table = document.createElement('table');
@@ -15941,6 +15952,15 @@
         const row = td.parentElement;
         const rc = row && _rowTextCache.get(row);
         if (rc) { rc.cols = []; rc.full = null; }
+        // The row's Picard cell reads its releases from this one: an open
+        // column takes the answer at once. A source row is not in a table;
+        // its next clone is filled from the answer by the render's own pass.
+        const picard = row && row.querySelector('td.mb-picard-cell');
+        const table = row && row.closest('table.tbl');
+        if (picard && table && _picardTableExpanded(table)) {
+            _picardApplyCellState(row, picard, true);
+            picard._mbPicardWired = true;
+        }
     }
 
     /**
@@ -16621,6 +16641,161 @@
      */
     function _dgSubsPageRequest(p) {
         return { url: _dgSubsPageUrl(p), toHtml: (text) => _dgSubsToHtml(text) };
+    }
+
+    // --- discogs.com: a user's ratings (pageType dg-ratings) -----------------
+    // `/users/ratings/<name>` (vzell, 2026-10-19; debug/discogs-user-ratings.html):
+    // the releases a user rated, with the rating. Plain server-rendered HTML
+    // (no `#app`, `#page_content`), and the API has no such list (only one
+    // release's rating by one user), so the rows come from these pages on
+    // discogs.com itself, fetched same-origin as the submissions list's are,
+    // asked at Discogs' largest page size (250) in the "Text With Covers"
+    // layout (`layout=med`: the one with the table; "Large Covers" has none).
+    // The user's own sort (`sort`, `sort_order`) is kept.
+
+    /**
+     * How many ratings one page asks for: the largest of Discogs' "Show"
+     * choices (25, 50, 100, 250).
+     * @type {number}
+     */
+    const _DG_RATINGS_PER_PAGE = 250;
+
+    /**
+     * Page `p` of the ratings: the current URL with `limit`, `page` and
+     * `layout` set, no hash.
+     *
+     * @param {number} p - From 1.
+     * @returns {string}
+     */
+    function _dgRatingsPageUrl(p) {
+        const u = new URL(window.location.href);
+        u.hash = '';
+        u.searchParams.set('limit', String(_DG_RATINGS_PER_PAGE));
+        u.searchParams.set('page', String(p));
+        u.searchParams.set('layout', 'med');
+        return u.href;
+    }
+
+    /**
+     * The number of ratings as the live page states it ("1 – 2 of 2"), no
+     * request; 0 when it says nothing; and the pages at
+     * `_DG_RATINGS_PER_PAGE` a page (whatever the live page's own `limit`).
+     *
+     * @returns {{total: number, pages: number}}
+     */
+    function _dgRatingsSize() {
+        const el = document.querySelector('.pagination_total');
+        const m = el && /\bof\s+([\d,.]+)/.exec(el.textContent);
+        const total = m ? Number(m[1].replace(/[,.]/g, '')) : 0;
+        return { total, pages: Math.max(1, Math.ceil(total / _DG_RATINGS_PER_PAGE)) };
+    }
+
+    /**
+     * `features.pageCountAsync` of `dg-ratings`: `_dgRatingsSize()`'s pages.
+     *
+     * @returns {Promise<number>}
+     */
+    async function _dgRatingsPageCount() {
+        return _dgRatingsSize().pages;
+    }
+
+    /**
+     * The button's hover text: what it loads and what that costs, from the
+     * live page's own count.
+     *
+     * @returns {string}
+     */
+    function _dgRatingsCost() {
+        const { total, pages } = _dgRatingsSize();
+        const n = (x) => x.toLocaleString('en-US');
+        return `${total ? `All ${n(total)} rated releases` : 'Every rated release'} of this user, from discogs.com's own pages ` +
+            `(${_DG_RATINGS_PER_PAGE} a page): ${n(pages)} request${pages === 1 ? '' : 's'}.`;
+    }
+
+    /**
+     * The links of a ratings row's "Artist - Title (Label - Cat#)" cell as
+     * one `<td>` of links: each anchor as an absolute link (a link preview
+     * target), its name without Discogs' " (2)"; the text between them
+     * (", ", " & ", …) kept as Discogs writes it.
+     *
+     * @param {Node[]} nodes - The cell's child nodes of one part, in order.
+     * @returns {string} A `<td>`.
+     */
+    function _dgRatingsLinksCell(nodes) {
+        const html = nodes.map((n) => {
+            if (n.nodeType === Node.TEXT_NODE) return _rgEsc(n.textContent.replace(/\s+/g, ' '));
+            if (n.nodeName !== 'A') return _rgEsc(n.textContent);
+            const href = _dgAbsHref(n);
+            const name = _rgEsc(_extDiscogsName(n.textContent.replace(/\s+/g, ' ').trim()));
+            return href ? `<a href="${_rgEsc(href)}"${_DG_NEW_TAB}>${name}</a>` : name;
+        }).join('').trim();
+        return `<td>${html}</td>`;
+    }
+
+    /**
+     * One page of a user's ratings (`features.pageRequest`'s `toHtml`) as a
+     * document of `table.tbl`, in `_DG_HEADERS.ratings` order. Discogs' row:
+     * the thumbnail, the data quality (a tooltip's `data-title`), one cell
+     * "Artist - Title (Label - Cat#)" of links, Format, Year and the rating
+     * (`span.rating[data-value]`, 1–5).
+     *
+     * @param {string} text - One ratings page's HTML.
+     * @returns {string} An HTML document.
+     * @throws {Error} When the page holds no ratings table (`status` 0; a
+     *   login page, a browser check): the loop records the page as failed.
+     */
+    function _dgRatingsToHtml(text) {
+        const doc = new DOMParser().parseFromString(text, 'text/html');
+        const table = doc.querySelector('table.release_list_table');
+        if (!table) throw Object.assign(new Error('Discogs answered, but not with a list of ratings'), { status: 0 });
+        const rows = Array.from(table.querySelectorAll('tbody > tr')).map((tr) => {
+            const box = tr.querySelector('.release_title');
+            const rel = box && box.querySelector('a[href*="/release/"]');
+            if (!rel) return '';
+            const kids = Array.from(box.childNodes);
+            const at = kids.indexOf(rel);
+            // Before the release: the artists, then " - ".
+            const artists = kids.slice(0, at);
+            const lastText = artists[artists.length - 1];
+            if (lastText && lastText.nodeType === Node.TEXT_NODE) {
+                artists[artists.length - 1] = doc.createTextNode(lastText.textContent.replace(/\s*-\s*$/, ''));
+            }
+            // After it: " (Label - Cat#, Label2 - Cat#2)". Each label is a
+            // link; its number is the text after it up to the next link.
+            const labels = [];
+            const catnos = [];
+            kids.slice(at + 1).forEach((n) => {
+                if (n.nodeName === 'A') labels.push(n);
+                else if (n.nodeType === Node.TEXT_NODE && labels.length) {
+                    const m = /^\s*-\s*([^,)]*)/.exec(n.textContent);
+                    if (m && catnos.length < labels.length) catnos.push(m[1].trim());
+                }
+            });
+            const labelCell = labels.length ? _dgRatingsLinksCell(labels.flatMap((a, i) => i ? [doc.createTextNode(', '), a] : [a])) : '<td></td>';
+            const img = tr.querySelector('td.image img[src]');
+            const quality = tr.querySelector('td.status [data-title]');
+            const rating = tr.querySelector('span.rating[data-value]');
+            const cellText = (sel) => (tr.querySelector(sel)?.textContent || '').replace(/\s+/g, ' ').trim();
+            return `<tr>${_dgThumbCell(_extDgThumb(img && img.getAttribute('src')))}${_dgRatingsLinksCell(artists)}` +
+                `${_dgCell(rel.textContent.replace(/\s+/g, ' ').trim(), _dgAbsHref(rel))}${_dgCell(cellText('td[data-header="Format"]'))}` +
+                `${labelCell}${_dgCatnoCell(catnos.join(', '))}${_dgCell(cellText('td[data-header="Year"]'))}` +
+                `${_dgCell(rating ? String(Number(rating.getAttribute('data-value')) || '') : '')}` +
+                `${_dgCell(quality ? quality.getAttribute('data-title') : '')}</tr>`;
+        }).filter(Boolean);
+        return '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>' +
+            `${_dgTableHtml(null, _DG_HEADERS.ratings, rows)}</body></html>`;
+    }
+
+    /**
+     * `features.pageRequest` of `dg-ratings`: page `p` of the ratings, a
+     * same-origin GET (`fetchHtml()`, the browser's session), turned into
+     * rows by `_dgRatingsToHtml()`.
+     *
+     * @param {number} p - From 1.
+     * @returns {{url: string, toHtml: function(string): string}}
+     */
+    function _dgRatingsPageRequest(p) {
+        return { url: _dgRatingsPageUrl(p), toHtml: (text) => _dgRatingsToHtml(text) };
     }
 
     /**
@@ -33842,10 +34017,6 @@
             tableMode: 'single'
         },
         {
-            // A user's page (2026-10-18): their submissions, contributions,
-            // collection and wantlist from Discogs' API, each button shown
-            // only when the page counts that list. See the "discogs.com: a
-            // user's page" block above _DG_USER_LISTS.
             // A release's history page (2026-10-18): its changes and its diff,
             // read with the history reader's parser. See the "discogs.com: a
             // release's history page" block above _dgHistPageUrl().
@@ -33868,6 +34039,10 @@
             tableMode: 'multi'
         },
         {
+            // A user's page (2026-10-18): their submissions, contributions,
+            // collection and wantlist from Discogs' API, each button shown
+            // only when the page counts that list. See the "discogs.com: a
+            // user's page" block above _DG_USER_LISTS.
             type: 'dg-user',
             host: 'www.discogs.com',
             match: (path) => _DG_USER_PATH_RE.test(path),
@@ -33890,6 +34065,28 @@
                 integerColumns: [ { sourceColumn: 'Year', align: 'R' } ]
             },
             tableMode: 'multi'
+        },
+        {
+            // A user's ratings (2026-10-19): plain HTML, not in the API —
+            // the rows come from these pages on discogs.com itself, 250 a
+            // page. See the "discogs.com: a user's ratings" block above
+            // _DG_RATINGS_PER_PAGE.
+            type: 'dg-ratings',
+            host: 'www.discogs.com',
+            match: (path) => _DG_RATINGS_PATH_RE.test(path),
+            buttons: [ {
+                label: 'Show all ratings', shortLabel: 'Ratings',
+                get description() { return _dgRatingsCost(); }
+            } ],
+            features: {
+                dgToTable: 'ratings',
+                decorateDoc: (doc) => _dgMbDecorateDoc(doc),
+                pageRequest: (p) => _dgRatingsPageRequest(p),
+                pageCountAsync: () => _dgRatingsPageCount(),
+                collapsableColumns: [ 'Cat#' ],
+                integerColumns: [ { sourceColumn: 'Year', align: 'R' }, { sourceColumn: 'Rating', align: 'R' } ]
+            },
+            tableMode: 'single'
         }
     ];
 
@@ -134719,7 +134916,9 @@ a { color: #1565c0; }`;
             const hit = _classify(a);
             if (!hit || hit.type !== targetType || seen.has(hit.guid)) continue;
             seen.add(hit.guid);
-            out.push({ guid: hit.guid, entityType: hit.type, name: a.textContent.trim() });
+            // A discogs.com MusicBrainz-column link is an icon: its cell
+            // carries the Discogs entity's name.
+            out.push({ guid: hit.guid, entityType: hit.type, name: a.textContent.trim() || targetCell.dataset.mbDgName || '' });
         }
         return out;
     }
@@ -134734,8 +134933,11 @@ a { color: #1565c0; }`;
      * @returns {string}  Full http://… URL for the tagger endpoint.
      */
     function _picardBuildTaggerUrl(host, port, entityType, guid) {
+        // On another site (discogs.com's MusicBrainz column) the entity is
+        // still MusicBrainz's, never that site's own page.
+        const origin = _foreignHost ? 'https://musicbrainz.org' : window.location.origin;
         return `http://${host}:${port}/openalbum?id=${guid}&v=2&resource=${encodeURIComponent(
-            `${window.location.origin}/${entityType}/${guid}`
+            `${origin}/${entityType}/${guid}`
         )}`;
     }
 
@@ -135402,7 +135604,13 @@ a { color: #1565c0; }`;
             const _hasReleaseLink = Array.from(table.querySelectorAll(
                 'tbody td:not(.mb-sticky-col):not(.mb-rel-cell) ' +
                 'a[href*="/release/"]:not([href*="/release-group/"])'
-            )).some(a => /^(?:(?:https?:)?\/\/[^/]*musicbrainz\.(?:org|eu))?\/release\/[0-9a-f]{8}-/i.test(a.getAttribute('href') || ''));
+            )).some(a => /^(?:(?:https?:)?\/\/[^/]*musicbrainz\.(?:org|eu))?\/release\/[0-9a-f]{8}-/i.test(a.getAttribute('href') || ''))
+                // discogs.com: a table whose MusicBrainz column looks up
+                // releases has the column from the start, whether or not an
+                // answer is in yet (they arrive after the render; vzell,
+                // 2026-10-19: the ratings page had none, master and release
+                // pages had it only from the importer's cache).
+                || (_isDgHost && !!table.querySelector('tbody td.mb-dg-mb-cell[data-mb-dg-types~="release"]'));
             if (!_hasReleaseLink) {
                 Lib.debug('picard',
                     `initPicardTaggerColumn: skipping table — no /release/<mbid> links in tbody.`);
@@ -136622,6 +136830,20 @@ a { color: #1565c0; }`;
              */
             picardEntityScans() {
                 return _picardEntityScans;
+            },
+
+            /**
+             * The URL a Picard button sends (`_picardBuildTaggerUrl()`).
+             * Exposed because the request goes to a local Picard the fixture
+             * harness has none of: on another site (discogs.com) its
+             * `resource` must still be MusicBrainz's page, never the site's.
+             *
+             * @param {string} entityType
+             * @param {string} guid
+             * @returns {string}
+             */
+            picardTaggerUrl(entityType, guid) {
+                return _picardBuildTaggerUrl('127.0.0.1', 8000, entityType, guid);
             },
 
             /**

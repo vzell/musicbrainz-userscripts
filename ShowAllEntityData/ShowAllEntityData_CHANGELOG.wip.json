@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-10-19",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "discogs.com: a user's ratings page (/users/ratings/<name>) gets a \"Show all ratings\" button: every release the user rated in one table — thumbnail, Artist, Title, Format, Label, Cat#, Year, Rating (1 to 5, sorted as a number) and Discogs' Data quality, plus the MusicBrainz column when murdos' importer is installed. The rows are read from discogs.com's own pages, 250 a page (Discogs' API has no list of a user's ratings); the sort you chose on the page is kept, and pointing at the button shows how many pages it asks for. A click on a thumbnail opens the artwork viewer, as on the other Discogs pages.",
+          "discogs.com, with murdos' importer installed: the Picard column now shows on every Discogs table whose MusicBrainz column looks up releases — the ratings page too — from the start, not only when MusicBrainz's answers happened to be cached already (so far master and release pages had it, the ratings page never). Opened (▶♪), a row gets its ♪ as soon as MusicBrainz names its release, and the button says which release it sends. Picard is sent the release's MusicBrainz page, not the Discogs page you are on."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-10-19",
     "sections": [

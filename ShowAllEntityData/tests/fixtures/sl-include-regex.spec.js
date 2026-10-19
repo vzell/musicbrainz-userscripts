@@ -341,7 +341,23 @@ test.describe('@include coverage', () => {
             'https://www.discogs.com/user/vzell/collection',
             'https://www.discogs.com/user/vzell/submissions',
             'https://www.discogs.com/user/',
+        ];
+        expect(pages.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
+    test('discogs.com: a user\'s ratings (dg-ratings, 2026-10-19), a language prefix and the page\'s own query', () => {
+        const pages = [
             'https://www.discogs.com/users/ratings/vzell',
+            'https://www.discogs.com/users/ratings/vzell?limit=250&page=1',
+            'https://discogs.com/users/ratings/vzell/?sort=rating&sort_order=desc',
+            'https://www.discogs.com/de/users/ratings/vzell?limit=250&page=1',
+        ];
+        const others = [
+            'https://www.discogs.com/users/ratings/',
+            'https://www.discogs.com/users/ratings/vzell/more',
+            'https://www.discogs.com/users/vzell',
+            'https://www.discogs.com.example.org/users/ratings/vzell',
         ];
         expect(pages.filter((u) => !injected(u))).toEqual([]);
         expect(others.filter((u) => injected(u))).toEqual([]);

@@ -4,8 +4,8 @@
         "why": "The submissions list is plain HTML without #app; only a page with neither #app nor #page_content is the check.",
         "edits": [
             {
-                "find": "        !(_DG_SUBS_PATH_RE.test(window.location.pathname) && document.getElementById('page_content'))) {",
-                "replace": "        true) {"
+                "find": "        !((_DG_SUBS_PATH_RE.test(window.location.pathname) || _DG_USER_PATH_RE.test(window.location.pathname) ||",
+                "replace": "        !((false || _DG_USER_PATH_RE.test(window.location.pathname) ||"
             }
         ],
         "spec": "tests/fixtures/discogs-submissions.spec.js",

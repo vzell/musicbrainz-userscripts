@@ -28,7 +28,10 @@ the script DOES read:
   in Discogs' split pane with subbrowser.css's layout rules (the body rule
   locks the window's scrolling);
 - dg-release-history.html (debug/discogs-release-history.html): a release's
-  history page — header, every change, the rating, the latest diff.
+  history page — header, every change, the rating, the latest diff;
+- dg-user-ratings.html (debug/discogs-user-ratings.html, 2026-10-19): a
+  user's ratings — the user header, the top pager and the ratings table; and
+  dg-user-ratings-300.html, the same saying "of 300" (SYNTHETIC, 2 pages).
 
 usage: python3 scripts/build-discogs-fixtures.py
 """
@@ -187,6 +190,28 @@ def build_user(collection=False):
     return re.sub(r'<script\b.*?</script>', '', page, flags=re.S), title
 
 
+def build_ratings(total=None):
+    """dg-user-ratings.html (debug/discogs-user-ratings.html): a user's ratings — the user header (name),
+    the top pager ("1 – 2 of 2", the limit select) and the whole ratings table (2 rows, 5 and 4 stars).
+    With `total`, dg-user-ratings-300.html: the same page saying "1 – 250 of <total>" (SYNTHETIC: no
+    saved page of a user with more than 250 ratings), so the page count is 2."""
+    src = read_debug('discogs-user-ratings.html')
+    header = between(src, '<section aria-label="User">', '</section>')
+    header = re.sub(r'<form id="user_header_form".*?</form>', '', header, flags=re.S)
+    pager = between(src, '<nav aria-label="Pagination" class="pagination top', '</nav>')
+    if total:
+        pager = re.sub(r'1 – 2 of 2', f'1 – 250 of {total}', pager)
+    content = pager + between(src, '<table class="release_list_table', '</table>')
+    title = text(re.search(r'<title[^>]*>(.*?)</title>', src, re.S).group(1))
+    page = ('<!DOCTYPE html>\n<html lang="en"><head><meta charset="utf-8"><title>{title}</title></head><body class=" ">\n'
+            '<div id="main_wrapper"><div id="__header_root_497"><header class="dg-fx-header">'
+            '<a href="https://www.discogs.com/release/1874253">Header link</a></header></div>\n{header}\n'
+            '<div id="page"><div id="page_content" role="main">\n{content}\n</div></div></div>\n'
+            '<div id="esi-footer-root"><footer class="dg-fx-footer"><a href="https://www.discogs.com/master/26725">Footer link</a></footer></div>\n'
+            '</body></html>\n').format(title=html.escape(title), header=squeeze(header), content=squeeze(content))
+    return re.sub(r'<script\b.*?</script>', '', page, flags=re.S), title
+
+
 def write(name, out, note):
     """Writes one fixture and reports it."""
     dst = os.path.join(ROOT, 'tests', 'fixtures', name)
@@ -204,7 +229,9 @@ def main():
                      ('dg-release-history.html', build_release_history),
                      ('dg-release-history-diff.html', lambda: build_release_history('discogs-release-history-diff.html')),
                      ('dg-user-vzell.html', build_user),
-                     ('dg-user-collection.html', lambda: build_user(collection=True))):
+                     ('dg-user-collection.html', lambda: build_user(collection=True)),
+                     ('dg-user-ratings.html', build_ratings),
+                     ('dg-user-ratings-300.html', lambda: build_ratings(total=300))):
         out, title = fn()
         write(name, out, f'title "{title}"')
     return 0

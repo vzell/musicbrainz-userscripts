@@ -267,6 +267,40 @@ pager was not seen yet. A plain click on "View changes" opens the window;
 the history reader reads `?diff=<rev>` from the link and opens on that
 revision (`revFor`: once per opening).
 
+## A user's ratings (`dg-ratings`, 2026-10-19)
+
+`/users/ratings/<name>` (language prefix allowed; snapshot
+`debug/discogs-user-ratings.html`): the releases a user rated. An older page
+like the submissions list (no `#app`, the gate admits it with
+`#page_content`, our section first in `<body>`, the toolbar named from
+`#user_header h1`). **Not in the API** — it has one release's rating by one
+user, no list — so the rows come from these pages, fetched same-origin by
+`fetchHtml()` with the browser's session, as the submissions list's are.
+
+- **The pages asked** (`_dgRatingsPageUrl()`): the live URL with
+  `limit=250` (the largest "Show" choice), `page=N` and `layout=med`. The
+  layout matters: "Large Covers" (`layout=big`) is cards, not a table, and
+  Discogs remembers a user's choice. The user's own `sort`/`sort_order` stay
+  in the query, so the rows come in their order. The page count is the live
+  page's `.pagination_total` ("1 – 2 of 2") at 250 a page, no request
+  (`_dgRatingsSize()`); the live page's own `limit` does not matter.
+- **The row** (`_dgRatingsToHtml()`, `table.release_list_table`): the
+  thumbnail (`_dgThumbCell()`, so the viewer and the Image card work as
+  elsewhere); `td.status [data-title]` → *Data quality* ("New Submission");
+  one cell "Artist - Title (Label - Cat#)" of links, split by NODES around
+  the release link — before it the artists (the text between artist links
+  kept, the trailing " - " dropped), after it each label link followed by
+  " - <cat#>" (`_dgRatingsLinksCell()`, `_dgCatnoCell()`: "none" is no
+  number); `td[data-header=Format]`, `td[data-header=Year]`; and
+  `span.rating[data-value]` → *Rating* (`integerColumns`). "Added" is a sort
+  key on Discogs' page, never shown in its rows, so there is no such column.
+- **A page without the table** (a sign-in page, a browser check) throws
+  `status` 0: a FAILED page, logged with its reason, never zero rows.
+- **Unseen so far:** the snapshot has 2 rows, one artist and one label each,
+  and one page. Several artists or labels in a row and the multi-page pager
+  are parsed by the rules above but not checked against real markup; the
+  "of 300" fixture is SYNTHETIC.
+
 ## Users' pictures (2026-10-18)
 
 vzell: "the user's own avatar". A history (page and window) carries every
@@ -356,6 +390,13 @@ links", named first, makes no icons at all); reimplement its lookup and use
 its cache; look up automatically in the background; a cell covers the row's
 OWN entity; the column only with the importer present.
 
+**The Picard column rides on it** (vzell, 2026-10-19: master and release
+pages had it, the ratings page not): a table whose MusicBrainz column looks
+up releases gets the Picard column from the render on, an open one takes a
+late answer per row, and Picard is sent the MusicBrainz release page. See
+docs/claude/deferred-columns-picard-relationships.md, "On discogs.com the
+column comes from the MusicBrainz column".
+
 **Why our tables never get the importer's icons.** It decorates Discogs'
 React page only (`#app`: `div[class^=info_]`, `#release-companies`,
 `table[class^=releases_]` …); all 120 `span.mb_wrapper` of
@@ -443,6 +484,7 @@ incs in one request; `ended` per relation. Its answers are the
 | `tests/fixtures/sl-include-regex.spec.js`     | the `@include` line: the four page kinds (slug, language prefix, query, no www), not the image pages, search, sell, user pages or the API host                                                                                                                                                                                                                         |
 | `tests/fixtures/discogs-submissions.spec.js`  | submissions: flat view (section first in `<body>`, 12 flat pages same-origin in order, the split, every column), browser view (flat pages, the title), the check at a submissions URL; the history: a history link (card asks nothing, Space one request, 14 changes, filter, order, diff marked blocks / whole release, memory), a title ("History, then the release", one request each), a sign-in page; full size: a row's 5 images from one request, ← →, Shift+← →, back from the cache, a failure and "Try again"; MusicBrainz: a history link, an anonymous request on Space |
 | `tests/fixtures/discogs-links.spec.js`        | round 2: a plain click opens the window (every table link a new tab, the page stays); a search (25, Load 25 more = page 2, a result drilled, Back); in the history window a user (profile, the activity from their page, Back) and RSG §6.12.2 (the article, the section marked and in view, Back); View changes (6 buttons, 2 Images links, revision 8 → 10 only the Notes, Back to the latest, asked once); dg-user (only Submissions and Contributions, 642 in 7 requests, Releases 641 + Labels 1, columns; Contributions 3; the synthetic collection page: Collection, 2 pages, Added) |
+| `tests/fixtures/discogs-ratings.spec.js`      | dg-ratings: the section first, the name, the button's count, nothing before the press; one page `limit=250&page=1&layout=med`, every column (links absolute, Cat# "none" dropped, Rating 5/4, Data quality); Rating ▲/▼; 300 ratings = 2 pages with the page's sort kept; a sign-in page fails, logged; a thumbnail opens the viewer |
 | `tests/fixtures/discogs-mb-column.spec.js`    | the MusicBrainz column: none without the importer (no request); after Name/Title on Credits, Companies, Other versions, never Tracklist/Identifiers; the importer's cache at once, the rest in ≤100-resource requests (one inc, anonymous, exact URLs, none asked twice), a place before a label, one line, the importer's localStorage unchanged; our store (a second visit asks nothing, a "nothing found" too); ended grey, count badge, filtered by MBID not by "R?"; 📊 "MusicBrainz - Links" (ticking 2, pending drains as answers arrive); a sort keeps late answers (source rows); ⚠ and retry; auto lookups off → ▶ MB |
 
 Since vzell's browser round `discogs-pages.spec.js` also pins: the search
@@ -458,7 +500,8 @@ roots, Discogs' `<h1>`, five Discogs links, a header and a footer link;
 since 2026-10-18 also `dg-submissions-flat.html`, `dg-submissions-browser.html`
 and `dg-release-history.html`, the older pages' `#main_wrapper` shell;
 round 2: `dg-release-history-diff.html`, `dg-user-vzell.html`, the synthetic
-`dg-user-collection.html`);
+`dg-user-collection.html`; 2026-10-19: `dg-user-ratings.html` and the synthetic
+`dg-user-ratings-300.html`);
 the API answers are `scripts/capture-ext-fixtures.py`'s `ext-discogs-*.json`
 (Columbia oldest-first pages 2-5 added 2026-10-18; round 2: users vzell and
 GuiBeal, vzell's submissions pages 1 and 7 — the specs serve page 1 for 2-6,
