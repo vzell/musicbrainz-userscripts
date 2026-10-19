@@ -301,6 +301,43 @@ user, no list — so the rows come from these pages, fetched same-origin by
   are parsed by the rules above but not checked against real markup; the
   "of 300" fixture is SYNTHETIC.
 
+## The Image column's hover card (2026-10-19)
+
+vzell: "when hovering the Image column in Discogs PTs make all images shown
+in a popup like what we do in the CAA/EAA column on MB PTs". Every
+`_dgThumbCell()` link carries `data-mbtt-fn="dg-img"`, so the shared tooltip
+engine (`_initStatTooltip()`, `#mb-stat-tooltip`) resolves it through
+`_mbttResolve()` → `_dgImgCardHtml()`: delegated, so it survives every
+re-render's clones with no re-wiring.
+
+- **The card is the B1 artwork card** (`_artCardCoreHtml()`): the row's
+  title, the count, up to `sa_caa_tip_summary_tiles` tiles, the type tally.
+  Discogs' `primary` image takes the ★ (as MusicBrainz's main front) and the
+  tally reads primary / secondary; the facts line says "★ primary" / "no
+  primary" for an external context (`ctx.external`), never "main front".
+- **The record is the viewer's and the link preview's** (`_extLoad()` on
+  `_dgArtRowFor()`'s target — the row's Title link read by the Discogs
+  reader; `_dgThumbClick()` builds its rows with the same helper): memory,
+  IndexedDB, else ONE request for the hovered row, never a neighbour's.
+  Until it is in, "Loading" with the list's thumbnail; `repaint` re-resolves
+  the card while it still shows; `wanted` is `_dgImgCardShows()` (the card
+  on screen, the pointer on the link), asked after the rate slot — a row the
+  pointer only passed over costs nothing. A later click or Space costs
+  nothing either.
+- **Plain hover, no Ctrl** (vzell's choice): like the CAA column's card and
+  the users' picture card. `api.discogs.com` is an `@connect` host, so no
+  first-contact rule applies.
+- **Off** with `sa_dg_tip_images` (default on); no card for a row without a
+  release or master link (`_extTarget()` gives none).
+- **A viewer spec must switch it off**: a Playwright click moves the pointer
+  over the thumbnail first, so the card asks for the record before the
+  click, and the viewer then truthfully says "the cache"
+  (`discogs-submissions.spec.js`'s full-size test).
+- Specs: `tests/fixtures/discogs-image-card.spec.js` (tiles, ★, tally, one
+  request; second hover and click ask nothing; moved on before its slot →
+  "no longer wanted, not asked"; setting off); mutations
+  `scripts/mutations/discogs-image-card.json`.
+
 ## Users' pictures (2026-10-18)
 
 vzell: "the user's own avatar". A history (page and window) carries every

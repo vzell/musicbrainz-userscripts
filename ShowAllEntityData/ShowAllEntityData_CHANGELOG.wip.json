@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-10-19",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "discogs.com: pointing at a thumbnail in the Image column of a Discogs table shows a card with every image of that release or master — the primary one starred, how many primary and secondary — as the Cover Art column's card does on MusicBrainz. The first time, it is one request to Discogs for that row only (a row you only pass over costs nothing), and the artwork viewer and the link preview then reuse it. New setting ⚙️ Settings → 💿 Discogs → \"Image column: all images of a row on hover\" (on)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "2026-10-19",
     "sections": [

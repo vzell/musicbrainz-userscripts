@@ -2899,7 +2899,11 @@ images at full size, every one of them (a master row: the master's own
 images). The thumbnail shows at once with "Loading the full size…"; the
 full images take its place when Discogs answers: one request per row, and
 only for the rows you look at (a release you already previewed costs
-nothing). ← → step through the row's images, Shift+← → through the rows; if
+nothing). **Pointing at a thumbnail** shows a card with every image of that
+row — the primary one starred — as the Cover Art column does on
+MusicBrainz; the first time it is one request for that row, which the
+viewer then reuses (off: ⚙️ Settings → 💿 Discogs → *Image column: all
+images of a row on hover*). In the viewer, ← → step through the row's images, Shift+← → through the rows; if
 Discogs does not answer, the viewer says why and offers *Try again*. The
 section starts at the window's left edge and is as wide as its widest
 table; scrolled sideways, the toolbar and the bars stay in view.

@@ -4748,6 +4748,18 @@
                          '(a "nothing found" 7 days).'
         },
 
+        sa_dg_tip_images: {
+            label: 'Image column: all images of a row on hover',
+            type: 'checkbox',
+            default: true,
+            description: 'Pointing at a thumbnail in a Discogs table shows a card with every image of that ' +
+                         'release or master, as the Cover Art column does on MusicBrainz (the number of tiles ' +
+                         'as set for that card). The first time, the record is asked from Discogs\' API — one ' +
+                         'request for that row only, the same record the artwork viewer and the link preview ' +
+                         'use, so a later click or preview costs nothing; moving on before its turn asks ' +
+                         'nothing.'
+        },
+
         // ============================================================
         // LINK PREVIEWS ON MUSICBRAINZ (the popup engine's entity cards,
         // org/iframe.org Phase 2)
@@ -14881,7 +14893,8 @@
      * @returns {string}
      */
     function _dgThumbCell(thumb) {
-        return `<td class="mb-dg-imgcell">${thumb ? `<a class="mb-dg-thumblink" href="${_rgEsc(thumb)}" target="_blank" rel="noopener noreferrer">` +
+        // data-mbtt-fn: the hover card of every image of the row (_dgImgCardHtml()).
+        return `<td class="mb-dg-imgcell">${thumb ? `<a class="mb-dg-thumblink" data-mbtt-fn="dg-img" href="${_rgEsc(thumb)}" target="_blank" rel="noopener noreferrer">` +
             `<img class="mb-dg-thumb" src="${_rgEsc(thumb)}" alt="" width="40" height="40" loading="lazy" referrerpolicy="no-referrer"></a>` : ''}</td>`;
     }
 
@@ -15534,6 +15547,98 @@
     }
 
     /**
+     * The index of a discogs.com table's Title column (its first header
+     * starting "Title"), -1 for none.
+     *
+     * @param {HTMLTableElement} table
+     * @returns {number}
+     */
+    function _dgTitleColIdx(table) {
+        return Array.from(table.querySelectorAll('thead tr:first-child th'))
+            .findIndex(th => (th.dataset.colName || th.textContent).trim().startsWith('Title'));
+    }
+
+    /**
+     * One thumbnail's row as the artwork viewer and the image card take it:
+     * the row's Title link read by the link previews' Discogs reader (its
+     * release or master), null when that column has no such link.
+     *
+     * @param {HTMLAnchorElement} l - The row's `a.mb-dg-thumblink`.
+     * @param {number} titleIdx - `_dgTitleColIdx()` of its table.
+     * @param {string} path - The viewer's key for the row.
+     * @returns {DgArtRow}
+     */
+    function _dgArtRowFor(l, titleIdx, path) {
+        const cell = titleIdx >= 0 ? l.closest('tr').cells[titleIdx] : null;
+        const ta = cell && cell.querySelector('a[href]');
+        const target = ta ? _extTarget(ta) : null;
+        return {
+            thumb: l.href, title: cell ? cell.textContent.trim() : '', asked: false,
+            target: target && target.reader.id === 'discogs' ? target : null, path,
+        };
+    }
+
+    /**
+     * Whether `#mb-stat-tooltip` still shows the card of this thumbnail:
+     * the card is on screen and the pointer still on the link.
+     *
+     * @param {HTMLAnchorElement} a
+     * @returns {boolean}
+     */
+    function _dgImgCardShows(a) {
+        const tip = document.getElementById('mb-stat-tooltip');
+        return !!tip && tip.style.display === 'block' && a.isConnected && a.matches(':hover');
+    }
+
+    /**
+     * The hover card of a thumbnail in a discogs.com table (vzell,
+     * 2026-10-19: "all images in a popup, like the CAA/EAA column"): the
+     * B1 artwork card (`_artCardCoreHtml()`) of every image of the row's
+     * release or master — the record the viewer and the link preview use
+     * (`_extLoad()`: memory, IndexedDB, else ONE request for this row, never
+     * a neighbour's). Until it is in, "Loading" with the list's thumbnail;
+     * the request is wanted only while this card shows (`_dgImgCardShows()`,
+     * asked after the rate slot), and the card repaints when it arrives.
+     * Off with `sa_dg_tip_images`; no card for a row without a release or
+     * master link.
+     *
+     * @param {HTMLAnchorElement} a - The `a.mb-dg-thumblink`.
+     * @returns {?string} Card HTML, or null for none.
+     */
+    function _dgImgCardHtml(a) {
+        if (Lib.settings.sa_dg_tip_images === false) return null;
+        const table = a.closest('#mb-dg-root table.tbl');
+        if (!table) return null;
+        const row = _dgArtRowFor(a, _dgTitleColIdx(table), `dg-card:${a.href}`);
+        if (!row.target) return null;
+        const title = row.title || 'Discogs';
+        const box = (body) => `<div style="max-width:310px;"><div class="mb-tt-title">${_rgEsc(title)}</div>${body}</div>`;
+        const st = _mbPop.get(row.target.key);
+        if (!st || (st.status !== 'done' && st.status !== 'failed')) {
+            _extLoad(row.target, {
+                force: false,
+                repaint: () => {
+                    if (!_dgImgCardShows(a)) return;
+                    const html = _mbttResolve(a);
+                    if (html) document.getElementById('mb-stat-tooltip').innerHTML = html;
+                },
+                wanted: () => _dgImgCardShows(a),
+            });
+            return box(`<div class="mb-art-card-tiles"><span class="mb-art-card-tile"><img src="${_rgEsc(row.thumb)}" alt="" referrerpolicy="no-referrer"></span></div>` +
+                `<div class="mb-tt-comment"><span class="mb-dp-spin">◌</span> Loading every image of this one from Discogs…</div>`);
+        }
+        const images = _dgArtImages(row);
+        if (images.length === 1 && images[0].note) return box(`<div class="mb-tt-dim">${_rgEsc(images[0].note)}</div>`);
+        // Discogs' primary image is the one MusicBrainz would call the main
+        // front: the card's ★ and its type tally (primary, secondary).
+        const shown = images.map(im => ({ ...im, front: im.imageType === 'primary', types: im.imageType ? [im.imageType] : [] }));
+        return _artCardCoreHtml({
+            ctx: _DG_ART_CTX, images: shown, order: shown.map((_, i) => i), title, hit: () => false, matches: '',
+            foot: 'Click: viewer',
+        });
+    }
+
+    /**
      * A plain click on a thumbnail of a discogs.com table opens the artwork
      * viewer (vzell, 2026-10-18) on that row's images at FULL size: the
      * row's release or master record (its own images, a master's too:
@@ -15558,18 +15663,9 @@
             .filter(l => l.closest('tr').style.display !== 'none' && l.getClientRects().length);
         const k = links.indexOf(a);
         if (k < 0) return;
-        const titleIdx = Array.from(table.querySelectorAll('thead tr:first-child th'))
-            .findIndex(th => (th.dataset.colName || th.textContent).trim().startsWith('Title'));
+        const titleIdx = _dgTitleColIdx(table);
         /** @type {DgArtRow[]} */
-        const rows = links.map((l, i) => {
-            const cell = titleIdx >= 0 ? l.closest('tr').cells[titleIdx] : null;
-            const ta = cell && cell.querySelector('a[href]');
-            const target = ta ? _extTarget(ta) : null;
-            return {
-                thumb: l.href, title: cell ? cell.textContent.trim() : '', asked: false,
-                target: target && target.reader.id === 'discogs' ? target : null, path: `dg:${i}:${l.href}`,
-            };
-        });
+        const rows = links.map((l, i) => _dgArtRowFor(l, titleIdx, `dg:${i}:${l.href}`));
         e.preventDefault();
         e.stopImmediatePropagation();
         _DG_ART_CTX.imagesCache.clear();
@@ -129181,6 +129277,7 @@ a { color: #1565c0; }`;
                 case 'art-sum': return _artCardSummaryHtml(el);
                 case 'art-img': return _artCardImageHtml(el);
                 case 'art-rel': return _artRelIconCardHtml(el);
+                case 'dg-img': return _dgImgCardHtml(el);
                 default: return null;
             }
         } catch (err) {
@@ -129314,8 +129411,10 @@ a { color: #1565c0; }`;
         images.forEach(im => ((im.types && im.types.length) ? im.types : ['(no type)'])
             .forEach(t => tally.set(t, (tally.get(t) || 0) + 1)));
         const pills = Array.from(tally).map(([t, n]) => `<span class="mb-tt-pill">${_rgEsc(t)}${n > 1 ? ` ×${n}` : ''}</span>`).join(' ');
+        // An external record (a Discogs card) has a primary image or not:
+        // "no main front" is MusicBrainz's notion only.
         const facts = [
-            images.some(im => im.front) ? '★ main front' : 'no main front',
+            images.some(im => im.front) ? (ctx.external ? '★ primary' : '★ main front') : (ctx.external ? 'no primary' : 'no main front'),
             ...(ctx.key === 'caa' ? [images.some(im => im.back) ? 'main back' : 'no main back'] : []),
             ...(images.some(im => im.approved === false) ? [`${images.filter(im => im.approved === false).length} pending approval`] : []),
         ].join(' · ');

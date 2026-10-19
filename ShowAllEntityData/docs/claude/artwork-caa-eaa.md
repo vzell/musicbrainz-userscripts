@@ -517,7 +517,9 @@ Grep `// ── CAA/EAA column redesign` for the code. Rules that fail silently:
   <span class="caa-icon">`, put in late) is stamped `data-mbtt-fn="art-rel"`
   at the top of `#mb-stat-tooltip`'s mouseover (`_artRelIconStamp()`) and
   shows the B1 card (`_artCardCoreHtml()`, shared with
-  `_artCardSummaryHtml()`) from `_artFetchEntityImages()`, asked on the first
+  `_artCardSummaryHtml()`, and since 2026-10-19 with discogs.com's Image
+  column, `_dgImgCardHtml()`: its facts line says "primary" for an
+  external context) from `_artFetchEntityImages()`, asked on the first
   hover or click; waiting callers queue (`_artRelIconLoading`), because a
   click right after the hover found the load already on its way and was
   dropped. The click never navigates by itself. Gates: `sa_enable_caa_pics`

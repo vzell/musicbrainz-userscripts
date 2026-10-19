@@ -380,7 +380,10 @@ test.describe('discogs.com submissions, edit history, full-size images (2026-10-
     });
 
     test('a thumbnail: the row\'s full images from its record, asked when shown; Shift+← → step through rows; back from the cache', async ({ page }) => {
-        const { errors } = await openDg(page, { url: MASTER, file: path.join(__dirname, 'dg-master.html') });
+        // The viewer's own request: without the image card, whose hover
+        // (the click's pointer passes over the thumbnail first) would ask
+        // for the record before the click (discogs-image-card.spec.js).
+        const { errors } = await openDg(page, { url: MASTER, file: path.join(__dirname, 'dg-master.html'), settings: { sa_dg_tip_images: false } });
         await page.locator('#mb-dg-root button[data-label="Show all versions"]').click();
         await waitForRenderComplete(page, { waitForAutoResize: false });
         const table = page.locator('#mb-dg-root table.tbl').first();
