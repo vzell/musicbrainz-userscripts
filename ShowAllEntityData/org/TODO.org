@@ -3246,21 +3246,7 @@ see e.g the "Columbia" label:
 
 maybe we can reimplement what the third-party userscript does and use the Importer's cache
 
-
-* TODO check discogs artist pages if really ALL master are present + implement master->release(s) drilldown
-
-* TODO add "Space" on the image hover popup in the CAA/EAA column to show ALL images (right now it shows a couple and the a "+ 69")
-
-1.)
-
-add "Space" on the image hover popup in the CAA/EAA column to show ALL images (right now it shows a couple and the a "+ 69"), e.g. on https://musicbrainz.org/release-group/f731060c-05d4-439d-8351-59e5e5eb91a0
-
-2.)
-
-add an option to show bigger/scaled images in the hover popup
-
-
-* TODO add UVD entries to the "Relationships" column for unique counts for amazon link in general not dependant on which country, same for other URL types 
+* DONE add UVD entries to the "Relationships" column for unique counts for amazon link in general not dependant on which country, same for other URL types 
 
 do it all in one branch:
 
@@ -3312,17 +3298,83 @@ Remove
 
 from the bottom of the FRP at https://musicbrainz.org/release/9d451257-ebce-44ec-aad8-b48609bfaf7a - it's coming from a third-party user script "MBz YouTube Music Lookup" by @afro
 
+5.)
 
-* TODO add the "work of" to more recording columns in other PTs
+if the "Relationships" column on MP PTs has multiple Discogs URL relationship icons, add a warning icon (see the skill "add-finding")
 
-Currently on the PT 'artist-recordings'
-e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings on the FRP we render the new
-"Recording of" and "Performance attributes" columns after the "Name" column with the functionality of on demand loading
-of works associated to the recordings
+
+* TODO check discogs artist pages if really ALL master are present + implement master->release(s) drilldown
+
+* TODO add "Space" on the image hover popup in the CAA/EAA column to show ALL images (right now it shows a couple and the a "+ 69")
+
+1.)
+
+add "Space" on the image hover popup in the CAA/EAA column to show ALL images (right now it shows a couple and the a "+ 69"), e.g. on https://musicbrainz.org/release-group/f731060c-05d4-439d-8351-59e5e5eb91a0
+
+2.)
+
+add an option to show bigger/scaled images in the hover popup
+
+
+* TODO add the "Recording of" to more recording columns in other PTs
+
+Currently on the PT 'artist-recordings' e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings on the FRP we render the new
+"Recording of" and "Performance attributes" columns (+ functionality) after the recording "Name" column with the functionality of on demand loading of works associated to the recordings
 
 #+begin_example
 <button type="button" class="mb-recof-col-hdr-btn" data-mb-aj="recof" data-mb-aj-name="▶🎼" aria-pressed="true" aria-label="Load the &quot;Recording of&quot; column"></button>
 #+end_example
+
+1.)
+
+Make a comprehensive report of MB PTs where we also render recording type columns
+
+2.)
+
+Is it feasible to also add the same treatment to these columns as we do on the PT 'artist-recordings', if yes make it configurable
+
+* TODO add support for a tag reader
+
+1.)
+
+On e.g. tag pages like https://musicbrainz.org/tag/alternative%20rock move the following container
+
+#+begin_example
+<p class="mb-sph-target" style="--mb-sph-left: 16px; --mb-sph-maxw: 1582px;">212,773 entities found</p>
+#+end_example
+
+right after the h2 header line with the global filter field, also indented like all the following h3 header lines
+
+#+begin_example
+@debug/tag-entity-initial.html - IP
+@debug/tag-entity-final.html - FRP
+#+end_example
+
+2.)
+
+a.)
+
+add support for a tag reader to display as detail popup on hovering and "Space" pressing a tag container like e.g
+
+#+begin_example
+<div class="mb-sb-chips mb-sb-card-body"><div class="mb-sb-chip-row"><span class="mb-sb-pill"><a href="/tag/alternative%20rock">alternative rock</a><span class="mb-sb-pill-votes">1</span></span><span class="mb-sb-pill"><a href="/tag/heartland%20rock">heartland rock</a><span class="mb-sb-pill-votes">1</span></span></div></div>
+#+end_example
+
+see the above raw HTML files in @debug and the following for the "TAGS" section on e.g. https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/releases
+
+#+begin_example
+@debug/bo-deans-tag-buttons.html - FRP - https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/releases
+#+end_example
+
+b.)
+
+also the number of spill votes
+
+#+begin_example
+<span class="mb-sb-pill-votes">1</span>
+#+end_example
+
+should get an explanatory rich tooltip
 
 
 * TODO add UVD entries for titles which do NOT follow MB style guidelines on MB PTs and use our rich tooltip diff popup view to show whats differing
@@ -3335,10 +3387,6 @@ add UVD entries for titles which do NOT follow MB style guidelines on MB PTs
 
 use our rich tooltip diff popup view to show whats differing
 
-
-* TODO add warning icon (etc.) support if a MB entitty has multiple Discogs URLs
-
-add warning icon (etc.) support if a MB entitty has multiple Discogs URLs
 
 * TODO Add a must have third-party userscripts section together with the end-user visible changes and what our userscript depends on
 
