@@ -3262,20 +3262,25 @@ add an option to show bigger/scaled images in the hover popup
 
 * TODO add UVD entries to the "Relationships" column for unique counts for amazon link in general not dependant on which country, same for other URL types 
 
+do it all in one branch:
+
 1.)
 
-add UVD entries to the "Relationships" column for unique counts for amazon link in general not dependant on which
-country, same for other URL types
+The review favicon
+
+#+begin_example
+<li class="review-favicon" data-mb-sbl-kind="Other" style="order: 70001;"><a href="http://brucebase.wikidot.com/2025#261025">Review (brucebase.wikidot.com)</a></li>
+#+end_example
+
+on e.g. https://musicbrainz.org/event/47b84024-bd3b-4e36-80e1-b051e12ede2f is missing in the "Relationship" column under the "URLs" section
+
+#+begin_example
+@debug/event-review-glyph.html - FRP - https://musicbrainz.org/release/979418e7-c2c1-47e8-805a-bdc2d60c0057
+#+end_example
 
 2.)
 
-https://musicbrainz.org/series/bf668806-793f-4131-959f-9124ad76a47b
-
-3.)
-
-https://musicbrainz.org/release/979418e7-c2c1-47e8-805a-bdc2d60c0057
-
-columns
+The UVD in the following "Section - column"
 
 #+begin_example
 URLs - "URL"
@@ -3283,6 +3288,19 @@ Via release group: <RG> - "Target"
 Sidebar: AME - "Link"
 Sidebar: Search - "Link"
 #+end_example
+
+need website icon support + unique value counts e.g. on https://musicbrainz.org/release/9d451257-ebce-44ec-aad8-b48609bfaf7a
+after clicking the "Credits" button (but the same is true for other PTs after clicking the "Relationships" button, e.g. on https://musicbrainz.org/series/bf668806-793f-4131-959f-9124ad76a47b)
+
+#+begin_example
+@debug/release-missing-glyphs.html - FRP
+#+end_example
+
+3.)
+
+there should also be unique counts for same kind of links (e.g. not dependant on which country)
+
+https://musicbrainz.org/release/979418e7-c2c1-47e8-805a-bdc2d60c0057
 
 4.)
 
@@ -3292,7 +3310,7 @@ Remove
 <button title="Search &quot;Bruce Springsteen Tracks II: The Lost Albums&quot; on YouTube Music" style="cursor: pointer; --mb-sph-left: 20px; --mb-sph-maxw: 1590px;" class="mb-sph-target mb-sph-inline">YouTube Music Lookup</button>
 #+end_example
 
-from the bottom of the FRP at https://musicbrainz.org/release/979418e7-c2c1-47e8-805a-bdc2d60c0057
+from the bottom of the FRP at https://musicbrainz.org/release/9d451257-ebce-44ec-aad8-b48609bfaf7a - it's coming from a third-party user script "MBz YouTube Music Lookup" by @afro
 
 
 * TODO add the "work of" to more recording columns in other PTs
@@ -3306,16 +3324,6 @@ of works associated to the recordings
 <button type="button" class="mb-recof-col-hdr-btn" data-mb-aj="recof" data-mb-aj-name="▶🎼" aria-pressed="true" aria-label="Load the &quot;Recording of&quot; column"></button>
 #+end_example
 
-
-* TODO Wikipedia(en) card missing from the "EXTERNAL LINKS -> DATABSES" section
-
-Wikipedia(en) card missing from the "EXTERNAL LINKS -> DATABSES" section, e.g. https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0 - 
-
-
-* TODO UVD in URL columns need web site icon support + unique value counts
-
-UVD in URL columns need web site icon support + unique value counts e.g. on https://musicbrainz.org/release/9d451257-ebce-44ec-aad8-b48609bfaf7a
-after clicking the "Credits" button (but the same is true for other PTs after clicking the "Relationships" button, e.g. on https://musicbrainz.org/series/bf668806-793f-4131-959f-9124ad76a47b)
 
 * TODO add UVD entries for titles which do NOT follow MB style guidelines on MB PTs and use our rich tooltip diff popup view to show whats differing
 
