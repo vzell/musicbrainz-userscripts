@@ -24247,3 +24247,12 @@ plus a screenshot of the CAA card showing "Van Halen" as the title).
   Not on this change's path; passed alone 3/3 (`--repeat-each=3`) and with
   its whole file 76/76. First recorded flake of that test — if it recurs,
   the area-chain wait is the place to look, not this fix.
+- **Flake fixed (branch fix/popup-mb-area-chain-timeout):** the chain is
+  three area lookups behind the 1 req/s gate — timed at 3.3–3.9 s on
+  NB-3641 alone (5 runs) and 3.8 s beside popup-ext + sticky-page-headers on
+  14 workers, against the default 5 s `expect` timeout. Same cause the label
+  window's Area row was given `{ timeout: 15000 }` for on 2026-10-14; the
+  event window's "Held at" and the failed-step test's partial chain (same
+  three slots) now get the same. The exact-text match is unchanged, so a
+  chain stuck at "◌" still fails. Not reproducible on demand: 28 parallel
+  copies of the two tests alone passed before the change.
