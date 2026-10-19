@@ -24294,3 +24294,50 @@ plus a screenshot of the CAA card showing "Van Halen" as the title).
   three slots) now get the same. The exact-text match is unchanged, so a
   chain stuck at "◌" still fails. Not reproducible on demand: 28 parallel
   copies of the two tests alone passed before the change.
+
+## 2026-10-19 — dg-submissions browser view: the rendered page cannot scroll down or right (branch feat/discogs-mb-column, WIP.2)
+
+Env: 2026-10-19T15:21+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1, Chromium build 1234, no Tampermonkey (GM stubs); snapshot and screenshot from vzell's browser: browser/Tampermonkey versions unknown
+
+- **Report** (vzell, `debug/discogs-scroll-bug.html` = FRP, plus a
+  screenshot of `…/submissions?mode=list&id=599283&page=1#…&item=%2Frelease%2F12931010-Eesti-Hit-13%2Fhistory`):
+  after the render the page shows one window's worth of the 1143 rows, the
+  columns run off the right edge, no scrollbars at all; filtering and
+  sorting work.
+- **Root cause: Discogs' own stylesheet.** The browser view (no `view=flat`;
+  `pageCategory: "history.browser"`) links
+  `stylesheets/sections/subbrowser.css`, whose first rule is
+  `body{overflow:hidden;margin:0;padding:0;height:100%;width:100%}`.
+  `<html>` has no overflow of its own, so the body's value is used for the
+  viewport: the window itself cannot be scrolled by the user. Discogs'
+  layout depends on it — `table#browser` holds `aside#items` and
+  `#hpane_wrap`, both set to the window's height by `submissions.js`
+  (`i.resize`) and scrolling inside themselves. Our `section#mb-dg-root` is
+  the first `<body>` child, in the page's flow, so it was cut at the
+  window's edges.
+- **Ruled out, with the snapshot:** the `item=` hash (Discogs' own: its
+  hashchange handler loads that history into `#historyData`; the userscript
+  never writes `location.hash`); our art viewer's lock (`<html>` has no
+  inline style); `mb-sph`/`mb-vsb` CSS (no overflow rule on html/body); an
+  open dialog (none in the DOM).
+- **Why the tests never saw it:** `tests/fixtures/dg-submissions-browser.html`
+  was built without Discogs' stylesheets and without the split pane. It is
+  now built (scripts/build-discogs-fixtures.py, `SUBBROWSER_CSS`) inside
+  `table#browser` with subbrowser.css's layout rules in its head.
+- **Fix:** `_dgPrepareLivePage()` tags `<body>` `mb-dg-unlock-scroll` when
+  `table#browser`/`#hpane_wrap` is present; `_ensureDgStyle()` gives that
+  body `overflow: visible !important; height: auto !important`. Host- and
+  page-scoped; MusicBrainz and every other Discogs page untouched (the flat
+  view asserted untagged).
+- **Test trap:** the first version of the regression test scrolled with
+  `window.scrollTo()` and passed WITH the lock — `overflow: hidden` only
+  stops the user, not a script. The test now scrolls with the mouse wheel
+  (down, then right) and asserts neither html nor body computes to
+  `overflow-y: hidden`. Mutation-checked: dropping the tag or the CSS rule
+  fails it ("the wheel scrolls the window down"); tagging every Discogs page
+  fails the flat-view test.
+- **Stale mutation entries repaired in passing** in
+  `scripts/mutations/discogs-submissions.json`: "our section inside Discogs'
+  #main_wrapper" (the avatar init now follows the insert) and "the diff
+  shows every block" (`h.diff` became `diff`); the Cloudflare-gate entry is
+  re-anchored with the ratings pageType, which changes that line again.

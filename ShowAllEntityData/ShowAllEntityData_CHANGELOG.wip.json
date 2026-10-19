@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-10-19",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "discogs.com, a list's submissions in Discogs' browser view (the list on the left, a release's history on the right): after \"Show all submissions\" the page could not be scrolled — only one window's worth of rows was visible, the columns past the right edge were out of reach, and there were no scrollbars. Discogs' own style for that view switches off the window's scrolling (its two panes scroll inside themselves); it is now switched back on for that view only, so the page scrolls down and to the right, and Discogs' panes still work below the table."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-10-19",
     "sections": [

@@ -15397,6 +15397,12 @@
                column (vzell, 2026-10-18; measured on debug/stretch.html
                with that stylesheet). */
             body.mb-sa-host-dg input.mb-col-filter-input { box-sizing: border-box; }
+            /* A submissions list's browser view loads subbrowser.css, whose
+               body rule (overflow hidden, height 100%) reaches the viewport:
+               the window could not scroll, so our table stopped at the
+               window's edges (vzell, 2026-10-19). Discogs' split pane
+               scrolls inside itself and works the same below our section. */
+            body.mb-sa-host-dg.mb-dg-unlock-scroll { overflow: visible !important; height: auto !important; }
             /* A user's picture before their name (vzell, 2026-10-18): until a
                list's picture arrives its place is kept, so names line up. */
             body.mb-sa-host-dg #mb-dg-root img.mb-dg-avatar {
@@ -15582,8 +15588,10 @@
      * in a `<bdi>` (the page's name, from Discogs' own `<h1>`) for the
      * init-time entity name capture.
      *
-     * Also tags `<body>` with `mb-sa-host-dg`, installs `_ensureDgStyle()`
-     * and the thumbnails' viewer click (`_dgThumbClick()`).
+     * Also tags `<body>` with `mb-sa-host-dg` (and `mb-dg-unlock-scroll` on a
+     * submissions list's browser view, whose subbrowser.css locks the
+     * window's scrolling), installs `_ensureDgStyle()` and the thumbnails'
+     * viewer click (`_dgThumbClick()`).
      * Nothing else on the page changes until the user presses a button.
      *
      * @returns {?HTMLHeadingElement} The `<h1>` to use as header container, or
@@ -15594,6 +15602,9 @@
         if (existing) return existing;
         if (!document.body) return null;
         document.body.classList.add('mb-sa-host-dg');
+        // A submissions list's browser view (its split pane, #browser and
+        // #hpane_wrap) locks the window's scrolling (_ensureDgStyle()).
+        if (document.querySelector('table#browser, #hpane_wrap')) document.body.classList.add('mb-dg-unlock-scroll');
         _ensureDgStyle();
         document.addEventListener('click', _dgThumbClick, true);
         const root = document.createElement('section');

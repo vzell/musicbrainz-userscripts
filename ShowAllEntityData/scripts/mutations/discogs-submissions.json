@@ -17,8 +17,8 @@
         "why": "Without #app, header and page share #main_wrapper; the sticky headers pin every other <body> child whole, so our section must be one.",
         "edits": [
             {
-                "find": "        else document.body.insertBefore(root, document.body.firstChild);\n        return h1;",
-                "replace": "        else (document.getElementById('page') || document.body).prepend(root);\n        return h1;"
+                "find": "        else document.body.insertBefore(root, document.body.firstChild);",
+                "replace": "        else (document.getElementById('page') || document.body).prepend(root);"
             }
         ],
         "spec": "tests/fixtures/discogs-submissions.spec.js",
@@ -125,8 +125,8 @@
         "why": "The latest change shows only the blocks Discogs marked, unless \"The whole release\" is pressed.",
         "edits": [
             {
-                "find": "            const shown = ui.diffAll ? h.diff.blocks : h.diff.blocks.filter(b => b.changed);",
-                "replace": "            const shown = h.diff.blocks;"
+                "find": "            const shown = ui.diffAll ? diff.blocks : diff.blocks.filter(b => b.changed);",
+                "replace": "            const shown = diff.blocks;"
             }
         ],
         "spec": "tests/fixtures/discogs-submissions.spec.js",
@@ -274,6 +274,45 @@
         ],
         "spec": "tests/fixtures/discogs-submissions.spec.js",
         "grep": "a history link",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-submissions: the browser view's body not tagged for the scroll unlock",
+        "why": "subbrowser.css's body rule (overflow hidden, height 100%) reaches the viewport: the window cannot scroll, the table stops at its edges.",
+        "edits": [
+            {
+                "find": "        if (document.querySelector('table#browser, #hpane_wrap')) document.body.classList.add('mb-dg-unlock-scroll');",
+                "replace": "        if (false) document.body.classList.add('mb-dg-unlock-scroll');"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "no longer locks the window",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-submissions: the scroll unlock rule left out of the style",
+        "why": "The tag alone changes nothing: the rule must override Discogs' own body rule.",
+        "edits": [
+            {
+                "find": "            body.mb-sa-host-dg.mb-dg-unlock-scroll { overflow: visible !important; height: auto !important; }",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "no longer locks the window",
+        "expect": "fail"
+    },
+    {
+        "name": "dg-submissions: every Discogs page tagged for the scroll unlock",
+        "why": "Only the split pane's page needs it; the rest keep Discogs' own layout.",
+        "edits": [
+            {
+                "find": "        if (document.querySelector('table#browser, #hpane_wrap')) document.body.classList.add('mb-dg-unlock-scroll');",
+                "replace": "        document.body.classList.add('mb-dg-unlock-scroll');"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-submissions.spec.js",
+        "grep": "is not tagged",
         "expect": "fail"
     }
 ]

@@ -24,7 +24,9 @@ the script DOES read:
   submissions, flat view — its title block, the top pager (total and "Jump
   to" max) and all 100 rows of `div.history > table`;
 - dg-submissions-browser.html (debug/discogs-submissions.html): the browser
-  view — its "1-100 of 1,140" pager, five entries, a stand-in history pane;
+  view — its "1-100 of 1,140" pager, five entries, a stand-in history pane,
+  in Discogs' split pane with subbrowser.css's layout rules (the body rule
+  locks the window's scrolling);
 - dg-release-history.html (debug/discogs-release-history.html): a release's
   history page — header, every change, the rating, the latest diff.
 
@@ -116,15 +118,31 @@ def build_submissions_flat():
     return SHELL.format(title=html.escape(title), content=squeeze(content)), title
 
 
+# The browser view's own stylesheet (sections/subbrowser.css, fetched from the
+# live server 2026-10-19), its layout rules only: the body rule turns off the
+# window's scrolling, the split pane scrolls inside itself
+# (debug/discogs-scroll-bug.html, DEBUG-NOTES.md 2026-10-19).
+SUBBROWSER_CSS = ('<style>body{overflow:hidden;margin:0;padding:0;height:100%;width:100%}'
+                  '#items{border-right:2px solid #ddd;overflow-y:auto;height:100%;width:200px}'
+                  '#hpane{min-width:1008px}#hpane_wrap{overflow:auto;position:relative}'
+                  '#browser{font-size:13px;line-height:16px;height:100%}</style>')
+
+
 def build_submissions_browser():
-    """dg-submissions-browser.html: the browser view, its pager and the first five entries (no release ids), a stand-in history pane."""
+    """dg-submissions-browser.html: the browser view, its pager and the first five entries (no release ids), a stand-in history pane,
+    in Discogs' split pane (table#browser: the list in aside#items, the pane in #hpane_wrap) with subbrowser.css's layout rules."""
     src = read_debug('discogs-submissions.html')
     title = text(re.search(r'<title[^>]*>(.*?)</title>', src, re.S).group(1))
     items = re.findall(r'<li id="sub_\d+">.*?</li>', src, re.S)[:5]
-    content = (between(src, '<div id="browser_tdl_items_pager_short">', '</div>') +
-               f'<ul class="browser_tdl_items">{"".join(items)}</ul>' +
-               '<div id="hpane"><div id="historyData"><p>Discogs\' history pane (stand-in).</p></div></div>')
-    return SHELL.format(title=html.escape(title), content=squeeze(content)), title
+    content = ('<table id="browser" role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%"><tbody><tr>'
+               '<td id="tdl" valign="top" width="200" height="100%"><aside id="items">' +
+               between(src, '<div id="browser_tdl_items_pager_short">', '</div>') +
+               f'<ul class="browser_tdl_items">{"".join(items)}</ul></aside></td>'
+               '<td valign="top" height="100%"><div id="hpane_wrap"><div id="hpane">'
+               '<div id="historyData"><p>Discogs\' history pane (stand-in).</p></div></div></div></td>'
+               '</tr></tbody></table>')
+    page = SHELL.format(title=html.escape(title), content=squeeze(content))
+    return page.replace('</title></head>', '</title>' + SUBBROWSER_CSS + '</head>', 1), title
 
 
 def build_release_history(name='discogs-release-history.html'):

@@ -188,6 +188,23 @@ neither; `dg-challenge.html` at a submissions URL is still left alone).
   is the flat view's `.browser_flat_title > h1` (its document title is just
   "Discogs"), on the browser view the document title (its only `<h1>` is the
   selected release's history).
+- **The browser view locks the window's scrolling; we unlock it** (vzell,
+  2026-10-19: "the page is NOT scrollable downwards and to the right").
+  Its `sections/subbrowser.css` has `body{overflow:hidden;height:100%;
+  width:100%}`; `<html>` has no overflow of its own, so the body's reaches
+  the viewport. Discogs' split pane (`table#browser`: the list in
+  `aside#items`, the history in `#hpane_wrap`, both sized to the window by
+  `submissions.js`) scrolls inside itself, but our section is in the
+  page's flow above it and was cut at the window's edges, scrollbars and
+  all. `_dgPrepareLivePage()` tags `<body>` `mb-dg-unlock-scroll` when
+  `table#browser`/`#hpane_wrap` is there, and `_ensureDgStyle()` sets that
+  body back to `overflow: visible; height: auto` (`!important`). The split
+  pane keeps working below our section. The flat view, a user's page and
+  the React pages never load that stylesheet and are not tagged. **A spec
+  must scroll with the mouse wheel**: `overflow: hidden` still lets
+  `window.scrollTo()` move the window, so a scripted scroll passes with the
+  lock in place. The `item=/release/…/history` in the URL's hash is Discogs'
+  own (its hashchange handler loads that history into the pane), not ours.
 - **A release title's window opens with its edit history** (vzell: "History,
   then the release"): `_extDiscogsWindow()` puts `_extDgHistReleaseParts()`
   in the window's `top` part when `_dgOnSubmissions()`. It is the history

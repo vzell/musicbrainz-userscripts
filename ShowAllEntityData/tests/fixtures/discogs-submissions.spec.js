@@ -246,6 +246,37 @@ test.describe('discogs.com submissions, edit history, full-size images (2026-10-
         expect(errors).toEqual([]);
     });
 
+    test('the browser view: subbrowser.css\'s body rule no longer locks the window — the table scrolls down and to the right (vzell 2026-10-19)', async ({ page }) => {
+        // Pins: the WINDOW scrolls both ways after the render. Discogs' own
+        // rule (body overflow hidden, height 100%) is in the fixture's head,
+        // so without the unlock the window stays at 0,0 however tall or
+        // wide the table is (debug/discogs-scroll-bug.html).
+        await page.setViewportSize({ width: 900, height: 600 });
+        const { errors } = await openDg(page, { url: BROWSER, file: path.join(__dirname, 'dg-submissions-browser.html') });
+        expect(await page.evaluate(() => Array.from(document.styleSheets).some(s => Array.from(s.cssRules)
+            .some(r => r.selectorText === 'body' && r.style.overflow === 'hidden'))), 'the page\'s own lock is there').toBe(true);
+        const table = await showAll(page);
+        await expect(table.locator('tbody > tr')).toHaveCount(1200);
+        // The mouse wheel, not window.scrollTo(): overflow hidden still lets
+        // a script scroll the window, only the user cannot.
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.mouse.move(450, 300);
+        await page.mouse.wheel(0, 2000);
+        await expect.poll(() => page.evaluate(() => window.scrollY), { message: 'the wheel scrolls the window down' }).toBeGreaterThan(0);
+        await page.mouse.wheel(600, 0);
+        await expect.poll(() => page.evaluate(() => window.scrollX), { message: 'the wheel scrolls the window right' }).toBeGreaterThan(0);
+        const ov = await page.evaluate(() => [document.documentElement, document.body].map(el => getComputedStyle(el).overflowY));
+        expect(ov, 'no scrollbar is suppressed (html, body)').not.toContain('hidden');
+        // Discogs' split pane is still there, below our section.
+        await expect(page.locator('#hpane_wrap #historyData')).toHaveCount(1);
+        expect(errors).toEqual([]);
+    });
+
+    test('the flat view (no split pane) is not tagged: nothing of Discogs\' own layout is overridden there', async ({ page }) => {
+        await openDg(page);
+        expect(await page.evaluate(() => document.body.classList.contains('mb-dg-unlock-scroll'))).toBe(false);
+    });
+
     test('Cloudflare\'s check at a submissions URL (no #app, no #page_content) is left alone', async ({ page }) => {
         const { errors } = await openDg(page, { file: path.join(__dirname, 'dg-challenge.html') });
         expect(await page.locator('#mb-dg-root, h1.mb-dg-h1').count()).toBe(0);
