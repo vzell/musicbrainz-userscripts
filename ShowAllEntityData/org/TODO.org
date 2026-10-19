@@ -3317,7 +3317,7 @@ additional ones as a number e.g "+69"), e.g. on https://musicbrainz.org/release-
 add an option to show bigger/scaled images in the hover popup
 
 
-* TODO add the "Recording of" to more recording columns in other PTs
+* DONE add the "Recording of" to more recording columns in other PTs
 
 Currently on the PT 'artist-recordings' e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings on the FRP we render the new
 "Recording of" and "Performance attributes" columns (+ functionality) after the recording "Name" column with the functionality of on demand loading of works associated to the recordings
@@ -3340,7 +3340,7 @@ Is it feasible to also add the same treatment to these columns as we do on the P
 
 One recording per row (anchor = the column that links /recording/):
 
-| pageType                                                           | tableMode    | anchor                | WS/2 browse parent | done in WIP.1               | tested in browser |
+| pageType                                                           | tableMode    | anchor                | WS/2 browse parent | done in 9.99.1390           | tested in browser |
 |--------------------------------------------------------------------+--------------+-----------------------+--------------------+-----------------------------+-------------------|
 | artist-recordings                                                  | single       | Name                  | artist             | (already, with suggestions) | yes               |
 | instrument-recordings                                              | single       | Name                  | —                  | yes                         | yes               |

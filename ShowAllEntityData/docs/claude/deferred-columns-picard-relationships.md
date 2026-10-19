@@ -547,7 +547,7 @@ Show only: no edit is ever submitted. API facts (browse parity, 74 567
 recordings for Springsteen, only `performance` relations, search carries no
 relations): `scripts/probe-recording-work-rels.py`, `tests/MEASUREMENTS.org`.
 
-**Declared on every one-recording-per-row list** (since WIP.1 of
+**Declared on every one-recording-per-row list** (since 9.99.1390,
 `feat/recording-of-more-pts`), as an object normalised by `_recOfNormDecl()`
 into `_recOfDecl`:
 `recordingOf: { after, browseBy, suggest, setting }`.
