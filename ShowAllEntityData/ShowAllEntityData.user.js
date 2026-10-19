@@ -502,7 +502,7 @@
             label: "Sidebar picture: hover card and viewer",
             type: "checkbox",
             default: true,
-            description: "The picture MusicBrainz shows in the sidebar (an artist's photo, a label's logo, from Wikimedia Commons) gets a hover card and opens in the artwork viewer on a click, Enter or Space. Uses the picture MusicBrainz already loaded: no extra request."
+            description: "The picture MusicBrainz shows in the sidebar (an artist's photo, a label's logo, from Wikimedia Commons; an instrument's IROMBOOK drawing) gets a hover card and opens in the artwork viewer on a click, Enter or Space. Uses the picture MusicBrainz already loaded: no extra request."
         },
 
         sa_sidebar_picture_in_header: {
@@ -98230,6 +98230,40 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * The file name of an instrument's IROMBOOK drawing
+     * (`https://static.metabrainz.org/irombook/bass_guitar/bass_guitar_electric.png`),
+     * '' when it is not one. MusicBrainz renders it server-side as
+     * `#sidebar > div.picture > img` with an "IROMBOOK image" note.
+     * @param {string} src
+     * @returns {string}
+     */
+    function _sbIrombookFile(src) {
+        try {
+            const u = new URL(src, location.href);
+            if (u.hostname !== 'static.metabrainz.org' || !u.pathname.startsWith('/irombook/')) return '';
+            const parts = u.pathname.split('/').filter(Boolean);
+            return decodeURIComponent(parts[parts.length - 1] || '');
+        } catch (_) {
+            return '';
+        }
+    }
+
+    /**
+     * Where a sidebar picture comes from: a Wikimedia Commons file or an
+     * instrument's IROMBOOK drawing; null for anything else (the event
+     * sidebar's event art, which already has the artwork viewer).
+     * @param {string} src
+     * @returns {?{kind: 'commons'|'irombook', file: string}}
+     */
+    function _sbPictureSource(src) {
+        const commons = _sbCommonsFile(src);
+        if (commons) return { kind: 'commons', file: commons };
+        const irombook = _sbIrombookFile(src);
+        if (irombook) return { kind: 'irombook', file: irombook };
+        return null;
+    }
+
+    /**
      * Opens the sidebar picture in the artwork viewer.
      * @param {HTMLImageElement} img - The sidebar's own picture.
      * @param {Element} opener - Focus returns here on close.
@@ -98238,11 +98272,14 @@ a { color: #1565c0; }`;
     function _sbOpenPicture(img, opener) {
         const src = img.currentSrc || img.src;
         if (!src) return;
-        const file = _sbCommonsFile(src);
+        const source = _sbPictureSource(src);
+        const file = source ? source.file : '';
+        // An IROMBOOK drawing has no page of its own: no link in the bar.
+        const commons = source && source.kind === 'commons';
         const images = [{
-            image: src, thumbnails: { 250: src }, types: [], external: true, comment: file || '',
-            pageUrl: file ? `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(file.replace(/ /g, '_'))}` : '',
-            pageLabel: 'Open on Commons',
+            image: src, thumbnails: { 250: src }, types: [], external: true, comment: file,
+            pageUrl: commons ? `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(file.replace(/ /g, '_'))}` : '',
+            pageLabel: commons ? 'Open on Commons' : '',
         }];
         _SB_PIC_CTX.imagesCache.clear();
         _SB_PIC_CTX.imagesCache.set('sidebar', images);
@@ -98257,13 +98294,15 @@ a { color: #1565c0; }`;
      * @returns {void}
      */
     function _sbPictureControl(el, img) {
-        const file = _sbCommonsFile(img.currentSrc || img.src);
+        const source = _sbPictureSource(img.currentSrc || img.src);
+        const file = source ? source.file : '';
+        const origin = source && source.kind === 'irombook' ? 'IROMBOOK' : 'Wikimedia Commons';
         const type = _sbEntityType();
         el.setAttribute('role', 'button');
         el.tabIndex = 0;
         el.setAttribute('aria-label', `Open the ${type} image`);
         el.classList.add('mb-sb-pic');
-        _setTip(el, `${type.charAt(0).toUpperCase() + type.slice(1)} image · Wikimedia Commons${file ? ' · ' + file : ''}. Click to open it in the viewer.`);
+        _setTip(el, `${type.charAt(0).toUpperCase() + type.slice(1)} image · ${origin}${file ? ' · ' + file : ''}. Click to open it in the viewer.`);
         el.addEventListener('click', (e) => {
             if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return;
             e.preventDefault();
@@ -98280,21 +98319,26 @@ a { color: #1565c0; }`;
     /**
      * Wires the sidebar picture once it is there: its own control, and (with
      * `sa_sidebar_picture_in_header`) a 34 px copy at the start of the heading.
-     * Only a Wikimedia picture: the event sidebar's event art already has the
-     * artwork viewer.
+     * Only a Wikimedia picture or an instrument's IROMBOOK drawing: the event
+     * sidebar's event art already has the artwork viewer.
      * @param {HTMLImageElement} img
      * @returns {void}
      */
     function _sbWirePicture(img) {
         if (img.dataset.mbSbPic) return;
-        if (!_sbCommonsFile(img.currentSrc || img.src)) return;
+        const source = _sbPictureSource(img.currentSrc || img.src);
+        if (!source) return;
         img.dataset.mbSbPic = '1';
         if (!document.getElementById('mb-sb-pic-style')) {
+            // A drawing is fitted whole on white, not cropped: an IROMBOOK
+            // instrument is tall line art on a transparent ground.
             const st = GM_addStyle(`
                 #sidebar img.mb-sb-pic, .mb-sb-avatar { cursor: zoom-in; }
                 #sidebar img.mb-sb-pic:focus-visible, .mb-sb-avatar:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 2px; }
                 .mb-sb-avatar { display: inline-block; width: 34px; height: 34px; margin-right: 8px; vertical-align: middle; border: 1px solid #d9cfbd; border-radius: 3px; overflow: hidden; background: #fbf8f1; }
                 .mb-sb-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
+                .mb-sb-avatar.mb-sb-avatar-contain { background: #fff; }
+                .mb-sb-avatar.mb-sb-avatar-contain img { object-fit: contain; }
             `);
             st.id = 'mb-sb-pic-style';
         }
@@ -98303,6 +98347,7 @@ a { color: #1565c0; }`;
         if (Lib.settings.sa_sidebar_picture_in_header !== false && h1 && !h1.querySelector('.mb-sb-avatar')) {
             const box = document.createElement('span');
             box.className = 'mb-sb-avatar';
+            if (source.kind === 'irombook') box.classList.add('mb-sb-avatar-contain');
             const copy = document.createElement('img');
             copy.src = img.currentSrc || img.src;
             copy.alt = '';
@@ -98315,8 +98360,10 @@ a { color: #1565c0; }`;
     /**
      * Starts watching the sidebar for its picture (it arrives after load)
      * for up to 15 s, then wires it. MusicBrainz only. The selector is
-     * another script's markup, then MusicBrainz's own; it is a literal here
-     * because this runs at init, before this part of the file (TDZ).
+     * another script's markup, then MusicBrainz's own Commons component, then
+     * an instrument's IROMBOOK drawing (`#sidebar > div.picture`, server-
+     * rendered, so it is found at once); it is a literal here because this
+     * runs at init, before this part of the file (TDZ).
      * @returns {void}
      */
     function _sbInitPicture() {
@@ -98324,7 +98371,7 @@ a { color: #1565c0; }`;
         const sidebar = document.getElementById('sidebar');
         if (!sidebar) return;
         const find = () => {
-            const img = sidebar.querySelector('.entity-image .picture img, .commons-image .picture img');
+            const img = sidebar.querySelector('.entity-image .picture img, .commons-image .picture img, :scope > .picture img');
             if (img && (img.currentSrc || img.src)) { _sbWirePicture(img); return true; }
             return false;
         };
