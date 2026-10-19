@@ -24227,3 +24227,70 @@ Env: 2026-10-19T00:31+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) 
   the clean text itself: "R?" never matched as a filter anyway, the box's two
   text nodes join with a space); lint within baseline. `test:full` on NB-3641
   2026-10-19T00:34:03–00:45:36+02:00 (uncommitted on 7824778): 1911 passed.
+
+## 2026-10-19 — tag pages: "Artist" header missing when Artists is the first section; artist comment read as the entity's Comment (branch fix/tag-value-artist-header, WIP.1)
+
+Env: 2026-10-19T11:31+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Snapshot: `debug/tag-arena-rock.html` (vzell, FRP of `/tag/arena%20rock`,
+plus a screenshot of the CAA card showing "Van Halen" as the title).
+
+- **Column shift in Release groups/Releases/Recordings.** The cells were
+  right (`Release group | Artist | MB-Name | Comment | Primary alias |
+  Relationships`); the header row had no `Artist`. `renderGroupedTable()`'s
+  per-group thead branch (tag-value, user-tag-value, instrument-list,
+  artist-credit) clones `rawTemplateHead` — the FIRST native table's head —
+  and renamed its first `<th>` to `group.colName` only AFTER
+  `cleanupHeaders()`. This page has no Areas section, so that `<th>` said
+  "Artist"; `cleanupHeaders()`' name dedup then skipped artistCredit's
+  synthetic "Artist" header while the row pass still appended its cell.
+  The existing tag fixtures all start with Areas ("Area"), which is why no
+  spec saw it. Fix: rename first, then `cleanupHeaders()`. Its removal maps
+  are prefixes of MusicBrainz's own names (Relationships, Performance
+  Attributes, Release events, Tagger, Rating), so no group name is removed.
+- **CAA card: artist as title, no artist line.** Same cause: tag RG/R
+  declare `tooltipColumns: ['MB-Name', 'Artist']`, resolved by header name.
+- **Comment = the artist's disambiguation.** `_extractMainColumnParts()` took
+  `querySelector('.comment')`, so "Back in Black by AC/DC (Australian hard
+  rock band)" got "Australian hard rock band" as the release group's
+  Comment (and an artist alias would have become its Primary alias). New
+  `_ownEntityCommentSpan()` skips a comment inside the artist credit — a
+  direct-child `<bdi>` with an `/artist/` link that follows the cell's first
+  link without containing it (so a cell that IS an artist credit keeps its
+  comment); no " by " text is matched, so it works in any UI language. Also
+  used for the big-image wrapper's `data-art-tooltip-comment`.
+- **Which pageTypes:** scanned every `artistCredit`/`extractMainColumn`
+  user. " by Artist" inside the main cell: tag-value, user-tag-value (both
+  bugs), tag-value-entity, user-tag-value-entity (Comment only). user-ratings
+  splits " by " into a native Artist column in Structure H; artist-credit
+  rows are bare titles; event/relationship tables parse " by " in
+  `_eventParse`.
+- **Fixture trap:** a user-tag entity page's column name comes from the h2
+  with its LAST word before "tagged" dropped (the username, "Release groups
+  vzell tagged as …"); a fixture with the plain tag-page h2 names the column
+  "Release", and artistCredit (keyed on "Release group") silently never runs.
+  Hence a separate `user-tag-value-entity-artist-comment.html`.
+- **Verified:** `tests/fixtures/tag-value-artists-first.spec.js` (12 tests,
+  all four pageTypes), mutation-checked by
+  `scripts/mutations/tag-value-artists-first.json` (header order, call site,
+  helper: fail; the CAA wrapper read: recorded as pass, CAA is off in
+  fixtures and these pageTypes draw the card from tooltipColumns); the
+  tag-value/artist-credit/user-ratings/instrument-list specs: 46 passed;
+  lint within baseline.
+- **Merge gate:** `test:full` on main (merge `2e26b7f` + fold, 9.99.1376),
+  NB-3641, 2026-10-19T11:51:20–12:01:36+02:00 (10 m 16 s): 1911 passed,
+  1 failed — `popup-mb.spec.js:1322` "the event window: held at with the
+  whole area chain …": the 5 s `toHaveText` ran out while the area chain was
+  still resolving one step at a time ("… West Long Branch, New Jersey ◌").
+  Not on this change's path; passed alone 3/3 (`--repeat-each=3`) and with
+  its whole file 76/76. First recorded flake of that test — if it recurs,
+  the area-chain wait is the place to look, not this fix.
+- **Flake fixed (branch fix/popup-mb-area-chain-timeout):** the chain is
+  three area lookups behind the 1 req/s gate — timed at 3.3–3.9 s on
+  NB-3641 alone (5 runs) and 3.8 s beside popup-ext + sticky-page-headers on
+  14 workers, against the default 5 s `expect` timeout. Same cause the label
+  window's Area row was given `{ timeout: 15000 }` for on 2026-10-14; the
+  event window's "Held at" and the failed-step test's partial chain (same
+  three slots) now get the same. The exact-text match is unchanged, so a
+  chain stuck at "◌" still fails. Not reproducible on demand: 28 parallel
+  copies of the two tests alone passed before the change.

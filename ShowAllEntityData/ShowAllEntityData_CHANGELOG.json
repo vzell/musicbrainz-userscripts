@@ -1,5 +1,18 @@
 [
   {
+    "version": "9.99.1376",
+    "date": "2026-10-19",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Tag pages (/tag/<tag>, /user/<name>/tag/<tag>) whose first section is Artists: the Release groups, Releases and Recordings tables were missing their \"Artist\" header, so every header from the second column on stood over the wrong column (\"MB-Name\" over the artist, \"Comment\" over the title, …), and the cover art card showed the artist as the title and no artist line.",
+          "Tag pages, including a single entity's (/tag/<tag>/release-group, …): the Comment column of a release group, release or recording no longer shows its artist's disambiguation (\"Back in Black by AC/DC (Australian hard rock band)\" had \"Australian hard rock band\" as Comment). Only the entity's own comment shows there."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1375",
     "date": "2026-10-18",
     "sections": [
