@@ -94,6 +94,30 @@ test.describe('discogs.com: the Image column\'s hover card (2026-10-19)', () => 
         expect(errors).toEqual([]);
     });
 
+    // The card keys (2026-10-20) are shared by every card _artCardCoreHtml()
+    // builds. Five images are never cut off, so Space is the page's here;
+    // Shift must still draw the tiles bigger — measured, not a class.
+    test('card keys: Shift draws the tiles bigger while held; Space with nothing cut off is left alone', async ({ page }) => {
+        const { errors, table } = await openVersions(page);
+        await hover(page, thumbOf(table, RELEASE));
+        const tiles = tip(page).locator('.mb-art-card-tile');
+        await expect(tiles).toHaveCount(5);
+        const width = async () => Math.round((await tiles.first().boundingBox()).width);
+        expect(await width()).toBe(56);
+        await page.keyboard.down('Shift');
+        await expect.poll(width).toBe(150);
+        await page.keyboard.up('Shift');
+        await expect.poll(width).toBe(56);
+        const spent = await page.evaluate(() => {
+            const ev = new KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true, cancelable: true });
+            document.body.dispatchEvent(ev);
+            return ev.defaultPrevented;
+        });
+        expect(spent).toBe(false);
+        await expect(tiles).toHaveCount(5);
+        expect(errors).toEqual([]);
+    });
+
     test('a second hover and a click on the same row ask nothing more: the viewer shows the record from the cache', async ({ page }) => {
         const { errors, table } = await openVersions(page);
         const link = thumbOf(table, RELEASE);

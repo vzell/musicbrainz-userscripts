@@ -24547,3 +24547,41 @@ Env: 2026-10-20T01:13:03+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
   Pinned by the new spec rather than by code.
 - **Tests:** 4 new tests in `sidebar-picture.spec.js`; 6 new `picture:`
   mutations in `sidebar-overhaul.json`, all caught.
+
+## 2026-10-20 — CAA/EAA artwork card: Space = every image, Shift = bigger tiles (branch feat/caa-card-space-shift, WIP.1)
+
+Env: 2026-10-20T01:45:23+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (chromium-1234), no Tampermonkey (GM stubs); snapshot: browser unknown
+
+- **Question asked first:** why does the B1 card on the CAA icon show "+69"
+  (`debug/CAA-lots-of-images.html`, FRP of release-group
+  f731060c-05d4-439d-8351-59e5e5eb91a0, the 81-image Tracks II release)?
+  `_artCardCoreHtml()` slices to `sa_caa_tip_summary_tiles` (default 12,
+  1–60), so the break-even is 12 and 81 → 12 + "+69". The cap came in with the
+  redesign (f4adaaf), although the design catalogue said "all images", and no
+  reason was ever recorded. What the code implies: the card is
+  `#mb-stat-tooltip`, which follows the pointer, closes on mouseout and so
+  can never scroll, at 310 px wide (5 tiles per line). Each tile is a
+  separate 250 px thumbnail request.
+- **Built:** `_mbttKey()` / `_mbttAfterHide()` / `_statTipApi.repaint()`
+  hooks in the tooltip engine, plus `_artCardFit()` (see
+  docs/claude/artwork-caa-eaa.md, "The B1 card's keys"). New setting
+  `sa_caa_tip_summary_big_tile` (150).
+- **Three traps hit while testing, each recorded so it is not hit again:**
+  1. `--mb-art-tile` already existed on `<html>` (the cell grid, 64 px). The
+     card's `var(--mb-art-tile, 56px)` read it, so the compact card measured
+     64. Renamed to `--mb-art-card-tile`.
+  2. `#mb-stat-tooltip { max-width: 520px }` capped the wide card, so the
+     tiles wrapped into more rows than the fit planned (card bottom 598 in a
+     500 px window). Fixed with a `:has(> [data-mb-art-wide])` override.
+  3. The typing guard relied on `_dpPeek.typedAt`, but the link preview's
+     `input` tracker is not installed where its sources are off (as in every
+     fixture). The tooltip engine now records it itself. A spec typing into
+     MusicBrainz's header search proved nothing: typing scrolled the page up
+     to the field, the card closed on the mouseout, and the Space never met
+     a card (the mutation that removes the guard still passed). The spec now
+     types into a `position:fixed` field.
+- **Mutation check:** `scripts/mutations/caa-card-keys.json`, 10 planted
+  defects, all fail their spec. The first run left three passing: the typing
+  pair (trap 3) and "fit skipped", which passed because without the fit the
+  tiles fell back to 56 px and fitted anyway. The tile size is now in the
+  markup, and the spec requires 56 < tile < 150.

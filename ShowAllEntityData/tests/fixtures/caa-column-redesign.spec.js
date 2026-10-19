@@ -217,6 +217,127 @@ test.describe('CAA/EAA column redesign', () => {
         await expect(page.locator('#mb-art-hover-preview'), 'no front preview beside the card').toBeHidden();
     });
 
+    // Card keys (2026-10-20). Space must DRAW every image (16 tiles, no "+N"),
+    // not merely be swallowed — and must leave the page's Space alone where
+    // it has nothing to do: no card, nothing cut off, typing into a field.
+    // Shift must change the drawn TILE SIZE, measured, not a class.
+
+    /**
+     * Dispatches a Space keydown at the body and returns whether it was spent.
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<boolean>}
+     */
+    const spaceSpent = (page) => page.evaluate(() => {
+        const ev = new KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true, cancelable: true });
+        document.body.dispatchEvent(ev);
+        return ev.defaultPrevented;
+    });
+    /** @param {import('@playwright/test').Locator} tip */
+    const tileWidth = async (tip) => Math.round((await tip.locator('.mb-art-card-tile').first().boundingBox()).width);
+
+    test('B1 keys: Space draws every image and back; the next hover starts at the cap again', async ({ page }) => {
+        test.setTimeout(120000);
+        await open(page);
+        const tip = page.locator('#mb-stat-tooltip');
+        expect(await spaceSpent(page), 'no card: Space stays the page\'s').toBe(false);
+        await cell(page, R.sixteen).locator('span.caa-icon').hover();
+        await expect(tip.locator('.mb-art-card-tile')).toHaveCount(12);
+        await expect(tip.locator('.mb-art-card-keys')).toContainText('Space all 16 images');
+        await page.keyboard.press('Space');
+        await expect(tip.locator('.mb-art-card-tile')).toHaveCount(16);
+        await expect(tip.locator('.mb-art-card-more')).toHaveCount(0);
+        await expect(tip.locator('.mb-art-card-keys')).toContainText('Space first 12');
+        await page.keyboard.press('Space');
+        await expect(tip.locator('.mb-art-card-tile')).toHaveCount(12);
+        await expect(tip.locator('.mb-art-card-more')).toHaveText('+4');
+
+        await page.keyboard.press('Space');
+        await expect(tip.locator('.mb-art-card-tile')).toHaveCount(16);
+        await page.mouse.move(0, 0);
+        await expect(tip).toBeHidden();
+        await cell(page, R.sixteen).locator('span.caa-icon').hover();
+        await expect(tip.locator('.mb-art-card-tile'), 'a new hover starts at the cap').toHaveCount(12);
+    });
+
+    test('B1 keys: Space is left alone with nothing cut off and while typing into a field', async ({ page }) => {
+        test.setTimeout(120000);
+        await open(page);
+        const tip = page.locator('#mb-stat-tooltip');
+        await cell(page, R.outside).locator('span.caa-icon').hover();
+        await expect(tip.locator('.mb-art-card-tile')).toHaveCount(3);
+        expect(await spaceSpent(page), 'three images, nothing cut off').toBe(false);
+        await expect(tip.locator('.mb-art-card-keys')).not.toContainText('Space');
+
+        await cell(page, R.sixteen).locator('span.caa-icon').hover();
+        await expect(tip.locator('.mb-art-card-tile')).toHaveCount(12);
+        // A text field that filters nothing, fixed in a corner away from the
+        // pointer: typing into the header search scrolled the page up to it,
+        // the card closed on that, and the Space never met a card (probed
+        // 2026-10-20). Here the card is still up when the Space arrives, so
+        // the key hook runs and has to decide.
+        await page.evaluate(() => {
+            const f = document.createElement('input');
+            f.id = 't-field';
+            f.type = 'text';
+            f.style.cssText = 'position:fixed;top:0;left:0;width:80px;z-index:1;';
+            document.body.appendChild(f);
+            f.focus({ preventScroll: true });
+        });
+        await page.keyboard.type('x');
+        await expect(tip, 'the card still shows as the Space comes').toBeVisible();
+        await expect(tip.locator('.mb-art-card-tile')).toHaveCount(12);
+        await page.keyboard.type(' ');
+        await expect(page.locator('#t-field'), 'the typed Space was the field\'s').toHaveValue('x ');
+        await expect(tip.locator('.mb-art-card-tile')).toHaveCount(12);
+    });
+
+    test('B1 keys: Shift draws bigger tiles while held, also when held before the hover', async ({ page }) => {
+        test.setTimeout(120000);
+        await open(page);
+        const tip = page.locator('#mb-stat-tooltip');
+        await cell(page, R.sixteen).locator('span.caa-icon').hover();
+        await expect(tip.locator('.mb-art-card-tile')).toHaveCount(12);
+        expect(await tileWidth(tip)).toBe(56);
+        await page.keyboard.down('Shift');
+        await expect.poll(() => tileWidth(tip), 'sa_caa_tip_summary_big_tile default').toBe(150);
+        await expect(tip.locator('.mb-art-card-tile'), 'still the cap').toHaveCount(12);
+        await page.keyboard.up('Shift');
+        await expect.poll(() => tileWidth(tip)).toBe(56);
+
+        await page.mouse.move(0, 0);
+        await expect(tip).toBeHidden();
+        await page.keyboard.down('Shift');
+        await cell(page, R.sixteen).locator('span.caa-icon').hover();
+        await expect(tip).toBeVisible();
+        expect(await tileWidth(tip), 'Shift held as the pointer came in').toBe(150);
+        await page.keyboard.up('Shift');
+    });
+
+    test('B1 keys: Shift + Space on a small window — every image, tiles shrunk, the card inside the window', async ({ page }) => {
+        test.setTimeout(120000);
+        await open(page);
+        await page.setViewportSize({ width: 900, height: 500 });
+        const tip = page.locator('#mb-stat-tooltip');
+        await cell(page, R.sixteen).locator('span.caa-icon').scrollIntoViewIfNeeded();
+        await cell(page, R.sixteen).locator('span.caa-icon').hover();
+        await expect(tip.locator('.mb-art-card-tile')).toHaveCount(12);
+        await page.keyboard.down('Shift');
+        await page.keyboard.press('Space');
+        await expect(tip.locator('.mb-art-card-tile')).toHaveCount(16);
+        const fit = await tip.evaluate((t) => {
+            const r = t.getBoundingClientRect();
+            const tile = t.querySelector('.mb-art-card-tile').getBoundingClientRect();
+            return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, vw: innerWidth, vh: innerHeight, tile: Math.round(tile.width) };
+        });
+        await page.keyboard.up('Shift');
+        expect(fit.tile, 'shrunk below the Shift size to fit').toBeLessThan(150);
+        expect(fit.tile, 'still bigger than the compact card\'s').toBeGreaterThan(56);
+        expect(fit.top).toBeGreaterThanOrEqual(0);
+        expect(fit.left).toBeGreaterThanOrEqual(0);
+        expect(fit.bottom, 'the card cannot scroll: it must fit').toBeLessThanOrEqual(fit.vh);
+        expect(fit.right).toBeLessThanOrEqual(fit.vw);
+    });
+
     test('D1: a click opens the viewer at that image; ← → cross into the next row; no JSON request', async ({ page }) => {
         test.setTimeout(120000);
         const { hits } = await open(page);
