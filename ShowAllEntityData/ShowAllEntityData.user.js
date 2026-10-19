@@ -6159,6 +6159,37 @@
     //   3. Declare the synthetic column header names in `syntheticColumns`.
 
     /**
+     * _ownEntityCommentSpan — the first `.comment` in a main entity cell that
+     * belongs to the cell's OWN entity, skipping any comment inside the
+     * artist credit that follows " by " on tag pages
+     * (`<a><bdi>Back in Black</bdi></a> by <bdi><a href="/artist/…">AC/DC</a>
+     * <span class="comment">(Australian hard rock band)</span></bdi>`).
+     * A plain `querySelector('.comment')` returned that artist comment as the
+     * release group's own disambiguation (see debug/tag-arena-rock.html).
+     *
+     * The credit is recognised the way `artistCredit` recognises it — a
+     * direct-child `<bdi>` holding an `/artist/` link — and only when it
+     * FOLLOWS the cell's first link without containing it, so a cell that IS
+     * an artist credit (its first link inside the `<bdi>`) keeps its comment.
+     * No " by " text is matched, so it works in every interface language.
+     *
+     * @param   {?HTMLElement} cell  The main entity cell.
+     * @returns {?HTMLElement}       The own-entity `.comment`, or null.
+     */
+    function _ownEntityCommentSpan(cell) {
+        if (!cell) return null;
+        const firstLink = cell.querySelector('a');
+        const credits = firstLink
+            ? Array.from(cell.querySelectorAll(':scope > bdi')).filter(b =>
+                !b.contains(firstLink) &&
+                (firstLink.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) &&
+                b.querySelector('a[href*="/artist/"]'))
+            : [];
+        return Array.from(cell.querySelectorAll('.comment'))
+            .find(c => !credits.some(b => b.contains(c))) || null;
+    }
+
+    /**
      * _extractMainColumnParts — the single source of truth for
      * `features.extractMainColumn`'s per-row split of a page's main entity
      * cell into three synthetic `<td>`s: `MB-Name`, `Comment`, and
@@ -6224,7 +6255,7 @@
             }
         }
 
-        const commentSpan = targetCell.querySelector('.comment');
+        const commentSpan = _ownEntityCommentSpan(targetCell);
         if (commentSpan) {
             const scope = commentSpan.querySelector('bdi') || commentSpan;
             const iEl = scope.querySelector('i[title="Primary alias"]');
@@ -92363,10 +92394,18 @@ a { color: #1565c0; }`;
                         activeColumnExtractors.forEach(e => {
                             if (e.sourceColumn === group.colName) e.colIdx = 0;
                         });
-                        // 3. Clone raw thead and run cleanupHeaders with correct colIdx.
+                        // 3. Clone raw thead and patch its first <th> to the singular column
+                        //    name BEFORE cleanupHeaders() runs. rawTemplateHead is the FIRST
+                        //    native table's head, so its first <th> still carries that
+                        //    group's name, and cleanupHeaders() injects a synthetic header
+                        //    only when no header of that name exists yet. On a tag page
+                        //    whose first section is Artists (no Areas), that stale "Artist"
+                        //    made every later group skip artistCredit's "Artist" header
+                        //    while its cell was still appended, so all headers after the
+                        //    first sat one column left of their cells (and the CAA
+                        //    tooltip's 'MB-Name'/'Artist' lookups read the wrong cells) —
+                        //    see debug/tag-arena-rock.html.
                         _theadForGroup = rawTemplateHead.cloneNode(true);
-                        cleanupHeaders(_theadForGroup);
-                        // 4. Patch first <th> text to the singular column name.
                         if (group.colName) {
                             const _firstTh = _theadForGroup.querySelector('tr:first-child th:first-child');
                             if (_firstTh) {
@@ -92374,6 +92413,8 @@ a { color: #1565c0; }`;
                                 _firstTh.dataset.colName = group.colName;
                             }
                         }
+                        // 4. Run cleanupHeaders with correct colIdx.
+                        cleanupHeaders(_theadForGroup);
                     } else {
                         _theadForGroup = templateHead.cloneNode(true);
                         // Patch first <th> text for non-tag-value pageTypes if needed.
@@ -129449,7 +129490,9 @@ a { color: #1565c0; }`;
                     // Extract comment text (keep full "(…)" form including parens).
                     const _commentForTooltip = (() => {
                         if (!_td) return '';
-                        const _cs = _td.querySelector('span.comment');
+                        // The entity's own comment, never the artist credit's
+                        // (tag pages: "Title by Artist (artist comment)").
+                        const _cs = _ownEntityCommentSpan(_td);
                         if (!_cs) return '';
                         return _cs.textContent.trim();
                     })();

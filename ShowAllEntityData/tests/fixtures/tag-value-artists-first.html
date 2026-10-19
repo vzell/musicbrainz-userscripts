@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Tag &ldquo;arena rock&rdquo; - MusicBrainz</title>
+</head>
+<body>
+    <!--
+        A tag-value overview page (/tag/arena%20rock), trimmed to four entity
+        sections, whose FIRST section is Artists (the real page has no Areas
+        section). Rows are copied from debug/tag-arena-rock.html.
+
+        renderGroupedTable() builds every group's thead from the first native
+        table's head, whose first <th> is "Artist" here. cleanupHeaders() used
+        to run before that <th> was renamed to the group's own column name, so
+        it saw "Artist" already present and skipped artistCredit's synthetic
+        "Artist" header in Release groups/Releases/Recordings, while the cell
+        was still appended: every header after the first sat one column left
+        of its cell.
+
+        The artist credits carry their own disambiguation comment, which
+        _extractMainColumnParts() used to read as the entity's Comment.
+
+          Artists        (first section; its <th> is the template's)
+          Release groups (artist comment only)
+          Releases       (artist comment only)
+          Recordings     (own comment AND artist comment)
+    -->
+    <div class="fullwidth " id="page">
+        <div id="content">
+            <div class="tagheader">
+                <h1>Tag &ldquo;<a href="/tag/arena%20rock">arena rock</a>&rdquo;</h1>
+                <p class="subheader"><span class="prefix">~</span> Tag</p>
+            </div>
+            <div class="tabs">
+                <ul class="tabs">
+                    <li class="sel"><a href="/tag/arena%20rock">Overview</a></li>
+                    <li><a href="/tag/arena%20rock/artist">Artists</a></li>
+                    <li><a href="/tag/arena%20rock/recording">Recordings</a></li>
+                </ul>
+            </div>
+            <h2>Entities tagged as &ldquo;arena rock&rdquo;</h2>
+            <p>4 entities found</p>
+
+            <h3>Artists</h3>
+            <ul>
+                <li><a href="/artist/66c662b6-6e2f-4930-8610-912e24c63ed1" title="AC/DC (Australian hard rock band)"><bdi>AC/DC</bdi></a>&nbsp;<span class="comment"><bdi>(Australian hard rock band)</bdi></span></li>
+            </ul>
+
+            <h3>Release groups</h3>
+            <ul>
+                <li><a href="/release-group/d3bc1a64-7561-3787-b680-0003aa50f8f1"><bdi>Back in Black</bdi></a> by <bdi><a href="/artist/66c662b6-6e2f-4930-8610-912e24c63ed1" title="AC/DC (Australian hard rock band)">AC/DC</a>&nbsp;<span class="comment"><bdi>(Australian hard rock band)</bdi></span></bdi></li>
+            </ul>
+
+            <h3>Releases</h3>
+            <ul>
+                <li><a href="/release/70d49204-428d-48b0-a4d5-73d787f84d74"><bdi>Singularity</bdi></a> by <bdi><a href="/artist/a6b21021-0399-4eee-8c73-e0e61195ca17" title="Sunspot (WI, US rock trio)">Sunspot</a>&nbsp;<span class="comment"><bdi>(WI, US rock trio)</bdi></span></bdi></li>
+            </ul>
+
+            <h3>Recordings</h3>
+            <ul>
+                <li><a href="/recording/fcb8c560-ae73-4947-b2c9-96e7e4c864f8"><bdi>It&rsquo;s a Long Way to the Top (If You Wanna Rock &rsquo;n&rsquo; Roll)</bdi></a>&nbsp;<span class="comment"><bdi>(original Australian mix)</bdi></span> by <bdi><a href="/artist/66c662b6-6e2f-4930-8610-912e24c63ed1" title="AC/DC (Australian hard rock band)">AC/DC</a>&nbsp;<span class="comment"><bdi>(Australian hard rock band)</bdi></span></bdi></li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

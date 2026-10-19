@@ -1,0 +1,58 @@
+[
+    {
+        "name": "header: first <th> renamed after cleanupHeaders() again",
+        "why": "cleanupHeaders() runs on the clone while its first <th> still says 'Artist' (the first native table's name): artistCredit's 'Artist' header is skipped, its cell is not, and every later header shifts one column left (debug/tag-arena-rock.html).",
+        "edits": [
+            {
+                "find": "                        // 4. Run cleanupHeaders with correct colIdx.\n                        cleanupHeaders(_theadForGroup);\n",
+                "replace": ""
+            },
+            {
+                "find": "                        _theadForGroup = rawTemplateHead.cloneNode(true);\n",
+                "replace": "                        _theadForGroup = rawTemplateHead.cloneNode(true);\n                        cleanupHeaders(_theadForGroup);\n"
+            }
+        ],
+        "spec": "tests/fixtures/tag-value-artists-first.spec.js",
+        "grep": "header stands over",
+        "expect": "fail"
+    },
+    {
+        "name": "comment: first .comment in the cell again",
+        "why": "_extractMainColumnParts() reads the artist credit's disambiguation as the entity's own Comment when the entity has none.",
+        "edits": [
+            {
+                "find": "        const commentSpan = _ownEntityCommentSpan(targetCell);\n",
+                "replace": "        const commentSpan = targetCell.querySelector('.comment');\n"
+            }
+        ],
+        "spec": "tests/fixtures/tag-value-artists-first.spec.js",
+        "grep": "never the",
+        "expect": "fail"
+    },
+    {
+        "name": "comment: _ownEntityCommentSpan() skips nothing",
+        "why": "The helper's artist-credit filter is gone: same symptom as the call-site revert, so the helper itself is pinned and not only its call.",
+        "edits": [
+            {
+                "find": "            .find(c => !credits.some(b => b.contains(c))) || null;\n",
+                "replace": "            .find(() => true) || null;\n"
+            }
+        ],
+        "spec": "tests/fixtures/tag-value-artists-first.spec.js",
+        "grep": "never the",
+        "expect": "fail"
+    },
+    {
+        "name": "comment: the CAA big-image wrapper reads the first .comment again",
+        "why": "Recorded as pass. Fixture specs run with CAA off (FIXTURE_SETTINGS_OVERRIDE), so no big-image wrapper is built. On the four affected pageTypes the card is drawn from tooltipColumns ('MB-Name', 'Artist'), which does not read data-art-tooltip-comment; the fix keeps that attribute right for the fallback card.",
+        "edits": [
+            {
+                "find": "                        const _cs = _ownEntityCommentSpan(_td);\n",
+                "replace": "                        const _cs = _td.querySelector('span.comment');\n"
+            }
+        ],
+        "spec": "tests/fixtures/tag-value-artists-first.spec.js",
+        "grep": "never the",
+        "expect": "pass"
+    }
+]
