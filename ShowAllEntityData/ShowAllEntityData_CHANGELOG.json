@@ -1,5 +1,79 @@
 [
   {
+    "version": "9.99.1382",
+    "date": "2026-10-19",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "discogs.com: the 📊 list of a submissions list's \"Changed by\" column and of a release history's \"User\" column shows each user's picture after their name, as in the table. A submissions list loads pictures only for rows you have scrolled to, so the list shows the pictures known by then; opening it asks Discogs for none."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1381",
+    "date": "2026-10-19",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "discogs.com: pointing at a thumbnail in the Image column of a Discogs table shows a card with every image of that release or master — the primary one starred, how many primary and secondary — as the Cover Art column's card does on MusicBrainz. The first time, it is one request to Discogs for that row only (a row you only pass over costs nothing), and the artwork viewer and the link preview then reuse it. New setting ⚙️ Settings → 💿 Discogs → \"Image column: all images of a row on hover\" (on)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1380",
+    "date": "2026-10-19",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "discogs.com (and Discogs previews anywhere): with several Discogs tabs open, and above all without a Discogs token, the buttons failed with \"HTTP 429 from Discogs\" — Discogs allows 25 requests a minute for your whole connection (60 with a token), and each tab spaced only its own requests. All tabs now share one spacing for Discogs' API. When Discogs says the minute's requests are used up, every tab waits a minute and asks again (up to four times; before, one retry 1.5 s later could never succeed), the status line says so, and Stop still stops at once."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1379",
+    "date": "2026-10-19",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "discogs.com: a user's ratings page (/users/ratings/<name>) gets a \"Show all ratings\" button: every release the user rated in one table — thumbnail, Artist, Title, Format, Label, Cat#, Year, Rating (1 to 5, sorted as a number) and Discogs' Data quality, plus the MusicBrainz column when murdos' importer is installed. The rows are read from discogs.com's own pages, 250 a page (Discogs' API has no list of a user's ratings); the sort you chose on the page is kept, and pointing at the button shows how many pages it asks for. A click on a thumbnail opens the artwork viewer, as on the other Discogs pages.",
+          "discogs.com, with murdos' importer installed: the Picard column now shows on every Discogs table whose MusicBrainz column looks up releases — the ratings page too — from the start, not only when MusicBrainz's answers happened to be cached already (so far master and release pages had it, the ratings page never). Opened (▶♪), a row gets its ♪ as soon as MusicBrainz names its release, and the button says which release it sends. Picard is sent the release's MusicBrainz page, not the Discogs page you are on."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1378",
+    "date": "2026-10-19",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "discogs.com, a list's submissions in Discogs' browser view (the list on the left, a release's history on the right): after \"Show all submissions\" the page could not be scrolled — only one window's worth of rows was visible, the columns past the right edge were out of reach, and there were no scrollbars. Discogs' own style for that view switches off the window's scrolling (its two panes scroll inside themselves); it is now switched back on for that view only, so the page scrolls down and to the right, and Discogs' panes still work below the table."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1377",
+    "date": "2026-10-19",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "discogs.com, with the \"Import Discogs releases to MusicBrainz\" userscript (murdos) installed: every Discogs table whose rows are releases, masters, artists or labels gets a \"MusicBrainz\" column right after Title or Name — the master's versions, a release's Credits, Companies and Other versions, an artist's discography, a label's releases, a submissions list and a user's lists. Each cell shows, on one line, every MusicBrainz entity linked to that Discogs page (the entity icons that script puts on Discogs' own page only), a yellow search box for each kind without one, a grey icon for an ended link and a count from two links up. A company is first looked for as a MusicBrainz place (a studio, a pressing plant), as that script does. The links come from that script's own cache first (read only, its data is never changed), then from this script's own store, then from MusicBrainz in the background, 100 Discogs links a request, one request a second; a header button (▶ MB) shows the progress and asks again for failed rows, and so does a click on a failed row's ⚠. Settings: \"MusicBrainz column (with the Discogs importer userscript)\" and \"MusicBrainz column: look up missing rows automatically\", both on. Without that userscript nothing changes. Mockup: https://claude.ai/artifact/6CmnUoNf4LHd44yxvp3rvu",
+          "📊 dropdown on that column: a \"MusicBrainz - Links\" section with the number of MusicBrainz links per row (» MB links: 0, 1, 2, …) and, while rows are still looked up or failed, \"pending\" and \"error\"; a ticked entry rings the matched icons and keeps up as answers arrive."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1376",
     "date": "2026-10-19",
     "sections": [
