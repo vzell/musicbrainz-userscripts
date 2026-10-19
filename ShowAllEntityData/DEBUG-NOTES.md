@@ -24438,3 +24438,87 @@ Env: 2026-10-19T18:39:21+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
   `_sbTagVotesTip()` on the pill's number. The number is a sibling of the
   link, so the two hover cards never compete.
 - `scripts/mutations/tag-reader.json`: 7 entries, 7 caught.
+
+## 2026-10-19 — "Recording of" columns on every one-recording-per-row list (branch feat/recording-of-more-pts, WIP.1)
+
+Env: 2026-10-19T19:16:01+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs); probes: no browser
+
+- **Task:** `org/TODO.org` "add the "Recording of" to more recording columns in
+  other PTs". The report of every MusicBrainz pageType that renders
+  recordings is under that TODO item. Scope chosen by the user: one recording
+  per row only, one checkbox per page group, on by default.
+- **What only held on artist-recordings:** the anchor was the literal
+  "Name" in three places (`_recOfAnchorIndex()`, the `_finalColNames`
+  splice, `_recOfInjectHeaders()`); the browse was by artist, from
+  `_recOfArtistMbid()`; suggestions used the artist's work list. All three
+  are now read from `_recOfDecl` (`features.recordingOf: { after, browseBy,
+  suggest, setting }`, `_recOfNormDecl()`). Everything else (the three
+  row-assembly sites, multi-table header injection in `cleanupHeaders()`,
+  live + master writes) was already source-agnostic.
+- **Inert cells:** a row whose anchor links no recording gets a cell without
+  `data-mbid`; the glyph CSS now requires `[data-mbid]` and
+  `_recOfCellLoadState()` returns null for it, so 📊 does not promise a load.
+- **Probe:** browse by work and by collection = lookup relations
+  (`tests/MEASUREMENTS.org`, "Recording of" browse by work and by collection).
+- **Fixtures:** `scripts/build-recording-of-pagetype-fixtures.py` fetched
+  isrc, instrument, series, user-ratings-type and artist-credit-entity pages
+  (cut to ≤ 6 rows, no pagination) plus the real WS/2 answers of all 34
+  recordings into `tests/fixtures/recording-of-pt-data.json`; search, work,
+  area and tag-value-entity reuse existing fixtures. musicbrainz.org answered
+  the collection page with a "Verifying your browser" bot check, so it has no
+  fixture (a browser snapshot is needed); user-tag-value-entity has none either.
+- **Caught by the old spec on the way:** the progress card's "Source" text
+  for artist-recordings had been generalised to "the recordings by this
+  artist"; `recording-of-column.spec.js` pins "the artist's recordings", so
+  the per-parent wording keeps that exact text.
+- Spec `recording-of-pagetypes.spec.js`; mutations
+  `scripts/mutations/recording-of-pagetypes.json`.
+- **Two positional bugs the full suite found once the pair was declared on
+  more pages** (`test:full` 2026-10-19T19:43:06+02:00, 5 failed / 2001):
+  1. *Hydration took the pair for Relationships cells.* Both restore
+     branches of `_hydrateAndRenderFromSnapshotData()` set
+     `className = 'mb-rel-cell'` on every cell record with an `mbid`, and
+     `_buildDiskCellData()` saves one for both "Recording of" cells. On
+     place-performances (which has a Relationships column) a sub-table tab
+     lost one of them and showed the Video value under Length
+     (`subtable-tab-handoff.spec.js`). Evidence: a temporary spec dumped
+     the tab's first row — `mb-rel-cell mb-perfattr-cell` at index 2 and no
+     `mb-recof-cell`. Fix: `&& !cellData.recof` in both branches. On
+     artist-recordings the cells had silently carried `mb-rel-cell` since
+     the feature shipped; harmless only because that page has no
+     Relationships column.
+  2. *Continuation-row merge ignored the inserted cells.*
+     `_mergeContinuationRowInto()` maps original index − excluded columns;
+     the pair after "Name" moved every target two to the right, so search
+     results merged extra releases two columns early (Medium/Type one item,
+     Picard 2 of 3). Fix: the call passes `_recOfAfterIdx` and the pair's
+     width. `search-recordings-continuation.spec.js`'s fixed `COL` indices
+     now count the pair.
+  Mutations for both are in `recording-of-pagetypes.json` (13 entries:
+  11 caught, 2 recorded as invisible with the reason).
+- **2026-10-20, user report — search results: "artists and recordings in the
+  same Artist column".** Env: 2026-10-20T00:10+02:00 · user's browser, unknown
+  versions (snapshots) / NB-3641 · Playwright 1.62.1 Chromium, no
+  Tampermonkey (GM stubs) for the check. Snapshots:
+  `debug/OF-WORK-search-recordings-initial.html` (IP of
+  /search?query=Born+to+Run&type=recording, saved after the page-load
+  toolbar was injected), `…-final-ok.html` (before the pair),
+  `…-final-bug.html` (with it). `scripts/compare-rendered-rows.py` on the
+  two FRPs: every recording with continuation rows has its extra releases
+  under Artist (2, 3, 38, 54 items), Track items under ISRCs, and one item
+  in Medium/Type — exactly the two-column merge shift fixed above
+  (`_mergeContinuationRowInto()`); the user's Tampermonkey copy predates
+  that fix (re-import needed). The page is now a whole-page fixture,
+  `recording-of-pt-search-born-to-run.html` (102 continuation rows), and
+  `recording-of-pagetypes.spec.js` renders it with the pair on and off and
+  requires identical item counts in every other column. Its first version
+  passed with the fix REVERTED: both renders share one browser context, the
+  "off" seed of the first carried into the second, and nothing asserted the
+  pair was present — now it does, and the seeded "off" render goes last.
+- **Fixtures from the user's browser:** `debug/collection-recordings-initial.html`
+  and `debug/user-tag-recording-initial.html` (and the search IP above) all
+  carry ShowAllEntityData's page-load toolbar and status line; the builder's
+  `strip_userscript()` removes them and refuses a page with any `id="mb-…"`
+  / `data-mb-…` left. Collection = `17ee2e77-…` (49 recordings, one browse
+  page), user tag = `vzell/acoustic rock`. The series is pinned to
+  `2b09356c-…`: `discover()` picked a different one on the second build.

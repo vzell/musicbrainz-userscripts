@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "33e51edfe19604e6dea3c1837c06fd828afb993a",
-    "revisions_walked": 962
+    "head": "22edaca2c6c06760312b28ef325c3dd376d794e9",
+    "revisions_walked": 967
   },
   "changes": [
     {
@@ -691,6 +691,8 @@
     "sa_findings_tint_no_front_image": true,
     "sa_findings_no_medium_image": true,
     "sa_findings_tint_no_medium_image": true,
+    "sa_findings_rel_multi_discogs": true,
+    "sa_findings_tint_rel_multi_discogs": true,
     "sa_findings_nonphysical_formats": "Digital Media",
     "sa_enable_release_tracks": true,
     "sa_enable_release_tracks_acoustid_column": false,

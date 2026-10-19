@@ -1129,7 +1129,16 @@ so you can filter to exactly the rows that failed.
 
 ## The Recording of column
 
-On an artist's **Recordings** page, two columns follow **Name**:
+On an artist's **Recordings** page, two columns follow **Name**. They are on
+the other recording lists too, after that page's own recording column:
+
+| Page | After |
+|---|---|
+| An artist's, an instrument's Recordings; recording search results; a series or collection of recordings | **Name** |
+| An ISRC; an area's Recordings; a place's Performances; a work's recordings | **Title** |
+| Tagged recordings (yours or everyone's); your rated recordings; an artist credit's recordings | **Recording** |
+
+The two columns are:
 
 - **Recording of** — the work each recording performs, as a link. Its
   attributes follow in light green italics, e.g.
@@ -1150,14 +1159,19 @@ every row is loaded it reads **▼🎼**. A cell shows `⋯` while queued, `◌`
 loading, `–` when the recording has no work, and `⚠︎` when the request
 failed; click a `⚠︎` to try again.
 
-**Few requests.** Loading every row first asks for the artist's recordings
-100 at a time, and that first answer also says how big the catalogue is. If
-the catalogue is much larger than the page, the rest is looked up one row
-at a time instead, whichever needs fewer requests. Answers are kept in the
-browser for 30 days, so a reload costs nothing.
+**Few requests.** On an artist's Recordings page, loading every row first
+asks for the artist's recordings 100 at a time, and that first answer also
+says how big the catalogue is. If the catalogue is much larger than the
+page, the rest is looked up one row at a time instead, whichever needs fewer
+requests. A work page and a collection do the same with the work's or the
+collection's recordings. Every other page looks up one row per request (about
+one a second). Answers are kept in the browser for 30 days, so a reload costs
+nothing, and a recording loaded on one page is already loaded on every other.
 
-**Suggested works.** For a recording without a work, the column suggests
-the artist's work with the closest title, in orange and marked *suggested:*.
+**Suggested works** (artist's Recordings page only — the other lists have no
+single artist to take works from). For a recording without a work, the
+column suggests the artist's work with the closest title, in orange and
+marked *suggested:*.
 "(alternate take)" and similar endings are ignored, and so are case,
 spacing and typographic quotes. The artist's work list is loaded with the
 column and kept for 30 days. If the batch-add userscript already holds that
@@ -1169,7 +1183,10 @@ loaded / has a work / work suggested / no work / failed) and **Suggested
 work** (one entry per suggested title). The attributes appear in the
 existing attribute entries.
 
-Settings: ⚙️ Settings → 🎼 RECORDING OF COLUMN.
+Settings: ⚙️ Settings → 🎼 RECORDING OF COLUMN. The first checkbox turns the
+columns off everywhere; one checkbox per page group (search, instrument,
+series, collection, ISRC, area/place, work, tags, ratings, artist credit)
+turns them off on those pages only.
 
 ---
 

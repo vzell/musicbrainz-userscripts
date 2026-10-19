@@ -538,7 +538,7 @@ measures "the button was not repainted" instead.
 
 ## Recording of column: two columns after "Name", loaded only on request
 
-`features.recordingOf` (artist-recordings) adds "Recording of" and
+`features.recordingOf` adds "Recording of" and
 "Performance attributes" — what Michael Wiencek's batch-add "performance of"
 userscript writes under each recording title, as two real columns. The code
 is the `_recOf*` family just above the Relationships section;
@@ -547,18 +547,64 @@ Show only: no edit is ever submitted. API facts (browse parity, 74 567
 recordings for Springsteen, only `performance` relations, search carries no
 relations): `scripts/probe-recording-work-rels.py`, `tests/MEASUREMENTS.org`.
 
+**Declared on every one-recording-per-row list** (since WIP.1 of
+`feat/recording-of-more-pts`), as an object normalised by `_recOfNormDecl()`
+into `_recOfDecl`:
+`recordingOf: { after, browseBy, suggest, setting }`.
+- `after` — the header of the page's OWN recording column, which the pair
+  follows: "Name" (artist/instrument recordings, search, series and
+  collection Recordings), "Title" (isrc, area recordings, place performances,
+  work recordings) or "Recording" (tag, user tag, user ratings, artist-credit
+  Recordings). `_recOfAnchorIndex()`, the `_finalColNames` splice and
+  `_recOfInjectHeaders()` all read it — a hard-coded "Name" there leaves every
+  other page without the pair and no error.
+- `browseBy` — the WS/2 browse parent "load all" may use (`artist`, `work`,
+  `collection`); absent = lookups only. `_recOfBrowseSource()` also requires
+  the URL's own entity to be that parent (the `_relBrowseSource()` guard).
+  Declare one only after `scripts/probe-recording-work-rels.py --by
+  <entity>:<mbid>` shows browse = lookup relations (2026-10-19: work and
+  collection passed), because a browse answer is cached under the lookup's key.
+- `suggest` — only artist-recordings: suggestions need ONE artist's work list,
+  which no other list has. `_recOfSuggestOn()` gates `_recOfEnsureWorks()`,
+  the single-row path and the progress card's work-list row and action.
+- `setting` — the page group's own checkbox (`sa_recording_of_on_*`, default
+  on), under the master switch.
+`true` still means artist-recordings' declaration. Not declared: release-tracks
+(its "Recording of work" comes from the page itself, free), mixed-entity
+tables (relationships pages, relationship tables, overviews, event, edits) and
+the all-entity-kinds multi pages (tag-value, user-tag-value, user-ratings,
+artist-credit), which need per-table anchoring.
+
+**A row whose anchor links no recording gets an inert cell**: no `data-mbid`,
+so no 🎼 glyph (the CSS needs `[data-mbid]`), no click load, and
+`_recOfCellLoadState()` returns null, so 📊 "Load state" does not count it.
+
 **They are the only injected columns that are not appended.** Every other
 injected column goes at the row END, which is what lets the ⏱/Relationships
 code say "nothing they drop can shift Length". These two are INSERTED after
-"Name", and three things keep that from misplacing positional work:
+the anchor (`_recOfDecl.after`, "Name" on artist-recordings), and three
+things keep that from misplacing positional work:
 - `_recOfInsertCells()` runs in each of the three row-assembly sites BEFORE
   `applyIntegerColumnStyling()`, not after;
-- `_finalColNames` splices the two names in after "Name", so every
+- `_finalColNames` splices the two names in after the anchor, so every
   integer-column `colIdx` (styling, `finalizeSplitAlignedColumns()`,
   `finalizeRLCColumnWidths()`, `_repairTreleasesTd()`) is resolved against
   the final layout;
-- `_recOfInjectHeaders()` inserts the `<th>`s after the "Name" `<th>` in
-  `cleanupHeaders()`.
+- `_recOfInjectHeaders()` inserts the `<th>`s after the anchor `<th>` in
+  `cleanupHeaders()`;
+- `_mergeContinuationRowInto()` (search results' continuation rows) is told
+  the anchor index and the pair's width: its destination indices are
+  original-minus-excluded, which knows nothing of inserted cells, and without
+  the shift a recording's extra releases were merged two columns early
+  (`search-recordings-continuation.spec.js`, found by the full suite when the
+  pair was declared on search).
+**A restored cell record with `recof` is never a Relationships cell.** Both
+hydration branches (disk load, sub-table tab) used to tag ANY record with an
+`mbid` `td.mb-rel-cell`, and the pair's records carry one; on a page with a
+Relationships column the Relationships pass then removed one of them and
+every later column shifted (a sub-table tab of place-performances showed
+Video under Length). `subtable-tab-handoff.spec.js`, `recording-of-disk.spec.js`
+and the multi disk test in `recording-of-pagetypes.spec.js` pin it.
 The audit that found the post-render `colIdx` readers is in DEBUG-NOTES
 (2026-10-10). Inserting after styling instead "works" for the inserted cells
 and silently moves Length's colon alignment two columns left — pinned by
@@ -641,6 +687,10 @@ artist-recordings with the columns present but empty; filter and 📊 metrics
 within noise. The per-column residue of two more cells per row.
 
 Specs: `recording-of-column.spec.js`, `recording-of-suggest.spec.js`,
+`recording-of-pagetypes.spec.js` (every other declared page: anchor, browse vs
+lookups, settings, multi-table survival, inert cells; fixtures and real WS/2
+answers from `scripts/build-recording-of-pagetype-fixtures.py`, mutations
+`scripts/mutations/recording-of-pagetypes.json`),
 `recording-of-uniq.spec.js`, `recording-of-third-party.spec.js` (the batch-add
 userscript's markup: until this, nothing pinned the `'wiencek'` eraser or the
 foreign "Performance Attributes" strip). Fixtures come from

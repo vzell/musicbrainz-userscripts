@@ -1,0 +1,4395 @@
+{
+ "pages": {
+  "collections-releases": {
+   "url": "https://musicbrainz.org/collection/17ee2e77-21e7-40f1-89b1-4238c9b73428",
+   "fixture": "recording-of-pt-collections-releases.html",
+   "recordings": [
+    "57c4a079-f9dc-49c5-8ef4-9f289207d543",
+    "acb65716-1c4d-4dfe-a962-1970b9e0f91c",
+    "535c937a-f884-445c-8388-ba1a361028a7",
+    "2e45ff1c-346b-4784-b7e5-49a3f9116e14",
+    "dbaa5618-bac1-40d8-9169-bb4e7b1a58a0",
+    "13528ed5-1cc4-4e75-bc69-acaf4a9afb22"
+   ]
+  },
+  "user-tag-value-entity": {
+   "url": "https://musicbrainz.org/user/vzell/tag/acoustic%20rock/recording",
+   "fixture": "recording-of-pt-user-tag-value-entity.html",
+   "recordings": [
+    "aebc08a3-8169-4d72-858e-0de7580b344d"
+   ]
+  },
+  "search-born-to-run": {
+   "url": "https://musicbrainz.org/search?query=Born+to+Run&type=recording&limit=25&method=indexed",
+   "fixture": "recording-of-pt-search-born-to-run.html",
+   "recordings": [
+    "f407d609-7f0e-44e6-a60f-4989817eff95",
+    "13d20cef-2cc8-4c6d-b5ed-8f106e3b4a35",
+    "22abfeb0-3099-4c51-9662-c48cb63b1967",
+    "b3ed899d-0f66-4a3b-b7fc-6e16fa82779d",
+    "39cdf2a6-0c99-4170-a92d-6f469296619a",
+    "67ad31dd-9eb4-44d7-83da-91482e1e37c3",
+    "1df37726-6bd8-4c20-a3bc-968c7b9e48ac",
+    "0cb8200b-32b2-4e8d-8b94-6239534de69b",
+    "bd20d084-4ba1-4483-bfaa-6b92d19c3330",
+    "af567a49-f841-4916-9915-c4c9542ba6ae",
+    "892ba7e2-cf47-42ce-b685-05e0210cfb9c",
+    "1364eb9f-2569-4b48-8d8a-d201bd373d1b",
+    "1a4bd1e9-9778-4e0c-8cf0-fa531ec6c2bf",
+    "f0f1e551-22e1-43a0-9b5f-ceb28d4500f4",
+    "35440ea9-0c3a-45f7-8670-e8f00607d43c",
+    "7fab84f0-9aef-4d29-85ee-14e00de967fd",
+    "7ea0daa2-f2d7-46dc-9d68-cafbf8274a91",
+    "6567a1fb-9174-4430-9578-9d1334d7b978",
+    "c8f85c79-7456-4464-97ca-90449e635f36",
+    "4db9ee0c-2e2c-4cf9-825b-5ac46d8898aa",
+    "b2dad532-2726-4979-9349-cf50df3c92d0",
+    "e9ac1f3a-7d80-4318-9f7d-63516393aa1e",
+    "71c48e33-44f0-44af-a95b-419af613d2c6",
+    "5c9e2c0b-84e4-45a6-bd09-d871809d8549",
+    "51946b2b-c0fb-44b8-8d13-6bac101e5e0b"
+   ]
+  },
+  "search": {
+   "url": "https://musicbrainz.org/search?query=roulette&type=recording&method=indexed",
+   "fixture": "search-recordings-continuation.html",
+   "recordings": [
+    "e12e20a3-de16-45ce-a234-c7d475b0d2a0",
+    "a89a4eae-14fc-47d9-a04a-caf8d8e02b8b",
+    "4b83c3a4-b1c5-4015-8468-69ddb2de1eb7"
+   ]
+  },
+  "work-recordings": {
+   "url": "https://musicbrainz.org/work/8727a75a-8d33-3a2c-912a-f57952773201",
+   "fixture": "work-recordings-ms-length.html",
+   "recordings": [
+    "528327c7-0f7a-46d1-b03f-700ebc39f747",
+    "de9ff1d7-dd78-4ed6-a328-c1ab126304e6",
+    "089026d3-1c1d-45bb-bf16-072d0bff8412",
+    "299b2860-570e-4dca-9166-9e3842d8c381",
+    "0b62eb61-f75f-498c-845f-5e7fbd3ac924",
+    "bbbbbbbb-2222-4222-8222-222222222222"
+   ]
+  },
+  "area-recordings": {
+   "url": "https://musicbrainz.org/area/10fa66f7-aa08-4823-8af8-52108f350a5a/recordings",
+   "fixture": "area-recordings-ms-length.html",
+   "recordings": [
+    "ba16da23-17e6-4043-b779-977000d19bb4",
+    "07ac0c55-8553-41f0-8818-d114b64674ec",
+    "104b3865-bc98-4968-8ca8-7ca67295caf2"
+   ]
+  },
+  "tag-value-entity": {
+   "url": "https://musicbrainz.org/tag/rock/recording",
+   "fixture": "tag-value-entity-extractmaincolumn-zero.html",
+   "recordings": [
+    "8d2338a2-4acc-4d99-b2a7-1151f428cab6",
+    "ec04e3c5-0548-4e73-bfc3-19a26108f302"
+   ]
+  },
+  "isrc": {
+   "url": "https://musicbrainz.org/isrc/USSM19500019",
+   "fixture": "recording-of-pt-isrc.html",
+   "recordings": [
+    "e94a1986-8853-4c1e-932b-cec1e01914a7"
+   ]
+  },
+  "instrument-recordings": {
+   "url": "https://musicbrainz.org/instrument/b62ace3b-47e7-4319-8a3e-1b035ccd20b2/recordings",
+   "fixture": "recording-of-pt-instrument-recordings.html",
+   "recordings": [
+    "abac5b18-5517-4f42-92ca-73838e2fca35",
+    "81587238-06bf-4c56-aa07-f3303ebf49ba",
+    "87b66b29-b2a0-4406-9062-f58dcc271aa3",
+    "c54a683e-a581-46c8-bf5d-29a1d1a7983a",
+    "6590ddf3-f10c-4e35-8f0e-87a99b081b0b",
+    "cd1225e5-4e4f-4b29-a3a7-86200c5d0780"
+   ]
+  },
+  "user-ratings-type": {
+   "url": "https://musicbrainz.org/user/vzell/ratings/recording",
+   "fixture": "recording-of-pt-user-ratings-type.html",
+   "recordings": [
+    "2ee8cd1a-804f-4159-87af-81fd4622648d",
+    "71157ae1-055d-4a55-a17b-cb90802f909d"
+   ]
+  },
+  "artist-credit-entity": {
+   "url": "https://musicbrainz.org/artist-credit/1488075/recording",
+   "fixture": "recording-of-pt-artist-credit-entity.html",
+   "recordings": [
+    "e7592c69-88ae-4038-a834-c6b63bbb5251",
+    "226515e4-29b2-4910-9148-fa052088d7e3",
+    "a38ffc8a-0ab5-4402-9a9e-16b116fe16d1",
+    "701a5ba6-13eb-45a5-9c87-3911989a6252",
+    "8c07a819-61a2-4252-bee7-2f7047c03be6",
+    "9d83255f-6b0e-4d34-aa14-6860da2061b0"
+   ]
+  },
+  "series-releases": {
+   "url": "https://musicbrainz.org/series/2b09356c-cccd-4501-84f4-ae3c63605204",
+   "fixture": "recording-of-pt-series-releases.html",
+   "recordings": [
+    "c6247fa3-b825-460a-b6bd-490319a1b887",
+    "148bac14-e0c9-46d1-9f76-8aecb38362cd",
+    "b93b90df-fe02-4c1a-b13b-f92a34ad3c9a",
+    "137b53e7-57e3-4a07-85e3-fcf733ae0a0d",
+    "a0e93806-1dea-4d57-bc5f-f6c459d14a09",
+    "694ec225-b06e-48f0-8d68-202e1c5eaa71"
+   ]
+  }
+ },
+ "recordings": {
+  "57c4a079-f9dc-49c5-8ef4-9f289207d543": {
+   "id": "57c4a079-f9dc-49c5-8ef4-9f289207d543",
+   "title": "2 Brazil! (uncensored)",
+   "relations": []
+  },
+  "acb65716-1c4d-4dfe-a962-1970b9e0f91c": {
+   "id": "acb65716-1c4d-4dfe-a962-1970b9e0f91c",
+   "title": "Auf die Liebe",
+   "relations": []
+  },
+  "535c937a-f884-445c-8388-ba1a361028a7": {
+   "id": "535c937a-f884-445c-8388-ba1a361028a7",
+   "title": "Ausländer",
+   "relations": [
+    {
+     "attributes": [],
+     "begin": null,
+     "ended": false,
+     "end": null,
+     "attribute-values": {},
+     "attribute-ids": {},
+     "direction": "forward",
+     "source-credit": "",
+     "target-type": "work",
+     "target-credit": "",
+     "type": "performance",
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "work": {
+      "id": "7907040b-0e80-4ef9-9a38-71dd1328726a",
+      "disambiguation": "",
+      "attributes": [],
+      "language": "deu",
+      "type": "Song",
+      "languages": [
+       "deu"
+      ],
+      "title": "Ausländer",
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "iswcs": [
+       "T-804.114.212-6"
+      ]
+     }
+    }
+   ]
+  },
+  "2e45ff1c-346b-4784-b7e5-49a3f9116e14": {
+   "id": "2e45ff1c-346b-4784-b7e5-49a3f9116e14",
+   "title": "bed bugs",
+   "relations": []
+  },
+  "dbaa5618-bac1-40d8-9169-bb4e7b1a58a0": {
+   "id": "dbaa5618-bac1-40d8-9169-bb4e7b1a58a0",
+   "title": "Big Dick",
+   "relations": []
+  },
+  "13528ed5-1cc4-4e75-bc69-acaf4a9afb22": {
+   "id": "13528ed5-1cc4-4e75-bc69-acaf4a9afb22",
+   "title": "BLVCK MVGIC (official video)",
+   "relations": []
+  },
+  "aebc08a3-8169-4d72-858e-0de7580b344d": {
+   "id": "aebc08a3-8169-4d72-858e-0de7580b344d",
+   "title": "Madalynn",
+   "relations": [
+    {
+     "attribute-values": {},
+     "work": {
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "type": "Song",
+      "title": "Madalynn",
+      "languages": [
+       "eng"
+      ],
+      "attributes": [],
+      "disambiguation": "",
+      "id": "97920440-6272-411a-bb09-5368f0759448",
+      "language": "eng",
+      "iswcs": []
+     },
+     "ended": false,
+     "attribute-ids": {},
+     "target-type": "work",
+     "end": null,
+     "target-credit": "",
+     "begin": null,
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "attributes": [],
+     "source-credit": "",
+     "direction": "forward",
+     "type": "performance"
+    }
+   ]
+  },
+  "f407d609-7f0e-44e6-a60f-4989817eff95": {
+   "id": "f407d609-7f0e-44e6-a60f-4989817eff95",
+   "title": "Born to Run",
+   "relations": []
+  },
+  "13d20cef-2cc8-4c6d-b5ed-8f106e3b4a35": {
+   "id": "13d20cef-2cc8-4c6d-b5ed-8f106e3b4a35",
+   "title": "Born to Run",
+   "relations": []
+  },
+  "22abfeb0-3099-4c51-9662-c48cb63b1967": {
+   "id": "22abfeb0-3099-4c51-9662-c48cb63b1967",
+   "title": "Born to Run",
+   "relations": []
+  },
+  "b3ed899d-0f66-4a3b-b7fc-6e16fa82779d": {
+   "id": "b3ed899d-0f66-4a3b-b7fc-6e16fa82779d",
+   "title": "Born to Run",
+   "relations": []
+  },
+  "39cdf2a6-0c99-4170-a92d-6f469296619a": {
+   "id": "39cdf2a6-0c99-4170-a92d-6f469296619a",
+   "title": "Born to Run",
+   "relations": [
+    {
+     "attribute-values": {},
+     "type": "performance",
+     "work": {
+      "type": "Song",
+      "iswcs": [
+       "T-070.014.903-6"
+      ],
+      "id": "9893a23c-f282-3b07-a2db-b4f2f3b9f4b2",
+      "disambiguation": "",
+      "attributes": [],
+      "languages": [
+       "eng"
+      ],
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "language": "eng",
+      "title": "Born to Run"
+     },
+     "ended": false,
+     "attributes": [],
+     "attribute-ids": {},
+     "source-credit": "",
+     "target-credit": "",
+     "direction": "forward",
+     "target-type": "work",
+     "end": null,
+     "begin": null,
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0"
+    }
+   ]
+  },
+  "67ad31dd-9eb4-44d7-83da-91482e1e37c3": {
+   "id": "67ad31dd-9eb4-44d7-83da-91482e1e37c3",
+   "title": "Born to Run",
+   "relations": []
+  },
+  "1df37726-6bd8-4c20-a3bc-968c7b9e48ac": {
+   "id": "1df37726-6bd8-4c20-a3bc-968c7b9e48ac",
+   "title": "Born to Run",
+   "relations": []
+  },
+  "0cb8200b-32b2-4e8d-8b94-6239534de69b": {
+   "id": "0cb8200b-32b2-4e8d-8b94-6239534de69b",
+   "title": "Born to Run",
+   "relations": [
+    {
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "attribute-values": {},
+     "target-type": "work",
+     "attributes": [
+      "cover"
+     ],
+     "end": null,
+     "direction": "forward",
+     "target-credit": "",
+     "ended": false,
+     "begin": null,
+     "work": {
+      "disambiguation": "",
+      "languages": [
+       "eng"
+      ],
+      "title": "Born to Run",
+      "type": "Song",
+      "attributes": [],
+      "language": "eng",
+      "id": "9893a23c-f282-3b07-a2db-b4f2f3b9f4b2",
+      "iswcs": [
+       "T-070.014.903-6"
+      ],
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6"
+     },
+     "attribute-ids": {
+      "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113"
+     },
+     "source-credit": "",
+     "type": "performance"
+    }
+   ]
+  },
+  "bd20d084-4ba1-4483-bfaa-6b92d19c3330": {
+   "id": "bd20d084-4ba1-4483-bfaa-6b92d19c3330",
+   "title": "Born to Run",
+   "relations": [
+    {
+     "begin": null,
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "end": null,
+     "target-credit": "",
+     "target-type": "work",
+     "ended": false,
+     "attribute-ids": {
+      "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113"
+     },
+     "work": {
+      "title": "Born to Run",
+      "type": "Song",
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "iswcs": [
+       "T-070.014.903-6"
+      ],
+      "language": "eng",
+      "id": "9893a23c-f282-3b07-a2db-b4f2f3b9f4b2",
+      "disambiguation": "",
+      "languages": [
+       "eng"
+      ],
+      "attributes": []
+     },
+     "attribute-values": {},
+     "type": "performance",
+     "direction": "forward",
+     "source-credit": "",
+     "attributes": [
+      "cover"
+     ]
+    }
+   ]
+  },
+  "af567a49-f841-4916-9915-c4c9542ba6ae": {
+   "id": "af567a49-f841-4916-9915-c4c9542ba6ae",
+   "title": "Born to Run",
+   "relations": [
+    {
+     "attribute-values": {},
+     "type": "performance",
+     "work": {
+      "type": "Song",
+      "iswcs": [
+       "T-070.014.903-6"
+      ],
+      "languages": [
+       "eng"
+      ],
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "language": "eng",
+      "title": "Born to Run",
+      "attributes": [],
+      "id": "9893a23c-f282-3b07-a2db-b4f2f3b9f4b2",
+      "disambiguation": ""
+     },
+     "ended": false,
+     "attribute-ids": {
+      "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113",
+      "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+     },
+     "attributes": [
+      "cover",
+      "live"
+     ],
+     "source-credit": "",
+     "target-credit": "",
+     "direction": "forward",
+     "target-type": "work",
+     "end": null,
+     "begin": null,
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0"
+    }
+   ]
+  },
+  "892ba7e2-cf47-42ce-b685-05e0210cfb9c": {
+   "id": "892ba7e2-cf47-42ce-b685-05e0210cfb9c",
+   "title": "Born to Run",
+   "relations": []
+  },
+  "1364eb9f-2569-4b48-8d8a-d201bd373d1b": {
+   "id": "1364eb9f-2569-4b48-8d8a-d201bd373d1b",
+   "title": "Born to Run",
+   "relations": []
+  },
+  "1a4bd1e9-9778-4e0c-8cf0-fa531ec6c2bf": {
+   "id": "1a4bd1e9-9778-4e0c-8cf0-fa531ec6c2bf",
+   "title": "Born to Run",
+   "relations": [
+    {
+     "work": {
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "type": "Song",
+      "title": "Born to Run",
+      "id": "9893a23c-f282-3b07-a2db-b4f2f3b9f4b2",
+      "disambiguation": "",
+      "attributes": [],
+      "languages": [
+       "eng"
+      ],
+      "iswcs": [
+       "T-070.014.903-6"
+      ],
+      "language": "eng"
+     },
+     "attribute-values": {},
+     "target-type": "work",
+     "ended": false,
+     "attribute-ids": {
+      "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113"
+     },
+     "begin": null,
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "end": null,
+     "target-credit": "",
+     "attributes": [
+      "cover"
+     ],
+     "source-credit": "",
+     "direction": "forward",
+     "type": "performance"
+    }
+   ]
+  },
+  "f0f1e551-22e1-43a0-9b5f-ceb28d4500f4": {
+   "id": "f0f1e551-22e1-43a0-9b5f-ceb28d4500f4",
+   "title": "Born to Run",
+   "relations": []
+  },
+  "35440ea9-0c3a-45f7-8670-e8f00607d43c": {
+   "id": "35440ea9-0c3a-45f7-8670-e8f00607d43c",
+   "title": "Born to Run",
+   "relations": [
+    {
+     "work": {
+      "attributes": [],
+      "iswcs": [
+       "T-070.014.903-6"
+      ],
+      "id": "9893a23c-f282-3b07-a2db-b4f2f3b9f4b2",
+      "language": "eng",
+      "type": "Song",
+      "languages": [
+       "eng"
+      ],
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "disambiguation": "",
+      "title": "Born to Run"
+     },
+     "attributes": [
+      "live"
+     ],
+     "target-credit": "",
+     "ended": true,
+     "end": "1993-06-24",
+     "attribute-ids": {
+      "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+     },
+     "source-credit": "",
+     "begin": "1993-06-24",
+     "attribute-values": {},
+     "direction": "forward",
+     "target-type": "work",
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "type": "performance"
+    }
+   ]
+  },
+  "7fab84f0-9aef-4d29-85ee-14e00de967fd": {
+   "id": "7fab84f0-9aef-4d29-85ee-14e00de967fd",
+   "title": "Born to Run",
+   "relations": [
+    {
+     "source-credit": "",
+     "type": "performance",
+     "target-type": "work",
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "attribute-values": {},
+     "target-credit": "",
+     "begin": null,
+     "ended": false,
+     "work": {
+      "type": "Song",
+      "attributes": [],
+      "language": "eng",
+      "disambiguation": "",
+      "languages": [
+       "eng"
+      ],
+      "title": "Born to Run",
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "id": "9893a23c-f282-3b07-a2db-b4f2f3b9f4b2",
+      "iswcs": [
+       "T-070.014.903-6"
+      ]
+     },
+     "attribute-ids": {
+      "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113"
+     },
+     "end": null,
+     "attributes": [
+      "cover"
+     ],
+     "direction": "forward"
+    }
+   ]
+  },
+  "7ea0daa2-f2d7-46dc-9d68-cafbf8274a91": {
+   "id": "7ea0daa2-f2d7-46dc-9d68-cafbf8274a91",
+   "title": "Born to Run",
+   "relations": [
+    {
+     "target-credit": "",
+     "end": "1985-08-22",
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "begin": "1985-08-22",
+     "attribute-values": {},
+     "work": {
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "type": "Song",
+      "title": "Born to Run",
+      "id": "9893a23c-f282-3b07-a2db-b4f2f3b9f4b2",
+      "disambiguation": "",
+      "languages": [
+       "eng"
+      ],
+      "attributes": [],
+      "language": "eng",
+      "iswcs": [
+       "T-070.014.903-6"
+      ]
+     },
+     "attribute-ids": {
+      "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+     },
+     "ended": true,
+     "target-type": "work",
+     "direction": "forward",
+     "type": "performance",
+     "attributes": [
+      "live"
+     ],
+     "source-credit": ""
+    }
+   ]
+  },
+  "6567a1fb-9174-4430-9578-9d1334d7b978": {
+   "id": "6567a1fb-9174-4430-9578-9d1334d7b978",
+   "title": "Born to Run",
+   "relations": [
+    {
+     "attributes": [
+      "live"
+     ],
+     "source-credit": "",
+     "direction": "forward",
+     "type": "performance",
+     "work": {
+      "title": "Born to Run",
+      "type": "Song",
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "iswcs": [
+       "T-070.014.903-6"
+      ],
+      "language": "eng",
+      "id": "9893a23c-f282-3b07-a2db-b4f2f3b9f4b2",
+      "attributes": [],
+      "languages": [
+       "eng"
+      ],
+      "disambiguation": ""
+     },
+     "attribute-values": {},
+     "target-type": "work",
+     "attribute-ids": {
+      "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+     },
+     "ended": true,
+     "begin": "1978-07-07",
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "end": "1978-07-07",
+     "target-credit": ""
+    }
+   ]
+  },
+  "c8f85c79-7456-4464-97ca-90449e635f36": {
+   "id": "c8f85c79-7456-4464-97ca-90449e635f36",
+   "title": "Born to Run",
+   "relations": [
+    {
+     "direction": "forward",
+     "end": "1975-02-05",
+     "begin": "1975-02-05",
+     "target-type": "work",
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "attribute-values": {},
+     "type": "performance",
+     "work": {
+      "title": "Born to Run",
+      "languages": [
+       "eng"
+      ],
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "language": "eng",
+      "id": "9893a23c-f282-3b07-a2db-b4f2f3b9f4b2",
+      "disambiguation": "",
+      "attributes": [],
+      "iswcs": [
+       "T-070.014.903-6"
+      ],
+      "type": "Song"
+     },
+     "ended": true,
+     "attribute-ids": {
+      "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+     },
+     "attributes": [
+      "live"
+     ],
+     "source-credit": "",
+     "target-credit": ""
+    }
+   ]
+  },
+  "4db9ee0c-2e2c-4cf9-825b-5ac46d8898aa": {
+   "id": "4db9ee0c-2e2c-4cf9-825b-5ac46d8898aa",
+   "title": "Born to Run",
+   "relations": [
+    {
+     "attribute-values": {},
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "target-type": "work",
+     "direction": "forward",
+     "attributes": [
+      "live"
+     ],
+     "end": "2003-05-08",
+     "work": {
+      "title": "Born to Run",
+      "languages": [
+       "eng"
+      ],
+      "disambiguation": "",
+      "attributes": [],
+      "type": "Song",
+      "language": "eng",
+      "iswcs": [
+       "T-070.014.903-6"
+      ],
+      "id": "9893a23c-f282-3b07-a2db-b4f2f3b9f4b2",
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6"
+     },
+     "attribute-ids": {
+      "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+     },
+     "ended": true,
+     "target-credit": "",
+     "begin": "2003-05-08",
+     "source-credit": "",
+     "type": "performance"
+    }
+   ]
+  },
+  "b2dad532-2726-4979-9349-cf50df3c92d0": {
+   "id": "b2dad532-2726-4979-9349-cf50df3c92d0",
+   "title": "Born to Run",
+   "relations": [
+    {
+     "type": "performance",
+     "target-credit": "",
+     "target-type": "work",
+     "work": {
+      "title": "Born to Run",
+      "languages": [
+       "eng"
+      ],
+      "type": "Song",
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "iswcs": [
+       "T-070.014.903-6"
+      ],
+      "attributes": [],
+      "id": "9893a23c-f282-3b07-a2db-b4f2f3b9f4b2",
+      "disambiguation": "",
+      "language": "eng"
+     },
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "attribute-values": {},
+     "attribute-ids": {
+      "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113"
+     },
+     "end": null,
+     "attributes": [
+      "cover"
+     ],
+     "begin": null,
+     "ended": false,
+     "source-credit": "",
+     "direction": "forward"
+    }
+   ]
+  },
+  "e9ac1f3a-7d80-4318-9f7d-63516393aa1e": {
+   "id": "e9ac1f3a-7d80-4318-9f7d-63516393aa1e",
+   "title": "Born to Run",
+   "relations": []
+  },
+  "71c48e33-44f0-44af-a95b-419af613d2c6": {
+   "id": "71c48e33-44f0-44af-a95b-419af613d2c6",
+   "title": "Born to Run",
+   "relations": [
+    {
+     "work": {
+      "id": "312a631c-e49f-414d-8cd4-c02683f833a0",
+      "iswcs": [
+       "T-010.183.995-5"
+      ],
+      "language": "eng",
+      "languages": [
+       "eng"
+      ],
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "type": "Song",
+      "title": "Born to Run",
+      "attributes": [],
+      "disambiguation": ""
+     },
+     "end": null,
+     "attributes": [],
+     "attribute-ids": {},
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "attribute-values": {},
+     "ended": false,
+     "target-credit": "",
+     "direction": "forward",
+     "source-credit": "",
+     "begin": null,
+     "target-type": "work",
+     "type": "performance"
+    }
+   ]
+  },
+  "5c9e2c0b-84e4-45a6-bd09-d871809d8549": {
+   "id": "5c9e2c0b-84e4-45a6-bd09-d871809d8549",
+   "title": "Born to Run",
+   "relations": [
+    {
+     "direction": "forward",
+     "begin": "2000-02-28",
+     "end": "2000-02-28",
+     "target-type": "work",
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "type": "performance",
+     "work": {
+      "disambiguation": "",
+      "id": "9893a23c-f282-3b07-a2db-b4f2f3b9f4b2",
+      "attributes": [],
+      "title": "Born to Run",
+      "language": "eng",
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "languages": [
+       "eng"
+      ],
+      "iswcs": [
+       "T-070.014.903-6"
+      ],
+      "type": "Song"
+     },
+     "attribute-values": {},
+     "ended": true,
+     "source-credit": "",
+     "attributes": [
+      "live"
+     ],
+     "attribute-ids": {
+      "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+     },
+     "target-credit": ""
+    }
+   ]
+  },
+  "51946b2b-c0fb-44b8-8d13-6bac101e5e0b": {
+   "id": "51946b2b-c0fb-44b8-8d13-6bac101e5e0b",
+   "title": "Born to Run",
+   "relations": [
+    {
+     "type": "performance",
+     "target-type": "work",
+     "begin": null,
+     "source-credit": "",
+     "target-credit": "",
+     "direction": "forward",
+     "attribute-values": {},
+     "ended": false,
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "attribute-ids": {
+      "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113"
+     },
+     "attributes": [
+      "cover"
+     ],
+     "work": {
+      "languages": [
+       "eng"
+      ],
+      "iswcs": [
+       "T-070.014.903-6"
+      ],
+      "id": "9893a23c-f282-3b07-a2db-b4f2f3b9f4b2",
+      "language": "eng",
+      "type": "Song",
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "title": "Born to Run",
+      "disambiguation": "",
+      "attributes": []
+     },
+     "end": null
+    }
+   ]
+  },
+  "e12e20a3-de16-45ce-a234-c7d475b0d2a0": {
+   "id": "e12e20a3-de16-45ce-a234-c7d475b0d2a0",
+   "title": "Roulette",
+   "relations": [
+    {
+     "attributes": [],
+     "work": {
+      "type": "Song",
+      "languages": [
+       "eng"
+      ],
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "disambiguation": "",
+      "title": "Roulette",
+      "iswcs": [],
+      "attributes": [],
+      "id": "639c23e4-7a4a-49a3-af63-fa78ff786634",
+      "language": "eng"
+     },
+     "attribute-ids": {},
+     "source-credit": "",
+     "ended": true,
+     "end": "1979-04-04",
+     "target-credit": "",
+     "target-type": "work",
+     "direction": "forward",
+     "attribute-values": {},
+     "begin": "1979-04-03",
+     "type": "performance",
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0"
+    }
+   ]
+  },
+  "a89a4eae-14fc-47d9-a04a-caf8d8e02b8b": {
+   "id": "a89a4eae-14fc-47d9-a04a-caf8d8e02b8b",
+   "title": "Roulette",
+   "relations": [
+    {
+     "direction": "forward",
+     "end": null,
+     "begin": null,
+     "target-type": "work",
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "type": "performance",
+     "work": {
+      "languages": [
+       "zxx"
+      ],
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "language": "zxx",
+      "title": "Roulette",
+      "id": "22bc9e01-8815-3cf6-a68d-de26e6e6fa3a",
+      "attributes": [],
+      "disambiguation": "",
+      "type": "Song",
+      "iswcs": [
+       "T-010.164.848-9"
+      ]
+     },
+     "attribute-values": {},
+     "ended": false,
+     "source-credit": "",
+     "attributes": [],
+     "attribute-ids": {},
+     "target-credit": ""
+    }
+   ]
+  },
+  "4b83c3a4-b1c5-4015-8468-69ddb2de1eb7": {
+   "id": "4b83c3a4-b1c5-4015-8468-69ddb2de1eb7",
+   "title": "Roulette",
+   "relations": []
+  },
+  "528327c7-0f7a-46d1-b03f-700ebc39f747": {
+   "id": "528327c7-0f7a-46d1-b03f-700ebc39f747",
+   "title": "Rainy Night in Soho",
+   "relations": [
+    {
+     "type": "performance",
+     "begin": "2001-12",
+     "source-credit": "",
+     "target-type": "work",
+     "attribute-ids": {
+      "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+     },
+     "attribute-values": {},
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "ended": true,
+     "direction": "forward",
+     "target-credit": "",
+     "end": "2001-12",
+     "work": {
+      "language": "eng",
+      "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+      "iswcs": [
+       "T-010.309.871-0"
+      ],
+      "languages": [
+       "eng"
+      ],
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "type": "Song",
+      "title": "A Rainy Night in Soho",
+      "attributes": [],
+      "disambiguation": ""
+     },
+     "attributes": [
+      "live"
+     ]
+    }
+   ]
+  },
+  "de9ff1d7-dd78-4ed6-a328-c1ab126304e6": {
+   "id": "de9ff1d7-dd78-4ed6-a328-c1ab126304e6",
+   "title": "Rainy Night in Soho",
+   "relations": [
+    {
+     "ended": true,
+     "attribute-ids": {},
+     "target-type": "work",
+     "attribute-values": {},
+     "work": {
+      "language": "eng",
+      "iswcs": [
+       "T-010.309.871-0"
+      ],
+      "disambiguation": "",
+      "languages": [
+       "eng"
+      ],
+      "attributes": [],
+      "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+      "type": "Song",
+      "title": "A Rainy Night in Soho",
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6"
+     },
+     "end": "2001-12",
+     "target-credit": "",
+     "begin": "2001-12",
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "source-credit": "",
+     "attributes": [],
+     "type": "performance",
+     "direction": "forward"
+    }
+   ]
+  },
+  "089026d3-1c1d-45bb-bf16-072d0bff8412": {
+   "id": "089026d3-1c1d-45bb-bf16-072d0bff8412",
+   "title": "Rainy Night in Soho",
+   "relations": [
+    {
+     "attribute-ids": {
+      "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+     },
+     "attributes": [
+      "live"
+     ],
+     "source-credit": "",
+     "target-credit": "",
+     "attribute-values": {},
+     "type": "performance",
+     "work": {
+      "title": "A Rainy Night in Soho",
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "languages": [
+       "eng"
+      ],
+      "language": "eng",
+      "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+      "attributes": [],
+      "disambiguation": "",
+      "iswcs": [
+       "T-010.309.871-0"
+      ],
+      "type": "Song"
+     },
+     "ended": true,
+     "begin": "2012-09",
+     "end": "2012-09",
+     "target-type": "work",
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "direction": "forward"
+    }
+   ]
+  },
+  "299b2860-570e-4dca-9166-9e3842d8c381": {
+   "id": "299b2860-570e-4dca-9166-9e3842d8c381",
+   "title": "Rainy Night in Soho",
+   "relations": [
+    {
+     "begin": "2012-09",
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "end": "2012-09",
+     "target-credit": "",
+     "work": {
+      "iswcs": [
+       "T-010.309.871-0"
+      ],
+      "language": "eng",
+      "disambiguation": "",
+      "attributes": [],
+      "languages": [
+       "eng"
+      ],
+      "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+      "title": "A Rainy Night in Soho",
+      "type": "Song",
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6"
+     },
+     "attribute-values": {},
+     "target-type": "work",
+     "attribute-ids": {
+      "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+     },
+     "ended": true,
+     "direction": "forward",
+     "type": "performance",
+     "attributes": [
+      "live"
+     ],
+     "source-credit": ""
+    }
+   ]
+  },
+  "0b62eb61-f75f-498c-845f-5e7fbd3ac924": {
+   "id": "0b62eb61-f75f-498c-845f-5e7fbd3ac924",
+   "title": "Opening – A Rainy Night in Soho",
+   "relations": [
+    {
+     "direction": "forward",
+     "target-type": "work",
+     "begin": "2017-05-12",
+     "end": "2017-05-12",
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "type": "performance",
+     "work": {
+      "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+      "attributes": [],
+      "disambiguation": "",
+      "title": "A Rainy Night in Soho",
+      "language": "eng",
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "languages": [
+       "eng"
+      ],
+      "iswcs": [
+       "T-010.309.871-0"
+      ],
+      "type": "Song"
+     },
+     "attribute-values": {},
+     "ended": true,
+     "source-credit": "",
+     "attribute-ids": {
+      "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a",
+      "partial": "d2b63be6-91ec-426a-987a-30b47f8aae2d"
+     },
+     "attributes": [
+      "live",
+      "partial"
+     ],
+     "target-credit": ""
+    }
+   ]
+  },
+  "bbbbbbbb-2222-4222-8222-222222222222": null,
+  "ba16da23-17e6-4043-b779-977000d19bb4": {
+   "id": "ba16da23-17e6-4043-b779-977000d19bb4",
+   "title": "16",
+   "relations": [
+    {
+     "attributes": [],
+     "source-credit": "",
+     "direction": "forward",
+     "type": "performance",
+     "work": {
+      "iswcs": [],
+      "language": "eng",
+      "disambiguation": "",
+      "languages": [
+       "eng"
+      ],
+      "attributes": [],
+      "id": "54b8f693-ad81-41e8-bef5-05e4b2f0c6b7",
+      "title": "16",
+      "type": "Song",
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6"
+     },
+     "attribute-values": {},
+     "target-type": "work",
+     "attribute-ids": {},
+     "ended": false,
+     "begin": null,
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "end": null,
+     "target-credit": ""
+    }
+   ]
+  },
+  "07ac0c55-8553-41f0-8818-d114b64674ec": {
+   "id": "07ac0c55-8553-41f0-8818-d114b64674ec",
+   "title": "Anchor",
+   "relations": [
+    {
+     "begin": null,
+     "end": null,
+     "target-type": "work",
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "direction": "forward",
+     "attribute-ids": {},
+     "attributes": [],
+     "source-credit": "",
+     "target-credit": "",
+     "attribute-values": {},
+     "work": {
+      "id": "7b23276a-812d-467c-a9ac-596c1deedd2d",
+      "disambiguation": "",
+      "attributes": [],
+      "language": null,
+      "type-id": null,
+      "languages": [],
+      "title": "Anchor",
+      "type": null,
+      "iswcs": []
+     },
+     "type": "performance",
+     "ended": false
+    }
+   ]
+  },
+  "104b3865-bc98-4968-8ca8-7ca67295caf2": {
+   "id": "104b3865-bc98-4968-8ca8-7ca67295caf2",
+   "title": "Bobby",
+   "relations": [
+    {
+     "type": "performance",
+     "direction": "forward",
+     "source-credit": "",
+     "attributes": [],
+     "begin": null,
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "end": null,
+     "target-credit": "",
+     "target-type": "work",
+     "attribute-ids": {},
+     "ended": false,
+     "work": {
+      "title": "Bobby",
+      "type": null,
+      "type-id": null,
+      "language": null,
+      "iswcs": [],
+      "id": "4fc4a014-3075-4cb1-ac7c-9c460ccf73ec",
+      "attributes": [],
+      "languages": [],
+      "disambiguation": ""
+     },
+     "attribute-values": {}
+    }
+   ]
+  },
+  "8d2338a2-4acc-4d99-b2a7-1151f428cab6": {
+   "id": "8d2338a2-4acc-4d99-b2a7-1151f428cab6",
+   "title": "Brown Sugar",
+   "relations": [
+    {
+     "attributes": [],
+     "begin": "1969-12",
+     "ended": true,
+     "end": "1969-12",
+     "attribute-ids": {},
+     "attribute-values": {},
+     "direction": "forward",
+     "source-credit": "",
+     "target-type": "work",
+     "target-credit": "",
+     "type": "performance",
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "work": {
+      "type": "Song",
+      "title": "Brown Sugar",
+      "languages": [
+       "eng"
+      ],
+      "iswcs": [
+       "T-010.446.187-1",
+       "T-070.880.945-3"
+      ],
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "disambiguation": "",
+      "id": "a57a1ebc-eee5-382f-9360-af951710a6a5",
+      "attributes": [],
+      "language": "eng"
+     }
+    }
+   ]
+  },
+  "ec04e3c5-0548-4e73-bfc3-19a26108f302": {
+   "id": "ec04e3c5-0548-4e73-bfc3-19a26108f302",
+   "title": "Imagine",
+   "relations": [
+    {
+     "direction": "forward",
+     "end": "1971-07-04",
+     "attributes": [],
+     "work": {
+      "iswcs": [
+       "T-010.260.088-3",
+       "T-010.907.737-3",
+       "T-070.241.141-3"
+      ],
+      "id": "517ff96c-5970-3eac-9ae5-bcafc15f5bc7",
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "title": "Imagine",
+      "disambiguation": "",
+      "languages": [
+       "eng"
+      ],
+      "attributes": [],
+      "type": "Song",
+      "language": "eng"
+     },
+     "attribute-ids": {},
+     "begin": "1971-05-27",
+     "target-credit": "",
+     "ended": true,
+     "attribute-values": {},
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "target-type": "work",
+     "type": "performance",
+     "source-credit": ""
+    }
+   ]
+  },
+  "e94a1986-8853-4c1e-932b-cec1e01914a7": {
+   "id": "e94a1986-8853-4c1e-932b-cec1e01914a7",
+   "title": "Thunder Road",
+   "relations": [
+    {
+     "type": "performance",
+     "direction": "forward",
+     "source-credit": "",
+     "attributes": [
+      "live"
+     ],
+     "target-credit": "",
+     "end": "1975-10-18",
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "begin": "1975-10-18",
+     "attribute-ids": {
+      "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+     },
+     "ended": true,
+     "target-type": "work",
+     "attribute-values": {},
+     "work": {
+      "type": "Song",
+      "title": "Thunder Road",
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "iswcs": [
+       "T-070.184.153-3"
+      ],
+      "language": "eng",
+      "disambiguation": "B. Springsteen 1974–1975",
+      "languages": [
+       "eng"
+      ],
+      "attributes": [],
+      "id": "cc8d858a-38ef-35b0-b83c-a5d26f04207b"
+     }
+    }
+   ]
+  },
+  "abac5b18-5517-4f42-92ca-73838e2fca35": {
+   "id": "abac5b18-5517-4f42-92ca-73838e2fca35",
+   "title": "(Sittin' on) the Dock of the Bay",
+   "relations": [
+    {
+     "attributes": [],
+     "ended": true,
+     "begin": "1998-12",
+     "attribute-ids": {},
+     "attribute-values": {},
+     "end": "1998-12",
+     "source-credit": "",
+     "direction": "forward",
+     "target-type": "work",
+     "type": "performance",
+     "target-credit": "",
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "work": {
+      "language": "eng",
+      "attributes": [],
+      "disambiguation": "",
+      "id": "ef3039b2-1d3e-3240-a2b8-4ae6d8acba97",
+      "iswcs": [
+       "T-071.017.301-5"
+      ],
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "title": "(Sittin’ on) the Dock of the Bay",
+      "languages": [
+       "eng"
+      ],
+      "type": "Song"
+     }
+    }
+   ]
+  },
+  "81587238-06bf-4c56-aa07-f3303ebf49ba": {
+   "id": "81587238-06bf-4c56-aa07-f3303ebf49ba",
+   "title": "4th Time Around",
+   "relations": [
+    {
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "work": {
+      "language": "eng",
+      "attributes": [],
+      "id": "d902b2a2-5dc6-32bb-a391-bfbf0f098e9c",
+      "disambiguation": "",
+      "iswcs": [
+       "T-070.250.268-8"
+      ],
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "title": "4th Time Around",
+      "languages": [
+       "eng"
+      ],
+      "type": "Song"
+     },
+     "target-type": "work",
+     "target-credit": "",
+     "type": "performance",
+     "direction": "forward",
+     "source-credit": "",
+     "ended": true,
+     "attributes": [
+      "cover",
+      "live"
+     ],
+     "begin": "2016-05",
+     "end": "2016-05",
+     "attribute-ids": {
+      "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113",
+      "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+     },
+     "attribute-values": {}
+    }
+   ]
+  },
+  "87b66b29-b2a0-4406-9062-f58dcc271aa3": {
+   "id": "87b66b29-b2a0-4406-9062-f58dcc271aa3",
+   "title": "8 Dogs 8 Banjos",
+   "relations": [
+    {
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "begin": null,
+     "end": null,
+     "target-type": "work",
+     "direction": "forward",
+     "target-credit": "",
+     "attributes": [],
+     "attribute-ids": {},
+     "source-credit": "",
+     "ended": false,
+     "attribute-values": {},
+     "type": "performance",
+     "work": {
+      "iswcs": [
+       "T-916.531.172-8"
+      ],
+      "type": "Song",
+      "attributes": [],
+      "id": "606d76c7-e875-415a-9a22-f2d98da0cdbc",
+      "disambiguation": "",
+      "title": "8 Dogs 8 Banjos",
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "language": "eng",
+      "languages": [
+       "eng"
+      ]
+     }
+    }
+   ]
+  },
+  "c54a683e-a581-46c8-bf5d-29a1d1a7983a": {
+   "id": "c54a683e-a581-46c8-bf5d-29a1d1a7983a",
+   "title": "A Lazy Farmer Boy",
+   "relations": [
+    {
+     "attributes": [],
+     "source-credit": "",
+     "direction": "forward",
+     "type": "performance",
+     "attribute-values": {},
+     "work": {
+      "title": "A Lazy Farmer Boy",
+      "type": "Song",
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "iswcs": [],
+      "language": "eng",
+      "languages": [
+       "eng"
+      ],
+      "attributes": [],
+      "disambiguation": "",
+      "id": "14249ae4-ce0c-3445-934c-00860bd77989"
+     },
+     "ended": false,
+     "attribute-ids": {},
+     "target-type": "work",
+     "end": null,
+     "target-credit": "",
+     "begin": null,
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0"
+    }
+   ]
+  },
+  "6590ddf3-f10c-4e35-8f0e-87a99b081b0b": {
+   "id": "6590ddf3-f10c-4e35-8f0e-87a99b081b0b",
+   "title": "A Little Blues",
+   "relations": []
+  },
+  "cd1225e5-4e4f-4b29-a3a7-86200c5d0780": {
+   "id": "cd1225e5-4e4f-4b29-a3a7-86200c5d0780",
+   "title": "A Little More You",
+   "relations": [
+    {
+     "begin": null,
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "end": null,
+     "target-credit": "",
+     "attribute-values": {},
+     "work": {
+      "type": "Song",
+      "title": "A Little More You",
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "language": "eng",
+      "iswcs": [],
+      "id": "ddfa8ca5-c71c-48a9-ac23-dcc732bf5a16",
+      "languages": [
+       "eng"
+      ],
+      "attributes": [],
+      "disambiguation": ""
+     },
+     "target-type": "work",
+     "ended": false,
+     "attribute-ids": {},
+     "direction": "forward",
+     "type": "performance",
+     "attributes": [],
+     "source-credit": ""
+    }
+   ]
+  },
+  "2ee8cd1a-804f-4159-87af-81fd4622648d": {
+   "id": "2ee8cd1a-804f-4159-87af-81fd4622648d",
+   "title": "Roll Jordan Roll",
+   "relations": [
+    {
+     "direction": "forward",
+     "type": "performance",
+     "attributes": [],
+     "source-credit": "",
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "begin": null,
+     "target-credit": "",
+     "end": null,
+     "work": {
+      "title": "Roll Jordan Roll",
+      "type": "Song",
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "iswcs": [],
+      "language": "eng",
+      "languages": [
+       "eng"
+      ],
+      "attributes": [],
+      "disambiguation": "",
+      "id": "71296b04-4fda-43b9-ba54-8894477bd046"
+     },
+     "attribute-values": {},
+     "target-type": "work",
+     "ended": false,
+     "attribute-ids": {}
+    }
+   ]
+  },
+  "71157ae1-055d-4a55-a17b-cb90802f909d": {
+   "id": "71157ae1-055d-4a55-a17b-cb90802f909d",
+   "title": "Born in the U.S.A.",
+   "relations": [
+    {
+     "end": "2002-10-16",
+     "work": {
+      "languages": [
+       "eng"
+      ],
+      "id": "55d593ce-52cc-30ec-9494-eca1ab879f5c",
+      "iswcs": [
+       "T-070.016.411-9"
+      ],
+      "language": "eng",
+      "type": "Song",
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "title": "Born in the U.S.A.",
+      "disambiguation": "",
+      "attributes": []
+     },
+     "attributes": [
+      "live"
+     ],
+     "attribute-ids": {
+      "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+     },
+     "attribute-values": {},
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "ended": true,
+     "target-credit": "",
+     "direction": "forward",
+     "begin": "2002-10-16",
+     "source-credit": "",
+     "target-type": "work",
+     "type": "performance"
+    }
+   ]
+  },
+  "e7592c69-88ae-4038-a834-c6b63bbb5251": {
+   "id": "e7592c69-88ae-4038-a834-c6b63bbb5251",
+   "title": "(4th of July, Asbury Park) Sandy",
+   "relations": [
+    {
+     "type": "performance",
+     "work": {
+      "iswcs": [
+       "T-070.057.018-8"
+      ],
+      "type": "Song",
+      "id": "1f573511-eb4b-3106-8fb2-f15de52e4868",
+      "attributes": [],
+      "disambiguation": "",
+      "title": "4th of July, Asbury Park (Sandy)",
+      "language": "eng",
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "languages": [
+       "eng"
+      ]
+     },
+     "attribute-values": {},
+     "ended": true,
+     "source-credit": "",
+     "attributes": [
+      "live"
+     ],
+     "attribute-ids": {
+      "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+     },
+     "target-credit": "",
+     "direction": "forward",
+     "target-type": "work",
+     "end": "1975-09-26",
+     "begin": "1975-09-26",
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0"
+    }
+   ]
+  },
+  "226515e4-29b2-4910-9148-fa052088d7e3": {
+   "id": "226515e4-29b2-4910-9148-fa052088d7e3",
+   "title": "(Can’t Help) Falling in Love With You",
+   "relations": [
+    {
+     "attribute-ids": {
+      "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a",
+      "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113"
+     },
+     "attributes": [
+      "cover",
+      "live"
+     ],
+     "source-credit": "",
+     "target-credit": "",
+     "attribute-values": {},
+     "work": {
+      "attributes": [],
+      "id": "06afdb15-bfd4-388f-8d51-72531748b715",
+      "disambiguation": "",
+      "language": "eng",
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "languages": [
+       "eng"
+      ],
+      "title": "Can’t Help Falling in Love",
+      "type": "Song",
+      "iswcs": [
+       "T-070.026.688-1",
+       "T-902.623.822-2",
+       "T-925.632.862-8"
+      ]
+     },
+     "type": "performance",
+     "ended": true,
+     "target-type": "work",
+     "end": "1981-04-18",
+     "begin": "1981-04-18",
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "direction": "forward"
+    }
+   ]
+  },
+  "a38ffc8a-0ab5-4402-9a9e-16b116fe16d1": {
+   "id": "a38ffc8a-0ab5-4402-9a9e-16b116fe16d1",
+   "title": "(Drop on Down and) Cover Me",
+   "relations": [
+    {
+     "type": "performance",
+     "direction": "forward",
+     "source-credit": "",
+     "attributes": [],
+     "end": null,
+     "target-credit": "",
+     "begin": null,
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "attribute-ids": {},
+     "ended": false,
+     "target-type": "work",
+     "work": {
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "title": "Drop on Down and Cover Me",
+      "type": "Song",
+      "id": "eb5f85a1-2699-4135-881a-9e70b1bde049",
+      "disambiguation": "",
+      "languages": [
+       "eng"
+      ],
+      "attributes": [],
+      "iswcs": [],
+      "language": "eng"
+     },
+     "attribute-values": {}
+    }
+   ]
+  },
+  "701a5ba6-13eb-45a5-9c87-3911989a6252": {
+   "id": "701a5ba6-13eb-45a5-9c87-3911989a6252",
+   "title": "(I Can’t Get No) Satisfaction",
+   "relations": [
+    {
+     "source-credit": "",
+     "direction": "forward",
+     "attribute-values": {},
+     "attribute-ids": {
+      "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113",
+      "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+     },
+     "end": "2014-04-17",
+     "ended": true,
+     "attributes": [
+      "cover",
+      "live"
+     ],
+     "begin": "2014-04-17",
+     "work": {
+      "disambiguation": "",
+      "id": "b8aeb29b-6c42-38da-a179-12e1fdb97ad3",
+      "attributes": [],
+      "language": "eng",
+      "type": "Song",
+      "title": "(I Can’t Get No) Satisfaction",
+      "languages": [
+       "eng"
+      ],
+      "iswcs": [
+       "T-010.072.181-0",
+       "T-070.240.484-9",
+       "T-913.881.116-2"
+      ],
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6"
+     },
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "type": "performance",
+     "target-credit": "",
+     "target-type": "work"
+    }
+   ]
+  },
+  "8c07a819-61a2-4252-bee7-2f7047c03be6": {
+   "id": "8c07a819-61a2-4252-bee7-2f7047c03be6",
+   "title": "(I Can’t Get No) Satisfaction",
+   "relations": [
+    {
+     "attribute-values": {},
+     "type": "performance",
+     "work": {
+      "id": "b8aeb29b-6c42-38da-a179-12e1fdb97ad3",
+      "disambiguation": "",
+      "attributes": [],
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "language": "eng",
+      "languages": [
+       "eng"
+      ],
+      "title": "(I Can’t Get No) Satisfaction",
+      "type": "Song",
+      "iswcs": [
+       "T-010.072.181-0",
+       "T-070.240.484-9",
+       "T-913.881.116-2"
+      ]
+     },
+     "ended": false,
+     "attribute-ids": {
+      "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a",
+      "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113"
+     },
+     "attributes": [
+      "cover",
+      "live"
+     ],
+     "source-credit": "",
+     "target-credit": "",
+     "direction": "forward",
+     "end": null,
+     "begin": null,
+     "target-type": "work",
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0"
+    }
+   ]
+  },
+  "9d83255f-6b0e-4d34-aa14-6860da2061b0": {
+   "id": "9d83255f-6b0e-4d34-aa14-6860da2061b0",
+   "title": "(I Can’t Get No) Satisfaction",
+   "relations": [
+    {
+     "ended": true,
+     "attribute-ids": {
+      "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113",
+      "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+     },
+     "target-type": "work",
+     "work": {
+      "iswcs": [
+       "T-010.072.181-0",
+       "T-070.240.484-9",
+       "T-913.881.116-2"
+      ],
+      "language": "eng",
+      "id": "b8aeb29b-6c42-38da-a179-12e1fdb97ad3",
+      "attributes": [],
+      "languages": [
+       "eng"
+      ],
+      "disambiguation": "",
+      "title": "(I Can’t Get No) Satisfaction",
+      "type": "Song",
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6"
+     },
+     "attribute-values": {},
+     "target-credit": "",
+     "end": "2014-04-17",
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "begin": "2014-04-17",
+     "source-credit": "",
+     "attributes": [
+      "cover",
+      "live"
+     ],
+     "type": "performance",
+     "direction": "forward"
+    }
+   ]
+  },
+  "c6247fa3-b825-460a-b6bd-490319a1b887": {
+   "id": "c6247fa3-b825-460a-b6bd-490319a1b887",
+   "title": "Whole Lotta Shakin’ Goin’ On",
+   "relations": [
+    {
+     "target-credit": "",
+     "attributes": [
+      "cover"
+     ],
+     "attribute-ids": {
+      "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113"
+     },
+     "source-credit": "",
+     "ended": true,
+     "attribute-values": {},
+     "work": {
+      "type": "Song",
+      "iswcs": [
+       "T-070.199.897-1"
+      ],
+      "language": "eng",
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "languages": [
+       "eng"
+      ],
+      "title": "Whole Lotta Shakin’ Goin’ On",
+      "disambiguation": "",
+      "id": "f0cd0c3e-2657-303f-bbe4-05e8c597a328",
+      "attributes": []
+     },
+     "type": "performance",
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "end": "1957-02-05",
+     "begin": "1957-02-05",
+     "target-type": "work",
+     "direction": "forward"
+    },
+    {
+     "begin": null,
+     "end": null,
+     "target-type": "work",
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "direction": "forward",
+     "source-credit": "",
+     "attributes": [],
+     "attribute-ids": {},
+     "target-credit": "",
+     "type": "performance",
+     "work": {
+      "title": "Whole Lotta Shakin’ Goin’ On",
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "language": "eng",
+      "languages": [
+       "eng"
+      ],
+      "id": "f0cd0c3e-2657-303f-bbe4-05e8c597a328",
+      "disambiguation": "",
+      "attributes": [],
+      "iswcs": [
+       "T-070.199.897-1"
+      ],
+      "type": "Song"
+     },
+     "attribute-values": {},
+     "ended": false
+    }
+   ]
+  },
+  "148bac14-e0c9-46d1-9f76-8aecb38362cd": {
+   "id": "148bac14-e0c9-46d1-9f76-8aecb38362cd",
+   "title": "That’ll Be the Day",
+   "relations": [
+    {
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "work": {
+      "disambiguation": "",
+      "id": "388fb6f6-d4d7-381a-b17f-c1e7b8a08a2a",
+      "attributes": [],
+      "language": "eng",
+      "type": "Song",
+      "title": "That’ll Be the Day",
+      "languages": [
+       "eng"
+      ],
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "iswcs": [
+       "T-070.178.668-6"
+      ]
+     },
+     "target-type": "work",
+     "type": "performance",
+     "target-credit": "",
+     "source-credit": "",
+     "direction": "forward",
+     "attributes": [],
+     "ended": false,
+     "begin": null,
+     "attribute-values": {},
+     "attribute-ids": {},
+     "end": null
+    }
+   ]
+  },
+  "b93b90df-fe02-4c1a-b13b-f92a34ad3c9a": {
+   "id": "b93b90df-fe02-4c1a-b13b-f92a34ad3c9a",
+   "title": "School Days",
+   "relations": [
+    {
+     "attributes": [],
+     "end": "1956-12-15",
+     "work": {
+      "type": "Song",
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "languages": [
+       "eng"
+      ],
+      "language": "eng",
+      "iswcs": [
+       "T-070.940.144-4",
+       "T-901.126.376-6"
+      ],
+      "id": "0cda5e19-8488-35c0-a3c8-e9a86d30ebcd",
+      "disambiguation": "",
+      "attributes": [],
+      "title": "School Day (Ring! Ring! Goes the Bell)"
+     },
+     "target-credit": "",
+     "direction": "forward",
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "attribute-values": {},
+     "ended": true,
+     "attribute-ids": {},
+     "target-type": "work",
+     "begin": "1956-12-15",
+     "source-credit": "",
+     "type": "performance"
+    }
+   ]
+  },
+  "137b53e7-57e3-4a07-85e3-fcf733ae0a0d": {
+   "id": "137b53e7-57e3-4a07-85e3-fcf733ae0a0d",
+   "title": "Jailhouse Rock",
+   "relations": [
+    {
+     "ended": false,
+     "type": "performance",
+     "work": {
+      "iswcs": [
+       "T-010.971.187-6",
+       "T-070.088.153-3"
+      ],
+      "type": "Song",
+      "title": "Jailhouse Rock",
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "language": "eng",
+      "languages": [
+       "eng"
+      ],
+      "id": "c783b0b7-cbc4-3be6-89dc-a13883fe5c51",
+      "disambiguation": "",
+      "attributes": []
+     },
+     "attribute-values": {},
+     "target-credit": "",
+     "source-credit": "",
+     "attributes": [],
+     "attribute-ids": {},
+     "direction": "forward",
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "target-type": "work",
+     "end": null,
+     "begin": null
+    }
+   ]
+  },
+  "a0e93806-1dea-4d57-bc5f-f6c459d14a09": {
+   "id": "a0e93806-1dea-4d57-bc5f-f6c459d14a09",
+   "title": "Peggy Sue (alternate version)",
+   "relations": [
+    {
+     "target-credit": "",
+     "type": "performance",
+     "target-type": "work",
+     "work": {
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "iswcs": [
+       "T-070.165.286-9"
+      ],
+      "type": "Song",
+      "languages": [
+       "eng"
+      ],
+      "title": "Peggy Sue",
+      "language": "eng",
+      "id": "ae2e755f-7754-3cbc-b988-13139cbba070",
+      "disambiguation": "",
+      "attributes": []
+     },
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "end": "1957-07-01",
+     "attribute-values": {},
+     "attribute-ids": {},
+     "attributes": [],
+     "ended": true,
+     "begin": "1957-06-29",
+     "direction": "forward",
+     "source-credit": ""
+    }
+   ]
+  },
+  "694ec225-b06e-48f0-8d68-202e1c5eaa71": {
+   "id": "694ec225-b06e-48f0-8d68-202e1c5eaa71",
+   "title": "Little Darlin’",
+   "relations": [
+    {
+     "source-credit": "",
+     "direction": "forward",
+     "attributes": [
+      "cover"
+     ],
+     "ended": false,
+     "begin": null,
+     "attribute-ids": {
+      "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113"
+     },
+     "attribute-values": {},
+     "end": null,
+     "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+     "work": {
+      "iswcs": [
+       "T-908.919.921-3"
+      ],
+      "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+      "languages": [
+       "eng"
+      ],
+      "title": "Little Darlin’",
+      "type": "Song",
+      "language": "eng",
+      "attributes": [],
+      "id": "a81611d7-7f9c-35ab-be9d-6b954f02e549",
+      "disambiguation": ""
+     },
+     "target-type": "work",
+     "type": "performance",
+     "target-credit": ""
+    }
+   ]
+  }
+ },
+ "browse": {
+  "work": {
+   "mbid": "8727a75a-8d33-3a2c-912a-f57952773201",
+   "recording-count": 40,
+   "recordings": [
+    {
+     "id": "07c7cb45-64d6-43d9-8a3a-d37a4b8ab626",
+     "title": "Rainy Night in Soho",
+     "relations": [
+      {
+       "direction": "forward",
+       "type": "performance",
+       "attributes": [],
+       "source-credit": "",
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "begin": null,
+       "target-credit": "",
+       "end": null,
+       "work": {
+        "language": "eng",
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "attributes": [],
+        "languages": [
+         "eng"
+        ],
+        "disambiguation": "",
+        "type": "Song",
+        "title": "A Rainy Night in Soho",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6"
+       },
+       "attribute-values": {},
+       "target-type": "work",
+       "ended": false,
+       "attribute-ids": {}
+      }
+     ]
+    },
+    {
+     "id": "089026d3-1c1d-45bb-bf16-072d0bff8412",
+     "title": "Rainy Night in Soho",
+     "relations": [
+      {
+       "source-credit": "",
+       "attributes": [
+        "live"
+       ],
+       "type": "performance",
+       "direction": "forward",
+       "target-type": "work",
+       "ended": true,
+       "attribute-ids": {
+        "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+       },
+       "attribute-values": {},
+       "work": {
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "title": "A Rainy Night in Soho",
+        "type": "Song",
+        "languages": [
+         "eng"
+        ],
+        "attributes": [],
+        "disambiguation": "",
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "language": "eng",
+        "iswcs": [
+         "T-010.309.871-0"
+        ]
+       },
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "begin": "2012-09",
+       "target-credit": "",
+       "end": "2012-09"
+      }
+     ]
+    },
+    {
+     "id": "0a712f28-a999-46cd-b1c1-6519cff39193",
+     "title": "A Rainy Night in Soho (single edit)",
+     "relations": [
+      {
+       "direction": "forward",
+       "type": "performance",
+       "attributes": [
+        "cover"
+       ],
+       "source-credit": "",
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "begin": null,
+       "target-credit": "",
+       "end": null,
+       "attribute-values": {},
+       "work": {
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "type": "Song",
+        "title": "A Rainy Night in Soho",
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "disambiguation": "",
+        "languages": [
+         "eng"
+        ],
+        "attributes": [],
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "language": "eng"
+       },
+       "target-type": "work",
+       "attribute-ids": {
+        "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113"
+       },
+       "ended": false
+      }
+     ]
+    },
+    {
+     "id": "0b62eb61-f75f-498c-845f-5e7fbd3ac924",
+     "title": "Opening – A Rainy Night in Soho",
+     "relations": [
+      {
+       "attributes": [
+        "live",
+        "partial"
+       ],
+       "source-credit": "",
+       "direction": "forward",
+       "type": "performance",
+       "attribute-values": {},
+       "work": {
+        "type": "Song",
+        "title": "A Rainy Night in Soho",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "language": "eng",
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "attributes": [],
+        "languages": [
+         "eng"
+        ],
+        "disambiguation": ""
+       },
+       "ended": true,
+       "attribute-ids": {
+        "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a",
+        "partial": "d2b63be6-91ec-426a-987a-30b47f8aae2d"
+       },
+       "target-type": "work",
+       "end": "2017-05-12",
+       "target-credit": "",
+       "begin": "2017-05-12",
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0"
+      }
+     ]
+    },
+    {
+     "id": "1cf7e7e1-4807-4793-8bc2-96c950076152",
+     "title": "A Rainy Night in Soho",
+     "relations": [
+      {
+       "attribute-values": {},
+       "work": {
+        "language": "eng",
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "languages": [
+         "eng"
+        ],
+        "attributes": [],
+        "disambiguation": "",
+        "type": "Song",
+        "title": "A Rainy Night in Soho",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6"
+       },
+       "target-type": "work",
+       "ended": false,
+       "attribute-ids": {
+        "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113",
+        "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+       },
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "begin": null,
+       "target-credit": "",
+       "end": null,
+       "attributes": [
+        "cover",
+        "live"
+       ],
+       "source-credit": "",
+       "direction": "forward",
+       "type": "performance"
+      }
+     ]
+    },
+    {
+     "id": "299b2860-570e-4dca-9166-9e3842d8c381",
+     "title": "Rainy Night in Soho",
+     "relations": [
+      {
+       "attributes": [
+        "live"
+       ],
+       "source-credit": "",
+       "direction": "forward",
+       "type": "performance",
+       "attribute-values": {},
+       "work": {
+        "type": "Song",
+        "title": "A Rainy Night in Soho",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "language": "eng",
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "languages": [
+         "eng"
+        ],
+        "attributes": [],
+        "disambiguation": "",
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201"
+       },
+       "ended": true,
+       "attribute-ids": {
+        "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+       },
+       "target-type": "work",
+       "end": "2012-09",
+       "target-credit": "",
+       "begin": "2012-09",
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0"
+      }
+     ]
+    },
+    {
+     "id": "324a0776-ad5a-406c-83a1-ba380db4cb32",
+     "title": "Rainy Night in Soho",
+     "relations": [
+      {
+       "source-credit": "",
+       "attributes": [],
+       "type": "performance",
+       "direction": "forward",
+       "target-type": "work",
+       "ended": false,
+       "attribute-ids": {},
+       "work": {
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "languages": [
+         "eng"
+        ],
+        "attributes": [],
+        "disambiguation": "",
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "language": "eng",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "type": "Song",
+        "title": "A Rainy Night in Soho"
+       },
+       "attribute-values": {},
+       "begin": null,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "end": null,
+       "target-credit": ""
+      }
+     ]
+    },
+    {
+     "id": "38c1b4b0-7210-4443-a82c-4f3c3d5f759f",
+     "title": "A Rainy Night in Soho",
+     "relations": [
+      {
+       "type": "performance",
+       "direction": "forward",
+       "source-credit": "",
+       "attributes": [
+        "cover"
+       ],
+       "begin": null,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "end": null,
+       "target-credit": "",
+       "target-type": "work",
+       "ended": false,
+       "attribute-ids": {
+        "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113"
+       },
+       "attribute-values": {},
+       "work": {
+        "type": "Song",
+        "title": "A Rainy Night in Soho",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "language": "eng",
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "languages": [
+         "eng"
+        ],
+        "attributes": [],
+        "disambiguation": ""
+       }
+      }
+     ]
+    },
+    {
+     "id": "46847372-8683-4737-8eec-7a5210933b37",
+     "title": "Rainy Night in Soho",
+     "relations": [
+      {
+       "direction": "forward",
+       "type": "performance",
+       "attributes": [
+        "cover"
+       ],
+       "source-credit": "",
+       "begin": null,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "end": null,
+       "target-credit": "",
+       "work": {
+        "title": "A Rainy Night in Soho",
+        "type": "Song",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "language": "eng",
+        "disambiguation": "",
+        "attributes": [],
+        "languages": [
+         "eng"
+        ],
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201"
+       },
+       "attribute-values": {},
+       "target-type": "work",
+       "ended": false,
+       "attribute-ids": {
+        "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113"
+       }
+      }
+     ]
+    },
+    {
+     "id": "4a8b6adf-1c91-494a-a663-a602c069f225",
+     "title": "A Rainy Night in Soho",
+     "relations": [
+      {
+       "type": "performance",
+       "direction": "forward",
+       "source-credit": "",
+       "attributes": [
+        "cover"
+       ],
+       "target-credit": "",
+       "end": null,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "begin": null,
+       "ended": false,
+       "attribute-ids": {
+        "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113"
+       },
+       "target-type": "work",
+       "attribute-values": {},
+       "work": {
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "type": "Song",
+        "title": "A Rainy Night in Soho",
+        "attributes": [],
+        "languages": [
+         "eng"
+        ],
+        "disambiguation": "",
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "language": "eng"
+       }
+      }
+     ]
+    },
+    {
+     "id": "4bc1f120-a2dd-49e0-b446-d804b518389b",
+     "title": "A Rainy Night in Soho",
+     "relations": [
+      {
+       "target-type": "work",
+       "attribute-ids": {},
+       "ended": false,
+       "work": {
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "language": "eng",
+        "disambiguation": "",
+        "languages": [
+         "eng"
+        ],
+        "attributes": [],
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "title": "A Rainy Night in Soho",
+        "type": "Song",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6"
+       },
+       "attribute-values": {},
+       "begin": null,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "end": null,
+       "target-credit": "",
+       "source-credit": "",
+       "attributes": [],
+       "type": "performance",
+       "direction": "forward"
+      }
+     ]
+    },
+    {
+     "id": "4df60c24-6392-4409-83c6-359a18b77450",
+     "title": "Rainy Night in Soho",
+     "relations": [
+      {
+       "direction": "forward",
+       "type": "performance",
+       "attributes": [],
+       "source-credit": "",
+       "end": null,
+       "target-credit": "",
+       "begin": null,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "work": {
+        "languages": [
+         "eng"
+        ],
+        "attributes": [],
+        "disambiguation": "",
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "language": "eng",
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "type": "Song",
+        "title": "A Rainy Night in Soho"
+       },
+       "attribute-values": {},
+       "ended": false,
+       "attribute-ids": {},
+       "target-type": "work"
+      }
+     ]
+    },
+    {
+     "id": "51a56f83-0088-486d-9eb0-9870dade59ba",
+     "title": "Rainy Night in Soho",
+     "relations": [
+      {
+       "type": "performance",
+       "direction": "forward",
+       "source-credit": "",
+       "attributes": [],
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "begin": null,
+       "target-credit": "",
+       "end": null,
+       "target-type": "work",
+       "ended": false,
+       "attribute-ids": {},
+       "work": {
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "type": "Song",
+        "title": "A Rainy Night in Soho",
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "attributes": [],
+        "languages": [
+         "eng"
+        ],
+        "disambiguation": "",
+        "language": "eng",
+        "iswcs": [
+         "T-010.309.871-0"
+        ]
+       },
+       "attribute-values": {}
+      }
+     ]
+    },
+    {
+     "id": "528327c7-0f7a-46d1-b03f-700ebc39f747",
+     "title": "Rainy Night in Soho",
+     "relations": [
+      {
+       "target-credit": "",
+       "end": "2001-12",
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "begin": "2001-12",
+       "attribute-ids": {
+        "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+       },
+       "ended": true,
+       "target-type": "work",
+       "work": {
+        "language": "eng",
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "disambiguation": "",
+        "attributes": [],
+        "languages": [
+         "eng"
+        ],
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "title": "A Rainy Night in Soho",
+        "type": "Song",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6"
+       },
+       "attribute-values": {},
+       "type": "performance",
+       "direction": "forward",
+       "source-credit": "",
+       "attributes": [
+        "live"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "5a74fbbd-4e72-4409-a9fa-818fd1fce5ab",
+     "title": "A Rainy Night in Soho",
+     "relations": [
+      {
+       "attributes": [],
+       "source-credit": "",
+       "direction": "forward",
+       "type": "performance",
+       "work": {
+        "title": "A Rainy Night in Soho",
+        "type": "Song",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "language": "eng",
+        "languages": [
+         "eng"
+        ],
+        "attributes": [],
+        "disambiguation": "",
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201"
+       },
+       "attribute-values": {},
+       "target-type": "work",
+       "attribute-ids": {},
+       "ended": false,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "begin": null,
+       "target-credit": "",
+       "end": null
+      }
+     ]
+    },
+    {
+     "id": "5b676489-64e6-4ca9-82e3-53c13ed770f9",
+     "title": "Rainy Night in Soho",
+     "relations": [
+      {
+       "attribute-values": {},
+       "work": {
+        "language": "eng",
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "disambiguation": "",
+        "attributes": [],
+        "languages": [
+         "eng"
+        ],
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "title": "A Rainy Night in Soho",
+        "type": "Song",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6"
+       },
+       "target-type": "work",
+       "attribute-ids": {},
+       "ended": false,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "begin": null,
+       "target-credit": "",
+       "end": null,
+       "attributes": [],
+       "source-credit": "",
+       "direction": "forward",
+       "type": "performance"
+      }
+     ]
+    },
+    {
+     "id": "5cc425ce-0dff-4a9d-9bad-37f2d439be40",
+     "title": "A Rainy Night in Soho",
+     "relations": [
+      {
+       "attributes": [
+        "cover",
+        "live"
+       ],
+       "source-credit": "",
+       "direction": "forward",
+       "type": "performance",
+       "work": {
+        "type": "Song",
+        "title": "A Rainy Night in Soho",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "language": "eng",
+        "disambiguation": "",
+        "attributes": [],
+        "languages": [
+         "eng"
+        ],
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201"
+       },
+       "attribute-values": {},
+       "target-type": "work",
+       "attribute-ids": {
+        "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113",
+        "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+       },
+       "ended": true,
+       "begin": "2024-05-16",
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "end": "2024-05-16",
+       "target-credit": ""
+      }
+     ]
+    },
+    {
+     "id": "67ee3c64-5308-445a-b340-c8884aacce3e",
+     "title": "A Rainy Night in Soho",
+     "relations": [
+      {
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "begin": "2024-05-19",
+       "target-credit": "",
+       "end": "2024-05-19",
+       "attribute-values": {},
+       "work": {
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "language": "eng",
+        "disambiguation": "",
+        "languages": [
+         "eng"
+        ],
+        "attributes": [],
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "title": "A Rainy Night in Soho",
+        "type": "Song",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6"
+       },
+       "target-type": "work",
+       "ended": true,
+       "attribute-ids": {
+        "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+       },
+       "direction": "forward",
+       "type": "performance",
+       "attributes": [
+        "live"
+       ],
+       "source-credit": ""
+      }
+     ]
+    },
+    {
+     "id": "69772915-1bf6-46ea-b9e8-af4862378714",
+     "title": "Rainy Night in Soho (Oboe version)",
+     "relations": [
+      {
+       "attributes": [],
+       "source-credit": "",
+       "direction": "forward",
+       "type": "performance",
+       "work": {
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "language": "eng",
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "disambiguation": "",
+        "languages": [
+         "eng"
+        ],
+        "attributes": [],
+        "title": "A Rainy Night in Soho",
+        "type": "Song",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6"
+       },
+       "attribute-values": {},
+       "target-type": "work",
+       "ended": false,
+       "attribute-ids": {},
+       "begin": null,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "end": null,
+       "target-credit": ""
+      }
+     ]
+    },
+    {
+     "id": "7a2a397b-54d7-43c7-8d8e-b8d9f3f7dadb",
+     "title": "A Rainy Night in Soho",
+     "relations": [
+      {
+       "type": "performance",
+       "direction": "forward",
+       "source-credit": "",
+       "attributes": [],
+       "begin": null,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "end": null,
+       "target-credit": "",
+       "target-type": "work",
+       "attribute-ids": {},
+       "ended": false,
+       "work": {
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "title": "A Rainy Night in Soho",
+        "type": "Song",
+        "languages": [
+         "eng"
+        ],
+        "attributes": [],
+        "disambiguation": "",
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "language": "eng",
+        "iswcs": [
+         "T-010.309.871-0"
+        ]
+       },
+       "attribute-values": {}
+      }
+     ]
+    },
+    {
+     "id": "7b4e9b55-c017-4bc7-9b32-3182bc4d16d8",
+     "title": "Rainy Night in Soho",
+     "relations": [
+      {
+       "attribute-ids": {},
+       "ended": false,
+       "target-type": "work",
+       "work": {
+        "disambiguation": "",
+        "attributes": [],
+        "languages": [
+         "eng"
+        ],
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "language": "eng",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "title": "A Rainy Night in Soho",
+        "type": "Song"
+       },
+       "attribute-values": {},
+       "target-credit": "",
+       "end": null,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "begin": null,
+       "source-credit": "",
+       "attributes": [],
+       "type": "performance",
+       "direction": "forward"
+      }
+     ]
+    },
+    {
+     "id": "7c846395-2348-442d-9944-54b6283bdaea",
+     "title": "Rainy Night in Soho (remix)",
+     "relations": [
+      {
+       "ended": false,
+       "attribute-ids": {},
+       "target-type": "work",
+       "work": {
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "language": "eng",
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "disambiguation": "",
+        "attributes": [],
+        "languages": [
+         "eng"
+        ],
+        "type": "Song",
+        "title": "A Rainy Night in Soho",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6"
+       },
+       "attribute-values": {},
+       "end": null,
+       "target-credit": "",
+       "begin": null,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "source-credit": "",
+       "attributes": [],
+       "type": "performance",
+       "direction": "forward"
+      }
+     ]
+    },
+    {
+     "id": "7e3ed2ce-395d-45fe-96a4-351dac29f6cd",
+     "title": "A Rainy Night in Soho",
+     "relations": [
+      {
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "begin": null,
+       "target-credit": "",
+       "end": null,
+       "attribute-values": {},
+       "work": {
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "language": "eng",
+        "disambiguation": "",
+        "attributes": [],
+        "languages": [
+         "eng"
+        ],
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "type": "Song",
+        "title": "A Rainy Night in Soho",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6"
+       },
+       "target-type": "work",
+       "ended": false,
+       "attribute-ids": {},
+       "direction": "forward",
+       "type": "performance",
+       "attributes": [],
+       "source-credit": ""
+      }
+     ]
+    },
+    {
+     "id": "8745f552-8a1e-4ab0-8e94-53d42e224b08",
+     "title": "Rainy Night in Soho",
+     "relations": [
+      {
+       "begin": null,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "end": null,
+       "target-credit": "",
+       "target-type": "work",
+       "ended": false,
+       "attribute-ids": {
+        "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113"
+       },
+       "attribute-values": {},
+       "work": {
+        "language": "eng",
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "disambiguation": "",
+        "languages": [
+         "eng"
+        ],
+        "attributes": [],
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "type": "Song",
+        "title": "A Rainy Night in Soho",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6"
+       },
+       "type": "performance",
+       "direction": "forward",
+       "source-credit": "",
+       "attributes": [
+        "cover"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "8981a977-382d-471d-8fc6-e9e17fc01e7a",
+     "title": "A Rainy Night in Soho",
+     "relations": [
+      {
+       "direction": "forward",
+       "type": "performance",
+       "attributes": [
+        "cover",
+        "live"
+       ],
+       "source-credit": "",
+       "end": "2024-05-12",
+       "target-credit": "",
+       "begin": "2024-05-12",
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "attribute-values": {},
+       "work": {
+        "attributes": [],
+        "languages": [
+         "eng"
+        ],
+        "disambiguation": "",
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "language": "eng",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "type": "Song",
+        "title": "A Rainy Night in Soho"
+       },
+       "attribute-ids": {
+        "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113",
+        "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+       },
+       "ended": true,
+       "target-type": "work"
+      }
+     ]
+    },
+    {
+     "id": "8a6f2233-be3d-474d-9528-2710eabf3b80",
+     "title": "Rainy Night in Soho",
+     "relations": [
+      {
+       "end": "2024-05-19",
+       "target-credit": "",
+       "begin": "2024-05-19",
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "attribute-values": {},
+       "work": {
+        "attributes": [],
+        "languages": [
+         "eng"
+        ],
+        "disambiguation": "",
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "language": "eng",
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "type": "Song",
+        "title": "A Rainy Night in Soho"
+       },
+       "attribute-ids": {
+        "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113",
+        "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+       },
+       "ended": true,
+       "target-type": "work",
+       "direction": "forward",
+       "type": "performance",
+       "attributes": [
+        "cover",
+        "live"
+       ],
+       "source-credit": ""
+      }
+     ]
+    },
+    {
+     "id": "8c987c72-a799-4fbf-b505-d97b2dbab5d8",
+     "title": "A Rainy Night in Soho",
+     "relations": [
+      {
+       "begin": null,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "end": null,
+       "target-credit": "",
+       "target-type": "work",
+       "ended": false,
+       "attribute-ids": {
+        "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113"
+       },
+       "attribute-values": {},
+       "work": {
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "type": "Song",
+        "title": "A Rainy Night in Soho",
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "attributes": [],
+        "languages": [
+         "eng"
+        ],
+        "disambiguation": "",
+        "language": "eng",
+        "iswcs": [
+         "T-010.309.871-0"
+        ]
+       },
+       "type": "performance",
+       "direction": "forward",
+       "source-credit": "",
+       "attributes": [
+        "cover"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "95a8f8f4-63f9-4241-9082-ad18a81f6af5",
+     "title": "Rainy Night in Soho (by Shane MacGowan)",
+     "relations": [
+      {
+       "direction": "forward",
+       "type": "performance",
+       "attributes": [
+        "cover"
+       ],
+       "source-credit": "",
+       "end": null,
+       "target-credit": "",
+       "begin": null,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "attribute-values": {},
+       "work": {
+        "language": "eng",
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "disambiguation": "",
+        "languages": [
+         "eng"
+        ],
+        "attributes": [],
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "title": "A Rainy Night in Soho",
+        "type": "Song",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6"
+       },
+       "ended": false,
+       "attribute-ids": {
+        "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113"
+       },
+       "target-type": "work"
+      }
+     ]
+    },
+    {
+     "id": "9c5c9677-0d82-48c8-9e91-fce5d1f87861",
+     "title": "A Rainy Night in Soho",
+     "relations": [
+      {
+       "type": "performance",
+       "direction": "forward",
+       "source-credit": "",
+       "attributes": [
+        "cover"
+       ],
+       "begin": null,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "end": null,
+       "target-credit": "",
+       "target-type": "work",
+       "attribute-ids": {
+        "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113"
+       },
+       "ended": false,
+       "work": {
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "title": "A Rainy Night in Soho",
+        "type": "Song",
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "languages": [
+         "eng"
+        ],
+        "attributes": [],
+        "disambiguation": "",
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "language": "eng"
+       },
+       "attribute-values": {}
+      }
+     ]
+    },
+    {
+     "id": "a0f89954-8134-4fe5-9b7f-9ab38f0a928d",
+     "title": "A Rainy Night in Soho",
+     "relations": [
+      {
+       "begin": null,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "end": null,
+       "target-credit": "",
+       "target-type": "work",
+       "attribute-ids": {},
+       "ended": false,
+       "attribute-values": {},
+       "work": {
+        "type": "Song",
+        "title": "A Rainy Night in Soho",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "language": "eng",
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "disambiguation": "",
+        "languages": [
+         "eng"
+        ],
+        "attributes": []
+       },
+       "type": "performance",
+       "direction": "forward",
+       "source-credit": "",
+       "attributes": []
+      }
+     ]
+    },
+    {
+     "id": "bac519c0-c048-4f22-b3db-985f1c09175d",
+     "title": "A Rainy Night in Soho",
+     "relations": [
+      {
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "begin": "2024-05-12",
+       "target-credit": "",
+       "end": "2024-05-12",
+       "target-type": "work",
+       "attribute-ids": {
+        "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a",
+        "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113"
+       },
+       "ended": true,
+       "attribute-values": {},
+       "work": {
+        "type": "Song",
+        "title": "A Rainy Night in Soho",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "language": "eng",
+        "disambiguation": "",
+        "attributes": [],
+        "languages": [
+         "eng"
+        ],
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201"
+       },
+       "type": "performance",
+       "direction": "forward",
+       "source-credit": "",
+       "attributes": [
+        "cover",
+        "live"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "be241483-d1ef-457f-aee5-b3bfea91cf5a",
+     "title": "Rainy Night in Soho",
+     "relations": [
+      {
+       "work": {
+        "type": "Song",
+        "title": "A Rainy Night in Soho",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "language": "eng",
+        "disambiguation": "",
+        "languages": [
+         "eng"
+        ],
+        "attributes": [],
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201"
+       },
+       "attribute-values": {},
+       "ended": false,
+       "attribute-ids": {
+        "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113",
+        "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+       },
+       "target-type": "work",
+       "end": null,
+       "target-credit": "",
+       "begin": null,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "attributes": [
+        "cover",
+        "live"
+       ],
+       "source-credit": "",
+       "direction": "forward",
+       "type": "performance"
+      }
+     ]
+    },
+    {
+     "id": "d0ef6e9d-9313-45de-852f-df85884fac6a",
+     "title": "Rainy Night in Soho",
+     "relations": [
+      {
+       "attributes": [],
+       "source-credit": "",
+       "direction": "forward",
+       "type": "performance",
+       "attribute-values": {},
+       "work": {
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "type": "Song",
+        "title": "A Rainy Night in Soho",
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "disambiguation": "",
+        "languages": [
+         "eng"
+        ],
+        "attributes": [],
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "language": "eng"
+       },
+       "attribute-ids": {},
+       "ended": false,
+       "target-type": "work",
+       "end": null,
+       "target-credit": "",
+       "begin": null,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0"
+      }
+     ]
+    },
+    {
+     "id": "d458e1a9-886e-44d7-9ca3-4e16df62909d",
+     "title": "A Rainy Night in Soho",
+     "relations": [
+      {
+       "attribute-values": {},
+       "work": {
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "title": "A Rainy Night in Soho",
+        "type": "Song",
+        "attributes": [],
+        "languages": [
+         "eng"
+        ],
+        "disambiguation": "",
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "language": "eng"
+       },
+       "ended": false,
+       "attribute-ids": {},
+       "target-type": "work",
+       "end": null,
+       "target-credit": "",
+       "begin": null,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "attributes": [],
+       "source-credit": "",
+       "direction": "forward",
+       "type": "performance"
+      }
+     ]
+    },
+    {
+     "id": "d7c5c5a4-1dce-4aef-a15c-604bdecacd2a",
+     "title": "A Rainy Night in Soho (live)",
+     "relations": [
+      {
+       "direction": "forward",
+       "type": "performance",
+       "attributes": [
+        "live"
+       ],
+       "source-credit": "",
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "begin": null,
+       "target-credit": "",
+       "end": null,
+       "work": {
+        "disambiguation": "",
+        "attributes": [],
+        "languages": [
+         "eng"
+        ],
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "language": "eng",
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "title": "A Rainy Night in Soho",
+        "type": "Song"
+       },
+       "attribute-values": {},
+       "target-type": "work",
+       "ended": false,
+       "attribute-ids": {
+        "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+       }
+      }
+     ]
+    },
+    {
+     "id": "de9ff1d7-dd78-4ed6-a328-c1ab126304e6",
+     "title": "Rainy Night in Soho",
+     "relations": [
+      {
+       "type": "performance",
+       "direction": "forward",
+       "source-credit": "",
+       "attributes": [],
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "begin": "2001-12",
+       "target-credit": "",
+       "end": "2001-12",
+       "target-type": "work",
+       "attribute-ids": {},
+       "ended": true,
+       "work": {
+        "attributes": [],
+        "languages": [
+         "eng"
+        ],
+        "disambiguation": "",
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "language": "eng",
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "type": "Song",
+        "title": "A Rainy Night in Soho"
+       },
+       "attribute-values": {}
+      }
+     ]
+    },
+    {
+     "id": "e80c9335-7b18-4ef4-9003-369d5e0fe765",
+     "title": "A Rainy Night in Soho",
+     "relations": [
+      {
+       "attributes": [],
+       "source-credit": "",
+       "direction": "forward",
+       "type": "performance",
+       "attribute-values": {},
+       "work": {
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "disambiguation": "",
+        "attributes": [],
+        "languages": [
+         "eng"
+        ],
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "language": "eng",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "type": "Song",
+        "title": "A Rainy Night in Soho"
+       },
+       "attribute-ids": {},
+       "ended": false,
+       "target-type": "work",
+       "target-credit": "",
+       "end": null,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "begin": null
+      }
+     ]
+    },
+    {
+     "id": "f239a3c0-10bb-4def-a47d-44bac86528f5",
+     "title": "A Rainy Night in Soho",
+     "relations": [
+      {
+       "type": "performance",
+       "direction": "forward",
+       "source-credit": "",
+       "attributes": [
+        "cover",
+        "live"
+       ],
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "begin": "2024-05-12",
+       "target-credit": "",
+       "end": "2024-05-12",
+       "target-type": "work",
+       "ended": true,
+       "attribute-ids": {
+        "cover": "1e8536bd-6eda-3822-8e78-1c0f4d3d2113",
+        "live": "70007db6-a8bc-46d7-a770-80e6a0bb551a"
+       },
+       "attribute-values": {},
+       "work": {
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "title": "A Rainy Night in Soho",
+        "type": "Song",
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "disambiguation": "",
+        "attributes": [],
+        "languages": [
+         "eng"
+        ],
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "language": "eng"
+       }
+      }
+     ]
+    },
+    {
+     "id": "f2df8995-46f7-487f-a9cc-9354bf76221e",
+     "title": "Rainy Night in Soho (oboe mix)",
+     "relations": [
+      {
+       "target-credit": "",
+       "end": null,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "begin": null,
+       "ended": false,
+       "attribute-ids": {},
+       "target-type": "work",
+       "attribute-values": {},
+       "work": {
+        "type": "Song",
+        "title": "A Rainy Night in Soho",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "language": "eng",
+        "disambiguation": "",
+        "languages": [
+         "eng"
+        ],
+        "attributes": [],
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201"
+       },
+       "type": "performance",
+       "direction": "forward",
+       "source-credit": "",
+       "attributes": []
+      }
+     ]
+    },
+    {
+     "id": "f8b58a63-0415-4328-905e-c088bef04bbe",
+     "title": "A Rainy Night in Soho",
+     "relations": [
+      {
+       "attributes": [],
+       "source-credit": "",
+       "direction": "forward",
+       "type": "performance",
+       "work": {
+        "attributes": [],
+        "languages": [
+         "eng"
+        ],
+        "disambiguation": "",
+        "id": "8727a75a-8d33-3a2c-912a-f57952773201",
+        "iswcs": [
+         "T-010.309.871-0"
+        ],
+        "language": "eng",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "title": "A Rainy Night in Soho",
+        "type": "Song"
+       },
+       "attribute-values": {},
+       "attribute-ids": {},
+       "ended": false,
+       "target-type": "work",
+       "end": null,
+       "target-credit": "",
+       "begin": null,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0"
+      }
+     ]
+    }
+   ]
+  },
+  "collection": {
+   "mbid": "17ee2e77-21e7-40f1-89b1-4238c9b73428",
+   "recording-count": 49,
+   "recordings": [
+    {
+     "id": "008b31bb-2757-4846-9316-f55ded0f1020",
+     "title": "Ficken gehen",
+     "relations": []
+    },
+    {
+     "id": "09a4cf33-006e-4ef3-a257-dcedf82c8e55",
+     "title": "Till the End",
+     "relations": [
+      {
+       "type": "performance",
+       "target-type": "work",
+       "begin": null,
+       "source-credit": "",
+       "target-credit": "",
+       "direction": "forward",
+       "attribute-values": {},
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "ended": false,
+       "attribute-ids": {},
+       "attributes": [],
+       "end": null,
+       "work": {
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "type": "Song",
+        "language": "eng",
+        "iswcs": [
+         "T-804.250.826-0"
+        ],
+        "id": "1ebeddb7-7877-44da-b9e4-73b64799c963",
+        "languages": [
+         "eng"
+        ],
+        "attributes": [],
+        "disambiguation": "",
+        "title": "Till the End"
+       }
+      }
+     ]
+    },
+    {
+     "id": "0a46a1df-9a9a-4dbd-ba4c-255bda7ffbf0",
+     "title": "Mutwa (animated speedcore music video filth)",
+     "relations": []
+    },
+    {
+     "id": "0f83fd73-d8f5-47b0-aefc-a9f9b431bcda",
+     "title": "Верёвки (official video)",
+     "relations": [
+      {
+       "type": "performance",
+       "target-type": "work",
+       "source-credit": "",
+       "begin": null,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "attribute-values": {},
+       "ended": false,
+       "target-credit": "",
+       "direction": "forward",
+       "attribute-ids": {},
+       "attributes": [],
+       "end": null,
+       "work": {
+        "type": "Song",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "languages": [],
+        "id": "32664392-4a3d-4bad-ae8b-dbacb2f38f4b",
+        "iswcs": [],
+        "language": null,
+        "disambiguation": "",
+        "attributes": [],
+        "title": "Верёвки"
+       }
+      }
+     ]
+    },
+    {
+     "id": "134843e4-5ddc-4892-9ceb-f5892c2d9d37",
+     "title": "Fotze",
+     "relations": []
+    },
+    {
+     "id": "13528ed5-1cc4-4e75-bc69-acaf4a9afb22",
+     "title": "BLVCK MVGIC (official video)",
+     "relations": []
+    },
+    {
+     "id": "166941f0-a8c5-4846-bf78-a1923733bd1d",
+     "title": "Looming Sorrow Descent (animated music video)",
+     "relations": []
+    },
+    {
+     "id": "17fd6661-a826-427a-9b73-977ad7313959",
+     "title": "Naked (Hardcore version)",
+     "relations": [
+      {
+       "type": "performance",
+       "target-type": "work",
+       "begin": "1996",
+       "source-credit": "",
+       "attribute-values": {},
+       "ended": true,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "target-credit": "",
+       "direction": "forward",
+       "attribute-ids": {},
+       "attributes": [],
+       "end": "1996",
+       "work": {
+        "language": "mul",
+        "iswcs": [
+         "T-800.212.154-3"
+        ],
+        "id": "510d682d-7044-3ebb-92d3-5c27c6612b3d",
+        "languages": [
+         "eng",
+         "deu"
+        ],
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "type": "Song",
+        "title": "Naked",
+        "attributes": [],
+        "disambiguation": ""
+       }
+      }
+     ]
+    },
+    {
+     "id": "25855684-6444-4e3c-8699-68c305d256f0",
+     "title": "Edelweiß (Official Music Video)",
+     "relations": []
+    },
+    {
+     "id": "279799fc-780e-405e-b7a3-14140d8bf715",
+     "title": "Throat Full of Glass (\"dirty\" version)",
+     "relations": []
+    },
+    {
+     "id": "2a41ba62-de28-4ff8-ae3f-b6adf72fd4e7",
+     "title": "セックス大好き",
+     "relations": []
+    },
+    {
+     "id": "2e45ff1c-346b-4784-b7e5-49a3f9116e14",
+     "title": "bed bugs",
+     "relations": []
+    },
+    {
+     "id": "3b773138-9e95-4f5d-bf6e-e5af7f351f63",
+     "title": "Mein Bock",
+     "relations": [
+      {
+       "type": "performance",
+       "begin": null,
+       "source-credit": "",
+       "target-type": "work",
+       "attribute-ids": {},
+       "target-credit": "",
+       "direction": "forward",
+       "attribute-values": {},
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "ended": false,
+       "work": {
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "type": "Song",
+        "language": "deu",
+        "id": "a4ca19c1-23fc-4674-84cd-77667bf918bd",
+        "iswcs": [],
+        "languages": [
+         "deu"
+        ],
+        "attributes": [],
+        "disambiguation": "",
+        "title": "Mein Bock"
+       },
+       "end": null,
+       "attributes": []
+      }
+     ]
+    },
+    {
+     "id": "3e28ce6c-555d-4d76-b7ad-13585a62f23e",
+     "title": "Extasy",
+     "relations": []
+    },
+    {
+     "id": "418f0a8f-459d-44f5-957b-03595d449ee4",
+     "title": "This Land Is Mine",
+     "relations": [
+      {
+       "target-type": "work",
+       "source-credit": "",
+       "begin": null,
+       "type": "performance",
+       "attributes": [],
+       "work": {
+        "disambiguation": "This Land Is Mine",
+        "attributes": [],
+        "title": "Exodus",
+        "type": "Song",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "languages": [
+         "eng"
+        ],
+        "language": "eng",
+        "iswcs": [
+         "T-900.278.844-5",
+         "T-911.334.896-2"
+        ],
+        "id": "0df271c3-e2b5-3662-8305-cffcb1b92824"
+       },
+       "end": null,
+       "direction": "forward",
+       "target-credit": "",
+       "attribute-values": {},
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "ended": false,
+       "attribute-ids": {}
+      }
+     ]
+    },
+    {
+     "id": "4ba493d7-933f-444e-a499-0c462135171e",
+     "title": "Your Cum Won't Last (official music video)",
+     "relations": []
+    },
+    {
+     "id": "535c937a-f884-445c-8388-ba1a361028a7",
+     "title": "Ausländer",
+     "relations": [
+      {
+       "direction": "forward",
+       "target-credit": "",
+       "attribute-values": {},
+       "ended": false,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "attribute-ids": {},
+       "attributes": [],
+       "work": {
+        "title": "Ausländer",
+        "disambiguation": "",
+        "attributes": [],
+        "languages": [
+         "deu"
+        ],
+        "id": "7907040b-0e80-4ef9-9a38-71dd1328726a",
+        "iswcs": [
+         "T-804.114.212-6"
+        ],
+        "language": "deu",
+        "type": "Song",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6"
+       },
+       "end": null,
+       "type": "performance",
+       "target-type": "work",
+       "source-credit": "",
+       "begin": null
+      }
+     ]
+    },
+    {
+     "id": "57c4a079-f9dc-49c5-8ef4-9f289207d543",
+     "title": "2 Brazil! (uncensored)",
+     "relations": []
+    },
+    {
+     "id": "6a74e48b-b3e3-48e4-8f49-2f78cc8732ce",
+     "title": "Looking for Some Girls",
+     "relations": []
+    },
+    {
+     "id": "75326ac1-7c5d-41d0-93bb-905dbcd1c581",
+     "title": "ME!ME!ME!",
+     "relations": [
+      {
+       "type": "performance",
+       "target-type": "work",
+       "source-credit": "",
+       "begin": null,
+       "attribute-values": {},
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "ended": false,
+       "direction": "forward",
+       "target-credit": "",
+       "attribute-ids": {},
+       "attributes": [],
+       "work": {
+        "languages": [
+         "jpn"
+        ],
+        "language": "jpn",
+        "iswcs": [],
+        "id": "046edab8-b37a-4e70-ad25-07496630ab0f",
+        "type": "Song",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "title": "ME!ME!ME!",
+        "disambiguation": "",
+        "attributes": []
+       },
+       "end": null
+      }
+     ]
+    },
+    {
+     "id": "760e4005-13e8-4309-b329-04cc2b168ad4",
+     "title": "Pet the Pussy",
+     "relations": [
+      {
+       "type": "performance",
+       "begin": null,
+       "source-credit": "",
+       "target-type": "work",
+       "attribute-ids": {},
+       "attribute-values": {},
+       "ended": false,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "direction": "forward",
+       "target-credit": "",
+       "end": null,
+       "work": {
+        "disambiguation": "",
+        "attributes": [],
+        "title": "Camel by Camel",
+        "type": null,
+        "type-id": null,
+        "languages": [
+         "eng"
+        ],
+        "language": "eng",
+        "iswcs": [
+         "T-005.015.174-0"
+        ],
+        "id": "21a03456-d6fd-4a9d-82d7-ee77650fea50"
+       },
+       "attributes": []
+      }
+     ]
+    },
+    {
+     "id": "7fe9acda-a36e-46f6-8e9e-7395c6e240e1",
+     "title": "Hateful Love",
+     "relations": []
+    },
+    {
+     "id": "849e5a2d-e9f8-4c51-8479-423acc2e705b",
+     "title": "Fuck Me",
+     "relations": []
+    },
+    {
+     "id": "8aa704aa-e9e5-4062-9d2c-295f104981ed",
+     "title": "Welcome to the Cum Zone (official music video)",
+     "relations": [
+      {
+       "attribute-values": {},
+       "ended": false,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "target-credit": "",
+       "direction": "forward",
+       "attribute-ids": {},
+       "attributes": [],
+       "end": null,
+       "work": {
+        "title": "Welcome to the Cum Zone",
+        "attributes": [],
+        "disambiguation": "",
+        "language": "eng",
+        "id": "ee466583-96c6-423f-800a-a17a5144b850",
+        "iswcs": [],
+        "languages": [
+         "eng"
+        ],
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "type": "Song"
+       },
+       "type": "performance",
+       "target-type": "work",
+       "begin": null,
+       "source-credit": ""
+      }
+     ]
+    },
+    {
+     "id": "8c1744d2-c6bb-4331-967b-872721ed3859",
+     "title": "Truckers Delight",
+     "relations": []
+    },
+    {
+     "id": "9712af2f-1631-4c4f-94dd-9051867f167b",
+     "title": "YouTube du Hure (unzensiert)",
+     "relations": [
+      {
+       "attribute-values": {},
+       "ended": false,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "direction": "forward",
+       "target-credit": "",
+       "attribute-ids": {},
+       "attributes": [],
+       "end": null,
+       "work": {
+        "title": "YouTube du Hure",
+        "disambiguation": "",
+        "attributes": [],
+        "languages": [
+         "deu"
+        ],
+        "language": "deu",
+        "iswcs": [],
+        "id": "248dae6e-5b6d-47a3-bf1b-94ab4e262282",
+        "type": "Song",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6"
+       },
+       "type": "performance",
+       "target-type": "work",
+       "source-credit": "",
+       "begin": null
+      }
+     ]
+    },
+    {
+     "id": "98003b85-00d2-4c4f-b7a8-359316e43843",
+     "title": "Hentai Metal",
+     "relations": []
+    },
+    {
+     "id": "9985404a-a804-4ccf-9946-fa2d44be69e7",
+     "title": "Freaks",
+     "relations": [
+      {
+       "target-type": "work",
+       "source-credit": "",
+       "begin": null,
+       "type": "performance",
+       "attributes": [],
+       "end": null,
+       "work": {
+        "language": "eng",
+        "id": "43a98821-fb8d-45a9-8003-106a4a93bc19",
+        "iswcs": [
+         "T-061.533.322-6",
+         "T-061.544.309-8"
+        ],
+        "languages": [
+         "eng"
+        ],
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "type": "Song",
+        "title": "Freaks",
+        "attributes": [],
+        "disambiguation": "with Savage"
+       },
+       "attribute-values": {},
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "ended": false,
+       "direction": "forward",
+       "target-credit": "",
+       "attribute-ids": {}
+      }
+     ]
+    },
+    {
+     "id": "9e49a6f7-1d82-4096-9c2f-60b98145f503",
+     "title": "Fantasy (official video)",
+     "relations": []
+    },
+    {
+     "id": "9f59871f-eee3-445b-b425-2abe31ff4dbc",
+     "title": "Mad Man",
+     "relations": [
+      {
+       "work": {
+        "title": "Mad Man",
+        "disambiguation": "",
+        "attributes": [],
+        "languages": [],
+        "id": "cd304b9b-de95-4280-800c-bf5d5524e801",
+        "iswcs": [],
+        "language": null,
+        "type": null,
+        "type-id": null
+       },
+       "end": null,
+       "attributes": [],
+       "attribute-ids": {},
+       "direction": "forward",
+       "target-credit": "",
+       "attribute-values": {},
+       "ended": false,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "begin": null,
+       "source-credit": "",
+       "target-type": "work",
+       "type": "performance"
+      }
+     ]
+    },
+    {
+     "id": "a902ede1-ad91-4216-93b5-03acc57a8e0a",
+     "title": "Mr. Frosty Man",
+     "relations": [
+      {
+       "type": "performance",
+       "source-credit": "",
+       "begin": null,
+       "target-type": "work",
+       "attribute-ids": {},
+       "ended": false,
+       "attribute-values": {},
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "direction": "forward",
+       "target-credit": "",
+       "work": {
+        "language": null,
+        "id": "0bba31ea-9c08-4a26-bff6-b361d3093d71",
+        "iswcs": [],
+        "languages": [],
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "type": "Song",
+        "title": "Mr. Frosty Man",
+        "attributes": [],
+        "disambiguation": ""
+       },
+       "end": null,
+       "attributes": []
+      }
+     ]
+    },
+    {
+     "id": "acb65716-1c4d-4dfe-a962-1970b9e0f91c",
+     "title": "Auf die Liebe",
+     "relations": []
+    },
+    {
+     "id": "bb22b3a8-3c6d-472b-983e-b84f94b355f7",
+     "title": "Millennium Earl Too Again (muusic video)",
+     "relations": []
+    },
+    {
+     "id": "bcc01cd0-a6a3-47d3-8a18-9eda649679ac",
+     "title": "Super Soaker (official video)",
+     "relations": []
+    },
+    {
+     "id": "bd066fe1-4afb-4f44-a637-c660fab348e4",
+     "title": "Clinical Sodomy",
+     "relations": []
+    },
+    {
+     "id": "bd876eb8-1314-458b-a801-9dd33101267a",
+     "title": "Pussy (uncensored)",
+     "relations": [
+      {
+       "source-credit": "",
+       "begin": null,
+       "target-type": "work",
+       "type": "performance",
+       "work": {
+        "title": "Pussy",
+        "attributes": [],
+        "disambiguation": "",
+        "iswcs": [
+         "T-802.757.577-6"
+        ],
+        "id": "344c423b-c51f-4405-afde-ec0486f01b1f",
+        "language": "mul",
+        "languages": [
+         "deu",
+         "eng"
+        ],
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "type": "Song"
+       },
+       "end": null,
+       "attributes": [],
+       "attribute-ids": {},
+       "ended": false,
+       "attribute-values": {},
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "direction": "forward",
+       "target-credit": ""
+      }
+     ]
+    },
+    {
+     "id": "be40feb3-9a3f-458c-8f16-66e87d1c84e5",
+     "title": "Heir to the Cum Throne (official music video)",
+     "relations": [
+      {
+       "type": "performance",
+       "source-credit": "",
+       "begin": null,
+       "target-type": "work",
+       "attribute-ids": {},
+       "target-credit": "",
+       "direction": "forward",
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "attribute-values": {},
+       "ended": false,
+       "work": {
+        "title": "Heir to the Cum Throne",
+        "disambiguation": "",
+        "attributes": [],
+        "languages": [
+         "eng"
+        ],
+        "language": "eng",
+        "iswcs": [],
+        "id": "8c0957a7-6816-466c-93ce-2dfeab449115",
+        "type": "Song",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6"
+       },
+       "end": null,
+       "attributes": []
+      }
+     ]
+    },
+    {
+     "id": "c57d2d7b-35bb-4875-b7bc-2c8336014c73",
+     "title": "Ménage à Trois (uncensored, official music video)",
+     "relations": []
+    },
+    {
+     "id": "d5776f17-d6d2-48c3-9911-537be4702fd0",
+     "title": "Nude",
+     "relations": [
+      {
+       "type": "performance",
+       "target-type": "work",
+       "source-credit": "",
+       "begin": null,
+       "direction": "forward",
+       "target-credit": "",
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "attribute-values": {},
+       "ended": false,
+       "attribute-ids": {},
+       "attributes": [],
+       "work": {
+        "type": "Song",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "languages": [],
+        "language": null,
+        "id": "912f9748-6f7c-42ad-82f7-36ea13a65f6a",
+        "iswcs": [
+         "T-306.773.185-1"
+        ],
+        "disambiguation": "",
+        "attributes": [],
+        "title": "Nude"
+       },
+       "end": null
+      }
+     ]
+    },
+    {
+     "id": "dbaa5618-bac1-40d8-9169-bb4e7b1a58a0",
+     "title": "Big Dick",
+     "relations": []
+    },
+    {
+     "id": "dd1be9ed-242b-4808-b89e-68796b6b628b",
+     "title": "The Sound of Muslims",
+     "relations": []
+    },
+    {
+     "id": "df957399-6f6a-4614-ad5e-7359d3318fba",
+     "title": "Nackt is Geil",
+     "relations": []
+    },
+    {
+     "id": "e6a5750d-9ada-402c-84ba-b2f8046e82f4",
+     "title": "Smack My Bitch Up (DVD edit)",
+     "relations": [
+      {
+       "target-type": "work",
+       "source-credit": "",
+       "begin": null,
+       "type": "performance",
+       "attributes": [],
+       "end": null,
+       "work": {
+        "type": "Song",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+        "languages": [
+         "eng"
+        ],
+        "language": "eng",
+        "iswcs": [
+         "T-070.926.620-5"
+        ],
+        "id": "659e16df-b173-3b90-8ca7-322a0cfb21e8",
+        "disambiguation": "",
+        "attributes": [],
+        "title": "Smack My Bitch Up"
+       },
+       "attribute-values": {},
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "ended": false,
+       "direction": "forward",
+       "target-credit": "",
+       "attribute-ids": {}
+      }
+     ]
+    },
+    {
+     "id": "ee58463f-da2c-471f-91e7-f6867bb3ecee",
+     "title": "Crack (official video)",
+     "relations": [
+      {
+       "type": "performance",
+       "source-credit": "",
+       "begin": null,
+       "target-type": "work",
+       "attribute-ids": {},
+       "attribute-values": {},
+       "ended": false,
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "target-credit": "",
+       "direction": "forward",
+       "end": null,
+       "work": {
+        "disambiguation": "",
+        "attributes": [],
+        "title": "Crack",
+        "type": null,
+        "type-id": null,
+        "languages": [],
+        "id": "2df4dd1c-2dbf-4009-b7d1-eb4ca9a542b9",
+        "iswcs": [
+         "T-804.448.204-5"
+        ],
+        "language": null
+       },
+       "attributes": []
+      }
+     ]
+    },
+    {
+     "id": "f05c4199-6efe-4214-b873-0957813cffa1",
+     "title": "Press (official music video)",
+     "relations": []
+    },
+    {
+     "id": "f0895636-ffee-4ddf-b0ad-223762c40a18",
+     "title": "Kids in Love",
+     "relations": []
+    },
+    {
+     "id": "f0f3381b-94e0-4f8e-8195-86de67a0f574",
+     "title": "Platz eins",
+     "relations": [
+      {
+       "work": {
+        "title": "Platz eins",
+        "disambiguation": "",
+        "attributes": [],
+        "languages": [
+         "deu"
+        ],
+        "language": "deu",
+        "id": "666216c8-8a86-45e7-95e6-4d980fefe622",
+        "iswcs": [
+         "T-804.205.444-5"
+        ],
+        "type": "Song",
+        "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6"
+       },
+       "end": null,
+       "attributes": [],
+       "attribute-ids": {},
+       "target-credit": "",
+       "direction": "forward",
+       "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+       "attribute-values": {},
+       "ended": false,
+       "begin": null,
+       "source-credit": "",
+       "target-type": "work",
+       "type": "performance"
+      }
+     ]
+    },
+    {
+     "id": "f3c3e7dc-2aad-445b-90a2-ebfabb3fb5ad",
+     "title": "Born Free",
+     "relations": []
+    },
+    {
+     "id": "f687b0ad-6bab-4207-a549-ac671d804296",
+     "title": "SHIKO SHIKO NEKO NEKO",
+     "relations": []
+    }
+   ]
+  }
+ }
+}
