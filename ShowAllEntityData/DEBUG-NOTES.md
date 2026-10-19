@@ -24341,3 +24341,41 @@ Env: 2026-10-19T15:21+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) 
   #main_wrapper" (the avatar init now follows the insert) and "the diff
   shows every block" (`h.diff` became `diff`); the Cloudflare-gate entry is
   re-anchored with the ratings pageType, which changes that line again.
+
+## 2026-10-19 — discogs.com: "HTTP 429 from Discogs" on dg-release and the other API pageTypes (branch feat/discogs-mb-column, WIP.4)
+
+Env: 2026-10-19T16:10+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1, Chromium build 1234, no Tampermonkey (GM stubs); console log from vzell's browser (`debug/discogs-429.html`, userscript 9.99.1376, library 4.4.0): browser/Tampermonkey versions unknown
+
+- **Report:** on `…/release/8164856-Bruce-Springsteen-Human-Touch` and other
+  Discogs pages, `features.pageCountAsync failed (HTTP 429 from Discogs for
+  https://api.discogs.com/releases/8164856) — trying one page`, then
+  `Error fetching/parsing page 1: HTTP 429`. The page loaded at 13:42:20,
+  the page count failed at :25 (first ask + one retry), page 1 at :30.
+- **Root cause (vzell's answers): no token and 4+ Discogs tabs open.**
+  Discogs' API allows 25 requests a minute per IP without a token (60 per
+  token), as a moving minute. Each tab's `_extAwaitSlot()` spaced only its
+  own requests (2.5 s), so N tabs asked N × 24 a minute, beside murdos'
+  importer (`discogs_importer.user.js:70`: one unauthenticated
+  `api.discogs.com/releases/<id>` per release page load), users' pictures on
+  a scrolled submissions list, and previews. Setting the token cured it for
+  vzell — 60 a minute, and the importer's requests no longer share it.
+- **Second defect, whatever the cause:** `_extGet()` retried a 429 ONCE,
+  `max(1.5 s, Retry-After)` later — inside the same moving minute, so it
+  could never succeed; one bad minute killed the whole run.
+- **Fix:** `_EXT_SHARED_SLOT_HOSTS` (`api.discogs.com`): the next slot also
+  in GM storage (`sa_ext_next_slot:api.discogs.com`), read and written by
+  every tab's `_extReserveSlot()`; a value more than 2 min ahead ignored. A
+  429, or `X-Discogs-Ratelimit-Remaining: 0`, pushes that slot a minute
+  ahead for every tab (`_extNoteBudget()`), and the request is asked again
+  from the gate up to `_EXT_SHARED_TRIES` (4) times. The slot wait is
+  interruptible on `!wanted()` (Stop), and a run's status line names a wait
+  over 5 s. Other hosts unchanged (2 tries, 1.5 s floor).
+- **Not established:** whether Discogs sends `Retry-After` or
+  `X-Discogs-Ratelimit-Remaining` on a 429 — forcing one costs the user's
+  budget for a minute, so it was not probed; the code honours both if
+  present and does not need either.
+- **Tests:** `tests/fixtures/discogs-rate-limit.spec.js` (5) and
+  `scripts/mutations/discogs-rate-limit.json` (6, all caught). The test
+  pause had to be LONGER than the 2.5 s spacing (4 s): at 1.5 s a missing
+  pause was hidden by the spacing itself. Discogs, link-preview and include
+  specs: 136 passed; lint within baseline.

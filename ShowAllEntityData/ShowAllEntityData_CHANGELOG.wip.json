@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-10-19",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "discogs.com (and Discogs previews anywhere): with several Discogs tabs open, and above all without a Discogs token, the buttons failed with \"HTTP 429 from Discogs\" — Discogs allows 25 requests a minute for your whole connection (60 with a token), and each tab spaced only its own requests. All tabs now share one spacing for Discogs' API. When Discogs says the minute's requests are used up, every tab waits a minute and asks again (up to four times; before, one retry 1.5 s later could never succeed), the status line says so, and Stop still stops at once."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-10-19",
     "sections": [

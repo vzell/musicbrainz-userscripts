@@ -2870,8 +2870,12 @@ section of its own above Discogs' page, with the toolbar and these buttons:
 
 The rows come from Discogs' API, 100 a request, one after the other: a
 request every 2.5 seconds, or every second with your Discogs personal access
-token (⚙️ Settings → *🔎 External link previews*). Pointing at a button shows
-what it costs. Bruce Springsteen's discography is 68 requests, about 3
+token (⚙️ Settings → *🔎 External link previews*). Discogs counts those
+requests for your whole connection (or your token), not per tab, so all
+your Discogs tabs share them; when Discogs says the minute's requests are
+used up, every tab waits a minute and then asks again, and the status line
+says so. With several Discogs tabs open, the token helps most. Pointing at
+a button shows what it costs. Bruce Springsteen's discography is 68 requests, about 3
 minutes without a token; more than 50 pages asks you first, as on
 MusicBrainz. Discogs' own page stays as it is below the section. As
 everywhere, pressing a second button reloads the page; press it again then.

@@ -14749,6 +14749,11 @@
         }
         const res = await _extGet(url, {
             wanted: stoppable ? () => !stopRequested : null, fetchOpts: { accept: /\bjson\b/i, headers: _extDiscogsHeaders() },
+            // Longer than the spacing: Discogs' minute is spent (a 429 here
+            // or in another tab); the status line says why nothing moves.
+            onWait: (ms) => {
+                if (ms > 5000) globalStatusDisplay.textContent = `Discogs' request limit is reached — waiting ${Math.ceil(ms / 1000)} s…`;
+            },
         });
         const fail = (message, status) => Object.assign(new Error(message), { status });
         if (res.skipped) throw fail('Stopped before this page was asked', 0);
@@ -48545,10 +48550,117 @@
      * @returns {Promise<void>}
      */
     function _extAwaitSlot(host) {
+        const wait = _extReserveSlot(host);
+        return wait > 0 ? new Promise(r => setTimeout(r, wait)) : Promise.resolve();
+    }
+
+    /**
+     * Hosts whose request budget belongs to the user, not to one tab:
+     * Discogs' API counts per IP (or per token) over a moving minute, so
+     * every tab of this script (and every other script on the IP) draws on
+     * the same 25 (60) a minute. Their next slot is kept in GM storage too,
+     * which every tab of the script shares (vzell, 2026-10-19: HTTP 429 with
+     * 4+ Discogs tabs open and no token).
+     * @type {Set<string>}
+     */
+    const _EXT_SHARED_SLOT_HOSTS = new Set(['api.discogs.com']);
+
+    /**
+     * How long a shared host's requests pause, in every tab, once it says
+     * the budget is spent (a 429, or `X-Discogs-Ratelimit-Remaining: 0`),
+     * ms: Discogs' window is a moving minute, which resets after a minute
+     * without requests. A `Retry-After` longer than this wins.
+     * `__saTest.setExtRateLimitPauseMs()` shortens it for the specs.
+     * @type {number}
+     */
+    let _extRateLimitPauseMs = 60000;
+
+    /**
+     * How far ahead a shared slot is believed, ms: a value further out (a
+     * tab's clock gone wrong, a pause from long ago) is ignored rather than
+     * blocking every tab.
+     * @type {number}
+     */
+    const _EXT_SHARED_SLOT_MAX_AHEAD_MS = 120000;
+
+    /**
+     * The GM storage key of a shared host's next slot.
+     *
+     * @param {string} host
+     * @returns {string}
+     */
+    function _extSharedSlotKey(host) {
+        return `sa_ext_next_slot:${host}`;
+    }
+
+    /**
+     * A shared host's next slot as the other tabs left it (0 for none, or
+     * for one too far ahead to believe).
+     *
+     * @param {string} host
+     * @returns {number} Epoch ms.
+     */
+    function _extSharedSlotAt(host) {
+        let v;
+        try {
+            v = Number(GM_getValue(_extSharedSlotKey(host), 0)) || 0;
+        } catch (_) {
+            return 0;
+        }
+        return v > Date.now() + _EXT_SHARED_SLOT_MAX_AHEAD_MS ? 0 : v;
+    }
+
+    /**
+     * Pushes a host's next slot to `at` at least, in this tab and, for a
+     * shared host, in every tab.
+     *
+     * @param {string} host
+     * @param {number} at - Epoch ms.
+     * @returns {void}
+     */
+    function _extPushSlot(host, at) {
+        if ((_extNextSlotAt.get(host) || 0) < at) _extNextSlotAt.set(host, at);
+        if (!_EXT_SHARED_SLOT_HOSTS.has(host) || _extSharedSlotAt(host) >= at) return;
+        try {
+            GM_setValue(_extSharedSlotKey(host), at);
+        } catch (_) { /* storage unavailable: this tab's gate still holds */ }
+    }
+
+    /**
+     * Reserves the next request slot of one host (`_extSpacingMs()` apart,
+     * after every tab's reservations for a shared host), synchronously, so
+     * two callers in one tick get consecutive slots.
+     *
+     * @param {string} host
+     * @returns {number} How long until that slot, ms (0: now).
+     */
+    function _extReserveSlot(host) {
         const now = Date.now();
-        const at = Math.max(now, _extNextSlotAt.get(host) || 0);
-        _extNextSlotAt.set(host, at + _extSpacingMs(host));
-        return at > now ? new Promise(r => setTimeout(r, at - now)) : Promise.resolve();
+        const shared = _EXT_SHARED_SLOT_HOSTS.has(host);
+        const at = Math.max(now, _extNextSlotAt.get(host) || 0, shared ? _extSharedSlotAt(host) : 0);
+        _extPushSlot(host, at + _extSpacingMs(host));
+        return at - now;
+    }
+
+    /**
+     * After an answer of a shared host: when it says the budget is spent (a
+     * 429, or `X-Discogs-Ratelimit-Remaining` at 0), every tab's requests to
+     * it pause (`_extRateLimitPauseMs`, or the answer's `Retry-After` when
+     * longer).
+     *
+     * @param {string} host
+     * @param {{status: number, headers: Object<string, string>}} res
+     * @returns {number} The pause begun, ms (0 for none).
+     */
+    function _extNoteBudget(host, res) {
+        if (!_EXT_SHARED_SLOT_HOSTS.has(host) || !res || !res.headers) return 0;
+        const left = Number.parseInt(res.headers['x-discogs-ratelimit-remaining'], 10);
+        if (res.status !== 429 && !(Number.isFinite(left) && left <= 0)) return 0;
+        const ms = Math.max(_extRateLimitPauseMs, _parseRetryAfterMs(res.headers['retry-after']));
+        _extPushSlot(host, Date.now() + ms);
+        Lib.info('ext', `${host}: ${res.status === 429 ? 'HTTP 429' : 'no requests left this minute'} — ` +
+            `every tab pauses its requests for ${Math.round(ms / 1000)} s.`);
+        return ms;
     }
 
     /**
@@ -48719,16 +48831,31 @@
      * moved on makes no request (`{skipped: true}`). Any answer with a
      * status remembers the host (answer 7).
      *
+     * A shared host (`_EXT_SHARED_SLOT_HOSTS`: Discogs' API) is asked up to
+     * `_EXT_SHARED_TRIES` times, and its 429 pauses every tab's requests
+     * for the host's minute (`_extNoteBudget()`), so the retry waits in the
+     * gate: one retry 1.5 s later can never get past a moving minute. The
+     * wait for a slot ends early once `wanted()` turns false (Stop).
+     *
      * @param {string} url
-     * @param {{wanted?: ?function(): boolean, gate?: boolean, fetchOpts?: Object}} [opts] - `gate`
-     *   false: the caller waited for the first slot itself (`_dpGetRaw()`);
-     *   `fetchOpts`: `_extFetch()`'s options (a JSON API's `accept`).
+     * @param {{wanted?: ?function(): boolean, gate?: boolean, fetchOpts?: Object,
+     *   onWait?: ?function(number): void}} [opts] - `gate` false: the caller waited
+     *   for the first slot itself (`_dpGetRaw()`); `fetchOpts`: `_extFetch()`'s
+     *   options (a JSON API's `accept`); `onWait(ms)`: told before each wait for
+     *   a slot (a run's status line).
      * @returns {Promise<Object>} `_extFetch()`'s answer, or `{skipped: true}`.
      */
-    async function _extGet(url, { wanted = null, gate = true, fetchOpts = {} } = {}) {
+    async function _extGet(url, { wanted = null, gate = true, fetchOpts = {}, onWait = null } = {}) {
         const host = _extHostOf(url);
+        const tries = _EXT_SHARED_SLOT_HOSTS.has(host) ? _EXT_SHARED_TRIES : 2;
         for (let attempt = 1; ; attempt++) {
-            if (gate || attempt > 1) await _extAwaitSlot(host);
+            if (gate || attempt > 1) {
+                const wait = _extReserveSlot(host);
+                if (wait > 0) {
+                    if (onWait) onWait(wait);
+                    await _sleepInterruptible(wait, wanted ? () => !wanted() : null);
+                }
+            }
             if (wanted && !wanted()) {
                 Lib.debug('ext', `no longer wanted, not asked: ${url}`);
                 return { skipped: true };
@@ -48736,10 +48863,19 @@
             Lib.debug('ext', `GET ${url}${attempt > 1 ? ` (attempt ${attempt})` : ''}`);
             const res = await _extFetch(url, fetchOpts);
             if (res.status > 0) _extRememberHost(host);
-            if (attempt >= 2 || !_isTransientHttp(res.status)) return res;
-            await new Promise(r => setTimeout(r, Math.max(1500, _parseRetryAfterMs(res.headers['retry-after']))));
+            const paused = _extNoteBudget(host, res);
+            if (attempt >= tries || !_isTransientHttp(res.status)) return res;
+            // A shared host's pause is in its gate already; anything else as before.
+            if (!paused) await new Promise(r => setTimeout(r, Math.max(1500, _parseRetryAfterMs(res.headers['retry-after']))));
         }
     }
+
+    /**
+     * How often a shared host's request is asked at most: the first time and
+     * three more, each after the host's pause (`_extNoteBudget()`).
+     * @type {number}
+     */
+    const _EXT_SHARED_TRIES = 4;
 
     /**
      * What a page's `<head>` says about it: title, description, image, site
@@ -136555,6 +136691,17 @@ a { color: #1565c0; }`;
              */
             extRateSlotWaitMs(host) {
                 return Math.max(0, (_extNextSlotAt.get(host) || 0) - Date.now());
+            },
+            /**
+             * Shortens the pause a shared host's spent budget starts
+             * (`_extRateLimitPauseMs`, a minute), so a spec can show a 429
+             * pausing and retrying without waiting a minute.
+             *
+             * @param {number} ms
+             * @returns {void}
+             */
+            setExtRateLimitPauseMs(ms) {
+                _extRateLimitPauseMs = ms;
             },
             /**
              * Which source of the popup engine claims an element, and with

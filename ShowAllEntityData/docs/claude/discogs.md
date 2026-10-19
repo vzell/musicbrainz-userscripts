@@ -357,6 +357,45 @@ discogs.com where a name test could reach MusicBrainz:
   date half; `isTimeCol` takes its time half on discogs.com ("Time info -
   Time of day"; on MusicBrainz still only "Time").
 
+## Discogs' request limit, shared by every tab (2026-10-19)
+
+vzell, with no token and 4+ Discogs tabs open: "HTTP 429 from Discogs" on
+dg-release and the other API pageTypes (`debug/discogs-429.html`: the page
+count's first request answered 429, retried once 1.5 s later, 429 again,
+then page 1 the same). Setting the token cured it. Discogs counts per IP
+(per token with one) over a moving minute (25 / 60 a minute), and every
+tab spaced only its OWN requests, beside murdos' importer (one unauthenticated
+request per release page load), users' pictures, previews and the like.
+
+- **One slot for every tab** (`_EXT_SHARED_SLOT_HOSTS`, only
+  `api.discogs.com`): `_extReserveSlot()` takes the later of this tab's
+  slot and GM storage's `sa_ext_next_slot:api.discogs.com` (Tampermonkey
+  shares GM values across tabs) and writes the next one back. A stored slot
+  more than 2 minutes ahead is ignored (`_EXT_SHARED_SLOT_MAX_AHEAD_MS`: a
+  wrong clock or an old pause never blocks every tab). Not a lock: two tabs
+  reserving in the same few ms can take one slot — the pause below catches
+  what slips through.
+- **A spent budget pauses every tab** (`_extNoteBudget()`): a 429, or
+  `X-Discogs-Ratelimit-Remaining: 0` before one, pushes the shared slot a
+  minute ahead (`_extRateLimitPauseMs`; a longer `Retry-After` wins) — the
+  window resets after a minute without requests, so EVERY tab has to hold
+  off. The request is then asked again from the gate, up to
+  `_EXT_SHARED_TRIES` (4) times in all; the old single retry 1.5 s later sat
+  inside the same minute and could never succeed.
+- **The wait ends on Stop**: `_extGet()` sleeps with
+  `_sleepInterruptible()` on `!wanted()`, so a run's Stop (and a hover that
+  moved on) does not sit out a minute. A run's status line says
+  "Discogs' request limit is reached — waiting N s…" for a wait over 5 s
+  (`_dgFetchText()`'s `onWait`).
+- **Specs:** `tests/fixtures/discogs-rate-limit.spec.js` (three 429s then
+  the list; four 429s fail as a 429; another tab's slot honoured and ours
+  written back; a slot an hour ahead ignored; Remaining 0 pauses), with
+  `__saTest.setExtRateLimitPauseMs()` at 4 s (longer than the 2.5 s
+  spacing, so a pause shows apart from it); mutations
+  `scripts/mutations/discogs-rate-limit.json`. Two real tabs are not
+  tested: the GM stub caches a key per tab once read, so a second page
+  would not see the first's later writes as Tampermonkey's would.
+
 ## Links in our tables never leave the page (2026-10-18)
 
 A plain click on "Columbia" (a label search link) left the page through the
