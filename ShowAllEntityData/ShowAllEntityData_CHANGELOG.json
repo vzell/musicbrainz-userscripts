@@ -1,5 +1,65 @@
 [
   {
+    "version": "9.99.1387",
+    "date": "2026-10-19",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "New ⚠️ WARNING \"Several Discogs links in Relationships\": a Relationships column cell showing two or more different Discogs URLs (a link and the same link with \"?…\" count once) is tinted with a ⚠️ and listed in the ⚠️ WARNING menu, where one click filters every table to those rows. It is known once the column has loaded, so the count grows while it loads. Two new settings in ⚙️ Settings → ⚠️ FINDINGS turn the finding and its tint on or off."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1386",
+    "date": "2026-10-19",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The 📊 list of the Relationships column has a new \"Relationship icons - Site kind\" section: one entry for a site whatever its country or subdomain, so amazon.com, amazon.de and amazon.co.uk are counted together as \"amazon.*\". It appears when some site has two or more such hosts; the per-host entries stay."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1385",
+    "date": "2026-10-19",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The link columns of the Credits/Relationships tables, the event page's tables and the sidebar tables — \"URL\" (URLs), \"Target\" (Via release group, Via series) and \"Link\" (Sidebar: …) — have two new 📊 sections: \"Links info - Site\", one entry per site with the number of rows linking to it and the same site icon the link shows, and \"Links info - Site kind\", which counts a site whatever its country or subdomain (\"amazon.*\", \"bandcamp.*\") when some site has two or more such hosts. Ticking a site marks its address in the link text."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1384",
+    "date": "2026-10-19",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The \"YouTube Music Lookup\" button of the \"MBz YouTube Music Lookup\" userscript (by @afro) is now removed after the release page's Credits button too, not only after Tracks."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1383",
+    "date": "2026-10-19",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Event page: a link in the \"URLs\" table now shows the site icon the sidebar shows for it, as on the other relationship tables — a review link, for example, had its icon only in the sidebar."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1382",
     "date": "2026-10-19",
     "sections": [
