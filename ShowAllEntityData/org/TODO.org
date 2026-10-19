@@ -3171,7 +3171,12 @@ not scrollable - https://www.discogs.com/submissions?mode=list&id=599283&page=1#
 
 * TODO column shift in "Release groups" and "Release" sections - https://musicbrainz.org/tag/arena%20rock
 
-column shift in "Release groups" and "Release" sections - https://musicbrainz.org/tag/arena%20rock
+On e.g. the PT https://musicbrainz.org/tag/arena%20rock there seems to be a column shift in the "Release groups" and "Release" sections:
+
+The "AC/DC (Australian hard rock band)" after the " by " from the "Release groups" and "Release" columns seems to be wrongly extracted
+#+begin_example
+@debug/tag-arena-rock.html - [Image #1]
+#+end_example
 
   
 * TODO add support for a "MusicBrainz" column
