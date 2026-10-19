@@ -353,6 +353,12 @@ every render makes. Cost measured 2026-10-18T20:02+02:00 on petri (fixture,
 0.48/0.47/0.47 s without — within noise. The picture is never inside the
 name's link (`_extTarget()` leaves a link around an image to the image).
 
+**In the 📊 list too** (vzell, 2026-10-19): the "Changed by" and "User"
+entries show the user's picture after the name — what the cells hold, plus
+`_dgAvatars` for a submissions list's pictures that came after the panel's
+data was cached; the panel never asks for one. See
+docs/claude/uniq-dropdown.md, "Discogs' columns".
+
 **The picture at its largest** (vzell: "in highest resolution in our
 internal viewer"; his answer: click opens the viewer, hover a card): Discogs
 signs its image URLs, so no size can be made from a small one; the largest

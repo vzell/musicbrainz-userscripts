@@ -6677,6 +6677,33 @@
     }
 
     /**
+     * A discogs.com user's picture for the END of a 📊 entry (vzell,
+     * 2026-10-19: the "Changed by" and "User" entries) — the trailing slot
+     * a flag or an instrument icon gets (docs/claude/uniq-dropdown.md: a
+     * real image never goes in the leading marker slot), 16 px as in the
+     * cell, no referrer.
+     *
+     * @param {string} url
+     * @returns {HTMLSpanElement}
+     */
+    function _dgAvatarTrailingSlot(url) {
+        const slot = document.createElement('span');
+        slot.className = 'mb-uniq-dg-avatar';
+        slot.setAttribute('aria-hidden', 'true');
+        slot.style.display       = 'inline-flex';
+        slot.style.alignItems    = 'center';
+        slot.style.marginLeft    = '4px';
+        slot.style.verticalAlign = 'middle';
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = '';
+        img.referrerPolicy = 'no-referrer';
+        img.style.cssText = 'width:16px;height:16px;object-fit:cover;border-radius:2px;';
+        slot.appendChild(img);
+        return slot;
+    }
+
+    /**
      * Wraps a copy of an instrument icon for the END of a 📊 entry — the
      * same trailing slot a country flag gets (docs/claude/uniq-dropdown.md:
      * a real image never goes in the leading marker slot). The script styles
@@ -99222,6 +99249,13 @@ a { color: #1565c0; }`;
         // userscript is at work.
         const _iiDropIcons = _iiOn && Lib.settings.sa_enable_dropdown_instrument_icons !== false;
         const iiIconMap = _uniqCacheHit ? _uniqCacheHit.iiIconMap : new Map();
+        // discogs.com: entry value (a user's name: "Changed by", a
+        // history's "User") → that user's picture, read from the cell's
+        // `img.mb-dg-avatar` (vzell, 2026-10-19). A submissions list's
+        // pictures arrive as rows come on screen: the entry also takes one
+        // known by then (`_dgAvatars`), at render; opening the panel asks
+        // for none.
+        const dgAvatarMap = _uniqCacheHit ? (_uniqCacheHit.dgAvatarMap || new Map()) : new Map();
         // EVERY column, EVERY page type: MusicBrainz's own native `<span
         // class="mp">` open-edits marker — a binary presence flag pair plus
         // one entry per distinct pending entity name (see
@@ -99551,6 +99585,10 @@ a { color: #1565c0; }`;
                 if (_iiDropIcons && v && !iiIconMap.has(v)) {
                     const _ic = _iiSoleIcon(cell);
                     if (_ic) iiIconMap.set(v, _ic);
+                }
+                if (_isDgHost && v && !dgAvatarMap.has(v)) {
+                    const _av = cell.querySelector('img.mb-dg-avatar[src]');
+                    if (_av) dgAvatarMap.set(v, _av.getAttribute('src'));
                 }
                 // Count cell-structure state using expandedCells as source of truth.
                 // Counting from DOM toggle.textContent would give wrong results after a
@@ -100496,6 +100534,9 @@ a { color: #1565c0; }`;
                 // list item, after the label (see iiIconMap).
                 const _iiIcon = iiIconMap.get(v);
                 if (_iiIcon) item.appendChild(_iiTrailingIconSlot(_iiIcon));
+                // A Discogs user's picture, after the name (see dgAvatarMap).
+                const _dgAv = _isDgHost ? (dgAvatarMap.get(v) || _dgAvatars.get(v) || '') : '';
+                if (_dgAv) item.appendChild(_dgAvatarTrailingSlot(_dgAv));
 
                 item.addEventListener('mousedown', ev => ev.preventDefault());
                 // Unify mouse hover with keyboard arrow-key focus onto the same
@@ -101330,7 +101371,7 @@ a { color: #1565c0; }`;
                 acoustidLinkedCount, acoustidUnlinkedCount,
                 localeLanguageValueCounts, localePrimaryCount, localeNotPrimaryCount,
                 instrumentHasCommentCount, instrumentHasDescriptionCount, instrumentHasCrossReferenceCount,
-                iiIconYesCount, iiIconNoCount, iiIconMap,
+                iiIconYesCount, iiIconNoCount, iiIconMap, dgAvatarMap,
                 pendingEditValueCounts, pendingEditsYesCount, pendingEditsNoCount,
                 eventRoleValueCounts, roleTokenValueCounts, artTypeValueCounts, artCommentValueCounts,
                 flagIconMap, isRelCellCol, relIconCounts, relLoadStateCounts,

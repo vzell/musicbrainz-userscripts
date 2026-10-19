@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.6",
+    "date": "2026-10-19",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "discogs.com: the 📊 list of a submissions list's \"Changed by\" column and of a release history's \"User\" column shows each user's picture after their name, as in the table. A submissions list loads pictures only for rows you have scrolled to, so the list shows the pictures known by then; opening it asks Discogs for none."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.5",
     "date": "2026-10-19",
     "sections": [

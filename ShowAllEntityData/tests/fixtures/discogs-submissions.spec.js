@@ -207,6 +207,78 @@ test.describe('discogs.com submissions, edit history, full-size images (2026-10-
         expect(errors).toEqual([]);
     });
 
+    test('📊 of "Changed by": a user\'s known picture after their name; opening the panel asks for no picture (vzell 2026-10-19)', async ({ page }) => {
+        // Pins: the entry carries the SAME picture as the cell, in the
+        // trailing slot (after the label), and only for a user whose picture
+        // is known — the panel never starts a request of its own.
+        const g = FX('discogs-user-guibeal');
+        const d = JSON.parse(g.body);
+        const AVATAR = 'https://i.discogs.com/fixture-avatar-woodies1999.jpeg';
+        Object.assign(d, { username: 'Woodies1999', avatar_url: AVATAR });
+        // Woodies1999's picture answers late: the panel is first opened before it.
+        const late = answer(Object.assign({}, g, { body: JSON.stringify(d) }), `${API}users/Woodies1999`);
+        late[`${API}users/Woodies1999`].delayMs = 2500;
+        const { errors } = await openDg(page, { responses: late });
+        const table = await showAll(page);
+        const openPanel = () => table.evaluate((t) => {
+            const th = Array.from(t.querySelectorAll('thead tr:first-child th')).find(x => (x.dataset.colName || '') === 'Changed by');
+            th.querySelector('.mb-col-uniq-wrap').click();
+        });
+        const drop = page.locator('#mb-col-uniq-dropdown');
+        const entry = drop.locator('.mb-col-uniq-item', { hasText: 'Woodies1999' }).first();
+        await openPanel();
+        await expect(drop).toBeVisible();
+        await expect(entry.locator('.mb-uniq-dg-avatar'), 'not known yet').toHaveCount(0);
+        await page.keyboard.press('Escape');
+        await expect(drop).toBeHidden();
+        await expect((await cell(table, 0, 'Changed by')).locator('img.mb-dg-avatar')).toHaveAttribute('src', AVATAR, { timeout: 15000 });
+        // Opened again: the picture known by now, though the panel's data was
+        // read before it came.
+        await openPanel();
+        await expect(drop).toBeVisible();
+        await expect(entry.locator('.mb-uniq-dg-avatar img')).toHaveAttribute('src', AVATAR);
+        expect(await entry.evaluate(el => el.lastElementChild && el.lastElementChild.classList.contains('mb-uniq-dg-avatar')), 'after the label').toBe(true);
+        // The list's last user is far below the window: never asked, so no picture.
+        const lastUser = await table.evaluate((t) => {
+            const hs = Array.from(t.querySelectorAll('thead tr:first-child th')).map(th => th.dataset.colName || th.textContent.trim());
+            return t.tBodies[0].rows[t.tBodies[0].rows.length - 1].cells[hs.indexOf('Changed by')].textContent.trim();
+        });
+        const users = await page.evaluate(() => (window.__gmXhrLog || []).map(r => r.url).filter(u => /api\.discogs\.com\/users\//.test(u)));
+        expect(users.some(u => decodeURIComponent(u.split('/users/')[1]) === lastUser), `${lastUser} not asked`).toBe(false);
+        await expect(drop.locator('.mb-col-uniq-item', { hasText: lastUser }).first().locator('.mb-uniq-dg-avatar')).toHaveCount(0);
+        expect(errors).toEqual([]);
+    });
+
+    test('📊 of a history\'s "User": every user\'s picture from the page, after their name (vzell 2026-10-19)', async ({ page }) => {
+        const HIST = 'https://www.discogs.com/release/8164856-Human-Touch/history';
+        const { errors } = await openDg(page, { url: HIST, file: HISTORY_FILE });
+        await page.locator('#mb-dg-root button[data-label="Show the changes and the diff"]').click();
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        await page.locator('.mb-master-toggle').click();
+        const changes = page.locator('#mb-dg-root table.tbl').first();
+        const pics = await changes.evaluate((t) => {
+            const hs = Array.from(t.querySelectorAll('thead tr:first-child th')).map(th => th.dataset.colName || th.textContent.trim());
+            const m = {};
+            Array.from(t.tBodies[0].rows).forEach((r) => {
+                const c = r.cells[hs.indexOf('User')];
+                const img = c.querySelector('img.mb-dg-avatar[src]');
+                if (img) m[c.textContent.trim()] = img.getAttribute('src');
+            });
+            return m;
+        });
+        expect(Object.keys(pics).length).toBeGreaterThan(1);
+        await changes.evaluate((t) => {
+            const th = Array.from(t.querySelectorAll('thead tr:first-child th')).find(x => (x.dataset.colName || '') === 'User');
+            th.querySelector('.mb-col-uniq-wrap').click();
+        });
+        const drop = page.locator('#mb-col-uniq-dropdown');
+        await expect(drop).toBeVisible();
+        for (const [name, src] of Object.entries(pics)) {
+            await expect(drop.locator('.mb-col-uniq-item', { hasText: name }).first().locator('.mb-uniq-dg-avatar img'), name).toHaveAttribute('src', src);
+        }
+        expect(errors).toEqual([]);
+    });
+
     test('Changed split into date and time with MusicBrainz\'s 📊 sections: Date info on the date, Time of day on the time (vzell 2026-10-18)', async ({ page }) => {
         const { errors } = await openDg(page);
         const table = await showAll(page);

@@ -2913,6 +2913,8 @@ the page's content (not Discogs' header or footer) gets the same card and
 window as on MusicBrainz. A user's name carries their own picture: in a
 history it comes with the page; in a submissions list it is read from the
 user's profile once their row is on screen (one request each, one at a time).
+The 📊 list of that column shows each user's picture after their name too —
+every picture known by then; opening it asks for none.
 Pointing at a picture shows it larger in a card; a click opens it in the
 artwork viewer at the largest size Discogs serves. On a submissions page a release title's window
 opens with the release's **edit history** (see *Link previews*), then the
