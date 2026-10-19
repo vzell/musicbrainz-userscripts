@@ -398,6 +398,9 @@ themselves:
 - **🎚️ Credit details**, **🎭 Roles**, **📅 Release events**, **💿 Format
   info**, **🏷️ Catalog info**, **🔗 Relationship icons**, **⏳ Pending edits**,
   and a **Relationships — Load state** section on pages carrying that column.
+  **🧩 Relationship icons - Site kind** counts the same site together whatever
+  its country or subdomain (amazon.com, amazon.de and amazon.co.uk are one
+  `amazon.*` entry); it appears when some site has two or more such hosts.
 - **🔢 Tracks info** — a "Tracks" column's per-medium counts, a multi-medium
   flag, and the summed **Total** (the same number as the "Total Tracks" column:
   "5 + 5 + 5" is `5` under *Tracks* and `15` under *Total*).
@@ -604,6 +607,14 @@ themselves:
 - **📡 Links info - Platform** — on ISRC Scout's "Links" column of a release
   tracklist: one entry per platform (Spotify, Deezer, …) with the number of
   rows linking to it and the platform's icon. Ticking one outlines its icons.
+- **🌐 Links info - Site** and **🧩 Links info - Site kind** — on the link
+  columns of the relationship tables (Credits / Relationships buttons), the
+  event page's tables and the sidebar tables: "URL" (URLs), "Target" (Via
+  release group, Via series) and "Link" (Sidebar: …). One entry per site with
+  the number of rows linking to it and the same site icon the link shows;
+  *Site kind* counts one site whatever its country or subdomain
+  (`amazon.*`, `bandcamp.*`) and appears when some site has two or more such
+  hosts. Ticking a site marks its address in the link text.
 - **Barcode info** — on any "Barcode" column: a validity flag (✅/⚠️), which
   GS1 format (UPC-A/EAN-13/EAN-8/GTIN-14) a conforming entry matches, and a
   "Same As" list, one entry per group of rows sharing a barcode number
@@ -688,6 +699,7 @@ by digit, with the gap in a small amber (⚠️) or red (❌) label.
 | ⚠️     | Invalid ISRC / ISWC / barcode format                            | ISRCs, ISRC, ISWC, Barcode                  |
 | ⚠️     | Artwork has no Front image (releases with artwork only)         | CAA                                         |
 | ⚠️     | Physical release artwork has no Medium image                    | CAA (needs a Format column)                 |
+| ⚠️     | Several Discogs links in Relationships (once the column loaded) | Relationships                               |
 | ⚠️     | Pending edits                                                   | any column                                  |
 | ⚠️     | Live credit without a date                                      | Release tracklist: credit columns           |
 | ❌    | Track and recording length far apart                            | Release tracklist: Length, Recording length |
@@ -1413,7 +1425,7 @@ you automatically.
 | 🔍 Expand release and release groups            | Inline ▶/▼ expanders                                                                                                                                                                                                                                                  |
 | ▶️ Expand truncated cells                        | Whether a clipped cell offers an expander, and how it looks                                                                                                                                                                                                           |
 | 📑 Show single-table                            | The client-side sub-table snapshot button and its colours                                                                                                                                                                                                             |
-| ⚠️ Findings                                      | The ⚠️ WARNING / ❌ ERROR menus on or off; one switch per newly highlighted finding (ALL UPPERCASE, truncated, track ≠ recording name, low quality, pending edits, ISRC, ISWC, barcode, live credit dates, capitalized ETI); the extra title information keyword list  |
+| ⚠️ Findings                                      | The ⚠️ WARNING / ❌ ERROR menus on or off; one switch per newly highlighted finding (ALL UPPERCASE, truncated, track ≠ recording name, low quality, pending edits, ISRC, ISWC, barcode, live credit dates, capitalized ETI, several Discogs links in Relationships); the extra title information keyword list  |
 | 💿 Release tracklist                            | Every tracklist column family, credit colours, live-date flagging, the ARs column                                                                                                                                                                                     |
 | 🔖 Barcode highlight                            | Identical-barcode highlighting                                                                                                                                                                                                                                        |
 | 🔖 Barcode validation                           | GS1 format/check-digit validation, the 📊 Validity/Format/Same As sections                                                                                                                                                                                            |

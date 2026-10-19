@@ -136,10 +136,12 @@ arrives AFTER `stampFindings()` ran. The rules for any such finding:
   Because the stamp reads the cache, `stampFindings()` itself already gets
   every record that was cached before it ran (IDB, a re-fetch).
 - **A per-row re-stamp, not another `stampFindings()`.**
-  `_artBuildMultiRowArtCell()` (both branches) queues the row;
-  `_artFlushFindingsRestamp()` re-runs `_stampFindingRow()` on each queued live
+  `_artBuildMultiRowArtCell()` (both branches) queues the row
+  (`_artQueueFindingsRestamp()` → the shared `_queueFindingsRestamp()`);
+  `_flushFindingsRestamp()` re-runs `_stampFindingRow()` on each queued live
   row AND its master row, 150 ms later in one batch. A full pass per record
-  would be O(rows) per row.
+  would be O(rows) per row. (Until 2026-10-19 the pair was artwork-only,
+  `_artFlushFindingsRestamp()`.)
 - **Only a CHANGED stamp goes on** — gen bump, the touched tables' 📊 caches,
   `updateFilterButtonsVisibility()` (the menus), and `runFilter()` only while
   an artwork finding is filtering. That condition is what stops a loop:
@@ -148,6 +150,32 @@ arrives AFTER `stampFindings()` ran. The rules for any such finding:
 - A row the active filter removed is never enriched, so it is stamped only
   once its art loads in some later view. The menu count therefore grows while
   the CAA column loads; its tip says so.
+
+### The Relationships column: `rel-multi-discogs`
+
+The second kind of late data (2026-10-19, `feat/link-site-uvd`): the deferred
+Relationships column (docs/claude/deferred-columns-picard-relationships.md)
+writes its cells after `stampFindings()` ran. "Several Discogs links in
+Relationships" (⚠️, cell scope, column "Relationships") follows the same
+rules:
+
+- `test()` reads `_findCellDiscogsRelUrls()`: the icons' hidden
+  `.mb-rel-filter-key` spans, which `_relWriteResult()` writes into the live
+  cells AND copies onto the master rows — source-row data. Distinct by host
+  (without "www.") + path, so a `?…` variant of one page is one URL; 2+ flag.
+- `_relWriteResult()` queues each live row it wrote (both the answer and
+  the "no relationships" branch, so a ⟳ reload can also CLEAR a stamp)
+  through `_queueFindingsRestamp(tr, ['rel-multi-discogs'])`.
+- The filter re-run condition is `_LATE_FINDING_IDS` (artwork + this one).
+  No loop: a re-rendered clone never reaches `_relWriteResult()` again
+  (`relDone`).
+- A write to master rows ONLY (a clicked row the filter has since hidden:
+  `cells` empty) is not re-stamped: nothing live to queue. The next fetch or
+  disk load stamps it; `stampFindings()` reads the master's spans.
+- Settings `sa_findings_rel_multi_discogs` (the finding, needs
+  `sa_enable_relationships_column`) and `sa_findings_tint_rel_multi_discogs`.
+- Spec `rel-column-site-kind-discogs.spec.js`; mutations
+  `scripts/mutations/link-site-uvd.json`.
 
 ## Counting: `_findingRowTally()` and the stamp generation
 

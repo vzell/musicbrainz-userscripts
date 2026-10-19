@@ -2611,6 +2611,23 @@
                          'Medium image.'
         },
 
+        sa_findings_rel_multi_discogs: {
+            label: 'Find Relationships cells with more than one Discogs link',
+            type: 'checkbox',
+            default: true,
+            description: 'An entity whose Relationships column shows two or more different Discogs URLs is a ' +
+                         'WARNING ("Several Discogs links in Relationships"). Known once the column has loaded ' +
+                         '(the Relationships column must be on); the ⚠️ menu count grows while it loads.'
+        },
+
+        sa_findings_tint_rel_multi_discogs: {
+            label: 'Highlight Relationships cells with more than one Discogs link as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint the Relationships cell light yellow with a ⚠️ when it shows two or more different ' +
+                         'Discogs URLs.'
+        },
+
         sa_findings_nonphysical_formats: {
             label: 'Formats that have no medium to photograph',
             type: 'text',
@@ -6745,6 +6762,32 @@
         copy.setAttribute('width', '14');
         copy.setAttribute('height', '14');
         slot.appendChild(copy);
+        return slot;
+    }
+
+    /**
+     * The site icon of a "» site:" / "» site kind:" 📊 entry, after its label
+     * (the trailing slot `_linkPlatformTrailingIconSlot()` uses): the SAME
+     * icon the table's link shows, by its name in `#mb-sb-ico-style`
+     * (`_sbIconRef()` writes its rule for this span class too), so nothing is
+     * requested and the ~10 KB `data:` image is never copied.
+     *
+     * @param   {string} icoName A `data-mb-sb-ico` name.
+     * @returns {HTMLSpanElement}
+     */
+    function _linkSiteTrailingIconSlot(icoName) {
+        const slot = document.createElement('span');
+        slot.className = 'mb-uniq-site-icon';
+        slot.dataset.mbSbIco = icoName;
+        slot.setAttribute('aria-hidden', 'true');
+        slot.style.display            = 'inline-block';
+        slot.style.width              = '14px';
+        slot.style.height             = '14px';
+        slot.style.marginLeft         = '4px';
+        slot.style.verticalAlign      = 'middle';
+        slot.style.backgroundRepeat   = 'no-repeat';
+        slot.style.backgroundPosition = '50% 50%';
+        slot.style.backgroundSize     = '14px 14px';
         return slot;
     }
 
@@ -23543,6 +23586,9 @@
             setP.remove();
             if (setH2 && setH2 !== anchor) setH2.remove();
         }
+        // A URL row's link with the site icon the sidebar shows for it, as
+        // applyRelDetailsToTables() does (the "review" link had none here).
+        if (relBuilt) _sbIconRelLinks(doc, frag);
         anchor.after(frag);
         root.dataset.mbEventTables = '1';
         Lib.debug('init', `applyEventDetailsToTables: ${relBuilt ? own.length + seriesRows.length : 0} relationship row(s), ` +
@@ -23835,9 +23881,13 @@
      * @param   {string} entity   Entity name for the label ("Recording").
      * @param   {object} cfg      `features.relDetailsToTables` (`removeMain` is added).
      * @param   {string} [section='Relationships'] Button word ("Credits" on a release).
+     * @param   {object} [extraFeatures={}] Features of this button only, merged
+     *   after the shared ones — `replaceFeatures` drops the page's own, so a
+     *   page-specific feature this render needs too (release: the third-party
+     *   YouTube button's `removeSelectors`) has to be named here again.
      * @returns {object} A `buttons[]` entry.
      */
-    function _relTablesButton(type, entity, cfg, section = 'Relationships') {
+    function _relTablesButton(type, entity, cfg, section = 'Relationships', extraFeatures = {}) {
         return {
             label: `Show all ${section} for ${entity}`,
             shortLabel: section,
@@ -23846,7 +23896,7 @@
             tableMode: 'multi',
             non_paginated: true,
             showIf: () => Lib.settings.sa_enable_relationship_tables !== false,
-            features: _relTablesFeatures({ ownLabel: entity, removeMain: true, ...cfg })
+            features: { ..._relTablesFeatures({ ownLabel: entity, removeMain: true, ...cfg }), ...extraFeatures }
         };
     }
 
@@ -30414,6 +30464,18 @@
         };
     }
 
+    /**
+     * The "MBz YouTube Music Lookup" userscript's button
+     * (github.com/afrocatmusic/userscripts, @match release pages): a bare,
+     * unlabeled `<button>` (no id/class) appended at document-idle, matched by
+     * its own fixed title-attribute suffix — the only stable thing about it
+     * (the release title fills the middle of the title, so nothing before the
+     * suffix is safe to anchor on). See debug/youtube.html. Removed by both
+     * renders of a release page: Tracks and Credits (`_relTablesButton()`'s
+     * `extraFeatures`, since that button replaces the page's features).
+     */
+    const _YTM_LOOKUP_SEL = 'button[title$="on YouTube Music"]';
+
     const pageDefinitions = [
         // TagLookup pages
         {
@@ -33473,7 +33535,8 @@
             buttons: [
                 { label: 'Show all Tracks for Release', shortLabel: 'Tracks' },
                 // The release's own and its release group's lists under "Credits".
-                _relTablesButton('release-credit-tables', 'Release', { credits: true }, 'Credits')
+                _relTablesButton('release-credit-tables', 'Release', { credits: true }, 'Credits',
+                    { removeSelectors: [_YTM_LOOKUP_SEL] })
             ],
             features: {
                 removeYomoWidget: true,          // strip the "Batch Add Recording Aliases" userscript's widget, if present
@@ -33509,14 +33572,8 @@
                     // anymore — they're expected to keep rendering inside h2.tracklist,
                     // right after the "Tracklist" text.
                     'span#medium-toolbox', // native toggle-credits/expand/collapse controls — inert post-render
-                    // The "MBz YouTube Music Lookup" userscript
-                    // (github.com/afrocatmusic/userscripts) appends a bare,
-                    // unlabeled `<button>` (no id/class) at document-idle —
-                    // matched by its own fixed title-attribute suffix, which
-                    // is the only stable thing about it (the release title
-                    // fills the middle of the title, so nothing before the
-                    // suffix is safe to anchor on). See debug/youtube.html.
-                    'button[title$="on YouTube Music"]'
+                    // The "MBz YouTube Music Lookup" userscript's button.
+                    _YTM_LOOKUP_SEL
                 ],
                 columnErasers: [
                     // Strips jesus2099 "SUPER MIND CONTROL" hover toolzone/editbutt/
@@ -41418,6 +41475,110 @@
     }
 
     /**
+     * Second-level labels under which a country code registers names
+     * (`co.uk`, `com.br`, `ne.jp`): `_siteFamilyOf()` strips them with the
+     * country code, so amazon.co.uk is the same site as amazon.de.
+     * @type {Set<string>}
+     */
+    const _SITE_FAMILY_SLD = new Set(['co', 'com', 'net', 'org', 'ac', 'ne', 'or', 'gov', 'edu', 'gv']);
+
+    /**
+     * The "site kind" of a host — the same site whatever its country or
+     * subdomain (org/TODO.org 2026-10-19: one count for every Amazon, not one
+     * per country): the label before the public suffix, plus ".*".
+     * amazon.de, amazon.co.uk and music.amazon.com are `amazon.*`;
+     * artist.bandcamp.com is `bandcamp.*`. The suffix is the last label, or
+     * the last two when a 2-letter country code follows one of
+     * `_SITE_FAMILY_SLD`. A path never counts: Apple Music's per-country
+     * paths (/us/, /de/) already share one host. An IP or a one-label host is
+     * returned as it is. Pure; also behind the 📊 "… - Site kind" sections.
+     *
+     * @param   {string} host
+     * @returns {string}
+     */
+    function _siteFamilyOf(host) {
+        const h = String(host || '').toLowerCase().replace(/\.$/, '').replace(/^(?:www\d*|m|mobile)\./, '');
+        if (!h.includes('.') || /^[\d.]+$/.test(h) || h.includes(':') || h.startsWith('[')) return h;
+        const parts = h.split('.');
+        const last = parts.length - 1;
+        const suffix = parts.length >= 3 && parts[last].length === 2 && _SITE_FAMILY_SLD.has(parts[last - 1]) ? 2 : 1;
+        return parts.length > suffix ? `${parts[parts.length - suffix - 1]}.*` : h;
+    }
+
+    /**
+     * Every external link of a cell of a relationship, event or sidebar
+     * table's URL/Target/Link column (the 📊 "Links info - Site" and "Links
+     * info - Site kind" sections): an `a[href]` to http(s) outside
+     * MusicBrainz — so a URL row's "[info]" link (`/url/…`) and an entity
+     * row's link in a mixed Target column never count, and nothing inside
+     * our inline artwork placeholders does. A Target cell typed as another
+     * entity (`data-mb-entity-type`) holds none. Reads the `href` and the
+     * site-icon ATTRIBUTES only, never text, so a highlight cannot change
+     * the answer.
+     *
+     * @param   {?HTMLTableCellElement} cell
+     * @returns {Array<{host: string, family: string, el: HTMLAnchorElement, icoName: string}>}
+     *   One entry per link, in cell order. `host` drops "www." (the "Site"
+     *   column's form); `icoName` is the link's `data-mb-sb-ico` ('' for none).
+     */
+    function _findCellSiteLinks(cell) {
+        if (!cell) return [];
+        const type = cell.dataset ? cell.dataset.mbEntityType : '';
+        if (type && type !== 'url') return [];
+        const out = [];
+        cell.querySelectorAll('a[href]').forEach(a => {
+            if (a.closest('.mb-caa-inline-ph, .mb-eaa-inline-ph')) return;
+            let u;
+            try { u = new URL(a.getAttribute('href'), 'https://musicbrainz.org'); } catch (_) { return; }
+            if (!/^https?:$/.test(u.protocol)) return;
+            const host = u.hostname.toLowerCase().replace(/^www\./, '');
+            if (!host || host === 'musicbrainz.org' || host.endsWith('.musicbrainz.org')) return;
+            out.push({ host, family: _siteFamilyOf(host), el: a, icoName: a.dataset.mbSbIco || '' });
+        });
+        return out;
+    }
+
+    /**
+     * The site kind (`_siteFamilyOf()`) of one `_findCellRelIcons()` entry,
+     * '' for a MusicBrainz-relative one: the single derivation behind the
+     * "Relationship icons - Site kind" counts, its `relfam:` matcher and its
+     * highlight.
+     *
+     * @param   {{domainKey: string, baseUrl: string}} r
+     * @returns {string}
+     */
+    function _relIconFamily(r) {
+        if (!r || !/^https?:/.test(r.baseUrl)) return '';
+        try { return _siteFamilyOf(new URL(r.baseUrl).hostname); } catch (_) { return ''; }
+    }
+
+    /**
+     * The distinct Discogs URLs of a Relationships cell (`td.mb-rel-cell`,
+     * the `rel-multi-discogs` finding): each icon's raw target URL from its
+     * hidden `.mb-rel-filter-key` (`_relAppendIcon()`), whose host is
+     * discogs.com or a subdomain of it, as origin + path without a trailing
+     * slash, so a `?…`/`#…` or "/" variant of one URL counts once. The spans
+     * are written into the live cells AND mirrored onto the master rows by
+     * `_relWriteResult()`, so this reads source-row data.
+     *
+     * @param   {?HTMLTableCellElement} cell
+     * @returns {string[]} In cell order.
+     */
+    function _findCellDiscogsRelUrls(cell) {
+        if (!cell || !cell.classList.contains('mb-rel-cell')) return [];
+        const out = [];
+        cell.querySelectorAll('.mb-rel-filter-key').forEach(k => {
+            let u;
+            try { u = new URL(k.textContent); } catch (_) { return; }
+            const host = u.hostname.toLowerCase();
+            if (host !== 'discogs.com' && !host.endsWith('.discogs.com')) return;
+            const key = `https://${host.replace(/^www\./, '')}${u.pathname.replace(/\/+$/, '')}`;
+            if (!out.includes(key)) out.push(key);
+        });
+        return out;
+    }
+
+    /**
      * Extends `_findCellEntityRefs()` (never re-derives its anchor-finding
      * logic) to split each NON-BARE entity (`!ref.isBare` — part of
      * something bigger than just its own name somewhere in the table, e.g.
@@ -44035,6 +44196,22 @@
                     !im.some(x => (x.types || []).includes('Medium'));
             },
             tint: _findingTintSetting('sa_findings_tint_no_medium_image'),
+        },
+        // Late data like the artwork findings: the deferred Relationships
+        // column fills its cells after stampFindings() ran, and
+        // _relWriteResult() re-stamps each row it writes
+        // (_queueFindingsRestamp()). test() reads the icons' hidden
+        // filter-key spans, which the master rows get too.
+        {
+            id: 'rel-multi-discogs', level: 'warn', glyph: '🔗', scope: 'cell',
+            label: 'Several Discogs links in Relationships',
+            tip: 'The Relationships column shows more than one Discogs URL for this entity. One release, master, artist or label usually has ONE Discogs page; two are often a duplicate or a link to the wrong kind of page (a release linked from a release group). Known once the column has loaded, so the count grows while it loads.',
+            enabled: () => Lib.settings.sa_findings_rel_multi_discogs !== false && !!Lib.settings.sa_enable_relationships_column,
+            cols: name => name === 'Relationships',
+            rowGate: row => !!row.querySelector('td.mb-rel-cell .mb-rel-filter-key'),
+            test: cell => _findCellDiscogsRelUrls(cell).length >= 2,
+            detail: cell => _findCellDiscogsRelUrls(cell).join('\n'),
+            tint: _findingTintSetting('sa_findings_tint_rel_multi_discogs'),
         },
         {
             id: 'pending', level: 'warn', glyph: '⏳', scope: 'row',
@@ -55804,6 +55981,12 @@
             const want = mode.slice(4);
             return !!cell && _findCellRelIcons(cell).some(r => r.domainKey === want);
         }
+        if (mode.startsWith('relfam:')) {
+            // Compound mode (openUniqDrop()'s "Relationship icons - Site kind"
+            // section) — one site kind (_siteFamilyOf()) of the cell's icons.
+            const want = mode.slice(7);
+            return !!cell && _findCellRelIcons(cell).some(r => _relIconFamily(r) === want);
+        }
         if (mode === 'inline-art-yes' || mode === 'inline-art-no') {
             // addCAA/addEAA inline-thumbnail presence — the sentinel
             // _artSetInlineSortKey stamps after each load/error path settles
@@ -56254,6 +56437,16 @@
             // (_findCellLinkPlatforms()).
             const want = mode.slice(13);
             return !!cell && _findCellLinkPlatforms(cell).some(p => p.name === want);
+        }
+        if (mode.startsWith('linksite:')) {
+            // Compound mode — one site of a URL/Target/Link cell (_findCellSiteLinks()).
+            const want = mode.slice(9);
+            return !!cell && _findCellSiteLinks(cell).some(l => l.host === want);
+        }
+        if (mode.startsWith('linkfamily:')) {
+            // Compound mode — one site kind of a URL/Target/Link cell (_siteFamilyOf()).
+            const want = mode.slice(11);
+            return !!cell && _findCellSiteLinks(cell).some(l => l.family === want);
         }
         if (mode === 'isrc-valid') {
             // Binary flag — true when at least one "ISRCs" cell entry
@@ -80386,6 +80579,9 @@ a { color: #1565c0; }`;
         // combination) — see MB_UNIQ_KIND_TO_SECTION's 'role' key.
         roles:         { label: 'Entity info - Role (combined)', glyph: '🎭' },
         relationships: { label: 'Relationship icons', glyph: '🔗' },
+        // The same icons by site kind (_siteFamilyOf(): amazon.com, amazon.de,
+        // … together), mode 'relfam:'; only when a kind covers 2+ hosts.
+        relFamily:     { label: 'Relationship icons - Site kind', glyph: '🧩' },
         // Fixed-flag load state of each Relationships cell (not loaded / has /
         // none / failed) — a different question from which icons it holds, so
         // its own section. Classified by _relCellLoadState().
@@ -80474,6 +80670,12 @@ a { color: #1565c0; }`;
         // The third-party ISRC Scout's "Links" column: one open-valued entry
         // per platform (kind 'linkplatform', _findCellLinkPlatforms()).
         linkPlatform:    { label: 'Links info - Platform', glyph: '📡' },
+        // The URL/Target/Link columns of relationship, event and sidebar
+        // tables: one entry per site with the link's own site icon (kind
+        // 'linksite', _findCellSiteLinks()), and per site kind (kind
+        // 'linkfamily', _siteFamilyOf()) when a kind covers 2+ sites.
+        linkSite:        { label: 'Links info - Site',      glyph: '🌐' },
+        linkSiteKind:    { label: 'Links info - Site kind', glyph: '🧩' },
         // "ISWC info" — validity only (org/ISRC.org item 7); MusicBrainz's
         // native ISWC display is already correctly formatted, so there is
         // no constituent breakdown to offer here.
@@ -80970,6 +81172,8 @@ a { color: #1565c0; }`;
         isrccountry: 'isrcCountry', isrcregistrant: 'isrcRegistrant',
         isrcyear: 'isrcYear', isrcdesignation: 'isrcDesignation',
         linkplatform: 'linkPlatform',
+        linksite: 'linkSite',
+        linkfamily: 'linkSiteKind',
         barcodeformat: 'barcodeFormat', barcodesameas: 'barcodeSameAs',
         lengthbucket: 'lengthBucket',
         timeofday: 'timeOfDay',
@@ -81905,6 +82109,46 @@ a { color: #1565c0; }`;
             if (!keySpan) continue;
             if (testFn(keySpan.textContent)) a.classList.add('mb-rel-icon-match');
         }
+    }
+
+    /**
+     * Marks the icons of a Relationships cell whose site kind is `family`
+     * (a ticked `relfam:` entry) — the same `mb-rel-icon-match` outline a
+     * `rel:` tick gives, decided by `_relIconFamily()` like the matcher.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @param {string} family E.g. "amazon.*".
+     */
+    function _highlightRelFamilyIcons(cell, family) {
+        if (!cell || !family) return;
+        for (const a of cell.querySelectorAll('a')) {
+            const keySpan = a.querySelector('.mb-rel-filter-key');
+            if (!keySpan) continue;
+            if (_relIconFamily({ baseUrl: keySpan.textContent }) === family) a.classList.add('mb-rel-icon-match');
+        }
+    }
+
+    /**
+     * Highlights the ticked site of a `linksite:` / `linkfamily:` entry in a
+     * URL/Target/Link cell: the host inside the link's own text, when the
+     * text shows it (a URL); a link named by its site ("Discogs") gets no
+     * mark — the row filter alone says it matched, as a flag entry does.
+     * Only the links of the ticked site or kind are marked.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @param {string} mode E.g. `"linksite:discogs.com"`, `"linkfamily:amazon.*"`.
+     */
+    function _highlightLinkSiteMatch(cell, mode) {
+        if (!cell) return;
+        const fam = mode.startsWith('linkfamily:');
+        const want = mode.slice(fam ? 11 : 9);
+        if (!want) return;
+        _findCellSiteLinks(cell).forEach(l => {
+            if ((fam ? l.family : l.host) !== want) return;
+            if (!l.el.textContent.toLowerCase().includes(l.host)) return;
+            l.el.normalize();
+            highlightCrossTag(l.el, new RegExp(l.host.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), 'mb-column-filter-highlight');
+        });
     }
 
     /**
@@ -84313,6 +84557,8 @@ a { color: #1565c0; }`;
                                     _highlightIsrcPartMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('linkplatform:')) {
                                     _highlightLinkPlatformMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('linksite:') || mode.startsWith('linkfamily:')) {
+                                    _highlightLinkSiteMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'isrc-invalid') {
                                     _highlightIsrcInvalidMatch(row.cells[f.idx]);
                                 } else if (mode === 'isrc-valid') {
@@ -84413,6 +84659,8 @@ a { color: #1565c0; }`;
                                     // exactly equivalent to _cellMatchesStructureMode()'s own
                                     // exact domainKey === want comparison.
                                     _highlightRelCellIcons(row.cells[f.idx], mode.slice(4), true, false);
+                                } else if (mode.startsWith('relfam:')) {
+                                    _highlightRelFamilyIcons(row.cells[f.idx], mode.slice(7));
                                 } else if (mode.startsWith('editordeleted:') || mode === 'editor-any-deleted') {
                                     _highlightEditorDeletedMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('editorcomment:')) {
@@ -96470,7 +96718,9 @@ a { color: #1565c0; }`;
 
     /**
      * An icon's name in `#mb-sb-ico-style`, its rule
-     * (`a.mb-sb-ico[data-mb-sb-ico="NAME"] { background-image: … }`) added
+     * (`:is(a.mb-sb-ico, span.mb-uniq-site-icon)[data-mb-sb-ico="NAME"] {
+     * background-image: … }`, the span being a 📊 entry's icon,
+     * `_linkSiteTrailingIconSlot()`) added
      * the first time: a `data:` icon is ~10 KB, so each is written ONCE, never
      * inline on every link and every table clone of it. The name is a hash
      * of the URL (FNV-1a, 32 bits), never a running number: a page saved to
@@ -96495,7 +96745,7 @@ a { color: #1565c0; }`;
             (document.head || document.documentElement).appendChild(st);
         }
         st.appendChild(document.createTextNode(
-            `a.mb-sb-ico[data-mb-sb-ico="${name}"] { background-image: url("${url.replace(/["\\\n]/g, '\\$&')}"); }\n`));
+            `:is(a.mb-sb-ico, span.mb-uniq-site-icon)[data-mb-sb-ico="${name}"] { background-image: url("${url.replace(/["\\\n]/g, '\\$&')}"); }\n`));
         return name;
     }
 
@@ -99061,6 +99311,14 @@ a { color: #1565c0; }`;
         // Column-gated (isIiLinksCol below).
         const linkPlatformValueCounts = _uniqCacheHit ? _uniqCacheHit.linkPlatformValueCounts : new Map();
         const linkPlatformIconMap     = _uniqCacheHit ? _uniqCacheHit.linkPlatformIconMap     : new Map();
+        // URL/Target/Link sites and site kinds — rows per site / kind, the
+        // site icon's name per site (its first link that has one), and the
+        // sites of each kind (the entry's tooltip, the "2+ sites" rule).
+        // Column-gated (isSiteLinkCol below), _findCellSiteLinks().
+        const linkSiteValueCounts   = _uniqCacheHit ? _uniqCacheHit.linkSiteValueCounts   : new Map();
+        const linkSiteIconMap       = _uniqCacheHit ? _uniqCacheHit.linkSiteIconMap       : new Map();
+        const linkFamilyValueCounts = _uniqCacheHit ? _uniqCacheHit.linkFamilyValueCounts : new Map();
+        const linkFamilyHosts       = _uniqCacheHit ? _uniqCacheHit.linkFamilyHosts       : new Map();
         // Entries (`"<kind>:<value>"`) whose EVERY matching item sits inside a
         // collapsed (hidden) list item — rendered with a ▶ marker so a user is
         // not left hunting the page for a code that is not on screen until
@@ -99384,6 +99642,13 @@ a { color: #1565c0; }`;
         // "Links", so no other column called "Links" is affected.
         const _iiLinksTh = table ? table.querySelectorAll('thead tr:first-child th')[colIndex] : null;
         const isIiLinksCol = !!(_iiLinksTh && _iiLinksTh.classList.contains('ii-col-links'));
+        // The link column of a relationship-tables, event or "Sidebar as
+        // tables" render (URLs → "URL", "Via …" → "Target", "Sidebar: …" →
+        // "Link"): "Links info - Site" / "- Site kind". Name AND render, so a
+        // native column of the same name elsewhere is left as it was.
+        const _siteLinkRender = !_foreignHost && !!activeDefinition && (_isRelTablesRun() ||
+            !!activeDefinition.features?.eventDetailsToTables || !!activeDefinition.features?.sidebarToTables);
+        const isSiteLinkCol = _siteLinkRender && (_colHeaderName === 'URL' || _colHeaderName === 'Target' || _colHeaderName === 'Link');
         // Column-name gate for the native "ISWC" column's validity flag
         // (org/ISRC.org item 7) — same convention as isIsrcCol above.
         const isIswcCol = _colHeaderName === 'ISWC';
@@ -99833,6 +100098,19 @@ a { color: #1565c0; }`;
                         }
                     });
                     _rowPlatforms.forEach(t => linkPlatformValueCounts.set(t, (linkPlatformValueCounts.get(t) || 0) + 1));
+                }
+                if (isSiteLinkCol) {
+                    const _rowSites = new Set();
+                    const _rowKinds = new Set();
+                    _findCellSiteLinks(cell).forEach(l => {
+                        _rowSites.add(l.host);
+                        _rowKinds.add(l.family);
+                        if (l.icoName && !linkSiteIconMap.has(l.host)) linkSiteIconMap.set(l.host, l.icoName);
+                        if (!linkFamilyHosts.has(l.family)) linkFamilyHosts.set(l.family, new Set());
+                        linkFamilyHosts.get(l.family).add(l.host);
+                    });
+                    _rowSites.forEach(t => linkSiteValueCounts.set(t, (linkSiteValueCounts.get(t) || 0) + 1));
+                    _rowKinds.forEach(t => linkFamilyValueCounts.set(t, (linkFamilyValueCounts.get(t) || 0) + 1));
                 }
                 if (isIswcCol) {
                     const _iswcParts = _findCellIswcParts(cell);
@@ -101218,6 +101496,11 @@ a { color: #1565c0; }`;
                 || table.querySelector('tbody td.mb-rel-cell[data-rel-done="1"]')) ? (() => {
             const counts  = new Map(); // domainKey → row count
             const iconFor = new Map(); // domainKey → display URL (for label + favicon)
+            const famCounts = new Map(); // site kind → row count ("Relationship icons - Site kind")
+            const famHosts  = new Map(); // site kind → Set of hostnames
+            counts._iconFor = iconFor;
+            counts._famCounts = famCounts;
+            counts._famHosts = famHosts;
             if (!tbody) return counts;
             for (const row of tbody.rows) {
                 if (row.style.display === 'none') continue;
@@ -101226,12 +101509,19 @@ a { color: #1565c0; }`;
                 // _findCellRelIcons() already dedups within the cell and applies
                 // the PATH_SENSITIVE_HOSTS grouping — single source of truth
                 // shared with _cellMatchesStructureMode()'s 'rel:' branch.
-                for (const { domainKey, baseUrl } of _findCellRelIcons(cell)) {
+                const rowFams = new Set();
+                for (const r of _findCellRelIcons(cell)) {
+                    const { domainKey, baseUrl } = r;
                     counts.set(domainKey, (counts.get(domainKey) || 0) + 1);
                     if (!iconFor.has(domainKey)) iconFor.set(domainKey, baseUrl);
+                    const fam = _relIconFamily(r);
+                    if (!fam) continue;
+                    rowFams.add(fam);
+                    if (!famHosts.has(fam)) famHosts.set(fam, new Set());
+                    famHosts.get(fam).add(new URL(baseUrl).hostname);
                 }
+                rowFams.forEach(f => famCounts.set(f, (famCounts.get(f) || 0) + 1));
             }
-            counts._iconFor = iconFor;
             return counts;
         })() : new Map();
 
@@ -101354,6 +101644,7 @@ a { color: #1565c0; }`;
                 relTypeCreditValueCounts,
                 isrcCountryValueCounts, isrcRegistrantValueCounts, isrcYearValueCounts, isrcDesignationValueCounts,
                 linkPlatformValueCounts, linkPlatformIconMap,
+                linkSiteValueCounts, linkSiteIconMap, linkFamilyValueCounts, linkFamilyHosts,
                 dateDecadeValueCounts, dateMonthValueCounts, dateYearValueCounts, dateWeekdayValueCounts,
                 partOfSeriesNameValueCounts, partOfSeriesDateValueCounts, partOfSeriesNumberValueCounts,
                 editorDeletedValueCounts, editorAnyDeletedCount, editorRecordedNameValueCounts,
@@ -101445,6 +101736,7 @@ a { color: #1565c0; }`;
             ...isrcCountryValueCounts.values(), ...isrcRegistrantValueCounts.values(),
             ...isrcYearValueCounts.values(), ...isrcDesignationValueCounts.values(),
             ...linkPlatformValueCounts.values(),
+            ...linkSiteValueCounts.values(), ...linkFamilyValueCounts.values(),
             ...barcodeFormatValueCounts.values(), ...barcodeSameAsValueCounts.values(),
             ...lengthBucketValueCounts.values(), ...timeOfDayValueCounts.values(), ...relTypeCreditValueCounts.values(),
             ...recofSuggValueCounts.values(), ...(recofLoadStateCounts ? Object.values(recofLoadStateCounts) : []),
@@ -102184,7 +102476,9 @@ a { color: #1565c0; }`;
             // appended after the value — see CATALOG_PREFIX_TOOLTIP's own
             // JSDoc for why this is one static string for every entry
             // rather than a per-prefix lookup.
-            _setTip(item, (kind === 'catalogprefix') ? `${value}\n\n${CATALOG_PREFIX_TOOLTIP}` : value);
+            _setTip(item, (kind === 'catalogprefix') ? `${value}\n\n${CATALOG_PREFIX_TOOLTIP}`
+                : (kind === 'linkfamily') ? `${value}\n\n${Array.from(linkFamilyHosts.get(value) || []).sort().join('\n')}`
+                : value);
 
             const badge = document.createElement('span');
             badge.className = 'mb-uniq-count-badge';
@@ -102271,6 +102565,8 @@ a { color: #1565c0; }`;
                  : kind === 'isrcyear'        ? '» year: '
                  : kind === 'isrcdesignation' ? '» designation: '
                  : kind === 'linkplatform'    ? '» platform: '
+                 : kind === 'linksite'        ? '» site: '
+                 : kind === 'linkfamily'      ? '» site kind: '
                  : kind === 'barcodeformat'   ? '» format: '
                  : kind === 'barcodesameas'   ? '🔢 '
                  : kind === 'workattrid'    ? '» identifier: '
@@ -102416,6 +102712,12 @@ a { color: #1565c0; }`;
                 if (kind === 'linkplatform' && linkPlatformIconMap.has(value)) {
                     item.appendChild(_linkPlatformTrailingIconSlot(linkPlatformIconMap.get(value)));
                 }
+                // "» site:" / "» site kind:" entries: the site icon the
+                // table's link shows (a kind: its first site that has one).
+                const _siteIco = kind === 'linksite' ? linkSiteIconMap.get(value)
+                    : kind === 'linkfamily' ? Array.from(linkFamilyHosts.get(value) || []).map(h => linkSiteIconMap.get(h)).find(Boolean)
+                    : '';
+                if (_siteIco) item.appendChild(_linkSiteTrailingIconSlot(_siteIco));
             }
 
             if (collapsedOnlyKeys.has(`${kind}:${value}`)) {
@@ -102734,6 +103036,11 @@ a { color: #1565c0; }`;
         const _sortedIsrcYearValues        = Array.from(isrcYearValueCounts.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
         const _sortedIsrcDesignationValues = Array.from(isrcDesignationValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedLinkPlatformValues    = Array.from(linkPlatformValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedLinkSiteValues        = Array.from(linkSiteValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        // A site kind only where it adds something: it covers 2+ sites
+        // (otherwise it repeats "Links info - Site" entry for entry).
+        const _sortedLinkFamilyValues      = Array.from(linkFamilyHosts.values()).some(h => h.size > 1)
+            ? Array.from(linkFamilyValueCounts.keys()).sort((a, b) => a.localeCompare(b)) : [];
         // Fixed display order by increasing length (EAN-8/UPC-A/EAN-13/
         // GTIN-14), not lexicographic — mirrors the Weekday/bucket-style
         // sorts above.
@@ -102809,6 +103116,7 @@ a { color: #1565c0; }`;
             _sortedIsrcCountryValues.length > 0 || _sortedIsrcRegistrantValues.length > 0 ||
             _sortedIsrcYearValues.length > 0 || _sortedIsrcDesignationValues.length > 0 ||
             _sortedLinkPlatformValues.length > 0 ||
+            _sortedLinkSiteValues.length > 0 || _sortedLinkFamilyValues.length > 0 ||
             _sortedBarcodeFormatValues.length > 0 || _sortedBarcodeSameAsValues.length > 0 ||
             _sortedLengthBucketValues.length > 0 || _sortedTimeOfDayValues.length > 0 || _sortedRelTypeCreditValues.length > 0 ||
             _sortedPartOfSeriesNameValues.length > 0 || _sortedPartOfSeriesDateValues.length > 0 || _sortedPartOfSeriesNumberValues.length > 0 ||
@@ -103109,6 +103417,8 @@ a { color: #1565c0; }`;
             _sortedIsrcYearValues.forEach(v => makeValueSynItem('isrcyear', v, isrcYearValueCounts.get(v)));
             _sortedIsrcDesignationValues.forEach(v => makeValueSynItem('isrcdesignation', v, isrcDesignationValueCounts.get(v)));
             _sortedLinkPlatformValues.forEach(v => makeValueSynItem('linkplatform', v, linkPlatformValueCounts.get(v)));
+            _sortedLinkSiteValues.forEach(v => makeValueSynItem('linksite', v, linkSiteValueCounts.get(v)));
+            _sortedLinkFamilyValues.forEach(v => makeValueSynItem('linkfamily', v, linkFamilyValueCounts.get(v)));
             _sortedBarcodeFormatValues.forEach(v => makeValueSynItem('barcodeformat', v, barcodeFormatValueCounts.get(v)));
             _sortedBarcodeSameAsValues.forEach(v => makeValueSynItem('barcodesameas', v, barcodeSameAsValueCounts.get(v)));
             _sortedLengthBucketValues.forEach(v => makeValueSynItem('lengthbucket', v, lengthBucketValueCounts.get(v)));
@@ -103275,6 +103585,8 @@ a { color: #1565c0; }`;
             _sortedIsrcYearValues.forEach(v => makeValueSynItem('isrcyear', v, isrcYearValueCounts.get(v)));
             _sortedIsrcDesignationValues.forEach(v => makeValueSynItem('isrcdesignation', v, isrcDesignationValueCounts.get(v)));
             _sortedLinkPlatformValues.forEach(v => makeValueSynItem('linkplatform', v, linkPlatformValueCounts.get(v)));
+            _sortedLinkSiteValues.forEach(v => makeValueSynItem('linksite', v, linkSiteValueCounts.get(v)));
+            _sortedLinkFamilyValues.forEach(v => makeValueSynItem('linkfamily', v, linkFamilyValueCounts.get(v)));
             _sortedBarcodeFormatValues.forEach(v => makeValueSynItem('barcodeformat', v, barcodeFormatValueCounts.get(v)));
             _sortedBarcodeSameAsValues.forEach(v => makeValueSynItem('barcodesameas', v, barcodeSameAsValueCounts.get(v)));
             _sortedLengthBucketValues.forEach(v => makeValueSynItem('lengthbucket', v, lengthBucketValueCounts.get(v)));
@@ -103438,6 +103750,41 @@ a { color: #1565c0; }`;
                 // closeUniqDrop() this used to call.
                 _wireStructureCheckbox(item, MB_UNIQ_STRUCTURE_MODE_PREFIX + 'rel:' + domainKey);
                 getOrCreateSynSection('relationships').itemsBox.appendChild(item);
+            }
+            // ── The same icons by site kind (amazon.com, amazon.de, … as one
+            // "amazon.*" entry, org/TODO.org 2026-10-19), only when a kind
+            // covers 2+ hosts: otherwise it repeats the list above.
+            const _famCounts = relIconCounts._famCounts || new Map();
+            const _famHosts  = relIconCounts._famHosts  || new Map();
+            if (Array.from(_famHosts.values()).some(h => h.size > 1)) {
+                Array.from(_famCounts.keys()).sort((a, b) => a.localeCompare(b)).forEach(fam => {
+                    const hosts = Array.from(_famHosts.get(fam) || []).sort();
+                    const item = document.createElement('div');
+                    item.className = 'mb-col-uniq-item mb-col-uniq-multirow-item mb-uniq-rel-item';
+                    item.setAttribute('role', 'option');
+                    _setTip(item, `${fam}\n\n${hosts.join('\n')}`);
+                    item.dataset.mbUniqSynLabel = fam;
+                    const badge = document.createElement('span');
+                    badge.className = 'mb-uniq-count-badge';
+                    badge.textContent = `(${_famCounts.get(fam)})`;
+                    badge.setAttribute('aria-hidden', 'true');
+                    badge.style.cssText = `color:${cntColor};background-color:${cntBg};font-weight:bold;font-family:monospace;` +
+                        `border-radius:3px;padding:0 3px;margin-right:5px;font-size:0.85em;display:inline-block;flex-shrink:0;` +
+                        `min-width:${relBadgeChWidth}ch;text-align:right;`;
+                    item.appendChild(badge);
+                    const ico = document.createElement('img');
+                    ico.src = hosts.length ? `https://www.google.com/s2/favicons?sz=16&domain=${hosts[0]}` : '/favicon.ico';
+                    ico.style.cssText = 'width:14px;height:14px;flex-shrink:0;margin-right:4px;';
+                    ico.setAttribute('aria-hidden', 'true');
+                    item.appendChild(ico);
+                    const lbl = document.createElement('span');
+                    lbl.className = 'mb-uniq-syn-label-text';
+                    lbl.textContent = fam;
+                    lbl.style.cssText = 'font-size:0.85em;font-family:monospace;color:inherit;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+                    item.appendChild(lbl);
+                    _wireStructureCheckbox(item, MB_UNIQ_STRUCTURE_MODE_PREFIX + 'relfam:' + fam);
+                    getOrCreateSynSection('relFamily').itemsBox.appendChild(item);
+                });
             }
         }
 
@@ -104013,6 +104360,9 @@ a { color: #1565c0; }`;
         if (mode.startsWith('isrcyear:'))        return `» year: ${mode.slice(9)}`;
         if (mode.startsWith('isrcdesignation:')) return `» designation: ${mode.slice(16)}`;
         if (mode.startsWith('linkplatform:'))    return `» platform: ${mode.slice(13)}`;
+        if (mode.startsWith('linksite:'))        return `» site: ${mode.slice(9)}`;
+        if (mode.startsWith('linkfamily:'))      return `» site kind: ${mode.slice(11)}`;
+        if (mode.startsWith('relfam:'))          return `🔗 ${mode.slice(7)}`;
         if (mode.startsWith('lengthbucket:'))    return `» duration: ${mode.slice(13)}`;
         if (mode.startsWith('timeofday:'))       return `» time of day: ${mode.slice(10)}`;
         if (mode.startsWith('reltypecredit:'))   return `» ${mode.slice(14)}`;
@@ -104244,6 +104594,9 @@ a { color: #1565c0; }`;
         if (mode.startsWith('isrcregistrant:')) return 'One "ISRCs" entry\'s own 3-character registrant code (the XXX segment).';
         if (mode.startsWith('isrcyear:')) return 'One "ISRCs" entry\'s own year of reference, resolved to a 4-digit year from the 2-digit YY segment.';
         if (mode.startsWith('isrcdesignation:')) return 'One "ISRCs" entry\'s own 5-digit designation code (the NNNNN segment).';
+        if (mode.startsWith('linksite:')) return 'Rows with at least one link to this site (its host, without "www.").';
+        if (mode.startsWith('linkfamily:')) return 'Rows with at least one link to this kind of site — the same site whatever its country or subdomain (amazon.com, amazon.de, amazon.co.uk are all "amazon.*").';
+        if (mode.startsWith('relfam:')) return 'A kind of relationship site — the same site whatever its country or subdomain (amazon.com, amazon.de, amazon.co.uk are all "amazon.*").';
         if (mode.startsWith('linkplatform:')) return 'Rows with at least one link to this platform in the "Links" column of the "ISRC Scout" userscript (by @majkinetor). Ticked, it outlines that platform\'s icon.';
         if (mode.startsWith('reltypecredit:')) return 'One "Relationship types" item\'s credited-as name — the (as “…”) part — with its relationship type in front.';
         if (mode.startsWith('timeofday:')) return 'This "Time" cell\'s start time, bucketed into a part of the day (morning, lunch, afternoon, evening, night). An empty cell stays under "empty cells".';
@@ -112537,9 +112890,15 @@ a { color: #1565c0; }`;
             delete td.dataset.relLoading;
         };
         primary.forEach(_markDone);
+        // The `rel-multi-discogs` finding reads these cells, which
+        // stampFindings() saw empty: re-stamp each live row written (its
+        // master with it), batched. A write to master rows only (the row is
+        // filtered out) waits for the next fetch or disk load.
+        const _restamp = () => cells.forEach(td => _queueFindingsRestamp(td.closest('tr'), ['rel-multi-discogs']));
         if (!data) {
             _dbg(`_relWriteResult: no data for ${mbid}`);
             rest.forEach(_markDone);
+            _restamp();
             return;
         }
         // WS2 JSON format: data.relations[] filtered by target-type
@@ -112637,6 +112996,7 @@ a { color: #1565c0; }`;
             delete td.dataset.relError;
             delete td.dataset.relLoading;
         });
+        _restamp();
     }
 
     /**
@@ -130443,21 +130803,41 @@ a { color: #1565c0; }`;
     const _ART_FINDING_IDS = ['art-no-front', 'art-no-medium'];
 
     /**
+     * The ids of the findings whose data arrives AFTER `stampFindings()` ran
+     * (it runs ONCE per fetch): the artwork record, and the deferred
+     * Relationships column (`rel-multi-discogs`). Each is re-stamped per row
+     * through `_queueFindingsRestamp()`.
+     */
+    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-discogs'];
+
+    /**
+     * Queues a re-stamp of a row whose late data (`_LATE_FINDING_IDS`) has
+     * just arrived — nothing when none of `ids` is enabled. The queue is
+     * flushed in batches by `_flushFindingsRestamp()`, 150 ms after the
+     * first row of a batch.
+     *
+     * @param   {?HTMLTableRowElement} tr
+     * @param   {string[]} ids The findings this data feeds.
+     * @returns {void}
+     */
+    function _queueFindingsRestamp(tr, ids) {
+        if (!ids.some(id => { const f = _FINDING_BY_ID.get(id); return f && (!f.enabled || f.enabled()); })) return;
+        if (!tr || !tr.isConnected) return;
+        if (!_queueFindingsRestamp.rows) _queueFindingsRestamp.rows = new Set();
+        _queueFindingsRestamp.rows.add(tr);
+        if (!_queueFindingsRestamp.timer) _queueFindingsRestamp.timer = setTimeout(_flushFindingsRestamp, 150);
+    }
+
+    /**
      * Queues a re-stamp of the artwork findings for a cell's row. They can
      * only be known once the archive record is in, which is after
-     * `stampFindings()` ran (it runs ONCE per fetch, before the artwork); the
-     * queue is flushed in batches by `_artFlushFindingsRestamp()`.
+     * `stampFindings()` ran (it runs ONCE per fetch, before the artwork).
      *
      * @param   {HTMLTableCellElement} artCell
      * @returns {void}
      */
     function _artQueueFindingsRestamp(artCell) {
-        if (!_ART_FINDING_IDS.some(id => { const f = _FINDING_BY_ID.get(id); return f && (!f.enabled || f.enabled()); })) return;
-        const tr = artCell.closest('tr');
-        if (!tr || !tr.isConnected) return;
-        if (!_artQueueFindingsRestamp.rows) _artQueueFindingsRestamp.rows = new Set();
-        _artQueueFindingsRestamp.rows.add(tr);
-        if (!_artQueueFindingsRestamp.timer) _artQueueFindingsRestamp.timer = setTimeout(_artFlushFindingsRestamp, 150);
+        _queueFindingsRestamp(artCell.closest('tr'), _ART_FINDING_IDS);
     }
 
     /**
@@ -130467,17 +130847,18 @@ a { color: #1565c0; }`;
      *
      * Only when a stamp actually CHANGED does it go on: bump
      * `_findingStampGen` (the menu tally memo), drop the touched tables' 📊
-     * caches, refresh the menus, and re-run the filter if an artwork finding
-     * is filtering. That condition is what keeps this from looping: the
-     * re-render re-enriches its clones from the cache, which queues their
-     * rows again, and their stamps then come out unchanged.
+     * caches, refresh the menus, and re-run the filter if a late finding
+     * (`_LATE_FINDING_IDS`) is filtering. That condition is what keeps this
+     * from looping: the re-render re-enriches its clones from the artwork
+     * cache, which queues their rows again, and their stamps then come out
+     * unchanged (a Relationships cell is never written twice: `relDone`).
      *
      * @returns {void}
      */
-    function _artFlushFindingsRestamp() {
-        const rows = Array.from(_artQueueFindingsRestamp.rows || []).filter(r => r.isConnected);
-        _artQueueFindingsRestamp.rows = new Set();
-        _artQueueFindingsRestamp.timer = 0;
+    function _flushFindingsRestamp() {
+        const rows = Array.from(_queueFindingsRestamp.rows || []).filter(r => r.isConnected);
+        _queueFindingsRestamp.rows = new Set();
+        _queueFindingsRestamp.timer = 0;
         if (!rows.length) return;
         const master = _buildMasterRowIndex();
         const plans = new Map();
@@ -130498,9 +130879,9 @@ a { color: #1565c0; }`;
         if (!touched.size) return;
         _findingStampGen++;
         touched.forEach(t => _invalidateUniqDropDataCacheForTable(t));
-        Lib.debug('filter', `_artFlushFindingsRestamp(): ${rows.length} row(s), ${touched.size} table(s) changed.`);
+        Lib.debug('filter', `_flushFindingsRestamp(): ${rows.length} row(s), ${touched.size} table(s) changed.`);
         if (typeof window.updateFilterButtonsVisibility === 'function') window.updateFilterButtonsVisibility();
-        if (_ART_FINDING_IDS.some(id => { const f = _FINDING_BY_ID.get(id); return f && _findingState(f) !== 'off'; })) runFilter();
+        if (_LATE_FINDING_IDS.some(id => { const f = _FINDING_BY_ID.get(id); return f && _findingState(f) !== 'off'; })) runFilter();
     }
 
 
@@ -136593,6 +136974,15 @@ a { color: #1565c0; }`;
              * @returns {boolean}
              */
             titleHasRecNameMismatch: (cell) => _titleHasRecNameMismatch(cell),
+            /**
+             * A host's site kind (`_siteFamilyOf()`), the key of the 📊
+             * "… - Site kind" sections, so a spec can pin the suffix rule on
+             * hosts no fixture has.
+             *
+             * @param {string} host
+             * @returns {string}
+             */
+            siteFamilyOf: (host) => _siteFamilyOf(host),
             /**
              * The "Instrument Icons Everywhere" icon an instrument anchor
              * owns (`_findInstrumentLinkIcon()`): before it, after it, or

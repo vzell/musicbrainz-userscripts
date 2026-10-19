@@ -83,6 +83,7 @@ below, which mixed unrelated topics under one header.
 | next (feature/uvd-event-names)          | Additions: `liveLoc` ("Live title info - Location completeness", kind `liveloc`, value = `_liveLocLabel()` of `_parseLiveTitle()`'s new `locParts`), and eleven "Event name info - …" sections on every column in `_uvdEventNameColumns()` ("Event" + `sa_uvd_event_name_columns`), counting only cells whose first non-comment `<bdi>` links `/event/<mbid>` (`_findCellEventName()`). One pure parser, `_parseEventName()`: the live form first (its `_parseLiveTitle()` verdict rides along as `live`), then the https://musicbrainz.org/doc/Style/Event forms in the order at → festival edition → tour, then the `_EVENT_STYLE_NEAR_MISSES` list, else free form. `evForm` (`evform-<form>`), `evStyleNearMiss` (`evform-nearmiss` + kind `evstylemiss`), `evFestEdition` (kind `evedition`), and `evLive*` — the live sections again: **their modes are the live modes with an `ev` prefix, and `_eventNameMatchesMode()` strips it and calls `_liveTitleMatchesMode()`**, so a new live facet reaches events by adding its `ev` row to the two lookup tables, never by copying matcher code. Counting shares `_countLiveVerdict()`/`_newLiveCounts()`, rendering `_pushLiveSections(prefix, counts, sfx)`. Behind `sa_enable_uvd_event_names`; never text-highlighted. Events reuse the `data-mb-live-flag` tint via `_findCellAnyLiveTitle()` in `_stampLiveTitleRow()` (`tests/fixtures/uvd-event-names.spec.js`, `scripts/mutations/uvd-event-names.json`).                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | next (feature/uvd-recording-comments)   | Additions: twelve "Recording comment info - …" sections (`rcForm`, `rcType`, `rcNearMiss`, `rcMultiDay`, `rcInfo`, and `rcLive*` = the live sections with an `rc` mode prefix, same rule as `ev`) on every column `_recCommentColumnKind()` names: `'link'` = Title + `_uvdTitleInfoColumns()` (reads the `.comment` of a `/recording/<mbid>` link), `'plain'` = `sa_uvd_recording_comment_columns` (default "Disambiguation", the cell text). The synthetic "Comment" column is deliberately neither. One pure parser, `_parseRecordingComment()`, built on `_liveVerdictFromMatch()` (split out of `_parseLiveTitle()`, no behaviour change) and `_LIVE_DATE_ONLY_RE`; `EVENT_TYPE_KEYWORDS` is now one module-level constant shared with `eventParts()`, longest first, with "rehearsal" added. Location completeness for the dateless `location` form is counted from the verdict's own `locParts`, outside `_countLiveVerdict()`, and matched by an `rcliveloc:` branch that does not need a live verdict. Also three eventParts sections: `eventPartsCountryForm` (`evcountry-abbr/full`), `eventPartsDetail`/`eventPartsAddInfo` (`evdetail-*`/`evaddinfo-*` presence counted only on rows with an Event-Type, plus kinds `eventdetail`/`eventaddinfo`). All ride `_titleRatingItems` (`tests/fixtures/uvd-recording-comments.spec.js`, `scripts/mutations/uvd-recording-comments.json`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | next (feature/uvd-grouped-sections)     | Not a split: a second level ABOVE the sections. Every section now sits in a topic group derived from its label (see "Grouped topics and prefix hoisting" below), and a one-section topic is merged into one header line. No `SYN_SECTION_META` key changed.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| next (feat/link-site-uvd)               | Additions: `linkSite` ("Links info - Site", kind `linksite`, the site icon by name in the trailing slot), `linkSiteKind` ("Links info - Site kind", kind `linkfamily`, `_siteFamilyOf()`) on the URL/Target/Link columns of relationship, event and sidebar tables (`isSiteLinkCol`), and `relFamily` ("Relationship icons - Site kind", mode `relfam:`) on the deferred Relationships column. Both kind sections only when a kind covers 2+ hosts. See "Sites of a link column" below. |
 | next (fix/live-multidate-and-retry-dup) | Additions: `liveMulti`/`evLiveMulti`/`rcLiveMulti` ("… - Multiple dates", modes `live-multi-days`/`live-multi-dates` with the usual `ev`/`rc` prefixes), counted by `_countLiveVerdict()` from `_parseLiveTitle()`'s new `multi` field and matched by `_liveTitleMatchesMode()`. The parser now accepts several dates per title (`_parseMultiDateLiveTitle()`: "DATE/DD/DD: Loc", "DATE: Loc / DATE: Loc", "DATE / DATE: Loc"), each date judged by `_parseLiveTitleWithDays()`; a single-date title never leaves the old path (`'/'` pre-check). (`tests/fixtures/uvd-live-titles.spec.js` with `releasegroup-releases-live-multidate.html`, `scripts/mutations/live-multidate-retry-dup.json`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 
 ## Grouped topics and prefix hoisting
@@ -333,3 +334,52 @@ own; the spec therefore pairs a tick with the GLOBAL filter, as
 Spec: `release-tracks-isrc-scout.spec.js` (counts, a tick narrowing and
 outlining, a tick AND a global filter on the same text in both orders, plain
 values free of badge digits).
+
+## Sites of a link column: "Links info - Site" / "- Site kind", "Relationship icons - Site kind"
+
+Added 2026-10-19 (`feat/link-site-uvd`, org/TODO.org: the URL, Target and
+Link columns of a release's Credits render had no site entries at all).
+
+- **Gate `isSiteLinkCol`**: the column is named `URL` (a "URLs" table),
+  `Target` ("Via release group: …", "Via <series>") or `Link` ("Sidebar: …")
+  AND the render is a relationship-tables (`_isRelTablesRun()`), event
+  (`eventDetailsToTables`) or "Sidebar as tables" (`sidebarToTables`)
+  render, on MusicBrainz. Name AND render: a native column of the same name
+  elsewhere is left as it was.
+- **Reader `_findCellSiteLinks()`**: every `a[href]` to http(s) outside
+  MusicBrainz — so a URL row's "[info]" link and an entity row's link in a
+  mixed Target column never count, nor a link inside our inline artwork
+  placeholders; a Target cell typed as another entity
+  (`data-mb-entity-type`) holds none. Attributes only (href, the icon name).
+- **"Links info - Site"** (🌐, kind `linksite`, label `» site: host`): one
+  entry per host without "www." (the "Site" column's form), its ROW count.
+  The entry's icon (trailing slot, `_linkSiteTrailingIconSlot()`) is the
+  table link's own sidebar icon BY NAME: `span.mb-uniq-site-icon[data-mb-sb-ico]`,
+  drawn by the rule `_sbIconRef()` already wrote (its selector covers the
+  span), so nothing is requested and the ~10 KB `data:` image is never
+  copied. A link with no sidebar icon gives an entry without one — no
+  Google S2 fallback, the sidebar's "no request" rule.
+- **"Links info - Site kind"** (🧩, kind `linkfamily`, `» site kind: amazon.*`):
+  the same rows by `_siteFamilyOf()` — the label before the public suffix
+  plus ".*" (amazon.de, amazon.co.uk, music.amazon.com → `amazon.*`;
+  *.bandcamp.com → `bandcamp.*`); the suffix is the last label, or the last
+  two after a `_SITE_FAMILY_SLD` label before a 2-letter country code. A
+  path never counts (Apple Music's /us/, /de/ share one host already). The
+  tooltip lists the kind's hosts. **Only when some kind covers 2+ hosts** —
+  otherwise it repeats the site list entry for entry.
+- **Highlight** (`_highlightLinkSiteMatch()`): the host inside the link's
+  text, when the text shows it (a URL); a link named by its site
+  ("Discogs") gets no mark — the row filter alone shows it, as a flag does.
+- **"Relationship icons - Site kind"** (🧩, `relFamily`, mode `relfam:`):
+  the deferred Relationships column's icons by the same `_siteFamilyOf()`
+  (through `_relIconFamily()`, one derivation for count, matcher and
+  highlight), counted in the existing `relIconCounts` walk
+  (`relIconCounts._famCounts`/`_famHosts`, so it rides in the cache bundle
+  with it), rendered after the per-host "Relationship icons" with the same
+  hand-built row and its Google S2 icon, also only when a kind covers 2+
+  hosts. A tick outlines the matching icons (`mb-rel-icon-match`).
+
+Specs: `rel-tables-link-site-uvd.spec.js` (counts against a DOM oracle per
+column, the entry icon = the link's, ticks and marks, kinds, the cache
+re-open, the suffix rule), `rel-column-site-kind-discogs.spec.js` (the
+Relationships side). Mutations: `scripts/mutations/link-site-uvd.json`.

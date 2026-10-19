@@ -2614,9 +2614,12 @@ which IS such a "writer into captured rows" case — ~stampFindings()~ stamps at
 the render tail — and so carries the invalidation this one never needed: a
 stamp generation (~_findingStampGen~) beside the array and its length.
 *Since branch ~feature/caa-eaa-redesign~ (2026-10-06)* the generation also moves
-while the CAA column loads: ~_artFlushFindingsRestamp()~ re-stamps the rows
-whose artwork record just arrived (the two artwork findings) and bumps it once
-per 150 ms batch — only when a stamp actually changed. So during artwork
+while the CAA column loads: ~_flushFindingsRestamp()~ (until 2026-10-19
+~_artFlushFindingsRestamp()~) re-stamps the rows whose artwork record just
+arrived (the two artwork findings) and bumps it once per 150 ms batch — only
+when a stamp actually changed. Since 2026-10-19 (~feat/link-site-uvd~) the
+Relationships column's writes queue their rows too (~rel-multi-discogs~), on
+the same 150 ms batches. So during artwork
 loading the next tally walks the source rows once per changed batch; once the
 artwork has settled, a filter pass again walks none.
 
