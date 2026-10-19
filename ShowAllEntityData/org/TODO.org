@@ -1,4 +1,4 @@
-Q* DONE Add abbrev section to CLAUDE.md
+* DONE Add abbrev section to CLAUDE.md
 ** DONE i
 
 Add the following abbreviation section to CLAUDE.md, so whenever I use an abbreviation in my prompt it's recognized with
@@ -859,7 +859,6 @@ I also corrected the manifest entry and added a follow-up to the `DEBUG-NOTES.md
 files to commit are `manifest.json`, `DEBUG-NOTES.md` and the new probe script; `org/TODO.org` is your earlier edit and
 I'd leave it out. Nothing is committed yet. Should I commit them?
 
-
 * DONE indent h3 headers under h2 section before the h2 headerline with the global filter
 ** DONE i
 
@@ -942,6 +941,11 @@ Is it possible to align the contents of the h3 sub-sections under the h2 "Annota
 the screenshot
 
 * DONE make userscript mobile firendly
+
+
+* TODO What's left from the parking lot in AUDIT.org
+
+- that icon-mirror half
 
 * TODO 503
 ** CAA/EAA and Relationships multi section button
@@ -1085,10 +1089,6 @@ Two honest gaps, both recorded rather than buried:
 - Path dedup within a table isn't pinned — it needs a fixture with a sticky column over an artwork column.
 
 
-* TODO What's left from the parking lot in AUDIT.org
-
-- that icon-mirror half
-
 * DONE - The two recorded (unfixed) harness weaknesses:
 ** DONE i
 
@@ -1193,7 +1193,7 @@ e.g. https://musicbrainz.org/search?query=Born+to&type=instrument&limit=25&metho
     MEASUREMENTS.org 2026-10-01: on multi-table pages each row is parsed twice (live clone + master); parse once and copy the attribute (~24 ms → ~12 ms)
 
 
-* bug report for "Credited as" field in real MB edit relationships page
+* TODO bug report for "Credited as" field in real MB edit relationships page
 
 #+begin_example
 As soon as I type "U", for "UK" in the "Credited as" field
@@ -1206,10 +1206,9 @@ I get
 #+end_example
 
 
-* DONE integrate springsteenlyrics.com
-
-
 * TODO fix my release-tracks special script
+
+* DONE integrate springsteenlyrics.com
 
 * DONE add more functionality to the SP parser
 
@@ -1483,10 +1482,10 @@ should also be sticky when scrolling down, even before the h2 header line with t
 So basically I for ALL PTs I want the line with the action buttons + the line with the "mb-status-displays-container"
 ALWAYS be sticky too when srolling down.
 
+* DONE add instrument icons support (), ONLY the icon should show up in the UVD
+
 
 * TODO adapt the logging framework and orig page shine through from majkinetor
-
-* DONE add instrument icons support (), ONLY the icon should show up in the UVD
 
 * TODO add sanojjanos event stuff in a nice popup (cachable)
 
@@ -3143,8 +3142,21 @@ when hovering the avator it should be shown in highest resolution in our interna
 
 [Image #55] there are two column headers missing under the Diff - revision section" - @debug/2columns-missing.html
  
+* DONE column shift in "Release groups" and "Release" sections - https://musicbrainz.org/tag/arena%20rock
 
-* TODO todo for discogs
+On e.g. the PT https://musicbrainz.org/tag/arena%20rock there seems to be a column shift in the "Release groups" and "Release" sections:
+
+The "AC/DC (Australian hard rock band)" after the " by " from the "Release groups" and "Release" columns seems to be wrongly extracted
+#+begin_example
+@debug/tag-arena-rock.html - [Image #1]
+#+end_example
+
+* DONE todo for discogs
+** discogs URLs
+
+https://www.discogs.com/submissions?mode=list&id=599283&page=1&view=flat
+https://www.discogs.com/submissions?mode=list&id=599283&page=1
+
 ** i
 
 ● Pushed: main is at 3c335d0 on origin and feat/discogs-submissions is deleted. One test is still flaky, and it went out that way because you asked me to push first.
@@ -3161,25 +3173,52 @@ when hovering the avator it should be shown in highest resolution in our interna
 
   I'd fix it on a new branch: read the traces, fix the cause, and confirm the test fails before the fix and passes after.
 
-** bugs
+* DONE add new Discogs PT support for user rating pages and make all images shown in "Image" column when hovering
+** DONE i
 
-https://www.discogs.com/submissions?mode=list&id=599283&page=1&view=flat
-https://www.discogs.com/submissions?mode=list&id=599283&page=1
+1.)
 
-not scrollable - https://www.discogs.com/submissions?mode=list&id=599283&page=1#mode=list&id=599283&page=1&item=%2Frelease%2F8164856-Human-Touch%2Fhistory
+add a new Discogs PT support for user rating pages e.g. https://www.discogs.com/users/ratings/vzell?limit=250&page=1
 
-
-* TODO column shift in "Release groups" and "Release" sections - https://musicbrainz.org/tag/arena%20rock
-
-On e.g. the PT https://musicbrainz.org/tag/arena%20rock there seems to be a column shift in the "Release groups" and "Release" sections:
-
-The "AC/DC (Australian hard rock band)" after the " by " from the "Release groups" and "Release" columns seems to be wrongly extracted
 #+begin_example
-@debug/tag-arena-rock.html - [Image #1]
+@debug/discogs-user-ratings.html - IP
 #+end_example
 
-  
-* TODO add support for a "MusicBrainz" column
+2.)
+
+when hovering the "Image" column in Discogs PTs make all images shown in a popup like what we do in the CAA/EAA column on MB PTs
+
+3.)
+
+Bug on PT https://www.discogs.com/submissions?mode=list&id=599283&page=1#mode=list&id=599283&page=1&item=%2Frelease%2F8164856-Human-Touch%2Fhistory
+
+#+begin_example
+@debug/discogs-scroll-bug.html - FRP
+#+end_example
+
+a.)
+
+the page is NOT scrollable downwards and to the right, it renders a browser full fixed number of entries on the FRP 
+
+b.)
+
+filtering and sorting works so
+
+4.)
+
+The Discogs submissions PTs should render the avator also in the UVD of the
+
+#+begin_example
+"Changed by" column at https://www.discogs.com/submissions?mode=list&id=599283&page=1&view=flat / https://www.discogs.com/submissions?mode=list&id=599283&page=1
+"User" at https://www.discogs.com/release/29758150-Fire-Gunar-Live/history
+#+end_example
+
+** DONE error
+
+I now get on e.g. https://www.discogs.com/release/8164856-Bruce-Springsteen-Human-Touch but also on other Discogs PTs in the console @debug/discogs-429.html
+
+* DONE add support for a "MusicBrainz" column on Discogs PTs
+** DONE initial
 
 On all new Discogs PTs add support for a "MusicBrainz" column when the third-party userscript "Import Discogs releases to MusicBrainz" by
 @murdos is present
@@ -3207,6 +3246,55 @@ see e.g the "Columbia" label:
 
 maybe we can reimplement what the third-party userscript does and use the Importer's cache
 
+
+* TODO check discogs artist pages if really ALL master are present + implement master->release(s) drilldown
+
+* TODO add "Space" on the image hover popup in the CAA/EAA column to show ALL images (right now it shows a couple and the a "+ 69")
+
+1.)
+
+add "Space" on the image hover popup in the CAA/EAA column to show ALL images (right now it shows a couple and the a "+ 69"), e.g. on https://musicbrainz.org/release-group/f731060c-05d4-439d-8351-59e5e5eb91a0
+
+2.)
+
+add an option to show bigger/scaled images in the hover popup
+
+
+* TODO add UVD entries to the "Relationships" column for unique counts for amazon link in general not dependant on which country, same for other URL types 
+
+1.)
+
+add UVD entries to the "Relationships" column for unique counts for amazon link in general not dependant on which
+country, same for other URL types
+
+2.)
+
+https://musicbrainz.org/series/bf668806-793f-4131-959f-9124ad76a47b
+
+3.)
+
+https://musicbrainz.org/release/979418e7-c2c1-47e8-805a-bdc2d60c0057
+
+columns
+
+#+begin_example
+URLs - "URL"
+Via release group: <RG> - "Target"
+Sidebar: AME - "Link"
+Sidebar: Search - "Link"
+#+end_example
+
+4.)
+
+Remove
+
+#+begin_example
+<button title="Search &quot;Bruce Springsteen Tracks II: The Lost Albums&quot; on YouTube Music" style="cursor: pointer; --mb-sph-left: 20px; --mb-sph-maxw: 1590px;" class="mb-sph-target mb-sph-inline">YouTube Music Lookup</button>
+#+end_example
+
+from the bottom of the FRP at https://musicbrainz.org/release/979418e7-c2c1-47e8-805a-bdc2d60c0057
+
+
 * TODO add the "work of" to more recording columns in other PTs
 
 Currently on the PT 'artist-recordings'
@@ -3219,8 +3307,30 @@ of works associated to the recordings
 #+end_example
 
 
-* TODO add UVD entries for titles which do NOT follow MB style guidelines on MB PTs and user aour rich tooltip diff popup view to show whats differing
+* TODO Wikipedia(en) card missing from the "EXTERNAL LINKS -> DATABSES" section
 
+Wikipedia(en) card missing from the "EXTERNAL LINKS -> DATABSES" section, e.g. https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0 - 
+
+
+* TODO UVD in URL columns need web site icon support + unique value counts
+
+UVD in URL columns need web site icon support + unique value counts e.g. on https://musicbrainz.org/release/9d451257-ebce-44ec-aad8-b48609bfaf7a
+after clicking the "Credits" button (but the same is true for other PTs after clicking the "Relationships" button, e.g. on https://musicbrainz.org/series/bf668806-793f-4131-959f-9124ad76a47b)
+
+* TODO add UVD entries for titles which do NOT follow MB style guidelines on MB PTs and use our rich tooltip diff popup view to show whats differing
+
+1.)
+
+add UVD entries for titles which do NOT follow MB style guidelines on MB PTs
+
+2.)
+
+use our rich tooltip diff popup view to show whats differing
+
+
+* TODO add warning icon (etc.) support if a MB entitty has multiple Discogs URLs
+
+add warning icon (etc.) support if a MB entitty has multiple Discogs URLs
 
 * TODO Add a must have third-party userscripts section together with the end-user visible changes and what our userscript depends on
 
@@ -3240,7 +3350,7 @@ Suggestions for complete integration
 etc
 
 
-* TODO new non-MB PTs
+* DONE new non-MB PTs
 
 discogs submission list
 
@@ -3277,3 +3387,16 @@ etc. if the corresponding entries in the real sidebar have them
 3.)
 
 Except the h4 "SEARCH" section ALL sections in the h2 "Sidebar" section should be uncollapsed by default
+
+
+* TODO Could the "Page Reloaded" popup dialog directly emulate the click on the corresponding "Show all..." button from which it was triggerd
+** Question
+
+Could the "Page Reloaded" popup dialog directly emulate the click on the corresponding "Show all..." button from which
+it was triggered, by clicking the "OK" button directly (or maybe wait 2 seconds until the user has read the popop dialog
+text) ? If yes, please implement
+
+
+* TODO use the Discogs history diff format LAF in other pageTypes like e.g. on BB pageTypes ==> changes button (must be logged in)
+
+* TODO consolidate more LAF across more PTs
