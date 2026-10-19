@@ -103,10 +103,17 @@ Specs:
   with no note: **another userscript adds it**. The user consented on
   2026-10-11 to it being decorated; only the img's address is read.
 
-Both arrive AFTER load: the raw page has neither. `_sbInitPicture()` is called
+- **An instrument's drawing** (added 2026-10-20, `debug/electric-bass-guitar.html`):
+  MusicBrainz's own server-rendered `#sidebar > div.picture > img` from
+  `static.metabrainz.org/irombook/…` with an "IROMBOOK image" note. It IS in
+  the raw page, so `_sbInitPicture()` finds it at once and the copy is in the
+  h1 before the toolbar is built; nothing in the render rewrites the h1, so
+  it is still first there on the final page.
+
+The two Commons ones arrive AFTER load: the raw page has neither. `_sbInitPicture()` is called
 once at init, right after the required-elements check, on MusicBrainz only
 (`_foreignHost`). It wires a picture that is already there (selector
-`.entity-image .picture img, .commons-image .picture img`, a literal because
+`.entity-image .picture img, .commons-image .picture img, :scope > .picture img`, a literal because
 this runs before its part of the file: TDZ), or watches `#sidebar` with a
 MutationObserver for up to 15 s.
 
@@ -116,9 +123,15 @@ art cache, no referrer), like `_dpArtViewerClick()` does for another site's
 images.
 
 **Rules.**
-- **Only a Commons file** (`_sbCommonsFile()`: the host ends in `wikimedia.org`).
-  The event sidebar's event art already has the artwork viewer, and is left
-  alone.
+- **Only a Commons file or an IROMBOOK drawing** (`_sbPictureSource()`:
+  `_sbCommonsFile()`, the host ends in `wikimedia.org`; `_sbIrombookFile()`,
+  `static.metabrainz.org/irombook/`). The event sidebar's event art already
+  has the artwork viewer, and is left alone.
+- **A drawing differs in three places only**: the card says "IROMBOOK"
+  instead of "Wikimedia Commons"; the viewer gets no `pageUrl` (a drawing has
+  no file page, so the bar shows no link); the copy beside the name carries
+  `mb-sb-avatar-contain` (`object-fit: contain` on white), because a tall
+  transparent line drawing cropped by `cover` is an unrecognisable strip.
 - **The picture's own control** (`_sbPictureControl()`): a `_setTip()` hover
   card ("Artist image · Wikimedia Commons · <file>. Click to open it in the
   viewer."), `role=button`, `tabindex=0`, and click, Enter or Space.
@@ -135,11 +148,18 @@ images.
 **Settings.** `sa_sidebar_picture` (default on) and `sa_sidebar_picture_in_header`
 (default on).
 
-**Specs.** `sidebar-picture.spec.js` (6: both markups) and
-`sidebar-picture.mobile.spec.js` (1). They add the picture late and serve
-upload.wikimedia.org from a 1×1 PNG. A "left alone" test waits one macrotask
+**Specs.** `sidebar-picture.spec.js` (10: both Commons markups, then an
+instrument's drawing) and `sidebar-picture.mobile.spec.js` (1). The Commons
+tests add the picture late and serve upload.wikimedia.org from a 1×1 PNG; the
+instrument tests load `sidebar-picture-instrument-recordings.html` (built by
+`scripts/build-sidebar-picture-instrument-fixture.py`), serve the IROMBOOK host
+from the same PNG, and check the copy leads the h1 before and after "Show all
+Recordings for Instrument". A "left alone" test waits one macrotask
 turn (`observerRan()`): an observer callback is a microtask, so this is a real
-settle, not a sleep. There are 8 mutations in `sidebar-overhaul.json`.
+settle, not a sleep. There are 14 `picture:` mutations in
+`sidebar-overhaul.json` (six of them for the drawing, added 2026-10-20). The "still
+first on the final page" half has no mutation: no code keeps it there, it
+holds because nothing rewrites the h1.
 
 ## "🗂 Sidebar as tables"
 

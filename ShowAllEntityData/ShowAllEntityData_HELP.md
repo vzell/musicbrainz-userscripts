@@ -870,6 +870,11 @@ close every sidebar section; the headings of the main page are left alone.
   the picture already shown. MusicBrainz has switched its own sidebar picture
   off, so on musicbrainz.org today that picture comes from another userscript
   you have installed; MusicBrainz's own works too, should it come back.
+  An instrument's drawing (MusicBrainz shows one from the IROMBOOK on many
+  instrument pages) works the same way on every tab of the instrument: card,
+  viewer, and the copy at the start of the heading, there before and after
+  you load the table. A drawing is shown whole in the copy, not cropped, and
+  its viewer bar has no Commons link.
   Switches: *Sidebar picture: hover card and viewer*, *Sidebar picture beside
   the name*.
 - **The picture in previews.** The link previews of an artist, a label or a

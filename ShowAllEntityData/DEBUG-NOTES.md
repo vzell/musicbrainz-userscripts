@@ -24522,3 +24522,28 @@ Env: 2026-10-19T19:16:01+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
   / `data-mb-…` left. Collection = `17ee2e77-…` (49 recordings, one browse
   page), user tag = `vzell/acoustic rock`. The series is pinned to
   `2b09356c-…`: `discover()` picked a different one on the second build.
+
+## 2026-10-20 — instrument pages: the IROMBOOK sidebar drawing as the sidebar picture (branch feat/instrument-sidebar-picture, WIP.1)
+
+Env: 2026-10-20T01:13:03+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs); snapshot: browser unknown
+
+- **Snapshot:** `debug/electric-bass-guitar.html` (IP of
+  /instrument/0b9d87fa-93fa-4956-8b6a-a419566cc915/recordings, with
+  jesus2099's ALL LINKS decorations in it). The sidebar opens with
+  `<div class="picture"><img src="https://static.metabrainz.org/irombook/bass_guitar/bass_guitar_electric.png"><br><span class="picture-note">IROMBOOK image/…</span></div>`
+  as the FIRST child of `#sidebar` — MusicBrainz's own markup, server-rendered,
+  not wrapped in `.entity-image`/`.commons-image`. `tests/fixtures/rel-instrument-overview.html`
+  (tenor guitar) has the same shape, so it is not a one-off.
+- **Why it was skipped:** `_sbInitPicture()`'s selector only had the two
+  Commons wrappers, and `_sbWirePicture()` rejected any non-Commons host
+  (the guard that keeps the event art out).
+- **Fix:** a third selector arm `:scope > .picture img`; `_sbPictureSource()`
+  accepts Commons or `static.metabrainz.org/irombook/` (`_sbIrombookFile()`),
+  everything else still left alone. Card names IROMBOOK; no viewer page
+  link; the h1 copy gets `mb-sb-avatar-contain` (whole drawing on white).
+- **IP vs FRP:** the drawing is in the raw page, so the copy is prepended at
+  init, before the toolbar; nothing in the instrument renders rewrites the h1
+  (the only `_h1.textContent =` is the disk-load path), so it stays first.
+  Pinned by the new spec rather than by code.
+- **Tests:** 4 new tests in `sidebar-picture.spec.js`; 6 new `picture:`
+  mutations in `sidebar-overhaul.json`, all caught.
