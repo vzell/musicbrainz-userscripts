@@ -883,7 +883,10 @@ close every sidebar section; the headings of the main page are left alone.
   information, labels, release events, external links and tags are small
   cards: facts as *name → value* lines in a column on the left, links as
   chips grouped by kind (Official, Social, Streaming, …) beside them, tags as
-  pills with their votes. In a narrow window the facts come first and the
+  pills with their votes. Pointing at a pill's number explains it: the tag's
+  vote total on this entity (tagging or upvoting adds 1, a downvote takes 1
+  away; MusicBrainz shows a tag only while its total is above 0). Pointing at
+  the tag's name shows its link preview. In a narrow window the facts come first and the
   links below them. A link's chip shows only the link; a link listed under it
   (the Wikipedia article under a Wikidata link) is a small *› en* link after
   it. A link shows the same site icon in front of its name as in the real
@@ -1998,7 +2001,8 @@ window instead of the page. So far: **releases**, **release
 groups**, **recordings**, **works**, **artists**, **labels**, **areas**,
 **instruments**, **events**, **places**, **series**, **collections**, the
 **[info]** link beside every URL, and the
-codes: **ISRCs**, **ISWCs** and **disc IDs**, and **edits** and **editors**.
+codes: **ISRCs**, **ISWCs** and **disc IDs**, **edits** and **editors**, and
+**tags** (a genre or tag link, also the pills of the sidebar's Tags card).
 A **Barcode** cell has a card too: the barcode's format and the releases
 carrying it. So does an entry of a column's **📊 dropdown** that names one
 artist, label, area or other entity: rest the pointer on it. Pinning it with Space
@@ -2038,6 +2042,9 @@ first changes; its window every change, the entities it touches and its notes
 editor card shows the user type, member since and edit counts — nothing
 personal. An open edit is read again on every page load, since its votes
 change.
+A tag card shows whether the tag is a genre, how many entities carry it
+and the kinds with the most of them (*Recordings 129,479*); it is read from
+the tag's own page, since MusicBrainz cannot look a tag up otherwise.
 **Esc** or moving away closes it.
 
 **Press Space** to pin it into a window:
@@ -2065,7 +2072,9 @@ change.
   "(with …)" — linked to the artist, what was recorded there and its posters;
   for a place, its area named the same way, a map link, its links and up to
   100 of its events by date; for a
-  series, every item in order. An **artist, label or place** window shows its
+  series, every item in order; for a tag, its genre, how many of each kind
+  it carries (each linked to the tag's page of that kind) and the ten top
+  entities of every kind. An **artist, label or place** window shows its
   **picture** under the name: the Wikimedia Commons file MusicBrainz links as
   its image or logo, else the one its Wikidata item names (one or two small
   requests to Wikidata, a label's logo first). It is asked only here, never
