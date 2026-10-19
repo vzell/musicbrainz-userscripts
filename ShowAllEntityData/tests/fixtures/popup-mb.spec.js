@@ -1339,7 +1339,11 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
         const facts = area.locator('h4:text-is("Facts") + .mb-dp-kv');
         // As MusicBrainz writes it: the county is passed over.
         const heldAt = facts.locator('dt:text-is("Held at") + dd');
-        await expect(heldAt).toHaveText('OceanFirst Bank Center in West Long Branch, New Jersey, United States');
+        // Three area lookups behind the 1 req/s gate: 3.3–3.9 s on NB-3641
+        // with nothing else running, so the default 5 s left ~1 s for load —
+        // a loaded full run was still at "… New Jersey ◌" (2026-10-19). Same
+        // cause and allowance as the label window's Area row below.
+        await expect(heldAt).toHaveText('OceanFirst Bank Center in West Long Branch, New Jersey, United States', { timeout: 15000 });
         await expect(heldAt.locator('a')).toHaveCount(4);
         await expect(heldAt.locator('a[href="/area/a36544c1-cb40-4f44-9e0e-7a5a69e403a8"]')).toHaveText('New Jersey');
         await expect(heldAt).not.toContainText('Monmouth');
@@ -1384,7 +1388,9 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
         // West Long Branch and Monmouth County answered (the county's parent
         // names New Jersey), New Jersey's own lookup did not, so its parent
         // is unknown: the chain so far, and no spinner — the step has failed.
-        await expect(heldAt).toHaveText('OceanFirst Bank Center in West Long Branch, New Jersey');
+        // The same three rate slots as the event window's test above, so the
+        // same allowance.
+        await expect(heldAt).toHaveText('OceanFirst Bank Center in West Long Branch, New Jersey', { timeout: 15000 });
         const nj = () => areaLookups(log).filter(id => id.startsWith('a36544c1-')).length;
         const tries = nj();
         expect(tries, 'the failed step was asked').toBeGreaterThan(0);
