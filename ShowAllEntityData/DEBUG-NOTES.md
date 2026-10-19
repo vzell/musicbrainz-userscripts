@@ -24239,3 +24239,11 @@ plus a screenshot of the CAA card showing "Van Halen" as the title).
   fixtures and these pageTypes draw the card from tooltipColumns); the
   tag-value/artist-credit/user-ratings/instrument-list specs: 46 passed;
   lint within baseline.
+- **Merge gate:** `test:full` on main (merge `2e26b7f` + fold, 9.99.1376),
+  NB-3641, 2026-10-19T11:51:20–12:01:36+02:00 (10 m 16 s): 1911 passed,
+  1 failed — `popup-mb.spec.js:1322` "the event window: held at with the
+  whole area chain …": the 5 s `toHaveText` ran out while the area chain was
+  still resolving one step at a time ("… West Long Branch, New Jersey ◌").
+  Not on this change's path; passed alone 3/3 (`--repeat-each=3`) and with
+  its whole file 76/76. First recorded flake of that test — if it recurs,
+  the area-chain wait is the place to look, not this fix.
