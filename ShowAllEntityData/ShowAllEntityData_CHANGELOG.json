@@ -1,5 +1,19 @@
 [
   {
+    "version": "9.99.1392",
+    "date": "2026-10-20",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "CAA/EAA artwork card: press Space while it shows to see every image, not just the first 12 and a \"+N\" (Space again goes back to 12). The card cannot scroll, so it shrinks its tiles until it fits the window. Space keeps its usual meaning when nothing is cut off, while you type into a field, and while a link preview card shows.",
+          "CAA/EAA artwork card: hold Shift to draw its tiles bigger (new setting \"Tile size in the artwork card while Shift is held\", 150 px). This also works when Shift is already down as the pointer reaches the icon, and it combines with Space. The tiles are the thumbnails the card already loads, so this costs no request.",
+          "The same Space and Shift keys work on the artwork cards of the relationship-list covers and of discogs.com's Image column."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1391",
     "date": "2026-10-20",
     "sections": [
