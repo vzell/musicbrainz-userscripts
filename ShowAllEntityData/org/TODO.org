@@ -3602,7 +3602,7 @@ etc. if the corresponding entries in the real sidebar have them
 Except the h4 "SEARCH" section ALL sections in the h2 "Sidebar" section should be uncollapsed by default
 
 
-* TODO Could the "Page Reloaded" popup dialog directly emulate the click on the corresponding "Show all..." button from which it was triggerd
+* DONE Could the "Page Reloaded" popup dialog directly emulate the click on the corresponding "Show all..." button from which it was triggerd
 
 Could the "Page Reloaded" popup dialog,
 
