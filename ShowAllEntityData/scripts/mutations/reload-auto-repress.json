@@ -1,0 +1,43 @@
+[
+  {
+    "name": "the reloaded page never presses the button",
+    "why": "THE feature. The note is painted before the press, so a test that only looked for the note would pass with the click gone; the spec pins all 300 rows arriving with no click from the test.",
+    "edits": [
+      { "find": "            btn.click();\n        }, 0);", "replace": "        }, 0);" }
+    ],
+    "spec": "tests/fixtures/reload-auto-repress.spec.js",
+    "grep": "a recorded button is pressed again",
+    "expect": "fail"
+  },
+  {
+    "name": "the flag's URL is not checked",
+    "why": "A flag left behind by another URL in the same tab must not start a fetch nobody asked for on this one.",
+    "edits": [
+      { "find": "        if (rec && rec.href === window.location.href) {", "replace": "        if (rec) {" }
+    ],
+    "spec": "tests/fixtures/reload-auto-repress.spec.js",
+    "grep": "a flag recorded on another URL",
+    "expect": "fail"
+  },
+  {
+    "name": "the guard records no button",
+    "why": "Without the recorded button the reloaded page can only fall back to the dialog — the behaviour this change replaces.",
+    "edits": [
+      { "find": "            const _reloadFlag = _pressedIdx >= 0", "replace": "            const _reloadFlag = false" }
+    ],
+    "spec": "tests/fixtures/reload-auto-repress.spec.js",
+    "grep": "reloads before any fetch work",
+    "expect": "fail"
+  },
+  {
+    "name": "the reload guard is back below the definition merge",
+    "why": "Where it used to stand: after the merge, the removal of the other sections from the visible page and (artist-releasegroups) a whole network pre-fetch pass, all thrown away by the reload. The spec sees it as the merge's '… configured' debug lines printing on the second press.",
+    "edits": [
+      { "find": "        if (isLoaded && !_isResume) {\n            const _pressed", "replace": "        if (false) {\n            const _pressed" },
+      { "find": "        // Stop other scripts immediately when an action button is pressed\n", "replace": "        if (isLoaded && !_isResume) {\n            Lib.debug('meta', 'Second fetch attempt detected (late guard).');\n            sessionStorage.setItem('mb_show_all_reload_pending', 'true');\n            window.location.reload();\n            return;\n        }\n        // Stop other scripts immediately when an action button is pressed\n" }
+    ],
+    "spec": "tests/fixtures/reload-auto-repress.spec.js",
+    "grep": "reloads before any fetch work",
+    "expect": "fail"
+  }
+]

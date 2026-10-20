@@ -24734,3 +24734,48 @@ Env: 2026-10-20T18:18:32+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
   `scripts/mutations/diff-cards.json` (8, all caught); 195 related tests
   (uvd-live-titles, uvd-recording-comments, uvd-event-names, findings-*,
   tooltip-diff, popup-mb, rich-tooltips-liner, …) pass.
+
+## 2026-10-20 — a second press reloads, then presses the same button again (branch feat/auto-repress-after-reload, WIP.1)
+
+Env: 2026-10-20T18:45:36+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+**Asked:** on a final rendered page, a second press of an action button ends
+on the "⚠️ Page Reloaded" dialog ("…click the desired Show all button again").
+Could the script dismiss it and press the button itself, and is the reload
+needed at all?
+
+- **The reload stays.** By the second press the initial page is gone: headings
+  renamed or injected, the other sections removed (`Cleaned UI to target
+  header`), the native tables replaced, module state filled. The guard's stated
+  reason, "column-level filter unresponsiveness" after a second fetch, is a
+  2026-05 workaround whose mechanism was never recorded (see the 2026-09-20
+  entry), so taking it out could only be tested, not reasoned about. A reload
+  is the cheap, known-good way back to a clean page.
+- **The dialog and the second click go.** The guard now stores
+  `{label, index, href}` of the pressed button (`allActionButtons`,
+  `data-label`) in `mb_show_all_reload_pending`; init's
+  `_autoRepressAfterReload()` finds that button again and clicks it. A bare
+  `'true'` (a press from something other than an action button, or a flag
+  written by an older version), another URL, or no matching label falls back
+  to the old dialog.
+- **The guard moved to the top of `startFetchingProcess()`.** It stood after
+  the definition merge, the `Cleaned UI to target header` removal (a visible
+  flicker before the reload) and, on `artist-releasegroups`, the whole
+  official-headers pre-fetch pass — network requests whose results the reload
+  discarded. Nothing between the old and the new position returned early, so
+  moving it changes only what is wasted.
+- **Trap hit while building it:** the dialog's old call site runs BEFORE
+  `statusDisplaysContainer.appendChild(globalStatusDisplay)`, so
+  `globalStatusDisplay.after(note)` there was a silent no-op on a detached
+  node (`after()` without a parent does nothing). The note and the click both
+  run in the `setTimeout(0)`, after the rest of init.
+- `_offerDisambiguationRebuild()`'s "Rebuild table" (`_lastActiveBtn.click()`)
+  is a second press too, so it now reloads and re-runs without a dialog.
+
+**Tests:** `tests/fixtures/reload-auto-repress.spec.js` (6 — the re-press
+fetches all 300 rows with no dialog; four untrusted flags fall back to the
+dialog and fetch nothing; the second press reloads before the merge's
+"… configured" debug lines and records the button).
+`scripts/mutations/reload-auto-repress.json` (4, all caught). The fixture
+harness injects the userscript after `goto`, so a real reload leaves no script
+running; the re-press tests seed the flag before injection instead.

@@ -1,7 +1,7 @@
 [
   {
     "name": "a resume takes the second-fetch reload path",
-    "why": "startFetchingProcess() answers a second press with window.location.reload(), and nothing re-presses afterwards. A resume that took that door would destroy the very rows it exists to keep and leave the user on a bare page. This is the guard whose absence stalled the first five runs of this spec.",
+    "why": "startFetchingProcess() answers a second press with window.location.reload(), and the reloaded page only re-presses the button from scratch. A resume that took that door would destroy the very rows it exists to keep and leave the user on a bare page. This is the guard whose absence stalled the first five runs of this spec.",
     "edits": [
       { "find": "        if (isLoaded && !_isResume) {", "replace": "        if (isLoaded) {" }
     ],

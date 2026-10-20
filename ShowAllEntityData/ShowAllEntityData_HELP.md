@@ -60,7 +60,9 @@ will never need is folded into collapsible sections.
    controls described below.
 
 Pressing the action button a second time reloads the page first. That is
-deliberate — it is the cheapest way to get back to a clean state.
+deliberate — it is the cheapest way to get back to a clean state. After the
+reload the button you pressed runs again by itself; a short note beside the
+status line ("↻ Page reloaded — re-running …") says so, and fades.
 
 ---
 
@@ -2771,8 +2773,8 @@ record's tracklist and the shows its tracks come from (see
 *Previewing the detail pages* under [Page-specific behaviour](#page-specific-behaviour)).
 
 To switch from one kind to the other, press the other button. The page
-reloads first, as it does whenever a second list is loaded, so press it once
-more after the reload.
+reloads first, as it does whenever a second list is loaded, and then runs
+that button by itself.
 
 </details>
 
@@ -3019,7 +3021,8 @@ says so. With several Discogs tabs open, the token helps most. Pointing at
 a button shows what it costs. Bruce Springsteen's discography is 68 requests, about 3
 minutes without a token; more than 50 pages asks you first, as on
 MusicBrainz. Discogs' own page stays as it is below the section. As
-everywhere, pressing a second button reloads the page; press it again then.
+everywhere, pressing a second button reloads the page, which then runs that
+button by itself.
 
 Titles link their Discogs pages, and so do the names in a track's credits
 (one row each; a long list is collapsed, ▶ opens it). The 📊 dropdown knows
@@ -3250,7 +3253,8 @@ dialog is waiting for you — a large listing asks before fetching, and the answ
 is a plain-DOM dialog rather than a browser one, so it may be behind something.
 
 **Filtering stopped responding after a while.** Press the action button again;
-it reloads the page and starts clean. That is what the second press is for.
+it reloads the page and runs again from a clean start. That is what the second
+press is for.
 
 **The Relationships column is empty and nothing is loading.** It is collapsed —
 large tables start that way on purpose. Press **▶🔗** in its header, or click a
