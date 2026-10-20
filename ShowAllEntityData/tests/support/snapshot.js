@@ -234,6 +234,11 @@ const GENERIC_SCRUB_RULES = [
         ''
     ),
     (html) => html.replace(/ui-id-\d+/g, 'ui-id-SCRUBBED'),
+    // Email addresses: not volatile, but private. An editor's OWN profile,
+    // captured logged in (user-profile, 2026-10-20), shows the account's
+    // address in "Email:" where everyone else sees "(hidden)". A committed
+    // baseline must never carry it, whatever page it turns up on.
+    (html) => html.replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g, 'email@SCRUBBED.invalid'),
 ];
 
 /**
@@ -245,7 +250,17 @@ const GENERIC_SCRUB_RULES = [
  *
  * @type {Object<string, Array<(html: string) => string>>}
  */
-const PAGE_TYPE_SCRUB_RULES = {};
+const PAGE_TYPE_SCRUB_RULES = {
+    // An editor's OWN profile captured logged in (2026-10-20): age, gender
+    // and location are personal (the user-page-vzell.html fixture had those
+    // rows removed for the same reason), and "Last login" changes with every
+    // login. Values masked, rows kept, in MusicBrainz's `th`/`td` (raw) and
+    // in the "General information" group's Field/Value cells (rendered).
+    'user-profile': [
+        (html) => html.replace(/(<th>(?:Age|Gender|Location|Last login):<\/th><td>)[\s\S]*?(<\/td>)/g, '$1[SCRUBBED]$2'),
+        (html) => html.replace(/(<td\b[^>]*>\s*(?:Age|Gender|Location|Last login)\s*<\/td>\s*<td\b[^>]*>)[\s\S]*?(<\/td>)/g, '$1[SCRUBBED]$2'),
+    ],
+};
 
 /**
  * Strips or placeholder-replaces known-volatile content before either

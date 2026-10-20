@@ -3631,13 +3631,34 @@ Is it actually really neccessary to do it like we implemented currently or can w
 If yes, please implement
 
 
-* TODO add a reader for collection detail popups
+* DONE add a reader for collection detail popups
 
-add a reader for collection detail popups on e.g.https://musicbrainz.org/user/chaban/collections
+1.)
+
+add a new PT for MB users, e.g. https://musicbrainz.org/user/chaban
+
+#+begin_example
+@debug/user-chaban.html - IP - chaban
+@debug/user-vac31.html - IP - Vac31
+#+end_example
+
+2.)
+
+a.)
+
+add a reader for richer collection detail popups (than we have now) on e.g.https://musicbrainz.org/user/chaban/collections
 
 #+begin_example
 @debug/chaban-collections-initial.html 
 #+end_example
+
+b.)
+
+read a couple of the actual referenced collections by yourself to get an idea of how collection pages look like
+
+3.)
+
+make some nice rich HTML based mockups
 
 
 * TODO consolidate more LAF across more PTs

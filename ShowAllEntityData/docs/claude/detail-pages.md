@@ -206,9 +206,10 @@ hosts (kept, decided 2026-10-07).
   `area-rels+url-rels`, window `event?place=…&limit=100` sorted by date (the
   browse is not); series — one lookup with every item-kind relation (R1),
   items by `ordering-key` (the lookup is not in order) (9.99.1275); ISRC
-  (`artist-credits`), ISWC, disc ID and collection — one lookup each, no extras
+  (`artist-credits`), ISWC and disc ID — one lookup each, no extras
   (9.99.1276); url, the "[info]" link (U2, section "MusicBrainz URL entities"
-  below); tag, read from its page (section "MusicBrainz: tag cards" below).
+  below); tag and collection, read from their pages (sections "MusicBrainz:
+  tag cards" and "MusicBrainz: collection cards" below).
   Browse keys: `pop:browse:<entity>?<query>` (`_mbPopBrowse()`).
 - **Pictures** (artist, label, place; `sa_pop_mb_image`, the sidebar overhaul's
   part 4): the window shows the entity's Commons picture, from an `image`/`logo`
@@ -220,9 +221,9 @@ hosts (kept, decided 2026-10-07).
   `/cdtoc/`); `_MB_POP_CODE_TYPES` maps the page segment to the kind and Web
   Service path — a disc ID's page is `/cdtoc/<id>`, its lookup
   `/ws/2/discid/<id>`, and the target's `url` (↗, Live page) keeps the PAGE's
-  segment. A kind may add `failNote(detail)` to its failure line: a private
-  collection answers 401 (the Web Service shows public collections only) and
-  its card says "It is probably private." — still not kept, as any failure.
+  segment. A kind may add `failNote(detail)` to its failure line (a page
+  kind too, `_mbPopPageKind()`): a collection we may not see says so ("It
+  may be private, or no longer exist.") — still not kept, as any failure.
 - **The setlist is MusicBrainz's markup** (`_mbPopSetlist()`): `@ ` line-up
   artist, `# ` comment (between artists, the billing word "&"/"with"),
   `* ` song. The window LINKS `[mbid|name]` tokens (`_mbPopSetlistLine()`,
@@ -820,6 +821,64 @@ everything the card needs in one request.
   (`scripts/fetch-mb-page-fixture.js /tag/alternative%20rock`). Specs:
   `popup-mb.spec.js` "tags, read from the page", `sidebar-inline.spec.js`
   "tag pills"; mutations `scripts/mutations/tag-reader.json`.
+
+## MusicBrainz: collection cards, read from the page (2026-10-20)
+
+The collection kind was a Web Service lookup until 2026-10-20; it is now a
+PAGE kind (`_mbPopPageKind()`, `wide: true`). The Web Service answers a
+collection's name, type, `type-id`, `entity-type`, `<entity>-count` and
+`editor` only — no description, no collaborators, no subscribers, neither in
+the lookup nor in `/ws/2/collection?editor=` (probed 2026-10-20). The page
+has them. Mockup picked 2026-10-20:
+https://claude.ai/artifact/KtfNY1XfjyJoPb8fGjLGeu (25 entries a window page,
+a pager, covers, eight entries on the card).
+
+- **Path:** unchanged, `_MB_POP_PATH_RE`'s `collection`. Key
+  `pop:page:collection:<MBID>`; page n > 1 of the window's pager is its own
+  record, `pop:page:collection:<MBID>:p<n>` (`_mbCollKey()`, `_mbCollLoad()`).
+- **`_mbParseCollectionPage()`** (selectors in DEBUG-NOTES.md, 2026-10-20 "what
+  a collection page holds"): the name from `.collectionheader h1`, public from
+  the subheader, the sidebar's Owner / Type / "Number of entities", the
+  collaborators from `div.collaborators` (always there, EMPTY when none), the
+  description from `div.description` through `_mbEditsHtml()` (the edits'
+  sanitizer: links kept, other userscripts' classes dropped), the entity kind
+  and plural from `#content`'s own h2, the rows and the page count. **Every
+  `table.tbl` is read**: a release group collection's page is one table per
+  release group type, each after its h3 ("Album + Compilation"); the first
+  alone held 65 of 100 rows, and the pager then asked for a page 3 that does
+  not exist. The h3 becomes a "Type" column in front. A row's entity is its
+  first link to a bare page of the table's kind; its cells are kept as safe
+  HTML except `_MB_COLL_SKIP_COLS` (Rating, Begin area, End area) and an
+  event's Artists. `.caa-icon` marks a row with artwork.
+- **Card:** pills (type, size via `_mbCollHolds()`, pages, public/private),
+  Owner, Collaborators, About (the description's text, clamped to two lines),
+  the first `_MB_COLL_CARD_ROWS` (8) entries in the two-column
+  `.mb-dp-tracks` list.
+- **Window:** facts and the whole description on the left; on the right
+  `_MB_COLL_WIN_ROWS` (25) entries in `_mbPopTableHtml()` (never `tbl`) with
+  ◀ ▶ (`_mbCollAreaClick()`, `_mbCollUi`). A MusicBrainz page holds 100, so
+  slices 1–4 cost nothing and slice 5 reads `?page=2` — only then
+  (`__saTest.mbPopStatus()` lets the spec show page 2 was not even started).
+  Release and release group collections show the slice's covers as
+  `coverartarchive.org/<kind>/<MBID>/front-250` images, only for rows the
+  page marks with `.caa-icon`: no CAA API request, and only in the window
+  (Space), never on a hover.
+- **No editing history** (H, "✎ Editing history"): a collection's
+  `/collection/<MBID>/edits` says "Found 0 edits" logged in and did not load
+  within 90 s logged out (probed twice, 2026-10-20), so `_mbEditsSubject()`
+  still returns null for it. The window does not link "Open edits" /
+  "Editing history" either.
+- **Never read:** the pending-edits count beside "Open edits"
+  (`.jesus2099PendingEditsCount`), the "PRINT ALL PAGES" item in the
+  pagination (the page count comes from `a[href*="page="]` only), flag
+  markup in the description (`_MB_EDITS_FOREIGN_CLS`).
+- Fixtures (`scripts/fetch-mb-page-fixture.js`, 2026-10-20):
+  `collection-page-coverart-video.html` and `-p2.html` (chaban's public
+  "Cover art: Video", committed with the user's consent),
+  `collection-page-attending.html` (the user's own, empty). Specs:
+  `popup-mb.spec.js` "ISRC, ISWC, disc ID, collection" (five collection
+  tests), `popup-mb.mobile.spec.js` (tap and ▶); mutations in
+  `scripts/mutations/popup-mb.json`.
 
 ## MusicBrainz: an entity's editing history in the window (2026-10-20)
 

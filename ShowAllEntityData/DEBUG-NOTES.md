@@ -24779,3 +24779,95 @@ dialog and fetch nothing; the second press reloads before the merge's
 `scripts/mutations/reload-auto-repress.json` (4, all caught). The fixture
 harness injects the userscript after `goto`, so a real reload leaves no script
 running; the re-press tests seed the flag before injection instead.
+
+## 2026-10-20 — what a collection page holds, for a page-reading collection preview (branch feat/user-and-collection-pages)
+
+Env: 2026-10-20T20:15:21+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium, anonymous (scripts/fetch-mb-page-fixture.js) · no Tampermonkey
+
+**Why:** the collection preview reads `/ws/2/collection/<id>?fmt=json`, which
+carries `name`, `type`, `type-id`, `entity-type`, `<entity>-count` and
+`editor` only. Probed the same day: no description, no collaborators, no
+subscribers anywhere in WS/2, neither in the lookup nor in
+`/ws/2/collection?editor=<name>`. curl and WebFetch get "Verifying your
+browser" for the HTML, so the pages were saved through a real Chromium.
+
+**Saved (debug/, gitignored, chaban's public collections):**
+`collection-artist-vtuber.html` (artist, 950, 2 collaborators),
+`collection-rg-coverart-video.html` (release group, 196, 4 collaborators),
+`collection-release-video-yt.html` (release, 255),
+`collection-wishlist-wanted.html` (type "Wishlist", 6, none),
+`collection-event-virtual.html` (event, 9), `collection-area-historical.html`
+(area, 68), `collection-missing.html` (unknown MBID),
+`user-vzell-collections.html` (the user's own: two empty event collections).
+
+**Shape, the same on all six:**
+- `#content > div.collectionheader`: `h1 > a[href=/collection/<id>] > bdi`
+  (name), `p.subheader` "~ Public collection by <a href=/user/<owner>>"
+  (+ "See all of <owner>'s public collections").
+- `div.tabs`: one tab, "Overview".
+- `div.description`: `<h2>Description</h2>` then the formatted text (`p > bdi`,
+  `ul`, links `rel=nofollow`); absent when there is none.
+- `div.collaborators`: ALWAYS present; EMPTY when there are none, otherwise
+  `<h2>Collaborators</h2><p>` with comma-separated `a[href^="/user/"]`.
+- `<h2>` with the entity kind's plural ("Artists", "Release groups", …), then
+  `form[method=post]` > `nav > ul.pagination` (only with more than one page) +
+  `table.tbl`. **100 rows a page** (the artist collection: 10 pages for 950).
+- Columns per kind: artist — Artist, Type, Gender, Area, Begin, Begin area,
+  End, End area, Rating; release group — Year, Title, Artist, Rating,
+  Releases; release — Release, Artist, Format, Tracks, Country/Date, Label,
+  Catalog#, Barcode, Rating; event — Event, Type, Artists, Location, Date,
+  Time, Rating; area — Area, Type. The main link is the first
+  `a[href^="/<kind>/"]` with a `bdi` in the row (release group: 2nd column).
+- `#sidebar`: `h2.collection-information` + `dl.properties` — "Owner:",
+  "Type:" (`dd.type`), "Number of entities:"; `h2.editing` + `ul.links`
+  ("Open edits", "Editing history"). Logged in it adds Subscriptions
+  (Subscribe/Subscribers) and Export; a recording collection adds "Play on
+  ListenBrainz" (`debug/collection-recordings-initial.html`).
+- Unknown MBID: no `#content`, `#page` says "Collection not found".
+
+**Not to be read** (other userscripts, seen in the older logged-in snapshot):
+`.jesus2099PendingEditsCount` next to "Open edits", the "PRINT ALL PAGES"
+`li` in `ul.pagination`, and our own `#mb-show-all-controls-container`.
+
+## 2026-10-20 — user-profile pageType (WIP.1) and the collection preview read from the page (WIP.2) (branch feat/user-and-collection-pages)
+
+Env: 2026-10-20T21:31:01+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Mockup picked 2026-10-20 (https://claude.ai/artifact/KtfNY1XfjyJoPb8fGjLGeu):
+profile as tables; collection card with eight entries; window with 25 entries,
+a pager, covers on Space.
+
+- **`user-profile`** (`applyUserProfileToTables()`, docs/claude/fetch-and-render-pipeline.md
+  "An editor's profile"). The committed fixture `user-page-vzell.html` is the
+  LOGGED-OUT shape: statistics cells hold counts only, the votes table has no
+  "Total effective votes" row and no links. The logged-in shape
+  (`debug/user-chaban.html`) adds "(view)"/"(N%)" after the counts. The first
+  spec run failed on exactly that: the converter was right, the spec assumed
+  one shape. The spec now covers both (the logged-in shape planted).
+  Sub-tables start collapsed, as on every multi page: a sort-icon click needs
+  `ensureSubTableVisible()` first.
+- **Collection preview.** A release group collection's page is NOT one table:
+  MusicBrainz writes one `table.tbl` per release group type, each after an h3
+  ("Album", "Album + Compilation", …; chaban's "Cover art: Video" page 1 has
+  seven, 65 + 4 + 3 + 3 + 4 + 20 + 1 = 100 rows). Reading the first table
+  only made the pager compute 65 rows a page and ask for a `?page=3` that
+  does not exist (a 404 in the window). The first structure probe (Step 1,
+  above) had printed "rowCount: 65" for that page and it went unnoticed. All
+  tables are read now, with the h3 as a "Type" column.
+- **H (editing history) stays off collections**, although the review asked
+  for it: `/collection/<MBID>/edits` timed out twice logged out (90 s,
+  `fetch-mb-page-fixture.js`, again today), and logged in it says "Found 0
+  edits" (2026-10-20 entry above, org/mb-edit-history.org). An H that opens an
+  empty or hanging window helps nobody; reported back to the user.
+- **No sleep in the spec**: "page 2 is read only when the pager gets there"
+  first used `waitForTimeout`, which the lint baseline refuses
+  (`playwright/no-wait-for-timeout`). A request started early waits for its
+  rate slot, so "not in the request log" proves nothing. The new test hook
+  `__saTest.mbPopStatus(key)` reads `_mbPop` directly: null means never
+  started. The mutation "the window reads page 2 at once" passed against the
+  log-only assertion and fails against the hook.
+
+Tests: `tests/fixtures/user-profile.spec.js` (6), `popup-mb.spec.js` collection
+(5 new, replacing 2 Web Service tests), `popup-mb.mobile.spec.js` (1).
+Mutations: `scripts/mutations/user-profile.json` (8), `popup-mb.json` (9
+collection entries replacing 1) — all caught.
