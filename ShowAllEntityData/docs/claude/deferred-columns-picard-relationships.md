@@ -335,6 +335,26 @@ The traps. Every one of them fails silently:
   snapshot harness serializes the whole `documentElement`, so a page-level class
   drifts every rendered baseline, including pageTypes with no Relationships
   column at all.
+- **Pseudo-element slots of a loaded cell (2026-10-21, WIP.1): `::before` is
+  the finding's ⚠️/❌, `::after` is the hover ⟳.** The load states own
+  `::before` while a cell is NOT loaded (or loading, or failed); a loaded cell
+  with icons has no `::before` of its own, so a finding (`rel-multi-site`,
+  docs/claude/findings.md) draws there, absolute at the right edge
+  (`td.mb-rel-cell[data-mb-finding]` rules beside the generic finding CSS).
+  It used to share the generic `td[data-mb-finding]::after` — and the ⟳
+  hover rule swapped only that pseudo-element's `content`, so the ⟳ took the
+  ⚠️'s absolute place at the right edge on every hover
+  (debug/multiple-discogs-relationships.html). The cell is `font-size: 0`,
+  so its finding padding is `18px`, never em. **The hover title keeps the
+  finding**: `_relCellTitleHandler()` writes finding text + blank line +
+  hint (`_findingTitle()`, shared with `_writeFindingAttrs()`), never the hint
+  alone on a cell with `data-mb-findings`.
+- **An icon's popup stack starts with the cell's finding box**
+  (`_relStackParts()` → `_relFindingNoteHtml()`), on all three paths: the
+  preview card's `#mb-dp-notes` (kind `tip`, the amber border),
+  `#mb-rel-tooltip`, and `#mb-stat-tooltip` (`_tipTextToHtml()`'s
+  Relationships early return). Built from `_FINDING_BY_ID` and the icons,
+  never from the cell's title.
 - **The progress badge is `attr()`, never header text**, for the same reason
   as the toggle's own glyph: this `<th>`'s text feeds `colName` derivation,
   export and the 📊 dropdown. And its refresh is also where the table's 📊

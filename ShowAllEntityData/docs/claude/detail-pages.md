@@ -52,6 +52,19 @@ preview setting on changes nothing"` (every FOREIGN preview setting on, an
 
 ## The popup engine: sources (org/iframe.org, Phase 1)
 
+**Gate order (2026-10-21, WIP.3, org/initial-page-footprint.org):**
+1. `sa_pop_enabled` (master, default on), at the call site
+   `if (pageType && headerContainer && …) _initDetailPreview()`: off, the
+   engine is never installed — no listener, no `#mb-dp-style`, no request,
+   on every host.
+2. `_initDetailPreview()` itself installs only when some source is enabled.
+3. `sa_pop_initial_page` (default on), FIRST in `_popResolve()`: off, on
+   MusicBrainz (`!_foreignHost`) nothing resolves while `!isLoaded` — the
+   initial page, before a button rendered the table or a disk load drew
+   one. `isLoaded` is declared far below; reading it at event time only is
+   safe because the init IIFE is synchronous. Foreign hosts ignore it.
+4. Each source's `enabled()` (the `sa_pop_*` keys), then `needsCtrl()`.
+
 The card and the dialog are an engine that serves SOURCES (`_popSources()`,
 built once; `_popResolve(node)` finds the first enabled source whose
 `selector` matches `node.closest()` and whose `resolve()` accepts it, and

@@ -753,7 +753,7 @@ its own switch there, plus one for their yellow tint.
 | ⚠️     | Invalid ISRC / ISWC / barcode format                            | ISRCs, ISRC, ISWC, Barcode                  |
 | ⚠️     | Artwork has no Front image (releases with artwork only)         | CAA                                         |
 | ⚠️     | Physical release artwork has no Medium image                    | CAA (needs a Format column)                 |
-| ⚠️     | Several Discogs links in Relationships (once the column loaded) | Relationships                               |
+| ⚠️     | Several links to one site in Relationships (once loaded)        | Relationships                               |
 | ⚠️     | Pending edits                                                   | any column                                  |
 | ⚠️     | Live credit without a date                                      | Release tracklist: credit columns           |
 | ❌    | Track and recording length far apart                            | Release tracklist: Length, Recording length |
@@ -908,8 +908,13 @@ close every sidebar section; the headings of the main page are left alone.
   corner of the sidebar closes the whole sidebar and opens it again; closed,
   the tab waits at the right edge of the window. On a page wider than the
   window the opened sidebar stays at the window's right edge, in sight at
-  any horizontal scroll. *Start with sidebar collapsed* opens pages with it
-  closed, without the slide.
+  any horizontal scroll. The tab is there as soon as the page opens, before
+  any button is pressed, with the sidebar open and the page laid out as
+  MusicBrainz draws it; there it closes and opens without the slide. Once a
+  button has rendered the table, *Start with sidebar collapsed* closes it
+  (without the slide). *Sidebar handle before a button is pressed* switches
+  the early tab off; *Start with sidebar collapsed before a button is
+  pressed* closes the sidebar from the start.
 - **Other scripts.** Whatever another userscript adds to the sidebar stays
   where it put it. Its headings open and close like the others; nothing of it
   is read or moved. There are two exceptions: the sidebar picture below, and
@@ -1190,6 +1195,16 @@ SpringsteenLyrics, …), MusicBrainz's relationship type, and the full URL.
 While a filter matches the cell, a box above it lists all the row's links
 with the filter's marks and marks the icon you point at ("◂ this icon"). With
 link previews on, the link's preview card shows under those boxes.
+
+**Several links to the same site** (two Discogs pages, two amazon.de products,
+…) are a ⚠️ WARNING: the cell turns light yellow with a ⚠️ at its right edge.
+Hovering an icon of such a cell shows the warning first, naming every site
+involved with its links, and marks the icon you point at. The cell's own
+tooltip names them too, above the reload hint; the `⟳` still appears right
+after the icons. Different hosts count as different sites, so amazon.de and
+amazon.com, or music.apple.com and itunes.apple.com, never flag. Hosts listed
+under *Sites allowed more than one link in Relationships* (⚙️, Findings) never
+count.
 
 **An automatic follow-up pass** retries failures once the first load drains,
 after a 30-second pause, at most twice per page, and never at all when more than
@@ -1520,7 +1535,7 @@ you automatically.
 | 🔍 Expand release and release groups            | Inline ▶/▼ expanders                                                                                                                                                                                                                                                  |
 | ▶️ Expand truncated cells                        | Whether a clipped cell offers an expander, and how it looks                                                                                                                                                                                                           |
 | 📑 Show single-table                            | The client-side sub-table snapshot button and its colours                                                                                                                                                                                                             |
-| ⚠️ Findings                                      | The ⚠️ WARNING / ❌ ERROR menus on or off; one switch per newly highlighted finding (ALL UPPERCASE, truncated, track ≠ recording name, low quality, pending edits, ISRC, ISWC, barcode, live credit dates, capitalized ETI, several Discogs links in Relationships); the extra title information keyword list; "Check title style automatically", the five title-style warnings and their tint |
+| ⚠️ Findings                                      | The ⚠️ WARNING / ❌ ERROR menus on or off; one switch per newly highlighted finding (ALL UPPERCASE, truncated, track ≠ recording name, low quality, pending edits, ISRC, ISWC, barcode, live credit dates, capitalized ETI, several links to one site in Relationships, with a list of sites allowed several); the extra title information keyword list; "Check title style automatically", the five title-style warnings and their tint |
 | 💿 Release tracklist                            | Every tracklist column family, credit colours, live-date flagging, the ARs column                                                                                                                                                                                     |
 | 🔖 Barcode highlight                            | Identical-barcode highlighting                                                                                                                                                                                                                                        |
 | 🔖 Barcode validation                           | GS1 format/check-digit validation, the 📊 Validity/Format/Same As sections                                                                                                                                                                                            |
@@ -1538,7 +1553,7 @@ you automatically.
 | 💿 brucespringsteen.it                          | Switch on the brucespringsteen.it record database (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                           |
 | 📚 Brucebase                                    | Switch on the Brucebase song list, Relations and Recent changes and, separately, its year pages (all off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                         |
 | 💿 Discogs                                      | Switch on discogs.com's master, release, artist, label, submissions, user and ratings pages (off by default), and the MusicBrainz column with murdos' importer userscript (on; its automatic lookups on); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                          |
-| 🔎 Link previews on MusicBrainz                 | The cards of the links on MusicBrainz pages (on by default; on a phone or tablet off unless you tick the *… on touch devices* boxes), how long their answers are kept, the release group window's size; see [Page-specific behaviour](#page-specific-behaviour)     |
+| 🔎 Link previews on MusicBrainz                 | The master switch of every link preview and the one for the page before a button is pressed; the cards of the links on MusicBrainz pages (on by default; on a phone or tablet off unless you tick the *… on touch devices* boxes), how long their answers are kept, the release group window's size; see [Page-specific behaviour](#page-specific-behaviour)     |
 | 🔎 Every preview                                | Show the MusicBrainz link previews and the Springsteen sites' detail-page previews on a plain hover (on by default), or only while Ctrl is held                                                                                                                       |
 
 </details>
@@ -2097,6 +2112,15 @@ releases.
 
 <details>
 <summary>Link previews on MusicBrainz</summary>
+
+**Two switches above all the others** (⚙️ Settings → 🔎 LINK PREVIEWS ON
+MUSICBRAINZ, both on by default): *Link previews (hover card and Space
+window)* turns every preview off at once (MusicBrainz, external links, the
+release page's release-group card and the other supported sites), and then
+the script adds nothing for them to any page. *Link previews also before a
+button is pressed*, switched off, keeps a supported page as MusicBrainz draws
+it until a button has rendered the table (or a saved one is loaded); from
+then on the previews work as set below.
 
 With ⚙️ Settings → 🔎 LINK PREVIEWS ON MUSICBRAINZ → *Preview linked entities
 on hover* switched on (it is, unless you switch it off), the links on the page

@@ -173,8 +173,8 @@
     "why": "The detector is the whole finding.",
     "edits": [
       {
-        "find": "            test: cell => _findCellDiscogsRelUrls(cell).length >= 2,",
-        "replace": "            test: cell => _findCellDiscogsRelUrls(cell).length >= 99,"
+        "find": "            test: cell => _findCellRelSiteDupes(cell).length > 0,",
+        "replace": "            test: cell => _findCellRelSiteDupes(cell).length > 99,"
       }
     ],
     "spec": "tests/fixtures/rel-column-site-kind-discogs.spec.js",
@@ -186,7 +186,7 @@
     "why": "Two raw strings of ONE page are not two links: without the origin+path key the release/4?ev=rr row is flagged too.",
     "edits": [
       {
-        "find": "            const key = `https://${host.replace(/^www\\./, '')}${u.pathname.replace(/\\/+$/, '')}`;",
+        "find": "            const key = `https://${host}${u.pathname.replace(/\\/+$/, '')}`;",
         "replace": "            const key = k.textContent;"
       }
     ],
@@ -225,7 +225,7 @@
     "why": "While the finding is ticked, a row stamped later must be filtered in; only _LATE_FINDING_IDS decides. Not visible here: every cell is written before the tick, so nothing is stamped while it filters.",
     "edits": [
       {
-        "find": "    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-discogs'];",
+        "find": "    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site'];",
         "replace": "    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS];"
       }
     ],

@@ -5,7 +5,7 @@
 //  - 📊 "Relationship icons - Site kind" (item 3): amazon.com and amazon.de
 //    are two hosts of one site; "Relationship icons" lists them apart, the
 //    new section counts them as ONE "amazon.*" entry.
-//  - ⚠️ "Several Discogs links in Relationships" (rel-multi-discogs): a cell
+//  - ⚠️ "Several links to one site in Relationships" (rel-multi-site, until WIP.2 rel-multi-discogs): a cell
 //    showing two or more DIFFERENT Discogs URLs is a WARNING.
 //
 // Shell: the releasegroup-releases raw snapshot (7 releases, 2 sub-tables,
@@ -21,7 +21,7 @@
 //     Discogs URLs (a "?…" variant of one URL is one) — a DOM oracle;
 //   - FILTER: clicking the row leaves exactly those rows, clicking again
 //     restores every row;
-//   - LOOK: the flagged cell has the warn tint and the generic ⚠️; with the
+//   - LOOK: the flagged cell has the warn tint and the ⚠️ (its ::before, not the generic ::after); with the
 //     tint setting off no tint, the menu row stays;
 //   - SURVIVAL: the stamp outlives a filter re-render (the master was
 //     stamped — multi-table re-renders clone it).
@@ -120,7 +120,7 @@ test.describe('Relationships column: 📊 Relationship icons - Site kind', () =>
     });
 });
 
-test.describe('finding: Several Discogs links in Relationships', () => {
+test.describe('finding: Several links to one site in Relationships (Discogs cases)', () => {
     /** Rows (all tables) whose cell holds 2+ distinct Discogs URLs. */
     const flaggedOracle = async (page) => (await cellOracle(page)).reduce((n, t) => n + t.rows.filter((r) => r.discogs >= 2).length, 0);
 
@@ -128,32 +128,32 @@ test.describe('finding: Several Discogs links in Relationships', () => {
         await open(page);
         const expected = await flaggedOracle(page);
         expect(expected, 'premise: two flagged rows; the query variant is not one').toBe(2);
-        await expect.poll(async () => (await findingRow(page, 'warn', 'rel-multi-discogs') || {}).count,
+        await expect.poll(async () => (await findingRow(page, 'warn', 'rel-multi-site') || {}).count,
             { timeout: 15000, message: 'the re-stamp after the column loaded' }).toBe(expected);
 
-        const cells = await page.evaluate(() => Array.from(document.querySelectorAll('table.tbl tbody td[data-mb-findings~="rel-multi-discogs"]')).map((td) => ({
+        const cells = await page.evaluate(() => Array.from(document.querySelectorAll('table.tbl tbody td[data-mb-findings~="rel-multi-site"]')).map((td) => ({
             rel: td.classList.contains('mb-rel-cell'),
             bg: getComputedStyle(td).backgroundColor,
-            after: getComputedStyle(td, '::after').content,
+            before: getComputedStyle(td, '::before').content,
         })));
         expect(cells).toHaveLength(expected);
-        cells.forEach((c) => expect(c).toEqual({ rel: true, bg: WARN_BG, after: '"⚠️"' }));
+        cells.forEach((c) => expect(c).toEqual({ rel: true, bg: WARN_BG, before: '"⚠️"' }));
 
-        await clickFinding(page, 'rel-multi-discogs');
-        await expect.poll(async () => findingRowState(page, 'rel-multi-discogs')).toEqual({ visible: expected, withFinding: expected });
-        await clickFinding(page, 'rel-multi-discogs');
+        await clickFinding(page, 'rel-multi-site');
+        await expect.poll(async () => findingRowState(page, 'rel-multi-site')).toEqual({ visible: expected, withFinding: expected });
+        await clickFinding(page, 'rel-multi-site');
         await expect.poll(async () => (await findingRowState(page)).visible).toBe(RG_ROWS);
 
         // A filter re-render clones the master rows: the stamp is on them too.
         await typeGlobalFilter(page, 'zzzz-nothing');
         await typeGlobalFilter(page, '');
-        await expect.poll(async () => (await findingRowState(page, 'rel-multi-discogs')).withFinding).toBe(expected);
+        await expect.poll(async () => (await findingRowState(page, 'rel-multi-site')).withFinding).toBe(expected);
     });
 
     test('LOOK: with the tint setting off no tint, the menu row stays', async ({ page }) => {
         await open(page, { sa_findings_tint_rel_multi_discogs: false });
-        await expect.poll(async () => (await findingRow(page, 'warn', 'rel-multi-discogs') || {}).count, { timeout: 15000 }).toBe(2);
-        const cells = await page.evaluate(() => Array.from(document.querySelectorAll('table.tbl tbody td[data-mb-findings~="rel-multi-discogs"]'))
+        await expect.poll(async () => (await findingRow(page, 'warn', 'rel-multi-site') || {}).count, { timeout: 15000 }).toBe(2);
+        const cells = await page.evaluate(() => Array.from(document.querySelectorAll('table.tbl tbody td[data-mb-findings~="rel-multi-site"]'))
             .map((td) => ({ level: td.dataset.mbFinding || null, bg: getComputedStyle(td).backgroundColor })));
         expect(cells).toHaveLength(2);
         cells.forEach((c) => { expect(c.level).toBeNull(); expect(c.bg).not.toBe(WARN_BG); });

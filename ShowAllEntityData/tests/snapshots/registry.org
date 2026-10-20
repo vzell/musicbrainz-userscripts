@@ -94,6 +94,22 @@ Not affected, and worth knowing so the diff is not over-read:
     `npm test` reads a snapshot baseline at all. The review window expiring can
     never turn the suite red.
 
+** Several-links finding and sidebar-handle stylesheets (branch feat/rel-multi-site-and-initial-page, 2026-10-21) — NOT yet re-captured
+
+A script change, not upstream movement. In every =rendered.html=:
+- the generic finding stylesheet gains the =td.mb-rel-cell[data-mb-finding]=
+  rules (the Relationships finding's ⚠️ on =::before=);
+- the sidebar handle's one stylesheet is split in two: the handle/collapsed
+  rules (no id, as before) and =<style id="mb-sidebar-layout-style">= with
+  the =#page=/=#content= layout and the slide transitions — same rules, new
+  grouping and order;
+- a cell that carries =rel-multi-site= (was =rel-multi-discogs=) shows the new
+  id in =data-mb-findings=, only on pages whose Relationships column loaded.
+
+No raw-baseline change: the IP handle (=#sidebar-toggle-handle= before any
+button) is added by the script at runtime, and =raw.html= is captured without
+it.
+
 ** Relationships per-cell glyph stylesheet (branch rel-column-batch-and-cell-states)
 
 A script change, not upstream movement — recorded here so that a re-capture

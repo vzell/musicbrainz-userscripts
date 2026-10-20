@@ -468,7 +468,21 @@
             label: "Start with sidebar collapsed",
             type: "checkbox",
             default: true,
-            description: "Automatically collapse the sidebar when the consolidated view is first rendered, freeing up horizontal space immediately. Only takes effect when 'Collabsable sidebar' is also enabled."
+            description: "Automatically collapse the sidebar when a button has rendered the consolidated view (or a saved one is loaded), freeing up horizontal space immediately. Only takes effect when 'Collabsable sidebar' is also enabled."
+        },
+
+        sa_sidebar_handle_initial_page: {
+            label: "Sidebar handle before a button is pressed",
+            type: "checkbox",
+            default: true,
+            description: "Show the sidebar's ◀/▶ handle on a supported MusicBrainz page from the start, not only once a button has rendered the consolidated view. The page keeps MusicBrainz's own layout while the sidebar is open. Only takes effect when 'Collabsable sidebar' is also enabled."
+        },
+
+        sa_sidebar_collapsed_initial_page: {
+            label: "Start with sidebar collapsed before a button is pressed",
+            type: "checkbox",
+            default: false,
+            description: "With the handle shown from the start, collapse the sidebar right away too. Off (the default), the sidebar stays open until a button renders the consolidated view; 'Start with sidebar collapsed' decides from there."
         },
 
         sa_sidebar_remember_sections: {
@@ -2759,21 +2773,34 @@
                          'Medium image.'
         },
 
+        // The two keys below still say "discogs": the finding covered Discogs
+        // only until WIP.2, and keeping the keys keeps every saved value.
         sa_findings_rel_multi_discogs: {
-            label: 'Find Relationships cells with more than one Discogs link',
+            label: 'Find Relationships cells with more than one link to the same site',
             type: 'checkbox',
             default: true,
-            description: 'An entity whose Relationships column shows two or more different Discogs URLs is a ' +
-                         'WARNING ("Several Discogs links in Relationships"). Known once the column has loaded ' +
-                         '(the Relationships column must be on); the ⚠️ menu count grows while it loads.'
+            description: 'An entity whose Relationships column shows two or more different URLs on the same site ' +
+                         '(host without "www.": two Discogs pages, two amazon.de products, …) is a WARNING ' +
+                         '("Several links to one site in Relationships"). amazon.de and amazon.com, or en. and ' +
+                         'de.wikipedia, are different sites. Known once the column has loaded (the Relationships ' +
+                         'column must be on); the ⚠️ menu count grows while it loads.'
         },
 
         sa_findings_tint_rel_multi_discogs: {
-            label: 'Highlight Relationships cells with more than one Discogs link as WARNING',
+            label: 'Highlight Relationships cells with more than one link to the same site as WARNING',
             type: 'checkbox',
             default: true,
             description: 'Tint the Relationships cell light yellow with a ⚠️ when it shows two or more different ' +
-                         'Discogs URLs.'
+                         'URLs on the same site.'
+        },
+
+        sa_findings_rel_multi_site_ignore: {
+            label: 'Sites allowed more than one link in Relationships',
+            type: 'text',
+            default: '',
+            description: 'Hosts, separated by commas or spaces (e.g. "youtube.com, open.spotify.com"), that may ' +
+                         'appear more than once in a Relationships cell without the "Several links to one site" ' +
+                         'WARNING. "www." is ignored.'
         },
 
         sa_findings_nonphysical_formats: {
@@ -4946,6 +4973,30 @@
         divider_pop_mb: {
             type: 'divider',
             label: '🔎 LINK PREVIEWS ON MUSICBRAINZ'
+        },
+
+        // The popup engine's master switch and its initial-page switch
+        // (org/initial-page-footprint.org). Off, _initDetailPreview() is never
+        // called: no listener, no stylesheet, no request, on any host.
+        sa_pop_enabled: {
+            label: 'Link previews (hover card and Space window)',
+            type: 'checkbox',
+            default: true,
+            description: 'The master switch of every link preview: the card that appears when the pointer rests ' +
+                         'on a link, and the window Space opens from it — MusicBrainz entities, external links, ' +
+                         'the release page\'s release-group card, and the previews on the other supported sites. ' +
+                         'Off, the script installs nothing for them (no listener, no request); the switches ' +
+                         'below then do nothing.'
+        },
+
+        sa_pop_initial_page: {
+            label: 'Link previews also before a button is pressed',
+            type: 'checkbox',
+            default: true,
+            description: 'On a MusicBrainz page the script supports, show link previews from the start. Off, the ' +
+                         'page stays as MusicBrainz draws it until a button has rendered the consolidated table ' +
+                         '(or a saved one is loaded); from then on the previews work as set below. Needs ' +
+                         '\'Link previews (hover card and Space window)\'.'
         },
 
         sa_pop_mb: {
@@ -19797,9 +19848,13 @@
         const sortName = t.src && t.src.id === 'mb-entity' && (t.type === 'artist' || t.type === 'label');
         // A Relationships icon: the filter's view of the cell and the icon's
         // own box (`_relStackParts()`), never its bare title or the cell's
-        // "click outside the icons" hint.
+        // "click outside the icons" hint. The cell's finding box takes the
+        // finding colour (`tip`).
         const relCell = own && own.tagName === 'A' && own.closest('td.mb-rel-cell');
-        if (relCell) return _relStackParts(relCell, own).map(p => ({ kind: p.kind === 'filter' ? 'rel' : 'title', html: p.html }));
+        if (relCell) {
+            const kinds = { filter: 'rel', finding: 'tip' };
+            return _relStackParts(relCell, own).map(p => ({ kind: kinds[p.kind] || 'title', html: p.html }));
+        }
         // The link's note box compares the two names; the cell's finding box
         // then gives the label alone, not the same comparison again.
         const hasOrigin = !!_dpOriginNote(own);
@@ -20565,6 +20620,11 @@
      */
     function _popResolve(node) {
         if (!node || !node.closest) return null;
+        // The initial page of a MusicBrainz pageType, with the previews kept
+        // until a button rendered the table (sa_pop_initial_page). Read at
+        // event time only, so `isLoaded`, declared further down this
+        // synchronous IIFE, is initialised by then.
+        if (!_foreignHost && !isLoaded && Lib.settings.sa_pop_initial_page === false) return null;
         for (const src of _popSources()) {
             const el = node.closest(src.selector);
             if (!el || !src.enabled()) continue;
@@ -42201,29 +42261,52 @@
     }
 
     /**
-     * The distinct Discogs URLs of a Relationships cell (`td.mb-rel-cell`,
-     * the `rel-multi-discogs` finding): each icon's raw target URL from its
-     * hidden `.mb-rel-filter-key` (`_relAppendIcon()`), whose host is
-     * discogs.com or a subdomain of it, as origin + path without a trailing
-     * slash, so a `?…`/`#…` or "/" variant of one URL counts once. The spans
-     * are written into the live cells AND mirrored onto the master rows by
+     * The sites a Relationships cell (`td.mb-rel-cell`, the `rel-multi-site`
+     * finding) links to more than once: each icon's raw target URL from its
+     * hidden `.mb-rel-filter-key` (`_relAppendIcon()`), grouped by host
+     * without "www.", each URL as host + path without a trailing slash, so a
+     * `?…`/`#…` or "/" variant of one URL counts once. The HOST is the site,
+     * not the site kind (`_siteFamilyOf()`): en. and de.wikipedia, amazon.de
+     * and amazon.com are one link each to different sites, which is how
+     * MusicBrainz expects them. Hosts listed in
+     * `sa_findings_rel_multi_site_ignore` never count. The spans are written
+     * into the live cells AND mirrored onto the master rows by
      * `_relWriteResult()`, so this reads source-row data.
      *
      * @param   {?HTMLTableCellElement} cell
-     * @returns {string[]} In cell order.
+     * @returns {Array<{host: string, name: string, urls: string[]}>} One entry
+     *   per site with 2+ distinct URLs, in cell order; `name` from
+     *   `_relSiteName()`.
      */
-    function _findCellDiscogsRelUrls(cell) {
+    function _findCellRelSiteDupes(cell) {
         if (!cell || !cell.classList.contains('mb-rel-cell')) return [];
-        const out = [];
+        const ignore = String(Lib.settings.sa_findings_rel_multi_site_ignore || '').toLowerCase()
+            .split(/[\s,]+/).map(h => h.replace(/^www\./, '')).filter(Boolean);
+        const byHost = new Map();
         cell.querySelectorAll('.mb-rel-filter-key').forEach(k => {
             let u;
             try { u = new URL(k.textContent); } catch (_) { return; }
-            const host = u.hostname.toLowerCase();
-            if (host !== 'discogs.com' && !host.endsWith('.discogs.com')) return;
-            const key = `https://${host.replace(/^www\./, '')}${u.pathname.replace(/\/+$/, '')}`;
-            if (!out.includes(key)) out.push(key);
+            if (!/^https?:$/.test(u.protocol)) return;
+            const host = u.hostname.toLowerCase().replace(/^www\./, '');
+            if (ignore.includes(host)) return;
+            const key = `https://${host}${u.pathname.replace(/\/+$/, '')}`;
+            if (!byHost.has(host)) byHost.set(host, []);
+            const urls = byHost.get(host);
+            if (!urls.includes(key)) urls.push(key);
         });
-        return out;
+        return Array.from(byHost, ([host, urls]) => ({ host, name: _relSiteName(host), urls }))
+            .filter(d => d.urls.length >= 2);
+    }
+
+    /**
+     * The `rel-multi-site` finding's detail for one cell: one line per site
+     * linked more than once, "Discogs (discogs.com): url, url".
+     *
+     * @param   {?HTMLTableCellElement} cell
+     * @returns {string}
+     */
+    function _relSiteDupesDetail(cell) {
+        return _findCellRelSiteDupes(cell).map(d => `${d.name} (${d.host}): ${d.urls.join(', ')}`).join('\n');
     }
 
     /**
@@ -45096,16 +45179,18 @@
         // column fills its cells after stampFindings() ran, and
         // _relWriteResult() re-stamps each row it writes
         // (_queueFindingsRestamp()). test() reads the icons' hidden
-        // filter-key spans, which the master rows get too.
+        // filter-key spans, which the master rows get too. Until WIP.2 this
+        // was 'rel-multi-discogs' (Discogs only); its two setting keys keep
+        // the old names so every saved value still applies.
         {
-            id: 'rel-multi-discogs', level: 'warn', glyph: '🔗', scope: 'cell',
-            label: 'Several Discogs links in Relationships',
-            tip: 'The Relationships column shows more than one Discogs URL for this entity. One release, master, artist or label usually has ONE Discogs page; two are often a duplicate or a link to the wrong kind of page (a release linked from a release group). Known once the column has loaded, so the count grows while it loads.',
+            id: 'rel-multi-site', level: 'warn', glyph: '🔗', scope: 'cell',
+            label: 'Several links to one site in Relationships',
+            tip: 'The Relationships column shows more than one URL on the same site for this entity (two Discogs pages, two amazon.de products, …). One release, release group, artist or label usually has ONE page per site; two are often a duplicate or a link to the wrong kind of page (a release linked from a release group). The cell\'s tooltip names every site involved. Known once the column has loaded, so the count grows while it loads.',
             enabled: () => Lib.settings.sa_findings_rel_multi_discogs !== false && !!Lib.settings.sa_enable_relationships_column,
             cols: name => name === 'Relationships',
             rowGate: row => !!row.querySelector('td.mb-rel-cell .mb-rel-filter-key'),
-            test: cell => _findCellDiscogsRelUrls(cell).length >= 2,
-            detail: cell => _findCellDiscogsRelUrls(cell).join('\n'),
+            test: cell => _findCellRelSiteDupes(cell).length > 0,
+            detail: cell => _relSiteDupesDetail(cell),
             tint: _findingTintSetting('sa_findings_tint_rel_multi_discogs'),
         },
         {
@@ -45386,16 +45471,32 @@
         // A title a preview card parked (`_dpStashTitles()`) is still the
         // cell's title.
         if (!familyPainted && (!(td.hasAttribute('title') || td.hasAttribute('data-mb-dp-saved-title')) || td.dataset.mbFindingTip)) {
-            const head = f => `${f.level === 'error' ? '❌' : '⚠️'} ${f.label}`;
-            const cmp = [];
-            const text = ids.map((id, at) => {
-                const f = _FINDING_BY_ID.get(id);
-                if (compares[id]) cmp.push({ ...compares[id], at, head: head(f) });
-                return `${head(f)}${details[id] ? `: ${details[id]}` : ''}`;
-            }).join('\n');
+            const { text, cmp } = _findingTitle(ids, details, compares);
             _setTipCmp(td, text, cmp);
             td.dataset.mbFindingTip = '1';
         }
+    }
+
+    /**
+     * A finding title's text and comparisons (`_setTipCmp()`'s arguments):
+     * per finding "⚠️ Label" or "❌ Label", then ": detail" when it has one,
+     * one finding per line. Shared by `_writeFindingAttrs()` and the
+     * Relationships cell's hover title (`_relCellTitleHandler()`).
+     *
+     * @param {string[]} ids
+     * @param {Object<string, string>} [details] - Per-cell detail text by id.
+     * @param {Object<string, object>} [compares] - Per-cell comparison by id.
+     * @returns {{text: string, cmp: Array<object>}}
+     */
+    function _findingTitle(ids, details = {}, compares = {}) {
+        const head = f => `${f.level === 'error' ? '❌' : '⚠️'} ${f.label}`;
+        const cmp = [];
+        const text = ids.map((id, at) => {
+            const f = _FINDING_BY_ID.get(id);
+            if (compares[id]) cmp.push({ ...compares[id], at, head: head(f) });
+            return `${head(f)}${details[id] ? `: ${details[id]}` : ''}`;
+        }).join('\n');
+        return { text, cmp };
     }
 
     /**
@@ -69578,41 +69679,79 @@ a { color: #1565c0; }`;
      * containers expand to full width for better visibility of wide tables.
      *
      * Adds CSS transitions and event handlers for smooth sidebar collapse/expand animation
+     *
+     * Two phases (org/initial-page-footprint.org, WIP.4):
+     *   - `'initial'`: from page init, on a supported MusicBrainz page before
+     *     any button is pressed (`sa_sidebar_handle_initial_page`). Builds the
+     *     handle and only the CSS a collapsed sidebar needs, so an OPEN
+     *     sidebar keeps MusicBrainz's own layout; starts collapsed only with
+     *     `sa_sidebar_collapsed_initial_page`.
+     *   - `'final'`: from the render tails (fetch and disk load). Adds the
+     *     layout CSS for the consolidated view, builds the handle if the
+     *     initial phase did not, and applies `sa_sidebar_collapsed` once per
+     *     page — a re-render or a later disk load leaves the user's choice.
+     *
+     * @param {('initial'|'final')} [phase='final']
      */
-    function initSidebarCollapse() {
+    function initSidebarCollapse(phase = 'final') {
         if (!Lib.settings.sa_collabsable_sidebar) return; // Only available if true
 
         const sidebar = document.getElementById("sidebar");
 
         if (!sidebar) return;
 
-        // Guard: if the handle was already injected (e.g. by a previous fetch run
-        // before the user loaded data from disk) do not create a second one.
-        if (document.getElementById('sidebar-toggle-handle')) {
+        const sidebarWidth = '240px';
+
+        if (phase === 'final' && !document.getElementById('mb-sidebar-layout-style')) {
+            // The consolidated view's layout around the sidebar. Never on the
+            // initial page: these rules move #page and #content even while
+            // the sidebar is open, and the transitions would animate every
+            // change MusicBrainz's own layout makes (a window resize, a late
+            // stylesheet) — so on the initial page the handle snaps.
+            const layout = GM_addStyle(`
+                /* Sidebar with proper overflow handling */
+                #sidebar {
+                    transition: transform 0.3s ease, width 0.3s ease, opacity 0.3s ease, margin-right 0.3s ease, display 0.3s allow-discrete;
+                    overflow-y: auto;
+                    overflow-x: hidden;
+                    box-sizing: border-box;
+                }
+
+                /* Content containers with proper width transitions */
+                #page, #content {
+                    transition: margin-right 0.3s ease, padding-right 0.3s ease, width 0.3s ease, max-width 0.3s ease, margin-left 0.3s ease;
+                    box-sizing: border-box;
+                }
+
+                /* When sidebar is visible, leave room for it */
+                body:not(.sidebar-is-collapsed) #page {
+                    margin-right: ${sidebarWidth};
+                }
+
+                body:not(.sidebar-is-collapsed) #content {
+                    /* Ensure content doesn't overlap with sidebar scrollbar */
+                    padding-right: 10px;
+                }
+            `);
+            layout.id = 'mb-sidebar-layout-style';
+        }
+
+        // Guard: the handle exists already (built on the initial page, or by a
+        // previous fetch run before the user loaded data from disk): never a
+        // second one. The first final phase still applies its start state.
+        if (initSidebarCollapse.setCollapsed) {
+            if (phase === 'final' && !initSidebarCollapse.finalApplied) {
+                initSidebarCollapse.finalApplied = true;
+                if (Lib.settings.sa_sidebar_collapsed) initSidebarCollapse.setCollapsed(true);
+            }
             Lib.debug('init', 'Sidebar toggle handle already present — skipping re-init.');
             return;
         }
 
-        Lib.debug('init', 'Initializing aggressive full-width sidebar toggle.');
-
-        const sidebarWidth = '240px';
+        Lib.debug('init', `Initializing aggressive full-width sidebar toggle (${phase}).`);
 
         // GM_addStyle so this is exempt from page CSP style-src restrictions.
         GM_addStyle(`
-            /* Sidebar with proper overflow handling */
-            #sidebar {
-                transition: transform 0.3s ease, width 0.3s ease, opacity 0.3s ease, margin-right 0.3s ease, display 0.3s allow-discrete;
-                overflow-y: auto;
-                overflow-x: hidden;
-                box-sizing: border-box;
-            }
-
-            /* Content containers with proper width transitions and overflow handling */
-            #page, #content {
-                transition: margin-right 0.3s ease, padding-right 0.3s ease, width 0.3s ease, max-width 0.3s ease, margin-left 0.3s ease;
-                box-sizing: border-box;
-            }
-
             /* Ensure content can scroll when needed without overlapping sidebar */
             #content {
                 /* overflow-x: auto; REMOVED: Breaks vertical sticky headers */
@@ -69653,16 +69792,6 @@ a { color: #1565c0; }`;
                 width: fit-content !important;
                 min-width: calc(100vw - 20px) !important;
                 box-sizing: border-box !important;
-            }
-
-            /* When sidebar is visible, leave room for it */
-            body:not(.sidebar-is-collapsed) #page {
-                margin-right: ${sidebarWidth};
-            }
-
-            body:not(.sidebar-is-collapsed) #content {
-                /* Ensure content doesn't overlap with sidebar scrollbar */
-                padding-right: 10px;
             }
 
             /* Toggle handle
@@ -69856,24 +69985,40 @@ a { color: #1565c0; }`;
         // Set initial position now that the handle is in the DOM.
         requestAnimationFrame(() => updateHandlePosition(handle));
 
-        // If the user has configured the sidebar to start collapsed, apply the
-        // collapsed state immediately — equivalent to a single programmatic click
-        // on the handle, but without animation so the page opens already collapsed.
-        if (Lib.settings.sa_sidebar_collapsed) {
-            // Without its transition: the sidebar has been laid out already,
-            // so adding the class alone animates, and since the collapsed
-            // state ends in display: none (a discrete transition) the page
-            // kept the sidebar for 0.3 s and then reflowed under a pointer
-            // already resting on a link (popup-ext.spec.js, 2026-10-14).
+        /**
+         * Collapses or opens the sidebar at once — a programmatic click on
+         * the handle, but without animation: the sidebar has been laid out
+         * already, so adding the class alone animates, and since the
+         * collapsed state ends in display: none (a discrete transition) the
+         * page kept the sidebar for 0.3 s and then reflowed under a pointer
+         * already resting on a link (popup-ext.spec.js, 2026-10-14).
+         *
+         * @param {boolean} collapsed
+         * @returns {void}
+         */
+        const setCollapsed = (collapsed) => {
+            if (sidebar.classList.contains('sidebar-collapsed') === collapsed) return;
             sidebar.style.transition = 'none';
-            sidebar.classList.add('sidebar-collapsed');
-            void sidebar.offsetWidth; // commit the collapsed style before the transition returns
+            sidebar.classList.toggle('sidebar-collapsed', collapsed);
+            void sidebar.offsetWidth; // commit the new style before the transition returns
             sidebar.style.transition = '';
-            handle.classList.add('handle-collapsed');
-            applyStretching(true);
-            // Re-position handle after collapsing so it parks at the viewport edge.
+            handle.classList.toggle('handle-collapsed', collapsed);
+            applyStretching(collapsed);
+            // Re-position handle so it parks at the viewport edge (or the sidebar).
             requestAnimationFrame(() => updateHandlePosition(handle));
-            Lib.debug('init', 'Sidebar initially collapsed per sa_sidebar_collapsed setting.');
+        };
+        initSidebarCollapse.setCollapsed = setCollapsed;
+
+        // The start state: on the initial page per
+        // sa_sidebar_collapsed_initial_page (open by default), on the
+        // consolidated view per sa_sidebar_collapsed — once per page.
+        if (phase === 'final') initSidebarCollapse.finalApplied = true;
+        const startCollapsed = phase === 'initial'
+            ? !!Lib.settings.sa_sidebar_collapsed_initial_page
+            : !!Lib.settings.sa_sidebar_collapsed;
+        if (startCollapsed) {
+            setCollapsed(true);
+            Lib.debug('init', `Sidebar initially collapsed (${phase}).`);
         }
 
         // Keep handle flush against the sidebar on every scroll / resize.
@@ -70077,8 +70222,9 @@ a { color: #1565c0; }`;
     // The popup engine (hover card + pinned dialog), when one of its sources
     // is enabled here: a foreign host's tables with that host's preview
     // setting on, or a MusicBrainz release page's release-group cards. A
-    // no-op wherever no source is. See _initDetailPreview().
-    if (pageType && headerContainer) _initDetailPreview();
+    // no-op wherever no source is. See _initDetailPreview(). The master
+    // switch sa_pop_enabled keeps the whole engine out.
+    if (pageType && headerContainer && Lib.settings.sa_pop_enabled !== false) _initDetailPreview();
 
     if (pageType) Lib.prefix = `[VZ-${SCRIPT_BASE_NAME}: ${pageType}]`;
     Lib.debug('init', 'Initializing script for path:', path);
@@ -70122,6 +70268,13 @@ a { color: #1565c0; }`;
     // The sidebar picture's hover card and viewer (docs/claude/sidebar.md).
     // MusicBrainz adds the picture after load, so this only starts watching.
     _sbInitPicture();
+
+    // The sidebar's collapse handle on the initial page, sidebar open
+    // (org/initial-page-footprint.org); the render tails collapse it.
+    // MusicBrainz only: the foreign sites' sidebars have their own.
+    if (!_foreignHost && Lib.settings.sa_collabsable_sidebar && Lib.settings.sa_sidebar_handle_initial_page !== false) {
+        initSidebarCollapse('initial');
+    }
 
     // Special case: recording page where "Appears on releases" section explicitly
     // states there are no releases.  Nothing to fetch or display, so do not
@@ -73495,6 +73648,32 @@ a { color: #1565c0; }`;
         }
         td[data-mb-finding="warn"]:not([data-mb-finding-inline])::after  { content: '⚠️'; }
         td[data-mb-finding="error"]:not([data-mb-finding-inline])::after { content: '❌'; }
+        /* A Relationships cell (rel-multi-site) draws its glyph with
+           ::before: its ::after is the in-flow reload glyph shown on hover
+           right after the icons (#mb-rel-cell-glyph-style), which used to
+           take this glyph's absolute place at the right edge. A loaded cell
+           with icons has no ::before content of its own; a loading or failed
+           cell keeps its load-state ::before. The cell is font-size 0, so
+           sizes are in px, not em. */
+        td.mb-rel-cell[data-mb-finding]:not([data-mb-finding-inline]) { padding-right: 18px; }
+        td.mb-rel-cell[data-mb-finding]:not([data-mb-finding-inline])::after {
+            content: none;
+            position: static;
+            transform: none;
+        }
+        td.mb-rel-cell[data-mb-finding]:not([data-mb-finding-inline]):not([data-rel-loading]):not([data-rel-error])::before {
+            position: absolute;
+            right: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            line-height: 1;
+            min-width: 0;
+            opacity: 1;
+            pointer-events: none;
+        }
+        td.mb-rel-cell[data-mb-finding="warn"]:not([data-mb-finding-inline]):not([data-rel-loading]):not([data-rel-error])::before  { content: '⚠️'; }
+        td.mb-rel-cell[data-mb-finding="error"]:not([data-mb-finding-inline]):not([data-rel-loading]):not([data-rel-error])::before { content: '❌'; }
         /* Track-vs-recording length mismatch (release-tracks only, see
            _applyLengthMismatchFlag()). Driven ENTIRELY off the td's own
            data-mb-len-flag attribute — no marker element exists in the cell at
@@ -79333,8 +79512,13 @@ a { color: #1565c0; }`;
         const blocks = String(text).split('\n').map(s => s.trim()).filter(Boolean);
         if (!blocks.length) return '';
         // A Relationships icon names its site and type, not only its URL
-        // (`_relLinkNoteHtml()`, mockup https://claude.ai/artifact/NonAS8iqfjSMRUaXojzSnT).
-        if (el && el.tagName === 'A' && el.closest && el.closest('td.mb-rel-cell')) return _relLinkNoteHtml(el);
+        // (`_relLinkNoteHtml()`, mockup https://claude.ai/artifact/NonAS8iqfjSMRUaXojzSnT),
+        // under the cell's finding box when it carries one.
+        const relCell = el && el.tagName === 'A' && el.closest && el.closest('td.mb-rel-cell');
+        if (relCell) {
+            const finding = _relFindingNoteHtml(relCell, el);
+            return (finding ? `${finding}<div class="mb-tt-rule"></div>` : '') + _relLinkNoteHtml(el);
+        }
         const cmp = _cmpTipData(el, text);
         const len = cmp.find(c => c.kind === 'len');
         if (len) return _cmpLenCardHtml(len);
@@ -92944,7 +93128,7 @@ a { color: #1565c0; }`;
             }, 150);
             // Initialize sidebar collapse only now if enabled
             if (Lib.settings.sa_collabsable_sidebar) {
-                initSidebarCollapse();
+                initSidebarCollapse('final');
             }
 
             // Inject expand/collapse buttons for release-group and release rows
@@ -115682,11 +115866,11 @@ a { color: #1565c0; }`;
             delete td.dataset.relLoading;
         };
         primary.forEach(_markDone);
-        // The `rel-multi-discogs` finding reads these cells, which
+        // The `rel-multi-site` finding reads these cells, which
         // stampFindings() saw empty: re-stamp each live row written (its
         // master with it), batched. A write to master rows only (the row is
         // filtered out) waits for the next fetch or disk load.
-        const _restamp = () => cells.forEach(td => _queueFindingsRestamp(td.closest('tr'), ['rel-multi-discogs']));
+        const _restamp = () => cells.forEach(td => _queueFindingsRestamp(td.closest('tr'), ['rel-multi-site']));
         if (!data) {
             _dbg(`_relWriteResult: no data for ${mbid}`);
             rest.forEach(_markDone);
@@ -115958,6 +116142,21 @@ a { color: #1565c0; }`;
                 : 'Nothing with an icon for this row — click to reload';
         } else {
             _title = 'Relationships not loaded yet — click to load this row only (one request)';
+        }
+        // A cell carrying findings (rel-multi-site) keeps them above the
+        // hint: the hint used to replace the finding title outright. The
+        // rel-multi-site detail is re-read from the cell's icons, as the
+        // stamp reads it; other findings (row-wide ones) have none here,
+        // since their column tests need the stamp's plan.
+        const ids = (td.dataset.mbFindings || '').split(' ').filter(id => _FINDING_BY_ID.has(id));
+        if (ids.length) {
+            const details = {};
+            if (ids.includes('rel-multi-site')) details['rel-multi-site'] = _relSiteDupesDetail(td);
+            const { text, cmp } = _findingTitle(ids, details);
+            _title = `${text}\n\n${_title}`;
+            if (td.title !== _title) _setTipCmp(td, _title, cmp);
+            td.dataset.mbFindingTip = '1';
+            return;
         }
         if (td.title !== _title) _setTip(td, _title);
     }
@@ -117164,6 +117363,10 @@ a { color: #1565c0; }`;
             .mb-rel-ended { margin-left: 5px; opacity: 0.6; font-style: italic; }
             .mb-rel-lk { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 2px 8px; align-items: center; }
             .mb-rel-lk-url { grid-column: 2; font: 12px/1.4 ui-monospace, Consolas, monospace; overflow-wrap: anywhere; }
+            #mb-rel-tooltip > .mb-rel-note-finding { border-left-color: #c48a00; }
+            .mb-rel-fd-site { margin-top: 3px; }
+            .mb-rel-fd-url { font: 12px/1.4 ui-monospace, Consolas, monospace; overflow-wrap: anywhere; padding: 1px 4px; margin: 0 -4px; border-radius: 2px; }
+            .mb-rel-fd-url.mb-rel-here { background: #efe6d4; box-shadow: inset 3px 0 0 #8b1a1a; }
         `);
         style.id = 'sa-rel-tooltip-style';
     }
@@ -117188,6 +117391,19 @@ a { color: #1565c0; }`;
     ];
 
     /**
+     * A site's display name by host (`_REL_SITE_NAMES`), else the host
+     * without "www.".
+     *
+     * @param {string} host
+     * @returns {string}
+     */
+    function _relSiteName(host) {
+        const h = String(host || '').toLowerCase();
+        const hit = _REL_SITE_NAMES.find(([re]) => re.test(h));
+        return hit ? hit[1] : h.replace(/^www\./, '');
+    }
+
+    /**
      * The name a Relationships icon is shown with: the site for a URL
      * (`_REL_SITE_NAMES`, else the bare host); for a link to MusicBrainz
      * itself (a "single from" release group), the entity's title from the
@@ -117204,9 +117420,7 @@ a { color: #1565c0; }`;
             return colon > 0 ? first.slice(colon + 2) : 'MusicBrainz';
         }
         try {
-            const host = new URL(href, window.location.href).hostname.toLowerCase();
-            const hit = _REL_SITE_NAMES.find(([re]) => re.test(host));
-            return hit ? hit[1] : host.replace(/^www\./, '');
+            return _relSiteName(new URL(href, window.location.href).hostname);
         } catch (_) {
             return href;
         }
@@ -117347,6 +117561,42 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * The box that says which findings a Relationships cell carries
+     * (`data-mb-findings`): each finding's ⚠️/❌ and label, and for
+     * `rel-multi-site` every site linked more than once with its URLs, the
+     * hovered icon's URL marked "◂ this icon". Built from `_FINDING_BY_ID`
+     * and the cell's icons, never from the cell's title (the reload hint may
+     * be there).
+     *
+     * @param {HTMLTableCellElement} cell
+     * @param {?HTMLAnchorElement} here - The hovered icon.
+     * @returns {string} HTML ('' when the cell carries no finding).
+     */
+    function _relFindingNoteHtml(cell, here) {
+        const ids = (cell.dataset.mbFindings || '').split(' ').filter(id => _FINDING_BY_ID.has(id));
+        if (!ids.length) return '';
+        _ensureRelTooltipStyle();
+        let hereUrl = '';
+        const hereKey = here && here.querySelector('.mb-rel-filter-key');
+        if (hereKey) {
+            try {
+                const u = new URL(hereKey.textContent);
+                hereUrl = `https://${u.hostname.toLowerCase().replace(/^www\./, '')}${u.pathname.replace(/\/+$/, '')}`;
+            } catch (_) { /* not a URL: nothing to mark */ }
+        }
+        return ids.map((id) => {
+            const f = _FINDING_BY_ID.get(id);
+            const head = `<div class="mb-tt-title">${f.level === 'error' ? '❌' : '⚠️'} ${_mbttEscape(f.label)}</div>`;
+            if (id !== 'rel-multi-site') return head;
+            return head + _findCellRelSiteDupes(cell).map(d =>
+                `<div class="mb-rel-fd-site"><b>${_mbttEscape(d.name)}</b> <span class="mb-tt-dim">${_mbttEscape(d.host)} · ${d.urls.length} links</span></div>` +
+                d.urls.map(u => `<div class="mb-rel-fd-url${u === hereUrl ? ' mb-rel-here' : ''}">${_mbttEscape(u)}` +
+                    `${u === hereUrl ? '<span class="mb-rel-here-tag">◂ this icon</span>' : ''}</div>`).join('')
+            ).join('');
+        }).join('<div class="mb-tt-rule"></div>');
+    }
+
+    /**
      * The boxes a hovered Relationships icon gets, top to bottom (mockup
      * https://claude.ai/artifact/NonAS8iqfjSMRUaXojzSnT, approved
      * 2026-10-17): the filter's view of the cell, while a filter matches it
@@ -117354,12 +117604,19 @@ a { color: #1565c0; }`;
      * when no preview card does; under a card they are its note stack
      * (`_dpCollectNotes()`).
      *
+     * A cell that carries a finding (`data-mb-findings`, e.g.
+     * `rel-multi-site`) gets that box first (`finding`,
+     * `_relFindingNoteHtml()`): the cell's own title, where findings
+     * otherwise show, is never part of an icon's stack.
+     *
      * @param {HTMLTableCellElement} cell
      * @param {HTMLAnchorElement} a
-     * @returns {Array<{kind: ('filter'|'link'), html: string}>}
+     * @returns {Array<{kind: ('finding'|'filter'|'link'), html: string}>}
      */
     function _relStackParts(cell, a) {
         const parts = [];
+        const finding = _relFindingNoteHtml(cell, a);
+        if (finding) parts.push({ kind: 'finding', html: finding });
         if (_relHasAnyActiveFilter(cell) && _relQueryMatchesCell(cell)) parts.push({ kind: 'filter', html: _relFilterNoteHtml(cell, a) });
         parts.push({ kind: 'link', html: _relLinkNoteHtml(a) });
         return parts;
@@ -121427,7 +121684,7 @@ a { color: #1565c0; }`;
             // Initialize sidebar collapse toggle (must run after render;
             // idempotent — safe to call even if a prior fetch already ran it)
             if (Lib.settings.sa_collabsable_sidebar) {
-                initSidebarCollapse();
+                initSidebarCollapse('final');
             }
 
             // Inject expand/collapse buttons for release-group and release rows
@@ -133740,10 +133997,10 @@ a { color: #1565c0; }`;
     /**
      * The ids of the findings whose data arrives AFTER `stampFindings()` ran
      * (it runs ONCE per fetch): the artwork record, and the deferred
-     * Relationships column (`rel-multi-discogs`). Each is re-stamped per row
+     * Relationships column (`rel-multi-site`). Each is re-stamped per row
      * through `_queueFindingsRestamp()`.
      */
-    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-discogs'];
+    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site'];
 
     /**
      * Queues a re-stamp of a row whose late data (`_LATE_FINDING_IDS`) has
