@@ -99134,7 +99134,10 @@ a { color: #1565c0; }`;
      * Credits (`#bottom-credits`), else right after the `h2.relationships`
      * section (before the next h2, or an element holding one), else right
      * above the data h2 (the one with `.mb-row-count-stat`), else at the end
-     * of `#content`. Re-run after every `_relocateTrailingH2Sections()`: that
+     * of `#content`. An `h2.relationships` that IS the data h2 (event-overview:
+     * the event tables render under it) is not a side section, so it falls to
+     * "above the data" like every other page, instead of landing after all
+     * the tables. Re-run after every `_relocateTrailingH2Sections()`: that
      * pass moves the Relationships section, and would move this h2 too.
      * @param {Element} root `#content`.
      * @param {Element} wrap `div.mb-sb-inline-wrap`.
@@ -99146,7 +99149,8 @@ a { color: #1565c0; }`;
             if (bc.nextElementSibling !== wrap) bc.after(wrap);
             return 'after Credits';
         }
-        const rel = Array.from(root.querySelectorAll('h2.relationships')).find(h => !h.closest('table.tbl'));
+        const rel = Array.from(root.querySelectorAll('h2.relationships'))
+            .find(h => !h.closest('table.tbl') && !h.querySelector('.mb-row-count-stat'));
         if (rel) {
             let n = rel.nextSibling;
             while (n && !(n.nodeType === Node.ELEMENT_NODE && (n.tagName === 'H2' || n.querySelector('h2')))) n = n.nextSibling;

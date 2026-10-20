@@ -3302,15 +3302,18 @@ from the bottom of the FRP at https://musicbrainz.org/release/9d451257-ebce-44ec
 
 if the "Relationships" column on MP PTs has multiple Discogs URL relationship icons, add a warning icon (see the skill "add-finding")
 
+* DONE the "Sidebar" section on events PTs should be rendered above the "Relationships" section
 
-* TODO check discogs artist pages if really ALL master are present + implement master->release(s) drilldown
+The "Sidebar" section on PTs e.g. https://musicbrainz.org/event/47b84024-bd3b-4e36-80e1-b051e12ede2f should be rendered
+above the "Relationships" section as with all other MB PTs. This one seems to be the only exception, but check.
 
+#+begin_example
+@debug/event-sidebar-above-relationships.html - current FRP - "Sidebar" section below "Relationships"
+#+end_example
 
-* TODO the "Sidebar" section on events PTs should be rendered above the "Relationships" section
-
-The "Sidebar" section on PTs e.g. https://musicbrainz.org/event/47b84024-bd3b-4e36-80e1-b051e12ede2fshould be rendered
-above the "Relationships" section
-
+#+begin_example
+@debug/USA-area-releases-filtered.html - FRP - https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98/releases?link_type_id=1
+#+end_example
 
 * DONE add a "Editing history" button to the entity detail popup header of every supported MB entity
 ** initial
@@ -3518,16 +3521,6 @@ add support for images in the sidebar of instruments PTs and add them to the h1 
 @debug/electric-bass-guitar.html - IP - - https://musicbrainz.org/instrument/0b9d87fa-93fa-4956-8b6a-a419566cc915/recordings
 #+end_example
 
-
-* TODO add a reader for collection detail popups
-
-add a reader for collection detail popups on e.g.https://musicbrainz.org/user/chaban/collections
-
-#+begin_example
-@debug/chaban-collections-initial.html 
-#+end_example
-
-
 * DONE add support for a tag reader
 
 1.)
@@ -3571,40 +3564,9 @@ also the number of spill votes
 
 should get an explanatory rich tooltip
 
-
-* TODO add UVD entries for titles which do NOT follow MB style guidelines on MB PTs and use our rich tooltip diff popup view to show whats differing
-
-1.)
-
-add UVD entries for titles which do NOT follow MB style guidelines on MB PTs
-
-2.)
-
-use our rich tooltip diff popup view to show whats differing
-
-
-* TODO Add a must have third-party userscripts section together with the end-user visible changes and what our userscript depends on
-
-Add a must have third-party userscripts section together with the end-user visible changes and what our userscript
-depends on
-
-1.)
-
-Analyse first and give a comprehensive summary in a nice HTML based view, with URLs to the original script (downlaod URL, homepage, documentaiotn URL, etc)
-
-2.)
-
-Suggestions for complete integration
-
-3.)
-
-etc
-
-
 * DONE new non-MB PTs
 
 discogs submission list
-
 * DONE bugs
 
 1.)
@@ -3640,6 +3602,47 @@ etc. if the corresponding entries in the real sidebar have them
 Except the h4 "SEARCH" section ALL sections in the h2 "Sidebar" section should be uncollapsed by default
 
 
+* TODO check discogs artist pages if really ALL master are present + implement master->release(s) drilldown
+
+
+* TODO add a reader for collection detail popups
+
+add a reader for collection detail popups on e.g.https://musicbrainz.org/user/chaban/collections
+
+#+begin_example
+@debug/chaban-collections-initial.html 
+#+end_example
+
+
+* TODO add UVD entries for titles which do NOT follow MB style guidelines on MB PTs and use our rich tooltip diff popup view to show whats differing
+
+1.)
+
+add UVD entries for titles which do NOT follow MB style guidelines on MB PTs
+
+2.)
+
+use our rich tooltip diff popup view to show whats differing
+
+
+* TODO Add a must have third-party userscripts section together with the end-user visible changes and what our userscript depends on
+
+Add a must have third-party userscripts section together with the end-user visible changes and what our userscript
+depends on
+
+1.)
+
+Analyse first and give a comprehensive summary in a nice HTML based view, with URLs to the original script (downlaod URL, homepage, documentaiotn URL, etc)
+
+2.)
+
+Suggestions for complete integration
+
+3.)
+
+etc
+
+
 * TODO Could the "Page Reloaded" popup dialog directly emulate the click on the corresponding "Show all..." button from which it was triggerd
 ** Question
 
@@ -3649,5 +3652,6 @@ text) ? If yes, please implement
 
 
 * TODO use the Discogs history diff format LAF in other pageTypes like e.g. on BB pageTypes ==> changes button (must be logged in)
+
 
 * TODO consolidate more LAF across more PTs

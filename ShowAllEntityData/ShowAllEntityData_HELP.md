@@ -884,7 +884,8 @@ close every sidebar section; the headings of the main page are left alone.
 - **The sidebar under Credits / Relationships.** After the page's own button
   (*Tracks*, *Releases*, *Artist RGs*, …) has shown its table, a **Sidebar**
   heading comes right below the *Credits* or *Relationships* section (on a
-  page without one: right above the table). Under it, the sidebar's
+  page without one, or where *Relationships* is the table itself, as on an
+  event page: right above the table). Under it, the sidebar's
   information, labels, release events, external links and tags are small
   cards: facts as *name → value* lines in a column on the left, links as
   chips grouped by kind (Official, Social, Streaming, …) beside them, tags as

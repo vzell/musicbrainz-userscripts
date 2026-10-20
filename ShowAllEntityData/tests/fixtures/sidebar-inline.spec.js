@@ -19,7 +19,8 @@
 //   - CLEAN COLUMNS: exactly the sidebar's columns (no Picard, CAA, Details);
 //   - PLACE: the cards' h2 sits right after #bottom-credits / the
 //     Relationships section / right above the data h2, and stays there after
-//     an empty-query re-render;
+//     an empty-query re-render; when the Relationships h2 IS the data h2
+//     (event-overview), right above it, never after its tables;
 //   - ISOLATION: no table.tbl and no h3 inside it; folding Credits /
 //     Relationships does not fold it (the makeH2sCollapsible() boundary);
 //   - CONTENT: one card per group, as many entries as the sidebar has;
@@ -46,6 +47,9 @@ const PAGES = {
         'Show all Relationships for Place', null],
     artist: ['https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f', 'artist-releasegroups-live-titles.html',
         null, '🧮 Artist RGs'],
+    // h2.relationships is the data h2 here: the event tables render under it.
+    event: ['https://musicbrainz.org/event/3f2ca30a-7de4-4964-ad30-48376535fec8', 'event-overview.html',
+        null, 'Show all Relationships for Event'],
     // Several facts cards (Work information, Work attributes, …): the page that sees
     // whether the release-only facts rule leaks to other pageTypes.
     work: ['https://musicbrainz.org/work/1f573511-eb4b-3106-8fb2-f15de52e4868', 'rel-work-overview.html',
@@ -382,6 +386,28 @@ test.describe('sidebar cards after the page render', () => {
         } finally {
             fs.rmSync(tmpDir, { recursive: true, force: true });
         }
+    });
+
+    // Reported 2026-10-20 on /event/47b84024-…: "Relationships" is the event
+    // page's DATA h2, so "after the Relationships section" put the cards
+    // below every event table, where every other page has them above the data.
+    test('PLACE: event — Relationships is the data h2, so right above it', async ({ page }) => {
+        await open(page, 'event', 'own');
+        const s = await inline(page);
+        expect(s).not.toBeNull();
+        expect(s.nextIsDataH2, 'the next element is the data h2').toBe(true);
+        const order = await page.evaluate(() => {
+            const wrap = document.querySelector('#content .mb-sb-inline-wrap');
+            const rel = document.querySelector('#content h2.relationships');
+            const tbl = Array.from(document.querySelectorAll('#content table.tbl')).find((t) => !wrap.contains(t));
+            return {
+                nextIsRel: wrap.nextElementSibling === rel,
+                // DOCUMENT_POSITION_FOLLOWING: the table comes after the wrap.
+                tblAfter: !!tbl && !!(wrap.compareDocumentPosition(tbl) & Node.DOCUMENT_POSITION_FOLLOWING),
+            };
+        });
+        expect(order.nextIsRel, 'right above h2.relationships').toBe(true);
+        expect(order.tblAfter, 'the event tables come after the cards').toBe(true);
     });
 
     test('PLACE: artist — no such section, so right above the data h2', async ({ page }) => {
