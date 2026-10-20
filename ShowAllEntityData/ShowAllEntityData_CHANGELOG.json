@@ -1,5 +1,18 @@
 [
   {
+    "version": "9.99.1397",
+    "date": "2026-10-20",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Pressing an action button a second time still reloads the page (that is what keeps the column filters working), but the reloaded page now runs the same button by itself: no more \"⚠️ Page Reloaded\" dialog to dismiss and button to press again. A short note beside the status line (\"↻ Page reloaded — re-running …\") says what is happening and fades after about 3 seconds. The dialog remains only as a fallback when the button cannot be found again.",
+          "The reload now happens before anything else a press does. It used to come after the other sections had already been removed from the visible page and, on an artist's release groups, after a whole pass of page requests for the official headers, all of which the reload then threw away."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1396",
     "date": "2026-10-20",
     "sections": [

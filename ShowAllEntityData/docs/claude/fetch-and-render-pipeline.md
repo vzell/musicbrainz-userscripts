@@ -20,8 +20,7 @@ if (isLoaded && !_isResume) {
 }
 ```
 
-**The guard is the first statement after `_isResume`** (since WIP.1 of
-`feat/auto-repress-after-reload`). It used to stand ~400 lines in, after the
+**The guard is the first statement after `_isResume`** (since 9.99.1397). It used to stand ~400 lines in, after the
 definition merge, the removal of the other sections from the visible page and,
 on `artist-releasegroups`, a whole network pre-fetch pass — all of it thrown
 away by the reload.
