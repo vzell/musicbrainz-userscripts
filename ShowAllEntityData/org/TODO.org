@@ -3305,6 +3305,7 @@ if the "Relationships" column on MP PTs has multiple Discogs URL relationship ic
 
 * TODO check discogs artist pages if really ALL master are present + implement master->release(s) drilldown
 
+
 * TODO the "Sidebar" section on events PTs should be rendered above the "Relationships" section
 
 The "Sidebar" section on PTs e.g. https://musicbrainz.org/event/47b84024-bd3b-4e36-80e1-b051e12ede2fshould be rendered
@@ -3390,6 +3391,12 @@ Open questions (also at the end of the mockup's overview tab):
 4. Should the editor card get the same button for /user/<name>/edits, now or later? NOW
 5. Should "Only what changed" be on by default? YES
 6. Logged-in pages name other editors and quote their notes. These are public on musicbrainz.org, and the Discogs fixtures already do the same. Can the test fixtures use these pages: YES
+
+** after resume
+
+● Automatic replies were not resumed for https://claude.ai/artifact/D4ZxzCjwsbWSRJLs6dqk58 — switching conversations
+inside a session doesn't bring comment monitors back. Publish the Artifact again, or ask Claude to watch it, to turn its
+replies back on.
 
 * DONE add "Space" on the image hover popup in the CAA/EAA column to show ALL images (right now it shows a couple and the a "+ 69")
 
