@@ -20718,7 +20718,9 @@
      */
     function _mbKindIconUrl(t) {
         if (!t || !t.src || t.src.id !== 'mb-entity') return '';
-        const stem = Object.prototype.hasOwnProperty.call(_MB_KIND_ICON, t.type) ? _MB_KIND_ICON[t.type] : '';
+        // An editing history shows the glyph of what it is the history of.
+        const type = t.type === 'edits' ? String(t.id || '').split('/')[0] : t.type;
+        const stem = Object.prototype.hasOwnProperty.call(_MB_KIND_ICON, type) ? _MB_KIND_ICON[type] : '';
         return stem ? `${window.location.origin}/static/images/entity/${stem}.svg` : '';
     }
 
@@ -21352,6 +21354,8 @@
             title.replaceChildren(...parts);
         }
         if (_dpDialog.controls && _dpDialog.controls.back) _dpDialog.controls.back.style.display = _dpDialog.stack.length ? '' : 'none';
+        // "✎ Editing history": only where there is one (org/mb-edit-history.org).
+        if (_dpDialog.controls && _dpDialog.controls.hist) _dpDialog.controls.hist.style.display = _mbEditsSubject(t) ? '' : 'none';
         // Where the window was opened from: the page target's note (kept
         // along a drill-down path, which starts from it, as ← → do).
         const badge = _dpDialog.controls && _dpDialog.controls.origin;
@@ -21456,6 +21460,15 @@
             return;
         }
         if (_dpIsTextField(e.target)) return;
+        // H: the editing history of what the window shows, where it has one
+        // (org/mb-edit-history.org); the history's own row keys.
+        if ((e.key === 'h' || e.key === 'H') && !e.altKey && !e.ctrlKey && !e.metaKey && _mbEditsSubject(_dpDialog.target)) {
+            e.preventDefault();
+            e.stopPropagation();
+            _dpOpenEdits();
+            return;
+        }
+        if (_mbEditsRowKeys(e)) return;
         // Back from a drill-down (Phase 5): Backspace, or Alt+← as in a
         // browser. Only with something to go back to.
         const back = (e.key === 'Backspace' && !e.altKey && !e.ctrlKey && !e.metaKey)
@@ -21584,6 +21597,21 @@
         };
         const back = btn('← Back', 'Back to what the window showed before (Backspace, Alt+←)');
         back.style.display = 'none';
+        // The editing history of what the window shows (`_dpOpenEdits()`);
+        // `_dpShowInDialog()` shows it only where there is one. A narrow
+        // window keeps the glyph alone (CSS).
+        const hist = btn('', 'This entity\'s editing history on MusicBrainz, in this window (H)');
+        hist.classList.add('mb-meh-hist-btn');
+        const histGlyph = document.createElement('span');
+        histGlyph.className = 'mb-meh-g';
+        histGlyph.setAttribute('aria-hidden', 'true');
+        histGlyph.textContent = '✎';
+        const histText = document.createElement('span');
+        histText.className = 'mb-meh-t';
+        histText.textContent = 'Editing history';
+        hist.append(histGlyph, histText);
+        hist.setAttribute('aria-label', 'Editing history');
+        hist.style.display = 'none';
         const prev = btn('‹', 'Previous row (←)');
         const pos = document.createElement('span');
         pos.className = 'mb-dp-pos-label';
@@ -21610,7 +21638,7 @@
             centerV: false,
             zIndex: 10050,
             geoKey: 'sa_dp_dialog_geometry',
-            titleBarExtras: [back, prev, pos, next, seg, reload, open],
+            titleBarExtras: [back, hist, prev, pos, next, seg, reload, open],
             // The artwork viewer an image opens (_dpArtViewerClick()) lies
             // over the window; a click in it is not a click outside.
             keepOpenWithin: ['#mb-art-viewer'],
@@ -21646,8 +21674,9 @@
             if (_dpDialog.target && _dpDialog.target.src.onAreaInput) _dpDialog.target.src.onAreaInput(e, _dpDialog.target);
         });
         _dpDialog.api = api;
-        _dpDialog.controls = { pos, ex, live, open, back, origin };
+        _dpDialog.controls = { pos, ex, live, open, back, origin, hist };
         back.addEventListener('click', _dpBack);
+        hist.addEventListener('click', _dpOpenEdits);
         prev.addEventListener('click', () => _dpStep(-1));
         next.addEventListener('click', () => _dpStep(1));
         ex.addEventListener('click', () => { _dpDialog.view = 'ex'; _dpRenderDialog(false); });
@@ -21889,6 +21918,59 @@
             .mb-dp-dialog .mb-dgh-rem { background: #f3d2cc; text-decoration: line-through; }
             .mb-dp-dialog .mb-dgh-legend { display: flex; gap: 10px; margin-top: 5px; font: 11px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #7a6d5c; }
             .mb-dp-dialog .mb-dgh-legend span { padding: 0 6px; border-radius: 2px; }
+            /* A MusicBrainz editing history (org/mb-edit-history.org, 2026-10-20):
+               the Discogs history above, plus the header button, a red pill for
+               a removal, rows that select as a whole in a list that scrolls on
+               its own (the pane stays under it), context rows across both
+               columns of the diff, and the one-column pane of an addition. */
+            .mb-dp-dialog .mb-meh-hist-btn { gap: 5px; font-weight: 600; }
+            .mb-dp-dialog .mb-meh-hist-btn .mb-meh-g { font-size: 14px; line-height: 1; }
+            .mb-dp-dialog .mb-dgh-pill-bad { color: #9b2218; }
+            .mb-dp-dialog .mb-meh-list { max-height: min(46vh, 440px); overflow: auto; }
+            .mb-dp-dialog .mb-meh-e { grid-template-columns: 8.4em 10em 12.5em minmax(0, 1fr) auto; align-items: start; cursor: pointer; padding-inline: 4px; }
+            .mb-dp-dialog .mb-meh-e:hover { background: #f4eee2; }
+            .mb-dp-dialog .mb-meh-e.mb-dgh-latest { background: #eef2f8; box-shadow: inset 3px 0 0 #2f5f9e; }
+            .mb-dp-dialog .mb-meh-e:focus-visible { outline: 2px solid #2f5f9e; outline-offset: -2px; }
+            .mb-dp-dialog .mb-meh-e .mb-dgh-pill { max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: 1px; }
+            .mb-dp-dialog .mb-meh-e .mb-dgh-d { white-space: nowrap; }
+            .mb-dp-dialog .mb-meh-e:is(.mb-meh-is-failed, .mb-meh-is-cancelled) .mb-dgh-n { color: #7a6d5c; }
+            .mb-dp-dialog .mb-meh-cls { margin-left: 4px; font: 10px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #7a6d5c; }
+            .mb-dp-dialog .mb-meh-hidden { font-style: italic; color: #7a6d5c; }
+            .mb-dp-dialog .mb-meh-st { font: 11px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #7a6d5c; font-variant-numeric: tabular-nums; }
+            .mb-dp-dialog .mb-meh-q { font-style: italic; color: #7a6d5c; }
+            .mb-dp-dialog .mb-meh-more { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 0 2px; font: 12px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #7a6d5c; }
+            .mb-dp-dialog .mb-meh-meta { display: flex; flex-wrap: wrap; gap: 2px 14px; margin: 0 0 6px; font: 12px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #7a6d5c; }
+            .mb-dp-dialog .mb-meh-meta b { color: #2b2622; font-weight: 600; }
+            .mb-dp-dialog .mb-meh-x { padding: 0 18px 14px; color: #2b2622; font: 13.5px/1.5 Georgia, "Times New Roman", Times, serif; }
+            /* A context row spans both columns and shifts the grid's even/odd
+               count, so the column rule goes by class, not by nth-child. */
+            .mb-dp-dialog .mb-meh-diff > div:nth-child(even) { border-left: 0; }
+            .mb-dp-dialog .mb-meh-diff > .mb-meh-n, .mb-dp-dialog .mb-meh-diff > .mb-dgh-dh + .mb-dgh-dh { border-left: 1px solid #d9cfbd; }
+            .mb-dp-dialog .mb-meh-diff > .mb-meh-ctx { grid-column: 1 / -1; background: #fffdf8; border-bottom: 1px solid #ece4d4; }
+            .mb-dp-dialog .mb-meh-lbl { display: block; margin-bottom: 1px; font: 600 10px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; letter-spacing: 0.06em; text-transform: uppercase; color: #7a6d5c; }
+            .mb-dp-dialog .mb-meh-ctx .mb-meh-lbl { display: inline; margin-right: 8px; }
+            .mb-dp-dialog .mb-meh-same { opacity: 0.5; }
+            .mb-dp-dialog .mb-meh-one { border: 1px solid #d9cfbd; border-radius: 3px; overflow: hidden; }
+            .mb-dp-dialog .mb-meh-one > .mb-dgh-dh { padding: 6px 10px; }
+            .mb-dp-dialog .mb-meh-dh-add { color: #3f7a3a; background: #f1f8ee; }
+            .mb-dp-dialog .mb-meh-dh-remove { color: #9b2218; background: #fbefed; }
+            .mb-dp-dialog .mb-meh-kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; padding: 8px 10px; margin: 0; }
+            .mb-dp-dialog .mb-meh-kv dt { font-style: italic; color: #7a6d5c; }
+            .mb-dp-dialog .mb-meh-kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+            .mb-dp-dialog .mb-meh-scroll { overflow-x: auto; max-width: 100%; }
+            .mb-dp-dialog table.mb-meh-sub { border-collapse: collapse; font-size: 12.5px; line-height: 1.4; margin: 2px 0; }
+            .mb-dp-dialog table.mb-meh-sub :is(th, td) { border: 1px solid #e3dac8; padding: 2px 6px; text-align: left; vertical-align: top; }
+            .mb-dp-dialog table.mb-meh-sub th { font-weight: 400; font-style: italic; color: #7a6d5c; background: #f4eee2; }
+            .mb-dp-dialog .mb-meh-deleted { color: #7a6d5c; text-decoration: line-through dotted; }
+            .mb-dp-dialog .mb-meh-comment { color: #7a6d5c; }
+            .mb-dp-dialog a.mb-meh-art { display: inline-block; cursor: zoom-in; }
+            .mb-dp-dialog a.mb-meh-art img { height: 110px; width: auto; border: 1px solid #d9cfbd; background: #f4eee2; vertical-align: top; }
+            .mb-dp-dialog a.mb-meh-editlink { text-decoration: none; }
+            .mb-dp-dialog .mb-meh-notes { display: grid; gap: 8px; margin-top: 2px; }
+            .mb-dp-dialog .mb-meh-note { border-left: 2px solid #d9cfbd; padding: 1px 0 1px 10px; }
+            .mb-dp-dialog .mb-meh-note.mb-meh-own { border-left-color: #2f5f9e; }
+            .mb-dp-dialog .mb-meh-nh { display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; font: 12px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #7a6d5c; }
+            .mb-dp-dialog .mb-meh-nh b { color: #2b2622; font-weight: 600; }
             /* A Discogs user's Recent activity and links, a search's
                results, a support article (2026-10-18). */
             .mb-dp-dialog .mb-dgu-e { grid-template-columns: 8.6em 8em minmax(0, 1fr); }
@@ -21922,6 +22004,11 @@
                 .mb-dp-dialog .mb-dgh-n, .mb-dp-dialog .mb-dgh-lk { grid-column: 1 / -1; }
                 .mb-dp-dialog .mb-dgh-diff { grid-template-columns: minmax(0, 1fr); }
                 .mb-dp-dialog .mb-dgh-diff > div:nth-child(even) { border-left: 0; }
+                .mb-dp-dialog .mb-meh-e { grid-template-columns: minmax(0, 1fr) auto; }
+                .mb-dp-dialog .mb-meh-e > :nth-child(3), .mb-dp-dialog .mb-meh-e .mb-dgh-n { grid-column: 1 / -1; }
+                .mb-dp-dialog .mb-meh-diff > .mb-meh-n, .mb-dp-dialog .mb-meh-diff > .mb-dgh-dh + .mb-dgh-dh { border-left: 0; }
+                .mb-dp-dialog .mb-meh-diff > .mb-meh-n { border-top: 1px dashed #e3dac8; }
+                .mb-dp-dialog .mb-meh-hist-btn .mb-meh-t { display: none; }
             }
             .mb-dp-dialog .mb-dg-tl { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
             .mb-dp-dialog .mb-dg-tl td { padding: 3px 6px 3px 0; vertical-align: top; border-top: 1px solid #eee5d4; }
@@ -46047,6 +46134,27 @@
     }
 
     /**
+     * What a page card says when MusicBrainz answered with its browser
+     * check instead of the page (`_mbIsBrowserCheck()`).
+     * @type {string}
+     */
+    const _MB_BROWSER_CHECK_NOTE = 'MusicBrainz asked this browser to verify itself: open the page once in a tab (↗), then press ⟳';
+
+    /**
+     * Whether a page is MusicBrainz's "Verifying your browser" check (a
+     * proof-of-work page posting to `/__meb_verify`, 1394 bytes) rather than
+     * the page asked for. A script without a browser gets it for most pages
+     * since 2026-10-01 (DEBUG-NOTES.md); the user's own session has passed it,
+     * but a fresh one may not have (org/mb-edit-history.org, "Probe").
+     *
+     * @param {string} html
+     * @returns {boolean}
+     */
+    function _mbIsBrowserCheck(html) {
+        return /\/__meb_verify|<title>Verifying your browser<\/title>/.test(String(html || '').slice(0, 4096));
+    }
+
+    /**
      * Loads one MusicBrainz PAGE for the cards the Web Service cannot feed
      * (an edit, an editor: org/iframe.org Phase 3), through `_mbLoad()`: the
      * page's HTML through `_dpGetRaw()` and the one MusicBrainz rate gate
@@ -46075,7 +46183,7 @@
             // view: a page that is not the one expected (a login page) must
             // not be read back from there by the next try.
             _dpRawMem.delete(url);
-            return { ok: false, detail: 'not the page expected' };
+            return { ok: false, detail: _mbIsBrowserCheck(raw.html) ? _MB_BROWSER_CHECK_NOTE : 'not the page expected' };
         }, Object.assign({ version: _MB_POP_PAGE_VERSION }, opts));
     }
 
@@ -46172,17 +46280,32 @@
      * name percent-encoded as in the link), and a tag (`/tag/<name>`, the
      * same encoding, 2026-10-19: the Web Service has no lookup of a tag by
      * name).
-     * Their tabs (`/user/<name>/edits`, `/edit/<n>/data`, `/tag/<name>/artist`)
-     * and an editor's own tag (`/user/<name>/tag/<name>`) are not previewed.
+     * Their tabs (`/edit/<n>/data`, `/tag/<name>/artist`) and an editor's own
+     * tag (`/user/<name>/tag/<name>`) are not previewed; an editor's edits
+     * (`/user/<name>/edits`) are an editing history (`_MB_POP_EDITS_RE`).
      * @type {RegExp}
      */
     const _MB_POP_PAGE_RE = /^\/(?:(edit)\/(\d+)|(user)\/([^/]+)|(tag)\/([^/]+))\/?$/;
 
     /**
+     * An editing history (org/mb-edit-history.org, 2026-10-20): an entity's
+     * `/<kind>/<MBID>/edits` (every MBID kind but a collection, which is not
+     * edited through edits: "Found 0 edits", probed 2026-10-20) or an
+     * editor's `/user/<name>/edits`. Its kind is `edits`, its id
+     * `<kind>/<MBID>` or `user/<name>` (the name percent-encoded as in the
+     * link, as the `user` kind's id). The MBID is lowercased, as for
+     * `_MB_POP_PATH_RE`.
+     * @type {RegExp}
+     */
+    const _MB_POP_EDITS_RE = /^\/(?:(artist|release-group|release|recording|work|label|event|place|area|series|instrument|url)\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})|user\/([^/]+))\/edits\/?$/;
+
+    /**
      * The kind a MusicBrainz page path previews as: an entity by MBID
-     * (`_MB_POP_PATH_RE`), a code (`_MB_POP_CODE_RE`), an edit, an editor or a tag
-     * (`_MB_POP_PAGE_RE`); `seg` is the path's own first segment (a disc ID's
-     * page is /cdtoc/, its kind `discid`). `null` for any other path.
+     * (`_MB_POP_PATH_RE`), a code (`_MB_POP_CODE_RE`), an editing history
+     * (`_MB_POP_EDITS_RE`), an edit, an editor or a tag (`_MB_POP_PAGE_RE`);
+     * `seg` is the path's own first segment (a disc ID's page is /cdtoc/, its
+     * kind `discid`), '' when the kind's own `path()` names the page (an
+     * editing history). `null` for any other path.
      *
      * @param {string} pathname
      * @returns {?{seg: string, type: string, id: string}}
@@ -46192,6 +46315,8 @@
         if (m) return { seg: m[1], type: m[1], id: m[2].toLowerCase() };
         const c = _MB_POP_CODE_RE.exec(pathname);
         if (c) return { seg: c[1], type: _MB_POP_CODE_TYPES[c[1]], id: c[2] };
+        const h = _MB_POP_EDITS_RE.exec(pathname);
+        if (h) return { seg: '', type: 'edits', id: h[1] ? `${h[1]}/${h[2].toLowerCase()}` : `user/${h[3]}` };
         const p = _MB_POP_PAGE_RE.exec(pathname);
         if (p) return { seg: p[1] || p[3] || p[5], type: p[1] || p[3] || p[5], id: p[2] || p[4] || p[6] };
         return null;
@@ -47929,6 +48054,774 @@
         };
     }
 
+    // --- Editing history (org/mb-edit-history.org, 2026-10-20) ---
+    //
+    // "✎ Editing history" in the window's header (`_dpOpenEdits()`, key H)
+    // shows the entity's (or editor's) `/…/edits` page IN the window, with
+    // the Discogs release history's look (`_extDgHistSectionsHtml()`): one
+    // HISTORY row per `div.edit-header` block, the selected edit's
+    // `table.details` as the OLD | NEW pane, Back to where it came from.
+    // Mockups: org/mb-edit-history-mockups.html. The list page carries every
+    // edit's full details, so a row asks for nothing; a page of 50 edits is
+    // one request through `_mbPageLoad()` (the one MusicBrainz gate), the
+    // next page another ("Load page N").
+
+    /**
+     * Class prefixes of other userscripts' markup inside an edit (the debug
+     * snapshots were saved with several running): never read.
+     * @type {RegExp}
+     */
+    const _MB_EDITS_FOREIGN_CLS = /^(jesus2099|mfe-|mb-hq-|mmth|search-link|mb-batch|batch-toggle|mb-vsb)/;
+
+    /** Hosts an image inside an edit may come from: the cover and event art archives and their thumbnails. */
+    const _MB_EDITS_IMG_HOST = /^https:\/\/([a-z0-9-]+\.)*(coverartarchive\.org|eventartarchive\.org|archive\.org)\//i;
+
+    /** An `.edit-header` category token → the history's category (the tokens `_editActionBgColor()` matches). */
+    const _MB_EDITS_CATS = { 'edit-add': 'add', 'edit-edit': 'edit', 'edit-remove': 'remove', 'edit-merge': 'merge' };
+
+    /** A category's pill colour (the Discogs history's, plus `bad` for a removal). */
+    const _MB_EDITS_PILL = { add: 'ok', edit: 'run', remove: 'bad', merge: 'warn', other: 'idle' };
+
+    /** The categories in chip order, with their chip labels. */
+    const _MB_EDITS_CAT_LABELS = [['add', 'Add'], ['edit', 'Edit'], ['remove', 'Remove'], ['merge', 'Merge'], ['other', 'Other']];
+
+    /** A status token's pill colour; an applied edit has no pill. */
+    const _MB_EDITS_STATUS_PILL = { open: 'run', failed: 'bad', error: 'bad' };
+
+    /**
+     * A URL as the page writes it, a protocol-relative one (`//archive.org/…`,
+     * the artwork thumbnails) made https.
+     *
+     * @param {string} u
+     * @returns {string}
+     */
+    function _mbEditsAbsUrl(u) {
+        return /^\/\//.test(u) ? `https:${u}` : u;
+    }
+
+    /**
+     * What a node HOLDS as safe HTML (its own tag is not kept): text, line
+     * breaks, bold/italic, `bdi`, `code`, lists, paragraphs; links
+     * (MusicBrainz paths stay paths, so a plain click drills down in the
+     * window, `_dpDrill()`; another site's absolute; both a new tab); nested
+     * tables as `table.mb-meh-sub` — never `tbl`, or every global
+     * `table.tbl` query of the script would count the window's content;
+     * cover and event art only from their archives, the `<noscript>`
+     * thumbnail (a DOMParser document runs no script, so `<noscript>` is
+     * markup), its link marked `mb-meh-art` for the artwork viewer.
+     * MusicBrainz's diff marks `diff-only-a`/`diff-only-b` become the Discogs
+     * history's `mb-dgh-rem`/`mb-dgh-add`, a removed entity (`span.deleted`)
+     * `mb-meh-deleted`, a disambiguation (`span.comment`) `mb-meh-comment`.
+     * Other userscripts' markup (`_MB_EDITS_FOREIGN_CLS`), scripts and form
+     * controls are dropped.
+     *
+     * @param {Node} node
+     * @returns {string}
+     */
+    function _mbEditsHtml(node) {
+        const walk = (n) => {
+            if (n.nodeType === 3) return _rgEsc(n.nodeValue.replace(/\s+/g, ' '));
+            if (n.nodeType !== 1) return '';
+            const tag = n.tagName.toUpperCase();
+            if (/^(SCRIPT|STYLE|BUTTON|SELECT|TEXTAREA|INPUT|FORM|SVG)$/.test(tag)) return '';
+            const cls = Array.from(n.classList || []);
+            if (cls.some(c => _MB_EDITS_FOREIGN_CLS.test(c))) return '';
+            const inner = Array.from(n.childNodes).map(walk).join('');
+            if (cls.includes('diff-only-a')) return `<span class="mb-dgh-rem">${inner}</span>`;
+            if (cls.includes('diff-only-b')) return `<span class="mb-dgh-add">${inner}</span>`;
+            if (cls.includes('deleted')) return `<span class="mb-meh-deleted">${inner}</span>`;
+            if (cls.includes('comment')) return `<span class="mb-meh-comment">${inner}</span>`;
+            switch (tag) {
+            case 'A': {
+                const href = _mbEditsAbsUrl(n.getAttribute('href') || '');
+                if (!/^\/(?!\/)/.test(href) && !/^https?:\/\//i.test(href)) return inner;
+                const art = /<img /.test(inner) ? ' class="mb-meh-art"' : '';
+                return `<a${art} href="${_rgEsc(href)}" target="_blank" rel="noopener">${inner}</a>`;
+            }
+            case 'BR': return '<br>';
+            case 'B': case 'STRONG': return `<b>${inner}</b>`;
+            case 'I': case 'EM': return `<i>${inner}</i>`;
+            case 'CODE': case 'BDI': case 'UL': case 'OL': case 'LI': case 'P': case 'THEAD': case 'TBODY': case 'TR':
+                return `<${tag.toLowerCase()}>${inner}</${tag.toLowerCase()}>`;
+            case 'TABLE': return `<table class="mb-meh-sub">${inner}</table>`;
+            case 'TH': case 'TD': {
+                const span = ['colspan', 'rowspan'].map(a => (Number(n.getAttribute(a)) > 1 ? ` ${a}="${Number(n.getAttribute(a))}"` : '')).join('');
+                return `<${tag.toLowerCase()}${span}>${inner}</${tag.toLowerCase()}>`;
+            }
+            case 'IMG': {
+                const src = _mbEditsAbsUrl(n.getAttribute('src') || '');
+                return _MB_EDITS_IMG_HOST.test(src) ? `<img src="${_rgEsc(src)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : '';
+            }
+            default: return inner;
+            }
+        };
+        return Array.from(node.childNodes).map(walk).join('').replace(/\s+/g, ' ').trim();
+    }
+
+    /**
+     * The text of a fragment `_mbEditsHtml()` made, for a one-line summary.
+     *
+     * @param {string} html
+     * @returns {string}
+     */
+    function _mbEditsText(html) {
+        return String(html || '').replace(/<[^>]+>/g, ' ')
+            .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, '\'').replace(/&amp;/g, '&')
+            .replace(/\s+/g, ' ').trim();
+    }
+
+    /**
+     * MusicBrainz's Old/New table in one value cell as its two halves: an
+     * edit medium's tracklist ("Old tracklist" | "New tracklist", each over
+     * the same columns) or its artist credits ("#" | "Old artist" | "New
+     * artist", the shared columns on both sides). `null` for any other table.
+     *
+     * @param {Element} table - The native table.
+     * @returns {?{old: string, new: string, same: boolean}}
+     */
+    function _mbEditsSplitTable(table) {
+        const heads = Array.from(table.querySelectorAll(':scope > thead > tr'));
+        if (!heads.length) return null;
+        const h0 = Array.from(heads[0].cells);
+        let oldIdx;
+        let newIdx;
+        let hdr;
+        if (h0.length === 2 && /^old\b/i.test(_mbPopText(h0[0])) && /^new\b/i.test(_mbPopText(h0[1]))) {
+            const k = h0[0].colSpan || 1;
+            oldIdx = Array.from({ length: k }, (_, i) => i);
+            newIdx = oldIdx.map(i => i + k);
+            hdr = heads[1] ? Array.from(heads[1].cells) : null;
+        } else {
+            const o = [];
+            const nw = [];
+            const shared = [];
+            h0.forEach((c, i) => (/^old\b/i.test(_mbPopText(c)) ? o : /^new\b/i.test(_mbPopText(c)) ? nw : shared).push(i));
+            if (!o.length || !nw.length) return null;
+            oldIdx = shared.concat(o).sort((a, b) => a - b);
+            newIdx = shared.concat(nw).sort((a, b) => a - b);
+            hdr = h0;
+        }
+        const rows = Array.from(table.querySelectorAll(':scope > tbody > tr'));
+        const half = idx => '<table class="mb-meh-sub">' +
+            (hdr ? `<thead><tr>${idx.map(i => `<th>${hdr[i] ? _rgEsc(_mbPopText(hdr[i]).replace(/^(?:old|new)\s+(\S)/i, (m, c) => c.toUpperCase())) : ''}</th>`).join('')}</tr></thead>` : '') +
+            `<tbody>${rows.map(tr => `<tr>${idx.map(i => `<td>${tr.cells[i] ? _mbEditsHtml(tr.cells[i]) : ''}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+        const o = half(oldIdx);
+        const nw = half(newIdx);
+        return { old: o, new: nw, same: !/mb-dgh-(add|rem)/.test(o + nw) };
+    }
+
+    /**
+     * One edit's changes as rows, from each top-level `table.details` of its
+     * `.edit-details` (and a pre-NGS `table.edit-release-events`), by
+     * `table.rows` (never a nested table's):
+     *   - `diff` {label, old, new}: a row with `td.old` and `td.new`; a
+     *     `th[rowspan=2]` over an old row and a new row (edit relationship);
+     *     one per nested old/new table in a value cell (set track lengths: a
+     *     track has no number of its own, so "Track N"); an Old/New table in
+     *     a value cell (`_mbEditsSplitTable()`); "Old X" + "New X" value rows
+     *     (reorder art); `same` when both sides read alike;
+     *   - `val` {label, html}: anything else; a `ctx` (context, across both
+     *     columns) once the edit has any diff.
+     *
+     * @param {Element} block - The edit's `div.edit-list`.
+     * @returns {Array<{label: string, kind: string, html?: string, old?: string, new?: string, same?: boolean}>}
+     */
+    function _mbEditsRows(block) {
+        const rows = [];
+        const tables = Array.from(block.querySelectorAll('.edit-details table.details, .edit-details table.edit-release-events'))
+            .filter(tb => !tb.parentElement.closest('.edit-details table'));
+        tables.forEach((table) => {
+            let pending = null;
+            Array.from(table.rows).forEach((tr) => {
+                const th = tr.querySelector(':scope > th');
+                const oldTd = tr.querySelector(':scope > td.old');
+                const newTd = tr.querySelector(':scope > td.new');
+                const label = th ? _mbPopText(th).replace(/:$/, '') : '';
+                if (!th && pending && newTd) {
+                    pending.new = _mbEditsHtml(newTd);
+                    pending = null;
+                    return;
+                }
+                if (oldTd || newTd) {
+                    const r = { label, kind: 'diff', old: oldTd ? _mbEditsHtml(oldTd) : '', new: newTd ? _mbEditsHtml(newTd) : '' };
+                    rows.push(r);
+                    if (oldTd && !newTd && th && th.rowSpan === 2) pending = r;
+                    return;
+                }
+                const td = tr.querySelector(':scope > td');
+                if (!td) return;
+                const nested = Array.from(td.querySelectorAll(':scope > table.details, :scope > table.wrap-block'));
+                if (nested.length && nested.every(tb => tb.querySelector('td.old, td.new'))) {
+                    nested.forEach((tb, i) => {
+                        const o = tb.querySelector('td.old');
+                        const nw = tb.querySelector('td.new');
+                        rows.push({ label: `${/^Track/.test(label) ? 'Track' : label} ${i + 1}`, kind: 'diff', old: o ? _mbEditsHtml(o) : '', new: nw ? _mbEditsHtml(nw) : '' });
+                    });
+                    return;
+                }
+                const only = td.children.length === 1 && td.firstElementChild.tagName === 'TABLE' ? _mbEditsSplitTable(td.firstElementChild) : null;
+                if (only) rows.push({ label, kind: 'diff', old: only.old, new: only.new, same: only.same });
+                else rows.push({ label, kind: 'val', html: _mbEditsHtml(td) });
+            });
+        });
+        for (let i = rows.length - 2; i >= 0; i--) {
+            const a = rows[i];
+            const b = rows[i + 1];
+            const m = a.kind === 'val' && b.kind === 'val' && /^Old (.+)$/i.exec(a.label);
+            if (m && b.label.toLowerCase() === `new ${m[1].toLowerCase()}`) {
+                rows.splice(i, 2, { label: m[1].charAt(0).toUpperCase() + m[1].slice(1), kind: 'diff', old: a.html, new: b.html });
+            }
+        }
+        rows.forEach((r) => {
+            if (r.kind === 'diff' && r.same === undefined) r.same = r.old === r.new;
+        });
+        if (rows.some(r => r.kind === 'diff')) rows.forEach((r) => { if (r.kind === 'val') r.kind = 'ctx'; });
+        return rows;
+    }
+
+    /**
+     * What an edit changed, in one line of text: a merge's count and target;
+     * one changed value as "Label: old → new" when short, else the changed
+     * labels; an addition or removal by its values, the entity the history
+     * is about left out.
+     *
+     * @param {string} cat
+     * @param {string} slug
+     * @param {Array<Object>} rows - `_mbEditsRows()`.
+     * @param {string} subj - The history's own entity path, '' for an editor's.
+     * @returns {string}
+     */
+    function _mbEditsSummary(cat, slug, rows, subj) {
+        const cut = (s, n) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
+        if (cat === 'merge') {
+            const from = rows.find(r => r.label === 'Merge');
+            const into = rows.find(r => r.label === 'Into');
+            if (from && into) {
+                const n = Math.max(1, ((from.html || '').match(/<tr>/g) || []).length - 1);
+                const name = /<bdi>([^<]+)<\/bdi>/.exec(into.html || '');
+                const what = slug === 'merge-release-groups' ? 'release group' : slug.replace(/^merge-|s$/g, '').replace(/-/g, ' ');
+                return `${n} ${what}${n === 1 ? '' : 's'} merged into “${name ? _mbEditsText(name[1]) : '…'}”`;
+            }
+        }
+        const changed = rows.filter(r => r.kind === 'diff' && !r.same);
+        if (changed.length === 1 && !/<(table|img) /.test(changed[0].old + changed[0].new)) {
+            const o = _mbEditsText(changed[0].old);
+            const nw = _mbEditsText(changed[0].new);
+            if (o.length + nw.length < 90) return `${changed[0].label}: ${o || '—'} → ${nw || '—'}`;
+        }
+        if (changed.length) return `Changed ${changed.map(r => r.label).filter((l, i, a) => l && a.indexOf(l) === i).slice(0, 4).join(', ')}`;
+        const own = r => subj && (r.html || '').includes(`href="${subj}"`) && rows.length > 1;
+        return rows.filter(r => !own(r)).slice(0, 2).map((r) => {
+            if (/<table /.test(r.html)) return `${r.label}: ${Math.max(0, (r.html.match(/<tr>/g) || []).length - 1)} rows`;
+            if (/<img /.test(r.html)) return '';
+            const t = cut(_mbEditsText(r.html), 90);
+            return !r.label || /^Relationships?$/.test(r.label) ? t : `${r.label}: ${t}`;
+        }).filter(Boolean).join(' · ');
+    }
+
+    /**
+     * One `div.edit-list` block as a history entry; `null` when it is not an
+     * edit (another userscript's batch summary has no "Edit #N - Type" link).
+     * Status, category and type slug from `.edit-header`'s tokens
+     * (`<status> edit-<category> <slug> [pre-ngs]`; a slug may end in a dash:
+     * `add-release-events-historic-`), the status's words from
+     * `_editStatusLabel()`; the editor ("Editor hidden" logged out), the
+     * tally, the closing or voting date (an open edit's end date from its
+     * tooltip), the notes (none at all logged out: `notesHidden`).
+     *
+     * @param {Element} block
+     * @param {string} subj - The history's own entity path, for the summary.
+     * @returns {?Object}
+     */
+    function _mbEditsEntry(block, subj) {
+        const header = block.querySelector(':scope > .edit-header');
+        const a = header && header.querySelector('h2 a[href^="/edit/"]');
+        const m = a && /^Edit #(\d+)\s*-\s*(.+)$/.exec(_mbPopText(a));
+        if (!m) return null;
+        const tokens = header.className.split(/\s+/).filter(Boolean);
+        const catTok = tokens.find(x => _MB_EDITS_CATS[x] || x === 'edit-other') || '';
+        const slug = catTok ? (tokens[tokens.indexOf(catTok) + 1] || '') : '';
+        const cat = _MB_EDITS_CATS[catTok] || 'other';
+        const sub = header.querySelector('p.subheader');
+        const userA = sub && sub.querySelector('a[href^="/user/"]');
+        const vote = _mbPopText(header.querySelector('.vote-count')).replace(/^Vote tally:\s*/i, '');
+        const yn = /(\d+)\s*yes\s*:\s*(\d+)\s*no/i.exec(vote);
+        const expEl = header.querySelector('.edit-expiration');
+        const expM = /^(Closed|Approved|Voting|Expired|Cancelled)\s*:\s*(.*)$/i.exec(_mbPopText(expEl));
+        const expTip = expEl && expEl.querySelector('[title]');
+        const notes = Array.from(block.querySelectorAll(':scope > .edit-notes > div.edit-note:not(.add-edit-note)')).map((n) => {
+            const h3 = n.querySelector(':scope > h3');
+            const ua = h3 && h3.querySelector('a[href^="/user/"]');
+            const text = n.querySelector('.edit-note-text');
+            return {
+                author: _mbPopText(ua && (ua.querySelector('bdi') || ua)) || _mbPopText(h3 && h3.querySelector('bdi')),
+                date: _mbPopText(h3 && h3.querySelector('a.date, .date')),
+                vote: h3 ? Array.from(h3.classList).filter(c => c !== 'owner').join(' ') : '',
+                owner: !!(h3 && h3.classList.contains('owner')),
+                bot: !!(text && text.classList.contains('modbot')),
+                html: _mbEditsHtml(text || n),
+            };
+        });
+        const rows = _mbEditsRows(block);
+        const own = notes.find(n => n.owner);
+        return {
+            id: m[1], type: m[2].trim(), slug, cat, status: tokens[1] || '', statusLabel: _editStatusLabel(block),
+            preNgs: tokens.includes('pre-ngs'),
+            editor: _mbPopText(userA && (userA.querySelector('bdi') || userA)), editorPath: userA ? userA.getAttribute('href') : '',
+            editorHidden: !userA && /Editor hidden/i.test(_mbPopText(sub)),
+            editorClass: _mbPopText(sub && sub.querySelector('.editor-class')).replace(/^\(|\)$/g, ''),
+            auto: /automatically applied/i.test(vote), yes: yn ? Number(yn[1]) : null, no: yn ? Number(yn[2]) : null,
+            when: expM ? expM[1] : '', date: expM ? expM[2].trim() : _mbPopText(expEl), dateAt: expTip ? expTip.getAttribute('title') : '',
+            myVote: _mbPopText(header.querySelector('.my-vote')).replace(/^My vote:\s*/i, ''),
+            notes, notesHidden: !block.querySelector(':scope > .edit-notes'),
+            rows, changed: rows.some(r => (r.kind === 'diff' && !r.same) || /mb-dgh-(add|rem)/.test(r.html || '')),
+            summary: _mbEditsSummary(cat, slug, rows, subj),
+            ownNote: own ? _mbEditsText(own.html).slice(0, 200) : '',
+        };
+    }
+
+    /**
+     * An editing history page (`/<kind>/<MBID>/edits`, `/user/<name>/edits`)
+     * as a record for its card and window; `null` when the page is not one
+     * (a login page, MusicBrainz's browser check, an error page): no "Found
+     * (at least) N edit(s)" in `#content .search-toggle`. 50 edits a page;
+     * a busy entity's count is only "at least 500" and its page links a
+     * lower bound (probed 2026-10-20, org/mb-edit-history.org "Probe"). One
+     * entry per edit (`_mbEditsEntry()`), deduped by number: another
+     * userscript's batch grouping nests the member blocks in a summary block
+     * (debug/edits-*.html). The subject: an entity's header link (`h1 a`),
+     * else an editor's page heading ("Edits by <name>").
+     *
+     * @param {Document} doc
+     * @returns {?{subject: {path: string, name: string}, by: string, total: number, atLeast: boolean,
+     *   page: number, pages: number, entries: Array<Object>}}
+     */
+    function _mbParseEditsPage(doc) {
+        const content = doc.getElementById('content');
+        const found = content && /Found (at least )?([\d,.]+) edits?/.exec(_mbPopText(content.querySelector('.search-toggle')));
+        if (!found) return null;
+        const h1a = content.querySelector('h1 a[href]');
+        const h2 = !h1a && /^(?:Open )?Edits by (.+)$/.exec(_mbPopText(content.querySelector('h2')));
+        const subject = h1a ? { path: h1a.getAttribute('href') || '', name: _mbPopText(h1a) } : { path: '', name: h2 ? h2[1] : '' };
+        const seen = new Set();
+        const entries = [];
+        content.querySelectorAll('div.edit-list').forEach((b) => {
+            const e = _mbEditsEntry(b, subject.path);
+            if (e && !seen.has(e.id)) {
+                seen.add(e.id);
+                entries.push(e);
+            }
+        });
+        const pag = content.querySelector('ul.pagination');
+        const nums = pag ? Array.from(pag.querySelectorAll('a[href*="page="]')).map(x => Number((/[?&]page=(\d+)/.exec(x.getAttribute('href')) || [])[1]) || 0) : [];
+        return {
+            subject, by: _mbPopText(content.querySelector('h1 + p.subheader')).replace(/^~\s*/, ''),
+            total: Number(found[2].replace(/[,.]/g, '')), atLeast: !!found[1],
+            page: pag ? Number(_mbPopText(pag.querySelector('a.sel'))) || 1 : 1, pages: nums.length ? Math.max(1, ...nums) : 1,
+            entries,
+        };
+    }
+
+    /**
+     * What the user chose in an editing history, by its id (`recording/<MBID>`,
+     * `user/<name>`), for this page load: the category and status chips, the
+     * order, the selected edit, "Only what changed", how many pages are read.
+     * @type {Map<string, {group: string, status: string, order: string, sel: string, only: boolean, pages: number}>}
+     */
+    const _mbEditsUi = new Map();
+
+    /**
+     * An editing history's choices, created with the defaults.
+     *
+     * @param {string} id
+     * @returns {{group: string, status: string, order: string, sel: string, only: boolean, pages: number}}
+     */
+    function _mbEditsUiOf(id) {
+        if (!_mbEditsUi.has(id)) _mbEditsUi.set(id, { group: 'all', status: 'any', order: 'new', sel: '', only: true, pages: 1 });
+        return _mbEditsUi.get(id);
+    }
+
+    /**
+     * The cache key of an editing history's page n.
+     *
+     * @param {string} id
+     * @param {number} n
+     * @returns {string}
+     */
+    function _mbEditsKey(id, n) {
+        return `pop:page:edits:${id}:${n}`;
+    }
+
+    /**
+     * Loads page n of an editing history (`_mbPageLoad()`, the one
+     * MusicBrainz gate). A page with an open edit stays in memory only: its
+     * votes change (as an open edit's card, `_MB_KINDS.edit`).
+     *
+     * @param {object} t - The `edits` target.
+     * @param {number} n
+     * @param {{force?: boolean, repaint?: ?function(): void}} [opts]
+     * @returns {void}
+     */
+    function _mbEditsLoad(t, n, opts = {}) {
+        const url = new URL(`/${t.id}/edits${n > 1 ? `?page=${n}` : ''}`, window.location.origin).href;
+        _mbPageLoad(_mbEditsKey(t.id, n), url, _mbParseEditsPage, Object.assign({
+            wanted: _mbPopWanted(t), keep: d => !d.entries.some(e => e.status === 'open'),
+        }, opts));
+    }
+
+    /**
+     * What a history is about, in words: an entity's kind, or "editor".
+     *
+     * @param {string} id
+     * @returns {string}
+     */
+    function _mbEditsKindWord(id) {
+        const seg = id.split('/')[0];
+        return seg === 'user' ? 'editor' : seg.replace(/-/g, ' ');
+    }
+
+    /**
+     * A segmented row of chip buttons, the Discogs history's `.mb-dgh-seg`.
+     *
+     * @param {string} act - `data-mb-meh-act`.
+     * @param {Array<Array<string>>} items - `[value, label]`.
+     * @param {string} cur
+     * @returns {string}
+     */
+    function _mbEditsSeg(act, items, cur) {
+        return `<span class="mb-dgh-seg">${items.map(([v, l]) => `<button type="button" class="mb-dg-btn" data-mb-meh-act="${act}" ` +
+            `data-mb-meh-v="${_rgEsc(v)}" aria-pressed="${v === cur}">${_rgEsc(l)}</button>`).join('')}</span>`;
+    }
+
+    /**
+     * One history row: the closing date (an open edit: "voting · 7 days",
+     * its end on hover), the editor, the type as a pill coloured by
+     * category, what changed and the editor's own note, the tally or the
+     * status. The whole row selects (`data-mb-meh-act="sel"`, Enter, ↑ ↓).
+     *
+     * @param {Object} e - An entry.
+     * @param {boolean} sel
+     * @returns {string}
+     */
+    function _mbEditsRowHtml(e, sel) {
+        const d = /^(\d{4}-\d\d-\d\d \d\d:\d\d)/.exec(e.date || '');
+        const date = e.when === 'Voting'
+            ? `<span class="mb-dgh-d" title="${_rgEsc(e.dateAt ? `Voting closes ${e.dateAt}` : e.date)}">voting · ${_rgEsc(e.date.replace(/^Closes in /i, ''))}</span>`
+            : `<span class="mb-dgh-d" title="${_rgEsc(`${e.when || 'Closed'}: ${e.date}`)}">${_rgEsc(d ? d[1] : e.date)}</span>`;
+        const editor = e.editorHidden
+            ? '<span class="mb-dgh-u"><span class="mb-meh-hidden" title="MusicBrainz shows who made an edit only to editors who are logged in">editor hidden</span></span>'
+            : `<span class="mb-dgh-u">${e.editorPath ? `<a href="${_rgEsc(e.editorPath)}" target="_blank" rel="noopener">${_rgEsc(e.editor)}</a>` : _rgEsc(e.editor)}` +
+                `${e.editorClass ? `<span class="mb-meh-cls">${_rgEsc(e.editorClass)}</span>` : ''}</span>`;
+        const pill = `<span><span class="mb-dgh-pill mb-dgh-pill-${_MB_EDITS_PILL[e.cat]}" title="${_rgEsc(e.type)}${e.preNgs ? ' (pre-NGS)' : ''}">${_rgEsc(e.type)}</span></span>`;
+        const tally = e.yes != null ? `${e.yes} yes · ${e.no} no` : '';
+        const status = e.status !== 'applied'
+            ? `<span class="mb-dgh-pill mb-dgh-pill-${_MB_EDITS_STATUS_PILL[e.status] || 'idle'}">${_rgEsc(e.statusLabel)}</span>${tally ? ` <span class="mb-meh-st">${tally}</span>` : ''}`
+            : `<span class="mb-meh-st">${e.auto ? 'auto' : tally}</span>`;
+        return `<div class="mb-dgh-e mb-meh-e${sel ? ' mb-dgh-latest' : ''}${e.status !== 'applied' ? ` mb-meh-is-${_rgEsc(e.status)}` : ''}" data-mb-meh-act="sel" ` +
+            `data-mb-meh-v="${_rgEsc(e.id)}" data-mb-keep-focus="meh-${_rgEsc(e.id)}" tabindex="0" role="button" aria-pressed="${sel}">` +
+            `${date}${editor}${pill}<span class="mb-dgh-n mb-dgh-clamp">${_rgEsc(e.summary)}` +
+            `${e.ownNote ? ` <span class="mb-meh-q">“${_rgEsc(e.ownNote.length > 140 ? `${e.ownNote.slice(0, 139).trimEnd()}…` : e.ownNote)}”</span>` : ''}</span>` +
+            `<span class="mb-dgh-lk">${status}</span></div>`;
+    }
+
+    /**
+     * The selected edit's pane: a line of facts; MusicBrainz's old and new
+     * values as the Discogs history's OLD | NEW grid (context rows across
+     * both columns, a label over each value; a merge as Merge | Into), or one
+     * column ("Added", "Removed", "Details") when nothing has two sides; the
+     * legend; the notes. "Only what changed" (on by default) hides the
+     * context rows after the first and the rows whose sides read alike. Its
+     * artwork links are numbered for the artwork viewer
+     * (`data-mb-artv-ext`, `_dpArtViewerClick()`). `Edit #N` is a link, so a
+     * plain click drills into the edit's own card (`_dpDrill()`).
+     *
+     * @param {Object} e
+     * @param {{only: boolean}} ui
+     * @param {boolean} latest - It is the newest edit read.
+     * @returns {string}
+     */
+    function _mbEditsPaneHtml(e, ui, latest) {
+        const rows = e.rows.map(r => Object.assign({}, r));
+        let heads = ['Old', 'New'];
+        let two = rows.some(r => r.kind === 'diff');
+        const from = e.cat === 'merge' && rows.find(r => r.label === 'Merge');
+        const into = e.cat === 'merge' && rows.find(r => r.label === 'Into');
+        if (from && into) {
+            heads = ['Merge', 'Into'];
+            two = true;
+            rows.splice(0, rows.length, { kind: 'diff', label: '', old: from.html, new: into.html },
+                ...rows.filter(r => r !== from && r !== into).map(r => Object.assign(r, { kind: 'ctx' })));
+        }
+        // MusicBrainz's own "Note:" row explains the edit ("This edit makes
+        // subsecond changes to track lengths"): never hidden.
+        const hide = (r, i) => (r.kind === 'ctx' && i > 0 && r.label !== 'Note') || !!r.same;
+        const hidable = rows.some(hide);
+        const scroll = h => (/<table /.test(h) ? `<div class="mb-meh-scroll">${h}</div>` : h);
+        const lbl = r => (r.label ? `<span class="mb-meh-lbl">${_rgEsc(r.label)}</span>` : '');
+        const none = '<span class="mb-meh-hidden">—</span>';
+        let body;
+        if (two) {
+            const cells = [`<div class="mb-dgh-dh">${heads[0]}</div><div class="mb-dgh-dh">${heads[1]}</div>`];
+            if (ui.only && !rows.some(r => r.kind === 'diff' && !r.same)) {
+                cells.push('<div class="mb-meh-ctx mb-dp-xsub">Every value MusicBrainz shows reads as before. "Everything" lists them.</div>');
+            }
+            rows.forEach((r, i) => {
+                if (ui.only && hide(r, i)) return;
+                if (r.kind !== 'diff') {
+                    cells.push(`<div class="mb-meh-ctx">${lbl(r)}${scroll(r.html) || none}</div>`);
+                    return;
+                }
+                const same = r.same ? ' mb-meh-same' : '';
+                cells.push(`<div class="mb-meh-o${same}">${lbl(r)}${scroll(r.old) || none}</div><div class="mb-meh-n${same}">${lbl(r)}${scroll(r.new) || none}</div>`);
+            });
+            body = `<div class="mb-dgh-diff mb-meh-diff">${cells.join('')}</div>`;
+        } else {
+            const kind = e.cat === 'add' ? ['add', 'Added'] : e.cat === 'remove' ? ['remove', 'Removed'] : ['', 'Details'];
+            body = `<div class="mb-meh-one"><div class="mb-dgh-dh${kind[0] ? ` mb-meh-dh-${kind[0]}` : ''}">${kind[1]}</div>` +
+                (rows.length ? `<dl class="mb-meh-kv">${rows.map(r => `<dt>${_rgEsc(r.label || '—')}</dt><dd>${scroll(r.html) || '<span class="mb-meh-hidden">(empty)</span>'}</dd>`).join('')}</dl>`
+                    : '<div class="mb-meh-kv mb-dp-xsub">MusicBrainz lists no details for this edit.</div>') + '</div>';
+        }
+        let n = 0;
+        const alt = _rgEsc(`${e.type} · edit #${e.id}`);
+        body = body.replace(/<a class="mb-meh-art"/g, () => `<a class="mb-meh-art" data-mb-artv-ext="${n++}"`).replace(/<img src="([^"]*)" alt=""/g, `<img src="$1" alt="${alt}"`);
+        const legend = /mb-dgh-(add|rem)/.test(body) ? '<div class="mb-dgh-legend"><span class="mb-dgh-rem">removed</span><span class="mb-dgh-add">added</span></div>' : '';
+        const meta = '<div class="mb-meh-meta">' +
+            `<span><span class="mb-dgh-pill mb-dgh-pill-${_MB_EDITS_PILL[e.cat]}">${_rgEsc(e.type)}</span>${e.preNgs ? ' <span class="mb-meh-cls">pre-NGS</span>' : ''}</span>` +
+            `<span>${e.editorHidden ? 'editor hidden' : `by <b>${_rgEsc(e.editor)}</b>`}</span>` +
+            `<span>${_rgEsc(e.when || 'Closed')}: ${_rgEsc(e.when === 'Voting' ? (e.dateAt || e.date) : e.date)}</span>` +
+            `<span>${e.auto ? 'automatically applied' : e.yes != null ? `${e.yes} yes : ${e.no} no` : 'no votes yet'}</span>` +
+            (e.status !== 'applied' ? `<span><b>${_rgEsc(e.statusLabel)}</b></span>` : '') +
+            (e.myVote && e.myVote !== 'N/A' ? `<span>my vote: ${_rgEsc(e.myVote)}</span>` : '') + '</div>';
+        const notes = e.notesHidden ? '<div class="mb-dp-xsub">MusicBrainz shows edit notes only to editors who are logged in.</div>'
+            : e.notes.length ? `<div class="mb-meh-notes">${e.notes.map(x => `<div class="mb-meh-note${x.owner ? ' mb-meh-own' : ''}"><div class="mb-meh-nh">` +
+                `<b>${_rgEsc(x.author)}</b>${x.owner ? '<span>editor</span>' : ''}` +
+                `${x.vote ? `<span class="mb-dgh-pill mb-dgh-pill-${x.vote === 'yes' ? 'ok' : x.vote === 'no' ? 'bad' : 'idle'}">voted ${_rgEsc(x.vote)}</span>` : ''}` +
+                `${x.bot ? '<span class="mb-meh-cls">bot</span>' : ''}<span>${_rgEsc(x.date)}</span></div><div>${x.html}</div></div>`).join('')}</div>`
+                : '<div class="mb-dp-xsub">No notes.</div>';
+        const act = (two && hidable ? _mbEditsSeg('only', [['1', 'Only what changed'], ['0', 'Everything']], ui.only ? '1' : '0') : '') +
+            ` <a class="mb-dg-btn mb-dg-primary mb-meh-editlink" href="/edit/${_rgEsc(e.id)}" target="_blank" rel="noopener">Edit #${_rgEsc(e.id)}</a>`;
+        return _extDgSection('meh-diff', `${latest ? 'Latest change · ' : ''}edit #${e.id}`, null,
+            meta + body + legend + `<h4>Notes${e.notes.length ? ` · ${e.notes.length}` : ''}</h4>${notes}`, act);
+    }
+
+    /**
+     * An editing history's window from its pages read so far (page 1 is
+     * loaded; `pend` is the next page's state while it loads or after it
+     * failed): the subject and what MusicBrainz says about its history; the
+     * HISTORY section (category chips, status chips when the statuses are
+     * mixed, Newest/Oldest, the rows, the footer that loads the next page);
+     * the selected edit's pane.
+     *
+     * @param {object} t - The `edits` target.
+     * @param {Array<Object>} recs - The pages read, in order.
+     * @param {?{n: number, st: ?Object}} pend
+     * @returns {string}
+     */
+    function _mbEditsWindowHtml(t, recs, pend) {
+        const ui = _mbEditsUiOf(t.id);
+        const r0 = recs[0];
+        const all = recs.flatMap(r => r.entries);
+        if (!all.some(e => e.id === ui.sel)) ui.sel = all.length ? all[0].id : '';
+        const kind = _mbEditsKindWord(t.id);
+        const name = r0.subject.name || decodeURIComponent((t.id.split('/')[1] || ''));
+        const total = r0.atLeast ? `at least ${r0.total.toLocaleString('en-US')}` : r0.total.toLocaleString('en-US');
+        const last = recs[recs.length - 1];
+        const counts = {};
+        const stc = {};
+        const eds = {};
+        all.forEach((e) => {
+            counts[e.cat] = (counts[e.cat] || 0) + 1;
+            const s = e.status === 'applied' ? 'applied' : e.status;
+            if (!stc[s]) stc[s] = { n: 0, label: e.statusLabel || s };
+            stc[s].n++;
+            if (e.editor) eds[e.editor] = (eds[e.editor] || 0) + 1;
+        });
+        const top = Object.entries(eds).sort((a, b) => b[1] - a[1]).slice(0, 3);
+        const line = e => (e ? `${_rgEsc((/^(\d{4}-\d\d-\d\d \d\d:\d\d)/.exec(e.date) || [e.date])[0])}${e.editor ? ` by ${_rgEsc(e.editor)}` : ''} (${_rgEsc(e.type)})` : '');
+        const morePages = r0.atLeast || last.page < last.pages;
+        const head = '<div class="mb-dp-x"><div class="mb-dp-col">' +
+            `<div class="mb-dp-xtitle">${_rgEsc(name)}</div><div class="mb-dp-xsub">MusicBrainz · ${_rgEsc(kind)} · editing history</div>` +
+            (r0.by ? `<div>${_rgEsc(r0.by)}</div>` : '') +
+            (all.some(e => e.editorHidden) ? '<p class="mb-dp-xsub">Logged out, MusicBrainz hides who made each edit and every edit note. Log in on musicbrainz.org to see them here.</p>' : '') +
+            '</div><div class="mb-dp-col"><h4>MusicBrainz says</h4>' + _mbPopKvHtml([
+                ['Edits', `${_rgEsc(total)}${recs.length > 1 || morePages ? ` · ${recs.length} page${recs.length === 1 ? '' : 's'} read` : ''}`],
+                ['Latest', line(all[0])],
+                [morePages ? 'Oldest read' : 'First', all.length > 1 ? line(all[all.length - 1]) : ''],
+                ['Status', Object.keys(stc).length > 1 ? Object.values(stc).map(s => `${s.n} ${_rgEsc(s.label.toLowerCase())}`).join(' · ') : ''],
+                ['Editors', top.length ? `${Object.keys(eds).length}: ${top.map(([nm, c]) => `${_rgEsc(nm)} (${c})`).join(', ')}` : ''],
+            ]) + '</div></div>';
+        if (!all.length) {
+            return `${head}<div class="mb-meh-x"><div class="mb-dp-xsub">MusicBrainz lists no edit for this ${_rgEsc(kind)}.</div></div>`;
+        }
+        let list = all;
+        if (ui.group !== 'all') list = list.filter(e => e.cat === ui.group);
+        if (ui.status !== 'any') list = list.filter(e => (e.status === 'applied' ? 'applied' : e.status) === ui.status);
+        if (ui.order === 'old') list = list.slice().reverse();
+        const chips = _mbEditsSeg('group', [['all', `All ${all.length}`]].concat(_MB_EDITS_CAT_LABELS.filter(([k]) => counts[k]).map(([k, l]) => [k, `${l} ${counts[k]}`])), ui.group) +
+            (Object.keys(stc).length > 1 ? _mbEditsSeg('status', [['any', 'Any status']].concat(Object.entries(stc).map(([k, s]) => [k, `${s.label} ${s.n}`])), ui.status) : '') +
+            _mbEditsSeg('order', [['new', 'Newest first'], ['old', 'Oldest first']], ui.order);
+        const rows = list.map(e => _mbEditsRowHtml(e, e.id === ui.sel)).join('') ||
+            '<div class="mb-dp-xsub">No edit of this kind among the edits read.</div>';
+        let foot = '';
+        const next = last.page + 1;
+        if (pend && pend.st && pend.st.status === 'failed') {
+            foot = `<div class="mb-meh-more"><span class="mb-dp-warn">Page ${pend.n} could not be read (${_rgEsc(pend.st.detail)}).</span>` +
+                `<button type="button" class="mb-dg-btn mb-dg-primary" data-mb-meh-act="more" data-mb-meh-v="${pend.n}" data-mb-meh-force="1">Try again</button></div>`;
+        } else if (pend) {
+            foot = `<div class="mb-meh-more"><span class="mb-dp-spin">◌</span> Reading page ${pend.n}…</div>`;
+        } else if (morePages && last.entries.length) {
+            foot = `<div class="mb-meh-more"><button type="button" class="mb-dg-btn mb-dg-primary" data-mb-meh-act="more" data-mb-meh-v="${next}">` +
+                `Load page ${next}${r0.atLeast ? '' : ` of ${last.pages}`}</button>` +
+                `<span>${r0.atLeast ? `more than ${r0.total.toLocaleString('en-US')} edits` : `${Math.min(50, r0.total - all.length)} more`}</span></div>`;
+        }
+        const hist = _extDgSection('meh-hist', 'History', _rgEsc(morePages || recs.length > 1 ? `${all.length} of ${total}` : String(all.length)),
+            `<div class="mb-dgh-list mb-meh-list" data-mb-keep-scroll="meh-list">${rows}</div>${foot}`, chips);
+        const e = all.find(x => x.id === ui.sel);
+        return `${head}<div class="mb-meh-x">${hist}${e ? _mbEditsPaneHtml(e, ui, e.id === all[0].id) : ''}</div>`;
+    }
+
+    /**
+     * The pages of an editing history read so far, and the next one's state
+     * when it is loading or failed; a page the user asked for that is not
+     * in memory (this page load's `_mbPop`) is asked for again.
+     *
+     * @param {object} t
+     * @param {function(): void} repaint
+     * @returns {{recs: Array<Object>, pend: ?{n: number, st: ?Object}}}
+     */
+    function _mbEditsPages(t, repaint) {
+        const ui = _mbEditsUiOf(t.id);
+        const recs = [];
+        for (let n = 1; n <= ui.pages; n++) {
+            const st = _mbPop.get(_mbEditsKey(t.id, n));
+            if (st && st.status === 'done' && st.data) {
+                recs.push(st.data);
+                continue;
+            }
+            if (!st && n > 1) _mbEditsLoad(t, n, { repaint });
+            return { recs, pend: { n, st: _mbPop.get(_mbEditsKey(t.id, n)) } };
+        }
+        return { recs, pend: null };
+    }
+
+    /**
+     * An editing history's clicks in the window: a section heading opens or
+     * closes it (the Discogs windows' `_extDgCollapsed`), a chip, a row, "Only
+     * what changed" or "Load page N". Links never get here: `_dpDrill()`
+     * takes them first (an entity, `/edit/N`, an editor), and the artwork
+     * viewer its images.
+     *
+     * @param {MouseEvent} e
+     * @param {object} t - The `edits` target.
+     * @returns {void}
+     */
+    function _mbEditsAreaClick(e, t) {
+        if (!(e.target instanceof Element)) return;
+        const repaint = () => { if (_dpDialog.repaint) _dpDialog.repaint(); };
+        const head = e.target.closest('.mb-dg-xh');
+        if (head) {
+            const id = head.closest('[data-mb-dg-sec]').dataset.mbDgSec;
+            if (_extDgCollapsed.has(id)) _extDgCollapsed.delete(id);
+            else _extDgCollapsed.add(id);
+            repaint();
+            return;
+        }
+        const b = e.target.closest('[data-mb-meh-act]');
+        if (!b) return;
+        const ui = _mbEditsUiOf(t.id);
+        const v = b.dataset.mbMehV;
+        switch (b.dataset.mbMehAct) {
+        case 'group': ui.group = v; break;
+        case 'status': ui.status = v; break;
+        case 'order': ui.order = v; break;
+        case 'only': ui.only = v === '1'; break;
+        case 'sel': ui.sel = v; break;
+        case 'more': {
+            const n = Number(v) || 2;
+            ui.pages = Math.max(ui.pages, n);
+            _mbEditsLoad(t, n, { force: b.dataset.mbMehForce === '1', repaint: _dpDialog.repaint });
+            break;
+        }
+        default: return;
+        }
+        repaint();
+        if (b.dataset.mbMehAct === 'sel') {
+            // The pane is under the list: bring its head into view.
+            const pane = _dpDialog.api && _dpDialog.api.scrollArea.querySelector('[data-mb-dg-sec="meh-diff"]');
+            if (pane && pane.scrollIntoView) pane.scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    /**
+     * The history's keys while its window is open: Enter selects the
+     * focused row, ↑ ↓ move to the row above or below and select it.
+     *
+     * @param {KeyboardEvent} e
+     * @returns {boolean} Whether the key was the history's.
+     */
+    function _mbEditsRowKeys(e) {
+        if (e.altKey || e.ctrlKey || e.metaKey || !['Enter', 'ArrowUp', 'ArrowDown'].includes(e.key)) return false;
+        const row = e.target instanceof Element && e.target.closest('.mb-meh-e');
+        if (!row || !_dpDialog.api || !_dpDialog.api.scrollArea.contains(row)) return false;
+        let to = row;
+        if (e.key !== 'Enter') {
+            to = e.key === 'ArrowDown' ? row.nextElementSibling : row.previousElementSibling;
+            if (!to || !to.classList.contains('mb-meh-e')) return false;
+            to.focus();
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        to.click();
+        return true;
+    }
+
+    /**
+     * What a window's target has an editing history of: `<kind>/<MBID>` for
+     * an entity with an MBID (from the target's own MusicBrainz URL, so a
+     * release group shown by the release-group sources counts too),
+     * `user/<name>` for an editor; `null` for everything else (a collection,
+     * a code, an edit, a tag, another site, an editing history itself), and
+     * while the MusicBrainz cards are off (the history is one of them).
+     *
+     * @param {?object} t - A window target.
+     * @returns {?string}
+     */
+    function _mbEditsSubject(t) {
+        if (!t || !t.src || _foreignHost) return null;
+        const src = _popSources().find(x => x.id === 'mb-entity');
+        if (!src || !src.enabled()) return null;
+        if (t.src.id === 'mb-entity' && t.type === 'user') return `user/${t.id}`;
+        let u;
+        try {
+            u = new URL(t.src.liveUrl(t), window.location.origin);
+        } catch (_) {
+            return null;
+        }
+        if (u.origin !== window.location.origin) return null;
+        const m = _MB_POP_PATH_RE.exec(u.pathname);
+        return m && m[1] !== 'collection' ? `${m[1]}/${m[2].toLowerCase()}` : null;
+    }
+
+    /**
+     * "✎ Editing history" (or H): the window shows the editing history of
+     * what it shows now, which goes on the back stack (← Back, Backspace,
+     * Alt+← return to it).
+     *
+     * @returns {void}
+     */
+    function _dpOpenEdits() {
+        const cur = _dpDialog.target;
+        const id = _mbEditsSubject(cur);
+        const src = _popSources().find(x => x.id === 'mb-entity');
+        if (!id || !src) return;
+        _dpDialog.stack.push(cur);
+        _dpShowInDialog({
+            src, el: cur.el, drilled: true, key: `edits:${id}`, type: 'edits', id,
+            url: new URL(`/${id}/edits`, window.location.origin).href,
+            kind: _MB_KINDS.edits.title, wide: true, name: cur.name || '', col: '',
+        });
+    }
+
     /**
      * A tag's kinds by how many of each it tags, largest first (page order
      * among equals).
@@ -48773,6 +49666,43 @@
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
         })),
+        // An editing history (org/mb-edit-history.org, 2026-10-20): an
+        // entity's or editor's `/…/edits`, read from the page (the Web
+        // Service has no edits), shown with the Discogs history's look. The
+        // window opens it from "✎ Editing history" (`_dpOpenEdits()`); a
+        // link to the page (the sidebar's "Editing history", an editor's
+        // "Their edits") is a target like any other. Page n is its own
+        // record (`_mbEditsKey()`); ⟳ reads page 1 again and starts over.
+        edits: {
+            title: 'Editing history', wide: true,
+            path: id => `/${id}/edits`,
+            card(t, start, repaint) {
+                if (start) _mbEditsLoad(t, 1, { repaint });
+                return _mbPopCardShell(t, _mbPop.get(_mbEditsKey(t.id, 1)), (d) => {
+                    const types = {};
+                    d.entries.forEach((e) => { types[e.type] = (types[e.type] || 0) + 1; });
+                    const latest = d.entries[0];
+                    return `<div class="mb-tt-title">${_rgEsc(d.subject.name || decodeURIComponent(t.id.split('/')[1] || ''))}</div>` +
+                        `<div class="mb-tt-comment">Editing history · ${_rgEsc(_mbEditsKindWord(t.id))}</div>` +
+                        `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([`${d.atLeast ? 'at least ' : ''}${d.total.toLocaleString('en-US')} edits`,
+                            d.entries.some(e => e.status === 'open') ? `${d.entries.filter(e => e.status === 'open').length} open` : ''])}</div>` +
+                        '<div class="mb-tt-rule"></div>' + _mbPopKvHtml([
+                            ['Latest', latest ? _rgEsc(`${(/^(\d{4}-\d\d-\d\d)/.exec(latest.date) || [latest.date])[0]} · ${latest.type}${latest.editor ? ` · ${latest.editor}` : ''}`) : ''],
+                            ...Object.entries(types).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, n]) => [k, String(n)]),
+                        ]);
+                });
+            },
+            extracted(t, start, force, repaint) {
+                const ui = _mbEditsUiOf(t.id);
+                if (force) ui.pages = 1;
+                if (start) _mbEditsLoad(t, 1, { force, repaint });
+                return _mbPopWindowShell(t, _mbPop.get(_mbEditsKey(t.id, 1)), () => {
+                    const { recs, pend } = _mbEditsPages(t, repaint);
+                    return _mbEditsWindowHtml(t, recs, pend);
+                });
+            },
+            onAreaClick: _mbEditsAreaClick,
+        },
         // Phase 4: a barcode cell. One release search on the indexed
         // `barcode` field (MusicBrainz_API/Search, checked 2026-10-08): the
         // releases carrying it, the first 25 (the default limit) and the count.
@@ -61733,6 +62663,15 @@ ${sections.join('\n')}
         // Delay 100 ms so the click that opened the dialog doesn't immediately close it
         const onClickOutside = (e) => {
             if (dialog.contains(e.target)) return;
+            // A control inside that repaints its own part of the dialog
+            // while the click is still bubbling (an editing history's row,
+            // a chip) has left the document by the time the click gets
+            // here, so contains() no longer finds it. The event's path was
+            // recorded when it was dispatched and still names the dialog.
+            // The mousedown flag below covered this only for a MOUSE click:
+            // one made with the keyboard (Enter on a focused chip, the
+            // history's ↑ ↓) has no mousedown and closed the dialog.
+            if (e.composedPath().includes(dialog)) return;
             if (_lastMousedownInDialog) { _lastMousedownInDialog = false; return; }
             if (opts.keepOpenWithin && opts.keepOpenWithin.length &&
                 e.composedPath().some(n => n instanceof Element && opts.keepOpenWithin.some(sel => n.matches(sel)))) return;

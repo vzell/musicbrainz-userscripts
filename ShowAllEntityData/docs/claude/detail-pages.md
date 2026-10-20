@@ -750,7 +750,8 @@ rate gate, and the raw-page memory the Live page view reads, so a hover then
 Live page costs ONE request — and parses it into a record kept like any card
 (`_mbLoad()`, the loader both kinds of card share; `_MB_POP_PAGE_VERSION`:
 **bump it when a page parser's output changes**). Paths: `_MB_POP_PAGE_RE`,
-the bare edit or profile only (not `/edit/<n>/data`, `/user/<name>/edits`).
+the bare edit or profile only (not `/edit/<n>/data`; `/user/<name>/edits` is
+an editing history since 2026-10-20, see below).
 
 - **`_mbParseEditPage()`** reads `.edit-header` (number, type; the editor, or
   "Editor hidden" when logged out), every `table.details` row (`td.old` +
@@ -817,6 +818,107 @@ everything the card needs in one request.
   (`scripts/fetch-mb-page-fixture.js /tag/alternative%20rock`). Specs:
   `popup-mb.spec.js` "tags, read from the page", `sidebar-inline.spec.js`
   "tag pills"; mutations `scripts/mutations/tag-reader.json`.
+
+## MusicBrainz: an entity's editing history in the window (2026-10-20)
+
+Plan, probe and decisions: `org/mb-edit-history.org`; mockups (real parsed
+edits): `org/mb-edit-history-mockups.html`. **✎ Editing history** in the
+window's header (`hist` in `_dpDialog.controls`, key **H** in
+`_dpDialogKeys()`) shows the `/…/edits` page of what the window shows, in the
+same window, with the look of a Discogs release's history
+(`_extDgHistSectionsHtml()`, above): `_dpOpenEdits()` pushes the current
+target on `_dpDialog.stack` and shows an `edits` target, so ← Back,
+Backspace, Alt+← and the kinds-path title need nothing new.
+
+- **Who has one: `_mbEditsSubject(t)`.** Read from the target's own
+  MusicBrainz URL (`t.src.liveUrl(t)` against `_MB_POP_PATH_RE`), so a
+  release group shown by the release-group sources counts too; every MBID
+  kind but a collection ("Found 0 edits": collections are not edited
+  through edits, probed); an editor (`user` kind) → `user/<name>`. Null on a
+  foreign host and while `sa_pop_mb` is off (the history is one of its
+  cards, and `_dpRenderDialog()` refuses a disabled source). The button is
+  hidden wherever it is null, the history itself included.
+- **The kind: `_MB_KINDS.edits`**, id `<kind>/<MBID>` or `user/<name>`,
+  `path()` → `/<id>/edits`. `_MB_POP_EDITS_RE` makes the page's links
+  targets too (`_mbPopParsePath()` returns `seg: ''` so `_mbPopTarget()`
+  takes the kind's `path()`): the sidebar's "Editing history" and the editor
+  window's "Their edits" get a card (`card`: subject, total, latest edit,
+  commonest types) and open the same window.
+- **Pages: one record each**, `pop:page:edits:<id>:<n>` (`_mbEditsKey()`),
+  through `_mbPageLoad()` (the one MusicBrainz gate, `_dpRawMem`), 50 edits
+  a page. `_mbEditsUi` (per id, this page load) holds the chips, the order,
+  the selection, "Only what changed" and how many pages are read;
+  `_mbEditsPages()` collects them and the next one's state; "Load page N"
+  (`data-mb-meh-act="more"`) asks for it; ⟳ (`force`) re-reads page 1 and
+  starts over at one page. **`keep`: no entry `open`** — a page holding an
+  open edit stays in memory only, as an open edit's card. A busy entity says
+  "Found at least 500 edits" and links pages 1–10, deeper pages raising both
+  (probed), so with `atLeast` the footer has no "of M".
+- **The parser: `_mbParseEditsPage()`**, null without "Found (at least) N
+  edit(s)" in `#content .search-toggle` (a login page, the browser check).
+  An entry per `div.edit-list` with an "Edit #N - Type" link, deduped by
+  number (another userscript nests batch members inside a summary block on
+  the LIVE page; fetched pages never carry it, so that guard is unseen by
+  the specs and recorded so in the mutation list). Rows
+  (`_mbEditsRows()`): `td.old`+`td.new` → diff; `th[rowspan=2]` over an old
+  row and a new row → one diff (edit relationship); nested old/new tables
+  in a value → one diff per track ("Track N", set track lengths); an
+  Old/New table in a value → its halves (`_mbEditsSplitTable()`: an edit
+  medium's "Old tracklist | New tracklist", artist credits' "# | Old artist
+  | New artist"); "Old X"+"New X" values → one diff (reorder art); anything
+  else a value, a context row once the edit has a diff; `same` when both
+  sides read alike. The summary line and the editor's own note are worked
+  out here, so the render is strings only.
+- **The sanitizer: `_mbEditsHtml()`** keeps what a node HOLDS, never its
+  own tag. Links stay MusicBrainz paths (a plain click drills, `_dpDrill()`;
+  `/edit/N` opens the edit card, `/user/x` the editor's); **a nested table
+  is `table.mb-meh-sub`, never `tbl`** (every global `table.tbl` query of
+  the script would count the window's content; the RG test pins the count);
+  artwork only from the two archives, from the `<noscript>` thumbnail (a
+  DOMParser document runs no script, so `<noscript>` is markup), its link
+  `a.mb-meh-art`, numbered `data-mb-artv-ext` when the pane is built so
+  `_dpArtViewerClick()` opens the viewer; `diff-only-a`/`-b` →
+  `mb-dgh-rem`/`-add`; other userscripts' markup dropped by class prefix.
+- **The window: `_mbEditsWindowHtml()`.** The subject and "MusicBrainz says"
+  (edits and pages read, latest, first or oldest read, statuses when mixed,
+  editors); `_extDgSection('meh-hist', …)` with category chips, status chips
+  only when mixed, Newest/Oldest, rows in a list that scrolls on its own
+  (`.mb-meh-list`, `data-mb-keep-scroll`), so the pane stays under it, and
+  the footer; `_extDgSection('meh-diff', …)` = `_mbEditsPaneHtml()`: a facts
+  line, the OLD | NEW grid (`mb-dgh-diff mb-meh-diff`; a merge Merge | Into)
+  or one column ("Added", "Removed", "Details"), the legend, the notes, "Only
+  what changed" (default on: hides context rows after the first and `same`
+  rows, never MusicBrainz's own "Note" row; says so when nothing visible
+  changed), and `Edit #N` (a link, so the drill). **The grid's column border
+  goes by class (`.mb-meh-n`), not Discogs' `nth-child(even)`**: a context
+  row spans both columns and shifts the parity.
+- **Clicks and keys.** `_mbEditsAreaClick()` (the kind's `onAreaClick`):
+  section heads through the Discogs windows' `_extDgCollapsed`, then
+  `data-mb-meh-act` = group | status | order | only | sel | more. A row is a
+  `role="button"` with `data-mb-keep-focus`; `_mbEditsRowKeys()` (from
+  `_dpDialogKeys()`): Enter selects, ↑ ↓ move and select — **by a click on
+  the row, which repaints and detaches it mid-dispatch**: that closed the
+  dialog until `createInfoDialog()`'s outside-click check also asked
+  `e.composedPath().includes(dialog)` (2026-10-20). A mouse click survived
+  only by the `_lastMousedownInDialog` flag; a keyboard click (Enter on a
+  focused chip of ANY window that repaints, the Discogs history's included)
+  has no mousedown.
+- **Failures.** `_mbPageLoad()` names MusicBrainz's "Verifying your browser"
+  page (`_mbIsBrowserCheck()`, `_MB_BROWSER_CHECK_NOTE`) for every page
+  card, instead of "not the page expected". Logged out, MusicBrainz hides
+  every editor and sends no notes (`editorHidden`, `notesHidden`), and the
+  window says so.
+- **Glyph.** `_mbKindIconUrl()` gives an `edits` target its subject's icon.
+- **Tests:** `tests/fixtures/popup-mb-edits.spec.js` (PATH, BUTTON, DIFF,
+  SPLIT, ONLY, ADDED, RG, KEEP, EDITOR, NONE, LOGGEDOUT, CHECK) and
+  `popup-mb-edits.mobile.spec.js`; fixtures `tests/fixtures/edits-page-*.html`
+  (real pages, scrubbed by `scripts/fetch-mb-page-fixture.js`; logged in, so
+  they name other editors, with the user's consent, answer 6); mutations
+  `scripts/mutations/popup-mb-edits.json`. Research scripts:
+  `scripts/probe-mb-entity-edits.py`, `scripts/inventory-mb-edits.js` (the
+  prototype parser `scripts/lib/mb-edits-parser.browser.js` over saved pages:
+  39 edit types), `scripts/show-mb-edits-samples.py`,
+  `scripts/build-mb-edit-history-mockups.py`.
 
 ## MusicBrainz: beyond table links (org/iframe.org, Phase 4)
 

@@ -24585,3 +24585,61 @@ Env: 2026-10-20T01:45:23+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
   pair (trap 3) and "fit skipped", which passed because without the fit the
   tiles fell back to 56 px and fitted anyway. The tile size is now in the
   markup, and the spec requires 56 < tile < 150.
+
+## 2026-10-20 — editing history in the entity window; a keyboard click closed any repainting dialog (branch feat/mb-edit-history-popup, WIP.1)
+
+Env: 2026-10-20T02:37+02:00 – 03:33:32+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (chromium-1234), no Tampermonkey (GM stubs); probe: urllib (Python 3.11.3) and Playwright Chromium, logged out and logged in as vzell
+
+- **Asked:** "✎ Editing history" in the popup window's header for every MB
+  entity, showing `/<entity>/<MBID>/edits` in the same window with the
+  Discogs history's look, and Back (org/TODO.org; plan, probe, answers and
+  mockups in org/mb-edit-history.org and org/mb-edit-history-mockups.html).
+- **Probe findings** (`scripts/probe-mb-entity-edits.py`, then pages saved
+  with `scripts/fetch-mb-page-fixture.js [--auth]` and reported with
+  `--from`):
+  1. urllib gets the "Verifying your browser" page (1394 bytes,
+     `/__meb_verify`) for every `/edits` path but the guitar's. The window
+     cannot rely on a session that passed it, so `_mbPageLoad()` now names
+     the check page (`_mbIsBrowserCheck()`) for every page card.
+  2. Logged out: "Editor hidden (log in…)" in every subheader, NO
+     `.edit-notes` block at all, "Vote tally:" before the tally, UTC dates.
+     Logged in: editors, notes, "My vote", the editor's own zone ("GMT+1").
+  3. "Found at least 500 edits" for a busy entity, pagination links 1–10;
+     page 30 of Bruce Springsteen says "at least 1950" and 39 pages. With
+     "at least" the last page is unknown.
+  4. `/collection/<mbid>/edits` logged in: "Found 0 edits" (not edited
+     through edits); logged out it did not load in 90 s. No button.
+  5. 21 saved pages hold 39 edit types (`scripts/inventory-mb-edits.js`);
+     row shapes are listed in org/mb-edit-history.org.
+- **Prototype bugs found on real pages before any userscript code:** the
+  sanitizer returned each value wrapped in its own `<td>` (it walked the
+  node, not its children); cover art came out empty, because the thumbnail
+  is a protocol-relative `//archive.org/…` URL inside `<noscript>`, which a
+  DOMParser document parses as markup and the first sanitizer dropped.
+- **Root cause of the dialog closing on ↓ (found by the DIFF spec):** a row
+  selects by a click; the scroll area's click listener repaints, which
+  detaches the row while the click still bubbles; `createInfoDialog()`'s
+  document-level outside-click handler then finds `dialog.contains(target)`
+  false and closes the dialog. A MOUSE click survives only because its
+  mousedown inside the dialog set `_lastMousedownInDialog`; a keyboard click
+  (Enter on a focused chip or row, the history's ↑ ↓) has no mousedown. So
+  this was latent in every window that repaints on a click, the Discogs
+  history's chips included. Fix: also return when
+  `e.composedPath().includes(dialog)` — the path is recorded at dispatch and
+  still names the dialog. Mutation-checked
+  (`scripts/mutations/popup-mb-edits.json`, "a keyboard click that repaints
+  closes the window").
+- **Test traps:** `loadUserscriptPage()` aborts every archive.org image at
+  PAGE level (`ARCHIVE_ORG_RE`), which a context route cannot override; the
+  spec adds a page route after the load, or the window's image `error`
+  listener removes the thumbnail and the artwork link is empty. On the
+  Pixel 7 project `Locator.tap()` misses on the zoomed-out page; taps go
+  through `page.touchscreen.tap()` at the element's centre, as
+  popup-mb.mobile.spec.js does.
+- **Design changes against the mockup, from implementing it:** the history
+  rows scroll in their own box (`.mb-meh-list`), so the selected edit's pane
+  stays under the list; MusicBrainz's own "Note" row is never hidden by
+  "Only what changed", and the pane says when nothing visible changed (set
+  track lengths that changed below a second); "On MusicBrainz ↗" was
+  dropped, since `_dpDrill()` would take a same-origin `/edit/N` link anyway:
+  `Edit #N` drills, and Ctrl-click or the edit card's ↗ opens the page.

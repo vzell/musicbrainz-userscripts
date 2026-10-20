@@ -1,0 +1,219 @@
+#+TITLE: Editing history in the MusicBrainz entity window
+#+DATE: 2026-10-20
+
+* Context
+
+org/TODO.org, "add a 'Editing history' button to the entity detail popup
+header of every supported MB entity": a button in the header of the popup
+window (=#mb-dp-dialog=) opens the entity's =/<entity>/<MBID>/edits= page
+INSIDE the same window, with the look of the Discogs release history
+(=_extDgHistSectionsHtml()=, screenshot in the TODO entry): the
+=div.edit-header= blocks map to the Discogs HISTORY rows, the selected edit's
+=table.details= to the "LATEST CHANGE · REVISION" OLD | NEW pane, and Back
+returns to the previous view.
+
+Mockups: =org/mb-edit-history-mockups.html= (interactive, real data; built by
+=scripts/build-mb-edit-history-mockups.py=), published privately at
+https://claude.ai/artifact/D4ZxzCjwsbWSRJLs6dqk58.
+
+Branch: =feat/mb-edit-history-popup=.
+
+* Decisions (2026-10-20)
+
+1. A click on a history row shows its changes in the lower pane, as on
+   Discogs; no request (the list page carries every edit's full details).
+   The pane's =Edit #N= drills into the existing edit card
+   (=_MB_KINDS.edit=, =_mbParseEditPage()=); Back returns.
+2. The newest page (50 edits) on open, then "Load page N of M", one request
+   per page.
+3. Mockups first, review, then the implementation.
+4. (Asked during stage 1) Artwork inside an edit (cover art, event art) opens
+   the script's own artwork viewer: each thumbnail link carries
+   =data-mb-artv-ext=, the hook =_dpArtViewerClick()= already reads, so the
+   viewer pages through every image in the pane (one image once).
+
+* Probe (2026-10-20)
+
+Env: 2026-10-20T02:37+02:00 – 02:47+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4
+(Linux 6.18.54.1) · Playwright 1.62.1 Chromium build 1234 (no Tampermonkey,
+no userscript) · logged out, then logged in as vzell
+(=playwright/.auth/vzell.json=, refreshed by the user at 02:39).
+
+- =scripts/probe-mb-entity-edits.py= (urllib) gets MusicBrainz's "Verifying
+  your browser" proof-of-work page (1394 bytes, =/__meb_verify=) for every
+  =/edits= path but one (the instrument page answered). Known since
+  2026-10-01 (DEBUG-NOTES.md). The pages were saved with
+  =node scripts/fetch-mb-page-fixture.js [--auth] <path> <out>= instead and
+  reported with =probe-mb-entity-edits.py --from DIR=.
+  *Consequence for the window:* the userscript fetches same-origin with the
+  user's session, which has passed the check, but a fresh session may get
+  the check page; the parser returns =null= for it and the window says so
+  ("Open the page once in a tab, then ⟳"), see the mockup's states tab.
+- Logged out: every "Edit by" reads "Editor hidden (log in…)"; there is NO
+  =.edit-notes= block at all; vote cells read "Vote tally: …"; dates are
+  "YYYY-MM-DD HH:MM UTC". Logged in: editors, notes, "My vote", and dates in
+  the editor's own zone ("… GMT+1").
+- "Found N edits" in =div.search-toggle=; 50 edits a page; =ul.pagination=
+  with =?page=N= links. A busy entity says "Found *at least* 500 edits" and
+  links pages 1–10; deeper pages raise both (Bruce Springsteen page 30:
+  "at least 1950", 39 pages). So with "at least", the page count is a lower
+  bound and the footer cannot say "of M".
+- =/url/<mbid>/edits= exists (1 edit). =/collection/<mbid>/edits= logged
+  in: "Found 0 edits"; logged out the page did not load within 90 s.
+  Collections get no button.
+- An open edit: empty =td.vote-count= until someone votes; expiration
+  "Voting: Closes in <span title="2026-10-27 00:22 GMT+1">7 days</span>".
+- Statuses seen across the pages and three status searches: applied, open,
+  failed ("Failed vote"), cancelled. =.edit-status= carries the label for
+  the non-applied ones.
+
+Pages saved (21, scratchpad only, not committed): artist (Bruce Springsteen
+p1, p30), label (Columbia p1, p60), work, two events, place, two areas,
+instrument, series, url, release, release group (p1, p2, p7), recording
+(logged in and out), collection, and /search/edits for open, failed and
+cancelled edits.
+
+* Edit types and how the pane shows them
+
+=node scripts/inventory-mb-edits.js [--json OUT] <pages…>= runs the
+prototype parser (=scripts/lib/mb-edits-parser.browser.js=) in Chromium and
+lists every type with its row shapes. 39 types in 5 categories (the
+=edit-add/-edit/-remove/-merge/-other= token of =.edit-header=):
+
+| Category | Types (count over the 21 pages)                                                                                                                                                                                  | Pane                                                        |
+|----------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------|
+| add      | relationship 386, release label 99, cover art 60, medium 24, disc ID 13, release 13, ISRCs 10, release/event/series annotation 8/6/4, event art 8, standalone recording, release group, aliases, artist, series, release events (historic) | one column "Added"; annotation edits with a changed text add an "Annotation comparison" diff row |
+| edit     | recording 62, relationship 57, medium 24, release label 11, release 9, artist 8, cover art 6, event 6, release group, URL, place alias, work, place, series                                                        | two columns; edit medium's tracklist split into its halves  |
+| merge    | recordings 42, release groups 3                                                                                                                                                                                  | two columns "Merge" / "Into"                                |
+| remove   | relationship 32, cover art 9, disc ID 1                                                                                                                                                                          | one column "Removed"                                        |
+| other    | set track lengths 10, reorder event art 1                                                                                                                                                                        | two columns, one row per track / positions paired           |
+
+* Parse rules (prototype: scripts/lib/mb-edits-parser.browser.js)
+
+Becomes =_mbParseEditsPage()= / =_mbEditsHtml()= next to =_mbParseEditPage()=.
+
+- Not the page → =null=: no "Found (at least )N edit(s)" in
+  =#content .search-toggle= (login page, browser check, error page).
+- One entry per =div.edit-list= whose =:scope > .edit-header h2
+  a[href^="/edit/"]= reads "Edit #N - Type". Deduped by id: another
+  userscript's batch grouping nests member blocks inside a summary block
+  (debug/edits-*.html); its summary has no such link and is skipped.
+- Header tokens: =<status> edit-<cat> <slug> [pre-ngs]=. The slug can end in
+  a dash (=add-release-events-historic-=). The status label comes from
+  =.edit-status=, else the token (=_editStatusLabel()= in the =edits=
+  pageType does the same and is reused).
+- Rows of each top-level =.edit-details table.details= (and pre-NGS
+  =table.edit-release-events=), =table.rows= only (never a nested table's):
+  - =td.old= + =td.new= on one row → diff;
+  - =th[rowspan=2]= + =td.old=, the next row's =td.new= → one diff
+    (edit relationship);
+  - a value cell holding =table.details=/=table.wrap-block= with old/new
+    cells → one diff per nested table, labelled "Track N" (set track
+    lengths; a track carries no number of its own);
+  - "Old X" + "New X" value rows → one diff "X" (reorder art);
+  - anything else → a value; when the edit has any diff, values become
+    context rows.
+  - =same= when both sides read the same (unchanged track lengths).
+  - =changed= also when a value holds diff marks (edit medium's tracklist
+    table).
+- Sanitizer: text, =br=, =p=, =b/strong=, =i/em=, =bdi=, =code=, lists;
+  links (MusicBrainz paths stay paths, so the window's drill-in resolves
+  them; =//host= made https); nested tables as =table.mb-meh-sub= (NEVER
+  =tbl=, or every global =table.tbl= query of the script would count popup
+  content); images only from coverartarchive.org / eventartarchive.org /
+  archive.org, from the =<noscript>= thumbnail (a DOMParser document runs no
+  script, so =<noscript>= parses as markup). =diff-only-a= → =mb-dgh-rem=,
+  =diff-only-b= → =mb-dgh-add= (the Discogs colours), =span.deleted= →
+  =mb-meh-deleted=, =span.comment= → =mb-meh-comment=. Dropped: scripts,
+  forms, buttons, inputs, and other userscripts' markup by class prefix
+  (=jesus2099=, =mfe-=, =mb-hq-=, =mmth=, =search-link=, =mb-batch=,
+  =batch-toggle=, =mb-vsb=).
+- Editor: =p.subheader a[href^="/user/"]=, its =.editor-class=
+  ("beginner", "bot"); =editorHidden= when the subheader says "Editor
+  hidden". Notes: =:scope > .edit-notes > .edit-note:not(.add-edit-note)=,
+  author, date, vote (the =h3='s class), owner, bot (=modbot=);
+  =notesHidden= when there is no =.edit-notes= at all.
+- Votes: "N yes : M no" or "automatically applied"; expiration
+  Closed/Approved/Voting with the end date from the tooltip span.
+
+* The window (prototype: the mockup's renderer)
+
+- Header: =✎ Editing history= before ‹, on every window whose MusicBrainz
+  URL (=src.liveUrl(t)=) is an MBID entity other than a collection; hidden
+  while the history shows; ✎ alone in a narrow window. A click pushes the
+  current target and shows the =edits= kind; Back/Backspace/Alt+← and the
+  kinds-path title work off the existing stack.
+- Area, top: entity name, "MusicBrainz · <kind> · editing history", the
+  artist line; "MusicBrainz says": edits (and pages read), latest, first
+  (or oldest read), statuses when mixed, editors with the top three.
+- History section (=_extDgSection= markup, id =meh-hist=): category chips
+  (non-empty only), status chips (only when mixed), Newest/Oldest. A row:
+  date (open: "voting · 7 days", end date on hover) | editor (+ class) |
+  type pill (add green, edit blue, remove red =mb-dgh-pill-bad= (new),
+  merge amber, other grey) | what changed + the editor's own note in quotes
+  | tally or status. The whole row selects (Enter/Space; ↑ ↓ move).
+  Footer: "Load page N of M · K more", or "Load page N · more than 500
+  edits" when MusicBrainz only says "at least".
+- Edit section (id =meh-diff=, title "Latest change · edit #N" or "edit
+  #N"): a meta line (type, editor, closed/voting, tally, status, my vote);
+  the two-column grid =mb-dgh-diff mb-meh-diff= with context rows across
+  both columns, a label over each value, or the one-column "Added"/
+  "Removed"/"Details" list; the legend when marks exist; the notes (owner's
+  note marked, votes as pills). Actions: Only what changed / Everything
+  (hides context rows after the first and unchanged rows), =Edit #N=
+  (drill), "On MusicBrainz ↗".
+- The grid's column border goes by class (=.mb-meh-n=), not Discogs'
+  =nth-child(even)=: a context row spans both columns and shifts the
+  parity.
+
+* Requests and caching
+
+- Through =_mbPageLoad()= (=_dpGetRaw()= with =_MB_LIVE=, the one
+  MusicBrainz gate), keyed =pop:page:edits:<type>/<mbid>:<page>=, record
+  version =_MB_POP_PAGE_VERSION=.
+- =keep=: no entry with status =open= (votes change); else IndexedDB for
+  =sa_pop_mb_ttl_hours=. ⟳ forces.
+- No new setting: gated by =sa_pop_mb= like every MusicBrainz card.
+- Performance: popup only; nothing on the filter/sort/render/artwork path.
+
+* Open questions, answered 2026-10-20
+
+1. Label: "✎ Editing history" (MusicBrainz's own word).
+2. A key: yes, =H= while the window is open (not while typing).
+3. "at least 500": "Load page 11 · more than 500 edits" is enough.
+4. The Editor card gets the same button now: =/user/<name>/edits=, same
+   =div.edit-list= blocks (the =user-edits= pageType's page).
+5. "Only what changed" on by default: yes.
+6. Fixtures may use the logged-in pages (other editors' names and notes are
+   public on musicbrainz.org; the Discogs fixtures already do likewise).
+
+* Stage 2: implemented (2026-10-20, WIP.1)
+
+Design notes for the code: docs/claude/detail-pages.md, "MusicBrainz: an
+entity's editing history in the window (2026-10-20)". Changes against the
+mockup, from implementing it:
+- the rows scroll in their own box, so the pane stays under the list;
+- MusicBrainz's own "Note" row is never hidden by "Only what changed", and
+  the pane says when nothing visible changed;
+- no "On MusicBrainz ↗" button: =Edit #N= drills (a same-origin =/edit/N=
+  link is =_dpDrill()='s anyway); Ctrl-click or the edit card's ↗ opens it;
+- the Old/New table split moved into the parser (=_mbEditsSplitTable()=),
+  so the render needs no DOM.
+Found on the way: a keyboard click on a control that repaints closed ANY
+dialog (=createInfoDialog()=, fixed with =composedPath()=; DEBUG-NOTES.md,
+2026-10-20).
+
+* Stage 2 test plan (after approval)
+
+Fixtures =tests/fixtures/edits-*.html= scrubbed by
+=scripts/fetch-mb-page-fixture.js= (Mapbox token, form tokens); spec
+=tests/fixtures/popup-mb-edits.spec.js= (+ =.mobile.spec.js=); mutations
+=scripts/mutations/popup-mb-edits.json=. Guarantees, each named in its
+assertion: button on MBID kinds only; one request on open, none on select
+or Back; rows = the page's edits (batch summaries out, members deduped);
+chip counts; order reverses; a diff's marks carry the exact words; add →
+one column; tracklist split; merge → Merge | Into; =#N= drills and Back
+returns; Load more requests =?page=2= and appends; =table.tbl= count of the
+page unchanged with the history open; artwork links open the viewer; an
+open edit's page not written to IndexedDB; logged out → "editor hidden",
+notes hidden; browser-check page → the message, not an empty list.
