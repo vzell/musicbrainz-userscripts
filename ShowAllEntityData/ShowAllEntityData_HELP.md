@@ -1031,7 +1031,22 @@ since opening all of them would load every thumbnail on the page.
 **Cards.** Hovering the artwork icon or the image count shows a card with the
 release's whole artwork: a tile per image (★ main front), a tally of the types,
 pending images, and — while a filter matches — the images it matches, marked
-the same way. Hovering one image of an expanded cell shows its card: the
+the same way. The card shows at most 12 tiles and a "+N" for the rest
+(*Tiles shown in the artwork card*). While it shows:
+
+- **Space** draws every image; Space again goes back to the first 12. With
+  nothing cut off, or while you are typing into a field, Space keeps its usual
+  meaning.
+- **Shift** held draws the tiles bigger (*Tile size in the artwork card while
+  Shift is held*, 150 px), also when Shift is already down as the pointer
+  reaches the icon. Release it to go back.
+- Both together give every image at the bigger size. The card cannot scroll,
+  so it shrinks its tiles until it fits the window.
+
+Every image starts again at 12 on the next hover. The same keys work on the
+cards of the relationship-list covers and of discogs.com's Image column.
+Bigger tiles cost no request; every image loads the thumbnails that were left
+out. Hovering one image of an expanded cell shows its card: the
 preview, its types and comment, its position ("Image 6 of 10 · Medium 2 of 3"),
 main front/back, the sizes the archive has and its archive id.
 

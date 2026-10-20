@@ -110,13 +110,28 @@ test.describe('relationship list cover icons', () => {
         await expect(tip.locator('.mb-tt-dim')).toHaveText(new RegExp(`^${RECORD.images.length} images · ★ main front`));
         await expect(tip.locator('.mb-art-card-tile')).toHaveCount(12);
         await expect(tip.locator('.mb-art-card-more')).toHaveText(`+${RECORD.images.length - 12}`);
-        await expect(tip.locator('.mb-tt-foot')).toHaveText('Click: viewer · Ctrl-click: the artwork page');
+        await expect(tip.locator('.mb-tt-foot:not(.mb-art-card-keys)')).toHaveText('Click: viewer · Ctrl-click: the artwork page');
         expect(log.metaRequests.filter((u) => u.includes(REL_ID))).toEqual([`https://coverartarchive.org/release/${REL_ID}`]);
         // No native box over the card.
         await expect(icon).toHaveAttribute('title', '');
         await page.mouse.move(0, 0);
         await expect(tip).toBeHidden();
         await expect(icon).toHaveAttribute('title', '16 images found in this release');
+    });
+
+    // The card keys (2026-10-20) are shared by every card _artCardCoreHtml()
+    // builds: Space must draw every image here too, not only in the CAA column.
+    test('Space on the card draws every image of the release, Space again the first 12', async ({ page }) => {
+        await openRelList(page);
+        await page.mouse.move(0, 0);
+        await page.locator('#rel-cover-icon').hover();
+        const tip = page.locator('#mb-stat-tooltip');
+        await expect(tip.locator('.mb-art-card-tile')).toHaveCount(12);
+        await page.keyboard.press('Space');
+        await expect(tip.locator('.mb-art-card-tile')).toHaveCount(RECORD.images.length);
+        await expect(tip.locator('.mb-art-card-more')).toHaveCount(0);
+        await page.keyboard.press('Space');
+        await expect(tip.locator('.mb-art-card-tile')).toHaveCount(12);
     });
 
     test('click: our viewer at the main front, on this page, no "leave this page?"; Ctrl-click is the link\'s', async ({ page }) => {

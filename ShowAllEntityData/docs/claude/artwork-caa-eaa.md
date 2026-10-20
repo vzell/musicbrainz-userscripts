@@ -499,6 +499,28 @@ Grep `// ── CAA/EAA column redesign` for the code. Rules that fail silently:
   recomputed**: `_artCardCopy()` clones the cell's own pill/comment nodes,
   which `_artHighlightImageLi()` already marked — the viewer's info panel does
   the same through `opts.liFor`. A second highlight path would drift.
+- **The B1 card's keys (2026-10-20): Space = every image, Shift = bigger
+  tiles**, for all three cards `_artCardCoreHtml()` builds (`art-sum`,
+  `art-rel`, `dg-img` — `_ART_CARD_FNS`). `_initStatTooltip()` hands every
+  key to `_mbttKey()` while a resolver card shows, and rebuilds the card
+  through `_statTipApi.repaint()`. Late record repaints (`_artRelIconRepaint()`,
+  the Discogs card) also go through that, so the fit runs on them too. Space is
+  spent ONLY when the card is cut off (`data-mb-art-cut`) or already shows every
+  image; typing into a field keeps it (`_dpPeek.typedAt`, which the tooltip
+  engine now records itself, because the link preview installs nothing where
+  its sources are off); a shown link preview owns it. "Every image" belongs to
+  the hovered element and resets in `_mbttAfterHide()`; Shift follows the key
+  (and `e.shiftKey` on the mouseover, `blur` clears it). **The card never
+  scrolls, so it is fitted, not clipped**: `_artCardFit()` (from
+  `_mbttAfterShow()`, which now runs BEFORE `_positionTip()`) picks the line
+  width and shrinks `--mb-art-card-tile` until the rows fit the window. That
+  needs `#mb-stat-tooltip:has(> [data-mb-art-wide]) { max-width: none; }`:
+  without it the tooltip's 520 px cap wraps the tiles into more rows than
+  planned. **Do not name the card's custom property `--mb-art-tile`**: that one
+  is set on `<html>` for the cell grid (64 px), and the card read it at first.
+  Specs: the "B1 keys" tests in `caa-column-redesign.spec.js`, plus
+  `rel-icons.spec.js` and `discogs-image-card.spec.js`. Mutations:
+  `scripts/mutations/caa-card-keys.json`.
 - **The column click listens on `window` capture**, like the tab click above:
   the icon is a link and the navigation guard's document-capture listener
   would ask "leave the page?" first. Tile and ▦ clicks go the same way; ▦ in

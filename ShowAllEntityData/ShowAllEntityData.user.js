@@ -3631,7 +3631,21 @@
             default: 12,
             min: 1,
             max: 60,
-            description: 'The artwork card shows at most this many image tiles and a "+N" for the rest.'
+            description: 'The artwork card shows at most this many image tiles and a "+N" for the rest. ' +
+                         'Space while the card shows draws every image (Space again: back to this many); ' +
+                         'the card shrinks its tiles until it fits the window.'
+        },
+
+        sa_caa_tip_summary_big_tile: {
+            label: 'Tile size in the artwork card while Shift is held (px)',
+            type: 'number',
+            default: 150,
+            min: 64,
+            max: 250,
+            description: 'Holding Shift while the artwork card shows (or while the pointer comes onto the icon) ' +
+                         'draws its tiles at this size instead of 56 px, fewer per line; releasing Shift goes ' +
+                         'back. The tiles are the 250 px thumbnails the card already loads, so this costs no ' +
+                         'request. Combined with Space (every image) the tiles shrink until the card fits the window.'
         },
 
         sa_caa_tip_image: {
@@ -15774,8 +15788,7 @@
                 force: false,
                 repaint: () => {
                     if (!_dgImgCardShows(a)) return;
-                    const html = _mbttResolve(a);
-                    if (html) document.getElementById('mb-stat-tooltip').innerHTML = html;
+                    if (_statTipApi) _statTipApi.repaint(a);
                 },
                 wanted: () => _dgImgCardShows(a),
             });
@@ -15788,7 +15801,7 @@
         // front: the card's ★ and its type tally (primary, secondary).
         const shown = images.map(im => ({ ...im, front: im.imageType === 'primary', types: im.imageType ? [im.imageType] : [] }));
         return _artCardCoreHtml({
-            ctx: _DG_ART_CTX, images: shown, order: shown.map((_, i) => i), title, hit: () => false, matches: '',
+            el: a, ctx: _DG_ART_CTX, images: shown, order: shown.map((_, i) => i), title, hit: () => false, matches: '',
             foot: 'Click: viewer',
         });
     }
@@ -71056,6 +71069,9 @@ a { color: #1565c0; }`;
             pointer-events: none;
             white-space: pre-wrap;
         }
+        /* An artwork card with every image or Shift-size tiles sets its own
+           width, fitted to the window by _artCardFit(). */
+        #mb-stat-tooltip:has(> [data-mb-art-wide]) { max-width: none; }
         /* filter-expression highlight spans inside the tooltip */
         #mb-stat-tooltip .mbtt-gf  { background: var(--mbtt-gf-bg,  #FFD700); color: var(--mbtt-gf-col, red);  border-radius: 2px; padding: 0 3px; }
         #mb-stat-tooltip .mbtt-stf { background: var(--mbtt-stf-bg, #90ee90); color: var(--mbtt-stf-col, #000); border-radius: 2px; padding: 0 3px; }
@@ -71410,11 +71426,13 @@ a { color: #1565c0; }`;
             max-width: 300px;
             margin: 4px 0;
         }
-        #mb-stat-tooltip .mb-art-card-tile { position: relative; width: 56px; height: 56px; }
+        /* The tile size is --mb-art-card-tile: 56px, or the Shift size / the fitted size
+           that _artCardFit() puts on .mb-art-card-tiles. */
+        #mb-stat-tooltip .mb-art-card-tile { position: relative; width: var(--mb-art-card-tile, 56px); height: var(--mb-art-card-tile, 56px); }
         #mb-stat-tooltip .mb-art-card-tile img {
             display: block;
-            width: 56px;
-            height: 56px;
+            width: var(--mb-art-card-tile, 56px);
+            height: var(--mb-art-card-tile, 56px);
             object-fit: cover;
             border-radius: 2px;
             background: #dddddd;
@@ -77352,10 +77370,13 @@ a { color: #1565c0; }`;
             _target = el;
             _own = false;
             _fnShown = !!fnHtml;
+            _lastMove = e;
             _tip.innerHTML = fnHtml || el.dataset.mbtt;
             _tip.style.display = 'block';
-            _positionTip(e);
+            // The resolver's after-show runs first: it may resize the card to
+            // fit the window (the artwork cards), and the position reads the size.
             if (fnHtml) _mbttAfterShow(el, _tip);
+            _positionTip(e);
             // Suppress the element's own native title (action buttons) and any
             // h2/h3 ancestor's (row-count stat) while our tooltip is visible,
             // so the browser doesn't overlay both tooltips simultaneously.
@@ -77413,10 +77434,12 @@ a { color: #1565c0; }`;
             clearTimeout(_showTimer);
             _tip.style.display = 'none';
             const el = _target;
+            const wasFn = _fnShown;
             _target = null;
             _fnShown = false;
             _dismissed = false;
             if (!el) return;
+            if (wasFn) _mbttAfterHide(el);
             // Restore the element's own native title, and any h2/h3 ancestor's.
             if (el.dataset.mbttSavedTitle !== undefined) {
                 el.title = el.dataset.mbttSavedTitle;
@@ -77470,6 +77493,20 @@ a { color: #1565c0; }`;
                 const _d = Lib.settings.sa_rich_tooltip_delay_ms;
                 _showTimer = setTimeout(() => _showOwn(text), (typeof _d === 'number' && _d >= 0) ? _d : 400);
             },
+            /**
+             * Builds a resolver card again (its record arrived, a key changed
+             * what it shows), when it still shows for `el`: the resolver's
+             * after-show, then the position for the new size.
+             * @param {Element} el
+             */
+            repaint(el) {
+                if (!_target || _target !== el || !_fnShown || _tip.style.display !== 'block') return;
+                const html = _mbttResolve(el);
+                if (!html) return;
+                _tip.innerHTML = html;
+                _mbttAfterShow(el, _tip);
+                if (_lastMove) _positionTip(_lastMove);
+            },
         };
 
         document.addEventListener('mouseover', (e) => {
@@ -77486,7 +77523,9 @@ a { color: #1565c0; }`;
             // [data-mbtt-fn]: HTML built NOW by _mbttResolve() — it depends on
             // state that changes after the element was built (the artwork
             // cache, the active filter). null = nothing to show, and the
-            // element's plain title (if any) is used as usual.
+            // element's plain title (if any) is used as usual. A Shift held
+            // as the pointer comes in counts like one pressed on the card.
+            if (el && el.dataset.mbttFn) _mbttPointerMods(e);
             const fnHtml = el && el.dataset.mbttFn ? _mbttResolve(el) : null;
             if (el && (el.dataset.mbtt || fnHtml)) {
                 // The link's preview card shows: its stack carries this card
@@ -77561,6 +77600,33 @@ a { color: #1565c0; }`;
             }
             if (_tip.style.display === 'block') _positionTip(e);
         }, true);
+
+        /**
+         * A key while a resolver card shows: `_mbttKey()` says whether the
+         * card changes (Space: every image of an artwork card; Shift: bigger
+         * tiles) and whether the key is spent on it.
+         * @param {KeyboardEvent} e
+         */
+        const _onCardKey = (e) => {
+            if (!_target || !_fnShown || _tip.style.display !== 'block') return;
+            if (!_target.isConnected) { _hide(); return; }
+            const r = _mbttKey(_target, e);
+            if (!r) return;
+            if (r.consume) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+            }
+            if (r.repaint) _statTipApi.repaint(_target);
+        };
+        document.addEventListener('keydown', _onCardKey, true);
+        document.addEventListener('keyup', _onCardKey, true);
+        // When typing happened, for `_mbttKey()`'s "a Space typed into a
+        // field stays the field's". The link preview records it too, but
+        // installs nothing where its sources are all off.
+        document.addEventListener('input', (e) => {
+            if (_dpIsTextField(e.target)) _dpPeek.typedAt = Date.now();
+        }, true);
+        window.addEventListener('blur', () => _mbttPointerMods({ shiftKey: false }));
 
         /**
          * Places the card next to the pointer, flipped to stay on screen.
@@ -130184,13 +130250,18 @@ a { color: #1565c0; }`;
     /**
      * Runs after a resolver card is shown: the image card swaps its preview
      * from the thumbnail (already loaded, shown at once) to the hover
-     * preview's image, through the same cache as the hover preview.
+     * preview's image, through the same cache as the hover preview; an
+     * artwork card (`_ART_CARD_FNS`) is fitted to the window (`_artCardFit()`).
      *
      * @param   {HTMLElement} el
      * @param   {HTMLElement} tip `#mb-stat-tooltip`.
      * @returns {void}
      */
     function _mbttAfterShow(el, tip) {
+        if (_ART_CARD_FNS.has(el.dataset.mbttFn)) {
+            _artCardFit(tip);
+            return;
+        }
         if (el.dataset.mbttFn !== 'art-img') return;
         const img = tip.querySelector('img.mb-art-card-preview[data-mb-art-big]');
         if (!img) return;
@@ -130198,6 +130269,115 @@ a { color: #1565c0; }`;
         _artViewerLoad(big).then(src => {
             if (img.isConnected && tip.style.display === 'block') img.src = src;
         }).catch(() => { /* the thumbnail stays */ });
+    }
+
+    // ── Artwork card keys: Space = every image, Shift = bigger tiles ─────────
+    //
+    // vzell, 2026-10-20: the B1 card stops at `sa_caa_tip_summary_tiles`
+    // (12) and a "+N" — 81 images on Tracks II gave "+69". Space while the
+    // card shows draws every image (Space again: back to the cap); Shift held
+    // draws the tiles at `sa_caa_tip_summary_big_tile`. Both together work.
+    // The card follows the pointer and can never scroll, so `_artCardFit()`
+    // shrinks the tiles until the card fits the window. One state for the
+    // three cards `_artCardCoreHtml()` builds; "every image" ends with the
+    // hover (`_mbttAfterHide()`), Shift follows the key.
+
+    /** The resolver cards built by `_artCardCoreHtml()`. */
+    const _ART_CARD_FNS = new Set(['art-sum', 'art-rel', 'dg-img']);
+
+    /**
+     * The artwork card's view: `allEl` is the element whose card shows every
+     * image, `big` whether Shift is held.
+     * @type {{allEl: ?Element, big: boolean}}
+     */
+    const _artCardView = { allEl: null, big: false };
+
+    /**
+     * Takes Shift's state from a pointer event (or `{shiftKey: false}` when
+     * the window loses focus, so a Shift released elsewhere does not stick).
+     *
+     * @param   {{shiftKey: boolean}} e
+     * @returns {void}
+     */
+    function _mbttPointerMods(e) {
+        _artCardView.big = !!e.shiftKey;
+    }
+
+    /**
+     * A key while a resolver card shows (`_initStatTooltip()`): Space toggles
+     * every image of an artwork card that has more than its tiles show (else
+     * Space stays the page's), Shift draws bigger tiles. Space typed into a
+     * field stays the field's, and a link preview card owns Space while it
+     * shows — the link preview's own rules.
+     *
+     * @param   {Element}       el The card's element.
+     * @param   {KeyboardEvent} e
+     * @returns {?{repaint: boolean, consume: boolean}} null: not this card's key.
+     */
+    function _mbttKey(el, e) {
+        if (!_ART_CARD_FNS.has(el.dataset.mbttFn)) return null;
+        if (e.key === 'Shift') {
+            const big = e.type === 'keydown';
+            if (big === _artCardView.big) return null;
+            _artCardView.big = big;
+            return { repaint: true, consume: false };
+        }
+        if (e.type !== 'keydown' || !(e.key === ' ' || e.code === 'Space') || e.repeat ||
+                e.ctrlKey || e.altKey || e.metaKey) return null;
+        if (_dpIsTextField(e.target) && Date.now() - _dpPeek.typedAt < _DP_TYPING_GRACE_MS) return null;
+        if (_dpPeekShown()) return null;
+        const card = document.querySelector('#mb-stat-tooltip [data-mb-art-card]');
+        if (!card) return null;
+        if (_artCardView.allEl === el) _artCardView.allEl = null;
+        else if (card.hasAttribute('data-mb-art-cut')) _artCardView.allEl = el;
+        else return null;
+        return { repaint: true, consume: true };
+    }
+
+    /**
+     * After a resolver card is hidden: the next hover starts at the cap again.
+     *
+     * @param   {Element} el
+     * @returns {void}
+     */
+    function _mbttAfterHide(el) {
+        if (_artCardView.allEl === el) _artCardView.allEl = null;
+    }
+
+    /**
+     * Fits an artwork card into the window — it follows the pointer and can
+     * never scroll. With every image or bigger tiles, a balanced number of
+     * tiles per line (about √(1.6·n), at least what the compact card holds,
+     * at most what the window's width holds), then the tile size shrinks
+     * (to 32 px at least) until the rows fit the window's height beside the
+     * card's other lines. The compact card is left as it is.
+     *
+     * @param   {HTMLElement} tip `#mb-stat-tooltip`.
+     * @returns {void}
+     */
+    function _artCardFit(tip) {
+        const card = tip.querySelector('[data-mb-art-card]');
+        const tiles = card && card.querySelector('.mb-art-card-tiles');
+        if (!tiles || !card.hasAttribute('data-mb-art-wide')) return;
+        const n = tiles.querySelectorAll('.mb-art-card-tile').length + (tiles.querySelector('.mb-art-card-more') ? 1 : 0);
+        if (!n) return;
+        const GAP = 3, MIN = 32;
+        const want = Number(card.dataset.mbArtTile) || 56;
+        const perLine = (s, w) => Math.max(1, Math.floor((w + GAP) / (s + GAP)));
+        const maxCols = perLine(want, window.innerWidth - 48);
+        const cols = Math.min(n, maxCols, Math.max(perLine(want, 300), Math.ceil(Math.sqrt(n * 1.6))));
+        const width = cols * (want + GAP);
+        tiles.style.setProperty('--mb-art-card-tile', `${want}px`);
+        tiles.style.maxWidth = `${width}px`;
+        card.style.maxWidth = `${width + 10}px`;
+        // The card's other lines (title, tally, foot) at this width.
+        const room = window.innerHeight - 16 - (tip.offsetHeight - tiles.offsetHeight);
+        // Keep the line width and shrink the tiles: more of them per line then.
+        let size = want;
+        const rows = s => Math.ceil(n / perLine(s, width));
+        while (size > MIN && rows(size) * (size + GAP) > room) size = Math.max(MIN, size - 4);
+        if (size !== want) tiles.style.setProperty('--mb-art-card-tile', `${size}px`);
+        card.dataset.mbArtFitTile = String(size);
     }
 
     /**
@@ -130279,7 +130459,7 @@ a { color: #1565c0; }`;
         const foot = Lib.settings.sa_caa_column_viewer !== false
             ? (Lib.settings.sa_caa_viewer_icon_click !== false ? 'Click: viewer · Ctrl-click: the artwork page' : 'Click an image of the expanded cell: viewer')
             : '';
-        return _artCardCoreHtml({ ctx, images, order, title, hit, matches, foot });
+        return _artCardCoreHtml({ el, ctx, images, order, title, hit, matches, foot });
     }
 
     /**
@@ -130289,13 +130469,28 @@ a { color: #1565c0; }`;
      * the tiles (★ main front, outlined while `hit` says it holds a filter
      * match), the type tally, then `matches` and the foot.
      *
-     * @param   {{ctx: Object, images: Object[], order: number[], title: string,
+     * The tiles stop at `sa_caa_tip_summary_tiles` and a "+N", unless Space
+     * asked for every image of `o.el`'s card; Shift held draws them at
+     * `sa_caa_tip_summary_big_tile` (`_artCardView`). Either makes the card
+     * "wide" (`data-mb-art-wide`), which `_artCardFit()` fits to the window.
+     * The root's `data-mb-art-cut` tells `_mbttKey()` that Space has more
+     * to show.
+     *
+     * @param   {{el: Element, ctx: Object, images: Object[], order: number[], title: string,
      *            hit: function(number): boolean, matches: string, foot: string}} o
      * @returns {string}
      */
     function _artCardCoreHtml(o) {
         const { ctx, images, order } = o;
-        const max = Math.round(_artNumSetting('sa_caa_tip_summary_tiles', 12, 1));
+        const cap = Math.round(_artNumSetting('sa_caa_tip_summary_tiles', 12, 1));
+        const all = !!o.el && _artCardView.allEl === o.el;
+        const big = _artCardView.big;
+        const max = all ? order.length : cap;
+        const tileSize = big ? Math.round(Math.min(250, _artNumSetting('sa_caa_tip_summary_big_tile', 150, 64))) : 56;
+        const keys = [
+            ...(all ? [`<kbd>Space</kbd> first ${cap}`] : order.length > cap ? [`<kbd>Space</kbd> all ${order.length} images`] : []),
+            big ? 'Shift held: bigger tiles' : '<kbd>Shift</kbd> bigger tiles',
+        ].join(' · ');
         const tiles = order.slice(0, max).map(i => {
             const im = images[i];
             const cls = 'mb-art-card-tile' + (im.front ? ' mb-art-card-main' : '') +
@@ -130313,13 +130508,17 @@ a { color: #1565c0; }`;
             ...(ctx.key === 'caa' ? [images.some(im => im.back) ? 'main back' : 'no main back'] : []),
             ...(images.some(im => im.approved === false) ? [`${images.filter(im => im.approved === false).length} pending approval`] : []),
         ].join(' · ');
-        return `<div style="max-width:310px;">` +
+        const attrs = ` data-mb-art-card="${order.length}" data-mb-art-tile="${tileSize}"` +
+            (order.length > max ? ' data-mb-art-cut' : '') + (all ? ' data-mb-art-all' : '') +
+            (all || big ? ' data-mb-art-wide' : '');
+        return `<div${attrs} style="max-width:310px;">` +
             `<div class="mb-tt-title">${_rgEsc(o.title)}</div>` +
             `<div class="mb-tt-dim">${images.length} image${images.length === 1 ? '' : 's'} · ${_rgEsc(facts)}</div>` +
-            `<div class="mb-art-card-tiles">${tiles}</div>` +
+            `<div class="mb-art-card-tiles"${tileSize !== 56 ? ` style="--mb-art-card-tile:${tileSize}px;"` : ''}>${tiles}</div>` +
             `<div class="mb-tt-body" style="display:flex;gap:4px;flex-wrap:wrap;">${pills}</div>` +
             (o.matches || '') +
             (o.foot ? `<div class="mb-tt-foot">${_rgEsc(o.foot)}</div>` : '') +
+            `<div class="mb-tt-foot mb-art-card-keys">${keys}</div>` +
             `</div>`;
     }
 
@@ -130455,7 +130654,7 @@ a { color: #1565c0; }`;
             return `<div style="max-width:310px;">${head}<div class="mb-tt-dim">${why}</div></div>`;
         }
         return _artCardCoreHtml({
-            ctx: CAA_CTX, images, order: images.map((_, i) => i), title, hit: () => false, matches: '',
+            el: a, ctx: CAA_CTX, images, order: images.map((_, i) => i), title, hit: () => false, matches: '',
             foot: _artRelIconViewerOn() ? 'Click: viewer · Ctrl-click: the artwork page' : '',
         });
     }
@@ -130470,8 +130669,7 @@ a { color: #1565c0; }`;
     function _artRelIconRepaint(a) {
         const tip = document.getElementById('mb-stat-tooltip');
         if (!tip || tip.style.display !== 'block' || !a.isConnected || !a.matches(':hover')) return;
-        const html = _mbttResolve(a);
-        if (html) tip.innerHTML = html;
+        if (_statTipApi) _statTipApi.repaint(a);
     }
 
     /**
