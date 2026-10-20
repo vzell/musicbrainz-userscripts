@@ -3665,3 +3665,5 @@ etc
 
 
 * TODO use the Discogs history diff format LAF in other pageTypes like e.g. on BB pageTypes ==> changes button (must be logged in)
+
+* write the forum section for 9.99.1394 -> 9.99.xxxx
