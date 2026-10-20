@@ -3305,14 +3305,91 @@ if the "Relationships" column on MP PTs has multiple Discogs URL relationship ic
 
 * TODO check discogs artist pages if really ALL master are present + implement master->release(s) drilldown
 
-* add a "Editing history" button to the entity detail popup header of every supported MB entity
+* TODO the "Sidebar" section on events PTs should be rendered above the "Relationships" section
 
-add a "Editing history" button to the entity detail popup header of every supported MB entity
+The "Sidebar" section on PTs e.g. https://musicbrainz.org/event/47b84024-bd3b-4e36-80e1-b051e12ede2fshould be rendered
+above the "Relationships" section
+
+
+* DONE add a "Editing history" button to the entity detail popup header of every supported MB entity
+** initial
+
+1.)
+
+add a "Editing history" button to the entity detail popup header of every supported MB entity e.g.
 
 #+begin_example
 @debug/entity-detail-popup-header.html - entity detail popup header for a recording where the track name difffers from the recording name 
 #+end_example
 
+See 3.) below what should happen when pressing the button
+
+2.)
+
+MB entity edit pages have the generic URL "/<entity>/<MBID>/edits" and can be found in the sidebar of each MB entity (if present) e.g
+
+#+begin_example
+<li><a href="/event/47b84024-bd3b-4e36-80e1-b051e12ede2f/edits"><bdi>Editing history</bdi></a></li>
+#+end_example
+
+Examples of IPs for the edit pages at @debug/
+
+#+begin_example
+edits-release-group.html
+edits-release.html
+edits-recording.html
+#+end_example
+
+3.)
+
+a.)
+
+parse them and render in the current detail popup the edit history of the current entity with the same look and feel
+what the Discogs "Submissions"PTs offer when pressing the history link in the "History" column [Image #21]
+
+The edit header lines
+
+#+begin_example
+<div class="edit-header applied edit-add add-medium">
+#+end_example
+
+should basically map to the Discogs "HISTORY" entries and when clicked should show the actual detail edits (mapped to the Discogs "LATEST CHANGE - REVISION" entries)
+
+b.)
+
+a back button should get us back to the previous page inside the same detail popup
+
+4.)
+
+make some nice rich HTML mockups
+
+5.)
+
+maybe download yourself some more edit pages of other entities to get a better overview what kind of edits are possible
+and how they are represented
+
+6.)
+
+images should get our internal viewer treatement too
+
+** questions
+
+Open questions (also at the end of the mockup's overview tab):
+1. Should the label be "✎ Editing history" (MusicBrainz's own word) or "✎ Edits"?
+2. Should there be a key for it, such as H?
+3. For busy entities, is "Load page 11 · more than 500 edits" enough, given there's no last page?
+4. Should the editor card get the same button for /user/<name>/edits, now or later?
+5. Should "Only what changed" be on by default?
+6. Logged-in pages name other editors and quote their notes. These are public on musicbrainz.org, and the Discogs fixtures already do the same. Can the test fixtures use these pages, or only logged-out pages plus your own edits?
+
+** answers
+
+1. Should the label be "✎ Editing history" (MusicBrainz's own word): "✎ Editing history"
+2. Should there be a key for it, such as H? YES
+3. For busy entities, is "Load page 11 · more than 500 edits" enough, given there's no last page? YES
+4. Should the editor card get the same button for /user/<name>/edits, now or later? NOW
+5. Should "Only what changed" be on by default? YES
+6. Logged-in pages name other editors and quote their notes. These are public on musicbrainz.org, and the Discogs fixtures already do the same. Can the test fixtures use these pages: YES
 
 * DONE add "Space" on the image hover popup in the CAA/EAA column to show ALL images (right now it shows a couple and the a "+ 69")
 
