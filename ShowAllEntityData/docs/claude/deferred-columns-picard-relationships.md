@@ -335,7 +335,7 @@ The traps. Every one of them fails silently:
   snapshot harness serializes the whole `documentElement`, so a page-level class
   drifts every rendered baseline, including pageTypes with no Relationships
   column at all.
-- **Pseudo-element slots of a loaded cell (2026-10-21, WIP.1): `::before` is
+- **Pseudo-element slots of a loaded cell (2026-10-21, 9.99.1400): `::before` is
   the finding's ⚠️/❌, `::after` is the hover ⟳.** The load states own
   `::before` while a cell is NOT loaded (or loading, or failed); a loaded cell
   with icons has no `::before` of its own, so a finding (`rel-multi-site`,

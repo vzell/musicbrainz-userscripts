@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "c3be6647780ddbfdb93e62255f8beb5e3182b249",
-    "revisions_walked": 983
+    "head": "f1d8a8d26f323d71658c1facb743eae77eb55fe3",
+    "revisions_walked": 984
   },
   "changes": [
     {
@@ -483,6 +483,8 @@
     "sa_enable_h2_section_relocation_on_final_page": true,
     "sa_collabsable_sidebar": true,
     "sa_sidebar_collapsed": true,
+    "sa_sidebar_handle_initial_page": true,
+    "sa_sidebar_collapsed_initial_page": false,
     "sa_sidebar_remember_sections": true,
     "sa_sidebar_open_all": false,
     "sa_sidebar_section_counts": true,
@@ -710,6 +712,7 @@
     "sa_findings_tint_no_medium_image": true,
     "sa_findings_rel_multi_discogs": true,
     "sa_findings_tint_rel_multi_discogs": true,
+    "sa_findings_rel_multi_site_ignore": "",
     "sa_findings_nonphysical_formats": "Digital Media",
     "sa_enable_release_tracks": true,
     "sa_enable_release_tracks_acoustid_column": false,
@@ -861,6 +864,8 @@
     "sa_dg_mb_column": true,
     "sa_dg_mb_auto_lookup": true,
     "sa_dg_tip_images": true,
+    "sa_pop_enabled": true,
+    "sa_pop_initial_page": true,
     "sa_pop_mb": true,
     "sa_pop_mb_on_touch": false,
     "sa_pop_mb_page": true,

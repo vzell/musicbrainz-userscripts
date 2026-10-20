@@ -181,7 +181,7 @@ The second kind of late data (2026-10-19, `feat/link-site-uvd`): the deferred
 Relationships column (docs/claude/deferred-columns-picard-relationships.md)
 writes its cells after `stampFindings()` ran. "Several links to one site in
 Relationships" (⚠️, cell scope, column "Relationships") follows the same
-rules. Until 2026-10-21 (WIP.2 of `feat/rel-multi-site-and-initial-page`) it
+rules. Until 2026-10-21 (9.99.1401, `feat/rel-multi-site-and-initial-page`) it
 was "Several Discogs links in Relationships", Discogs only:
 
 - `test()` reads `_findCellRelSiteDupes()`: the icons' hidden

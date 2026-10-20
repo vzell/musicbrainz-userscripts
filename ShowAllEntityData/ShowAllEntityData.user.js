@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.1399+2026-10-20
+// @version      9.99.1403+2026-10-21
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting. Optionally also springsteenlyrics.com collection and bootleg lists, the jungleland.it bootleg artwork list and the brucespringsteen.it record database.
 // @author       vzell
 // @tag          AI generated
@@ -2774,7 +2774,7 @@
         },
 
         // The two keys below still say "discogs": the finding covered Discogs
-        // only until WIP.2, and keeping the keys keeps every saved value.
+        // only until 9.99.1401, and keeping the keys keeps every saved value.
         sa_findings_rel_multi_discogs: {
             label: 'Find Relationships cells with more than one link to the same site',
             type: 'checkbox',
@@ -45179,7 +45179,7 @@
         // column fills its cells after stampFindings() ran, and
         // _relWriteResult() re-stamps each row it writes
         // (_queueFindingsRestamp()). test() reads the icons' hidden
-        // filter-key spans, which the master rows get too. Until WIP.2 this
+        // filter-key spans, which the master rows get too. Until 9.99.1401 this
         // was 'rel-multi-discogs' (Discogs only); its two setting keys keep
         // the old names so every saved value still applies.
         {
@@ -69680,7 +69680,7 @@ a { color: #1565c0; }`;
      *
      * Adds CSS transitions and event handlers for smooth sidebar collapse/expand animation
      *
-     * Two phases (org/initial-page-footprint.org, WIP.4):
+     * Two phases (org/initial-page-footprint.org, 9.99.1403):
      *   - `'initial'`: from page init, on a supported MusicBrainz page before
      *     any button is pressed (`sa_sidebar_handle_initial_page`). Builds the
      *     handle and only the CSS a collapsed sidebar needs, so an OPEN

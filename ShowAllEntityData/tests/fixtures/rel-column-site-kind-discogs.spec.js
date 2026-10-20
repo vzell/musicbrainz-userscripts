@@ -5,7 +5,7 @@
 //  - 📊 "Relationship icons - Site kind" (item 3): amazon.com and amazon.de
 //    are two hosts of one site; "Relationship icons" lists them apart, the
 //    new section counts them as ONE "amazon.*" entry.
-//  - ⚠️ "Several links to one site in Relationships" (rel-multi-site, until WIP.2 rel-multi-discogs): a cell
+//  - ⚠️ "Several links to one site in Relationships" (rel-multi-site, until 9.99.1401 rel-multi-discogs): a cell
 //    showing two or more DIFFERENT Discogs URLs is a WARNING.
 //
 // Shell: the releasegroup-releases raw snapshot (7 releases, 2 sub-tables,

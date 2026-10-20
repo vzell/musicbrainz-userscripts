@@ -13,7 +13,7 @@ the card: decided 2026-10-11, the card closes on mousedown). Plan:
 ## The collapse handle (`initSidebarCollapse(phase)`)
 
 `#sidebar-toggle-handle` (◀/▶, `sa_collabsable_sidebar`). Since 2026-10-21
-(WIP.4, org/initial-page-footprint.org) it has two phases:
+(9.99.1403, org/initial-page-footprint.org) it has two phases:
 
 - **`'initial'`** — from page init, beside `_sbInitPicture()`, MusicBrainz
   only (`!_foreignHost`), with `sa_sidebar_handle_initial_page` (default on).

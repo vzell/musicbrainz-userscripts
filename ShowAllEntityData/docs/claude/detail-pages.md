@@ -52,7 +52,7 @@ preview setting on changes nothing"` (every FOREIGN preview setting on, an
 
 ## The popup engine: sources (org/iframe.org, Phase 1)
 
-**Gate order (2026-10-21, WIP.3, org/initial-page-footprint.org):**
+**Gate order (2026-10-21, 9.99.1402, org/initial-page-footprint.org):**
 1. `sa_pop_enabled` (master, default on), at the call site
    `if (pageType && headerContainer && …) _initDetailPreview()`: off, the
    engine is never installed — no listener, no `#mb-dp-style`, no request,
