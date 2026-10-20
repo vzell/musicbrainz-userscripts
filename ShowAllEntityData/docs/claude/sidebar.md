@@ -228,14 +228,14 @@ own `ownFeatures`/`pageType` pair for this; the merge of `main` on
 pre-processing and for a fetched page, next to `applyEventDetailsToTables()`.
 It builds groups with `_eventBuildTable()`:
 
-| Group | Columns | Source |
-|---|---|---|
-| `<h2 text of dl.properties>` | #, Property, Value | every `dl.properties` (dd cloned); a release has two: "Release information", "Additional details" |
-| Labels (release) | #, Label, Catalog number | the `ul.links` whose items link a label's own page (`/label/<mbid>`, never `/label/<mbid>/edit`: a label's Editing list); `.catalog-number` |
-| Release events (release) | #, Country, Date | `ul.release-events > li`: the `.flag` area link, `.release-date` |
-| `<h2 text of ul.external_links>` | #, Site, Link, Kind, Details | every OUTERMOST `ul.external_links` (a release has "Release group external links" too); Site = host; Kind = `_SB_LINK_KINDS`; Details = the item's own text beside its link, e.g. "(as @x)" (`_sbOwnText()`), then each link nested in it ("en: Devils & Dust"); `.all-relationships` left out |
-| Search | #, Search, Section, Group, Site, Link | jesus2099's search lists (`_SB_SEARCH_LIST_SEL`), all in ONE group where the first of them is; see "The Search group" |
-| Tags | #, Tag, Kind, Votes | Kind is Genre or Tag; Votes from `.tag-count` |
+| Group                            | Columns                               | Source                                                                                                                                                                                                                                                                                         |
+|----------------------------------|---------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `<h2 text of dl.properties>`     | #, Property, Value                    | every `dl.properties` (dd cloned); a release has two: "Release information", "Additional details"                                                                                                                                                                                              |
+| Labels (release)                 | #, Label, Catalog number              | the `ul.links` whose items link a label's own page (`/label/<mbid>`, never `/label/<mbid>/edit`: a label's Editing list); `.catalog-number`                                                                                                                                                    |
+| Release events (release)         | #, Country, Date                      | `ul.release-events > li`: the `.flag` area link, `.release-date`                                                                                                                                                                                                                               |
+| `<h2 text of ul.external_links>` | #, Site, Link, Kind, Details          | every OUTERMOST `ul.external_links` (a release has "Release group external links" too); Site = host; Kind = `_SB_LINK_KINDS`; Details = the item's own text beside its link, e.g. "(as @x)" (`_sbOwnText()`), then each link nested in it ("en: Devils & Dust"); `.all-relationships` left out |
+| Search                           | #, Search, Section, Group, Site, Link | jesus2099's search lists (`_SB_SEARCH_LIST_SEL`), all in ONE group where the first of them is; see "The Search group"                                                                                                                                                                          |
+| Tags                             | #, Tag, Kind, Votes                   | Kind is Genre or Tag; Votes from `.tag-count`                                                                                                                                                                                                                                                  |
 
 - An empty group is left out.
 - It removes that document's own `table.tbl`s and h3s from `#content`, so only

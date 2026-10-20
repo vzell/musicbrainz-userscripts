@@ -11,25 +11,26 @@ it ("Fade away at the Madison Square Garden (Version 2)"). The request
 replace the keyboard punctuation with typographic punctuation.
 
 Two settings, both **on** by default, both read only by the non-MusicBrainz
-converters, so nothing changes on MusicBrainz:
+converters, so nothing changes on MusicBrainz (the MusicBrainz title-style
+findings use the same rewriters read-only, below):
 
-| Setting                 | Does                                                                 | Function            |
-|-------------------------|----------------------------------------------------------------------|---------------------|
-| `sa_foreign_mb_titles`  | MusicBrainz English letter case; a trailing "(THE)" moves to the front | `_mbNormalizeTitle()` → `_mbTitleCase()` |
-| `sa_foreign_typography` | ’ ‘ “ ” ″ – ‐ … — × instead of ' " - ... -- x                        | `_mbTypography()` → `_mbTypographyFixed()` |
+| Setting                 | Does                                                                   | Function                                   |
+|-------------------------|------------------------------------------------------------------------|--------------------------------------------|
+| `sa_foreign_mb_titles`  | MusicBrainz English letter case; a trailing "(THE)" moves to the front | `_mbNormalizeTitle()` → `_mbTitleCase()`   |
+| `sa_foreign_typography` | ’ ‘ “ ” ″ – ‐ … — × instead of ' " - ... -- x                          | `_mbTypography()` → `_mbTypographyFixed()` |
 
 `_mbSiteTitleText()` runs both, each behind its own setting. Where they apply:
 
-| Site / pageType     | Column(s)                         | Through                                    |
-|---------------------|-----------------------------------|--------------------------------------------|
-| springsteenlyrics.com `sl-collection`, `sl-collection-intro`, `sl-bootlegs`, `sl-brucelegs` | Title | `_mbSiteTitleText()` in `_slBuildRow()` (the cover's alt text keeps the site's) |
-| springsteenlyrics.com `sl-lyrics` | Title                     | `_mbSetSiteTitle()` in `applySlLyricsToTable()` |
-| jungleland.it `jl-list` | Title                         | `_mbSetSiteTitle()` in `_jlBuildRow()`     |
-| brucespringsteen.it `bs-records` | Title                | `_mbSetSiteTitle()` in `_bsBuildRow()`     |
-| Brucebase `bb-songs` | Title                            | `_mbSetSiteTitle()` in `_bbBuildRow()`     |
-| Brucebase `bb-year` / `bb-home` | Venue, City, Country (not "USA") | `_mbSetSiteTitle()` in `_bbYearBuildRow()` |
-| Brucebase `bb-year` / `bb-home` | Soundcheck, Setlist (each song row) | `_mbSiteTitleNodes(li, {capsOnly, skipSel})` |
-| Brucebase `bb-relations` | Name, Sort name (typography only — names, not titles) | `_bbRelationsBuildRow()` |
+| Site / pageType                                                                             | Column(s)                                             | Through                                                                         |
+|---------------------------------------------------------------------------------------------|-------------------------------------------------------|---------------------------------------------------------------------------------|
+| springsteenlyrics.com `sl-collection`, `sl-collection-intro`, `sl-bootlegs`, `sl-brucelegs` | Title                                                 | `_mbSiteTitleText()` in `_slBuildRow()` (the cover's alt text keeps the site's) |
+| springsteenlyrics.com `sl-lyrics`                                                           | Title                                                 | `_mbSetSiteTitle()` in `applySlLyricsToTable()`                                 |
+| jungleland.it `jl-list`                                                                     | Title                                                 | `_mbSetSiteTitle()` in `_jlBuildRow()`                                          |
+| brucespringsteen.it `bs-records`                                                            | Title                                                 | `_mbSetSiteTitle()` in `_bsBuildRow()`                                          |
+| Brucebase `bb-songs`                                                                        | Title                                                 | `_mbSetSiteTitle()` in `_bbBuildRow()`                                          |
+| Brucebase `bb-year` / `bb-home`                                                             | Venue, City, Country (not "USA")                      | `_mbSetSiteTitle()` in `_bbYearBuildRow()`                                      |
+| Brucebase `bb-year` / `bb-home`                                                             | Soundcheck, Setlist (each song row)                   | `_mbSiteTitleNodes(li, {capsOnly, skipSel})`                                    |
+| Brucebase `bb-relations`                                                                    | Name, Sort name (typography only — names, not titles) | `_bbRelationsBuildRow()`                                                        |
 
 Not: State (a code, "NJ", or a region), Tour, Notes (prose), Recent changes
 (a log of page names). Country "USA" is left as it is by request; it is also
@@ -130,15 +131,15 @@ on the whole data, not just on the cases.
 `_mbSiteTitleNodes()`, after the one-for-one pass; never across two nodes).
 `_mbTypographyFixed()` is one-for-one:
 
-| Input | Becomes | When |
-|-------|---------|------|
-| `'` `´` `` ` `` | ’ | after a letter or digit ("Don’t", "Comin’", "70’s"); word-initial shortening a word (`_MBTP_ELISION_RE`: ’n’, ’til, ’cause, ’em, ’09) |
-| `'` | ‘ … ’ | word-initial, not an elision, and closed later in the title ("IRISH ‘SPRINGSTEEN PACK’") |
-| `"` | “ / ” | “ after a space, bracket or the start; ” otherwise |
-| `"` | ″ | right after a digit with no quotation open ("7″") |
-| `-` | – en dash | spaced (" – ", a medley or subtitle); between two numbers (a range, "1975–1985", "19–20") |
-| `-` | ‐ hyphen | between letters ("Freeze‐Out"); in a run of three or more numbers (a date, "1999‐08‐12", "10‐18‐75") |
-| `x` | × | between two numbers, spaces round it ("2 × 45") |
+| Input           | Becomes   | When                                                                                                                                  |
+|-----------------|-----------|---------------------------------------------------------------------------------------------------------------------------------------|
+| `'` `´` `` ` `` | ’         | after a letter or digit ("Don’t", "Comin’", "70’s"); word-initial shortening a word (`_MBTP_ELISION_RE`: ’n’, ’til, ’cause, ’em, ’09) |
+| `'`             | ‘ … ’     | word-initial, not an elision, and closed later in the title ("IRISH ‘SPRINGSTEEN PACK’")                                              |
+| `"`             | “ / ”     | “ after a space, bracket or the start; ” otherwise                                                                                    |
+| `"`             | ″         | right after a digit with no quotation open ("7″")                                                                                     |
+| `-`             | – en dash | spaced (" – ", a medley or subtitle); between two numbers (a range, "1975–1985", "19–20")                                             |
+| `-`             | ‐ hyphen  | between letters ("Freeze‐Out"); in a run of three or more numbers (a date, "1999‐08‐12", "10‐18‐75")                                  |
+| `x`             | ×         | between two numbers, spaces round it ("2 × 45")                                                                                       |
 
 jungleland.it types the acute accent and the backtick for an apostrophe
 ("Spirit of ´76", "`Cause Tonight", "Rock `n` Roll"); they are treated as one.
@@ -152,14 +153,43 @@ punctuation, so "don't" no longer finds "Don’t" in these tables, and
 "freeze-out" not "Freeze‐Out". `sa_foreign_typography` is its own setting for
 that reason, and its description says so.
 
+## The same engine on MusicBrainz pages: the title-style findings
+
+Since `feat/mb-title-style-findings` (2026-10-20) `_mbTitleCase()` and
+`_mbTypographyFixed()` have a second, READ-ONLY user:
+`_mbTitleStyleCheck()`, the checker behind the five ⚠️ title-style findings
+on MusicBrainz pages (docs/claude/findings.md, "On demand: the title-style
+findings"). **A rule change here changes those findings too** — judge it with
+`--mb-sample` as well as `--sample`.
+
+Where the converters may guess, a finding must not, so the checker keeps the
+rewriters' output only where the guideline leaves no choice. Measured on
+7,936 distinct MusicBrainz titles (`--mb-sample`, 2026-10-20), the raw
+`_mbTitleCase()` would have flagged 21% of recordings; the filters below bring
+case hits to 3.4% of all titles (typography 4.7%). Per " / " part outside brackets (`_mbtsParts()`):
+
+| Not judged                                                                                | Why                                                               | Where                                |
+|-------------------------------------------------------------------------------------------|-------------------------------------------------------------------|--------------------------------------|
+| no Latin letter; CJK, Cyrillic, Greek, full-width forms in the part                       | other conventions                                                 | `_MBTS_SKIP_SCRIPT_RE`               |
+| more `_MBTS_FOREIGN` words (or a letter of `_MBTS_FOREIGN_CH_RE`) than `_MBTS_EN` words   | English rules only                                                | `_mbtsEnglish()`                     |
+| sentence case: after the first word, content words start lower case, none upper           | most other languages write titles so                              | `_mbtsSentenceCase()`                |
+| a live bootleg title (leading date)                                                       | its own style page and place names; `live-sep` checks its hyphens | `_MBTS_LIVE_RE`                      |
+| a word in "[…]"                                                                           | file names, "[unknown]"                                           | `_mbtsCasePart()`, `_mbtsTypoPart()` |
+| a word raised to a capital inside "(…)"                                                   | descriptive ETI is lower case ("(Stone Pony rehearsal)")          | `_mbtsCasePart()`                    |
+| on, in, off, by, up, over, out, down, vs., n, ft., feat. (either way, unless in capitals) | phrasal verbs ("Take On Me"), "Rock n Roll"                       | `_MBTS_ADVERB`                       |
+| a word after an ellipsis or an apostrophe, glued to `_ # @ -`, or holding a digit         | the guideline leaves it open                                      | `_mbtsCasePart()`                    |
+| "The" after "&", an article before "," / ")" / the end                                    | a band ("& The E Street Band"), a name ("Forum Hall A")           | `_mbtsCasePart()`                    |
+| quotation marks in a part that is not English                                             | their shape depends on the language                               | `_mbtsTypoPart()`                    |
+
 ## Tests
 
-| Spec / script | Pins |
-|---|---|
-| `tests/support/mbTitleCaseCases.js` | the cases, each a real title of one of the sites unless marked "constructed" |
-| `scripts/check-mb-title-case.js` | the cases in Node (no browser), `--sample [--typo]` over the snapshots |
-| `tests/fixtures/mb-title-case.spec.js` | the cases through `window.__saTest` in Chromium; per site the rendered titles (song list, jungleland.it, brucespringsteen.it "(THE)", springsteenlyrics.com bootlegs and lyrics, 1985 venues, cities, countries ("USA" kept, State untouched) and songs, 2018 notes kept, 2012 bold kept, set labels kept and the first song after one rewritten), the tooltips, a lower-case Setlist filter still matching, each setting alone |
-| `scripts/mutations/foreign-titles.json` | 20 planted defects; `"expect": "pass"`: the per-node ellipsis (no setlist in the year fixtures holds "..." or "--") and the "USA" exception (see above) |
+| Spec / script                                                                                                             | Pins                                                                                                                                                                                                                                                                                                                                                                                                                            |
+|---------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `tests/support/mbTitleCaseCases.js`                                                                                       | the cases, each a real title of one of the sites unless marked "constructed"                                                                                                                                                                                                                                                                                                                                                    |
+| `scripts/check-mb-title-case.js`                                                                                          | the cases in Node (no browser), `--sample [--typo]` over the snapshots                                                                                                                                                                                                                                                                                                                                                          |
+| `tests/fixtures/mb-title-case.spec.js`                                                                                    | the cases through `window.__saTest` in Chromium; per site the rendered titles (song list, jungleland.it, brucespringsteen.it "(THE)", springsteenlyrics.com bootlegs and lyrics, 1985 venues, cities, countries ("USA" kept, State untouched) and songs, 2018 notes kept, 2012 bold kept, set labels kept and the first song after one rewritten), the tooltips, a lower-case Setlist filter still matching, each setting alone |
+| `tests/support/mbTitleStyleCases.js`, `tests/fixtures/findings-title-style.spec.js`, `scripts/mutations/title-style.json` | the MusicBrainz title-style checker and findings (above)                                                                                                                                                                                                                                                                                                                                                                        |
+| `scripts/mutations/foreign-titles.json`                                                                                   | 20 planted defects; `"expect": "pass"`: the per-node ellipsis (no setlist in the year fixtures holds "..." or "--") and the "USA" exception (see above)                                                                                                                                                                                                                                                                         |
 
 The converter specs (`bb-songs`, `bb-year`, `bb-home`, `jl-list`,
 `bs-records`, every `sl-*` list spec) load with BOTH settings OFF: their

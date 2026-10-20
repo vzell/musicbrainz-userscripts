@@ -17,7 +17,12 @@
  *      how many changed and a sample of before → after, so a rule change can
  *      be judged on the whole data, not on the cases alone.
  *
- *     node scripts/check-mb-title-case.js [--sample [--typo]]
+ *   3. runs `_mbTitleStyleCheck()` (the MusicBrainz title-style findings)
+ *      over the STYLE_CASES of tests/support/mbTitleStyleCases.js;
+ *   4. with `--mb-sample`, runs `_mbTitleStyleCheck()` over the MusicBrainz
+ *      titles of the snapshots in debug/ and tests/fixtures/, and times it.
+ *
+ *     node scripts/check-mb-title-case.js [--sample [--typo]] [--mb-sample]
  *
  * The fixture spec tests/fixtures/mb-title-case.spec.js runs the same CASES
  * through `window.__saTest.mbTitleCase` in Chromium.
@@ -29,13 +34,14 @@ const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
 const CASES = require('../tests/support/mbTitleCaseCases.js');
+const STYLE_CASES = require('../tests/support/mbTitleStyleCases.js');
 
 function loadSection() {
     const src = fs.readFileSync(path.join(ROOT, 'ShowAllEntityData.user.js'), 'utf8');
     const a = src.indexOf('// MusicBrainz title style on the non-MusicBrainz sites');
     const b = src.indexOf('// jungleland.it: the bootleg artwork list');
     if (a < 0 || b < 0) throw new Error('section banners not found');
-    const code = src.slice(a, b) + '\n;({ _mbTitleCase, _mbNormalizeTitle, _mbTypography, _mbSiteTitleText });';
+    const code = src.slice(a, b) + '\n;({ _mbTitleCase, _mbNormalizeTitle, _mbTypography, _mbSiteTitleText, _mbTitleStyleCheck, _mbTitleStyleMemo });';
     const sandbox = { Lib: { settings: {} }, _setTip: () => {} };
     return vm.runInNewContext(code, sandbox);
 }
@@ -116,6 +122,74 @@ function sample(fn) {
     });
 }
 
+/**
+ * `--mb-sample`: the same rewriters over MusicBrainz titles — every
+ * recording, release, release group, work and track link's `<bdi>` (the
+ * element `_findCellTitleEl()` reads) in the MusicBrainz snapshots of
+ * debug/ and the fixtures of tests/fixtures/. Prints, per entity kind, how
+ * many distinct titles the case and the typography rewriters would change,
+ * a spread of before → after for each, how many titles have no Latin letter
+ * (the MusicBrainz findings skip those), and what one title costs.
+ *
+ * @param {object} fn - The evaluated section's functions.
+ */
+function mbSample(fn) {
+    const dirs = ['debug', 'tests/fixtures'];
+    const foreign = /^(bb-|bs-|jl-|jungleland|sl-|dg-|discogs|brucebase|springsteenlyrics)/;
+    const linkRe = /<a [^>]*href="(?:https?:\/\/[^/"]*musicbrainz\.org)?\/(recording|release|release-group|work|track)\/[0-9a-f-]{36}\/?"[^>]*>\s*<bdi>([\s\S]*?)<\/bdi>/g;
+    const byKind = new Map();
+    let files = 0;
+    dirs.forEach(d => {
+        const dir = path.join(ROOT, d);
+        if (!fs.existsSync(dir)) return;
+        fs.readdirSync(dir).filter(f => f.endsWith('.html') && !foreign.test(f)).forEach(f => {
+            const s = fs.readFileSync(path.join(dir, f), 'utf8');
+            files++;
+            for (const m of s.matchAll(linkRe)) {
+                const t = decode(m[2]).replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(+n))
+                    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)));
+                if (!t) continue;
+                if (!byKind.has(m[1])) byKind.set(m[1], new Set());
+                byKind.get(m[1]).add(t);
+            }
+        });
+    });
+    console.log(`\n${files} MusicBrainz snapshot files read`);
+    const all = [];
+    const latin = /\p{Script=Latin}/u;
+    byKind.forEach((set, kind) => {
+        const uniq = [...set];
+        all.push(...uniq);
+        const checked = uniq.filter(t => latin.test(t));
+        const res = uniq.map(t => [t, fn._mbTitleStyleCheck(t)]);
+        const pick = k => res.filter(([, r]) => r[k]).map(([t, r]) => [t, r[k]]);
+        const fields = [['case', pick('caseFix')], ['typography', pick('typoFix')], ['series', pick('seriesFix')],
+            ['feat', pick('feat')], ['eti-remove', pick('etiRemove')]];
+        console.log(`\n=== ${kind}: ${uniq.length} distinct, ${uniq.length - checked.length} without a Latin letter, ` +
+            fields.map(([l, c]) => `${c.length} ${l}`).join(', '));
+        fields.forEach(([label, changed]) => {
+            if (!changed.length) return;
+            console.log(`  --- ${label}`);
+            const step = Math.max(1, Math.floor(changed.length / 40));
+            changed.filter((_, i) => i % step === 0).slice(0, 40).forEach(([a, b]) => console.log(`  ${a}\n    → ${b}`));
+        });
+    });
+    const reps = Math.max(1, Math.ceil(200000 / Math.max(1, all.length)));
+    const t0 = process.hrtime.bigint();
+    let n = 0;
+    for (let r = 0; r < reps; r++) {
+        fn._mbTitleStyleMemo.clear();
+        for (const t of all) { fn._mbTitleStyleCheck(t); n++; }
+    }
+    const us = Number(process.hrtime.bigint() - t0) / 1000 / n;
+    const t1 = process.hrtime.bigint();
+    for (let r = 0; r < reps; r++) for (const t of all) fn._mbTitleStyleCheck(t);
+    const usMemo = Number(process.hrtime.bigint() - t1) / 1000 / n;
+    console.log(`\nCost of _mbTitleStyleCheck(): ${us.toFixed(2)} µs per distinct title, ` +
+        `${(us * 10).toFixed(1)} ms per 10,000; a repeated title ${usMemo.toFixed(2)} µs (memo); ` +
+        `${all.length} distinct titles × ${reps}`);
+}
+
 function main() {
     const fn = loadSection();
     let bad = 0;
@@ -129,7 +203,20 @@ function main() {
         }
     });
     console.log(`${CASES.length - bad}/${CASES.length} cases pass`);
+    let badStyle = 0;
+    STYLE_CASES.forEach(([input, expected]) => {
+        const r = fn._mbTitleStyleCheck(input);
+        const got = {};
+        Object.keys(r).forEach(k => { if (r[k] !== null) got[k] = r[k]; });
+        if (JSON.stringify(got) !== JSON.stringify(expected)) {
+            badStyle++;
+            console.log(`STYLE MISMATCH ${JSON.stringify(input)}\n   want ${JSON.stringify(expected)}\n   got  ${JSON.stringify(got)}`);
+        }
+    });
+    console.log(`${STYLE_CASES.length - badStyle}/${STYLE_CASES.length} title-style cases pass`);
+    bad += badStyle;
     if (process.argv.includes('--sample')) sample(fn);
+    if (process.argv.includes('--mb-sample')) mbSample(fn);
     process.exitCode = bad ? 1 : 0;
 }
 

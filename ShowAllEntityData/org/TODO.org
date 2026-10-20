@@ -3602,7 +3602,33 @@ etc. if the corresponding entries in the real sidebar have them
 Except the h4 "SEARCH" section ALL sections in the h2 "Sidebar" section should be uncollapsed by default
 
 
-* TODO check discogs artist pages if really ALL master are present + implement master->release(s) drilldown
+* TODO Could the "Page Reloaded" popup dialog directly emulate the click on the corresponding "Show all..." button from which it was triggerd
+
+Could the "Page Reloaded" popup dialog,
+
+#+begin_example
+<div style="position: absolute; background-color: rgb(255, 255, 255); border: 1px solid rgb(204, 204, 204); border-radius: 10px; padding: 0px; min-width: 320px; max-width: 500px; box-shadow: rgba(0, 0, 0, 0.22) 0px 8px 32px; font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, sans-serif; font-size: 14px; color: rgb(34, 34, 34); overflow: hidden; z-index: 20001; left: 235.672px; top: 125.062px;"><div style="background-color: rgb(74, 85, 104); color: rgb(255, 255, 255); padding: 10px 14px; font-weight: 600; font-size: 13px; letter-spacing: 0.03em;">⚠️ Page Reloaded</div><div style="padding: 16px 18px; line-height: 1.55; color: rgb(51, 51, 51); white-space: pre-wrap;">The underlying MusicBrainz page has been reloaded to ensure filter stability. Please click the desired "Show all" button again to start the process.</div><div style="display: flex; justify-content: flex-end; gap: 10px; padding: 10px 14px; border-top: 1px solid rgb(232, 232, 232); background-color: rgb(249, 249, 251);"><button style="padding: 6px 18px; border-radius: 6px; border: 1px solid rgb(67, 160, 71); cursor: pointer; font-size: 13px; font-weight: 600; transition: background 0.12s; background: rgb(76, 175, 80); color: rgb(255, 255, 255);">OK</button></div></div>
+#+end_example
+
+which shows up when already on an FRP and pressing either the same or another action button (if available) on the same
+page, do the following automatically:
+
+1.)
+
+clicking the "OK" button inside the dialog directly (or maybe wait 2/3 seconds until the user has read the popop dialog
+text)
+
+2.)
+
+directly emulate the click on the corresponding "Show all..." button from which it was triggered
+
+3.)
+
+Is it actually really neccessary to do it like we implemented currently or can we shortcut it further
+
+4.)
+
+If yes, please implement
 
 
 * TODO add a reader for collection detail popups
@@ -3614,15 +3640,7 @@ add a reader for collection detail popups on e.g.https://musicbrainz.org/user/ch
 #+end_example
 
 
-* TODO add UVD entries for titles which do NOT follow MB style guidelines on MB PTs and use our rich tooltip diff popup view to show whats differing
-
-1.)
-
-add UVD entries for titles which do NOT follow MB style guidelines on MB PTs
-
-2.)
-
-use our rich tooltip diff popup view to show whats differing
+* TODO consolidate more LAF across more PTs
 
 
 * TODO Add a must have third-party userscripts section together with the end-user visible changes and what our userscript depends on
@@ -3643,15 +3661,7 @@ Suggestions for complete integration
 etc
 
 
-* TODO Could the "Page Reloaded" popup dialog directly emulate the click on the corresponding "Show all..." button from which it was triggerd
-** Question
-
-Could the "Page Reloaded" popup dialog directly emulate the click on the corresponding "Show all..." button from which
-it was triggered, by clicking the "OK" button directly (or maybe wait 2 seconds until the user has read the popop dialog
-text) ? If yes, please implement
+* TODO check discogs artist pages if really ALL master are present + implement master->release(s) drilldown
 
 
 * TODO use the Discogs history diff format LAF in other pageTypes like e.g. on BB pageTypes ==> changes button (must be logged in)
-
-
-* TODO consolidate more LAF across more PTs
