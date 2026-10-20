@@ -658,8 +658,10 @@ bold with a ✓. Rows combine with each other and with any other filter you set:
 two problems in the same column show rows with *either*, two in different
 columns show rows with *both*. **✗ Clear warning filters** (or **✗ Clear error
 filters**) removes only what that menu set. A menu is not shown at all while
-the page has nothing of its kind, and the counts always describe the whole
-page, not just the rows a filter leaves on screen.
+the page has nothing of its kind (except that the WARNING menu always offers
+"Check title style" on a MusicBrainz page with titles, see below), and the
+counts always describe the whole page, not just the rows a filter leaves on
+screen.
 
 Most rows work by ticking the matching entry in the column's 📊 dropdown — the
 **Findings - Warning** / **Findings - Error** section — so you see it in that
@@ -675,6 +677,51 @@ group title over the event, the track length over the recording length. Only
 the part that differs is marked, down to a single letter or a hyphen ‐ against
 -, and a line under them says in words what differs. Two lengths line up digit
 by digit, with the gap in a small amber (⚠️) or red (❌) label.
+
+Problems with a known MusicBrainz form show the title over that form: a live
+title, event name or recording comment whose date uses "-" over the same text
+with "‐" (only the date's hyphens marked — a hyphen in the venue stays), and
+capitalized extra title information over the same title with its keywords in
+lower case ("(Live in Asbury Park 2009)" → "(live in Asbury Park 2009)"). A
+title ending in "…" shows in one row with the "…" marked: the full title is
+not on the page, so nothing is proposed.
+
+### Check title style
+
+On a MusicBrainz page with titles (release groups, releases, recordings,
+works, a tracklist), the ⚠️ WARNING menu starts with **Aa Check title style
+(MB guidelines)** — even when the page has no other warning. Click it to
+check every title on the page against the MusicBrainz style guide. What it
+finds joins the menu as five more warnings:
+
+| Warning                               | Example                           | MusicBrainz style                |
+|---------------------------------------|-----------------------------------|----------------------------------|
+| Aa Title not in MB title case         | Prayer For The Weary              | Prayer for the Weary             |
+| ’ ASCII punctuation in title          | Don't Be Lonely                   | Don’t Be Lonely                  |
+| , Series number without comma         | Broadcasts Vol. 5                 | Broadcasts, Vol. 5               |
+| ft. Featured artist in title          | Song (feat. Somebody)             | the artist belongs in the credit |
+| ( ) Extra title information to remove | Come Together [The Beatles Cover] | Come Together                    |
+
+Rest the pointer on a flagged cell to see the title over its MusicBrainz style,
+with only the letters or marks that differ highlighted. Nothing is changed:
+the check only points things out.
+
+It flags only what the guideline is sure about. It never flags:
+
+- titles that read as another language, or are written in sentence case
+  ("Bolji nego ja");
+- live bootleg titles ("1977‐05‐13, late show: …");
+- a capitalized short preposition that may belong to a verb ("Take On Me",
+  "Stand By Me"), or "The" after "&" ("& The E Street Band");
+- lower-case words inside "( … )" (descriptive extra title information);
+- anything in "[ … ]" (file names, "[unknown]").
+
+The check is not run by itself, because it costs about 0.2 seconds per
+10,000 different titles. After the click it stays on for the page until you
+reload it, and the first row then says how many titles it checked and how
+long that took. To run it on every page by itself, turn on ⚙️ Settings → ⚠️
+Findings → **Check title style automatically**. Each of the five warnings has
+its own switch there, plus one for their yellow tint.
 
 <details>
 <summary>What is checked</summary>
@@ -695,6 +742,11 @@ by digit, with the gap in a small amber (⚠️) or red (❌) label.
 | ⚠️     | Title truncated with "…"                                        | Title columns                               |
 | ⚠️     | Extra title information starts uppercase, e.g. "(Version 1)"    | Title columns                               |
 | ⚠️     | Track name differs from recording name (jesus2099's "≠" marker) | Release tracklist: Title                    |
+| ⚠️     | Title not in MB title case (after "Check title style")          | Title columns                               |
+| ⚠️     | ASCII punctuation in title (after "Check title style")          | Title columns                               |
+| ⚠️     | Series number without comma (after "Check title style")         | Title columns                               |
+| ⚠️     | Featured artist in title (after "Check title style")            | Title columns                               |
+| ⚠️     | Extra title information to remove (after "Check title style")   | Title columns                               |
 | ⚠️     | 🟠 Release has low data quality                                 | Release / Title columns                     |
 | ⚠️     | Invalid ISRC / ISWC / barcode format                            | ISRCs, ISRC, ISWC, Barcode                  |
 | ⚠️     | Artwork has no Front image (releases with artwork only)         | CAA                                         |
@@ -1153,11 +1205,11 @@ so you can filter to exactly the rows that failed.
 On an artist's **Recordings** page, two columns follow **Name**. They are on
 the other recording lists too, after that page's own recording column:
 
-| Page | After |
-|---|---|
-| An artist's, an instrument's Recordings; recording search results; a series or collection of recordings | **Name** |
-| An ISRC; an area's Recordings; a place's Performances; a work's recordings | **Title** |
-| Tagged recordings (yours or everyone's); your rated recordings; an artist credit's recordings | **Recording** |
+| Page                                                                                                    | After         |
+|---------------------------------------------------------------------------------------------------------|---------------|
+| An artist's, an instrument's Recordings; recording search results; a series or collection of recordings | **Name**      |
+| An ISRC; an area's Recordings; a place's Performances; a work's recordings                              | **Title**     |
+| Tagged recordings (yours or everyone's); your rated recordings; an artist credit's recordings           | **Recording** |
 
 The two columns are:
 
@@ -1466,7 +1518,7 @@ you automatically.
 | 🔍 Expand release and release groups            | Inline ▶/▼ expanders                                                                                                                                                                                                                                                  |
 | ▶️ Expand truncated cells                        | Whether a clipped cell offers an expander, and how it looks                                                                                                                                                                                                           |
 | 📑 Show single-table                            | The client-side sub-table snapshot button and its colours                                                                                                                                                                                                             |
-| ⚠️ Findings                                      | The ⚠️ WARNING / ❌ ERROR menus on or off; one switch per newly highlighted finding (ALL UPPERCASE, truncated, track ≠ recording name, low quality, pending edits, ISRC, ISWC, barcode, live credit dates, capitalized ETI, several Discogs links in Relationships); the extra title information keyword list  |
+| ⚠️ Findings                                      | The ⚠️ WARNING / ❌ ERROR menus on or off; one switch per newly highlighted finding (ALL UPPERCASE, truncated, track ≠ recording name, low quality, pending edits, ISRC, ISWC, barcode, live credit dates, capitalized ETI, several Discogs links in Relationships); the extra title information keyword list; "Check title style automatically", the five title-style warnings and their tint |
 | 💿 Release tracklist                            | Every tracklist column family, credit colours, live-date flagging, the ARs column                                                                                                                                                                                     |
 | 🔖 Barcode highlight                            | Identical-barcode highlighting                                                                                                                                                                                                                                        |
 | 🔖 Barcode validation                           | GS1 format/check-digit validation, the 📊 Validity/Format/Same As sections                                                                                                                                                                                            |

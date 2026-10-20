@@ -1,0 +1,121 @@
+* DONE add UVD entries for titles which do NOT follow MB style guidelines on MB PTs and use our rich tooltip diff popup view to show whats differing
+** DONE initial
+
+Branch feat/mb-title-style-findings (2026-10-20). Five ⚠️ findings (title-case,
+title-typography, title-series-sep, title-feat, title-eti-remove), run on demand
+from "Check title style" in the WARNING menu (placement option B, mockup
+https://claude.ai/artifact/5MUe9Ti1hGBu9tAP6PYXVV) or on every load with
+sa_findings_title_style_auto. Design: docs/claude/findings.md "On demand: the
+title-style findings"; rules: docs/claude/foreign-title-case.md "The same engine
+on MusicBrainz pages"; sample and false-positive classes: DEBUG-NOTES.md
+2026-10-20.
+
+1.)
+
+Make suggestions for an MB entity name parser which checks if an entity title/name follows MB style guidelines see
+
+#+begin_example
+general - https://musicbrainz.org/doc/Style
+Specifically for english - https://musicbrainz.org/doc/Style/Language/English 
+#+end_example
+
+2.)
+
+also change the basic ASCII punctuation characters such as e.g. ' and " and use typographically-correct punctuation
+(such as ’ for the English apostrophe), here the full list:
+
+#+begin_example
+hyphen         (‐)    - 2010 - 8208 - joins words and syllables of a word (e.g. “Tenth Avenue Freeze‐Out” or “co‐operate”)
+figure dash    (‒)    - 2012 - 8210 - used as a dash within numbers (e.g. 555‒1212)
+en dash        (–)    - 2013 - 8211 - indicates a range of numbers (e.g. 1989–90)
+em dash        (—)    - 2014 - 8212 - separate thoughts—like this
+minus sign     (−)    - 2212 - 8722 - indicates subtraction
+hyphen minus   (-)    - 2D   - 45   - minus on alphanumeric keys
+quotation dash (―)    - 2015 - 8213 - introduces quoted text in some cases (non‐standard for English dialect)
+
+' vs ’ vs ´
+" vs „“”
+... vs …
+
+    deutsch – for German „quotation marks“ and ‚single quotation marks‘ (default)
+    francais – for French «double quotation marks» and ‹single quotation marks›
+    deutsch-2 – for an alternative style of German »double« and ›single quotation marks‹
+    english – for English “double” and ‘single quotation marks’
+
+Preferred Unicode characters for English punctuation
+Preferred	Usage	Deprecates
+‐	Hyphen	Joins words and syllables of a word or dates 2012‐12‐15 (e.g. co‐operate).	-	Hyphen-minus
+‒	Figure Dash	Used as a dash within numbers (e.g. 555‒1212).
+–	- 2013 - - 8211 - AltGr-# - - En Dash	Indicates a range of numbers (e.g. 1989–90).
+−	Minus sign	Indicates subtraction.
+—	- 2014 - 2012 - AltGr-Shift- - Em Dash	Separate thoughts—like this.	--	Hyphen-minus ×2
+―	Horizontal bar aka Quotation dash	Introduces quoted text in some cases (non‐standard for English dialect).
+'       apostrophe on alphanumeric keys
+‘	- 2018 - 8216 - AltGr-' - Left single quotation mark	Indicates start of quoted text.	'	Apostrophe
+’	Right single quotation mark Apostrophe	Indicates end of quoted text, or omitted characters.
+′	- 2032 - 8242 - AltGr-^ - Prime	Minutes; feet
+“	Left double quotation mark	Indicates start of quoted text.	"	Quotation mark
+”	Right double quotation mark	Indicates end of quoted text.
+″	- 2033 - 8243 - AltGr-Shift-^ - Double prime	Seconds; inches
+〃	Ditto mark	Indicates that the word(s) or figure(s) below which it is placed are to be repeated.
+…	Horizontal ellipsis	Indicates intentional omission in original text…or a pause in speech or thought.	...	Full stop ×3
+×	Multiplication	Indicates a multiplication operation.	x	(the letter ‘X’) when used to indicate multiplication
+⁄	Fraction slash	Indicates arbitrary fractions of decimal numbers (e.g. 15⁄16). Hardcoded fractions: ¼, ½, ¾, ⅐, ⅑, ⅒, ⅓, ⅔, ⅕, ⅖, ⅗, ⅘, ⅙, ⅚, ⅛, ⅜, ⅝, ⅞, ⅟ and ↉.	/	Slash
+∕	Division slash	Indicates a division operation (e.g. 3.14∕2n).	/	Slash
+¤       AltGr-Shift-4
+#+end_example
+
+3.)
+
+1. and 2. have already been implemented for non-MB PTs, maybe we can reuse that functionality
+
+4.)
+
+make nice rich HTML based mockups where to put the invocation button for the parser, because probably we don't want to
+execute the parser for every column in a table/sub-table on each supported MB PT automatically (except it turns out it's
+not a performance killer)
+
+5.)
+
+add UVD findings for entity names/titles in columns which do NOT follow MB style guidelines on MB PTs
+
+6.)
+
+use our rich tooltip diff popup view to show whats differing between the current entity name/title and the proposed one
+according to style guidelines
+
+* DONE add more diff popups
+
+1.)
+
+change the current popup about "Live title date uses a plain..." to a more rich diff popup view which visualizes the
+diffferences between the current date and the proposed date
+
+#+begin_example
+@debug/live-title-date.html - FRP filtered to the relevant entry - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings - [Image #1]
+#+end_example
+
+2.)
+
+same for "Extra title information starts uppercase" - [Image #2]
+
+3.)
+
+same for "Title truncated with "…"" - [Image #3]
+
+* TODO Is it possible to muliselect options under the "WARNING" and "ERROR" menu buttons - [Image #5]
+
+Yes, you can tick several rows, but each click closes the menu, so you have to reopen it for every extra one. The closing is deliberate: any click on a menu row runs setTimeout(close, 0) in createToolbarMenu().
+
+How the ticked rows combine depends on where each warning sits:
+
+- Same column: the rows are 📊 ticks in that column, so they combine as OR. You see rows with either warning.
+- Different columns: ticks in different columns combine as AND. You only see rows with both.
+- Warning in several columns at once: the menu falls back to a page-wide row filter and shows a chip, like "ASCII punctuation in title" in your screenshot. That happens here because the title-style warnings sit in both Name and Release groups. These row filters also combine as AND. So adding "Title not in MB title case" on that page would show only rows with both problems, not rows with either.
+
+That AND is probably not what you'd expect from a multi-select list of warnings. Two changes would make it work the way the screenshot suggests:
+
+1. Keep the menu open on a warning row click (checkbox rows only; "Clear" and "Check title style" would still close it). Then you can tick several in one go.
+2. Make ticked rows within one menu combine as OR, meaning rows with any of the ticked warnings, while the menus still AND with your other filters. This changes the existing semantics, which findings-menus.spec.js pins.
+
+Both are a few lines in _buildFindingMenuRows()/_toggleFinding() and the row-filter test in testRowMatch(), plus spec changes. Do you want one or both? If both, should OR also apply across WARNING and ERROR, or only within one menu?

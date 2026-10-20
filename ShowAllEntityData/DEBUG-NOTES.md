@@ -24672,3 +24672,65 @@ Env: 2026-10-20T15:19:19+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
 - **Tests:** `sidebar-inline.spec.js` "PLACE: event — Relationships is the
   data h2, so right above it" (next sibling is `h2.relationships`, the event
   tables follow the wrap); mutation in `sidebar-inline.json` caught.
+
+## 2026-10-20 — MusicBrainz title-style findings: what the converters' title case gets wrong on MB data (branch feat/mb-title-style-findings, WIP.1)
+
+Env: 2026-10-20T16:46:17+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Node (no browser) for the sample; Playwright 1.62.1 Chromium (chromium-1234), no Tampermonkey (GM stubs) for the spec
+
+- **Task:** org/title-style-guidelines.org — flag MusicBrainz titles that
+  break the style guide as ⚠️ findings with the diff card, reusing the
+  non-MB converters' `_mbTitleCase()`/`_mbTypography()`. Placement mockup
+  https://claude.ai/artifact/5MUe9Ti1hGBu9tAP6PYXVV; option B (a "Check
+  title style" row in the WARNING menu) + an auto setting, chosen by the user.
+- **Sample:** `node scripts/check-mb-title-case.js --mb-sample` reads every
+  recording/release/RG/work/track `<bdi>` of the MB snapshots in `debug/`
+  and `tests/fixtures/` (550 files, 7,936 distinct titles, 8,752 counted per
+  kind). The raw `_mbTitleCase()` changed 687 of 3,276 recordings (21%).
+  The false positives, by class: Spanish/Italian/German/Czech/Yiddish
+  titles; live bootleg titles (place names "The Netherlands", "late show");
+  bracketed file names "[… .mp3]"; phrasal "Take On Me", "Bringing On the
+  Fever"; descriptive ETI "(Stone Pony rehearsal, 1977 / mono)", "(U.S.
+  remix)" raised; a word after "(" or "…"; "& The E Street Band"; "Forum
+  Hall A"; "Rock n Roll" → "N"; "MP3" → "Mp3"; a " / " split INSIDE
+  parentheses (`_parseTitleAnatomy()` splits on every " / ", so the checker
+  has its own `_mbtsParts()`).
+- **After the filters** (docs/claude/foreign-title-case.md, "The same engine
+  on MusicBrainz pages"): case 295 of 8,752 (3.4%), typography 409 (4.7%),
+  series 22, featured artist 1, ETI to remove 1. Remaining debatable hits are
+  names inside titles ("92.9 The Mountain", "Satchmo The Great"), which the
+  guideline also lower-cases.
+- **Cost:** 17–23 µs per distinct title over four runs (Node, memo
+  cleared), 0.7–0.85 µs per repeated title (memo). Hence on demand, default
+  off.
+- **Overlap kept:** an ALL UPPERCASE title carries `allcaps` and
+  `title-case`; "(Live)" carries `eti-case` and `title-case`.
+- **Also found:** `scripts/mutations/foreign-titles.json` "no tooltip with
+  the site's own text" anchored a line that 154859e renamed to
+  `_mbSiteTitleTip()`, so it errored instead of running; anchor updated, the
+  entry fails as it should again.
+- **Tests:** `tests/fixtures/findings-title-style.spec.js` (9),
+  `tests/support/mbTitleStyleCases.js` (59 cases, Node and browser),
+  `scripts/mutations/title-style.json` (14 entries, all caught).
+
+## 2026-10-20 — diff cards for live-title "-", capitalized ETI and truncated titles (branch feat/mb-title-style-findings, WIP.2)
+
+Env: 2026-10-20T18:18:32+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium (chromium-1234), no Tampermonkey (GM stubs); screenshots: browser unknown
+
+- **Snapshot:** `debug/live-title-date.html` (FRP of
+  /artist/70248960-…/recordings, filtered to one row). The Release groups
+  cell carries `data-mb-live-flag="warn"`, `data-mb-findings="live-sep"`
+  and the plain title "Live title date uses a plain "-" between its parts
+  instead of "‐" (U+2010)." — no `data-mb-tip-cmp`. That sentence is what the
+  note box above the preview card showed (user's screenshots 1–3, the same
+  for `eti-case` and `truncated`).
+- **Why live-sep had no card:** it is family-painted (`data-mb-live-flag`),
+  so `_writeFindingAttrs()` leaves its tip to `_stampLiveTitleRow()` and
+  would ignore a `compare` on the finding. The comparison is therefore
+  written there (`_liveSepCmp()`, warn only), not in the registry.
+- **truncated:** no proposal exists (the full title is not on the page), so
+  the user chose a one-row card with the "…" marked: new comparison kind
+  `mark` (`_cmpMarkHtml()`, validated in `_cmpTipData()`).
+- **Tests:** `tests/fixtures/findings-diff-cards.spec.js` (6),
+  `scripts/mutations/diff-cards.json` (8, all caught); 195 related tests
+  (uvd-live-titles, uvd-recording-comments, uvd-event-names, findings-*,
+  tooltip-diff, popup-mb, rich-tooltips-liner, …) pass.

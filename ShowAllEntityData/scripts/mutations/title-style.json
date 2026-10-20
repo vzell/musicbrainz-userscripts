@@ -1,0 +1,184 @@
+[
+  {
+    "name": "the title-style findings run without being asked for",
+    "why": "The on-demand gate is the point of option B: the check costs ~0.2 s per 10,000 titles. Must fail on the before-the-click test.",
+    "edits": [
+      {
+        "find": "        return !_foreignHost && (_titleStyleRequested || Lib.settings.sa_findings_title_style_auto === true);",
+        "replace": "        return !_foreignHost;"
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.spec.js",
+    "grep": "nothing is checked before the click",
+    "expect": "fail"
+  },
+  {
+    "name": "the auto setting is ignored",
+    "why": "sa_findings_title_style_auto would then do nothing. Must fail on the auto-setting test.",
+    "edits": [
+      {
+        "find": "        return !_foreignHost && (_titleStyleRequested || Lib.settings.sa_findings_title_style_auto === true);",
+        "replace": "        return !_foreignHost && _titleStyleRequested;"
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.spec.js",
+    "grep": "auto setting",
+    "expect": "fail"
+  },
+  {
+    "name": "the WARNING menu never offers the check",
+    "why": "Without the row there is no way to run the check. Must fail on the before-the-click test.",
+    "edits": [
+      {
+        "find": "        if (!_titleStyleActive()) return { done: false, text: 'Check title style (MB guidelines)' };",
+        "replace": "        if (!_titleStyleActive()) return null;"
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.spec.js",
+    "grep": "nothing is checked before the click",
+    "expect": "fail"
+  },
+  {
+    "name": "the click does not turn the findings on",
+    "why": "The re-stamp then runs with the findings still disabled. Must fail on the stamped-titles test.",
+    "edits": [
+      {
+        "find": "        _titleStyleRequested = true;\n        const t0 = performance.now();",
+        "replace": "        const t0 = performance.now();"
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.spec.js",
+    "grep": "counted by row",
+    "expect": "fail"
+  },
+  {
+    "name": "the menu is created only when a finding has rows",
+    "why": "On a page with no other warning the check row would never show. The fixture page has no other warning, so must fail on the before-the-click test.",
+    "edits": [
+      {
+        "find": "            if (!list.length && !styleRow && !menu) return;",
+        "replace": "            if (!list.length && !menu) return;"
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.spec.js",
+    "grep": "nothing is checked before the click",
+    "expect": "fail"
+  },
+  {
+    "name": "the title-style tint setting is ignored",
+    "why": "sa_findings_tint_title_style would then not turn the paint off. Must fail on the tint-setting test.",
+    "edits": [
+      {
+        "find": "            compare: cell => _findingTitleStyleCmp(cell, 'seriesFix'),\n            tint: _findingTintSetting('sa_findings_tint_title_style'),",
+        "replace": "            compare: cell => _findingTitleStyleCmp(cell, 'seriesFix'),\n            tint: () => true,"
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.spec.js",
+    "grep": "keep the finding but not the paint",
+    "expect": "fail"
+  },
+  {
+    "name": "a finding's own setting is ignored",
+    "why": "sa_findings_title_typography would then not turn its finding off. Must fail on the own-setting test.",
+    "edits": [
+      {
+        "find": "            enabled: _titleStyleEnabled('sa_findings_title_typography'),",
+        "replace": "            enabled: _titleStyleEnabled('sa_findings_title_typography_unused'),"
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.spec.js",
+    "grep": "own setting",
+    "expect": "fail"
+  },
+  {
+    "name": "the case comparison is dropped",
+    "why": "The hover card then shows the label alone, no title over MB style. Must fail on the hover-card test.",
+    "edits": [
+      {
+        "find": "            compare: cell => _findingTitleStyleCmp(cell, 'caseFix'),",
+        "replace": "            compare: () => null,"
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.spec.js",
+    "grep": "hover card",
+    "expect": "fail"
+  },
+  {
+    "name": "the language gate is gone",
+    "why": "Spanish and Yiddish titles would be re-cased. Must fail on the shared cases.",
+    "edits": [
+      {
+        "find": "        if (!_mbtsEnglish(text) || _MBTS_LIVE_RE.test(text) || _MBTS_SKIP_SCRIPT_RE.test(text) ||",
+        "replace": "        if (_MBTS_LIVE_RE.test(text) || _MBTS_SKIP_SCRIPT_RE.test(text) ||"
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.spec.js",
+    "grep": "shared cases",
+    "expect": "fail"
+  },
+  {
+    "name": "the sentence-case gate is gone",
+    "why": "\"Bolji nego ja\" and \"songs without a home\" would be re-cased. Must fail on the shared cases.",
+    "edits": [
+      {
+        "find": "            _mbtsSentenceCase(text)) return text;",
+        "replace": "            false) return text;"
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.spec.js",
+    "grep": "shared cases",
+    "expect": "fail"
+  },
+  {
+    "name": "phrasal short prepositions are judged",
+    "why": "\"Take On Me\" and \"Plug In Baby\" would be flagged. Must fail on the shared cases.",
+    "edits": [
+      {
+        "find": "            if (_MBTS_ADVERB.has(lw) && (w !== w.toUpperCase() || w.length === 1)) continue;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.spec.js",
+    "grep": "shared cases",
+    "expect": "fail"
+  },
+  {
+    "name": "\"The\" after \"&\" is judged",
+    "why": "\"Bruce Springsteen & The E Street Band\" would be flagged. Must fail on the stamped-titles test (a fixture title) and the shared cases.",
+    "edits": [
+      {
+        "find": "            if (!raising && lw === 'the' && /&\\s*$/.test(text.slice(0, a))) continue;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.spec.js",
+    "grep": "counted by row",
+    "expect": "fail"
+  },
+  {
+    "name": "typography reads inside [...]",
+    "why": "File names such as \"[80's Prom Night 12.mp3]\" would be flagged. Must fail on the shared cases.",
+    "edits": [
+      {
+        "find": "            return square || (!english && '“”‘″'.includes(c)) ? s[i] : c;",
+        "replace": "            return (!english && '“”‘″'.includes(c)) ? s[i] : c;"
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.spec.js",
+    "grep": "shared cases",
+    "expect": "fail"
+  },
+  {
+    "name": "the series rule fires after \"&\"",
+    "why": "\"Greatest Hits, Volume I & Volume II\" would get a comma before its second volume. Must fail on the shared cases.",
+    "edits": [
+      {
+        "find": "    const _MBTS_SERIES_RE = /([^\\s,:\\-–—(/&?!])(\\s+)",
+        "replace": "    const _MBTS_SERIES_RE = /([^\\s,:\\-–—(/?!])(\\s+)"
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.spec.js",
+    "grep": "shared cases",
+    "expect": "fail"
+  }
+]

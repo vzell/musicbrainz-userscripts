@@ -118,6 +118,30 @@ cell's box in the stack gives the label alone (`_dpCollectNotes()`,
 https://claude.ai/artifact/7Nbqih988jfzpGxbiQTX75 (approved 2026-10-17,
 variant A); mutation list `scripts/mutations/tooltip-diff.json`.
 
+Three more cards since 2026-10-20 (branch `feat/mb-title-style-findings`,
+WIP.2):
+
+- **`eti-case`**: `_findingEtiCaseCmp()`, the title over the same title with
+  the keywords of each capitalized group in lower case (the finding's own
+  `etiCase`/`etiRanges` and `_etiKeywords()`, so names in the group stay).
+- **`truncated`**: `_findingTruncatedCmp()`, a ONE-row entry, `kind: 'mark'`
+  (`_cmpMarkHtml()`): the title with its closing "…" marked and a summary.
+  There is no honest second value — the full title is not on the page — and
+  "the title without …" would propose a fix that may be wrong (the user's
+  choice). `_cmpTipData()` validates the kind (`a`, `la`, `s`, `e`, `sum`).
+- **`live-sep` / `event-live-sep` / `rec-live-sep`**: these are
+  family-painted (`data-mb-live-flag`), so `_writeFindingAttrs()` never
+  writes their tip and a `compare` on the finding would be ignored. The
+  comparison is written where the tip is: `_stampLiveTitleRow()` stores
+  `_liveSepCmp()` with the flag's own sentence, `at: 0`, for a `warn` flag
+  only (a red cell's error is the date, not the hyphen). `_liveSepFixed()`
+  changes only the date head before the first ": " of each " / " part,
+  so "Wilkes-Barre" in a venue stays. Clearing the flag removes
+  `data-mb-tip-cmp` with the title.
+
+Spec `tests/fixtures/findings-diff-cards.spec.js`, mutations
+`scripts/mutations/diff-cards.json`.
+
 Attributes only, so none of the "writing cell text after the render" duties
 apply (docs/claude/filter-and-cache-invariants.md) — except the 📊 cache,
 whose `findingCounts` come from these attributes: the stamp invalidates each
@@ -176,6 +200,53 @@ rules:
   `sa_enable_relationships_column`) and `sa_findings_tint_rel_multi_discogs`.
 - Spec `rel-column-site-kind-discogs.spec.js`; mutations
   `scripts/mutations/link-site-uvd.json`.
+
+## On demand: the title-style findings
+
+`title-case`, `title-typography`, `title-series-sep`, `title-feat` and
+`title-eti-remove` (branch `feat/mb-title-style-findings`,
+org/title-style-guidelines.org) check MusicBrainz titles against the style
+guide. They are the first findings that run only when ASKED for, because the
+check costs real render time: about 20 µs per distinct title in Node, so
+~0.2 s per 10,000 (`node scripts/check-mb-title-case.js --mb-sample`;
+0.85 µs for a repeated title, which the memo serves).
+
+- **The gate is `enabled()`** — `_titleStyleEnabled(key)`: `_titleStyleActive()`
+  (`!_foreignHost` and either `_titleStyleRequested` or
+  `sa_findings_title_style_auto`, default OFF) plus the finding's own
+  `sa_findings_title_*` setting. A disabled finding is not in any plan, so
+  the default render pays nothing but `_titleStyleAvail`'s header scan.
+- **The trigger is the first row of the ⚠️ WARNING menu**
+  (`_titleStyleMenuRow()`, `_buildTitleStyleMenuRow()`, placement option B
+  of the mockup https://claude.ai/artifact/5MUe9Ti1hGBu9tAP6PYXVV, chosen
+  2026-10-20). It is offered while `_titleStyleAvail` (the last
+  `stampFindings()` met a `plan.titleInfo()` column on a MusicBrainz page),
+  so `_updateFindingMenus()` now builds the WARNING menu even with no
+  finding rows — the one exception to "a menu is hidden while the page has
+  nothing of its kind". Without rows its label carries no "(0)".
+- **The click re-runs `stampFindings()`** (`_runTitleStyleCheck()`), which is
+  idempotent — `initReleaseGroupLink()` included — and then shows the time
+  and the memo size as the row's status line. Later fetches and disk loads
+  of the page keep the findings on; a reload drops them.
+- **One checker, `_mbTitleStyleCheck(text)`**, in the shared title section
+  (so `scripts/check-mb-title-case.js` cuts and tests it), memoized by text.
+  It reuses the converters' `_mbTitleCase()` and `_mbTypographyFixed()`
+  READ-ONLY and keeps their output only where the guideline is certain;
+  docs/claude/foreign-title-case.md has the rules, and every exemption is a
+  mutation in `scripts/mutations/title-style.json`.
+- **`compare`** gives `{la: 'Title', lb: 'MB style', own: 'b'}` for case,
+  typography and series; `title-feat` and `title-eti-remove` propose no
+  title and give a `detail` instead.
+- **One tint setting** for all five, `sa_findings_tint_title_style`.
+- Overlaps are deliberate: an ALL UPPERCASE title also carries `title-case`
+  (its card shows the proposal), and "(Live)" both `eti-case` and
+  `title-case`. `_MBTC_ETI` (the case rule's lower-case ETI words) and
+  `sa_findings_eti_keywords` (`eti-case`'s) are different lists, so a group
+  such as "(Second Night)" is `title-case` only.
+
+Spec `tests/fixtures/findings-title-style.spec.js` (plants titles into
+`artist-releasegroups-live-titles.html`), cases
+`tests/support/mbTitleStyleCases.js` (Node and browser).
 
 ## Counting: `_findingRowTally()` and the stamp generation
 

@@ -1,0 +1,106 @@
+[
+  {
+    "name": "the live-title flag stores no comparison",
+    "why": "The card falls back to the sentence alone, as before the change. Must fail on the live-title card test.",
+    "edits": [
+      {
+        "find": "                _setTipCmp(td, flag.tip, cmp ? [cmp] : []);",
+        "replace": "                _setTip(td, flag.tip);"
+      }
+    ],
+    "spec": "tests/fixtures/findings-diff-cards.spec.js",
+    "grep": "live title with",
+    "expect": "fail"
+  },
+  {
+    "name": "the live-date fix rewrites every hyphen",
+    "why": "\"Wilkes-Barre\" in the location would be proposed as \"Wilkes‐Barre\". Must fail on the date-head test.",
+    "edits": [
+      {
+        "find": "            return head.replace(/([\\d?])-(?=[\\d?])/g, '$1‐') + (c < 0 ? '' : part.slice(c));",
+        "replace": "            return part.replace(/-/g, '‐');"
+      }
+    ],
+    "spec": "tests/fixtures/findings-diff-cards.spec.js",
+    "grep": "date head only",
+    "expect": "fail"
+  },
+  {
+    "name": "a red live-title cell gets the separator comparison too",
+    "why": "An impossible date is an error about the date, not the hyphen. Must fail on the live-title card test (red cell).",
+    "edits": [
+      {
+        "find": "                const cmp = flag.kind === 'warn' ? _liveSepCmp(td, recFlag ? rec : null) : null;",
+        "replace": "                const cmp = _liveSepCmp(td, recFlag ? rec : null);"
+      }
+    ],
+    "spec": "tests/fixtures/findings-diff-cards.spec.js",
+    "grep": "live title with",
+    "expect": "fail"
+  },
+  {
+    "name": "a recording comment is compared as a title",
+    "why": "The comment flag would read the recording title instead of its comment. Must fail on the recording-comment test.",
+    "edits": [
+      {
+        "find": "                const cmp = flag.kind === 'warn' ? _liveSepCmp(td, recFlag ? rec : null) : null;",
+        "replace": "                const cmp = flag.kind === 'warn' ? _liveSepCmp(td, null) : null;"
+      }
+    ],
+    "spec": "tests/fixtures/findings-diff-cards.spec.js",
+    "grep": "recording comment",
+    "expect": "fail"
+  },
+  {
+    "name": "eti-case has no comparison",
+    "why": "The card shows the label alone. Must fail on the ETI test.",
+    "edits": [
+      {
+        "find": "            compare: cell => _findingEtiCaseCmp(cell),",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-diff-cards.spec.js",
+    "grep": "capitalized ETI",
+    "expect": "fail"
+  },
+  {
+    "name": "the ETI proposal lowers the names in the group too",
+    "why": "\"(live in asbury park 2009)\" would be proposed. Must fail on the ETI test.",
+    "edits": [
+      {
+        "find": "            const low = g.replace(/\\S+/g, w => (kw.has(_etiBareWord(w).toLowerCase()) ? w.toLowerCase() : w));",
+        "replace": "            const low = g.toLowerCase();"
+      }
+    ],
+    "spec": "tests/fixtures/findings-diff-cards.spec.js",
+    "grep": "capitalized ETI",
+    "expect": "fail"
+  },
+  {
+    "name": "truncated has no card row",
+    "why": "The card shows the label alone. Must fail on the truncated test.",
+    "edits": [
+      {
+        "find": "            compare: cell => _findingTruncatedCmp(cell),",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-diff-cards.spec.js",
+    "grep": "truncated title",
+    "expect": "fail"
+  },
+  {
+    "name": "a one-row entry fails validation",
+    "why": "_cmpTipData() would drop every kind:'mark' entry. Must fail on the truncated test.",
+    "edits": [
+      {
+        "find": "                    ? str(c.a) && str(c.la) && num(c.s) && num(c.e) && (c.sum === undefined || str(c.sum))",
+        "replace": "                    ? false"
+      }
+    ],
+    "spec": "tests/fixtures/findings-diff-cards.spec.js",
+    "grep": "truncated title",
+    "expect": "fail"
+  }
+]

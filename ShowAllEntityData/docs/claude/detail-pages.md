@@ -13,12 +13,12 @@ Design study, probes and the mockups the user chose from:
 
 ## Gates: one setting per host, nothing on MusicBrainz
 
-| Host                  | Setting                | Detail links                                                                                                    |
-|-----------------------|------------------------|-----------------------------------------------------------------------------------------------------------------|
+| Host                  | Setting                | Detail links                                                                                                        |
+|-----------------------|------------------------|---------------------------------------------------------------------------------------------------------------------|
 | springsteenlyrics.com | `sa_sl_detail_preview` | `collection.php`/`bootlegs.php`/`brucelegs.php` with `item=N`; `lyrics.php?song=SLUG` (the lyrics index, 9.99.1264) |
-| jungleland.it         | `sa_jl_detail_preview` | `/html/*.htm` except list, images, artwork                                                                      |
-| brucespringsteen.it   | `sa_bs_detail_preview` | `/DB/detrec.aspx?code=`                                                                                         |
-| brucebase.wikidot.com | `sa_bb_detail_preview` | `/song:<slug>`                                                                                                  |
+| jungleland.it         | `sa_jl_detail_preview` | `/html/*.htm` except list, images, artwork                                                                          |
+| brucespringsteen.it   | `sa_bs_detail_preview` | `/DB/detrec.aspx?code=`                                                                                             |
+| brucebase.wikidot.com | `sa_bb_detail_preview` | `/song:<slug>`                                                                                                      |
 
 All four default **off** and sit under their host's own `sa_enable_<site>`
 setting, which still has to be on.
@@ -59,17 +59,17 @@ returns a TARGET `{src, el, key, url, …}`). The four foreign sites are one
 source each (`_dpSiteSource()`, the behaviour above, unchanged); a MusicBrainz
 release page adds two (below). A source has:
 
-| Member                                    | What it is                                                                                                           |
-|-------------------------------------------|----------------------------------------------------------------------------------------------------------------------|
-| `selector`, `resolve(el)`                 | which element it previews (a link, or a container such as a "#" cell), and that element's `{key, url}`, or null      |
-| `enabled()`                               | its host and settings, read at every event                                                                           |
-| `needsCtrl()`                             | whether its card waits for Ctrl (the foreign sites: `_dpNeedsCtrl()`)                                                |
-| `card(t, start, repaint)`                 | the card's HTML for the CURRENT state, at once                                                                       |
-| `extracted(t, start, force, repaint)`     | the Extracted view's HTML, the same way                                                                              |
-| `live`, `liveUrl(t)`                      | the Live page view: `_dpIsolateFrame()`'s fields, plus `charset` and `awaitSlot` (the rate gate `_dpGetRaw()` waits on) |
-| `liveFailTitle`, a target's `noLive`      | the Live page's failure heading ("Could not load the detail page." unless set; the external source: "the page"); no Live page button for that target (YouTube) |
-| `steps(t)`, `stepId(el)`                  | what ‹ › step through, and an identity that survives the `cloneNode(true)` re-renders                                |
-| `kind`, `wide`, `onAreaClick(e, t)`       | the dialog's title, a wider card, a click in the Extracted view (a sortable header)                                  |
+| Member                                | What it is                                                                                                                                                     |
+|---------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `selector`, `resolve(el)`             | which element it previews (a link, or a container such as a "#" cell), and that element's `{key, url}`, or null                                                |
+| `enabled()`                           | its host and settings, read at every event                                                                                                                     |
+| `needsCtrl()`                         | whether its card waits for Ctrl (the foreign sites: `_dpNeedsCtrl()`)                                                                                          |
+| `card(t, start, repaint)`             | the card's HTML for the CURRENT state, at once                                                                                                                 |
+| `extracted(t, start, force, repaint)` | the Extracted view's HTML, the same way                                                                                                                        |
+| `live`, `liveUrl(t)`                  | the Live page view: `_dpIsolateFrame()`'s fields, plus `charset` and `awaitSlot` (the rate gate `_dpGetRaw()` waits on)                                        |
+| `liveFailTitle`, a target's `noLive`  | the Live page's failure heading ("Could not load the detail page." unless set; the external source: "the page"); no Live page button for that target (YouTube) |
+| `steps(t)`, `stepId(el)`              | what ‹ › step through, and an identity that survives the `cloneNode(true)` re-renders                                                                          |
+| `kind`, `wide`, `onAreaClick(e, t)`   | the dialog's title, a wider card, a click in the Extracted view (a sortable header)                                                                            |
 
 Rules that fail silently if broken:
 
@@ -552,9 +552,11 @@ floating hover tooltip.
     diff-match-patch's "semantic cleanup" idea; below 40 % shared text
     nothing is marked. The same renderer serves every comparison tooltip:
     the findings that name two values, the length mismatch
-    (`_cmpLenCardHtml()`), the window badge's tip and a foreign site's
+    (`_cmpLenCardHtml()`), the one-row `kind: 'mark'` card of a truncated
+    title (`_cmpMarkHtml()`), the window badge's tip and a foreign site's
     original title, through `data-mb-tip-cmp` (see docs/claude/findings.md,
-    "compare rides beside detail"). No parser output changed, so no
+    "compare rides beside detail"). The note stack shows them too: a cell
+    tip goes through `_tipTextToHtml()` there. No parser output changed, so no
     `_DP_PARSER_VERSION` bump. Mockup:
     https://claude.ai/artifact/7Nbqih988jfzpGxbiQTX75 (variant A).
   - `_titleHasRecNameMismatch()` (the 📊 flag and the ⚠️ finding) reads the

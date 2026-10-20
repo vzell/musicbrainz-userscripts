@@ -2498,7 +2498,8 @@
                          'mismatches, live-title dates, pending edits, ALL UPPERCASE titles, invalid ISRCs, …) ' +
                          'with how many rows carry them. Clicking one filters every table and sub-table to ' +
                          'those rows; clicking it again removes that filter. A menu is hidden while the page ' +
-                         'has nothing of its kind.'
+                         'has nothing of its kind — except that on a MusicBrainz page with titles the WARNING ' +
+                         'menu always offers "Check title style".'
         },
 
         sa_findings_tint_allcaps: {
@@ -2548,6 +2549,67 @@
             default: true,
             description: 'Tint a title cell light yellow with a ⚠️ when its extra title information starts with ' +
                          'one of the keywords above written capitalized, e.g. "(Version 1)" or "(Live)".'
+        },
+
+        sa_findings_title_style_auto: {
+            label: 'Check title style automatically',
+            type: 'checkbox',
+            default: false,
+            description: 'Check every title on MusicBrainz pages against the MusicBrainz style guide on every load, ' +
+                         'instead of only after "Check title style" in the ⚠️ WARNING menu. The check finds the five ' +
+                         'title-style warnings below. It costs about 0.2 s per 10,000 distinct titles, which is why it ' +
+                         'is off by default.'
+        },
+
+        sa_findings_title_case: {
+            label: 'Title style: find titles not in MusicBrainz title case',
+            type: 'checkbox',
+            default: true,
+            description: 'A WARNING when a title capitalizes a word the English title case of MusicBrainz writes in ' +
+                         'lower case, or the other way round ("Prayer For The Weary" for "Prayer for the Weary"). ' +
+                         'Only certain cases: titles in another language or in sentence case, live bootleg titles, ' +
+                         'capitalized short prepositions ("Take On Me") and lower-case words in "(…)" are never ' +
+                         'flagged. The hover card shows the title over the MusicBrainz style, the letters marked.'
+        },
+
+        sa_findings_title_typography: {
+            label: 'Title style: find ASCII punctuation in titles',
+            type: 'checkbox',
+            default: true,
+            description: 'A WARNING when a title uses a straight apostrophe or quotation mark, a hyphen-minus for a ' +
+                         'hyphen or dash, or three dots for an ellipsis, where typography writes ’ “ ” ‐ – — ….'
+        },
+
+        sa_findings_title_series: {
+            label: 'Title style: find series numbers without a comma',
+            type: 'checkbox',
+            default: true,
+            description: 'A WARNING when a "Vol."/"Volume"/"Pt."/"Part" number follows the title without a comma: ' +
+                         '"Broadcasts Vol. 5" for "Broadcasts, Vol. 5".'
+        },
+
+        sa_findings_title_feat: {
+            label: 'Title style: find featured artists in titles',
+            type: 'checkbox',
+            default: true,
+            description: 'A WARNING when "feat.", "ft." or "featuring" is part of a title: a featured artist belongs ' +
+                         'in the artist credit.'
+        },
+
+        sa_findings_title_eti_remove: {
+            label: 'Title style: find extra title information to remove',
+            type: 'checkbox',
+            default: true,
+            description: 'A WARNING for extra title information that tells no versions apart: "(bonus track)", ' +
+                         '"(new song)", "(… cover)".'
+        },
+
+        sa_findings_tint_title_style: {
+            label: 'Highlight title-style findings as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint a title cell light yellow with a ⚠️ when one of the five title-style checks above ' +
+                         'found something. The menu rows and 📊 entries stay either way.'
         },
 
         sa_findings_tint_event_style: {
@@ -14202,6 +14264,297 @@
             _mbSiteTitleTip(el, flat(before), flat(nodes.map(n => n.data).join('')));
         }
         return changed;
+    }
+
+    // -------------------------------------------------------------------------
+    // MusicBrainz title style on MusicBrainz pages: the checker behind the
+    // title-style findings (`title-case`, `title-typography`,
+    // `title-series-sep`, `title-feat`, `title-eti-remove`)
+    // -------------------------------------------------------------------------
+    // The same two rewriters as above, but READ-ONLY: a MusicBrainz title is
+    // never changed, it is compared with what the rules would make of it, and
+    // a difference is a ⚠️ finding whose card shows both. Where the converters
+    // may guess, a finding must not: the rewriters' output is kept only where
+    // the guideline leaves no choice, so a title in another language, a live
+    // bootleg title, a phrasal "Take On Me", a descriptive "(Stone Pony
+    // rehearsal)" or a file name in "[…]" is never flagged. Judged on 7,936
+    // MusicBrainz titles of the snapshots (`node scripts/check-mb-title-case.js
+    // --mb-sample`, 2026-10-20). See docs/claude/findings.md.
+
+    /**
+     * Words that only English titles use often: one of them in a part makes
+     * it English unless more of `_MBTS_FOREIGN` stand against it.
+     * @type {Set<string>}
+     */
+    const _MBTS_EN = new Set(['the', 'and', 'of', 'you', 'your', 'my', 'it', 'is', 'with', 'for', 'i', 'from',
+        'this', 'that', 'be', 'are', 'all', 'we', 'love', 'at', 'to', "i'm", "don't", "it's", 'what', 'when',
+        'where', 'how', 'she', 'he', 'they', 'her', 'his', 'our', 'night', 'day', 'live', 'best', 'song',
+        'songs', 'greatest', 'hits']);
+
+    /**
+     * Function words of the other languages the snapshots hold titles in
+     * (Spanish, Italian, Portuguese, French, German, Dutch, Swedish, Czech,
+     * Yiddish transliteration).
+     * @type {Set<string>}
+     */
+    const _MBTS_FOREIGN = new Set(['el', 'los', 'las', 'del', 'que', 'qué', 'y', 'con', 'por', 'para', 'una', 'mi',
+        'tu', 'te', 'es', 'il', 'gli', 'della', 'di', 'che', 'non', 'sono', 'ho', 'le', 'les', 'des', 'du', 'et',
+        'est', 'pas', 'je', 'ce', 'qu', 'une', 'der', 'die', 'das', 'und', 'nicht', 'ich', 'ist', 'mit', 'ein',
+        'eine', 'von', 'zu', 'auf', 'den', 'dem', 'wie', 'mir', 'dich', 'het', 'een', 'van', 'op', 'ik', 'och',
+        'att', 'jag', 'na', 'se', 'la', 'lo', 'e', 'o', 'da', 'em', 'um', 'uma', 'não', 'más', 'va', 'otra', 'vez',
+        'si', 'tú', 'du', 'wir', 'mein', 'meine', 'sie', 'nous', 'vous', 'mon', 'ma']);
+
+    /**
+     * Letters English titles hardly use (é is left out: "Café", "Beyoncé").
+     * One counts as one foreign word.
+     * @type {RegExp}
+     */
+    const _MBTS_FOREIGN_CH_RE = /[ñ¿¡ßäöüåøæœçčřšžůěýąęłńśźżőűãõâêîôûàèìòùáíóúÿ]/i;
+
+    /**
+     * Scripts whose presence takes a title out of the case check: a
+     * Japanese title with an English part ("君が通り過ぎたあとに—DON’T PASS ME
+     * BY—") follows its own conventions.
+     * @type {RegExp}
+     */
+    const _MBTS_SKIP_SCRIPT_RE = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Cyrillic}\p{Script=Greek}　-〿＀-￯]/u;
+
+    /**
+     * A live bootleg title ("1977‐05‐13, late show: Monmouth Arts Center, Red
+     * Bank, NJ, USA"): its own style page, place names, and a hyphen the
+     * `live-sep` finding already checks.
+     * @type {RegExp}
+     */
+    const _MBTS_LIVE_RE = /^\d{4}[-‐]\d\d[-‐]\d\d(?:\s*\/\s*\d{4}[-‐]\d\d[-‐]\d\d)*/;
+
+    /**
+     * Short words a title may capitalise as an adverb or part of a verb
+     * ("Take On Me", "Plug In Baby", "Stand By Me"), plus "vs."/"v." and a
+     * bare "n" ("Rock n Roll"): their case is never flagged, either way
+     * ("Born on the Bayou" and "Turn On the Light" are both right).
+     * @type {Set<string>}
+     */
+    const _MBTS_ADVERB = new Set(['on', 'in', 'off', 'by', 'up', 'over', 'out', 'down', 'vs', 'vs.', 'v', 'v.', 'n',
+        'ft', 'ft.', 'feat', 'feat.']);
+
+    /**
+     * Whether a part is written in sentence case: after its first word, some
+     * word that is neither small (`_MBTC_SMALL`) nor an `_MBTS_ADVERB` starts
+     * lower case and none starts upper case ("Bolji nego ja", "Demi tasse",
+     * "É proibido fumar"). That is how most other languages write a title,
+     * and nothing says this one is English, so its case is not judged.
+     * Words inside brackets do not count.
+     *
+     * @param {string} text
+     * @returns {boolean}
+     */
+    function _mbtsSentenceCase(text) {
+        const outer = text.replace(/\([^()]*\)|\[[^[\]]*\]/g, ' ');
+        let lower = 0;
+        let upper = 0;
+        let first = true;
+        for (const m of outer.matchAll(_MBTC_WORD_RE)) {
+            const w = m[0];
+            if (first) { first = false; continue; }
+            const lw = w.toLowerCase();
+            if (_MBTC_SMALL.has(lw) || _MBTS_ADVERB.has(lw) || !/^\p{L}/u.test(w)) continue;
+            if (w[0] === w[0].toUpperCase() && w[0] !== w[0].toLowerCase()) upper++;
+            else lower++;
+        }
+        return lower > 0 && upper === 0;
+    }
+
+    /**
+     * A featured artist written into the title: "feat.", "ft." or
+     * "featuring" after a space or an opening bracket (never as the first
+     * word: "Featuring Bruce Springsteen" is a title).
+     * @type {RegExp}
+     */
+    const _MBTS_FEAT_RE = /[\s([](feat\.|ft\.|featuring)\s/i;
+
+    /**
+     * Extra title information that tells no versions apart and is to be
+     * removed (https://musicbrainz.org/doc/Style/Titles#Extra_title_information):
+     * "(bonus track)", "(bonus)", "(new song)", "(… cover)".
+     * @type {RegExp}
+     */
+    const _MBTS_ETI_REMOVE_RE = /\s[([]((?:bonus(?: track)?|new song|new track|[^()[\]]* cover))[)\]]/i;
+
+    /**
+     * A series number glued to the title without the comma the style asks
+     * for ("Broadcasts Vol. 5" for "Broadcasts, Vol. 5"): not after a comma,
+     * a colon, a dash, a bracket, a slash, "&", "?" or "!" (the style keeps
+     * "?" and "!" when the release uses them).
+     * @type {RegExp}
+     */
+    const _MBTS_SERIES_RE = /([^\s,:\-–—(/&?!])(\s+)((?:Vol(?:ume)?\.?|Pt\.?|Part)\s+(?:\d+|[IVXLC]+)\b)/;
+
+    /**
+     * Whether a part of a title reads as English: more `_MBTS_EN` words than
+     * `_MBTS_FOREIGN` words (a `_MBTS_FOREIGN_CH_RE` letter counting as one),
+     * or neither.
+     *
+     * @param {string} text
+     * @returns {boolean}
+     */
+    function _mbtsEnglish(text) {
+        const words = text.toLowerCase().match(/[\p{L}'’]+/gu) || [];
+        const en = words.filter(w => _MBTS_EN.has(w.replace(/’/g, "'"))).length;
+        const fo = words.filter(w => _MBTS_FOREIGN.has(w)).length + (_MBTS_FOREIGN_CH_RE.test(text) ? 1 : 0);
+        return en > fo || (en === 0 && fo === 0);
+    }
+
+    /**
+     * Splits a title at its spaced slashes outside brackets — the titles of
+     * a multi-title recording — so each is judged in its own language. A
+     * slash inside "(…)" ("(Stone Pony rehearsal, 1977 / mono)") does not
+     * split.
+     *
+     * @param {string} text
+     * @returns {string[]}
+     */
+    function _mbtsParts(text) {
+        const parts = [];
+        let depth = 0;
+        let from = 0;
+        for (let i = 0; i < text.length; i++) {
+            const c = text[i];
+            if (c === '(' || c === '[') depth++;
+            else if ((c === ')' || c === ']') && depth) depth--;
+            else if (!depth && c === ' ' && text.startsWith(' / ', i)) {
+                parts.push(text.slice(from, i));
+                from = i + 3;
+                i += 2;
+            }
+        }
+        parts.push(text.slice(from));
+        return parts;
+    }
+
+    /**
+     * `_mbTitleCase()`'s rewrite of one part, kept only for the words where
+     * the guideline leaves no choice. A word keeps its own case when it is
+     * inside "[…]", follows an ellipsis or an apostrophe, is glued to the
+     * character before it (not a space, a quote or "(") or to "_"/"@" after
+     * it, holds a digit, would be capitalised inside "(…)" (descriptive
+     * extra title information is lower case), is an `_MBTS_ADVERB` (either
+     * way, unless written in capitals: "LET THE NEW YEAR IN"), or is an
+     * article before a comma, ")" or the end ("Forum Hall A"), or is "The"
+     * after "&" (a band: "Bruce Springsteen & The E Street Band"). A part that is
+     * not English, is in sentence case (`_mbtsSentenceCase()`), is a live
+     * bootleg title or holds a `_MBTS_SKIP_SCRIPT_RE` character is returned
+     * as it is.
+     *
+     * @param {string} text
+     * @returns {string} Same length as `text`.
+     */
+    function _mbtsCasePart(text) {
+        if (!_mbtsEnglish(text) || _MBTS_LIVE_RE.test(text) || _MBTS_SKIP_SCRIPT_RE.test(text) ||
+            _mbtsSentenceCase(text)) return text;
+        const p = _mbTitleCase(text);
+        if (p === text || p.length !== text.length) return text;
+        const out = text.split('');
+        let paren = 0;
+        let square = 0;
+        let last = 0;
+        for (const m of text.matchAll(_MBTC_WORD_RE)) {
+            for (let i = last; i < m.index; i++) {
+                const c = text[i];
+                if (c === '(') paren++;
+                else if (c === ')') paren = Math.max(0, paren - 1);
+                else if (c === '[') square++;
+                else if (c === ']') square = Math.max(0, square - 1);
+            }
+            last = m.index;
+            const a = m.index;
+            const b = a + m[0].length;
+            const w = m[0];
+            const pw = p.slice(a, b);
+            if (w === pw || square || /\d/.test(w)) continue;
+            if (/(?:[…'’‘]|\.\.\.)$/.test(text.slice(0, a).trimEnd())) continue;
+            if (a > 0 && !/[\s"“(]/.test(text[a - 1])) continue;
+            if (/[_@]/.test(text[b] || '')) continue;
+            let k = 0;
+            while (w[k] === pw[k]) k++;
+            const raising = pw[k] !== pw[k].toLowerCase();
+            const lw = w.toLowerCase();
+            if (raising && paren) continue;
+            if (_MBTS_ADVERB.has(lw) && (w !== w.toUpperCase() || w.length === 1)) continue;
+            if (!raising && (lw === 'a' || lw === 'an' || lw === 'the') && /^\s*(?:[,;)]|$)/.test(text.slice(b))) continue;
+            if (!raising && lw === 'the' && /&\s*$/.test(text.slice(0, a))) continue;
+            for (let i = a; i < b; i++) out[i] = p[i];
+        }
+        return out.join('');
+    }
+
+    /**
+     * `_mbTypography()`'s rewrite of one part, minus the leading date(s) of a
+     * live bootleg title (`live-sep` checks those), minus anything inside
+     * "[…]" (file names, "[unknown]"), and — in a part that is not English —
+     * minus the quotation marks, whose shape depends on the language.
+     *
+     * @param {string} text
+     * @returns {string}
+     */
+    function _mbtsTypoPart(text) {
+        const pm = _MBTS_LIVE_RE.exec(text);
+        const prefix = pm ? pm[0] : '';
+        const s = text.slice(prefix.length).replace(/\.{3}/g, '…').replace(/--/g, '—');
+        const english = _mbtsEnglish(text);
+        let square = 0;
+        const f = Array.from(_mbTypographyFixed(s), (c, i) => {
+            if (s[i] === '[') square++;
+            else if (s[i] === ']') square = Math.max(0, square - 1);
+            return square || (!english && '“”‘″'.includes(c)) ? s[i] : c;
+        }).join('');
+        return prefix + f;
+    }
+
+    /**
+     * Memo of `_mbTitleStyleCheck()` by title text: titles repeat across a
+     * page's rows, and the five findings each ask once per cell. Emptied when
+     * it grows past 50,000 titles.
+     * @type {Map<string, object>}
+     */
+    const _mbTitleStyleMemo = new Map();
+
+    /**
+     * Checks a MusicBrainz title against the style guide. Every field is
+     * `null` when that rule has nothing to say:
+     *   - `caseFix`: the title in MusicBrainz English title case
+     *     (https://musicbrainz.org/doc/Style/Language/English), certain
+     *     changes only (`_mbtsCasePart()`);
+     *   - `typoFix`: the title with typographic punctuation (`_mbtsTypoPart()`);
+     *   - `seriesFix`: the title with a comma before its series number
+     *     (`_MBTS_SERIES_RE`);
+     *   - `feat`: the featured-artist word written into it (`_MBTS_FEAT_RE`);
+     *   - `etiRemove`: the extra title information to remove (`_MBTS_ETI_REMOVE_RE`).
+     * A title without a Latin letter gets all `null`. Pure, memoized.
+     *
+     * @param {?string} text
+     * @returns {{caseFix: ?string, typoFix: ?string, seriesFix: ?string, feat: ?string, etiRemove: ?string}}
+     */
+    function _mbTitleStyleCheck(text) {
+        const t = String(text || '').replace(/\s+/g, ' ').trim();
+        const hit = _mbTitleStyleMemo.get(t);
+        if (hit) return hit;
+        const r = { caseFix: null, typoFix: null, seriesFix: null, feat: null, etiRemove: null };
+        if (/\p{Script=Latin}/u.test(t)) {
+            const parts = _mbtsParts(t);
+            const c = parts.map(_mbtsCasePart).join(' / ');
+            if (c !== t) r.caseFix = c;
+            const y = parts.map(_mbtsTypoPart).join(' / ');
+            if (y !== t) r.typoFix = y;
+            const sm = _MBTS_SERIES_RE.exec(t);
+            if (sm) r.seriesFix = `${t.slice(0, sm.index + 1)},${t.slice(sm.index + 1)}`;
+            const fm = _MBTS_FEAT_RE.exec(t);
+            if (fm) r.feat = fm[1];
+            const em = _MBTS_ETI_REMOVE_RE.exec(t);
+            if (em) r.etiRemove = em[1];
+        }
+        if (_mbTitleStyleMemo.size > 50000) _mbTitleStyleMemo.clear();
+        _mbTitleStyleMemo.set(t, r);
+        return r;
     }
 
     // -------------------------------------------------------------------------
@@ -44070,9 +44423,74 @@
     }
 
     /**
+     * A live title, event name or recording comment with the plain "-"
+     * between its date's parts written "‐" (U+2010): in each " / " part, only
+     * in the date head before the first ": ", and only between two digits
+     * (or "?" of an unknown part) — so "1975-08-15, late show: Bottom Line"
+     * becomes "1975‐08‐15, late show: Bottom Line" and nothing in the
+     * location changes.
+     *
+     * @param {string} text
+     * @returns {string}
+     */
+    function _liveSepFixed(text) {
+        return text.split(' / ').map((part) => {
+            const c = part.indexOf(': ');
+            const head = c < 0 ? part : part.slice(0, c);
+            return head.replace(/([\d?])-(?=[\d?])/g, '$1‐') + (c < 0 ? '' : part.slice(c));
+        }).join(' / ');
+    }
+
+    /**
+     * The rich card's comparison for a live-title separator flag: the text
+     * the flag judged — a release / release group title, an event name, or
+     * (`recKind`) the recording comment — over the same text with "‐" in its
+     * date (`_liveSepFixed()`), the hyphens marked. The text is read the way
+     * the flag's own reader reads it (`_findCellLiveTitle()`,
+     * `_findCellEventName()`, `_findCellRecordingComment()`).
+     *
+     * @param {HTMLTableCellElement} td
+     * @param {?('plain'|'link')} recKind - Set when the comment raised the flag.
+     * @returns {?{at: number, la: string, lb: string, sb: string, own: string, a: string, b: string}}
+     */
+    function _liveSepCmp(td, recKind) {
+        let text = null;
+        let la = 'Title';
+        if (recKind) {
+            la = 'Comment';
+            if (recKind === 'plain') text = _recCommentTextOf(td);
+            else {
+                const span = td.querySelector('.comment');
+                text = span ? _recCommentTextOf(span.querySelector('bdi') || span) : null;
+            }
+        } else {
+            const el = _findCellTitleEl(td);
+            const a = el && el.closest('a[href]');
+            if (a && _LIVE_ENTITY_HREF_RE.test(a.getAttribute('href')) && _parseLiveTitle(el.textContent)) {
+                text = el.textContent;
+            } else {
+                for (const bdi of td.querySelectorAll('a[href] bdi')) {
+                    if (bdi.closest('.comment')) continue;
+                    if (_EVENT_HREF_RE.test(bdi.closest('a[href]').getAttribute('href'))) {
+                        text = bdi.textContent;
+                        la = 'Event';
+                    }
+                    break;
+                }
+            }
+        }
+        if (!text) return null;
+        const a = text.replace(/\s+/g, ' ').trim();
+        const b = _liveSepFixed(a);
+        return b === a ? null : { at: 0, la, lb: 'MB style', sb: 'MB style', own: 'b', a, b };
+    }
+
+    /**
      * Stamps (or clears) one row's live-title flag on each of `colIdxs`'
      * cells: `data-mb-live-flag` drives the tint and glyph from CSS, `title`
      * explains it, `data-mb-col-tip` marks the tooltip as this script's own.
+     * A separator warning also stores its comparison (`_liveSepCmp()`), so
+     * the rich card shows the text over its "‐" form, the hyphens marked.
      * Clearing removes the tooltip only from a cell this function flagged,
      * so a foreign `title` is never touched.
      *
@@ -44087,15 +44505,17 @@
         colIdxs.forEach(({ i, rec }) => {
             const td = row.cells[i];
             if (!td) return;
-            const flag = (rec && _recCommentFlag(_findCellRecordingComment(td, rec === 'plain'))) ||
-                (rec === 'plain' ? null : _liveTitleFlag(_findCellAnyLiveTitle(td)));
+            const recFlag = rec ? _recCommentFlag(_findCellRecordingComment(td, rec === 'plain')) : null;
+            const flag = recFlag || (rec === 'plain' ? null : _liveTitleFlag(_findCellAnyLiveTitle(td)));
             if (flag) {
                 td.dataset.mbLiveFlag = flag.kind;
-                _setTip(td, flag.tip);
+                const cmp = flag.kind === 'warn' ? _liveSepCmp(td, recFlag ? rec : null) : null;
+                _setTipCmp(td, flag.tip, cmp ? [cmp] : []);
                 td.dataset.mbColTip = '1';
             } else if (td.dataset.mbLiveFlag) {
                 delete td.dataset.mbLiveFlag;
                 td.removeAttribute('title');
+                td.removeAttribute('data-mb-tip-cmp');
                 delete td.dataset.mbColTip;
             }
         });
@@ -44216,6 +44636,126 @@
             if (m && /[A-F]/.test(m[1]) && !out.includes(m[1])) out.push(m[1]);
         });
         return out;
+    }
+
+    /**
+     * Set by the ⚠️ WARNING menu's "Check title style" row
+     * (`_runTitleStyleCheck()`): from then on, until the page is reloaded,
+     * every stamp also runs the title-style findings.
+     * @type {boolean}
+     */
+    let _titleStyleRequested = false;
+
+    /**
+     * Whether the last `stampFindings()` pass met a title-info column
+     * (`plan.titleInfo()`) on a MusicBrainz page: the "Check title style"
+     * row is offered only then.
+     * @type {boolean}
+     */
+    let _titleStyleAvail = false;
+
+    /**
+     * What the menu's "Check title style" click measured: the wall time of
+     * its stamp and the distinct titles checked so far. `null` before.
+     * @type {?{ms: number, titles: number}}
+     */
+    let _titleStyleLastRun = null;
+
+    /**
+     * Whether the title-style findings run on this page: a MusicBrainz page,
+     * and the check asked for from the menu or set to run by itself
+     * (`sa_findings_title_style_auto`, default off — it costs about 20 µs a
+     * distinct title, 0.2 s per 10,000, on every fetch and disk load).
+     *
+     * @returns {boolean}
+     */
+    function _titleStyleActive() {
+        return !_foreignHost && (_titleStyleRequested || Lib.settings.sa_findings_title_style_auto === true);
+    }
+
+    /**
+     * The `enabled()` of one title-style finding: the check is active and
+     * the finding's own setting is not off.
+     *
+     * @param {string} key - The finding's `sa_findings_title_*` setting.
+     * @returns {function(): boolean}
+     */
+    const _titleStyleEnabled = key => () => _titleStyleActive() && Lib.settings[key] !== false;
+
+    /**
+     * `_mbTitleStyleCheck()` of a title cell's own title element
+     * (`_findCellTitleEl()`: a recording, release, release group, work or
+     * track link outside the disambiguation) — source-row data.
+     *
+     * @param {HTMLTableCellElement} cell
+     * @returns {?ReturnType<typeof _mbTitleStyleCheck>} `null` without a title element.
+     */
+    function _findingTitleStyle(cell) {
+        const el = _findCellTitleEl(cell);
+        return el ? _mbTitleStyleCheck(el.textContent) : null;
+    }
+
+    /**
+     * The rich card's comparison of a title-style finding: the title as it
+     * is, over the title as the rule would write it.
+     *
+     * @param {HTMLTableCellElement} cell
+     * @param {string} field - `caseFix`, `typoFix` or `seriesFix`.
+     * @returns {?{la: string, lb: string, sb: string, own: string, a: string, b: string}}
+     */
+    function _findingTitleStyleCmp(cell, field) {
+        const el = _findCellTitleEl(cell);
+        const r = el ? _mbTitleStyleCheck(el.textContent) : null;
+        if (!r || !r[field]) return null;
+        return { la: 'Title', lb: 'MB style', sb: 'MB style', own: 'b', a: el.textContent.replace(/\s+/g, ' ').trim(), b: r[field] };
+    }
+
+    /**
+     * The `eti-case` finding's comparison: the title over the same title with
+     * the keywords of each capitalized extra title information group in lower
+     * case ("(Live in Asbury Park 2009)" → "(live in Asbury Park 2009)"; the
+     * names in it stay). Groups and keywords are the ones the finding itself
+     * reads (`_parseTitleAnatomy()`'s `etiCase`/`etiRanges`, `_etiKeywords()`).
+     *
+     * @param {HTMLTableCellElement} cell
+     * @returns {?{la: string, lb: string, sb: string, own: string, a: string, b: string}}
+     */
+    function _findingEtiCaseCmp(cell) {
+        const el = _findCellTitleEl(cell);
+        if (!el) return null;
+        const full = el.textContent.trim();
+        const an = _parseTitleAnatomy(full);
+        if (!an || !an.etiCase.length) return null;
+        const kw = _etiKeywords();
+        const cased = new Set(an.etiCase);
+        let b = full;
+        // From the end, so an earlier range's offsets stay right.
+        an.etiRanges.slice().reverse().forEach(([s, e]) => {
+            const g = full.slice(s, e);
+            if (!cased.has(g)) return;
+            const low = g.replace(/\S+/g, w => (kw.has(_etiBareWord(w).toLowerCase()) ? w.toLowerCase() : w));
+            b = b.slice(0, s) + low + b.slice(e);
+        });
+        return b === full ? null : { la: 'Title', lb: 'MB style', sb: 'MB style', own: 'b', a: full, b };
+    }
+
+    /**
+     * The `truncated` finding's card: the title in one row with its closing
+     * "…" marked. There is no second row — the full title is not on the page,
+     * and "the title without …" would propose a fix that may be wrong.
+     *
+     * @param {HTMLTableCellElement} cell
+     * @returns {?{kind: 'mark', la: string, a: string, s: number, e: number, sum: string}}
+     */
+    function _findingTruncatedCmp(cell) {
+        const el = _findCellTitleEl(cell);
+        const t = el ? el.textContent.trim() : '';
+        if (!t.endsWith('…')) return null;
+        return {
+            kind: 'mark', la: 'Title', a: t, s: t.length - 1, e: t.length,
+            sum: 'Ends in an ellipsis “…” (U+2026): cut off at the 1,024-character limit, or copied from a ' +
+                 'cut-off source. The full title is not on this page.',
+        };
     }
 
     const FINDINGS = [
@@ -44353,6 +44893,7 @@
             tip: 'A title ending in "…", usually cut off at the 1,024-character limit or copied from a cut-off source.',
             cols: (name, plan) => plan.titleInfo(name),
             test: cell => { const a = _findCellTitleAnatomy(cell); return !!a && a.truncated; },
+            compare: cell => _findingTruncatedCmp(cell),
             tint: _findingTintSetting('sa_findings_tint_truncated'),
         },
         {
@@ -44361,6 +44902,7 @@
             tip: 'A trailing "(…)" or "[…]" that starts with an extra title information keyword written capitalized, e.g. "(Version 1)" or "(Live)". The style guide writes ETI in lower case: "(version 1)", "(live)" (https://musicbrainz.org/doc/Style/Titles#Extra_title_information). Keywords: ⚙️ Settings → ⚠️ FINDINGS.',
             cols: (name, plan) => plan.titleInfo(name),
             test: cell => { const a = _findCellTitleAnatomy(cell); return !!a && a.etiCase.length > 0; },
+            compare: cell => _findingEtiCaseCmp(cell),
             tint: _findingTintSetting('sa_findings_tint_eti_case'),
         },
         {
@@ -44380,6 +44922,64 @@
                 return n ? { ..._dpOriginCmp(n), origin: true } : null;
             },
             tint: _findingTintSetting('sa_findings_tint_title_mismatch'),
+        },
+        // The five title-style findings run only once asked for: the
+        // "Check title style" row of this menu, or sa_findings_title_style_auto.
+        {
+            id: 'title-case', level: 'warn', glyph: 'Aa', scope: 'cell',
+            label: 'Title not in MB title case',
+            tip: 'A word is capitalized where the English title case of MusicBrainz writes it in lower case, or the other way round (https://musicbrainz.org/doc/Style/Language/English). Only certain cases count: titles that read as another language or are in sentence case, live bootleg titles, a capitalized short preposition ("Take On Me") and lower-case words in "(…)" are never flagged.',
+            enabled: _titleStyleEnabled('sa_findings_title_case'),
+            cols: (name, plan) => plan.titleInfo(name),
+            test: cell => !!_findingTitleStyle(cell)?.caseFix,
+            compare: cell => _findingTitleStyleCmp(cell, 'caseFix'),
+            tint: _findingTintSetting('sa_findings_tint_title_style'),
+        },
+        {
+            id: 'title-typography', level: 'warn', glyph: '’', scope: 'cell',
+            label: 'ASCII punctuation in title',
+            tip: 'A straight apostrophe or quotation mark, a hyphen-minus where a hyphen or dash belongs, or three dots for an ellipsis. The typographic form: ’ “ ” ‐ – — …',
+            enabled: _titleStyleEnabled('sa_findings_title_typography'),
+            cols: (name, plan) => plan.titleInfo(name),
+            test: cell => !!_findingTitleStyle(cell)?.typoFix,
+            compare: cell => _findingTitleStyleCmp(cell, 'typoFix'),
+            tint: _findingTintSetting('sa_findings_tint_title_style'),
+        },
+        {
+            id: 'title-series-sep', level: 'warn', glyph: ',', scope: 'cell',
+            label: 'Series number without comma',
+            tip: 'A "Vol."/"Volume"/"Pt."/"Part" number with no comma before it: "Broadcasts Vol. 5" for "Broadcasts, Vol. 5" (https://musicbrainz.org/doc/Style/Titles).',
+            enabled: _titleStyleEnabled('sa_findings_title_series'),
+            cols: (name, plan) => plan.titleInfo(name),
+            test: cell => !!_findingTitleStyle(cell)?.seriesFix,
+            compare: cell => _findingTitleStyleCmp(cell, 'seriesFix'),
+            tint: _findingTintSetting('sa_findings_tint_title_style'),
+        },
+        {
+            id: 'title-feat', level: 'warn', glyph: 'ft.', scope: 'cell',
+            label: 'Featured artist in title',
+            tip: '"feat.", "ft." or "featuring" in the title: a featured artist belongs in the artist credit, not in the title (https://musicbrainz.org/doc/Style/Titles#Extra_title_information).',
+            enabled: _titleStyleEnabled('sa_findings_title_feat'),
+            cols: (name, plan) => plan.titleInfo(name),
+            test: cell => !!_findingTitleStyle(cell)?.feat,
+            detail: cell => {
+                const f = _findingTitleStyle(cell)?.feat;
+                return f ? `"${f}" belongs in the artist credit` : null;
+            },
+            tint: _findingTintSetting('sa_findings_tint_title_style'),
+        },
+        {
+            id: 'title-eti-remove', level: 'warn', glyph: '( )', scope: 'cell',
+            label: 'Extra title information to remove',
+            tip: 'Extra title information that tells no versions apart, "(bonus track)", "(new song)", "(… cover)", is removed (https://musicbrainz.org/doc/Style/Titles#Extra_title_information); a cover is linked to its work instead.',
+            enabled: _titleStyleEnabled('sa_findings_title_eti_remove'),
+            cols: (name, plan) => plan.titleInfo(name),
+            test: cell => !!_findingTitleStyle(cell)?.etiRemove,
+            detail: cell => {
+                const e = _findingTitleStyle(cell)?.etiRemove;
+                return e ? `"${e}"` : null;
+            },
+            tint: _findingTintSetting('sa_findings_tint_title_style'),
         },
         {
             id: 'low-quality', level: 'warn', glyph: '🟠', scope: 'cell',
@@ -55277,6 +55877,12 @@
         const master = _buildMasterRowIndex();
         const tables = Array.from(document.querySelectorAll('table.tbl')).filter(t => t.tBodies[0]);
         const plans = new Map(tables.map(t => [t, _findingPlanForTable(t)]));
+        _titleStyleAvail = !_foreignHost && tables.some(t => {
+            const plan = plans.get(t);
+            const n = t.querySelectorAll('thead tr:first-child th').length;
+            for (let i = 0; i < n; i++) if (plan.titleInfo(plan.nameOf(i))) return true;
+            return false;
+        });
         // Pass 1: every row's event key, page-wide, because the main event
         // (pass 2) is decided from all of them at once.
         tables.forEach(table => {
@@ -71088,9 +71694,12 @@ a { color: #1565c0; }`;
      * @param {object} menu - From `_ensureFindingMenu()`.
      * @param {('warn'|'error')} level
      * @param {Array<{f: object, n: number, state: string}>} list
+     * @param {?{done: boolean, text: string}} [styleRow] - The WARNING menu's
+     *   "Check title style" row (`_titleStyleMenuRow()`), first.
      */
-    function _buildFindingMenuRows(menu, level, list) {
+    function _buildFindingMenuRows(menu, level, list, styleRow = null) {
         menu.panel.querySelectorAll('.mb-toolbar-menu-item').forEach(el => el.remove());
+        if (styleRow) _buildTitleStyleMenuRow(menu, styleRow);
         list.forEach(({ f, n, state }) => {
             const row = document.createElement('button');
             row.type = 'button';
@@ -71125,6 +71734,75 @@ a { color: #1565c0; }`;
         clear.setAttribute('aria-disabled', anyOn ? 'false' : 'true');
         menu.adopt(clear);
         clear.addEventListener('click', () => { if (anyOn) _clearFindingLevel(level); });
+    }
+
+    /**
+     * The state of the WARNING menu's first row, the title-style check
+     * (docs/claude/findings.md, "On demand: the title-style findings"):
+     * `null` where there is nothing to check (not MusicBrainz, no
+     * title-info column); "Check title style" before; a status line after.
+     *
+     * @returns {?{done: boolean, text: string}}
+     */
+    function _titleStyleMenuRow() {
+        if (!_titleStyleAvail) return null;
+        if (!_titleStyleActive()) return { done: false, text: 'Check title style (MB guidelines)' };
+        if (_titleStyleRequested && _titleStyleLastRun) {
+            const { ms, titles } = _titleStyleLastRun;
+            return { done: true, text: `Title style checked: ${titles.toLocaleString('en-US')} title${titles === 1 ? '' : 's'}, ${ms} ms` };
+        }
+        return { done: true, text: 'Title style checked automatically' };
+    }
+
+    /**
+     * Adds the "Check title style" row (or its status line) to the WARNING
+     * menu. The run row is a plain `menuitem`; the status line is disabled.
+     *
+     * @param {object} menu - From `_ensureFindingMenu()`.
+     * @param {{done: boolean, text: string}} state - From `_titleStyleMenuRow()`.
+     */
+    function _buildTitleStyleMenuRow(menu, state) {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'mb-findings-menu-item mb-findings-style-item';
+        row.dataset.mbTitleStyle = state.done ? 'done' : 'run';
+        const g = document.createElement('span');
+        g.className = 'mb-findings-item-glyph';
+        g.textContent = state.done ? '✓' : 'Aa';
+        const label = document.createElement('span');
+        label.className = 'mb-findings-item-label';
+        label.textContent = state.text;
+        row.append(g, label);
+        menu.adopt(row);
+        row.setAttribute('role', 'menuitem');
+        if (state.done) {
+            row.setAttribute('aria-disabled', 'true');
+            _setTip(row, 'The title-style findings are on for this page until it is reloaded: title case, ' +
+                'typographic punctuation, series numbers, featured artists, extra title information. Their rows ' +
+                'below show only when a title has one. To run them on every page by themselves: ⚙️ Settings → ' +
+                '⚠️ FINDINGS → "Check title style automatically".');
+        } else {
+            _setTip(row, 'Check every title on this page against the MusicBrainz style guide — title case, ' +
+                'typographic punctuation, series numbers, featured artists, extra title information — and add ' +
+                'what it finds to this menu. It is not done by itself because it costs about 0.2 s per 10,000 ' +
+                'titles (⚙️ Settings → ⚠️ FINDINGS → "Check title style automatically" turns that on).');
+            row.addEventListener('click', _runTitleStyleCheck);
+        }
+    }
+
+    /**
+     * The "Check title style" click: turns the title-style findings on for
+     * this page and stamps again (`stampFindings()`, which is idempotent),
+     * then shows how long it took.
+     */
+    function _runTitleStyleCheck() {
+        if (_titleStyleActive()) return;
+        _titleStyleRequested = true;
+        const t0 = performance.now();
+        stampFindings();
+        _titleStyleLastRun = { ms: Math.round(performance.now() - t0), titles: _mbTitleStyleMemo.size };
+        Lib.debug('filter', `_runTitleStyleCheck(): ${_titleStyleLastRun.titles} title(s), ${_titleStyleLastRun.ms} ms.`);
+        _updateFindingMenus();
     }
 
     /**
@@ -71187,21 +71865,26 @@ a { color: #1565c0; }`;
                     .filter(f => f.level === level && (counts.get(f.id) || 0) > 0)
                     .map(f => ({ f, n: counts.get(f.id), state: _findingState(f) }))
                 : [];
+            const styleRow = enabled && level === 'warn' ? _titleStyleMenuRow() : null;
             let menu = _toolbarMenus.get(key);
-            if (!list.length && !menu) return;
+            if (!list.length && !styleRow && !menu) return;
             menu = menu || _ensureFindingMenu(level);
-            const sig = list.map(x => `${x.f.id}:${x.n}:${x.state}`).join('|');
+            const sig = (styleRow ? `style:${styleRow.text}|` : '') + list.map(x => `${x.f.id}:${x.n}:${x.state}`).join('|');
             if (menu.panel.dataset.mbSig === sig) return;
             menu.panel.dataset.mbSig = sig;
             changed = true;
-            if (list.length) _buildFindingMenuRows(menu, level, list);
+            if (list.length || styleRow) _buildFindingMenuRows(menu, level, list, styleRow);
             else menu.panel.querySelectorAll('.mb-toolbar-menu-item').forEach(el => el.remove());
             const total = list.reduce((s, x) => s + x.n, 0);
             const word = level === 'error' ? 'ERROR' : 'WARNING';
-            menu.setLabel(level === 'error' ? `❌ ${word} (${total})` : `⚠️ ${word} (${total})`);
-            _setTip(menu.btn, `${list.length} kind${list.length === 1 ? '' : 's'} of ${word.toLowerCase()} on this page: `
-                + list.map(x => `${x.f.label} (${x.n})`).join(', ')
-                + '. Pick one to show only those rows in every table.');
+            // Only the "Check title style" row: no count to show yet.
+            const count = list.length ? ` (${total})` : '';
+            menu.setLabel(level === 'error' ? `❌ ${word}${count}` : `⚠️ ${word}${count}`);
+            _setTip(menu.btn, list.length
+                ? `${list.length} kind${list.length === 1 ? '' : 's'} of ${word.toLowerCase()} on this page: `
+                    + list.map(x => `${x.f.label} (${x.n})`).join(', ')
+                    + '. Pick one to show only those rows in every table.'
+                : `No ${word.toLowerCase()} on this page so far. "Check title style" checks its titles against the MusicBrainz style guide.`);
             const anyOn = list.some(x => x.state !== 'off');
             menu.btn.setAttribute('aria-pressed', anyOn ? 'true' : 'false');
             menu.btn.style.boxShadow = anyOn ? 'inset 0 0 0 2px currentColor' : '';
@@ -74235,6 +74918,21 @@ a { color: #1565c0; }`;
         .mb-findings-clear-item[aria-disabled="true"] {
             opacity: 0.45;
             cursor: default;
+        }
+        /* The WARNING menu's "Check title style" row (_buildTitleStyleMenuRow):
+           first, blue like an action rather than a finding; its status line
+           after the run is grey and inert. */
+        .mb-findings-style-item {
+            border-bottom: 1px solid #ddd !important;
+            background: #eef3ff;
+            color: #2c3e8f;
+        }
+        .mb-findings-style-item .mb-findings-item-glyph { font-family: Georgia, serif; font-weight: bold; }
+        .mb-findings-style-item[aria-disabled="true"] {
+            background: white;
+            color: #666;
+            cursor: default;
+            font-size: 0.88em;
         }
 
         /* ── Fallback: browsers that don't support :focus-visible still see
@@ -78065,6 +78763,29 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * The one-row form of the comparison block, for a problem that has no
+     * honest second value (a title ending in "…": the full title is not on
+     * the page): one labelled row with the offending run marked, and the
+     * summary below. Nothing for an empty range.
+     *
+     * @param {{kind: 'mark', a: string, la: string, s: number, e: number, sum?: string}} c
+     *   `[s, e)` is the marked run of `a`.
+     * @returns {string}
+     */
+    function _cmpMarkHtml(c) {
+        const s = Math.max(0, Math.min(c.s, c.a.length));
+        const e = Math.max(s, Math.min(c.e, c.a.length));
+        if (e === s) return '';
+        return '<div class="mb-tt-cmp"><div class="mb-tt-cmp-grid">' +
+            `<span class="mb-tt-cmp-lbl">${_mbttEscape(c.la)}</span>` +
+            `<span class="mb-tt-cmp-val mb-tt-cmp-own">${_mbttEscape(c.a.slice(0, s))}` +
+            `<mark class="mb-tt-cmp-d">${_cmpShowWs(c.a.slice(s, e))}</mark>${_mbttEscape(c.a.slice(e))}</span>` +
+            '</div>' +
+            (c.sum ? `<div class="mb-tt-cmp-sum"><div>${_mbttEscape(c.sum)}</div></div>` : '') +
+            '</div>';
+    }
+
+    /**
      * A duration with the digits that differ from the other one marked,
      * position by position from the right (both are right-aligned).
      *
@@ -78145,7 +78866,8 @@ a { color: #1565c0; }`;
      * were built for exactly `text`; otherwise none. Each entry names the tip
      * line it belongs to (`at`, counting non-empty lines), optionally how
      * many lines it replaces (`span`, default 1) and the text the card shows
-     * instead of them (`head`); a `kind: 'len'` entry replaces the whole card.
+     * instead of them (`head`); a `kind: 'len'` entry replaces the whole card;
+     * a `kind: 'mark'` entry is one row with a run marked (`_cmpMarkHtml()`).
      *
      * @param {?Element} el
      * @param {string} text
@@ -78163,7 +78885,9 @@ a { color: #1565c0; }`;
                 ? (c.which === 'track' || c.which === 'recording') && (c.level === 'warn' || c.level === 'severe') &&
                   num(c.trackMs) && num(c.recMs) &&
                   num(c.thresholdMs) && (c.severeMs === null || num(c.severeMs))
-                : str(c.a) && str(c.b) && str(c.la) && str(c.lb)));
+                : c.kind === 'mark'
+                    ? str(c.a) && str(c.la) && num(c.s) && num(c.e) && (c.sum === undefined || str(c.sum))
+                    : str(c.a) && str(c.b) && str(c.la) && str(c.lb)));
         } catch (e) {
             return [];
         }
@@ -78240,7 +78964,7 @@ a { color: #1565c0; }`;
             const c = at.get(i);
             const shown = c && typeof c.head === 'string' ? c.head : b;
             const body = keycaps(_mbttEscape(shown));
-            const after = c && !(opts.noOrigin && c.origin) ? _cmpHtml(c) : '';
+            const after = c && !(opts.noOrigin && c.origin) ? (c.kind === 'mark' ? _cmpMarkHtml(c) : _cmpHtml(c)) : '';
             if (i === 0 && (blocks.length > 1 || shown.length <= 60 || c)) {
                 return `<div class="mb-tt-title">${body}</div>${after}`;
             }
@@ -139911,6 +140635,28 @@ a { color: #1565c0; }`;
              */
             mbSiteTitleText(text) {
                 return _mbSiteTitleText(text, { caseOn: true, typoOn: true });
+            },
+
+            /**
+             * Thin wrapper around `_mbTitleStyleCheck()` — the checker of the
+             * title-style findings, a copy of its memoized result.
+             *
+             * @param {string} text
+             * @returns {object}
+             */
+            mbTitleStyleCheck(text) {
+                return { ..._mbTitleStyleCheck(text) };
+            },
+
+            /**
+             * Thin wrapper around `_liveSepFixed()` — a live title's date with
+             * "‐" for its plain "-".
+             *
+             * @param {string} text
+             * @returns {string}
+             */
+            liveSepFixed(text) {
+                return _liveSepFixed(text);
             },
 
             /**

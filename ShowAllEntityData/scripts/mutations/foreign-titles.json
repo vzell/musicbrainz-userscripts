@@ -17,7 +17,7 @@
         "why": "A changed title shows the site's text on hover; the spec reads the cell's tip.",
         "edits": [
             {
-                "find": "        if (shown !== text) _setTip(tipEl, `As written on the site:\\n${text}`);",
+                "find": "        if (shown !== text) _mbSiteTitleTip(tipEl, text, shown);",
                 "replace": ""
             }
         ],
