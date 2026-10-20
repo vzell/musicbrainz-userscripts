@@ -451,7 +451,13 @@ default off).
   page and PLACES on every call (`_sbInlinePlace()`): after
   `#bottom-credits`; else after the `h2.relationships` section (before the
   next h2 or element holding one); else right above the data h2; else at the
-  end of `#content`. Placing again after each relocation is required: the
+  end of `#content`. An `h2.relationships` that holds `.mb-row-count-stat` IS
+  the data h2 (event-overview: the event tables render under it) and is
+  skipped by the second rule, so the third puts the cards right above it —
+  without the skip they landed after every event table (2026-10-20,
+  `debug/event-sidebar-above-relationships.html`). area-releases-filtered's
+  "Relationships" data h2 is a fabricated one without the class, so it
+  never hit this. Placing again after each relocation is required: the
   relocation treats our h2 as one more trailing section and would put it
   BEFORE the Relationships section (reverse-order pass; pinned by the
   release-group disk round trip in `sidebar-inline.spec.js`).
@@ -587,14 +593,15 @@ and the tables reading the search lists too. Branch
 duplicated the two views). Its reads are `=== true` / `!== true` so a stub
 `Lib` keeps it off; `_SETTINGS_MIGRATIONS` carries `was: [true]`.
 
-**Specs.** `sidebar-inline.spec.js` (19) and `sidebar-inline.mobile.spec.js` (1, the window cap): card folding (INITIAL STATE and its two
+**Specs.** `sidebar-inline.spec.js` (21) and `sidebar-inline.mobile.spec.js` (1, the window cap): card folding (INITIAL STATE and its two
 switches, CTRL+CLICK ALL from a mixed state both ways plus Cmd and
 Ctrl+Enter, the ▶ MARKER following each fold, the TOOLTIP on every head and
 on hover); order and columns of the
 `Sidebar:` tables, duplicates on/off, global filter + a sort that ORDERS,
 the place overview, the switches, a disk round trip; the cards' place on a
 release (after `#bottom-credits`), a release group (after Relationships,
-again after an empty-query re-render), an artist (above the data h2),
+again after an empty-query re-render), an artist (above the data h2), an
+event (above `h2.relationships`, the data h2, never after its tables),
 folding (Credits leaves it open, its own h2, a card by click and Enter),
 content counts against the sidebar itself, the switches. The rel-tables
 specs seed `sa_sidebar_in_rel_tables: false` (they pin the relationship

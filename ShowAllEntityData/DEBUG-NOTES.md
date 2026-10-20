@@ -24643,3 +24643,32 @@ Env: 2026-10-20T02:37+02:00 – 03:33:32+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4
   track lengths that changed below a second); "On MusicBrainz ↗" was
   dropped, since `_dpDrill()` would take a same-origin `/edit/N` link anyway:
   `Edit #N` drills, and Ctrl-click or the edit card's ↗ opens the page.
+
+## 2026-10-20 — event page: the "Sidebar" cards landed below the Relationships tables (branch fix/sidebar-event-above-data, WIP.1)
+
+Env: 2026-10-20T15:19:19+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium, no Tampermonkey (GM stubs); snapshots: browser unknown
+
+- **Snapshot:** `debug/event-sidebar-above-relationships.html` (FRP of
+  /event/47b84024-bd3b-4e36-80e1-b051e12ede2f after "Show all Relationships
+  for Event"). Order in `#content`: annotation, Event art,
+  `h2.relationships` WITH `.mb-row-count-stat` in it, the event tables, and
+  only then `.mb-sb-inline-wrap`. Every other page has the cards above the
+  data.
+- **Root cause:** `_sbInlinePlace()` tries "after the `h2.relationships`
+  section" before "right above the data h2". That second rule is for pages
+  where Relationships is a side section (release group: Relationships →
+  Sidebar → data). On event-overview `h2.relationships` IS the data h2
+  (`eventDetailsToTables` renders under it), so the walk to the next h2 ran
+  past every event table.
+- **Only exception?** The relationship-tables renders (`relDetailsToTables`)
+  never get the cards. `debug/USA-area-releases-filtered.html` (FRP of
+  /area/489ce91b-…/releases?link_type_id=1, the other `targetHeader:
+  'Relationships'` pageType) already has the wrap right above its data h2:
+  that h2 is fabricated (`data-mb-sa-fabricated-heading`) and has no
+  `relationships` class. So event-overview is the only one.
+- **Fix:** the second rule skips an `h2.relationships` that holds
+  `.mb-row-count-stat`; the third then puts the cards right above it
+  (between Event art and Relationships).
+- **Tests:** `sidebar-inline.spec.js` "PLACE: event — Relationships is the
+  data h2, so right above it" (next sibling is `h2.relationships`, the event
+  tables follow the wrap); mutation in `sidebar-inline.json` caught.
