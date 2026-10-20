@@ -3305,17 +3305,32 @@ if the "Relationships" column on MP PTs has multiple Discogs URL relationship ic
 
 * TODO check discogs artist pages if really ALL master are present + implement master->release(s) drilldown
 
-* TODO add "Space" on the image hover popup in the CAA/EAA column to show ALL images (right now it shows a couple and the a "+ 69")
+* add a "Editing history" button to the entity detail popup header of every supported MB entity
+
+add a "Editing history" button to the entity detail popup header of every supported MB entity
+
+#+begin_example
+@debug/entity-detail-popup-header.html - entity detail popup header for a recording where the track name difffers from the recording name 
+#+end_example
+
+
+* DONE add "Space" on the image hover popup in the CAA/EAA column to show ALL images (right now it shows a couple and the a "+ 69")
+
+0.)
+
+what is the reason (and the current number break even number) of not showing all images on hover popup in the CAA/EAA
+column e.g. on https://musicbrainz.org/release-group/f731060c-05d4-439d-8351-59e5e5eb91a0 - @debug/CAA-lots-of-images.html - FRP - filtered
 
 1.)
 
-add "Space" on the image hover popup in the CAA/EAA column to show ALL images (right now it shows a couple and then the
-additional ones as a number e.g "+69"), e.g. on https://musicbrainz.org/release-group/f731060c-05d4-439d-8351-59e5e5eb91a0
+implement the option to press "Space" on the image hover popup in the CAA/EAA column to show ALL images (right now it
+shows a couple and then the additional ones as a number "+<images left to show>" e.g "+69") - [Image #17]
 
 2.)
 
-add an option to show bigger/scaled images in the hover popup
-
+is it possible, when holding down the "Shift" key and hovering over the inline image in the CAA/EAA column of MB PTs, to
+show the images in a bigger size, e.g. the same size as what we show when hovering over the inline image in e.g. the
+"Release" column of the above URL - [Image #18]
 
 * DONE add the "Recording of" to more recording columns in other PTs
 
@@ -3344,7 +3359,7 @@ One recording per row (anchor = the column that links /recording/):
 |--------------------------------------------------------------------+--------------+-----------------------+--------------------+-----------------------------+-------------------|
 | artist-recordings                                                  | single       | Name                  | artist             | (already, with suggestions) | yes               |
 | instrument-recordings                                              | single       | Name                  | —                  | yes                         | yes               |
-| search (type=recording)                                            | single       | Name                  | —                  | yes                         | bug               |
+| search (type=recording)                                            | single       | Name                  | —                  | yes                         | yes               |
 | series-releases → Recordings                                       | single       | Name                  | —                  | yes                         | yes               |
 | collections-releases → Recordings                                  | single       | Name                  | collection         | yes (no fixture yet)        | yes               |
 | isrc                                                               | single       | Title                 | —                  | yes                         | yes               |
@@ -3373,7 +3388,7 @@ Browse batching on work and collection pages (probed), lookups elsewhere,
 suggestions on artist-recordings only. Details:
 docs/claude/deferred-columns-picard-relationships.md, "Recording of column".
 
-*** fixtures
+** DONE fixtures
 **** q
 
 Are the following the right URL you are missing for the fixtures
@@ -3394,7 +3409,7 @@ They are in place:
 - debug/user-tag-recording-initial.html
 #+end_example
 
-*** bug
+** DONE bug
 
 1.)
 
@@ -3410,11 +3425,15 @@ There is a rendering bug on PT 'search (type=recording)' e.g https://musicbrainz
 @debug/OF-WORK-search-recordings-final-bug.html - FRP - after the addition of the two new columns 
 #+end_example
 
-
-* TODO add support for images in the sidebar of instruments PTs
+* DONE add support for images in the sidebar of instruments PTs
 
 add support for images in the sidebar of instruments PTs and add them to the h1 line in front of the instrument name (IP and FRP)
 (like we do e.g for the picture for artists/places etc.)
+
+#+begin_example
+@debug/electric-bass-guitar.html - IP - - https://musicbrainz.org/instrument/0b9d87fa-93fa-4956-8b6a-a419566cc915/recordings
+#+end_example
+
 
 * TODO add a reader for collection detail popups
 
