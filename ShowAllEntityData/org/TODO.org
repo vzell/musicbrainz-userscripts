@@ -3601,7 +3601,6 @@ etc. if the corresponding entries in the real sidebar have them
 
 Except the h4 "SEARCH" section ALL sections in the h2 "Sidebar" section should be uncollapsed by default
 
-
 * DONE Could the "Page Reloaded" popup dialog directly emulate the click on the corresponding "Show all..." button from which it was triggerd
 
 Could the "Page Reloaded" popup dialog,
@@ -3629,7 +3628,6 @@ Is it actually really neccessary to do it like we implemented currently or can w
 4.)
 
 If yes, please implement
-
 
 * DONE add a reader for collection detail popups
 
@@ -3660,6 +3658,51 @@ read a couple of the actual referenced collections by yourself to get an idea of
 
 make some nice rich HTML based mockups
 
+* DONE multiple discogs relationships icons bugs
+
+1.)
+
+when there are multiple discogs relationships icons in the "Relationships" column for a specific cell, there are two bugs:
+
+#+begin_example
+@debug/multiple-discogs-relationships.html - FRP - https://musicbrainz.org/tag/distributor
+#+end_example
+
+a.)
+
+Although the warning icon for this case is present, when trying to hover over it, the glyph for "Click here, outside the icons, to reload this row’s relationships"
+(together with it's tooltip) takes over it's place, although that glyph is normally rendered right after the relationship icon(s) and NOT at the very right of the data cell.
+
+b.)
+
+in the screenshot, you can see the popup stack is missing the actual finding about the multiple (in this case double)
+discogs icons, what at least the "WARNING" menu shows us. please add it.
+
+c.)
+
+actually extend the multiple site check finding (like the discogs one) also to all other websites in the "Relationships"
+column
+
+2.)
+
+I want our userscript to be as non-intrusive as possible on the IP of a supported MB PT. We need config options for the
+end-user.
+
+a.)
+
+analyse and summarize what kind of features are already injected besides our standard action buttons in the h1 line of a
+PT.
+
+b.)
+
+I think there is the option ov hovering over a hyperlink and displaying a popup with "Space" typing detail window support.
+Make this configurable (default: true), but at least an end-user can switch it off when not needed
+
+c.)
+
+the sidebar should already get a sidebar handle on the IP, but the sidebar by default should be uncollapsed (whereas on
+the FRP it's collapsed by default)
+
 
 * TODO consolidate more LAF across more PTs
 
@@ -3685,6 +3728,63 @@ etc
 * TODO check discogs artist pages if really ALL master are present + implement master->release(s) drilldown
 
 
-* TODO use the Discogs history diff format LAF in other pageTypes like e.g. on BB pageTypes ==> changes button (must be logged in)
+* TODO write the forum section for 9.99.1394 -> 9.99.1399
 
-* write the forum section for 9.99.1394 -> 9.99.1399
+* TODO Use the Discogs history diff format in other pageTypes, for example the BB “changes” button
+
+Use the Discogs history diff format in other pageTypes, for example the BB “changes” button (you have to be logged in).
+
+* TODO "Live credit without a date" should tell the date when it can be deduced
+
+"Live credit without a date" should tell the date when it can be deduced - https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f
+"Recording engineer" column
+
+* TODO "Links" column - switch of the native tooltip on the FRP
+
+* TODO https://musicbrainz.org/user/vzell
+
+At https://musicbrainz.org/user/vzell under the "Edits" section support also the following types of links
+
+#+begin_example
+https://musicbrainz.org/account/applications
+https://musicbrainz.org/subscribers
+
+https://musicbrainz.org/user/vzell/edits
+
+https://musicbrainz.org/user/vzell/votes
+
+https://musicbrainz.org/user/vzell/edits/accepted
+https://musicbrainz.org/user/vzell/edits/autoedits
+https://musicbrainz.org/user/vzell/edits/applied
+https://musicbrainz.org/user/vzell/edits/rejected
+https://musicbrainz.org/user/vzell/edits/failed
+https://musicbrainz.org/user/vzell/edits/cancelled
+https://musicbrainz.org/user/vzell/edits/open
+https://musicbrainz.org/user/vzell/edits/failed
+https://musicbrainz.org/search/edits?conditions.1.operator=%3E&conditions.1.field=open_time&conditions.1.args.0=24+hours+ago&combinator=and&conditions.0.name=vzell&conditions.0.field=editor&order=desc&conditions.0.args.0=1126444&conditions.0.operator=%3D&negation=0&auto_edit_filter=
+#+end_example
+
+b.)
+
+support "Tags and ratings"
+
+c.)
+
+support "Added entities"
+
+* TODO on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight the corresponding row
+
+on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight
+the corresponding row
+
+* TODO also the the pager framework on othe detail popups like on the collections one
+
+* TODO on 'release-tracks' PTs render the front imahe from the sidebar alos in front of the h1 release title
+
+1.)
+
+on 'release-tracks' PTs render the front imahe from the sidebar alos in front of the h1 release title
+
+2.)
+
+the "View annotation history" needs a detail popup - https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f/annotations
