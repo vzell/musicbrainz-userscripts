@@ -138,9 +138,18 @@ test.describe('discogs.com: Discogs\' request limit, shared by every tab (2026-1
         const asks = await apiAt(page);
         expect(asks[0].at, 'not before the other tab\'s slot').toBeGreaterThanOrEqual(at - 50);
         // Every ask of ours moved the shared slot on: the last one 2.5 s
-        // (no token) after the last ask.
+        // (no token) after the last ask's SLOT. The slot is the time the ask
+        // was scheduled for; the ask itself goes when its timer fires, which
+        // is never earlier and, under a loaded suite, can be tens of ms later
+        // (57 ms seen on NB-3641, 14 workers, 2026-10-20). So the stored slot
+        // is at most 2.5 s past the measured ask, and only timer lateness
+        // below that. 500 ms still tells both defects apart from it: a slot
+        // not written back stays at the other tab's (~10 s before the last
+        // ask), and one written without the spacing sits ~2.5 s short.
+        const last = asks[asks.length - 1].at;
         const shared = await page.evaluate((k) => window.GM_getValue(k, 0), SLOT_KEY);
-        expect(shared).toBeGreaterThanOrEqual(asks[asks.length - 1].at + 2500 - 50);
+        expect(shared, 'never more than one spacing past the last ask').toBeLessThanOrEqual(last + 2500 + 5);
+        expect(shared, 'one spacing past the last ask, less timer lateness').toBeGreaterThanOrEqual(last + 2500 - 500);
     });
 
     test('a slot far in the future (a clock gone wrong) is ignored, never blocks every tab', async ({ page }) => {

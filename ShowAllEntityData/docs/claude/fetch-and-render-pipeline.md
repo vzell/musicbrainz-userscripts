@@ -12,18 +12,35 @@ re-enter the function:
 // Reload the page if a fetch process has already run to fix column-level
 // filter unresponsiveness
 if (isLoaded && !_isResume) {
-    sessionStorage.setItem('mb_show_all_reload_pending', 'true');
+    // _reloadFlag = JSON {label, index, href} of the pressed action button,
+    // or the bare 'true' when the press was not one of them
+    sessionStorage.setItem('mb_show_all_reload_pending', _reloadFlag);
     window.location.reload();
     return;
 }
 ```
 
-Nothing re-presses after the reload — init only clears the flag — so the error
-arm's own advice, *repress the "Show all" button*, means **reload, then press
-again**. Do not read that comment as evidence that the render tail is exercised
-a second time on a live page; it is not, and building item 5 on that inference
-cost five stalled spec runs whose only symptom was a renderer blocked so hard
-that `page.evaluate()` timed out (DEBUG-NOTES.md, 2026-09-20).
+**The guard is the first statement after `_isResume`** (since WIP.1 of
+`feat/auto-repress-after-reload`). It used to stand ~400 lines in, after the
+definition merge, the removal of the other sections from the visible page and,
+on `artist-releasegroups`, a whole network pre-fetch pass — all of it thrown
+away by the reload.
+
+**The reloaded page presses the same button again by itself**
+(`_autoRepressAfterReload()`, at the end of init): it finds the button by its
+`data-label` (by `index` only when the label was empty), only while
+`location.href` is still the reloaded URL, shows a brief
+`#mb-reload-repress-note` beside the status line and clicks the button on a
+`setTimeout(0)`, after the rest of init has attached the status line. With the
+bare `'true'`, another URL or no matching button it falls back to the old
+"⚠️ Page Reloaded" dialog. Pinned by `tests/fixtures/reload-auto-repress.spec.js`.
+
+So a second press still means **reload, then press again** — the second press
+now made by init, not the user. Do not read the error arm's advice, *repress
+the "Show all" button*, as evidence that the render tail is exercised a second
+time on a live page; it is not, and building item 5 on that inference cost five
+stalled spec runs whose only symptom was a renderer blocked so hard that
+`page.evaluate()` timed out (DEBUG-NOTES.md, 2026-09-20).
 
 **The `_isResume` exemption is the ONE way back in**, and it is deliberately
 narrow. `startFetchingProcess(e, buttonConfig, baseDef, resumeFrom)` with a

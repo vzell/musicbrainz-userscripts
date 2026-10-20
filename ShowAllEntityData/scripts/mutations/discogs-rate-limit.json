@@ -65,6 +65,19 @@
         "expect": "fail"
     },
     {
+        "name": "ext gate: our slot written without the spacing",
+        "why": "The other tabs would ask at the moment ours did. Pins the lower bound the 2026-10-20 widening (timer lateness, 50 -> 500 ms) must still hold.",
+        "edits": [
+            {
+                "find": "        _extPushSlot(host, at + _extSpacingMs(host));",
+                "replace": "        _extPushSlot(host, at);"
+            }
+        ],
+        "spec": "tests/fixtures/discogs-rate-limit.spec.js",
+        "grep": "another tab's reservation",
+        "expect": "fail"
+    },
+    {
         "name": "ext gate: a shared slot an hour ahead believed",
         "why": "A tab's wrong clock or an old pause must not block every tab.",
         "edits": [

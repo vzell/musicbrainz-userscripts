@@ -6343,7 +6343,8 @@
 
     //--------------------------------------------------------------------------------
 
-    // Check if we just reloaded to fix the filter issue — dialog shown later, after buttons are in DOM
+    // Check if we just reloaded to fix the filter issue — the button is pressed again
+    // later, after buttons are in DOM (_autoRepressAfterReload())
     const reloadFlag = sessionStorage.getItem('mb_show_all_reload_pending');
     if (reloadFlag) {
         sessionStorage.removeItem('mb_show_all_reload_pending');
@@ -29694,6 +29695,8 @@
      * Disambiguation column — mirrors this file's own "second fetch
      * attempt" reload precedent for the same reasoning (state changed
      * underneath the current render; cheapest safe fix is to redo it).
+     * That click is itself a second press, so it reloads the page, and
+     * `_autoRepressAfterReload()` presses the same button again there.
      *
      * @returns {void}
      */
@@ -75294,14 +75297,86 @@ a { color: #1565c0; }`;
         Lib.debug('init', 'Blurred #headerid-query input on page entry');
     }
 
-    // Show deferred "Page Reloaded" dialog now that action buttons are in the DOM
+    /**
+     * Finishes a second press that `startFetchingProcess()` answered with a
+     * reload: presses the same action button again, so the user does not
+     * have to.
+     *
+     * The flag is the JSON `{label, index, href}` the reload guard stored.
+     * The button is found by its stable `data-label`; `index` is used only
+     * for a button that had no label (a label that matches nothing means the
+     * buttons changed, and a guess could run the wrong one). Nothing is pressed when
+     * the URL is no longer the one that was reloaded. A brief note next to
+     * the status line says what is happening, then fades.
+     *
+     * Falls back to the "Page Reloaded" dialog (press it yourself) for the
+     * bare `'true'` flag (a press that was not an action button, or a flag
+     * written by an older version) and whenever no button can be found.
+     * No loop is possible: the flag is consumed at init before the press,
+     * and `isLoaded` is false on the reloaded page.
+     *
+     * @param {string} flag - The consumed `mb_show_all_reload_pending` value.
+     * @returns {HTMLButtonElement|null} The button that will be pressed, or null.
+     */
+    function _autoRepressAfterReload(flag) {
+        let rec = null;
+        try {
+            const parsed = JSON.parse(flag);
+            if (parsed && typeof parsed === 'object') rec = parsed;
+        } catch (_) { /* legacy 'true' or malformed: dialog below */ }
+
+        let btn = null;
+        if (rec && rec.href === window.location.href) {
+            btn = allActionButtons.find(b => rec.label && b.dataset.label === rec.label) || null;
+            if (!btn && Number.isInteger(rec.index) && rec.index >= 0 && rec.index < allActionButtons.length
+                && !rec.label) {
+                btn = allActionButtons[rec.index];
+            }
+        }
+
+        if (!btn) {
+            const firstActionBtn = allActionButtons.length > 0 ? allActionButtons[0] : null;
+            Lib.showCustomAlert(
+                'The underlying MusicBrainz page has been reloaded to ensure filter stability. Please click the desired "Show all" button again to start the process.',
+                '⚠️ Page Reloaded',
+                firstActionBtn
+            );
+            return null;
+        }
+
+        const label = btn.dataset.label || btn.textContent.trim();
+        Lib.info('init', `Page reloaded for a second fetch — pressing "${label}" again.`);
+
+        const note = document.createElement('span');
+        note.id = 'mb-reload-repress-note';
+        note.style.cssText = 'display:inline-flex; align-items:center; margin-left:8px; '
+            + 'font-size:0.85em; color:#333; cursor:pointer; transition:opacity 0.35s;';
+        note.textContent = `↻ Page reloaded — re-running "${label.replace(/^Show(?: all)?\s+/, '')}"…`;
+        _setTip(note, 'The page was reloaded so that the new fetch starts from a clean page; the button you pressed runs again by itself.');
+        const fade = () => {
+            note.style.opacity = '0';
+            setTimeout(() => note.remove(), 380);
+        };
+        note.addEventListener('click', fade);
+
+        // Deferred so the rest of init (below) has run, as before a manual
+        // click — including attaching the status line, which the note sits
+        // beside (it is still detached at this point of init).
+        setTimeout(() => {
+            if (globalStatusDisplay.isConnected) {
+                globalStatusDisplay.after(note);
+            } else {
+                btn.after(note);
+            }
+            setTimeout(fade, 3000);
+            btn.click();
+        }, 0);
+        return btn;
+    }
+
+    // Finish a second press that reloaded the page, now that the action buttons are in the DOM
     if (reloadFlag) {
-        const firstActionBtn = allActionButtons.length > 0 ? allActionButtons[0] : null;
-        Lib.showCustomAlert(
-            'The underlying MusicBrainz page has been reloaded to ensure filter stability. Please click the desired "Show all" button again to start the process.',
-            '⚠️ Page Reloaded',
-            firstActionBtn
-        );
+        _autoRepressAfterReload(reloadFlag);
     }
 
     // ── "Show single-table" cross-tab snapshot handoff ──────────────────────
@@ -89335,6 +89410,40 @@ a { color: #1565c0; }`;
      */
     async function startFetchingProcess(e, buttonConfig, baseDef, resumeFrom = null) {
         const _isResume = !!resumeFrom;
+
+        // Reload the page if a fetch process has already run to fix column-level filter unresponsiveness
+        //
+        // A RESUME is exempt, and the distinction is the point: this is the
+        // answer to a SECOND fetch, which replaces the row set, and it works by
+        // throwing the page away — which is exactly what a resume must not do,
+        // since the rows it is continuing live in module state that a reload
+        // destroys. A resume that took this path would leave the user on the
+        // reloaded initial page having lost the pages that did arrive.
+        //
+        // The property this guard exists for is pinned directly instead:
+        // `tests/fixtures/resume-from-failed-page.spec.js` filters a COLUMN
+        // after a resume and asserts the rows narrow, which is the behaviour the
+        // reload was introduced to protect.
+        //
+        // It stands FIRST on purpose: everything below it (definition merging,
+        // removing the other sections from the visible page, and on
+        // artist-releasegroups a whole network pre-fetch pass) would only be
+        // thrown away by the reload. The pressed button is recorded so that
+        // init presses it again after the reload (_autoRepressAfterReload());
+        // a press that is not one of the action buttons stores the bare
+        // 'true', which brings back the "Page Reloaded" dialog instead.
+        if (isLoaded && !_isResume) {
+            const _pressed = (e?.currentTarget || e?.target)?.closest?.('button') || null;
+            const _pressedIdx = _pressed ? allActionButtons.indexOf(_pressed) : -1;
+            const _reloadFlag = _pressedIdx >= 0
+                ? JSON.stringify({ label: _pressed.dataset.label || '', index: _pressedIdx, href: window.location.href })
+                : 'true';
+            Lib.debug('meta', `Second fetch attempt detected. Setting reload flag (${_reloadFlag}) and reloading page to ensure filter stability.`);
+            sessionStorage.setItem('mb_show_all_reload_pending', _reloadFlag);
+            window.location.reload();
+            return;
+        }
+
         // MERGE LOGIC: Combine base definition with button-specific overrides.
         // For page types that carry an `entityFeatures` map (e.g.
         // 'series-releases', 'collections-releases'), resolve the per-entity
@@ -89733,27 +89842,6 @@ a { color: #1565c0; }`;
                 });
                 Lib.debug('cleanup', `Cleaned UI to target header: "${targetHeader}"`);
             }
-        }
-
-        // Reload the page if a fetch process has already run to fix column-level filter unresponsiveness
-        //
-        // A RESUME is exempt, and the distinction is the point: this is the
-        // answer to a SECOND fetch, which replaces the row set, and it works by
-        // throwing the page away — which is exactly what a resume must not do,
-        // since the rows it is continuing live in module state that a reload
-        // destroys. Nothing re-presses the button after the reload either, so a
-        // resume that took this path would simply leave the user on a bare page
-        // having lost the pages that did arrive.
-        //
-        // The property this guard exists for is pinned directly instead:
-        // `tests/fixtures/resume-from-failed-page.spec.js` filters a COLUMN
-        // after a resume and asserts the rows narrow, which is the behaviour the
-        // reload was introduced to protect.
-        if (isLoaded && !_isResume) {
-            Lib.debug('meta', 'Second fetch attempt detected. Setting reload flag and reloading page to ensure filter stability.');
-            sessionStorage.setItem('mb_show_all_reload_pending', 'true');
-            window.location.reload();
-            return;
         }
 
         // Stop other scripts immediately when an action button is pressed
