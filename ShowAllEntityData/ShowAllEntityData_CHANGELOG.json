@@ -1,5 +1,32 @@
 [
   {
+    "version": "9.99.1399",
+    "date": "2026-10-20",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "A collection's link preview now reads the collection's own page instead of the Web Service, which knows only its name, type, size and owner. The card shows the type, size and number of pages, whether it is public, the owner and the collaborators, the first two lines of the description and the first eight entries. It is still one request, through the same once-a-second gate.",
+          "The collection window (Space) shows the whole description with its links, and the entries 25 at a time with the page's own columns (without the rating stars) and ◀ ▶ to page through them. MusicBrainz shows 100 entries a page, so the next page is read only when the pager gets there. A release or release group collection also shows those 25 entries' covers from the Cover Art Archive. A release group collection's page splits its entries into one table per type; the window lists them together with the type as a column.",
+          "When a collection cannot be read (someone else's private one, or one that was removed), the card says it may be private or no longer exist, and the next hover asks again. Other userscripts' additions to a collection page are never read."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1398",
+    "date": "2026-10-20",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Editor profiles (/user/<name>) get a Profile button. It reads the page you are on, nothing is fetched, and shows General information, Edits, Votes, Added entities and, when the profile has it, Tags and ratings as sub-tables under one Profile heading, with the usual filters, sorting and 📊 dropdowns. Counts sort as numbers; a count's share and its \"view\" link have their own columns; the bio is clamped with a more toggle.",
+          "Blocks other userscripts add to a profile (an Edit Notes list, highlights, flags) stay where they are and are never copied into the tables."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1397",
     "date": "2026-10-20",
     "sections": [
