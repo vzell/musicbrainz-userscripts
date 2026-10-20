@@ -10,6 +10,30 @@ hover card (not on the sidebar handle; the viewer opens from the window, not
 the card: decided 2026-10-11, the card closes on mousedown). Plan:
 `~/.claude/plans/` "MusicBrainz sidebar overhaul", branch `feature/sidebar-overhaul`.
 
+## The collapse handle (`initSidebarCollapse(phase)`)
+
+`#sidebar-toggle-handle` (◀/▶, `sa_collabsable_sidebar`). Since 2026-10-21
+(WIP.4, org/initial-page-footprint.org) it has two phases:
+
+- **`'initial'`** — from page init, beside `_sbInitPicture()`, MusicBrainz
+  only (`!_foreignHost`), with `sa_sidebar_handle_initial_page` (default on).
+  It builds the handle, its listeners and only the CSS a COLLAPSED sidebar
+  needs. The sidebar starts open unless `sa_sidebar_collapsed_initial_page`.
+- **`'final'`** — from both render tails (fetch, disk load). It adds
+  `#mb-sidebar-layout-style` (the consolidated view's `margin-right: 240px`
+  on `#page`, `#content` padding, box-sizing, the slide transitions), builds
+  the handle if the initial phase did not, and applies
+  `sa_sidebar_collapsed` ONCE per page (`initSidebarCollapse.finalApplied`);
+  a re-render or a later disk load keeps the user's choice.
+
+**The layout CSS never lands on the initial page**: with the sidebar open,
+the IP's `#page`/`#content`/`#sidebar` boxes must equal those of a page
+without the handle (`initial-page-quiet.spec.js` "IP HANDLE"). The
+transitions are in that sheet too — on the IP they animated every change of
+MusicBrainz's own layout (a late stylesheet, a window resize), so the IP's
+handle snaps instead of sliding. `setCollapsed()` (exposed as
+`initSidebarCollapse.setCollapsed`) is the one no-animation state change.
+
 ## Sections
 
 `_sbEnhance()` runs at the end of every `makeH2sCollapsible()` pass, on

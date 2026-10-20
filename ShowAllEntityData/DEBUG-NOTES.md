@@ -24871,3 +24871,70 @@ Tests: `tests/fixtures/user-profile.spec.js` (6), `popup-mb.spec.js` collection
 (5 new, replacing 2 Web Service tests), `popup-mb.mobile.spec.js` (1).
 Mutations: `scripts/mutations/user-profile.json` (8), `popup-mb.json` (9
 collection entries replacing 1) — all caught.
+
+## 2026-10-21 — Relationships "several links" finding: ⟳ over the ⚠️, finding missing from the icon popup, all sites (WIP.1, WIP.2); a quieter initial page (WIP.3, WIP.4) (branch feat/rel-multi-site-and-initial-page)
+
+Env: 2026-10-21T00:45:40+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs). The user's report: real browser, versions not given (unknown).
+
+Snapshot: `debug/multiple-discogs-relationships.html` (FRP of
+`https://musicbrainz.org/tag/distributor`, uploaded 2026-10-20, with two
+screenshots). Its two flagged cells (`45967cf5…` RCA Records, `ea212af6…`)
+carry `data-mb-findings="rel-multi-discogs" data-mb-finding="warn"`, and both
+already show the evidence of the tooltip half: `title` is the reload hint and
+`data-mb-tip=""` — the finding title was gone after the first hover.
+
+- **1a, root cause (CSS):** the finding's ⚠️ and the hover ⟳ were the SAME
+  pseudo-element, `td.mb-rel-cell::after`. The generic finding rule made it
+  `position: absolute; right: 2px`; the ⟳ rule in
+  `#mb-rel-cell-glyph-style` (specificity 0,6,4) won on `content` and reset
+  nothing else, so the ⟳ was drawn at the ⚠️'s place and the ⚠️ vanished on
+  any hover (`pointer-events: none` makes "hovering the ⚠️" hovering the
+  cell). Two side defects: the cell's `font-size: 0` turned
+  `padding-right: 1.6em` into 0, and the glyph sheet dimmed the ⚠️ to 0.35.
+  Fix: a Relationships cell draws its finding glyph with `::before`
+  (absolute, right edge, px sizes); `::after` is only the in-flow ⟳.
+- **1a, tooltip half:** `_relCellTitleHandler()` overwrote the cell title
+  with the reload hint. Now finding text + blank line + hint, through the
+  shared `_findingTitle()`.
+- **1b:** the icon's popup stack (`_relStackParts()`) had no finding box; its
+  three consumers (`#mb-dp-notes`, `#mb-rel-tooltip`, `#mb-stat-tooltip` via
+  `_tipTextToHtml()`'s early return) all skipped the cell's title on purpose.
+  New `_relFindingNoteHtml()` box first, kind `tip` under the card.
+- **1c:** `rel-multi-discogs` → `rel-multi-site` ("Several links to one site
+  in Relationships"), grouped by HOST without "www." (the user: "list them
+  all if let's say multiple discogs and multiple amazon.de"). Setting keys
+  kept (`sa_findings_rel_multi_discogs`, `…_tint_…`) so saved values stay; new
+  `sa_findings_rel_multi_site_ignore`. Disk loads re-stamp from the spans, so
+  a saved file with the old id is not a problem.
+  Test-data trap: a link type with no icon class (wikipedia, bandcamp as
+  type "bandcamp") never reaches the cell, so the first spec premise failed
+  with 1 flagged cell instead of 2 — the data now uses `streaming` /
+  `purchase for download`. And `?…` is dropped from the key, so two YouTube
+  `watch?v=` links count as ONE (kept: fewer false positives; documented).
+- **2a:** inventory of everything on the IP: `org/initial-page-footprint.org`.
+- **2b:** `sa_pop_enabled` (master, gates the `_initDetailPreview()` call)
+  and `sa_pop_initial_page` (first check in `_popResolve()`, `!isLoaded`,
+  MusicBrainz only).
+- **2c:** `initSidebarCollapse(phase)`. First version put the whole sidebar
+  stylesheet on the IP and the "layout unchanged" assertion caught it TWICE:
+  the `body:not(.sidebar-is-collapsed) #page { margin-right }` family (planned
+  for), and — not foreseen — the slide `transition`s on `#sidebar`/`#page`/
+  `#content`, which animated the fixture's late MB stylesheet (sidebar
+  4269 → 1100 px tall mid-transition). In real use they would animate every
+  native layout change (window resize). Both now live in
+  `#mb-sidebar-layout-style`, final phase only; the IP handle snaps.
+
+Tests: `tests/fixtures/rel-multi-site-finding.spec.js` (5),
+`tests/fixtures/initial-page-quiet.spec.js` (9),
+`rel-column-site-kind-discogs.spec.js` (id rename, `::before`). Mutations:
+`scripts/mutations/rel-multi-site-and-ip.json` (16, all caught);
+`link-site-uvd.json` anchors updated.
+
+`npm run test:full` (2026-10-21T00:45:31+02:00 → 00:56:48, NB-3641, 14
+workers, uncommitted branch tree on c3be664): 2081 passed, 2 failed —
+`discogs-rate-limit.spec.js` "another tab's reservation is honoured" and
+`fixture-load-no-archive-org-wait.spec.js` ("both thumbnails were requested
+and blocked": 2 expected). Neither touches code this branch changed
+(discogs.com rate slot; archive.org thumbnails in fixture markup). Re-run
+alone with `--repeat-each=3`: 30/30 passed. Treated as load-dependent
+flakes under 14 workers, not seen before in DEBUG-NOTES — worth watching.

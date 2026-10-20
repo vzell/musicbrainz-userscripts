@@ -175,21 +175,31 @@ arrives AFTER `stampFindings()` ran. The rules for any such finding:
   once its art loads in some later view. The menu count therefore grows while
   the CAA column loads; its tip says so.
 
-### The Relationships column: `rel-multi-discogs`
+### The Relationships column: `rel-multi-site` (was `rel-multi-discogs`)
 
 The second kind of late data (2026-10-19, `feat/link-site-uvd`): the deferred
 Relationships column (docs/claude/deferred-columns-picard-relationships.md)
-writes its cells after `stampFindings()` ran. "Several Discogs links in
+writes its cells after `stampFindings()` ran. "Several links to one site in
 Relationships" (⚠️, cell scope, column "Relationships") follows the same
-rules:
+rules. Until 2026-10-21 (WIP.2 of `feat/rel-multi-site-and-initial-page`) it
+was "Several Discogs links in Relationships", Discogs only:
 
-- `test()` reads `_findCellDiscogsRelUrls()`: the icons' hidden
+- `test()` reads `_findCellRelSiteDupes()`: the icons' hidden
   `.mb-rel-filter-key` spans, which `_relWriteResult()` writes into the live
-  cells AND copies onto the master rows — source-row data. Distinct by host
-  (without "www.") + path, so a `?…` variant of one page is one URL; 2+ flag.
+  cells AND copies onto the master rows — source-row data. Grouped by HOST
+  without "www." — never by site kind (`_siteFamilyOf()`): amazon.de and
+  amazon.com, music. and itunes.apple.com are different sites, one link each
+  is what MusicBrainz expects. Distinct by host + path, so a `?…` variant of
+  one page is one URL (which also makes two YouTube `watch?v=` links ONE);
+  a host with 2+ flags. Hosts in `sa_findings_rel_multi_site_ignore` never
+  count. Only icons that are drawn count (a link type with no icon class —
+  wikipedia by default — never reaches the cell).
+- `detail()` (`_relSiteDupesDetail()`) names EVERY site involved, one line
+  each: "Discogs (discogs.com): url, url". The cell title, its hover title
+  and the icon's popup finding box (`_relFindingNoteHtml()`) all show it.
 - `_relWriteResult()` queues each live row it wrote (both the answer and
   the "no relationships" branch, so a ⟳ reload can also CLEAR a stamp)
-  through `_queueFindingsRestamp(tr, ['rel-multi-discogs'])`.
+  through `_queueFindingsRestamp(tr, ['rel-multi-site'])`.
 - The filter re-run condition is `_LATE_FINDING_IDS` (artwork + this one).
   No loop: a re-rendered clone never reaches `_relWriteResult()` again
   (`relDone`).
@@ -197,9 +207,17 @@ rules:
   `cells` empty) is not re-stamped: nothing live to queue. The next fetch or
   disk load stamps it; `stampFindings()` reads the master's spans.
 - Settings `sa_findings_rel_multi_discogs` (the finding, needs
-  `sa_enable_relationships_column`) and `sa_findings_tint_rel_multi_discogs`.
-- Spec `rel-column-site-kind-discogs.spec.js`; mutations
-  `scripts/mutations/link-site-uvd.json`.
+  `sa_enable_relationships_column`) and `sa_findings_tint_rel_multi_discogs`
+  — **the keys keep "discogs"** on purpose: renaming them would drop every
+  saved value (`_SETTINGS_MIGRATIONS` moves defaults, not keys). Plus
+  `sa_findings_rel_multi_site_ignore` (text, hosts).
+- The cell draws its ⚠️ with `::before`, not the generic `::after` (that is
+  the hover ⟳ here) — see "Pseudo-element slots of a loaded cell" in
+  docs/claude/deferred-columns-picard-relationships.md.
+- Specs `rel-column-site-kind-discogs.spec.js` (Discogs cases, filter,
+  survival), `rel-multi-site-finding.spec.js` (every site, ignore list,
+  glyphs on hover, popup stack); mutations
+  `scripts/mutations/link-site-uvd.json`, `scripts/mutations/rel-multi-site-and-ip.json`.
 
 ## On demand: the title-style findings
 
