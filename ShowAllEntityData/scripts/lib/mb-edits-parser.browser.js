@@ -8,6 +8,11 @@
  * `_mbParseEditsPage()` / `_mbEditsHtml()` in ShowAllEntityData.user.js.
  *
  * Defines `window.mbParseEditsPage(doc)`; nothing else is global.
+ *
+ * Since 2026-10-20 the userscript's `_mbParseEditsPage()` is the authority:
+ * it adds the Old/New table split (`_mbEditsSplitTable()`), the summary line
+ * and the owner's note. This prototype stays as it was, for the inventory
+ * (which edit types and row shapes a page holds), and is not kept in step.
  */
 (function () {
     'use strict';

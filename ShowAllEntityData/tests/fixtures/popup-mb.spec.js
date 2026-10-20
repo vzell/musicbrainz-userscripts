@@ -1570,7 +1570,9 @@ test.describe('MusicBrainz link previews: edit and editor, read from the page (P
         expect(r.data).toBeNull();
         expect(r.notNumber).toBeNull();
         expect(r.user).toBe('mb-entity|user:vzell');
-        expect(r.userEdits).toBeNull();
+        // An editor's edits are an editing history (org/mb-edit-history.org,
+        // popup-mb-edits.spec.js), no longer a tab left alone.
+        expect(r.userEdits).toBe('mb-entity|edits:user/vzell');
         expect(r.encoded).toBe('mb-entity|user:Some%20One');
         expect(r.avatar, 'an editor link\'s avatar is not artwork').toBe('mb-entity|user:vzell');
     });

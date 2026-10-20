@@ -176,16 +176,32 @@ Becomes =_mbParseEditsPage()= / =_mbEditsHtml()= next to =_mbParseEditPage()=.
 - No new setting: gated by =sa_pop_mb= like every MusicBrainz card.
 - Performance: popup only; nothing on the filter/sort/render/artwork path.
 
-* Open questions (also on the mockup's overview)
+* Open questions, answered 2026-10-20
 
-1. Label "✎ Editing history" (MusicBrainz's word) or "✎ Edits"?
-2. A key for it (=H= in the window)?
-3. "at least 500": is "Load page 11 · more than 500 edits" enough?
-4. The Editor card's own history (=/user/<name>/edits=): now or later?
-5. "Only what changed" on by default?
-6. Fixtures: logged-in pages name other editors and quote their notes
-   (public on musicbrainz.org; the Discogs fixtures already do likewise).
-   Use them, or logged-out pages plus the user's own edits only?
+1. Label: "✎ Editing history" (MusicBrainz's own word).
+2. A key: yes, =H= while the window is open (not while typing).
+3. "at least 500": "Load page 11 · more than 500 edits" is enough.
+4. The Editor card gets the same button now: =/user/<name>/edits=, same
+   =div.edit-list= blocks (the =user-edits= pageType's page).
+5. "Only what changed" on by default: yes.
+6. Fixtures may use the logged-in pages (other editors' names and notes are
+   public on musicbrainz.org; the Discogs fixtures already do likewise).
+
+* Stage 2: implemented (2026-10-20, WIP.1)
+
+Design notes for the code: docs/claude/detail-pages.md, "MusicBrainz: an
+entity's editing history in the window (2026-10-20)". Changes against the
+mockup, from implementing it:
+- the rows scroll in their own box, so the pane stays under the list;
+- MusicBrainz's own "Note" row is never hidden by "Only what changed", and
+  the pane says when nothing visible changed;
+- no "On MusicBrainz ↗" button: =Edit #N= drills (a same-origin =/edit/N=
+  link is =_dpDrill()='s anyway); Ctrl-click or the edit card's ↗ opens it;
+- the Old/New table split moved into the parser (=_mbEditsSplitTable()=),
+  so the render needs no DOM.
+Found on the way: a keyboard click on a control that repaints closed ANY
+dialog (=createInfoDialog()=, fixed with =composedPath()=; DEBUG-NOTES.md,
+2026-10-20).
 
 * Stage 2 test plan (after approval)
 

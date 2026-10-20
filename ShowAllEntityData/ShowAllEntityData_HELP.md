@@ -2038,7 +2038,8 @@ window instead of the page. So far: **releases**, **release
 groups**, **recordings**, **works**, **artists**, **labels**, **areas**,
 **instruments**, **events**, **places**, **series**, **collections**, the
 **[info]** link beside every URL, and the
-codes: **ISRCs**, **ISWCs** and **disc IDs**, **edits** and **editors**, and
+codes: **ISRCs**, **ISWCs** and **disc IDs**, **edits** and **editors**,
+**editing histories** (the sidebar's *Editing history* link), and
 **tags** (a genre or tag link, also the pills of the sidebar's Tags card).
 A **Barcode** cell has a card too: the barcode's format and the releases
 carrying it. So does an entry of a column's **📊 dropdown** that names one
@@ -2131,6 +2132,35 @@ the tag's own page, since MusicBrainz cannot look a tag up otherwise.
   release page's Cover art, stepping through all of that release's or event's
   images. **Esc** returns to the window; Ctrl-click opens the image in a new
   tab instead.
+- **✎ Editing history** (or press **H**) in the window's header shows the
+  entity's editing history in the same window, laid out like a Discogs
+  release's history. Every entity with an MBID has one (not a collection),
+  and so does an editor (their edits). **← Back** (or Backspace) returns.
+  - **History**: one row per edit, newest first: when it closed (an open
+    edit: "voting · 7 days"), who made it, its type as a coloured pill (green
+    add, blue edit, red remove, amber merge, grey other), what it changed with
+    the editor's own note, and its votes or status (open, failed vote,
+    cancelled). The chips show one category or status; *Oldest first* turns
+    the list round. **Click a row** (or move with ↑ ↓) to see that edit below.
+  - **The edit**: its old and new values side by side, the changed words
+    marked red and green as MusicBrainz marks them. An edit medium's
+    tracklist is split into its old and new halves, and a merge shows Merge
+    and Into. An addition or removal is one column. *Only what changed* (on
+    by default) hides the unchanged rows; *Everything* lists them. The edit
+    notes follow. Cover and event art open in the artwork viewer. **Edit #…**
+    opens the edit's own card (votes, every note) in the window, and an
+    entity link opens that entity's card.
+  - MusicBrainz lists 50 edits a page: **Load page 2 of 7** reads the next 50.
+    A busy entity only says "at least 500 edits", so its footer has no last
+    page.
+  - Each page is one request to MusicBrainz. Selecting a row asks for nothing.
+    A history whose edits are all closed is kept like any card; a page with an
+    open edit is read again next time, because its votes change. Logged out,
+    MusicBrainz hides who made each edit and all notes, and the window says
+    so. If MusicBrainz answers with its "Verifying your browser" page, the
+    window says that too: open the page once in a tab (↗), then press ⟳.
+  - The sidebar's **Editing history** link and an editor window's *Their
+    edits* link have a card of their own and open the same window.
 - **A track named differently from its recording.** With jesus2099's
   *mb. INLINE STUFF* installed, a track whose name differs from its recording's
   carries a note with both names. The browser used to show that note in its

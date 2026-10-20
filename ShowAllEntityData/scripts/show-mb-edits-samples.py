@@ -4,6 +4,8 @@ the given pages, so the editing-history mockups (org/mb-edit-history.org)
 can be checked against the real field values.
 
 usage: python3 scripts/show-mb-edits-samples.py <records.json> [--type "Edit medium"] [--id 12345] [--full]
+       python3 scripts/show-mb-edits-samples.py <records.json> --page edits-page-recording --list
+       (--page limits every mode to one page; --list prints one line per entry)
 """
 import argparse
 import json
@@ -40,9 +42,20 @@ def main():
     ap.add_argument('--type')
     ap.add_argument('--id')
     ap.add_argument('--full', action='store_true')
+    ap.add_argument('--page')
+    ap.add_argument('--list', action='store_true')
     args = ap.parse_args()
     with open(args.records, encoding='utf-8') as f:
         recs = json.load(f)
+    if args.page:
+        recs = {args.page: recs[args.page]}
+    if args.list:
+        for page, rec in recs.items():
+            for i, e in enumerate((rec or {}).get('entries', [])):
+                kinds = ','.join(sorted({r['kind'] for r in e['rows']}))
+                print(f"{page} {i:2} #{e['id']} [{e['cat']}] {e['type']} status={e['status']} rows={kinds} "
+                      f"notes={len(e['notes'])} editor={e['editor']!r} date={e['date']!r}")
+        return
     if args.type or args.id:
         n = 0
         for page, rec in recs.items():
