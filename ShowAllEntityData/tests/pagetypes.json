@@ -80,6 +80,16 @@
     "waitForAutoResize": true
   },
   {
+    "pageType": "user-profile",
+    "url": "https://musicbrainz.org/user/vzell",
+    "tableMode": "multi",
+    "showAllButtonSelector": "button[data-label=\"Show profile as tables\"]",
+    "seedGmValues": { "sa_enable_caa_pics": false, "sa_enable_relationships_column": false },
+    "hasCaaOrEaa": false,
+    "hasRelationships": false,
+    "waitForAutoResize": true
+  },
+  {
     "pageType": "series-releases",
     "url": "https://musicbrainz.org/series/aa3694d3-a3d0-48ed-8f07-5b576de87908",
     "tableMode": "single",

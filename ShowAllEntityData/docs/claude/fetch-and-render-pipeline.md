@@ -331,6 +331,34 @@ Two more things the event page taught, both generic:
   short (the stylesheet keeps it as the fallback). Pinned by
   `tag-value-intro.spec.js`.
 
+## An editor's profile: a converter on a page without `#content` (2026-10-20)
+
+`user-profile` (`/user/<name>`, branch feat/user-and-collection-pages)
+is `non_paginated`: page 1 is the live document, nothing is fetched.
+`applyUserProfileToTables()` (`features.userProfileToTables`, wired at the
+same three call sites as `applySidebarToTables()`: live, fetched, disk load)
+builds its groups with `_eventBuildTable()`, so each carries
+`data-mb-col-headers` (the groups' columns differ, see above).
+
+- **No `#content`**: h1, h2s and tables are children of `#page`, as on
+  account-applications. The converter works on `#page` and marks it
+  (`data-mb-user-profile`); `groupByH3` finds each table's h3.
+- It replaces the h2 that heads `table.profileinfo` ("General information")
+  with one h2 "Profile", removes "Statistics" and the native tables. The h2
+  "Edit Notes" between them is USER_STATS's (another userscript, the
+  `title` says so): left alone, never read, and
+  `_relocateTrailingH2Sections()` may move it.
+- **Two page shapes.** Logged out (the fixture `user-page-vzell.html`) a
+  statistics cell is the count alone; logged in (`debug/user-chaban.html`)
+  it is "1,466,095 (view)" / "187,144 (100%)", an overall vote count is a
+  link, and the votes table has a one-cell "Total effective votes" row.
+  `_upSplitStat()` splits a cell into count, share and link; a column no row
+  fills is left out, so the logged-out Edits group is Status | Count only.
+  The spec plants the logged-in shape into the fixture (no logged-in capture
+  of the user's own profile exists yet).
+- Copied cells drop other userscripts' additions (`_upCellNodes()`: flag
+  images, `.mfe-flag-wrapper` unwrapped, every `style`).
+
 ## One live dataset per page: a second data section is an either/or button
 
 Added 2026-10-12 (org/relationship-tables-pt.org). Every render owns the

@@ -76,6 +76,12 @@ const PAGE_FIXTURES = [
     // A tag's page as the server sends it (scripts/fetch-mb-page-fixture.js,
     // 2026-10-19): a genre, 212,773 entities, eleven kinds.
     [/\/tag\/alternative%20rock\/?$/, 'tag-page-alternative-rock.html'],
+    // Collections (2026-10-20, read from the page): chaban's public "Cover
+    // art: Video" (release groups, 196 on two pages, four collaborators, a
+    // description) and the user's own empty "Attending".
+    [/\/collection\/3d73c67c-76c6-459d-ac8b-3145cb49d672\/?$/, 'collection-page-coverart-video.html'],
+    [/\/collection\/3d73c67c-76c6-459d-ac8b-3145cb49d672\?page=2$/, 'collection-page-coverart-video-p2.html'],
+    [/\/collection\/60df131d-bdb7-3c83-840d-e31e566baabe\/?$/, 'collection-page-attending.html'],
 ];
 const WS2_FIXTURES = [
     [/\/ws\/2\/recording\/[0-9a-f-]{36}\?inc=artist-credits\+isrcs/, 'ws2-pop-recording-thunder.json'],
@@ -101,7 +107,6 @@ const WS2_FIXTURES = [
     [/\/ws\/2\/isrc\//, 'ws2-pop-isrc-thunder.json'],
     [/\/ws\/2\/iswc\//, 'ws2-pop-iswc-btr.json'],
     [/\/ws\/2\/discid\//, 'ws2-pop-discid-dark.json'],
-    [/\/ws\/2\/collection\//, 'ws2-pop-collection-attending.json'],
     [/\/ws\/2\/release\?query=barcode:/, 'ws2-pop-barcode-074643190329.json'],
 ];
 // A 1×1 PNG, so a cover the card asks for loads instead of being dropped.
@@ -178,8 +183,8 @@ async function open(page, { settings = {}, lookup = null, showAll = true, ws2 = 
     await ctx.route('**/ws/2/release?label=**', other);
     await ctx.route('**/ws/2/release?query=**', other);
     await ctx.route('**/ws/2/release-group?artist=**', other);
-    // Phase 3: edit, editor and tag pages, by URL (`pageFixture` may answer instead).
-    await ctx.route(/^https:\/\/musicbrainz\.org\/(edit|user|tag)\//, (route) => {
+    // Phase 3: edit, editor, tag and collection pages, by URL (`pageFixture` may answer instead).
+    await ctx.route(/^https:\/\/musicbrainz\.org\/(edit|user|tag|collection)\//, (route) => {
         const url = route.request().url();
         log.html.push(url);
         const own = pageFixture ? pageFixture(url) : null;
@@ -1473,7 +1478,8 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
 
 test.describe('MusicBrainz link previews: ISRC, ISWC, disc ID, collection (WIP.5)', () => {
     const DISCID = 'coDDysS5IdmG1aPONqJSQd6TJws-';
-    const COLLECTION = '/collection/60df131d-bdb7-3c83-840d-e31e566baabe';
+    const ATTENDING = '/collection/60df131d-bdb7-3c83-840d-e31e566baabe';
+    const CV = '/collection/3d73c67c-76c6-459d-ac8b-3145cb49d672';
 
     test('an ISRC: the recordings carrying it', async ({ page }) => {
         const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
@@ -1514,27 +1520,112 @@ test.describe('MusicBrainz link previews: ISRC, ISWC, disc ID, collection (WIP.5
         await expect(dialog(page).locator('a.mb-dp-tbtn')).toHaveAttribute('href', `https://musicbrainz.org/cdtoc/${DISCID}`);
     });
 
-    test('a public collection: its type, size and editor', async ({ page }) => {
+    test('a collection card is read from its page: type, size, owner, collaborators, description, first eight', async ({ page }) => {
         const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
-        const a = await addLink(page, COLLECTION, 'Attending');
+        const a = await addLink(page, CV, 'Cover art: Video');
         await ctrlHover(page, a);
         await expect(card(page)).toContainText('fetched now');
-        await expect(card(page).locator('.mb-tt-pill')).toHaveText(['Attending', '0 events']);
-        await expect(card(page).locator('.mb-dp-kv a')).toHaveAttribute('href', '/user/vzell');
-        expect(log.ws2).toEqual([expect.stringContaining(`/ws/2${COLLECTION}?fmt=json`)]);
+        await expect(card(page).locator('.mb-tt-pill')).toHaveText(['Release group collection', '196 release groups', '2 pages', 'public']);
+        const kv = card(page).locator('.mb-dp-kv');
+        await expect(kv.locator('dt')).toHaveText(['Owner', 'Collaborators', 'About']);
+        await expect(kv.locator('a[href="/user/chaban"]')).toHaveText('chaban');
+        await expect(kv.locator('dd').nth(1).locator('a')).toHaveText(['cherryblossom000', 'elQuotho', 'kellnerd', 'wileyfoxyx']);
+        await expect(kv.locator('.mb-pop-coll-about')).toContainText('Tickets MBS-11633 CAA-132');
+        const first = card(page).locator('ol.mb-pop-coll-first li');
+        await expect(first).toHaveCount(8);
+        await expect(first.first()).toContainText('÷');
+        await expect(card(page).locator('.mb-tt-dim')).toHaveText('first 8 of 196');
+        // One page request, and the Web Service is not asked.
+        expect(log.html.filter(u => u.includes('/collection/'))).toEqual([`https://musicbrainz.org${CV}`]);
+        expect(log.ws2.filter(u => u.includes('/collection'))).toEqual([]);
     });
 
-    test('a private collection answers 401: the card says so, and nothing is kept', async ({ page }) => {
+    test('the window: the whole description, 25 entries at a time, covers; page 2 is read only when the pager gets there', async ({ page }) => {
+        const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, CV, 'Cover art: Video');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        const dlg = dialog(page);
+        await expect(dlg.locator(':scope > div > span').first()).toHaveText('Collection');
+        await expect(dlg.locator('.mb-pop-coll-desc a', { hasText: 'MBS-11633' })).toHaveAttribute('href', 'https://tickets.metabrainz.org/browse/MBS-11633');
+        await expect(dlg.locator('.mb-dp-kv dt')).toHaveText(['Owner', 'Collaborators', 'Holds']);
+        await expect(dlg.locator('.mb-dp-kv dd').nth(2)).toHaveText('196 release groups on 2 pages');
+        const h4 = dlg.locator('h4', { hasText: 'Release groups' });
+        await expect(h4).toHaveText('Release groups · 1–25 of 196');
+        // The page's own columns, but its stars; its tables per release group
+        // type (an h3 each) are one list, the type a column.
+        await expect(dlg.locator('.mb-rg-wtable thead th')).toHaveText(['Type', 'Year', 'Title', 'Artist', 'Releases']);
+        await expect(dlg.locator('.mb-rg-wtable tbody tr').first().locator('td').first()).toHaveText('Album');
+        await expect(dlg.locator('.mb-rg-wtable tbody tr')).toHaveCount(25);
+        await expect(dlg.locator('.mb-rg-wtable tbody tr').first().locator('a').first()).toHaveAttribute('href', '/release-group/e05f9927-e24b-41c5-928d-d0e008a12444');
+        await expect(dlg.locator('table.tbl')).toHaveCount(0);
+        // Covers: the rows' own, from the Cover Art Archive, one per row the page marks.
+        const imgs = dlg.locator('.mb-pop-coll-art img');
+        await expect(imgs).toHaveCount(25);
+        await expect(imgs.first()).toHaveAttribute('src', 'https://coverartarchive.org/release-group/e05f9927-e24b-41c5-928d-d0e008a12444/front-250');
+        const next = dlg.locator('button[data-mb-coll-act="next"]');
+        for (let i = 0; i < 3; i++) await next.click();
+        await expect(h4).toHaveText('Release groups · 76–100 of 196');
+        // Row 100 is page 1's last table's (MusicBrainz's seven tables hold 100 rows).
+        await expect(dlg.locator('.mb-rg-wtable tbody tr').last().locator('td').first()).toHaveText('Broadcast + DJ-mix');
+        // A request started early would still be waiting for its 1/s rate
+        // slot: ask the loader, so "not asked" is not just "not sent YET".
+        expect(await page.evaluate((k) => window.__saTest.mbPopStatus(k), `pop:page:collection:${CV.split('/')[2]}:p2`),
+            'slices 1–4 are page 1: page 2 not even started').toBeNull();
+        expect(log.html.filter(u => u.includes('/collection/'))).toHaveLength(1);
+        await next.click();
+        await expect(h4).toHaveText('Release groups · 101–125 of 196');
+        await expect(dlg.locator('.mb-rg-wtable tbody tr')).toHaveCount(25);
+        await expect.poll(() => log.html.filter(u => u.includes('/collection/'))).toEqual([`https://musicbrainz.org${CV}`, `https://musicbrainz.org${CV}?page=2`]);
+        for (let i = 0; i < 3; i++) await next.click();
+        await expect(h4).toHaveText('Release groups · 176–196 of 196');
+        await expect(dlg.locator('.mb-rg-wtable tbody tr')).toHaveCount(21);
+        await expect(next).toBeDisabled();
+        await dlg.locator('button[data-mb-coll-act="prev"]').click();
+        await expect(h4).toHaveText('Release groups · 151–175 of 196');
+        expect(log.html.filter(u => u.includes('/collection/'))).toHaveLength(2);
+    });
+
+    test('an empty collection says so', async ({ page }) => {
+        await open(page, { settings: { sa_pop_mb: true }, showAll: false });
+        const a = await addLink(page, ATTENDING, 'Attending');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-pill')).toHaveText(['Attending', '0 events', 'public']);
+        await expect(card(page).locator('.mb-dp-kv a')).toHaveAttribute('href', '/user/vzell');
+        await expect(card(page)).toContainText('This collection is empty.');
+    });
+
+    test('a collection we may not see: the card says why, and nothing is kept', async ({ page }) => {
         const log = await open(page, {
             settings: { sa_pop_mb: true }, showAll: false,
-            ws2: (url) => (url.includes('/ws/2/collection/') ? { status: 401, body: '{"error":"Authentication required"}' } : null),
+            pageFixture: (url) => (url.includes('/collection/') ? { status: 404, contentType: 'text/html', body: '<html><body><div id="page"><h1>Collection not found</h1></div></body></html>' } : null),
         });
-        const a = await addLink(page, COLLECTION, 'Attending');
+        const a = await addLink(page, ATTENDING, 'Attending');
         await ctrlHover(page, a);
-        await expect(card(page).locator('.mb-tt-alert')).toContainText('It is probably private.');
+        await expect(card(page).locator('.mb-tt-alert')).toContainText('It may be private, or no longer exist.');
         await ctrlHover(page, a);
-        await expect(card(page).locator('.mb-tt-alert')).toContainText('It is probably private.');
-        await expect.poll(() => log.ws2.length, { message: 'a failure is asked again on the next hover' }).toBe(2);
+        await expect(card(page).locator('.mb-tt-alert')).toContainText('It may be private, or no longer exist.');
+        await expect.poll(() => log.html.filter(u => u.includes('/collection/')).length, { message: 'a failure is asked again on the next hover' }).toBe(2);
+    });
+
+    test("other userscripts' additions to a collection page are never read", async ({ page }) => {
+        const html = fs.readFileSync(path.join(__dirname, 'collection-page-coverart-video.html'), 'utf8')
+            .replace('Open edits</bdi></a>', 'Open edits</bdi></a>&nbsp;(<span class="jesus2099PendingEditsCount">FOREIGN-COUNT</span>)')
+            .replace('<ul class="pagination">', '<ul class="pagination"><li><a title="mb. PRINT ALL PAGES">FOREIGN-PRINT</a></li>')
+            .replace('<div class="description"><h2>Description</h2><p>', '<div class="description"><h2>Description</h2><p><span class="mb-hq-flag-img">FOREIGN-FLAG</span>');
+        await open(page, {
+            settings: { sa_pop_mb: true }, showAll: false,
+            pageFixture: (url) => (/\/collection\/3d73c67c[^?]*$/.test(url) ? { status: 200, contentType: 'text/html', body: html } : null),
+        });
+        const a = await addLink(page, CV, 'Cover art: Video');
+        await ctrlHover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await page.keyboard.press('Space');
+        await expect(dialog(page).locator('.mb-pop-coll-desc')).toContainText('MBS-11633');
+        for (const box of [card(page), dialog(page)]) await expect(box).not.toContainText('FOREIGN');
+        await expect(dialog(page).locator('.mb-dp-kv dd').nth(2)).toHaveText('196 release groups on 2 pages');
     });
 });
 

@@ -1,0 +1,84 @@
+[
+  {
+    "name": "the profile converter never runs",
+    "why": "THE feature: without it the page has no table.tbl, so the button renders nothing.",
+    "edits": [
+      { "find": "        if (activeDefinition.features?.userProfileToTables) {\n            applyUserProfileToTables(activeDefinition);\n        }\n\n        // ── editsToTable pre-processing", "replace": "\n        // ── editsToTable pre-processing" }
+    ],
+    "spec": "tests/fixtures/user-profile.spec.js",
+    "grep": "five groups with their columns",
+    "expect": "fail"
+  },
+  {
+    "name": "a count cell keeps its share and link",
+    "why": "Count is numeric only while the cell holds the count alone; '109,579 (100%)' would sort by the digits of both numbers run together.",
+    "edits": [
+      { "find": "            if (count && t === count[0]) out.count = [copy];", "replace": "            if (count && t === count[0]) out.count = [copy];\n            else if (count) out.count = text;" }
+    ],
+    "spec": "tests/fixtures/user-profile.spec.js",
+    "grep": "a count cell holds the count only",
+    "expect": "fail"
+  },
+  {
+    "name": "Count is not declared numeric",
+    "why": "The spec's descending sort must be by value: as text, '992' sorts above '7,585'.",
+    "edits": [
+      { "find": "                    { sourceColumn: 'Count', align: 'R' },\n                    { sourceColumn: 'Share', align: 'R' },", "replace": "                    { sourceColumn: 'Share', align: 'R' }," }
+    ],
+    "spec": "tests/fixtures/user-profile.spec.js",
+    "grep": "a count cell holds the count only",
+    "expect": "fail"
+  },
+  {
+    "name": "the one-cell votes row lands in the 28-day column",
+    "why": "'Total effective votes' is an overall figure; MusicBrainz spans it over both columns.",
+    "edits": [
+      { "find": "                const overall = _upSplitStat(cells[cells.length > 2 ? 2 : 1]);", "replace": "                const overall = _upSplitStat(cells[2]);" },
+      { "find": "                const recent = cells.length > 2 ? _upSplitStat(cells[1]) : _upSplitStat(null);", "replace": "                const recent = _upSplitStat(cells[1]);" }
+    ],
+    "spec": "tests/fixtures/user-profile.spec.js",
+    "grep": "Votes: the one-cell row",
+    "expect": "fail"
+  },
+  {
+    "name": "the footer's Total row is dropped",
+    "why": "The vote totals live in tfoot; reading tbody only loses them.",
+    "edits": [
+      { "find": "        const trs = Array.from(table.querySelectorAll(':scope > tbody > tr, :scope > tfoot > tr'));", "replace": "        const trs = Array.from(table.querySelectorAll(':scope > tbody > tr'));" }
+    ],
+    "spec": "tests/fixtures/user-profile.spec.js",
+    "grep": "Votes: the one-cell row",
+    "expect": "fail"
+  },
+  {
+    "name": "other userscripts' flag images are copied",
+    "why": "Another script's markup is never read into our tables.",
+    "edits": [
+      { "find": "        box.querySelectorAll(_UP_FOREIGN_SEL).forEach(n => n.remove());\n", "replace": "" }
+    ],
+    "spec": "tests/fixtures/user-profile.spec.js",
+    "grep": "additions are never copied",
+    "expect": "fail"
+  },
+  {
+    "name": "inline highlight styles are copied",
+    "why": "USER_STATS's yellow highlights would ride along into our cells.",
+    "edits": [
+      { "find": "        box.querySelectorAll('[style]').forEach(n => n.removeAttribute('style'));\n", "replace": "" },
+      { "find": "            copy.removeAttribute('style');\n", "replace": "" }
+    ],
+    "spec": "tests/fixtures/user-profile.spec.js",
+    "grep": "additions are never copied",
+    "expect": "fail"
+  },
+  {
+    "name": "the pageType matches pages under the profile",
+    "why": "Only the bare profile page is this pageType; /user/<name>/collections has its own.",
+    "edits": [
+      { "find": "            match: (path) => /^\\/user\\/[^/]+\\/?$/.test(path),", "replace": "            match: (path) => /^\\/user\\/[^/]+(?:\\/collections)?\\/?$/.test(path)," }
+    ],
+    "spec": "tests/fixtures/user-profile.spec.js",
+    "grep": "not on a page under the profile",
+    "expect": "fail"
+  }
+]

@@ -18,6 +18,7 @@
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/release\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/disc\/\d+)?\/?(?:\?[^#]*)?(?:#.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits\/?(?:\?.*)?|edit\/(?:subscribed(?:_editors)?|notes-received)\/?(?:\?.*)?|account\/applications\/?(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections\/?(?:\?.*)?|election\/.*|genres\/?(?:\?.*)?|cdstub\/.*|isrc\/.*|iswc\/.*|doc\/Edit_Types\/?(?:\?.*)?|instruments\/?(?:\?.*)?|privileged\/?(?:\?.*)?)$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/]+\/(?:subscriptions\/.*|subscribers\/?(?:\?.*)?|collections\/?(?:\?.*)?|ratings\/.*|ratings(?:\?.*)?|tags.*|tag\/.*|edits(?:\/open)?\/?(?:\?.*)?)$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/?#]+\/?(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/(?:collection|bootlegs|brucelegs)\.php\?(?:[^#]*&)?cmd=list(?:[&#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/collection\.php(?:\?(?:(?:[^#]*&)?cmd=intro(?:&[^#]*)?|pg=\d+(?:&[^#]*)?))?(?:#.*)?$/
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/bootlegs\.php(?:\?(?:[^#]*&)?cmd=intro(?:&[^#]*)?)?(?:#.*)?$/
@@ -22588,6 +22589,19 @@
             #mb-dp-peek .mb-pop-ttl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
             :is(#mb-dp-peek, .mb-dp-dialog) .mb-pop-len { flex: none; color: #7a6d5c; font-variant-numeric: tabular-nums; }
             .mb-dp-dialog .mb-dp-kv a, .mb-dp-dialog .mb-dp-xsub a, .mb-dp-dialog .mb-pop-ttl a { color: #6b3f12; }
+            /* A collection (_mbParseCollectionPage()): two lines of its
+               description on the card; the whole one in the window, scrolling
+               past a screenful; the pager over its entries; covers. */
+            #mb-dp-peek .mb-pop-coll-about {
+                display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-style: italic;
+            }
+            .mb-dp-dialog .mb-pop-coll-desc { max-height: 320px; overflow: auto; border-left: 2px solid #e3dac8; padding-left: 10px; }
+            .mb-dp-dialog .mb-pop-coll-desc p { margin: 0 0 4px; }
+            .mb-dp-dialog .mb-pop-coll-desc ul { margin: 0 0 6px; padding-left: 18px; }
+            .mb-dp-dialog .mb-pop-coll-desc a { color: #6b3f12; }
+            .mb-dp-dialog .mb-pop-coll-pager { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font: 12px ui-monospace, Consolas, monospace; color: #7a6d5c; }
+            .mb-dp-dialog .mb-pop-coll-pager button[disabled] { opacity: 0.4; cursor: default; }
+            .mb-dp-dialog .mb-pop-coll-art { margin: 0 0 8px; }
             /* Links to other sites (_extSource()): the site line with its
                status pill, the page's image beside its title. */
             #mb-dp-peek .mb-ext-card { width: 400px; max-width: 100%; }
@@ -31189,6 +31203,34 @@
                 listToTable: [ '' ]
             },
             tableMode: 'multi'
+        },
+        // An editor's profile (/user/<name>): the "General information" and
+        // "Statistics" tables become h3 + table.tbl groups
+        // (applyUserProfileToTables()). Read from the page, nothing fetched;
+        // no div#content (h1 and h2s are children of div#page, as on
+        // account-applications).
+        {
+            type: 'user-profile',
+            match: (path) => /^\/user\/[^/]+\/?$/.test(path),
+            buttons: [ {
+                label: 'Show profile as tables', shortLabel: 'Profile',
+                description: "Show the profile's information and statistics as tables. Read from this page: nothing is fetched."
+            } ],
+            features: {
+                userProfileToTables: true,
+                groupByH3: true,
+                collapsableColumns: [ 'Value' ],
+                integerColumns: [
+                    { sourceColumn: 'Count', align: 'R' },
+                    { sourceColumn: 'Share', align: 'R' },
+                    { sourceColumn: 'Last 28 days', align: 'R' },
+                    { sourceColumn: 'Last 28 days %', align: 'R' },
+                    { sourceColumn: 'Overall', align: 'R' },
+                    { sourceColumn: 'Overall %', align: 'R' }
+                ]
+            },
+            tableMode: 'multi',
+            non_paginated: true
         },
         // Subscriptions pages — a single consolidated type with per-button
         // virtualPath values that replace the last URL path segment on click,
@@ -48602,6 +48644,262 @@
     }
 
     /**
+     * Columns of a collection's table the window leaves out: stars that do
+     * not survive a copy, and the artist columns that only widen it. An
+     * event's "Artists" (often a dozen performers) goes too
+     * (`_mbParseCollectionPage()`).
+     * @type {Set<string>}
+     */
+    const _MB_COLL_SKIP_COLS = new Set(['Rating', 'Begin area', 'End area']);
+
+    /**
+     * A collection's entries the window shows at a time (mockup picked
+     * 2026-10-20: 25, with a pager; MusicBrainz's own pages hold 100).
+     * @type {number}
+     */
+    const _MB_COLL_WIN_ROWS = 25;
+
+    /** A collection card's first entries (2026-10-20: eight, in two columns). */
+    const _MB_COLL_CARD_ROWS = 8;
+
+    /**
+     * One cell of a collection's table as safe HTML (`_mbEditsHtml()`); a
+     * release's "Country/Date" events read "XW 2008-06-19", one per line.
+     *
+     * @param {Element} td
+     * @returns {string}
+     */
+    function _mbCollCellHtml(td) {
+        const evs = td.querySelectorAll('li.release-event');
+        if (evs.length) {
+            return Array.from(evs).map(li => _rgEsc([_mbPopText(li.querySelector('.release-country')), _mbPopText(li.querySelector('.release-date'))]
+                .filter(Boolean).join(' '))).join('<br>');
+        }
+        return _mbEditsHtml(td);
+    }
+
+    /**
+     * A collection's page (`/collection/<MBID>`, any `?page=N`) as a record
+     * for its card and window; the Web Service knows only its name, type,
+     * size and owner (probed 2026-10-20, DEBUG-NOTES.md "what a collection
+     * page holds"). Read: the name (`.collectionheader h1`), public or not
+     * (the subheader), the sidebar's Owner, Type and "Number of entities",
+     * the collaborators (`div.collaborators`, empty when none), the
+     * description (`div.description`, through `_mbEditsHtml()`), the
+     * entities' kind (its h2, "Release groups"), the page's rows (100 a page)
+     * and how many pages there are (`ul.pagination`). Each row: the entity
+     * (its first link to a bare entity page of the table's kind), its
+     * disambiguation, whether the page marks Cover Art Archive artwork
+     * (`.caa-icon`), and every cell but `_MB_COLL_SKIP_COLS` as safe HTML.
+     * Other userscripts' markup is never read (`_mbEditsHtml()`'s
+     * `_MB_EDITS_FOREIGN_CLS`; the pagination's own links only). `null`
+     * when the page is not a collection's ("Collection not found", a login
+     * page).
+     *
+     * @param {Document} doc
+     * @returns {?Object}
+     */
+    function _mbParseCollectionPage(doc) {
+        const content = doc.getElementById('content');
+        const head = content && content.querySelector('.collectionheader');
+        const name = head && _mbPopText(head.querySelector('h1 a[href^="/collection/"] bdi'));
+        if (!name) return null;
+        const prop = (label) => {
+            const dt = Array.from(doc.querySelectorAll('#sidebar dl.properties dt')).find(x => _mbPopText(x) === `${label}:`);
+            return dt ? dt.nextElementSibling : null;
+        };
+        const ownerA = (prop('Owner') || head).querySelector('a[href^="/user/"]');
+        const descBox = content.querySelector(':scope > div.description');
+        let description = '';
+        if (descBox) {
+            const copy = descBox.cloneNode(true);
+            copy.querySelectorAll(':scope > h2').forEach(h => h.remove());
+            description = _mbEditsHtml(copy);
+        }
+        // A release group collection's page is one table per release group
+        // type, each after its h3 ("Album + Compilation"): every table is
+        // read, and that h3 becomes a "Type" column in front.
+        const tables = Array.from(content.querySelectorAll('table.tbl'));
+        const table = tables[0];
+        const groupOf = (t) => {
+            let p = t.previousElementSibling;
+            while (p && p.tagName !== 'H3' && p.tagName !== 'TABLE') p = p.previousElementSibling;
+            return p && p.tagName === 'H3' ? _mbPopText(p) : '';
+        };
+        const grouped = tables.some(t => groupOf(t));
+        const heads = table ? Array.from(table.querySelectorAll('thead th')).map(th => _mbPopText(th).replace(/\s*▴\/▾/g, '').trim()) : [];
+        // The description's and collaborators' h2s sit in their own divs: the
+        // one h2 of #content itself names the entities ("Release groups").
+        const plural = _mbPopText(content.querySelector(':scope > h2'));
+        let kind = '';
+        const rows = [];
+        tables.forEach((t) => {
+            const group = groupOf(t);
+            t.querySelectorAll(':scope > tbody > tr').forEach((tr) => {
+                const links = Array.from(tr.querySelectorAll('a[href]')).map(a => ({ a, p: _MB_POP_PATH_RE.exec(a.getAttribute('href') || '') })).filter(x => x.p);
+                if (!kind && links.length) kind = links[0].p[1];
+                const main = links.find(x => x.p[1] === kind);
+                if (!main) return;
+                const cell = main.a.closest('td');
+                const comment = cell ? _mbPopText(cell.querySelector(':scope > .comment, :scope > .historical')).replace(/^\((.*)\)$/, '$1') : '';
+                const cells = grouped ? [_rgEsc(group)] : [];
+                Array.from(tr.children).forEach((td, i) => {
+                    const h = heads[i] || '';
+                    if (_MB_COLL_SKIP_COLS.has(h) || (kind === 'event' && h === 'Artists')) return;
+                    cells.push(_mbCollCellHtml(td));
+                });
+                rows.push({ id: main.p[2].toLowerCase(), name: _mbPopText(main.a), comment, art: !!tr.querySelector('.caa-icon'), cells });
+            });
+        });
+        const cols = (grouped ? ['Type'] : []).concat(heads.filter(h => !_MB_COLL_SKIP_COLS.has(h) && !(kind === 'event' && h === 'Artists')));
+        const pag = content.querySelector('ul.pagination');
+        const nums = pag ? Array.from(pag.querySelectorAll('a[href*="page="]')).map(x => Number((/[?&]page=(\d+)/.exec(x.getAttribute('href')) || [])[1]) || 0) : [];
+        const sel = pag && Number(_mbPopText(pag.querySelector('a.sel')));
+        const countDd = prop('Number of entities');
+        return {
+            name,
+            owner: ownerA ? _mbPopText(ownerA) : '',
+            ownerPath: ownerA ? ownerA.getAttribute('href') : '',
+            isPublic: /\bPublic collection\b/i.test(_mbPopText(head.querySelector('p.subheader'))),
+            type: _mbPopText(prop('Type')),
+            count: countDd ? Number(_mbPopText(countDd).replace(/[,.]/g, '')) || 0 : rows.length,
+            collaborators: Array.from(content.querySelectorAll(':scope > div.collaborators a[href^="/user/"]')).map(a => ({ name: _mbPopText(a), path: a.getAttribute('href') })),
+            description,
+            plural: plural || '',
+            kind,
+            cols,
+            rows,
+            page: sel || 1,
+            pages: nums.length ? Math.max(1, sel || 1, ...nums) : 1,
+        };
+    }
+
+    /**
+     * How a collection's size reads: "950 artists", "1 release group".
+     *
+     * @param {Object} d - `_mbParseCollectionPage()`'s record.
+     * @returns {string}
+     */
+    function _mbCollHolds(d) {
+        const word = d.count === 1 ? (d.kind || 'entity').replace(/-/g, ' ') : (d.plural || 'entities').toLowerCase();
+        return `${_mbPopNum(d.count)} ${word}`;
+    }
+
+    /**
+     * Editors as links, comma-separated.
+     *
+     * @param {Array<{name: string, path: string}>} list
+     * @returns {string}
+     */
+    function _mbCollUsersHtml(list) {
+        return list.map(u => `<a href="${_rgEsc(u.path)}" target="_blank" rel="noopener">${_rgEsc(u.name)}</a>`).join(', ');
+    }
+
+    /**
+     * Which slice of a collection the window shows, by collection MBID, for
+     * this page load (0: entries 1–25).
+     * @type {Map<string, number>}
+     */
+    const _mbCollUi = new Map();
+
+    /**
+     * The cache key of a collection's page n: page 1 is the card's record
+     * (`_mbPopPageKind()`'s key), every other page its own.
+     *
+     * @param {string} id
+     * @param {number} n
+     * @returns {string}
+     */
+    function _mbCollKey(id, n) {
+        return n > 1 ? `pop:page:collection:${id}:p${n}` : `pop:page:collection:${id}`;
+    }
+
+    /**
+     * Loads page n (> 1) of a collection for the window's pager, through
+     * the one MusicBrainz gate (`_mbPageLoad()`).
+     *
+     * @param {object} t - The collection target.
+     * @param {number} n
+     * @param {{force?: boolean, repaint?: ?function(): void}} [opts]
+     * @returns {void}
+     */
+    function _mbCollLoad(t, n, opts = {}) {
+        const url = new URL(`/collection/${t.id}?page=${n}`, window.location.origin).href;
+        _mbPageLoad(_mbCollKey(t.id, n), url, _mbParseCollectionPage, Object.assign({ wanted: _mbPopWanted(t) }, opts));
+    }
+
+    /**
+     * A collection's window (Space): on the left its facts and the whole
+     * description; on the right 25 of its entries with the page's own
+     * columns, a pager over all of them (a MusicBrainz page holds 100, so
+     * four slices cost one request) and, for releases and release groups,
+     * their covers from the Cover Art Archive (only rows the page marks as
+     * having artwork; images only, no API request).
+     *
+     * @param {object} t
+     * @param {Object} d - Page 1's record.
+     * @param {function(): void} repaint
+     * @returns {string}
+     */
+    function _mbCollWindowHtml(t, d, repaint) {
+        const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
+            `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type, d.isPublic ? 'public' : 'private'])}</div><h4>Facts</h4>` + _mbPopKvHtml([
+                ['Owner', d.owner ? `<a href="${_rgEsc(d.ownerPath)}" target="_blank" rel="noopener">${_rgEsc(d.owner)}</a> · ` +
+                    `<a href="${_rgEsc(d.ownerPath)}/collections" target="_blank" rel="noopener">all their collections</a>` : ''],
+                ['Collaborators', _mbCollUsersHtml(d.collaborators)],
+                ['Holds', _rgEsc(`${_mbCollHolds(d)}${d.pages > 1 ? ` on ${d.pages} pages` : ''}`)],
+            ]) + (d.description ? `<h4>Description</h4><div class="mb-pop-coll-desc">${d.description}</div>` : '');
+        const total = d.count || d.rows.length;
+        const perPage = d.pages > 1 ? Math.max(1, d.rows.length) : Math.max(1, total);
+        const slices = Math.max(1, Math.ceil(total / _MB_COLL_WIN_ROWS));
+        const sub = Math.min(_mbCollUi.get(t.id) || 0, slices - 1);
+        const from = sub * _MB_COLL_WIN_ROWS;
+        const n = Math.floor(from / perPage) + 1;
+        const st = _mbPop.get(_mbCollKey(t.id, n));
+        if (n > 1 && !st) _mbCollLoad(t, n, { repaint });
+        const rec = n === 1 ? d : st && st.status === 'done' ? st.data : null;
+        const btn = (act, label, on) => `<button type="button" class="mb-dg-btn" data-mb-coll-act="${act}"${on ? '' : ' disabled'}>${label}</button>`;
+        let body;
+        if (rec) {
+            const off = from - (n - 1) * perPage;
+            const rows = rec.rows.slice(off, off + _MB_COLL_WIN_ROWS);
+            const art = (rec.kind === 'release' || rec.kind === 'release-group') ? rows.filter(r => r.art) : [];
+            const strip = art.length ? '<div class="mb-dp-gallery mb-pop-coll-art">' + art.map(r => `<a href="/${_rgEsc(rec.kind)}/${_rgEsc(r.id)}" ` +
+                `target="_blank" rel="noopener" title="${_rgEsc(r.name)}"><img src="https://coverartarchive.org/${_rgEsc(rec.kind)}/${_rgEsc(r.id)}/front-250" ` +
+                'alt="" loading="lazy"></a>').join('') + '</div>' : '';
+            body = strip + (rows.length ? _mbPopTableHtml(rec.cols, rows.map(r => r.cells)) : '<div class="mb-dp-xsub">This collection is empty.</div>');
+        } else if (st && st.status === 'failed') {
+            body = `<div class="mb-dp-warn">Page ${n} could not be read (${_rgEsc(st.detail)}).</div>` +
+                `<p><button type="button" class="mb-dg-btn" data-mb-coll-act="retry" data-mb-coll-v="${n}">Try again</button></p>`;
+        } else {
+            body = `<div class="mb-dp-xsub"><span class="mb-dp-spin">◌</span> Reading page ${n}…</div>`;
+        }
+        const shown = total ? `${from + 1}–${Math.min(total, from + _MB_COLL_WIN_ROWS)} of ${_mbPopNum(total)}` : '0';
+        const pager = slices > 1 ? `<div class="mb-pop-coll-pager">${btn('prev', '◀', sub > 0)}<span>${_rgEsc(`${sub + 1} / ${slices}`)}</span>` +
+            `${btn('next', '▶', sub < slices - 1)}</div>` : '';
+        const right = `<h4>${_rgEsc(`${d.plural || 'Entries'} · ${shown}`)}</h4>${pager}${body}`;
+        return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+    }
+
+    /**
+     * A collection window's pager clicks (◀ ▶, "Try again"). Links never get
+     * here: `_dpDrill()` takes them first.
+     *
+     * @param {MouseEvent} e
+     * @param {object} t - The collection target.
+     * @returns {void}
+     */
+    function _mbCollAreaClick(e, t) {
+        const b = e.target instanceof Element && e.target.closest('[data-mb-coll-act]');
+        if (!b || b.disabled) return;
+        const sub = _mbCollUi.get(t.id) || 0;
+        if (b.dataset.mbCollAct === 'prev') _mbCollUi.set(t.id, Math.max(0, sub - 1));
+        else if (b.dataset.mbCollAct === 'next') _mbCollUi.set(t.id, sub + 1);
+        else if (b.dataset.mbCollAct === 'retry') _mbCollLoad(t, Number(b.dataset.mbCollV) || 2, { force: true, repaint: _dpDialog.repaint });
+        if (_dpDialog.repaint) _dpDialog.repaint();
+    }
+
+    /**
      * A tag's page (`/tag/<name>`) as a record for its card and window. The
      * Web Service has no lookup of a tag by name, only a search that answers
      * names and scores (MusicBrainz_API, checked 2026-10-19), so the page is
@@ -49457,7 +49755,11 @@
      * the window show the same parsed record.
      *
      * @param {{parse: function(Document): ?Object, keep?: function(Object): boolean,
-     *   cardHtml: function(Object, object): string, windowHtml: function(Object, object): string}} spec
+     *   cardHtml: function(Object, object): string,
+     *   windowHtml: function(Object, object, function(): void): string,
+     *   failNote?: function(string): string}} spec - `windowHtml` gets the
+     *   repaint too (a collection's pager loads more pages); `failNote` as
+     *   `_mbPopLookupKind()`'s.
      * @returns {{card: function(object, boolean, function(): void): string,
      *   extracted: function(object, boolean, boolean, function(): void): string}}
      */
@@ -49466,11 +49768,11 @@
         return {
             card(t, start, repaint) {
                 if (start) _mbPageLoad(key(t), t.url, spec.parse, { repaint, wanted: _mbPopWanted(t), keep: spec.keep });
-                return _mbPopCardShell(t, _mbPop.get(key(t)), spec.cardHtml);
+                return _mbPopCardShell(t, _mbPop.get(key(t)), spec.cardHtml, spec.failNote);
             },
             extracted(t, start, force, repaint) {
                 if (start) _mbPageLoad(key(t), t.url, spec.parse, { force, repaint, wanted: _mbPopWanted(t), keep: spec.keep });
-                return _mbPopWindowShell(t, _mbPop.get(key(t)), spec.windowHtml);
+                return _mbPopWindowShell(t, _mbPop.get(key(t)), (d, tt) => spec.windowHtml(d, tt, repaint), spec.failNote);
             },
         };
     }
@@ -50124,27 +50426,36 @@
                     ])) + '</div></div>';
             },
         })),
-        // Public collections only: a private one answers 401 (not kept, as
-        // any failure), and the card says what that probably means.
-        collection: Object.assign({ title: 'Collection', wide: false }, _mbPopLookupKind({
-            cardInc: '',
-            failNote: (detail) => (/\b40[13]\b/.test(detail) ? ' It is probably private.' : ''),
+        // Read from the collection's page (2026-10-20, mockup
+        // https://claude.ai/artifact/KtfNY1XfjyJoPb8fGjLGeu): the Web
+        // Service has no description and no collaborators. Card: type, size,
+        // owner, collaborators, two lines of the description, the first
+        // eight entries. Window (Space): the facts and the whole
+        // description; 25 entries at a time with a pager; covers for release
+        // and release group collections. Someone else's private collection
+        // is not shown to us (not kept, as any failure); the card says what
+        // that probably means. No editing history: a collection's is always
+        // empty ("Found 0 edits", `_MB_POP_EDITS_RE`).
+        collection: Object.assign({ title: 'Collection', wide: true }, _mbPopPageKind({
+            parse: _mbParseCollectionPage,
+            failNote: (detail) => (/\b40[13]\b/.test(detail) ? ' It is probably private.'
+                : /\b404\b|not the page expected/.test(detail) ? ' It may be private, or no longer exist.' : ''),
             cardHtml(d) {
-                const n = d[`${d['entity-type']}-count`];
+                const first = d.rows.slice(0, _MB_COLL_CARD_ROWS);
+                const about = _mbEditsText(d.description);
                 return `<div class="mb-tt-title">${_rgEsc(d.name)}</div><div class="mb-tt-body mb-rg-pills">` +
-                    _mbPopPillsHtml([d.type, typeof n === 'number' ? `${_mbPopNum(n)} ${d['entity-type']}${n === 1 ? '' : 's'}` : '']) +
-                    '</div><div class="mb-tt-rule"></div>' + _mbPopKvHtml([['Editor', d.editor ? `<a href="/user/${encodeURIComponent(d.editor)}" ` +
-                        `target="_blank" rel="noopener">${_rgEsc(d.editor)}</a>` : '']]);
+                    _mbPopPillsHtml([d.type, _mbCollHolds(d), d.pages > 1 ? `${d.pages} pages` : '', d.isPublic ? 'public' : 'private']) +
+                    '</div><div class="mb-tt-rule"></div>' + _mbPopKvHtml([
+                        ['Owner', d.owner ? `<a href="${_rgEsc(d.ownerPath)}" target="_blank" rel="noopener">${_rgEsc(d.owner)}</a>` : ''],
+                        ['Collaborators', _mbCollUsersHtml(d.collaborators)],
+                        ['About', about ? `<span class="mb-pop-coll-about">${_rgEsc(about)}</span>` : ''],
+                    ]) + (first.length ? '<div class="mb-tt-rule"></div><ol class="mb-dp-tracks mb-pop-coll-first">' + first.map((r, i) =>
+                        `<li><span class="mb-dp-pos">${i + 1}</span>${_rgEsc(r.name)}</li>`).join('') + '</ol>' +
+                        (d.count > first.length ? `<div class="mb-tt-dim">first ${first.length} of ${_mbPopNum(d.count)}</div>` : '')
+                        : '<div class="mb-tt-comment">This collection is empty.</div>');
             },
-            windowHtml(d) {
-                const n = d[`${d['entity-type']}-count`];
-                return `<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
-                    `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type])}</div><h4>Facts</h4>` + _mbPopKvHtml([
-                        ['Holds', _rgEsc(typeof n === 'number' ? `${_mbPopNum(n)} ${d['entity-type']}${n === 1 ? '' : 's'}` : d['entity-type'] || '')],
-                        ['Editor', d.editor ? `<a href="/user/${encodeURIComponent(d.editor)}" target="_blank" rel="noopener">${_rgEsc(d.editor)}</a>` : ''],
-                    ]) + '</div></div>';
-            },
-        })),
+            windowHtml: (d, t, repaint) => _mbCollWindowHtml(t, d, repaint),
+        }), { onAreaClick: _mbCollAreaClick }),
         // U2 (org/iframe.org "* generalize to URLs"): the "[info]" link
         // beside every URL relationship. One lookup with every relationship
         // include (`_MB_POP_URL_INC`, 655 bytes for the event's Brucebase
@@ -89971,6 +90282,11 @@ a { color: #1565c0; }`;
         if (activeDefinition.features?.sidebarToTables) {
             applySidebarToTables(activeDefinition);
         }
+        // An editor's profile ('user-profile'): its information and
+        // statistics tables become h3 + table.tbl groups.
+        if (activeDefinition.features?.userProfileToTables) {
+            applyUserProfileToTables(activeDefinition);
+        }
 
         // ── editsToTable pre-processing ─────────────────────────────────────
         // For the 'edits' pageType, convert the native div.edit-list block
@@ -90500,6 +90816,9 @@ a { color: #1565c0; }`;
                 }
                 if (doc !== document && activeDefinition.features?.sidebarToTables) {
                     applySidebarToTables(activeDefinition, doc);
+                }
+                if (doc !== document && activeDefinition.features?.userProfileToTables) {
+                    applyUserProfileToTables(activeDefinition, doc);
                 }
 
                 // ── editsToTable on fetched pages ────────────────────────────
@@ -99218,6 +99537,170 @@ a { color: #1565c0; }`;
         if (firstH2) firstH2.before(h2); else root.appendChild(h2);
         h2.after(...frags);
         Lib.debug('render', `applySidebarToTables: ${frags.length} groups (${count('links')} links, ${count('tags')} tags).`);
+    }
+
+    // ── An editor's profile as tables ('user-profile') ──────────────────────
+    // `/user/<name>`: `table.profileinfo` ("General information") and every
+    // `table.statistics` (Edits, Votes, Added entities, Tags and ratings)
+    // become h3 + table.tbl groups under one h2 "Profile". Mockup picked
+    // 2026-10-20 (https://claude.ai/artifact/KtfNY1XfjyJoPb8fGjLGeu).
+    // Other userscripts' additions are never read: the "Edit Notes" h2 + ul
+    // (USER_STATS) stays where it is, and their flags and highlight styles
+    // are taken off the copied cells.
+
+    /** Other userscripts' nodes inside profile cells, dropped from the copy. */
+    const _UP_FOREIGN_SEL = 'img.mb-hq-flag-img, .mb-hq-flag-img';
+
+    /**
+     * A profile cell's content, copied without other userscripts' additions:
+     * their flag images go, their flag wrappers (`.mfe-flag-wrapper`) are
+     * unwrapped, every inline `style` (USER_STATS's highlights) is dropped,
+     * and so are comment nodes.
+     *
+     * @param   {Element} cell
+     * @returns {Node[]}
+     */
+    function _upCellNodes(cell) {
+        const box = cell.cloneNode(true);
+        box.querySelectorAll(_UP_FOREIGN_SEL).forEach(n => n.remove());
+        box.querySelectorAll('.mfe-flag-wrapper').forEach(w => w.replaceWith(...w.childNodes));
+        box.querySelectorAll('[style]').forEach(n => n.removeAttribute('style'));
+        return Array.from(box.childNodes).filter(n => n.nodeType !== Node.COMMENT_NODE);
+    }
+
+    /**
+     * A row label: the cell's text without the trailing colon.
+     *
+     * @param   {Element} cell
+     * @returns {string}
+     */
+    function _upLabel(cell) {
+        return (cell.textContent || '').replace(/\s+/g, ' ').trim().replace(/:$/, '');
+    }
+
+    /**
+     * Splits a statistics value cell ("1,466,095 (view)", "187,144 (100%)",
+     * "7,183 (17%)", a linked "662,128 (15%)") into its count, its share and
+     * its other link. A link whose text is the count or the share is kept as
+     * that column's value; a "view" link goes to `link`.
+     *
+     * @param   {?Element} cell
+     * @returns {{count: (Node[]|string), share: (Node[]|string), link: (Node[]|string)}}
+     */
+    function _upSplitStat(cell) {
+        const out = { count: '', share: '', link: '' };
+        if (!cell) return out;
+        const text = (cell.textContent || '').replace(/\s+/g, ' ').trim();
+        const count = text.match(/^[\d,.]+/);
+        const share = text.match(/\((\d+(?:\.\d+)?%)\)/);
+        if (count) out.count = count[0];
+        if (share) out.share = share[1];
+        cell.querySelectorAll('a[href]').forEach(a => {
+            const t = a.textContent.trim();
+            const copy = a.cloneNode(true);
+            copy.removeAttribute('style');
+            if (count && t === count[0]) out.count = [copy];
+            else if (/^\d+(?:\.\d+)?%$/.test(t)) out.share = [copy];
+            else out.link = [copy];
+        });
+        return out;
+    }
+
+    /**
+     * One `table.statistics` as a group: its name (the head's text, without
+     * "(view)"), its columns and rows. The votes table (two head rows) gets
+     * "Last 28 days" / "Overall" counts and shares; the others a count, a
+     * share and a link, with the columns no row fills left out. The
+     * "Total effective votes" row (one cell over both columns) and the
+     * footer's "Total" are ordinary rows.
+     *
+     * @param   {HTMLTableElement} table
+     * @returns {{name: string, cols: string[], rows: Array<Array<Node[]|string>>, intro: string}}
+     */
+    function _upStatsGroup(table) {
+        const headRows = table.querySelectorAll('thead tr');
+        const headCell = headRows[0] && headRows[0].querySelector('th');
+        const name = (headCell ? headCell.textContent : 'Statistics').replace(/\s+/g, ' ').replace(/\(\s*view\s*\)/i, '').trim();
+        const headLink = headCell && headCell.querySelector('a[href]');
+        const intro = headLink ? `<a href="${_rgEsc(headLink.getAttribute('href'))}">View all</a>` : '';
+        const first = { 'Edits': 'Status', 'Votes': 'Vote', 'Added entities': 'Entity', 'Tags and ratings': 'Kind' }[name] || 'Item';
+        const trs = Array.from(table.querySelectorAll(':scope > tbody > tr, :scope > tfoot > tr'));
+        if (headRows.length > 1) {
+            const rows = trs.map(tr => {
+                const cells = Array.from(tr.children);
+                const recent = cells.length > 2 ? _upSplitStat(cells[1]) : _upSplitStat(null);
+                const overall = _upSplitStat(cells[cells.length > 2 ? 2 : 1]);
+                return [_upLabel(cells[0]), recent.count, recent.share, overall.count, overall.share];
+            });
+            return { name, cols: [first, 'Last 28 days', 'Last 28 days %', 'Overall', 'Overall %'], rows, intro };
+        }
+        const parsed = trs.map(tr => {
+            const cells = Array.from(tr.children);
+            const s = _upSplitStat(cells[1]);
+            return [_upLabel(cells[0]), s.count, s.share, s.link];
+        });
+        const all = [first, 'Count', 'Share', 'Link'];
+        const keep = all.map((_, i) => i === 0 || parsed.some(r => r[i] !== ''));
+        return {
+            name,
+            cols: all.filter((_, i) => keep[i]),
+            rows: parsed.map(r => r.filter((_, i) => keep[i])),
+            intro,
+        };
+    }
+
+    /**
+     * Turns an editor's profile into h3 + `table.tbl` groups
+     * (`features.userProfileToTables`, pageType 'user-profile'): "General
+     * information" (Field | Value, from `table.profileinfo`) and one group
+     * per `table.statistics`. The native h2s of those blocks and the tables
+     * go; a new h2 "Profile" takes the first one's place with the groups
+     * after it. The page has no `#content`: everything is a child of
+     * `#page`. Idempotent (`data-mb-user-profile`).
+     *
+     * @param {object}           def
+     * @param {Document|Element} [docContext=document]
+     * @returns {void}
+     */
+    function applyUserProfileToTables(def, docContext = document) {
+        if (!def?.features?.userProfileToTables) return;
+        const doc = docContext.nodeType === Node.DOCUMENT_NODE ? docContext : docContext.ownerDocument;
+        const page = doc.getElementById('page');
+        if (!page || page.dataset.mbUserProfile) return;
+        const info = page.querySelector('table.profileinfo');
+        const stats = Array.from(page.querySelectorAll('table.statistics'));
+        if (!info && !stats.length) return;
+        page.dataset.mbUserProfile = '1';
+
+        const frags = [];
+        if (info) {
+            const rows = Array.from(info.querySelectorAll(':scope > tbody > tr')).map(tr => {
+                const th = tr.querySelector(':scope > th');
+                const td = tr.querySelector(':scope > td');
+                return [th ? _upLabel(th) : '', td ? _upCellNodes(td) : ''];
+            });
+            frags.push(_eventBuildTable(doc, 'General information', ['Field', 'Value'], rows));
+        }
+        stats.forEach(t => {
+            const g = _upStatsGroup(t);
+            frags.push(_eventBuildTable(doc, g.name, g.cols, g.rows, g.intro));
+        });
+
+        // The h2s that head these blocks ("General information", "Statistics").
+        const heads = [info, ...stats].filter(Boolean).map(t => {
+            let p = t.previousElementSibling;
+            while (p && p.matches('table.statistics')) p = p.previousElementSibling;
+            return p && p.tagName === 'H2' ? p : null;
+        }).filter(Boolean);
+        const h2 = doc.createElement('h2');
+        h2.className = 'mb-user-profile';
+        h2.textContent = 'Profile';
+        const first = heads[0] || info || stats[0];
+        first.before(h2);
+        h2.after(...frags);
+        new Set(heads).forEach(h => h.remove());
+        [info, ...stats].filter(Boolean).forEach(t => t.remove());
+        Lib.debug('render', `applyUserProfileToTables: ${frags.length} groups.`);
     }
 
     // ── The sidebar beside the page's own data ───────────────────────────────
@@ -119993,6 +120476,11 @@ a { color: #1565c0; }`;
             if (activeDefinition.features?.sidebarToTables) {
                 applySidebarToTables(activeDefinition);
             }
+            // And an editor's profile: the reloaded page holds its native
+            // information and statistics tables again.
+            if (activeDefinition.features?.userProfileToTables) {
+                applyUserProfileToTables(activeDefinition);
+            }
             // And moveColumnFirst ('annotations'): the reloaded native table
             // has its own column order again.
             if (activeDefinition.features?.moveColumnFirst) {
@@ -139691,6 +140179,19 @@ a { color: #1565c0; }`;
             popResolve(el) {
                 const t = _popResolve(el);
                 return t ? `${t.src.id}|${t.key}` : null;
+            },
+            /**
+             * The state of one MusicBrainz card request (`_mbPop`):
+             * 'loading', 'done' or 'failed', null when nothing asked for it,
+             * so a spec can show a request was never started rather than
+             * not sent YET (a started one waits for its rate slot).
+             *
+             * @param {string} key - e.g. `pop:page:collection:<MBID>:p2`.
+             * @returns {?string}
+             */
+            mbPopStatus(key) {
+                const s = _mbPop.get(key);
+                return s ? s.status : null;
             },
             /**
              * A foreign host's detail-page parser (`_DP_SITES[host].parse`)

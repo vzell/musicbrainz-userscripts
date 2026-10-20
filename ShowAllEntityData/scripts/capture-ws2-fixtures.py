@@ -73,12 +73,12 @@ FIXTURES = {
     'series-st': 'series/aa3694d3-a3d0-48ed-8f07-5b576de87908'
                  '?inc=release-rels+release-group-rels+recording-rels+work-rels+event-rels+artist-rels',
     # WIP.5: codes. Thunder Road's ISRC, Born to Run's ISWC, a disc ID of the
-    # probe's "Darkness" release, and a public collection (the user's own,
-    # found by the Phase 0 probe's editor browse).
+    # probe's "Darkness" release. (A collection's card reads its page since
+    # 2026-10-20: tests/fixtures/collection-page-*.html, captured with
+    # scripts/fetch-mb-page-fixture.js.)
     'isrc-thunder': 'isrc/USSM17500803?inc=artist-credits',
     'iswc-btr': 'iswc/T-070.014.903-6',
     'discid-dark': 'discid/coDDysS5IdmG1aPONqJSQd6TJws-',
-    'collection-attending': 'collection/60df131d-bdb7-3c83-840d-e31e566baabe',
     # Phase 4 (WIP.2): a barcode card is one release search on the indexed
     # `barcode` field (MusicBrainz_API/Search, checked 2026-10-08), asked as
     # the cell writes it. Probed 2026-10-08: barcode:74643190329 (the leading

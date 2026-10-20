@@ -1590,6 +1590,8 @@ an import brings your deletions back.
   second button on series, work, release group, recording and release pages
   and the artist and label Relationships tab
 - **Collections** — your own, subscribed ones, and their entity sub-tabs
+- **Editor profiles** (`/user/<name>`) — the profile's information and
+  statistics as tables
 - **Tags** — entity tag pages, user tag pages, and the most-popular-tags page
 - **Search results** — every entity type
 - **Reports** — the `/reports` index and all 117 reports across 14 categories
@@ -2066,6 +2068,18 @@ elections.
 than the rest of MusicBrainz. Every dialog, tooltip and panel renders correctly
 there; nothing is reduced.
 
+**Editor profiles** (`/user/<name>`) get a **Profile** button. It reads the
+page you are on (nothing is fetched) and turns *General information* and each
+*Statistics* table into its own sub-table under one *Profile* heading:
+*General information* (Field, Value; a long bio is clamped with a *more*
+toggle), *Edits* (Status, Count, and the share and *view* link when the page
+shows them), *Votes* (Last 28 days and Overall, each with its share; *Total
+effective votes* and *Total* are rows like the others), *Added entities* and,
+when the profile has it, *Tags and ratings*. The counts sort as numbers, so
+"1,466,095" sorts above "99". Blocks other userscripts add to a profile (an
+*Edit Notes* list, highlights, flags) are left as they are and never copied
+into the tables.
+
 </details>
 
 <details>
@@ -2122,8 +2136,15 @@ event card its date and time, place, what it is part of, line-up and first
 songs; a place card
 its address and coordinates; a series card its first items. An ISRC or ISWC
 card lists the recordings or works carrying the code; a disc ID card its
-tracks, length and releases; a collection card its type, size and editor
-(MusicBrainz shows only public collections; a private one's card says so).
+tracks, length and releases. A collection card is read from the
+collection's own page: its type, size and number of pages, whether it is
+public, its owner and collaborators, the first two lines of its description
+and its first eight entries (someone else's private collection is not shown
+to you; its card says so). Its window shows the whole description with its
+links, and the entries 25 at a time with the page's own columns and ◀ ▶ to
+page through them; a further page of MusicBrainz's (100 entries each) is read
+only when you get to it. A release or release group collection also shows
+those 25 entries' covers from the Cover Art Archive.
 An **[info]** card (the link MusicBrainz writes after each URL of a
 relationship list or a **URLs** table) shows the URL's site and address and
 which entities link it, by relationship — *Setlistfm: Event: 2025‐05‐20: Co‐op
@@ -2189,7 +2210,8 @@ the tag's own page, since MusicBrainz cannot look a tag up otherwise.
   tab instead.
 - **✎ Editing history** (or press **H**) in the window's header shows the
   entity's editing history in the same window, laid out like a Discogs
-  release's history. Every entity with an MBID has one (not a collection),
+  release's history. Every entity with an MBID has one (not a collection:
+  MusicBrainz lists no edits for one),
   and so does an editor (their edits). **← Back** (or Backspace) returns.
   - **History**: one row per edit, newest first: when it closed (an open
     edit: "voting · 7 days"), who made it, its type as a coloured pill (green

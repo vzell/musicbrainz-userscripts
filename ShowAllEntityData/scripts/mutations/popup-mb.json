@@ -404,16 +404,120 @@
         "expect": "fail"
     },
     {
-        "name": "a private collection's 401 gets no explanation",
-        "why": "The Web Service shows public collections only; 'HTTP 401' alone reads like a fault of the script.",
+        "name": "a collection we may not see gets no explanation",
+        "why": "Someone else's private collection answers 'not found'; 'HTTP 404' alone reads like a fault of the script.",
         "edits": [
             {
-                "find": "            failNote: (detail) => (/\\b40[13]\\b/.test(detail) ? ' It is probably private.' : ''),",
+                "find": "            failNote: (detail) => (/\\b40[13]\\b/.test(detail) ? ' It is probably private.'\n                : /\\b404\\b|not the page expected/.test(detail) ? ' It may be private, or no longer exist.' : ''),\n",
                 "replace": ""
             }
         ],
         "spec": "tests/fixtures/popup-mb.spec.js",
-        "grep": "a private collection",
+        "grep": "a collection we may not see",
+        "expect": "fail"
+    },
+    {
+        "name": "a release group collection's page: only its first table is read",
+        "why": "MusicBrainz splits that page into one table per release group type; the first alone held 65 of 100 rows, and the pager asked for a page 3 that does not exist.",
+        "edits": [
+            {
+                "find": "        const tables = Array.from(content.querySelectorAll('table.tbl'));",
+                "replace": "        const tables = Array.from(content.querySelectorAll('table.tbl')).slice(0, 1);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the window: the whole description",
+        "expect": "fail"
+    },
+    {
+        "name": "the collaborators are not read",
+        "why": "The point of reading the page: the Web Service has no collaborators.",
+        "edits": [
+            {
+                "find": "            collaborators: Array.from(content.querySelectorAll(':scope > div.collaborators a[href^=\"/user/\"]'))",
+                "replace": "            collaborators: Array.from(content.querySelectorAll(':scope > div.collaborators-x a[href^=\"/user/\"]'))"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a collection card is read from its page",
+        "expect": "fail"
+    },
+    {
+        "name": "the pager never leaves page 1",
+        "why": "Entries 101–196 live on ?page=2; the window must read it when the pager gets there.",
+        "edits": [
+            {
+                "find": "        const n = Math.floor(from / perPage) + 1;",
+                "replace": "        const n = 1;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the window: the whole description",
+        "expect": "fail"
+    },
+    {
+        "name": "the window reads page 2 at once",
+        "why": "Slices 1–4 are page 1: a second request before the pager gets there is a request nobody asked for.",
+        "edits": [
+            {
+                "find": "        if (n > 1 && !st) _mbCollLoad(t, n, { repaint });",
+                "replace": "        if (n > 1 && !st) _mbCollLoad(t, n, { repaint });\n        if (d.pages > 1 && !_mbPop.get(_mbCollKey(t.id, 2))) _mbCollLoad(t, 2, { repaint });"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the window: the whole description",
+        "expect": "fail"
+    },
+    {
+        "name": "the stars column is copied",
+        "why": "A rating's stars do not survive the copy: an empty column.",
+        "edits": [
+            {
+                "find": "    const _MB_COLL_SKIP_COLS = new Set(['Rating', 'Begin area', 'End area']);",
+                "replace": "    const _MB_COLL_SKIP_COLS = new Set(['Begin area', 'End area']);"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the window: the whole description",
+        "expect": "fail"
+    },
+    {
+        "name": "the last slice's ▶ is not disabled",
+        "why": "Past the last entry there is nothing to show.",
+        "edits": [
+            {
+                "find": "            `${btn('next', '▶', sub < slices - 1)}</div>` : '';",
+                "replace": "            `${btn('next', '▶', true)}</div>` : '';"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "the window: the whole description",
+        "expect": "fail"
+    },
+    {
+        "name": "the card lists every entry of the page",
+        "why": "Eight, in two columns (mockup picked 2026-10-20); a hundred would fill the screen.",
+        "edits": [
+            {
+                "find": "        const first = d.rows.slice(0, _MB_COLL_CARD_ROWS);",
+                "replace": "        const first = d.rows;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "a collection card is read from its page",
+        "expect": "fail"
+    },
+    {
+        "name": "a flag script's markup inside the description is read",
+        "why": "Other userscripts' markup is never read, here as in an edit.",
+        "edits": [
+            {
+                "find": "    const _MB_EDITS_FOREIGN_CLS = /^(jesus2099|mfe-|mb-hq-|mmth|search-link|mb-batch|batch-toggle|mb-vsb)/;",
+                "replace": "    const _MB_EDITS_FOREIGN_CLS = /^(jesus2099|mfe-|mmth|search-link|mb-batch|batch-toggle|mb-vsb)/;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb.spec.js",
+        "grep": "other userscripts' additions to a collection page",
         "expect": "fail"
     },
     {
