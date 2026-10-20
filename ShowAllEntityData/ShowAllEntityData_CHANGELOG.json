@@ -1,5 +1,31 @@
 [
   {
+    "version": "9.99.1393",
+    "date": "2026-10-20",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Link preview window: a new \"✎ Editing history\" button (or press H) shows the entity's editing history in the same window, laid out like a Discogs release's history. Every entity with an MBID has one (not a collection), and so does an editor. The list has one row per edit (date, editor, a coloured type pill, what changed with the editor's note, votes or status), with chips for category and status and a Newest/Oldest switch. Click a row (or use ↑ ↓) to see that edit below: old and new values side by side with MusicBrainz's red/green marks, an edit medium's tracklist split into its old and new halves, a merge as Merge | Into, an addition or removal in one column, then the edit notes. \"Only what changed\" is on by default. Cover and event art open in the artwork viewer, \"Edit #…\" opens the edit's own card in the window, and ← Back returns.",
+          "\"Load page 2 of 7\" reads the next 50 edits. A busy entity only says \"at least 500\", so its footer has no last page. Each page is one request and selecting a row asks for nothing. A page with an open edit is read again next time, because its votes change. Logged out, the window says that MusicBrainz hides editors and notes.",
+          "The sidebar's \"Editing history\" link and an editor window's \"Their edits\" link now have a card of their own and open the same window."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "A dialog no longer closes when a button inside it is pressed with the keyboard (Enter on a focused chip in a Discogs history window, for example) and the button redraws its part of the dialog."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "An edit, editor or tag card that gets MusicBrainz's \"Verifying your browser\" page instead now says so: open the page once in a tab, then press ⟳."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1392",
     "date": "2026-10-20",
     "sections": [
