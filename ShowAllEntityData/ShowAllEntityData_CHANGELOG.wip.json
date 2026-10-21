@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.6",
+    "date": "2026-10-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The live near misses get the rich comparison card: a recording comment that \"almost follows 'live, YYYY-MM-DD: Venue, City, …'\", and a release, release group title or event name that starts with a date but is not quite in the live form, now show the text over the form it almost has, the difference marked (\"live, 1993-4-21: …\" over \"live, 1993‐04‐21: …\", \"Live, …\" over \"live, …\", \"1975‐02‐05 The Main Point, …\" over \"1975‐02‐05: The Main Point, …\"). Only a fix that cannot be read two ways is proposed, and only when the result is itself in the live form; when there is no single answer (\"05.02.1975\": which part is the day?), the text shows in one row with the part to rewrite marked."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.5",
     "date": "2026-10-21",
     "sections": [

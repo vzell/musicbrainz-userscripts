@@ -688,6 +688,15 @@ lower case ("(Live in Asbury Park 2009)" → "(live in Asbury Park 2009)"). A
 title ending in "…" shows in one row with the "…" marked: the full title is
 not on the page, so nothing is proposed.
 
+A live title, event name or recording comment that *almost* follows the live
+form shows the text over the form it almost has, the difference marked: "live,
+1993-4-21: Sony Music Studios, …" over "live, 1993‐04‐21: Sony Music Studios,
+…", "Live, …" over "live, …", "live 2004‐10‐02: …" over "live, 2004‐10‐02: …",
+"1975‐02‐05 The Main Point, …" over "1975‐02‐05: The Main Point, …". Only a fix
+that cannot be read two ways is proposed, and only when the result is itself
+in the live form. When there is no single answer ("05.02.1975": which part
+is the day?), the text shows in one row with the part to rewrite marked.
+
 ### Check title style
 
 On a MusicBrainz page with titles (release groups, releases, recordings,

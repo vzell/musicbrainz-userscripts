@@ -44439,17 +44439,20 @@
      * own setting.
      *
      * @param {?ReturnType<typeof _parseLiveTitle>} live
-     * @returns {?{kind: ('error'|'warn'), tip: string}}
+     * @returns {?{kind: ('error'|'warn'), tip: string, nearmiss?: string}} A
+     *   near miss carries its problem as `nearmiss`, for its comparison
+     *   (`_liveFlagCmp()`).
      */
     function _liveTitleFlag(live) {
         if (!live) return null;
         if ((live.kind === 'invalid' || live.kind === 'nearmiss') && Lib.settings.sa_enable_live_title_error_flag !== false) {
-            return {
-                kind: 'error',
-                tip: live.kind === 'invalid'
-                    ? `Live title date is impossible: ${live.problems.join(', ')}.`
-                    : `Starts with a date but is not a live title "YYYY-MM-DD: Venue, City, …": ${live.problems[0]}.`,
-            };
+            if (live.kind === 'nearmiss') {
+                return {
+                    kind: 'error', nearmiss: live.problems[0],
+                    tip: `Starts with a date but is not a live title "YYYY-MM-DD: Venue, City, …": ${live.problems[0]}.`,
+                };
+            }
+            return { kind: 'error', tip: `Live title date is impossible: ${live.problems.join(', ')}.` };
         }
         if ((live.sep === 'ascii' || live.sep === 'mixed') && Lib.settings.sa_enable_live_title_separator_flag !== false) {
             return {
@@ -44531,13 +44534,14 @@
      * impossible date or a near miss, `'warn'` for a plain "-" in the date.
      *
      * @param {?ReturnType<typeof _parseRecordingComment>} rc
-     * @returns {?{kind: ('error'|'warn'), tip: string}}
+     * @returns {?{kind: ('error'|'warn'), tip: string, nearmiss?: string}} A
+     *   near miss carries its problem as `nearmiss` (`_liveFlagCmp()`).
      */
     function _recCommentFlag(rc) {
         if (!rc) return null;
         const errorOn = Lib.settings.sa_enable_live_title_error_flag !== false;
         if (rc.form === 'nearmiss' && errorOn) {
-            return { kind: 'error', tip: `Recording comment almost follows "live, YYYY-MM-DD: Venue, City, …": ${rc.problem}.` };
+            return { kind: 'error', nearmiss: rc.problem, tip: `Recording comment almost follows "live, YYYY-MM-DD: Venue, City, …": ${rc.problem}.` };
         }
         const live = rc.form === 'nearmiss' ? null : rc.live;
         if (live && live.kind === 'invalid' && errorOn) {
@@ -44602,6 +44606,23 @@
      * @returns {?{at: number, la: string, lb: string, sb: string, own: string, a: string, b: string}}
      */
     function _liveSepCmp(td, recKind) {
+        const src = _liveFlagText(td, recKind);
+        if (!src) return null;
+        const b = _liveSepFixed(src.text);
+        return b === src.text ? null : { at: 0, la: src.la, lb: 'MB style', sb: 'MB style', own: 'b', a: src.text, b };
+    }
+
+    /**
+     * The text a live-title flag judged, read the way the flag's own reader
+     * reads it (`_findCellLiveTitle()`, `_findCellEventName()`,
+     * `_findCellRecordingComment()`), whitespace collapsed, and the label of
+     * its row in the rich card.
+     *
+     * @param {HTMLTableCellElement} td
+     * @param {?('plain'|'link')} recKind - Set when the comment raised the flag.
+     * @returns {?{text: string, la: ('Title'|'Event'|'Comment')}}
+     */
+    function _liveFlagText(td, recKind) {
         let text = null;
         let la = 'Title';
         if (recKind) {
@@ -44628,17 +44649,153 @@
             }
         }
         if (!text) return null;
-        const a = text.replace(/\s+/g, ' ').trim();
-        const b = _liveSepFixed(a);
-        return b === a ? null : { at: 0, la, lb: 'MB style', sb: 'MB style', own: 'b', a, b };
+        return { text: text.replace(/\s+/g, ' ').trim(), la };
+    }
+
+    /**
+     * A near miss's text in the form it almost has — or `null` when there is
+     * no single right answer. Only fixes that cannot be read two ways are
+     * made, then the result must PASS the same parser that flagged the text
+     * (`_parseLiveTitle()` "valid", or a recording comment's live forms with
+     * a valid date), so a fix is never a guess:
+     *   - a comment's event type lower-cased ("Live, …"), ", " after it
+     *     ("live 2004‐…", "live: KBCO Studios, …"), "live, " before a
+     *     date-led comment with no type;
+     *   - a year-first date's parts padded and joined by "‐" ("1993-4-21",
+     *     "1975.02.05", "2004–10–02");
+     *   - ": " after the date ("2004‐10‐02, Gund Arena, …", "… 2004‐10‐02
+     *     Gund Arena, …", "2004‐10‐02:Gund Arena");
+     *   - then `_liveSepFixed()`.
+     * Never fixed: a day-first or month-first date ("05.02.1975" — which is
+     * the day?), two years ("1973/1976"), a location that is not "Venue,
+     * City, …", several dates (" / ").
+     *
+     * @param {string} text - The text as flagged.
+     * @param {('title'|'comment')} target - A release / release group title
+     *   or event name, or a recording comment.
+     * @returns {?string}
+     */
+    function _liveNearMissFixed(text, target) {
+        const full = String(text || '').replace(/\s+/g, ' ').trim();
+        if (!full || full.includes(' / ')) return null;
+        let prefix = '';
+        let body = full;
+        let tail = '';
+        if (target === 'comment') {
+            const semi = full.indexOf(';');
+            const head = (semi < 0 ? full : full.slice(0, semi)).trim();
+            tail = semi < 0 ? '' : full.slice(semi);
+            const lower = head.toLowerCase();
+            const type = EVENT_TYPE_KEYWORDS.find(k => lower.startsWith(k) && (lower.length === k.length || /^[ ,:]/.test(lower.slice(k.length))));
+            if (type) {
+                prefix = type;
+                body = head.slice(type.length).replace(/^(?:\s*[,:]\s*|\s+)/, '');
+                if (body) prefix += ', ';
+            } else {
+                prefix = 'live, ';
+                body = head;
+            }
+            if (!body) return _liveNearMissCheck(prefix + tail, full, target);
+            if (!/^[\d?]/.test(body)) return _liveNearMissCheck(prefix + body + tail, full, target);
+        }
+        // A year-first date, padded: the only order that cannot be misread.
+        const d = /^(\d{4})\s?[‐\-–./]\s?(\d{1,2})(?:\s?[‐\-–./]\s?(\d{1,2}))?(?!\d)/.exec(body);
+        if (d) {
+            const pad = x => x.padStart(2, '0');
+            body = `${d[1]}‐${pad(d[2])}${d[3] ? `‐${pad(d[3])}` : ''}${body.slice(d[0].length)}`;
+        }
+        const h = _LIVE_DATE_HEAD_RE.exec(body);
+        if (!h) return null;
+        let after = body.slice(h[0].length);
+        if (/^:\S/.test(after)) after = `: ${after.slice(1)}`;
+        else if (/^ +[^\s,:]/.test(after)) after = `: ${after.trim()}`;
+        else if (/^, /.test(after) && !after.includes(': ')) after = `: ${after.slice(2)}`;
+        return _liveNearMissCheck(_liveSepFixed(prefix + h[0] + after) + tail, full, target);
+    }
+
+    /**
+     * `_liveNearMissFixed()`'s last step: the candidate when it differs from
+     * the text and passes the parser the flag came from, else `null`.
+     *
+     * @param {string} candidate
+     * @param {string} full - The text as flagged.
+     * @param {('title'|'comment')} target
+     * @returns {?string}
+     */
+    function _liveNearMissCheck(candidate, full, target) {
+        if (candidate === full) return null;
+        if (target === 'comment') {
+            const rc = _parseRecordingComment(candidate);
+            const ok = !!rc && ['typeonly', 'date', 'datelocation', 'location'].includes(rc.form) && (!rc.live || rc.live.kind === 'valid');
+            return ok ? candidate : null;
+        }
+        const live = _parseLiveTitle(candidate);
+        return live && live.kind === 'valid' ? candidate : null;
+    }
+
+    /**
+     * The one-row card of a near miss with no single fix
+     * (`_liveNearMissFixed()` gave `null`): the text with the part to
+     * rewrite marked — the date run for a date problem ("05.02.1975",
+     * "1973/1976"), the location for a location problem. `null` when the
+     * part is not found.
+     *
+     * @param {string} text
+     * @param {string} la - The row's label.
+     * @param {string} problem - The flag's `nearmiss`.
+     * @returns {?{at: number, kind: 'mark', la: string, a: string, s: number, e: number, sum: string}}
+     */
+    function _liveNearMissMark(text, la, problem) {
+        let s = -1;
+        let e = -1;
+        let sum = '';
+        if (/date/.test(problem)) {
+            const m = /[\d?][\d?‐\-–./]*[\d?]/.exec(text);
+            if (m) {
+                s = m.index;
+                e = m.index + m[0].length;
+                sum = 'No single fix: write the marked date as one YYYY-MM-DD date.';
+            }
+        } else if (/location/.test(problem)) {
+            const c = text.indexOf(': ');
+            if (c >= 0) {
+                s = c + 2;
+                e = text.length;
+                sum = 'No single fix: the location should read "Venue, City, …".';
+            }
+        }
+        return s >= 0 && e > s ? { at: 0, kind: 'mark', la, a: text, s, e, sum } : null;
+    }
+
+    /**
+     * The rich card's comparison for a live-title flag (`_stampLiveTitleRow()`):
+     * a separator warning's (`_liveSepCmp()`); a near miss's text over the
+     * form it almost has (`_liveNearMissFixed()`), the difference marked, or
+     * — with no single fix — its one-row card (`_liveNearMissMark()`); none
+     * for an impossible date, which has no right value to show.
+     *
+     * @param {HTMLTableCellElement} td
+     * @param {?('plain'|'link')} recKind - Set when the comment raised the flag.
+     * @param {{kind: ('error'|'warn'), nearmiss?: string}} flag
+     * @returns {?Object}
+     */
+    function _liveFlagCmp(td, recKind, flag) {
+        if (flag.kind === 'warn') return _liveSepCmp(td, recKind);
+        if (!flag.nearmiss) return null;
+        const src = _liveFlagText(td, recKind);
+        if (!src) return null;
+        const b = _liveNearMissFixed(src.text, recKind ? 'comment' : 'title');
+        if (b) return { at: 0, la: src.la, lb: 'MB style', sb: 'MB style', own: 'b', a: src.text, b };
+        return _liveNearMissMark(src.text, src.la, flag.nearmiss);
     }
 
     /**
      * Stamps (or clears) one row's live-title flag on each of `colIdxs`'
      * cells: `data-mb-live-flag` drives the tint and glyph from CSS, `title`
      * explains it, `data-mb-col-tip` marks the tooltip as this script's own.
-     * A separator warning also stores its comparison (`_liveSepCmp()`), so
-     * the rich card shows the text over its "‐" form, the hyphens marked.
+     * A separator warning or a near miss also stores its comparison
+     * (`_liveFlagCmp()`), so the rich card shows the text over its "‐" form
+     * or over the form it almost has, the difference marked.
      * Clearing removes the tooltip only from a cell this function flagged,
      * so a foreign `title` is never touched.
      *
@@ -44657,7 +44814,7 @@
             const flag = recFlag || (rec === 'plain' ? null : _liveTitleFlag(_findCellAnyLiveTitle(td)));
             if (flag) {
                 td.dataset.mbLiveFlag = flag.kind;
-                const cmp = flag.kind === 'warn' ? _liveSepCmp(td, recFlag ? rec : null) : null;
+                const cmp = _liveFlagCmp(td, recFlag ? rec : null, flag);
                 _setTipCmp(td, flag.tip, cmp ? [cmp] : []);
                 td.dataset.mbColTip = '1';
             } else if (td.dataset.mbLiveFlag) {
@@ -142332,6 +142489,18 @@ a { color: #1565c0; }`;
              */
             liveSepFixed(text) {
                 return _liveSepFixed(text);
+            },
+
+            /**
+             * Thin wrapper around `_liveNearMissFixed()` — a near miss in the
+             * form it almost has, or null when there is no single fix.
+             *
+             * @param {string} text
+             * @param {('title'|'comment')} target
+             * @returns {?string}
+             */
+            liveNearMissFixed(text, target) {
+                return _liveNearMissFixed(text, target);
             },
 
             /**

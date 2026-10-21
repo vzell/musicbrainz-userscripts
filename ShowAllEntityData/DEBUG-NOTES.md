@@ -25097,3 +25097,33 @@ credit without a date".
   1988-04-27)", "live recording of: Born to Run (on 1988-04-27)", and
   "recording engineer: Toby Scott" with no date. The comment is "live,
   1988‐04‐27: Los Angeles Memorial Sports Arena, …" (U+2010).
+
+## 2026-10-21 — rich comparison cards for the live near misses (WIP.6, branch feat/pop-user-page-lists)
+
+Env: 2026-10-21T12:53:52+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Asked for from `debug/recording-comment-diff-tooltip.html` (FRP of
+/tag/acoustic rock/recording): "Because the Night [unplugged]" with the
+comment "live, 1993-4-21: Sony Music Studios, New York, NY, USA" showed only
+'Recording comment almost follows "live, YYYY-MM-DD: …": date is not written
+YYYY-MM-DD.' The snapshot's 110 `data-mb-tip-cmp` cells were all separator
+warnings; no near-miss cell had one.
+
+- **Why:** the live-title family is family-painted (`data-mb-live-flag`), so
+  `_writeFindingAttrs()` never writes its tip and a FINDINGS `compare` would
+  be ignored; `_stampLiveTitleRow()` built a comparison for `warn` only.
+- **No corrected text existed:** the classifiers return a `problem`
+  sentence, not where it is. `_liveNearMissFixed()` rebuilds the text, and
+  every candidate must PASS the classifier that flagged it, so nothing it
+  proposes is a near miss or an impossible date (a padded "1975-2-31" is
+  rejected that way).
+- **Gotcha:** a `kind: 'mark'` entry without `at` validates in
+  `_cmpTipData()` but is never placed by `_tipTextToHtml()` (it keys entries
+  by integer `at`). The card silently had no row until `at: 0` was added.
+- Other near misses on the snapshot page: "(Live)" (many: case), "(live:
+  KBCO Studios, Boulder, CO, USA)" (fixed to "live, KBCO Studios, …", the
+  location-only form), "(live, 1973/1976)" (no fix: two years; the mark
+  card).
+- `scripts/mutations/diff-cards.json`: the two entries anchored on the old
+  `const cmp = flag.kind === 'warn' ? _liveSepCmp(…) : null;` line were
+  re-anchored on `_liveFlagCmp()`; 6 new ones, 14/14 caught.

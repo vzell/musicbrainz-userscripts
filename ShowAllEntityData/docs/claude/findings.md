@@ -138,6 +138,24 @@ WIP.2):
   changes only the date head before the first ": " of each " / " part,
   so "Wilkes-Barre" in a venue stays. Clearing the flag removes
   `data-mb-tip-cmp` with the title.
+- **The live near misses** (2026-10-21, WIP.6: `live-nearmiss`,
+  `event-live-nearmiss`, `rec-live-nearmiss`): same family, same place.
+  `_stampLiveTitleRow()` now calls `_liveFlagCmp()`, which keeps the
+  separator card for `warn`, gives a near miss (the flag carries its
+  problem as `nearmiss`, from `_liveTitleFlag()`/`_recCommentFlag()`) the
+  text over `_liveNearMissFixed()`'s form, and still gives an impossible
+  date nothing. **The fixer never guesses**: it makes only fixes that read
+  one way (a comment's type lower-cased, ", " after it, "live, " before a
+  typeless date-led comment, a YEAR-FIRST date padded and "‐"-joined, ": "
+  after the date), and the result must pass the parser that flagged it
+  (`_liveNearMissCheck()`: `_parseLiveTitle()` "valid", or a comment's live
+  forms with a valid date). A day-first or month-first date ("05.02.1975"),
+  two years ("1973/1976"), a bad location or several dates get the one-row
+  `kind: 'mark'` card instead (`_liveNearMissMark()`, the date run or the
+  location marked) — which needs `at: 0` like every entry, or
+  `_tipTextToHtml()` places it nowhere. "live: KBCO Studios, …" IS fixed to
+  "live, KBCO Studios, …": the location-only form is the one valid reading.
+  `_liveFlagText()` is the text reader both cards share.
 
 Spec `tests/fixtures/findings-diff-cards.spec.js`, mutations
 `scripts/mutations/diff-cards.json`.
