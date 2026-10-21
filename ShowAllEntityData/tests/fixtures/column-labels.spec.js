@@ -13,8 +13,8 @@ const { PAGE_URL, FIXTURE, setupRecordingOf, headerNames } = require('../support
 // PAINTS a short label ("Work" for "Recording of", "Perf." for "Performance
 // attributes") while the column keeps its NAME everywhere else. Properties:
 //   - the painted text is the label, `data-col-name` is the name, and the
-//     header's tooltip starts with the name — once, however often the
-//     header is decorated again;
+//     header's tooltip card is titled with the name — once, however often
+//     the header is decorated again (the card adds it, _tipHeaderColumnName());
 //   - with the setting off, the header paints its name;
 //   - everything keyed by name still finds the column: the 👁️ menu, a
 //     default-hidden column, the collapse buttons' visibility check;
@@ -31,22 +31,27 @@ test.beforeEach(() => { tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'col-labe
 test.afterEach(() => { if (tmpDir) fs.rmSync(tmpDir, { recursive: true, force: true }); });
 
 /**
- * The two headers: painted text (the flex's first text node), name, tooltip
- * and the name carried on the flex.
+ * The two headers: painted text (the flex's first text node), name, the
+ * name carried on the flex, and the tooltip card's titles (the "Liner
+ * notes" formatter, `__saTest.tipTextToHtml()`).
  *
  * @param {import('@playwright/test').Page} page
- * @returns {Promise<Array<{name: string, painted: string, tip: string, flexKey: ?string}>>}
+ * @returns {Promise<Array<{name: string, painted: ?string, flexKey: ?string, titles: string[], text: string}>>}
  */
 const labelledHeaders = (page) => page.evaluate((names) => names.map((name) => {
     const th = document.querySelector(`table.tbl thead tr:first-child th[data-col-name="${name}"]`);
-    if (!th) return { name, painted: null, tip: null, flexKey: null };
+    if (!th) return { name, painted: null, flexKey: null, titles: [], text: '' };
     const flex = th.querySelector('.mb-col-hdr-flex');
     const node = flex && Array.from(flex.childNodes).find((n) => n.nodeType === Node.TEXT_NODE);
+    const tip = th.getAttribute('title') || th.dataset.mbTipSaved || '';
+    const card = document.createElement('div');
+    card.innerHTML = tip ? window.__saTest.tipTextToHtml(tip, th) : '';
     return {
         name,
         painted: node ? node.textContent.trim() : null,
-        tip: th.getAttribute('title') || th.dataset.mbTipSaved || '',
         flexKey: flex ? flex.getAttribute('data-mb-col-key') : null,
+        titles: Array.from(card.querySelectorAll('.mb-tt-title')).map((t) => t.textContent),
+        text: card.textContent,
     };
 }), Object.keys(LABELS));
 
@@ -57,7 +62,7 @@ test.describe('column display labels', () => {
         for (const h of hdrs) {
             expect(h.painted, `${h.name} paints its label`).toBe(LABELS[h.name]);
             expect(h.flexKey, `${h.name}'s flex carries the name`).toBe(h.name);
-            expect(h.tip.split('\n')[0], `${h.name}'s tooltip starts with the name`).toBe(h.name);
+            expect(h.titles, `${h.name}'s card is titled with the name`).toEqual([h.name]);
         }
         const names = await headerNames(page);
         expect(names).toContain('Recording of');
@@ -72,7 +77,7 @@ test.describe('column display labels', () => {
         expect(plain).toEqual({ text: 'Name', key: false });
     });
 
-    test('the tooltip names the column once after the header is decorated again', async ({ page }) => {
+    test('the card names the column once after the header is decorated again', async ({ page }) => {
         await setupRecordingOf(page, { settings: { sa_recording_of_suggest_enable: false } });
         // Sort twice by "Recording of" (its own ▲ / ▼), then re-decorate
         // the header row the way "↻ Load remaining pages" does.
@@ -83,8 +88,8 @@ test.describe('column display labels', () => {
         const hdrs = await labelledHeaders(page);
         for (const h of hdrs) {
             expect(h.painted).toBe(LABELS[h.name]);
-            const lines = h.tip.split('\n');
-            expect(lines.filter((l) => l === h.name), `${h.name} appears once in ${JSON.stringify(h.tip)}`).toHaveLength(1);
+            expect(h.titles, `${h.name} titles its card once`).toEqual([h.name]);
+            expect(h.text.split(h.name).length - 1, `${h.name} appears once in ${JSON.stringify(h.text)}`).toBe(1);
         }
     });
 
@@ -175,7 +180,7 @@ test.describe('column display labels', () => {
         expect(names).not.toContain('Perf.');
         for (const h of await labelledHeaders(page2)) {
             expect(h.painted).toBe(LABELS[h.name]);
-            expect(h.tip.split('\n')[0]).toBe(h.name);
+            expect(h.titles).toEqual([h.name]);
         }
     });
 

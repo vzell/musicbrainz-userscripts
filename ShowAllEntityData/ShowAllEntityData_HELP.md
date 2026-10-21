@@ -803,6 +803,17 @@ header needs. The CAA and EAA columns are fitted to a fully loaded artwork
 line from the start, so the image count and the type letters stay on one line
 even while the artwork is still arriving.
 
+**Hover a column header** to see what the column holds. The tooltip shows the
+column's name in bold, then the explanation. Columns the script adds explain
+where their data comes from, for example *Derived from 'Comment': the event
+date …*. MusicBrainz's own columns (Artist, Catalog#, Country/Date, Type, …)
+get a description of their own. Where a name means different things, the
+description fits the page: on an artist's Events page, *Type* is the kind of
+event. To turn the descriptions of MusicBrainz's columns off, use *Explain
+MusicBrainz columns in header tooltips* (🎨 UI FEATURES). On other sites
+(Discogs, the Springsteen sites) only the script's own columns have such a
+tooltip.
+
 **Scrolling down** keeps the page heading with the action buttons and the
 status line ("Loaded … Fetching …") at the top of the window, from the moment
 the page opens, and once the table is shown the section bar with the global

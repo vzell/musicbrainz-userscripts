@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1403+2026-10-21",
-    "schema_entries": 469,
+    "schema_entries": 470,
     "sections": 52,
-    "settings": 417,
-    "settings_with_default": 412,
+    "settings": 418,
+    "settings_with_default": 413,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 237,
+      "checkbox": 238,
       "color_picker": 62,
       "number": 53,
       "divider": 52,
@@ -297,6 +297,7 @@
     "sa_col_filter_active_bg": "Column Filter Active Background",
     "sa_col_filter_focus_bg": "Column Filter Focus Background",
     "sa_collabsable_sidebar": "Collabsable sidebar",
+    "sa_column_descriptions": "Explain MusicBrainz columns in header tooltips",
     "sa_column_filter_highlight_bg": "Column Filter Highlight Background",
     "sa_column_filter_highlight_color": "Column Filter Highlight Color",
     "sa_column_filter_modes_compact_width": "Column Filter Switches: Compact Below (px)",
@@ -716,6 +717,7 @@
     "sa_col_filter_active_bg": "#fff9c4",
     "sa_col_filter_focus_bg": "#fffde7",
     "sa_collabsable_sidebar": true,
+    "sa_column_descriptions": true,
     "sa_column_filter_highlight_bg": "#add8e6",
     "sa_column_filter_highlight_color": "red",
     "sa_column_filter_modes_compact_width": 160,

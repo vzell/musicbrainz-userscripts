@@ -234,6 +234,9 @@ shape:
         columnLabels: { 'Long name': 'Short' }, // header paints the label, the column keeps
                                       // its name (merged over _COLUMN_LABELS; see "Column
                                       // display labels" in docs/claude/toolbar-and-header-ui.md)
+        columnDescriptions: { 'Type': 'Text' }, // a native column's header tooltip, over
+                                      // _COLUMN_DESCRIPTIONS; a value may be { default, <row
+                                      // entity>: … } ("Column header tooltips", same doc)
         tooltipColumns: [ … ],
         renderMultiRowCell: [ … ],
         splitCD: true,

@@ -24982,3 +24982,36 @@ failed, `discogs-links.spec.js:196`.
 - This is a different spec from the earlier entry's "worth watching"
   load-dependent flakes (`discogs-rate-limit.spec.js`,
   `fixture-load-no-archive-org-wait.spec.js`). Those are not addressed here.
+
+## 2026-10-21 — column header tooltips: the name in bold, descriptions for MusicBrainz's columns (WIP.3) (branch feat/short-column-labels)
+
+Env: 2026-10-21T17:05:32+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Asked from screenshots. The "Recording of" card (bold name over its
+explanation, WIP.1) looked right; the derived columns' cards (Event-Date,
+MB-Name) had no name line; MusicBrainz's own columns had no tooltip at all.
+See "Column header tooltips" in docs/claude/toolbar-and-header-ui.md.
+- **The name line lives in the card, not the tip text.** `_tipTextToHtml()`
+  prepends `_tipHeaderColumnName(el)`. This replaces WIP.1's `_tipColumnName()`,
+  which prefixed the tip text and covered only labelled headers. Tips that are
+  written later (the Relationships load state, the ⏱ Length header) would have
+  lost a text prefix; the card covers every writer.
+- **Native descriptions.** `_COLUMN_DESCRIPTIONS` has 70 names, from the native
+  headers found in `tests/fixtures/*.html`, `debug/*.html` and the raw
+  snapshots (about 100 distinct names).
+  - Edit-detail and merge tables (Old/New tracklist, Into:, Track #, …) have no
+    entry, because their meaning was not checked.
+  - Ambiguous names get texts per row entity (`_tableRowEntity()`: the first
+    MusicBrainz link of the first body row).
+- **Foreign sites are excluded** (`_foreignHost`). Their column names overlap
+  ("Title", "Artist") but mean the converter's data.
+- **`jesus2099-artifact-purge.spec.js:63` failed in the run:** it asserted the
+  Length header has no `title` at all. It now asserts the plugin's title is
+  gone and ours is there. That is still a guard: an unpurged plugin title would
+  keep ours from being set.
+- **Mutations:** `scripts/mutations/column-descriptions.json` 8/8 and
+  `column-labels.json` 11/11. One description mutation first "failed" through a
+  syntax error (`void desc;` before an `else`). That was replaced and re-run,
+  and now fails on the assertion it targets.
+- **`test:full`** 16:53:39–17:05:32 CEST (11 m 53 s): 2097/2098, the one
+  failure being the purge spec above; it passes after the change, 5/5.

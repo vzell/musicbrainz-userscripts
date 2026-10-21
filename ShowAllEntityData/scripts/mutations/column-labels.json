@@ -17,8 +17,8 @@
     "why": "A saved file keeps the header's innerHTML, not the th's data-col-name; without the flex key a reloaded header reads \"Work\" and the pair is injected a second time.",
     "edits": [
       {
-        "find": "                hdrFlex.dataset.mbColKey = colName;",
-        "replace": "                void 0;"
+        "find": "            if (colLabel !== colName) hdrFlex.dataset.mbColKey = colName;",
+        "replace": "            if (colLabel !== colName) void 0;"
       }
     ],
     "spec": "tests/fixtures/column-labels.spec.js",
@@ -39,12 +39,12 @@
     "expect": "fail"
   },
   {
-    "name": "the tooltip gets the column's name again on every decoration",
-    "why": "makeTableSortableUnified() re-runs on the same header; without the guard the tooltip grows one name line per pass.",
+    "name": "a labelled header's card is not titled with its name",
+    "why": "The card puts the column's name above the tip (_tipHeaderColumnName()); without it a header that reads \"Work\" never says it is \"Recording of\".",
     "edits": [
       {
-        "find": "        if (cur === colName || cur.startsWith(`${colName}\\n`)) return;",
-        "replace": "        if (false) return;"
+        "find": "        if (hdrName && blocks[0] !== hdrName) blocks.unshift(hdrName);",
+        "replace": "        void hdrName;"
       }
     ],
     "spec": "tests/fixtures/column-labels.spec.js",
