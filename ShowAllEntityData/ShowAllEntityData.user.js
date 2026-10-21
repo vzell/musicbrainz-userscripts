@@ -21176,7 +21176,7 @@
         artist: 'artist', release: 'release', 'release-group': 'release_group', recording: 'recording',
         work: 'work', label: 'label', area: 'area', place: 'place', event: 'event', series: 'series',
         instrument: 'instrument', collection: 'collection', user: 'editor', subscribers: 'editor',
-        usertags: 'editor', userratings: 'editor',
+        usertags: 'editor', userratings: 'editor', usertag: 'editor',
     };
 
     /**
@@ -47476,12 +47476,26 @@
      * name percent-encoded as in the link), and a tag (`/tag/<name>`, the
      * same encoding, 2026-10-19: the Web Service has no lookup of a tag by
      * name).
-     * Their tabs (`/edit/<n>/data`, `/tag/<name>/artist`) and an editor's own
-     * tag (`/user/<name>/tag/<name>`) are not previewed; an editor's edits
-     * (`/user/<name>/edits`) are an editing history (`_MB_POP_EDITS_RE`).
+     * Their tabs (`/edit/<n>/data`, `/tag/<name>/artist`) are not previewed;
+     * an editor's own tag (`/user/<name>/tag/<name>`) is `_MB_POP_USERTAG_RE`'s
+     * (since 2026-10-21), an editor's edits (`/user/<name>/edits`) an
+     * editing history (`_MB_POP_EDITS_RE`).
      * @type {RegExp}
      */
     const _MB_POP_PAGE_RE = /^\/(?:(edit)\/(\d+)|(user)\/([^/]+)|(tag)\/([^/]+))\/?$/;
+
+    /**
+     * An editor's own tag page (`/user/<editor>/tag/<tag>`, 2026-10-21), the
+     * links of their `/user/<editor>/tags`: kind `usertag`, id
+     * `<editor>/<tag>`, both as the link spells them (percent-encoded). Its
+     * kind pages (`…/tag/<tag>/artist`) are not previewed, nor its downvotes
+     * (`?show_downvoted=1`): another list than the page the card reads.
+     * @type {RegExp}
+     */
+    const _MB_POP_USERTAG_RE = /^\/user\/([^/]+)\/tag\/([^/]+)\/?$/;
+
+    /** How many of an editor's tagged entities the `usertag` card lists. */
+    const _MB_POP_USERTAG_CARD_ROWS = 6;
 
     /**
      * An editing history (org/mb-edit-history.org, 2026-10-20): an entity's
@@ -47588,6 +47602,8 @@
         // than the page the card reads: no card rather than the wrong one.
         if (a && a[2] === 'tags' && /(?:^|[?&])show_downvoted=1(?:&|$)/.test(search)) return null;
         if (a) return a[2] ? { seg: '', type: _MB_POP_ACCOUNT_KINDS[a[2]], id: a[1] } : { seg: '', type: 'applications', id: 'me' };
+        const u = _MB_POP_USERTAG_RE.exec(pathname);
+        if (u) return /(?:^|[?&])show_downvoted=1(?:&|$)/.test(search) ? null : { seg: '', type: 'usertag', id: `${u[1]}/${u[2]}` };
         const p = _MB_POP_PAGE_RE.exec(pathname);
         if (p) return { seg: p[1] || p[3] || p[5], type: p[1] || p[3] || p[5], id: p[2] || p[4] || p[6] };
         return null;
@@ -49915,10 +49931,23 @@
         const name = _mbPopText(content && content.querySelector('.tagheader h1 a[href^="/tag/"]'));
         if (!name) return null;
         const g = content.querySelector('a[href^="/genre/"]');
-        const total = Array.from(content.querySelectorAll(':scope > p'))
+        return Object.assign({ name, genre: g ? { id: (g.getAttribute('href').split('/')[2] || ''), name: _mbPopText(g) } : null },
+            _mbParseTagSections(content));
+    }
+
+    /**
+     * The body a tag page and an editor's own tag page share: "N entities
+     * found" and, per kind, its h3 and `ul` of the first entries, with the
+     * "See all N" link of a kind that has more.
+     *
+     * @param {Element} root - `#content` (a tag), `#page` (an editor's tag).
+     * @returns {{total: string, sections: Array<{kind: string, items: Array<Object>, count: number, more: string}>}}
+     */
+    function _mbParseTagSections(root) {
+        const total = Array.from(root.querySelectorAll(':scope > p'))
             .map(p => /^([\d,.]+) entit(?:y|ies) found/.exec(_mbPopText(p))).find(Boolean);
         const sections = [];
-        content.querySelectorAll(':scope > h3').forEach(h3 => {
+        root.querySelectorAll(':scope > h3').forEach(h3 => {
             const ul = h3.nextElementSibling;
             if (!ul || ul.tagName !== 'UL') return;
             const items = [];
@@ -49943,10 +49972,30 @@
                 more: more ? more.getAttribute('href') : '',
             });
         });
-        return {
-            name, genre: g ? { id: (g.getAttribute('href').split('/')[2] || ''), name: _mbPopText(g) } : null,
-            total: total ? total[1] : '', sections,
-        };
+        return { total: total ? total[1] : '', sections };
+    }
+
+    /**
+     * An editor's own tag page (`/user/<name>/tag/<tag>`, 2026-10-21): the
+     * entities THEY tagged with it. A fullwidth page without `#content`
+     * (tests/fixtures/user-tag-page-vzell-*.html): the editor in the h1,
+     * then "Entities <name> tagged as “<tag>”" (an h2 linking the tag's own
+     * page) and the tag page's body (`_mbParseTagSections()`). null for any
+     * other page (a login page): nothing is kept.
+     *
+     * @param {Document} doc
+     * @returns {?{name: string, editor: string, tag: string, total: string, sections: Array<Object>}}
+     */
+    function _mbParseUserTagPage(doc) {
+        const root = doc.getElementById('page');
+        const h2 = root ? Array.from(root.querySelectorAll(':scope > h2')).find(h => /\btagged as\b/.test(_mbPopText(h))) : null;
+        const a = h2 && h2.querySelector('a[href^="/tag/"]');
+        if (!a) return null;
+        return Object.assign({
+            name: _mbPopText(a),
+            editor: _mbPopText(root.querySelector(':scope > h1 bdi')),
+            tag: a.getAttribute('href').split('/')[2] || '',
+        }, _mbParseTagSections(root));
     }
 
     // --- Editing history (org/mb-edit-history.org, 2026-10-20) ---
@@ -50789,18 +50838,49 @@
     }
 
     /**
-     * The page of a tag's entities of one kind (`/tag/<name>/artist`): the
-     * page's own "See all" link, else built from the kind's h3 name
+     * The page of a tag's entities of one kind (`/tag/<name>/artist`, an
+     * editor's `/user/<editor>/tag/<name>/artist`): the page's own "See all"
+     * link, else built from the kind's h3 name
      * (`SA_TAG_VALUE_CATEGORY_SLUGS`); '' for a kind it does not know.
      *
-     * @param {string} tagId - The tag as in its link (percent-encoded).
+     * @param {string} base - The tag page's path, the tag as in its link
+     *   (percent-encoded): `/tag/<name>` or `/user/<editor>/tag/<name>`.
      * @param {{kind: string, more: string}} s - A section of the record.
      * @returns {string}
      */
-    function _mbPopTagKindHref(tagId, s) {
+    function _mbPopTagKindHref(base, s) {
         if (s.more) return s.more;
         const slug = SA_TAG_VALUE_CATEGORY_SLUGS[s.kind];
-        return slug ? `/tag/${tagId}/${slug}` : '';
+        return slug ? `${base}/${slug}` : '';
+    }
+
+    /**
+     * The window of a tag page or an editor's tag page: the facts on the
+     * left (`head`, then the kinds by count, each linking its page), each
+     * kind's first entries on the right, linked so they drill down (Phase
+     * 5), with "See all N" for a kind that has more.
+     *
+     * @param {Object} d - `_mbParseTagPage()`'s or `_mbParseUserTagPage()`'s record.
+     * @param {string} base - The page's path (`_mbPopTagKindHref()`).
+     * @param {string} head - The left column's title and facts (HTML).
+     * @param {string} empty - What an empty page means.
+     * @returns {string}
+     */
+    function _mbPopTagWindowHtml(d, base, head, empty) {
+        const kinds = _mbPopTagKinds(d);
+        const kindLink = (s) => {
+            const href = _mbPopTagKindHref(base, s);
+            return href ? `<a href="${_rgEsc(href)}" target="_blank" rel="noopener">${_rgEsc(s.kind)}</a>` : _rgEsc(s.kind);
+        };
+        const left = head + (kinds.length ? '<h4>By kind</h4>' + _mbPopTableHtml(['Kind', 'Count'],
+            kinds.map(s => [kindLink(s), _rgEsc(s.count.toLocaleString('en-US'))]), [1]) : '');
+        const right = kinds.length ? kinds.map(s => '<div class="mb-dp-group">' +
+            `<div class="mb-dp-gname">${_rgEsc(s.kind)} · ${_rgEsc(s.count.toLocaleString('en-US'))}</div>` +
+            '<ul class="mb-pop-taglist">' + s.items.map(e => `<li><a href="/${_rgEsc(e.type)}/${_rgEsc(e.id)}" target="_blank" rel="noopener">` +
+                `${_rgEsc(e.name)}</a>${e.extra ? ` <span class="mb-rg-dim">${_rgEsc(e.extra)}</span>` : ''}</li>`).join('') + '</ul>' +
+            (s.count > s.items.length ? `<div class="mb-dp-xsub">${kindLink({ kind: `See all ${s.count.toLocaleString('en-US')}`, more: _mbPopTagKindHref(base, s) })}</div>` : '') +
+            '</div>').join('') : `<div class="mb-dp-xsub">${_rgEsc(empty)}</div>`;
+        return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
     }
 
     /**
@@ -51796,24 +51876,48 @@
                         : '<div class="mb-tt-comment">Nothing is tagged with it.</div>');
             },
             windowHtml(d, t) {
-                const kinds = _mbPopTagKinds(d);
-                const kindLink = (s) => {
-                    const href = _mbPopTagKindHref(t.id, s);
-                    return href ? `<a href="${_rgEsc(href)}" target="_blank" rel="noopener">${_rgEsc(s.kind)}</a>` : _rgEsc(s.kind);
-                };
-                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
+                const head = `<div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
                     `<div class="mb-rg-pills">${_mbPopPillsHtml([d.genre ? 'Genre' : 'Tag'])}</div><h4>Tag</h4>` + _mbPopKvHtml([
                         ['Genre', d.genre ? `<a href="/genre/${_rgEsc(d.genre.id)}" target="_blank" rel="noopener">${_rgEsc(d.genre.name)}</a>` : 'none'],
                         ['Entities', _rgEsc(d.total)],
-                    ]) + (kinds.length ? '<h4>By kind</h4>' + _mbPopTableHtml(['Kind', 'Count'],
-                        kinds.map(s => [kindLink(s), _rgEsc(s.count.toLocaleString('en-US'))]), [1]) : '');
-                const right = kinds.length ? kinds.map(s => '<div class="mb-dp-group">' +
-                    `<div class="mb-dp-gname">${_rgEsc(s.kind)} · ${_rgEsc(s.count.toLocaleString('en-US'))}</div>` +
-                    '<ul class="mb-pop-taglist">' + s.items.map(e => `<li><a href="/${_rgEsc(e.type)}/${_rgEsc(e.id)}" target="_blank" rel="noopener">` +
-                        `${_rgEsc(e.name)}</a>${e.extra ? ` <span class="mb-rg-dim">${_rgEsc(e.extra)}</span>` : ''}</li>`).join('') + '</ul>' +
-                    (s.count > s.items.length ? `<div class="mb-dp-xsub">${kindLink({ kind: `See all ${s.count.toLocaleString('en-US')}`, more: _mbPopTagKindHref(t.id, s) })}</div>` : '') +
-                    '</div>').join('') : '<div class="mb-dp-xsub">Nothing is tagged with it.</div>';
-                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+                    ]);
+                return _mbPopTagWindowHtml(d, `/tag/${t.id}`, head, 'Nothing is tagged with it.');
+            },
+        })),
+        // An editor's own tag (2026-10-21, the links of `/user/<name>/tags`):
+        // read from its page (`_mbParseUserTagPage()`), which has the tag
+        // page's body, so the same window (`_mbPopTagWindowHtml()`). Its id
+        // is `<editor>/<tag>`, both as the link spells them. Card: how many
+        // entities, how many of each kind, the first few. Window: the facts,
+        // a link to everyone's tag (a drill into the tag card), each kind's
+        // first entries and their "See all" pages.
+        usertag: Object.assign({ title: 'Editor\'s tag', wide: false, path: id => `/user/${id.replace('/', '/tag/')}` }, _mbPopPageKind({
+            parse: _mbParseUserTagPage,
+            cardHtml(d) {
+                const kinds = _mbPopTagKinds(d);
+                const shown = kinds.slice(0, 6);
+                const first = kinds.flatMap(s => s.items).slice(0, _MB_POP_USERTAG_CARD_ROWS);
+                const n = Number(String(d.total).replace(/[,.]/g, '')) || 0;
+                return `<div class="mb-tt-title">${_rgEsc(d.name)}</div>` +
+                    `<div class="mb-tt-comment">${_rgEsc(d.editor ? `${d.editor}’s tag` : 'An editor’s tag')}</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([d.total ? `${d.total} ${d.total === '1' ? 'entity' : 'entities'}` : ''])}</div>` +
+                    '<div class="mb-tt-rule"></div>' +
+                    (shown.length
+                        ? _mbPopKvHtml(shown.map(s => [s.kind, _rgEsc(s.count.toLocaleString('en-US'))])) +
+                            (kinds.length > shown.length ? `<div class="mb-tt-dim">+ ${kinds.length - shown.length} more kinds</div>` : '') +
+                            '<ul class="mb-pop-taglist">' + first.map(e => `<li>${_rgEsc(e.name)}${e.extra ? ` <span class="mb-rg-dim">${_rgEsc(e.extra)}</span>` : ''}</li>`).join('') + '</ul>' +
+                            (n > first.length ? `<div class="mb-tt-dim">+ ${(n - first.length).toLocaleString('en-US')} more</div>` : '')
+                        : '<div class="mb-tt-comment">They tagged nothing with it.</div>');
+            },
+            windowHtml(d, t) {
+                const [editor, tag] = String(t.id).split('/');
+                const head = `<div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
+                    `<div class="mb-rg-pills">${_mbPopPillsHtml(['Editor’s tag'])}</div><h4>Tag</h4>` + _mbPopKvHtml([
+                        ['Editor', `<a href="/user/${_rgEsc(editor)}" target="_blank" rel="noopener">${_rgEsc(d.editor || editor)}</a>`],
+                        ['Entities', _rgEsc(d.total)],
+                        ['Everyone’s', `<a href="/tag/${_rgEsc(d.tag || tag)}" target="_blank" rel="noopener">${_rgEsc(d.name)}</a>`],
+                    ]);
+                return _mbPopTagWindowHtml(d, `/user/${editor}/tag/${tag}`, head, 'They tagged nothing with it.');
             },
         })),
         // An editing history (org/mb-edit-history.org, 2026-10-20): an

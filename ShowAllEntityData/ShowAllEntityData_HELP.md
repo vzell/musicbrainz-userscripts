@@ -2272,7 +2272,11 @@ secret, nor a *Revoke access* link, and it is never kept after a page load.
 The *view* beside **Tags upvoted** shows how many tags and genres the editor
 voted for, with how many votes, the ten they used most on the card, and every
 one in the window, most used first; a tag opens its own tag card. (Downvoted
-tags have no preview.) The *view* beside **Ratings** shows their ratings as
+tags have no preview.) On the editor's tags page itself, each tag link
+(*acoustic rock*, *gig*, …) shows what THAT editor tagged with it: how many
+entities, how many of each kind and the first few; its window lists each
+kind's first entries with MusicBrainz's *See all* page, and *Everyone's*
+opens the tag's own card. The *view* beside **Ratings** shows their ratings as
 their ratings page does, a few per kind, each with its stars; an entity opens
 its own card, and *All … ratings* opens MusicBrainz's full list in a tab. The
 window never copies the stars, which on MusicBrainz are links that change a

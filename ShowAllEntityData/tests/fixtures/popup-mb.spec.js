@@ -1790,7 +1790,7 @@ test.describe('MusicBrainz link previews: edit and editor, read from the page (P
 test.describe('MusicBrainz link previews: tags, read from the page', () => {
     const TAG = '/tag/alternative%20rock';
 
-    test('what is previewed: a tag, not its tabs nor an editor\'s own tag', async ({ page }) => {
+    test('what is previewed: a tag, not its tabs; an editor\'s own tag is its own kind', async ({ page }) => {
         await open(page, { settings: { sa_pop_mb: true }, showAll: false });
         const r = await page.evaluate(() => {
             const td = document.querySelector('table.tbl tbody tr td:first-child');
@@ -1808,7 +1808,7 @@ test.describe('MusicBrainz link previews: tags, read from the page', () => {
         });
         expect(r.tag).toBe('mb-entity|tag:alternative%20rock');
         expect(r.tab).toBeNull();
-        expect(r.mine).toBeNull();
+        expect(r.mine, 'an editor\'s own tag is its own kind (popup-mb-user-lists.spec.js)').toBe('mb-entity|usertag:vzell/alternative%20rock');
         expect(r.all).toBeNull();
     });
 

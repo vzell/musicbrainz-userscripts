@@ -871,8 +871,9 @@ everything the card needs in one request.
 
 - **Path:** `_MB_POP_PAGE_RE`'s third branch, `/tag/<name>` bare. The id is
   the name percent-encoded as in the link (`tag:alternative%20rock`), like
-  `user`. Not previewed: the tabs (`/tag/<name>/artist`), an editor's own tag
-  (`/user/<name>/tag/<name>`, the regex is anchored) and `/tags`.
+  `user`. Not previewed: the tabs (`/tag/<name>/artist`) and `/tags`. An
+  editor's own tag (`/user/<name>/tag/<name>`) is its own kind since
+  2026-10-21 (`usertag`, below with the editor's lists).
 - **`_mbParseTagPage()`** reads `#content`: the name from `.tagheader h1 a`,
   the genre from the first `a[href^="/genre/"]` (only a tag that is a genre
   has one), "N entities found", and per `h3` (one per entity kind, and only
@@ -1111,10 +1112,33 @@ from the page (no Web Service), through `_mbPageLoad()`.
   `span.tag-count`); one page, no pager (112 tags on capture, their counts
   sum to the profile's "Tags upvoted 347"). Card: tags, genres, votes, the
   ten most used together; window: both lists by count, each tag linked to
-  the GLOBAL `/tag/<name>` so it drills into the tag card (the editor's own
-  `/user/<name>/tag/<name>` is no kind). `?show_downvoted=1` returns null in
+  the GLOBAL `/tag/<name>` so it drills into the tag card (written when the
+  editor's own `/user/<name>/tag/<name>` was no kind; it is `usertag` since
+  2026-10-21, the window's links stay global). `?show_downvoted=1` returns null in
   `_mbPopParsePath()`: another list than the page read, never seen live
   (the account has 0 downvotes, so the profile links none).
+- **`usertag`** (`/user/<editor>/tag/<tag>`, 2026-10-21, vzell: "tag detail
+  popup support on PTs like /user/vzell/tags when hovering the tag
+  anchors"): `_MB_POP_USERTAG_RE`, checked in `_mbPopParsePath()` after the
+  account pages and before `_MB_POP_PAGE_RE`; the id is `<editor>/<tag>`,
+  both as the link spells them, and `path()` puts `/tag/` back between them.
+  Not previewed: its kind pages (`…/tag/<tag>/release`) and
+  `?show_downvoted=1`. The page is fullwidth, WITHOUT `#content`
+  (`tests/fixtures/user-tag-page-vzell-{live,acoustic-rock,gig}.html`,
+  `scripts/fetch-mb-page-fixture.js`, anonymous, 2026-10-21T21:54+02:00,
+  NB-3641): h1 the editor, h2 "Entities <editor> tagged as “<a
+  href=/tag/…>”", then the same "N entities found" and h3/`ul`/"See all N"
+  body as `/tag/<name>`. So `_mbParseTagPage()`'s body moved into
+  `_mbParseTagSections(root)`, which both parsers call
+  (`_mbParseUserTagPage()` with `#page`), and the window into
+  `_mbPopTagWindowHtml(d, base, head, empty)`, `base` being the page path
+  `_mbPopTagKindHref(base, s)` builds a kind's page from. Card: the tag,
+  "<editor>’s tag", the total, the kinds by count and the first
+  `_MB_POP_USERTAG_CARD_ROWS` (6) entries with "+ N more". Window: Editor,
+  Entities, Everyone's (`/tag/<tag>`, a drill into the tag card), then the
+  tag window's kinds. Glyph: the editor's (`_MB_KIND_ICON`). Specs:
+  `popup-mb-user-lists.spec.js` "USER TAG: …" (on the tags page before and
+  after its render), PATH; mutations `scripts/mutations/popup-user-tag.json`.
 - **`userratings`** (`/user/<name>/ratings`): `_mbParseUserRatingsPage()`
   reads per h2 "<Kind> ratings" its `ul > li`: `.current-user-rating` (1–5),
   the first link to a bare entity page outside `.inline-rating`, the rest of

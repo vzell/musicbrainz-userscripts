@@ -1,5 +1,17 @@
 [
     {
+        "version": "WIP.4",
+        "date": "2026-10-21",
+        "sections": [
+            {
+                "label": "🚀 Feature",
+                "items": [
+                    "Link previews: an editor's own tag (the links of /user/<name>/tags, e.g. /user/vzell/tag/acoustic%20rock) now has a card and a window, read from its page: what that editor tagged with it, how many entities and of which kinds, the first few on the card; in the window each kind's first entries, its \"See all\" page, and \"Everyone's\" to open the tag's own card. Works on the tags page as it loads and after its table render."
+                ]
+            }
+        ]
+    },
+    {
         "version": "WIP.3",
         "date": "2026-10-21",
         "sections": [
