@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-10-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Link previews on an editor's profile, \"Tags and ratings\": the \"view\" beside Tags upvoted shows how many tags and genres they voted for and with how many votes, the most used first; a tag opens its own tag card. The \"view\" beside Ratings shows their ratings as their ratings page does, a few per kind with their stars; an entity opens its own card. The stars on MusicBrainz's page are links that change a rating, and the window never copies them. Downvoted tags have no preview."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-10-21",
     "sections": [

@@ -21122,6 +21122,7 @@
         artist: 'artist', release: 'release', 'release-group': 'release_group', recording: 'recording',
         work: 'work', label: 'label', area: 'area', place: 'place', event: 'event', series: 'series',
         instrument: 'instrument', collection: 'collection', user: 'editor', subscribers: 'editor',
+        usertags: 'editor', userratings: 'editor',
     };
 
     /**
@@ -47057,13 +47058,17 @@
     const _MB_POP_EDITLIST_RE = /^\/user\/[^/]+\/(?:edits\/(?:open|accepted|autoedits|applied|rejected|failed|cancelled)|votes)$/;
 
     /**
-     * Two pages of an editor's account read for their cards (2026-10-21):
-     * `/user/<name>/subscribers` (kind `subscribers`, id the name) and
-     * `/account/applications` (kind `applications`, id `me`: it is always
-     * the logged-in reader's own).
+     * Pages of an editor's account read for their cards (2026-10-21):
+     * `/user/<name>/subscribers`, `/user/<name>/tags` and
+     * `/user/<name>/ratings` (the kind by `_MB_POP_ACCOUNT_KINDS`, id the
+     * name) and `/account/applications` (kind `applications`, id `me`: it is
+     * always the logged-in reader's own).
      * @type {RegExp}
      */
-    const _MB_POP_ACCOUNT_RE = /^\/(?:user\/([^/]+)\/(subscribers)|account\/(applications))\/?$/;
+    const _MB_POP_ACCOUNT_RE = /^\/(?:user\/([^/]+)\/(subscribers|tags|ratings)|account\/(applications))\/?$/;
+
+    /** `_MB_POP_ACCOUNT_RE`'s editor page → its kind in `_MB_KINDS`. */
+    const _MB_POP_ACCOUNT_KINDS = { subscribers: 'subscribers', tags: 'usertags', ratings: 'userratings' };
 
     /**
      * The id of an edit search (`/search/edits?…`, 2026-10-21): the path and
@@ -47086,8 +47091,9 @@
      * (`_MB_POP_PATH_RE`), a code (`_MB_POP_CODE_RE`), an editing history
      * (`_MB_POP_EDITS_RE`), an editor's other edit list
      * (`_MB_POP_EDITLIST_RE`) or an edit search (`_mbEditsSearchId()`, the
-     * one path that needs `search`), an editor's subscribers or the reader's
-     * applications (`_MB_POP_ACCOUNT_RE`), an edit, an editor or a tag
+     * one path that needs `search`), an editor's subscribers, tags or
+     * ratings or the reader's applications (`_MB_POP_ACCOUNT_RE`; downvoted
+     * tags are not previewed), an edit, an editor or a tag
      * (`_MB_POP_PAGE_RE`); `seg` is the path's own first segment (a disc
      * ID's page is /cdtoc/, its kind `discid`), '' when the kind's own
      * `path()` names the page (an editing history). `null` for any other
@@ -47110,7 +47116,10 @@
             return sid ? { seg: '', type: 'edits', id: sid } : null;
         }
         const a = _MB_POP_ACCOUNT_RE.exec(pathname);
-        if (a) return a[2] ? { seg: '', type: 'subscribers', id: a[1] } : { seg: '', type: 'applications', id: 'me' };
+        // An editor's downvoted tags (`?show_downvoted=1`) are another list
+        // than the page the card reads: no card rather than the wrong one.
+        if (a && a[2] === 'tags' && /(?:^|[?&])show_downvoted=1(?:&|$)/.test(search)) return null;
+        if (a) return a[2] ? { seg: '', type: _MB_POP_ACCOUNT_KINDS[a[2]], id: a[1] } : { seg: '', type: 'applications', id: 'me' };
         const p = _MB_POP_PAGE_RE.exec(pathname);
         if (p) return { seg: p[1] || p[3] || p[5], type: p[1] || p[3] || p[5], id: p[2] || p[4] || p[6] };
         return null;
@@ -48894,6 +48903,76 @@
             authorized: authorized || { cols: [], rows: [] }, developer: developer || { cols: [], rows: [] },
             digest: d ? d[1] : '',
         };
+    }
+
+    /**
+     * An editor's tags page (`/user/<name>/tags`, 2026-10-21) as a record
+     * for its card: the tags they upvoted, as the page lists them under its
+     * h3s "Genres" (`ul.genre-list`) and "Other tags" (`ul.tag-list`), each
+     * with its `span.tag-count` (how many entities they tagged with it).
+     * One page, no pager (captured 2026-10-21: 112 tags). `null` without the
+     * h2 "Tags <name> upvoted" (a login page, an error page).
+     *
+     * @param {Document} doc
+     * @returns {?{name: string, genres: Array<{name: string, count: number}>, tags: Array<{name: string, count: number}>}}
+     */
+    function _mbParseUserTagsPage(doc) {
+        const page = doc.getElementById('page');
+        const h2 = page && Array.from(page.querySelectorAll('h2')).find(x => /^Tags .+ upvoted$/.test(_mbPopText(x)));
+        if (!h2) return null;
+        const read = sel => Array.from(page.querySelectorAll(`#all-tags ${sel} > li`)).map((li) => {
+            const a = li.querySelector('a[href]');
+            return a ? { name: _mbPopText(a), count: Number(_mbPopText(li.querySelector('.tag-count')).replace(/,/g, '')) || 0 } : null;
+        }).filter(Boolean);
+        return { name: _mbPopText(page.querySelector('h1 a[href^="/user/"] bdi')), genres: read('ul.genre-list'), tags: read('ul.tag-list') };
+    }
+
+    /**
+     * An editor's ratings page (`/user/<name>/ratings`, 2026-10-21) as a
+     * record for its card: per h2 "<Kind> ratings" the ratings its `ul`
+     * shows — the value of `.current-user-rating` (1–5), the rated entity
+     * (the item's link to a bare entity page) and the rest of the item's
+     * text (an event's date, a disambiguation) — and the kind's "View all
+     * ratings" page. MusicBrainz shows a few per kind there, so the counts
+     * are of what is shown. The stars' own links (`/rating/rate/?…`, GET
+     * links that CHANGE the rating) are never read. `null` without the
+     * editor's h1 (a login page, an error page).
+     *
+     * @param {Document} doc
+     * @returns {?{name: string, kinds: Array<{kind: string, more: string,
+     *   items: Array<{rating: number, type: string, id: string, name: string, extra: string}>}>}}
+     */
+    function _mbParseUserRatingsPage(doc) {
+        const page = doc.getElementById('page');
+        const name = page ? _mbPopText(page.querySelector('h1 a[href^="/user/"] bdi')) : '';
+        if (!name) return null;
+        const kinds = [];
+        page.querySelectorAll('h2').forEach((h2) => {
+            const m = /^(.+) ratings$/.exec(_mbPopText(h2));
+            const ul = h2.nextElementSibling;
+            if (!m || !ul || ul.tagName !== 'UL') return;
+            const items = [];
+            let more = '';
+            ul.querySelectorAll(':scope > li').forEach((li) => {
+                const stars = li.querySelector('.current-user-rating');
+                const a = Array.from(li.querySelectorAll('a[href]')).find(x => !x.closest('.inline-rating') && _MB_POP_PATH_RE.test(x.getAttribute('href')));
+                if (!stars || !a) {
+                    const all = li.querySelector('a[href^="/user/"]');
+                    if (all && /View all/.test(_mbPopText(all))) more = all.getAttribute('href');
+                    return;
+                }
+                const p = _MB_POP_PATH_RE.exec(a.getAttribute('href'));
+                const rest = li.cloneNode(true);
+                rest.querySelectorAll('.inline-rating').forEach(x => x.remove());
+                const name2 = _mbPopText(a);
+                items.push({
+                    rating: Number(_mbPopText(stars)) || 0, type: p[1], id: p[2].toLowerCase(), name: name2,
+                    extra: _mbPopText(rest).replace(/^[\s\-–]+/, '').slice(name2.length).trim(),
+                });
+            });
+            kinds.push({ kind: m[1], more, items });
+        });
+        return { name, kinds };
     }
 
     /**
@@ -50910,6 +50989,62 @@
                         ['Digest auth', _rgEsc(d.digest)]]);
                 const right = sec('Authorized applications', d.authorized, 'No application is authorized.') +
                     sec('Developer applications', d.developer, 'No application is registered.');
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+        })),
+        // An editor's tags (2026-10-21), the profile's "Tags upvoted …
+        // view": read from the page (`_mbParseUserTagsPage()`). Each tag
+        // links its own `/tag/<name>` page, so a click drills into the tag
+        // card; the editor's `/user/<name>/tag/<name>` pages are no kind.
+        usertags: Object.assign({ title: 'Tags', wide: false, path: id => `/user/${id}/tags` }, _mbPopPageKind({
+            parse: _mbParseUserTagsPage,
+            cardHtml(d, t) {
+                const all = d.genres.concat(d.tags);
+                const votes = all.reduce((s, x) => s + x.count, 0);
+                const top = all.slice().sort((a, b) => (b.count - a.count) || a.name.localeCompare(b.name)).slice(0, 10);
+                return `<div class="mb-tt-title">${_rgEsc(d.name || t.id)}</div><div class="mb-tt-comment">Tags · editor</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([`${all.length} tag${all.length === 1 ? '' : 's'}`,
+                        d.genres.length ? `${d.genres.length} genre${d.genres.length === 1 ? '' : 's'}` : '',
+                        `${votes.toLocaleString('en-US')} vote${votes === 1 ? '' : 's'}`])}</div><div class="mb-tt-rule"></div>` +
+                    (top.length ? `<div class="mb-tt-body">${top.map(x => `${_rgEsc(x.name)} <span class="mb-rg-dim">${x.count}</span>`).join(', ')}</div>`
+                        : '<div class="mb-tt-comment">They have upvoted no tag.</div>');
+            },
+            windowHtml(d, t) {
+                const list = items => `<ul class="mb-pop-taglist">${items.slice().sort((a, b) => (b.count - a.count) || a.name.localeCompare(b.name))
+                    .map(x => `<li><a href="/tag/${encodeURIComponent(x.name)}" target="_blank" rel="noopener">${_rgEsc(x.name)}</a> ` +
+                        `<span class="mb-rg-dim">${x.count}</span></li>`).join('')}</ul>`;
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name || t.id)}</div><div class="mb-dp-xsub">MusicBrainz · editor · tags upvoted</div>` +
+                    `<h4>Genres · ${d.genres.length}</h4>` + (d.genres.length ? list(d.genres) : '<div class="mb-dp-xsub">None.</div>');
+                const right = `<h4>Other tags · ${d.tags.length}</h4>` + (d.tags.length ? list(d.tags) : '<div class="mb-dp-xsub">None.</div>');
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+        })),
+        // An editor's ratings (2026-10-21), the profile's "Ratings … view":
+        // read from the page (`_mbParseUserRatingsPage()`), the few per kind
+        // it shows, each entity linked so it drills; never the stars' own
+        // `/rating/rate/` links, which change the rating.
+        userratings: Object.assign({ title: 'Ratings', wide: true, path: id => `/user/${id}/ratings` }, _mbPopPageKind({
+            parse: _mbParseUserRatingsPage,
+            cardHtml(d, t) {
+                const n = d.kinds.reduce((s, k) => s + k.items.length, 0);
+                const stars = r => `${'★'.repeat(r)}${'☆'.repeat(Math.max(0, 5 - r))}`;
+                return `<div class="mb-tt-title">${_rgEsc(d.name || t.id)}</div><div class="mb-tt-comment">Ratings · editor</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([`${n} rating${n === 1 ? '' : 's'} shown`,
+                        `${d.kinds.length} kind${d.kinds.length === 1 ? '' : 's'}`])}</div><div class="mb-tt-rule"></div>` +
+                    (d.kinds.length ? _mbPopKvHtml(d.kinds.map(k => [k.kind, k.items.slice(0, 2).map(x => `${stars(x.rating)} ${_rgEsc(x.name)}`).join('<br>') +
+                        (k.items.length > 2 ? `<br><span class="mb-rg-dim">+ ${k.items.length - 2} more</span>` : '')]))
+                        : '<div class="mb-tt-comment">They have rated nothing.</div>');
+            },
+            windowHtml(d, t) {
+                const stars = r => `${'★'.repeat(r)}${'☆'.repeat(Math.max(0, 5 - r))}`;
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name || t.id)}</div><div class="mb-dp-xsub">MusicBrainz · editor · ratings</div>` +
+                    _mbPopKvHtml(d.kinds.map(k => [k.kind, _rgEsc(String(k.items.length))])) +
+                    '<p class="mb-dp-xsub">As their ratings page shows them: a few of each kind.</p>';
+                const right = d.kinds.length ? d.kinds.map(k => `<h4>${_rgEsc(k.kind)} · ${k.items.length}</h4>` +
+                    _mbPopTableHtml(['Rating', k.kind, ''], k.items.map(x => [stars(x.rating),
+                        `<a href="/${_rgEsc(x.type)}/${_rgEsc(x.id)}" target="_blank" rel="noopener">${_rgEsc(x.name)}</a>`, _rgEsc(x.extra)])) +
+                    (k.more ? `<p><a href="${_rgEsc(k.more)}" target="_blank" rel="noopener">All ${_rgEsc(k.kind.toLowerCase())} ratings</a></p>` : '')).join('')
+                    : '<div class="mb-dp-xsub">They have rated nothing.</div>';
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
         })),

@@ -2134,8 +2134,9 @@ groups**, **recordings**, **works**, **artists**, **labels**, **areas**,
 codes: **ISRCs**, **ISWCs** and **disc IDs**, **edits** and **editors**,
 **editing histories** (the sidebar's *Editing history* link), an editor's
 **other edit lists** and **edit searches** (the *view*, *N%* and *View all*
-links of a profile's statistics), an editor's **subscribers** and your
-**applications** (the profile's two *view list* links), and
+links of a profile's statistics), an editor's **subscribers**, **tags** and
+**ratings** and your **applications** (the profile's *view list* and *view*
+links), and
 **tags** (a genre or tag link, also the pills of the sidebar's Tags card).
 A **Barcode** cell has a card too: the barcode's format and the releases
 carrying it. So does an entry of a column's **📊 dropdown** that names one
@@ -2196,6 +2197,14 @@ see that page): each one's name, what it may access and when it last got a
 token, how many applications you registered, and whether digest
 authentication is on. It never shows an application's OAuth client ID or
 secret, nor a *Revoke access* link, and it is never kept after a page load.
+The *view* beside **Tags upvoted** shows how many tags and genres the editor
+voted for, with how many votes, the ten they used most on the card, and every
+one in the window, most used first; a tag opens its own tag card. (Downvoted
+tags have no preview.) The *view* beside **Ratings** shows their ratings as
+their ratings page does, a few per kind, each with its stars; an entity opens
+its own card, and *All … ratings* opens MusicBrainz's full list in a tab. The
+window never copies the stars, which on MusicBrainz are links that change a
+rating.
 A tag card shows whether the tag is a genre, how many entities carry it
 and the kinds with the most of them (*Recordings 129,479*); it is read from
 the tag's own page, since MusicBrainz cannot look a tag up otherwise.

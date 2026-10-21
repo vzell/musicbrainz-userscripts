@@ -1000,8 +1000,9 @@ Backspace, Alt+← and the kinds-path title need nothing new.
 ## MusicBrainz: an editor's lists, edit searches, subscribers and applications (2026-10-21)
 
 The links of a profile's statistics (`user-profile`, rendered by
-`applyUserProfileToTables()`): "view", "N%", "View all", "view list". All are
-read from the page (no Web Service), through `_mbPageLoad()`.
+`applyUserProfileToTables()`): "view", "N%", "View all", "view list", and
+(WIP.2) the "Tags and ratings" sub-section's tags and ratings. All are read
+from the page (no Web Service), through `_mbPageLoad()`.
 
 - **Edit lists are the `edits` kind.** `/user/<name>/edits/<status>` (the
   seven statuses the profile links: open, accepted, autoedits, applied,
@@ -1045,15 +1046,33 @@ read from the page (no Web Service), through `_mbPageLoad()`.
   The real page had no developer table on capture, so the APPS spec plants
   one with "OAuth Client ID"/"OAuth Client Secret" columns and asserts
   neither value reaches the window. **Memory-only** (`keep: () => false`).
+- **`usertags`** (`/user/<name>/tags`, `_MB_POP_ACCOUNT_KINDS`, id the
+  name): `_mbParseUserTagsPage()` needs the h2 "Tags <name> upvoted" and
+  reads `#all-tags ul.genre-list > li` and `ul.tag-list > li` (name +
+  `span.tag-count`); one page, no pager (112 tags on capture, their counts
+  sum to the profile's "Tags upvoted 347"). Card: tags, genres, votes, the
+  ten most used together; window: both lists by count, each tag linked to
+  the GLOBAL `/tag/<name>` so it drills into the tag card (the editor's own
+  `/user/<name>/tag/<name>` is no kind). `?show_downvoted=1` returns null in
+  `_mbPopParsePath()`: another list than the page read, never seen live
+  (the account has 0 downvotes, so the profile links none).
+- **`userratings`** (`/user/<name>/ratings`): `_mbParseUserRatingsPage()`
+  reads per h2 "<Kind> ratings" its `ul > li`: `.current-user-rating` (1–5),
+  the first link to a bare entity page outside `.inline-rating`, the rest of
+  the item's text with `.inline-rating` removed, and the "View all ratings"
+  link. **The stars are `/rating/rate/?…` GET links that change the
+  rating**: never copied (the window draws ★/☆ text). The page shows a few
+  per kind, so the counts say "shown".
 - Fixtures (`scripts/fetch-mb-page-fixture.js --auth`, then
   `scripts/anonymize-user-fixtures.py`, which replaces the subscribers' names
   with editor-1… and blanks developer-application cells):
   `edits-page-user-vzell-{rejected,open,votes}.html`,
   `edits-page-search-type.html`, `subscribers-page-vzell.html`,
-  `applications-page-vzell.html`. Spec: `popup-mb-user-lists.spec.js`
-  (PATH, STATUS, EMPTY, VOTES, SEARCH, SUBS, APPS), one tap test in
+  `applications-page-vzell.html`, `user-{tags,ratings}-page-vzell.html`.
+  Spec: `popup-mb-user-lists.spec.js` (PATH, STATUS, EMPTY, VOTES, SEARCH,
+  SUBS, APPS, TAGS, RATINGS), one tap test in
   `popup-mb-edits.mobile.spec.js`; mutations
-  `scripts/mutations/popup-user-lists.json` (10, all caught).
+  `scripts/mutations/popup-user-lists.json` (14, all caught).
 
 ## MusicBrainz: beyond table links (org/iframe.org, Phase 4)
 

@@ -20,13 +20,19 @@
 //            subscribers, the anonymous count, a click drills to an editor;
 //   APPS     the applications: names and access only, no "Revoke access"
 //            link, memory only; a developer application's client id and
-//            secret never reach the window; a login page names the owner.
+//            secret never reach the window; a login page names the owner;
+//   TAGS     the profile's "Tags upvoted … view": tags, genres, votes, the
+//            most used first; a tag drills into its /tag/<name> card;
+//            downvoted tags have no card (PATH);
+//   RATINGS  the profile's "Ratings … view": per kind its stars and
+//            entities, never a /rating/rate/ link; an entity drills.
 //
 // Fixtures (2026-10-21, scripts/fetch-mb-page-fixture.js --auth, then
 // scripts/anonymize-user-fixtures.py): edits-page-user-vzell-{rejected,open,
 // votes}.html, edits-page-search-type.html, subscribers-page-vzell.html (the
-// names replaced by editor-1…), applications-page-vzell.html. Mutation
-// list: scripts/mutations/popup-user-lists.json.
+// names replaced by editor-1…), applications-page-vzell.html,
+// user-{tags,ratings}-page-vzell.html. Mutation list:
+// scripts/mutations/popup-user-lists.json.
 
 const path = require('path');
 const fs = require('fs');
@@ -50,6 +56,8 @@ const PAGES = [
     [/\/search\/edits\?auto_edit_filter=.*order=desc$/, 'edits-page-search-type.html'],
     [/\/user\/vzell\/subscribers$/, 'subscribers-page-vzell.html'],
     [/\/account\/applications$/, 'applications-page-vzell.html'],
+    [/\/user\/vzell\/tags$/, 'user-tags-page-vzell.html'],
+    [/\/user\/vzell\/ratings$/, 'user-ratings-page-vzell.html'],
 ];
 const card = (page) => page.locator('#mb-dp-peek');
 const dialog = (page) => page.locator('#mb-dp-dialog');
@@ -71,7 +79,7 @@ async function open(page, { url = RG_URL, fixtureFile = RG_FIXTURE, pageFixture 
     const ctx = page.context();
     await ctx.route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
     await ctx.route(/\/ws\/2\//, (route) => route.fulfill({ status: 404, contentType: 'application/json', body: '{"error":"no fixture"}' }));
-    await ctx.route(/^https:\/\/musicbrainz\.org\/(user|account|search)\//, (route) => {
+    await ctx.route(/^https:\/\/musicbrainz\.org\/(user|account|search|tag)\//, (route) => {
         const u = route.request().url();
         if (u === url) return route.fulfill({ path: fixtureFile, contentType: 'text/html' });
         log.html.push(u.replace('https://musicbrainz.org', ''));
@@ -188,6 +196,8 @@ test.describe('MusicBrainz link previews: an editor\'s lists and account pages',
                 form: res('/search/edits'), formOnly: res('/search/edits?form_only=yes&conditions.0.name=vzell'),
                 subs: res('/user/vzell/subscribers'), apps: res('/account/applications'),
                 revoke: res('/account/applications/revoke-access/77/1'), history: res('/user/vzell/edits'),
+                tags: res('/user/vzell/tags'), down: res('/user/vzell/tags?show_downvoted=1'),
+                ratings: res('/user/vzell/ratings'), userTag: res('/user/vzell/tag/rock'),
             };
         });
         expect(r.rejected).toBe('mb-entity|edits:/user/vzell/edits/rejected');
@@ -200,6 +210,10 @@ test.describe('MusicBrainz link previews: an editor\'s lists and account pages',
         expect(r.subs).toBe('mb-entity|subscribers:vzell');
         expect(r.apps).toBe('mb-entity|applications:me');
         expect(r.revoke, 'an action is never a target').toBeNull();
+        expect(r.tags).toBe('mb-entity|usertags:vzell');
+        expect(r.down, 'downvoted tags are another list than the card reads').toBeNull();
+        expect(r.ratings).toBe('mb-entity|userratings:vzell');
+        expect(r.userTag, 'an editor\'s own tag page is no kind').toBeNull();
         expect(r.history, 'the editor\'s history as before').toBe('mb-entity|edits:user/vzell');
     });
 
@@ -314,5 +328,43 @@ test.describe('MusicBrainz link previews: an editor\'s lists and account pages',
         await hover(page, await addLink(page, '/account/applications', 'view list'));
         await expect(card(page).locator('.mb-tt-alert')).toContainText('MusicBrainz shows this page only to its logged-in owner.');
         expect(log.html, 'asked again after the reload: memory only').toEqual(['/account/applications', '/account/applications']);
+    });
+
+    test('TAGS: tags, genres and votes, the most used first; a tag drills into its own tag card', async ({ page }) => {
+        const log = await open(page);
+        await hover(page, await addLink(page, '/user/vzell/tags', 'view'));
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('vzell');
+        await expect(card(page).locator('.mb-tt-comment').first()).toHaveText('Tags · editor');
+        await expect(card(page).locator('.mb-tt-pill')).toHaveText(['112 tags', '5 genres', '347 votes']);
+        await expect(card(page).locator('.mb-tt-body').last(), 'the ten most used, genres and tags together')
+            .toHaveText('live 47, studio 40, interview 30, rock 15, soundcheck 11, pop 10, solo 10, missing_artwork_koenboone 8, 2024 6, multiple events 6');
+        await page.keyboard.press('Space');
+        await expect(title(page)).toHaveText('Tags');
+        const genres = dialog(page).locator('.mb-dp-col').first().locator('.mb-pop-taglist li');
+        await expect(genres).toHaveText(['interview 30', 'rock 15', 'pop 10', 'acoustic rock 2', 'hard rock 1']);
+        await expect(dialog(page).locator('.mb-dp-col').last().locator('.mb-pop-taglist li')).toHaveCount(107);
+        await genres.first().locator('a').click();
+        await expect(title(page)).toHaveText('Tags › Tag');
+        await expect.poll(() => log.html, { message: 'the drill asks the tag\'s own page' }).toEqual(['/user/vzell/tags', '/tag/interview']);
+    });
+
+    test('RATINGS: per kind the stars and entities, never a /rating/rate/ link; an entity drills', async ({ page }) => {
+        await open(page);
+        await hover(page, await addLink(page, '/user/vzell/ratings', 'view'));
+        await expect(card(page).locator('.mb-tt-comment').first()).toHaveText('Ratings · editor');
+        await expect(card(page).locator('.mb-tt-pill')).toHaveText(['12 ratings shown', '7 kinds']);
+        await page.keyboard.press('Space');
+        await expect(title(page)).toHaveText('Ratings');
+        const tables = dialog(page).locator('table.mb-rg-wtable');
+        await expect(tables).toHaveCount(7);
+        await expect(tables.first().locator('tbody td')).toHaveText(['★★★★★', 'Bruce Springsteen', '']);
+        await expect(tables.nth(1).locator('tbody tr').first().locator('td').last())
+            .toHaveText('(2001-05-27) (Southside Johnny & The Asbury Jukes at The Stone Pony, Southside Johnny & The Asbury Jukes Stone Pony 25th Anniversary Show)');
+        await expect(tables.nth(1).locator('tbody tr').nth(1).locator('td').first()).toHaveText('★☆☆☆☆');
+        const html = await dialog(page).innerHTML();
+        expect(html, 'never a link that changes a rating').not.toContain('/rating/rate');
+        await expect(dialog(page).locator('a[href="/user/vzell/ratings/artist"]')).toHaveText('All artist ratings');
+        await tables.first().locator('a').click();
+        await expect(title(page)).toHaveText('Ratings › Artist');
     });
 });

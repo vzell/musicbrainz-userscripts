@@ -15,6 +15,7 @@
     capture has no such table, but a later re-capture might);
   - every page: fails if a Mapbox token (pk./sk.eyJ...) is left.
 
+The editor's own tags and ratings pages (tags, ratings) are copied unchanged.
 The edit lists (rejected, open, votes, search-type) are copied unchanged:
 like the committed edits-page-*.html they name other editors and quote
 their notes, as musicbrainz.org shows them to every logged-in reader (the
@@ -36,6 +37,9 @@ FILES = {
     'search-type.html': 'edits-page-search-type.html',
     'subscribers.html': 'subscribers-page-vzell.html',
     'applications.html': 'applications-page-vzell.html',
+    # The editor's own tags and ratings (WIP.2): their own data, unchanged.
+    'tags.html': 'user-tags-page-vzell.html',
+    'ratings.html': 'user-ratings-page-vzell.html',
 }
 
 OWNER = 'vzell'

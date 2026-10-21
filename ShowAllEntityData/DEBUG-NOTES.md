@@ -24977,3 +24977,30 @@ Captured logged in with `node scripts/fetch-mb-page-fixture.js --auth`, then
   reader: the committed logged-out `user-page-vzell.html` has only the
   subscribers "view list", which the SUBS test uses on the rendered profile
   (its sub-tables start collapsed: `ensureSubTableVisible(page, 0)`).
+
+## 2026-10-21 — an editor's tags and ratings pages, for their link previews (WIP.2, branch feat/pop-user-page-lists)
+
+Env: 2026-10-21T10:48:02+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Reported after WIP.1 shipped to the branch: the profile's "Tags and ratings"
+sub-section ("Tags upvoted 347 view", "Ratings 12 view") still had no card.
+Captured logged in (`fetch-mb-page-fixture.js --auth`), no `#content` on
+either page:
+
+- **`/user/vzell/tags`**: `h2` "Tags vzell upvoted", a GET form
+  (`show_downvoted` 0/1, `order` name/count/countdesc), then
+  `#all-tags > h3 "Genres" + div#genres > ul.genre-list` and
+  `h3 "Other tags" + div#tags > ul.tag-list`; each `li` = `a[href=
+  "/user/vzell/tag/<t>"]` + `span.tag-vote-buttons > span.tag-count`. 112
+  tags, counts summing to 347 — the profile's number is VOTES, not tags.
+  No pager. "Tags downvoted 0" has no link, so the downvoted list's URL
+  shape is unseen; `?show_downvoted=1` (the form's own parameter) is
+  excluded from previews rather than shown with the upvoted data.
+- **`/user/vzell/ratings`**: per kind `h2` "<Kind> ratings" + `ul`; each
+  `li` = `span.inline-rating > span.star-rating > span.current-user-rating`
+  (text 1–5, width %) + five `a.set-rating`/`a.remove-rating` with
+  `href="/rating/rate/?entity_type=…&entity_id=…&rating=N&returnto=…"` —
+  **plain GET links that set or remove the rating** — then " - " and the
+  entity link, then an event's "(date)", `span.comment`, `span.cancelled`.
+  The last `li` of each kind: `a[href="/user/vzell/ratings/<kind>"]` "View
+  all ratings". 12 ratings over 7 kinds on capture.
