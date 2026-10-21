@@ -3742,8 +3742,16 @@ Use the Discogs history diff format in other pageTypes, for example the BB “ch
 * TODO "Links" column - switch of the native tooltip on the FRP
 
 * TODO https://musicbrainz.org/user/vzell
+** DONE initial
 
-At https://musicbrainz.org/user/vzell under the "Edits" section support also the following types of links
+At the MB user pages e.g. https://musicbrainz.org/user/vzell
+
+#+begin_example
+@debug/user-vzell.html - FRP
+#+end_example
+
+the following types of links which are typically referenced from "View..." hrefs inside columns of sub-tables should
+also get our popup detail handling
 
 #+begin_example
 https://musicbrainz.org/account/applications
@@ -3764,20 +3772,24 @@ https://musicbrainz.org/user/vzell/edits/failed
 https://musicbrainz.org/search/edits?conditions.1.operator=%3E&conditions.1.field=open_time&conditions.1.args.0=24+hours+ago&combinator=and&conditions.0.name=vzell&conditions.0.field=editor&order=desc&conditions.0.args.0=1126444&conditions.0.operator=%3D&negation=0&auto_edit_filter=
 #+end_example
 
-b.)
+** ratings and tags are still missing
 
-support "Tags and ratings"
+the user ratings and tags are still missing (see the "Tags and ratings" sub-section)
 
-c.)
+#+begin_example
+https://musicbrainz.org/user/vzell/tags
+https://musicbrainz.org/user/vzell/ratings
+#+end_example
 
-support "Added entities"
 
 * TODO on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight the corresponding row
 
 on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight
 the corresponding row
 
+
 * TODO also the the pager framework on othe detail popups like on the collections one
+
 
 * TODO on 'release-tracks' PTs render the front imahe from the sidebar alos in front of the h1 release title
 
@@ -3788,3 +3800,4 @@ on 'release-tracks' PTs render the front imahe from the sidebar alos in front of
 2.)
 
 the "View annotation history" needs a detail popup - https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f/annotations
+
