@@ -24938,3 +24938,47 @@ and blocked": 2 expected). Neither touches code this branch changed
 (discogs.com rate slot; archive.org thumbnails in fixture markup). Re-run
 alone with `--repeat-each=3`: 30/30 passed. Treated as load-dependent
 flakes under 14 workers, not seen before in DEBUG-NOTES — worth watching.
+
+## 2026-10-21 — short column header labels (WIP.1) and the discogs-links favicon flake (WIP.2) (branch feat/short-column-labels)
+
+Env: 2026-10-21T16:19:04+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+**WIP.1: display labels.** The headers of "Recording of" and "Performance
+attributes" were wide on every recording list (reported with a screenshot of
+`artist/70248960-…/recordings`). The header text was also the column's key in
+16 `collapsableColumns` lists, the 📊 sections, `sa_default_hidden_columns`,
+exports and saved files, so the column was not renamed. Instead the header
+paints a label ("Work" and "Perf.", `_COLUMN_LABELS` or
+`features.columnLabels`, gated by `sa_short_column_labels`). See "Column
+display labels" in docs/claude/toolbar-and-header-ui.md.
+- **Trap avoided: never reverse a label by its text.** The first draft had
+  `_colKeyFromLabel(text)`. It would have renamed `artist-works`' real "Work"
+  column to "Recording of" on a disk load. The name now travels on the
+  labelled flex as `data-mb-col-key`. A saved header's `innerHTML` keeps that
+  attribute, though it loses the `<th>`'s `data-col-name`.
+- **Three readers used the header text and had to change:**
+  - `isColVisible` in `syncCollapseButtonsWithColumnVisibility()`
+  - `showStatsPanel()`'s column list
+  - the "invalid regexp" filter message
+
+  All three are pinned by `tests/fixtures/column-labels.spec.js` (8 tests).
+- **Mutation check:** `scripts/mutations/column-labels.json` gave 11/11 as
+  expected. Two of them are fallbacks that no spec reaches, and are recorded
+  as `"expect": "pass"`.
+- **Snapshot baselines:** none of them carries the pair (they predate it), so
+  no drift.
+
+**WIP.2: favicon flake.** `test:full` at 16:05–16:18 CEST: 2090 passed, 1
+failed, `discogs-links.spec.js:196`.
+- **Symptom:** one GM request too many, `https://support.discogs.com/favicon.ico`.
+- **Cause:** `_extIconEnsure()` asks a host for its icon after the page's own
+  answer, through the host's rate slot. That is intended. Under 14 workers the
+  request lands before the spec's "only the article was requested" assertion;
+  alone it lands after.
+- **Reproduced** with `--repeat-each=28 --workers=14` on that test alone: the
+  old assertion failed 1/28 (that favicon line), the narrowed one passed 28/28.
+  The assertion now leaves out `/favicon.ico`; icons are covered by
+  `popup-ext.spec.js`.
+- This is a different spec from the earlier entry's "worth watching"
+  load-dependent flakes (`discogs-rate-limit.spec.js`,
+  `fixture-load-no-archive-org-wait.spec.js`). Those are not addressed here.
