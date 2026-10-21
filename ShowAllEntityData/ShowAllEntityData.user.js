@@ -3175,6 +3175,18 @@
                          'up cards nor starts searches.'
         },
 
+        sa_event_rg_event_card: {
+            label: 'Show the track\'s event above the "#" release group card',
+            type: 'checkbox',
+            default: true,
+            description: 'Stacks a card of the event the track was recorded at (its "Recorded at event" link) ' +
+                         'right above the "#" release group card: its name, type, date, place, tour, line-up and ' +
+                         'the start of its setlist, as the event link\'s own preview shows them. The first hover ' +
+                         'on a track of an event asks MusicBrainz once (after the release group search, at the ' +
+                         'same one-a-second pace); the answer is kept like the other previews. A track whose event ' +
+                         'is named only in its comment, without a link, shows no event card.'
+        },
+
         sa_event_rg_search_phrase: {
             label: 'Search the event name as an exact phrase',
             type: 'checkbox',
@@ -19859,9 +19871,15 @@
      *   - `tip`, last: the link's own ready-made card (`data-mbtt`, e.g. a
      *     link of the Sidebar cards, `_sbLinkTip()`), as `#mb-stat-tooltip`
      *     would show it; that card gives way meanwhile (`yieldTo()`).
+     * Each box also names where it comes from (`label`), which
+     * `_dpFillNotes()` writes as its kind line, as the card has one:
+     * "Finding" (a finding's tip, `data-mb-finding-tip`), "Note" (any other
+     * tip or title of the cell), "Track ≠ recording", "Link title" (the
+     * link's own title), "Link" (the link's own card, a Relationships icon's
+     * box), "Filter" (the Relationships filter's view of the cell).
      *
      * @param {object} t - A target (`_popResolve()`).
-     * @returns {Array<{kind: string, html: string}>}
+     * @returns {Array<{kind: string, html: string, label: string}>}
      */
     function _dpCollectNotes(t) {
         const squash = s => String(s).replace(/\s+/g, ' ').trim().toLowerCase();
@@ -19874,7 +19892,8 @@
         const relCell = own && own.tagName === 'A' && own.closest('td.mb-rel-cell');
         if (relCell) {
             const kinds = { filter: 'rel', finding: 'tip' };
-            return _relStackParts(relCell, own).map(p => ({ kind: kinds[p.kind] || 'title', html: p.html }));
+            const labels = { filter: 'Filter', finding: 'Finding' };
+            return _relStackParts(relCell, own).map(p => ({ kind: kinds[p.kind] || 'title', html: p.html, label: labels[p.kind] || 'Link' }));
         }
         // The link's note box compares the two names; the cell's finding box
         // then gives the label alone, not the same comparison again.
@@ -19883,16 +19902,19 @@
             const text = _dpTitleText(n).trim();
             if (n === own) {
                 const note = _dpOriginNote(n);
-                if (note) return { kind: 'origin', html: _dpOriginHtml(note) };
+                if (note) return { kind: 'origin', html: _dpOriginHtml(note), label: 'Track ≠ recording' };
             }
-            if (n.hasAttribute('data-mb-tip')) return { kind: 'tip', html: _tipTextToHtml(text, n, { noOrigin: hasOrigin }) };
+            if (n.hasAttribute('data-mb-tip')) {
+                return { kind: 'tip', html: _tipTextToHtml(text, n, { noOrigin: hasOrigin }), label: n.dataset.mbFindingTip ? 'Finding' : 'Note' };
+            }
             if (n === own && squash(text) === squash(n.textContent)) return null;
+            const label = n === own ? 'Link title' : 'Note';
             if (n === own && sortName) {
-                return { kind: 'title', html: `<dl class="mb-dp-origin-kv"><dt>Sort name</dt><dd>${_mbttEscape(text)}</dd></dl>` };
+                return { kind: 'title', html: `<dl class="mb-dp-origin-kv"><dt>Sort name</dt><dd>${_mbttEscape(text)}</dd></dl>`, label };
             }
-            return { kind: 'title', html: `<div class="mb-tt-body">${text.split('\n').map(_mbttEscape).join('<br>')}</div>` };
+            return { kind: 'title', html: `<div class="mb-tt-body">${text.split('\n').map(_mbttEscape).join('<br>')}</div>`, label };
         }).filter(Boolean);
-        if (own && own.dataset && own.dataset.mbtt) notes.push({ kind: 'tip', html: own.dataset.mbtt });
+        if (own && own.dataset && own.dataset.mbtt) notes.push({ kind: 'tip', html: own.dataset.mbtt, label: 'Link' });
         return notes;
     }
 
@@ -21115,18 +21137,29 @@
     /**
      * Fills the stack above the card with a target's notes, one box each;
      * the track/recording note's box is `#mb-dp-origin`. Hidden when there
-     * are none.
+     * are none. A source may add cards of its own below the notes, right
+     * above its card (`stack(t, start, repaint)`: the "#" cell's event,
+     * `_eventRgEventStack()`); a box with a `target` gets that target's kind
+     * line (`_dpAddKindHead()`), any other its `label` as one, without a
+     * glyph. Only a call with `start` may let such a card ask (the engine's
+     * rule): the show, never a repaint.
      *
      * @param {object} t - A target (`_popResolve()`).
+     * @param {boolean} [start] - The card is being shown (not repainted).
+     * @param {?function(): void} [repaint] - The card's repaint.
      * @returns {void}
      */
-    function _dpFillNotes(t) {
-        const notes = _dpCollectNotes(t);
+    function _dpFillNotes(t, start = false, repaint = null) {
+        const notes = _dpCollectNotes(t).concat(t.src.stack ? t.src.stack(t, start, repaint || (() => {})) : []);
         const box = _dpEnsureNotesEl();
         box.style.display = notes.length ? 'flex' : 'none';
         box.innerHTML = notes.map(n =>
             `<div class="mb-tt-liner mb-dp-note mb-dp-note-${n.kind}" role="tooltip"${n.kind === 'origin' ? ' id="mb-dp-origin"' : ''}>${n.html}</div>`
         ).join('');
+        notes.forEach((n, i) => {
+            if (n.target) _dpAddKindHead(box.children[i], n.target);
+            else if (n.label) _dpPrependKindHead(box.children[i], n.label, '');
+        });
     }
 
     /**
@@ -21143,7 +21176,7 @@
         artist: 'artist', release: 'release', 'release-group': 'release_group', recording: 'recording',
         work: 'work', label: 'label', area: 'area', place: 'place', event: 'event', series: 'series',
         instrument: 'instrument', collection: 'collection', user: 'editor', subscribers: 'editor',
-        usertags: 'editor', userratings: 'editor',
+        usertags: 'editor', userratings: 'editor', usertag: 'editor',
     };
 
     /**
@@ -21155,6 +21188,14 @@
     const _MB_KIND_ICON_FROM_ID = new Set(['annotations', 'annotation']);
 
     /**
+     * Popup sources other than `mb-entity` whose targets are MusicBrainz
+     * release groups, so they carry its glyph: the release page's subheader
+     * link (`_rgLinkSource()`) and the "#" cell (`_eventRgSource()`).
+     * @type {Set<string>}
+     */
+    const _MB_RG_SOURCE_IDS = new Set(['mb-release-group', 'mb-event-rg']);
+
+    /**
      * The URL of a MusicBrainz kind's own glyph (`_MB_KIND_ICON`), on this
      * origin; '' for a kind without one or a target of another source.
      *
@@ -21162,7 +21203,11 @@
      * @returns {string}
      */
     function _mbKindIconUrl(t) {
-        if (!t || !t.src || t.src.id !== 'mb-entity') return '';
+        if (!t || !t.src) return '';
+        // The release page's own release-group sources (_rgLinkSource(),
+        // _eventRgSource()) show a MusicBrainz release group too.
+        if (_MB_RG_SOURCE_IDS.has(t.src.id)) return `${window.location.origin}/static/images/entity/${_MB_KIND_ICON['release-group']}.svg`;
+        if (t.src.id !== 'mb-entity') return '';
         // An editing history shows the glyph of what it is the history of;
         // an annotation the glyph of the entity it annotates.
         const type = t.type === 'edits' ? _mbEditsLabel(String(t.id || '')).icon
@@ -21172,23 +21217,55 @@
     }
 
     /**
-     * Puts the target's entity glyph in front of the card's title (the
-     * entity's name, or the link's text while loading). A DOM step after
-     * every paint, so every kind's own card HTML gets it.
+     * What a target is called: the card's kind line and the window's title
+     * bar both read it, so the two never disagree ("Recording", "Discogs ·
+     * release", "Rejected edits").
+     *
+     * @param {object} t - A target (`_popResolve()`).
+     * @returns {string}
+     */
+    function _dpKindLabel(t) {
+        return String(t.kind || t.src.kind || '');
+    }
+
+    /**
+     * Puts the card's kind line on top of it: the target's entity glyph
+     * (MusicBrainz kinds only) and its kind, a small version of the window's
+     * title bar. A DOM step after every paint, so every source's card HTML,
+     * the loading and the failed shells get it; a repaint replaces the
+     * card's HTML, and the line with it, so it is added once per paint.
      *
      * @param {HTMLElement} el - `#mb-dp-peek`.
      * @param {object} t - Its target.
      * @returns {void}
      */
-    function _dpAddKindIcon(el, t) {
-        const src = _mbKindIconUrl(t);
-        const title = src ? el.querySelector('.mb-tt-title') : null;
-        if (!title || title.querySelector(':scope > img.mb-pop-kind-icon')) return;
-        const img = document.createElement('img');
-        img.className = 'mb-pop-kind-icon';
-        img.alt = '';
-        img.src = src;
-        title.prepend(img);
+    function _dpAddKindHead(el, t) {
+        _dpPrependKindHead(el, _dpKindLabel(t), _mbKindIconUrl(t));
+    }
+
+    /**
+     * Puts a kind line on top of a box: a glyph (when `src` names one) and
+     * the label, the hairline under it (CSS). Once per box: a box that
+     * already starts with one keeps it.
+     *
+     * @param {HTMLElement} el - The card, or a box of the stack above it.
+     * @param {string} label
+     * @param {string} src - The glyph's URL, '' for none.
+     * @returns {void}
+     */
+    function _dpPrependKindHead(el, label, src) {
+        if (!label || el.querySelector(':scope > .mb-pop-kind-head')) return;
+        const head = document.createElement('div');
+        head.className = 'mb-pop-kind-head';
+        if (src) {
+            const img = document.createElement('img');
+            img.className = 'mb-pop-kind-icon';
+            img.alt = '';
+            img.src = src;
+            head.append(img);
+        }
+        head.append(label);
+        el.prepend(head);
     }
 
     /**
@@ -21296,7 +21373,10 @@
         const repaint = () => {
             if (!_dpPeekShowing(t.el)) return;
             el.innerHTML = t.src.card(t, false, repaint);
-            _dpAddKindIcon(el, t);
+            _dpAddKindHead(el, t);
+            // A source's own stacked cards repaint with it (their answers
+            // come in through this repaint too).
+            if (t.src.stack) _dpFillNotes(t, false, repaint);
             _dpPlacePeek(t.el);
         };
         // The notes of the link and its cell, as boxes above the card (Ctrl
@@ -21307,12 +21387,15 @@
         // A Relationships icon's own stack gives way too: the card's stack
         // carries its boxes.
         if (t.el.closest('td.mb-rel-cell')) _relHideTooltip();
-        _dpFillNotes(t);
+        _dpFillNotes(t, false, repaint);
         // Shown before the source is asked, so a request it starts finds
         // its card showing when its rate slot comes up.
         el.style.display = 'block';
         el.innerHTML = t.src.card(t, true, repaint);
-        _dpAddKindIcon(el, t);
+        _dpAddKindHead(el, t);
+        // A source's stacked cards ask after the card itself, so the card's
+        // own request keeps the first rate slot.
+        if (t.src.stack) _dpFillNotes(t, true, repaint);
         _dpPlacePeek(t.el);
     }
 
@@ -21784,7 +21867,7 @@
         // first span: the target's kind, after a drill-down the path to it
         // ("Release group › Release"), its last three steps.
         const title = _dpDialog.api ? _dpDialog.api.dialog.querySelector(':scope > div > span') : null;
-        const kinds = _dpDialog.stack.concat([t]).map(x => x.kind || x.src.kind);
+        const kinds = _dpDialog.stack.concat([t]).map(_dpKindLabel);
         if (title) {
             // MusicBrainz's glyph of the kind shown now, in front of the
             // path: inside the span, so the bar's space-between leaves no
@@ -22185,6 +22268,9 @@
                 border-left: 3px solid #8a7f6a;
             }
             #mb-dp-notes .mb-dp-note-tip { border-left-color: #c48a00; }
+            /* The "#" cell's event (_eventRgEventStack()): a whole card, so
+               the card's padding and border, not a note's left rule. */
+            #mb-dp-notes .mb-dp-note-event { padding: 8px 12px 9px; border-left: 1px solid #d9cfbd; }
             #mb-dp-origin { border-left-color: #8b1a1a; }
             #mb-dp-notes .mb-dp-origin-kv {
                 display: grid;
@@ -22201,13 +22287,24 @@
             #mb-dp-origin .mb-dp-origin-kv dt { color: #8b1a1a; }
             #mb-dp-notes .mb-dp-origin-kv dd { margin: 0; overflow-wrap: anywhere; }
             #mb-dp-origin .mb-dp-origin-track { font-weight: 700; }
-            /* MusicBrainz's own entity glyph before the card's title and the
-               window's kind (_MB_KIND_ICON). */
-            #mb-dp-peek .mb-pop-kind-icon {
+            /* The kind line of the card and of every box stacked above it
+               (_dpPrependKindHead()): MusicBrainz's own entity glyph
+               (_MB_KIND_ICON) when there is one and the kind, as in the
+               window's title bar; a hairline under it. */
+            :is(#mb-dp-peek, #mb-dp-notes .mb-dp-note) > .mb-pop-kind-head {
+                display: flex;
+                align-items: center;
+                font: 700 12px/1.3 Georgia, "Times New Roman", Times, serif;
+                color: #4a3f33;
+                padding-bottom: 5px;
+                margin-bottom: 6px;
+                border-bottom: 1px solid #d9cfbd;
+            }
+            :is(#mb-dp-peek, #mb-dp-notes) .mb-pop-kind-icon {
+                flex: none;
                 width: 16px;
                 height: 16px;
                 margin-right: 5px;
-                vertical-align: -2px;
             }
             .mb-dp-dialog .mb-dp-kind-icon {
                 width: 18px;
@@ -22237,25 +22334,25 @@
             #mb-dp-peek .mb-dp-thumbs img { height: 44px; max-width: 72px; object-fit: cover; border: 1px solid #d9cfbd; border-radius: 2px; }
             #mb-dp-peek .mb-dp-src { margin-top: 1px; }
             #mb-dp-peek .mb-dp-excerpt { font-style: italic; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-kv {
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-kv {
                 display: grid;
                 grid-template-columns: max-content minmax(0, 1fr);
                 gap: 1px 10px;
                 margin: 4px 0 0;
             }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-kv dt { font-style: italic; color: #7a6d5c; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-kv dd { margin: 0; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-tracks { margin: 3px 0 0; padding: 0; list-style: none; }
-            #mb-dp-peek .mb-dp-tracks { columns: 2; column-gap: 16px; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-tracks li { break-inside: avoid; }
-            #mb-dp-peek .mb-dp-tracks li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-pos { color: #7a6d5c; font-variant-numeric: tabular-nums; margin-right: 6px; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-kv dt { font-style: italic; color: #7a6d5c; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-kv dd { margin: 0; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-tracks { margin: 3px 0 0; padding: 0; list-style: none; }
+            :is(#mb-dp-peek, .mb-dp-note-event) .mb-dp-tracks { columns: 2; column-gap: 16px; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-tracks li { break-inside: avoid; }
+            :is(#mb-dp-peek, .mb-dp-note-event) .mb-dp-tracks li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-pos { color: #7a6d5c; font-variant-numeric: tabular-nums; margin-right: 6px; }
             :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-stat { margin: 4px 0 2px; }
             :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-stat b { font-size: 1.6em; font-variant-numeric: tabular-nums; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-spin { display: inline-block; animation: mb-dp-spin 0.9s linear infinite; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-spin { display: inline-block; animation: mb-dp-spin 0.9s linear infinite; }
             @keyframes mb-dp-spin { to { transform: rotate(360deg); } }
             @media (prefers-reduced-motion: reduce) {
-                :is(#mb-dp-peek, .mb-dp-dialog) .mb-dp-spin { animation: none; }
+                :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-dp-spin { animation: none; }
             }
             .mb-dp-dialog .mb-dp-tbtn {
                 display: inline-flex;
@@ -22618,7 +22715,7 @@
             }
             #mb-dp-peek .mb-rg-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
             #mb-dp-peek .mb-rg-headtext { min-width: 0; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-rg-pills { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-rg-pills { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
             .mb-dp-dialog .mb-rg-pills { margin: 6px 0 2px; }
             .mb-dp-dialog .mb-tt-pill {
                 display: inline-block; background: #efe6d4; color: #4a3f33; border: 1px solid #d9cfbd; border-radius: 3px;
@@ -22666,7 +22763,7 @@
             }
             /* The MusicBrainz entity cards (_mbEntitySource()): one track per
                line with its length at the end. */
-            #mb-dp-peek .mb-pop-card { width: 440px; max-width: 100%; }
+            :is(#mb-dp-peek, .mb-dp-note-event) .mb-pop-card { width: 440px; max-width: 100%; }
             /* An artist's, label's or place's picture (_mbPopCardPicture()),
                known only after a Space: 64 px beside the facts. */
             #mb-dp-peek .mb-pop-card-pic { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; align-items: start; }
@@ -22674,11 +22771,11 @@
             #mb-dp-peek .mb-pop-main { min-width: 0; }
             .mb-dp-dialog .mb-pop-xpic { margin: 6px 0 4px; }
             .mb-dp-dialog .mb-pop-xpic .mb-dp-xcover { margin: 0 0 3px; cursor: zoom-in; }
-            #mb-dp-peek .mb-pop-tracks { columns: 1; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-pop-tracks li { display: flex; gap: 6px; align-items: baseline; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-pop-tracks .mb-dp-pos { flex: none; min-width: 1.6em; margin-right: 0; }
-            :is(#mb-dp-peek, .mb-dp-dialog) .mb-pop-ttl { flex: 1; min-width: 0; }
-            #mb-dp-peek .mb-pop-ttl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            :is(#mb-dp-peek, .mb-dp-note-event) .mb-pop-tracks { columns: 1; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-pop-tracks li { display: flex; gap: 6px; align-items: baseline; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-pop-tracks .mb-dp-pos { flex: none; min-width: 1.6em; margin-right: 0; }
+            :is(#mb-dp-peek, .mb-dp-note-event, .mb-dp-dialog) .mb-pop-ttl { flex: 1; min-width: 0; }
+            :is(#mb-dp-peek, .mb-dp-note-event) .mb-pop-ttl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
             :is(#mb-dp-peek, .mb-dp-dialog) .mb-pop-len { flex: none; color: #7a6d5c; font-variant-numeric: tabular-nums; }
             .mb-dp-dialog .mb-dp-kv a, .mb-dp-dialog .mb-dp-xsub a, .mb-dp-dialog .mb-pop-ttl a { color: #6b3f12; }
             /* A collection (_mbParseCollectionPage()): two lines of its
@@ -46723,6 +46820,23 @@
     const _eventRgPlans = new WeakMap();
 
     /**
+     * A table's findings plan (`_findingPlanForTable()`), made once per
+     * table and kept in `_eventRgPlans`.
+     *
+     * @param {?HTMLTableElement} table
+     * @returns {?ReturnType<typeof _findingPlanForTable>}
+     */
+    function _eventRgPlan(table) {
+        if (!table) return null;
+        let plan = _eventRgPlans.get(table);
+        if (!plan) {
+            plan = _findingPlanForTable(table);
+            _eventRgPlans.set(table, plan);
+        }
+        return plan;
+    }
+
+    /**
      * MBIDs of the release's artist credit, from the page's own JSON.
      *
      * @returns {string[]}
@@ -46759,12 +46873,7 @@
      * @returns {?string}
      */
     function _eventSearchText(row) {
-        const table = row.closest('table');
-        let plan = table ? _eventRgPlans.get(table) : null;
-        if (table && !plan) {
-            plan = _findingPlanForTable(table);
-            _eventRgPlans.set(table, plan);
-        }
+        const plan = _eventRgPlan(row.closest('table'));
         const ce = plan ? _rowRecCommentEvent(row, plan) : null;
         if (ce) return ce.event;
         const key = row.dataset.mbEventKey || '';
@@ -47068,13 +47177,63 @@
     }
 
     /**
+     * The source the "#" cell's stacked event card claims
+     * (`_eventRgEventStack()`): a MusicBrainz entity, so its kind line has
+     * the event glyph (`_mbKindIconUrl()`).
+     * @type {{id: string, kind: string}}
+     */
+    const _EVENT_RG_EVENT_SRC = { id: 'mb-entity', kind: 'Event' };
+
+    /**
+     * The event link of a row's "Recorded at event" cell, the first one (the
+     * column holds one event per track, `_findRecordedAtDt(…)[0]`).
+     *
+     * @param {HTMLTableRowElement} row
+     * @returns {?HTMLAnchorElement}
+     */
+    function _eventRgEventLink(row) {
+        const plan = _eventRgPlan(row.closest('table'));
+        if (!plan) return null;
+        for (let i = 0; i < row.cells.length; i++) {
+            if (plan.nameOf(i) === 'Recorded at event') return row.cells[i].querySelector('a[href*="/event/"]');
+        }
+        return null;
+    }
+
+    /**
+     * The "#" cell's stacked card (`stack` of `_eventRgSource()`, shown
+     * above its release group card by `_dpFillNotes()`): the event the
+     * row's "Recorded at event" cell links, as the link previews' event card
+     * (`_MB_KINDS.event`: the same lookup, the same cache, the same rate
+     * gate). Its target is a copy of the event link's on the HOVERED cell,
+     * so the request is wanted while the "#" card shows (`_mbPopWanted()`).
+     * None when the row links no event (an event named only in the live
+     * comment has no MBID to look up) or with `sa_event_rg_event_card` off.
+     * Only a call with `start` asks: the hover, never a repaint.
+     *
+     * @param {HTMLTableCellElement} td - The "#" cell.
+     * @param {boolean} start
+     * @param {function(): void} repaint - The card's repaint.
+     * @returns {Array<{kind: string, html: string, target: object}>}
+     */
+    function _eventRgEventStack(td, start, repaint) {
+        if (Lib.settings.sa_event_rg_event_card === false || !td.parentElement) return [];
+        const a = _eventRgEventLink(td.parentElement);
+        const base = a ? _mbPopTarget(a) : null;
+        if (!base || base.type !== 'event') return [];
+        const et = Object.assign(base, { el: td, src: _EVENT_RG_EVENT_SRC });
+        return [{ kind: 'event', html: _MB_KINDS.event.card(et, start, repaint), target: et }];
+    }
+
+    /**
      * The "#" cell of a live track (`_EVENT_RG_CELL_SEL`: a release
      * tracklist row with an event key) as a source of the popup engine: the
      * release group of the track's event (`_eventRgCardHtml()`), the
-     * release's own for the main event, else one a search finds. Its card
-     * waits for Ctrl unless `sa_event_rg_tooltip_without_ctrl` is on; Space
-     * pins the window (`_eventRgWindowHtml()`), and ‹ › step down the "#"
-     * cells of every visible row, from one sub-table into the next. Off with
+     * release's own for the main event, else one a search finds; above it,
+     * the event itself (`stack`, `_eventRgEventStack()`). Its card waits for
+     * Ctrl unless `sa_event_rg_tooltip_without_ctrl` is on; Space pins the
+     * window (`_eventRgWindowHtml()`), and ‹ › step down the "#" cells of
+     * every visible row, from one sub-table into the next. Off with
      * `sa_event_rg_tooltip`.
      *
      * @returns {object} The source.
@@ -47101,6 +47260,7 @@
                 return new URL(path, window.location.origin).href;
             },
             card: (t, start, repaint) => _eventRgCardHtml(t.el, start, repaint),
+            stack: (t, start, repaint) => _eventRgEventStack(t.el, start, repaint),
             extracted: (t, start, force, repaint) => _eventRgWindowHtml(t.el, start, force, repaint),
             onAreaClick: _rgOnAreaClick,
             steps: () => Array.from(document.querySelectorAll(_EVENT_RG_CELL_SEL)).filter(td => td.getClientRects().length > 0),
@@ -47316,12 +47476,26 @@
      * name percent-encoded as in the link), and a tag (`/tag/<name>`, the
      * same encoding, 2026-10-19: the Web Service has no lookup of a tag by
      * name).
-     * Their tabs (`/edit/<n>/data`, `/tag/<name>/artist`) and an editor's own
-     * tag (`/user/<name>/tag/<name>`) are not previewed; an editor's edits
-     * (`/user/<name>/edits`) are an editing history (`_MB_POP_EDITS_RE`).
+     * Their tabs (`/edit/<n>/data`, `/tag/<name>/artist`) are not previewed;
+     * an editor's own tag (`/user/<name>/tag/<name>`) is `_MB_POP_USERTAG_RE`'s
+     * (since 2026-10-21), an editor's edits (`/user/<name>/edits`) an
+     * editing history (`_MB_POP_EDITS_RE`).
      * @type {RegExp}
      */
     const _MB_POP_PAGE_RE = /^\/(?:(edit)\/(\d+)|(user)\/([^/]+)|(tag)\/([^/]+))\/?$/;
+
+    /**
+     * An editor's own tag page (`/user/<editor>/tag/<tag>`, 2026-10-21), the
+     * links of their `/user/<editor>/tags`: kind `usertag`, id
+     * `<editor>/<tag>`, both as the link spells them (percent-encoded). Its
+     * kind pages (`…/tag/<tag>/artist`) are not previewed, nor its downvotes
+     * (`?show_downvoted=1`): another list than the page the card reads.
+     * @type {RegExp}
+     */
+    const _MB_POP_USERTAG_RE = /^\/user\/([^/]+)\/tag\/([^/]+)\/?$/;
+
+    /** How many of an editor's tagged entities the `usertag` card lists. */
+    const _MB_POP_USERTAG_CARD_ROWS = 6;
 
     /**
      * An editing history (org/mb-edit-history.org, 2026-10-20): an entity's
@@ -47428,6 +47602,8 @@
         // than the page the card reads: no card rather than the wrong one.
         if (a && a[2] === 'tags' && /(?:^|[?&])show_downvoted=1(?:&|$)/.test(search)) return null;
         if (a) return a[2] ? { seg: '', type: _MB_POP_ACCOUNT_KINDS[a[2]], id: a[1] } : { seg: '', type: 'applications', id: 'me' };
+        const u = _MB_POP_USERTAG_RE.exec(pathname);
+        if (u) return /(?:^|[?&])show_downvoted=1(?:&|$)/.test(search) ? null : { seg: '', type: 'usertag', id: `${u[1]}/${u[2]}` };
         const p = _MB_POP_PAGE_RE.exec(pathname);
         if (p) return { seg: p[1] || p[3] || p[5], type: p[1] || p[3] || p[5], id: p[2] || p[4] || p[6] };
         return null;
@@ -47741,8 +47917,8 @@
                 ? `<div class="mb-pop-card mb-pop-card-pic">${aside}<div class="mb-pop-main">${main}</div></div>`
                 : `<div class="mb-pop-card">${main}</div>`;
         }
-        const head = `<div class="mb-tt-title">${_rgEsc(t.name || t.kind)}</div><div class="mb-tt-comment">${_rgEsc(t.kind)}</div>` +
-            '<div class="mb-tt-rule"></div>';
+        // The kind is the card's kind line (_dpAddKindHead()), not repeated here.
+        const head = `<div class="mb-tt-title">${_rgEsc(t.name || t.kind)}</div><div class="mb-tt-rule"></div>`;
         if (st && st.status === 'failed') {
             return `<div class="mb-pop-card">${head}<div class="mb-tt-alert">Could not load it from MusicBrainz ` +
                 `(${_rgEsc(st.detail)}).${_rgEsc(failNote ? failNote(st.detail) : '')}</div>` +
@@ -49755,10 +49931,23 @@
         const name = _mbPopText(content && content.querySelector('.tagheader h1 a[href^="/tag/"]'));
         if (!name) return null;
         const g = content.querySelector('a[href^="/genre/"]');
-        const total = Array.from(content.querySelectorAll(':scope > p'))
+        return Object.assign({ name, genre: g ? { id: (g.getAttribute('href').split('/')[2] || ''), name: _mbPopText(g) } : null },
+            _mbParseTagSections(content));
+    }
+
+    /**
+     * The body a tag page and an editor's own tag page share: "N entities
+     * found" and, per kind, its h3 and `ul` of the first entries, with the
+     * "See all N" link of a kind that has more.
+     *
+     * @param {Element} root - `#content` (a tag), `#page` (an editor's tag).
+     * @returns {{total: string, sections: Array<{kind: string, items: Array<Object>, count: number, more: string}>}}
+     */
+    function _mbParseTagSections(root) {
+        const total = Array.from(root.querySelectorAll(':scope > p'))
             .map(p => /^([\d,.]+) entit(?:y|ies) found/.exec(_mbPopText(p))).find(Boolean);
         const sections = [];
-        content.querySelectorAll(':scope > h3').forEach(h3 => {
+        root.querySelectorAll(':scope > h3').forEach(h3 => {
             const ul = h3.nextElementSibling;
             if (!ul || ul.tagName !== 'UL') return;
             const items = [];
@@ -49783,10 +49972,30 @@
                 more: more ? more.getAttribute('href') : '',
             });
         });
-        return {
-            name, genre: g ? { id: (g.getAttribute('href').split('/')[2] || ''), name: _mbPopText(g) } : null,
-            total: total ? total[1] : '', sections,
-        };
+        return { total: total ? total[1] : '', sections };
+    }
+
+    /**
+     * An editor's own tag page (`/user/<name>/tag/<tag>`, 2026-10-21): the
+     * entities THEY tagged with it. A fullwidth page without `#content`
+     * (tests/fixtures/user-tag-page-vzell-*.html): the editor in the h1,
+     * then "Entities <name> tagged as “<tag>”" (an h2 linking the tag's own
+     * page) and the tag page's body (`_mbParseTagSections()`). null for any
+     * other page (a login page): nothing is kept.
+     *
+     * @param {Document} doc
+     * @returns {?{name: string, editor: string, tag: string, total: string, sections: Array<Object>}}
+     */
+    function _mbParseUserTagPage(doc) {
+        const root = doc.getElementById('page');
+        const h2 = root ? Array.from(root.querySelectorAll(':scope > h2')).find(h => /\btagged as\b/.test(_mbPopText(h))) : null;
+        const a = h2 && h2.querySelector('a[href^="/tag/"]');
+        if (!a) return null;
+        return Object.assign({
+            name: _mbPopText(a),
+            editor: _mbPopText(root.querySelector(':scope > h1 bdi')),
+            tag: a.getAttribute('href').split('/')[2] || '',
+        }, _mbParseTagSections(root));
     }
 
     // --- Editing history (org/mb-edit-history.org, 2026-10-20) ---
@@ -50629,18 +50838,49 @@
     }
 
     /**
-     * The page of a tag's entities of one kind (`/tag/<name>/artist`): the
-     * page's own "See all" link, else built from the kind's h3 name
+     * The page of a tag's entities of one kind (`/tag/<name>/artist`, an
+     * editor's `/user/<editor>/tag/<name>/artist`): the page's own "See all"
+     * link, else built from the kind's h3 name
      * (`SA_TAG_VALUE_CATEGORY_SLUGS`); '' for a kind it does not know.
      *
-     * @param {string} tagId - The tag as in its link (percent-encoded).
+     * @param {string} base - The tag page's path, the tag as in its link
+     *   (percent-encoded): `/tag/<name>` or `/user/<editor>/tag/<name>`.
      * @param {{kind: string, more: string}} s - A section of the record.
      * @returns {string}
      */
-    function _mbPopTagKindHref(tagId, s) {
+    function _mbPopTagKindHref(base, s) {
         if (s.more) return s.more;
         const slug = SA_TAG_VALUE_CATEGORY_SLUGS[s.kind];
-        return slug ? `/tag/${tagId}/${slug}` : '';
+        return slug ? `${base}/${slug}` : '';
+    }
+
+    /**
+     * The window of a tag page or an editor's tag page: the facts on the
+     * left (`head`, then the kinds by count, each linking its page), each
+     * kind's first entries on the right, linked so they drill down (Phase
+     * 5), with "See all N" for a kind that has more.
+     *
+     * @param {Object} d - `_mbParseTagPage()`'s or `_mbParseUserTagPage()`'s record.
+     * @param {string} base - The page's path (`_mbPopTagKindHref()`).
+     * @param {string} head - The left column's title and facts (HTML).
+     * @param {string} empty - What an empty page means.
+     * @returns {string}
+     */
+    function _mbPopTagWindowHtml(d, base, head, empty) {
+        const kinds = _mbPopTagKinds(d);
+        const kindLink = (s) => {
+            const href = _mbPopTagKindHref(base, s);
+            return href ? `<a href="${_rgEsc(href)}" target="_blank" rel="noopener">${_rgEsc(s.kind)}</a>` : _rgEsc(s.kind);
+        };
+        const left = head + (kinds.length ? '<h4>By kind</h4>' + _mbPopTableHtml(['Kind', 'Count'],
+            kinds.map(s => [kindLink(s), _rgEsc(s.count.toLocaleString('en-US'))]), [1]) : '');
+        const right = kinds.length ? kinds.map(s => '<div class="mb-dp-group">' +
+            `<div class="mb-dp-gname">${_rgEsc(s.kind)} · ${_rgEsc(s.count.toLocaleString('en-US'))}</div>` +
+            '<ul class="mb-pop-taglist">' + s.items.map(e => `<li><a href="/${_rgEsc(e.type)}/${_rgEsc(e.id)}" target="_blank" rel="noopener">` +
+                `${_rgEsc(e.name)}</a>${e.extra ? ` <span class="mb-rg-dim">${_rgEsc(e.extra)}</span>` : ''}</li>`).join('') + '</ul>' +
+            (s.count > s.items.length ? `<div class="mb-dp-xsub">${kindLink({ kind: `See all ${s.count.toLocaleString('en-US')}`, more: _mbPopTagKindHref(base, s) })}</div>` : '') +
+            '</div>').join('') : `<div class="mb-dp-xsub">${_rgEsc(empty)}</div>`;
+        return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
     }
 
     /**
@@ -51636,24 +51876,48 @@
                         : '<div class="mb-tt-comment">Nothing is tagged with it.</div>');
             },
             windowHtml(d, t) {
-                const kinds = _mbPopTagKinds(d);
-                const kindLink = (s) => {
-                    const href = _mbPopTagKindHref(t.id, s);
-                    return href ? `<a href="${_rgEsc(href)}" target="_blank" rel="noopener">${_rgEsc(s.kind)}</a>` : _rgEsc(s.kind);
-                };
-                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
+                const head = `<div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
                     `<div class="mb-rg-pills">${_mbPopPillsHtml([d.genre ? 'Genre' : 'Tag'])}</div><h4>Tag</h4>` + _mbPopKvHtml([
                         ['Genre', d.genre ? `<a href="/genre/${_rgEsc(d.genre.id)}" target="_blank" rel="noopener">${_rgEsc(d.genre.name)}</a>` : 'none'],
                         ['Entities', _rgEsc(d.total)],
-                    ]) + (kinds.length ? '<h4>By kind</h4>' + _mbPopTableHtml(['Kind', 'Count'],
-                        kinds.map(s => [kindLink(s), _rgEsc(s.count.toLocaleString('en-US'))]), [1]) : '');
-                const right = kinds.length ? kinds.map(s => '<div class="mb-dp-group">' +
-                    `<div class="mb-dp-gname">${_rgEsc(s.kind)} · ${_rgEsc(s.count.toLocaleString('en-US'))}</div>` +
-                    '<ul class="mb-pop-taglist">' + s.items.map(e => `<li><a href="/${_rgEsc(e.type)}/${_rgEsc(e.id)}" target="_blank" rel="noopener">` +
-                        `${_rgEsc(e.name)}</a>${e.extra ? ` <span class="mb-rg-dim">${_rgEsc(e.extra)}</span>` : ''}</li>`).join('') + '</ul>' +
-                    (s.count > s.items.length ? `<div class="mb-dp-xsub">${kindLink({ kind: `See all ${s.count.toLocaleString('en-US')}`, more: _mbPopTagKindHref(t.id, s) })}</div>` : '') +
-                    '</div>').join('') : '<div class="mb-dp-xsub">Nothing is tagged with it.</div>';
-                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+                    ]);
+                return _mbPopTagWindowHtml(d, `/tag/${t.id}`, head, 'Nothing is tagged with it.');
+            },
+        })),
+        // An editor's own tag (2026-10-21, the links of `/user/<name>/tags`):
+        // read from its page (`_mbParseUserTagPage()`), which has the tag
+        // page's body, so the same window (`_mbPopTagWindowHtml()`). Its id
+        // is `<editor>/<tag>`, both as the link spells them. Card: how many
+        // entities, how many of each kind, the first few. Window: the facts,
+        // a link to everyone's tag (a drill into the tag card), each kind's
+        // first entries and their "See all" pages.
+        usertag: Object.assign({ title: 'Editor\'s tag', wide: false, path: id => `/user/${id.replace('/', '/tag/')}` }, _mbPopPageKind({
+            parse: _mbParseUserTagPage,
+            cardHtml(d) {
+                const kinds = _mbPopTagKinds(d);
+                const shown = kinds.slice(0, 6);
+                const first = kinds.flatMap(s => s.items).slice(0, _MB_POP_USERTAG_CARD_ROWS);
+                const n = Number(String(d.total).replace(/[,.]/g, '')) || 0;
+                return `<div class="mb-tt-title">${_rgEsc(d.name)}</div>` +
+                    `<div class="mb-tt-comment">${_rgEsc(d.editor ? `${d.editor}’s tag` : 'An editor’s tag')}</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([d.total ? `${d.total} ${d.total === '1' ? 'entity' : 'entities'}` : ''])}</div>` +
+                    '<div class="mb-tt-rule"></div>' +
+                    (shown.length
+                        ? _mbPopKvHtml(shown.map(s => [s.kind, _rgEsc(s.count.toLocaleString('en-US'))])) +
+                            (kinds.length > shown.length ? `<div class="mb-tt-dim">+ ${kinds.length - shown.length} more kinds</div>` : '') +
+                            '<ul class="mb-pop-taglist">' + first.map(e => `<li>${_rgEsc(e.name)}${e.extra ? ` <span class="mb-rg-dim">${_rgEsc(e.extra)}</span>` : ''}</li>`).join('') + '</ul>' +
+                            (n > first.length ? `<div class="mb-tt-dim">+ ${(n - first.length).toLocaleString('en-US')} more</div>` : '')
+                        : '<div class="mb-tt-comment">They tagged nothing with it.</div>');
+            },
+            windowHtml(d, t) {
+                const [editor, tag] = String(t.id).split('/');
+                const head = `<div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
+                    `<div class="mb-rg-pills">${_mbPopPillsHtml(['Editor’s tag'])}</div><h4>Tag</h4>` + _mbPopKvHtml([
+                        ['Editor', `<a href="/user/${_rgEsc(editor)}" target="_blank" rel="noopener">${_rgEsc(d.editor || editor)}</a>`],
+                        ['Entities', _rgEsc(d.total)],
+                        ['Everyone’s', `<a href="/tag/${_rgEsc(d.tag || tag)}" target="_blank" rel="noopener">${_rgEsc(d.name)}</a>`],
+                    ]);
+                return _mbPopTagWindowHtml(d, `/user/${editor}/tag/${tag}`, head, 'They tagged nothing with it.');
             },
         })),
         // An editing history (org/mb-edit-history.org, 2026-10-20): an

@@ -1,0 +1,152 @@
+{
+  "relations": [
+    {
+      "direction": "backward",
+      "attributes": [],
+      "end": null,
+      "attribute-ids": {},
+      "ended": false,
+      "target-credit": "",
+      "begin": null,
+      "attribute-values": {},
+      "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+      "artist": {
+        "country": null,
+        "disambiguation": "",
+        "type": "Person",
+        "id": "9a214f8b-f606-47d7-803f-f1b96854ae14",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "name": "Kevin Buell",
+        "sort-name": "Buell, Kevin"
+      },
+      "target-type": "artist",
+      "type": "main performer",
+      "source-credit": ""
+    },
+    {
+      "begin": null,
+      "target-credit": "",
+      "ended": false,
+      "attribute-ids": {
+        "acoustic guitar": "00beaf8e-a781-431c-8130-7c2871696b7d",
+        "harmonica": "63e37f1a-30b6-4746-8a49-dfb55be3cdd1",
+        "other vocals": "c359be96-620a-435c-bd25-2eb0ce81a22e",
+        "piano": "b3eac5f9-7859-4416-ac39-7154e2e8d348"
+      },
+      "attributes": [
+        "acoustic guitar",
+        "harmonica",
+        "other vocals",
+        "piano"
+      ],
+      "end": null,
+      "direction": "backward",
+      "target-type": "artist",
+      "type-id": "936c7c95-3156-3889-a062-8a0cd57f8946",
+      "attribute-credits": {
+        "other vocals": "vocals"
+      },
+      "artist": {
+        "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+        "sort-name": "Springsteen, Bruce",
+        "name": "Bruce Springsteen",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "disambiguation": "",
+        "country": "US",
+        "type": "Person"
+      },
+      "attribute-values": {},
+      "type": "main performer",
+      "source-credit": ""
+    },
+    {
+      "type": "held at",
+      "source-credit": "",
+      "direction": "forward",
+      "end": null,
+      "attributes": [],
+      "attribute-ids": {},
+      "begin": null,
+      "target-credit": "",
+      "ended": false,
+      "place": {
+        "address": "Kensington Gore, London SW7 2AP",
+        "coordinates": {
+          "latitude": 51.50105,
+          "longitude": -0.17748
+        },
+        "type": "Concert hall / Theatre",
+        "disambiguation": "",
+        "type-id": "e3e38e27-d866-4877-920d-916a124e7111",
+        "name": "Royal Albert Hall",
+        "area": {
+          "id": "b9576171-3434-4d1b-8883-165ed6e65d2f",
+          "iso-3166-2-codes": [
+            "GB-KEC"
+          ],
+          "sort-name": "Kensington and Chelsea",
+          "name": "Kensington and Chelsea",
+          "type-id": "fd3d44c5-80a1-3842-9745-2c4972d35afa",
+          "disambiguation": "",
+          "type": "Subdivision"
+        },
+        "id": "4352063b-a833-421b-a420-e7fb295dece0"
+      },
+      "attribute-values": {},
+      "type-id": "e2c6f697-07dc-38b1-be0b-83d740165532",
+      "target-type": "place"
+    },
+    {
+      "attribute-values": {},
+      "type-id": "707d947d-9563-328a-9a7d-0c5b9c3a9791",
+      "target-type": "series",
+      "series": {
+        "type-id": "8ff6df0e-3dce-3bdf-bd57-d386c51b0060",
+        "name": "The Ghost of Tom Joad Tour: Solo Acoustic",
+        "type": "Tour",
+        "disambiguation": "",
+        "id": "5baa4a40-5c7a-466a-b2d7-b8d9c198a035"
+      },
+      "direction": "forward",
+      "end": null,
+      "attributes": [],
+      "attribute-ids": {},
+      "target-credit": "",
+      "ended": false,
+      "begin": null,
+      "source-credit": "",
+      "type": "part of"
+    },
+    {
+      "source-credit": "",
+      "type": "review",
+      "type-id": "30ee8e92-5722-4dd7-943c-a2fa82b9aff4",
+      "attribute-values": {},
+      "target-type": "url",
+      "attributes": [],
+      "end": null,
+      "direction": "forward",
+      "url": {
+        "id": "92ff8945-7ab6-4962-924d-4e4a4c8ccd86",
+        "resource": "http://brucebase.wikidot.com/1996#220496"
+      },
+      "target-credit": "",
+      "begin": null,
+      "ended": false,
+      "attribute-ids": {}
+    }
+  ],
+  "cancelled": false,
+  "setlist": "@ [70248960-cb53-4ea4-943a-edb18f7d336f|Bruce Springsteen]\r\n# with\r\n@ [9a214f8b-f606-47d7-803f-f1b96854ae14|Kevin Buell]\r\n\r\n# Soundcheck\r\n* [e2ed6926-6b80-354c-932c-d4cf9f154bec|My Father’s House]\r\n* [194391fb-0e28-3a81-bae1-9483d10f67e6|If I Should Fall Behind]\r\n* [6eaeba87-f301-3932-84a5-39d4d88f9c53|The Angel]\r\n* [dd21710e-a51b-3029-ae58-cd6a3559af26|You Can Look (but You Better Not Touch)]\r\n* [edee001d-572c-352a-8486-dcfe06f8fc90|Atlantic City]\r\n* [cce38f48-6d14-4f2f-80fd-a09d0cbd19c7|Red Headed Woman]\r\n* [2e672a08-aa64-3ab1-9bcf-ab93b19ab5e4|Point Blank]\r\n\r\n# Concert\r\n* [3fff3842-e572-394e-a3c0-69a9dccccd50|The Ghost of Tom Joad]\r\n* [27f570c6-0051-3047-b230-ead9e0ab9792|Adam Raised a Cain]\r\n* [ff84940b-6940-33d0-b343-16370f33ca15|Straight Time]\r\n* [c2146e4a-cc11-32fe-81ac-310073f02ad2|Highway 29]\r\n* [d3cbf5a8-c80a-3273-a405-e756cf11e9ca|Darkness on the Edge of Town]\r\n* [f80534bf-958d-34c0-83cb-d7edbe887cdf|Johnny 99]\r\n* [88bc0066-6896-36e2-9f93-bbac8aa4f839|Nebraska]\r\n* [f79d626b-d123-4d4f-8abd-2988a4d9fd5c|Sell It and They Will Come]\r\n* [6eaeba87-f301-3932-84a5-39d4d88f9c53|The Angel]\r\n* [2ba51d23-e042-3279-b9ee-de5b552fafdb|Brothers Under the Bridge]\r\n* [55d593ce-52cc-30ec-9494-eca1ab879f5c|Born in the U.S.A.]\r\n* [511de63f-d586-364d-b62a-0919941a41d7|Dry Lightning]\r\n* [3fc9dea6-c527-43c4-b3bf-5d3470a721e9|Spare Parts]\r\n* [f4a77656-8cdb-365c-aef9-034c098e249f|Youngstown]\r\n* [fb6f5b78-65a5-3d8a-b1a0-e7431d1e4b14|Sinaloa Cowboys]\r\n* [a39a5b73-5d05-304b-9e5b-3ce210900cf9|The Line]\r\n* [6ce583b4-ca66-3f52-a7e8-5941f7f49ae0|Balboa Park]\r\n* [483abf96-6154-32e2-982f-5f7bab0a39a7|Across the Border]\r\n* [7a757d97-da2a-3751-8d32-94d471de2eeb|Blinded by the Light]\r\n* [58a01740-e85b-36a6-bcee-24bf53b8b2fe|This Hard Land]\r\n* [218391f6-1d68-353b-8a25-39a5a94c95a5|Streets of Philadelphia]\r\n* [0af60b56-55d3-374d-87ce-7463abcd7943|Galveston Bay]\r\n* [13411c83-ddd8-31ca-b968-79e4cf6db8fb|The Promised Land]",
+  "type-id": "ef55e8d7-3d00-394a-8012-f5506a29ff0b",
+  "name": "1996‐04‐22: Royal Albert Hall, London, England, UK",
+  "id": "0ee722a0-00b8-45a4-ba21-f4d549ce29bd",
+  "type": "Concert",
+  "time": "",
+  "life-span": {
+    "begin": "1996-04-22",
+    "ended": true,
+    "end": "1996-04-22"
+  },
+  "disambiguation": ""
+}

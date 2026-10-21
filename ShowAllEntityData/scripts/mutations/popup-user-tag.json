@@ -1,0 +1,67 @@
+[
+    {
+        "name": "an editor's own tag is no kind again",
+        "why": "The tags page's links would show nothing on hover, as before 2026-10-21.",
+        "edits": [
+            {
+                "find": "        if (u) return /(?:^|[?&])show_downvoted=1(?:&|$)/.test(search) ? null : { seg: '', type: 'usertag', id: `${u[1]}/${u[2]}` };",
+                "replace": "        if (u) return null;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-user-lists.spec.js",
+        "grep": "USER TAG: on the tags page itself",
+        "expect": "fail"
+    },
+    {
+        "name": "an editor's downvoted tag gets the upvotes' card",
+        "why": "?show_downvoted=1 lists other entities than the page the card reads.",
+        "edits": [
+            {
+                "find": "        if (u) return /(?:^|[?&])show_downvoted=1(?:&|$)/.test(search) ? null : { seg: '', type: 'usertag', id: `${u[1]}/${u[2]}` };",
+                "replace": "        if (u) return { seg: '', type: 'usertag', id: `${u[1]}/${u[2]}` };"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-user-lists.spec.js",
+        "grep": "PATH: status lists",
+        "expect": "fail"
+    },
+    {
+        "name": "the editor's tag page is read like a tag page (#content)",
+        "why": "The page is fullwidth, without #content: nothing would parse and every card would fail.",
+        "edits": [
+            {
+                "find": "        const root = doc.getElementById('page');\n        const h2 = root ? Array.from(root.querySelectorAll(':scope > h2')).find(h => /\\btagged as\\b/.test(_mbPopText(h))) : null;",
+                "replace": "        const root = doc.getElementById('content');\n        const h2 = root ? Array.from(root.querySelectorAll(':scope > h2')).find(h => /\\btagged as\\b/.test(_mbPopText(h))) : null;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-user-lists.spec.js",
+        "grep": "USER TAG: on the tags page itself",
+        "expect": "fail"
+    },
+    {
+        "name": "the card lists no entries",
+        "why": "The card would give the counts only, not which entities the editor tagged.",
+        "edits": [
+            {
+                "find": "    const _MB_POP_USERTAG_CARD_ROWS = 6;",
+                "replace": "    const _MB_POP_USERTAG_CARD_ROWS = 0;"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-user-lists.spec.js",
+        "grep": "USER TAG: a small tag",
+        "expect": "fail"
+    },
+    {
+        "name": "the parser keeps any page",
+        "why": "A login page answered for the tag would be kept as an empty tag for sa_pop_mb_ttl_hours.",
+        "edits": [
+            {
+                "find": "        const a = h2 && h2.querySelector('a[href^=\"/tag/\"]');\n        if (!a) return null;",
+                "replace": "        const a = h2 && h2.querySelector('a[href^=\"/tag/\"]');\n        if (!a) return { name: '', editor: '', tag: '', total: '', sections: [] };"
+            }
+        ],
+        "spec": "tests/fixtures/popup-mb-user-lists.spec.js",
+        "grep": "USER TAG: a page that is not an editor's tag",
+        "expect": "fail"
+    }
+]

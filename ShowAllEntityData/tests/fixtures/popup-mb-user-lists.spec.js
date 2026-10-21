@@ -57,6 +57,9 @@ const PAGES = [
     [/\/user\/vzell\/subscribers$/, 'subscribers-page-vzell.html'],
     [/\/account\/applications$/, 'applications-page-vzell.html'],
     [/\/user\/vzell\/tags$/, 'user-tags-page-vzell.html'],
+    [/\/user\/vzell\/tag\/live$/, 'user-tag-page-vzell-live.html'],
+    [/\/user\/vzell\/tag\/acoustic%20rock$/, 'user-tag-page-vzell-acoustic-rock.html'],
+    [/\/user\/vzell\/tag\/gig$/, 'user-tag-page-vzell-gig.html'],
     [/\/user\/vzell\/ratings$/, 'user-ratings-page-vzell.html'],
 ];
 const card = (page) => page.locator('#mb-dp-peek');
@@ -198,6 +201,8 @@ test.describe('MusicBrainz link previews: an editor\'s lists and account pages',
                 revoke: res('/account/applications/revoke-access/77/1'), history: res('/user/vzell/edits'),
                 tags: res('/user/vzell/tags'), down: res('/user/vzell/tags?show_downvoted=1'),
                 ratings: res('/user/vzell/ratings'), userTag: res('/user/vzell/tag/rock'),
+                userTagSp: res('/user/Some%20One/tag/acoustic%20rock'), userTagTab: res('/user/vzell/tag/live/release'),
+                userTagDown: res('/user/vzell/tag/rock?show_downvoted=1'),
             };
         });
         expect(r.rejected).toBe('mb-entity|edits:/user/vzell/edits/rejected');
@@ -213,7 +218,12 @@ test.describe('MusicBrainz link previews: an editor\'s lists and account pages',
         expect(r.tags).toBe('mb-entity|usertags:vzell');
         expect(r.down, 'downvoted tags are another list than the card reads').toBeNull();
         expect(r.ratings).toBe('mb-entity|userratings:vzell');
-        expect(r.userTag, 'an editor\'s own tag page is no kind').toBeNull();
+        // An editor's own tag (2026-10-21): editor and tag as spelled; not its
+        // kind pages, not its downvotes.
+        expect(r.userTag).toBe('mb-entity|usertag:vzell/rock');
+        expect(r.userTagSp).toBe('mb-entity|usertag:Some%20One/acoustic%20rock');
+        expect(r.userTagTab, 'a kind page of it').toBeNull();
+        expect(r.userTagDown, 'its downvotes are another list').toBeNull();
         expect(r.history, 'the editor\'s history as before').toBe('mb-entity|edits:user/vzell');
     });
 
@@ -346,6 +356,75 @@ test.describe('MusicBrainz link previews: an editor\'s lists and account pages',
         await genres.first().locator('a').click();
         await expect(title(page)).toHaveText('Tags › Tag');
         await expect.poll(() => log.html, { message: 'the drill asks the tag\'s own page' }).toEqual(['/user/vzell/tags', '/tag/interview']);
+    });
+
+    // An editor's own tag (2026-10-21): the links of /user/<name>/tags, read
+    // from /user/<name>/tag/<tag> (tests/fixtures/user-tag-page-vzell-*.html,
+    // captured anonymously with scripts/fetch-mb-page-fixture.js).
+    const TAGS_URL = 'https://musicbrainz.org/user/vzell/tags';
+    const TAGS_FIXTURE = path.join(__dirname, 'user-tags-page-vzell.html');
+
+    test('USER TAG: on the tags page itself, a tag\'s card: kind line, kinds by count, the first entries; one page request', async ({ page }) => {
+        const log = await open(page, { url: TAGS_URL, fixtureFile: TAGS_FIXTURE });
+        const a = page.locator('#all-tags a[href="/user/vzell/tag/live"]');
+        await hover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator(':scope > .mb-pop-kind-head')).toHaveText('Editor\'s tag');
+        await expect(card(page).locator(':scope > .mb-pop-kind-head img')).toHaveAttribute('src', /\/editor\.svg$/);
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('live');
+        await expect(card(page).locator('.mb-tt-comment').first()).toHaveText('vzell’s tag');
+        await expect(card(page).locator('.mb-tt-pill')).toHaveText(['47 entities']);
+        await expect(card(page).locator('.mb-dp-kv dt')).toHaveText(['Releases', 'Release groups']);
+        await expect(card(page).locator('.mb-dp-kv dd')).toHaveText(['44', '3']);
+        const first = card(page).locator('.mb-pop-taglist li');
+        await expect(first).toHaveCount(6);
+        await expect(first.nth(1)).toContainText('Acoustic Tales');
+        await expect(card(page).locator('.mb-tt-dim').last()).toHaveText('+ 41 more');
+        expect(log.html).toEqual(['/user/vzell/tag/live']);
+    });
+
+    test('USER TAG: the window: editor, entities, everyone\'s tag (a drill), each kind\'s "See all" page', async ({ page }) => {
+        const log = await open(page, { url: TAGS_URL, fixtureFile: TAGS_FIXTURE });
+        await pin(page, page.locator('#all-tags a[href="/user/vzell/tag/live"]'));
+        await expect(title(page)).toHaveText('Editor\'s tag');
+        const left = dialog(page).locator('.mb-dp-col').first();
+        await expect(left.locator('.mb-dp-kv dt')).toHaveText(['Editor', 'Entities', 'Everyone’s']);
+        await expect(left.locator('.mb-dp-kv a[href="/user/vzell"]')).toHaveText('vzell');
+        const right = dialog(page).locator('.mb-dp-col').last();
+        await expect(right.locator('.mb-dp-gname')).toHaveText(['Releases · 44', 'Release groups · 3']);
+        await expect(right.locator('a', { hasText: 'See all 44' })).toHaveAttribute('href', '/user/vzell/tag/live/release');
+        await left.locator('.mb-dp-kv a[href="/tag/live"]').click();
+        await expect(title(page)).toHaveText('Editor\'s tag › Tag');
+        await expect.poll(() => log.html, { message: 'the drill asks everyone\'s tag page' }).toEqual(['/user/vzell/tag/live', '/tag/live']);
+    });
+
+    test('USER TAG: a small tag, one kind each; the table render\'s links have the card too', async ({ page }) => {
+        // The button fetches the page again, with its query.
+        await open(page, { url: TAGS_URL, fixtureFile: TAGS_FIXTURE, pageFixture: (u) => (/\/user\/vzell\/tags\?/.test(u) ? 'user-tags-page-vzell.html' : null) });
+        await page.click('button[data-label="Tags upvoted"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        await ensureSubTableVisible(page, 0);
+        const a = page.locator('table.tbl tbody a[href="/user/vzell/tag/acoustic%20rock"]').first();
+        await hover(page, a);
+        await expect(card(page)).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-title')).toHaveText('acoustic rock');
+        await expect(card(page).locator('.mb-dp-kv dt')).toHaveText(['Artists', 'Recordings']);
+        await expect(card(page).locator('.mb-pop-taglist li')).toHaveText(['Bob Burger', 'Madalynn by Bob Burger']);
+        await expect(card(page).locator('.mb-tt-dim'), 'all of them shown').toHaveCount(0);
+    });
+
+    test('USER TAG: a page that is not an editor\'s tag (a login page) fails and is not kept', async ({ page }) => {
+        const log = await open(page, {
+            url: TAGS_URL, fixtureFile: TAGS_FIXTURE,
+            pageFixture: (u) => (/\/tag\/gig$/.test(u) ? 'user-page-vzell.html' : null),
+        });
+        const a = page.locator('#all-tags a[href="/user/vzell/tag/gig"]');
+        await hover(page, a);
+        await expect(card(page)).toContainText('Could not load it');
+        await page.mouse.move(0, 0);
+        await hover(page, a);
+        await expect(card(page)).toContainText('Could not load it');
+        expect(log.html, 'asked again: a failure is not kept').toEqual(['/user/vzell/tag/gig', '/user/vzell/tag/gig']);
     });
 
     test('RATINGS: per kind the stars and entities, never a /rating/rate/ link; an entity drills', async ({ page }) => {

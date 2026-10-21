@@ -34,6 +34,7 @@ const path = require('path');
 const { test, expect } = require('../support/test');
 const { loadUserscriptPage, addRequiredLibs, MB_LIBRARY_PATH, USERSCRIPT_PATH } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
+const { routeEventLookups } = require('../support/eventLookups');
 
 const RELEASE_URL = 'https://musicbrainz.org/release/e384f062-85a3-4141-9122-0814d987cda3';
 const RELEASE_GID = 'e384f062-85a3-4141-9122-0814d987cda3';
@@ -101,6 +102,8 @@ async function open(page, { browse = null, search = null, settings = {}, showAll
         log.pages.push(route.request().url());
         return route.fulfill({ path: RG_PAGE, contentType: 'text/html' });
     });
+    // The "#" card's stacked event card (on by default) asks for its event.
+    await routeEventLookups(page);
     await loadUserscriptPage(page, { url: RELEASE_URL, fixtureFile: FIXTURE, testMode: true, settingsOverride: { sa_rich_tooltip_delay_ms: 0, ...settings } });
     await page.route('https://musicbrainz.org/release/**', (route) => route.fulfill({ path: FIXTURE, contentType: 'text/html' }));
     if (showAll) {

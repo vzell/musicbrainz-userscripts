@@ -1406,6 +1406,10 @@ test.describe('the Discogs window (2026-10-17)', () => {
         await openDiscogs(page);
         await ctrlHover(page, probe(page, 0));
         await expect(card(page).locator('.mb-ext-headtext .mb-tt-comment')).toHaveText('Discogs · release');
+        // A card of another site has the kind line too: the window's kind,
+        // no glyph (MusicBrainz kinds only).
+        await expect(card(page).locator(':scope > .mb-pop-kind-head')).toHaveText('Discogs release');
+        await expect(card(page).locator(':scope > .mb-pop-kind-head img')).toHaveCount(0);
         await page.keyboard.press('Space');
         const d = dialog(page);
         const title = d.locator(':scope > div > span').first();

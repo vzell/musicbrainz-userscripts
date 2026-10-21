@@ -301,6 +301,9 @@ test.describe('the Search card (jesus2099 mb. ALL LINKS)', () => {
         await expect(peek).toBeVisible();
         await expect(notes, 'the link\'s card is in the stack').toContainText('Searches dramonline.org');
         await expect(notes.locator('.mb-dp-note-tip .mb-tt-title')).toHaveText('DRAM');
+        // The box's kind line, with the hairline under it.
+        await expect(notes.locator('.mb-dp-note-tip > .mb-pop-kind-head')).toHaveText('Link');
+        await expect(notes.locator('.mb-dp-note-tip > .mb-pop-kind-head')).toHaveCSS('border-bottom-style', 'solid');
         await expect(tip, 'no second box').toBeHidden();
         // A link with child elements (a <bdi> in it) gets a mouseover again
         // each time the pointer crosses from a child back onto it, while its

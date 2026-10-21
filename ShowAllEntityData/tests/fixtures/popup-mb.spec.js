@@ -904,6 +904,14 @@ test.describe('MusicBrainz link previews: the note stack and the entity glyphs (
     const SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16"/></svg>';
     const stack = (page) => page.locator('#mb-dp-notes');
     const statTip = (page) => page.locator('#mb-stat-tooltip');
+    /** A stacked box's text without its kind line. */
+    const boxBody = (box) => box.evaluate((el) => Array.from(el.childNodes)
+        .filter((n) => !(n.classList && n.classList.contains('mb-pop-kind-head'))).map((n) => n.textContent).join(''));
+    /** A stacked box's kind line: its text and its hairline. */
+    const boxHead = (box) => box.locator(':scope > .mb-pop-kind-head').evaluate((el) => {
+        const cs = getComputedStyle(el);
+        return [el.textContent, `${cs.borderBottomWidth} ${cs.borderBottomStyle}`];
+    });
 
     /**
      * Gives the cell holding `a` its own tip, as `_setTip()` writes one.
@@ -987,7 +995,8 @@ test.describe('MusicBrainz link previews: the note stack and the entity glyphs (
         }, tipText);
         await ctrlHover(page, a);
         await expect(card(page)).toContainText('fetched now');
-        await expect(stack(page).locator('.mb-dp-note-tip')).toHaveText('⚠️ Track name differs from recording name');
+        await expect(stack(page).locator('.mb-dp-note-tip > .mb-pop-kind-head')).toHaveText('Note');
+        expect(await boxBody(stack(page).locator('.mb-dp-note-tip'))).toBe('⚠️ Track name differs from recording name');
         await expect(stack(page).locator('.mb-dp-note-tip .mb-tt-cmp')).toHaveCount(0);
         await expect(stack(page).locator('#mb-dp-origin mark.mb-tt-cmp-d')).toHaveText(['·(version·7)']);
     });
@@ -1003,6 +1012,9 @@ test.describe('MusicBrainz link previews: the note stack and the entity glyphs (
         await expect(notes).toHaveCount(2);
         await expect(notes.nth(0)).toHaveClass(/mb-dp-note-tip/);
         await expect(notes.nth(1)).toHaveAttribute('id', 'mb-dp-origin');
+        // Each box opens with its kind line and its hairline, as the card.
+        expect(await boxHead(notes.nth(0))).toEqual(['Note', '1px solid']);
+        expect(await boxHead(notes.nth(1))).toEqual(['Track ≠ recording', '1px solid']);
         await expect(statTip(page)).toBeHidden();
         const b0 = await notes.nth(0).boundingBox();
         const b1 = await notes.nth(1).boundingBox();
@@ -1023,41 +1035,57 @@ test.describe('MusicBrainz link previews: the note stack and the entity glyphs (
         await expect(box).toBeVisible();
         await expect(box.locator('dt')).toHaveText('Sort name');
         await expect(box.locator('dd')).toHaveText('Springsteen, Bruce');
+        expect(await boxHead(box)).toEqual(['Link title', '1px solid']);
         await expect(a).not.toHaveAttribute('title', /./);
         await page.keyboard.press('Escape');
         await expect(stack(page)).toBeHidden();
         await expect(a).toHaveAttribute('title', 'Springsteen, Bruce');
     });
 
-    test('the entity glyph: before the card\'s title (loaded and failed) and the window\'s kind; none for an ISRC', async ({ page }) => {
+    test('the kind line: glyph and kind on top of the card (loaded and failed), the window\'s kind; no glyph for an ISRC', async ({ page }) => {
         let fail = false;
         await open(page, {
             settings: { sa_pop_mb: true }, showAll: false,
             ws2: (url) => (fail && url.includes('/ws/2/work/') ? { status: 500, body: '{}' } : null),
         });
+        const head = () => card(page).locator(':scope > .mb-pop-kind-head');
         const a = await addLink(page, `/recording/${REC_ID}`, 'Thunder Road');
         await ctrlHover(page, a);
         await expect(card(page)).toContainText('fetched now');
-        const icon = card(page).locator('.mb-tt-title').first().locator(':scope > img.mb-pop-kind-icon:first-child');
-        await expect(icon).toHaveCount(1);
+        // The card's FIRST child, once, after the loading paint was repainted.
+        await expect(head()).toHaveCount(1);
+        await expect(card(page).locator(':scope > :first-child')).toHaveClass('mb-pop-kind-head');
+        await expect(head()).toHaveText('Recording');
+        const icon = head().locator(':scope > img.mb-pop-kind-icon:first-child');
         await expect(icon).toHaveAttribute('src', /\/static\/images\/entity\/recording\.svg$/);
+        await expect(card(page).locator('.mb-tt-title img'), 'the glyph moved out of the title').toHaveCount(0);
+        // A hairline under the line, as under the window's title bar.
+        const rule = await head().evaluate((el) => {
+            const cs = getComputedStyle(el);
+            return `${cs.borderBottomWidth} ${cs.borderBottomStyle} ${cs.borderBottomColor} ${cs.paddingBottom}`;
+        });
+        expect(rule, 'the kind line\'s hairline').toBe('1px solid rgb(217, 207, 189) 5px');
         await page.keyboard.press('Space');
         const title = dialog(page).locator(':scope > div > span').first();
-        await expect(title).toHaveText('Recording');
+        await expect(title, 'the card and the window name the same kind').toHaveText('Recording');
         await expect(title.locator(':scope > img.mb-dp-kind-icon:first-child')).toHaveAttribute('src', /\/recording\.svg$/);
         await page.keyboard.press('Escape');
         await expect(dialog(page)).toBeHidden();
 
-        // A failed card's head carries it too (the shell, not the kind's HTML).
+        // A failed card has the line too (the shell, not the kind's HTML),
+        // and the shell no longer repeats the kind below the title.
         fail = true;
         const w = await addLink(page, `/work/${WORK_ID}`, 'Born to Run');
         await ctrlHover(page, w);
         await expect(card(page)).toContainText('Could not load it');
-        await expect(card(page).locator('.mb-tt-title img.mb-pop-kind-icon')).toHaveAttribute('src', /\/work\.svg$/);
+        await expect(head()).toHaveText('Work');
+        await expect(head().locator('img.mb-pop-kind-icon')).toHaveAttribute('src', /\/work\.svg$/);
+        await expect(card(page).locator('.mb-tt-comment', { hasText: /^Work$/ })).toHaveCount(0);
 
         const i = await addLink(page, '/isrc/USSM17500803', 'USSM17500803');
         await ctrlHover(page, i);
         await expect(card(page)).toContainText('fetched now');
+        await expect(head(), 'a kind without a glyph still names itself').toHaveText('ISRC');
         await expect(card(page).locator('img.mb-pop-kind-icon')).toHaveCount(0);
     });
 });
@@ -1762,7 +1790,7 @@ test.describe('MusicBrainz link previews: edit and editor, read from the page (P
 test.describe('MusicBrainz link previews: tags, read from the page', () => {
     const TAG = '/tag/alternative%20rock';
 
-    test('what is previewed: a tag, not its tabs nor an editor\'s own tag', async ({ page }) => {
+    test('what is previewed: a tag, not its tabs; an editor\'s own tag is its own kind', async ({ page }) => {
         await open(page, { settings: { sa_pop_mb: true }, showAll: false });
         const r = await page.evaluate(() => {
             const td = document.querySelector('table.tbl tbody tr td:first-child');
@@ -1780,7 +1808,7 @@ test.describe('MusicBrainz link previews: tags, read from the page', () => {
         });
         expect(r.tag).toBe('mb-entity|tag:alternative%20rock');
         expect(r.tab).toBeNull();
-        expect(r.mine).toBeNull();
+        expect(r.mine, 'an editor\'s own tag is its own kind (popup-mb-user-lists.spec.js)').toBe('mb-entity|usertag:vzell/alternative%20rock');
         expect(r.all).toBeNull();
     });
 

@@ -1856,6 +1856,17 @@ TRACKLIST you can switch the card off, search the words instead of the exact
 phrase (like the website's search, with many more hits), drop the
 restriction to the release's artist, and set how many closest titles to show.
 
+**The event itself, above that card.** When the track's **Recorded at event**
+cell links an event, a second card sits right above the release group card:
+the event's name, type, date, place, tour, line-up and the start of its
+setlist, as the event link's own preview shows them. Each card opens with
+its kind ("Event", "Release group"), so you can tell the two apart. The first
+hover on a track of an event asks MusicBrainz once, after the release group
+search; the answer is kept like the other previews. A track whose event is
+only named in its comment shows no event card. Switch it off with *Show the
+track's event above the "#" release group card* in ⚙️ Settings → 💿 RELEASE
+TRACKLIST.
+
 **Event and place against the comment.** A **Recorded at event** cell is
 marked ❌ when none of its events is named like the recording comment without
 its event type: the comment `live, 1996‐04‐19: Saal 1, ICC Berlin, …` needs
@@ -2261,7 +2272,11 @@ secret, nor a *Revoke access* link, and it is never kept after a page load.
 The *view* beside **Tags upvoted** shows how many tags and genres the editor
 voted for, with how many votes, the ten they used most on the card, and every
 one in the window, most used first; a tag opens its own tag card. (Downvoted
-tags have no preview.) The *view* beside **Ratings** shows their ratings as
+tags have no preview.) On the editor's tags page itself, each tag link
+(*acoustic rock*, *gig*, …) shows what THAT editor tagged with it: how many
+entities, how many of each kind and the first few; its window lists each
+kind's first entries with MusicBrainz's *See all* page, and *Everyone's*
+opens the tag's own card. The *view* beside **Ratings** shows their ratings as
 their ratings page does, a few per kind, each with its stars; an entity opens
 its own card, and *All … ratings* opens MusicBrainz's full list in a tab. The
 window never copies the stars, which on MusicBrainz are links that change a
@@ -2374,14 +2389,19 @@ the tag's own page, since MusicBrainz cannot look a tag up otherwise.
   none covering the card or each other: the cell's warnings first (*Pending
   edits*, *Track name differs from recording name*, *This recording is not
   linked to any work*, …), then the link's own notes (the track/recording
-  names above, an artist's or label's **Sort name**). Neither the browser's
+  names above, an artist's or label's **Sort name**). Like the card, each box
+  opens with a small header saying what it is (*Finding*, *Note*, *Track ≠
+  recording*, *Link title*, *Link*, *Filter*) and a thin line under it. Neither the browser's
   own grey tooltip nor the cell's "Liner notes" card appears over the card
   any more. A tooltip that only repeats the link's name is left out. When the
   card closes (Esc, or the pointer leaves the link but stays in the cell),
   the cell's own card comes back.
-- **The entity's glyph.** The card and the window's title bar show
-  MusicBrainz's own icon of the kind (artist, release, recording, work, …)
-  in front of the name and in front of the kind ("Recording").
+- **The kind line.** Every card opens with a small header naming what it
+  shows ("Recording", "Release group", "Discogs release", "Wikipedia"), the
+  same words as the window's title bar, so you know what Space will open.
+  For MusicBrainz kinds it starts with MusicBrainz's own icon of the kind
+  (artist, release, recording, work, …), which the window's title bar shows
+  too.
 - **‹ ›** or **← →** step to the same kind of link in the **same column** of
   the next or previous row, on into the next sub-table. A row links a
   release, an artist and a label; the arrows stay with the one you started

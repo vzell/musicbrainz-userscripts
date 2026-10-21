@@ -685,6 +685,13 @@ column uses (≥1.1 s apart, together). A hit counts only
 when its title IS the event name: terms mode scores wrong concerts 100
 (`scripts/probe-rg-event-search.py`). Spec
 `release-event-colours-rg-tooltip.spec.js` on `release-tracks-brixton-night.html`.
+**The event above the card (2026-10-21, `sa_event_rg_event_card`, default
+on):** the row's "Recorded at event" event, stacked above the release group
+card as the link previews' event card, one lookup per event through the same
+gate, asked after the card's own request and never by a repaint. Details in
+docs/claude/detail-pages.md, `_eventRgSource()`'s "stacked event card". A spec
+that hovers a "#" cell routes those lookups with
+`tests/support/eventLookups.js`.
 
 **Fixture trap: a freshly fetched release page re-renders itself.**
 `tests/fixtures/release-tracks-multi-event.html` came from

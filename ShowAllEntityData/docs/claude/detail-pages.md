@@ -83,6 +83,7 @@ release page adds two (below). A source has:
 | `liveFailTitle`, a target's `noLive`  | the Live page's failure heading ("Could not load the detail page." unless set; the external source: "the page"); no Live page button for that target (YouTube) |
 | `steps(t)`, `stepId(el)`              | what ‹ › step through, and an identity that survives the `cloneNode(true)` re-renders                                                                          |
 | `kind`, `wide`, `onAreaClick(e, t)`   | the dialog's title, a wider card, a click in the Extracted view (a sortable header)                                                                            |
+| `stack(t, start, repaint)` (optional) | cards of its own in the note stack, right above its card: `[{kind, html, target?}]`; a `target` gets its kind line (`_dpFillNotes()`; the "#" cell's event)    |
 
 Rules that fail silently if broken:
 
@@ -117,6 +118,33 @@ tints and the "#" card"):
   down the "#" cells of every visible row (`stepId` = `data-mb-row-idx`). Off
   with `sa_event_rg_tooltip`. Alt+click stays its own handler
   (`initEventRgTooltip()`).
+  - **Its stacked event card (`stack`, `_eventRgEventStack()`, 2026-10-21,
+    mockup https://claude.ai/artifact/JekitWKi2rFCiC7r3HYzru, decision 2
+    variant A; `sa_event_rg_event_card`, default on).** Above the release
+    group card, as the last box of `#mb-dp-notes`: the event the row's
+    "Recorded at event" cell links (`_eventRgEventLink()`, by column name
+    through the findings plan, NEVER the row's first event link: the title
+    cell's own `dl.ars` links events too), shown as `_MB_KINDS.event.card()`,
+    the same lookup, IndexedDB cache and rate gate as the event link's own
+    preview. Its target is `_mbPopTarget(a)` with `el` set to the HOVERED "#"
+    cell, because `_mbPopWanted()` drops a request whose element shows no card
+    at its rate slot; `src` is `_EVENT_RG_EVENT_SRC` (`mb-entity`, so the
+    kind line gets the event glyph). `_dpShowPeek()` fills the notes without
+    `start` before the card, and again WITH `start` after the card's own
+    `card(t, true)`, so the release-group search or browse keeps the first
+    rate slot. Every repaint refills the stack without `start` (a failed
+    lookup is asked again by the next hover only). A row that links no
+    event (the event named only in a comment has no MBID) stacks nothing.
+    The box is `.mb-dp-note-event`, with a card's padding and border, not a
+    note's left rule. Its body's CSS comes from extending the card's
+    `:is(#mb-dp-peek, …)` selector lists with `.mb-dp-note-event`, not from
+    copies. Covered by `release-event-colours-rg-tooltip.spec.js` "the "#"
+    card's stacked event card" (fixture answers
+    `ws2-pop-event-{brixton-0424,rah-0422}.json`, from
+    `scripts/probe-event-card-fixtures.py`, routed by
+    `tests/support/eventLookups.js`, which `release-rg-popup.spec.js` uses
+    too, so no spec that hovers a "#" cell reaches the network); mutation
+    list `event-hash-event-card.json`.
 
 Both share `_rgReleases` (a group's releases as far as loaded) and `_rgFacts`
 (its lookup), and the window `_rgWindowFor()` builds:
@@ -527,16 +555,47 @@ floating hover tooltip.
     the WS/2 rate gate. Probe 2026-10-16 (vzell-lap, curl): artist, release,
     release_group, recording, work, label, area, place, event, series,
     instrument, genre, collection and editor answer 200; url, isrc, iswc,
-    cdtoc and `release-group` answer 404. Those kinds have none. The card:
-    `_dpAddKindIcon()` prepends `img.mb-pop-kind-icon` to the first
-    `.mb-tt-title` after every paint, so every kind's own card HTML, the
-    loading shell and the failed shell get it. The window: `_dpShowInDialog()`
+    cdtoc and `release-group` answer 404. Those kinds have none. The card
+    (superseded 2026-10-21, see "The kind line" below): ~~`_dpAddKindIcon()`
+    prepends `img.mb-pop-kind-icon` to the first `.mb-tt-title`~~. The window: `_dpShowInDialog()`
     puts `img.mb-dp-kind-icon` INSIDE the title-bar span, before the kind path
     (the current kind's glyph). Inside, because the bar is `space-between`, so
     a sibling `<img>` would leave a gap; the span's text stays the kinds alone.
   Covered by `popup-mb.spec.js` "the note stack and the entity glyphs (WIP.1)"
   and its "only repeats its name" control; mutation list
   `gpe-art-viewer.json`.
+  - **The kind line (`.mb-pop-kind-head`, 2026-10-21, mockup
+    https://claude.ai/artifact/JekitWKi2rFCiC7r3HYzru variant A).** The
+    card's first child: the glyph (when there is one) and the kind, a small
+    version of the window's title bar, with a hairline under it.
+    `_dpAddKindHead()` adds it to `#mb-dp-peek` after EVERY paint (show and
+    repaint, in `_dpShowPeek()`): a repaint replaces the card's HTML and the
+    line with it. It replaced `_dpAddKindIcon()`, so the glyph is no longer
+    inside the title. The text is `_dpKindLabel(t)` (`t.kind || t.src.kind`),
+    which `_dpShowInDialog()` reads for its path too, so the card and the
+    window never name different kinds. EVERY source gets the line, the other
+    sites' cards included ("Discogs release", "Wikipedia", "Detail page"),
+    without a glyph, since `_mbKindIconUrl()` returns '' for them. The release
+    page's own release-group sources (`_rgLinkSource()`, `_eventRgSource()`,
+    `_MB_RG_SOURCE_IDS`) do get the release-group glyph, in the window too.
+    `_mbPopCardShell()`'s loading and failed shells no longer repeat the kind
+    as a `.mb-tt-comment` under the title. A kind's own comment line ("Rejected
+    edits · editor", "Discogs · release") stays: it says more than the kind.
+    Covered by `popup-mb.spec.js` "the kind line…", `popup-ext.spec.js`
+    "names link their Discogs pages…" and
+    `release-event-colours-rg-tooltip.spec.js` "\"#\" card, main event";
+    mutation list `popup-card-kind-head.json`.
+    **Every box of the note stack has one too** (vzell, 2026-10-21: "there
+    should also be a thin horizontal line after the header line"):
+    `_dpCollectNotes()` gives each note a `label` ("Finding" for a finding's
+    tip, `data-mb-finding-tip`; "Note" for any other tip or title of the
+    cell; "Track ≠ recording"; "Link title"; "Link" for the link's own
+    `data-mbtt` card and a Relationships icon's box; "Filter"), and
+    `_dpFillNotes()` writes it with `_dpPrependKindHead()`, the helper
+    `_dpAddKindHead()` uses too (a box with a `target`, the "#" cell's
+    event, gets that target's line, glyph included). One CSS rule,
+    `:is(#mb-dp-peek, #mb-dp-notes .mb-dp-note) > .mb-pop-kind-head`, draws
+    the line and its hairline for all of them.
 - **The track/recording name note (`#mb-dp-origin`, 2026-10-09).** jesus2099's
   "mb. INLINE STUFF" gives a release page's recording link a native
   `title="track name: …\n≠rec. name: …"` when the track is named differently
@@ -812,8 +871,9 @@ everything the card needs in one request.
 
 - **Path:** `_MB_POP_PAGE_RE`'s third branch, `/tag/<name>` bare. The id is
   the name percent-encoded as in the link (`tag:alternative%20rock`), like
-  `user`. Not previewed: the tabs (`/tag/<name>/artist`), an editor's own tag
-  (`/user/<name>/tag/<name>`, the regex is anchored) and `/tags`.
+  `user`. Not previewed: the tabs (`/tag/<name>/artist`) and `/tags`. An
+  editor's own tag (`/user/<name>/tag/<name>`) is its own kind since
+  2026-10-21 (`usertag`, below with the editor's lists).
 - **`_mbParseTagPage()`** reads `#content`: the name from `.tagheader h1 a`,
   the genre from the first `a[href^="/genre/"]` (only a tag that is a genre
   has one), "N entities found", and per `h3` (one per entity kind, and only
@@ -1052,10 +1112,33 @@ from the page (no Web Service), through `_mbPageLoad()`.
   `span.tag-count`); one page, no pager (112 tags on capture, their counts
   sum to the profile's "Tags upvoted 347"). Card: tags, genres, votes, the
   ten most used together; window: both lists by count, each tag linked to
-  the GLOBAL `/tag/<name>` so it drills into the tag card (the editor's own
-  `/user/<name>/tag/<name>` is no kind). `?show_downvoted=1` returns null in
+  the GLOBAL `/tag/<name>` so it drills into the tag card (written when the
+  editor's own `/user/<name>/tag/<name>` was no kind; it is `usertag` since
+  2026-10-21, the window's links stay global). `?show_downvoted=1` returns null in
   `_mbPopParsePath()`: another list than the page read, never seen live
   (the account has 0 downvotes, so the profile links none).
+- **`usertag`** (`/user/<editor>/tag/<tag>`, 2026-10-21, vzell: "tag detail
+  popup support on PTs like /user/vzell/tags when hovering the tag
+  anchors"): `_MB_POP_USERTAG_RE`, checked in `_mbPopParsePath()` after the
+  account pages and before `_MB_POP_PAGE_RE`; the id is `<editor>/<tag>`,
+  both as the link spells them, and `path()` puts `/tag/` back between them.
+  Not previewed: its kind pages (`…/tag/<tag>/release`) and
+  `?show_downvoted=1`. The page is fullwidth, WITHOUT `#content`
+  (`tests/fixtures/user-tag-page-vzell-{live,acoustic-rock,gig}.html`,
+  `scripts/fetch-mb-page-fixture.js`, anonymous, 2026-10-21T21:54+02:00,
+  NB-3641): h1 the editor, h2 "Entities <editor> tagged as “<a
+  href=/tag/…>”", then the same "N entities found" and h3/`ul`/"See all N"
+  body as `/tag/<name>`. So `_mbParseTagPage()`'s body moved into
+  `_mbParseTagSections(root)`, which both parsers call
+  (`_mbParseUserTagPage()` with `#page`), and the window into
+  `_mbPopTagWindowHtml(d, base, head, empty)`, `base` being the page path
+  `_mbPopTagKindHref(base, s)` builds a kind's page from. Card: the tag,
+  "<editor>’s tag", the total, the kinds by count and the first
+  `_MB_POP_USERTAG_CARD_ROWS` (6) entries with "+ N more". Window: Editor,
+  Entities, Everyone's (`/tag/<tag>`, a drill into the tag card), then the
+  tag window's kinds. Glyph: the editor's (`_MB_KIND_ICON`). Specs:
+  `popup-mb-user-lists.spec.js` "USER TAG: …" (on the tags page before and
+  after its render), PATH; mutations `scripts/mutations/popup-user-tag.json`.
 - **`userratings`** (`/user/<name>/ratings`): `_mbParseUserRatingsPage()`
   reads per h2 "<Kind> ratings" its `ul > li`: `.current-user-rating` (1–5),
   the first link to a bare entity page outside `.inline-rating`, the rest of

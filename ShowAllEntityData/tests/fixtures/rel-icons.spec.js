@@ -225,6 +225,7 @@ test.describe('Relationships column icons: the link preview card', () => {
         await expect(notes.locator('.mb-dp-note').first()).toHaveClass(/mb-dp-note-rel/);
         await expect(notes.locator('.mb-dp-note-rel .mb-rel-here')).toContainText('SpringsteenLyrics');
         await expect(notes.locator('.mb-dp-note-title .mb-rel-lk b')).toHaveText('SpringsteenLyrics');
+        await expect(notes.locator('.mb-dp-note > .mb-pop-kind-head')).toHaveText(['Filter', 'Link']);
         // Not the cell's own "click outside the icons" hint, and no second
         // stack of the column's own.
         await expect(notes).not.toContainText('outside the icons');
