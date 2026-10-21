@@ -3703,45 +3703,7 @@ c.)
 the sidebar should already get a sidebar handle on the IP, but the sidebar by default should be uncollapsed (whereas on
 the FRP it's collapsed by default)
 
-
-* TODO consolidate more LAF across more PTs
-
-
-* TODO Add a must have third-party userscripts section together with the end-user visible changes and what our userscript depends on
-
-Add a must have third-party userscripts section together with the end-user visible changes and what our userscript
-depends on
-
-1.)
-
-Analyse first and give a comprehensive summary in a nice HTML based view, with URLs to the original script (downlaod URL, homepage, documentaiotn URL, etc)
-
-2.)
-
-Suggestions for complete integration
-
-3.)
-
-etc
-
-
-* TODO check discogs artist pages if really ALL master are present + implement master->release(s) drilldown
-
-
-* TODO write the forum section for 9.99.1394 -> 9.99.1399
-
-* TODO Use the Discogs history diff format in other pageTypes, for example the BB “changes” button
-
-Use the Discogs history diff format in other pageTypes, for example the BB “changes” button (you have to be logged in).
-
-* TODO "Live credit without a date" should tell the date when it can be deduced
-
-"Live credit without a date" should tell the date when it can be deduced - https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f
-"Recording engineer" column
-
-* TODO "Links" column - switch of the native tooltip on the FRP
-
-* TODO https://musicbrainz.org/user/vzell
+* DONE https://musicbrainz.org/user/vzell
 ** DONE initial
 
 At the MB user pages e.g. https://musicbrainz.org/user/vzell
@@ -3772,7 +3734,7 @@ https://musicbrainz.org/user/vzell/edits/failed
 https://musicbrainz.org/search/edits?conditions.1.operator=%3E&conditions.1.field=open_time&conditions.1.args.0=24+hours+ago&combinator=and&conditions.0.name=vzell&conditions.0.field=editor&order=desc&conditions.0.args.0=1126444&conditions.0.operator=%3D&negation=0&auto_edit_filter=
 #+end_example
 
-** ratings and tags are still missing
+** DONE ratings and tags are still missing
 
 the user ratings and tags are still missing (see the "Tags and ratings" sub-section)
 
@@ -3781,23 +3743,154 @@ https://musicbrainz.org/user/vzell/tags
 https://musicbrainz.org/user/vzell/ratings
 #+end_example
 
+* DONE on 'release-tracks' PTs render the front image from the sidebar also in front of the h1 release title
+** DONE initial
+
+#+begin_example
+@debug/release-tracks-tttr.html - FRP
+#+end_example
+
+1.)
+
+on 'release-tracks' PTs render the front image from the sidebar also in front of the h1 release title, etc. like we
+already do with artist, place, etc. - [Image #14]
+
+2.)
+
+the "View annotation history" href in the "Annotations" section
+
+#+begin_example
+<a href="/release/3ec14d03-2c03-4764-a69d-8155817a040f/annotations">View annotation history</a>
+#+end_example
+
+needs a detail popup - https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f/annotations
+
+3.)
+
+"Live credit without a date" e.g in the "Recording engineer" column should tell the date when it can be deduced -
+https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f - [Image #13]
+
+4.)
+
+add rich HTML diff tooltips for "Recording comment almost follows ...."/"Recording comment almost in the live from",
+e.g. on https://musicbrainz.org/tag/acoustic%20rock/recording
+
+#+begin_example
+@debug/recording-comment-diff-tooltip.html - FRP - [Image #15]
+#+end_example
+
+** DONE bugs
+
+some bugs and enhancements
+
+1.)
+
+There is a "shine through" effect on the following PTs (whereas on
+e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f it works as designed)
+
+#+begin_example
+[Image #17] - https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c
+[Image #18] - https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f
+#+end_example
+
+2.)
+
+a.)
+
+Currently when hovering over an artist image either the one in front of the h1 artist name or the one in the sidebar, we
+only get a tooltip popup, see [Image #19] and only when clicking the image we get our internal viewer treatment. 
+
+b.)
+
+I want the same treatment like we have when hovering an image in the "CAA"/"EAA" column on e.g. https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c PTs
+c.)
+
+same holds true for other PTs where we support images, like release groups, releases, places, instruments, etc -> please fix/add support
+
+3.)
+
+add a new PT for annotations e.g. https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f/annotation/1063770
+
+#+begin_example
+@debug/annotation-artist.html - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/annotation/630690
+@debug/annotation-release.html - https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f/annotation/1063770
+#+end_example
+
+
+* TODO consolidate more LAF across more PTs
+
+
+* TODO Add a must have third-party userscripts section together with the end-user visible changes and what our userscript depends on
+
+Add a must have third-party userscripts section together with the end-user visible changes and what our userscript
+depends on
+
+1.)
+
+Analyse first and give a comprehensive summary in a nice HTML based view, with URLs to the original script (downlaod URL, homepage, documentaiotn URL, etc)
+
+2.)
+
+Suggestions for complete integration
+
+3.)
+
+etc
+
+
+* TODO check discogs artist pages if really ALL master are present + implement master->release(s) drilldown
+
+* TODO Use the Discogs history diff format in other pageTypes, for example the BB “changes” button
+
+Use the Discogs history diff format in other pageTypes, for example the BB “changes” button (you have to be logged in).
+
+* TODO write the forum section for 9.99.1394 -> 9.99.1399
+
+* TODO "Links" column - switch of the native tooltip on the FRP
 
 * TODO on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight the corresponding row
 
 on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight
 the corresponding row
 
+* TODO also the the pager framework on other detail popups like on the collections one
+* TODO Scrollbars (left side) and pager (tables right side) or any table + image internal viewer support should automatically be there for ALL detail popups
 
-* TODO also the the pager framework on othe detail popups like on the collections one
+Scrollbars (left side) and pager (tables right side) or any table + image internal viewer support should automatically
+be there for ALL detail popups, and the geometry should be based on the current and stored popup window size 
+
+a.)
+
+Chaban
+
+#+begin_example
+"Instrument collections" -> "Edit search queries" - scrollbar on the left section
+"Label collections" ->  "Artist as label" - multiple srollbars
+"Release collections" -> "Scans" - image hover popup + internal viewer click
+"Work collections" -> "Onomatopoeia" - adjust scrollbars for the right window + adjust height
+#+end_example
+
+b.)
+
+on collection pages, images should get internal viewer support + their tooltip should show a rich popup and highlight
+the corresponding row -> image hover popup + internal viewer click
 
 
-* TODO on 'release-tracks' PTs render the front imahe from the sidebar alos in front of the h1 release title
+* TODO tested live, OK; commit, push
 
-1.)
+* TODO shorten column names for "Recording of" and "Performance attributes" on PTs which use them
 
-on 'release-tracks' PTs render the front imahe from the sidebar alos in front of the h1 release title
+Shorten column names for "Recording of" and "Performance attributes" on PTs which use them, e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings.
+Make some suggestions so we can save space.
 
-2.)
+* TODO tag detail popup support on https://musicbrainz.org/user/vzell/tags
 
-the "View annotation history" needs a detail popup - https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f/annotations
+tag detail popup support on https://musicbrainz.org/user/vzell/tags
+
+#+begin_example
+https://musicbrainz.org/user/vzell/tag/acoustic%20rock
+https://musicbrainz.org/user/vzell/tag/gig
+https://musicbrainz.org/user/vzell/tag/back%20scan%20missing
+
+#+end_example
 
