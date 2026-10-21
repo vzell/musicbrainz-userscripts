@@ -224,6 +224,30 @@ BOTH bare-`title` call sites (`_isJesus2099Treleases()` and
 `_isOwnColumnTooltip()`. Anything that puts a `title` on a `treleases`
 `<th>`/`<td>` must mark it the same way.
 
+**Since branch `fix/length-header-tooltips`, `data-mb-tip` marks
+it too.** `_isOwnColumnTooltip()` accepts `data-mb-col-tip` OR `data-mb-tip`,
+and `data-mb-tip` is stamped only by `_setTip()`. So any tooltip written
+through `_setTip()` is recognised, and no writer has to remember the second
+marker. That came from a regression: the column descriptions of 9.99.1406
+(`_COLUMN_DESCRIPTIONS`) went through `_setTip()` without `data-mb-col-tip`.
+On every page whose Length `<th>` MusicBrainz marks `treleases` (an ISRC page,
+the relationship overviews), the next filter keystroke then stripped the
+native class and the description. Pinned by
+`tests/fixtures/length-header-tooltips.spec.js`. A `title` set by direct
+assignment is still NOT ours, by design. See "Script tooltips go through
+`_setTip()`" in docs/claude/toolbar-and-header-ui.md.
+
+**The Length tooltips follow the ⏱ state.** `_initLengthColHeaderTooltips()`
+builds both texts from `_msLengthPrecisionShown()`:
+- **Seconds:** "rounded to the nearest second, so '4:50' can be anything from
+  4:49.500 to 4:50.499".
+- **Milliseconds:** "shown here with milliseconds", and the ⏱ hint offers
+  "back to whole seconds".
+
+`_msToggleLengthPrecision()` re-runs it after every press, together with
+`_refreshColumnDescriptions('Length')`, which does the same for the generic
+Length description on the other pages.
+
 `purgeJesus2099Artifacts()`/`_stripJesus2099InTable()` strip every remaining
 jesus2099 artifact from the tables this script renders — header row included,
 plus the captured source rows in `groupedRows`/`allRows` (cleaning only the

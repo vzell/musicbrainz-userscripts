@@ -25346,3 +25346,40 @@ tooltips): 2131/2131 passed, 14 workers, wall 12 m 46 s (17:25:07–17:37:53
 CEST). The branch's own specs and the header-tooltip change did not collide.
 In particular, no spec of WIP.1–WIP.9 asserts that a native header has no
 `title`.
+
+## 2026-10-21 — Length header tooltip follows ⏱ (WIP.2); a native treleases header lost its class and description (WIP.1) (branch fix/length-header-tooltips)
+
+Env: 2026-10-21T18:57:18+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+**Asked:** on `release-tracks` the Length tooltip should account for
+milliseconds once ⏱ shows them. It always said "rounded to the nearest
+second". It was a fixed text built in `_initLengthColHeaderTooltips()`, and
+the toggle rewrote cells and buttons but no header tooltip. The 9.99.1406
+generic Length description ("minutes and seconds") had the same gap on the
+other ⏱ pages.
+- **Change:** both texts are built from `_msLengthPrecisionShown()`.
+  `_msToggleLengthPrecision()` now ends with
+  `_refreshColumnDescriptions('Length')` and `_initLengthColHeaderTooltips()`.
+- **Multi-table:** release-tracks has one table per medium. Every sub-table's
+  header follows, and the spec polls all of them.
+
+**Found on the way (WIP.1), from 9.99.1406.**
+`docs/claude/release-tracks-and-length.md` warns that a `title` on a
+`treleases` `<th>` reads as jesus2099's unless it is marked as ours
+(`data-mb-col-tip`). The new column descriptions were not marked.
+- **Reproduced** on the ISRC fixture (`recording-of-pt-isrc.html`). After the
+  render the header is `treleases mb-original-column` with the description.
+  After one global-filter keystroke it is `mb-original-column` with no title:
+  `purgeJesus2099Artifacts()` stripped MusicBrainz's class and the tip.
+- **Fix:** `_isOwnColumnTooltip()` accepts `data-mb-tip` too, which only
+  `_setTip()` stamps. Root cause, not a per-call-site marker.
+- **Who is affected:** every page whose Length header MusicBrainz marks
+  `treleases` (ISRC, the relationship overviews). `release-tracks` itself was
+  safe, because its own Length tooltip already carried the marker.
+
+**Tests:** `tests/fixtures/length-header-tooltips.spec.js`, 3 tests.
+`scripts/mutations/length-header-tooltips.json`: 7/7 as expected (6 fail on
+their own assertion, 1 recorded as `"expect": "pass"`). The jesus2099, ms and
+column specs pass, 90/90.
+`test:full` on the branch (uncommitted tree on 44d4379), 18:57:30–19:09:24
+CEST, 14 workers: 2134/2134 passed, wall 11 m 54 s.

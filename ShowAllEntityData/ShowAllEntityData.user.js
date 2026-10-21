@@ -38318,6 +38318,10 @@
         _msApplyLengthPrecision(next);
         if (partialDetail) _msRepaintColHdrBtns(next, 'partial', partialDetail);
         else _msRepaintColHdrBtns(next);
+        // The headers' tooltips say what the columns show (seconds or
+        // milliseconds): write them again for the new state.
+        _refreshColumnDescriptions('Length');
+        _initLengthColHeaderTooltips();
     }
 
     /**
@@ -38419,26 +38423,37 @@
         if (activeDefinition?.type !== 'release-tracks') return;
 
         // Only mention the toggle where it exists — with the feature off there
-        // is no ⏱ button to point at.
-        const msHint = Lib.settings.sa_enable_ms_track_length === false
-            ? ''
-            : ' The ⏱ button in the "Length" header switches both duration columns '
-              + 'between seconds and full millisecond precision together.';
+        // is no ⏱ button to point at. What the columns show depends on it:
+        // re-run from _msToggleLengthPrecision() after every press.
+        const msOn = Lib.settings.sa_enable_ms_track_length !== false;
+        const shown = msOn && _msLengthPrecisionShown();
+        const msHint = !msOn ? ''
+            : shown
+                ? ' The ⏱ button in the "Length" header switches both duration columns back '
+                  + 'to whole seconds together.'
+                : ' The ⏱ button in the "Length" header switches both duration columns '
+                  + 'between seconds and full millisecond precision together.';
 
         const titles = {
             'Length':
                 'Track length — the duration MusicBrainz stores for this track on THIS release\'s '
                 + 'tracklist. The value belongs to the release, not to the recording: another '
-                + 'release using the same recording can store a different one. MusicBrainz keeps '
-                + 'it in milliseconds but displays it rounded to the nearest second, so "4:50" can '
-                + 'be anything from 4:49.500 to 4:50.499.' + msHint,
+                + 'release using the same recording can store a different one. '
+                + (shown
+                    ? 'Shown here with milliseconds ("4:50.123"), the precision MusicBrainz keeps; '
+                      + 'MusicBrainz itself displays it rounded to the nearest second.'
+                    : 'MusicBrainz keeps it in milliseconds but displays it rounded to the nearest '
+                      + 'second, so "4:50" can be anything from 4:49.500 to 4:50.499.')
+                + msHint,
             'Recording length':
                 'Recording length — the duration MusicBrainz stores on the recording entity this '
                 + 'track links to, shared by every release that uses that recording. Read from the '
                 + 'release data MusicBrainz already embeds in this page, so it costs no extra '
                 + 'request. This column is shown only when at least one track on the release has a '
                 + 'recording length that disagrees with its track length; "?:??" means MusicBrainz '
-                + 'has no length on record for that recording.' + msHint,
+                + 'has no length on record for that recording.'
+                + (shown ? ' Shown here with milliseconds, the precision MusicBrainz keeps.' : '')
+                + msHint,
         };
 
         const tables = scopeTable ? [scopeTable] : Array.from(document.querySelectorAll('table.tbl'));
@@ -38447,6 +38462,8 @@
                 const text = titles[th.dataset.colName || ''];
                 if (!text) return;
                 _setTip(th, text);
+                // No longer the generic description (_refreshColumnDescriptions()).
+                delete th.dataset.mbColDesc;
                 // Claim the tooltip as ours. MusicBrainz natively marks a
                 // release tracklist's Length <th> with `class="treleases"`, and
                 // `_isJesus2099Treleases()` reads "a treleases cell with a
@@ -61668,12 +61685,14 @@
      *
      * A value is a string, or an object of texts per ROW entity
      * (`_tableRowEntity()`: what one row of the table is) with `default` for
-     * every other table. A name means different things on different pages
+     * every other table. A text may be a function returning it, for a column
+     * whose content changes (Length, with the ⏱ toggle).
+     * @see _refreshColumnDescriptions A name means different things on different pages
      * ("Type" of an event, a release group, a work), and the row entity is
      * what tells them apart. A pageType adds or overrides texts with
      * `features.columnDescriptions` (same shape), e.g. for a table whose rows
      * are no entity at all. A name missing here gets no tooltip.
-     * @type {Object<string, (string|Object<string, string>)>}
+     * @type {Object<string, (string|function(): string|Object<string, (string|function(): string)>)>}
      */
     const _COLUMN_DESCRIPTIONS = {
         '#': {
@@ -61721,7 +61740,11 @@
         'Release groups':   'The release groups the recording appears on.',
         'Release events':   'Where and when the release came out: one country or region and one date per release event.',
         'Rating':           'The average rating MusicBrainz users gave, out of five stars.',
-        'Length':           'The duration, in minutes and seconds.',
+        // A function: what the column shows depends on the ⏱ millisecond
+        // toggle, and the toggle refreshes the tip (_refreshColumnDescriptions()).
+        'Length':           () => (_msLengthPrecisionShown()
+            ? 'The duration, in minutes, seconds and milliseconds ("4:50.123"): the ⏱ button shows the full precision MusicBrainz stores, and switches back to whole seconds.'
+            : 'The duration, in minutes and seconds.'),
         'Format':           'The release\'s media, with how many of each: "2×CD", "12\\" Vinyl + DVD".',
         'Tracks':           'The number of tracks on each medium, e.g. "10 + 12".',
         'Country/Date':     'The release events: the country or region where the release came out, and the date. A release can have several.',
@@ -61863,8 +61886,26 @@
         const entry = (own && Object.prototype.hasOwnProperty.call(own, colName))
             ? own[colName] : _COLUMN_DESCRIPTIONS[colName];
         if (!entry) return '';
-        if (typeof entry === 'string') return entry;
-        return entry[rowKind] || entry.default || '';
+        const text = (typeof entry === 'object') ? (entry[rowKind] || entry.default) : entry;
+        return (typeof text === 'function' ? text() : text) || '';
+    }
+
+    /**
+     * Writes the column descriptions again, for headers that still carry
+     * one (`data-mb-col-desc`), after something changed what a column
+     * shows: the ⏱ toggle (`_msToggleLengthPrecision()`). A header whose
+     * tip another writer has since replaced has lost the marker and is left
+     * alone.
+     *
+     * @param {string} [colName] - Only this column; every described one when omitted.
+     * @returns {void}
+     */
+    function _refreshColumnDescriptions(colName) {
+        document.querySelectorAll('table.tbl thead tr:first-child th[data-mb-col-desc]').forEach(th => {
+            if (colName && th.dataset.colName !== colName) return;
+            const desc = _columnDescription(th.dataset.colName, _tableRowEntity(th.closest('table')));
+            if (desc) _setTip(th, desc);
+        });
     }
 
     /**
@@ -94662,11 +94703,18 @@ a { color: #1565c0; }`;
      * `data-mb-col-tip` and both places consult this instead of testing bare
      * attribute presence.
      *
+     * `data-mb-tip` counts as well: only `_setTip()` stamps it, so it means
+     * "this tooltip is ours" for every writer, without each one having to
+     * remember `data-mb-col-tip`. The column descriptions (9.99.1406,
+     * `_COLUMN_DESCRIPTIONS`) did not, and on every page whose Length header
+     * MusicBrainz marks `treleases` (an ISRC, the relationship overviews) the
+     * next filter keystroke stripped that native class and the description.
+     *
      * @param   {Element} el
      * @returns {boolean}
      */
     function _isOwnColumnTooltip(el) {
-        return !!(el.dataset && el.dataset.mbColTip);
+        return !!(el.dataset && (el.dataset.mbColTip || el.hasAttribute('data-mb-tip')));
     }
 
     /**
@@ -111891,8 +111939,11 @@ a { color: #1565c0; }`;
             // puts the name above either (_tipHeaderColumnName()).
             if (!th.hasAttribute('data-mb-tip') && !th.title) {
                 const desc = _columnDescription(colName, rowKind);
-                if (desc) _setTip(th, desc);
-                else if (colLabel !== colName) _setTip(th, colName);
+                if (desc) {
+                    _setTip(th, desc);
+                    // So _refreshColumnDescriptions() knows the tip is still the description.
+                    th.dataset.mbColDesc = '1';
+                } else if (colLabel !== colName) _setTip(th, colName);
             }
             hdrFlex.appendChild(createIcon('⇅', 0));
             hdrFlex.appendChild(createIcon('▲', 1));

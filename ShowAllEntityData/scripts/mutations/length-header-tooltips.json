@@ -1,0 +1,93 @@
+[
+  {
+    "name": "data-mb-tip does not count as our tooltip",
+    "why": "A description on a native <th class=\"treleases\"> (ISRC page) reads as jesus2099's: the next render strips MusicBrainz's class and the description (the 9.99.1406 regression).",
+    "edits": [
+      {
+        "find": "        return !!(el.dataset && (el.dataset.mbColTip || el.hasAttribute('data-mb-tip')));",
+        "replace": "        return !!(el.dataset && el.dataset.mbColTip);"
+      }
+    ],
+    "spec": "tests/fixtures/length-header-tooltips.spec.js",
+    "grep": "treleases class",
+    "expect": "fail"
+  },
+  {
+    "name": "the generic Length description ignores the ⏱ state",
+    "why": "After ⏱ the column shows milliseconds while the tooltip still says minutes and seconds.",
+    "edits": [
+      {
+        "find": "        'Length':           () => (_msLengthPrecisionShown()\n",
+        "replace": "        'Length':           () => (false\n"
+      }
+    ],
+    "spec": "tests/fixtures/length-header-tooltips.spec.js",
+    "grep": "generic Length description",
+    "expect": "fail"
+  },
+  {
+    "name": "the toggle does not refresh the descriptions",
+    "why": "The text is right after the next full render only, not after the press.",
+    "edits": [
+      {
+        "find": "        _refreshColumnDescriptions('Length');\n        _initLengthColHeaderTooltips();\n    }",
+        "replace": "        _initLengthColHeaderTooltips();\n    }"
+      }
+    ],
+    "spec": "tests/fixtures/length-header-tooltips.spec.js",
+    "grep": "generic Length description",
+    "expect": "fail"
+  },
+  {
+    "name": "the toggle does not refresh release-tracks' Length tooltips",
+    "why": "release-tracks keeps saying \"rounded to the nearest second\" while it shows milliseconds.",
+    "edits": [
+      {
+        "find": "        _refreshColumnDescriptions('Length');\n        _initLengthColHeaderTooltips();\n    }",
+        "replace": "        _refreshColumnDescriptions('Length');\n    }"
+      }
+    ],
+    "spec": "tests/fixtures/length-header-tooltips.spec.js",
+    "grep": "rounded to the second",
+    "expect": "fail"
+  },
+  {
+    "name": "release-tracks' Length tooltip ignores the ⏱ state",
+    "why": "The text is rebuilt after the press, but always the seconds one.",
+    "edits": [
+      {
+        "find": "        const shown = msOn && _msLengthPrecisionShown();",
+        "replace": "        const shown = false;"
+      }
+    ],
+    "spec": "tests/fixtures/length-header-tooltips.spec.js",
+    "grep": "rounded to the second",
+    "expect": "fail"
+  },
+  {
+    "name": "a description tip is not marked",
+    "why": "_refreshColumnDescriptions() then finds no header to rewrite.",
+    "edits": [
+      {
+        "find": "                    th.dataset.mbColDesc = '1';",
+        "replace": "                    void 0;"
+      }
+    ],
+    "spec": "tests/fixtures/length-header-tooltips.spec.js",
+    "grep": "generic Length description",
+    "expect": "fail"
+  },
+  {
+    "name": "release-tracks' own Length tooltip keeps the description marker",
+    "why": "Belt and braces: the toggle refreshes the descriptions first and release-tracks' own texts last, so the release-tracks text still wins; the marker removal only matters to a later description refresh without the second call. Recorded so the guard is not mistaken for tested.",
+    "edits": [
+      {
+        "find": "                delete th.dataset.mbColDesc;",
+        "replace": "                void 0;"
+      }
+    ],
+    "spec": "tests/fixtures/length-header-tooltips.spec.js",
+    "grep": "rounded to the second",
+    "expect": "pass"
+  }
+]

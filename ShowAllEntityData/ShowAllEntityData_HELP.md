@@ -1337,6 +1337,12 @@ Those last two are different facts and only one of them is worth a second click.
 Answers are cached per recording in IndexedDB, so a recording seen on one page is
 free on the next.
 
+The *Length* header's tooltip says what the column shows right now. With ⏱ off,
+it says the value is rounded to the second, so "4:50" can be anything from
+4:49.500 to 4:50.499. With ⏱ on, it says the value is shown with milliseconds,
+and that ⏱ switches back to whole seconds. On a release tracklist the
+*Recording length* tooltip changes the same way.
+
 A release tracklist also gets a **Recording length** column whenever some track's
 recording length disagrees with its track length, and flags the disagreements
 with ⚠️ or ❌ past a configurable threshold; the ⚠️ WARNING and ❌ ERROR menus
