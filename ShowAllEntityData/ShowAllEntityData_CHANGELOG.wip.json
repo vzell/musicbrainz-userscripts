@@ -1,0 +1,26 @@
+[
+  {
+    "version": "WIP.2",
+    "date": "2026-10-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The Length column's header tooltip now follows the ⏱ millisecond toggle. On a release tracklist it used to say \"rounded to the nearest second, so 4:50 can be anything from 4:49.500 to 4:50.499\" even while the column showed milliseconds. With ⏱ on it now says the value is shown with milliseconds, the precision MusicBrainz keeps, and that ⏱ switches back to whole seconds; the Recording length tooltip says the same. On the other pages with a ⏱ button, the Length description (9.99.1406) changes from \"minutes and seconds\" to \"minutes, seconds and milliseconds\" in the same way."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-10-21",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Since 9.99.1406, on pages where MusicBrainz marks the Length column itself (an ISRC page, the relationship overviews), the first filter keystroke removed MusicBrainz's own class from the Length header and its new tooltip with it. The jesus2099 clean-up took that tooltip for the \"SUPER MIND CONTROL\" plugin's, because only one older kind of the script's own tooltips counted as ours. Every tooltip the script writes now counts, so both stay."
+        ]
+      }
+    ]
+  }
+]

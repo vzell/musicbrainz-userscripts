@@ -191,6 +191,18 @@ stamped the script's columns.
 - **Per pageType:** `features.columnDescriptions` (same shape) wins over the
   built-in texts. It is the way in for a table whose rows are no entity, such
   as elections, annotations or CD stubs.
+- **A text that changes:** a text may be a function, for a column whose
+  content changes under the user. Length switches between seconds and
+  milliseconds with ⏱.
+  - A description tip carries `data-mb-col-desc`.
+    `_refreshColumnDescriptions(colName)` rewrites only those, so a header
+    whose tip another writer replaced is left alone. `release-tracks`'
+    `_initLengthColHeaderTooltips()` removes the marker for that reason.
+  - Whatever changes the content calls it; for ⏱ that is the end of
+    `_msToggleLengthPrecision()`.
+  - A description is the script's own tooltip (`data-mb-tip`), so
+    `_isOwnColumnTooltip()` never takes it for jesus2099's on a native
+    `treleases` header (docs/claude/release-tracks-and-length.md).
 - **When there is no text:** off with `sa_column_descriptions`, and always off
   on a foreign site (`_foreignHost`), whose columns these texts do not
   describe. A name with no entry gets no tip, as before.
