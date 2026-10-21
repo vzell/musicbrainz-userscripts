@@ -21215,10 +21215,12 @@
     /**
      * Kinds whose glyph is their entity's, read from the id
      * (`<kind>/<MBID>…`): an annotation history or version shows the
-     * release's (artist's, …) own glyph.
+     * release's (artist's, …) own glyph, an entity's subscribers or
+     * collections (2026-10-22) the artist's. An id with no `/` (an editor's
+     * subscribers: the id is the name) keeps the kind's own glyph.
      * @type {Set<string>}
      */
-    const _MB_KIND_ICON_FROM_ID = new Set(['annotations', 'annotation']);
+    const _MB_KIND_ICON_FROM_ID = new Set(['annotations', 'annotation', 'subscribers', 'collections']);
 
     /**
      * Popup sources other than `mb-entity` whose targets are MusicBrainz
@@ -21244,7 +21246,7 @@
         // An editing history shows the glyph of what it is the history of;
         // an annotation the glyph of the entity it annotates.
         const type = t.type === 'edits' ? _mbEditsLabel(String(t.id || '')).icon
-            : (_MB_KIND_ICON_FROM_ID.has(t.type) ? String(t.id || '').split('/')[0] : t.type);
+            : (_MB_KIND_ICON_FROM_ID.has(t.type) && String(t.id || '').includes('/') ? String(t.id).split('/')[0] : t.type);
         const stem = Object.prototype.hasOwnProperty.call(_MB_KIND_ICON, type) ? _MB_KIND_ICON[type] : '';
         return stem ? `${window.location.origin}/static/images/entity/${stem}.svg` : '';
     }
@@ -47746,6 +47748,36 @@
     const _MB_POP_ACCOUNT_KINDS = { subscribers: 'subscribers', tags: 'usertags', ratings: 'userratings' };
 
     /**
+     * An entity's own list pages linked from its sidebar (2026-10-22):
+     * "Subscribers" (`/<kind>/<MBID>/subscribers`, kind `subscribers`, as an
+     * editor's) and "Found in N user collections" (`/<kind>/<MBID>/collections`,
+     * kind `collections`). The id is `<kind>/<MBID>`, the MBID lowercased.
+     * Which kinds have which page: `_MB_POP_SUBSCRIBABLE`, and every kind
+     * here but a collection has a collections page.
+     * @type {RegExp}
+     */
+    const _MB_POP_ENTITY_LIST_RE = /^\/(area|artist|collection|event|instrument|label|place|recording|release|release-group|series|work)\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\/(subscribers|collections)\/?$/;
+
+    /** The entity kinds an editor can subscribe to (a subscribers page). */
+    const _MB_POP_SUBSCRIBABLE = new Set(['artist', 'label', 'series', 'collection']);
+
+    /** How many collections an entity's `collections` card lists. */
+    const _MB_POP_COLLS_CARD_ROWS = 8;
+
+    /**
+     * The entity kind a `subscribers` or `collections` id is about: "artist"
+     * for `artist/<MBID>`, '' for an editor's subscribers (the id is the
+     * editor's name).
+     *
+     * @param {string} id
+     * @returns {string}
+     */
+    function _mbPopListOf(id) {
+        const m = /^([a-z-]+)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.exec(String(id || ''));
+        return m ? m[1] : '';
+    }
+
+    /**
      * The id of an edit search (`/search/edits?…`, 2026-10-21): the path and
      * the query as the link spells it, without `page=` (the window's pager
      * adds its own). '' for a search that lists nothing yet: no
@@ -47769,7 +47801,8 @@
      * one path that needs `search`), an annotation history or version
      * (`_MB_POP_ANNOT_RE`), an editor's subscribers, tags or
      * ratings or the reader's applications (`_MB_POP_ACCOUNT_RE`; downvoted
-     * tags are not previewed), an edit, an editor or a tag
+     * tags are not previewed), an entity's subscribers or collections
+     * (`_MB_POP_ENTITY_LIST_RE`), an edit, an editor or a tag
      * (`_MB_POP_PAGE_RE`); `seg` is the path's own first segment (a disc
      * ID's page is /cdtoc/, its kind `discid`), '' when the kind's own
      * `path()` names the page (an editing history). `null` for any other
@@ -47801,6 +47834,11 @@
         // than the page the card reads: no card rather than the wrong one.
         if (a && a[2] === 'tags' && /(?:^|[?&])show_downvoted=1(?:&|$)/.test(search)) return null;
         if (a) return a[2] ? { seg: '', type: _MB_POP_ACCOUNT_KINDS[a[2]], id: a[1] } : { seg: '', type: 'applications', id: 'me' };
+        const l = _MB_POP_ENTITY_LIST_RE.exec(pathname);
+        if (l) {
+            const ok = l[3] === 'subscribers' ? _MB_POP_SUBSCRIBABLE.has(l[1]) : l[1] !== 'collection';
+            return ok ? { seg: '', type: l[3], id: `${l[1]}/${l[2].toLowerCase()}` } : null;
+        }
         const u = _MB_POP_USERTAG_RE.exec(pathname);
         if (u) return /(?:^|[?&])show_downvoted=1(?:&|$)/.test(search) ? null : { seg: '', type: 'usertag', id: `${u[1]}/${u[2]}` };
         const p = _MB_POP_PAGE_RE.exec(pathname);
@@ -49502,13 +49540,17 @@
     }
 
     /**
-     * An editor's subscribers page (`/user/<name>/subscribers`, 2026-10-21)
-     * as a record for its card: the editors subscribed to their edits (name
-     * and the id of their `/user/<id>` link) and how many more are
-     * anonymous ("Plus N other anonymous users"); `total` is the page's own
-     * "There are currently N users" when it says so. `null` when the page
-     * has no "Subscribers" h2 (a login page, an error page). Selectors from
-     * the capture of 2026-10-21 (DEBUG-NOTES.md).
+     * A subscribers page as a record for its card: an editor's
+     * (`/user/<name>/subscribers`, 2026-10-21) or an artist's, label's,
+     * series' or collection's (`/<kind>/<MBID>/subscribers`, 2026-10-22, the
+     * same h2 + `<p>` + `<ul>` inside `#content`: debug/artist-subscribers.html).
+     * The editors subscribed (name and the id of their `/user/<id>` link) and
+     * how many more are anonymous ("Plus N other anonymous users"); `total`
+     * is the page's own "There are currently N users" when it says so. The
+     * name is the h1's editor link, else (an entity's page, whose h1 links
+     * nothing) the h1's first `<bdi>`. `null` when the page has no
+     * "Subscribers" h2 (a login page, an error page). Selectors from the
+     * captures of 2026-10-21 and 2026-10-22 (DEBUG-NOTES.md).
      *
      * @param {Document} doc
      * @returns {?{name: string, editors: Array<{name: string, id: string}>, anonymous: number, total: number}}
@@ -49536,8 +49578,56 @@
             });
         });
         return {
-            name: _mbPopText(page.querySelector('h1 a[href^="/user/"] bdi')), editors, anonymous,
+            name: _mbPopText(page.querySelector('h1 a[href^="/user/"] bdi') || page.querySelector('h1 bdi')), editors, anonymous,
             total: total >= 0 ? total : editors.length + anonymous,
+        };
+    }
+
+    /**
+     * An entity's "Found in N user collections" page
+     * (`/<kind>/<MBID>/collections`, 2026-10-22; debug/artist-collections.html)
+     * as a record for its card. Read from `#content`'s h2 "Collections" — the
+     * sidebar has an h2 "Collections" of its own (the reader's collections),
+     * which comes later and is never read. Its `<p>` says "<name> has been
+     * added to N collections:" (N counts the private ones too) or "… has not
+     * been added to any collections." (no `<ul>`: the total falls back to
+     * the rows counted, 0); each `<li>` is a collection
+     * link "by" its owner's link, the last one may be "plus N other private
+     * collections". `null` without that h2 (an error page).
+     *
+     * @param {Document} doc
+     * @returns {?{name: string, collections: Array<{name: string, id: string, editor: string, editorId: string}>,
+     *   private: number, total: number}}
+     */
+    function _mbParseEntityCollectionsPage(doc) {
+        const content = doc.getElementById('content');
+        const els = _mbPopH2Section(content, 'Collections');
+        if (!els) return null;
+        const num = s => Number(String(s).replace(/,/g, '')) || 0;
+        const collections = [];
+        let priv = 0;
+        let total = -1;
+        els.forEach((el) => {
+            const m = el.tagName === 'P' && /has been added to ([\d,]+) collections?/.exec(_mbPopText(el));
+            if (m) total = num(m[1]);
+            if (el.tagName !== 'UL') return;
+            el.querySelectorAll(':scope > li').forEach((li) => {
+                const c = li.querySelector('a[href^="/collection/"]');
+                if (c) {
+                    const u = li.querySelector('a[href^="/user/"]');
+                    collections.push({
+                        name: _mbPopText(c), id: (c.getAttribute('href') || '').split('/')[2] || '',
+                        editor: u ? _mbPopText(u) : '', editorId: u ? (u.getAttribute('href') || '').split('/')[2] || '' : '',
+                    });
+                    return;
+                }
+                const p = /plus ([\d,]+) other private/i.exec(_mbPopText(li));
+                if (p) priv = num(p[1]);
+            });
+        });
+        return {
+            name: _mbPopText(content.querySelector('h1 bdi')), collections, private: priv,
+            total: total >= 0 ? total : collections.length + priv,
         };
     }
 
@@ -51876,22 +51966,29 @@
                     `<p><a href="/user/${encodeURIComponent(d.name)}/edits" target="_blank" rel="noopener">Their edits</a></p></div></div>`;
             },
         })),
-        // An editor's subscribers (2026-10-21), the profile's "view list":
-        // read from the page (`_mbParseSubscribersPage()`). The window links
-        // each editor, so a click drills into their card (Phase 5).
-        subscribers: Object.assign({ title: 'Subscribers', wide: false, path: id => `/user/${id}/subscribers` }, _mbPopPageKind({
+        // An editor's subscribers (2026-10-21), the profile's "view list",
+        // and an artist's, label's, series' or collection's (2026-10-22, the
+        // sidebar's "Subscribers"; id `<kind>/<MBID>`): read from the page
+        // (`_mbParseSubscribersPage()`). The window links each editor, so a
+        // click drills into their card (Phase 5).
+        subscribers: Object.assign({
+            title: 'Subscribers', wide: false,
+            path: id => (_mbPopListOf(id) ? `/${id}/subscribers` : `/user/${id}/subscribers`),
+        }, _mbPopPageKind({
             parse: _mbParseSubscribersPage,
             cardHtml(d, t) {
                 const shown = d.editors.slice(0, 12);
-                return `<div class="mb-tt-title">${_rgEsc(d.name || t.id)}</div><div class="mb-tt-comment">Subscribers · editor</div>` +
+                const of = _mbPopListOf(t.id);
+                return `<div class="mb-tt-title">${_rgEsc(d.name || t.id)}</div><div class="mb-tt-comment">Subscribers · ${_rgEsc(of || 'editor')}</div>` +
                     `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([`${d.total} subscriber${d.total === 1 ? '' : 's'}`,
                         d.anonymous ? `${d.anonymous} anonymous` : ''])}</div><div class="mb-tt-rule"></div>` +
                     (shown.length ? `<div class="mb-tt-body">${shown.map(e => _rgEsc(e.name)).join(', ')}</div>` +
                         (d.editors.length > shown.length ? `<div class="mb-tt-dim">+ ${d.editors.length - shown.length} more</div>` : '')
-                        : '<div class="mb-tt-comment">Nobody is subscribed to their edits.</div>');
+                        : `<div class="mb-tt-comment">${of ? 'Nobody is subscribed by name.' : 'Nobody is subscribed to their edits.'}</div>`);
             },
             windowHtml(d, t) {
-                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name || t.id)}</div><div class="mb-dp-xsub">MusicBrainz · editor · subscribers</div>` +
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name || t.id)}</div>` +
+                    `<div class="mb-dp-xsub">MusicBrainz · ${_rgEsc(_mbPopListOf(t.id) || 'editor')} · subscribers</div>` +
                     '<h4>Subscribers</h4>' + _mbPopKvHtml([
                         ['Editors', _rgEsc(String(d.editors.length))], ['Anonymous', d.anonymous ? _rgEsc(String(d.anonymous)) : ''],
                         ['Total', _rgEsc(String(d.total))],
@@ -51899,6 +51996,39 @@
                 const right = `<h4>Editors · ${d.editors.length}</h4>` + (d.editors.length
                     ? `<ul class="mb-pop-taglist">${d.editors.map(e => `<li><a href="/user/${_rgEsc(e.id)}" target="_blank" rel="noopener">${_rgEsc(e.name)}</a></li>`).join('')}</ul>`
                     : '<div class="mb-dp-xsub">No editor is subscribed by name.</div>');
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+        })),
+        // An entity's "Found in N user collections" (2026-10-22, the
+        // sidebar's link; id `<kind>/<MBID>`): read from the page
+        // (`_mbParseEntityCollectionsPage()`). The window links each
+        // collection and its owner, so a click drills into their cards.
+        collections: Object.assign({ title: 'Collections', wide: false, path: id => `/${id}/collections` }, _mbPopPageKind({
+            parse: _mbParseEntityCollectionsPage,
+            cardHtml(d, t) {
+                const shown = d.collections.slice(0, _MB_POP_COLLS_CARD_ROWS);
+                const more = d.collections.length - shown.length;
+                return `<div class="mb-tt-title">${_rgEsc(d.name || t.id)}</div><div class="mb-tt-comment">Collections · ${_rgEsc(_mbPopListOf(t.id))}</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([`${d.total} collection${d.total === 1 ? '' : 's'}`,
+                        d.private ? `${d.private} private` : ''])}</div><div class="mb-tt-rule"></div>` +
+                    (shown.length ? shown.map(c => `<div class="mb-tt-body">${_rgEsc(c.name)}` +
+                        `${c.editor ? ` <span class="mb-rg-dim">by ${_rgEsc(c.editor)}</span>` : ''}</div>`).join('') +
+                        (more > 0 ? `<div class="mb-tt-dim">+ ${more} more</div>` : '')
+                        : `<div class="mb-tt-comment">${d.total ? 'In private collections only.' : 'In no collection.'}</div>`);
+            },
+            windowHtml(d, t) {
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name || t.id)}</div>` +
+                    `<div class="mb-dp-xsub">MusicBrainz · ${_rgEsc(_mbPopListOf(t.id))} · collections</div>` +
+                    '<h4>Collections</h4>' + _mbPopKvHtml([
+                        ['Public', _rgEsc(String(d.collections.length))], ['Private', d.private ? _rgEsc(String(d.private)) : ''],
+                        ['Total', _rgEsc(String(d.total))],
+                    ]);
+                const right = `<h4>Public collections · ${d.collections.length}</h4>` + (d.collections.length
+                    ? _mbPopTableHtml(['Collection', 'Editor'], d.collections.map(c => [
+                        `<a href="/collection/${_rgEsc(c.id)}" target="_blank" rel="noopener">${_rgEsc(c.name)}</a>`,
+                        c.editorId ? `<a href="/user/${_rgEsc(c.editorId)}" target="_blank" rel="noopener">${_rgEsc(c.editor)}</a>` : _rgEsc(c.editor),
+                    ]))
+                    : '<div class="mb-dp-xsub">In no public collection.</div>');
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
         })),

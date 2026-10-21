@@ -2207,8 +2207,10 @@ codes: **ISRCs**, **ISWCs** and **disc IDs**, **edits** and **editors**,
 **other edit lists** and **edit searches** (the *view*, *N%* and *View all*
 links of a profile's statistics), an editor's **subscribers**, **tags** and
 **ratings** and your **applications** (the profile's *view list* and *view*
-links), an **annotation's history** and its **versions** (*View annotation
-history*, *View this version*, *View current revision*), and
+links), an entity's **subscribers** and **collections** (the sidebar's
+*Subscribers* and *Found in N user collections* links), an **annotation's
+history** and its **versions** (*View annotation history*, *View this
+version*, *View current revision*), and
 **tags** (a genre or tag link, also the pills of the sidebar's Tags card).
 A **Barcode** cell has a card too: the barcode's format and the releases
 carrying it. So does an entry of a column's **📊 dropdown** that names one
@@ -2263,7 +2265,12 @@ edits*, their **Votes**, and every **edit search** (*Last 24 hours*, the *N%*
 links of the edit types). An edit search is read again on every page load,
 since what it finds changes ("24 hours ago"). The *view list* beside
 **Subscribers** shows who is subscribed to the editor's edits, and how many
-more anonymously; a name in its window opens that editor's card. The *view
+more anonymously; a name in its window opens that editor's card. An
+artist's, label's, series' or collection's sidebar *Subscribers* link shows
+the same for that entity. Its *Found in N user collections* link shows how
+many collections hold it, how many of them are private, and the first few
+by name and owner; the window lists every public one, and a collection or
+an owner in it opens their card. The *view
 list* beside **Authorized applications** shows your applications (only you
 see that page): each one's name, what it may access and when it last got a
 token, how many applications you registered, and whether digest

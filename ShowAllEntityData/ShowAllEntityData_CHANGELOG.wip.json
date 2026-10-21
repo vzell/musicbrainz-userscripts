@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-10-22",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Link previews: an artist's, label's, series' or collection's sidebar \"Subscribers\" link now has a card and a window, like an editor's subscribers: how many are subscribed, how many anonymously, and their names. The \"Found in N user collections\" link of any entity has one too: how many collections hold it, how many of them are private, and the first few by name and owner; the window lists every public collection with its owner, and a click on either opens their card."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-10-22",
     "sections": [
