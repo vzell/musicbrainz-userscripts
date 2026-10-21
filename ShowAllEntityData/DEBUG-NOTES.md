@@ -25335,3 +25335,14 @@ See "Column header tooltips" in docs/claude/toolbar-and-header-ui.md.
   and now fails on the assertion it targets.
 - **`test:full`** 16:53:39–17:05:32 CEST (11 m 53 s): 2097/2098, the one
   failure being the purge spec above; it passes after the change, 5/5.
+
+## 2026-10-21 — test:full after merging main (9.99.1404–1406) into feat/pop-user-page-lists
+
+Env: 2026-10-21T17:37:53+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+`python3 scripts/run-test-full.py` on `feat/pop-user-page-lists` at 0232650
+(the merge of `main` with the short column labels and the column header
+tooltips): 2131/2131 passed, 14 workers, wall 12 m 46 s (17:25:07–17:37:53
+CEST). The branch's own specs and the header-tooltip change did not collide.
+In particular, no spec of WIP.1–WIP.9 asserts that a native header has no
+`title`.
