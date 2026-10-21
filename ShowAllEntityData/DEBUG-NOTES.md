@@ -25040,3 +25040,32 @@ the start of the h1, a release page did not.
   `python3 scripts/check-mutation-anchors.py
   scripts/mutations/sidebar-overhaul.json`). The three this change moved were
   re-anchored; the cover mutations were run as a subset.
+
+## 2026-10-21 — an annotation's history and versions, for their link previews (WIP.4, branch feat/pop-user-page-lists)
+
+Env: 2026-10-21T12:39:35+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Asked for from `debug/release-tracks-tttr.html`: the annotation's "View
+annotation history" (`/release/3ec14d03-…/annotations`) had no card.
+Captured with `scripts/fetch-mb-page-fixture.js` on 2026-10-21:
+
+- **The history is login-only.** Logged out, the capture timed out twice
+  waiting for `#page` (the RG page captured fine in the same minute, so it
+  was not the browser check); `--auth` returned the page at once. So the
+  `annotations` kind has a `failNote` for a login page, and the fixture is
+  the logged-in one (only vzell's own name in it).
+- **The history page carries every version's text** in a JSON script inside
+  its form (`{"annotations":[{id, html, text, changelog, editor, …}]}`), so
+  the card shows the latest text without asking the version pages. The
+  table: `table#annotation-history`, columns Old, New, Editor, Date,
+  Version history; "View this version" → `/annotation/<n>`, then
+  "(<em>no changelog specified</em>)" or the changelog.
+- **A version page, logged out, cannot tell old from current by its text:**
+  both say "Annotation last modified on <date> UTC." (logged in, an old one
+  says "This is an old revision … as edited by <editor> on <date>"). Its
+  JSON has `annotation.id` and `entity.latest_annotation.id`, which decide,
+  and `annotation.editor.name`. First attempt read the wrong JSON: the
+  `div.releaseheader` carries its own `{"entityType":…,"gid":…}` script
+  BEFORE the annotation's, and `querySelector` took that one.
+- The current version is `/annotation` without a number (the version page's
+  "View current revision"), the same markup.

@@ -21126,6 +21126,14 @@
     };
 
     /**
+     * Kinds whose glyph is their entity's, read from the id
+     * (`<kind>/<MBID>…`): an annotation history or version shows the
+     * release's (artist's, …) own glyph.
+     * @type {Set<string>}
+     */
+    const _MB_KIND_ICON_FROM_ID = new Set(['annotations', 'annotation']);
+
+    /**
      * The URL of a MusicBrainz kind's own glyph (`_MB_KIND_ICON`), on this
      * origin; '' for a kind without one or a target of another source.
      *
@@ -21134,8 +21142,10 @@
      */
     function _mbKindIconUrl(t) {
         if (!t || !t.src || t.src.id !== 'mb-entity') return '';
-        // An editing history shows the glyph of what it is the history of.
-        const type = t.type === 'edits' ? _mbEditsLabel(String(t.id || '')).icon : t.type;
+        // An editing history shows the glyph of what it is the history of;
+        // an annotation the glyph of the entity it annotates.
+        const type = t.type === 'edits' ? _mbEditsLabel(String(t.id || '')).icon
+            : (_MB_KIND_ICON_FROM_ID.has(t.type) ? String(t.id || '').split('/')[0] : t.type);
         const stem = Object.prototype.hasOwnProperty.call(_MB_KIND_ICON, type) ? _MB_KIND_ICON[type] : '';
         return stem ? `${window.location.origin}/static/images/entity/${stem}.svg` : '';
     }
@@ -47058,6 +47068,19 @@
     const _MB_POP_EDITLIST_RE = /^\/user\/[^/]+\/(?:edits\/(?:open|accepted|autoedits|applied|rejected|failed|cancelled)|votes)$/;
 
     /**
+     * An entity's annotation history (`/<kind>/<MBID>/annotations`, kind
+     * `annotations`) and one version of its annotation
+     * (`/<kind>/<MBID>/annotation/<n>`, or the current one without the
+     * number: kind `annotation`), 2026-10-21. The id is `<kind>/<MBID>`, plus
+     * `/<n>` for a numbered version; the MBID lowercased, as for
+     * `_MB_POP_PATH_RE`. Probed 2026-10-21: the history is shown to a
+     * logged-in editor only (logged out, the page never loads), a version to
+     * anyone. `edit_annotation` and `annotations-differences` do not match.
+     * @type {RegExp}
+     */
+    const _MB_POP_ANNOT_RE = /^\/(artist|release-group|release|recording|work|label|event|place|area|series|instrument)\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\/(?:(annotations)|annotation(?:\/(\d+))?)\/?$/;
+
+    /**
      * Pages of an editor's account read for their cards (2026-10-21):
      * `/user/<name>/subscribers`, `/user/<name>/tags` and
      * `/user/<name>/ratings` (the kind by `_MB_POP_ACCOUNT_KINDS`, id the
@@ -47091,7 +47114,8 @@
      * (`_MB_POP_PATH_RE`), a code (`_MB_POP_CODE_RE`), an editing history
      * (`_MB_POP_EDITS_RE`), an editor's other edit list
      * (`_MB_POP_EDITLIST_RE`) or an edit search (`_mbEditsSearchId()`, the
-     * one path that needs `search`), an editor's subscribers, tags or
+     * one path that needs `search`), an annotation history or version
+     * (`_MB_POP_ANNOT_RE`), an editor's subscribers, tags or
      * ratings or the reader's applications (`_MB_POP_ACCOUNT_RE`; downvoted
      * tags are not previewed), an edit, an editor or a tag
      * (`_MB_POP_PAGE_RE`); `seg` is the path's own first segment (a disc
@@ -47114,6 +47138,11 @@
         if (/^\/search\/edits\/?$/.test(pathname)) {
             const sid = _mbEditsSearchId(search);
             return sid ? { seg: '', type: 'edits', id: sid } : null;
+        }
+        const n = _MB_POP_ANNOT_RE.exec(pathname);
+        if (n) {
+            const base = `${n[1]}/${n[2].toLowerCase()}`;
+            return n[3] ? { seg: '', type: 'annotations', id: base } : { seg: '', type: 'annotation', id: n[4] ? `${base}/${n[4]}` : base };
         }
         const a = _MB_POP_ACCOUNT_RE.exec(pathname);
         // An editor's downvoted tags (`?show_downvoted=1`) are another list
@@ -48973,6 +49002,182 @@
             kinds.push({ kind: m[1], more, items });
         });
         return { name, kinds };
+    }
+
+    /**
+     * An annotation's rendered body as plain text blocks, for a card and a
+     * window that copy no markup: a heading (`h`) or a paragraph (`p`, a
+     * `<br>` kept as a line break; a list item gets a "• "). Text only, so
+     * the record can be kept and is shown escaped.
+     *
+     * @param {?Element} root - `.annotation-body`, or a parsed `html` field.
+     * @returns {Array<{h?: string, p?: string}>}
+     */
+    function _mbAnnotationBlocks(root) {
+        const blocks = [];
+        const text = (el) => {
+            const c = el.cloneNode(true);
+            c.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+            return c.textContent.split('\n').map(s => s.replace(/\s+/g, ' ').trim()).filter(Boolean).join('\n');
+        };
+        const walk = (el) => {
+            Array.from(el.children).forEach((c) => {
+                if (/^H[1-6]$/.test(c.tagName)) {
+                    const h = text(c);
+                    if (h) blocks.push({ h });
+                } else if (c.tagName === 'UL' || c.tagName === 'OL') {
+                    c.querySelectorAll(':scope > li').forEach((li) => {
+                        const p = text(li);
+                        if (p) blocks.push({ p: `• ${p}` });
+                    });
+                } else if (c.tagName === 'DIV' && c.children.length) {
+                    walk(c);
+                } else {
+                    const p = text(c);
+                    if (p) blocks.push({ p });
+                }
+            });
+        };
+        if (root) walk(root);
+        return blocks;
+    }
+
+    /**
+     * The entity an annotation page is about, from its header: the h1 link's
+     * name and the kind of page it links.
+     *
+     * @param {?Element} content - The page's `#content`.
+     * @returns {{name: string, type: string}}
+     */
+    function _mbAnnotationEntity(content) {
+        const a = content && content.querySelector('h1 a[href]');
+        const p = a ? _MB_POP_PATH_RE.exec(a.getAttribute('href')) : null;
+        return { name: _mbPopText(a), type: p ? p[1] : '' };
+    }
+
+    /**
+     * An entity's annotation history page (`/<kind>/<MBID>/annotations`,
+     * 2026-10-21; shown to a logged-in editor only) as a record for its
+     * card: one row per version of `table#annotation-history`, newest first
+     * as the page lists them — its number (from "View this version"), the
+     * editor (name, `/user/<id>`), the date as the page writes it, and the
+     * changelog ('' for "no changelog specified") — with each version's
+     * text read from the page's own JSON in the form (`annotations[].html`,
+     * as `_mbAnnotationBlocks()`). `null` without the table (a login page,
+     * an error page). Selectors from the capture of 2026-10-21
+     * (DEBUG-NOTES.md).
+     *
+     * @param {Document} doc
+     * @returns {?{name: string, type: string, versions: Array<{id: string, editor: string, editorId: string,
+     *   date: string, changelog: string, blocks: Array<{h?: string, p?: string}>}>}}
+     */
+    function _mbParseAnnotationsPage(doc) {
+        const content = doc.getElementById('content');
+        const table = content && content.querySelector('table#annotation-history');
+        if (!table) return null;
+        const bodies = new Map();
+        const json = table.closest('form') && table.closest('form').querySelector('script[type="application/json"]');
+        try {
+            const parsed = json ? JSON.parse(json.textContent) : null;
+            // An inert document: nothing in it runs or loads.
+            (parsed && parsed.annotations || []).forEach((x) => {
+                bodies.set(String(x.id), _mbAnnotationBlocks(new DOMParser().parseFromString(String(x.html || ''), 'text/html').body));
+            });
+        } catch (_) { /* no texts: the table alone */ }
+        const heads = Array.from(table.querySelectorAll('thead th')).map(th => _mbPopText(th));
+        const col = name => heads.indexOf(name);
+        const versions = Array.from(table.querySelectorAll('tbody > tr')).map((tr) => {
+            const ver = tr.querySelector('a[href*="/annotation/"]');
+            const id = ver ? (/\/annotation\/(\d+)/.exec(ver.getAttribute('href')) || [])[1] || '' : '';
+            if (!id) return null;
+            const ed = tr.querySelector('a[href^="/user/"]');
+            const hist = tr.cells[col('Version history')];
+            let changelog = '';
+            if (hist) {
+                const c = hist.cloneNode(true);
+                c.querySelectorAll('a').forEach(x => x.remove());
+                changelog = _mbPopText(c).replace(/^\((.*)\)$/, '$1');
+                if (/^no changelog specified$/i.test(changelog)) changelog = '';
+            }
+            return {
+                id, editor: _mbPopText(ed), editorId: ed ? (ed.getAttribute('href') || '').split('/')[2] || '' : '',
+                date: _mbPopText(tr.cells[col('Date')]), changelog, blocks: bodies.get(id) || [],
+            };
+        }).filter(Boolean);
+        return Object.assign(_mbAnnotationEntity(content), { versions });
+    }
+
+    /**
+     * `_mbAnnotationBlocks()`' blocks as escaped HTML: a heading as `<h4>`
+     * (the window) or a bold line (the card), a paragraph keeping its line
+     * breaks. `max` blocks at most, then "+ N more".
+     *
+     * @param {Array<{h?: string, p?: string}>} blocks
+     * @param {{card?: boolean, max?: number}} [opts]
+     * @returns {string}
+     */
+    function _mbAnnotationHtml(blocks, { card = false, max = Infinity } = {}) {
+        const shown = blocks.slice(0, max);
+        const br = s => _rgEsc(s).replace(/\n/g, '<br>');
+        const html = shown.map((b) => {
+            if (b.h) return card ? `<div class="mb-tt-body"><b>${br(b.h)}</b></div>` : `<h4>${br(b.h)}</h4>`;
+            return card ? `<div class="mb-tt-body">${br(b.p)}</div>` : `<p>${br(b.p)}</p>`;
+        }).join('');
+        const more = blocks.length - shown.length;
+        return html + (more > 0 ? `<div class="${card ? 'mb-tt-dim' : 'mb-dp-xsub'}">+ ${more} more</div>` : '');
+    }
+
+    /**
+     * One version of an entity's annotation (`/<kind>/<MBID>/annotation/<n>`,
+     * or the current one at `/<kind>/<MBID>/annotation`; 2026-10-21, shown
+     * to anyone) as a record for its card: the text (`_mbAnnotationBlocks()`
+     * of `.annotation-body`), the changelog ('' for "(no changelog)"), and
+     * what `.annotation-details` says — an old version names its editor and
+     * date ("This is an old revision of this annotation, as edited by … on
+     * …"), the current one only its date ("Annotation last modified on …").
+     * `revisions` is the page JSON's `numberOfRevisions` (0 when absent).
+     * `null` without `div.annotation` (an error page).
+     *
+     * @param {Document} doc
+     * @returns {?{name: string, type: string, blocks: Array<{h?: string, p?: string}>, changelog: string,
+     *   editor: string, editorId: string, date: string, old: boolean, revisions: number}}
+     */
+    function _mbParseAnnotationVersionPage(doc) {
+        const content = doc.getElementById('content');
+        const box = content && content.querySelector('div.annotation');
+        if (!box) return null;
+        const details = box.querySelector('.annotation-details');
+        const said = _mbPopText(details);
+        const ed = details && details.querySelector('a[href^="/user/"]');
+        const cl = Array.from(box.querySelectorAll(':scope > p')).find(p => /^Changelog:/.test(_mbPopText(p)));
+        let changelog = cl ? _mbPopText(cl).replace(/^Changelog:\s*/, '').replace(/^\((.*)\)$/, '$1') : '';
+        if (/^no changelog( specified)?$/i.test(changelog)) changelog = '';
+        let revisions = 0;
+        let old = /old revision/.test(said);
+        let editor = _mbPopText(ed);
+        let editorId = ed ? (ed.getAttribute('href') || '').split('/')[2] || '' : '';
+        // The header has a JSON script of its own (the entity type and MBID)
+        // before the annotation's.
+        const json = Array.from(content.querySelectorAll('script[type="application/json"]'))
+            .find(s => /^\s*\{\s*"annotation"\s*:/.test(s.textContent) || /"numberOfRevisions"/.test(s.textContent));
+        try {
+            const parsed = json ? JSON.parse(json.textContent) : null;
+            revisions = Number(parsed && parsed.numberOfRevisions) || 0;
+            // Logged out, an old version's line reads like the current one's
+            // ("Annotation last modified on …", probed 2026-10-21), so the
+            // ids decide; the editor is in the JSON either way.
+            const ann = parsed && parsed.annotation;
+            const latest = parsed && parsed.entity && parsed.entity.latest_annotation;
+            if (ann && latest && ann.id != null && latest.id != null) old = ann.id !== latest.id;
+            if (!editor && ann && ann.editor && ann.editor.name) {
+                editor = String(ann.editor.name);
+                editorId = encodeURIComponent(editor);
+            }
+        } catch (_) { /* not said */ }
+        return Object.assign(_mbAnnotationEntity(content), {
+            blocks: _mbAnnotationBlocks(box.querySelector('.annotation-body')), changelog, editor, editorId,
+            date: (/\bon (\d{4}-\d{2}-\d{2}[^.]*)\./.exec(said) || [])[1] || '', old, revisions,
+        });
     }
 
     /**
@@ -51045,6 +51250,73 @@
                         `<a href="/${_rgEsc(x.type)}/${_rgEsc(x.id)}" target="_blank" rel="noopener">${_rgEsc(x.name)}</a>`, _rgEsc(x.extra)])) +
                     (k.more ? `<p><a href="${_rgEsc(k.more)}" target="_blank" rel="noopener">All ${_rgEsc(k.kind.toLowerCase())} ratings</a></p>` : '')).join('')
                     : '<div class="mb-dp-xsub">They have rated nothing.</div>';
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+        })),
+        // An entity's annotation history (2026-10-21), the annotation's "View
+        // annotation history": read from the page (`_mbParseAnnotationsPage()`),
+        // which MusicBrainz shows to a logged-in editor only. The window
+        // lists every version, each linked so a click opens it (the
+        // `annotation` kind), and each editor so a click opens their card.
+        annotations: Object.assign({ title: 'Annotation history', wide: true, path: id => `/${id}/annotations` }, _mbPopPageKind({
+            parse: _mbParseAnnotationsPage,
+            failNote: () => ' MusicBrainz shows an annotation history only to a logged-in editor.',
+            cardHtml(d, t) {
+                const last = d.versions[0];
+                const n = d.versions.length;
+                return `<div class="mb-tt-title">${_rgEsc(d.name || t.id)}</div><div class="mb-tt-comment">Annotation history · ${_rgEsc(d.type || t.id.split('/')[0])}</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([`${n} version${n === 1 ? '' : 's'}`,
+                        last ? `latest ${_rgEsc(last.date)}` : ''])}</div><div class="mb-tt-rule"></div>` +
+                    (last ? _mbPopKvHtml([['Latest by', _rgEsc(last.editor)], ['Changelog', _rgEsc(last.changelog)]]) +
+                        _mbAnnotationHtml(last.blocks, { card: true, max: 3 })
+                        : '<div class="mb-tt-comment">No annotation has been written.</div>');
+            },
+            windowHtml(d, t) {
+                const n = d.versions.length;
+                const last = d.versions[0];
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name || t.id)}</div>` +
+                    `<div class="mb-dp-xsub">MusicBrainz · ${_rgEsc(d.type || t.id.split('/')[0])} · annotation history</div>` +
+                    _mbPopKvHtml([['Versions', _rgEsc(String(n))], ['Latest', last ? _rgEsc(last.date) : ''], ['Latest by', last ? _rgEsc(last.editor) : '']]) +
+                    (last && last.blocks.length ? `<h4>The latest text</h4>${_mbAnnotationHtml(last.blocks)}` : '');
+                const right = `<h4>Versions · ${n}</h4>` + (n ? _mbPopTableHtml(['Version', 'Editor', 'Date', 'Changelog'], d.versions.map((v, i) => [
+                    `<a href="/${_rgEsc(t.id)}/annotation/${_rgEsc(v.id)}" target="_blank" rel="noopener">Version ${n - i}</a>`,
+                    v.editorId ? `<a href="/user/${_rgEsc(v.editorId)}" target="_blank" rel="noopener">${_rgEsc(v.editor)}</a>` : _rgEsc(v.editor),
+                    _rgEsc(v.date), v.changelog ? _rgEsc(v.changelog) : '<span class="mb-rg-dim">none</span>',
+                ])) : '<div class="mb-dp-xsub">No annotation has been written.</div>');
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+        })),
+        // One version of an entity's annotation (2026-10-21): a version's
+        // "View this version", or the current one ("View current
+        // revision"), read from its page (`_mbParseAnnotationVersionPage()`).
+        // Its text is copied as text only, never as markup.
+        annotation: Object.assign({
+            title: 'Annotation', wide: true,
+            titleOf: id => (/\/\d+$/.test(id) ? 'Annotation version' : 'Annotation'),
+            path: (id) => {
+                const p = id.split('/');
+                return `/${p[0]}/${p[1]}/annotation${p[2] ? `/${p[2]}` : ''}`;
+            },
+        }, _mbPopPageKind({
+            parse: _mbParseAnnotationVersionPage,
+            cardHtml(d, t) {
+                const what = d.old ? 'an old version' : 'the current version';
+                return `<div class="mb-tt-title">${_rgEsc(d.name || t.id)}</div><div class="mb-tt-comment">Annotation · ${_rgEsc(what)}</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([_rgEsc(d.date), d.editor ? `by ${_rgEsc(d.editor)}` : '',
+                        d.revisions ? `${d.revisions} version${d.revisions === 1 ? '' : 's'}` : ''])}</div><div class="mb-tt-rule"></div>` +
+                    (d.changelog ? _mbPopKvHtml([['Changelog', _rgEsc(d.changelog)]]) : '') +
+                    (d.blocks.length ? _mbAnnotationHtml(d.blocks, { card: true, max: 4 }) : '<div class="mb-tt-comment">This version is empty.</div>');
+            },
+            windowHtml(d, t) {
+                const p = t.id.split('/');
+                const base = `/${p[0]}/${p[1]}`;
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name || t.id)}</div>` +
+                    `<div class="mb-dp-xsub">MusicBrainz · ${_rgEsc(d.type || p[0])} · annotation</div>` +
+                    _mbPopKvHtml([['Version', d.old ? 'an old one' : 'the current one'], ['Edited by', _rgEsc(d.editor)], ['Date', _rgEsc(d.date)],
+                        ['Changelog', _rgEsc(d.changelog)], ['Versions', d.revisions ? _rgEsc(String(d.revisions)) : '']]) +
+                    `<p><a href="${_rgEsc(base)}/annotations" target="_blank" rel="noopener">Annotation history</a>` +
+                    (d.old ? ` · <a href="${_rgEsc(base)}/annotation" target="_blank" rel="noopener">The current version</a>` : '') + '</p>';
+                const right = '<h4>Annotation</h4>' + (d.blocks.length ? _mbAnnotationHtml(d.blocks) : '<div class="mb-dp-xsub">This version is empty.</div>');
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
             },
         })),

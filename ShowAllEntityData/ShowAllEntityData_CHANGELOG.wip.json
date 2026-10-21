@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-10-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Link previews for annotations: \"View annotation history\" (under an annotation and in the sidebar, on every kind of page that has one) shows how many versions the annotation has and the latest one's date, editor, changelog and first lines; its window lists every version, newest first, and a version opens its own card. MusicBrainz shows the history only to a logged-in editor, and logged out the card says so. \"View this version\" and \"View current revision\" show that version's date, editor, changelog and text. An annotation is copied as plain text, never as markup."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-10-21",
     "sections": [

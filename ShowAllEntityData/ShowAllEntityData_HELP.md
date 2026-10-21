@@ -2141,7 +2141,8 @@ codes: **ISRCs**, **ISWCs** and **disc IDs**, **edits** and **editors**,
 **other edit lists** and **edit searches** (the *view*, *N%* and *View all*
 links of a profile's statistics), an editor's **subscribers**, **tags** and
 **ratings** and your **applications** (the profile's *view list* and *view*
-links), and
+links), an **annotation's history** and its **versions** (*View annotation
+history*, *View this version*, *View current revision*), and
 **tags** (a genre or tag link, also the pills of the sidebar's Tags card).
 A **Barcode** cell has a card too: the barcode's format and the releases
 carrying it. So does an entry of a column's **📊 dropdown** that names one
@@ -2210,6 +2211,14 @@ their ratings page does, a few per kind, each with its stars; an entity opens
 its own card, and *All … ratings* opens MusicBrainz's full list in a tab. The
 window never copies the stars, which on MusicBrainz are links that change a
 rating.
+*View annotation history* (under an annotation, and in the sidebar) shows
+how many versions the annotation has, and the latest one's date, editor,
+changelog and first lines; its window lists every version, newest first, and
+a version opens its own card. MusicBrainz shows that history only when you
+are logged in, so logged out the card says so. *View this version* and *View
+current revision* show that version's date, editor, changelog and text. An
+annotation is copied as plain text: its links and formatting stay on
+MusicBrainz's page.
 A tag card shows whether the tag is a genre, how many entities carry it
 and the kinds with the most of them (*Recordings 129,479*); it is read from
 the tag's own page, since MusicBrainz cannot look a tag up otherwise.

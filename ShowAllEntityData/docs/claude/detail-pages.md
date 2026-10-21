@@ -1074,6 +1074,57 @@ from the page (no Web Service), through `_mbPageLoad()`.
   `popup-mb-edits.mobile.spec.js`; mutations
   `scripts/mutations/popup-user-lists.json` (14, all caught).
 
+## MusicBrainz: an annotation's history and its versions (2026-10-21)
+
+An annotation's own line ("View annotation history | Edit annotation", in
+`.annotation-details`), the sidebar's "View annotation history" and every
+"View this version" / "View current revision" link get a card and a window.
+Two kinds read from the page (`_mbPopPageKind()`), both found by
+`_MB_POP_ANNOT_RE` in `_mbPopParsePath()` for the eleven annotated entity
+kinds (no `url`, no `collection`); `edit_annotation` and
+`annotations-differences` do not match (the pattern is anchored).
+
+- **`annotations`** (`/<kind>/<MBID>/annotations`, id `<kind>/<MBID>`, the
+  shape of an `edits` id). **Probed 2026-10-21: MusicBrainz shows this page
+  to a logged-in editor only** — logged out the page never loads, so a
+  fixture needs `--auth` and a login page is the `failNote`.
+  `_mbParseAnnotationsPage()` reads `table#annotation-history` (by header:
+  "Date", "Version history"; editor = the row's `/user/` link; changelog =
+  the history cell without its link, "(no changelog specified)" → '') and
+  takes each version's TEXT from the page's own JSON inside the form
+  (`annotations[].html`, keyed by `id`). Card: versions, the latest date,
+  editor, changelog and the first three blocks; window: the latest text and
+  every version ("Version N", newest first as the page lists them), each
+  linked to its `/annotation/<n>` so a click drills into the `annotation`
+  kind, each editor to `/user/<name>`.
+- **`annotation`** (`/<kind>/<MBID>/annotation/<n>`, id `<kind>/<MBID>/<n>`;
+  the current one at `/<kind>/<MBID>/annotation`, id `<kind>/<MBID>`;
+  `titleOf` says "Annotation version" or "Annotation"). Shown to anyone.
+  `_mbParseAnnotationVersionPage()` reads `div.annotation`: the body, "Changelog:",
+  and `.annotation-details`. **Logged out, an old version's line reads like
+  the current one's** ("Annotation last modified on <date> UTC.", logged
+  in "This is an old revision … as edited by <editor> on <date>."), so
+  old/current is decided by the page JSON's `annotation.id` against
+  `entity.latest_annotation.id`, and the editor comes from
+  `annotation.editor.name` when the line names none. **The header has a JSON
+  script of its own first** (`{"entityType":…,"gid":…}`): the parser looks
+  for the one with an `annotation` key.
+- **Text only, never markup.** `_mbAnnotationBlocks()` turns a rendered body
+  into `{h}` / `{p}` blocks of `textContent` (a `<br>` kept as a newline, a
+  list item as "• …"); `_mbAnnotationHtml()` escapes them. The JSON's `html`
+  is parsed in an inert `DOMParser` document. So a link inside an
+  annotation is its text in the card; the SAFE spec plants an `<img
+  onerror>` and asserts it neither reaches the window nor runs.
+- **Glyph:** `_MB_KIND_ICON_FROM_ID` — both kinds show the glyph of the
+  entity named by the id's first segment.
+- Fixtures (`scripts/fetch-mb-page-fixture.js`, release 3ec14d03-…):
+  `release-annotations-history.html` (`--auth`),
+  `release-annotation-version.html` (version 810603) and
+  `release-annotation-current.html` (logged out). Spec:
+  `popup-mb-annotations.spec.js` (PATH, HISTORY, VERSION, CURRENT, LOGIN,
+  SAFE) on `release-tracks-sidebar-search-links.html`; mutations
+  `scripts/mutations/popup-annotations.json` (9, all caught).
+
 ## MusicBrainz: beyond table links (org/iframe.org, Phase 4)
 
 - **`data-mb-pop="<kind>:<id>"`** on any element makes it a target
