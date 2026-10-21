@@ -28629,13 +28629,16 @@
      *   `_parseCreditDateAnnotation`/`_parseBareParenDate`; `null` when no
      *   date attribute was found at all, or the annotation present wasn't
      *   date-shaped (e.g. a task note) — both count as "missing".
-     * @returns {?{icon: string, tooltip: string}}
+     * @returns {?{icon: string, tooltip: string, date?: string}} A missing
+     *   date's flag carries `date`, the recording date it is deduced to be
+     *   (`_appendLiveDateFlag()` stamps it for the finding's title).
      */
     function _liveDateCheckResult(recordingDate, parsedDate) {
         if (!parsedDate) {
             return {
                 icon: '⚠️',
-                tooltip: `This track is a live recording (recorded ${recordingDate}), but this credit has no date attribute — it can't be confirmed to be from the same performance.`
+                tooltip: `This track is a live recording (recorded ${recordingDate}), but this credit has no date attribute — it can't be confirmed to be from the same performance.`,
+                date: recordingDate,
             };
         }
         if (parsedDate.compareValue === recordingDate) return null;
@@ -28654,14 +28657,20 @@
      * container — a credit `<li>`, or a "Recorded at event" `<td>` directly
      * (that column never renders a list).
      *
+     * A missing date's flag also carries `data-mb-live-date`, the
+     * recording date the credit is deduced to be from: the
+     * `live-credit-nodate` finding names it in the cell's title. An
+     * attribute, so it survives every clone and the disk round trip.
+     *
      * @param {HTMLElement} container
-     * @param {?{icon: string, tooltip: string}} result
+     * @param {?{icon: string, tooltip: string, date?: string}} result
      */
     function _appendLiveDateFlag(container, result) {
         if (!result) return;
         const _flag = document.createElement('span');
         _flag.className = 'mb-live-date-flag';
         _flag.textContent = ' ' + result.icon;
+        if (result.date) _flag.dataset.mbLiveDate = result.date;
         _setTip(_flag, result.tooltip);
         container.appendChild(_flag);
     }
@@ -44748,6 +44757,26 @@
         Array.from(cell.querySelectorAll('.mb-live-date-flag')).some(s => s.textContent.includes(glyph));
 
     /**
+     * The `live-credit-nodate` finding's detail: the date a cell's undated
+     * live credits can be deduced to be from — the recording's own "live
+     * recording of" date, which is what the flag was measured against
+     * (`_appendLiveDateFlag()`'s `data-mb-live-date`). Every distinct date
+     * is named (one row is one recording, so it is one date); '' for a
+     * flag stamped before the attribute existed (an older disk record).
+     *
+     * @param {HTMLTableCellElement} cell
+     * @returns {string}
+     */
+    function _liveCreditDeducedDate(cell) {
+        const dates = [];
+        cell.querySelectorAll('.mb-live-date-flag[data-mb-live-date]').forEach((s) => {
+            const d = s.dataset.mbLiveDate;
+            if (s.textContent.includes('⚠️') && d && !dates.includes(d)) dates.push(d);
+        });
+        return dates.length ? `probably ${dates.join(' or ')}, the recording's own date ("live recording of")` : '';
+    }
+
+    /**
      * The finding registry, WARNINGs first, each level in menu order. See the
      * block comment above for the contract of every field.
      *
@@ -45221,6 +45250,7 @@
             rowGate: row => !!row.querySelector('.mb-live-date-flag'),
             cols: () => '*',
             test: cell => _cellHasLiveDateFlag(cell, '⚠️'),
+            detail: cell => _liveCreditDeducedDate(cell),
             tint: _findingTintSetting('sa_findings_tint_live_credit'),
         },
         {
@@ -45530,7 +45560,16 @@
                 const c = f.compare && f.compare(td, row, plan);
                 if (c) compares[f.id] = c;
             });
-            rowWide.forEach(f => { if (f.test(td, row, plan)) ids.push(f.id); });
+            // A row finding's detail and comparison are per cell too (the
+            // date an undated live credit is deduced to be from).
+            rowWide.forEach((f) => {
+                if (!f.test(td, row, plan)) return;
+                ids.push(f.id);
+                const d = f.detail && f.detail(td, row, plan);
+                if (d) details[f.id] = d;
+                const c = f.compare && f.compare(td, row, plan);
+                if (c) compares[f.id] = c;
+            });
             _writeFindingAttrs(td, ids, details, compares);
         });
     }

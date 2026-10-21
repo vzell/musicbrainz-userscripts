@@ -31,8 +31,8 @@ project skill `add-finding` (`.claude/skills/add-finding/SKILL.md`).
 | `enabled()`                            | Optional; the finding's own feature setting (`sa_enable_pending_edits_section`, `sa_enable_barcode_validation`).                                                                         |
 | `cols(name, plan)`                     | Which columns are tested. `'*'` = every cell of a row that passes `rowGate()`.                                                                                                           |
 | `test(cell, row, plan)`                | The detector.                                                                                                                                                                            |
-| `detail(cell, row, plan)`              | Optional, cell scope: this cell's own text, appended to its tooltip line after the label (`rec-event-mismatch`/`rec-place-mismatch` name both values). Same source-row rule as `test()`. |
-| `compare(cell, row, plan)`             | Optional, cell scope: `{la, lb, a, b}` for the rich card, which shows the two values one under the other, the difference marked (`_cmpHtml()`).                                          |
+| `detail(cell, row, plan)`              | Optional, per cell (either scope; a row finding's since 2026-10-21): this cell's own text, appended to its tooltip line after the label (`rec-event-mismatch`/`rec-place-mismatch` name both values; `live-credit-nodate` the date the credit is deduced to be from). Same source-row rule as `test()`. |
+| `compare(cell, row, plan)`             | Optional, per cell (either scope): `{la, lb, a, b}` for the rich card, which shows the two values one under the other, the difference marked (`_cmpHtml()`).                              |
 | `tint(cell)`                           | Whether this finding paints. `false` for the families that already had CSS (length, video, no-work, live titles); the rest read their `sa_findings_tint_*` setting.                      |
 
 **`test()` reads SOURCE-row data, never post-render decoration.** The stamp

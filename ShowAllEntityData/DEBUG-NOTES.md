@@ -25069,3 +25069,31 @@ Captured with `scripts/fetch-mb-page-fixture.js` on 2026-10-21:
   BEFORE the annotation's, and `querySelector` took that one.
 - The current version is `/annotation` without a number (the version page's
   "View current revision"), the same markup.
+
+## 2026-10-21 — "Live credit without a date" names the deduced date (WIP.5, branch feat/pop-user-page-lists)
+
+Env: 2026-10-21T12:43:30+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Asked for on release 3ec14d03-… ("Born to Run (new live)", Toby Scott's
+"recording engineer" credit, screenshot): the hover card said only "⚠️ Live
+credit without a date".
+
+- **The date was already known.** `_liveDateCheckResult()` raises the ⚠️
+  only when the row has a "live recording of" date, and the small ⚠️ span's
+  own tooltip already said "(recorded 1988-04-27)". The card the user saw is
+  NOT that span's: it is the `<td>`'s finding title (`_writeFindingAttrs()`)
+  stacked with the link's sort name by `_dpCollectNotes()`. The span sits
+  beside the `<a>`, not around it, so its tooltip never joins the card.
+- **Why the cell title had no detail:** `_stampFindingRow()` asked
+  `detail()`/`compare()` only of COLUMN findings; a row finding
+  (`live-credit-nodate` is `scope: 'row'`) got its id and nothing else. Now
+  both scopes are asked; no other row finding has either, so nothing else
+  changed.
+- The date travels as `data-mb-live-date` on the flag span: the findings
+  stamp cloned rows (a mutation keeping it as a JS property failed already
+  on the first render), and a disk load restores the flags as HTML.
+- Snapshot track 4 for reference: its `dl.ars` has the live credits "solo
+  acoustic guitar … (on 1988-04-27)", event "(1988-04-27)", place "(on
+  1988-04-27)", "live recording of: Born to Run (on 1988-04-27)", and
+  "recording engineer: Toby Scott" with no date. The comment is "live,
+  1988‐04‐27: Los Angeles Memorial Sports Arena, …" (U+2010).

@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-10-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Release tracklist: the hover card of a \"Live credit without a date\" cell now names the date the credit is most likely from: the recording's own \"live recording of\" date, which the credit was checked against (\"⚠️ Live credit without a date: probably 1988-04-27, …\"). It stays there after filtering, sorting and loading the page from disk."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "2026-10-21",
     "sections": [

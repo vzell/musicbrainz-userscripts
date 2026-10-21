@@ -769,6 +769,11 @@ its own switch there, plus one for their yellow tint.
 | ❌    | Recorded at place differs from the comment venue                | Release tracklist: Recorded at place        |
 | ❌    | Live credit date differs from the recording date                | Release tracklist: credit columns           |
 
+A flagged cell's hover card names the problem and, where there is one, the
+cell's own detail. *Live credit without a date* names the date the credit is
+most likely from: the recording's own "live recording of" date, which the
+credit was checked against ("probably 1988-04-27").
+
 The tint of each newly highlighted problem has its own switch in ⚙️ Settings →
 ⚠️ Findings; turning one off keeps the problem in the menu. The menus
 themselves can be switched off there too. Length, video, no-work and live-title
