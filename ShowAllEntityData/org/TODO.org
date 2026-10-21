@@ -3816,6 +3816,71 @@ add a new PT for annotations e.g. https://musicbrainz.org/release/3ec14d03-2c03-
 @debug/annotation-release.html - https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f/annotation/1063770
 #+end_example
 
+* DONE shorten column names for "Recording of" and "Performance attributes" on PTs which use them
+
+1.)
+
+Shorten column names for "Recording of" and "Performance attributes" on PTs which use them, e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings.
+Make some suggestions so we can save space.
+
+2.)
+
+"1. Display labels only"; go with 1. and implement in such a way that we potentially can reuse it for other columns in other PTs, so make it reusable
+
+* DONE tag detail popup support on https://musicbrainz.org/user/vzell/tags
+
+After this implementation additional tackle the following:
+
+1.)
+
+Add tag detail popup support on PTs like e.g https://musicbrainz.org/user/vzell/tags when hovering the tag anchors
+(maybe check the collections page for ideas - https://musicbrainz.org/user/chaban/collections)
+
+#+begin_example
+@debug/user-tags.html
+#+end_example
+
+There are hrefs like the following on it:
+
+#+begin_example
+https://musicbrainz.org/user/vzell/tag/acoustic%20rock
+https://musicbrainz.org/user/vzell/tag/gig
+https://musicbrainz.org/user/vzell/tag/back%20scan%20missing
+etc.
+#+end_example
+
+* DONE on the first mini popup when hovering a known MB PT for further expansion with a complete detail popup, add a small headerline to the mini popup which already shows the entity type
+** DONE i
+
+1.)
+
+on the first mini popup [Image #32] when hovering a known MB PT, the entity type like in this case "Recording" is NOT
+shown and obvious, for further expansion with a complete detail popup [Image #31], add a small headerline or something
+else to the mini popup which already shows the entity type
+
+Make some suggestions and nice rich HTML mockups first
+
+2.)
+
+on PT 'release-tracks' e.g. https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f create a stacked popup
+tooltip above the RG popup [Image #34], which describes the event when hovering the "#" column (in this example the
+second row). The actual event is found in the "Recorded at event" column
+
+** q
+
+What I need from you
+1. Which variant for the kind: A, B, C, D or E?
+2. Should cards from other sites stay as they are, or also get the kind line?
+3. Which variant for the event card: A, B or C?
+4. Should the event card get its own checkbox, on by default, next to the "#" card's Ctrl setting, or follow the existing "MusicBrainz cards" setting?
+
+** answers
+
+1. Which variant for the kind: A, B, C, D or E?: ==> A
+2. Should cards from other sites stay as they are, or also get the kind line?: ==> They too with the kind line
+3. Which variant for the event card: A, B or C?: ==> A
+4. Should the event card get its own checkbox, on by default, next to the "#" card's Ctrl setting, or follow the existing "MusicBrainz cards" setting?: ==> YES, on by default
+
 
 * TODO consolidate more LAF across more PTs
 
@@ -3879,34 +3944,9 @@ the corresponding row -> image hover popup + internal viewer click
 
 * TODO tested live, OK; commit, push
 
-* DONE shorten column names for "Recording of" and "Performance attributes" on PTs which use them
+* TODO Re-capture all the snapshot baselines after all the latest changes
 
-1.)
+Re-capture all the snapshot baselines after all the latest changes
 
-Shorten column names for "Recording of" and "Performance attributes" on PTs which use them, e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings.
-Make some suggestions so we can save space.
+* Release events -Japa need flag on the relationships area
 
-2.)
-
-"1. Display labels only"; go with 1. and implement in such a way that we potentially can reuse it for other columns in other PTs, so make it reusable
-
-
-* TODO tag detail popup support on https://musicbrainz.org/user/vzell/tags
-
-tag detail popup support on https://musicbrainz.org/user/vzell/tags
-
-#+begin_example
-https://musicbrainz.org/user/vzell/tag/acoustic%20rock
-https://musicbrainz.org/user/vzell/tag/gig
-https://musicbrainz.org/user/vzell/tag/back%20scan%20missing
-
-#+end_example
-
-* TODO on PT 'release-tracks' e.g. https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f create popup tooltip which describes the event
-
-on PT 'release-tracks' e.g. https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f create popup tooltip
-which describes the event when hovering the "#" column
-
-* I'll record the new attributes as an expected drift in the registry rather than re-capturing baselines, since those are handled by a separate live harness. Next, I'll read the start of makeTableSortableUnified and the existing tooltip test hook.
-
-* Snapshot baselines: they will show the new header titles when re-captured.
