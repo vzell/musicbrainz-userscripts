@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "2602ca7b53f83d890b0f40ac62e0a49139ced558",
-    "revisions_walked": 986
+    "head": "7d5582feb7c16d2b1975e7a81cdb34b382b1c2f7",
+    "revisions_walked": 987
   },
   "changes": [
     {
@@ -583,6 +583,7 @@
     "sa_chunked_render_threshold": 1000,
     "sa_enable_column_visibility": true,
     "sa_short_column_labels": true,
+    "sa_column_descriptions": true,
     "sa_enable_density_control": true,
     "sa_enable_sticky_headers": true,
     "sa_enable_sticky_filter_bars": true,
