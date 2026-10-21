@@ -1,5 +1,43 @@
 [
   {
+    "version": "9.99.1406",
+    "date": "2026-10-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Column header tooltips name their column in bold, with the explanation below it. This applies to every column the script adds (derived, extracted and injected columns such as Event-Date, MB-Name, Recording of), and \"Work\" / \"Perf.\" (9.99.1404) show their full names there.",
+          "MusicBrainz's own columns now have a header tooltip too, saying what the column holds: Artist, Title, Catalog#, Country/Date, Format, Tracks, ISRCs, Rating and about 60 more. Where a name means different things the text fits the table: \"Type\" on an artist's Events page is the kind of event, on a release-group list the primary and secondary types. New setting \"Explain MusicBrainz columns in header tooltips\" (🎨 UI FEATURES, on). Not on other sites, whose columns these texts do not describe. A pageType can add or override texts with features.columnDescriptions."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1405",
+    "date": "2026-10-21",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Fixed a test flake in discogs-links.spec.js (\"in the history window: … a support link with its section\"): it failed about 1 run in 28 when many tests ran in parallel. The help-centre window asks for the site's icon after the article answers. Under load that icon request (support.discogs.com/favicon.ico) arrived before the check that only the article was requested. The check now leaves the icon request out; icons have their own tests in popup-ext.spec.js. The userscript is unchanged."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1404",
+    "date": "2026-10-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Recording lists: the \"Recording of\" and \"Performance attributes\" column headers now read \"Work\" and \"Perf.\", so the two columns take less width. Hover a header to see its full name. Menus, the 📊 drop-down, exports and the Default Hidden Columns table still use the full names. To get the full names back in the headers, turn off the new setting \"Short column header labels\" (🎨 UI FEATURES, on by default).",
+          "Short header labels work for any column. A pageType gets its own with features.columnLabels; the built-in ones are in _COLUMN_LABELS. A saved table keeps each labelled column's name, so Load from Disk restores it."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1403",
     "date": "2026-10-21",
     "sections": [

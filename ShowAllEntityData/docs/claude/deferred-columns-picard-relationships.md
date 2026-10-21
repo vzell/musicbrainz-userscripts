@@ -563,6 +563,10 @@ measures "the button was not repainted" instead.
 userscript writes under each recording title, as two real columns. The code
 is the `_recOf*` family just above the Relationships section;
 `buildActiveRecordingOfColumns()` gates it (`sa_enable_recording_of_column`).
+Their headers paint "Work" and "Perf." (since `feat/short-column-labels`),
+but the columns are still named "Recording of" and "Performance attributes"
+everywhere else. See "Column display labels" in
+docs/claude/toolbar-and-header-ui.md.
 Show only: no edit is ever submitted. API facts (browse parity, 74 567
 recordings for Springsteen, only `performance` relations, search carries no
 relations): `scripts/probe-recording-work-rels.py`, `tests/MEASUREMENTS.org`.

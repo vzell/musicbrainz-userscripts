@@ -94,6 +94,20 @@ Not affected, and worth knowing so the diff is not over-read:
     `npm test` reads a snapshot baseline at all. The review window expiring can
     never turn the suite red.
 
+** Column header descriptions and short labels (branch feat/short-column-labels, 2026-10-21) — NOT yet re-captured
+
+A script change, not upstream movement. In every =rendered.html=:
+- a native MusicBrainz header with an entry in =_COLUMN_DESCRIPTIONS=
+  (Artist, Title, Catalog#, Country/Date, …) gains =data-mb-tip= and a
+  =title= with its description. Its text and every other attribute are
+  unchanged; the bold name line exists only in the hover card, not in the
+  markup;
+- on a recording list with the "Recording of" pair, those two headers paint
+  "Work" / "Perf." and their =.mb-col-hdr-flex= gains =data-mb-col-key=. No
+  baseline captured so far has the pair.
+
+No raw-baseline change: both happen at render time.
+
 ** Several-links finding and sidebar-handle stylesheets (branch feat/rel-multi-site-and-initial-page, 2026-10-21) — NOT yet re-captured
 
 A script change, not upstream movement. In every =rendered.html=:

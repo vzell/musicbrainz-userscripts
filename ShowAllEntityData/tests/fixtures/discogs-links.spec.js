@@ -215,7 +215,13 @@ test.describe('discogs.com: links that stay, every link in the window, View chan
         await expect(mark).toHaveCount(1);
         await expect(mark).toContainText('6.12.2');
         await expect(mark).toBeInViewport();
-        expect((await gmLog(page)).filter(u => u.includes('support.discogs.com'))).toEqual(['https://support.discogs.com/api/v2/help_center/articles/360005006654.json']);
+        // The article once — and nothing else of the help centre's but its
+        // site icon, which _extIconEnsure() asks for after the article's
+        // answer, through the host's rate slot: under a full parallel run
+        // it can land before this line, alone it lands after (2026-10-21).
+        // Icons have their own spec (popup-ext.spec.js).
+        expect((await gmLog(page)).filter(u => u.includes('support.discogs.com') && !u.endsWith('/favicon.ico')))
+            .toEqual(['https://support.discogs.com/api/v2/help_center/articles/360005006654.json']);
         await back(page).click();
         await expect(kind(page)).toHaveText('Discogs release history');
         expect(errors).toEqual([]);
