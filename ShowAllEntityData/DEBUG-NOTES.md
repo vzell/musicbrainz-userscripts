@@ -25347,7 +25347,7 @@ CEST). The branch's own specs and the header-tooltip change did not collide.
 In particular, no spec of WIP.1–WIP.9 asserts that a native header has no
 `title`.
 
-## 2026-10-21 — Length header tooltip follows ⏱ (WIP.2); a native treleases header lost its class and description (WIP.1) (branch fix/length-header-tooltips)
+## 2026-10-21 — Length header tooltip follows ⏱ (9.99.1417, was WIP.2); a native treleases header lost its class and description (9.99.1416, was WIP.1) (branch fix/length-header-tooltips)
 
 Env: 2026-10-21T18:57:18+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.54.1-microsoft-standard-WSL2) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
 
