@@ -3879,7 +3879,7 @@ the corresponding row -> image hover popup + internal viewer click
 
 * TODO tested live, OK; commit, push
 
-* TODO shorten column names for "Recording of" and "Performance attributes" on PTs which use them
+* DONE shorten column names for "Recording of" and "Performance attributes" on PTs which use them
 
 1.)
 
@@ -3907,5 +3907,6 @@ https://musicbrainz.org/user/vzell/tag/back%20scan%20missing
 on PT 'release-tracks' e.g. https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f create popup tooltip
 which describes the event when hovering the "#" column
 
+* I'll record the new attributes as an expected drift in the registry rather than re-capturing baselines, since those are handled by a separate live harness. Next, I'll read the start of makeTableSortableUnified and the existing tooltip test hook.
 
-
+* Snapshot baselines: they will show the new header titles when re-captured.
