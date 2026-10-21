@@ -3844,6 +3844,7 @@ etc
 
 Use the Discogs history diff format in other pageTypes, for example the BB “changes” button (you have to be logged in).
 
+
 * TODO write the forum section for 9.99.1394 -> 9.99.1399
 
 * TODO "Links" column - switch of the native tooltip on the FRP
@@ -3880,8 +3881,15 @@ the corresponding row -> image hover popup + internal viewer click
 
 * TODO shorten column names for "Recording of" and "Performance attributes" on PTs which use them
 
+1.)
+
 Shorten column names for "Recording of" and "Performance attributes" on PTs which use them, e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings.
 Make some suggestions so we can save space.
+
+2.)
+
+"1. Display labels only"; go with 1. and implement in such a way that we potentially can reuse it for other columns in other PTs, so make it reusable
+
 
 * TODO tag detail popup support on https://musicbrainz.org/user/vzell/tags
 
@@ -3893,4 +3901,11 @@ https://musicbrainz.org/user/vzell/tag/gig
 https://musicbrainz.org/user/vzell/tag/back%20scan%20missing
 
 #+end_example
+
+* TODO on PT 'release-tracks' e.g. https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f create popup tooltip which describes the event
+
+on PT 'release-tracks' e.g. https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f create popup tooltip
+which describes the event when hovering the "#" column
+
+
 
