@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Link previews on an editor's profile: every \"view\", \"N%\" and \"View all\" link of the statistics now has a card and a window. An editor's Open, Accepted, Auto-edits, Applied, Rejected, Failed and Cancelled edits, their Votes, and every edit search (\"Last 24 hours\", the edit types' percentages) open in the editing-history window, titled by what they list. An edit search is read again on every page load. The two \"view list\" links show the editor's subscribers (names, and how many are anonymous; a name opens that editor's card) and your authorized and registered applications (name, access, last token, digest authentication). An application's OAuth client ID or secret and its \"Revoke access\" link are never shown, and that page is never kept after a page load."
+        ]
+      }
+    ]
+  }
+]

@@ -24938,3 +24938,42 @@ and blocked": 2 expected). Neither touches code this branch changed
 (discogs.com rate slot; archive.org thumbnails in fixture markup). Re-run
 alone with `--repeat-each=3`: 30/30 passed. Treated as load-dependent
 flakes under 14 workers, not seen before in DEBUG-NOTES — worth watching.
+
+## 2026-10-21 — what an editor's lists, subscribers and applications pages hold, for their link previews (branch feat/pop-user-page-lists)
+
+Env: 2026-10-21T10:07:45+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium (captures and fixture specs) · no Tampermonkey (GM stubs)
+
+Captured logged in with `node scripts/fetch-mb-page-fixture.js --auth`, then
+`python3 scripts/anonymize-user-fixtures.py <dir>` into `tests/fixtures/`.
+
+- **`/user/vzell/edits/rejected`, `/edits/open`, `/user/vzell/votes`,
+  `/search/edits?…conditions…`: all the editing-history page.**
+  `#content .search-toggle` "Found 65 edits" / "Found 0 edits" / "Found at
+  least 500 edits", 50 `div.edit-list` a page, `ul.pagination` with
+  `?page=N` (the search's links carry the whole query plus `&page=N`).
+  Headings: `h2` "Rejected edits by <a>vzell</a>", "Open edits by …",
+  "Votes by …"; the search has `h1` "Search for edits" and no subject. So
+  `_mbParseEditsPage()` reads all four unchanged; the votes page is the edits
+  OTHER editors made that vzell voted on. At 0 edits there is no `#edits`
+  block at all, only the "Found 0 edits" line.
+- The lists' "Quick links" carry `/search/edits?…&form_only=yes…` links:
+  they open the prefilled form and list nothing, hence `_mbEditsSearchId()`'s
+  `form_only=` exclusion.
+- **`/user/vzell/subscribers`** (no `#content`): `#page > h1 a[href^="/user/"]
+  bdi` the editor, `h2` "Subscribers", `p` "There are currently 8 users
+  subscribed to edits that you make:", `ul > li > a[href^="/user/"]` (6) and
+  a last `li` "Plus 2 other anonymous users".
+- **`/account/applications`** (no `#content`): `h1` "Applications"; `h2`
+  "Authorized applications" + `p` + `table.tbl` with headers Application |
+  Access | Last granted token | Actions — Actions is
+  `<a href="/account/applications/revoke-access/<app>/<scope>">Revoke
+  access</a>`, a plain GET link; `h2` "Developer applications" + `p`s ("You
+  do not have any registered applications." on this account, so the
+  developer table's real headers are NOT seen); `h2` "Digest access
+  authentication" with "Digest authentication is <strong>enabled</strong>"
+  and a POST form. Hence `_MB_APPS_COLS` (a whitelist, so an unseen
+  client-id/secret column is dropped whatever its header) and memory-only.
+- `/user/vzell` itself shows the statistics links only to a logged-in
+  reader: the committed logged-out `user-page-vzell.html` has only the
+  subscribers "view list", which the SUBS test uses on the rendered profile
+  (its sub-tables start collapsed: `ensureSubTableVisible(page, 0)`).

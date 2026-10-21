@@ -2132,7 +2132,10 @@ groups**, **recordings**, **works**, **artists**, **labels**, **areas**,
 **instruments**, **events**, **places**, **series**, **collections**, the
 **[info]** link beside every URL, and the
 codes: **ISRCs**, **ISWCs** and **disc IDs**, **edits** and **editors**,
-**editing histories** (the sidebar's *Editing history* link), and
+**editing histories** (the sidebar's *Editing history* link), an editor's
+**other edit lists** and **edit searches** (the *view*, *N%* and *View all*
+links of a profile's statistics), an editor's **subscribers** and your
+**applications** (the profile's two *view list* links), and
 **tags** (a genre or tag link, also the pills of the sidebar's Tags card).
 A **Barcode** cell has a card too: the barcode's format and the releases
 carrying it. So does an entry of a column's **📊 dropdown** that names one
@@ -2180,6 +2183,19 @@ first changes; its window every change, the entities it touches and its notes
 editor card shows the user type, member since and edit counts — nothing
 personal. An open edit is read again on every page load, since its votes
 change.
+On an editor's profile, every list of edits it links has a card and a window
+like an editing history (below), titled by what it lists: *Open*, *Accepted*,
+*Auto-edits*, *Applied*, *Rejected* (voted down), *Failed* and *Cancelled
+edits*, their **Votes**, and every **edit search** (*Last 24 hours*, the *N%*
+links of the edit types). An edit search is read again on every page load,
+since what it finds changes ("24 hours ago"). The *view list* beside
+**Subscribers** shows who is subscribed to the editor's edits, and how many
+more anonymously; a name in its window opens that editor's card. The *view
+list* beside **Authorized applications** shows your applications (only you
+see that page): each one's name, what it may access and when it last got a
+token, how many applications you registered, and whether digest
+authentication is on. It never shows an application's OAuth client ID or
+secret, nor a *Revoke access* link, and it is never kept after a page load.
 A tag card shows whether the tag is a genre, how many entities carry it
 and the kinds with the most of them (*Recordings 129,479*); it is read from
 the tag's own page, since MusicBrainz cannot look a tag up otherwise.
@@ -2262,6 +2278,9 @@ the tag's own page, since MusicBrainz cannot look a tag up otherwise.
     window says that too: open the page once in a tab (↗), then press ⟳.
   - The sidebar's **Editing history** link and an editor window's *Their
     edits* link have a card of their own and open the same window.
+  - A profile's other edit lists and edit searches open this window too,
+    titled by the list (*Rejected edits*, *Votes*, *Edit search*). A list has
+    no ✎ Editing history of its own.
 - **A track named differently from its recording.** With jesus2099's
   *mb. INLINE STUFF* installed, a track whose name differs from its recording's
   carries a note with both names. The browser used to show that note in its

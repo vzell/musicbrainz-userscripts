@@ -21121,7 +21121,7 @@
     const _MB_KIND_ICON = {
         artist: 'artist', release: 'release', 'release-group': 'release_group', recording: 'recording',
         work: 'work', label: 'label', area: 'area', place: 'place', event: 'event', series: 'series',
-        instrument: 'instrument', collection: 'collection', user: 'editor',
+        instrument: 'instrument', collection: 'collection', user: 'editor', subscribers: 'editor',
     };
 
     /**
@@ -21134,7 +21134,7 @@
     function _mbKindIconUrl(t) {
         if (!t || !t.src || t.src.id !== 'mb-entity') return '';
         // An editing history shows the glyph of what it is the history of.
-        const type = t.type === 'edits' ? String(t.id || '').split('/')[0] : t.type;
+        const type = t.type === 'edits' ? _mbEditsLabel(String(t.id || '')).icon : t.type;
         const stem = Object.prototype.hasOwnProperty.call(_MB_KIND_ICON, type) ? _MB_KIND_ICON[type] : '';
         return stem ? `${window.location.origin}/static/images/entity/${stem}.svg` : '';
     }
@@ -47046,23 +47046,71 @@
     const _MB_POP_EDITS_RE = /^\/(?:(artist|release-group|release|recording|work|label|event|place|area|series|instrument|url)\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})|user\/([^/]+))\/edits\/?$/;
 
     /**
+     * An editor's other edit lists (2026-10-21), the links of a profile's
+     * Statistics: `/user/<name>/edits/<status>` with the seven statuses the
+     * profile links, and `/user/<name>/votes` (the edits they voted on).
+     * Same page as an editing history ("Found N edits", `div.edit-list`,
+     * probed logged in 2026-10-21), so the same `edits` kind; its id is the
+     * path itself (`_mbEditsPagePath()`).
+     * @type {RegExp}
+     */
+    const _MB_POP_EDITLIST_RE = /^\/user\/[^/]+\/(?:edits\/(?:open|accepted|autoedits|applied|rejected|failed|cancelled)|votes)$/;
+
+    /**
+     * Two pages of an editor's account read for their cards (2026-10-21):
+     * `/user/<name>/subscribers` (kind `subscribers`, id the name) and
+     * `/account/applications` (kind `applications`, id `me`: it is always
+     * the logged-in reader's own).
+     * @type {RegExp}
+     */
+    const _MB_POP_ACCOUNT_RE = /^\/(?:user\/([^/]+)\/(subscribers)|account\/(applications))\/?$/;
+
+    /**
+     * The id of an edit search (`/search/edits?…`, 2026-10-21): the path and
+     * the query as the link spells it, without `page=` (the window's pager
+     * adds its own). '' for a search that lists nothing yet: no
+     * `conditions.` (the empty form, the header's "Edit search") or
+     * `form_only=yes` (an edit list's "Quick links" to the prefilled form).
+     *
+     * @param {string} search - The link's `search`, with or without `?`.
+     * @returns {string}
+     */
+    function _mbEditsSearchId(search) {
+        const q = String(search || '').replace(/^\?/, '').split('&').filter(p => p && !/^page=/.test(p));
+        if (!q.some(p => /^conditions\./.test(p)) || q.some(p => /^form_only=/.test(p))) return '';
+        return `/search/edits?${q.join('&')}`;
+    }
+
+    /**
      * The kind a MusicBrainz page path previews as: an entity by MBID
      * (`_MB_POP_PATH_RE`), a code (`_MB_POP_CODE_RE`), an editing history
-     * (`_MB_POP_EDITS_RE`), an edit, an editor or a tag (`_MB_POP_PAGE_RE`);
-     * `seg` is the path's own first segment (a disc ID's page is /cdtoc/, its
-     * kind `discid`), '' when the kind's own `path()` names the page (an
-     * editing history). `null` for any other path.
+     * (`_MB_POP_EDITS_RE`), an editor's other edit list
+     * (`_MB_POP_EDITLIST_RE`) or an edit search (`_mbEditsSearchId()`, the
+     * one path that needs `search`), an editor's subscribers or the reader's
+     * applications (`_MB_POP_ACCOUNT_RE`), an edit, an editor or a tag
+     * (`_MB_POP_PAGE_RE`); `seg` is the path's own first segment (a disc
+     * ID's page is /cdtoc/, its kind `discid`), '' when the kind's own
+     * `path()` names the page (an editing history). `null` for any other
+     * path.
      *
      * @param {string} pathname
+     * @param {string} [search] - The URL's query, for an edit search.
      * @returns {?{seg: string, type: string, id: string}}
      */
-    function _mbPopParsePath(pathname) {
+    function _mbPopParsePath(pathname, search = '') {
         const m = _MB_POP_PATH_RE.exec(pathname);
         if (m) return { seg: m[1], type: m[1], id: m[2].toLowerCase() };
         const c = _MB_POP_CODE_RE.exec(pathname);
         if (c) return { seg: c[1], type: _MB_POP_CODE_TYPES[c[1]], id: c[2] };
         const h = _MB_POP_EDITS_RE.exec(pathname);
         if (h) return { seg: '', type: 'edits', id: h[1] ? `${h[1]}/${h[2].toLowerCase()}` : `user/${h[3]}` };
+        if (_MB_POP_EDITLIST_RE.test(pathname)) return { seg: '', type: 'edits', id: pathname };
+        if (/^\/search\/edits\/?$/.test(pathname)) {
+            const sid = _mbEditsSearchId(search);
+            return sid ? { seg: '', type: 'edits', id: sid } : null;
+        }
+        const a = _MB_POP_ACCOUNT_RE.exec(pathname);
+        if (a) return a[2] ? { seg: '', type: 'subscribers', id: a[1] } : { seg: '', type: 'applications', id: 'me' };
         const p = _MB_POP_PAGE_RE.exec(pathname);
         if (p) return { seg: p[1] || p[3] || p[5], type: p[1] || p[3] || p[5], id: p[2] || p[4] || p[6] };
         return null;
@@ -47113,13 +47161,13 @@
     function _mbPopStampHref(el, hrefs, name) {
         const list = typeof hrefs === 'string' ? [hrefs] : Array.from(hrefs || []);
         if (!el || list.length !== 1) return;
-        let pathname;
+        let u;
         try {
-            pathname = new URL(list[0], window.location.origin).pathname;
+            u = new URL(list[0], window.location.origin);
         } catch (_) {
             return;
         }
-        const pp = _mbPopParsePath(pathname);
+        const pp = _mbPopParsePath(u.pathname, u.search);
         if (!pp || !Object.prototype.hasOwnProperty.call(_MB_KINDS, pp.type)) return;
         el.setAttribute('data-mb-pop', `${pp.type}:${pp.id}`);
         if (name) el.setAttribute('data-mb-pop-name', name);
@@ -47186,7 +47234,7 @@
         } else if (a.tagName !== 'A' || a.origin !== window.location.origin) {
             return null;
         } else {
-            const pp = _mbPopParsePath(a.pathname);
+            const pp = _mbPopParsePath(a.pathname, a.search);
             if (pp) ({ seg, type, id } = pp);
         }
         // Own keys only: a stamped kind is a string from an attribute.
@@ -47203,7 +47251,7 @@
         const where = seg ? `/${seg}/${id}` : (k.path ? k.path(id) : `/${type}/${id}`);
         return {
             key: `${type}:${id}`, url: new URL(where, window.location.origin).href,
-            type, id, kind: k.title, wide: !!k.wide,
+            type, id, kind: k.titleOf ? k.titleOf(id) : k.title, wide: !!k.wide,
             name: a.getAttribute('data-mb-pop-name') || (k.nameOf ? k.nameOf(a) : '') || a.textContent.trim(),
             col: table ? _resolveColHeaderName(table, td.cellIndex) : '',
         };
@@ -48745,6 +48793,110 @@
     }
 
     /**
+     * The elements after a page's `<h2>` with this text, up to the next
+     * `<h2>` (a section of a page without `#content`: an editor's
+     * subscribers, the account's applications).
+     *
+     * @param {?Element} page - `#page`.
+     * @param {string} title
+     * @returns {?Array<Element>} `null` when there is no such h2.
+     */
+    function _mbPopH2Section(page, title) {
+        const h2 = page && Array.from(page.querySelectorAll('h2')).find(x => _mbPopText(x) === title);
+        if (!h2) return null;
+        const els = [];
+        for (let el = h2.nextElementSibling; el && el.tagName !== 'H2'; el = el.nextElementSibling) els.push(el);
+        return els;
+    }
+
+    /**
+     * An editor's subscribers page (`/user/<name>/subscribers`, 2026-10-21)
+     * as a record for its card: the editors subscribed to their edits (name
+     * and the id of their `/user/<id>` link) and how many more are
+     * anonymous ("Plus N other anonymous users"); `total` is the page's own
+     * "There are currently N users" when it says so. `null` when the page
+     * has no "Subscribers" h2 (a login page, an error page). Selectors from
+     * the capture of 2026-10-21 (DEBUG-NOTES.md).
+     *
+     * @param {Document} doc
+     * @returns {?{name: string, editors: Array<{name: string, id: string}>, anonymous: number, total: number}}
+     */
+    function _mbParseSubscribersPage(doc) {
+        const page = doc.getElementById('page');
+        const els = _mbPopH2Section(page, 'Subscribers');
+        if (!els) return null;
+        const num = s => Number(String(s).replace(/,/g, '')) || 0;
+        const editors = [];
+        let anonymous = 0;
+        let total = -1;
+        els.forEach((el) => {
+            const m = el.tagName === 'P' && /currently ([\d,]+) users?/.exec(_mbPopText(el));
+            if (m) total = num(m[1]);
+            if (el.tagName !== 'UL') return;
+            el.querySelectorAll(':scope > li').forEach((li) => {
+                const a = li.querySelector('a[href^="/user/"]');
+                if (a) {
+                    editors.push({ name: _mbPopText(a), id: (a.getAttribute('href') || '').split('/')[2] || '' });
+                    return;
+                }
+                const anon = /Plus ([\d,]+) other anonymous/.exec(_mbPopText(li));
+                if (anon) anonymous = num(anon[1]);
+            });
+        });
+        return {
+            name: _mbPopText(page.querySelector('h1 a[href^="/user/"] bdi')), editors, anonymous,
+            total: total >= 0 ? total : editors.length + anonymous,
+        };
+    }
+
+    /**
+     * The columns of the account's application tables the card may read,
+     * by header (2026-10-21). Everything else is never read: the "Actions"
+     * cell holds "Revoke access" (a GET link that revokes), and a developer
+     * application's row holds its OAuth client id and secret.
+     * @type {Set<string>}
+     */
+    const _MB_APPS_COLS = new Set(['Application', 'Name', 'Access', 'Last granted token', 'Type']);
+
+    /**
+     * The account's applications page (`/account/applications`, 2026-10-21;
+     * only its logged-in owner sees it) as a record for its card: per
+     * section ("Authorized applications", "Developer applications") the
+     * `_MB_APPS_COLS` columns of its `table.tbl` as text, no link and no
+     * other cell; and whether digest authentication is enabled. `null`
+     * without either section (a login page). Kept in memory only
+     * (`_MB_KINDS.applications`).
+     *
+     * @param {Document} doc
+     * @returns {?{authorized: {cols: Array<string>, rows: Array<Array<string>>},
+     *   developer: {cols: Array<string>, rows: Array<Array<string>>}, digest: string}}
+     */
+    function _mbParseApplicationsPage(doc) {
+        const page = doc.getElementById('page');
+        const read = (title) => {
+            const els = _mbPopH2Section(page, title);
+            if (!els) return null;
+            const table = els.find(el => el.tagName === 'TABLE' && el.classList.contains('tbl'));
+            if (!table) return { cols: [], rows: [] };
+            const heads = Array.from(table.querySelectorAll('thead th')).map(th => _mbPopText(th));
+            const keep = heads.map((h, i) => (_MB_APPS_COLS.has(h) ? i : -1)).filter(i => i >= 0);
+            return {
+                cols: keep.map(i => heads[i]),
+                rows: Array.from(table.querySelectorAll('tbody tr')).map(tr => keep.map(i => _mbPopText(tr.cells[i]))),
+            };
+        };
+        const authorized = read('Authorized applications');
+        const developer = read('Developer applications');
+        if (!authorized && !developer) return null;
+        const dig = (_mbPopH2Section(page, 'Digest access authentication') || []).map(el => _mbPopText(el)).join(' ');
+        const d = /Digest authentication is (enabled|disabled)/.exec(dig);
+        return {
+            authorized: authorized || { cols: [], rows: [] }, developer: developer || { cols: [], rows: [] },
+            digest: d ? d[1] : '',
+        };
+    }
+
+    /**
      * Columns of a collection's table the window leaves out: stars that do
      * not survive a copy, and the artist columns that only widen it. An
      * event's "Artists" (often a dozen performers) goes too
@@ -49392,7 +49544,10 @@
      * entry per edit (`_mbEditsEntry()`), deduped by number: another
      * userscript's batch grouping nests the member blocks in a summary block
      * (debug/edits-*.html). The subject: an entity's header link (`h1 a`),
-     * else an editor's page heading ("Edits by <name>").
+     * else an editor's page heading ("Edits by <name>"). An editor's other
+     * lists ("Rejected edits by <name>", "Votes by <name>") and an edit
+     * search (2026-10-21) give '': their name comes from the id
+     * (`_mbEditsLabel()`).
      *
      * @param {Document} doc
      * @returns {?{subject: {path: string, name: string}, by: string, total: number, atLeast: boolean,
@@ -49455,9 +49610,36 @@
     }
 
     /**
+     * The page of an `edits` id: an entity's or editor's history
+     * (`<kind>/<MBID>`, `user/<name>`) is `/<id>/edits`; an editor's other
+     * list or an edit search (2026-10-21) has its page path as its id.
+     *
+     * @param {string} id
+     * @returns {string}
+     */
+    function _mbEditsPagePath(id) {
+        return id.startsWith('/') ? id : `/${id}/edits`;
+    }
+
+    /**
+     * The URL of page n of an `edits` id; an edit search's query gets
+     * `&page=n` after its own parameters.
+     *
+     * @param {string} id
+     * @param {number} n
+     * @returns {string}
+     */
+    function _mbEditsUrl(id, n) {
+        const p = _mbEditsPagePath(id);
+        return new URL(n > 1 ? `${p}${p.includes('?') ? '&' : '?'}page=${n}` : p, window.location.origin).href;
+    }
+
+    /**
      * Loads page n of an editing history (`_mbPageLoad()`, the one
      * MusicBrainz gate). A page with an open edit stays in memory only: its
-     * votes change (as an open edit's card, `_MB_KINDS.edit`).
+     * votes change (as an open edit's card, `_MB_KINDS.edit`). An edit
+     * search stays in memory only, whatever it holds: its conditions may be
+     * relative ("24 hours ago"), so a kept answer would be a wrong one.
      *
      * @param {object} t - The `edits` target.
      * @param {number} n
@@ -49465,21 +49647,51 @@
      * @returns {void}
      */
     function _mbEditsLoad(t, n, opts = {}) {
-        const url = new URL(`/${t.id}/edits${n > 1 ? `?page=${n}` : ''}`, window.location.origin).href;
-        _mbPageLoad(_mbEditsKey(t.id, n), url, _mbParseEditsPage, Object.assign({
-            wanted: _mbPopWanted(t), keep: d => !d.entries.some(e => e.status === 'open'),
+        const search = t.id.startsWith('/search/');
+        _mbPageLoad(_mbEditsKey(t.id, n), _mbEditsUrl(t.id, n), _mbParseEditsPage, Object.assign({
+            wanted: _mbPopWanted(t), keep: d => !search && !d.entries.some(e => e.status === 'open'),
         }, opts));
     }
 
+    /** An editor's edit lists by their path's status (`_MB_POP_EDITLIST_RE`), as MusicBrainz heads them. */
+    const _MB_EDITS_LIST_HEADS = {
+        open: 'Open edits', accepted: 'Accepted edits', autoedits: 'Auto-edits', applied: 'Applied edits',
+        rejected: 'Rejected edits', failed: 'Failed edits', cancelled: 'Cancelled edits',
+    };
+
     /**
-     * What a history is about, in words: an entity's kind, or "editor".
+     * What an `edits` id is, in words: `head` (the window's title, "Editing
+     * history", "Rejected edits", "Votes", "Edit search"), `comment` (the
+     * card's line under the name), `sub` (the window's line under it),
+     * `name` (the subject's name when the page names none: an MBID, an
+     * editor's name, '' for a search), `none` (the line of an empty list)
+     * and `icon` (the `_MB_KIND_ICON` kind of the glyph).
      *
      * @param {string} id
-     * @returns {string}
+     * @returns {{head: string, comment: string, sub: string, name: string, none: string, icon: string}}
      */
-    function _mbEditsKindWord(id) {
+    function _mbEditsLabel(id) {
+        const dec = (s) => {
+            try {
+                return decodeURIComponent(s || '');
+            } catch (_) {
+                return s || '';
+            }
+        };
+        if (id.startsWith('/search/')) {
+            return { head: 'Edit search', comment: 'Edit search', sub: 'edit search', name: '', none: 'No edit matches this search.', icon: '' };
+        }
+        const l = /^\/user\/([^/]+)\/(?:edits\/(\w+)|votes)$/.exec(id);
+        if (l) {
+            const head = l[2] ? (_MB_EDITS_LIST_HEADS[l[2]] || 'Edits') : 'Votes';
+            return { head, comment: `${head} · editor`, sub: `editor · ${head.toLowerCase()}`, name: dec(l[1]), none: 'MusicBrainz lists no edit here.', icon: 'user' };
+        }
         const seg = id.split('/')[0];
-        return seg === 'user' ? 'editor' : seg.replace(/-/g, ' ');
+        const word = seg === 'user' ? 'editor' : seg.replace(/-/g, ' ');
+        return {
+            head: 'Editing history', comment: `Editing history · ${word}`, sub: `${word} · editing history`,
+            name: dec(id.split('/')[1]), none: `MusicBrainz lists no edit for this ${word}.`, icon: seg,
+        };
     }
 
     /**
@@ -49624,8 +49836,8 @@
         const r0 = recs[0];
         const all = recs.flatMap(r => r.entries);
         if (!all.some(e => e.id === ui.sel)) ui.sel = all.length ? all[0].id : '';
-        const kind = _mbEditsKindWord(t.id);
-        const name = r0.subject.name || decodeURIComponent((t.id.split('/')[1] || ''));
+        const label = _mbEditsLabel(t.id);
+        const name = r0.subject.name || label.name || label.head;
         const total = r0.atLeast ? `at least ${r0.total.toLocaleString('en-US')}` : r0.total.toLocaleString('en-US');
         const last = recs[recs.length - 1];
         const counts = {};
@@ -49642,7 +49854,7 @@
         const line = e => (e ? `${_rgEsc((/^(\d{4}-\d\d-\d\d \d\d:\d\d)/.exec(e.date) || [e.date])[0])}${e.editor ? ` by ${_rgEsc(e.editor)}` : ''} (${_rgEsc(e.type)})` : '');
         const morePages = r0.atLeast || last.page < last.pages;
         const head = '<div class="mb-dp-x"><div class="mb-dp-col">' +
-            `<div class="mb-dp-xtitle">${_rgEsc(name)}</div><div class="mb-dp-xsub">MusicBrainz · ${_rgEsc(kind)} · editing history</div>` +
+            `<div class="mb-dp-xtitle">${_rgEsc(name)}</div><div class="mb-dp-xsub">MusicBrainz · ${_rgEsc(label.sub)}</div>` +
             (r0.by ? `<div>${_rgEsc(r0.by)}</div>` : '') +
             (all.some(e => e.editorHidden) ? '<p class="mb-dp-xsub">Logged out, MusicBrainz hides who made each edit and every edit note. Log in on musicbrainz.org to see them here.</p>' : '') +
             '</div><div class="mb-dp-col"><h4>MusicBrainz says</h4>' + _mbPopKvHtml([
@@ -49653,7 +49865,7 @@
                 ['Editors', top.length ? `${Object.keys(eds).length}: ${top.map(([nm, c]) => `${_rgEsc(nm)} (${c})`).join(', ')}` : ''],
             ]) + '</div></div>';
         if (!all.length) {
-            return `${head}<div class="mb-meh-x"><div class="mb-dp-xsub">MusicBrainz lists no edit for this ${_rgEsc(kind)}.</div></div>`;
+            return `${head}<div class="mb-meh-x"><div class="mb-dp-xsub">${_rgEsc(label.none)}</div></div>`;
         }
         let list = all;
         if (ui.group !== 'all') list = list.filter(e => e.cat === ui.group);
@@ -49903,7 +50115,9 @@
      * window's title (`title`), a wider card (`wide`), and how the card and
      * the window are built (`card`, `extracted`, optional `onAreaClick`), as
      * the popup engine's sources build theirs; an optional `nameOf(a)` names
-     * a link's loading card when its own text does not (an "[info]" link).
+     * a link's loading card when its own text does not (an "[info]" link),
+     * an optional `titleOf(id)` the window's title per id (an editor's
+     * "Rejected edits" is the `edits` kind, 2026-10-21).
      * Requests per kind follow
      * org/iframe.org Phase 0 (R1–R4); each inc set is valid for its lookup
      * per https://musicbrainz.org/doc/MusicBrainz_API (checked 2026-10-07).
@@ -50642,6 +50856,63 @@
                     `<p><a href="/user/${encodeURIComponent(d.name)}/edits" target="_blank" rel="noopener">Their edits</a></p></div></div>`;
             },
         })),
+        // An editor's subscribers (2026-10-21), the profile's "view list":
+        // read from the page (`_mbParseSubscribersPage()`). The window links
+        // each editor, so a click drills into their card (Phase 5).
+        subscribers: Object.assign({ title: 'Subscribers', wide: false, path: id => `/user/${id}/subscribers` }, _mbPopPageKind({
+            parse: _mbParseSubscribersPage,
+            cardHtml(d, t) {
+                const shown = d.editors.slice(0, 12);
+                return `<div class="mb-tt-title">${_rgEsc(d.name || t.id)}</div><div class="mb-tt-comment">Subscribers · editor</div>` +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([`${d.total} subscriber${d.total === 1 ? '' : 's'}`,
+                        d.anonymous ? `${d.anonymous} anonymous` : ''])}</div><div class="mb-tt-rule"></div>` +
+                    (shown.length ? `<div class="mb-tt-body">${shown.map(e => _rgEsc(e.name)).join(', ')}</div>` +
+                        (d.editors.length > shown.length ? `<div class="mb-tt-dim">+ ${d.editors.length - shown.length} more</div>` : '')
+                        : '<div class="mb-tt-comment">Nobody is subscribed to their edits.</div>');
+            },
+            windowHtml(d, t) {
+                const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name || t.id)}</div><div class="mb-dp-xsub">MusicBrainz · editor · subscribers</div>` +
+                    '<h4>Subscribers</h4>' + _mbPopKvHtml([
+                        ['Editors', _rgEsc(String(d.editors.length))], ['Anonymous', d.anonymous ? _rgEsc(String(d.anonymous)) : ''],
+                        ['Total', _rgEsc(String(d.total))],
+                    ]);
+                const right = `<h4>Editors · ${d.editors.length}</h4>` + (d.editors.length
+                    ? `<ul class="mb-pop-taglist">${d.editors.map(e => `<li><a href="/user/${_rgEsc(e.id)}" target="_blank" rel="noopener">${_rgEsc(e.name)}</a></li>`).join('')}</ul>`
+                    : '<div class="mb-dp-xsub">No editor is subscribed by name.</div>');
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+        })),
+        // The reader's own applications (2026-10-21), the profile's
+        // "Authorized applications … view list": read from the page
+        // (`_mbParseApplicationsPage()`), only the `_MB_APPS_COLS` columns
+        // as text — never an OAuth client id or secret, never a "Revoke
+        // access" link — and kept in memory only: account data, not a
+        // MusicBrainz entity.
+        applications: Object.assign({ title: 'Applications', wide: true, path: () => '/account/applications' }, _mbPopPageKind({
+            parse: _mbParseApplicationsPage,
+            keep: () => false,
+            failNote: () => ' MusicBrainz shows this page only to its logged-in owner.',
+            cardHtml(d) {
+                const names = d.authorized.rows.map(r => r[0]).filter(Boolean);
+                const dev = d.developer.rows.length;
+                return '<div class="mb-tt-title">Applications</div><div class="mb-tt-comment">Your account</div>' +
+                    `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([`${names.length} authorized`, `${dev} developer`,
+                        d.digest ? `digest auth ${d.digest}` : ''])}</div><div class="mb-tt-rule"></div>` +
+                    (names.length ? `<div class="mb-tt-body">${names.slice(0, 8).map(_rgEsc).join(', ')}</div>` +
+                        (names.length > 8 ? `<div class="mb-tt-dim">+ ${names.length - 8} more</div>` : '')
+                        : '<div class="mb-tt-comment">No application is authorized.</div>');
+            },
+            windowHtml(d) {
+                const sec = (title, s, none) => `<h4>${_rgEsc(title)} · ${s.rows.length}</h4>` + (s.rows.length
+                    ? _mbPopTableHtml(s.cols, s.rows.map(r => r.map(_rgEsc))) : `<div class="mb-dp-xsub">${_rgEsc(none)}</div>`);
+                const left = '<div class="mb-dp-xtitle">Applications</div><div class="mb-dp-xsub">MusicBrainz · your account</div>' +
+                    _mbPopKvHtml([['Authorized', _rgEsc(String(d.authorized.rows.length))], ['Developer', _rgEsc(String(d.developer.rows.length))],
+                        ['Digest auth', _rgEsc(d.digest)]]);
+                const right = sec('Authorized applications', d.authorized, 'No application is authorized.') +
+                    sec('Developer applications', d.developer, 'No application is registered.');
+                return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+        })),
         // A tag (2026-10-19): read from its page (`_mbParseTagPage()`), the
         // Web Service has no lookup of a tag by name. Card: is it a genre,
         // how many entities, how many of each kind. Window: the same, plus
@@ -50688,17 +50959,23 @@
         // link to the page (the sidebar's "Editing history", an editor's
         // "Their edits") is a target like any other. Page n is its own
         // record (`_mbEditsKey()`); ⟳ reads page 1 again and starts over.
+        // Since 2026-10-21 also an editor's other lists (`/user/<name>/edits/
+        // <status>`, `/user/<name>/votes`) and an edit search
+        // (`/search/edits?…`): the same page, their path as their id
+        // (`_mbEditsPagePath()`), named by `_mbEditsLabel()`.
         edits: {
             title: 'Editing history', wide: true,
-            path: id => `/${id}/edits`,
+            titleOf: id => _mbEditsLabel(id).head,
+            path: _mbEditsPagePath,
             card(t, start, repaint) {
                 if (start) _mbEditsLoad(t, 1, { repaint });
                 return _mbPopCardShell(t, _mbPop.get(_mbEditsKey(t.id, 1)), (d) => {
                     const types = {};
                     d.entries.forEach((e) => { types[e.type] = (types[e.type] || 0) + 1; });
                     const latest = d.entries[0];
-                    return `<div class="mb-tt-title">${_rgEsc(d.subject.name || decodeURIComponent(t.id.split('/')[1] || ''))}</div>` +
-                        `<div class="mb-tt-comment">Editing history · ${_rgEsc(_mbEditsKindWord(t.id))}</div>` +
+                    const label = _mbEditsLabel(t.id);
+                    return `<div class="mb-tt-title">${_rgEsc(d.subject.name || label.name || label.head)}</div>` +
+                        `<div class="mb-tt-comment">${_rgEsc(label.comment)}</div>` +
                         `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([`${d.atLeast ? 'at least ' : ''}${d.total.toLocaleString('en-US')} edits`,
                             d.entries.some(e => e.status === 'open') ? `${d.entries.filter(e => e.status === 'open').length} open` : ''])}</div>` +
                         '<div class="mb-tt-rule"></div>' + _mbPopKvHtml([

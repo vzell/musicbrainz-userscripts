@@ -767,7 +767,10 @@ Live page costs ONE request — and parses it into a record kept like any card
 (`_mbLoad()`, the loader both kinds of card share; `_MB_POP_PAGE_VERSION`:
 **bump it when a page parser's output changes**). Paths: `_MB_POP_PAGE_RE`,
 the bare edit or profile only (not `/edit/<n>/data`; `/user/<name>/edits` is
-an editing history since 2026-10-20, see below).
+an editing history since 2026-10-20, see below; an editor's other lists, edit
+searches, `/user/<name>/subscribers` and `/account/applications` since
+2026-10-21, section "an editor's lists, edit searches, subscribers and
+applications" below).
 
 - **`_mbParseEditPage()`** reads `.edit-header` (number, type; the editor, or
   "Editor hidden" when logged out), every `table.details` row (`td.old` +
@@ -993,6 +996,64 @@ Backspace, Alt+← and the kinds-path title need nothing new.
   prototype parser `scripts/lib/mb-edits-parser.browser.js` over saved pages:
   39 edit types), `scripts/show-mb-edits-samples.py`,
   `scripts/build-mb-edit-history-mockups.py`.
+
+## MusicBrainz: an editor's lists, edit searches, subscribers and applications (2026-10-21)
+
+The links of a profile's statistics (`user-profile`, rendered by
+`applyUserProfileToTables()`): "view", "N%", "View all", "view list". All are
+read from the page (no Web Service), through `_mbPageLoad()`.
+
+- **Edit lists are the `edits` kind.** `/user/<name>/edits/<status>` (the
+  seven statuses the profile links: open, accepted, autoedits, applied,
+  rejected, failed, cancelled), `/user/<name>/votes` and `/search/edits?…`
+  are the same page as an editing history ("Found N edits",
+  `div.edit-list`, the same pager; captured logged in 2026-10-21), so they
+  reuse `_mbParseEditsPage()` and the whole window unchanged.
+  - **Id = the page path** (`_MB_POP_EDITLIST_RE`), or path + query for a
+    search (`_mbEditsSearchId()`: the query as the link spells it, minus
+    `page=`). A history's ids (`<kind>/<MBID>`, `user/<name>`) and cache
+    keys are unchanged. `_mbEditsPagePath(id)` / `_mbEditsUrl(id, n)` build
+    the page (`&page=n` after a search's own query).
+  - **A search is a target only with `conditions.` and without
+    `form_only=`**: the empty form (the header's "Edit search") and an edit
+    list's "Quick links" to the prefilled form list nothing.
+    `_mbPopParsePath(pathname, search)` takes the query for this one case;
+    `_mbPopTarget()` and `_mbPopStampHref()` pass it.
+  - **Names: `_mbEditsLabel(id)`** gives the window's title (`titleOf` on the
+    kind: "Rejected edits", "Votes", "Edit search"), the card's comment, the
+    window's subline, the empty-list line and the glyph. A list's own
+    heading ("Rejected edits by vzell") is NOT read: the name comes from the
+    id, so `_mbParseEditsPage()`'s subject regex stays "(Open )Edits by".
+  - **`keep`**: a status list or votes as a history (no open edit → kept for
+    `sa_pop_mb_ttl_hours`); **an edit search memory-only**, whatever it holds,
+    since its conditions may be relative ("24 hours ago").
+  - No "✎ Editing history" on a list: `_mbEditsSubject()` returns null, as
+    for a history.
+- **`subscribers`** (`_MB_POP_ACCOUNT_RE`, id the name):
+  `_mbParseSubscribersPage()` reads the section after `h2` "Subscribers"
+  (`_mbPopH2Section()`; the page has no `#content`): the editor links of its
+  `ul`, "Plus N other anonymous users", "There are currently N users". Card:
+  the count, the anonymous count, the first 12 names; window: every editor
+  linked, so a click drills to their card.
+- **`applications`** (`_MB_POP_ACCOUNT_RE`, id `me`; only the logged-in
+  owner sees the page, else a login page → `failNote`):
+  `_mbParseApplicationsPage()` reads the "Authorized applications" and
+  "Developer applications" sections and the digest-auth line. **Only the
+  `_MB_APPS_COLS` columns, as text** (Application, Name, Access, Last granted
+  token, Type): the Actions cell is "Revoke access", a GET link that revokes,
+  and a developer application's row holds its OAuth client id and secret.
+  The real page had no developer table on capture, so the APPS spec plants
+  one with "OAuth Client ID"/"OAuth Client Secret" columns and asserts
+  neither value reaches the window. **Memory-only** (`keep: () => false`).
+- Fixtures (`scripts/fetch-mb-page-fixture.js --auth`, then
+  `scripts/anonymize-user-fixtures.py`, which replaces the subscribers' names
+  with editor-1… and blanks developer-application cells):
+  `edits-page-user-vzell-{rejected,open,votes}.html`,
+  `edits-page-search-type.html`, `subscribers-page-vzell.html`,
+  `applications-page-vzell.html`. Spec: `popup-mb-user-lists.spec.js`
+  (PATH, STATUS, EMPTY, VOTES, SEARCH, SUBS, APPS), one tap test in
+  `popup-mb-edits.mobile.spec.js`; mutations
+  `scripts/mutations/popup-user-lists.json` (10, all caught).
 
 ## MusicBrainz: beyond table links (org/iframe.org, Phase 4)
 
