@@ -3108,7 +3108,10 @@ The site's form still decides **what** is loaded: untick *ALL* and tick, say,
 - **Flags:** what changed, one row per flag, the site's letter and its
   meaning: N new page created, S content source text changed, T title
   changed, R page renamed/moved, A tags changed, M meta data changed, F
-  file/attachment action. Filter it, or pick from its 📊 list.
+  file/attachment action. Filter it, or pick from its 📊 list. A change
+  with two flags shows the first one and a ▶ toggle that opens the other,
+  as MusicBrainz's list cells do; the column header's button opens or
+  closes all of them.
 - **Date** and **Time:** when, in your own time zone, as `2026-10-12` and
   `17:42:28`. **DD**, **MM**, **YYYY**, **Day** and **Month** (at the end of
   the table) split the date up as on MusicBrainz pages, and the 📊 lists of

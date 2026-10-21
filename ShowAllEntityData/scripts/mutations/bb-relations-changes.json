@@ -245,5 +245,18 @@
         "spec": "tests/fixtures/bb-recent-changes.spec.js",
         "grep": "split into DD|📊 sections",
         "expect": "fail"
+    },
+    {
+        "name": "Flags is not a collapsable column",
+        "why": "The pre-fix state (2026-10-22): a two-flag change shows both flags as loose lines, no toggle, no header button or count.",
+        "edits": [
+            {
+                "find": "                collapsableColumns: [ 'Flags' ],\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-recent-changes.spec.js",
+        "grep": "multi-row column",
+        "expect": "fail"
     }
 ]

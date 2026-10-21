@@ -254,6 +254,32 @@ test.describe('bb-recent-changes', () => {
         expect(filtered.every((r) => r._flags.includes('N'))).toBe(true);
     });
 
+    // Pins that Flags is a MULTI-ROW column (collapsableColumns), not just a
+    // list: a two-flag cell shows one row and a ▶ toggle, a one-flag cell
+    // none; the toggle opens it; the header has its collapse button and the
+    // count of multi-row cells (2026-10-22, the user's screenshot of
+    // "content source text changed / title changed" as two loose lines).
+    test('Flags is a multi-row column: a two-flag cell collapses behind its toggle', async ({ page }) => {
+        await loadBbChangesPage(page);
+        await press(page, 'Show the last 200 changes');
+        const wantMulti = P1.filter((r) => r._flags.length === 2).length;
+        const flagsTh = page.locator('table.tbl thead tr:first-child th[data-col-name="Flags"]');
+        await expect(flagsTh.locator('.mb-col-collapse-hdr-btn')).toHaveCount(1);
+        await expect(flagsTh.locator('.mb-col-collapse-count')).toContainText(String(wantMulti));
+
+        const flagsIdx = HEADERS.indexOf('Flags') + 1;
+        const cells = page.locator(`table.tbl tbody tr td:nth-child(${flagsIdx})`);
+        const multi = cells.filter({ has: page.locator('.mb-cell-collapse-toggle') });
+        await expect(multi).toHaveCount(wantMulti);
+        const first = multi.first();
+        await expect(first.locator('li:visible')).toHaveCount(1);
+        await first.locator('.mb-cell-collapse-toggle').click();
+        await expect(first.locator('li:visible')).toHaveCount(2);
+
+        const single = cells.filter({ has: page.locator('li') }).filter({ hasNot: page.locator('.mb-cell-collapse-toggle') });
+        await expect(single).toHaveCount(P1.filter((r) => r._flags.length === 1).length);
+    });
+
     test('Date is split into DD / MM / YYYY / Day / Month, as on MusicBrainz pages', async ({ page }) => {
         await loadBbChangesPage(page);
         await press(page, 'Show the last 200 changes');

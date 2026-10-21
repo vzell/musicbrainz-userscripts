@@ -35103,6 +35103,10 @@
                     { sourceColumn: 'Revision', align: 'R' },
                     { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' }
                 ],
+                // Flags is one <li> per letter (_bbChangesBuildRow()): a
+                // multi-row column, so a two-flag change ("S" + "T") collapses
+                // behind its toggle like any MusicBrainz list cell.
+                collapsableColumns: [ 'Flags' ],
                 stickyColumn: 'Page'
             },
             tableMode: 'single'

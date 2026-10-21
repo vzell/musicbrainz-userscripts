@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-10-22",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Brucebase recent changes: the Flags column is a multi-row column now. A change with two flags (\"content source text changed\" and \"title changed\") shows the first one with a ▶ toggle to open the other, and the column header can open or close them all and counts them, like MusicBrainz's list columns."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-10-22",
     "sections": [
