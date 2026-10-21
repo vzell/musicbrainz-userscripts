@@ -1,0 +1,15 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Recording lists: the \"Recording of\" and \"Performance attributes\" column headers now read \"Work\" and \"Perf.\", so the two columns take less width. Hover a header to see its full name. Menus, the 📊 drop-down, exports and the Default Hidden Columns table still use the full names. To get the full names back in the headers, turn off the new setting \"Short column header labels\" (🎨 UI FEATURES, on by default).",
+          "Short header labels work for any column. A pageType gets its own with features.columnLabels; the built-in ones are in _COLUMN_LABELS. A saved table keeps each labelled column's name, so Load from Disk restores it."
+        ]
+      }
+    ]
+  }
+]

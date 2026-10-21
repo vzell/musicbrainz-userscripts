@@ -1437,6 +1437,17 @@
                          'just before the 👁️ Visible button is built.'
         },
 
+        sa_short_column_labels: {
+            label: 'Short column header labels',
+            type: 'checkbox',
+            default: true,
+            description: 'Shows a shorter name in the header of some wide columns, for example '
+                         + '"Work" for "Recording of" and "Perf." for "Performance attributes" '
+                         + 'on recording lists. Hovering the header shows the full name. Menus, '
+                         + 'the 📊 drop-down, exports and the Default Hidden Columns table keep '
+                         + 'using the full name. When disabled, every header shows its full name.'
+        },
+
         sa_enable_density_control: {
             label: 'Enable Table Density Control',
             type: 'checkbox',
@@ -41601,13 +41612,9 @@
          * @returns {boolean}
          */
         const isColVisible = colName => {
-            const th = headers.find(h => {
-                const clean = h.textContent
-                    .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '')
-                    .trim()
-                    .replace(/\s+/g, ' ');
-                return clean === colName;
-            });
+            // By name, not by text: a labelled header paints "Work", not
+            // "Recording of" (_colLabel()).
+            const th = headers.find(h => _cleanColHeaderText(h).replace(/\s+/g, ' ') === colName);
             return !!th && th.style.display !== 'none';
         };
 
@@ -60602,7 +60609,11 @@
             return th.dataset.colName.trim();
         }
 
-        // 2. First text node of .mb-col-hdr-flex (before sort/uniq spans)
+        // 2. First text node of .mb-col-hdr-flex (before sort/uniq spans) —
+        // unless that node is a display LABEL (_colLabel()), whose name the
+        // flex carries.
+        const _labelled = _colKeyOfLabelledHeader(th);
+        if (_labelled) return _labelled;
         const _flex = th.querySelector('.mb-col-hdr-flex');
         if (_flex) {
             for (const node of _flex.childNodes) {
@@ -60624,6 +60635,94 @@
 
         // Last resort: raw textContent stripped of known glyph characters
         return th.textContent.replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
+    }
+
+    // ── Column display labels ────────────────────────────────────────────────
+    //
+    // A column's NAME is its key: `data-col-name`, `collapsableColumns`, the 📊
+    // sections, `sa_default_hidden_columns`, exports and saved files all use
+    // it. A LABEL is only what the header paints (the first text node of
+    // `.mb-col-hdr-flex`, in `makeTableSortableUnified()`), with the full name
+    // in the header's tooltip. Every reader resolves the key; a header that
+    // lost its `data-col-name` (a disk load) gets it back from the flex
+    // (`_colKeyOfLabelledHeader()`). See docs/claude/toolbar-and-header-ui.md,
+    // "Column display labels".
+
+    /**
+     * Built-in labels, for columns that appear on many pageTypes. A single
+     * pageType adds or overrides labels with `features.columnLabels`.
+     *
+     * Literal names, not `_RECOF_COL`/`_RECOF_ATTR_COL`: those are declared
+     * further down the IIFE, and reading them here would hit their TDZ.
+     * @type {Object<string, string>}
+     */
+    const _COLUMN_LABELS = {
+        'Recording of':           'Work',
+        'Performance attributes': 'Perf.'
+    };
+
+    /**
+     * The labels in force on this page: `_COLUMN_LABELS` with the active
+     * pageType's `features.columnLabels` over it, or `{}` when
+     * `sa_short_column_labels` is off.
+     *
+     * @param {Object} [def=activeDefinition] - The pageType definition whose
+     *   `features.columnLabels` apply.
+     * @returns {Object<string, string>}
+     */
+    function _activeColumnLabels(def = activeDefinition) {
+        if (Lib.settings.sa_short_column_labels === false) return {};
+        const own = def?.features?.columnLabels;
+        return own ? Object.assign({}, _COLUMN_LABELS, own) : _COLUMN_LABELS;
+    }
+
+    /**
+     * The text a column's header paints: its label, or its name when it has
+     * none.
+     *
+     * @param {string} colName - The column's name (its key).
+     * @returns {string}
+     */
+    function _colLabel(colName) {
+        return _activeColumnLabels()[colName] || colName;
+    }
+
+    /**
+     * The column name a labelled header carries on its `.mb-col-hdr-flex`
+     * (`data-mb-col-key`, set only when the label differs from the name), or
+     * `''`. It is the one way back from a label: a saved file stores the
+     * header's `innerHTML`, which keeps the flex and this attribute but not
+     * the `<th>`'s own `data-col-name`. Never reverse a label by its text —
+     * "Work" is also a real column (`artist-works`).
+     *
+     * @param {Element} th - A `<th>`, or a detached copy of one.
+     * @returns {string}
+     */
+    function _colKeyOfLabelledHeader(th) {
+        const flex = th.querySelector('.mb-col-hdr-flex[data-mb-col-key]');
+        return flex ? flex.dataset.mbColKey : '';
+    }
+
+    /**
+     * Puts a labelled column's full name on the first line of its header's
+     * tooltip, above whatever tip the header already had. Idempotent:
+     * `makeTableSortableUnified()` re-runs on the same header ("↻ Load
+     * remaining pages", re-renders), and a second call finds the name
+     * already there.
+     *
+     * @param {HTMLTableCellElement} th
+     * @param {string} colName - The column's name (its key).
+     * @returns {void}
+     */
+    function _tipColumnName(th, colName) {
+        // Where _setTip() keeps the text: `title`, or the stash while the
+        // card or the link preview has the title parked.
+        const cur = th.getAttribute('title')
+            || th.dataset.mbTipSaved
+            || th.getAttribute('data-mb-dp-saved-title')
+            || '';
+        if (cur === colName || cur.startsWith(`${colName}\n`)) return;
+        _setTip(th, cur ? `${colName}\n${cur}` : colName);
     }
 
     /**
@@ -65684,9 +65783,11 @@ ${sections.join('\n')}
             const _tHdrRow = tbl.querySelector('thead tr:first-child');
             const _columns = _tHdrRow ? Array.from(_tHdrRow.cells).map((th, ci) => {
                 const _thFlex  = th.querySelector('.mb-col-hdr-flex');
-                const _rawName = (_thFlex || th).textContent
-                    .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤]/gu, '')
-                    .replace(/\d+\s*$/, '').trim();
+                // The name, not a display label (_colLabel()) the header paints.
+                const _rawName = th.dataset.colName || _colKeyOfLabelledHeader(th)
+                    || (_thFlex || th).textContent
+                        .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤]/gu, '')
+                        .replace(/\d+\s*$/, '').trim();
                 const _colName = _rawName || `Col ${ci + 1}`;
 
                 const _visible = th.style.display !== 'none';
@@ -84516,7 +84617,7 @@ a { color: #1565c0; }`;
             const colIdx  = parseInt(inp.dataset.colIdx, 10);
             const headers = table.querySelectorAll('thead tr:first-child th');
             const colName = headers[colIdx]
-                ? headers[colIdx].textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim()
+                ? _cleanColHeaderText(headers[colIdx])
                 : `Col ${colIdx}`;
 
             // ── Value-set filter (set by applyUniqValueSet via uniq-drop checkboxes) ──
@@ -109860,7 +109961,10 @@ a { color: #1565c0; }`;
             // pages" re-runs this on the live table): the header is decorated
             // by then, its 📊 count badge holds plain digits, and the text
             // read "Title 102". The name stored on the first pass wins.
-            const colName = th.dataset.colName || th.textContent.replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
+            // A labelled header (_colLabel()) paints its label, so its text
+            // is not its name: take the name the flex carries.
+            const colName = th.dataset.colName || _colKeyOfLabelledHeader(th)
+                || th.textContent.replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
             th.innerHTML = ''; // clear for new icon layout
 
             const createIcon = (char, targetState) => {
@@ -110227,7 +110331,15 @@ a { color: #1565c0; }`;
             // count number OR the 📊 glyph both open the dropdown.
             const hdrFlex = document.createElement('div');
             hdrFlex.className = 'mb-col-hdr-flex';
-            hdrFlex.appendChild(document.createTextNode(`${colName} `));
+            // The painted text is the column's display label ("Work" for
+            // "Recording of"); the name stays in data-col-name, and on the
+            // flex too, which a saved file keeps (_colKeyOfLabelledHeader()).
+            const colLabel = _colLabel(colName);
+            hdrFlex.appendChild(document.createTextNode(`${colLabel} `));
+            if (colLabel !== colName) {
+                hdrFlex.dataset.mbColKey = colName;
+                _tipColumnName(th, colName);
+            }
             hdrFlex.appendChild(createIcon('⇅', 0));
             hdrFlex.appendChild(createIcon('▲', 1));
             hdrFlex.appendChild(createIcon('▼', 2));
@@ -120885,12 +120997,15 @@ a { color: #1565c0; }`;
                             // column by its real name. Collapse back to the original plain
                             // text — the flex wrapper's only genuine Text-node child — so
                             // this header starts clean, exactly like a freshly-fetched
-                            // native <th>.
+                            // native <th>. A labelled header's text node holds its
+                            // display label ("Work"), not its name: the flex carries
+                            // the name (_colKeyOfLabelledHeader()).
                             const hdrFlex = cell.querySelector('.mb-col-hdr-flex');
                             if (hdrFlex) {
                                 const nameNode = Array.from(hdrFlex.childNodes)
                                     .find(n => n.nodeType === Node.TEXT_NODE);
-                                cell.textContent = nameNode ? nameNode.textContent.trim() : cell.textContent.trim();
+                                cell.textContent = _colKeyOfLabelledHeader(cell)
+                                    || (nameNode ? nameNode.textContent.trim() : cell.textContent.trim());
                             }
 
                             tr.appendChild(cell);
@@ -140166,6 +140281,24 @@ a { color: #1565c0; }`;
              * @returns {boolean}
              */
             titleHasRecNameMismatch: (cell) => _titleHasRecNameMismatch(cell),
+            /**
+             * The labels a pageType definition would paint
+             * (`_activeColumnLabels()`), so a spec can pin how
+             * `features.columnLabels` merges over the built-in ones without a
+             * pageType that uses it.
+             *
+             * @param {Object} def - A definition, e.g. `{ features: { columnLabels: {…} } }`.
+             * @returns {Object<string, string>}
+             */
+            columnLabelsFor: (def) => Object.assign({}, _activeColumnLabels(def)),
+            /**
+             * Decorates a table's headers again (`makeTableSortableUnified()`),
+             * as "↻ Load remaining pages" does on the live table.
+             *
+             * @param {HTMLTableElement} table
+             * @returns {void}
+             */
+            makeTableSortableUnified: (table) => makeTableSortableUnified(table, 'main_table'),
             /**
              * A host's site kind (`_siteFamilyOf()`), the key of the 📊
              * "… - Site kind" sections, so a spec can pin the suffix rule on

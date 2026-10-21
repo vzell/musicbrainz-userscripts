@@ -130,6 +130,39 @@ the dangerous case**, because the one tool you would reach for says the file is
 fine. If a CSS change makes unrelated rules stop working, grep the edited
 region for a backtick before debugging anything else.
 
+### Column display labels (`_colLabel()`, `sa_short_column_labels`)
+
+A column's **name** is its key: `data-col-name`, `collapsableColumns`, the 📊
+sections, `sa_default_hidden_columns`, the 👁️ menus, exports and saved files
+all use it. A **label** is only the text the header paints: the first text node
+of `.mb-col-hdr-flex`, written by `makeTableSortableUnified()`. The full name
+goes on the first line of the header's tooltip (`_tipColumnName()`, which is
+idempotent because the decorator re-runs on the same header).
+
+- **Declaring a label.** Built-in labels go in `_COLUMN_LABELS`, for columns
+  on many pageTypes: "Recording of" → "Work" and "Performance attributes" →
+  "Perf." (since `feat/short-column-labels`). A single pageType adds or
+  overrides labels with `features.columnLabels: { '<name>': '<label>' }`, which
+  `_activeColumnLabels()` merges over the built-in ones.
+  `sa_short_column_labels` off returns `{}`.
+- **The way back from a label is the flex, never the text.** A labelled flex
+  carries `data-mb-col-key="<name>"`. Saving to disk and the "Show
+  single-table" handoff store the header's `innerHTML`, which keeps that
+  attribute but loses the `<th>`'s `data-col-name`. The restore in
+  `loadTableDataFromDisk()` rebuilds the header as the plain name from it
+  (`_colKeyOfLabelledHeader()`). **Do not add a reverse lookup by label
+  text.** "Work" is also a real column on `artist-works`, and a text lookup
+  would rename it.
+- **Every reader resolves the name.** Use `dataset.colName` or
+  `_cleanColHeaderText()`, never a decorated header's `textContent`. Three
+  readers used text and were switched:
+  - `syncCollapseButtonsWithColumnVisibility()`'s `isColVisible`
+  - `showStatsPanel()`'s column list
+  - the "invalid regexp" filter message
+
+  Specs: `tests/fixtures/column-labels.spec.js`. Planted defects:
+  `scripts/mutations/column-labels.json`.
+
 ## The h1 toolbar is two pull-down menus plus two pinned buttons
 
 `org/action-button-redesign.org`. The bar used to be one flat run of up to 13

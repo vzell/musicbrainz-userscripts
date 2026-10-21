@@ -1236,6 +1236,12 @@ The two columns are:
 - **Performance attributes** — the same attributes one per row (cover, live,
   partial, instrumental, medley, …), plus the performance date.
 
+To save width, their headers read **Work** and **Perf.**. Hover a header to
+see its full name. Everything else uses the full names: the 👁️ Visible menu,
+the 📊 drop-down, exports, and the *Default Hidden Columns per Page Type*
+table. To see the full names in the headers, turn off **Short column header
+labels** in the settings (🎨 UI FEATURES).
+
 This is what the "MusicBrainz: Batch-add 'performance of' relationships"
 userscript writes under each title, as columns you can filter and sort. If
 that script is installed, its own lines and its "Performance Attributes"

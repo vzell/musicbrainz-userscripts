@@ -231,6 +231,9 @@ shape:
         integerColumns: [ … ],
         collapsableColumns: [ … ],
         stickyColumn: 'Column name',
+        columnLabels: { 'Long name': 'Short' }, // header paints the label, the column keeps
+                                      // its name (merged over _COLUMN_LABELS; see "Column
+                                      // display labels" in docs/claude/toolbar-and-header-ui.md)
         tooltipColumns: [ … ],
         renderMultiRowCell: [ … ],
         splitCD: true,
