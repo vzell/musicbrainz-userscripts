@@ -39346,6 +39346,36 @@
     const SPH_Z_RAISED = 107;
     /** z-index of a raised BODY-LEVEL pinned element (MB header, banners, footer): one above SPH_Z_RAISED, so an open MB header menu beats a raised content bar instead of tying with it (a tie goes to the later element in DOM order, i.e. the content bar). */
     const SPH_Z_CHROME_RAISED = 108;
+    /**
+     * z-index of MusicBrainz's own jQuery UI modal overlay (its dialog one
+     * above): MusicBrainz appends `div.ui-widget-overlay.ui-front` and
+     * `div.ui-dialog.ui-front` to `<body>` (the sidebar cover's artwork
+     * dialog, `.artwork-dialog`: debug/mb-native-sidbar-image-open.html,
+     * 2026-10-21), at jQuery UI's `.ui-front { z-index: 100 }` — under the
+     * stuck header block (105–107), the stuck h2/h3 bars (102–104), the
+     * sticky thead (100) and the sidebar handle (10000), which all painted
+     * through it. Above all of those and this script's menus (10000–10002),
+     * under its own modal dialogs (20000 and up), artwork viewer and tooltips.
+     */
+    const MB_JQUI_Z_OVERLAY = 10050;
+
+    /**
+     * Lifts MusicBrainz's own jQuery UI modal (overlay and dialog) above this
+     * script's pinned bars and sidebar handle (`MB_JQUI_Z_OVERLAY`). A
+     * body-level selector, so it outranks jQuery UI's `.ui-front` by
+     * specificity, whichever stylesheet loads last. MusicBrainz only; once.
+     *
+     * @returns {void}
+     */
+    function _ensureMbDialogZStyle() {
+        if (_foreignHost || document.getElementById('mb-jqui-z-style')) return;
+        const st = GM_addStyle(`
+            body > .ui-widget-overlay.ui-front { z-index: ${MB_JQUI_Z_OVERLAY}; }
+            body > .ui-dialog.ui-front { z-index: ${MB_JQUI_Z_OVERLAY + 1}; }
+        `);
+        st.id = 'mb-jqui-z-style';
+    }
+
     /** Debounce delay (ms) for coalescing resize / observer bursts into one refresh pass. */
     const SPH_REFRESH_DELAY_MS = 60;
     /** Lower bound (px) for a pinned element's clamped width, so tiny viewports never collapse a bar. */
@@ -71144,6 +71174,9 @@ a { color: #1565c0; }`;
         Lib.error('init', 'Required elements not found. Terminating.', { pageType, hasHeader: !!headerContainer });
         return;
     }
+
+    // MusicBrainz's own modal dialogs (the sidebar cover's) above our bars.
+    _ensureMbDialogZStyle();
 
     // The sidebar picture's hover card and viewer (docs/claude/sidebar.md).
     // MusicBrainz adds the picture after load, so this only starts watching.

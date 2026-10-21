@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.7",
+    "date": "2026-10-21",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "MusicBrainz's own pop-up windows, such as the one a click on the sidebar's cover opens on release, release group and event pages, now cover the whole page. The script's buttons beside the title, the headings that stay at the top while scrolling and the sidebar handle no longer show through them."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.6",
     "date": "2026-10-21",
     "sections": [

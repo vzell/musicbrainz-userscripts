@@ -25143,3 +25143,30 @@ scrollX 0 when the first measurement was taken. Re-run alone with
 annotation kinds act on hover, the findings changes touch release and
 recording tables), so this is load-dependent timing in the test's setup,
 recorded here as a first sighting rather than fixed.
+
+## 2026-10-21 — MusicBrainz's jQuery UI dialog under our pinned bars (WIP.7, branch feat/pop-user-page-lists)
+
+Env: 2026-10-21T14:13:42+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs); the report itself from the user's browser (version not given)
+
+Reported with screenshots on /release-group/f83d2211-… and /release/3ec14d03-…:
+a click on the SIDEBAR's cover opened MusicBrainz's own dialog, and the h1
+toolbar buttons ("Releases", "Data", "View", ⚙, ?) and the sidebar handle
+painted through it. On the artist page the same click opens our viewer
+(z-index 2147483400), so nothing showed through there.
+
+- `debug/mb-native-sidbar-image-open.html` (FRP, /event/47b84024-…, dialog
+  open): jQuery UI appends `div.ui-widget-overlay.ui-front` and
+  `div.ui-dialog.ui-front` (content `.artwork-dialog`) as the LAST children
+  of `<body>`, after the footer, with no inline z-index: jQuery UI's own
+  `.ui-front { z-index: 100 }` applies.
+- Measured on the release fixture after the render (positioned elements
+  with a z-index): MB header `.mb-vsb-chrome` 108, stuck header block 107,
+  tracklist h2 104, h3 102, thead 100, column resizers and sticky column
+  101, `#sidebar-toggle-handle` 10000 (fixed). Everything from 101 up was
+  above the dialog.
+- Fix: `_ensureMbDialogZStyle()` lifts the overlay to 10050 and the dialog
+  to 10051 (above our menus at 10000–10002, under our own dialogs at 20000+).
+  Not a guess at a class name: the selectors are the snapshot's.
+- Test trap: the fixture page already holds a hidden `.ui-dialog` of its own
+  (`display: none`), so the spec addresses its planted dialog by id.
+- HELP: no section described this; nothing in it was made false.
