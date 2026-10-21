@@ -935,8 +935,9 @@ close every sidebar section; the headings of the main page are left alone.
   the search links of jesus2099's *mb. ALL LINKS*, which the Sidebar cards
   and tables below show as one *Search* group.
 - **The picture** (as soon as the page opens, no table needed). The photo or
-  logo from Wikimedia Commons at the top of the sidebar shows a card with its
-  file name when you point at it, and opens in the
+  logo from Wikimedia Commons at the top of the sidebar shows the same card as
+  an image in a *CAA*/*EAA* column when you point at it — the picture, where
+  it comes from and its file name — and opens in the
   [artwork viewer](#cover-art) on a click, Enter or Space, with *Open on
   Commons* in its bar. A small copy appears at the start of the page heading,
   so it stays in sight with the sidebar closed. Nothing extra is loaded: it is
@@ -948,11 +949,14 @@ close every sidebar section; the headings of the main page are left alone.
   viewer, and the copy at the start of the heading, there before and after
   you load the table. A drawing is shown whole in the copy, not cropped, and
   its viewer bar has no Commons link.
-  On a release or release group page, the front cover from the sidebar gets
-  the copy at the start of the heading too. A click, Enter or Space on it
-  opens all of the release's images from the Cover Art Archive in the viewer,
-  starting at the front cover; they are asked for on that click, not before.
-  The sidebar's own cover keeps MusicBrainz's link.
+  On a release, release group or event page, the front cover (an event's
+  event art) from the sidebar gets the copy at the start of the heading too.
+  Pointing at the copy, or at the sidebar's own cover, shows the card of a
+  *CAA*/*EAA* column: every image of the release (or event), the main front
+  starred, Space for all of them, Shift for bigger ones. They are asked for
+  on that first hover, not before. A click, Enter or Space on either opens
+  them all in the viewer, starting at the front; a Ctrl-click on the
+  sidebar's cover still opens MusicBrainz's own window.
   Switches: *Sidebar picture: hover card and viewer*, *Sidebar picture beside
   the name*.
 - **The picture in previews.** The link previews of an artist, a label or a

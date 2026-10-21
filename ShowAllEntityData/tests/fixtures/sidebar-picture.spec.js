@@ -12,7 +12,9 @@ const { waitForRenderComplete } = require('../support/browser');
 // `div.commons-image`; the raw page has none, so each test adds it late and
 // serves the upload host from a 1×1 PNG. The guarantees pinned:
 //   - a picture that arrives late is wired: hover card, keyboard, and a copy
-//     beside the name in the heading; MusicBrainz's own markup too;
+//     beside the name in the heading; MusicBrainz's own markup too. The hover
+//     card is the CAA/EAA column's image card (2026-10-21): the picture's
+//     preview, its origin and file name — on the copy too;
 //   - a click opens the shared artwork viewer on that picture, with an
 //     "Open on Commons" link to its file page; Esc closes it and gives focus
 //     back to what opened it; Enter on the copy opens it too;
@@ -38,7 +40,8 @@ async function open(page, settings = {}) {
     const uploads = { n: 0 };
     await page.route('https://upload.wikimedia.org/**', (r) => { uploads.n++; r.fulfill({ body: PNG, contentType: 'image/png' }); });
     await loadUserscriptPage(page, { url: URL, fixtureFile: FIXTURE, testMode: true,
-                                     settingsOverride: { sa_enable_caa_pics: false, sa_enable_relationships_column: false, ...settings } });
+                                     settingsOverride: { sa_enable_caa_pics: false, sa_enable_relationships_column: false,
+                                                         sa_rich_tooltip_delay_ms: 0, ...settings } });
     return uploads;
 }
 
@@ -50,7 +53,9 @@ async function open(page, settings = {}) {
 const addPicture = (page, src = SRC) => page.evaluate((s) => {
     const box = document.createElement('div');
     box.className = 'entity-image';
-    box.innerHTML = `<div class="picture"><img src="${s}" alt=""></div>`;
+    // Sized as MusicBrainz's CSS would: the 1×1 test image would otherwise
+    // sit under the fixed sidebar handle at the page's left edge.
+    box.innerHTML = `<div class="picture"><img src="${s}" alt="" style="width: 120px; height: 120px; margin-left: 40px;"></div>`;
     document.getElementById('sidebar').prepend(box);
 }, src);
 
@@ -75,6 +80,18 @@ const addNativePicture = (page) => page.evaluate((s) => {
 const observerRan = (page) => page.evaluate(() => new Promise((r) => setTimeout(r, 0)));
 
 const pic = (page) => page.locator('#sidebar .entity-image .picture img');
+const tip = (page) => page.locator('#mb-stat-tooltip');
+
+/**
+ * Hovers `el` from outside and waits for its card in #mb-stat-tooltip.
+ * @param {import('@playwright/test').Page} page
+ * @param {import('@playwright/test').Locator} el
+ */
+async function hoverCard(page, el) {
+    await page.mouse.move(0, 0);
+    await el.hover();
+    await expect(tip(page)).toBeVisible();
+}
 const avatar = (page) => page.locator('h1 .mb-sb-avatar');
 const viewer = (page) => page.locator('#mb-art-viewer');
 
@@ -86,10 +103,17 @@ test.describe('the sidebar picture', () => {
         await expect(pic(page)).toHaveClass(/mb-sb-pic/);
         await expect(pic(page)).toHaveAttribute('role', 'button');
         await expect(pic(page)).toHaveAttribute('tabindex', '0');
-        await expect(pic(page)).toHaveAttribute('data-mb-tip', '');
-        expect(await pic(page).getAttribute('title')).toContain(FILE);
         await expect(avatar(page)).toHaveCount(1);
         await expect(avatar(page).locator('img')).toHaveAttribute('src', SRC);
+        for (const el of [pic(page), avatar(page)]) {
+            await hoverCard(page, el);
+            await expect(tip(page).locator('.mb-tt-title')).toHaveText('Artist image');
+            await expect(tip(page).locator('img.mb-art-card-preview')).toHaveAttribute('src', SRC);
+            await expect(tip(page).locator('.mb-tt-pill')).toHaveText('Wikimedia Commons');
+            await expect(tip(page).locator('.mb-tt-comment')).toHaveText(FILE);
+            await expect(tip(page).locator('.mb-tt-foot')).toHaveText('Click: viewer');
+        }
+        expect(await pic(page).getAttribute('title'), 'no plain tooltip any more').toBeNull();
     });
 
     test('a click opens the viewer with an Open on Commons link; Esc closes and gives focus back', async ({ page }) => {
@@ -178,7 +202,7 @@ async function openInstrument(page, settings = {}) {
     await page.route('**/ws/2/**', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{}' }));
     await loadUserscriptPage(page, { url: INST_URL, fixtureFile: INST_FIXTURE, testMode: true,
                                      settingsOverride: { sa_enable_caa_pics: false, sa_enable_relationships_column: false,
-                                                         sa_recording_of_on_instrument: false, ...settings } });
+                                                         sa_recording_of_on_instrument: false, sa_rich_tooltip_delay_ms: 0, ...settings } });
 }
 
 const instPic = (page) => page.locator('#sidebar > .picture img');
@@ -194,10 +218,11 @@ test.describe('an instrument\'s IROMBOOK drawing', () => {
         await expect(instPic(page)).toHaveClass(/mb-sb-pic/);
         await expect(instPic(page)).toHaveAttribute('role', 'button');
         await expect(instPic(page)).toHaveAttribute('tabindex', '0');
-        const tip = await instPic(page).getAttribute('title');
-        expect(tip).toContain('IROMBOOK');
-        expect(tip).toContain(INST_FILE);
-        expect(tip).not.toContain('Commons');
+        await hoverCard(page, instPic(page));
+        await expect(tip(page).locator('.mb-tt-title')).toHaveText('Instrument image');
+        await expect(tip(page).locator('.mb-tt-pill')).toHaveText('IROMBOOK');
+        await expect(tip(page).locator('.mb-tt-comment')).toHaveText(INST_FILE);
+        await page.mouse.move(0, 0);
         await expect(avatar(page)).toHaveCount(1);
         await expect(avatar(page)).toHaveClass(/mb-sb-avatar-contain/);
         await expect(avatar(page).locator('img')).toHaveAttribute('src', INST_SRC);
@@ -241,22 +266,27 @@ test.describe('an instrument\'s IROMBOOK drawing', () => {
     });
 });
 
-// A release's or release group's front cover: MusicBrainz's own
-// `#sidebar .cover-art.present span.artwork-image`, server-rendered with its
+// A release's, release group's or event's front cover: MusicBrainz's own
+// `#sidebar .cover-art.present span.artwork-image` (an event's
+// `.event-art span.artwork-image`), server-rendered with its
 // address in `data-small-thumbnail`; MusicBrainz's script puts the `<img>` in,
 // and replaces the whole span with "Image failed to load" when it cannot. The
 // harness blocks every archive.org image, so each fixture is served from a
 // copy whose thumbnails live on a host this spec answers (THUMB_HOST).
 // The guarantees pinned:
 //   - a copy of the cover leads the heading at load, from the span's
-//     thumbnail address (made absolute), with its card; the sidebar's own
-//     cover is not touched (it keeps MusicBrainz's link);
-//   - nothing is asked of the Cover Art Archive before the click; the click
-//     asks once and opens the viewer on ALL the release's images, at the
-//     FRONT image even when it is not the first (the record is reordered so
-//     the front is second); Esc gives focus back to the copy;
+//     thumbnail address (made absolute);
+//   - nothing is asked of the archive at load; the first HOVER asks once and
+//     shows the CAA/EAA column's card of every image (tiles, ★ main front);
+//     the click opens the viewer on ALL the images, at the FRONT image even
+//     when it is not the first (the record is reordered so the front is
+//     second); Esc gives focus back to the copy;
+//   - the sidebar's own cover link has the same card, and a plain click on
+//     it opens OUR viewer (MusicBrainz's dialog, which our bars painted
+//     through, is not opened), even with the copy switched off;
 //   - the copy still leads the heading after the tracks rendered;
-//   - a release group page does the same with its own path;
+//   - a release group page does the same with its own path, an event page
+//     with the Event Art Archive;
 //   - no `.present` cover, or the copy switched off, makes no copy.
 
 const REL_URL = 'https://musicbrainz.org/release/20a52f17-ce0b-48bf-911e-9f962a518185';
@@ -265,6 +295,8 @@ const THUMB_HOST = 'thumbs.mb-test.invalid';
 const REL_THUMB = `https://${THUMB_HOST}/download/mbid-20a52f17-ce0b-48bf-911e-9f962a518185/mbid-20a52f17-ce0b-48bf-911e-9f962a518185-40457792022_thumb250.jpg`;
 const RG_URL = 'https://musicbrainz.org/release-group/fa9c43a7-2592-3336-a09b-1414b4b6ee68';
 const RG_FIXTURE = path.join(__dirname, 'rg-page-berlin.html');
+const EV_URL = 'https://musicbrainz.org/event/3f2ca30a-7de4-4964-ad30-48376535fec8';
+const EV_FIXTURE = path.join(__dirname, 'event-overview.html');
 const CAA_CORS = { 'access-control-allow-origin': '*' };
 const CAA_RECORD = JSON.parse(require('fs').readFileSync(path.join(__dirname, 'caa-release-d0adda7e.json'), 'utf8'));
 
@@ -291,9 +323,9 @@ async function openCover(page, testInfo, url, fixture, { settings = {}, edit = (
     images.splice(1, 0, front);
     const body = JSON.stringify({ ...CAA_RECORD, images });
     await page.route(`https://${THUMB_HOST}/**`, (r) => r.fulfill({ body: PNG, contentType: 'image/png' }));
-    await page.route(/^https:\/\/coverartarchive\.org\//, (r) => {
+    await page.route(/^https:\/\/(cover|event)artarchive\.org\//, (r) => {
         const u = r.request().url();
-        if (/^https:\/\/coverartarchive\.org\/(release|release-group)\/[0-9a-f-]{36}\/?$/.test(u)) {
+        if (/^https:\/\/(coverartarchive\.org\/(release|release-group)|eventartarchive\.org\/event)\/[0-9a-f-]{36}\/?$/.test(u)) {
             asked.push(u);
             return r.fulfill({ status: 200, headers: CAA_CORS, contentType: 'application/json', body });
         }
@@ -301,22 +333,25 @@ async function openCover(page, testInfo, url, fixture, { settings = {}, edit = (
     });
     await loadUserscriptPage(page, { url, fixtureFile: copy, testMode: true,
                                      settingsOverride: { sa_enable_caa_pics: false, sa_enable_relationships_column: false,
-                                                         sa_art_idb_enable: false, ...settings } });
+                                                         sa_art_idb_enable: false, sa_rich_tooltip_delay_ms: 0, ...settings } });
     return { asked };
 }
 
 test.describe('a release\'s or release group\'s cover beside the name', () => {
-    test('the copy leads the heading at load; the click opens all the images at the front', async ({ page }, testInfo) => {
+    test('the copy leads the heading at load; a hover shows every image; the click opens them at the front', async ({ page }, testInfo) => {
         const { asked } = await openCover(page, testInfo, REL_URL, REL_FIXTURE);
         await expect(avatar(page)).toHaveCount(1);
         expect(await avatarFirst(page), 'the copy leads the heading').toBe(true);
         await expect(avatar(page).locator('img')).toHaveAttribute('src', REL_THUMB);
         await expect(avatar(page)).toHaveAttribute('role', 'button');
-        await expect(avatar(page)).toHaveAttribute('data-mb-tip', '');
-        expect(await avatar(page).getAttribute('title')).toContain('Cover Art Archive');
-        await expect(page.locator('#sidebar .cover-art .mb-sb-pic'), 'the sidebar\'s own cover is not touched').toHaveCount(0);
         await observerRan(page);
-        expect(asked, 'nothing asked before the click').toEqual([]);
+        expect(asked, 'nothing asked at load').toEqual([]);
+        await hoverCard(page, avatar(page));
+        await expect(tip(page).locator('.mb-tt-title')).toHaveText('Barcelona Night');
+        await expect(tip(page).locator('.mb-art-card-tile')).toHaveCount(Math.min(12, CAA_RECORD.images.length));
+        await expect(tip(page).locator('.mb-art-card-tile.mb-art-card-main'), 'the ★ main front').toHaveCount(1);
+        await expect(tip(page).locator('.mb-tt-foot:not(.mb-art-card-keys)')).toHaveText('Click: viewer');
+        expect(asked, 'the first hover asks once').toEqual(['https://coverartarchive.org/release/20a52f17-ce0b-48bf-911e-9f962a518185']);
         await avatar(page).click();
         await expect(viewer(page)).toBeVisible();
         await expect(viewer(page).locator('.mb-artv-title')).toContainText('cover art');
@@ -342,20 +377,49 @@ test.describe('a release\'s or release group\'s cover beside the name', () => {
         expect(await avatarFirst(page), 'the copy still leads the heading on the final page').toBe(true);
     });
 
+    test('the sidebar\'s own cover: the same card, and a click opens our viewer, not MusicBrainz\'s dialog', async ({ page }, testInfo) => {
+        const { asked } = await openCover(page, testInfo, REL_URL, REL_FIXTURE);
+        const own = page.locator('#sidebar .cover-art a.artwork-image');
+        await hoverCard(page, own);
+        await expect(tip(page).locator('.mb-art-card-tile')).toHaveCount(Math.min(12, CAA_RECORD.images.length));
+        await expect(tip(page).locator('.mb-tt-foot:not(.mb-art-card-keys)')).toHaveText('Click: viewer · Ctrl-click: MusicBrainz\'s own');
+        await own.click();
+        await expect(viewer(page)).toBeVisible();
+        await expect(viewer(page).locator('.mb-artv-pos')).toHaveText(`2 / ${CAA_RECORD.images.length}`);
+        await expect(page.locator('.ui-dialog:visible'), 'MusicBrainz\'s dialog is not opened').toHaveCount(0);
+        expect(page.url(), 'and the page is not left').toBe(REL_URL);
+        expect(asked.length, 'one record for card and viewer').toBe(1);
+    });
+
     test('a release group page opens its own record', async ({ page }, testInfo) => {
         const { asked } = await openCover(page, testInfo, RG_URL, RG_FIXTURE);
         await expect(avatar(page)).toHaveCount(1);
-        expect(await avatar(page).getAttribute('title')).toContain('Release group cover');
+        await expect(avatar(page)).toHaveAttribute('aria-label', 'Open the release group\'s cover art');
         await avatar(page).click();
         await expect(viewer(page)).toBeVisible();
         expect(asked).toEqual(['https://coverartarchive.org/release-group/fa9c43a7-2592-3336-a09b-1414b4b6ee68']);
     });
 
-    test('no copy with the copy switched off', async ({ page }, testInfo) => {
+    test('an event page: its event art beside the name, the EAA card, the viewer', async ({ page }, testInfo) => {
+        const { asked } = await openCover(page, testInfo, EV_URL, EV_FIXTURE);
+        await expect(avatar(page)).toHaveCount(1);
+        expect(await avatarFirst(page), 'the copy leads the heading').toBe(true);
+        await expect(avatar(page)).toHaveAttribute('aria-label', 'Open the event\'s event art');
+        await hoverCard(page, avatar(page));
+        await expect(tip(page).locator('.mb-art-card-tile')).toHaveCount(Math.min(12, CAA_RECORD.images.length));
+        expect(asked).toEqual(['https://eventartarchive.org/event/3f2ca30a-7de4-4964-ad30-48376535fec8']);
+        await page.locator('#sidebar .event-art a.artwork-image').click();
+        await expect(viewer(page)).toBeVisible();
+        await expect(viewer(page).locator('.mb-artv-title')).toContainText('event art');
+    });
+
+    test('no copy with the copy switched off; the sidebar\'s own cover still opens our viewer', async ({ page }, testInfo) => {
         await openCover(page, testInfo, REL_URL, REL_FIXTURE, { settings: { sa_sidebar_picture_in_header: false } });
         await expect(page.locator('h1')).toHaveCount(1);
         await observerRan(page);
         await expect(avatar(page)).toHaveCount(0);
+        await page.locator('#sidebar .cover-art a.artwork-image').click();
+        await expect(viewer(page)).toBeVisible();
     });
 
     test('no copy without a present cover', async ({ page }, testInfo) => {

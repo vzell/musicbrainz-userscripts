@@ -517,14 +517,14 @@
             label: "Sidebar picture: hover card and viewer",
             type: "checkbox",
             default: true,
-            description: "The picture MusicBrainz shows in the sidebar (an artist's photo, a label's logo, from Wikimedia Commons; an instrument's IROMBOOK drawing) gets a hover card and opens in the artwork viewer on a click, Enter or Space. Uses the picture MusicBrainz already loaded: no extra request. On a release or release group page, the cover gets a copy beside the name (see below), and the sidebar's own cover keeps MusicBrainz's link."
+            description: "The picture MusicBrainz shows in the sidebar (an artist's photo, a label's logo, from Wikimedia Commons; an instrument's IROMBOOK drawing) gets the image card of a CAA/EAA column on hover and opens in the artwork viewer on a click, Enter or Space. Uses the picture MusicBrainz already loaded: no extra request. On a release, release group or event page, the sidebar's own cover gets the card of every image (asked on the first hover) and opens them in the artwork viewer instead of MusicBrainz's own window; Ctrl-click still opens MusicBrainz's."
         },
 
         sa_sidebar_picture_in_header: {
             label: "Sidebar picture beside the name",
             type: "checkbox",
             default: true,
-            description: "Also show a small copy of the sidebar picture at the start of the page heading, so it stays in sight with the sidebar closed. Same hover card and viewer. On a release or release group page it is the front cover; a click opens all its Cover Art Archive images in the viewer (asked on that click). Needs 'Sidebar picture: hover card and viewer'."
+            description: "Also show a small copy of the sidebar picture at the start of the page heading, so it stays in sight with the sidebar closed. Same hover card and viewer. On a release, release group or event page it is the front cover (the event art); its card shows every image and a click opens them all in the viewer (asked on the first hover or click). Needs 'Sidebar picture: hover card and viewer'."
         },
 
         sa_sidebar_tables_button: {
@@ -101688,6 +101688,35 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * The hover card of the sidebar picture or its copy beside the name
+     * (`data-mbtt-fn="sb-pic"`): the B2 image card of a CAA/EAA cell image
+     * (`_artCardImageHtml()`'s look) for the one picture — its preview,
+     * where it comes from, its file name, the size the browser loaded —
+     * built from the picture already shown: nothing is asked.
+     *
+     * @param {HTMLElement} el - The sidebar `<img>`, or the copy's box.
+     * @returns {?string}
+     */
+    function _sbPicCardHtml(el) {
+        const img = el.tagName === 'IMG' ? el : el.querySelector('img');
+        const src = img ? (img.currentSrc || img.src) : '';
+        const source = src ? _sbPictureSource(src) : null;
+        if (!source) return null;
+        const side = document.querySelector('#sidebar img.mb-sb-pic') || img;
+        const type = _sbEntityType();
+        const origin = source.kind === 'irombook' ? 'IROMBOOK' : 'Wikimedia Commons';
+        const size = side.naturalWidth ? `${side.naturalWidth} × ${side.naturalHeight} px as loaded` : '';
+        return `<div style="max-width:${_artNumSetting('sa_caa_tip_image_size', 200, 40) + 20}px;min-width:200px;">` +
+            `<div class="mb-tt-title">${_rgEsc(type.charAt(0).toUpperCase() + type.slice(1))} image</div>` +
+            `<img class="mb-art-card-preview" src="${_rgEsc(src)}" alt=""${source.kind === 'irombook' ? ' style="background:#ffffff;"' : ''}>` +
+            `<div class="mb-tt-body" style="display:flex;gap:4px;flex-wrap:wrap;"><span class="mb-tt-pill">${_rgEsc(origin)}</span></div>` +
+            (source.file ? `<div class="mb-tt-comment">${_rgEsc(source.file)}</div>` : '') +
+            '<div class="mb-tt-rule"></div>' +
+            (size ? `<div class="mb-tt-dim">${_rgEsc(size)}</div>` : '') +
+            '<div class="mb-tt-foot">Click: viewer</div></div>';
+    }
+
+    /**
      * Makes one element open the sidebar picture: hover card, click, Enter
      * and Space.
      * @param {Element} el - The picture or its copy beside the name.
@@ -101695,15 +101724,13 @@ a { color: #1565c0; }`;
      * @returns {void}
      */
     function _sbPictureControl(el, img) {
-        const source = _sbPictureSource(img.currentSrc || img.src);
-        const file = source ? source.file : '';
-        const origin = source && source.kind === 'irombook' ? 'IROMBOOK' : 'Wikimedia Commons';
         const type = _sbEntityType();
         el.setAttribute('role', 'button');
         el.tabIndex = 0;
         el.setAttribute('aria-label', `Open the ${type} image`);
         el.classList.add('mb-sb-pic');
-        _setTip(el, `${type.charAt(0).toUpperCase() + type.slice(1)} image · ${origin}${file ? ' · ' + file : ''}. Click to open it in the viewer.`);
+        // The image card, as a CAA/EAA cell image's (`_sbPicCardHtml()`).
+        el.dataset.mbttFn = 'sb-pic';
         el.addEventListener('click', (e) => {
             if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return;
             e.preventDefault();
@@ -101779,19 +101806,81 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * The Cover Art Archive path of this page's release or release group
-     * (`/release/<mbid>`, `/release-group/<mbid>`, lower case, the key of
-     * `CAA_CTX`'s caches); '' on any other page.
+     * The archive path of this page's release, release group or event
+     * (`/release/<mbid>`, `/release-group/<mbid>`, `/event/<mbid>`, lower
+     * case, the key of `CAA_CTX`'s or `EAA_CTX`'s caches); '' on any other
+     * page.
      * @returns {string}
      */
     function _sbCoverPath() {
-        const m = location.pathname.match(/^\/(release|release-group)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\/|$)/i);
+        const m = location.pathname.match(/^\/(release|release-group|event)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\/|$)/i);
         return m ? `/${m[1]}/${m[2].toLowerCase()}` : '';
     }
 
     /**
-     * Opens the release's (or release group's) Cover Art Archive images in
-     * the artwork viewer at the front image, asking the archive first when
+     * The archive of a `_sbCoverPath()`: the Event Art Archive for an event,
+     * else the Cover Art Archive. Only called on a hover or a click — both
+     * contexts are declared far below this part of the file (TDZ at init).
+     * @param {string} path
+     * @returns {Object} `EAA_CTX` or `CAA_CTX`.
+     */
+    function _sbCoverCtx(path) {
+        return path.startsWith('/event/') ? EAA_CTX : CAA_CTX;
+    }
+
+    /**
+     * What a `_sbCoverPath()` is, for the card and the aria label.
+     * @param {string} path
+     * @returns {('release'|'release group'|'event')}
+     */
+    function _sbCoverLabel(path) {
+        return path.startsWith('/event/') ? 'event' : path.startsWith('/release-group/') ? 'release group' : 'release';
+    }
+
+    /**
+     * The hover card of a release's, release group's or event's cover — its
+     * copy beside the name and the sidebar's own cover link
+     * (`data-mbtt-fn="sb-cover"`, the path in `data-mb-sb-cover`): the B1
+     * card of every image of the record, as a CAA/EAA cell's
+     * (`_artRecordCardHtml()`; the first hover asks the archive, as a
+     * relationship-list cover icon does). Off with `sa_caa_tip_summary`.
+     *
+     * @param {HTMLElement} el
+     * @returns {?string}
+     */
+    function _sbCoverCardHtml(el) {
+        const path = el.dataset.mbSbCover || '';
+        if (!path || Lib.settings.sa_caa_tip_summary === false) return null;
+        const label = _sbCoverLabel(path);
+        const title = _cachedEntityName || `${label.charAt(0).toUpperCase() + label.slice(1)} artwork`;
+        const own = el.matches('#sidebar a.artwork-image');
+        return _artRecordCardHtml(el, _sbCoverCtx(path), path, title,
+            own ? 'Click: viewer · Ctrl-click: MusicBrainz\'s own' : 'Click: viewer');
+    }
+
+    /**
+     * A plain click on the sidebar's own cover link (a release's, release
+     * group's or event's `a.artwork-image`) opens the artwork viewer instead
+     * of MusicBrainz's dialog. On the WINDOW in the capture phase, so it runs
+     * before MusicBrainz's handler and the navigation guard, and
+     * stopPropagation keeps the click from both. Ctrl, Shift, Alt or ⌘ leave
+     * it to MusicBrainz.
+     * @param {MouseEvent} e
+     * @returns {void}
+     */
+    function _sbCoverLinkClick(e) {
+        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+        const a = e.target && e.target.closest ? e.target.closest('#sidebar a.artwork-image[data-mb-sb-cover]') : null;
+        if (!a) return;
+        e.preventDefault();
+        e.stopPropagation();
+        _sbOpenCover(a.dataset.mbSbCover, a);
+    }
+
+    /**
+     * Opens the release's (release group's) Cover Art Archive images, or the
+     * event's Event Art Archive images, in the artwork viewer at the front
+     * image, asking the archive first when
      * its record is not in yet (a click is the only thing that asks), the
      * way `_artIconClick()` opens a relationship-list cover icon. When the
      * record turns out empty or the archive does not answer, nothing opens
@@ -101801,32 +101890,38 @@ a { color: #1565c0; }`;
      * @returns {void}
      */
     function _sbOpenCover(path, opener) {
+        const ctx = _sbCoverCtx(path);
         const open = () => {
-            const images = CAA_CTX.imagesCache.get(path) || [];
+            const images = ctx.imagesCache.get(path) || [];
             if (!images.length) {
-                Lib.debug(CAA_CTX.key, `_sbOpenCover: no images for ${path}` +
-                    (CAA_CTX.failedCache.has(path) ? ' (the archive did not answer)' : ''));
+                Lib.debug(ctx.key, `_sbOpenCover: no images for ${path}` +
+                    (ctx.failedCache.has(path) ? ' (the archive did not answer)' : ''));
                 return;
             }
             const front = images.findIndex(im => im.front);
-            _artViewerOpen(CAA_CTX, path, null, front < 0 ? 0 : front,
-                { opener, title: `${_cachedEntityName || document.title} — cover art` });
+            // The cover's card is showing under the pointer: the viewer covers it.
+            const tip = document.getElementById('mb-stat-tooltip');
+            if (tip) tip.style.display = 'none';
+            _artViewerOpen(ctx, path, null, front < 0 ? 0 : front,
+                { opener, title: `${_cachedEntityName || document.title} — ${ctx.key === 'eaa' ? 'event art' : 'cover art'}` });
         };
-        if (CAA_CTX.countCache.has(path) && !CAA_CTX.failedCache.has(path)) open();
+        if (ctx.countCache.has(path) && !ctx.failedCache.has(path)) open();
         else {
-            if (CAA_CTX.failedCache.has(path)) CAA_CTX.countCache.delete(path);
-            _artRelIconLoad(path, open, CAA_CTX);
+            if (ctx.failedCache.has(path)) ctx.countCache.delete(path);
+            _artRelIconLoad(path, open, ctx);
         }
     }
 
     /**
-     * Wires a release's or release group's sidebar cover
-     * (`.cover-art.present span.artwork-image`): a copy at the start of the
-     * heading that opens the release's images in the artwork viewer. The
-     * address is the span's `data-small-thumbnail`, there before
+     * Wires a release's, release group's or event's sidebar cover
+     * (`.cover-art.present span.artwork-image`, `.event-art
+     * span.artwork-image`): a copy at the start of the heading, and the
+     * sidebar's own cover link, both with the record's artwork card
+     * (`_sbCoverCardHtml()`) and opening its images in the artwork viewer.
+     * The address is the span's `data-small-thumbnail`, there before
      * MusicBrainz's script puts the `<img>` in, and the browser loads that
-     * thumbnail for the sidebar anyway. MusicBrainz's own sidebar cover keeps
-     * its own link and is not touched.
+     * thumbnail for the sidebar anyway. A Ctrl/Shift click on the sidebar
+     * link is still MusicBrainz's.
      * @param {HTMLElement} span
      * @returns {void}
      */
@@ -101837,14 +101932,26 @@ a { color: #1565c0; }`;
         if (!path || !raw) return;
         span.dataset.mbSbPic = '1';
         _sbEnsurePictureStyle();
+        // The sidebar's own cover link: the same card, and a click opens our
+        // viewer (`_sbCoverLinkClick()`), not MusicBrainz's dialog.
+        const own = span.closest('a.artwork-image');
+        if (own) {
+            own.dataset.mbSbCover = path;
+            own.dataset.mbttFn = 'sb-cover';
+            if (!_sbWireCover.listening) {
+                _sbWireCover.listening = true;
+                window.addEventListener('click', _sbCoverLinkClick, true);
+            }
+        }
         const box = _sbHeaderCopy(raw.startsWith('//') ? `https:${raw}` : raw, false);
         if (!box) return;
-        const label = path.startsWith('/release-group/') ? 'release group' : 'release';
+        const label = _sbCoverLabel(path);
         box.setAttribute('role', 'button');
         box.tabIndex = 0;
-        box.setAttribute('aria-label', `Open the ${label}'s cover art`);
+        box.setAttribute('aria-label', `Open the ${label}'s ${label === 'event' ? 'event art' : 'cover art'}`);
         box.classList.add('mb-sb-pic');
-        _setTip(box, `${label.charAt(0).toUpperCase() + label.slice(1)} cover · Cover Art Archive. Click to open its images in the viewer.`);
+        box.dataset.mbSbCover = path;
+        box.dataset.mbttFn = 'sb-cover';
         box.addEventListener('click', (e) => {
             if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return;
             e.preventDefault();
@@ -101864,8 +101971,9 @@ a { color: #1565c0; }`;
      * another script's markup, then MusicBrainz's own Commons component, then
      * an instrument's IROMBOOK drawing (`#sidebar > div.picture`, server-
      * rendered, so it is found at once); it is a literal here because this
-     * runs at init, before this part of the file (TDZ). A release's or
-     * release group's cover (`_sbWireCover()`) is server-rendered too.
+     * runs at init, before this part of the file (TDZ). A release's,
+     * release group's or event's cover (`_sbWireCover()`) is server-rendered
+     * too.
      * @returns {void}
      */
     function _sbInitPicture() {
@@ -101873,7 +101981,7 @@ a { color: #1565c0; }`;
         const sidebar = document.getElementById('sidebar');
         if (!sidebar) return;
         if (_sbCoverPath()) {
-            const cover = sidebar.querySelector('.cover-art.present span.artwork-image[data-small-thumbnail]');
+            const cover = sidebar.querySelector('.cover-art.present span.artwork-image[data-small-thumbnail], .event-art span.artwork-image[data-small-thumbnail]');
             if (cover) _sbWireCover(cover);
             return;
         }
@@ -133758,6 +133866,8 @@ a { color: #1565c0; }`;
                 case 'art-img': return _artCardImageHtml(el);
                 case 'art-rel': return _artRelIconCardHtml(el);
                 case 'dg-img': return _dgImgCardHtml(el);
+                case 'sb-pic': return _sbPicCardHtml(el);
+                case 'sb-cover': return _sbCoverCardHtml(el);
                 default: return null;
             }
         } catch (err) {
@@ -133802,7 +133912,7 @@ a { color: #1565c0; }`;
     // hover (`_mbttAfterHide()`), Shift follows the key.
 
     /** The resolver cards built by `_artCardCoreHtml()`. */
-    const _ART_CARD_FNS = new Set(['art-sum', 'art-rel', 'dg-img']);
+    const _ART_CARD_FNS = new Set(['art-sum', 'art-rel', 'dg-img', 'sb-cover']);
 
     /**
      * The artwork card's view: `allEl` is the element whose card shows every
@@ -134161,20 +134271,38 @@ a { color: #1565c0; }`;
     function _artRelIconCardHtml(a) {
         const info = _artRelIconInfo(a);
         if (!info || !_artRelIconCardOn()) return null;
-        const title = info.title || 'Cover art';
+        return _artRecordCardHtml(a, CAA_CTX, info.path, info.title || 'Cover art',
+            _artRelIconViewerOn() ? 'Click: viewer · Ctrl-click: the artwork page' : '');
+    }
+
+    /**
+     * The B1 card of every image of ONE archive record that is not a table
+     * row's (a relationship-list cover icon, a sidebar cover): the record's
+     * card once it is in; "Loading" while asked (the first hover asks,
+     * `_artRelIconLoad()`, and the card repaints when it arrives); a line
+     * when the archive has no image or did not answer.
+     *
+     * @param   {HTMLElement} el - The hovered element.
+     * @param   {Object} ctx - `CAA_CTX` or `EAA_CTX`.
+     * @param   {string} path - The record (`/release/<mbid>`, …).
+     * @param   {string} title
+     * @param   {string} foot
+     * @returns {string}
+     */
+    function _artRecordCardHtml(el, ctx, path, title, foot) {
         const head = `<div class="mb-tt-title">${_rgEsc(title)}</div>`;
-        if (!CAA_CTX.countCache.has(info.path)) {
-            _artRelIconLoad(info.path, () => _artRelIconRepaint(a));
-            return `<div style="max-width:310px;">${head}<div class="mb-tt-comment"><span class="mb-dp-spin">◌</span> Loading the release's artwork…</div></div>`;
+        const archive = ctx.key === 'eaa' ? 'Event Art Archive' : 'Cover Art Archive';
+        if (!ctx.countCache.has(path)) {
+            _artRelIconLoad(path, () => _artRelIconRepaint(el), ctx);
+            return `<div style="max-width:310px;">${head}<div class="mb-tt-comment"><span class="mb-dp-spin">◌</span> Loading the ${ctx.key === 'eaa' ? 'event' : 'release'}'s artwork…</div></div>`;
         }
-        const images = CAA_CTX.imagesCache.get(info.path) || [];
+        const images = ctx.imagesCache.get(path) || [];
         if (!images.length) {
-            const why = CAA_CTX.failedCache.has(info.path) ? 'The Cover Art Archive did not answer.' : 'No artwork in the Cover Art Archive.';
+            const why = ctx.failedCache.has(path) ? `The ${archive} did not answer.` : `No artwork in the ${archive}.`;
             return `<div style="max-width:310px;">${head}<div class="mb-tt-dim">${why}</div></div>`;
         }
         return _artCardCoreHtml({
-            el: a, ctx: CAA_CTX, images, order: images.map((_, i) => i), title, hit: () => false, matches: '',
-            foot: _artRelIconViewerOn() ? 'Click: viewer · Ctrl-click: the artwork page' : '',
+            el, ctx, images, order: images.map((_, i) => i), title, hit: () => false, matches: '', foot,
         });
     }
 

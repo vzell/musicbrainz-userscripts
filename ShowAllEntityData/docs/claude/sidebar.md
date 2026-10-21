@@ -143,6 +143,9 @@ Specs:
   load. So `_sbWireCover()` reads `data-small-thumbnail` (made absolute)
   straight away instead of waiting for the `<img>`. A cover with no
   `.present` (no front image) gets no copy.
+- **An event's event art** (2026-10-21, WIP.8): the same markup in
+  `#sidebar .event-art` (no `.present` class there), wired the same way with
+  the Event Art Archive (`_sbCoverCtx()` → `EAA_CTX`).
 
 The two Commons ones arrive AFTER load: the raw page has neither. `_sbInitPicture()` is called
 once at init, right after the required-elements check, on MusicBrainz only
@@ -154,36 +157,51 @@ MutationObserver for up to 15 s.
 **Nothing is requested.** The picture is MusicBrainz's own, already in the
 browser. The viewer loads it through the external path (`external: true`: no
 art cache, no referrer), like `_dpArtViewerClick()` does for another site's
-images. **The one exception is a click on a cover's copy**: it opens ALL the
-release's (or release group's) images, so it asks the Cover Art Archive
-record (`_sbOpenCover()`, the same path as `_artIconClick()`:
-`_artRelIconLoad(path, open, CAA_CTX)`, or at once when `CAA_CTX.countCache`
-already has it, e.g. after the release page's "Cover art (N)" section). Only
-that click asks, never the load.
+images. **The one exception is a cover** (release, release group, event):
+its card and its viewer show ALL the record's images, so the FIRST HOVER of
+the copy or of the sidebar's own cover link asks the archive record
+(`_artRecordCardHtml()` → `_artRelIconLoad(path, …, ctx)`, as a
+relationship-list cover icon does), and a click asks it when no hover has
+(`_sbOpenCover()`); at once when `ctx.countCache` already has it, e.g. after
+the release page's "Cover art (N)" section. Never at load.
 
 **Rules.**
 - **Only a Commons file or an IROMBOOK drawing** (`_sbPictureSource()`:
   `_sbCommonsFile()`, the host ends in `wikimedia.org`; `_sbIrombookFile()`,
-  `static.metabrainz.org/irombook/`), **or a release / release group cover**
-  (a path of its own, below). The event sidebar's event art already has the
-  artwork viewer, and is left alone.
-- **A cover differs from a picture in four places**: only the COPY is wired
-  (MusicBrainz's own sidebar cover keeps its link, so with
-  `sa_sidebar_picture_in_header` off nothing changes on the page); it is
-  found only on a `/release/<mbid>…` or `/release-group/<mbid>…` path
-  (`_sbCoverPath()`, which is also the `CAA_CTX` cache key), and on those
-  pages the Commons selector is not watched; the viewer context is
-  `CAA_CTX`, not `_SB_PIC_CTX`, so the bar reads "CAA", shows every image and
-  starts at the record's `front` one; its card reads "Release cover · Cover
-  Art Archive".
+  `static.metabrainz.org/irombook/`), **or a release / release group /
+  event cover** (a path of its own, below). `_sbPictureSource()` still
+  answers null for an event-art address, so `_sbWirePicture()` never takes
+  one for a Commons picture.
+- **A cover differs from a picture in four places**: it is found only on a
+  `/release/<mbid>…`, `/release-group/<mbid>…` or `/event/<mbid>…` path
+  (`_sbCoverPath()`, which is also the archive cache key), and on those
+  pages the Commons selector is not watched; besides the copy, the SIDEBAR'S
+  OWN cover link (`a.artwork-image`, stamped `data-mb-sb-cover`) is wired:
+  same card, and a plain click opens our viewer through a window
+  capture-phase listener (`_sbCoverLinkClick()`) so MusicBrainz's jQuery UI
+  dialog never opens (Ctrl/Shift/Alt/⌘ leave the click to MusicBrainz; with
+  `sa_sidebar_picture_in_header` off the link is still wired); the viewer
+  context is `CAA_CTX`/`EAA_CTX` (`_sbCoverCtx()`, read only on a hover or
+  click: both are declared far below, TDZ at init), so the bar reads "CAA"
+  or "EAA", shows every image and starts at the record's `front` one; its
+  card is the CAA/EAA column's B1 card of every image
+  (`data-mbtt-fn="sb-cover"` → `_sbCoverCardHtml()` → `_artRecordCardHtml()`,
+  which `_artRelIconCardHtml()` now shares; Space draws every image, Shift
+  bigger tiles: `sb-cover` is in `_ART_CARD_FNS`). Off with
+  `sa_caa_tip_summary`.
 - **A drawing differs in three places only**: the card says "IROMBOOK"
   instead of "Wikimedia Commons"; the viewer gets no `pageUrl` (a drawing has
   no file page, so the bar shows no link); the copy beside the name carries
   `mb-sb-avatar-contain` (`object-fit: contain` on white), because a tall
   transparent line drawing cropped by `cover` is an unrecognisable strip.
-- **The picture's own control** (`_sbPictureControl()`): a `_setTip()` hover
-  card ("Artist image · Wikimedia Commons · <file>. Click to open it in the
-  viewer."), `role=button`, `tabindex=0`, and click, Enter or Space.
+- **The picture's own control** (`_sbPictureControl()`): `role=button`,
+  `tabindex=0`, click, Enter or Space, and since 2026-10-21 (WIP.8, asked
+  for: "the same treatment as an image in the CAA/EAA column") the B2 image
+  card instead of a plain tooltip: `data-mbtt-fn="sb-pic"` →
+  `_sbPicCardHtml()`, the picture's preview (`.mb-art-card-preview`), its
+  origin pill (Wikimedia Commons / IROMBOOK), its file name, the size the
+  browser loaded, "Click: viewer". Built from the picture already shown:
+  nothing is asked. No `title` any more, so no native box either.
 - **The viewer context** is its own (`_SB_PIC_CTX`, column "Entity image"). A
   shared context would make the bar read "Detail page" or "CAA".
 - **The viewer bar** shows an image's `pageUrl` as a link (`pageLabel`, here
@@ -197,23 +215,26 @@ that click asks, never the load.
 **Settings.** `sa_sidebar_picture` (default on) and `sa_sidebar_picture_in_header`
 (default on). Both gate the cover copy too.
 
-**Specs.** `sidebar-picture.spec.js` (15: both Commons markups, an
-instrument's drawing, then the release / release group cover) and
+**Specs.** `sidebar-picture.spec.js` (17: both Commons markups, an
+instrument's drawing, then the release / release group / event cover) and
 `sidebar-picture.mobile.spec.js` (1). The cover tests serve a COPY of each
 fixture whose archive.org thumbnails are moved to a host the spec answers:
 the harness blocks every archive.org image, and MusicBrainz's script would
 replace the blocked span before the userscript looked. The record is served
 with its front image moved to second place, so "opens at the front" cannot
 pass by starting at index 0. The Commons
-tests add the picture late and serve upload.wikimedia.org from a 1×1 PNG; the
+tests add the picture late and serve upload.wikimedia.org from a 1×1 PNG,
+sized 120 px by the test as MusicBrainz's CSS would (a 1×1 image sits under
+the fixed sidebar handle at the page's left edge, and a hover lands on the
+handle's card); the
 instrument tests load `sidebar-picture-instrument-recordings.html` (built by
 `scripts/build-sidebar-picture-instrument-fixture.py`), serve the IROMBOOK host
 from the same PNG, and check the copy leads the h1 before and after "Show all
 Recordings for Instrument". A "left alone" test waits one macrotask
 turn (`observerRan()`): an observer callback is a microtask, so this is a real
 settle, not a sleep. There are 14 `picture:` mutations in
-`sidebar-overhaul.json` (six of them for the drawing, added 2026-10-20) and
-6 `cover:` ones (2026-10-21). The "still
+`sidebar-overhaul.json` (six of them for the drawing, added 2026-10-20),
+9 `cover:` and 3 `card:` ones (2026-10-21). The "still
 first on the final page" half has no mutation: no code keeps it there, it
 holds because nothing rewrites the h1.
 

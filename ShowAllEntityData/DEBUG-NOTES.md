@@ -25170,3 +25170,37 @@ painted through it. On the artist page the same click opens our viewer
 - Test trap: the fixture page already holds a hidden `.ui-dialog` of its own
   (`display: none`), so the spec addresses its planted dialog by id.
 - HELP: no section described this; nothing in it was made false.
+
+## 2026-10-21 — the sidebar pictures get the CAA/EAA column's cards (WIP.8, branch feat/pop-user-page-lists)
+
+Env: 2026-10-21T14:45:12+02:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.54.1) · Playwright 1.62.1 Chromium · no Tampermonkey (GM stubs)
+
+Asked for with a screenshot of the artist page: pointing at the photo (in
+the sidebar or beside the name) showed a plain one-line tooltip; "the same
+treatment as an image in the CAA/EAA column", also on release groups,
+releases, places, instruments, events.
+
+- **Two cards, both existing looks.** A single picture (Commons,
+  IROMBOOK) gets the B2 image card (`_sbPicCardHtml()`, data-mbtt-fn
+  "sb-pic"): nothing to ask, the picture is shown already. A release,
+  release group or event cover gets the B1 card of every image of its
+  record (`_sbCoverCardHtml()`, "sb-cover"), through the card the
+  relationship-list cover icons already used — refactored into
+  `_artRecordCardHtml(el, ctx, path, title, foot)` so CAA and EAA share
+  it. The record is asked on the first hover, as those icons do (user's
+  choice, 2026-10-21).
+- **The sidebar's own cover link is now ours too**: a window capture-phase
+  click listener opens our viewer, so MusicBrainz's jQuery UI dialog (the
+  one WIP.7 lifted above our bars) no longer opens from the sidebar at all;
+  Ctrl/Shift/Alt/⌘ leave it to MusicBrainz.
+- **Events:** `.event-art` has the same `a.artwork-image >
+  span.artwork-image[data-small-thumbnail]` markup as `.cover-art` but no
+  `.present` class (fixture event-overview.html).
+- **Test trap:** the Commons tests plant a 1×1 PNG; without MusicBrainz's
+  CSS it sat at x 8, under the fixed sidebar handle (x 0–15, z 10000), so a
+  hover at its centre got the HANDLE's card ("Toggle Full Width Sidebar").
+  The planted image is now sized 120 px, as MusicBrainz's CSS would.
+- **Mutations:** re-anchored 5 entries this change moved (4 in
+  sidebar-overhaul.json, 1 in caa-card-keys.json) and, as asked, the 7 that
+  were already stale at HEAD 8ccbd8d (tables:, more kinds:, disk:, two
+  picture:). The full sidebar-overhaul.json list then ran 71/71 OK.

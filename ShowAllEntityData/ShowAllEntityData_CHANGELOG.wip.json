@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.8",
+    "date": "2026-10-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The sidebar picture and its copy beside the name now show the same hover card as an image in a CAA/EAA column, instead of a one-line tooltip: an artist's photo, a label's logo or a place's picture from Wikimedia Commons, and an instrument's IROMBOOK drawing, with the picture, where it comes from and its file name.",
+          "Release, release group and event pages: pointing at the cover beside the name, or at the sidebar's own cover, shows the CAA/EAA column's card of every image of the release (or the event's event art), asked for on that first hover; Space shows them all, Shift bigger. A click on either opens them all in the artwork viewer, starting at the front, instead of MusicBrainz's own window; Ctrl-click on the sidebar's cover still opens MusicBrainz's. Event pages now get the cover beside the name too."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.7",
     "date": "2026-10-21",
     "sections": [
